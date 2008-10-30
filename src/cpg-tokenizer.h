@@ -1,0 +1,94 @@
+#ifndef __CPG_TOKENIZER_H__
+#define __CPG_TOKENIZER_H__
+
+#define CPG_TOKEN_IS_NUMBER(x) (x->type == CPG_TOKEN_TYPE_NUMBER)
+#define CPG_TOKEN_IS_IDENTIFIER(x) (x->type == CPG_TOKEN_TYPE_IDENTIFIER)
+#define CPG_TOKEN_IS_OPERATOR(x) (x->type == CPG_TOKEN_TYPE_OPERATOR)
+
+#define CPG_TOKEN_NUMBER(x) ((CpgTokenNumber *)x)
+#define CPG_TOKEN_IDENTIFIER(x) ((CpgTokenIdentifier *)x)
+#define CPG_TOKEN_OPERATOR(x) ((CpgTokenOperator *)x)
+
+typedef enum
+{
+	CPG_TOKEN_TYPE_NONE,
+	CPG_TOKEN_TYPE_NUMBER,
+	CPG_TOKEN_TYPE_IDENTIFIER,
+	CPG_TOKEN_TYPE_OPERATOR
+} CpgTokenType;
+
+#define CPG_TOKEN_OPERATOR_TYPE_IS_ARITHMETIC(x) (x > CPG_TOKEN_OPERATOR_TYPE_ARITHMETIC && x < CPG_TOKEN_OPERATOR_TYPE_LOGICAL)
+#define CPG_TOKEN_OPERATOR_TYPE_IS_LOGICAL(x) (x > CPG_TOKEN_OPERATOR_TYPE_LOGICAL && x < CPG_TOKEN_OPERATOR_TYPE_TERNARY)
+#define CPG_TOKEN_OPERATOR_TYPE_IS_TERNARY(x) (x > CPG_TOKEN_OPERATOR_TYPE_TERNARY && x < CPG_TOKEN_OPERATOR_TYPE_GROUP)
+#define CPG_TOKEN_OPERATOR_TYPE_IS_GROUP(x) (x > CPG_TOKEN_OPERATOR_TYPE_GROUP)
+
+typedef enum
+{
+	CPG_TOKEN_OPERATOR_TYPE_NONE,
+	
+	// arithmetic operators
+	CPG_TOKEN_OPERATOR_TYPE_ARITHMETIC,
+	CPG_TOKEN_OPERATOR_TYPE_MULTIPLY,
+	CPG_TOKEN_OPERATOR_TYPE_DIVIDE,
+	CPG_TOKEN_OPERATOR_TYPE_MODULO,
+	CPG_TOKEN_OPERATOR_TYPE_PLUS,
+	CPG_TOKEN_OPERATOR_TYPE_MINUS,
+	CPG_TOKEN_OPERATOR_TYPE_POWER,
+	
+	// logical operators
+	CPG_TOKEN_OPERATOR_TYPE_LOGICAL,
+	CPG_TOKEN_OPERATOR_TYPE_NEGATE,
+	CPG_TOKEN_OPERATOR_TYPE_GREATER,
+	CPG_TOKEN_OPERATOR_TYPE_LESS,
+	CPG_TOKEN_OPERATOR_TYPE_GREATER_OR_EQUAL,
+	CPG_TOKEN_OPERATOR_TYPE_LESS_OR_EQUAL,
+	CPG_TOKEN_OPERATOR_TYPE_EQUAL,
+	CPG_TOKEN_OPERATOR_TYPE_OR,
+	CPG_TOKEN_OPERATOR_TYPE_AND,
+	
+	// ternary operator
+	CPG_TOKEN_OPERATOR_TYPE_TERNARY,
+	CPG_TOKEN_OPERATOR_TYPE_TERNARY_TRUE,
+	CPG_TOKEN_OPERATOR_TYPE_TERNARY_FALSE,
+	
+	// group 'operator'
+	CPG_TOKEN_OPERATOR_TYPE_GROUP,
+	CPG_TOKEN_OPERATOR_TYPE_GROUP_START,
+	CPG_TOKEN_OPERATOR_TYPE_GROUP_END,
+
+	CPG_TOKEN_OPERATOR_TYPE_COMMA,
+	CPG_TOKEN_OPERATOR_TYPE_DOT
+} CpgTokenOperatorType;
+
+typedef struct
+{
+	CpgTokenType type;
+} CpgToken;
+
+typedef struct
+{
+	CpgToken parent;
+	double value;
+} CpgTokenNumber;
+
+typedef struct
+{
+	CpgToken parent;
+	char *identifier;
+} CpgTokenIdentifier;
+
+typedef struct
+{
+	CpgToken parent;
+	CpgTokenOperatorType type;
+	int priority;
+	int left_assoc;
+} CpgTokenOperator;
+
+CpgToken *cpg_tokenizer_next(char const **buffer);
+CpgToken *cpg_tokenizer_peek(char const *buffer);
+
+void cpg_token_free(CpgToken *token);
+
+#endif /* __CPG_TOKENIZER_H__ */
+

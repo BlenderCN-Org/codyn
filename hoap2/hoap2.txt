@@ -1,0 +1,503 @@
+# CPG Network File
+state
+lhip_l
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	1	0
+gy	1	0
+u	7.28037714304	0
+w	1.25 * 2 * PI	0
+xoffset	0	0
+yoffset	0	0
+phase	-0.5 * PI	0
+
+state
+lhip
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	0.02	0
+gy	0.02	0
+u	46.8911199633	0
+w	1.25 * 2 * PI	0
+xoffset	0	0
+yoffset	0	0
+phase	-0.0524749723744	0
+
+state
+lknee
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	0.02	0
+gy	0.02	0
+u	31.8389198966	0
+w	1.25 * 2 * PI	0
+xoffset	39.9931855386	0
+yoffset	0	0
+phase	-2.79717420348	0
+
+state
+rhip
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	0.02	0
+gy	0.02	0
+u	46.8911199633	0
+w	1.25 * 2 * PI	0
+xoffset	0	0
+yoffset	0	0
+phase	3.08911768122	0
+
+state
+rknee
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	0.02	0
+gy	0.02	0
+u	31.8389198966	0
+w	1.25 * 2 * PI	0
+xoffset	39.9931855386	0
+yoffset	0	0
+phase	0.34441845011	0
+
+state
+lankle_l
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	1	0
+gy	1	0
+u	7.28037714304	0
+w	1.25 * 2 * PI	0
+xoffset	0	0
+yoffset	0	0
+phase	0.5 * PI	0
+
+state
+rankle
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	0.1	0
+gy	0.1	0
+u	11.605024176	0
+w	1.25 * 2 * PI	0
+xoffset	-26.9016678748	0
+yoffset	0	0
+phase	5.52475684823	0
+
+state
+lankle
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	0.1	0
+gy	0.1	0
+u	11.605024176	0
+w	1.25 * 2 * PI	0
+xoffset	-26.9016678748	0
+yoffset	0	0
+phase	2.38316419464	0
+
+state
+rankle_l
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	1	0
+gy	1	0
+u	7.28037714304	0
+w	1.25 * 2 * PI	0
+xoffset	0	0
+yoffset	0	0
+phase	0.5 * PI	0
+
+state
+rhip_l
+x	u * sin(phase) + xoffset	1
+y	u * sin(phase + 0.5 * PI) + yoffset	1
+gx	1	0
+gy	1	0
+u	7.28037714304	0
+w	1.25 * 2 * PI	0
+xoffset	0	0
+yoffset	0	0
+phase	-0.5 * PI	0
+
+state
+drive
+x	1	1
+y	0	1
+gx	1	0
+gy	1	0
+u	1	0
+w	1.25 * 2 * PI	0
+xoffset	0	0
+yoffset	0	0
+wstance	1.25 * 2 * PI	0
+wswing	1.25 * 2 * PI	0
+b	1	0
+
+link
+drive
+rhip_l
+
+w	w
+
+link
+drive
+rankle
+
+w	w
+
+link
+drive
+rknee
+
+w	w
+
+link
+lankle_l
+lhip_l
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+lhip
+lhip_l
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+lhip_l
+lhip
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+lknee
+lankle
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+drive
+lhip
+
+w	w
+
+link
+drive
+lknee
+
+w	w
+
+link
+rhip
+lhip
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+drive
+lhip_l
+
+w	w
+
+link
+drive
+lankle
+
+w	w
+
+link
+rhip
+rhip_l
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+drive
+rhip
+
+w	w
+
+link
+rankle_l
+rhip_l
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+rankle
+rknee
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+drive
+lankle_l
+
+w	w
+
+link
+lhip_l
+lhip_l
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+drive
+rankle_l
+
+w	w
+
+link
+lhip
+lhip
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+lhip_l
+lankle_l
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+drive
+drive
+
+w	wstance / (exp(-b * y) + 1) + wswing / (exp(b * y) + 1)
+
+link
+lhip
+lknee
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+lknee
+lknee
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+lknee
+lhip
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+rhip
+rhip
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+lankle
+lknee
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+rknee
+rknee
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+lhip
+rhip
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+lankle_l
+lankle_l
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+rhip
+rknee
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+rankle
+rankle
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+rknee
+rhip
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+lankle
+lankle
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+rhip_l
+rhip
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+rankle_l
+rankle_l
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+rhip_l
+rankle_l
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+rhip_l
+rhip_l
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+link
+rknee
+rankle
+rx	(x * cos(phase) + y * sin(phase)) / from.u * to.u	0
+ry	(-x * sin(phase) + y * sin(phase)) / from.u * to.u	0
+phase	to.phase - from.phase	0
+
+x	rx
+y	ry
+
+link
+drive
+drive
+ex	gx * (u ** 2 - (xs ** 2 + ys ** 2)) * xs + w * ys	0
+ey	gy * (u ** 2 - (xs ** 2 + ys ** 2)) * ys - w * xs	0
+xs	x - xoffset	0
+ys	y - yoffset	0
+
+x	ex
+y	ey
+
+
