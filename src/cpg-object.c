@@ -4,6 +4,8 @@
 #include "cpg-object.h"
 #include "cpg-link.h"
 #include "cpg-utils.h"
+#include "cpg-debug.h"
+#include "cpg-state.h"
 
 void
 cpg_object_initialize(CpgObject *object, CpgObjectType type)
@@ -102,10 +104,16 @@ cpg_object_update(CpgObject *object, float timestep)
 			double value;
 			
 			if (property->integrated)
+			{
 				value = cpg_expression_evaluate(property->value) + property->update * timestep;
+				property->update = 0;
+			}
 			else
+			{
 				value = property->update;
+			}
 
+			cpg_debug_evaluate("Updating %s.%s (%d) = %f (from %f)", CPG_OBJECT_IS_STATE(object) ? ((CpgState *)object)->name : "link", property->name, property->integrated, value, cpg_expression_evaluate(property->value));
 			cpg_expression_set_value(property->value, value);
 		}
 	}
@@ -123,7 +131,7 @@ cpg_object_evaluate(CpgObject *object, float timestep)
 		unsigned e;
 		
 		// Iterate over all the expressions in the link and initialize
-		// the update value
+		// the update value of the destination
 		for (e = 0; e < link->num_expressions; ++e)
 		{
 			CpgProperty *property = link->expressions[e]->destination;
@@ -145,6 +153,8 @@ cpg_object_evaluate(CpgObject *object, float timestep)
 			
 			// Evaluate expression and add value to the update
 			double val = cpg_expression_evaluate(expression);
+			
+			cpg_debug_evaluate("Update val for %s.%s: %f", CPG_OBJECT_IS_STATE(object) ? ((CpgState *)object)->name : "link", expression->destination->name, val);
 			expression->destination->update += val;
 		}
 	}

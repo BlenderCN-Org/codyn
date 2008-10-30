@@ -5,6 +5,7 @@
 #include "cpg-utils.h"
 #include "cpg-state.h"
 #include "cpg-link.h"
+#include "cpg-debug.h"
 
 #define BUFFER_SIZE 4096
 
@@ -407,6 +408,7 @@ cpg_network_simulation_step(CpgNetwork *network, float step)
 {
 	network->timestep = step;
 	
+	cpg_debug_evaluate("Simulation step", "");
 	simulation_evaluate(network);
 	simulation_update(network);
 }
