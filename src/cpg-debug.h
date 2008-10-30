@@ -10,7 +10,7 @@ typedef enum
 	CPG_DEBUG_TYPE_EVALUATE = 1 << 1
 } CpgDebugType;
 
-#define cpg_debug_message(type, format, ...) cpg_debug_message_function(type, __FUNCTION__, format, __VA_ARGS__)
+#define cpg_debug_message(type, format, ...) cpg_debug_message_function(type, __func__, format, __VA_ARGS__)
 
 #define cpg_debug_expression(format, ...) cpg_debug_message(CPG_DEBUG_TYPE_EXPRESSION, format, __VA_ARGS__)
 #define cpg_debug_evaluate(format, ...) cpg_debug_message(CPG_DEBUG_TYPE_EVALUATE, format, __VA_ARGS__)

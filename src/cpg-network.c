@@ -28,14 +28,18 @@ struct _CpgNetwork
 {
 	char *filename;
 	
-	/* objects */
-	CpgObject **objects;
+	/* states */
+	CpgState **states;
 	unsigned num_states;
+	
+	/* links */
+	CpgLink **links;
 	unsigned num_links;
 	
 	/* simulation */
 	float timestep;
 	float time;
+	int compiled;
 	
 	/* monitors */
 	CpgMonitor *monitors;
@@ -296,6 +300,8 @@ parse_expressions(CpgObject *object)
 		}
 	}
 	
+	cpg_object_reset(object);
+	
 	if (!CPG_OBJECT_IS_LINK(object))
 		return 1;
 
@@ -318,38 +324,39 @@ parse_expressions(CpgObject *object)
 	return 1;
 }
 
+static void
+add_state(CpgNetwork *network, CpgState *state)
+{
+	network->states = (CpgState **)realloc(network->states, sizeof(CpgState *) * (++network->num_states));
+	network->states[network->num_states - 1] = state;
+}
+
+static void
+add_link(CpgNetwork *network, CpgLink *link)
+{
+	network->links = (CpgLink **)realloc(network->links, sizeof(CpgLink *) * (++network->num_links));
+	network->links[network->num_links - 1] = link;
+}
+
 /**
  * cpg_network_add_object:
  * @network: the #CpgNetwork
  * @object: the #CpgObject to add
  *
- * Adds a new object to the network (either #CpgLink or #CpgState). You have
- * to make sure to add states first, then links. You also need to make
- * sure that objects are fully constructed, no properties maybe added after
- * this point.
+ * Adds a new object to the network (either #CpgLink or #CpgState). Make sure
+ * to recompile the network after the object is added.
  *
  */
-int
+void
 cpg_network_add_object(CpgNetwork *network, CpgObject *object)
 {
-	// Make sure to parse all expressions in the object after it has been
-	// fully constructed so that references are all present
-	if (!parse_expressions(object))
-		return 0;
-
-	// make sure to reset the object
-	cpg_object_reset(object);
-	
 	// add object to the network
-	network->objects = (CpgObject **)realloc(network->objects, sizeof(CpgObject *) * (network->num_states + network->num_links + 1));
-	network->objects[network->num_states + network->num_links] = object;
-	
 	if (CPG_OBJECT_IS_STATE(object))
-		++network->num_states;
+		add_state(network, (CpgState *)object);
 	else
-		++network->num_links;
+		add_link(network, (CpgLink *)object);
 	
-	return 1;
+	network->compiled = 0;
 }
 
 static int
@@ -372,17 +379,7 @@ read_object(CpgNetwork *network, FILE *f)
 	free(buffer);
 
 	if (object)
-	{
-		if (!cpg_network_add_object(network, object))
-		{
-			if (CPG_OBJECT_IS_STATE(object))
-				cpg_state_free((CpgState *)object);
-			else
-				cpg_link_free((CpgLink *)object);
-		
-			return 0;
-		}
-	}
+		cpg_network_add_object(network, object);
 	
 	return 1;
 }
@@ -394,13 +391,102 @@ cpg_network_get_state_by_name(CpgNetwork *network, char const *name)
 	
 	for (i = 0; i < network->num_states; ++i)
 	{
-		CpgState *state = (CpgState *)(network->objects[i]);
+		CpgState *state = network->states[i];
 		
 		if (strcmp(state->name, name) == 0)
 			return state;
 	}
 	
 	return NULL;
+}
+
+/**
+ * cpg_network_states:
+ * @network: the #CpgNetwork
+ * @size: return value for the size of the list of states
+ *
+ * Retrieves the list of states. This list is managed internally by the network
+ * and should therefore not be changed or freed
+ *
+ * Return value: a list of #CpgState
+ *
+ **/
+CpgState * const *
+cpg_network_states(CpgNetwork *network, unsigned *size)
+{
+	if (size)
+		*size = network->num_states;
+	
+	return network->states;
+}
+
+/**
+ * cpg_network_links:
+ * @network: the #CpgNetwork
+ * @size: return value for the size of the list of links
+ *
+ * Retrieves the list of links. This list is managed internally by the network
+ * and should therefore not be changed or freed
+ *
+ * Return value: a list of #CpgLink
+ *
+ **/
+CpgLink * const *
+cpg_network_links(CpgNetwork *network, unsigned *size)
+{
+	if (size)
+		*size = network->num_links;
+	
+	return network->links;
+}
+
+/**
+ * cpg_network_taint:
+ * @network: the #CpgNetwork
+ *
+ * Set the network in an uncompiled state, forcing it to recompile at the next
+ * simulation step or run (or the network can be recompiled manually with 
+ * #cpg_network_compile)
+ *
+ **/
+void
+cpg_network_taint(CpgNetwork *network)
+{
+	network->compiled = 0;
+}
+
+/**
+ * cpg_network_compile:
+ * @network: the #CpgNetwork
+ *
+ * Recompile all expressions for all states and links. You should do this
+ * after you've added new objects to the network. If a simulation is ran while
+ * the network is in an uncompiled state, it will be compiled first.
+ *
+ * Return value: 1 if compilation was successful, 0 otherwise
+ *
+ **/
+int
+cpg_network_compile(CpgNetwork *network)
+{
+	unsigned i;
+	
+	network->compiled = 0;
+
+	for (i = 0; i < network->num_states; ++i)
+	{
+		if (!parse_expressions((CpgObject *)(network->states[i])))
+			return 0;
+	}
+	
+	for (i = 0; i < network->num_links; ++i)
+	{
+		if (!parse_expressions((CpgObject *)(network->links[i])))
+			return 0;
+	}
+	
+	network->compiled = 1;
+	return 1;
 }
 
 /**
@@ -416,13 +502,15 @@ cpg_network_new()
 	CpgNetwork *network = cpg_new1(CpgNetwork);
 
 	network->filename = NULL;
-	network->objects = NULL;
+	network->states = NULL;
+	network->links = NULL;
 
 	network->num_states = 0;
 	network->num_links = 0;
 	
 	network->time = 0;
 	network->timestep = 0;
+	network->compiled = 0;
 	
 	network->monitors = NULL;
 }
@@ -464,6 +552,13 @@ cpg_network_new_from_file(char const *filename)
 	}
 	
 	fclose(f);
+	
+	if (!cpg_network_compile(network))
+	{
+		cpg_network_free(network);
+		return NULL;
+	}
+	
 	return network;
 }
 
@@ -481,14 +576,21 @@ cpg_network_clear(CpgNetwork *network)
 	// remove all states
 	unsigned i;
 	for (i = 0; i < network->num_states; ++i)
-		cpg_state_free((CpgState *)network->objects[i]);
+		cpg_state_free(network->states[i]);
 	
 	// remove all links
-	for (i = network->num_states; i < network->num_states + network->num_links; ++i)
-		cpg_link_free((CpgLink *)network->objects[i]);
+	for (i = 0; i < network->num_links; ++i)
+		cpg_link_free(network->links[i]);
 	
-	free(network->objects);
-	network->objects = NULL;
+	if (network->states)
+		free(network->states);
+	
+	if (network->links)
+		free(network->links);
+	
+	network->states = NULL;
+	network->links = NULL;
+
 	network->num_states = 0;
 	network->num_links = 0;
 
@@ -531,7 +633,7 @@ simulation_evaluate(CpgNetwork *network)
 	
 	for (i = 0; i < network->num_states; ++i)
 	{
-		CpgObject *object = (CpgObject *)(network->objects[i]);
+		CpgObject *object = (CpgObject *)(network->states[i]);
 		cpg_object_evaluate(object, network->timestep);
 	}
 }
@@ -543,7 +645,7 @@ simulation_update(CpgNetwork *network)
 	
 	for (i = 0; i < network->num_states; ++i)
 	{
-		CpgObject *object = (CpgObject *)(network->objects[i]);
+		CpgObject *object = (CpgObject *)(network->states[i]);
 		cpg_object_update(object, network->timestep);
 	}
 }
@@ -559,9 +661,12 @@ simulation_update(CpgNetwork *network)
 void
 cpg_network_simulation_step(CpgNetwork *network, float timestep)
 {
+	if (!network->compiled)
+		cpg_network_compile(network);
+
 	network->timestep = timestep;
 	
-	cpg_debug_evaluate("Simulation step", "");
+	cpg_debug_evaluate("%s", "Simulation step");
 	simulation_evaluate(network);
 	simulation_update(network);
 	
@@ -582,6 +687,9 @@ cpg_network_simulation_step(CpgNetwork *network, float timestep)
 void
 cpg_network_simulation_run(CpgNetwork *network, float from, float timestep, float to)
 {
+	if (!network->compiled && !cpg_network_compile(network))
+		return;
+
 	if (from >= to)
 	{
 		fprintf(stderr, "** Error: Invalid range specified, from has to be smaller than to\n");
@@ -617,8 +725,12 @@ cpg_network_simulation_reset(CpgNetwork *network)
 	
 	// reset all objects
 	unsigned i;
-	for (i = 0; i < network->num_states + network->num_links; ++i)
-		cpg_object_reset(network->objects[i]);
+	for (i = 0; i < network->num_states; ++i)
+		cpg_object_reset((CpgObject *)(network->states[i]));
+
+	for (i = 0; i < network->num_links; ++i)
+		cpg_object_reset((CpgObject *)(network->links[i]));
+
 }
 
 /* monitoring */

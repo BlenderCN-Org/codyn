@@ -3,6 +3,7 @@
 
 #include "cpg-object.h"
 #include "cpg-state.h"
+#include "cpg-link.h"
 
 typedef struct _CpgNetwork CpgNetwork;
 
@@ -16,8 +17,17 @@ CpgState		*cpg_network_get_state_by_name	(CpgNetwork *network,
 												 char const *name);
 
 /* network manipulation */
-int				 cpg_network_add_object			(CpgNetwork *network, 
+void			 cpg_network_add_object			(CpgNetwork *network, 
 												 CpgObject  *object);
+
+int				 cpg_network_compile			(CpgNetwork *network);
+void			 cpg_network_taint				(CpgNetwork *network);
+
+CpgState * const *cpg_network_states			(CpgNetwork *network,
+												 unsigned   *size);
+
+CpgLink * const *cpg_network_links				(CpgNetwork *network,
+												 unsigned   *size);
 
 /* monitor functions */
 void			 cpg_network_set_monitor		(CpgNetwork *network, 

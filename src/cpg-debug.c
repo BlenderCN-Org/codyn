@@ -5,7 +5,8 @@
 static char const *debug_types[] =
 {
 	"NONE",
-	"EXPRESSION"
+	"EXPRESSION",
+	"EVALUATION"
 };
 
 static int debug_type = CPG_DEBUG_TYPE_NONE;

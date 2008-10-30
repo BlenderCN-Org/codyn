@@ -980,7 +980,7 @@ cpg_expression_parse(CpgExpression *expression, CpgObject *context, char **error
 			
 			return 0;
 		}
-	}	
+	}
 	
 	return 1;
 }
@@ -1036,7 +1036,7 @@ cpg_expression_evaluate(CpgExpression *expression)
 	
 	if (expression->output_ptr != expression->output + 1)
 	{
-		fprintf(stderr, "Invalid output stack after evaluating!\n");
+		fprintf(stderr, "Invalid output stack after evaluating: %s!\n", expression->expression);
 		return NAN;
 	}
 
