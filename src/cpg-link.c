@@ -10,11 +10,11 @@ cpg_link_new(CpgObject *from, CpgObject *to)
 	
 	res->from = from;
 	res->to = to;
-	
-	cpg_object_link(res->to, res);
 
 	res->expressions = 0;
 	res->num_expressions = 0;
+	
+	cpg_object_link(res->to, res);
 		
 	return res;
 }
