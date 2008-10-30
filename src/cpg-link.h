@@ -20,7 +20,7 @@ struct _CpgLink
 };
 
 CpgLink 	*cpg_link_new				(CpgObject *from, CpgObject *to);
-void 		 cpg_link_add_expression	(CpgLink *link, CpgProperty *destination, char const *expression);
+void 		 cpg_link_add_action		(CpgLink *link, CpgProperty *destination, char const *expression);
 void 		 cpg_link_free				(CpgLink *link);
 
 #endif /* __CPG_LINK_H__ */

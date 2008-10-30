@@ -20,7 +20,7 @@ cpg_link_new(CpgObject *from, CpgObject *to)
 }
 
 void
-cpg_link_add_expression(CpgLink *link, CpgProperty *destination, char const *expression)
+cpg_link_add_action(CpgLink *link, CpgProperty *destination, char const *expression)
 {
 	link->expressions = (CpgExpression **)realloc(link->expressions, sizeof(CpgExpression *) * ++link->num_expressions);
 	link->expressions[link->num_expressions - 1] = cpg_expression_new_for_link(link, destination, expression);
