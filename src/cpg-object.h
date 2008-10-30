@@ -23,6 +23,9 @@ typedef struct
 	CpgProperty **properties;
 	unsigned num_properties;
 	
+	CpgProperty **actors;
+	unsigned num_actors;
+	
 	// Links
 	struct _CpgLink **links;
 	unsigned num_links;
@@ -36,6 +39,7 @@ void 			 cpg_object_destroy			(CpgObject *object);
 
 CpgProperty 	*cpg_object_get_property	(CpgObject *object, char const *name);
 void 			 cpg_object_link			(CpgObject *object, struct _CpgLink *link);
+void			 cpg_object_update_link		(CpgObject *object, struct _CpgLink *link);
 
 void			 cpg_object_update			(CpgObject *object, float timestep);
 void			 cpg_object_evaluate		(CpgObject *object, float timestep);

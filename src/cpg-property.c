@@ -17,6 +17,9 @@ cpg_property_new(char const *name, char const *expression, char integrated)
 	res->integrated = integrated;	
 	res->initial = cpg_expression_new(expression);
 	
+	// set current value to copy of initial value
+	res->value = cpg_expression_copy(res->initial);
+	
 	return res;
 }
 
