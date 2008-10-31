@@ -1,6 +1,16 @@
 #include "cpg-link.h"
 #include "cpg-utils.h"
 
+/**
+ * cpg_link_new:
+ * @from: the #CpgObject which is the link source
+ * @to: the #CpgObject which is the link destination
+ *
+ * Create a new link object with source @from and destination @to. The link
+ * will automatically be installed in @to.
+ *
+ * Return value: the newly created #CpgLink
+ */
 CpgLink *
 cpg_link_new(CpgObject *from, CpgObject *to)
 {
@@ -19,6 +29,17 @@ cpg_link_new(CpgObject *from, CpgObject *to)
 	return res;
 }
 
+/**
+ * cpg_link_add_action:
+ * @link: the #CpgLink
+ * @destination: the destination #CpgProperty
+ * @expression: the expression to evaluate and push to @destination
+ *
+ * Add a new action to be performed when the link is evaluated during
+ * simulation. An action consists of a destination property and an expression
+ * who's result will be pushed in the destination at every simulation step
+ *
+ */
 void
 cpg_link_add_action(CpgLink *link, CpgProperty *destination, char const *expression)
 {
@@ -29,6 +50,13 @@ cpg_link_add_action(CpgLink *link, CpgProperty *destination, char const *express
 	cpg_object_update_link(link->to, link);
 }
 
+/**
+ * cpg_link_free:
+ * @link: the #CpgLink
+ *
+ * Destroy the #CpgLink
+ *
+ */
 void
 cpg_link_free(CpgLink *link)
 {

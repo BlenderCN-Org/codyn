@@ -183,3 +183,37 @@ cpg_object_reset(CpgObject *object)
 		property->value = cpg_expression_copy(property->initial);
 	}
 }
+
+void 
+cpg_object_set_value(CpgObject *object, CpgProperty *property, char const *expression)
+{
+	if (!property->value)
+		return;
+	
+	cpg_expression_set(property->value, expression);
+	
+	char *error;
+	
+	if (!cpg_expression_parse(property->value, object, &error))
+	{
+		fprintf(stderr, "Unable to parse new property value: %s\n", error);
+		free(error);
+	}
+}
+
+void
+cpg_object_set_initial(CpgObject *object, CpgProperty *property, char const *expression)
+{
+	if (!property->initial)
+		return;
+	
+	cpg_expression_set(property->initial, expression);
+	
+	char *error;
+	
+	if (!cpg_expression_parse(property->initial, object, &error))
+	{
+		fprintf(stderr, "Unable to parse new property value: %s\n", error);
+		free(error);
+	}
+}

@@ -41,6 +41,9 @@ CpgProperty 	*cpg_object_get_property	(CpgObject *object, char const *name);
 void 			 cpg_object_link			(CpgObject *object, struct _CpgLink *link);
 void			 cpg_object_update_link		(CpgObject *object, struct _CpgLink *link);
 
+void			 cpg_object_set_value		(CpgObject *object, CpgProperty *property, char const *expression);
+void			 cpg_object_set_initial		(CpgObject *object, CpgProperty *property, char const *expression);
+
 void			 cpg_object_update			(CpgObject *object, float timestep);
 void			 cpg_object_evaluate		(CpgObject *object, float timestep);
 void			 cpg_object_reset			(CpgObject *object);

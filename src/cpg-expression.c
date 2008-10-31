@@ -140,7 +140,7 @@ cpg_instruction_property_new(CpgProperty *property)
 	return (CpgInstruction *)res;
 }
 
-void
+static void
 cpg_instruction_free(CpgInstruction *instruction)
 {
 	if (instruction->type == CPG_INSTRUCTION_TYPE_FUNCTION ||
@@ -148,6 +148,38 @@ cpg_instruction_free(CpgInstruction *instruction)
 		free(((CpgInstructionFunction *)instruction)->name);
 
 	free(instruction);
+}
+
+static void
+instructions_free(CpgExpression *expression)
+{
+	CpgInstruction *inst = expression->instructions;
+	
+	while (inst)
+	{
+		CpgInstruction *next = inst->next;
+		cpg_instruction_free(inst);
+		inst = next;
+	}
+	
+	expression->instructions = NULL;
+}
+
+void
+cpg_expression_set(CpgExpression *expression, char const *value)
+{
+	if (expression->expression)
+		free(expression->expression);
+	
+	expression->expression = strdup(value);
+	instructions_free(expression);
+	
+	if (expression->output)
+		free(expression->output);
+	
+	expression->output = NULL;
+	expression->output_ptr = NULL;
+	expression->num_output = 0;
 }
 
 CpgExpression *
@@ -223,21 +255,6 @@ cpg_expression_copy(CpgExpression *expression)
 	}
 	
 	return res;
-}
-
-static void
-instructions_free(CpgExpression *expression)
-{
-	CpgInstruction *inst = expression->instructions;
-	
-	while (inst)
-	{
-		CpgInstruction *next = inst->next;
-		cpg_instruction_free(inst);
-		inst = next;
-	}
-	
-	expression->instructions = NULL;
 }
 
 static void
@@ -877,6 +894,10 @@ validate_stack(CpgExpression *expression)
 	int stack = 0;
 	int maxstack = 1;
 	
+	// check for empty instruction set
+	if (!expression->instructions)
+		instructions_push(expression, cpg_instruction_number_new(0.0));
+	
 	for (inst = expression->instructions; inst; inst = inst->next)
 	{
 		switch (inst->type)
@@ -907,6 +928,9 @@ validate_stack(CpgExpression *expression)
 			maxstack = stack;
 	}
 	
+	if (stack != 1)
+		return 0;
+	
 	if (expression->output)
 		free(expression->output);
 	
@@ -930,7 +954,7 @@ cpg_expression_parse(CpgExpression *expression, CpgObject *context, char **error
 		expression->num_output = 0;	
 		expression->output = NULL;
 	}
-		
+	
 	int ret = parse_expression(expression, (char const **)&buffer, context, -1, 0);
 	
 	if (!ret)
@@ -955,8 +979,6 @@ cpg_expression_parse(CpgExpression *expression, CpgObject *context, char **error
 
 		if (!validate_stack(expression))
 		{
-			exit(1);
-
 			if (error)
 			{
 				char msg[4096];
@@ -1011,6 +1033,12 @@ cpg_expression_evaluate(CpgExpression *expression)
 	CpgInstruction *instruction;
 	expression->output_ptr = expression->output;
 	
+	if (!expression->instructions)
+	{
+		fprintf(stderr, "No instructions found, maybe the expression was not parsed?");
+		return 0.0;
+	}
+	
 	for (instruction = expression->instructions; instruction; instruction = instruction->next)
 	{
 		switch (instruction->type)
@@ -1051,8 +1079,12 @@ cpg_expression_free(CpgExpression *expression)
 
 	instructions_free(expression);
 
-	free(expression->output);
-	free(expression->expression);
+	if (expression->output)
+		free(expression->output);
+		
+	if (expression->expression)
+		free(expression->expression);
+
 	free(expression);
 }
 

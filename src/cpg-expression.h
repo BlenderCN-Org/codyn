@@ -37,6 +37,8 @@ CpgExpression	*cpg_expression_copy			(CpgExpression *expression);
 void 			 cpg_expression_free			(CpgExpression *expression);
 
 int				 cpg_expression_parse			(CpgExpression *expression, CpgObject *context, char **error);
+void			 cpg_expression_set				(CpgExpression *expression, char const *value);
+
 double 			 cpg_expression_evaluate		(CpgExpression *expression);
 void			 cpg_expression_set_value		(CpgExpression *expression, double value);
 
@@ -44,4 +46,5 @@ double 			 cpg_expression_pop				(CpgExpression *expression);
 void 			 cpg_expression_push			(CpgExpression *expression, double value);
 
 void			 cpg_expression_print_instructions(CpgExpression *expression, FILE *f);
+
 #endif /* __CPG_EXPRESSION_H__ */
