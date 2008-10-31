@@ -18,8 +18,8 @@ struct _CpgMonitor
 	CpgProperty *property;
 	
 	double *values;
-	unsigned value_ptr;
 	unsigned num_values;
+	unsigned size;
 
 	CpgMonitor *next;
 };
@@ -70,8 +70,8 @@ read_line(FILE *f)
 static void
 cpg_monitor_grow(CpgMonitor *monitor)
 {
-	monitor->num_values += MONITOR_GROW_SIZE;
-	monitor->values = (double *)realloc(monitor->values, sizeof(double) * monitor->num_values);
+	monitor->size += MONITOR_GROW_SIZE;
+	monitor->values = (double *)realloc(monitor->values, sizeof(double) * monitor->size);
 }
 
 static CpgMonitor *
@@ -84,7 +84,7 @@ cpg_monitor_new(CpgObject *object, CpgProperty *property)
 
 	res->num_values = 0;
 	res->values = NULL;
-	res->value_ptr = 0;
+	res->size = 0;
 	
 	// initialize values list
 	cpg_monitor_grow(res);
@@ -93,11 +93,19 @@ cpg_monitor_new(CpgObject *object, CpgProperty *property)
 }
 
 static void
-cpg_monitor_free(CpgMonitor *monitor)
+cpg_monitor_free_data(CpgMonitor *monitor)
 {
 	if (monitor->values)
 		free(monitor->values);
 	
+	monitor->values = NULL;
+	monitor->size = 0;
+	monitor->num_values = 0;
+}	
+static void
+cpg_monitor_free(CpgMonitor *monitor)
+{
+	cpg_monitor_free_data(monitor);	
 	free(monitor);
 }
 
@@ -650,6 +658,19 @@ simulation_update(CpgNetwork *network)
 	}
 }
 
+static void
+update_monitors(CpgNetwork *network)
+{
+	CpgMonitor *monitor;
+	for (monitor = network->monitors; monitor; monitor = monitor->next)
+	{
+		if (monitor->num_values >= monitor->size - 1)
+			cpg_monitor_grow(monitor);
+		
+		monitor->values[monitor->num_values++] = cpg_expression_evaluate(monitor->property->value);
+	}
+}
+
 /**
  * cpg_network_simulation_step:
  * @network: the #CpgNetwork
@@ -663,6 +684,8 @@ cpg_network_simulation_step(CpgNetwork *network, float timestep)
 {
 	if (!network->compiled)
 		cpg_network_compile(network);
+		
+	update_monitors(network);
 
 	network->timestep = timestep;
 	
@@ -714,7 +737,7 @@ cpg_network_simulation_run(CpgNetwork *network, float from, float timestep, floa
  *
  * Reset the CPG network to its original values. This will reset the time
  * to 0 and for all objects in the network will reset all properties to the
- * initial value.
+ * initial value. This also will reset any active monitors.
  *
  **/
 void
@@ -730,7 +753,11 @@ cpg_network_simulation_reset(CpgNetwork *network)
 
 	for (i = 0; i < network->num_links; ++i)
 		cpg_object_reset((CpgObject *)(network->links[i]));
-
+	
+	// reset monitors
+	CpgMonitor *monitor;
+	for (monitor = network->monitors; monitor; monitor = monitor->next)
+		cpg_monitor_free_data(monitor);
 }
 
 /* monitoring */
@@ -823,7 +850,7 @@ cpg_network_monitor_data(CpgNetwork *network, CpgObject  *object, char const *pr
 		return NULL;
 	
 	if (size)	
-		*size = monitor->value_ptr;
+		*size = monitor->num_values;
 
 	return monitor->values;
 }

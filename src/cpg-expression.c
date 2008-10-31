@@ -1029,6 +1029,9 @@ cpg_expression_new_for_link(CpgLink *link, CpgProperty *destination, char const 
 double
 cpg_expression_evaluate(CpgExpression *expression)
 {
+	if (!expression)
+		return 0.0;
+
 	/* execute stack */
 	CpgInstruction *instruction;
 	expression->output_ptr = expression->output;
