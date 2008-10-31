@@ -16,5 +16,7 @@ CpgProperty 	*cpg_property_new			(char const *name, char const *expression, char
 void			 cpg_property_free			(CpgProperty *property);
 void			 cpg_property_set_value		(CpgProperty *property, double value);
 void			 cpg_property_set_initial 	(CpgProperty *property, double value);
+double			 cpg_property_value			(CpgProperty *property);
+double			 cpg_property_initial		(CpgProperty *property);
 
 #endif /* __CPG_PROPERTY_H__ */

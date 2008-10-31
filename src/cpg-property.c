@@ -89,3 +89,33 @@ cpg_property_set_initial(CpgProperty *property, double value)
 	
 	cpg_expression_set_value(property->initial, value);
 }
+
+/**
+ * cpg_property_value:
+ * @property: the #CpgProperty
+ *
+ * Get the numerical value of the current value of the property
+ *
+ * Return value: the numerical value of the property's current value
+ *
+ **/
+double
+cpg_property_value(CpgProperty *property)
+{
+	return property->value ? cpg_expression_evaluate(property->value) : 0.0;
+}
+
+/**
+ * cpg_property_initial:
+ * @property: the #CpgProperty
+ *
+ * Get the numerical value of the initial value of the property
+ *
+ * Return value: the numerical value of the property's initial value
+ *
+ **/
+double
+cpg_property_initial(CpgProperty *property)
+{
+	return property->initial ? cpg_expression_evaluate(property->initial) : 0.0;
+}
