@@ -41,6 +41,12 @@ double const 	*cpg_network_monitor_data		(CpgNetwork *network,
 												 char const *propname,
 												 unsigned   *size);
 
+double			*cpg_network_monitor_data_resampled	(CpgNetwork   *network,
+												     CpgObject    *object,
+												     char const   *propname,
+												     double const *sites,
+												     unsigned      size);
+												 
 /* simulation functions */
 void			 cpg_network_simulation_run		(CpgNetwork *network, 
 												 float 		 from, 

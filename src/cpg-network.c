@@ -18,6 +18,7 @@ struct _CpgMonitor
 	CpgProperty *property;
 	
 	double *values;
+	double *sites;
 	unsigned num_values;
 	unsigned size;
 
@@ -72,6 +73,7 @@ cpg_monitor_grow(CpgMonitor *monitor)
 {
 	monitor->size += MONITOR_GROW_SIZE;
 	monitor->values = (double *)realloc(monitor->values, sizeof(double) * monitor->size);
+	monitor->sites = (double *)realloc(monitor->sites, sizeof(double) * monitor->size);
 }
 
 static CpgMonitor *
@@ -85,6 +87,7 @@ cpg_monitor_new(CpgObject *object, CpgProperty *property)
 	res->num_values = 0;
 	res->values = NULL;
 	res->size = 0;
+	res->sites = NULL;
 	
 	// initialize values list
 	cpg_monitor_grow(res);
@@ -98,7 +101,11 @@ cpg_monitor_free_data(CpgMonitor *monitor)
 	if (monitor->values)
 		free(monitor->values);
 	
+	if (monitor->sites)
+		free(monitor->sites);
+	
 	monitor->values = NULL;
+	monitor->sites = NULL;
 	monitor->size = 0;
 	monitor->num_values = 0;
 }	
@@ -503,6 +510,7 @@ cpg_network_compile(CpgNetwork *network)
  * Create a new empty CPG network
  *
  * Return value: the newly created CPG network
+ *
  **/
 CpgNetwork *
 cpg_network_new()
@@ -531,6 +539,7 @@ cpg_network_new()
  *
  * Return value: the newly created CPG network or %NULL if there was an
  * error reading the file
+ *
  **/
 CpgNetwork *
 cpg_network_new_from_file(char const *filename)
@@ -664,10 +673,11 @@ update_monitors(CpgNetwork *network)
 	CpgMonitor *monitor;
 	for (monitor = network->monitors; monitor; monitor = monitor->next)
 	{
-		if (monitor->num_values >= monitor->size - 1)
+		if (monitor->size == 0 || monitor->num_values >= monitor->size - 1)
 			cpg_monitor_grow(monitor);
 		
-		monitor->values[monitor->num_values++] = cpg_expression_evaluate(monitor->property->value);
+		monitor->values[monitor->num_values] = cpg_expression_evaluate(monitor->property->value);
+		monitor->sites[monitor->num_values++] = network->time;
 	}
 }
 
@@ -727,7 +737,7 @@ cpg_network_simulation_run(CpgNetwork *network, float from, float timestep, floa
 	
 	network->time = from;
 	
-	while (network->time < to)
+	while (network->time < to - 0.5 * timestep)
 		cpg_network_simulation_step(network, timestep);
 }
 
@@ -790,6 +800,19 @@ monitor_add(CpgNetwork *network, CpgObject *object, CpgProperty *property)
 	return monitor;
 }
 
+/**
+ * cpg_network_set_monitor:
+ * @network: the #CpgNetwork
+ * @object: the #CpgObject to monitor
+ * @propname: the name of the property to monitor on @object
+ *
+ * Starts a monitor on the specified object and property. The value of that
+ * property is collected for every simulation step until 
+ * #cpg_network_unset_monitor is called. The collected data can be retrieved
+ * at any time with #cpg_network_monitor_data or 
+ * #cpg_network_monitor_data_resampled.
+ *
+ **/
 void
 cpg_network_set_monitor(CpgNetwork *network, CpgObject *object, char const *propname)
 {
@@ -801,6 +824,18 @@ cpg_network_set_monitor(CpgNetwork *network, CpgObject *object, char const *prop
 	monitor_add(network, object, property);	
 }
 
+/**
+ * cpg_network_unset_monitor:
+ * @network: the #CpgNetwork
+ * @object: the monitored #CpgObject
+ * @propname: the name of the monitored property
+ *
+ * Removes the monitor specified by the object and property name. The property
+ * value will no longer be collected and previously collected data is
+ * freed. Note that data previously requested with 
+ * #cpg_network_monitor_data is now no longer valid.
+ *
+ **/
 void
 cpg_network_unset_monitor(CpgNetwork *network, CpgObject *object, char const *propname)
 {
@@ -833,8 +868,23 @@ cpg_network_unset_monitor(CpgNetwork *network, CpgObject *object, char const *pr
 	cpg_monitor_free(monitor);
 }
 
+/**
+ * cpg_network_monitor_data:
+ * @network: the #CpgNetwork
+ * @object: the monitored #CpgObject
+ * @propname: the monitored property name
+ * @size: return pointer value for the size of the returned array
+ *
+ * Returns the data as monitored during the simulation. See also
+ * #cpg_network_monitor_data_resampled for retrieving a resampled version
+ * of the monitor data
+ *
+ * Return value: internal array of monitored values. The double pointer should
+ * not be freed
+ *
+ **/
 double const *
-cpg_network_monitor_data(CpgNetwork *network, CpgObject  *object, char const *propname, unsigned *size)
+cpg_network_monitor_data(CpgNetwork *network, CpgObject *object, char const *propname, unsigned *size)
 {
 	CpgProperty *property = cpg_object_get_property(object, propname);
 	
@@ -853,4 +903,76 @@ cpg_network_monitor_data(CpgNetwork *network, CpgObject  *object, char const *pr
 		*size = monitor->num_values;
 
 	return monitor->values;
+}
+
+static int
+bsearch_find(double const *list, int size, double value)
+{
+	int left = 0;
+	int right = size;
+	
+	while (right > left)
+	{
+		int probe = (left + right) / 2;
+		
+		if (list[probe] > value)
+			right = probe - 1;
+		else if (list[probe] < value)
+			left = probe + 1;
+		else
+			return probe;
+	}
+	
+	return right + (right < size && list[right] < value ? 1 : 0);
+}
+
+/**
+ * cpg_network_monitor_data_resampled:
+ * @network: the #CpgNetwork
+ * @object: the monitored #CpgObject
+ * @propname: the monitored property name
+ * @sites: the data sites at which to resample the data
+ * @size: the size of the data sites array
+ *
+ * Returns the data as monitored during the simulation, but resampled at
+ * sepcific data sites
+ *
+ * Return value: newly allocated array of monitored values. The returned pointer
+ * should be freed when no longer used
+ *
+ **/
+double *
+cpg_network_monitor_data_resampled(CpgNetwork *network, CpgObject *object, char const *propname, double const *sites, unsigned size)
+{
+	if (!sites || size == 0)
+		return NULL;
+
+	CpgProperty *property = cpg_object_get_property(object, propname);
+
+	if (!property)
+		return NULL;
+
+	CpgMonitor *monitor = monitor_find(network, object, property);
+	
+	if (!monitor)
+		return NULL;
+	
+	double const *data = monitor->values;
+	double *ret = cpg_new(double, size);
+	unsigned i;
+	
+	double const *monsites = monitor->sites;
+	
+	for (i = 0; i < size; ++i)
+	{
+		unsigned idx = bsearch_find(monsites, (int)monitor->num_values, sites[i]);
+		unsigned fidx = idx > 0 ? idx - 1 : 0;
+		unsigned sidx = idx < monitor->num_values ? idx : monitor->num_values - 1;
+		
+		// interpolate between the values
+		double factor = monsites[sidx] == monsites[fidx] ? 1 : (monsites[sidx] - sites[i]) / (monsites[sidx] - monsites[fidx]);
+		ret[i] = data[fidx] * factor + (data[sidx] * (1 - factor));
+	}
+	
+	return ret;
 }
