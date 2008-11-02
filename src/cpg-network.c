@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 #include "cpg-network.h"
 #include "cpg-utils.h"
 #include "cpg-state.h"
-#include "cpg-link.h"
+#include "cpg-link-private.h"
 #include "cpg-debug.h"
 
 #define BUFFER_SIZE 4096
@@ -48,11 +49,14 @@ struct _CpgNetwork
 
 
 static char *
-read_line(FILE *f)
+read_line_real(FILE *f, int skip_comments)
 {
 	char *buffer = cpg_new(char, BUFFER_SIZE);
-	char *ret = fgets(buffer, BUFFER_SIZE, f);
+	char *ret;
 	
+	while ((ret = fgets(buffer, BUFFER_SIZE, f)) && (skip_comments && *ret == '#'))
+		;
+
 	if (!ret)
 	{
 		free(buffer);
@@ -66,6 +70,12 @@ read_line(FILE *f)
 	}
 	
 	return ret;
+}
+
+static char *
+read_line(FILE *f)
+{
+	return read_line_real(f, 1);
 }
 
 static void
@@ -121,7 +131,7 @@ read_headers(CpgNetwork *network, FILE *f)
 {
 	char *buffer;
 
-	while ((buffer = read_line(f)))
+	while ((buffer = read_line_real(f, 0)))
 	{
 		if (*buffer != '#')
 		{
@@ -377,13 +387,18 @@ cpg_network_add_object(CpgNetwork *network, CpgObject *object)
 static int
 read_object(CpgNetwork *network, FILE *f)
 {
-	// read in type of object
-	char *buffer = read_line(f);
+	char *buffer;
+	
+	// skip empty lines
+	while ((buffer = read_line(f)) && !*buffer)
+		free(buffer);
+	
 	CpgObject *object = NULL;
 	
 	if (!buffer)
-		return 0;
-	
+		return feof(f); // return 1 if end of file, cause that's ok
+
+	// read in type of object	
 	if (strcmp(buffer, "state") == 0)
 		object = read_state(network, f);
 	else if (strcmp(buffer, "link") == 0)
@@ -547,7 +562,10 @@ cpg_network_new_from_file(char const *filename)
 	FILE *f = fopen(filename, "r");
 	
 	if (!f)
+	{
+		fprintf(stderr, "Could not open network file: %s\n", strerror(errno));
 		return NULL;
+	}
 
 	CpgNetwork *network = cpg_network_new();
 

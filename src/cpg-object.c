@@ -2,7 +2,7 @@
 #include <string.h>
 
 #include "cpg-object.h"
-#include "cpg-link.h"
+#include "cpg-link-private.h"
 #include "cpg-utils.h"
 #include "cpg-debug.h"
 #include "cpg-state.h"
@@ -160,6 +160,7 @@ cpg_object_evaluate(CpgObject *object, float timestep)
 			// Evaluate expression and add value to the update
 			double val = cpg_expression_evaluate(expression);
 			
+			cpg_debug_evaluate("Evaluated from %s to %s", ((CpgState *)link->from)->name, ((CpgState *)link->to)->name);
 			cpg_debug_evaluate("Update val for %s.%s: %f", CPG_OBJECT_IS_STATE(object) ? ((CpgState *)object)->name : "link", expression->destination->name, val);
 			expression->destination->update += val;
 		}

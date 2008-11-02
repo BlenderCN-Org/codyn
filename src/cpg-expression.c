@@ -1,5 +1,5 @@
 #include "cpg-expression.h"
-#include "cpg-link.h"
+#include "cpg-link-private.h"
 #include "cpg-utils.h"
 #include "cpg-tokenizer.h"
 #include "cpg-math.h"
@@ -660,13 +660,13 @@ parse_property(CpgExpression *expression, char *propname, CpgObject *context)
 	
 	cpg_debug_expression("Parsing property: %s", propname);
 	
-	if (expression->link)
-	{
-		property = cpg_object_get_property(expression->link->from, propname);
-	}
-	
-	if (!property && context)
+	// first look in the context
+	if (context)
 		property = cpg_object_get_property(context, propname);
+	
+	// then look in the 'from'
+	if (!property && expression->link)
+		property = cpg_object_get_property(expression->link->from, propname);
 	
 	if (!property)
 	{

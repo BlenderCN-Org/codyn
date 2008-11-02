@@ -1,5 +1,6 @@
 #include "cpg-link.h"
 #include "cpg-utils.h"
+#include "cpg-link-private.h"
 
 /**
  * cpg_link_new:
@@ -10,7 +11,7 @@
  * will automatically be installed in @to.
  *
  * Return value: the newly created #CpgLink
- */
+ **/
 CpgLink *
 cpg_link_new(CpgObject *from, CpgObject *to)
 {
@@ -39,7 +40,7 @@ cpg_link_new(CpgObject *from, CpgObject *to)
  * simulation. An action consists of a destination property and an expression
  * who's result will be pushed in the destination at every simulation step
  *
- */
+ **/
 void
 cpg_link_add_action(CpgLink *link, CpgProperty *destination, char const *expression)
 {
@@ -56,7 +57,7 @@ cpg_link_add_action(CpgLink *link, CpgProperty *destination, char const *express
  *
  * Destroy the #CpgLink
  *
- */
+ **/
 void
 cpg_link_free(CpgLink *link)
 {
@@ -71,4 +72,51 @@ cpg_link_free(CpgLink *link)
 	
 	free(link->expressions);
 	free(link);
+}
+
+/**
+ * cpg_link_from:
+ * @link: the #CpgLink
+ *
+ * Returns the from #CpgObject of the link
+ *
+ * Return value: the from #CpgObject
+ *
+ **/
+CpgObject *
+cpg_link_from(CpgLink *link)
+{
+	return link->from;
+}
+
+/**
+ * cpg_link_to:
+ * @link: the #CpgLink
+ *
+ * Returns the to #CpgObject of the link
+ *
+ * Return value: the to #CpgObject
+ *
+ **/
+CpgObject *
+cpg_link_to(CpgLink *link)
+{
+	return link->to;
+}
+
+/**
+ * cpg_link_actions:
+ * @link: the #CpgLink
+ * @size: return pointer for the number of actions
+ *
+ * Returns an array of all actions of the link
+ *
+ * Return value: array of #CpgExpression
+ *
+ **/
+CpgExpression **
+cpg_link_actions(CpgLink *link, unsigned *size)
+{
+	*size = link->num_expressions;
+	return link->expressions;
 }

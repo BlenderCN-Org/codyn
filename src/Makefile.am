@@ -15,7 +15,8 @@ COMMON_SOURCES = 		\
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-utils.h \
-	cpg-math.h
+	cpg-math.h \
+	cpg-link-private.h
 
 lib_LTLIBRARIES = libcpg-network-0.1.la
 libcpg_network_headers = \

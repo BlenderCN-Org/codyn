@@ -121,6 +121,15 @@ op_exp(CpgExpression *expression)
 	cpg_expression_push(expression, exp(cpg_expression_pop(expression)));
 }
 
+static void
+op_pow(CpgExpression *expression)
+{
+	double second = cpg_expression_pop(expression);
+	double first = cpg_expression_pop(expression);
+	
+	cpg_expression_push(expression, pow(first, second));
+}
+
 static FunctionEntry function_entries[] = {
 	{"sin", op_sin, 1},
 	{"cos", op_cos, 1},
@@ -135,7 +144,8 @@ static FunctionEntry function_entries[] = {
 	{"floor", op_floor, 1},
 	{"ceil", op_ceil, 1},
 	{"round", op_round, 1},
-	{"abs", op_abs, 1}
+	{"abs", op_abs, 1},
+	{"pow", op_pow, 2}
 };
 
 CpgFunctionClosure

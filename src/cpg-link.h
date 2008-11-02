@@ -6,21 +6,13 @@
 
 typedef struct _CpgLink CpgLink;
 
-struct _CpgLink
-{
-	CpgObject parent;
-	
-	// from and to objects
-	CpgObject *from;
-	CpgObject *to;
-	
-	// list of expressions to evaluate
-	CpgExpression **expressions;
-	unsigned num_expressions;
-};
+CpgLink 		 *cpg_link_new				(CpgObject *from, CpgObject *to);
+void 			  cpg_link_add_action		(CpgLink *link, CpgProperty *destination, char const *expression);
+void 			  cpg_link_free				(CpgLink *link);
 
-CpgLink 	*cpg_link_new				(CpgObject *from, CpgObject *to);
-void 		 cpg_link_add_action		(CpgLink *link, CpgProperty *destination, char const *expression);
-void 		 cpg_link_free				(CpgLink *link);
+CpgObject		 *cpg_link_from				(CpgLink *link);
+CpgObject		 *cpg_link_to				(CpgLink *link);
+
+CpgExpression	**cpg_link_actions			(CpgLink *link, unsigned *size);
 
 #endif /* __CPG_LINK_H__ */
