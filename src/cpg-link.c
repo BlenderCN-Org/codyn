@@ -50,7 +50,7 @@ cpg_link_add_action(CpgLink *link, CpgProperty *target, char const *expression)
 	CpgLinkAction **action = &(link->actions[link->num_actions - 1]);
 	*action = cpg_new1(CpgLinkAction);
 	
-	(*action)->expression = cpg_expression_new(link);
+	(*action)->expression = cpg_expression_new(expression);
 	
 	// target is a borrowed reference
 	(*action)->target = target;
@@ -85,7 +85,7 @@ cpg_link_free(CpgLink *link)
 	unsigned i;
 	
 	for (i = 0; i < link->num_actions; ++i)
-		cpg_link_action_free(link->actions[i]);
+		link_action_free(link->actions[i]);
 	
 	if (link->actions)
 		free(link->actions);

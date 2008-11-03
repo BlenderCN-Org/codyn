@@ -33,7 +33,7 @@ libcpg_network_headers = \
 
 libcpg_network_0_1_la_SOURCES = $(COMMON_SOURCES)
 
-libcpg_network_0_1_la_CFLAGS = -D_GNU_SOURCE
+libcpg_network_0_1_la_CFLAGS = -D_GNU_SOURCE -Wall -Werror
 libcpg_network_0_1_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*"
 libcpg_network_0_1_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
 

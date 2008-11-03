@@ -667,7 +667,7 @@ parse_property(CpgExpression *expression, char *propname, CpgContext *context)
 	{
 		if (context->object)
 			property = cpg_object_property(context->object, propname);
-
+		
 		context = context->next;
 	}
 	

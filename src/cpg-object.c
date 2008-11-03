@@ -51,11 +51,11 @@ cpg_object_evaluate_impl(CpgObject *object, float timestep)
 		// Iterate over all the expressions in the link
 		for (e = 0; e < size; ++e)
 		{
-			CpgExpression *expression = cpg_link_action_expression(actions[i]);
+			CpgExpression *expression = cpg_link_action_expression(actions[e]);
 			
 			// Evaluate expression and add value to the update
 			double val = cpg_expression_evaluate(expression);
-			cpg_link_action_target(actions[i])->update += val;
+			cpg_link_action_target(actions[e])->update += val;
 		}
 	}
 }

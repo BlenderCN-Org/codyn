@@ -5,6 +5,7 @@
 #include "cpg-object-private.h"
 #include "cpg-link-private.h"
 #include "cpg-state-private.h"
+#include "cpg-expression-private.h"
 
 #include "cpg-network.h"
 #include "cpg-utils.h"
@@ -327,13 +328,13 @@ parse_expressions(CpgNetwork *network, CpgObject *object)
 {
 	unsigned i;
 	
+	set_context(network, object, CPG_OBJECT_IS_LINK(object) ? ((CpgLink *)object)->from : NULL);
+	
 	// Parse all property value expressions
 	for (i = 0; i < object->num_properties; ++i)
 	{
 		CpgProperty *property = object->properties[i];
 		char *error;
-		
-		set_context(network, object, NULL);
 
 		if (!cpg_expression_compile(property->initial, network->context, &error))
 		{
@@ -358,7 +359,6 @@ parse_expressions(CpgNetwork *network, CpgObject *object)
 	for (e = 0; e < size; ++e)
 	{
 		char *error;
-		set_context(network, (CpgObject *)link, link->from);
 		
 		if (!cpg_expression_compile(cpg_link_action_expression(actions[e]), network->context, &error))
 		{
@@ -580,6 +580,8 @@ cpg_network_new()
 	network->timestepprop = cpg_object_add_property(network->constants, "dt", "0", 0);
 	
 	network->context[2].object = network->constants;
+	
+	return network;
 }
 
 /**
@@ -849,7 +851,7 @@ monitor_add(CpgNetwork *network, CpgObject *object, CpgProperty *property)
 	CpgMonitor *monitor = monitor_find(network, object, property);
 	
 	if (monitor)
-		return;
+		return monitor;
 
 	monitor = cpg_monitor_new(object, property);
 
