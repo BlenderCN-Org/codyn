@@ -16,6 +16,15 @@ void 			 cpg_network_free				(CpgNetwork *network);
 CpgState		*cpg_network_get_state_by_name	(CpgNetwork *network, 
 												 char const *name);
 
+int			 	cpg_network_set_value			(CpgNetwork  *network,
+												 CpgObject   *object,
+												 CpgProperty *property,
+												 char const  *expression);
+int			 	cpg_network_set_initial			(CpgNetwork  *network,
+												 CpgObject   *object,
+												 CpgProperty *property,
+												 char const  *expression);
+
 /* network manipulation */
 void			 cpg_network_add_object			(CpgNetwork *network, 
 												 CpgObject  *object);

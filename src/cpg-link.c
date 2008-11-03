@@ -22,9 +22,10 @@ cpg_link_new(CpgObject *from, CpgObject *to)
 	res->from = from;
 	res->to = to;
 
-	res->expressions = 0;
-	res->num_expressions = 0;
+	res->actions = NULL;
+	res->num_actions = 0;
 	
+	// register linkn in target
 	cpg_object_link(res->to, res);
 		
 	return res;
@@ -42,13 +43,29 @@ cpg_link_new(CpgObject *from, CpgObject *to)
  *
  **/
 void
-cpg_link_add_action(CpgLink *link, CpgProperty *destination, char const *expression)
+cpg_link_add_action(CpgLink *link, CpgProperty *target, char const *expression)
 {
-	link->expressions = (CpgExpression **)realloc(link->expressions, sizeof(CpgExpression *) * ++link->num_expressions);
-	link->expressions[link->num_expressions - 1] = cpg_expression_new_for_link(link, destination, expression);
+	array_resize(link->actions, CpgLinkAction *, ++link->num_actions);
 	
-	// let destination object know that the link has been updated
+	CpgLinkAction **action = &(link->actions[link->num_actions - 1]);
+	*action = cpg_new1(CpgLinkAction);
+	
+	(*action)->expression = cpg_expression_new(link);
+	
+	// target is a borrowed reference
+	(*action)->target = target;
+	
+	// let target object know that link has changed
 	cpg_object_update_link(link->to, link);
+}
+
+static void
+link_action_free(CpgLinkAction *action)
+{
+	cpg_expression_free(action->expression);
+	
+	// do not free target, borrowed reference
+	free(action);
 }
 
 /**
@@ -67,10 +84,12 @@ cpg_link_free(CpgLink *link)
 	cpg_object_destroy(&link->parent);
 	unsigned i;
 	
-	for (i = 0; i < link->num_expressions; ++i)
-		cpg_expression_free(link->expressions[i]);
+	for (i = 0; i < link->num_actions; ++i)
+		cpg_link_action_free(link->actions[i]);
 	
-	free(link->expressions);
+	if (link->actions)
+		free(link->actions);
+
 	free(link);
 }
 
@@ -111,12 +130,45 @@ cpg_link_to(CpgLink *link)
  *
  * Returns an array of all actions of the link
  *
- * Return value: array of #CpgExpression
+ * Return value: array of #CpgLinkAction pointers
  *
  **/
-CpgExpression **
+CpgLinkAction **
 cpg_link_actions(CpgLink *link, unsigned *size)
 {
-	*size = link->num_expressions;
-	return link->expressions;
+	*size = link->num_actions;
+	return link->actions;
 }
+
+/**
+ * cpg_link_action_expression:
+ * @action: the #CpgLinkAction
+ *
+ * Returns the expression associated with the action
+ *
+ * Return value: the #CpgExpression associated with the action. It is owned
+ * by the action object and should not be freed.
+ *
+ **/
+CpgExpression *
+cpg_link_action_expression(CpgLinkAction *action)
+{
+	return action->expression;
+}
+
+/**
+ * cpg_link_action_target:
+ * @action: the #CpgLinkAction
+ *
+ * Returns the target #CpgProperty associated with the action
+ *
+ * Return value: the target #CpgProperty. It is owned
+ * by the action object and should not be freed.
+ *
+ **/
+CpgProperty	*
+cpg_link_action_target(CpgLinkAction *action)
+{
+	return action->target;
+}
+

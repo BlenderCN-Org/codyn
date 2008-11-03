@@ -2,6 +2,13 @@
 #define __CPG_LINK_PRIVATE_H__
 
 #include "cpg-link.h"
+#include "cpg-object-private.h"
+
+struct _CpgLinkAction
+{
+	CpgExpression *expression;
+	CpgProperty *target;
+};
 
 struct _CpgLink
 {
@@ -12,8 +19,8 @@ struct _CpgLink
 	CpgObject *to;
 	
 	// list of expressions to evaluate
-	CpgExpression **expressions;
-	unsigned num_expressions;
+	CpgLinkAction **actions;
+	unsigned num_actions;
 };
 
 #endif /* __CPG_LINK_PRIVATE_H__ */

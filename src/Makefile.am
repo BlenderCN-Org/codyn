@@ -16,7 +16,10 @@ NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-utils.h \
 	cpg-math.h \
-	cpg-link-private.h
+	cpg-link-private.h \
+	cpg-object-private.h \
+	cpg-expression-private.h \
+	cpg-state-private.h
 
 lib_LTLIBRARIES = libcpg-network-0.1.la
 libcpg_network_headers = \

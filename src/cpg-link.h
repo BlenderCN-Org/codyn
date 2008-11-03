@@ -5,14 +5,21 @@
 #include "cpg-expression.h"
 
 typedef struct _CpgLink CpgLink;
+typedef struct _CpgLinkAction CpgLinkAction;
 
-CpgLink 		 *cpg_link_new				(CpgObject *from, CpgObject *to);
-void 			  cpg_link_add_action		(CpgLink *link, CpgProperty *destination, char const *expression);
-void 			  cpg_link_free				(CpgLink *link);
+CpgLink 		 *cpg_link_new					(CpgObject *from, 
+												 CpgObject *to);
+void 			  cpg_link_free					(CpgLink *link);
 
-CpgObject		 *cpg_link_from				(CpgLink *link);
-CpgObject		 *cpg_link_to				(CpgLink *link);
+CpgObject		 *cpg_link_from					(CpgLink *link);
+CpgObject		 *cpg_link_to					(CpgLink *link);
 
-CpgExpression	**cpg_link_actions			(CpgLink *link, unsigned *size);
+void 			  cpg_link_add_action			(CpgLink *link, 
+												 CpgProperty *target, 
+												 char const *expression);
+CpgLinkAction	**cpg_link_actions				(CpgLink *link, unsigned *size);
+
+CpgExpression	 *cpg_link_action_expression 	(CpgLinkAction *action);
+CpgProperty		 *cpg_link_action_target		(CpgLinkAction *action);
 
 #endif /* __CPG_LINK_H__ */

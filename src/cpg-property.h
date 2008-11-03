@@ -14,8 +14,12 @@ typedef struct
 
 CpgProperty 	*cpg_property_new			(char const *name, char const *expression, char integrated);
 void			 cpg_property_free			(CpgProperty *property);
+
+/* set numerics, for expressions use #cpg_network_set_value and friends */
 void			 cpg_property_set_value		(CpgProperty *property, double value);
 void			 cpg_property_set_initial 	(CpgProperty *property, double value);
+
+/* get numerics, for expressions use #cpg_network_value and friends */
 double			 cpg_property_value			(CpgProperty *property);
 double			 cpg_property_initial		(CpgProperty *property);
 

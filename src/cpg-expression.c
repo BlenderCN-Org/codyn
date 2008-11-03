@@ -1,4 +1,4 @@
-#include "cpg-expression.h"
+#include "cpg-expression-private.h"
 #include "cpg-link-private.h"
 #include "cpg-utils.h"
 #include "cpg-tokenizer.h"
@@ -24,7 +24,7 @@ struct _CpgInstruction
 	CpgInstruction *next;
 };
 
-static int parse_expression(CpgExpression *expression, char const **buffer, CpgObject *context, int priority, int left_assoc);
+static int parse_expression(CpgExpression *expression, char const **buffer, CpgContext *context, int priority, int left_assoc);
 
 typedef struct
 {
@@ -57,7 +57,6 @@ cpg_instruction_initialize(CpgInstruction *instruction)
 }
 
 #define instruction_new(Type) ((Type *)cpg_instruction_initialize((CpgInstruction *)cpg_new1(Type)))
-
 
 static char *
 instruction_tos(CpgInstruction *inst)
@@ -165,6 +164,12 @@ instructions_free(CpgExpression *expression)
 	expression->instructions = NULL;
 }
 
+char const *
+cpg_expression_get(CpgExpression *expression)
+{
+	return expression->expression;
+}
+
 void
 cpg_expression_set(CpgExpression *expression, char const *value)
 {
@@ -191,7 +196,6 @@ cpg_expression_new(char const *expression)
 	res->instructions = NULL;
 	res->output = NULL;
 	res->output_ptr = NULL;
-	res->link = NULL;
 
 	return res;
 }
@@ -232,8 +236,6 @@ cpg_expression_copy(CpgExpression *expression)
 	CpgExpression *res = cpg_new1(CpgExpression);
 	
 	res->expression = strdup(expression->expression);
-	res->link = expression->link;
-	res->destination = expression->destination;
 	res->output = cpg_new(double, expression->num_output);
 	res->output_ptr = res->output;
 	
@@ -282,7 +284,7 @@ cpg_expression_pop(CpgExpression *expression)
 }
 
 static int
-parse_function(CpgExpression *expression, char const *name, char const **buffer, CpgObject *context)
+parse_function(CpgExpression *expression, char const *name, char const **buffer, CpgContext *context)
 {
 	// do function lookup
 	int arguments;
@@ -478,7 +480,7 @@ op_ternary(CpgExpression *expression)
 }
 
 static int
-parse_ternary_operator(CpgExpression *expression, CpgTokenOperator *token, char const **buffer, CpgObject *context)
+parse_ternary_operator(CpgExpression *expression, CpgTokenOperator *token, char const **buffer, CpgContext *context)
 {
 	if (!parse_expression(expression, buffer, context, token->priority, token->left_assoc))
 		return 0;
@@ -512,7 +514,7 @@ parse_ternary_operator(CpgExpression *expression, CpgTokenOperator *token, char 
 }
 
 static int
-parse_group(CpgExpression *expression, char const **buffer, CpgObject *context)
+parse_group(CpgExpression *expression, char const **buffer, CpgContext *context)
 {
 	if (!parse_expression(expression, buffer, context, -1, 0))
 		return 0;
@@ -532,7 +534,7 @@ parse_group(CpgExpression *expression, char const **buffer, CpgObject *context)
 }
 
 static int
-parse_unary_operator(CpgExpression *expression, CpgToken *token, char const **buffer, CpgObject *context)
+parse_unary_operator(CpgExpression *expression, CpgToken *token, char const **buffer, CpgContext *context)
 {
 	CpgTokenOperator *op = CPG_TOKEN_OPERATOR(token);
 	int ret = 1;
@@ -574,7 +576,7 @@ parse_unary_operator(CpgExpression *expression, CpgToken *token, char const **bu
 }
 
 static int
-parse_operator(CpgExpression *expression, CpgToken *token, char const **buffer, CpgObject *context)
+parse_operator(CpgExpression *expression, CpgToken *token, char const **buffer, CpgContext *context)
 {
 	CpgTokenOperator *op = CPG_TOKEN_OPERATOR(token);
 	
@@ -654,19 +656,20 @@ parse_operator(CpgExpression *expression, CpgToken *token, char const **buffer, 
 }
 
 static int
-parse_property(CpgExpression *expression, char *propname, CpgObject *context)
+parse_property(CpgExpression *expression, char *propname, CpgContext *context)
 {
 	CpgProperty *property = NULL;
 	
 	cpg_debug_expression("Parsing property: %s", propname);
 	
-	// first look in the context
-	if (context)
-		property = cpg_object_get_property(context, propname);
-	
-	// then look in the 'from'
-	if (!property && expression->link)
-		property = cpg_object_get_property(expression->link->from, propname);
+	// iterate over contexts
+	while (context && !property)
+	{
+		if (context->object)
+			property = cpg_object_property(context->object, propname);
+
+		context = context->next;
+	}
 	
 	if (!property)
 	{
@@ -678,18 +681,32 @@ parse_property(CpgExpression *expression, char *propname, CpgObject *context)
 	return 1;
 }
 
+static CpgLink *
+find_link(CpgContext *context)
+{
+	while (context)
+	{
+		if (CPG_OBJECT_IS_LINK(context->object))
+			return (CpgLink *)context->object;
+		
+		context = context->next;
+	}
+	
+	return NULL;
+}
+
 static int
-parse_link_property(CpgExpression *expression, char *id, char *propname)
+parse_link_property(CpgExpression *expression, char *id, char *propname, CpgLink *link)
 {
 	CpgProperty *property = NULL;
 
 	if (strcmp(id, "from") == 0)
 	{
-		property = cpg_object_get_property(expression->link->from, propname);
+		property = cpg_object_property(link->from, propname);
 	}
 	else if (strcmp(id, "to") == 0)
 	{
-		property = cpg_object_get_property(expression->link->to, propname);
+		property = cpg_object_property(link->to, propname);
 	}
 	
 	if (!property)
@@ -722,7 +739,7 @@ parse_number(CpgExpression *expression, CpgTokenNumber *token)
 }
 
 static int
-parse_identifier(CpgExpression *expression, CpgTokenIdentifier *token, char const **buffer, CpgObject *context)
+parse_identifier(CpgExpression *expression, CpgTokenIdentifier *token, char const **buffer, CpgContext *context)
 {
 	char *id = token->identifier;
 	int ret = 0;
@@ -731,6 +748,7 @@ parse_identifier(CpgExpression *expression, CpgTokenIdentifier *token, char cons
 	// call
 	cpg_token_free(cpg_tokenizer_next(buffer));
 	CpgToken *next = cpg_tokenizer_peek(*buffer);
+	CpgLink *link;
 
 	if (next && CPG_TOKEN_IS_OPERATOR(next) && 
 		CPG_TOKEN_OPERATOR(next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_START)
@@ -740,15 +758,14 @@ parse_identifier(CpgExpression *expression, CpgTokenIdentifier *token, char cons
 		ret = parse_function(expression, id, buffer, context);
 	}
 	else if (next && CPG_TOKEN_IS_OPERATOR(next) &&
-			 CPG_TOKEN_OPERATOR(next)->type == CPG_TOKEN_OPERATOR_TYPE_DOT &&
-			 expression->link != NULL)
+			 CPG_TOKEN_OPERATOR(next)->type == CPG_TOKEN_OPERATOR_TYPE_DOT && (link = find_link(context)))
 	{
 		// consume peeked dot
 		cpg_token_free(cpg_tokenizer_next(buffer));
 		CpgToken *propname = cpg_tokenizer_next(buffer);
 	
 		if (CPG_TOKEN_IS_IDENTIFIER(propname))
-			ret = parse_link_property(expression, id, CPG_TOKEN_IDENTIFIER(propname)->identifier);
+			ret = parse_link_property(expression, id, CPG_TOKEN_IDENTIFIER(propname)->identifier, link);
 	
 		cpg_token_free(propname);
 	}
@@ -769,7 +786,7 @@ parse_identifier(CpgExpression *expression, CpgTokenIdentifier *token, char cons
 }
 
 static int
-parse_expression(CpgExpression *expression, char const **buffer, CpgObject *context, int priority, int left_assoc)
+parse_expression(CpgExpression *expression, char const **buffer, CpgContext *context, int priority, int left_assoc)
 {
 	static int depth = 0;
 	
@@ -942,7 +959,7 @@ validate_stack(CpgExpression *expression)
 }
 
 int
-cpg_expression_parse(CpgExpression *expression, CpgObject *context, char **error)
+cpg_expression_compile(CpgExpression *expression, CpgContext *context, char **error)
 {
 	char *buffer = expression->expression;
 	
@@ -1013,17 +1030,6 @@ cpg_expression_set_value(CpgExpression *expression, double value)
 	instructions_free(expression);
 	
 	expression->instructions = cpg_instruction_number_new(value);
-}
-
-CpgExpression *
-cpg_expression_new_for_link(CpgLink *link, CpgProperty *destination, char const *expression)
-{
-	CpgExpression *res = cpg_expression_new(expression);	
-
-	res->destination = destination;
-	res->link = link;
-	
-	return res;
 }
 
 double

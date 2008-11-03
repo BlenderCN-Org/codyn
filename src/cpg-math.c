@@ -182,8 +182,8 @@ op_timestep(CpgExpression *expression)
 static CpgConstantEntry constant_entries[] = {
 	{"pi", NULL, M_PI},
 	{"PI", NULL, M_PI},
-	{"t", op_time},
-	{"dt", op_timestep}
+	{"e", NULL, M_E},
+	{"E", NULL, M_E}
 };
 
 CpgConstantEntry const *

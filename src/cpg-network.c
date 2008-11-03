@@ -2,10 +2,12 @@
 #include <string.h>
 #include <errno.h>
 
+#include "cpg-object-private.h"
+#include "cpg-link-private.h"
+#include "cpg-state-private.h"
+
 #include "cpg-network.h"
 #include "cpg-utils.h"
-#include "cpg-state.h"
-#include "cpg-link-private.h"
 #include "cpg-debug.h"
 
 #define BUFFER_SIZE 4096
@@ -45,6 +47,12 @@ struct _CpgNetwork
 	
 	/* monitors */
 	CpgMonitor *monitors;
+	
+	/* context */
+	CpgContext context[3];
+	CpgObject *constants;
+	CpgProperty *timeprop;
+	CpgProperty *timestepprop;
 };
 
 
@@ -82,8 +90,9 @@ static void
 cpg_monitor_grow(CpgMonitor *monitor)
 {
 	monitor->size += MONITOR_GROW_SIZE;
-	monitor->values = (double *)realloc(monitor->values, sizeof(double) * monitor->size);
-	monitor->sites = (double *)realloc(monitor->sites, sizeof(double) * monitor->size);
+	
+	array_resize(monitor->values, double, monitor->size);
+	array_resize(monitor->sites, double, monitor->size);
 }
 
 static CpgMonitor *
@@ -218,7 +227,7 @@ read_expressions(CpgLink *link, FILE *f)
 			break;
 		}
 		
-		CpgProperty *property = cpg_object_get_property(link->to, first);
+		CpgProperty *property = cpg_object_property(link->to, first);
 		
 		if (property)
 			cpg_link_add_action(link, property, second);
@@ -306,8 +315,15 @@ skip_until_separator(FILE *f)
 	}
 }
 
+static void
+set_context(CpgNetwork *network, CpgObject *first, CpgObject *second)
+{
+	network->context[0].object = first;
+	network->context[1].object = second;
+}
+
 static int
-parse_expressions(CpgObject *object)
+parse_expressions(CpgNetwork *network, CpgObject *object)
 {
 	unsigned i;
 	
@@ -316,8 +332,10 @@ parse_expressions(CpgObject *object)
 	{
 		CpgProperty *property = object->properties[i];
 		char *error;
+		
+		set_context(network, object, NULL);
 
-		if (!cpg_expression_parse(property->initial, object, &error))
+		if (!cpg_expression_compile(property->initial, network->context, &error))
 		{
 			fprintf(stderr, "Error while parsing expression: %s\n", error);
 			free(error);
@@ -333,12 +351,16 @@ parse_expressions(CpgObject *object)
 	// Parse all link expressions	
 	CpgLink *link = (CpgLink *)object;
 	unsigned e;
+	unsigned size;
 	
-	for (e = 0; e < link->num_expressions; ++e)
+	CpgLinkAction **actions = cpg_link_actions(link, &size);
+	
+	for (e = 0; e < size; ++e)
 	{
 		char *error;
+		set_context(network, (CpgObject *)link, link->from);
 		
-		if (!cpg_expression_parse(link->expressions[e], (CpgObject *)link, &error))
+		if (!cpg_expression_compile(cpg_link_action_expression(actions[e]), network->context, &error))
 		{
 			fprintf(stderr, "Error while parsing expression: %s\n", error);
 			free(error);
@@ -352,14 +374,14 @@ parse_expressions(CpgObject *object)
 static void
 add_state(CpgNetwork *network, CpgState *state)
 {
-	network->states = (CpgState **)realloc(network->states, sizeof(CpgState *) * (++network->num_states));
+	array_resize(network->states, CpgState *, ++network->num_states);
 	network->states[network->num_states - 1] = state;
 }
 
 static void
 add_link(CpgNetwork *network, CpgLink *link)
 {
-	network->links = (CpgLink **)realloc(network->links, sizeof(CpgLink *) * (++network->num_links));
+	array_resize(network->links, CpgLink *, ++network->num_links);
 	network->links[network->num_links - 1] = link;
 }
 
@@ -505,13 +527,13 @@ cpg_network_compile(CpgNetwork *network)
 
 	for (i = 0; i < network->num_states; ++i)
 	{
-		if (!parse_expressions((CpgObject *)(network->states[i])))
+		if (!parse_expressions(network, (CpgObject *)(network->states[i])))
 			return 0;
 	}
 	
 	for (i = 0; i < network->num_links; ++i)
 	{
-		if (!parse_expressions((CpgObject *)(network->links[i])))
+		if (!parse_expressions(network, (CpgObject *)(network->links[i])))
 			return 0;
 	}
 	
@@ -544,6 +566,20 @@ cpg_network_new()
 	network->compiled = 0;
 	
 	network->monitors = NULL;
+	
+	unsigned i;
+	unsigned size = sizeof(network->context) / sizeof(CpgContext);
+	for (i = 0; i < size; ++i)
+	{
+		network->context[i].next = (i == size - 1 ? NULL : &(network->context[i + 1]));
+		network->context[i].object = NULL;
+	}
+	
+	network->constants = cpg_object_new();
+	network->timeprop = cpg_object_add_property(network->constants, "t", "0", 0);
+	network->timestepprop = cpg_object_add_property(network->constants, "dt", "0", 0);
+	
+	network->context[2].object = network->constants;
 }
 
 /**
@@ -655,6 +691,7 @@ cpg_network_free(CpgNetwork *network)
 	if (network->filename)
 		free(network->filename);
 	
+	cpg_object_free(network->constants);
 	cpg_network_clear(network);
 
 	free(network);	
@@ -716,12 +753,14 @@ cpg_network_simulation_step(CpgNetwork *network, float timestep)
 	update_monitors(network);
 
 	network->timestep = timestep;
+	cpg_property_set_value(network->timestepprop, timestep);
 	
 	cpg_debug_evaluate("%s", "Simulation step");
 	simulation_evaluate(network);
 	simulation_update(network);
 	
 	network->time += timestep;
+	cpg_property_set_value(network->timeprop, network->time);
 }
 
 /**
@@ -754,6 +793,7 @@ cpg_network_simulation_run(CpgNetwork *network, float from, float timestep, floa
 	}
 	
 	network->time = from;
+	cpg_property_set_value(network->timeprop, network->time);
 	
 	while (network->time < to - 0.5 * timestep)
 		cpg_network_simulation_step(network, timestep);
@@ -773,6 +813,7 @@ cpg_network_simulation_reset(CpgNetwork *network)
 {
 	// set time back to 0
 	network->time = 0;
+	cpg_property_set_value(network->timeprop, 0);
 	
 	// reset all objects
 	unsigned i;
@@ -834,7 +875,7 @@ monitor_add(CpgNetwork *network, CpgObject *object, CpgProperty *property)
 void
 cpg_network_set_monitor(CpgNetwork *network, CpgObject *object, char const *propname)
 {
-	CpgProperty *property = cpg_object_get_property(object, propname);
+	CpgProperty *property = cpg_object_property(object, propname);
 	
 	if (!property)
 		return;
@@ -857,7 +898,7 @@ cpg_network_set_monitor(CpgNetwork *network, CpgObject *object, char const *prop
 void
 cpg_network_unset_monitor(CpgNetwork *network, CpgObject *object, char const *propname)
 {
-	CpgProperty *property = cpg_object_get_property(object, propname);
+	CpgProperty *property = cpg_object_property(object, propname);
 	
 	if (!property)
 		return;
@@ -904,7 +945,7 @@ cpg_network_unset_monitor(CpgNetwork *network, CpgObject *object, char const *pr
 double const *
 cpg_network_monitor_data(CpgNetwork *network, CpgObject *object, char const *propname, unsigned *size)
 {
-	CpgProperty *property = cpg_object_get_property(object, propname);
+	CpgProperty *property = cpg_object_property(object, propname);
 	
 	if (size)
 		*size = 0;
@@ -965,7 +1006,7 @@ cpg_network_monitor_data_resampled(CpgNetwork *network, CpgObject *object, char 
 	if (!sites || size == 0)
 		return NULL;
 
-	CpgProperty *property = cpg_object_get_property(object, propname);
+	CpgProperty *property = cpg_object_property(object, propname);
 
 	if (!property)
 		return NULL;
@@ -993,4 +1034,36 @@ cpg_network_monitor_data_resampled(CpgNetwork *network, CpgObject *object, char 
 	}
 	
 	return ret;
+}
+
+int
+cpg_network_set_value(CpgNetwork *network, CpgObject *object, CpgProperty *property, char const *expression)
+{
+	if (!property->value)
+		property->value = cpg_expression_new(expression);
+	else
+		cpg_expression_set(property->value, expression);
+	
+	if (CPG_OBJECT_IS_LINK(object))
+		set_context(network, object, ((CpgLink *)object)->from);
+	else
+		set_context(network, object, NULL);
+
+	return cpg_expression_compile(property->value, network->context, NULL);
+}
+
+int
+cpg_network_set_initial(CpgNetwork *network, CpgObject *object, CpgProperty *property, char const *expression)
+{
+	if (!property->initial)
+		property->initial = cpg_expression_new(expression);
+	else
+		cpg_expression_set(property->initial, expression);
+	
+	if (CPG_OBJECT_IS_LINK(object))
+		set_context(network, object, ((CpgLink *)object)->from);
+	else
+		set_context(network, object, NULL);
+
+	return cpg_expression_compile(property->initial, network->context, NULL);
 }

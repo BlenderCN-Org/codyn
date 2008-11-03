@@ -1,12 +1,92 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cpg-object.h"
+#include "cpg-object-private.h"
 #include "cpg-link-private.h"
+#include "cpg-state-private.h"
+
 #include "cpg-utils.h"
 #include "cpg-debug.h"
-#include "cpg-state.h"
 
+/* interface implementations */
+static void
+cpg_object_update_impl(CpgObject *object, float timestep)
+{
+	unsigned i;
+
+	// Copy from update to actual
+	for (i = 0; i < object->num_actors; ++i)
+	{
+		CpgProperty *property = object->actors[i];
+		double value;
+			
+		if (property->integrated)
+			value = cpg_expression_evaluate(property->value) + property->update * timestep;
+		else
+			value = property->update;
+
+		cpg_debug_evaluate("Updating %s.%s (%d) = %f (from %f)", CPG_OBJECT_IS_STATE(object) ? ((CpgState *)object)->name : "link", property->name, property->integrated, value, cpg_expression_evaluate(property->value));
+		cpg_expression_set_value(property->value, value);
+	}
+}
+
+static void
+cpg_object_evaluate_impl(CpgObject *object, float timestep)
+{
+	unsigned i;
+
+	// Prepare update values (ready for accumulation)
+	for (i = 0; i < object->num_actors; ++i)
+		object->actors[i]->update = 0.0;
+	
+	// Iterate over all the links
+	for (i = 0; i < object->num_links; ++i)
+	{
+		CpgLink *link = object->links[i];
+		unsigned e;
+		unsigned size;
+		
+		CpgLinkAction **actions = cpg_link_actions(link, &size);
+		
+		// Iterate over all the expressions in the link
+		for (e = 0; e < size; ++e)
+		{
+			CpgExpression *expression = cpg_link_action_expression(actions[i]);
+			
+			// Evaluate expression and add value to the update
+			double val = cpg_expression_evaluate(expression);
+			cpg_link_action_target(actions[i])->update += val;
+		}
+	}
+}
+
+static void
+cpg_object_reset_impl(CpgObject *object)
+{
+	unsigned i;
+	
+	for (i = 0; i < object->num_properties; ++i)
+	{
+		CpgProperty *property = object->properties[i];
+		
+		// Free current value
+		if (property->value)
+			cpg_expression_free(property->value);
+
+		// Copy initial expression back to current value
+		property->value = cpg_expression_copy(property->initial);
+	}
+}
+
+/**
+ * cpg_object_initialize:
+ * @object: the #CpgObject
+ * @type: type object type
+ *
+ * Initializes the #CpgObject. This is a private function and is used by
+ * subclasses of #CpgObject such as #CpgState and #CpgLink.
+ *
+ **/
 void
 cpg_object_initialize(CpgObject *object, CpgObjectType type)
 {
@@ -19,8 +99,20 @@ cpg_object_initialize(CpgObject *object, CpgObjectType type)
 	
 	object->links = NULL;
 	object->num_links = 0;
+	
+	object->evaluate = cpg_object_evaluate_impl;
+	object->update = cpg_object_update_impl;
+	object->reset = cpg_object_reset_impl;
 }
 
+/**
+ * cpg_object_new:
+ *
+ * Create new empty #CpgObject
+ *
+ * Return value: a newly created #CpgObject
+ *
+ **/
 CpgObject *
 cpg_object_new()
 {
@@ -30,16 +122,29 @@ cpg_object_new()
 	return res;
 }
 
-void
+/**
+ * cpg_object_add_property:
+ * @object: the #CpgObject
+ * @name: the property name
+ * @expression: the properties initial value
+ * @integrated: whether or not the update values should be integrated when
+ * a link acts on the property
+ *
+ * Returns the new property added to the object
+ *
+ * Return value: the new #CpgProperty. The returned object is owned by
+ * @object and should not be freed
+ *
+ **/
+CpgProperty *
 cpg_object_add_property(CpgObject *object, char const *name, char const *expression, char integrated)
 {
 	CpgProperty *property = cpg_property_new(name, expression, integrated);
 	
-	if (CPG_OBJECT_IS_LINK(object))
-		property->initial->link = (CpgLink *)object;
-	
-	object->properties = (CpgProperty **)realloc(object->properties, sizeof(CpgProperty *) * ++object->num_properties);
+	array_resize(object->properties, CpgProperty *, ++object->num_properties);
 	object->properties[object->num_properties - 1] = property;
+	
+	return property;
 }
 
 void
@@ -69,7 +174,7 @@ cpg_object_free(CpgObject *object)
 }
 
 CpgProperty *
-cpg_object_get_property(CpgObject *object, char const *name)
+cpg_object_property(CpgObject *object, char const *name)
 {
 	unsigned i;
 	
@@ -82,6 +187,14 @@ cpg_object_get_property(CpgObject *object, char const *name)
 	return NULL;
 }
 
+CpgProperty **
+cpg_object_properties(CpgObject *object, unsigned *size)
+{
+	*size = object->num_properties;
+	
+	return object->properties;
+}
+
 static void
 add_actor(CpgObject *object, CpgProperty *property)
 {
@@ -91,130 +204,97 @@ add_actor(CpgObject *object, CpgProperty *property)
 		if (object->actors[i] == property)
 			return;
 	
-	object->actors = (CpgProperty **)realloc(object->actors, sizeof(CpgProperty) * ++object->num_actors);
+	array_resize(object->actors, CpgProperty *, ++object->num_actors);
 	object->actors[object->num_actors - 1] = property;
 }
 
+/**
+ * cpg_object_update_link:
+ * @object: the #CpgObject
+ * @link: the #CpgLink which links to this object
+ *
+ * Registers new actors for the object
+ *
+ **/
 void
 cpg_object_update_link(CpgObject *object, CpgLink *link)
 {
 	unsigned i;
-	for (i = 0; i < link->num_expressions; ++i)
-	{
-		CpgExpression *exp = link->expressions[i];
-		
-		add_actor(object, exp->destination);
-	}
+	unsigned size;
+	
+	CpgLinkAction **actions = cpg_link_actions(link, &size);
+	
+	for (i = 0; i < size; ++i)
+		add_actor(object, cpg_link_action_target(actions[i]));
 }
 
+/**
+ * cpg_object_link:
+ * @object: the #CpgObject
+ * @link: the #CpgLink which links to this object
+ *
+ * Adds @link as a link which targets the object (link will be evaluated in
+ * #cpg_object_evaluate). If the link introduces new actors, they will be
+ * automatically registered.
+ *
+ **/
 void
 cpg_object_link(CpgObject *object, CpgLink *link)
 {
-	object->links = (CpgLink **)realloc(object->links, sizeof(CpgLink) * ++object->num_links);
+	array_resize(object->links, CpgLink *, ++object->num_links);
 	object->links[object->num_links - 1] = link;
 	
+	// register possible new actors
 	cpg_object_update_link(object, link);
 }
 
+/**
+ * cpg_object_update:
+ * @object: the #CpgObject
+ * @timestep: the timestep to use
+ *
+ * Update property values using the values previously calculated in 
+ * #cpg_object_evaluate.
+ *
+ **/
 void
 cpg_object_update(CpgObject *object, float timestep)
 {
-	unsigned i;
-
-	// Copy from update to actual
-	for (i = 0; i < object->num_actors; ++i)
-	{
-		CpgProperty *property = object->actors[i];
-		double value;
-			
-		if (property->integrated)
-			value = cpg_expression_evaluate(property->value) + property->update * timestep;
-		else
-			value = property->update;
-
-		cpg_debug_evaluate("Updating %s.%s (%d) = %f (from %f)", CPG_OBJECT_IS_STATE(object) ? ((CpgState *)object)->name : "link", property->name, property->integrated, value, cpg_expression_evaluate(property->value));
-		cpg_expression_set_value(property->value, value);
-	}
+	if (object->update)
+		object->update(object, timestep);
 }
 
+/**
+ * cpg_object_evaluate:
+ * @object: the #CpgObject
+ * @timestep: the timestep to use
+ *
+ * Calculates update values for all the properties acted on by links
+ *
+ **/
 void
 cpg_object_evaluate(CpgObject *object, float timestep)
 {
-	unsigned i;
-
-	// Prepare update values (ready for accumulation)
-	for (i = 0; i < object->num_actors; ++i)
-		object->actors[i]->update = 0.0;
-	
-	// Iterate over all the links
-	for (i = 0; i < object->num_links; ++i)
-	{
-		CpgLink *link = object->links[i];
-		unsigned e;
-		
-		// Iterate over all the expressions in the link
-		for (e = 0; e < link->num_expressions; ++e)
-		{
-			CpgExpression *expression = link->expressions[e];
-			
-			// Evaluate expression and add value to the update
-			double val = cpg_expression_evaluate(expression);
-			
-			cpg_debug_evaluate("Evaluated from %s to %s", ((CpgState *)link->from)->name, ((CpgState *)link->to)->name);
-			cpg_debug_evaluate("Update val for %s.%s: %f", CPG_OBJECT_IS_STATE(object) ? ((CpgState *)object)->name : "link", expression->destination->name, val);
-			expression->destination->update += val;
-		}
-	}
+	if (object->evaluate)
+		object->evaluate(object, timestep);
 }
 
+/**
+ * cpg_object_reset:
+ * @object: the #CpgObject
+ *
+ * Reset all properties to their initial values
+ *
+ **/
 void
 cpg_object_reset(CpgObject *object)
 {
-	unsigned i;
-	
-	for (i = 0; i < object->num_properties; ++i)
-	{
-		CpgProperty *property = object->properties[i];
-		
-		// Free current value
-		if (property->value)
-			cpg_expression_free(property->value);
-
-		// Copy initial expression back to current value
-		property->value = cpg_expression_copy(property->initial);
-	}
+	if (object->reset)
+		object->reset(object);
 }
 
-void 
-cpg_object_set_value(CpgObject *object, CpgProperty *property, char const *expression)
+CpgObjectType
+cpg_object_type(CpgObject *object)
 {
-	if (!property->value)
-		return;
-	
-	cpg_expression_set(property->value, expression);
-	
-	char *error;
-	
-	if (!cpg_expression_parse(property->value, object, &error))
-	{
-		fprintf(stderr, "Unable to parse new property value: %s\n", error);
-		free(error);
-	}
-}
-
-void
-cpg_object_set_initial(CpgObject *object, CpgProperty *property, char const *expression)
-{
-	if (!property->initial)
-		return;
-	
-	cpg_expression_set(property->initial, expression);
-	
-	char *error;
-	
-	if (!cpg_expression_parse(property->initial, object, &error))
-	{
-		fprintf(stderr, "Unable to parse new property value: %s\n", error);
-		free(error);
-	}
+	return object->type;
 }
