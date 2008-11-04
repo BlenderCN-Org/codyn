@@ -49,6 +49,13 @@ typedef struct
 	CpgProperty *property;
 } CpgInstructionProperty;
 
+static double
+my_fmod (double x, double y)
+{
+	double ans = fmod (x, y);
+	return ans < 0 ? ans + y : ans;
+}
+
 static CpgInstruction *
 cpg_instruction_initialize(CpgInstruction *instruction)
 {
@@ -395,7 +402,7 @@ op_modulo(CpgExpression *expression)
 	double second = cpg_expression_pop(expression);
 	double first = cpg_expression_pop(expression);
 	
-	cpg_expression_push(expression, fmod(first, second));
+	cpg_expression_push(expression, my_fmod(first, second));
 }
 
 static void
