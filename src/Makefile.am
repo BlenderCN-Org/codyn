@@ -31,12 +31,18 @@ libcpg_network_headers = \
 	cpg-expression.h \
 	cpg-debug.h
 
-libcpg_network_0_1_la_SOURCES = $(COMMON_SOURCES)
-
 libcpg_network_0_1_la_CFLAGS = -D_GNU_SOURCE -Wall -Werror
 libcpg_network_0_1_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*"
 libcpg_network_0_1_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
 
+if ENABLE_THREADS
+COMMON_SOURCES += cpg-thread.c
+NOINST_H_FILES += cpg-thread.h
+libcpg_network_0_1_la_CFLAGS += $(THREAD_CFLAGS)
+libcpg_network_0_1_la_LDFLAGS += $(THREAD_LIBS)
+endif
+
+libcpg_network_0_1_la_SOURCES = $(COMMON_SOURCES)
 libcpg_network_0_1_include_HEADERS = $(libcpg_network_headers)
 
 EXTRA_DIST = $(NOINST_H_FILES)

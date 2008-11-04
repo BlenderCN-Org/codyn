@@ -1030,9 +1030,16 @@ cpg_network_monitor_data_resampled(CpgNetwork *network, CpgObject *object, char 
 		unsigned fidx = idx > 0 ? idx - 1 : 0;
 		unsigned sidx = idx < monitor->num_values ? idx : monitor->num_values - 1;
 		
-		// interpolate between the values
-		double factor = monsites[sidx] == monsites[fidx] ? 1 : (monsites[sidx] - sites[i]) / (monsites[sidx] - monsites[fidx]);
-		ret[i] = data[fidx] * factor + (data[sidx] * (1 - factor));
+		if (fidx >= monitor->num_values || sidx >= monitor->num_values)
+		{
+			ret[i] = 0.0;
+		}
+		else
+		{		
+			// interpolate between the values
+			double factor = monsites[sidx] == monsites[fidx] ? 1 : (monsites[sidx] - sites[i]) / (monsites[sidx] - monsites[fidx]);
+			ret[i] = data[fidx] * factor + (data[sidx] * (1 - factor));
+		}
 	}
 	
 	return ret;
