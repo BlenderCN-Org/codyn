@@ -203,6 +203,7 @@ cpg_expression_new(char const *expression)
 	res->instructions = NULL;
 	res->output = NULL;
 	res->output_ptr = NULL;
+	res->has_cache = 0;
 
 	return res;
 }
@@ -245,6 +246,7 @@ cpg_expression_copy(CpgExpression *expression)
 	res->expression = strdup(expression->expression);
 	res->output = cpg_new(double, expression->num_output);
 	res->output_ptr = res->output;
+	res->has_cache = 0;
 	
 	CpgInstruction *inst;
 	CpgInstruction *prev = NULL;
@@ -979,6 +981,8 @@ cpg_expression_compile(CpgExpression *expression, CpgContext *context, char **er
 		expression->output = NULL;
 	}
 	
+	expression->has_cache = 0;
+	
 	int ret = parse_expression(expression, (char const **)&buffer, context, -1, 0);
 	
 	if (!ret)
@@ -1044,6 +1048,9 @@ cpg_expression_evaluate(CpgExpression *expression)
 {
 	if (!expression)
 		return 0.0;
+		
+	if (expression->has_cache)
+		return expression->cached_output;
 
 	/* execute stack */
 	CpgInstruction *instruction;
@@ -1083,8 +1090,11 @@ cpg_expression_evaluate(CpgExpression *expression)
 		fprintf(stderr, "Invalid output stack after evaluating: %s!\n", expression->expression);
 		return NAN;
 	}
-
-	return cpg_expression_pop(expression);
+	
+	expression->has_cache = 1;
+	expression->cached_output = cpg_expression_pop(expression);
+	
+	return expression->cached_output;
 }
 
 void
@@ -1118,4 +1128,10 @@ cpg_expression_print_instructions(CpgExpression *expression, FILE *f)
 	}
 	
 	fprintf(f, "\n");;
+}
+
+void
+cpg_expression_reset_cache(CpgExpression *expression)
+{
+	expression->has_cache = 0;
 }

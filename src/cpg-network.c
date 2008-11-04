@@ -738,6 +738,39 @@ update_monitors(CpgNetwork *network)
 	}
 }
 
+static void
+reset_cache_object(CpgObject *object)
+{
+	unsigned i;
+	for (i = 0; i < object->num_properties; ++i)
+		cpg_expression_reset_cache(object->properties[i]->value);
+}
+
+static void
+reset_cache(CpgNetwork *network)
+{
+	// reset caches of all expressions
+	unsigned i;
+	for (i = 0; i < network->num_states; ++i)
+	{
+		// state properties
+		reset_cache_object((CpgObject *)network->states[i]);
+	}
+	
+	for (i = 0; i < network->num_links; ++i)
+	{
+		// link properties
+		reset_cache_object((CpgObject *)network->links[i]);
+		
+		// link actions
+		CpgLink *link = network->links[i];
+		unsigned a;
+		
+		for (a = 0; a < link->num_actions; ++a)
+			cpg_expression_reset_cache(link->actions[a]->expression);
+	}
+}
+
 /**
  * cpg_network_simulation_step:
  * @network: the #CpgNetwork
@@ -753,6 +786,7 @@ cpg_network_simulation_step(CpgNetwork *network, float timestep)
 		cpg_network_compile(network);
 		
 	update_monitors(network);
+	reset_cache(network);
 
 	network->timestep = timestep;
 	cpg_property_set_value(network->timestepprop, timestep);
