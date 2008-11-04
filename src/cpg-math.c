@@ -165,20 +165,6 @@ cpg_math_function_lookup(char const *name, int *arguments)
 	return NULL;
 }
 
-static void
-op_time(CpgExpression *expression)
-{
-	// TODO
-	cpg_expression_push(expression, 0.0);
-}
-
-static void
-op_timestep(CpgExpression *expression)
-{
-	// TODO
-	cpg_expression_push(expression, 0.0);
-}
-
 static CpgConstantEntry constant_entries[] = {
 	{"pi", NULL, M_PI},
 	{"PI", NULL, M_PI},
