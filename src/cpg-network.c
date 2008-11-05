@@ -507,6 +507,91 @@ cpg_network_taint(CpgNetwork *network)
 	network->compiled = 0;
 }
 
+static int
+is_action_property(CpgNetwork *network, CpgProperty *prop)
+{
+	unsigned i;
+	
+	for (i = 0; i < network->num_states; ++i)
+	{
+		unsigned a;
+		CpgObject *obj = (CpgObject *)network->states[i];
+		
+		for (a = 0; a < obj->num_actors; ++a)
+			if (obj->actors[a] == prop)
+				return 1;
+	}
+	
+	return 0;
+}
+
+static int
+expression_is_constant(CpgNetwork *network, CpgExpression *expression)
+{
+	CpgInstruction *inst;
+	
+	for (inst = expression->instructions; inst; inst = inst->next)
+	{
+		if (inst->type != CPG_INSTRUCTION_TYPE_PROPERTY)
+			continue;
+		
+		// check if property is acted upon
+		CpgInstructionProperty *prop = (CpgInstructionProperty *)inst;
+		
+		if (is_action_property(network, prop->property))
+			return 0;
+		
+		if (!expression_is_constant(network, prop->property->initial))
+			return 0;
+	}
+	
+	return 1;
+}
+
+static void
+optimize_expressions_object(CpgNetwork *network, CpgObject *object)
+{
+	unsigned i;
+	
+	for (i = 0; i < object->num_properties; ++i)
+	{
+		if (object->properties[i]->initial->instant)
+			continue;
+
+		if (expression_is_constant(network, object->properties[i]->initial))
+		{
+			object->properties[i]->initial->instant = 1;
+			object->properties[i]->value->instant = 1;
+		}
+	}
+}
+
+static void
+optimize_expressions(CpgNetwork *network)
+{
+	unsigned i;
+	for (i = 0; i < network->num_states; ++i)
+		optimize_expressions_object(network, (CpgObject *)network->states[i]);
+
+	for (i = 0; i < network->num_links; ++i)
+	{
+		optimize_expressions_object(network, (CpgObject *)network->links[i]);
+		
+		unsigned a;
+		CpgLink *link = network->links[i];
+		
+		for (a = 0; a < link->num_actions; ++a)
+		{
+			if (link->actions[a]->expression->instant)
+				continue;
+
+			if (expression_is_constant(network, link->actions[a]->expression))
+				link->actions[a]->expression->instant = 1;
+		}
+	}
+
+}
+
 /**
  * cpg_network_compile:
  * @network: the #CpgNetwork
@@ -537,6 +622,9 @@ cpg_network_compile(CpgNetwork *network)
 			return 0;
 	}
 	
+	// optimize expressions
+	optimize_expressions(network);
+
 	network->compiled = 1;
 	return 1;
 }
