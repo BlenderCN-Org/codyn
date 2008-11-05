@@ -9,45 +9,7 @@
 #include <stdio.h>
 #include <math.h>
 
-typedef enum
-{
-	CPG_INSTRUCTION_TYPE_NONE,
-	CPG_INSTRUCTION_TYPE_FUNCTION,
-	CPG_INSTRUCTION_TYPE_NUMBER,
-	CPG_INSTRUCTION_TYPE_OPERATOR,
-	CPG_INSTRUCTION_TYPE_PROPERTY
-} CpgInstructionType;
-
-struct _CpgInstruction
-{
-	CpgInstructionType type;
-	CpgInstruction *next;
-};
-
 static int parse_expression(CpgExpression *expression, char const **buffer, CpgContext *context, int priority, int left_assoc);
-
-typedef struct
-{
-	CpgInstruction parent;
-	
-	CpgFunctionClosure function;
-	char *name;
-	int arguments;
-} CpgInstructionFunction;
-
-typedef struct
-{
-	CpgInstruction parent;
-	
-	double value;
-} CpgInstructionNumber;
-
-typedef struct
-{
-	CpgInstruction parent;
-
-	CpgProperty *property;
-} CpgInstructionProperty;
 
 static double
 my_fmod (double x, double y)
@@ -204,6 +166,7 @@ cpg_expression_new(char const *expression)
 	res->output = NULL;
 	res->output_ptr = NULL;
 	res->has_cache = 0;
+	res->instant = 0;
 
 	return res;
 }
@@ -246,7 +209,9 @@ cpg_expression_copy(CpgExpression *expression)
 	res->expression = strdup(expression->expression);
 	res->output = cpg_new(double, expression->num_output);
 	res->output_ptr = res->output;
-	res->has_cache = 0;
+	res->has_cache = expression->has_cache;
+	res->instant = expression->instant;
+	res->cached_output = expression->cached_output;
 	
 	CpgInstruction *inst;
 	CpgInstruction *prev = NULL;
@@ -282,8 +247,7 @@ instructions_push(CpgExpression *expression, CpgInstruction *next)
 void
 cpg_expression_push(CpgExpression *expression, double value)
 {
-	*expression->output_ptr = value;
-	++expression->output_ptr;
+	*(expression->output_ptr++) = value;
 }
 
 double
@@ -919,6 +883,7 @@ validate_stack(CpgExpression *expression)
 	CpgInstruction *inst;
 	int stack = 0;
 	int maxstack = 1;
+	int caninstant = 1;
 	
 	// check for empty instruction set
 	if (!expression->instructions)
@@ -942,6 +907,9 @@ validate_stack(CpgExpression *expression)
 			}
 			break;
 			case CPG_INSTRUCTION_TYPE_PROPERTY:
+				caninstant = 0;
+				++stack;
+			break;
 			case CPG_INSTRUCTION_TYPE_NUMBER:
 				// increase stack here
 				++stack;
@@ -963,6 +931,14 @@ validate_stack(CpgExpression *expression)
 	expression->output = cpg_new(double, maxstack);
 	expression->num_output = maxstack;
 	expression->output_ptr = expression->output;
+	
+	expression->instant = caninstant;
+	
+	if (caninstant)
+	{
+		expression->has_cache = 0;
+		cpg_expression_evaluate(expression);
+	}
 	
 	return 1;
 }
@@ -1052,7 +1028,6 @@ cpg_expression_evaluate(CpgExpression *expression)
 	if (expression->has_cache)
 		return expression->cached_output;
 
-	/* execute stack */
 	CpgInstruction *instruction;
 	expression->output_ptr = expression->output;
 	
@@ -1133,5 +1108,6 @@ cpg_expression_print_instructions(CpgExpression *expression, FILE *f)
 void
 cpg_expression_reset_cache(CpgExpression *expression)
 {
-	expression->has_cache = 0;
+	if (!expression->instant)
+		expression->has_cache = 0;
 }
