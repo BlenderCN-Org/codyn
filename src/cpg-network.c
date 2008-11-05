@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
+#include <sys/sysinfo.h>
 
 #include "cpg-object-private.h"
 #include "cpg-link-private.h"
@@ -8,6 +10,7 @@
 #include "cpg-expression-private.h"
 
 #include "cpg-network.h"
+#include "cpg-thread.h"
 #include "cpg-utils.h"
 #include "cpg-debug.h"
 
@@ -29,6 +32,18 @@ struct _CpgMonitor
 	CpgMonitor *next;
 };
 
+typedef struct
+{
+	CpgNetwork *network;
+	CpgThread *thread;
+	CpgMutex *mutex;
+
+	unsigned from;
+	unsigned to;
+	
+	int running;
+} CpgSimulationWorker;
+
 struct _CpgNetwork
 {
 	char *filename;
@@ -45,6 +60,8 @@ struct _CpgNetwork
 	float timestep;
 	float time;
 	int compiled;
+	CpgSimulationWorker *worker_threads;
+	int num_worker_threads;
 	
 	/* monitors */
 	CpgMonitor *monitors;
@@ -56,6 +73,10 @@ struct _CpgNetwork
 	CpgProperty *timestepprop;
 };
 
+typedef int (*ExpressionEach)(CpgNetwork *, CpgExpression *);
+
+static int each_expression(CpgNetwork *network, ExpressionEach func);
+static void *worker_thread_evaluate(CpgSimulationWorker *);
 
 static char *
 read_line_real(FILE *f, int skip_comments)
@@ -321,6 +342,48 @@ set_context(CpgNetwork *network, CpgObject *first, CpgObject *second)
 {
 	network->context[0].object = first;
 	network->context[1].object = second;
+}
+
+static int
+each_expression_object(CpgNetwork *network, CpgObject *object, ExpressionEach func)
+{
+	unsigned i;
+	
+	for (i = 0; i < object->num_properties; ++i)
+	{
+		if (!func(network, object->properties[i]->initial))
+			return 0;
+	}
+	
+	return 1;
+}
+
+static int
+each_expression(CpgNetwork *network, ExpressionEach func)
+{
+	unsigned i;
+	for (i = 0; i < network->num_states; ++i)
+	{
+		if (!each_expression_object(network, (CpgObject *)network->states[i], func))
+			return 0;
+	}
+	
+	for (i = 0; i < network->num_links; ++i)
+	{
+		if (!each_expression_object(network, (CpgObject *)network->links[i], func))
+			return 0;
+		
+		unsigned a;
+		CpgLink *link = network->links[i];
+		
+		for (a = 0; a < link->num_actions; ++a)
+		{
+			if (!func(network, link->actions[a]->expression))
+				return 0;
+		}
+	}
+	
+	return 1;
 }
 
 static int
@@ -592,6 +655,26 @@ optimize_expressions(CpgNetwork *network)
 
 }
 
+static void
+partition_states_for_workers(CpgNetwork *network)
+{
+	if (network->num_worker_threads == 0)
+		return;
+
+	unsigned i;
+	unsigned num = network->num_worker_threads;
+	unsigned perworker = ceil(network->num_states / (double)num);
+	
+	for (i = 0; i < network->num_worker_threads; ++i)
+	{
+		CpgSimulationWorker *worker = &(network->worker_threads[i]);
+		
+		worker->from = (i * perworker);
+		worker->to = (i == num - 1 ? network->num_states : worker->from + perworker);
+		worker->running = 1;
+	}
+}
+
 /**
  * cpg_network_compile:
  * @network: the #CpgNetwork
@@ -624,7 +707,10 @@ cpg_network_compile(CpgNetwork *network)
 	
 	// optimize expressions
 	optimize_expressions(network);
-
+	
+	// divide states over workers
+	partition_states_for_workers(network);
+	
 	network->compiled = 1;
 	return 1;
 }
@@ -669,6 +755,9 @@ cpg_network_new()
 	
 	network->context[2].object = network->constants;
 	
+	network->num_worker_threads = 0;
+	network->worker_threads = NULL;
+
 	return network;
 }
 
@@ -768,6 +857,38 @@ cpg_network_clear(CpgNetwork *network)
 	network->monitors = NULL;
 }
 
+static void
+free_worker_threads(CpgNetwork *network)
+{
+	if (network->worker_threads)
+	{
+		unsigned i;
+		
+		for (i = 0; i < network->num_worker_threads; ++i)
+		{
+			CpgSimulationWorker *worker = &(network->worker_threads[i]);
+			
+			if (worker->running)
+			{
+				worker->running = 0;
+				cpg_mutex_lock(worker->mutex);
+				cpg_mutex_cond_signal(worker->mutex);
+				cpg_mutex_unlock(worker->mutex);
+				
+				cpg_thread_join(worker->thread, NULL);
+			}
+
+			cpg_thread_free(worker->thread);
+			cpg_mutex_free(worker->mutex);
+		}
+		
+		free(network->worker_threads);
+	}
+	
+	network->num_worker_threads = 0;
+	network->worker_threads = NULL;
+}
+
 /**
  * cpg_network_free:
  * @network: the #CpgNetwork
@@ -784,19 +905,129 @@ cpg_network_free(CpgNetwork *network)
 	cpg_object_free(network->constants);
 	cpg_network_clear(network);
 
+	free_worker_threads(network);
 	free(network);	
+}
+
+static int
+free_expression_mutex(CpgNetwork *network, CpgExpression *expression)
+{
+	cpg_mutex_free(expression->mutex);
+	expression->mutex = NULL;
+	
+	return 1;
+}
+
+static int
+create_expression_mutex(CpgNetwork *network, CpgExpression *expression)
+{
+	expression->mutex = cpg_mutex_new();
+	return 1;
+}
+
+static void
+initialize_worker_threads(CpgNetwork *network, int numthreads)
+{
+	int prevthreads = network->num_worker_threads;
+	numthreads = numthreads < 0 ? get_nprocs() : numthreads;
+
+	free_worker_threads(network);
+	
+	if (numthreads <= 1)
+	{
+		if (prevthreads)
+			each_expression(network, free_expression_mutex);
+
+		return;
+	}
+	
+	network->num_worker_threads = numthreads;
+	network->worker_threads = cpg_new(CpgSimulationWorker, network->num_worker_threads);
+	
+	unsigned i;
+	
+	for (i = 0; i < network->num_worker_threads; ++i)
+	{
+		network->worker_threads[i].thread = cpg_thread_new((CpgThreadFunc)worker_thread_evaluate);
+		network->worker_threads[i].mutex = cpg_mutex_new();
+
+		network->worker_threads[i].network = network;
+	}
+	
+	if (!prevthreads)
+		each_expression(network, create_expression_mutex);
+}
+
+void
+cpg_network_enable_threads(CpgNetwork *network, int numthreads)
+{
+	initialize_worker_threads(network, numthreads);
+	cpg_network_taint(network);
 }
 
 /* simulation functions */
 static void
-simulation_evaluate(CpgNetwork *network)
+evaluate_states(CpgNetwork *network, unsigned from, unsigned to)
 {
 	unsigned i;
-	
-	for (i = 0; i < network->num_states; ++i)
+	for (i = from; i < to; ++i)
+		cpg_object_evaluate((CpgObject *)(network->states[i]), network->timestep);
+}
+
+static void *
+worker_thread_evaluate(CpgSimulationWorker *data)
+{
+	// lock the mutex
+	cpg_mutex_lock(data->mutex);
+
+	while (1)
 	{
-		CpgObject *object = (CpgObject *)(network->states[i]);
-		cpg_object_evaluate(object, network->timestep);
+		// wait for begin signal, this unlocks the mutex
+		cpg_mutex_cond_wait(data->mutex);
+	
+		// we have the mutex again, check if we are still running
+		if (!data->running)
+		{
+			// make sure to unlock the mutex
+			cpg_mutex_unlock(data->mutex);
+			break;
+		}
+
+		// evaluate states
+		evaluate_states(data->network, data->from, data->to);
+	}
+
+	return NULL;
+}
+
+static void
+simulation_evaluate(CpgNetwork *network)
+{
+	if (network->num_worker_threads == 0)
+	{
+		evaluate_states(network, 0, network->num_states);
+		return;
+	}
+	
+	// signal all worker threads to start their work
+	unsigned i;
+	for (i = 0; i < network->num_worker_threads; ++i)
+	{
+		CpgMutex *mutex = network->worker_threads[i].mutex;
+		
+		cpg_mutex_lock(mutex);
+		cpg_mutex_cond_signal(mutex);
+		cpg_mutex_unlock(mutex);
+	}
+		
+	// and wait for it
+	for (i = 0; i < network->num_worker_threads; ++i)
+	{
+		CpgMutex *mutex = network->worker_threads[i].mutex;
+		
+		// wait until we can lock again
+		cpg_mutex_lock(mutex);
+		cpg_mutex_unlock(mutex);
 	}
 }
 
@@ -919,8 +1150,29 @@ cpg_network_simulation_run(CpgNetwork *network, float from, float timestep, floa
 	network->time = from;
 	cpg_property_set_value(network->timeprop, network->time);
 	
+	unsigned i;
+	// start worker threads
+	for (i = 0; i < network->num_worker_threads; ++i)
+		cpg_thread_run(network->worker_threads[i].thread, &(network->worker_threads[i]));
+	
 	while (network->time < to - 0.5 * timestep)
 		cpg_network_simulation_step(network, timestep);
+	
+	// signal worker threads to stop
+	for (i = 0; i < network->num_worker_threads; ++i)
+	{
+		CpgMutex *mutex = network->worker_threads[i].mutex;
+		cpg_mutex_lock(mutex);
+		
+		if (network->worker_threads[i].running)
+		{
+			network->worker_threads[i].running = 0;
+			cpg_mutex_cond_signal(mutex);
+		}
+		
+		cpg_mutex_unlock(mutex);
+		cpg_thread_join(network->worker_threads[i].thread, NULL);
+	}
 }
 
 /**

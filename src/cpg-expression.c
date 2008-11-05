@@ -167,6 +167,7 @@ cpg_expression_new(char const *expression)
 	res->output_ptr = NULL;
 	res->has_cache = 0;
 	res->instant = 0;
+	res->mutex = NULL;
 
 	return res;
 }
@@ -212,6 +213,7 @@ cpg_expression_copy(CpgExpression *expression)
 	res->has_cache = expression->has_cache;
 	res->instant = expression->instant;
 	res->cached_output = expression->cached_output;
+	res->mutex = NULL;
 	
 	CpgInstruction *inst;
 	CpgInstruction *prev = NULL;
@@ -1028,12 +1030,16 @@ cpg_expression_evaluate(CpgExpression *expression)
 	if (expression->has_cache)
 		return expression->cached_output;
 
+	// make sure to lock the mutex because there is only one output stack
+	cpg_mutex_lock(expression->mutex);
+
 	CpgInstruction *instruction;
 	expression->output_ptr = expression->output;
 	
 	if (!expression->instructions)
 	{
 		fprintf(stderr, "No instructions found, maybe the expression was not parsed?");
+		cpg_mutex_unlock(expression->mutex);
 		return 0.0;
 	}
 	
@@ -1063,12 +1069,14 @@ cpg_expression_evaluate(CpgExpression *expression)
 	if (expression->output_ptr != expression->output + 1)
 	{
 		fprintf(stderr, "Invalid output stack after evaluating: %s!\n", expression->expression);
+		cpg_mutex_unlock(expression->mutex);
 		return NAN;
 	}
 	
 	expression->has_cache = 1;
 	expression->cached_output = cpg_expression_pop(expression);
 	
+	cpg_mutex_unlock(expression->mutex);
 	return expression->cached_output;
 }
 

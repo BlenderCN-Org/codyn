@@ -10,7 +10,9 @@ COMMON_SOURCES = 		\
 	cpg-tokenizer.c \
 	cpg-expression.c \
 	cpg-math.c \
-	cpg-debug.c
+	cpg-debug.c \
+	cpg-thread.c \
+	cpg-mutex.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
@@ -19,7 +21,9 @@ NOINST_H_FILES = \
 	cpg-link-private.h \
 	cpg-object-private.h \
 	cpg-expression-private.h \
-	cpg-state-private.h
+	cpg-state-private.h \
+	cpg-thread.h \
+	cpg-mutex.h
 
 lib_LTLIBRARIES = libcpg-network-0.1.la
 libcpg_network_headers = \
@@ -36,8 +40,6 @@ libcpg_network_0_1_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-re
 libcpg_network_0_1_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
 
 if ENABLE_THREADS
-COMMON_SOURCES += cpg-thread.c
-NOINST_H_FILES += cpg-thread.h
 libcpg_network_0_1_la_CFLAGS += $(THREAD_CFLAGS)
 libcpg_network_0_1_la_LDFLAGS += $(THREAD_LIBS)
 endif

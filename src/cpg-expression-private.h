@@ -2,6 +2,7 @@
 #define __CPG_EXPRESSION_PRIVATE_H__
 
 #include "cpg-expression.h"
+#include "cpg-mutex.h"
 
 typedef enum
 {
@@ -53,6 +54,7 @@ struct _CpgExpression
 	double *output;
 	unsigned num_output;
 	
+	CpgMutex *mutex;
 	double cached_output;
 	int has_cache;
 	int instant;
