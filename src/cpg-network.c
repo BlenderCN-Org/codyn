@@ -1281,21 +1281,19 @@ cpg_network_unset_monitor(CpgNetwork *network, CpgObject *object, char const *pr
 	if (!monitor)
 		return;
 	
-	CpgMonitor *other;
+	CpgMonitor *other = network->monitors;
 	CpgMonitor *prev = NULL;
 
-	for (other = network->monitors; other; ++other)
+	while (other && other != monitor)
 	{
-		if (other != monitor)
-			continue;
-			
-		if (prev)
-			prev->next = monitor->next;
-		else
-			network->monitors = monitor->next;
-
-		break;
+		prev = other;
+		other = other->next;
 	}
+		
+	if (prev)
+		prev->next = monitor->next;
+	else
+		network->monitors = monitor->next;
 	
 	cpg_monitor_free(monitor);
 }
