@@ -246,13 +246,13 @@ instructions_push(CpgExpression *expression, CpgInstruction *next)
 	free(res);
 }
 
-void
+inline void
 cpg_expression_push(CpgExpression *expression, double value)
 {
 	*(expression->output_ptr++) = value;
 }
 
-double
+inline double
 cpg_expression_pop(CpgExpression *expression)
 {
 	return *(--expression->output_ptr);
