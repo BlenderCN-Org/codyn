@@ -885,7 +885,6 @@ validate_stack(CpgExpression *expression)
 	CpgInstruction *inst;
 	int stack = 0;
 	int maxstack = 1;
-	int caninstant = 1;
 	
 	// check for empty instruction set
 	if (!expression->instructions)
@@ -909,7 +908,6 @@ validate_stack(CpgExpression *expression)
 			}
 			break;
 			case CPG_INSTRUCTION_TYPE_PROPERTY:
-				caninstant = 0;
 				++stack;
 			break;
 			case CPG_INSTRUCTION_TYPE_NUMBER:
@@ -933,14 +931,6 @@ validate_stack(CpgExpression *expression)
 	expression->output = cpg_new(double, maxstack);
 	expression->num_output = maxstack;
 	expression->output_ptr = expression->output;
-	
-	expression->instant = caninstant;
-	
-	if (caninstant)
-	{
-		expression->has_cache = 0;
-		cpg_expression_evaluate(expression);
-	}
 	
 	return 1;
 }
@@ -1013,7 +1003,7 @@ cpg_expression_compile(CpgExpression *expression, CpgContext *context, char **er
 	return 1;
 }
 
-void
+inline void
 cpg_expression_set_value(CpgExpression *expression, double value)
 {
 	instructions_free(expression);
@@ -1029,7 +1019,7 @@ cpg_expression_evaluate(CpgExpression *expression)
 		
 	if (expression->has_cache)
 		return expression->cached_output;
-
+	
 	// make sure to lock the mutex because there is only one output stack
 	cpg_mutex_lock(expression->mutex);
 
@@ -1113,7 +1103,7 @@ cpg_expression_print_instructions(CpgExpression *expression, FILE *f)
 	fprintf(f, "\n");;
 }
 
-void
+inline void
 cpg_expression_reset_cache(CpgExpression *expression)
 {
 	if (!expression->instant)

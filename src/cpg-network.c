@@ -618,14 +618,12 @@ optimize_expressions_object(CpgNetwork *network, CpgObject *object)
 	
 	for (i = 0; i < object->num_properties; ++i)
 	{
-		if (object->properties[i]->initial->instant)
-			continue;
+		CpgProperty *prop = object->properties[i];
 
-		if (expression_is_constant(network, object->properties[i]->initial))
-		{
-			object->properties[i]->initial->instant = 1;
-			object->properties[i]->value->instant = 1;
-		}
+		prop->initial->instant = (!is_action_property(network, prop) && 
+								   expression_is_constant(network, prop->initial));
+		
+		prop->initial->has_cache = 0;
 	}
 }
 
@@ -645,11 +643,10 @@ optimize_expressions(CpgNetwork *network)
 		
 		for (a = 0; a < link->num_actions; ++a)
 		{
-			if (link->actions[a]->expression->instant)
-				continue;
-
-			if (expression_is_constant(network, link->actions[a]->expression))
-				link->actions[a]->expression->instant = 1;
+			CpgExpression *exp = link->actions[a]->expression;
+			exp->instant = (expression_is_constant(network, link->actions[a]->expression));
+			
+			exp->has_cache = 0;
 		}
 	}
 
@@ -1432,7 +1429,15 @@ cpg_network_set_value(CpgNetwork *network, CpgObject *object, CpgProperty *prope
 	else
 		set_context(network, object, NULL);
 
-	return cpg_expression_compile(property->value, network->context, NULL);
+	int ret = cpg_expression_compile(property->value, network->context, NULL);
+	
+	if (ret)
+	{
+		// make sure to reconsider optimization for expressions
+		optimize_expressions(network);
+	}
+	
+	return ret;
 }
 
 int
