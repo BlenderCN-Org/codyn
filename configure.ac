@@ -24,6 +24,7 @@ AC_ARG_ENABLE([threads],
 if test "x$enable_threads" = "xyes" ; then
 	AC_CHECK_LIB(pthread, pthread_mutex_init, THREAD_LIBS="-lpthread", AC_MSG_ERROR(pthread library not found))
 	THREAD_CFLAGS=
+	AC_DEFINE(ENABLE_THREADS)
 else
 	THREAD_LIBS=
 	THREAD_CFLAGS=
