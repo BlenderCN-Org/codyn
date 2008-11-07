@@ -7,8 +7,6 @@
 struct _CpgState
 {
 	CpgObject parent;
-
-	char *name;
 };
 
 #endif /* __CPG_STATE_PRIVATE_H__ */

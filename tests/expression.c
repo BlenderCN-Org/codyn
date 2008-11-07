@@ -84,7 +84,7 @@ test_function_sin()
 static int
 test_complex()
 {
-	CpgObject *obj = cpg_object_new();
+	CpgObject *obj = cpg_object_new(NULL);
 	
 	/*cpg_object_add_property(obj, "x", "1", 0);
 	cpg_expression_compile(obj->properties[0]->initial, obj, NULL);

@@ -7,7 +7,8 @@
 typedef struct _CpgLink CpgLink;
 typedef struct _CpgLinkAction CpgLinkAction;
 
-CpgLink 		 *cpg_link_new					(CpgObject *from, 
+CpgLink 		 *cpg_link_new					(char const *id,
+												 CpgObject *from, 
 												 CpgObject *to);
 void 			  cpg_link_free					(CpgLink *link);
 

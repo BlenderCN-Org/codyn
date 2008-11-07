@@ -282,28 +282,33 @@ read_link(CpgNetwork *network, FILE *f)
 {
 	char *from;
 	char *to;
-	
+	char *id;
+
 	// read from
+	id = read_line(f);
 	from = read_line(f);
 	to = read_line(f);
 	
-	CpgState *fromobj = cpg_network_get_state_by_name(network, from);
-	CpgState *toobj = cpg_network_get_state_by_name(network, to);
+	CpgObject *fromobj = cpg_network_object(network, from);
+	CpgObject *toobj = cpg_network_object(network, to);
 	
-	if (!fromobj || !toobj)
+	if (!fromobj || !CPG_OBJECT_IS_STATE(fromobj) || !toobj || !CPG_OBJECT_IS_STATE(toobj))
 	{
-		fprintf(stderr, "Could not find object `%s' for link\n", !fromobj ? from : to);
+		fprintf(stderr, "Could not find state `%s' for link\n", !fromobj ? from : to);
 
 		if (from)
 			free(from);
 		
 		if (to)
 			free(to);
+		
+		if (id)
+			free(id);
 
 		return NULL;
 	}
 	
-	CpgLink *link = cpg_link_new((CpgObject *)fromobj, (CpgObject *)toobj);
+	CpgLink *link = cpg_link_new(id, fromobj, toobj);
 	
 	// read properties
 	read_properties((CpgObject *)link, f);
@@ -313,6 +318,7 @@ read_link(CpgNetwork *network, FILE *f)
 	
 	free(from);
 	free(to);
+	free(id);
 	
 	return (CpgObject *)link;
 }
@@ -499,17 +505,25 @@ read_object(CpgNetwork *network, FILE *f)
 	return 1;
 }
 
-CpgState *
-cpg_network_get_state_by_name(CpgNetwork *network, char const *name)
+CpgObject *
+cpg_network_object(CpgNetwork *network, char const *id)
 {
 	int i;
 	
 	for (i = 0; i < network->num_states; ++i)
 	{
-		CpgState *state = network->states[i];
+		CpgObject *object = (CpgObject *)network->states[i];
 		
-		if (strcmp(state->name, name) == 0)
-			return state;
+		if (strcmp(object->id, id) == 0)
+			return object;
+	}
+	
+	for (i = 0; i < network->num_links; ++i)
+	{
+		CpgObject *object = (CpgObject *)network->links[i];
+		
+		if (strcmp(object->id, id) == 0)
+			return object;
 	}
 	
 	return NULL;
@@ -746,7 +760,7 @@ cpg_network_new()
 		network->context[i].object = NULL;
 	}
 	
-	network->constants = cpg_object_new();
+	network->constants = cpg_object_new(NULL);
 	network->timeprop = cpg_object_add_property(network->constants, "t", "0", 0);
 	network->timestepprop = cpg_object_add_property(network->constants, "dt", "0", 0);
 	

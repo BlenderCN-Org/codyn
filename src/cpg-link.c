@@ -2,6 +2,8 @@
 #include "cpg-utils.h"
 #include "cpg-link-private.h"
 
+#include <string.h>
+
 /**
  * cpg_link_new:
  * @from: the #CpgObject which is the link source
@@ -13,11 +15,14 @@
  * Return value: the newly created #CpgLink
  **/
 CpgLink *
-cpg_link_new(CpgObject *from, CpgObject *to)
+cpg_link_new(char const *id, CpgObject *from, CpgObject *to)
 {
 	CpgLink *res = cpg_new1(CpgLink);
 	
 	cpg_object_initialize(&res->parent, CPG_OBJECT_TYPE_LINK);
+	
+	if (id)
+		res->parent.id = strdup(id);
 	
 	res->from = from;
 	res->to = to;

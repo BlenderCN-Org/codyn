@@ -25,7 +25,7 @@ cpg_object_update_impl(CpgObject *object, float timestep)
 		else
 			value = property->update;
 
-		cpg_debug_evaluate("Updating %s.%s (%d) = %f (from %f)", CPG_OBJECT_IS_STATE(object) ? ((CpgState *)object)->name : "link", property->name, property->integrated, value, cpg_expression_evaluate(property->value));
+		cpg_debug_evaluate("Updating %s.%s (%d) = %f (from %f)", object->id, property->name, property->integrated, value, cpg_expression_evaluate(property->value));
 		cpg_expression_set_value(property->value, value);
 	}
 }
@@ -90,6 +90,7 @@ cpg_object_reset_impl(CpgObject *object)
 void
 cpg_object_initialize(CpgObject *object, CpgObjectType type)
 {
+	object->id = NULL;
 	object->type = type;
 	object->properties = NULL;
 	object->num_properties = 0;
@@ -114,10 +115,13 @@ cpg_object_initialize(CpgObject *object, CpgObjectType type)
  *
  **/
 CpgObject *
-cpg_object_new()
+cpg_object_new(char const *id)
 {
 	CpgObject *res = cpg_new1(CpgObject);
 	cpg_object_initialize(res, CPG_OBJECT_TYPE_NONE);
+	
+	if (id)
+		res->id = strdup(id);
 	
 	return res;
 }
@@ -161,6 +165,9 @@ cpg_object_destroy(CpgObject *object)
 	free(object->properties);
 	free(object->links);
 	free(object->actors);
+	
+	if (object->id)
+		free(object->id);
 }
 
 void
@@ -297,4 +304,10 @@ CpgObjectType
 cpg_object_type(CpgObject *object)
 {
 	return object->type;
+}
+
+char const *
+cpg_object_id(CpgObject *object)
+{
+	return object->id;
 }

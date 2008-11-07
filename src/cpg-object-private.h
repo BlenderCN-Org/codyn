@@ -7,6 +7,7 @@
 struct _CpgObject
 {
 	CpgObjectType type;
+	char *id;
 
 	// Properties
 	CpgProperty **properties;
@@ -28,6 +29,7 @@ struct _CpgObject
 /* used for inheritance of CpgState and CpgLink */
 void 			 cpg_object_initialize		(CpgObject *object, CpgObjectType type);
 void 			 cpg_object_destroy			(CpgObject *object);
+char const  	*cpg_object_id				(CpgObject *object);
 
 /* used for referencing links */
 void 			 cpg_object_link			(CpgObject *object, CpgLink *link);

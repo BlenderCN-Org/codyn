@@ -14,12 +14,13 @@
  *
  **/
 CpgState *
-cpg_state_new(char const *name)
+cpg_state_new(char const *id)
 {
 	CpgState *res = cpg_new1(CpgState);
 	cpg_object_initialize(&res->parent, CPG_OBJECT_TYPE_STATE);
-		
-	res->name = strdup(name);
+	
+	if (id)
+		res->parent.id = strdup(id);
 
 	return res;
 }
@@ -39,21 +40,5 @@ cpg_state_free(CpgState *state)
 
 	cpg_object_destroy(&state->parent);
 
-	free(state->name);
 	free(state);
-}
-
-/**
- * cpg_state_name:
- * @state: the #CpgState
- *
- * Returns the name of the #CpgState
- *
- * Return value: the name of the #CpgState
- *
- **/
-char const *
-cpg_state_name(CpgState *state)
-{
-	return state->name;
 }

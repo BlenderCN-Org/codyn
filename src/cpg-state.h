@@ -5,8 +5,7 @@
 
 typedef struct _CpgState CpgState;
 
-CpgState 	*cpg_state_new		(char const *name);
+CpgState 	*cpg_state_new		(char const *id);
 void		 cpg_state_free		(CpgState *state);
-char const  *cpg_state_name		(CpgState *state);
 
 #endif /* __CPG_STATE_H__ */
