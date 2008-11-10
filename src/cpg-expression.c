@@ -361,7 +361,7 @@ op_divide(CpgExpression *expression)
 	double second = cpg_expression_pop(expression);
 	double first = cpg_expression_pop(expression);
 	
-	cpg_expression_push(expression, first / second);
+	cpg_expression_push(expression, second == 0.0 ? 0.0 : first / second);
 }
 
 static void
