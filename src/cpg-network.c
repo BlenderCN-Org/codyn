@@ -717,7 +717,7 @@ cpg_network_compile(CpgNetwork *network)
 	}
 	
 	// optimize expressions
-	optimize_expressions(network);
+	//optimize_expressions(network);
 	
 	// divide states over workers
 	partition_states_for_workers(network);

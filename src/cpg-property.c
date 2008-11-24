@@ -119,3 +119,9 @@ cpg_property_initial(CpgProperty *property)
 {
 	return property->initial ? cpg_expression_evaluate(property->initial) : 0.0;
 }
+
+char const *
+cpg_property_name(CpgProperty *property)
+{
+	return property->name;
+}

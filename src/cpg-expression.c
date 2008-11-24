@@ -131,6 +131,10 @@ instructions_free(CpgExpression *expression)
 	}
 	
 	expression->instructions = NULL;
+
+	// reset cached and instant flags
+	expression->instant = 0;
+	expression->has_cache = 0;
 }
 
 char const *
@@ -1009,6 +1013,12 @@ cpg_expression_set_value(CpgExpression *expression, double value)
 	instructions_free(expression);
 	
 	expression->instructions = cpg_instruction_number_new(value);
+
+	// this can be instant and lets also set the cache already
+	expression->instant = 1;
+	expression->has_cache = 1;
+
+	expression->cached_output = value;
 }
 
 double

@@ -101,7 +101,7 @@ cpg_tokenizer_parse_identifier(char const **buffer)
 {
 	char const *start = *buffer;
 
-	while (isalnum(*(++*buffer)))
+	while (isalnum(*(++*buffer)) || **buffer == '_')
 	;
 	
 	CpgTokenIdentifier *res = cpg_new1(CpgTokenIdentifier);
