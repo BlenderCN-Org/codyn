@@ -115,6 +115,6 @@ cpg_mutex_free(CpgMutex *mutex)
 	pthread_cond_destroy(&(mutex->priv->pcond));
 #endif
 
-	free(mutex->priv);
-	free(mutex);
+	cpg_free(mutex->priv);
+	cpg_free(mutex);
 }

@@ -30,8 +30,8 @@ cpg_thread_new(CpgThreadFunc function)
 void
 cpg_thread_free(CpgThread *thread)
 {
-	free(thread->priv);
-	free(thread);
+	cpg_free(thread->priv);
+	cpg_free(thread);
 }
 
 int

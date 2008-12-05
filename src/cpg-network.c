@@ -4,74 +4,14 @@
 #include <math.h>
 #include <sys/sysinfo.h>
 
-#include "cpg-object-private.h"
-#include "cpg-link-private.h"
-#include "cpg-state-private.h"
+#include "cpg-network-private.h"
 #include "cpg-expression-private.h"
 
-#include "cpg-network.h"
-#include "cpg-thread.h"
 #include "cpg-utils.h"
 #include "cpg-debug.h"
 
 #define BUFFER_SIZE 4096
 #define MONITOR_GROW_SIZE 1000
-
-typedef struct _CpgMonitor CpgMonitor;
-
-struct _CpgMonitor
-{
-	CpgObject *object;
-	CpgProperty *property;
-	
-	double *values;
-	double *sites;
-	unsigned num_values;
-	unsigned size;
-
-	CpgMonitor *next;
-};
-
-typedef struct
-{
-	CpgNetwork *network;
-	CpgThread *thread;
-	CpgMutex *mutex;
-
-	unsigned from;
-	unsigned to;
-	
-	int running;
-} CpgSimulationWorker;
-
-struct _CpgNetwork
-{
-	char *filename;
-	
-	/* states */
-	CpgState **states;
-	unsigned num_states;
-	
-	/* links */
-	CpgLink **links;
-	unsigned num_links;
-	
-	/* simulation */
-	float timestep;
-	float time;
-	int compiled;
-	CpgSimulationWorker *worker_threads;
-	int num_worker_threads;
-	
-	/* monitors */
-	CpgMonitor *monitors;
-	
-	/* context */
-	CpgContext context[3];
-	CpgObject *constants;
-	CpgProperty *timeprop;
-	CpgProperty *timestepprop;
-};
 
 typedef int (*ExpressionEach)(CpgNetwork *, CpgExpression *);
 
@@ -1114,14 +1054,14 @@ cpg_network_simulation_step(CpgNetwork *network, float timestep)
 {
 	if (!network->compiled)
 		cpg_network_compile(network);
-		
+
 	update_monitors(network);
 	reset_cache(network);
 
 	network->timestep = timestep;
 	cpg_property_set_value(network->timestepprop, timestep);
 	
-	cpg_debug_evaluate("%s", "Simulation step");
+	cpg_debug_evaluate("Simulation step");
 	simulation_evaluate(network);
 	simulation_update(network);
 	
@@ -1148,21 +1088,22 @@ cpg_network_simulation_run(CpgNetwork *network, float from, float timestep, floa
 
 	if (from >= to)
 	{
-		fprintf(stderr, "** Error: Invalid range specified, from has to be smaller than to\n");
+		cpg_debug_error("Invalid range specified, from has to be smaller than to");
 		return;
 	}
 	
 	if (timestep <= 0)
 	{
-		fprintf(stderr, "** Error: Timestep has to be larger than 0\n");
+		cpg_debug_error("Timestep has to be larger than 0");
 		return;
 	}
 	
 	network->time = from;
 	cpg_property_set_value(network->timeprop, network->time);
 	
-	unsigned i;
 	// start worker threads
+	unsigned i;
+
 	for (i = 0; i < network->num_worker_threads; ++i)
 		cpg_thread_run(network->worker_threads[i].thread, &(network->worker_threads[i]));
 	

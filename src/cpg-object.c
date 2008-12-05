@@ -121,7 +121,7 @@ cpg_object_new(char const *id)
 	cpg_object_initialize(res, CPG_OBJECT_TYPE_NONE);
 	
 	if (id)
-		res->id = strdup(id);
+		res->id = cpg_strdup(id);
 	
 	return res;
 }

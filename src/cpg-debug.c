@@ -1,15 +1,23 @@
 #include "cpg-debug.h"
+
+#ifndef RTLINUX
 #include <stdarg.h>
 #include <stdio.h>
+#endif
 
-static char const *debug_types[] =
+char const *debug_types[] =
 {
 	"NONE",
+	"ERROR",
 	"EXPRESSION",
-	"EVALUATION"
+	"ERROR, EXPRESSION",
+	"EVALUATION",
+	"ERROR, EVALUATION",
+	"EXPRESSION, EVALUATION",
+	"ERROR, EXPRESSION, EVALUATION"
 };
 
-static int debug_type = CPG_DEBUG_TYPE_NONE;
+int debug_type = CPG_DEBUG_TYPE_ERROR;
 
 void
 cpg_debug_add(CpgDebugType type)
@@ -17,6 +25,7 @@ cpg_debug_add(CpgDebugType type)
 	debug_type |= type;
 }
 
+#ifndef RTLINUX
 void
 cpg_debug_message_function(CpgDebugType type, char const *function, char const *format, ...)
 {
@@ -32,3 +41,4 @@ cpg_debug_message_function(CpgDebugType type, char const *function, char const *
 		
 	va_end(ap);
 }
+#endif

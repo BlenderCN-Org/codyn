@@ -13,8 +13,6 @@ struct _CpgContext
 	CpgContext *next;
 };
 
-typedef void (*CpgFunctionClosure)(CpgExpression *);
-
 CpgExpression 	*cpg_expression_new				(char const *expression);
 CpgExpression	*cpg_expression_copy			(CpgExpression *expression);
 void 			 cpg_expression_free			(CpgExpression *expression);
@@ -24,9 +22,6 @@ int				 cpg_expression_compile			(CpgExpression *expression, CpgContext *context
 
 double 			 cpg_expression_evaluate		(CpgExpression *expression);
 void			 cpg_expression_set_value		(CpgExpression *expression, double value);
-
-double 			 cpg_expression_pop				(CpgExpression *expression);
-void 			 cpg_expression_push			(CpgExpression *expression, double value);
 
 /* convenient function */
 void			 cpg_expression_print_instructions(CpgExpression *expression, FILE *f);

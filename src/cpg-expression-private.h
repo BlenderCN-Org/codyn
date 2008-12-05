@@ -3,15 +3,8 @@
 
 #include "cpg-expression.h"
 #include "cpg-mutex.h"
-
-typedef enum
-{
-	CPG_INSTRUCTION_TYPE_NONE,
-	CPG_INSTRUCTION_TYPE_FUNCTION,
-	CPG_INSTRUCTION_TYPE_NUMBER,
-	CPG_INSTRUCTION_TYPE_OPERATOR,
-	CPG_INSTRUCTION_TYPE_PROPERTY
-} CpgInstructionType;
+#include "cpg-stack.h"
+#include "cpg-types.h"
 
 typedef struct _CpgInstruction CpgInstruction;
 
@@ -25,7 +18,7 @@ typedef struct
 {
 	CpgInstruction parent;
 	
-	CpgFunctionClosure function;
+	unsigned id;
 	char *name;
 	int arguments;
 } CpgInstructionFunction;
@@ -50,11 +43,10 @@ struct _CpgExpression
 	char *expression;
 	
 	CpgInstruction *instructions;
-	double *output_ptr;
-	double *output;
-	unsigned num_output;
+	CpgStack output;
 	
 	CpgMutex *mutex;
+
 	double cached_output;
 	int has_cache;
 	int instant;

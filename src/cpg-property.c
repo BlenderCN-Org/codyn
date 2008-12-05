@@ -20,7 +20,7 @@ cpg_property_new(char const *name, char const *expression, char integrated)
 {
 	CpgProperty *res = cpg_new1(CpgProperty);
 	
-	res->name = strdup(name);
+	res->name = cpg_strdup(name);
 
 	res->value = NULL;
 	res->update = 0.0;

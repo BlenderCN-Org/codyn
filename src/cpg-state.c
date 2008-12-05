@@ -20,7 +20,7 @@ cpg_state_new(char const *id)
 	cpg_object_initialize(&res->parent, CPG_OBJECT_TYPE_STATE);
 	
 	if (id)
-		res->parent.id = strdup(id);
+		res->parent.id = cpg_strdup(id);
 
 	return res;
 }

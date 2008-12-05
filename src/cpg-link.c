@@ -22,7 +22,7 @@ cpg_link_new(char const *id, CpgObject *from, CpgObject *to)
 	cpg_object_initialize(&res->parent, CPG_OBJECT_TYPE_LINK);
 	
 	if (id)
-		res->parent.id = strdup(id);
+		res->parent.id = cpg_strdup(id);
 	
 	res->from = from;
 	res->to = to;

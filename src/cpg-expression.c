@@ -11,13 +11,6 @@
 
 static int parse_expression(CpgExpression *expression, char const **buffer, CpgContext *context, int priority, int left_assoc);
 
-static double
-my_fmod (double x, double y)
-{
-	double ans = fmod (x, y);
-	return ans < 0 ? ans + y : ans;
-}
-
 static CpgInstruction *
 cpg_instruction_initialize(CpgInstruction *instruction)
 {
@@ -67,12 +60,12 @@ instruction_tos(CpgInstruction *inst)
 }
 
 static CpgInstruction *
-cpg_instruction_function_new(CpgFunctionClosure function, char const *name, int arguments)
+cpg_instruction_function_new(unsigned id, char const *name, int arguments)
 {
 	CpgInstructionFunction *res = instruction_new(CpgInstructionFunction);
 	res->parent.type = CPG_INSTRUCTION_TYPE_FUNCTION;
-	res->function = function;
-	res->name = strdup(name);
+	res->id = id;
+	res->name = cpg_strdup(name);
 	res->arguments = arguments;
 	
 	return (CpgInstruction *)res;
@@ -89,9 +82,9 @@ cpg_instruction_number_new(double value)
 }
 
 static CpgInstruction *
-cpg_instruction_operator_new(CpgFunctionClosure function, char const *name, int arguments)
+cpg_instruction_operator_new(unsigned id, char const *name, int arguments)
 {
-	CpgInstruction *res = cpg_instruction_function_new(function, name, arguments);
+	CpgInstruction *res = cpg_instruction_function_new(id, name, arguments);
 	res->type = CPG_INSTRUCTION_TYPE_OPERATOR;
 	
 	return res;
@@ -113,9 +106,9 @@ cpg_instruction_free(CpgInstruction *instruction)
 {
 	if (instruction->type == CPG_INSTRUCTION_TYPE_FUNCTION ||
 		instruction->type == CPG_INSTRUCTION_TYPE_OPERATOR)
-		free(((CpgInstructionFunction *)instruction)->name);
+		cpg_free(((CpgInstructionFunction *)instruction)->name);
 
-	free(instruction);
+	cpg_free(instruction);
 }
 
 static void
@@ -147,17 +140,12 @@ void
 cpg_expression_set(CpgExpression *expression, char const *value)
 {
 	if (expression->expression)
-		free(expression->expression);
+		cpg_free(expression->expression);
 	
-	expression->expression = strdup(value);
+	expression->expression = cpg_strdup(value);
 	instructions_free(expression);
 	
-	if (expression->output)
-		free(expression->output);
-	
-	expression->output = NULL;
-	expression->output_ptr = NULL;
-	expression->num_output = 0;
+	cpg_stack_destroy(&(expression->output));
 }
 
 CpgExpression *
@@ -165,10 +153,11 @@ cpg_expression_new(char const *expression)
 {
 	CpgExpression *res = cpg_new1(CpgExpression);
 
-	res->expression = strdup(expression);
+	res->expression = cpg_strdup(expression);
 	res->instructions = NULL;
-	res->output = NULL;
-	res->output_ptr = NULL;
+	
+	cpg_stack_init(&(res->output), 0);
+
 	res->has_cache = 0;
 	res->instant = 0;
 	res->mutex = NULL;
@@ -190,13 +179,13 @@ cpg_instruction_copy(CpgInstruction *instruction)
 		case CPG_INSTRUCTION_TYPE_OPERATOR:
 		{
 			CpgInstructionFunction *inst = (CpgInstructionFunction *)instruction;
-			return cpg_instruction_operator_new(inst->function, inst->name, inst->arguments);
+			return cpg_instruction_operator_new(inst->id, inst->name, inst->arguments);
 		}
 		break;
 		case CPG_INSTRUCTION_TYPE_FUNCTION:
 		{
 			CpgInstructionFunction *inst = (CpgInstructionFunction *)instruction;
-			return cpg_instruction_function_new(inst->function, inst->name, inst->arguments);
+			return cpg_instruction_function_new(inst->id, inst->name, inst->arguments);
 		}
 		break;
 		default:
@@ -211,9 +200,11 @@ cpg_expression_copy(CpgExpression *expression)
 {
 	CpgExpression *res = cpg_new1(CpgExpression);
 	
-	res->expression = strdup(expression->expression);
-	res->output = cpg_new(double, expression->num_output);
-	res->output_ptr = res->output;
+	res->expression = cpg_strdup(expression->expression);
+	
+	cpg_stack_destroy(&(res->output));
+	cpg_stack_init(&(res->output), res->output.size);
+
 	res->has_cache = expression->has_cache;
 	res->instant = expression->instant;
 	res->cached_output = expression->cached_output;
@@ -247,19 +238,7 @@ instructions_push(CpgExpression *expression, CpgInstruction *next)
 	
 	char *res = instruction_tos(next);
 	cpg_debug_expression("Pushed expression: %s", res);
-	free(res);
-}
-
-inline void
-cpg_expression_push(CpgExpression *expression, double value)
-{
-	*(expression->output_ptr++) = value;
-}
-
-inline double
-cpg_expression_pop(CpgExpression *expression)
-{
-	return *(--expression->output_ptr);
+	cpg_free(res);
 }
 
 static int
@@ -267,9 +246,9 @@ parse_function(CpgExpression *expression, char const *name, char const **buffer,
 {
 	// do function lookup
 	int arguments;
-	CpgFunctionClosure closure = cpg_math_function_lookup(name, &arguments);
+	unsigned id = cpg_math_function_lookup(name, &arguments);
 	
-	if (!closure)
+	if (!id)
 		return 0;
 	
 	// parse arguments
@@ -312,150 +291,8 @@ parse_function(CpgExpression *expression, char const *name, char const **buffer,
 		instructions_push(expression, cpg_instruction_number_new((double)numargs));
 
 	cpg_debug_expression("After func: %s", *buffer);
-	instructions_push(expression, cpg_instruction_function_new(closure, name, numargs));
+	instructions_push(expression, cpg_instruction_function_new(id, name, numargs));
 	return 1;
-}
-
-/* operator functions */
-static void
-op_unary_minus(CpgExpression *expression)
-{
-	cpg_expression_push(expression, -1 * cpg_expression_pop(expression));
-}
-
-static void
-op_minus(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first - second);
-}
-
-static void
-op_plus(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first + second);
-}
-
-static void
-op_power(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, pow(first, second));
-}
-
-static void
-op_multiply(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first * second);
-}
-
-static void
-op_divide(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, second == 0.0 ? 0.0 : first / second);
-}
-
-static void
-op_modulo(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, my_fmod(first, second));
-}
-
-static void
-op_greater(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first > second);
-}
-
-static void
-op_less(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first < second);
-}
-
-static void
-op_greater_or_equal(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first >= second);
-}
-
-static void
-op_less_or_equal(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first < second);
-}
-
-static void
-op_equal(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first == second);
-}
-
-static void
-op_or(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first || second);
-}
-
-static void
-op_and(CpgExpression *expression)
-{
-	double second = cpg_expression_pop(expression);
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, first && second);
-}
-
-static void
-op_negate(CpgExpression *expression)
-{
-	double first = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, !first);
-}
-
-static void
-op_ternary(CpgExpression *expression)
-{
-	double falsepart = cpg_expression_pop(expression);
-	double truepart = cpg_expression_pop(expression);
-	double condition = cpg_expression_pop(expression);
-	
-	cpg_expression_push(expression, condition ? truepart : falsepart);
 }
 
 static int
@@ -488,7 +325,7 @@ parse_ternary_operator(CpgExpression *expression, CpgTokenOperator *token, char 
 		return 0;
 	}
 	
-	instructions_push(expression, cpg_instruction_function_new(op_ternary, "?:", 3));
+	instructions_push(expression, cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_TERNARY), "?:", 3));
 	return 1;
 }
 
@@ -529,12 +366,12 @@ parse_unary_operator(CpgExpression *expression, CpgToken *token, char const **bu
 	switch (op->type)
 	{
 		case CPG_TOKEN_OPERATOR_TYPE_MINUS:
-			inst = cpg_instruction_operator_new(op_unary_minus, "-", 1);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_UNARY_MINUS), "-", 1);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_PLUS:
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_NEGATE:
-			inst = cpg_instruction_operator_new(op_negate, "!", 1);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_NEGATE), "!", 1);
 		break;
 		default:
 			ret = 0;
@@ -574,45 +411,45 @@ parse_operator(CpgExpression *expression, CpgToken *token, char const **buffer, 
 	{
 		// arithmetic
 		case CPG_TOKEN_OPERATOR_TYPE_MULTIPLY:
-			inst = cpg_instruction_operator_new(op_multiply, "*", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_MULTIPLY), "*", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_DIVIDE:
-			inst = cpg_instruction_operator_new(op_divide, "/", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_DIVIDE), "/", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_MODULO:
-			inst = cpg_instruction_operator_new(op_modulo, "%", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_MODULO), "%", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_PLUS:
-			inst = cpg_instruction_operator_new(op_plus, "+", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_PLUS), "+", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_MINUS:
-			inst = cpg_instruction_operator_new(op_minus, "-", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_MINUS), "-", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_POWER:
-			inst = cpg_instruction_operator_new(op_power, "**", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_POWER), "**", 2);
 		break;
 		
 		// logical
 		case CPG_TOKEN_OPERATOR_TYPE_GREATER:
-			inst = cpg_instruction_operator_new(op_greater, ">", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_GREATER), ">", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_LESS:
-			inst = cpg_instruction_operator_new(op_less, "<", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_LESS), "<", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_GREATER_OR_EQUAL:
-			inst = cpg_instruction_operator_new(op_greater_or_equal, ">=", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_GREATER_OR_EQUAL), ">=", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_LESS_OR_EQUAL:
-			inst = cpg_instruction_operator_new(op_less_or_equal, "<=", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_LESS_OR_EQUAL), "<=", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_EQUAL:
-			inst = cpg_instruction_operator_new(op_equal, "==", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_EQUAL), "==", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_OR:
-			inst = cpg_instruction_operator_new(op_or, "||", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_OR), "||", 2);
 		break;
 		case CPG_TOKEN_OPERATOR_TYPE_AND:
-			inst = cpg_instruction_operator_new(op_and, "&&", 2);
+			inst = cpg_instruction_operator_new(cpg_math_operator_lookup(CPG_MATH_OPERATOR_TYPE_AND), "&&", 2);
 		break;
 		default:
 			return 0;
@@ -698,15 +535,13 @@ parse_link_property(CpgExpression *expression, char *id, char *propname, CpgLink
 static int
 parse_constant(CpgExpression *expression, char const *name)
 {
-	CpgConstantEntry const *entry = cpg_math_constant_lookup(name);
+	int found = 0;
+	double val = cpg_math_constant_lookup(name, &found);
 	
-	if (!entry)
+	if (!found)
 		return 0;
-	
-	if (entry->closure)
-		instructions_push(expression, cpg_instruction_function_new(entry->closure, name, 0));
-	else
-		instructions_push(expression, cpg_instruction_number_new(entry->value));
+
+	instructions_push(expression, cpg_instruction_number_new(val));
 	return 1;
 }
 
@@ -929,12 +764,8 @@ validate_stack(CpgExpression *expression)
 	if (stack != 1)
 		return 0;
 	
-	if (expression->output)
-		free(expression->output);
-	
-	expression->output = cpg_new(double, maxstack);
-	expression->num_output = maxstack;
-	expression->output_ptr = expression->output;
+	cpg_stack_destroy(&(expression->output));
+	cpg_stack_init(&(expression->output), maxstack);
 	
 	return 1;
 }
@@ -946,13 +777,7 @@ cpg_expression_compile(CpgExpression *expression, CpgContext *context, char **er
 	
 	instructions_free(expression);
 	
-	if (expression->output)
-	{
-		free(expression->output);
-		expression->num_output = 0;	
-		expression->output = NULL;
-	}
-	
+	cpg_stack_destroy(&(expression->output));
 	expression->has_cache = 0;
 	
 	int ret = parse_expression(expression, (char const **)&buffer, context, -1, 0);
@@ -967,7 +792,7 @@ cpg_expression_compile(CpgExpression *expression, CpgContext *context, char **er
 			char msg[1024];
 			snprintf(msg, 1024, "Invalid token at: %s", buffer ? buffer : "");
 			
-			*error = strdup(msg);
+			*error = cpg_strdup(msg);
 		}
 		
 		return 0;
@@ -996,7 +821,7 @@ cpg_expression_compile(CpgExpression *expression, CpgContext *context, char **er
 					free(res);
 				}
 				
-				*error = strdup(msg);
+				*error = cpg_strdup(msg);
 				instructions_free(expression);
 			}
 			
@@ -1034,7 +859,7 @@ cpg_expression_evaluate(CpgExpression *expression)
 	cpg_mutex_lock(expression->mutex);
 
 	CpgInstruction *instruction;
-	expression->output_ptr = expression->output;
+	cpg_stack_reset(&(expression->output));
 	
 	if (!expression->instructions)
 	{
@@ -1048,33 +873,35 @@ cpg_expression_evaluate(CpgExpression *expression)
 		switch (instruction->type)
 		{
 			case CPG_INSTRUCTION_TYPE_NUMBER:
-				cpg_expression_push(expression, ((CpgInstructionNumber *)instruction)->value);
+				cpg_stack_push(&(expression->output), ((CpgInstructionNumber *)instruction)->value, NULL);
 			break;
 			case CPG_INSTRUCTION_TYPE_PROPERTY:
 			{
 				CpgInstructionProperty *property = (CpgInstructionProperty *)instruction;
-				cpg_expression_push(expression, cpg_expression_evaluate(property->property->value));
+				cpg_stack_push(&(expression->output), cpg_expression_evaluate(property->property->value), NULL);
 			}
 			break;
 			case CPG_INSTRUCTION_TYPE_FUNCTION:
+				cpg_math_function_execute(((CpgInstructionFunction *)instruction)->id, &(expression->output), NULL);
+			break;
 			case CPG_INSTRUCTION_TYPE_OPERATOR:
-			{
-				((CpgInstructionFunction *)instruction)->function(expression);
-			}
+				cpg_math_operator_execute(((CpgInstructionFunction *)instruction)->id, &(expression->output), NULL);
+			break;
 			default:
 			break;
 		}
 	}
 	
-	if (expression->output_ptr != expression->output + 1)
+	if (cpg_stack_count(&(expression->output)) != 1)
 	{
 		fprintf(stderr, "Invalid output stack after evaluating: %s!\n", expression->expression);
+
 		cpg_mutex_unlock(expression->mutex);
 		return NAN;
 	}
 	
 	expression->has_cache = 1;
-	expression->cached_output = cpg_expression_pop(expression);
+	expression->cached_output = cpg_stack_pop(&(expression->output), NULL);
 	
 	cpg_mutex_unlock(expression->mutex);
 	return expression->cached_output;
@@ -1088,8 +915,7 @@ cpg_expression_free(CpgExpression *expression)
 
 	instructions_free(expression);
 
-	if (expression->output)
-		free(expression->output);
+	cpg_stack_destroy(&(expression->output));
 		
 	if (expression->expression)
 		free(expression->expression);
