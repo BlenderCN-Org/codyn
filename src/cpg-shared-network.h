@@ -6,6 +6,13 @@
 
 typedef struct _CpgMemoryMap CpgMemoryMap;
 
+struct _CpgMemoryMap
+{
+	void *source;
+	CpgSharedPointer target;
+	CpgMemoryMap *next;
+};
+
 void cpg_memory_map_init						(CpgMemoryMap     *map);
 void cpg_memory_map_destroy						(CpgMemoryMap     *map);
 CpgSharedPointer cpg_memory_map_find			(CpgMemoryMap     *iter, 

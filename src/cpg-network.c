@@ -663,6 +663,8 @@ cpg_network_compile(CpgNetwork *network)
 	partition_states_for_workers(network);
 	
 	network->compiled = 1;
+	cpg_network_simulation_reset(network);
+
 	return 1;
 }
 

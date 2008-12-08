@@ -4,16 +4,10 @@
 #include "cpg-shared-network.h"
 #include "cpg-network-private.h"
 #include "cpg-expression-private.h"
+#include "cpg-debug.h"
 
 #include "shared/cpg-shared-link.h"
 #include "shared/cpg-shared-expression.h"
-
-struct _CpgMemoryMap
-{
-	void *source;
-	CpgSharedPointer target;
-	CpgMemoryMap *next;
-};
 
 static void
 memory_map_add(CpgMemoryMap *iter, void *source, CpgSharedPointer target)
@@ -78,12 +72,18 @@ copy_expression(CpgMemoryMap *map, void *base, void **ptr, CpgSharedExpression *
 	CpgInstruction *inst;
 	expr->num_instructions = 0;
 	
+	if (expression->instructions)
+		expr->instructions = memory_offset(base, *ptr);
+	else
+		expr->instructions = 0;
+
 	for (inst = expression->instructions; inst; inst = inst->next)
 	{
 		CpgSharedInstruction *si = (CpgSharedInstruction *)*ptr;
 		++expr->num_instructions;
-		
+
 		memory_add(*ptr, sizeof(CpgSharedInstruction), maxsize);
+		
 		si->type = inst->type;
 		
 		switch (inst->type)
@@ -193,8 +193,8 @@ cpg_shared_network_copy(CpgSharedNetwork *ret, CpgNetwork *network, CpgMemoryMap
 		allocate_properties((CpgObject *)network->links[i], map, base, ptr, maxsize);
 	
 	// fill in property expressions
-	copy_property(network->timeprop, &propstart, map, base, ptr, maxsize);
-	copy_property(network->timestepprop, &propstart, map, base, ptr, maxsize);
+	copy_expression(map, base, ptr, &(ret->timeprop.value), network->timeprop->initial, maxsize);
+	copy_expression(map, base, ptr, &(ret->timestepprop.value), network->timestepprop->initial, maxsize);
 	
 	for (i = 0; i < network->num_states; ++i)
 		copy_properties((CpgObject *)network->states[i], &propstart, map, base, ptr, maxsize);
@@ -204,7 +204,7 @@ cpg_shared_network_copy(CpgSharedNetwork *ret, CpgNetwork *network, CpgMemoryMap
 	
 	// fill in all the actor property references
 	ret->num_actors = 0;
-	ret->actors = memory_offset(base, ptr); // shared pointer to first actor
+	ret->actors = memory_offset(base, *ptr); // shared pointer to first actor
 		
 	for (i = 0; i < network->num_states; ++i)
 	{
@@ -223,27 +223,30 @@ cpg_shared_network_copy(CpgSharedNetwork *ret, CpgNetwork *network, CpgMemoryMap
 	
 	// create all the links
 	ret->num_links = network->num_links;
-	ret->links = memory_offset(base, ptr); // shared pointer to first link
+	ret->links = memory_offset(base, *ptr); // shared pointer to first link
+	
+	CpgSharedLink *link = (CpgSharedLink *)*ptr;
+	memory_add(*ptr, sizeof(CpgSharedLink) * network->num_links, maxsize);
 	
 	for (i = 0; i < network->num_links; ++i)
 	{
 		// create link
-		CpgSharedLink *link = (CpgSharedLink *)ptr;
-		memory_add(ptr, sizeof(CpgSharedLink), maxsize);
-		
+		CpgSharedLinkAction *action = (CpgSharedLinkAction *)*ptr;
+		link->actions = memory_offset(base, *ptr); // shared pointer to first action
+
 		link->num_actions = network->links[i]->num_actions;
-		link->actions = memory_offset(base, ptr); // shared pointer to first action
+		memory_add(*ptr, sizeof(CpgSharedLinkAction) * link->num_actions, maxsize);
 		
 		unsigned a;
 		for (a = 0; a < network->links[i]->num_actions; ++a)
 		{
-			CpgSharedLinkAction *action = (CpgSharedLinkAction *)ptr;
-			memory_add(ptr, sizeof(CpgSharedLinkAction), maxsize);
-			
 			action->target = cpg_memory_map_find(map, network->links[i]->actions[a]->target);
 			
 			// copy expression
-			copy_expression(map, base, ptr, (&action->expression), network->links[i]->actions[a]->expression, maxsize);
+			copy_expression(map, base, ptr, &(action->expression), network->links[i]->actions[a]->expression, maxsize);
+			++action;
 		}
+				
+		++link;
 	}
 }

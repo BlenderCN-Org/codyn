@@ -10,8 +10,6 @@ typedef enum
 } CpgDebugType;
 
 #ifdef RTLINUX
-//#include <rtlprint.h>
-
 extern int debug_type;
 extern char const *debug_types[];
 #endif
@@ -28,12 +26,13 @@ void cpg_debug_add(CpgDebugType type);
 #ifndef RTLINUX
 void cpg_debug_message_function(CpgDebugType type, char const *function, char const *format, ...);
 #else
-#define cpg_debug_message_function(type, function, format, ...) 					\
+#include <rtlprint.h>
+#define cpg_debug_message_function(type, function, ...) 							\
 		if (debug_type & type)														\
 		{																			\
-			/*rtl_printf(" ** DEBUG %s in %s: ", debug_types[type], function);*/	\
-			/*rtl_printf(format, __VA_ARGS__);*/									\
-			/*rtl_printf("\n");*/													\
+			rtl_printf(" ** DEBUG %s in %s: ", debug_types[type], function);		\
+			rtl_printf(__VA_ARGS__); 												\
+			rtl_printf("\n");														\
 		}
 #endif
 #else

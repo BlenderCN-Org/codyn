@@ -4,6 +4,7 @@
 #include "cpg-object-private.h"
 #include "cpg-link-private.h"
 #include "cpg-state-private.h"
+#include "cpg-expression-private.h"
 
 #include "cpg-utils.h"
 #include "cpg-debug.h"

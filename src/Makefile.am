@@ -14,7 +14,9 @@ COMMON_SOURCES = 		\
 	cpg-stack.c \
 	cpg-thread.c \
 	cpg-mutex.c \
-	cpg-shared-network.c
+	cpg-shared-network.c \
+	shared/cpg-shared-expression.c \
+	shared/cpg-shared-property.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
@@ -63,9 +65,9 @@ libcpg_network_rt_0_1_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_V
 
 libcpg_network_rt_0_1_la_SOURCES = \
 	shared/cpg-shared-network.c \
-	shared/cpg-shared-stack.c \
 	shared/cpg-shared-property.c \
 	shared/cpg-shared-expression.c \
+	cpg-stack.c \
 	cpg-math.c \
 	cpg-debug.c
 	

@@ -29,7 +29,7 @@ cpg_property_new(char const *name, char const *expression, char integrated)
 	res->initial = cpg_expression_new(expression);
 	
 	// set current value to copy of initial value
-	res->value = cpg_expression_copy(res->initial);
+	res->value = NULL;
 	
 	return res;
 }
@@ -67,7 +67,7 @@ void
 cpg_property_set_value(CpgProperty *property, double value)
 {
 	if (!property->value)
-		return;
+		property->value = cpg_expression_copy(property->initial);
 	
 	cpg_expression_set_value(property->value, value);
 }

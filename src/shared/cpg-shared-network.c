@@ -11,7 +11,9 @@ simulation_evaluate(CpgSharedNetwork *network,
 	// prepare values
 	for (i = 0; i < network->num_actors; ++i)
 	{
-		CpgSharedProperty *property = cpg_shared_array_base_type(base, network->actors, i, CpgSharedProperty);
+		CpgSharedPointer *ptr = cpg_shared_array_base_type(base, network->actors, i, CpgSharedPointer);
+		CpgSharedProperty *property = cpg_shared_pointer_base_type(base, *ptr, CpgSharedProperty);
+		
 		property->update = 0.0;
 	}
 	
@@ -23,9 +25,10 @@ simulation_evaluate(CpgSharedNetwork *network,
 		for (a = 0; a < link->num_actions; ++a)
 		{
 			CpgSharedLinkAction *action = cpg_shared_array_base_type(base, link->actions, a, CpgSharedLinkAction);
+
 			CpgSharedProperty *property = cpg_shared_pointer_base_type(base, action->target, CpgSharedProperty);
 			
-			property->update += cpg_shared_expression_evaluate(&(action->expression), base);			
+			property->update += cpg_shared_expression_evaluate(&(action->expression), base);
 		}
 	}
 }
@@ -38,7 +41,8 @@ simulation_update(CpgSharedNetwork *network,
 	
 	for (i = 0; i < network->num_actors; ++i)
 	{
-		CpgSharedProperty *property = cpg_shared_array_base_type(base, network->actors, i, CpgSharedProperty);
+		CpgSharedPointer *ptr = cpg_shared_array_base_type(base, network->actors, i, CpgSharedPointer);
+		CpgSharedProperty *property = cpg_shared_pointer_base_type(base, *ptr, CpgSharedProperty);
 		double value;
 			
 		if (property->integrated)
@@ -87,5 +91,10 @@ cpg_shared_network_simulation_run(CpgSharedNetwork *network,
 	cpg_shared_property_set_value(&(network->timeprop), network->time, base);
 	
 	while (network->time < to - 0.5 * timestep)
+	{
 		cpg_shared_network_simulation_step(network, timestep, base);
+		
+		network->time += timestep;
+		cpg_shared_property_set_value(&(network->timeprop), network->time, base);
+	}
 }

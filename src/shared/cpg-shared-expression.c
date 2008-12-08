@@ -12,23 +12,22 @@ get_instruction(CpgSharedExpression *expression, unsigned idx, void *base)
 void
 cpg_shared_expression_set_value(CpgSharedExpression *expression, double value, void *base)
 {
-	if (expression->num_instructions != 1)
+	if (expression->num_instructions == 0)
 		return;
 	
 	CpgSharedInstruction *inst = get_instruction(expression, 0, base);
-
-	if (inst->type != CPG_INSTRUCTION_TYPE_NUMBER)
-		return;
-	
+	inst->type = CPG_INSTRUCTION_TYPE_NUMBER;
 	inst->value = value;
+	
+	expression->num_instructions = 1;
 }
 
 double
 cpg_shared_expression_evaluate(CpgSharedExpression *expression, void *base)
 {
 	unsigned i;
-	expression->output.output_ptr = expression->output.output;
-	
+	expression->output.output_ptr = cpg_shared_pointer_base_type(base, expression->output.output, double);
+
 	for (i = 0; i < expression->num_instructions; ++i)
 	{
 		CpgSharedInstruction *instruction = get_instruction(expression, i, base);
@@ -51,13 +50,16 @@ cpg_shared_expression_evaluate(CpgSharedExpression *expression, void *base)
 				cpg_math_operator_execute(instruction->id, &(expression->output), base);
 			break;
 			default:
+				cpg_debug_error("Unknown instruction: %d", instruction->type);
 			break;
 		}
 	}
 	
-	if (cpg_stack_count(&(expression->output)) != 1)
+	int cnt = expression->output.output_ptr - cpg_shared_pointer_base_type(base, expression->output.output, double);
+	
+	if (cnt != 1)
 	{
-		cpg_debug_error("Invalid expression stack size after evaluating");
+		cpg_debug_error("Invalid expression stack size after evaluating: %d", cpg_stack_count(&(expression->output)));
 		return 0.0;
 	}
 	

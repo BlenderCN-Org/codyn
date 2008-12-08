@@ -201,9 +201,7 @@ cpg_expression_copy(CpgExpression *expression)
 	CpgExpression *res = cpg_new1(CpgExpression);
 	
 	res->expression = cpg_strdup(expression->expression);
-	
-	cpg_stack_destroy(&(res->output));
-	cpg_stack_init(&(res->output), res->output.size);
+	cpg_stack_init(&(res->output), expression->output.size);
 
 	res->has_cache = expression->has_cache;
 	res->instant = expression->instant;
@@ -860,6 +858,12 @@ cpg_expression_evaluate(CpgExpression *expression)
 
 	CpgInstruction *instruction;
 	cpg_stack_reset(&(expression->output));
+	
+	if (expression->output.size == 0)
+	{
+		cpg_debug_error("Stack size should not be 0!");
+		return 0.0;
+	}
 	
 	if (!expression->instructions)
 	{
