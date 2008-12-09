@@ -30,6 +30,9 @@ else
 	THREAD_CFLAGS=
 fi
 
+AC_SUBST(THREAD_CFLAGS)
+AC_SUBST(THREAD_LIBS)
+
 AM_CONDITIONAL([ENABLE_THREADS],[test "x$enable_threads" = "xyes"])
 
 AC_ARG_ENABLE([rt],
@@ -38,9 +41,30 @@ AC_ARG_ENABLE([rt],
 	[enable_rt=no])
 	
 AM_CONDITIONAL([ENABLE_RT],[test "x$enable_rt" = "xyes"])
+RT_CFLAGS=
 
-AC_SUBST(THREAD_CFLAGS)
-AC_SUBST(THREAD_LIBS)
+if test "x$enable_rt" = "xyes" ; then
+	AC_MSG_CHECKING(for rtlinux header files)
+	
+	dirs="/usr/rtlinux /usr/src/rtlinux"
+	
+	for i in dirs; do
+		if test -r "$i/include/rtl_printf.h"; then
+			AC_MSG_RESULT($i)
+  			RT_CFLAGS="-I$i/include"
+  			break;
+		fi
+	done
+	
+	if test "x$RT_CFLAGS" = "x"; then
+		AC_MSG_RESULT(could not locate rtlinux)
+	else
+		AC_MSG_RESULT(found)
+		AC_DEFINE(ENABLE_RT_DEBUG)
+	fi
+fi
+
+AC_SUBST(RT_CFLAGS)
 
 CPG_NETWORK_API_VERSION=0.1
 AC_SUBST(CPG_NETWORK_API_VERSION)

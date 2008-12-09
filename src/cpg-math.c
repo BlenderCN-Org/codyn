@@ -155,6 +155,7 @@ static FunctionEntry function_entries[] = {
 	{"pow", op_pow, 2}
 };
 
+#ifndef RTLINUX
 unsigned
 cpg_math_function_lookup(char const *name, int *arguments)
 {
@@ -171,6 +172,7 @@ cpg_math_function_lookup(char const *name, int *arguments)
 	
 	return 0;
 }
+#endif
 
 void 
 cpg_math_function_execute(unsigned id, CpgStack *stack, void *data)
@@ -373,6 +375,7 @@ typedef struct
 	double value;
 } CpgConstantEntry;
 
+#ifndef RTLINUX
 static CpgConstantEntry constant_entries[] = {
 	{"pi", NULL, M_PI},
 	{"PI", NULL, M_PI},
@@ -401,3 +404,4 @@ cpg_math_constant_lookup(char const *name, int *found)
 	*found = 0;	
 	return 0.0;
 }
+#endif

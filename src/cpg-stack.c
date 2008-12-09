@@ -1,6 +1,7 @@
 #include "cpg-stack.h"
 #include "cpg-utils.h"
 
+#ifndef RTLINUX
 void
 cpg_stack_init(CpgStack *stack, unsigned size)
 {
@@ -40,6 +41,7 @@ cpg_stack_free(CpgStack *stack)
 	cpg_stack_destroy(stack);
 	cpg_free(stack);
 }
+#endif
 
 unsigned
 cpg_stack_size(CpgStack *stack)
