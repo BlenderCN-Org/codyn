@@ -32,6 +32,13 @@ fi
 
 AM_CONDITIONAL([ENABLE_THREADS],[test "x$enable_threads" = "xyes"])
 
+AC_ARG_ENABLE([rt],
+	AS_HELP_STRING([--enable-rt],[Enable building real time library (default: disabled)]),
+	[enable_rt=$enableval],
+	[enable_rt=no])
+	
+AM_CONDITIONAL([ENABLE_RT],[test "x$enable_rt" = "xyes"])
+
 AC_SUBST(THREAD_CFLAGS)
 AC_SUBST(THREAD_LIBS)
 
@@ -41,6 +48,7 @@ AC_SUBST(CPG_NETWORK_API_VERSION)
 AC_OUTPUT(
 Makefile
 cpg-network.pc
+cpg-network-rt.pc
 src/Makefile
 tests/Makefile
 )

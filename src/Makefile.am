@@ -26,16 +26,11 @@ NOINST_H_FILES = \
 	cpg-object-private.h \
 	cpg-expression-private.h \
 	cpg-state-private.h \
+	cpg-network-private.h \
 	cpg-thread.h \
-	cpg-mutex.h \
-	shared/cpg-shared-expression.h \
-	shared/cpg-shared-link.h \
-	shared/cpg-shared-object.h \
-	shared/cpg-shared-network.h \
-	shared/cpg-shared-property.h \
-	shared/cpg-shared-utils.h
+	cpg-mutex.h
 
-lib_LTLIBRARIES = libcpg-network-0.1.la libcpg-network-rt-0.1.la
+lib_LTLIBRARIES = libcpg-network-0.1.la
 libcpg_network_headers = \
 	cpg-network.h \
 	cpg-object.h \
@@ -44,7 +39,14 @@ libcpg_network_headers = \
 	cpg-property.h \
 	cpg-expression.h \
 	cpg-stack.h \
-	cpg-debug.h
+	cpg-debug.h \
+	cpg-types.h \
+	cpg-shared-network.h \
+	shared/cpg-shared-expression.h \
+	shared/cpg-shared-property.h \
+	shared/cpg-shared-network.h \
+	shared/cpg-shared-utils.h \
+	shared/cpg-shared-link.h
 
 libcpg_network_0_1_la_CFLAGS = -D_GNU_SOURCE -Wall -Werror
 libcpg_network_0_1_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*"
@@ -58,6 +60,9 @@ endif
 libcpg_network_0_1_la_SOURCES = $(COMMON_SOURCES)
 
 libcpg_network_0_1_include_HEADERS = $(libcpg_network_headers)
+
+if ENABLE_RT
+lib_LTLIBRARIES += libcpg-network-rt-0.1.la
 
 libcpg_network_rt_0_1_la_CFLAGS = -D_GNU_SOURCE -Wall -Werror -DRTLINUX
 libcpg_network_rt_0_1_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*"
@@ -75,6 +80,9 @@ libcpg_network_rt_0_1_include_HEADERS = \
 	shared/cpg-shared-network.h \
 	shared/cpg-shared-expression.h \
 	shared/cpg-shared-property.h \
-	shared/cpg-shared-utils.h
+	shared/cpg-shared-utils.h \
+	shared/cpg-shared-link.h \
+	cpg-debug.h
+endif
 
 EXTRA_DIST = $(NOINST_H_FILES)

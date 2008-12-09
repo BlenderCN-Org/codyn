@@ -26,7 +26,9 @@ void cpg_debug_add(CpgDebugType type);
 #ifndef RTLINUX
 void cpg_debug_message_function(CpgDebugType type, char const *function, char const *format, ...);
 #else
-#include <rtlprint.h>
+//#include <rtlprint.h>
+#include <stdio.h>
+#define rtl_printf(...) printf(__VA_ARGS__)
 #define cpg_debug_message_function(type, function, ...) 							\
 		if (debug_type & type)														\
 		{																			\
