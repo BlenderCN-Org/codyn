@@ -8,4 +8,4 @@ Description: cpg network simulation library (real time library)
 Requires:
 Version: @VERSION@
 Libs: -L${libdir} -lcpg-network-rt-@CPG_NETWORK_API_VERSION@
-Cflags: -I${includedir}/cpg-network-rt-@CPG_NETWORK_API_VERSION@
+Cflags: -I${includedir}/cpg-network-@CPG_NETWORK_API_VERSION@

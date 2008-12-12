@@ -1,7 +1,7 @@
-#include "shared/cpg-shared-expression.h"
-#include "shared/cpg-shared-property.h"
-#include "cpg-debug.h"
-#include "cpg-math.h"
+#include <cpg-network/shared/cpg-shared-expression.h>
+#include <cpg-network/shared/cpg-shared-property.h>
+#include <cpg-network/cpg-debug.h>
+#include <cpg-network/cpg-math.h>
 
 static inline CpgSharedInstruction *
 get_instruction(CpgSharedExpression *expression, unsigned idx, void *base)

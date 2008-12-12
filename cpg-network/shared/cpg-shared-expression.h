@@ -1,9 +1,9 @@
 #ifndef __CPG_SHARED_EXPRESSION_H__
 #define __CPG_SHARED_EXPRESSION_H__
 
-#include "cpg-stack.h"
-#include "cpg-types.h"
-#include "shared/cpg-shared-utils.h"
+#include <cpg-network/cpg-stack.h>
+#include <cpg-network/cpg-types.h>
+#include <cpg-network/shared/cpg-shared-utils.h>
 
 typedef struct
 {

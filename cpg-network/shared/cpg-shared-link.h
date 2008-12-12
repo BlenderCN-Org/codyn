@@ -1,8 +1,8 @@
 #ifndef __CPG_SHARED_LINK_H__
 #define __CPG_SHARED_LINK_H__
 
-#include "shared/cpg-shared-expression.h"
-#include "shared/cpg-shared-utils.h"
+#include <cpg-network/shared/cpg-shared-expression.h>
+#include <cpg-network/shared/cpg-shared-utils.h>
 
 typedef struct
 {

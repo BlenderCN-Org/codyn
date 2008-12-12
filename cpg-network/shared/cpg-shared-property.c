@@ -1,4 +1,4 @@
-#include "shared/cpg-shared-property.h"
+#include <cpg-network/shared/cpg-shared-property.h>
 
 void
 cpg_shared_property_set_value(CpgSharedProperty *property, 

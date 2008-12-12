@@ -1,5 +1,6 @@
 INCLUDES =				\
-	-I$(srcdir)
+	-I$(srcdir)			\
+	-I$(top_srcdir)
 
 COMMON_SOURCES = 		\
 	cpg-network.c \
@@ -41,17 +42,21 @@ libcpg_network_headers = \
 	cpg-stack.h \
 	cpg-debug.h \
 	cpg-types.h \
-	cpg-shared-network.h \
-	shared/cpg-shared-expression.h \
-	shared/cpg-shared-property.h \
-	shared/cpg-shared-network.h \
-	shared/cpg-shared-utils.h \
-	shared/cpg-shared-link.h
+	cpg-shared-network.h
 
 libcpg_network_0_1_la_CFLAGS = -D_GNU_SOURCE -Wall -Werror
 libcpg_network_0_1_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*"
 libcpg_network_0_1_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
 
+
+sharedincdir = $(libcpg_network_0_1_includedir)/shared
+sharedinc_DATA = \
+	shared/cpg-shared-expression.h \
+	shared/cpg-shared-property.h \
+	shared/cpg-shared-network.h \
+	shared/cpg-shared-utils.h \
+	shared/cpg-shared-link.h
+	
 if ENABLE_THREADS
 libcpg_network_0_1_la_CFLAGS += $(THREAD_CFLAGS)
 libcpg_network_0_1_la_LDFLAGS += $(THREAD_LIBS)
@@ -85,4 +90,4 @@ libcpg_network_rt_0_1_include_HEADERS = \
 	cpg-debug.h
 endif
 
-EXTRA_DIST = $(NOINST_H_FILES)
+EXTRA_DIST = $(NOINST_H_FILES) $(sharedinc_DATA)

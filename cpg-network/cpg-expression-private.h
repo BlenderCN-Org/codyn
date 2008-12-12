@@ -21,6 +21,7 @@ typedef struct
 	unsigned id;
 	char *name;
 	int arguments;
+	int vargs;
 } CpgInstructionFunction;
 
 typedef struct

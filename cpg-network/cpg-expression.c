@@ -60,13 +60,14 @@ instruction_tos(CpgInstruction *inst)
 }
 
 static CpgInstruction *
-cpg_instruction_function_new(unsigned id, char const *name, int arguments)
+cpg_instruction_function_new(unsigned id, char const *name, int arguments, int vargs)
 {
 	CpgInstructionFunction *res = instruction_new(CpgInstructionFunction);
 	res->parent.type = CPG_INSTRUCTION_TYPE_FUNCTION;
 	res->id = id;
 	res->name = cpg_strdup(name);
 	res->arguments = arguments;
+	res->vargs = vargs;
 	
 	return (CpgInstruction *)res;
 }
@@ -84,7 +85,7 @@ cpg_instruction_number_new(double value)
 static CpgInstruction *
 cpg_instruction_operator_new(unsigned id, char const *name, int arguments)
 {
-	CpgInstruction *res = cpg_instruction_function_new(id, name, arguments);
+	CpgInstruction *res = cpg_instruction_function_new(id, name, arguments, 0);
 	res->type = CPG_INSTRUCTION_TYPE_OPERATOR;
 	
 	return res;
@@ -185,7 +186,7 @@ cpg_instruction_copy(CpgInstruction *instruction)
 		case CPG_INSTRUCTION_TYPE_FUNCTION:
 		{
 			CpgInstructionFunction *inst = (CpgInstructionFunction *)instruction;
-			return cpg_instruction_function_new(inst->id, inst->name, inst->arguments);
+			return cpg_instruction_function_new(inst->id, inst->name, inst->arguments, inst->vargs);
 		}
 		break;
 		default:
@@ -289,7 +290,7 @@ parse_function(CpgExpression *expression, char const *name, char const **buffer,
 		instructions_push(expression, cpg_instruction_number_new((double)numargs));
 
 	cpg_debug_expression("After func: %s", *buffer);
-	instructions_push(expression, cpg_instruction_function_new(id, name, numargs));
+	instructions_push(expression, cpg_instruction_function_new(id, name, numargs, arguments == -1));
 	return 1;
 }
 
@@ -735,7 +736,7 @@ validate_stack(CpgExpression *expression)
 			case CPG_INSTRUCTION_TYPE_FUNCTION:
 			{
 				CpgInstructionFunction *i = (CpgInstructionFunction *)inst;
-				stack -= i->arguments;
+				stack -= i->arguments + i->vargs;
 				
 				if (stack < 0)
 					return 0;

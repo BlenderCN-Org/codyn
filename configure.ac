@@ -66,6 +66,38 @@ fi
 
 AC_SUBST(RT_CFLAGS)
 
+AC_ARG_ENABLE([webots],
+	AS_HELP_STRING([--enable-webots],[Enable building webots bindings (default: disabled)]),
+	[enable_webots=$enableval],
+	[enable_webots=no])
+	
+AM_CONDITIONAL([ENABLE_WEBOTS],[test "x$enable_webots" = "xyes"])
+
+# look for webots
+if test "x$enable_webots" = "xyes"; then
+	AC_MSG_CHECKING(for webots)
+	dirs="$WEBOTS_HOME_PATH $WEBOTS_HOME /usr/local/webots"
+
+	for i in $dirs;
+	do
+		if test -r $i/include/device/robot.h;
+		then
+			AC_MSG_RESULT($i)
+			WEBOTS_CFLAGS="-I$i/include"
+			
+			break;
+		fi
+	done
+
+	if test "$WEBOTS_CFLAGS" = none; then
+		AC_MSG_ERROR(could not locate webots)
+	fi
+else
+	WEBOTS_CFLAGS=
+fi
+
+AC_SUBST(WEBOTS_CFLAGS)
+
 CPG_NETWORK_API_VERSION=0.1
 AC_SUBST(CPG_NETWORK_API_VERSION)
 
@@ -73,6 +105,8 @@ AC_OUTPUT(
 Makefile
 cpg-network.pc
 cpg-network-rt.pc
-src/Makefile
+cpg-network-webots.pc
+cpg-network/Makefile
+cpg-network-webots/Makefile
 tests/Makefile
 )

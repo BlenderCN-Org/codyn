@@ -1,8 +1,8 @@
 #ifndef __CPG_SHARED_SHARED_NETWORK_H__
 #define __CPG_SHARED_SHARED_NETWORK_H__
 
-#include "shared/cpg-shared-utils.h"
-#include "shared/cpg-shared-property.h"
+#include <cpg-network/shared/cpg-shared-utils.h>
+#include <cpg-network/shared/cpg-shared-property.h>
 
 typedef struct
 {

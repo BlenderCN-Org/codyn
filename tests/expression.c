@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include "cpg-expression.h"
+#include <cpg-network/cpg-expression.h>
 #include "utils.h"
 
 static CpgExpression *expression;
@@ -82,6 +82,15 @@ test_function_sin()
 }
 
 static int
+test_function_varargs()
+{
+	expression_initialize("max(0, 2 * pi)");
+	assert(expression_eval(), 2 * M_PI);
+	
+	return 1;
+}
+
+static int
 test_complex()
 {
 	CpgObject *obj = cpg_object_new(NULL);
@@ -117,7 +126,8 @@ static Test functions[] = {
 	{test_operator_minus_unary, "test_operator_minus_unary"},
 	{test_priority, "test_priority"},
 	{test_function_sin, "test_function_sin"},
-	{test_complex, "test_complex"}
+	{test_complex, "test_complex"},
+	{test_function_varargs, "test_function_varargs"}
 };
 
 int 

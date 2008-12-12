@@ -1,5 +1,5 @@
-#include "shared/cpg-shared-network.h"
-#include "shared/cpg-shared-link.h"
+#include "cpg-shared-network.h"
+#include "cpg-shared-link.h"
 #include "cpg-debug.h"
 
 static void
