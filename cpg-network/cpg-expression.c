@@ -127,7 +127,10 @@ instructions_free(CpgExpression *expression)
 	expression->instructions = NULL;
 	
 	if (expression->dependencies)
+	{
 		cpg_free(expression->dependencies);
+		expression->dependencies = NULL;
+	}
 
 	expression->num_dependencies = 0;
 
@@ -221,8 +224,11 @@ cpg_expression_copy(CpgExpression *expression)
 	
 	if (res->num_dependencies)
 	{
+		unsigned i;
 		res->dependencies = cpg_new(CpgProperty *, expression->num_dependencies);
-		memcpy(res->dependencies, expression->dependencies, expression->num_dependencies * sizeof(CpgProperty *));
+		
+		for (i = 0; i < res->num_dependencies; ++i)
+			res->dependencies[i] = expression->dependencies[i];
 	}
 	else
 	{
