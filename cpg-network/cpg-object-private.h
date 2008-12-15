@@ -27,7 +27,8 @@ struct _CpgObject
 };
 
 /* used for inheritance of CpgState and CpgLink */
-void 			 cpg_object_initialize		(CpgObject *object, CpgObjectType type);
+#define cpg_object_create(Type, type, id)	((Type *)cpg_object_initialize((CpgObject *)cpg_new1(Type), type, id))
+CpgObject		*cpg_object_initialize		(CpgObject *object, CpgObjectType type, char const *id);
 void 			 cpg_object_destroy			(CpgObject *object);
 char const  	*cpg_object_id				(CpgObject *object);
 

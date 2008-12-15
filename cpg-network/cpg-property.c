@@ -3,6 +3,7 @@
 #include "cpg-property.h"
 #include "cpg-expression.h"
 #include "cpg-utils.h"
+#include "cpg-object.h"
 
 /**
  * cpg_property_new:
@@ -16,7 +17,7 @@
  *
  **/
 CpgProperty *
-cpg_property_new(char const *name, char const *expression, char integrated)
+cpg_property_new(char const *name, char const *expression, char integrated, CpgObject *object)
 {
 	CpgProperty *res = cpg_new1(CpgProperty);
 	
@@ -24,6 +25,7 @@ cpg_property_new(char const *name, char const *expression, char integrated)
 
 	res->value = NULL;
 	res->update = 0.0;
+	res->object = object;
 
 	res->integrated = integrated;	
 	res->initial = cpg_expression_new(expression);
@@ -52,6 +54,20 @@ cpg_property_free(CpgProperty *property)
 
 	free(property->name);
 	free(property);
+}
+
+/**
+ * cpg_property_object:
+ * @property: the #CpgProperty
+ *
+ * Get the object associated with the property
+ *
+ * Returns: the object associated with the property
+ **/
+CpgObject *
+cpg_property_object(CpgProperty *property)
+{
+	return property->object;
 }
 
 /**

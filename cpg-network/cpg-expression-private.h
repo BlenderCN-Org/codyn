@@ -47,6 +47,8 @@ struct _CpgExpression
 	CpgStack output;
 	
 	CpgMutex *mutex;
+	CpgProperty **dependencies;
+	unsigned num_dependencies;
 
 	double cached_output;
 	int has_cache;

@@ -2,6 +2,7 @@
 #define __CPG_PROPERTY_H__
 
 struct _CpgExpression;
+struct _CpgObject;
 
 typedef struct 
 {
@@ -10,12 +11,16 @@ typedef struct
 	double update;
 	struct _CpgExpression *initial;
 	char integrated;
+	
+	struct _CpgObject *object;
 } CpgProperty;
 
-CpgProperty 	*cpg_property_new			(char const *name, char const *expression, char integrated);
+CpgProperty 	*cpg_property_new			(char const *name, char const *expression, char integrated, struct _CpgObject *object);
 void			 cpg_property_free			(CpgProperty *property);
 
 char const 		*cpg_property_name			(CpgProperty *property);
+
+struct _CpgObject *cpg_property_object		(CpgProperty *property);
 
 /* set numerics, for expressions use #cpg_network_set_value and friends */
 void			 cpg_property_set_value		(CpgProperty *property, double value);

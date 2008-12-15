@@ -125,6 +125,11 @@ instructions_free(CpgExpression *expression)
 	}
 	
 	expression->instructions = NULL;
+	
+	if (expression->dependencies)
+		cpg_free(expression->dependencies);
+
+	expression->num_dependencies = 0;
 
 	// reset cached and instant flags
 	expression->instant = 0;
@@ -156,6 +161,8 @@ cpg_expression_new(char const *expression)
 
 	res->expression = cpg_strdup(expression);
 	res->instructions = NULL;
+	res->dependencies = NULL;
+	res->num_dependencies = 0;
 	
 	cpg_stack_init(&(res->output), 0);
 
@@ -209,6 +216,20 @@ cpg_expression_copy(CpgExpression *expression)
 	res->cached_output = expression->cached_output;
 	res->mutex = NULL;
 	
+	// Copy dependencies
+	res->num_dependencies = expression->num_dependencies;
+	
+	if (res->num_dependencies)
+	{
+		res->dependencies = cpg_new(CpgProperty *, expression->num_dependencies);
+		memcpy(res->dependencies, expression->dependencies, expression->num_dependencies * sizeof(CpgProperty *));
+	}
+	else
+	{
+		res->dependencies = NULL;
+	}
+	
+	// Copy instructions
 	CpgInstruction *inst;
 	CpgInstruction *prev = NULL;
 	res->instructions = NULL;
@@ -236,7 +257,6 @@ instructions_push(CpgExpression *expression, CpgInstruction *next)
 	expression->instructions = next;
 	
 	char *res = instruction_tos(next);
-	cpg_debug_expression("Pushed expression: %s", res);
 	cpg_free(res);
 }
 
@@ -728,6 +748,13 @@ validate_stack(CpgExpression *expression)
 	if (!expression->instructions)
 		instructions_push(expression, cpg_instruction_number_new(0.0));
 	
+	if (expression->dependencies)
+	{
+		cpg_free(expression->dependencies);
+		expression->dependencies = NULL;
+		expression->num_dependencies = 0;
+	}
+	
 	for (inst = expression->instructions; inst; inst = inst->next)
 	{
 		switch (inst->type)
@@ -746,6 +773,8 @@ validate_stack(CpgExpression *expression)
 			}
 			break;
 			case CPG_INSTRUCTION_TYPE_PROPERTY:
+				array_resize(expression->dependencies, CpgProperty *, ++expression->num_dependencies);
+				expression->dependencies[expression->num_dependencies - 1] = ((CpgInstructionProperty *)inst)->property;
 				++stack;
 			break;
 			case CPG_INSTRUCTION_TYPE_NUMBER:
@@ -949,4 +978,13 @@ cpg_expression_reset_cache(CpgExpression *expression)
 {
 	if (!expression->instant)
 		expression->has_cache = 0;
+}
+
+CpgProperty **
+cpg_expression_dependencies(CpgExpression *expression, unsigned *num)
+{
+	if (num)
+		*num = expression->num_dependencies;
+	
+	return expression->dependencies;
 }

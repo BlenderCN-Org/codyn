@@ -6,6 +6,7 @@
 
 #include "cpg-network-private.h"
 #include "cpg-expression-private.h"
+#include "cpg-relay-private.h"
 
 #include "cpg-utils.h"
 #include "cpg-debug.h"
@@ -201,20 +202,38 @@ read_expressions(CpgLink *link, FILE *f)
 }
 
 static CpgObject *
-read_state(CpgNetwork *network, FILE *f)
+read_object_type(CpgNetwork *network, FILE *f, CpgObjectType type)
 {
 	char *buffer;
 	
 	// read in the state object id
 	buffer = read_line(f);
 	
-	CpgState *state = cpg_state_new(buffer);
+	CpgObject *object;
+	
+	if (type == CPG_OBJECT_TYPE_STATE)
+		object = (CpgObject *)cpg_state_new(buffer);
+	else
+		object = (CpgObject *)cpg_relay_new(buffer);
+
 	free(buffer);
 	
 	// read in properties
-	read_properties((CpgObject *)state, f);
+	read_properties(object, f);
 	
-	return (CpgObject *)state;
+	return object;
+}
+
+static CpgObject *
+read_state(CpgNetwork *network, FILE *f)
+{
+	return read_object_type(network, f, CPG_OBJECT_TYPE_STATE);
+}
+
+static CpgObject *
+read_relay(CpgNetwork *network, FILE *f)
+{
+	return read_object_type(network, f, CPG_OBJECT_TYPE_RELAY);
 }
 
 static CpgObject *
@@ -232,7 +251,7 @@ read_link(CpgNetwork *network, FILE *f)
 	CpgObject *fromobj = cpg_network_object(network, from);
 	CpgObject *toobj = cpg_network_object(network, to);
 	
-	if (!fromobj || !CPG_OBJECT_IS_STATE(fromobj) || !toobj || !CPG_OBJECT_IS_STATE(toobj))
+	if (!fromobj || (!CPG_OBJECT_IS_STATE(fromobj) && !CPG_OBJECT_IS_RELAY(fromobj)) || !toobj || (!CPG_OBJECT_IS_STATE(toobj) && !CPG_OBJECT_IS_RELAY(toobj)))
 	{
 		fprintf(stderr, "Could not find state `%s' for link\n", !fromobj ? from : to);
 
@@ -383,8 +402,25 @@ parse_expressions(CpgNetwork *network, CpgObject *object)
 static void
 add_state(CpgNetwork *network, CpgState *state)
 {
-	array_resize(network->states, CpgState *, ++network->num_states);
-	network->states[network->num_states - 1] = state;
+	array_resize(network->states, CpgState *, network->num_states + 1);
+	
+	// make sure to insert before relays
+	unsigned i;
+	
+	for (i = network->num_states; i > network->num_states - network->num_relays; --i)
+		network->states[i] = network->states[i - 1];
+
+	network->states[network->num_states - network->num_relays] = state;
+	++network->num_states;
+}
+
+static void
+add_relay(CpgNetwork *network, CpgRelay *relay)
+{
+	array_resize(network->states, CpgState *, ++(network->num_states));
+	network->states[network->num_states - 1] = (CpgState *)relay;
+	
+	++network->num_relays;
 }
 
 static void
@@ -409,6 +445,8 @@ cpg_network_add_object(CpgNetwork *network, CpgObject *object)
 	// add object to the network
 	if (CPG_OBJECT_IS_STATE(object))
 		add_state(network, (CpgState *)object);
+	else if (CPG_OBJECT_IS_RELAY(object))
+		add_relay(network, (CpgRelay *)object);
 	else
 		add_link(network, (CpgLink *)object);
 	
@@ -432,6 +470,8 @@ read_object(CpgNetwork *network, FILE *f)
 	// read in type of object	
 	if (strcmp(buffer, "state") == 0)
 		object = read_state(network, f);
+	else if (strcmp(buffer, "relay") == 0)
+		object = read_relay(network, f);
 	else if (strcmp(buffer, "link") == 0)
 		object = read_link(network, f);
 	else
@@ -614,14 +654,14 @@ partition_states_for_workers(CpgNetwork *network)
 
 	unsigned i;
 	unsigned num = network->num_worker_threads;
-	unsigned perworker = ceil(network->num_states / (double)num);
+	unsigned perworker = ceil((network->num_states - network->num_relays) / (double)num);
 	
 	for (i = 0; i < network->num_worker_threads; ++i)
 	{
 		CpgSimulationWorker *worker = &(network->worker_threads[i]);
 		
 		worker->from = (i * perworker);
-		worker->to = (i == num - 1 ? network->num_states : worker->from + perworker);
+		worker->to = (i == num - 1 ? (network->num_states - network->num_relays) : worker->from + perworker);
 		worker->running = 1;
 	}
 }
@@ -686,6 +726,7 @@ cpg_network_new()
 	network->links = NULL;
 
 	network->num_states = 0;
+	network->num_relays = 0;
 	network->num_links = 0;
 	
 	network->time = 0;
@@ -954,11 +995,24 @@ worker_thread_evaluate(CpgSimulationWorker *data)
 }
 
 static void
+simulation_evaluate_relays(CpgNetwork *network)
+{
+	unsigned i;
+	unsigned num = network->num_states - network->num_relays;
+	
+	for (i = num; i < network->num_states; ++i)
+		((CpgRelay *)network->states[i])->done = 0;
+	
+	for (i = num; i < network->num_states; ++i)
+		cpg_object_evaluate((CpgObject *)network->states[i], network->timestep);
+}
+
+static void
 simulation_evaluate(CpgNetwork *network)
 {
 	if (network->num_worker_threads == 0)
 	{
-		evaluate_states(network, 0, network->num_states);
+		evaluate_states(network, 0, network->num_states - network->num_relays);
 		return;
 	}
 	
@@ -989,7 +1043,7 @@ simulation_update(CpgNetwork *network)
 {
 	unsigned i;
 	
-	for (i = 0; i < network->num_states; ++i)
+	for (i = 0; i < network->num_states - network->num_relays; ++i)
 	{
 		CpgObject *object = (CpgObject *)(network->states[i]);
 		cpg_object_update(object, network->timestep);
@@ -1064,6 +1118,11 @@ cpg_network_simulation_step(CpgNetwork *network, float timestep)
 	cpg_property_set_value(network->timestepprop, timestep);
 	
 	cpg_debug_evaluate("Simulation step");
+	
+	// first evaluate all the relays
+	simulation_evaluate_relays(network);
+	
+	// then evaluate the network
 	simulation_evaluate(network);
 	simulation_update(network);
 	

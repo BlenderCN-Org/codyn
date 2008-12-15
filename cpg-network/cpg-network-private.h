@@ -42,6 +42,7 @@ struct _CpgNetwork
 	/* states */
 	CpgState **states;
 	unsigned num_states;
+	unsigned num_relays;
 	
 	/* links */
 	CpgLink **links;

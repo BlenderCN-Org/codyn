@@ -13,15 +13,16 @@ struct _CpgContext
 	CpgContext *next;
 };
 
-CpgExpression 	*cpg_expression_new				(char const *expression);
-CpgExpression	*cpg_expression_copy			(CpgExpression *expression);
-void 			 cpg_expression_free			(CpgExpression *expression);
+CpgExpression 	 *cpg_expression_new			(char const *expression);
+CpgExpression	 *cpg_expression_copy			(CpgExpression *expression);
+void 			  cpg_expression_free			(CpgExpression *expression);
 
-char const 		*cpg_expression_get				(CpgExpression *expression);
-int				 cpg_expression_compile			(CpgExpression *expression, CpgContext *context, char **error);
+CpgProperty 	**cpg_expression_dependencies	(CpgExpression *expression, unsigned *num);
+char const 		 *cpg_expression_get			(CpgExpression *expression);
+int				  cpg_expression_compile		(CpgExpression *expression, CpgContext *context, char **error);
 
-double 			 cpg_expression_evaluate		(CpgExpression *expression);
-void			 cpg_expression_set_value		(CpgExpression *expression, double value);
+double 			  cpg_expression_evaluate		(CpgExpression *expression);
+void			  cpg_expression_set_value		(CpgExpression *expression, double value);
 
 /* convenient function */
 void			 cpg_expression_print_instructions(CpgExpression *expression, FILE *f);

@@ -6,6 +6,7 @@ COMMON_SOURCES = 		\
 	cpg-network.c \
 	cpg-object.c \
 	cpg-state.c \
+	cpg-relay.c \
 	cpg-link.c \
 	cpg-property.c \
 	cpg-tokenizer.c \
@@ -27,6 +28,7 @@ NOINST_H_FILES = \
 	cpg-object-private.h \
 	cpg-expression-private.h \
 	cpg-state-private.h \
+	cpg-relay-private.h \
 	cpg-network-private.h \
 	cpg-thread.h \
 	cpg-mutex.h
@@ -36,6 +38,7 @@ libcpg_network_headers = \
 	cpg-network.h \
 	cpg-object.h \
 	cpg-state.h \
+	cpg-relay.h \
 	cpg-link.h \
 	cpg-property.h \
 	cpg-expression.h \

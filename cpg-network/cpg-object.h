@@ -4,12 +4,14 @@
 #include "cpg-property.h"
 
 #define CPG_OBJECT_IS_STATE(x) (cpg_object_type((CpgObject *)x) == CPG_OBJECT_TYPE_STATE)
+#define CPG_OBJECT_IS_RELAY(x) (cpg_object_type((CpgObject *)x) == CPG_OBJECT_TYPE_RELAY)
 #define CPG_OBJECT_IS_LINK(x) (cpg_object_type((CpgObject *)x) == CPG_OBJECT_TYPE_LINK)
 
 typedef enum
 {
 	CPG_OBJECT_TYPE_NONE,
 	CPG_OBJECT_TYPE_STATE,
+	CPG_OBJECT_TYPE_RELAY,
 	CPG_OBJECT_TYPE_LINK
 } CpgObjectType;
 

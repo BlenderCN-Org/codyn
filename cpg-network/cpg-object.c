@@ -88,10 +88,10 @@ cpg_object_reset_impl(CpgObject *object)
  * subclasses of #CpgObject such as #CpgState and #CpgLink.
  *
  **/
-void
-cpg_object_initialize(CpgObject *object, CpgObjectType type)
+CpgObject *
+cpg_object_initialize(CpgObject *object, CpgObjectType type, char const *id)
 {
-	object->id = NULL;
+	object->id = id ? cpg_strdup(id) : NULL;
 	object->type = type;
 	object->properties = NULL;
 	object->num_properties = 0;
@@ -105,6 +105,8 @@ cpg_object_initialize(CpgObject *object, CpgObjectType type)
 	object->evaluate = cpg_object_evaluate_impl;
 	object->update = cpg_object_update_impl;
 	object->reset = cpg_object_reset_impl;
+	
+	return object;
 }
 
 /**
@@ -119,11 +121,8 @@ CpgObject *
 cpg_object_new(char const *id)
 {
 	CpgObject *res = cpg_new1(CpgObject);
-	cpg_object_initialize(res, CPG_OBJECT_TYPE_NONE);
-	
-	if (id)
-		res->id = cpg_strdup(id);
-	
+	cpg_object_initialize(res, CPG_OBJECT_TYPE_NONE, id);
+
 	return res;
 }
 
@@ -144,7 +143,7 @@ cpg_object_new(char const *id)
 CpgProperty *
 cpg_object_add_property(CpgObject *object, char const *name, char const *expression, char integrated)
 {
-	CpgProperty *property = cpg_property_new(name, expression, integrated);
+	CpgProperty *property = cpg_property_new(name, expression, integrated, object);
 	
 	array_resize(object->properties, CpgProperty *, ++object->num_properties);
 	object->properties[object->num_properties - 1] = property;

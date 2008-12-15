@@ -3,6 +3,7 @@
 
 #include "cpg-object.h"
 #include "cpg-state.h"
+#include "cpg-relay.h"
 #include "cpg-link.h"
 #include "shared/cpg-shared-network.h"
 
