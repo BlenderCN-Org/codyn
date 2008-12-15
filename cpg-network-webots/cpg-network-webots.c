@@ -3,6 +3,9 @@
 #include <device/touch_sensor.h>
 
 #include "cpg-network-webots-private.h"
+#include "cpg-network/cpg-expression-private.h"
+#include "cpg-network/cpg-types.h"
+#include "cpg-network/cpg-utils.h"
 
 #include <stdlib.h>
 
@@ -39,18 +42,41 @@ binding_handler_touch_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding
 		cpg_property_set_value(binding->property, (double)touch_sensor_get_value(binding->device));
 }
 
+typedef enum
+{
+	ACCESS_TYPE_NONE = 0,
+	ACCESS_TYPE_READ,
+	ACCESS_TYPE_WRITE
+} AccessType;
+
 typedef struct
 {
 	char const *propname;
 	CpgWebotsBindingType type;
 	CpgWebotsBindingFunc func;
+	AccessType access;
 } BindingDefinition;
 
 static BindingDefinition binding_definitions[] = 
 {
-	{"webots_servo", CPG_WEBOTS_BINDING_TYPE_SERVO, binding_handler_servo},
-	{"webots_touch", CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR, binding_handler_touch_sensor}
+	{"webots_servo", CPG_WEBOTS_BINDING_TYPE_SERVO, binding_handler_servo, ACCESS_TYPE_WRITE},
+	{"webots_touch", CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR, binding_handler_touch_sensor, ACCESS_TYPE_READ}
 };
+
+static CpgProperty *
+resolve_property(CpgProperty *property)
+{
+	CpgExpression *expr = property->value;
+	
+	if (expr->instructions == NULL ||
+	    expr->instructions->next != NULL)
+		return property;
+	
+	if (expr->instructions->type != CPG_INSTRUCTION_TYPE_PROPERTY)
+		return property;
+	
+	return resolve_property(((CpgInstructionProperty *)expr->instructions)->property);
+}
 
 static void
 resolve_bindings(CpgNetworkWebots *webots)
@@ -68,14 +94,20 @@ resolve_bindings(CpgNetworkWebots *webots)
 		{
 			CpgProperty *property = cpg_object_property(object, binding_definitions[d].propname);
 			CpgWebotsBinding *binding;
+			char *id;
 			
 			if (!property)
 				continue;
+				
+			if (binding_definitions[d].access == ACCESS_TYPE_READ)
+				property = resolve_property(property);
 
+			id = cpg_object_local_id(object);
 			binding = webots_binding_new(binding_definitions[d].type, 
 										 binding_definitions[d].func,
-										 cpg_object_id(object),
+										 id,
 										 property);
+			cpg_free(id);
 
 			webots->bindings = (CpgWebotsBinding **)realloc(webots->bindings, sizeof(CpgWebotsBinding *) * (webots->num_bindings + 1));
 			webots->bindings[webots->num_bindings] = binding;
