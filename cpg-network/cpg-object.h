@@ -21,6 +21,7 @@ CpgObject 		 *cpg_object_new			(char const *id);
 void 			  cpg_object_free			(CpgObject *object);
 
 char const 		 *cpg_object_id				(CpgObject *object);
+char 			 *cpg_object_local_id		(CpgObject *object);
 CpgObjectType 	  cpg_object_type			(CpgObject *object);
 void			  cpg_object_reset			(CpgObject *object);
 

@@ -195,7 +195,7 @@ read_expressions(CpgLink *link, FILE *f)
 		if (property)
 			cpg_link_add_action(link, property, second);
 		else
-			fprintf(stderr, "Could not find property `%s' to act on", first);
+			cpg_debug_error("Could not find property `%s' to act on", first);
 
 		free(buffer);
 	}
@@ -253,7 +253,7 @@ read_link(CpgNetwork *network, FILE *f)
 	
 	if (!fromobj || (!CPG_OBJECT_IS_STATE(fromobj) && !CPG_OBJECT_IS_RELAY(fromobj)) || !toobj || (!CPG_OBJECT_IS_STATE(toobj) && !CPG_OBJECT_IS_RELAY(toobj)))
 	{
-		fprintf(stderr, "Could not find state `%s' for link\n", !fromobj ? from : to);
+		cpg_debug_error("Could not find state `%s' for link", !fromobj ? from : to);
 
 		if (from)
 			free(from);
@@ -366,7 +366,7 @@ parse_expressions(CpgNetwork *network, CpgObject *object)
 
 		if (!cpg_expression_compile(property->initial, network->context, &error))
 		{
-			fprintf(stderr, "Error while parsing expression: %s\n", error);
+			cpg_debug_error("Error while parsing expression: %s (%s) for [%s].%s", cpg_expression_get(property->initial), error, cpg_object_id(object), cpg_property_name(property));
 			free(error);
 			return 0;
 		}
@@ -390,7 +390,7 @@ parse_expressions(CpgNetwork *network, CpgObject *object)
 		
 		if (!cpg_expression_compile(cpg_link_action_expression(actions[e]), network->context, &error))
 		{
-			fprintf(stderr, "Error while parsing expression: %s\n", error);
+			cpg_debug_error("Error while parsing expression: %s", error);
 			free(error);
 			return 0;
 		}
@@ -772,7 +772,7 @@ cpg_network_new_from_file(char const *filename)
 	
 	if (!f)
 	{
-		fprintf(stderr, "Could not open network file: %s\n", strerror(errno));
+		cpg_debug_error("Could not open network file: %s", strerror(errno));
 		return NULL;
 	}
 

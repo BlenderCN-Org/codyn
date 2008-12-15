@@ -311,3 +311,17 @@ cpg_object_id(CpgObject *object)
 {
 	return object->id;
 }
+
+char *
+cpg_object_local_id(CpgObject *object)
+{
+	if (!object->id)
+		return NULL;
+
+	char *last = strrchr(object->id, '.');
+	
+	if (!last)
+		return cpg_strdup(object->id);
+	else
+		return cpg_strdup(last + 1);
+}

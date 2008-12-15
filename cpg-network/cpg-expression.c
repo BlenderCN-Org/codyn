@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <ctype.h>
 
 static int parse_expression(CpgExpression *expression, char const **buffer, CpgContext *context, int priority, int left_assoc);
 
