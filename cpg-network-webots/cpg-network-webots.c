@@ -8,6 +8,7 @@
 #include "cpg-network/cpg-utils.h"
 
 #include <stdlib.h>
+#include <string.h>
 
 static CpgWebotsBinding *
 webots_binding_new(CpgWebotsBindingType type, CpgWebotsBindingFunc func, char const *device, CpgProperty *property)
@@ -18,6 +19,8 @@ webots_binding_new(CpgWebotsBindingType type, CpgWebotsBindingFunc func, char co
 	binding->func = func;
 	binding->device = robot_get_device(device);
 	binding->property = property;
+	binding->initial = 0;
+	binding->name = strdup(device);
 	
 	return binding;
 }
@@ -25,6 +28,9 @@ webots_binding_new(CpgWebotsBindingType type, CpgWebotsBindingFunc func, char co
 static void
 webots_binding_free(CpgWebotsBinding *binding)
 {
+	if (binding->name)
+		free(binding->name);
+
 	free(binding);
 }
 
@@ -130,6 +136,34 @@ cpg_network_webots_new(CpgNetwork *network)
 	return webots;
 }
 
+void
+cpg_network_webots_initial(CpgNetworkWebots *webots, unsigned ms)
+{
+	unsigned i;
+
+	for (i = 0; i < webots->num_bindings; ++i)
+	{
+		CpgWebotsBinding *binding = webots->bindings[i];
+		
+		switch (binding->type)
+		{
+			case CPG_WEBOTS_BINDING_TYPE_SERVO:
+			{
+				if (!binding->device)
+					continue;
+
+				servo_enable_position (binding->device, ms);
+				robot_step (ms);
+				
+				binding->initial = servo_get_position (binding->device);
+				servo_disable_position (binding->device);
+			}
+			default:
+			break;
+		}
+	}
+}
+
 void 
 cpg_network_webots_free(CpgNetworkWebots *webots)
 {
@@ -184,4 +218,38 @@ cpg_network_webots_update(CpgNetworkWebots *webots, float timestep)
 	
 	for (i = 0; i < webots->num_bindings; ++i)
 		webots->bindings[i]->func(webots, webots->bindings[i]);
+}
+
+size_t
+cpg_network_webots_size(CpgNetworkWebots *webots)
+{
+	return webots->num_bindings;
+}
+
+void
+cpg_network_webots_scale_initial(CpgNetworkWebots *webots, float fraction)
+{
+	/* Scale from initial webots values, to initial value of network, according
+	   to fraction */
+	unsigned i;
+	
+	for (i = 0; i < webots->num_bindings; ++i)
+	{
+		CpgWebotsBinding *binding = webots->bindings[i];
+		
+		switch (binding->type)
+		{
+			case CPG_WEBOTS_BINDING_TYPE_SERVO:
+			{
+				if (!binding->device)
+					continue;
+					
+				float p = fraction * (cpg_property_value(binding->property) - binding->initial);
+				servo_set_position(binding->device, binding->initial + p);
+			}
+			break;
+			default:
+			break;
+		}
+	}
 }

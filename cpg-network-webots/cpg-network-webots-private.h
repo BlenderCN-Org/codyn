@@ -20,6 +20,8 @@ struct _CpgWebotsBinding
 	CpgWebotsBindingFunc func;
 	DeviceTag device;
 	CpgProperty *property;
+	float initial;
+	char *name;
 };
 
 struct _CpgNetworkWebots
