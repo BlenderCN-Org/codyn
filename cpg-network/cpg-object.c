@@ -1,129 +1,136 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "cpg-object-private.h"
-#include "cpg-link-private.h"
-#include "cpg-state-private.h"
-#include "cpg-expression-private.h"
+#include "cpg-object.h"
 
-#include "cpg-utils.h"
+#include "cpg-link.h"
+#include "cpg-state.h"
+#include "cpg-expression.h"
+
 #include "cpg-debug.h"
+
+#define CPG_OBJECT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OBJECT, CpgObjectPrivate))
+
+struct _CpgObjectPrivate
+{
+	gchar *id;
+
+	// Properties
+	GSList *properties;	
+	GSList *actors;
+	
+	// Links
+	GSList *links;
+};
+
+/* Properties */
+enum
+{
+	PROP_0,
+	PROP_ID
+};
+
+G_DEFINE_TYPE(CpgObject, cpg_object, G_TYPE_OBJECT)
+
+static void
+cpg_object_finalize(GObject *object)
+{
+	CpgObject *obj = CPG_OBJECT(object);
+	
+	g_slist_foreach(obj->priv->properties, (GFunc)cpg_ref_counted_unref, NULL);
+	g_slist_free(obj->priv->properties);
+
+	g_slist_free(obj->priv->links);
+	g_slist_free(obj->priv->actors);
+	
+	g_free(obj->priv->id);
+		
+	G_OBJECT_CLASS(cpg_object_parent_class)->finalize(object);
+}
 
 /* interface implementations */
 static void
-cpg_object_update_impl(CpgObject *object, float timestep)
-{
-	unsigned i;
-
-	// Copy from update to actual
-	for (i = 0; i < object->num_actors; ++i)
-	{
-		CpgProperty *property = object->actors[i];
-		double value;
-			
-		if (property->integrated)
-			value = cpg_expression_evaluate(property->value) + property->update * timestep;
-		else
-			value = property->update;
-
-		cpg_debug_evaluate("Updating %s.%s (%d) = %f (from %f)", object->id, property->name, property->integrated, value, cpg_expression_evaluate(property->value));
-		cpg_expression_set_value(property->value, value);
-	}
-}
-
-static void
-cpg_object_evaluate_impl(CpgObject *object, float timestep)
-{
-	unsigned i;
-
-	// Prepare update values (ready for accumulation)
-	for (i = 0; i < object->num_actors; ++i)
-		object->actors[i]->update = 0.0;
-	
-	// Iterate over all the links
-	for (i = 0; i < object->num_links; ++i)
-	{
-		CpgLink *link = object->links[i];
-		unsigned e;
-		unsigned size;
-		
-		CpgLinkAction **actions = cpg_link_actions(link, &size);
-		
-		// Iterate over all the expressions in the link
-		for (e = 0; e < size; ++e)
-		{
-			CpgExpression *expression = cpg_link_action_expression(actions[e]);
-			
-			// Evaluate expression and add value to the update
-			double val = cpg_expression_evaluate(expression);
-			cpg_link_action_target(actions[e])->update += val;
-		}
-	}
-}
-
-static void
 cpg_object_reset_impl(CpgObject *object)
 {
-	unsigned i;
-	
-	for (i = 0; i < object->num_properties; ++i)
-	{
-		CpgProperty *property = object->properties[i];
-		
-		// Free current value
-		if (property->value)
-			cpg_expression_free(property->value);
+	g_slist_foreach(object->priv->properties, (GFunc)cpg_property_reset, NULL);
+}
 
-		// Copy initial expression back to current value
-		property->value = cpg_expression_copy(property->initial);
+static void
+get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+	CpgObject *obj = CPG_OBJECT(object);
+
+	switch (prop_id)
+	{
+		case PROP_ID:
+			g_value_set_string(value, obj->priv->id);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
 	}
 }
 
-/**
- * cpg_object_initialize:
- * @object: the #CpgObject
- * @type: type object type
- *
- * Initializes the #CpgObject. This is a private function and is used by
- * subclasses of #CpgObject such as #CpgState and #CpgLink.
- *
- **/
-CpgObject *
-cpg_object_initialize(CpgObject *object, CpgObjectType type, char const *id)
+static void
+set_property(GObject *object, guint prop_id, GValue const *value, GParamSpec *pspec)
 {
-	object->id = id ? cpg_strdup(id) : NULL;
-	object->type = type;
-	object->properties = NULL;
-	object->num_properties = 0;
+	CpgObject *obj = CPG_OBJECT(object);
+
+	switch (prop_id)
+	{
+		case PROP_ID:
+		{
+			g_free(obj->priv->id);
+			obj->priv->id = g_value_dup_string(value);
+		}
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_object_class_init(CpgObjectClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS(klass);
+
+	object_class->finalize = cpg_object_finalize;
+	object_class->get_property = get_property;
+	object_class->set_property = set_property;
+
+	klass->reset = cpg_object_reset_impl;
 	
-	object->actors = NULL;
-	object->num_actors = 0;
-	
-	object->links = NULL;
-	object->num_links = 0;
-	
-	object->evaluate = cpg_object_evaluate_impl;
-	object->update = cpg_object_update_impl;
-	object->reset = cpg_object_reset_impl;
-	
-	return object;
+	g_object_class_install_property(object_class, PROP_ID,
+				 g_param_spec_string("id",
+						      "ID",
+						      "The object's id",
+						      NULL,
+						      G_PARAM_READWRITE));
+
+	g_type_class_add_private(object_class, sizeof(CpgObjectPrivate));
+}
+
+static void
+cpg_object_init(CpgObject *self)
+{
+	self->priv = CPG_OBJECT_GET_PRIVATE(self);
 }
 
 /**
  * cpg_object_new:
  *
- * Create new empty #CpgObject
+ * Creates a new #CpgObject.
+ * @id: the object id
  *
- * Return value: a newly created #CpgObject
+ * Return value: the newly created #CpgObject
  *
  **/
-CpgObject *
-cpg_object_new(char const *id)
-{
-	CpgObject *res = cpg_new1(CpgObject);
-	cpg_object_initialize(res, CPG_OBJECT_TYPE_NONE, id);
 
-	return res;
+CpgObject *
+cpg_object_new(gchar const *id)
+{
+	return g_object_new(CPG_TYPE_OBJECT, "id", id, NULL);
 }
 
 /**
@@ -141,82 +148,64 @@ cpg_object_new(char const *id)
  *
  **/
 CpgProperty *
-cpg_object_add_property(CpgObject *object, char const *name, char const *expression, char integrated)
+cpg_object_add_property(CpgObject   *object, 
+						gchar const *name, 
+						gchar const *expression, 
+						gboolean     integrated)
 {
+	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+	g_return_val_if_fail(name != NULL, NULL);
+	g_return_val_if_fail(expression != NULL, NULL);
+
 	CpgProperty *property = cpg_property_new(name, expression, integrated, object);
 	
-	array_resize(object->properties, CpgProperty *, ++object->num_properties);
-	object->properties[object->num_properties - 1] = property;
-	
+	object->priv->properties = g_slist_append(object->priv->properties, property);	
 	return property;
 }
 
-void
-cpg_object_destroy(CpgObject *object)
-{
-	if (!object)
-		return;
-
-	unsigned i;
-
-	for (i = 0; i < object->num_properties; ++i)
-		cpg_property_free(object->properties[i]);
-
-	free(object->properties);
-	free(object->links);
-	free(object->actors);
-	
-	if (object->id)
-		free(object->id);
-}
-
-void
-cpg_object_free(CpgObject *object)
-{
-	if (!object)
-		return;
-
-	cpg_object_destroy(object);
-	free(object);
-}
-
 CpgProperty *
-cpg_object_property(CpgObject *object, char const *name)
+cpg_object_get_property(CpgObject   *object, 
+						gchar const *name)
 {
-	unsigned i;
+	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+	g_return_val_if_fail(name != NULL, NULL);
+
+	GSList *item;
 	
-	for (i = 0; i < object->num_properties; ++i)
+	for (item = object->priv->properties; item; item = g_slist_next(item))
 	{
-		if (strcmp(object->properties[i]->name, name) == 0)
-			return object->properties[i];
+		CpgProperty *property = (CpgProperty *)item->data;
+		
+		if (strcmp(cpg_property_get_name(property), name) == 0)
+			return property;
 	}
 	
 	return NULL;
 }
 
-CpgProperty **
-cpg_object_properties(CpgObject *object, unsigned *size)
+GSList *
+cpg_object_get_properties(CpgObject *object)
 {
-	*size = object->num_properties;
-	
-	return object->properties;
+	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+
+	return object->priv->properties;
 }
 
 static void
-add_actor(CpgObject *object, CpgProperty *property)
+add_actor(CpgObject   *object, 
+		  CpgProperty *property)
 {
-	unsigned i;
+	GSList *item;
 	
-	for (i = 0; i < object->num_actors; ++i)
-		if (object->actors[i] == property)
+	for (item = object->priv->actors; item; item = g_slist_next(item))
+		if ((CpgProperty *)item->data == property)
 			return;
 	
-	array_resize(object->actors, CpgProperty *, ++object->num_actors);
-	object->actors[object->num_actors - 1] = property;
+	object->priv->actors = g_slist_append(object->priv->actors, property);
 }
 
 /**
- * cpg_object_update_link:
+ * _cpg_object_update_link:
  * @object: the #CpgObject
  * @link: the #CpgLink which links to this object
  *
@@ -224,19 +213,23 @@ add_actor(CpgObject *object, CpgProperty *property)
  *
  **/
 void
-cpg_object_update_link(CpgObject *object, CpgLink *link)
+_cpg_object_update_link(CpgObject *object, 
+						CpgLink   *link)
 {
-	unsigned i;
-	unsigned size;
+	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail(CPG_IS_LINK(link));
+
+	GSList *actions = cpg_link_get_actions(link);
 	
-	CpgLinkAction **actions = cpg_link_actions(link, &size);
-	
-	for (i = 0; i < size; ++i)
-		add_actor(object, cpg_link_action_target(actions[i]));
+	while (actions)
+	{
+		add_actor(object, cpg_link_action_get_target((CpgLinkAction *)actions->data));
+		actions = g_slist_next(actions);
+	}
 }
 
 /**
- * cpg_object_link:
+ * _cpg_object_link:
  * @object: the #CpgObject
  * @link: the #CpgLink which links to this object
  *
@@ -246,13 +239,24 @@ cpg_object_update_link(CpgObject *object, CpgLink *link)
  *
  **/
 void
-cpg_object_link(CpgObject *object, CpgLink *link)
+_cpg_object_link(CpgObject *object, 
+				 CpgLink   *link)
 {
-	array_resize(object->links, CpgLink *, ++object->num_links);
-	object->links[object->num_links - 1] = link;
+	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail(CPG_IS_LINK(link));
+	
+	object->priv->links = g_slist_append(object->priv->links, link);
 	
 	// register possible new actors
-	cpg_object_update_link(object, link);
+	_cpg_object_update_link(object, link);
+}
+
+GSList *
+_cpg_object_get_actors(CpgObject *object)
+{
+	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+	
+	return object->priv->actors;
 }
 
 /**
@@ -265,10 +269,14 @@ cpg_object_link(CpgObject *object, CpgLink *link)
  *
  **/
 void
-cpg_object_update(CpgObject *object, float timestep)
+cpg_object_update(CpgObject *object, 
+				  gdouble    timestep)
 {
-	if (object->update)
-		object->update(object, timestep);
+	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail(timestep <= 0);
+
+	if (CPG_OBJECT_GET_CLASS(object)->update)
+		CPG_OBJECT_GET_CLASS(object)->update(object, timestep);
 }
 
 /**
@@ -280,10 +288,14 @@ cpg_object_update(CpgObject *object, float timestep)
  *
  **/
 void
-cpg_object_evaluate(CpgObject *object, float timestep)
+cpg_object_evaluate(CpgObject *object, 
+					gdouble    timestep)
 {
-	if (object->evaluate)
-		object->evaluate(object, timestep);
+	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail(timestep <= 0);
+
+	if (CPG_OBJECT_GET_CLASS(object)->evaluate)
+		CPG_OBJECT_GET_CLASS(object)->evaluate(object, timestep);
 }
 
 /**
@@ -296,32 +308,40 @@ cpg_object_evaluate(CpgObject *object, float timestep)
 void
 cpg_object_reset(CpgObject *object)
 {
-	if (object->reset)
-		object->reset(object);
+	g_return_if_fail(CPG_IS_OBJECT(object));
+
+	if (CPG_OBJECT_GET_CLASS(object)->reset)
+		CPG_OBJECT_GET_CLASS(object)->reset(object);
 }
 
-CpgObjectType
-cpg_object_type(CpgObject *object)
+gchar const *
+cpg_object_get_id(CpgObject *object)
 {
-	return object->type;
+	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+
+	return object->priv->id;
 }
 
-char const *
-cpg_object_id(CpgObject *object)
+gchar *
+cpg_object_get_local_id(CpgObject *object)
 {
-	return object->id;
-}
+	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
 
-char *
-cpg_object_local_id(CpgObject *object)
-{
-	if (!object->id)
+	if (!object->priv->id)
 		return NULL;
 
-	char *last = strrchr(object->id, '.');
+	gchar *last = strrchr(object->priv->id, '.');
 	
 	if (!last)
-		return cpg_strdup(object->id);
+		return g_strdup(object->priv->id);
 	else
-		return cpg_strdup(last + 1);
+		return g_strdup(last + 1);
+}
+
+GSList *
+_cpg_object_get_links(CpgObject *object)
+{
+	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+	
+	return object->priv->links;
 }

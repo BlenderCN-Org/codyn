@@ -4,23 +4,48 @@
 #include "cpg-object.h"
 #include "cpg-expression.h"
 
-typedef struct _CpgLink CpgLink;
-typedef struct _CpgLinkAction CpgLinkAction;
+G_BEGIN_DECLS
 
-CpgLink 		 *cpg_link_new					(char const *id,
-												 CpgObject *from, 
-												 CpgObject *to);
-void 			  cpg_link_free					(CpgLink *link);
+#define CPG_TYPE_LINK				(cpg_link_get_type ())
+#define CPG_LINK(obj)				(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_LINK, CpgLink))
+#define CPG_LINK_CONST(obj)			(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_LINK, CpgLink const))
+#define CPG_LINK_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_LINK, CpgLinkClass))
+#define CPG_IS_LINK(obj)			(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_LINK))
+#define CPG_IS_LINK_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_LINK))
+#define CPG_LINK_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_LINK, CpgLinkClass))
 
-CpgObject		 *cpg_link_from					(CpgLink *link);
-CpgObject		 *cpg_link_to					(CpgLink *link);
+typedef struct _CpgLink			CpgLink;
+typedef struct _CpgLinkClass	CpgLinkClass;
+typedef struct _CpgLinkPrivate	CpgLinkPrivate;
+typedef struct _CpgLinkAction	CpgLinkAction;
 
-void 			  cpg_link_add_action			(CpgLink *link, 
-												 CpgProperty *target, 
-												 char const *expression);
-CpgLinkAction	**cpg_link_actions				(CpgLink *link, unsigned *size);
+struct _CpgLink {
+	CpgObject parent;
+	
+	CpgLinkPrivate *priv;
+};
 
-CpgExpression	 *cpg_link_action_expression 	(CpgLinkAction *action);
-CpgProperty		 *cpg_link_action_target		(CpgLinkAction *action);
+struct _CpgLinkClass {
+	CpgObjectClass parent_class;
+};
+
+GType 			  cpg_link_get_type 			 (void) G_GNUC_CONST;
+
+CpgLink 		 *cpg_link_new 					 (gchar const   *id, 
+												  CpgObject     *from, 
+												  CpgObject     *to);
+
+CpgObject		 *cpg_link_get_from				 (CpgLink       *link);
+CpgObject		 *cpg_link_get_to				 (CpgLink       *link);
+
+void 			  cpg_link_add_action			 (CpgLink       *link, 
+												  CpgProperty   *target, 
+												  gchar const   *expression);
+GSList			 *cpg_link_get_actions			 (CpgLink       *link);
+
+CpgExpression	 *cpg_link_action_get_expression (CpgLinkAction *action);
+CpgProperty		 *cpg_link_action_get_target	 (CpgLinkAction *action);
+
+G_END_DECLS
 
 #endif /* __CPG_LINK_H__ */

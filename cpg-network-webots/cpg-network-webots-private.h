@@ -2,6 +2,7 @@
 #define __CPG_NETWORK_WEBOTS_PRIVATE_H__
 
 #include <device/robot_types.h>
+#include <glib.h>
 #include "cpg-network-webots.h"
 
 typedef struct _CpgWebotsBinding CpgWebotsBinding;
@@ -20,15 +21,14 @@ struct _CpgWebotsBinding
 	CpgWebotsBindingFunc func;
 	DeviceTag device;
 	CpgProperty *property;
-	float initial;
-	char *name;
+	gdouble initial;
+	gchar *name;
 };
 
 struct _CpgNetworkWebots
 {
 	CpgNetwork *network;
-	CpgWebotsBinding **bindings;
-	unsigned num_bindings;
+	GSList *bindings;
 };
 
 #endif /* __CPG_NETWORK_WEBOTS_PRIVATE_H__ */

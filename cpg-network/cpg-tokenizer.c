@@ -3,12 +3,12 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdio.h>
-#include "cpg-utils.h"
+#include <glib.h>
 
 typedef struct
 {
-	int priority;
-	int left_assoc;
+	gint priority;
+	gint left_assoc;
 } OperatorProperties;
 
 static OperatorProperties operator_properties[] = 
@@ -49,24 +49,25 @@ static OperatorProperties operator_properties[] =
 };
 
 static void
-skip_whitespace(char const **buffer)
+skip_whitespace(gchar const **buffer)
 {
 	while (isspace(**buffer))
 		++*buffer;
 }
 
-static int
-buffer_peek(char const *buffer, int at)
+static gint
+buffer_peek(gchar const *buffer, 
+			gint         at)
 {
 	return strlen(buffer) <= at ? '\0' : buffer[at];
 }
 
 /* parse number value */
 CpgToken *
-cpg_tokenizer_parse_number(char const **buffer)
+cpg_tokenizer_parse_number(gchar const **buffer)
 {
 	// parse leading numbers
-	char const *start = *buffer;
+	gchar const *start = *buffer;
 	
 	while (isdigit(*(++*buffer)))
 	;
@@ -77,10 +78,10 @@ cpg_tokenizer_parse_number(char const **buffer)
 		;
 	}
 	
-	CpgTokenNumber *res = cpg_new1(CpgTokenNumber);
+	CpgTokenNumber *res = g_new(CpgTokenNumber, 1);
 	res->parent.type = CPG_TOKEN_TYPE_NUMBER;
 
-	char *ptr = strndup((char *)start, *buffer - start);
+	gchar *ptr = g_strndup((gchar *)start, *buffer - start);
 	
 	res->value = atof(ptr);
 	
@@ -90,21 +91,21 @@ cpg_tokenizer_parse_number(char const **buffer)
 			res->value = res->value / 10.0;
 	}
 	
-	free(ptr);
+	g_free(ptr);
 	
 	return (CpgToken *)res;
 }
 
 /* parse identifier */
 CpgToken *
-cpg_tokenizer_parse_identifier(char const **buffer)
+cpg_tokenizer_parse_identifier(gchar const **buffer)
 {
-	char const *start = *buffer;
+	gchar const *start = *buffer;
 
 	while (isalnum(*(++*buffer)) || **buffer == '_')
 	;
 	
-	CpgTokenIdentifier *res = cpg_new1(CpgTokenIdentifier);
+	CpgTokenIdentifier *res = g_new(CpgTokenIdentifier, 1);
 	res->parent.type = CPG_TOKEN_TYPE_IDENTIFIER;
 	
 	res->identifier = strndup(start, *buffer - start);
@@ -112,8 +113,8 @@ cpg_tokenizer_parse_identifier(char const **buffer)
 }
 
 /* check for operator */
-int
-isoperator(int c)
+gboolean
+isoperator(gint c)
 {
 	switch (c)
 	{
@@ -134,18 +135,18 @@ isoperator(int c)
 		case '(':
 		case ')':
 		case ',':
-			return 1;
+			return TRUE;
 	}
 	
-	return 0;
+	return FALSE;
 }
 
 /* parse operator */
 CpgToken *
-cpg_tokenizer_parse_operator(char const **buffer)
+cpg_tokenizer_parse_operator(gchar const **buffer)
 {
-	int c = **buffer;
-	int n = buffer_peek(*buffer, 1);
+	gint c = **buffer;
+	gint n = buffer_peek(*buffer, 1);
 	CpgTokenOperatorType type = CPG_TOKEN_OPERATOR_TYPE_NONE;
 	
 	// skip buffer 2 places to handle double char operators, then when it
@@ -219,7 +220,7 @@ cpg_tokenizer_parse_operator(char const **buffer)
 	if (type == CPG_TOKEN_OPERATOR_TYPE_NONE)
 		return NULL;
 	
-	CpgTokenOperator *res = cpg_new1(CpgTokenOperator);
+	CpgTokenOperator *res = g_new(CpgTokenOperator, 1);
 	res->parent.type = CPG_TOKEN_TYPE_OPERATOR;
 	res->type = type;
 	res->priority = operator_properties[type].priority;
@@ -229,13 +230,13 @@ cpg_tokenizer_parse_operator(char const **buffer)
 }
 
 CpgToken *
-cpg_tokenizer_peek(char const *buffer)
+cpg_tokenizer_peek(gchar const *buffer)
 {
 	return cpg_tokenizer_next(&buffer);
 }
 
 CpgToken *
-cpg_tokenizer_next(char const **buffer)
+cpg_tokenizer_next(gchar const **buffer)
 {
 	if (*buffer)
 		skip_whitespace(buffer);
@@ -276,11 +277,11 @@ cpg_token_free(CpgToken *token)
 	switch (token->type)
 	{
 		case CPG_TOKEN_TYPE_IDENTIFIER:
-			free(((CpgTokenIdentifier *)token)->identifier);
+			g_free(((CpgTokenIdentifier *)token)->identifier);
 		break;
 		default:
 		break;
 	}
 
-	free(token);
+	g_free(token);
 }

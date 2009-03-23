@@ -2,29 +2,40 @@
 #define __CPG_EXPRESSION_H__
 
 #include <stdio.h>
-#include "cpg-object.h"
+#include <glib-object.h>
+
+typedef enum
+{
+	CPG_EXPRESSION_FLAG_NONE = 0,
+	CPG_EXPRESSION_FLAG_CACHED = 1 << 0,
+	CPG_EXPRESSION_FLAG_INSTANT = 1 << 1
+} CpgExpressionFlag;
 
 typedef struct _CpgExpression 		CpgExpression;
-typedef struct _CpgContext			CpgContext;
 
-struct _CpgContext
-{
-	CpgObject *object;
-	CpgContext *next;
-};
+GType			  cpg_expression_get_type			(void);
+CpgExpression 	 *cpg_expression_new				(gchar const    *expression);
+CpgExpression	 *cpg_expression_copy				(CpgExpression  *expression);
 
-CpgExpression 	 *cpg_expression_new			(char const *expression);
-CpgExpression	 *cpg_expression_copy			(CpgExpression *expression);
-void 			  cpg_expression_free			(CpgExpression *expression);
+GSList		 	 *cpg_expression_get_dependencies	(CpgExpression  *expression);
+gchar const		 *cpg_expression_get				(CpgExpression  *expression);
+gint			  cpg_expression_compile			(CpgExpression  *expression, 
+													 GSList         *context, 
+													 gchar         **error);
 
-CpgProperty 	**cpg_expression_dependencies	(CpgExpression *expression, unsigned *num);
-char const 		 *cpg_expression_get			(CpgExpression *expression);
-int				  cpg_expression_compile		(CpgExpression *expression, CpgContext *context, char **error);
+GSList 			 *cpg_expression_get_instructions	(CpgExpression  *expression);
 
-double 			  cpg_expression_evaluate		(CpgExpression *expression);
-void			  cpg_expression_set_value		(CpgExpression *expression, double value);
+gdouble 		  cpg_expression_evaluate			(CpgExpression  *expression);
+void			  cpg_expression_set_value			(CpgExpression  *expression, 
+													 gdouble         value);
+
 
 /* convenient function */
-void			 cpg_expression_print_instructions(CpgExpression *expression, FILE *f);
+void			  cpg_expression_print_instructions	(CpgExpression  *expression, 
+													 FILE           *f);
+
+void			  cpg_expression_set				(CpgExpression  *expression, 
+													 gchar const    *value);
+void 			  cpg_expression_reset_cache		(CpgExpression  *expression);
 
 #endif /* __CPG_EXPRESSION_H__ */

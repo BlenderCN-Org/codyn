@@ -3,24 +3,23 @@
 #include <device/touch_sensor.h>
 
 #include "cpg-network-webots-private.h"
-#include "cpg-network/cpg-expression-private.h"
+#include "cpg-network/cpg-expression.h"
 #include "cpg-network/cpg-types.h"
-#include "cpg-network/cpg-utils.h"
 
 #include <stdlib.h>
 #include <string.h>
 
 static CpgWebotsBinding *
-webots_binding_new(CpgWebotsBindingType type, CpgWebotsBindingFunc func, char const *device, CpgProperty *property)
+webots_binding_new(CpgWebotsBindingType type, CpgWebotsBindingFunc func, gchar const *device, CpgProperty *property)
 {
-	CpgWebotsBinding *binding = (CpgWebotsBinding *)malloc(sizeof(CpgWebotsBinding));
+	CpgWebotsBinding *binding = g_slice_new(CpgWebotsBinding);
 
 	binding->type = type;
 	binding->func = func;
 	binding->device = robot_get_device(device);
 	binding->property = property;
 	binding->initial = 0;
-	binding->name = strdup(device);
+	binding->name = g_strdup(device);
 	
 	return binding;
 }
@@ -28,24 +27,22 @@ webots_binding_new(CpgWebotsBindingType type, CpgWebotsBindingFunc func, char co
 static void
 webots_binding_free(CpgWebotsBinding *binding)
 {
-	if (binding->name)
-		free(binding->name);
-
-	free(binding);
+	g_free(binding->name);
+	g_slice_free(CpgWebotsBinding, binding);
 }
 
 static void
 binding_handler_servo(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
 {
 	if (binding->device)
-		servo_set_position(binding->device, cpg_property_value(binding->property));
+		servo_set_position(binding->device, cpg_property_get_value(binding->property));
 }
 
 static void
 binding_handler_touch_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
 {
 	if (binding->device)
-		cpg_property_set_value(binding->property, (double)touch_sensor_get_value(binding->device));
+		cpg_property_set_value(binding->property, (gdouble)touch_sensor_get_value(binding->device));
 }
 
 typedef enum
@@ -57,7 +54,7 @@ typedef enum
 
 typedef struct
 {
-	char const *propname;
+	gchar const *propname;
 	CpgWebotsBindingType type;
 	CpgWebotsBindingFunc func;
 	AccessType access;
@@ -72,35 +69,34 @@ static BindingDefinition binding_definitions[] =
 static CpgProperty *
 resolve_property(CpgProperty *property)
 {
-	CpgExpression *expr = property->value;
-	
-	if (expr->instructions == NULL ||
-	    expr->instructions->next != NULL)
+	CpgExpression *expr = cpg_property_get_value_expression(property);
+	GSList *instructions = cpg_expression_get_instructions(expr);
+
+	if (instructions == NULL || instructions->next != NULL)
 		return property;
 	
-	if (expr->instructions->type != CPG_INSTRUCTION_TYPE_PROPERTY)
+	CpgInstruction *instruction = (CpgInstruction *)instructions->data;
+	if (instruction->type != CPG_INSTRUCTION_TYPE_PROPERTY)
 		return property;
 	
-	return resolve_property(((CpgInstructionProperty *)expr->instructions)->property);
+	return resolve_property(((CpgInstructionProperty *)instruction)->property);
 }
 
 static void
 resolve_bindings(CpgNetworkWebots *webots)
 {
-	unsigned num;
-	unsigned i;
-	CpgState * const *states = cpg_network_states(webots->network, &num);
+	GSList *item;
 
-	for (i = 0; i < num; ++i)
+	for (item = cpg_network_get_states(webots->network); item; item = g_slist_next(item))
 	{
-		unsigned d;
-		CpgObject *object = (CpgObject *)states[i];
+		guint d;
+		CpgObject *object = CPG_OBJECT(item->data);
 		
 		for (d = 0; d < sizeof(binding_definitions) / sizeof(BindingDefinition); ++d)
 		{
-			CpgProperty *property = cpg_object_property(object, binding_definitions[d].propname);
+			CpgProperty *property = cpg_object_get_property(object, binding_definitions[d].propname);
 			CpgWebotsBinding *binding;
-			char *id;
+			gchar *id;
 			
 			if (!property)
 				continue;
@@ -108,16 +104,14 @@ resolve_bindings(CpgNetworkWebots *webots)
 			if (binding_definitions[d].access == ACCESS_TYPE_READ)
 				property = resolve_property(property);
 
-			id = cpg_object_local_id(object);
+			id = cpg_object_get_local_id(object);
 			binding = webots_binding_new(binding_definitions[d].type, 
 										 binding_definitions[d].func,
 										 id,
 										 property);
-			cpg_free(id);
+			g_free(id);
 
-			webots->bindings = (CpgWebotsBinding **)realloc(webots->bindings, sizeof(CpgWebotsBinding *) * (webots->num_bindings + 1));
-			webots->bindings[webots->num_bindings] = binding;
-			++(webots->num_bindings);
+			webots->bindings = g_slist_append(webots->bindings, binding);
 		}
 	}
 }
@@ -125,25 +119,22 @@ resolve_bindings(CpgNetworkWebots *webots)
 CpgNetworkWebots *
 cpg_network_webots_new(CpgNetwork *network)
 {
-	CpgNetworkWebots *webots = (CpgNetworkWebots *)malloc(sizeof(CpgNetworkWebots));
+	CpgNetworkWebots *webots = g_slice_new0(CpgNetwork);
 	
 	webots->network = network;
-	webots->num_bindings = 0;
-	webots->bindings = NULL;
-	
 	resolve_bindings(webots);
 	
 	return webots;
 }
 
 void
-cpg_network_webots_initial(CpgNetworkWebots *webots, unsigned ms)
+cpg_network_webots_initial(CpgNetworkWebots *webots, guint ms)
 {
-	unsigned i;
+	GSList *item;
 
-	for (i = 0; i < webots->num_bindings; ++i)
+	for (item = webots->bindings; item; item = g_slist_next(item))
 	{
-		CpgWebotsBinding *binding = webots->bindings[i];
+		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
 		
 		switch (binding->type)
 		{
@@ -152,11 +143,11 @@ cpg_network_webots_initial(CpgNetworkWebots *webots, unsigned ms)
 				if (!binding->device)
 					continue;
 
-				servo_enable_position (binding->device, ms);
-				robot_step (ms);
+				servo_enable_position(binding->device, ms);
+				robot_step(ms);
 				
-				binding->initial = servo_get_position (binding->device);
-				servo_disable_position (binding->device);
+				binding->initial = servo_get_position(binding->device);
+				servo_disable_position(binding->device);
 			}
 			default:
 			break;
@@ -167,25 +158,26 @@ cpg_network_webots_initial(CpgNetworkWebots *webots, unsigned ms)
 void 
 cpg_network_webots_free(CpgNetworkWebots *webots)
 {
-	unsigned i;
-	for (i = 0; i < webots->num_bindings; ++i)
-		webots_binding_free(webots->bindings[i]);
-	
-	free(webots->bindings);
-	free(webots);
+	g_slist_foreach(webots->bindings, (GFunc)webots_binding_free, NULL);
+	g_slist_free(webots->bindings);
+
+	g_slice_free(CpgNetworkWebots, webots);
 }
 
 void
-cpg_network_webots_enable(CpgNetworkWebots *webots, unsigned ms)
+cpg_network_webots_enable(CpgNetworkWebots *webots, guint ms)
 {
-	unsigned i;
-	for (i = 0; i < webots->num_bindings; ++i)
+	GSList *item;
+	
+	for (item = webots->bindings; item; item = g_slist_next(item))
 	{
-		switch (webots->bindings[i]->type)
+		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
+		
+		switch (binding->type)
 		{
 			case CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR:
-				if (webots->bindings[i]->device)
-					touch_sensor_enable(webots->bindings[i]->device, ms);
+				if (binding->device)
+					touch_sensor_enable(binding->device, ms);
 			break;
 			default:
 			break;
@@ -196,14 +188,17 @@ cpg_network_webots_enable(CpgNetworkWebots *webots, unsigned ms)
 void
 cpg_network_webots_disable(CpgNetworkWebots *webots)
 {
-	unsigned i;
-	for (i = 0; i < webots->num_bindings; ++i)
+	GSList *item;
+	
+	for (item = webots->bindings; item; item = g_slist_next(item))
 	{
-		switch (webots->bindings[i]->type)
+		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
+		
+		switch (binding->type)
 		{
 			case CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR:
-				if (webots->bindings[i]->device)
-					touch_sensor_disable(webots->bindings[i]->device);
+				if (binding->device)
+					touch_sensor_disable(binding->device);
 			break;
 			default:
 			break;
@@ -212,30 +207,34 @@ cpg_network_webots_disable(CpgNetworkWebots *webots)
 }
 
 void 
-cpg_network_webots_update(CpgNetworkWebots *webots, float timestep)
+cpg_network_webots_update(CpgNetworkWebots *webots, gdouble timestep)
 {
-	unsigned i;
+	GSList *item;
 	
-	for (i = 0; i < webots->num_bindings; ++i)
-		webots->bindings[i]->func(webots, webots->bindings[i]);
+	for (item = webots->bindings; item; item = g_slist_next(item))
+	{
+		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
+		binding->func(webots, binding);
+	}
 }
 
-size_t
+guint
 cpg_network_webots_size(CpgNetworkWebots *webots)
 {
-	return webots->num_bindings;
+	return g_slist_length(webots->bindings);
 }
 
 void
-cpg_network_webots_scale_initial(CpgNetworkWebots *webots, float fraction)
+cpg_network_webots_scale_initial(CpgNetworkWebots *webots, gdouble fraction)
 {
+	GSList *item;
+	
 	/* Scale from initial webots values, to initial value of network, according
 	   to fraction */
-	unsigned i;
-	
-	for (i = 0; i < webots->num_bindings; ++i)
+
+	for (item = webots->bindings; item; item = g_slist_next(item))
 	{
-		CpgWebotsBinding *binding = webots->bindings[i];
+		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
 		
 		switch (binding->type)
 		{
@@ -244,7 +243,7 @@ cpg_network_webots_scale_initial(CpgNetworkWebots *webots, float fraction)
 				if (!binding->device)
 					continue;
 					
-				float p = fraction * (cpg_property_value(binding->property) - binding->initial);
+				gdouble p = fraction * (cpg_property_get_value(binding->property) - binding->initial);
 				servo_set_position(binding->device, binding->initial + p);
 			}
 			break;

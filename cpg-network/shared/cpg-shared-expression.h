@@ -2,6 +2,7 @@
 #define __CPG_SHARED_EXPRESSION_H__
 
 #include <cpg-network/cpg-stack.h>
+#include <cpg-network/cpg-expression.h>
 #include <cpg-network/cpg-types.h>
 #include <cpg-network/shared/cpg-shared-utils.h>
 

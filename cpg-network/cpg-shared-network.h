@@ -23,7 +23,7 @@ void cpg_shared_network_copy 					(CpgSharedNetwork  *ret,
 												 CpgMemoryMap      *map,
 												 void              *base,
 												 void			  **ptr,
-												 unsigned           maxsize);
+												 guint              maxsize);
 
 #endif /* __CPG_SHARED_NETWORK_H__ */
 

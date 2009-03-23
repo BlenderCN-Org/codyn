@@ -2,10 +2,9 @@
 #include <string.h>
 
 #include "cpg-shared-network.h"
-#include "cpg-network-private.h"
-#include "cpg-expression-private.h"
+#include "cpg-network.h"
+#include "cpg-expression.h"
 #include "cpg-debug.h"
-#include "cpg-shared-network.h"
 
 #include "shared/cpg-shared-link.h"
 #include "shared/cpg-shared-expression.h"

@@ -1,9 +1,43 @@
 #include <string.h>
 
 #include "cpg-property.h"
+#include "cpg-ref-counted-private.h"
 #include "cpg-expression.h"
 #include "cpg-utils.h"
 #include "cpg-object.h"
+
+struct _CpgProperty
+{
+	CpgRefCounted parent;
+	gchar *name;
+	
+	CpgExpression *value;
+	CpgExpression *initial;
+	gboolean integrated;
+	
+	gdouble update;
+	CpgObject *object;
+};
+
+GType 
+cpg_monitor_get_type()
+{
+	static GType type_id = 0;
+	
+	if (G_UNLIKELY(type_id == 0))
+		type_id = cpg_ref_counted_register_static("CpgProperty");
+	
+	return type_id;
+}
+
+static void
+cpg_property_free(CpgProperty *property)
+{
+	cpg_ref_counted_unref(property->value);
+	cpg_ref_counted_unref(property->initial);
+
+	g_free(property->name);
+}
 
 /**
  * cpg_property_new:
@@ -17,47 +51,26 @@
  *
  **/
 CpgProperty *
-cpg_property_new(char const *name, char const *expression, char integrated, CpgObject *object)
+cpg_property_new(gchar const *name, 
+				 gchar const *expression, 
+				 gboolean     integrated, 
+				 CpgObject   *object)
 {
-	CpgProperty *res = cpg_new1(CpgProperty);
+	CpgProperty *res = g_slice_new0(CpgProperty);
 	
-	res->name = cpg_strdup(name);
-
-	res->value = NULL;
-	res->update = 0.0;
+	cpg_ref_counted_init(res, (GDestroyNotify)cpg_property_free);
+	
+	res->name = g_strdup(name);
 	res->object = object;
 
 	res->integrated = integrated;	
 	res->initial = cpg_expression_new(expression);
 	
-	// set current value to copy of initial value
-	res->value = NULL;
-	
 	return res;
 }
 
 /**
- * cpg_property_free:
- * @property: the #CpgProperty
- *
- * Destroy the #CpgProperty object
- *
- **/
-void
-cpg_property_free(CpgProperty *property)
-{
-	if (!property)
-		return;
-
-	cpg_expression_free(property->value);
-	cpg_expression_free(property->initial);
-
-	free(property->name);
-	free(property);
-}
-
-/**
- * cpg_property_object:
+ * cpg_property_get_object:
  * @property: the #CpgProperty
  *
  * Get the object associated with the property
@@ -65,7 +78,7 @@ cpg_property_free(CpgProperty *property)
  * Returns: the object associated with the property
  **/
 CpgObject *
-cpg_property_object(CpgProperty *property)
+cpg_property_get_object(CpgProperty *property)
 {
 	return property->object;
 }
@@ -80,7 +93,8 @@ cpg_property_object(CpgProperty *property)
  *
  **/
 void
-cpg_property_set_value(CpgProperty *property, double value)
+cpg_property_set_value(CpgProperty *property,
+					   gdouble      value)
 {
 	if (!property->value)
 		property->value = cpg_expression_copy(property->initial);
@@ -98,7 +112,8 @@ cpg_property_set_value(CpgProperty *property, double value)
  *
  **/
 void
-cpg_property_set_initial(CpgProperty *property, double value)
+cpg_property_set_initial(CpgProperty *property, 
+						 gdouble      value)
 {
 	if (!property->initial)
 		return;
@@ -107,7 +122,7 @@ cpg_property_set_initial(CpgProperty *property, double value)
 }
 
 /**
- * cpg_property_value:
+ * cpg_property_get_value:
  * @property: the #CpgProperty
  *
  * Get the numerical value of the current value of the property
@@ -115,14 +130,20 @@ cpg_property_set_initial(CpgProperty *property, double value)
  * Return value: the numerical value of the property's current value
  *
  **/
-double
-cpg_property_value(CpgProperty *property)
+gdouble
+cpg_property_get_value(CpgProperty *property)
 {
 	return property->value ? cpg_expression_evaluate(property->value) : 0.0;
 }
 
+CpgExpression *
+cpg_property_get_value_expression(CpgProperty *property)
+{
+	return property->value;
+}
+
 /**
- * cpg_property_initial:
+ * cpg_property_get_initial:
  * @property: the #CpgProperty
  *
  * Get the numerical value of the initial value of the property
@@ -130,14 +151,34 @@ cpg_property_value(CpgProperty *property)
  * Return value: the numerical value of the property's initial value
  *
  **/
-double
+gdouble
 cpg_property_initial(CpgProperty *property)
 {
 	return property->initial ? cpg_expression_evaluate(property->initial) : 0.0;
 }
 
-char const *
-cpg_property_name(CpgProperty *property)
+gchar const *
+cpg_property_get_name(CpgProperty *property)
 {
 	return property->name;
 }
+
+gboolean
+cpg_property_get_integrated(CpgProperty *property)
+{
+	return property->integrated;
+}
+
+void
+_cpg_property_set_update(CpgProperty *property,
+						 gdouble      value)
+{
+	property->update = value;
+}
+
+gdouble
+_cpg_property_get_update(CpgProperty *property)
+{
+	return property->update;
+}
+
