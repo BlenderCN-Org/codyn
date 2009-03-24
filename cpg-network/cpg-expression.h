@@ -15,7 +15,6 @@ typedef struct _CpgExpression 		CpgExpression;
 
 GType			  cpg_expression_get_type			(void);
 CpgExpression 	 *cpg_expression_new				(gchar const    *expression);
-CpgExpression	 *cpg_expression_copy				(CpgExpression  *expression);
 
 GSList		 	 *cpg_expression_get_dependencies	(CpgExpression  *expression);
 gchar const		 *cpg_expression_get_as_string		(CpgExpression  *expression);

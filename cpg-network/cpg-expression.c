@@ -37,7 +37,7 @@ cpg_expression_get_type()
 	static GType type_id = 0;
 	
 	if (G_UNLIKELY(type_id == 0))
-		type_id = cpg_ref_counted_register_static("CpgExpression");
+		type_id = g_boxed_type_register_static("CpgExpression", cpg_ref_counted_ref, cpg_ref_counted_unref);
 	
 	return type_id;
 }
@@ -208,72 +208,6 @@ cpg_expression_new(gchar const *expression)
 	res->expression = g_strdup(expression);
 	cpg_stack_init(&(res->output), 0);
 
-	return res;
-}
-
-CpgInstruction *
-cpg_instruction_copy(CpgInstruction *instruction)
-{
-	switch (instruction->type)
-	{
-		case CPG_INSTRUCTION_TYPE_NUMBER:
-			return cpg_instruction_number_new(((CpgInstructionNumber *)instruction)->value);
-		break;
-		case CPG_INSTRUCTION_TYPE_PROPERTY:
-			return cpg_instruction_property_new(((CpgInstructionProperty *)instruction)->property);
-		break;
-		case CPG_INSTRUCTION_TYPE_OPERATOR:
-		{
-			CpgInstructionFunction *inst = (CpgInstructionFunction *)instruction;
-			return cpg_instruction_operator_new(inst->id, inst->name, inst->arguments);
-		}
-		break;
-		case CPG_INSTRUCTION_TYPE_FUNCTION:
-		{
-			CpgInstructionFunction *inst = (CpgInstructionFunction *)instruction;
-			return cpg_instruction_function_new(inst->id, inst->name, inst->arguments, inst->vargs);
-		}
-		break;
-		default:
-		break;
-	}
-	
-	return NULL;
-}
-
-CpgExpression *
-cpg_expression_copy(CpgExpression *expression)
-{
-	CpgExpression *res = g_slice_new0(CpgExpression);
-	cpg_ref_counted_init(res, (GDestroyNotify)cpg_expression_free);
-	
-	res->expression = g_strdup(expression->expression);
-	cpg_stack_init(&(res->output), expression->output.size);
-
-	res->flags = expression->flags;
-	res->cached_output = expression->cached_output;
-
-	// Copy dependencies
-	res->dependencies = g_slist_copy(expression->dependencies);
-
-	// Copy instructions
-	CpgInstruction *inst;
-	CpgInstruction *prev = NULL;
-	res->instructions = NULL;
-	
-	for (inst = expression->instructions; inst; inst = inst->next)
-	{
-		CpgInstruction *copy = cpg_instruction_copy(inst);
-		
-		if (prev)
-			prev->next = copy;
-		else
-			res->instructions = copy;
-		
-		prev = copy;
-		copy->next = NULL;
-	}
-	
 	return res;
 }
 

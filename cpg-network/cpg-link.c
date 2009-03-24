@@ -1,11 +1,12 @@
 #include "cpg-link.h"
-#include "cpg-ref-counted.h"
+#include "cpg-ref-counted-private.h"
 #include <string.h>
 
 #define CPG_LINK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_LINK, CpgLinkPrivate))
 
 struct _CpgLinkAction
 {
+	CpgRefCounted parent;
 	CpgExpression *expression;
 	CpgProperty *target;
 };
@@ -25,19 +26,18 @@ enum
 {
 	PROP_0,
 	PROP_TO,
-	PROP_FROM,
-	PROP_ACTIONS
+	PROP_FROM
 };
 
 G_DEFINE_TYPE(CpgLink, cpg_link, CPG_TYPE_OBJECT)
 
 static void
-link_action_free(CpgLinkAction *action)
+cpg_link_action_free(CpgLinkAction *action)
 {
 	cpg_ref_counted_unref(action->expression);
 	
 	// do not free target, borrowed reference
-	g_free(action);
+	g_slice_free(CpgLinkAction, action);
 }
 
 static void
@@ -45,7 +45,7 @@ cpg_link_finalize(GObject *object)
 {
 	CpgLink *link = CPG_LINK(object);
 	
-	g_slist_foreach(link->priv->actions, (GFunc)link_action_free, NULL);
+	g_slist_foreach(link->priv->actions, (GFunc)cpg_ref_counted_unref, NULL);
 	g_slist_free(link->priv->actions);
 
 	G_OBJECT_CLASS(cpg_link_parent_class)->finalize(object);
@@ -63,9 +63,6 @@ cpg_link_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec 
 		break;
 		case PROP_FROM:
 			g_value_set_object(value, link->priv->from);
-		break;
-		case PROP_ACTIONS:
-			g_value_set_pointer(value, link->priv->actions);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -126,13 +123,6 @@ cpg_link_class_init(CpgLinkClass *klass)
 							  CPG_TYPE_OBJECT,
 							  G_PARAM_READWRITE));
 
-	g_object_class_install_property(object_class, PROP_ACTIONS,
-				 g_param_spec_object("actions",
-							  "ACTIONS",
-							  "The link actions",
-							  G_TYPE_POINTER,
-							  G_PARAM_READABLE));
-
 	g_type_class_add_private(object_class, sizeof(CpgLinkPrivate));
 }
 
@@ -168,7 +158,8 @@ cpg_link_add_action(CpgLink     *link,
 	g_return_if_fail(target != NULL);
 	g_return_if_fail(expression != NULL);
 
-	CpgLinkAction *action = g_new(CpgLinkAction, 1);
+	CpgLinkAction *action = g_slice_new(CpgLinkAction);
+	cpg_ref_counted_init(action, (GDestroyNotify)cpg_link_action_free);
 	
 	action->expression = cpg_expression_new(expression);
 	
@@ -264,5 +255,16 @@ CpgProperty	*
 cpg_link_action_get_target(CpgLinkAction *action)
 {
 	return action->target;
+}
+
+GType
+cpg_link_action_get_type()
+{
+	static GType type_id = 0;
+	
+	if (G_UNLIKELY(type_info == 0))
+		type_id = g_boxed_type_register_static("CpgLinkAction", cpg_ref_counted_ref, cpg_ref_counted_unref);
+	
+	return type_id;
 }
 

@@ -623,7 +623,7 @@ cpg_network_compile(CpgNetwork *network)
 	}
 	
 	network->priv->compiled = TRUE;
-	cpg_network_simulation_reset(network);
+	cpg_network_reset(network);
 
 	return TRUE;
 }
@@ -746,7 +746,7 @@ simulation_update(CpgNetwork *network)
 }
 
 /**
- * cpg_network_simulation_step:
+ * cpg_network_step:
  * @network: the #CpgNetwork
  * @timestep: the integration timestep
  * 
@@ -754,8 +754,8 @@ simulation_update(CpgNetwork *network)
  *
  **/
 void
-cpg_network_simulation_step(CpgNetwork *network, 
-							gdouble     timestep)
+cpg_network_step(CpgNetwork *network, 
+				 gdouble     timestep)
 {
 	g_return_if_fail(CPG_IS_NETWORK(network));
 	g_return_if_fail(timestep > 0);
@@ -782,7 +782,7 @@ cpg_network_simulation_step(CpgNetwork *network,
 }
 
 /**
- * cpg_network_simulation_run:
+ * cpg_network_run:
  * @network: the #CpgNetwork
  * @from: the simulation start time
  * @timestep: the integration time step to simulate with
@@ -793,10 +793,10 @@ cpg_network_simulation_step(CpgNetwork *network,
  *
  **/
 void
-cpg_network_simulation_run(CpgNetwork *network, 
-						   gdouble     from, 
-						   gdouble     timestep, 
-						   gdouble     to)
+cpg_network_run(CpgNetwork *network, 
+				gdouble     from, 
+				gdouble     timestep, 
+				gdouble     to)
 {
 	g_return_if_fail(CPG_IS_NETWORK(network));
 	g_return_if_fail(from < to);
@@ -810,11 +810,11 @@ cpg_network_simulation_run(CpgNetwork *network,
 	cpg_property_set_value(network->priv->timeprop, network->priv->time);
 		
 	while (network->priv->time < to - 0.5 * timestep)
-		cpg_network_simulation_step(network, timestep);
+		cpg_network_step(network, timestep);
 }
 
 /**
- * cpg_network_simulation_reset:
+ * cpg_network_reset:
  * @network: the #CpgNetwork
  *
  * Reset the CPG network to its original values. This will reset the time
@@ -823,7 +823,7 @@ cpg_network_simulation_run(CpgNetwork *network,
  *
  **/
 void
-cpg_network_simulation_reset(CpgNetwork *network)
+cpg_network_reset(CpgNetwork *network)
 {
 	g_return_if_fail(CPG_IS_NETWORK(network));
 

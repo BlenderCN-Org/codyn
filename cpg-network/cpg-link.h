@@ -29,6 +29,8 @@ struct _CpgLinkClass {
 	CpgObjectClass parent_class;
 };
 
+GType			  cpg_link_action_get_type		 (void) G_GNUC_CONST;
+
 GType 			  cpg_link_get_type 			 (void) G_GNUC_CONST;
 
 CpgLink 		 *cpg_link_new 					 (gchar const   *id, 

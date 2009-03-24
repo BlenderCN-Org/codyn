@@ -27,7 +27,8 @@ struct _CpgObjectPrivate
 enum
 {
 	PROP_0,
-	PROP_ID
+	PROP_ID,
+	PROP_LOCAL_ID
 };
 
 G_DEFINE_TYPE(CpgObject, cpg_object, G_TYPE_OBJECT)
@@ -71,6 +72,9 @@ get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
 		case PROP_ID:
 			g_value_set_string(value, obj->priv->id);
 		break;
+		case PROP_LOCAL_ID:
+			g_value_take_string(value, cpg_object_get_local_id(obj));
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -113,6 +117,13 @@ cpg_object_class_init(CpgObjectClass *klass)
 						      "The object's id",
 						      NULL,
 						      G_PARAM_READWRITE));
+
+	g_object_class_install_property(object_class, PROP_LOCAL_ID,
+				 g_param_spec_string("local-id",
+						      "LOCAL_ID",
+						      "The object's local id",
+						      NULL,
+						      G_PARAM_READABLE));
 
 	g_type_class_add_private(object_class, sizeof(CpgObjectPrivate));
 }

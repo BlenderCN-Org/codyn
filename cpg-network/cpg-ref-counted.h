@@ -5,8 +5,6 @@
 
 typedef struct _CpgRefCounted CpgRefCounted;
 
-GType 		cpg_ref_counted_register_static		(gchar const    *name);
-
 void		cpg_ref_counted_init				(gpointer		 ref_counted,
 												 GDestroyNotify  destroy_func);
 gpointer 	cpg_ref_counted_ref					(gpointer        ref_counted);

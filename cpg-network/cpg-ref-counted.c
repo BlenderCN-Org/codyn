@@ -1,11 +1,5 @@
 #include "cpg-ref-counted-private.h"
 
-GType 
-cpg_ref_counted_register_static(gchar const *name)
-{
-	return g_boxed_type_register_static(name, cpg_ref_counted_ref, cpg_ref_counted_unref);
-}
-
 void
 cpg_ref_counted_init(gpointer       ref_counted,
 					 GDestroyNotify destroy_func)

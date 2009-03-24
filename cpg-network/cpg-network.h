@@ -67,13 +67,13 @@ CpgMonitor		 *cpg_network_add_monitor		(CpgNetwork  *network,
 												 gchar const *propname);
 												 
 /* simulation functions */
-void			  cpg_network_simulation_run	(CpgNetwork *network, 
+void			  cpg_network_run				(CpgNetwork *network, 
 												 gdouble	 from, 
 												 gdouble	 timestep, 
 												 gdouble	 to);
-void			  cpg_network_simulation_step	(CpgNetwork *network, 
+void			  cpg_network_step				(CpgNetwork *network, 
 												 gdouble	 timestep);
-void			  cpg_network_simulation_reset	(CpgNetwork *network);
+void			  cpg_network_reset				(CpgNetwork *network);
 
 G_END_DECLS
 
