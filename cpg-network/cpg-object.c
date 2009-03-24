@@ -50,9 +50,15 @@ cpg_object_finalize(GObject *object)
 
 /* interface implementations */
 static void
+property_reset(CpgProperty *property, gpointer data)
+{
+	cpg_expression_reset(cpg_property_get_value_expression(property));
+}
+
+static void
 cpg_object_reset_impl(CpgObject *object)
 {
-	g_slist_foreach(object->priv->properties, (GFunc)cpg_property_reset, NULL);
+	g_slist_foreach(object->priv->properties, (GFunc)property_reset, NULL);
 }
 
 static void
@@ -344,4 +350,18 @@ _cpg_object_get_links(CpgObject *object)
 	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
 	
 	return object->priv->links;
+}
+
+static void
+property_reset_cache(CpgProperty *property, gpointer data)
+{
+	cpg_expression_reset_cache(cpg_property_get_value_expression(property));
+}
+
+void
+cpg_object_reset_cache(CpgObject *object)
+{
+	g_return_if_fail(CPG_IS_OBJECT(object));
+	
+	g_slist_foreach(object->priv->properties, (GFunc)property_reset_cache, NULL);
 }

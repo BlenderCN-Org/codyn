@@ -79,6 +79,27 @@ cpg_network_class_init(CpgNetworkClass *klass)
 	
 	object_class->finalize = cpg_network_finalize;
 
+	network_signals[RESET] =
+   		g_signal_new("reset",
+			      G_OBJECT_CLASS_TYPE(object_class),
+			      G_SIGNAL_RUN_LAST,
+			      G_STRUCT_OFFSET(CpgNetworkClass, reset),
+			      NULL, NULL,
+			      g_cclosure_marshal_VOID__VOID,
+			      G_TYPE_NONE,
+			      0);
+
+	network_signals[UPDATE] =
+   		g_signal_new("update",
+			      G_OBJECT_CLASS_TYPE(object_class),
+			      G_SIGNAL_RUN_LAST,
+			      G_STRUCT_OFFSET(CpgNetworkClass, update),
+			      NULL, NULL,
+			      g_cclosure_marshal_VOID__DOUBLE,
+			      G_TYPE_NONE,
+			      1,
+				  G_TYPE_DOUBLE);
+		
 	g_type_class_add_private(object_class, sizeof(CpgNetworkPrivate));
 }
 
@@ -298,8 +319,8 @@ read_link(CpgNetwork *network,
 	from = read_line(f);
 	to = read_line(f);
 	
-	CpgObject *fromobj = cpg_network_object(network, from);
-	CpgObject *toobj = cpg_network_object(network, to);
+	CpgObject *fromobj = cpg_network_get_object(network, from);
+	CpgObject *toobj = cpg_network_get_object(network, to);
 	
 	if (!fromobj || !CPG_IS_STATE(fromobj) || !toobj || !CPG_IS_STATE(toobj))
 	{
@@ -370,7 +391,7 @@ parse_expressions(CpgNetwork *network,
 		CpgProperty *property = (CpgProperty *)properties->data;
 		gchar *error;
 
-		if (!cpg_property_compile(property, network->priv->context, &error))
+		if (!cpg_expression_compile(cpg_property_get_value_expression(property), network->priv->context, &error))
 		{
 			cpg_debug_error("Error while parsing expression: %s for [%s].%s", error, cpg_object_get_id(object), cpg_property_get_name(property));
 			g_free(error);
@@ -818,9 +839,9 @@ cpg_network_simulation_reset(CpgNetwork *network)
 }
 
 gboolean
-cpg_network_set_value(CpgNetwork  *network, 
-					  CpgProperty *property, 
-					  gchar const *expression)
+cpg_network_set_expression(CpgNetwork  *network, 
+					       CpgProperty *property, 
+					       gchar const *expression)
 {
 	g_return_val_if_fail(CPG_IS_NETWORK(network), FALSE);
 	g_return_val_if_fail(property != NULL, FALSE);
@@ -833,5 +854,8 @@ cpg_network_set_value(CpgNetwork  *network,
 	else
 		set_context(network, object, NULL);
 
-	return cpg_property_set_value_expression(property, expression, network->priv->context, NULL);
+	CpgExpression *expr = cpg_property_get_value_expression(property);
+	cpg_expression_set_from_string(expr, expression);
+	
+	return cpg_expression_compile(expr, network->priv->context, NULL);
 }

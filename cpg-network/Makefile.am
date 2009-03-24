@@ -11,6 +11,7 @@ COMMON_SOURCES = 		\
 	cpg-property.c \
 	cpg-tokenizer.c \
 	cpg-expression.c \
+	cpg-ref-counted.c \
 	cpg-math.c \
 	cpg-debug.c \
 	cpg-stack.c
@@ -28,6 +29,7 @@ libcpg_network_headers = \
 	cpg-link.h \
 	cpg-property.h \
 	cpg-expression.h \
+	cpg-ref-counted.h \
 	cpg-stack.h \
 	cpg-debug.h \
 	cpg-types.h

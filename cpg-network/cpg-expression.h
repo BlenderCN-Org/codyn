@@ -18,7 +18,7 @@ CpgExpression 	 *cpg_expression_new				(gchar const    *expression);
 CpgExpression	 *cpg_expression_copy				(CpgExpression  *expression);
 
 GSList		 	 *cpg_expression_get_dependencies	(CpgExpression  *expression);
-gchar const		 *cpg_expression_get				(CpgExpression  *expression);
+gchar const		 *cpg_expression_get_as_string		(CpgExpression  *expression);
 gint			  cpg_expression_compile			(CpgExpression  *expression, 
 													 GSList         *context, 
 													 gchar         **error);
@@ -28,13 +28,13 @@ GSList 			 *cpg_expression_get_instructions	(CpgExpression  *expression);
 gdouble 		  cpg_expression_evaluate			(CpgExpression  *expression);
 void			  cpg_expression_set_value			(CpgExpression  *expression, 
 													 gdouble         value);
-
+void			  cpg_expression_reset				(CpgExpression  *expression);
 
 /* convenient function */
-void			  cpg_expression_print_instructions	(CpgExpression  *expression, 
+void			 _cpg_expression_print_instructions	(CpgExpression  *expression, 
 													 FILE           *f);
 
-void			  cpg_expression_set				(CpgExpression  *expression, 
+void			  cpg_expression_set_from_string	(CpgExpression  *expression, 
 													 gchar const    *value);
 void 			  cpg_expression_reset_cache		(CpgExpression  *expression);
 

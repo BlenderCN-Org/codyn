@@ -7,8 +7,8 @@ cpg_ref_counted_register_static(gchar const *name)
 }
 
 void
-cpg_ref_counted_init(gpointer     ref_counted,
-					 GDestroyFunc destroy_func)
+cpg_ref_counted_init(gpointer       ref_counted,
+					 GDestroyNotify destroy_func)
 {
 	CpgRefCounted *r = (CpgRefCounted *)ref_counted;
 

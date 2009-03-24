@@ -128,8 +128,8 @@ cpg_monitor_new(CpgNetwork  *network,
  *
  **/
 gdouble const *
-cpg_network_monitor_data(CpgMonitor *monitor,
-						 guint      *size)
+cpg_monitor_get_data(CpgMonitor *monitor,
+				     guint      *size)
 {
 	if (size)
 		*size = 0;
@@ -180,9 +180,9 @@ bsearch_find(gdouble const *list, gint size, gdouble value)
  *
  **/
 gdouble	*
-cpg_network_monitor_data_resampled(CpgMonitor    *monitor,
-								   gdouble const *sites,
-								   guint          size)
+cpg_monitor_get_data_resampled(CpgMonitor    *monitor,
+							   gdouble const *sites,
+							   guint          size)
 {
 	if (!sites || size == 0 || !monitor || !monitor->object || !monitor->property)
 		return NULL;

@@ -170,14 +170,14 @@ instructions_free(CpgExpression *expression)
 }
 
 gchar const *
-cpg_expression_get(CpgExpression *expression)
+cpg_expression_get_as_string(CpgExpression *expression)
 {
 	return expression->expression;
 }
 
 void
-cpg_expression_set(CpgExpression *expression, 
-				   gchar const   *value)
+cpg_expression_set_from_string(CpgExpression *expression, 
+				               gchar const   *value)
 {
 	g_free(expression->expression);
 	
@@ -901,10 +901,6 @@ void
 cpg_expression_set_value(CpgExpression *expression, 
 						 gdouble        value)
 {
-	instructions_free(expression);
-	
-	expression->instructions = cpg_instruction_number_new(value);
-
 	// this can be instant and lets also set the cache already
 	expression->flags = CPG_EXPRESSION_FLAG_INSTANT | CPG_EXPRESSION_FLAG_CACHED;
 	expression->cached_output = value;
@@ -995,7 +991,13 @@ cpg_expression_reset_cache(CpgExpression *expression)
 }
 
 GSList *
-cpg_expression_dependencies(CpgExpression *expression)
+cpg_expression_get_dependencies(CpgExpression *expression)
 {
 	return expression->dependencies;
+}
+
+void
+cpg_expression_reset(CpgExpression *expression)
+{
+	expression->flags = CPG_EXPRESSION_FLAG_NONE;
 }

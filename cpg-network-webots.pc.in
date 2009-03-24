@@ -5,7 +5,7 @@ includedir=@includedir@
 
 Name: cpg-network-webots
 Description: cpg network simulation library (webots bindings)
-Requires:
+Requires: cpg-network-0.1
 Version: @VERSION@
 Libs: -L${libdir} -lcpg-network-webots-@CPG_NETWORK_API_VERSION@
 Cflags: -I${includedir}/cpg-network-@CPG_NETWORK_API_VERSION@

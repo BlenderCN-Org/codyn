@@ -2,19 +2,23 @@
 #include <math.h>
 
 #include <cpg-network/cpg-expression.h>
+#include <cpg-network/cpg-object.h>
 #include "utils.h"
 
 static CpgExpression *expression;
 
 static void
-expression_initialize_context(char const *exp, CpgObject *context)
+expression_initialize_context(gchar const *exp, CpgObject *context)
 {
 	expression = cpg_expression_new(exp);
 	
-	char *error;
-	CpgContext ctx = {context, NULL};
+	gchar *error;
+	GSList *ctx = g_slist_append(NULL, context);
 
-	if (!cpg_expression_compile(expression, &ctx, &error))
+	gboolean ret = cpg_expression_compile(expression, ctx, &error);
+	g_slist_free(ctx);
+	
+	if (!ret)
 	{
 		fprintf(stderr, "Could not parse expression: %s\n", error);
 		exit(1);
@@ -22,45 +26,45 @@ expression_initialize_context(char const *exp, CpgObject *context)
 }
 
 static void
-expression_initialize(char const *exp)
+expression_initialize(gchar const *exp)
 {
 	expression_initialize_context(exp, NULL);
 }
 
-static double
+static gdouble
 expression_eval()
 {
 	return cpg_expression_evaluate(expression);
 }
 
-static int
+static gboolean
 test_operator_plus()
 {
 	expression_initialize("3 + 4");
 	assert(expression_eval(), (3 + 4));
 	
-	return 1;
+	return TRUE;
 }
 
-static int
+static gboolean
 test_operator_minus()
 {
 	expression_initialize("3 - 4");
 	assert(expression_eval(), (3 - 4));
 	
-	return 1;
+	return TRUE;
 }
 
-static int
+static gboolean
 test_operator_minus_unary()
 {
 	expression_initialize("3 + -4");
 	assert(expression_eval(), (3 + -4));
 	
-	return 1;
+	return TRUE;
 }
 
-static int
+static gboolean
 test_priority()
 {
 	expression_initialize("3 * 4 + 3");
@@ -69,55 +73,58 @@ test_priority()
 	expression_initialize("3 + 4 * 2");
 	assert(expression_eval(), (3 + 4 * 2));
 	
-	return 1;
+	return TRUE;
 }
 
-static int
+static gboolean
 test_function_sin()
 {
 	expression_initialize("sin(pi)");
 	assert(expression_eval(), sin(M_PI));
 	
-	return 1;
+	return TRUE;
 }
 
-static int
+static gboolean
 test_function_varargs()
 {
 	expression_initialize("max(0, 2 * pi)");
 	assert(expression_eval(), 2 * M_PI);
 	
-	return 1;
+	return TRUE;
 }
 
-static int
+static gboolean
 test_complex()
 {
 	CpgObject *obj = cpg_object_new(NULL);
+	CpgProperty *prop;
 	
-	/*cpg_object_add_property(obj, "x", "1", 0);
-	cpg_expression_compile(obj->properties[0]->initial, obj, NULL);
+	prop = cpg_object_add_property(obj, "x", "1", 0);
 	
-	cpg_object_add_property(obj,"phase", "2", 0);
-	cpg_expression_compile(obj->properties[1]->initial, obj, NULL);
+	cpg_expression_compile(cpg_property_get_value_expression(prop), NULL, NULL);
 	
-	cpg_object_add_property(obj, "y", "3", 0);
-	cpg_expression_parse(obj->properties[2]->initial, obj, NULL);
+	prop = cpg_object_add_property(obj, "phase", "2", 0);
+	cpg_expression_compile(cpg_property_get_value_expression(prop), NULL, NULL);
+	
+	prop = cpg_object_add_property(obj, "y", "3", 0);
+	cpg_expression_compile(cpg_property_get_value_expression(prop), NULL, NULL);
 	
 	cpg_object_reset(obj);
 
 	expression_initialize_context("x * sin(phase) + 2 * y * PI", obj);
-	assert(expression_eval(), 1 * sin(2) + 2 * 3 * M_PI);*/
+	assert(expression_eval(), 1 * sin(2) + 2 * 3 * M_PI);
 	
-	return 1;
+	g_object_unref(obj);
+	return TRUE;
 }
 
-typedef int (*TestFunction)();
+typedef gboolean (*TestFunction)();
 
 typedef struct
 {
 	TestFunction function;
-	char const *name;
+	gchar const *name;
 } Test;
 
 static Test functions[] = {
@@ -130,11 +137,12 @@ static Test functions[] = {
 	{test_function_varargs, "test_function_varargs"}
 };
 
-int 
-main (int argc, char *argv[])
+gint 
+main (gint argc, gchar *argv[])
 {
-	unsigned i;
+	guint i;
 	
+	g_type_init();
 	for (i = 0; i < sizeof(functions) / sizeof(Test); ++i)
 	{
 		if (functions[i].function())

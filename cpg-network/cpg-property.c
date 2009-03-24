@@ -12,7 +12,6 @@ struct _CpgProperty
 	gchar *name;
 	
 	CpgExpression *value;
-	CpgExpression *initial;
 	gboolean integrated;
 	
 	gdouble update;
@@ -34,7 +33,6 @@ static void
 cpg_property_free(CpgProperty *property)
 {
 	cpg_ref_counted_unref(property->value);
-	cpg_ref_counted_unref(property->initial);
 
 	g_free(property->name);
 }
@@ -42,7 +40,7 @@ cpg_property_free(CpgProperty *property)
 /**
  * cpg_property_new:
  * @name: the property name
- * @expression: the initial value expression
+ * @expression: the value expression
  * @integrated: whether this property should be integated during the simulation
  *
  * Create a new property object. Property objects are assigned to #CpgObject
@@ -64,7 +62,7 @@ cpg_property_new(gchar const *name,
 	res->object = object;
 
 	res->integrated = integrated;	
-	res->initial = cpg_expression_new(expression);
+	res->value = cpg_expression_new(expression);
 	
 	return res;
 }
@@ -96,29 +94,7 @@ void
 cpg_property_set_value(CpgProperty *property,
 					   gdouble      value)
 {
-	if (!property->value)
-		property->value = cpg_expression_copy(property->initial);
-	
 	cpg_expression_set_value(property->value, value);
-}
-
-/**
- * cpg_property_set_initial:
- * @property: the #CpgProperty
- * @value: the new initial value
- *
- * Change the initial value to a specific number. To set the initial value
- * to any expression, use #cpg_object_set_initial.
- *
- **/
-void
-cpg_property_set_initial(CpgProperty *property, 
-						 gdouble      value)
-{
-	if (!property->initial)
-		return;
-	
-	cpg_expression_set_value(property->initial, value);
 }
 
 /**
@@ -140,21 +116,6 @@ CpgExpression *
 cpg_property_get_value_expression(CpgProperty *property)
 {
 	return property->value;
-}
-
-/**
- * cpg_property_get_initial:
- * @property: the #CpgProperty
- *
- * Get the numerical value of the initial value of the property
- *
- * Return value: the numerical value of the property's initial value
- *
- **/
-gdouble
-cpg_property_initial(CpgProperty *property)
-{
-	return property->initial ? cpg_expression_evaluate(property->initial) : 0.0;
 }
 
 gchar const *
@@ -182,3 +143,8 @@ _cpg_property_get_update(CpgProperty *property)
 	return property->update;
 }
 
+void
+cpg_property_reset_cache(CpgProperty *property)
+{
+	cpg_expression_reset_cache(property->value);
+}

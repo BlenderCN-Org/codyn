@@ -32,6 +32,9 @@ struct _CpgNetwork {
 
 struct _CpgNetworkClass {
 	GObjectClass parent_class;
+	
+	void (*reset)		(CpgNetwork *network);
+	void (*update)		(CpgNetwork *network, gdouble timestep);
 };
 
 GType cpg_network_get_type (void) G_GNUC_CONST;
@@ -40,12 +43,11 @@ CpgNetwork 		 *cpg_network_new_from_file		(gchar const *filename);
 CpgNetwork		 *cpg_network_new				(void);
 
 void			  cpg_network_clear				(CpgNetwork *network);
-void 			  cpg_network_free				(CpgNetwork *network);
 
-CpgObject		 *cpg_network_object			(CpgNetwork *network, 
+CpgObject		 *cpg_network_get_object		(CpgNetwork *network, 
 												 gchar const *id);
 
-gboolean	 	  cpg_network_set_value			(CpgNetwork  *network,
+gboolean	 	  cpg_network_set_expression	(CpgNetwork  *network,
 												 CpgProperty *property,
 												 gchar const  *expression);
 

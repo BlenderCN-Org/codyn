@@ -25,7 +25,8 @@ enum
 {
 	PROP_0,
 	PROP_TO,
-	PROP_FROM
+	PROP_FROM,
+	PROP_ACTIONS
 };
 
 G_DEFINE_TYPE(CpgLink, cpg_link, CPG_TYPE_OBJECT)
@@ -62,6 +63,9 @@ cpg_link_get_property(GObject *object, guint prop_id, GValue *value, GParamSpec 
 		break;
 		case PROP_FROM:
 			g_value_set_object(value, link->priv->from);
+		break;
+		case PROP_ACTIONS:
+			g_value_set_pointer(value, link->priv->actions);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -121,6 +125,13 @@ cpg_link_class_init(CpgLinkClass *klass)
 							  "The link to object",
 							  CPG_TYPE_OBJECT,
 							  G_PARAM_READWRITE));
+
+	g_object_class_install_property(object_class, PROP_ACTIONS,
+				 g_param_spec_object("actions",
+							  "ACTIONS",
+							  "The link actions",
+							  G_TYPE_POINTER,
+							  G_PARAM_READABLE));
 
 	g_type_class_add_private(object_class, sizeof(CpgLinkPrivate));
 }

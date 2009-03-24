@@ -14,10 +14,10 @@ CpgMonitor		 *cpg_monitor_new					 (struct _CpgNetwork *network,
 													  CpgObject          *object, 
 													  gchar const        *property_name);
 
-gdouble const 	 *cpg_network_monitor_data			 (CpgMonitor         *monitor,
+gdouble const 	 *cpg_monitor_get_data			 	 (CpgMonitor         *monitor,
 												 	  guint              *size);
 
-gdouble			 *cpg_network_monitor_data_resampled (CpgMonitor         *monitor,
+gdouble			 *cpg_monitor_get_data_resampled 	 (CpgMonitor         *monitor,
 												      gdouble const      *sites,
 												      guint               size);
 
