@@ -432,14 +432,14 @@ static void
 add_state(CpgNetwork *network, 
 		  gpointer    state)
 {
-	network->priv->states = g_slist_append(network->priv->states, state);
+	network->priv->states = g_slist_append(network->priv->states, g_object_ref(state));
 }
 
 static void
 add_link(CpgNetwork *network, 
 		 gpointer    link)
 {
-	network->priv->links = g_slist_append(network->priv->links, link);
+	network->priv->links = g_slist_append(network->priv->links, g_object_ref(link));
 }
 
 /**
