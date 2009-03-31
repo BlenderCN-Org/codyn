@@ -466,6 +466,7 @@ cpg_network_add_object(CpgNetwork *network,
 	else
 		return;
 	
+	g_signal_connect_swapped(object, "tainted", G_CALLBACK(cpg_network_taint), network);
 	network->priv->compiled = FALSE;
 }
 
@@ -681,6 +682,36 @@ cpg_network_new_from_file(gchar const *filename)
 	return network;
 }
 
+static void
+remove_object(CpgObject *object, CpgNetwork *network)
+{
+	g_signal_handlers_disconnect_by_func(object, G_CALLBACK(cpg_network_taint), network);
+	g_object_unref(object);	
+}
+
+/**
+ * cpg_network_remove_object:
+ * @network: the #CpgNetwork
+ * @object: the #CpgObject to remove
+ *
+ * Removes @object from the network
+ *
+ **/
+void
+cpg_network_remove_object(CpgNetwork *network, 
+						  CpgObject  *object)
+{
+	g_return_if_fail(CPG_IS_NETWORK(network));
+	g_return_if_fail(CPG_IS_OBJECT(object));
+
+	remove_object(object, network);
+
+	if (CPG_IS_LINK(object))
+		network->priv->links = g_slist_remove(network->priv->links, object);
+	else
+		network->priv->states = g_slist_remove(network->priv->states, object);
+}
+
 /**
  * cpg_network_clear:
  * @network: the #CpgNetwork
@@ -694,8 +725,8 @@ cpg_network_clear(CpgNetwork *network)
 	g_return_if_fail(CPG_IS_NETWORK(network));
 
 	// remove all states
-	g_slist_foreach(network->priv->states, (GFunc)g_object_unref, NULL);
-	g_slist_foreach(network->priv->links, (GFunc)g_object_unref, NULL);
+	g_slist_foreach(network->priv->states, (GFunc)remove_object, network);
+	g_slist_foreach(network->priv->links, (GFunc)remove_object, network);
 	
 	g_slist_free(network->priv->states);
 	g_slist_free(network->priv->links);

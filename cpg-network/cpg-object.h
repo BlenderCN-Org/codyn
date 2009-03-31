@@ -35,6 +35,8 @@ struct _CpgObjectClass {
 						 gdouble    timestep);
 	void (*evaluate)	(CpgObject *object, 
 						 gdouble    timestep);
+	
+	void (*tainted)		(CpgObject *object);
 };
 
 GType cpg_object_get_type (void) G_GNUC_CONST;
@@ -60,6 +62,7 @@ void			  cpg_object_evaluate		(CpgObject   *object,
 											 gdouble      timestep);
 
 void			  cpg_object_reset_cache	(CpgObject	 *object);
+void			  cpg_object_taint			(CpgObject   *object);
 
 /* used for referencing links */
 void 			 _cpg_object_link			(CpgObject       *object, 
@@ -68,6 +71,8 @@ void			 _cpg_object_update_link	(CpgObject       *object,
 											 struct _CpgLink *link);
 GSList 			*_cpg_object_get_actors		(CpgObject       *object);
 GSList 			*_cpg_object_get_links		(CpgObject       *object);
+
+void 			 _cpg_object_taint			(CpgObject 		 *object);
 
 G_END_DECLS
 

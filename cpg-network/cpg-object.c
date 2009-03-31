@@ -31,7 +31,16 @@ enum
 	PROP_LOCAL_ID
 };
 
+/* Signals */
+enum
+{
+	TAINTED,
+	NUM_SIGNALS
+};
+
 G_DEFINE_TYPE(CpgObject, cpg_object, G_TYPE_OBJECT)
+
+static guint object_signals[NUM_SIGNALS] = {0,};
 
 static void
 cpg_object_finalize(GObject *object)
@@ -124,6 +133,16 @@ cpg_object_class_init(CpgObjectClass *klass)
 						      "The object's local id",
 						      NULL,
 						      G_PARAM_READABLE));
+
+	object_signals[TAINTED] = 
+	   		g_signal_new("tainted",
+			      G_OBJECT_CLASS_TYPE(object_class),
+			      G_SIGNAL_RUN_LAST,
+			      G_STRUCT_OFFSET(CpgObjectClass, tainted),
+			      NULL, NULL,
+			      g_cclosure_marshal_VOID__VOID,
+			      G_TYPE_NONE,
+			      0);
 
 	g_type_class_add_private(object_class, sizeof(CpgObjectPrivate));
 }
@@ -375,4 +394,12 @@ cpg_object_reset_cache(CpgObject *object)
 	g_return_if_fail(CPG_IS_OBJECT(object));
 	
 	g_slist_foreach(object->priv->properties, (GFunc)property_reset_cache, NULL);
+}
+
+void
+cpg_object_taint(CpgObject *object)
+{
+	g_return_if_fail(CPG_IS_OBJECT(object));
+	
+	g_signal_emit(object, object_signals[TAINTED], 0);
 }

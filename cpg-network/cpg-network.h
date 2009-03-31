@@ -54,6 +54,8 @@ gboolean	 	  cpg_network_set_expression	(CpgNetwork  *network,
 /* network manipulation */
 void			  cpg_network_add_object		(CpgNetwork *network, 
 												 CpgObject  *object);
+void			  cpg_network_remove_object		(CpgNetwork *network, 
+												 CpgObject  *object);
 
 gboolean		  cpg_network_compile			(CpgNetwork *network);
 void			  cpg_network_taint				(CpgNetwork *network);
