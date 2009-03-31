@@ -262,7 +262,7 @@ cpg_link_action_get_type()
 {
 	static GType type_id = 0;
 	
-	if (G_UNLIKELY(type_info == 0))
+	if (G_UNLIKELY(type_id == 0))
 		type_id = g_boxed_type_register_static("CpgLinkAction", cpg_ref_counted_ref, cpg_ref_counted_unref);
 	
 	return type_id;
