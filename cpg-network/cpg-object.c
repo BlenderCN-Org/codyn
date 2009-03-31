@@ -219,6 +219,32 @@ cpg_object_get_property(CpgObject   *object,
 	return NULL;
 }
 
+gboolean
+cpg_object_has_property(CpgObject   *object,
+						gchar const *name)
+{
+	g_return_val_if_fail(CPG_IS_OBJECT(object), FALSE);
+	g_return_val_if_fail(name != NULL, FALSE);
+	
+	return cpg_object_get_property(object, name) != NULL;
+}
+
+void
+cpg_object_remove_property(CpgObject   *object,
+						   gchar const *name)
+{
+	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail(name != NULL);
+	
+	CpgProperty *property = cpg_object_get_property(object, name);
+	
+	if (property)
+	{
+		object->priv->properties = g_slist_remove(object->priv->properties, property);
+		cpg_ref_counted_unref(property);
+	}
+}
+
 GSList *
 cpg_object_get_properties(CpgObject *object)
 {

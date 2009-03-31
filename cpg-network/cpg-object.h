@@ -51,6 +51,10 @@ CpgProperty 	 *cpg_object_add_property	(CpgObject   *object,
 											 gboolean     integrated);
 CpgProperty 	 *cpg_object_get_property	(CpgObject   *object, 
 											 gchar const *name);
+gboolean		  cpg_object_has_property   (CpgObject   *object,
+											 gchar const *name);
+void			  cpg_object_remove_property (CpgObject  *object,
+											  gchar const *name);
 
 GSList			*cpg_object_get_properties	(CpgObject   *object);
 
