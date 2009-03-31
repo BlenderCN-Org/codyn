@@ -118,6 +118,13 @@ cpg_property_get_value_expression(CpgProperty *property)
 	return property->value;
 }
 
+void
+cpg_property_set_value_expression(CpgProperty *property,
+								  gchar const *expression)
+{
+	cpg_expression_set_from_string(property->value, expression);
+}
+
 gchar const *
 cpg_property_get_name(CpgProperty *property)
 {

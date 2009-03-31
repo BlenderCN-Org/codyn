@@ -32,10 +32,8 @@ CpgExpression 	  *cpg_property_get_value_expression	(CpgProperty        *propert
 
 void			   cpg_property_set_value				(CpgProperty        *property, 
 														 gdouble             value);
-gboolean		   cpg_property_set_value_expression	(CpgProperty        *property, 
-														 gchar const 		*expression,
-														 GSList 			*context,
-														 gchar 			   **error);
+void			   cpg_property_set_value_expression	(CpgProperty        *property, 
+														 gchar const 		*expression);
 
 void			   _cpg_property_set_update				(CpgProperty	    *property,
 														 gdouble             value);
