@@ -23,7 +23,7 @@ cpg_monitor_get_type()
 {
 	static GType type_id = 0;
 	
-	if (G_UNLIKELY(type_id == 0))c
+	if (G_UNLIKELY(type_id == 0))
 		type_id = g_boxed_type_register_static("CpgProperty", cpg_ref_counted_ref, cpg_ref_counted_unref);
 	
 	return type_id;
