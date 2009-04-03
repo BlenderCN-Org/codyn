@@ -138,6 +138,13 @@ cpg_property_get_integrated(CpgProperty *property)
 }
 
 void
+cpg_property_set_integrated(CpgProperty *property,
+							gboolean	 integrated)
+{
+	property->integrated = integrated;
+}
+
+void
 _cpg_property_set_update(CpgProperty *property,
 						 gdouble      value)
 {

@@ -19,6 +19,8 @@ gchar const 	  *cpg_property_get_name				(CpgProperty        *property);
 
 struct _CpgObject *cpg_property_get_object				(CpgProperty        *property);
 gboolean		   cpg_property_get_integrated			(CpgProperty        *property);
+void			   cpg_property_set_integrated			(CpgProperty		*property,
+														 gboolean			 integrated);
 
 gboolean		   cpg_property_compile					(CpgProperty        *property, 
 														 GSList 			*context, 
