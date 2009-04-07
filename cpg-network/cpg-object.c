@@ -110,11 +110,49 @@ set_property(GObject *object, guint prop_id, GValue const *value, GParamSpec *ps
 }
 
 static void
+link_destroyed(CpgObject *object,
+			   CpgLink   *link,
+			   gboolean   is_last_ref)
+{
+	if (!is_last_ref)
+		return;
+
+	/* Remove link, actors and toggle ref */
+	object->priv->links = g_slist_remove(object->priv->links, link);
+	
+	GSList *item;
+	
+	for (item = cpg_link_get_actions(link); item; item = g_slist_next(item))
+	{
+		CpgLinkAction *action = (CpgLinkAction *)item->data;
+		object->priv->actors = g_slist_remove(object->priv->actors, cpg_link_action_get_target(action));
+	}
+	
+	g_object_remove_toggle_ref(G_OBJECT(link), (GToggleNotify)link_destroyed, object);
+}
+
+static void
+cpg_object_dispose(GObject *object)
+{
+	CpgObject *obj = CPG_OBJECT(object);
+	
+	/* Untoggle ref all links, because we need them destroyed! */
+	GSList *item;
+	GSList *copy = g_slist_copy(obj->priv->links);
+	
+	for (item = copy; item; item = g_slist_next(item))
+		link_destroyed(obj, CPG_LINK(item->data), TRUE);
+	
+	g_slist_free(copy);
+}
+
+static void
 cpg_object_class_init(CpgObjectClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 
 	object_class->finalize = cpg_object_finalize;
+	object_class->dispose = cpg_object_dispose;
 	object_class->get_property = get_property;
 	object_class->set_property = set_property;
 
@@ -308,6 +346,8 @@ _cpg_object_link(CpgObject *object,
 	g_return_if_fail(CPG_IS_LINK(link));
 	
 	object->priv->links = g_slist_append(object->priv->links, link);
+	
+	g_object_add_toggle_ref(G_OBJECT(link), (GToggleNotify)link_destroyed, object);
 	
 	// register possible new actors
 	_cpg_object_update_link(object, link);

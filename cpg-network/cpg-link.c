@@ -47,7 +47,7 @@ cpg_link_finalize(GObject *object)
 	
 	g_slist_foreach(link->priv->actions, (GFunc)cpg_ref_counted_unref, NULL);
 	g_slist_free(link->priv->actions);
-
+	
 	G_OBJECT_CLASS(cpg_link_parent_class)->finalize(object);
 }
 
@@ -101,11 +101,28 @@ cpg_link_set_property(GObject *object, guint prop_id, GValue const *value, GPara
 }
 
 static void
+cpg_link_dispose(GObject *object)
+{
+	CpgLink *link = CPG_LINK(object);
+	
+	if (link->priv->to)
+		g_object_unref(link->priv->to);
+	
+	if (link->priv->from)
+		g_object_unref(link->priv->from);
+		
+	link->priv->to = NULL;
+	link->priv->from = NULL;
+}	
+
+static void
 cpg_link_class_init(CpgLinkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS(klass);
 	
 	object_class->finalize = cpg_link_finalize;
+	object_class->dispose = cpg_link_dispose;
+	
 	object_class->get_property = cpg_link_get_property;
 	object_class->set_property = cpg_link_set_property;
 
