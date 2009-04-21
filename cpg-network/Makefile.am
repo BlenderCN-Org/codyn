@@ -32,7 +32,8 @@ libcpg_network_headers = \
 	cpg-ref-counted.h \
 	cpg-stack.h \
 	cpg-debug.h \
-	cpg-types.h
+	cpg-types.h \
+	cpg-monitor.h
 
 libcpg_network_1_0_la_CFLAGS = -D_GNU_SOURCE -Wall -Werror $(CPG_NETWORK_CFLAGS)
 libcpg_network_1_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS)
