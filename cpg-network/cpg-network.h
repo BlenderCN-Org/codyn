@@ -3,12 +3,12 @@
 
 #include <glib-object.h>
 
-#include "cpg-object.h"
-#include "cpg-state.h"
-#include "cpg-relay.h"
-#include "cpg-link.h"
-#include "cpg-monitor.h"
-#include "shared/cpg-shared-network.h"
+#include <cpg-network/cpg-object.h>
+#include <cpg-network/cpg-state.h>
+#include <cpg-network/cpg-relay.h>
+#include <cpg-network/cpg-link.h>
+#include <cpg-network/cpg-monitor.h>
+#include <cpg-network/shared/cpg-shared-network.h>
 
 G_BEGIN_DECLS
 
