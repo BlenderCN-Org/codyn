@@ -1,7 +1,7 @@
 #ifndef __CPG_NETWORK_WEBOTS_PRIVATE_H__
 #define __CPG_NETWORK_WEBOTS_PRIVATE_H__
 
-#include <device/robot_types.h>
+#include <webots/types.h>
 #include <glib.h>
 #include "cpg-network-webots.h"
 
@@ -19,7 +19,7 @@ struct _CpgWebotsBinding
 {
 	CpgWebotsBindingType type;
 	CpgWebotsBindingFunc func;
-	DeviceTag device;
+	WbDeviceTag device;
 	CpgProperty *property;
 	gdouble initial;
 	gchar *name;

@@ -61,10 +61,10 @@ if test "x$enable_webots" = "xyes"; then
 
 	for i in $dirs;
 	do
-		if test -r $i/include/device/robot.h;
+		if test -r $i/include/controller/c/webots/robot.h;
 		then
 			AC_MSG_RESULT($i)
-			WEBOTS_CFLAGS="-I$i/include"
+			WEBOTS_CFLAGS="-I$i/include/controller/c"
 			
 			break;
 		fi

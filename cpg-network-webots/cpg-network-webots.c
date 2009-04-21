@@ -1,6 +1,6 @@
-#include <device/robot.h>
-#include <device/servo.h>
-#include <device/touch_sensor.h>
+#include <webots/robot.h>
+#include <webots/servo.h>
+#include <webots/touch_sensor.h>
 
 #include "cpg-network-webots-private.h"
 #include "cpg-network/cpg-expression.h"
@@ -16,7 +16,7 @@ webots_binding_new(CpgWebotsBindingType type, CpgWebotsBindingFunc func, gchar c
 
 	binding->type = type;
 	binding->func = func;
-	binding->device = robot_get_device(device);
+	binding->device = wb_robot_get_device(device);
 	binding->property = property;
 	binding->initial = 0;
 	binding->name = g_strdup(device);
@@ -35,14 +35,14 @@ static void
 binding_handler_servo(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
 {
 	if (binding->device)
-		servo_set_position(binding->device, cpg_property_get_value(binding->property));
+		wb_servo_set_position(binding->device, cpg_property_get_value(binding->property));
 }
 
 static void
 binding_handler_touch_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
 {
 	if (binding->device)
-		cpg_property_set_value(binding->property, (gdouble)touch_sensor_get_value(binding->device));
+		cpg_property_set_value(binding->property, (gdouble)wb_touch_sensor_get_value(binding->device));
 }
 
 typedef enum
@@ -119,7 +119,7 @@ resolve_bindings(CpgNetworkWebots *webots)
 CpgNetworkWebots *
 cpg_network_webots_new(CpgNetwork *network)
 {
-	CpgNetworkWebots *webots = g_slice_new0(CpgNetwork);
+	CpgNetworkWebots *webots = g_slice_new0(CpgNetworkWebots);
 	
 	webots->network = network;
 	resolve_bindings(webots);
@@ -143,11 +143,11 @@ cpg_network_webots_initial(CpgNetworkWebots *webots, guint ms)
 				if (!binding->device)
 					continue;
 
-				servo_enable_position(binding->device, ms);
-				robot_step(ms);
+				wb_servo_enable_position(binding->device, ms);
+				wb_robot_step(ms);
 				
-				binding->initial = servo_get_position(binding->device);
-				servo_disable_position(binding->device);
+				binding->initial = wb_servo_get_position(binding->device);
+				wb_servo_disable_position(binding->device);
 			}
 			default:
 			break;
@@ -177,7 +177,7 @@ cpg_network_webots_enable(CpgNetworkWebots *webots, guint ms)
 		{
 			case CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR:
 				if (binding->device)
-					touch_sensor_enable(binding->device, ms);
+					wb_touch_sensor_enable(binding->device, ms);
 			break;
 			default:
 			break;
@@ -198,7 +198,7 @@ cpg_network_webots_disable(CpgNetworkWebots *webots)
 		{
 			case CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR:
 				if (binding->device)
-					touch_sensor_disable(binding->device);
+					wb_touch_sensor_disable(binding->device);
 			break;
 			default:
 			break;
@@ -244,7 +244,7 @@ cpg_network_webots_scale_initial(CpgNetworkWebots *webots, gdouble fraction)
 					continue;
 					
 				gdouble p = fraction * (cpg_property_get_value(binding->property) - binding->initial);
-				servo_set_position(binding->device, binding->initial + p);
+				wb_servo_set_position(binding->device, binding->initial + p);
 			}
 			break;
 			default:
