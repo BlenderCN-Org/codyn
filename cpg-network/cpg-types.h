@@ -17,7 +17,6 @@ typedef enum
 struct _CpgInstruction
 {
 	CpgInstructionType type;
-	CpgInstruction *next;
 };
 
 typedef struct

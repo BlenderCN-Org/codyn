@@ -20,7 +20,7 @@ struct _CpgExpression
 	// Expression to evaluate
 	gchar *expression;
 	
-	CpgInstruction *instructions;
+	GSList *instructions;
 	CpgStack output;
 	
 	GSList *dependencies;
@@ -45,7 +45,6 @@ cpg_expression_get_type()
 static CpgInstruction *
 cpg_instruction_initialize(CpgInstruction *instruction)
 {
-	instruction->next = NULL;
 	return instruction;
 }
 
@@ -152,17 +151,11 @@ cpg_instruction_free(CpgInstruction *instruction)
 static void
 instructions_free(CpgExpression *expression)
 {
-	CpgInstruction *inst = expression->instructions;
-	
-	while (inst)
-	{
-		CpgInstruction *next = inst->next;
-		cpg_instruction_free(inst);
-		inst = next;
-	}
-	
+	g_slist_foreach(expression->instructions, (GFunc)cpg_instruction_free, NULL);
+	g_slist_free(expression->instructions);
+
 	expression->instructions = NULL;
-	
+
 	g_slist_free(expression->dependencies);
 
 	// reset cached and instant flags
@@ -214,8 +207,7 @@ cpg_expression_new(gchar const *expression)
 static void
 instructions_push(CpgExpression *expression, CpgInstruction *next)
 {
-	next->next = expression->instructions;
-	expression->instructions = next;
+	expression->instructions = g_slist_prepend(expression->instructions, next);
 }
 
 static gboolean
@@ -698,28 +690,10 @@ parse_expression(CpgExpression  *expression,
 	return ret;
 }
 
-static void
-instructions_reverse(CpgExpression *expression)
-{
-	CpgInstruction *rev = NULL;
-	CpgInstruction *last = expression->instructions;
-	
-	while (last)
-	{
-		CpgInstruction *tmp = last->next;
-		last->next = rev;
-		
-		rev = last;
-		last = tmp;
-	}
-	
-	expression->instructions = rev;
-}
-
 static gboolean
 validate_stack(CpgExpression *expression)
 {
-	CpgInstruction *inst;
+	GSList *item;
 	gint stack = 0;
 	gint maxstack = 1;
 	
@@ -730,8 +704,10 @@ validate_stack(CpgExpression *expression)
 	g_slist_free(expression->dependencies);
 	expression->dependencies = NULL;
 	
-	for (inst = expression->instructions; inst; inst = inst->next)
+	for (item = expression->instructions; item; item = g_slist_next(item))
 	{
+		CpgInstruction *inst = item->data;
+
 		switch (inst->type)
 		{
 			case CPG_INSTRUCTION_TYPE_OPERATOR:
@@ -799,22 +775,22 @@ cpg_expression_compile(CpgExpression  *expression,
 	else
 	{
 		// reverse instructions
-		instructions_reverse(expression);
+		expression->instructions = g_slist_reverse(expression->instructions);
 
 		if (!validate_stack(expression))
 		{
 			if (error)
 			{
 				gchar msg[4096];
-				CpgInstruction *inst;
+				GSList *item;
 				gchar *ptr;
 				
 				snprintf(msg, 4096, "Invalid stack produced: \n\t%s\n\t", expression->expression);
 				ptr = msg + strlen(msg);
 
-				for (inst = expression->instructions; inst; inst = inst->next)
+				for (item = expression->instructions; item; item = g_slist_next(item))
 				{
-					gchar *res = instruction_tos(inst);
+					gchar *res = instruction_tos(item->data);
 					snprintf(ptr, msg + 4096 - ptr, "%s ", res);
 					ptr += strlen(res) + 1;
 					g_free(res);
@@ -849,7 +825,7 @@ cpg_expression_evaluate(CpgExpression *expression)
 	if (expression->flags & CPG_EXPRESSION_FLAG_CACHED)
 		return expression->cached_output;
 	
-	CpgInstruction *instruction;
+	GSList *item;
 	cpg_stack_reset(&(expression->output));
 	
 	if (expression->output.size == 0)
@@ -864,8 +840,9 @@ cpg_expression_evaluate(CpgExpression *expression)
 		return 0.0;
 	}
 	
-	for (instruction = expression->instructions; instruction; instruction = instruction->next)
+	for (item = expression->instructions; item; item = g_slist_next(item))
 	{
+		CpgInstruction *instruction = item->data;
 		switch (instruction->type)
 		{
 			case CPG_INSTRUCTION_TYPE_NUMBER:
@@ -904,11 +881,11 @@ void
 cpg_expression_print_instructions(CpgExpression *expression, 
 								  FILE          *f)
 {
-	CpgInstruction *inst;
+	GSList *item;
 	
-	for (inst = expression->instructions; inst; inst = inst->next)
+	for (item = expression->instructions; item; item = g_slist_next(item))
 	{
-		gchar *res = instruction_tos(inst);
+		gchar *res = instruction_tos(item->data);
 		
 		fprintf(f, "%s ", res);
 		g_free(res);
@@ -934,4 +911,10 @@ void
 cpg_expression_reset(CpgExpression *expression)
 {
 	expression->flags = CPG_EXPRESSION_FLAG_NONE;
+}
+
+GSList *
+cpg_expression_get_instructions(CpgExpression *expression)
+{
+	return expression->instructions;
 }
