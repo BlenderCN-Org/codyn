@@ -12,12 +12,15 @@ COMMON_SOURCES = 		\
 	cpg-tokenizer.c \
 	cpg-expression.c \
 	cpg-ref-counted.c \
+	cpg-monitor.c \
 	cpg-math.c \
 	cpg-debug.c \
-	cpg-stack.c
+	cpg-stack.c \
+	cpg-network-reader.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
+	cpg-network-reader.h \
 	cpg-math.h
 
 lib_LTLIBRARIES = libcpg-network-1.0.la
@@ -27,6 +30,7 @@ libcpg_network_headers = \
 	cpg-state.h \
 	cpg-relay.h \
 	cpg-link.h \
+	cpg-monitor.h \
 	cpg-property.h \
 	cpg-expression.h \
 	cpg-ref-counted.h \

@@ -19,22 +19,22 @@ struct _CpgProperty
 };
 
 GType 
-cpg_monitor_get_type()
+cpg_property_get_type ()
 {
 	static GType type_id = 0;
 	
-	if (G_UNLIKELY(type_id == 0))
-		type_id = g_boxed_type_register_static("CpgProperty", cpg_ref_counted_ref, cpg_ref_counted_unref);
+	if (G_UNLIKELY (type_id == 0))
+		type_id = g_boxed_type_register_static ("CpgProperty", cpg_ref_counted_ref, cpg_ref_counted_unref);
 	
 	return type_id;
 }
 
 static void
-cpg_property_free(CpgProperty *property)
+cpg_property_free (CpgProperty *property)
 {
-	cpg_ref_counted_unref(property->value);
+	cpg_ref_counted_unref (property->value);
 
-	g_free(property->name);
+	g_free (property->name);
 }
 
 /**
@@ -42,27 +42,30 @@ cpg_property_free(CpgProperty *property)
  * @name: the property name
  * @expression: the value expression
  * @integrated: whether this property should be integated during the simulation
+ * @object: the #CpgObject to which the property belongs
  *
  * Create a new property object. Property objects are assigned to #CpgObject
  * objects and are of little use on their own. The provided expression will
  * not be parsed initially.
  *
+ * Returns: the new #CpgProperty
+ *
  **/
 CpgProperty *
-cpg_property_new(gchar const *name, 
-				 gchar const *expression, 
-				 gboolean     integrated, 
-				 CpgObject   *object)
+cpg_property_new (gchar const  *name,
+                  gchar const  *expression,
+                  gboolean      integrated,
+                  CpgObject    *object)
 {
 	CpgProperty *res = g_slice_new0(CpgProperty);
 	
-	cpg_ref_counted_init(res, (GDestroyNotify)cpg_property_free);
+	cpg_ref_counted_init (res, (GDestroyNotify)cpg_property_free);
 	
-	res->name = g_strdup(name);
+	res->name = g_strdup (name);
 	res->object = object;
 
 	res->integrated = integrated;	
-	res->value = cpg_expression_new(expression);
+	res->value = cpg_expression_new (expression);
 	
 	return res;
 }
@@ -76,7 +79,7 @@ cpg_property_new(gchar const *name,
  * Returns: the object associated with the property
  **/
 CpgObject *
-cpg_property_get_object(CpgProperty *property)
+cpg_property_get_object (CpgProperty *property)
 {
 	return property->object;
 }
@@ -91,10 +94,10 @@ cpg_property_get_object(CpgProperty *property)
  *
  **/
 void
-cpg_property_set_value(CpgProperty *property,
-					   gdouble      value)
+cpg_property_set_value (CpgProperty  *property,
+                        gdouble       value)
 {
-	cpg_expression_set_value(property->value, value);
+	cpg_expression_set_value (property->value, value);
 }
 
 /**
@@ -107,58 +110,58 @@ cpg_property_set_value(CpgProperty *property,
  *
  **/
 gdouble
-cpg_property_get_value(CpgProperty *property)
+cpg_property_get_value (CpgProperty *property)
 {
-	return property->value ? cpg_expression_evaluate(property->value) : 0.0;
+	return property->value ? cpg_expression_evaluate (property->value) : 0.0;
 }
 
 CpgExpression *
-cpg_property_get_value_expression(CpgProperty *property)
+cpg_property_get_value_expression (CpgProperty *property)
 {
 	return property->value;
 }
 
 void
-cpg_property_set_value_expression(CpgProperty *property,
-								  gchar const *expression)
+cpg_property_set_value_expression (CpgProperty  *property,
+                                   gchar const  *expression)
 {
-	cpg_expression_set_from_string(property->value, expression);
+	cpg_expression_set_from_string (property->value, expression);
 }
 
 gchar const *
-cpg_property_get_name(CpgProperty *property)
+cpg_property_get_name (CpgProperty *property)
 {
 	return property->name;
 }
 
 gboolean
-cpg_property_get_integrated(CpgProperty *property)
+cpg_property_get_integrated (CpgProperty *property)
 {
 	return property->integrated;
 }
 
 void
-cpg_property_set_integrated(CpgProperty *property,
-							gboolean	 integrated)
+cpg_property_set_integrated (CpgProperty  *property,
+                             gboolean      integrated)
 {
 	property->integrated = integrated;
 }
 
 void
-_cpg_property_set_update(CpgProperty *property,
-						 gdouble      value)
+_cpg_property_set_update (CpgProperty  *property,
+                          gdouble       value)
 {
 	property->update = value;
 }
 
 gdouble
-_cpg_property_get_update(CpgProperty *property)
+_cpg_property_get_update (CpgProperty *property)
 {
 	return property->update;
 }
 
 void
-cpg_property_reset_cache(CpgProperty *property)
+cpg_property_reset_cache (CpgProperty *property)
 {
-	cpg_expression_reset_cache(property->value);
+	cpg_expression_reset_cache (property->value);
 }

@@ -71,8 +71,6 @@ void			  cpg_object_taint			(CpgObject   *object);
 /* used for referencing links */
 void 			 _cpg_object_link			(CpgObject       *object, 
 											 struct _CpgLink *link);
-void			 _cpg_object_update_link	(CpgObject       *object, 
-											 struct _CpgLink *link);
 GSList 			*_cpg_object_get_actors		(CpgObject       *object);
 GSList 			*_cpg_object_get_links		(CpgObject       *object);
 

@@ -1,6 +1,9 @@
 #include "cpg-monitor.h"
 #include "cpg-property.h"
 #include "cpg-utils.h"
+#include "cpg-ref-counted-private.h"
+#include "cpg-network.h"
+#include "cpg-expression.h"
 
 #define MONITOR_GROW_SIZE 1000
 
@@ -28,10 +31,10 @@ struct _CpgMonitor
 };
 
 static void
-cpg_monitor_free_data(CpgMonitor *monitor)
+cpg_monitor_free_data (CpgMonitor *monitor)
 {
-	g_free(monitor->values);
-	g_free(monitor->sites);
+	g_free (monitor->values);
+	g_free (monitor->sites);
 	
 	monitor->values = NULL;
 	monitor->sites = NULL;
@@ -40,74 +43,76 @@ cpg_monitor_free_data(CpgMonitor *monitor)
 }
 
 static void
-cpg_monitor_free(CpgMonitor *monitor)
+cpg_monitor_free (CpgMonitor *monitor)
 {
 	if (monitor->object)
-		g_object_unref(monitor->object);
+		g_object_unref (monitor->object);
 	
-	cpg_ref_counted_unref(monitor->property);
+	cpg_ref_counted_unref (monitor->property);
 	
 	if (monitor->network)
 	{
-		g_signal_handler_disconnect(monitor->network, monitor->signals[RESET]);
-		g_signal_handler_disconnect(monitor->network, monitor->signals[UPDATE]);
+		g_signal_handler_disconnect (monitor->network, monitor->signals[RESET]);
+		g_signal_handler_disconnect (monitor->network, monitor->signals[UPDATE]);
 	}
 
-	cpg_monitor_free_data(monitor);	
-	g_slice_free(CpgMonitor, monitor);
+	cpg_monitor_free_data (monitor);	
+	g_slice_free (CpgMonitor, monitor);
 }
 
 GType 
-cpg_monitor_get_type()
+cpg_monitor_get_type ()
 {
 	static GType type_id = 0;
 	
-	if (G_UNLIKELY(type_id == 0))
-		type_id = g_boxed_type_register_static("CpgMonitor", cpg_ref_counted_ref, cpg_ref_counted_unref);
+	if (G_UNLIKELY (type_id == 0))
+		type_id = g_boxed_type_register_static ("CpgMonitor", cpg_ref_counted_ref, cpg_ref_counted_unref);
 	
 	return type_id;
 }
 
 static void
-cpg_monitor_grow(CpgMonitor *monitor)
+cpg_monitor_grow (CpgMonitor *monitor)
 {
 	monitor->size += MONITOR_GROW_SIZE;
 	
-	array_resize(monitor->values, double, monitor->size);
-	array_resize(monitor->sites, double, monitor->size);
+	array_resize (monitor->values, double, monitor->size);
+	array_resize (monitor->sites, double, monitor->size);
 }
 
 static void
-cpg_monitor_update(CpgMonitor *monitor, gdouble timestep, CpgNetwork *network)
+cpg_monitor_update (CpgMonitor  *monitor,
+                    gdouble      timestep,
+                    CpgNetwork  *network)
 {
 	if (monitor->size == 0 || monitor->num_values >= monitor->size - 1)
-		cpg_monitor_grow(monitor);
+		cpg_monitor_grow (monitor);
 	
-	monitor->values[monitor->num_values] = cpg_expression_evaluate(monitor->property->value);
-	monitor->sites[monitor->num_values++] = network->time;
+	monitor->values[monitor->num_values] = cpg_property_get_value (monitor->property);
+	monitor->sites[monitor->num_values++] = cpg_network_get_time (network);
 }
 
 CpgMonitor *
-cpg_monitor_new(CpgNetwork  *network,
-				CpgObject   *object, 
-				gchar const *property_name)
+cpg_monitor_new (CpgNetwork   *network,
+                 CpgObject    *object,
+                 gchar const  *property_name)
 {
-	CpgMonitor *monitor = g_slice_new0(CpgMonitor);
+	CpgMonitor *monitor = g_slice_new0 (CpgMonitor);
 
-	cpg_ref_counted_init(monitor, (GDestroyFunc)cpg_monitor_free);
+	cpg_ref_counted_init (monitor, (GDestroyNotify)cpg_monitor_free);
 	
 	monitor->network = network;
 	monitor->object = object;
-	monitor->property = cpg_ref_counted_ref(cpg_object_property(object, property_name));
+	monitor->property = cpg_ref_counted_ref (cpg_object_get_property (object, property_name));
 	
-	g_object_add_weak_pointer(object, &(monitor->object));
-	g_object_add_weak_pointer(network, &(monitor->network));
+	g_object_add_weak_pointer (G_OBJECT (object), (gpointer *)&(monitor->object));
+	g_object_add_weak_pointer (G_OBJECT (network), (gpointer *)&(monitor->network));
 	
 	// initialize values list
-	cpg_monitor_grow(monitor);
+	cpg_monitor_grow (monitor);
 	
-	monitor->signals[RESET] = g_signal_connect_swapped(network, "reset", G_CALLBACK(cpg_monitor_free_data), monitor);
-	monitor->signals[UPDATE] = g_signal_connect_swapped(network, "update", G_CALLBACK(cpg_monitor_update), monitor);
+	monitor->signals[RESET] = g_signal_connect_swapped (network, "reset", G_CALLBACK (cpg_monitor_free_data), monitor);
+	monitor->signals[UPDATE] = g_signal_connect_swapped (network, "update", G_CALLBACK (cpg_monitor_update), monitor);
 
 	return monitor;
 }
@@ -128,7 +133,7 @@ cpg_monitor_new(CpgNetwork  *network,
  *
  **/
 gdouble const *
-cpg_monitor_get_data(CpgMonitor *monitor,
+cpg_monitor_get_data (CpgMonitor *monitor,
 				     guint      *size)
 {
 	if (size)
@@ -144,7 +149,9 @@ cpg_monitor_get_data(CpgMonitor *monitor,
 }
 
 static int
-bsearch_find(gdouble const *list, gint size, gdouble value)
+bsearch_find (gdouble const  *list,
+              gint            size,
+              gdouble         value)
 {
 	gint left = 0;
 	gint right = size;
@@ -180,22 +187,22 @@ bsearch_find(gdouble const *list, gint size, gdouble value)
  *
  **/
 gdouble	*
-cpg_monitor_get_data_resampled(CpgMonitor    *monitor,
-							   gdouble const *sites,
-							   guint          size)
+cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
+                                gdouble const  *sites,
+                                guint           size)
 {
 	if (!sites || size == 0 || !monitor || !monitor->object || !monitor->property)
 		return NULL;
 
 	gdouble const *data = monitor->values;
-	gdouble *ret = cpg_new(gdouble, size);
+	gdouble *ret = g_new0 (gdouble, size);
 	guint i;
 	
 	gdouble const *monsites = monitor->sites;
 	
 	for (i = 0; i < size; ++i)
 	{
-		guint idx = bsearch_find(monsites, (gint)monitor->num_values, sites[i]);
+		guint idx = bsearch_find (monsites, (gint)monitor->num_values, sites[i]);
 		guint fidx = idx > 0 ? idx - 1 : 0;
 		guint sidx = idx < monitor->num_values ? idx : monitor->num_values - 1;
 		

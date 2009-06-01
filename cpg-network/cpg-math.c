@@ -7,125 +7,143 @@
 typedef void (*FunctionClosure)(CpgStack *, void *);
 
 static void
-op_sin(CpgStack *stack, void *data)
+op_sin (CpgStack  *stack,
+        void      *data)
 {
-	cpg_stack_push(stack, sin(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, sin (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_cos(CpgStack *stack, void *data)
+op_cos (CpgStack  *stack,
+        void      *data)
 {
-	cpg_stack_push(stack, cos(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, cos (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_tan(CpgStack *stack, void *data)
+op_tan (CpgStack  *stack,
+        void      *data)
 {
-	cpg_stack_push(stack, tan(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, tan (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_sqrt(CpgStack *stack, void *data)
+op_sqrt (CpgStack  *stack,
+         void      *data)
 {
-	cpg_stack_push(stack, sqrt(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, sqrt (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_asin(CpgStack *stack, void *data)
+op_asin (CpgStack  *stack,
+         void      *data)
 {
-	cpg_stack_push(stack, asin(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, asin (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_acos(CpgStack *stack, void *data)
+op_acos (CpgStack  *stack,
+         void      *data)
 {
-	cpg_stack_push(stack, acos(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, acos (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_atan(CpgStack *stack, void *data)
+op_atan (CpgStack  *stack,
+         void      *data)
 {
-	cpg_stack_push(stack, atan(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, atan (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_floor(CpgStack *stack, void *data)
+op_floor (CpgStack  *stack,
+          void      *data)
 {
-	cpg_stack_push(stack, floor(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, floor (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_ceil(CpgStack *stack, void *data)
+op_ceil (CpgStack  *stack,
+         void      *data)
 {
-	cpg_stack_push(stack, ceil(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, ceil (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_round(CpgStack *stack, void *data)
+op_round (CpgStack  *stack,
+          void      *data)
 {
-	cpg_stack_push(stack, round(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, round (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_abs(CpgStack *stack, void *data)
+op_abs (CpgStack  *stack,
+        void      *data)
 {
-	cpg_stack_push(stack, abs(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, abs (cpg_stack_pop (stack, data)), data);
 }
 
 static double
-min(double a, double b)
+min (double a,
+     double b)
 {
 	return a < b ? a : b;
 }
 
 static double
-max(double a, double b)
+max (double a,
+     double b)
 {
 	return a > b ? a : b;
 }
 
 static void
-op_nested(CpgStack *stack, double(*func)(double, double), void *data)
+op_nested (CpgStack  *stack, 
+           double   (*func)(double, double), 
+           void      *data)
 {
-	unsigned nargs = (unsigned)cpg_stack_pop(stack, data);
-	double value = cpg_stack_pop(stack, data);
+	unsigned nargs = (unsigned)cpg_stack_pop (stack, data);
+	double value = cpg_stack_pop (stack, data);
 	unsigned i;
 	
 	for (i = 0; i < nargs - 1; ++i)
-		value = func(value, cpg_stack_pop(stack, data));
+		value = func (value, cpg_stack_pop (stack, data));
 	
-	cpg_stack_push(stack, value, data);	
+	cpg_stack_push (stack, value, data);	
 }
 
 static void
-op_min(CpgStack *stack, void *data)
+op_min (CpgStack  *stack,
+        void      *data)
 {
-	op_nested(stack, min, data);
+	op_nested (stack, min, data);
 }
 
 static void
-op_max(CpgStack *stack, void *data)
+op_max (CpgStack  *stack,
+        void      *data)
 {
-	op_nested(stack, max, data);
+	op_nested (stack, max, data);
 }
 
 static void
-op_exp(CpgStack *stack, void *data)
+op_exp (CpgStack  *stack,
+        void      *data)
 {
-	cpg_stack_push(stack, exp(cpg_stack_pop(stack, data)), data);
+	cpg_stack_push (stack, exp (cpg_stack_pop (stack, data)), data);
 }
 
 static void
-op_pow(CpgStack *stack, void *data)
+op_pow (CpgStack *stack, void *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, pow(first, second), data);
+	cpg_stack_push (stack, pow (first, second), data);
 }
 
 static void
-op_noop(CpgStack *stack, void *data)
+op_noop (CpgStack *stack, void *data)
 {
 }
 
@@ -157,13 +175,14 @@ static FunctionEntry function_entries[] = {
 
 #ifndef RTLINUX
 unsigned
-cpg_math_function_lookup(char const *name, int *arguments)
+cpg_math_function_lookup (char const  *name,
+                          int         *arguments)
 {
 	unsigned i;
 	
-	for (i = 1; i < sizeof(function_entries) / sizeof(FunctionEntry); ++i)
+	for (i = 1; i < sizeof (function_entries) / sizeof (FunctionEntry); ++i)
 	{
-		if (strcmp(function_entries[i].name, name) == 0)
+		if (strcmp (function_entries[i].name, name) == 0)
 		{
 			*arguments = function_entries[i].arguments;
 			return i;
@@ -175,158 +194,177 @@ cpg_math_function_lookup(char const *name, int *arguments)
 #endif
 
 void 
-cpg_math_function_execute(unsigned id, CpgStack *stack, void *data)
+cpg_math_function_execute (unsigned   id,
+                           CpgStack  *stack,
+                           void      *data)
 {
-	function_entries[id].function(stack, data);
+	function_entries[id].function (stack, data);
 }
 
 /* operator functions */
 static void
-op_unary_minus(CpgStack *stack, void *data)
+op_unary_minus (CpgStack  *stack,
+                void      *data)
 {
-	cpg_stack_push(stack, -1 * cpg_stack_pop(stack, data), data);
+	cpg_stack_push (stack, -1 * cpg_stack_pop (stack, data), data);
 }
 
 static void
-op_minus(CpgStack *stack, void *data)
+op_minus (CpgStack  *stack,
+          void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first - second, data);
+	cpg_stack_push (stack, first - second, data);
 }
 
 static void
-op_plus(CpgStack *stack, void *data)
+op_plus (CpgStack  *stack,
+         void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first + second, data);
+	cpg_stack_push (stack, first + second, data);
 }
 
 static void
-op_multiply(CpgStack *stack, void *data)
+op_multiply (CpgStack  *stack,
+             void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first * second, data);
+	cpg_stack_push (stack, first * second, data);
 }
 
 static void
-op_divide(CpgStack *stack, void *data)
+op_divide (CpgStack  *stack,
+           void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, second == 0.0 ? 0.0 : first / second, data);
+	cpg_stack_push (stack, second == 0.0 ? 0.0 : first / second, data);
 }
 
 static double
-my_fmod (double x, double y)
+my_fmod (double x,
+         double y)
 {
 	double ans = fmod (x, y);
 	return ans < 0 ? ans + y : ans;
 }
 
 static void
-op_modulo(CpgStack *stack, void *data)
+op_modulo (CpgStack  *stack,
+           void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, my_fmod(first, second), data);
+	cpg_stack_push (stack, my_fmod (first, second), data);
 }
 
 static void
-op_power(CpgStack *stack, void *data)
+op_power (CpgStack  *stack,
+          void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, pow(first, second), data);
+	cpg_stack_push (stack, pow (first, second), data);
 }
 
 static void
-op_greater(CpgStack *stack, void *data)
+op_greater (CpgStack  *stack,
+            void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first > second, data);
+	cpg_stack_push (stack, first > second, data);
 }
 
 static void
-op_less(CpgStack *stack, void *data)
+op_less (CpgStack  *stack,
+         void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first < second, data);
+	cpg_stack_push (stack, first < second, data);
 }
 
 static void
-op_greater_or_equal(CpgStack *stack, void *data)
+op_greater_or_equal (CpgStack  *stack,
+                     void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first >= second, data);
+	cpg_stack_push (stack, first >= second, data);
 }
 
 static void
-op_less_or_equal(CpgStack *stack, void *data)
+op_less_or_equal (CpgStack  *stack,
+                  void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first < second, data);
+	cpg_stack_push (stack, first < second, data);
 }
 
 static void
-op_equal(CpgStack *stack, void *data)
+op_equal (CpgStack  *stack,
+          void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first == second, data);
+	cpg_stack_push (stack, first == second, data);
 }
 
 static void
-op_or(CpgStack *stack, void *data)
+op_or (CpgStack  *stack,
+       void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first || second, data);
+	cpg_stack_push (stack, first || second, data);
 }
 
 static void
-op_and(CpgStack *stack, void *data)
+op_and (CpgStack  *stack,
+        void      *data)
 {
-	double second = cpg_stack_pop(stack, data);
-	double first = cpg_stack_pop(stack, data);
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, first && second, data);
+	cpg_stack_push (stack, first && second, data);
 }
 
 static void
-op_negate(CpgStack *stack, void *data)
+op_negate (CpgStack  *stack,
+           void      *data)
 {
-	double first = cpg_stack_pop(stack, data);
+	double first = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, !first, data);
+	cpg_stack_push (stack, !first, data);
 }
 
 static void
-op_ternary(CpgStack *stack, void *data)
+op_ternary (CpgStack  *stack,
+            void      *data)
 {
-	double falsepart = cpg_stack_pop(stack, data);
-	double truepart = cpg_stack_pop(stack, data);
-	double condition = cpg_stack_pop(stack, data);
+	double falsepart = cpg_stack_pop (stack, data);
+	double truepart = cpg_stack_pop (stack, data);
+	double condition = cpg_stack_pop (stack, data);
 	
-	cpg_stack_push(stack, condition ? truepart : falsepart, data);
+	cpg_stack_push (stack, condition ? truepart : falsepart, data);
 }
 
 typedef struct
@@ -357,15 +395,17 @@ static OperatorEntry operator_entries[] = {
 };
 
 unsigned
-cpg_math_operator_lookup(CpgMathOperatorType type)
+cpg_math_operator_lookup (CpgMathOperatorType type)
 {
 	return type;
 }
 
 void
-cpg_math_operator_execute(unsigned id, CpgStack *stack, void *data)
+cpg_math_operator_execute (unsigned   id,
+                           CpgStack  *stack,
+                           void      *data)
 {
-	operator_entries[id].function(stack, data);
+	operator_entries[id].function (stack, data);
 }
 
 typedef struct
@@ -384,18 +424,19 @@ static CpgConstantEntry constant_entries[] = {
 };
 
 double
-cpg_math_constant_lookup(char const *name, int *found)
+cpg_math_constant_lookup (char const  *name,
+                          int         *found)
 {
 	unsigned i;
 	
-	for (i = 0; i < sizeof(constant_entries) / sizeof(CpgConstantEntry); ++i)
+	for (i = 0; i < sizeof (constant_entries) / sizeof (CpgConstantEntry); ++i)
 	{
-		if (strcmp(constant_entries[i].name, name) == 0)
+		if (strcmp (constant_entries[i].name, name) == 0)
 		{
 			*found = 1;
 
 			if (constant_entries[i].function)
-				return constant_entries[i].function();
+				return constant_entries[i].function ();
 			else
 				return constant_entries[i].value;
 		}

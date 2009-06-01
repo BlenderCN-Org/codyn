@@ -10,10 +10,9 @@
 #include "cpg-object.h"
 #include "cpg-link.h"
 #include "cpg-debug.h"
+#include "cpg-network-reader.h"
 
-#define BUFFER_SIZE 4096
-
-#define CPG_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_NETWORK, CpgNetworkPrivate))
+#define CPG_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_NETWORK, CpgNetworkPrivate))
 
 typedef struct
 {
@@ -55,69 +54,69 @@ enum
 
 static guint network_signals[NUM_SIGNALS] = {0,};
 
-G_DEFINE_TYPE(CpgNetwork, cpg_network, G_TYPE_OBJECT)
+G_DEFINE_TYPE (CpgNetwork, cpg_network, G_TYPE_OBJECT)
 
 static void
-cpg_network_finalize(GObject *object)
+cpg_network_finalize (GObject *object)
 {
-	CpgNetwork *network = CPG_NETWORK(object);
+	CpgNetwork *network = CPG_NETWORK (object);
 
-	g_free(network->priv->filename);
+	g_free (network->priv->filename);
 	
-	g_object_unref(network->priv->constants);
-	g_slist_free(network->priv->context);
+	g_object_unref (network->priv->constants);
+	g_slist_free (network->priv->context);
 
-	cpg_network_clear(network);
+	cpg_network_clear (network);
 	
-	G_OBJECT_CLASS(cpg_network_parent_class)->finalize(object);
+	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
 
 static void
-cpg_network_class_init(CpgNetworkClass *klass)
+cpg_network_class_init (CpgNetworkClass *klass)
 {
-	GObjectClass *object_class = G_OBJECT_CLASS(klass);
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	
 	object_class->finalize = cpg_network_finalize;
 
 	network_signals[RESET] =
-   		g_signal_new("reset",
-			      G_OBJECT_CLASS_TYPE(object_class),
+   		g_signal_new ("reset",
+			      G_OBJECT_CLASS_TYPE (object_class),
 			      G_SIGNAL_RUN_LAST,
-			      G_STRUCT_OFFSET(CpgNetworkClass, reset),
+			      G_STRUCT_OFFSET (CpgNetworkClass, reset),
 			      NULL, NULL,
 			      g_cclosure_marshal_VOID__VOID,
 			      G_TYPE_NONE,
 			      0);
 
 	network_signals[UPDATE] =
-   		g_signal_new("update",
-			      G_OBJECT_CLASS_TYPE(object_class),
+   		g_signal_new ("update",
+			      G_OBJECT_CLASS_TYPE (object_class),
 			      G_SIGNAL_RUN_LAST,
-			      G_STRUCT_OFFSET(CpgNetworkClass, update),
+			      G_STRUCT_OFFSET (CpgNetworkClass, update),
 			      NULL, NULL,
 			      g_cclosure_marshal_VOID__DOUBLE,
 			      G_TYPE_NONE,
 			      1,
 				  G_TYPE_DOUBLE);
 		
-	g_type_class_add_private(object_class, sizeof(CpgNetworkPrivate));
+	g_type_class_add_private (object_class, sizeof (CpgNetworkPrivate));
 }
 
 static void
-cpg_network_init(CpgNetwork *network)
+cpg_network_init (CpgNetwork *network)
 {
-	network->priv = CPG_NETWORK_GET_PRIVATE(network);
+	network->priv = CPG_NETWORK_GET_PRIVATE (network);
 
 	guint i;
 	
 	for (i = 0; i < NUM_CONTEXT; ++i)
-		network->priv->context = g_slist_prepend(network->priv->context, NULL);
+		network->priv->context = g_slist_prepend (network->priv->context, NULL);
 	
-	network->priv->constants = cpg_object_new(NULL);
-	network->priv->timeprop = cpg_object_add_property(network->priv->constants, "t", "0", 0);
-	network->priv->timestepprop = cpg_object_add_property(network->priv->constants, "dt", "0", 0);
+	network->priv->constants = cpg_object_new (NULL);
+	network->priv->timeprop = cpg_object_add_property (network->priv->constants, "t", "0", 0);
+	network->priv->timestepprop = cpg_object_add_property (network->priv->constants, "dt", "0", 0);
 	
-	g_slist_nth(network->priv->context, NUM_CONTEXT - 1)->data = network->priv->constants;
+	g_slist_nth (network->priv->context, NUM_CONTEXT - 1)->data = network->priv->constants;
 }
 
 /**
@@ -129,317 +128,83 @@ cpg_network_init(CpgNetwork *network)
  *
  **/
 CpgNetwork*
-cpg_network_new()
+cpg_network_new ()
 {
-	return g_object_new(CPG_TYPE_NETWORK, NULL);
-}
-
-static gchar *
-read_line_real(FILE *f, 
-			   gint  skip_comments)
-{
-	gchar *buffer = g_new(gchar, BUFFER_SIZE);
-	gchar *ret;
-	
-	while ((ret = fgets(buffer, BUFFER_SIZE, f)) && (skip_comments && *ret == '#'))
-		;
-
-	if (!ret)
-	{
-		g_free(buffer);
-	}
-	else
-	{
-		gint len = strlen(buffer);
-		
-		if (buffer[len - 1] == '\n')
-			buffer[len - 1] = '\0';
-	}
-	
-	return ret;
-}
-
-static gchar *
-read_line(FILE *f)
-{
-	return read_line_real(f, 1);
+	return g_object_new (CPG_TYPE_NETWORK, NULL);
 }
 
 static void
-read_headers(CpgNetwork *network, 
-			 FILE       *f)
+set_context (CpgNetwork  *network,
+             CpgObject   *first,
+             CpgObject   *second)
 {
-	gchar *buffer;
-
-	while ((buffer = read_line_real(f, 0)))
-	{
-		if (*buffer != '#')
-		{
-			fseek(f, -strlen(buffer) - 1, SEEK_CUR);
-			g_free(buffer);
-
-			break;
-		}
-		
-		// just ignore headers for now
-		g_free(buffer);
-	}
-}
-
-static gchar *
-read_tab_sep(FILE   *f, 
-			 gchar **first, 
-			 gchar **second)
-{
-	if (feof(f))
-		return NULL;
-	
-	gchar *buffer = read_line(f);
-	
-	if (!buffer)
-		return NULL;
-	
-	gchar *pos = strchr(buffer, '\t');
-	
-	if (pos)
-	{
-		*pos = '\0';
-		*first = buffer;
-		*second = pos + 1;
-	}
-	else
-	{
-		*first = NULL;
-		*second = NULL;
-	}
-
-	return buffer;
-}
-
-static void
-read_properties(CpgObject *object, 
-				FILE      *f)
-{
-	gchar *buffer;
-	gchar *first;
-	gchar *second;
-	
-	while ((buffer = read_tab_sep(f, &first, &second)))
-	{
-		if (*buffer == '\0')
-		{
-			g_free(buffer);
-			break;
-		}
-		
-		gchar *pos = strchr(second, '\t');
-		gboolean integrated = FALSE;
-		
-		if (pos)
-		{
-			*pos = '\0';
-			integrated = (*(pos + 1) != '0');
-		}
-		
-		cpg_object_add_property(object, first, second, integrated);
-		g_free(buffer);
-	}
-}
-
-static void
-read_expressions(CpgLink *link, 
-				 FILE    *f)
-{
-	gchar *buffer;
-	gchar *first;
-	gchar *second;
-	
-	while ((buffer = read_tab_sep(f, &first, &second)))
-	{
-		if (*buffer == '\0')
-		{
-			g_free(buffer);
-			break;
-		}
-		
-		CpgProperty *property = cpg_object_get_property(cpg_link_get_to(link), first);
-		
-		if (property)
-			cpg_link_add_action(link, property, second);
-		else
-			cpg_debug_error("Could not find property `%s' to act on", first);
-
-		g_free(buffer);
-	}
-}
-
-static CpgObject *
-read_object_type(CpgNetwork *network, 
-				 FILE       *f, 
-				 GType       gtype)
-{
-	gchar *buffer;
-	
-	// read in the state object id
-	buffer = read_line(f);
-	
-	CpgObject *object = g_object_new(gtype, "id", buffer, NULL);
-	g_free(buffer);
-	
-	// read in properties
-	read_properties(object, f);
-	
-	return object;
-}
-
-static CpgObject *
-read_state(CpgNetwork *network, 
-		   FILE       *f)
-{
-	return read_object_type(network, f, CPG_TYPE_STATE);
-}
-
-static CpgObject *
-read_relay(CpgNetwork *network, 
-		   FILE       *f)
-{
-	return read_object_type(network, f, CPG_TYPE_RELAY);
-}
-
-static CpgObject *
-read_link(CpgNetwork *network, 
-		  FILE       *f)
-{
-	gchar *from;
-	gchar *to;
-	gchar *id;
-
-	// read from
-	id = read_line(f);
-	from = read_line(f);
-	to = read_line(f);
-	
-	CpgObject *fromobj = cpg_network_get_object(network, from);
-	CpgObject *toobj = cpg_network_get_object(network, to);
-	
-	if (!fromobj || !CPG_IS_STATE(fromobj) || !toobj || !CPG_IS_STATE(toobj))
-	{
-		cpg_debug_error("Could not find state `%s' for link", !fromobj ? from : to);
-
-		g_free(from);
-		g_free(to);
-		g_free(id);
-
-		return NULL;
-	}
-	
-	CpgLink *link = cpg_link_new(id, fromobj, toobj);
-	
-	// read properties
-	read_properties((CpgObject *)link, f);
-
-	// read expressions
-	read_expressions(link, f);
-	
-	g_free(from);
-	g_free(to);
-	g_free(id);
-	
-	return (CpgObject *)link;
-}
-
-static void
-skip_until_separator(FILE *f)
-{
-	gchar *buffer;
-	gint nl = 0;
-	
-	while ((buffer = read_line(f)))
-	{
-		if (*buffer == '\0')
-			++nl;
-		else
-			nl = 0;
-		
-		g_free(buffer);
-		
-		if (nl == 2)
-			break;
-	}
-}
-
-static void
-set_context(CpgNetwork *network, 
-		    CpgObject  *first, 
-			CpgObject  *second)
-{
-	g_slist_nth(network->priv->context, 0)->data = first;
-	g_slist_nth(network->priv->context, 1)->data = second;
+	g_slist_nth (network->priv->context, 0)->data = first;
+	g_slist_nth (network->priv->context, 1)->data = second;
 }
 
 static gboolean
-parse_expressions(CpgNetwork *network, 
-				  CpgObject  *object)
+parse_expressions (CpgNetwork  *network,
+                   CpgObject   *object)
 {
-	set_context(network, object, CPG_IS_LINK(object) ? cpg_link_get_from(CPG_LINK(object)) : NULL);
+	set_context (network, object, CPG_IS_LINK (object) ? cpg_link_get_from (CPG_LINK (object)) : NULL);
 	
 	// Parse all property value expressions
-	GSList *properties = cpg_object_get_properties(object);
+	GSList *properties = cpg_object_get_properties (object);
 	
 	while (properties)
 	{
 		CpgProperty *property = (CpgProperty *)properties->data;
 		gchar *error;
 
-		if (!cpg_expression_compile(cpg_property_get_value_expression(property), network->priv->context, &error))
+		if (!cpg_expression_compile (cpg_property_get_value_expression (property), network->priv->context, &error))
 		{
-			cpg_debug_error("Error while parsing expression: %s for [%s].%s", error, cpg_object_get_id(object), cpg_property_get_name(property));
-			g_free(error);
+			cpg_debug_error ("Error while parsing expression: %s for [%s].%s", error, cpg_object_get_id (object), cpg_property_get_name (property));
+			g_free (error);
 			return FALSE;
 		}
 		
-		properties = g_slist_next(properties);
+		properties = g_slist_next (properties);
 	}
 	
-	cpg_object_reset(object);
+	cpg_object_reset (object);
 	
-	if (!CPG_IS_LINK(object))
+	if (!CPG_IS_LINK (object))
 		return TRUE;
 
 	// Parse all link expressions	
-	CpgLink *link = CPG_LINK(object);	
-	GSList *actions = cpg_link_get_actions(link);
+	CpgLink *link = CPG_LINK (object);	
+	GSList *actions = cpg_link_get_actions (link);
 	
 	while (actions)
 	{
 		CpgLinkAction *action = (CpgLinkAction *)actions->data;
 		gchar *error;
 		
-		if (!cpg_expression_compile(cpg_link_action_get_expression(action), network->priv->context, &error))
+		if (!cpg_expression_compile (cpg_link_action_get_expression (action), network->priv->context, &error))
 		{
-			cpg_debug_error("Error while parsing expression: %s for [%s]", error, cpg_object_get_id(object));
-			g_free(error);
+			cpg_debug_error ("Error while parsing expression: %s for [%s]", error, cpg_object_get_id (object));
+			g_free (error);
 			return FALSE;
 		}
 		
-		actions = g_slist_next(actions);
+		actions = g_slist_next (actions);
 	}
 	
 	return TRUE;
 }
 
 static void
-add_state(CpgNetwork *network, 
+add_state (CpgNetwork *network, 
 		  gpointer    state)
 {
-	network->priv->states = g_slist_append(network->priv->states, g_object_ref(state));
+	network->priv->states = g_slist_append (network->priv->states, g_object_ref (state));
 }
 
 static void
-add_link(CpgNetwork *network, 
-		 gpointer    link)
+add_link (CpgNetwork  *network,
+          gpointer     link)
 {
-	network->priv->links = g_slist_append(network->priv->links, g_object_ref(link));
+	network->priv->links = g_slist_append (network->priv->links, g_object_ref (link));
 }
 
 /**
@@ -452,85 +217,62 @@ add_link(CpgNetwork *network,
  *
  */
 void
-cpg_network_add_object(CpgNetwork *network, 
-					   CpgObject  *object)
+cpg_network_add_object (CpgNetwork  *network,
+                        CpgObject   *object)
 {
-	g_return_if_fail(CPG_IS_NETWORK(network));
-	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (CPG_IS_OBJECT (object));
 
 	// add object to the network
-	if (CPG_IS_LINK(object))
-		add_link(network, object);
-	else if (CPG_IS_STATE(object) || CPG_IS_RELAY(object))
-		add_state(network, object);
+	if (CPG_IS_LINK (object))
+		add_link (network, object);
+	else if (CPG_IS_STATE (object) || CPG_IS_RELAY (object))
+		add_state (network, object);
 	else
 		return;
 	
-	g_signal_connect_swapped(object, "tainted", G_CALLBACK(cpg_network_taint), network);
+	g_signal_connect_swapped (object, "tainted", G_CALLBACK (cpg_network_taint), network);
 	network->priv->compiled = FALSE;
 }
 
-static gboolean
-read_object(CpgNetwork *network, 
-			FILE       *f)
-{
-	gchar *buffer;
-	
-	// skip empty lines
-	while ((buffer = read_line(f)) && !*buffer)
-		g_free(buffer);
-	
-	CpgObject *object = NULL;
-	
-	if (!buffer)
-		return feof(f); // return TRUE if end of file, cause that's ok
-
-	// read in type of object	
-	if (strcmp(buffer, "state") == 0)
-		object = read_state(network, f);
-	else if (strcmp(buffer, "relay") == 0)
-		object = read_relay(network, f);
-	else if (strcmp(buffer, "link") == 0)
-		object = read_link(network, f);
-	else
-		skip_until_separator(f);
-	
-	g_free(buffer);
-
-	if (object)
-		cpg_network_add_object(network, object);
-	
-	return TRUE;
-}
-
 static CpgObject *
-get_object_from_list(GSList      *objects,
-					 gchar const *id)
+get_object_from_list (GSList       *objects,
+                      gchar const  *id)
 {
 	while (objects)
 	{
-		if (strcmp(cpg_object_get_id(CPG_OBJECT(objects->data)), id) == 0)
-			return CPG_OBJECT(objects->data);
+		if (strcmp (cpg_object_get_id (CPG_OBJECT (objects->data)), id) == 0)
+			return CPG_OBJECT (objects->data);
 
-		objects = g_slist_next(objects);
+		objects = g_slist_next (objects);
 	}
 	
 	return NULL;
 }
 
+/**
+ * cpg_network_get_object:
+ * @network: the #CpgNetwork
+ * @id: the object id
+ *
+ * Find object @id in @network
+ *
+ * Return value: a #CpgObject or %NULL if there is no object with id @id
+ *
+ **/
 CpgObject *
-cpg_network_get_object(CpgNetwork  *network, 
-					   gchar const *id)
+cpg_network_get_object (CpgNetwork   *network,
+                        gchar const  *id)
 {
-	g_return_val_if_fail(CPG_IS_NETWORK(network), NULL);
-	g_return_val_if_fail(id != NULL, NULL);
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (id != NULL, NULL);
 	
 	CpgObject *ret;
 	
-	if ((ret = get_object_from_list(network->priv->states, id)))
+	if ((ret = get_object_from_list (network->priv->states, id)))
 		return ret;
 
-	if ((ret = get_object_from_list(network->priv->links, id)))
+	if ((ret = get_object_from_list (network->priv->links, id)))
 		return ret;
 
 	return NULL;
@@ -539,7 +281,6 @@ cpg_network_get_object(CpgNetwork  *network,
 /**
  * cpg_network_get_states:
  * @network: the #CpgNetwork
- * @size: return value for the size of the list of states
  *
  * Retrieves the list of states. This list is managed internally by the network
  * and should therefore not be changed or freed
@@ -548,9 +289,9 @@ cpg_network_get_object(CpgNetwork  *network,
  *
  **/
 GSList *
-cpg_network_get_states(CpgNetwork *network)
+cpg_network_get_states (CpgNetwork *network)
 {
-	g_return_val_if_fail(CPG_IS_NETWORK(network), NULL);
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 	
 	return network->priv->states;
 }
@@ -567,9 +308,9 @@ cpg_network_get_states(CpgNetwork *network)
  *
  **/
 GSList *
-cpg_network_get_links(CpgNetwork *network)
+cpg_network_get_links (CpgNetwork *network)
 {
-	g_return_val_if_fail(CPG_IS_NETWORK(network), NULL);
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 
 	return network->priv->links;
 }
@@ -584,9 +325,9 @@ cpg_network_get_links(CpgNetwork *network)
  *
  **/
 void
-cpg_network_taint(CpgNetwork *network)
+cpg_network_taint (CpgNetwork *network)
 {
-	g_return_if_fail(CPG_IS_NETWORK(network));
+	g_return_if_fail (CPG_IS_NETWORK (network));
 
 	network->priv->compiled = FALSE;
 }
@@ -603,28 +344,28 @@ cpg_network_taint(CpgNetwork *network)
  *
  **/
 gboolean
-cpg_network_compile(CpgNetwork *network)
+cpg_network_compile (CpgNetwork *network)
 {
-	g_return_val_if_fail(CPG_IS_NETWORK(network), FALSE);
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	
 	network->priv->compiled = FALSE;
 	
 	GSList *item;
 	
-	for (item = network->priv->states; item; item = g_slist_next(item))
+	for (item = network->priv->states; item; item = g_slist_next (item))
 	{
-		if (!parse_expressions(network, CPG_OBJECT(item->data)))
+		if (!parse_expressions (network, CPG_OBJECT (item->data)))
 			return FALSE;
 	}
 	
-	for (item = network->priv->links; item; item = g_slist_next(item))
+	for (item = network->priv->links; item; item = g_slist_next (item))
 	{
-		if (!parse_expressions(network, CPG_OBJECT(item->data)))
+		if (!parse_expressions (network, CPG_OBJECT (item->data)))
 			return FALSE;
 	}
 	
 	network->priv->compiled = TRUE;
-	cpg_network_reset(network);
+	cpg_network_reset (network);
 
 	return TRUE;
 }
@@ -640,53 +381,35 @@ cpg_network_compile(CpgNetwork *network)
  *
  **/
 CpgNetwork *
-cpg_network_new_from_file(gchar const *filename)
+cpg_network_new_from_file (gchar const *filename)
 {
-	g_return_val_if_fail(filename != NULL, NULL);
+	g_return_val_if_fail (filename != NULL, NULL);
 
-	FILE *f = fopen(filename, "r");
+	CpgNetwork *network = cpg_network_new ();
+	network->priv->filename = strdup (filename);
 	
-	if (!f)
+	if (!cpg_network_reader_xml (network, filename))
 	{
-		cpg_debug_error("Could not open network file: %s", strerror(errno));
-		return NULL;
+		cpg_debug_error ("Could not read network from xml file: %s", filename);
+		
+		g_object_unref (network);
+		network = NULL;
 	}
-
-	CpgNetwork *network = cpg_network_new();
-
-	network->priv->filename = strdup(filename);
-	
-	// read in headers
-	read_headers(network, f);
-	
-	// rest of the file consists of objects
-	while (!feof(f))
+	else if (!cpg_network_compile (network))
 	{
-		// read object
-		if (!read_object(network, f))
-		{
-			g_object_unref(network);
-			fclose(f);
-			return NULL;
-		}
-	}
-	
-	fclose(f);
-	
-	if (!cpg_network_compile(network))
-	{
-		g_object_unref(network);
-		return NULL;
+		g_object_unref (network);
+		network = NULL;
 	}
 	
 	return network;
 }
 
 static void
-remove_object(CpgObject *object, CpgNetwork *network)
+remove_object (CpgObject   *object,
+               CpgNetwork  *network)
 {
-	g_signal_handlers_disconnect_by_func(object, G_CALLBACK(cpg_network_taint), network);
-	g_object_unref(object);	
+	g_signal_handlers_disconnect_by_func (object, G_CALLBACK (cpg_network_taint), network);
+	g_object_unref (object);	
 }
 
 /**
@@ -698,18 +421,18 @@ remove_object(CpgObject *object, CpgNetwork *network)
  *
  **/
 void
-cpg_network_remove_object(CpgNetwork *network, 
-						  CpgObject  *object)
+cpg_network_remove_object (CpgNetwork  *network,
+                           CpgObject   *object)
 {
-	g_return_if_fail(CPG_IS_NETWORK(network));
-	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (CPG_IS_OBJECT (object));
 
-	remove_object(object, network);
+	remove_object (object, network);
 
-	if (CPG_IS_LINK(object))
-		network->priv->links = g_slist_remove(network->priv->links, object);
+	if (CPG_IS_LINK (object))
+		network->priv->links = g_slist_remove (network->priv->links, object);
 	else
-		network->priv->states = g_slist_remove(network->priv->states, object);
+		network->priv->states = g_slist_remove (network->priv->states, object);
 }
 
 /**
@@ -720,16 +443,16 @@ cpg_network_remove_object(CpgNetwork *network,
  *
  **/
 void
-cpg_network_clear(CpgNetwork *network)
+cpg_network_clear (CpgNetwork *network)
 {
-	g_return_if_fail(CPG_IS_NETWORK(network));
+	g_return_if_fail (CPG_IS_NETWORK (network));
 
 	// remove all states
-	g_slist_foreach(network->priv->states, (GFunc)remove_object, network);
-	g_slist_foreach(network->priv->links, (GFunc)remove_object, network);
+	g_slist_foreach (network->priv->states, (GFunc)remove_object, network);
+	g_slist_foreach (network->priv->links, (GFunc)remove_object, network);
 	
-	g_slist_free(network->priv->states);
-	g_slist_free(network->priv->links);
+	g_slist_free (network->priv->states);
+	g_slist_free (network->priv->links);
 	
 	network->priv->states = NULL;
 	network->priv->links = NULL;
@@ -737,43 +460,43 @@ cpg_network_clear(CpgNetwork *network)
 
 /* simulation functions */
 static void
-evaluate_objects(CpgNetwork *network,
-				 GType       type)
+evaluate_objects (CpgNetwork  *network,
+                  GType        type)
 {
 	GSList *item;
 	
-	for (item = network->priv->states; item; item = g_slist_next(item))
+	for (item = network->priv->states; item; item = g_slist_next (item))
 	{
-		CpgObject *obj = CPG_OBJECT(item->data);
+		CpgObject *obj = CPG_OBJECT (item->data);
 		
-		if (g_type_is_a(G_TYPE_FROM_INSTANCE(obj), type))
-			cpg_object_evaluate(obj, network->priv->timestep);
+		if (g_type_is_a (G_TYPE_FROM_INSTANCE (obj), type))
+			cpg_object_evaluate (obj, network->priv->timestep);
 	}
 }
 
 static void
-simulation_evaluate_relays(CpgNetwork *network)
+simulation_evaluate_relays (CpgNetwork *network)
 {
-	evaluate_objects(network, CPG_TYPE_RELAY);
+	evaluate_objects (network, CPG_TYPE_RELAY);
 }
 
 static void
-simulation_evaluate_states(CpgNetwork *network)
+simulation_evaluate_states (CpgNetwork *network)
 {
-	evaluate_objects(network, CPG_TYPE_STATE);
+	evaluate_objects (network, CPG_TYPE_STATE);
 }
 
 static void
-simulation_update(CpgNetwork *network)
+simulation_update (CpgNetwork *network)
 {
 	GSList *item;
 	
 	/* update all objects */
-	for (item = network->priv->states; item; item = g_slist_next(item))
-		cpg_object_update(CPG_OBJECT(item->data), network->priv->timestep);
+	for (item = network->priv->states; item; item = g_slist_next (item))
+		cpg_object_update (CPG_OBJECT (item->data), network->priv->timestep);
 	
-	for (item = network->priv->links; item; item = g_slist_next(item))
-		cpg_object_update(CPG_OBJECT(item->data), network->priv->timestep);
+	for (item = network->priv->links; item; item = g_slist_next (item))
+		cpg_object_update (CPG_OBJECT (item->data), network->priv->timestep);
 }
 
 /**
@@ -785,31 +508,31 @@ simulation_update(CpgNetwork *network)
  *
  **/
 void
-cpg_network_step(CpgNetwork *network, 
-				 gdouble     timestep)
+cpg_network_step (CpgNetwork  *network,
+                  gdouble      timestep)
 {
-	g_return_if_fail(CPG_IS_NETWORK(network));
-	g_return_if_fail(timestep > 0);
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (timestep > 0);
 
 	if (!network->priv->compiled)
-		cpg_network_compile(network);
+		cpg_network_compile (network);
 
-	g_signal_emit(network, network_signals[UPDATE], 0, timestep);
+	g_signal_emit (network, network_signals[UPDATE], 0, timestep);
 
 	network->priv->timestep = timestep;
-	cpg_property_set_value(network->priv->timestepprop, timestep);
+	cpg_property_set_value (network->priv->timestepprop, timestep);
 	
-	cpg_debug_evaluate("Simulation step");
+	cpg_debug_evaluate ("Simulation step");
 	
 	// first evaluate all the relays
-	simulation_evaluate_relays(network);
+	simulation_evaluate_relays (network);
 	
 	// then evaluate the network
-	simulation_evaluate_states(network);
-	simulation_update(network);
+	simulation_evaluate_states (network);
+	simulation_update (network);
 	
 	network->priv->time += timestep;
-	cpg_property_set_value(network->priv->timeprop, network->priv->time);
+	cpg_property_set_value (network->priv->timeprop, network->priv->time);
 }
 
 /**
@@ -824,24 +547,24 @@ cpg_network_step(CpgNetwork *network,
  *
  **/
 void
-cpg_network_run(CpgNetwork *network, 
-				gdouble     from, 
-				gdouble     timestep, 
-				gdouble     to)
+cpg_network_run (CpgNetwork  *network,
+                 gdouble      from,
+                 gdouble      timestep,
+                 gdouble      to)
 {
-	g_return_if_fail(CPG_IS_NETWORK(network));
-	g_return_if_fail(from < to);
-	g_return_if_fail(timestep > 0);
-	g_return_if_fail(to - (from + timestep) < to - from);
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (from < to);
+	g_return_if_fail (timestep > 0);
+	g_return_if_fail (to - (from + timestep) < to - from);
 
-	if (!network->priv->compiled && !cpg_network_compile(network))
+	if (!network->priv->compiled && !cpg_network_compile (network))
 		return;
 
 	network->priv->time = from;
-	cpg_property_set_value(network->priv->timeprop, network->priv->time);
+	cpg_property_set_value (network->priv->timeprop, network->priv->time);
 		
 	while (network->priv->time < to - 0.5 * timestep)
-		cpg_network_step(network, timestep);
+		cpg_network_step (network, timestep);
 }
 
 /**
@@ -854,39 +577,55 @@ cpg_network_run(CpgNetwork *network,
  *
  **/
 void
-cpg_network_reset(CpgNetwork *network)
+cpg_network_reset (CpgNetwork *network)
 {
-	g_return_if_fail(CPG_IS_NETWORK(network));
+	g_return_if_fail (CPG_IS_NETWORK (network));
 
 	// set time back to 0
 	network->priv->time = 0;
-	cpg_property_set_value(network->priv->timeprop, 0);
+	cpg_property_set_value (network->priv->timeprop, 0);
 	
 	// reset all objects
-	g_slist_foreach(network->priv->states, (GFunc)cpg_object_reset, NULL);
-	g_slist_foreach(network->priv->links, (GFunc)cpg_object_reset, NULL);
+	g_slist_foreach (network->priv->states, (GFunc)cpg_object_reset, NULL);
+	g_slist_foreach (network->priv->links, (GFunc)cpg_object_reset, NULL);
 
-	g_signal_emit(network, network_signals[RESET], 0);
+	g_signal_emit (network, network_signals[RESET], 0);
 }
 
 gboolean
-cpg_network_set_expression(CpgNetwork  *network, 
-					       CpgProperty *property, 
-					       gchar const *expression)
+cpg_network_set_expression (CpgNetwork   *network,
+                            CpgProperty  *property,
+                            gchar const  *expression)
 {
-	g_return_val_if_fail(CPG_IS_NETWORK(network), FALSE);
-	g_return_val_if_fail(property != NULL, FALSE);
-	g_return_val_if_fail(expression != NULL, FALSE);
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (property != NULL, FALSE);
+	g_return_val_if_fail (expression != NULL, FALSE);
 	
-	CpgObject *object = cpg_property_get_object(property);
+	CpgObject *object = cpg_property_get_object (property);
 	
-	if (CPG_IS_LINK(object))
-		set_context(network, object, cpg_link_get_from(CPG_LINK(object)));
+	if (CPG_IS_LINK (object))
+		set_context (network, object, cpg_link_get_from (CPG_LINK (object)));
 	else
-		set_context(network, object, NULL);
+		set_context (network, object, NULL);
 
-	CpgExpression *expr = cpg_property_get_value_expression(property);
-	cpg_expression_set_from_string(expr, expression);
+	CpgExpression *expr = cpg_property_get_value_expression (property);
+	cpg_expression_set_from_string (expr, expression);
 	
-	return cpg_expression_compile(expr, network->priv->context, NULL);
+	return cpg_expression_compile (expr, network->priv->context, NULL);
+}
+
+gdouble          
+cpg_network_get_time (CpgNetwork  *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), 0);
+	
+	return network->priv->time;
+}
+
+gdouble          
+cpg_network_get_timestep (CpgNetwork  *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), 0);
+	
+	return network->priv->timestep;
 }

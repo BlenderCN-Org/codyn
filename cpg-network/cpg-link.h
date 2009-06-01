@@ -40,9 +40,13 @@ CpgLink 		 *cpg_link_new 					 (gchar const   *id,
 CpgObject		 *cpg_link_get_from				 (CpgLink       *link);
 CpgObject		 *cpg_link_get_to				 (CpgLink       *link);
 
-void 			  cpg_link_add_action			 (CpgLink       *link, 
+CpgLinkAction    *cpg_link_add_action			 (CpgLink       *link, 
 												  CpgProperty   *target, 
 												  gchar const   *expression);
+
+void			  cpg_link_remove_action		(CpgLink        *link,
+                                                 CpgProperty    *target);
+
 GSList			 *cpg_link_get_actions			 (CpgLink       *link);
 
 CpgExpression	 *cpg_link_action_get_expression (CpgLinkAction *action);

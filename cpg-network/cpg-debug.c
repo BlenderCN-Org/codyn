@@ -20,25 +20,28 @@ char const *debug_types[] =
 int debug_type = CPG_DEBUG_TYPE_ERROR;
 
 void
-cpg_debug_add(CpgDebugType type)
+cpg_debug_add (CpgDebugType type)
 {
 	debug_type |= type;
 }
 
 #ifndef RTLINUX
 void
-cpg_debug_message_function(CpgDebugType type, char const *function, char const *format, ...)
+cpg_debug_message_function (CpgDebugType  type, 
+                            char const   *function, 
+                            char const   *format, 
+                            ...)
 {
 	if (!(type & debug_type))
 		return;
 
 	va_list ap;
-	va_start(ap, format);
+	va_start (ap, format);
 
-	fprintf(stderr, " ** DEBUG %s in %s: ", debug_types[type], function);
-	vfprintf(stderr, format, ap);
-	fprintf(stderr, "\n");
+	fprintf (stderr, " ** DEBUG %s in %s: ", debug_types[type], function);
+	vfprintf (stderr, format, ap);
+	fprintf (stderr, "\n");
 		
-	va_end(ap);
+	va_end (ap);
 }
 #endif

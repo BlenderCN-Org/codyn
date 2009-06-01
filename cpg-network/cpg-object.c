@@ -9,7 +9,7 @@
 
 #include "cpg-debug.h"
 
-#define CPG_OBJECT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OBJECT, CpgObjectPrivate))
+#define CPG_OBJECT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_OBJECT, CpgObjectPrivate))
 
 struct _CpgObjectPrivate
 {
@@ -38,51 +38,54 @@ enum
 	NUM_SIGNALS
 };
 
-G_DEFINE_TYPE(CpgObject, cpg_object, G_TYPE_OBJECT)
+G_DEFINE_TYPE (CpgObject, cpg_object, G_TYPE_OBJECT)
 
 static guint object_signals[NUM_SIGNALS] = {0,};
 
 static void
-cpg_object_finalize(GObject *object)
+cpg_object_finalize (GObject *object)
 {
-	CpgObject *obj = CPG_OBJECT(object);
+	CpgObject *obj = CPG_OBJECT (object);
 	
-	g_slist_foreach(obj->priv->properties, (GFunc)cpg_ref_counted_unref, NULL);
-	g_slist_free(obj->priv->properties);
+	g_slist_foreach (obj->priv->properties, (GFunc)cpg_ref_counted_unref, NULL);
+	g_slist_free (obj->priv->properties);
 
-	g_slist_free(obj->priv->links);
-	g_slist_free(obj->priv->actors);
+	g_slist_free (obj->priv->links);
+	g_slist_free (obj->priv->actors);
 	
-	g_free(obj->priv->id);
+	g_free (obj->priv->id);
 		
-	G_OBJECT_CLASS(cpg_object_parent_class)->finalize(object);
+	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
 
 /* interface implementations */
 static void
-property_reset(CpgProperty *property, gpointer data)
+property_reset (CpgProperty *property, gpointer data)
 {
-	cpg_expression_reset(cpg_property_get_value_expression(property));
+	cpg_expression_reset (cpg_property_get_value_expression (property));
 }
 
 static void
-cpg_object_reset_impl(CpgObject *object)
+cpg_object_reset_impl (CpgObject *object)
 {
-	g_slist_foreach(object->priv->properties, (GFunc)property_reset, NULL);
+	g_slist_foreach (object->priv->properties, (GFunc)property_reset, NULL);
 }
 
 static void
-get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+get_property (GObject     *object,
+              guint        prop_id,
+              GValue      *value,
+              GParamSpec  *pspec)
 {
-	CpgObject *obj = CPG_OBJECT(object);
+	CpgObject *obj = CPG_OBJECT (object);
 
 	switch (prop_id)
 	{
 		case PROP_ID:
-			g_value_set_string(value, obj->priv->id);
+			g_value_set_string (value, obj->priv->id);
 		break;
 		case PROP_LOCAL_ID:
-			g_value_take_string(value, cpg_object_get_local_id(obj));
+			g_value_take_string (value, cpg_object_get_local_id (obj));
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -91,16 +94,19 @@ get_property(GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
 }
 
 static void
-set_property(GObject *object, guint prop_id, GValue const *value, GParamSpec *pspec)
+set_property (GObject       *object,
+              guint          prop_id,
+              GValue const  *value,
+              GParamSpec    *pspec)
 {
-	CpgObject *obj = CPG_OBJECT(object);
+	CpgObject *obj = CPG_OBJECT (object);
 
 	switch (prop_id)
 	{
 		case PROP_ID:
 		{
-			g_free(obj->priv->id);
-			obj->priv->id = g_value_dup_string(value);
+			g_free (obj->priv->id);
+			obj->priv->id = g_value_dup_string (value);
 		}
 		break;
 		default:
@@ -110,46 +116,46 @@ set_property(GObject *object, guint prop_id, GValue const *value, GParamSpec *ps
 }
 
 static void
-link_destroyed(CpgObject *object,
-			   CpgLink   *link,
-			   gboolean   is_last_ref)
+link_destroyed (CpgObject  *object,
+                CpgLink    *link,
+                gboolean    is_last_ref)
 {
 	if (!is_last_ref)
 		return;
 
 	/* Remove link, actors and toggle ref */
-	object->priv->links = g_slist_remove(object->priv->links, link);
+	object->priv->links = g_slist_remove (object->priv->links, link);
 	
 	GSList *item;
 	
-	for (item = cpg_link_get_actions(link); item; item = g_slist_next(item))
+	for (item = cpg_link_get_actions (link); item; item = g_slist_next (item))
 	{
 		CpgLinkAction *action = (CpgLinkAction *)item->data;
-		object->priv->actors = g_slist_remove(object->priv->actors, cpg_link_action_get_target(action));
+		object->priv->actors = g_slist_remove (object->priv->actors, cpg_link_action_get_target (action));
 	}
 	
-	g_object_remove_toggle_ref(G_OBJECT(link), (GToggleNotify)link_destroyed, object);
+	g_object_remove_toggle_ref (G_OBJECT (link), (GToggleNotify)link_destroyed, object);
 }
 
 static void
-cpg_object_dispose(GObject *object)
+cpg_object_dispose (GObject *object)
 {
-	CpgObject *obj = CPG_OBJECT(object);
+	CpgObject *obj = CPG_OBJECT (object);
 	
 	/* Untoggle ref all links, because we need them destroyed! */
 	GSList *item;
-	GSList *copy = g_slist_copy(obj->priv->links);
+	GSList *copy = g_slist_copy (obj->priv->links);
 	
-	for (item = copy; item; item = g_slist_next(item))
-		link_destroyed(obj, CPG_LINK(item->data), TRUE);
+	for (item = copy; item; item = g_slist_next (item))
+		link_destroyed (obj, CPG_LINK (item->data), TRUE);
 	
-	g_slist_free(copy);
+	g_slist_free (copy);
 }
 
 static void
-cpg_object_class_init(CpgObjectClass *klass)
+cpg_object_class_init (CpgObjectClass *klass)
 {
-	GObjectClass *object_class = G_OBJECT_CLASS(klass);
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	object_class->finalize = cpg_object_finalize;
 	object_class->dispose = cpg_object_dispose;
@@ -158,53 +164,52 @@ cpg_object_class_init(CpgObjectClass *klass)
 
 	klass->reset = cpg_object_reset_impl;
 	
-	g_object_class_install_property(object_class, PROP_ID,
-				 g_param_spec_string("id",
+	g_object_class_install_property (object_class, PROP_ID,
+				 g_param_spec_string ("id",
 						      "ID",
 						      "The object's id",
 						      NULL,
-						      G_PARAM_READWRITE));
+						      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
-	g_object_class_install_property(object_class, PROP_LOCAL_ID,
-				 g_param_spec_string("local-id",
+	g_object_class_install_property (object_class, PROP_LOCAL_ID,
+				 g_param_spec_string ("local-id",
 						      "LOCAL_ID",
 						      "The object's local id",
 						      NULL,
 						      G_PARAM_READABLE));
 
 	object_signals[TAINTED] = 
-	   		g_signal_new("tainted",
-			      G_OBJECT_CLASS_TYPE(object_class),
+	   		g_signal_new ("tainted",
+			      G_OBJECT_CLASS_TYPE (object_class),
 			      G_SIGNAL_RUN_LAST,
-			      G_STRUCT_OFFSET(CpgObjectClass, tainted),
+			      G_STRUCT_OFFSET (CpgObjectClass, tainted),
 			      NULL, NULL,
 			      g_cclosure_marshal_VOID__VOID,
 			      G_TYPE_NONE,
 			      0);
 
-	g_type_class_add_private(object_class, sizeof(CpgObjectPrivate));
+	g_type_class_add_private (object_class, sizeof (CpgObjectPrivate));
 }
 
 static void
-cpg_object_init(CpgObject *self)
+cpg_object_init (CpgObject *self)
 {
-	self->priv = CPG_OBJECT_GET_PRIVATE(self);
+	self->priv = CPG_OBJECT_GET_PRIVATE (self);
 }
 
 /**
  * cpg_object_new:
+ * @id: the object id
  *
  * Creates a new #CpgObject.
- * @id: the object id
  *
  * Return value: the newly created #CpgObject
  *
  **/
-
 CpgObject *
-cpg_object_new(gchar const *id)
+cpg_object_new (gchar const *id)
 {
-	return g_object_new(CPG_TYPE_OBJECT, "id", id, NULL);
+	return g_object_new (CPG_TYPE_OBJECT, "id", id, NULL);
 }
 
 /**
@@ -222,35 +227,35 @@ cpg_object_new(gchar const *id)
  *
  **/
 CpgProperty *
-cpg_object_add_property(CpgObject   *object, 
-						gchar const *name, 
-						gchar const *expression, 
-						gboolean     integrated)
+cpg_object_add_property (CpgObject    *object,
+                         gchar const  *name,
+                         gchar const  *expression,
+                         gboolean      integrated)
 {
-	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
-	g_return_val_if_fail(name != NULL, NULL);
-	g_return_val_if_fail(expression != NULL, NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+	g_return_val_if_fail (expression != NULL, NULL);
 
-	CpgProperty *property = cpg_property_new(name, expression, integrated, object);
+	CpgProperty *property = cpg_property_new (name, expression, integrated, object);
 	
-	object->priv->properties = g_slist_append(object->priv->properties, property);	
+	object->priv->properties = g_slist_append (object->priv->properties, property);	
 	return property;
 }
 
 CpgProperty *
-cpg_object_get_property(CpgObject   *object, 
-						gchar const *name)
+cpg_object_get_property (CpgObject    *object,
+                         gchar const  *name)
 {
-	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
-	g_return_val_if_fail(name != NULL, NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
 
 	GSList *item;
 	
-	for (item = object->priv->properties; item; item = g_slist_next(item))
+	for (item = object->priv->properties; item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
 		
-		if (strcmp(cpg_property_get_name(property), name) == 0)
+		if (strcmp (cpg_property_get_name (property), name) == 0)
 			return property;
 	}
 	
@@ -258,74 +263,47 @@ cpg_object_get_property(CpgObject   *object,
 }
 
 gboolean
-cpg_object_has_property(CpgObject   *object,
-						gchar const *name)
+cpg_object_has_property (CpgObject    *object,
+                         gchar const  *name)
 {
-	g_return_val_if_fail(CPG_IS_OBJECT(object), FALSE);
-	g_return_val_if_fail(name != NULL, FALSE);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
 	
-	return cpg_object_get_property(object, name) != NULL;
+	return cpg_object_get_property (object, name) != NULL;
 }
 
 void
-cpg_object_remove_property(CpgObject   *object,
-						   gchar const *name)
+cpg_object_remove_property (CpgObject    *object,
+                            gchar const  *name)
 {
-	g_return_if_fail(CPG_IS_OBJECT(object));
-	g_return_if_fail(name != NULL);
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (name != NULL);
 	
-	CpgProperty *property = cpg_object_get_property(object, name);
+	CpgProperty *property = cpg_object_get_property (object, name);
 	
 	if (property)
 	{
-		object->priv->properties = g_slist_remove(object->priv->properties, property);
-		cpg_ref_counted_unref(property);
+		object->priv->properties = g_slist_remove (object->priv->properties, property);
+		cpg_ref_counted_unref (property);
 	}
-}
-
-GSList *
-cpg_object_get_properties(CpgObject *object)
-{
-	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
-
-	return object->priv->properties;
-}
-
-static void
-add_actor(CpgObject   *object, 
-		  CpgProperty *property)
-{
-	GSList *item;
-	
-	for (item = object->priv->actors; item; item = g_slist_next(item))
-		if ((CpgProperty *)item->data == property)
-			return;
-	
-	object->priv->actors = g_slist_append(object->priv->actors, property);
 }
 
 /**
- * _cpg_object_update_link:
- * @object: the #CpgObject
- * @link: the #CpgLink which links to this object
+ * cpg_object_get_properties:
+ * @object: a #CpgObject
  *
- * Registers new actors for the object
+ * Gets the object properties.
+ *
+ * Returns: a list of #CpgProperty. The list is owned by the object and should
+ *          not be freed.
  *
  **/
-void
-_cpg_object_update_link(CpgObject *object, 
-						CpgLink   *link)
+GSList *
+cpg_object_get_properties (CpgObject *object)
 {
-	g_return_if_fail(CPG_IS_OBJECT(object));
-	g_return_if_fail(CPG_IS_LINK(link));
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
-	GSList *actions = cpg_link_get_actions(link);
-	
-	while (actions)
-	{
-		add_actor(object, cpg_link_action_get_target((CpgLinkAction *)actions->data));
-		actions = g_slist_next(actions);
-	}
+	return object->priv->properties;
 }
 
 /**
@@ -334,31 +312,44 @@ _cpg_object_update_link(CpgObject *object,
  * @link: the #CpgLink which links to this object
  *
  * Adds @link as a link which targets the object (link will be evaluated in
- * #cpg_object_evaluate). If the link introduces new actors, they will be
- * automatically registered.
+ * #cpg_object_evaluate).
  *
  **/
 void
-_cpg_object_link(CpgObject *object, 
-				 CpgLink   *link)
+_cpg_object_link (CpgObject  *object,
+                  CpgLink    *link)
 {
-	g_return_if_fail(CPG_IS_OBJECT(object));
-	g_return_if_fail(CPG_IS_LINK(link));
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (CPG_IS_LINK (link));
 	
-	object->priv->links = g_slist_append(object->priv->links, link);
+	object->priv->links = g_slist_append (object->priv->links, link);
 	
-	g_object_add_toggle_ref(G_OBJECT(link), (GToggleNotify)link_destroyed, object);
-	
-	// register possible new actors
-	_cpg_object_update_link(object, link);
+	g_object_add_toggle_ref (G_OBJECT (link), (GToggleNotify)link_destroyed, object);
 }
 
 GSList *
-_cpg_object_get_actors(CpgObject *object)
+_cpg_object_get_actors (CpgObject *object)
 {
-	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	
-	return object->priv->actors;
+	GSList *ret = NULL;
+	GSList *item;
+	
+	for (item = object->priv->links; item; item = g_slist_next (item))
+	{
+		GSList *action;
+		GSList *actions;
+		
+		actions = cpg_link_get_actions (CPG_LINK (item->data));
+		
+		for (action = actions; action; action = g_slist_next (action))
+		{
+			CpgLinkAction *a = (CpgLinkAction *)action->data;
+			ret = g_slist_prepend (ret, cpg_link_action_get_target (a));
+		}
+	}
+	
+	return g_slist_reverse (ret);
 }
 
 /**
@@ -371,14 +362,14 @@ _cpg_object_get_actors(CpgObject *object)
  *
  **/
 void
-cpg_object_update(CpgObject *object, 
-				  gdouble    timestep)
+cpg_object_update (CpgObject  *object,
+                   gdouble     timestep)
 {
-	g_return_if_fail(CPG_IS_OBJECT(object));
-	g_return_if_fail(timestep <= 0);
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (timestep <= 0);
 
-	if (CPG_OBJECT_GET_CLASS(object)->update)
-		CPG_OBJECT_GET_CLASS(object)->update(object, timestep);
+	if (CPG_OBJECT_GET_CLASS (object)->update)
+		CPG_OBJECT_GET_CLASS (object)->update (object, timestep);
 }
 
 /**
@@ -390,14 +381,14 @@ cpg_object_update(CpgObject *object,
  *
  **/
 void
-cpg_object_evaluate(CpgObject *object, 
-					gdouble    timestep)
+cpg_object_evaluate (CpgObject  *object,
+                     gdouble     timestep)
 {
-	g_return_if_fail(CPG_IS_OBJECT(object));
-	g_return_if_fail(timestep <= 0);
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (timestep <= 0);
 
-	if (CPG_OBJECT_GET_CLASS(object)->evaluate)
-		CPG_OBJECT_GET_CLASS(object)->evaluate(object, timestep);
+	if (CPG_OBJECT_GET_CLASS (object)->evaluate)
+		CPG_OBJECT_GET_CLASS (object)->evaluate (object, timestep);
 }
 
 /**
@@ -408,64 +399,65 @@ cpg_object_evaluate(CpgObject *object,
  *
  **/
 void
-cpg_object_reset(CpgObject *object)
+cpg_object_reset (CpgObject *object)
 {
-	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail (CPG_IS_OBJECT (object));
 
-	if (CPG_OBJECT_GET_CLASS(object)->reset)
-		CPG_OBJECT_GET_CLASS(object)->reset(object);
+	if (CPG_OBJECT_GET_CLASS (object)->reset)
+		CPG_OBJECT_GET_CLASS (object)->reset (object);
 }
 
 gchar const *
-cpg_object_get_id(CpgObject *object)
+cpg_object_get_id (CpgObject *object)
 {
-	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
 	return object->priv->id;
 }
 
 gchar *
-cpg_object_get_local_id(CpgObject *object)
+cpg_object_get_local_id (CpgObject *object)
 {
-	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
 	if (!object->priv->id)
 		return NULL;
 
-	gchar *last = strrchr(object->priv->id, '.');
+	gchar *last = strrchr (object->priv->id, '.');
 	
 	if (!last)
-		return g_strdup(object->priv->id);
+		return g_strdup (object->priv->id);
 	else
-		return g_strdup(last + 1);
+		return g_strdup (last + 1);
 }
 
 GSList *
-_cpg_object_get_links(CpgObject *object)
+_cpg_object_get_links (CpgObject *object)
 {
-	g_return_val_if_fail(CPG_IS_OBJECT(object), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	
 	return object->priv->links;
 }
 
 static void
-property_reset_cache(CpgProperty *property, gpointer data)
+property_reset_cache (CpgProperty  *property,
+                      gpointer      data)
 {
-	cpg_expression_reset_cache(cpg_property_get_value_expression(property));
+	cpg_expression_reset_cache (cpg_property_get_value_expression (property));
 }
 
 void
-cpg_object_reset_cache(CpgObject *object)
+cpg_object_reset_cache (CpgObject *object)
 {
-	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail (CPG_IS_OBJECT (object));
 	
-	g_slist_foreach(object->priv->properties, (GFunc)property_reset_cache, NULL);
+	g_slist_foreach (object->priv->properties, (GFunc)property_reset_cache, NULL);
 }
 
 void
-cpg_object_taint(CpgObject *object)
+cpg_object_taint (CpgObject *object)
 {
-	g_return_if_fail(CPG_IS_OBJECT(object));
+	g_return_if_fail (CPG_IS_OBJECT (object));
 	
-	g_signal_emit(object, object_signals[TAINTED], 0);
+	g_signal_emit (object, object_signals[TAINTED], 0);
 }

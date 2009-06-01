@@ -77,6 +77,9 @@ void			  cpg_network_step				(CpgNetwork *network,
 												 gdouble	 timestep);
 void			  cpg_network_reset				(CpgNetwork *network);
 
+gdouble           cpg_network_get_time          (CpgNetwork *network);
+gdouble           cpg_network_get_timestep      (CpgNetwork *network);
+
 G_END_DECLS
 
 #endif /* __CPG_NETWORK_H__ */
