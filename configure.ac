@@ -11,6 +11,10 @@ AM_PROG_CC_STDC
 AC_HEADER_STDC
 AM_PROG_LIBTOOL
 
+GTK_DOC_CHECK(1.9)
+
+AM_MAINTAINER_MODE
+
 AC_PROG_INSTALL
 AC_PROG_MAKE_SET
 
@@ -86,6 +90,7 @@ dnl ================================================================
 PKG_CHECK_MODULES(CPG_NETWORK, [
 	glib-2.0
 	gobject-2.0
+	libxml-2.0
 ])
 GEDIT_LIBS="${CPG_NETWORK_LIBS}"
 AC_SUBST(CPG_NETWORK_LIBS)
@@ -101,5 +106,7 @@ cpg-network-rt.pc
 cpg-network-webots.pc
 cpg-network/Makefile
 cpg-network-webots/Makefile
+docs/Makefile
+docs/reference/Makefile
 tests/Makefile
 )
