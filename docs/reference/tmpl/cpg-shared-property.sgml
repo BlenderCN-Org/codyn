@@ -1,0 +1,39 @@
+<!-- ##### SECTION Title ##### -->
+cpg-shared-property
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### FUNCTION cpg_shared_property_value ##### -->
+<para>
+
+</para>
+
+@property: 
+@base: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_shared_property_set_value ##### -->
+<para>
+
+</para>
+
+@property: 
+@value: 
+@base: 
+
+

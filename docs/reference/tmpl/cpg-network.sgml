@@ -1,0 +1,178 @@
+<!-- ##### SECTION Title ##### -->
+CpgNetwork
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT CpgNetwork ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL CpgNetwork::reset ##### -->
+<para>
+
+</para>
+
+@cpgnetwork: the object which received the signal.
+
+<!-- ##### SIGNAL CpgNetwork::update ##### -->
+<para>
+
+</para>
+
+@cpgnetwork: the object which received the signal.
+@arg1: 
+
+<!-- ##### FUNCTION cpg_network_new_from_file ##### -->
+<para>
+
+</para>
+
+@filename: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_clear ##### -->
+<para>
+
+</para>
+
+@network: 
+
+
+<!-- ##### FUNCTION cpg_network_get_object ##### -->
+<para>
+
+</para>
+
+@network: 
+@id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_set_expression ##### -->
+<para>
+
+</para>
+
+@network: 
+@property: 
+@expression: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_add_object ##### -->
+<para>
+
+</para>
+
+@network: 
+@object: 
+
+
+<!-- ##### FUNCTION cpg_network_remove_object ##### -->
+<para>
+
+</para>
+
+@network: 
+@object: 
+
+
+<!-- ##### FUNCTION cpg_network_compile ##### -->
+<para>
+
+</para>
+
+@network: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_taint ##### -->
+<para>
+
+</para>
+
+@network: 
+
+
+<!-- ##### FUNCTION cpg_network_get_states ##### -->
+<para>
+
+</para>
+
+@network: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_get_links ##### -->
+<para>
+
+</para>
+
+@network: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_add_monitor ##### -->
+<para>
+
+</para>
+
+@network: 
+@object: 
+@propname: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_run ##### -->
+<para>
+
+</para>
+
+@network: 
+@from: 
+@timestep: 
+@to: 
+
+
+<!-- ##### FUNCTION cpg_network_step ##### -->
+<para>
+
+</para>
+
+@network: 
+@timestep: 
+
+
+<!-- ##### FUNCTION cpg_network_reset ##### -->
+<para>
+
+</para>
+
+@network: 
+
+

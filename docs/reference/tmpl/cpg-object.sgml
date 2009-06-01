@@ -1,0 +1,161 @@
+<!-- ##### SECTION Title ##### -->
+CpgObject
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT CpgObject ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL CpgObject::tainted ##### -->
+<para>
+
+</para>
+
+@cpgobject: the object which received the signal.
+
+<!-- ##### ARG CpgObject:id ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG CpgObject:local-id ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION cpg_object_new ##### -->
+<para>
+
+</para>
+
+@id: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_get_id ##### -->
+<para>
+
+</para>
+
+@object: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_get_local_id ##### -->
+<para>
+
+</para>
+
+@object: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_add_property ##### -->
+<para>
+
+</para>
+
+@object: 
+@name: 
+@expression: 
+@integrated: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_get_property ##### -->
+<para>
+
+</para>
+
+@object: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_has_property ##### -->
+<para>
+
+</para>
+
+@object: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_remove_property ##### -->
+<para>
+
+</para>
+
+@object: 
+@name: 
+
+
+<!-- ##### FUNCTION cpg_object_get_properties ##### -->
+<para>
+
+</para>
+
+@object: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_reset ##### -->
+<para>
+
+</para>
+
+@object: 
+
+
+<!-- ##### FUNCTION cpg_object_update ##### -->
+<para>
+
+</para>
+
+@object: 
+@timestep: 
+
+
+<!-- ##### FUNCTION cpg_object_evaluate ##### -->
+<para>
+
+</para>
+
+@object: 
+@timestep: 
+
+
+<!-- ##### FUNCTION cpg_object_reset_cache ##### -->
+<para>
+
+</para>
+
+@object: 
+
+
+<!-- ##### FUNCTION cpg_object_taint ##### -->
+<para>
+
+</para>
+
+@object: 
+
+

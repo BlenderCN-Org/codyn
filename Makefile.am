@@ -1,4 +1,4 @@
-SUBDIRS = cpg-network tests
+SUBDIRS = cpg-network tests docs
 
 if ENABLE_WEBOTS
 SUBDIRS += cpg-network-webots
@@ -39,7 +39,7 @@ if ENABLE_WEBOTS
 EXTRA_DIST += cpg-network-webots.pc.in
 endif
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-threads --enable-rt
+DISTCHECK_CONFIGURE_FLAGS = --disable-threads --enable-rt --enable-gtk-doc
 
 CLEANFILES = 	\
 	$(pkgconfig_DATA)

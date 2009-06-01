@@ -1,0 +1,65 @@
+<!-- ##### SECTION Title ##### -->
+CpgMonitor
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT CpgMonitor ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION cpg_monitor_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_monitor_new ##### -->
+<para>
+
+</para>
+
+@network: 
+@object: 
+@property_name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_monitor_get_data ##### -->
+<para>
+
+</para>
+
+@monitor: 
+@size: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_monitor_get_data_resampled ##### -->
+<para>
+
+</para>
+
+@monitor: 
+@sites: 
+@size: 
+@Returns: 
+
+

@@ -1,0 +1,132 @@
+<!-- ##### SECTION Title ##### -->
+CpgExpression
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### ENUM CpgExpressionFlag ##### -->
+<para>
+
+</para>
+
+@CPG_EXPRESSION_FLAG_NONE: 
+@CPG_EXPRESSION_FLAG_CACHED: 
+@CPG_EXPRESSION_FLAG_INSTANT: 
+
+<!-- ##### STRUCT CpgExpression ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION cpg_expression_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_expression_new ##### -->
+<para>
+
+</para>
+
+@expression: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_expression_get_dependencies ##### -->
+<para>
+
+</para>
+
+@expression: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_expression_get_as_string ##### -->
+<para>
+
+</para>
+
+@expression: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_expression_compile ##### -->
+<para>
+
+</para>
+
+@expression: 
+@context: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_expression_get_instructions ##### -->
+<para>
+
+</para>
+
+@expression: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_expression_evaluate ##### -->
+<para>
+
+</para>
+
+@expression: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_expression_set_value ##### -->
+<para>
+
+</para>
+
+@expression: 
+@value: 
+
+
+<!-- ##### FUNCTION cpg_expression_reset ##### -->
+<para>
+
+</para>
+
+@expression: 
+
+
+<!-- ##### FUNCTION cpg_expression_set_from_string ##### -->
+<para>
+
+</para>
+
+@expression: 
+@value: 
+
+
+<!-- ##### FUNCTION cpg_expression_reset_cache ##### -->
+<para>
+
+</para>
+
+@expression: 
+
+

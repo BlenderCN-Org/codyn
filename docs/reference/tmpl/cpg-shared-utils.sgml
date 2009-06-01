@@ -1,0 +1,91 @@
+<!-- ##### SECTION Title ##### -->
+cpg-shared-utils
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### TYPEDEF CpgSharedPointer ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO cpg_shared_pointer_type ##### -->
+<para>
+
+</para>
+
+@value: 
+@Type: 
+
+
+<!-- ##### MACRO cpg_shared_pointer_base_type ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+@Type: 
+
+
+<!-- ##### MACRO cpg_shared_array_base_type ##### -->
+<para>
+
+</para>
+
+@base: 
+@first: 
+@index: 
+@Type: 
+
+
+<!-- ##### MACRO CPG_SHARED_OBJECT ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+
+
+<!-- ##### MACRO CPG_SHARED_LINK ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+
+
+<!-- ##### MACRO CPG_SHARED_PROPERTY ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+
+
+<!-- ##### MACRO CPG_SHARED_EXPRESSION ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+
+

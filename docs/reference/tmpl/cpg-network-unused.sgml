@@ -1,0 +1,65 @@
+<!-- ##### MACRO CPG_LINK_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+<!-- ##### MACRO CPG_NETWORK_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+<!-- ##### MACRO CPG_OBJECT_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+<!-- ##### MACRO CPG_RELAY_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+<!-- ##### MACRO CPG_STATE_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+<!-- ##### STRUCT CpgLinkPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgNetworkPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgObjectPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgRelayPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgStatePrivate ##### -->
+<para>
+
+</para>
+
+

@@ -1,0 +1,38 @@
+<!-- ##### SECTION Title ##### -->
+cpg-types
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT CpgInstruction ##### -->
+<para>
+
+</para>
+
+@type: 
+@next: 
+
+<!-- ##### ENUM CpgInstructionType ##### -->
+<para>
+
+</para>
+
+@CPG_INSTRUCTION_TYPE_NONE: 
+@CPG_INSTRUCTION_TYPE_FUNCTION: 
+@CPG_INSTRUCTION_TYPE_NUMBER: 
+@CPG_INSTRUCTION_TYPE_OPERATOR: 
+@CPG_INSTRUCTION_TYPE_PROPERTY: 
+

@@ -1,0 +1,99 @@
+<!-- ##### SECTION Title ##### -->
+cpg-stack
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### FUNCTION cpg_stack_new ##### -->
+<para>
+
+</para>
+
+@size: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_stack_init ##### -->
+<para>
+
+</para>
+
+@stack: 
+@size: 
+
+
+<!-- ##### FUNCTION cpg_stack_destroy ##### -->
+<para>
+
+</para>
+
+@stack: 
+
+
+<!-- ##### FUNCTION cpg_stack_free ##### -->
+<para>
+
+</para>
+
+@stack: 
+
+
+<!-- ##### FUNCTION cpg_stack_size ##### -->
+<para>
+
+</para>
+
+@stack: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_stack_count ##### -->
+<para>
+
+</para>
+
+@stack: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_stack_push ##### -->
+<para>
+
+</para>
+
+@stack: 
+@value: 
+@data: 
+
+
+<!-- ##### FUNCTION cpg_stack_pop ##### -->
+<para>
+
+</para>
+
+@stack: 
+@data: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_stack_reset ##### -->
+<para>
+
+</para>
+
+@stack: 
+
+

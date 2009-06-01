@@ -1,0 +1,43 @@
+<!-- ##### SECTION Title ##### -->
+cpg-shared-network
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### FUNCTION cpg_shared_network_simulation_step ##### -->
+<para>
+
+</para>
+
+@network: 
+@timestep: 
+@base: 
+
+
+<!-- ##### FUNCTION cpg_shared_network_simulation_run ##### -->
+<para>
+
+</para>
+
+@network: 
+@from: 
+@timestep: 
+@to: 
+@base: 
+
+
