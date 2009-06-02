@@ -40,7 +40,11 @@ struct _CpgNetworkClass {
 GType cpg_network_get_type (void) G_GNUC_CONST;
 
 CpgNetwork 		 *cpg_network_new_from_file		(gchar const *filename);
+CpgNetwork 		 *cpg_network_new_from_xml		(gchar const *xml);
 CpgNetwork		 *cpg_network_new				(void);
+
+void              cpg_network_merge             (CpgNetwork *network,
+                                                 CpgNetwork *other);
 
 void			  cpg_network_clear				(CpgNetwork *network);
 

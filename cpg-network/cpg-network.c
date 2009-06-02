@@ -770,3 +770,19 @@ cpg_network_get_timestep (CpgNetwork  *network)
 	
 	return network->priv->timestep;
 }
+
+void             
+cpg_network_merge (CpgNetwork  *network,
+                   CpgNetwork  *other)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (CPG_IS_NETWORK (other));
+	
+	GSList *item;
+	
+	for (item = other->priv->states; item; item = g_slist_next (item))
+		cpg_network_add_object (network, CPG_OBJECT (item->data));
+
+	for (item = other->priv->links; item; item = g_slist_next (item))
+		cpg_network_add_object (network, CPG_OBJECT (item->data));
+}
