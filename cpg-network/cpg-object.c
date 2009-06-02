@@ -374,7 +374,7 @@ cpg_object_update (CpgObject  *object,
                    gdouble     timestep)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (timestep <= 0);
+	g_return_if_fail (timestep > 0);
 
 	if (CPG_OBJECT_GET_CLASS (object)->update)
 		CPG_OBJECT_GET_CLASS (object)->update (object, timestep);
@@ -393,7 +393,7 @@ cpg_object_evaluate (CpgObject  *object,
                      gdouble     timestep)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (timestep <= 0);
+	g_return_if_fail (timestep > 0);
 
 	if (CPG_OBJECT_GET_CLASS (object)->evaluate)
 		CPG_OBJECT_GET_CLASS (object)->evaluate (object, timestep);
