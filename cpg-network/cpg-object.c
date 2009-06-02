@@ -60,7 +60,8 @@ cpg_object_finalize (GObject *object)
 
 /* interface implementations */
 static void
-property_reset (CpgProperty *property, gpointer data)
+property_reset (CpgProperty  *property,
+                gpointer      data)
 {
 	cpg_expression_reset (cpg_property_get_value_expression (property));
 }
@@ -69,6 +70,14 @@ static void
 cpg_object_reset_impl (CpgObject *object)
 {
 	g_slist_foreach (object->priv->properties, (GFunc)property_reset, NULL);
+}
+
+static void
+set_id (CpgObject   *object,
+        gchar const *id)
+{
+	g_free (object->priv->id);
+	object->priv->id = g_strdup (id);
 }
 
 static void
@@ -105,8 +114,7 @@ set_property (GObject       *object,
 	{
 		case PROP_ID:
 		{
-			g_free (obj->priv->id);
-			obj->priv->id = g_value_dup_string (value);
+			set_id (obj, g_value_get_string (value));
 		}
 		break;
 		default:
@@ -407,12 +415,39 @@ cpg_object_reset (CpgObject *object)
 		CPG_OBJECT_GET_CLASS (object)->reset (object);
 }
 
+/**
+ * cpg_object_get_id:
+ * @object: a #CpgObject
+ *
+ * Gets the object id
+ *
+ * Returns: the object id
+ **/
 gchar const *
 cpg_object_get_id (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
 	return object->priv->id;
+}
+
+/**
+ * cpg_object_set_id:
+ * @object: a #CpgObject
+ * @id: the new object id
+ *
+ * Sets the object id
+ *
+ **/
+void 
+cpg_object_set_id (CpgObject    *object,
+                   gchar const  *id)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (id != NULL);
+	
+	set_id (object, id);	
+	g_object_notify (G_OBJECT (object), "id");
 }
 
 gchar *

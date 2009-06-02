@@ -43,6 +43,8 @@ GType cpg_object_get_type (void) G_GNUC_CONST;
 CpgObject *cpg_object_new (gchar const *id);
 
 gchar const 	 *cpg_object_get_id			(CpgObject   *object);
+void              cpg_object_set_id			(CpgObject   *object,
+                                             gchar const *id);
 gchar 			 *cpg_object_get_local_id	(CpgObject   *object);
 
 CpgProperty 	 *cpg_object_add_property	(CpgObject   *object, 
