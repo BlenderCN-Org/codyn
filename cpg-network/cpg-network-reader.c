@@ -343,3 +343,18 @@ reader_xml (CpgNetwork *network,
 	xmlFreeDoc (doc);
 	return ret;
 }
+
+gboolean
+cpg_network_reader_xml (CpgNetwork  *network,
+                        gchar const *filename)
+{
+	return reader_xml (network, xmlParseFile (filename));
+}
+
+gboolean
+cpg_network_reader_xml_string (CpgNetwork  *network,
+                               gchar const *xml)
+{
+	return reader_xml (network, xmlParseDoc ((xmlChar *)xml));
+}
+
