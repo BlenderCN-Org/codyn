@@ -45,9 +45,6 @@ cpg_monitor_free_data (CpgMonitor *monitor)
 static void
 cpg_monitor_free (CpgMonitor *monitor)
 {
-	if (monitor->object)
-		g_object_unref (monitor->object);
-	
 	cpg_ref_counted_unref (monitor->property);
 	
 	if (monitor->network)
