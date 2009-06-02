@@ -86,7 +86,11 @@ cpg_monitor_update (CpgMonitor  *monitor,
 		cpg_monitor_grow (monitor);
 	
 	monitor->values[monitor->num_values] = cpg_property_get_value (monitor->property);
-	monitor->sites[monitor->num_values++] = cpg_network_get_time (network);
+	
+	gdouble time;
+	g_object_get (G_OBJECT (network), "time", &time, NULL);
+	
+	monitor->sites[monitor->num_values++] = time;
 }
 
 CpgMonitor *
