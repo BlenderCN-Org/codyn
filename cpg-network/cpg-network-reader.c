@@ -280,30 +280,37 @@ parse_network (xmlDocPtr   doc,
                CpgNetwork *network)
 {
 	GList *item;
+	gboolean ret = TRUE;
 	
 	for (item = nodes; item; item = g_list_next (item))
 	{
 		xmlNodePtr node = (xmlNodePtr)item->data;
-			
+		
 		if (g_strcmp0 ((gchar const *)node->name, "state") == 0)
 		{
-			new_object (CPG_TYPE_STATE, node, network);
+			ret = new_object (CPG_TYPE_STATE, node, network);
 		}
 		else if (g_strcmp0 ((gchar const *)node->name, "relay") == 0)
 		{
-			new_object (CPG_TYPE_RELAY, node, network);
+			ret = new_object (CPG_TYPE_RELAY, node, network);
 		}
 		else if (g_strcmp0 ((gchar const *)node->name, "link") == 0)
 		{
-			parse_link (doc, node, network);
+			ret = parse_link (doc, node, network);
 		}
 		else
 		{
 			cpg_debug_error ("Unknown element: %s", node->name);
+			ret = FALSE;
+		}
+		
+		if (!ret)
+		{
+			break;
 		}
 	}
 	
-	return TRUE;
+	return ret;
 }
 
 gboolean
@@ -319,12 +326,10 @@ parse_objects (xmlDocPtr    doc,
 	                  network);
 }
 
-gboolean
-cpg_network_reader_xml (CpgNetwork  *network,
-                        gchar const *filename)
+static gboolean
+reader_xml (CpgNetwork *network,
+            xmlDocPtr   doc)
 {
-	xmlDocPtr doc = xmlParseFile (filename);
-	
 	if (!doc)
 	{
 		cpg_debug_error ("Could not open network file: %s", strerror (errno));
