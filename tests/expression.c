@@ -12,15 +12,14 @@ expression_initialize_context(gchar const *exp, CpgObject *context)
 {
 	expression = cpg_expression_new(exp);
 	
-	gchar *error;
 	GSList *ctx = g_slist_append(NULL, context);
 
-	gboolean ret = cpg_expression_compile(expression, ctx, &error);
+	gboolean ret = cpg_expression_compile(expression, ctx, NULL);
 	g_slist_free(ctx);
 	
 	if (!ret)
 	{
-		fprintf(stderr, "Could not parse expression: %s\n", error);
+		fprintf(stderr, "Could not parse expression: %s\n", exp);
 		exit(1);
 	}
 }

@@ -50,7 +50,6 @@ print_link (CpgLink *link)
 		                          cpg_property_get_name (prop),
 		                          cpg_expression_get_as_string (expr));
 		
-		g_printf ("\n");
 		actions = g_slist_next (actions);
 	}
 }
@@ -75,6 +74,23 @@ main (int argc, char *argv[])
 		return 1;
 	}
 	
+	CpgCompileError *error = cpg_compile_error_new ();
+	
+	if (!cpg_network_compile (network, error))
+	{
+		GError *gerror = *cpg_compile_error_get_error (error);
+		
+		g_printf ("** Compile error in network: %s, %s", 
+		          cpg_compile_error_string (error),
+		          gerror->message);
+
+		cpg_ref_counted_unref (error);
+		g_object_unref (network);
+		return 1;
+	}
+	
+	cpg_ref_counted_unref (error);
+	
 	GSList *states = cpg_network_get_states (network);
 	GSList *links = cpg_network_get_links (network);
 	
@@ -94,6 +110,35 @@ main (int argc, char *argv[])
 	{
 		print_link (CPG_LINK (item->data));
 	}
+	
+	g_printf ("\n\e[1mRunning network for 0.1s...\e[0m\n");
+	
+	CpgMonitor *monitor;
+	monitor = cpg_monitor_new (network, 
+	                           cpg_network_get_object (network, "state"),
+	                           "x");
+
+	cpg_network_run (network, 0, 0.01, 0.1);
+	
+	guint size;
+	double const *data = cpg_monitor_get_data (monitor, &size);
+	
+	g_printf ("Monitor on x(%d): [", size);
+	guint i;
+	
+	for (i = 0; i < size; ++i)
+	{
+		if (i != 0)
+			g_printf (", ");
+			
+		g_printf ("%.3f", data[i]);
+	}
+	
+	g_printf ("]\n");
+	
+	cpg_ref_counted_unref (monitor);
+	
+	g_printf ("\n");
 	
 	g_object_unref (network);
 	

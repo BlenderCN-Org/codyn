@@ -16,15 +16,16 @@ COMMON_SOURCES = 		\
 	cpg-math.c \
 	cpg-debug.c \
 	cpg-stack.c \
-	cpg-network-reader.c
+	cpg-network-reader.c \
+	cpg-enum-types.c \
+	cpg-compile-error.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-network-reader.h \
 	cpg-math.h
 
-lib_LTLIBRARIES = libcpg-network-1.0.la
-libcpg_network_headers = \
+INST_H_FILES = \
 	cpg-network.h \
 	cpg-object.h \
 	cpg-state.h \
@@ -37,7 +38,20 @@ libcpg_network_headers = \
 	cpg-stack.h \
 	cpg-debug.h \
 	cpg-types.h \
-	cpg-monitor.h
+	cpg-monitor.h \
+	cpg-compile-error.h
+	
+lib_LTLIBRARIES = libcpg-network-1.0.la
+
+libcpg_network_headers = \
+	$(INST_H_FILES) \
+	cpg-enum-types.h
+
+cpg-enum-types.h: cpg-enum-types.h.template $(INST_H_FILES) $(GLIB_MKENUMS)
+	(cd $(srcdir) && $(GLIB_MKENUMS) --template cpg-enum-types.h.template $(INST_H_FILES)) > $@
+	
+cpg-enum-types.c: cpg-enum-types.c.template $(INST_H_FILES) $(GLIB_MKENUMS)
+	(cd $(srcdir) && $(GLIB_MKENUMS) --template cpg-enum-types.c.template $(INST_H_FILES)) > $@
 
 libcpg_network_1_0_la_CFLAGS = -D_GNU_SOURCE -Wall -Werror $(CPG_NETWORK_CFLAGS)
 libcpg_network_1_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS)
@@ -80,4 +94,8 @@ libcpg_network_rt_1_0_include_HEADERS = \
 	cpg-debug.h
 endif
 
-EXTRA_DIST = $(NOINST_H_FILES) $(sharedinc_DATA)
+EXTRA_DIST = \
+	$(NOINST_H_FILES) \
+	$(sharedinc_DATA) \
+	cpg-enum-types.c.template \
+	cpg-enum-types.h.template

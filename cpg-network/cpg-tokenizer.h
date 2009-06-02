@@ -1,6 +1,8 @@
 #ifndef __CPG_TOKENIZER_H__
 #define __CPG_TOKENIZER_H__
 
+#include <glib.h>
+
 #define CPG_TOKEN_IS_NUMBER(x) (x->type == CPG_TOKEN_TYPE_NUMBER)
 #define CPG_TOKEN_IS_IDENTIFIER(x) (x->type == CPG_TOKEN_TYPE_IDENTIFIER)
 #define CPG_TOKEN_IS_OPERATOR(x) (x->type == CPG_TOKEN_TYPE_OPERATOR)
@@ -63,30 +65,31 @@ typedef enum
 typedef struct
 {
 	CpgTokenType type;
+	gchar *text;
 } CpgToken;
 
 typedef struct
 {
 	CpgToken parent;
-	double value;
+	gdouble value;
 } CpgTokenNumber;
 
 typedef struct
 {
 	CpgToken parent;
-	char *identifier;
+	gchar *identifier;
 } CpgTokenIdentifier;
 
 typedef struct
 {
 	CpgToken parent;
 	CpgTokenOperatorType type;
-	int priority;
-	int left_assoc;
+	gint priority;
+	gint left_assoc;
 } CpgTokenOperator;
 
-CpgToken *cpg_tokenizer_next(char const **buffer);
-CpgToken *cpg_tokenizer_peek(char const *buffer);
+CpgToken *cpg_tokenizer_next(gchar const **buffer);
+CpgToken *cpg_tokenizer_peek(gchar const *buffer);
 
 void cpg_token_free(CpgToken *token);
 

@@ -2,13 +2,16 @@
 <cpg xmlns:cpg="http://birg.epfl.ch/cpg">
   <network>
     <state id="state">
-      <property name="x" integrated="true">0</property>
+      <property name="x" integrated="true">0.1</property>
       <property name="y" integrated="true">0</property>
       <property name="g_x">1</property>
       <property name="g_y">1</property>
+      <property name="w">1</property>
+      <property name="u">1</property>
     </state>
     <link id="link" from="state" to="state">
-      <action target="x" />
+      <property name="r">x * x + y * y</property>
+      <action target="x">g_x * (u * u - r * r) * x + w * y</action>
       <action target="y">g_y * (u * u - r * r) * y - w * x</action>
     </link>
   </network>

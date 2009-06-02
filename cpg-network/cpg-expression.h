@@ -4,13 +4,6 @@
 #include <stdio.h>
 #include <glib-object.h>
 
-typedef enum
-{
-	CPG_EXPRESSION_FLAG_NONE = 0,
-	CPG_EXPRESSION_FLAG_CACHED = 1 << 0,
-	CPG_EXPRESSION_FLAG_INSTANT = 1 << 1
-} CpgExpressionFlag;
-
 typedef struct _CpgExpression 		CpgExpression;
 
 GType			  cpg_expression_get_type			(void);
@@ -20,7 +13,7 @@ GSList		 	 *cpg_expression_get_dependencies	(CpgExpression  *expression);
 gchar const		 *cpg_expression_get_as_string		(CpgExpression  *expression);
 gint			  cpg_expression_compile			(CpgExpression  *expression, 
 													 GSList         *context, 
-													 gchar         **error);
+													 GError        **error);
 
 GSList 			 *cpg_expression_get_instructions	(CpgExpression  *expression);
 

@@ -51,7 +51,7 @@ static OperatorProperties operator_properties[] =
 static void
 skip_whitespace (gchar const **buffer)
 {
-	while (isspace (**buffer))
+	while (g_ascii_isspace (**buffer))
 		++*buffer;
 }
 
@@ -69,29 +69,26 @@ cpg_tokenizer_parse_number (gchar const **buffer)
 	// parse leading numbers
 	gchar const *start = *buffer;
 	
-	while (isdigit (*(++*buffer)))
+	while (g_ascii_isdigit (*(++*buffer)))
 	;
 	
 	if (**buffer == '.')
 	{
-		while (isdigit (*(++*buffer)))
+		while (g_ascii_isdigit (*(++*buffer)))
 		;
 	}
 	
-	CpgTokenNumber *res = g_new (CpgTokenNumber, 1);
+	CpgTokenNumber *res = g_slice_new (CpgTokenNumber);
 	res->parent.type = CPG_TOKEN_TYPE_NUMBER;
 
-	gchar *ptr = g_strndup ((gchar *)start, *buffer - start);
-	
-	res->value = atof (ptr);
+	res->parent.text = g_strndup ((gchar *)start, *buffer - start);
+	res->value = g_ascii_strtod (res->parent.text, NULL);
 	
 	if (*start == '.')
 	{
 		while (res->value > 0)
 			res->value = res->value / 10.0;
 	}
-	
-	g_free (ptr);
 	
 	return (CpgToken *)res;
 }
@@ -105,10 +102,11 @@ cpg_tokenizer_parse_identifier (gchar const **buffer)
 	while (isalnum (*(++*buffer)) || **buffer == '_')
 	;
 	
-	CpgTokenIdentifier *res = g_new (CpgTokenIdentifier, 1);
+	CpgTokenIdentifier *res = g_slice_new (CpgTokenIdentifier);
 	res->parent.type = CPG_TOKEN_TYPE_IDENTIFIER;
-	
-	res->identifier = strndup (start, *buffer - start);
+	res->parent.text = g_strndup (start, *buffer - start);
+	res->identifier = res->parent.text;
+
 	return (CpgToken *)res;
 }
 
@@ -148,6 +146,8 @@ cpg_tokenizer_parse_operator (gchar const **buffer)
 	gint c = **buffer;
 	gint n = buffer_peek (*buffer, 1);
 	CpgTokenOperatorType type = CPG_TOKEN_OPERATOR_TYPE_NONE;
+
+	gchar const *start = *buffer;
 	
 	// skip buffer 2 places to handle double char operators, then when it
 	// is not a double char, shift buffer one back, its the easiest way
@@ -220,8 +220,10 @@ cpg_tokenizer_parse_operator (gchar const **buffer)
 	if (type == CPG_TOKEN_OPERATOR_TYPE_NONE)
 		return NULL;
 	
-	CpgTokenOperator *res = g_new (CpgTokenOperator, 1);
+	CpgTokenOperator *res = g_slice_new0 (CpgTokenOperator);
 	res->parent.type = CPG_TOKEN_TYPE_OPERATOR;
+	res->parent.text = g_strndup (start, *buffer - start);
+	
 	res->type = type;
 	res->priority = operator_properties[type].priority;
 	res->left_assoc = operator_properties[type].left_assoc;
@@ -273,15 +275,21 @@ cpg_token_free (CpgToken *token)
 {
 	if (!token)
 		return;
+	
+	g_free (token->text);
 
 	switch (token->type)
 	{
 		case CPG_TOKEN_TYPE_IDENTIFIER:
-			g_free (((CpgTokenIdentifier *)token)->identifier);
+			g_slice_free (CpgTokenIdentifier, (CpgTokenIdentifier *)token);
+		break;
+		case CPG_TOKEN_TYPE_NUMBER:
+			g_slice_free (CpgTokenNumber, (CpgTokenNumber *)token);
+		break;
+		case CPG_TOKEN_TYPE_OPERATOR:
+			g_slice_free (CpgTokenOperator, (CpgTokenOperator *)token);
 		break;
 		default:
 		break;
 	}
-
-	g_free (token);
 }

@@ -20,6 +20,8 @@ AC_PROG_MAKE_SET
 
 PKG_PROG_PKG_CONFIG
 
+AC_PATH_PROG(GLIB_MKENUMS, glib-mkenums)
+
 AC_ARG_ENABLE([rt],
 	AS_HELP_STRING([--enable-rt],[Enable building real time library (default: disabled)]),
 	[enable_rt=$enableval],

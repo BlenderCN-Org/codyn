@@ -9,6 +9,7 @@
 #include <cpg-network/cpg-link.h>
 #include <cpg-network/cpg-monitor.h>
 #include <cpg-network/shared/cpg-shared-network.h>
+#include <cpg-network/cpg-compile-error.h>
 
 G_BEGIN_DECLS
 
@@ -33,8 +34,9 @@ struct _CpgNetwork {
 struct _CpgNetworkClass {
 	GObjectClass parent_class;
 	
-	void (*reset)		(CpgNetwork *network);
-	void (*update)		(CpgNetwork *network, gdouble timestep);
+	void (*reset)			(CpgNetwork *network);
+	void (*update)			(CpgNetwork *network, gdouble timestep);
+	void (*compile_error)	(CpgNetwork *network, CpgCompileError *error);
 };
 
 GType cpg_network_get_type (void) G_GNUC_CONST;
@@ -61,16 +63,13 @@ void			  cpg_network_add_object		(CpgNetwork *network,
 void			  cpg_network_remove_object		(CpgNetwork *network, 
 												 CpgObject  *object);
 
-gboolean		  cpg_network_compile			(CpgNetwork *network);
+gboolean		  cpg_network_compile			(CpgNetwork      *network,
+                                                 CpgCompileError *error);
+
 void			  cpg_network_taint				(CpgNetwork *network);
 
 GSList			 *cpg_network_get_states		(CpgNetwork *network);
 GSList 			 *cpg_network_get_links			(CpgNetwork *network);
-
-/* monitor functions */
-CpgMonitor		 *cpg_network_add_monitor		(CpgNetwork  *network, 
-												 CpgObject   *object, 
-												 gchar const *propname);
 												 
 /* simulation functions */
 void			  cpg_network_run				(CpgNetwork *network, 
@@ -80,9 +79,6 @@ void			  cpg_network_run				(CpgNetwork *network,
 void			  cpg_network_step				(CpgNetwork *network, 
 												 gdouble	 timestep);
 void			  cpg_network_reset				(CpgNetwork *network);
-
-gdouble           cpg_network_get_time          (CpgNetwork *network);
-gdouble           cpg_network_get_timestep      (CpgNetwork *network);
 
 G_END_DECLS
 
