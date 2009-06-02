@@ -2,34 +2,14 @@
 <cpg xmlns:cpg="http://birg.epfl.ch/cpg">
   <network>
     <state id="state">
-      <property name="x1">1</property>
+      <property name="x" integrated="true">0</property>
+      <property name="y" integrated="true">0</property>
+      <property name="g_x">1</property>
+      <property name="g_y">1</property>
     </state>
-    <relay id="relay">
-      <property name="x2">2</property>
-    </relay>
-    <link id="link" from="state" to="relay">
-      <action target="x2">1</action>
-    </link>
-    <link id="link (1)" from="relay" to="state">
-      <action target="x1">1</action>
+    <link id="link" from="state" to="state">
+      <action target="x" />
+      <action target="y">g_y * (u * u - r * r) * y - w * x</action>
     </link>
   </network>
-  <project>
-    <zoom>50</zoom>
-    <allocation x="0" y="54" width="700" height="600" />
-    <canvas x="0" y="0">
-      <state id="state">
-        <allocation x="4" y="2" width="1" height="1" />
-      </state>
-      <relay id="relay">
-        <allocation x="6" y="2" width="1" height="1" />
-      </relay>
-      <link id="link">
-        <allocation x="0" y="0" width="1" height="1" />
-      </link>
-      <link id="link (1)">
-        <allocation x="0" y="0" width="1" height="1" />
-      </link>
-    </canvas>
-  </project>
 </cpg>
