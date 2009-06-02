@@ -153,27 +153,12 @@ cpg_instruction_free (CpgInstruction *instruction)
 static void
 instructions_free (CpgExpression *expression)
 {
-<<<<<<< HEAD:libcpg-network/cpg-network/cpg-expression.c
 	g_slist_foreach(expression->instructions, (GFunc)cpg_instruction_free, NULL);
 	g_slist_free(expression->instructions);
 
 	expression->instructions = NULL;
 
 	g_slist_free(expression->dependencies);
-=======
-	CpgInstruction *inst = expression->instructions;
-	
-	while (inst)
-	{
-		CpgInstruction *next = inst->next;
-		cpg_instruction_free (inst);
-		inst = next;
-	}
-	
-	expression->instructions = NULL;
-	
-	g_slist_free (expression->dependencies);
->>>>>>> Fixup indentation, reading from xml and CpgMonitor:libcpg-network/cpg-network/cpg-expression.c
 
 	// reset cached and instant flags
 	expression->flags = CPG_EXPRESSION_FLAG_NONE;
@@ -708,27 +693,6 @@ parse_expression (CpgExpression   *expression,
 	return ret;
 }
 
-<<<<<<< HEAD:libcpg-network/cpg-network/cpg-expression.c
-=======
-static void
-instructions_reverse (CpgExpression *expression)
-{
-	CpgInstruction *rev = NULL;
-	CpgInstruction *last = expression->instructions;
-	
-	while (last)
-	{
-		CpgInstruction *tmp = last->next;
-		last->next = rev;
-		
-		rev = last;
-		last = tmp;
-	}
-	
-	expression->instructions = rev;
-}
-
->>>>>>> Fixup indentation, reading from xml and CpgMonitor:libcpg-network/cpg-network/cpg-expression.c
 static gboolean
 validate_stack (CpgExpression *expression)
 {
