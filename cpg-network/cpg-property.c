@@ -9,6 +9,7 @@
 struct _CpgProperty
 {
 	CpgRefCounted parent;
+	guint use_count;
 	gchar *name;
 	
 	CpgExpression *value;
@@ -63,6 +64,7 @@ cpg_property_new (gchar const  *name,
 	
 	res->name = g_strdup (name);
 	res->object = object;
+	res->use_count = 0;
 
 	res->integrated = integrated;	
 	res->value = cpg_expression_new (expression);
@@ -165,4 +167,19 @@ void
 cpg_property_reset_cache (CpgProperty *property)
 {
 	cpg_expression_reset_cache (property->value);
+}
+
+void
+_cpg_property_use (CpgProperty *property)
+{
+	++(property->use_count);
+}
+
+gboolean
+_cpg_property_unuse (CpgProperty *property)
+{
+	if (property->use_count == 0)
+		return TRUE;	
+
+	return (--(property->use_count) == 0);
 }

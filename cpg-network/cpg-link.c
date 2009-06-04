@@ -36,6 +36,11 @@ cpg_link_action_free (CpgLinkAction *action)
 {
 	cpg_ref_counted_unref (action->expression);
 	
+	if (action->target)
+	{
+		_cpg_property_unuse (action->target);
+	}
+	
 	// do not free target, borrowed reference
 	g_slice_free (CpgLinkAction, action);
 }
@@ -224,6 +229,7 @@ cpg_link_add_action (CpgLink      *link,
 	
 	// target is a borrowed reference
 	action->target = target;
+	_cpg_property_use (target);
 	
 	link->priv->actions = g_slist_append (link->priv->actions, action);
 	
@@ -234,31 +240,32 @@ cpg_link_add_action (CpgLink      *link,
 /**
  * cpg_link_remove_action:
  * @link: the #CpgLink
- * @target: the target #CpgProperty
+ * @action: the #CpgLinkAction
  *
  * Removes an action from the link.
  *
+ * Returns: %TRUE if the action was successfully removed
+ *
  **/
-void
-cpg_link_remove_action (CpgLink      *link,
-                        CpgProperty  *target)
+gboolean
+cpg_link_remove_action (CpgLink       *link,
+                        CpgLinkAction *action)
 {
-	g_return_if_fail (CPG_IS_LINK (link));
-	g_return_if_fail (target != NULL);
+	g_return_val_if_fail (CPG_IS_LINK (link), FALSE);
+	g_return_val_if_fail (action != NULL, FALSE);
 
-	GSList *item;
+	GSList *item = g_slist_find (link->priv->actions, action);
 	
-	for (item = link->priv->actions; item; item = g_slist_next (item))
+	if (item != NULL)
 	{
-		CpgLinkAction *action = (CpgLinkAction *)item->data;
+		cpg_ref_counted_unref (action);
+		link->priv->actions = g_slist_remove_link (link->priv->actions, item);
 		
-		if (action->target == target)
-		{
-			cpg_ref_counted_unref (action);
-			link->priv->actions = g_slist_remove_link (link->priv->actions, item);
-
-			break;
-		}
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
 	}
 }
 

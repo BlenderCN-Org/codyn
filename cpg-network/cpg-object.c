@@ -42,12 +42,30 @@ G_DEFINE_TYPE (CpgObject, cpg_object, G_TYPE_OBJECT)
 
 static guint object_signals[NUM_SIGNALS] = {0,};
 
+GQuark 
+cpg_object_error_quark (void)
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+		quark = g_quark_from_static_string ("cpg_object_error");
+
+	return quark;
+}
+
+static void
+free_property (CpgProperty *property)
+{
+	_cpg_property_unuse (property);
+	cpg_ref_counted_unref (property);
+}
+
 static void
 cpg_object_finalize (GObject *object)
 {
 	CpgObject *obj = CPG_OBJECT (object);
 	
-	g_slist_foreach (obj->priv->properties, (GFunc)cpg_ref_counted_unref, NULL);
+	g_slist_foreach (obj->priv->properties, (GFunc)free_property, NULL);
 	g_slist_free (obj->priv->properties);
 
 	g_slist_free (obj->priv->links);
@@ -262,6 +280,7 @@ cpg_object_add_property (CpgObject    *object,
 	
 	object->priv->properties = g_slist_append (object->priv->properties, property);
 	
+	_cpg_property_use (property);
 	cpg_object_taint (object);
 	
 	return property;
@@ -297,22 +316,55 @@ cpg_object_has_property (CpgObject    *object,
 	return cpg_object_get_property (object, name) != NULL;
 }
 
-void
+gboolean
 cpg_object_remove_property (CpgObject    *object,
-                            gchar const  *name)
+                            gchar const  *name,
+                            GError      **error)
 {
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (name != NULL);
+	if (error)
+		*error = NULL;
+
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
 	
 	CpgProperty *property = cpg_object_get_property (object, name);
 	
 	if (property)
 	{
+		if (!_cpg_property_unuse (property))
+		{
+			if (error)
+			{
+				g_set_error (error,
+					         CPG_OBJECT_ERROR,
+					         CPG_OBJECT_ERROR_PROP_IN_USE,
+					         "Property %s is still in use and can not be removed",
+					         name);
+			}
+			
+			_cpg_property_use (property);
+			return FALSE;
+		}
+		
 		object->priv->properties = g_slist_remove (object->priv->properties, property);
 		cpg_ref_counted_unref (property);
-		
 		cpg_object_taint (object);
 	}
+	else
+	{
+		if (error)
+		{
+			g_set_error (error,
+			             CPG_OBJECT_ERROR,
+			             CPG_OBJECT_ERROR_PROP_NOT_FOUND,
+			             "Property %s could not be found for %s",
+			             name,
+			             cpg_object_get_id (object));
+		}
+		return FALSE;
+	}
+	
+	return TRUE;
 }
 
 /**

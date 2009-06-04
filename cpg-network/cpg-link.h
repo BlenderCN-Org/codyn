@@ -44,8 +44,8 @@ CpgLinkAction    *cpg_link_add_action			 (CpgLink       *link,
 												  CpgProperty   *target, 
 												  gchar const   *expression);
 
-void			  cpg_link_remove_action		(CpgLink        *link,
-                                                 CpgProperty    *target);
+gboolean		  cpg_link_remove_action		(CpgLink        *link,
+                                                 CpgLinkAction  *action);
 
 GSList			 *cpg_link_get_actions			 (CpgLink       *link);
 

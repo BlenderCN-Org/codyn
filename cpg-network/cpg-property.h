@@ -41,4 +41,7 @@ void			   _cpg_property_set_update				(CpgProperty	    *property,
 														 gdouble             value);
 gdouble			   _cpg_property_get_update				(CpgProperty	    *property);
 
+void 			   _cpg_property_use                    (CpgProperty        *property);
+gboolean           _cpg_property_unuse                  (CpgProperty        *property);
+
 #endif /* __CPG_PROPERTY_H__ */

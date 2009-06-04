@@ -152,6 +152,7 @@ cpg_instruction_property_new (CpgProperty *property)
 	res->parent.type = CPG_INSTRUCTION_TYPE_PROPERTY;
 	
 	res->property = property;
+	_cpg_property_use (property);
 	
 	return (CpgInstruction *)res;
 }
@@ -162,8 +163,12 @@ cpg_instruction_free (CpgInstruction *instruction)
 	switch (instruction->type)
 	{
 		case CPG_INSTRUCTION_TYPE_PROPERTY:
-			g_slice_free (CpgInstructionProperty, 
-			              (CpgInstructionProperty *)instruction);
+		{
+			CpgInstructionProperty *prop = (CpgInstructionProperty *)instruction;
+
+			_cpg_property_unuse (prop->property);
+			g_slice_free (CpgInstructionProperty, prop);
+		}
 		break;
 		case CPG_INSTRUCTION_TYPE_NUMBER:
 			g_slice_free (CpgInstructionNumber, 
@@ -267,10 +272,11 @@ parser_failed (ParserContext *context,
 			*context->error = NULL;
 		}
 		
-		g_set_error_literal (context->error, 
-		                     CPG_COMPILE_ERROR_TYPE,
-		                     code,
-		                     message);
+		g_set_error (context->error, 
+		             CPG_COMPILE_ERROR_TYPE,
+		             code,
+		             "%s",
+		             message);
 		g_free (message);
 	}
 	

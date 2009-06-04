@@ -6,6 +6,8 @@
 
 G_BEGIN_DECLS
 
+#define CPG_OBJECT_ERROR (cpg_object_error_quark ())
+
 #define CPG_TYPE_OBJECT				(cpg_object_get_type ())
 #define CPG_OBJECT(obj)				(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_OBJECT, CpgObject))
 #define CPG_OBJECT_CONST(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_OBJECT, CpgObject const))
@@ -19,6 +21,14 @@ typedef struct _CpgObjectClass		CpgObjectClass;
 typedef struct _CpgObjectPrivate	CpgObjectPrivate;
 
 struct _CpgLink;
+
+typedef enum
+{
+	CPG_OBJECT_ERROR_PROP_UNKNOWN,
+	CPG_OBJECT_ERROR_PROP_NOT_FOUND,
+	CPG_OBJECT_ERROR_PROP_IN_USE,
+	CPG_OBJECT_NUM_ERRORS
+} CpgObjectError;
 
 struct _CpgObject {
 	GObject parent;
@@ -41,6 +51,8 @@ struct _CpgObjectClass {
 	void (*reset_cache) (CpgObject *object);
 };
 
+GQuark cpg_object_error_quark (void);
+
 GType cpg_object_get_type (void) G_GNUC_CONST;
 CpgObject *cpg_object_new (gchar const *id);
 
@@ -57,8 +69,9 @@ CpgProperty 	 *cpg_object_get_property	(CpgObject   *object,
 											 gchar const *name);
 gboolean		  cpg_object_has_property   (CpgObject   *object,
 											 gchar const *name);
-void			  cpg_object_remove_property (CpgObject  *object,
-											  gchar const *name);
+gboolean		  cpg_object_remove_property (CpgObject    *object,
+											  gchar const  *name,
+											  GError      **error);
 
 GSList			*cpg_object_get_properties	(CpgObject   *object);
 
