@@ -49,6 +49,7 @@ struct _CpgNetworkPrivate
 	
 	/* context */
 	GSList *context;
+	
 	CpgObject *constants;
 	CpgProperty *timeprop;
 	CpgProperty *timestepprop;
@@ -620,6 +621,9 @@ cpg_network_compile (CpgNetwork      *network,
 			return FALSE;
 	}
 	
+	if (!parse_expressions (network, network->priv->constants, error))
+		return FALSE;
+	
 	set_compiled (network, TRUE);
 	cpg_network_reset (network);
 
@@ -788,6 +792,8 @@ reset_cache (CpgNetwork *network)
 {
 	g_slist_foreach (network->priv->states, (GFunc)cpg_object_reset_cache, NULL);
 	g_slist_foreach (network->priv->links, (GFunc)cpg_object_reset_cache, NULL);
+	
+	cpg_object_reset (network->priv->constants);
 }
 
 /**
@@ -915,6 +921,8 @@ cpg_network_reset (CpgNetwork *network)
 	// reset all objects
 	g_slist_foreach (network->priv->states, (GFunc)cpg_object_reset, NULL);
 	g_slist_foreach (network->priv->links, (GFunc)cpg_object_reset, NULL);
+	
+	cpg_object_reset (network->priv->constants);
 
 	g_signal_emit (network, network_signals[RESET], 0);
 }
