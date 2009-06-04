@@ -126,6 +126,7 @@ cpg_property_set_value_expression (CpgProperty  *property,
                                    gchar const  *expression)
 {
 	cpg_expression_set_from_string (property->value, expression);
+	cpg_object_taint (property->object);
 }
 
 gchar const *

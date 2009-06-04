@@ -96,6 +96,8 @@ cpg_link_set_property (GObject       *object,
 			{
 				_cpg_object_link (link->priv->to, link);
 			}
+			
+			cpg_object_taint (CPG_OBJECT (link));
 		}
 		break;
 		case PROP_FROM:
@@ -106,6 +108,7 @@ cpg_link_set_property (GObject       *object,
 			}
 			
 			link->priv->from = g_value_dup_object (value);
+			cpg_object_taint (CPG_OBJECT (link));
 		}
 		break;
 		default:
@@ -223,6 +226,8 @@ cpg_link_add_action (CpgLink      *link,
 	action->target = target;
 	
 	link->priv->actions = g_slist_append (link->priv->actions, action);
+	
+	cpg_object_taint (CPG_OBJECT (link));
 	return action;
 }
 

@@ -260,7 +260,10 @@ cpg_object_add_property (CpgObject    *object,
 
 	CpgProperty *property = cpg_property_new (name, expression, integrated, object);
 	
-	object->priv->properties = g_slist_append (object->priv->properties, property);	
+	object->priv->properties = g_slist_append (object->priv->properties, property);
+	
+	cpg_object_taint (object);
+	
 	return property;
 }
 
@@ -307,6 +310,8 @@ cpg_object_remove_property (CpgObject    *object,
 	{
 		object->priv->properties = g_slist_remove (object->priv->properties, property);
 		cpg_ref_counted_unref (property);
+		
+		cpg_object_taint (object);
 	}
 }
 
