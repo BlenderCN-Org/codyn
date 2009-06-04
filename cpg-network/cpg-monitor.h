@@ -17,9 +17,10 @@ CpgMonitor		 *cpg_monitor_new					 (struct _CpgNetwork *network,
 gdouble const 	 *cpg_monitor_get_data			 	 (CpgMonitor         *monitor,
 												 	  guint              *size);
 
-gdouble			 *cpg_monitor_get_data_resampled 	 (CpgMonitor         *monitor,
+gboolean		  cpg_monitor_get_data_resampled 	 (CpgMonitor         *monitor,
 												      gdouble const      *sites,
-												      guint               size);
+												      guint               size,
+												      gdouble            *ret);
 
 #endif /* __CPG_MONITOR_H__ */
 

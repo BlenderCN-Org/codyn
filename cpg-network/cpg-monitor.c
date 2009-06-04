@@ -5,6 +5,8 @@
 #include "cpg-network.h"
 #include "cpg-expression.h"
 
+#include <string.h>
+
 #define MONITOR_GROW_SIZE 1000
 
 enum
@@ -98,6 +100,10 @@ cpg_monitor_new (CpgNetwork   *network,
                  CpgObject    *object,
                  gchar const  *property_name)
 {
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_val_if_fail (property_name != NULL, NULL);
+	
 	CpgMonitor *monitor = g_slice_new0 (CpgMonitor);
 
 	cpg_ref_counted_init (monitor, (GDestroyNotify)cpg_monitor_free);
@@ -187,16 +193,19 @@ bsearch_find (gdouble const  *list,
  * should be freed when no longer used
  *
  **/
-gdouble	*
+gboolean
 cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
                                 gdouble const  *sites,
-                                guint           size)
+                                guint           size,
+                                gdouble        *ret)
 {
 	if (!sites || size == 0 || !monitor || !monitor->object || !monitor->property)
-		return NULL;
+	{
+		memset (ret, 0, sizeof (double) * size);
+		return FALSE;
+	}
 
 	gdouble const *data = monitor->values;
-	gdouble *ret = g_new0 (gdouble, size);
 	guint i;
 	
 	gdouble const *monsites = monitor->sites;
@@ -219,5 +228,5 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
 		}
 	}
 	
-	return ret;
+	return TRUE;
 }
