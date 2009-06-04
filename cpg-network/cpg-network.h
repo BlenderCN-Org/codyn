@@ -48,6 +48,8 @@ CpgNetwork		 *cpg_network_new				(void);
 void              cpg_network_merge             (CpgNetwork *network,
                                                  CpgNetwork *other);
 
+CpgObject 		 *cpg_network_get_globals       (CpgNetwork  *network);
+
 void			  cpg_network_clear				(CpgNetwork *network);
 
 CpgObject		 *cpg_network_get_object		(CpgNetwork *network, 

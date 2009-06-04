@@ -221,9 +221,14 @@ cpg_network_init (CpgNetwork *network)
 		network->priv->context = g_slist_prepend (network->priv->context, NULL);
 	}
 	
-	network->priv->constants = cpg_object_new (NULL);
+	network->priv->constants = cpg_object_new ("Globals");
 	network->priv->timeprop = cpg_object_add_property (network->priv->constants, "t", "0", 0);
 	network->priv->timestepprop = cpg_object_add_property (network->priv->constants, "dt", "0", 0);
+	
+	g_signal_connect_swapped (network->priv->constants, 
+	                          "tainted", 
+	                          G_CALLBACK (cpg_network_taint), 
+	                          network);
 	
 	g_slist_nth (network->priv->context, NUM_CONTEXT - 1)->data = network->priv->constants;
 }
@@ -963,4 +968,34 @@ cpg_network_merge (CpgNetwork  *network,
 
 	for (item = other->priv->links; item; item = g_slist_next (item))
 		cpg_network_add_object (network, CPG_OBJECT (item->data));
+}
+
+void
+cpg_network_set_global_constant (CpgNetwork   *network,
+                                 gchar const  *name,
+                                 gdouble       constant)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (name != NULL);
+	
+	CpgProperty *property = cpg_object_get_property (network->priv->constants,
+	                                                 name);
+
+	if (property == NULL)
+	{
+		property = cpg_object_add_property (network->priv->constants,
+		                                    name,
+		                                    "",
+		                                    FALSE);
+	}
+
+	cpg_property_set_value (property, constant);
+}
+
+CpgObject *
+cpg_network_get_globals (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	
+	return network->priv->constants;
 }

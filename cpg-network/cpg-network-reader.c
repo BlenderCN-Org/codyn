@@ -102,6 +102,19 @@ parse_properties (xmlDocPtr  doc,
 	return TRUE;
 }
 
+static gboolean
+parse_object_properties (CpgObject  *object,
+                         xmlNodePtr  node)
+{
+	if (!xml_xpath (node->doc, node, "property", XML_ELEMENT_NODE, (XPathResultFunc)parse_properties, object))
+	{
+		cpg_debug_error ("Could not parse object properties for: %s", cpg_object_get_id (object));
+		return FALSE;
+	}
+	
+	return TRUE;
+}
+
 static CpgObject *
 parse_object (GType      gtype,
               xmlNodePtr node)
@@ -118,10 +131,8 @@ parse_object (GType      gtype,
 	xmlFree (id);
 	
 	/* Parse properties */
-	if (!xml_xpath (node->doc, node, "property", XML_ELEMENT_NODE, (XPathResultFunc)parse_properties, obj))
+	if (!parse_object_properties (obj, node))
 	{
-		cpg_debug_error ("Could not parse object properties for: %s", cpg_object_get_id (obj));
-
 		g_object_unref (obj);
 		obj = NULL;
 	}
@@ -148,6 +159,15 @@ new_object (GType       gtype,
 	{
 		return FALSE;
 	}
+}
+
+static gboolean
+parse_globals (xmlDocPtr   doc,
+               xmlNodePtr  node,
+               CpgNetwork *network)
+{
+	return parse_object_properties (cpg_network_get_globals (network),
+	                                node);
 }
 
 static gboolean
@@ -297,6 +317,10 @@ parse_network (xmlDocPtr   doc,
 		else if (g_strcmp0 ((gchar const *)node->name, "link") == 0)
 		{
 			ret = parse_link (doc, node, network);
+		}
+		else if (g_strcmp0 ((gchar const *)node->name, "globals") == 0)
+		{
+			ret = parse_globals (doc, node, network);
 		}
 		else
 		{
