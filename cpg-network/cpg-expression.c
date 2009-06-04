@@ -192,6 +192,7 @@ instructions_free (CpgExpression *expression)
 	expression->instructions = NULL;
 
 	g_slist_free(expression->dependencies);
+	expression->dependencies = NULL;
 
 	// reset cached and instant flags
 	expression->flags = CPG_EXPRESSION_FLAG_NONE;
@@ -837,9 +838,6 @@ validate_stack (CpgExpression *expression)
 	if (!expression->instructions)
 		instructions_push (expression, cpg_instruction_number_new (0.0));
 	
-	g_slist_free (expression->dependencies);
-	expression->dependencies = NULL;
-	
 	for (item = expression->instructions; item; item = g_slist_next(item))
 	{
 		CpgInstruction *inst = item->data;
@@ -860,7 +858,7 @@ validate_stack (CpgExpression *expression)
 			}
 			break;
 			case CPG_INSTRUCTION_TYPE_PROPERTY:
-				expression->dependencies = g_slist_append (expression->dependencies, ((CpgInstructionProperty *)inst)->property);
+				expression->dependencies = g_slist_prepend (expression->dependencies, ((CpgInstructionProperty *)inst)->property);
 				++stack;
 			break;
 			case CPG_INSTRUCTION_TYPE_NUMBER:
@@ -874,6 +872,8 @@ validate_stack (CpgExpression *expression)
 		if (stack > maxstack)
 			maxstack = stack;
 	}
+	
+	expression->dependencies = g_slist_reverse (expression->dependencies);
 	
 	if (stack != 1)
 		return FALSE;
@@ -922,9 +922,13 @@ cpg_expression_compile (CpgExpression   *expression,
 	}
 	else
 	{
+		cpg_debug_expression ("Starting to parse: %s", expression->expression);
 		ret = parse_expression (expression, &ctx, -1, 0);
 	}
-	
+
+	g_slist_free (expression->dependencies);
+	expression->dependencies = NULL;
+
 	if (!ret)
 	{
 		instructions_free (expression);
@@ -962,10 +966,15 @@ cpg_expression_evaluate (CpgExpression *expression)
 {
 	if (!expression)
 		return 0.0;
+	
+	cpg_debug_evaluate ("Evaluating expression: %s", expression->expression);
 		
 	if (expression->flags & CPG_EXPRESSION_FLAG_CACHED)
+	{
+		cpg_debug_evaluate ("Returning from cached: %f", expression->cached_output);
 		return expression->cached_output;
-	
+	}
+
 	GSList *item;
 	cpg_stack_reset (&(expression->output));
 	
