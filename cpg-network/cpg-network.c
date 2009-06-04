@@ -882,9 +882,14 @@ cpg_network_run (CpgNetwork  *network,
 	g_object_notify (G_OBJECT (network), "time");
 	
 	cpg_property_set_value (network->priv->timeprop, network->priv->time);
-		
+	
+	if (network->priv->time >= to - 0.5 * timestep)
+		return;
+	
 	while (network->priv->time < to - 0.5 * timestep)
 		cpg_network_step (network, timestep);
+	
+	g_signal_emit (network, network_signals[UPDATE], 0, timestep);
 }
 
 /**
