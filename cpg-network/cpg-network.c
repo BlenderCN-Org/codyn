@@ -757,12 +757,14 @@ evaluate_objects (CpgNetwork  *network,
 static void
 simulation_evaluate_relays (CpgNetwork *network)
 {
+	cpg_debug_evaluate ("Evaluate relays");
 	evaluate_objects (network, CPG_TYPE_RELAY);
 }
 
 static void
 simulation_evaluate_states (CpgNetwork *network)
 {
+	cpg_debug_evaluate ("Evaluate states");
 	evaluate_objects (network, CPG_TYPE_STATE);
 }
 
@@ -771,12 +773,21 @@ simulation_update (CpgNetwork *network)
 {
 	GSList *item;
 	
+	cpg_debug_evaluate ("Simulation update");
+	
 	/* update all objects */
 	for (item = network->priv->states; item; item = g_slist_next (item))
 		cpg_object_update (CPG_OBJECT (item->data), network->priv->timestep);
 	
 	for (item = network->priv->links; item; item = g_slist_next (item))
 		cpg_object_update (CPG_OBJECT (item->data), network->priv->timestep);
+}
+
+static void
+reset_cache (CpgNetwork *network)
+{
+	g_slist_foreach (network->priv->states, (GFunc)cpg_object_reset_cache, NULL);
+	g_slist_foreach (network->priv->links, (GFunc)cpg_object_reset_cache, NULL);
 }
 
 /**
@@ -810,6 +821,7 @@ cpg_network_step (CpgNetwork  *network,
 	}
 
 	g_signal_emit (network, network_signals[UPDATE], 0, timestep);
+	reset_cache (network);	
 
 	network->priv->timestep = timestep;
 	g_object_notify (G_OBJECT (network), "timestep");

@@ -130,15 +130,37 @@ cpg_link_dispose (GObject *object)
 }	
 
 static void
+action_reset_cache (CpgLinkAction *action)
+{
+	cpg_expression_reset_cache (action->expression);
+}
+
+static void
+cpg_link_reset_cache_impl (CpgObject *object)
+{
+	/* Chain up */
+	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->reset_cache != NULL)
+	{
+		CPG_OBJECT_CLASS (cpg_link_parent_class)->reset_cache (object);
+	}
+	
+	/* Reset action expressions */
+	g_slist_foreach (CPG_LINK (object)->priv->actions, (GFunc)action_reset_cache, NULL);
+}
+
+static void
 cpg_link_class_init (CpgLinkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	CpgObjectClass *cpgobject_class = CPG_OBJECT_CLASS (klass);
 	
 	object_class->finalize = cpg_link_finalize;
 	object_class->dispose = cpg_link_dispose;
 	
 	object_class->get_property = cpg_link_get_property;
 	object_class->set_property = cpg_link_set_property;
+	
+	cpgobject_class->reset_cache = cpg_link_reset_cache_impl;
 
 	g_object_class_install_property (object_class, PROP_FROM,
 				 g_param_spec_object ("from",

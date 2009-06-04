@@ -37,6 +37,8 @@ struct _CpgObjectClass {
 						 gdouble    timestep);
 	
 	void (*tainted)		(CpgObject *object);
+	
+	void (*reset_cache) (CpgObject *object);
 };
 
 GType cpg_object_get_type (void) G_GNUC_CONST;

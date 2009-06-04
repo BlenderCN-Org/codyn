@@ -161,6 +161,19 @@ cpg_object_dispose (GObject *object)
 }
 
 static void
+property_reset_cache (CpgProperty  *property,
+                      gpointer      data)
+{
+	cpg_expression_reset_cache (cpg_property_get_value_expression (property));
+}
+
+void
+cpg_object_reset_cache_impl (CpgObject *object)
+{
+	g_slist_foreach (object->priv->properties, (GFunc)property_reset_cache, NULL);
+}
+
+static void
 cpg_object_class_init (CpgObjectClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -171,6 +184,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 	object_class->set_property = set_property;
 
 	klass->reset = cpg_object_reset_impl;
+	klass->reset_cache = cpg_object_reset_cache_impl;
 	
 	g_object_class_install_property (object_class, PROP_ID,
 				 g_param_spec_string ("id",
@@ -377,7 +391,9 @@ cpg_object_update (CpgObject  *object,
 	g_return_if_fail (timestep > 0);
 
 	if (CPG_OBJECT_GET_CLASS (object)->update)
+	{
 		CPG_OBJECT_GET_CLASS (object)->update (object, timestep);
+	}
 }
 
 /**
@@ -396,7 +412,9 @@ cpg_object_evaluate (CpgObject  *object,
 	g_return_if_fail (timestep > 0);
 
 	if (CPG_OBJECT_GET_CLASS (object)->evaluate)
+	{
 		CPG_OBJECT_GET_CLASS (object)->evaluate (object, timestep);
+	}
 }
 
 /**
@@ -412,7 +430,9 @@ cpg_object_reset (CpgObject *object)
 	g_return_if_fail (CPG_IS_OBJECT (object));
 
 	if (CPG_OBJECT_GET_CLASS (object)->reset)
+	{
 		CPG_OBJECT_GET_CLASS (object)->reset (object);
+	}
 }
 
 /**
@@ -474,19 +494,15 @@ _cpg_object_get_links (CpgObject *object)
 	return object->priv->links;
 }
 
-static void
-property_reset_cache (CpgProperty  *property,
-                      gpointer      data)
-{
-	cpg_expression_reset_cache (cpg_property_get_value_expression (property));
-}
-
 void
 cpg_object_reset_cache (CpgObject *object)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
 	
-	g_slist_foreach (object->priv->properties, (GFunc)property_reset_cache, NULL);
+	if (CPG_OBJECT_GET_CLASS (object)->reset_cache)
+	{
+		CPG_OBJECT_GET_CLASS (object)->reset_cache (object);
+	}
 }
 
 void

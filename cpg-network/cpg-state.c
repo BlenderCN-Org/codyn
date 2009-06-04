@@ -1,6 +1,7 @@
 #include "cpg-state.h"
 #include "cpg-expression.h"
 #include "cpg-link.h"
+#include "cpg-debug.h"
 
 #define CPG_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_STATE, CpgStatePrivate))
 
@@ -32,6 +33,11 @@ cpg_state_update_impl (CpgObject  *object,
 		else
 			value = _cpg_property_get_update (property);
 
+		cpg_debug_evaluate ("Updating target %s.%s to %f",
+		                    cpg_object_get_id (object),
+		                    cpg_property_get_name (property),
+		                    value);
+
 		cpg_property_set_value (property, value);
 	}
 }
@@ -45,7 +51,13 @@ cpg_state_evaluate_impl (CpgObject  *object,
 	// Prepare update values (ready for accumulation)
 	for (item = _cpg_object_get_actors (object); item; item = g_slist_next (item))
 	{
-		_cpg_property_set_update ((CpgProperty *)item->data, 0.0);
+		CpgProperty *property = (CpgProperty *)item->data;
+
+		cpg_debug_evaluate ("Setting update for actor %s.%s to 0", 
+		                     cpg_object_get_id (object),
+		                     cpg_property_get_name (property));
+
+		_cpg_property_set_update (property, 0.0);
 	}
 
 	// Iterate over all the links
@@ -53,16 +65,23 @@ cpg_state_evaluate_impl (CpgObject  *object,
 	{
 		CpgLink *link = CPG_LINK (item->data);
 		GSList *ac;
+		
+		cpg_debug_evaluate ("Evaluating link on %s", cpg_object_get_id (object));
 
 		// Iterate over all the expressions in the link
 		for (ac = cpg_link_get_actions (link); ac; ac = g_slist_next (ac))
 		{
 			CpgLinkAction *action = (CpgLinkAction *)ac->data;
 			CpgExpression *expression = cpg_link_action_get_expression (action);
+
+			cpg_debug_evaluate ("Evaluating link action on %s.%s", 
+			                    cpg_object_get_id (object),
+			                    cpg_property_get_name (cpg_link_action_get_target (action)));
 			
 			// Evaluate expression and add value to the update
 			gdouble val = cpg_expression_evaluate (expression);
 			CpgProperty *target = cpg_link_action_get_target (action);
+
 			_cpg_property_set_update (target, _cpg_property_get_update (target) + val);
 		}
 	}
