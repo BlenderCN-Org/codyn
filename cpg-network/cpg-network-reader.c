@@ -362,7 +362,8 @@ reader_xml (CpgNetwork *network,
 	
 	gboolean ret = parse_objects (doc, "/cpg/network/state", network) &&
 	               parse_objects (doc, "/cpg/network/relay", network) &&
-	               parse_objects (doc, "/cpg/network/link", network);
+	               parse_objects (doc, "/cpg/network/link", network) &&
+	               parse_objects (doc, "/cpg/network/globals", network);
 
 	xmlFreeDoc (doc);
 	return ret;
