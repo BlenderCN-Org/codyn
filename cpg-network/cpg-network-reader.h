@@ -8,7 +8,7 @@ gboolean cpg_network_reader_xml (CpgNetwork  *network,
                                  gchar const *filename);
 
 gboolean cpg_network_reader_xml_string (CpgNetwork  *network,
-                                        gchar const *filename);
+                                        gchar const *xml);
 
 
 #endif /* __CPG_NETWORK_READER_H__ */
