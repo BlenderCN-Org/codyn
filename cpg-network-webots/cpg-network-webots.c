@@ -39,6 +39,13 @@ binding_handler_servo(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
 }
 
 static void
+binding_handler_servo_force(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+{
+	if (binding->device)
+		wb_servo_set_force(binding->device, cpg_property_get_value(binding->property));
+}
+
+static void
 binding_handler_touch_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
 {
 	if (binding->device)
@@ -62,8 +69,9 @@ typedef struct
 
 static BindingDefinition binding_definitions[] = 
 {
-	{"webots_servo", CPG_WEBOTS_BINDING_TYPE_SERVO, binding_handler_servo, ACCESS_TYPE_WRITE},
-	{"webots_touch", CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR, binding_handler_touch_sensor, ACCESS_TYPE_READ}
+	{"wb_servo_pos", CPG_WEBOTS_BINDING_TYPE_SERVO, binding_handler_servo, ACCESS_TYPE_WRITE},
+	{"wb_servo_force", CPG_WEBOTS_BINDING_TYPE_SERVO, binding_handler_servo_force, ACCESS_TYPE_WRITE},
+	{"wb_sensor_touch", CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR, binding_handler_touch_sensor, ACCESS_TYPE_READ}
 };
 
 static CpgProperty *
@@ -207,7 +215,7 @@ cpg_network_webots_disable(CpgNetworkWebots *webots)
 }
 
 void 
-cpg_network_webots_update(CpgNetworkWebots *webots, gdouble timestep)
+cpg_network_webots_update(CpgNetworkWebots *webots)
 {
 	GSList *item;
 	
