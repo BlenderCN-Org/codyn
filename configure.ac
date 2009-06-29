@@ -22,37 +22,6 @@ PKG_PROG_PKG_CONFIG
 
 AC_PATH_PROG(GLIB_MKENUMS, glib-mkenums)
 
-AC_ARG_ENABLE([rt],
-	AS_HELP_STRING([--enable-rt],[Enable building real time library (default: disabled)]),
-	[enable_rt=$enableval],
-	[enable_rt=no])
-	
-AM_CONDITIONAL([ENABLE_RT],[test "x$enable_rt" = "xyes"])
-RT_CFLAGS=
-
-if test "x$enable_rt" = "xyes" ; then
-	AC_MSG_CHECKING(for rtlinux header files)
-	
-	dirs="/usr/rtlinux /usr/src/rtlinux"
-	
-	for i in dirs; do
-		if test -r "$i/include/rtl_printf.h"; then
-			AC_MSG_RESULT($i)
-  			RT_CFLAGS="-I$i/include"
-  			break;
-		fi
-	done
-	
-	if test "x$RT_CFLAGS" = "x"; then
-		AC_MSG_RESULT(could not locate rtlinux)
-	else
-		AC_MSG_RESULT(found)
-		AC_DEFINE(ENABLE_RT_DEBUG)
-	fi
-fi
-
-AC_SUBST(RT_CFLAGS)
-
 AC_ARG_ENABLE([webots],
 	AS_HELP_STRING([--enable-webots],[Enable building webots bindings (default: disabled)]),
 	[enable_webots=$enableval],
@@ -106,7 +75,6 @@ AC_SUBST(CPG_NETWORK_API_VERSION)
 AC_OUTPUT(
 Makefile
 cpg-network.pc
-cpg-network-rt.pc
 cpg-network-webots.pc
 cpg-network/Makefile
 cpg-network-webots/Makefile

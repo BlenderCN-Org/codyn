@@ -8,7 +8,6 @@
 #include <cpg-network/cpg-relay.h>
 #include <cpg-network/cpg-link.h>
 #include <cpg-network/cpg-monitor.h>
-#include <cpg-network/shared/cpg-shared-network.h>
 #include <cpg-network/cpg-compile-error.h>
 
 G_BEGIN_DECLS
