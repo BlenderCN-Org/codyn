@@ -1,0 +1,24 @@
+Source: cpg-network
+Priority: extra
+Maintainer: Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>
+Build-Depends: debhelper (>= 7), autotools-dev, pkg-config
+Standards-Version: 3.8.0
+Section: libs
+Homepage: http://birg2.epfl.ch
+
+Package: cpg-network-dev
+Section: libdevel
+Architecture: any
+Depends: cpg-network1 (= ${binary:Version}),
+         libglib2.0-dev,
+         libxml2-dev
+Suggests: libglib2.0-doc
+Description: Development files for CPG network library
+ CPG network library
+
+Package: cpg-network1
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: CPG network library
+ CPG network library
