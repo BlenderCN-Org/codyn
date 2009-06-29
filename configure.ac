@@ -40,6 +40,7 @@ if test "x$enable_webots" = "xyes"; then
 		then
 			AC_MSG_RESULT($i)
 			WEBOTS_CFLAGS="-I$i/include/controller/c"
+			WEBOTS_LIBS="-L$i/lib -lCppController -lController"
 			
 			break;
 		fi
@@ -50,9 +51,11 @@ if test "x$enable_webots" = "xyes"; then
 	fi
 else
 	WEBOTS_CFLAGS=
+	WEBOTS_LIBS=
 fi
 
 AC_SUBST(WEBOTS_CFLAGS)
+AC_SUBST(WEBOTS_LIBS)
 
 dnl ================================================================
 dnl Start of pkg-config checks
