@@ -23,9 +23,17 @@ Description: Development files for CPG network library
 Package: cpg-network1
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, 
+Depends: ${shlibs:Depends},
          ${misc:Depends},
          libglib2.0-0,
-         libxml2         
+         libxml2
 Description: CPG network library
  CPG network library
+
+Package: cpg-network-webots1
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends}
+Description: CPG network library - webots bindings
+ CPG network library webots bindings
