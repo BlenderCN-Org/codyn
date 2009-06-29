@@ -17,23 +17,3 @@ cpg-shared-expression
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### FUNCTION cpg_shared_expression_set_value ##### -->
-<para>
-
-</para>
-
-@expression: 
-@value: 
-@base: 
-
-
-<!-- ##### FUNCTION cpg_shared_expression_evaluate ##### -->
-<para>
-
-</para>
-
-@expression: 
-@base: 
-@Returns: 
-
-

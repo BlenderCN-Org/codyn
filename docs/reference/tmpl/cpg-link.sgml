@@ -93,7 +93,8 @@ CpgLink
 </para>
 
 @link: 
-@target: 
+@action: 
+@Returns: 
 
 
 <!-- ##### FUNCTION cpg_link_get_actions ##### -->

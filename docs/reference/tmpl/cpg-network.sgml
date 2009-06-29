@@ -23,6 +23,14 @@ CpgNetwork
 </para>
 
 
+<!-- ##### SIGNAL CpgNetwork::compile-error ##### -->
+<para>
+
+</para>
+
+@cpgnetwork: the object which received the signal.
+@arg1: 
+
 <!-- ##### SIGNAL CpgNetwork::reset ##### -->
 <para>
 
@@ -37,6 +45,21 @@ CpgNetwork
 
 @cpgnetwork: the object which received the signal.
 @arg1: 
+
+<!-- ##### ARG CpgNetwork:compiled ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG CpgNetwork:time ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG CpgNetwork:timestep ##### -->
+<para>
+
+</para>
 
 <!-- ##### FUNCTION cpg_network_new_from_file ##### -->
 <para>
@@ -108,6 +131,7 @@ CpgNetwork
 </para>
 
 @network: 
+@error: 
 @Returns: 
 
 
@@ -134,17 +158,6 @@ CpgNetwork
 </para>
 
 @network: 
-@Returns: 
-
-
-<!-- ##### FUNCTION cpg_network_add_monitor ##### -->
-<para>
-
-</para>
-
-@network: 
-@object: 
-@propname: 
 @Returns: 
 
 

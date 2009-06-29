@@ -106,6 +106,8 @@ CpgObject
 
 @object: 
 @name: 
+@error: 
+@Returns: 
 
 
 <!-- ##### FUNCTION cpg_object_get_properties ##### -->

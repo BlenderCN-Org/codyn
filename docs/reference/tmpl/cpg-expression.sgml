@@ -17,15 +17,6 @@ CpgExpression
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### ENUM CpgExpressionFlag ##### -->
-<para>
-
-</para>
-
-@CPG_EXPRESSION_FLAG_NONE: 
-@CPG_EXPRESSION_FLAG_CACHED: 
-@CPG_EXPRESSION_FLAG_INSTANT: 
-
 <!-- ##### STRUCT CpgExpression ##### -->
 <para>
 

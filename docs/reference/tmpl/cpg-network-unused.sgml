@@ -26,12 +26,53 @@
 
 @obj: 
 
+<!-- ##### MACRO CPG_SHARED_EXPRESSION ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+
+<!-- ##### MACRO CPG_SHARED_LINK ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+
+<!-- ##### MACRO CPG_SHARED_OBJECT ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+
+<!-- ##### MACRO CPG_SHARED_PROPERTY ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+
 <!-- ##### MACRO CPG_STATE_CONST ##### -->
 <para>
 
 </para>
 
 @obj: 
+
+<!-- ##### ENUM CpgExpressionFlag ##### -->
+<para>
+
+</para>
+
+@CPG_EXPRESSION_FLAG_NONE: 
+@CPG_EXPRESSION_FLAG_CACHED: 
+@CPG_EXPRESSION_FLAG_INSTANT: 
 
 <!-- ##### STRUCT CpgLinkPrivate ##### -->
 <para>
@@ -57,9 +98,108 @@
 </para>
 
 
+<!-- ##### TYPEDEF CpgSharedPointer ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### STRUCT CpgStatePrivate ##### -->
 <para>
 
 </para>
 
+
+<!-- ##### FUNCTION cpg_network_add_monitor ##### -->
+<para>
+
+</para>
+
+@network: 
+@object: 
+@propname: 
+@Returns: 
+
+<!-- ##### MACRO cpg_shared_array_base_type ##### -->
+<para>
+
+</para>
+
+@base: 
+@first: 
+@index: 
+@Type: 
+
+<!-- ##### FUNCTION cpg_shared_expression_evaluate ##### -->
+<para>
+
+</para>
+
+@expression: 
+@base: 
+@Returns: 
+
+<!-- ##### FUNCTION cpg_shared_expression_set_value ##### -->
+<para>
+
+</para>
+
+@expression: 
+@value: 
+@base: 
+
+<!-- ##### FUNCTION cpg_shared_network_simulation_run ##### -->
+<para>
+
+</para>
+
+@network: 
+@from: 
+@timestep: 
+@to: 
+@base: 
+
+<!-- ##### FUNCTION cpg_shared_network_simulation_step ##### -->
+<para>
+
+</para>
+
+@network: 
+@timestep: 
+@base: 
+
+<!-- ##### MACRO cpg_shared_pointer_base_type ##### -->
+<para>
+
+</para>
+
+@base: 
+@offset: 
+@Type: 
+
+<!-- ##### MACRO cpg_shared_pointer_type ##### -->
+<para>
+
+</para>
+
+@value: 
+@Type: 
+
+<!-- ##### FUNCTION cpg_shared_property_set_value ##### -->
+<para>
+
+</para>
+
+@property: 
+@value: 
+@base: 
+
+<!-- ##### FUNCTION cpg_shared_property_value ##### -->
+<para>
+
+</para>
+
+@property: 
+@base: 
+@Returns: 
 

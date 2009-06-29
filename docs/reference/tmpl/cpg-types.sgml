@@ -23,7 +23,6 @@ cpg-types
 </para>
 
 @type: 
-@next: 
 
 <!-- ##### ENUM CpgInstructionType ##### -->
 <para>

@@ -57,6 +57,9 @@ CFILE_GLOB=$(top_srcdir)/cpg-network/*.c
 IGNORE_HFILES= \
 	cpg-tokenizer.h \
 	cpg-network-reader.h \
+	cpg-network-writer.h \
+	cpg-utils.h \
+	cpg-ref-counted-private.h \
 	cpg-math.h
 
 # Images to copy into HTML directory.

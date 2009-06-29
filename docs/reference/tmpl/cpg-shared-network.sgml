@@ -19,25 +19,3 @@ cpg-shared-network
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### FUNCTION cpg_shared_network_simulation_step ##### -->
-<para>
-
-</para>
-
-@network: 
-@timestep: 
-@base: 
-
-
-<!-- ##### FUNCTION cpg_shared_network_simulation_run ##### -->
-<para>
-
-</para>
-
-@network: 
-@from: 
-@timestep: 
-@to: 
-@base: 
-
-
