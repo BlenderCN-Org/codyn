@@ -30,10 +30,19 @@ Depends: ${shlibs:Depends},
 Description: CPG network library
  CPG network library
 
+Package: cpg-network-webots-dev
+Section: libdevel
+Architecture: any
+Depends: cpg-network-webots1 (= ${binary:Version}),
+         cpg-network-dev
+Description: Development files for CPG network library - webots bindings
+ CPG network library webots bindings
+
 Package: cpg-network-webots1
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
-         ${misc:Depends}
+         ${misc:Depends},
+         webots (>= 6)
 Description: CPG network library - webots bindings
  CPG network library webots bindings

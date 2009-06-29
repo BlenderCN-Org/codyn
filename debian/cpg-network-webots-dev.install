@@ -1,0 +1,5 @@
+usr/include/cpg-network-1.0/cpg-network-webots/*
+usr/lib/libcpg-network-webots*.a
+usr/lib/libcpg-network-webots*.so
+usr/lib/pkgconfig/cpg-network-webots*
+usr/lib/libcpg-network-webots*.la
