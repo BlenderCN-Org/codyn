@@ -25,6 +25,8 @@ NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-network-reader.h \
 	cpg-network-writer.h \
+	cpg-ref-counted-private.h \
+	cpg-utils.h \
 	cpg-math.h
 
 INST_H_FILES = \
