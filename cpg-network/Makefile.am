@@ -17,12 +17,14 @@ COMMON_SOURCES = 		\
 	cpg-debug.c \
 	cpg-stack.c \
 	cpg-network-reader.c \
+	cpg-network-writer.c \
 	cpg-enum-types.c \
 	cpg-compile-error.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-network-reader.h \
+	cpg-network-writer.h \
 	cpg-math.h
 
 INST_H_FILES = \

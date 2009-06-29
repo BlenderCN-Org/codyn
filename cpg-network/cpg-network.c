@@ -11,6 +11,7 @@
 #include "cpg-link.h"
 #include "cpg-debug.h"
 #include "cpg-network-reader.h"
+#include "cpg-network-writer.h"
 
 #define CPG_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_NETWORK, CpgNetworkPrivate))
 
@@ -999,3 +1000,22 @@ cpg_network_get_globals (CpgNetwork *network)
 	
 	return network->priv->constants;
 }
+
+gchar *
+cpg_network_write_to_xml (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	return cpg_network_writer_xml_string (network);
+}
+
+void			 
+cpg_network_write_to_file (CpgNetwork  *network,
+                           gchar const *filename)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (filename != NULL);
+	
+	cpg_network_writer_xml (network, filename);
+}
+

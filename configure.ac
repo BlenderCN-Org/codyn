@@ -91,9 +91,11 @@ dnl ================================================================
 
 PKG_CHECK_MODULES(CPG_NETWORK, [
 	glib-2.0
+	gio-2.0
 	gobject-2.0
 	libxml-2.0
 ])
+
 GEDIT_LIBS="${CPG_NETWORK_LIBS}"
 AC_SUBST(CPG_NETWORK_LIBS)
 AC_SUBST(CPG_NETWORK_CFLAGS)

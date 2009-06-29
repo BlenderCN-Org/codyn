@@ -45,6 +45,10 @@ CpgNetwork 		 *cpg_network_new_from_file		(gchar const *filename);
 CpgNetwork 		 *cpg_network_new_from_xml		(gchar const *xml);
 CpgNetwork		 *cpg_network_new				(void);
 
+gchar 			 *cpg_network_write_to_xml		(CpgNetwork  *network);
+void			  cpg_network_write_to_file		(CpgNetwork  *network,
+												 gchar const *filename);
+
 void              cpg_network_merge             (CpgNetwork *network,
                                                  CpgNetwork *other);
 
