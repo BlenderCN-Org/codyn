@@ -22,6 +22,4 @@ cpg-ref-counted-private
 
 </para>
 
-@ref_count: 
-@destroy_func: 
 

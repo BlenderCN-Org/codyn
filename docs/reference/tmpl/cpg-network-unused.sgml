@@ -110,6 +110,15 @@
 </para>
 
 
+<!-- ##### MACRO array_resize ##### -->
+<para>
+
+</para>
+
+@Ptr: 
+@Type: 
+@Num: 
+
 <!-- ##### FUNCTION cpg_network_add_monitor ##### -->
 <para>
 
