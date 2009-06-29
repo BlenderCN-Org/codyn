@@ -1,7 +1,11 @@
 Source: cpg-network
 Priority: extra
 Maintainer: Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>
-Build-Depends: debhelper (>= 7), autotools-dev, pkg-config
+Build-Depends: debhelper (>= 7), 
+               autotools-dev, 
+               pkg-config,
+               libglib2.0-dev,
+               libxml2-dev
 Standards-Version: 3.8.0
 Section: libs
 Homepage: http://birg2.epfl.ch
@@ -19,6 +23,9 @@ Description: Development files for CPG network library
 Package: cpg-network1
 Section: libs
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, 
+         ${misc:Depends},
+         libglib2.0-0,
+         libxml2         
 Description: CPG network library
  CPG network library
