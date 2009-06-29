@@ -185,10 +185,32 @@ property_reset_cache (CpgProperty  *property,
 	cpg_expression_reset_cache (cpg_property_get_value_expression (property));
 }
 
-void
+static void
 cpg_object_reset_cache_impl (CpgObject *object)
 {
 	g_slist_foreach (object->priv->properties, (GFunc)property_reset_cache, NULL);
+}
+
+static void
+cpg_object_copy_impl (CpgObject *object, 
+                      CpgObject *source)
+{
+	// Copy id
+	object->priv->id = g_strdup (source->priv->id);
+	
+	// Copy properties
+	GSList *item;
+	
+	for (item = source->priv->properties; item; item = g_slist_next (item))
+	{
+		CpgProperty *property = (CpgProperty *)item->data;
+		CpgProperty *cpy = _cpg_property_copy (property);
+		
+		_cpg_property_set_object (cpy, object);
+		object->priv->properties = g_slist_prepend (object->priv->properties, cpy);
+	}
+	
+	object->priv->properties = g_slist_reverse (object->priv->properties);
 }
 
 static void
@@ -203,6 +225,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 
 	klass->reset = cpg_object_reset_impl;
 	klass->reset_cache = cpg_object_reset_cache_impl;
+	klass->copy = cpg_object_copy_impl;
 	
 	g_object_class_install_property (object_class, PROP_ID,
 				 g_param_spec_string ("id",
@@ -275,9 +298,21 @@ cpg_object_add_property (CpgObject    *object,
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 	g_return_val_if_fail (expression != NULL, NULL);
-
-	CpgProperty *property = cpg_property_new (name, expression, integrated, object);
 	
+	// Check if property already set
+	CpgProperty *property;
+	
+	property = cpg_object_get_property (object, name);
+	
+	if (property)
+	{
+		if (!cpg_object_remove_property (object, name, NULL))
+		{
+			return NULL;
+		}
+	}
+	
+	property = cpg_property_new (name, expression, integrated, object);	
 	object->priv->properties = g_slist_append (object->priv->properties, property);
 	
 	_cpg_property_use (property);
@@ -568,4 +603,19 @@ cpg_object_taint (CpgObject *object)
 	g_return_if_fail (CPG_IS_OBJECT (object));
 	
 	g_signal_emit (object, object_signals[TAINTED], 0);
+}
+
+CpgObject *
+_cpg_object_copy (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	
+	CpgObject *ret = g_object_new (G_OBJECT_TYPE (object), NULL);
+	
+	if (CPG_OBJECT_GET_CLASS (object)->copy)
+	{
+		CPG_OBJECT_GET_CLASS (object)->copy (ret, object);
+	}
+	
+	return ret;
 }

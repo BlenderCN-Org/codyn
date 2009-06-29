@@ -15,9 +15,13 @@ CpgProperty 	  *cpg_property_new						(gchar const        *name,
 														 gboolean            integrated, 
 														 struct _CpgObject  *object);
 
+CpgProperty       *_cpg_property_copy                   (CpgProperty        *property);
 gchar const 	  *cpg_property_get_name				(CpgProperty        *property);
 
 struct _CpgObject *cpg_property_get_object				(CpgProperty        *property);
+void               _cpg_property_set_object             (CpgProperty        *property,
+                                                         struct _CpgObject  *object);
+
 gboolean		   cpg_property_get_integrated			(CpgProperty        *property);
 void			   cpg_property_set_integrated			(CpgProperty		*property,
 														 gboolean			 integrated);

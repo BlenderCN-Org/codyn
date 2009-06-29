@@ -54,6 +54,8 @@ struct _CpgNetworkPrivate
 	CpgObject *constants;
 	CpgProperty *timeprop;
 	CpgProperty *timestepprop;
+	
+	GHashTable *templates;
 };
 
 enum
@@ -83,6 +85,7 @@ cpg_network_finalize (GObject *object)
 	cpg_network_clear (network);
 	
 	g_hash_table_destroy (network->priv->object_map);
+	g_hash_table_destroy (network->priv->templates);
 	
 	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
@@ -232,6 +235,11 @@ cpg_network_init (CpgNetwork *network)
 	                          network);
 	
 	g_slist_nth (network->priv->context, NUM_CONTEXT - 1)->data = network->priv->constants;
+	
+	network->priv->templates = g_hash_table_new_full (g_str_hash, 
+	                                                  g_str_equal,
+	                                                  (GDestroyNotify)g_free,
+	                                                  (GDestroyNotify)g_object_unref);
 }
 
 /**
@@ -348,6 +356,8 @@ static void
 add_link (CpgNetwork  *network,
           gpointer     link)
 {
+	_cpg_link_resolve_actions (CPG_LINK (link));
+
 	network->priv->links = g_slist_append (network->priv->links, 
 	                                       g_object_ref (link));
 }
@@ -972,6 +982,42 @@ cpg_network_merge (CpgNetwork  *network,
 }
 
 void
+cpg_network_merge_from_file (CpgNetwork  *network,
+                             gchar const *filename)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (filename != NULL);
+
+	CpgNetwork *other;
+	
+	other = cpg_network_new_from_file (filename);
+	
+	if (other != NULL)
+	{
+		cpg_network_merge (network, other);
+		g_object_unref (other);
+	}
+}
+
+void
+cpg_network_merge_from_xml (CpgNetwork  *network,
+                            gchar const *xml)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (xml != NULL);
+	
+	CpgNetwork *other;
+	
+	other = cpg_network_new_from_xml (xml);
+	
+	if (other != NULL)
+	{
+		cpg_network_merge (network, other);
+		g_object_unref (other);
+	}
+}
+
+void
 cpg_network_set_global_constant (CpgNetwork   *network,
                                  gchar const  *name,
                                  gdouble       constant)
@@ -1019,3 +1065,106 @@ cpg_network_write_to_file (CpgNetwork  *network,
 	cpg_network_writer_xml (network, filename);
 }
 
+static void
+fill_templates (gchar const  *key,
+                CpgObject    *template,
+                GSList      **list)
+{
+	*list = g_slist_prepend (*list, g_strdup (key));
+}
+
+GSList *
+cpg_network_get_templates (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	
+	GSList *list = NULL;
+	
+	g_hash_table_foreach (network->priv->templates, 
+	                      (GHFunc)fill_templates,
+	                      &list);
+
+	return g_slist_reverse (list);
+}
+
+void
+cpg_network_add_template (CpgNetwork  *network,
+                          gchar const *name,
+                          CpgObject   *object)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (name != NULL);
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	
+	g_hash_table_insert (network->priv->templates,
+	                     g_strdup (name),
+	                     g_object_ref (object));
+}
+
+CpgObject *
+cpg_network_get_template (CpgNetwork  *network,
+                          gchar const *name)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+
+	return g_hash_table_lookup (network->priv->templates, name);
+}
+
+void
+cpg_network_remove_template (CpgNetwork  *network,
+                             gchar const *name)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (name != NULL);
+	
+	g_hash_table_remove (network->priv->templates, name);	
+}
+
+CpgObject *
+cpg_network_add_from_template (CpgNetwork  *network,
+                               gchar const *name)
+
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+	
+	CpgObject *template = cpg_network_get_template (network, name);
+	
+	if (template == NULL || CPG_IS_LINK (template))
+	{
+		return NULL;
+	}
+	
+	// Make copy of the object and insert it
+	CpgObject *ret = _cpg_object_copy (template);
+	
+	cpg_network_add_object (network, ret);
+	g_object_unref (ret);
+
+	return ret;
+}
+
+CpgObject *
+cpg_network_add_link_from_template (CpgNetwork  *network,
+                                    gchar const *name,
+                                    CpgObject   *from,
+                                    CpgObject   *to)
+
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+	
+	CpgObject *template = cpg_network_get_template (network, name);
+	
+	if (template == NULL || !CPG_IS_LINK (template))
+	{
+		return NULL;
+	}
+	
+	CpgObject *object = _cpg_object_copy (template);
+	g_object_set (G_OBJECT (object), "from", from, "to", to, NULL);
+
+	cpg_network_add_object (network, object);
+	return object;
+}

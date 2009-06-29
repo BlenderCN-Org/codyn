@@ -39,20 +39,34 @@ cpg_link_action_free (CpgLinkAction *action)
 	if (action->target)
 	{
 		_cpg_property_unuse (action->target);
+		cpg_ref_counted_unref (action->target);
 	}
 	
 	// do not free target, borrowed reference
 	g_slice_free (CpgLinkAction, action);
 }
 
+static CpgLinkAction *
+cpg_link_action_new (CpgProperty *target,
+                     gchar const *expression)
+{
+	CpgLinkAction *action = g_slice_new0 (CpgLinkAction);
+	cpg_ref_counted_init (action, (GDestroyNotify)cpg_link_action_free);
+	
+	action->expression = cpg_expression_new (expression);
+	
+	if (target)
+	{
+		action->target = cpg_ref_counted_ref (target);
+		_cpg_property_use (target);
+	}
+	
+	return action;
+}
+
 static void
 cpg_link_finalize (GObject *object)
 {
-	CpgLink *link = CPG_LINK (object);
-	
-	g_slist_foreach (link->priv->actions, (GFunc)cpg_ref_counted_unref, NULL);
-	g_slist_free (link->priv->actions);
-	
 	G_OBJECT_CLASS (cpg_link_parent_class)->finalize (object);
 }
 
@@ -132,7 +146,12 @@ cpg_link_dispose (GObject *object)
 	
 	if (link->priv->from)
 		g_object_unref (link->priv->from);
-		
+	
+	g_slist_foreach (link->priv->actions, (GFunc)cpg_ref_counted_unref, NULL);
+	g_slist_free (link->priv->actions);
+	
+	link->priv->actions = NULL;
+	
 	link->priv->to = NULL;
 	link->priv->from = NULL;
 }	
@@ -157,6 +176,42 @@ cpg_link_reset_cache_impl (CpgObject *object)
 }
 
 static void
+cpg_link_copy_impl (CpgObject *object,
+                    CpgObject *source)
+{
+	/* Chain up */
+	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->copy != NULL)
+	{
+		CPG_OBJECT_CLASS (cpg_link_parent_class)->copy (object, source);
+	}
+	
+	// Copy over link actions
+	GSList *item;
+	CpgLink *source_link = CPG_LINK (source);
+	CpgLink *target = CPG_LINK (object);
+	
+	for (item = source_link->priv->actions; item; item = g_slist_next (item))
+	{
+		CpgLinkAction *action = (CpgLinkAction *)item->data;
+		CpgProperty *tg = NULL;
+		
+		if (action->target)
+		{
+			tg = _cpg_property_copy (action->target);
+		}
+		
+		cpg_link_add_action (target, 
+		                     tg, 
+		                     cpg_expression_get_as_string (action->expression));
+
+		if (tg)
+		{
+			cpg_ref_counted_unref (tg);
+		}
+	}
+}
+
+static void
 cpg_link_class_init (CpgLinkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -169,6 +224,7 @@ cpg_link_class_init (CpgLinkClass *klass)
 	object_class->set_property = cpg_link_set_property;
 	
 	cpgobject_class->reset_cache = cpg_link_reset_cache_impl;
+	cpgobject_class->copy = cpg_link_copy_impl;
 
 	g_object_class_install_property (object_class, PROP_FROM,
 				 g_param_spec_object ("from",
@@ -219,17 +275,28 @@ cpg_link_add_action (CpgLink      *link,
                      gchar const  *expression)
 {
 	g_return_val_if_fail (CPG_IS_LINK (link), NULL);
-	g_return_val_if_fail (target != NULL, NULL);
 	g_return_val_if_fail (expression != NULL, NULL);
 
-	CpgLinkAction *action = g_slice_new (CpgLinkAction);
-	cpg_ref_counted_init (action, (GDestroyNotify)cpg_link_action_free);
+	GSList *item;
+	GSList *copy = g_slist_copy (link->priv->actions);
 	
-	action->expression = cpg_expression_new (expression);
+	for (item = copy; item; item = g_slist_next (item))
+	{
+		CpgLinkAction *action = (CpgLinkAction *)item->data;
+		
+		if (!action->target || 
+		     g_strcmp0 (cpg_property_get_name (action->target),
+		                cpg_property_get_name (target)) != 0)
+		{
+			continue;
+		}
+		
+		cpg_link_remove_action (link, action);
+	}
 	
-	// target is a borrowed reference
-	action->target = target;
-	_cpg_property_use (target);
+	g_slist_free (copy);
+
+	CpgLinkAction *action = cpg_link_action_new (target, expression);
 	
 	link->priv->actions = g_slist_append (link->priv->actions, action);
 	
@@ -353,6 +420,24 @@ cpg_link_action_get_target (CpgLinkAction *action)
 	return action->target;
 }
 
+void
+cpg_link_action_set_target (CpgLinkAction *action,
+                            CpgProperty   *property)
+{
+	if (action->target)
+	{
+		_cpg_property_unuse (action->target);
+		cpg_ref_counted_unref (action->target);
+	}
+	
+	action->target = cpg_ref_counted_ref (property);
+	
+	if (action->target)
+	{
+		_cpg_property_use (action->target);
+	}
+}
+
 GType
 cpg_link_action_get_type ()
 {
@@ -364,3 +449,50 @@ cpg_link_action_get_type ()
 	return type_id;
 }
 
+void
+_cpg_link_resolve_actions (CpgLink *link)
+{
+	g_return_if_fail (CPG_IS_LINK (link));
+	
+	// Reroute link actions to 'to'
+	GSList *item;
+	GSList *copy = g_slist_copy (link->priv->actions);
+	
+	for (item = copy; item; item = g_slist_next (item))
+	{
+		CpgLinkAction *action = (CpgLinkAction *)item->data;
+		CpgProperty *prop;
+		
+		// Check if action is already valid
+		if (cpg_property_get_object (action->target) == link->priv->to)
+		{
+			continue;
+		}
+		
+		prop = cpg_object_get_property (link->priv->to, 
+		                                cpg_property_get_name (action->target));
+
+		if (prop == NULL)
+		{
+			// Property not found in new target, remove action...
+			cpg_link_remove_action (link, action);
+		}
+		else
+		{
+			if (action->target)
+			{
+				_cpg_property_unuse (action->target);
+				cpg_ref_counted_unref (action->target);
+			}
+			
+			action->target = prop;
+
+			cpg_ref_counted_ref (prop);
+			_cpg_property_use (prop);
+		}
+	}
+
+	g_slist_free (copy);
+		
+	cpg_object_taint (CPG_OBJECT (link));
+}

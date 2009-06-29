@@ -64,15 +64,17 @@ link_to_xml (xmlDocPtr   doc,
 	CpgObject *from = cpg_link_get_from (link);
 	CpgObject *to = cpg_link_get_to (link);
 	
-	if (from == NULL || to == NULL)
-	{
-		return NULL;
-	}
-	
 	xmlNodePtr node = object_to_xml (doc, parent, CPG_OBJECT (link), "link");
 	
-	xmlNewProp (node, (xmlChar *)"from", (xmlChar *)cpg_object_get_id (from));
-	xmlNewProp (node, (xmlChar *)"to", (xmlChar *)cpg_object_get_id (to));
+	if (from != NULL)
+	{
+		xmlNewProp (node, (xmlChar *)"from", (xmlChar *)cpg_object_get_id (from));
+	}
+	
+	if (to != NULL)
+	{
+		xmlNewProp (node, (xmlChar *)"to", (xmlChar *)cpg_object_get_id (to));
+	}
 	
 	// Link actions
 	GSList *item;
@@ -101,9 +103,40 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	
 	xmlDocSetRootElement (doc, root);
 	
-	/* Generate state, relay and link nodes */
+	// Generate templates
+	GSList *list = cpg_network_get_templates (network);
 	GSList *item;
+	xmlNodePtr templates;
 	
+	if (list)
+	{
+		templates = xmlNewDocNode (doc, NULL, (xmlChar *)"templates", NULL);
+		xmlAddChild (root, templates);
+	}
+	
+	for (item = list; item; item = g_slist_next (item))
+	{
+		gchar const *name = (gchar const *)item->data;
+		CpgObject *template = cpg_network_get_template (network, name);
+		
+		if (CPG_IS_RELAY (template))
+		{
+			relay_to_xml (doc, templates, CPG_RELAY (template));
+		}
+		else if (CPG_IS_STATE (template))
+		{
+			state_to_xml (doc, templates, CPG_STATE (template));
+		}
+		else if (CPG_IS_LINK (template))
+		{
+			link_to_xml (doc, templates, CPG_LINK (template));
+		}
+	}
+	
+	g_slist_foreach (list, (GFunc)g_free, NULL);
+	g_slist_free (list);
+
+	// Generate state, relay and link nodes
 	for (item = cpg_network_get_states (network); item; item = g_slist_next (item))
 	{
 		if (CPG_IS_RELAY (item->data))

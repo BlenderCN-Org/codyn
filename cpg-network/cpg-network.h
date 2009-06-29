@@ -51,6 +51,11 @@ void			  cpg_network_write_to_file		(CpgNetwork  *network,
 void              cpg_network_merge             (CpgNetwork *network,
                                                  CpgNetwork *other);
 
+void			  cpg_network_merge_from_file	(CpgNetwork  *network, 
+                                                 gchar const *filename);
+void			  cpg_network_merge_from_xml	(CpgNetwork  *network,
+                                                 gchar const *xml);
+
 CpgObject 		 *cpg_network_get_globals       (CpgNetwork  *network);
 
 void			  cpg_network_clear				(CpgNetwork *network);
@@ -84,6 +89,25 @@ void			  cpg_network_run				(CpgNetwork *network,
 void			  cpg_network_step				(CpgNetwork *network, 
 												 gdouble	 timestep);
 void			  cpg_network_reset				(CpgNetwork *network);
+
+GSList			 *cpg_network_get_templates     (CpgNetwork   *network);
+void			  cpg_network_add_template 		(CpgNetwork   *network,
+                                                 gchar const  *name,
+                                                 CpgObject    *object);
+
+CpgObject		 *cpg_network_get_template 		(CpgNetwork   *network,
+                                                 gchar const  *name);
+
+void			  cpg_network_remove_template 	(CpgNetwork   *network,
+                                                 gchar const  *name);
+
+CpgObject        *cpg_network_add_from_template (CpgNetwork   *network,
+                                                 gchar const  *name);
+
+CpgObject        *cpg_network_add_link_from_template (CpgNetwork   *network,
+                                                      gchar const  *name,
+                                                      CpgObject    *from,
+                                                      CpgObject    *to);
 
 G_END_DECLS
 

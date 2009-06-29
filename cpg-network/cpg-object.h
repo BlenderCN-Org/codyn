@@ -49,6 +49,9 @@ struct _CpgObjectClass {
 	void (*tainted)		(CpgObject *object);
 	
 	void (*reset_cache) (CpgObject *object);
+	
+	void (*copy)		(CpgObject *object,
+	                     CpgObject *source);
 };
 
 GQuark cpg_object_error_quark (void);
@@ -56,6 +59,7 @@ GQuark cpg_object_error_quark (void);
 GType cpg_object_get_type (void) G_GNUC_CONST;
 CpgObject *cpg_object_new (gchar const *id);
 
+CpgObject        *_cpg_object_copy			(CpgObject   *object);
 gchar const 	 *cpg_object_get_id			(CpgObject   *object);
 void              cpg_object_set_id			(CpgObject   *object,
                                              gchar const *id);

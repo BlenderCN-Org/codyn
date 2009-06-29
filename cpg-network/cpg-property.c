@@ -30,6 +30,15 @@ cpg_property_get_type ()
 	return type_id;
 }
 
+CpgProperty *
+_cpg_property_copy (CpgProperty *property)
+{
+	return cpg_property_new (property->name,
+	                         cpg_expression_get_as_string (property->value),
+	                         property->integrated,
+	                         NULL);
+}
+
 static void
 cpg_property_free (CpgProperty *property)
 {
@@ -86,6 +95,13 @@ cpg_property_get_object (CpgProperty *property)
 	return property->object;
 }
 
+void
+_cpg_property_set_object (CpgProperty *property,
+                          CpgObject   *object)
+{
+	property->object = object;
+}
+
 /**
  * cpg_property_set_value:
  * @property: the #CpgProperty
@@ -128,7 +144,11 @@ cpg_property_set_value_expression (CpgProperty  *property,
                                    gchar const  *expression)
 {
 	cpg_expression_set_from_string (property->value, expression);
-	cpg_object_taint (property->object);
+	
+	if (property->object)
+	{
+		cpg_object_taint (property->object);
+	}
 }
 
 gchar const *
