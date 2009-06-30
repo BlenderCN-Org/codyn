@@ -1,0 +1,23 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<cpg xmlns:cpg="http://birg.epfl.ch/cpg">
+  <network>
+    <globals>
+      <property name="g1">1</property>
+    </globals>
+    <templates>
+      <state id="s1">
+        <property name="a">1</property>
+      </state>
+      <link id="l1">
+        <action target="a">a + 2</action>
+      </link>
+    </templates>
+    <state id="s1" ref="s1">
+      <property name="a">1</property>
+    </state>
+    <link id="l1" ref="l1" from="s1" to="s1">
+      <action target="a">a + 2</action>
+    </link>
+  </network>
+</cpg>
+<!-- vi:ts=2:et -->

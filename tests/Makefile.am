@@ -6,9 +6,9 @@ INCLUDES =				\
 	-I$(top_srcdir)				\
 	$(CPG_NETWORK_CFLAGS)
 
-EXTRA_PROGRAMS = expression test
+EXTRA_PROGRAMS = expression test template
 
-noinst_PROGRAMS = expression test
+noinst_PROGRAMS = expression test template
 expression_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la -lm $(CPG_NETWORK_LIBS)
 
 expression_SOURCES = \
@@ -20,3 +20,10 @@ test_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSIO
 
 test_SOURCES = \
 	test.c
+
+template_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la -lm $(CPG_NETWORK_LIBS)
+
+template_SOURCES = \
+	template.c
+
+EXTRA_DIST = template.cpg
