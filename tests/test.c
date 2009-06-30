@@ -1,5 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
+#include <glib.h>
+#include <glib/gprintf.h>
 
 #include <cpg-network/cpg-network.h>
 #include <cpg-network/cpg-debug.h>
