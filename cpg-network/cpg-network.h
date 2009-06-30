@@ -63,10 +63,6 @@ void			  cpg_network_clear				(CpgNetwork *network);
 CpgObject		 *cpg_network_get_object		(CpgNetwork *network, 
 												 gchar const *id);
 
-gboolean	 	  cpg_network_set_expression	(CpgNetwork  *network,
-												 CpgProperty *property,
-												 gchar const  *expression);
-
 /* network manipulation */
 void			  cpg_network_add_object		(CpgNetwork *network, 
 												 CpgObject  *object);

@@ -26,11 +26,6 @@ gboolean		   cpg_property_get_integrated			(CpgProperty        *property);
 void			   cpg_property_set_integrated			(CpgProperty		*property,
 														 gboolean			 integrated);
 
-gboolean		   cpg_property_compile					(CpgProperty        *property, 
-														 GSList 			*context, 
-														 gchar             **error);
-
-void			   cpg_property_reset					(CpgProperty		*property);
 void 			   cpg_property_reset_cache				(CpgProperty		*property);
 
 gdouble			   cpg_property_get_value				(CpgProperty        *property);
@@ -40,6 +35,9 @@ void			   cpg_property_set_value				(CpgProperty        *property,
 														 gdouble             value);
 void			   cpg_property_set_value_expression	(CpgProperty        *property, 
 														 gchar const 		*expression);
+
+gboolean		   cpg_property_equal					(CpgProperty        *property,
+														 CpgProperty        *other);
 
 void			   _cpg_property_set_update				(CpgProperty	    *property,
 														 gdouble             value);

@@ -21,6 +21,8 @@ struct _CpgObjectPrivate
 	
 	// Links
 	GSList *links;
+	
+	CpgObject *template;
 };
 
 /* Properties */
@@ -28,7 +30,8 @@ enum
 {
 	PROP_0,
 	PROP_ID,
-	PROP_LOCAL_ID
+	PROP_LOCAL_ID,
+	PROP_TEMPLATE
 };
 
 /* Signals */
@@ -114,9 +117,27 @@ get_property (GObject     *object,
 		case PROP_LOCAL_ID:
 			g_value_take_string (value, cpg_object_get_local_id (obj));
 		break;
+		case PROP_TEMPLATE:
+			g_value_set_object (value, obj->priv->template);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
+	}
+}
+
+static void
+template_toggled (CpgObject *object,
+                  CpgObject *template,
+                  gboolean   is_last_ref)
+{
+	if (is_last_ref)
+	{
+		object->priv->template = NULL;
+
+		g_object_remove_toggle_ref (G_OBJECT (template),
+		                            (GToggleNotify)template_toggled,
+		                            object);
 	}
 }
 
@@ -131,9 +152,24 @@ set_property (GObject       *object,
 	switch (prop_id)
 	{
 		case PROP_ID:
-		{
 			set_id (obj, g_value_get_string (value));
-		}
+		break;
+		case PROP_TEMPLATE:
+			if (obj->priv->template)
+			{
+				g_object_remove_toggle_ref (G_OBJECT (obj->priv->template),
+				                            (GToggleNotify)template_toggled,
+				                            obj);
+			}
+			
+			obj->priv->template = g_value_get_object (value);
+			
+			if (obj->priv->template)
+			{
+				g_object_add_toggle_ref (G_OBJECT (obj->priv->template),
+				                         (GToggleNotify)template_toggled,
+				                         obj);
+			}
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -173,7 +209,16 @@ cpg_object_dispose (GObject *object)
 	GSList *copy = g_slist_copy (obj->priv->links);
 	
 	for (item = copy; item; item = g_slist_next (item))
+	{
 		link_destroyed (obj, CPG_LINK (item->data), TRUE);
+	}
+	
+	if (obj->priv->template)
+	{
+		g_object_remove_toggle_ref (G_OBJECT (obj->priv->template),
+		                            (GToggleNotify)template_toggled,
+		                            obj);
+	}
 	
 	g_slist_free (copy);
 }
@@ -253,6 +298,26 @@ cpg_object_class_init (CpgObjectClass *klass)
 						      NULL,
 						      G_PARAM_READABLE));
 
+	/**
+	 * CpgObject:template: 
+	 *
+	 * The #CpgObject template on which the object is based
+	 *
+	 **/
+	g_object_class_install_property (object_class, PROP_TEMPLATE,
+				 g_param_spec_object ("template",
+						      "TEMPLATE",
+						      "The object's template",
+						      CPG_TYPE_OBJECT,
+						      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	/**
+	 * CpgObject::tainted:
+	 * @object: a #CpgObject
+	 *
+	 * Emitted when the object is tainted
+	 *
+	 **/
 	object_signals[TAINTED] = 
 	   		g_signal_new ("tainted",
 			      G_OBJECT_CLASS_TYPE (object_class),
@@ -365,15 +430,13 @@ cpg_object_get_property (CpgObject    *object,
 }
 
 /**
- * cpg_object_remove_property:
+ * cpg_object_has_property:
  * @object: a #CpgObject
  * @name: a property name
- * @error: a #GError
  *
- * Remove the property @name from @object. If the property was not found or
- * could not be removed, @error will be appropriately set
+ * Get whether @object has a property with name @name
  *
- * Returns: %TRUE if the property could be removed, %FALSE otherwise
+ * Returns: %TRUE if @object has a property with name @name, %FALSE otherwise
  *
  **/
 gboolean
@@ -387,13 +450,15 @@ cpg_object_has_property (CpgObject    *object,
 }
 
 /**
- * cpg_object_has_property:
+ * cpg_object_remove_property:
  * @object: a #CpgObject
  * @name: a property name
+ * @error: a #GError
  *
- * Get whether @object has a property with name @name
+ * Remove the property @name from @object. If the property was not found or
+ * could not be removed, @error will be appropriately set
  *
- * Returns: %TRUE if @object has a property with name @name, %FALSE otherwise
+ * Returns: %TRUE if the property could be removed, %FALSE otherwise
  *
  **/
 gboolean
@@ -643,13 +708,11 @@ _cpg_object_get_links (CpgObject *object)
 }
 
 /**
- * cpg_object_taint:
+ * cpg_object_reset_cache:
  * @object: a #CpgObject
  *
- * Mark the object as tainted. This emits the "tainted" signal. The #CpgNetwork
- * in which the object is added acts on this signal to mark the network tainted
- * and as such the object will be properly recompiled when the network needs
- * to be simulated
+ * Reset object expression caches. This will reset all expressions (such as
+ * within properties) within the object
  *
  **/
 void
@@ -664,11 +727,13 @@ cpg_object_reset_cache (CpgObject *object)
 }
 
 /**
- * cpg_object_reset_cache:
+ * cpg_object_taint:
  * @object: a #CpgObject
  *
- * Reset object expression caches. This will reset all expressions (such as
- * within properties) within the object
+ * Mark the object as tainted. This emits the "tainted" signal. The #CpgNetwork
+ * in which the object is added acts on this signal to mark the network tainted
+ * and as such the object will be properly recompiled when the network needs
+ * to be simulated
  *
  **/
 void
@@ -684,7 +749,7 @@ _cpg_object_copy (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	
-	CpgObject *ret = g_object_new (G_OBJECT_TYPE (object), NULL);
+	CpgObject *ret = g_object_new (G_OBJECT_TYPE (object), "template", object, NULL);
 	
 	if (CPG_OBJECT_GET_CLASS (object)->copy)
 	{

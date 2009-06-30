@@ -22,9 +22,8 @@ void			  cpg_expression_set_value			(CpgExpression  *expression,
 													 gdouble         value);
 void			  cpg_expression_reset				(CpgExpression  *expression);
 
-/* convenient function */
-void			 _cpg_expression_print_instructions	(CpgExpression  *expression, 
-													 FILE           *f);
+gboolean		  cpg_expression_equal				(CpgExpression  *expression,
+													 CpgExpression  *other);
 
 void			  cpg_expression_set_from_string	(CpgExpression  *expression, 
 													 gchar const    *value);

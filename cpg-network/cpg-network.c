@@ -553,6 +553,24 @@ cpg_network_add_object (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_OBJECT (object));
 	g_return_if_fail (CPG_IS_LINK (object) || CPG_IS_STATE (object) || CPG_IS_RELAY (object));
 	
+	// Check if object has a template, and the network owns it
+	CpgObject *template = NULL;
+	g_object_get (G_OBJECT (object), "template", &template, NULL);
+	
+	if (template)
+	{
+		CpgObject *other = g_hash_table_lookup (network->priv->templates,
+		                                        cpg_object_get_id (template));
+
+		gboolean eq = other != template;
+		g_object_unref (template);
+		
+		if (!eq)
+		{
+			return;
+		}
+	}
+	
 	CpgObject *other = g_hash_table_lookup (network->priv->object_map, 
 	                                        cpg_object_get_id (object));
 
@@ -987,28 +1005,28 @@ cpg_network_reset (CpgNetwork *network)
 	g_signal_emit (network, network_signals[RESET], 0);
 }
 
-gboolean
-cpg_network_set_expression (CpgNetwork   *network,
-                            CpgProperty  *property,
-                            gchar const  *expression)
+static void
+merge_templates (gchar const *key,
+                 CpgObject   *template,
+                 CpgNetwork  *network)
 {
-	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
-	g_return_val_if_fail (property != NULL, FALSE);
-	g_return_val_if_fail (expression != NULL, FALSE);
-	
-	CpgObject *object = cpg_property_get_object (property);
-	
-	if (CPG_IS_LINK (object))
-		set_context (network, object, cpg_link_get_from (CPG_LINK (object)));
-	else
-		set_context (network, object, NULL);
+	CpgObject *orig = g_hash_table_lookup (network->priv->templates,
+	                                       key);
 
-	CpgExpression *expr = cpg_property_get_value_expression (property);
-	cpg_expression_set_from_string (expr, expression);
-	
-	return cpg_expression_compile (expr, network->priv->context, NULL);
+	if (!orig)
+	{
+		cpg_network_add_template (network, key, template);
+	}
 }
 
+/**
+ * cpg_network_merge:
+ * @network: a #CpgNetwork
+ * @other: a #CpgNetwork to merge
+ *
+ * Merges all the globals, templates and objects from @other into @network.
+ *
+ **/
 void             
 cpg_network_merge (CpgNetwork  *network,
                    CpgNetwork  *other)
@@ -1016,15 +1034,50 @@ cpg_network_merge (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (CPG_IS_NETWORK (other));
 	
+	// Copy over globals
 	GSList *item;
 	
+	for (item = cpg_object_get_properties (other->priv->constants); item; item = g_slist_next (item))
+	{
+		CpgProperty *property = (CpgProperty *)item->data;
+		
+		if (!cpg_object_get_property (network->priv->constants,
+		                              cpg_property_get_name (property)))
+		{
+			cpg_object_add_property (network->priv->constants,
+			                         cpg_property_get_name (property),
+			                         cpg_expression_get_as_string (cpg_property_get_value_expression (property)),
+			                         FALSE);
+		}
+	}
+		
+	// Copy over templates
+	g_hash_table_foreach (other->priv->templates,
+	                      (GHFunc)merge_templates,
+	                      network);
+	
+	// Copy over states/relays
 	for (item = other->priv->states; item; item = g_slist_next (item))
+	{
 		cpg_network_add_object (network, CPG_OBJECT (item->data));
+	}
 
+	// Copy over links
 	for (item = other->priv->links; item; item = g_slist_next (item))
+	{
 		cpg_network_add_object (network, CPG_OBJECT (item->data));
+	}
 }
 
+/**
+ * cpg_network_merge_from_file:
+ * @network: a #CpgNetwork
+ * @filename: network filename
+ *
+ * Merges the network defined in the file @filename into @network. This is
+ * similar to creating a network from a file and merging it with @network.
+ *
+ **/
 void
 cpg_network_merge_from_file (CpgNetwork  *network,
                              gchar const *filename)
@@ -1044,12 +1097,12 @@ cpg_network_merge_from_file (CpgNetwork  *network,
 }
 
 /**
- * cpg_network_remove_template:
+ * cpg_network_merge_from_xml:
  * @network: a #CpgNetwork
- * @name: the template name
+ * @xml: a xml string describing the network
  *
- * Remove a registered template object. Any objects based on this template
- * will become standalone objects.
+ * Merges the network defined in @xml into @network. This is
+ * similar to creating a network from xml and merging it with @network.
  *
  **/
 void
@@ -1071,14 +1124,13 @@ cpg_network_merge_from_xml (CpgNetwork  *network,
 }
 
 /**
- * cpg_network_add_template:
+ * cpg_network_set_global_constant:
  * @network: a #CpgNetwork
- * @name: the template name
- * @object: the template object
+ * @name: the constant name
+ * @constant: the constant value
  *
- * Adds a new template to the network. Templates can be used to define a
- * basis for constructing new states/links. This can be very useful to keep
- * the xml representation of the network small.
+ * Sets a constant in the network. Constants can be used to set global settings
+ * for the whole network (e.g. oscillator frequency)
  *
  **/
 void
@@ -1104,15 +1156,12 @@ cpg_network_set_global_constant (CpgNetwork   *network,
 }
 
 /**
- * cpg_network_add_link_from_template:
+ * cpg_network_get_globals:
  * @network: a #CpgNetwork
- * @name: template name
- * @from: a #CpgObject
- * @to: a #CpgObject
  *
- * Add a new link to the network based on a template.
- * 
- * Returns: a new #CpgObject. The object is already added to the network
+ * Get the #CpgObject containing all the global constants
+ *
+ * Returns: the #CpgObject containing the global constants
  *
  **/
 CpgObject *
@@ -1193,12 +1242,14 @@ cpg_network_get_templates (CpgNetwork *network)
 }
 
 /**
- * cpg_network_merge_from_xml:
+ * cpg_network_add_template:
  * @network: a #CpgNetwork
- * @xml: a xml string describing the network
+ * @name: the template name
+ * @object: the template object
  *
- * Merges the network defined in @xml into @network. This is
- * similar to creating a network from xml and merging it with @network.
+ * Adds a new template to the network. Templates can be used to define a
+ * basis for constructing new states/links. This can be very useful to keep
+ * the xml representation of the network small.
  *
  **/
 void
@@ -1216,12 +1267,13 @@ cpg_network_add_template (CpgNetwork  *network,
 }
 
 /**
- * cpg_network_get_globals:
+ * cpg_network_get_template:
  * @network: a #CpgNetwork
+ * @name: the template name
  *
- * Get the #CpgObject containing all the global constants
+ * Get a registered template object
  *
- * Returns: the #CpgObject containing the global constants
+ * Returns: a template object or %NULL if the template could not be found
  *
  **/
 CpgObject *
@@ -1235,13 +1287,12 @@ cpg_network_get_template (CpgNetwork  *network,
 }
 
 /**
- * cpg_network_set_global_constant:
+ * cpg_network_remove_template:
  * @network: a #CpgNetwork
- * @name: the constant name
- * @constant: the constant value
+ * @name: the template name
  *
- * Sets a constant in the network. Constants can be used to set global settings
- * for the whole network (e.g. oscillator frequency)
+ * Remove a registered template object. Any objects based on this template
+ * will become standalone objects.
  *
  **/
 void
@@ -1291,13 +1342,15 @@ cpg_network_add_from_template (CpgNetwork  *network,
 }
 
 /**
- * cpg_network_get_template:
+ * cpg_network_add_link_from_template:
  * @network: a #CpgNetwork
- * @name: the template name
+ * @name: template name
+ * @from: a #CpgObject
+ * @to: a #CpgObject
  *
- * Get a registered template object
- *
- * Returns: a template object or %NULL if the template could not be found
+ * Add a new link to the network based on a template.
+ * 
+ * Returns: a new #CpgObject. The object is already added to the network
  *
  **/
 CpgObject *

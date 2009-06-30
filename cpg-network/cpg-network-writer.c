@@ -7,14 +7,27 @@ extern int xmlIndentTreeOutput;
 static void
 properties_to_xml (xmlDocPtr   doc,
                    xmlNodePtr  parent,
-                   CpgObject  *object)
+                   GSList     *properties,
+                   CpgObject  *template)
 {
 	GSList *item;
 	
-	for (item = cpg_object_get_properties (object); item; item = g_slist_next (item))
+	for (item = properties; item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
 		CpgExpression *expression = cpg_property_get_value_expression (property);
+		
+		// Check if property is different from template
+		if (template)
+		{
+			CpgProperty *tprop = cpg_object_get_property (template, 
+				                                          cpg_property_get_name (property));
+
+			if (tprop && cpg_property_equal (property, tprop))
+			{
+				continue;
+			}
+		}
 
 		xmlNodePtr node = xmlNewDocNode (doc, NULL, (xmlChar *)"property", NULL);
 		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)cpg_property_get_name (property));
@@ -36,7 +49,16 @@ object_to_xml (xmlDocPtr     doc,
 	xmlNewProp (ptr, (xmlChar *)"id", (xmlChar *)cpg_object_get_id (object));
 	xmlAddChild (parent, ptr);
 	
-	properties_to_xml (doc, ptr, object);
+	CpgObject *template = NULL;
+	g_object_get (G_OBJECT (object), "template", &template, NULL);
+	
+	if (template != NULL)
+	{
+		xmlNewProp (ptr, (xmlChar *)"ref", (xmlChar *)cpg_object_get_id (template));
+		g_object_unref (template);
+	}
+	
+	properties_to_xml (doc, ptr, cpg_object_get_properties (object), template);
 	return ptr;
 }
 
@@ -54,6 +76,37 @@ state_to_xml (xmlDocPtr   doc,
               CpgState   *state)
 {
 	return object_to_xml (doc, parent, CPG_OBJECT (state), "state");
+}
+
+static gboolean
+template_has_action (CpgLink       *template,
+                     CpgLinkAction *action)
+{
+	if (!template)
+	{
+		return FALSE;
+	}
+	
+	GSList *item;
+	CpgProperty *p1 = cpg_link_action_get_target (action);
+	CpgExpression *e1 = cpg_link_action_get_expression (action);
+	
+	for (item = cpg_link_get_actions (template); item; item = g_slist_next (item))
+	{
+		CpgLinkAction *other = (CpgLinkAction *)item->data;
+
+		CpgProperty *p2 = cpg_link_action_get_target (other);
+		CpgExpression *e2 = cpg_link_action_get_expression (other);
+		
+		if (g_strcmp0 (cpg_property_get_name (p1), 
+		               cpg_property_get_name (p2)) == 0 &&
+		    cpg_expression_equal (e1, e2))
+		{
+			return TRUE;
+		}
+	}
+	
+	return FALSE;
 }
 
 static xmlNodePtr
@@ -79,9 +132,17 @@ link_to_xml (xmlDocPtr   doc,
 	// Link actions
 	GSList *item;
 	
+	CpgObject *template = NULL;
+	g_object_get (G_OBJECT (link), "template", &template, NULL);
+	
 	for (item = cpg_link_get_actions (link); item; item = g_slist_next (item))
 	{
 		CpgLinkAction *action = (CpgLinkAction *)(item->data);
+		
+		if (template_has_action (CPG_LINK (template), action))
+		{
+			continue;
+		}
 		
 		xmlNodePtr ac = xmlNewDocNode (doc, NULL, (xmlChar *)"action", NULL);
 		xmlNewProp (ac, (xmlChar *)"target", (xmlChar *)cpg_property_get_name (cpg_link_action_get_target (action)));
@@ -92,6 +153,11 @@ link_to_xml (xmlDocPtr   doc,
 		xmlAddChild (node, ac);
 	}
 	
+	if (template)
+	{
+		g_object_unref (template);
+	}
+	
 	return node;
 }
 
@@ -100,12 +166,38 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 {
 	xmlDocPtr doc = xmlNewDoc ((xmlChar *)"1.0");
 	xmlNodePtr root = xmlNewDocNode (doc, NULL, (xmlChar *)"cpg", NULL);
-	
+
 	xmlDocSetRootElement (doc, root);
+
+	// Globals
+	GSList *properties = NULL;
+	CpgObject *globals = cpg_network_get_globals (network);
+	GSList *item;
 	
+	for (item = cpg_object_get_properties (globals); item; item = g_slist_next (item))
+	{
+		CpgProperty *prop = (CpgProperty *)item->data;
+		gchar const *name = cpg_property_get_name (prop);
+		
+		if (g_strcmp0 (name, "t") != 0 && g_strcmp0 (name, "dt") != 0)
+		{
+			properties = g_slist_prepend (properties, prop);
+		}
+	}
+	
+	if (properties)
+	{	
+		properties = g_slist_reverse (properties);
+
+		xmlNodePtr gbl = xmlNewDocNode (doc, NULL, (xmlChar *)"globals", NULL);
+		xmlAddChild (root, gbl);
+		
+		properties_to_xml (doc, gbl, properties, NULL);
+		g_slist_free (properties);
+	}
+
 	// Generate templates
 	GSList *list = cpg_network_get_templates (network);
-	GSList *item;
 	xmlNodePtr templates;
 	
 	if (list)
@@ -153,15 +245,17 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	{
 		link_to_xml (doc, root, CPG_LINK (item->data));
 	}
-	
-	object_to_xml (doc, root, cpg_network_get_globals (network), "globals");
-	
+		
 	xmlIndentTreeOutput = 1;
 	
 	xmlChar *mem;
 	int size;
 	
-	xmlDocDumpFormatMemory (doc, &mem, &size, 1);
+	xmlDocDumpFormatMemoryEnc (doc,
+	                           &mem,
+	                           &size,
+	                           xmlGetCharEncodingName (XML_CHAR_ENCODING_UTF8),
+	                           1);
 	
 	gchar *ret = g_strndup ((gchar const *)mem, size);
 	xmlFree (mem);

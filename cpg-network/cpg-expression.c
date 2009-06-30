@@ -1153,3 +1153,77 @@ cpg_expression_get_instructions(CpgExpression *expression)
 {
 	return expression->instructions;
 }
+
+static gboolean
+instructions_equal (CpgInstruction *i1, 
+                    CpgInstruction *i2)
+{
+	if (i1->type != i2->type)
+	{
+		return FALSE;
+	}
+	
+	switch (i1->type)
+	{
+		case CPG_INSTRUCTION_TYPE_PROPERTY:
+			return ((CpgInstructionProperty *)i1)->property ==
+			       ((CpgInstructionProperty *)i2)->property;
+		break;
+		case CPG_INSTRUCTION_TYPE_OPERATOR:
+		case CPG_INSTRUCTION_TYPE_FUNCTION:
+			return ((CpgInstructionFunction *)i1)->id ==
+			       ((CpgInstructionFunction *)i2)->id;
+		break;
+		case CPG_INSTRUCTION_TYPE_NUMBER:
+			return ((CpgInstructionNumber *)i1)->value ==
+			       ((CpgInstructionNumber *)i2)->value;
+		break;
+		default:
+			return FALSE;
+		break;
+	}
+}
+
+/**
+ * cpg_expression_equal:
+ * @expression: a #CpgExpression
+ * @other: a #CpgExpression
+ *
+ * Get whether two expressions are equal. If the expressions are compiled, they
+ * are evaluated for equality by means of their instructions. Otherwise the
+ * comparison is done on their string representations
+ *
+ * Returns: %TRUE if the expressions are equal, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_expression_equal (CpgExpression *expression,
+                      CpgExpression *other)
+{
+	if (!expression->instructions || !other->instructions)
+	{
+		return g_strcmp0 (expression->expression, other->expression) == 0;
+	}
+	
+	if (g_slist_length (expression->instructions) != g_slist_length (other->instructions))
+	{
+		return FALSE;
+	}
+	
+	// Compare instructions
+	GSList *e1 = expression->instructions;
+	GSList *e2 = other->instructions;
+	
+	while (e1)
+	{
+		if (!instructions_equal ((CpgInstruction *)e1->data, (CpgInstruction *)e2->data))
+		{
+			return FALSE;
+		}
+		
+		e1 = g_slist_next (e1);
+		e2 = g_slist_next (e2);
+	}
+	
+	return TRUE;
+}

@@ -255,3 +255,21 @@ _cpg_property_unuse (CpgProperty *property)
 
 	return (--(property->use_count) == 0);
 }
+
+/**
+ * cpg_property_equal:
+ * @property: a #CpgProperty
+ * @other: a #CpgProperty
+ *
+ * Compare two properties for equal values/expressions
+ *
+ * Returns: %TRUE if the properties are equal, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_property_equal (CpgProperty *property,
+                    CpgProperty *other)
+{
+	return cpg_expression_equal (cpg_property_get_value_expression (property),
+	                             cpg_property_get_value_expression (other));
+}
