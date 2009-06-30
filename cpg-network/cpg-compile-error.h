@@ -9,8 +9,19 @@
 #define CPG_TYPE_COMPILE_ERROR (cpg_compile_error_get_type ())
 #define CPG_COMPILE_ERROR_TYPE (cpg_compile_error_type_quark ())
 
-typedef enum
-{
+/**
+ * CpgCompileErrorType:
+ * @CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND: property not found
+ * @CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND: function not found
+ * @CPG_COMPILE_ERROR_INVALID_TOKEN: invalid token
+ * @CPG_COMPILE_ERROR_MAXARG: maximum number of arguments exceeded
+ * @CPG_COMPILE_ERROR_INVALID_STACK: invalid stack produced
+ * @CPG_COMPILE_ERROR_NUM_ERRORS: num errors
+ *
+ * Enum used to indicate the type of compile error
+ *
+ **/
+typedef enum {
 	CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
 	CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
 	CPG_COMPILE_ERROR_INVALID_TOKEN,

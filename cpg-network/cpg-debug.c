@@ -17,15 +17,30 @@ char const *debug_types[] =
 	"ERROR, EXPRESSION, EVALUATION"
 };
 
-int debug_type = CPG_DEBUG_TYPE_ERROR;
+static int debug_type = CPG_DEBUG_TYPE_ERROR;
 
+/**
+ * cpg_debug_message_function:
+ * @type: a #CpgDebugType
+ *
+ * Add a debug type
+ *
+ **/
 void
 cpg_debug_add (CpgDebugType type)
 {
 	debug_type |= type;
 }
 
-#ifndef RTLINUX
+/**
+ * cpg_debug_message_function:
+ * @type: a #CpgDebugType
+ * @function: the function
+ * @format: the format
+ *
+ * Write a debug message
+ *
+ **/
 void
 cpg_debug_message_function (CpgDebugType  type, 
                             char const   *function, 
@@ -44,4 +59,3 @@ cpg_debug_message_function (CpgDebugType  type,
 		
 	va_end (ap);
 }
-#endif

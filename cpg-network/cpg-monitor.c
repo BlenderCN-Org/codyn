@@ -95,6 +95,19 @@ cpg_monitor_update (CpgMonitor  *monitor,
 	monitor->sites[monitor->num_values++] = time;
 }
 
+/**
+ * cpg_monitor_new:
+ * @network: a #CpgNetwork
+ * @object: a #CpgObject
+ * @property_name: a property name
+ *
+ * Create a new monitor for monitoring property @property_name of object
+ * @object in the network @network. The monitor will attach itself to the
+ * life time of the network and object.
+ *
+ * Returns: a new #CpgMonitor
+ *
+ **/
 CpgMonitor *
 cpg_monitor_new (CpgNetwork   *network,
                  CpgObject    *object,
@@ -125,23 +138,21 @@ cpg_monitor_new (CpgNetwork   *network,
 }
 
 /**
- * cpg_network_monitor_data:
- * @network: the #CpgNetwork
- * @object: the monitored #CpgObject
- * @propname: the monitored property name
- * @size: return pointer value for the size of the returned array
+ * cpg_monitor_get_data:
+ * @monitor: a #CpgMonitor
+ * @size: return value for number of values
  *
  * Returns the data as monitored during the simulation. See also
- * #cpg_network_monitor_data_resampled for retrieving a resampled version
+ * #cpg_monitor_get_data_resampled for retrieving a resampled version
  * of the monitor data
  *
- * Return value: internal array of monitored values. The double pointer should
+ * Returns: internal array of monitored values. The pointer should
  * not be freed
  *
  **/
 gdouble const *
 cpg_monitor_get_data (CpgMonitor *monitor,
-				     guint      *size)
+				      guint      *size)
 {
 	if (size)
 		*size = 0;
@@ -179,18 +190,17 @@ bsearch_find (gdouble const  *list,
 }
 
 /**
- * cpg_network_monitor_data_resampled:
- * @network: the #CpgNetwork
- * @object: the monitored #CpgObject
- * @propname: the monitored property name
+ * cpg_monitor_get_data_resampled:
+ * @monitor: a #CpgMonitor
  * @sites: the data sites at which to resample the data
  * @size: the size of the data sites array
+ * @ret: the return location for the resampled data
  *
  * Returns the data as monitored during the simulation, but resampled at
- * sepcific data sites
+ * specific data sites. @ret will have to be already allocated and large
+ * enough to hold @size values.
  *
- * Return value: newly allocated array of monitored values. The returned pointer
- * should be freed when no longer used
+ * Returns: %TRUE if @ret was successfully filled with data, %FALSE otherwise
  *
  **/
 gboolean

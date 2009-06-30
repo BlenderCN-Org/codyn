@@ -70,11 +70,74 @@ CpgNetwork
 @Returns: 
 
 
+<!-- ##### FUNCTION cpg_network_new_from_xml ##### -->
+<para>
+
+</para>
+
+@xml: 
+@Returns: 
+
+
 <!-- ##### FUNCTION cpg_network_new ##### -->
 <para>
 
 </para>
 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_write_to_xml ##### -->
+<para>
+
+</para>
+
+@network: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_write_to_file ##### -->
+<para>
+
+</para>
+
+@network: 
+@filename: 
+
+
+<!-- ##### FUNCTION cpg_network_merge ##### -->
+<para>
+
+</para>
+
+@network: 
+@other: 
+
+
+<!-- ##### FUNCTION cpg_network_merge_from_file ##### -->
+<para>
+
+</para>
+
+@network: 
+@filename: 
+
+
+<!-- ##### FUNCTION cpg_network_merge_from_xml ##### -->
+<para>
+
+</para>
+
+@network: 
+@xml: 
+
+
+<!-- ##### FUNCTION cpg_network_get_globals ##### -->
+<para>
+
+</para>
+
+@network: 
 @Returns: 
 
 
@@ -93,17 +156,6 @@ CpgNetwork
 
 @network: 
 @id: 
-@Returns: 
-
-
-<!-- ##### FUNCTION cpg_network_set_expression ##### -->
-<para>
-
-</para>
-
-@network: 
-@property: 
-@expression: 
 @Returns: 
 
 
@@ -187,5 +239,65 @@ CpgNetwork
 </para>
 
 @network: 
+
+
+<!-- ##### FUNCTION cpg_network_get_templates ##### -->
+<para>
+
+</para>
+
+@network: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_add_template ##### -->
+<para>
+
+</para>
+
+@network: 
+@name: 
+@object: 
+
+
+<!-- ##### FUNCTION cpg_network_get_template ##### -->
+<para>
+
+</para>
+
+@network: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_remove_template ##### -->
+<para>
+
+</para>
+
+@network: 
+@name: 
+
+
+<!-- ##### FUNCTION cpg_network_add_from_template ##### -->
+<para>
+
+</para>
+
+@network: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_add_link_from_template ##### -->
+<para>
+
+</para>
+
+@network: 
+@name: 
+@from: 
+@to: 
+@Returns: 
 
 

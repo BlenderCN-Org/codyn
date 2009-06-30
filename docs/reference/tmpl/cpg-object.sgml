@@ -17,6 +17,16 @@ CpgObject
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### ENUM CpgObjectError ##### -->
+<para>
+
+</para>
+
+@CPG_OBJECT_ERROR_PROP_UNKNOWN: 
+@CPG_OBJECT_ERROR_PROP_NOT_FOUND: 
+@CPG_OBJECT_ERROR_PROP_IN_USE: 
+@CPG_OBJECT_NUM_ERRORS: 
+
 <!-- ##### STRUCT CpgObject ##### -->
 <para>
 
@@ -40,6 +50,19 @@ CpgObject
 
 </para>
 
+<!-- ##### ARG CpgObject:template ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION cpg_object_error_quark ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
 <!-- ##### FUNCTION cpg_object_new ##### -->
 <para>
 
@@ -56,6 +79,15 @@ CpgObject
 
 @object: 
 @Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_set_id ##### -->
+<para>
+
+</para>
+
+@object: 
+@id: 
 
 
 <!-- ##### FUNCTION cpg_object_get_local_id ##### -->

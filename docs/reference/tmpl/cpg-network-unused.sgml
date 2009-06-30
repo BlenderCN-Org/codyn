@@ -1,3 +1,219 @@
+<!-- ##### SECTION ./tmpl/cpg-debug.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-debug.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-debug.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-debug.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-debug.sgml:Title ##### -->
+cpg-debug
+
+
+<!-- ##### SECTION ./tmpl/cpg-ref-counted-private.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-ref-counted-private.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-ref-counted-private.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-ref-counted-private.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-ref-counted-private.sgml:Title ##### -->
+cpg-ref-counted-private
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-expression.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-expression.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-expression.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-expression.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-expression.sgml:Title ##### -->
+cpg-shared-expression
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-link.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-link.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-link.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-link.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-link.sgml:Title ##### -->
+cpg-shared-link
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-network.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-network.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-network.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-network.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-network.sgml:Title ##### -->
+cpg-shared-network
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-property.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-property.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-property.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-property.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-property.sgml:Title ##### -->
+cpg-shared-property
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-utils.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-utils.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-utils.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-utils.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-shared-utils.sgml:Title ##### -->
+cpg-shared-utils
+
+
+<!-- ##### SECTION ./tmpl/cpg-stack.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-stack.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-stack.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-stack.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-stack.sgml:Title ##### -->
+cpg-stack
+
+
+<!-- ##### SECTION ./tmpl/cpg-utils.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-utils.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-utils.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-utils.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-utils.sgml:Title ##### -->
+cpg-utils
+
+
 <!-- ##### MACRO CPG_LINK_CONST ##### -->
 <para>
 
@@ -12,12 +228,42 @@
 
 @obj: 
 
+<!-- ##### MACRO CPG_NETWORK_TYPE_COMPILE_ERROR_TYPE ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO CPG_NETWORK_TYPE_DEBUG_TYPE ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO CPG_NETWORK_TYPE_INSTRUCTION_TYPE ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO CPG_NETWORK_TYPE_OBJECT_ERROR ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### MACRO CPG_OBJECT_CONST ##### -->
 <para>
 
 </para>
 
 @obj: 
+
+<!-- ##### MACRO CPG_OBJECT_ERROR ##### -->
+<para>
+
+</para>
+
 
 <!-- ##### MACRO CPG_RELAY_CONST ##### -->
 <para>
@@ -64,6 +310,16 @@
 </para>
 
 @obj: 
+
+<!-- ##### ENUM CpgDebugType ##### -->
+<para>
+
+</para>
+
+@CPG_DEBUG_TYPE_NONE: 
+@CPG_DEBUG_TYPE_ERROR: 
+@CPG_DEBUG_TYPE_EXPRESSION: 
+@CPG_DEBUG_TYPE_EVALUATE: 
 
 <!-- ##### ENUM CpgExpressionFlag ##### -->
 <para>
@@ -119,6 +375,101 @@
 @Type: 
 @Num: 
 
+<!-- ##### FUNCTION cpg_compile_error_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION cpg_compile_error_type_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION cpg_debug_add ##### -->
+<para>
+
+</para>
+
+@type: 
+
+<!-- ##### MACRO cpg_debug_error ##### -->
+<para>
+
+</para>
+
+@...: 
+
+<!-- ##### MACRO cpg_debug_evaluate ##### -->
+<para>
+
+</para>
+
+@...: 
+
+<!-- ##### MACRO cpg_debug_expression ##### -->
+<para>
+
+</para>
+
+@...: 
+
+<!-- ##### MACRO cpg_debug_message ##### -->
+<para>
+
+</para>
+
+@type: 
+@...: 
+
+<!-- ##### FUNCTION cpg_debug_message_function ##### -->
+<para>
+
+</para>
+
+@type: 
+@function: 
+@format: 
+@Varargs: 
+
+<!-- ##### FUNCTION cpg_debug_type_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION cpg_expression_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION cpg_instruction_type_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION cpg_link_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION cpg_monitor_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
 <!-- ##### FUNCTION cpg_network_add_monitor ##### -->
 <para>
 
@@ -128,6 +479,47 @@
 @object: 
 @propname: 
 @Returns: 
+
+<!-- ##### FUNCTION cpg_network_set_expression ##### -->
+<para>
+
+</para>
+
+@network: 
+@property: 
+@expression: 
+@Returns: 
+
+<!-- ##### FUNCTION cpg_object_error_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION cpg_property_compile ##### -->
+<para>
+
+</para>
+
+@property: 
+@context: 
+@error: 
+@Returns: 
+
+<!-- ##### FUNCTION cpg_property_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+<!-- ##### FUNCTION cpg_property_reset ##### -->
+<para>
+
+</para>
+
+@property: 
 
 <!-- ##### MACRO cpg_shared_array_base_type ##### -->
 <para>
@@ -211,4 +603,81 @@
 @property: 
 @base: 
 @Returns: 
+
+<!-- ##### FUNCTION cpg_stack_count ##### -->
+<para>
+
+</para>
+
+@stack: 
+@Returns: 
+
+<!-- ##### FUNCTION cpg_stack_destroy ##### -->
+<para>
+
+</para>
+
+@stack: 
+
+<!-- ##### FUNCTION cpg_stack_free ##### -->
+<para>
+
+</para>
+
+@stack: 
+
+<!-- ##### FUNCTION cpg_stack_init ##### -->
+<para>
+
+</para>
+
+@stack: 
+@size: 
+
+<!-- ##### FUNCTION cpg_stack_new ##### -->
+<para>
+
+</para>
+
+@size: 
+@Returns: 
+
+<!-- ##### FUNCTION cpg_stack_pop ##### -->
+<para>
+
+</para>
+
+@stack: 
+@data: 
+@Returns: 
+
+<!-- ##### FUNCTION cpg_stack_push ##### -->
+<para>
+
+</para>
+
+@stack: 
+@value: 
+@data: 
+
+<!-- ##### FUNCTION cpg_stack_reset ##### -->
+<para>
+
+</para>
+
+@stack: 
+
+<!-- ##### FUNCTION cpg_stack_size ##### -->
+<para>
+
+</para>
+
+@stack: 
+@Returns: 
+
+<!-- ##### VARIABLE debug_type ##### -->
+<para>
+
+</para>
+
 

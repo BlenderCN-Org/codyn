@@ -149,6 +149,12 @@ cpg_network_class_init (CpgNetworkClass *klass)
 	object_class->get_property = cpg_network_get_property;
 	object_class->set_property = cpg_network_set_property;
 
+	/**
+	 * CpgNetwork:time:
+	 *
+	 * Current simulation time
+	 *
+	 **/
 	g_object_class_install_property (object_class, PROP_TIME,
 				 g_param_spec_double ("time",
 							  "TIME",
@@ -158,6 +164,12 @@ cpg_network_class_init (CpgNetworkClass *klass)
 							  0,
 							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgNetwork:timestep:
+	 *
+	 * Current simulation timestep
+	 *
+	 **/
 	g_object_class_install_property (object_class, PROP_TIMESTEP,
 				 g_param_spec_double ("timestep",
 							  "TIMESTEP",
@@ -167,6 +179,12 @@ cpg_network_class_init (CpgNetworkClass *klass)
 							  0,
 							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgNetwork:compiled:
+	 *
+	 * Whether the network is currently compiled
+	 *
+	 **/
 	g_object_class_install_property (object_class, PROP_COMPILED,
 				 g_param_spec_boolean ("compiled",
 							  "COMPILED",
@@ -174,6 +192,13 @@ cpg_network_class_init (CpgNetworkClass *klass)
 							  FALSE,
 							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgNetwork::reset:
+	 * @network: a #CpgNetwork
+	 *
+	 * Emitted when the network is reset
+	 *
+	 **/
 	network_signals[RESET] =
    		g_signal_new ("reset",
 			      G_OBJECT_CLASS_TYPE (object_class),
@@ -184,6 +209,14 @@ cpg_network_class_init (CpgNetworkClass *klass)
 			      G_TYPE_NONE,
 			      0);
 
+	/**
+	 * CpgNetwork::update:
+	 * @network: a #CpgNetwork
+	 * @timestep: the timestep
+	 *
+	 * Emitted when the network is updated (one step)
+	 *
+	 **/
 	network_signals[UPDATE] =
    		g_signal_new ("update",
 			      G_OBJECT_CLASS_TYPE (object_class),
@@ -195,6 +228,14 @@ cpg_network_class_init (CpgNetworkClass *klass)
 			      1,
 				  G_TYPE_DOUBLE);
 
+	/**
+	 * CpgNetwork::compile-error:
+	 * @network: a #CpgNetwork
+	 * @error: a #CpgCompileError
+	 *
+	 * Emitted when there is a compile error
+	 *
+	 **/
 	network_signals[COMPILE_ERROR] =
    		g_signal_new ("compile-error",
 			      G_OBJECT_CLASS_TYPE (object_class),
@@ -497,7 +538,7 @@ set_compiled (CpgNetwork *network,
 
 /**
  * cpg_network_add_object:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  * @object: the #CpgObject to add
  *
  * Adds a new object to the network (either #CpgLink or #CpgState). Make sure
@@ -532,7 +573,7 @@ cpg_network_add_object (CpgNetwork  *network,
 
 /**
  * cpg_network_get_object:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  * @id: the object id
  *
  * Find object @id in @network
@@ -552,7 +593,7 @@ cpg_network_get_object (CpgNetwork   *network,
 
 /**
  * cpg_network_get_states:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  *
  * Retrieves the list of states. This list is managed internally by the network
  * and should therefore not be changed or freed
@@ -569,9 +610,8 @@ cpg_network_get_states (CpgNetwork *network)
 }
 
 /**
- * cpg_network_links:
- * @network: the #CpgNetwork
- * @size: return value for the size of the list of links
+ * cpg_network_get_links:
+ * @network: a #CpgNetwork
  *
  * Retrieves the list of links. This list is managed internally by the network
  * and should therefore not be changed or freed
@@ -589,7 +629,7 @@ cpg_network_get_links (CpgNetwork *network)
 
 /**
  * cpg_network_taint:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  *
  * Set the network in an uncompiled state, forcing it to recompile at the next
  * simulation step or run (or the network can be recompiled manually with 
@@ -606,13 +646,17 @@ cpg_network_taint (CpgNetwork *network)
 
 /**
  * cpg_network_compile:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
+ * @error: return location for compiler error
  *
  * Recompile all expressions for all states and links. You should do this
  * after you've added new objects to the network. If a simulation is ran while
  * the network is in an uncompiled state, it will be compiled first.
  *
- * Return value: 1 if compilation was successful, 0 otherwise
+ * If an error occurs while compiling, this function returns %FALSE and sets
+ * @error accordingly.
+ *
+ * Return value: %TRUE if compilation was successful, %FALSE otherwise
  *
  **/
 gboolean
@@ -714,7 +758,7 @@ remove_object (CpgObject   *object,
 
 /**
  * cpg_network_remove_object:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  * @object: the #CpgObject to remove
  *
  * Removes @object from the network
@@ -737,7 +781,7 @@ cpg_network_remove_object (CpgNetwork  *network,
 
 /**
  * cpg_network_clear:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  *
  * Clears the network (removes all objects).
  *
@@ -814,7 +858,7 @@ reset_cache (CpgNetwork *network)
 
 /**
  * cpg_network_step:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  * @timestep: the integration timestep
  * 
  * Perform one step of simulation given the specified @timestep.
@@ -865,7 +909,7 @@ cpg_network_step (CpgNetwork  *network,
 
 /**
  * cpg_network_run:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  * @from: the simulation start time
  * @timestep: the integration time step to simulate with
  * @to: the simulation end time
@@ -916,7 +960,7 @@ cpg_network_run (CpgNetwork  *network,
 
 /**
  * cpg_network_reset:
- * @network: the #CpgNetwork
+ * @network: a #CpgNetwork
  *
  * Reset the CPG network to its original values. This will reset the time
  * to 0 and for all objects in the network will reset all properties to the
@@ -999,6 +1043,15 @@ cpg_network_merge_from_file (CpgNetwork  *network,
 	}
 }
 
+/**
+ * cpg_network_remove_template:
+ * @network: a #CpgNetwork
+ * @name: the template name
+ *
+ * Remove a registered template object. Any objects based on this template
+ * will become standalone objects.
+ *
+ **/
 void
 cpg_network_merge_from_xml (CpgNetwork  *network,
                             gchar const *xml)
@@ -1017,6 +1070,17 @@ cpg_network_merge_from_xml (CpgNetwork  *network,
 	}
 }
 
+/**
+ * cpg_network_add_template:
+ * @network: a #CpgNetwork
+ * @name: the template name
+ * @object: the template object
+ *
+ * Adds a new template to the network. Templates can be used to define a
+ * basis for constructing new states/links. This can be very useful to keep
+ * the xml representation of the network small.
+ *
+ **/
 void
 cpg_network_set_global_constant (CpgNetwork   *network,
                                  gchar const  *name,
@@ -1039,6 +1103,18 @@ cpg_network_set_global_constant (CpgNetwork   *network,
 	cpg_property_set_value (property, constant);
 }
 
+/**
+ * cpg_network_add_link_from_template:
+ * @network: a #CpgNetwork
+ * @name: template name
+ * @from: a #CpgObject
+ * @to: a #CpgObject
+ *
+ * Add a new link to the network based on a template.
+ * 
+ * Returns: a new #CpgObject. The object is already added to the network
+ *
+ **/
 CpgObject *
 cpg_network_get_globals (CpgNetwork *network)
 {
@@ -1047,6 +1123,15 @@ cpg_network_get_globals (CpgNetwork *network)
 	return network->priv->constants;
 }
 
+/**
+ * cpg_network_write_to_xml:
+ * @network: a #CpgNetwork
+ *
+ * Get xml representation of the network
+ *
+ * Returns: a string containing the xml representation of the network
+ *
+ **/
 gchar *
 cpg_network_write_to_xml (CpgNetwork *network)
 {
@@ -1055,6 +1140,14 @@ cpg_network_write_to_xml (CpgNetwork *network)
 	return cpg_network_writer_xml_string (network);
 }
 
+/**
+ * cpg_network_write_to_file:
+ * @network: a #CpgNetwork
+ * @filename: a filename
+ *
+ * Write the xml representation of the network to file
+ *
+ **/
 void			 
 cpg_network_write_to_file (CpgNetwork  *network,
                            gchar const *filename)
@@ -1073,6 +1166,18 @@ fill_templates (gchar const  *key,
 	*list = g_slist_prepend (*list, g_strdup (key));
 }
 
+/**
+ * cpg_network_get_templates:
+ * @network: a #CpgNetwork
+ *
+ * Get a list of template names for @network. The names in the list are owned
+ * by the caller and need to be freed accordingly:
+ *
+ * g_slist_foreach (templates, (GFunc)g_free, NULL);
+ *
+ * Returns: a list of template names
+ *
+ **/
 GSList *
 cpg_network_get_templates (CpgNetwork *network)
 {
@@ -1087,6 +1192,15 @@ cpg_network_get_templates (CpgNetwork *network)
 	return g_slist_reverse (list);
 }
 
+/**
+ * cpg_network_merge_from_xml:
+ * @network: a #CpgNetwork
+ * @xml: a xml string describing the network
+ *
+ * Merges the network defined in @xml into @network. This is
+ * similar to creating a network from xml and merging it with @network.
+ *
+ **/
 void
 cpg_network_add_template (CpgNetwork  *network,
                           gchar const *name,
@@ -1101,6 +1215,15 @@ cpg_network_add_template (CpgNetwork  *network,
 	                     g_object_ref (object));
 }
 
+/**
+ * cpg_network_get_globals:
+ * @network: a #CpgNetwork
+ *
+ * Get the #CpgObject containing all the global constants
+ *
+ * Returns: the #CpgObject containing the global constants
+ *
+ **/
 CpgObject *
 cpg_network_get_template (CpgNetwork  *network,
                           gchar const *name)
@@ -1111,6 +1234,16 @@ cpg_network_get_template (CpgNetwork  *network,
 	return g_hash_table_lookup (network->priv->templates, name);
 }
 
+/**
+ * cpg_network_set_global_constant:
+ * @network: a #CpgNetwork
+ * @name: the constant name
+ * @constant: the constant value
+ *
+ * Sets a constant in the network. Constants can be used to set global settings
+ * for the whole network (e.g. oscillator frequency)
+ *
+ **/
 void
 cpg_network_remove_template (CpgNetwork  *network,
                              gchar const *name)
@@ -1121,6 +1254,18 @@ cpg_network_remove_template (CpgNetwork  *network,
 	g_hash_table_remove (network->priv->templates, name);	
 }
 
+/**
+ * cpg_network_add_from_template:
+ * @network: a #CpgNetwork
+ * @name: template name
+ *
+ * Add a new object to the network based on a template. Do not use this for
+ * constructing links from templates. To construct links, use 
+ * #cpg_network_add_link_from_template instead.
+ * 
+ * Returns: a new #CpgObject. The object is already added to the network
+ *
+ **/
 CpgObject *
 cpg_network_add_from_template (CpgNetwork  *network,
                                gchar const *name)
@@ -1145,6 +1290,16 @@ cpg_network_add_from_template (CpgNetwork  *network,
 	return ret;
 }
 
+/**
+ * cpg_network_get_template:
+ * @network: a #CpgNetwork
+ * @name: the template name
+ *
+ * Get a registered template object
+ *
+ * Returns: a template object or %NULL if the template could not be found
+ *
+ **/
 CpgObject *
 cpg_network_add_link_from_template (CpgNetwork  *network,
                                     gchar const *name,

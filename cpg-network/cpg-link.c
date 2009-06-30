@@ -226,6 +226,12 @@ cpg_link_class_init (CpgLinkClass *klass)
 	cpgobject_class->reset_cache = cpg_link_reset_cache_impl;
 	cpgobject_class->copy = cpg_link_copy_impl;
 
+	/**
+	 * CpgLink:from:
+	 *
+	 * The from #CpgObject
+	 *
+	 **/
 	g_object_class_install_property (object_class, PROP_FROM,
 				 g_param_spec_object ("from",
 							  "FROM",
@@ -233,6 +239,12 @@ cpg_link_class_init (CpgLinkClass *klass)
 							  CPG_TYPE_OBJECT,
 							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgLink:to: 
+	 *
+	 * The to #CpgObject
+	 *
+	 **/
 	g_object_class_install_property (object_class, PROP_TO,
 				 g_param_spec_object ("to",
 							  "TO",
@@ -249,6 +261,17 @@ cpg_link_init (CpgLink *self)
 	self->priv = CPG_LINK_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_link_new:
+ * @id: the object id
+ * @from: a #CpgObject
+ * @to: a #CpgObject
+ *
+ * Create a new #CpgLink
+ *
+ * Returns: a new #CpgLink
+ *
+ **/
 CpgLink *
 cpg_link_new (gchar const  *id,
               CpgObject    *from,
@@ -389,12 +412,12 @@ cpg_link_get_actions (CpgLink *link)
 }
 
 /**
- * cpg_link_action_expression:
+ * cpg_link_action_get_expression:
  * @action: the #CpgLinkAction
  *
- * Returns the expression associated with the action
+ * Get the expression associated with the action
  *
- * Return value: the #CpgExpression associated with the action. It is owned
+ * Returns: the #CpgExpression associated with the action. It is owned
  * by the action object and should not be freed.
  *
  **/
@@ -405,12 +428,12 @@ cpg_link_action_get_expression (CpgLinkAction *action)
 }
 
 /**
- * cpg_link_action_target:
+ * cpg_link_action_get_target:
  * @action: the #CpgLinkAction
  *
- * Returns the target #CpgProperty associated with the action
+ * Get the target #CpgProperty associated with the action
  *
- * Return value: the target #CpgProperty. It is owned
+ * Returns: the target #CpgProperty. It is owned
  * by the action object and should not be freed.
  *
  **/
@@ -420,6 +443,14 @@ cpg_link_action_get_target (CpgLinkAction *action)
 	return action->target;
 }
 
+/**
+ * cpg_link_action_set_target:
+ * @action: a #CpgLinkAction
+ * @property: a #CpgProperty
+ *
+ * Set the target of the link action to @property
+ *
+ **/
 void
 cpg_link_action_set_target (CpgLinkAction *action,
                             CpgProperty   *property)

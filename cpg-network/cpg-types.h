@@ -5,8 +5,18 @@
 
 typedef struct _CpgInstruction 		CpgInstruction;
 
-typedef enum
-{
+/**
+ * CpgInstructionType:
+ * @CPG_INSTRUCTION_TYPE_NONE: none
+ * @CPG_INSTRUCTION_TYPE_FUNCTION: function
+ * @CPG_INSTRUCTION_TYPE_NUMBER: number
+ * @CPG_INSTRUCTION_TYPE_OPERATOR: operator
+ * @CPG_INSTRUCTION_TYPE_PROPERTY: property 
+ *
+ * Enum used to indicate instruction type
+ *
+ **/
+typedef enum {
 	CPG_INSTRUCTION_TYPE_NONE,
 	CPG_INSTRUCTION_TYPE_FUNCTION,
 	CPG_INSTRUCTION_TYPE_NUMBER,

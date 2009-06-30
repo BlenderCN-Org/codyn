@@ -53,6 +53,14 @@ cpg_compile_error_type_quark ()
 	return quark;
 }
 
+/**
+ * cpg_compile_error_new:
+ *
+ * Create new empty compile error
+ * 
+ * Returns: a new #CpgCompileError
+ *
+ **/
 CpgCompileError *
 cpg_compile_error_new ()
 {
@@ -78,34 +86,79 @@ _cpg_compile_error_set (CpgCompileError *error,
 	error->action = action;
 }
 
+/**
+ * cpg_compile_error_get_error:
+ * @error: a #CpgCompileError
+ *
+ * Get the associated #GError
+ *
+ * Returns: the associated #GError
+ *
+ **/
 GError **
 cpg_compile_error_get_error	(CpgCompileError *error)
 {
 	return &(error->error);
 }
 
+/**
+ * cpg_compile_error_get_object:
+ * @error: a #CpgCompileError
+ *
+ * Get the associated #CpgObject
+ *
+ * Returns: the associated #CpgObject
+ *
+ **/
 CpgObject *
 cpg_compile_error_get_object (CpgCompileError *error)
 {
 	return error->object;
 }
 
+/**
+ * cpg_compile_error_get_property:
+ * @error: a #CpgCompileError
+ *
+ * Get the associated #CpgProperty
+ *
+ * Returns: the associated #CpgProperty
+ *
+ **/
 CpgProperty	*
 cpg_compile_error_get_property (CpgCompileError *error)
 {
 	return error->property;
 }
 
+/**
+ * cpg_compile_error_get_link_action:
+ * @error: a #CpgCompileError
+ *
+ * Get the associated #CpgLinkAction
+ *
+ * Returns: the associated #CpgLinkAction
+ *
+ **/
 CpgLinkAction *
 cpg_compile_error_get_link_action (CpgCompileError *error)
 {
 	return error->action;
 }
 
+/**
+ * cpg_compile_error_code_string:
+ * @code: the error code
+ *
+ * Get the string describing an error with error code @error
+ *
+ * Returns: the error string message
+ *
+ **/
 gchar const *
-cpg_compile_error_code_string (gint error)
+cpg_compile_error_code_string (gint code)
 {
-	switch (error)
+	switch (code)
 	{
 		case CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND:
 			return "Property not found";
@@ -128,18 +181,45 @@ cpg_compile_error_code_string (gint error)
 	}
 }
 
+/**
+ * cpg_compile_error_string:
+ * @error: a #CpgCompileError
+ *
+ * Get the string describing @error
+ *
+ * Returns: the error string message
+ *
+ **/
 gchar const *
 cpg_compile_error_string (CpgCompileError *error)
 {
 	return cpg_compile_error_code_string (error->error->code);
 }
 
+/**
+ * cpg_compile_error_get_code:
+ * @error: a #CpgCompileError
+ *
+ * Get the error code
+ *
+ * Returns: the error code
+ *
+ **/
 gint
 cpg_compile_error_get_code (CpgCompileError *error)
 {
 	return error->error->code;
 }
 
+/**
+ * cpg_compile_error_get_message:
+ * @error: a #CpgCompileError
+ *
+ * Get the error message
+ *
+ * Returns: the error message
+ *
+ **/
 gchar const *
 cpg_compile_error_get_message (CpgCompileError *error)
 {

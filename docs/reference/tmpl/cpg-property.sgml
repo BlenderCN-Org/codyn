@@ -23,14 +23,6 @@ CpgProperty
 </para>
 
 
-<!-- ##### FUNCTION cpg_property_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
-
 <!-- ##### FUNCTION cpg_property_new ##### -->
 <para>
 
@@ -79,25 +71,6 @@ CpgProperty
 @integrated: 
 
 
-<!-- ##### FUNCTION cpg_property_compile ##### -->
-<para>
-
-</para>
-
-@property: 
-@context: 
-@error: 
-@Returns: 
-
-
-<!-- ##### FUNCTION cpg_property_reset ##### -->
-<para>
-
-</para>
-
-@property: 
-
-
 <!-- ##### FUNCTION cpg_property_reset_cache ##### -->
 <para>
 
@@ -140,5 +113,15 @@ CpgProperty
 
 @property: 
 @expression: 
+
+
+<!-- ##### FUNCTION cpg_property_equal ##### -->
+<para>
+
+</para>
+
+@property: 
+@other: 
+@Returns: 
 
 

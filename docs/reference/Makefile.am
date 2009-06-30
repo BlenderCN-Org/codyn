@@ -60,7 +60,9 @@ IGNORE_HFILES= \
 	cpg-network-writer.h \
 	cpg-utils.h \
 	cpg-ref-counted-private.h \
-	cpg-math.h
+	cpg-math.h \
+	cpg-stack.h \
+	cpg-debug.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png
@@ -94,10 +96,6 @@ GTKDOC_LIBS=	\
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
 include $(top_srcdir)/gtk-doc.make
 
-regenerate-types:
-	grep _get_type $(DOC_SOURCE_DIR)/cpg-*.h | grep -oR '^.*\.h' | sort | uniq - | sed -r 's/^.*\.h$/#include "\0"/' > cpg-network.types
-	grep _get_type $(DOC_SOURCE_DIR)/cpg-*.h | grep -oR '^.*\.h' | sort | uniq - | sed -re 'y/-/_/' -e 's/^(.*)\.h$/\1_get_type/' >> cpg-network.types.new
-
 # Other files to distribute
 # e.g. EXTRA_DIST += version.xml.in
 EXTRA_DIST +=
@@ -105,7 +103,7 @@ EXTRA_DIST +=
 # Files not to distribute
 # for --rebuild-types in $(SCAN_OPTIONS), e.g. $(DOC_MODULE).types
 # for --rebuild-sections in $(SCAN_OPTIONS) e.g. $(DOC_MODULE)-sections.txt
-#DISTCLEANFILES +=
+#DISTCLEANFILES = $(DOC_MODULE)-sections.txt $(DOC_MODULE).types
 
 # Comment this out if you want your docs-status tested during 'make check'
 #TESTS = $(GTKDOC_CHECK)

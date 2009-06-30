@@ -22,6 +22,16 @@ typedef struct _CpgObjectPrivate	CpgObjectPrivate;
 
 struct _CpgLink;
 
+/**
+ * CpgObjectError:
+ * @CPG_OBJECT_ERROR_PROP_UNKNOWN: unknown
+ * @CPG_OBJECT_ERROR_PROP_NOT_FOUND: property not found
+ * @CPG_OBJECT_ERROR_PROP_IN_USE: property in use
+ * @CPG_OBJECT_NUM_ERRORS: num errors
+ *
+ * Enum used to indicate an error when removing a property
+ *
+ **/
 typedef enum
 {
 	CPG_OBJECT_ERROR_PROP_UNKNOWN,

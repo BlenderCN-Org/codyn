@@ -227,6 +227,12 @@ cpg_object_class_init (CpgObjectClass *klass)
 	klass->reset_cache = cpg_object_reset_cache_impl;
 	klass->copy = cpg_object_copy_impl;
 	
+	/**
+	 * CpgObject:id: 
+	 *
+	 * The #CpgObject id
+	 *
+	 **/
 	g_object_class_install_property (object_class, PROP_ID,
 				 g_param_spec_string ("id",
 						      "ID",
@@ -234,6 +240,12 @@ cpg_object_class_init (CpgObjectClass *klass)
 						      NULL,
 						      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgObject:local-id: 
+	 *
+	 * The #CpgObject local id
+	 *
+	 **/
 	g_object_class_install_property (object_class, PROP_LOCAL_ID,
 				 g_param_spec_string ("local-id",
 						      "LOCAL_ID",
@@ -321,6 +333,17 @@ cpg_object_add_property (CpgObject    *object,
 	return property;
 }
 
+/**
+ * cpg_object_get_property:
+ * @object: a #CpgObject
+ * @name: a property name
+ *
+ * Get a #CpgProperty from the object by name
+ *
+ * Returns: the #CpgProperty with name @name, or %NULL if no such property could
+ *          be found
+ *
+ **/
 CpgProperty *
 cpg_object_get_property (CpgObject    *object,
                          gchar const  *name)
@@ -341,6 +364,18 @@ cpg_object_get_property (CpgObject    *object,
 	return NULL;
 }
 
+/**
+ * cpg_object_remove_property:
+ * @object: a #CpgObject
+ * @name: a property name
+ * @error: a #GError
+ *
+ * Remove the property @name from @object. If the property was not found or
+ * could not be removed, @error will be appropriately set
+ *
+ * Returns: %TRUE if the property could be removed, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_object_has_property (CpgObject    *object,
                          gchar const  *name)
@@ -351,6 +386,16 @@ cpg_object_has_property (CpgObject    *object,
 	return cpg_object_get_property (object, name) != NULL;
 }
 
+/**
+ * cpg_object_has_property:
+ * @object: a #CpgObject
+ * @name: a property name
+ *
+ * Get whether @object has a property with name @name
+ *
+ * Returns: %TRUE if @object has a property with name @name, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_object_remove_property (CpgObject    *object,
                             gchar const  *name,
@@ -534,6 +579,7 @@ cpg_object_reset (CpgObject *object)
  * Gets the object id
  *
  * Returns: the object id
+ *
  **/
 gchar const *
 cpg_object_get_id (CpgObject *object)
@@ -562,6 +608,16 @@ cpg_object_set_id (CpgObject    *object,
 	g_object_notify (G_OBJECT (object), "id");
 }
 
+/**
+ * cpg_object_get_local_id:
+ * @object: a #CpgObject
+ *
+ * Gets the object's local id. The local id is the last part of a dot-namespaced
+ * object name
+ *
+ * Returns: the object local id
+ *
+ **/
 gchar *
 cpg_object_get_local_id (CpgObject *object)
 {
@@ -586,6 +642,16 @@ _cpg_object_get_links (CpgObject *object)
 	return object->priv->links;
 }
 
+/**
+ * cpg_object_taint:
+ * @object: a #CpgObject
+ *
+ * Mark the object as tainted. This emits the "tainted" signal. The #CpgNetwork
+ * in which the object is added acts on this signal to mark the network tainted
+ * and as such the object will be properly recompiled when the network needs
+ * to be simulated
+ *
+ **/
 void
 cpg_object_reset_cache (CpgObject *object)
 {
@@ -597,6 +663,14 @@ cpg_object_reset_cache (CpgObject *object)
 	}
 }
 
+/**
+ * cpg_object_reset_cache:
+ * @object: a #CpgObject
+ *
+ * Reset object expression caches. This will reset all expressions (such as
+ * within properties) within the object
+ *
+ **/
 void
 cpg_object_taint (CpgObject *object)
 {

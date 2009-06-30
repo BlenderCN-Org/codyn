@@ -39,14 +39,6 @@ CpgLink
 
 </para>
 
-<!-- ##### FUNCTION cpg_link_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
-
 <!-- ##### FUNCTION cpg_link_new ##### -->
 <para>
 
@@ -122,5 +114,14 @@ CpgLink
 
 @action: 
 @Returns: 
+
+
+<!-- ##### FUNCTION cpg_link_action_set_target ##### -->
+<para>
+
+</para>
+
+@action: 
+@property: 
 
 

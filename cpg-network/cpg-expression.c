@@ -203,12 +203,29 @@ instructions_free (CpgExpression *expression)
 	expression->flags = CPG_EXPRESSION_FLAG_NONE;
 }
 
+/**
+ * cpg_expression_get_as_string:
+ * @expression: a #CpgExpression
+ *
+ * Get the string representation of the expression
+ *
+ * Returns: the string representation of the expression
+ *
+ **/ 
 gchar const *
 cpg_expression_get_as_string (CpgExpression *expression)
 {
 	return expression->expression;
 }
 
+/**
+ * cpg_expression_set_from_string:
+ * @expression: a #CpgExpression
+ * @value: the value
+ *
+ * Set a new expression for @expression
+ *
+ **/ 
 void
 cpg_expression_set_from_string (CpgExpression *expression, 
 				                gchar const   *value)
@@ -232,6 +249,15 @@ cpg_expression_free (CpgExpression *expression)
 	g_slice_free (CpgExpression, expression);
 }
 
+/**
+ * cpg_expression_new:
+ * @expression: an expression
+ *
+ * Create a new #CpgExpression containing the expression @expression
+ *
+ * Returns: a new #CpgExpression
+ *
+ **/
 CpgExpression *
 cpg_expression_new (gchar const *expression)
 {
@@ -906,6 +932,19 @@ empty_expression (CpgExpression *expression)
 	return TRUE;
 }
 
+/**
+ * cpg_expression_compile:
+ * @expression: a #CpgExpression
+ * @context: the evaluation context
+ * @error: a #GError
+ *
+ * Compile the expression. The context is a list of #CpgObject from which
+ * properties can be looked up (such as global constants, or from/to objects).
+ * If there were any errors during compilation, @error will be set accordingly
+ *
+ * Returns: %TRUE if the expression compiled successfully, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_expression_compile (CpgExpression   *expression,
                         GSList          *context,
@@ -958,7 +997,17 @@ cpg_expression_compile (CpgExpression   *expression,
 	return TRUE;
 }
 
- void
+/**
+ * cpg_expression_set_value:
+ * @expression: a #CpgExpression
+ * @value: a value
+ *
+ * Sets the cached/instant value of an expression. If the expression is 
+ * reset, this value will no longer be used and the expression will be
+ * evaluated as normal
+ *
+ **/
+void
 cpg_expression_set_value (CpgExpression  *expression,
                           gdouble         value)
 {
@@ -967,6 +1016,18 @@ cpg_expression_set_value (CpgExpression  *expression,
 	expression->cached_output = value;
 }
 
+/**
+ * cpg_expression_evaluate:
+ * @expression: a #CpgExpression
+ *
+ * Get the result of evaluating the expression. If the expression is not yet
+ * compiled, 0.0 is returned. The result of the evaluation is cached in
+ * the expression. Make sure to call cpg_expression_reset_cache to clear the
+ * cache if needed
+ *
+ * Returns: the result of evaluating the expression
+ *
+ **/
 gdouble
 cpg_expression_evaluate (CpgExpression *expression)
 {
@@ -1034,23 +1095,13 @@ cpg_expression_evaluate (CpgExpression *expression)
 	return expression->cached_output;
 }
 
- void
-cpg_expression_print_instructions (CpgExpression  *expression,
-                                   FILE           *f)
-{
-	GSList *item;
-	
-	for (item = expression->instructions; item; item = g_slist_next(item))
-	{
-		gchar *res = instruction_tos(item->data);
-		
-		fprintf (f, "%s ", res);
-		g_free (res);
-	}
-	
-	fprintf (f, "\n");;
-}
-
+/**
+ * cpg_expression_reset_cache:
+ * @expression: a #CpgExpression
+ *
+ * Resets the possibly cached result of the value
+ *
+ **/
 void
 cpg_expression_reset_cache (CpgExpression *expression)
 {
@@ -1058,18 +1109,45 @@ cpg_expression_reset_cache (CpgExpression *expression)
 		expression->flags &= ~CPG_EXPRESSION_FLAG_CACHED;
 }
 
+/**
+ * cpg_expression_get_dependencies:
+ * @expression: a #CpgExpression
+ *
+ * Get a list of #CpgProperty on which the expression depends. The list is owned
+ * by @expression and should not be freed or modified
+ *
+ * Returns: a list of #CpgProperty
+ *
+ **/
 GSList *
 cpg_expression_get_dependencies (CpgExpression *expression)
 {
 	return expression->dependencies;
 }
 
+/**
+ * cpg_expression_reset:
+ * @expression: a #CpgExpression
+ *
+ * Resets all the expression flags (cache, instant)
+ *
+ **/
 void
 cpg_expression_reset (CpgExpression *expression)
 {
 	expression->flags = CPG_EXPRESSION_FLAG_NONE;
 }
 
+/**
+ * cpg_expression_get_instructions:
+ * @expression: a #CpgExpression
+ *
+ * Get list of #CpgInstruction. The list is owned by @expression and should
+ * not be freed or modified
+ *
+ * Returns: list of #CpgInstruction
+ *
+ **/
 GSList *
 cpg_expression_get_instructions(CpgExpression *expression)
 {

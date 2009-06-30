@@ -133,12 +133,31 @@ cpg_property_get_value (CpgProperty *property)
 	return property->value ? cpg_expression_evaluate (property->value) : 0.0;
 }
 
+/**
+ * cpg_property_get_value_expression:
+ * @property: a #CpgProperty
+ *
+ * Get the property value expression
+ *
+ * Returns: a #CpgExpression. The expression is owned by the property and
+ *          should not be freed
+ *
+ **/
 CpgExpression *
 cpg_property_get_value_expression (CpgProperty *property)
 {
 	return property->value;
 }
 
+/**
+ * cpg_property_set_value_expression:
+ * @property: a #CpgProperty
+ * @expression: the expression
+ *
+ * Set the property value from an expression. This will mark the associated
+ * #CpgObject as tainted so the expression will be recompiled accordingly.
+ *
+ **/
 void
 cpg_property_set_value_expression (CpgProperty  *property,
                                    gchar const  *expression)
@@ -151,18 +170,44 @@ cpg_property_set_value_expression (CpgProperty  *property,
 	}
 }
 
+/**
+ * cpg_property_get_name:
+ * @property: a #CpgProperty
+ *
+ * Get the property name
+ *
+ * Returns: the property name
+ *
+ **/
 gchar const *
 cpg_property_get_name (CpgProperty *property)
 {
 	return property->name;
 }
 
+/**
+ * cpg_property_get_integrated:
+ * @property: a #CpgProperty
+ *
+ * Get whether the property should be integrated during evaluation or not
+ *
+ * Returns: %TRUE if the property will be integrated, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_property_get_integrated (CpgProperty *property)
 {
 	return property->integrated;
 }
 
+/**
+ * cpg_property_set_integrated:
+ * @property: a #CpgProperty
+ * @integrated: integrate the property
+ *
+ * Set whether the property should be integrated during evaluation or not
+ *
+ **/
 void
 cpg_property_set_integrated (CpgProperty  *property,
                              gboolean      integrated)
@@ -183,6 +228,13 @@ _cpg_property_get_update (CpgProperty *property)
 	return property->update;
 }
 
+/**
+ * cpg_property_reset_cache:
+ * @property: a #CpgProperty
+ *
+ * Reset the cached value of the property expression
+ *
+ **/
 void
 cpg_property_reset_cache (CpgProperty *property)
 {

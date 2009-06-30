@@ -23,14 +23,6 @@ CpgExpression
 </para>
 
 
-<!-- ##### FUNCTION cpg_expression_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
-
 <!-- ##### FUNCTION cpg_expression_new ##### -->
 <para>
 
@@ -102,6 +94,16 @@ CpgExpression
 </para>
 
 @expression: 
+
+
+<!-- ##### FUNCTION cpg_expression_equal ##### -->
+<para>
+
+</para>
+
+@expression: 
+@other: 
+@Returns: 
 
 
 <!-- ##### FUNCTION cpg_expression_set_from_string ##### -->
