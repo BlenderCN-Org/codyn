@@ -68,45 +68,6 @@ cpg_instruction_initialize (CpgInstruction *instruction)
 
 #define instruction_new(Type) ((Type *)cpg_instruction_initialize ((CpgInstruction *)g_slice_new0 (Type)))
 
-static gchar *
-instruction_tos (CpgInstruction *inst)
-{
-	gchar *res;
-	
-	switch (inst->type)
-	{
-		case CPG_INSTRUCTION_TYPE_FUNCTION:
-		{
-			CpgInstructionFunction *i = (CpgInstructionFunction *)inst;
-			res = g_strdup_printf ("FUNC (%s, %d)", i->name, i->arguments);
-		}
-		break;
-		case CPG_INSTRUCTION_TYPE_OPERATOR:
-		{
-			CpgInstructionFunction *i = (CpgInstructionFunction *)inst;
-			res = g_strdup_printf ("OP (%s, %d)", i->name, i->arguments);
-		}
-		break;
-		case CPG_INSTRUCTION_TYPE_PROPERTY:
-		{
-			CpgInstructionProperty *i = (CpgInstructionProperty *)inst;
-			res = g_strdup_printf ("PROP (%s)", cpg_property_get_name (i->property));
-		}
-		break;
-		case CPG_INSTRUCTION_TYPE_NUMBER:
-		{
-			CpgInstructionNumber *i = (CpgInstructionNumber *)inst;
-			res = g_strdup_printf ("NUM (%f)", i->value);
-		}
-		break;
-		default:
-			res = g_strdup ("");
-		break;
-	}
-	
-	return res;
-}
-
 static CpgInstruction *
 cpg_instruction_function_new (guint         id,
                               gchar const  *name,
