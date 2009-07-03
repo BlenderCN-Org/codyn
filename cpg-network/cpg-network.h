@@ -56,6 +56,10 @@ void			  cpg_network_merge_from_file	(CpgNetwork  *network,
 void			  cpg_network_merge_from_xml	(CpgNetwork  *network,
                                                  gchar const *xml);
 
+void 			  cpg_network_set_global_constant (CpgNetwork   *network,
+                                 				   gchar const  *name,
+                                 				   gdouble       constant);
+
 CpgObject 		 *cpg_network_get_globals       (CpgNetwork  *network);
 
 void			  cpg_network_clear				(CpgNetwork *network);
