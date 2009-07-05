@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <glib-object.h>
 
+G_BEGIN_DECLS
+
 typedef struct _CpgExpression 		CpgExpression;
 
 GType			  cpg_expression_get_type			(void);
@@ -28,5 +30,7 @@ gboolean		  cpg_expression_equal				(CpgExpression  *expression,
 void			  cpg_expression_set_from_string	(CpgExpression  *expression, 
 													 gchar const    *value);
 void 			  cpg_expression_reset_cache		(CpgExpression  *expression);
+
+G_END_DECLS
 
 #endif /* __CPG_EXPRESSION_H__ */

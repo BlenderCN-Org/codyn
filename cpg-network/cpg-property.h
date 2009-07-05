@@ -4,6 +4,8 @@
 #include "cpg-ref-counted.h"
 #include "cpg-expression.h"
 
+G_BEGIN_DECLS
+
 typedef struct _CpgProperty CpgProperty;
 
 /* forward declaration */
@@ -45,5 +47,7 @@ gdouble			   _cpg_property_get_update				(CpgProperty	    *property);
 
 void 			   _cpg_property_use                    (CpgProperty        *property);
 gboolean           _cpg_property_unuse                  (CpgProperty        *property);
+
+G_END_DECLS
 
 #endif /* __CPG_PROPERTY_H__ */

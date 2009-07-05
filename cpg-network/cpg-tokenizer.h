@@ -3,6 +3,8 @@
 
 #include <glib.h>
 
+G_BEGIN_DECLS
+
 #define CPG_TOKEN_IS_NUMBER(x) (x->type == CPG_TOKEN_TYPE_NUMBER)
 #define CPG_TOKEN_IS_IDENTIFIER(x) (x->type == CPG_TOKEN_TYPE_IDENTIFIER)
 #define CPG_TOKEN_IS_OPERATOR(x) (x->type == CPG_TOKEN_TYPE_OPERATOR)
@@ -92,6 +94,8 @@ CpgToken *cpg_tokenizer_next(gchar const **buffer);
 CpgToken *cpg_tokenizer_peek(gchar const *buffer);
 
 void cpg_token_free(CpgToken *token);
+
+G_END_DECLS
 
 #endif /* __CPG_TOKENIZER_H__ */
 

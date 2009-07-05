@@ -1,6 +1,10 @@
 #ifndef __CPG_DEBUG_H__
 #define __CPG_DEBUG_H__
 
+#include <glib.h>
+
+G_BEGIN_DECLS
+
 /**
  * CpgDebugType:
  * @CPG_DEBUG_TYPE_NONE: none
@@ -31,6 +35,8 @@ void cpg_debug_message_function(CpgDebugType type, char const *function, char co
 #else
 #define cpg_debug_message_function(type, function, format, ...) ;
 #endif
+
+G_END_DECLS
 
 #endif /* __CPG_DEBUG_H__ */
 

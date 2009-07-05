@@ -3,6 +3,8 @@
 
 #include "cpg-stack.h"
 
+G_BEGIN_DECLS
+
 typedef enum
 {
 	CPG_MATH_OPERATOR_TYPE_NONE = 0,
@@ -24,15 +26,15 @@ typedef enum
 	CPG_MATH_OPERATOR_TYPE_TERNARY
 } CpgMathOperatorType;
 
-#ifndef RTLINUX
 unsigned cpg_math_function_lookup(char const *name, int *arguments);
 double cpg_math_constant_lookup(char const *name, int *found);
-#endif
 
 unsigned cpg_math_operator_lookup(CpgMathOperatorType type);
 
 void cpg_math_function_execute(unsigned id, CpgStack *stack, void *data);
 void cpg_math_operator_execute(unsigned id, CpgStack *stack, void *data);
+
+G_END_DECLS
 
 #endif /* __CPG_MATH_H__ */
 

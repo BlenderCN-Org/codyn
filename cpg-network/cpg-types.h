@@ -3,6 +3,8 @@
 
 #include "cpg-property.h"
 
+G_BEGIN_DECLS
+
 typedef struct _CpgInstruction 		CpgInstruction;
 
 /**
@@ -52,6 +54,8 @@ typedef struct
 
 	CpgProperty *property;
 } CpgInstructionProperty;
+
+G_END_DECLS
 
 #endif /* __CPG_TYPES_H__ */
 

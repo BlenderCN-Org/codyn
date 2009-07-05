@@ -6,6 +6,8 @@
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-link.h>
 
+G_BEGIN_DECLS
+
 #define CPG_TYPE_COMPILE_ERROR (cpg_compile_error_get_type ())
 #define CPG_COMPILE_ERROR_TYPE (cpg_compile_error_type_quark ())
 
@@ -51,6 +53,8 @@ gchar const 	 *cpg_compile_error_string				(CpgCompileError *error);
 gchar const 	 *cpg_compile_error_code_string			(gint             code);
 gint			  cpg_compile_error_get_code            (CpgCompileError *error);
 gchar const      *cpg_compile_error_get_message         (CpgCompileError *error);
+
+G_END_DECLS
 
 #endif /* __CPG_COMPILE_ERROR_H__ */
 

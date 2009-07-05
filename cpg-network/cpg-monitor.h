@@ -3,6 +3,8 @@
 
 #include "cpg-object.h"
 
+G_BEGIN_DECLS
+
 /* forward declaration */
 struct _CpgNetwork;
 
@@ -21,6 +23,8 @@ gboolean		  cpg_monitor_get_data_resampled 	 (CpgMonitor         *monitor,
 												      gdouble const      *sites,
 												      guint               size,
 												      gdouble            *ret);
+
+G_END_DECLS
 
 #endif /* __CPG_MONITOR_H__ */
 

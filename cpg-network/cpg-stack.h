@@ -3,6 +3,8 @@
 
 #include <glib.h>
 
+G_BEGIN_DECLS
+
 typedef struct _CpgStack
 {
 	gdouble *output_ptr;
@@ -10,12 +12,10 @@ typedef struct _CpgStack
 	guint size;
 } CpgStack;
 
-#ifndef RTLINUX
 CpgStack *cpg_stack_new(guint size);
 void cpg_stack_init(CpgStack *stack, guint size);
 void cpg_stack_destroy(CpgStack *stack);
 void cpg_stack_free(CpgStack *stack);
-#endif
 
 guint cpg_stack_size(CpgStack *stack);
 guint cpg_stack_count(CpgStack *stack);
@@ -24,6 +24,8 @@ void cpg_stack_push(CpgStack *stack, gdouble value, void *data);
 gdouble cpg_stack_pop(CpgStack *stack, void *data);
 
 void cpg_stack_reset(CpgStack *stack);
+
+G_END_DECLS
 
 #endif /* __CPG_STACK_H__ */
 

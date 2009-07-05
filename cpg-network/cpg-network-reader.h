@@ -4,12 +4,15 @@
 #include <glib.h>
 #include "cpg-network.h"
 
+G_BEGIN_DECLS
+
 gboolean cpg_network_reader_xml (CpgNetwork  *network,
                                  gchar const *filename);
 
 gboolean cpg_network_reader_xml_string (CpgNetwork  *network,
                                         gchar const *xml);
 
+G_END_DECLS
 
 #endif /* __CPG_NETWORK_READER_H__ */
 
