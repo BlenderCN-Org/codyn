@@ -562,7 +562,7 @@ cpg_network_add_object (CpgNetwork  *network,
 		CpgObject *other = g_hash_table_lookup (network->priv->templates,
 		                                        cpg_object_get_id (template));
 
-		gboolean eq = other != template;
+		gboolean eq = other == template;
 		g_object_unref (template);
 		
 		if (!eq)
