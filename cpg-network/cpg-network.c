@@ -734,7 +734,11 @@ cpg_network_new_from_file (gchar const *filename)
 		network = NULL;
 	}
 
-	set_compiled (network, FALSE);
+	if (network)
+	{
+		set_compiled (network, FALSE);
+	}
+
 	return network;
 }
 
@@ -763,6 +767,11 @@ cpg_network_new_from_xml (gchar const *xml)
 		network = NULL;
 	}
 
+	if (network)
+	{
+		set_compiled (network, FALSE);
+	}
+	
 	return network;
 }
 
