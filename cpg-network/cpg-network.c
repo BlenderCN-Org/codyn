@@ -334,18 +334,27 @@ parse_expressions (CpgNetwork      *network,
 	{
 		CpgProperty *property = (CpgProperty *)properties->data;
 		CpgExpression *expr = cpg_property_get_value_expression (property);
-		GError **gerror = cpg_compile_error_get_error (error);
+		GError *gerror = NULL;
 		
 		if (!cpg_expression_compile (expr, 
 		                             network->priv->context, 
-		                             gerror))
+		                             &gerror))
 		{
 			cpg_debug_error ("Error while parsing expression [%s].%s<%s>: %s",
 			                 cpg_object_get_id (object), 
 			                 cpg_property_get_name (property), 
 			                 cpg_expression_get_as_string (expr),
-			                 (*gerror)->message);
+			                 gerror->message);
 			
+			if (error)
+			{
+				g_propagate_error (cpg_compile_error_get_error (error), gerror);
+			}
+			else
+			{
+				g_error_free (gerror);
+			}
+
 			compile_error_set (error, object, property, NULL);
 			return FALSE;
 		}
@@ -366,14 +375,23 @@ parse_expressions (CpgNetwork      *network,
 	{
 		CpgLinkAction *action = (CpgLinkAction *)actions->data;
 		CpgExpression *expr = cpg_link_action_get_expression (action);
-		GError **gerror = cpg_compile_error_get_error (error);
+		GError *gerror = NULL;
 		
-		if (!cpg_expression_compile (expr, network->priv->context, gerror))
+		if (!cpg_expression_compile (expr, network->priv->context, &gerror))
 		{
 			cpg_debug_error ("Error while parsing expression [%s]<%s>: %s", 
 			                 cpg_object_get_id (object), 
 			                 cpg_expression_get_as_string (expr),
-			                 (*gerror)->message);
+			                 gerror->message);
+			
+			if (error)
+			{
+				g_propagate_error (cpg_compile_error_get_error (error), gerror);
+			}
+			else
+			{
+				g_error_free (gerror);
+			}
 			
 			compile_error_set (error, object, NULL, action);
 			return FALSE;
