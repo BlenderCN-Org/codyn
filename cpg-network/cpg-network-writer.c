@@ -168,6 +168,9 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	xmlNodePtr root = xmlNewDocNode (doc, NULL, (xmlChar *)"cpg", NULL);
 
 	xmlDocSetRootElement (doc, root);
+	
+	xmlNodePtr nnetwork = xmlNewDocNode (doc, NULL, (xmlChar *)"network", NULL);
+	xmlAddChild (root, nnetwork);
 
 	// Globals
 	GSList *properties = NULL;
@@ -190,7 +193,7 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 		properties = g_slist_reverse (properties);
 
 		xmlNodePtr gbl = xmlNewDocNode (doc, NULL, (xmlChar *)"globals", NULL);
-		xmlAddChild (root, gbl);
+		xmlAddChild (nnetwork, gbl);
 		
 		properties_to_xml (doc, gbl, properties, NULL);
 		g_slist_free (properties);
@@ -203,7 +206,7 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	if (list)
 	{
 		templates = xmlNewDocNode (doc, NULL, (xmlChar *)"templates", NULL);
-		xmlAddChild (root, templates);
+		xmlAddChild (nnetwork, templates);
 	}
 	
 	for (item = list; item; item = g_slist_next (item))
@@ -233,17 +236,17 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	{
 		if (CPG_IS_RELAY (item->data))
 		{
-			relay_to_xml (doc, root, CPG_RELAY (item->data));
+			relay_to_xml (doc, nnetwork, CPG_RELAY (item->data));
 		}
 		else if (CPG_IS_STATE (item->data))
 		{
-			state_to_xml (doc, root, CPG_STATE (item->data));
+			state_to_xml (doc, nnetwork, CPG_STATE (item->data));
 		}
 	}
 	
 	for (item = cpg_network_get_links (network); item; item = g_slist_next (item))
 	{
-		link_to_xml (doc, root, CPG_LINK (item->data));
+		link_to_xml (doc, nnetwork, CPG_LINK (item->data));
 	}
 		
 	xmlIndentTreeOutput = 1;
