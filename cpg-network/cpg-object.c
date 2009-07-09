@@ -17,10 +17,12 @@ struct _CpgObjectPrivate
 
 	// Properties
 	GSList *properties;	
-	GSList *actors;
 	
 	// Links
 	GSList *links;
+	
+	// Actors
+	GSList *actors;
 	
 	CpgObject *template;
 };
@@ -185,17 +187,8 @@ link_destroyed (CpgObject  *object,
 	if (!is_last_ref)
 		return;
 
-	/* Remove link, actors and toggle ref */
+	/* Remove link, and toggle ref */
 	object->priv->links = g_slist_remove (object->priv->links, link);
-	
-	GSList *item;
-	
-	for (item = cpg_link_get_actions (link); item; item = g_slist_next (item))
-	{
-		CpgLinkAction *action = (CpgLinkAction *)item->data;
-		object->priv->actors = g_slist_remove (object->priv->actors, cpg_link_action_get_target (action));
-	}
-	
 	g_object_remove_toggle_ref (G_OBJECT (link), (GToggleNotify)link_destroyed, object);
 }
 
@@ -548,6 +541,9 @@ _cpg_object_link (CpgObject  *object,
 	
 	object->priv->links = g_slist_append (object->priv->links, link);
 	
+	g_slist_free (object->priv->actors);
+	object->priv->actors = NULL;
+	
 	g_object_add_toggle_ref (G_OBJECT (link), (GToggleNotify)link_destroyed, object);
 }
 
@@ -555,6 +551,11 @@ GSList *
 _cpg_object_get_actors (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	
+	if (object->priv->actors != NULL)
+	{
+		return object->priv->actors;
+	}
 	
 	GSList *ret = NULL;
 	GSList *item;
@@ -569,11 +570,17 @@ _cpg_object_get_actors (CpgObject *object)
 		for (action = actions; action; action = g_slist_next (action))
 		{
 			CpgLinkAction *a = (CpgLinkAction *)action->data;
-			ret = g_slist_prepend (ret, cpg_link_action_get_target (a));
+			CpgProperty *target = cpg_link_action_get_target (a);
+			
+			if (!g_slist_find (ret, target))
+			{
+				ret = g_slist_prepend (ret, target);
+			}
 		}
 	}
 	
-	return g_slist_reverse (ret);
+	object->priv->actors = g_slist_reverse (ret);
+	return object->priv->actors;
 }
 
 /**
@@ -741,6 +748,9 @@ cpg_object_taint (CpgObject *object)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
 	
+	g_slist_free (object->priv->actors);
+	object->priv->actors = NULL;
+
 	g_signal_emit (object, object_signals[TAINTED], 0);
 }
 
