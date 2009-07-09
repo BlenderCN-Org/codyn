@@ -31,6 +31,12 @@ properties_to_xml (xmlDocPtr   doc,
 
 		xmlNodePtr node = xmlNewDocNode (doc, NULL, (xmlChar *)"property", NULL);
 		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)cpg_property_get_name (property));
+		
+		if (cpg_property_get_integrated (property))
+		{
+			xmlNewProp (node, (xmlChar *)"integrated", (xmlChar *)"yes");
+		}
+		
 		xmlNodePtr text = xmlNewDocText (doc, (xmlChar *)cpg_expression_get_as_string (expression));
 		
 		xmlAddChild (node, text);
