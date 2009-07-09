@@ -270,6 +270,7 @@ gboolean
 cpg_property_equal (CpgProperty *property,
                     CpgProperty *other)
 {
-	return cpg_expression_equal (cpg_property_get_value_expression (property),
+	return property->integrated == other->integrated &&
+	       cpg_expression_equal (cpg_property_get_value_expression (property),
 	                             cpg_property_get_value_expression (other));
 }
