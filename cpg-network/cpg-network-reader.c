@@ -90,7 +90,9 @@ parse_properties (xmlDocPtr  doc,
 		}
 		
 		xmlChar *integrated = xmlGetProp (node, (xmlChar *)"integrated");
-		gboolean isint = (integrated && g_ascii_strcasecmp ((const gchar *)integrated, "true") == 0);
+		gboolean isint = (integrated && (g_ascii_strcasecmp ((const gchar *)integrated, "true") == 0 ||
+		                                 g_ascii_strcasecmp ((const gchar *)integrated, "yes") == 0 ||
+		                                 g_ascii_strcasecmp ((const gchar *)integrated, "1") == 0));
 		xmlFree (integrated);
 		
 		cpg_object_add_property (object, 
