@@ -20,3 +20,5 @@ install-sh
 libtool
 m4
 missing
+docs/reference/html
+docs/reference/xml
