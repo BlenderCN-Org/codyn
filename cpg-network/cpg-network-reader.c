@@ -95,10 +95,24 @@ parse_properties (xmlDocPtr  doc,
 		                                 g_ascii_strcasecmp ((const gchar *)integrated, "1") == 0));
 		xmlFree (integrated);
 		
-		cpg_object_add_property (object, 
-		                         (const gchar *)name, 
-		                         (const gchar *)expression, 
-		                         isint);		
+		CpgProperty *property;
+		
+		property = cpg_object_add_property (object, 
+		                                    (const gchar *)name, 
+		                                    (const gchar *)expression, 
+		                                    isint);
+
+		if (property)
+		{
+			xmlChar *variant = xmlGetProp (node, (xmlChar *)"variant");
+			
+			gboolean isvariant = (variant && (g_ascii_strcasecmp ((const gchar *)variant, "true") == 0 ||
+		                                 g_ascii_strcasecmp ((const gchar *)variant, "yes") == 0 ||
+		                                 g_ascii_strcasecmp ((const gchar *)variant, "1") == 0));
+
+			cpg_property_set_variant (property, isvariant);
+		}
+		
 		xmlFree (name);
 	}
 	

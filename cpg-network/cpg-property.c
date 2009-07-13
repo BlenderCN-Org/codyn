@@ -17,6 +17,8 @@ struct _CpgProperty
 	
 	gdouble update;
 	CpgObject *object;
+	
+	gboolean variant;
 };
 
 GType 
@@ -77,6 +79,7 @@ cpg_property_new (gchar const  *name,
 
 	res->integrated = integrated;	
 	res->value = cpg_expression_new (expression);
+	res->variant = FALSE;
 	
 	return res;
 }
@@ -213,6 +216,38 @@ cpg_property_set_integrated (CpgProperty  *property,
                              gboolean      integrated)
 {
 	property->integrated = integrated;
+}
+
+/**
+ * cpg_property_get_variant:
+ * @property: a #CpgProperty
+ *
+ * Get whether the property is variant. When optimizing the network, variant
+ * properties are not optimized away and can thus be modified at run time
+ *
+ * Returns: %TRUE if the property will be integrated, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_property_get_variant (CpgProperty *property)
+{
+	return property->variant;
+}
+
+/**
+ * cpg_property_set_variant:
+ * @property: a #CpgProperty
+ * @variant: whether the property is variant
+ *
+ * Set to %TRUE when the property may not be optimized when the network is
+ * optimized.
+ *
+ **/
+void
+cpg_property_set_variant (CpgProperty  *property,
+                          gboolean      variant)
+{
+	property->variant = variant;
 }
 
 void

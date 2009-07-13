@@ -28,6 +28,10 @@ gboolean		   cpg_property_get_integrated			(CpgProperty        *property);
 void			   cpg_property_set_integrated			(CpgProperty		*property,
 														 gboolean			 integrated);
 
+gboolean		   cpg_property_get_variant				(CpgProperty        *property);
+void			   cpg_property_set_variant				(CpgProperty		*property,
+														 gboolean			 variant);
+
 void 			   cpg_property_reset_cache				(CpgProperty		*property);
 
 gdouble			   cpg_property_get_value				(CpgProperty        *property);

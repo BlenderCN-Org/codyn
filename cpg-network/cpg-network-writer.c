@@ -37,6 +37,11 @@ properties_to_xml (xmlDocPtr   doc,
 			xmlNewProp (node, (xmlChar *)"integrated", (xmlChar *)"yes");
 		}
 		
+		if (cpg_property_get_variant (property))
+		{
+			xmlNewProp (node, (xmlChar *)"variant", (xmlChar *)"yes");
+		}
+		
 		xmlNodePtr text = xmlNewDocText (doc, (xmlChar *)cpg_expression_get_as_string (expression));
 		
 		xmlAddChild (node, text);
