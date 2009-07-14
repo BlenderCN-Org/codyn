@@ -118,6 +118,24 @@ test_complex()
 	return TRUE;
 }
 
+static gboolean
+text_scientific_notation()
+{
+	expression_initialize("1e-2");
+	assert(expression_eval(), 1e-2);
+	
+	expression_initialize("1e+20");
+	assert(expression_eval(), 1e+20);
+	
+	expression_initialize("1.25e-5");
+	assert(expression_eval(), 1.25e-5);
+	
+	expression_initialize("10.2523e+4");
+	assert(expression_eval(), 10.2523e+4);
+	
+	return TRUE;
+}
+
 typedef gboolean (*TestFunction)();
 
 typedef struct
@@ -133,7 +151,8 @@ static Test functions[] = {
 	{test_priority, "test_priority"},
 	{test_function_sin, "test_function_sin"},
 	{test_complex, "test_complex"},
-	{test_function_varargs, "test_function_varargs"}
+	{test_function_varargs, "test_function_varargs"},
+	{text_scientific_notation, "test_scientific_notation"}
 };
 
 gint 

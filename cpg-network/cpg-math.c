@@ -420,7 +420,13 @@ static CpgConstantEntry constant_entries[] = {
 	{"pi", NULL, M_PI},
 	{"PI", NULL, M_PI},
 	{"e", NULL, M_E},
-	{"E", NULL, M_E}
+	{"E", NULL, M_E},
+	{"NAN", NULL, 0},
+	{"nan", NULL, 0},
+	{"NaN", NULL, 0},
+	{"Inf", NULL, 0},
+	{"INF", NULL, 0},
+	{"inf", NULL, 0}
 };
 
 double

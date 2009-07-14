@@ -78,6 +78,25 @@ cpg_tokenizer_parse_number (gchar const **buffer)
 		;
 	}
 	
+	// Scientific notation
+	if ((**buffer == 'e' || **buffer == 'E') && *(*buffer + 1))
+	{
+		gchar const *next = *buffer + 1;
+		
+		if (*next == '+' || *next == '-')
+		{
+			++next;
+		}
+		
+		if (*next && g_ascii_isdigit(*next))
+		{
+			while (g_ascii_isdigit(*++next))
+			;
+			
+			*buffer = next;
+		}
+	}
+	
 	CpgTokenNumber *res = g_slice_new (CpgTokenNumber);
 	res->parent.type = CPG_TOKEN_TYPE_NUMBER;
 
