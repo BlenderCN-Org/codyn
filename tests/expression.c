@@ -6,6 +6,7 @@
 #include "utils.h"
 
 static CpgExpression *expression;
+#define RAND(A, B)  ((A) + rand() * 1.0 / RAND_MAX * ((B) - (A)))
 
 static void
 expression_initialize_context(gchar const *exp, CpgObject *context)
@@ -119,7 +120,7 @@ test_complex()
 }
 
 static gboolean
-text_scientific_notation()
+test_scientific_notation()
 {
 	expression_initialize("1e-2");
 	assert(expression_eval(), 1e-2);
@@ -132,6 +133,31 @@ text_scientific_notation()
 	
 	expression_initialize("10.2523e+4");
 	assert(expression_eval(), 10.2523e+4);
+	
+	return TRUE;
+}
+
+static gboolean
+test_random()
+{
+	double ret;
+	double val;
+	
+	srand(1);
+	expression_initialize("rand()");
+	ret = expression_eval();
+	
+	srand(1);
+	val = RAND(0, 1);
+	assert(ret, val);
+	
+	srand(4);
+	expression_initialize("rand(-1, 1)");
+	ret = expression_eval();
+	
+	srand(4);
+	val = RAND(-1, 1);
+	assert(ret, val);
 	
 	return TRUE;
 }
@@ -152,7 +178,8 @@ static Test functions[] = {
 	{test_function_sin, "test_function_sin"},
 	{test_complex, "test_complex"},
 	{test_function_varargs, "test_function_varargs"},
-	{text_scientific_notation, "test_scientific_notation"}
+	{test_scientific_notation, "test_scientific_notation"},
+	{test_random, "test_random"}
 };
 
 gint 
