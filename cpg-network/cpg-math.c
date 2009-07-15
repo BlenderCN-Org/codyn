@@ -111,7 +111,7 @@ op_nested (CpgStack  *stack,
 	for (i = 0; i < nargs - 1; ++i)
 		value = func (value, cpg_stack_pop (stack, data));
 	
-	cpg_stack_push (stack, value, data);	
+	cpg_stack_push (stack, value, data);
 }
 
 static void
@@ -147,9 +147,34 @@ op_pow (CpgStack *stack, void *data)
 static void
 op_rand (CpgStack *stack, void *data)
 {
-	double second = cpg_stack_pop (stack, data);
-	double first = cpg_stack_pop (stack, data);
-	cpg_stack_push (stack, RAND (first, second), data);
+	unsigned nargs = (unsigned)cpg_stack_pop (stack, data);
+	double value;
+	
+	if (nargs == 0)
+	{
+		value = RAND (0, 1);
+	}
+	else if (nargs == 2)
+	{
+		double second = cpg_stack_pop (stack, data);
+		double first = cpg_stack_pop (stack, data);
+
+		value = RAND (first, second);
+	}
+	else
+	{
+		int i;
+		
+		for (i = 0; i < nargs - 1; ++i)
+		{
+			cpg_stack_pop (stack, data);
+		}
+		
+		double first = cpg_stack_pop (stack, data);
+		value = RAND (0, first);
+	}
+
+	cpg_stack_push (stack, value, data);
 }
 
 static void
@@ -181,7 +206,7 @@ static FunctionEntry function_entries[] = {
 	{"round", op_round, 1},
 	{"abs", op_abs, 1},
 	{"pow", op_pow, 2},
-	{"rand", op_rand, 2}
+	{"rand", op_rand, -1}
 };
 
 #ifndef RTLINUX
