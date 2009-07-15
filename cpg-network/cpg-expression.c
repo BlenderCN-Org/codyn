@@ -276,7 +276,7 @@ parse_function (CpgExpression   *expression,
                 ParserContext   *context)
 {
 	// do function lookup
-	gint arguments;
+	gint arguments = 0;
 	guint id = cpg_math_function_lookup (name, &arguments);
 	
 	if (!id)
@@ -289,9 +289,21 @@ parse_function (CpgExpression   *expression,
 	
 	// parse arguments
 	gint numargs = 0;
+	CpgToken *next = cpg_tokenizer_peek (*(context->buffer));
+	gboolean loopit = TRUE;
 	
-	while (TRUE)
+	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
+	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_END)
 	{
+		cpg_token_free (next);
+		cpg_token_free (cpg_tokenizer_next (context->buffer));
+		
+		loopit = FALSE;
+	}
+	
+	while (loopit)
+	{
+		
 		if (!parse_expression (expression, context, -1, 0))
 		{
 			return FALSE;
