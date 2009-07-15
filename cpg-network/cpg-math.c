@@ -4,6 +4,8 @@
 
 #include "cpg-math.h"
 
+#define RAND(A, B)  ((A) + rand() * 1.0 / RAND_MAX * ((B) - (A)))
+
 typedef void (*FunctionClosure)(CpgStack *, void *);
 
 static void
@@ -143,6 +145,14 @@ op_pow (CpgStack *stack, void *data)
 }
 
 static void
+op_rand (CpgStack *stack, void *data)
+{
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
+	cpg_stack_push (stack, RAND (first, second), data);
+}
+
+static void
 op_noop (CpgStack *stack, void *data)
 {
 }
@@ -170,7 +180,8 @@ static FunctionEntry function_entries[] = {
 	{"ceil", op_ceil, 1},
 	{"round", op_round, 1},
 	{"abs", op_abs, 1},
-	{"pow", op_pow, 2}
+	{"pow", op_pow, 2},
+	{"rand", op_rand, 2}
 };
 
 #ifndef RTLINUX
