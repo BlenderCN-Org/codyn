@@ -345,11 +345,11 @@ parse_function (CpgExpression   *expression,
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 	}
 	
-	if (arguments != -1 && numargs > arguments)
+	if (arguments != -1 && numargs != arguments)
 	{
 		return parser_failed (context,
 		                      CPG_COMPILE_ERROR_MAXARG,
-		                      "Maximum number of arguments (%d) for function `%s' exceeded (got %d)",
+		                      "Number of arguments (%d) for function `%s' does not match (got %d)",
 		                      numargs,
 		                      arguments);
 	}
