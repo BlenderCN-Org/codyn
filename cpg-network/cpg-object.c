@@ -77,7 +77,7 @@ cpg_object_finalize (GObject *object)
 	g_slist_free (obj->priv->actors);
 	
 	g_free (obj->priv->id);
-		
+	
 	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
 
@@ -197,6 +197,13 @@ cpg_object_dispose (GObject *object)
 {
 	CpgObject *obj = CPG_OBJECT (object);
 	
+	if (obj->priv->template)
+	{
+		g_object_remove_toggle_ref (G_OBJECT (obj->priv->template),
+		                            (GToggleNotify)template_toggled,
+		                            obj);
+	}
+	
 	/* Untoggle ref all links, because we need them destroyed! */
 	GSList *item;
 	GSList *copy = g_slist_copy (obj->priv->links);
@@ -206,14 +213,9 @@ cpg_object_dispose (GObject *object)
 		link_destroyed (obj, CPG_LINK (item->data), TRUE);
 	}
 	
-	if (obj->priv->template)
-	{
-		g_object_remove_toggle_ref (G_OBJECT (obj->priv->template),
-		                            (GToggleNotify)template_toggled,
-		                            obj);
-	}
-	
 	g_slist_free (copy);
+	
+	G_OBJECT_CLASS (cpg_object_parent_class)->dispose (object);
 }
 
 static void

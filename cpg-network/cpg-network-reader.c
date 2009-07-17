@@ -111,6 +111,8 @@ parse_properties (xmlDocPtr  doc,
 		                                 g_ascii_strcasecmp ((const gchar *)variant, "1") == 0));
 
 			cpg_property_set_variant (property, isvariant);
+			
+			xmlFree (variant);
 		}
 		
 		xmlFree (name);
@@ -178,6 +180,7 @@ parse_object (GType       gtype,
 	}
 	
 	xmlFree (id);
+	xmlFree (ref);
 	
 	// Parse properties
 	if (!parse_object_properties (obj, node))

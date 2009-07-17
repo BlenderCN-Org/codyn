@@ -1401,5 +1401,7 @@ cpg_network_add_link_from_template (CpgNetwork  *network,
 	g_object_set (G_OBJECT (object), "from", from, "to", to, NULL);
 
 	cpg_network_add_object (network, object);
+	g_object_unref (object);
+
 	return object;
 }

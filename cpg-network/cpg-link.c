@@ -154,6 +154,8 @@ cpg_link_dispose (GObject *object)
 	
 	link->priv->to = NULL;
 	link->priv->from = NULL;
+	
+	G_OBJECT_CLASS (cpg_link_parent_class)->dispose (object);
 }	
 
 static void
@@ -320,7 +322,6 @@ cpg_link_add_action (CpgLink      *link,
 	g_slist_free (copy);
 
 	CpgLinkAction *action = cpg_link_action_new (target, expression);
-	
 	link->priv->actions = g_slist_append (link->priv->actions, action);
 	
 	cpg_object_taint (CPG_OBJECT (link));
@@ -349,7 +350,7 @@ cpg_link_remove_action (CpgLink       *link,
 	if (item != NULL)
 	{
 		cpg_ref_counted_unref (action);
-		link->priv->actions = g_slist_remove_link (link->priv->actions, item);
+		link->priv->actions = g_slist_delete_link (link->priv->actions, item);
 		
 		return TRUE;
 	}

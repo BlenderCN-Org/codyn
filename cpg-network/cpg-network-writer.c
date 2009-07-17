@@ -273,6 +273,7 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	
 	gchar *ret = g_strndup ((gchar const *)mem, size);
 	xmlFree (mem);
+	xmlFreeDoc (doc);
 	
 	return ret;
 }

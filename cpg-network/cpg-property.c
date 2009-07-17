@@ -47,6 +47,7 @@ cpg_property_free (CpgProperty *property)
 	cpg_ref_counted_unref (property->value);
 
 	g_free (property->name);
+	g_slice_free (CpgProperty, property);
 }
 
 /**
@@ -70,7 +71,6 @@ cpg_property_new (gchar const  *name,
                   CpgObject    *object)
 {
 	CpgProperty *res = g_slice_new0(CpgProperty);
-	
 	cpg_ref_counted_init (res, (GDestroyNotify)cpg_property_free);
 	
 	res->name = g_strdup (name);
