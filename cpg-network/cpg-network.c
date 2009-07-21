@@ -1257,7 +1257,7 @@ check_template (GSList *templates, gchar const *name)
 {
 	while (templates)
 	{
-		if (g_strcmp0 (name, cpg_object_get_id (CPG_OBJECT (templates->data))) == 0)
+		if (g_strcmp0 (name, (gchar const *)templates->data) == 0)
 		{
 			return TRUE;
 		}
@@ -1269,7 +1269,8 @@ check_template (GSList *templates, gchar const *name)
 }
 
 static GSList *
-sort_templates (GSList *templates)
+sort_templates (CpgNetwork *network,
+               GSList      *templates)
 {
 	GSList *sorted = NULL;
 	GSList *ptr = templates;
@@ -1277,13 +1278,14 @@ sort_templates (GSList *templates)
 	
 	while (ptr)
 	{
-		CpgObject *orig = CPG_OBJECT (ptr->data);
+		gchar *name = (gchar *)ptr->data;
+		CpgObject *orig = cpg_network_get_template (network, name);
 		CpgObject *template = NULL;
 		g_object_get (G_OBJECT (orig), "template", &template, NULL);
 		
 		if (seen == orig || !template || check_template (sorted, cpg_object_get_id (template)))
 		{
-			sorted = g_slist_prepend (sorted, orig);
+			sorted = g_slist_prepend (sorted, name);
 			ptr = g_slist_next (ptr);
 			
 			seen = NULL;
@@ -1292,7 +1294,7 @@ sort_templates (GSList *templates)
 		{
 			// Template not yet added, so cycle it
 			ptr = g_slist_next (ptr);
-			ptr = g_slist_append (ptr, orig);
+			ptr = g_slist_append (ptr, name);
 			
 			if (seen == NULL)
 			{
@@ -1328,7 +1330,7 @@ cpg_network_get_templates (CpgNetwork *network)
 	                      (GHFunc)fill_templates,
 	                      &list);
 
-	return sort_templates (g_slist_reverse (list));
+	return sort_templates (network, g_slist_reverse (list));
 }
 
 /**
