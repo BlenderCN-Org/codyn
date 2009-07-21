@@ -40,7 +40,7 @@ if test "x$enable_webots" = "xyes"; then
 		then
 			AC_MSG_RESULT($i)
 			WEBOTS_CFLAGS="-I$i/include/controller/c"
-			WEBOTS_LIBS="-L$i/lib -lCppController -lController"
+			WEBOTS_LIBS="-L$i/lib -lController"
 			
 			break;
 		fi
