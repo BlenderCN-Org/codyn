@@ -18,12 +18,14 @@ typedef struct _CpgStateClass	CpgStateClass;
 typedef struct _CpgStatePrivate	CpgStatePrivate;
 
 struct _CpgState {
+	/*< private >*/
 	CpgObject parent;
 	
 	CpgStatePrivate *priv;
 };
 
 struct _CpgStateClass {
+	/*< private >*/
 	CpgObjectClass parent_class;
 };
 

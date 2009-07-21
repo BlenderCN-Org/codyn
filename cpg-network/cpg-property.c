@@ -4,8 +4,18 @@
 #include "cpg-ref-counted-private.h"
 #include "cpg-expression.h"
 #include "cpg-utils.h"
+
 #include "cpg-object.h"
 
+/**
+ * SECTION:cpg-property
+ * @short_description: Property container
+ *
+ * A #CpgProperty is a container for a specific variable in an object. It
+ * consists of a name and a mathematical expression describing its contents.
+ *
+ */
+ 
 struct _CpgProperty
 {
 	CpgRefCounted parent;

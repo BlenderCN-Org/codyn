@@ -1,7 +1,7 @@
 cpg_object_error_get_type
 cpg_debug_type_get_type
-cpg_instruction_type_get_type
-cpg_compile_error_type_get_type
+cpg_instruction_code_get_type
+cpg_compile_error_code_get_type
 cpg_expression_get_type
 cpg_object_get_type
 cpg_compile_error_get_type

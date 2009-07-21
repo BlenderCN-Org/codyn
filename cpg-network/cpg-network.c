@@ -13,6 +13,16 @@
 #include "cpg-network-reader.h"
 #include "cpg-network-writer.h"
 
+/**
+ * SECTION:cpg-network
+ * @short_description: The main CPG network object
+ *
+ * The cpg network is the main component of the cpg-network library. The network
+ * consists of #CpgState, #CpgRelay and #CpgLink objects which combined make
+ * up the network.
+ *
+ */
+
 #define CPG_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_NETWORK, CpgNetworkPrivate))
 
 /* Properties */

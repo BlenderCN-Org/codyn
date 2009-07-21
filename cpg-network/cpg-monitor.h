@@ -14,13 +14,13 @@ GType			  cpg_monitor_get_type				 (void);
 
 CpgMonitor		 *cpg_monitor_new					 (struct _CpgNetwork *network,
 													  CpgObject          *object, 
-													  gchar const        *property_name);
+													  const gchar        *property_name);
 
-gdouble const 	 *cpg_monitor_get_data			 	 (CpgMonitor         *monitor,
+const gdouble 	 *cpg_monitor_get_data			 	 (CpgMonitor         *monitor,
 												 	  guint              *size);
 
 gboolean		  cpg_monitor_get_data_resampled 	 (CpgMonitor         *monitor,
-												      gdouble const      *sites,
+												      const gdouble      *sites,
 												      guint               size,
 												      gdouble            *ret);
 

@@ -23,6 +23,24 @@ CpgExpression
 </para>
 
 
+<!-- ##### STRUCT CpgInstruction ##### -->
+<para>
+
+</para>
+
+@type: 
+
+<!-- ##### ENUM CpgInstructionCode ##### -->
+<para>
+
+</para>
+
+@CPG_INSTRUCTION_TYPE_NONE: 
+@CPG_INSTRUCTION_TYPE_FUNCTION: 
+@CPG_INSTRUCTION_TYPE_NUMBER: 
+@CPG_INSTRUCTION_TYPE_OPERATOR: 
+@CPG_INSTRUCTION_TYPE_PROPERTY: 
+
 <!-- ##### FUNCTION cpg_expression_new ##### -->
 <para>
 

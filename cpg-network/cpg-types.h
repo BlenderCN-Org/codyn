@@ -8,7 +8,7 @@ G_BEGIN_DECLS
 typedef struct _CpgInstruction 		CpgInstruction;
 
 /**
- * CpgInstructionType:
+ * CpgInstructionCode:
  * @CPG_INSTRUCTION_TYPE_NONE: none
  * @CPG_INSTRUCTION_TYPE_FUNCTION: function
  * @CPG_INSTRUCTION_TYPE_NUMBER: number
@@ -24,11 +24,11 @@ typedef enum {
 	CPG_INSTRUCTION_TYPE_NUMBER,
 	CPG_INSTRUCTION_TYPE_OPERATOR,
 	CPG_INSTRUCTION_TYPE_PROPERTY
-} CpgInstructionType;
+} CpgInstructionCode;
 
 struct _CpgInstruction
 {
-	CpgInstructionType type;
+	CpgInstructionCode type;
 };
 
 typedef struct

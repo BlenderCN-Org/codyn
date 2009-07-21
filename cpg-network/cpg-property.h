@@ -12,13 +12,13 @@ typedef struct _CpgProperty CpgProperty;
 struct _CpgObject;
 
 GType			   cpg_property_get_type				(void);
-CpgProperty 	  *cpg_property_new						(gchar const        *name, 
-														 gchar const        *expression, 
+CpgProperty 	  *cpg_property_new						(const gchar        *name, 
+														 const gchar        *expression, 
 														 gboolean            integrated, 
 														 struct _CpgObject  *object);
 
 CpgProperty       *_cpg_property_copy                   (CpgProperty        *property);
-gchar const 	  *cpg_property_get_name				(CpgProperty        *property);
+const gchar 	  *cpg_property_get_name				(CpgProperty        *property);
 
 struct _CpgObject *cpg_property_get_object				(CpgProperty        *property);
 void               _cpg_property_set_object             (CpgProperty        *property,
@@ -40,7 +40,7 @@ CpgExpression 	  *cpg_property_get_value_expression	(CpgProperty        *propert
 void			   cpg_property_set_value				(CpgProperty        *property, 
 														 gdouble             value);
 void			   cpg_property_set_value_expression	(CpgProperty        *property, 
-														 gchar const 		*expression);
+														 const gchar 		*expression);
 
 gboolean		   cpg_property_equal					(CpgProperty        *property,
 														 CpgProperty        *other);

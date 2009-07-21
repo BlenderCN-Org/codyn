@@ -12,7 +12,7 @@ GType			  cpg_expression_get_type			(void);
 CpgExpression 	 *cpg_expression_new				(gchar const    *expression);
 
 GSList		 	 *cpg_expression_get_dependencies	(CpgExpression  *expression);
-gchar const		 *cpg_expression_get_as_string		(CpgExpression  *expression);
+const gchar      *cpg_expression_get_as_string		(CpgExpression  *expression);
 gint			  cpg_expression_compile			(CpgExpression  *expression, 
 													 GSList         *context, 
 													 GError        **error);

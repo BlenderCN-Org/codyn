@@ -2,6 +2,17 @@
 #include "cpg-ref-counted-private.h"
 #include <string.h>
 
+/**
+ * SECTION:cpg-link
+ * @short_description: Information transfer link
+ *
+ * A #CpgLink is a connection between two #CpgObject. The link defines actions
+ * which consist of a target property in the object to which the link is
+ * connected, and an expression by which this target property needs to be
+ * updated.
+ *
+ */
+ 
 #define CPG_LINK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_LINK, CpgLinkPrivate))
 
 struct _CpgLinkAction

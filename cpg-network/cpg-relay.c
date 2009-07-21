@@ -5,6 +5,19 @@
 #include "cpg-relay.h"
 #include "cpg-link.h"
 
+/**
+ * SECTION:cpg-relay
+ * @short_description: An immediate transfer object
+ *
+ * When using a #CpgState and a #CpgLink to transfer information, each transfer
+ * will take exactly one time step. This can be inconvenient when data should
+ * be transfered immediately within one timestep, over more than one state.
+ * To address this problem, a #CpgRelay can be used instead. All links 
+ * connected to a #CpgRelay will transfer information immediately in a separate
+ * phase, before the standard simulation update phase, at each timestep.
+ *
+ */
+ 
 #define CPG_RELAY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_RELAY, CpgRelayPrivate))
 
 struct _CpgRelayPrivate

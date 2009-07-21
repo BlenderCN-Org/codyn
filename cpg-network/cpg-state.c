@@ -3,6 +3,15 @@
 #include "cpg-link.h"
 #include "cpg-debug.h"
 
+/**
+ * SECTION:cpg-state
+ * @short_description: Basic simulation state object
+ *
+ * The #CpgState is the basic simulation state object. A #CpgState updates
+ * the target #CpgProperty from links that are connected to it at each timestep.
+ *
+ */
+ 
 #define CPG_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_STATE, CpgStatePrivate))
 
 /*struct _CpgStatePrivate

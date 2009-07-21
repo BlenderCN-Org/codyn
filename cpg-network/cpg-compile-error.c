@@ -1,6 +1,14 @@
 #include "cpg-compile-error.h"
 #include "cpg-ref-counted-private.h"
 
+/**
+ * SECTION:cpg-compile-error
+ * @short_description: Compile error message container
+ *
+ * Object used to store information on expression compile errors.
+ *
+ */
+ 
 struct _CpgCompileError
 {
 	CpgRefCounted parent;

@@ -7,6 +7,18 @@
 
 #include <string.h>
 
+/**
+ * SECTION:cpg-monitor
+ * @short_description: Property value monitor
+ *
+ * A #CpgMonitor can be used to monitor the value of a certain #CpgProperty
+ * while simulating. The monitor will collect the value of the property at
+ * each simulation step and provides methods to access these values. 
+ * Particularly useful is #cpg_monitor_get_data_resampled which retrieves the
+ * data resampled at specific times.
+ *
+ */
+ 
 #define MONITOR_GROW_SIZE 1000
 
 enum

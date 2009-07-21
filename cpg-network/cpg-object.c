@@ -9,6 +9,16 @@
 
 #include "cpg-debug.h"
 
+/**
+ * SECTION:cpg-object
+ * @short_description: Basis for all cpg objects
+ *
+ * #CpgObject is a base class for all the objects which can be added to a
+ * network. It provides property storage and virtual methods which can be
+ * implemented that drive the simulation process.
+ *
+ */
+ 
 #define CPG_OBJECT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_OBJECT, CpgObjectPrivate))
 
 struct _CpgObjectPrivate

@@ -124,14 +124,10 @@ CPG_RELAY_GET_CLASS
 </SECTION>
 
 <SECTION>
-<FILE>cpg-enum-types</FILE>
-CpgInstructionType
-CpgCompileErrorType
-</SECTION>
-
-<SECTION>
 <FILE>cpg-expression</FILE>
 CpgExpression
+CpgInstruction
+CpgInstructionCode
 cpg_expression_new
 cpg_expression_get_dependencies
 cpg_expression_get_as_string
@@ -157,7 +153,7 @@ cpg_ref_counted_unref
 <FILE>cpg-compile-error</FILE>
 CPG_TYPE_COMPILE_ERROR
 CPG_COMPILE_ERROR_TYPE
-CpgCompileErrorType
+CpgCompileErrorCode
 CpgCompileError
 cpg_compile_error_type_quark
 cpg_compile_error_new
@@ -169,12 +165,6 @@ cpg_compile_error_string
 cpg_compile_error_code_string
 cpg_compile_error_get_code
 cpg_compile_error_get_message
-</SECTION>
-
-<SECTION>
-<FILE>cpg-types</FILE>
-CpgInstruction
-CpgInstructionType
 </SECTION>
 
 <SECTION>

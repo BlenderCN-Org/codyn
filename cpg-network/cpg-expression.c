@@ -14,6 +14,17 @@
 #include <ctype.h>
 #include <glib.h>
 
+/**
+ * SECTION:cpg-expression
+ * @short_description: Mathematical expression evaluation
+ *
+ * A #CpgExpression contains a mathematical expression. The expression in
+ * string format can be compiled and evaluated. At the compilation phase,
+ * a list of #CpgObject is provided as a context in which variables are mapped
+ * to #CpgProperty in this context.
+ *
+ */
+
 enum
 {
 	CPG_EXPRESSION_FLAG_NONE = 0,

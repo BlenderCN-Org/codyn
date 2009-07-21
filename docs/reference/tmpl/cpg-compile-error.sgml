@@ -1,5 +1,5 @@
 <!-- ##### SECTION Title ##### -->
-cpg-compile-error
+CpgCompileError
 
 <!-- ##### SECTION Short_Description ##### -->
 
@@ -31,7 +31,7 @@ cpg-compile-error
 
 
 
-<!-- ##### ENUM CpgCompileErrorType ##### -->
+<!-- ##### ENUM CpgCompileErrorCode ##### -->
 <para>
 
 </para>

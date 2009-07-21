@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<refentry id="xml-specification" revision="5 May 2005">
+<refmeta>
+<refentrytitle>XML specification</refentrytitle>
+</refmeta>
+
+<refnamediv>
+<refname>XML specification</refname>
+<refpurpose>
+Specification of the XML format used to describe a cpg network
+</refpurpose>
+</refnamediv>
+
+<refsect1>
+<title>Sections</title>
+<para>
+A basic, empty XML file looks like this:
+<informalexample>
+<programlisting language="xml">
+<![CDATA[<cpg>
+  <network>
+  </network>
+</cpg>]]>
+</programlisting>
+</informalexample>
+Thus, the root element is <code>cpg</code> which contains the network root
+element <code>network</code>. The network itself consists of three distinct
+sections:
+
+<itemizedlist>
+  <listitem><link linkend="globals">Globals</link></listitem>
+  <listitem><link linkend="templates">Templates</link></listitem>
+  <listitem><link linkend="objects">Objects</link></listitem>
+</itemizedlist>
+
+</para>
+
+<refsect2 id="globals">
+<title>Globals</title>
+<para>
+The globals section of the network is an optional section containing property
+definitions which can be used in any expression in the network. As such, they
+are similar to <emphasis>global variables</emphasis>. The following is an example
+of defining a global property <emphasis>x</emphasis>.
+
+<example>
+<programlisting language="xml" linenumbering="numbered">
+<![CDATA[<cpg>
+  <network>
+    <globals>
+      <property name="x">2 * PI</property>
+    </globals>
+  </network>
+</cpg>]]>
+</programlisting>
+</example>
+
+</para>
+</refsect2>
+
+<refsect2 id="templates">
+<title>Templates</title>
+<para>
+The network specification can make use of a simple templating system. This
+means that you can write generic <code>state</code>, <code>link</code> and 
+<code>relay</code> objects which can serve as templates to base the actual
+objects in the network on. You could for instance define a template for
+a <code>state</code> which defines some properties that apply to all the
+states in your network, and override some specific properties in each instance
+of the template. Templating is also very useful for <code>link</code> objects.
+For instance, defining a phase coupling link as a template and instantiating
+that template for specific states will greatly reduce the size of the 
+network representation. Templates definitions can themselves also be based
+on another template, making the templates a simple, yet powerful mechanism.
+The following example shows a network with a template for a basic oscillator 
+and integration link:
+
+<example>
+<title>Demonstration of templates</title>
+<programlisting language="xml">
+<![CDATA[<cpg>
+  <network>
+    <templates>
+      <state id="oscillator">
+        <property name="x" integrated="true">rand()</property>
+        <property name="y" integrated="true">rand()</property>
+        <property name="amplitude">1</property>
+      </state>
+      <link id="integrate">
+        <action target="x">y</action>
+        <action target="y">x</action>
+      </link>
+    </templates>
+    <state id="osc1" ref="oscillator">
+      <!-- Override amplitude property -->
+      <property name="amplitude">2</property>
+    </state>
+    <state id="osc2" ref="oscillator">
+      <!-- Override amplitude property -->
+      <property name="amplitude">3</property>
+    </state>
+
+    <link id="integrate1" ref="integrate" from="osc1" to="osc1"/>
+    <link id="integrate2" ref="integrate" from="osc2" to="osc2"/>
+  </network>
+</cpg>]]>
+</programlisting>
+</example>
+</para>
+</refsect2>
+
+<refsect2 id="objects">
+<title>Objects</title>
+<para>
+The example in the <link linkend="templates">Templates</link> section already
+showed how objects can be defined in a network. Any <code>state</code>, 
+<code>link</code> or <code>relay</code> can be defined in the network. Each
+of these objects requires an unique <code>id</code> by which the object can
+be referenced in the network. Optionally, you can specify a <code>ref</code>
+attribute which bases the object on a template defined in the 
+<code>templates</code> section.
+</para>
+<para>
+Each object can then define a list of <code>property</code> elements specifying
+the state variables of the object. A property tag <emphasis>MUST</emphasis>
+have a <code>name</code> attribute. The content of the tag is a mathematical
+expression defining the initial value of the property:
+
+<informalexample>
+<programlisting>
+<![CDATA[<property name="x">2 * PI</property>]]>
+</programlisting>
+</informalexample>
+
+A property can reference other properties with the following precendence:
+
+<orderedlist>
+  <listitem>Properties from the object itself</listitem>
+  <listitem>Previously defined global properties</listitem>
+</orderedlist>
+
+To indicate that a property should be 
+integrated when acted upon by a link, the tag <code>integrated</code> can be 
+specified on the property.
+</para>
+<para>
+A link tag has two additional required attributes, <code>from</code> and
+<code>to</code>. These define respectively the source and the destination
+objects of the link. In addition to properties, a <code>link</code> has one
+ore more <code>action</code> tags. An action defines information to be 
+transfered to a <code>target</code> property in the destination object, using
+a mathematical expression. The expression can reference properties with the
+following precedence:
+
+<orderedlist>
+  <listitem>Properties from the link itself</listitem>
+  <listitem>Properties from the source object</listitem>
+  <listitem>Previously defined global properties</listitem>
+</orderedlist>
+
+In addition, properties from the source and destination objects can be
+referenced explicitly by using the format <code>from.&lt;prop&gt;</code> and
+<code>to.&lt;prop&gt;</code> respectively.
+
+</para>
+</refsect2>
+</refsect1>
+<refsect1 id="specification">
+<title>DTD specification</title>
+<para>
+The specification of the XML format used to represent a network can be 
+precisely described with the following DTD:
+</para>
+
+<programlisting>
+<![CDATA[<!ELEMENT cpg (network)>
+<!ELEMENT network (globals?, templates?, state*, link*, relay*)>
+<!ELEMENT globals (property*)>
+<!ELEMENT templates (state*, link*, relay*)>
+
+<!ELEMENT state (property*)>
+<!ATTLIST state
+	id CDATA #REQUIRED
+	ref CDATA
+>
+
+<!ELEMENT link (property*, action*)>
+<!ATTLIST link
+	id CDATA #REQUIRED
+	from CDATA
+	to CDATA
+	ref CDATA
+>
+
+<!ELEMENT relay (property*)>
+<!ATTLIST relay
+	id CDATA #REQUIRED
+	ref CDATA
+>
+
+<!ELEMENT action (#PCDATA)>
+<!ATTLIST action
+	target CDATA #REQUIRED
+>
+
+<!ELEMENT property (#PCDATA)>
+<!ATTLIST property
+	name CDATA #REQUIRED
+	integrated CDATA
+	variant CDATA
+>]]>
+</programlisting>
+</refsect1>
+</refentry>
