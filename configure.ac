@@ -81,6 +81,7 @@ cpg-network.pc
 cpg-network-webots.pc
 cpg-network/Makefile
 cpg-network-webots/Makefile
+data/Makefile
 docs/Makefile
 docs/reference/Makefile
 tests/Makefile

@@ -1,4 +1,4 @@
-SUBDIRS = cpg-network tests docs
+SUBDIRS = cpg-network data tests docs
 
 if ENABLE_WEBOTS
 SUBDIRS += cpg-network-webots
