@@ -1252,6 +1252,59 @@ fill_templates (gchar const  *key,
 	*list = g_slist_prepend (*list, g_strdup (key));
 }
 
+static gboolean
+check_template (GSList *templates, gchar const *name)
+{
+	while (templates)
+	{
+		if (g_strcmp0 (name, cpg_object_get_id (CPG_OBJECT (templates->data))) == 0)
+		{
+			return TRUE;
+		}
+
+		templates = g_slist_next (templates);
+	}
+	
+	return FALSE;
+}
+
+static GSList *
+sort_templates (GSList *templates)
+{
+	GSList *sorted = NULL;
+	GSList *ptr = templates;
+	CpgObject *seen = NULL;
+	
+	while (ptr)
+	{
+		CpgObject *orig = CPG_OBJECT (ptr->data);
+		CpgObject *template = NULL;
+		g_object_get (G_OBJECT (orig), "template", &template, NULL);
+		
+		if (seen == orig || !template || check_template (sorted, cpg_object_get_id (template)))
+		{
+			sorted = g_slist_prepend (sorted, orig);
+			ptr = g_slist_next (ptr);
+			
+			seen = NULL;
+		}
+		else
+		{
+			// Template not yet added, so cycle it
+			ptr = g_slist_next (ptr);
+			ptr = g_slist_append (ptr, orig);
+			
+			if (seen == NULL)
+			{
+				seen = orig;
+			}
+		}
+	}
+	
+	g_slist_free (templates);
+	return g_slist_reverse (sorted);
+}
+
 /**
  * cpg_network_get_templates:
  * @network: a #CpgNetwork
@@ -1275,7 +1328,7 @@ cpg_network_get_templates (CpgNetwork *network)
 	                      (GHFunc)fill_templates,
 	                      &list);
 
-	return g_slist_reverse (list);
+	return sort_templates (g_slist_reverse (list));
 }
 
 /**
