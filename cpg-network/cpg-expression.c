@@ -78,6 +78,15 @@ cpg_instruction_initialize (CpgInstruction *instruction)
 
 #define instruction_new(Type) ((Type *)cpg_instruction_initialize ((CpgInstruction *)g_slice_new0 (Type)))
 
+/**
+ * cpg_instruction_copy:
+ * @instruction: a #CpgInstruction
+ *
+ * Create a copy of a #CpgInstruction
+ *
+ * Return value: a new #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_copy (CpgInstruction *instruction)
 {
@@ -118,6 +127,22 @@ cpg_instruction_copy (CpgInstruction *instruction)
 	}
 }
 
+/**
+ * cpg_instruction_function_new:
+ * @id: function id
+ * @name: function name
+ * @arguments: the number of arguments this function takes
+ * @variable: if the number of arguments is variable for this function
+ *
+ * Creates a new function call instruction. The id @id of the instruction
+ * specifies which function the instruction represents (see 
+ * #CpgMathFunctionType). If @variable is %TRUE, the instruction expects the 
+ * first value on the stack, when the instruction is executed, to be the number 
+ * of arguments to process.
+ *
+ * Return value: the new #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_function_new (guint         id,
                               gchar const  *name,
@@ -135,6 +160,16 @@ cpg_instruction_function_new (guint         id,
 	return (CpgInstruction *)res;
 }
 
+/**
+ * cpg_instruction_number_new:
+ * @value: the numeric value
+ *
+ * Creates a new number instruction. This is the most basic instruction, which
+ * simply pushes a number onto the stack when executed.
+ *
+ * Return value: the new #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_number_new (gdouble value)
 {
@@ -145,6 +180,19 @@ cpg_instruction_number_new (gdouble value)
 	return (CpgInstruction *)res;
 }
 
+/**
+ * cpg_instruction_operator_new:
+ * @id: operator id
+ * @name: operator name
+ * @arguments: the number of arguments this operator takes
+ *
+ * Creates a new operator instruction. The id @id of the instruction
+ * specifies which operator the instruction represents (see 
+ * #CpgMathOperatorType).
+ *
+ * Return value: the new #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_operator_new (guint         id,
                               gchar const  *name,
@@ -156,6 +204,17 @@ cpg_instruction_operator_new (guint         id,
 	return res;
 }
 
+/**
+ * cpg_instruction_property_new:
+ * @property: a #CpgProperty
+ *
+ * Creates a new property call instruction. When the instruction is executed,
+ * the property value expression is evaluated and its return value is pushed
+ * on the stack.
+ *
+ * Return value: the new #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_property_new (CpgProperty *property)
 {
@@ -168,6 +227,13 @@ cpg_instruction_property_new (CpgProperty *property)
 	return (CpgInstruction *)res;
 }
 
+/**
+ * cpg_instruction_free:
+ * @instruction: a #CpgInstruction
+ *
+ * Free previously created #CpgInstruction object
+ *
+ **/
 void
 cpg_instruction_free (CpgInstruction *instruction)
 {
