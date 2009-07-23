@@ -68,7 +68,7 @@ main (int argc, char *argv[])
 	}
 	
 	cpg_debug_add (CPG_DEBUG_TYPE_ERROR);
-	CpgNetwork *network = cpg_network_new_from_file (argv[1]);
+	CpgNetwork *network = cpg_network_new_from_file (argv[1], NULL);
 	
 	if (!network)
 	{

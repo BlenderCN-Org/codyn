@@ -11,6 +11,7 @@ COMMON_SOURCES = 		\
 	cpg-property.c \
 	cpg-tokenizer.c \
 	cpg-expression.c \
+	cpg-enum-types.c \
 	cpg-ref-counted.c \
 	cpg-monitor.c \
 	cpg-math.c \
@@ -18,7 +19,6 @@ COMMON_SOURCES = 		\
 	cpg-stack.c \
 	cpg-network-reader.c \
 	cpg-network-writer.c \
-	cpg-enum-types.c \
 	cpg-compile-error.c
 
 NOINST_H_FILES = \
@@ -64,6 +64,8 @@ libcpg_network_1_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERS
 libcpg_network_1_0_la_SOURCES = $(COMMON_SOURCES)
 
 libcpg_network_1_0_include_HEADERS = $(libcpg_network_headers)
+
+CLEANFILES = cpg-enum-types.c cpg-enum-types.h
 
 EXTRA_DIST = \
 	$(NOINST_H_FILES) \

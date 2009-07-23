@@ -24,6 +24,16 @@ typedef struct _CpgNetwork			CpgNetwork;
 typedef struct _CpgNetworkClass		CpgNetworkClass;
 typedef struct _CpgNetworkPrivate	CpgNetworkPrivate;
 
+#define CPG_NETWORK_LOAD_ERROR (cpg_network_load_error_quark ())
+
+typedef enum
+{
+	CPG_NETWORK_LOAD_ERROR_XML,
+	CPG_NETWORK_LOAD_ERROR_PROPERTY,
+	CPG_NETWORK_LOAD_ERROR_OBJECT,
+	CPG_NETWORK_LOAD_ERROR_LINK
+} CpgNetworkLoadError;
+
 struct _CpgNetwork {
 	/*< private >*/
 	GObject parent;
@@ -43,8 +53,10 @@ struct _CpgNetworkClass {
 
 GType cpg_network_get_type (void) G_GNUC_CONST;
 
-CpgNetwork 		 *cpg_network_new_from_file		(const gchar *filename);
-CpgNetwork 		 *cpg_network_new_from_xml		(const gchar *xml);
+GQuark            cpg_network_load_error_quark  (void);
+
+CpgNetwork 		 *cpg_network_new_from_file		(const gchar *filename, GError **error);
+CpgNetwork 		 *cpg_network_new_from_xml		(const gchar *xml, GError **error);
 CpgNetwork		 *cpg_network_new				(void);
 
 gchar 			 *cpg_network_write_to_xml		(CpgNetwork  *network);
@@ -54,10 +66,13 @@ void			  cpg_network_write_to_file		(CpgNetwork  *network,
 void              cpg_network_merge             (CpgNetwork *network,
                                                  CpgNetwork *other);
 
-void			  cpg_network_merge_from_file	(CpgNetwork  *network, 
-                                                 const gchar *filename);
-void			  cpg_network_merge_from_xml	(CpgNetwork  *network,
-                                                 const gchar *xml);
+void			  cpg_network_merge_from_file	(CpgNetwork   *network, 
+                                                 const gchar  *filename,
+                                                 GError      **error);
+
+void			  cpg_network_merge_from_xml	(CpgNetwork   *network,
+                                                 const gchar  *xml,
+                                                 GError      **error);
 
 void 			  cpg_network_set_global_constant (CpgNetwork   *network,
                                  				   const gchar  *name,

@@ -82,6 +82,17 @@ static guint network_signals[NUM_SIGNALS] = {0,};
 
 G_DEFINE_TYPE (CpgNetwork, cpg_network, G_TYPE_OBJECT)
 
+GQuark
+cpg_network_load_error_quark ()
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+		quark = g_quark_from_static_string ("cpg_network_load_error");
+
+	return quark;
+}
+
 static void
 cpg_network_finalize (GObject *object)
 {
@@ -739,6 +750,7 @@ cpg_network_compile (CpgNetwork      *network,
 /**
  * cpg_network_new_from_file:
  * @filename: the filename of the file containing the network definition
+ * @error: error return value
  * 
  * Create a new CPG network by reading the network definition from file
  *
@@ -747,17 +759,15 @@ cpg_network_compile (CpgNetwork      *network,
  *
  **/
 CpgNetwork *
-cpg_network_new_from_file (gchar const *filename)
+cpg_network_new_from_file (gchar const *filename, GError **error)
 {
 	g_return_val_if_fail (filename != NULL, NULL);
 
 	CpgNetwork *network = cpg_network_new ();
 	network->priv->filename = strdup (filename);
 	
-	if (!cpg_network_reader_xml (network, filename))
+	if (!cpg_network_reader_xml (network, filename, error))
 	{
-		cpg_debug_error ("Could not read network from xml file: %s", filename);
-		
 		g_object_unref (network);
 		network = NULL;
 	}
@@ -773,6 +783,7 @@ cpg_network_new_from_file (gchar const *filename)
 /**
  * cpg_network_new_from_xml:
  * @xml: xml definition of the network
+ * @error: error return value
  * 
  * Create a new CPG network from the network xml definition
  *
@@ -781,16 +792,14 @@ cpg_network_new_from_file (gchar const *filename)
  *
  **/
 CpgNetwork *
-cpg_network_new_from_xml (gchar const *xml)
+cpg_network_new_from_xml (gchar const *xml, GError **error)
 {
 	g_return_val_if_fail (xml != NULL, NULL);
 
 	CpgNetwork *network = cpg_network_new ();
 	
-	if (!cpg_network_reader_xml_string (network, xml))
+	if (!cpg_network_reader_xml_string (network, xml, error))
 	{
-		cpg_debug_error ("Could not read network from xml");
-		
 		g_object_unref (network);
 		network = NULL;
 	}
@@ -1110,21 +1119,23 @@ cpg_network_merge (CpgNetwork  *network,
  * cpg_network_merge_from_file:
  * @network: a #CpgNetwork
  * @filename: network filename
+ * @error: error return value
  *
  * Merges the network defined in the file @filename into @network. This is
  * similar to creating a network from a file and merging it with @network.
  *
  **/
 void
-cpg_network_merge_from_file (CpgNetwork  *network,
-                             gchar const *filename)
+cpg_network_merge_from_file (CpgNetwork   *network,
+                             gchar const  *filename,
+                             GError      **error)
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (filename != NULL);
 
 	CpgNetwork *other;
 	
-	other = cpg_network_new_from_file (filename);
+	other = cpg_network_new_from_file (filename, error);
 	
 	if (other != NULL)
 	{
@@ -1137,21 +1148,23 @@ cpg_network_merge_from_file (CpgNetwork  *network,
  * cpg_network_merge_from_xml:
  * @network: a #CpgNetwork
  * @xml: a xml string describing the network
+ * @error: error return value
  *
  * Merges the network defined in @xml into @network. This is
  * similar to creating a network from xml and merging it with @network.
  *
  **/
 void
-cpg_network_merge_from_xml (CpgNetwork  *network,
-                            gchar const *xml)
+cpg_network_merge_from_xml (CpgNetwork   *network,
+                            gchar const  *xml,
+                            GError      **error)
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (xml != NULL);
 	
 	CpgNetwork *other;
 	
-	other = cpg_network_new_from_xml (xml);
+	other = cpg_network_new_from_xml (xml, error);
 	
 	if (other != NULL)
 	{
