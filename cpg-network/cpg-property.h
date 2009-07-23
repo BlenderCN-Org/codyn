@@ -32,6 +32,10 @@ gboolean		   cpg_property_get_variant				(CpgProperty        *property);
 void			   cpg_property_set_variant				(CpgProperty		*property,
 														 gboolean			 variant);
 
+gboolean		   cpg_property_get_out					(CpgProperty        *property);
+void			   cpg_property_set_out					(CpgProperty		*property,
+														 gboolean			 out);
+														 
 void 			   cpg_property_reset_cache				(CpgProperty		*property);
 
 gdouble			   cpg_property_get_value				(CpgProperty        *property);
@@ -51,6 +55,7 @@ gdouble			   _cpg_property_get_update				(CpgProperty	    *property);
 
 void 			   _cpg_property_use                    (CpgProperty        *property);
 gboolean           _cpg_property_unuse                  (CpgProperty        *property);
+gboolean           cpg_property_get_used                (CpgProperty        *property);
 
 G_END_DECLS
 

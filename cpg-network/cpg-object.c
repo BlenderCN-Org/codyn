@@ -560,7 +560,7 @@ _cpg_object_link (CpgObject  *object,
 }
 
 GSList *
-_cpg_object_get_actors (CpgObject *object)
+cpg_object_get_actors (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	

@@ -63,7 +63,7 @@ cpg_relay_evaluate_impl (CpgObject  *object,
 	// Set this first to avoid cyclic loops
 	relay->priv->done = TRUE;
 	
-	GSList *actors = _cpg_object_get_actors (object);
+	GSList *actors = cpg_object_get_actors (object);
 	GSList *actor;
 
 	// Prepare update values (ready for accumulation)

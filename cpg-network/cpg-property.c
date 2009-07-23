@@ -7,6 +7,13 @@
 
 #include "cpg-object.h"
 
+typedef enum
+{
+	ATTRIBUTE_INTEGRATED = 1 << 0,
+	ATTRIBUTE_VARIANT = 1 << 1,
+	ATTRIBUTE_OUT = 1 << 2
+} PropertyAttribute;
+
 /**
  * SECTION:cpg-property
  * @short_description: Property container
@@ -23,12 +30,10 @@ struct _CpgProperty
 	gchar *name;
 	
 	CpgExpression *value;
-	gboolean integrated;
+	PropertyAttribute attributes;
 	
 	gdouble update;
 	CpgObject *object;
-	
-	gboolean variant;
 };
 
 GType 
@@ -45,10 +50,15 @@ cpg_property_get_type ()
 CpgProperty *
 _cpg_property_copy (CpgProperty *property)
 {
-	return cpg_property_new (property->name,
-	                         cpg_expression_get_as_string (property->value),
-	                         property->integrated,
-	                         NULL);
+	CpgProperty *ret;
+	
+	ret = cpg_property_new (property->name,
+	                        cpg_expression_get_as_string (property->value),
+	                        FALSE,
+	                        NULL);
+
+	ret->attributes = property->attributes;
+	return ret;
 }
 
 static void
@@ -87,9 +97,8 @@ cpg_property_new (gchar const  *name,
 	res->object = object;
 	res->use_count = 0;
 
-	res->integrated = integrated;	
+	res->attributes = integrated ? ATTRIBUTE_INTEGRATED : 0;
 	res->value = cpg_expression_new (expression);
-	res->variant = FALSE;
 	
 	return res;
 }
@@ -210,7 +219,7 @@ cpg_property_get_name (CpgProperty *property)
 gboolean
 cpg_property_get_integrated (CpgProperty *property)
 {
-	return property->integrated;
+	return property->attributes & ATTRIBUTE_INTEGRATED;
 }
 
 /**
@@ -225,7 +234,14 @@ void
 cpg_property_set_integrated (CpgProperty  *property,
                              gboolean      integrated)
 {
-	property->integrated = integrated;
+	if (integrated)
+	{
+		property->attributes |= ATTRIBUTE_INTEGRATED;
+	}
+	else
+	{
+		property->attributes &= ~ATTRIBUTE_INTEGRATED;
+	}
 }
 
 /**
@@ -235,13 +251,13 @@ cpg_property_set_integrated (CpgProperty  *property,
  * Get whether the property is variant. When optimizing the network, variant
  * properties are not optimized away and can thus be modified at run time
  *
- * Returns: %TRUE if the property will be integrated, %FALSE otherwise
+ * Returns: %TRUE if the property is variant, %FALSE otherwise
  *
  **/
 gboolean
 cpg_property_get_variant (CpgProperty *property)
 {
-	return property->variant;
+	return property->attributes & ATTRIBUTE_VARIANT;
 }
 
 /**
@@ -257,7 +273,54 @@ void
 cpg_property_set_variant (CpgProperty  *property,
                           gboolean      variant)
 {
-	property->variant = variant;
+	if (variant)
+	{
+		property->attributes |= ATTRIBUTE_VARIANT;
+	}
+	else
+	{
+		property->attributes &= ~ATTRIBUTE_VARIANT;
+	}
+}
+
+
+/**
+ * cpg_property_get_out:
+ * @property: a #CpgProperty
+ *
+ * Get whether the property is an output. When optimizing the network, out
+ * properties are preserved and can be used to read data back externally
+ *
+ * Returns: %TRUE if the property is an out, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_property_get_out (CpgProperty *property)
+{
+	return property->attributes & ATTRIBUTE_OUT;
+}
+
+/**
+ * cpg_property_set_variant:
+ * @property: a #CpgProperty
+ * @variant: whether the property is out
+ *
+ * Set to %TRUE when the property may not be optimized when the network is
+ * optimized and should be available externally to read back data
+ *
+ **/
+void
+cpg_property_set_out (CpgProperty  *property,
+                      gboolean      out)
+{
+	if (out)
+	{
+		property->attributes |= ATTRIBUTE_OUT;
+	}
+	else
+	{
+		property->attributes &= ~ATTRIBUTE_OUT;
+	}
 }
 
 void
@@ -301,6 +364,12 @@ _cpg_property_unuse (CpgProperty *property)
 	return (--(property->use_count) == 0);
 }
 
+gboolean 
+cpg_property_get_used (CpgProperty *property)
+{
+	return property->use_count == 0;
+}
+
 /**
  * cpg_property_equal:
  * @property: a #CpgProperty
@@ -315,7 +384,7 @@ gboolean
 cpg_property_equal (CpgProperty *property,
                     CpgProperty *other)
 {
-	return property->integrated == other->integrated &&
+	return property->attributes == other->attributes &&
 	       cpg_expression_equal (cpg_property_get_value_expression (property),
 	                             cpg_property_get_value_expression (other));
 }

@@ -32,7 +32,7 @@ cpg_state_update_impl (CpgObject  *object,
 {
 	GSList *item;
 	
-	for (item = _cpg_object_get_actors (object); item; item = g_slist_next (item))
+	for (item = cpg_object_get_actors (object); item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
 		gdouble value;
@@ -58,7 +58,7 @@ cpg_state_evaluate_impl (CpgObject  *object,
 	GSList *item;
 	
 	// Prepare update values (ready for accumulation)
-	for (item = _cpg_object_get_actors (object); item; item = g_slist_next (item))
+	for (item = cpg_object_get_actors (object); item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
 

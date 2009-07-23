@@ -41,7 +41,6 @@ INST_H_FILES = \
 	cpg-ref-counted.h \
 	cpg-stack.h \
 	cpg-debug.h \
-	cpg-types.h \
 	cpg-monitor.h \
 	cpg-compile-error.h
 	
