@@ -1,7 +1,7 @@
 #ifndef __CPG_MATH_H__
 #define __CPG_MATH_H__
 
-#include "cpg-stack.h"
+#include <cpg-network/cpg-stack.h>
 
 G_BEGIN_DECLS
 

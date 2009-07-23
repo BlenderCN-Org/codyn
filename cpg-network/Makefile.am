@@ -26,8 +26,7 @@ NOINST_H_FILES = \
 	cpg-network-reader.h \
 	cpg-network-writer.h \
 	cpg-ref-counted-private.h \
-	cpg-utils.h \
-	cpg-math.h
+	cpg-utils.h
 
 INST_H_FILES = \
 	cpg-network.h \
@@ -42,7 +41,8 @@ INST_H_FILES = \
 	cpg-stack.h \
 	cpg-debug.h \
 	cpg-monitor.h \
-	cpg-compile-error.h
+	cpg-compile-error.h \
+	cpg-math.h
 	
 lib_LTLIBRARIES = libcpg-network-1.0.la
 
