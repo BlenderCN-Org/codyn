@@ -1282,8 +1282,13 @@ instructions_equal (CpgInstruction *i1,
 	switch (i1->type)
 	{
 		case CPG_INSTRUCTION_TYPE_PROPERTY:
-			return ((CpgInstructionProperty *)i1)->property ==
-			       ((CpgInstructionProperty *)i2)->property;
+		{
+			CpgInstructionProperty *p1 = (CpgInstructionProperty *)i1;
+			CpgInstructionProperty *p2 = (CpgInstructionProperty *)i2;
+
+			return (g_strcmp0 (cpg_property_get_name (p1->property), 
+			                   cpg_property_get_name (p2->property)) == 0);
+		}
 		break;
 		case CPG_INSTRUCTION_TYPE_OPERATOR:
 		case CPG_INSTRUCTION_TYPE_FUNCTION:
