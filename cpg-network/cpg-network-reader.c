@@ -114,6 +114,15 @@ parse_properties (xmlDocPtr  doc,
 		                                 g_ascii_strcasecmp ((const gchar *)integrated, "1") == 0));
 		xmlFree (integrated);
 		
+		if (!isint)
+		{
+			integrated = xmlGetProp (node, (xmlChar *)"integrate");
+			isint = (integrated && (g_ascii_strcasecmp ((const gchar *)integrated, "true") == 0 ||
+			                        g_ascii_strcasecmp ((const gchar *)integrated, "yes") == 0 ||
+			                        g_ascii_strcasecmp ((const gchar *)integrated, "1") == 0));
+			xmlFree (integrated);
+		}
+		
 		CpgProperty *property;
 		
 		property = cpg_object_add_property (info->object, 
@@ -126,12 +135,20 @@ parse_properties (xmlDocPtr  doc,
 			xmlChar *variant = xmlGetProp (node, (xmlChar *)"variant");
 			
 			gboolean isvariant = (variant && (g_ascii_strcasecmp ((const gchar *)variant, "true") == 0 ||
-		                                 g_ascii_strcasecmp ((const gchar *)variant, "yes") == 0 ||
-		                                 g_ascii_strcasecmp ((const gchar *)variant, "1") == 0));
+		                                      g_ascii_strcasecmp ((const gchar *)variant, "yes") == 0 ||
+		                                      g_ascii_strcasecmp ((const gchar *)variant, "1") == 0));
 
 			cpg_property_set_variant (property, isvariant);
 			
 			xmlFree (variant);
+			
+			xmlChar *out = xmlGetProp (node, (xmlChar *)"out");
+			
+			gboolean isout = (out && (g_ascii_strcasecmp ((const gchar *)out, "true") == 0 ||
+		                              g_ascii_strcasecmp ((const gchar *)out, "yes") == 0 ||
+		                              g_ascii_strcasecmp ((const gchar *)out, "1") == 0));
+
+			cpg_property_set_out (property, isout);
 		}
 		
 		xmlFree (name);

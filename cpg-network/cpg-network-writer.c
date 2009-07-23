@@ -42,6 +42,11 @@ properties_to_xml (xmlDocPtr   doc,
 			xmlNewProp (node, (xmlChar *)"variant", (xmlChar *)"yes");
 		}
 		
+		if (cpg_property_get_out (property))
+		{
+			xmlNewProp (node, (xmlChar *)"out", (xmlChar *)"yes");
+		}
+		
 		xmlNodePtr text = xmlNewDocText (doc, (xmlChar *)cpg_expression_get_as_string (expression));
 		
 		xmlAddChild (node, text);
