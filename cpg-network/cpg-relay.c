@@ -99,9 +99,9 @@ cpg_relay_evaluate_impl (CpgObject  *object,
 	
 	// instantly set values, that's what the relay does
 	for (actor = actors; actor; actor = g_slist_next (actor))
+	{
 		cpg_property_set_value ((CpgProperty *)actor->data, _cpg_property_get_update ((CpgProperty *)actor->data));
-	
-	g_slist_free (actors);
+	}
 }
 
 static void
