@@ -48,7 +48,7 @@ typedef enum
 } CpgMathFunctionType;
 
 CpgMathFunctionType cpg_math_function_lookup (gchar const *name, gint *arguments);
-gdouble cpg_math_constant_lookup (gchar const *name, gint *found);
+gdouble cpg_math_constant_lookup (gchar const *name, gboolean *found);
 
 CpgMathOperatorType cpg_math_operator_lookup(CpgMathOperatorType type);
 

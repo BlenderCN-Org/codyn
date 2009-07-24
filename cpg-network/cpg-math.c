@@ -490,15 +490,15 @@ static CpgConstantEntry constant_entries[] = {
 
 gdouble
 cpg_math_constant_lookup (gchar const  *name,
-                          gint         *found)
+                          gboolean     *found)
 {
 	guint i;
 	
 	for (i = 0; i < sizeof (constant_entries) / sizeof (CpgConstantEntry); ++i)
 	{
-		if (strcmp (constant_entries[i].name, name) == 0)
+		if (g_strcmp0 (constant_entries[i].name, name) == 0)
 		{
-			*found = 1;
+			*found = TRUE;
 
 			if (constant_entries[i].function)
 				return constant_entries[i].function ();
@@ -507,6 +507,6 @@ cpg_math_constant_lookup (gchar const  *name,
 		}
 	}
 
-	*found = 0;	
+	*found = FALSE;	
 	return 0.0;
 }
