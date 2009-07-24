@@ -257,6 +257,8 @@ cpg_object_copy_impl (CpgObject *object,
 		CpgProperty *cpy = _cpg_property_copy (property);
 		
 		_cpg_property_set_object (cpy, object);
+		_cpg_property_use (cpy);
+
 		object->priv->properties = g_slist_prepend (object->priv->properties, cpy);
 	}
 	
