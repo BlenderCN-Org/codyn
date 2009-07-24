@@ -37,14 +37,14 @@ properties_to_xml (xmlDocPtr   doc,
 			xmlNewProp (node, (xmlChar *)"integrated", (xmlChar *)"yes");
 		}
 		
-		if (cpg_property_get_variant (property))
-		{
-			xmlNewProp (node, (xmlChar *)"variant", (xmlChar *)"yes");
-		}
-		
-		if (cpg_property_get_out (property))
+		if (cpg_property_get_hint (property) & CPG_PROPERTY_HINT_OUT)
 		{
 			xmlNewProp (node, (xmlChar *)"out", (xmlChar *)"yes");
+		}
+		
+		if (cpg_property_get_hint (property) & CPG_PROPERTY_HINT_IN)
+		{
+			xmlNewProp (node, (xmlChar *)"in", (xmlChar *)"yes");
 		}
 		
 		xmlNodePtr text = xmlNewDocText (doc, (xmlChar *)cpg_expression_get_as_string (expression));

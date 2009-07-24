@@ -73,6 +73,18 @@ typedef struct
 } ParseInfo;
 
 static gboolean
+attribute_true (xmlNodePtr node, gchar const *name)
+{
+	xmlChar *prop = xmlGetProp (node, (xmlChar *)name);
+	gboolean ret = (prop && (g_ascii_strcasecmp ((const gchar *)prop, "true") == 0 ||
+		                     g_ascii_strcasecmp ((const gchar *)prop, "yes") == 0 ||
+		                     g_ascii_strcasecmp ((const gchar *)prop, "1") == 0));
+	xmlFree (prop);
+	
+	return ret;
+}
+
+static gboolean
 parse_properties (xmlDocPtr  doc,
                   GList     *nodes,
                   ParseInfo *info)
@@ -108,47 +120,25 @@ parse_properties (xmlDocPtr  doc,
 			expression = node->children->content;
 		}
 		
-		xmlChar *integrated = xmlGetProp (node, (xmlChar *)"integrated");
-		gboolean isint = (integrated && (g_ascii_strcasecmp ((const gchar *)integrated, "true") == 0 ||
-		                                 g_ascii_strcasecmp ((const gchar *)integrated, "yes") == 0 ||
-		                                 g_ascii_strcasecmp ((const gchar *)integrated, "1") == 0));
-		xmlFree (integrated);
-		
-		if (!isint)
-		{
-			integrated = xmlGetProp (node, (xmlChar *)"integrate");
-			isint = (integrated && (g_ascii_strcasecmp ((const gchar *)integrated, "true") == 0 ||
-			                        g_ascii_strcasecmp ((const gchar *)integrated, "yes") == 0 ||
-			                        g_ascii_strcasecmp ((const gchar *)integrated, "1") == 0));
-			xmlFree (integrated);
-		}
-		
 		CpgProperty *property;
 		
 		property = cpg_object_add_property (info->object, 
 		                                    (const gchar *)name, 
 		                                    (const gchar *)expression, 
-		                                    isint);
+		                                    attribute_true (node, "integrated") || 
+		                                    attribute_true (node, "integrate"));
 
 		if (property)
 		{
-			xmlChar *variant = xmlGetProp (node, (xmlChar *)"variant");
+			if (attribute_true (node, "in"))
+			{
+				cpg_property_add_hint (property, CPG_PROPERTY_HINT_IN);
+			}
 			
-			gboolean isvariant = (variant && (g_ascii_strcasecmp ((const gchar *)variant, "true") == 0 ||
-		                                      g_ascii_strcasecmp ((const gchar *)variant, "yes") == 0 ||
-		                                      g_ascii_strcasecmp ((const gchar *)variant, "1") == 0));
-
-			cpg_property_set_variant (property, isvariant);
-			
-			xmlFree (variant);
-			
-			xmlChar *out = xmlGetProp (node, (xmlChar *)"out");
-			
-			gboolean isout = (out && (g_ascii_strcasecmp ((const gchar *)out, "true") == 0 ||
-		                              g_ascii_strcasecmp ((const gchar *)out, "yes") == 0 ||
-		                              g_ascii_strcasecmp ((const gchar *)out, "1") == 0));
-
-			cpg_property_set_out (property, isout);
+			if (attribute_true (node, "out"))
+			{
+				cpg_property_add_hint (property, CPG_PROPERTY_HINT_OUT);
+			}
 		}
 		
 		xmlFree (name);

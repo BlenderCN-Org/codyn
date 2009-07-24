@@ -6,6 +6,13 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+	CPG_PROPERTY_HINT_NONE = 0,
+	CPG_PROPERTY_HINT_IN = 1 << 0,
+	CPG_PROPERTY_HINT_OUT = 1 << 1
+} CpgPropertyHint;
+
 typedef struct _CpgProperty CpgProperty;
 
 /* forward declaration */
@@ -28,14 +35,13 @@ gboolean		   cpg_property_get_integrated			(CpgProperty        *property);
 void			   cpg_property_set_integrated			(CpgProperty		*property,
 														 gboolean			 integrated);
 
-gboolean		   cpg_property_get_variant				(CpgProperty        *property);
-void			   cpg_property_set_variant				(CpgProperty		*property,
-														 gboolean			 variant);
-
-gboolean		   cpg_property_get_out					(CpgProperty        *property);
-void			   cpg_property_set_out					(CpgProperty		*property,
-														 gboolean			 out);
-														 
+CpgPropertyHint	   cpg_property_get_hint				(CpgProperty        *property);
+void			   cpg_property_set_hint				(CpgProperty		*property,
+														 CpgPropertyHint     hint);
+void			   cpg_property_add_hint				(CpgProperty		*property,
+														 CpgPropertyHint     hint);
+void			   cpg_property_remove_hint				(CpgProperty		*property,
+														 CpgPropertyHint     hint);
 void 			   cpg_property_reset_cache				(CpgProperty		*property);
 
 gdouble			   cpg_property_get_value				(CpgProperty        *property);
@@ -55,7 +61,7 @@ gdouble			   _cpg_property_get_update				(CpgProperty	    *property);
 
 void 			   _cpg_property_use                    (CpgProperty        *property);
 gboolean           _cpg_property_unuse                  (CpgProperty        *property);
-gboolean           cpg_property_get_used                (CpgProperty        *property);
+guint	            cpg_property_get_used               (CpgProperty        *property);
 
 G_END_DECLS
 
