@@ -95,7 +95,7 @@ cpg_instruction_copy (CpgInstruction *instruction)
 		case CPG_INSTRUCTION_TYPE_PROPERTY:
 		{
 			CpgInstructionProperty *property = (CpgInstructionProperty *)instruction;
-			return cpg_instruction_property_new (property->property);
+			return cpg_instruction_property_new (property->property, property->binding);
 		}
 		break;
 		case CPG_INSTRUCTION_TYPE_FUNCTION:
@@ -207,6 +207,7 @@ cpg_instruction_operator_new (guint         id,
 /**
  * cpg_instruction_property_new:
  * @property: a #CpgProperty
+ * @binding: the property binding
  *
  * Creates a new property call instruction. When the instruction is executed,
  * the property value expression is evaluated and its return value is pushed
@@ -216,13 +217,17 @@ cpg_instruction_operator_new (guint         id,
  *
  **/
 CpgInstruction *
-cpg_instruction_property_new (CpgProperty *property)
+cpg_instruction_property_new (CpgProperty           *property,
+                              CpgInstructionBinding  binding)
 {
 	CpgInstructionProperty *res = instruction_new (CpgInstructionProperty);
 	res->parent.type = CPG_INSTRUCTION_TYPE_PROPERTY;
 	
 	res->property = property;
+	res->binding = binding;
+
 	_cpg_property_use (property);
+	cpg_ref_counted_ref (property);
 	
 	return (CpgInstruction *)res;
 }
@@ -244,6 +249,8 @@ cpg_instruction_free (CpgInstruction *instruction)
 			CpgInstructionProperty *prop = (CpgInstructionProperty *)instruction;
 
 			_cpg_property_unuse (prop->property);
+			cpg_ref_counted_unref (prop->property);
+
 			g_slice_free (CpgInstructionProperty, prop);
 		}
 		break;
@@ -380,6 +387,7 @@ parser_failed (ParserContext *context,
 		             code,
 		             "%s",
 		             message);
+
 		g_free (message);
 	}
 	
@@ -710,7 +718,7 @@ parse_property (CpgExpression *expression,
 		                      propname);
 	}
 	
-	instructions_push (expression, cpg_instruction_property_new (property));
+	instructions_push (expression, cpg_instruction_property_new (property, 0));
 	return TRUE;
 }
 
@@ -735,16 +743,25 @@ parse_link_property (CpgExpression  *expression,
                      CpgLink        *link)
 {
 	CpgProperty *property = NULL;
+	CpgInstructionBinding binding = 0;
 
 	if (strcmp (id, "from") == 0)
+	{
 		property = cpg_object_get_property (cpg_link_get_from (link), propname);
+		binding = CPG_INSTRUCTION_BINDING_FROM;
+	}
 	else if (strcmp (id, "to") == 0)
+	{
 		property = cpg_object_get_property (cpg_link_get_to (link), propname);
+		binding = CPG_INSTRUCTION_BINDING_FROM;
+	}
 	
 	if (!property)
+	{
 		return FALSE;
+	}
 	
-	instructions_push (expression, cpg_instruction_property_new (property));
+	instructions_push (expression, cpg_instruction_property_new (property, binding));
 	return TRUE;
 }
 
@@ -1296,8 +1313,13 @@ instructions_equal (CpgInstruction *i1,
 		{
 			CpgInstructionProperty *p1 = (CpgInstructionProperty *)i1;
 			CpgInstructionProperty *p2 = (CpgInstructionProperty *)i2;
+			
+			if (p1->binding != p2->binding)
+			{
+				return FALSE;
+			}
 
-			return (g_strcmp0 (cpg_property_get_name (p1->property), 
+			return (g_strcmp0 (cpg_property_get_name (p1->property),
 			                   cpg_property_get_name (p2->property)) == 0);
 		}
 		break;

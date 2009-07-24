@@ -52,11 +52,19 @@ typedef struct
 	gdouble value;
 } CpgInstructionNumber;
 
+typedef enum
+{
+	CPG_INSTRUCTION_BINDING_NONE = 0,
+	CPG_INSTRUCTION_BINDING_FROM,
+	CPG_INSTRUCTION_BINDING_TO,
+} CpgInstructionBinding;
+
 typedef struct
 {
 	CpgInstruction parent;
 
 	struct _CpgProperty *property;
+	CpgInstructionBinding binding;
 } CpgInstructionProperty;
 
 typedef struct _CpgExpression 		CpgExpression;
@@ -67,7 +75,7 @@ CpgExpression 	 *cpg_expression_new				(gchar const    *expression);
 GSList		 	 *cpg_expression_get_dependencies	(CpgExpression  *expression);
 const gchar      *cpg_expression_get_as_string		(CpgExpression  *expression);
 gint			  cpg_expression_compile			(CpgExpression  *expression, 
-													 GSList         *context, 
+													 GSList         *context,
 													 GError        **error);
 
 gdouble 		  cpg_expression_evaluate			(CpgExpression  *expression);
@@ -96,7 +104,8 @@ CpgInstruction   *cpg_instruction_number_new 		(gdouble value);
 CpgInstruction   *cpg_instruction_operator_new 		(guint         id,
 													 gchar const  *name,
 													 gint          arguments);
-CpgInstruction   *cpg_instruction_property_new 		(struct _CpgProperty *property);
+CpgInstruction   *cpg_instruction_property_new 		(struct _CpgProperty *property,
+                                                     CpgInstructionBinding binding);
 CpgInstruction   *cpg_instruction_copy 				(CpgInstruction *instruction);
 void              cpg_instruction_free 				(CpgInstruction *instruction);
 
