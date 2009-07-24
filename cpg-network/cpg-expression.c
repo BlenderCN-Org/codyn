@@ -416,10 +416,13 @@ parse_function (CpgExpression   *expression,
 		
 		loopit = FALSE;
 	}
+	else
+	{
+		cpg_token_free (next);
+	}
 	
 	while (loopit)
 	{
-		
 		if (!parse_expression (expression, context, -1, 0))
 		{
 			return FALSE;
@@ -428,7 +431,7 @@ parse_function (CpgExpression   *expression,
 		++numargs;
 
 		// see what's next
-		CpgToken *next = cpg_tokenizer_peek (*(context->buffer));
+		next = cpg_tokenizer_peek (*(context->buffer));
 		
 		if (!next || !CPG_TOKEN_IS_OPERATOR (next))
 		{
@@ -690,7 +693,9 @@ parse_property (CpgExpression *expression,
 	while (item && !property)
 	{
 		if (item->data)
+		{
 			property = cpg_object_get_property (CPG_OBJECT (item->data), propname);
+		}
 		
 		item = g_slist_next (item);
 	}
@@ -820,7 +825,13 @@ parse_identifier (CpgExpression      *expression,
 		ret = parse_property (expression, id, context);
 	
 		if (!ret)
-		{	
+		{
+			if (context->error && *(context->error))
+			{
+				g_error_free (*(context->error));
+				*(context->error) = NULL;
+			}
+			
 			// try parsing constants
 			ret = parse_constant (expression, id);
 			

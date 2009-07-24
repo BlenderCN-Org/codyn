@@ -100,13 +100,13 @@ cpg_network_finalize (GObject *object)
 
 	g_free (network->priv->filename);
 	
-	g_object_unref (network->priv->constants);
-	g_slist_free (network->priv->context);
-
 	cpg_network_clear (network);
-	
+
 	g_hash_table_destroy (network->priv->object_map);
 	g_hash_table_destroy (network->priv->templates);
+
+	g_object_unref (network->priv->constants);
+	g_slist_free (network->priv->context);
 	
 	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
@@ -855,9 +855,8 @@ cpg_network_clear (CpgNetwork *network)
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
 
-	// remove all states
-	g_slist_foreach (network->priv->states, (GFunc)remove_object, network);
 	g_slist_foreach (network->priv->links, (GFunc)remove_object, network);
+	g_slist_foreach (network->priv->states, (GFunc)remove_object, network);
 	
 	g_slist_free (network->priv->states);
 	g_slist_free (network->priv->links);

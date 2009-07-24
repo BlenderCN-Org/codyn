@@ -48,6 +48,8 @@ cpg_compile_error_free (CpgCompileError *error)
 	{
 		g_object_unref (error->object);
 	}
+	
+	g_slice_free (CpgCompileError, error);
 }
 
 GQuark
