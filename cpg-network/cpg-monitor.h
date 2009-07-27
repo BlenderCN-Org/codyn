@@ -24,6 +24,10 @@ gboolean		  cpg_monitor_get_data_resampled 	 (CpgMonitor         *monitor,
 												      guint               size,
 												      gdouble            *ret);
 
+CpgObject		 *cpg_monitor_get_object			 (CpgMonitor         *monitor);
+
+CpgProperty		 *cpg_monitor_get_property			 (CpgMonitor		 *monitor);
+
 G_END_DECLS
 
 #endif /* __CPG_MONITOR_H__ */

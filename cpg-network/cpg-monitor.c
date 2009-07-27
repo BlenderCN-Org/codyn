@@ -252,3 +252,47 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
 	
 	return TRUE;
 }
+
+/**
+ * cpg_monitor_get_object:
+ * @monitor: a #CpgMonitor
+ *
+ * Returns the object from which a property is being monitored.
+ *
+ * Returns: a pointer to the #CpgObject
+ *
+ **/
+CpgObject *
+cpg_monitor_get_object (CpgMonitor *monitor)
+{
+	if (!monitor)
+	{
+		return NULL;
+	}
+	else
+	{
+		return monitor->object;
+	}
+}
+
+/**
+ * cpg_monitor_get_property:
+ * @monitor: a #CpgMonitor
+ *
+ * Returns the property which is being monitored.
+ *
+ * Returns: a pointer to the #CpgProperty
+ *
+ **/
+CpgProperty *
+cpg_monitor_get_property (CpgMonitor *monitor)
+{
+	if (!monitor)
+	{
+		return NULL;
+	}
+	else
+	{
+		return monitor->property;
+	}
+}

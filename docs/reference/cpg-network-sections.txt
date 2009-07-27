@@ -173,6 +173,8 @@ CpgMonitor
 cpg_monitor_new
 cpg_monitor_get_data
 cpg_monitor_get_data_resampled
+cpg_monitor_get_object
+cpg_monitor_get_property
 </SECTION>
 
 <SECTION>
