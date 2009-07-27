@@ -92,9 +92,9 @@ cpg_monitor_grow (CpgMonitor *monitor)
 }
 
 static void
-cpg_monitor_update (CpgMonitor  *monitor,
-                    gdouble      timestep,
-                    CpgNetwork  *network)
+cpg_monitor_update (CpgMonitor *monitor,
+                    gdouble     timestep,
+                    CpgNetwork *network)
 {
 	if (monitor->size == 0 || monitor->num_values >= monitor->size - 1)
 		cpg_monitor_grow (monitor);
