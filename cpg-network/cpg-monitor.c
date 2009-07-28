@@ -129,13 +129,18 @@ cpg_monitor_new (CpgNetwork   *network,
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (property_name != NULL, NULL);
 	
+	CpgProperty *property;
+
+	property = cpg_object_get_property (object, property_name);
+	g_return_val_if_fail (property != NULL, NULL);
+
 	CpgMonitor *monitor = g_slice_new0 (CpgMonitor);
 
 	cpg_ref_counted_init (monitor, (GDestroyNotify)cpg_monitor_free);
 	
 	monitor->network = network;
 	monitor->object = object;
-	monitor->property = cpg_ref_counted_ref (cpg_object_get_property (object, property_name));
+	monitor->property = cpg_ref_counted_ref (property);
 	
 	g_object_add_weak_pointer (G_OBJECT (object), (gpointer *)&(monitor->object));
 	g_object_add_weak_pointer (G_OBJECT (network), (gpointer *)&(monitor->network));
