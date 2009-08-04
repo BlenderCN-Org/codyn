@@ -9,7 +9,6 @@
 
 #include "cpg-network-webots-private.h"
 #include "cpg-network/cpg-expression.h"
-#include "cpg-network/cpg-types.h"
 
 #include <stdlib.h>
 #include <string.h>
