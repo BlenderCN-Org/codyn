@@ -103,12 +103,6 @@ cpg_tokenizer_parse_number (gchar const **buffer)
 	res->parent.text = g_strndup ((gchar *)start, *buffer - start);
 	res->value = g_ascii_strtod (res->parent.text, NULL);
 	
-	if (*start == '.')
-	{
-		while (res->value > 0)
-			res->value = res->value / 10.0;
-	}
-	
 	return (CpgToken *)res;
 }
 
