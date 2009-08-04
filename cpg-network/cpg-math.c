@@ -145,6 +145,12 @@ op_pow (CpgStack *stack, void *data)
 }
 
 static void
+op_log (CpgStack *stack, void *data)
+{
+	cpg_stack_push (stack, log (cpg_stack_pop (stack, data)), data);
+}
+
+static void
 op_rand (CpgStack *stack, void *data)
 {
 	unsigned nargs = (unsigned)cpg_stack_pop (stack, data);
@@ -207,7 +213,9 @@ static FunctionEntry function_entries[] = {
 	{"round", op_round, 1, TRUE},
 	{"abs", op_abs, 1, TRUE},
 	{"pow", op_pow, 2, TRUE},
-	{"rand", op_rand, -1, FALSE}
+	{"rand", op_rand, -1, FALSE},
+	{"ln", op_log, 1, TRUE},
+	{"log", op_log, 1, TRUE}
 };
 
 CpgMathFunctionType
