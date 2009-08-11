@@ -5,7 +5,9 @@ Build-Depends: debhelper (>= 7),
                autotools-dev, 
                pkg-config,
                libglib2.0-dev,
-               libxml2-dev
+               libxml2-dev,
+			   gtk-doc-tools,
+			   webots (>= 6.1.0)
 Standards-Version: 3.8.0
 Section: libs
 Homepage: http://birg2.epfl.ch
@@ -15,7 +17,8 @@ Section: libdevel
 Architecture: any
 Depends: cpg-network1 (= ${binary:Version}),
          libglib2.0-dev,
-         libxml2-dev
+         libxml2-dev,
+		 gtk-doc-tools
 Suggests: libglib2.0-doc
 Description: Development files for CPG network library
  CPG network library
@@ -34,7 +37,8 @@ Package: cpg-network-webots-dev
 Section: libdevel
 Architecture: any
 Depends: cpg-network-webots1 (= ${binary:Version}),
-         cpg-network-dev
+         cpg-network-dev,
+		 webots (>= 6.1.0)
 Description: Development files for CPG network library - webots bindings
  CPG network library webots bindings
 
@@ -43,6 +47,7 @@ Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-         webots (>= 6)
+		 cpg-network1,
+         webots (>= 6.1.0)
 Description: CPG network library - webots bindings
  CPG network library webots bindings
