@@ -59,13 +59,15 @@ typedef enum
 	CPG_INSTRUCTION_BINDING_TO,
 } CpgInstructionBinding;
 
-typedef struct
+typedef struct _CpgInstructionProperty CpgInstructionProperty;
+
+struct _CpgInstructionProperty
 {
 	CpgInstruction parent;
 
 	struct _CpgProperty *property;
 	CpgInstructionBinding binding;
-} CpgInstructionProperty;
+};
 
 typedef struct _CpgExpression 		CpgExpression;
 
