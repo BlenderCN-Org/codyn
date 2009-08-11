@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cpg>
+  <network>
+    <templates>
+      <state id="hopf">
+        <property name="XS">0</property>
+        <property name="R">1</property>
+        <property name="g_x">1</property>
+        <property name="g_y">1</property>
+        <property name="x" integrated="yes">0</property>
+        <property name="y" integrated="yes">1</property>
+        <property name="drive">x + XS</property>
+        <property name="w">2 * PI</property>
+        <property name="r">sqrt(x * x + y * y)</property>
+      </state>
+      <link id="hopf::integrate">
+        <action target="x">g_x * (R * R - r * r) * x - w * y</action>
+        <action target="y">g_y * (R * R - r * r) * y + w * x</action>
+      </link>
+      <link id="hopf::coupling">
+        <property name="phase">0</property>
+        <property name="weight">1</property>
+        <property name="summed">w / to.r * ((to.x * y - x * to.y) * cos(phase) - (x * to.x +  + y * to.y) * sin(phase))</action>
+        <action target="x">weight * -summed * to.y</action>
+        <action target="y">weight * summed * to.x</action>
+      </link>
+    </templates>
+  </network>
+</cpg>
