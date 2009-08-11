@@ -26,7 +26,7 @@ if ENABLE_WEBOTS
 EXTRA_DIST += cpg-network-webots.pc.in
 endif
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-threads --enable-gtk-doc --enable-webots
+DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc --enable-webots
 
 CLEANFILES = 	\
 	$(pkgconfig_DATA)
