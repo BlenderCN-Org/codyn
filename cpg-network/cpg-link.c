@@ -2,6 +2,17 @@
 #include "cpg-ref-counted-private.h"
 #include <string.h>
 
+/**
+ * SECTION:cpg-link
+ * @short_description: Information transfer link
+ *
+ * A #CpgLink is a connection between two #CpgObject. The link defines actions
+ * which consist of a target property in the object to which the link is
+ * connected, and an expression by which this target property needs to be
+ * updated.
+ *
+ */
+ 
 #define CPG_LINK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_LINK, CpgLinkPrivate))
 
 struct _CpgLinkAction
@@ -154,6 +165,8 @@ cpg_link_dispose (GObject *object)
 	
 	link->priv->to = NULL;
 	link->priv->from = NULL;
+	
+	G_OBJECT_CLASS (cpg_link_parent_class)->dispose (object);
 }	
 
 static void
@@ -320,7 +333,6 @@ cpg_link_add_action (CpgLink      *link,
 	g_slist_free (copy);
 
 	CpgLinkAction *action = cpg_link_action_new (target, expression);
-	
 	link->priv->actions = g_slist_append (link->priv->actions, action);
 	
 	cpg_object_taint (CPG_OBJECT (link));
@@ -349,7 +361,7 @@ cpg_link_remove_action (CpgLink       *link,
 	if (item != NULL)
 	{
 		cpg_ref_counted_unref (action);
-		link->priv->actions = g_slist_remove_link (link->priv->actions, item);
+		link->priv->actions = g_slist_delete_link (link->priv->actions, item);
 		
 		return TRUE;
 	}

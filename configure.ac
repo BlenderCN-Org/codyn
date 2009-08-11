@@ -40,7 +40,7 @@ if test "x$enable_webots" = "xyes"; then
 		then
 			AC_MSG_RESULT($i)
 			WEBOTS_CFLAGS="-I$i/include/controller/c"
-			WEBOTS_LIBS="-L$i/lib -lCppController -lController"
+			WEBOTS_LIBS="-L$i/lib -lController"
 			
 			break;
 		fi
@@ -81,6 +81,7 @@ cpg-network.pc
 cpg-network-webots.pc
 cpg-network/Makefile
 cpg-network-webots/Makefile
+data/Makefile
 docs/Makefile
 docs/reference/Makefile
 tests/Makefile

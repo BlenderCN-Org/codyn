@@ -78,17 +78,30 @@ cpg_tokenizer_parse_number (gchar const **buffer)
 		;
 	}
 	
+	// Scientific notation
+	if ((**buffer == 'e' || **buffer == 'E') && *(*buffer + 1))
+	{
+		gchar const *next = *buffer + 1;
+		
+		if (*next == '+' || *next == '-')
+		{
+			++next;
+		}
+		
+		if (*next && g_ascii_isdigit(*next))
+		{
+			while (g_ascii_isdigit(*++next))
+			;
+			
+			*buffer = next;
+		}
+	}
+	
 	CpgTokenNumber *res = g_slice_new (CpgTokenNumber);
 	res->parent.type = CPG_TOKEN_TYPE_NUMBER;
 
 	res->parent.text = g_strndup ((gchar *)start, *buffer - start);
 	res->value = g_ascii_strtod (res->parent.text, NULL);
-	
-	if (*start == '.')
-	{
-		while (res->value > 0)
-			res->value = res->value / 10.0;
-	}
 	
 	return (CpgToken *)res;
 }

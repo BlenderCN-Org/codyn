@@ -41,14 +41,17 @@ typedef enum
 } CpgObjectError;
 
 struct _CpgObject {
+	/*< private >*/
 	GObject parent;
 	
 	CpgObjectPrivate *priv;
 };
 
 struct _CpgObjectClass {
+	/*< private >*/
 	GObjectClass parent_class;
-	
+
+	/*< public >*/	
 	void (*compile)		(CpgObject *object);
 	void (*reset)		(CpgObject *object);
 	void (*update)		(CpgObject *object, 
@@ -67,24 +70,24 @@ struct _CpgObjectClass {
 GQuark cpg_object_error_quark (void);
 
 GType cpg_object_get_type (void) G_GNUC_CONST;
-CpgObject *cpg_object_new (gchar const *id);
+CpgObject *cpg_object_new (const gchar *id);
 
 CpgObject        *_cpg_object_copy			(CpgObject   *object);
-gchar const 	 *cpg_object_get_id			(CpgObject   *object);
+const gchar 	 *cpg_object_get_id			(CpgObject   *object);
 void              cpg_object_set_id			(CpgObject   *object,
-                                             gchar const *id);
+                                             const gchar *id);
 gchar 			 *cpg_object_get_local_id	(CpgObject   *object);
 
 CpgProperty 	 *cpg_object_add_property	(CpgObject   *object, 
-											 gchar const *name, 
-											 gchar const *expression, 
+											 const gchar *name, 
+											 const gchar *expression, 
 											 gboolean     integrated);
 CpgProperty 	 *cpg_object_get_property	(CpgObject   *object, 
-											 gchar const *name);
+											 const gchar *name);
 gboolean		  cpg_object_has_property   (CpgObject   *object,
-											 gchar const *name);
+											 const gchar *name);
 gboolean		  cpg_object_remove_property (CpgObject    *object,
-											  gchar const  *name,
+											  const gchar  *name,
 											  GError      **error);
 
 GSList			*cpg_object_get_properties	(CpgObject   *object);
@@ -102,7 +105,7 @@ void			  cpg_object_taint			(CpgObject   *object);
 /* used for referencing links */
 void 			 _cpg_object_link			(CpgObject       *object, 
 											 struct _CpgLink *link);
-GSList 			*_cpg_object_get_actors		(CpgObject       *object);
+GSList 			 *cpg_object_get_actors		(CpgObject       *object);
 GSList 			*_cpg_object_get_links		(CpgObject       *object);
 
 void 			 _cpg_object_taint			(CpgObject 		 *object);

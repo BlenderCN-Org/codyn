@@ -4,8 +4,18 @@
 #include "cpg-ref-counted-private.h"
 #include "cpg-expression.h"
 #include "cpg-utils.h"
+
 #include "cpg-object.h"
 
+/**
+ * SECTION:cpg-property
+ * @short_description: Property container
+ *
+ * A #CpgProperty is a container for a specific variable in an object. It
+ * consists of a name and a mathematical expression describing its contents.
+ *
+ */
+ 
 struct _CpgProperty
 {
 	CpgRefCounted parent;
@@ -14,6 +24,7 @@ struct _CpgProperty
 	
 	CpgExpression *value;
 	gboolean integrated;
+	CpgPropertyHint hint;
 	
 	gdouble update;
 	CpgObject *object;
@@ -33,10 +44,15 @@ cpg_property_get_type ()
 CpgProperty *
 _cpg_property_copy (CpgProperty *property)
 {
-	return cpg_property_new (property->name,
-	                         cpg_expression_get_as_string (property->value),
-	                         property->integrated,
-	                         NULL);
+	CpgProperty *ret;
+	
+	ret = cpg_property_new (property->name,
+	                        cpg_expression_get_as_string (property->value),
+	                        property->integrated,
+	                        NULL);
+
+	ret->hint = property->hint;	
+	return ret;
 }
 
 static void
@@ -45,6 +61,7 @@ cpg_property_free (CpgProperty *property)
 	cpg_ref_counted_unref (property->value);
 
 	g_free (property->name);
+	g_slice_free (CpgProperty, property);
 }
 
 /**
@@ -68,14 +85,14 @@ cpg_property_new (gchar const  *name,
                   CpgObject    *object)
 {
 	CpgProperty *res = g_slice_new0(CpgProperty);
-	
 	cpg_ref_counted_init (res, (GDestroyNotify)cpg_property_free);
 	
 	res->name = g_strdup (name);
 	res->object = object;
 	res->use_count = 0;
 
-	res->integrated = integrated;	
+	res->integrated = integrated;
+	res->hint = CPG_PROPERTY_HINT_NONE;
 	res->value = cpg_expression_new (expression);
 	
 	return res;
@@ -256,6 +273,12 @@ _cpg_property_unuse (CpgProperty *property)
 	return (--(property->use_count) == 0);
 }
 
+guint 
+cpg_property_get_used (CpgProperty *property)
+{
+	return property->use_count;
+}
+
 /**
  * cpg_property_equal:
  * @property: a #CpgProperty
@@ -271,6 +294,34 @@ cpg_property_equal (CpgProperty *property,
                     CpgProperty *other)
 {
 	return property->integrated == other->integrated &&
+	       property->hint == other->hint &&
 	       cpg_expression_equal (cpg_property_get_value_expression (property),
 	                             cpg_property_get_value_expression (other));
+}
+
+CpgPropertyHint
+cpg_property_get_hint (CpgProperty *property)
+{
+	return property->hint;
+}
+
+void
+cpg_property_set_hint (CpgProperty     *property,
+                       CpgPropertyHint  hint)
+{
+	property->hint = hint;
+}
+
+void
+cpg_property_add_hint (CpgProperty     *property,
+                       CpgPropertyHint  hint)
+{
+	property->hint |= hint;
+}
+
+void
+cpg_property_remove_hint (CpgProperty     *property,
+                          CpgPropertyHint  hint)
+{
+	property->hint &= hint;
 }

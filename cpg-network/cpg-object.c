@@ -9,6 +9,16 @@
 
 #include "cpg-debug.h"
 
+/**
+ * SECTION:cpg-object
+ * @short_description: Basis for all cpg objects
+ *
+ * #CpgObject is a base class for all the objects which can be added to a
+ * network. It provides property storage and virtual methods which can be
+ * implemented that drive the simulation process.
+ *
+ */
+ 
 #define CPG_OBJECT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_OBJECT, CpgObjectPrivate))
 
 struct _CpgObjectPrivate
@@ -77,7 +87,7 @@ cpg_object_finalize (GObject *object)
 	g_slist_free (obj->priv->actors);
 	
 	g_free (obj->priv->id);
-		
+	
 	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
 
@@ -197,6 +207,13 @@ cpg_object_dispose (GObject *object)
 {
 	CpgObject *obj = CPG_OBJECT (object);
 	
+	if (obj->priv->template)
+	{
+		g_object_remove_toggle_ref (G_OBJECT (obj->priv->template),
+		                            (GToggleNotify)template_toggled,
+		                            obj);
+	}
+	
 	/* Untoggle ref all links, because we need them destroyed! */
 	GSList *item;
 	GSList *copy = g_slist_copy (obj->priv->links);
@@ -206,14 +223,9 @@ cpg_object_dispose (GObject *object)
 		link_destroyed (obj, CPG_LINK (item->data), TRUE);
 	}
 	
-	if (obj->priv->template)
-	{
-		g_object_remove_toggle_ref (G_OBJECT (obj->priv->template),
-		                            (GToggleNotify)template_toggled,
-		                            obj);
-	}
-	
 	g_slist_free (copy);
+	
+	G_OBJECT_CLASS (cpg_object_parent_class)->dispose (object);
 }
 
 static void
@@ -245,6 +257,8 @@ cpg_object_copy_impl (CpgObject *object,
 		CpgProperty *cpy = _cpg_property_copy (property);
 		
 		_cpg_property_set_object (cpy, object);
+		_cpg_property_use (cpy);
+
 		object->priv->properties = g_slist_prepend (object->priv->properties, cpy);
 	}
 	
@@ -548,7 +562,7 @@ _cpg_object_link (CpgObject  *object,
 }
 
 GSList *
-_cpg_object_get_actors (CpgObject *object)
+cpg_object_get_actors (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	

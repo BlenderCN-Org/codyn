@@ -1,6 +1,14 @@
 #include "cpg-compile-error.h"
 #include "cpg-ref-counted-private.h"
 
+/**
+ * SECTION:cpg-compile-error
+ * @short_description: Compile error message container
+ *
+ * Object used to store information on expression compile errors.
+ *
+ */
+ 
 struct _CpgCompileError
 {
 	CpgRefCounted parent;
@@ -40,6 +48,8 @@ cpg_compile_error_free (CpgCompileError *error)
 	{
 		g_object_unref (error->object);
 	}
+	
+	g_slice_free (CpgCompileError, error);
 }
 
 GQuark

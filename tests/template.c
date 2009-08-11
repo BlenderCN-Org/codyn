@@ -11,7 +11,7 @@ main (int argc, char *argv[])
 	
 	cpg_debug_add (CPG_DEBUG_TYPE_ERROR);
 
-	CpgNetwork *network = cpg_network_new_from_file ("template.cpg");
+	CpgNetwork *network = cpg_network_new_from_file ("template.cpg", NULL);
 	
 	if (!network)
 	{

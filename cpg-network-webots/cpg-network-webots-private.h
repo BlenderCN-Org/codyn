@@ -12,13 +12,19 @@ typedef void (*CpgWebotsBindingFunc)(CpgNetworkWebots *webots, CpgWebotsBinding 
 typedef enum
 {
 	CPG_WEBOTS_BINDING_TYPE_SERVO,
-	CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR
+	CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR,
+	CPG_WEBOTS_BINDING_TYPE_LIGHT_SENSOR,
+	CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR,
+	CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR,
+	CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR,
+	CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR
 } CpgWebotsBindingType;
 
 struct _CpgWebotsBinding
 {
 	CpgWebotsBindingType type;
 	CpgWebotsBindingFunc func;
+	gpointer data;
 	WbDeviceTag device;
 	CpgProperty *property;
 	gdouble initial;

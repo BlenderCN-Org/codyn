@@ -4,6 +4,8 @@
 
 #include "cpg-math.h"
 
+#define RAND(A, B)  ((A) + rand() * 1.0 / RAND_MAX * ((B) - (A)))
+
 typedef void (*FunctionClosure)(CpgStack *, void *);
 
 static void
@@ -109,7 +111,7 @@ op_nested (CpgStack  *stack,
 	for (i = 0; i < nargs - 1; ++i)
 		value = func (value, cpg_stack_pop (stack, data));
 	
-	cpg_stack_push (stack, value, data);	
+	cpg_stack_push (stack, value, data);
 }
 
 static void
@@ -143,42 +145,84 @@ op_pow (CpgStack *stack, void *data)
 }
 
 static void
+op_log (CpgStack *stack, void *data)
+{
+	cpg_stack_push (stack, log (cpg_stack_pop (stack, data)), data);
+}
+
+static void
+op_rand (CpgStack *stack, void *data)
+{
+	unsigned nargs = (unsigned)cpg_stack_pop (stack, data);
+	double value;
+	
+	if (nargs == 0)
+	{
+		value = RAND (0, 1);
+	}
+	else if (nargs == 2)
+	{
+		double second = cpg_stack_pop (stack, data);
+		double first = cpg_stack_pop (stack, data);
+
+		value = RAND (first, second);
+	}
+	else
+	{
+		int i;
+		
+		for (i = 0; i < nargs - 1; ++i)
+		{
+			cpg_stack_pop (stack, data);
+		}
+		
+		double first = cpg_stack_pop (stack, data);
+		value = RAND (0, first);
+	}
+
+	cpg_stack_push (stack, value, data);
+}
+
+static void
 op_noop (CpgStack *stack, void *data)
 {
 }
 
 typedef struct
 {
-	char const *name;
+	gchar const *name;
 	FunctionClosure function;
-	int arguments;
+	gint arguments;
+	gboolean constant;
 } FunctionEntry;
 
 static FunctionEntry function_entries[] = {
-	{NULL, op_noop, 0},
-	{"sin", op_sin, 1},
-	{"cos", op_cos, 1},
-	{"tan", op_tan, 1},
-	{"asin", op_asin, 1},
-	{"acos", op_acos, 1},
-	{"atan", op_atan, 1},
-	{"sqrt", op_sqrt, 1},
-	{"min", op_min, -1},
-	{"max", op_max, -1},
-	{"exp", op_exp, 1},
-	{"floor", op_floor, 1},
-	{"ceil", op_ceil, 1},
-	{"round", op_round, 1},
-	{"abs", op_abs, 1},
-	{"pow", op_pow, 2}
+	{NULL, op_noop, 0, TRUE},
+	{"sin", op_sin, 1, TRUE},
+	{"cos", op_cos, 1, TRUE},
+	{"tan", op_tan, 1, TRUE},
+	{"asin", op_asin, 1, TRUE},
+	{"acos", op_acos, 1, TRUE},
+	{"atan", op_atan, 1, TRUE},
+	{"sqrt", op_sqrt, 1, TRUE},
+	{"min", op_min, -1, TRUE},
+	{"max", op_max, -1, TRUE},
+	{"exp", op_exp, 1, TRUE},
+	{"floor", op_floor, 1, TRUE},
+	{"ceil", op_ceil, 1, TRUE},
+	{"round", op_round, 1, TRUE},
+	{"abs", op_abs, 1, TRUE},
+	{"pow", op_pow, 2, TRUE},
+	{"rand", op_rand, -1, FALSE},
+	{"ln", op_log, 1, TRUE},
+	{"log", op_log, 1, TRUE}
 };
 
-#ifndef RTLINUX
-unsigned
-cpg_math_function_lookup (char const  *name,
-                          int         *arguments)
+CpgMathFunctionType
+cpg_math_function_lookup (gchar const  *name,
+                          gint         *arguments)
 {
-	unsigned i;
+	guint i;
 	
 	for (i = 1; i < sizeof (function_entries) / sizeof (FunctionEntry); ++i)
 	{
@@ -191,12 +235,23 @@ cpg_math_function_lookup (char const  *name,
 	
 	return 0;
 }
-#endif
 
-void 
-cpg_math_function_execute (unsigned   id,
-                           CpgStack  *stack,
-                           void      *data)
+gboolean
+cpg_math_function_is_constant (CpgMathFunctionType type)
+{
+	return function_entries[type].constant;
+}
+
+gboolean
+cpg_math_function_is_variable (CpgMathFunctionType type)
+{
+	return function_entries[type].arguments == -1;
+}
+
+void
+cpg_math_function_execute (CpgMathFunctionType  id,
+                           CpgStack            *stack,
+                           void                *data)
 {
 	function_entries[id].function (stack, data);
 }
@@ -369,43 +424,56 @@ op_ternary (CpgStack  *stack,
 
 typedef struct
 {
-	char const *name;
+	gchar const *name;
 	FunctionClosure function;
-	int arguments;
+	gint arguments;
+	gboolean constant;
 } OperatorEntry;
 
 static OperatorEntry operator_entries[] = {
-	{NULL, op_noop, 0},
-	{"--", op_unary_minus, 1},
-	{"-", op_minus, 2},
-	{"+", op_plus, 2},
-	{"*", op_multiply, 2},
-	{"/", op_divide, 2},
-	{"%", op_modulo, 2},
-	{"^", op_power, 2},
-	{">", op_greater, 2},
-	{"<", op_less, 2},
-	{">=", op_greater_or_equal, 2},
-	{"<=", op_less_or_equal, 2},
-	{"==", op_equal, 2},
-	{"||", op_or, 2},
-	{"&&", op_and, 2},
-	{"!", op_negate, 1},
-	{"?:", op_ternary, 3}
+	{NULL, op_noop, 0, TRUE},
+	{"--", op_unary_minus, 1, TRUE},
+	{"-", op_minus, 2, TRUE},
+	{"+", op_plus, 2, TRUE},
+	{"*", op_multiply, 2, TRUE},
+	{"/", op_divide, 2, TRUE},
+	{"%", op_modulo, 2, TRUE},
+	{"^", op_power, 2, TRUE},
+	{">", op_greater, 2, TRUE},
+	{"<", op_less, 2, TRUE},
+	{">=", op_greater_or_equal, 2, TRUE},
+	{"<=", op_less_or_equal, 2, TRUE},
+	{"==", op_equal, 2, TRUE},
+	{"||", op_or, 2, TRUE},
+	{"&&", op_and, 2, TRUE},
+	{"!", op_negate, 1, TRUE},
+	{"?:", op_ternary, 3, TRUE}
 };
 
-unsigned
+CpgMathOperatorType
 cpg_math_operator_lookup (CpgMathOperatorType type)
 {
 	return type;
 }
 
 void
-cpg_math_operator_execute (unsigned   id,
-                           CpgStack  *stack,
-                           void      *data)
+cpg_math_operator_execute (CpgMathOperatorType  id,
+                           CpgStack            *stack,
+                           void                *data)
 {
 	operator_entries[id].function (stack, data);
+}
+
+gboolean
+cpg_math_operator_is_constant (CpgMathOperatorType type)
+{
+	return operator_entries[type].constant;
+}
+
+gboolean
+cpg_math_operator_is_variable (CpgMathOperatorType type)
+{
+	return operator_entries[type].arguments == -1;
 }
 
 typedef struct
@@ -415,25 +483,30 @@ typedef struct
 	double value;
 } CpgConstantEntry;
 
-#ifndef RTLINUX
 static CpgConstantEntry constant_entries[] = {
 	{"pi", NULL, M_PI},
 	{"PI", NULL, M_PI},
 	{"e", NULL, M_E},
-	{"E", NULL, M_E}
+	{"E", NULL, M_E},
+	{"NAN", NULL, 0},
+	{"nan", NULL, 0},
+	{"NaN", NULL, 0},
+	{"Inf", NULL, 0},
+	{"INF", NULL, 0},
+	{"inf", NULL, 0}
 };
 
-double
-cpg_math_constant_lookup (char const  *name,
-                          int         *found)
+gdouble
+cpg_math_constant_lookup (gchar const  *name,
+                          gboolean     *found)
 {
-	unsigned i;
+	guint i;
 	
 	for (i = 0; i < sizeof (constant_entries) / sizeof (CpgConstantEntry); ++i)
 	{
-		if (strcmp (constant_entries[i].name, name) == 0)
+		if (g_strcmp0 (constant_entries[i].name, name) == 0)
 		{
-			*found = 1;
+			*found = TRUE;
 
 			if (constant_entries[i].function)
 				return constant_entries[i].function ();
@@ -442,7 +515,6 @@ cpg_math_constant_lookup (char const  *name,
 		}
 	}
 
-	*found = 0;	
+	*found = FALSE;	
 	return 0.0;
 }
-#endif

@@ -13,6 +13,16 @@
 #include "cpg-network-reader.h"
 #include "cpg-network-writer.h"
 
+/**
+ * SECTION:cpg-network
+ * @short_description: The main CPG network object
+ *
+ * The cpg network is the main component of the cpg-network library. The network
+ * consists of #CpgState, #CpgRelay and #CpgLink objects which combined make
+ * up the network.
+ *
+ */
+
 #define CPG_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_NETWORK, CpgNetworkPrivate))
 
 /* Properties */
@@ -72,6 +82,17 @@ static guint network_signals[NUM_SIGNALS] = {0,};
 
 G_DEFINE_TYPE (CpgNetwork, cpg_network, G_TYPE_OBJECT)
 
+GQuark
+cpg_network_load_error_quark ()
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+		quark = g_quark_from_static_string ("cpg_network_load_error");
+
+	return quark;
+}
+
 static void
 cpg_network_finalize (GObject *object)
 {
@@ -79,13 +100,13 @@ cpg_network_finalize (GObject *object)
 
 	g_free (network->priv->filename);
 	
-	g_object_unref (network->priv->constants);
-	g_slist_free (network->priv->context);
-
 	cpg_network_clear (network);
-	
+
 	g_hash_table_destroy (network->priv->object_map);
 	g_hash_table_destroy (network->priv->templates);
+
+	g_object_unref (network->priv->constants);
+	g_slist_free (network->priv->context);
 	
 	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
@@ -729,6 +750,7 @@ cpg_network_compile (CpgNetwork      *network,
 /**
  * cpg_network_new_from_file:
  * @filename: the filename of the file containing the network definition
+ * @error: error return value
  * 
  * Create a new CPG network by reading the network definition from file
  *
@@ -737,17 +759,15 @@ cpg_network_compile (CpgNetwork      *network,
  *
  **/
 CpgNetwork *
-cpg_network_new_from_file (gchar const *filename)
+cpg_network_new_from_file (gchar const *filename, GError **error)
 {
 	g_return_val_if_fail (filename != NULL, NULL);
 
 	CpgNetwork *network = cpg_network_new ();
 	network->priv->filename = strdup (filename);
 	
-	if (!cpg_network_reader_xml (network, filename))
+	if (!cpg_network_reader_xml (network, filename, error))
 	{
-		cpg_debug_error ("Could not read network from xml file: %s", filename);
-		
 		g_object_unref (network);
 		network = NULL;
 	}
@@ -763,6 +783,7 @@ cpg_network_new_from_file (gchar const *filename)
 /**
  * cpg_network_new_from_xml:
  * @xml: xml definition of the network
+ * @error: error return value
  * 
  * Create a new CPG network from the network xml definition
  *
@@ -771,16 +792,14 @@ cpg_network_new_from_file (gchar const *filename)
  *
  **/
 CpgNetwork *
-cpg_network_new_from_xml (gchar const *xml)
+cpg_network_new_from_xml (gchar const *xml, GError **error)
 {
 	g_return_val_if_fail (xml != NULL, NULL);
 
 	CpgNetwork *network = cpg_network_new ();
 	
-	if (!cpg_network_reader_xml_string (network, xml))
+	if (!cpg_network_reader_xml_string (network, xml, error))
 	{
-		cpg_debug_error ("Could not read network from xml");
-		
 		g_object_unref (network);
 		network = NULL;
 	}
@@ -836,9 +855,8 @@ cpg_network_clear (CpgNetwork *network)
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
 
-	// remove all states
-	g_slist_foreach (network->priv->states, (GFunc)remove_object, network);
 	g_slist_foreach (network->priv->links, (GFunc)remove_object, network);
+	g_slist_foreach (network->priv->states, (GFunc)remove_object, network);
 	
 	g_slist_free (network->priv->states);
 	g_slist_free (network->priv->links);
@@ -1100,21 +1118,23 @@ cpg_network_merge (CpgNetwork  *network,
  * cpg_network_merge_from_file:
  * @network: a #CpgNetwork
  * @filename: network filename
+ * @error: error return value
  *
  * Merges the network defined in the file @filename into @network. This is
  * similar to creating a network from a file and merging it with @network.
  *
  **/
 void
-cpg_network_merge_from_file (CpgNetwork  *network,
-                             gchar const *filename)
+cpg_network_merge_from_file (CpgNetwork   *network,
+                             gchar const  *filename,
+                             GError      **error)
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (filename != NULL);
 
 	CpgNetwork *other;
 	
-	other = cpg_network_new_from_file (filename);
+	other = cpg_network_new_from_file (filename, error);
 	
 	if (other != NULL)
 	{
@@ -1127,21 +1147,23 @@ cpg_network_merge_from_file (CpgNetwork  *network,
  * cpg_network_merge_from_xml:
  * @network: a #CpgNetwork
  * @xml: a xml string describing the network
+ * @error: error return value
  *
  * Merges the network defined in @xml into @network. This is
  * similar to creating a network from xml and merging it with @network.
  *
  **/
 void
-cpg_network_merge_from_xml (CpgNetwork  *network,
-                            gchar const *xml)
+cpg_network_merge_from_xml (CpgNetwork   *network,
+                            gchar const  *xml,
+                            GError      **error)
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (xml != NULL);
 	
 	CpgNetwork *other;
 	
-	other = cpg_network_new_from_xml (xml);
+	other = cpg_network_new_from_xml (xml, error);
 	
 	if (other != NULL)
 	{
@@ -1242,6 +1264,61 @@ fill_templates (gchar const  *key,
 	*list = g_slist_prepend (*list, g_strdup (key));
 }
 
+static gboolean
+check_template (GSList *templates, gchar const *name)
+{
+	while (templates)
+	{
+		if (g_strcmp0 (name, (gchar const *)templates->data) == 0)
+		{
+			return TRUE;
+		}
+
+		templates = g_slist_next (templates);
+	}
+	
+	return FALSE;
+}
+
+static GSList *
+sort_templates (CpgNetwork *network,
+               GSList      *templates)
+{
+	GSList *sorted = NULL;
+	GSList *ptr = templates;
+	CpgObject *seen = NULL;
+	
+	while (ptr)
+	{
+		gchar *name = (gchar *)ptr->data;
+		CpgObject *orig = cpg_network_get_template (network, name);
+		CpgObject *template = NULL;
+		g_object_get (G_OBJECT (orig), "template", &template, NULL);
+		
+		if (seen == orig || !template || check_template (sorted, cpg_object_get_id (template)))
+		{
+			sorted = g_slist_prepend (sorted, name);
+			ptr = g_slist_next (ptr);
+			
+			seen = NULL;
+		}
+		else
+		{
+			// Template not yet added, so cycle it
+			ptr = g_slist_next (ptr);
+			ptr = g_slist_append (ptr, name);
+			
+			if (seen == NULL)
+			{
+				seen = orig;
+			}
+		}
+	}
+	
+	g_slist_free (templates);
+	return g_slist_reverse (sorted);
+}
+
 /**
  * cpg_network_get_templates:
  * @network: a #CpgNetwork
@@ -1265,7 +1342,7 @@ cpg_network_get_templates (CpgNetwork *network)
 	                      (GHFunc)fill_templates,
 	                      &list);
 
-	return g_slist_reverse (list);
+	return sort_templates (network, g_slist_reverse (list));
 }
 
 /**
@@ -1401,5 +1478,7 @@ cpg_network_add_link_from_template (CpgNetwork  *network,
 	g_object_set (G_OBJECT (object), "from", from, "to", to, NULL);
 
 	cpg_network_add_object (network, object);
+	g_object_unref (object);
+
 	return object;
 }

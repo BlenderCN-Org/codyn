@@ -1,6 +1,15 @@
 #include "cpg-ref-counted-private.h"
 
 /**
+ * SECTION:cpg-ref-counted
+ * @short_description: A lightweight reference counted object
+ *
+ * #CpgRefCounted is a very lightweight implementation of a reference counted
+ * object, similar to GObject but without all the additional functionality.
+ *
+ */
+ 
+/**
  * cpg_ref_counted_init:
  * @ref_counted: a #CpgRefCounted
  * @destroy_func: callback to destroy the ref counted object

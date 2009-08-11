@@ -56,3 +56,21 @@ CpgMonitor
 @Returns: 
 
 
+<!-- ##### FUNCTION cpg_monitor_get_object ##### -->
+<para>
+
+</para>
+
+@monitor: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_monitor_get_property ##### -->
+<para>
+
+</para>
+
+@monitor: 
+@Returns: 
+
+

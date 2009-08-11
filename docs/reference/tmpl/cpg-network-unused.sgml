@@ -22,6 +22,30 @@
 cpg-debug
 
 
+<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:Title ##### -->
+cpg-enum-types
+
+
 <!-- ##### SECTION ./tmpl/cpg-ref-counted-private.sgml:Long_Description ##### -->
 <para>
 
@@ -190,6 +214,30 @@ cpg-shared-utils
 cpg-stack
 
 
+<!-- ##### SECTION ./tmpl/cpg-types.sgml:Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-types.sgml:See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION ./tmpl/cpg-types.sgml:Short_Description ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-types.sgml:Stability_Level ##### -->
+
+
+
+<!-- ##### SECTION ./tmpl/cpg-types.sgml:Title ##### -->
+cpg-types
+
+
 <!-- ##### SECTION ./tmpl/cpg-utils.sgml:Long_Description ##### -->
 <para>
 
@@ -311,6 +359,18 @@ cpg-utils
 
 @obj: 
 
+<!-- ##### ENUM CpgCompileErrorType ##### -->
+<para>
+
+</para>
+
+@CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND: 
+@CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND: 
+@CPG_COMPILE_ERROR_INVALID_TOKEN: 
+@CPG_COMPILE_ERROR_MAXARG: 
+@CPG_COMPILE_ERROR_INVALID_STACK: 
+@CPG_COMPILE_ERROR_NUM_ERRORS: 
+
 <!-- ##### ENUM CpgDebugType ##### -->
 <para>
 
@@ -329,6 +389,17 @@ cpg-utils
 @CPG_EXPRESSION_FLAG_NONE: 
 @CPG_EXPRESSION_FLAG_CACHED: 
 @CPG_EXPRESSION_FLAG_INSTANT: 
+
+<!-- ##### ENUM CpgInstructionType ##### -->
+<para>
+
+</para>
+
+@CPG_INSTRUCTION_TYPE_NONE: 
+@CPG_INSTRUCTION_TYPE_FUNCTION: 
+@CPG_INSTRUCTION_TYPE_NUMBER: 
+@CPG_INSTRUCTION_TYPE_OPERATOR: 
+@CPG_INSTRUCTION_TYPE_PROPERTY: 
 
 <!-- ##### STRUCT CpgLinkPrivate ##### -->
 <para>

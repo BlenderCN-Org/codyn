@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cpg>
+  <network>
+    <templates>
+      <state id="phase">
+        <property name="XS">0</property>
+        <property name="R">1</property>
+        <property name="P">0</property>
+        <property name="g_r">1</property>
+        <property name="p" integrated="yes">P</property>
+        <property name="r" integrated="yes">0.001</property>
+        <property name="drive">r * sin(p) + XS</property>
+        <property name="w">2 * PI</property>
+      </state>
+      <link id="phase::integrate">
+        <action target="r">g_r * (R * R - r * r) * r</action>
+        <action target="p">frequency * 2 * PI</action>
+      </link>
+      <link id="phase::coupling">
+        <property name="phase">0</property>
+        <property name="weight">10</property>
+        <action target="p">weight * sin(from.p - to.p - phase)</action>
+      </link>
+    </templates>
+  </network>
+</cpg>

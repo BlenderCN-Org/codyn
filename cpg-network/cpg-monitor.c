@@ -7,6 +7,18 @@
 
 #include <string.h>
 
+/**
+ * SECTION:cpg-monitor
+ * @short_description: Property value monitor
+ *
+ * A #CpgMonitor can be used to monitor the value of a certain #CpgProperty
+ * while simulating. The monitor will collect the value of the property at
+ * each simulation step and provides methods to access these values. 
+ * Particularly useful is #cpg_monitor_get_data_resampled which retrieves the
+ * data resampled at specific times.
+ *
+ */
+ 
 #define MONITOR_GROW_SIZE 1000
 
 enum
@@ -80,9 +92,9 @@ cpg_monitor_grow (CpgMonitor *monitor)
 }
 
 static void
-cpg_monitor_update (CpgMonitor  *monitor,
-                    gdouble      timestep,
-                    CpgNetwork  *network)
+cpg_monitor_update (CpgMonitor *monitor,
+                    gdouble     timestep,
+                    CpgNetwork *network)
 {
 	if (monitor->size == 0 || monitor->num_values >= monitor->size - 1)
 		cpg_monitor_grow (monitor);
@@ -117,13 +129,18 @@ cpg_monitor_new (CpgNetwork   *network,
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (property_name != NULL, NULL);
 	
+	CpgProperty *property;
+
+	property = cpg_object_get_property (object, property_name);
+	g_return_val_if_fail (property != NULL, NULL);
+
 	CpgMonitor *monitor = g_slice_new0 (CpgMonitor);
 
 	cpg_ref_counted_init (monitor, (GDestroyNotify)cpg_monitor_free);
 	
 	monitor->network = network;
 	monitor->object = object;
-	monitor->property = cpg_ref_counted_ref (cpg_object_get_property (object, property_name));
+	monitor->property = cpg_ref_counted_ref (property);
 	
 	g_object_add_weak_pointer (G_OBJECT (object), (gpointer *)&(monitor->object));
 	g_object_add_weak_pointer (G_OBJECT (network), (gpointer *)&(monitor->network));
@@ -239,4 +256,48 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
 	}
 	
 	return TRUE;
+}
+
+/**
+ * cpg_monitor_get_object:
+ * @monitor: a #CpgMonitor
+ *
+ * Returns the object from which a property is being monitored.
+ *
+ * Returns: a pointer to the #CpgObject
+ *
+ **/
+CpgObject *
+cpg_monitor_get_object (CpgMonitor *monitor)
+{
+	if (!monitor)
+	{
+		return NULL;
+	}
+	else
+	{
+		return monitor->object;
+	}
+}
+
+/**
+ * cpg_monitor_get_property:
+ * @monitor: a #CpgMonitor
+ *
+ * Returns the property which is being monitored.
+ *
+ * Returns: a pointer to the #CpgProperty
+ *
+ **/
+CpgProperty *
+cpg_monitor_get_property (CpgMonitor *monitor)
+{
+	if (!monitor)
+	{
+		return NULL;
+	}
+	else
+	{
+		return monitor->property;
+	}
 }

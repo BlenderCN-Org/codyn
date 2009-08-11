@@ -3,6 +3,15 @@
 #include "cpg-link.h"
 #include "cpg-debug.h"
 
+/**
+ * SECTION:cpg-state
+ * @short_description: Basic simulation state object
+ *
+ * The #CpgState is the basic simulation state object. A #CpgState updates
+ * the target #CpgProperty from links that are connected to it at each timestep.
+ *
+ */
+ 
 #define CPG_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_STATE, CpgStatePrivate))
 
 /*struct _CpgStatePrivate
@@ -23,7 +32,7 @@ cpg_state_update_impl (CpgObject  *object,
 {
 	GSList *item;
 	
-	for (item = _cpg_object_get_actors (object); item; item = g_slist_next (item))
+	for (item = cpg_object_get_actors (object); item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
 		gdouble value;
@@ -49,7 +58,7 @@ cpg_state_evaluate_impl (CpgObject  *object,
 	GSList *item;
 	
 	// Prepare update values (ready for accumulation)
-	for (item = _cpg_object_get_actors (object); item; item = g_slist_next (item))
+	for (item = cpg_object_get_actors (object); item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
 

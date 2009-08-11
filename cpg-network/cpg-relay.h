@@ -19,17 +19,19 @@ typedef struct _CpgRelayClass	CpgRelayClass;
 typedef struct _CpgRelayPrivate	CpgRelayPrivate;
 
 struct _CpgRelay {
+	/*< private >*/
 	CpgObject parent;
 	
 	CpgRelayPrivate *priv;
 };
 
 struct _CpgRelayClass {
+	/*< private >*/
 	CpgObjectClass parent_class;
 };
 
 GType cpg_relay_get_type(void) G_GNUC_CONST;
-CpgRelay *cpg_relay_new(gchar const *id);
+CpgRelay *cpg_relay_new(const gchar *id);
 
 G_END_DECLS
 

@@ -20,12 +20,14 @@ typedef struct _CpgLinkPrivate	CpgLinkPrivate;
 typedef struct _CpgLinkAction	CpgLinkAction;
 
 struct _CpgLink {
+	/*< private >*/
 	CpgObject parent;
 	
 	CpgLinkPrivate *priv;
 };
 
 struct _CpgLinkClass {
+	/*< private >*/
 	CpgObjectClass parent_class;
 };
 
@@ -33,7 +35,7 @@ GType			  cpg_link_action_get_type		 (void) G_GNUC_CONST;
 
 GType 			  cpg_link_get_type 			 (void) G_GNUC_CONST;
 
-CpgLink 		 *cpg_link_new 					 (gchar const   *id, 
+CpgLink 		 *cpg_link_new 					 (const gchar   *id, 
 												  CpgObject     *from, 
 												  CpgObject     *to);
 
@@ -42,7 +44,7 @@ CpgObject		 *cpg_link_get_to				 (CpgLink       *link);
 
 CpgLinkAction    *cpg_link_add_action			 (CpgLink       *link, 
 												  CpgProperty   *target, 
-												  gchar const   *expression);
+												  const gchar   *expression);
 
 gboolean		  cpg_link_remove_action		(CpgLink        *link,
                                                  CpgLinkAction  *action);

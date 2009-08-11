@@ -5,6 +5,19 @@
 #include "cpg-relay.h"
 #include "cpg-link.h"
 
+/**
+ * SECTION:cpg-relay
+ * @short_description: An immediate transfer object
+ *
+ * When using a #CpgState and a #CpgLink to transfer information, each transfer
+ * will take exactly one time step. This can be inconvenient when data should
+ * be transfered immediately within one timestep, over more than one state.
+ * To address this problem, a #CpgRelay can be used instead. All links 
+ * connected to a #CpgRelay will transfer information immediately in a separate
+ * phase, before the standard simulation update phase, at each timestep.
+ *
+ */
+ 
 #define CPG_RELAY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_RELAY, CpgRelayPrivate))
 
 struct _CpgRelayPrivate
@@ -50,7 +63,7 @@ cpg_relay_evaluate_impl (CpgObject  *object,
 	// Set this first to avoid cyclic loops
 	relay->priv->done = TRUE;
 	
-	GSList *actors = _cpg_object_get_actors (object);
+	GSList *actors = cpg_object_get_actors (object);
 	GSList *actor;
 
 	// Prepare update values (ready for accumulation)
@@ -86,9 +99,9 @@ cpg_relay_evaluate_impl (CpgObject  *object,
 	
 	// instantly set values, that's what the relay does
 	for (actor = actors; actor; actor = g_slist_next (actor))
+	{
 		cpg_property_set_value ((CpgProperty *)actor->data, _cpg_property_get_update ((CpgProperty *)actor->data));
-	
-	g_slist_free (actors);
+	}
 }
 
 static void

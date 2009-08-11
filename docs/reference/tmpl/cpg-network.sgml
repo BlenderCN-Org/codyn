@@ -67,6 +67,7 @@ CpgNetwork
 </para>
 
 @filename: 
+@error: 
 @Returns: 
 
 
@@ -76,6 +77,7 @@ CpgNetwork
 </para>
 
 @xml: 
+@error: 
 @Returns: 
 
 
@@ -121,6 +123,7 @@ CpgNetwork
 
 @network: 
 @filename: 
+@error: 
 
 
 <!-- ##### FUNCTION cpg_network_merge_from_xml ##### -->
@@ -130,6 +133,7 @@ CpgNetwork
 
 @network: 
 @xml: 
+@error: 
 
 
 <!-- ##### FUNCTION cpg_network_get_globals ##### -->
