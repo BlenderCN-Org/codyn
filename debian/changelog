@@ -1,4 +1,4 @@
-cpg-network (1.0-1) jaunty; urgency=low
+cpg-network (1.0-1) $DIST; urgency=low
 
   * Initial release
 
