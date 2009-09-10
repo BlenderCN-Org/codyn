@@ -1,4 +1,10 @@
-cpg-network (1.0-1) $DIST; urgency=low
+cpg-network (1.0.1-1) UNRELEASED; urgency=low
+
+  * New upstream version (1.0.1) 
+
+ -- Jesse van den Kieboom <jvanden@grijpc10.epfl.ch>  Thu, 10 Sep 2009 12:49:33 +0200
+
+cpg-network (1.0-1) UNRELEASED; urgency=low
 
   * Initial release
 
