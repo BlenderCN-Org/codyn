@@ -863,6 +863,23 @@ cpg_network_clear (CpgNetwork *network)
 	
 	network->priv->states = NULL;
 	network->priv->links = NULL;
+	
+	GSList *props = g_slist_copy (cpg_object_get_properties (network->priv->constants));
+	GSList *item;
+	
+	for (item = props; item; item = g_slist_next (item))
+	{
+		CpgProperty *property = (CpgProperty *)item->data;
+		
+		if (property != network->priv->timeprop && property != network->priv->timestepprop)
+		{
+			cpg_object_remove_property (network->priv->constants, 
+			                            cpg_property_get_name (property),
+			                            NULL);
+		}
+	}
+	
+	g_slist_free (props);
 }
 
 /* simulation functions */
