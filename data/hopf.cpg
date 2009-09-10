@@ -20,7 +20,7 @@
       <link id="hopf::coupling">
         <property name="phase">0</property>
         <property name="weight">1</property>
-        <property name="summed">w / to.r * ((to.x * y - x * to.y) * cos(phase) - (x * to.x +  + y * to.y) * sin(phase))</action>
+        <property name="summed">w / to.r * ((to.x * y - x * to.y) * cos(phase) - (x * to.x +  + y * to.y) * sin(phase))</property>
         <action target="x">weight * -summed * to.y</action>
         <action target="y">weight * summed * to.x</action>
       </link>
