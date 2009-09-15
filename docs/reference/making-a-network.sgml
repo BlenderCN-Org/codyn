@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<refentry id="making-a-network">
+<refmeta>
+<refentrytitle>Making a Network</refentrytitle>
+</refmeta>
+
+<refnamediv>
+<refname>Making a Network</refname>
+<refpurpose>
+How to construct and use a network
+</refpurpose>
+</refnamediv>
+
+<refsect1>
+<title>Principles and Concepts</title>
+<para>
+The CPG network library is a general dynamical systems simulator. Although as
+the name suggests it focusses on implementing Central Pattern Generators, it
+can basicly be used to model any kind of dynamical system.
+</para>
+<para>
+The library takes an Object Oriented approach into modelling a dynamical system.
+Such a system then consists of a number of state containers, which each contain
+any number of state variables. In programming terms these are simply objects
+with a certain set of properties assigned to them. Each property furthermore is
+a mathematical expression which can reference other properties from the 
+object in which it is defined. For instance, you could have a property 
+<emphasis>a = 1</emphasis> and <emphasis>b = 2 * a</emphasis>.
+</para>
+<para>
+Apart from state containers, you can transmit <emphasis>information</emphasis>
+from one state container to another, with a certain transfer function, using
+links. A link simply connects two containers together and defines a set of
+<emphasis>actions</emphasis>. An action consists of a target property in the
+object to which it links, and a mathematical expression which transfers a
+value to that target property at each simulation step of the system. This
+transfer function can use any properties from the object it originates from.
+</para>
+<para>
+Now, this is not strictly a dynamical system yet, since it only is able to set 
+a property to a specific value at each time step. However, any property can be 
+marked to be integrated during simulation. The result of this is that when such 
+property is targeted by a link, the resulting value will be multiplied by the 
+timestep and added to the current value of that property. Furthermore, multiple 
+links can act on the same property, resulting in all their respective 
+transmitted values being added to the property.
+</para>
+<para>
+To illustrate this with a simple example, take the following first order
+non-linear dynamical system:
+</para>
+<inlinegraphic fileref="exmath.png" format="PNG" />
+<para>
+To model this simple system using the library we need one state container
+with an <emphasis>x</emphasis>, <emphasis>g_x</emphasis> and 
+<emphasis>X</emphasis> property. The initial values of these properties should
+be chosen such that the system actually does something interesting, for example
+respective values 0.1, 1 and 1 could be taken. Furthermore we mark
+<emphasis>x</emphasis> to be integrated.
+
+<programlisting language="C" linenumbering="numbered">
+<![CDATA[CpgNetwork *network = cpg_network_new ();
+CpgObject *object = CPG_OBJECT (cpg_state_new ("state"));
+
+cpg_object_add_property (object, "x", "0.1", TRUE);
+cpg_object_add_property (object, "g_x", "1", FALSE);
+cpg_object_add_property (object, "X", "1", FALSE);
+
+cpg_network_add_object (network, object);]]>
+</programlisting>
+</para>
+<para>
+As defined above, the network will not do anything when being simulated since
+we only defined some states. To model the equation as specified above, we
+need to add a link to the system transfering information. Since nothing
+prevents us from adding a link from and to the same object, we do just that.
+The link should have one action, targetting the <emphasis>x</emphasis> property
+and transferring information as defined in the equation:
+
+<programlisting language="C" linenumbering="numbered">
+/* Continue with example above */
+CpgLink *link = cpg_link_new ("integration", object, object);
+
+cpg_link_add_action (link, 
+                     cpg_object_get_property (object, "x"),
+                     "g_x * (X * X - x * x) * x");
+
+cpg_network_add_object (network, CPG_OBJECT (link));
+</programlisting>
+</para>
+<para>
+Now the network is complete it can be simulated using 
+<link linkend="cpg-network-run">cpg_network_run</link>.
+<note>
+Links are just another type of object, as such they can also have properties
+(although these can not be targed by links themselves). You can use these
+properties in the link actions. This can be useful if you need to precalculate
+some value and use it in several link actions in the same link.
+</note>
+</para>
+</refsect1>
+<refsect1>
+<title>Construction</title>
+<para>
+There are basicly two ways to create a new network. The first is simply by
+using <link linkend="cpg-network-new">cpg_network_new</link> to create an empty
+network. After the network is created, you can start building it by adding 
+states and links to the network using <link linkend="cpg-network-add-object">
+cpg_network_add_object</link> (as done above). Although you might be able to 
+construct fairly simple networks like this quite easily, at some point your 
+networks will become bigger and more complex. To this end, you can write the 
+network using
+the <link linkend="xml-specification">CPG Network XML specification</link>. 
+Once written, you can construct a network from such a file using
+<link linkend="cpg-network-new-from-file">cpg_network_new_from_file</link>. To
+illustrate, the example system defined above can be written in XML format
+as follows:
+
+<programlisting language="xml" linenumbering="numbered">
+<![CDATA[<cpg>
+  <network>
+    <state id="state">
+      <property name="x" integrated="yes">0.1</property>
+      <property name="g_x">1</property>
+      <property name="X">1</property>
+    </state>
+    <link id="integration" from="state" to="state">
+      <action target="x">g_x * (X * X - x * x) * x</action>
+    </link>
+  </network>
+</cpg>]]>
+</programlisting>
+</para>
+<para>
+After a network has been loaded from the XML file, you can manipulate in the
+same way as if it was constructed by hand. This means you can modify some
+properties of objects in the network or add and remove states and links
+as needed.
+</para>
+</refsect1>
+<refsect1>
+<title>Manipulating a Network</title>
+<para>
+Every aspect of the network can be manipulated using the network API. There are
+a few methods in particular that are used to retrieve objects and set or get
+certain properties of those objects.
+</para>
+<para>
+To get a specific object from the network, you can use 
+<link linkend="cpg-network-get-object">cpg_network_get_object</link> using the
+objects unique id. To get a list of all the states in the network, use
+<link linkend="cpg-network-get-states">cpg_network_get_states</link> and for
+a list of links use <link linkend="cpg-network-get-links">cpg_network_get_links</link>.
+</para>
+<para>
+Each object in the network basicly consists of a set of properties which 
+contain mathematical expressions. To get a specific property from an object
+you can use <link linkend="cpg-object-get-property">cpg_object_get_property</link>.
+Similar to getting all states from the network, you can use
+<link linkend="cpg-object-get-properties">cpg_object_get_properties</link> to
+get a list of all properties on an object. The functions
+<link linkend="cpg-object-add-property">cpg_object_add_property</link> and
+<link linkend="cpg-object-remove-property">cpg_object_remove_property</link>
+can be used to respectively add and remove properties from the object.
+</para>
+<para>
+To get the current value of a <link linkend="cpg-network-cpg-property">CpgProperty</link>
+you can use <link linkend="cpg_property_get_value">cpg_property_get_value</link>.
+Similarly, use 
+<link linkend="cpg_property_set_value_expression">cpg_property_set_value_expression</link>
+to set the value of a property to a mathematical expression.
+<note>
+Make sure that your network has been compiled 
+(<link linkend="cpg-network-compile">cpg_network_compile</link>) before
+accessing the property value with 
+<link linkend="cpg-property-get-value">cpg_property_get_value</link>.
+</note>
+</para>
+</refsect1>
+<refsect1>
+<title>Using global variables</title>
+<para>
+One thing that might be useful to know is that you can define global accessible
+variables within the network. Two special globals are already defined by
+default, they signify the network simulation time (<emphasis>t</emphasis>) and
+the current simulation step size (<emphasis>dt</emphasis>). The time variable
+in particular can be useful when experimenting with perturbing some values
+in the network using simple conditional statements equivalent to the ternary
+operator many programming languages (<emphasis>t &lt; 2 ? 1 : 0</emphasis>).
+</para>
+<para>
+In network terminology, global variables are defined within a special
+<link linkend="CpgObject">CpgObject</link> which you can access
+as any other object in the network (thus using 
+<link linkend="cpg-object-add-property">cpg_object_add_property</link> to add
+new global properties). Use 
+<link linkend="cpg-network-get-globals">cpg_network_get_globals</link> to
+get the networks' globals object.
+</para>
+</refsect1>
+
+</refentry>

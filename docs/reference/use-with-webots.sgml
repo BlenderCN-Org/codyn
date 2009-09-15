@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<refentry id="use-with-webots">
+<refmeta>
+<refentrytitle>Use with Webots</refentrytitle>
+</refmeta>
+
+<refnamediv>
+<refname>Use with Webots</refname>
+<refpurpose>
+How to use a CPG network to control a robot in Webots
+</refpurpose>
+</refnamediv>
+
+</refentry>

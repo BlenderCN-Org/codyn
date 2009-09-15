@@ -21,6 +21,14 @@
  * consists of #CpgState, #CpgRelay and #CpgLink objects which combined make
  * up the network.
  *
+ * The easiest way of using the library is to write the network using the 
+ * XML representation (see #xml-specification). You then create the network
+ * from file using #cpg_network_new_from_file. To simulate the network, use
+ * #cpg_network_run or for running single steps #cpg_network_step.
+ * 
+ * For more information, see 
+ * <link linkend='using-the-network'>Using the network</link>.
+ *
  */
 
 #define CPG_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_NETWORK, CpgNetworkPrivate))
