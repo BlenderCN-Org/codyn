@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<refentry id="monitoring-variables">
+<refmeta>
+<refentrytitle>Monitoring Variables</refentrytitle>
+</refmeta>
+
+<refnamediv>
+<refname>Monitoring Variables</refname>
+<refpurpose>
+How to monitor variables using <link linkend="cpg-network-cpg-monitor">CpgMonitor</link>
+</refpurpose>
+</refnamediv>
+
+<refsect1>
+<title>Monitoring</title>
+<para>
+It's often useful to monitor a specific property in the network and output or
+collect the values of this property at each time step. Although you can quite
+easily do this manually by getting the property you want to monitor from
+some object in your network and at each timestep get its value (see 
+<link linkend="making-a-network">Making a Network</link>), a special class
+is included in the library that makes it easier to manage and retrieve 
+property values values while running the network.
+</para>
+<para>
+Using a <link linkend="cpg-network-cpg-monitor">CpgMonitor</link> is quite
+straightforward. You first construct a new 
+<link linkend="cpg-network-cpg-monitor">CpgMonitor</link> using
+<link linkend="cpg-monitor-new">cpg_monitor_new</link>, providing the network,
+object and property to monitor during simulation. Once constructed, the 
+monitor will automatically collect property values at each simulation step.
+To retrieve the values of the property at any time, you can use
+<link linkend="cpg-monitor-get-data">cpg_monitor_get_data</link>. If you want
+to resample the data at specific times, you can use the convenience function
+<link linkend="cpg-monitor-get-data-resampled">cpg_monitor_get_data_resampled</link>.
+</para>
+</refsect1>
+</refentry>

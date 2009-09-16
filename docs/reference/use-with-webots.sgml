@@ -1,0 +1,241 @@
+<?xml version="1.0" encoding="utf-8"?>
+<refentry id="use-with-webots">
+<refmeta>
+<refentrytitle>Use with Webots</refentrytitle>
+</refmeta>
+
+<refnamediv>
+<refname>Use with Webots</refname>
+<refpurpose>
+How to use a CPG network to control a robot in Webots
+</refpurpose>
+</refnamediv>
+
+<refsect1>
+<title>Using a CPG network with webots</title>
+<para>
+Using the CPG library to control a robot in webots can be done fairly easy
+with the standard API. For instance, if you want to use position control, you
+can at each webots simulation step get the appropriate property from your
+network and set some servo devices' position to the value of that property.
+</para>
+<para>
+CPG network however has a small utility library that makes it even easier to
+bind properties from the network directly to devices in your webots robot.
+You can use this functionality by specifying a special property in state
+containers indicating how the property should be bound to something in webots.
+The webots device that will be used for this will be matched with the 'id'
+of the state container.
+</para>
+<para>
+The following special property names can be used:
+
+<itemizedlist>
+  <listitem>
+	<para><emphasis>wb_servo_pos</emphasis>: Set value to servo position (wb_servo_set_position)</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_servo_force</emphasis>: Set value to servo force (wb_servo_set_force)</para>
+  </listitem>
+</itemizedlist>
+</para>
+<para>
+Similarly, you can read sensor values from webots devices easily into the
+network by another set of special property names. These properties are handled
+in a bit of a special way. If they contain a single other property value, the
+sensor reading will be set to this property instead. So, if you have
+<emphasis>x = 0</emphasis> and <emphasis>wb_touch = x</emphasis>, the touch
+sensor value will be written to <emphasis>x</emphasis>.
+</para>
+<para>
+The following special property names for sensors can be used:
+
+<itemizedlist>
+  <listitem>
+	<para><emphasis>wb_touch</emphasis>: Read value from a touch sensor device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_light</emphasis>: Read value from a light sensor device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_gyro_x</emphasis>: Read <emphasis>x</emphasis> value from a gyroscope device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_gyro_y</emphasis>: Read <emphasis>y</emphasis> value from a gyroscope device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_gyro_z</emphasis>: Read <emphasis>z</emphasis> value from a gyroscope device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_gps_x</emphasis>: Read <emphasis>x</emphasis> value from a GPS device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_gps_y</emphasis>: Read <emphasis>y</emphasis> value from a GPS device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_gps_z</emphasis>: Read <emphasis>z</emphasis> value from a GPS device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_accelerometer_x</emphasis>: Read <emphasis>x</emphasis> value from an accelerometer device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_accelerometer_y</emphasis>: Read <emphasis>y</emphasis> value from an accelerometer device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_accelerometer_z</emphasis>: Read <emphasis>z</emphasis> value from an accelerometer device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_compass_x</emphasis>: Read <emphasis>x</emphasis> value from a compass device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_compass_y</emphasis>: Read <emphasis>y</emphasis> value from a compass device</para>
+  </listitem>
+  <listitem>
+	<para><emphasis>wb_compass_z</emphasis>: Read <emphasis>z</emphasis> value from a compass device</para>
+  </listitem>
+</itemizedlist>
+</para>
+</refsect1>
+<refsect1>
+<title>Example controller</title>
+<para>The following is an example controller for a simple 3 DOF robot.</para>
+
+<example>
+  <title>Example network file</title>
+  <programlisting language="xml">
+<![CDATA[<?xml version="1.0" encoding="utf-8"?>
+<cpg>
+  <network>
+	<globals>
+	  <property name="frequency">1</property>
+	</globals>
+	<templates>
+	  <state id="oscillator">
+		<property name="P">0</property>
+		<property name="phase" integrated="yes">P</property>
+		<property name="amplitude">1</property>
+		
+		<!-- Use the special 'wb_servo_pos' to bind to servo position -->
+		<property name="wb_servo_pos">amplitude * sin(phase)</property>
+	  </state>
+	  <link id="integration">
+		<action target="phase">2 * PI * frequency</action>
+	  </link>
+	</templates>
+	
+	<!-- States -->
+	<state id="servo_1" ref="oscillator">
+	  <property name="amplitude">2</property>
+	  <property name="P">0</property>
+	</state>
+	<state id="servo_2" ref="oscillator">
+	  <property name="amplitude">1</property>
+	  <property name="P">0.5 * PI</property>
+	</state>
+	<state id="servo_3" ref="oscillator">
+	  <property name="amplitude">3</property>
+	  <property name="P">PI</property>
+	</state>
+	
+	<!-- Integration links -->
+	<link id="integrate_servo_1" ref="integration" from="servo_1" to="servo_1"/>
+	<link id="integrate_servo_2" ref="integration" from="servo_2" to="servo_2"/>
+	<link id="integrate_servo_3" ref="integration" from="servo_3" to="servo_3"/>
+  </network>
+</cpg>]]>
+  </programlisting>
+</example>
+<example>
+  <title>Example controller</title>
+  <programlisting language="C">
+<![CDATA[#include <cpg-network-webots/cpg-network-webots.h>
+#include <stdio.h>
+
+#define WEBOTS_STEP 5
+
+static CpgNetwork *
+read_network(char const *filename)
+{
+	CpgNetwork *network;
+	CpgCompileError *error;
+	GError *load_error = NULL;
+	
+	network = cpg_network_new_from_file ("network.cpg", &load_error);
+
+	if (network == NULL)
+	{
+		fprintf (stderr, 
+				 "Could not read network: %s\n",
+				 load_error ? load_error->message : "Unknown");
+
+		if (load_error != NULL)
+		{
+			g_error_free (load_error);
+		}
+
+		return NULL;
+	}
+	
+	error = cpg_compile_error_new ();
+
+	if (!cpg_network_compile (network, error))
+	{
+		fprintf (stderr, 
+				 "Could not compile network: %s", 
+				 cpg_compile_error_string (error));
+
+		cpg_ref_counted_unref (error);
+		return NULL;
+	}
+	
+	cpg_ref_counted_unref (error);
+	return network;
+}
+
+int main(int argc, char **argv)
+{
+	CpgNetwork *network;
+	CpgNetworkWebots *network_webots;
+	
+	g_type_init ();
+	network = read_network ("network.cpg");
+
+	if (network == NULL)
+	{
+		return 1;
+	}
+	
+	wb_robot_init ();
+	network_webots = cpg_network_webots_new (network);
+	
+	while (wb_robot_step (WEBOTS_STEP) != -1)
+	{
+		int i;
+		
+		/* Update bindings */
+		cpg_network_webots_update (network_webots);
+		
+		/* Run network simulation */
+		for (i = 0; i < WEBOTS_STEP; ++i)
+		{
+			cpg_network_step (network, 0.001);
+		}
+	}
+	
+	g_object_unref (network);
+	wb_robot_cleanup ();
+	
+	return 0;
+}]]>
+  </programlisting>
+</example>
+<note>
+You can compile the example like: 
+
+<code>gcc -o controller controller.c -lController -L/usr/local/webots/lib -I/usr/local/webots/include/controller/c `pkg-config --cflags --libs cpg-network-webots-1.0`</code>
+</note>
+<note>
+The webots bindings can be used with webots 6.1 and higher
+</note>
+</refsect1>
+</refentry>

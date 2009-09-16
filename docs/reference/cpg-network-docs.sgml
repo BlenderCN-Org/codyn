@@ -2,12 +2,23 @@
 <!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" 
                "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
 <!ENTITY specification SYSTEM "xml-specification.sgml">
+<!ENTITY makinganetwork SYSTEM "making-a-network.sgml">
+<!ENTITY monitoring SYSTEM "monitoring-variables.sgml">
+<!ENTITY templates SYSTEM "using-templates.sgml">
+<!ENTITY webots SYSTEM "use-with-webots.sgml">
 ]>
 <book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
   <bookinfo>
     <title>cpg-network Reference Manual</title>
   </bookinfo>
 
+  <reference>
+    <title>CPG Network</title>
+    &makinganetwork;
+    &monitoring;
+    &templates;
+    &webots;
+  </reference>
   <reference>
     <title>API reference</title>
     <xi:include href="xml/cpg-network.xml"/>
