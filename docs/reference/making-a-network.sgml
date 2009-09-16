@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <refentry id="making-a-network">
 <refmeta>
-<refentrytitle>Making a Network</refentrytitle>
+<refentrytitle>CPG Network basics</refentrytitle>
 </refmeta>
 
 <refnamediv>
-<refname>Making a Network</refname>
+<refname>CPG Network basics</refname>
 <refpurpose>
 How to construct and use a network
 </refpurpose>
@@ -175,6 +175,47 @@ Make sure that your network has been compiled
 accessing the property value with 
 <link linkend="cpg-property-get-value">cpg_property_get_value</link>.
 </note>
+</para>
+</refsect1>
+<refsect1>
+<title>Mathematical expressions</title>
+<para>
+The mathematical expressions you can use are very similar to the mathematical
+expressions in many C based programming languages. It also uses the same 
+presedence and priorities of operators as in C. The standard arithmetic 
+operators are supported: <emphasis>+, -, *, /, %, unary -, unary +</emphasis>.
+Most logical operators are also supported: <emphasis>&amp;&amp;, ||, &lt;, &gt;
+&lt;=, &gt;=, ==, !</emphasis>. Additionally, you can use the ternary operator
+for small conditional statements (e.g. <emphasis>a > b ? c : d</emphasis>). One
+additional operator which does not exist in C, but is supported by the network
+is the power operator: <emphasis>**</emphasis>.
+</para>
+<para>
+A number of functions is also implemented: <emphasis>cos, sin, tan, acos, asin,
+atan, sqrt, min, max, exp, floor, ceil, round, abs, pow, rand, ln, log</emphasis>.
+Here <emphasis>ln</emphasis> and <emphasis>log</emphasis> both refer to the
+natural logarithm. <emphasis>rand</emphasis> generate a random number between
+0 and 1. You can use 2 arguments to rand to give a range in which the random
+number has to be generated. Beside functions, you can also use the constants
+<emphasis>pi</emphasis> and <emphasis>e</emphasis>.
+</para>
+<para>
+You can not only use operators, functions and constants in mathematical
+expressions, but also refer to any other property within the context of
+execution. For all objects, this context includes the global properties and
+properties of the object in which the expression is defined. Links have two 
+additional context objects, namely the <emphasis>from</emphasis> and
+<emphasis>to</emphasis> objects. The properties from the <emphasis>from</emphasis>
+object are implicitly available in the context. A special syntax allows you
+to access properties from the <emphasis>to</emphasis> object: 
+<emphasis>to.x</emphasis> (you can do the same for <emphasis>from</emphasis>
+if you like specifying those explicitly). The priority from high to low is:
+<emphasis>object</emphasis>, <emphasis>globals</emphasis> for objects, and
+<emphasis>object</emphasis>, <emphasis>from</emphasis>, <emphasis>globals</emphasis>
+for links.
+</para>
+<para>
+
 </para>
 </refsect1>
 <refsect1>
