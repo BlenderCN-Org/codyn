@@ -24,3 +24,6 @@ docs/reference/html
 docs/reference/xml
 docs/reference/tmpl/*.bak
 docs/reference/*.stamp
+/tests/expression
+/tests/template
+/tests/test
