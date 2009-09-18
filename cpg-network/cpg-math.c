@@ -65,6 +65,16 @@ op_atan (CpgStack  *stack,
 }
 
 static void
+op_atan2 (CpgStack *stack,
+          void     *data)
+{
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
+
+	cpg_stack_push (stack, atan2 (first, second), data);
+}
+
+static void
 op_floor (CpgStack  *stack,
           void      *data)
 {
@@ -211,6 +221,7 @@ static FunctionEntry function_entries[] = {
 	{"asin", op_asin, 1, TRUE},
 	{"acos", op_acos, 1, TRUE},
 	{"atan", op_atan, 1, TRUE},
+	{"atan2", op_atan2, 2, TRUE},
 	{"sqrt", op_sqrt, 1, TRUE},
 	{"invsqrt", op_invsqrt, 1, TRUE},
 	{"min", op_min, -1, TRUE},
