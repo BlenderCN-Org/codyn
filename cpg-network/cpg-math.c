@@ -37,6 +37,13 @@ op_sqrt (CpgStack  *stack,
 }
 
 static void
+op_invsqrt (CpgStack *stack,
+            void     *data)
+{
+	cpg_stack_push (stack, 1.0 / sqrt (cpg_stack_pop (stack, data)), data);
+}
+
+static void
 op_asin (CpgStack  *stack,
          void      *data)
 {
@@ -205,6 +212,7 @@ static FunctionEntry function_entries[] = {
 	{"acos", op_acos, 1, TRUE},
 	{"atan", op_atan, 1, TRUE},
 	{"sqrt", op_sqrt, 1, TRUE},
+	{"invsqrt", op_invsqrt, 1, TRUE},
 	{"min", op_min, -1, TRUE},
 	{"max", op_max, -1, TRUE},
 	{"exp", op_exp, 1, TRUE},
