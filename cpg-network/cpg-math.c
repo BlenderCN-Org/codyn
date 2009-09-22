@@ -237,13 +237,21 @@ static FunctionEntry function_entries[] = {
 	{"log", op_log, 1, TRUE}
 };
 
+gchar const *
+cpg_math_function_lookup_by_id (CpgMathFunctionType  id,
+                                gint                *arguments) 
+{
+	*arguments = function_entries[id].arguments;
+	return function_entries[id].name;
+}
+
 CpgMathFunctionType
 cpg_math_function_lookup (gchar const  *name,
                           gint         *arguments)
 {
 	guint i;
 	
-	for (i = 1; i < sizeof (function_entries) / sizeof (FunctionEntry); ++i)
+	for (i = 1; i < CPG_FUNCTION_OPERATOR_NUM; ++i)
 	{
 		if (strcmp (function_entries[i].name, name) == 0)
 		{
