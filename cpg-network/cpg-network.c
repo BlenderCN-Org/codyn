@@ -2,7 +2,6 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
-#include <sys/sysinfo.h>
 
 #include "cpg-network.h"
 #include "cpg-expression.h"
