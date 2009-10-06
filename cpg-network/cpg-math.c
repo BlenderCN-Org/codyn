@@ -99,7 +99,7 @@ static void
 op_abs (CpgStack  *stack,
         void      *data)
 {
-	cpg_stack_push (stack, abs (cpg_stack_pop (stack, data)), data);
+	cpg_stack_push (stack, fabs (cpg_stack_pop (stack, data)), data);
 }
 
 static double
