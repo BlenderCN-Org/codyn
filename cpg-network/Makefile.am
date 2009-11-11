@@ -40,10 +40,9 @@ INST_H_FILES = \
 	cpg-ref-counted.h \
 	cpg-stack.h \
 	cpg-debug.h \
-	cpg-monitor.h \
 	cpg-compile-error.h \
 	cpg-math.h
-	
+
 lib_LTLIBRARIES = libcpg-network-1.0.la
 
 libcpg_network_headers = \
@@ -52,7 +51,7 @@ libcpg_network_headers = \
 
 cpg-enum-types.h: cpg-enum-types.h.template $(INST_H_FILES) $(GLIB_MKENUMS)
 	(cd $(srcdir) && $(GLIB_MKENUMS) --template cpg-enum-types.h.template $(INST_H_FILES)) > $@
-	
+
 cpg-enum-types.c: cpg-enum-types.c.template cpg-enum-types.h $(INST_H_FILES) $(GLIB_MKENUMS)
 	(cd $(srcdir) && $(GLIB_MKENUMS) --template cpg-enum-types.c.template $(INST_H_FILES)) > $@
 

@@ -37,6 +37,13 @@ op_sqrt (CpgStack  *stack,
 }
 
 static void
+op_invsqrt (CpgStack *stack,
+            void     *data)
+{
+	cpg_stack_push (stack, 1.0 / sqrt (cpg_stack_pop (stack, data)), data);
+}
+
+static void
 op_asin (CpgStack  *stack,
          void      *data)
 {
@@ -55,6 +62,16 @@ op_atan (CpgStack  *stack,
          void      *data)
 {
 	cpg_stack_push (stack, atan (cpg_stack_pop (stack, data)), data);
+}
+
+static void
+op_atan2 (CpgStack *stack,
+          void     *data)
+{
+	double second = cpg_stack_pop (stack, data);
+	double first = cpg_stack_pop (stack, data);
+
+	cpg_stack_push (stack, atan2 (first, second), data);
 }
 
 static void
@@ -82,7 +99,7 @@ static void
 op_abs (CpgStack  *stack,
         void      *data)
 {
-	cpg_stack_push (stack, abs (cpg_stack_pop (stack, data)), data);
+	cpg_stack_push (stack, fabs (cpg_stack_pop (stack, data)), data);
 }
 
 static double
@@ -204,7 +221,9 @@ static FunctionEntry function_entries[] = {
 	{"asin", op_asin, 1, TRUE},
 	{"acos", op_acos, 1, TRUE},
 	{"atan", op_atan, 1, TRUE},
+	{"atan2", op_atan2, 2, TRUE},
 	{"sqrt", op_sqrt, 1, TRUE},
+	{"invsqrt", op_invsqrt, 1, TRUE},
 	{"min", op_min, -1, TRUE},
 	{"max", op_max, -1, TRUE},
 	{"exp", op_exp, 1, TRUE},
@@ -218,13 +237,21 @@ static FunctionEntry function_entries[] = {
 	{"log", op_log, 1, TRUE}
 };
 
+gchar const *
+cpg_math_function_lookup_by_id (CpgMathFunctionType  id,
+                                gint                *arguments) 
+{
+	*arguments = function_entries[id].arguments;
+	return function_entries[id].name;
+}
+
 CpgMathFunctionType
 cpg_math_function_lookup (gchar const  *name,
                           gint         *arguments)
 {
 	guint i;
 	
-	for (i = 1; i < sizeof (function_entries) / sizeof (FunctionEntry); ++i)
+	for (i = 1; i < CPG_FUNCTION_OPERATOR_NUM; ++i)
 	{
 		if (strcmp (function_entries[i].name, name) == 0)
 		{

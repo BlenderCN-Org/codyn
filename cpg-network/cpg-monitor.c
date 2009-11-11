@@ -183,6 +183,35 @@ cpg_monitor_get_data (CpgMonitor *monitor,
 	return monitor->values;
 }
 
+/**
+ * cpg_monitor_get_sites:
+ * @monitor: a #CpgMonitor
+ * @size: return value for number of values
+ *
+ * Returns the data sites as monitored during the simulation. See also
+ * #cpg_monitor_get_data_resampled for retrieving a resampled version
+ * of the monitor data
+ *
+ * Returns: internal array of monitored sites. The pointer should
+ * not be freed
+ *
+ **/
+gdouble const *
+cpg_monitor_get_sites (CpgMonitor *monitor,
+				       guint      *size)
+{
+	if (size)
+		*size = 0;
+
+	if (!monitor || !monitor->object || !monitor->property)
+		return NULL;
+
+	if (size)
+		*size = monitor->num_values;
+
+	return monitor->sites;
+}
+
 static int
 bsearch_find (gdouble const  *list,
               gint            size,

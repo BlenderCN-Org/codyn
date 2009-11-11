@@ -2,7 +2,6 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
-#include <sys/sysinfo.h>
 
 #include "cpg-network.h"
 #include "cpg-expression.h"
@@ -851,6 +850,29 @@ cpg_network_remove_object (CpgNetwork  *network,
 		network->priv->states = g_slist_remove (network->priv->states, object);
 }
 
+static gint
+compare_property_dependencies (CpgProperty *prop1,
+                               CpgProperty *prop2)
+{
+	CpgExpression *e1 = cpg_property_get_value_expression (prop1);
+	CpgExpression *e2 = cpg_property_get_value_expression (prop2);
+	GSList *d1 = cpg_expression_get_dependencies (e1);
+	GSList *d2 = cpg_expression_get_dependencies (e2);
+	
+	if (g_slist_find (d1, prop2) != NULL)
+	{
+		return 1;
+	}
+	else if (g_slist_find (d2, prop1) != NULL)
+	{
+		return -1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
 /**
  * cpg_network_clear:
  * @network: a #CpgNetwork
@@ -875,6 +897,8 @@ cpg_network_clear (CpgNetwork *network)
 	GSList *props = g_slist_copy (cpg_object_get_properties (network->priv->constants));
 	GSList *item;
 	
+	props = g_slist_sort (props, (GCompareFunc)compare_property_dependencies);
+	
 	for (item = props; item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
@@ -888,6 +912,9 @@ cpg_network_clear (CpgNetwork *network)
 	}
 	
 	g_slist_free (props);
+	
+	/* Clear templates */
+	g_hash_table_remove_all (network->priv->templates);
 }
 
 /* simulation functions */

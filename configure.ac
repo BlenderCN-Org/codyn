@@ -1,4 +1,4 @@
-AC_INIT(cpg-network, 1.0.2)
+AC_INIT(cpg-network, 1.1)
 
 AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 

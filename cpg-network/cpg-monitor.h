@@ -16,6 +16,8 @@ CpgMonitor		 *cpg_monitor_new					 (struct _CpgNetwork *network,
 													  CpgObject          *object, 
 													  const gchar        *property_name);
 
+const gdouble    *cpg_monitor_get_sites 			 (CpgMonitor         *monitor,
+													  guint              *size);
 const gdouble 	 *cpg_monitor_get_data			 	 (CpgMonitor         *monitor,
 												 	  guint              *size);
 
