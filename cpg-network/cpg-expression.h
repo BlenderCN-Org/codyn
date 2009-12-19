@@ -3,11 +3,15 @@
 
 #include <stdio.h>
 #include <glib-object.h>
+#include "cpg-compile-context.h"
 
 G_BEGIN_DECLS
 
+#define CPG_TYPE_EXPRESSION	(cpg_expression_get_type())
+
 /* Forward declaration */
 struct _CpgProperty;
+struct _CpgFunction;
 
 typedef struct _CpgInstruction 		CpgInstruction;
 
@@ -27,7 +31,8 @@ typedef enum {
 	CPG_INSTRUCTION_TYPE_FUNCTION,
 	CPG_INSTRUCTION_TYPE_NUMBER,
 	CPG_INSTRUCTION_TYPE_OPERATOR,
-	CPG_INSTRUCTION_TYPE_PROPERTY
+	CPG_INSTRUCTION_TYPE_PROPERTY,
+	CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION
 } CpgInstructionCode;
 
 struct _CpgInstruction
@@ -44,6 +49,13 @@ typedef struct
 	gint arguments;
 	gboolean variable;
 } CpgInstructionFunction;
+
+typedef struct
+{
+	CpgInstruction parent;
+	
+	struct _CpgFunction *function;
+} CpgInstructionCustomFunction;
 
 typedef struct
 {
@@ -77,7 +89,7 @@ CpgExpression 	 *cpg_expression_new				(gchar const    *expression);
 GSList		 	 *cpg_expression_get_dependencies	(CpgExpression  *expression);
 const gchar      *cpg_expression_get_as_string		(CpgExpression  *expression);
 gint			  cpg_expression_compile			(CpgExpression  *expression, 
-													 GSList         *context,
+													 CpgCompileContext *context,
 													 GError        **error);
 
 gdouble 		  cpg_expression_evaluate			(CpgExpression  *expression);
@@ -101,6 +113,8 @@ CpgInstruction   *cpg_instruction_function_new 		(guint         id,
 													 gchar const  *name,
 													 gint          arguments,
 													 gint          vargs);
+
+CpgInstruction   *cpg_instruction_custom_function_new (struct _CpgFunction *function);
 
 CpgInstruction   *cpg_instruction_number_new 		(gdouble value);
 CpgInstruction   *cpg_instruction_operator_new 		(guint         id,

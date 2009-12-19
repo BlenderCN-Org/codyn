@@ -177,6 +177,64 @@ link_to_xml (xmlDocPtr   doc,
 	return node;
 }
 
+static void
+write_functions (CpgNetwork *network,
+                 xmlDocPtr   doc,
+                 xmlNodePtr  nnetwork)
+{
+	GSList *functions = cpg_network_get_functions (network);
+	GSList *item;
+
+	if (functions == NULL)
+	{
+		return;
+	}
+
+	xmlNodePtr funcs = xmlNewDocNode (doc, NULL, (xmlChar *)"functions", NULL);
+	xmlAddChild (nnetwork, funcs);
+
+	for (item = functions; item; item = g_slist_next (item))
+	{
+		CpgFunction *func = CPG_FUNCTION (item->data);
+
+		xmlNodePtr funcn = xmlNewDocNode (doc, NULL, (xmlChar *)"function", NULL);
+		xmlNewProp (funcn,
+		            (xmlChar *)"name",
+		            (xmlChar *)cpg_object_get_id (CPG_OBJECT (func)));
+
+		xmlAddChild (funcs, funcn);
+
+		/* Create expression element */
+		CpgExpression *expression = cpg_function_get_expression (func);
+
+		if (expression)
+		{
+			xmlNodePtr exprn = xmlNewDocNode (doc, NULL, (xmlChar *)"expression", NULL);
+			xmlNodePtr text = xmlNewDocText (doc,
+			                                 (xmlChar *)cpg_expression_get_as_string (expression));
+
+			xmlAddChild (exprn, text);
+			xmlAddChild (funcn, exprn);
+		}
+
+		/* Create argument elements */
+		GSList *args = cpg_function_get_arguments (func);
+		GSList *argitem;
+
+		for (argitem = args; argitem; argitem = g_slist_next (argitem))
+		{
+			CpgProperty *prop = (CpgProperty *)argitem->data;
+
+			xmlNodePtr argn = xmlNewDocNode (doc, NULL, (xmlChar *)"argument", NULL);
+			xmlNodePtr text = xmlNewDocText (doc,
+			                                 (xmlChar *)cpg_property_get_name (prop));
+
+			xmlAddChild (argn, text);
+			xmlAddChild (funcn, argn);
+		}
+	}
+}
+
 gchar * 
 cpg_network_writer_xml_string (CpgNetwork *network)
 {
@@ -264,7 +322,9 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	{
 		link_to_xml (doc, nnetwork, CPG_LINK (item->data));
 	}
-		
+
+	write_functions (network, doc, nnetwork);
+
 	xmlIndentTreeOutput = 1;
 	
 	xmlChar *mem;

@@ -3,6 +3,7 @@
 
 #include <glib-object.h>
 #include "cpg-property.h"
+#include "cpg-compile-context.h"
 
 G_BEGIN_DECLS
 
@@ -21,6 +22,7 @@ typedef struct _CpgObjectClass		CpgObjectClass;
 typedef struct _CpgObjectPrivate	CpgObjectPrivate;
 
 struct _CpgLink;
+struct _CpgCompileError;
 
 /**
  * CpgObjectError:
@@ -52,7 +54,9 @@ struct _CpgObjectClass {
 	GObjectClass parent_class;
 
 	/*< public >*/	
-	void (*compile)		(CpgObject *object);
+	gboolean (*compile)	(CpgObject *object,
+	                     CpgCompileContext *context,
+	                     struct _CpgCompileError *error);
 	void (*reset)		(CpgObject *object);
 	void (*update)		(CpgObject *object, 
 						 gdouble    timestep);
@@ -101,6 +105,10 @@ void			  cpg_object_evaluate		(CpgObject   *object,
 
 void			  cpg_object_reset_cache	(CpgObject	 *object);
 void			  cpg_object_taint			(CpgObject   *object);
+
+gboolean		  cpg_object_compile		(CpgObject         *object,
+											 CpgCompileContext *context,
+											 struct _CpgCompileError *error);
 
 /* used for referencing links */
 void 			 _cpg_object_link			(CpgObject       *object, 

@@ -275,6 +275,149 @@ parse_globals (xmlDocPtr   doc,
 }
 
 static gboolean
+get_function_expression (xmlDocPtr   doc,
+                         GList      *nodes,
+                         gchar     **ret)
+{
+	if (nodes == NULL)
+	{
+		return FALSE;
+	}
+
+	xmlNode *node = (xmlNode *)nodes->data;
+
+	if (!(node->children && node->children->type == XML_TEXT_NODE))
+	{
+		return FALSE;
+	}
+
+	*ret = g_strdup ((gchar const *)node->children->content);
+	return TRUE;
+}
+
+static gboolean
+parse_function_arguments (xmlDocPtr    doc,
+                          GList       *nodes,
+                          CpgFunction *function)
+{
+	GList *item;
+
+	for (item = nodes; item; item = g_list_next (item))
+	{
+		xmlNode *node = (xmlNode *)item->data;
+
+		if (!(node->children && node->children->type == XML_TEXT_NODE))
+		{
+			continue;
+		}
+
+		gchar const *name = (gchar const *)node->children->content;
+
+		if (cpg_object_get_property (CPG_OBJECT (function), name))
+		{
+			continue;
+		}
+
+		cpg_function_add_argument (function, name);
+	}
+
+	return TRUE;
+}
+
+static gboolean
+parse_function (xmlDocPtr   doc,
+                xmlNodePtr  node,
+                ParseInfo  *info)
+{
+	xmlChar *name = xmlGetProp (node, (xmlChar *)"name");
+	
+	if (!name)
+	{
+		cpg_debug_error ("Function does not have a name");
+		
+		if (info->error)
+		{
+			g_set_error (info->error,
+			             CPG_NETWORK_LOAD_ERROR,
+			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
+			             "One of the functions does not have a name");
+		}
+
+		return FALSE;
+	}
+
+	if (cpg_network_get_function (info->network, (gchar const *)name))
+	{
+		cpg_debug_error ("Function is already defined");
+		xmlFree (name);
+		
+		if (info->error)
+		{
+			g_set_error (info->error,
+			             CPG_NETWORK_LOAD_ERROR,
+			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
+			             "One of the functions is already defined");
+		}
+
+		return FALSE;
+	}
+
+	gchar *expression = NULL;
+
+	if (!xml_xpath (node->doc,
+	                node,
+	                "expression",
+	                XML_ELEMENT_NODE,
+	                (XPathResultFunc)get_function_expression,
+	                &expression))
+	{
+		cpg_debug_error ("No expression defined for function: %s", name);
+		xmlFree (name);
+
+		if (info->error)
+		{
+			g_set_error (info->error,
+			             CPG_NETWORK_LOAD_ERROR,
+			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
+			             "Expression not set for function");
+		}
+
+		return FALSE;
+	}
+
+	CpgFunction *function = cpg_function_new ((gchar const *)name, expression, NULL);
+	g_free (expression);
+	xmlFree (name);
+
+	if (!xml_xpath (node->doc,
+	                node,
+	                "argument",
+	                XML_ELEMENT_NODE,
+	                (XPathResultFunc)parse_function_arguments,
+	                function))
+	{
+		cpg_debug_error ("Failed to parse function arguments: %s",
+		                 cpg_object_get_id (CPG_OBJECT (function)));
+		g_object_unref (function);
+
+		if (info->error)
+		{
+			g_set_error (info->error,
+			             CPG_NETWORK_LOAD_ERROR,
+			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
+			             "Failed to parse function arguments");
+		}
+
+		return FALSE;
+	}
+
+	cpg_network_add_function (info->network, function);
+	g_object_unref (function);
+
+	return TRUE;
+}
+
+static gboolean
 parse_actions (xmlDocPtr doc,
                GList     *nodes,
                ParseInfo *info)
@@ -481,6 +624,10 @@ parse_network (xmlDocPtr   doc,
 		{
 			ret = parse_globals (doc, node, info);
 		}
+		else if (g_strcmp0 ((gchar const *)node->name, "function") == 0)
+		{
+			ret = parse_function (doc, node, info);
+		}
 		else
 		{
 			cpg_debug_error ("Unknown element: %s", node->name);
@@ -569,7 +716,8 @@ reader_xml (CpgNetwork  *network,
 	gboolean ret = parse_objects (doc, "/cpg/network/state", &info) &&
 	               parse_objects (doc, "/cpg/network/relay", &info) &&
 	               parse_objects (doc, "/cpg/network/link", &info) &&
-	               parse_objects (doc, "/cpg/network/globals", &info);
+	               parse_objects (doc, "/cpg/network/globals", &info) &&
+	               parse_objects (doc, "/cpg/network/functions/function", &info);
 
 	xmlFreeDoc (doc);
 	

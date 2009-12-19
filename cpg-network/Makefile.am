@@ -19,7 +19,9 @@ COMMON_SOURCES = 		\
 	cpg-stack.c \
 	cpg-network-reader.c \
 	cpg-network-writer.c \
-	cpg-compile-error.c
+	cpg-compile-error.c \
+	cpg-function.c \
+	cpg-compile-context.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
@@ -41,7 +43,9 @@ INST_H_FILES = \
 	cpg-stack.h \
 	cpg-debug.h \
 	cpg-compile-error.h \
-	cpg-math.h
+	cpg-math.h \
+	cpg-function.h \
+	cpg-compile-context.h
 
 lib_LTLIBRARIES = libcpg-network-1.0.la
 

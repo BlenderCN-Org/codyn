@@ -12,11 +12,12 @@ static void
 expression_initialize_context(gchar const *exp, CpgObject *context)
 {
 	expression = cpg_expression_new(exp);
-	
-	GSList *ctx = g_slist_append(NULL, context);
+
+	CpgCompileContext *ctx = cpg_compile_context_new ();
+	cpg_compile_context_prepend_object (ctx, context);
 
 	gboolean ret = cpg_expression_compile(expression, ctx, NULL);
-	g_slist_free(ctx);
+	cpg_ref_counted_unref (ctx);
 	
 	if (!ret)
 	{

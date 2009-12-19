@@ -56,6 +56,14 @@ print_link (CpgLink *link)
 	}
 }
 
+static void
+print_function (CpgFunction *function)
+{
+	print_object (CPG_OBJECT (function));
+
+	g_printf (" > %s\n", cpg_expression_get_as_string (cpg_function_get_expression (function)));
+}
+
 int 
 main (int argc, char *argv[])
 {
@@ -80,11 +88,11 @@ main (int argc, char *argv[])
 	
 	if (!cpg_network_compile (network, error))
 	{
-		GError *gerror = *cpg_compile_error_get_error (error);
+		GError *gerror = cpg_compile_error_get_error (error);
 		
-		g_printf ("** Compile error in network: %s, %s", 
+		g_printf ("** Compile error in network: %s, %s\n", 
 		          cpg_compile_error_string (error),
-		          gerror->message);
+		          gerror ? gerror->message : "No error set");
 
 		cpg_ref_counted_unref (error);
 		g_object_unref (network);
@@ -95,9 +103,10 @@ main (int argc, char *argv[])
 	
 	GSList *states = cpg_network_get_states (network);
 	GSList *links = cpg_network_get_links (network);
+	GSList *functions = cpg_network_get_functions (network);
 	
 	g_printf ("\n***\n");
-	g_printf ("*** \e[34;1mLoaded network: %d states, %d links\e[0m\n", g_slist_length (states), g_slist_length (links));
+	g_printf ("*** \e[34;1mLoaded network: %d states, %d links, %d functions\e[0m\n", g_slist_length (states), g_slist_length (links), g_slist_length (functions));
 	g_printf ("***\n\n");
 	
 	GSList *item;
@@ -111,6 +120,11 @@ main (int argc, char *argv[])
 	for (item = links; item; item = g_slist_next (item))
 	{
 		print_link (CPG_LINK (item->data));
+	}
+
+	for (item = functions; item; item = g_slist_next (item))
+	{
+		print_function (CPG_FUNCTION (item->data));
 	}
 	
 	g_printf ("\n\e[1mRunning network for 0.1s...\e[0m\n");

@@ -9,6 +9,7 @@
 #include <cpg-network/cpg-link.h>
 #include <cpg-network/cpg-monitor.h>
 #include <cpg-network/cpg-compile-error.h>
+#include <cpg-network/cpg-function.h>
 
 G_BEGIN_DECLS
 
@@ -31,7 +32,8 @@ typedef enum
 	CPG_NETWORK_LOAD_ERROR_XML,
 	CPG_NETWORK_LOAD_ERROR_PROPERTY,
 	CPG_NETWORK_LOAD_ERROR_OBJECT,
-	CPG_NETWORK_LOAD_ERROR_LINK
+	CPG_NETWORK_LOAD_ERROR_LINK,
+	CPG_NETWORK_LOAD_ERROR_FUNCTION
 } CpgNetworkLoadError;
 
 struct _CpgNetwork {
@@ -64,19 +66,19 @@ void			  cpg_network_write_to_file		(CpgNetwork  *network,
 												 const gchar *filename);
 
 void              cpg_network_merge             (CpgNetwork *network,
-                                                 CpgNetwork *other);
+												 CpgNetwork *other);
 
 void			  cpg_network_merge_from_file	(CpgNetwork   *network, 
-                                                 const gchar  *filename,
-                                                 GError      **error);
+												 const gchar  *filename,
+												 GError      **error);
 
 void			  cpg_network_merge_from_xml	(CpgNetwork   *network,
-                                                 const gchar  *xml,
-                                                 GError      **error);
+												 const gchar  *xml,
+												 GError      **error);
 
-void 			  cpg_network_set_global_constant (CpgNetwork   *network,
-                                 				   const gchar  *name,
-                                 				   gdouble       constant);
+void 			  cpg_network_set_global_constant (CpgNetwork *network,
+												 const gchar  *name,
+												 gdouble       constant);
 
 CpgObject 		 *cpg_network_get_globals       (CpgNetwork  *network);
 
@@ -92,7 +94,7 @@ void			  cpg_network_remove_object		(CpgNetwork *network,
 												 CpgObject  *object);
 
 gboolean		  cpg_network_compile			(CpgNetwork      *network,
-                                                 CpgCompileError *error);
+												 CpgCompileError *error);
 
 void			  cpg_network_taint				(CpgNetwork *network);
 
@@ -110,22 +112,33 @@ void			  cpg_network_reset				(CpgNetwork *network);
 
 GSList			 *cpg_network_get_templates     (CpgNetwork   *network);
 void			  cpg_network_add_template 		(CpgNetwork   *network,
-                                                 const gchar  *name,
-                                                 CpgObject    *object);
+												 const gchar  *name,
+												 CpgObject    *object);
 
 CpgObject		 *cpg_network_get_template 		(CpgNetwork   *network,
-                                                 const gchar  *name);
+												 const gchar  *name);
 
 void			  cpg_network_remove_template 	(CpgNetwork   *network,
-                                                 const gchar  *name);
+												 const gchar  *name);
 
 CpgObject        *cpg_network_add_from_template (CpgNetwork   *network,
-                                                 const gchar  *name);
+												 const gchar  *name);
 
 CpgObject        *cpg_network_add_link_from_template (CpgNetwork   *network,
-                                                      const gchar  *name,
-                                                      CpgObject    *from,
-                                                      CpgObject    *to);
+												 const gchar  *name,
+												 CpgObject    *from,
+												 CpgObject    *to);
+
+void			  cpg_network_add_function		(CpgNetwork   *network,
+												 CpgFunction  *function);
+
+void			  cpg_network_remove_function	(CpgNetwork   *network,
+												 CpgFunction  *function);
+
+GSList			 *cpg_network_get_functions		(CpgNetwork   *network);
+
+CpgFunction		 *cpg_network_get_function		(CpgNetwork   *network,
+                                                 gchar const  *name);
 
 G_END_DECLS
 
