@@ -492,11 +492,13 @@ parse_polynomial_pieces (xmlDocPtr              doc,
 
 		g_strfreev (ptrs);
 
-		cpg_function_polynomial_add (function,
-		                             begin,
-		                             end,
-		                             coefficients,
-		                             num_coefficients);
+		CpgFunctionPolynomialPiece *piece = 
+				cpg_function_polynomial_piece_new (begin,
+				                                   end,
+				                                   coefficients,
+				                                   num_coefficients);
+
+		cpg_function_polynomial_add (function, piece);
 
 		g_free (coefficients);
 	}
