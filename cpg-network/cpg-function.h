@@ -42,12 +42,16 @@ CpgFunction *cpg_function_new (gchar const *name, gchar const *expression, ...) 
 void cpg_function_set_arguments (CpgFunction *function, ...) G_GNUC_NULL_TERMINATED;
 void cpg_function_set_argumentsv (CpgFunction *function, va_list args);
 void cpg_function_add_argument (CpgFunction *function, gchar const *name);
+void cpg_function_remove_argument (CpgFunction *function, gchar const *name);
+
+void cpg_function_clear_arguments (CpgFunction *function);
 
 GSList *cpg_function_get_arguments (CpgFunction *function);
 guint cpg_function_get_n_arguments (CpgFunction *function);
 
 void cpg_function_execute (CpgFunction *function, CpgStack *stack);
 
+void cpg_function_set_expression (CpgFunction *function, CpgExpression *expression);
 struct _CpgExpression *cpg_function_get_expression (CpgFunction *function);
 
 G_END_DECLS

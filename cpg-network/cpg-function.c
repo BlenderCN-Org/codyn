@@ -22,15 +22,6 @@ struct _CpgFunctionPrivate
 G_DEFINE_TYPE (CpgFunction, cpg_function, CPG_TYPE_OBJECT)
 
 static void
-clear_arguments (CpgFunction *function)
-{
-	g_slist_foreach (function->priv->arguments, (GFunc)cpg_ref_counted_unref, NULL);
-	g_slist_free (function->priv->arguments);
-
-	function->priv->arguments = NULL;
-	function->priv->n_arguments = 0;
-}
-static void
 cpg_function_finalize (GObject *object)
 {
 	CpgFunction *self = CPG_FUNCTION (object);
@@ -40,7 +31,7 @@ cpg_function_finalize (GObject *object)
 		cpg_ref_counted_unref (self->priv->expression);
 	}
 
-	clear_arguments (self);
+	cpg_function_clear_arguments (self);
 
 	G_OBJECT_CLASS (cpg_function_parent_class)->finalize (object);
 }
@@ -324,7 +315,7 @@ cpg_function_set_argumentsv (CpgFunction *function, va_list args)
 
 	g_return_if_fail (CPG_IS_FUNCTION (function));
 
-	clear_arguments (function);
+	cpg_function_clear_arguments (function);
 
 	while ((arg = va_arg(args, gchar const *)) != NULL)
 	{
@@ -347,12 +338,52 @@ cpg_function_add_argument (CpgFunction *function,
 		property = cpg_object_add_property (CPG_OBJECT (function),
 		                                    argument, "0", FALSE);
 	}
+	else if (g_slist_find (function->priv->arguments, property) != NULL)
+	{
+		return;
+	}
 
 	function->priv->arguments = g_slist_append (function->priv->arguments,
 	                                            cpg_ref_counted_ref (property));
 	++function->priv->n_arguments;
 
 	cpg_object_taint (CPG_OBJECT (function));
+}
+
+void
+cpg_function_remove_argument (CpgFunction *function,
+                              gchar const *argument)
+{
+	g_return_if_fail (CPG_IS_FUNCTION (function));
+	g_return_if_fail (argument != NULL);
+
+	CpgProperty *property = cpg_object_get_property (CPG_OBJECT (function),
+		                                             argument);
+
+	if (property == NULL)
+	{
+		return;
+	}
+
+	GSList *item = g_slist_find (function->priv->arguments, property);
+
+	if (item == NULL)
+	{
+		return;
+	}
+
+	if (cpg_object_remove_property (CPG_OBJECT (function),
+	                                cpg_property_get_name (property),
+	                                NULL))
+	{
+		function->priv->arguments = g_slist_delete_link (function->priv->arguments,
+		                                                 item);
+
+		cpg_ref_counted_unref (property);
+		--function->priv->n_arguments;
+
+		cpg_object_taint (CPG_OBJECT (function));
+	}
 }
 
 void
@@ -400,4 +431,45 @@ cpg_function_get_expression (CpgFunction *function)
 	g_return_val_if_fail (CPG_IS_FUNCTION (function), NULL);
 
 	return function->priv->expression;
+}
+
+void
+cpg_function_set_expression (CpgFunction   *function,
+                             CpgExpression *expression)
+{
+	g_return_if_fail (CPG_IS_FUNCTION (function));
+	g_object_set (G_OBJECT (function), "expression", expression, NULL);
+}
+
+void
+cpg_function_clear_arguments (CpgFunction *function)
+{
+	g_return_if_fail (CPG_IS_FUNCTION (function));
+
+	GSList *item = function->priv->arguments;
+	GSList *prev = NULL;
+
+	while (item)
+	{
+		CpgProperty *property = (CpgProperty *)item->data;
+
+		if (cpg_object_remove_property (CPG_OBJECT (function),
+		                                cpg_property_get_name (property),
+		                                NULL))
+		{
+			cpg_ref_counted_unref (property);
+			
+			function->priv->arguments = g_slist_delete_link (function->priv->arguments,
+			                                                 item);
+			item = prev ? prev->next : function->priv->arguments;
+			--function->priv->n_arguments;
+		}
+		else
+		{
+			prev = item;
+			item = g_slist_next (item);
+		}
+	}
+
+	cpg_object_taint (CPG_OBJECT (function));
 }
