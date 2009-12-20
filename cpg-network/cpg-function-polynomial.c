@@ -19,6 +19,7 @@ struct _CpgFunctionPolynomialPrivate
 	GSList *polynomials;
 
 	CpgProperty *t;
+	CpgProperty *order;
 };
 
 G_DEFINE_TYPE (CpgFunctionPolynomial, cpg_function_polynomial, CPG_TYPE_FUNCTION)
@@ -82,17 +83,41 @@ cpg_function_polynomial_finalize (GObject *object)
 	G_OBJECT_CLASS (cpg_function_polynomial_parent_class)->finalize (object);
 }
 
+static gint
+order_faculty (gint n, gint order)
+{
+	if (order == 0)
+	{
+		return 1;
+	}
+
+	if (n == 0)
+	{
+		return 0;
+	}
+
+	return n * order_faculty (n - 1, order - 1);
+}
+
 static gdouble
 evaluate_polynomial (CpgFunctionPolynomialPiece *polynomial,
-                     gdouble     t)
+                     gdouble                     t,
+                     guint                       order)
 {
 	gdouble ret = 0;
 	gdouble power = 1;
 	gint i;
 
-	for (i = (gint)polynomial->num_coefficients - 1; i >= 0; --i)
+	if (order >= polynomial->num_coefficients)
 	{
-		ret += polynomial->coefficients[i] * power;
+		return 0;
+	}
+
+	for (i = (gint)polynomial->num_coefficients - 1 - order; i >= 0; --i)
+	{
+		gint revt = (gint)polynomial->num_coefficients - i - 1;
+
+		ret += order_faculty (revt, order) * polynomial->coefficients[i] * power;
 		power *= t;
 	}
 
@@ -110,6 +135,7 @@ cpg_function_polynomial_evaluate_impl (CpgFunction *function)
 	gboolean found = FALSE;
 	guint num = 0;
 	gdouble ret = 0;
+	guint order = (guint)cpg_property_get_value (pol->priv->order);
 
 	for (item = pol->priv->polynomials; item; item = g_slist_next (item))
 	{
@@ -118,7 +144,7 @@ cpg_function_polynomial_evaluate_impl (CpgFunction *function)
 		if (val >= piece->begin && val < piece->end)
 		{
 			double norm = (val - piece->begin) / (piece->end - piece->begin);
-			ret += evaluate_polynomial (piece, norm);
+			ret += evaluate_polynomial (piece, norm, order);
 			++num;
 
 			found = TRUE;
@@ -176,10 +202,18 @@ cpg_function_polynomial_init (CpgFunctionPolynomial *self)
 {
 	self->priv = CPG_FUNCTION_POLYNOMIAL_GET_PRIVATE (self);
 
-	/* Add argument */
-	cpg_function_add_argument (CPG_FUNCTION (self), "t");
+	/* Add 't' argument */
+	CpgFunctionArgument *argument = cpg_function_argument_new ("t", FALSE, 0);
+	cpg_function_add_argument (CPG_FUNCTION (self), argument);
+	cpg_ref_counted_unref (argument);
+
+	/* Add optional 'order' argument */
+	argument = cpg_function_argument_new ("order", TRUE, 0);
+	cpg_function_add_argument (CPG_FUNCTION (self), argument);
+	cpg_ref_counted_unref (argument);
 
 	self->priv->t = cpg_object_get_property (CPG_OBJECT (self), "t");
+	self->priv->order = cpg_object_get_property (CPG_OBJECT (self), "order");
 }
 
 CpgFunctionPolynomial *
