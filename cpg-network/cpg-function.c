@@ -234,12 +234,24 @@ cpg_function_reset_cache_impl (CpgObject *object)
 }
 
 static void
+cpg_function_constructed (GObject *object)
+{
+	CpgFunction *function = CPG_FUNCTION (object);
+
+	if (function->priv->expression == NULL)
+	{
+		function->priv->expression = cpg_expression_new ("0");
+	}
+}
+
+static void
 cpg_function_class_init (CpgFunctionClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	CpgObjectClass *cpg_object_class = CPG_OBJECT_CLASS (klass);
 	
 	object_class->finalize = cpg_function_finalize;
+	object_class->constructed = cpg_function_constructed;
 
 	object_class->set_property = cpg_function_set_property;
 	object_class->get_property = cpg_function_get_property;
