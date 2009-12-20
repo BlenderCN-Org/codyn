@@ -240,6 +240,19 @@ cpg_instruction_property_new (CpgProperty           *property,
 	return (CpgInstruction *)res;
 }
 
+/**
+ * cpg_instruction_custom_function_new:
+ * @function: A #CpgFunction
+ * @arguments: The number of arguments this function takes
+ * 
+ * Creates a new custom function call instruction. If the number of arguments
+ * (@arguments) is not equal to the number of arguments @function takes, the
+ * instruction expects the first value on the stack, when the instruction is
+ * executed, to be the number of arguments to process.
+ *
+ * Returns: A #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_custom_function_new (CpgFunction *function,
                                      gint         arguments)
@@ -1179,6 +1192,18 @@ cpg_expression_compile (CpgExpression      *expression,
 	return TRUE;
 }
 
+/**
+ * cpg_expression_set_instructions:
+ * @expression: A #CpgExpression
+ * @instructions: A #GSList of #CpgInstruction
+ * 
+ * Set the instructions used to evaluate the expression. You should never have
+ * to use this function. It's main purpose is for optimization of expressions
+ * in cpgrawc.
+ *
+ * Returns: %TRUE if the new instruction set is valid, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_expression_set_instructions (CpgExpression *expression,
                                  GSList        *instructions)

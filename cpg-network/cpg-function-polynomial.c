@@ -1,6 +1,20 @@
 #include "cpg-function-polynomial.h"
 #include "cpg-ref-counted-private.h"
 
+/**
+ * SECTION:cpg-function-polynomial
+ * @short_description: Custom user defined piecewise polynomial
+ *
+ * This class provides a specialized custom user function which defines
+ * and evaluates piecewise polynomials. The piece polynomials can be
+ * specified in terms of the interval in which they are evaluated and
+ * the polynomial coefficients.
+ *
+ * In addition, you can automatically evaluate the Nth derivative of the
+ * polynomial by use of the optional second argument of the function.
+ *
+ */
+ 
 #define CPG_FUNCTION_POLYNOMIAL_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_FUNCTION_POLYNOMIAL, CpgFunctionPolynomialPrivate))
 
 struct _CpgFunctionPolynomialPiece
@@ -46,6 +60,19 @@ cpg_function_polynomial_piece_get_type (void)
 	return type_id;
 }
 
+/**
+ * cpg_function_polynomial_piece_new:
+ * @begin: The polynomial interval begin
+ * @end: The polynomial interval end
+ * @coefficients: The coefficients
+ * @num_coefficients: The number of coefficients provided in @coefficients
+ * 
+ * Create a new polynomial to be used in a piecewise polynomial function. The
+ * coefficients are specified from high to low order.
+ *
+ * Returns: A #CpgFunctionPolynomialPiece
+ *
+ **/
 CpgFunctionPolynomialPiece *
 cpg_function_polynomial_piece_new (gdouble  begin,
                                    gdouble  end,
@@ -216,6 +243,19 @@ cpg_function_polynomial_init (CpgFunctionPolynomial *self)
 	self->priv->order = cpg_object_get_property (CPG_OBJECT (self), "order");
 }
 
+/**
+ * cpg_function_polynomial_new:
+ * @name: The function name
+ * 
+ * Create a new polynomial function. This is a special kind of user function
+ * which calculates a piecewise polynomial. The function can be called with one
+ * mandatory argument, which is the point at which to evaluate the piecewise
+ * polynomial (t: [0, 1]). The second argument is optional and determines the
+ * order of differentation of the polynomial.
+ *
+ * Returns: A #CpgFunctionPolynomial
+ *
+ **/
 CpgFunctionPolynomial *
 cpg_function_polynomial_new (gchar const *name)
 {
@@ -229,6 +269,14 @@ compare_polynomials (CpgFunctionPolynomialPiece *p1,
 	return p1->begin < p2->begin ? -1 : (p2->begin < p1->begin ? 1 : 0);
 }
 
+/**
+ * cpg_function_polynomial_add:
+ * @function: A #CpgFunctionPolynomial
+ * @piece: A #CpgFunctionPolynomialPiece
+ * 
+ * Add a polynomial piece.
+ *
+ **/
 void
 cpg_function_polynomial_add (CpgFunctionPolynomial      *function,
                              CpgFunctionPolynomialPiece *piece)
@@ -241,6 +289,14 @@ cpg_function_polynomial_add (CpgFunctionPolynomial      *function,
 	                                                     (GCompareFunc)compare_polynomials);
 }
 
+/**
+ * cpg_function_polynomial_remove:
+ * @function: A #CpgFunctionPolynomial
+ * @piece: A #CpgFunctionPolynomialPiece
+ * 
+ * Remove a polynomial piece.
+ *
+ **/
 void
 cpg_function_polynomial_remove (CpgFunctionPolynomial      *function,
                                 CpgFunctionPolynomialPiece *piece)
@@ -260,6 +316,13 @@ cpg_function_polynomial_remove (CpgFunctionPolynomial      *function,
 	}
 }
 
+/**
+ * cpg_function_polynomial_clear:
+ * @function: A #CpgFunctionPolynomial
+ * 
+ * Remove all the polynomial pieces.
+ *
+ **/
 void
 cpg_function_polynomial_clear (CpgFunctionPolynomial *function)
 {
@@ -271,6 +334,16 @@ cpg_function_polynomial_clear (CpgFunctionPolynomial *function)
 	function->priv->polynomials = NULL;
 }
 
+/**
+ * cpg_function_polynomial_get_pieces:
+ * @function: A #CpgFunctionPolynomial
+ * 
+ * Get a list of the polynomials which make up the function. This returns 
+ * the internally used list which should not be modified or freed.
+ *
+ * Returns: A #GSList of #CpgFunctionPolynomialPiece
+ *
+ **/
 GSList *
 cpg_function_polynomial_get_pieces (CpgFunctionPolynomial *function)
 {
@@ -279,12 +352,29 @@ cpg_function_polynomial_get_pieces (CpgFunctionPolynomial *function)
 	return function->priv->polynomials;
 }
 
+/**
+ * cpg_function_polynomial_piece_get_begin:
+ * @piece: A #CpgFunctionPolynomialPiece
+ * 
+ * Get the interval begin of the polynomial.
+ *
+ * Returns: the interval begin of the polynomial
+ *
+ **/
 gdouble
 cpg_function_polynomial_piece_get_begin (CpgFunctionPolynomialPiece *piece)
 {
 	return piece->begin;
 }
 
+/**
+ * cpg_function_polynomial_piece_set_begin:
+ * @piece: A #CpgFunctionPolynomialPiece
+ * @begin: the interval begin of the polynomial
+ * 
+ * Set the interval begin of the polynomial.
+ *
+ **/
 void
 cpg_function_polynomial_piece_set_begin (CpgFunctionPolynomialPiece *piece,
                                          gdouble                     begin)
@@ -292,12 +382,29 @@ cpg_function_polynomial_piece_set_begin (CpgFunctionPolynomialPiece *piece,
 	piece->begin = begin;
 }
 
+/**
+ * cpg_function_polynomial_piece_get_end:
+ * @piece: A #CpgFunctionPolynomialPiece
+ * 
+ * Get the interval end of the polynomial.
+ *
+ * Returns: the interval end of the polynomial
+ *
+ **/
 gdouble
 cpg_function_polynomial_piece_get_end (CpgFunctionPolynomialPiece *piece)
 {
 	return piece->end;
 }
 
+/**
+ * cpg_function_polynomial_piece_set_end:
+ * @piece: A #CpgFunctionPolynomialPiece
+ * @end: the interval end of the polynomial
+ * 
+ * Set the interval end of the polynomial.
+ *
+ **/
 void
 cpg_function_polynomial_piece_set_end (CpgFunctionPolynomialPiece *piece,
                                        gdouble                     end)
@@ -305,6 +412,17 @@ cpg_function_polynomial_piece_set_end (CpgFunctionPolynomialPiece *piece,
 	piece->end = end;
 }
 
+/**
+ * cpg_function_polynomial_piece_get_coefficients:
+ * @piece: A #CpgFunctionPolynomialPiece
+ * @num: Return value for the number of coefficients
+ * 
+ * Get the polynomial coefficients. The order of the coefficients is from high
+ * to low
+ *
+ * Returns: the polynomial coefficients
+ *
+ **/
 gdouble	*
 cpg_function_polynomial_piece_get_coefficients (CpgFunctionPolynomialPiece *piece,
                                                 guint                      *num)
@@ -313,6 +431,16 @@ cpg_function_polynomial_piece_get_coefficients (CpgFunctionPolynomialPiece *piec
 	return piece->coefficients;
 }
 
+/**
+ * cpg_function_polynomial_piece_set_coefficients:
+ * @piece: A #CpgFunctionPolynomialPiece
+ * @coefficients: The polynomial coefficients
+ * @num: The number of coefficients provided in @coefficients
+ * 
+ * Set the coefficients of the polynomial. The order of the coefficients is
+ * from high to low.
+ *
+ **/
 void
 cpg_function_polynomial_piece_set_coefficients (CpgFunctionPolynomialPiece *piece,
                                                 gdouble                    *coefficients,

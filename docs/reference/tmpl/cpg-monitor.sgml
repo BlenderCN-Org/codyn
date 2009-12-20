@@ -23,6 +23,14 @@ CpgMonitor
 </para>
 
 
+<!-- ##### FUNCTION cpg_monitor_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
 <!-- ##### FUNCTION cpg_monitor_new ##### -->
 <para>
 
@@ -31,6 +39,16 @@ CpgMonitor
 @network: 
 @object: 
 @property_name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_monitor_get_sites ##### -->
+<para>
+
+</para>
+
+@monitor: 
+@size: 
 @Returns: 
 
 

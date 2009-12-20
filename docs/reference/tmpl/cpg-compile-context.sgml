@@ -1,0 +1,122 @@
+<!-- ##### SECTION Title ##### -->
+CpgCompileContext
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### STRUCT CpgCompileContext ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION cpg_compile_context_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_prepend_object ##### -->
+<para>
+
+</para>
+
+@context: 
+@object: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_save ##### -->
+<para>
+
+</para>
+
+@context: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_restore ##### -->
+<para>
+
+</para>
+
+@context: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_append_object ##### -->
+<para>
+
+</para>
+
+@context: 
+@object: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_set_functions ##### -->
+<para>
+
+</para>
+
+@context: 
+@functions: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_lookup_property ##### -->
+<para>
+
+</para>
+
+@context: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_lookup_function ##### -->
+<para>
+
+</para>
+
+@context: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_get_objects ##### -->
+<para>
+
+</para>
+
+@context: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_compile_context_get_functions ##### -->
+<para>
+
+</para>
+
+@context: 
+@Returns: 
+
+

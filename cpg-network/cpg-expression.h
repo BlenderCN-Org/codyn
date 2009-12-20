@@ -115,7 +115,7 @@ gboolean          cpg_expression_set_instructions   (CpgExpression  *expression,
 CpgInstruction   *cpg_instruction_function_new 		(guint         id,
 													 gchar const  *name,
 													 gint          arguments,
-													 gint          vargs);
+													 gboolean      variable);
 
 CpgInstruction   *cpg_instruction_custom_function_new (struct _CpgFunction *function,
 													   gint                 arguments);

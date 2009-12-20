@@ -17,6 +17,20 @@ CpgState
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### MACRO CPG_STATE_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgStatePrivate ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### STRUCT CpgState ##### -->
 <para>
 

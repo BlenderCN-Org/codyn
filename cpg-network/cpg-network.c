@@ -1487,6 +1487,14 @@ cpg_network_add_link_from_template (CpgNetwork  *network,
 	return object;
 }
 
+/**
+ * cpg_network_add_function:
+ * @network: A #CpgNetwork
+ * @function: A #CpgFunction
+ * 
+ * Add a new custom user function to the network.
+ *
+ **/
 void
 cpg_network_add_function (CpgNetwork  *network,
                           CpgFunction *function)
@@ -1506,6 +1514,14 @@ cpg_network_add_function (CpgNetwork  *network,
 	set_compiled (network, FALSE);
 }
 
+/**
+ * cpg_network_remove_function:
+ * @network: A #CpgNetwork
+ * @function: A #CpgFunction
+ * 
+ * Remove a custom user function from the network.
+ *
+ **/
 void
 cpg_network_remove_function (CpgNetwork  *network,
                              CpgFunction *function)
@@ -1527,6 +1543,15 @@ cpg_network_remove_function (CpgNetwork  *network,
 	set_compiled (network, FALSE);
 }
 
+/**
+ * cpg_network_get_functions:
+ * @network: A #CpgNetwork
+ * 
+ * Get the custom user functions defined in the network.
+ *
+ * Returns: A #GSList of #CpgFunction.
+ *
+ **/
 GSList *
 cpg_network_get_functions (CpgNetwork *network)
 {
@@ -1535,6 +1560,17 @@ cpg_network_get_functions (CpgNetwork *network)
 	return network->priv->functions;
 }
 
+/**
+ * cpg_network_get_function:
+ * @network: A #CpgNetwork
+ * @name: The function name
+ * 
+ * Get a custom user function defined in the network.
+ *
+ * Returns: A #CpgFunction if a function with @name could be found, %NULL
+ *          otherwise
+ *
+ **/
 CpgFunction *
 cpg_network_get_function (CpgNetwork  *network,
                           gchar const *name)

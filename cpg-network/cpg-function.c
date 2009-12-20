@@ -3,6 +3,22 @@
 #include "cpg-debug.h"
 #include "cpg-ref-counted-private.h"
 
+/**
+ * SECTION:cpg-function
+ * @short_description: Custom user defined function
+ *
+ * It is possible to define custom user functions in the network which can
+ * then be used from any expression. This class provides the basic
+ * user function functionality. User defined functions can have optional
+ * arguments with default values and can reference global constants as well
+ * as use other user defined functions in their expressions.
+ *
+ * The #CpgFunction class can be subclassed to provide more specific types
+ * of functions. One such example is the #CpgFunctionPolynomial class which
+ * can be used to define and evaluate piecewise polynomials.
+ *
+ */
+
 #define CPG_FUNCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_FUNCTION, CpgFunctionPrivate))
 
 /* Properties */
@@ -62,6 +78,17 @@ cpg_function_argument_free (CpgFunctionArgument *argument)
 	g_slice_free (CpgFunctionArgument, argument);
 }
 
+/**
+ * cpg_function_argument_new:
+ * @name: The argument name
+ * @optional: Whether the argument is optional
+ * @def: The default value of an optional argument
+ * 
+ * Create a new function argument.
+ *
+ * Returns: A #CpgFunctionArgument
+ *
+ **/
 CpgFunctionArgument *
 cpg_function_argument_new (gchar const *name,
                            gboolean     optional,
@@ -370,6 +397,17 @@ cpg_function_init (CpgFunction *self)
 	self->priv = CPG_FUNCTION_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_function_new:
+ * @name: The function name
+ * @expression: The function expression
+ * 
+ * Create a new custom user function. After creation, function arguments
+ * can be added to the function using #cpg_function_add_argument.
+ *
+ * Returns: A #CpgFunction
+ *
+ **/
 CpgFunction *
 cpg_function_new (gchar const *name, gchar const *expression)
 {
@@ -400,6 +438,23 @@ cpg_function_new (gchar const *name, gchar const *expression)
 	return ret;
 }
 
+static gint
+find_argument (CpgFunctionArgument *a1,
+               CpgFunctionArgument *a2)
+{
+	return g_strcmp0 (a1->name, a2->name);
+}
+
+/**
+ * cpg_function_add_argument:
+ * @function: A #CpgFunction
+ * @argument: A #CpgFunctionArgument
+ * 
+ * Add a function argument. A proxy property for the argument will be
+ * automatically created if it does not exist yet. If the argument already
+ * exists it will not be added.
+ *
+ **/
 void
 cpg_function_add_argument (CpgFunction         *function,
                            CpgFunctionArgument *argument)
@@ -448,21 +503,12 @@ cpg_function_add_argument (CpgFunction         *function,
 	cpg_object_taint (CPG_OBJECT (function));
 }
 
-static gint
-find_argument (CpgFunctionArgument *a1,
-               CpgFunctionArgument *a2)
-{
-	return g_strcmp0 (a1->name, a2->name);
-}
-
 /**
- * cpg_function_add_argument:
+ * cpg_function_remove_argument:
  * @function: A #CpgFunction
  * @argument: A #CpgFunctionArgument
  * 
- * Add a function argument. A proxy property for the argument will be
- * automatically created if it does not exist yet. If the argument already
- * exists it will not be added.
+ * Remove a function argument.
  *
  **/
 void
@@ -498,6 +544,16 @@ cpg_function_remove_argument (CpgFunction         *function,
 	}
 }
 
+/**
+ * cpg_function_get_arguments:
+ * @function: A #CpgFunction
+ * 
+ * Get the list of function arguments. The returned list is used internally
+ * and should not be modified or freed.
+ *
+ * Returns: A #GList
+ *
+ **/
 GList *
 cpg_function_get_arguments (CpgFunction *function)
 {
@@ -506,6 +562,15 @@ cpg_function_get_arguments (CpgFunction *function)
 	return function->priv->arguments;
 }
 
+/**
+ * cpg_function_execute:
+ * @function: A #CpgFunction
+ * @stack: A #CpgStack
+ * 
+ * Execute the function. This is used internally when the function needs to be
+ * evaluated.
+ *
+ **/
 void
 cpg_function_execute (CpgFunction *function, CpgStack *stack)
 {
@@ -518,6 +583,15 @@ cpg_function_execute (CpgFunction *function, CpgStack *stack)
 	}
 }
 
+/**
+ * cpg_function_get_expression:
+ * @function: A #CpgFunction
+ * 
+ * Get the function expression.
+ *
+ * Returns: A #CpgExpression
+ *
+ **/
 CpgExpression *
 cpg_function_get_expression (CpgFunction *function)
 {
@@ -526,6 +600,14 @@ cpg_function_get_expression (CpgFunction *function)
 	return function->priv->expression;
 }
 
+/**
+ * cpg_function_set_expression:
+ * @function: A #CpgFunction
+ * @expression: A #CpgExpression
+ * 
+ * Set the function expression.
+ *
+ **/
 void
 cpg_function_set_expression (CpgFunction   *function,
                              CpgExpression *expression)
@@ -534,6 +616,13 @@ cpg_function_set_expression (CpgFunction   *function,
 	g_object_set (G_OBJECT (function), "expression", expression, NULL);
 }
 
+/**
+ * cpg_function_clear_arguments:
+ * @function: A #CpgFunction
+ * 
+ * Remove all the function arguments.
+ *
+ **/
 void
 cpg_function_clear_arguments (CpgFunction *function)
 {
@@ -572,6 +661,16 @@ cpg_function_clear_arguments (CpgFunction *function)
 	cpg_object_taint (CPG_OBJECT (function));
 }
 
+/**
+ * cpg_function_get_n_optional:
+ * @function: A #CpgFunction
+ * 
+ * Get the number of optional arguments. The optional arguments are always
+ * at the end of the list of arguments of the function.
+ *
+ * Returns: the number of optional arguments
+ *
+ **/
 guint
 cpg_function_get_n_optional (CpgFunction *function)
 {
@@ -580,6 +679,16 @@ cpg_function_get_n_optional (CpgFunction *function)
 	return function->priv->n_optional;
 }
 
+/**
+ * cpg_function_get_n_arguments:
+ * @function: A #CpgFunction
+ * 
+ * Get the number of arguments. This value is cached and is thus faster than
+ * using #cpg_function_get_arguments and #g_list_length.
+ *
+ * Returns: the number of arguments
+ *
+ **/
 guint
 cpg_function_get_n_arguments (CpgFunction *function)
 {
@@ -588,18 +697,47 @@ cpg_function_get_n_arguments (CpgFunction *function)
 	return function->priv->n_arguments;
 }
 
+/**
+ * cpg_function_argument_get_name:
+ * @argument: A #CpgFunctionArgument
+ * 
+ * Get the function name.
+ *
+ * Returns: the function name
+ *
+ **/
 gchar const *
 cpg_function_argument_get_name (CpgFunctionArgument *argument)
 {
 	return argument->name;
 }
 
+/**
+ * cpg_function_argument_get_optional:
+ * @argument: A #CpgFunctionArgument
+ * 
+ * Get whether the function argument is optional. If the argument is optional
+ * its default value can be obtained with
+ * #cpg_function_argument_get_default_value
+ *
+ * Returns: whether the argument is optional
+ *
+ **/
 gboolean
 cpg_function_argument_get_optional (CpgFunctionArgument *argument)
 {
 	return argument->optional;
 }
 
+/**
+ * cpg_function_argument_get_default_value:
+ * @argument: A #CpgFunctionArgument
+ * 
+ * Get the function argument default value.
+ *
+ * Returns: the default value
+ *
+ **/
 gdouble
 cpg_function_argument_get_default_value (CpgFunctionArgument *argument)
 {

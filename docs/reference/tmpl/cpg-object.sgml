@@ -17,6 +17,27 @@ CpgObject
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### MACRO CPG_OBJECT_ERROR ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### MACRO CPG_OBJECT_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgObjectPrivate ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### ENUM CpgObjectError ##### -->
 <para>
 
@@ -191,5 +212,25 @@ CpgObject
 </para>
 
 @object: 
+
+
+<!-- ##### FUNCTION cpg_object_compile ##### -->
+<para>
+
+</para>
+
+@object: 
+@context: 
+@error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_object_get_actors ##### -->
+<para>
+
+</para>
+
+@object: 
+@Returns: 
 
 

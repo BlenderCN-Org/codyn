@@ -31,6 +31,9 @@
     <xi:include href="xml/cpg-expression.xml"/>
     <xi:include href="xml/cpg-ref-counted.xml"/>
     <xi:include href="xml/cpg-compile-error.xml"/>
+    <xi:include href="xml/cpg-compile-context.xml"/>
+    <xi:include href="xml/cpg-function.xml"/>
+    <xi:include href="xml/cpg-function-polynomial.xml"/>
   </reference>
   <reference>
     <title>XML format</title>

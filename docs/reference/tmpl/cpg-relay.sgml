@@ -17,6 +17,20 @@ CpgRelay
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### MACRO CPG_RELAY_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgRelayPrivate ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### STRUCT CpgRelay ##### -->
 <para>
 

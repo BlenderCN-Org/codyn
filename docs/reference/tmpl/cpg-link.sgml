@@ -17,6 +17,20 @@ CpgLink
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### MACRO CPG_LINK_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgLinkPrivate ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### STRUCT CpgLinkAction ##### -->
 <para>
 
@@ -38,6 +52,14 @@ CpgLink
 <para>
 
 </para>
+
+<!-- ##### FUNCTION cpg_link_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
 
 <!-- ##### FUNCTION cpg_link_new ##### -->
 <para>

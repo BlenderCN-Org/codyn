@@ -616,6 +616,16 @@ _cpg_object_link (CpgObject  *object,
 	g_object_add_toggle_ref (G_OBJECT (link), (GToggleNotify)link_destroyed, object);
 }
 
+/**
+ * cpg_object_get_actors:
+ * @object: A #CpgObject
+ * 
+ * Get the properties which are acted upon by links.
+ *
+ * Returns: A #GSList of #CpgProperty. This list is newly allocated and needs
+ *          to be freed with when g_slist_free when no longer used.
+ *
+ **/
 GSList *
 cpg_object_get_actors (CpgObject *object)
 {
@@ -802,6 +812,19 @@ cpg_object_reset_cache (CpgObject *object)
 	}
 }
 
+/**
+ * cpg_object_compile:
+ * @object: A #CpgObject
+ * @context: A #CpgCompileContext
+ * @error: A #CpgCompileError
+ * 
+ * Compile the object.
+ *
+ * Returns: %TRUE if the object compiled successfully, %FALSE otherwise. If the
+ *          compilation failed and @error was set, the reason for the compile
+ *          failure is set in @error.
+ *
+ **/
 gboolean
 cpg_object_compile (CpgObject         *object,
                     CpgCompileContext *context,
