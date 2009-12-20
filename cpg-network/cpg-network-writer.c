@@ -1,6 +1,9 @@
 #include "cpg-network-writer.h"
+
 #include <libxml/tree.h>
 #include <gio/gio.h>
+
+#include "cpg-function-polynomial.h"
 
 extern int xmlIndentTreeOutput;
 
@@ -178,6 +181,118 @@ link_to_xml (xmlDocPtr   doc,
 }
 
 static void
+write_function (CpgNetwork  *network,
+                xmlDocPtr    doc,
+                CpgFunction *func,
+                xmlNodePtr   funcs)
+{
+	xmlNodePtr funcn = xmlNewDocNode (doc, NULL, (xmlChar *)"function", NULL);
+	xmlNewProp (funcn,
+	            (xmlChar *)"name",
+	            (xmlChar *)cpg_object_get_id (CPG_OBJECT (func)));
+
+	xmlAddChild (funcs, funcn);
+
+	/* Create expression element */
+	CpgExpression *expression = cpg_function_get_expression (func);
+
+	if (expression)
+	{
+		xmlNodePtr exprn = xmlNewDocNode (doc, NULL, (xmlChar *)"expression", NULL);
+		xmlNodePtr text = xmlNewDocText (doc,
+		                                 (xmlChar *)cpg_expression_get_as_string (expression));
+
+		xmlAddChild (exprn, text);
+		xmlAddChild (funcn, exprn);
+	}
+
+	/* Create argument elements */
+	GSList *args = cpg_function_get_arguments (func);
+	GSList *argitem;
+
+	for (argitem = args; argitem; argitem = g_slist_next (argitem))
+	{
+		CpgProperty *prop = (CpgProperty *)argitem->data;
+
+		xmlNodePtr argn = xmlNewDocNode (doc, NULL, (xmlChar *)"argument", NULL);
+		xmlNodePtr text = xmlNewDocText (doc,
+		                                 (xmlChar *)cpg_property_get_name (prop));
+
+		xmlAddChild (argn, text);
+		xmlAddChild (funcn, argn);
+	}
+}
+
+static void
+write_function_polynomial (CpgNetwork            *network,
+                           xmlDocPtr              doc,
+                           CpgFunctionPolynomial *func,
+                           xmlNodePtr             funcs)
+{
+	xmlNodePtr funcn = xmlNewDocNode (doc, NULL, (xmlChar *)"polynomial", NULL);
+	xmlNewProp (funcn,
+	            (xmlChar *)"name",
+	            (xmlChar *)cpg_object_get_id (CPG_OBJECT (func)));
+
+	xmlAddChild (funcs, funcn);
+
+	/* Create pieces */
+	GSList *pieces = cpg_function_polynomial_get_pieces (func);
+
+	while (pieces)
+	{
+		CpgFunctionPolynomialPiece *piece = (CpgFunctionPolynomialPiece *)pieces->data;
+
+		gchar beginPtr[G_ASCII_DTOSTR_BUF_SIZE];
+		gchar endPtr[G_ASCII_DTOSTR_BUF_SIZE];
+
+
+		g_snprintf (beginPtr,
+		            G_ASCII_DTOSTR_BUF_SIZE,
+		            "%g",
+		            cpg_function_polynomial_piece_get_begin (piece));
+
+		g_snprintf (endPtr,
+		            G_ASCII_DTOSTR_BUF_SIZE,
+		            "%g",
+		            cpg_function_polynomial_piece_get_end (piece));
+
+		xmlNodePtr piecen = xmlNewDocNode (doc, NULL, (xmlChar *)"piece", NULL);
+		xmlNewProp (piecen, (xmlChar *)"begin", (xmlChar *)beginPtr);
+		xmlNewProp (piecen, (xmlChar *)"end", (xmlChar *)endPtr);
+
+		GString *str = g_string_new ("");
+		guint num;
+		guint i;
+		gdouble *coefficients = cpg_function_polynomial_piece_get_coefficients (piece,
+		                                                                        &num);
+
+		for (i = 0; i < num; ++i)
+		{
+			gchar coefPtr[G_ASCII_DTOSTR_BUF_SIZE];
+
+			if (i != 0)
+			{
+				g_string_append (str, ", ");
+			}
+
+			g_snprintf (coefPtr, G_ASCII_DTOSTR_BUF_SIZE, "%g", coefficients[i]);
+			g_string_append (str, coefPtr);
+		}
+
+		xmlNodePtr text = xmlNewDocText (doc,
+		                                 (xmlChar *)str->str);
+
+		g_string_free (str, TRUE);
+
+		xmlAddChild (piecen, text);
+		xmlAddChild (funcn, piecen);
+
+		pieces = g_slist_next (pieces);
+	}
+}
+
+static void
 write_functions (CpgNetwork *network,
                  xmlDocPtr   doc,
                  xmlNodePtr  nnetwork)
@@ -197,40 +312,13 @@ write_functions (CpgNetwork *network,
 	{
 		CpgFunction *func = CPG_FUNCTION (item->data);
 
-		xmlNodePtr funcn = xmlNewDocNode (doc, NULL, (xmlChar *)"function", NULL);
-		xmlNewProp (funcn,
-		            (xmlChar *)"name",
-		            (xmlChar *)cpg_object_get_id (CPG_OBJECT (func)));
-
-		xmlAddChild (funcs, funcn);
-
-		/* Create expression element */
-		CpgExpression *expression = cpg_function_get_expression (func);
-
-		if (expression)
+		if (CPG_IS_FUNCTION_POLYNOMIAL (func))
 		{
-			xmlNodePtr exprn = xmlNewDocNode (doc, NULL, (xmlChar *)"expression", NULL);
-			xmlNodePtr text = xmlNewDocText (doc,
-			                                 (xmlChar *)cpg_expression_get_as_string (expression));
-
-			xmlAddChild (exprn, text);
-			xmlAddChild (funcn, exprn);
+			write_function_polynomial (network, doc, CPG_FUNCTION_POLYNOMIAL (func), funcs);
 		}
-
-		/* Create argument elements */
-		GSList *args = cpg_function_get_arguments (func);
-		GSList *argitem;
-
-		for (argitem = args; argitem; argitem = g_slist_next (argitem))
+		else
 		{
-			CpgProperty *prop = (CpgProperty *)argitem->data;
-
-			xmlNodePtr argn = xmlNewDocNode (doc, NULL, (xmlChar *)"argument", NULL);
-			xmlNodePtr text = xmlNewDocText (doc,
-			                                 (xmlChar *)cpg_property_get_name (prop));
-
-			xmlAddChild (argn, text);
-			xmlAddChild (funcn, argn);
+			write_function (network, doc, func, funcs);
 		}
 	}
 }

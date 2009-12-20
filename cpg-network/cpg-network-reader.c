@@ -10,6 +10,7 @@
 
 #include "cpg-network.h"
 #include "cpg-debug.h"
+#include "cpg-function-polynomial.h"
 
 typedef gboolean (*XPathResultFunc)(xmlDocPtr doc, GList *nodes, gpointer data);
 
@@ -418,6 +419,161 @@ parse_function (xmlDocPtr   doc,
 }
 
 static gboolean
+parse_polynomial_pieces (xmlDocPtr              doc,
+                         GList                 *nodes,
+                         CpgFunctionPolynomial *function)
+{
+	GList *item;
+
+	for (item = nodes; item; item = g_list_next (item))
+	{
+		xmlNode *node = (xmlNode *)item->data;
+
+		xmlChar *beginPtr = xmlGetProp (node, (xmlChar *)"begin");
+
+		if (!beginPtr)
+		{
+			cpg_debug_error ("Piece does not define a begin");
+			return FALSE;
+		}
+		
+		xmlChar *endPtr = xmlGetProp (node, (xmlChar *)"end");
+
+		if (!endPtr)
+		{
+			cpg_debug_error ("Piece does not define an end");
+			xmlFree (beginPtr);
+			return FALSE;
+		}
+
+		gdouble begin = g_ascii_strtod ((gchar const *)beginPtr, NULL);
+		gdouble end = g_ascii_strtod ((gchar const *)endPtr, NULL);
+
+		xmlFree (beginPtr);
+		xmlFree (endPtr);
+
+		if (begin >= end)
+		{
+			cpg_debug_error ("Begin of piece should be smaller than end");
+			return FALSE;
+		}
+
+		if (!(node->children && node->children->type == XML_TEXT_NODE))
+		{
+			cpg_debug_error ("No coefficients are specified for polynomial piece");
+			return FALSE;
+		}
+
+		gchar const *coefs = (gchar const *)node->children->content;
+		gchar **ptrs = g_strsplit_set (coefs, ", ", -1);
+
+		if (!ptrs || !*ptrs)
+		{
+			cpg_debug_error ("No coefficients are specified for polynomial piece");
+			g_strfreev (ptrs);
+
+			return FALSE;
+		}
+
+		guint num = g_strv_length (ptrs);
+		guint num_coefficients = 0;
+		gdouble *coefficients = g_new (gdouble, num);
+		guint i;
+
+		for (i = 0; i < num; ++i)
+		{
+			if (!*ptrs[i])
+			{
+				continue;
+			}
+
+			coefficients[num_coefficients++] = g_ascii_strtod (ptrs[i], NULL);
+		}
+
+		g_strfreev (ptrs);
+
+		cpg_function_polynomial_add (function,
+		                             begin,
+		                             end,
+		                             coefficients,
+		                             num_coefficients);
+
+		g_free (coefficients);
+	}
+
+	return TRUE;
+}
+
+static gboolean
+parse_polynomial (xmlDocPtr   doc,
+                  xmlNodePtr  node,
+                  ParseInfo  *info)
+{
+	xmlChar *name = xmlGetProp (node, (xmlChar *)"name");
+	
+	if (!name)
+	{
+		cpg_debug_error ("Function does not have a name");
+		
+		if (info->error)
+		{
+			g_set_error (info->error,
+			             CPG_NETWORK_LOAD_ERROR,
+			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
+			             "One of the functions does not have a name");
+		}
+
+		return FALSE;
+	}
+
+	if (cpg_network_get_function (info->network, (gchar const *)name))
+	{
+		cpg_debug_error ("Function is already defined");
+		xmlFree (name);
+		
+		if (info->error)
+		{
+			g_set_error (info->error,
+			             CPG_NETWORK_LOAD_ERROR,
+			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
+			             "One of the functions is already defined");
+		}
+
+		return FALSE;
+	}
+
+	CpgFunctionPolynomial *function = cpg_function_polynomial_new ((gchar const *)name);
+	xmlFree (name);
+
+	if (!xml_xpath (node->doc,
+	                node,
+	                "piece",
+	                XML_ELEMENT_NODE,
+	                (XPathResultFunc)parse_polynomial_pieces,
+	                function))
+	{
+		cpg_debug_error ("Failed to parse polynomial pieces: %s",
+		                 cpg_object_get_id (CPG_OBJECT (function)));
+		g_object_unref (function);
+
+		if (info->error)
+		{
+			g_set_error (info->error,
+			             CPG_NETWORK_LOAD_ERROR,
+			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
+			             "Failed to parse polynomial pieces");
+		}
+
+		return FALSE;
+	}
+
+	cpg_network_add_function (info->network, CPG_FUNCTION (function));
+	g_object_unref (function);
+
+	return TRUE;
+}
+
+static gboolean
 parse_actions (xmlDocPtr doc,
                GList     *nodes,
                ParseInfo *info)
@@ -628,6 +784,10 @@ parse_network (xmlDocPtr   doc,
 		{
 			ret = parse_function (doc, node, info);
 		}
+		else if (g_strcmp0 ((gchar const *)node->name, "polynomial") == 0)
+		{
+			ret = parse_polynomial (doc, node, info);
+		}
 		else
 		{
 			cpg_debug_error ("Unknown element: %s", node->name);
@@ -717,7 +877,7 @@ reader_xml (CpgNetwork  *network,
 	               parse_objects (doc, "/cpg/network/relay", &info) &&
 	               parse_objects (doc, "/cpg/network/link", &info) &&
 	               parse_objects (doc, "/cpg/network/globals", &info) &&
-	               parse_objects (doc, "/cpg/network/functions/function", &info);
+	               parse_objects (doc, "/cpg/network/functions/function | /cpg/network/functions/polynomial", &info);
 
 	xmlFreeDoc (doc);
 	

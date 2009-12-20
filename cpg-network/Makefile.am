@@ -21,7 +21,8 @@ COMMON_SOURCES = 		\
 	cpg-network-writer.c \
 	cpg-compile-error.c \
 	cpg-function.c \
-	cpg-compile-context.c
+	cpg-compile-context.c \
+	cpg-function-polynomial.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
@@ -45,7 +46,8 @@ INST_H_FILES = \
 	cpg-compile-error.h \
 	cpg-math.h \
 	cpg-function.h \
-	cpg-compile-context.h
+	cpg-compile-context.h \
+	cpg-function-polynomial.h
 
 lib_LTLIBRARIES = libcpg-network-1.0.la
 
