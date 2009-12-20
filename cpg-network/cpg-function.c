@@ -415,7 +415,9 @@ cpg_function_add_argument (CpgFunction         *function,
 		property = cpg_object_add_property (CPG_OBJECT (function),
 		                                    argument->name, "0", FALSE);
 	}
-	else if (g_list_find (function->priv->arguments, property) != NULL)
+	else if (g_list_find_custom (function->priv->arguments,
+	                             argument,
+	                             (GCompareFunc)find_argument) != NULL)
 	{
 		return;
 	}
@@ -446,6 +448,23 @@ cpg_function_add_argument (CpgFunction         *function,
 	cpg_object_taint (CPG_OBJECT (function));
 }
 
+static gint
+find_argument (CpgFunctionArgument *a1,
+               CpgFunctionArgument *a2)
+{
+	return g_strcmp0 (a1->name, a2->name);
+}
+
+/**
+ * cpg_function_add_argument:
+ * @function: A #CpgFunction
+ * @argument: A #CpgFunctionArgument
+ * 
+ * Add a function argument. A proxy property for the argument will be
+ * automatically created if it does not exist yet. If the argument already
+ * exists it will not be added.
+ *
+ **/
 void
 cpg_function_remove_argument (CpgFunction         *function,
                               CpgFunctionArgument *argument)
