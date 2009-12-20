@@ -319,7 +319,19 @@ parse_function_arguments (xmlDocPtr    doc,
 			continue;
 		}
 
-		cpg_function_add_argument (function, name);
+		gboolean optional = attribute_true (node, "optional");
+		xmlChar *def = xmlGetProp (node, (xmlChar *)"default");
+		gdouble default_value = 0;
+
+		if (def)
+		{
+			default_value = g_ascii_strtod ((gchar const *)def, NULL);
+			xmlFree (def);
+		}
+
+		CpgFunctionArgument *argument = cpg_function_argument_new (name, optional, default_value);
+		cpg_function_add_argument (function, argument);
+		cpg_ref_counted_unref (argument);
 	}
 
 	return TRUE;
@@ -386,7 +398,7 @@ parse_function (xmlDocPtr   doc,
 		return FALSE;
 	}
 
-	CpgFunction *function = cpg_function_new ((gchar const *)name, expression, NULL);
+	CpgFunction *function = cpg_function_new ((gchar const *)name, expression);
 	g_free (expression);
 	xmlFree (name);
 

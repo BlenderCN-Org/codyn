@@ -207,18 +207,31 @@ write_function (CpgNetwork  *network,
 	}
 
 	/* Create argument elements */
-	GSList *args = cpg_function_get_arguments (func);
-	GSList *argitem;
+	GList *args = cpg_function_get_arguments (func);
+	GList *argitem;
 
-	for (argitem = args; argitem; argitem = g_slist_next (argitem))
+	for (argitem = args; argitem; argitem = g_list_next (argitem))
 	{
-		CpgProperty *prop = (CpgProperty *)argitem->data;
+		CpgFunctionArgument *argument = (CpgFunctionArgument *)argitem->data;
 
 		xmlNodePtr argn = xmlNewDocNode (doc, NULL, (xmlChar *)"argument", NULL);
 		xmlNodePtr text = xmlNewDocText (doc,
-		                                 (xmlChar *)cpg_property_get_name (prop));
+		                                 (xmlChar *)cpg_function_argument_get_name (argument));
 
 		xmlAddChild (argn, text);
+
+		if (cpg_function_argument_get_optional (argument))
+		{
+			gchar defPtr[G_ASCII_DTOSTR_BUF_SIZE];
+
+			xmlNewProp (argn, (xmlChar *)"optional", (xmlChar *)"yes");
+
+			g_ascii_dtostr (defPtr,
+			                G_ASCII_DTOSTR_BUF_SIZE,
+			                cpg_function_argument_get_default_value (argument));
+			xmlNewProp (argn, (xmlChar *)"default", (xmlChar *)defPtr);
+		}
+
 		xmlAddChild (funcn, argn);
 	}
 }

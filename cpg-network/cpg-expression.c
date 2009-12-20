@@ -125,7 +125,8 @@ cpg_instruction_copy (CpgInstruction *instruction)
 		case CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION:
 		{
 			CpgInstructionCustomFunction *function = (CpgInstructionCustomFunction *)instruction;
-			return cpg_instruction_custom_function_new (function->function);
+			return cpg_instruction_custom_function_new (function->function,
+			                                            function->arguments);
 		}
 		break;
 		default:
@@ -240,12 +241,14 @@ cpg_instruction_property_new (CpgProperty           *property,
 }
 
 CpgInstruction *
-cpg_instruction_custom_function_new (CpgFunction *function)
+cpg_instruction_custom_function_new (CpgFunction *function,
+                                     gint         arguments)
 {
 	CpgInstructionCustomFunction *res = instruction_new (CpgInstructionCustomFunction);
 
 	res->parent.type = CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION;
 	res->function = g_object_ref (function);
+	res->arguments = arguments;
 
 	return (CpgInstruction *)res;
 }
@@ -429,6 +432,7 @@ parse_function (CpgExpression *expression,
 	                                                             name);
 	guint fid = 0;
 	gint arguments = 0;
+	gint n_optional = 0;
 
 	/* Try builtin function */
 	if (function == NULL)
@@ -445,6 +449,7 @@ parse_function (CpgExpression *expression,
 	}
 	else
 	{
+		n_optional = (gint)cpg_function_get_n_optional (function);
 		arguments = (gint)cpg_function_get_n_arguments (function);
 	}
 	
@@ -509,7 +514,8 @@ parse_function (CpgExpression *expression,
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 	}
 	
-	if (arguments != -1 && numargs != arguments)
+	if ((function != NULL && (numargs > arguments || numargs < arguments - n_optional)) || 
+	    (function == NULL && arguments != -1 && numargs != arguments))
 	{
 		return parser_failed (context,
 		                      CPG_COMPILE_ERROR_MAXARG,
@@ -518,7 +524,7 @@ parse_function (CpgExpression *expression,
 		                      arguments);
 	}
 	
-	if (arguments == -1)
+	if (arguments == -1 || n_optional > 0)
 	{
 		instructions_push (expression, cpg_instruction_number_new ((gdouble)numargs));
 	}
@@ -534,7 +540,8 @@ parse_function (CpgExpression *expression,
 	}
 	else
 	{
-		instruction = cpg_instruction_custom_function_new (function);
+		instruction = cpg_instruction_custom_function_new (function,
+		                                                   numargs);
 	}
 
 	instructions_push (expression, instruction);
@@ -1046,8 +1053,7 @@ validate_stack (CpgExpression *expression)
 				
 				if (stack < 0)
 					return 0;
-				
-				// TODO: add number of return values to function instruction
+
 				++stack;
 			}
 			break;
@@ -1063,7 +1069,13 @@ validate_stack (CpgExpression *expression)
 			{
 				CpgInstructionCustomFunction *i = (CpgInstructionCustomFunction *)inst;
 
-				stack -= cpg_function_get_n_arguments (i->function);
+				stack -= i->arguments + (cpg_function_get_n_optional (i->function) > 0 ? 1 : 0);
+
+				if (stack < 0)
+				{
+					return 0;
+				}
+
 				++stack;
 			}
 			break;

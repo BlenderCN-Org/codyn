@@ -56,6 +56,8 @@ typedef struct
 	CpgInstruction parent;
 	
 	struct _CpgFunction *function;
+
+	gint arguments;
 } CpgInstructionCustomFunction;
 
 typedef struct
@@ -115,7 +117,8 @@ CpgInstruction   *cpg_instruction_function_new 		(guint         id,
 													 gint          arguments,
 													 gint          vargs);
 
-CpgInstruction   *cpg_instruction_custom_function_new (struct _CpgFunction *function);
+CpgInstruction   *cpg_instruction_custom_function_new (struct _CpgFunction *function,
+													   gint                 arguments);
 
 CpgInstruction   *cpg_instruction_number_new 		(gdouble value);
 CpgInstruction   *cpg_instruction_operator_new 		(guint         id,
