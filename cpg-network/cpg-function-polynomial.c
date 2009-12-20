@@ -30,6 +30,21 @@ cpg_function_polynomial_piece_free (CpgFunctionPolynomialPiece *piece)
 	g_slice_free (CpgFunctionPolynomialPiece, piece);
 }
 
+GType
+cpg_function_polynomial_piece_get_type (void)
+{
+	static GType type_id = 0;
+	
+	if (G_UNLIKELY (type_id == 0))
+	{
+		type_id = g_boxed_type_register_static ("CpgFunctionPolynomialPiece",
+		                                        cpg_ref_counted_ref,
+		                                        cpg_ref_counted_unref);
+	}
+	
+	return type_id;
+}
+
 static CpgFunctionPolynomialPiece *
 cpg_function_polynomial_piece_new (gdouble  begin,
                                    gdouble  end,

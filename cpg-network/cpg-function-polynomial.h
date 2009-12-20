@@ -31,6 +31,8 @@ struct _CpgFunctionPolynomialClass {
 
 GType cpg_function_polynomial_get_type (void) G_GNUC_CONST;
 
+GType cpg_function_polynomial_piece_get_type (void);
+
 CpgFunctionPolynomial *
 			 cpg_function_polynomial_new 			(gchar const           *name);
 
