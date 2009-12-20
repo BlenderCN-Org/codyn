@@ -88,9 +88,9 @@ evaluate_polynomial (CpgFunctionPolynomialPiece *polynomial,
 {
 	gdouble ret = 0;
 	gdouble power = 1;
-	guint i;
+	gint i;
 
-	for (i = 0; i < polynomial->num_coefficients; ++i)
+	for (i = (gint)polynomial->num_coefficients - 1; i >= 0; --i)
 	{
 		ret += polynomial->coefficients[i] * power;
 		power *= t;
@@ -117,7 +117,8 @@ cpg_function_polynomial_evaluate_impl (CpgFunction *function)
 
 		if (val >= piece->begin && val < piece->end)
 		{
-			ret += evaluate_polynomial (piece, val);
+			double norm = (val - piece->begin) / (piece->end - piece->begin);
+			ret += evaluate_polynomial (piece, norm);
 			++num;
 
 			found = TRUE;
