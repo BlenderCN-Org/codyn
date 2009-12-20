@@ -247,15 +247,14 @@ write_function_polynomial (CpgNetwork            *network,
 		gchar endPtr[G_ASCII_DTOSTR_BUF_SIZE];
 
 
-		g_snprintf (beginPtr,
-		            G_ASCII_DTOSTR_BUF_SIZE,
-		            "%g",
-		            cpg_function_polynomial_piece_get_begin (piece));
+		
+		g_ascii_dtostr (beginPtr,
+		                G_ASCII_DTOSTR_BUF_SIZE,
+		                cpg_function_polynomial_piece_get_begin (piece));
 
-		g_snprintf (endPtr,
-		            G_ASCII_DTOSTR_BUF_SIZE,
-		            "%g",
-		            cpg_function_polynomial_piece_get_end (piece));
+		g_ascii_dtostr (endPtr,
+		                G_ASCII_DTOSTR_BUF_SIZE,
+		                cpg_function_polynomial_piece_get_end (piece));
 
 		xmlNodePtr piecen = xmlNewDocNode (doc, NULL, (xmlChar *)"piece", NULL);
 		xmlNewProp (piecen, (xmlChar *)"begin", (xmlChar *)beginPtr);
@@ -276,7 +275,7 @@ write_function_polynomial (CpgNetwork            *network,
 				g_string_append (str, ", ");
 			}
 
-			g_snprintf (coefPtr, G_ASCII_DTOSTR_BUF_SIZE, "%g", coefficients[i]);
+			g_ascii_dtostr (coefPtr, G_ASCII_DTOSTR_BUF_SIZE, coefficients[i]);
 			g_string_append (str, coefPtr);
 		}
 
