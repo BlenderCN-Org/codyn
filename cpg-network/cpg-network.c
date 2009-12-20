@@ -428,11 +428,15 @@ unregister_object (CpgNetwork *network,
 	g_signal_handlers_disconnect_by_func (object, 
 	                                      G_CALLBACK (cpg_network_taint), 
 	                                      network);
-	g_signal_handlers_disconnect_by_func (object, 
-	                                      G_CALLBACK (update_object_id), 
-	                                      network);
 
-	g_hash_table_remove (network->priv->object_map, cpg_object_get_id (object));
+	if (!CPG_IS_FUNCTION (object))
+	{
+		g_signal_handlers_disconnect_by_func (object, 
+			                                  G_CALLBACK (update_object_id), 
+			                                  network);
+
+		g_hash_table_remove (network->priv->object_map, cpg_object_get_id (object));
+	}
 }
 
 static void
@@ -444,12 +448,15 @@ register_object (CpgNetwork *network,
 	                          G_CALLBACK (cpg_network_taint), 
 	                          network);
 
-	g_signal_connect (object, 
-	                  "notify::id", 
-	                  G_CALLBACK (update_object_id), 
-	                  network);
+	if (!CPG_IS_FUNCTION (object))
+	{
+		g_signal_connect (object, 
+			              "notify::id", 
+			              G_CALLBACK (update_object_id), 
+			              network);
 
-	register_id (network, object);
+		register_id (network, object);
+	}
 }
 
 static void
@@ -1495,6 +1502,7 @@ cpg_network_add_function (CpgNetwork  *network,
 	network->priv->functions = g_slist_append (network->priv->functions,
 	                                           g_object_ref (function));
 
+	register_object (network, CPG_OBJECT (function));
 	set_compiled (network, FALSE);
 }
 
@@ -1511,6 +1519,7 @@ cpg_network_remove_function (CpgNetwork  *network,
 
 	if (item)
 	{
+		unregister_object (network, CPG_OBJECT (function));
 		g_object_unref (item->data);
 		network->priv->functions = g_slist_delete_link (network->priv->functions, item);
 	}
