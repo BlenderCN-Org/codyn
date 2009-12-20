@@ -233,7 +233,7 @@ cpg_function_execute_impl (CpgFunction *function, CpgStack *stack)
 	}
 
 	/* Set defaults for optional arguments */
-	item = g_list_next (from);
+	item = from ? g_list_next (from) : function->priv->arguments;
 	while (item)
 	{
 		CpgFunctionArgument *argument = (CpgFunctionArgument *)item->data;
