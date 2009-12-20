@@ -22,6 +22,7 @@ typedef struct _CpgInstruction 		CpgInstruction;
  * @CPG_INSTRUCTION_TYPE_NUMBER: number
  * @CPG_INSTRUCTION_TYPE_OPERATOR: operator
  * @CPG_INSTRUCTION_TYPE_PROPERTY: property 
+ * @CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION: custom function 
  *
  * Enum used to indicate instruction type
  *
