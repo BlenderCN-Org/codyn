@@ -36,15 +36,17 @@ GType cpg_function_polynomial_piece_get_type (void);
 CpgFunctionPolynomial *
 			 cpg_function_polynomial_new 			(gchar const           *name);
 
-void 		 cpg_function_polynomial_add 			(CpgFunctionPolynomial *function,
-													 gdouble                begin,
-													 gdouble                end,
-													 gdouble               *coefficients,
-													 guint                  num_coefficients);
+CpgFunctionPolynomialPiece *
+			 cpg_function_polynomial_piece_new		(gdouble  begin,
+													 gdouble  end,
+													 gdouble *coefficients,
+													 guint    num_coefficients);
 
-void 		 cpg_function_polynomial_remove 		(CpgFunctionPolynomial *function,
-													 gdouble                begin,
-													 gdouble                end);
+void		 cpg_function_polynomial_add 			(CpgFunctionPolynomial *function,
+													 CpgFunctionPolynomialPiece *piece);
+
+void 		 cpg_function_polynomial_remove 		(CpgFunctionPolynomial      *function,
+													 CpgFunctionPolynomialPiece *piece);
 
 void		 cpg_function_polynomial_clear			(CpgFunctionPolynomial *function);
 

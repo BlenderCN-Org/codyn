@@ -45,7 +45,7 @@ cpg_function_polynomial_piece_get_type (void)
 	return type_id;
 }
 
-static CpgFunctionPolynomialPiece *
+CpgFunctionPolynomialPiece *
 cpg_function_polynomial_piece_new (gdouble  begin,
                                    gdouble  end,
                                    gdouble *coefficients,
@@ -195,46 +195,33 @@ compare_polynomials (CpgFunctionPolynomialPiece *p1,
 }
 
 void
-cpg_function_polynomial_add (CpgFunctionPolynomial *function,
-                             gdouble                begin,
-                             gdouble                end,
-                             gdouble               *coefficients,
-                             guint                  num_coefficients)
+cpg_function_polynomial_add (CpgFunctionPolynomial      *function,
+                             CpgFunctionPolynomialPiece *piece)
 {
 	g_return_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function));
-	g_return_if_fail (coefficients != NULL);
-	g_return_if_fail (num_coefficients > 0);
-	g_return_if_fail (end > begin);
-
-	CpgFunctionPolynomialPiece *pol = cpg_function_polynomial_piece_new (begin, end, coefficients, num_coefficients);
+	g_return_if_fail (piece != NULL);
 
 	function->priv->polynomials = g_slist_insert_sorted (function->priv->polynomials,
-	                                                     pol,
+	                                                     cpg_ref_counted_ref (piece),
 	                                                     (GCompareFunc)compare_polynomials);
 }
 
 void
-cpg_function_polynomial_remove (CpgFunctionPolynomial *function,
-                                gdouble                begin,
-                                gdouble                end)
+cpg_function_polynomial_remove (CpgFunctionPolynomial      *function,
+                                CpgFunctionPolynomialPiece *piece)
 {
 	GSList *item;
 
 	g_return_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function));
-	g_return_if_fail (end > begin);
+	g_return_if_fail (piece != NULL);
 
-	for (item = function->priv->polynomials; item; item = g_slist_next (item))
+	item = g_slist_find (function->priv->polynomials, piece);
+
+	if (item)
 	{
-		CpgFunctionPolynomialPiece *pol = (CpgFunctionPolynomialPiece *)item->data;
-
-		if (pol->begin == begin && pol->end == end)
-		{
-			cpg_ref_counted_unref (pol);
-
-			function->priv->polynomials = g_slist_delete_link (function->priv->polynomials,
-			                                                   item);
-			break;
-		}
+		function->priv->polynomials = g_slist_delete_link (function->priv->polynomials,
+		                                                   item);
+		cpg_ref_counted_unref (piece);
 	}
 }
 
