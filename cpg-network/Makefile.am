@@ -75,3 +75,5 @@ EXTRA_DIST = \
 	$(NOINST_H_FILES) \
 	cpg-enum-types.c.template \
 	cpg-enum-types.h.template
+
+-include $(top_srcdir)/git.mk

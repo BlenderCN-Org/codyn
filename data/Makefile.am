@@ -9,3 +9,5 @@ library_DATA = \
 EXTRA_DIST = \
 	$(dtd_DATA) \
 	$(library_DATA)
+
+-include $(top_srcdir)/git.mk

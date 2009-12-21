@@ -27,3 +27,5 @@ template_SOURCES = \
 	template.c
 
 EXTRA_DIST = template.cpg
+
+-include $(top_srcdir)/git.mk
