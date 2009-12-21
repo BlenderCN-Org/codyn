@@ -11,6 +11,7 @@
 #include "cpg-debug.h"
 #include "cpg-network-reader.h"
 #include "cpg-network-writer.h"
+#include "cpg-integrator.h"
 
 /**
  * SECTION:cpg-network
@@ -72,6 +73,8 @@ struct _CpgNetworkPrivate
 	GHashTable *templates;
 
 	GSList *functions;
+
+	CpgIntegrator *integrator;
 };
 
 enum
@@ -314,7 +317,7 @@ cpg_network_new ()
 
 static void
 add_state (CpgNetwork *network, 
-		  gpointer    state)
+           gpointer    state)
 {
 	network->priv->states = g_slist_append (network->priv->states, 
 	                                        g_object_ref (state));
@@ -516,9 +519,13 @@ cpg_network_add_object (CpgNetwork  *network,
 	register_object (network, object);
 
 	if (CPG_IS_LINK (object))
+	{
 		add_link (network, object);
+	}
 	else if (CPG_IS_STATE (object) || CPG_IS_RELAY (object))
+	{
 		add_state (network, object);
+	}
 	
 	set_compiled (network, FALSE);
 }
@@ -647,6 +654,8 @@ gboolean
 cpg_network_compile (CpgNetwork      *network,
                      CpgCompileError *error)
 {
+	gboolean ret = TRUE;
+
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	
 	set_compiled (network, FALSE);
@@ -658,35 +667,43 @@ cpg_network_compile (CpgNetwork      *network,
 	/* Compile functions */
 	if (!cpg_network_compile_each (network, context, error, network->priv->functions))
 	{
+		/* Functions */
 		cpg_ref_counted_unref (context);
-		return FALSE;
+		ret = FALSE;
 	}
-
-	/* Compile states */
-	if (!cpg_network_compile_each (network, context, error, network->priv->states))
+	else if (!cpg_network_compile_each (network, context, error, network->priv->states))
 	{
+		/* States */
 		cpg_ref_counted_unref (context);
-		return FALSE;
+		ret = FALSE;
 	}
-
-	/* Compile links */
-	if (!cpg_network_compile_each (network, context, error, network->priv->links))
+	else if (!cpg_network_compile_each (network, context, error, network->priv->links))
 	{
+		/* Links */
 		cpg_ref_counted_unref (context);
-		return FALSE;
+		ret = FALSE;
 	}
-
-	/* Compile globals */
-	if (!cpg_object_compile (network->priv->globals, context, error))
+	else if (!cpg_object_compile (network->priv->globals, context, error))
 	{
+		/* Globals */
 		cpg_ref_counted_unref (context);
-		return FALSE;
+		ret = FALSE;
 	}
 
-	set_compiled (network, TRUE);
-	cpg_network_reset (network);
+	if (!ret)
+	{
+		if (error)
+		{
+			g_signal_emit (network, network_signals[COMPILE_ERROR], 0, error);
+		}
+	}
+	else
+	{
+		set_compiled (network, TRUE);
+		cpg_network_reset (network);
+	}
 
-	return TRUE;
+	return ret;
 }
 
 /**
@@ -929,41 +946,10 @@ cpg_network_step (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (timestep > 0);
 
-	if (!network->priv->compiled)
-	{
-		CpgCompileError *error = cpg_compile_error_new ();
-		
-		if (!cpg_network_compile (network, error))
-		{
-			g_signal_emit (network, network_signals[COMPILE_ERROR], 0, error);
-			cpg_ref_counted_unref (error);
-			
-			return;
-		}
-		
-		cpg_ref_counted_unref (error);
-	}
-
-	g_signal_emit (network, network_signals[UPDATE], 0, timestep);
-	reset_cache (network);
-
-	network->priv->timestep = timestep;
-	g_object_notify (G_OBJECT (network), "timestep");
-
-	cpg_property_set_value (network->priv->timestepprop, timestep);
-	cpg_property_set_value (network->priv->timeprop, network->priv->time);
-	
-	cpg_debug_evaluate ("Simulation step");
-	
-	// first evaluate all the relays
-	simulation_evaluate_relays (network);
-	
-	// then evaluate the network
-	simulation_evaluate_states (network);
-	simulation_update (network);
-	
-	network->priv->time += timestep;
-	cpg_property_set_value (network->priv->timeprop, network->priv->time);
+	/* FIXME: g_signal_emit (network, network_signals[UPDATE], 0, timestep); */
+	cpg_integrator_step (network->priv->integrator,
+	                     cpg_integrator_get_time (network->priv->integrator),
+	                     timestep);
 }
 
 /**
@@ -986,35 +972,12 @@ cpg_network_run (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (from < to);
 	g_return_if_fail (timestep > 0);
-	g_return_if_fail (to - (from + timestep) < to - from);
 
-	if (!network->priv->compiled)
-	{
-		CpgCompileError *error = cpg_compile_error_new ();
-		
-		if (!cpg_network_compile (network, error))
-		{
-			g_signal_emit (network, network_signals[COMPILE_ERROR], 0, error);
-			cpg_ref_counted_unref (error);
-			
-			return;
-		}
-		
-		cpg_ref_counted_unref (error);
-	}
+	cpg_integrator_run (network->priv->integrator, from, timestep, to);
 
-	network->priv->time = from;
-	g_object_notify (G_OBJECT (network), "time");
-	
-	cpg_property_set_value (network->priv->timeprop, network->priv->time);
-	
-	if (network->priv->time >= to - 0.5 * timestep)
-		return;
-	
-	while (network->priv->time < to - 0.5 * timestep)
-		cpg_network_step (network, timestep);
-	
+	/* TODO: call update somewhere ?
 	g_signal_emit (network, network_signals[UPDATE], 0, timestep);
+	*/
 }
 
 /**
@@ -1593,3 +1556,10 @@ cpg_network_get_function (CpgNetwork  *network,
 	return NULL;
 }
 
+gboolean
+cpg_network_is_compiled (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+
+	return network->priv->compiled;
+}
