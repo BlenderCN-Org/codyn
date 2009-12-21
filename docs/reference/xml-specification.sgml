@@ -198,11 +198,9 @@ and evaluate piecewise polynomial functions.
 <programlisting>
 <![CDATA[<functions>
   <polynomial name="f1">
-    <piece begin="-0.75" end="-0.25">4, 6, 0, 1</piece>
     <piece begin="-0.25" end="0.25">-4, 6, 0, -1</piece>
     <piece begin="0.25" end="0.75">4, -6, 0, 1</piece>
     <piece begin="0.75" end="1.25">-4, 6, 0, -1</piece>
-    <piece begin="1.25" end="1.75">4, -6, 0, 1</piece>
   </function>
 </functions>]]>
 </programlisting>

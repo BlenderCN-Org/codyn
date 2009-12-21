@@ -8,7 +8,8 @@
  * This class provides a specialized custom user function which defines
  * and evaluates piecewise polynomials. The piece polynomials can be
  * specified in terms of the interval in which they are evaluated and
- * the polynomial coefficients.
+ * the polynomial coefficients. Note that each polynomial will be evaluated
+ * on the normalized interval 0 to 1.
  *
  * In addition, you can automatically evaluate the Nth derivative of the
  * polynomial by use of the optional second argument of the function.
@@ -275,7 +276,7 @@ cpg_function_polynomial_init (CpgFunctionPolynomial *self)
  * which calculates a piecewise polynomial. The function can be called with one
  * mandatory argument, which is the point at which to evaluate the piecewise
  * polynomial (t: [0, 1]). The second argument is optional and determines the
- * order of differentation of the polynomial.
+ * order of derivation of the polynomial (default being 0).
  *
  * Returns: A #CpgFunctionPolynomial
  *
