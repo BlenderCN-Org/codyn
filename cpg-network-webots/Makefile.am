@@ -21,3 +21,5 @@ libcpg_network_webots_1_0_include_HEADERS = $(libcpg_network_webots_headers)
 
 EXTRA_DIST = \
 	$(NOINST_H_FILES)
+
+-include $(top_srcdir)/git.mk
