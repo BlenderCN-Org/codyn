@@ -26,6 +26,8 @@ struct _CpgFunctionPolynomialPiece
 
 	gdouble *coefficients;
 	guint num_coefficients;
+
+	gdouble *normalization;
 };
 
 struct _CpgFunctionPolynomialPrivate
@@ -42,6 +44,8 @@ static void
 cpg_function_polynomial_piece_free (CpgFunctionPolynomialPiece *piece)
 {
 	g_free (piece->coefficients);
+	g_free (piece->normalization);
+
 	g_slice_free (CpgFunctionPolynomialPiece, piece);
 }
 
@@ -58,6 +62,25 @@ cpg_function_polynomial_piece_get_type (void)
 	}
 	
 	return type_id;
+}
+
+static void
+renormalize_piece (CpgFunctionPolynomialPiece *piece)
+{
+	guint i;
+	gdouble norm = piece->end - piece->begin;
+	gdouble nsum = 1;
+
+	norm = norm == 0 ? 1 : 1 / norm;
+
+	g_free (piece->normalization);
+	piece->normalization = g_new (gdouble, piece->num_coefficients);
+
+	for (i = 0; i < piece->num_coefficients; ++i)
+	{
+		piece->normalization[i] = nsum;
+		nsum *= norm;
+	}
 }
 
 /**
@@ -148,7 +171,7 @@ evaluate_polynomial (CpgFunctionPolynomialPiece *polynomial,
 		power *= t;
 	}
 
-	return ret;
+	return ret * polynomial->normalization[order];
 }
 
 static gdouble
@@ -170,7 +193,8 @@ cpg_function_polynomial_evaluate_impl (CpgFunction *function)
 
 		if (val >= piece->begin && val < piece->end)
 		{
-			double norm = (val - piece->begin) / (piece->end - piece->begin);
+			double de = (piece->end - piece->begin);
+			double norm = de != 0 ? (val - piece->begin) / de : 0;
 			ret += evaluate_polynomial (piece, norm, order);
 			++num;
 
@@ -182,7 +206,7 @@ cpg_function_polynomial_evaluate_impl (CpgFunction *function)
 		}
 	}
 
-	return ret / num;
+	return num != 0 ? ret / num : 0;
 }
 
 static void
@@ -380,6 +404,7 @@ cpg_function_polynomial_piece_set_begin (CpgFunctionPolynomialPiece *piece,
                                          gdouble                     begin)
 {
 	piece->begin = begin;
+	renormalize_piece (piece);
 }
 
 /**
@@ -410,6 +435,7 @@ cpg_function_polynomial_piece_set_end (CpgFunctionPolynomialPiece *piece,
                                        gdouble                     end)
 {
 	piece->end = end;
+	renormalize_piece (piece);
 }
 
 /**
@@ -461,4 +487,5 @@ cpg_function_polynomial_piece_set_coefficients (CpgFunctionPolynomialPiece *piec
 	}
 
 	piece->num_coefficients = num;
+	renormalize_piece (piece);
 }
