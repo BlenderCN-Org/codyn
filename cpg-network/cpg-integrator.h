@@ -67,9 +67,6 @@ void 				 cpg_integrator_evaluate		(CpgIntegrator		*integrator,
 gdouble				 cpg_integrator_get_time		(CpgIntegrator		*integrator);
 void				 cpg_integrator_reset			(CpgIntegrator		*integrator);
 
-void				 cpg_integrator_update			(CpgIntegrator		*integrator,
-													 GSList             *state);
-
 gdouble				 cpg_integrator_state_get_update	(CpgIntegratorState *state);
 CpgProperty			*cpg_integrator_state_get_property	(CpgIntegratorState *state);
 

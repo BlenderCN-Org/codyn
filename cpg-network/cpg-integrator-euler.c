@@ -45,7 +45,6 @@ cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
 		}
 	}
 
-	cpg_integrator_update (integrator, state);
 	return step;
 }
 
