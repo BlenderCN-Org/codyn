@@ -199,7 +199,7 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 	                                 g_param_spec_double ("time",
 	                                                      "Time",
 	                                                      "Time",
-	                                                      G_MINDOUBLE,
+	                                                      0.0,
 	                                                      G_MAXDOUBLE,
 	                                                      0.0,
 	                                                      G_PARAM_READABLE));
