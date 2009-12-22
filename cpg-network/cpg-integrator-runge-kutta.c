@@ -181,6 +181,14 @@ cpg_integrator_runge_kutta_init (CpgIntegratorRungeKutta *self)
 	self->priv = CPG_INTEGRATOR_RUNGE_KUTTA_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_integrator_runge_kutta_new:
+ * 
+ * Create a new Runge-Kutta, 4th order integrator.
+ *
+ * Returns: A #CpgIntegratorRungeKutta
+ *
+ **/
 CpgIntegratorRungeKutta *
 cpg_integrator_runge_kutta_new ()
 {

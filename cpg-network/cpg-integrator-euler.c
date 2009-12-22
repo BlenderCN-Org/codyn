@@ -87,6 +87,14 @@ cpg_integrator_euler_init (CpgIntegratorEuler *self)
 	//self->priv = CPG_INTEGRATOR_EULER_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_integrator_euler_new:
+ * 
+ * Create a new Euler integrator.
+ *
+ * Returns: A #CpgIntegratorEuler
+ *
+ **/
 CpgIntegratorEuler *
 cpg_integrator_euler_new (void)
 {

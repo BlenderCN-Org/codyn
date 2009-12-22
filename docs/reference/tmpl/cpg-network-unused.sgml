@@ -336,6 +336,26 @@ cpg-utils
 @CPG_INSTRUCTION_TYPE_OPERATOR: 
 @CPG_INSTRUCTION_TYPE_PROPERTY: 
 
+<!-- ##### SIGNAL CpgNetwork::update ##### -->
+<para>
+
+</para>
+
+@cpgnetwork: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG CpgNetwork:time ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG CpgNetwork:timestep ##### -->
+<para>
+
+</para>
+
+
 <!-- ##### TYPEDEF CpgSharedPointer ##### -->
 <para>
 
@@ -430,6 +450,14 @@ cpg-utils
 @property: 
 @expression: 
 @Returns: 
+
+<!-- ##### FUNCTION cpg_object_update ##### -->
+<para>
+
+</para>
+
+@object: 
+@timestep: 
 
 <!-- ##### FUNCTION cpg_property_compile ##### -->
 <para>

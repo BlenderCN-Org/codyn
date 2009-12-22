@@ -10,6 +10,8 @@ cpg_network_load_error_quark
 cpg_network_new_from_file
 cpg_network_new_from_xml
 cpg_network_new
+cpg_network_set_integrator
+cpg_network_get_integrator
 cpg_network_write_to_xml
 cpg_network_write_to_file
 cpg_network_merge
@@ -22,6 +24,7 @@ cpg_network_get_object
 cpg_network_add_object
 cpg_network_remove_object
 cpg_network_compile
+cpg_network_is_compiled
 cpg_network_taint
 cpg_network_get_states
 cpg_network_get_links
@@ -66,6 +69,40 @@ CPG_STATE_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>cpg-integrator-runge-kutta</FILE>
+CPG_INTEGRATOR_RUNGE_KUTTA_CONST
+CpgIntegratorRungeKuttaPrivate
+<TITLE>CpgIntegratorRungeKutta</TITLE>
+CpgIntegratorRungeKutta
+cpg_integrator_runge_kutta_new
+<SUBSECTION Standard>
+CPG_INTEGRATOR_RUNGE_KUTTA
+CPG_IS_INTEGRATOR_RUNGE_KUTTA
+CPG_TYPE_INTEGRATOR_RUNGE_KUTTA
+cpg_integrator_runge_kutta_get_type
+CPG_INTEGRATOR_RUNGE_KUTTA_CLASS
+CPG_IS_INTEGRATOR_RUNGE_KUTTA_CLASS
+CPG_INTEGRATOR_RUNGE_KUTTA_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>cpg-integrator-euler</FILE>
+CPG_INTEGRATOR_EULER_CONST
+CpgIntegratorEulerPrivate
+<TITLE>CpgIntegratorEuler</TITLE>
+CpgIntegratorEuler
+cpg_integrator_euler_new
+<SUBSECTION Standard>
+CPG_INTEGRATOR_EULER
+CPG_IS_INTEGRATOR_EULER
+CPG_TYPE_INTEGRATOR_EULER
+cpg_integrator_euler_get_type
+CPG_INTEGRATOR_EULER_CLASS
+CPG_IS_INTEGRATOR_EULER_CLASS
+CPG_INTEGRATOR_EULER_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>cpg-object</FILE>
 CPG_OBJECT_ERROR
 CPG_OBJECT_CONST
@@ -84,7 +121,6 @@ cpg_object_has_property
 cpg_object_remove_property
 cpg_object_get_properties
 cpg_object_reset
-cpg_object_update
 cpg_object_evaluate
 cpg_object_reset_cache
 cpg_object_taint
@@ -172,6 +208,32 @@ cpg_link_action_get_type
 CPG_LINK_CLASS
 CPG_IS_LINK_CLASS
 CPG_LINK_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>cpg-integrator</FILE>
+CPG_INTEGRATOR_CONST
+CpgIntegratorPrivate
+CpgIntegratorState
+<TITLE>CpgIntegrator</TITLE>
+CpgIntegrator
+cpg_integrator_state_get_type
+cpg_integrator_state_new
+cpg_integrator_run
+cpg_integrator_step
+cpg_integrator_evaluate
+cpg_integrator_get_time
+cpg_integrator_reset
+cpg_integrator_state_get_update
+cpg_integrator_state_get_property
+<SUBSECTION Standard>
+CPG_INTEGRATOR
+CPG_IS_INTEGRATOR
+CPG_TYPE_INTEGRATOR
+cpg_integrator_get_type
+CPG_INTEGRATOR_CLASS
+CPG_IS_INTEGRATOR_CLASS
+CPG_INTEGRATOR_GET_CLASS
 </SECTION>
 
 <SECTION>

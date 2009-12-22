@@ -1,0 +1,49 @@
+<!-- ##### SECTION Title ##### -->
+CpgIntegratorEuler
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO CPG_INTEGRATOR_EULER_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgIntegratorEulerPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgIntegratorEuler ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION cpg_integrator_euler_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+

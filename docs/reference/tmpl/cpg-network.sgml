@@ -70,25 +70,12 @@ CpgNetwork
 
 @cpgnetwork: the object which received the signal.
 
-<!-- ##### SIGNAL CpgNetwork::update ##### -->
-<para>
-
-</para>
-
-@cpgnetwork: the object which received the signal.
-@arg1: 
-
 <!-- ##### ARG CpgNetwork:compiled ##### -->
 <para>
 
 </para>
 
-<!-- ##### ARG CpgNetwork:time ##### -->
-<para>
-
-</para>
-
-<!-- ##### ARG CpgNetwork:timestep ##### -->
+<!-- ##### ARG CpgNetwork:integrator ##### -->
 <para>
 
 </para>
@@ -126,6 +113,24 @@ CpgNetwork
 
 </para>
 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_set_integrator ##### -->
+<para>
+
+</para>
+
+@network: 
+@integrator: 
+
+
+<!-- ##### FUNCTION cpg_network_get_integrator ##### -->
+<para>
+
+</para>
+
+@network: 
 @Returns: 
 
 
@@ -238,6 +243,15 @@ CpgNetwork
 
 @network: 
 @error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_is_compiled ##### -->
+<para>
+
+</para>
+
+@network: 
 @Returns: 
 
 

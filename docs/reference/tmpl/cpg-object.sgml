@@ -180,22 +180,12 @@ CpgObject
 @object: 
 
 
-<!-- ##### FUNCTION cpg_object_update ##### -->
-<para>
-
-</para>
-
-@object: 
-@timestep: 
-
-
 <!-- ##### FUNCTION cpg_object_evaluate ##### -->
 <para>
 
 </para>
 
 @object: 
-@timestep: 
 
 
 <!-- ##### FUNCTION cpg_object_reset_cache ##### -->

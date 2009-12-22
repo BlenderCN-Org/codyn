@@ -64,6 +64,15 @@ cpg_integrator_state_free (CpgIntegratorState *state)
 	g_slice_free (CpgIntegratorState, state);
 }
 
+/**
+ * cpg_integrator_state_new:
+ * @property: A #CpgProperty
+ * 
+ * Create a new integrator state.
+ *
+ * Returns: A #CpgIntegratorState
+ *
+ **/
 CpgIntegratorState *
 cpg_integrator_state_new (CpgProperty *property)
 {
@@ -338,6 +347,17 @@ reset_cache (CpgIntegrator *integrator)
 	                 NULL);
 }
 
+/**
+ * cpg_integrator_run:
+ * @integrator: A #CpgIntegrator
+ * @state: A #GSList of #CpgIntegratorState
+ * @from: The time at which to start integrating
+ * @timestep: The timestep to use for integration
+ * @to: The time until which to run the integration
+ * 
+ * Integrate the network for a certain period of time.
+ *
+ **/
 void
 cpg_integrator_run (CpgIntegrator *integrator,
                     GSList        *state,
@@ -360,6 +380,19 @@ cpg_integrator_run (CpgIntegrator *integrator,
 	}
 }
 
+/**
+ * cpg_integrator_step:
+ * @integrator: A #CpgIntegrator
+ * @state: A #GSList of #CpgIntegratorState
+ * @t: The time at which to perform the integration step
+ * @timestep: The timestep with which to perform the integration step
+ * 
+ * Perform a single integration step. Use #cpg_integrator_run if you want to
+ * run the integration for a period of time.
+ *
+ * Returns: The real time step with which the integration was performed
+ *
+ **/
 gdouble
 cpg_integrator_step (CpgIntegrator *integrator,
                      GSList        *state,
@@ -377,6 +410,15 @@ cpg_integrator_step (CpgIntegrator *integrator,
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->step (integrator, state, t, timestep);
 }
 
+/**
+ * cpg_integrator_get_network:
+ * @integrator: A #CpgIntegrator
+ * 
+ * Get the network associated with the integrator.
+ *
+ * Returns: A #CpgNetwork
+ *
+ **/
 CpgNetwork	*
 cpg_integrator_get_network (CpgIntegrator *integrator)
 {
@@ -385,6 +427,19 @@ cpg_integrator_get_network (CpgIntegrator *integrator)
 	return integrator->priv->network;
 }
 
+/**
+ * cpg_integrator_evaluate:
+ * @integrator: A #CpgIntegrator
+ * @state: A #GSList of #CpgIntegratorState
+ * @t: The time at which to evaluate the network
+ * @timestep: The timestep with which the current step is evaluating
+ * 
+ * Evaluate the system of equations comprising the network. This is a utility
+ * function for integrator implementations. Call this function to calculate
+ * all the states. After this function completes, the update values for the
+ * states can be found (@see #cpg_integrator_state_get_update)
+ *
+ **/
 void
 cpg_integrator_evaluate (CpgIntegrator *integrator,
                          GSList        *state,
@@ -421,6 +476,15 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
 	simulation_step (integrator, state);
 }
 
+/**
+ * cpg_integrator_get_time:
+ * @integrator: A #CpgIntegrator
+ * 
+ * Get the current time at which the network is being integrated.
+ *
+ * Returns: the current integration time
+ *
+ **/
 gdouble
 cpg_integrator_get_time	(CpgIntegrator *integrator)
 {
@@ -429,6 +493,13 @@ cpg_integrator_get_time	(CpgIntegrator *integrator)
 	return cpg_property_get_value (integrator->priv->property_time);
 }
 
+/**
+ * cpg_integrator_reset:
+ * @integrator: A #CpgIntegrator
+ * 
+ * Reset the integrator. This is usually called from #cpg_network_reset.
+ *
+ **/
 void
 cpg_integrator_reset (CpgIntegrator *integrator)
 {
@@ -446,18 +517,45 @@ cpg_integrator_reset (CpgIntegrator *integrator)
 	                        NULL);
 }
 
+/**
+ * cpg_integrator_state_get_update:
+ * @state: A #CpgIntegratorState
+ * 
+ * Get the update value for the state.
+ *
+ * Returns: the update value
+ *
+ **/
 gdouble
 cpg_integrator_state_get_update (CpgIntegratorState *state)
 {
 	return state->update;
 }
 
+/**
+ * cpg_integrator_state_get_property:
+ * @state: A #CpgIntegratorState
+ * 
+ * Get the #CpgProperty for the state.
+ *
+ * Returns: A #CpgProperty
+ *
+ **/
 CpgProperty	*
 cpg_integrator_state_get_property (CpgIntegratorState *state)
 {
 	return state->property;
 }
 
+/**
+ * cpg_integrator_get_id:
+ * @integrator: A #CpgIntegrator
+ * 
+ * The integrator id.
+ *
+ * Returns: the integrator id
+ *
+ **/
 gchar const	*
 cpg_integrator_get_id (CpgIntegrator *integrator)
 {
@@ -466,6 +564,15 @@ cpg_integrator_get_id (CpgIntegrator *integrator)
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->get_id (integrator);
 }
 
+/**
+ * cpg_integrator_get_name:
+ * @integrator: A #CpgIntegrator
+ * 
+ * The integrator name.
+ *
+ * Returns: the integrator name
+ *
+ **/
 gchar const *
 cpg_integrator_get_name (CpgIntegrator *integrator)
 {
