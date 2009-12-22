@@ -54,6 +54,18 @@ cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
 	return timestep;
 }
 
+static gchar const *
+cpg_integrator_euler_get_id_impl (CpgIntegrator *integrator)
+{
+	return "euler";
+}
+
+static gchar const *
+cpg_integrator_euler_get_name_impl (CpgIntegrator *integrator)
+{
+	return "Euler";
+}
+
 static void
 cpg_integrator_euler_class_init (CpgIntegratorEulerClass *klass)
 {
@@ -63,6 +75,8 @@ cpg_integrator_euler_class_init (CpgIntegratorEulerClass *klass)
 	object_class->finalize = cpg_integrator_euler_finalize;
 
 	integrator_class->step = cpg_integrator_euler_step_impl;
+	integrator_class->get_id = cpg_integrator_euler_get_id_impl;
+	integrator_class->get_name = cpg_integrator_euler_get_name_impl;
 
 	//g_type_class_add_private (object_class, sizeof(CpgIntegratorEulerPrivate));
 }

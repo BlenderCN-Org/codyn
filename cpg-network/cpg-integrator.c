@@ -182,14 +182,29 @@ cpg_integrator_constructor (GType                  type,
 	GObject *ret = G_OBJECT_CLASS (cpg_integrator_parent_class)->constructor (type,
 	                                                                          n_construct_properties,
 	                                                                          construct_properties);
-	CpgIntegrator *integrator = CPG_INTEGRATOR (ret);
-	CpgIntegratorStepFunc step_func = CPG_INTEGRATOR_GET_CLASS (integrator)->step;
 
-	if (!step_func || step_func == cpg_integrator_step_impl)
+	CpgIntegrator *integrator = CPG_INTEGRATOR (ret);
+	CpgIntegratorClass *klass = CPG_INTEGRATOR_GET_CLASS (integrator);
+	
+	if (!klass->step || klass->step == cpg_integrator_step_impl)
 	{
 		g_critical ("Subclasses of CpgIntegrator MUST implement the `step' function");
-		g_object_unref (ret);
 
+		g_object_unref (ret);
+		ret = NULL;
+	}
+	else if (!klass->get_id)
+	{
+		g_critical ("Subclasses of CpgIntegrator MUST implement the `get_id` function");
+
+		g_object_unref (ret);
+		ret = NULL;
+	}
+	else if (!klass->get_name)
+	{
+		g_critical ("Subclasses of CpgIntegrator MUST implement the `get_name` function");
+
+		g_object_unref (ret);
 		ret = NULL;
 	}
 
@@ -442,3 +457,20 @@ cpg_integrator_state_get_property (CpgIntegratorState *state)
 {
 	return state->property;
 }
+
+gchar const	*
+cpg_integrator_get_id (CpgIntegrator *integrator)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), NULL);
+
+	return CPG_INTEGRATOR_GET_CLASS (integrator)->get_id (integrator);
+}
+
+gchar const *
+cpg_integrator_get_name (CpgIntegrator *integrator)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), NULL);
+
+	return CPG_INTEGRATOR_GET_CLASS (integrator)->get_name (integrator);
+}
+
