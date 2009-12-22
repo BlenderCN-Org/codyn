@@ -335,6 +335,21 @@ write_functions (CpgNetwork *network,
 	}
 }
 
+static void
+write_config (xmlDocPtr   doc,
+              CpgNetwork *network,
+              xmlNodePtr  nnetwork)
+{
+	CpgIntegrator *integrator = cpg_network_get_integrator (network);
+
+	if (integrator != NULL)
+	{
+		xmlNewProp (nnetwork,
+		            (xmlChar *)"integrator",
+		            (xmlChar *)cpg_object_get_id (CPG_OBJECT (integrator)));
+	}
+}
+
 gchar * 
 cpg_network_writer_xml_string (CpgNetwork *network)
 {
@@ -346,31 +361,17 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	xmlNodePtr nnetwork = xmlNewDocNode (doc, NULL, (xmlChar *)"network", NULL);
 	xmlAddChild (root, nnetwork);
 
+	write_config (doc, network, nnetwork);
+
 	// Globals
-	GSList *properties = NULL;
-	CpgObject *globals = cpg_network_get_globals (network);
-	GSList *item;
-	
-	for (item = cpg_object_get_properties (globals); item; item = g_slist_next (item))
-	{
-		CpgProperty *prop = (CpgProperty *)item->data;
-		gchar const *name = cpg_property_get_name (prop);
-		
-		if (g_strcmp0 (name, "t") != 0 && g_strcmp0 (name, "dt") != 0)
-		{
-			properties = g_slist_prepend (properties, prop);
-		}
-	}
-	
+	GSList *properties = cpg_object_get_properties (cpg_network_get_globals (network));
+
 	if (properties)
 	{	
-		properties = g_slist_reverse (properties);
-
 		xmlNodePtr gbl = xmlNewDocNode (doc, NULL, (xmlChar *)"globals", NULL);
 		xmlAddChild (nnetwork, gbl);
 		
 		properties_to_xml (doc, gbl, properties, NULL);
-		g_slist_free (properties);
 	}
 
 	// Generate templates
@@ -382,7 +383,9 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 		templates = xmlNewDocNode (doc, NULL, (xmlChar *)"templates", NULL);
 		xmlAddChild (nnetwork, templates);
 	}
-	
+
+	GSList *item;
+
 	for (item = list; item; item = g_slist_next (item))
 	{
 		gchar const *name = (gchar const *)item->data;

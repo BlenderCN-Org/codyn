@@ -10,6 +10,7 @@
 
 #include "cpg-network.h"
 #include "cpg-debug.h"
+#include "cpg-integrators.h"
 #include "cpg-function-polynomial.h"
 
 typedef gboolean (*XPathResultFunc)(xmlDocPtr doc, GList *nodes, gpointer data);
@@ -823,7 +824,7 @@ parse_network (xmlDocPtr   doc,
 			break;
 		}
 	}
-	
+
 	return ret;
 }
 
@@ -852,6 +853,52 @@ parse_templates (xmlDocPtr    doc,
 	               parse_objects (doc, "/cpg/network/templates/link", &info);
 
 	return ret;
+}
+
+static gboolean
+parse_network_config (xmlDocPtr  doc,
+                      GList     *nodes,
+                      ParseInfo *info)
+{
+	if (!nodes)
+	{
+		return TRUE;
+	}
+
+	xmlNodePtr net = (xmlNodePtr)nodes->data;
+	xmlChar *it = xmlGetProp (net, (xmlChar *)"integrator");
+
+	if (it)
+	{
+		GType inttype = cpg_integrators_find ((gchar const *)it);
+
+		if (inttype != G_TYPE_INVALID)
+		{
+			CpgIntegrator *integrator = CPG_INTEGRATOR (g_object_new (inttype, NULL));
+
+			cpg_network_set_integrator (info->network, integrator);
+			g_object_unref (integrator);
+		}
+
+		xmlFree (it);
+	}
+
+	return TRUE;
+}
+
+static gboolean
+parse_config (xmlDocPtr   doc,
+              CpgNetwork  *network,
+              GError     **error)
+{
+	ParseInfo info = {network, error, TRUE};
+
+	return xml_xpath (doc,
+	                  NULL,
+	                  "/cpg/network",
+	                  XML_ELEMENT_NODE,
+	                  (XPathResultFunc)parse_network_config,
+	                  &info);
 }
 
 static gboolean
@@ -892,6 +939,11 @@ reader_xml (CpgNetwork  *network,
 	               parse_objects (doc, "/cpg/network/link", &info) &&
 	               parse_objects (doc, "/cpg/network/globals", &info) &&
 	               parse_objects (doc, "/cpg/network/functions/function | /cpg/network/functions/polynomial", &info);
+
+	if (ret)
+	{
+		ret = parse_config (doc, network, error);
+	}
 
 	xmlFreeDoc (doc);
 	
