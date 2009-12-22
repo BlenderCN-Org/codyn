@@ -622,8 +622,8 @@ _cpg_object_link (CpgObject  *object,
  * 
  * Get the properties which are acted upon by links.
  *
- * Returns: A #GSList of #CpgProperty. This list is newly allocated and needs
- *          to be freed with when g_slist_free when no longer used.
+ * Returns: A #GSList of #CpgProperty. This list is used internally and should
+ *          not be freed.
  *
  **/
 GSList *
