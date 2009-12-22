@@ -19,9 +19,9 @@ static gdouble
 cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
                                 GSList        *state,
                                 gdouble        t,
-                                gdouble        step)
+                                gdouble        timestep)
 {
-	cpg_integrator_evaluate (integrator, state, t, step);
+	cpg_integrator_evaluate (integrator, state, t, timestep);
 
 	/* Update values are now contained in state, update the values in the
 	   states */
@@ -36,7 +36,7 @@ cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
 		{
 			cpg_property_set_value (property,
 			                        cpg_property_get_value (property) +
-			                        cpg_integrator_state_get_update (st) * step);
+			                        cpg_integrator_state_get_update (st) * timestep);
 		}
 		else
 		{
@@ -45,7 +45,13 @@ cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
 		}
 	}
 
-	return step;
+	/* Chain up to emit 'step' */
+	CPG_INTEGRATOR_CLASS (cpg_integrator_euler_parent_class)->step (integrator,
+	                                                                state,
+	                                                                t,
+	                                                                timestep);
+
+	return timestep;
 }
 
 static void

@@ -3,11 +3,13 @@
 
 #define CPG_INTEGRATOR_RUNGE_KUTTA_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_RUNGE_KUTTA, CpgIntegratorRungeKuttaPrivate))
 
+#define MAX_COEFFICIENTS 4
+
 struct _CpgIntegratorRungeKuttaPrivate
 {
 	GSList *last_state;
 
-	gdouble *coefficients[4];
+	gdouble *coefficients[MAX_COEFFICIENTS];
 	guint num_coefficients;
 };
 
@@ -16,6 +18,17 @@ G_DEFINE_TYPE (CpgIntegratorRungeKutta, cpg_integrator_runge_kutta, CPG_TYPE_INT
 static void
 cpg_integrator_runge_kutta_finalize (GObject *object)
 {
+	CpgIntegratorRungeKutta *rk = CPG_INTEGRATOR_RUNGE_KUTTA (object);
+	guint i = 0;
+
+	for (i = 0; i < MAX_COEFFICIENTS; ++i)
+	{
+		if (rk->priv->coefficients[i])
+		{
+			g_free (rk->priv->coefficients[i]);
+		}
+	}
+
 	G_OBJECT_CLASS (cpg_integrator_runge_kutta_parent_class)->finalize (object);
 }
 
@@ -31,7 +44,7 @@ initialize_coefficients (CpgIntegratorRungeKutta *rk,
 	}
 
 	guint i;
-	for (i = 0; i < 4; ++i)
+	for (i = 0; i < MAX_COEFFICIENTS; ++i)
 	{
 		if (rk->priv->coefficients[i])
 		{
@@ -63,7 +76,7 @@ store_coefficients (CpgIntegratorRungeKutta *rk,
 		}
 		else if (cpg_property_get_integrated (prop))
 		{
-			if (order == 4)
+			if (order == MAX_COEFFICIENTS)
 			{
 				/* Do the final update right away */
 				cpg_property_set_value (prop, rk->priv->coefficients[0][i] + 1.0 / 6 * norm * (
@@ -83,7 +96,7 @@ store_coefficients (CpgIntegratorRungeKutta *rk,
 				                              norm * ret);
 			}
 		}
-		else if (order == 4)
+		else if (order == MAX_COEFFICIENTS)
 		{
 			cpg_property_set_value (prop, rk->priv->coefficients[0][i]);
 		}
@@ -97,7 +110,7 @@ static gdouble
 cpg_integrator_runge_kutta_step_impl (CpgIntegrator *integrator,
                                       GSList        *state,
                                       gdouble        t,
-                                      gdouble        step)
+                                      gdouble        timestep)
 {
 	CpgIntegratorRungeKutta *rk = CPG_INTEGRATOR_RUNGE_KUTTA (integrator);
 
@@ -109,23 +122,30 @@ cpg_integrator_runge_kutta_step_impl (CpgIntegrator *integrator,
 
 	/* K_1 = f(t_n, y_n) */
 	store_coefficients (rk, state, 0, 0);
-	cpg_integrator_evaluate (integrator, state, t, step);
+	cpg_integrator_evaluate (integrator, state, t, timestep);
 
 	/* K_2 = f(t_n + 0.5 * h, y_n + 0.5 * h * K_1) */
-	store_coefficients (rk, state, 1, 0.5 * step);
-	cpg_integrator_evaluate (integrator, state, t + 0.5 * step, 0.5 * step);
+	store_coefficients (rk, state, 1, 0.5 * timestep);
+	cpg_integrator_evaluate (integrator, state, t + 0.5 * timestep, 0.5 * timestep);
 
 	/* K_3 = f(t_n + 0.5 * h, y_n + 0.5 * h * K_2) */
-	store_coefficients (rk, state, 2, 0.5 * step);
-	cpg_integrator_evaluate (integrator, state, t + 0.5 * step, 0.5 * step);
+	store_coefficients (rk, state, 2, 0.5 * timestep);
+	cpg_integrator_evaluate (integrator, state, t + 0.5 * timestep, 0.5 * timestep);
 
 	/* K_4 = f(t_n + h, y_n + h * K_3) */
-	store_coefficients (rk, state, 3, 0.5 * step);
-	cpg_integrator_evaluate (integrator, state, t + step, step);
+	store_coefficients (rk, state, 3, timestep);
+	cpg_integrator_evaluate (integrator, state, t + timestep, timestep);
 
 	/* This last call will also transfer the new state */
-	store_coefficients (rk, state, 4, step);
-	return step;
+	store_coefficients (rk, state, 4, timestep);
+
+	/* Chain up to emit 'step' */
+	CPG_INTEGRATOR_CLASS (cpg_integrator_runge_kutta_parent_class)->step (integrator,
+	                                                                      state,
+	                                                                      t,
+	                                                                      timestep);
+
+	return timestep;
 }
 
 static void
