@@ -10,6 +10,7 @@
 #include <cpg-network/cpg-monitor.h>
 #include <cpg-network/cpg-compile-error.h>
 #include <cpg-network/cpg-function.h>
+#include <cpg-network/cpg-integrator.h>
 
 G_BEGIN_DECLS
 
@@ -60,6 +61,11 @@ GQuark            cpg_network_load_error_quark  (void);
 CpgNetwork 		 *cpg_network_new_from_file		(const gchar *filename, GError **error);
 CpgNetwork 		 *cpg_network_new_from_xml		(const gchar *xml, GError **error);
 CpgNetwork		 *cpg_network_new				(void);
+
+void			  cpg_network_set_integrator	(CpgNetwork    *network,
+												 CpgIntegrator *integrator);
+
+CpgIntegrator	 *cpg_network_get_integrator	(CpgNetwork    *network);
 
 gchar 			 *cpg_network_write_to_xml		(CpgNetwork  *network);
 void			  cpg_network_write_to_file		(CpgNetwork  *network,

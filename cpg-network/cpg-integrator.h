@@ -19,8 +19,6 @@ typedef struct _CpgIntegratorPrivate	CpgIntegratorPrivate;
 
 typedef struct _CpgIntegratorState		CpgIntegratorState;
 
-struct _CpgNetwork;
-
 struct _CpgIntegrator {
 	CpgObject parent;
 	
@@ -46,9 +44,9 @@ struct _CpgIntegratorClass {
 };
 
 GType				 cpg_integrator_get_type		(void) G_GNUC_CONST;
-CpgIntegrator 		*cpg_integrator_new 			(struct _CpgNetwork *network);
-
 GType				 cpg_integrator_state_get_type	(void) G_GNUC_CONST;
+
+CpgIntegratorState	*cpg_integrator_state_new		(CpgProperty *property);
 
 void				 cpg_integrator_run				(CpgIntegrator 		*integrator,
 													 GSList				*state,
@@ -61,13 +59,19 @@ gdouble				 cpg_integrator_step			(CpgIntegrator		*integrator,
 													 gdouble             t,
 													 gdouble			 step);
 
-struct _CpgNetwork	*cpg_integrator_get_network		(CpgIntegrator		*integrator);
 void 				 cpg_integrator_evaluate		(CpgIntegrator		*integrator,
 													 GSList				*state,
 													 gdouble             t,
 													 gdouble             step);
 
 gdouble				 cpg_integrator_get_time		(CpgIntegrator		*integrator);
+void				 cpg_integrator_reset			(CpgIntegrator		*integrator);
+
+void				 cpg_integrator_update			(CpgIntegrator		*integrator,
+													 GSList             *state);
+
+gdouble				 cpg_integrator_state_get_update	(CpgIntegratorState *state);
+CpgProperty			*cpg_integrator_state_get_property	(CpgIntegratorState *state);
 
 G_END_DECLS
 

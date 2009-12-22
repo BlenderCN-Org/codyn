@@ -22,7 +22,10 @@ COMMON_SOURCES = 		\
 	cpg-compile-error.c \
 	cpg-function.c \
 	cpg-compile-context.c \
-	cpg-function-polynomial.c
+	cpg-function-polynomial.c \
+	cpg-integrator.c \
+	cpg-integrator-runge-kutta.c \
+	cpg-integrator-euler.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
@@ -47,7 +50,10 @@ INST_H_FILES = \
 	cpg-math.h \
 	cpg-function.h \
 	cpg-compile-context.h \
-	cpg-function-polynomial.h
+	cpg-function-polynomial.h \
+	cpg-integrator.h \
+	cpg-integrator-runge-kutta.h \
+	cpg-integrator-euler.h
 
 lib_LTLIBRARIES = libcpg-network-1.0.la
 

@@ -58,7 +58,7 @@ struct _CpgObjectClass {
 	                     CpgCompileContext *context,
 	                     struct _CpgCompileError *error);
 	void (*reset)		(CpgObject *object);
-	void (*evaluate)	(CpgObject *object;
+	void (*evaluate)	(CpgObject *object);
 	
 	void (*tainted)		(CpgObject *object);
 	
