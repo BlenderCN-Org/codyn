@@ -41,6 +41,9 @@ struct _CpgIntegratorClass {
 	                     gdouble        timestep);
 
 	gchar const *(*get_name)	(CpgIntegrator *integrator);
+
+	/* private field */
+	gchar const *integrator_id;
 };
 
 GType				 cpg_integrator_get_type		(void) G_GNUC_CONST;

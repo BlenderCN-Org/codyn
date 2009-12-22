@@ -209,6 +209,13 @@ cpg_integrator_constructor (GType                  type,
 		g_object_unref (ret);
 		ret = NULL;
 	}
+	else
+	{
+		if (klass->integrator_id)
+		{
+			cpg_object_set_id (CPG_OBJECT (ret), klass->integrator_id);
+		}
+	}
 
 	return ret;
 }

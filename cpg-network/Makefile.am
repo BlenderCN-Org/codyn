@@ -23,6 +23,7 @@ COMMON_SOURCES = 		\
 	cpg-function.c \
 	cpg-compile-context.c \
 	cpg-function-polynomial.c \
+	cpg-integrators.c \
 	cpg-integrator.c \
 	cpg-integrator-runge-kutta.c \
 	cpg-integrator-euler.c
@@ -51,6 +52,7 @@ INST_H_FILES = \
 	cpg-function.h \
 	cpg-compile-context.h \
 	cpg-function-polynomial.h \
+	cpg-integrators.h \
 	cpg-integrator.h \
 	cpg-integrator-runge-kutta.h \
 	cpg-integrator-euler.h

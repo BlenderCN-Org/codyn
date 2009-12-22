@@ -71,6 +71,8 @@ cpg_integrator_euler_class_init (CpgIntegratorEulerClass *klass)
 	integrator_class->step = cpg_integrator_euler_step_impl;
 	integrator_class->get_name = cpg_integrator_euler_get_name_impl;
 
+	integrator_class->integrator_id = "euler";
+
 	//g_type_class_add_private (object_class, sizeof(CpgIntegratorEulerPrivate));
 }
 
@@ -78,8 +80,6 @@ static void
 cpg_integrator_euler_init (CpgIntegratorEuler *self)
 {
 	//self->priv = CPG_INTEGRATOR_EULER_GET_PRIVATE (self);
-
-	cpg_object_set_id (CPG_OBJECT (self), "euler");
 }
 
 /**

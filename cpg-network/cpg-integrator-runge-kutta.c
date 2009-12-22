@@ -165,6 +165,8 @@ cpg_integrator_runge_kutta_class_init (CpgIntegratorRungeKuttaClass *klass)
 	integrator_class->step = cpg_integrator_runge_kutta_step_impl;
 	integrator_class->get_name = cpg_integrator_runge_kutta_get_name_impl;
 
+	integrator_class->integrator_id = "runge-kutta";
+
 	g_type_class_add_private (object_class, sizeof(CpgIntegratorRungeKuttaPrivate));
 }
 
@@ -172,8 +174,6 @@ static void
 cpg_integrator_runge_kutta_init (CpgIntegratorRungeKutta *self)
 {
 	self->priv = CPG_INTEGRATOR_RUNGE_KUTTA_GET_PRIVATE (self);
-
-	cpg_object_set_id (CPG_OBJECT (self), "runge-kutta");
 }
 
 /**
