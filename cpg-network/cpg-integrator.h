@@ -64,6 +64,7 @@ void 				 cpg_integrator_evaluate		(CpgIntegrator		*integrator,
 													 gdouble             t,
 													 gdouble             timestep);
 
+gchar const			*cpg_integrator_get_id			(CpgIntegrator 		*integrator);
 gchar const			*cpg_integrator_get_name		(CpgIntegrator 		*integrator);
 
 gdouble				 cpg_integrator_get_time		(CpgIntegrator		*integrator);
