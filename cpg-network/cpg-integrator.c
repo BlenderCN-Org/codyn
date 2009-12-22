@@ -202,13 +202,6 @@ cpg_integrator_constructor (GType                  type,
 		g_object_unref (ret);
 		ret = NULL;
 	}
-	else if (!klass->get_id)
-	{
-		g_critical ("Subclasses of CpgIntegrator MUST implement the `get_id` function");
-
-		g_object_unref (ret);
-		ret = NULL;
-	}
 	else if (!klass->get_name)
 	{
 		g_critical ("Subclasses of CpgIntegrator MUST implement the `get_name` function");
@@ -239,7 +232,7 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 	                                 g_param_spec_object ("network",
 	                                                      "Network",
 	                                                      "Network",
-	                                                      G_TYPE_OBJECT,
+	                                                      CPG_TYPE_NETWORK,
 	                                                      G_PARAM_READWRITE));
 
 	g_object_class_install_property (object_class,
@@ -545,23 +538,6 @@ CpgProperty	*
 cpg_integrator_state_get_property (CpgIntegratorState *state)
 {
 	return state->property;
-}
-
-/**
- * cpg_integrator_get_id:
- * @integrator: A #CpgIntegrator
- * 
- * The integrator id.
- *
- * Returns: the integrator id
- *
- **/
-gchar const	*
-cpg_integrator_get_id (CpgIntegrator *integrator)
-{
-	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), NULL);
-
-	return CPG_INTEGRATOR_GET_CLASS (integrator)->get_id (integrator);
 }
 
 /**

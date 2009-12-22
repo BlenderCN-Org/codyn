@@ -149,12 +149,6 @@ cpg_integrator_runge_kutta_step_impl (CpgIntegrator *integrator,
 }
 
 static gchar const *
-cpg_integrator_runge_kutta_get_id_impl (CpgIntegrator *integrator)
-{
-	return "runge-kutta";
-}
-
-static gchar const *
 cpg_integrator_runge_kutta_get_name_impl (CpgIntegrator *integrator)
 {
 	return "Runge-Kutta 4th order";
@@ -169,7 +163,6 @@ cpg_integrator_runge_kutta_class_init (CpgIntegratorRungeKuttaClass *klass)
 	object_class->finalize = cpg_integrator_runge_kutta_finalize;
 
 	integrator_class->step = cpg_integrator_runge_kutta_step_impl;
-	integrator_class->get_id = cpg_integrator_runge_kutta_get_id_impl;
 	integrator_class->get_name = cpg_integrator_runge_kutta_get_name_impl;
 
 	g_type_class_add_private (object_class, sizeof(CpgIntegratorRungeKuttaPrivate));
@@ -179,6 +172,8 @@ static void
 cpg_integrator_runge_kutta_init (CpgIntegratorRungeKutta *self)
 {
 	self->priv = CPG_INTEGRATOR_RUNGE_KUTTA_GET_PRIVATE (self);
+
+	cpg_object_set_id (CPG_OBJECT (self), "runge-kutta");
 }
 
 /**
