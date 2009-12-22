@@ -3,9 +3,9 @@
 
 #define CPG_INTEGRATOR_EULER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_EULER, CpgIntegratorEulerPrivate))
 
-struct _CpgIntegratorEulerPrivate
+/*struct _CpgIntegratorEulerPrivate
 {
-};
+};*/
 
 G_DEFINE_TYPE (CpgIntegratorEuler, cpg_integrator_euler, CPG_TYPE_INTEGRATOR)
 
@@ -58,13 +58,13 @@ cpg_integrator_euler_class_init (CpgIntegratorEulerClass *klass)
 
 	integrator_class->step = cpg_integrator_euler_step_impl;
 
-	g_type_class_add_private (object_class, sizeof(CpgIntegratorEulerPrivate));
+	//g_type_class_add_private (object_class, sizeof(CpgIntegratorEulerPrivate));
 }
 
 static void
 cpg_integrator_euler_init (CpgIntegratorEuler *self)
 {
-	self->priv = CPG_INTEGRATOR_EULER_GET_PRIVATE (self);
+	//self->priv = CPG_INTEGRATOR_EULER_GET_PRIVATE (self);
 }
 
 CpgIntegratorEuler *
