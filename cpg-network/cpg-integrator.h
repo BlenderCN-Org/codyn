@@ -32,13 +32,13 @@ struct _CpgIntegratorClass {
 	void	(*run)		(CpgIntegrator *integrator,
 	                     GSList        *state,
 	                     gdouble        from,
-	                     gdouble        step,
+	                     gdouble        timestep,
 	                     gdouble        to);
 
 	gdouble	(*step)		(CpgIntegrator *integrator,
 	                     GSList        *state,
 	                     gdouble        t,
-	                     gdouble        step);
+	                     gdouble        timestep);
 
 	/* signals */
 };
@@ -51,18 +51,18 @@ CpgIntegratorState	*cpg_integrator_state_new		(CpgProperty *property);
 void				 cpg_integrator_run				(CpgIntegrator 		*integrator,
 													 GSList				*state,
 													 gdouble			 from,
-													 gdouble			 step,
+													 gdouble			 timestep,
 													 gdouble			 to);
 
 gdouble				 cpg_integrator_step			(CpgIntegrator		*integrator,
 													 GSList				*state,
 													 gdouble             t,
-													 gdouble			 step);
+													 gdouble			 timestep);
 
 void 				 cpg_integrator_evaluate		(CpgIntegrator		*integrator,
 													 GSList				*state,
 													 gdouble             t,
-													 gdouble             step);
+													 gdouble             timestep);
 
 gdouble				 cpg_integrator_get_time		(CpgIntegrator		*integrator);
 void				 cpg_integrator_reset			(CpgIntegrator		*integrator);

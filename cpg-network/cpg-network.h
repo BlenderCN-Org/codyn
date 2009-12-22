@@ -50,7 +50,6 @@ struct _CpgNetworkClass {
 	
 	/*< public >*/
 	void (*reset)			(CpgNetwork *network);
-	void (*update)			(CpgNetwork *network, gdouble timestep);
 	void (*compile_error)	(CpgNetwork *network, CpgCompileError *error);
 };
 

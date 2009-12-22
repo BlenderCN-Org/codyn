@@ -76,7 +76,6 @@ struct _CpgNetworkPrivate
 enum
 {
 	RESET,
-	UPDATE,
 	COMPILE_ERROR,
 	NUM_SIGNALS
 };
@@ -201,25 +200,6 @@ cpg_network_class_init (CpgNetworkClass *klass)
 			      g_cclosure_marshal_VOID__VOID,
 			      G_TYPE_NONE,
 			      0);
-
-	/**
-	 * CpgNetwork::update:
-	 * @network: a #CpgNetwork
-	 * @timestep: the timestep
-	 *
-	 * Emitted when the network is updated (one step)
-	 *
-	 **/
-	network_signals[UPDATE] =
-   		g_signal_new ("update",
-			      G_OBJECT_CLASS_TYPE (object_class),
-			      G_SIGNAL_RUN_LAST,
-			      G_STRUCT_OFFSET (CpgNetworkClass, update),
-			      NULL, NULL,
-			      g_cclosure_marshal_VOID__DOUBLE,
-			      G_TYPE_NONE,
-			      1,
-				  G_TYPE_DOUBLE);
 
 	/**
 	 * CpgNetwork::compile-error:
@@ -456,15 +436,14 @@ update_state (CpgNetwork *network)
 		CpgObject *object = CPG_OBJECT (item->data);
 
 		GSList *actors = cpg_object_get_actors (object);
-		GSList *actor;
 
-		for (actor = actors; actor; actor = g_slist_next (actor))
+		while (actors)
 		{
 			network->priv->state = g_slist_prepend (network->priv->state,
-			                                        cpg_integrator_state_new ((CpgProperty *)actor->data));
-		}
+			                                        cpg_integrator_state_new ((CpgProperty *)actors->data));
 
-		g_slist_free (actors);
+			actors = g_slist_next (actors);
+		}
 	}
 
 	network->priv->state = g_slist_reverse (network->priv->state);
@@ -907,7 +886,6 @@ cpg_network_step (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (timestep > 0);
 
-	/* FIXME: g_signal_emit (network, network_signals[UPDATE], 0, timestep); */
 	cpg_integrator_step (network->priv->integrator,
 	                     network->priv->state,
 	                     cpg_integrator_get_time (network->priv->integrator),
@@ -940,10 +918,6 @@ cpg_network_run (CpgNetwork  *network,
 	                    from,
 	                    timestep,
 	                    to);
-
-	/* TODO: call update somewhere ?
-	g_signal_emit (network, network_signals[UPDATE], 0, timestep);
-	*/
 }
 
 /**
