@@ -108,8 +108,6 @@ cpg_network_finalize (GObject *object)
 	g_hash_table_destroy (network->priv->templates);
 
 	g_object_unref (network->priv->globals);
-
-	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
 
 static void
@@ -163,11 +161,26 @@ cpg_network_set_property (GObject       *object,
 }
 
 static void
+cpg_network_dispose (GObject *object)
+{
+	CpgNetwork *network = CPG_NETWORK (object);
+
+	if (network->priv->integrator)
+	{
+		g_object_unref (network->priv->integrator);
+		network->priv->integrator = NULL;
+	}
+
+	G_OBJECT_CLASS (cpg_network_parent_class)->dispose (object);
+}
+
+static void
 cpg_network_class_init (CpgNetworkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	
 	object_class->finalize = cpg_network_finalize;
+	object_class->dispose = cpg_network_dispose;
 	object_class->get_property = cpg_network_get_property;
 	object_class->set_property = cpg_network_set_property;
 
@@ -839,16 +852,16 @@ cpg_network_clear (CpgNetwork *network)
 	
 	network->priv->states = NULL;
 	network->priv->links = NULL;
-	
+
 	GSList *props = g_slist_copy (cpg_object_get_properties (network->priv->globals));
 	GSList *item;
-	
+
 	props = g_slist_sort (props, (GCompareFunc)compare_property_dependencies);
 	
 	for (item = props; item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
-		
+
 		cpg_object_remove_property (network->priv->globals, 
 		                            cpg_property_get_name (property),
 		                            NULL);
