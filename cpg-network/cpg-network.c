@@ -662,7 +662,7 @@ cpg_network_compile (CpgNetwork      *network,
 	gboolean ret = TRUE;
 
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
-	
+
 	set_compiled (network, FALSE);
 
 	CpgCompileContext *context = cpg_compile_context_new ();

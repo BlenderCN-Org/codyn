@@ -19,6 +19,8 @@ enum
 enum
 {
 	STEP,
+	BEGIN,
+	END,
 	NUM_SIGNALS
 };
 
@@ -262,6 +264,26 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 			              G_TYPE_NONE,
 			              0);
 
+	integrator_signals[BEGIN] =
+			g_signal_new ("begin",
+			              G_OBJECT_CLASS_TYPE (object_class),
+			              G_SIGNAL_RUN_LAST,
+			              0,
+			              NULL, NULL,
+			              g_cclosure_marshal_VOID__VOID,
+			              G_TYPE_NONE,
+			              0);
+
+	integrator_signals[END] =
+			g_signal_new ("end",
+			              G_OBJECT_CLASS_TYPE (object_class),
+			              G_SIGNAL_RUN_LAST,
+			              0,
+			              NULL, NULL,
+			              g_cclosure_marshal_VOID__VOID,
+			              G_TYPE_NONE,
+			              0);
+
 	g_type_class_add_private (object_class, sizeof(CpgIntegratorPrivate));
 }
 
@@ -369,14 +391,27 @@ cpg_integrator_run (CpgIntegrator *integrator,
 	g_return_if_fail (from < to);
 	g_return_if_fail (timestep > 0);
 
-	if (!state)
+	/* Compile network if needed */
+	if (!cpg_network_is_compiled (integrator->priv->network))
 	{
-		return;
+		CpgCompileError *error = cpg_compile_error_new ();
+
+		if (!cpg_network_compile (integrator->priv->network, error))
+		{
+			cpg_ref_counted_unref (error);
+			return;
+		}
+
+		cpg_ref_counted_unref (error);
 	}
 
 	if (CPG_INTEGRATOR_GET_CLASS (integrator)->run)
 	{
+		g_signal_emit (integrator, integrator_signals[BEGIN], 0);
+
 		CPG_INTEGRATOR_GET_CLASS (integrator)->run (integrator, state, from, timestep, to);
+
+		g_signal_emit (integrator, integrator_signals[END], 0);
 	}
 }
 
@@ -402,9 +437,18 @@ cpg_integrator_step (CpgIntegrator *integrator,
 	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), 0);
 	g_return_val_if_fail (timestep > 0, 0);
 
-	if (!state)
+	/* Compile network if needed */
+	if (!cpg_network_is_compiled (integrator->priv->network))
 	{
-		return 0;
+		CpgCompileError *error = cpg_compile_error_new ();
+
+		if (!cpg_network_compile (integrator->priv->network, error))
+		{
+			cpg_ref_counted_unref (error);
+			return 0;
+		}
+
+		cpg_ref_counted_unref (error);
 	}
 
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->step (integrator, state, t, timestep);
@@ -451,20 +495,6 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
 	if (!state)
 	{
 		return;
-	}
-
-	/* Compile network if needed */
-	if (!cpg_network_is_compiled (integrator->priv->network))
-	{
-		CpgCompileError *error = cpg_compile_error_new ();
-
-		if (!cpg_network_compile (integrator->priv->network, error))
-		{
-			cpg_ref_counted_unref (error);
-			return;
-		}
-
-		cpg_ref_counted_unref (error);
 	}
 
 	cpg_property_set_value (integrator->priv->property_time, t);

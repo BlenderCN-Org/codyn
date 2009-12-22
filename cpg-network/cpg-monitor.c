@@ -26,6 +26,7 @@ enum
 	RESET,
 	STEP,
 	NOTIFY_INTEGRATOR,
+	BEGIN,
 	NUM_SIGNALS
 };
 
@@ -64,6 +65,7 @@ disconnect_integrator (CpgMonitor *monitor)
 	if (monitor->integrator)
 	{
 		g_signal_handler_disconnect (monitor->integrator, monitor->signals[STEP]);
+		g_signal_handler_disconnect (monitor->integrator, monitor->signals[BEGIN]);
 
 		g_object_remove_weak_pointer (G_OBJECT (monitor->integrator),
 		                              (gpointer *)(&monitor->integrator));
@@ -125,6 +127,14 @@ cpg_monitor_update (CpgMonitor    *monitor,
 }
 
 static void
+cpg_monitor_begin (CpgMonitor    *monitor,
+                   CpgIntegrator *integrator)
+{
+	/* Record first value */
+	cpg_monitor_update (monitor, integrator);
+}
+
+static void
 connect_integrator (CpgMonitor *monitor)
 {
 	disconnect_integrator (monitor);
@@ -138,6 +148,11 @@ connect_integrator (CpgMonitor *monitor)
 			                                               G_CALLBACK (cpg_monitor_update),
 			                                               monitor);
 
+		monitor->signals[BEGIN] = g_signal_connect_swapped (integrator,
+		                                                    "begin",
+		                                                    G_CALLBACK (cpg_monitor_begin),
+		                                                    monitor);
+
 		monitor->integrator = integrator;
 
 		g_object_add_weak_pointer (G_OBJECT (integrator),
@@ -149,10 +164,6 @@ static void
 network_reset_cb (CpgMonitor *monitor)
 {
 	cpg_monitor_free_data (monitor);
-
-	/* When the network is reset, we initialize the monitor with the initial
-	   value of the monitored property at t = 0 */
-	cpg_monitor_update (monitor, NULL);
 }
 
 static void
