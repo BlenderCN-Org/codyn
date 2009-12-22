@@ -24,7 +24,8 @@
 enum
 {
 	RESET,
-	UPDATE,
+	STEP,
+	NOTIFY_INTEGRATOR,
 	NUM_SIGNALS
 };
 
@@ -35,6 +36,7 @@ struct _CpgMonitor
 	CpgNetwork  *network;
 	CpgObject   *object;
 	CpgProperty *property;
+	CpgIntegrator *integrator;
 
 	gdouble *values;
 	gdouble *sites;
@@ -57,6 +59,20 @@ cpg_monitor_free_data (CpgMonitor *monitor)
 }
 
 static void
+disconnect_integrator (CpgMonitor *monitor)
+{
+	if (monitor->integrator)
+	{
+		g_signal_handler_disconnect (monitor->integrator, monitor->signals[STEP]);
+
+		g_object_remove_weak_pointer (G_OBJECT (monitor->integrator),
+		                              (gpointer *)(&monitor->integrator));
+
+		monitor->integrator = NULL;
+	}
+}
+
+static void
 cpg_monitor_free (CpgMonitor *monitor)
 {
 	cpg_ref_counted_unref (monitor->property);
@@ -64,10 +80,12 @@ cpg_monitor_free (CpgMonitor *monitor)
 	if (monitor->network)
 	{
 		g_signal_handler_disconnect (monitor->network, monitor->signals[RESET]);
-		g_signal_handler_disconnect (monitor->network, monitor->signals[UPDATE]);
+		g_signal_handler_disconnect (monitor->network, monitor->signals[NOTIFY_INTEGRATOR]);
 	}
 
-	cpg_monitor_free_data (monitor);	
+	disconnect_integrator (monitor);
+
+	cpg_monitor_free_data (monitor);
 	g_slice_free (CpgMonitor, monitor);
 }
 
@@ -77,7 +95,9 @@ cpg_monitor_get_type ()
 	static GType type_id = 0;
 	
 	if (G_UNLIKELY (type_id == 0))
+	{
 		type_id = g_boxed_type_register_static ("CpgMonitor", cpg_ref_counted_ref, cpg_ref_counted_unref);
+	}
 	
 	return type_id;
 }
@@ -92,19 +112,55 @@ cpg_monitor_grow (CpgMonitor *monitor)
 }
 
 static void
-cpg_monitor_update (CpgMonitor *monitor,
-                    gdouble     timestep,
-                    CpgNetwork *network)
+cpg_monitor_update (CpgMonitor    *monitor,
+                    CpgIntegrator *integrator)
 {
 	if (monitor->size == 0 || monitor->num_values >= monitor->size - 1)
+	{
 		cpg_monitor_grow (monitor);
+	}
 	
 	monitor->values[monitor->num_values] = cpg_property_get_value (monitor->property);
-	
-	gdouble time;
-	g_object_get (G_OBJECT (network), "time", &time, NULL);
-	
-	monitor->sites[monitor->num_values++] = time;
+	monitor->sites[monitor->num_values++] = integrator ? cpg_integrator_get_time (integrator) : 0;
+}
+
+static void
+connect_integrator (CpgMonitor *monitor)
+{
+	disconnect_integrator (monitor);
+
+	CpgIntegrator *integrator = cpg_network_get_integrator (monitor->network);
+
+	if (integrator)
+	{
+		monitor->signals[STEP] = g_signal_connect_swapped (integrator,
+			                                               "step",
+			                                               G_CALLBACK (cpg_monitor_update),
+			                                               monitor);
+
+		monitor->integrator = integrator;
+
+		g_object_add_weak_pointer (G_OBJECT (integrator),
+		                           (gpointer *)(&monitor->integrator));
+	}
+}
+
+static void
+network_reset_cb (CpgMonitor *monitor)
+{
+	cpg_monitor_free_data (monitor);
+
+	/* When the network is reset, we initialize the monitor with the initial
+	   value of the monitored property at t = 0 */
+	cpg_monitor_update (monitor, NULL);
+}
+
+static void
+integrator_changed_cb (CpgMonitor *monitor,
+                       GParamSpec *spec,
+                       CpgNetwork *network)
+{
+	connect_integrator (monitor);
 }
 
 /**
@@ -147,9 +203,16 @@ cpg_monitor_new (CpgNetwork   *network,
 	
 	// initialize values list
 	cpg_monitor_grow (monitor);
-	
-	monitor->signals[RESET] = g_signal_connect_swapped (network, "reset", G_CALLBACK (cpg_monitor_free_data), monitor);
-	monitor->signals[UPDATE] = g_signal_connect_swapped (network, "update", G_CALLBACK (cpg_monitor_update), monitor);
+	connect_integrator (monitor);
+
+	monitor->signals[RESET] = g_signal_connect_swapped (network,
+	                                                    "reset",
+	                                                    G_CALLBACK (network_reset_cb), monitor);
+
+	monitor->signals[NOTIFY_INTEGRATOR] = g_signal_connect_swapped (network,
+	                                                                "notify::integrator",
+	                                                                G_CALLBACK (integrator_changed_cb),
+	                                                                monitor);
 
 	return monitor;
 }
@@ -169,7 +232,7 @@ cpg_monitor_new (CpgNetwork   *network,
  **/
 gdouble const *
 cpg_monitor_get_data (CpgMonitor *monitor,
-				      guint      *size)
+                      guint      *size)
 {
 	if (size)
 		*size = 0;
@@ -177,8 +240,10 @@ cpg_monitor_get_data (CpgMonitor *monitor,
 	if (!monitor || !monitor->object || !monitor->property)
 		return NULL;
 
-	if (size)	
+	if (size)
+	{
 		*size = monitor->num_values;
+	}
 
 	return monitor->values;
 }
@@ -198,7 +263,7 @@ cpg_monitor_get_data (CpgMonitor *monitor,
  **/
 gdouble const *
 cpg_monitor_get_sites (CpgMonitor *monitor,
-				       guint      *size)
+                       guint      *size)
 {
 	if (size)
 		*size = 0;
@@ -225,11 +290,17 @@ bsearch_find (gdouble const  *list,
 		gint probe = (left + right) / 2;
 		
 		if (list[probe] > value)
+		{
 			right = probe - 1;
+		}
 		else if (list[probe] < value)
+		{
 			left = probe + 1;
+		}
 		else
+		{
 			return probe;
+		}
 	}
 	
 	return right + (right < size && list[right] < value ? 1 : 0);
@@ -277,7 +348,7 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
 			ret[i] = 0.0;
 		}
 		else
-		{		
+		{
 			// interpolate between the values
 			gdouble factor = monsites[sidx] == monsites[fidx] ? 1 : (monsites[sidx] - sites[i]) / (monsites[sidx] - monsites[fidx]);
 			ret[i] = data[fidx] * factor + (data[sidx] * (1 - factor));
