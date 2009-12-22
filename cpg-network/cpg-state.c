@@ -27,33 +27,7 @@ cpg_state_finalize (GObject *object)
 }
 
 static void
-cpg_state_update_impl (CpgObject  *object,
-                       gdouble     timestep)
-{
-	GSList *item;
-	
-	for (item = cpg_object_get_actors (object); item; item = g_slist_next (item))
-	{
-		CpgProperty *property = (CpgProperty *)item->data;
-		gdouble value;
-			
-		if (cpg_property_get_integrated (property))
-			value = cpg_property_get_value (property) + _cpg_property_get_update (property) * timestep;
-		else
-			value = _cpg_property_get_update (property);
-
-		cpg_debug_evaluate ("Updating target %s.%s to %f",
-		                    cpg_object_get_id (object),
-		                    cpg_property_get_name (property),
-		                    value);
-
-		cpg_property_set_value (property, value);
-	}
-}
-
-static void
-cpg_state_evaluate_impl (CpgObject  *object,
-                         gdouble     timestep)
+cpg_state_evaluate_impl (CpgObject *object)
 {
 	GSList *item;
 	
@@ -104,7 +78,6 @@ cpg_state_class_init (CpgStateClass *klass)
 	CpgObjectClass *cpg_class = CPG_OBJECT_CLASS (klass);
 	
 	object_class->finalize = cpg_state_finalize;
-	cpg_class->update = cpg_state_update_impl;
 	cpg_class->evaluate = cpg_state_evaluate_impl;
 
 	//g_type_class_add_private (object_class, sizeof (CpgStatePrivate));

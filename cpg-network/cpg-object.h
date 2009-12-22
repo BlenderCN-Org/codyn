@@ -58,10 +58,7 @@ struct _CpgObjectClass {
 	                     CpgCompileContext *context,
 	                     struct _CpgCompileError *error);
 	void (*reset)		(CpgObject *object);
-	void (*update)		(CpgObject *object, 
-						 gdouble    timestep);
-	void (*evaluate)	(CpgObject *object, 
-						 gdouble    timestep);
+	void (*evaluate)	(CpgObject *object);
 	
 	void (*tainted)		(CpgObject *object);
 	
@@ -98,10 +95,7 @@ GSList			*cpg_object_get_properties	(CpgObject   *object);
 
 /* evaluation */
 void			  cpg_object_reset			(CpgObject   *object);
-void			  cpg_object_update			(CpgObject   *object, 
-											 gdouble      timestep);
-void			  cpg_object_evaluate		(CpgObject   *object, 
-											 gdouble      timestep);
+void			  cpg_object_evaluate		(CpgObject   *object);
 
 void			  cpg_object_reset_cache	(CpgObject	 *object);
 void			  cpg_object_taint			(CpgObject   *object);

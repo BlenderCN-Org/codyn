@@ -10,6 +10,7 @@
 #include <cpg-network/cpg-monitor.h>
 #include <cpg-network/cpg-compile-error.h>
 #include <cpg-network/cpg-function.h>
+#include <cpg-network/cpg-integrator.h>
 
 G_BEGIN_DECLS
 
@@ -49,7 +50,6 @@ struct _CpgNetworkClass {
 	
 	/*< public >*/
 	void (*reset)			(CpgNetwork *network);
-	void (*update)			(CpgNetwork *network, gdouble timestep);
 	void (*compile_error)	(CpgNetwork *network, CpgCompileError *error);
 };
 
@@ -60,6 +60,11 @@ GQuark            cpg_network_load_error_quark  (void);
 CpgNetwork 		 *cpg_network_new_from_file		(const gchar *filename, GError **error);
 CpgNetwork 		 *cpg_network_new_from_xml		(const gchar *xml, GError **error);
 CpgNetwork		 *cpg_network_new				(void);
+
+void			  cpg_network_set_integrator	(CpgNetwork    *network,
+												 CpgIntegrator *integrator);
+
+CpgIntegrator	 *cpg_network_get_integrator	(CpgNetwork    *network);
 
 gchar 			 *cpg_network_write_to_xml		(CpgNetwork  *network);
 void			  cpg_network_write_to_file		(CpgNetwork  *network,
@@ -95,6 +100,8 @@ void			  cpg_network_remove_object		(CpgNetwork *network,
 
 gboolean		  cpg_network_compile			(CpgNetwork      *network,
 												 CpgCompileError *error);
+
+gboolean		  cpg_network_is_compiled		(CpgNetwork		 *network);
 
 void			  cpg_network_taint				(CpgNetwork *network);
 

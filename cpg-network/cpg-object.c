@@ -622,8 +622,8 @@ _cpg_object_link (CpgObject  *object,
  * 
  * Get the properties which are acted upon by links.
  *
- * Returns: A #GSList of #CpgProperty. This list is newly allocated and needs
- *          to be freed with when g_slist_free when no longer used.
+ * Returns: A #GSList of #CpgProperty. This list is used internally and should
+ *          not be freed.
  *
  **/
 GSList *
@@ -663,28 +663,6 @@ cpg_object_get_actors (CpgObject *object)
 }
 
 /**
- * cpg_object_update:
- * @object: the #CpgObject
- * @timestep: the timestep to use
- *
- * Update property values using the values previously calculated in 
- * #cpg_object_evaluate.
- *
- **/
-void
-cpg_object_update (CpgObject  *object,
-                   gdouble     timestep)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (timestep > 0);
-
-	if (CPG_OBJECT_GET_CLASS (object)->update)
-	{
-		CPG_OBJECT_GET_CLASS (object)->update (object, timestep);
-	}
-}
-
-/**
  * cpg_object_evaluate:
  * @object: the #CpgObject
  * @timestep: the timestep to use
@@ -693,15 +671,13 @@ cpg_object_update (CpgObject  *object,
  *
  **/
 void
-cpg_object_evaluate (CpgObject  *object,
-                     gdouble     timestep)
+cpg_object_evaluate (CpgObject *object)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (timestep > 0);
 
 	if (CPG_OBJECT_GET_CLASS (object)->evaluate)
 	{
-		CPG_OBJECT_GET_CLASS (object)->evaluate (object, timestep);
+		CPG_OBJECT_GET_CLASS (object)->evaluate (object);
 	}
 }
 
