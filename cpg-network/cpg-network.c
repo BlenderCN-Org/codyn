@@ -884,6 +884,26 @@ cpg_network_clear (CpgNetwork *network)
 	network->priv->state = NULL;
 }
 
+static gboolean
+ensure_compiled (CpgNetwork *network)
+{
+	if (network->priv->compiled)
+	{
+		return TRUE;
+	}
+
+	CpgCompileError *error = cpg_compile_error_new ();
+
+	if (!cpg_network_compile (network, error))
+	{
+		cpg_ref_counted_unref (error);
+		return FALSE;
+	}
+
+	cpg_ref_counted_unref (error);
+	return TRUE;
+}
+
 /**
  * cpg_network_step:
  * @network: a #CpgNetwork
@@ -899,10 +919,13 @@ cpg_network_step (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (timestep > 0);
 
-	cpg_integrator_step (network->priv->integrator,
-	                     network->priv->state,
-	                     cpg_integrator_get_time (network->priv->integrator),
-	                     timestep);
+	if (ensure_compiled (network))
+	{
+		cpg_integrator_step (network->priv->integrator,
+			                 network->priv->state,
+			                 cpg_integrator_get_time (network->priv->integrator),
+			                 timestep);
+	}
 }
 
 /**
@@ -926,11 +949,14 @@ cpg_network_run (CpgNetwork  *network,
 	g_return_if_fail (from < to);
 	g_return_if_fail (timestep > 0);
 
-	cpg_integrator_run (network->priv->integrator,
-	                    network->priv->state,
-	                    from,
-	                    timestep,
-	                    to);
+	if (ensure_compiled (network))
+	{
+		cpg_integrator_run (network->priv->integrator,
+			                network->priv->state,
+			                from,
+			                timestep,
+			                to);
+	}
 }
 
 /**
@@ -1506,7 +1532,7 @@ cpg_network_get_function (CpgNetwork  *network,
 }
 
 gboolean
-cpg_network_is_compiled (CpgNetwork *network)
+cpg_network_get_compiled (CpgNetwork *network)
 {
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 

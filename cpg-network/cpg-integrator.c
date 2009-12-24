@@ -390,20 +390,7 @@ cpg_integrator_run (CpgIntegrator *integrator,
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
 	g_return_if_fail (from < to);
 	g_return_if_fail (timestep > 0);
-
-	/* Compile network if needed */
-	if (!cpg_network_is_compiled (integrator->priv->network))
-	{
-		CpgCompileError *error = cpg_compile_error_new ();
-
-		if (!cpg_network_compile (integrator->priv->network, error))
-		{
-			cpg_ref_counted_unref (error);
-			return;
-		}
-
-		cpg_ref_counted_unref (error);
-	}
+	g_return_if_fail (cpg_network_get_compiled (integrator->priv->network));
 
 	if (CPG_INTEGRATOR_GET_CLASS (integrator)->run)
 	{
@@ -436,20 +423,7 @@ cpg_integrator_step (CpgIntegrator *integrator,
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), 0);
 	g_return_val_if_fail (timestep > 0, 0);
-
-	/* Compile network if needed */
-	if (!cpg_network_is_compiled (integrator->priv->network))
-	{
-		CpgCompileError *error = cpg_compile_error_new ();
-
-		if (!cpg_network_compile (integrator->priv->network, error))
-		{
-			cpg_ref_counted_unref (error);
-			return 0;
-		}
-
-		cpg_ref_counted_unref (error);
-	}
+	g_return_val_if_fail (cpg_network_get_compiled (integrator->priv->network), 0);
 
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->step (integrator, state, t, timestep);
 }
@@ -491,11 +465,6 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
                          gdouble        timestep)
 {
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
-
-	if (!state)
-	{
-		return;
-	}
 
 	cpg_property_set_value (integrator->priv->property_time, t);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);

@@ -101,7 +101,7 @@ void			  cpg_network_remove_object		(CpgNetwork *network,
 gboolean		  cpg_network_compile			(CpgNetwork      *network,
 												 CpgCompileError *error);
 
-gboolean		  cpg_network_is_compiled		(CpgNetwork		 *network);
+gboolean		  cpg_network_get_compiled		(CpgNetwork		 *network);
 
 void			  cpg_network_taint				(CpgNetwork *network);
 
