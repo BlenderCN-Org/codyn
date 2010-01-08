@@ -362,7 +362,7 @@ reset_cache (CpgIntegrator *integrator)
 	                 (GFunc)cpg_object_reset_cache,
 	                 NULL);
 	
-	cpg_object_reset (cpg_network_get_globals (integrator->priv->network));
+	cpg_object_reset_cache (cpg_network_get_globals (integrator->priv->network));
 
 	g_slist_foreach (cpg_network_get_functions (integrator->priv->network),
 	                 (GFunc)cpg_object_reset_cache,
