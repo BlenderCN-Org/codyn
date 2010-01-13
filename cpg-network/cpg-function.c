@@ -222,7 +222,11 @@ cpg_function_evaluate_impl (CpgFunction *function)
 {
 	if (function->priv->expression)
 	{
-		return cpg_expression_evaluate (function->priv->expression);
+		gdouble ret = cpg_expression_evaluate (function->priv->expression);
+
+		/* Don't cache results from functions */
+		cpg_expression_reset_cache (function->priv->expression);
+		return ret;
 	}
 	else
 	{
