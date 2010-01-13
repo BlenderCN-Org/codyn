@@ -532,6 +532,21 @@ cpg_integrator_state_get_update (CpgIntegratorState *state)
 }
 
 /**
+ * cpg_integrator_state_set_update:
+ * @state: A # CpgIntegratorState
+ * @value: State update value
+ * 
+ * Set the state update value.
+ *
+ **/
+void
+cpg_integrator_state_set_update	(CpgIntegratorState *state,
+                                 gdouble             value)
+{
+	state->update = value;
+}
+
+/**
  * cpg_integrator_state_get_property:
  * @state: A #CpgIntegratorState
  * 

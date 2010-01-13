@@ -75,6 +75,9 @@ void				 cpg_integrator_reset			(CpgIntegrator		*integrator);
 gdouble				 cpg_integrator_state_get_update	(CpgIntegratorState *state);
 CpgProperty			*cpg_integrator_state_get_property	(CpgIntegratorState *state);
 
+void				 cpg_integrator_state_set_update	(CpgIntegratorState *state,
+														 gdouble             value);
+
 G_END_DECLS
 
 #endif /* __CPG_INTEGRATOR_H__ */
