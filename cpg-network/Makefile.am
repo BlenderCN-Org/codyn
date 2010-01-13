@@ -26,7 +26,8 @@ COMMON_SOURCES = 		\
 	cpg-integrators.c \
 	cpg-integrator.c \
 	cpg-integrator-runge-kutta.c \
-	cpg-integrator-euler.c
+	cpg-integrator-euler.c \
+	cpg-integrator-stub.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
@@ -55,7 +56,8 @@ INST_H_FILES = \
 	cpg-integrators.h \
 	cpg-integrator.h \
 	cpg-integrator-runge-kutta.h \
-	cpg-integrator-euler.h
+	cpg-integrator-euler.h \
+	cpg-integrator-stub.h
 
 lib_LTLIBRARIES = libcpg-network-1.0.la
 
