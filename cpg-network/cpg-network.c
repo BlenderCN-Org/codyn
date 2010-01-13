@@ -1556,3 +1556,16 @@ cpg_network_get_integrator (CpgNetwork *network)
 
 	return network->priv->integrator;
 }
+
+GSList *
+cpg_network_get_integration_state (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	if (!network->priv->state)
+	{
+		update_state (network);
+	}
+
+	return network->priv->state;
+}

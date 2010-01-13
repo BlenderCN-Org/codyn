@@ -147,6 +147,8 @@ GSList			 *cpg_network_get_functions		(CpgNetwork   *network);
 CpgFunction		 *cpg_network_get_function		(CpgNetwork   *network,
                                                  gchar const  *name);
 
+GSList 			 *cpg_network_get_integration_state (CpgNetwork *network);
+
 G_END_DECLS
 
 #endif /* __CPG_NETWORK_H__ */
