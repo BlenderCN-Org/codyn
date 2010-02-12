@@ -25,6 +25,8 @@ struct _CpgIntegrator {
 	CpgIntegratorPrivate *priv;
 };
 
+struct _CpgNetwork;
+
 struct _CpgIntegratorClass {
 	CpgObjectClass parent_class;
 
@@ -77,6 +79,8 @@ CpgProperty			*cpg_integrator_state_get_property	(CpgIntegratorState *state);
 
 void				 cpg_integrator_state_set_update	(CpgIntegratorState *state,
 														 gdouble             value);
+
+struct _CpgNetwork	*cpg_integrator_get_network		(CpgIntegrator *integrator);
 
 G_END_DECLS
 
