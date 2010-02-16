@@ -129,6 +129,8 @@ CpgInstruction   *cpg_instruction_property_new 		(struct _CpgProperty *property,
 CpgInstruction   *cpg_instruction_copy 				(CpgInstruction *instruction);
 void              cpg_instruction_free 				(CpgInstruction *instruction);
 
+gchar			 *cpg_instruction_to_string			(CpgInstruction *instruction);
+
 G_END_DECLS
 
 #endif /* __CPG_EXPRESSION_H__ */

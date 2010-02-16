@@ -1478,3 +1478,46 @@ cpg_expression_equal (CpgExpression *expression,
 	
 	return TRUE;
 }
+
+gchar *
+cpg_instruction_to_string (CpgInstruction *instruction)
+{
+	switch (instruction->type)
+	{
+		case CPG_INSTRUCTION_TYPE_FUNCTION:
+		{
+			CpgInstructionFunction *inst = (CpgInstructionFunction *)instruction;
+			return g_strdup_printf ("FUN (%s)", inst->name);
+		}
+		break;
+		case CPG_INSTRUCTION_TYPE_NUMBER:
+		{
+			CpgInstructionNumber *inst = (CpgInstructionNumber *)instruction;
+			return g_strdup_printf ("NUM (%f)", inst->value);
+		}
+		break;
+		case CPG_INSTRUCTION_TYPE_OPERATOR:
+		{
+			CpgInstructionFunction *inst = (CpgInstructionFunction *)instruction;
+			return g_strdup_printf ("OP  (%s)", inst->name);
+		}
+		break;
+		case CPG_INSTRUCTION_TYPE_PROPERTY:
+		{
+			CpgInstructionProperty *inst = (CpgInstructionProperty *)instruction;
+			return g_strdup_printf ("PRP (%s.%s)",
+			                        cpg_object_get_id (cpg_property_get_object (inst->property)),
+			                        cpg_property_get_name (inst->property));
+		}
+		break;
+		case CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION:
+		{
+			CpgInstructionCustomFunction *inst = (CpgInstructionCustomFunction *)instruction;
+			return g_strdup_printf ("FNC (%s)", cpg_object_get_id (CPG_OBJECT (inst->function)));
+		}
+		break;
+		default:
+			return g_strdup ("NON");
+		break;
+	}
+}
