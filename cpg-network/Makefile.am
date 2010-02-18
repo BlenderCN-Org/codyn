@@ -33,8 +33,7 @@ NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-network-reader.h \
 	cpg-network-writer.h \
-	cpg-ref-counted-private.h \
-	cpg-utils.h
+	cpg-ref-counted-private.h
 
 INST_H_FILES = \
 	cpg-network.h \
@@ -47,6 +46,7 @@ INST_H_FILES = \
 	cpg-expression.h \
 	cpg-ref-counted.h \
 	cpg-stack.h \
+	cpg-utils.h \
 	cpg-debug.h \
 	cpg-compile-error.h \
 	cpg-math.h \

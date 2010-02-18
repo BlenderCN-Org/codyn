@@ -2,6 +2,7 @@
 #define __CPG_INTEGRATOR_H__
 
 #include <cpg-network/cpg-object.h>
+#include <cpg-network/cpg-utils.h>
 
 G_BEGIN_DECLS
 
@@ -25,7 +26,7 @@ struct _CpgIntegrator {
 	CpgIntegratorPrivate *priv;
 };
 
-struct _CpgNetwork;
+CPG_FORWARD_DECL (CpgNetwork);
 
 struct _CpgIntegratorClass {
 	CpgObjectClass parent_class;

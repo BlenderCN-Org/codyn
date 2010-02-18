@@ -1,8 +1,9 @@
 #ifndef __CPG_PROPERTY_H__
 #define __CPG_PROPERTY_H__
 
-#include "cpg-ref-counted.h"
-#include "cpg-expression.h"
+#include <cpg-network/cpg-ref-counted.h>
+#include <cpg-network/cpg-expression.h>
+#include <cpg-network/cpg-utils.h>
 
 G_BEGIN_DECLS
 
@@ -16,7 +17,7 @@ typedef enum
 typedef struct _CpgProperty CpgProperty;
 
 /* forward declaration */
-struct _CpgObject;
+CPG_FORWARD_DECL (CpgObject);
 
 GType			   cpg_property_get_type				(void);
 CpgProperty 	  *cpg_property_new						(const gchar        *name, 

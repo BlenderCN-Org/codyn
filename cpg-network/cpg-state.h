@@ -1,7 +1,7 @@
 #ifndef __CPG_STATE_H__
 #define __CPG_STATE_H__
 
-#include "cpg-object.h"
+#include <cpg-network/cpg-object.h>
 
 G_BEGIN_DECLS
 

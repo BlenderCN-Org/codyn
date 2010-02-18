@@ -3,6 +3,7 @@
 
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-stack.h>
+#include <cpg-network/cpg-utils.h>
 
 #include <stdarg.h>
 
@@ -16,7 +17,7 @@ G_BEGIN_DECLS
 #define CPG_IS_FUNCTION_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_FUNCTION))
 #define CPG_FUNCTION_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_FUNCTION, CpgFunctionClass))
 
-struct _CpgExpression;
+CPG_FORWARD_DECL (CpgExpression);
 
 typedef struct _CpgFunction			CpgFunction;
 typedef struct _CpgFunctionClass	CpgFunctionClass;

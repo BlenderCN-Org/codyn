@@ -1,8 +1,8 @@
 #ifndef __CPG_LINK_H__
 #define __CPG_LINK_H__
 
-#include "cpg-object.h"
-#include "cpg-expression.h"
+#include <cpg-network/cpg-object.h>
+#include <cpg-network/cpg-expression.h>
 
 G_BEGIN_DECLS
 

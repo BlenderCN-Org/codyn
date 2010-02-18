@@ -3,15 +3,16 @@
 
 #include <stdio.h>
 #include <glib-object.h>
-#include "cpg-compile-context.h"
+#include <cpg-network/cpg-compile-context.h>
+#include <cpg-network/cpg-utils.h>
 
 G_BEGIN_DECLS
 
 #define CPG_TYPE_EXPRESSION	(cpg_expression_get_type())
 
 /* Forward declaration */
-struct _CpgProperty;
-struct _CpgFunction;
+CPG_FORWARD_DECL (CpgProperty);
+CPG_FORWARD_DECL (CpgFunction);
 
 typedef struct _CpgInstruction 		CpgInstruction;
 

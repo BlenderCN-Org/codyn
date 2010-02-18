@@ -2,8 +2,9 @@
 #define __CPG_OBJECT_H__
 
 #include <glib-object.h>
-#include "cpg-property.h"
-#include "cpg-compile-context.h"
+#include <cpg-network/cpg-property.h>
+#include <cpg-network/cpg-compile-context.h>
+#include <cpg-network/cpg-utils.h>
 
 G_BEGIN_DECLS
 
@@ -21,8 +22,8 @@ typedef struct _CpgObject			CpgObject;
 typedef struct _CpgObjectClass		CpgObjectClass;
 typedef struct _CpgObjectPrivate	CpgObjectPrivate;
 
-struct _CpgLink;
-struct _CpgCompileError;
+CPG_FORWARD_DECL (CpgLink);
+CPG_FORWARD_DECL (CpgCompileError);
 
 /**
  * CpgObjectError:

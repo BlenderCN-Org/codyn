@@ -1,11 +1,12 @@
 #ifndef __CPG_COMPILE_CONTEXT_H__
 #define __CPG_COMPILE_CONTEXT_H__
 
-#include "cpg-ref-counted.h"
+#include <cpg-network/cpg-ref-counted.h>
+#include <cpg-network/cpg-utils.h>
 
-struct _CpgObject;
-struct _CpgProperty;
-struct _CpgFunction;
+CPG_FORWARD_DECL (CpgObject);
+CPG_FORWARD_DECL (CpgProperty);
+CPG_FORWARD_DECL (CpgFunction);
 
 typedef struct _CpgCompileContext CpgCompileContext;
 

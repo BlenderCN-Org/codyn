@@ -1,12 +1,13 @@
 #ifndef __CPG_MONITOR_H__
 #define __CPG_MONITOR_H__
 
-#include "cpg-object.h"
+#include <cpg-network/cpg-object.h>
+#include <cpg-network/cpg-utils.h>
 
 G_BEGIN_DECLS
 
 /* forward declaration */
-struct _CpgNetwork;
+CPG_FORWARD_DECL (CpgNetwork);
 
 typedef struct _CpgMonitor CpgMonitor;
 
