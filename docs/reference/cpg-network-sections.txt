@@ -50,7 +50,6 @@ cpg_function_get_n_optional
 cpg_function_get_n_arguments
 cpg_function_execute
 cpg_function_set_expression
-cpg_function_get_expression
 cpg_function_argument_get_name
 cpg_function_argument_get_optional
 cpg_function_argument_get_default_value
@@ -301,8 +300,6 @@ cpg_compile_context_save
 cpg_compile_context_restore
 cpg_compile_context_append_object
 cpg_compile_context_set_functions
-cpg_compile_context_lookup_property
-cpg_compile_context_lookup_function
 cpg_compile_context_get_objects
 cpg_compile_context_get_functions
 </SECTION>
@@ -415,7 +412,6 @@ CpgProperty
 cpg_property_get_type
 cpg_property_new
 cpg_property_get_name
-cpg_property_get_object
 cpg_property_get_integrated
 cpg_property_set_integrated
 cpg_property_get_hint

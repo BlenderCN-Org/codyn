@@ -56,7 +56,7 @@ typedef struct
 {
 	CpgInstruction parent;
 	
-	struct _CpgFunction *function;
+	CPG_FORWARD_DECL (CpgFunction) *function;
 
 	gint arguments;
 } CpgInstructionCustomFunction;
@@ -81,7 +81,7 @@ struct _CpgInstructionProperty
 {
 	CpgInstruction parent;
 
-	struct _CpgProperty *property;
+	CPG_FORWARD_DECL (CpgProperty) *property;
 	CpgInstructionBinding binding;
 };
 
@@ -118,14 +118,14 @@ CpgInstruction   *cpg_instruction_function_new 		(guint         id,
 													 gint          arguments,
 													 gboolean      variable);
 
-CpgInstruction   *cpg_instruction_custom_function_new (struct _CpgFunction *function,
+CpgInstruction   *cpg_instruction_custom_function_new (CPG_FORWARD_DECL (CpgFunction) *function,
 													   gint                 arguments);
 
 CpgInstruction   *cpg_instruction_number_new 		(gdouble value);
 CpgInstruction   *cpg_instruction_operator_new 		(guint         id,
 													 gchar const  *name,
 													 gint          arguments);
-CpgInstruction   *cpg_instruction_property_new 		(struct _CpgProperty *property,
+CpgInstruction   *cpg_instruction_property_new 		(CPG_FORWARD_DECL (CpgProperty) *property,
                                                      CpgInstructionBinding binding);
 CpgInstruction   *cpg_instruction_copy 				(CpgInstruction *instruction);
 void              cpg_instruction_free 				(CpgInstruction *instruction);

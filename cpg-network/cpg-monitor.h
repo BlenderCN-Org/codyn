@@ -13,7 +13,7 @@ typedef struct _CpgMonitor CpgMonitor;
 
 GType			  cpg_monitor_get_type				 (void);
 
-CpgMonitor		 *cpg_monitor_new					 (struct _CpgNetwork *network,
+CpgMonitor		 *cpg_monitor_new					 (CPG_FORWARD_DECL (CpgNetwork) *network,
 													  CpgObject          *object, 
 													  const gchar        *property_name);
 

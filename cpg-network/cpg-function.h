@@ -57,7 +57,7 @@ guint cpg_function_get_n_arguments (CpgFunction *function);
 void cpg_function_execute (CpgFunction *function, CpgStack *stack);
 
 void cpg_function_set_expression (CpgFunction *function, CpgExpression *expression);
-struct _CpgExpression *cpg_function_get_expression (CpgFunction *function);
+CPG_FORWARD_DECL (CpgExpression) *cpg_function_get_expression (CpgFunction *function);
 
 gchar const *cpg_function_argument_get_name (CpgFunctionArgument *argument);
 gboolean cpg_function_argument_get_optional (CpgFunctionArgument *argument);

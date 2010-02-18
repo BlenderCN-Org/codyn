@@ -57,7 +57,7 @@ struct _CpgObjectClass {
 	/*< public >*/	
 	gboolean (*compile)	(CpgObject *object,
 	                     CpgCompileContext *context,
-	                     struct _CpgCompileError *error);
+	                     CPG_FORWARD_DECL (CpgCompileError) *error);
 	void (*reset)		(CpgObject *object);
 	void (*evaluate)	(CpgObject *object);
 	
@@ -103,11 +103,11 @@ void			  cpg_object_taint			(CpgObject   *object);
 
 gboolean		  cpg_object_compile		(CpgObject         *object,
 											 CpgCompileContext *context,
-											 struct _CpgCompileError *error);
+											 CPG_FORWARD_DECL (CpgCompileError) *error);
 
 /* used for referencing links */
 void 			 _cpg_object_link			(CpgObject       *object, 
-											 struct _CpgLink *link);
+											 CPG_FORWARD_DECL (CpgLink) *link);
 GSList 			 *cpg_object_get_actors		(CpgObject       *object);
 GSList 			*_cpg_object_get_links		(CpgObject       *object);
 
