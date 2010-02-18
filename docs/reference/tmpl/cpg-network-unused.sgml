@@ -441,6 +441,14 @@ cpg-utils
 @propname: 
 @Returns: 
 
+<!-- ##### FUNCTION cpg_network_is_compiled ##### -->
+<para>
+
+</para>
+
+@network: 
+@Returns: 
+
 <!-- ##### FUNCTION cpg_network_set_expression ##### -->
 <para>
 

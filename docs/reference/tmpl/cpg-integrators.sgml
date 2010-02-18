@@ -1,5 +1,5 @@
 <!-- ##### SECTION Title ##### -->
-CpgIntegratorEuler
+cpg-integrators
 
 <!-- ##### SECTION Short_Description ##### -->
 
@@ -17,31 +17,36 @@ CpgIntegratorEuler
 <!-- ##### SECTION Stability_Level ##### -->
 
 
-<!-- ##### MACRO CPG_INTEGRATOR_EULER_CONST ##### -->
+<!-- ##### FUNCTION cpg_integrators_list ##### -->
 <para>
 
 </para>
 
-@obj: 
+@Returns: 
 
 
-<!-- ##### STRUCT CpgIntegratorEulerPrivate ##### -->
+<!-- ##### FUNCTION cpg_integrators_register ##### -->
 <para>
 
 </para>
 
+@gtype: 
 
-<!-- ##### STRUCT CpgIntegratorEuler ##### -->
+
+<!-- ##### FUNCTION cpg_integrators_unregister ##### -->
 <para>
 
 </para>
 
+@gtype: 
 
-<!-- ##### FUNCTION cpg_integrator_euler_new ##### -->
+
+<!-- ##### FUNCTION cpg_integrators_find ##### -->
 <para>
 
 </para>
 
+@id: 
 @Returns: 
 
 

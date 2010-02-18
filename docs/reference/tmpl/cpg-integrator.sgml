@@ -9,12 +9,10 @@ CpgIntegrator
 
 </para>
 
-
 <!-- ##### SECTION See_Also ##### -->
 <para>
 
 </para>
-
 
 <!-- ##### SECTION Stability_Level ##### -->
 
@@ -44,6 +42,20 @@ CpgIntegrator
 
 </para>
 
+
+<!-- ##### SIGNAL CpgIntegrator::begin ##### -->
+<para>
+
+</para>
+
+@cpgintegrator: the object which received the signal.
+
+<!-- ##### SIGNAL CpgIntegrator::end ##### -->
+<para>
+
+</para>
+
+@cpgintegrator: the object which received the signal.
 
 <!-- ##### SIGNAL CpgIntegrator::step ##### -->
 <para>
@@ -114,6 +126,15 @@ CpgIntegrator
 @timestep: 
 
 
+<!-- ##### FUNCTION cpg_integrator_get_name ##### -->
+<para>
+
+</para>
+
+@integrator: 
+@Returns: 
+
+
 <!-- ##### FUNCTION cpg_integrator_get_time ##### -->
 <para>
 
@@ -146,6 +167,24 @@ CpgIntegrator
 </para>
 
 @state: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_state_set_update ##### -->
+<para>
+
+</para>
+
+@state: 
+@value: 
+
+
+<!-- ##### FUNCTION cpg_integrator_get_network ##### -->
+<para>
+
+</para>
+
+@integrator: 
 @Returns: 
 
 

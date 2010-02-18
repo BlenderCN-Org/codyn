@@ -246,7 +246,7 @@ CpgNetwork
 @Returns: 
 
 
-<!-- ##### FUNCTION cpg_network_is_compiled ##### -->
+<!-- ##### FUNCTION cpg_network_get_compiled ##### -->
 <para>
 
 </para>
@@ -403,6 +403,15 @@ CpgNetwork
 
 @network: 
 @name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_get_integration_state ##### -->
+<para>
+
+</para>
+
+@network: 
 @Returns: 
 
 
