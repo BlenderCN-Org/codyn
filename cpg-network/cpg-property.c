@@ -273,6 +273,15 @@ _cpg_property_unuse (CpgProperty *property)
 	return (--(property->use_count) == 0);
 }
 
+/**
+ * cpg_property_get_used:
+ * @property: A #CpgProperty
+ * 
+ * Get how many times the property is used currently.
+ *
+ * Returns: The number of times the property is used
+ *
+ **/
 guint 
 cpg_property_get_used (CpgProperty *property)
 {
@@ -299,12 +308,30 @@ cpg_property_equal (CpgProperty *property,
 	                             cpg_property_get_value_expression (other));
 }
 
+/**
+ * cpg_property_get_hint:
+ * @property: A #CpgProperty
+ * 
+ * The property hint. The hint contains information on the type of property (
+ * such as in, or out).
+ *
+ * Returns: A #CpgPropertyHint
+ *
+ **/
 CpgPropertyHint
 cpg_property_get_hint (CpgProperty *property)
 {
 	return property->hint;
 }
 
+/**
+ * cpg_property_set_hint:
+ * @property: A #CpgProperty
+ * @hint: A #CpgPropertyHint
+ * 
+ * Set the property hint.
+ *
+ **/
 void
 cpg_property_set_hint (CpgProperty     *property,
                        CpgPropertyHint  hint)
@@ -312,6 +339,14 @@ cpg_property_set_hint (CpgProperty     *property,
 	property->hint = hint;
 }
 
+/**
+ * cpg_property_add_hint:
+ * @property: A #CpgProperty
+ * @hint: A #CpgPropertyHint
+ * 
+ * Add a hint flag to the property hints.
+ *
+ **/
 void
 cpg_property_add_hint (CpgProperty     *property,
                        CpgPropertyHint  hint)
@@ -319,6 +354,14 @@ cpg_property_add_hint (CpgProperty     *property,
 	property->hint |= hint;
 }
 
+/**
+ * cpg_property_remove_hint:
+ * @property: A #CpgProperty
+ * @hint: A #CpgPropertyHint
+ * 
+ * Remove a hint flag from the property hints.
+ *
+ **/
 void
 cpg_property_remove_hint (CpgProperty     *property,
                           CpgPropertyHint  hint)

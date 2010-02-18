@@ -1,0 +1,190 @@
+<!-- ##### SECTION Title ##### -->
+CpgIntegrator
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO CPG_INTEGRATOR_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgIntegratorPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgIntegratorState ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgIntegrator ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### SIGNAL CpgIntegrator::begin ##### -->
+<para>
+
+</para>
+
+@cpgintegrator: the object which received the signal.
+
+<!-- ##### SIGNAL CpgIntegrator::end ##### -->
+<para>
+
+</para>
+
+@cpgintegrator: the object which received the signal.
+
+<!-- ##### SIGNAL CpgIntegrator::step ##### -->
+<para>
+
+</para>
+
+@cpgintegrator: the object which received the signal.
+
+<!-- ##### ARG CpgIntegrator:network ##### -->
+<para>
+
+</para>
+
+<!-- ##### ARG CpgIntegrator:time ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION cpg_integrator_state_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_state_new ##### -->
+<para>
+
+</para>
+
+@property: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_run ##### -->
+<para>
+
+</para>
+
+@integrator: 
+@state: 
+@from: 
+@timestep: 
+@to: 
+
+
+<!-- ##### FUNCTION cpg_integrator_step ##### -->
+<para>
+
+</para>
+
+@integrator: 
+@state: 
+@t: 
+@timestep: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_evaluate ##### -->
+<para>
+
+</para>
+
+@integrator: 
+@state: 
+@t: 
+@timestep: 
+
+
+<!-- ##### FUNCTION cpg_integrator_get_name ##### -->
+<para>
+
+</para>
+
+@integrator: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_get_time ##### -->
+<para>
+
+</para>
+
+@integrator: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_reset ##### -->
+<para>
+
+</para>
+
+@integrator: 
+
+
+<!-- ##### FUNCTION cpg_integrator_state_get_update ##### -->
+<para>
+
+</para>
+
+@state: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_state_get_property ##### -->
+<para>
+
+</para>
+
+@state: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_state_set_update ##### -->
+<para>
+
+</para>
+
+@state: 
+@value: 
+
+
+<!-- ##### FUNCTION cpg_integrator_get_network ##### -->
+<para>
+
+</para>
+
+@integrator: 
+@Returns: 
+
+

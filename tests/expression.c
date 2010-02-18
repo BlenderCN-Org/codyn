@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 
+#include <cpg-network/cpg-network.h>
 #include <cpg-network/cpg-expression.h>
 #include <cpg-network/cpg-object.h>
 #include "utils.h"
@@ -12,11 +13,12 @@ static void
 expression_initialize_context(gchar const *exp, CpgObject *context)
 {
 	expression = cpg_expression_new(exp);
-	
-	GSList *ctx = g_slist_append(NULL, context);
+
+	CpgCompileContext *ctx = cpg_compile_context_new ();
+	cpg_compile_context_prepend_object (ctx, context);
 
 	gboolean ret = cpg_expression_compile(expression, ctx, NULL);
-	g_slist_free(ctx);
+	cpg_ref_counted_unref (ctx);
 	
 	if (!ret)
 	{
@@ -162,6 +164,24 @@ test_random()
 	return TRUE;
 }
 
+static gboolean
+test_globals ()
+{
+	CpgNetwork *network = cpg_network_new ();
+	CpgObject *globals = cpg_network_get_globals (network);
+	CpgProperty *x = cpg_object_add_property (globals, "x", "0", FALSE);
+
+	cpg_network_step (network, 0.001);
+
+	cpg_property_set_value (x, 1);
+	assert(1, cpg_property_get_value (x));
+
+	cpg_network_step (network, 0.001);
+	assert(1, cpg_property_get_value (x));
+
+	return TRUE;
+}
+
 typedef gboolean (*TestFunction)();
 
 typedef struct
@@ -179,7 +199,8 @@ static Test functions[] = {
 	{test_complex, "test_complex"},
 	{test_function_varargs, "test_function_varargs"},
 	{test_scientific_notation, "test_scientific_notation"},
-	{test_random, "test_random"}
+	{test_random, "test_random"},
+	{test_globals, "test_globals"}
 };
 
 gint 

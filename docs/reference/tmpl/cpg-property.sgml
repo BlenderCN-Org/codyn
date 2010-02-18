@@ -17,10 +17,27 @@ CpgProperty
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### ENUM CpgPropertyHint ##### -->
+<para>
+
+</para>
+
+@CPG_PROPERTY_HINT_NONE: 
+@CPG_PROPERTY_HINT_IN: 
+@CPG_PROPERTY_HINT_OUT: 
+
 <!-- ##### STRUCT CpgProperty ##### -->
 <para>
 
 </para>
+
+
+<!-- ##### FUNCTION cpg_property_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
 
 
 <!-- ##### FUNCTION cpg_property_new ##### -->
@@ -69,6 +86,42 @@ CpgProperty
 
 @property: 
 @integrated: 
+
+
+<!-- ##### FUNCTION cpg_property_get_hint ##### -->
+<para>
+
+</para>
+
+@property: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_property_set_hint ##### -->
+<para>
+
+</para>
+
+@property: 
+@hint: 
+
+
+<!-- ##### FUNCTION cpg_property_add_hint ##### -->
+<para>
+
+</para>
+
+@property: 
+@hint: 
+
+
+<!-- ##### FUNCTION cpg_property_remove_hint ##### -->
+<para>
+
+</para>
+
+@property: 
+@hint: 
 
 
 <!-- ##### FUNCTION cpg_property_reset_cache ##### -->
@@ -122,6 +175,15 @@ CpgProperty
 
 @property: 
 @other: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_property_get_used ##### -->
+<para>
+
+</para>
+
+@property: 
 @Returns: 
 
 

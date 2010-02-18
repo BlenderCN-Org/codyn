@@ -2,7 +2,9 @@
 #define __CPG_OBJECT_H__
 
 #include <glib-object.h>
-#include "cpg-property.h"
+#include <cpg-network/cpg-property.h>
+#include <cpg-network/cpg-compile-context.h>
+#include <cpg-network/cpg-utils.h>
 
 G_BEGIN_DECLS
 
@@ -20,7 +22,8 @@ typedef struct _CpgObject			CpgObject;
 typedef struct _CpgObjectClass		CpgObjectClass;
 typedef struct _CpgObjectPrivate	CpgObjectPrivate;
 
-struct _CpgLink;
+CPG_FORWARD_DECL (CpgLink);
+CPG_FORWARD_DECL (CpgCompileError);
 
 /**
  * CpgObjectError:
@@ -52,12 +55,11 @@ struct _CpgObjectClass {
 	GObjectClass parent_class;
 
 	/*< public >*/	
-	void (*compile)		(CpgObject *object);
+	gboolean (*compile)	(CpgObject *object,
+	                     CpgCompileContext *context,
+	                     CPG_FORWARD_DECL (CpgCompileError) *error);
 	void (*reset)		(CpgObject *object);
-	void (*update)		(CpgObject *object, 
-						 gdouble    timestep);
-	void (*evaluate)	(CpgObject *object, 
-						 gdouble    timestep);
+	void (*evaluate)	(CpgObject *object);
 	
 	void (*tainted)		(CpgObject *object);
 	
@@ -94,17 +96,18 @@ GSList			*cpg_object_get_properties	(CpgObject   *object);
 
 /* evaluation */
 void			  cpg_object_reset			(CpgObject   *object);
-void			  cpg_object_update			(CpgObject   *object, 
-											 gdouble      timestep);
-void			  cpg_object_evaluate		(CpgObject   *object, 
-											 gdouble      timestep);
+void			  cpg_object_evaluate		(CpgObject   *object);
 
 void			  cpg_object_reset_cache	(CpgObject	 *object);
 void			  cpg_object_taint			(CpgObject   *object);
 
+gboolean		  cpg_object_compile		(CpgObject         *object,
+											 CpgCompileContext *context,
+											 CPG_FORWARD_DECL (CpgCompileError) *error);
+
 /* used for referencing links */
 void 			 _cpg_object_link			(CpgObject       *object, 
-											 struct _CpgLink *link);
+											 CPG_FORWARD_DECL (CpgLink) *link);
 GSList 			 *cpg_object_get_actors		(CpgObject       *object);
 GSList 			*_cpg_object_get_links		(CpgObject       *object);
 

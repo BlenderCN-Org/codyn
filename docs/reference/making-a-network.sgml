@@ -192,7 +192,8 @@ is the power operator: <emphasis>**</emphasis>.
 </para>
 <para>
 A number of functions is also implemented: <emphasis>cos, sin, tan, acos, asin,
-atan, sqrt, min, max, exp, floor, ceil, round, abs, pow, rand, ln, log</emphasis>.
+atan, atan2, sqrt, invsqrt, min, max, exp, floor, ceil, round, abs, pow, rand,
+ln, log</emphasis>.
 Here <emphasis>ln</emphasis> and <emphasis>log</emphasis> both refer to the
 natural logarithm. <emphasis>rand</emphasis> generate a random number between
 0 and 1. You can use 2 arguments to rand to give a range in which the random

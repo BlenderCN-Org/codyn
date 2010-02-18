@@ -20,8 +20,8 @@ void cpg_stack_free(CpgStack *stack);
 guint cpg_stack_size(CpgStack *stack);
 guint cpg_stack_count(CpgStack *stack);
 
-void cpg_stack_push(CpgStack *stack, gdouble value, void *data);
-gdouble cpg_stack_pop(CpgStack *stack, void *data);
+void cpg_stack_push(CpgStack *stack, gdouble value);
+gdouble cpg_stack_pop(CpgStack *stack);
 
 void cpg_stack_reset(CpgStack *stack);
 

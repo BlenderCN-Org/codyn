@@ -11,6 +11,7 @@
 #include "cpg-debug.h"
 #include "cpg-network-reader.h"
 #include "cpg-network-writer.h"
+#include "cpg-integrator-euler.h"
 
 /**
  * SECTION:cpg-network
@@ -36,9 +37,8 @@
 enum
 {
 	PROP_0,
-	PROP_TIME,
-	PROP_TIMESTEP,
-	PROP_COMPILED
+	PROP_COMPILED,
+	PROP_INTEGRATOR
 };
 
 typedef struct
@@ -61,29 +61,24 @@ struct _CpgNetworkPrivate
 	GHashTable *object_map;
 	
 	/* simulation */
-	gdouble timestep;
-	gdouble time;
 	gboolean compiled;
 	
-	/* context */
-	GSList *context;
-	
-	CpgObject *constants;
-	CpgProperty *timeprop;
-	CpgProperty *timestepprop;
-	
+	CpgObject *globals;
+
 	GHashTable *templates;
+
+	GSList *functions;
+	CpgIntegrator *integrator;
+
+	GSList *state;
 };
 
 enum
 {
 	RESET,
-	UPDATE,
 	COMPILE_ERROR,
 	NUM_SIGNALS
 };
-
-#define NUM_CONTEXT 3
 
 static guint network_signals[NUM_SIGNALS] = {0,};
 
@@ -112,10 +107,7 @@ cpg_network_finalize (GObject *object)
 	g_hash_table_destroy (network->priv->object_map);
 	g_hash_table_destroy (network->priv->templates);
 
-	g_object_unref (network->priv->constants);
-	g_slist_free (network->priv->context);
-	
-	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
+	g_object_unref (network->priv->globals);
 }
 
 static void
@@ -128,14 +120,11 @@ cpg_network_get_property (GObject     *object,
 	
 	switch (prop_id)
 	{
-		case PROP_TIME:
-			g_value_set_double (value, self->priv->time);
-		break;
-		case PROP_TIMESTEP:
-			g_value_set_double (value, self->priv->timestep);
-		break;
 		case PROP_COMPILED:
 			g_value_set_boolean (value, self->priv->compiled);
+		break;
+		case PROP_INTEGRATOR:
+			g_value_set_object (value, self->priv->integrator);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -153,14 +142,17 @@ cpg_network_set_property (GObject       *object,
 	
 	switch (prop_id)
 	{
-		case PROP_TIME:
-			self->priv->time = g_value_get_double (value);
-		break;
-		case PROP_TIMESTEP:
-			self->priv->timestep = g_value_get_double (value);
-		break;
 		case PROP_COMPILED:
 			self->priv->compiled = g_value_get_boolean (value);
+		break;
+		case PROP_INTEGRATOR:
+			if (self->priv->integrator)
+			{
+				g_object_unref (self->priv->integrator);
+			}
+
+			self->priv->integrator = g_value_dup_object (value);
+			g_object_set (self->priv->integrator, "network", self, NULL);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -169,43 +161,28 @@ cpg_network_set_property (GObject       *object,
 }
 
 static void
+cpg_network_dispose (GObject *object)
+{
+	CpgNetwork *network = CPG_NETWORK (object);
+
+	if (network->priv->integrator)
+	{
+		g_object_unref (network->priv->integrator);
+		network->priv->integrator = NULL;
+	}
+
+	G_OBJECT_CLASS (cpg_network_parent_class)->dispose (object);
+}
+
+static void
 cpg_network_class_init (CpgNetworkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	
 	object_class->finalize = cpg_network_finalize;
+	object_class->dispose = cpg_network_dispose;
 	object_class->get_property = cpg_network_get_property;
 	object_class->set_property = cpg_network_set_property;
-
-	/**
-	 * CpgNetwork:time:
-	 *
-	 * Current simulation time
-	 *
-	 **/
-	g_object_class_install_property (object_class, PROP_TIME,
-				 g_param_spec_double ("time",
-							  "TIME",
-							  "Current simulatio time",
-							  0,
-							  G_MAXDOUBLE,
-							  0,
-							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
-
-	/**
-	 * CpgNetwork:timestep:
-	 *
-	 * Current simulation timestep
-	 *
-	 **/
-	g_object_class_install_property (object_class, PROP_TIMESTEP,
-				 g_param_spec_double ("timestep",
-							  "TIMESTEP",
-							  "Current simulation timestep",
-							  0,
-							  G_MAXDOUBLE,
-							  0,
-							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	/**
 	 * CpgNetwork:compiled:
@@ -238,25 +215,6 @@ cpg_network_class_init (CpgNetworkClass *klass)
 			      0);
 
 	/**
-	 * CpgNetwork::update:
-	 * @network: a #CpgNetwork
-	 * @timestep: the timestep
-	 *
-	 * Emitted when the network is updated (one step)
-	 *
-	 **/
-	network_signals[UPDATE] =
-   		g_signal_new ("update",
-			      G_OBJECT_CLASS_TYPE (object_class),
-			      G_SIGNAL_RUN_LAST,
-			      G_STRUCT_OFFSET (CpgNetworkClass, update),
-			      NULL, NULL,
-			      g_cclosure_marshal_VOID__DOUBLE,
-			      G_TYPE_NONE,
-			      1,
-				  G_TYPE_DOUBLE);
-
-	/**
 	 * CpgNetwork::compile-error:
 	 * @network: a #CpgNetwork
 	 * @error: a #CpgCompileError
@@ -274,7 +232,16 @@ cpg_network_class_init (CpgNetworkClass *klass)
 			      G_TYPE_NONE,
 			      1,
 				  CPG_TYPE_COMPILE_ERROR);
-		
+
+	g_object_class_install_property (object_class,
+	                                 PROP_INTEGRATOR,
+	                                 g_param_spec_object ("integrator",
+	                                                      "Integrator",
+	                                                      "Integrator",
+	                                                      CPG_TYPE_INTEGRATOR,
+	                                                      G_PARAM_READWRITE));
+	
+
 	g_type_class_add_private (object_class, sizeof (CpgNetworkPrivate));
 }
 
@@ -287,28 +254,22 @@ cpg_network_init (CpgNetwork *network)
 	                                                   g_str_equal,
 	                                                   (GDestroyNotify)g_free,
 	                                                   NULL);
-	guint i;
+	network->priv->globals = cpg_object_new ("Globals");
 	
-	for (i = 0; i < NUM_CONTEXT; ++i)
-	{
-		network->priv->context = g_slist_prepend (network->priv->context, NULL);
-	}
-	
-	network->priv->constants = cpg_object_new ("Globals");
-	network->priv->timeprop = cpg_object_add_property (network->priv->constants, "t", "0", 0);
-	network->priv->timestepprop = cpg_object_add_property (network->priv->constants, "dt", "0", 0);
-	
-	g_signal_connect_swapped (network->priv->constants, 
+	g_signal_connect_swapped (network->priv->globals, 
 	                          "tainted", 
 	                          G_CALLBACK (cpg_network_taint), 
 	                          network);
-	
-	g_slist_nth (network->priv->context, NUM_CONTEXT - 1)->data = network->priv->constants;
 	
 	network->priv->templates = g_hash_table_new_full (g_str_hash, 
 	                                                  g_str_equal,
 	                                                  (GDestroyNotify)g_free,
 	                                                  (GDestroyNotify)g_object_unref);
+
+	/* Create default integrator */
+	CpgIntegratorEuler *integrator = cpg_integrator_euler_new ();
+	cpg_network_set_integrator (network, CPG_INTEGRATOR (integrator));
+	g_object_unref (integrator);
 }
 
 /**
@@ -326,114 +287,8 @@ cpg_network_new ()
 }
 
 static void
-set_context (CpgNetwork  *network,
-             CpgObject   *first,
-             CpgObject   *second)
-{
-	g_slist_nth (network->priv->context, 0)->data = first;
-	g_slist_nth (network->priv->context, 1)->data = second;
-}
-
-static void
-compile_error_set (CpgCompileError *error,
-                   CpgObject       *object,
-                   CpgProperty     *property,
-                   CpgLinkAction   *action)
-{
-	if (error == NULL)
-	{
-		return;
-	}
-
-	_cpg_compile_error_set (error, object, property, action);
-}
-
-static gboolean
-parse_expressions (CpgNetwork      *network,
-                   CpgObject       *object,
-                   CpgCompileError *error)
-{
-	set_context (network, object, CPG_IS_LINK (object) ? cpg_link_get_from (CPG_LINK (object)) : NULL);
-	
-	// Parse all property value expressions
-	GSList *properties = cpg_object_get_properties (object);
-	
-	while (properties)
-	{
-		CpgProperty *property = (CpgProperty *)properties->data;
-		CpgExpression *expr = cpg_property_get_value_expression (property);
-		GError *gerror = NULL;
-		
-		if (!cpg_expression_compile (expr, 
-		                             network->priv->context, 
-		                             &gerror))
-		{
-			cpg_debug_error ("Error while parsing expression [%s].%s<%s>: %s",
-			                 cpg_object_get_id (object), 
-			                 cpg_property_get_name (property), 
-			                 cpg_expression_get_as_string (expr),
-			                 gerror->message);
-			
-			if (error)
-			{
-				g_propagate_error (cpg_compile_error_get_error (error), gerror);
-			}
-			else
-			{
-				g_error_free (gerror);
-			}
-
-			compile_error_set (error, object, property, NULL);
-			return FALSE;
-		}
-		
-		properties = g_slist_next (properties);
-	}
-	
-	cpg_object_reset (object);
-	
-	if (!CPG_IS_LINK (object))
-		return TRUE;
-
-	// Parse all link expressions	
-	CpgLink *link = CPG_LINK (object);	
-	GSList *actions = cpg_link_get_actions (link);
-	
-	while (actions)
-	{
-		CpgLinkAction *action = (CpgLinkAction *)actions->data;
-		CpgExpression *expr = cpg_link_action_get_expression (action);
-		GError *gerror = NULL;
-		
-		if (!cpg_expression_compile (expr, network->priv->context, &gerror))
-		{
-			cpg_debug_error ("Error while parsing expression [%s]<%s>: %s", 
-			                 cpg_object_get_id (object), 
-			                 cpg_expression_get_as_string (expr),
-			                 gerror->message);
-			
-			if (error)
-			{
-				g_propagate_error (cpg_compile_error_get_error (error), gerror);
-			}
-			else
-			{
-				g_error_free (gerror);
-			}
-			
-			compile_error_set (error, object, NULL, action);
-			return FALSE;
-		}
-		
-		actions = g_slist_next (actions);
-	}
-	
-	return TRUE;
-}
-
-static void
 add_state (CpgNetwork *network, 
-		  gpointer    state)
+           gpointer    state)
 {
 	network->priv->states = g_slist_append (network->priv->states, 
 	                                        g_object_ref (state));
@@ -547,11 +402,15 @@ unregister_object (CpgNetwork *network,
 	g_signal_handlers_disconnect_by_func (object, 
 	                                      G_CALLBACK (cpg_network_taint), 
 	                                      network);
-	g_signal_handlers_disconnect_by_func (object, 
-	                                      G_CALLBACK (update_object_id), 
-	                                      network);
 
-	g_hash_table_remove (network->priv->object_map, cpg_object_get_id (object));
+	if (!CPG_IS_FUNCTION (object))
+	{
+		g_signal_handlers_disconnect_by_func (object, 
+			                                  G_CALLBACK (update_object_id), 
+			                                  network);
+
+		g_hash_table_remove (network->priv->object_map, cpg_object_get_id (object));
+	}
 }
 
 static void
@@ -563,12 +422,44 @@ register_object (CpgNetwork *network,
 	                          G_CALLBACK (cpg_network_taint), 
 	                          network);
 
-	g_signal_connect (object, 
-	                  "notify::id", 
-	                  G_CALLBACK (update_object_id), 
-	                  network);
+	if (!CPG_IS_FUNCTION (object))
+	{
+		g_signal_connect (object, 
+			              "notify::id", 
+			              G_CALLBACK (update_object_id), 
+			              network);
 
-	register_id (network, object);
+		register_id (network, object);
+	}
+}
+
+static void
+update_state (CpgNetwork *network)
+{
+	g_slist_foreach (network->priv->state, (GFunc)cpg_ref_counted_unref, NULL);
+	g_slist_free (network->priv->state);
+
+	network->priv->state = NULL;
+
+	/* Collect all the states in the network */
+	GSList *item;
+
+	for (item = network->priv->states; item; item = g_slist_next (item))
+	{
+		CpgObject *object = CPG_OBJECT (item->data);
+
+		GSList *actors = cpg_object_get_actors (object);
+
+		while (actors)
+		{
+			network->priv->state = g_slist_prepend (network->priv->state,
+			                                        cpg_integrator_state_new ((CpgProperty *)actors->data));
+
+			actors = g_slist_next (actors);
+		}
+	}
+
+	network->priv->state = g_slist_reverse (network->priv->state);
 }
 
 static void
@@ -579,6 +470,11 @@ set_compiled (CpgNetwork *network,
 	{
 		network->priv->compiled = compiled;
 		g_object_notify (G_OBJECT (network), "compiled");
+
+		if (compiled)
+		{
+			update_state (network);
+		}
 	}
 }
 
@@ -628,9 +524,13 @@ cpg_network_add_object (CpgNetwork  *network,
 	register_object (network, object);
 
 	if (CPG_IS_LINK (object))
+	{
 		add_link (network, object);
+	}
 	else if (CPG_IS_STATE (object) || CPG_IS_RELAY (object))
+	{
 		add_state (network, object);
+	}
 	
 	set_compiled (network, FALSE);
 }
@@ -708,6 +608,38 @@ cpg_network_taint (CpgNetwork *network)
 	set_compiled (network, FALSE);
 }
 
+typedef struct
+{
+	CpgNetwork *network;
+	CpgCompileContext *context;
+	CpgCompileError *error;
+	gboolean failed;
+} CompileInfo;
+
+static void
+compile_each_object (CpgObject   *object,
+                     CompileInfo *info)
+{
+	if (info->failed)
+	{
+		return;
+	}
+
+	info->failed = !cpg_object_compile (object, info->context, info->error);
+}
+
+static gboolean
+cpg_network_compile_each (CpgNetwork        *network,
+                          CpgCompileContext *context,
+                          CpgCompileError   *error,
+                          GSList            *objects)
+{
+	CompileInfo info = {network, context, error, FALSE};
+
+	g_slist_foreach (objects, (GFunc)compile_each_object, &info);
+	return !info.failed;
+}
+
 /**
  * cpg_network_compile:
  * @network: a #CpgNetwork
@@ -727,31 +659,58 @@ gboolean
 cpg_network_compile (CpgNetwork      *network,
                      CpgCompileError *error)
 {
-	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
-	
-	set_compiled (network, FALSE);
-	
-	GSList *item;
-	
-	for (item = network->priv->states; item; item = g_slist_next (item))
-	{
-		if (!parse_expressions (network, CPG_OBJECT (item->data), error))
-			return FALSE;
-	}
-	
-	for (item = network->priv->links; item; item = g_slist_next (item))
-	{
-		if (!parse_expressions (network, CPG_OBJECT (item->data), error))
-			return FALSE;
-	}
-	
-	if (!parse_expressions (network, network->priv->constants, error))
-		return FALSE;
-	
-	set_compiled (network, TRUE);
-	cpg_network_reset (network);
+	gboolean ret = TRUE;
 
-	return TRUE;
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+
+	set_compiled (network, FALSE);
+
+	CpgCompileContext *context = cpg_compile_context_new ();
+
+	cpg_compile_context_prepend_object (context, CPG_OBJECT (network->priv->integrator));
+	cpg_compile_context_prepend_object (context, network->priv->globals);
+	cpg_compile_context_set_functions (context, network->priv->functions);
+
+	/* Compile functions */
+	if (!cpg_network_compile_each (network, context, error, network->priv->functions))
+	{
+		/* Functions */
+		cpg_ref_counted_unref (context);
+		ret = FALSE;
+	}
+	else if (!cpg_network_compile_each (network, context, error, network->priv->states))
+	{
+		/* States */
+		cpg_ref_counted_unref (context);
+		ret = FALSE;
+	}
+	else if (!cpg_network_compile_each (network, context, error, network->priv->links))
+	{
+		/* Links */
+		cpg_ref_counted_unref (context);
+		ret = FALSE;
+	}
+	else if (!cpg_object_compile (network->priv->globals, context, error))
+	{
+		/* Globals */
+		cpg_ref_counted_unref (context);
+		ret = FALSE;
+	}
+
+	if (!ret)
+	{
+		if (error)
+		{
+			g_signal_emit (network, network_signals[COMPILE_ERROR], 0, error);
+		}
+	}
+	else
+	{
+		set_compiled (network, TRUE);
+		cpg_network_reset (network);
+	}
+
+	return ret;
 }
 
 /**
@@ -893,82 +852,56 @@ cpg_network_clear (CpgNetwork *network)
 	
 	network->priv->states = NULL;
 	network->priv->links = NULL;
-	
-	GSList *props = g_slist_copy (cpg_object_get_properties (network->priv->constants));
+
+	GSList *props = g_slist_copy (cpg_object_get_properties (network->priv->globals));
 	GSList *item;
-	
+
 	props = g_slist_sort (props, (GCompareFunc)compare_property_dependencies);
 	
 	for (item = props; item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
-		
-		if (property != network->priv->timeprop && property != network->priv->timestepprop)
-		{
-			cpg_object_remove_property (network->priv->constants, 
-			                            cpg_property_get_name (property),
-			                            NULL);
-		}
+
+		cpg_object_remove_property (network->priv->globals, 
+		                            cpg_property_get_name (property),
+		                            NULL);
 	}
 	
 	g_slist_free (props);
 	
 	/* Clear templates */
 	g_hash_table_remove_all (network->priv->templates);
+
+	/* Clear functions */
+	g_slist_foreach (network->priv->functions, (GFunc)g_object_unref, NULL);
+	g_slist_free (network->priv->functions);
+
+	network->priv->functions = NULL;
+
+	g_slist_foreach (network->priv->state, (GFunc)cpg_ref_counted_unref, NULL);
+	g_slist_free (network->priv->state);
+
+	network->priv->state = NULL;
 }
 
-/* simulation functions */
-static void
-evaluate_objects (CpgNetwork  *network,
-                  GType        type)
+static gboolean
+ensure_compiled (CpgNetwork *network)
 {
-	GSList *item;
-	
-	for (item = network->priv->states; item; item = g_slist_next (item))
+	if (network->priv->compiled)
 	{
-		CpgObject *obj = CPG_OBJECT (item->data);
-		
-		if (g_type_is_a (G_TYPE_FROM_INSTANCE (obj), type))
-			cpg_object_evaluate (obj, network->priv->timestep);
+		return TRUE;
 	}
-}
 
-static void
-simulation_evaluate_relays (CpgNetwork *network)
-{
-	cpg_debug_evaluate ("Evaluate relays");
-	evaluate_objects (network, CPG_TYPE_RELAY);
-}
+	CpgCompileError *error = cpg_compile_error_new ();
 
-static void
-simulation_evaluate_states (CpgNetwork *network)
-{
-	cpg_debug_evaluate ("Evaluate states");
-	evaluate_objects (network, CPG_TYPE_STATE);
-}
+	if (!cpg_network_compile (network, error))
+	{
+		cpg_ref_counted_unref (error);
+		return FALSE;
+	}
 
-static void
-simulation_update (CpgNetwork *network)
-{
-	GSList *item;
-	
-	cpg_debug_evaluate ("Simulation update");
-	
-	/* update all objects */
-	for (item = network->priv->states; item; item = g_slist_next (item))
-		cpg_object_update (CPG_OBJECT (item->data), network->priv->timestep);
-	
-	for (item = network->priv->links; item; item = g_slist_next (item))
-		cpg_object_update (CPG_OBJECT (item->data), network->priv->timestep);
-}
-
-static void
-reset_cache (CpgNetwork *network)
-{
-	g_slist_foreach (network->priv->states, (GFunc)cpg_object_reset_cache, NULL);
-	g_slist_foreach (network->priv->links, (GFunc)cpg_object_reset_cache, NULL);
-	
-	cpg_object_reset (network->priv->constants);
+	cpg_ref_counted_unref (error);
+	return TRUE;
 }
 
 /**
@@ -986,41 +919,13 @@ cpg_network_step (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (timestep > 0);
 
-	if (!network->priv->compiled)
+	if (ensure_compiled (network))
 	{
-		CpgCompileError *error = cpg_compile_error_new ();
-		
-		if (!cpg_network_compile (network, error))
-		{
-			g_signal_emit (network, network_signals[COMPILE_ERROR], 0, error);
-			cpg_ref_counted_unref (error);
-			
-			return;
-		}
-		
-		cpg_ref_counted_unref (error);
+		cpg_integrator_step (network->priv->integrator,
+			                 network->priv->state,
+			                 cpg_integrator_get_time (network->priv->integrator),
+			                 timestep);
 	}
-
-	g_signal_emit (network, network_signals[UPDATE], 0, timestep);
-	reset_cache (network);
-
-	network->priv->timestep = timestep;
-	g_object_notify (G_OBJECT (network), "timestep");
-
-	cpg_property_set_value (network->priv->timestepprop, timestep);
-	cpg_property_set_value (network->priv->timeprop, network->priv->time);
-	
-	cpg_debug_evaluate ("Simulation step");
-	
-	// first evaluate all the relays
-	simulation_evaluate_relays (network);
-	
-	// then evaluate the network
-	simulation_evaluate_states (network);
-	simulation_update (network);
-	
-	network->priv->time += timestep;
-	cpg_property_set_value (network->priv->timeprop, network->priv->time);
 }
 
 /**
@@ -1043,35 +948,15 @@ cpg_network_run (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (from < to);
 	g_return_if_fail (timestep > 0);
-	g_return_if_fail (to - (from + timestep) < to - from);
 
-	if (!network->priv->compiled)
+	if (ensure_compiled (network))
 	{
-		CpgCompileError *error = cpg_compile_error_new ();
-		
-		if (!cpg_network_compile (network, error))
-		{
-			g_signal_emit (network, network_signals[COMPILE_ERROR], 0, error);
-			cpg_ref_counted_unref (error);
-			
-			return;
-		}
-		
-		cpg_ref_counted_unref (error);
+		cpg_integrator_run (network->priv->integrator,
+			                network->priv->state,
+			                from,
+			                timestep,
+			                to);
 	}
-
-	network->priv->time = from;
-	g_object_notify (G_OBJECT (network), "time");
-	
-	cpg_property_set_value (network->priv->timeprop, network->priv->time);
-	
-	if (network->priv->time >= to - 0.5 * timestep)
-		return;
-	
-	while (network->priv->time < to - 0.5 * timestep)
-		cpg_network_step (network, timestep);
-	
-	g_signal_emit (network, network_signals[UPDATE], 0, timestep);
 }
 
 /**
@@ -1088,17 +973,15 @@ cpg_network_reset (CpgNetwork *network)
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
 
-	// set time back to 0
-	network->priv->time = 0;
-	g_object_notify (G_OBJECT (network), "time");
-	
-	cpg_property_set_value (network->priv->timeprop, 0);
-	
 	// reset all objects
 	g_slist_foreach (network->priv->states, (GFunc)cpg_object_reset, NULL);
 	g_slist_foreach (network->priv->links, (GFunc)cpg_object_reset, NULL);
 	
-	cpg_object_reset (network->priv->constants);
+	cpg_object_reset (network->priv->globals);
+
+	g_slist_foreach (network->priv->functions, (GFunc)cpg_object_reset, NULL);
+
+	cpg_integrator_reset (network->priv->integrator);
 
 	g_signal_emit (network, network_signals[RESET], 0);
 }
@@ -1135,14 +1018,14 @@ cpg_network_merge (CpgNetwork  *network,
 	// Copy over globals
 	GSList *item;
 	
-	for (item = cpg_object_get_properties (other->priv->constants); item; item = g_slist_next (item))
+	for (item = cpg_object_get_properties (other->priv->globals); item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
 		
-		if (!cpg_object_get_property (network->priv->constants,
+		if (!cpg_object_get_property (network->priv->globals,
 		                              cpg_property_get_name (property)))
 		{
-			cpg_object_add_property (network->priv->constants,
+			cpg_object_add_property (network->priv->globals,
 			                         cpg_property_get_name (property),
 			                         cpg_expression_get_as_string (cpg_property_get_value_expression (property)),
 			                         FALSE);
@@ -1164,6 +1047,12 @@ cpg_network_merge (CpgNetwork  *network,
 	for (item = other->priv->links; item; item = g_slist_next (item))
 	{
 		cpg_network_add_object (network, CPG_OBJECT (item->data));
+	}
+
+	// Copy over functions
+	for (item = other->priv->functions; item; item = g_slist_next (item))
+	{
+		cpg_network_add_function (network, CPG_FUNCTION (item->data));
 	}
 }
 
@@ -1231,7 +1120,7 @@ cpg_network_merge_from_xml (CpgNetwork   *network,
  * @name: the constant name
  * @constant: the constant value
  *
- * Sets a constant in the network. Constants can be used to set global settings
+ * Sets a constant in the network. Globals can be used to set global settings
  * for the whole network (e.g. oscillator frequency)
  *
  **/
@@ -1243,12 +1132,12 @@ cpg_network_set_global_constant (CpgNetwork   *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (name != NULL);
 	
-	CpgProperty *property = cpg_object_get_property (network->priv->constants,
+	CpgProperty *property = cpg_object_get_property (network->priv->globals,
 	                                                 name);
 
 	if (property == NULL)
 	{
-		property = cpg_object_add_property (network->priv->constants,
+		property = cpg_object_add_property (network->priv->globals,
 		                                    name,
 		                                    "",
 		                                    FALSE);
@@ -1261,9 +1150,9 @@ cpg_network_set_global_constant (CpgNetwork   *network,
  * cpg_network_get_globals:
  * @network: a #CpgNetwork
  *
- * Get the #CpgObject containing all the global constants
+ * Get the #CpgObject containing all the global globals
  *
- * Returns: the #CpgObject containing the global constants
+ * Returns: the #CpgObject containing the global globals
  *
  **/
 CpgObject *
@@ -1271,7 +1160,7 @@ cpg_network_get_globals (CpgNetwork *network)
 {
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 	
-	return network->priv->constants;
+	return network->priv->globals;
 }
 
 /**
@@ -1534,4 +1423,149 @@ cpg_network_add_link_from_template (CpgNetwork  *network,
 	g_object_unref (object);
 
 	return object;
+}
+
+/**
+ * cpg_network_add_function:
+ * @network: A #CpgNetwork
+ * @function: A #CpgFunction
+ * 
+ * Add a new custom user function to the network.
+ *
+ **/
+void
+cpg_network_add_function (CpgNetwork  *network,
+                          CpgFunction *function)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (CPG_IS_FUNCTION (function));
+
+	if (cpg_network_get_function (network, cpg_object_get_id (CPG_OBJECT (function))))
+	{
+		return;
+	}
+
+	network->priv->functions = g_slist_append (network->priv->functions,
+	                                           g_object_ref (function));
+
+	register_object (network, CPG_OBJECT (function));
+	set_compiled (network, FALSE);
+}
+
+/**
+ * cpg_network_remove_function:
+ * @network: A #CpgNetwork
+ * @function: A #CpgFunction
+ * 
+ * Remove a custom user function from the network.
+ *
+ **/
+void
+cpg_network_remove_function (CpgNetwork  *network,
+                             CpgFunction *function)
+{
+	GSList *item;
+
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (CPG_IS_FUNCTION (function));
+
+	item = g_slist_find (network->priv->functions, function);
+
+	if (item)
+	{
+		unregister_object (network, CPG_OBJECT (function));
+		g_object_unref (item->data);
+		network->priv->functions = g_slist_delete_link (network->priv->functions, item);
+	}
+
+	set_compiled (network, FALSE);
+}
+
+/**
+ * cpg_network_get_functions:
+ * @network: A #CpgNetwork
+ * 
+ * Get the custom user functions defined in the network.
+ *
+ * Returns: A #GSList of #CpgFunction.
+ *
+ **/
+GSList *
+cpg_network_get_functions (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	return network->priv->functions;
+}
+
+/**
+ * cpg_network_get_function:
+ * @network: A #CpgNetwork
+ * @name: The function name
+ * 
+ * Get a custom user function defined in the network.
+ *
+ * Returns: A #CpgFunction if a function with @name could be found, %NULL
+ *          otherwise
+ *
+ **/
+CpgFunction *
+cpg_network_get_function (CpgNetwork  *network,
+                          gchar const *name)
+{
+	GSList *item;
+
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+
+	for (item = network->priv->functions; item; item = g_slist_next (item))
+	{
+		CpgFunction *func = CPG_FUNCTION (item->data);
+
+		if (g_strcmp0 (cpg_object_get_id (CPG_OBJECT (func)), name) == 0)
+		{
+			return func;
+		}
+	}
+
+	return NULL;
+}
+
+gboolean
+cpg_network_get_compiled (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+
+	return network->priv->compiled;
+}
+
+void
+cpg_network_set_integrator (CpgNetwork    *network,
+                            CpgIntegrator *integrator)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
+
+	g_object_set (network, "integrator", integrator, NULL);
+}
+
+CpgIntegrator *
+cpg_network_get_integrator (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	return network->priv->integrator;
+}
+
+GSList *
+cpg_network_get_integration_state (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	if (!network->priv->state)
+	{
+		update_state (network);
+	}
+
+	return network->priv->state;
 }

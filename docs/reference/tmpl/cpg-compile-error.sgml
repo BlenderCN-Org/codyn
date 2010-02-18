@@ -57,12 +57,32 @@ CpgCompileError
 @Returns: 
 
 
+<!-- ##### FUNCTION cpg_compile_error_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
 <!-- ##### FUNCTION cpg_compile_error_new ##### -->
 <para>
 
 </para>
 
 @Returns: 
+
+
+<!-- ##### FUNCTION cpg_compile_error_set ##### -->
+<para>
+
+</para>
+
+@error: 
+@gerror: 
+@object: 
+@property: 
+@action: 
 
 
 <!-- ##### FUNCTION cpg_compile_error_get_error ##### -->

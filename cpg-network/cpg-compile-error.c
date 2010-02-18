@@ -81,16 +81,28 @@ cpg_compile_error_new ()
 }
 
 void
-_cpg_compile_error_set (CpgCompileError *error,
-                        CpgObject       *object,
-                        CpgProperty     *property,
-                        CpgLinkAction   *action)
+cpg_compile_error_set (CpgCompileError *error,
+                       GError          *gerror,
+                       CpgObject       *object,
+                       CpgProperty     *property,
+                       CpgLinkAction   *action)
 {
 	if (error->object)
 	{
 		g_object_unref (error->object);
 	}
-	
+
+	if (error->error)
+	{
+		g_error_free (error->error);
+		error->error = NULL;
+	}
+
+	if (gerror)
+	{
+		error->error = g_error_copy (gerror);
+	}
+
 	error->object = g_object_ref (object);
 	error->property = property;
 	error->action = action;
@@ -105,10 +117,10 @@ _cpg_compile_error_set (CpgCompileError *error,
  * Returns: the associated #GError
  *
  **/
-GError **
+GError *
 cpg_compile_error_get_error	(CpgCompileError *error)
 {
-	return &(error->error);
+	return error->error;
 }
 
 /**
@@ -203,7 +215,7 @@ cpg_compile_error_code_string (gint code)
 gchar const *
 cpg_compile_error_string (CpgCompileError *error)
 {
-	return cpg_compile_error_code_string (error->error->code);
+	return cpg_compile_error_code_string (cpg_compile_error_get_code (error));
 }
 
 /**
@@ -218,7 +230,7 @@ cpg_compile_error_string (CpgCompileError *error)
 gint
 cpg_compile_error_get_code (CpgCompileError *error)
 {
-	return error->error->code;
+	return error->error ? error->error->code : 0;
 }
 
 /**
@@ -233,5 +245,5 @@ cpg_compile_error_get_code (CpgCompileError *error)
 gchar const *
 cpg_compile_error_get_message (CpgCompileError *error)
 {
-	return error->error->message;
+	return error->error ? error->error->message : "Unknown";
 }

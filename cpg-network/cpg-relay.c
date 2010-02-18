@@ -35,8 +35,7 @@ cpg_relay_finalize (GObject *object)
 
 static void
 ensure_dependencies (CpgRelay       *relay,
-                     CpgExpression  *expression,
-                     gdouble         timestep)
+                     CpgExpression  *expression)
 {
 	GSList *dependencies = cpg_expression_get_dependencies (expression);
 	
@@ -45,15 +44,29 @@ ensure_dependencies (CpgRelay       *relay,
 		CpgObject *obj = cpg_property_get_object ((CpgProperty *)dependencies->data);
 		
 		if (CPG_IS_RELAY (obj))
-			cpg_object_evaluate (obj, timestep);
+		{
+			cpg_object_evaluate (obj);
+		}
 		
 		dependencies = g_slist_next (dependencies);
 	}
 }
 
 static void
-cpg_relay_evaluate_impl (CpgObject  *object,
-                         gdouble     timestep)
+cpg_relay_reset_cache_impl (CpgObject *object)
+{
+	CpgRelay *relay = CPG_RELAY (object);
+
+	if (CPG_OBJECT_CLASS (cpg_relay_parent_class)->reset_cache)
+	{
+		CPG_OBJECT_CLASS (cpg_relay_parent_class)->reset_cache (object);
+	}
+
+	relay->priv->done = FALSE;
+}
+
+static void
+cpg_relay_evaluate_impl (CpgObject *object)
 {
 	CpgRelay *relay = CPG_RELAY (object);
 
@@ -84,13 +97,13 @@ cpg_relay_evaluate_impl (CpgObject  *object,
 			CpgExpression *expression = cpg_link_action_get_expression (action);
 			
 			// Ensure relay dependencies
-			ensure_dependencies (relay, expression, timestep);				
+			ensure_dependencies (relay, expression);
 			
 			// Evaluate expression and add value to the update
 			gdouble val = cpg_expression_evaluate (expression);
 			CpgProperty *target = cpg_link_action_get_target (action);
 
-			_cpg_property_set_update (target, _cpg_property_get_update (target) + val);			
+			_cpg_property_set_update (target, _cpg_property_get_update (target) + val);
 			actions = g_slist_next (actions);
 		}
 		
@@ -105,15 +118,6 @@ cpg_relay_evaluate_impl (CpgObject  *object,
 }
 
 static void
-cpg_relay_update_impl (CpgObject  *object,
-                       gdouble     timestep)
-{
-	CpgRelay *relay = CPG_RELAY (object);
-	
-	relay->priv->done = FALSE;
-}
-
-static void
 cpg_relay_class_init (CpgRelayClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -121,7 +125,7 @@ cpg_relay_class_init (CpgRelayClass *klass)
 	
 	object_class->finalize = cpg_relay_finalize;
 	cpg_class->evaluate = cpg_relay_evaluate_impl;
-	cpg_class->update = cpg_relay_update_impl;
+	cpg_class->reset_cache = cpg_relay_reset_cache_impl;
 
 	g_type_class_add_private (object_class, sizeof (CpgRelayPrivate));
 }

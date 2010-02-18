@@ -22,30 +22,6 @@
 cpg-debug
 
 
-<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:Long_Description ##### -->
-<para>
-
-</para>
-
-
-<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:See_Also ##### -->
-<para>
-
-</para>
-
-
-<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:Short_Description ##### -->
-
-
-
-<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:Stability_Level ##### -->
-
-
-
-<!-- ##### SECTION ./tmpl/cpg-enum-types.sgml:Title ##### -->
-cpg-enum-types
-
-
 <!-- ##### SECTION ./tmpl/cpg-ref-counted-private.sgml:Long_Description ##### -->
 <para>
 
@@ -262,20 +238,6 @@ cpg-types
 cpg-utils
 
 
-<!-- ##### MACRO CPG_LINK_CONST ##### -->
-<para>
-
-</para>
-
-@obj: 
-
-<!-- ##### MACRO CPG_NETWORK_CONST ##### -->
-<para>
-
-</para>
-
-@obj: 
-
 <!-- ##### MACRO CPG_NETWORK_TYPE_COMPILE_ERROR_TYPE ##### -->
 <para>
 
@@ -299,26 +261,6 @@ cpg-utils
 
 </para>
 
-
-<!-- ##### MACRO CPG_OBJECT_CONST ##### -->
-<para>
-
-</para>
-
-@obj: 
-
-<!-- ##### MACRO CPG_OBJECT_ERROR ##### -->
-<para>
-
-</para>
-
-
-<!-- ##### MACRO CPG_RELAY_CONST ##### -->
-<para>
-
-</para>
-
-@obj: 
 
 <!-- ##### MACRO CPG_SHARED_EXPRESSION ##### -->
 <para>
@@ -351,13 +293,6 @@ cpg-utils
 
 @base: 
 @offset: 
-
-<!-- ##### MACRO CPG_STATE_CONST ##### -->
-<para>
-
-</para>
-
-@obj: 
 
 <!-- ##### ENUM CpgCompileErrorType ##### -->
 <para>
@@ -401,37 +336,27 @@ cpg-utils
 @CPG_INSTRUCTION_TYPE_OPERATOR: 
 @CPG_INSTRUCTION_TYPE_PROPERTY: 
 
-<!-- ##### STRUCT CpgLinkPrivate ##### -->
+<!-- ##### SIGNAL CpgNetwork::update ##### -->
+<para>
+
+</para>
+
+@cpgnetwork: the object which received the signal.
+@arg1: 
+
+<!-- ##### ARG CpgNetwork:time ##### -->
 <para>
 
 </para>
 
 
-<!-- ##### STRUCT CpgNetworkPrivate ##### -->
-<para>
-
-</para>
-
-
-<!-- ##### STRUCT CpgObjectPrivate ##### -->
-<para>
-
-</para>
-
-
-<!-- ##### STRUCT CpgRelayPrivate ##### -->
+<!-- ##### ARG CpgNetwork:timestep ##### -->
 <para>
 
 </para>
 
 
 <!-- ##### TYPEDEF CpgSharedPointer ##### -->
-<para>
-
-</para>
-
-
-<!-- ##### STRUCT CpgStatePrivate ##### -->
 <para>
 
 </para>
@@ -445,13 +370,6 @@ cpg-utils
 @Ptr: 
 @Type: 
 @Num: 
-
-<!-- ##### FUNCTION cpg_compile_error_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
 
 <!-- ##### FUNCTION cpg_compile_error_type_get_type ##### -->
 <para>
@@ -506,35 +424,7 @@ cpg-utils
 @format: 
 @Varargs: 
 
-<!-- ##### FUNCTION cpg_debug_type_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
-<!-- ##### FUNCTION cpg_expression_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
 <!-- ##### FUNCTION cpg_instruction_type_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
-<!-- ##### FUNCTION cpg_link_get_type ##### -->
-<para>
-
-</para>
-
-@Returns: 
-
-<!-- ##### FUNCTION cpg_monitor_get_type ##### -->
 <para>
 
 </para>
@@ -551,6 +441,14 @@ cpg-utils
 @propname: 
 @Returns: 
 
+<!-- ##### FUNCTION cpg_network_is_compiled ##### -->
+<para>
+
+</para>
+
+@network: 
+@Returns: 
+
 <!-- ##### FUNCTION cpg_network_set_expression ##### -->
 <para>
 
@@ -561,12 +459,13 @@ cpg-utils
 @expression: 
 @Returns: 
 
-<!-- ##### FUNCTION cpg_object_error_get_type ##### -->
+<!-- ##### FUNCTION cpg_object_update ##### -->
 <para>
 
 </para>
 
-@Returns: 
+@object: 
+@timestep: 
 
 <!-- ##### FUNCTION cpg_property_compile ##### -->
 <para>
@@ -576,13 +475,6 @@ cpg-utils
 @property: 
 @context: 
 @error: 
-@Returns: 
-
-<!-- ##### FUNCTION cpg_property_get_type ##### -->
-<para>
-
-</para>
-
 @Returns: 
 
 <!-- ##### FUNCTION cpg_property_reset ##### -->

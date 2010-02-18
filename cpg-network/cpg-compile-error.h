@@ -39,12 +39,14 @@ GQuark			  cpg_compile_error_type_quark			(void);
 GType cpg_compile_error_get_type						(void);
 
 CpgCompileError *cpg_compile_error_new					();
-void _cpg_compile_error_set								(CpgCompileError *error,
+
+void cpg_compile_error_set								(CpgCompileError *error,
+														 GError          *gerror,
 														 CpgObject       *object,
 														 CpgProperty     *property,
 														 CpgLinkAction   *action);
 
-GError 			**cpg_compile_error_get_error			(CpgCompileError *error);
+GError 			 *cpg_compile_error_get_error			(CpgCompileError *error);
 CpgObject 		 *cpg_compile_error_get_object			(CpgCompileError *error);
 CpgProperty		 *cpg_compile_error_get_property		(CpgCompileError *error);
 CpgLinkAction 	 *cpg_compile_error_get_link_action		(CpgCompileError *error);

@@ -1,0 +1,186 @@
+<!-- ##### SECTION Title ##### -->
+CpgFunction
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO CPG_FUNCTION_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgFunctionPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgFunctionArgument ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgFunction ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### ARG CpgFunction:expression ##### -->
+<para>
+
+</para>
+
+<!-- ##### FUNCTION cpg_function_argument_get_type ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_new ##### -->
+<para>
+
+</para>
+
+@name: 
+@expression: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_argument_new ##### -->
+<para>
+
+</para>
+
+@name: 
+@optional: 
+@def: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_add_argument ##### -->
+<para>
+
+</para>
+
+@function: 
+@argument: 
+
+
+<!-- ##### FUNCTION cpg_function_remove_argument ##### -->
+<para>
+
+</para>
+
+@function: 
+@argument: 
+
+
+<!-- ##### FUNCTION cpg_function_clear_arguments ##### -->
+<para>
+
+</para>
+
+@function: 
+
+
+<!-- ##### FUNCTION cpg_function_get_arguments ##### -->
+<para>
+
+</para>
+
+@function: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_get_n_optional ##### -->
+<para>
+
+</para>
+
+@function: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_get_n_arguments ##### -->
+<para>
+
+</para>
+
+@function: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_execute ##### -->
+<para>
+
+</para>
+
+@function: 
+@stack: 
+
+
+<!-- ##### FUNCTION cpg_function_set_expression ##### -->
+<para>
+
+</para>
+
+@function: 
+@expression: 
+
+
+<!-- ##### FUNCTION cpg_function_get_expression ##### -->
+<para>
+
+</para>
+
+@function: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_argument_get_name ##### -->
+<para>
+
+</para>
+
+@argument: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_argument_get_optional ##### -->
+<para>
+
+</para>
+
+@argument: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_function_argument_get_default_value ##### -->
+<para>
+
+</para>
+
+@argument: 
+@Returns: 
+
+

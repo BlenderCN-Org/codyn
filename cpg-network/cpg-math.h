@@ -58,8 +58,8 @@ gdouble cpg_math_constant_lookup (gchar const *name, gboolean *found);
 
 CpgMathOperatorType cpg_math_operator_lookup(CpgMathOperatorType type);
 
-void cpg_math_function_execute(CpgMathFunctionType id, CpgStack *stack, void *data);
-void cpg_math_operator_execute(CpgMathOperatorType id, CpgStack *stack, void *data);
+void cpg_math_function_execute(CpgMathFunctionType id, CpgStack *stack);
+void cpg_math_operator_execute(CpgMathOperatorType id, CpgStack *stack);
 
 gboolean cpg_math_function_is_constant (CpgMathFunctionType id);
 gboolean cpg_math_operator_is_constant (CpgMathOperatorType id);

@@ -8,6 +8,7 @@
 #include "cpg-expression.h"
 
 #include "cpg-debug.h"
+#include "cpg-compile-error.h"
 
 /**
  * SECTION:cpg-object
@@ -265,6 +266,59 @@ cpg_object_copy_impl (CpgObject *object,
 	object->priv->properties = g_slist_reverse (object->priv->properties);
 }
 
+static gboolean
+cpg_object_compile_impl (CpgObject         *object,
+                         CpgCompileContext *context,
+                         CpgCompileError   *error)
+{
+	/* Compile all the property expressions */
+	GSList *properties = cpg_object_get_properties (object);
+	gboolean ret = TRUE;
+
+	/* Prepend the object in the context */
+	cpg_compile_context_save (context);
+	cpg_compile_context_prepend_object (context, object);
+
+	while (properties)
+	{
+		CpgProperty *property = (CpgProperty *)properties->data;
+		CpgExpression *expr = cpg_property_get_value_expression (property);
+		GError *gerror = NULL;
+		
+		if (!cpg_expression_compile (expr, 
+		                             context, 
+		                             &gerror))
+		{
+			cpg_debug_error ("Error while parsing expression [%s].%s<%s>: %s",
+			                 cpg_object_get_id (object), 
+			                 cpg_property_get_name (property), 
+			                 cpg_expression_get_as_string (expr),
+			                 gerror->message);
+
+			
+			if (error)
+			{
+				cpg_compile_error_set (error, gerror, object, property, NULL);
+			}
+
+			g_error_free (gerror);
+
+			ret = FALSE;
+			break;
+		}
+		
+		properties = g_slist_next (properties);
+	}
+
+	if (ret)
+	{
+		cpg_object_reset (object);
+	}
+
+	cpg_compile_context_restore (context);
+	return ret;
+}
+
 static void
 cpg_object_class_init (CpgObjectClass *klass)
 {
@@ -278,6 +332,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 	klass->reset = cpg_object_reset_impl;
 	klass->reset_cache = cpg_object_reset_cache_impl;
 	klass->copy = cpg_object_copy_impl;
+	klass->compile = cpg_object_compile_impl;
 	
 	/**
 	 * CpgObject:id: 
@@ -561,6 +616,16 @@ _cpg_object_link (CpgObject  *object,
 	g_object_add_toggle_ref (G_OBJECT (link), (GToggleNotify)link_destroyed, object);
 }
 
+/**
+ * cpg_object_get_actors:
+ * @object: A #CpgObject
+ * 
+ * Get the properties which are acted upon by links.
+ *
+ * Returns: A #GSList of #CpgProperty. This list is used internally and should
+ *          not be freed.
+ *
+ **/
 GSList *
 cpg_object_get_actors (CpgObject *object)
 {
@@ -598,28 +663,6 @@ cpg_object_get_actors (CpgObject *object)
 }
 
 /**
- * cpg_object_update:
- * @object: the #CpgObject
- * @timestep: the timestep to use
- *
- * Update property values using the values previously calculated in 
- * #cpg_object_evaluate.
- *
- **/
-void
-cpg_object_update (CpgObject  *object,
-                   gdouble     timestep)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (timestep > 0);
-
-	if (CPG_OBJECT_GET_CLASS (object)->update)
-	{
-		CPG_OBJECT_GET_CLASS (object)->update (object, timestep);
-	}
-}
-
-/**
  * cpg_object_evaluate:
  * @object: the #CpgObject
  * @timestep: the timestep to use
@@ -628,15 +671,13 @@ cpg_object_update (CpgObject  *object,
  *
  **/
 void
-cpg_object_evaluate (CpgObject  *object,
-                     gdouble     timestep)
+cpg_object_evaluate (CpgObject *object)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (timestep > 0);
 
 	if (CPG_OBJECT_GET_CLASS (object)->evaluate)
 	{
-		CPG_OBJECT_GET_CLASS (object)->evaluate (object, timestep);
+		CPG_OBJECT_GET_CLASS (object)->evaluate (object);
 	}
 }
 
@@ -745,6 +786,34 @@ cpg_object_reset_cache (CpgObject *object)
 	{
 		CPG_OBJECT_GET_CLASS (object)->reset_cache (object);
 	}
+}
+
+/**
+ * cpg_object_compile:
+ * @object: A #CpgObject
+ * @context: A #CpgCompileContext
+ * @error: A #CpgCompileError
+ * 
+ * Compile the object.
+ *
+ * Returns: %TRUE if the object compiled successfully, %FALSE otherwise. If the
+ *          compilation failed and @error was set, the reason for the compile
+ *          failure is set in @error.
+ *
+ **/
+gboolean
+cpg_object_compile (CpgObject         *object,
+                    CpgCompileContext *context,
+                    CpgCompileError   *error)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+
+	if (CPG_OBJECT_GET_CLASS (object)->compile)
+	{
+		return CPG_OBJECT_GET_CLASS (object)->compile (object, context, error);
+	}
+
+	return TRUE;
 }
 
 /**

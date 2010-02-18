@@ -1,5 +1,7 @@
 #include "cpg-link.h"
 #include "cpg-ref-counted-private.h"
+#include "cpg-compile-error.h"
+#include "cpg-debug.h"
 #include <string.h>
 
 /**
@@ -224,6 +226,63 @@ cpg_link_copy_impl (CpgObject *object,
 	}
 }
 
+static gboolean
+cpg_link_compile_impl (CpgObject         *object,
+                       CpgCompileContext *context,
+                       CpgCompileError   *error)
+{
+	CpgLink *link = CPG_LINK (object);
+
+	cpg_compile_context_save (context);
+	cpg_compile_context_prepend_object (context, link->priv->from);
+	cpg_compile_context_prepend_object (context, object);
+
+	/* Chain up, compile object */
+	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->compile)
+	{
+		if (!CPG_OBJECT_CLASS (cpg_link_parent_class)->compile (object, context, error))
+		{
+			cpg_compile_context_restore (context);
+			return FALSE;
+		}
+	}
+
+	/* Parse all link expressions */
+	GSList *actions = cpg_link_get_actions (link);
+	gboolean ret = TRUE;
+
+	while (actions)
+	{
+		CpgLinkAction *action = (CpgLinkAction *)actions->data;
+		CpgExpression *expr = cpg_link_action_get_expression (action);
+		GError *gerror = NULL;
+
+		if (!cpg_expression_compile (expr, context, &gerror))
+		{
+			cpg_debug_error ("Error while parsing expression [%s]<%s>: %s", 
+			                 cpg_object_get_id (object), 
+			                 cpg_expression_get_as_string (expr),
+			                 gerror->message);
+			
+			if (error)
+			{
+				cpg_compile_error_set (error, gerror, object, NULL, action);
+			}
+
+			g_error_free (gerror);
+			
+			ret = FALSE;
+			break;
+		}
+		
+		actions = g_slist_next (actions);
+	}
+
+	cpg_compile_context_restore (context);
+
+	return ret;
+}
+
 static void
 cpg_link_class_init (CpgLinkClass *klass)
 {
@@ -238,6 +297,7 @@ cpg_link_class_init (CpgLinkClass *klass)
 	
 	cpgobject_class->reset_cache = cpg_link_reset_cache_impl;
 	cpgobject_class->copy = cpg_link_copy_impl;
+	cpgobject_class->compile = cpg_link_compile_impl;
 
 	/**
 	 * CpgLink:from:

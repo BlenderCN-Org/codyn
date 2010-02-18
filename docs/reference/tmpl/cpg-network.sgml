@@ -17,6 +17,38 @@ CpgNetwork
 <!-- ##### SECTION Stability_Level ##### -->
 
 
+<!-- ##### MACRO CPG_NETWORK_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgNetworkPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### MACRO CPG_NETWORK_LOAD_ERROR ##### -->
+<para>
+
+</para>
+
+
+
+<!-- ##### ENUM CpgNetworkLoadError ##### -->
+<para>
+
+</para>
+
+@CPG_NETWORK_LOAD_ERROR_XML: 
+@CPG_NETWORK_LOAD_ERROR_PROPERTY: 
+@CPG_NETWORK_LOAD_ERROR_OBJECT: 
+@CPG_NETWORK_LOAD_ERROR_LINK: 
+@CPG_NETWORK_LOAD_ERROR_FUNCTION: 
+
 <!-- ##### STRUCT CpgNetwork ##### -->
 <para>
 
@@ -38,28 +70,23 @@ CpgNetwork
 
 @cpgnetwork: the object which received the signal.
 
-<!-- ##### SIGNAL CpgNetwork::update ##### -->
-<para>
-
-</para>
-
-@cpgnetwork: the object which received the signal.
-@arg1: 
-
 <!-- ##### ARG CpgNetwork:compiled ##### -->
 <para>
 
 </para>
 
-<!-- ##### ARG CpgNetwork:time ##### -->
+<!-- ##### ARG CpgNetwork:integrator ##### -->
 <para>
 
 </para>
 
-<!-- ##### ARG CpgNetwork:timestep ##### -->
+<!-- ##### FUNCTION cpg_network_load_error_quark ##### -->
 <para>
 
 </para>
+
+@Returns: 
+
 
 <!-- ##### FUNCTION cpg_network_new_from_file ##### -->
 <para>
@@ -86,6 +113,24 @@ CpgNetwork
 
 </para>
 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_set_integrator ##### -->
+<para>
+
+</para>
+
+@network: 
+@integrator: 
+
+
+<!-- ##### FUNCTION cpg_network_get_integrator ##### -->
+<para>
+
+</para>
+
+@network: 
 @Returns: 
 
 
@@ -134,6 +179,16 @@ CpgNetwork
 @network: 
 @xml: 
 @error: 
+
+
+<!-- ##### FUNCTION cpg_network_set_global_constant ##### -->
+<para>
+
+</para>
+
+@network: 
+@name: 
+@constant: 
 
 
 <!-- ##### FUNCTION cpg_network_get_globals ##### -->
@@ -188,6 +243,15 @@ CpgNetwork
 
 @network: 
 @error: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_get_compiled ##### -->
+<para>
+
+</para>
+
+@network: 
 @Returns: 
 
 
@@ -302,6 +366,52 @@ CpgNetwork
 @name: 
 @from: 
 @to: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_add_function ##### -->
+<para>
+
+</para>
+
+@network: 
+@function: 
+
+
+<!-- ##### FUNCTION cpg_network_remove_function ##### -->
+<para>
+
+</para>
+
+@network: 
+@function: 
+
+
+<!-- ##### FUNCTION cpg_network_get_functions ##### -->
+<para>
+
+</para>
+
+@network: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_get_function ##### -->
+<para>
+
+</para>
+
+@network: 
+@name: 
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_network_get_integration_state ##### -->
+<para>
+
+</para>
+
+@network: 
 @Returns: 
 
 

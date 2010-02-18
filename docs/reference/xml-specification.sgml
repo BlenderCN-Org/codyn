@@ -24,13 +24,14 @@ A basic, empty XML file looks like this:
 </programlisting>
 </informalexample>
 Thus, the root element is <code>cpg</code> which contains the network root
-element <code>network</code>. The network itself consists of three distinct
+element <code>network</code>. The network itself consists of four distinct
 sections:
 
 <itemizedlist>
   <listitem><link linkend="globals">Globals</link></listitem>
   <listitem><link linkend="templates">Templates</link></listitem>
   <listitem><link linkend="objects">Objects</link></listitem>
+  <listitem><link linkend="functions">Functions</link></listitem>
 </itemizedlist>
 
 </para>
@@ -164,6 +165,55 @@ referenced explicitly by using the format <code>from.&lt;prop&gt;</code> and
 
 </para>
 </refsect2>
+
+<refsect2 id="functions">
+<title>Functions</title>
+<para>
+A special section in the network specifies user defined functions which you
+can then use in any expression in the network. This can be very convenient
+if you have subexpressions which need to be evaluated at many places.
+</para>
+<informalexample>
+<programlisting>
+<![CDATA[<functions>
+  <function name="f1">
+    <expression>x * x</expression>
+    <argument optional="yes" default="1">x</argument>
+  </function>
+</functions>]]>
+</programlisting>
+</informalexample>
+<para>
+The small example shows a custom user function <code>f1</code> with one
+optional argument (with a default value of 1) named <code>x</code>. The
+specified expression is the same kind of mathematical expression you can
+specify in other parts of the network. You can use global constants and
+other user functions in this expression.
+</para>
+<para>
+There is one more specialized user function which allows you to easily define
+and evaluate piecewise polynomial functions.
+</para>
+<informalexample>
+<programlisting>
+<![CDATA[<functions>
+  <polynomial name="f1">
+    <piece begin="-0.25" end="0.25">-4, 6, 0, -1</piece>
+    <piece begin="0.25" end="0.75">4, -6, 0, 1</piece>
+    <piece begin="0.75" end="1.25">-4, 6, 0, -1</piece>
+  </function>
+</functions>]]>
+</programlisting>
+</informalexample>
+<para>
+The example above defines a piecewise 4th order, periodic polynomial resembling
+a sine wave. You can evaluate this function with <code>f1(t)</code> where
+<code>t</code> is the point at which to evaluate the piecewise polynomial
+function. Additionally, an optional second argument specifies with order
+derivative of the function to evaluate. Thus <code>f1(t, 1)</code> evaluates
+the first order derivative of the function.
+</para>
+</refsect2>
 </refsect1>
 <refsect1 id="specification">
 <title>DTD specification</title>
@@ -174,9 +224,15 @@ precisely described with the following DTD:
 
 <programlisting>
 <![CDATA[<!ELEMENT cpg (network)>
-<!ELEMENT network (globals?, templates?, state*, link*, relay*)>
+<!ELEMENT network (globals?, templates?, functions?, state*, link*, relay*)>
 <!ELEMENT globals (property*)>
 <!ELEMENT templates (state*, link*, relay*)>
+<!ELEMENT functions (function*, polynomial*)>
+<!ELEMENT function (expression, argument*)>
+<!ELEMENT polynomial (piece*)>
+<!ELEMENT argument (#PCDATA)>
+<!ELEMENT expression (#PCDATA)>
+<!ELEMENT piece (#PCDATA)>
 
 <!ELEMENT state (property*)>
 <!ATTLIST state
@@ -207,7 +263,26 @@ precisely described with the following DTD:
 <!ATTLIST property
 	name CDATA #REQUIRED
 	integrated CDATA
-	variant CDATA
+	in CDATA
+	out CDATA
+>
+
+<!ATTLIST argument
+	optional CDATA
+	default CDATA
+>
+
+<!ATTLIST function
+	name CDATA #REQUIRED
+>
+
+<!ATTLIST polynomial
+	name CDATA #REQUIRED
+>
+
+<!ATTLIST piece
+	begin CDATA #REQUIRED
+	end CDATA #REQUIRED
 >]]>
 </programlisting>
 </refsect1>

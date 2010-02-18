@@ -56,15 +56,13 @@ cpg_stack_count (CpgStack *stack)
 
 void
 cpg_stack_push (CpgStack  *stack,
-                gdouble    value,
-                void      *data)
+                gdouble    value)
 {
 	*(stack->output_ptr++) = value;
 }
 
 gdouble
-cpg_stack_pop (CpgStack  *stack,
-               void      *data)
+cpg_stack_pop (CpgStack *stack)
 {
 	return *(--stack->output_ptr);
 }

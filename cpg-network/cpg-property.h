@@ -1,8 +1,9 @@
 #ifndef __CPG_PROPERTY_H__
 #define __CPG_PROPERTY_H__
 
-#include "cpg-ref-counted.h"
-#include "cpg-expression.h"
+#include <cpg-network/cpg-ref-counted.h>
+#include <cpg-network/cpg-expression.h>
+#include <cpg-network/cpg-utils.h>
 
 G_BEGIN_DECLS
 
@@ -16,20 +17,20 @@ typedef enum
 typedef struct _CpgProperty CpgProperty;
 
 /* forward declaration */
-struct _CpgObject;
+CPG_FORWARD_DECL (CpgObject);
 
 GType			   cpg_property_get_type				(void);
 CpgProperty 	  *cpg_property_new						(const gchar        *name, 
 														 const gchar        *expression, 
 														 gboolean            integrated, 
-														 struct _CpgObject  *object);
+														 CPG_FORWARD_DECL (CpgObject)  *object);
 
 CpgProperty       *_cpg_property_copy                   (CpgProperty        *property);
 const gchar 	  *cpg_property_get_name				(CpgProperty        *property);
 
-struct _CpgObject *cpg_property_get_object				(CpgProperty        *property);
+CPG_FORWARD_DECL (CpgObject) *cpg_property_get_object				(CpgProperty        *property);
 void               _cpg_property_set_object             (CpgProperty        *property,
-                                                         struct _CpgObject  *object);
+                                                         CPG_FORWARD_DECL (CpgObject)  *object);
 
 gboolean		   cpg_property_get_integrated			(CpgProperty        *property);
 void			   cpg_property_set_integrated			(CpgProperty		*property,

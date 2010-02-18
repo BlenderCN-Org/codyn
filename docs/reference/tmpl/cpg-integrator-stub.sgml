@@ -1,0 +1,68 @@
+<!-- ##### SECTION Title ##### -->
+CpgIntegratorStub
+
+<!-- ##### SECTION Short_Description ##### -->
+
+
+<!-- ##### SECTION Long_Description ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION See_Also ##### -->
+<para>
+
+</para>
+
+<!-- ##### SECTION Stability_Level ##### -->
+
+
+<!-- ##### MACRO CPG_INTEGRATOR_STUB_CONST ##### -->
+<para>
+
+</para>
+
+@obj: 
+
+
+<!-- ##### STRUCT CpgIntegratorStubPrivate ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### STRUCT CpgIntegratorStub ##### -->
+<para>
+
+</para>
+
+
+<!-- ##### FUNCTION cpg_integrator_stub_new ##### -->
+<para>
+
+</para>
+
+@Returns: 
+
+
+<!-- ##### FUNCTION cpg_integrator_stub_update ##### -->
+<para>
+
+</para>
+
+@stub: 
+@state: 
+@t: 
+@dt: 
+@integrate: 
+
+
+<!-- ##### FUNCTION cpg_integrator_stub_get_state ##### -->
+<para>
+
+</para>
+
+@stub: 
+@Returns: 
+
+

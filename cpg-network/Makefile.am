@@ -19,14 +19,21 @@ COMMON_SOURCES = 		\
 	cpg-stack.c \
 	cpg-network-reader.c \
 	cpg-network-writer.c \
-	cpg-compile-error.c
+	cpg-compile-error.c \
+	cpg-function.c \
+	cpg-compile-context.c \
+	cpg-function-polynomial.c \
+	cpg-integrators.c \
+	cpg-integrator.c \
+	cpg-integrator-runge-kutta.c \
+	cpg-integrator-euler.c \
+	cpg-integrator-stub.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-network-reader.h \
 	cpg-network-writer.h \
-	cpg-ref-counted-private.h \
-	cpg-utils.h
+	cpg-ref-counted-private.h
 
 INST_H_FILES = \
 	cpg-network.h \
@@ -39,9 +46,18 @@ INST_H_FILES = \
 	cpg-expression.h \
 	cpg-ref-counted.h \
 	cpg-stack.h \
+	cpg-utils.h \
 	cpg-debug.h \
 	cpg-compile-error.h \
-	cpg-math.h
+	cpg-math.h \
+	cpg-function.h \
+	cpg-compile-context.h \
+	cpg-function-polynomial.h \
+	cpg-integrators.h \
+	cpg-integrator.h \
+	cpg-integrator-runge-kutta.h \
+	cpg-integrator-euler.h \
+	cpg-integrator-stub.h
 
 lib_LTLIBRARIES = libcpg-network-1.0.la
 
@@ -69,3 +85,5 @@ EXTRA_DIST = \
 	$(NOINST_H_FILES) \
 	cpg-enum-types.c.template \
 	cpg-enum-types.h.template
+
+-include $(top_srcdir)/git.mk
