@@ -15,7 +15,7 @@
 #include <glib.h>
 
 /**
- * SECTION:cpg-expression
+ * SECTION:expression
  * @short_description: Mathematical expression evaluation
  *
  * A #CpgExpression contains a mathematical expression. The expression in
@@ -1479,6 +1479,15 @@ cpg_expression_equal (CpgExpression *expression,
 	return TRUE;
 }
 
+/**
+ * cpg_instruction_to_string:
+ * @instruction: A #CpgInstruction
+ * 
+ * Get the string representation of an instruction.
+ *
+ * Returns: The string representation of the instruction.
+ *
+ **/
 gchar *
 cpg_instruction_to_string (CpgInstruction *instruction)
 {

@@ -1,5 +1,14 @@
 #include "cpg-integrators.h"
 
+/**
+ * SECTION:integrators
+ * @short_description: Integrator registry
+ *
+ * #CpgIntegrators provides a registry for integrators. All integrators must
+ * be registered before loading a #CpgNetwork.
+ *
+ */
+
 static GSList *integrators = NULL;
 
 static void
@@ -19,6 +28,14 @@ ensure_defaults ()
 	}
 }
 
+/**
+ * cpg_integrators_list:
+ * 
+ * Get the list of integrators.
+ *
+ * Returns: A GSList of #GType
+ *
+ **/
 GSList const *
 cpg_integrators_list (void)
 {
@@ -27,6 +44,13 @@ cpg_integrators_list (void)
 	return integrators;
 }
 
+/**
+ * cpg_integrators_register:
+ * @gtype: A #GType
+ * 
+ * Register a new integrator.
+ *
+ **/
 void
 cpg_integrators_register (GType gtype)
 {
@@ -40,12 +64,29 @@ cpg_integrators_register (GType gtype)
 	integrators = g_slist_append (integrators, GINT_TO_POINTER (gtype));
 }
 
+/**
+ * cpg_integrators_unregister:
+ * @gtype: A #GType
+ * 
+ * Unregister an integrator.
+ *
+ **/
 void
 cpg_integrators_unregister (GType gtype)
 {
 	integrators = g_slist_remove (integrators, GINT_TO_POINTER (gtype));
 }
 
+/**
+ * cpg_integrators_find:
+ * @id: The integrator id
+ * 
+ * Find an integrator by id.
+ *
+ * Returns: A #GType of the integrator or #G_TYPE_INVALID when the integrator
+ * could not be found.
+ *
+ **/
 GType
 cpg_integrators_find (gchar const *id)
 {

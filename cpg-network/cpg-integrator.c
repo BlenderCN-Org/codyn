@@ -2,6 +2,15 @@
 #include "cpg-network.h"
 #include "cpg-ref-counted-private.h"
 
+/**
+ * SECTION:integrator
+ * @short_description: Simulation integrator
+ *
+ * #CpgIntegrator is a base class for implementing different integration
+ * methods.
+ *
+ */
+
 #define CPG_INTEGRATOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR, CpgIntegratorPrivate))
 
 typedef gdouble (*CpgIntegratorStepFunc)(CpgIntegrator *, GSList *, gdouble, gdouble);
@@ -236,6 +245,12 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 	klass->run = cpg_integrator_run_impl;
 	klass->step = cpg_integrator_step_impl;
 
+	/**
+	 * CpgIntegrator:network:
+	 *
+	 * The network
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_NETWORK,
 	                                 g_param_spec_object ("network",
@@ -244,6 +259,12 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 	                                                      CPG_TYPE_NETWORK,
 	                                                      G_PARAM_READWRITE));
 
+	/**
+	 * CpgIntegrator:time:
+	 *
+	 * The current simulated time
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_TIME,
 	                                 g_param_spec_double ("time",
@@ -254,6 +275,12 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 	                                                      0.0,
 	                                                      G_PARAM_READABLE));
 
+	/**
+	 * CpgIntegrator::step:
+	 *
+	 * Emitted when an integrator step has been performed
+	 *
+	 **/
 	integrator_signals[STEP] =
 			g_signal_new ("step",
 			              G_OBJECT_CLASS_TYPE (object_class),
@@ -264,6 +291,12 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 			              G_TYPE_NONE,
 			              0);
 
+	/**
+	 * CpgIntegrator::begin:
+	 *
+	 * Emitted before running an integration of several steps
+	 *
+	 **/
 	integrator_signals[BEGIN] =
 			g_signal_new ("begin",
 			              G_OBJECT_CLASS_TYPE (object_class),
@@ -274,6 +307,12 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 			              G_TYPE_NONE,
 			              0);
 
+	/**
+	 * CpgIntegrator::end:
+	 *
+	 * Emitted after running an integration of several steps has finished
+	 *
+	 **/
 	integrator_signals[END] =
 			g_signal_new ("end",
 			              G_OBJECT_CLASS_TYPE (object_class),

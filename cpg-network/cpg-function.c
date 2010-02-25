@@ -4,7 +4,7 @@
 #include "cpg-ref-counted-private.h"
 
 /**
- * SECTION:cpg-function
+ * SECTION:function
  * @short_description: Custom user defined function
  *
  * It is possible to define custom user functions in the network which can

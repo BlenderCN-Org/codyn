@@ -6,7 +6,6 @@ CPG_OBJECT_ERROR
 CpgObjectError
 CpgObjectClass
 CpgObject
-cpg_object_error_quark
 cpg_object_new
 cpg_object_get_id
 cpg_object_set_id
@@ -32,6 +31,7 @@ CPG_IS_OBJECT_CLASS
 CPG_OBJECT_GET_CLASS
 CPG_OBJECT_CONST
 CpgObjectPrivate
+cpg_object_error_quark
 </SECTION>
 
 <SECTION>
@@ -41,7 +41,6 @@ CpgObjectPrivate
 CpgFunctionArgument
 CpgFunctionClass
 CpgFunction
-cpg_function_argument_get_type
 cpg_function_new
 cpg_function_argument_new
 cpg_function_add_argument
@@ -66,6 +65,7 @@ CPG_IS_FUNCTION_CLASS
 CPG_FUNCTION_GET_CLASS
 CPG_FUNCTION_CONST
 CpgFunctionPrivate
+cpg_function_argument_get_type
 </SECTION>
 
 <SECTION>
@@ -207,7 +207,6 @@ CPG_NETWORK_LOAD_ERROR
 CpgNetworkLoadError
 CpgNetworkClass
 CpgNetwork
-cpg_network_load_error_quark
 cpg_network_new_from_file
 cpg_network_new_from_xml
 cpg_network_new
@@ -253,6 +252,7 @@ CPG_IS_NETWORK_CLASS
 CPG_NETWORK_GET_CLASS
 CPG_NETWORK_CONST
 CpgNetworkPrivate
+cpg_network_load_error_quark
 </SECTION>
 
 <SECTION>

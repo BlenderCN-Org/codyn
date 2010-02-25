@@ -1,7 +1,7 @@
 #include "cpg-ref-counted-private.h"
 
 /**
- * SECTION:cpg-ref-counted
+ * SECTION:ref-counted
  * @short_description: A lightweight reference counted object
  *
  * #CpgRefCounted is a very lightweight implementation of a reference counted

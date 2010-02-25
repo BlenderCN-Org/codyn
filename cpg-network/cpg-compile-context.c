@@ -5,7 +5,7 @@
 #include "cpg-function.h"
 
 /**
- * SECTION:cpg-compile-context
+ * SECTION:compile-context
  * @short_description: The expression compile context
  *
  * The compile context provides information for compiling expressions such
