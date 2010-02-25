@@ -1,10 +1,10 @@
 <SECTION>
-<FILE>cpg-object</FILE>
-CPG_OBJECT_ERROR
-CPG_OBJECT_CONST
-CpgObjectPrivate
-CpgObjectError
+<FILE>object</FILE>
 <TITLE>CpgObject</TITLE>
+<INCLUDE>cpg-network/cpg-object.h</INCLUDE>
+CPG_OBJECT_ERROR
+CpgObjectError
+CpgObjectClass
 CpgObject
 cpg_object_error_quark
 cpg_object_new
@@ -30,6 +30,8 @@ cpg_object_get_type
 CPG_OBJECT_CLASS
 CPG_IS_OBJECT_CLASS
 CPG_OBJECT_GET_CLASS
+CPG_OBJECT_CONST
+CpgObjectPrivate
 </SECTION>
 
 <SECTION>
@@ -53,6 +55,7 @@ cpg_function_set_expression
 cpg_function_argument_get_name
 cpg_function_argument_get_optional
 cpg_function_argument_get_default_value
+cpg_function_argument_get_property
 <SUBSECTION Standard>
 CPG_FUNCTION
 CPG_IS_FUNCTION
@@ -186,12 +189,12 @@ CPG_STATE_GET_CLASS
 </SECTION>
 
 <SECTION>
-<FILE>cpg-network</FILE>
-CPG_NETWORK_CONST
-CpgNetworkPrivate
+<FILE>network</FILE>
+<TITLE>CpgNetwork</TITLE>
+<INCLUDE>cpg-network/cpg-network.h</INCLUDE>
 CPG_NETWORK_LOAD_ERROR
 CpgNetworkLoadError
-<TITLE>CpgNetwork</TITLE>
+CpgNetworkClass
 CpgNetwork
 cpg_network_load_error_quark
 cpg_network_new_from_file
@@ -237,6 +240,8 @@ cpg_network_get_type
 CPG_NETWORK_CLASS
 CPG_IS_NETWORK_CLASS
 CPG_NETWORK_GET_CLASS
+CPG_NETWORK_CONST
+CpgNetworkPrivate
 </SECTION>
 
 <SECTION>
