@@ -21,19 +21,23 @@
   </reference>
   <reference>
     <title>API reference</title>
-    <xi:include href="xml/cpg-network.xml"/>
-    <xi:include href="xml/cpg-object.xml"/>
-    <xi:include href="xml/cpg-property.xml"/>
-    <xi:include href="xml/cpg-state.xml"/>
-    <xi:include href="xml/cpg-relay.xml"/>
-    <xi:include href="xml/cpg-link.xml"/>
-    <xi:include href="xml/cpg-monitor.xml"/>
-    <xi:include href="xml/cpg-expression.xml"/>
-    <xi:include href="xml/cpg-ref-counted.xml"/>
-    <xi:include href="xml/cpg-compile-error.xml"/>
-    <xi:include href="xml/cpg-compile-context.xml"/>
-    <xi:include href="xml/cpg-function.xml"/>
-    <xi:include href="xml/cpg-function-polynomial.xml"/>
+    <xi:include href="xml/network.xml"/>
+    <xi:include href="xml/object.xml"/>
+    <xi:include href="xml/property.xml"/>
+    <xi:include href="xml/state.xml"/>
+    <xi:include href="xml/relay.xml"/>
+    <xi:include href="xml/link.xml"/>
+    <xi:include href="xml/monitor.xml"/>
+    <xi:include href="xml/expression.xml"/>
+    <xi:include href="xml/ref-counted.xml"/>
+    <xi:include href="xml/compile-error.xml"/>
+    <xi:include href="xml/compile-context.xml"/>
+    <xi:include href="xml/function.xml"/>
+    <xi:include href="xml/function-polynomial.xml"/>
+    <xi:include href="xml/integrator.xml"/>
+    <xi:include href="xml/integrators.xml"/>
+    <xi:include href="xml/integrator-euler.xml"/>
+    <xi:include href="xml/integrator-runge-kutta.xml"/>
   </reference>
   <reference>
     <title>XML format</title>
