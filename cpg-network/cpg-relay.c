@@ -6,7 +6,7 @@
 #include "cpg-link.h"
 
 /**
- * SECTION:cpg-relay
+ * SECTION:relay
  * @short_description: An immediate transfer object
  *
  * When using a #CpgState and a #CpgLink to transfer information, each transfer

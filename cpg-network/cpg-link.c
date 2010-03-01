@@ -5,7 +5,7 @@
 #include <string.h>
 
 /**
- * SECTION:cpg-link
+ * SECTION:link
  * @short_description: Information transfer link
  *
  * A #CpgLink is a connection between two #CpgObject. The link defines actions

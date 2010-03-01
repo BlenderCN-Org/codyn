@@ -8,7 +8,7 @@
 #include "cpg-object.h"
 
 /**
- * SECTION:cpg-property
+ * SECTION:property
  * @short_description: Property container
  *
  * A #CpgProperty is a container for a specific variable in an object. It

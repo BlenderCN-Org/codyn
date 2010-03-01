@@ -4,7 +4,7 @@
 #include "cpg-ref-counted-private.h"
 
 /**
- * SECTION:cpg-function
+ * SECTION:function
  * @short_description: Custom user defined function
  *
  * It is possible to define custom user functions in the network which can
@@ -746,4 +746,20 @@ gdouble
 cpg_function_argument_get_default_value (CpgFunctionArgument *argument)
 {
 	return argument->def;
+}
+
+/**
+ * cpg_function_argument_get_property:
+ * @argument: A #CpgFunctionArgument
+ *
+ * Get the underlying property that is the proxy for the function argument.
+ * You should generally not need this. It is mainly used in cpgrawc.
+ *
+ * Returns: the underlying argument property
+ *
+ **/
+CpgProperty *
+cpg_function_argument_get_property (CpgFunctionArgument *argument)
+{
+	return argument->property;
 }

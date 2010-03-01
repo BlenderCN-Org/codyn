@@ -63,6 +63,8 @@ gchar const *cpg_function_argument_get_name (CpgFunctionArgument *argument);
 gboolean cpg_function_argument_get_optional (CpgFunctionArgument *argument);
 gdouble cpg_function_argument_get_default_value (CpgFunctionArgument *argument);
 
+CpgProperty *cpg_function_argument_get_property (CpgFunctionArgument *argument);
+
 G_END_DECLS
 
 #endif /* __CPG_FUNCTION_H__ */

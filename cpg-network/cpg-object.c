@@ -11,7 +11,7 @@
 #include "cpg-compile-error.h"
 
 /**
- * SECTION:cpg-object
+ * SECTION:object
  * @short_description: Basis for all cpg objects
  *
  * #CpgObject is a base class for all the objects which can be added to a
@@ -19,7 +19,7 @@
  * implemented that drive the simulation process.
  *
  */
- 
+
 #define CPG_OBJECT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_OBJECT, CpgObjectPrivate))
 
 struct _CpgObjectPrivate
@@ -665,7 +665,6 @@ cpg_object_get_actors (CpgObject *object)
 /**
  * cpg_object_evaluate:
  * @object: the #CpgObject
- * @timestep: the timestep to use
  *
  * Calculates update values for all the properties acted on by links
  *

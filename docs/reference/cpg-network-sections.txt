@@ -1,12 +1,11 @@
 <SECTION>
-<FILE>cpg-object</FILE>
-CPG_OBJECT_ERROR
-CPG_OBJECT_CONST
-CpgObjectPrivate
-CpgObjectError
+<FILE>object</FILE>
 <TITLE>CpgObject</TITLE>
+<INCLUDE>cpg-network/cpg-object.h</INCLUDE>
+CPG_OBJECT_ERROR
+CpgObjectError
+CpgObjectClass
 CpgObject
-cpg_object_error_quark
 cpg_object_new
 cpg_object_get_id
 cpg_object_set_id
@@ -30,16 +29,18 @@ cpg_object_get_type
 CPG_OBJECT_CLASS
 CPG_IS_OBJECT_CLASS
 CPG_OBJECT_GET_CLASS
+CPG_OBJECT_CONST
+CpgObjectPrivate
+cpg_object_error_quark
 </SECTION>
 
 <SECTION>
-<FILE>cpg-function</FILE>
-CPG_FUNCTION_CONST
-CpgFunctionPrivate
-CpgFunctionArgument
+<FILE>function</FILE>
 <TITLE>CpgFunction</TITLE>
+<INCLUDE>cpg-network/cpg-function.h</INCLUDE>
+CpgFunctionArgument
+CpgFunctionClass
 CpgFunction
-cpg_function_argument_get_type
 cpg_function_new
 cpg_function_argument_new
 cpg_function_add_argument
@@ -53,6 +54,7 @@ cpg_function_set_expression
 cpg_function_argument_get_name
 cpg_function_argument_get_optional
 cpg_function_argument_get_default_value
+cpg_function_argument_get_property
 <SUBSECTION Standard>
 CPG_FUNCTION
 CPG_IS_FUNCTION
@@ -61,16 +63,18 @@ cpg_function_get_type
 CPG_FUNCTION_CLASS
 CPG_IS_FUNCTION_CLASS
 CPG_FUNCTION_GET_CLASS
+CPG_FUNCTION_CONST
+CpgFunctionPrivate
+cpg_function_argument_get_type
 </SECTION>
 
 <SECTION>
-<FILE>cpg-link</FILE>
-CPG_LINK_CONST
-CpgLinkPrivate
-CpgLinkAction
+<FILE>link</FILE>
 <TITLE>CpgLink</TITLE>
+<INCLUDE>cpg-network/cpg-link.h</INCLUDE>
+CpgLinkAction
+CpgLinkClass
 CpgLink
-cpg_link_get_type
 cpg_link_new
 cpg_link_get_from
 cpg_link_get_to
@@ -84,17 +88,20 @@ cpg_link_action_set_target
 CPG_LINK
 CPG_IS_LINK
 CPG_TYPE_LINK
+cpg_link_get_type
 cpg_link_action_get_type
 CPG_LINK_CLASS
 CPG_IS_LINK_CLASS
 CPG_LINK_GET_CLASS
+CPG_LINK_CONST
+CpgLinkPrivate
 </SECTION>
 
 <SECTION>
-<FILE>cpg-integrator-stub</FILE>
-CPG_INTEGRATOR_STUB_CONST
-CpgIntegratorStubPrivate
+<FILE>integrator-stub</FILE>
 <TITLE>CpgIntegratorStub</TITLE>
+<INCLUDE>cpg-network/cpg-integrator-stub.h</INCLUDE>
+CpgIntegratorStubClass
 CpgIntegratorStub
 cpg_integrator_stub_new
 cpg_integrator_stub_update
@@ -107,16 +114,17 @@ cpg_integrator_stub_get_type
 CPG_INTEGRATOR_STUB_CLASS
 CPG_IS_INTEGRATOR_STUB_CLASS
 CPG_INTEGRATOR_STUB_GET_CLASS
+CPG_INTEGRATOR_STUB_CONST
+CpgIntegratorStubPrivate
 </SECTION>
 
 <SECTION>
-<FILE>cpg-function-polynomial</FILE>
-CPG_FUNCTION_POLYNOMIAL_CONST
-CpgFunctionPolynomialPrivate
-CpgFunctionPolynomialPiece
+<FILE>function-polynomial</FILE>
 <TITLE>CpgFunctionPolynomial</TITLE>
+<INCLUDE>cpg-network/cpg-function-polynomial.h</INCLUDE>
+CpgFunctionPolynomialPiece
+CpgFunctionPolynomialClass
 CpgFunctionPolynomial
-cpg_function_polynomial_piece_get_type
 cpg_function_polynomial_new
 cpg_function_polynomial_piece_new
 cpg_function_polynomial_add
@@ -137,16 +145,17 @@ cpg_function_polynomial_get_type
 CPG_FUNCTION_POLYNOMIAL_CLASS
 CPG_IS_FUNCTION_POLYNOMIAL_CLASS
 CPG_FUNCTION_POLYNOMIAL_GET_CLASS
+CPG_FUNCTION_POLYNOMIAL_CONST
+CpgFunctionPolynomialPrivate
+cpg_function_polynomial_piece_get_type
 </SECTION>
 
 <SECTION>
-<FILE>cpg-integrator</FILE>
-CPG_INTEGRATOR_CONST
-CpgIntegratorPrivate
-CpgIntegratorState
+<FILE>integrator</FILE>
 <TITLE>CpgIntegrator</TITLE>
+CpgIntegratorState
+CpgIntegratorClass
 CpgIntegrator
-cpg_integrator_state_get_type
 cpg_integrator_state_new
 cpg_integrator_run
 cpg_integrator_step
@@ -166,13 +175,16 @@ cpg_integrator_get_type
 CPG_INTEGRATOR_CLASS
 CPG_IS_INTEGRATOR_CLASS
 CPG_INTEGRATOR_GET_CLASS
+CPG_INTEGRATOR_CONST
+CpgIntegratorPrivate
+cpg_integrator_state_get_type
 </SECTION>
 
 <SECTION>
-<FILE>cpg-state</FILE>
-CPG_STATE_CONST
-CpgStatePrivate
+<FILE>state</FILE>
 <TITLE>CpgState</TITLE>
+<INCLUDE>cpg-network/cpg-state.h</INCLUDE>
+CpgStateClass
 CpgState
 cpg_state_new
 <SUBSECTION Standard>
@@ -183,17 +195,18 @@ cpg_state_get_type
 CPG_STATE_CLASS
 CPG_IS_STATE_CLASS
 CPG_STATE_GET_CLASS
+CPG_STATE_CONST
+CpgStatePrivate
 </SECTION>
 
 <SECTION>
-<FILE>cpg-network</FILE>
-CPG_NETWORK_CONST
-CpgNetworkPrivate
+<FILE>network</FILE>
+<TITLE>CpgNetwork</TITLE>
+<INCLUDE>cpg-network/cpg-network.h</INCLUDE>
 CPG_NETWORK_LOAD_ERROR
 CpgNetworkLoadError
-<TITLE>CpgNetwork</TITLE>
+CpgNetworkClass
 CpgNetwork
-cpg_network_load_error_quark
 cpg_network_new_from_file
 cpg_network_new_from_xml
 cpg_network_new
@@ -237,13 +250,16 @@ cpg_network_get_type
 CPG_NETWORK_CLASS
 CPG_IS_NETWORK_CLASS
 CPG_NETWORK_GET_CLASS
+CPG_NETWORK_CONST
+CpgNetworkPrivate
+cpg_network_load_error_quark
 </SECTION>
 
 <SECTION>
-<FILE>cpg-integrator-euler</FILE>
-CPG_INTEGRATOR_EULER_CONST
-CpgIntegratorEulerPrivate
+<FILE>integrator-euler</FILE>
 <TITLE>CpgIntegratorEuler</TITLE>
+<INCLUDE>cpg-network/cpg-integrator-euler.h</INCLUDE>
+CpgIntegratorEulerClass
 CpgIntegratorEuler
 cpg_integrator_euler_new
 <SUBSECTION Standard>
@@ -254,13 +270,15 @@ cpg_integrator_euler_get_type
 CPG_INTEGRATOR_EULER_CLASS
 CPG_IS_INTEGRATOR_EULER_CLASS
 CPG_INTEGRATOR_EULER_GET_CLASS
+CPG_INTEGRATOR_EULER_CONST
+CpgIntegratorEulerPrivate
 </SECTION>
 
 <SECTION>
-<FILE>cpg-integrator-runge-kutta</FILE>
-CPG_INTEGRATOR_RUNGE_KUTTA_CONST
-CpgIntegratorRungeKuttaPrivate
+<FILE>integrator-runge-kutta</FILE>
 <TITLE>CpgIntegratorRungeKutta</TITLE>
+<INCLUDE>cpg-network/cpg-integrator-runge-kutta.h</INCLUDE>
+CpgIntegratorRungeKuttaClass
 CpgIntegratorRungeKutta
 cpg_integrator_runge_kutta_new
 <SUBSECTION Standard>
@@ -271,13 +289,15 @@ cpg_integrator_runge_kutta_get_type
 CPG_INTEGRATOR_RUNGE_KUTTA_CLASS
 CPG_IS_INTEGRATOR_RUNGE_KUTTA_CLASS
 CPG_INTEGRATOR_RUNGE_KUTTA_GET_CLASS
+CPG_INTEGRATOR_RUNGE_KUTTA_CONST
+CpgIntegratorRungeKuttaPrivate
 </SECTION>
 
 <SECTION>
-<FILE>cpg-relay</FILE>
-CPG_RELAY_CONST
-CpgRelayPrivate
+<FILE>relay</FILE>
 <TITLE>CpgRelay</TITLE>
+<INCLUDE>cpg-network/cpg-relay.h</INCLUDE>
+CpgRelayClass
 CpgRelay
 cpg_relay_new
 <SUBSECTION Standard>
@@ -288,13 +308,16 @@ cpg_relay_get_type
 CPG_RELAY_CLASS
 CPG_IS_RELAY_CLASS
 CPG_RELAY_GET_CLASS
+CPG_RELAY_CONST
+CpgRelayPrivate
 </SECTION>
 
 <SECTION>
-<FILE>cpg-compile-context</FILE>
+<FILE>compile-context</FILE>
+<TITLE>CpgCompileContext</TITLE>
+<INCLUDE>cpg-network/cpg-compile-context.h</INCLUDE>
 CpgCompileContext
 cpg_compile_context_new
-cpg_compile_context_get_type
 cpg_compile_context_prepend_object
 cpg_compile_context_save
 cpg_compile_context_restore
@@ -302,39 +325,44 @@ cpg_compile_context_append_object
 cpg_compile_context_set_functions
 cpg_compile_context_get_objects
 cpg_compile_context_get_functions
+<SUBSECTION Standard>
+cpg_compile_context_get_type
 </SECTION>
 
 <SECTION>
-<FILE>cpg-enum-types</FILE>
+<FILE>enum-types</FILE>
+<TITLE>CpgEnumTypes</TITLE>
+<INCLUDE>cpg-network/cpg-enum-types.h</INCLUDE>
+<SUBSECTION Standard>
 CPG_TYPE_NETWORK_LOAD_ERROR
-cpg_network_load_error_get_type
 CPG_TYPE_OBJECT_ERROR
-cpg_object_error_get_type
 CPG_TYPE_PROPERTY_HINT
-cpg_property_hint_get_type
 CPG_TYPE_INSTRUCTION_CODE
-cpg_instruction_code_get_type
 CPG_TYPE_INSTRUCTION_BINDING
-cpg_instruction_binding_get_type
 CPG_TYPE_DEBUG_TYPE
-cpg_debug_type_get_type
 CPG_TYPE_COMPILE_ERROR_CODE
-cpg_compile_error_code_get_type
 CPG_TYPE_MATH_OPERATOR_TYPE
-cpg_math_operator_type_get_type
 CPG_TYPE_MATH_FUNCTION_TYPE
+cpg_network_load_error_get_type
 cpg_math_function_type_get_type
+cpg_math_operator_type_get_type
+cpg_compile_error_code_get_type
+cpg_debug_type_get_type
+cpg_instruction_binding_get_type
+cpg_instruction_code_get_type
+cpg_property_hint_get_type
+cpg_object_error_get_type
 </SECTION>
 
 <SECTION>
-<FILE>cpg-expression</FILE>
-CPG_TYPE_EXPRESSION
+<FILE>expression</FILE>
+<TITLE>CpgExpression</TITLE>
+<INCLUDE>cpg-network/cpg-expression.h</INCLUDE>
 CpgInstruction
 CpgInstructionCode
 CpgInstructionBinding
 CpgInstructionProperty
 CpgExpression
-cpg_expression_get_type
 cpg_expression_new
 cpg_expression_get_dependencies
 cpg_expression_get_as_string
@@ -355,10 +383,15 @@ cpg_instruction_property_new
 cpg_instruction_copy
 cpg_instruction_free
 cpg_instruction_to_string
+<SUBSECTION Standard>
+cpg_expression_get_type
+CPG_TYPE_EXPRESSION
 </SECTION>
 
 <SECTION>
-<FILE>cpg-ref-counted</FILE>
+<FILE>ref-counted</FILE>
+<TITLE>CpgRefCounted</TITLE>
+<INCLUDE>cpg-network/cpg-ref-counted.h</INCLUDE>
 CpgRefCounted
 cpg_ref_counted_init
 cpg_ref_counted_ref
@@ -366,13 +399,12 @@ cpg_ref_counted_unref
 </SECTION>
 
 <SECTION>
-<FILE>cpg-compile-error</FILE>
-CPG_TYPE_COMPILE_ERROR
+<FILE>compile-error</FILE>
+<TITLE>CpgCompileError</TITLE>
+<INCLUDE>cpg-network/cpg-compile-error.h</INCLUDE>
 CPG_COMPILE_ERROR_TYPE
 CpgCompileErrorCode
 CpgCompileError
-cpg_compile_error_type_quark
-cpg_compile_error_get_type
 cpg_compile_error_new
 cpg_compile_error_set
 cpg_compile_error_get_error
@@ -383,22 +415,31 @@ cpg_compile_error_string
 cpg_compile_error_code_string
 cpg_compile_error_get_code
 cpg_compile_error_get_message
+<SUBSECTION Standard>
+cpg_compile_error_get_type
+CPG_TYPE_COMPILE_ERROR
+cpg_compile_error_type_quark
 </SECTION>
 
 <SECTION>
-<FILE>cpg-monitor</FILE>
+<FILE>monitor</FILE>
+<TITLE>CpgMonitor</TITLE>
+<INCLUDE>cpg-network/cpg-monitor.h</INCLUDE>
 CpgMonitor
-cpg_monitor_get_type
 cpg_monitor_new
 cpg_monitor_get_sites
 cpg_monitor_get_data
 cpg_monitor_get_data_resampled
 cpg_monitor_get_object
 cpg_monitor_get_property
+<SUBSECTION Standard>
+cpg_monitor_get_type
 </SECTION>
 
 <SECTION>
-<FILE>cpg-integrators</FILE>
+<FILE>integrators</FILE>
+<TITLE>CpgIntegrators</TITLE>
+<INCLUDE>cpg-network/cpg-integrators.h</INCLUDE>
 cpg_integrators_list
 cpg_integrators_register
 cpg_integrators_unregister
@@ -406,10 +447,11 @@ cpg_integrators_find
 </SECTION>
 
 <SECTION>
-<FILE>cpg-property</FILE>
+<FILE>property</FILE>
+<TITLE>CpgProperty</TITLE>
+<INCLUDE>cpg-network/cpg-property.h</INCLUDE>
 CpgPropertyHint
 CpgProperty
-cpg_property_get_type
 cpg_property_new
 cpg_property_get_name
 cpg_property_get_integrated
@@ -425,5 +467,7 @@ cpg_property_set_value
 cpg_property_set_value_expression
 cpg_property_equal
 cpg_property_get_used
+<SUBSECTION Standard>
+cpg_property_get_type
 </SECTION>
 

@@ -14,7 +14,7 @@
 #include "cpg-integrator-euler.h"
 
 /**
- * SECTION:cpg-network
+ * SECTION:network
  * @short_description: The main CPG network object
  *
  * The cpg network is the main component of the cpg-network library. The network
@@ -1531,6 +1531,15 @@ cpg_network_get_function (CpgNetwork  *network,
 	return NULL;
 }
 
+/**
+ * cpg_network_get_compiled:
+ * @network: A #CpgNetwork
+ * 
+ * Get whether the network is currently compiled.
+ *
+ * Returns: %TRUE if the network is compiled, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_network_get_compiled (CpgNetwork *network)
 {
@@ -1539,6 +1548,14 @@ cpg_network_get_compiled (CpgNetwork *network)
 	return network->priv->compiled;
 }
 
+/**
+ * cpg_network_set_integrator:
+ * @network: A #CpgNetwork
+ * @integrator: A #CpgIntegrator
+ * 
+ * Set the integrator used to integrate the network.
+ *
+ **/
 void
 cpg_network_set_integrator (CpgNetwork    *network,
                             CpgIntegrator *integrator)
@@ -1549,6 +1566,15 @@ cpg_network_set_integrator (CpgNetwork    *network,
 	g_object_set (network, "integrator", integrator, NULL);
 }
 
+/**
+ * cpg_network_get_integrator:
+ * @network: A #CpgNetwork
+ * 
+ * Get the integrator currently associated with the network.
+ *
+ * Returns: A #CpgIntegrator
+ *
+ **/
 CpgIntegrator *
 cpg_network_get_integrator (CpgNetwork *network)
 {
@@ -1557,6 +1583,16 @@ cpg_network_get_integrator (CpgNetwork *network)
 	return network->priv->integrator;
 }
 
+/**
+ * cpg_network_get_integration_state:
+ * @network: A #CpgNetwork
+ * 
+ * Get the list of properties that need to be integrated.
+ *
+ * Returns: A #GSList of #CpgProperty. The list is owned by the network and
+ * should not be freed.
+ *
+ **/
 GSList *
 cpg_network_get_integration_state (CpgNetwork *network)
 {

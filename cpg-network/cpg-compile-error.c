@@ -2,7 +2,7 @@
 #include "cpg-ref-counted-private.h"
 
 /**
- * SECTION:cpg-compile-error
+ * SECTION:compile-error
  * @short_description: Compile error message container
  *
  * Object used to store information on expression compile errors.
