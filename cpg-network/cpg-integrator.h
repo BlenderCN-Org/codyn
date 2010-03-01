@@ -22,7 +22,7 @@ typedef struct _CpgIntegratorState		CpgIntegratorState;
 
 struct _CpgIntegrator {
 	CpgObject parent;
-	
+
 	CpgIntegratorPrivate *priv;
 };
 
@@ -44,6 +44,9 @@ struct _CpgIntegratorClass {
 	                     gdouble        timestep);
 
 	gchar const *(*get_name)	(CpgIntegrator *integrator);
+
+	void (*reset)        (CpgIntegrator *integrator,
+	                      GSList        *state);
 
 	/* private field */
 	gchar const *integrator_id;
@@ -70,10 +73,13 @@ void 				 cpg_integrator_evaluate		(CpgIntegrator		*integrator,
 													 gdouble             t,
 													 gdouble             timestep);
 
+void				 cpg_integrator_reset			(CpgIntegrator		*integrator,
+                                                     GSList             *state);
+
 gchar const			*cpg_integrator_get_name		(CpgIntegrator 		*integrator);
 
 gdouble				 cpg_integrator_get_time		(CpgIntegrator		*integrator);
-void				 cpg_integrator_reset			(CpgIntegrator		*integrator);
+
 
 gdouble				 cpg_integrator_state_get_update	(CpgIntegratorState *state);
 CpgProperty			*cpg_integrator_state_get_property	(CpgIntegratorState *state);
