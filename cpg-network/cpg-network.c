@@ -146,6 +146,11 @@ cpg_network_set_property (GObject       *object,
 			self->priv->compiled = g_value_get_boolean (value);
 		break;
 		case PROP_INTEGRATOR:
+			if (self->priv->integrator == g_value_get_object (value))
+			{
+				return;
+			}
+
 			if (self->priv->integrator)
 			{
 				g_object_unref (self->priv->integrator);
@@ -153,6 +158,8 @@ cpg_network_set_property (GObject       *object,
 
 			self->priv->integrator = g_value_dup_object (value);
 			g_object_set (self->priv->integrator, "network", self, NULL);
+
+			cpg_network_taint (self);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
