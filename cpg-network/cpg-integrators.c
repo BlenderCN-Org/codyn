@@ -116,10 +116,18 @@ cpg_integrators_find (gchar const *id)
 	return ret;
 }
 
-CpgIntegrator *
-cpg_integrators_create (GType gtype)
+GSList *
+cpg_integrators_create ()
 {
-	g_return_val_if_fail (g_type_is_a (gtype, CPG_TYPE_INTEGRATOR) && gtype != CPG_TYPE_INTEGRATOR, NULL);
+	GSList const *ints = cpg_integrators_list ();
+	GSList *ret = NULL;
 
-	return g_object_new (gtype, NULL);
+	while (ints)
+	{
+		ret = g_slist_prepend (ret,
+		                       g_object_new (GPOINTER_TO_INT (ints->data), NULL));
+		ints = g_slist_next (ints);
+	}
+
+	return g_slist_reverse (ret);
 }
