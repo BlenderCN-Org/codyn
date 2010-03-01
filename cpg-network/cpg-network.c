@@ -988,8 +988,11 @@ cpg_network_reset (CpgNetwork *network)
 
 	g_slist_foreach (network->priv->functions, (GFunc)cpg_object_reset, NULL);
 
-	cpg_integrator_reset (network->priv->integrator,
-	                      cpg_network_get_integration_state (network));
+	if (network->priv->integrator)
+	{
+		cpg_integrator_reset (network->priv->integrator,
+		                      cpg_network_get_integration_state (network));
+	}
 
 	g_signal_emit (network, network_signals[RESET], 0);
 }
