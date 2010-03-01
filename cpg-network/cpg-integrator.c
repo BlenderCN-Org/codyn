@@ -563,7 +563,7 @@ cpg_integrator_reset (CpgIntegrator	*integrator,
 {
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
 
-	return CPG_INTEGRATOR_CLASS (cpg_integrator_parent_class)->reset (integrator, state);
+	return CPG_INTEGRATOR_GET_CLASS (integrator)->reset (integrator, state);
 }
 
 /**
