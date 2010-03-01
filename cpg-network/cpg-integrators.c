@@ -115,3 +115,11 @@ cpg_integrators_find (gchar const *id)
 
 	return ret;
 }
+
+CpgIntegrator *
+cpg_integrators_create (GType gtype)
+{
+	g_return_val_if_fail (g_type_is_a (gtype, CPG_TYPE_INTEGRATOR) && gtype != CPG_TYPE_INTEGRATOR, NULL);
+
+	return g_object_new (gtype, NULL);
+}
