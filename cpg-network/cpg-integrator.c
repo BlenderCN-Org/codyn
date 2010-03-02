@@ -399,6 +399,8 @@ simulation_step (CpgIntegrator *integrator,
 		laststate = g_list_previous (laststate);
 	}
 
+	g_list_free (states);
+
 	/* Collect updates */
 	while (state)
 	{
