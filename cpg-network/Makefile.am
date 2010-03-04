@@ -27,6 +27,7 @@ COMMON_SOURCES = 		\
 	cpg-integrator.c \
 	cpg-integrator-runge-kutta.c \
 	cpg-integrator-euler.c \
+	cpg-integrator-predict-correct.c \
 	cpg-integrator-stub.c
 
 NOINST_H_FILES = \
@@ -57,6 +58,7 @@ INST_H_FILES = \
 	cpg-integrator.h \
 	cpg-integrator-runge-kutta.h \
 	cpg-integrator-euler.h \
+	cpg-integrator-predict-correct.h \
 	cpg-integrator-stub.h
 
 lib_LTLIBRARIES = libcpg-network-1.0.la

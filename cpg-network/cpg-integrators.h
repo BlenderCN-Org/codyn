@@ -2,6 +2,7 @@
 #define __CPG_INTEGRATORS_H__
 
 #include <cpg-network/cpg-integrator-euler.h>
+#include <cpg-network/cpg-integrator-predict-correct.h>
 #include <cpg-network/cpg-integrator-runge-kutta.h>
 #include <cpg-network/cpg-integrator-stub.h>
 
