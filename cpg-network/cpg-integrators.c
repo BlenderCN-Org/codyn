@@ -21,6 +21,7 @@ ensure_defaults ()
 		initing = TRUE;
 
 		cpg_integrators_register (CPG_TYPE_INTEGRATOR_EULER);
+		cpg_integrators_register (CPG_TYPE_INTEGRATOR_PREDICT_CORRECT);
 		cpg_integrators_register (CPG_TYPE_INTEGRATOR_RUNGE_KUTTA);
 		cpg_integrators_register (CPG_TYPE_INTEGRATOR_STUB);
 
@@ -114,4 +115,20 @@ cpg_integrators_find (gchar const *id)
 	}
 
 	return ret;
+}
+
+GSList *
+cpg_integrators_create ()
+{
+	GSList const *ints = cpg_integrators_list ();
+	GSList *ret = NULL;
+
+	while (ints)
+	{
+		ret = g_slist_prepend (ret,
+		                       g_object_new (GPOINTER_TO_INT (ints->data), NULL));
+		ints = g_slist_next (ints);
+	}
+
+	return g_slist_reverse (ret);
 }

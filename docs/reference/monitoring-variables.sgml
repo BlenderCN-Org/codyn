@@ -7,7 +7,7 @@
 <refnamediv>
 <refname>Monitoring Variables</refname>
 <refpurpose>
-How to monitor variables using <link linkend="cpg-network-cpg-monitor">CpgMonitor</link>
+How to monitor variables using <link linkend="cpg-network-CpgMonitor">CpgMonitor</link>
 </refpurpose>
 </refnamediv>
 
@@ -23,9 +23,9 @@ is included in the library that makes it easier to manage and retrieve
 property values values while running the network.
 </para>
 <para>
-Using a <link linkend="cpg-network-cpg-monitor">CpgMonitor</link> is quite
+Using a <link linkend="cpg-network-CpgMonitor">CpgMonitor</link> is quite
 straightforward. You first construct a new 
-<link linkend="cpg-network-cpg-monitor">CpgMonitor</link> using
+<link linkend="cpg-network-CpgMonitor">CpgMonitor</link> using
 <link linkend="cpg-monitor-new">cpg_monitor_new</link>, providing the network,
 object and property to monitor during simulation. Once constructed, the 
 monitor will automatically collect property values at each simulation step.

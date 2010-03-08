@@ -232,6 +232,24 @@ cpg_integrator_constructor (GType                  type,
 }
 
 static void
+cpg_integrator_reset_impl (CpgIntegrator *integrator,
+                           GSList        *state)
+{
+	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
+
+	cpg_expression_reset (cpg_property_get_value_expression (integrator->priv->property_time));
+	cpg_expression_reset (cpg_property_get_value_expression (integrator->priv->property_timestep));
+
+	cpg_expression_compile (cpg_property_get_value_expression (integrator->priv->property_time),
+	                        NULL,
+	                        NULL);
+
+	cpg_expression_compile (cpg_property_get_value_expression (integrator->priv->property_timestep),
+	                        NULL,
+	                        NULL);
+}
+
+static void
 cpg_integrator_class_init (CpgIntegratorClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -244,6 +262,7 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 
 	klass->run = cpg_integrator_run_impl;
 	klass->step = cpg_integrator_step_impl;
+	klass->reset = cpg_integrator_reset_impl;
 
 	/**
 	 * CpgIntegrator:network:
@@ -379,6 +398,8 @@ simulation_step (CpgIntegrator *integrator,
 		cpg_object_evaluate (CPG_OBJECT (laststate->data));
 		laststate = g_list_previous (laststate);
 	}
+
+	g_list_free (states);
 
 	/* Collect updates */
 	while (state)
@@ -539,20 +560,12 @@ cpg_integrator_get_time	(CpgIntegrator *integrator)
  *
  **/
 void
-cpg_integrator_reset (CpgIntegrator *integrator)
+cpg_integrator_reset (CpgIntegrator	*integrator,
+                      GSList        *state)
 {
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
 
-	cpg_expression_reset (cpg_property_get_value_expression (integrator->priv->property_time));
-	cpg_expression_reset (cpg_property_get_value_expression (integrator->priv->property_timestep));
-
-	cpg_expression_compile (cpg_property_get_value_expression (integrator->priv->property_time),
-	                        NULL,
-	                        NULL);
-
-	cpg_expression_compile (cpg_property_get_value_expression (integrator->priv->property_timestep),
-	                        NULL,
-	                        NULL);
+	return CPG_INTEGRATOR_GET_CLASS (integrator)->reset (integrator, state);
 }
 
 /**
