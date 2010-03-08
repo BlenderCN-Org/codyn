@@ -7,9 +7,11 @@
 
 #define MIN_PREDICTION_ORDER 2
 #define MAX_PREDICTION_ORDER 5
+#define DEFAULT_PREDICTION_ORDER 3
 
 #define MIN_CORRECTION_ORDER 3
 #define MAX_CORRECTION_ORDER 5
+#define DEFAULT_CORRECTION_ORDER 5
 
 /* necessary depth of history:
  * prediction method order 'n' uses f(t), f(t-1), ... f(t-n+2)
@@ -43,35 +45,15 @@ struct _CpgIntegratorPredictCorrectPrivate
 	guint correction_order;
 };
 
+/* Properties */
+enum
+{
+	PROP_0,
+	PROP_PREDICTION_ORDER,
+	PROP_CORRECTION_ORDER
+};
+
 G_DEFINE_TYPE (CpgIntegratorPredictCorrect, cpg_integrator_predict_correct, CPG_TYPE_INTEGRATOR)
-
-guint
-cpg_integrator_predict_correct_get_prediction_order (CpgIntegratorPredictCorrect *pc)
-{
-	return pc->priv->prediction_order;
-}
-
-guint
-cpg_integrator_predict_correct_get_correction_order (CpgIntegratorPredictCorrect *pc)
-{
-	return pc->priv->correction_order;
-}
-
-void
-cpg_integrator_predict_correct_set_prediction_order (CpgIntegratorPredictCorrect *pc,
-                                                     guint                        order)
-{
-	g_return_if_fail (order >= MIN_PREDICTION_ORDER && order <= MAX_PREDICTION_ORDER);
-	pc->priv->prediction_order = order;
-}
-
-void
-cpg_integrator_predict_correct_set_correction_order (CpgIntegratorPredictCorrect *pc,
-                                                     guint                        order)
-{
-	g_return_if_fail (order >= MIN_CORRECTION_ORDER && order <= MAX_CORRECTION_ORDER);
-	pc->priv->correction_order = order;
-}
 
 static void
 history_move_cursor (CpgIntegratorPredictCorrect *pc)
@@ -317,18 +299,84 @@ cpg_integrator_predict_correct_get_name_impl (CpgIntegrator *integrator)
 }
 
 static void
+cpg_integrator_predict_correct_set_property (GObject      *object,
+                                             guint         prop_id,
+                                             const GValue *value,
+                                             GParamSpec   *pspec)
+{
+	CpgIntegratorPredictCorrect *self = CPG_INTEGRATOR_PREDICT_CORRECT (object);
+
+	switch (prop_id)
+	{
+		case PROP_CORRECTION_ORDER:
+			self->priv->correction_order = g_value_get_uint (value);
+		break;
+		case PROP_PREDICTION_ORDER:
+			self->priv->prediction_order = g_value_get_uint (value);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_integrator_predict_correct_get_property (GObject    *object,
+                                             guint       prop_id,
+                                             GValue     *value,
+                                             GParamSpec *pspec)
+{
+	CpgIntegratorPredictCorrect *self = CPG_INTEGRATOR_PREDICT_CORRECT (object);
+	
+	switch (prop_id)
+	{
+		case PROP_CORRECTION_ORDER:
+			g_value_set_uint (value, self->priv->correction_order);
+		break;
+		case PROP_PREDICTION_ORDER:
+			g_value_set_uint (value, self->priv->prediction_order);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
 cpg_integrator_predict_correct_class_init (CpgIntegratorPredictCorrectClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	CpgIntegratorClass *integrator_class = CPG_INTEGRATOR_CLASS (klass);
 
 	object_class->finalize = cpg_integrator_predict_correct_finalize;
+	object_class->set_property = cpg_integrator_predict_correct_set_property;
+	object_class->get_property = cpg_integrator_predict_correct_get_property;
 
 	integrator_class->step = cpg_integrator_predict_correct_step_impl;
 	integrator_class->get_name = cpg_integrator_predict_correct_get_name_impl;
 	integrator_class->reset = cpg_integrator_predict_correct_reset_impl;
 
 	integrator_class->integrator_id = "predict-correct";
+
+	g_object_class_install_property (object_class,
+	                                 PROP_PREDICTION_ORDER,
+	                                 g_param_spec_uint ("prediction-order",
+	                                                    "Prediction Order",
+	                                                    "Prediction order",
+	                                                    MIN_PREDICTION_ORDER,
+	                                                    MAX_PREDICTION_ORDER,
+	                                                    DEFAULT_PREDICTION_ORDER,
+	                                                    G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_CORRECTION_ORDER,
+	                                 g_param_spec_uint ("correction-order",
+	                                                    "Correction Order",
+	                                                    "Correction order",
+	                                                    MIN_CORRECTION_ORDER,
+	                                                    MAX_CORRECTION_ORDER,
+	                                                    DEFAULT_CORRECTION_ORDER,
+	                                                    G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	g_type_class_add_private (object_class, sizeof(CpgIntegratorPredictCorrectPrivate));
 }
@@ -353,4 +401,74 @@ CpgIntegratorPredictCorrect *
 cpg_integrator_predict_correct_new (void)
 {
 	return g_object_new (CPG_TYPE_INTEGRATOR_PREDICT_CORRECT, NULL);
+}
+
+/**
+ * cpg_integrator_predict_correct_get_prediction_order:
+ * @pc: A #CpgIntegratorPredictCorrect
+ * 
+ * Get the prediction order.
+ *
+ * Returns: The prediction order
+ *
+ **/
+guint
+cpg_integrator_predict_correct_get_prediction_order (CpgIntegratorPredictCorrect *pc)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_PREDICT_CORRECT (pc), 0);
+
+	return pc->priv->prediction_order;
+}
+
+/**
+ * cpg_integrator_predict_correct_get_correction_order:
+ * @pc: A #CpgIntegratorPredictCorrect
+ * 
+ * Get the correction order.
+ *
+ * Returns: The correction order
+ *
+ **/
+guint
+cpg_integrator_predict_correct_get_correction_order (CpgIntegratorPredictCorrect *pc)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_PREDICT_CORRECT (pc), 0);
+
+	return pc->priv->correction_order;
+}
+
+/**
+ * cpg_integrator_predict_correct_set_prediction_order:
+ * @pc: A #CpgIntegratorPredictCorrect
+ * @order: The prediction order
+ * 
+ * Set the prediction order.
+ *
+ **/
+void
+cpg_integrator_predict_correct_set_prediction_order (CpgIntegratorPredictCorrect *pc,
+                                                     guint                        order)
+{
+	g_return_if_fail (CPG_IS_INTEGRATOR_PREDICT_CORRECT (pc));
+	g_return_if_fail (order >= MIN_PREDICTION_ORDER && order <= MAX_PREDICTION_ORDER);
+
+	g_object_set (pc, "prediction-order", order, NULL);
+}
+
+/**
+ * cpg_integrator_predict_correct_set_correction_order:
+ * @pc: A #CpgIntegratorPredictCorrect
+ * @order: The correction order
+ * 
+ * Set the correction order.
+ *
+ **/
+void
+cpg_integrator_predict_correct_set_correction_order (CpgIntegratorPredictCorrect *pc,
+                                                     guint                        order)
+{
+	g_return_if_fail (CPG_IS_INTEGRATOR_PREDICT_CORRECT (pc));
+	g_return_if_fail (order >= MIN_CORRECTION_ORDER && order <= MAX_CORRECTION_ORDER);
+
+	g_object_set (pc, "correction-order", order, NULL);
 }
