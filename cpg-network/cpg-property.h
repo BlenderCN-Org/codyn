@@ -11,7 +11,8 @@ typedef enum
 {
 	CPG_PROPERTY_HINT_NONE = 0,
 	CPG_PROPERTY_HINT_IN = 1 << 0,
-	CPG_PROPERTY_HINT_OUT = 1 << 1
+	CPG_PROPERTY_HINT_OUT = 1 << 1,
+	CPG_PROPERTY_HINT_ONCE = 1 << 2
 } CpgPropertyHint;
 
 typedef struct _CpgProperty CpgProperty;

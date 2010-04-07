@@ -230,16 +230,9 @@ cpg_object_dispose (GObject *object)
 }
 
 static void
-property_reset_cache (CpgProperty  *property,
-                      gpointer      data)
-{
-	cpg_expression_reset_cache (cpg_property_get_value_expression (property));
-}
-
-static void
 cpg_object_reset_cache_impl (CpgObject *object)
 {
-	g_slist_foreach (object->priv->properties, (GFunc)property_reset_cache, NULL);
+	g_slist_foreach (object->priv->properties, (GFunc)cpg_property_reset_cache, NULL);
 }
 
 static void

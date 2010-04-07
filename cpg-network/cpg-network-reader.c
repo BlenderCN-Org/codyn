@@ -141,6 +141,11 @@ parse_properties (xmlDocPtr  doc,
 			{
 				cpg_property_add_hint (property, CPG_PROPERTY_HINT_OUT);
 			}
+
+			if (attribute_true (node, "once"))
+			{
+				cpg_property_add_hint (property, CPG_PROPERTY_HINT_ONCE);
+			}
 		}
 		
 		xmlFree (name);

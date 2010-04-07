@@ -255,7 +255,11 @@ _cpg_property_get_update (CpgProperty *property)
 void
 cpg_property_reset_cache (CpgProperty *property)
 {
-	cpg_expression_reset_cache (property->value);
+	/* Never reset the cache of something that is only initialized once */
+	if (!(property->hint & CPG_PROPERTY_HINT_ONCE))
+	{
+		cpg_expression_reset_cache (property->value);
+	}
 }
 
 void
@@ -268,7 +272,7 @@ gboolean
 _cpg_property_unuse (CpgProperty *property)
 {
 	if (property->use_count == 0)
-		return TRUE;	
+		return TRUE;
 
 	return (--(property->use_count) == 0);
 }

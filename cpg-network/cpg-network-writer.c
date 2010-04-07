@@ -49,6 +49,11 @@ properties_to_xml (xmlDocPtr   doc,
 		{
 			xmlNewProp (node, (xmlChar *)"in", (xmlChar *)"yes");
 		}
+
+		if (cpg_property_get_hint (property) & CPG_PROPERTY_HINT_ONCE)
+		{
+			xmlNewProp (node, (xmlChar *)"once", (xmlChar *)"yes");
+		}
 		
 		xmlNodePtr text = xmlNewDocText (doc, (xmlChar *)cpg_expression_get_as_string (expression));
 		
