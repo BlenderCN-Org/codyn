@@ -539,7 +539,7 @@ cpg_function_remove_argument (CpgFunction         *function,
 		}
 
 		function->priv->arguments = g_list_delete_link (function->priv->arguments,
-		                                                 item);
+		                                                item);
 
 		cpg_ref_counted_unref (argument);
 		--function->priv->n_arguments;
