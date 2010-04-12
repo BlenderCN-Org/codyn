@@ -184,6 +184,65 @@ op_rand (CpgStack *stack)
 }
 
 static void
+op_hypot (CpgStack *stack)
+{
+	double second = cpg_stack_pop (stack);
+	double first = cpg_stack_pop (stack);
+
+	cpg_stack_push (stack, hypot (first, second));
+}
+
+static void
+op_exp2 (CpgStack *stack)
+{
+	cpg_stack_push (stack, exp2 (cpg_stack_pop (stack)));
+}
+
+static void
+op_sinh (CpgStack *stack)
+{
+	cpg_stack_push (stack, sinh (cpg_stack_pop (stack)));
+}
+
+static void
+op_cosh (CpgStack *stack)
+{
+	cpg_stack_push (stack, cosh (cpg_stack_pop (stack)));
+}
+
+static void
+op_tanh (CpgStack *stack)
+{
+	cpg_stack_push (stack, tanh (cpg_stack_pop (stack)));
+}
+
+static void
+op_lerp (CpgStack *stack)
+{
+	double third = cpg_stack_pop (stack);
+	double second = cpg_stack_pop (stack);
+	double first = cpg_stack_pop (stack);
+
+	cpg_stack_push (stack, first + (second - first) * third);
+}
+
+static void
+op_sqsum (CpgStack *stack)
+{
+	unsigned nargs = (unsigned)cpg_stack_pop (stack);
+	unsigned i;
+	double value = 0;
+
+	for (i = 0; i < nargs; ++i)
+	{
+		double v = cpg_stack_pop (stack);
+		value += v * v;
+	}
+
+	cpg_stack_push (stack, value);
+}
+
+static void
 op_noop (CpgStack *stack)
 {
 }
@@ -217,7 +276,14 @@ static FunctionEntry function_entries[] = {
 	{"pow", op_pow, 2, TRUE},
 	{"rand", op_rand, -1, FALSE},
 	{"ln", op_log, 1, TRUE},
-	{"log", op_log, 1, TRUE}
+	{"log", op_log, 1, TRUE},
+	{"hypot", op_hypot, 2, TRUE},
+	{"exp2", op_exp2, 1, TRUE},
+	{"sinh", op_sinh, 1, TRUE},
+	{"cosh", op_cosh, 1, TRUE},
+	{"tanh", op_tanh, 1, TRUE},
+	{"lerp", op_lerp, 3, TRUE},
+	{"sqsum", op_sqsum, -1, TRUE}
 };
 
 gchar const *

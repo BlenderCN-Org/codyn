@@ -181,6 +181,24 @@ cpg_integrator_run_impl (CpgIntegrator *integrator,
 	}
 }
 
+static void
+reset_cache (CpgIntegrator *integrator)
+{
+	g_slist_foreach (cpg_network_get_states (integrator->priv->network),
+	                 (GFunc)cpg_object_reset_cache,
+	                 NULL);
+
+	g_slist_foreach (cpg_network_get_links (integrator->priv->network),
+	                 (GFunc)cpg_object_reset_cache,
+	                 NULL);
+	
+	cpg_object_reset_cache (cpg_network_get_globals (integrator->priv->network));
+
+	g_slist_foreach (cpg_network_get_functions (integrator->priv->network),
+	                 (GFunc)cpg_object_reset_cache,
+	                 NULL);
+}
+
 static gdouble
 cpg_integrator_step_impl (CpgIntegrator *integrator,
                           GSList        *state,
@@ -189,6 +207,8 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
 {
 	cpg_property_set_value (integrator->priv->property_time, t);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
+
+	reset_cache (integrator);
 
 	g_signal_emit (integrator, integrator_signals[STEP], 0);
 	return timestep;
@@ -409,24 +429,6 @@ simulation_step (CpgIntegrator *integrator,
 		st->update = _cpg_property_get_update (st->property);
 		state = g_slist_next (state);
 	}
-}
-
-static void
-reset_cache (CpgIntegrator *integrator)
-{
-	g_slist_foreach (cpg_network_get_states (integrator->priv->network),
-	                 (GFunc)cpg_object_reset_cache,
-	                 NULL);
-
-	g_slist_foreach (cpg_network_get_links (integrator->priv->network),
-	                 (GFunc)cpg_object_reset_cache,
-	                 NULL);
-	
-	cpg_object_reset_cache (cpg_network_get_globals (integrator->priv->network));
-
-	g_slist_foreach (cpg_network_get_functions (integrator->priv->network),
-	                 (GFunc)cpg_object_reset_cache,
-	                 NULL);
 }
 
 /**
