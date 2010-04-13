@@ -38,7 +38,7 @@ GQuark			  cpg_compile_error_type_quark			(void);
 
 GType cpg_compile_error_get_type						(void);
 
-CpgCompileError *cpg_compile_error_new					();
+CpgCompileError *cpg_compile_error_new					(void);
 
 void cpg_compile_error_set								(CpgCompileError *error,
 														 GError          *gerror,
