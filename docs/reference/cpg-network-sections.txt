@@ -294,6 +294,29 @@ CpgIntegratorRungeKuttaPrivate
 </SECTION>
 
 <SECTION>
+<FILE>integrator-predict-correct</FILE>
+<TITLE>CpgIntegratorPredictCorrect</TITLE>
+<INCLUDE>cpg-network/cpg-integrator-predict-correct.h</INCLUDE>
+CpgIntegratorPredictCorrectClass
+CpgIntegratorPredictCorrect
+cpg_integrator_predict_correct_new
+cpg_integrator_predict_correct_get_correction_order
+cpg_integrator_predict_correct_get_prediction_order
+cpg_integrator_predict_correct_set_correction_order
+cpg_integrator_predict_correct_set_prediction_order
+<SUBSECTION Standard>
+CPG_INTEGRATOR_PREDICT_CORRECT
+CPG_IS_INTEGRATOR_PREDICT_CORRECT
+CPG_TYPE_INTEGRATOR_PREDICT_CORRECT
+cpg_integrator_predict_correct_get_type
+CPG_INTEGRATOR_PREDICT_CORRECT_CLASS
+CPG_IS_INTEGRATOR_PREDICT_CORRECT_CLASS
+CPG_INTEGRATOR_PREDICT_CORRECT_GET_CLASS
+CPG_INTEGRATOR_PREDICT_CORRECT_CONST
+CpgIntegratorPredictCorrectPrivate
+</SECTION>
+
+<SECTION>
 <FILE>relay</FILE>
 <TITLE>CpgRelay</TITLE>
 <INCLUDE>cpg-network/cpg-relay.h</INCLUDE>
@@ -444,6 +467,7 @@ cpg_integrators_list
 cpg_integrators_register
 cpg_integrators_unregister
 cpg_integrators_find
+cpg_integrators_create
 </SECTION>
 
 <SECTION>

@@ -557,6 +557,7 @@ cpg_integrator_get_time	(CpgIntegrator *integrator)
 /**
  * cpg_integrator_reset:
  * @integrator: A #CpgIntegrator
+ * @state: A list of #CpgIntegratorState
  * 
  * Reset the integrator. This is usually called from #cpg_network_reset.
  *
