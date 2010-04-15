@@ -205,7 +205,7 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
                           gdouble        t,
                           gdouble        timestep)
 {
-	cpg_property_set_value (integrator->priv->property_time, t);
+	cpg_property_set_value (integrator->priv->property_time, t + timestep);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
 	reset_cache (integrator);
@@ -486,6 +486,9 @@ cpg_integrator_step (CpgIntegrator *integrator,
 	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), 0);
 	g_return_val_if_fail (timestep > 0, 0);
 	g_return_val_if_fail (cpg_network_get_compiled (integrator->priv->network), 0);
+
+	cpg_property_set_value (integrator->priv->property_time, t);
+	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->step (integrator, state, t, timestep);
 }
