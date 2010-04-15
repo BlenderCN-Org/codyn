@@ -38,6 +38,7 @@
     <xi:include href="xml/integrators.xml"/>
     <xi:include href="xml/integrator-euler.xml"/>
     <xi:include href="xml/integrator-runge-kutta.xml"/>
+    <xi:include href="xml/integrator-predict-correct.xml"/>
   </reference>
   <reference>
     <title>XML format</title>

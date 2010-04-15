@@ -13,7 +13,7 @@ GSList const *cpg_integrators_list (void);
 void cpg_integrators_register (GType gtype);
 void cpg_integrators_unregister (GType gtype);
 
-GSList *cpg_integrators_create ();
+GSList *cpg_integrators_create (void);
 
 GType cpg_integrators_find (gchar const *id);
 

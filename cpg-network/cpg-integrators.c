@@ -118,7 +118,7 @@ cpg_integrators_find (gchar const *id)
 }
 
 GSList *
-cpg_integrators_create ()
+cpg_integrators_create (void)
 {
 	GSList const *ints = cpg_integrators_list ();
 	GSList *ret = NULL;

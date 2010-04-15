@@ -1199,7 +1199,7 @@ cpg_network_write_to_xml (CpgNetwork *network)
  * Write the xml representation of the network to file
  *
  **/
-void			 
+void
 cpg_network_write_to_file (CpgNetwork  *network,
                            gchar const *filename)
 {
