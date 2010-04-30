@@ -57,12 +57,15 @@ cpg_integrators_register (GType gtype)
 {
 	ensure_defaults ();
 
-	if (g_slist_find (integrators, GINT_TO_POINTER (gtype)))
+	gpointer klass = g_type_class_ref (gtype);
+
+	if (g_slist_find (integrators, klass))
 	{
+		g_type_class_unref (klass);
 		return;
 	}
 
-	integrators = g_slist_append (integrators, GINT_TO_POINTER (gtype));
+	integrators = g_slist_append (integrators, klass);
 }
 
 /**
@@ -75,7 +78,12 @@ cpg_integrators_register (GType gtype)
 void
 cpg_integrators_unregister (GType gtype)
 {
-	integrators = g_slist_remove (integrators, GINT_TO_POINTER (gtype));
+	gpointer klass = g_type_class_peek (gtype);
+
+	if (klass)
+	{
+		integrators = g_slist_remove (integrators, klass);
+	}
 }
 
 /**
@@ -96,16 +104,13 @@ cpg_integrators_find (gchar const *id)
 	
 	while (ints)
 	{
-		GType gtype = GPOINTER_TO_INT (ints->data);
-
-		CpgIntegratorClass *klass = CPG_INTEGRATOR_CLASS (g_type_class_ref (gtype));
+		CpgIntegratorClass *klass = ints->data;
 
 		if (g_strcmp0 (id, klass->integrator_id) == 0)
 		{
-			ret = gtype;
+			ret = G_TYPE_FROM_CLASS (klass);
 		}
 
-		g_type_class_unref (klass);
 		ints = g_slist_next (ints);
 
 		if (ret != G_TYPE_INVALID)
