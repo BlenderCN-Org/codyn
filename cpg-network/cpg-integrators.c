@@ -131,7 +131,7 @@ cpg_integrators_create (void)
 	while (ints)
 	{
 		ret = g_slist_prepend (ret,
-		                       g_object_new (GPOINTER_TO_INT (ints->data), NULL));
+		                       g_object_new (G_TYPE_FROM_CLASS (ints->data), NULL));
 		ints = g_slist_next (ints);
 	}
 
