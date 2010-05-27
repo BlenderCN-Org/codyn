@@ -13,7 +13,7 @@ Standards-Version: 3.8.0
 Section: libs
 Homepage: http://birg2.epfl.ch
 
-Package: cpg-network-dev
+Package: cpg-network1-dev
 Section: libdevel
 Architecture: any
 Depends: cpg-network1 (= ${binary:Version}),
@@ -34,7 +34,7 @@ Depends: ${shlibs:Depends},
 Description: CPG network library
  CPG network library
 
-Package: cpg-network-webots-dev
+Package: cpg-network-webots1-dev
 Section: libdevel
 Architecture: any
 Depends: cpg-network-webots1 (= ${binary:Version}),
