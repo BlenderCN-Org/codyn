@@ -38,7 +38,7 @@ Package: cpg-network-webots1-dev
 Section: libdevel
 Architecture: any
 Depends: cpg-network-webots1 (= ${binary:Version}),
-         cpg-network-dev,
+         cpg-network1-dev,
          webots (>= 6.1.0)
 Description: Development files for CPG network library - webots bindings
  CPG network library webots bindings
