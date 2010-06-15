@@ -1,4 +1,4 @@
-AC_INIT(cpg-network, 1.8)
+AC_INIT(cpg-network, 1.9)
 
 AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 
@@ -64,7 +64,6 @@ dnl ================================================================
 
 PKG_CHECK_MODULES(CPG_NETWORK, [
 	glib-2.0
-	gio-2.0
 	gobject-2.0
 	libxml-2.0
 ])

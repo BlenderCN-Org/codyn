@@ -1,7 +1,6 @@
 #include "cpg-network-writer.h"
 
 #include <libxml/tree.h>
-#include <gio/gio.h>
 
 #include "cpg-function-polynomial.h"
 

@@ -98,7 +98,7 @@ store_coefficients (CpgIntegratorRungeKutta *rk,
 		}
 		else if (order == MAX_COEFFICIENTS)
 		{
-			cpg_property_set_value (prop, rk->priv->coefficients[0][i]);
+			cpg_property_set_value (prop, cpg_integrator_state_get_update (st));
 		}
 
 		state = g_slist_next (state);
