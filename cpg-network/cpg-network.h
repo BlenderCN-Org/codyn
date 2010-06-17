@@ -73,13 +73,17 @@ void			  cpg_network_write_to_file		(CpgNetwork  *network,
 void              cpg_network_merge             (CpgNetwork *network,
 												 CpgNetwork *other);
 
-void			  cpg_network_merge_from_file	(CpgNetwork   *network, 
+void			  cpg_network_merge_from_file	(CpgNetwork   *network,
 												 const gchar  *filename,
 												 GError      **error);
 
 void			  cpg_network_merge_from_xml	(CpgNetwork   *network,
 												 const gchar  *xml,
 												 GError      **error);
+
+gboolean          cpg_network_merge_from_partial_xml (CpgNetwork   *network,
+													  const gchar  *xml,
+													  GError      **error);
 
 void 			  cpg_network_set_global_constant (CpgNetwork *network,
 												 const gchar  *name,
