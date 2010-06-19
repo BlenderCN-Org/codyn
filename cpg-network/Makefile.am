@@ -10,6 +10,7 @@ COMMON_SOURCES = 		\
 	cpg-expression.c \
 	cpg-function.c \
 	cpg-function-polynomial.c \
+	cpg-group.c \
 	cpg-instructions.c \
 	cpg-integrator.c \
 	cpg-integrator-euler.c \
@@ -44,6 +45,7 @@ INST_H_FILES = \
 	cpg-expression.h \
 	cpg-function.h \
 	cpg-function-polynomial.h \
+	cpg-group.h \
 	cpg-instructions.h \
 	cpg-integrator-euler.h \
 	cpg-integrator.h \

@@ -119,6 +119,7 @@ cpg_link_set_property (GObject       *object,
 		{
 			if (link->priv->to)
 			{
+				_cpg_object_unlink (link->priv->to, link);
 				g_object_unref (link->priv->to);
 			}
 
@@ -136,6 +137,7 @@ cpg_link_set_property (GObject       *object,
 		{
 			if (link->priv->from)
 			{
+				_cpg_object_unlink (link->priv->from, link);
 				g_object_unref (link->priv->from);
 			}
 
@@ -155,10 +157,14 @@ cpg_link_dispose (GObject *object)
 	CpgLink *link = CPG_LINK (object);
 
 	if (link->priv->to)
+	{
 		g_object_unref (link->priv->to);
+	}
 
 	if (link->priv->from)
+	{
 		g_object_unref (link->priv->from);
+	}
 
 	g_slist_foreach (link->priv->actions, (GFunc)cpg_ref_counted_unref, NULL);
 	g_slist_free (link->priv->actions);
@@ -248,12 +254,12 @@ cpg_link_compile_impl (CpgObject         *object,
 	}
 
 	/* Parse all link expressions */
-	GSList *actions = cpg_link_get_actions (link);
+	GSList const *actions = cpg_link_get_actions (link);
 	gboolean ret = TRUE;
 
 	while (actions)
 	{
-		CpgLinkAction *action = (CpgLinkAction *)actions->data;
+		CpgLinkAction *action = actions->data;
 		CpgExpression *expr = cpg_link_action_get_expression (action);
 		GError *gerror = NULL;
 
@@ -305,12 +311,13 @@ cpg_link_class_init (CpgLinkClass *klass)
 	 * The from #CpgObject
 	 *
 	 **/
-	g_object_class_install_property (object_class, PROP_FROM,
-				 g_param_spec_object ("from",
-							  "FROM",
-							  "The link from object",
-							  CPG_TYPE_OBJECT,
-							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	g_object_class_install_property (object_class,
+	                                 PROP_FROM,
+	                                 g_param_spec_object ("from",
+	                                                      "FROM",
+	                                                      "The link from object",
+	                                                      CPG_TYPE_OBJECT,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	/**
 	 * CpgLink:to:
@@ -318,12 +325,13 @@ cpg_link_class_init (CpgLinkClass *klass)
 	 * The to #CpgObject
 	 *
 	 **/
-	g_object_class_install_property (object_class, PROP_TO,
-				 g_param_spec_object ("to",
-							  "TO",
-							  "The link to object",
-							  CPG_TYPE_OBJECT,
-							  G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	g_object_class_install_property (object_class,
+	                                 PROP_TO,
+	                                 g_param_spec_object ("to",
+	                                                      "TO",
+	                                                      "The link to object",
+	                                                      CPG_TYPE_OBJECT,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	g_type_class_add_private (object_class, sizeof (CpgLinkPrivate));
 }
@@ -475,7 +483,7 @@ cpg_link_get_to (CpgLink *link)
  *               should not be freed
  *
  **/
-GSList *
+GSList const *
 cpg_link_get_actions (CpgLink *link)
 {
 	g_return_val_if_fail (CPG_IS_LINK (link), NULL);

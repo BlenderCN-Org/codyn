@@ -208,7 +208,7 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      "Name",
 	                                                      "Name",
 	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 
 	g_object_class_install_property (object_class,

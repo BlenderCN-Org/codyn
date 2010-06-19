@@ -11,7 +11,7 @@
  * the target #CpgProperty from links that are connected to it at each timestep.
  *
  */
- 
+
 #define CPG_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_STATE, CpgStatePrivate))
 
 /*struct _CpgStatePrivate
@@ -29,14 +29,14 @@ cpg_state_finalize (GObject *object)
 static void
 cpg_state_evaluate_impl (CpgObject *object)
 {
-	GSList *item;
-	
+	GSList const *item;
+
 	// Prepare update values (ready for accumulation)
 	for (item = cpg_object_get_actors (object); item; item = g_slist_next (item))
 	{
-		CpgProperty *property = (CpgProperty *)item->data;
+		CpgProperty *property = item->data;
 
-		cpg_debug_evaluate ("Setting update for actor %s.%s to 0", 
+		cpg_debug_evaluate ("Setting update for actor %s.%s to 0",
 		                     cpg_object_get_id (object),
 		                     cpg_property_get_name (property));
 
@@ -47,20 +47,20 @@ cpg_state_evaluate_impl (CpgObject *object)
 	for (item = _cpg_object_get_links (object); item; item = g_slist_next (item))
 	{
 		CpgLink *link = CPG_LINK (item->data);
-		GSList *ac;
-		
+		GSList const *ac;
+
 		cpg_debug_evaluate ("Evaluating link on %s", cpg_object_get_id (object));
 
 		// Iterate over all the expressions in the link
 		for (ac = cpg_link_get_actions (link); ac; ac = g_slist_next (ac))
 		{
-			CpgLinkAction *action = (CpgLinkAction *)ac->data;
+			CpgLinkAction *action = ac->data;
 			CpgExpression *expression = cpg_link_action_get_expression (action);
 
-			cpg_debug_evaluate ("Evaluating link action on %s.%s", 
+			cpg_debug_evaluate ("Evaluating link action on %s.%s",
 			                    cpg_object_get_id (object),
 			                    cpg_property_get_name (cpg_link_action_get_target (action)));
-			
+
 			// Evaluate expression and add value to the update
 			gdouble val = cpg_expression_evaluate (expression);
 			CpgProperty *target = cpg_link_action_get_target (action);
@@ -70,13 +70,12 @@ cpg_state_evaluate_impl (CpgObject *object)
 	}
 }
 
-
 static void
 cpg_state_class_init (CpgStateClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	CpgObjectClass *cpg_class = CPG_OBJECT_CLASS (klass);
-	
+
 	object_class->finalize = cpg_state_finalize;
 	cpg_class->evaluate = cpg_state_evaluate_impl;
 
@@ -89,7 +88,7 @@ cpg_state_init (CpgState *self)
 	//self->priv = CPG_STATE_GET_PRIVATE (self);
 }
 
-/** 
+/**
  * cpg_state_new:
  * @id: the state id
  *
