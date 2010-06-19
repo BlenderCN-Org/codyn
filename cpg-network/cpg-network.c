@@ -820,11 +820,12 @@ static gint
 compare_property_dependencies (CpgProperty *prop1,
                                CpgProperty *prop2)
 {
-	CpgExpression *e1 = cpg_property_get_value_expression (prop1);
-	CpgExpression *e2 = cpg_property_get_value_expression (prop2);
-	GSList *d1 = cpg_expression_get_dependencies (e1);
-	GSList *d2 = cpg_expression_get_dependencies (e2);
-	
+	CpgExpression *e1 = cpg_property_get_expression (prop1);
+	CpgExpression *e2 = cpg_property_get_expression (prop2);
+
+	GSList *d1 = (GSList *)cpg_expression_get_dependencies (e1);
+	GSList *d2 = (GSList *)cpg_expression_get_dependencies (e2);
+
 	if (g_slist_find (d1, prop2) != NULL)
 	{
 		return 1;
@@ -1038,7 +1039,7 @@ cpg_network_merge (CpgNetwork  *network,
 		{
 			cpg_object_add_property (network->priv->globals,
 			                         cpg_property_get_name (property),
-			                         cpg_expression_get_as_string (cpg_property_get_value_expression (property)),
+			                         cpg_expression_get_as_string (cpg_property_get_expression (property)),
 			                         FALSE);
 		}
 	}

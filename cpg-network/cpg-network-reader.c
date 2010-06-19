@@ -668,7 +668,7 @@ parse_actions (xmlDocPtr doc,
 		
 		if (!to)
 		{
-			cpg_ref_counted_unref (property);
+			g_object_unref (property);
 		}
 		
 		xmlFree (target);

@@ -1,11 +1,37 @@
 #include <string.h>
 
 #include "cpg-property.h"
-#include "cpg-ref-counted-private.h"
 #include "cpg-expression.h"
 #include "cpg-utils.h"
-
+#include "cpg-enum-types.h"
 #include "cpg-object.h"
+
+#define CPG_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY, CpgPropertyPrivate))
+
+struct _CpgPropertyPrivate
+{
+	guint use_count;
+	gchar *name;
+
+	CpgExpression *expression;
+	gboolean integrated;
+	CpgPropertyHint hint;
+
+	gdouble update;
+	CpgObject *object;
+};
+
+G_DEFINE_TYPE (CpgProperty, cpg_property, G_TYPE_OBJECT)
+
+enum
+{
+	PROP_0,
+	PROP_NAME,
+	PROP_OBJECT,
+	PROP_HINT,
+	PROP_INTEGRATED,
+	PROP_EXPRESSION
+};
 
 /**
  * SECTION:property
@@ -15,53 +41,217 @@
  * consists of a name and a mathematical expression describing its contents.
  *
  */
- 
-struct _CpgProperty
-{
-	CpgRefCounted parent;
-	guint use_count;
-	gchar *name;
-	
-	CpgExpression *value;
-	gboolean integrated;
-	CpgPropertyHint hint;
-	
-	gdouble update;
-	CpgObject *object;
-};
 
-GType 
-cpg_property_get_type ()
+static void
+set_object (CpgProperty *property,
+            CpgObject   *object)
 {
-	static GType type_id = 0;
-	
-	if (G_UNLIKELY (type_id == 0))
-		type_id = g_boxed_type_register_static ("CpgProperty", cpg_ref_counted_ref, cpg_ref_counted_unref);
-	
-	return type_id;
-}
+	if (property->priv->object == object)
+	{
+		return;
+	}
 
-CpgProperty *
-_cpg_property_copy (CpgProperty *property)
-{
-	CpgProperty *ret;
-	
-	ret = cpg_property_new (property->name,
-	                        cpg_expression_get_as_string (property->value),
-	                        property->integrated,
-	                        NULL);
+	if (property->priv->object)
+	{
+		g_object_remove_weak_pointer (G_OBJECT (property->priv->object),
+		                              (gpointer *)&property->priv->object);
+	}
 
-	ret->hint = property->hint;	
-	return ret;
+	property->priv->object = object;
+
+	if (property->priv->object)
+	{
+		g_object_add_weak_pointer (G_OBJECT (property->priv->object),
+		                           (gpointer *)&property->priv->object);
+	}
+
+	g_object_notify (G_OBJECT (property), "object");
 }
 
 static void
-cpg_property_free (CpgProperty *property)
+cpg_property_finalize (GObject *object)
 {
-	cpg_ref_counted_unref (property->value);
+	CpgProperty *property;
 
-	g_free (property->name);
-	g_slice_free (CpgProperty, property);
+	property = CPG_PROPERTY (object);
+
+	g_free (property->priv->name);
+
+	if (property->priv->expression)
+	{
+		g_object_unref (property->priv->expression);
+	}
+
+	g_object_freeze_notify (object);
+	set_object (property, NULL);
+	g_object_thaw_notify (object);
+
+	G_OBJECT_CLASS (cpg_property_parent_class)->finalize (object);
+}
+
+static void
+set_expression (CpgProperty *property,
+                CpgExpression *expression)
+{
+	if (property->priv->expression)
+	{
+		g_object_unref (property->priv->expression);
+	}
+
+	property->priv->expression = g_object_ref (expression);
+
+	g_object_notify (G_OBJECT (property), "expression");
+}
+
+static void
+set_integrated (CpgProperty *property,
+                gboolean     integrated)
+{
+	if (integrated != property->priv->integrated)
+	{
+		property->priv->integrated = integrated;
+
+		g_object_notify (G_OBJECT (property), "integrated");
+	}
+}
+
+static void
+set_hint (CpgProperty     *property,
+          CpgPropertyHint  hint)
+{
+	if (hint != property->priv->hint)
+	{
+		property->priv->hint = hint;
+
+		g_object_notify (G_OBJECT (property), "hint");
+	}
+}
+
+static void
+cpg_property_set_property (GObject      *object,
+                           guint         prop_id,
+                           const GValue *value,
+                           GParamSpec   *pspec)
+{
+	CpgProperty *self = CPG_PROPERTY (object);
+
+	switch (prop_id)
+	{
+		case PROP_NAME:
+			g_free (self->priv->name);
+			self->priv->name = g_value_dup_string (value);
+		break;
+		case PROP_OBJECT:
+			set_object (self, g_value_get_object (value));
+		break;
+		case PROP_HINT:
+			set_hint (self, g_value_get_flags (value));
+		break;
+		case PROP_INTEGRATED:
+			set_integrated (self, g_value_get_boolean (value));
+		break;
+		case PROP_EXPRESSION:
+			set_expression (self, g_value_get_object (value));
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_property_get_property (GObject    *object,
+                           guint       prop_id,
+                           GValue     *value,
+                           GParamSpec *pspec)
+{
+	CpgProperty *self = CPG_PROPERTY (object);
+
+	switch (prop_id)
+	{
+		case PROP_NAME:
+			g_value_set_string (value, self->priv->name);
+		break;
+		case PROP_OBJECT:
+			g_value_set_object (value, self->priv->object);
+		break;
+		case PROP_HINT:
+			g_value_set_flags (value, self->priv->hint);
+		break;
+		case PROP_INTEGRATED:
+			g_value_set_boolean (value, self->priv->integrated);
+		break;
+		case PROP_EXPRESSION:
+			g_value_set_object (value, self->priv->expression);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_property_class_init (CpgPropertyClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->finalize = cpg_property_finalize;
+
+	object_class->get_property = cpg_property_get_property;
+	object_class->set_property = cpg_property_set_property;
+
+	g_type_class_add_private (object_class, sizeof(CpgPropertyPrivate));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_NAME,
+	                                 g_param_spec_string ("name",
+	                                                      "Name",
+	                                                      "Name",
+	                                                      NULL,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_OBJECT,
+	                                 g_param_spec_object ("object",
+	                                                      "Object",
+	                                                      "Object",
+	                                                      CPG_TYPE_OBJECT,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_HINT,
+	                                 g_param_spec_flags ("hint",
+	                                                     "Hint",
+	                                                     "Hint",
+	                                                     CPG_TYPE_PROPERTY_HINT,
+	                                                     CPG_PROPERTY_HINT_NONE,
+	                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_INTEGRATED,
+	                                 g_param_spec_boolean ("integrated",
+	                                                       "Integrated",
+	                                                       "Integrated",
+	                                                       FALSE,
+	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_EXPRESSION,
+	                                 g_param_spec_object ("expression",
+	                                                      "Expression",
+	                                                      "Expression",
+	                                                      CPG_TYPE_EXPRESSION,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+}
+
+static void
+cpg_property_init (CpgProperty *self)
+{
+	self->priv = CPG_PROPERTY_GET_PRIVATE (self);
 }
 
 /**
@@ -84,18 +274,12 @@ cpg_property_new (gchar const  *name,
                   gboolean      integrated,
                   CpgObject    *object)
 {
-	CpgProperty *res = g_slice_new0(CpgProperty);
-	cpg_ref_counted_init (res, (GDestroyNotify)cpg_property_free);
-	
-	res->name = g_strdup (name);
-	res->object = object;
-	res->use_count = 0;
-
-	res->integrated = integrated;
-	res->hint = CPG_PROPERTY_HINT_NONE;
-	res->value = cpg_expression_new (expression);
-	
-	return res;
+	return g_object_new (CPG_TYPE_PROPERTY,
+	                     "name", name,
+	                     "expression", cpg_expression_new (expression),
+	                     "integrated", integrated,
+	                     "object", object,
+	                     NULL);
 }
 
 /**
@@ -109,14 +293,9 @@ cpg_property_new (gchar const  *name,
 CpgObject *
 cpg_property_get_object (CpgProperty *property)
 {
-	return property->object;
-}
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
 
-void
-_cpg_property_set_object (CpgProperty *property,
-                          CpgObject   *object)
-{
-	property->object = object;
+	return property->priv->object;
 }
 
 /**
@@ -132,7 +311,9 @@ void
 cpg_property_set_value (CpgProperty  *property,
                         gdouble       value)
 {
-	cpg_expression_set_value (property->value, value);
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	cpg_expression_set_value (property->priv->expression, value);
 }
 
 /**
@@ -147,7 +328,16 @@ cpg_property_set_value (CpgProperty  *property,
 gdouble
 cpg_property_get_value (CpgProperty *property)
 {
-	return property->value ? cpg_expression_evaluate (property->value) : 0.0;
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
+
+	if (property->priv->expression)
+	{
+		return cpg_expression_evaluate (property->priv->expression);
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 /**
@@ -161,9 +351,11 @@ cpg_property_get_value (CpgProperty *property)
  *
  **/
 CpgExpression *
-cpg_property_get_value_expression (CpgProperty *property)
+cpg_property_get_expression (CpgProperty *property)
 {
-	return property->value;
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	return property->priv->expression;
 }
 
 /**
@@ -171,20 +363,17 @@ cpg_property_get_value_expression (CpgProperty *property)
  * @property: a #CpgProperty
  * @expression: the expression
  *
- * Set the property value from an expression. This will mark the associated
- * #CpgObject as tainted so the expression will be recompiled accordingly.
+ * Set the property value from an expression.
  *
  **/
 void
-cpg_property_set_value_expression (CpgProperty  *property,
-                                   gchar const  *expression)
+cpg_property_set_expression (CpgProperty   *property,
+                             CpgExpression *expression)
 {
-	cpg_expression_set_from_string (property->value, expression);
-	
-	if (property->object)
-	{
-		cpg_object_taint (property->object);
-	}
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+	g_return_if_fail (CPG_IS_EXPRESSION (expression));
+
+	set_expression (property, expression);
 }
 
 /**
@@ -199,7 +388,9 @@ cpg_property_set_value_expression (CpgProperty  *property,
 gchar const *
 cpg_property_get_name (CpgProperty *property)
 {
-	return property->name;
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	return property->priv->name;
 }
 
 /**
@@ -214,7 +405,9 @@ cpg_property_get_name (CpgProperty *property)
 gboolean
 cpg_property_get_integrated (CpgProperty *property)
 {
-	return property->integrated;
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
+
+	return property->priv->integrated;
 }
 
 /**
@@ -229,20 +422,9 @@ void
 cpg_property_set_integrated (CpgProperty  *property,
                              gboolean      integrated)
 {
-	property->integrated = integrated;
-}
+	g_return_if_fail (CPG_IS_PROPERTY (property));
 
-void
-_cpg_property_set_update (CpgProperty  *property,
-                          gdouble       value)
-{
-	property->update = value;
-}
-
-gdouble
-_cpg_property_get_update (CpgProperty *property)
-{
-	return property->update;
+	set_integrated (property, integrated);
 }
 
 /**
@@ -255,26 +437,13 @@ _cpg_property_get_update (CpgProperty *property)
 void
 cpg_property_reset_cache (CpgProperty *property)
 {
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
 	/* Never reset the cache of something that is only initialized once */
-	if (!(property->hint & CPG_PROPERTY_HINT_ONCE))
+	if (!(property->priv->hint & CPG_PROPERTY_HINT_ONCE))
 	{
-		cpg_expression_reset_cache (property->value);
+		cpg_expression_reset_cache (property->priv->expression);
 	}
-}
-
-void
-_cpg_property_use (CpgProperty *property)
-{
-	++(property->use_count);
-}
-
-gboolean
-_cpg_property_unuse (CpgProperty *property)
-{
-	if (property->use_count == 0)
-		return TRUE;
-
-	return (--(property->use_count) == 0);
 }
 
 /**
@@ -286,10 +455,12 @@ _cpg_property_unuse (CpgProperty *property)
  * Returns: The number of times the property is used
  *
  **/
-guint 
+guint
 cpg_property_get_used (CpgProperty *property)
 {
-	return property->use_count;
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
+
+	return property->priv->use_count;
 }
 
 /**
@@ -306,10 +477,13 @@ gboolean
 cpg_property_equal (CpgProperty *property,
                     CpgProperty *other)
 {
-	return property->integrated == other->integrated &&
-	       property->hint == other->hint &&
-	       cpg_expression_equal (cpg_property_get_value_expression (property),
-	                             cpg_property_get_value_expression (other));
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
+	g_return_val_if_fail (CPG_IS_PROPERTY (other), FALSE);
+
+	return property->priv->integrated == other->priv->integrated &&
+	       property->priv->hint == other->priv->hint &&
+	       cpg_expression_equal (cpg_property_get_expression (property),
+	                             cpg_property_get_expression (other));
 }
 
 /**
@@ -325,7 +499,9 @@ cpg_property_equal (CpgProperty *property,
 CpgPropertyHint
 cpg_property_get_hint (CpgProperty *property)
 {
-	return property->hint;
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), CPG_PROPERTY_HINT_NONE);
+
+	return property->priv->hint;
 }
 
 /**
@@ -340,7 +516,9 @@ void
 cpg_property_set_hint (CpgProperty     *property,
                        CpgPropertyHint  hint)
 {
-	property->hint = hint;
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	set_hint (property, hint);
 }
 
 /**
@@ -355,7 +533,9 @@ void
 cpg_property_add_hint (CpgProperty     *property,
                        CpgPropertyHint  hint)
 {
-	property->hint |= hint;
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	set_hint (property, property->priv->hint | hint);
 }
 
 /**
@@ -370,5 +550,74 @@ void
 cpg_property_remove_hint (CpgProperty     *property,
                           CpgPropertyHint  hint)
 {
-	property->hint &= hint;
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	set_hint (property, property->priv->hint & ~hint);
 }
+
+CpgProperty *
+_cpg_property_copy (CpgProperty *property)
+{
+	CpgProperty *ret;
+
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	ret = cpg_property_new (property->priv->name,
+	                        cpg_expression_get_as_string (property->priv->expression),
+	                        property->priv->integrated,
+	                        NULL);
+
+	ret->priv->hint = property->priv->hint;
+	ret->priv->update = property->priv->update;
+
+	return ret;
+}
+
+void
+_cpg_property_use (CpgProperty *property)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	++(property->priv->use_count);
+}
+
+gboolean
+_cpg_property_unuse (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
+
+	if (property->priv->use_count == 0)
+	{
+		return TRUE;
+	}
+
+	return (--(property->priv->use_count) == 0);
+}
+
+void
+_cpg_property_set_update (CpgProperty  *property,
+                          gdouble       value)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	property->priv->update = value;
+}
+
+gdouble
+_cpg_property_get_update (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
+
+	return property->priv->update;
+}
+
+void
+_cpg_property_set_object (CpgProperty *property,
+                          CpgObject   *object)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+	g_return_if_fail (CPG_IS_OBJECT (object));
+
+	set_object (property, object);
+}
+

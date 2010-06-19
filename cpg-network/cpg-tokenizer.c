@@ -63,7 +63,7 @@ buffer_peek (gchar const  *buffer,
 }
 
 /* parse number value */
-CpgToken *
+static CpgToken *
 cpg_tokenizer_parse_number (gchar const **buffer)
 {
 	// parse leading numbers
@@ -107,7 +107,7 @@ cpg_tokenizer_parse_number (gchar const **buffer)
 }
 
 /* parse identifier */
-CpgToken *
+static CpgToken *
 cpg_tokenizer_parse_identifier (gchar const **buffer)
 {
 	gchar const *start = *buffer;
@@ -124,7 +124,7 @@ cpg_tokenizer_parse_identifier (gchar const **buffer)
 }
 
 /* check for operator */
-gboolean
+static gboolean
 isoperator (gint c)
 {
 	switch (c)
@@ -153,7 +153,7 @@ isoperator (gint c)
 }
 
 /* parse operator */
-CpgToken *
+static CpgToken *
 cpg_tokenizer_parse_operator (gchar const **buffer)
 {
 	gint c = **buffer;

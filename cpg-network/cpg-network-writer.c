@@ -17,7 +17,7 @@ properties_to_xml (xmlDocPtr   doc,
 	for (item = properties; item; item = g_slist_next (item))
 	{
 		CpgProperty *property = (CpgProperty *)item->data;
-		CpgExpression *expression = cpg_property_get_value_expression (property);
+		CpgExpression *expression = cpg_property_get_expression (property);
 		
 		// Check if property is different from template
 		if (template)

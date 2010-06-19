@@ -223,7 +223,7 @@ cpg_integrator_predict_correct_finalize (GObject *object)
 	G_OBJECT_CLASS (cpg_integrator_predict_correct_parent_class)->finalize (object);
 }
 
-void
+static void
 cpg_integrator_predict_correct_reset_impl (CpgIntegrator *integrator,
                                            GSList        *state)
 {

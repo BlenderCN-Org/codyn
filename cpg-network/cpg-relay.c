@@ -37,7 +37,7 @@ static void
 ensure_dependencies (CpgRelay       *relay,
                      CpgExpression  *expression)
 {
-	GSList *dependencies = cpg_expression_get_dependencies (expression);
+	GSList const *dependencies = cpg_expression_get_dependencies (expression);
 	
 	while (dependencies)
 	{

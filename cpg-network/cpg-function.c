@@ -72,7 +72,7 @@ cpg_function_argument_free (CpgFunctionArgument *argument)
 
 	if (argument->property)
 	{
-		cpg_ref_counted_unref (argument->property);
+		g_object_unref (argument->property);
 	}
 
 	g_slice_free (CpgFunctionArgument, argument);
@@ -122,7 +122,7 @@ cpg_function_finalize (GObject *object)
 
 	if (self->priv->expression)
 	{
-		cpg_ref_counted_unref (self->priv->expression);
+		g_object_unref (self->priv->expression);
 	}
 
 	cpg_function_clear_arguments (self);
@@ -140,7 +140,7 @@ cpg_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 		case PROP_EXPRESSION:
 			if (self->priv->expression)
 			{
-				cpg_ref_counted_unref (self->priv->expression);
+				g_object_unref (self->priv->expression);
 			}
 
 			self->priv->expression = g_value_dup_boxed (value);
@@ -303,7 +303,7 @@ cpg_function_copy_impl (CpgObject *object,
 		CpgExpression *expr = cpg_expression_new (cpg_expression_get_as_string (source_function->priv->expression));
 
 		g_object_set (target, "expression", expr, NULL);
-		cpg_ref_counted_unref (expr);
+		g_object_unref (expr);
 	}
 
 	// Copy arguments
@@ -436,7 +436,7 @@ cpg_function_new (gchar const *name, gchar const *expression)
 
 	if (expr != NULL)
 	{
-		cpg_ref_counted_unref (expr);
+		g_object_unref (expr);
 	}
 
 	return ret;
@@ -481,7 +481,7 @@ cpg_function_add_argument (CpgFunction         *function,
 		return;
 	}
 
-	argument->property = cpg_ref_counted_ref (property);
+	argument->property = g_object_ref (property);
 
 	if (argument->optional)
 	{

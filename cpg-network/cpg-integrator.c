@@ -71,7 +71,7 @@ cpg_integrator_state_get_type (void)
 static void
 cpg_integrator_state_free (CpgIntegratorState *state)
 {
-	cpg_ref_counted_unref (state->property);
+	g_object_unref (state->property);
 	g_slice_free (CpgIntegratorState, state);
 }
 
@@ -91,7 +91,7 @@ cpg_integrator_state_new (CpgProperty *property)
 
 	cpg_ref_counted_init (&(state->parent), (GDestroyNotify)cpg_integrator_state_free);
 
-	state->property = cpg_ref_counted_ref (property);
+	state->property = g_object_ref (property);
 	return state;
 }
 
@@ -257,14 +257,14 @@ cpg_integrator_reset_impl (CpgIntegrator *integrator,
 {
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
 
-	cpg_expression_reset (cpg_property_get_value_expression (integrator->priv->property_time));
-	cpg_expression_reset (cpg_property_get_value_expression (integrator->priv->property_timestep));
+	cpg_expression_reset (cpg_property_get_expression (integrator->priv->property_time));
+	cpg_expression_reset (cpg_property_get_expression (integrator->priv->property_timestep));
 
-	cpg_expression_compile (cpg_property_get_value_expression (integrator->priv->property_time),
+	cpg_expression_compile (cpg_property_get_expression (integrator->priv->property_time),
 	                        NULL,
 	                        NULL);
 
-	cpg_expression_compile (cpg_property_get_value_expression (integrator->priv->property_timestep),
+	cpg_expression_compile (cpg_property_get_expression (integrator->priv->property_timestep),
 	                        NULL,
 	                        NULL);
 }
@@ -373,11 +373,11 @@ cpg_integrator_init (CpgIntegrator *self)
 	self->priv->property_time = cpg_object_add_property (CPG_OBJECT (self), "t", "0", FALSE);
 	self->priv->property_timestep = cpg_object_add_property (CPG_OBJECT (self), "dt", "0", FALSE);
 
-	cpg_expression_compile (cpg_property_get_value_expression (self->priv->property_time),
+	cpg_expression_compile (cpg_property_get_expression (self->priv->property_time),
 	                        NULL,
 	                        NULL);
 
-	cpg_expression_compile (cpg_property_get_value_expression (self->priv->property_timestep),
+	cpg_expression_compile (cpg_property_get_expression (self->priv->property_timestep),
 	                        NULL,
 	                        NULL);
 }

@@ -49,7 +49,7 @@ print_object (CpgObject *object)
 		g_printf ("  %s" ANSI_RED "%s" ANSI_OFF ": %s\n",
 		          cpg_property_get_integrated (prop) ? "*" : " ",
 		          cpg_property_get_name (prop),
-		          cpg_expression_get_as_string (cpg_property_get_value_expression (prop)));
+		          cpg_expression_get_as_string (cpg_property_get_expression (prop)));
 		
 		properties = g_slist_next (properties);
 	}

@@ -3,63 +3,65 @@ INCLUDES =				\
 	-I$(top_srcdir)
 
 COMMON_SOURCES = 		\
-	cpg-network.c \
-	cpg-object.c \
-	cpg-state.c \
-	cpg-relay.c \
-	cpg-link.c \
-	cpg-property.c \
-	cpg-tokenizer.c \
-	cpg-expression.c \
-	cpg-enum-types.c \
-	cpg-ref-counted.c \
-	cpg-monitor.c \
-	cpg-math.c \
-	cpg-debug.c \
-	cpg-stack.c \
-	cpg-network-reader.c \
-	cpg-network-writer.c \
-	cpg-compile-error.c \
-	cpg-function.c \
 	cpg-compile-context.c \
+	cpg-compile-error.c \
+	cpg-debug.c \
+	cpg-enum-types.c \
+	cpg-expression.c \
+	cpg-function.c \
 	cpg-function-polynomial.c \
-	cpg-integrators.c \
+	cpg-instructions.c \
 	cpg-integrator.c \
-	cpg-integrator-runge-kutta.c \
 	cpg-integrator-euler.c \
 	cpg-integrator-predict-correct.c \
-	cpg-integrator-stub.c
+	cpg-integrator-runge-kutta.c \
+	cpg-integrators.c \
+	cpg-integrator-stub.c \
+	cpg-link.c \
+	cpg-math.c \
+	cpg-monitor.c \
+	cpg-network.c \
+	cpg-network-reader.c \
+	cpg-network-writer.c \
+	cpg-object.c \
+	cpg-property.c \
+	cpg-ref-counted.c \
+	cpg-relay.c \
+	cpg-stack.c \
+	cpg-state.c \
+	cpg-tokenizer.c
 
 NOINST_H_FILES = \
-	cpg-tokenizer.h \
 	cpg-network-reader.h \
 	cpg-network-writer.h \
-	cpg-ref-counted-private.h
+	cpg-ref-counted-private.h \
+	cpg-tokenizer.h
 
 INST_H_FILES = \
+	cpg-compile-context.h \
+	cpg-compile-error.h \
+	cpg-debug.h \
+	cpg-expression.h \
+	cpg-function.h \
+	cpg-function-polynomial.h \
+	cpg-instructions.h \
+	cpg-integrator-euler.h \
+	cpg-integrator.h \
+	cpg-integrator-predict-correct.h \
+	cpg-integrator-runge-kutta.h \
+	cpg-integrators.h \
+	cpg-integrator-stub.h \
+	cpg-link.h \
+	cpg-math.h \
+	cpg-monitor.h \
 	cpg-network.h \
 	cpg-object.h \
-	cpg-state.h \
-	cpg-relay.h \
-	cpg-link.h \
-	cpg-monitor.h \
 	cpg-property.h \
-	cpg-expression.h \
 	cpg-ref-counted.h \
+	cpg-relay.h \
 	cpg-stack.h \
-	cpg-utils.h \
-	cpg-debug.h \
-	cpg-compile-error.h \
-	cpg-math.h \
-	cpg-function.h \
-	cpg-compile-context.h \
-	cpg-function-polynomial.h \
-	cpg-integrators.h \
-	cpg-integrator.h \
-	cpg-integrator-runge-kutta.h \
-	cpg-integrator-euler.h \
-	cpg-integrator-predict-correct.h \
-	cpg-integrator-stub.h
+	cpg-state.h \
+	cpg-utils.h
 
 lib_LTLIBRARIES = libcpg-network-1.0.la
 

@@ -13,12 +13,12 @@
  *
  * A #CpgMonitor can be used to monitor the value of a certain #CpgProperty
  * while simulating. The monitor will collect the value of the property at
- * each simulation step and provides methods to access these values. 
+ * each simulation step and provides methods to access these values.
  * Particularly useful is #cpg_monitor_get_data_resampled which retrieves the
  * data resampled at specific times.
  *
  */
- 
+
 #define MONITOR_GROW_SIZE 1000
 
 enum
@@ -33,7 +33,7 @@ enum
 struct _CpgMonitor
 {
 	CpgRefCounted parent;
-	
+
 	CpgNetwork  *network;
 	CpgObject   *object;
 	CpgProperty *property;
@@ -43,7 +43,7 @@ struct _CpgMonitor
 	gdouble *sites;
 	guint num_values;
 	guint size;
-	
+
 	guint signals[NUM_SIGNALS];
 };
 
@@ -52,7 +52,7 @@ cpg_monitor_free_data (CpgMonitor *monitor)
 {
 	g_free (monitor->values);
 	g_free (monitor->sites);
-	
+
 	monitor->values = NULL;
 	monitor->sites = NULL;
 	monitor->size = 0;
@@ -77,8 +77,8 @@ disconnect_integrator (CpgMonitor *monitor)
 static void
 cpg_monitor_free (CpgMonitor *monitor)
 {
-	cpg_ref_counted_unref (monitor->property);
-	
+	g_object_unref (monitor->property);
+
 	if (monitor->network)
 	{
 		g_signal_handler_disconnect (monitor->network, monitor->signals[RESET]);
@@ -91,16 +91,18 @@ cpg_monitor_free (CpgMonitor *monitor)
 	g_slice_free (CpgMonitor, monitor);
 }
 
-GType 
+GType
 cpg_monitor_get_type ()
 {
 	static GType type_id = 0;
-	
+
 	if (G_UNLIKELY (type_id == 0))
 	{
-		type_id = g_boxed_type_register_static ("CpgMonitor", cpg_ref_counted_ref, cpg_ref_counted_unref);
+		type_id = g_boxed_type_register_static ("CpgMonitor",
+		                                        cpg_ref_counted_ref,
+		                                        cpg_ref_counted_unref);
 	}
-	
+
 	return type_id;
 }
 
@@ -108,7 +110,7 @@ static void
 cpg_monitor_grow (CpgMonitor *monitor)
 {
 	monitor->size += MONITOR_GROW_SIZE;
-	
+
 	array_resize (monitor->values, double, monitor->size);
 	array_resize (monitor->sites, double, monitor->size);
 }
@@ -121,7 +123,7 @@ cpg_monitor_update (CpgMonitor    *monitor,
 	{
 		cpg_monitor_grow (monitor);
 	}
-	
+
 	monitor->values[monitor->num_values] = cpg_property_get_value (monitor->property);
 	monitor->sites[monitor->num_values++] = integrator ? cpg_integrator_get_time (integrator) : 0;
 }
@@ -195,7 +197,7 @@ cpg_monitor_new (CpgNetwork   *network,
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (property_name != NULL, NULL);
-	
+
 	CpgProperty *property;
 
 	property = cpg_object_get_property (object, property_name);
@@ -204,14 +206,14 @@ cpg_monitor_new (CpgNetwork   *network,
 	CpgMonitor *monitor = g_slice_new0 (CpgMonitor);
 
 	cpg_ref_counted_init (monitor, (GDestroyNotify)cpg_monitor_free);
-	
+
 	monitor->network = network;
 	monitor->object = object;
-	monitor->property = cpg_ref_counted_ref (property);
-	
+	monitor->property = g_object_ref (property);
+
 	g_object_add_weak_pointer (G_OBJECT (object), (gpointer *)&(monitor->object));
 	g_object_add_weak_pointer (G_OBJECT (network), (gpointer *)&(monitor->network));
-	
+
 	// initialize values list
 	cpg_monitor_grow (monitor);
 	connect_integrator (monitor);
@@ -295,11 +297,11 @@ bsearch_find (gdouble const  *list,
 {
 	gint left = 0;
 	gint right = size;
-	
+
 	while (right > left)
 	{
 		gint probe = (left + right) / 2;
-		
+
 		if (list[probe] > value)
 		{
 			right = probe - 1;
@@ -313,7 +315,7 @@ bsearch_find (gdouble const  *list,
 			return probe;
 		}
 	}
-	
+
 	return right + (right < size && list[right] < value ? 1 : 0);
 }
 
@@ -345,15 +347,15 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
 
 	gdouble const *data = monitor->values;
 	guint i;
-	
+
 	gdouble const *monsites = monitor->sites;
-	
+
 	for (i = 0; i < size; ++i)
 	{
 		guint idx = bsearch_find (monsites, (gint)monitor->num_values, sites[i]);
 		guint fidx = idx > 0 ? idx - 1 : 0;
 		guint sidx = idx < monitor->num_values ? idx : monitor->num_values - 1;
-		
+
 		if (fidx >= monitor->num_values || sidx >= monitor->num_values)
 		{
 			ret[i] = 0.0;
@@ -365,7 +367,7 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
 			ret[i] = data[fidx] * factor + (data[sidx] * (1 - factor));
 		}
 	}
-	
+
 	return TRUE;
 }
 
