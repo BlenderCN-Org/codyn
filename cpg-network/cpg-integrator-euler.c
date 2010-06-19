@@ -17,19 +17,18 @@ cpg_integrator_euler_finalize (GObject *object)
 
 static gdouble
 cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
-                                GSList        *state,
                                 gdouble        t,
                                 gdouble        timestep)
 {
-	cpg_integrator_evaluate (integrator, state, t, timestep);
+	cpg_integrator_evaluate (integrator, t, timestep);
 
 	/* Update values are now contained in state, update the values in the
 	   states */
-	GSList *item;
+	GSList const *item = cpg_integrator_get_state (integrator);
 
-	for (item = state; item; item = g_slist_next (item))
+	while (item)
 	{
-		CpgIntegratorState *st = (CpgIntegratorState *)item->data;
+		CpgIntegratorState *st = item->data;
 		CpgProperty *property = cpg_integrator_state_get_property (st);
 
 		if (cpg_property_get_integrated (property))
@@ -43,11 +42,12 @@ cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
 			cpg_property_set_value (property,
 			                        cpg_integrator_state_get_update (st));
 		}
+
+		item = g_slist_next (item);
 	}
 
 	/* Chain up to emit 'step' */
 	CPG_INTEGRATOR_CLASS (cpg_integrator_euler_parent_class)->step (integrator,
-	                                                                state,
 	                                                                t,
 	                                                                timestep);
 
@@ -73,13 +73,13 @@ cpg_integrator_euler_class_init (CpgIntegratorEulerClass *klass)
 
 	integrator_class->integrator_id = "euler";
 
-	//g_type_class_add_private (object_class, sizeof(CpgIntegratorEulerPrivate));
+	/*g_type_class_add_private (object_class, sizeof(CpgIntegratorEulerPrivate));*/
 }
 
 static void
 cpg_integrator_euler_init (CpgIntegratorEuler *self)
 {
-	//self->priv = CPG_INTEGRATOR_EULER_GET_PRIVATE (self);
+	/*self->priv = CPG_INTEGRATOR_EULER_GET_PRIVATE (self);*/
 }
 
 /**

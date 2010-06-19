@@ -930,9 +930,8 @@ cpg_network_step (CpgNetwork  *network,
 	if (ensure_compiled (network))
 	{
 		cpg_integrator_step (network->priv->integrator,
-			                 network->priv->state,
-			                 cpg_integrator_get_time (network->priv->integrator),
-			                 timestep);
+		                     cpg_integrator_get_time (network->priv->integrator),
+		                     timestep);
 	}
 }
 
@@ -960,10 +959,9 @@ cpg_network_run (CpgNetwork  *network,
 	if (ensure_compiled (network))
 	{
 		cpg_integrator_run (network->priv->integrator,
-			                network->priv->state,
-			                from,
-			                timestep,
-			                to);
+		                    from,
+		                    timestep,
+		                    to);
 	}
 }
 

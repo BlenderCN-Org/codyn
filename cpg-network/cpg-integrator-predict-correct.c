@@ -91,7 +91,7 @@ history_get (CpgIntegratorPredictCorrect *pc,
 
 static void
 history_update (CpgIntegratorPredictCorrect *pc,
-                GSList                      *state)
+                GSList const                *state)
 {
 	guint i = 0;
 
@@ -108,7 +108,7 @@ history_update (CpgIntegratorPredictCorrect *pc,
 
 static void
 read_current_values (CpgIntegratorPredictCorrect *pc,
-                     GSList                      *state)
+                     GSList const                *state)
 {
 	guint i = 0;
 
@@ -126,7 +126,7 @@ read_current_values (CpgIntegratorPredictCorrect *pc,
 
 static void
 prediction_step (CpgIntegratorPredictCorrect *pc,
-                 GSList                      *state,
+                 GSList const                *state,
                  gdouble                      timestep)
 {
 	/* for the first timesteps we have to use lower orders, e.g. at
@@ -160,7 +160,7 @@ prediction_step (CpgIntegratorPredictCorrect *pc,
 
 static void
 correction_step (CpgIntegratorPredictCorrect *pc,
-                 GSList                      *state,
+                 GSList const                *state,
                  gdouble                      timestep)
 {
 	/* for the first timesteps we have to use lower orders, e.g. at
@@ -188,7 +188,7 @@ correction_step (CpgIntegratorPredictCorrect *pc,
 			{
 				dcorrected += correction_coeffs[coeff_row][coeff_index] * history_get (pc, state_index, coeff_index - 1);
 			}
-            
+
 			cpg_property_set_value (prop, pc->priv->current_value[state_index] + timestep * dcorrected);
 		}
 		else
@@ -225,10 +225,10 @@ cpg_integrator_predict_correct_finalize (GObject *object)
 
 static void
 cpg_integrator_predict_correct_reset_impl (CpgIntegrator *integrator,
-                                           GSList        *state)
+                                           GSList const  *state)
 {
 	CpgIntegratorPredictCorrect *pc = CPG_INTEGRATOR_PREDICT_CORRECT (integrator);
-	guint len = g_slist_length (state);
+	guint len = g_slist_length ((GSList *)state);
 	guint i;
 
 	for (i = 0; i < MAX_HISTORY_DEPTH; ++i)
@@ -255,14 +255,15 @@ cpg_integrator_predict_correct_reset_impl (CpgIntegrator *integrator,
 
 static gdouble
 cpg_integrator_predict_correct_step_impl (CpgIntegrator *integrator,
-                                          GSList        *state,
                                           gdouble        t,
                                           gdouble        timestep)
 {
 	CpgIntegratorPredictCorrect *pc = CPG_INTEGRATOR_PREDICT_CORRECT (integrator);
 
+	GSList const *state = cpg_integrator_get_state (integrator);
+
 	/* evaluate f(t) */
-	cpg_integrator_evaluate (integrator, state, t, timestep);
+	cpg_integrator_evaluate (integrator, t, timestep);
 
 	/* backup of current states */
 	read_current_values (pc, state);
@@ -274,8 +275,8 @@ cpg_integrator_predict_correct_step_impl (CpgIntegrator *integrator,
 	prediction_step (pc, state, timestep);
 
 	/* evaluate f(t+1) */
-	cpg_integrator_evaluate (integrator, state, t + timestep, timestep);
-    
+	cpg_integrator_evaluate (integrator, t + timestep, timestep);
+
 	/* correct the prediction */
 	correction_step (pc, state, timestep);
 
@@ -285,9 +286,8 @@ cpg_integrator_predict_correct_step_impl (CpgIntegrator *integrator,
 
 	/* Chain up to emit 'step' */
 	CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->step (integrator,
-		                                                                      state,
-		                                                                      t,
-		                                                                      timestep);
+	                                                                          t,
+	                                                                          timestep);
 
 	return timestep;
 }
@@ -327,7 +327,7 @@ cpg_integrator_predict_correct_get_property (GObject    *object,
                                              GParamSpec *pspec)
 {
 	CpgIntegratorPredictCorrect *self = CPG_INTEGRATOR_PREDICT_CORRECT (object);
-	
+
 	switch (prop_id)
 	{
 		case PROP_CORRECTION_ORDER:
@@ -391,7 +391,7 @@ cpg_integrator_predict_correct_init (CpgIntegratorPredictCorrect *self)
 
 /**
  * cpg_integrator_predict_correct_new:
- * 
+ *
  * Create a new PredictCorrect integrator.
  *
  * Returns: A #CpgIntegratorPredictCorrect
@@ -406,7 +406,7 @@ cpg_integrator_predict_correct_new (void)
 /**
  * cpg_integrator_predict_correct_get_prediction_order:
  * @pc: A #CpgIntegratorPredictCorrect
- * 
+ *
  * Get the prediction order.
  *
  * Returns: The prediction order
@@ -423,7 +423,7 @@ cpg_integrator_predict_correct_get_prediction_order (CpgIntegratorPredictCorrect
 /**
  * cpg_integrator_predict_correct_get_correction_order:
  * @pc: A #CpgIntegratorPredictCorrect
- * 
+ *
  * Get the correction order.
  *
  * Returns: The correction order
@@ -441,7 +441,7 @@ cpg_integrator_predict_correct_get_correction_order (CpgIntegratorPredictCorrect
  * cpg_integrator_predict_correct_set_prediction_order:
  * @pc: A #CpgIntegratorPredictCorrect
  * @order: The prediction order
- * 
+ *
  * Set the prediction order.
  *
  **/
@@ -459,7 +459,7 @@ cpg_integrator_predict_correct_set_prediction_order (CpgIntegratorPredictCorrect
  * cpg_integrator_predict_correct_set_correction_order:
  * @pc: A #CpgIntegratorPredictCorrect
  * @order: The correction order
- * 
+ *
  * Set the correction order.
  *
  **/

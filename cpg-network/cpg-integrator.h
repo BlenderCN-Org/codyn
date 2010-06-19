@@ -32,62 +32,59 @@ struct _CpgIntegratorClass {
 	CpgObjectClass parent_class;
 
 	/* virtual functions */
-	void	(*run)		(CpgIntegrator *integrator,
-	                     GSList        *state,
-	                     gdouble        from,
-	                     gdouble        timestep,
-	                     gdouble        to);
+	void         (*run)      (CpgIntegrator *integrator,
+	                          gdouble        from,
+	                          gdouble        timestep,
+	                          gdouble        to);
 
-	gdouble	(*step)		(CpgIntegrator *integrator,
-	                     GSList        *state,
-	                     gdouble        t,
-	                     gdouble        timestep);
+	gdouble      (*step)     (CpgIntegrator *integrator,
+	                          gdouble        t,
+	                          gdouble        timestep);
 
-	gchar const *(*get_name)	(CpgIntegrator *integrator);
+	gchar const *(*get_name) (CpgIntegrator *integrator);
 
-	void (*reset)        (CpgIntegrator *integrator,
-	                      GSList        *state);
+	void         (*reset)     (CpgIntegrator *integrator,
+	                           GSList const  *state);
 
 	/* private field */
 	gchar const *integrator_id;
 };
 
-GType				 cpg_integrator_get_type		(void) G_GNUC_CONST;
-GType				 cpg_integrator_state_get_type	(void) G_GNUC_CONST;
+GType                cpg_integrator_get_type        (void) G_GNUC_CONST;
+GType                cpg_integrator_state_get_type  (void) G_GNUC_CONST;
 
-CpgIntegratorState	*cpg_integrator_state_new		(CpgProperty *property);
+CpgIntegratorState  *cpg_integrator_state_new       (CpgProperty *property);
 
-void				 cpg_integrator_run				(CpgIntegrator 		*integrator,
-													 GSList				*state,
-													 gdouble			 from,
-													 gdouble			 timestep,
-													 gdouble			 to);
+GSList const        *cpg_integrator_get_state       (CpgIntegrator *integrator);
 
-gdouble				 cpg_integrator_step			(CpgIntegrator		*integrator,
-													 GSList				*state,
-													 gdouble             t,
-													 gdouble			 timestep);
+void                 cpg_integrator_run             (CpgIntegrator *integrator,
+                                                     gdouble        from,
+                                                     gdouble        timestep,
+                                                     gdouble        to);
 
-void 				 cpg_integrator_evaluate		(CpgIntegrator		*integrator,
-													 GSList				*state,
-													 gdouble             t,
-													 gdouble             timestep);
+gdouble              cpg_integrator_step            (CpgIntegrator *integrator,
+                                                     gdouble        t,
+                                                     gdouble        timestep);
 
-void				 cpg_integrator_reset			(CpgIntegrator		*integrator,
-                                                     GSList             *state);
+void                 cpg_integrator_evaluate        (CpgIntegrator *integrator,
+                                                     gdouble        t,
+                                                     gdouble        timestep);
 
-gchar const			*cpg_integrator_get_name		(CpgIntegrator 		*integrator);
+void				 cpg_integrator_reset           (CpgIntegrator *integrator,
+                                                     GSList const  *state);
 
-gdouble				 cpg_integrator_get_time		(CpgIntegrator		*integrator);
+gchar const	        *cpg_integrator_get_name        (CpgIntegrator *integrator);
+
+gdouble              cpg_integrator_get_time        (CpgIntegrator *integrator);
 
 
-gdouble				 cpg_integrator_state_get_update	(CpgIntegratorState *state);
-CpgProperty			*cpg_integrator_state_get_property	(CpgIntegratorState *state);
+gdouble              cpg_integrator_state_get_update   (CpgIntegratorState *state);
+CpgProperty			*cpg_integrator_state_get_property (CpgIntegratorState *state);
 
-void				 cpg_integrator_state_set_update	(CpgIntegratorState *state,
-														 gdouble             value);
+void                 cpg_integrator_state_set_update   (CpgIntegratorState *state,
+                                                        gdouble             value);
 
-struct _CpgNetwork	*cpg_integrator_get_network		(CpgIntegrator *integrator);
+CPG_FORWARD_DECL (CpgNetwork) *cpg_integrator_get_network (CpgIntegrator *integrator);
 
 G_END_DECLS
 

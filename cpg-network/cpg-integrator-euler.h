@@ -19,7 +19,7 @@ typedef struct _CpgIntegratorEulerPrivate	CpgIntegratorEulerPrivate;
 
 struct _CpgIntegratorEuler {
 	CpgIntegrator parent;
-	
+
 	CpgIntegratorEulerPrivate *priv;
 };
 
