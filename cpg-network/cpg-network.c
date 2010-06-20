@@ -180,6 +180,8 @@ collect_states (CpgObject *object,
 	{
 		states = g_slist_prepend (states,
 		                          cpg_integrator_state_new (actors->data));
+
+		actors = g_slist_next (actors);
 	}
 
 	if (CPG_IS_GROUP (object))
