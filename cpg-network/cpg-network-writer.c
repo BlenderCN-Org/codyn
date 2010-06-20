@@ -92,14 +92,23 @@ templates_for_object (CpgObject *object)
 static void
 properties_to_xml (xmlDocPtr     doc,
                    xmlNodePtr    parent,
-                   GSList       *properties,
+                   CpgObject    *object,
                    GSList const *templates)
 {
 	GSList *item;
+	GSList *properties;
+
+	properties = cpg_object_get_properties (object);
 
 	for (item = properties; item; item = g_slist_next (item))
 	{
-		CpgProperty *property = (CpgProperty *)item->data;
+		CpgProperty *property = item->data;
+
+		if (cpg_property_get_object (property) != object)
+		{
+			continue;
+		}
+
 		CpgExpression *expression = cpg_property_get_expression (property);
 
 		// Check if property is different from template
@@ -136,6 +145,8 @@ properties_to_xml (xmlDocPtr     doc,
 		xmlAddChild (node, text);
 		xmlAddChild (parent, node);
 	}
+
+	g_slist_free (properties);
 }
 
 static xmlNodePtr
@@ -172,14 +183,11 @@ object_to_xml (xmlDocPtr     doc,
 
 	g_free (refs_ptr);
 
-	GSList *props = cpg_object_get_properties (object);
-
 	GSList *all_templates = templates_for_object (object);
 
-	properties_to_xml (doc, ptr, props, all_templates);
+	properties_to_xml (doc, ptr, object, all_templates);
 
 	g_slist_free (all_templates);
-	g_slist_free (props);
 
 	return ptr;
 }
@@ -527,7 +535,7 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 		xmlNodePtr gbl = xmlNewDocNode (doc, NULL, (xmlChar *)"globals", NULL);
 		xmlAddChild (nnetwork, gbl);
 
-		properties_to_xml (doc, gbl, properties, NULL);
+		properties_to_xml (doc, gbl, CPG_OBJECT (network), NULL);
 	}
 
 	g_slist_free (properties);
