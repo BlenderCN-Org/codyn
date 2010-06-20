@@ -823,39 +823,31 @@ sort_templates (CpgNetwork *network,
 		gchar *name = (gchar *)ptr->data;
 		CpgObject *orig = cpg_network_get_template (network, name);
 		GSList const *inherited = cpg_object_get_templates (orig);
+		gboolean checked = FALSE;
 
 		while (inherited)
 		{
-			CpgObject *template = inherited->data;
-
-			if (seen == orig || check_template (sorted, cpg_object_get_id (template)))
-			{
-				sorted = g_slist_prepend (sorted, name);
-				ptr = g_slist_next (ptr);
-
-				seen = NULL;
-			}
-			else
-			{
-				// Template not yet added, so cycle it
-				ptr = g_slist_next (ptr);
-				ptr = g_slist_append (ptr, name);
-
-				if (seen == NULL)
-				{
-					seen = orig;
-				}
-			}
-
+			checked |= check_template (sorted, cpg_object_get_id (inherited->data));
 			inherited = g_slist_next (inherited);
 		}
 
-		if (!inherited)
+		if (seen == orig || checked)
 		{
 			sorted = g_slist_prepend (sorted, name);
 			ptr = g_slist_next (ptr);
 
 			seen = NULL;
+		}
+		else
+		{
+			// Template not yet added, so cycle it
+			ptr = g_slist_next (ptr);
+			ptr = g_slist_append (ptr, name);
+
+			if (seen == NULL)
+			{
+				seen = orig;
+			}
 		}
 	}
 
