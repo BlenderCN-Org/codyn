@@ -90,6 +90,8 @@ cpg_network_finalize (GObject *object)
 	cpg_object_clear (CPG_OBJECT (network));
 
 	g_hash_table_destroy (network->priv->templates);
+
+	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
 
 static void
