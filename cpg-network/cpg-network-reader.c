@@ -943,7 +943,37 @@ parse_group (xmlDocPtr   doc,
 	}
 
 	/* Recurse into the group members */
-	return parse_all (doc, node, object, info);
+	if (!parse_all (doc, node, object, info))
+	{
+		return FALSE;
+	}
+
+	xmlChar *proxy = xmlGetProp (node, (xmlChar *)"proxy");
+
+	if (proxy)
+	{
+		CpgObject *child = cpg_group_get_child (CPG_GROUP (object),
+		                                        (gchar const *)proxy);
+
+		if (!child)
+		{
+			parser_failed (info,
+			               node,
+			               CPG_NETWORK_LOAD_ERROR_OBJECT,
+			               "Could not find proxy `%s' for group `%s'",
+			               proxy,
+			               cpg_object_get_id (object));
+
+			xmlFree (proxy);
+			return FALSE;
+		}
+
+		cpg_group_set_proxy (CPG_GROUP (object), child);
+
+		xmlFree (proxy);
+	}
+
+	return TRUE;
 }
 
 static gboolean
