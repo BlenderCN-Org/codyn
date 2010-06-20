@@ -78,6 +78,8 @@ templates_for_object (CpgObject *object)
 			{
 				ret = g_slist_prepend (ret, template);
 			}
+
+			templates = g_slist_next (templates);
 		}
 
 		selectors = g_slist_prepend (selectors, parent);
