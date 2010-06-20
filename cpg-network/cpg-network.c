@@ -231,22 +231,23 @@ cpg_network_add_impl (CpgGroup  *group,
 {
 	CpgNetwork *network = CPG_NETWORK (group);
 
-	// Check if object has a template, and the network owns it
-	CpgObject *template = NULL;
-	g_object_get (G_OBJECT (object), "template", &template, NULL);
+	/* Check if the network owns all the templates */
+	GSList const *templates = cpg_object_get_templates (object);
 
-	if (template)
+	while (templates)
 	{
+		CpgObject *template = templates->data;
 		CpgObject *other = g_hash_table_lookup (network->priv->templates,
 		                                        cpg_object_get_id (template));
 
 		gboolean eq = other == template;
-		g_object_unref (template);
 
 		if (!eq)
 		{
 			return FALSE;
 		}
+
+		templates = g_slist_next (templates);
 	}
 
 	if (CPG_GROUP_CLASS (cpg_network_parent_class)->add (group, object))
@@ -811,7 +812,7 @@ check_template (GSList *templates, gchar const *name)
 
 static GSList *
 sort_templates (CpgNetwork *network,
-               GSList      *templates)
+                GSList     *templates)
 {
 	GSList *sorted = NULL;
 	GSList *ptr = templates;
@@ -821,26 +822,40 @@ sort_templates (CpgNetwork *network,
 	{
 		gchar *name = (gchar *)ptr->data;
 		CpgObject *orig = cpg_network_get_template (network, name);
-		CpgObject *template = NULL;
-		g_object_get (G_OBJECT (orig), "template", &template, NULL);
+		GSList const *inherited = cpg_object_get_templates (orig);
 
-		if (seen == orig || !template || check_template (sorted, cpg_object_get_id (template)))
+		while (inherited)
+		{
+			CpgObject *template = inherited->data;
+
+			if (seen == orig || check_template (sorted, cpg_object_get_id (template)))
+			{
+				sorted = g_slist_prepend (sorted, name);
+				ptr = g_slist_next (ptr);
+
+				seen = NULL;
+			}
+			else
+			{
+				// Template not yet added, so cycle it
+				ptr = g_slist_next (ptr);
+				ptr = g_slist_append (ptr, name);
+
+				if (seen == NULL)
+				{
+					seen = orig;
+				}
+			}
+
+			inherited = g_slist_next (inherited);
+		}
+
+		if (!inherited)
 		{
 			sorted = g_slist_prepend (sorted, name);
 			ptr = g_slist_next (ptr);
 
 			seen = NULL;
-		}
-		else
-		{
-			// Template not yet added, so cycle it
-			ptr = g_slist_next (ptr);
-			ptr = g_slist_append (ptr, name);
-
-			if (seen == NULL)
-			{
-				seen = orig;
-			}
 		}
 	}
 

@@ -168,8 +168,7 @@ static gboolean
 test_globals ()
 {
 	CpgNetwork *network = cpg_network_new ();
-	CpgObject *globals = cpg_network_get_globals (network);
-	CpgProperty *x = cpg_object_add_property (globals, "x", "0", FALSE);
+	CpgProperty *x = cpg_object_add_property (CPG_OBJECT (network), "x", "0", FALSE);
 
 	cpg_network_step (network, 0.001);
 

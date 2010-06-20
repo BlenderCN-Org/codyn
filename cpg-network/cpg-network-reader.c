@@ -39,43 +39,60 @@ xml_xpath (xmlDocPtr        doc,
 {
 	xmlXPathContextPtr ctx;
 	xmlXPathObjectPtr obj;
-
-	ctx = xmlXPathNewContext (doc);
-	ctx->node = root;
-
-	if (!ctx)
-	{
-		cpg_debug_error ("Could not create XPath context");
-		return FALSE;
-	}
-
-	obj = xmlXPathEvalExpression ((xmlChar *)expr, ctx);
-
-	if (!obj)
-	{
-		cpg_debug_error ("Failed to evaluate xpath expression '%s'", expr);
-		xmlXPathFreeContext (ctx);
-		return FALSE;
-	}
-
-	int i;
 	GList *set = NULL;
 
-	for (i = 0; i < obj->nodesetval->nodeNr; ++i)
+	if (!expr)
 	{
-		if (type == 0 || obj->nodesetval->nodeTab[i]->type == type)
+		xmlNodePtr child = root->children;
+
+		while (child)
 		{
-			set = g_list_prepend (set, obj->nodesetval->nodeTab[i]);
+			if (child->type == type)
+			{
+				set = g_list_prepend (set, child);
+			}
+
+			child = child->next;
 		}
+	}
+	else
+	{
+		ctx = xmlXPathNewContext (doc);
+		ctx->node = root;
+
+		if (!ctx)
+		{
+			cpg_debug_error ("Could not create XPath context");
+			return FALSE;
+		}
+
+		obj = xmlXPathEvalExpression ((xmlChar *)expr, ctx);
+
+		if (!obj)
+		{
+			cpg_debug_error ("Failed to evaluate xpath expression '%s'", expr);
+			xmlXPathFreeContext (ctx);
+			return FALSE;
+		}
+
+		int i;
+
+		for (i = 0; i < obj->nodesetval->nodeNr; ++i)
+		{
+			if (type == 0 || obj->nodesetval->nodeTab[i]->type == type)
+			{
+				set = g_list_prepend (set, obj->nodesetval->nodeTab[i]);
+			}
+		}
+
+		/* Free up */
+		xmlXPathFreeObject (obj);
+		xmlXPathFreeContext (ctx);
 	}
 
 	set = g_list_reverse (set);
 	gboolean ret = func (doc, set, data);
 	g_list_free (set);
-
-	/* Free up */
-	xmlXPathFreeObject (obj);
-	xmlXPathFreeContext (ctx);
 
 	return ret;
 }
@@ -135,7 +152,7 @@ parser_failed (ParseInfo   *info,
 		g_set_error (info->error,
 		             CPG_NETWORK_LOAD_ERROR,
 		             code,
-		             "%s (line: %d)",
+		             "%s (line %d)",
 		             message,
 		             node ? node->line : 0);
 
@@ -374,13 +391,13 @@ new_object (GType       gtype,
 			if (info->template)
 			{
 				cpg_network_add_template (info->network,
-					                  cpg_object_get_id (object),
-					                  object);
+				                          cpg_object_get_id (object),
+				                          object);
 			}
 			else
 			{
 				cpg_group_add (CPG_GROUP (info->parents->data),
-					       object);
+				               object);
 			}
 
 			g_object_unref (object);
@@ -794,14 +811,14 @@ parse_link (xmlDocPtr   doc,
 			parser_failed (info,
 			               node,
 			               CPG_NETWORK_LOAD_ERROR_LINK,
-			               "From object %s not found for link %s",
+			               "The `from' object `%s' could not be found for link `%s'",
 			               from,
 			               cpg_object_get_id (object));
 			ret = FALSE;
 		}
 		else if (CPG_IS_LINK (fromobj))
 		{
-			cpg_debug_error ("From object cannot be a link (%s)",
+			cpg_debug_error ("The `from` object can not be a link (%s)",
 			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
@@ -846,14 +863,14 @@ parse_link (xmlDocPtr   doc,
 			parser_failed (info,
 			               node,
 			               CPG_NETWORK_LOAD_ERROR_LINK,
-			               "To object %s not found for link %s",
+			               "The `to' object `%s' could not be found for link `%s'",
 			               to,
 			               cpg_object_get_id (object));
 			ret = FALSE;
 		}
 		else if (CPG_IS_LINK (toobj))
 		{
-			cpg_debug_error ("To object cannot be a link (%s)",
+			cpg_debug_error ("The `to' object can not be a link (%s)",
 			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
@@ -977,6 +994,11 @@ parse_network (xmlDocPtr   doc,
 			{
 				ret = parse_polynomial (doc, node, info);
 			}
+			else if (g_strcmp0 ((gchar const *)node->name, "templates") == 0)
+			{
+				/* Ignore */
+				ret = TRUE;
+			}
 			else
 			{
 				cpg_debug_error ("Unknown element: %s", node->name);
@@ -1050,7 +1072,7 @@ parse_instances (xmlDocPtr    doc,
                  CpgNetwork  *network,
                  GError     **error)
 {
-	return parse_objects (doc, "/cpg/network", network, TRUE, error);
+	return parse_objects (doc, "/cpg/network", network, FALSE, error);
 }
 
 static gboolean

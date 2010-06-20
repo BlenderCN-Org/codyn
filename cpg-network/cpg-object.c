@@ -1079,10 +1079,21 @@ _cpg_object_copy (CpgObject *object)
 	                               "id", cpg_object_get_id (object),
 	                               NULL);
 
+	ret->priv->templates = g_slist_prepend (ret->priv->templates,
+	                                        g_object_ref (object));
+
 	if (CPG_OBJECT_GET_CLASS (ret)->copy)
 	{
 		CPG_OBJECT_GET_CLASS (ret)->copy (ret, object);
 	}
 
 	return ret;
+}
+
+GSList const *
+cpg_object_get_templates (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	return object->priv->templates;
 }

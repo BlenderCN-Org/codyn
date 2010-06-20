@@ -11,19 +11,22 @@ main (int argc, char *argv[])
 	
 	cpg_debug_add (CPG_DEBUG_TYPE_ERROR);
 
-	CpgNetwork *network = cpg_network_new_from_file ("template.cpg", NULL);
+	GError *error = NULL;
+	CpgNetwork *network = cpg_network_new_from_file ("template.cpg", &error);
 	
 	if (!network)
 	{
-		g_error ("Could not open network");
-		exit(1);
+		g_error ("Could not open network: %s", error->message);
+		g_error_free (error);
+
+		exit (1);
 	}
-	
-	gchar *xml = cpg_network_write_to_xml (network);
-	
-	g_printf ("\n%s\n", xml);
-	g_free (xml);
-	
+
+	//gchar *xml = cpg_network_write_to_xml (network);
+
+	//g_printf ("\n%s\n", xml);
+	//g_free (xml);
+
 	g_object_unref (network);
 	return 0;
 }

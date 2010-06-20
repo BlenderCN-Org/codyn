@@ -132,6 +132,8 @@ gboolean          cpg_object_compile        (CpgObject                          
 void              cpg_object_clear          (CpgObject   *object);
 GSList const     *cpg_object_get_actors     (CpgObject   *object);
 
+GSList const     *cpg_object_get_templates  (CpgObject   *object);
+
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,
                                              CPG_FORWARD_DECL (CpgLink) *link);

@@ -28,29 +28,29 @@ print_object (CpgObject *object)
 	g_printf ("[" ANSI_BOLD "%s" ANSI_OFF "] " ANSI_BLUE "%s" ANSI_OFF,
 	          G_OBJECT_TYPE_NAME (object),
 	          cpg_object_get_id (object));
-	
+
 	if (CPG_IS_LINK (object))
 	{
 		CpgLink *link = CPG_LINK (object);
-		
+
 		g_printf (": " ANSI_RED "%s" ANSI_OFF " -> " ANSI_PURPLE "%s" ANSI_OFF,
 		          cpg_object_get_id (cpg_link_get_from (link)),
 		          cpg_object_get_id (cpg_link_get_to (link)));
 	}
-	
+
 	g_printf ("\n");
-	
+
 	GSList *properties = cpg_object_get_properties (object);
-	
+
 	while (properties)
 	{
 		CpgProperty *prop = (CpgProperty *)properties->data;
-		
+
 		g_printf ("  %s" ANSI_RED "%s" ANSI_OFF ": %s\n",
 		          cpg_property_get_integrated (prop) ? "*" : " ",
 		          cpg_property_get_name (prop),
 		          cpg_expression_get_as_string (cpg_property_get_expression (prop)));
-		
+
 		properties = g_slist_next (properties);
 	}
 }
@@ -59,15 +59,15 @@ static void
 print_link (CpgLink *link)
 {
 	print_object (CPG_OBJECT (link));
-	
-	GSList *actions = cpg_link_get_actions (link);
-	
+
+	GSList const *actions = cpg_link_get_actions (link);
+
 	while (actions)
 	{
-		CpgLinkAction *a = (CpgLinkAction *)actions->data;
+		CpgLinkAction *a = actions->data;
 		CpgProperty *prop = cpg_link_action_get_target (a);
 		CpgExpression *expr = cpg_link_action_get_expression (a);
-		
+
 		g_printf (" >%s" ANSI_PURPLE "%s" ANSI_OFF ": %s\n",
 		          cpg_property_get_integrated (prop) ? "*" : " ",
 		          cpg_property_get_name (prop),
@@ -98,7 +98,7 @@ make_integrator ()
 	}
 }
 
-int 
+int
 main (int argc, char *argv[])
 {
 	g_type_init ();
@@ -118,12 +118,12 @@ main (int argc, char *argv[])
 		g_printf ("Please specify a network file to read from\n");
 		return 1;
 	}
-	
+
 	cpg_debug_add (CPG_DEBUG_TYPE_ERROR);
 
 	GError *gerror = NULL;
 	CpgNetwork *network = cpg_network_new_from_file (argv[1], &gerror);
-	
+
 	if (!network)
 	{
 		g_printf ("** Failed to load network: %s\n", gerror->message);
@@ -138,11 +138,11 @@ main (int argc, char *argv[])
 
 	CpgCompileError *error = cpg_compile_error_new ();
 
-	if (!cpg_network_compile (network, error))
+	if (!cpg_object_compile (CPG_OBJECT (network), NULL, error))
 	{
 		GError *gerror = cpg_compile_error_get_error (error);
-		
-		g_printf ("** Compile error in network: %s, %s\n", 
+
+		g_printf ("** Compile error in network: %s, %s\n",
 		          cpg_compile_error_string (error),
 		          gerror ? gerror->message : "No error set");
 
@@ -150,71 +150,72 @@ main (int argc, char *argv[])
 		g_object_unref (network);
 		return 1;
 	}
-	
+
 	cpg_ref_counted_unref (error);
-	
-	GSList *states = cpg_network_get_states (network);
-	GSList *links = cpg_network_get_links (network);
+
+	GSList *children = (GSList *)cpg_group_get_children (CPG_GROUP (network));
 	GSList *functions = cpg_network_get_functions (network);
-	
+
 	g_printf ("\n***\n");
-	g_printf ("*** " ANSI_BLUE ANSI_BOLD "Loaded network: %d states, %d links, %d functions" ANSI_OFF "\n", 
-	          g_slist_length (states),
-	          g_slist_length (links),
+	g_printf ("*** " ANSI_BLUE ANSI_BOLD "Loaded network: %d objects, %d functions" ANSI_OFF "\n",
+	          g_slist_length (children),
 	          g_slist_length (functions));
 
 	g_printf ("*** " ANSI_BLUE ANSI_BOLD "Integrator: %s" ANSI_OFF "\n",
 	          g_type_name (G_TYPE_FROM_INSTANCE (cpg_network_get_integrator (network))));
 	g_printf ("***\n\n");
-	
+
 	GSList *item;
-	
-	for (item = states; item; item = g_slist_next (item))
+
+	for (item = children; item; item = g_slist_next (item))
 	{
-		print_object (CPG_OBJECT (item->data));
+		if (CPG_IS_LINK (item->data))
+		{
+			print_link (item->data);
+		}
+		else
+		{
+			print_object (item->data);
+		}
+
 		g_printf("\n");
-	}
-	
-	for (item = links; item; item = g_slist_next (item))
-	{
-		print_link (CPG_LINK (item->data));
 	}
 
 	for (item = functions; item; item = g_slist_next (item))
 	{
 		print_function (CPG_FUNCTION (item->data));
 	}
-	
+
 	g_printf ("\n" ANSI_BOLD "Running network for 0.1s..." ANSI_OFF "\n");
-	
+
 	CpgMonitor *monitor;
-	monitor = cpg_monitor_new (network, 
-	                           cpg_network_get_object (network, "state"),
+	monitor = cpg_monitor_new (network,
+	                           cpg_group_get_child (CPG_GROUP (network), "state"),
 	                           "x");
 
 	cpg_network_run (network, 0, 0.01, 0.1);
-	
+
 	guint size;
 	double const *data = cpg_monitor_get_data (monitor, &size);
-	
+
 	g_printf ("Monitor on x(%d): [", size);
 	guint i;
-	
+
 	for (i = 0; i < size; ++i)
 	{
 		if (i != 0)
 			g_printf (", ");
-			
+
 		g_printf ("%.3f", data[i]);
 	}
-	
+
 	g_printf ("]\n");
-	
+
 	cpg_ref_counted_unref (monitor);
-	
+
 	g_printf ("\n");
-	
+
 	g_object_unref (network);
-	
+
 	return 0;
 }

@@ -274,12 +274,20 @@ cpg_property_new (gchar const  *name,
                   gboolean      integrated,
                   CpgObject    *object)
 {
-	return g_object_new (CPG_TYPE_PROPERTY,
-	                     "name", name,
-	                     "expression", cpg_expression_new (expression),
-	                     "integrated", integrated,
-	                     "object", object,
-	                     NULL);
+	CpgExpression *expr;
+	CpgProperty *ret;
+
+	expr = cpg_expression_new (expression);
+
+	ret = g_object_new (CPG_TYPE_PROPERTY,
+	                    "name", name,
+	                    "expression", expr,
+	                    "integrated", integrated,
+	                    "object", object,
+	                    NULL);
+
+	g_object_unref (expr);
+	return ret;
 }
 
 /**
