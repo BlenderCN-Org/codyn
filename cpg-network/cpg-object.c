@@ -50,6 +50,8 @@ enum
 enum
 {
 	TAINTED,
+	COMPILED,
+	RESETTED,
 	NUM_SIGNALS
 };
 
@@ -113,6 +115,8 @@ static void
 cpg_object_reset_impl (CpgObject *object)
 {
 	g_slist_foreach (object->priv->properties, (GFunc)property_reset, NULL);
+
+	g_signal_emit (object, object_signals[RESETTED], 0);
 }
 
 static void
@@ -334,6 +338,8 @@ cpg_object_compile_impl (CpgObject         *object,
 	if (ret)
 	{
 		cpg_object_reset (object);
+
+		g_signal_emit (object, object_signals[COMPILED], 0);
 	}
 
 	cpg_compile_context_restore (context);
@@ -560,6 +566,44 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (CpgObjectClass,
 		                               tainted),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE,
+		              0);
+
+	/**
+	 * CpgObject::compiled:
+	 * @object: a #CpgObject
+	 *
+	 * Emitted when the object is compiled
+	 *
+	 **/
+	object_signals[COMPILED] =
+		g_signal_new ("compiled",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass,
+		                               compiled),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE,
+		              0);
+
+	/**
+	 * CpgObject::resetted:
+	 * @object: a #CpgObject
+	 *
+	 * Emitted when the object is resetted
+	 *
+	 **/
+	object_signals[RESETTED] =
+		g_signal_new ("resetted",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass,
+		                               resetted),
 		              NULL,
 		              NULL,
 		              g_cclosure_marshal_VOID__VOID,

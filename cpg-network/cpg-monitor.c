@@ -219,7 +219,7 @@ cpg_monitor_new (CpgNetwork   *network,
 	connect_integrator (monitor);
 
 	monitor->signals[RESET] = g_signal_connect_swapped (network,
-	                                                    "reset",
+	                                                    "resetted",
 	                                                    G_CALLBACK (network_reset_cb), monitor);
 
 	monitor->signals[NOTIFY_INTEGRATOR] = g_signal_connect_swapped (network,

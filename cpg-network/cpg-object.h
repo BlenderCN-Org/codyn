@@ -60,7 +60,6 @@ struct _CpgObjectClass {
 	void          (*reset)           (CpgObject *object);
 	void          (*evaluate)        (CpgObject *object);
 
-	void          (*tainted)         (CpgObject *object);
 
 	void          (*reset_cache)     (CpgObject *object);
 
@@ -89,6 +88,11 @@ struct _CpgObjectClass {
 	                                  GError      **error);
 
 	void          (*clear)           (CpgObject    *object);
+
+	/* signals */
+	void          (*compiled)        (CpgObject *object);
+	void          (*resetted)        (CpgObject *object);
+	void          (*tainted)         (CpgObject *object);
 };
 
 GQuark cpg_object_error_quark (void);
