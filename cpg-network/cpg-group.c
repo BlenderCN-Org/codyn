@@ -215,6 +215,7 @@ cpg_group_cpg_remove_property (CpgObject    *object,
 static void
 cpg_group_cpg_evaluate (CpgObject *object)
 {
+	// TODO: relays first, then others
 	CPG_OBJECT_CLASS (cpg_group_parent_class)->evaluate (object);
 
 	/* And then also the children! */
@@ -275,32 +276,48 @@ cpg_group_cpg_reset_cache (CpgObject *object)
 }
 
 static void
-cpg_group_cpg_copy (CpgObject *object,
-                    CpgObject *source)
+copy_children (CpgGroup *group,
+               CpgGroup *source)
 {
-	/* Copy all the normal stuff */
-	CPG_OBJECT_CLASS (cpg_group_parent_class)->copy (object, source);
-
-	/* And then recursive copy the children */
-	CpgGroup *group = CPG_GROUP (object);
-	CpgGroup *source_group = CPG_GROUP (source);
-	CpgObject *source_proxy = cpg_group_get_proxy (source_group);
-
-	GSList const *children = cpg_group_get_children (source_group);
+	CpgObject *proxy = cpg_group_get_proxy (source);
+	GSList const *children = cpg_group_get_children (source);
 
 	while (children)
 	{
-		CpgObject *child = _cpg_object_copy (children->data);
+		CpgObject *child = children->data;
+		CpgObject *copied = _cpg_object_copy (child);
 
-		cpg_group_add (group, child);
+		cpg_group_add (group, copied);
 
-		if (CPG_OBJECT (children->data) == source_proxy)
+		if (child == proxy)
 		{
-			group->priv->proxy = g_object_ref (child);
+			group->priv->proxy = g_object_ref (copied);
 		}
 
 		children = g_slist_next (children);
 	}
+}
+
+static void
+cpg_group_cpg_apply_template (CpgObject *object,
+                              CpgObject *templ)
+{
+	CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template (object, templ);
+
+	if (CPG_IS_GROUP (templ))
+	{
+		copy_children (CPG_GROUP (object), CPG_GROUP (templ));
+	}
+}
+
+static void
+cpg_group_cpg_copy (CpgObject *object,
+                    CpgObject *source)
+{
+	CPG_OBJECT_CLASS (cpg_group_parent_class)->copy (object, source);
+
+	/* Copy over children */
+	copy_children (CPG_GROUP (object), CPG_GROUP (source));
 }
 
 static gchar *
@@ -506,6 +523,43 @@ cpg_group_cpg_clear (CpgObject *object)
 	CPG_OBJECT_CLASS (cpg_group_parent_class)->clear (object);
 }
 
+static CpgProperty *
+cpg_group_cpg_add_property (CpgObject   *object,
+                            gchar const *name,
+                            gchar const *expression,
+                            gboolean     integrated)
+{
+	CpgGroup *group = CPG_GROUP (object);
+	CpgProperty *property;
+
+	property = cpg_object_get_property (object, name);
+
+	if (property && cpg_property_get_object (property) != object)
+	{
+		CpgObject *owner = cpg_property_get_object (property);
+
+		if (owner == group->priv->proxy)
+		{
+			return cpg_object_add_property (group->priv->proxy,
+			                                name,
+			                                expression,
+			                                integrated);
+		}
+	}
+
+	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property)
+	{
+		return CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property (object,
+		                                                                name,
+		                                                                expression,
+		                                                                integrated);
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
 static void
 cpg_group_class_init (CpgGroupClass *klass)
 {
@@ -518,6 +572,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 	object_class->get_property = cpg_group_get_property;
 	object_class->set_property = cpg_group_set_property;
 
+	cpg_class->add_property = cpg_group_cpg_add_property;
 	cpg_class->get_property = cpg_group_cpg_get_property;
 	cpg_class->get_properties = cpg_group_cpg_get_properties;
 	cpg_class->remove_property = cpg_group_cpg_remove_property;
@@ -526,8 +581,10 @@ cpg_group_class_init (CpgGroupClass *klass)
 	cpg_class->reset = cpg_group_cpg_reset;
 	cpg_class->reset_cache = cpg_group_cpg_reset_cache;
 	cpg_class->evaluate = cpg_group_cpg_evaluate;
-	cpg_class->copy = cpg_group_cpg_copy;
 	cpg_class->clear = cpg_group_cpg_clear;
+
+	cpg_class->copy = cpg_group_cpg_copy;
+	cpg_class->apply_template = cpg_group_cpg_apply_template;
 
 	klass->add = cpg_group_add_impl;
 	klass->remove = cpg_group_remove_impl;

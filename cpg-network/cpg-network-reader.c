@@ -13,6 +13,20 @@
 #include "cpg-integrators.h"
 #include "cpg-function-polynomial.h"
 
+typedef struct
+{
+	CpgNetwork *network;
+	GError **error;
+	gboolean template;
+	CpgObject *object;
+	GSList *parents;
+} ParseInfo;
+
+static gboolean parse_all (xmlDocPtr   doc,
+                           xmlNodePtr  root,
+                           gpointer    parent,
+                           ParseInfo  *info);
+
 typedef gboolean (*XPathResultFunc)(xmlDocPtr doc, GList *nodes, gpointer data);
 
 static gboolean
@@ -25,28 +39,28 @@ xml_xpath (xmlDocPtr        doc,
 {
 	xmlXPathContextPtr ctx;
 	xmlXPathObjectPtr obj;
-	
+
 	ctx = xmlXPathNewContext (doc);
 	ctx->node = root;
-	
+
 	if (!ctx)
 	{
 		cpg_debug_error ("Could not create XPath context");
 		return FALSE;
 	}
-	
+
 	obj = xmlXPathEvalExpression ((xmlChar *)expr, ctx);
-	
+
 	if (!obj)
 	{
 		cpg_debug_error ("Failed to evaluate xpath expression '%s'", expr);
 		xmlXPathFreeContext (ctx);
 		return FALSE;
 	}
-	
+
 	int i;
 	GList *set = NULL;
-	
+
 	for (i = 0; i < obj->nodesetval->nodeNr; ++i)
 	{
 		if (type == 0 || obj->nodesetval->nodeTab[i]->type == type)
@@ -54,35 +68,92 @@ xml_xpath (xmlDocPtr        doc,
 			set = g_list_prepend (set, obj->nodesetval->nodeTab[i]);
 		}
 	}
-	
-	set = g_list_reverse (set);	
+
+	set = g_list_reverse (set);
 	gboolean ret = func (doc, set, data);
 	g_list_free (set);
 
 	/* Free up */
 	xmlXPathFreeObject (obj);
 	xmlXPathFreeContext (ctx);
-	
+
 	return ret;
 }
 
-typedef struct
+static gboolean
+xpath_first (xmlDocPtr doc, GList *nodes, gpointer data)
 {
-	CpgNetwork *network;
-	GError **error;
-	gboolean template;
-	CpgObject *object;
-} ParseInfo;
+	xmlNodePtr *first = (xmlNodePtr *)data;
+
+	if (nodes)
+	{
+		*first = nodes->data;
+		return TRUE;
+	}
+	else
+	{
+		*first = NULL;
+		return FALSE;
+	}
+}
+
+static xmlNodePtr
+xml_xpath_first (xmlDocPtr        doc,
+                 xmlNodePtr       root,
+                 gchar const     *expr,
+                 xmlElementType   type)
+{
+	xmlNodePtr first = NULL;
+
+	xml_xpath (doc, root, expr, type, xpath_first, &first);
+	return first;
+}
+
+static gboolean
+parser_failed (ParseInfo   *info,
+               xmlNodePtr   node,
+               gint         code,
+               gchar const *format,
+               ...)
+{
+	if (info->error != NULL)
+	{
+		va_list ap;
+		va_start (ap, format);
+
+		gchar *message = g_strdup_vprintf (format, ap);
+		va_end (ap);
+
+		if (*info->error)
+		{
+			g_error_free (*info->error);
+			*info->error = NULL;
+		}
+
+		cpg_debug_error ("XML load error: %s", message);
+
+		g_set_error (info->error,
+		             CPG_NETWORK_LOAD_ERROR,
+		             code,
+		             "%s (line: %d)",
+		             message,
+		             node ? node->line : 0);
+
+		g_free (message);
+	}
+
+	return FALSE;
+}
 
 static gboolean
 attribute_true (xmlNodePtr node, gchar const *name)
 {
 	xmlChar *prop = xmlGetProp (node, (xmlChar *)name);
 	gboolean ret = (prop && (g_ascii_strcasecmp ((const gchar *)prop, "true") == 0 ||
-		                     g_ascii_strcasecmp ((const gchar *)prop, "yes") == 0 ||
-		                     g_ascii_strcasecmp ((const gchar *)prop, "1") == 0));
+	                         g_ascii_strcasecmp ((const gchar *)prop, "yes") == 0 ||
+	                         g_ascii_strcasecmp ((const gchar *)prop, "1") == 0));
 	xmlFree (prop);
-	
+
 	return ret;
 }
 
@@ -92,65 +163,62 @@ parse_properties (xmlDocPtr  doc,
                   ParseInfo *info)
 {
 	GList *item;
-	
+
 	for (item = nodes; item; item = g_list_next (item))
 	{
 		xmlNodePtr node = (xmlNodePtr)item->data;
 		xmlChar *name = xmlGetProp (node, (xmlChar *)"name");
-			
+
 		if (!name)
 		{
-			cpg_debug_error ("Missing 'name' for property");
 			xmlFree (name);
-			
-			if (info->error)
-			{
-				g_set_error (info->error,
-				             CPG_NETWORK_LOAD_ERROR,
-				             CPG_NETWORK_LOAD_ERROR_PROPERTY,
-				             "Property on %s has no name",
-				             cpg_object_get_id (info->object));
-			}
-			
-			return FALSE;
+
+			return parser_failed (info,
+			                      node,
+			                      CPG_NETWORK_LOAD_ERROR_PROPERTY,
+			                      "Property on %s has no name",
+			                      cpg_object_get_id (info->object));
 		}
-		
+
 		xmlChar const *expression = (xmlChar *)"";
-		
+
 		if (node->children && node->children->type == XML_TEXT_NODE)
 		{
 			expression = node->children->content;
 		}
-		
+
 		CpgProperty *property;
-		
-		property = cpg_object_add_property (info->object, 
-		                                    (const gchar *)name, 
-		                                    (const gchar *)expression, 
-		                                    attribute_true (node, "integrated") || 
+
+		property = cpg_object_add_property (info->object,
+		                                    (const gchar *)name,
+		                                    (const gchar *)expression,
+		                                    attribute_true (node, "integrated") ||
 		                                    attribute_true (node, "integrate"));
 
 		if (property)
 		{
 			if (attribute_true (node, "in"))
 			{
-				cpg_property_add_hint (property, CPG_PROPERTY_HINT_IN);
+				cpg_property_add_hint (property,
+				                       CPG_PROPERTY_HINT_IN);
 			}
-			
+
 			if (attribute_true (node, "out"))
 			{
-				cpg_property_add_hint (property, CPG_PROPERTY_HINT_OUT);
+				cpg_property_add_hint (property,
+				                       CPG_PROPERTY_HINT_OUT);
 			}
 
 			if (attribute_true (node, "once"))
 			{
-				cpg_property_add_hint (property, CPG_PROPERTY_HINT_ONCE);
+				cpg_property_add_hint (property,
+				                       CPG_PROPERTY_HINT_ONCE);
 			}
 		}
-		
+
 		xmlFree (name);
 	}
-	
+
 	return TRUE;
 }
 
@@ -161,113 +229,168 @@ parse_object_properties (CpgObject  *object,
 {
 	info->object = object;
 
-	if (!xml_xpath (node->doc, node, "property", XML_ELEMENT_NODE, (XPathResultFunc)parse_properties, info))
+	if (!xml_xpath (node->doc,
+	                node,
+	                "property",
+	                XML_ELEMENT_NODE,
+	                (XPathResultFunc)parse_properties,
+	                info))
 	{
-		cpg_debug_error ("Could not parse object properties for: %s", cpg_object_get_id (object));
+		cpg_debug_error ("Could not parse object properties for: %s",
+		                 cpg_object_get_id (object));
 		return FALSE;
 	}
-	
+
 	return TRUE;
 }
 
 static CpgObject *
 parse_object (GType       gtype,
               xmlNodePtr  node,
-              ParseInfo  *info)
+              ParseInfo  *info,
+              gboolean   *new_object)
 {
 	xmlChar *id = xmlGetProp (node, (xmlChar *)"id");
-	
+	*new_object = FALSE;
+
 	if (!id)
 	{
-		cpg_debug_error ("Object does not have an id");
-		
-		if (info->error)
-		{
-			g_set_error (info->error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_OBJECT,
-			             "One of the objects does not have an id");
-		}
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_OBJECT,
+		               "One of the objects does not have an id");
+
 		return NULL;
 	}
-	
+
+	/* Check if the object already exists, if so, extend the existing object
+	   instead of creating a new one */
+	CpgGroup *parent = info->parents->data;
+	CpgObject *child;
+
+	child = cpg_group_get_child (parent, (gchar const *)id);
+
+	if (!child)
+	{
+		child = g_object_new (gtype, "id", (gchar const *)id, NULL);
+		*new_object = TRUE;
+	}
+	else if (!g_type_is_a (gtype, G_TYPE_FROM_INSTANCE (child)))
+	{
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_OBJECT,
+		               "Cannot extend type %s with type %s",
+		               g_type_name (G_TYPE_FROM_INSTANCE (child)),
+		               g_type_name (gtype));
+
+		xmlFree (id);
+		return NULL;
+	}
+
 	xmlChar *ref = xmlGetProp (node, (xmlChar *)"ref");
-	CpgObject *obj;
-	
+	gboolean ret = TRUE;
+
 	if (ref)
 	{
-		CpgObject *template = cpg_network_get_template (info->network, 
-		                                                (gchar const *)ref);
+		gchar **parts;
+		gchar **ptr;
 
-		if (!template)
+		parts = g_strsplit_set ((gchar const *)ref, ", ", 0);
+
+		for (ptr = parts; *ptr; ++ptr)
 		{
-			cpg_debug_error ("Referenced template not found");
+			CpgObject *template = cpg_network_get_template (info->network,
+			                                                *ptr);
 
-			if (info->error)
+			if (!template)
 			{
-				g_set_error (info->error,
-				             CPG_NETWORK_LOAD_ERROR,
-				             CPG_NETWORK_LOAD_ERROR_OBJECT,
-				             "Could not find template %s for object %s",
-				             ref,
-				             id);
+				ret = parser_failed (info,
+				                     node,
+				                     CPG_NETWORK_LOAD_ERROR_OBJECT,
+				                     "Could not find template %s for object %s",
+				                     ref,
+				                     id);
+			}
+			else
+			{
+				GType template_type = G_TYPE_FROM_INSTANCE (template);
+			
+				if (!g_type_is_a (gtype, template_type))
+				{
+					ret = parser_failed (info,
+					                     node,
+					                     CPG_NETWORK_LOAD_ERROR_OBJECT,
+					                     "Referenced template is of incorrect type %s (need %s)",
+					                     g_type_name (template_type),
+					                     g_type_name (gtype));
+				}
+				else
+				{
+					_cpg_object_apply_template (child,
+					                            template);
+				}
 			}
 
-			xmlFree (id);
-			xmlFree (ref);
-			
-			return NULL;
+			if (!ret)
+			{
+				break;
+			}
 		}
-		
-		obj = _cpg_object_copy (template);
-		cpg_object_set_id (obj, (gchar const *)id);
+
+		g_strfreev (parts);
 	}
-	else
-	{
-		obj = g_object_new (gtype, "id", (gchar const *)id, NULL);
-	}
-	
+
 	xmlFree (id);
 	xmlFree (ref);
-	
-	// Parse properties
-	if (!parse_object_properties (obj, node, info))
+
+	if (!ret || !parse_object_properties (child, node, info))
 	{
-		g_object_unref (obj);
-		obj = NULL;
+		if (*new_object)
+		{
+			g_object_unref (child);
+		}
+
+		return NULL;
 	}
 
-	return obj;
+	return child;
 }
 
-static gboolean
+static CpgObject *
 new_object (GType       gtype,
             xmlNodePtr  node,
             ParseInfo  *info)
 {
 	CpgObject *object;
-	
-	object = parse_object (gtype, node, info);
-	
+	gboolean new_object;
+
+	object = parse_object (gtype, node, info, &new_object);
+
 	if (object)
 	{
-		if (info->template)
+		if (new_object)
 		{
-			cpg_network_add_template (info->network,
-			                          cpg_object_get_id (object),
-			                          object);
+			if (info->template)
+			{
+				cpg_network_add_template (info->network,
+					                  cpg_object_get_id (object),
+					                  object);
+			}
+			else
+			{
+				cpg_group_add (CPG_GROUP (info->parents->data),
+					       object);
+			}
+
+			g_object_unref (object);
 		}
-		else
-		{
-			cpg_group_add (CPG_GROUP (info->network), object);
-		}
-		
-		g_object_unref (object);
-		return TRUE;
+
+		return object;
 	}
 	else
 	{
-		return FALSE;
+		return NULL;
 	}
 }
 
@@ -349,35 +472,24 @@ parse_function (xmlDocPtr   doc,
                 ParseInfo  *info)
 {
 	xmlChar *name = xmlGetProp (node, (xmlChar *)"name");
-	
+
 	if (!name)
 	{
-		cpg_debug_error ("Function does not have a name");
-		
-		if (info->error)
-		{
-			g_set_error (info->error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
-			             "One of the functions does not have a name");
-		}
-
-		return FALSE;
+		return parser_failed (info,
+		                      node,
+		                      CPG_NETWORK_LOAD_ERROR_FUNCTION,
+		                      "One of the functions does not have a name");
 	}
 
 	if (cpg_network_get_function (info->network, (gchar const *)name))
 	{
-		cpg_debug_error ("Function is already defined");
-		xmlFree (name);
-		
-		if (info->error)
-		{
-			g_set_error (info->error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
-			             "One of the functions is already defined");
-		}
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
+		               "The function `%s' is already defined",
+		               name);
 
+		xmlFree (name);
 		return FALSE;
 	}
 
@@ -390,17 +502,13 @@ parse_function (xmlDocPtr   doc,
 	                (XPathResultFunc)get_function_expression,
 	                &expression))
 	{
-		cpg_debug_error ("No expression defined for function: %s", name);
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
+		               "Expression not set for function %s",
+		               name);
+
 		xmlFree (name);
-
-		if (info->error)
-		{
-			g_set_error (info->error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
-			             "Expression not set for function");
-		}
-
 		return FALSE;
 	}
 
@@ -415,18 +523,13 @@ parse_function (xmlDocPtr   doc,
 	                (XPathResultFunc)parse_function_arguments,
 	                function))
 	{
-		cpg_debug_error ("Failed to parse function arguments: %s",
-		                 cpg_object_get_id (CPG_OBJECT (function)));
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
+		               "Failed to parse function arguments for %s",
+		               cpg_object_get_id (CPG_OBJECT (function)));
+
 		g_object_unref (function);
-
-		if (info->error)
-		{
-			g_set_error (info->error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
-			             "Failed to parse function arguments");
-		}
-
 		return FALSE;
 	}
 
@@ -454,7 +557,7 @@ parse_polynomial_pieces (xmlDocPtr              doc,
 			cpg_debug_error ("Piece does not define a begin");
 			return FALSE;
 		}
-		
+
 		xmlChar *endPtr = xmlGetProp (node, (xmlChar *)"end");
 
 		if (!endPtr)
@@ -510,7 +613,7 @@ parse_polynomial_pieces (xmlDocPtr              doc,
 
 		g_strfreev (ptrs);
 
-		CpgFunctionPolynomialPiece *piece = 
+		CpgFunctionPolynomialPiece *piece =
 				cpg_function_polynomial_piece_new (begin,
 				                                   end,
 				                                   coefficients,
@@ -530,35 +633,24 @@ parse_polynomial (xmlDocPtr   doc,
                   ParseInfo  *info)
 {
 	xmlChar *name = xmlGetProp (node, (xmlChar *)"name");
-	
+
 	if (!name)
 	{
-		cpg_debug_error ("Function does not have a name");
-		
-		if (info->error)
-		{
-			g_set_error (info->error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
-			             "One of the functions does not have a name");
-		}
-
-		return FALSE;
+		return parser_failed (info,
+		                      node,
+		                      CPG_NETWORK_LOAD_ERROR_FUNCTION,
+		                      "One of the polynomials does not have a name");
 	}
 
 	if (cpg_network_get_function (info->network, (gchar const *)name))
 	{
-		cpg_debug_error ("Function is already defined");
-		xmlFree (name);
-		
-		if (info->error)
-		{
-			g_set_error (info->error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
-			             "One of the functions is already defined");
-		}
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
+		               "The polynomial `%s' is already defined",
+		               name);
 
+		xmlFree (name);
 		return FALSE;
 	}
 
@@ -572,18 +664,13 @@ parse_polynomial (xmlDocPtr   doc,
 	                (XPathResultFunc)parse_polynomial_pieces,
 	                function))
 	{
-		cpg_debug_error ("Failed to parse polynomial pieces: %s",
-		                 cpg_object_get_id (CPG_OBJECT (function)));
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
+		               "Failed to parse polynomial pieces for: %s",
+		               cpg_object_get_id (CPG_OBJECT (function)));
+
 		g_object_unref (function);
-
-		if (info->error)
-		{
-			g_set_error (info->error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_FUNCTION,
-			             "Failed to parse polynomial pieces");
-		}
-
 		return FALSE;
 	}
 
@@ -605,46 +692,34 @@ parse_actions (xmlDocPtr doc,
 	for (item = nodes; item; item = g_list_next (item))
 	{
 		xmlNodePtr node = (xmlNodePtr)item->data;
-		
+
 		xmlChar *target = xmlGetProp (node, (xmlChar *)"target");
-		
+
 		if (!target)
 		{
-			cpg_debug_error ("Missing target for action of %s", cpg_object_get_id (CPG_OBJECT (link)));
-			
-			if (info->error)
-			{
-				g_set_error (info->error,
-				             CPG_NETWORK_LOAD_ERROR,
-				             CPG_NETWORK_LOAD_ERROR_LINK,
-				             "Missing target for action on %s",
-				             cpg_object_get_id (CPG_OBJECT (link)));
-			}
-			
-			return FALSE;
+			return parser_failed (info,
+			                      node,
+			                      CPG_NETWORK_LOAD_ERROR_LINK,
+			                      "Missing target for action on %s",
+			                      cpg_object_get_id (CPG_OBJECT (link)));
 		}
-		
+
 		/* Find target property in link.to */
 		CpgProperty *property;
-		
+
 		if (to)
 		{
 			property = cpg_object_get_property (to, (gchar const *)target);
-		
+
 			if (!property)
 			{
-				cpg_debug_error ("Property %s not found on %s", target, cpg_object_get_id (to));
-				
-				if (info->error)
-				{
-					g_set_error (info->error,
-							     CPG_NETWORK_LOAD_ERROR,
-							     CPG_NETWORK_LOAD_ERROR_LINK,
-							     "Target property %s not found for action on %s",
-							     target,
-							     cpg_object_get_id (to));
-				}
-			
+				parser_failed (info,
+				               node,
+				               CPG_NETWORK_LOAD_ERROR_LINK,
+				               "Target property %s not found for action on %s",
+				               target,
+				               cpg_object_get_id (to));
+
 				xmlFree (target);
 				return FALSE;
 			}
@@ -656,24 +731,24 @@ parse_actions (xmlDocPtr doc,
 			                             FALSE,
 			                             NULL);
 		}
-		
+
 		xmlChar const *expression = (xmlChar *)"";
-		
+
 		if (node->children && node->children->type == XML_TEXT_NODE)
 		{
 			expression = node->children->content;
 		}
-		
+
 		cpg_link_add_action (link, property, (gchar const *)expression);
-		
+
 		if (!to)
 		{
 			g_object_unref (property);
 		}
-		
+
 		xmlFree (target);
 	}
-	
+
 	return TRUE;
 }
 
@@ -683,46 +758,45 @@ parse_link (xmlDocPtr   doc,
             ParseInfo  *info)
 {
 	CpgObject *object;
-	
-	object = parse_object (CPG_TYPE_LINK, node, info);
-	
+	gboolean new_object;
+	gboolean atroot = !info->template && CPG_IS_NETWORK (info->parents->data);
+
+	object = parse_object (CPG_TYPE_LINK, node, info, &new_object);
+
 	if (!object)
 	{
 		return FALSE;
 	}
-	
-	if (!info->template)
-	{
-		/* Fill in from and to */
-		xmlChar *from = xmlGetProp (node, (xmlChar *)"from");
-	
-		if (!from)
-		{
-			g_object_unref (object);
-			return FALSE;
-		}
-	
-		xmlChar *to = xmlGetProp (node, (xmlChar *)"to");
-	
-		if (!to)
-		{
-			xmlFree (from);
-			g_object_unref (object);
-			return FALSE;
-		}
-	
-		CpgObject *fromobj = cpg_group_get_child (CPG_GROUP (info->network),
-		                                          (gchar const *)from);
 
-		CpgObject *toobj = cpg_group_get_child (CPG_GROUP (info->network),
-		                                         (gchar const *)to);
+	/* Fill in from and to */
+	xmlChar *from = xmlGetProp (node, (xmlChar *)"from");
+
+	if (!from && atroot && new_object)
+	{
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_LINK,
+		               "Link node %s is missing required `from' attribute",
+		               cpg_object_get_id (object));
+
+		g_object_unref (object);
+		return FALSE;
+	}
+
+	if (from)
+	{
+		CpgObject *fromobj = cpg_group_get_child (CPG_GROUP (info->parents->data),
+		                                          (gchar const *)from);
 		gboolean ret = TRUE;
-	
+
 		if (!fromobj)
 		{
-			cpg_debug_error ("From object %s not found link %s",
-			                 from,
-			                 cpg_object_get_id (object));
+			parser_failed (info,
+			               node,
+			               CPG_NETWORK_LOAD_ERROR_LINK,
+			               "From object %s not found for link %s",
+			               from,
+			               cpg_object_get_id (object));
 			ret = FALSE;
 		}
 		else if (CPG_IS_LINK (fromobj))
@@ -731,113 +805,188 @@ parse_link (xmlDocPtr   doc,
 			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
-		else if (!toobj)
+
+		xmlFree (from);
+
+		if (!ret)
 		{
-			cpg_debug_error ("Target object %s not found for link %s",
-			                 to,
-			                 cpg_object_get_id (object));
+			if (new_object)
+			{
+				g_object_unref (object);
+			}
+
+			return FALSE;
+		}
+
+		g_object_set (object, "from", fromobj, NULL);
+	}
+
+	xmlChar *to = xmlGetProp (node, (xmlChar *)"to");
+
+	if (!to && atroot && new_object)
+	{
+		parser_failed (info,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_LINK,
+		               "Link node %s is missing required `to' attribute",
+		               cpg_object_get_id (object));
+
+		g_object_unref (object);
+		return FALSE;
+	}
+
+	if (to)
+	{
+		CpgObject *toobj = cpg_group_get_child (CPG_GROUP (info->parents->data),
+		                                       (gchar const *)to);
+		gboolean ret = TRUE;
+
+		if (!toobj)
+		{
+			parser_failed (info,
+			               node,
+			               CPG_NETWORK_LOAD_ERROR_LINK,
+			               "To object %s not found for link %s",
+			               to,
+			               cpg_object_get_id (object));
 			ret = FALSE;
 		}
 		else if (CPG_IS_LINK (toobj))
 		{
-			cpg_debug_error ("Target object cannot be a link (%s)",
+			cpg_debug_error ("To object cannot be a link (%s)",
 			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
 
-		xmlFree (from);
 		xmlFree (to);
-	
+
 		if (!ret)
 		{
-			g_object_unref (object);
+			if (new_object)
+			{
+				g_object_unref (object);
+			}
+
 			return FALSE;
 		}
-	
-		g_object_set (G_OBJECT (object),
-		              "from",
-		              fromobj,
-		              "to",
-		              toobj,
-		              NULL);
-	}
-	
-	info->object = object;
-	if (!xml_xpath (doc, node, "action", XML_ELEMENT_NODE, (XPathResultFunc)parse_actions, info))
-	{
-		cpg_debug_error ("Could not parse actions successfully");
-		g_object_unref (object);
-		return FALSE;
-	}
-	
-	if (!info->template)
-	{
-		cpg_group_add (CPG_GROUP (info->network), object);
-	}
-	else
-	{
-		cpg_network_add_template (info->network,
-		                          cpg_object_get_id (object),
-		                          object);
+
+		g_object_set (object, "to", toobj, NULL);
 	}
 
-	g_object_unref (object);
+	info->object = object;
+
+	if (!xml_xpath (doc,
+	                node,
+	                "action",
+	                XML_ELEMENT_NODE,
+	                (XPathResultFunc)parse_actions,
+	                info))
+	{
+		cpg_debug_error ("Could not parse actions successfully");
+
+		if (new_object)
+		{
+			g_object_unref (object);
+		}
+
+		return FALSE;
+	}
+
+	if (new_object)
+	{
+		if (!info->template)
+		{
+			cpg_group_add (CPG_GROUP (info->parents->data), object);
+		}
+		else
+		{
+			cpg_network_add_template (info->network,
+			                          cpg_object_get_id (object),
+			                          object);
+		}
+
+		g_object_unref (object);
+	}
 
 	return TRUE;
 }
 
 static gboolean
-parse_network (xmlDocPtr   doc, 
-               GList      *nodes, 
+parse_group (xmlDocPtr   doc,
+             xmlNodePtr  node,
+             ParseInfo  *info)
+{
+	CpgObject *object;
+
+	object = new_object (CPG_TYPE_GROUP, node, info);
+
+	if (!object)
+	{
+		return FALSE;
+	}
+
+	/* Recurse into the group members */
+	return parse_all (doc, node, object, info);
+}
+
+static gboolean
+parse_network (xmlDocPtr   doc,
+               GList      *nodes,
                ParseInfo  *info)
 {
 	GList *item;
 	gboolean ret = TRUE;
-	
+
+	gboolean atroot = !info->template && CPG_IS_NETWORK (info->parents->data);
+
 	for (item = nodes; item; item = g_list_next (item))
 	{
 		xmlNodePtr node = (xmlNodePtr)item->data;
-		
+
 		if (g_strcmp0 ((gchar const *)node->name, "state") == 0)
 		{
-			ret = new_object (CPG_TYPE_STATE, node, info);
+			ret = new_object (CPG_TYPE_STATE, node, info) != NULL;
 		}
 		else if (g_strcmp0 ((gchar const *)node->name, "relay") == 0)
 		{
-			ret = new_object (CPG_TYPE_RELAY, node, info);
+			ret = new_object (CPG_TYPE_RELAY, node, info) != NULL;
 		}
 		else if (g_strcmp0 ((gchar const *)node->name, "link") == 0)
 		{
 			ret = parse_link (doc, node, info);
 		}
-		else if (g_strcmp0 ((gchar const *)node->name, "globals") == 0)
+		else if (g_strcmp0 ((gchar const *)node->name, "group") == 0)
 		{
-			ret = parse_globals (doc, node, info);
+			ret = parse_group (doc, node, info);
 		}
-		else if (g_strcmp0 ((gchar const *)node->name, "function") == 0)
+		else if (atroot)
 		{
-			ret = parse_function (doc, node, info);
-		}
-		else if (g_strcmp0 ((gchar const *)node->name, "polynomial") == 0)
-		{
-			ret = parse_polynomial (doc, node, info);
+			if (g_strcmp0 ((gchar const *)node->name, "globals") == 0)
+			{
+				ret = parse_globals (doc, node, info);
+			}
+			else if (g_strcmp0 ((gchar const *)node->name, "functions") == 0)
+			{
+				ret = parse_all (doc, node, NULL, info);
+			}
+			else if (g_strcmp0 ((gchar const *)node->name, "function") == 0)
+			{
+				ret = parse_function (doc, node, info);
+			}
+			else if (g_strcmp0 ((gchar const *)node->name, "polynomial") == 0)
+			{
+				ret = parse_polynomial (doc, node, info);
+			}
+			else
+			{
+				cpg_debug_error ("Unknown element: %s", node->name);
+			}
 		}
 		else
 		{
 			cpg_debug_error ("Unknown element: %s", node->name);
-			
-			if (info->error)
-			{
-				g_set_error (info->error,
-				             CPG_NETWORK_LOAD_ERROR,
-				             CPG_NETWORK_LOAD_ERROR_OBJECT,
-				             "Unknown element in object definitions: %s",
-				             node->name);
-			}
-
-			ret = FALSE;
 		}
-		
+
 		if (!ret)
 		{
 			break;
@@ -848,16 +997,44 @@ parse_network (xmlDocPtr   doc,
 }
 
 static gboolean
-parse_objects (xmlDocPtr    doc,
-               const gchar *path,
-               ParseInfo   *info)
+parse_all (xmlDocPtr   doc,
+           xmlNodePtr  root,
+           gpointer    parent,
+           ParseInfo  *info)
 {
-	return xml_xpath (doc, 
-	                  NULL,
-	                  path, 
-	                  XML_ELEMENT_NODE, 
-	                  (XPathResultFunc)parse_network, 
-	                  info);
+	gboolean ret;
+	info->parents = g_slist_prepend (info->parents, parent);
+
+	ret = xml_xpath (doc,
+	                 root,
+	                 NULL,
+	                 XML_ELEMENT_NODE,
+	                 (XPathResultFunc)parse_network,
+	                 info);
+
+	info->parents = g_slist_remove (info->parents, parent);
+	return ret;
+}
+
+static gboolean
+parse_objects (xmlDocPtr    doc,
+               gchar const *root_path,
+               CpgNetwork  *network,
+               gboolean     templates,
+               GError      **error)
+{
+	ParseInfo info = {network, error, templates, NULL, NULL};
+	xmlNodePtr root = xml_xpath_first (doc,
+	                                   NULL,
+	                                   root_path,
+	                                   XML_ELEMENT_NODE);
+
+	if (!root)
+	{
+		return TRUE;
+	}
+
+	return parse_all (doc, root, network, &info);
 }
 
 static gboolean
@@ -865,13 +1042,15 @@ parse_templates (xmlDocPtr    doc,
                  CpgNetwork  *network,
                  GError     **error)
 {
-	ParseInfo info = {network, error, TRUE};
-	
-	gboolean ret = parse_objects (doc, "/cpg/network/templates/state", &info) &&
-	               parse_objects (doc, "/cpg/network/templates/relay", &info) &&
-	               parse_objects (doc, "/cpg/network/templates/link", &info);
+	return parse_objects (doc, "/cpg/network/templates", network, TRUE, error);
+}
 
-	return ret;
+static gboolean
+parse_instances (xmlDocPtr    doc,
+                 CpgNetwork  *network,
+                 GError     **error)
+{
+	return parse_objects (doc, "/cpg/network", network, TRUE, error);
 }
 
 static gboolean
@@ -937,35 +1116,30 @@ reader_xml (CpgNetwork  *network,
 			             xmlLastError.int2,
 			             xmlLastError.message);
 		}
-		
+
 		cpg_debug_error ("Could not open network file: %s", strerror (errno));
 		return FALSE;
 	}
-	
+
 	// We don't really care if the include failed
 	xmlXIncludeProcess (doc);
-	
+
 	if (!parse_templates (doc, network, error))
 	{
+		xmlFreeDoc (doc);
 		cpg_debug_error ("Failed to parse templates");
 		return FALSE;
 	}
-	
-	ParseInfo info = {network, error, FALSE};
-	
-	gboolean ret = parse_objects (doc, "/cpg/network/state", &info) &&
-	               parse_objects (doc, "/cpg/network/relay", &info) &&
-	               parse_objects (doc, "/cpg/network/link", &info) &&
-	               parse_objects (doc, "/cpg/network/globals", &info) &&
-	               parse_objects (doc, "/cpg/network/functions/function | /cpg/network/functions/polynomial", &info);
 
-	if (ret)
+	if (!parse_instances (doc, network, error))
 	{
-		ret = parse_config (doc, network, error);
+		xmlFreeDoc (doc);
+		return FALSE;
 	}
 
+	gboolean ret = parse_config (doc, network, error);
 	xmlFreeDoc (doc);
-	
+
 	return ret;
 }
 

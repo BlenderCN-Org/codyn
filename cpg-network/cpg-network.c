@@ -41,16 +41,6 @@ enum
 	PROP_INTEGRATOR
 };
 
-typedef struct
-{
-	CpgNetwork *network;
-
-	guint from;
-	guint to;
-
-	gboolean running;
-} CpgSimulationWorker;
-
 struct _CpgNetworkPrivate
 {
 	gchar *filename;
@@ -83,7 +73,9 @@ cpg_network_load_error_quark ()
 	static GQuark quark = 0;
 
 	if (G_UNLIKELY (quark == 0))
+	{
 		quark = g_quark_from_static_string ("cpg_network_load_error");
+	}
 
 	return quark;
 }

@@ -64,6 +64,9 @@ struct _CpgObjectClass {
 
 	void          (*reset_cache)     (CpgObject *object);
 
+	void          (*apply_template)  (CpgObject *object,
+	                                  CpgObject *templ);
+
 	void          (*copy)            (CpgObject *object,
 	                                  CpgObject *source);
 
@@ -93,11 +96,9 @@ GQuark cpg_object_error_quark (void);
 GType cpg_object_get_type (void) G_GNUC_CONST;
 CpgObject *cpg_object_new (const gchar *id);
 
-CpgObject        *_cpg_object_copy           (CpgObject   *object);
 const gchar      *cpg_object_get_id          (CpgObject   *object);
 void              cpg_object_set_id          (CpgObject   *object,
                                               const gchar *id);
-gchar            *cpg_object_get_local_id    (CpgObject   *object);
 
 CpgProperty      *cpg_object_add_property    (CpgObject   *object,
                                               const gchar *name,
@@ -125,6 +126,7 @@ gboolean          cpg_object_compile        (CpgObject                          
                                              CPG_FORWARD_DECL (CpgCompileError) *error);
 
 void              cpg_object_clear          (CpgObject   *object);
+GSList const     *cpg_object_get_actors     (CpgObject   *object);
 
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,
@@ -133,10 +135,12 @@ void             _cpg_object_link           (CpgObject                  *object,
 void             _cpg_object_unlink         (CpgObject                  *object,
                                              CPG_FORWARD_DECL (CpgLink) *link);
 
-GSList const    *cpg_object_get_actors      (CpgObject       *object);
-GSList const    *_cpg_object_get_links      (CpgObject       *object);
+GSList const    *_cpg_object_get_links      (CpgObject *object);
 
-void             _cpg_object_taint          (CpgObject       *object);
+void             _cpg_object_apply_template (CpgObject *object,
+                                             CpgObject *templ);
+
+CpgObject       *_cpg_object_copy           (CpgObject *object);
 
 G_END_DECLS
 
