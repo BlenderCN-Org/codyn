@@ -47,7 +47,7 @@ struct _CpgNetwork
 
 struct _CpgNetworkClass
 {
-	GObjectClass parent_class;
+	CpgGroupClass parent_class;
 
 	void (*compile_error) (CpgNetwork      *network,
 	                       CpgCompileError *error);
