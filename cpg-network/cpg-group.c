@@ -34,6 +34,8 @@ enum
 	PROP_PROXY
 };
 
+static void remove_object (CpgGroup *group, CpgObject *object);
+
 static void
 cpg_group_finalize (GObject *object)
 {
@@ -52,9 +54,15 @@ cpg_group_dispose (GObject *object)
 	if (group->priv->children)
 	{
 		GSList *children = group->priv->children;
+		GSList *item;
+
 		group->priv->children = NULL;
 
-		g_slist_foreach (children, (GFunc)g_object_unref, NULL);
+		for (item = children; item; item = g_slist_next (item))
+		{
+			remove_object (group, item->data);
+		}
+
 		g_slist_free (children);
 	}
 
@@ -466,6 +474,8 @@ cpg_group_add_impl (CpgGroup  *group,
 		_cpg_link_resolve_actions (CPG_LINK (object));
 	}
 
+	_cpg_object_set_parent (object, CPG_OBJECT (group));
+
 	cpg_object_taint (CPG_OBJECT (group));
 	return TRUE;
 }
@@ -475,6 +485,12 @@ remove_object (CpgGroup  *group,
                CpgObject *object)
 {
 	unregister_object (group, object);
+
+	if (cpg_object_get_parent (object) == CPG_OBJECT (group))
+	{
+		_cpg_object_set_parent (object, NULL);
+	}
+
 	g_object_unref (object);
 }
 

@@ -37,6 +37,8 @@ struct _CpgObjectPrivate
 	GSList *actors;
 
 	GSList *templates;
+
+	CpgObject *parent;
 };
 
 /* Properties */
@@ -44,6 +46,7 @@ enum
 {
 	PROP_0,
 	PROP_ID,
+	PROP_PARENT
 };
 
 /* Signals */
@@ -139,6 +142,9 @@ get_property (GObject     *object,
 	{
 		case PROP_ID:
 			g_value_set_string (value, obj->priv->id);
+		break;
+		case PROP_PARENT:
+			g_value_set_object (value, obj->priv->parent);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -552,6 +558,14 @@ cpg_object_class_init (CpgObjectClass *klass)
 	                                                      "The object's id",
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_PARENT,
+	                                 g_param_spec_object ("parent",
+	                                                      "Parent",
+	                                                      "Parent",
+	                                                      CPG_TYPE_OBJECT,
+	                                                      G_PARAM_READABLE));
 
 	/**
 	 * CpgObject::tainted:
@@ -1056,6 +1070,22 @@ cpg_object_clear (CpgObject *object)
 	}
 }
 
+GSList const *
+cpg_object_get_templates (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	return object->priv->templates;
+}
+
+CpgObject *
+cpg_object_get_parent (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	return object->priv->parent;
+}
+
 void
 _cpg_object_apply_template (CpgObject *object,
                             CpgObject *templ)
@@ -1090,10 +1120,14 @@ _cpg_object_copy (CpgObject *object)
 	return ret;
 }
 
-GSList const *
-cpg_object_get_templates (CpgObject *object)
+void
+_cpg_object_set_parent (CpgObject *object,
+                        CpgObject *parent)
 {
-	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (parent == NULL || CPG_IS_OBJECT (parent));
 
-	return object->priv->templates;
+	object->priv->parent = parent;
+
+	g_object_notify (G_OBJECT (object), "parent");
 }

@@ -117,6 +117,7 @@ gboolean          cpg_object_remove_property (CpgObject    *object,
                                               GError      **error);
 
 GSList           *cpg_object_get_properties  (CpgObject   *object);
+CpgObject        *cpg_object_get_parent      (CpgObject   *object);
 
 /* evaluation */
 void              cpg_object_reset          (CpgObject   *object);
@@ -147,6 +148,8 @@ void             _cpg_object_apply_template (CpgObject *object,
                                              CpgObject *templ);
 
 CpgObject       *_cpg_object_copy           (CpgObject *object);
+void             _cpg_object_set_parent     (CpgObject *object,
+                                             CpgObject *parent);
 
 G_END_DECLS
 
