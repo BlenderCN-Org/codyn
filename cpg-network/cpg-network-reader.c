@@ -388,7 +388,7 @@ new_object (GType       gtype,
 	{
 		if (new_object)
 		{
-			if (info->template)
+			if (info->template && CPG_IS_NETWORK (info->parents->data))
 			{
 				cpg_network_add_template (info->network,
 				                          cpg_object_get_id (object),
@@ -911,7 +911,7 @@ parse_link (xmlDocPtr   doc,
 
 	if (new_object)
 	{
-		if (!info->template)
+		if (!info->template || !CPG_IS_NETWORK (info->parents->data))
 		{
 			cpg_group_add (CPG_GROUP (info->parents->data), object);
 		}
