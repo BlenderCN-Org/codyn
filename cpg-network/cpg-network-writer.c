@@ -481,7 +481,7 @@ group_to_xml (xmlDocPtr   doc,
 		{
 			group_to_xml (doc, group_node, children->data);
 		}
-		if (CPG_IS_RELAY (children->data))
+		else if (CPG_IS_RELAY (children->data))
 		{
 			relay_to_xml (doc, group_node, children->data);
 		}
