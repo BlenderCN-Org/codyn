@@ -289,6 +289,42 @@ cpg_link_compile_impl (CpgObject         *object,
 	return ret;
 }
 
+static gboolean
+cpg_link_equal_impl (CpgObject *first, CpgObject *second)
+{
+	if (!CPG_OBJECT_CLASS (cpg_link_parent_class)->equal (first, second))
+	{
+		return FALSE;
+	}
+
+	CpgLink *link1 = CPG_LINK (first);
+	CpgLink *link2 = CPG_LINK (second);
+
+	if ((link1->priv->from == NULL && link2->priv->from != NULL) ||
+	    (link2->priv->from == NULL && link1->priv->from != NULL) ||
+	    (link1->priv->to == NULL && link2->priv->to != NULL) ||
+	    (link2->priv->to == NULL && link1->priv->to != NULL))
+	{
+		return FALSE;
+	}
+
+	if (link1->priv->from &&
+	    g_strcmp0 (cpg_object_get_id (link1->priv->from),
+	               cpg_object_get_id (link2->priv->from)) != 0)
+	{
+		return FALSE;
+	}
+
+	if (link1->priv->to &&
+	    g_strcmp0 (cpg_object_get_id (link1->priv->to),
+	               cpg_object_get_id (link2->priv->to)) != 0)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static void
 cpg_link_class_init (CpgLinkClass *klass)
 {
@@ -304,6 +340,7 @@ cpg_link_class_init (CpgLinkClass *klass)
 	cpgobject_class->reset_cache = cpg_link_reset_cache_impl;
 	cpgobject_class->copy = cpg_link_copy_impl;
 	cpgobject_class->compile = cpg_link_compile_impl;
+	cpgobject_class->equal = cpg_link_equal_impl;
 
 	/**
 	 * CpgLink:from:

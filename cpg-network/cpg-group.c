@@ -576,6 +576,57 @@ cpg_group_cpg_add_property (CpgObject   *object,
 	}
 }
 
+static gboolean
+cpg_group_cpg_equal (CpgObject *first,
+                     CpgObject *second)
+{
+	if (!CPG_OBJECT_CLASS (cpg_group_parent_class)->equal (first, second))
+	{
+		return FALSE;
+	}
+
+	/* Same proxies */
+	CpgGroup *group1 = CPG_GROUP (first);
+	CpgGroup *group2 = CPG_GROUP (second);
+
+	if ((group1->priv->proxy == NULL && group2->priv->proxy != NULL) ||
+	    (group2->priv->proxy == NULL && group1->priv->proxy != NULL))
+	{
+		return FALSE;
+	}
+
+	if (group1->priv->proxy &&
+	    g_strcmp0 (cpg_object_get_id (group1->priv->proxy),
+	               cpg_object_get_id (group2->priv->proxy)) != 0)
+	{
+		return FALSE;
+	}
+
+	GSList const *children1 = cpg_group_get_children (group1);
+	GSList const *children2 = cpg_group_get_children (group2);
+
+	if (g_slist_length ((GSList *)children1) != g_slist_length ((GSList *)children2))
+	{
+		return FALSE;
+	}
+
+	while (children1)
+	{
+		CpgObject *child1 = children1->data;
+		CpgObject *child2 = cpg_group_get_child (group2,
+		                                         cpg_object_get_id (child1));
+
+		if (!child2 || !cpg_object_equal (child1, child2))
+		{
+			return FALSE;
+		}
+
+		children1 = g_slist_next (children1);
+	}
+
+	return TRUE;
+}
+
 static void
 cpg_group_class_init (CpgGroupClass *klass)
 {
@@ -598,6 +649,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 	cpg_class->reset_cache = cpg_group_cpg_reset_cache;
 	cpg_class->evaluate = cpg_group_cpg_evaluate;
 	cpg_class->clear = cpg_group_cpg_clear;
+	cpg_class->equal = cpg_group_cpg_equal;
 
 	cpg_class->copy = cpg_group_cpg_copy;
 	cpg_class->apply_template = cpg_group_cpg_apply_template;

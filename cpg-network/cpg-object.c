@@ -520,6 +520,45 @@ cpg_object_taint_impl (CpgObject *object)
 	g_signal_emit (object, object_signals[TAINTED], 0);
 }
 
+static gboolean
+cpg_object_equal_impl (CpgObject *first,
+                       CpgObject *second)
+{
+	if (G_TYPE_FROM_INSTANCE (first) != G_TYPE_FROM_INSTANCE (second))
+	{
+		return FALSE;
+	}
+
+	GSList *prop1 = cpg_object_get_properties (first);
+	GSList *prop2 = cpg_object_get_properties (second);
+
+	gboolean ret = g_slist_length (prop1) == g_slist_length (prop2);
+	g_slist_free (prop2);
+
+	if (ret)
+	{
+		GSList *item = prop1;
+
+		while (item)
+		{
+			CpgProperty *prop1 = item->data;
+			CpgProperty *prop2 = cpg_object_get_property (second,
+			                                              cpg_property_get_name (prop1));
+
+			if (!prop2 || !cpg_property_equal (prop1, prop2))
+			{
+				ret = FALSE;
+				break;
+			}
+
+			item = g_slist_next (item);
+		}
+	}
+
+	g_slist_free (prop1);
+	return ret;
+}
+
 static void
 cpg_object_class_init (CpgObjectClass *klass)
 {
@@ -535,6 +574,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 	klass->copy = cpg_object_copy_impl;
 	klass->compile = cpg_object_compile_impl;
 	klass->apply_template = cpg_object_apply_template_impl;
+	klass->equal = cpg_object_equal_impl;
 
 	klass->get_property = cpg_object_get_property_impl;
 	klass->get_properties = cpg_object_get_properties_impl;
@@ -1067,6 +1107,23 @@ cpg_object_clear (CpgObject *object)
 	if (CPG_OBJECT_GET_CLASS (object)->clear)
 	{
 		CPG_OBJECT_GET_CLASS (object)->clear (object);
+	}
+}
+
+gboolean
+cpg_object_equal (CpgObject *first,
+                  CpgObject *second)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (first), FALSE);
+	g_return_val_if_fail (CPG_IS_OBJECT (second), FALSE);
+
+	if (CPG_OBJECT_GET_CLASS (first)->equal)
+	{
+		return CPG_OBJECT_GET_CLASS (first)->equal (first, second);
+	}
+	else
+	{
+		return FALSE;
 	}
 }
 

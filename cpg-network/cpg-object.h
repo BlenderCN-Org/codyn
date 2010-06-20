@@ -89,6 +89,9 @@ struct _CpgObjectClass {
 
 	void          (*clear)           (CpgObject    *object);
 
+	gboolean      (*equal)           (CpgObject    *first,
+	                                  CpgObject    *last);
+
 	/* signals */
 	void          (*compiled)        (CpgObject *object);
 	void          (*resetted)        (CpgObject *object);
@@ -129,6 +132,9 @@ void              cpg_object_taint          (CpgObject   *object);
 gboolean          cpg_object_compile        (CpgObject                          *object,
                                              CpgCompileContext                  *context,
                                              CPG_FORWARD_DECL (CpgCompileError) *error);
+
+gboolean          cpg_object_equal          (CpgObject *first,
+                                             CpgObject *second);
 
 void              cpg_object_clear          (CpgObject   *object);
 GSList const     *cpg_object_get_actors     (CpgObject   *object);
