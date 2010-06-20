@@ -28,11 +28,63 @@ property_matches_template (CpgProperty  *property,
 	return FALSE;
 }
 
-static GSList *
-reversed_templates (CpgObject *object)
+static CpgObject *
+template_selector (CpgObject *parent,
+                   GSList    *selectors,
+                   CpgObject *child)
 {
-	GSList *templates = (GSList *)cpg_object_get_templates (object);
-	return g_slist_reverse (g_slist_copy (templates));
+	while (selectors)
+	{
+		CpgObject *selector = selectors->data;
+
+		parent = cpg_group_get_child (CPG_GROUP (parent),
+		                              cpg_object_get_id (selector));
+
+		if (!parent)
+		{
+			return NULL;
+		}
+
+		selectors = g_slist_next (selectors);
+	}
+
+	return cpg_group_get_child (CPG_GROUP (parent),
+	                            cpg_object_get_id (child));
+}
+
+static GSList *
+templates_for_object (CpgObject *object)
+{
+	/* These include the 'direct' templates on object, but also the
+	   indirect ones that were applied by a template group */
+	GSList *ret = g_slist_copy ((GSList *)cpg_object_get_templates (object));
+
+	CpgObject *parent = cpg_object_get_parent (object);
+	GSList *selectors = NULL;
+
+	while (parent)
+	{
+		GSList const *templates = cpg_object_get_templates (parent);
+
+		while (templates)
+		{
+			CpgObject *template;
+
+			template = template_selector (templates->data,
+			                              selectors,
+			                              object);
+
+			if (template)
+			{
+				ret = g_slist_prepend (ret, template);
+			}
+		}
+
+		selectors = g_slist_prepend (selectors, parent);
+		parent = cpg_object_get_parent (parent);
+	}
+
+	return g_slist_reverse (ret);
 }
 
 static void
@@ -96,20 +148,18 @@ object_to_xml (xmlDocPtr     doc,
 	xmlAddChild (parent, ptr);
 
 	GSList const *templates = cpg_object_get_templates (object);
+
 	GPtrArray *refs = g_ptr_array_new ();
 
 	while (templates)
 	{
-		g_ptr_array_add (refs, g_strdup (cpg_object_get_id (templates->data)));
+		g_ptr_array_add (refs, (gpointer)cpg_object_get_id (templates->data));
 		templates = g_slist_next (templates);
 	}
 
-	gchar **refs_ptr = (gchar **)g_ptr_array_free (refs, FALSE);
+	g_ptr_array_add (refs, NULL);
 
-	if (refs_ptr)
-	{
-		g_message ("Refs: %d", g_strv_length (refs_ptr));
-	}
+	gchar **refs_ptr = (gchar **)g_ptr_array_free (refs, FALSE);
 
 	if (refs_ptr && *refs_ptr)
 	{
@@ -118,18 +168,15 @@ object_to_xml (xmlDocPtr     doc,
 		g_free (joined);
 	}
 
-	if (refs_ptr)
-	{
-		g_strfreev (refs_ptr);
-	}
+	g_free (refs_ptr);
 
 	GSList *props = cpg_object_get_properties (object);
 
-	GSList *reversed = reversed_templates (object);
+	GSList *all_templates = templates_for_object (object);
 
-	properties_to_xml (doc, ptr, props, reversed);
+	properties_to_xml (doc, ptr, props, all_templates);
 
-	g_slist_free (reversed);
+	g_slist_free (all_templates);
 	g_slist_free (props);
 
 	return ptr;
@@ -212,7 +259,7 @@ link_to_xml (xmlDocPtr   doc,
 
 	// Link actions
 	GSList const *item;
-	GSList *templates = reversed_templates (CPG_OBJECT (link));
+	GSList *templates = templates_for_object (CPG_OBJECT (link));
 
 	for (item = cpg_link_get_actions (link); item; item = g_slist_next (item))
 	{
@@ -393,6 +440,56 @@ write_functions (CpgNetwork *network,
 }
 
 static void
+group_to_xml (xmlDocPtr   doc,
+              xmlNodePtr  root,
+              CpgGroup   *group)
+{
+	xmlNodePtr group_node;
+
+	if (!CPG_IS_NETWORK (group))
+	{
+		group_node = object_to_xml (doc, root, CPG_OBJECT (group), "group");
+		CpgObject *proxy = cpg_group_get_proxy (group);
+
+		if (proxy != NULL)
+		{
+			xmlNewProp (group_node,
+			            (xmlChar *)"proxy",
+			            (xmlChar *)cpg_object_get_id (proxy));
+		}
+	}
+	else
+	{
+		group_node = root;
+	}
+
+	GSList const *children = cpg_group_get_children (group);
+
+	while (children)
+	{
+		if (CPG_IS_GROUP (children->data))
+		{
+			group_to_xml (doc, group_node, children->data);
+		}
+		if (CPG_IS_RELAY (children->data))
+		{
+			relay_to_xml (doc, group_node, children->data);
+		}
+		else if (CPG_IS_STATE (children->data))
+		{
+			state_to_xml (doc, group_node, children->data);
+		}
+		else if (CPG_IS_LINK (children->data))
+		{
+			link_to_xml (doc, group_node, children->data);
+		}
+
+		children = g_slist_next (children);
+	}
+
+}
+
+static void
 write_config (xmlDocPtr   doc,
               CpgNetwork *network,
               xmlNodePtr  nnetwork)
@@ -450,7 +547,11 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 		gchar const *name = (gchar const *)item->data;
 		CpgObject *template = cpg_network_get_template (network, name);
 
-		if (CPG_IS_RELAY (template))
+		if (CPG_IS_GROUP (template))
+		{
+			group_to_xml (doc, templates, CPG_GROUP (template));
+		}
+		else if (CPG_IS_RELAY (template))
 		{
 			relay_to_xml (doc, templates, CPG_RELAY (template));
 		}
@@ -468,23 +569,7 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	g_slist_free (list);
 
 	// Generate state, relay and link nodes
-	GSList const *children = cpg_group_get_children (CPG_GROUP (network));
-
-	while (children)
-	{
-		if (CPG_IS_RELAY (children->data))
-		{
-			relay_to_xml (doc, nnetwork, children->data);
-		}
-		else if (CPG_IS_STATE (children->data))
-		{
-			state_to_xml (doc, nnetwork, children->data);
-		}
-		else if (CPG_IS_LINK (children->data))
-		{
-			link_to_xml (doc, nnetwork, children->data);
-		}
-	}
+	group_to_xml (doc, nnetwork, CPG_GROUP (network));
 
 	write_functions (network, doc, nnetwork);
 
