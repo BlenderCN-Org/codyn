@@ -65,7 +65,7 @@ INST_H_FILES = \
 	cpg-state.h \
 	cpg-utils.h
 
-lib_LTLIBRARIES = libcpg-network-1.0.la
+lib_LTLIBRARIES = libcpg-network-2.0.la
 
 libcpg_network_headers = \
 	$(INST_H_FILES) \
@@ -77,13 +77,13 @@ cpg-enum-types.h: cpg-enum-types.h.template $(INST_H_FILES) $(GLIB_MKENUMS)
 cpg-enum-types.c: cpg-enum-types.c.template cpg-enum-types.h $(INST_H_FILES) $(GLIB_MKENUMS)
 	(cd $(srcdir) && $(GLIB_MKENUMS) --template cpg-enum-types.c.template $(INST_H_FILES)) > $@
 
-libcpg_network_1_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CPG_NETWORK_CFLAGS)
-libcpg_network_1_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) -lm
-libcpg_network_1_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
+libcpg_network_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CPG_NETWORK_CFLAGS)
+libcpg_network_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) -lm
+libcpg_network_2_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
 
-libcpg_network_1_0_la_SOURCES = $(COMMON_SOURCES)
+libcpg_network_2_0_la_SOURCES = $(COMMON_SOURCES)
 
-libcpg_network_1_0_include_HEADERS = $(libcpg_network_headers)
+libcpg_network_2_0_include_HEADERS = $(libcpg_network_headers)
 
 CLEANFILES = cpg-enum-types.c cpg-enum-types.h
 
