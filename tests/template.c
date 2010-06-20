@@ -22,10 +22,10 @@ main (int argc, char *argv[])
 		exit (1);
 	}
 
-	//gchar *xml = cpg_network_write_to_xml (network);
+	gchar *xml = cpg_network_write_to_xml (network);
 
-	//g_printf ("\n%s\n", xml);
-	//g_free (xml);
+	g_printf ("\n%s\n", xml);
+	g_free (xml);
 
 	g_object_unref (network);
 	return 0;
