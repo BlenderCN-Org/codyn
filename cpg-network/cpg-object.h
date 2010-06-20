@@ -56,6 +56,7 @@ struct _CpgObjectClass {
 	gboolean      (*compile)         (CpgObject                          *object,
 	                                  CpgCompileContext                  *context,
 	                                  CPG_FORWARD_DECL (CpgCompileError) *error);
+
 	void          (*reset)           (CpgObject *object);
 	void          (*evaluate)        (CpgObject *object);
 
@@ -65,6 +66,8 @@ struct _CpgObjectClass {
 
 	void          (*copy)            (CpgObject *object,
 	                                  CpgObject *source);
+
+	void          (*taint)           (CpgObject *object);
 
 	GSList       *(*get_properties)  (CpgObject    *object);
 	CpgProperty  *(*get_property)    (CpgObject    *object,
@@ -81,6 +84,8 @@ struct _CpgObjectClass {
 	gboolean      (*remove_property) (CpgObject    *object,
 	                                  const gchar  *name,
 	                                  GError      **error);
+
+	void          (*clear)           (CpgObject    *object);
 };
 
 GQuark cpg_object_error_quark (void);
@@ -118,6 +123,8 @@ void              cpg_object_taint          (CpgObject   *object);
 gboolean          cpg_object_compile        (CpgObject                          *object,
                                              CpgCompileContext                  *context,
                                              CPG_FORWARD_DECL (CpgCompileError) *error);
+
+void              cpg_object_clear          (CpgObject   *object);
 
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,

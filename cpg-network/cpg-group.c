@@ -21,7 +21,9 @@
 struct _CpgGroupPrivate
 {
 	CpgObject *proxy;
+
 	GSList *children;
+	GHashTable *child_hash;
 };
 
 G_DEFINE_TYPE (CpgGroup, cpg_group, CPG_TYPE_STATE)
@@ -35,6 +37,10 @@ enum
 static void
 cpg_group_finalize (GObject *object)
 {
+	CpgGroup *group = CPG_GROUP (object);
+
+	g_hash_table_destroy (group->priv->child_hash);
+
 	G_OBJECT_CLASS (cpg_group_parent_class)->finalize (object);
 }
 
@@ -87,19 +93,17 @@ set_proxy (CpgGroup  *group,
 			}
 		}
 
-		g_object_unref (group->priv->proxy);
+		CpgObject *pr = group->priv->proxy;
 		group->priv->proxy = NULL;
 
-		group->priv->children = g_slist_remove (group->priv->children,
-		                                        group->priv->proxy);
+		cpg_group_remove (group, pr);
+		g_object_unref (pr);
 	}
 
 	if (proxy)
 	{
 		group->priv->proxy = g_object_ref (proxy);
-
-		group->priv->children = g_slist_prepend (group->priv->children,
-		                                         g_object_ref (group->priv->proxy));
+		cpg_group_add (group, proxy);
 	}
 
 	cpg_object_taint (CPG_OBJECT (group));
@@ -288,18 +292,218 @@ cpg_group_cpg_copy (CpgObject *object,
 	{
 		CpgObject *child = _cpg_object_copy (children->data);
 
+		cpg_group_add (group, child);
+
 		if (CPG_OBJECT (children->data) == source_proxy)
 		{
 			group->priv->proxy = g_object_ref (child);
 		}
 
-		group->priv->children = g_slist_prepend (group->priv->children,
-		                                         child);
-
 		children = g_slist_next (children);
 	}
+}
 
-	group->priv->children = g_slist_reverse (group->priv->children);
+static gchar *
+unique_id (CpgGroup  *group,
+           CpgObject *object)
+{
+	gchar const *id = cpg_object_get_id (object);
+	gchar *newid = g_strdup (id);
+	gint cnt = 0;
+
+	while (TRUE)
+	{
+		CpgObject *orig = g_hash_table_lookup (group->priv->child_hash,
+		                                       newid);
+
+		if (orig == NULL || orig == object)
+		{
+			if (cnt == 0)
+			{
+				g_free (newid);
+				newid = NULL;
+			}
+
+			break;
+		}
+
+		g_free (newid);
+		newid = g_strdup_printf ("%s (%d)", id, ++cnt);
+	}
+
+	return newid;
+}
+
+static void
+register_id (CpgGroup  *group,
+             CpgObject *object)
+{
+	gchar *newid = unique_id (group, object);
+
+	if (newid == NULL)
+	{
+		g_hash_table_insert (group->priv->child_hash,
+		                     g_strdup (cpg_object_get_id (object)),
+		                     object);
+	}
+	else
+	{
+		cpg_object_set_id (object, newid);
+		g_free (newid);
+	}
+}
+
+typedef struct
+{
+	CpgObject *find;
+	const gchar *id;
+} FindInfo;
+
+static gboolean
+find_object (const gchar  *id,
+             CpgObject    *object,
+             FindInfo     *info)
+{
+	if (object == info->find)
+	{
+		info->id = id;
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static void
+update_object_id (CpgObject  *object,
+                  GParamSpec *spec,
+                  CpgGroup   *group)
+{
+	FindInfo info = {object, NULL};
+
+	g_hash_table_find (group->priv->child_hash,
+	                   (GHRFunc)find_object,
+	                   &info);
+
+	/* Remove old id */
+	if (info.id != NULL)
+	{
+		g_hash_table_remove (group->priv->child_hash,
+		                     info.id);
+	}
+
+	register_id (group, object);
+}
+
+static void
+unregister_object (CpgGroup  *group,
+                   CpgObject *object)
+{
+	g_signal_handlers_disconnect_by_func (object,
+	                                      G_CALLBACK (cpg_object_taint),
+	                                      group);
+
+	g_signal_handlers_disconnect_by_func (object,
+	                                      G_CALLBACK (update_object_id),
+	                                      group);
+
+	g_hash_table_remove (group->priv->child_hash,
+	                     cpg_object_get_id (object));
+}
+
+static void
+register_object (CpgGroup  *group,
+                 CpgObject *object)
+{
+	g_signal_connect_swapped (object,
+	                          "tainted",
+	                          G_CALLBACK (cpg_object_taint),
+	                          group);
+
+	g_signal_connect (object,
+	                  "notify::id",
+	                  G_CALLBACK (update_object_id),
+	                  group);
+
+	register_id (group, object);
+}
+
+static gboolean
+cpg_group_add_impl (CpgGroup  *group,
+                    CpgObject *object)
+{
+	CpgObject *other = g_hash_table_lookup (group->priv->child_hash,
+	                                        cpg_object_get_id (object));
+
+	if (other == object)
+	{
+		return FALSE;
+	}
+
+	group->priv->children = g_slist_append (group->priv->children,
+	                                        g_object_ref (object));
+
+	register_object (group, object);
+
+	if (CPG_IS_LINK (object))
+	{
+		_cpg_link_resolve_actions (CPG_LINK (object));
+	}
+
+	cpg_object_taint (CPG_OBJECT (group));
+	return TRUE;
+}
+
+static void
+remove_object (CpgGroup  *group,
+               CpgObject *object)
+{
+	unregister_object (group, object);
+	g_object_unref (object);
+}
+
+static gboolean
+cpg_group_remove_impl (CpgGroup  *group,
+                       CpgObject *object)
+{
+	if (object == group->priv->proxy)
+	{
+		return set_proxy (group, NULL);
+	}
+
+	GSList *item = g_slist_find (group->priv->children, object);
+
+	if (item)
+	{
+		group->priv->children = g_slist_remove_link (group->priv->children,
+		                                             item);
+
+		remove_object (group, object);
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+static void
+cpg_group_cpg_clear (CpgObject *object)
+{
+	CpgGroup *group = CPG_GROUP (object);
+
+	set_proxy (group, NULL);
+
+	GSList *children = g_slist_copy (group->priv->children);
+	GSList *child;
+
+	for (child = children; child; child = g_slist_next (child))
+	{
+		cpg_group_remove (group, child->data);
+	}
+
+	g_slist_free (children);
+
+	CPG_OBJECT_CLASS (cpg_group_parent_class)->clear (object);
 }
 
 static void
@@ -323,6 +527,10 @@ cpg_group_class_init (CpgGroupClass *klass)
 	cpg_class->reset_cache = cpg_group_cpg_reset_cache;
 	cpg_class->evaluate = cpg_group_cpg_evaluate;
 	cpg_class->copy = cpg_group_cpg_copy;
+	cpg_class->clear = cpg_group_cpg_clear;
+
+	klass->add = cpg_group_add_impl;
+	klass->remove = cpg_group_remove_impl;
 
 	g_type_class_add_private (object_class, sizeof(CpgGroupPrivate));
 
@@ -345,6 +553,11 @@ static void
 cpg_group_init (CpgGroup *self)
 {
 	self->priv = CPG_GROUP_GET_PRIVATE (self);
+
+	self->priv->child_hash = g_hash_table_new_full (g_str_hash,
+	                                                g_str_equal,
+	                                                (GDestroyNotify)g_free,
+	                                                NULL);
 }
 
 /**
@@ -401,16 +614,14 @@ cpg_group_add (CpgGroup  *group,
 	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 
-	if (g_slist_find (group->priv->children, object))
+	if (CPG_GROUP_GET_CLASS (group)->add)
+	{
+		return CPG_GROUP_GET_CLASS (group)->add (group, object);
+	}
+	else
 	{
 		return FALSE;
 	}
-
-	group->priv->children = g_slist_append (group->priv->children,
-	                                        g_object_ref (object));
-
-	cpg_object_taint (CPG_OBJECT (group));
-	return TRUE;
 }
 
 /**
@@ -430,20 +641,9 @@ cpg_group_remove (CpgGroup  *group,
 	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 
-	if (object == group->priv->proxy)
+	if (CPG_GROUP_GET_CLASS (group)->remove)
 	{
-		return set_proxy (group, NULL);
-	}
-
-	GSList *item = g_slist_find (group->priv->children, object);
-
-	if (item)
-	{
-		group->priv->children = g_slist_remove_link (group->priv->children,
-		                                             item);
-
-		g_object_unref (object);
-		return TRUE;
+		return CPG_GROUP_GET_CLASS (group)->remove (group, object);
 	}
 	else
 	{
@@ -488,6 +688,15 @@ cpg_group_get_proxy (CpgGroup *group)
 	return group->priv->proxy;
 }
 
+/**
+ * cpg_group_foreach:
+ * @group: A #CpgGroup
+ * @func: A #GFunc
+ * @data: User data
+ * 
+ * Call @func for each child object in the group.
+ *
+ **/
 void
 cpg_group_foreach (CpgGroup *group,
                    GFunc     func,
@@ -498,3 +707,23 @@ cpg_group_foreach (CpgGroup *group,
 	g_slist_foreach (group->priv->children, func, data);
 }
 
+/**
+ * cpg_group_get_child:
+ * @group: A #CpgGroup
+ * @name: The child name
+ * 
+ * Get a child from the group by name.
+ *
+ * Returns: A #CpgObject
+ *
+ **/
+CpgObject *
+cpg_group_get_child (CpgGroup    *group,
+                     gchar const *name)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+
+	return g_hash_table_lookup (group->priv->child_hash,
+	                            name);
+}

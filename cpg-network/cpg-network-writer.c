@@ -371,7 +371,7 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	write_config (doc, network, nnetwork);
 
 	// Globals
-	GSList *properties = cpg_object_get_properties (cpg_network_get_globals (network));
+	GSList *properties = cpg_object_get_properties (CPG_OBJECT (network));
 
 	if (properties)
 	{
@@ -418,21 +418,22 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	g_slist_free (list);
 
 	// Generate state, relay and link nodes
-	for (item = cpg_network_get_states (network); item; item = g_slist_next (item))
-	{
-		if (CPG_IS_RELAY (item->data))
-		{
-			relay_to_xml (doc, nnetwork, CPG_RELAY (item->data));
-		}
-		else if (CPG_IS_STATE (item->data))
-		{
-			state_to_xml (doc, nnetwork, CPG_STATE (item->data));
-		}
-	}
+	GSList const *children = cpg_group_get_children (CPG_GROUP (network));
 
-	for (item = cpg_network_get_links (network); item; item = g_slist_next (item))
+	while (children)
 	{
-		link_to_xml (doc, nnetwork, CPG_LINK (item->data));
+		if (CPG_IS_RELAY (children->data))
+		{
+			relay_to_xml (doc, nnetwork, children->data);
+		}
+		else if (CPG_IS_STATE (children->data))
+		{
+			state_to_xml (doc, nnetwork, children->data);
+		}
+		else if (CPG_IS_LINK (children->data))
+		{
+			link_to_xml (doc, nnetwork, children->data);
+		}
 	}
 
 	write_functions (network, doc, nnetwork);

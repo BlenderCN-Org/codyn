@@ -70,21 +70,21 @@ void                 cpg_integrator_evaluate        (CpgIntegrator *integrator,
                                                      gdouble        t,
                                                      gdouble        timestep);
 
-void				 cpg_integrator_reset           (CpgIntegrator *integrator,
+void                 cpg_integrator_reset           (CpgIntegrator *integrator,
                                                      GSList const  *state);
 
-gchar const	        *cpg_integrator_get_name        (CpgIntegrator *integrator);
+gchar const         *cpg_integrator_get_name        (CpgIntegrator *integrator);
 
 gdouble              cpg_integrator_get_time        (CpgIntegrator *integrator);
 
 
 gdouble              cpg_integrator_state_get_update   (CpgIntegratorState *state);
-CpgProperty			*cpg_integrator_state_get_property (CpgIntegratorState *state);
+CpgProperty         *cpg_integrator_state_get_property (CpgIntegratorState *state);
 
 void                 cpg_integrator_state_set_update   (CpgIntegratorState *state,
                                                         gdouble             value);
 
-CPG_FORWARD_DECL (CpgNetwork) *cpg_integrator_get_network (CpgIntegrator *integrator);
+CpgObject           *cpg_integrator_get_object        (CpgIntegrator *integrator);
 
 G_END_DECLS
 

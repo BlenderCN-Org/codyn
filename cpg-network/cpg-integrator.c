@@ -1,5 +1,4 @@
 #include "cpg-integrator.h"
-#include "cpg-network.h"
 #include "cpg-ref-counted-private.h"
 
 /**
@@ -20,7 +19,7 @@ enum
 {
 	PROP_0,
 
-	PROP_NETWORK,
+	PROP_OBJECT,
 	PROP_TIME
 };
 
@@ -43,7 +42,7 @@ struct _CpgIntegratorState
 
 struct _CpgIntegratorPrivate
 {
-	CpgNetwork *network;
+	CpgObject *object;
 
 	CpgProperty *property_time;
 	CpgProperty *property_timestep;
@@ -59,14 +58,14 @@ GType
 cpg_integrator_state_get_type (void)
 {
 	static GType type_id = 0;
-	
+
 	if (G_UNLIKELY (type_id == 0))
 	{
 		type_id = g_boxed_type_register_static ("CpgIntegratorState",
 		                                        cpg_ref_counted_ref,
 		                                        cpg_ref_counted_unref);
 	}
-	
+
 	return type_id;
 }
 
@@ -80,7 +79,7 @@ cpg_integrator_state_free (CpgIntegratorState *state)
 /**
  * cpg_integrator_state_new:
  * @property: A #CpgProperty
- * 
+ *
  * Create a new integrator state.
  *
  * Returns: A #CpgIntegratorState
@@ -102,10 +101,10 @@ cpg_integrator_finalize (GObject *object)
 {
 	CpgIntegrator *self = CPG_INTEGRATOR (object);
 
-	if (self->priv->network)
+	if (self->priv->object)
 	{
-		g_object_remove_weak_pointer (G_OBJECT (self->priv->network),
-		                              (gpointer *)&(self->priv->network));
+		g_object_remove_weak_pointer (G_OBJECT (self->priv->object),
+		                              (gpointer *)&(self->priv->object));
 	}
 
 	g_slist_free (self->priv->state);
@@ -115,22 +114,26 @@ cpg_integrator_finalize (GObject *object)
 }
 
 static void
-cpg_integrator_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+cpg_integrator_set_property (GObject      *object,
+                             guint         prop_id,
+                             const GValue *value,
+                             GParamSpec   *pspec)
 {
 	CpgIntegrator *self = CPG_INTEGRATOR (object);
-	
+
 	switch (prop_id)
 	{
-		case PROP_NETWORK:
-			if (self->priv->network)
+		case PROP_OBJECT:
+			if (self->priv->object)
 			{
-				g_object_remove_weak_pointer (G_OBJECT (self->priv->network),
-				                              (gpointer *)&(self->priv->network));
+				g_object_remove_weak_pointer (G_OBJECT (self->priv->object),
+				                              (gpointer *)&(self->priv->object));
 			}
 
-			self->priv->network = CPG_NETWORK (g_value_get_object (value));
-			g_object_add_weak_pointer (G_OBJECT (self->priv->network),
-			                           (gpointer *)&(self->priv->network));
+			self->priv->object = CPG_OBJECT (g_value_get_object (value));
+
+			g_object_add_weak_pointer (G_OBJECT (self->priv->object),
+			                           (gpointer *)&(self->priv->object));
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -139,14 +142,17 @@ cpg_integrator_set_property (GObject *object, guint prop_id, const GValue *value
 }
 
 static void
-cpg_integrator_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+cpg_integrator_get_property (GObject    *object,
+                             guint       prop_id,
+                             GValue     *value,
+                             GParamSpec *pspec)
 {
 	CpgIntegrator *self = CPG_INTEGRATOR (object);
-	
+
 	switch (prop_id)
 	{
-		case PROP_NETWORK:
-			g_value_set_object (value, self->priv->network);
+		case PROP_OBJECT:
+			g_value_set_object (value, self->priv->object);
 		break;
 		case PROP_TIME:
 			g_value_set_double (value, cpg_property_get_value (self->priv->property_time));
@@ -188,19 +194,7 @@ cpg_integrator_run_impl (CpgIntegrator *integrator,
 static void
 reset_cache (CpgIntegrator *integrator)
 {
-	g_slist_foreach (cpg_network_get_states (integrator->priv->network),
-	                 (GFunc)cpg_object_reset_cache,
-	                 NULL);
-
-	g_slist_foreach (cpg_network_get_links (integrator->priv->network),
-	                 (GFunc)cpg_object_reset_cache,
-	                 NULL);
-	
-	cpg_object_reset_cache (cpg_network_get_globals (integrator->priv->network));
-
-	g_slist_foreach (cpg_network_get_functions (integrator->priv->network),
-	                 (GFunc)cpg_object_reset_cache,
-	                 NULL);
+	cpg_object_reset_cache (integrator->priv->object);
 }
 
 static gdouble
@@ -228,7 +222,7 @@ cpg_integrator_constructor (GType                  type,
 
 	CpgIntegrator *integrator = CPG_INTEGRATOR (ret);
 	CpgIntegratorClass *klass = CPG_INTEGRATOR_GET_CLASS (integrator);
-	
+
 	if (!klass->step || klass->step == cpg_integrator_step_impl)
 	{
 		g_critical ("Subclasses of CpgIntegrator MUST implement the `step' function");
@@ -282,7 +276,7 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 
 	object_class->constructor = cpg_integrator_constructor;
 	object_class->finalize = cpg_integrator_finalize;
-	
+
 	object_class->set_property = cpg_integrator_set_property;
 	object_class->get_property = cpg_integrator_get_property;
 
@@ -291,17 +285,17 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 	klass->reset = cpg_integrator_reset_impl;
 
 	/**
-	 * CpgIntegrator:network:
+	 * CpgIntegrator:object:
 	 *
-	 * The network
+	 * The object to integrate
 	 *
 	 **/
 	g_object_class_install_property (object_class,
-	                                 PROP_NETWORK,
-	                                 g_param_spec_object ("network",
-	                                                      "Network",
-	                                                      "Network",
-	                                                      CPG_TYPE_NETWORK,
+	                                 PROP_OBJECT,
+	                                 g_param_spec_object ("object",
+	                                                      "Object",
+	                                                      "Object",
+	                                                      CPG_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE));
 
 	/**
@@ -391,40 +385,7 @@ cpg_integrator_init (CpgIntegrator *self)
 static void
 simulation_step (CpgIntegrator *integrator)
 {
-	GSList *all = cpg_network_get_states (integrator->priv->network);
-	GList *states = NULL;
-	GList *laststate = NULL;
-
-	/* Evaluate all the relays, then the states */
-	while (all)
-	{
-		CpgObject *obj = all->data;
-		
-		if (CPG_IS_RELAY (obj))
-		{
-			cpg_object_evaluate (obj);
-		}
-		else
-		{
-			states = g_list_prepend (states, obj);
-
-			if (!states->next)
-			{
-				laststate = states;
-			}
-		}
-
-		all = g_slist_next (all);
-	}
-
-	/* Evaluate states */
-	while (laststate)
-	{
-		cpg_object_evaluate (CPG_OBJECT (laststate->data));
-		laststate = g_list_previous (laststate);
-	}
-
-	g_list_free (states);
+	cpg_object_evaluate (integrator->priv->object);
 
 	GSList *state = integrator->priv->state;
 
@@ -445,8 +406,8 @@ simulation_step (CpgIntegrator *integrator)
  * @from: The time at which to start integrating
  * @timestep: The timestep to use for integration
  * @to: The time until which to run the integration
- * 
- * Integrate the network for a certain period of time.
+ *
+ * Integrate the object for a certain period of time.
  *
  **/
 void
@@ -458,7 +419,6 @@ cpg_integrator_run (CpgIntegrator *integrator,
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
 	g_return_if_fail (from < to);
 	g_return_if_fail (timestep > 0);
-	g_return_if_fail (cpg_network_get_compiled (integrator->priv->network));
 
 	if (CPG_INTEGRATOR_GET_CLASS (integrator)->run)
 	{
@@ -476,7 +436,7 @@ cpg_integrator_run (CpgIntegrator *integrator,
  * @state: A #GSList of #CpgIntegratorState
  * @t: The time at which to perform the integration step
  * @timestep: The timestep with which to perform the integration step
- * 
+ *
  * Perform a single integration step. Use #cpg_integrator_run if you want to
  * run the integration for a period of time.
  *
@@ -490,7 +450,6 @@ cpg_integrator_step (CpgIntegrator *integrator,
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), 0);
 	g_return_val_if_fail (timestep > 0, 0);
-	g_return_val_if_fail (cpg_network_get_compiled (integrator->priv->network), 0);
 
 	cpg_property_set_value (integrator->priv->property_time, t);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
@@ -499,30 +458,30 @@ cpg_integrator_step (CpgIntegrator *integrator,
 }
 
 /**
- * cpg_integrator_get_network:
+ * cpg_integrator_get_object:
  * @integrator: A #CpgIntegrator
- * 
- * Get the network associated with the integrator.
  *
- * Returns: A #CpgNetwork
+ * Get the object associated with the integrator.
+ *
+ * Returns: A #CpgObject
  *
  **/
-CpgNetwork *
-cpg_integrator_get_network (CpgIntegrator *integrator)
+CpgObject *
+cpg_integrator_get_object (CpgIntegrator *integrator)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), NULL);
 
-	return integrator->priv->network;
+	return integrator->priv->object;
 }
 
 /**
  * cpg_integrator_evaluate:
  * @integrator: A #CpgIntegrator
  * @state: A #GSList of #CpgIntegratorState
- * @t: The time at which to evaluate the network
+ * @t: The time at which to evaluate the object
  * @timestep: The timestep with which the current step is evaluating
- * 
- * Evaluate the system of equations comprising the network. This is a utility
+ *
+ * Evaluate the system of equations comprising the object. This is a utility
  * function for integrator implementations. Call this function to calculate
  * all the states. After this function completes, the update values for the
  * states can be found (@see #cpg_integrator_state_get_update)
@@ -547,8 +506,8 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
 /**
  * cpg_integrator_get_time:
  * @integrator: A #CpgIntegrator
- * 
- * Get the current time at which the network is being integrated.
+ *
+ * Get the current time at which the object is being integrated.
  *
  * Returns: the current integration time
  *
@@ -565,8 +524,9 @@ cpg_integrator_get_time	(CpgIntegrator *integrator)
  * cpg_integrator_reset:
  * @integrator: A #CpgIntegrator
  * @state: A list of #CpgIntegratorState
- * 
- * Reset the integrator. This is usually called from #cpg_network_reset.
+ *
+ * Reset the integrator. This is usually called from #cpg_object_reset on the
+ * main network.
  *
  **/
 void
@@ -581,7 +541,7 @@ cpg_integrator_reset (CpgIntegrator *integrator,
 /**
  * cpg_integrator_state_get_update:
  * @state: A #CpgIntegratorState
- * 
+ *
  * Get the update value for the state.
  *
  * Returns: the update value
@@ -597,7 +557,7 @@ cpg_integrator_state_get_update (CpgIntegratorState *state)
  * cpg_integrator_state_set_update:
  * @state: A # CpgIntegratorState
  * @value: State update value
- * 
+ *
  * Set the state update value.
  *
  **/
@@ -611,7 +571,7 @@ cpg_integrator_state_set_update	(CpgIntegratorState *state,
 /**
  * cpg_integrator_state_get_property:
  * @state: A #CpgIntegratorState
- * 
+ *
  * Get the #CpgProperty for the state.
  *
  * Returns: A #CpgProperty
@@ -626,7 +586,7 @@ cpg_integrator_state_get_property (CpgIntegratorState *state)
 /**
  * cpg_integrator_get_name:
  * @integrator: A #CpgIntegrator
- * 
+ *
  * The integrator name.
  *
  * Returns: the integrator name

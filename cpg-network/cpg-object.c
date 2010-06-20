@@ -358,6 +358,32 @@ cpg_object_has_property_impl (CpgObject *object,
 }
 
 static gboolean
+remove_property (CpgObject   *object,
+                 CpgProperty *property,
+                 gboolean     check_unuse)
+{
+	if (!_cpg_property_unuse (property) && check_unuse)
+	{
+		_cpg_property_use (property);
+		return FALSE;
+	}
+
+	object->priv->properties = g_slist_remove (object->priv->properties,
+	                                           property);
+
+	g_hash_table_remove (object->priv->property_hash,
+	                     cpg_property_get_name (property));
+
+	g_signal_handlers_disconnect_by_func (property,
+	                                      cpg_object_taint,
+	                                      object);
+	g_object_unref (property);
+
+	cpg_object_taint (object);
+	return TRUE;
+}
+
+static gboolean
 cpg_object_remove_property_impl (CpgObject    *object,
                                  gchar const  *name,
                                  GError      **error)
@@ -371,7 +397,7 @@ cpg_object_remove_property_impl (CpgObject    *object,
 
 	if (property)
 	{
-		if (!_cpg_property_unuse (property))
+		if (!remove_property (object, property, TRUE))
 		{
 			if (error)
 			{
@@ -382,22 +408,8 @@ cpg_object_remove_property_impl (CpgObject    *object,
 				             name);
 			}
 
-			_cpg_property_use (property);
 			return FALSE;
 		}
-
-		object->priv->properties = g_slist_remove (object->priv->properties,
-		                                           property);
-
-		g_hash_table_remove (object->priv->property_hash,
-		                     cpg_property_get_name (property));
-
-		g_signal_handlers_disconnect_by_func (property,
-		                                      cpg_object_taint,
-		                                      object);
-		g_object_unref (property);
-
-		cpg_object_taint (object);
 	}
 	else
 	{
@@ -410,6 +422,7 @@ cpg_object_remove_property_impl (CpgObject    *object,
 			             name,
 			             cpg_object_get_id (object));
 		}
+
 		return FALSE;
 	}
 
@@ -454,6 +467,57 @@ cpg_object_add_property_impl (CpgObject   *object,
 	return property;
 }
 
+static gint
+compare_property_dependencies (CpgProperty *prop1,
+                               CpgProperty *prop2)
+{
+	CpgExpression *e1 = cpg_property_get_expression (prop1);
+	CpgExpression *e2 = cpg_property_get_expression (prop2);
+
+	GSList *d1 = (GSList *)cpg_expression_get_dependencies (e1);
+	GSList *d2 = (GSList *)cpg_expression_get_dependencies (e2);
+
+	if (g_slist_find (d1, prop2) != NULL)
+	{
+		return 1;
+	}
+	else if (g_slist_find (d2, prop1) != NULL)
+	{
+		return -1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+static void
+cpg_object_clear_impl (CpgObject *object)
+{
+	GSList *props = g_slist_copy (object->priv->properties);
+	GSList *item;
+
+	props = g_slist_sort (props, (GCompareFunc)compare_property_dependencies);
+
+	for (item = props; item; item = g_slist_next (item))
+	{
+		cpg_object_remove_property (object,
+		                            cpg_property_get_name (item->data),
+		                            NULL);
+	}
+
+	g_slist_free (props);
+}
+
+static void
+cpg_object_taint_impl (CpgObject *object)
+{
+	g_slist_free (object->priv->actors);
+	object->priv->actors = NULL;
+
+	g_signal_emit (object, object_signals[TAINTED], 0);
+}
+
 static void
 cpg_object_class_init (CpgObjectClass *klass)
 {
@@ -474,6 +538,9 @@ cpg_object_class_init (CpgObjectClass *klass)
 	klass->has_property = cpg_object_has_property_impl;
 	klass->remove_property = cpg_object_remove_property_impl;
 	klass->add_property = cpg_object_add_property_impl;
+
+	klass->clear = cpg_object_clear_impl;
+	klass->taint = cpg_object_taint_impl;
 
 	/**
 	 * CpgObject:id:
@@ -990,10 +1057,21 @@ cpg_object_taint (CpgObject *object)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
 
-	g_slist_free (object->priv->actors);
-	object->priv->actors = NULL;
+	if (CPG_OBJECT_GET_CLASS (object)->taint)
+	{
+		CPG_OBJECT_GET_CLASS (object)->taint (object);
+	}
+}
 
-	g_signal_emit (object, object_signals[TAINTED], 0);
+void
+cpg_object_clear (CpgObject *object)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+
+	if (CPG_OBJECT_GET_CLASS (object)->clear)
+	{
+		CPG_OBJECT_GET_CLASS (object)->clear (object);
+	}
 }
 
 CpgObject *

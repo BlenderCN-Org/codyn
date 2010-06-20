@@ -259,7 +259,7 @@ new_object (GType       gtype,
 		}
 		else
 		{
-			cpg_network_add_object (info->network, object);
+			cpg_group_add (CPG_GROUP (info->network), object);
 		}
 		
 		g_object_unref (object);
@@ -276,7 +276,7 @@ parse_globals (xmlDocPtr   doc,
                xmlNodePtr  node,
                ParseInfo  *info)
 {
-	return parse_object_properties (cpg_network_get_globals (info->network),
+	return parse_object_properties (CPG_OBJECT (info->network),
 	                                node,
 	                                info);
 }
@@ -711,28 +711,37 @@ parse_link (xmlDocPtr   doc,
 			return FALSE;
 		}
 	
-		CpgObject *fromobj = cpg_network_get_object (info->network, (gchar const *)from);
-		CpgObject *toobj = cpg_network_get_object (info->network, (gchar const *)to);
+		CpgObject *fromobj = cpg_group_get_child (CPG_GROUP (info->network),
+		                                          (gchar const *)from);
+
+		CpgObject *toobj = cpg_group_get_child (CPG_GROUP (info->network),
+		                                         (gchar const *)to);
 		gboolean ret = TRUE;
 	
 		if (!fromobj)
 		{
-			cpg_debug_error ("From object %s not found link %s", from, cpg_object_get_id (object));
+			cpg_debug_error ("From object %s not found link %s",
+			                 from,
+			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
 		else if (CPG_IS_LINK (fromobj))
 		{
-			cpg_debug_error ("From object cannot be a link (%s)", cpg_object_get_id (object));
+			cpg_debug_error ("From object cannot be a link (%s)",
+			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
 		else if (!toobj)
 		{
-			cpg_debug_error ("Target object %s not found for link %s", to, cpg_object_get_id (object));
+			cpg_debug_error ("Target object %s not found for link %s",
+			                 to,
+			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
 		else if (CPG_IS_LINK (toobj))
 		{
-			cpg_debug_error ("Target object cannot be a link (%s)", cpg_object_get_id (object));
+			cpg_debug_error ("Target object cannot be a link (%s)",
+			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
 
@@ -745,7 +754,12 @@ parse_link (xmlDocPtr   doc,
 			return FALSE;
 		}
 	
-		g_object_set (G_OBJECT (object), "from", fromobj, "to", toobj, NULL);
+		g_object_set (G_OBJECT (object),
+		              "from",
+		              fromobj,
+		              "to",
+		              toobj,
+		              NULL);
 	}
 	
 	info->object = object;
@@ -758,7 +772,7 @@ parse_link (xmlDocPtr   doc,
 	
 	if (!info->template)
 	{
-		cpg_network_add_object (info->network, object);
+		cpg_group_add (CPG_GROUP (info->network), object);
 	}
 	else
 	{

@@ -27,6 +27,10 @@ struct _CpgGroup
 struct _CpgGroupClass
 {
 	CpgStateClass parent_class;
+
+	gboolean (*add)    (CpgGroup *group, CpgObject *object);
+	gboolean (*remove) (CpgGroup *group, CpgObject *object);
+	void     (*clear)  (CpgGroup *group);
 };
 
 GType     cpg_group_get_type         (void) G_GNUC_CONST;
@@ -34,20 +38,25 @@ GType     cpg_group_get_type         (void) G_GNUC_CONST;
 CpgGroup *cpg_group_new              (const gchar *id,
                                       CpgObject   *proxy);
 
-GSList const *cpg_group_get_children (CpgGroup  *group);
+GSList const *cpg_group_get_children (CpgGroup    *group);
 
-gboolean      cpg_group_add          (CpgGroup  *group,
-                                      CpgObject *object);
-gboolean      cpg_group_remove       (CpgGroup  *group,
-                                      CpgObject *object);
+gboolean      cpg_group_add          (CpgGroup    *group,
+                                      CpgObject   *object);
+gboolean      cpg_group_remove       (CpgGroup    *group,
+                                      CpgObject   *object);
 
-gboolean      cpg_group_set_proxy    (CpgGroup  *group,
-                                      CpgObject *object);
-CpgObject    *cpg_group_get_proxy    (CpgGroup  *group);
+gboolean      cpg_group_set_proxy    (CpgGroup    *group,
+                                      CpgObject   *object);
+CpgObject    *cpg_group_get_proxy    (CpgGroup    *group);
 
-void          cpg_group_foreach      (CpgGroup *group,
-                                      GFunc     func,
-                                      gpointer  data);
+void          cpg_group_foreach      (CpgGroup    *group,
+                                      GFunc        func,
+                                      gpointer     data);
+
+CpgObject    *cpg_group_get_child    (CpgGroup    *group,
+                                      const gchar *name);
+
+void          cpg_group_clear        (CpgGroup    *group);
 
 G_END_DECLS
 
