@@ -689,7 +689,7 @@ cpg_group_init (CpgGroup *self)
  * cpg_group_new:
  * @id: the group id
  * @proxy: A #CpgObject
- * 
+ *
  * Create a new group.
  *
  * Returns: A #CpgGroup
@@ -708,7 +708,7 @@ cpg_group_new (gchar const *id,
 /**
  * cpg_group_get_children:
  * @group: A #CpgGroup
- * 
+ *
  * Get a list of the children in @group.
  *
  * Returns: A #GSList of #CpgObject
@@ -726,7 +726,7 @@ cpg_group_get_children (CpgGroup *group)
  * cpg_group_add:
  * @group: A #CpgGroup
  * @object: A #CpgObject
- * 
+ *
  * Add a child object to the group.
  *
  * Returns: %TRUE if the child could be successfully added, %FALSE otherwise
@@ -753,7 +753,7 @@ cpg_group_add (CpgGroup  *group,
  * cpg_group_remove:
  * @group: A #CpgGroup
  * @object: A #CpgObject
- * 
+ *
  * Remove a child object from the group.
  *
  * Returns: %TRUE if the child was successfully removed, %FALSE otherwise
@@ -780,7 +780,7 @@ cpg_group_remove (CpgGroup  *group,
  * cpg_group_set_proxy:
  * @group: A #CpgGroup
  * @proxy: A #CpgObject
- * 
+ *
  * Set the proxy object of @group to @proxy.
  *
  * Returns: %TRUE if the proxy could be successfully changed, %FALSE otherwise
@@ -799,7 +799,7 @@ cpg_group_set_proxy (CpgGroup  *group,
 /**
  * cpg_group_get_proxy:
  * @group: A #CpgGroup
- * 
+ *
  * Get the proxy object of @group.
  *
  * Returns: A #CpgObject
@@ -818,7 +818,7 @@ cpg_group_get_proxy (CpgGroup *group)
  * @group: A #CpgGroup
  * @func: A #GFunc
  * @data: User data
- * 
+ *
  * Call @func for each child object in the group.
  *
  **/
@@ -836,7 +836,7 @@ cpg_group_foreach (CpgGroup *group,
  * cpg_group_get_child:
  * @group: A #CpgGroup
  * @name: The child name
- * 
+ *
  * Get a child from the group by name.
  *
  * Returns: A #CpgObject
