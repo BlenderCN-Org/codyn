@@ -2,15 +2,13 @@
 #define __CPG_INSTRUCTIONS_H__
 
 #include <glib.h>
-#include "cpg-math.h"
-#include "cpg-utils.h"
+#include <cpg-network/cpg-math.h>
+#include <cpg-network/cpg-property.h>
+#include <cpg-network/cpg-function.h>
 
 G_BEGIN_DECLS
 
 /* Forward declaration */
-CPG_FORWARD_DECL (CpgProperty);
-CPG_FORWARD_DECL (CpgFunction);
-
 typedef struct _CpgInstruction CpgInstruction;
 
 /**
@@ -54,7 +52,7 @@ typedef struct
 {
 	CpgInstruction parent;
 
-	CPG_FORWARD_DECL (CpgFunction) *function;
+	CpgFunction *function;
 
 	gint arguments;
 } CpgInstructionCustomFunction;
@@ -79,7 +77,7 @@ struct _CpgInstructionProperty
 {
 	CpgInstruction parent;
 
-	CPG_FORWARD_DECL (CpgProperty) *property;
+	CpgProperty *property;
 	CpgInstructionBinding binding;
 };
 
@@ -88,16 +86,16 @@ CpgInstruction *cpg_instruction_function_new        (guint        id,
                                                      gint         arguments,
                                                      gboolean     variable);
 
-CpgInstruction *cpg_instruction_custom_function_new (CPG_FORWARD_DECL (CpgFunction) *function,
-                                                     gint                            arguments);
+CpgInstruction *cpg_instruction_custom_function_new (CpgFunction *function,
+                                                     gint         arguments);
 
 CpgInstruction *cpg_instruction_number_new          (gdouble      value);
 CpgInstruction *cpg_instruction_operator_new        (guint        id,
                                                      gchar const *name,
                                                      gint         arguments);
 
-CpgInstruction *cpg_instruction_property_new        (CPG_FORWARD_DECL (CpgProperty) *property,
-                                                     CpgInstructionBinding           binding);
+CpgInstruction *cpg_instruction_property_new        (CpgProperty           *property,
+                                                     CpgInstructionBinding  binding);
 
 CpgInstruction *cpg_instruction_copy                (CpgInstruction *instruction);
 void            cpg_instruction_free                (CpgInstruction *instruction);
