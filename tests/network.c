@@ -10,9 +10,11 @@ static gchar simple_xml[] = ""
 "  <network>\n"
 "    <state id=\"state\">\n"
 "      <property name=\"x\" integrated=\"yes\" in=\"yes\" out=\"yes\" once=\"yes\">0</property>\n"
+"      <property name=\"y\">0</property>\n"
 "    </state>\n"
 "    <link id=\"link\" from=\"state\" to=\"state\">\n"
 "      <action target=\"x\">1</action>\n"
+"      <action target=\"y\">t</action>"
 "    </link>\n"
 "  </network>\n"
 "</cpg>\n";
@@ -129,6 +131,8 @@ test_load ()
 	                             CPG_PATH_PROPERTY, "state.x",
 	                             CPG_PATH_OBJECT, "link",
 	                             CPG_PATH_ACTION, "link.x",
+	                             CPG_PATH_PROPERTY, "state.y",
+	                             CPG_PATH_ACTION, "link.y",
 	                             NULL);
 
 	CpgProperty *property = cpg_group_find_property (CPG_GROUP (network),
@@ -185,6 +189,18 @@ test_integrate ()
 
 	test_integrate_network (simple_xml,
 	                        "state.x",
+	                        0.1,
+	                        values,
+	                        G_N_ELEMENTS (values));
+}
+
+static void
+test_direct ()
+{
+	gdouble values[] = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+
+	test_integrate_network (simple_xml,
+	                        "state.y",
 	                        0.1,
 	                        values,
 	                        G_N_ELEMENTS (values));
@@ -273,6 +289,7 @@ main (int   argc,
 
 	g_test_add_func ("/network/load", test_load);
 	g_test_add_func ("/network/integrate", test_integrate);
+	g_test_add_func ("/network/direct", test_direct);
 	g_test_add_func ("/network/reset", test_reset);
 
 	g_test_add_func ("/network/group/load", test_group_load);

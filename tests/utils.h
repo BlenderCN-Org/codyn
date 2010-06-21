@@ -4,7 +4,7 @@
 #include <glib.h>
 #include <math.h>
 
-#define cpg_assert_tol(real, expect) g_assert (fabs ((expect) - (real)) < 0.00000000001)
+#define cpg_assert_tol(real, expect) g_assert_cmpfloat (fabs((real) - (expect)), <, 0.00000000001)
 
 #endif /* __TESTS_UTILS_H__ */
 
