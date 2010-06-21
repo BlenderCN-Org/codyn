@@ -14,8 +14,7 @@ struct _CpgPropertyPrivate
 	gchar *name;
 
 	CpgExpression *expression;
-	gboolean integrated;
-	CpgPropertyHint hint;
+	CpgPropertyFlags flags;
 
 	gdouble update;
 	CpgObject *object;
@@ -28,8 +27,7 @@ enum
 	PROP_0,
 	PROP_NAME,
 	PROP_OBJECT,
-	PROP_HINT,
-	PROP_INTEGRATED,
+	PROP_FLAGS,
 	PROP_EXPRESSION
 };
 
@@ -104,26 +102,14 @@ set_expression (CpgProperty *property,
 }
 
 static void
-set_integrated (CpgProperty *property,
-                gboolean     integrated)
+set_flags (CpgProperty      *property,
+           CpgPropertyFlags  flags)
 {
-	if (integrated != property->priv->integrated)
+	if (flags != property->priv->flags)
 	{
-		property->priv->integrated = integrated;
+		property->priv->flags = flags;
 
-		g_object_notify (G_OBJECT (property), "integrated");
-	}
-}
-
-static void
-set_hint (CpgProperty     *property,
-          CpgPropertyHint  hint)
-{
-	if (hint != property->priv->hint)
-	{
-		property->priv->hint = hint;
-
-		g_object_notify (G_OBJECT (property), "hint");
+		g_object_notify (G_OBJECT (property), "flags");
 	}
 }
 
@@ -144,11 +130,8 @@ cpg_property_set_property (GObject      *object,
 		case PROP_OBJECT:
 			set_object (self, g_value_get_object (value));
 		break;
-		case PROP_HINT:
-			set_hint (self, g_value_get_flags (value));
-		break;
-		case PROP_INTEGRATED:
-			set_integrated (self, g_value_get_boolean (value));
+		case PROP_FLAGS:
+			set_flags (self, g_value_get_flags (value));
 		break;
 		case PROP_EXPRESSION:
 			set_expression (self, g_value_get_object (value));
@@ -175,11 +158,8 @@ cpg_property_get_property (GObject    *object,
 		case PROP_OBJECT:
 			g_value_set_object (value, self->priv->object);
 		break;
-		case PROP_HINT:
-			g_value_set_flags (value, self->priv->hint);
-		break;
-		case PROP_INTEGRATED:
-			g_value_set_boolean (value, self->priv->integrated);
+		case PROP_FLAGS:
+			g_value_set_flags (value, self->priv->flags);
 		break;
 		case PROP_EXPRESSION:
 			g_value_set_object (value, self->priv->expression);
@@ -221,22 +201,13 @@ cpg_property_class_init (CpgPropertyClass *klass)
 
 
 	g_object_class_install_property (object_class,
-	                                 PROP_HINT,
-	                                 g_param_spec_flags ("hint",
-	                                                     "Hint",
-	                                                     "Hint",
-	                                                     CPG_TYPE_PROPERTY_HINT,
-	                                                     CPG_PROPERTY_HINT_NONE,
+	                                 PROP_FLAGS,
+	                                 g_param_spec_flags ("flags",
+	                                                     "Flags",
+	                                                     "Flags",
+	                                                     CPG_TYPE_PROPERTY_FLAGS,
+	                                                     CPG_PROPERTY_FLAG_NONE,
 	                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
-
-
-	g_object_class_install_property (object_class,
-	                                 PROP_INTEGRATED,
-	                                 g_param_spec_boolean ("integrated",
-	                                                       "Integrated",
-	                                                       "Integrated",
-	                                                       FALSE,
-	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 
 	g_object_class_install_property (object_class,
@@ -258,7 +229,7 @@ cpg_property_init (CpgProperty *self)
  * cpg_property_new:
  * @name: the property name
  * @expression: the value expression
- * @integrated: whether this property should be integated during the simulation
+ * @flags: the property flags
  * @object: the #CpgObject to which the property belongs
  *
  * Create a new property object. Property objects are assigned to #CpgObject
@@ -269,10 +240,10 @@ cpg_property_init (CpgProperty *self)
  *
  **/
 CpgProperty *
-cpg_property_new (gchar const  *name,
-                  gchar const  *expression,
-                  gboolean      integrated,
-                  CpgObject    *object)
+cpg_property_new (gchar const      *name,
+                  gchar const      *expression,
+                  CpgPropertyFlags  flags,
+                  CpgObject        *object)
 {
 	CpgExpression *expr;
 	CpgProperty *ret;
@@ -282,7 +253,7 @@ cpg_property_new (gchar const  *name,
 	ret = g_object_new (CPG_TYPE_PROPERTY,
 	                    "name", name,
 	                    "expression", expr,
-	                    "integrated", integrated,
+	                    "flags", flags,
 	                    "object", object,
 	                    NULL);
 
@@ -405,7 +376,9 @@ cpg_property_get_name (CpgProperty *property)
  * cpg_property_get_integrated:
  * @property: a #CpgProperty
  *
- * Get whether the property should be integrated during evaluation or not
+ * Get whether the property should be integrated during evaluation or not. This
+ * is a convenience function that simply checks if the
+ * CPG_PROPERTY_FLAG_INTEGRATED flag is set.
  *
  * Returns: %TRUE if the property will be integrated, %FALSE otherwise
  *
@@ -415,7 +388,7 @@ cpg_property_get_integrated (CpgProperty *property)
 {
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
 
-	return property->priv->integrated;
+	return property->priv->flags & CPG_PROPERTY_FLAG_INTEGRATED;
 }
 
 /**
@@ -423,7 +396,9 @@ cpg_property_get_integrated (CpgProperty *property)
  * @property: a #CpgProperty
  * @integrated: integrate the property
  *
- * Set whether the property should be integrated during evaluation or not
+ * Set whether the property should be integrated during evaluation or not. This
+ * is a convenience function that simply sets or unsets the
+ * CPG_PROPERTY_FLAG_INTEGRATED flag.
  *
  **/
 void
@@ -432,7 +407,14 @@ cpg_property_set_integrated (CpgProperty  *property,
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
-	set_integrated (property, integrated);
+	if (integrated)
+	{
+		cpg_property_add_flags (property, CPG_PROPERTY_FLAG_INTEGRATED);
+	}
+	else
+	{
+		cpg_property_remove_flags (property, CPG_PROPERTY_FLAG_INTEGRATED);
+	}
 }
 
 /**
@@ -448,7 +430,7 @@ cpg_property_reset_cache (CpgProperty *property)
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
 	/* Never reset the cache of something that is only initialized once */
-	if (!(property->priv->hint & CPG_PROPERTY_HINT_ONCE))
+	if (!(property->priv->flags & CPG_PROPERTY_FLAG_ONCE))
 	{
 		cpg_expression_reset_cache (property->priv->expression);
 	}
@@ -488,79 +470,78 @@ cpg_property_equal (CpgProperty *property,
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
 	g_return_val_if_fail (CPG_IS_PROPERTY (other), FALSE);
 
-	return property->priv->integrated == other->priv->integrated &&
-	       property->priv->hint == other->priv->hint &&
+	return property->priv->flags == other->priv->flags &&
 	       cpg_expression_equal (cpg_property_get_expression (property),
 	                             cpg_property_get_expression (other));
 }
 
 /**
- * cpg_property_get_hint:
+ * cpg_property_get_flags:
  * @property: A #CpgProperty
  * 
- * The property hint. The hint contains information on the type of property (
+ * The property flags. The flags contains information on the type of property (
  * such as in, or out).
  *
- * Returns: A #CpgPropertyHint
+ * Returns: A #CpgPropertyFlags
  *
  **/
-CpgPropertyHint
-cpg_property_get_hint (CpgProperty *property)
+CpgPropertyFlags
+cpg_property_get_flags (CpgProperty *property)
 {
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), CPG_PROPERTY_HINT_NONE);
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), CPG_PROPERTY_FLAG_NONE);
 
-	return property->priv->hint;
+	return property->priv->flags;
 }
 
 /**
- * cpg_property_set_hint:
+ * cpg_property_set_flags:
  * @property: A #CpgProperty
- * @hint: A #CpgPropertyHint
+ * @flags: A #CpgPropertyFlags
  * 
- * Set the property hint.
+ * Set the property flags.
  *
  **/
 void
-cpg_property_set_hint (CpgProperty     *property,
-                       CpgPropertyHint  hint)
+cpg_property_set_flags (CpgProperty     *property,
+                       CpgPropertyFlags  flags)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
-	set_hint (property, hint);
+	set_flags (property, flags);
 }
 
 /**
- * cpg_property_add_hint:
+ * cpg_property_add_flags:
  * @property: A #CpgProperty
- * @hint: A #CpgPropertyHint
+ * @flags: A #CpgPropertyFlags
  * 
- * Add a hint flag to the property hints.
+ * Add a flags flag to the property flagss.
  *
  **/
 void
-cpg_property_add_hint (CpgProperty     *property,
-                       CpgPropertyHint  hint)
+cpg_property_add_flags (CpgProperty     *property,
+                       CpgPropertyFlags  flags)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
-	set_hint (property, property->priv->hint | hint);
+	set_flags (property, property->priv->flags | flags);
 }
 
 /**
- * cpg_property_remove_hint:
+ * cpg_property_remove_flags:
  * @property: A #CpgProperty
- * @hint: A #CpgPropertyHint
+ * @flags: A #CpgPropertyFlags
  * 
- * Remove a hint flag from the property hints.
+ * Remove a flags flag from the property flagss.
  *
  **/
 void
-cpg_property_remove_hint (CpgProperty     *property,
-                          CpgPropertyHint  hint)
+cpg_property_remove_flags (CpgProperty     *property,
+                          CpgPropertyFlags  flags)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
-	set_hint (property, property->priv->hint & ~hint);
+	set_flags (property, property->priv->flags & ~flags);
 }
 
 CpgProperty *
@@ -572,10 +553,10 @@ _cpg_property_copy (CpgProperty *property)
 
 	ret = cpg_property_new (property->priv->name,
 	                        cpg_expression_get_as_string (property->priv->expression),
-	                        property->priv->integrated,
+	                        property->priv->flags,
 	                        NULL);
 
-	ret->priv->hint = property->priv->hint;
+	ret->priv->flags = property->priv->flags;
 	ret->priv->update = property->priv->update;
 
 	return ret;

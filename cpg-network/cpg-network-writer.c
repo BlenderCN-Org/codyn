@@ -1,7 +1,7 @@
 #include "cpg-network-writer.h"
 
 #include <libxml/tree.h>
-
+#include "cpg-enum-types.h"
 #include "cpg-function-polynomial.h"
 
 extern int xmlIndentTreeOutput;
@@ -98,6 +98,27 @@ templates_for_object (CpgObject *object,
 }
 
 static void
+export_flags (xmlNodePtr   node,
+              CpgProperty *property)
+{
+	CpgPropertyFlags flags = cpg_property_get_flags (property);
+	GFlagsClass *klass;
+	guint i;
+
+	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
+
+	for (i = 0; i < klass->n_values; ++i)
+	{
+		GFlagsValue *value = &(klass->values[i]);
+
+		if (flags & value->value)
+		{
+			xmlNewProp (node, (xmlChar *)value->value_nick, (xmlChar *)"yes");
+		}
+	}
+}
+
+static void
 properties_to_xml (xmlDocPtr     doc,
                    xmlNodePtr    parent,
                    CpgObject    *object,
@@ -128,25 +149,7 @@ properties_to_xml (xmlDocPtr     doc,
 		xmlNodePtr node = xmlNewDocNode (doc, NULL, (xmlChar *)"property", NULL);
 		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)cpg_property_get_name (property));
 
-		if (cpg_property_get_integrated (property))
-		{
-			xmlNewProp (node, (xmlChar *)"integrated", (xmlChar *)"yes");
-		}
-
-		if (cpg_property_get_hint (property) & CPG_PROPERTY_HINT_OUT)
-		{
-			xmlNewProp (node, (xmlChar *)"out", (xmlChar *)"yes");
-		}
-
-		if (cpg_property_get_hint (property) & CPG_PROPERTY_HINT_IN)
-		{
-			xmlNewProp (node, (xmlChar *)"in", (xmlChar *)"yes");
-		}
-
-		if (cpg_property_get_hint (property) & CPG_PROPERTY_HINT_ONCE)
-		{
-			xmlNewProp (node, (xmlChar *)"once", (xmlChar *)"yes");
-		}
+		export_flags (node, property);
 
 		xmlNodePtr text = xmlNewDocText (doc, (xmlChar *)cpg_expression_get_as_string (expression));
 

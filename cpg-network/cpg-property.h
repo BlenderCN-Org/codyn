@@ -20,11 +20,13 @@ typedef struct _CpgPropertyPrivate    CpgPropertyPrivate;
 
 typedef enum
 {
-	CPG_PROPERTY_HINT_NONE = 0,
-	CPG_PROPERTY_HINT_IN = 1 << 0,
-	CPG_PROPERTY_HINT_OUT = 1 << 1,
-	CPG_PROPERTY_HINT_ONCE = 1 << 2
-} CpgPropertyHint;
+	CPG_PROPERTY_FLAG_NONE = 0,
+	CPG_PROPERTY_FLAG_INTEGRATED = 1 << 0,
+	CPG_PROPERTY_FLAG_IN = 1 << 1,
+	CPG_PROPERTY_FLAG_OUT = 1 << 2,
+	CPG_PROPERTY_FLAG_ONCE = 1 << 3,
+	CPG_PROPERTY_FLAG_NO_DELAY = 1 << 4
+} CpgPropertyFlags;
 
 struct _CpgProperty
 {
@@ -45,7 +47,7 @@ GType cpg_property_get_type (void) G_GNUC_CONST;
 
 CpgProperty       *cpg_property_new                     (const gchar                  *name,
                                                          const gchar                  *expression,
-                                                         gboolean                      integrated,
+                                                         CpgPropertyFlags              flags,
                                                          CPG_FORWARD_DECL (CpgObject) *object);
 
 const gchar       *cpg_property_get_name                (CpgProperty        *property);
@@ -57,13 +59,13 @@ gboolean           cpg_property_get_integrated          (CpgProperty        *pro
 void               cpg_property_set_integrated          (CpgProperty        *property,
                                                          gboolean            integrated);
 
-CpgPropertyHint    cpg_property_get_hint                (CpgProperty        *property);
-void               cpg_property_set_hint                (CpgProperty        *property,
-                                                         CpgPropertyHint     hint);
-void               cpg_property_add_hint                (CpgProperty        *property,
-                                                         CpgPropertyHint     hint);
-void               cpg_property_remove_hint             (CpgProperty        *property,
-                                                         CpgPropertyHint     hint);
+CpgPropertyFlags   cpg_property_get_flags               (CpgProperty        *property);
+void               cpg_property_set_flags               (CpgProperty        *property,
+                                                         CpgPropertyFlags    flags);
+void               cpg_property_add_flags               (CpgProperty        *property,
+                                                         CpgPropertyFlags    flags);
+void               cpg_property_remove_flags            (CpgProperty        *property,
+                                                         CpgPropertyFlags    flags);
 void               cpg_property_reset_cache             (CpgProperty        *property);
 
 gdouble            cpg_property_get_value               (CpgProperty        *property);

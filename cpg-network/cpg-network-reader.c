@@ -12,6 +12,7 @@
 #include "cpg-debug.h"
 #include "cpg-integrators.h"
 #include "cpg-function-polynomial.h"
+#include "cpg-enum-types.h"
 
 typedef struct
 {
@@ -175,6 +176,70 @@ attribute_true (xmlNodePtr node, gchar const *name)
 }
 
 static gboolean
+extract_flags (ParseInfo        *info,
+               xmlNodePtr        node,
+               gchar const      *name,
+               CpgPropertyFlags *flags)
+{
+	GFlagsClass *klass;
+	guint i;
+
+	*flags = CPG_PROPERTY_FLAG_NONE;
+	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
+
+	for (i = 0; i < klass->n_values; ++i)
+	{
+		xmlChar *prop = xmlGetProp (node, (xmlChar *)klass->values[i].value_nick);
+
+		if (prop && g_ascii_strcasecmp ((gchar const *)prop, "yes") == 0)
+		{
+			*flags |= klass->values[i].value;
+		}
+
+		xmlFree (prop);
+	}
+
+	xmlChar *prop = xmlGetProp (node, (xmlChar *)"flags");
+	gboolean ret = TRUE;
+
+	if (prop)
+	{
+		gchar **parts = g_strsplit_set ((gchar const *)prop, ",| ", -1);
+		gchar **ptr = parts;
+
+		while (ptr && *ptr)
+		{
+			GFlagsValue *value = g_flags_get_value_by_nick (klass, *ptr);
+
+			if (!value)
+			{
+				ret = FALSE;
+
+				parser_failed (info,
+				               node,
+				               CPG_NETWORK_LOAD_ERROR_PROPERTY,
+				               "Invalid flag `%s' for `%s.%s'",
+				               *ptr,
+				               cpg_object_get_id (info->object),
+				               name);
+
+				break;
+			}
+
+			*flags |= value->value;
+			++ptr;
+		}
+
+		g_strfreev (parts);
+	}
+
+	xmlFree (prop);
+	g_type_class_unref (klass);
+
+	return ret;
+}
+
+static gboolean
 parse_properties (xmlDocPtr  doc,
                   GList     *nodes,
                   ParseInfo *info)
@@ -205,33 +270,17 @@ parse_properties (xmlDocPtr  doc,
 		}
 
 		CpgProperty *property;
+		CpgPropertyFlags flags;
+
+		if (!extract_flags (info, node, (gchar const *)name, &flags))
+		{
+			return FALSE;
+		}
 
 		property = cpg_object_add_property (info->object,
 		                                    (const gchar *)name,
 		                                    (const gchar *)expression,
-		                                    attribute_true (node, "integrated") ||
-		                                    attribute_true (node, "integrate"));
-
-		if (property)
-		{
-			if (attribute_true (node, "in"))
-			{
-				cpg_property_add_hint (property,
-				                       CPG_PROPERTY_HINT_IN);
-			}
-
-			if (attribute_true (node, "out"))
-			{
-				cpg_property_add_hint (property,
-				                       CPG_PROPERTY_HINT_OUT);
-			}
-
-			if (attribute_true (node, "once"))
-			{
-				cpg_property_add_hint (property,
-				                       CPG_PROPERTY_HINT_ONCE);
-			}
-		}
+		                                    flags);
 
 		xmlFree (name);
 	}

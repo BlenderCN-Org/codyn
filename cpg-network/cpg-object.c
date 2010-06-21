@@ -280,13 +280,7 @@ cpg_object_apply_template_impl (CpgObject *object,
 		new_prop = cpg_object_add_property (object,
 		                                    cpg_property_get_name (prop),
 		                                    str,
-		                                    cpg_property_get_integrated (prop));
-
-		if (new_prop)
-		{
-			cpg_property_set_hint (new_prop,
-			                       cpg_property_get_hint (prop));
-		}
+		                                    cpg_property_get_flags (prop));
 	}
 
 	object->priv->templates = g_slist_append (object->priv->templates,
