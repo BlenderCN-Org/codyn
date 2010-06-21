@@ -211,7 +211,7 @@ extract_flags (ParseInfo        *info,
 		{
 			GFlagsValue *value = g_flags_get_value_by_nick (klass, *ptr);
 
-			if (!value)
+			if (!value && **ptr)
 			{
 				ret = FALSE;
 
@@ -226,7 +226,11 @@ extract_flags (ParseInfo        *info,
 				break;
 			}
 
-			*flags |= value->value;
+			if (value)
+			{
+				*flags |= value->value;
+			}
+
 			++ptr;
 		}
 
