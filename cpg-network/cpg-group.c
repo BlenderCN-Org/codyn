@@ -225,13 +225,6 @@ cpg_group_cpg_compile (CpgObject         *object,
                        CpgCompileContext *context,
                        CpgCompileError   *error)
 {
-	if (!CPG_OBJECT_CLASS (cpg_group_parent_class)->compile (object,
-	                                                         context,
-	                                                         error))
-	{
-		return FALSE;
-	}
-
 	/* And then also the children! */
 	CpgGroup *group = CPG_GROUP (object);
 	GSList *item = group->priv->children;
@@ -246,6 +239,13 @@ cpg_group_cpg_compile (CpgObject         *object,
 		}
 
 		item = g_slist_next (item);
+	}
+
+	if (!CPG_OBJECT_CLASS (cpg_group_parent_class)->compile (object,
+	                                                         context,
+	                                                         error))
+	{
+		return FALSE;
 	}
 
 	return TRUE;
