@@ -852,3 +852,59 @@ cpg_group_get_child (CpgGroup    *group,
 	return g_hash_table_lookup (group->priv->child_hash,
 	                            name);
 }
+
+/**
+ * cpg_group_find_object:
+ * @group: A #CpgGroup
+ * @path: The object path
+ *
+ * Find an object by specifying a path. For example, if there is
+ * another group "g" containing a state "s", you can use
+ * cpg_group_find_object (group, "g.s") to get the object.
+ *
+ * Returns: A #CpgObject
+ *
+ **/
+CpgObject *
+cpg_group_find_object (CpgGroup    *group,
+                       gchar const *path)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+	g_return_val_if_fail (path != NULL, NULL);
+
+	gchar **parts = g_strsplit (path, ".", -1);
+	gchar **ptr = parts;
+
+	CpgObject *ret = NULL;
+	CpgGroup *parent = group;
+
+	while (ptr && *ptr)
+	{
+		if (!parent)
+		{
+			ret = NULL;
+			break;
+		}
+
+		ret = cpg_group_get_child (parent, *ptr);
+
+		if (!ret)
+		{
+			break;
+		}
+
+		if (CPG_IS_GROUP (ret))
+		{
+			parent = CPG_GROUP (ret);
+		}
+		else
+		{
+			parent = NULL;
+		}
+
+		++ptr;
+	}
+
+	g_strfreev (parts);
+	return ret;
+}
