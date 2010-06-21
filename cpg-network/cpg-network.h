@@ -16,15 +16,15 @@ G_BEGIN_DECLS
 
 #define CPG_TYPE_NETWORK            (cpg_network_get_type ())
 #define CPG_NETWORK(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK, CpgNetwork))
-#define CPG_NETWORK_CONST(obj)        (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK, CpgNetwork const))
+#define CPG_NETWORK_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK, CpgNetwork const))
 #define CPG_NETWORK_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_NETWORK, CpgNetworkClass))
-#define CPG_IS_NETWORK(obj)            (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_NETWORK))
-#define CPG_IS_NETWORK_CLASS(klass)    (G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_NETWORK))
-#define CPG_NETWORK_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_NETWORK, CpgNetworkClass))
+#define CPG_IS_NETWORK(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_NETWORK))
+#define CPG_IS_NETWORK_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_NETWORK))
+#define CPG_NETWORK_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_NETWORK, CpgNetworkClass))
 
-typedef struct _CpgNetwork            CpgNetwork;
-typedef struct _CpgNetworkClass        CpgNetworkClass;
-typedef struct _CpgNetworkPrivate    CpgNetworkPrivate;
+typedef struct _CpgNetwork        CpgNetwork;
+typedef struct _CpgNetworkClass   CpgNetworkClass;
+typedef struct _CpgNetworkPrivate CpgNetworkPrivate;
 
 #define CPG_NETWORK_LOAD_ERROR (cpg_network_load_error_quark ())
 
