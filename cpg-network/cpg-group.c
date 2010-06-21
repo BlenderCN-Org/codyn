@@ -908,3 +908,49 @@ cpg_group_find_object (CpgGroup    *group,
 	g_strfreev (parts);
 	return ret;
 }
+
+/**
+ * cpg_group_find_property:
+ * @group: A #CpgGroup
+ * @path: The property path
+ *
+ * Find a property by specifying an object path. For example, if there is
+ * another group "g" containing a state "s" with a property "x", you can use
+ * cpg_group_find_property (group, "g.s.x") to get the property.
+ *
+ * Returns: A #CpgProperty
+ *
+ **/
+CpgProperty *
+cpg_group_find_property (CpgGroup    *group,
+                         gchar const *path)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+	g_return_val_if_fail (path != NULL, NULL);
+
+	gchar *copy = g_strdup (path);
+	gchar *ptr = g_utf8_strrchr (copy, -1, '.');
+
+	if (!ptr)
+	{
+		g_free (copy);
+		return NULL;
+	}
+
+	*ptr = '\0';
+	CpgObject *object;
+
+	object = cpg_group_find_object (group, copy);
+
+	if (!object)
+	{
+		g_free (copy);
+		return NULL;
+	}
+
+	CpgProperty *ret = cpg_object_get_property (object, ptr + 1);
+	g_free (copy);
+
+	return ret;
+}
+

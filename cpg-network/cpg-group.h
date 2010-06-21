@@ -61,6 +61,9 @@ void          cpg_group_clear        (CpgGroup    *group);
 CpgObject    *cpg_group_find_object  (CpgGroup    *group,
                                       const gchar *path);
 
+CpgProperty  *cpg_group_find_property (CpgGroup    *group,
+                                       const gchar *path);
+
 G_END_DECLS
 
 #endif /* __CPG_GROUP_H__ */
