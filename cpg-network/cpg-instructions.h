@@ -31,11 +31,11 @@ typedef enum
 	CPG_INSTRUCTION_TYPE_OPERATOR,
 	CPG_INSTRUCTION_TYPE_PROPERTY,
 	CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION
-} CpgInstructionCode;
+} CpgInstructionType;
 
 struct _CpgInstruction
 {
-	CpgInstructionCode type;
+	CpgInstructionType type;
 };
 
 typedef struct
