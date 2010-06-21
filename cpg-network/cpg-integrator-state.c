@@ -3,6 +3,17 @@
 
 #define CPG_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_STATE, CpgIntegratorStatePrivate))
 
+/**
+ * SECTION:cpg-integrator-state
+ * @short_description: The integrator state
+ *
+ * The integrator state stores information on which properties need to be
+ * integrated and how, based on a root object. It automatically tracks changes
+ * in the root object and recalculates the properties that need to be
+ * integrated.
+ *
+ */
+
 struct _CpgIntegratorStatePrivate
 {
 	CpgObject *object;

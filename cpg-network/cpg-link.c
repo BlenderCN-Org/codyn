@@ -5,7 +5,7 @@
 #include <string.h>
 
 /**
- * SECTION:link
+ * SECTION:cpg-link
  * @short_description: Information transfer link
  *
  * A #CpgLink is a connection between two #CpgObject. The link defines actions
@@ -531,9 +531,9 @@ cpg_link_get_actions (CpgLink *link)
 /**
  * cpg_link_get_action:
  * @link: A #CpgLink
- * @prop: The target property name
+ * @target: The target property name
  *
- * Get a #CpgLinkAction targetting the property @prop.
+ * Get a #CpgLinkAction targetting the property @target.
  *
  * Returns: A #CpgLinkAction
  *

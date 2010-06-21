@@ -4,7 +4,7 @@
 #include "cpg-debug.h"
 
 /**
- * SECTION:state
+ * SECTION:cpg-state
  * @short_description: Basic simulation state object
  *
  * The #CpgState is the basic simulation state object. A #CpgState updates

@@ -4,7 +4,7 @@
 #include "cpg-ref-counted-private.h"
 
 /**
- * SECTION:function
+ * SECTION:cpg-function
  * @short_description: Custom user defined function
  *
  * It is possible to define custom user functions in the network which can
@@ -143,7 +143,7 @@ cpg_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 				g_object_unref (self->priv->expression);
 			}
 
-			self->priv->expression = g_value_dup_boxed (value);
+			self->priv->expression = g_value_dup_object (value);
 			cpg_object_taint (CPG_OBJECT (self));
 		break;
 		default:
@@ -160,7 +160,7 @@ cpg_function_get_property (GObject *object, guint prop_id, GValue *value, GParam
 	switch (prop_id)
 	{
 		case PROP_EXPRESSION:
-			g_value_set_boxed (value, self->priv->expression);
+			g_value_set_object (value, self->priv->expression);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -385,11 +385,11 @@ cpg_function_class_init (CpgFunctionClass *klass)
 
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPRESSION,
-	                                 g_param_spec_boxed ("expression",
-	                                                     "Expression",
-	                                                     "Expression",
-	                                                     CPG_TYPE_EXPRESSION,
-	                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                 g_param_spec_object ("expression",
+	                                                      "Expression",
+	                                                      "Expression",
+	                                                      CPG_TYPE_EXPRESSION,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 	
 
 	g_type_class_add_private (object_class, sizeof(CpgFunctionPrivate));

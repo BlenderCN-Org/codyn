@@ -16,7 +16,7 @@
 #include <glib.h>
 
 /**
- * SECTION:expression
+ * SECTION:cpg-expression
  * @short_description: Mathematical expression evaluation
  *
  * A #CpgExpression contains a mathematical expression. The expression in

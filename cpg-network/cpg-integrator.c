@@ -2,7 +2,7 @@
 #include "cpg-link.h"
 
 /**
- * SECTION:integrator
+ * SECTION:cpg-integrator
  * @short_description: Simulation integrator
  *
  * #CpgIntegrator is a base class for implementing different integration
@@ -610,6 +610,15 @@ cpg_integrator_get_name (CpgIntegrator *integrator)
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->get_name (integrator);
 }
 
+/**
+ * cpg_integrator_get_state:
+ * @integrator: A #CpgIntegrator
+ *
+ * Get the integrator state.
+ *
+ * Returns: A #CpgIntegratorState
+ *
+ **/
 CpgIntegratorState *
 cpg_integrator_get_state (CpgIntegrator *integrator)
 {
@@ -618,6 +627,14 @@ cpg_integrator_get_state (CpgIntegrator *integrator)
 	return integrator->priv->state;
 }
 
+/**
+ * cpg_integrator_set_state:
+ * @integrator: A #CpgIntegrator
+ * @state: A #CpgIntegratorState
+ * 
+ * Set the integrator state. You should normally not need to use this function.
+ *
+ **/
 void
 cpg_integrator_set_state (CpgIntegrator      *integrator,
                           CpgIntegratorState *state)

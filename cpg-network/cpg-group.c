@@ -4,7 +4,7 @@
 #include "cpg-compile-context.h"
 
 /**
- * SECTION:group
+ * SECTION:cpg-group
  * @short_description: Group object grouping many objects together
  *
  * The #CpgGroup is a special #CpgObject that contains many objects as children.

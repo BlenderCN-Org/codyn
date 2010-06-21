@@ -46,7 +46,7 @@ gboolean      cpg_group_remove       (CpgGroup    *group,
                                       CpgObject   *object);
 
 gboolean      cpg_group_set_proxy    (CpgGroup    *group,
-                                      CpgObject   *object);
+                                      CpgObject   *proxy);
 CpgObject    *cpg_group_get_proxy    (CpgGroup    *group);
 
 void          cpg_group_foreach      (CpgGroup    *group,

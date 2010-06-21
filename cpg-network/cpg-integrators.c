@@ -1,7 +1,7 @@
 #include "cpg-integrators.h"
 
 /**
- * SECTION:integrators
+ * SECTION:cpg-integrators
  * @short_description: Integrator registry
  *
  * #CpgIntegrators provides a registry for integrators. All integrators must

@@ -11,7 +11,7 @@
 #include "cpg-compile-error.h"
 
 /**
- * SECTION:object
+ * SECTION:cpg-object
  * @short_description: Basis for all cpg objects
  *
  * #CpgObject is a base class for all the objects which can be added to a

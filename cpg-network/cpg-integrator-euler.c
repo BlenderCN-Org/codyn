@@ -3,6 +3,16 @@
 
 #define CPG_INTEGRATOR_EULER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_EULER, CpgIntegratorEulerPrivate))
 
+/**
+ * SECTION:cpg-integrator-euler
+ * @short_description: Euler integrator
+ *
+ * The euler integrator is a #CpgIntegrator subclass implementing a simple
+ * euler integration scheme. See #CpgIntegratorPredictCorrect or
+ * #CpgIntegratorRungeKutta for more accurate (but slower) integrators.
+ *
+ */
+
 /*struct _CpgIntegratorEulerPrivate
 {
 };*/

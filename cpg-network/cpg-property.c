@@ -32,7 +32,7 @@ enum
 };
 
 /**
- * SECTION:property
+ * SECTION:cpg-property
  * @short_description: Property container
  *
  * A #CpgProperty is a container for a specific variable in an object. It
@@ -282,8 +282,7 @@ cpg_property_get_object (CpgProperty *property)
  * @property: the #CpgProperty
  * @value: the new value
  *
- * Change the value to a specific number. To set the value
- * to any expression, use #cpg_object_set_value.
+ * Change the value to a specific number.
  *
  **/
 void
@@ -320,7 +319,7 @@ cpg_property_get_value (CpgProperty *property)
 }
 
 /**
- * cpg_property_get_value_expression:
+ * cpg_property_get_expression:
  * @property: a #CpgProperty
  *
  * Get the property value expression
@@ -338,7 +337,7 @@ cpg_property_get_expression (CpgProperty *property)
 }
 
 /**
- * cpg_property_set_value_expression:
+ * cpg_property_set_expression:
  * @property: a #CpgProperty
  * @expression: the expression
  *
@@ -544,6 +543,16 @@ cpg_property_remove_flags (CpgProperty     *property,
 	set_flags (property, property->priv->flags & ~flags);
 }
 
+/**
+ * cpg_property_set_update:
+ * @property: A #CpgProperty
+ * @value: The update value
+ * 
+ * Set the update value of the property. The update value is used to store the
+ * result of differential equations on the property/ You normally do not need
+ * to use this function.
+ *
+ **/
 void
 cpg_property_set_update (CpgProperty  *property,
                          gdouble       value)
@@ -553,6 +562,17 @@ cpg_property_set_update (CpgProperty  *property,
 	property->priv->update = value;
 }
 
+/**
+ * cpg_property_get_update:
+ * @property: A #CpgProperty
+ * 
+ * Get the update value of a property. The update value is used to store the
+ * result of differential equations on the property. You normally do not need
+ * to use this function.
+ *
+ * Returns: The update value
+ *
+ **/
 gdouble
 cpg_property_get_update (CpgProperty *property)
 {

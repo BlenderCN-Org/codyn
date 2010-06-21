@@ -2,7 +2,7 @@
 #include "cpg-ref-counted-private.h"
 
 /**
- * SECTION:function-polynomial
+ * SECTION:cpg-function-polynomial
  * @short_description: Custom user defined piecewise polynomial
  *
  * This class provides a specialized custom user function which defines

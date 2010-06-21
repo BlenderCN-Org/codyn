@@ -13,7 +13,7 @@
 #include "cpg-integrator-euler.h"
 
 /**
- * SECTION:network
+ * SECTION:cpg-network
  * @short_description: The main CPG network object
  *
  * The cpg network is the main component of the cpg-network library. The network
@@ -26,7 +26,7 @@
  * #cpg_network_run or for running single steps #cpg_network_step.
  *
  * For more information, see
- * <link linkend='using-the-network'>Using the network</link>.
+ * <link linkend='making-a-network'>Making a network</link>.
  *
  */
 

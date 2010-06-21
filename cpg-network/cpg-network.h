@@ -83,8 +83,6 @@ void              cpg_network_merge_from_xml         (CpgNetwork     *network,
                                                       const gchar    *xml,
                                                       GError        **error);
 
-gboolean          cpg_network_get_compiled           (CpgNetwork     *network);
-
 /* simulation functions */
 void              cpg_network_run                    (CpgNetwork *network,
                                                       gdouble     from,
@@ -92,7 +90,6 @@ void              cpg_network_run                    (CpgNetwork *network,
                                                       gdouble     to);
 void              cpg_network_step                   (CpgNetwork *network,
                                                       gdouble     timestep);
-void              cpg_network_reset                  (CpgNetwork *network);
 
 GSList const     *cpg_network_get_templates          (CpgNetwork   *network);
 void              cpg_network_add_template           (CpgNetwork   *network,

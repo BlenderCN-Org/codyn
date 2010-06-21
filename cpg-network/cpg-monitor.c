@@ -8,7 +8,7 @@
 #include <string.h>
 
 /**
- * SECTION:monitor
+ * SECTION:cpg-monitor
  * @short_description: Property value monitor
  *
  * A #CpgMonitor can be used to monitor the value of a certain #CpgProperty

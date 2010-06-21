@@ -62,6 +62,7 @@ IGNORE_HFILES= \
 	cpg-ref-counted-private.h \
 	cpg-math.h \
 	cpg-stack.h \
+	cpg-network-xml.h \
 	cpg-debug.h
 
 # Images to copy into HTML directory.
