@@ -824,8 +824,7 @@ cpg_object_remove_property (CpgObject    *object,
  *
  * Gets the object properties.
  *
- * Returns: a list of #CpgProperty. The list is owned by the object and should
- *          not be freed.
+ * Returns: a list of #CpgProperty.
  *
  **/
 GSList *
@@ -907,8 +906,7 @@ _cpg_object_unlink (CpgObject  *object,
  *
  * Get the properties which are acted upon by links.
  *
- * Returns: A #GSList of #CpgProperty. This list is used internally and should
- *          not be freed.
+ * Returns: A #GSList of #CpgProperty.
  *
  **/
 GSList const *
@@ -1083,7 +1081,7 @@ cpg_object_taint (CpgObject *object)
 /**
  * cpg_object_clear:
  * @object: A #CpgObject
- * 
+ *
  * Clear all properties from the object.
  *
  **/
@@ -1098,6 +1096,16 @@ cpg_object_clear (CpgObject *object)
 	}
 }
 
+/**
+ * cpg_object_equal:
+ * @first: A #CpgObject
+ * @second: A #CpgObject
+ *
+ * Check if two objects are equal.
+ *
+ * Returns: %TRUE if the objects are equal, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_object_equal (CpgObject *first,
                   CpgObject *second)
@@ -1132,6 +1140,15 @@ cpg_object_get_applied_templates (CpgObject *object)
 	return object->priv->templates;
 }
 
+/**
+ * cpg_object_get_parent:
+ * @object: A #CpgObject
+ *
+ * Get the parent of the object.
+ *
+ * Returns: A #CpgObject
+ *
+ **/
 CpgObject *
 cpg_object_get_parent (CpgObject *object)
 {
@@ -1140,6 +1157,15 @@ cpg_object_get_parent (CpgObject *object)
 	return object->priv->parent;
 }
 
+/**
+ * cpg_object_is_compiled:
+ * @object: A #CpgObject
+ *
+ * Get whether the object is compiled.
+ *
+ * Returns: %TRUE if the object is compiled, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_object_is_compiled (CpgObject *object)
 {
