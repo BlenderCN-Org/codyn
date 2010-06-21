@@ -220,16 +220,6 @@ cpg_group_cpg_remove_property (CpgObject    *object,
 	return FALSE;
 }
 
-static void
-cpg_group_cpg_evaluate (CpgObject *object)
-{
-	// TODO: relays first, then others
-	CPG_OBJECT_CLASS (cpg_group_parent_class)->evaluate (object);
-
-	/* And then also the children! */
-	cpg_group_foreach (CPG_GROUP (object), (GFunc)cpg_object_evaluate, NULL);
-}
-
 static gboolean
 cpg_group_cpg_compile (CpgObject         *object,
                        CpgCompileContext *context,
@@ -647,7 +637,6 @@ cpg_group_class_init (CpgGroupClass *klass)
 	cpg_class->compile = cpg_group_cpg_compile;
 	cpg_class->reset = cpg_group_cpg_reset;
 	cpg_class->reset_cache = cpg_group_cpg_reset_cache;
-	cpg_class->evaluate = cpg_group_cpg_evaluate;
 	cpg_class->clear = cpg_group_cpg_clear;
 	cpg_class->equal = cpg_group_cpg_equal;
 

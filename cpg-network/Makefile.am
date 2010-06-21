@@ -16,8 +16,9 @@ COMMON_SOURCES = 		\
 	cpg-integrator-euler.c \
 	cpg-integrator-predict-correct.c \
 	cpg-integrator-runge-kutta.c \
-	cpg-integrators.c \
+	cpg-integrator-state.c \
 	cpg-integrator-stub.c \
+	cpg-integrators.c \
 	cpg-link.c \
 	cpg-math.c \
 	cpg-monitor.c \
@@ -50,8 +51,9 @@ INST_H_FILES = \
 	cpg-integrator.h \
 	cpg-integrator-predict-correct.h \
 	cpg-integrator-runge-kutta.h \
-	cpg-integrators.h \
+	cpg-integrator-state.h \
 	cpg-integrator-stub.h \
+	cpg-integrators.h \
 	cpg-link.h \
 	cpg-math.h \
 	cpg-monitor.h \

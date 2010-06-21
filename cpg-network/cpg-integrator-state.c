@@ -1,0 +1,448 @@
+#include "cpg-integrator-state.h"
+#include "cpg-link.h"
+
+#define CPG_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_STATE, CpgIntegratorStatePrivate))
+
+struct _CpgIntegratorStatePrivate
+{
+	CpgObject *object;
+
+	GSList *integrated_properties;
+	GSList *direct_properties;
+
+	GSList *integrated_link_actions;
+	GSList *direct_link_actions;
+};
+
+G_DEFINE_TYPE (CpgIntegratorState, cpg_integrator_state, G_TYPE_OBJECT)
+
+enum
+{
+	UPDATED,
+	NUM_SIGNALS
+};
+
+enum
+{
+	PROP_0,
+	PROP_OBJECT
+};
+
+static guint signals[NUM_SIGNALS] = {0,};
+
+static void
+cpg_integrator_state_finalize (GObject *object)
+{
+	G_OBJECT_CLASS (cpg_integrator_state_parent_class)->finalize (object);
+}
+
+static void
+clear_lists (CpgIntegratorState *state)
+{
+	g_slist_free (state->priv->integrated_properties);
+	state->priv->integrated_properties = NULL;
+
+	g_slist_free (state->priv->direct_properties);
+	state->priv->direct_properties = NULL;
+
+	g_slist_free (state->priv->integrated_link_actions);
+	state->priv->integrated_link_actions = NULL;
+
+	g_slist_free (state->priv->direct_link_actions);
+	state->priv->direct_link_actions = NULL;
+}
+
+static void
+on_object_compiled (CpgIntegratorState *state)
+{
+	cpg_integrator_state_update (state);
+}
+
+static void
+set_object (CpgIntegratorState *state,
+           CpgObject           *object)
+{
+	if (state->priv->object)
+	{
+		g_signal_handlers_disconnect_by_func (state->priv->object,
+		                                      on_object_compiled,
+		                                      state);
+
+		g_object_unref (state->priv->object);
+
+		state->priv->object = NULL;
+	}
+
+	if (object)
+	{
+		state->priv->object = g_object_ref (object);
+
+		if (cpg_object_is_compiled (CPG_OBJECT (object)))
+		{
+			cpg_integrator_state_update (state);
+		}
+
+		g_signal_connect_swapped (state->priv->object,
+		                          "compiled",
+		                          G_CALLBACK (on_object_compiled),
+		                          state);
+	}
+}
+
+static void
+cpg_integrator_state_dispose (GObject *object)
+{
+	CpgIntegratorState *state = CPG_INTEGRATOR_STATE (object);
+
+	set_object (state, NULL);
+
+	clear_lists (state);
+
+	G_OBJECT_CLASS (cpg_integrator_state_parent_class)->dispose (object);
+}
+
+static void
+cpg_integrator_state_set_property (GObject      *object,
+                                   guint         prop_id,
+                                   const GValue *value,
+                                   GParamSpec   *pspec)
+{
+	CpgIntegratorState *self = CPG_INTEGRATOR_STATE (object);
+
+	switch (prop_id)
+	{
+		case PROP_OBJECT:
+			set_object (self, g_value_get_object (value));
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_integrator_state_get_property (GObject    *object,
+                                   guint       prop_id,
+                                   GValue     *value,
+                                   GParamSpec *pspec)
+{
+	CpgIntegratorState *self = CPG_INTEGRATOR_STATE (object);
+
+	switch (prop_id)
+	{
+		case PROP_OBJECT:
+			g_value_set_object (value, self->priv->object);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_integrator_state_class_init (CpgIntegratorStateClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->finalize = cpg_integrator_state_finalize;
+	object_class->dispose = cpg_integrator_state_dispose;
+
+	object_class->get_property = cpg_integrator_state_get_property;
+	object_class->set_property = cpg_integrator_state_set_property;
+
+	g_type_class_add_private (object_class, sizeof (CpgIntegratorStatePrivate));
+
+	/**
+	 * CpgIntegratorState::updated:
+	 *
+	 * Emitted when an integrator step has been performed
+	 *
+	 **/
+	signals[UPDATED] =
+		g_signal_new ("updated",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE,
+		              0);
+
+	/**
+	 * CpgIntegratorState:object:
+	 *
+	 * The object which is integrated
+	 *
+	 **/
+	g_object_class_install_property (object_class,
+	                                 PROP_OBJECT,
+	                                 g_param_spec_object ("object",
+	                                                      "Object",
+	                                                      "Object",
+	                                                      CPG_TYPE_OBJECT,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+}
+
+static void
+cpg_integrator_state_init (CpgIntegratorState *self)
+{
+	self->priv = CPG_INTEGRATOR_STATE_GET_PRIVATE (self);
+}
+
+/**
+ * cpg_integrator_state_new:
+ * @object: A #CpgObject
+ * 
+ * Create a new integrator state for the given object.
+ *
+ * Returns: A #CpgIntegratorState
+ *
+ **/
+CpgIntegratorState *
+cpg_integrator_state_new (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	return g_object_new (CPG_TYPE_INTEGRATOR_STATE,
+	                     "object", object,
+	                     NULL);
+}
+
+static void
+collect_link (CpgIntegratorState *state,
+              CpgLink            *link)
+{
+	GSList const *actions = cpg_link_get_actions (link);
+
+	while (actions)
+	{
+		CpgLinkAction *action = actions->data;
+
+		CpgProperty *target = cpg_link_action_get_target (action);
+
+		if (cpg_property_get_integrated (target))
+		{
+			state->priv->integrated_link_actions =
+				g_slist_prepend (state->priv->integrated_link_actions,
+				                 action);
+		}
+		else
+		{
+			state->priv->direct_link_actions =
+				g_slist_prepend (state->priv->direct_link_actions,
+				                 action);
+		}
+
+		actions = g_slist_next (actions);
+	}
+}
+
+static void
+collect_actors (CpgIntegratorState *state,
+                CpgObject          *object)
+{
+	GSList const *actors = cpg_object_get_actors (object);
+
+	while (actors)
+	{
+		CpgProperty *property = actors->data;
+
+		if (cpg_property_get_integrated (property))
+		{
+			state->priv->integrated_properties =
+				g_slist_prepend (state->priv->integrated_properties,
+				                 property);
+		}
+		else
+		{
+			state->priv->direct_properties =
+				g_slist_prepend (state->priv->direct_properties,
+				                 property);
+		}
+
+		actors = g_slist_next (actors);
+	}
+}
+
+static void
+collect_states (CpgIntegratorState *state,
+                CpgObject          *object)
+{
+	if (CPG_IS_LINK (object))
+	{
+		collect_link (state, CPG_LINK (object));
+		return;
+	}
+
+	collect_actors (state, object);
+
+	if (CPG_IS_GROUP (object))
+	{
+		GSList const *children = cpg_group_get_children (CPG_GROUP (object));
+
+		while (children)
+		{
+			collect_states (state, children->data);
+			children = g_slist_next (children);
+		}
+	}
+}
+
+static gboolean
+check_link_action_dependency (GSList      *actions,
+                              CpgProperty *target)
+{
+	while (actions)
+	{
+		if (cpg_link_action_get_target (actions->data) == target)
+		{
+			return TRUE;
+		}
+
+		actions = g_slist_next (actions);
+	}
+
+	return FALSE;
+}
+
+static void
+sort_link_actions (CpgIntegratorState *state)
+{
+	GSList *sorted = NULL;
+	GSList *ptr = state->priv->direct_link_actions;
+	CpgLinkAction *seen = NULL;
+
+	while (ptr)
+	{
+		CpgLinkAction *orig = ptr->data;
+		CpgExpression *expression = cpg_link_action_get_expression (orig);
+		GSList const *dependencies = cpg_expression_get_dependencies (expression);
+		CpgProperty *target = cpg_link_action_get_target (orig);
+		gboolean checked = FALSE;
+
+		while (dependencies && !checked)
+		{
+			checked = check_link_action_dependency (sorted,
+			                                        target);
+
+			dependencies = g_slist_next (dependencies);
+		}
+
+		if (seen == orig || checked)
+		{
+			sorted = g_slist_prepend (sorted, orig);
+			ptr = g_slist_next (ptr);
+
+			seen = NULL;
+		}
+		else
+		{
+			ptr = g_slist_next (ptr);
+			ptr = g_slist_append (ptr, orig);
+
+			if (seen == NULL)
+			{
+				seen = orig;
+			}
+		}
+	}
+
+	g_slist_free (state->priv->direct_link_actions);
+	state->priv->direct_link_actions = g_slist_reverse (sorted);
+}
+
+/**
+ * cpg_integrator_state_update:
+ * @state: A #CpgIntegratorState
+ * 
+ * Update the integrator state. This recursively goes through all the objects
+ * contained in the associated #CpgIntegratorState:object and collects the
+ * links and properties that need to be integrated.
+ *
+ **/
+void
+cpg_integrator_state_update (CpgIntegratorState *state)
+{
+	g_return_if_fail (CPG_IS_INTEGRATOR_STATE (state));
+
+	clear_lists (state);
+
+	collect_states (state, CPG_OBJECT (state->priv->object));
+
+	/* order the direct link actions based on their dependencies */
+	sort_link_actions (state);
+
+	g_signal_emit (state, signals[UPDATED], 0);
+}
+
+/**
+ * cpg_integrator_state_integrated_properties:
+ * @state: A #CpgIntegratorState
+ * 
+ * Get the integrated properties which are acted upon by links.
+ *
+ * Returns: A #GSList
+ *
+ **/
+GSList const *
+cpg_integrator_state_integrated_properties (CpgIntegratorState *state)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->integrated_properties;
+}
+
+/**
+ * cpg_integrator_state_direct_properties:
+ * @state: A #CpgIntegratorState
+ * 
+ * Get non-integrated properties which are acted upon by links.
+ *
+ * Returns: A #GSList
+ *
+ **/
+GSList const *
+cpg_integrator_state_direct_properties (CpgIntegratorState *state)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->direct_properties;
+}
+
+/**
+ * cpg_integrator_state_integrated_link_actions:
+ * @state: A #CpgIntegratorState
+ * 
+ * Get the link actions that act on integrated properties.
+ *
+ * Returns: A #GSList
+ *
+ **/
+GSList const *
+cpg_integrator_state_integrated_link_actions (CpgIntegratorState *state)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->integrated_link_actions;
+}
+
+/**
+ * cpg_integrator_state_direct_link_actions:
+ * @state: A #CpgIntegratorState
+ * 
+ * Get the link actions that act on non-integrated properties.
+ *
+ * Returns: A #GSList
+ *
+ **/
+GSList const *
+cpg_integrator_state_direct_link_actions (CpgIntegratorState *state)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->direct_link_actions;
+}
+
+CpgObject *
+cpg_integrator_state_get_object (CpgIntegratorState *state)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+
+	return state->priv->object;
+}

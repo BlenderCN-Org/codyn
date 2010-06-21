@@ -58,9 +58,6 @@ struct _CpgObjectClass {
 	                                  CPG_FORWARD_DECL (CpgCompileError) *error);
 
 	void          (*reset)           (CpgObject *object);
-	void          (*evaluate)        (CpgObject *object);
-
-
 	void          (*reset_cache)     (CpgObject *object);
 
 	void          (*apply_template)  (CpgObject *object,
@@ -124,10 +121,10 @@ CpgObject        *cpg_object_get_parent      (CpgObject   *object);
 
 /* evaluation */
 void              cpg_object_reset          (CpgObject   *object);
-void              cpg_object_evaluate       (CpgObject   *object);
-
 void              cpg_object_reset_cache    (CpgObject	 *object);
 void              cpg_object_taint          (CpgObject   *object);
+
+gboolean          cpg_object_is_compiled    (CpgObject   *object);
 
 gboolean          cpg_object_compile        (CpgObject                          *object,
                                              CpgCompileContext                  *context,

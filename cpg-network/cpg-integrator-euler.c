@@ -24,26 +24,18 @@ cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
 
 	/* Update values are now contained in state, update the values in the
 	   states */
-	GSList const *item = cpg_integrator_get_state (integrator);
+	CpgIntegratorState *state = cpg_integrator_get_state (integrator);
+	GSList const *integrated = cpg_integrator_state_integrated_properties (state);
 
-	while (item)
+	while (integrated)
 	{
-		CpgIntegratorState *st = item->data;
-		CpgProperty *property = cpg_integrator_state_get_property (st);
+		CpgProperty *property = integrated->data;
 
-		if (cpg_property_get_integrated (property))
-		{
-			cpg_property_set_value (property,
-			                        cpg_property_get_value (property) +
-			                        cpg_integrator_state_get_update (st) * timestep);
-		}
-		else
-		{
-			cpg_property_set_value (property,
-			                        cpg_integrator_state_get_update (st));
-		}
+		cpg_property_set_value (property,
+		                        cpg_property_get_value (property) +
+		                        cpg_property_get_update (property) * timestep);
 
-		item = g_slist_next (item);
+		integrated = g_slist_next (integrated);
 	}
 
 	/* Chain up to emit 'step' */

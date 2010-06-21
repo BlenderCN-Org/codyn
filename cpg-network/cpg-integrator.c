@@ -1,5 +1,5 @@
 #include "cpg-integrator.h"
-#include "cpg-ref-counted-private.h"
+#include "cpg-link.h"
 
 /**
  * SECTION:integrator
@@ -20,7 +20,8 @@ enum
 	PROP_0,
 
 	PROP_OBJECT,
-	PROP_TIME
+	PROP_TIME,
+	PROP_STATE
 };
 
 /* Signals */
@@ -32,14 +33,6 @@ enum
 	NUM_SIGNALS
 };
 
-struct _CpgIntegratorState
-{
-	CpgRefCounted parent;
-
-	CpgProperty *property;
-	gdouble update;
-};
-
 struct _CpgIntegratorPrivate
 {
 	CpgObject *object;
@@ -47,54 +40,12 @@ struct _CpgIntegratorPrivate
 	CpgProperty *property_time;
 	CpgProperty *property_timestep;
 
-	GSList *state;
+	CpgIntegratorState *state;
 };
 
 static guint integrator_signals[NUM_SIGNALS] = {0,};
 
 G_DEFINE_TYPE (CpgIntegrator, cpg_integrator, CPG_TYPE_OBJECT)
-
-GType
-cpg_integrator_state_get_type (void)
-{
-	static GType type_id = 0;
-
-	if (G_UNLIKELY (type_id == 0))
-	{
-		type_id = g_boxed_type_register_static ("CpgIntegratorState",
-		                                        cpg_ref_counted_ref,
-		                                        cpg_ref_counted_unref);
-	}
-
-	return type_id;
-}
-
-static void
-cpg_integrator_state_free (CpgIntegratorState *state)
-{
-	g_object_unref (state->property);
-	g_slice_free (CpgIntegratorState, state);
-}
-
-/**
- * cpg_integrator_state_new:
- * @property: A #CpgProperty
- *
- * Create a new integrator state.
- *
- * Returns: A #CpgIntegratorState
- *
- **/
-CpgIntegratorState *
-cpg_integrator_state_new (CpgProperty *property)
-{
-	CpgIntegratorState *state = g_slice_new0 (CpgIntegratorState);
-
-	cpg_ref_counted_init (&(state->parent), (GDestroyNotify)cpg_integrator_state_free);
-
-	state->property = g_object_ref (property);
-	return state;
-}
 
 static void
 cpg_integrator_finalize (GObject *object)
@@ -107,10 +58,57 @@ cpg_integrator_finalize (GObject *object)
 		                              (gpointer *)&(self->priv->object));
 	}
 
-	g_slist_free (self->priv->state);
-	self->priv->state = NULL;
-
 	G_OBJECT_CLASS (cpg_integrator_parent_class)->finalize (object);
+}
+
+static void
+on_integrator_state_updated (CpgIntegrator *integrator)
+{
+	cpg_integrator_reset (integrator);
+}
+
+static void
+set_state (CpgIntegrator      *integrator,
+           CpgIntegratorState *state)
+{
+	if (integrator->priv->state == state)
+	{
+		return;
+	}
+
+	if (integrator->priv->state)
+	{
+		g_signal_handlers_disconnect_by_func (integrator->priv->state,
+		                                      on_integrator_state_updated,
+		                                      integrator);
+
+		g_object_unref (integrator->priv->state);
+		integrator->priv->state = NULL;
+	}
+
+	if (state)
+	{
+		integrator->priv->state = g_object_ref (state);
+
+		g_signal_connect_swapped (state,
+		                          "updated",
+		                          G_CALLBACK (on_integrator_state_updated),
+		                          integrator);
+	}
+
+	g_object_notify (G_OBJECT (integrator), "state");
+
+	cpg_integrator_reset (integrator);
+}
+
+static void
+cpg_integrator_dispose (GObject *object)
+{
+	CpgIntegrator *self = CPG_INTEGRATOR (object);
+
+	set_state (self, NULL);
+
+	G_OBJECT_CLASS (cpg_integrator_parent_class)->dispose (object);
 }
 
 static void
@@ -156,6 +154,9 @@ cpg_integrator_get_property (GObject    *object,
 		break;
 		case PROP_TIME:
 			g_value_set_double (value, cpg_property_get_value (self->priv->property_time));
+		break;
+		case PROP_STATE:
+			g_value_set_object (value, self->priv->state);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -249,8 +250,7 @@ cpg_integrator_constructor (GType                  type,
 }
 
 static void
-cpg_integrator_reset_impl (CpgIntegrator *integrator,
-                           GSList const  *state)
+cpg_integrator_reset_impl (CpgIntegrator *integrator)
 {
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
 
@@ -264,9 +264,6 @@ cpg_integrator_reset_impl (CpgIntegrator *integrator,
 	cpg_expression_compile (cpg_property_get_expression (integrator->priv->property_timestep),
 	                        NULL,
 	                        NULL);
-
-	g_slist_free (integrator->priv->state);
-	integrator->priv->state = g_slist_copy ((GSList *)state);
 }
 
 static void
@@ -276,6 +273,7 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 
 	object_class->constructor = cpg_integrator_constructor;
 	object_class->finalize = cpg_integrator_finalize;
+	object_class->dispose = cpg_integrator_dispose;
 
 	object_class->set_property = cpg_integrator_set_property;
 	object_class->get_property = cpg_integrator_get_property;
@@ -363,6 +361,15 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 			              0);
 
 	g_type_class_add_private (object_class, sizeof(CpgIntegratorPrivate));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_STATE,
+	                                 g_param_spec_object ("state",
+	                                                      "State",
+	                                                      "State",
+	                                                      CPG_TYPE_INTEGRATOR_STATE,
+	                                                      G_PARAM_READABLE));
 }
 
 static void
@@ -385,24 +392,66 @@ cpg_integrator_init (CpgIntegrator *self)
 static void
 simulation_step (CpgIntegrator *integrator)
 {
-	cpg_object_evaluate (integrator->priv->object);
+	/* First calculate all the direct properties */
+	GSList const *direct;
 
-	GSList *state = integrator->priv->state;
+	direct = cpg_integrator_state_direct_link_actions (integrator->priv->state);
 
-	/* Collect updates */
-	while (state)
+	while (direct)
 	{
-		CpgIntegratorState *st = state->data;
+		CpgLinkAction *action = direct->data;
+		CpgProperty *target = cpg_link_action_get_target (action);
+		CpgExpression *expr = cpg_link_action_get_expression (action);
 
-		st->update = _cpg_property_get_update (st->property);
-		state = g_slist_next (state);
+		cpg_property_set_value (target,
+		                        cpg_expression_evaluate (expr));
+
+		direct = g_slist_next (direct);
 	}
+
+	GSList const *integrated;
+
+	integrated = cpg_integrator_state_integrated_properties (integrator->priv->state);
+
+	while (integrated)
+	{
+		cpg_property_set_update (integrated->data, 0);
+		integrated = g_slist_next (integrated);
+	}
+
+	integrated = cpg_integrator_state_integrated_link_actions (integrator->priv->state);
+
+	while (integrated)
+	{
+		CpgLinkAction *action = integrated->data;
+
+		CpgProperty *target = cpg_link_action_get_target (action);
+		CpgExpression *expr = cpg_link_action_get_expression (action);
+
+		cpg_property_set_update (target,
+		                         cpg_property_get_update (target) +
+		                         cpg_expression_evaluate (expr));
+
+		integrated = g_slist_next (integrated);
+	}
+}
+
+static gboolean
+ensure_compiled (CpgIntegrator *integrator)
+{
+	CpgObject *object = cpg_integrator_state_get_object (integrator->priv->state);
+
+	if (!cpg_object_is_compiled (object))
+	{
+		return cpg_object_compile (object, NULL, NULL);
+	}
+
+	return TRUE;
 }
 
 /**
  * cpg_integrator_run:
  * @integrator: A #CpgIntegrator
- * @state: A #GSList of #CpgIntegratorState
  * @from: The time at which to start integrating
  * @timestep: The timestep to use for integration
  * @to: The time until which to run the integration
@@ -420,6 +469,11 @@ cpg_integrator_run (CpgIntegrator *integrator,
 	g_return_if_fail (from < to);
 	g_return_if_fail (timestep > 0);
 
+	if (!ensure_compiled (integrator))
+	{
+		return;
+	}
+
 	if (CPG_INTEGRATOR_GET_CLASS (integrator)->run)
 	{
 		g_signal_emit (integrator, integrator_signals[BEGIN], 0);
@@ -433,7 +487,6 @@ cpg_integrator_run (CpgIntegrator *integrator,
 /**
  * cpg_integrator_step:
  * @integrator: A #CpgIntegrator
- * @state: A #GSList of #CpgIntegratorState
  * @t: The time at which to perform the integration step
  * @timestep: The timestep with which to perform the integration step
  *
@@ -450,6 +503,11 @@ cpg_integrator_step (CpgIntegrator *integrator,
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), 0);
 	g_return_val_if_fail (timestep > 0, 0);
+
+	if (!ensure_compiled (integrator))
+	{
+		return 0;
+	}
 
 	cpg_property_set_value (integrator->priv->property_time, t);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
@@ -477,7 +535,6 @@ cpg_integrator_get_object (CpgIntegrator *integrator)
 /**
  * cpg_integrator_evaluate:
  * @integrator: A #CpgIntegrator
- * @state: A #GSList of #CpgIntegratorState
  * @t: The time at which to evaluate the object
  * @timestep: The timestep with which the current step is evaluating
  *
@@ -523,64 +580,17 @@ cpg_integrator_get_time	(CpgIntegrator *integrator)
 /**
  * cpg_integrator_reset:
  * @integrator: A #CpgIntegrator
- * @state: A list of #CpgIntegratorState
  *
  * Reset the integrator. This is usually called from #cpg_object_reset on the
  * main network.
  *
  **/
 void
-cpg_integrator_reset (CpgIntegrator *integrator,
-                      GSList const  *state)
+cpg_integrator_reset (CpgIntegrator *integrator)
 {
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
 
-	return CPG_INTEGRATOR_GET_CLASS (integrator)->reset (integrator, state);
-}
-
-/**
- * cpg_integrator_state_get_update:
- * @state: A #CpgIntegratorState
- *
- * Get the update value for the state.
- *
- * Returns: the update value
- *
- **/
-gdouble
-cpg_integrator_state_get_update (CpgIntegratorState *state)
-{
-	return state->update;
-}
-
-/**
- * cpg_integrator_state_set_update:
- * @state: A # CpgIntegratorState
- * @value: State update value
- *
- * Set the state update value.
- *
- **/
-void
-cpg_integrator_state_set_update	(CpgIntegratorState *state,
-                                 gdouble             value)
-{
-	state->update = value;
-}
-
-/**
- * cpg_integrator_state_get_property:
- * @state: A #CpgIntegratorState
- *
- * Get the #CpgProperty for the state.
- *
- * Returns: A #CpgProperty
- *
- **/
-CpgProperty	*
-cpg_integrator_state_get_property (CpgIntegratorState *state)
-{
-	return state->property;
+	return CPG_INTEGRATOR_GET_CLASS (integrator)->reset (integrator);
 }
 
 /**
@@ -600,7 +610,7 @@ cpg_integrator_get_name (CpgIntegrator *integrator)
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->get_name (integrator);
 }
 
-GSList const *
+CpgIntegratorState *
 cpg_integrator_get_state (CpgIntegrator *integrator)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), NULL);
@@ -608,3 +618,12 @@ cpg_integrator_get_state (CpgIntegrator *integrator)
 	return integrator->priv->state;
 }
 
+void
+cpg_integrator_set_state (CpgIntegrator      *integrator,
+                          CpgIntegratorState *state)
+{
+	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
+	g_return_if_fail (CPG_IS_INTEGRATOR_STATE (state));
+
+	set_state (integrator, state);
+}

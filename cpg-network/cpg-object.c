@@ -39,6 +39,7 @@ struct _CpgObjectPrivate
 	GSList *templates;
 
 	CpgObject *parent;
+	gboolean compiled;
 };
 
 /* Properties */
@@ -118,6 +119,8 @@ static void
 cpg_object_reset_impl (CpgObject *object)
 {
 	g_slist_foreach (object->priv->properties, (GFunc)property_reset, NULL);
+
+	cpg_object_taint (object);
 
 	g_signal_emit (object, object_signals[RESETTED], 0);
 }
@@ -292,6 +295,12 @@ cpg_object_compile_impl (CpgObject         *object,
                          CpgCompileContext *context,
                          CpgCompileError   *error)
 {
+	if (cpg_object_is_compiled (object))
+	{
+		/* Don't recompile if not necessary */
+		return TRUE;
+	}
+
 	/* Compile all the property expressions */
 	GSList *properties = object->priv->properties;
 	gboolean ret = TRUE;
@@ -335,10 +344,10 @@ cpg_object_compile_impl (CpgObject         *object,
 		properties = g_slist_next (properties);
 	}
 
+	object->priv->compiled = ret;
+
 	if (ret)
 	{
-		cpg_object_reset (object);
-
 		g_signal_emit (object, object_signals[COMPILED], 0);
 	}
 
@@ -503,6 +512,8 @@ cpg_object_clear_impl (CpgObject *object)
 	}
 
 	g_slist_free (props);
+
+	cpg_object_taint (object);
 }
 
 static void
@@ -510,6 +521,8 @@ cpg_object_taint_impl (CpgObject *object)
 {
 	g_slist_free (object->priv->actors);
 	object->priv->actors = NULL;
+
+	object->priv->compiled = FALSE;
 
 	g_signal_emit (object, object_signals[TAINTED], 0);
 }
@@ -835,8 +848,7 @@ cpg_object_get_properties (CpgObject *object)
  * @object: the #CpgObject
  * @link: the #CpgLink which links to this object
  *
- * Adds @link as a link which targets the object (link will be evaluated in
- * #cpg_object_evaluate).
+ * Adds @link as a link which targets the object.
  *
  **/
 void
@@ -934,24 +946,6 @@ cpg_object_get_actors (CpgObject *object)
 
 	object->priv->actors = g_slist_reverse (ret);
 	return object->priv->actors;
-}
-
-/**
- * cpg_object_evaluate:
- * @object: the #CpgObject
- *
- * Calculates update values for all the properties acted on by links
- *
- **/
-void
-cpg_object_evaluate (CpgObject *object)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-
-	if (CPG_OBJECT_GET_CLASS (object)->evaluate)
-	{
-		CPG_OBJECT_GET_CLASS (object)->evaluate (object);
-	}
 }
 
 /**
@@ -1135,6 +1129,14 @@ cpg_object_get_parent (CpgObject *object)
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
 	return object->priv->parent;
+}
+
+gboolean
+cpg_object_is_compiled (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+
+	return object->priv->compiled;
 }
 
 void

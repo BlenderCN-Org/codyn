@@ -544,6 +544,23 @@ cpg_property_remove_flags (CpgProperty     *property,
 	set_flags (property, property->priv->flags & ~flags);
 }
 
+void
+cpg_property_set_update (CpgProperty  *property,
+                         gdouble       value)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	property->priv->update = value;
+}
+
+gdouble
+cpg_property_get_update (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
+
+	return property->priv->update;
+}
+
 CpgProperty *
 _cpg_property_copy (CpgProperty *property)
 {
@@ -581,23 +598,6 @@ _cpg_property_unuse (CpgProperty *property)
 	}
 
 	return (--(property->priv->use_count) == 0);
-}
-
-void
-_cpg_property_set_update (CpgProperty  *property,
-                          gdouble       value)
-{
-	g_return_if_fail (CPG_IS_PROPERTY (property));
-
-	property->priv->update = value;
-}
-
-gdouble
-_cpg_property_get_update (CpgProperty *property)
-{
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
-
-	return property->priv->update;
 }
 
 void

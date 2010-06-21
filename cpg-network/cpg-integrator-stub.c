@@ -15,6 +15,20 @@ cpg_integrator_stub_finalize (GObject *object)
 	G_OBJECT_CLASS (cpg_integrator_stub_parent_class)->finalize (object);
 }
 
+static void
+stub_update (GSList const *properties)
+{
+	while (properties)
+	{
+		CpgProperty *property = properties->data;
+
+		cpg_property_set_value (property,
+		                        cpg_property_get_update (property));
+
+		properties = g_slist_next (properties);
+	}
+}
+
 void
 cpg_integrator_stub_update (CpgIntegratorStub *stub,
                             gdouble            t,
@@ -24,18 +38,10 @@ cpg_integrator_stub_update (CpgIntegratorStub *stub,
 	g_return_if_fail (CPG_IS_INTEGRATOR_STUB (stub));
 
 	/* First restore network state from the 'update' value of the cpg states */
-	GSList const *item = cpg_integrator_get_state (CPG_INTEGRATOR (stub));
+	CpgIntegratorState *state = cpg_integrator_get_state (CPG_INTEGRATOR (stub));
 
-	while (item)
-	{
-		CpgIntegratorState *st = item->data;
-		CpgProperty *property = cpg_integrator_state_get_property (st);
-
-		cpg_property_set_value (property,
-		                        cpg_integrator_state_get_update (st));
-
-		item = g_slist_next (item);
-	}
+	stub_update (cpg_integrator_state_integrated_properties (state));
+	stub_update (cpg_integrator_state_direct_properties (state));
 
 	/* Then calculate the differential equations in the network like any other
 	   integrator */

@@ -59,6 +59,7 @@ static void
 history_move_cursor (CpgIntegratorPredictCorrect *pc)
 {
 	--pc->priv->history_cursor;
+
 	if (pc->priv->history_cursor < 0)
 	{
 		pc->priv->history_cursor = MAX_HISTORY_DEPTH - 1;
@@ -91,42 +92,60 @@ history_get (CpgIntegratorPredictCorrect *pc,
 
 static void
 history_update (CpgIntegratorPredictCorrect *pc,
-                GSList const                *state)
+                GSList const                *integrated,
+                GSList const                *direct)
 {
 	guint i = 0;
 
-	while (state)
+	while (integrated)
 	{
-		CpgIntegratorState *st = (CpgIntegratorState *)state->data;
+		history_set (pc, i, 0, cpg_property_get_update (integrated->data));
 
-		history_set (pc, i, 0, cpg_integrator_state_get_update (st));
+		integrated = g_slist_next (integrated);
+		++i;
+	}
 
-		state = g_slist_next (state);
+	while (direct)
+	{
+		history_set (pc, i, 0, cpg_property_get_update (direct->data));
+
+		direct = g_slist_next (direct);
 		++i;
 	}
 }
 
 static void
 read_current_values (CpgIntegratorPredictCorrect *pc,
-                     GSList const                *state)
+                     GSList const                *integrated,
+                     GSList const                *direct)
 {
 	guint i = 0;
 
-	while (state)
+	while (integrated)
 	{
-		CpgIntegratorState *st = (CpgIntegratorState *)state->data;
-		CpgProperty *prop = cpg_integrator_state_get_property (st);
+		CpgProperty *prop = integrated->data;
 
 		pc->priv->current_value[i] = cpg_property_get_value (prop);
 
-		state = g_slist_next (state);
+		integrated = g_slist_next (integrated);
+		++i;
+	}
+
+	while (direct)
+	{
+		CpgProperty *prop = direct->data;
+
+		pc->priv->current_value[i] = cpg_property_get_value (prop);
+
+		direct = g_slist_next (direct);
 		++i;
 	}
 }
 
 static void
 prediction_step (CpgIntegratorPredictCorrect *pc,
-                 GSList const                *state,
+                 GSList const                *integrated,
+                 GSList const                *direct,
                  gdouble                      timestep)
 {
 	/* for the first timesteps we have to use lower orders, e.g. at
@@ -138,10 +157,9 @@ prediction_step (CpgIntegratorPredictCorrect *pc,
 
 	guint state_index = 0;
 
-	while (state)
+	while (integrated)
 	{
-		CpgIntegratorState *st = (CpgIntegratorState *)state->data;
-		CpgProperty *prop = cpg_integrator_state_get_property (st);
+		CpgProperty *prop = integrated->data;
 
 		guint coeff_index;
 		gdouble dprediction = 0;
@@ -153,14 +171,15 @@ prediction_step (CpgIntegratorPredictCorrect *pc,
 
 		cpg_property_set_value (prop, pc->priv->current_value[state_index] + timestep * dprediction);
 
-		state = g_slist_next (state);
+		integrated = g_slist_next (integrated);
 		++state_index;
 	}
 }
 
 static void
 correction_step (CpgIntegratorPredictCorrect *pc,
-                 GSList const                *state,
+                 GSList const                *integrated,
+                 GSList const                *direct,
                  gdouble                      timestep)
 {
 	/* for the first timesteps we have to use lower orders, e.g. at
@@ -172,31 +191,31 @@ correction_step (CpgIntegratorPredictCorrect *pc,
 
 	guint state_index = 0;
 
-	while (state)
+	while (integrated)
 	{
-		CpgIntegratorState *st = (CpgIntegratorState *)state->data;
-		CpgProperty *prop = cpg_integrator_state_get_property (st);
+		CpgProperty *prop = integrated->data;
 
-		if (cpg_property_get_integrated (prop))
+		guint coeff_index;
+
+		/* derivative prediction for t+1 */
+		gdouble dcorrected = correction_coeffs[coeff_row][0] * cpg_property_get_update (prop);
+
+		for (coeff_index = 1; coeff_index < n_coeffs; ++coeff_index)
 		{
-			guint coeff_index;
-
-			/* derivative prediction for t+1 */
-			gdouble dcorrected = correction_coeffs[coeff_row][0] * cpg_integrator_state_get_update (st);
-
-			for (coeff_index = 1; coeff_index < n_coeffs; ++coeff_index)
-			{
-				dcorrected += correction_coeffs[coeff_row][coeff_index] * history_get (pc, state_index, coeff_index - 1);
-			}
-
-			cpg_property_set_value (prop, pc->priv->current_value[state_index] + timestep * dcorrected);
-		}
-		else
-		{
-			cpg_property_set_value (prop, history_get (pc, state_index, 0));
+			dcorrected += correction_coeffs[coeff_row][coeff_index] * history_get (pc, state_index, coeff_index - 1);
 		}
 
-		state = g_slist_next (state);
+		cpg_property_set_value (prop, pc->priv->current_value[state_index] + timestep * dcorrected);
+
+		integrated = g_slist_next (integrated);
+		++state_index;
+	}
+
+	while (direct)
+	{
+		cpg_property_set_value (direct->data, history_get (pc, state_index, 0));
+
+		direct = g_slist_next (direct);
 		++state_index;
 	}
 }
@@ -224,11 +243,21 @@ cpg_integrator_predict_correct_finalize (GObject *object)
 }
 
 static void
-cpg_integrator_predict_correct_reset_impl (CpgIntegrator *integrator,
-                                           GSList const  *state)
+cpg_integrator_predict_correct_reset_impl (CpgIntegrator *integrator)
 {
 	CpgIntegratorPredictCorrect *pc = CPG_INTEGRATOR_PREDICT_CORRECT (integrator);
-	guint len = g_slist_length ((GSList *)state);
+
+	if (CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->reset)
+	{
+		CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->reset (integrator);
+	}
+
+	CpgIntegratorState *state = cpg_integrator_get_state (integrator);
+	GSList const *integrated = cpg_integrator_state_integrated_properties (state);
+	GSList const *direct = cpg_integrator_state_direct_properties (state);
+
+	guint len = g_slist_length ((GSList *)integrated) +
+	            g_slist_length ((GSList *)direct);
 	guint i;
 
 	for (i = 0; i < MAX_HISTORY_DEPTH; ++i)
@@ -245,12 +274,11 @@ cpg_integrator_predict_correct_reset_impl (CpgIntegrator *integrator,
 	{
 		g_free (pc->priv->current_value);
 	}
+
 	pc->priv->current_value = g_new0 (gdouble, len);
 
 	pc->priv->history_cursor = 0;
 	pc->priv->step_index = 0;
-
-	CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->reset (integrator, state);
 }
 
 static gdouble
@@ -260,34 +288,40 @@ cpg_integrator_predict_correct_step_impl (CpgIntegrator *integrator,
 {
 	CpgIntegratorPredictCorrect *pc = CPG_INTEGRATOR_PREDICT_CORRECT (integrator);
 
-	GSList const *state = cpg_integrator_get_state (integrator);
+	CpgIntegratorState *state = cpg_integrator_get_state (integrator);
+
+	GSList const *integrated = cpg_integrator_state_integrated_properties (state);
+	GSList const *direct = cpg_integrator_state_direct_properties (state);
 
 	/* evaluate f(t) */
 	cpg_integrator_evaluate (integrator, t, timestep);
 
 	/* backup of current states */
-	read_current_values (pc, state);
+	read_current_values (pc, integrated, direct);
 
 	/* store f(t) */
-	history_update (pc, state);
+	history_update (pc, integrated, direct);
 
 	/* calculate prediction for t+1 */
-	prediction_step (pc, state, timestep);
+	prediction_step (pc, integrated, direct, timestep);
 
 	/* evaluate f(t+1) */
 	cpg_integrator_evaluate (integrator, t + timestep, timestep);
 
 	/* correct the prediction */
-	correction_step (pc, state, timestep);
+	correction_step (pc, integrated, direct, timestep);
 
 	history_move_cursor (pc);
 
 	++pc->priv->step_index;
 
 	/* Chain up to emit 'step' */
-	CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->step (integrator,
-	                                                                          t,
-	                                                                          timestep);
+	if (CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->step)
+	{
+		CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->step (integrator,
+		                                                                          t,
+		                                                                          timestep);
+	}
 
 	return timestep;
 }
