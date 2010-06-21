@@ -44,7 +44,9 @@ struct _CpgNetworkPrivate
 	gchar *filename;
 
 	CpgObject *globals;
-	GHashTable *templates;
+
+	GSList *templates;
+	GHashTable *template_hash;
 
 	GSList *functions;
 	CpgIntegrator *integrator;
@@ -84,7 +86,8 @@ cpg_network_finalize (GObject *object)
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	g_hash_table_destroy (network->priv->templates);
+	g_hash_table_destroy (network->priv->template_hash);
+	g_slist_free (network->priv->templates);
 
 	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
@@ -167,12 +170,12 @@ cpg_network_add_impl (CpgGroup  *group,
 	CpgNetwork *network = CPG_NETWORK (group);
 
 	/* Check if the network owns all the templates */
-	GSList const *templates = cpg_object_get_templates (object);
+	GSList const *templates = cpg_object_get_applied_templates (object);
 
 	while (templates)
 	{
 		CpgObject *template = templates->data;
-		CpgObject *other = g_hash_table_lookup (network->priv->templates,
+		CpgObject *other = g_hash_table_lookup (network->priv->template_hash,
 		                                        cpg_object_get_id (template));
 
 		gboolean eq = other == template;
@@ -278,7 +281,10 @@ cpg_network_clear_impl (CpgObject *object)
 	CPG_OBJECT_CLASS (cpg_network_parent_class)->clear (object);
 
 	/* Clear templates */
-	g_hash_table_remove_all (network->priv->templates);
+	g_hash_table_remove_all (network->priv->template_hash);
+
+	g_slist_free (network->priv->templates);
+	network->priv->templates = NULL;
 
 	/* Clear functions */
 	g_slist_foreach (network->priv->functions, (GFunc)g_object_unref, NULL);
@@ -355,10 +361,11 @@ cpg_network_init (CpgNetwork *network)
 {
 	network->priv = CPG_NETWORK_GET_PRIVATE (network);
 
-	network->priv->templates = g_hash_table_new_full (g_str_hash,
-	                                                  g_str_equal,
-	                                                  (GDestroyNotify)g_free,
-	                                                  (GDestroyNotify)g_object_unref);
+	network->priv->template_hash =
+		g_hash_table_new_full (g_str_hash,
+	                               g_str_equal,
+	                               (GDestroyNotify)g_free,
+	                               (GDestroyNotify)g_object_unref);
 
 	network->priv->integrator_state = cpg_integrator_state_new (CPG_OBJECT (network));
 
@@ -487,20 +494,6 @@ cpg_network_run (CpgNetwork  *network,
 	                    to);
 }
 
-static void
-merge_templates (gchar const *key,
-                 CpgObject   *template,
-                 CpgNetwork  *network)
-{
-	CpgObject *orig = g_hash_table_lookup (network->priv->templates,
-	                                       key);
-
-	if (!orig)
-	{
-		cpg_network_add_template (network, key, template);
-	}
-}
-
 /**
  * cpg_network_merge:
  * @network: a #CpgNetwork
@@ -536,9 +529,20 @@ cpg_network_merge (CpgNetwork  *network,
 	g_slist_free (props);
 
 	/* Copy over templates */
-	g_hash_table_foreach (other->priv->templates,
-	                      (GHFunc)merge_templates,
-	                      network);
+	GSList const *templates = cpg_network_get_templates (other);
+
+	while (templates)
+	{
+		CpgObject *template = templates->data;
+
+		if (!g_hash_table_lookup (network->priv->template_hash,
+		                          cpg_object_get_id (template)))
+		{
+			cpg_network_add_template (network,
+			                          cpg_object_get_id (template),
+			                          template);
+		}
+	}
 
 	/* Copy over children */
 	GSList const *children = cpg_group_get_children (CPG_GROUP (other));
@@ -649,75 +653,6 @@ cpg_network_write_to_file (CpgNetwork  *network,
 	cpg_network_writer_xml (network, filename);
 }
 
-static void
-fill_templates (gchar const  *key,
-                CpgObject    *template,
-                GSList      **list)
-{
-	*list = g_slist_prepend (*list, g_strdup (key));
-}
-
-static gboolean
-check_template (GSList *templates, gchar const *name)
-{
-	while (templates)
-	{
-		if (g_strcmp0 (name, (gchar const *)templates->data) == 0)
-		{
-			return TRUE;
-		}
-
-		templates = g_slist_next (templates);
-	}
-
-	return FALSE;
-}
-
-static GSList *
-sort_templates (CpgNetwork *network,
-                GSList     *templates)
-{
-	GSList *sorted = NULL;
-	GSList *ptr = templates;
-	CpgObject *seen = NULL;
-
-	while (ptr)
-	{
-		gchar *name = (gchar *)ptr->data;
-		CpgObject *orig = cpg_network_get_template (network, name);
-		GSList const *inherited = cpg_object_get_templates (orig);
-		gboolean checked = FALSE;
-
-		while (inherited)
-		{
-			checked |= check_template (sorted, cpg_object_get_id (inherited->data));
-			inherited = g_slist_next (inherited);
-		}
-
-		if (seen == orig || checked)
-		{
-			sorted = g_slist_prepend (sorted, name);
-			ptr = g_slist_next (ptr);
-
-			seen = NULL;
-		}
-		else
-		{
-			// Template not yet added, so cycle it
-			ptr = g_slist_next (ptr);
-			ptr = g_slist_append (ptr, name);
-
-			if (seen == NULL)
-			{
-				seen = orig;
-			}
-		}
-	}
-
-	g_slist_free (templates);
-	return g_slist_reverse (sorted);
-}
-
 /**
  * cpg_network_get_templates:
  * @network: a #CpgNetwork
@@ -730,18 +665,33 @@ sort_templates (CpgNetwork *network,
  * Returns: a list of template names
  *
  **/
-GSList *
+GSList const *
 cpg_network_get_templates (CpgNetwork *network)
 {
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 
-	GSList *list = NULL;
+	return network->priv->templates;
+}
 
-	g_hash_table_foreach (network->priv->templates,
-	                      (GHFunc)fill_templates,
-	                      &list);
+static gint
+compare_templates (CpgObject *t1,
+                   CpgObject *t2)
+{
+	GSList const *temp1 = cpg_object_get_applied_templates (t1);
+	GSList const *temp2 = cpg_object_get_applied_templates (t2);
 
-	return sort_templates (network, g_slist_reverse (list));
+	if (g_slist_find ((GSList *)temp1, t2))
+	{
+		return 1;
+	}
+	else if (g_slist_find ((GSList *)temp2, t1))
+	{
+		return -1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 /**
@@ -764,9 +714,20 @@ cpg_network_add_template (CpgNetwork  *network,
 	g_return_if_fail (name != NULL);
 	g_return_if_fail (CPG_IS_OBJECT (object));
 
-	g_hash_table_insert (network->priv->templates,
+	if (g_hash_table_lookup (network->priv->template_hash,
+	                         name))
+	{
+		return;
+	}
+
+	g_hash_table_insert (network->priv->template_hash,
 	                     g_strdup (name),
 	                     g_object_ref (object));
+
+	network->priv->templates =
+		g_slist_insert_sorted (network->priv->templates,
+		                       object,
+		                       (GCompareFunc)compare_templates);
 }
 
 /**
@@ -786,7 +747,7 @@ cpg_network_get_template (CpgNetwork  *network,
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	return g_hash_table_lookup (network->priv->templates, name);
+	return g_hash_table_lookup (network->priv->template_hash, name);
 }
 
 /**
@@ -805,7 +766,14 @@ cpg_network_remove_template (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (name != NULL);
 
-	g_hash_table_remove (network->priv->templates, name);
+	CpgObject *obj = cpg_network_get_template (network, name);
+
+	if (obj)
+	{
+		g_hash_table_remove (network->priv->template_hash, name);
+		network->priv->templates = g_slist_remove (network->priv->templates,
+		                                           obj);
+	}
 }
 
 /**

@@ -1115,8 +1115,17 @@ cpg_object_equal (CpgObject *first,
 	}
 }
 
+/**
+ * cpg_object_get_applied_templates:
+ * @object: A #CpgObject
+ *
+ * Get the list of applied templates.
+ *
+ * Returns: A #GSList of #CpgObject
+ *
+ **/
 GSList const *
-cpg_object_get_templates (CpgObject *object)
+cpg_object_get_applied_templates (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 

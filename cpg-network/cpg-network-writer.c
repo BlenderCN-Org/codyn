@@ -65,7 +65,7 @@ templates_for_object (CpgObject *object,
 
 	if (include_own)
 	{
-		ret = g_slist_copy ((GSList *)cpg_object_get_templates (object));
+		ret = g_slist_copy ((GSList *)cpg_object_get_applied_templates (object));
 	}
 
 	CpgObject *parent = cpg_object_get_parent (object);
@@ -73,7 +73,7 @@ templates_for_object (CpgObject *object,
 
 	while (parent)
 	{
-		GSList const *templates = cpg_object_get_templates (parent);
+		GSList const *templates = cpg_object_get_applied_templates (parent);
 
 		while (templates)
 		{
@@ -200,7 +200,7 @@ check_inherited (CpgObject *object,
 
 	for (item = fakes; item; item = g_slist_next (item))
 	{
-		GSList const *templates = cpg_object_get_templates (item->data);
+		GSList const *templates = cpg_object_get_applied_templates (item->data);
 
 		while (templates)
 		{
@@ -229,7 +229,7 @@ object_to_xml (xmlDocPtr     doc,
 	xmlNewProp (ptr, (xmlChar *)"id", (xmlChar *)cpg_object_get_id (object));
 	xmlAddChild (parent, ptr);
 
-	GSList const *templates = cpg_object_get_templates (object);
+	GSList const *templates = cpg_object_get_applied_templates (object);
 
 	GPtrArray *refs = g_ptr_array_new ();
 
@@ -525,7 +525,7 @@ skip_object (CpgObject *object)
 	                                                           TRUE));
 
 	if (g_slist_length (templates) ==
-	    g_slist_length ((GSList *)cpg_object_get_templates (object)))
+	    g_slist_length ((GSList *)cpg_object_get_applied_templates (object)))
 	{
 		return FALSE;
 	}
@@ -685,7 +685,7 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	g_slist_free (properties);
 
 	// Generate templates
-	GSList *list = cpg_network_get_templates (network);
+	GSList const *list = cpg_network_get_templates (network);
 	xmlNodePtr templates;
 
 	if (list)
@@ -694,18 +694,14 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 		xmlAddChild (nnetwork, templates);
 	}
 
-	GSList *item;
+	GSList const *item;
 
 	for (item = list; item; item = g_slist_next (item))
 	{
-		gchar const *name = (gchar const *)item->data;
-		CpgObject *template = cpg_network_get_template (network, name);
+		CpgObject *template = item->data;
 
 		cpg_object_to_xml (doc, templates, template);
 	}
-
-	g_slist_foreach (list, (GFunc)g_free, NULL);
-	g_slist_free (list);
 
 	// Generate state and link nodes
 	group_to_xml (doc, nnetwork, CPG_GROUP (network));

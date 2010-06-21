@@ -94,7 +94,7 @@ void              cpg_network_step                   (CpgNetwork *network,
                                                       gdouble     timestep);
 void              cpg_network_reset                  (CpgNetwork *network);
 
-GSList           *cpg_network_get_templates          (CpgNetwork   *network);
+GSList const     *cpg_network_get_templates          (CpgNetwork   *network);
 void              cpg_network_add_template           (CpgNetwork   *network,
                                                       const gchar  *name,
                                                       CpgObject    *object);
