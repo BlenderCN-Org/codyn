@@ -621,6 +621,14 @@ cpg_link_action_set_target (CpgLinkAction *action,
 	}
 }
 
+gboolean
+cpg_link_action_depends (CpgLinkAction *action,
+                         CpgProperty   *property)
+{
+	return g_slist_find ((GSList *)cpg_expression_get_dependencies (action->expression),
+	                     property) != NULL;
+}
+
 GType
 cpg_link_action_get_type ()
 {

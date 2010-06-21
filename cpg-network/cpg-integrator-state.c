@@ -288,67 +288,33 @@ collect_states (CpgIntegratorState *state,
 	}
 }
 
-static gboolean
-check_link_action_dependency (GSList      *actions,
-                              CpgProperty *target)
+static gint
+link_action_compare (CpgLinkAction *a,
+                     CpgLinkAction *b)
 {
-	while (actions)
+	/* if a depends on b => 1
+	   if b depends on a => -1
+	   else 0 */
+	if (cpg_link_action_depends (a, cpg_link_action_get_target (b)))
 	{
-		if (cpg_link_action_get_target (actions->data) == target)
-		{
-			return TRUE;
-		}
-
-		actions = g_slist_next (actions);
+		return 1;
 	}
-
-	return FALSE;
+	else if (cpg_link_action_depends (b, cpg_link_action_get_target (a)))
+	{
+		return -1;
+	}
+	else
+	{
+		return 0;
+	}
 }
 
 static void
 sort_link_actions (CpgIntegratorState *state)
 {
-	GSList *sorted = NULL;
-	GSList *ptr = state->priv->direct_link_actions;
-	CpgLinkAction *seen = NULL;
-
-	while (ptr)
-	{
-		CpgLinkAction *orig = ptr->data;
-		CpgExpression *expression = cpg_link_action_get_expression (orig);
-		GSList const *dependencies = cpg_expression_get_dependencies (expression);
-		CpgProperty *target = cpg_link_action_get_target (orig);
-		gboolean checked = FALSE;
-
-		while (dependencies && !checked)
-		{
-			checked = check_link_action_dependency (sorted,
-			                                        target);
-
-			dependencies = g_slist_next (dependencies);
-		}
-
-		if (seen == orig || checked)
-		{
-			sorted = g_slist_prepend (sorted, orig);
-			ptr = g_slist_next (ptr);
-
-			seen = NULL;
-		}
-		else
-		{
-			ptr = g_slist_next (ptr);
-			ptr = g_slist_append (ptr, orig);
-
-			if (seen == NULL)
-			{
-				seen = orig;
-			}
-		}
-	}
-
-	g_slist_free (state->priv->direct_link_actions);
-	state->priv->direct_link_actions = g_slist_reverse (sorted);
+	state->priv->direct_link_actions =
+		g_slist_sort (state->priv->direct_link_actions,
+		              (GCompareFunc)link_action_compare);
 }
 
 /**
