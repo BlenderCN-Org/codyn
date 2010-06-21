@@ -13,6 +13,7 @@
 #include "cpg-integrators.h"
 #include "cpg-function-polynomial.h"
 #include "cpg-enum-types.h"
+#include "cpg-network-xml.h"
 
 typedef struct
 {
@@ -179,7 +180,8 @@ static gboolean
 extract_flags (ParseInfo        *info,
                xmlNodePtr        node,
                gchar const      *name,
-               CpgPropertyFlags *flags)
+               CpgPropertyFlags *flags,
+               gboolean         *flags_attr)
 {
 	GFlagsClass *klass;
 	guint i;
@@ -202,10 +204,14 @@ extract_flags (ParseInfo        *info,
 	xmlChar *prop = xmlGetProp (node, (xmlChar *)"flags");
 	gboolean ret = TRUE;
 
+	*flags_attr = FALSE;
+
 	if (prop)
 	{
 		gchar **parts = g_strsplit_set ((gchar const *)prop, ",| ", -1);
 		gchar **ptr = parts;
+
+		*flags_attr = TRUE;
 
 		while (ptr && *ptr)
 		{
@@ -275,8 +281,13 @@ parse_properties (xmlDocPtr  doc,
 
 		CpgProperty *property;
 		CpgPropertyFlags flags;
+		gboolean flags_attr;
 
-		if (!extract_flags (info, node, (gchar const *)name, &flags))
+		if (!extract_flags (info,
+		                    node,
+		                    (gchar const *)name,
+		                    &flags,
+		                    &flags_attr))
 		{
 			return FALSE;
 		}
@@ -285,6 +296,10 @@ parse_properties (xmlDocPtr  doc,
 		                                    (const gchar *)name,
 		                                    (const gchar *)expression,
 		                                    flags);
+
+		g_object_set_data (G_OBJECT (property),
+		                   CPG_NETWORK_XML_PROPERTY_FLAGS_ATTRIBUTE,
+		                   GINT_TO_POINTER (flags_attr));
 
 		xmlFree (name);
 	}

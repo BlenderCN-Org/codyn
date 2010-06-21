@@ -3,6 +3,7 @@
 #include <libxml/tree.h>
 #include "cpg-enum-types.h"
 #include "cpg-function-polynomial.h"
+#include "cpg-network-xml.h"
 
 extern int xmlIndentTreeOutput;
 
@@ -105,7 +106,18 @@ export_flags (xmlNodePtr   node,
 	GFlagsClass *klass;
 	guint i;
 
+	gboolean flags_attr;
+
+	flags_attr = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (property),
+	                                                 CPG_NETWORK_XML_PROPERTY_FLAGS_ATTRIBUTE));
+
 	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
+	GPtrArray *attrs;
+
+	if (flags_attr)
+	{
+		attrs = g_ptr_array_new ();
+	}
 
 	for (i = 0; i < klass->n_values; ++i)
 	{
@@ -113,8 +125,27 @@ export_flags (xmlNodePtr   node,
 
 		if (flags & value->value)
 		{
-			xmlNewProp (node, (xmlChar *)value->value_nick, (xmlChar *)"yes");
+			if (!flags_attr)
+			{
+				xmlNewProp (node, (xmlChar *)value->value_nick, (xmlChar *)"yes");
+			}
+			else
+			{
+				g_ptr_array_add (attrs, (gpointer)value->value_nick);
+			}
 		}
+	}
+
+	if (flags_attr)
+	{
+		g_ptr_array_add (attrs, NULL);
+		gchar **vals = (gchar **)g_ptr_array_free (attrs, FALSE);
+		gchar *joined = g_strjoinv (" | ", vals);
+
+		xmlNewProp (node, (xmlChar *)"flags", (xmlChar *)joined);
+
+		g_free (joined);
+		g_free (vals);
 	}
 }
 
