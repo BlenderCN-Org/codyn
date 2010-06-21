@@ -988,11 +988,23 @@ parse_network (xmlDocPtr   doc,
 
 	for (item = nodes; item; item = g_list_next (item))
 	{
-		xmlNodePtr node = (xmlNodePtr)item->data;
+		xmlNodePtr node = item->data;
+
+		gboolean has_child = xml_xpath_first (doc,
+		                                      node,
+		                                      "state | relay | link",
+		                                      XML_ELEMENT_NODE) != NULL;
 
 		if (g_strcmp0 ((gchar const *)node->name, "state") == 0)
 		{
-			ret = new_object (CPG_TYPE_STATE, node, info) != NULL;
+			if (has_child)
+			{
+				ret = parse_group (doc, node, info);
+			}
+			else
+			{
+				ret = new_object (CPG_TYPE_STATE, node, info) != NULL;
+			}
 		}
 		else if (g_strcmp0 ((gchar const *)node->name, "relay") == 0)
 		{
@@ -1001,10 +1013,6 @@ parse_network (xmlDocPtr   doc,
 		else if (g_strcmp0 ((gchar const *)node->name, "link") == 0)
 		{
 			ret = parse_link (doc, node, info);
-		}
-		else if (g_strcmp0 ((gchar const *)node->name, "group") == 0)
-		{
-			ret = parse_group (doc, node, info);
 		}
 		else if (atroot)
 		{

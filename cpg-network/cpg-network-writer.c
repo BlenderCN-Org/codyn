@@ -594,7 +594,7 @@ group_to_xml (xmlDocPtr   doc,
 
 	if (!CPG_IS_NETWORK (group))
 	{
-		group_node = object_to_xml (doc, root, CPG_OBJECT (group), "group");
+		group_node = object_to_xml (doc, root, CPG_OBJECT (group), "state");
 
 		CpgObject *proxy = cpg_group_get_proxy (group);
 

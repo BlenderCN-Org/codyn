@@ -6,26 +6,14 @@ INCLUDES =				\
 	-I$(top_srcdir)				\
 	$(CPG_NETWORK_CFLAGS)
 
-EXTRA_PROGRAMS = expression test template
+TEST_PROGS = expression
+progs_ldadd = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la
 
-noinst_PROGRAMS = expression test template
-expression_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la -lm $(CPG_NETWORK_LIBS)
+noinst_PROGRAMS = $(TEST_PROGS)
 
-expression_SOURCES = \
-	expression.c \
-	utils.c \
-	utils.h
+expression_SOURCES = expression.c utils.h
+expression_LDADD = $(progs_ldadd)
 
-test_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la -lm $(CPG_NETWORK_LIBS)
-
-test_SOURCES = \
-	test.c
-
-template_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la -lm $(CPG_NETWORK_LIBS)
-
-template_SOURCES = \
-	template.c
-
-EXTRA_DIST = template.cpg
+TESTS = $(TEST_PROGS)
 
 -include $(top_srcdir)/git.mk
