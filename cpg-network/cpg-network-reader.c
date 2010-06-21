@@ -992,7 +992,7 @@ parse_network (xmlDocPtr   doc,
 
 		gboolean has_child = xml_xpath_first (doc,
 		                                      node,
-		                                      "state | relay | link",
+		                                      "state | link",
 		                                      XML_ELEMENT_NODE) != NULL;
 
 		if (g_strcmp0 ((gchar const *)node->name, "state") == 0)
@@ -1005,10 +1005,6 @@ parse_network (xmlDocPtr   doc,
 			{
 				ret = new_object (CPG_TYPE_STATE, node, info) != NULL;
 			}
-		}
-		else if (g_strcmp0 ((gchar const *)node->name, "relay") == 0)
-		{
-			ret = new_object (CPG_TYPE_RELAY, node, info) != NULL;
 		}
 		else if (g_strcmp0 ((gchar const *)node->name, "link") == 0)
 		{

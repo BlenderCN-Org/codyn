@@ -233,14 +233,6 @@ object_to_xml (xmlDocPtr     doc,
 }
 
 static xmlNodePtr
-relay_to_xml (xmlDocPtr   doc,
-              xmlNodePtr  parent,
-              CpgRelay   *relay)
-{
-	return object_to_xml (doc, parent, CPG_OBJECT (relay), "relay");
-}
-
-static xmlNodePtr
 state_to_xml (xmlDocPtr   doc,
               xmlNodePtr  parent,
               CpgState   *state)
@@ -543,10 +535,6 @@ cpg_object_to_xml (xmlDocPtr   doc,
 	{
 		group_to_xml (doc, root, CPG_GROUP (object));
 	}
-	else if (CPG_IS_RELAY (object))
-	{
-		relay_to_xml (doc, root, CPG_RELAY (object));
-	}
 	else if (CPG_IS_STATE (object))
 	{
 		state_to_xml (doc, root, CPG_STATE (object));
@@ -685,7 +673,7 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	g_slist_foreach (list, (GFunc)g_free, NULL);
 	g_slist_free (list);
 
-	// Generate state, relay and link nodes
+	// Generate state and link nodes
 	group_to_xml (doc, nnetwork, CPG_GROUP (network));
 
 	write_functions (network, doc, nnetwork);

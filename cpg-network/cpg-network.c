@@ -5,7 +5,6 @@
 
 #include "cpg-network.h"
 #include "cpg-expression.h"
-#include "cpg-relay.h"
 #include "cpg-object.h"
 #include "cpg-link.h"
 #include "cpg-debug.h"
@@ -18,7 +17,7 @@
  * @short_description: The main CPG network object
  *
  * The cpg network is the main component of the cpg-network library. The network
- * consists of #CpgState, #CpgRelay and #CpgLink objects which combined make
+ * consists of #CpgState and #CpgLink objects which combined make
  * up the network.
  *
  * The easiest way of using the library is to write the network using the
@@ -672,12 +671,12 @@ cpg_network_merge (CpgNetwork  *network,
 
 	g_slist_free (props);
 
-	// Copy over templates
+	/* Copy over templates */
 	g_hash_table_foreach (other->priv->templates,
 	                      (GHFunc)merge_templates,
 	                      network);
 
-	// Copy over states/relays
+	/* Copy over children */
 	GSList const *children = cpg_group_get_children (CPG_GROUP (other));
 
 	while (children)
@@ -686,7 +685,7 @@ cpg_network_merge (CpgNetwork  *network,
 		children = g_slist_next (children);
 	}
 
-	// Copy over functions
+	/* Copy over functions */
 	for (item = other->priv->functions; item; item = g_slist_next (item))
 	{
 		cpg_network_add_function (network, CPG_FUNCTION (item->data));

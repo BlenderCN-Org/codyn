@@ -27,7 +27,6 @@ COMMON_SOURCES = 		\
 	cpg-object.c \
 	cpg-property.c \
 	cpg-ref-counted.c \
-	cpg-relay.c \
 	cpg-stack.c \
 	cpg-state.c \
 	cpg-tokenizer.c
@@ -60,7 +59,6 @@ INST_H_FILES = \
 	cpg-object.h \
 	cpg-property.h \
 	cpg-ref-counted.h \
-	cpg-relay.h \
 	cpg-stack.h \
 	cpg-state.h \
 	cpg-utils.h

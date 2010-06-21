@@ -5,7 +5,6 @@
 
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-state.h>
-#include <cpg-network/cpg-relay.h>
 #include <cpg-network/cpg-link.h>
 #include <cpg-network/cpg-monitor.h>
 #include <cpg-network/cpg-compile-error.h>
