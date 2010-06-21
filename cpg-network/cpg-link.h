@@ -50,6 +50,8 @@ gboolean       cpg_link_remove_action         (CpgLink       *link,
                                                CpgLinkAction *action);
 
 GSList const  *cpg_link_get_actions           (CpgLink       *link);
+CpgLinkAction *cpg_link_get_action            (CpgLink       *link,
+                                               const gchar   *target);
 
 CpgExpression *cpg_link_action_get_expression (CpgLinkAction *action);
 CpgProperty   *cpg_link_action_get_target     (CpgLinkAction *action);

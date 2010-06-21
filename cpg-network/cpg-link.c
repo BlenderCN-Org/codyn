@@ -529,6 +529,41 @@ cpg_link_get_actions (CpgLink *link)
 }
 
 /**
+ * cpg_link_get_action:
+ * @link: A #CpgLink
+ * @prop: The target property name
+ *
+ * Get a #CpgLinkAction targetting the property @prop.
+ *
+ * Returns: A #CpgLinkAction
+ *
+ **/
+CpgLinkAction *
+cpg_link_get_action (CpgLink     *link,
+                     gchar const *target)
+{
+	g_return_val_if_fail (CPG_IS_LINK (link), NULL);
+	g_return_val_if_fail (target != NULL, NULL);
+
+	GSList *actions = link->priv->actions;
+
+	while (actions)
+	{
+		CpgLinkAction *action = actions->data;
+		CpgProperty *prop = cpg_link_action_get_target (action);
+
+		if (g_strcmp0 (cpg_property_get_name (prop), target) == 0)
+		{
+			return action;
+		}
+
+		actions = g_slist_next (actions);
+	}
+
+	return NULL;
+}
+
+/**
  * cpg_link_action_get_expression:
  * @action: the #CpgLinkAction
  *
