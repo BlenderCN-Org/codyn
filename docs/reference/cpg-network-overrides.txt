@@ -76,7 +76,7 @@ CpgObject         *object,CpgCompileContext *context,CpgCompileError *error
 <FUNCTION>
 <NAME>cpg_monitor_new</NAME>
 <RETURNS>CpgMonitor		 *</RETURNS>
-CpgNetwork *network,CpgObject          *object,const gchar        *property_name
+CpgNetwork *network,CpgProperty          *property,
 </FUNCTION>
 <FUNCTION>
 <NAME>cpg_property_new</NAME>

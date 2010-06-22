@@ -391,6 +391,28 @@ CPG_PROPERTY_GET_CLASS
 </SECTION>
 
 <SECTION>
+<FILE>cpg-monitor</FILE>
+<TITLE>CpgMonitor</TITLE>
+CPG_MONITOR_CONST
+CpgMonitor
+CpgMonitorClass
+CpgMonitorPrivate
+cpg_monitor_new
+cpg_monitor_get_sites
+cpg_monitor_get_data
+cpg_monitor_get_data_resampled
+cpg_monitor_get_property
+<SUBSECTION Standard>
+CPG_MONITOR
+CPG_IS_MONITOR
+CPG_TYPE_MONITOR
+cpg_monitor_get_type
+CPG_MONITOR_CLASS
+CPG_IS_MONITOR_CLASS
+CPG_MONITOR_GET_CLASS
+</SECTION>
+
+<SECTION>
 <FILE>cpg-integrator-runge-kutta</FILE>
 <TITLE>CpgIntegratorRungeKutta</TITLE>
 CPG_INTEGRATOR_RUNGE_KUTTA_CONST
@@ -473,19 +495,6 @@ cpg_compile_error_string
 cpg_compile_error_code_string
 cpg_compile_error_get_code
 cpg_compile_error_get_message
-</SECTION>
-
-<SECTION>
-<FILE>cpg-monitor</FILE>
-<TITLE>CpgMonitor</TITLE>
-CpgMonitor
-cpg_monitor_get_type
-cpg_monitor_new
-cpg_monitor_get_sites
-cpg_monitor_get_data
-cpg_monitor_get_data_resampled
-cpg_monitor_get_object
-cpg_monitor_get_property
 </SECTION>
 
 <SECTION>
