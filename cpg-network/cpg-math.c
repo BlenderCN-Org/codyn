@@ -4,6 +4,14 @@
 
 #include "cpg-math.h"
 
+/**
+ * SECTION:cpg-math
+ * @short_description: Math function/operators
+ *
+ * Math expression helper functions.
+ *
+ */
+
 #define RAND(A, B)  ((A) + rand() * 1.0 / RAND_MAX * ((B) - (A)))
 
 typedef void (*FunctionClosure)(CpgStack *);
@@ -293,14 +301,35 @@ static FunctionEntry function_entries[] = {
 	{"sqsum", op_sqsum, -1, TRUE}
 };
 
+/**
+ * cpg_math_function_lookup_by_id:
+ * @type: A #CpgMathFunctionType
+ * @arguments: return value for the number of arguments
+ * 
+ * Lookup the name of a function by its id.
+ *
+ * Returns: the name of the function, or %NULL if the function could not be
+ *          found
+ *
+ **/
 gchar const *
-cpg_math_function_lookup_by_id (CpgMathFunctionType  id,
+cpg_math_function_lookup_by_id (CpgMathFunctionType  type,
                                 gint                *arguments) 
 {
-	*arguments = function_entries[id].arguments;
-	return function_entries[id].name;
+	*arguments = function_entries[type].arguments;
+	return function_entries[type].name;
 }
 
+/**
+ * cpg_math_function_lookup:
+ * @name: The function name
+ * @arguments: The number of arguments
+ * 
+ * Lookup a math function given the name @name and number of arguments.
+ *
+ * Returns: A #CpgMathFunctionType
+ *
+ **/
 CpgMathFunctionType
 cpg_math_function_lookup (gchar const  *name,
                           gint         *arguments)
@@ -319,23 +348,51 @@ cpg_math_function_lookup (gchar const  *name,
 	return 0;
 }
 
+/**
+ * cpg_math_function_is_constant:
+ * @type: A #CpgMathFunctionType
+ * 
+ * Get whether a math function is constant (i.e. if it is deterministic). An
+ * example of a function that is not constant is 'rand'.
+ *
+ * Returns: %TRUE if the function is constant, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_math_function_is_constant (CpgMathFunctionType type)
 {
 	return function_entries[type].constant;
 }
 
+/**
+ * cpg_math_function_is_variable:
+ * @type: A #CpgMathFunctionType
+ * 
+ * Get whether the math function accepts a variable number of arguments.
+ *
+ * Returns: %TRUE if the function accepts a variable number of arguments,
+ *          %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_math_function_is_variable (CpgMathFunctionType type)
 {
 	return function_entries[type].arguments == -1;
 }
 
+/**
+ * cpg_math_function_execute:
+ * @type: A #CpgMathFunctionType
+ * @stack: A #CpgStack
+ * 
+ * Execute a math function on the stack.
+ *
+ **/
 void
-cpg_math_function_execute (CpgMathFunctionType  id,
+cpg_math_function_execute (CpgMathFunctionType  type,
                            CpgStack            *stack)
 {
-	function_entries[id].function (stack);
+	function_entries[type].function (stack);
 }
 
 /* operator functions */
@@ -516,25 +573,61 @@ static OperatorEntry operator_entries[] = {
 	{"?:", op_ternary, 3, TRUE}
 };
 
+/**
+ * cpg_math_operator_lookup:
+ * @type: A #CpgMathOperatorType
+ * 
+ * Lookup the operator type for a certain operator type.
+ *
+ * Returns: A #CpgMathOperatorType
+ *
+ **/
 CpgMathOperatorType
 cpg_math_operator_lookup (CpgMathOperatorType type)
 {
 	return type;
 }
 
+/**
+ * cpg_math_operator_execute:
+ * @type: A #CpgMathOperatorType
+ * @stack: A #CpgStack
+ * 
+ * Execute an operator on the stack.
+ *
+ **/
 void
-cpg_math_operator_execute (CpgMathOperatorType  id,
+cpg_math_operator_execute (CpgMathOperatorType  type,
                            CpgStack            *stack)
 {
-	operator_entries[id].function (stack);
+	operator_entries[type].function (stack);
 }
 
+/**
+ * cpg_math_operator_is_constant:
+ * @type: A #CpgMathOperatorType
+ * 
+ * Get whether an operator is constant (i.e. if it is deterministic).
+ *
+ * Returns: %TRUE if the operator is constant, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_math_operator_is_constant (CpgMathOperatorType type)
 {
 	return operator_entries[type].constant;
 }
 
+/**
+ * cpg_math_operator_is_variable:
+ * @type: A #CpgMathOperatorType
+ * 
+ * Get whether an operator accepts a variable number of arguments.
+ *
+ * Returns: %TRUE if the operator accepts a variable number of arguments,
+ *          %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_math_operator_is_variable (CpgMathOperatorType type)
 {
@@ -561,6 +654,17 @@ static CpgConstantEntry constant_entries[] = {
 	{"inf", NULL, 0}
 };
 
+/**
+ * cpg_math_constant_lookup:
+ * @name: The name of the constant
+ * @found: Return value whether or not the constant could be found
+ * 
+ * Get the value of a constant. Valid constants are: pi, PI, e, E, NAN, nan,
+ * NaN, Inf, INF, inf.
+ *
+ * Returns: the value of a constant
+ *
+ **/
 gdouble
 cpg_math_constant_lookup (gchar const  *name,
                           gboolean     *found)

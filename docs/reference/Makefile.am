@@ -60,8 +60,6 @@ IGNORE_HFILES= \
 	cpg-network-writer.h \
 	cpg-utils.h \
 	cpg-ref-counted-private.h \
-	cpg-math.h \
-	cpg-stack.h \
 	cpg-network-xml.h \
 	cpg-debug.h
 

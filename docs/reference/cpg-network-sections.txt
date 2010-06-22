@@ -215,7 +215,6 @@ cpg_group_set_proxy
 cpg_group_get_proxy
 cpg_group_foreach
 cpg_group_get_child
-cpg_group_clear
 cpg_group_find_object
 cpg_group_find_property
 <SUBSECTION Standard>
@@ -328,7 +327,6 @@ cpg_network_add_function
 cpg_network_remove_function
 cpg_network_get_functions
 cpg_network_get_function
-cpg_network_get_integration_state
 <SUBSECTION Standard>
 CPG_NETWORK
 CPG_IS_NETWORK
@@ -431,8 +429,8 @@ CPG_TYPE_COMPILE_ERROR_CODE
 cpg_compile_error_code_get_type
 CPG_TYPE_DEBUG_TYPE
 cpg_debug_type_get_type
-CPG_TYPE_INSTRUCTION_CODE
-cpg_instruction_code_get_type
+CPG_TYPE_INSTRUCTION_TYPE
+cpg_instruction_type_get_type
 CPG_TYPE_INSTRUCTION_BINDING
 cpg_instruction_binding_get_type
 CPG_TYPE_MATH_OPERATOR_TYPE
@@ -501,11 +499,47 @@ cpg_integrators_find
 </SECTION>
 
 <SECTION>
+<FILE>cpg-math</FILE>
+<TITLE>CpgMath</TITLE>
+CpgMathFunctionType
+CpgMathOperatorType
+cpg_math_function_lookup
+cpg_math_function_lookup_by_id
+cpg_math_constant_lookup
+cpg_math_operator_lookup
+cpg_math_function_execute
+cpg_math_operator_execute
+cpg_math_function_is_constant
+cpg_math_operator_is_constant
+cpg_math_function_is_variable
+cpg_math_operator_is_variable
+</SECTION>
+
+<SECTION>
+<FILE>cpg-stack</FILE>
+<TITLE>CpgStack</TITLE>
+CpgStack
+cpg_stack_new
+cpg_stack_init
+cpg_stack_destroy
+cpg_stack_free
+cpg_stack_size
+cpg_stack_count
+cpg_stack_push
+cpg_stack_pop
+cpg_stack_reset
+</SECTION>
+
+<SECTION>
 <FILE>cpg-instructions</FILE>
+<TITLE>CpgInstructions</TITLE>
 CpgInstruction
-CpgInstructionCode
+CpgInstructionType
 CpgInstructionBinding
 CpgInstructionProperty
+CpgInstructionFunction
+CpgInstructionCustomFunction
+CpgInstructionNumber
 cpg_instruction_function_new
 cpg_instruction_custom_function_new
 cpg_instruction_number_new

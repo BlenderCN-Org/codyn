@@ -19,18 +19,28 @@ typedef struct _CpgGroupPrivate	CpgGroupPrivate;
 
 struct _CpgGroup
 {
+	/*< private >*/
 	CpgState parent;
 
 	CpgGroupPrivate *priv;
 };
 
+/**
+ * CpgGroupClass:
+ * @add: add virtual function
+ * @remove: remove virtual function
+ *
+ * The CpgGroup class
+ *
+ */
 struct _CpgGroupClass
 {
+	/*< private >*/
 	CpgStateClass parent_class;
 
+	/*< public >*/
 	gboolean (*add)    (CpgGroup *group, CpgObject *object);
 	gboolean (*remove) (CpgGroup *group, CpgObject *object);
-	void     (*clear)  (CpgGroup *group);
 };
 
 GType     cpg_group_get_type         (void) G_GNUC_CONST;
@@ -55,8 +65,6 @@ void          cpg_group_foreach      (CpgGroup    *group,
 
 CpgObject    *cpg_group_get_child    (CpgGroup    *group,
                                       const gchar *name);
-
-void          cpg_group_clear        (CpgGroup    *group);
 
 CpgObject    *cpg_group_find_object  (CpgGroup    *group,
                                       const gchar *path);

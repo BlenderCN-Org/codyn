@@ -1,6 +1,16 @@
 #include "cpg-integrator-stub.h"
 #include "cpg-network.h"
 
+/**
+ * SECTION:cpg-integrator-stub
+ * @short_description: Stub integrator
+ *
+ * Stub integrator. This integrator does not really do anything. It can be used
+ * as a stub when an external integration scheme is used (for example from
+ * matlab).
+ *
+ */
+
 #define CPG_INTEGRATOR_STUB_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_STUB, CpgIntegratorStubPrivate))
 
 /*struct _CpgIntegratorStubPrivate
@@ -29,6 +39,17 @@ stub_update (GSList const *properties)
 	}
 }
 
+/**
+ * cpg_integrator_stub_update:
+ * @stub: A #CpgIntegratorStub
+ * @t: the time
+ * @dt: the time step
+ * @integrate: whether or not to integrate the system
+ * 
+ * Update the stub integrator. This will reset property values from their
+ * update values and optionally calculate the differential equations.
+ *
+ **/
 void
 cpg_integrator_stub_update (CpgIntegratorStub *stub,
                             gdouble            t,

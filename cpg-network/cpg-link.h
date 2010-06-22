@@ -21,6 +21,7 @@ typedef struct _CpgLinkAction    CpgLinkAction;
 
 struct _CpgLink
 {
+	/*< private >*/
 	CpgObject parent;
 
 	CpgLinkPrivate *priv;
@@ -28,6 +29,7 @@ struct _CpgLink
 
 struct _CpgLinkClass
 {
+	/*< private >*/
 	CpgObjectClass parent_class;
 };
 

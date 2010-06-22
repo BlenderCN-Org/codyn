@@ -19,13 +19,17 @@ typedef struct _CpgFunctionPolynomialPrivate	CpgFunctionPolynomialPrivate;
 
 typedef struct _CpgFunctionPolynomialPiece		CpgFunctionPolynomialPiece;
 
-struct _CpgFunctionPolynomial {
+struct _CpgFunctionPolynomial
+{
+	/*< private >*/
 	CpgFunction parent;
-	
+
 	CpgFunctionPolynomialPrivate *priv;
 };
 
-struct _CpgFunctionPolynomialClass {
+struct _CpgFunctionPolynomialClass
+{
+	/*< private >*/
 	CpgFunctionClass parent_class;
 };
 

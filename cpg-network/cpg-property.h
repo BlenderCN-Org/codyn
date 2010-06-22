@@ -18,6 +18,17 @@ typedef struct _CpgProperty            CpgProperty;
 typedef struct _CpgPropertyClass    CpgPropertyClass;
 typedef struct _CpgPropertyPrivate    CpgPropertyPrivate;
 
+/**
+ * CpgPropertyFlags:
+ * @CPG_PROPERTY_FLAG_NONE: none
+ * @CPG_PROPERTY_FLAG_INTEGRATED: integrated
+ * @CPG_PROPERTY_FLAG_IN: in
+ * @CPG_PROPERTY_FLAG_OUT: out
+ * @CPG_PROPERTY_FLAG_ONCE: once
+ *
+ * Property flags.
+ *
+ */
 typedef enum
 {
 	CPG_PROPERTY_FLAG_NONE = 0,
@@ -25,11 +36,11 @@ typedef enum
 	CPG_PROPERTY_FLAG_IN = 1 << 1,
 	CPG_PROPERTY_FLAG_OUT = 1 << 2,
 	CPG_PROPERTY_FLAG_ONCE = 1 << 3,
-	CPG_PROPERTY_FLAG_NO_DELAY = 1 << 4
 } CpgPropertyFlags;
 
 struct _CpgProperty
 {
+	/*< private >*/
 	GObject parent;
 
 	CpgPropertyPrivate *priv;
@@ -37,6 +48,7 @@ struct _CpgProperty
 
 struct _CpgPropertyClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 

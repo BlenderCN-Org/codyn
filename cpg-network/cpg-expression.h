@@ -22,6 +22,7 @@ typedef struct _CpgExpressionPrivate	CpgExpressionPrivate;
 
 struct _CpgExpression
 {
+	/*< private >*/
 	GObject parent;
 
 	CpgExpressionPrivate *priv;
@@ -29,6 +30,7 @@ struct _CpgExpression
 
 struct _CpgExpressionClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 

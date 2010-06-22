@@ -25,17 +25,31 @@ typedef struct _CpgFunctionPrivate	CpgFunctionPrivate;
 
 typedef struct _CpgFunctionArgument CpgFunctionArgument;
 
-struct _CpgFunction {
+struct _CpgFunction
+{
+	/*< private >*/
 	CpgObject parent;
-	
+
 	CpgFunctionPrivate *priv;
 };
 
-struct _CpgFunctionClass {
+/**
+ * CpgFunctionClass:
+ * @evaluate: evaluate virtual function
+ * @execute: execute virtual function
+ *
+ * The CpgFunction class
+ *
+ */
+struct _CpgFunctionClass
+{
+	/*< private >*/
 	CpgObjectClass parent_class;
 
+	/*< public >*/
 	gdouble (*evaluate) (CpgFunction *function);
-	void (*execute) (CpgFunction *function, CpgStack *stack);
+	void    (*execute)  (CpgFunction *function,
+	                     CpgStack    *stack);
 };
 
 GType cpg_function_get_type (void) G_GNUC_CONST;

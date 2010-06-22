@@ -1,6 +1,16 @@
 #include "cpg-instructions.h"
 #include "cpg-function.h"
 
+/**
+ * SECTION:cpg-instructions
+ * @short_description: Instruction set for math expressions
+ *
+ * The following documentation describes the instructions that are used
+ * when compiling an expression. You can use @cpg_expression_get_instructions
+ * to get a list of instructions once an expression is compiled.
+ *
+ */
+
 static CpgInstruction *
 cpg_instruction_initialize (CpgInstruction *instruction)
 {

@@ -9,10 +9,14 @@
 G_BEGIN_DECLS
 
 /* Forward declaration */
-typedef struct _CpgInstruction CpgInstruction;
+typedef struct _CpgInstruction               CpgInstruction;
+typedef struct _CpgInstructionProperty       CpgInstructionProperty;
+typedef struct _CpgInstructionFunction       CpgInstructionFunction;
+typedef struct _CpgInstructionCustomFunction CpgInstructionCustomFunction;
+typedef struct _CpgInstructionNumber         CpgInstructionNumber;
 
 /**
- * CpgInstructionCode:
+ * CpgInstructionType:
  * @CPG_INSTRUCTION_TYPE_NONE: none
  * @CPG_INSTRUCTION_TYPE_FUNCTION: function
  * @CPG_INSTRUCTION_TYPE_NUMBER: number
@@ -33,37 +37,86 @@ typedef enum
 	CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION
 } CpgInstructionType;
 
+/**
+ * CpgInstruction:
+ * @type: the instruction type
+ *
+ * The base instruction. All other instructions are derived from this.
+ *
+ */
 struct _CpgInstruction
 {
 	CpgInstructionType type;
 };
 
-typedef struct
+/**
+ * CpgInstructionFunction:
+ * @id: The function/operator id (see #cpg_math_function_lookup)
+ * @name: The function/operator name
+ * @arguments: The number of arguments the function receives
+ * @variable: Whether the function is called with a variable number of
+ *            arguments
+ *
+ * The instruction class for %CPG_INSTRUCTION_TYPE_FUNCTION. Note: this
+ * instruction is used both for functions and for operators!
+ *
+ */
+struct _CpgInstructionFunction
 {
+	/*< private >*/
 	CpgInstruction parent;
 
+	/*< public >*/
 	guint id;
 	gchar *name;
 	gint arguments;
 	gboolean variable;
-} CpgInstructionFunction;
+};
 
-typedef struct
+/**
+ * CpgInstructionCustomFunction:
+ * @function: the custom function
+ * @arguments: the number of arguments the function receives
+ *
+ * The instruction class for %CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION
+ *
+ */
+struct _CpgInstructionCustomFunction
 {
+	/*< private >*/
 	CpgInstruction parent;
 
+	/*< public >*/
 	CpgFunction *function;
-
 	gint arguments;
-} CpgInstructionCustomFunction;
+};
 
-typedef struct
+/**
+ * CpgInstructionNumber:
+ * @value: the numeric value
+ *
+ * The instruction class for %CPG_INSTRUCTION_TYPE_NUMBER
+ *
+ */
+struct _CpgInstructionNumber
 {
+	/*< private >*/
 	CpgInstruction parent;
 
+	/*< public >*/
 	gdouble value;
-} CpgInstructionNumber;
+};
 
+/**
+ * CpgInstructionBinding:
+ * @CPG_INSTRUCTION_BINDING_NONE: none
+ * @CPG_INSTRUCTION_BINDING_FROM: from
+ * @CPG_INSTRUCTION_BINDING_TO: to
+ *
+ * Enum used to indicate how the property in a #CpgInstructionProperty
+ * was bound when the instruction was compiled.
+ *
+ **/
 typedef enum
 {
 	CPG_INSTRUCTION_BINDING_NONE = 0,
@@ -71,12 +124,20 @@ typedef enum
 	CPG_INSTRUCTION_BINDING_TO,
 } CpgInstructionBinding;
 
-typedef struct _CpgInstructionProperty CpgInstructionProperty;
-
+/**
+ * CpgInstructionProperty:
+ * @property: the property
+ * @binding: the property binding
+ *
+ * The instruction class for %CPG_INSTRUCTION_TYPE_PROPERTY.
+ *
+ */
 struct _CpgInstructionProperty
 {
+	/*< private >*/
 	CpgInstruction parent;
 
+	/*< public >*/
 	CpgProperty *property;
 	CpgInstructionBinding binding;
 };

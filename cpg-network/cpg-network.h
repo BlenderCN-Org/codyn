@@ -28,6 +28,17 @@ typedef struct _CpgNetworkPrivate CpgNetworkPrivate;
 
 #define CPG_NETWORK_LOAD_ERROR (cpg_network_load_error_quark ())
 
+/**
+ * CpgNetworkLoadError:
+ * @CPG_NETWORK_LOAD_ERROR_XML: error occurred in parsing xml
+ * @CPG_NETWORK_LOAD_ERROR_PROPERTY: error occurred in loading a property
+ * @CPG_NETWORK_LOAD_ERROR_OBJECT: error occurred in loading an object
+ * @CPG_NETWORK_LOAD_ERROR_LINK: error occurred in loading a link
+ * @CPG_NETWORK_LOAD_ERROR_FUNCTION: error occurred in loading a function
+ *
+ * Network load error types.
+ *
+ */
 typedef enum
 {
 	CPG_NETWORK_LOAD_ERROR_XML,
@@ -39,15 +50,25 @@ typedef enum
 
 struct _CpgNetwork
 {
+	/*< private >*/
 	CpgGroup parent;
 
 	CpgNetworkPrivate *priv;
 };
 
+/**
+ * CpgNetworkClass:
+ * @compile_error: compile error default signal handler
+ *
+ * The CpgNetwork class
+ *
+ */
 struct _CpgNetworkClass
 {
+	/*< private >*/
 	CpgGroupClass parent_class;
 
+	/*< public >*/
 	void (*compile_error) (CpgNetwork      *network,
 	                       CpgCompileError *error);
 };

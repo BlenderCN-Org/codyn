@@ -17,13 +17,17 @@ typedef struct _CpgIntegratorEuler			CpgIntegratorEuler;
 typedef struct _CpgIntegratorEulerClass		CpgIntegratorEulerClass;
 typedef struct _CpgIntegratorEulerPrivate	CpgIntegratorEulerPrivate;
 
-struct _CpgIntegratorEuler {
+struct _CpgIntegratorEuler
+{
+	/*< private >*/
 	CpgIntegrator parent;
 
 	CpgIntegratorEulerPrivate *priv;
 };
 
-struct _CpgIntegratorEulerClass {
+struct _CpgIntegratorEulerClass
+{
+	/*< private >*/
 	CpgIntegratorClass parent_class;
 };
 

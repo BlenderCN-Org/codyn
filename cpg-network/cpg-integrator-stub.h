@@ -19,6 +19,7 @@ typedef struct _CpgIntegratorStubPrivate CpgIntegratorStubPrivate;
 
 struct _CpgIntegratorStub
 {
+	/*< private >*/
 	CpgIntegrator parent;
 
 	CpgIntegratorStubPrivate *priv;
@@ -26,6 +27,7 @@ struct _CpgIntegratorStub
 
 struct _CpgIntegratorStubClass
 {
+	/*< private >*/
 	CpgIntegratorClass parent_class;
 };
 

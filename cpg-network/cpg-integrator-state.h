@@ -20,6 +20,7 @@ typedef struct _CpgIntegratorStatePrivate CpgIntegratorStatePrivate;
 
 struct _CpgIntegratorState
 {
+	/*< private >*/
 	GObject parent;
 
 	CpgIntegratorStatePrivate *priv;
@@ -27,6 +28,7 @@ struct _CpgIntegratorState
 
 struct _CpgIntegratorStateClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 

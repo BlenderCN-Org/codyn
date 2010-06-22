@@ -21,6 +21,7 @@ typedef struct _CpgIntegratorPrivate CpgIntegratorPrivate;
 
 struct _CpgIntegrator
 {
+	/*< private >*/
 	CpgObject parent;
 
 	CpgIntegratorPrivate *priv;
@@ -28,11 +29,23 @@ struct _CpgIntegrator
 
 CPG_FORWARD_DECL (CpgNetwork);
 
+/**
+ * CpgIntegratorClass:
+ * @run: run virtual function
+ * @step: step virtual function
+ * @get_name: get_name virtual function
+ * @reset: reset virtual function
+ * @integrator_id: the integrator id
+ *
+ * The CpgIntegrator class
+ *
+ */
 struct _CpgIntegratorClass
 {
+	/*< private >*/
 	CpgObjectClass parent_class;
 
-	/* virtual functions */
+	/*< public >*/
 	void         (*run)      (CpgIntegrator *integrator,
 	                          gdouble        from,
 	                          gdouble        timestep,

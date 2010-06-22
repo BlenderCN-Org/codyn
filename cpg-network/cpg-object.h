@@ -45,14 +45,40 @@ typedef enum
 
 struct _CpgObject
 {
+	/*< private >*/
 	GObject parent;
 
 	CpgObjectPrivate *priv;
 };
 
-struct _CpgObjectClass {
+/**
+ * CpgObjectClass:
+ * @compile: compile virtual function
+ * @reset: reset virtual function
+ * @reset_cache: reset cache virtual function
+ * @apply_template: apply template virtual function
+ * @copy: copy virtual function
+ * @taint: taint virtual function
+ * @get_properties: get properties virtual function
+ * @get_property: get property virtual function
+ * @has_property: has property virtual function
+ * @add_property: add property virtual function
+ * @remove_property: remove property virtual function
+ * @clear: clear virtual function
+ * @equal: equal virtual function
+ * @compiled: compiled signal default handler
+ * @resetted: resetted signal default handler
+ * @tainted: tainted signal default handler
+ *
+ * The CpgObject class
+ *
+ */
+struct _CpgObjectClass
+{
+	/*< private >*/
 	GObjectClass parent_class;
 
+	/*< public >*/
 	gboolean      (*compile)         (CpgObject                          *object,
 	                                  CpgCompileContext                  *context,
 	                                  CPG_FORWARD_DECL (CpgCompileError) *error);
