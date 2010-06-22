@@ -145,9 +145,16 @@ op_pow (CpgStack *stack)
 }
 
 static void
-op_log (CpgStack *stack)
+op_ln (CpgStack *stack)
 {
 	cpg_stack_push (stack, log (cpg_stack_pop (stack)));
+}
+
+
+static void
+op_log10 (CpgStack *stack)
+{
+	cpg_stack_push (stack, log10 (cpg_stack_pop (stack)));
 }
 
 static void
@@ -275,8 +282,8 @@ static FunctionEntry function_entries[] = {
 	{"abs", op_abs, 1, TRUE},
 	{"pow", op_pow, 2, TRUE},
 	{"rand", op_rand, -1, FALSE},
-	{"ln", op_log, 1, TRUE},
-	{"log", op_log, 1, TRUE},
+	{"ln", op_ln, 1, TRUE},
+	{"log10", op_log10, 1, TRUE},
 	{"hypot", op_hypot, 2, TRUE},
 	{"exp2", op_exp2, 1, TRUE},
 	{"sinh", op_sinh, 1, TRUE},
