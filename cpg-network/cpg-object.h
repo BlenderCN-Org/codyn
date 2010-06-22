@@ -69,6 +69,9 @@ struct _CpgObject
  * @compiled: compiled signal default handler
  * @resetted: resetted signal default handler
  * @tainted: tainted signal default handler
+ * @property_added: property added signal default handler
+ * @property_removed: property added signal default handler
+ * @property_changed: property added signal default handler
  *
  * The CpgObject class
  *
@@ -116,9 +119,15 @@ struct _CpgObjectClass
 	                                  CpgObject    *last);
 
 	/* signals */
-	void          (*compiled)        (CpgObject *object);
-	void          (*resetted)        (CpgObject *object);
-	void          (*tainted)         (CpgObject *object);
+	void          (*compiled)         (CpgObject   *object);
+	void          (*resetted)         (CpgObject   *object);
+	void          (*tainted)          (CpgObject   *object);
+	void          (*property_added)   (CpgObject   *object,
+	                                   CpgProperty *property);
+	void          (*property_removed) (CpgObject   *object,
+	                                   CpgProperty *property);
+	void          (*property_changed) (CpgObject   *object,
+	                                   CpgProperty *property);
 };
 
 GQuark cpg_object_error_quark (void);

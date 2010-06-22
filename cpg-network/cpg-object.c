@@ -56,6 +56,9 @@ enum
 	TAINTED,
 	COMPILED,
 	RESETTED,
+	PROPERTY_ADDED,
+	PROPERTY_REMOVED,
+	PROPERTY_CHANGED,
 	NUM_SIGNALS
 };
 
@@ -228,6 +231,15 @@ cpg_object_reset_cache_impl (CpgObject *object)
 }
 
 static void
+on_property_changed (CpgObject   *object,
+                     GParamSpec  *spec,
+                     CpgProperty *property)
+{
+	g_signal_emit (object, object_signals[PROPERTY_CHANGED], 0, property);
+	cpg_object_taint (object);
+}
+
+static void
 add_property (CpgObject   *object,
               CpgProperty *property)
 {
@@ -243,8 +255,10 @@ add_property (CpgObject   *object,
 
 	g_signal_connect_swapped (property,
 	                          "notify::expression",
-	                          G_CALLBACK (cpg_object_taint),
+	                          G_CALLBACK (on_property_changed),
 	                          object);
+
+	g_signal_emit (object, object_signals[PROPERTY_ADDED], 0, property);
 }
 
 static void
@@ -393,8 +407,14 @@ remove_property (CpgObject   *object,
 	                     cpg_property_get_name (property));
 
 	g_signal_handlers_disconnect_by_func (property,
-	                                      cpg_object_taint,
+	                                      on_property_changed,
 	                                      object);
+
+	g_signal_emit (object,
+	               object_signals[PROPERTY_REMOVED],
+	               0,
+	               property);
+
 	g_object_unref (property);
 
 	cpg_object_taint (object);
@@ -670,6 +690,45 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              g_cclosure_marshal_VOID__VOID,
 		              G_TYPE_NONE,
 		              0);
+
+	object_signals[PROPERTY_ADDED] =
+		g_signal_new ("property-added",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass,
+		                               property_added),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_PROPERTY);
+
+	object_signals[PROPERTY_REMOVED] =
+		g_signal_new ("property-removed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass,
+		                               property_removed),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_PROPERTY);
+
+	object_signals[PROPERTY_CHANGED] =
+		g_signal_new ("property-changed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass,
+		                               property_changed),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_PROPERTY);
 
 	g_type_class_add_private (object_class, sizeof (CpgObjectPrivate));
 }

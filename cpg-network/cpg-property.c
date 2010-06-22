@@ -67,24 +67,9 @@ set_object (CpgProperty *property,
 }
 
 static void
-cpg_property_finalize (GObject *object)
+on_expression_changed (CpgProperty *property)
 {
-	CpgProperty *property;
-
-	property = CPG_PROPERTY (object);
-
-	g_free (property->priv->name);
-
-	if (property->priv->expression)
-	{
-		g_object_unref (property->priv->expression);
-	}
-
-	g_object_freeze_notify (object);
-	set_object (property, NULL);
-	g_object_thaw_notify (object);
-
-	G_OBJECT_CLASS (cpg_property_parent_class)->finalize (object);
+	g_object_notify (G_OBJECT (property), "expression");
 }
 
 static void
@@ -93,12 +78,43 @@ set_expression (CpgProperty *property,
 {
 	if (property->priv->expression)
 	{
+		g_signal_handlers_disconnect_by_func (property->priv->expression,
+		                                      on_expression_changed,
+		                                      property);
+
 		g_object_unref (property->priv->expression);
 	}
 
-	property->priv->expression = g_object_ref (expression);
+	if (expression)
+	{
+		property->priv->expression = g_object_ref (expression);
 
-	g_object_notify (G_OBJECT (property), "expression");
+		g_object_notify (G_OBJECT (property), "expression");
+
+		g_signal_connect_swapped (expression,
+		                          "notify::expression",
+		                          G_CALLBACK (on_expression_changed),
+		                          property);
+	}
+}
+
+static void
+cpg_property_finalize (GObject *object)
+{
+	CpgProperty *property;
+
+	property = CPG_PROPERTY (object);
+
+	g_free (property->priv->name);
+
+	g_object_freeze_notify (object);
+
+	set_expression (property, NULL);
+	set_object (property, NULL);
+
+	g_object_thaw_notify (object);
+
+	G_OBJECT_CLASS (cpg_property_parent_class)->finalize (object);
 }
 
 static void
