@@ -1,4 +1,6 @@
 #include "cpg-monitor.h"
+
+#include "cpg-monitor.h"
 #include "cpg-property.h"
 #include "cpg-utils.h"
 #include "cpg-ref-counted-private.h"
@@ -19,23 +21,22 @@
  *
  */
 
+#define CPG_MONITOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_MONITOR, CpgMonitorPrivate))
+
 #define MONITOR_GROW_SIZE 1000
 
 enum
 {
-	RESET,
-	STEP,
+	RESETTED,
 	NOTIFY_INTEGRATOR,
+	STEP,
 	BEGIN,
 	NUM_SIGNALS
 };
 
-struct _CpgMonitor
+struct _CpgMonitorPrivate
 {
-	CpgRefCounted parent;
-
 	CpgNetwork  *network;
-	CpgObject   *object;
 	CpgProperty *property;
 	CpgIntegrator *integrator;
 
@@ -47,85 +48,88 @@ struct _CpgMonitor
 	guint signals[NUM_SIGNALS];
 };
 
-static void
-cpg_monitor_free_data (CpgMonitor *monitor)
-{
-	g_free (monitor->values);
-	g_free (monitor->sites);
+G_DEFINE_TYPE (CpgMonitor, cpg_monitor, G_TYPE_OBJECT)
 
-	monitor->values = NULL;
-	monitor->sites = NULL;
-	monitor->size = 0;
-	monitor->num_values = 0;
+enum
+{
+	PROP_0,
+	PROP_NETWORK,
+	PROP_PROPERTY
+};
+
+static void
+reset_monitor (CpgMonitor *monitor)
+{
+	g_free (monitor->priv->values);
+	g_free (monitor->priv->sites);
+
+	monitor->priv->values = NULL;
+	monitor->priv->sites = NULL;
+	monitor->priv->size = 0;
+	monitor->priv->num_values = 0;
 }
 
 static void
 disconnect_integrator (CpgMonitor *monitor)
 {
-	if (monitor->integrator)
+	if (!monitor->priv->integrator)
 	{
-		g_signal_handler_disconnect (monitor->integrator, monitor->signals[STEP]);
-		g_signal_handler_disconnect (monitor->integrator, monitor->signals[BEGIN]);
-
-		g_object_remove_weak_pointer (G_OBJECT (monitor->integrator),
-		                              (gpointer *)(&monitor->integrator));
-
-		monitor->integrator = NULL;
+		return;
 	}
+
+	g_signal_handler_disconnect (monitor->priv->integrator,
+	                             monitor->priv->signals[STEP]);
+
+	g_signal_handler_disconnect (monitor->priv->integrator,
+	                             monitor->priv->signals[BEGIN]);
+
+	g_object_remove_weak_pointer (G_OBJECT (monitor->priv->integrator),
+	                              (gpointer *)(&monitor->priv->integrator));
+
+	monitor->priv->integrator = NULL;
 }
 
 static void
-cpg_monitor_free (CpgMonitor *monitor)
+disconnect_network (CpgMonitor *monitor)
 {
-	g_object_unref (monitor->property);
-
-	if (monitor->network)
+	if (!monitor->priv->network)
 	{
-		g_signal_handler_disconnect (monitor->network, monitor->signals[RESET]);
-		g_signal_handler_disconnect (monitor->network, monitor->signals[NOTIFY_INTEGRATOR]);
+		return;
 	}
 
-	disconnect_integrator (monitor);
+	g_signal_handler_disconnect (monitor->priv->network,
+	                             monitor->priv->signals[RESETTED]);
 
-	cpg_monitor_free_data (monitor);
-	g_slice_free (CpgMonitor, monitor);
-}
+	g_signal_handler_disconnect (monitor->priv->network,
+	                             monitor->priv->signals[NOTIFY_INTEGRATOR]);
 
-GType
-cpg_monitor_get_type ()
-{
-	static GType type_id = 0;
+	g_object_remove_weak_pointer (G_OBJECT (monitor->priv->network),
+	                              (gpointer *)(&monitor->priv->network));
 
-	if (G_UNLIKELY (type_id == 0))
-	{
-		type_id = g_boxed_type_register_static ("CpgMonitor",
-		                                        cpg_ref_counted_ref,
-		                                        cpg_ref_counted_unref);
-	}
-
-	return type_id;
+	monitor->priv->network = NULL;
 }
 
 static void
 cpg_monitor_grow (CpgMonitor *monitor)
 {
-	monitor->size += MONITOR_GROW_SIZE;
+	monitor->priv->size += MONITOR_GROW_SIZE;
 
-	array_resize (monitor->values, double, monitor->size);
-	array_resize (monitor->sites, double, monitor->size);
+	array_resize (monitor->priv->values, double, monitor->priv->size);
+	array_resize (monitor->priv->sites, double, monitor->priv->size);
 }
 
 static void
 cpg_monitor_update (CpgMonitor    *monitor,
                     CpgIntegrator *integrator)
 {
-	if (monitor->size == 0 || monitor->num_values >= monitor->size - 1)
+	if (monitor->priv->size == 0 ||
+	    monitor->priv->num_values >= monitor->priv->size - 1)
 	{
 		cpg_monitor_grow (monitor);
 	}
 
-	monitor->values[monitor->num_values] = cpg_property_get_value (monitor->property);
-	monitor->sites[monitor->num_values++] = integrator ? cpg_integrator_get_time (integrator) : 0;
+	monitor->priv->values[monitor->priv->num_values] = cpg_property_get_value (monitor->priv->property);
+	monitor->priv->sites[monitor->priv->num_values++] = integrator ? cpg_integrator_get_time (integrator) : 0;
 }
 
 static void
@@ -141,93 +145,187 @@ connect_integrator (CpgMonitor *monitor)
 {
 	disconnect_integrator (monitor);
 
-	CpgIntegrator *integrator = cpg_network_get_integrator (monitor->network);
+	CpgIntegrator *integrator = cpg_network_get_integrator (monitor->priv->network);
 
 	if (integrator)
 	{
-		monitor->signals[STEP] = g_signal_connect_swapped (integrator,
-			                                               "step",
-			                                               G_CALLBACK (cpg_monitor_update),
-			                                               monitor);
+		monitor->priv->signals[STEP] =
+			g_signal_connect_swapped (integrator,
+			                          "step",
+			                          G_CALLBACK (cpg_monitor_update),
+			                          monitor);
 
-		monitor->signals[BEGIN] = g_signal_connect_swapped (integrator,
-		                                                    "begin",
-		                                                    G_CALLBACK (cpg_monitor_begin),
-		                                                    monitor);
-
-		monitor->integrator = integrator;
-
-		g_object_add_weak_pointer (G_OBJECT (integrator),
-		                           (gpointer *)(&monitor->integrator));
+		monitor->priv->signals[BEGIN] =
+			g_signal_connect_swapped (integrator,
+			                          "begin",
+			                          G_CALLBACK (cpg_monitor_begin),
+			                          monitor);
 	}
 }
 
 static void
-network_reset_cb (CpgMonitor *monitor)
+cpg_monitor_finalize (GObject *object)
 {
-	cpg_monitor_free_data (monitor);
+	G_OBJECT_CLASS (cpg_monitor_parent_class)->finalize (object);
 }
 
 static void
-integrator_changed_cb (CpgMonitor *monitor,
+cpg_monitor_dispose (GObject *object)
+{
+	CpgMonitor *monitor = CPG_MONITOR (object);
+
+	disconnect_integrator (monitor);
+	disconnect_network (monitor);
+	reset_monitor (monitor);
+
+	if (monitor->priv->property)
+	{
+		g_object_unref (monitor->priv->property);
+		monitor->priv->property = NULL;
+	}
+
+	G_OBJECT_CLASS (cpg_monitor_parent_class)->dispose (object);
+}
+
+static void
+monitor_get_property (GObject    *object,
+                      guint       prop_id,
+                      GValue     *value,
+                      GParamSpec *pspec)
+{
+	CpgMonitor *self = CPG_MONITOR (object);
+	
+	switch (prop_id)
+	{
+		case PROP_NETWORK:
+			g_value_set_object (value, self->priv->network);
+		break;
+		case PROP_PROPERTY:
+			g_value_set_object (value, self->priv->property);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+on_network_resetted (CpgMonitor *monitor)
+{
+	reset_monitor (monitor);
+}
+
+static void
+on_integrator_changed (CpgMonitor *monitor,
                        GParamSpec *spec,
                        CpgNetwork *network)
 {
 	connect_integrator (monitor);
 }
 
+static void
+set_network (CpgMonitor *monitor,
+             CpgNetwork *network)
+{
+	monitor->priv->network = network;
+
+	g_object_add_weak_pointer (G_OBJECT (monitor->priv->network),
+	                           (gpointer *)&monitor->priv->network);
+
+	monitor->priv->signals[RESETTED] =
+		g_signal_connect_swapped (monitor,
+		                          "resetted",
+		                          G_CALLBACK (on_network_resetted),
+		                          monitor);
+
+	monitor->priv->signals[NOTIFY_INTEGRATOR] =
+		g_signal_connect_swapped (network,
+		                          "notify::integrator",
+		                          G_CALLBACK (on_integrator_changed),
+		                          monitor);
+}
+static void
+monitor_set_property (GObject      *object,
+                      guint         prop_id,
+                      const GValue *value,
+                      GParamSpec   *pspec)
+{
+	CpgMonitor *self = CPG_MONITOR (object);
+	
+	switch (prop_id)
+	{
+		case PROP_NETWORK:
+			set_network (self, g_value_get_object (value));
+		break;
+		case PROP_PROPERTY:
+			self->priv->property = g_value_dup_object (value);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_monitor_class_init (CpgMonitorClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->finalize = cpg_monitor_finalize;
+	object_class->dispose = cpg_monitor_dispose;
+
+	object_class->get_property = monitor_get_property;
+	object_class->set_property = monitor_set_property;
+
+	g_type_class_add_private (object_class, sizeof(CpgMonitorPrivate));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_NETWORK,
+	                                 g_param_spec_object ("network",
+	                                                      "Network",
+	                                                      "Network",
+	                                                      CPG_TYPE_NETWORK,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_PROPERTY,
+	                                 g_param_spec_object ("property",
+	                                                      "Property",
+	                                                      "Property",
+	                                                      CPG_TYPE_PROPERTY,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+}
+
+static void
+cpg_monitor_init (CpgMonitor *self)
+{
+	self->priv = CPG_MONITOR_GET_PRIVATE (self);
+
+	cpg_monitor_grow (self);
+}
+
 /**
  * cpg_monitor_new:
  * @network: a #CpgNetwork
- * @object: a #CpgObject
- * @property_name: a property name
+ * @property: a #CpgProperty
  *
- * Create a new monitor for monitoring property @property_name of object
- * @object in the network @network. The monitor will attach itself to the
- * life time of the network and object.
+ * Create a new monitor for monitoring property @property.
  *
  * Returns: a new #CpgMonitor
  *
  **/
 CpgMonitor *
-cpg_monitor_new (CpgNetwork   *network,
-                 CpgObject    *object,
-                 gchar const  *property_name)
+cpg_monitor_new (CpgNetwork  *network,
+                 CpgProperty *property)
 {
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-	g_return_val_if_fail (property_name != NULL, NULL);
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
 
-	CpgProperty *property;
-
-	property = cpg_object_get_property (object, property_name);
-	g_return_val_if_fail (property != NULL, NULL);
-
-	CpgMonitor *monitor = g_slice_new0 (CpgMonitor);
-
-	cpg_ref_counted_init (monitor, (GDestroyNotify)cpg_monitor_free);
-
-	monitor->network = network;
-	monitor->object = object;
-	monitor->property = g_object_ref (property);
-
-	g_object_add_weak_pointer (G_OBJECT (object), (gpointer *)&(monitor->object));
-	g_object_add_weak_pointer (G_OBJECT (network), (gpointer *)&(monitor->network));
-
-	// initialize values list
-	cpg_monitor_grow (monitor);
-	connect_integrator (monitor);
-
-	monitor->signals[RESET] = g_signal_connect_swapped (network,
-	                                                    "resetted",
-	                                                    G_CALLBACK (network_reset_cb), monitor);
-
-	monitor->signals[NOTIFY_INTEGRATOR] = g_signal_connect_swapped (network,
-	                                                                "notify::integrator",
-	                                                                G_CALLBACK (integrator_changed_cb),
-	                                                                monitor);
-
-	return monitor;
+	return g_object_new (CPG_TYPE_MONITOR,
+	                     "network", network,
+	                     "property", property,
+	                     NULL);
 }
 
 /**
@@ -247,18 +345,24 @@ gdouble const *
 cpg_monitor_get_data (CpgMonitor *monitor,
                       guint      *size)
 {
-	if (size)
-		*size = 0;
-
-	if (!monitor || !monitor->object || !monitor->property)
-		return NULL;
+	g_return_val_if_fail (CPG_IS_MONITOR (monitor), NULL);
 
 	if (size)
 	{
-		*size = monitor->num_values;
+		*size = 0;
 	}
 
-	return monitor->values;
+	if (!monitor || !monitor->priv->property)
+	{
+		return NULL;
+	}
+
+	if (size)
+	{
+		*size = monitor->priv->num_values;
+	}
+
+	return monitor->priv->values;
 }
 
 /**
@@ -278,16 +382,24 @@ gdouble const *
 cpg_monitor_get_sites (CpgMonitor *monitor,
                        guint      *size)
 {
+	g_return_val_if_fail (CPG_IS_MONITOR (monitor), NULL);
+
 	if (size)
+	{
 		*size = 0;
+	}
 
-	if (!monitor || !monitor->object || !monitor->property)
+	if (!monitor || !monitor->priv->property)
+	{
 		return NULL;
+	}
 
 	if (size)
-		*size = monitor->num_values;
+	{
+		*size = monitor->priv->num_values;
+	}
 
-	return monitor->sites;
+	return monitor->priv->sites;
 }
 
 static int
@@ -339,24 +451,30 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
                                 guint           size,
                                 gdouble        *ret)
 {
-	if (!sites || size == 0 || !monitor || !monitor->object || !monitor->property)
+	g_return_val_if_fail (CPG_IS_MONITOR (monitor), FALSE);
+	
+	if (!sites || size == 0 || !monitor || !monitor->priv->property)
 	{
 		memset (ret, 0, sizeof (double) * size);
 		return FALSE;
 	}
 
-	gdouble const *data = monitor->values;
+	gdouble const *data = monitor->priv->values;
 	guint i;
 
-	gdouble const *monsites = monitor->sites;
+	gdouble const *monsites = monitor->priv->sites;
 
 	for (i = 0; i < size; ++i)
 	{
-		guint idx = bsearch_find (monsites, (gint)monitor->num_values, sites[i]);
-		guint fidx = idx > 0 ? idx - 1 : 0;
-		guint sidx = idx < monitor->num_values ? idx : monitor->num_values - 1;
+		guint idx = bsearch_find (monsites,
+		                          (gint)monitor->priv->num_values,
+		                          sites[i]);
 
-		if (fidx >= monitor->num_values || sidx >= monitor->num_values)
+		guint fidx = idx > 0 ? idx - 1 : 0;
+		guint sidx = idx < monitor->priv->num_values ? idx : monitor->priv->num_values - 1;
+
+		if (fidx >= monitor->priv->num_values ||
+		    sidx >= monitor->priv->num_values)
 		{
 			ret[i] = 0.0;
 		}
@@ -372,28 +490,6 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
 }
 
 /**
- * cpg_monitor_get_object:
- * @monitor: a #CpgMonitor
- *
- * Returns the object from which a property is being monitored.
- *
- * Returns: a pointer to the #CpgObject
- *
- **/
-CpgObject *
-cpg_monitor_get_object (CpgMonitor *monitor)
-{
-	if (!monitor)
-	{
-		return NULL;
-	}
-	else
-	{
-		return monitor->object;
-	}
-}
-
-/**
  * cpg_monitor_get_property:
  * @monitor: a #CpgMonitor
  *
@@ -405,12 +501,6 @@ cpg_monitor_get_object (CpgMonitor *monitor)
 CpgProperty *
 cpg_monitor_get_property (CpgMonitor *monitor)
 {
-	if (!monitor)
-	{
-		return NULL;
-	}
-	else
-	{
-		return monitor->property;
-	}
+	g_return_val_if_fail (CPG_IS_MONITOR (monitor), NULL);
+	return monitor->priv->property;
 }
