@@ -34,6 +34,15 @@ enum
 	PROP_PROXY
 };
 
+enum
+{
+	CHILD_ADDED,
+	CHILD_REMOVED,
+	NUM_SIGNALS
+};
+
+static guint group_signals[NUM_SIGNALS] = {0,};
+
 static void remove_object (CpgGroup *group, CpgObject *object);
 
 static void
@@ -467,6 +476,8 @@ cpg_group_add_impl (CpgGroup  *group,
 	_cpg_object_set_parent (object, CPG_OBJECT (group));
 
 	cpg_object_taint (CPG_OBJECT (group));
+	g_signal_emit (group, group_signals[CHILD_ADDED], 0, object);
+
 	return TRUE;
 }
 
@@ -481,6 +492,7 @@ remove_object (CpgGroup  *group,
 		_cpg_object_set_parent (object, NULL);
 	}
 
+	g_signal_emit (group, group_signals[CHILD_REMOVED], 0, object);
 	g_object_unref (object);
 }
 
@@ -530,10 +542,10 @@ cpg_group_cpg_clear (CpgObject *object)
 }
 
 static CpgProperty *
-cpg_group_cpg_add_property (CpgObject   *object,
-                            gchar const *name,
-                            gchar const *expression,
-                            gboolean     integrated)
+cpg_group_cpg_add_property (CpgObject        *object,
+                            gchar const      *name,
+                            gchar const      *expression,
+                            CpgPropertyFlags  flags)
 {
 	CpgGroup *group = CPG_GROUP (object);
 	CpgProperty *property;
@@ -549,7 +561,7 @@ cpg_group_cpg_add_property (CpgObject   *object,
 			return cpg_object_add_property (group->priv->proxy,
 			                                name,
 			                                expression,
-			                                integrated);
+			                                flags);
 		}
 	}
 
@@ -558,7 +570,7 @@ cpg_group_cpg_add_property (CpgObject   *object,
 		return CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property (object,
 		                                                                name,
 		                                                                expression,
-		                                                                integrated);
+		                                                                flags);
 	}
 	else
 	{
@@ -661,6 +673,32 @@ cpg_group_class_init (CpgGroupClass *klass)
 	                                                      "Proxy",
 	                                                      CPG_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+	group_signals[CHILD_ADDED] =
+		g_signal_new ("child-added",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgGroupClass,
+		                               child_added),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_OBJECT);
+
+	group_signals[CHILD_REMOVED] =
+		g_signal_new ("child-removed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgGroupClass,
+		                               child_removed),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_OBJECT);
 }
 
 static void

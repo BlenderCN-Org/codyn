@@ -39,8 +39,16 @@ struct _CpgGroupClass
 	CpgStateClass parent_class;
 
 	/*< public >*/
-	gboolean (*add)    (CpgGroup *group, CpgObject *object);
-	gboolean (*remove) (CpgGroup *group, CpgObject *object);
+	gboolean (*add)           (CpgGroup *group,
+	                           CpgObject *object);
+	gboolean (*remove)        (CpgGroup *group,
+	                           CpgObject *object);
+
+	/* signals */
+	void     (*child_added)   (CpgGroup *group,
+	                           CpgObject *object);
+	void     (*child_removed) (CpgGroup *group,
+	                           CpgObject *object);
 };
 
 GType     cpg_group_get_type         (void) G_GNUC_CONST;
