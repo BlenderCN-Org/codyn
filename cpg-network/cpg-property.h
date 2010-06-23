@@ -98,6 +98,9 @@ void               cpg_property_set_update              (CpgProperty        *pro
                                                           gdouble             value);
 gdouble            cpg_property_get_update              (CpgProperty        *property);
 
+gchar *            cpg_property_flags_to_string         (CpgPropertyFlags    flags);
+CpgPropertyFlags   cpg_property_flags_from_string       (const gchar        *flags);
+
 void               _cpg_property_use                    (CpgProperty        *property);
 gboolean           _cpg_property_unuse                  (CpgProperty        *property);
 

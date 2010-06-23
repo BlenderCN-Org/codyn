@@ -597,6 +597,85 @@ cpg_property_get_update (CpgProperty *property)
 	return property->priv->update;
 }
 
+/**
+ * cpg_property_flags_to_string:
+ * @flags: A #CpgPropertyFlags
+ *
+ * Convert flags to a string representation.
+ *
+ * Returns: the string representation of the flags
+ *
+ **/
+gchar *
+cpg_property_flags_to_string (CpgPropertyFlags flags)
+{
+	GFlagsClass *klass;
+	guint i;
+
+	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
+	GPtrArray *attrs;
+
+	attrs = g_ptr_array_new ();
+
+	for (i = 0; i < klass->n_values; ++i)
+	{
+		GFlagsValue *value = &(klass->values[i]);
+
+		if (flags & value->value)
+		{
+			g_ptr_array_add (attrs, (gpointer)value->value_nick);
+		}
+	}
+
+	g_ptr_array_add (attrs, NULL);
+
+	gchar **vals = (gchar **)g_ptr_array_free (attrs, FALSE);
+	gchar *ret = g_strjoinv (" | ", vals);
+	g_free (vals);
+
+	g_type_class_unref (klass);
+
+	return ret;
+}
+
+/**
+ * cpg_property_flags_from_string:
+ * @flags: The flags to parse
+ *
+ * Parse a string into a set of property flags. The flags can be specified
+ * by their nicks (none, in, out, once, integrated) and separated by any
+ * combination of spaces, comma's and/or pipes.
+ *
+ * Returns: A #CpgPropertyFlags
+ *
+ **/
+CpgPropertyFlags
+cpg_property_flags_from_string (gchar const *flags)
+{
+	CpgPropertyFlags ret = CPG_PROPERTY_FLAG_NONE;
+	GFlagsClass *klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
+
+	gchar **parts = g_strsplit_set (flags, ",| ", -1);
+	gchar **ptr = parts;
+
+	while (ptr && *ptr)
+	{
+		GFlagsValue *value = g_flags_get_value_by_nick (klass, *ptr);
+
+		if (value)
+		{
+			ret |= value->value;
+		}
+
+		++ptr;
+	}
+
+	g_strfreev (parts);
+	g_type_class_unref (klass);
+
+	return ret;
+}
+
 CpgProperty *
 _cpg_property_copy (CpgProperty *property)
 {

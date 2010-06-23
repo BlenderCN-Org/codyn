@@ -111,13 +111,16 @@ export_flags (xmlNodePtr   node,
 	flags_attr = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (property),
 	                                                 CPG_NETWORK_XML_PROPERTY_FLAGS_ATTRIBUTE));
 
-	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
-	GPtrArray *attrs;
-
 	if (flags_attr)
 	{
-		attrs = g_ptr_array_new ();
+		gchar *s = cpg_property_flags_to_string (flags);
+		xmlNewProp (node, (xmlChar *)"flags", (xmlChar *)s);
+		g_free (s);
+
+		return;
 	}
+
+	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
 
 	for (i = 0; i < klass->n_values; ++i)
 	{
@@ -125,27 +128,10 @@ export_flags (xmlNodePtr   node,
 
 		if (flags & value->value)
 		{
-			if (!flags_attr)
-			{
-				xmlNewProp (node, (xmlChar *)value->value_nick, (xmlChar *)"yes");
-			}
-			else
-			{
-				g_ptr_array_add (attrs, (gpointer)value->value_nick);
-			}
+			xmlNewProp (node,
+			            (xmlChar *)value->value_nick,
+			            (xmlChar *)"yes");
 		}
-	}
-
-	if (flags_attr)
-	{
-		g_ptr_array_add (attrs, NULL);
-		gchar **vals = (gchar **)g_ptr_array_free (attrs, FALSE);
-		gchar *joined = g_strjoinv (" | ", vals);
-
-		xmlNewProp (node, (xmlChar *)"flags", (xmlChar *)joined);
-
-		g_free (joined);
-		g_free (vals);
 	}
 }
 

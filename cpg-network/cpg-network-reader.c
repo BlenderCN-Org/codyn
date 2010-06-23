@@ -201,6 +201,8 @@ extract_flags (ParseInfo        *info,
 		xmlFree (prop);
 	}
 
+	g_type_class_unref (klass);
+
 	xmlChar *prop = xmlGetProp (node, (xmlChar *)"flags");
 	gboolean ret = TRUE;
 
@@ -208,43 +210,10 @@ extract_flags (ParseInfo        *info,
 
 	if (prop)
 	{
-		gchar **parts = g_strsplit_set ((gchar const *)prop, ",| ", -1);
-		gchar **ptr = parts;
-
-		*flags_attr = TRUE;
-
-		while (ptr && *ptr)
-		{
-			GFlagsValue *value = g_flags_get_value_by_nick (klass, *ptr);
-
-			if (!value && **ptr)
-			{
-				ret = FALSE;
-
-				parser_failed (info,
-				               node,
-				               CPG_NETWORK_LOAD_ERROR_PROPERTY,
-				               "Invalid flag `%s' for `%s.%s'",
-				               *ptr,
-				               cpg_object_get_id (info->object),
-				               name);
-
-				break;
-			}
-
-			if (value)
-			{
-				*flags |= value->value;
-			}
-
-			++ptr;
-		}
-
-		g_strfreev (parts);
+		*flags |= cpg_property_flags_from_string ((gchar const *)prop);
 	}
 
 	xmlFree (prop);
-	g_type_class_unref (klass);
 
 	return ret;
 }
