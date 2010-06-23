@@ -104,10 +104,10 @@ struct _CpgObjectClass
 	gboolean      (*has_property)    (CpgObject    *object,
 	                                  const gchar  *name);
 
-	CpgProperty  *(*add_property)    (CpgObject    *object,
-	                                  const gchar  *name,
-	                                  const gchar  *expression,
-	                                  gboolean      integrated);
+	CpgProperty  *(*add_property)    (CpgObject        *object,
+	                                  const gchar      *name,
+	                                  const gchar      *expression,
+	                                  CpgPropertyFlags  flags);
 
 	gboolean      (*remove_property) (CpgObject    *object,
 	                                  const gchar  *name,
@@ -139,10 +139,10 @@ const gchar      *cpg_object_get_id          (CpgObject   *object);
 void              cpg_object_set_id          (CpgObject   *object,
                                               const gchar *id);
 
-CpgProperty      *cpg_object_add_property    (CpgObject   *object,
-                                              const gchar *name,
-                                              const gchar *expression,
-                                              gboolean     integrated);
+CpgProperty      *cpg_object_add_property    (CpgObject        *object,
+                                              const gchar      *name,
+                                              const gchar      *expression,
+                                              CpgPropertyFlags  flags);
 CpgProperty      *cpg_object_get_property    (CpgObject   *object,
                                               const gchar *name);
 gboolean          cpg_object_has_property    (CpgObject   *object,

@@ -468,10 +468,10 @@ cpg_object_remove_property_impl (CpgObject    *object,
 }
 
 static CpgProperty *
-cpg_object_add_property_impl (CpgObject   *object,
-                              gchar const *name,
-                              gchar const *expression,
-                              gboolean     integrated)
+cpg_object_add_property_impl (CpgObject        *object,
+                              gchar const      *name,
+                              gchar const      *expression,
+                              CpgPropertyFlags  flags)
 {
 	// Check if property already set
 	CpgProperty *property;
@@ -486,7 +486,7 @@ cpg_object_add_property_impl (CpgObject   *object,
 		}
 	}
 
-	property = cpg_property_new (name, expression, integrated, object);
+	property = cpg_property_new (name, expression, flags, object);
 
 	add_property (object, property);
 	return property;
@@ -764,8 +764,7 @@ cpg_object_new (gchar const *id)
  * @object: the #CpgObject
  * @name: the property name
  * @expression: the properties initial value
- * @integrated: whether or not the update values should be integrated when
- * a link acts on the property
+ * @flags: the property flags
  *
  * Returns the new property added to the object
  *
@@ -774,10 +773,10 @@ cpg_object_new (gchar const *id)
  *
  **/
 CpgProperty *
-cpg_object_add_property (CpgObject    *object,
-                         gchar const  *name,
-                         gchar const  *expression,
-                         gboolean      integrated)
+cpg_object_add_property (CpgObject        *object,
+                         gchar const      *name,
+                         gchar const      *expression,
+                         CpgPropertyFlags  flags)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
@@ -788,7 +787,7 @@ cpg_object_add_property (CpgObject    *object,
 		return CPG_OBJECT_GET_CLASS (object)->add_property (object,
 		                                                    name,
 		                                                    expression,
-		                                                    integrated);
+		                                                    flags);
 	}
 	else
 	{
