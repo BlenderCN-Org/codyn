@@ -43,15 +43,11 @@ struct _CpgNetworkPrivate
 {
 	gchar *filename;
 
-	CpgObject *globals;
-
-	GSList *templates;
-	GHashTable *template_hash;
-
-	GSList *functions;
 	CpgIntegrator *integrator;
-
 	CpgIntegratorState *integrator_state;
+
+	CpgGroup *template_group;
+	CpgGroup *function_group;
 };
 
 enum
@@ -86,8 +82,8 @@ cpg_network_finalize (GObject *object)
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	g_hash_table_destroy (network->priv->template_hash);
-	g_slist_free (network->priv->templates);
+	g_object_unref (network->priv->template_group);
+	g_object_unref (network->priv->function_group);
 
 	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
@@ -175,7 +171,7 @@ cpg_network_add_impl (CpgGroup  *group,
 	while (templates)
 	{
 		CpgObject *template = templates->data;
-		CpgObject *other = g_hash_table_lookup (network->priv->template_hash,
+		CpgObject *other = cpg_group_get_child (network->priv->template_group,
 		                                        cpg_object_get_id (template));
 
 		gboolean eq = other == template;
@@ -203,7 +199,7 @@ cpg_network_reset_impl (CpgObject *object)
 {
 	CpgNetwork *network = CPG_NETWORK (object);
 
-	g_slist_foreach (network->priv->functions, (GFunc)cpg_object_reset, NULL);
+	cpg_object_reset (CPG_OBJECT (network->priv->function_group));
 
 	CPG_OBJECT_CLASS (cpg_network_parent_class)->reset (object);
 }
@@ -235,20 +231,12 @@ cpg_network_compile_impl (CpgObject         *object,
 	cpg_compile_context_prepend_object (context, CPG_OBJECT (network->priv->integrator));
 	cpg_compile_context_prepend_object (context, object);
 
-	cpg_compile_context_set_functions (context, network->priv->functions);
+	cpg_compile_context_set_functions (context,
+	                                   cpg_group_get_children (network->priv->function_group));
 
-	GSList *item;
-
-	gboolean ret = TRUE;
-
-	for (item = network->priv->functions; item; item = g_slist_next (item))
-	{
-		if (!cpg_object_compile (CPG_OBJECT (item->data), context, error))
-		{
-			cpg_ref_counted_unref (context);
-			ret = FALSE;
-		}
-	}
+	gboolean ret = cpg_object_compile (CPG_OBJECT (network->priv->function_group),
+	                                   context,
+	                                   error);
 
 	if (ret)
 	{
@@ -280,17 +268,8 @@ cpg_network_clear_impl (CpgObject *object)
 
 	CPG_OBJECT_CLASS (cpg_network_parent_class)->clear (object);
 
-	/* Clear templates */
-	g_hash_table_remove_all (network->priv->template_hash);
-
-	g_slist_free (network->priv->templates);
-	network->priv->templates = NULL;
-
-	/* Clear functions */
-	g_slist_foreach (network->priv->functions, (GFunc)g_object_unref, NULL);
-	g_slist_free (network->priv->functions);
-
-	network->priv->functions = NULL;
+	cpg_object_clear (CPG_OBJECT (network->priv->template_group));
+	cpg_object_clear (CPG_OBJECT (network->priv->function_group));
 }
 
 static void
@@ -300,9 +279,7 @@ cpg_network_reset_cache_impl (CpgObject *object)
 
 	CPG_OBJECT_CLASS (cpg_network_parent_class)->reset_cache (object);
 
-	g_slist_foreach (network->priv->functions,
-	                 (GFunc)cpg_object_reset_cache,
-	                 NULL);
+	cpg_object_reset_cache (CPG_OBJECT (network->priv->function_group));
 }
 
 static void
@@ -361,11 +338,18 @@ cpg_network_init (CpgNetwork *network)
 {
 	network->priv = CPG_NETWORK_GET_PRIVATE (network);
 
-	network->priv->template_hash =
-		g_hash_table_new_full (g_str_hash,
-	                               g_str_equal,
-	                               (GDestroyNotify)g_free,
-	                               (GDestroyNotify)g_object_unref);
+	network->priv->template_group = cpg_group_new ("templates", NULL);
+	network->priv->function_group = cpg_group_new ("functions", NULL);
+
+	g_signal_connect_swapped (network->priv->template_group,
+	                          "tainted",
+	                          G_CALLBACK (cpg_object_taint),
+	                          network);
+
+	g_signal_connect_swapped (network->priv->function_group,
+	                          "tainted",
+	                          G_CALLBACK (cpg_object_taint),
+	                          network);
 
 	network->priv->integrator_state = cpg_integrator_state_new (CPG_OBJECT (network));
 
@@ -411,7 +395,10 @@ cpg_network_new_from_file (gchar const *filename, GError **error)
 	CpgNetwork *network = cpg_network_new ();
 	network->priv->filename = strdup (filename);
 
-	if (!cpg_network_reader_xml (network, filename, error))
+	if (!cpg_network_reader_merge_from_file (network,
+	                                         CPG_GROUP (network),
+	                                         filename,
+	                                         error))
 	{
 		g_object_unref (network);
 		network = NULL;
@@ -438,7 +425,10 @@ cpg_network_new_from_xml (gchar const *xml, GError **error)
 
 	CpgNetwork *network = cpg_network_new ();
 
-	if (!cpg_network_reader_xml_string (network, xml, error))
+	if (!cpg_network_reader_merge_from_xml (network,
+	                                        CPG_GROUP (network),
+	                                        xml,
+	                                        error))
 	{
 		g_object_unref (network);
 		network = NULL;
@@ -529,18 +519,18 @@ cpg_network_merge (CpgNetwork  *network,
 	g_slist_free (props);
 
 	/* Copy over templates */
-	GSList const *templates = cpg_network_get_templates (other);
+	CpgGroup *template_group = cpg_network_get_template_group (other);
+	GSList const *templates = cpg_group_get_children (template_group);
 
 	while (templates)
 	{
 		CpgObject *template = templates->data;
 
-		if (!g_hash_table_lookup (network->priv->template_hash,
+		if (!cpg_group_get_child (network->priv->template_group,
 		                          cpg_object_get_id (template)))
 		{
-			cpg_network_add_template (network,
-			                          cpg_object_get_id (template),
-			                          template);
+			cpg_group_add (network->priv->template_group,
+			               template);
 		}
 	}
 
@@ -553,10 +543,20 @@ cpg_network_merge (CpgNetwork  *network,
 		children = g_slist_next (children);
 	}
 
+	CpgGroup *function_group = cpg_network_get_template_group (other);
+	GSList const *functions = cpg_group_get_children (function_group);
+
 	/* Copy over functions */
-	for (item = other->priv->functions; item; item = g_slist_next (item))
+	while (functions)
 	{
-		cpg_network_add_function (network, CPG_FUNCTION (item->data));
+		CpgObject *function = functions->data;
+
+		if (!cpg_group_get_child (network->priv->function_group,
+		                          cpg_object_get_id (function)))
+		{
+			cpg_group_add (network->priv->function_group,
+			               function);
+		}
 	}
 }
 
@@ -632,7 +632,7 @@ cpg_network_write_to_xml (CpgNetwork *network)
 {
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 
-	return cpg_network_writer_xml_string (network);
+	return cpg_network_writer_write_to_xml (network);
 }
 
 /**
@@ -650,130 +650,7 @@ cpg_network_write_to_file (CpgNetwork  *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (filename != NULL);
 
-	cpg_network_writer_xml (network, filename);
-}
-
-/**
- * cpg_network_get_templates:
- * @network: a #CpgNetwork
- *
- * Get a list of template names for @network. The names in the list are owned
- * by the caller and need to be freed accordingly:
- *
- * g_slist_foreach (templates, (GFunc)g_free, NULL);
- *
- * Returns: a list of template names
- *
- **/
-GSList const *
-cpg_network_get_templates (CpgNetwork *network)
-{
-	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
-
-	return network->priv->templates;
-}
-
-static gint
-compare_templates (CpgObject *t1,
-                   CpgObject *t2)
-{
-	GSList const *temp1 = cpg_object_get_applied_templates (t1);
-	GSList const *temp2 = cpg_object_get_applied_templates (t2);
-
-	if (g_slist_find ((GSList *)temp1, t2))
-	{
-		return 1;
-	}
-	else if (g_slist_find ((GSList *)temp2, t1))
-	{
-		return -1;
-	}
-	else
-	{
-		return 0;
-	}
-}
-
-/**
- * cpg_network_add_template:
- * @network: a #CpgNetwork
- * @name: the template name
- * @object: the template object
- *
- * Adds a new template to the network. Templates can be used to define a
- * basis for constructing new states/links. This can be very useful to keep
- * the xml representation of the network small.
- *
- **/
-void
-cpg_network_add_template (CpgNetwork  *network,
-                          gchar const *name,
-                          CpgObject   *object)
-{
-	g_return_if_fail (CPG_IS_NETWORK (network));
-	g_return_if_fail (name != NULL);
-	g_return_if_fail (CPG_IS_OBJECT (object));
-
-	if (g_hash_table_lookup (network->priv->template_hash,
-	                         name))
-	{
-		return;
-	}
-
-	g_hash_table_insert (network->priv->template_hash,
-	                     g_strdup (name),
-	                     g_object_ref (object));
-
-	network->priv->templates =
-		g_slist_insert_sorted (network->priv->templates,
-		                       object,
-		                       (GCompareFunc)compare_templates);
-}
-
-/**
- * cpg_network_get_template:
- * @network: a #CpgNetwork
- * @name: the template name
- *
- * Get a registered template object
- *
- * Returns: a template object or %NULL if the template could not be found
- *
- **/
-CpgObject *
-cpg_network_get_template (CpgNetwork  *network,
-                          gchar const *name)
-{
-	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
-	g_return_val_if_fail (name != NULL, NULL);
-
-	return g_hash_table_lookup (network->priv->template_hash, name);
-}
-
-/**
- * cpg_network_remove_template:
- * @network: a #CpgNetwork
- * @name: the template name
- *
- * Remove a registered template object. Any objects based on this template
- * will become standalone objects.
- *
- **/
-void
-cpg_network_remove_template (CpgNetwork  *network,
-                             gchar const *name)
-{
-	g_return_if_fail (CPG_IS_NETWORK (network));
-	g_return_if_fail (name != NULL);
-
-	CpgObject *obj = cpg_network_get_template (network, name);
-
-	if (obj)
-	{
-		g_hash_table_remove (network->priv->template_hash, name);
-		network->priv->templates = g_slist_remove (network->priv->templates,
-		                                           obj);
-	}
+	cpg_network_writer_write_to_file (network, filename);
 }
 
 /**
@@ -796,7 +673,8 @@ cpg_network_add_from_template (CpgNetwork  *network,
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	CpgObject *template = cpg_network_get_template (network, name);
+	CpgObject *template = cpg_group_get_child (network->priv->template_group,
+	                                           name);
 
 	if (template == NULL || CPG_IS_LINK (template))
 	{
@@ -834,7 +712,8 @@ cpg_network_add_link_from_template (CpgNetwork  *network,
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	CpgObject *template = cpg_network_get_template (network, name);
+	CpgObject *template = cpg_group_get_child (network->priv->template_group,
+	                                           name);
 
 	if (template == NULL || !CPG_IS_LINK (template))
 	{
@@ -848,119 +727,6 @@ cpg_network_add_link_from_template (CpgNetwork  *network,
 	g_object_unref (object);
 
 	return object;
-}
-
-/**
- * cpg_network_add_function:
- * @network: A #CpgNetwork
- * @function: A #CpgFunction
- *
- * Add a new custom user function to the network.
- *
- **/
-void
-cpg_network_add_function (CpgNetwork  *network,
-                          CpgFunction *function)
-{
-	g_return_if_fail (CPG_IS_NETWORK (network));
-	g_return_if_fail (CPG_IS_FUNCTION (function));
-
-	if (cpg_network_get_function (network, cpg_object_get_id (CPG_OBJECT (function))))
-	{
-		return;
-	}
-
-	network->priv->functions = g_slist_append (network->priv->functions,
-	                                           g_object_ref (function));
-
-	g_signal_connect_swapped (function,
-	                          "tainted",
-	                          G_CALLBACK (cpg_object_taint),
-	                          network);
-
-	cpg_object_taint (CPG_OBJECT (network));
-}
-
-/**
- * cpg_network_remove_function:
- * @network: A #CpgNetwork
- * @function: A #CpgFunction
- *
- * Remove a custom user function from the network.
- *
- **/
-void
-cpg_network_remove_function (CpgNetwork  *network,
-                             CpgFunction *function)
-{
-	GSList *item;
-
-	g_return_if_fail (CPG_IS_NETWORK (network));
-	g_return_if_fail (CPG_IS_FUNCTION (function));
-
-	item = g_slist_find (network->priv->functions, function);
-
-	if (item)
-	{
-		g_signal_handlers_disconnect_by_func (function,
-		                                      cpg_object_taint,
-		                                      network);
-
-		g_object_unref (item->data);
-		network->priv->functions = g_slist_delete_link (network->priv->functions, item);
-	}
-
-	cpg_object_taint (CPG_OBJECT (network));
-}
-
-/**
- * cpg_network_get_functions:
- * @network: A #CpgNetwork
- *
- * Get the custom user functions defined in the network.
- *
- * Returns: A #GSList of #CpgFunction.
- *
- **/
-GSList *
-cpg_network_get_functions (CpgNetwork *network)
-{
-	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
-
-	return network->priv->functions;
-}
-
-/**
- * cpg_network_get_function:
- * @network: A #CpgNetwork
- * @name: The function name
- *
- * Get a custom user function defined in the network.
- *
- * Returns: A #CpgFunction if a function with @name could be found, %NULL
- *          otherwise
- *
- **/
-CpgFunction *
-cpg_network_get_function (CpgNetwork  *network,
-                          gchar const *name)
-{
-	GSList *item;
-
-	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
-	g_return_val_if_fail (name != NULL, NULL);
-
-	for (item = network->priv->functions; item; item = g_slist_next (item))
-	{
-		CpgFunction *func = CPG_FUNCTION (item->data);
-
-		if (g_strcmp0 (cpg_object_get_id (CPG_OBJECT (func)), name) == 0)
-		{
-			return func;
-		}
-	}
-
-	return NULL;
 }
 
 /**
@@ -997,3 +763,38 @@ cpg_network_get_integrator (CpgNetwork *network)
 
 	return network->priv->integrator;
 }
+
+/**
+ * cpg_network_get_template_group:
+ * @network: A #CpgNetwork
+ * 
+ * Get the group containing the templates.
+ *
+ * Returns: A #CpgGroup
+ *
+ **/
+CpgGroup *
+cpg_network_get_template_group (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	return network->priv->template_group;
+}
+
+/**
+ * cpg_network_get_function_group:
+ * @network: A #CpgNetwork
+ * 
+ * Get the group containing the user defined functions.
+ *
+ * Returns: A #CpgGroup
+ *
+ **/
+CpgGroup *
+cpg_network_get_function_group (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	return network->priv->function_group;
+}
+

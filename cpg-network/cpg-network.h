@@ -112,16 +112,8 @@ void              cpg_network_run                    (CpgNetwork *network,
 void              cpg_network_step                   (CpgNetwork *network,
                                                       gdouble     timestep);
 
-GSList const     *cpg_network_get_templates          (CpgNetwork   *network);
-void              cpg_network_add_template           (CpgNetwork   *network,
-                                                      const gchar  *name,
-                                                      CpgObject    *object);
-
-CpgObject        *cpg_network_get_template           (CpgNetwork   *network,
-                                                      const gchar  *name);
-
-void              cpg_network_remove_template        (CpgNetwork   *network,
-                                                      const gchar  *name);
+CpgGroup         *cpg_network_get_template_group     (CpgNetwork   *network);
+CpgGroup         *cpg_network_get_function_group     (CpgNetwork   *network);
 
 CpgObject        *cpg_network_add_from_template      (CpgNetwork   *network,
                                                       const gchar  *name);
@@ -130,17 +122,6 @@ CpgObject        *cpg_network_add_link_from_template (CpgNetwork   *network,
                                                       const gchar  *name,
                                                       CpgObject    *from,
                                                       CpgObject    *to);
-
-void              cpg_network_add_function           (CpgNetwork   *network,
-                                                     CpgFunction  *function);
-
-void              cpg_network_remove_function        (CpgNetwork   *network,
-                                                      CpgFunction  *function);
-
-GSList           *cpg_network_get_functions          (CpgNetwork   *network);
-
-CpgFunction      *cpg_network_get_function           (CpgNetwork   *network,
-                                                      gchar const  *name);
 
 G_END_DECLS
 

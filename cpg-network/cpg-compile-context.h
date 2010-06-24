@@ -23,7 +23,7 @@ void cpg_compile_context_append_object (CpgCompileContext *context,
                                         CPG_FORWARD_DECL (CpgObject) *object);
 
 void cpg_compile_context_set_functions (CpgCompileContext *context,
-                                        GSList            *functions);
+                                        GSList const      *functions);
 
 CPG_FORWARD_DECL (CpgProperty) *cpg_compile_context_lookup_property (CpgCompileContext *context,
                                                           gchar const       *name);

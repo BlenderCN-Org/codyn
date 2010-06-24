@@ -17,11 +17,11 @@
 
 typedef struct
 {
-	CpgNetwork *network;
-	GError **error;
-	gboolean template;
-	CpgObject *object;
-	GSList *parents;
+	CpgNetwork  *network;
+	CpgGroup    *root;
+	GError     **error;
+	CpgObject  *object;
+	GSList     *parents;
 } ParseInfo;
 
 static gboolean parse_all (xmlDocPtr   doc,
@@ -344,6 +344,7 @@ parse_object (GType       gtype,
 
 	xmlChar *ref = xmlGetProp (node, (xmlChar *)"ref");
 	gboolean ret = TRUE;
+	CpgGroup *template_group = cpg_network_get_template_group (info->network);
 
 	if (ref)
 	{
@@ -354,8 +355,8 @@ parse_object (GType       gtype,
 
 		for (ptr = parts; *ptr; ++ptr)
 		{
-			CpgObject *template = cpg_network_get_template (info->network,
-			                                                *ptr);
+			CpgObject *template = cpg_group_get_child (template_group,
+			                                           *ptr);
 
 			if (!template)
 			{
@@ -425,18 +426,8 @@ new_object (GType       gtype,
 	{
 		if (new_object)
 		{
-			if (info->template && CPG_IS_NETWORK (info->parents->data))
-			{
-				cpg_network_add_template (info->network,
-				                          cpg_object_get_id (object),
-				                          object);
-			}
-			else
-			{
-				cpg_group_add (CPG_GROUP (info->parents->data),
-				               object);
-			}
-
+			cpg_group_add (CPG_GROUP (info->parents->data),
+			               object);
 			g_object_unref (object);
 		}
 
@@ -535,7 +526,9 @@ parse_function (xmlDocPtr   doc,
 		                      "One of the functions does not have a name");
 	}
 
-	if (cpg_network_get_function (info->network, (gchar const *)name))
+	CpgGroup *function_group = cpg_network_get_function_group (info->network);
+
+	if (cpg_group_get_child (function_group, (gchar const *)name))
 	{
 		parser_failed (info,
 		               node,
@@ -587,7 +580,7 @@ parse_function (xmlDocPtr   doc,
 		return FALSE;
 	}
 
-	cpg_network_add_function (info->network, function);
+	cpg_group_add (function_group, CPG_OBJECT (function));
 	g_object_unref (function);
 
 	return TRUE;
@@ -696,7 +689,9 @@ parse_polynomial (xmlDocPtr   doc,
 		                      "One of the polynomials does not have a name");
 	}
 
-	if (cpg_network_get_function (info->network, (gchar const *)name))
+	CpgGroup *function_group = cpg_network_get_function_group (info->network);
+
+	if (cpg_group_get_child (function_group, (gchar const *)name))
 	{
 		parser_failed (info,
 		               node,
@@ -728,7 +723,7 @@ parse_polynomial (xmlDocPtr   doc,
 		return FALSE;
 	}
 
-	cpg_network_add_function (info->network, CPG_FUNCTION (function));
+	cpg_group_add (function_group, CPG_OBJECT (function));
 	g_object_unref (function);
 
 	return TRUE;
@@ -813,7 +808,7 @@ parse_link (xmlDocPtr   doc,
 {
 	CpgObject *object;
 	gboolean new_object;
-	gboolean atroot = !info->template && CPG_IS_NETWORK (info->parents->data);
+	gboolean atroot = info->root && CPG_IS_NETWORK (info->parents->data);
 
 	object = parse_object (CPG_TYPE_LINK, node, info, &new_object);
 
@@ -948,17 +943,7 @@ parse_link (xmlDocPtr   doc,
 
 	if (new_object)
 	{
-		if (!info->template || !CPG_IS_NETWORK (info->parents->data))
-		{
-			cpg_group_add (CPG_GROUP (info->parents->data), object);
-		}
-		else
-		{
-			cpg_network_add_template (info->network,
-			                          cpg_object_get_id (object),
-			                          object);
-		}
-
+		cpg_group_add (CPG_GROUP (info->parents->data), object);
 		g_object_unref (object);
 	}
 
@@ -1021,7 +1006,7 @@ parse_network (xmlDocPtr   doc,
 	GList *item;
 	gboolean ret = TRUE;
 
-	gboolean atroot = !info->template && CPG_IS_NETWORK (info->parents->data);
+	gboolean atroot = info->root && CPG_IS_NETWORK (info->parents->data);
 
 	for (item = nodes; item; item = g_list_next (item))
 	{
@@ -1113,21 +1098,21 @@ static gboolean
 parse_objects (xmlDocPtr    doc,
                gchar const *root_path,
                CpgNetwork  *network,
-               gboolean     templates,
+               CpgGroup    *root,
                GError      **error)
 {
-	ParseInfo info = {network, error, templates, NULL, NULL};
-	xmlNodePtr root = xml_xpath_first (doc,
-	                                   NULL,
-	                                   root_path,
-	                                   XML_ELEMENT_NODE);
+	ParseInfo info = {network, root, error, NULL, NULL};
+	xmlNodePtr root_node = xml_xpath_first (doc,
+	                                        NULL,
+	                                        root_path,
+	                                        XML_ELEMENT_NODE);
 
-	if (!root)
+	if (!root_node)
 	{
 		return TRUE;
 	}
 
-	return parse_all (doc, root, network, &info);
+	return parse_all (doc, root_node, root, &info);
 }
 
 static gboolean
@@ -1135,15 +1120,20 @@ parse_templates (xmlDocPtr    doc,
                  CpgNetwork  *network,
                  GError     **error)
 {
-	return parse_objects (doc, "/cpg/network/templates", network, TRUE, error);
+	return parse_objects (doc,
+	                      "/cpg/network/templates",
+	                      network,
+	                      cpg_network_get_template_group (network),
+	                      error);
 }
 
 static gboolean
 parse_instances (xmlDocPtr    doc,
                  CpgNetwork  *network,
+                 CpgGroup    *root,
                  GError     **error)
 {
-	return parse_objects (doc, "/cpg/network", network, FALSE, error);
+	return parse_objects (doc, "/cpg/network", network, root, error);
 }
 
 static gboolean
@@ -1182,7 +1172,7 @@ parse_config (xmlDocPtr   doc,
               CpgNetwork  *network,
               GError     **error)
 {
-	ParseInfo info = {network, error, TRUE};
+	ParseInfo info = {network, NULL, error, NULL, NULL};
 
 	return xml_xpath (doc,
 	                  NULL,
@@ -1194,6 +1184,7 @@ parse_config (xmlDocPtr   doc,
 
 static gboolean
 reader_xml (CpgNetwork  *network,
+            CpgGroup    *group,
             xmlDocPtr    doc,
             GError     **error)
 {
@@ -1224,31 +1215,36 @@ reader_xml (CpgNetwork  *network,
 		return FALSE;
 	}
 
-	if (!parse_instances (doc, network, error))
+	if (!parse_instances (doc, network, group, error))
 	{
 		xmlFreeDoc (doc);
 		return FALSE;
 	}
 
-	gboolean ret = parse_config (doc, network, error);
-	xmlFreeDoc (doc);
+	if (!parse_config (doc, network, error))
+	{
+		xmlFreeDoc (doc);
+		return FALSE;
+	}
 
-	return ret;
+	return TRUE;
 }
 
 gboolean
-cpg_network_reader_xml (CpgNetwork   *network,
-                        gchar const  *filename,
-                        GError      **error)
+cpg_network_reader_merge_from_file (CpgNetwork   *network,
+                                    CpgGroup     *root,
+                                    gchar const  *filename,
+                                    GError      **error)
 {
-	return reader_xml (network, xmlParseFile (filename), error);
+	return reader_xml (network, root, xmlParseFile (filename), error);
 }
 
 gboolean
-cpg_network_reader_xml_string (CpgNetwork   *network,
-                               gchar const  *xml,
-                               GError      **error)
+cpg_network_reader_merge_from_xml (CpgNetwork   *network,
+                                   CpgGroup     *root,
+                                   gchar const  *xml,
+                                   GError      **error)
 {
-	return reader_xml (network, xmlParseDoc ((xmlChar *)xml), error);
+	return reader_xml (network, root, xmlParseDoc ((xmlChar *)xml), error);
 }
 

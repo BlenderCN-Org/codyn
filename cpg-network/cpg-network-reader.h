@@ -6,13 +6,15 @@
 
 G_BEGIN_DECLS
 
-gboolean cpg_network_reader_xml (CpgNetwork   *network,
-                                 gchar const  *filename,
-                                 GError      **error);
+gboolean cpg_network_reader_merge_from_file (CpgNetwork   *network,
+                                             CpgGroup     *root,
+                                             gchar const  *filename,
+                                             GError      **error);
 
-gboolean cpg_network_reader_xml_string (CpgNetwork   *network,
-                                        gchar const  *xml,
-                                        GError      **error);
+gboolean cpg_network_reader_merge_from_xml (CpgNetwork   *network,
+                                            CpgGroup     *root,
+                                            gchar const  *xml,
+                                            GError      **error);
 
 G_END_DECLS
 

@@ -473,7 +473,8 @@ write_functions (CpgNetwork *network,
                  xmlDocPtr   doc,
                  xmlNodePtr  nnetwork)
 {
-	GSList *functions = cpg_network_get_functions (network);
+	CpgGroup *function_group = cpg_network_get_function_group (network);
+	GSList const *functions = cpg_group_get_children (function_group);
 	GSList *item;
 
 	if (functions == NULL)
@@ -484,7 +485,7 @@ write_functions (CpgNetwork *network,
 	xmlNodePtr funcs = xmlNewDocNode (doc, NULL, (xmlChar *)"functions", NULL);
 	xmlAddChild (nnetwork, funcs);
 
-	for (item = functions; item; item = g_slist_next (item))
+	while (functions)
 	{
 		CpgFunction *func = CPG_FUNCTION (item->data);
 
@@ -496,6 +497,8 @@ write_functions (CpgNetwork *network,
 		{
 			write_function (network, doc, func, funcs);
 		}
+
+		functions = g_slist_next (functions);
 	}
 }
 
@@ -645,7 +648,7 @@ write_config (xmlDocPtr   doc,
 }
 
 gchar *
-cpg_network_writer_xml_string (CpgNetwork *network)
+cpg_network_writer_write_to_xml (CpgNetwork *network)
 {
 	xmlDocPtr doc = xmlNewDoc ((xmlChar *)"1.0");
 	xmlNodePtr root = xmlNewDocNode (doc, NULL, (xmlChar *)"cpg", NULL);
@@ -671,7 +674,8 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 	g_slist_free (properties);
 
 	// Generate templates
-	GSList const *list = cpg_network_get_templates (network);
+	CpgGroup *template_group = cpg_network_get_template_group (network);
+	GSList const *list = cpg_group_get_children (template_group);
 	xmlNodePtr templates;
 
 	if (list)
@@ -713,10 +717,10 @@ cpg_network_writer_xml_string (CpgNetwork *network)
 }
 
 gboolean
-cpg_network_writer_xml (CpgNetwork  *network,
-                        gchar const *filename)
+cpg_network_writer_write_to_file (CpgNetwork  *network,
+                                  gchar const *filename)
 {
-	gchar *contents = cpg_network_writer_xml_string (network);
+	gchar *contents = cpg_network_writer_write_to_xml (network);
 
 	if (contents == NULL)
 	{

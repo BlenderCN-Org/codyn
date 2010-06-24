@@ -169,10 +169,11 @@ cpg_compile_context_append_object (CpgCompileContext *context,
  **/
 void
 cpg_compile_context_set_functions (CpgCompileContext *context,
-                                   GSList            *functions)
+                                   GSList const      *functions)
 {
 	g_slist_free (CURRENT_CONTEXT (context)->functions);
-	CURRENT_CONTEXT (context)->functions = g_slist_copy (functions);
+
+	CURRENT_CONTEXT (context)->functions = g_slist_copy ((GSList *)functions);
 }
 
 /**
