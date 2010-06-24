@@ -29,7 +29,8 @@ struct _CpgGroup
  * CpgGroupClass:
  * @add: add virtual function
  * @remove: remove virtual function
- *
+ * @child_added: child added default signal handler
+ * @child_removed: child removed default signal handler
  * The CpgGroup class
  *
  */

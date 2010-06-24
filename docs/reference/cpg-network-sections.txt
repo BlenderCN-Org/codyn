@@ -380,6 +380,8 @@ cpg_property_equal
 cpg_property_get_used
 cpg_property_set_update
 cpg_property_get_update
+cpg_property_flags_from_string
+cpg_property_flags_to_string
 <SUBSECTION Standard>
 CPG_PROPERTY
 CPG_IS_PROPERTY
