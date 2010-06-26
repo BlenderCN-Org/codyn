@@ -23,6 +23,9 @@ direct_LDADD = $(progs_ldadd)
 import_SOURCES = import.c utils.h utils.c
 import_LDADD = $(progs_ldadd)
 
+template_SOURCES = template.c utils.h utils.c
+template_LDADD = $(progs_ldadd)
+
 TESTS = $(TEST_PROGS)
 
 -include $(top_srcdir)/git.mk
