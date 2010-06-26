@@ -1,7 +1,7 @@
 #ifndef __CPG_NETWORK_H__
 #define __CPG_NETWORK_H__
 
-#include <glib-object.h>
+#include <gio/gio.h>
 
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-state.h>
@@ -79,7 +79,7 @@ GQuark            cpg_network_load_error_quark  (void);
 
 CpgNetwork       *cpg_network_new                    (void);
 
-CpgNetwork       *cpg_network_new_from_file          (const gchar    *filename,
+CpgNetwork       *cpg_network_new_from_file          (GFile          *file,
                                                       GError        **error);
 CpgNetwork       *cpg_network_new_from_xml           (const gchar    *xml,
                                                       GError        **error);
@@ -97,7 +97,7 @@ void              cpg_network_merge                  (CpgNetwork     *network,
                                                       CpgNetwork     *other);
 
 void              cpg_network_merge_from_file        (CpgNetwork     *network,
-                                                      const gchar    *filename,
+                                                      GFile          *file,
                                                       GError        **error);
 
 void              cpg_network_merge_from_xml         (CpgNetwork     *network,

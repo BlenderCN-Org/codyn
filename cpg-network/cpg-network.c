@@ -8,9 +8,8 @@
 #include "cpg-object.h"
 #include "cpg-link.h"
 #include "cpg-debug.h"
-#include "cpg-network-reader.h"
-#include "cpg-network-writer.h"
 #include "cpg-integrator-euler.h"
+#include "cpg-network-deserializer.h"
 
 /**
  * SECTION:cpg-network
@@ -388,17 +387,35 @@ cpg_network_new ()
  *
  **/
 CpgNetwork *
-cpg_network_new_from_file (gchar const *filename, GError **error)
+cpg_network_new_from_file (GFile   *file,
+                           GError **error)
 {
-	g_return_val_if_fail (filename != NULL, NULL);
+	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
 	CpgNetwork *network = cpg_network_new ();
-	network->priv->filename = strdup (filename);
+	network->priv->filename = g_file_get_path (file);
 
-	if (!cpg_network_reader_merge_from_file (network,
-	                                         CPG_GROUP (network),
-	                                         filename,
-	                                         error))
+	CpgNetworkDeserializer *deserializer;
+
+	deserializer = cpg_network_deserializer_new (network,
+	                                             NULL);
+
+	GInputStream *stream = G_INPUT_STREAM (g_file_read (file, NULL, error));
+
+	if (!stream)
+	{
+		return NULL;
+	}
+
+	gboolean ret;
+
+	ret = cpg_network_deserializer_deserialize (deserializer,
+	                                            stream,
+	                                            error);
+
+	g_object_unref (stream);
+
+	if (!ret)
 	{
 		g_object_unref (network);
 		network = NULL;
@@ -419,16 +436,36 @@ cpg_network_new_from_file (gchar const *filename, GError **error)
  *
  **/
 CpgNetwork *
-cpg_network_new_from_xml (gchar const *xml, GError **error)
+cpg_network_new_from_xml (gchar const  *xml,
+                          GError      **error)
 {
 	g_return_val_if_fail (xml != NULL, NULL);
 
 	CpgNetwork *network = cpg_network_new ();
 
-	if (!cpg_network_reader_merge_from_xml (network,
-	                                        CPG_GROUP (network),
-	                                        xml,
-	                                        error))
+	CpgNetworkDeserializer *deserializer;
+
+	deserializer = cpg_network_deserializer_new (network,
+	                                             NULL);
+
+	GInputStream *stream = g_memory_input_stream_new_from_data (xml,
+	                                                            -1,
+	                                                            NULL);
+
+	if (!stream)
+	{
+		return NULL;
+	}
+
+	gboolean ret;
+
+	ret = cpg_network_deserializer_deserialize (deserializer,
+	                                            stream,
+	                                            error);
+
+	g_object_unref (stream);
+
+	if (!ret)
 	{
 		g_object_unref (network);
 		network = NULL;
@@ -571,16 +608,16 @@ cpg_network_merge (CpgNetwork  *network,
  *
  **/
 void
-cpg_network_merge_from_file (CpgNetwork   *network,
-                             gchar const  *filename,
-                             GError      **error)
+cpg_network_merge_from_file (CpgNetwork  *network,
+                             GFile       *file,
+                             GError     **error)
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
-	g_return_if_fail (filename != NULL);
+	g_return_if_fail (G_IS_FILE (file));
 
 	CpgNetwork *other;
 
-	other = cpg_network_new_from_file (filename, error);
+	other = cpg_network_new_from_file (file, error);
 
 	if (other != NULL)
 	{
@@ -616,41 +653,6 @@ cpg_network_merge_from_xml (CpgNetwork   *network,
 		cpg_network_merge (network, other);
 		g_object_unref (other);
 	}
-}
-
-/**
- * cpg_network_write_to_xml:
- * @network: a #CpgNetwork
- *
- * Get xml representation of the network
- *
- * Returns: a string containing the xml representation of the network
- *
- **/
-gchar *
-cpg_network_write_to_xml (CpgNetwork *network)
-{
-	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
-
-	return cpg_network_writer_write_to_xml (network);
-}
-
-/**
- * cpg_network_write_to_file:
- * @network: a #CpgNetwork
- * @filename: a filename
- *
- * Write the xml representation of the network to file
- *
- **/
-void
-cpg_network_write_to_file (CpgNetwork  *network,
-                           gchar const *filename)
-{
-	g_return_if_fail (CPG_IS_NETWORK (network));
-	g_return_if_fail (filename != NULL);
-
-	cpg_network_writer_write_to_file (network, filename);
 }
 
 /**

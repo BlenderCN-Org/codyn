@@ -1,9 +1,10 @@
-#include "cpg-network-reader.h"
+#include "cpg-network-deserializer.h"
 
 #include <libxml/parser.h>
 #include <libxml/tree.h>
 #include <libxml/xpath.h>
 #include <libxml/xinclude.h>
+#include <libxml/xmlreader.h>
 
 #include <errno.h>
 #include <string.h>
@@ -15,29 +16,155 @@
 #include "cpg-enum-types.h"
 #include "cpg-network-xml.h"
 
-typedef struct
+#define CPG_NETWORK_DESERIALIZER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_NETWORK_DESERIALIZER, CpgNetworkDeserializerPrivate))
+
+struct _CpgNetworkDeserializerPrivate
 {
 	CpgNetwork  *network;
 	CpgGroup    *root;
+	GInputStream *stream;
+
+	xmlDocPtr    doc;
 	GError     **error;
-	CpgObject  *object;
-	GSList     *parents;
-} ParseInfo;
+	CpgObject   *object;
+	GSList      *parents;
+};
 
-static gboolean parse_all (xmlDocPtr   doc,
-                           xmlNodePtr  root,
-                           gpointer    parent,
-                           ParseInfo  *info);
+static gboolean parse_all (CpgNetworkDeserializer *deserializer,
+                           xmlNodePtr              root,
+                           gpointer                parent);
 
-typedef gboolean (*XPathResultFunc)(xmlDocPtr doc, GList *nodes, gpointer data);
+typedef gboolean (*XPathResultFunc)(CpgNetworkDeserializer *deserializer, GList *nodes, gpointer data);
+
+G_DEFINE_TYPE (CpgNetworkDeserializer, cpg_network_deserializer, G_TYPE_OBJECT)
+
+enum
+{
+	PROP_0,
+	PROP_NETWORK,
+	PROP_ROOT
+};
+
+static void
+cpg_network_deserializer_finalize (GObject *object)
+{
+	G_OBJECT_CLASS (cpg_network_deserializer_parent_class)->finalize (object);
+}
+
+static void
+cpg_network_deserializer_dispose (GObject *object)
+{
+	CpgNetworkDeserializer *deserializer = CPG_NETWORK_DESERIALIZER (object);
+
+	if (deserializer->priv->network)
+	{
+		g_object_unref (deserializer->priv->network);
+		deserializer->priv->network = NULL;
+	}
+
+	if (deserializer->priv->root)
+	{
+		g_object_unref (deserializer->priv->root);
+		deserializer->priv->root = NULL;
+	}
+
+	G_OBJECT_CLASS (cpg_network_deserializer_parent_class)->dispose (object);
+}
+
+static void
+cpg_network_deserializer_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+{
+	CpgNetworkDeserializer *self = CPG_NETWORK_DESERIALIZER (object);
+
+	switch (prop_id)
+	{
+		case PROP_NETWORK:
+			self->priv->network = g_value_dup_object (value);
+		break;
+		case PROP_ROOT:
+			self->priv->root = g_value_dup_object (value);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_network_deserializer_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+	CpgNetworkDeserializer *self = CPG_NETWORK_DESERIALIZER (object);
+
+	switch (prop_id)
+	{
+		case PROP_NETWORK:
+			g_value_set_object (value, self->priv->network);
+		break;
+		case PROP_ROOT:
+			g_value_set_object (value, self->priv->root);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_network_deserializer_constructed (GObject *object)
+{
+	CpgNetworkDeserializer *deserializer = CPG_NETWORK_DESERIALIZER (object);
+
+	if (deserializer->priv->root == NULL && deserializer->priv->network)
+	{
+		deserializer->priv->root = g_object_ref (deserializer->priv->network);
+	}
+}
+
+static void
+cpg_network_deserializer_class_init (CpgNetworkDeserializerClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	
+	object_class->finalize = cpg_network_deserializer_finalize;
+
+	object_class->get_property = cpg_network_deserializer_get_property;
+	object_class->set_property = cpg_network_deserializer_set_property;
+
+	object_class->dispose = cpg_network_deserializer_dispose;
+	object_class->constructed = cpg_network_deserializer_constructed;
+
+	g_type_class_add_private (object_class, sizeof(CpgNetworkDeserializerPrivate));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_NETWORK,
+	                                 g_param_spec_object ("network",
+	                                                      "Network",
+	                                                      "Network",
+	                                                      CPG_TYPE_NETWORK,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_ROOT,
+	                                 g_param_spec_object ("root",
+	                                                      "Root",
+	                                                      "Root",
+	                                                      CPG_TYPE_GROUP,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+}
+
+static void
+cpg_network_deserializer_init (CpgNetworkDeserializer *self)
+{
+	self->priv = CPG_NETWORK_DESERIALIZER_GET_PRIVATE (self);
+}
 
 static gboolean
-xml_xpath (xmlDocPtr        doc,
-           xmlNodePtr       root,
-           gchar const     *expr,
-           xmlElementType   type,
-           XPathResultFunc  func,
-           gpointer         data)
+xml_xpath (CpgNetworkDeserializer *deserializer,
+           xmlNodePtr              root,
+           gchar const            *expr,
+           xmlElementType          type,
+           XPathResultFunc         func,
+           gpointer                data)
 {
 	xmlXPathContextPtr ctx;
 	xmlXPathObjectPtr obj;
@@ -59,7 +186,7 @@ xml_xpath (xmlDocPtr        doc,
 	}
 	else
 	{
-		ctx = xmlXPathNewContext (doc);
+		ctx = xmlXPathNewContext (deserializer->priv->doc);
 		ctx->node = root;
 
 		if (!ctx)
@@ -93,14 +220,16 @@ xml_xpath (xmlDocPtr        doc,
 	}
 
 	set = g_list_reverse (set);
-	gboolean ret = func (doc, set, data);
+	gboolean ret = func (deserializer, set, data);
 	g_list_free (set);
 
 	return ret;
 }
 
 static gboolean
-xpath_first (xmlDocPtr doc, GList *nodes, gpointer data)
+xpath_first (CpgNetworkDeserializer *deserializer,
+             GList                  *nodes,
+             gpointer                data)
 {
 	xmlNodePtr *first = (xmlNodePtr *)data;
 
@@ -117,25 +246,25 @@ xpath_first (xmlDocPtr doc, GList *nodes, gpointer data)
 }
 
 static xmlNodePtr
-xml_xpath_first (xmlDocPtr        doc,
-                 xmlNodePtr       root,
-                 gchar const     *expr,
-                 xmlElementType   type)
+xml_xpath_first (CpgNetworkDeserializer *deserializer,
+                 xmlNodePtr              root,
+                 gchar const            *expr,
+                 xmlElementType          type)
 {
 	xmlNodePtr first = NULL;
 
-	xml_xpath (doc, root, expr, type, xpath_first, &first);
+	xml_xpath (deserializer, root, expr, type, xpath_first, &first);
 	return first;
 }
 
 static gboolean
-parser_failed (ParseInfo   *info,
-               xmlNodePtr   node,
-               gint         code,
-               gchar const *format,
+parser_failed (CpgNetworkDeserializer *deserializer,
+               xmlNodePtr              node,
+               gint                    code,
+               gchar const            *format,
                ...)
 {
-	if (info->error != NULL)
+	if (deserializer->priv->error != NULL)
 	{
 		va_list ap;
 		va_start (ap, format);
@@ -143,15 +272,15 @@ parser_failed (ParseInfo   *info,
 		gchar *message = g_strdup_vprintf (format, ap);
 		va_end (ap);
 
-		if (*info->error)
+		if (*deserializer->priv->error)
 		{
-			g_error_free (*info->error);
-			*info->error = NULL;
+			g_error_free (*deserializer->priv->error);
+			*deserializer->priv->error = NULL;
 		}
 
 		cpg_debug_error ("XML load error: %s", message);
 
-		g_set_error (info->error,
+		g_set_error (deserializer->priv->error,
 		             CPG_NETWORK_LOAD_ERROR,
 		             code,
 		             "%s (line %d)",
@@ -165,23 +294,11 @@ parser_failed (ParseInfo   *info,
 }
 
 static gboolean
-attribute_true (xmlNodePtr node, gchar const *name)
-{
-	xmlChar *prop = xmlGetProp (node, (xmlChar *)name);
-	gboolean ret = (prop && (g_ascii_strcasecmp ((const gchar *)prop, "true") == 0 ||
-	                         g_ascii_strcasecmp ((const gchar *)prop, "yes") == 0 ||
-	                         g_ascii_strcasecmp ((const gchar *)prop, "1") == 0));
-	xmlFree (prop);
-
-	return ret;
-}
-
-static gboolean
-extract_flags (ParseInfo        *info,
-               xmlNodePtr        node,
-               gchar const      *name,
-               CpgPropertyFlags *flags,
-               gboolean         *flags_attr)
+extract_flags (CpgNetworkDeserializer *deserializer,
+               xmlNodePtr              node,
+               gchar const            *name,
+               CpgPropertyFlags       *flags,
+               gboolean               *flags_attr)
 {
 	GFlagsClass *klass;
 	guint i;
@@ -219,9 +336,8 @@ extract_flags (ParseInfo        *info,
 }
 
 static gboolean
-parse_properties (xmlDocPtr  doc,
-                  GList     *nodes,
-                  ParseInfo *info)
+parse_properties (CpgNetworkDeserializer *deserializer,
+                  GList                  *nodes)
 {
 	GList *item;
 
@@ -234,11 +350,11 @@ parse_properties (xmlDocPtr  doc,
 		{
 			xmlFree (name);
 
-			return parser_failed (info,
+			return parser_failed (deserializer,
 			                      node,
 			                      CPG_NETWORK_LOAD_ERROR_PROPERTY,
 			                      "Property on %s has no name",
-			                      cpg_object_get_id (info->object));
+			                      cpg_object_get_id (deserializer->priv->object));
 		}
 
 		xmlChar const *expression = (xmlChar *)"";
@@ -252,7 +368,7 @@ parse_properties (xmlDocPtr  doc,
 		CpgPropertyFlags flags;
 		gboolean flags_attr;
 
-		if (!extract_flags (info,
+		if (!extract_flags (deserializer,
 		                    node,
 		                    (gchar const *)name,
 		                    &flags,
@@ -261,7 +377,7 @@ parse_properties (xmlDocPtr  doc,
 			return FALSE;
 		}
 
-		property = cpg_object_add_property (info->object,
+		property = cpg_object_add_property (deserializer->priv->object,
 		                                    (const gchar *)name,
 		                                    (const gchar *)expression,
 		                                    flags);
@@ -277,18 +393,18 @@ parse_properties (xmlDocPtr  doc,
 }
 
 static gboolean
-parse_object_properties (CpgObject  *object,
-                         xmlNodePtr  node,
-                         ParseInfo  *info)
+parse_object_properties (CpgNetworkDeserializer *deserializer,
+                         xmlNodePtr              node,
+                         CpgObject              *object)
 {
-	info->object = object;
+	deserializer->priv->object = object;
 
-	if (!xml_xpath (node->doc,
+	if (!xml_xpath (deserializer,
 	                node,
 	                "property",
 	                XML_ELEMENT_NODE,
 	                (XPathResultFunc)parse_properties,
-	                info))
+	                NULL))
 	{
 		cpg_debug_error ("Could not parse object properties for: %s",
 		                 cpg_object_get_id (object));
@@ -299,17 +415,19 @@ parse_object_properties (CpgObject  *object,
 }
 
 static CpgObject *
-parse_object (GType       gtype,
-              xmlNodePtr  node,
-              ParseInfo  *info,
-              gboolean   *new_object)
+parse_object (CpgNetworkDeserializer *deserializer,
+              GType                   gtype,
+              xmlNodePtr              node,
+              gboolean               *new_object)
 {
 	xmlChar *id = xmlGetProp (node, (xmlChar *)"id");
 	*new_object = FALSE;
 
+	g_message ("%p, %p", deserializer, node);
+
 	if (!id)
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_OBJECT,
 		               "One of the objects does not have an id");
@@ -319,7 +437,7 @@ parse_object (GType       gtype,
 
 	/* Check if the object already exists, if so, extend the existing object
 	   instead of creating a new one */
-	CpgGroup *parent = info->parents->data;
+	CpgGroup *parent = deserializer->priv->parents->data;
 	CpgObject *child;
 
 	child = cpg_group_get_child (parent, (gchar const *)id);
@@ -331,7 +449,7 @@ parse_object (GType       gtype,
 	}
 	else if (!g_type_is_a (gtype, G_TYPE_FROM_INSTANCE (child)))
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_OBJECT,
 		               "Cannot extend type %s with type %s",
@@ -344,7 +462,7 @@ parse_object (GType       gtype,
 
 	xmlChar *ref = xmlGetProp (node, (xmlChar *)"ref");
 	gboolean ret = TRUE;
-	CpgGroup *template_group = cpg_network_get_template_group (info->network);
+	CpgGroup *template_group = cpg_network_get_template_group (deserializer->priv->network);
 
 	if (ref)
 	{
@@ -360,7 +478,7 @@ parse_object (GType       gtype,
 
 			if (!template)
 			{
-				ret = parser_failed (info,
+				ret = parser_failed (deserializer,
 				                     node,
 				                     CPG_NETWORK_LOAD_ERROR_OBJECT,
 				                     "Could not find template %s for object %s",
@@ -373,7 +491,7 @@ parse_object (GType       gtype,
 			
 				if (!g_type_is_a (gtype, template_type))
 				{
-					ret = parser_failed (info,
+					ret = parser_failed (deserializer,
 					                     node,
 					                     CPG_NETWORK_LOAD_ERROR_OBJECT,
 					                     "Referenced template is of incorrect type %s (need %s)",
@@ -399,7 +517,7 @@ parse_object (GType       gtype,
 	xmlFree (id);
 	xmlFree (ref);
 
-	if (!ret || !parse_object_properties (child, node, info))
+	if (!ret || !parse_object_properties (deserializer, node, child))
 	{
 		if (*new_object)
 		{
@@ -413,20 +531,20 @@ parse_object (GType       gtype,
 }
 
 static CpgObject *
-new_object (GType       gtype,
-            xmlNodePtr  node,
-            ParseInfo  *info)
+new_object (CpgNetworkDeserializer *deserializer,
+            GType                   gtype,
+            xmlNodePtr              node)
 {
 	CpgObject *object;
 	gboolean new_object;
 
-	object = parse_object (gtype, node, info, &new_object);
+	object = parse_object (deserializer, gtype, node, &new_object);
 
 	if (object)
 	{
 		if (new_object)
 		{
-			cpg_group_add (CPG_GROUP (info->parents->data),
+			cpg_group_add (CPG_GROUP (deserializer->priv->parents->data),
 			               object);
 			g_object_unref (object);
 		}
@@ -440,19 +558,18 @@ new_object (GType       gtype,
 }
 
 static gboolean
-parse_globals (xmlDocPtr   doc,
-               xmlNodePtr  node,
-               ParseInfo  *info)
+parse_globals (CpgNetworkDeserializer *deserializer,
+               xmlNodePtr              node)
 {
-	return parse_object_properties (CPG_OBJECT (info->network),
+	return parse_object_properties (deserializer,
 	                                node,
-	                                info);
+	                                CPG_OBJECT (deserializer->priv->network));
 }
 
 static gboolean
-get_function_expression (xmlDocPtr   doc,
-                         GList      *nodes,
-                         gchar     **ret)
+get_function_expression (CpgNetworkDeserializer  *deserializer,
+                         GList                   *nodes,
+                         gchar                  **ret)
 {
 	if (nodes == NULL)
 	{
@@ -471,9 +588,9 @@ get_function_expression (xmlDocPtr   doc,
 }
 
 static gboolean
-parse_function_arguments (xmlDocPtr    doc,
-                          GList       *nodes,
-                          CpgFunction *function)
+parse_function_arguments (CpgNetworkDeserializer *deserializer,
+                          GList                  *nodes,
+                          CpgFunction            *function)
 {
 	GList *item;
 
@@ -493,7 +610,10 @@ parse_function_arguments (xmlDocPtr    doc,
 			continue;
 		}
 
-		gboolean optional = attribute_true (node, "optional");
+		xmlChar *opt = xmlGetProp (node, (xmlChar *)"optional");
+		gboolean optional = opt ? g_ascii_strcasecmp ((gchar const *)opt, "yes") == 0 : FALSE;
+		xmlFree (opt);
+
 		xmlChar *def = xmlGetProp (node, (xmlChar *)"default");
 		gdouble default_value = 0;
 
@@ -512,25 +632,24 @@ parse_function_arguments (xmlDocPtr    doc,
 }
 
 static gboolean
-parse_function (xmlDocPtr   doc,
-                xmlNodePtr  node,
-                ParseInfo  *info)
+parse_function (CpgNetworkDeserializer *deserializer,
+                xmlNodePtr              node)
 {
 	xmlChar *name = xmlGetProp (node, (xmlChar *)"name");
 
 	if (!name)
 	{
-		return parser_failed (info,
+		return parser_failed (deserializer,
 		                      node,
 		                      CPG_NETWORK_LOAD_ERROR_FUNCTION,
 		                      "One of the functions does not have a name");
 	}
 
-	CpgGroup *function_group = cpg_network_get_function_group (info->network);
+	CpgGroup *function_group = cpg_network_get_function_group (deserializer->priv->network);
 
 	if (cpg_group_get_child (function_group, (gchar const *)name))
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
 		               "The function `%s' is already defined",
@@ -542,14 +661,14 @@ parse_function (xmlDocPtr   doc,
 
 	gchar *expression = NULL;
 
-	if (!xml_xpath (node->doc,
+	if (!xml_xpath (deserializer,
 	                node,
 	                "expression",
 	                XML_ELEMENT_NODE,
 	                (XPathResultFunc)get_function_expression,
 	                &expression))
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
 		               "Expression not set for function %s",
@@ -563,14 +682,14 @@ parse_function (xmlDocPtr   doc,
 	g_free (expression);
 	xmlFree (name);
 
-	if (!xml_xpath (node->doc,
+	if (!xml_xpath (deserializer,
 	                node,
 	                "argument",
 	                XML_ELEMENT_NODE,
 	                (XPathResultFunc)parse_function_arguments,
 	                function))
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
 		               "Failed to parse function arguments for %s",
@@ -587,9 +706,8 @@ parse_function (xmlDocPtr   doc,
 }
 
 static gboolean
-parse_polynomial_pieces (xmlDocPtr              doc,
-                         GList                 *nodes,
-                         CpgFunctionPolynomial *function)
+parse_polynomial_pieces (CpgFunctionPolynomial *function,
+                         GList                 *nodes)
 {
 	GList *item;
 
@@ -675,25 +793,24 @@ parse_polynomial_pieces (xmlDocPtr              doc,
 }
 
 static gboolean
-parse_polynomial (xmlDocPtr   doc,
-                  xmlNodePtr  node,
-                  ParseInfo  *info)
+parse_polynomial (CpgNetworkDeserializer  *deserializer,
+                  xmlNodePtr               node)
 {
 	xmlChar *name = xmlGetProp (node, (xmlChar *)"name");
 
 	if (!name)
 	{
-		return parser_failed (info,
+		return parser_failed (deserializer,
 		                      node,
 		                      CPG_NETWORK_LOAD_ERROR_FUNCTION,
 		                      "One of the polynomials does not have a name");
 	}
 
-	CpgGroup *function_group = cpg_network_get_function_group (info->network);
+	CpgGroup *function_group = cpg_network_get_function_group (deserializer->priv->network);
 
 	if (cpg_group_get_child (function_group, (gchar const *)name))
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
 		               "The polynomial `%s' is already defined",
@@ -706,14 +823,14 @@ parse_polynomial (xmlDocPtr   doc,
 	CpgFunctionPolynomial *function = cpg_function_polynomial_new ((gchar const *)name);
 	xmlFree (name);
 
-	if (!xml_xpath (node->doc,
+	if (!xml_xpath (deserializer,
 	                node,
 	                "piece",
 	                XML_ELEMENT_NODE,
 	                (XPathResultFunc)parse_polynomial_pieces,
 	                function))
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
 		               "Failed to parse polynomial pieces for: %s",
@@ -730,12 +847,11 @@ parse_polynomial (xmlDocPtr   doc,
 }
 
 static gboolean
-parse_actions (xmlDocPtr doc,
-               GList     *nodes,
-               ParseInfo *info)
+parse_actions (CpgNetworkDeserializer *deserializer,
+               GList                  *nodes)
 {
 	GList *item;
-	CpgLink *link = CPG_LINK (info->object);
+	CpgLink *link = CPG_LINK (deserializer->priv->object);
 	CpgObject *to = cpg_link_get_to (link);
 
 	for (item = nodes; item; item = g_list_next (item))
@@ -746,7 +862,7 @@ parse_actions (xmlDocPtr doc,
 
 		if (!target)
 		{
-			return parser_failed (info,
+			return parser_failed (deserializer,
 			                      node,
 			                      CPG_NETWORK_LOAD_ERROR_LINK,
 			                      "Missing target for action on %s",
@@ -762,7 +878,7 @@ parse_actions (xmlDocPtr doc,
 
 			if (!property)
 			{
-				parser_failed (info,
+				parser_failed (deserializer,
 				               node,
 				               CPG_NETWORK_LOAD_ERROR_LINK,
 				               "Target property %s not found for action on %s",
@@ -802,15 +918,14 @@ parse_actions (xmlDocPtr doc,
 }
 
 static gboolean
-parse_link (xmlDocPtr   doc,
-            xmlNodePtr  node,
-            ParseInfo  *info)
+parse_link (CpgNetworkDeserializer *deserializer,
+            xmlNodePtr              node)
 {
 	CpgObject *object;
 	gboolean new_object;
-	gboolean atroot = info->root && CPG_IS_NETWORK (info->parents->data);
+	gboolean atroot = deserializer->priv->root && CPG_IS_NETWORK (deserializer->priv->parents->data);
 
-	object = parse_object (CPG_TYPE_LINK, node, info, &new_object);
+	object = parse_object (deserializer, CPG_TYPE_LINK, node, &new_object);
 
 	if (!object)
 	{
@@ -822,7 +937,7 @@ parse_link (xmlDocPtr   doc,
 
 	if (!from && atroot && new_object)
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_LINK,
 		               "Link node %s is missing required `from' attribute",
@@ -834,13 +949,13 @@ parse_link (xmlDocPtr   doc,
 
 	if (from)
 	{
-		CpgObject *fromobj = cpg_group_get_child (CPG_GROUP (info->parents->data),
+		CpgObject *fromobj = cpg_group_get_child (CPG_GROUP (deserializer->priv->parents->data),
 		                                          (gchar const *)from);
 		gboolean ret = TRUE;
 
 		if (!fromobj)
 		{
-			parser_failed (info,
+			parser_failed (deserializer,
 			               node,
 			               CPG_NETWORK_LOAD_ERROR_LINK,
 			               "The `from' object `%s' could not be found for link `%s'",
@@ -874,7 +989,7 @@ parse_link (xmlDocPtr   doc,
 
 	if (!to && atroot && new_object)
 	{
-		parser_failed (info,
+		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_LINK,
 		               "Link node %s is missing required `to' attribute",
@@ -886,13 +1001,13 @@ parse_link (xmlDocPtr   doc,
 
 	if (to)
 	{
-		CpgObject *toobj = cpg_group_get_child (CPG_GROUP (info->parents->data),
+		CpgObject *toobj = cpg_group_get_child (CPG_GROUP (deserializer->priv->parents->data),
 		                                       (gchar const *)to);
 		gboolean ret = TRUE;
 
 		if (!toobj)
 		{
-			parser_failed (info,
+			parser_failed (deserializer,
 			               node,
 			               CPG_NETWORK_LOAD_ERROR_LINK,
 			               "The `to' object `%s' could not be found for link `%s'",
@@ -922,14 +1037,14 @@ parse_link (xmlDocPtr   doc,
 		g_object_set (object, "to", toobj, NULL);
 	}
 
-	info->object = object;
+	deserializer->priv->object = object;
 
-	if (!xml_xpath (doc,
+	if (!xml_xpath (deserializer,
 	                node,
 	                "action",
 	                XML_ELEMENT_NODE,
 	                (XPathResultFunc)parse_actions,
-	                info))
+	                NULL))
 	{
 		cpg_debug_error ("Could not parse actions successfully");
 
@@ -943,7 +1058,7 @@ parse_link (xmlDocPtr   doc,
 
 	if (new_object)
 	{
-		cpg_group_add (CPG_GROUP (info->parents->data), object);
+		cpg_group_add (CPG_GROUP (deserializer->priv->parents->data), object);
 		g_object_unref (object);
 	}
 
@@ -951,13 +1066,12 @@ parse_link (xmlDocPtr   doc,
 }
 
 static gboolean
-parse_group (xmlDocPtr   doc,
-             xmlNodePtr  node,
-             ParseInfo  *info)
+parse_group (CpgNetworkDeserializer *deserializer,
+             xmlNodePtr              node)
 {
 	CpgObject *object;
 
-	object = new_object (CPG_TYPE_GROUP, node, info);
+	object = new_object (deserializer, CPG_TYPE_GROUP, node);
 
 	if (!object)
 	{
@@ -965,7 +1079,7 @@ parse_group (xmlDocPtr   doc,
 	}
 
 	/* Recurse into the group members */
-	if (!parse_all (doc, node, object, info))
+	if (!parse_all (deserializer, node, object))
 	{
 		return FALSE;
 	}
@@ -979,7 +1093,7 @@ parse_group (xmlDocPtr   doc,
 
 		if (!child)
 		{
-			parser_failed (info,
+			parser_failed (deserializer,
 			               node,
 			               CPG_NETWORK_LOAD_ERROR_OBJECT,
 			               "Could not find proxy `%s' for group `%s'",
@@ -999,20 +1113,19 @@ parse_group (xmlDocPtr   doc,
 }
 
 static gboolean
-parse_network (xmlDocPtr   doc,
-               GList      *nodes,
-               ParseInfo  *info)
+parse_network (CpgNetworkDeserializer *deserializer,
+               GList                  *nodes)
 {
 	GList *item;
 	gboolean ret = TRUE;
 
-	gboolean atroot = info->root && CPG_IS_NETWORK (info->parents->data);
+	gboolean atroot = deserializer->priv->root && CPG_IS_NETWORK (deserializer->priv->parents->data);
 
 	for (item = nodes; item; item = g_list_next (item))
 	{
 		xmlNodePtr node = item->data;
 
-		gboolean has_child = xml_xpath_first (doc,
+		gboolean has_child = xml_xpath_first (deserializer,
 		                                      node,
 		                                      "state | link",
 		                                      XML_ELEMENT_NODE) != NULL;
@@ -1021,34 +1134,34 @@ parse_network (xmlDocPtr   doc,
 		{
 			if (has_child)
 			{
-				ret = parse_group (doc, node, info);
+				ret = parse_group (deserializer, node);
 			}
 			else
 			{
-				ret = new_object (CPG_TYPE_STATE, node, info) != NULL;
+				ret = new_object (deserializer, CPG_TYPE_STATE, NULL) != NULL;
 			}
 		}
 		else if (g_strcmp0 ((gchar const *)node->name, "link") == 0)
 		{
-			ret = parse_link (doc, node, info);
+			ret = parse_link (deserializer, node);
 		}
 		else if (atroot)
 		{
 			if (g_strcmp0 ((gchar const *)node->name, "globals") == 0)
 			{
-				ret = parse_globals (doc, node, info);
+				ret = parse_globals (deserializer, node);
 			}
 			else if (g_strcmp0 ((gchar const *)node->name, "functions") == 0)
 			{
-				ret = parse_all (doc, node, NULL, info);
+				ret = parse_all (deserializer, node, NULL);
 			}
 			else if (g_strcmp0 ((gchar const *)node->name, "function") == 0)
 			{
-				ret = parse_function (doc, node, info);
+				ret = parse_function (deserializer, node);
 			}
 			else if (g_strcmp0 ((gchar const *)node->name, "polynomial") == 0)
 			{
-				ret = parse_polynomial (doc, node, info);
+				ret = parse_polynomial (deserializer, node);
 			}
 			else if (g_strcmp0 ((gchar const *)node->name, "templates") == 0)
 			{
@@ -1075,34 +1188,32 @@ parse_network (xmlDocPtr   doc,
 }
 
 static gboolean
-parse_all (xmlDocPtr   doc,
-           xmlNodePtr  root,
-           gpointer    parent,
-           ParseInfo  *info)
+parse_all (CpgNetworkDeserializer *deserializer,
+           xmlNodePtr              root,
+           gpointer                parent)
 {
 	gboolean ret;
-	info->parents = g_slist_prepend (info->parents, parent);
+	deserializer->priv->parents = g_slist_prepend (deserializer->priv->parents,
+	                                               parent);
 
-	ret = xml_xpath (doc,
+	ret = xml_xpath (deserializer,
 	                 root,
 	                 NULL,
 	                 XML_ELEMENT_NODE,
 	                 (XPathResultFunc)parse_network,
-	                 info);
+	                 NULL);
 
-	info->parents = g_slist_remove (info->parents, parent);
+	deserializer->priv->parents = g_slist_remove (deserializer->priv->parents,
+	                                              parent);
 	return ret;
 }
 
 static gboolean
-parse_objects (xmlDocPtr    doc,
-               gchar const *root_path,
-               CpgNetwork  *network,
-               CpgGroup    *root,
-               GError      **error)
+parse_objects (CpgNetworkDeserializer *deserializer,
+               gchar const            *root_path,
+               CpgGroup               *root)
 {
-	ParseInfo info = {network, root, error, NULL, NULL};
-	xmlNodePtr root_node = xml_xpath_first (doc,
+	xmlNodePtr root_node = xml_xpath_first (deserializer,
 	                                        NULL,
 	                                        root_path,
 	                                        XML_ELEMENT_NODE);
@@ -1112,41 +1223,37 @@ parse_objects (xmlDocPtr    doc,
 		return TRUE;
 	}
 
-	return parse_all (doc, root_node, root, &info);
+	return parse_all (deserializer,
+	                  root_node,
+	                  root);
 }
 
 static gboolean
-parse_templates (xmlDocPtr    doc,
-                 CpgNetwork  *network,
-                 GError     **error)
+parse_templates (CpgNetworkDeserializer *deserializer)
 {
-	return parse_objects (doc,
+	return parse_objects (deserializer,
 	                      "/cpg/network/templates",
-	                      network,
-	                      cpg_network_get_template_group (network),
-	                      error);
+	                      cpg_network_get_template_group (deserializer->priv->network));
 }
 
 static gboolean
-parse_instances (xmlDocPtr    doc,
-                 CpgNetwork  *network,
-                 CpgGroup    *root,
-                 GError     **error)
+parse_instances (CpgNetworkDeserializer *deserializer)
 {
-	return parse_objects (doc, "/cpg/network", network, root, error);
+	return parse_objects (deserializer,
+	                      "/cpg/network",
+	                      deserializer->priv->root);
 }
 
 static gboolean
-parse_network_config (xmlDocPtr  doc,
-                      GList     *nodes,
-                      ParseInfo *info)
+parse_network_config (CpgNetworkDeserializer *deserializer,
+                      GList                  *nodes)
 {
 	if (!nodes)
 	{
 		return TRUE;
 	}
 
-	xmlNodePtr net = (xmlNodePtr)nodes->data;
+	xmlNodePtr net = nodes->data;
 	xmlChar *it = xmlGetProp (net, (xmlChar *)"integrator");
 
 	if (it)
@@ -1157,7 +1264,8 @@ parse_network_config (xmlDocPtr  doc,
 		{
 			CpgIntegrator *integrator = CPG_INTEGRATOR (g_object_new (inttype, NULL));
 
-			cpg_network_set_integrator (info->network, integrator);
+			cpg_network_set_integrator (deserializer->priv->network,
+			                            integrator);
 			g_object_unref (integrator);
 		}
 
@@ -1168,83 +1276,131 @@ parse_network_config (xmlDocPtr  doc,
 }
 
 static gboolean
-parse_config (xmlDocPtr   doc,
-              CpgNetwork  *network,
-              GError     **error)
+parse_config (CpgNetworkDeserializer *deserializer)
 {
-	ParseInfo info = {network, NULL, error, NULL, NULL};
-
-	return xml_xpath (doc,
+	return xml_xpath (deserializer,
 	                  NULL,
 	                  "/cpg/network",
 	                  XML_ELEMENT_NODE,
 	                  (XPathResultFunc)parse_network_config,
-	                  &info);
+	                  NULL);
 }
 
 static gboolean
-reader_xml (CpgNetwork  *network,
-            CpgGroup    *group,
-            xmlDocPtr    doc,
-            GError     **error)
+reader_xml (CpgNetworkDeserializer *deserializer)
 {
-	if (!doc)
+	if (!parse_templates (deserializer))
 	{
-		if (error)
-		{
-			g_set_error (error,
-			             CPG_NETWORK_LOAD_ERROR,
-			             CPG_NETWORK_LOAD_ERROR_XML,
-			             "Failed parsing xml at %d:%d: %s",
-			             xmlLastError.line,
-			             xmlLastError.int2,
-			             xmlLastError.message);
-		}
-
-		cpg_debug_error ("Could not open network file: %s", strerror (errno));
 		return FALSE;
 	}
 
-	// We don't really care if the include failed
-	xmlXIncludeProcess (doc);
-
-	if (!parse_templates (doc, network, error))
+	if (!parse_instances (deserializer))
 	{
-		xmlFreeDoc (doc);
-		cpg_debug_error ("Failed to parse templates");
 		return FALSE;
 	}
 
-	if (!parse_instances (doc, network, group, error))
+	if (!parse_config (deserializer))
 	{
-		xmlFreeDoc (doc);
-		return FALSE;
-	}
-
-	if (!parse_config (doc, network, error))
-	{
-		xmlFreeDoc (doc);
 		return FALSE;
 	}
 
 	return TRUE;
 }
 
-gboolean
-cpg_network_reader_merge_from_file (CpgNetwork   *network,
-                                    CpgGroup     *root,
-                                    gchar const  *filename,
-                                    GError      **error)
+CpgNetworkDeserializer *
+cpg_network_deserializer_new (CpgNetwork *network,
+                              CpgGroup   *root)
 {
-	return reader_xml (network, root, xmlParseFile (filename), error);
+	return g_object_new (CPG_TYPE_NETWORK_DESERIALIZER,
+	                     "network", network,
+	                     "root", root,
+	                     NULL);
+}
+
+static int
+xml_ioread (CpgNetworkDeserializer *deserializer,
+            char                   *buffer,
+            int                     len)
+{
+	gboolean ret;
+	gsize bytes_read;
+
+	ret = g_input_stream_read_all (deserializer->priv->stream,
+	                               buffer,
+	                               len,
+	                               &bytes_read,
+	                               NULL,
+	                               deserializer->priv->error);
+
+	if (!ret)
+	{
+		return -1;
+	}
+
+	return bytes_read;
+}
+
+static void
+xml_ioclose (CpgNetworkDeserializer *deserializer)
+{
+	g_input_stream_close (deserializer->priv->stream, NULL, NULL);
 }
 
 gboolean
-cpg_network_reader_merge_from_xml (CpgNetwork   *network,
-                                   CpgGroup     *root,
-                                   gchar const  *xml,
-                                   GError      **error)
+cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
+                                      GInputStream            *stream,
+                                      GError                 **error)
 {
-	return reader_xml (network, root, xmlParseDoc ((xmlChar *)xml), error);
-}
+	g_return_val_if_fail (CPG_IS_NETWORK_DESERIALIZER (deserializer), FALSE);
+	g_return_val_if_fail (G_INPUT_STREAM (stream), FALSE);
 
+	xmlTextReaderPtr reader;
+
+	deserializer->priv->stream = stream;
+	deserializer->priv->error = error;
+
+	reader = xmlReaderForIO ((xmlInputReadCallback)xml_ioread,
+	                         (xmlInputCloseCallback)xml_ioclose,
+	                         deserializer,
+	                         NULL,
+	                         NULL,
+	                         0);
+
+	if (reader == NULL)
+	{
+		return FALSE;
+	}
+
+	gint ret;
+
+	do
+	{
+		ret = xmlTextReaderRead(reader);
+		xmlTextReaderPreserve(reader);
+	} while (ret == 1);
+
+	if (ret != 0)
+	{
+		xmlFreeTextReader (reader);
+
+		return parser_failed (deserializer,
+		                      NULL,
+		                      CPG_NETWORK_LOAD_ERROR_XML,
+		                      "Failed parsing xml at %d:%d: %s",
+		                      xmlLastError.line,
+		                      xmlLastError.int2,
+		                      xmlLastError.message);
+	}
+	else
+	{
+		xmlDocPtr doc = xmlTextReaderCurrentDoc(reader);
+
+		deserializer->priv->doc = doc;
+		reader_xml (deserializer);
+
+		xmlFreeDoc (doc);
+	}
+
+	xmlFreeTextReader (reader);
+	return TRUE;
+}

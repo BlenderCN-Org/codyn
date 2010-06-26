@@ -23,8 +23,8 @@ COMMON_SOURCES = 		\
 	cpg-math.c \
 	cpg-monitor.c \
 	cpg-network.c \
-	cpg-network-reader.c \
-	cpg-network-writer.c \
+	cpg-network-deserializer.c \
+	cpg-network-serializer.c \
 	cpg-object.c \
 	cpg-property.c \
 	cpg-ref-counted.c \
@@ -33,8 +33,6 @@ COMMON_SOURCES = 		\
 	cpg-tokenizer.c
 
 NOINST_H_FILES = \
-	cpg-network-reader.h \
-	cpg-network-writer.h \
 	cpg-ref-counted-private.h \
 	cpg-tokenizer.h \
 	cpg-network-xml.h
@@ -59,6 +57,8 @@ INST_H_FILES = \
 	cpg-math.h \
 	cpg-monitor.h \
 	cpg-network.h \
+	cpg-network-deserializer.h \
+	cpg-network-serializer.h \
 	cpg-object.h \
 	cpg-property.h \
 	cpg-ref-counted.h \

@@ -1,9 +1,136 @@
-#include "cpg-network-writer.h"
-
-#include <libxml/tree.h>
+#include "cpg-network-serializer.h"
 #include "cpg-enum-types.h"
 #include "cpg-function-polynomial.h"
 #include "cpg-network-xml.h"
+
+#include <libxml/tree.h>
+
+#define CPG_NETWORK_SERIALIZER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_NETWORK_SERIALIZER, CpgNetworkSerializerPrivate))
+
+struct _CpgNetworkSerializerPrivate
+{
+	CpgNetwork *network;
+	CpgGroup *root;
+};
+
+G_DEFINE_TYPE (CpgNetworkSerializer, cpg_network_serializer, G_TYPE_OBJECT)
+
+enum
+{
+	PROP_0,
+	PROP_NETWORK,
+	PROP_ROOT
+};
+
+static void
+cpg_network_serializer_finalize (GObject *object)
+{
+	G_OBJECT_CLASS (cpg_network_serializer_parent_class)->finalize (object);
+}
+
+static void
+cpg_network_serializer_dispose (GObject *object)
+{
+	CpgNetworkSerializer *serializer = CPG_NETWORK_SERIALIZER (object);
+
+	if (serializer->priv->network)
+	{
+		g_object_unref (serializer->priv->network);
+		serializer->priv->network = NULL;
+	}
+
+	if (serializer->priv->root)
+	{
+		g_object_unref (serializer->priv->root);
+		serializer->priv->root = NULL;
+	}
+
+	G_OBJECT_CLASS (cpg_network_serializer_parent_class)->dispose (object);
+}
+
+static void
+cpg_network_serializer_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+{
+	CpgNetworkSerializer *self = CPG_NETWORK_SERIALIZER (object);
+
+	switch (prop_id)
+	{
+		case PROP_NETWORK:
+			self->priv->network = g_value_dup_object (value);
+		break;
+		case PROP_ROOT:
+			self->priv->root = g_value_dup_object (value);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_network_serializer_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+	CpgNetworkSerializer *self = CPG_NETWORK_SERIALIZER (object);
+
+	switch (prop_id)
+	{
+		case PROP_NETWORK:
+			g_value_set_object (value, self->priv->network);
+		break;
+		case PROP_ROOT:
+			g_value_set_object (value, self->priv->root);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_network_serializer_class_init (CpgNetworkSerializerClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	
+	object_class->finalize = cpg_network_serializer_finalize;
+	object_class->dispose = cpg_network_serializer_dispose;
+
+	object_class->get_property = cpg_network_serializer_get_property;
+	object_class->set_property = cpg_network_serializer_set_property;
+
+	g_type_class_add_private (object_class, sizeof(CpgNetworkSerializerPrivate));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_NETWORK,
+	                                 g_param_spec_object ("network",
+	                                                      "Network",
+	                                                      "Network",
+	                                                      CPG_TYPE_NETWORK,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_ROOT,
+	                                 g_param_spec_object ("root",
+	                                                      "Root",
+	                                                      "Root",
+	                                                      CPG_TYPE_GROUP,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+}
+
+static void
+cpg_network_serializer_init (CpgNetworkSerializer *self)
+{
+	self->priv = CPG_NETWORK_SERIALIZER_GET_PRIVATE (self);
+}
+
+CpgNetworkSerializer *
+cpg_network_serializer_new (CpgNetwork *network,
+                            CpgGroup   *root)
+{
+	return g_object_new (CPG_TYPE_NETWORK_SERIALIZER,
+	                     "network", network,
+	                     "root", root,
+	                     NULL);
+}
 
 extern int xmlIndentTreeOutput;
 
@@ -647,9 +774,14 @@ write_config (xmlDocPtr   doc,
 	}
 }
 
-gchar *
-cpg_network_writer_write_to_xml (CpgNetwork *network)
+gboolean
+cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
+                                  GOutputStream         *stream,
+                                  GError               **error)
 {
+	g_return_val_if_fail (CPG_IS_NETWORK_SERIALIZER (serializer), FALSE);
+	g_return_val_if_fail (G_IS_OUTPUT_STREAM (stream), FALSE);
+
 	xmlDocPtr doc = xmlNewDoc ((xmlChar *)"1.0");
 	xmlNodePtr root = xmlNewDocNode (doc, NULL, (xmlChar *)"cpg", NULL);
 
@@ -658,23 +790,23 @@ cpg_network_writer_write_to_xml (CpgNetwork *network)
 	xmlNodePtr nnetwork = xmlNewDocNode (doc, NULL, (xmlChar *)"network", NULL);
 	xmlAddChild (root, nnetwork);
 
-	write_config (doc, network, nnetwork);
+	write_config (doc, serializer->priv->network, nnetwork);
 
 	// Globals
-	GSList *properties = cpg_object_get_properties (CPG_OBJECT (network));
+	GSList *properties = cpg_object_get_properties (CPG_OBJECT (serializer->priv->network));
 
 	if (properties)
 	{
 		xmlNodePtr gbl = xmlNewDocNode (doc, NULL, (xmlChar *)"globals", NULL);
 		xmlAddChild (nnetwork, gbl);
 
-		properties_to_xml (doc, gbl, CPG_OBJECT (network), NULL);
+		properties_to_xml (doc, gbl, CPG_OBJECT (serializer->priv->network), NULL);
 	}
 
 	g_slist_free (properties);
 
 	// Generate templates
-	CpgGroup *template_group = cpg_network_get_template_group (network);
+	CpgGroup *template_group = cpg_network_get_template_group (serializer->priv->network);
 	GSList const *list = cpg_group_get_children (template_group);
 	xmlNodePtr templates;
 
@@ -694,9 +826,9 @@ cpg_network_writer_write_to_xml (CpgNetwork *network)
 	}
 
 	// Generate state and link nodes
-	group_to_xml (doc, nnetwork, CPG_GROUP (network));
+	group_to_xml (doc, nnetwork, CPG_GROUP (serializer->priv->root));
 
-	write_functions (network, doc, nnetwork);
+	write_functions (serializer->priv->network, doc, nnetwork);
 
 	xmlIndentTreeOutput = 1;
 
@@ -709,27 +841,17 @@ cpg_network_writer_write_to_xml (CpgNetwork *network)
 	                           xmlGetCharEncodingName (XML_CHAR_ENCODING_UTF8),
 	                           1);
 
-	gchar *ret = g_strndup ((gchar const *)mem, size);
+	gboolean ret;
+
+	ret = g_output_stream_write_all (stream,
+	                                 mem,
+	                                 size,
+	                                 NULL,
+	                                 NULL,
+	                                 error);
+
 	xmlFree (mem);
 	xmlFreeDoc (doc);
 
 	return ret;
 }
-
-gboolean
-cpg_network_writer_write_to_file (CpgNetwork  *network,
-                                  gchar const *filename)
-{
-	gchar *contents = cpg_network_writer_write_to_xml (network);
-
-	if (contents == NULL)
-	{
-		return FALSE;
-	}
-
-	gboolean ret = g_file_set_contents (filename, contents, -1, NULL);
-	g_free (contents);
-
-	return ret;
-}
-
