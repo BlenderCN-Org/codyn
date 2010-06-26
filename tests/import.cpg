@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cpg>
+  <network>
+    <templates>
+      <state id="template1">
+        <property name="x">0</property>
+
+        <state id="nested1">
+          <property name="y">0</property>
+        </state>
+      </state>
+    </templates>
+
+    <state id="state1" ref="template1"/>
+  </network>
+</cpg>
+<!-- vi:ex:ts=2:et -->
