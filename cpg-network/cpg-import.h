@@ -48,6 +48,8 @@ GFile       *cpg_import_get_file          (CpgImport    *self);
 
 gboolean     cpg_import_get_auto_imported (CpgImport    *self);
 
+gboolean     cpg_import_get_modified      (CpgImport    *self);
+
 G_END_DECLS
 
 #endif /* __CPG_IMPORT_H__ */

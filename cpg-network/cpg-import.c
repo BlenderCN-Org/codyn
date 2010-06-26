@@ -8,6 +8,7 @@ struct _CpgImportPrivate
 {
 	GFile *file;
 	gboolean auto_imported;
+	gboolean modified;
 };
 
 G_DEFINE_TYPE (CpgImport, cpg_import, CPG_TYPE_GROUP)
@@ -16,7 +17,8 @@ enum
 {
 	PROP_0,
 	PROP_FILE,
-	PROP_AUTO_IMPORTED
+	PROP_AUTO_IMPORTED,
+	PROP_MODIFIED
 };
 
 static void
@@ -70,6 +72,9 @@ cpg_import_get_property (GObject    *object,
 		case PROP_AUTO_IMPORTED:
 			g_value_set_boolean (value, self->priv->auto_imported);
 		break;
+		case PROP_MODIFIED:
+			g_value_set_boolean (value, self->priv->modified);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -77,14 +82,44 @@ cpg_import_get_property (GObject    *object,
 }
 
 static void
+cpg_import_taint (CpgObject *object)
+{
+	CpgImport *self = CPG_IMPORT (object);
+
+	CPG_OBJECT_CLASS (cpg_import_parent_class)->taint (object);
+
+	self->priv->modified = TRUE;
+	g_object_notify (G_OBJECT (object), "modified");
+}
+
+static void
+cpg_import_reset (CpgObject *object)
+{
+	CpgImport *self = CPG_IMPORT (object);
+	gboolean modified = self->priv->modified;
+
+	CPG_OBJECT_CLASS (cpg_import_parent_class)->reset (object);
+
+	if (modified != self->priv->modified)
+	{
+		self->priv->modified = modified;
+		g_object_notify (G_OBJECT (self), "modified");
+	}
+}
+
+static void
 cpg_import_class_init (CpgImportClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	CpgObjectClass *cpg_class = CPG_OBJECT_CLASS (klass);
 
 	object_class->finalize = cpg_import_finalize;
 
 	object_class->get_property = cpg_import_get_property;
 	object_class->set_property = cpg_import_set_property;
+
+	cpg_class->taint = cpg_import_taint;
+	cpg_class->reset = cpg_import_reset;
 
 	g_type_class_add_private (object_class, sizeof(CpgImportPrivate));
 
@@ -106,6 +141,15 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                       FALSE,
 	                                                       G_PARAM_READWRITE |
 	                                                       G_PARAM_CONSTRUCT_ONLY));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_MODIFIED,
+	                                 g_param_spec_boolean ("modified",
+	                                                       "Modified",
+	                                                       "Modified",
+	                                                       FALSE,
+	                                                       G_PARAM_READABLE));
 }
 
 static void
@@ -278,6 +322,10 @@ cpg_import_load (CpgImport   *self,
 	}
 
 	cpg_group_add (parent, CPG_OBJECT (self));
+
+	self->priv->modified = FALSE;
+	g_object_notify (G_OBJECT (self), "modified");
+
 	return TRUE;
 }
 
@@ -295,4 +343,12 @@ cpg_import_get_auto_imported (CpgImport *self)
 	g_return_val_if_fail (CPG_IS_IMPORT (self), FALSE);
 
 	return self->priv->auto_imported;
+}
+
+gboolean
+cpg_import_get_modified (CpgImport *self)
+{
+	g_return_val_if_fail (CPG_IS_IMPORT (self), FALSE);
+
+	return self->priv->modified;
 }
