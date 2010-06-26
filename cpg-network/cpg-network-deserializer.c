@@ -1224,12 +1224,38 @@ parse_import (CpgNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
+	GFile *file = NULL;
+
+	if (!g_path_is_absolute (filename))
+	{
+		gchar *path;
+		GFile *parent = cpg_network_get_file (deserializer->priv->network);
+
+		if (parent)
+		{
+			gchar *parent_path = g_file_get_path (parent);
+			path = g_build_filename (parent_path, filename, NULL);
+			g_free (parent_path);
+
+			file = g_file_new_for_path (path);
+			g_free (path);
+
+			g_object_unref (parent);
+		}
+	}
+
+	if (!file)
+	{
+		file = g_file_new_for_path (filename);
+	}
+
 	CpgImport *imp = cpg_import_new (deserializer->priv->network,
 	                                 deserializer->priv->parents->data,
 	                                 (gchar const *)id,
-	                                 filename,
+	                                 file,
 	                                 deserializer->priv->error);
 
+	g_object_unref (file);
 	xmlFree (id);
 
 	if (!imp)

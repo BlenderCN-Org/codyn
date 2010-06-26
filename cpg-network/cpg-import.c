@@ -6,7 +6,7 @@
 
 struct _CpgImportPrivate
 {
-	gchar *filename;
+	GFile *file;
 	gboolean auto_imported;
 };
 
@@ -15,7 +15,7 @@ G_DEFINE_TYPE (CpgImport, cpg_import, CPG_TYPE_GROUP)
 enum
 {
 	PROP_0,
-	PROP_FILENAME,
+	PROP_FILE,
 	PROP_AUTO_IMPORTED
 };
 
@@ -24,7 +24,7 @@ cpg_import_finalize (GObject *object)
 {
 	CpgImport *self = CPG_IMPORT (object);
 
-	g_free (self->priv->filename);
+	g_object_unref (self->priv->file);
 
 	G_OBJECT_CLASS (cpg_import_parent_class)->finalize (object);
 }
@@ -39,9 +39,11 @@ cpg_import_set_property (GObject      *object,
 
 	switch (prop_id)
 	{
-		case PROP_FILENAME:
-			g_free (self->priv->filename);
-			self->priv->filename = g_value_dup_string (value);
+		case PROP_FILE:
+		{
+			GFile *file = g_value_get_object (value);
+			self->priv->file = file ? g_file_dup (file) : NULL;
+		}
 		break;
 		case PROP_AUTO_IMPORTED:
 			self->priv->auto_imported = g_value_get_boolean (value);
@@ -62,8 +64,8 @@ cpg_import_get_property (GObject    *object,
 
 	switch (prop_id)
 	{
-		case PROP_FILENAME:
-			g_value_set_string (value, self->priv->filename);
+		case PROP_FILE:
+			g_value_set_object (value, self->priv->file);
 		break;
 		case PROP_AUTO_IMPORTED:
 			g_value_set_boolean (value, self->priv->auto_imported);
@@ -87,11 +89,11 @@ cpg_import_class_init (CpgImportClass *klass)
 	g_type_class_add_private (object_class, sizeof(CpgImportPrivate));
 
 	g_object_class_install_property (object_class,
-	                                 PROP_FILENAME,
-	                                 g_param_spec_string ("filename",
-	                                                      "Filename",
-	                                                      "Filename",
-	                                                      NULL,
+	                                 PROP_FILE,
+	                                 g_param_spec_object ("file",
+	                                                      "File",
+	                                                      "File",
+	                                                      G_TYPE_FILE,
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT_ONLY));
 
@@ -151,15 +153,15 @@ CpgImport *
 cpg_import_new (CpgNetwork   *network,
                 CpgGroup     *parent,
                 gchar const  *id,
-                gchar const  *filename,
+                GFile        *file,
                 GError      **error)
 {
 	g_return_val_if_fail (id != NULL, NULL);
-	g_return_val_if_fail (filename != NULL, NULL);
+	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
 	CpgImport *obj = g_object_new (CPG_TYPE_IMPORT,
 	                               "id", id,
-	                               "filename", filename,
+	                               "file", file,
 	                                NULL);
 
 	if (!cpg_import_load (obj, network, parent, error))
@@ -215,7 +217,7 @@ auto_import_templates (CpgImport  *self,
 
 	auto_import = g_object_new (CPG_TYPE_IMPORT,
 	                            "id", cpg_object_get_id (CPG_OBJECT (self)),
-	                            "filename", self->priv->filename,
+	                            "file", self->priv->file,
 	                            "auto-imported", TRUE,
 	                            NULL);
 
@@ -235,7 +237,7 @@ cpg_import_load (CpgImport   *self,
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (CPG_IS_GROUP (parent), FALSE);
 
-	if (self->priv->filename == NULL)
+	if (self->priv->file == NULL)
 	{
 		return import_failed (error,
 		                      CPG_NETWORK_LOAD_ERROR_IMPORT,
@@ -244,22 +246,18 @@ cpg_import_load (CpgImport   *self,
 
 	CpgNetwork *imported = cpg_network_new ();
 	CpgNetworkDeserializer *deserializer;
-	GFile *file;
 
 	deserializer = cpg_network_deserializer_new (imported, NULL);
-	file = g_file_new_for_path (self->priv->filename);
 
 	if (!cpg_network_deserializer_deserialize_file (deserializer,
-	                                                file,
+	                                                self->priv->file,
 	                                                error))
 	{
-		g_object_unref (file);
 		g_object_unref (deserializer);
 
 		return FALSE;
 	}
 
-	g_object_unref (file);
 	g_object_unref (deserializer);
 
 	/* Check if importing in templates or normal objects */
@@ -283,12 +281,12 @@ cpg_import_load (CpgImport   *self,
 	return TRUE;
 }
 
-gchar const *
-cpg_import_get_filename (CpgImport *self)
+GFile *
+cpg_import_get_file (CpgImport *self)
 {
 	g_return_val_if_fail (CPG_IS_IMPORT (self), NULL);
 
-	return self->priv->filename;
+	return self->priv->file ? g_file_dup (self->priv->file) : NULL;
 }
 
 gboolean

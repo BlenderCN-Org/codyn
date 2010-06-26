@@ -36,7 +36,7 @@ GType cpg_import_get_type (void) G_GNUC_CONST;
 CpgImport   *cpg_import_new               (CpgNetwork   *network,
                                            CpgGroup     *parent,
                                            const gchar  *id,
-                                           const gchar  *filename,
+                                           GFile        *file,
                                            GError      **error);
 
 gboolean     cpg_import_load              (CpgImport    *self,
@@ -44,7 +44,7 @@ gboolean     cpg_import_load              (CpgImport    *self,
                                            CpgGroup     *parent,
                                            GError      **error);
 
-gchar const *cpg_import_get_filename      (CpgImport    *self);
+GFile       *cpg_import_get_file          (CpgImport    *self);
 
 gboolean     cpg_import_get_auto_imported (CpgImport    *self);
 
