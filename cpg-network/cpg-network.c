@@ -35,12 +35,13 @@
 enum
 {
 	PROP_0,
-	PROP_INTEGRATOR
+	PROP_INTEGRATOR,
+	PROP_FILE
 };
 
 struct _CpgNetworkPrivate
 {
-	gchar *filename;
+	GFile *file;
 
 	CpgIntegrator *integrator;
 	CpgIntegratorState *integrator_state;
@@ -77,7 +78,7 @@ cpg_network_finalize (GObject *object)
 {
 	CpgNetwork *network = CPG_NETWORK (object);
 
-	g_free (network->priv->filename);
+	g_object_unref (network->priv->file);
 
 	cpg_object_clear (CPG_OBJECT (network));
 
@@ -99,6 +100,9 @@ cpg_network_get_property (GObject     *object,
 	{
 		case PROP_INTEGRATOR:
 			g_value_set_object (value, self->priv->integrator);
+		break;
+		case PROP_FILE:
+			g_value_set_object (value, self->priv->file);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -131,6 +135,12 @@ cpg_network_set_property (GObject       *object,
 			g_object_set (self->priv->integrator, "object", self, NULL);
 
 			cpg_object_taint (CPG_OBJECT (self));
+		break;
+		case PROP_FILE:
+		{
+			GFile *file = g_value_get_object (value);
+			self->priv->file = file ? g_file_dup (file) : NULL;
+		}
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -330,6 +340,15 @@ cpg_network_class_init (CpgNetworkClass *klass)
 	                                                      G_PARAM_READWRITE));
 
 	g_type_class_add_private (object_class, sizeof (CpgNetworkPrivate));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_FILE,
+	                                 g_param_spec_object ("file",
+	                                                      "File",
+	                                                      "File",
+	                                                      G_TYPE_FILE,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -377,7 +396,7 @@ cpg_network_new ()
 
 /**
  * cpg_network_new_from_file:
- * @filename: the filename of the file containing the network definition
+ * @file: the file containing the network definition
  * @error: error return value
  *
  * Create a new CPG network by reading the network definition from file
@@ -392,9 +411,7 @@ cpg_network_new_from_file (GFile   *file,
 {
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
-	CpgNetwork *network = cpg_network_new ();
-	network->priv->filename = g_file_get_path (file);
-
+	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK, "file", file, NULL);
 	CpgNetworkDeserializer *deserializer;
 
 	deserializer = cpg_network_deserializer_new (network,
@@ -592,10 +609,10 @@ cpg_network_merge (CpgNetwork  *network,
 /**
  * cpg_network_merge_from_file:
  * @network: a #CpgNetwork
- * @filename: network filename
+ * @file: network file
  * @error: error return value
  *
- * Merges the network defined in the file @filename into @network. This is
+ * Merges the network defined in the file @file into @network. This is
  * similar to creating a network from a file and merging it with @network.
  *
  **/
@@ -792,3 +809,10 @@ cpg_network_get_function_group (CpgNetwork *network)
 	return network->priv->function_group;
 }
 
+GFile *
+cpg_network_get_file (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	return network->priv->file ? g_file_dup (network->priv->file) : NULL;
+}

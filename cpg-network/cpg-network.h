@@ -85,6 +85,8 @@ CpgNetwork       *cpg_network_new_from_file          (GFile          *file,
 CpgNetwork       *cpg_network_new_from_xml           (const gchar    *xml,
                                                       GError        **error);
 
+GFile            *cpg_network_get_file               (CpgNetwork     *network);
+
 void              cpg_network_set_integrator         (CpgNetwork     *network,
                                                       CpgIntegrator  *integrator);
 
