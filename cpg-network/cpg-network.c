@@ -400,26 +400,15 @@ cpg_network_new_from_file (GFile   *file,
 	deserializer = cpg_network_deserializer_new (network,
 	                                             NULL);
 
-	GInputStream *stream = G_INPUT_STREAM (g_file_read (file, NULL, error));
-
-	if (!stream)
-	{
-		return NULL;
-	}
-
-	gboolean ret;
-
-	ret = cpg_network_deserializer_deserialize (deserializer,
-	                                            stream,
-	                                            error);
-
-	g_object_unref (stream);
-
-	if (!ret)
+	if (!cpg_network_deserializer_deserialize_file (deserializer,
+	                                                file,
+	                                                error))
 	{
 		g_object_unref (network);
 		network = NULL;
 	}
+
+	g_object_unref (deserializer);
 
 	return network;
 }
@@ -454,6 +443,7 @@ cpg_network_new_from_xml (gchar const  *xml,
 
 	if (!stream)
 	{
+		g_object_unref (deserializer);
 		return NULL;
 	}
 
@@ -470,6 +460,8 @@ cpg_network_new_from_xml (gchar const  *xml,
 		g_object_unref (network);
 		network = NULL;
 	}
+
+	g_object_unref (deserializer);
 
 	return network;
 }

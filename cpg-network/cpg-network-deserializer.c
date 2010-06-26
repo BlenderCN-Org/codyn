@@ -15,6 +15,7 @@
 #include "cpg-function-polynomial.h"
 #include "cpg-enum-types.h"
 #include "cpg-network-xml.h"
+#include "cpg-import.h"
 
 #define CPG_NETWORK_DESERIALIZER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_NETWORK_DESERIALIZER, CpgNetworkDeserializerPrivate))
 
@@ -414,6 +415,100 @@ parse_object_properties (CpgNetworkDeserializer *deserializer,
 	return TRUE;
 }
 
+static GType
+type_from_templates (GType   orig,
+                     GSList *templates)
+{
+	if (orig != CPG_TYPE_STATE)
+	{
+		return orig;
+	}
+
+	while (templates)
+	{
+		if (G_TYPE_FROM_INSTANCE (templates->data) == CPG_TYPE_GROUP)
+		{
+			return CPG_TYPE_GROUP;
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return orig;
+}
+
+static gboolean
+get_templates (CpgNetworkDeserializer  *deserializer,
+               xmlNodePtr               node,
+               gchar const             *id,
+               GSList                 **templates)
+{
+	xmlChar *ref = xmlGetProp (node, (xmlChar *)"ref");
+	*templates = NULL;
+
+	if (!ref)
+	{
+		return TRUE;
+	}
+
+	CpgGroup *template_group = cpg_network_get_template_group (deserializer->priv->network);
+
+	gchar **parts;
+	gchar **ptr;
+
+	parts = g_strsplit_set ((gchar const *)ref, ", ", 0);
+	gboolean ret = TRUE;
+
+	for (ptr = parts; *ptr; ++ptr)
+	{
+		CpgObject *template = NULL;
+
+		if (g_slist_last (deserializer->priv->parents)->data ==
+		    (gpointer)template_group)
+		{
+			template = cpg_group_find_object (deserializer->priv->parents->data,
+			                                  *ptr);
+		}
+
+		if (!template)
+		{
+			template = cpg_group_find_object (template_group,
+			                                  *ptr);
+		}
+
+		if (!template)
+		{
+			ret = parser_failed (deserializer,
+			                     node,
+			                     CPG_NETWORK_LOAD_ERROR_OBJECT,
+			                     "Could not find template %s for object %s",
+			                     ref,
+			                     id);
+		}
+		else
+		{
+			*templates = g_slist_prepend (*templates, template);
+		}
+
+		if (!ret)
+		{
+			break;
+		}
+	}
+
+	if (ret)
+	{
+		*templates = g_slist_reverse (*templates);
+	}
+	else
+	{
+		g_slist_free (*templates);
+	}
+
+	g_strfreev (parts);
+	return ret;
+}
+
 static CpgObject *
 parse_object (CpgNetworkDeserializer *deserializer,
               GType                   gtype,
@@ -433,8 +528,37 @@ parse_object (CpgNetworkDeserializer *deserializer,
 		return NULL;
 	}
 
-	/* Check if the object already exists, if so, extend the existing object
-	   instead of creating a new one */
+	GSList *templates;
+
+	if (!get_templates (deserializer, node, (gchar const *)id, &templates))
+	{
+		return NULL;
+	}
+
+	gtype = type_from_templates (gtype, templates);
+
+	GSList *item;
+
+	for (item = templates; item; item = g_slist_next (item))
+	{
+		GType template_type = G_TYPE_FROM_INSTANCE (item->data);
+
+		if (!g_type_is_a (gtype, template_type))
+		{
+			parser_failed (deserializer,
+			               node,
+			               CPG_NETWORK_LOAD_ERROR_OBJECT,
+			               "Referenced template is of incorrect type %s (need %s)",
+			               g_type_name (template_type),
+			               g_type_name (gtype));
+
+			g_slist_free (templates);
+			xmlFree (id);
+
+			return NULL;
+		}
+	}
+
 	CpgGroup *parent = deserializer->priv->parents->data;
 	CpgObject *child;
 
@@ -460,57 +584,14 @@ parse_object (CpgNetworkDeserializer *deserializer,
 
 	xmlChar *ref = xmlGetProp (node, (xmlChar *)"ref");
 	gboolean ret = TRUE;
-	CpgGroup *template_group = cpg_network_get_template_group (deserializer->priv->network);
 
-	if (ref)
+	for (item = templates; item; item = g_slist_next (item))
 	{
-		gchar **parts;
-		gchar **ptr;
-
-		parts = g_strsplit_set ((gchar const *)ref, ", ", 0);
-
-		for (ptr = parts; *ptr; ++ptr)
-		{
-			CpgObject *template = cpg_group_get_child (template_group,
-			                                           *ptr);
-
-			if (!template)
-			{
-				ret = parser_failed (deserializer,
-				                     node,
-				                     CPG_NETWORK_LOAD_ERROR_OBJECT,
-				                     "Could not find template %s for object %s",
-				                     ref,
-				                     id);
-			}
-			else
-			{
-				GType template_type = G_TYPE_FROM_INSTANCE (template);
-			
-				if (!g_type_is_a (gtype, template_type))
-				{
-					ret = parser_failed (deserializer,
-					                     node,
-					                     CPG_NETWORK_LOAD_ERROR_OBJECT,
-					                     "Referenced template is of incorrect type %s (need %s)",
-					                     g_type_name (template_type),
-					                     g_type_name (gtype));
-				}
-				else
-				{
-					_cpg_object_apply_template (child,
-					                            template);
-				}
-			}
-
-			if (!ret)
-			{
-				break;
-			}
-		}
-
-		g_strfreev (parts);
+		_cpg_object_apply_template (child,
+		                            templates->data);
 	}
+
+	g_slist_free (templates);
 
 	xmlFree (id);
 	xmlFree (ref);
@@ -1111,6 +1192,57 @@ parse_group (CpgNetworkDeserializer *deserializer,
 }
 
 static gboolean
+parse_import (CpgNetworkDeserializer *deserializer,
+              xmlNodePtr              node)
+{
+	xmlChar *id = xmlGetProp (node, (xmlChar *)"id");
+
+	if (!id)
+	{
+		return parser_failed (deserializer,
+		                      node,
+		                      CPG_NETWORK_LOAD_ERROR_IMPORT,
+		                      "Some import nodes do not have an id");
+	}
+
+	gchar const *filename = NULL;
+
+	if (node->children && node->children->type == XML_TEXT_NODE)
+	{
+		filename = (gchar const *)node->children->content;
+	}
+
+	if (!filename)
+	{
+		parser_failed (deserializer,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_IMPORT,
+		               "Import node `%s' does not have a filename",
+		               id);
+
+		xmlFree (id);
+		return FALSE;
+	}
+
+	CpgImport *imp = cpg_import_new (deserializer->priv->network,
+	                                 deserializer->priv->parents->data,
+	                                 (gchar const *)id,
+	                                 filename,
+	                                 deserializer->priv->error);
+
+	xmlFree (id);
+
+	if (!imp)
+	{
+		return FALSE;
+	}
+
+	g_object_unref (imp);
+
+	return TRUE;
+}
+
+static gboolean
 parse_network (CpgNetworkDeserializer *deserializer,
                GList                  *nodes)
 {
@@ -1128,7 +1260,9 @@ parse_network (CpgNetworkDeserializer *deserializer,
 		                                      "state | link",
 		                                      XML_ELEMENT_NODE) != NULL;
 
-		if (g_strcmp0 ((gchar const *)node->name, "state") == 0)
+		gchar const *nodename = (gchar const *)node->name;
+
+		if (g_strcmp0 (nodename, "state") == 0)
 		{
 			if (has_child)
 			{
@@ -1139,29 +1273,33 @@ parse_network (CpgNetworkDeserializer *deserializer,
 				ret = new_object (deserializer, CPG_TYPE_STATE, node) != NULL;
 			}
 		}
-		else if (g_strcmp0 ((gchar const *)node->name, "link") == 0)
+		else if (g_strcmp0 (nodename, "link") == 0)
 		{
 			ret = parse_link (deserializer, node);
 		}
+		else if (g_strcmp0 (nodename, "import") == 0)
+		{
+			ret = parse_import (deserializer, node);
+		}
 		else if (atroot)
 		{
-			if (g_strcmp0 ((gchar const *)node->name, "globals") == 0)
+			if (g_strcmp0 (nodename, "globals") == 0)
 			{
 				ret = parse_globals (deserializer, node);
 			}
-			else if (g_strcmp0 ((gchar const *)node->name, "functions") == 0)
+			else if (g_strcmp0 (nodename, "functions") == 0)
 			{
 				ret = parse_all (deserializer, node, NULL);
 			}
-			else if (g_strcmp0 ((gchar const *)node->name, "function") == 0)
+			else if (g_strcmp0 (nodename, "function") == 0)
 			{
 				ret = parse_function (deserializer, node);
 			}
-			else if (g_strcmp0 ((gchar const *)node->name, "polynomial") == 0)
+			else if (g_strcmp0 (nodename, "polynomial") == 0)
 			{
 				ret = parse_polynomial (deserializer, node);
 			}
-			else if (g_strcmp0 ((gchar const *)node->name, "templates") == 0)
+			else if (g_strcmp0 (nodename, "templates") == 0)
 			{
 				/* Ignore */
 				ret = TRUE;
@@ -1196,7 +1334,7 @@ parse_all (CpgNetworkDeserializer *deserializer,
 
 	ret = xml_xpath (deserializer,
 	                 root,
-	                 NULL,
+	                 "state | link | templates | functions | function | globals | polynomial | import",
 	                 XML_ELEMENT_NODE,
 	                 (XPathResultFunc)parse_network,
 	                 NULL);
