@@ -423,8 +423,6 @@ parse_object (CpgNetworkDeserializer *deserializer,
 	xmlChar *id = xmlGetProp (node, (xmlChar *)"id");
 	*new_object = FALSE;
 
-	g_message ("%p, %p", deserializer, node);
-
 	if (!id)
 	{
 		parser_failed (deserializer,
@@ -1138,7 +1136,7 @@ parse_network (CpgNetworkDeserializer *deserializer,
 			}
 			else
 			{
-				ret = new_object (deserializer, CPG_TYPE_STATE, NULL) != NULL;
+				ret = new_object (deserializer, CPG_TYPE_STATE, node) != NULL;
 			}
 		}
 		else if (g_strcmp0 ((gchar const *)node->name, "link") == 0)
