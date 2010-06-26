@@ -1,0 +1,11 @@
+<?xml version='1.0'?>
+<mime-info xmlns='http://www.freedesktop.org/standards/shared-mime-info'>
+  <mime-type type="text/x-cpg">
+    <comment>Cpg Network File</comment>
+    <comment xml:lang="nl">Cpg netwerk bestand</comment>
+    <!-- more translated comment elements -->
+    <glob pattern="*.cpg"/>
+    <sub-class-of type="application/xml"/>
+    <generic-icon name="document"/>
+  </mime-type>
+</mime-info>
