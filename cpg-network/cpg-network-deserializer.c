@@ -1402,3 +1402,30 @@ cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
 	xmlFreeTextReader (reader);
 	return TRUE;
 }
+
+gboolean
+cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer,
+                                           GFile                   *file,
+                                           GError                 **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK_DESERIALIZER (deserializer), FALSE);
+	g_return_val_if_fail (G_IS_FILE (file), FALSE);
+
+	GInputStream *stream = G_INPUT_STREAM (g_file_read (file, NULL, error));
+
+	if (!stream)
+	{
+		return FALSE;
+	}
+
+	gboolean ret;
+
+	ret = cpg_network_deserializer_deserialize (deserializer,
+	                                            stream,
+	                                            error);
+
+	g_object_unref (stream);
+
+	return ret;
+}
+

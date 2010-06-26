@@ -40,6 +40,10 @@ gboolean cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserial
                                                GInputStream            *stream,
                                                GError                 **error);
 
+gboolean cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer,
+                                                    GFile                   *file,
+                                                    GError                 **error);
+
 G_END_DECLS
 
 #endif /* __CPG_NETWORK_DESERIALIZER_H__ */
