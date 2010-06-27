@@ -2,6 +2,14 @@
 #include "cpg-debug.h"
 #include "cpg-network-deserializer.h"
 
+/**
+ * SECTION:cpg-import
+ * @short_description: Network import object
+ *
+ * The #CpgImport object can be used to import templates and objects from
+ * an external network file.
+ *
+ **/
 #define CPG_IMPORT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_IMPORT, CpgImportPrivate))
 
 struct _CpgImportPrivate
@@ -123,6 +131,12 @@ cpg_import_class_init (CpgImportClass *klass)
 
 	g_type_class_add_private (object_class, sizeof(CpgImportPrivate));
 
+	/**
+	 * CpgImport:file:
+	 *
+	 * The imported file
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_FILE,
 	                                 g_param_spec_object ("file",
@@ -132,7 +146,13 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT_ONLY));
 
-
+	/**
+	 * CpgImport:auto-imported:
+	 *
+	 * Whether the import was done automatically due to dependencies of
+	 * another import.
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_AUTO_IMPORTED,
 	                                 g_param_spec_boolean ("auto-imported",
@@ -142,7 +162,12 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                       G_PARAM_READWRITE |
 	                                                       G_PARAM_CONSTRUCT_ONLY));
 
-
+	/**
+	 * CpgImport:modified:
+	 *
+	 * Whether any of the imported objects have been modified.
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_MODIFIED,
 	                                 g_param_spec_boolean ("modified",
@@ -193,6 +218,22 @@ import_failed (GError     **error,
 	return FALSE;
 }
 
+/**
+ * cpg_import_new:
+ * @network: A #CpgNetwork
+ * @parent: A #CpgGroup
+ * @id: The import object id
+ * @file: The file to import
+ * @error: A #GError
+ *
+ * Import objects from an external file. The import object will automatically
+ * be added to the parent group. If the import is done in the normal object
+ * tree of the network, templates that are defined in the imported file will
+ * be automatically imported in the networks' templates.
+ *
+ * Returns: A #CpgImport or %NULL if the import failed.
+ *
+ **/
 CpgImport *
 cpg_import_new (CpgNetwork   *network,
                 CpgGroup     *parent,
@@ -271,6 +312,19 @@ auto_import_templates (CpgImport  *self,
 	               CPG_OBJECT (auto_import));
 }
 
+/**
+ * cpg_import_load:
+ * @self: A #CpgImport
+ * @network: A #CpgNetwork
+ * @parent: A #CpgGroup
+ * @error: A #GError
+ *
+ * Perform the actual import. This function is called by #cpg_import_new and
+ * should never have to be used manually. It's provided for use in bindings.
+ *
+ * Returns: %TRUE if the import was successful, %FALSE otherwise.
+ *
+ **/
 gboolean
 cpg_import_load (CpgImport   *self,
                  CpgNetwork  *network,
@@ -329,6 +383,15 @@ cpg_import_load (CpgImport   *self,
 	return TRUE;
 }
 
+/**
+ * cpg_import_get_file:
+ * @self: A #CpgImport
+ *
+ * Get the file that was imported.
+ *
+ * Returns: A #GFile
+ *
+ **/
 GFile *
 cpg_import_get_file (CpgImport *self)
 {
@@ -337,6 +400,15 @@ cpg_import_get_file (CpgImport *self)
 	return self->priv->file ? g_file_dup (self->priv->file) : NULL;
 }
 
+/**
+ * cpg_import_get_auto_imported:
+ * @self: A #CpgImport
+ *
+ * Get whether the import was done automatically.
+ *
+ * Returns: %TRUE if the import was automatic, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_import_get_auto_imported (CpgImport *self)
 {
@@ -345,6 +417,15 @@ cpg_import_get_auto_imported (CpgImport *self)
 	return self->priv->auto_imported;
 }
 
+/**
+ * cpg_import_get_modified:
+ * @self: A #CpgImport
+ *
+ * Get whether any of the imported objects were modified after the import.
+ *
+ * Returns: %TRUE if there were any imported objects modified, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_import_get_modified (CpgImport *self)
 {

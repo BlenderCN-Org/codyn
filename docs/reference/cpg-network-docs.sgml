@@ -22,16 +22,20 @@
   <reference>
     <title>API reference</title>
     <xi:include href="xml/cpg-network.xml"/>
+    <xi:include href="xml/cpg-network-serializer.xml"/>
+    <xi:include href="xml/cpg-network-deserializer.xml"/>
     <xi:include href="xml/cpg-object.xml"/>
     <xi:include href="xml/cpg-property.xml"/>
     <xi:include href="xml/cpg-state.xml"/>
     <xi:include href="xml/cpg-link.xml"/>
     <xi:include href="xml/cpg-group.xml"/>
-    <xi:include href="xml/cpg-monitor.xml"/>
+    <xi:include href="xml/cpg-import.xml"/>
+    <xi:include href="xml/cpg-import-alias.xml"/>
     <xi:include href="xml/cpg-expression.xml"/>
     <xi:include href="xml/cpg-instructions.xml"/>
     <xi:include href="xml/cpg-math.xml"/>
     <xi:include href="xml/cpg-stack.xml"/>
+    <xi:include href="xml/cpg-monitor.xml"/>
     <xi:include href="xml/cpg-ref-counted.xml"/>
     <xi:include href="xml/cpg-compile-error.xml"/>
     <xi:include href="xml/cpg-compile-context.xml"/>

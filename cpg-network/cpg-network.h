@@ -35,6 +35,7 @@ typedef struct _CpgNetworkPrivate CpgNetworkPrivate;
  * @CPG_NETWORK_LOAD_ERROR_OBJECT: error occurred in loading an object
  * @CPG_NETWORK_LOAD_ERROR_LINK: error occurred in loading a link
  * @CPG_NETWORK_LOAD_ERROR_FUNCTION: error occurred in loading a function
+ * @CPG_NETWORK_LOAD_ERROR_IMPORT: error occurred in an import
  *
  * Network load error types.
  *

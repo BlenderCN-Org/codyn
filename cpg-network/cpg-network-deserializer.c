@@ -16,7 +16,15 @@
 #include "cpg-enum-types.h"
 #include "cpg-network-xml.h"
 #include "cpg-import.h"
+#include "cpg-import-alias.h"
 
+/**
+ * SECTION:cpg-network-deserializer
+ * @short_description: XML to Network deserializer
+ *
+ * Use this to deserialize an XML description of a network to a #CpgNetwork.
+ *
+ */
 #define CPG_NETWORK_DESERIALIZER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_NETWORK_DESERIALIZER, CpgNetworkDeserializerPrivate))
 
 struct _CpgNetworkDeserializerPrivate
@@ -125,7 +133,7 @@ static void
 cpg_network_deserializer_class_init (CpgNetworkDeserializerClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
-	
+
 	object_class->finalize = cpg_network_deserializer_finalize;
 
 	object_class->get_property = cpg_network_deserializer_get_property;
@@ -1523,6 +1531,19 @@ reader_xml (CpgNetworkDeserializer *deserializer)
 	return TRUE;
 }
 
+/**
+ * cpg_network_deserializer_new:
+ * @network: A #CpgNetwork
+ * @root: A #CpgGroup
+ *
+ * Create a new deserializer for a given @network. When calling
+ * #cpg_network_deserializer_deserialize, objects will be deserialized into
+ * @root. If @root is %NULL, the objects will be deserialized in the root
+ * of the network.
+ *
+ * Returns: A #CpgNetworkDeserializer
+ *
+ **/
 CpgNetworkDeserializer *
 cpg_network_deserializer_new (CpgNetwork *network,
                               CpgGroup   *root)
@@ -1562,6 +1583,17 @@ xml_ioclose (CpgNetworkDeserializer *deserializer)
 	g_input_stream_close (deserializer->priv->stream, NULL, NULL);
 }
 
+/**
+ * cpg_network_deserializer_deserialize:
+ * @deserializer: A #CpgNetworkDeserializer
+ * @stream: A #GInputStream
+ * @error: A #GError
+ *
+ * Deserialize a network from an input stream.
+ *
+ * Returns: %TRUE if the deserialization was successful, %FALSE otherwise.
+ *
+ **/
 gboolean
 cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
                                       GInputStream            *stream,
@@ -1621,6 +1653,17 @@ cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
 	return TRUE;
 }
 
+/**
+ * cpg_network_deserializer_deserialize_file:
+ * @deserializer: A #CpgNetworkDeserializer
+ * @file: A #GFile
+ * @error: A #GError
+ *
+ * Convenience function to deserialize a network from a file.
+ *
+ * Returns: %TRUE if the deserialization was successful, %FALSE otherwise.
+ *
+ **/
 gboolean
 cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer,
                                            GFile                   *file,

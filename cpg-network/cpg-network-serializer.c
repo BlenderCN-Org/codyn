@@ -6,6 +6,13 @@
 
 #include <libxml/tree.h>
 
+/**
+ * SECTION:cpg-network-serializer
+ * @short_description: Network to XML serializer
+ *
+ * This can be used to serialize a #CpgNetwork to XML.
+ *
+ */
 #define CPG_NETWORK_SERIALIZER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_NETWORK_SERIALIZER, CpgNetworkSerializerPrivate))
 
 struct _CpgNetworkSerializerPrivate
@@ -92,7 +99,7 @@ static void
 cpg_network_serializer_class_init (CpgNetworkSerializerClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
-	
+
 	object_class->finalize = cpg_network_serializer_finalize;
 	object_class->dispose = cpg_network_serializer_dispose;
 
@@ -101,21 +108,34 @@ cpg_network_serializer_class_init (CpgNetworkSerializerClass *klass)
 
 	g_type_class_add_private (object_class, sizeof(CpgNetworkSerializerPrivate));
 
+	/**
+	 * CpgSerializer:network:
+	 *
+	 * The #CpgNetwork to serialize.
+	 */
 	g_object_class_install_property (object_class,
 	                                 PROP_NETWORK,
 	                                 g_param_spec_object ("network",
 	                                                      "Network",
 	                                                      "Network",
 	                                                      CPG_TYPE_NETWORK,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT_ONLY));
 
+	/**
+	 * CpgSerializer:root:
+	 *
+	 * The #CpgGroup to serialize
+	 *
+	 */
 	g_object_class_install_property (object_class,
 	                                 PROP_ROOT,
 	                                 g_param_spec_object ("root",
 	                                                      "Root",
 	                                                      "Root",
 	                                                      CPG_TYPE_GROUP,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -124,6 +144,19 @@ cpg_network_serializer_init (CpgNetworkSerializer *self)
 	self->priv = CPG_NETWORK_SERIALIZER_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_network_serializer_new:
+ * @network: A #CpgNetwork
+ * @root: A #CpgGroup
+ *
+ * Create a new serializer for @network. When serialized, only objects
+ * contained in @root will be serialized. This can be useful to serialize
+ * only parts of the network. If @root is %NULL, all objects will be
+ * serialized.
+ *
+ * Returns: A #CpgNetworkSerializer
+ *
+ **/
 CpgNetworkSerializer *
 cpg_network_serializer_new (CpgNetwork *network,
                             CpgGroup   *root)
@@ -898,6 +931,17 @@ write_config (CpgNetworkSerializer *serializer,
 	}
 }
 
+/**
+ * cpg_network_serializer_serialize:
+ * @serializer: A #CpgNetworkSerializer
+ * @stream: A #GOutputStream
+ * @error: A #GError
+ *
+ * Serialize a network to an output stream.
+ *
+ * Returns: %TRUE if the serialization was successful, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
                                   GOutputStream         *stream,
