@@ -339,6 +339,38 @@ check_inherited (CpgObject *object,
 	return FALSE;
 }
 
+static gchar *
+template_path (CpgObject *orig,
+               CpgObject *template)
+{
+	CpgObject *parent = cpg_object_get_parent (orig);
+	CpgObject *shared_root = template;
+
+	GString *ret = g_string_new ("");
+	gboolean first = TRUE;
+
+	do
+	{
+		CpgObject *shared_parent = cpg_object_get_parent (shared_root);
+
+		if (shared_parent != NULL)
+		{
+			if (!first)
+			{
+				g_string_prepend (ret, ".");
+			}
+
+			g_string_prepend (ret, cpg_object_get_id (shared_root));
+
+			first = FALSE;
+		}
+
+		shared_root = shared_parent;
+	} while (parent != shared_root);
+
+	return g_string_free (ret, FALSE);
+}
+
 static xmlNodePtr
 object_to_xml (CpgNetworkSerializer *serializer,
                xmlNodePtr            parent,
@@ -362,7 +394,9 @@ object_to_xml (CpgNetworkSerializer *serializer,
 		/* only apply templates that are not inherited */
 		if (!check_inherited (object, templates->data))
 		{
-			g_ptr_array_add (refs, (gpointer)cpg_object_get_id (templates->data));
+			gchar *path = template_path (object, templates->data);
+
+			g_ptr_array_add (refs, path);
 		}
 
 		templates = g_slist_next (templates);
@@ -379,7 +413,7 @@ object_to_xml (CpgNetworkSerializer *serializer,
 		g_free (joined);
 	}
 
-	g_free (refs_ptr);
+	g_strfreev (refs_ptr);
 
 	GSList *all_templates = templates_for_object (object, TRUE);
 
