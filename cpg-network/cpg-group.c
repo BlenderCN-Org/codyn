@@ -629,6 +629,12 @@ cpg_group_cpg_equal (CpgObject *first,
 	return TRUE;
 }
 
+static GSList const *
+cpg_group_get_children_impl (CpgGroup *group)
+{
+	return group->priv->children;
+}
+
 static void
 cpg_group_class_init (CpgGroupClass *klass)
 {
@@ -657,6 +663,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 
 	klass->add = cpg_group_add_impl;
 	klass->remove = cpg_group_remove_impl;
+	klass->get_children = cpg_group_get_children_impl;
 
 	g_type_class_add_private (object_class, sizeof(CpgGroupPrivate));
 
@@ -746,7 +753,7 @@ cpg_group_get_children (CpgGroup *group)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 
-	return group->priv->children;
+	return CPG_GROUP_GET_CLASS (group)->get_children (group);
 }
 
 /**
@@ -856,7 +863,7 @@ cpg_group_foreach (CpgGroup *group,
 {
 	g_return_if_fail (CPG_IS_GROUP (group));
 
-	g_slist_foreach (group->priv->children, func, data);
+	g_slist_foreach ((GSList *)cpg_group_get_children (group), func, data);
 }
 
 /**

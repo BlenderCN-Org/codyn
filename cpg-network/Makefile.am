@@ -20,6 +20,7 @@ COMMON_SOURCES = 		\
 	cpg-integrator-stub.c \
 	cpg-integrators.c \
 	cpg-import.c \
+	cpg-import-alias.c \
 	cpg-link.c \
 	cpg-math.c \
 	cpg-monitor.c \
@@ -55,6 +56,7 @@ INST_H_FILES = \
 	cpg-integrator-stub.h \
 	cpg-integrators.h \
 	cpg-import.h \
+	cpg-import-alias.h \
 	cpg-link.h \
 	cpg-math.h \
 	cpg-monitor.h \

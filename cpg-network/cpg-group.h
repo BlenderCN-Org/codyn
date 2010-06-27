@@ -45,6 +45,8 @@ struct _CpgGroupClass
 	gboolean (*remove)        (CpgGroup *group,
 	                           CpgObject *object);
 
+	GSList const *(*get_children) (CpgGroup *group);
+
 	/* signals */
 	void     (*child_added)   (CpgGroup *group,
 	                           CpgObject *object);

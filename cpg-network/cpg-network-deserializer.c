@@ -1191,6 +1191,43 @@ parse_group (CpgNetworkDeserializer *deserializer,
 	return TRUE;
 }
 
+static CpgImport *
+find_template_import (CpgObject *child,
+                      GFile     *file)
+{
+	if (CPG_IS_IMPORT (child))
+	{
+		GFile *f = cpg_import_get_file (CPG_IMPORT (child));
+		gboolean equal = g_file_equal (file, f);
+
+		g_object_unref (f);
+
+		if (equal)
+		{
+			return CPG_IMPORT (child);
+		}
+	}
+
+	if (CPG_IS_GROUP (child))
+	{
+		GSList const *children = cpg_group_get_children (CPG_GROUP (child));
+
+		while (children)
+		{
+			CpgImport *ret = find_template_import (children->data, file);
+
+			if (ret)
+			{
+				return ret;
+			}
+
+			children = g_slist_next (children);
+		}
+	}
+
+	return NULL;
+}
+
 static gboolean
 parse_import (CpgNetworkDeserializer *deserializer,
               xmlNodePtr              node)
@@ -1247,6 +1284,23 @@ parse_import (CpgNetworkDeserializer *deserializer,
 	if (!file)
 	{
 		file = g_file_new_for_path (filename);
+	}
+
+	/* Check if we already imported something like that for templates */
+	if (g_slist_last (deserializer->priv->parents)->data !=
+	    (gpointer)deserializer->priv->network)
+	{
+		CpgGroup *template_group = cpg_network_get_template_group (deserializer->priv->network);
+		CpgImport *import = find_template_import (CPG_OBJECT (template_group), file);
+
+		if (import)
+		{
+			CpgImportAlias *alias = cpg_import_alias_new (import);
+			cpg_group_add (deserializer->priv->parents->data, CPG_OBJECT (alias));
+			g_object_unref (alias);
+
+			return TRUE;
+		}
 	}
 
 	CpgImport *imp = cpg_import_new (deserializer->priv->network,
