@@ -1,6 +1,7 @@
 INCLUDES =				\
 	-I$(srcdir)			\
 	-I$(top_srcdir)			\
+	$(INTROSPECTION_CFLAGS)		\
 	-DDATADIR=\""$(datadir)"\"
 
 COMMON_SOURCES = 		\
@@ -38,7 +39,8 @@ COMMON_SOURCES = 		\
 NOINST_H_FILES = \
 	cpg-ref-counted-private.h \
 	cpg-tokenizer.h \
-	cpg-network-xml.h
+	cpg-network-xml.h \
+	cpg-stack-private.h
 
 INST_H_FILES = \
 	cpg-compile-context.h \
@@ -84,7 +86,7 @@ cpg-enum-types.c: cpg-enum-types.c.template cpg-enum-types.h $(INST_H_FILES) $(G
 	(cd $(srcdir) && $(GLIB_MKENUMS) --template cpg-enum-types.c.template $(INST_H_FILES)) > $@
 
 libcpg_network_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CPG_NETWORK_CFLAGS)
-libcpg_network_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) -lm
+libcpg_network_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) $(INTROSPECTION_LIBS) -lm
 libcpg_network_2_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
 
 libcpg_network_2_0_la_SOURCES = $(COMMON_SOURCES)
@@ -97,5 +99,28 @@ EXTRA_DIST = \
 	$(NOINST_H_FILES) \
 	cpg-enum-types.c.template \
 	cpg-enum-types.h.template
+
+if HAVE_INTROSPECTION
+-include $(INTROSPECTION_MAKEFILE)
+INTROSPECTION_GIRS = Cpg-2.0.gir
+
+Cpg-2.0.gir: libcpg-network-2.0.la
+INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --warn-error --verbose
+Cpg_2_0_gir_NAMESPACE = Cpg
+Cpg_2_0_gir_VERSION = 2.0
+Cpg_2_0_gir_LIBS = libcpg-network-2.0.la
+Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES)
+Cpg_2_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
+
+girdir = $(datadir)/gir-1.0
+gir_DATA = $(INTROSPECTION_GIRS)
+
+typelibdir = $(libdir)/girepository-1.0
+typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
+
+CLEANFILES +=			\
+	$(gir_DATA)	\
+	$(typelib_DATA)
+endif
 
 -include $(top_srcdir)/git.mk

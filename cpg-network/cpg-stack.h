@@ -7,23 +7,17 @@ G_BEGIN_DECLS
 
 typedef struct _CpgStack CpgStack;
 
-struct _CpgStack
-{
-	/*< private >*/
-	gdouble *output_ptr;
-	gdouble *output;
-	guint size;
-};
-
 CpgStack *cpg_stack_new     (guint     size);
 void      cpg_stack_init    (CpgStack *stack,
                              guint     size);
+
 void      cpg_stack_destroy (CpgStack *stack);
 void      cpg_stack_free    (CpgStack *stack);
 guint     cpg_stack_size    (CpgStack *stack);
 guint     cpg_stack_count   (CpgStack *stack);
 void      cpg_stack_push    (CpgStack *stack,
                              gdouble   value);
+
 gdouble   cpg_stack_pop     (CpgStack *stack);
 void      cpg_stack_reset   (CpgStack *stack);
 

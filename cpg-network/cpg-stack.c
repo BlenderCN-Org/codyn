@@ -1,4 +1,4 @@
-#include "cpg-stack.h"
+#include "cpg-stack-private.h"
 
 /**
  * SECTION:cpg-stack

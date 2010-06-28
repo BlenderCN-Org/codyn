@@ -31,8 +31,8 @@ CPG_FORWARD_DECL (CpgProperty) *cpg_compile_context_lookup_property (CpgCompileC
 CPG_FORWARD_DECL (CpgFunction) *cpg_compile_context_lookup_function (CpgCompileContext *context,
                                                           gchar const       *name);
 
-GSList *cpg_compile_context_get_objects (CpgCompileContext *context);
-GSList *cpg_compile_context_get_functions (CpgCompileContext *context);
+GSList const *cpg_compile_context_get_objects (CpgCompileContext *context);
+GSList const *cpg_compile_context_get_functions (CpgCompileContext *context);
 
 #endif /* __CPG_COMPILE_CONTEXT_H__ */
 

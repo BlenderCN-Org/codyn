@@ -1,6 +1,7 @@
 AC_INIT(cpg-network, 2.0)
 
-AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
+AC_PREREQ(2.62)
+AM_INIT_AUTOMAKE([-Wno-portability])
 
 AC_CONFIG_MACRO_DIR([m4])
 
@@ -58,6 +59,16 @@ fi
 AC_SUBST(WEBOTS_CFLAGS)
 AC_SUBST(WEBOTS_LIBS)
 
+# Introspection
+GOBJECT_INTROSPECTION_CHECK([0.6.7])
+
+if test "$found_introspection" = "yes"; then
+	enable_introspection=yes
+	AC_DEFINE([ENABLE_INTROSPECTION], [1], [Define to enable GObject Introspection])
+else
+	enable_introspection=no
+fi
+
 dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
@@ -81,7 +92,7 @@ AC_SUBST(CPG_NETWORK_CFLAGS)
 CPG_NETWORK_API_VERSION=2.0
 AC_SUBST(CPG_NETWORK_API_VERSION)
 
-AC_OUTPUT(
+AC_CONFIG_FILES([
 Makefile
 cpg-network.pc
 cpg-network-webots.pc
@@ -91,4 +102,16 @@ data/Makefile
 docs/Makefile
 docs/reference/Makefile
 tests/Makefile
-)
+])
+
+AC_OUTPUT
+
+echo "
+
+Configuration:
+
+	Source code location:	${srcdir}
+	Compiler:		${CC}
+	Webots support enabled:	$enable_webots
+	GObject Introspection:	$enable_introspection
+"

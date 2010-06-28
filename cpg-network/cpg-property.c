@@ -264,7 +264,7 @@ cpg_property_init (CpgProperty *self)
  * @name: the property name
  * @expression: the value expression
  * @flags: the property flags
- * @object: the #CpgObject to which the property belongs
+ * @object: (type CpgObject): the #CpgObject to which the property belongs
  *
  * Create a new property object. Property objects are assigned to #CpgObject
  * objects and are of little use on their own. The provided expression will
@@ -301,7 +301,7 @@ cpg_property_new (gchar const      *name,
  *
  * Get the object associated with the property
  *
- * Returns: the object associated with the property
+ * Returns: (type CpgObject): the object associated with the property
  **/
 CpgObject *
 cpg_property_get_object (CpgProperty *property)

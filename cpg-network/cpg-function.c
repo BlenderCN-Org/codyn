@@ -561,7 +561,7 @@ cpg_function_remove_argument (CpgFunction         *function,
  * Get the list of function arguments. The returned list is used internally
  * and should not be modified or freed.
  *
- * Returns: A #GList
+ * Returns: (element-type CpgFunctionArgument): A #GList
  *
  **/
 GList *
@@ -599,7 +599,7 @@ cpg_function_execute (CpgFunction *function, CpgStack *stack)
  * 
  * Get the function expression.
  *
- * Returns: A #CpgExpression
+ * Returns: (type CpgExpression): A #CpgExpression
  *
  **/
 CpgExpression *

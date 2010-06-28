@@ -366,10 +366,11 @@ cpg_function_polynomial_clear (CpgFunctionPolynomial *function)
  * Get a list of the polynomials which make up the function. This returns 
  * the internally used list which should not be modified or freed.
  *
- * Returns: A #GSList of #CpgFunctionPolynomialPiece
+ * Returns: (element-type CpgFunctionPolynomialPiece):
+ *          A #GSList of #CpgFunctionPolynomialPiece
  *
  **/
-GSList *
+GSList const *
 cpg_function_polynomial_get_pieces (CpgFunctionPolynomial *function)
 {
 	g_return_val_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function), NULL);

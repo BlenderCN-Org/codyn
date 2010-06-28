@@ -533,8 +533,8 @@ cpg_link_get_to (CpgLink *link)
  *
  * Get link actions
  *
- * Return value: list of #CpgLinkAction. The list is owned by the link and
- *               should not be freed
+ * Returns: (element-type CpgLinkAction): list of #CpgLinkAction. The list is
+ *          owned by the link and should not be freed
  *
  **/
 GSList const *

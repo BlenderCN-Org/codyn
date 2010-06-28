@@ -638,7 +638,7 @@ write_function_polynomial (CpgNetworkSerializer  *serializer,
 	xmlAddChild (funcs, funcn);
 
 	/* Create pieces */
-	GSList *pieces = cpg_function_polynomial_get_pieces (func);
+	GSList const *pieces = cpg_function_polynomial_get_pieces (func);
 
 	while (pieces)
 	{

@@ -931,7 +931,7 @@ cpg_object_remove_property (CpgObject    *object,
  *
  * Gets the object properties.
  *
- * Returns: a list of #CpgProperty.
+ * Returns: (element-type CpgProperty) (transfer container): a list of #CpgProperty.
  *
  **/
 GSList *
@@ -1013,7 +1013,7 @@ _cpg_object_unlink (CpgObject  *object,
  *
  * Get the properties which are acted upon by links.
  *
- * Returns: A #GSList of #CpgProperty.
+ * Returns: (element-type CpgProperty): A #GSList of #CpgProperty.
  *
  **/
 GSList const *
@@ -1138,7 +1138,7 @@ cpg_object_reset_cache (CpgObject *object)
  * cpg_object_compile:
  * @object: A #CpgObject
  * @context: A #CpgCompileContext
- * @error: A #CpgCompileError
+ * @error: (type CpgCompileError): A #CpgCompileError
  *
  * Compile the object.
  *
@@ -1236,7 +1236,7 @@ cpg_object_equal (CpgObject *first,
  *
  * Get the list of applied templates.
  *
- * Returns: A #GSList of #CpgObject
+ * Returns: (element-type CpgObject): A #GSList of #CpgObject
  *
  **/
 GSList const *

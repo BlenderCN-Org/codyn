@@ -129,7 +129,7 @@ cpg_compile_context_restore (CpgCompileContext *context)
 /**
  * cpg_compile_context_prepend_object:
  * @context: A #CpgCompileContext
- * @object: A #CpgObject
+ * @object: (type CpgObject): A #CpgObject
  * 
  * Prepend a context object to the list of context objects.
  *
@@ -145,7 +145,7 @@ cpg_compile_context_prepend_object (CpgCompileContext *context,
 /**
  * cpg_compile_context_append_object:
  * @context: A #CpgCompileContext
- * @object: A #CpgObject
+ * @object: (type CpgObject): A #CpgObject
  * 
  * Append a context object to the list of context objects.
  *
@@ -161,7 +161,7 @@ cpg_compile_context_append_object (CpgCompileContext *context,
 /**
  * cpg_compile_context_set_functions:
  * @context: A #CpgCompileContext
- * @functions: A #GSList of #CpgFunction
+ * @functions: (element-type CpgFunction): A #GSList of #CpgFunction
  * 
  * Set the list of user functions available in the compile context. This
  * function makes a copy of the list but not of its members.
@@ -183,7 +183,7 @@ cpg_compile_context_set_functions (CpgCompileContext *context,
  * 
  * Lookup a property in the list of context objects.
  *
- * Returns: A #CpgProperty or %NULL if the property could not be found
+ * Returns: (type CpgProperty): A #CpgProperty or %NULL if the property could not be found
  *
  **/
 CpgProperty *
@@ -222,10 +222,10 @@ cpg_compile_context_lookup_property (CpgCompileContext *context,
  * expressions. This returns the internally used list which should not be
  * modified or freed.
  *
- * Returns: A #GSList of #CpgObject
+ * Returns: (element-type CpgObject): A #GSList of #CpgObject
  *
  **/
-GSList *
+GSList const *
 cpg_compile_context_get_objects (CpgCompileContext *context)
 {
 	return CURRENT_CONTEXT (context)->objects;
@@ -238,10 +238,10 @@ cpg_compile_context_get_objects (CpgCompileContext *context)
  * Get the list of custom user functions. This returns the internally used
  * list which should not be modified or freed.
  *
- * Returns: A #GSList of #CpgFunction
+ * Returns: (element-type CpgFunction): A #GSList of #CpgFunction
  *
  **/
-GSList *
+GSList const *
 cpg_compile_context_get_functions (CpgCompileContext *context)
 {
 	return CURRENT_CONTEXT (context)->functions;
@@ -254,7 +254,7 @@ cpg_compile_context_get_functions (CpgCompileContext *context)
  * 
  * Lookup a custom user function.
  *
- * Returns: A #CpgFunction or %NULL if the function could not be found
+ * Returns: (type CpgFunction): A #CpgFunction or %NULL if the function could not be found
  *
  **/
 CpgFunction *

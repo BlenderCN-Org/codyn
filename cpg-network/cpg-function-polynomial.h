@@ -54,7 +54,7 @@ void 		 cpg_function_polynomial_remove 		(CpgFunctionPolynomial      *function,
 
 void		 cpg_function_polynomial_clear			(CpgFunctionPolynomial *function);
 
-GSList		*cpg_function_polynomial_get_pieces		(CpgFunctionPolynomial *function);
+GSList const	*cpg_function_polynomial_get_pieces		(CpgFunctionPolynomial *function);
 
 gdouble		 cpg_function_polynomial_piece_get_begin 	(CpgFunctionPolynomialPiece *piece);
 gdouble		 cpg_function_polynomial_piece_get_end 		(CpgFunctionPolynomialPiece *piece);

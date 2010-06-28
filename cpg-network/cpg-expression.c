@@ -8,6 +8,7 @@
 #include "cpg-compile-error.h"
 #include "cpg-function.h"
 #include "cpg-instructions.h"
+#include "cpg-stack-private.h"
 
 #include <string.h>
 #include <stdio.h>
@@ -670,7 +671,7 @@ parse_property (CpgExpression *expression,
 static CpgLink *
 find_link (CpgCompileContext *context)
 {
-	GSList *objects = cpg_compile_context_get_objects (context);
+	GSList const *objects = cpg_compile_context_get_objects (context);
 
 	while (objects)
 	{
@@ -720,7 +721,7 @@ parse_context_property (CpgExpression *expression,
                         gchar const   *propid,
                         ParserContext *context)
 {
-	GSList *objs = cpg_compile_context_get_objects (context->context);
+	GSList const *objs = cpg_compile_context_get_objects (context->context);
 
 	while (objs)
 	{
@@ -1167,7 +1168,7 @@ cpg_expression_compile (CpgExpression      *expression,
 /**
  * cpg_expression_set_instructions:
  * @expression: A #CpgExpression
- * @instructions: A #GSList of #CpgInstruction
+ * @instructions: (element-type CpgInstruction) (transfer full): A #GSList of #CpgInstruction
  *
  * Set the instructions used to evaluate the expression. You should never have
  * to use this function. It's main purpose is for optimization of expressions
@@ -1335,7 +1336,7 @@ cpg_expression_reset_cache (CpgExpression *expression)
  * Get a list of #CpgProperty on which the expression depends. The list is owned
  * by @expression and should not be freed or modified
  *
- * Returns: a list of #CpgProperty
+ * Returns: (element-type CpgProperty): a list of #CpgProperty
  *
  **/
 GSList const *
@@ -1366,11 +1367,11 @@ cpg_expression_reset (CpgExpression *expression)
  * Get list of #CpgInstruction. The list is owned by @expression and should
  * not be freed or modified
  *
- * Returns: list of #CpgInstruction
+ * Returns: (element-type CpgInstruction): list of #CpgInstruction
  *
  **/
 GSList const *
-cpg_expression_get_instructions(CpgExpression *expression)
+cpg_expression_get_instructions (CpgExpression *expression)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
 

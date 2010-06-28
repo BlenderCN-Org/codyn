@@ -307,7 +307,7 @@ cpg_monitor_init (CpgMonitor *self)
 
 /**
  * cpg_monitor_new:
- * @network: a #CpgNetwork
+ * @network: (type CpgNetwork): a #CpgNetwork
  * @property: a #CpgProperty
  *
  * Create a new monitor for monitoring property @property.
@@ -331,13 +331,13 @@ cpg_monitor_new (CpgNetwork  *network,
 /**
  * cpg_monitor_get_data:
  * @monitor: a #CpgMonitor
- * @size: return value for number of values
+ * @size: (out caller-allocates): return value for number of values
  *
  * Returns the data as monitored during the simulation. See also
  * #cpg_monitor_get_data_resampled for retrieving a resampled version
  * of the monitor data
  *
- * Returns: internal array of monitored values. The pointer should
+ * Returns: (array type=double length=size): internal array of monitored values. The pointer should
  * not be freed
  *
  **/
@@ -368,13 +368,13 @@ cpg_monitor_get_data (CpgMonitor *monitor,
 /**
  * cpg_monitor_get_sites:
  * @monitor: a #CpgMonitor
- * @size: return value for number of values
+ * @size: (out caller-allocates): return value for number of values
  *
  * Returns the data sites as monitored during the simulation. See also
  * #cpg_monitor_get_data_resampled for retrieving a resampled version
  * of the monitor data
  *
- * Returns: internal array of monitored sites. The pointer should
+ * Returns: (array type=double length=size): internal array of monitored sites. The pointer should
  * not be freed
  *
  **/
@@ -434,9 +434,9 @@ bsearch_find (gdouble const  *list,
 /**
  * cpg_monitor_get_data_resampled:
  * @monitor: a #CpgMonitor
- * @sites: the data sites at which to resample the data
+ * @sites: (array type=double length=size): the data sites at which to resample the data
  * @size: the size of the data sites array
- * @ret: the return location for the resampled data
+ * @ret: (out callee-allocates): the return location for the resampled data
  *
  * Returns the data as monitored during the simulation, but resampled at
  * specific data sites. @ret will have to be already allocated and large

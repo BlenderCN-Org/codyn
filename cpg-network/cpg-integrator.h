@@ -27,8 +27,6 @@ struct _CpgIntegrator
 	CpgIntegratorPrivate *priv;
 };
 
-CPG_FORWARD_DECL (CpgNetwork);
-
 /**
  * CpgIntegratorClass:
  * @run: run virtual function
