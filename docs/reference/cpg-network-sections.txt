@@ -80,6 +80,8 @@ cpg_object_get_actors
 cpg_object_get_applied_templates
 cpg_object_copy
 cpg_object_apply_template
+cpg_object_get_auto_imported
+cpg_object_set_auto_imported
 <SUBSECTION Standard>
 CPG_OBJECT
 CPG_IS_OBJECT
@@ -381,7 +383,6 @@ CPG_IMPORT_CONST
 CpgImport
 CpgImportClass
 CpgImportPrivate
-cpg_import_get_auto_imported
 cpg_import_get_file
 cpg_import_get_modified
 cpg_import_load

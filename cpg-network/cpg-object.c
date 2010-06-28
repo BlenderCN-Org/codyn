@@ -630,7 +630,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 	/**
 	 * CpgObject:id:
 	 *
-	 * The #CpgObject id
+	 * The #CpgObject id.
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -641,6 +641,12 @@ cpg_object_class_init (CpgObjectClass *klass)
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgObject:parent:
+	 *
+	 * The #CpgObject parent.
+	 *
+	 */
 	g_object_class_install_property (object_class,
 	                                 PROP_PARENT,
 	                                 g_param_spec_object ("parent",
@@ -649,6 +655,12 @@ cpg_object_class_init (CpgObjectClass *klass)
 	                                                      CPG_TYPE_OBJECT,
 	                                                      G_PARAM_READABLE));
 
+	/**
+	 * CpgObject:auto-imported:
+	 *
+	 * Set to %TRUE when the object was automatically imported.
+	 *
+	 */
 	g_object_class_install_property (object_class,
 	                                 PROP_AUTO_IMPORTED,
 	                                 g_param_spec_boolean ("auto-imported",
@@ -1330,6 +1342,15 @@ cpg_object_copy (CpgObject *object)
 	return ret;
 }
 
+/**
+ * cpg_object_get_auto_imported:
+ * @object: A #CpgObject
+ *
+ * Get whether the object was automatically imported.
+ *
+ * Returns: %TRUE if the object was automatically imported, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_object_get_auto_imported (CpgObject *object)
 {
@@ -1338,6 +1359,14 @@ cpg_object_get_auto_imported (CpgObject *object)
 	return object->priv->auto_imported;
 }
 
+/**
+ * cpg_object_set_auto_imported:
+ * @object: A #CpgObject
+ * @auto_imported: a boolean
+ *
+ * Set whether the object was automatically imported.
+ *
+ **/
 void
 cpg_object_set_auto_imported (CpgObject *object,
                               gboolean   auto_imported)
