@@ -160,6 +160,10 @@ gboolean          cpg_object_remove_property (CpgObject    *object,
 GSList           *cpg_object_get_properties  (CpgObject   *object);
 CpgObject        *cpg_object_get_parent      (CpgObject   *object);
 
+gboolean          cpg_object_get_auto_imported (CpgObject    *object);
+void              cpg_object_set_auto_imported (CpgObject    *object,
+                                                gboolean      auto_imported);
+
 /* evaluation */
 void              cpg_object_reset          (CpgObject   *object);
 void              cpg_object_reset_cache    (CpgObject	 *object);

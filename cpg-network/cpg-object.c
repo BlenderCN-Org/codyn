@@ -40,6 +40,8 @@ struct _CpgObjectPrivate
 
 	CpgObject *parent;
 	gboolean compiled;
+
+	gboolean auto_imported;
 };
 
 /* Properties */
@@ -47,7 +49,8 @@ enum
 {
 	PROP_0,
 	PROP_ID,
-	PROP_PARENT
+	PROP_PARENT,
+	PROP_AUTO_IMPORTED
 };
 
 /* Signals */
@@ -152,6 +155,9 @@ get_property (GObject     *object,
 		case PROP_PARENT:
 			g_value_set_object (value, obj->priv->parent);
 		break;
+		case PROP_AUTO_IMPORTED:
+			g_value_set_boolean (value, obj->priv->auto_imported);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -170,6 +176,9 @@ set_property (GObject       *object,
 	{
 		case PROP_ID:
 			set_id (obj, g_value_get_string (value));
+		break;
+		case PROP_AUTO_IMPORTED:
+			obj->priv->auto_imported = g_value_get_boolean (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object,
@@ -639,6 +648,14 @@ cpg_object_class_init (CpgObjectClass *klass)
 	                                                      "Parent",
 	                                                      CPG_TYPE_OBJECT,
 	                                                      G_PARAM_READABLE));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_AUTO_IMPORTED,
+	                                 g_param_spec_boolean ("auto-imported",
+	                                                       "Auto Imported",
+	                                                       "Auto imported",
+	                                                       FALSE,
+	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	/**
 	 * CpgObject::tainted:
@@ -1311,6 +1328,23 @@ cpg_object_copy (CpgObject *object)
 	}
 
 	return ret;
+}
+
+gboolean
+cpg_object_get_auto_imported (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+
+	return object->priv->auto_imported;
+}
+
+void
+cpg_object_set_auto_imported (CpgObject *object,
+                              gboolean   auto_imported)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+
+	object->priv->auto_imported = auto_imported;
 }
 
 void

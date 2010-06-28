@@ -59,8 +59,6 @@ gboolean     cpg_import_load                (CpgImport    *self,
 
 GFile       *cpg_import_get_file            (CpgImport    *self);
 
-gboolean     cpg_import_get_auto_imported   (CpgImport    *self);
-
 gboolean     cpg_import_get_modified        (CpgImport    *self);
 
 G_CONST_RETURN gchar * G_CONST_RETURN *

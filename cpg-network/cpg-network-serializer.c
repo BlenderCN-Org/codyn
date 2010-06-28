@@ -690,12 +690,30 @@ write_function_polynomial (CpgNetworkSerializer  *serializer,
 	}
 }
 
+static GSList *
+filter_functions (GSList const *functions)
+{
+	GSList *ret = NULL;
+
+	while (functions)
+	{
+		if (!cpg_object_get_auto_imported (functions->data))
+		{
+			ret = g_slist_prepend (ret, functions->data);
+		}
+
+		functions = g_slist_next (functions);
+	}
+
+	return g_slist_reverse (ret);
+}
+
 static void
 write_functions (CpgNetworkSerializer *serializer,
                  xmlNodePtr            nnetwork)
 {
 	CpgGroup *function_group = cpg_network_get_function_group (serializer->priv->network);
-	GSList const *functions = cpg_group_get_children (function_group);
+	GSList *functions = filter_functions (cpg_group_get_children (function_group));
 	GSList *item;
 
 	if (functions == NULL)
@@ -706,7 +724,7 @@ write_functions (CpgNetworkSerializer *serializer,
 	xmlNodePtr funcs = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"functions", NULL);
 	xmlAddChild (nnetwork, funcs);
 
-	while (functions)
+	for (item = functions; item; item = g_slist_next (item))
 	{
 		CpgFunction *func = CPG_FUNCTION (item->data);
 
@@ -718,9 +736,9 @@ write_functions (CpgNetworkSerializer *serializer,
 		{
 			write_function (serializer, func, funcs);
 		}
-
-		functions = g_slist_next (functions);
 	}
+
+	g_slist_free (functions);
 }
 
 static gboolean
@@ -729,6 +747,11 @@ skip_object (CpgObject *object)
 	if (!cpg_object_get_parent (object))
 	{
 		return FALSE;
+	}
+
+	if (cpg_object_get_auto_imported (object))
+	{
+		return TRUE;
 	}
 
 	GSList *templates = g_slist_reverse (templates_for_object (object,
@@ -771,11 +794,6 @@ import_to_xml (CpgNetworkSerializer *serializer,
 	if (cpg_import_get_modified (import))
 	{
 		group_to_xml (serializer, root, CPG_GROUP (import));
-		return;
-	}
-
-	if (cpg_import_get_auto_imported (import))
-	{
 		return;
 	}
 

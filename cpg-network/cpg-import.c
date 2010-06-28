@@ -22,7 +22,6 @@ static gchar **import_search_path = NULL;
 struct _CpgImportPrivate
 {
 	GFile *file;
-	gboolean auto_imported;
 	gboolean modified;
 };
 
@@ -32,7 +31,6 @@ enum
 {
 	PROP_0,
 	PROP_FILE,
-	PROP_AUTO_IMPORTED,
 	PROP_MODIFIED,
 	PROP_FILENAME
 };
@@ -63,9 +61,6 @@ cpg_import_set_property (GObject      *object,
 			self->priv->file = file ? g_file_dup (file) : NULL;
 		}
 		break;
-		case PROP_AUTO_IMPORTED:
-			self->priv->auto_imported = g_value_get_boolean (value);
-		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -84,9 +79,6 @@ cpg_import_get_property (GObject    *object,
 	{
 		case PROP_FILE:
 			g_value_set_object (value, self->priv->file);
-		break;
-		case PROP_AUTO_IMPORTED:
-			g_value_set_boolean (value, self->priv->auto_imported);
 		break;
 		case PROP_MODIFIED:
 			g_value_set_boolean (value, self->priv->modified);
@@ -172,7 +164,6 @@ cpg_import_copy (CpgObject *object,
 	CpgImport *source_import = CPG_IMPORT (source);
 
 	self->priv->file = g_file_dup (source_import->priv->file);
-	self->priv->auto_imported = source_import->priv->auto_imported;
 	self->priv->modified = source_import->priv->modified;
 }
 
@@ -210,22 +201,6 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                      G_PARAM_CONSTRUCT_ONLY));
 
 	/**
-	 * CpgImport:auto-imported:
-	 *
-	 * Whether the import was done automatically due to dependencies of
-	 * another import.
-	 *
-	 **/
-	g_object_class_install_property (object_class,
-	                                 PROP_AUTO_IMPORTED,
-	                                 g_param_spec_boolean ("auto-imported",
-	                                                       "Auto imported",
-	                                                       "Auto Imported",
-	                                                       FALSE,
-	                                                       G_PARAM_READWRITE |
-	                                                       G_PARAM_CONSTRUCT_ONLY));
-
-	/**
 	 * CpgImport:modified:
 	 *
 	 * Whether any of the imported objects have been modified.
@@ -238,7 +213,6 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                       "Modified",
 	                                                       FALSE,
 	                                                       G_PARAM_READABLE));
-
 
 	g_object_class_install_property (object_class,
 	                                 PROP_FILENAME,
@@ -421,6 +395,32 @@ auto_import_templates (CpgImport  *self,
 	               CPG_OBJECT (auto_import));
 }
 
+static void
+auto_import_functions (CpgImport  *import,
+                       CpgNetwork *source,
+                       CpgNetwork *target)
+{
+	CpgGroup *function_group = cpg_network_get_function_group (source);
+	CpgGroup *target_functions = cpg_network_get_function_group (target);
+
+	GSList const *children = cpg_group_get_children (function_group);
+
+	while (children)
+	{
+		CpgFunction *function = children->data;
+		gchar const *id = cpg_object_get_id (CPG_OBJECT (function));
+
+		if (!cpg_group_find_object (target_functions, id))
+		{
+			cpg_group_add (target_functions, CPG_OBJECT (function));
+			cpg_object_set_auto_imported (CPG_OBJECT (function),
+			                              TRUE);
+		}
+
+		children = g_slist_next (children);
+	}
+}
+
 /**
  * cpg_import_load:
  * @self: A #CpgImport
@@ -471,6 +471,8 @@ cpg_import_load (CpgImport   *self,
 	gboolean templ = object_in_templates (network,
 	                                      CPG_OBJECT (parent));
 
+	auto_import_functions (self, imported, network);
+
 	if (!templ)
 	{
 		auto_import_templates (self, imported, network);
@@ -507,23 +509,6 @@ cpg_import_get_file (CpgImport *self)
 	g_return_val_if_fail (CPG_IS_IMPORT (self), NULL);
 
 	return self->priv->file ? g_file_dup (self->priv->file) : NULL;
-}
-
-/**
- * cpg_import_get_auto_imported:
- * @self: A #CpgImport
- *
- * Get whether the import was done automatically.
- *
- * Returns: %TRUE if the import was automatic, %FALSE otherwise
- *
- **/
-gboolean
-cpg_import_get_auto_imported (CpgImport *self)
-{
-	g_return_val_if_fail (CPG_IS_IMPORT (self), FALSE);
-
-	return self->priv->auto_imported;
 }
 
 /**
