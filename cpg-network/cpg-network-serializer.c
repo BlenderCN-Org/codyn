@@ -1032,3 +1032,75 @@ cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
 
 	return ret;
 }
+
+/**
+ * cpg_network_serializer_serialize_file:
+ * @serializer: A #CpgNetworkSerializer
+ * @file: A #GFile
+ * @error: A #GError
+ * 
+ * Convenience function to serialize to a file.
+ *
+ * Returns: %TRUE if the serialization was successful, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_network_serializer_serialize_file (CpgNetworkSerializer  *serializer,
+                                       GFile                 *file,
+                                       GError               **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK_SERIALIZER (serializer), FALSE);
+	g_return_val_if_fail (G_IS_FILE (file), FALSE);
+
+	GFileOutputStream *stream = g_file_create (file,
+	                                           G_FILE_CREATE_NONE,
+	                                           NULL,
+	                                           error);
+
+	if (!stream)
+	{
+		return FALSE;
+	}
+
+	gboolean ret;
+
+	ret = cpg_network_serializer_serialize (serializer,
+	                                        G_OUTPUT_STREAM (stream),
+	                                        error);
+
+	g_object_unref (stream);
+
+	return ret;
+}
+
+/**
+ * cpg_network_serializer_serialize_path:
+ * @serializer: A #CpgNetworkSerializer
+ * @path: The file path
+ * @error: A #GError
+ * 
+ * Convenience function to serialize to a file path.
+ *
+ * Returns: %TRUE if the serialization was successful, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_network_serializer_serialize_path (CpgNetworkSerializer  *serializer,
+                                       gchar const           *path,
+                                       GError               **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK_SERIALIZER (serializer), FALSE);
+	g_return_val_if_fail (path != NULL, FALSE);
+
+	GFile *file = g_file_new_for_path (path);
+
+	gboolean ret;
+
+	ret = cpg_network_serializer_serialize_file (serializer,
+	                                             file,
+	                                             error);
+
+	g_object_unref (file);
+
+	return ret;
+}

@@ -1725,7 +1725,7 @@ cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer
 	g_return_val_if_fail (CPG_IS_NETWORK_DESERIALIZER (deserializer), FALSE);
 	g_return_val_if_fail (G_IS_FILE (file), FALSE);
 
-	GInputStream *stream = G_INPUT_STREAM (g_file_read (file, NULL, error));
+	GFileInputStream *stream = g_file_read (file, NULL, error);
 
 	if (!stream)
 	{
@@ -1735,7 +1735,7 @@ cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer
 	gboolean ret;
 
 	ret = cpg_network_deserializer_deserialize (deserializer,
-	                                            stream,
+	                                            G_INPUT_STREAM (stream),
 	                                            error);
 
 	g_object_unref (stream);
@@ -1743,3 +1743,34 @@ cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer
 	return ret;
 }
 
+/**
+ * cpg_network_deserializer_deserialize_path:
+ * @deserializer: A #CpgNetworkDeserializer
+ * @path: The file path
+ * @error: A #GError
+ * 
+ * Convenience function to deserialize a network from a file path.
+ *
+ * Returns: %TRUE if the deserialization was successful, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_network_deserializer_deserialize_path (CpgNetworkDeserializer  *deserializer,
+                                           gchar const             *path,
+                                           GError                 **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK_DESERIALIZER (deserializer), FALSE);
+	g_return_val_if_fail (path != NULL, FALSE);
+
+	GFile *file = g_file_new_for_path (path);
+
+	gboolean ret;
+
+	ret = cpg_network_deserializer_deserialize_file (deserializer,
+	                                                 file,
+	                                                 error);
+
+	g_object_unref (file);
+
+	return ret;
+}

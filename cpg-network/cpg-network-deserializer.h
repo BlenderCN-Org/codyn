@@ -44,6 +44,10 @@ gboolean cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *des
                                                     GFile                   *file,
                                                     GError                 **error);
 
+gboolean cpg_network_deserializer_deserialize_path (CpgNetworkDeserializer  *deserializer,
+                                                    const gchar             *path,
+                                                    GError                 **error);
+
 G_END_DECLS
 
 #endif /* __CPG_NETWORK_DESERIALIZER_H__ */

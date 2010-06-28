@@ -41,6 +41,14 @@ gboolean cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
                                            GOutputStream         *stream,
                                            GError               **error);
 
+gboolean cpg_network_serializer_serialize_file (CpgNetworkSerializer  *serializer,
+                                                GFile                 *file,
+                                                GError               **error);
+
+gboolean cpg_network_serializer_serialize_path (CpgNetworkSerializer  *serializer,
+                                                const gchar           *path,
+                                                GError               **error);
+
 G_END_DECLS
 
 #endif /* __CPG_NETWORK_SERIALIZER_H__ */
