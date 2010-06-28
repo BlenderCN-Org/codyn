@@ -267,7 +267,7 @@ import_failed (GError     **error,
 /**
  * cpg_import_new:
  * @network: A #CpgNetwork
- * @parent: A #CpgGroup
+ * @parent: (allow-none): A #CpgGroup
  * @id: The import object id
  * @file: The file to import
  * @error: A #GError
@@ -309,7 +309,7 @@ cpg_import_new (CpgNetwork   *network,
 /**
  * cpg_import_new_from_path:
  * @network: A #CpgNetwork
- * @parent: A #CpgGroup
+ * @parent: (allow-none): A #CpgGroup
  * @id: The import object id
  * @path: The import file path
  * @error: A #GError
@@ -425,7 +425,7 @@ auto_import_functions (CpgImport  *import,
  * cpg_import_load:
  * @self: A #CpgImport
  * @network: A #CpgNetwork
- * @parent: A #CpgGroup
+ * @parent: (allow-none): A #CpgGroup
  * @error: A #GError
  *
  * Perform the actual import. This function is called by #cpg_import_new and
@@ -533,7 +533,7 @@ cpg_import_get_modified (CpgImport *self)
  *
  * Get the search directories used to resolve import file names.
  *
- * Returns: a %NULL terminated list of strings
+ * Returns: (array zero-terminated=1) (transfer none): a %NULL terminated list of strings
  *
  **/
 G_CONST_RETURN gchar * G_CONST_RETURN *
@@ -549,7 +549,7 @@ cpg_import_get_search_path (void)
 
 /**
  * cpg_import_set_search_path:
- * @path: The search directories
+ * @path: (array zero-terminated=1): The search directories
  *
  * Set the search directories used to resolve import file names. @path should
  * be a %NULL terminated list of strings.

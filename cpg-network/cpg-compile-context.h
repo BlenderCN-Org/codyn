@@ -26,10 +26,10 @@ void cpg_compile_context_set_functions (CpgCompileContext *context,
                                         GSList const      *functions);
 
 CPG_FORWARD_DECL (CpgProperty) *cpg_compile_context_lookup_property (CpgCompileContext *context,
-                                                          gchar const       *name);
+                                                          const gchar       *name);
 
 CPG_FORWARD_DECL (CpgFunction) *cpg_compile_context_lookup_function (CpgCompileContext *context,
-                                                          gchar const       *name);
+                                                          const gchar       *name);
 
 GSList const *cpg_compile_context_get_objects (CpgCompileContext *context);
 GSList const *cpg_compile_context_get_functions (CpgCompileContext *context);

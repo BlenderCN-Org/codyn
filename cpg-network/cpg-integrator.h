@@ -53,12 +53,12 @@ struct _CpgIntegratorClass
 	                          gdouble        t,
 	                          gdouble        timestep);
 
-	gchar const *(*get_name) (CpgIntegrator *integrator);
+	const gchar *(*get_name) (CpgIntegrator *integrator);
 
 	void         (*reset)     (CpgIntegrator *integrator);
 
 	/* private field */
-	gchar const *integrator_id;
+	const gchar *integrator_id;
 };
 
 GType                cpg_integrator_get_type        (void) G_GNUC_CONST;
@@ -82,7 +82,7 @@ void                 cpg_integrator_evaluate        (CpgIntegrator *integrator,
 
 void                 cpg_integrator_reset           (CpgIntegrator *integrator);
 
-gchar const         *cpg_integrator_get_name        (CpgIntegrator *integrator);
+const gchar         *cpg_integrator_get_name        (CpgIntegrator *integrator);
 
 gdouble              cpg_integrator_get_time        (CpgIntegrator *integrator);
 

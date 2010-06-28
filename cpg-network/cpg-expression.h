@@ -55,7 +55,7 @@ gboolean       cpg_expression_equal            (CpgExpression      *expression,
                                                 CpgExpression      *other);
 
 void           cpg_expression_set_from_string  (CpgExpression      *expression,
-                                                gchar const        *value);
+                                                const gchar        *value);
 
 void           cpg_expression_reset_cache      (CpgExpression      *expression);
 

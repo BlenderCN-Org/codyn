@@ -399,8 +399,8 @@ cpg_link_init (CpgLink *self)
 /**
  * cpg_link_new:
  * @id: the object id
- * @from: a #CpgObject
- * @to: a #CpgObject
+ * @from: (allow-none): a #CpgObject
+ * @to: (allow-none): a #CpgObject
  *
  * Create a new #CpgLink
  *
@@ -582,8 +582,8 @@ cpg_link_get_action (CpgLink     *link,
 
 /**
  * cpg_link_attach:
- * @link: A #CpgLink
- * @from: A #CpgObject
+ * @link: (allow-none): A #CpgLink
+ * @from: (allow-none): A #CpgObject
  * @to: A #CpgObject
  *
  * Attach @link to the objects @from and @to. This is equivalent to:
@@ -633,7 +633,7 @@ cpg_link_action_get_expression (CpgLinkAction *action)
  * by the action object and should not be freed.
  *
  **/
-CpgProperty	*
+CpgProperty *
 cpg_link_action_get_target (CpgLinkAction *action)
 {
 	return action->target;
@@ -642,7 +642,7 @@ cpg_link_action_get_target (CpgLinkAction *action)
 /**
  * cpg_link_action_set_target:
  * @action: a #CpgLinkAction
- * @property: a #CpgProperty
+ * @property: (allow-none): a #CpgProperty
  *
  * Set the target of the link action to @property
  *
@@ -655,12 +655,14 @@ cpg_link_action_set_target (CpgLinkAction *action,
 	{
 		_cpg_property_unuse (action->target);
 		g_object_unref (action->target);
+
+		action->target = NULL;
 	}
 
-	action->target = g_object_ref (property);
-
-	if (action->target)
+	if (property)
 	{
+		action->target = g_object_ref (property);
+
 		_cpg_property_use (action->target);
 	}
 }

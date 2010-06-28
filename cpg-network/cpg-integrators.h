@@ -15,7 +15,7 @@ void cpg_integrators_unregister (GType gtype);
 
 GSList *cpg_integrators_create (void);
 
-GType cpg_integrators_find (gchar const *id);
+GType cpg_integrators_find (const gchar *id);
 
 G_END_DECLS
 

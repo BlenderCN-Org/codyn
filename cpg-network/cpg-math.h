@@ -119,9 +119,9 @@ typedef enum
 	CPG_FUNCTION_OPERATOR_NUM
 } CpgMathFunctionType;
 
-CpgMathFunctionType  cpg_math_function_lookup      (gchar const         *name,
+CpgMathFunctionType  cpg_math_function_lookup      (const gchar         *name,
                                                     gint                *arguments);
-gdouble              cpg_math_constant_lookup      (gchar const         *name,
+gdouble              cpg_math_constant_lookup      (const gchar         *name,
                                                     gboolean            *found);
 CpgMathOperatorType  cpg_math_operator_lookup      (CpgMathOperatorType  type);
 void                 cpg_math_function_execute     (CpgMathFunctionType  type,
@@ -133,7 +133,7 @@ gboolean             cpg_math_operator_is_constant (CpgMathOperatorType  type);
 gboolean             cpg_math_function_is_variable (CpgMathFunctionType  type);
 gboolean             cpg_math_operator_is_variable (CpgMathOperatorType  type);
 
-gchar const        *cpg_math_function_lookup_by_id (CpgMathFunctionType  type,
+const gchar        *cpg_math_function_lookup_by_id (CpgMathFunctionType  type,
                                                     gint                *arguments);
 
 G_END_DECLS

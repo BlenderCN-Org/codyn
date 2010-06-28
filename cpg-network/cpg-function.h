@@ -55,9 +55,9 @@ struct _CpgFunctionClass
 GType                cpg_function_get_type                    (void) G_GNUC_CONST;
 GType                cpg_function_argument_get_type           (void) G_GNUC_CONST;
 
-CpgFunction         *cpg_function_new                         (gchar const         *name,
-                                                               gchar const         *expression);
-CpgFunctionArgument *cpg_function_argument_new                (gchar const         *name,
+CpgFunction         *cpg_function_new                         (const gchar         *name,
+                                                               const gchar         *expression);
+CpgFunctionArgument *cpg_function_argument_new                (const gchar         *name,
                                                                gboolean             optional,
                                                                gdouble              def);
 void                 cpg_function_add_argument                (CpgFunction         *function,
@@ -75,7 +75,7 @@ void                 cpg_function_set_expression              (CpgFunction      
 
 CPG_FORWARD_DECL (CpgExpression) *cpg_function_get_expression (CpgFunction *function);
 
-gchar const         *cpg_function_argument_get_name           (CpgFunctionArgument *argument);
+const gchar         *cpg_function_argument_get_name           (CpgFunctionArgument *argument);
 gboolean             cpg_function_argument_get_optional       (CpgFunctionArgument *argument);
 gdouble              cpg_function_argument_get_default_value  (CpgFunctionArgument *argument);
 CpgProperty         *cpg_function_argument_get_property       (CpgFunctionArgument *argument);

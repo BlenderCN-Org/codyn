@@ -30,7 +30,7 @@ struct _CpgStateClass {
 };
 
 GType cpg_state_get_type(void) G_GNUC_CONST;
-CpgState *cpg_state_new(gchar const *id);
+CpgState *cpg_state_new(const gchar *id);
 
 G_END_DECLS
 

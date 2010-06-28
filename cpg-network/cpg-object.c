@@ -126,7 +126,7 @@ cpg_object_reset_impl (CpgObject *object)
 
 static void
 set_id (CpgObject   *object,
-        gchar const *id)
+        const gchar *id)
 {
 	g_free (object->priv->id);
 	object->priv->id = g_strdup (id);
@@ -292,7 +292,7 @@ cpg_object_apply_template_impl (CpgObject *object,
 	{
 		CpgProperty *prop = item->data;
 		CpgExpression *expression = cpg_property_get_expression (prop);
-		gchar const *str = cpg_expression_get_as_string (expression);
+		const gchar *str = cpg_expression_get_as_string (expression);
 		CpgProperty *new_prop;
 
 		new_prop = cpg_object_add_property (object,
@@ -379,14 +379,14 @@ cpg_object_get_properties_impl (CpgObject *object)
 
 static CpgProperty *
 cpg_object_get_property_impl (CpgObject   *object,
-                              gchar const *name)
+                              const gchar *name)
 {
 	return g_hash_table_lookup (object->priv->property_hash, name);
 }
 
 static gboolean
 cpg_object_has_property_impl (CpgObject *object,
-                              gchar const *name)
+                              const gchar *name)
 {
 	return cpg_object_get_property (object, name) != NULL;
 }
@@ -425,7 +425,7 @@ remove_property (CpgObject   *object,
 
 static gboolean
 cpg_object_remove_property_impl (CpgObject    *object,
-                                 gchar const  *name,
+                                 const gchar  *name,
                                  GError      **error)
 {
 	if (error)
@@ -471,8 +471,8 @@ cpg_object_remove_property_impl (CpgObject    *object,
 
 static CpgProperty *
 cpg_object_add_property_impl (CpgObject        *object,
-                              gchar const      *name,
-                              gchar const      *expression,
+                              const gchar      *name,
+                              const gchar      *expression,
                               CpgPropertyFlags  flags)
 {
 	// Check if property already set
@@ -783,7 +783,7 @@ cpg_object_init (CpgObject *self)
  *
  **/
 CpgObject *
-cpg_object_new (gchar const *id)
+cpg_object_new (const gchar *id)
 {
 	return g_object_new (CPG_TYPE_OBJECT, "id", id, NULL);
 }
@@ -823,8 +823,8 @@ cpg_object_new_from_template (CpgObject *templ)
  **/
 CpgProperty *
 cpg_object_add_property (CpgObject        *object,
-                         gchar const      *name,
-                         gchar const      *expression,
+                         const gchar      *name,
+                         const gchar      *expression,
                          CpgPropertyFlags  flags)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
@@ -857,7 +857,7 @@ cpg_object_add_property (CpgObject        *object,
  **/
 CpgProperty *
 cpg_object_get_property (CpgObject    *object,
-                         gchar const  *name)
+                         const gchar  *name)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
@@ -885,7 +885,7 @@ cpg_object_get_property (CpgObject    *object,
  **/
 gboolean
 cpg_object_has_property (CpgObject    *object,
-                         gchar const  *name)
+                         const gchar  *name)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
@@ -907,7 +907,7 @@ cpg_object_has_property (CpgObject    *object,
  **/
 gboolean
 cpg_object_remove_property (CpgObject    *object,
-                            gchar const  *name,
+                            const gchar  *name,
                             GError      **error)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
@@ -1080,7 +1080,7 @@ cpg_object_reset (CpgObject *object)
  * Returns: the object id
  *
  **/
-gchar const *
+const gchar *
 cpg_object_get_id (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
@@ -1098,7 +1098,7 @@ cpg_object_get_id (CpgObject *object)
  **/
 void
 cpg_object_set_id (CpgObject    *object,
-                   gchar const  *id)
+                   const gchar  *id)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
 	g_return_if_fail (id != NULL);

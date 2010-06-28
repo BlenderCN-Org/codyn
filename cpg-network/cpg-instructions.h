@@ -143,7 +143,7 @@ struct _CpgInstructionProperty
 };
 
 CpgInstruction *cpg_instruction_function_new        (guint        id,
-                                                     gchar const *name,
+                                                     const gchar *name,
                                                      gint         arguments,
                                                      gboolean     variable);
 
@@ -152,7 +152,7 @@ CpgInstruction *cpg_instruction_custom_function_new (CpgFunction *function,
 
 CpgInstruction *cpg_instruction_number_new          (gdouble      value);
 CpgInstruction *cpg_instruction_operator_new        (guint        id,
-                                                     gchar const *name,
+                                                     const gchar *name,
                                                      gint         arguments);
 
 CpgInstruction *cpg_instruction_property_new        (CpgProperty           *property,

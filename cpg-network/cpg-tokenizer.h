@@ -90,8 +90,8 @@ typedef struct
 	gint left_assoc;
 } CpgTokenOperator;
 
-CpgToken *cpg_tokenizer_next(gchar const **buffer);
-CpgToken *cpg_tokenizer_peek(gchar const *buffer);
+CpgToken *cpg_tokenizer_next(const gchar **buffer);
+CpgToken *cpg_tokenizer_peek(const gchar *buffer);
 
 void cpg_token_free(CpgToken *token);
 
