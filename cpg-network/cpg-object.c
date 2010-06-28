@@ -1321,9 +1321,9 @@ cpg_object_copy (CpgObject *object)
 
 	GType gtype;
 
-	if (CPG_OBJECT_CLASS (object)->get_copy_type)
+	if (CPG_OBJECT_GET_CLASS (object)->get_copy_type)
 	{
-		gtype = CPG_OBJECT_CLASS (object)->get_copy_type (object);
+		gtype = CPG_OBJECT_GET_CLASS (object)->get_copy_type (object);
 	}
 	else
 	{
