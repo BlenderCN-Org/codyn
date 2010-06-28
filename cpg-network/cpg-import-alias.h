@@ -19,13 +19,21 @@ typedef struct _CpgImportAliasPrivate CpgImportAliasPrivate;
 
 struct _CpgImportAlias
 {
+	/*< private >*/
 	CpgImport parent;
 
 	CpgImportAliasPrivate *priv;
 };
 
+/**
+ * CpgImportAliasClass:
+ *
+ * The #CpgImportAlias class
+ *
+ */
 struct _CpgImportAliasClass
 {
+	/*< private >*/
 	CpgImportClass parent_class;
 };
 

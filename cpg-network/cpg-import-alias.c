@@ -114,15 +114,20 @@ static void
 cpg_import_alias_cpg_copy (CpgObject *object,
                            CpgObject *source)
 {
-	CpgImportAlias *alias = CPG_IMPORT_ALIAS (object);
-	CpgImportAlias *source_alias = CPG_IMPORT_ALIAS (source);
+	CpgImportAlias *alias;
 
-	if (alias->priv->source)
+	alias = CPG_IMPORT_ALIAS (object);
+
+	if (CPG_IS_IMPORT_ALIAS (source))
 	{
-		g_object_unref (alias->priv->source);
+		alias->priv->source = g_object_ref (CPG_IMPORT_ALIAS (source)->priv->source);
+	}
+	else
+	{
+		alias->priv->source = g_object_ref (source);
 	}
 
-	alias->priv->source = g_object_ref (source_alias->priv->source);
+	CPG_OBJECT_CLASS (cpg_import_alias_parent_class)->copy (object, source);
 }
 
 static void

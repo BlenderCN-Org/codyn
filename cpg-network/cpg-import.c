@@ -1,6 +1,7 @@
 #include "cpg-import.h"
 #include "cpg-debug.h"
 #include "cpg-network-deserializer.h"
+#include "cpg-import-alias.h"
 
 #include <string.h>
 
@@ -157,6 +158,24 @@ default_search_path (void)
 	return (gchar **) g_ptr_array_free (dirs, FALSE);
 }
 
+static GType
+cpg_import_get_copy_type (CpgObject *object)
+{
+	return CPG_TYPE_IMPORT_ALIAS;
+}
+
+static void
+cpg_import_copy (CpgObject *object,
+                 CpgObject *source)
+{
+	CpgImport *self = CPG_IMPORT (object);
+	CpgImport *source_import = CPG_IMPORT (source);
+
+	self->priv->file = g_file_dup (source_import->priv->file);
+	self->priv->auto_imported = source_import->priv->auto_imported;
+	self->priv->modified = source_import->priv->modified;
+}
+
 static void
 cpg_import_class_init (CpgImportClass *klass)
 {
@@ -170,6 +189,8 @@ cpg_import_class_init (CpgImportClass *klass)
 
 	cpg_class->taint = cpg_import_taint;
 	cpg_class->reset = cpg_import_reset;
+	cpg_class->get_copy_type = cpg_import_get_copy_type;
+	cpg_class->copy = cpg_import_copy;
 
 	g_type_class_add_private (object_class, sizeof(CpgImportPrivate));
 

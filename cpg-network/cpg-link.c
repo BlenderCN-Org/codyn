@@ -13,6 +13,13 @@
  * connected, and an expression by which this target property needs to be
  * updated.
  *
+ * <refsect2 id="CpgLink-COPY">
+ * <title>CpgLink Copy Semantics</title>
+ * When a link is copied with #cpg_object_copy, the link actions are also
+ * copied. However, the link #CpgLink:from and #CpgLink:to properties are
+ * <emphasis>NOT</emphasis> copied, so that you are free to attach it to
+ * two new objects.
+ * </refsect2>
  */
 
 #define CPG_LINK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_LINK, CpgLinkPrivate))
@@ -106,6 +113,46 @@ cpg_link_get_property (GObject     *object,
 }
 
 static void
+set_to (CpgLink   *link,
+        CpgObject *target)
+{
+	if (link->priv->to)
+	{
+		_cpg_object_unlink (link->priv->to, link);
+		g_object_unref (link->priv->to);
+
+		link->priv->to = NULL;
+	}
+
+	if (target)
+	{
+		link->priv->to = g_object_ref (target);
+
+		_cpg_object_link (target, link);
+	}
+
+	cpg_object_taint (CPG_OBJECT (link));
+}
+
+static void
+set_from (CpgLink     *link,
+          CpgProperty *target)
+{
+	if (link->priv->from)
+	{
+		g_object_unref (link->priv->from);
+		link->priv->from = NULL;
+	}
+
+	if (target)
+	{
+		link->priv->from = g_object_ref (target);
+	}
+
+	cpg_object_taint (CPG_OBJECT (link));
+}
+
+static void
 cpg_link_set_property (GObject       *object,
                        guint          prop_id,
                        GValue const  *value,
@@ -117,32 +164,12 @@ cpg_link_set_property (GObject       *object,
 	{
 		case PROP_TO:
 		{
-			if (link->priv->to)
-			{
-				_cpg_object_unlink (link->priv->to, link);
-				g_object_unref (link->priv->to);
-			}
-
-			link->priv->to = g_value_dup_object (value);
-
-			if (link->priv->to)
-			{
-				_cpg_object_link (link->priv->to, link);
-			}
-
-			cpg_object_taint (CPG_OBJECT (link));
+			set_to (link, g_value_get_object (value));
 		}
 		break;
 		case PROP_FROM:
 		{
-			if (link->priv->from)
-			{
-				_cpg_object_unlink (link->priv->from, link);
-				g_object_unref (link->priv->from);
-			}
-
-			link->priv->from = g_value_dup_object (value);
-			cpg_object_taint (CPG_OBJECT (link));
+			set_from (link, g_value_get_object (value));
 		}
 		break;
 		default:
@@ -156,23 +183,13 @@ cpg_link_dispose (GObject *object)
 {
 	CpgLink *link = CPG_LINK (object);
 
-	if (link->priv->to)
-	{
-		g_object_unref (link->priv->to);
-	}
-
-	if (link->priv->from)
-	{
-		g_object_unref (link->priv->from);
-	}
+	set_to (link, NULL);
+	set_from (link, NULL);
 
 	g_slist_foreach (link->priv->actions, (GFunc)cpg_ref_counted_unref, NULL);
 	g_slist_free (link->priv->actions);
 
 	link->priv->actions = NULL;
-
-	link->priv->to = NULL;
-	link->priv->from = NULL;
 
 	G_OBJECT_CLASS (cpg_link_parent_class)->dispose (object);
 }
@@ -561,6 +578,33 @@ cpg_link_get_action (CpgLink     *link,
 	}
 
 	return NULL;
+}
+
+/**
+ * cpg_link_attach:
+ * @link: A #CpgLink
+ * @from: A #CpgObject
+ * @to: A #CpgObject
+ *
+ * Attach @link to the objects @from and @to. This is equivalent to:
+ * <informalexample>
+ * <programlisting>
+ * g_object_set (link, "from", from, "to", to);
+ * </programlisting>
+ * </informalexample>
+ *
+ **/
+void
+cpg_link_attach (CpgLink   *link,
+                 CpgObject *from,
+                 CpgObject *to)
+{
+	g_return_if_fail (CPG_IS_LINK (link));
+	g_return_if_fail ((from == NULL) == (to == NULL));
+	g_return_if_fail (from == NULL || CPG_IS_OBJECT (from));
+	g_return_if_fail (to == NULL || CPG_IS_OBJECT (to));
+
+	g_object_set (link, "from", from, "to", to, NULL);
 }
 
 /**

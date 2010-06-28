@@ -17,6 +17,12 @@
  * of functions. One such example is the #CpgFunctionPolynomial class which
  * can be used to define and evaluate piecewise polynomials.
  *
+ * <refsect2 id="CpgFunction-COPY">
+ * <title>CpgFunction Copy Semantics</title>
+ * When a function is copied with #cpg_object_copy, the function expression
+ * and all the arguments are copied as well.
+ * </refsect2>
+ *
  */
 
 #define CPG_FUNCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_FUNCTION, CpgFunctionPrivate))

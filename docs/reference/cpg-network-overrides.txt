@@ -39,6 +39,8 @@ struct _CpgObjectClass
 	void          (*copy)            (CpgObject *object,
 	                                  CpgObject *source);
 
+	GType         (*get_copy_type)   (CpgObject *object);
+
 	void          (*taint)           (CpgObject *object);
 
 	GSList       *(*get_properties)  (CpgObject    *object);

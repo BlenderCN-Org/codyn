@@ -25,6 +25,12 @@ struct _CpgImport
 	CpgImportPrivate *priv;
 };
 
+/**
+ * CpgImportClass:
+ *
+ * The #CpgImport class
+ *
+ */
 struct _CpgImportClass
 {
 	/*< private >*/

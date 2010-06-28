@@ -123,14 +123,6 @@ void              cpg_network_step                   (CpgNetwork *network,
 CpgGroup         *cpg_network_get_template_group     (CpgNetwork   *network);
 CpgGroup         *cpg_network_get_function_group     (CpgNetwork   *network);
 
-CpgObject        *cpg_network_add_from_template      (CpgNetwork   *network,
-                                                      const gchar  *name);
-
-CpgObject        *cpg_network_add_link_from_template (CpgNetwork   *network,
-                                                      const gchar  *name,
-                                                      CpgObject    *from,
-                                                      CpgObject    *to);
-
 G_END_DECLS
 
 #endif /* __CPG_NETWORK_H__ */

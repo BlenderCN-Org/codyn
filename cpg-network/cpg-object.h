@@ -58,6 +58,7 @@ struct _CpgObject
  * @reset_cache: reset cache virtual function
  * @apply_template: apply template virtual function
  * @copy: copy virtual function
+ * @get_copy_type: get copy type virtual function
  * @taint: taint virtual function
  * @get_properties: get properties virtual function
  * @get_property: get property virtual function
@@ -94,6 +95,8 @@ struct _CpgObjectClass
 
 	void          (*copy)            (CpgObject *object,
 	                                  CpgObject *source);
+
+	GType         (*get_copy_type)   (CpgObject *object);
 
 	void          (*taint)           (CpgObject *object);
 
@@ -134,7 +137,9 @@ struct _CpgObjectClass
 GQuark cpg_object_error_quark (void);
 
 GType cpg_object_get_type (void) G_GNUC_CONST;
-CpgObject *cpg_object_new (const gchar *id);
+
+CpgObject        *cpg_object_new               (const gchar *id);
+CpgObject        *cpg_object_new_from_template (CpgObject *templ);
 
 const gchar      *cpg_object_get_id          (CpgObject   *object);
 void              cpg_object_set_id          (CpgObject   *object,
@@ -174,6 +179,11 @@ GSList const     *cpg_object_get_actors     (CpgObject   *object);
 
 GSList const     *cpg_object_get_applied_templates  (CpgObject   *object);
 
+CpgObject        *cpg_object_copy           (CpgObject *object);
+
+void              cpg_object_apply_template (CpgObject *object,
+                                             CpgObject *templ);
+
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,
                                              CPG_FORWARD_DECL (CpgLink) *link);
@@ -183,10 +193,6 @@ void             _cpg_object_unlink         (CpgObject                  *object,
 
 GSList const    *_cpg_object_get_links      (CpgObject *object);
 
-void             _cpg_object_apply_template (CpgObject *object,
-                                             CpgObject *templ);
-
-CpgObject       *_cpg_object_copy           (CpgObject *object);
 void             _cpg_object_set_parent     (CpgObject *object,
                                              CpgObject *parent);
 

@@ -272,8 +272,7 @@ cpg_object_copy_impl (CpgObject *object,
 	{
 		CpgProperty *prop = item->data;
 
-		add_property (object,
-		              _cpg_property_copy (prop));
+		add_property (object, _cpg_property_copy (prop));
 	}
 
 	object->priv->templates = g_slist_copy (source->priv->templates);
@@ -586,6 +585,12 @@ cpg_object_equal_impl (CpgObject *first,
 	return ret;
 }
 
+static GType
+cpg_object_get_copy_type_impl (CpgObject *object)
+{
+	return G_TYPE_FROM_INSTANCE (object);
+}
+
 static void
 cpg_object_class_init (CpgObjectClass *klass)
 {
@@ -611,6 +616,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 
 	klass->clear = cpg_object_clear_impl;
 	klass->taint = cpg_object_taint_impl;
+	klass->get_copy_type = cpg_object_get_copy_type_impl;
 
 	/**
 	 * CpgObject:id:
@@ -757,6 +763,26 @@ CpgObject *
 cpg_object_new (gchar const *id)
 {
 	return g_object_new (CPG_TYPE_OBJECT, "id", id, NULL);
+}
+
+/**
+ * cpg_object_new_from_template:
+ * @templ: A #CpgObject
+ * 
+ * Create a new #CpgObject based on the template @templ.
+ *
+ * Returns: A #CpgObject
+ *
+ **/
+CpgObject *
+cpg_object_new_from_template (CpgObject *templ)
+{
+	CpgObject *obj = g_object_new (G_TYPE_FROM_INSTANCE (templ),
+	                               "id", cpg_object_get_id (templ),
+	                               NULL);
+
+	cpg_object_apply_template (obj, templ);
+	return obj;
 }
 
 /**
@@ -1233,8 +1259,8 @@ cpg_object_is_compiled (CpgObject *object)
 }
 
 void
-_cpg_object_apply_template (CpgObject *object,
-                            CpgObject *templ)
+cpg_object_apply_template (CpgObject *object,
+                           CpgObject *templ)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
 	g_return_if_fail (CPG_IS_OBJECT (templ));
@@ -1246,17 +1272,38 @@ _cpg_object_apply_template (CpgObject *object,
 	}
 }
 
+/**
+ * cpg_object_copy:
+ * @object: The source object
+ *
+ * Create a copy of the given object. This will create a new object with the
+ * same id and with a copy of all the properties defined on the object.
+ * The copied object will not have the same links, nor will it have a parent.
+ * See the documentation of specific subclasses of #CpgObject to see the
+ * copy semantics for those classes.
+ *
+ * Returns: A #CpgObject
+ *
+ **/
 CpgObject *
-_cpg_object_copy (CpgObject *object)
+cpg_object_copy (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
-	CpgObject *ret = g_object_new (G_TYPE_FROM_INSTANCE (object),
+	GType gtype;
+
+	if (CPG_OBJECT_CLASS (object)->get_copy_type)
+	{
+		gtype = CPG_OBJECT_CLASS (object)->get_copy_type (object);
+	}
+	else
+	{
+		gtype = G_TYPE_FROM_INSTANCE (object);
+	}
+
+	CpgObject *ret = g_object_new (gtype,
 	                               "id", cpg_object_get_id (object),
 	                               NULL);
-
-	ret->priv->templates = g_slist_prepend (ret->priv->templates,
-	                                        g_object_ref (object));
 
 	if (CPG_OBJECT_GET_CLASS (ret)->copy)
 	{

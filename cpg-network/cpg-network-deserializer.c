@@ -595,8 +595,8 @@ parse_object (CpgNetworkDeserializer *deserializer,
 
 	for (item = templates; item; item = g_slist_next (item))
 	{
-		_cpg_object_apply_template (child,
-		                            templates->data);
+		cpg_object_apply_template (child,
+		                           templates->data);
 	}
 
 	g_slist_free (templates);

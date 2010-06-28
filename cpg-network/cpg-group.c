@@ -14,6 +14,12 @@
  * Each group can have a proxy object associated which serves as a bridge
  * between the outside and the inside of the group.
  *
+ * <refsect2 id="CpgGroup-COPY">
+ * <title>CpgGroup Copy Semantics</title>
+ * When a group is copied with #cpg_object_copy, all the children are
+ * recursively copied as well. If a group has a proxy, the new group will
+ * have its proxy set to the new copy of the original proxy.
+ * </refsect2>
  */
 
 #define CPG_GROUP_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_GROUP, CpgGroupPrivate))
@@ -289,10 +295,16 @@ copy_children (CpgGroup *group,
 	CpgObject *proxy = cpg_group_get_proxy (source);
 	GSList const *children = cpg_group_get_children (source);
 
+	GHashTable *hash_table = g_hash_table_new (g_direct_hash,
+	                                           g_direct_equal);
+
 	while (children)
 	{
 		CpgObject *child = children->data;
-		CpgObject *copied = _cpg_object_copy (child);
+		CpgObject *copied = cpg_object_copy (child);
+
+		/* Store map from the original to the copy */
+		g_hash_table_insert (hash_table, child, copied);
 
 		cpg_group_add (group, copied);
 
@@ -303,6 +315,38 @@ copy_children (CpgGroup *group,
 
 		children = g_slist_next (children);
 	}
+
+	children = cpg_group_get_children (source);
+
+	/* Reconnect all the links */
+	while (children)
+	{
+		CpgObject *child = children->data;
+
+		if (CPG_IS_LINK (child))
+		{
+			CpgLink *orig_link = CPG_LINK (child);
+			CpgLink *copied_link;
+
+			CpgObject *copied_from;
+			CpgObject *copied_to;
+
+			copied_link = g_hash_table_lookup (hash_table,
+			                                   child);
+
+			copied_from = g_hash_table_lookup (hash_table,
+			                                   cpg_link_get_from (orig_link));
+
+			copied_to = g_hash_table_lookup (hash_table,
+			                                 cpg_link_get_to (orig_link));
+
+			cpg_link_attach (copied_link, copied_from, copied_to);
+		}
+
+		children = g_slist_next (children);
+	}
+
+	g_hash_table_destroy (hash_table);
 }
 
 static void
