@@ -687,8 +687,8 @@ find_link (CpgCompileContext *context)
 
 static gboolean
 parse_link_property (CpgExpression  *expression,
-                     gchar          *id,
-                     gchar          *propname,
+                     gchar const    *id,
+                     gchar const    *propname,
                      CpgLink        *link)
 {
 	CpgProperty *property = NULL;
@@ -712,6 +712,39 @@ parse_link_property (CpgExpression  *expression,
 
 	instructions_push (expression, cpg_instruction_property_new (property, binding));
 	return TRUE;
+}
+
+static gboolean
+parse_context_property (CpgExpression *expression,
+                        gchar const   *id,
+                        gchar const   *propid,
+                        ParserContext *context)
+{
+	GSList *objs = cpg_compile_context_get_objects (context->context);
+
+	while (objs)
+	{
+		CpgObject *o = objs->data;
+
+		if (g_strcmp0 (id, cpg_object_get_id (o)) == 0)
+		{
+			CpgProperty *prop;
+
+			prop = cpg_object_get_property (o, propid);
+
+			if (prop)
+			{
+				instructions_push (expression,
+				                   cpg_instruction_property_new (prop,
+				                                                 CPG_INSTRUCTION_BINDING_NONE));
+				return TRUE;
+			}
+		}
+
+		objs = g_slist_next (objs);
+	}
+
+	return FALSE;
 }
 
 static gboolean
@@ -761,8 +794,7 @@ parse_identifier (CpgExpression      *expression,
 		ret = parse_function (expression, id, context);
 	}
 	else if (next && CPG_TOKEN_IS_OPERATOR (next) &&
-	         CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_DOT &&
-	         (link = find_link (context->context)))
+	         CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_DOT)
 	{
 		// consume peeked dot
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
@@ -770,10 +802,24 @@ parse_identifier (CpgExpression      *expression,
 
 		if (CPG_TOKEN_IS_IDENTIFIER (propname))
 		{
-			ret = parse_link_property (expression,
-			                           id,
-			                           CPG_TOKEN_IDENTIFIER (propname)->identifier,
-			                           link);
+			gchar const *propid = CPG_TOKEN_IDENTIFIER (propname)->identifier;
+			link = find_link (context->context);
+
+			if (link)
+			{
+				ret = parse_link_property (expression,
+				                           id,
+				                           propid,
+				                           link);
+			}
+
+			if (!ret)
+			{
+				ret = parse_context_property (expression,
+				                              id,
+				                              propid,
+				                              context);
+			}
 
 			if (!ret)
 			{
