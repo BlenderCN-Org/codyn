@@ -292,6 +292,8 @@ cpg_import_new (CpgNetwork   *network,
                 GFile        *file,
                 GError      **error)
 {
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (parent == NULL || CPG_IS_GROUP (parent), NULL);
 	g_return_val_if_fail (id != NULL, NULL);
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
@@ -312,29 +314,32 @@ cpg_import_new (CpgNetwork   *network,
 /**
  * cpg_import_new_from_path:
  * @network: A #CpgNetwork
- * @group: A #CpgGroup
+ * @parent: A #CpgGroup
  * @id: The import object id
  * @path: The import file path
  * @error: A #GError
  *
  * Convenience function to create a new import for a path. See #cpg_import_new
- * for more information.
+ * for more information. Note that the specified path should be an absolute
+ * path. The search directories are not used to resolve the full path.
  *
  * Returns: A #CpgImport
  *
  **/
 CpgImport *
 cpg_import_new_from_path (CpgNetwork   *network,
-                          CpgGroup     *group,
+                          CpgGroup     *parent,
                           gchar const  *id,
                           gchar const  *path,
                           GError      **error)
 {
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (parent == NULL || CPG_IS_GROUP (parent), NULL);
 	g_return_val_if_fail (id != NULL, NULL);
 	g_return_val_if_fail (path != NULL, NULL);
 
 	GFile *file = g_file_new_for_path (path);
-	CpgImport *ret = cpg_import_new (network, group, id, file, error);
+	CpgImport *ret = cpg_import_new (network, parent, id, file, error);
 
 	g_object_unref (file);
 
@@ -517,6 +522,14 @@ cpg_import_get_modified (CpgImport *self)
 	return self->priv->modified;
 }
 
+/**
+ * cpg_import_get_search_path:
+ *
+ * Get the search directories used to resolve import file names.
+ *
+ * Returns: a %NULL terminated list of strings
+ *
+ **/
 G_CONST_RETURN gchar * G_CONST_RETURN *
 cpg_import_get_search_path (void)
 {
@@ -528,6 +541,14 @@ cpg_import_get_search_path (void)
 	return (G_CONST_RETURN gchar * G_CONST_RETURN *)import_search_path;
 }
 
+/**
+ * cpg_import_set_search_path:
+ * @path: The search directories
+ *
+ * Set the search directories used to resolve import file names. @path should
+ * be a %NULL terminated list of strings.
+ *
+ **/
 void
 cpg_import_set_search_path (gchar **path)
 {
@@ -546,6 +567,14 @@ cpg_import_set_search_path (gchar **path)
 	}
 }
 
+/**
+ * cpg_import_append_search_path:
+ * @path: A directory path
+ *
+ * Append a search directory path to the list of paths to be searched when
+ * resolving an import file.
+ *
+ **/
 void
 cpg_import_append_search_path (gchar const *path)
 {
@@ -570,6 +599,14 @@ cpg_import_append_search_path (gchar const *path)
 	import_search_path[len + 1] = NULL;
 }
 
+/**
+ * cpg_import_prepend_search_path:
+ * @path: A directory path
+ *
+ * Prepend a search directory path to the list of paths to be searched when
+ * resolving an import file.
+ *
+ **/
 void
 cpg_import_prepend_search_path (gchar const *path)
 {

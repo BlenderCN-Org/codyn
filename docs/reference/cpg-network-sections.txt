@@ -307,6 +307,7 @@ CpgNetworkLoadError
 cpg_network_load_error_quark
 cpg_network_new
 cpg_network_new_from_file
+cpg_network_new_from_path
 cpg_network_new_from_xml
 cpg_network_set_integrator
 cpg_network_get_integrator
@@ -359,6 +360,8 @@ CpgNetworkSerializerClass
 CpgNetworkSerializerPrivate
 cpg_network_serializer_new
 cpg_network_serializer_serialize
+cpg_network_serializer_serialize_file
+cpg_network_serializer_serialize_path
 <SUBSECTION Standard>
 CPG_NETWORK_SERIALIZER
 CPG_NETWORK_SERIALIZER_CLASS
@@ -381,6 +384,11 @@ cpg_import_get_file
 cpg_import_get_modified
 cpg_import_load
 cpg_import_new
+cpg_import_append_search_path
+cpg_import_get_search_path
+cpg_import_new_from_path
+cpg_import_prepend_search_path
+cpg_import_set_search_path
 <SUBSECTION Standard>
 CPG_IMPORT
 CPG_IMPORT_CLASS
@@ -419,6 +427,7 @@ CpgNetworkDeserializerPrivate
 cpg_network_deserializer_new
 cpg_network_deserializer_deserialize
 cpg_network_deserializer_deserialize_file
+cpg_network_deserializer_deserialize_path
 <SUBSECTION Standard>
 CPG_NETWORK_DESERIALIZER
 CPG_NETWORK_DESERIALIZER_CLASS
