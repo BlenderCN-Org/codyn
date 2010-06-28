@@ -123,7 +123,25 @@ set_flags (CpgProperty      *property,
 {
 	if (flags != property->priv->flags)
 	{
+		gboolean wasonce = property->priv->flags & CPG_PROPERTY_FLAG_ONCE;
+
 		property->priv->flags = flags;
+
+		if (flags & CPG_PROPERTY_FLAG_ONCE)
+		{
+			if (!wasonce)
+			{
+				cpg_expression_reset_cache (property->priv->expression);
+				cpg_expression_set_instant (property->priv->expression,
+				                            TRUE);
+			}
+		}
+		else if (wasonce)
+		{
+			cpg_expression_set_instant (property->priv->expression,
+			                            FALSE);
+			cpg_expression_reset_cache (property->priv->expression);
+		}
 
 		g_object_notify (G_OBJECT (property), "flags");
 	}
@@ -444,11 +462,17 @@ cpg_property_reset_cache (CpgProperty *property)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
-	/* Never reset the cache of something that is only initialized once */
-	if (!(property->priv->flags & CPG_PROPERTY_FLAG_ONCE))
-	{
-		cpg_expression_reset_cache (property->priv->expression);
-	}
+	cpg_expression_reset_cache (property->priv->expression);
+}
+
+void
+cpg_property_reset (CpgProperty *property)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	cpg_expression_reset (property->priv->expression);
+	cpg_expression_set_instant (property->priv->expression,
+	                            property->priv->flags & CPG_PROPERTY_FLAG_ONCE);
 }
 
 /**
@@ -517,8 +541,8 @@ cpg_property_get_flags (CpgProperty *property)
  *
  **/
 void
-cpg_property_set_flags (CpgProperty     *property,
-                       CpgPropertyFlags  flags)
+cpg_property_set_flags (CpgProperty      *property,
+                        CpgPropertyFlags  flags)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
@@ -534,8 +558,8 @@ cpg_property_set_flags (CpgProperty     *property,
  *
  **/
 void
-cpg_property_add_flags (CpgProperty     *property,
-                       CpgPropertyFlags  flags)
+cpg_property_add_flags (CpgProperty      *property,
+                        CpgPropertyFlags  flags)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
@@ -551,8 +575,8 @@ cpg_property_add_flags (CpgProperty     *property,
  *
  **/
 void
-cpg_property_remove_flags (CpgProperty     *property,
-                          CpgPropertyFlags  flags)
+cpg_property_remove_flags (CpgProperty      *property,
+                           CpgPropertyFlags  flags)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 

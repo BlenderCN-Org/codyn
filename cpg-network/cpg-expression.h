@@ -63,6 +63,10 @@ GSList const  *cpg_expression_get_instructions (CpgExpression      *expression);
 gboolean       cpg_expression_set_instructions (CpgExpression      *expression,
                                                 GSList             *instructions);
 
+gboolean       cpg_expression_get_instant      (CpgExpression      *expression);
+void           cpg_expression_set_instant      (CpgExpression      *expression,
+                                                gboolean            instant);
+
 G_END_DECLS
 
 #endif /* __CPG_EXPRESSION_H__ */

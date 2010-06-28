@@ -1111,6 +1111,12 @@ cpg_expression_compile (CpgExpression      *expression,
                         CpgCompileContext  *context,
                         GError            **error)
 {
+	if (expression->priv->instructions != NULL &&
+	    (expression->priv->flags & CPG_EXPRESSION_FLAG_INSTANT))
+	{
+		return TRUE;
+	}
+
 	gchar *buffer = expression->priv->expression;
 
 	instructions_free (expression);
@@ -1462,4 +1468,45 @@ cpg_expression_equal (CpgExpression *expression,
 	}
 
 	return TRUE;
+}
+
+/**
+ * cpg_expression_get_instant:
+ * @expression: A #CpgExpression
+ *
+ * Get whether the expression is instant.
+ *
+ * Returns: %TRUE if the expression is instant, %FALSE otherwise.
+ *
+ **/
+gboolean
+cpg_expression_get_instant (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
+
+	return (expression->priv->flags & CPG_EXPRESSION_FLAG_INSTANT);
+}
+
+/**
+ * cpg_expression_set_instant:
+ * @expression: A #CpgExpression
+ * @instant: Whether the expression should be instantly constant
+ *
+ * When an expression is "instant", its value will not change.
+ *
+ **/
+void
+cpg_expression_set_instant (CpgExpression *expression,
+                            gboolean       instant)
+{
+	g_return_if_fail (CPG_IS_EXPRESSION (expression));
+
+	if (instant)
+	{
+		expression->priv->flags |= CPG_EXPRESSION_FLAG_INSTANT;
+	}
+	else
+	{
+		expression->priv->flags &= ~CPG_EXPRESSION_FLAG_INSTANT;
+	}
 }
