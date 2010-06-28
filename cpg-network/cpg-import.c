@@ -32,7 +32,8 @@ enum
 	PROP_0,
 	PROP_FILE,
 	PROP_AUTO_IMPORTED,
-	PROP_MODIFIED
+	PROP_MODIFIED,
+	PROP_FILENAME
 };
 
 static void
@@ -88,6 +89,16 @@ cpg_import_get_property (GObject    *object,
 		break;
 		case PROP_MODIFIED:
 			g_value_set_boolean (value, self->priv->modified);
+		break;
+		case PROP_FILENAME:
+			if (self->priv->file)
+			{
+				g_value_take_string (value, g_file_get_path (self->priv->file));
+			}
+			else
+			{
+				g_value_set_string (value, NULL);
+			}
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -206,6 +217,15 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                       "Modified",
 	                                                       FALSE,
 	                                                       G_PARAM_READABLE));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_FILENAME,
+	                                 g_param_spec_string ("filename",
+	                                                      "Filename",
+	                                                      "Filename",
+	                                                      NULL,
+	                                                      G_PARAM_READABLE));
 }
 
 static void
@@ -287,6 +307,38 @@ cpg_import_new (CpgNetwork   *network,
 	}
 
 	return obj;
+}
+
+/**
+ * cpg_import_new_from_path:
+ * @network: A #CpgNetwork
+ * @group: A #CpgGroup
+ * @id: The import object id
+ * @path: The import file path
+ * @error: A #GError
+ *
+ * Convenience function to create a new import for a path. See #cpg_import_new
+ * for more information.
+ *
+ * Returns: A #CpgImport
+ *
+ **/
+CpgImport *
+cpg_import_new_from_path (CpgNetwork   *network,
+                          CpgGroup     *group,
+                          gchar const  *id,
+                          gchar const  *path,
+                          GError      **error)
+{
+	g_return_val_if_fail (id != NULL, NULL);
+	g_return_val_if_fail (path != NULL, NULL);
+
+	GFile *file = g_file_new_for_path (path);
+	CpgImport *ret = cpg_import_new (network, group, id, file, error);
+
+	g_object_unref (file);
+
+	return ret;
 }
 
 static gboolean

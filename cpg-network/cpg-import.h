@@ -39,6 +39,13 @@ CpgImport   *cpg_import_new                 (CpgNetwork   *network,
                                              GFile        *file,
                                              GError      **error);
 
+CpgImport   *cpg_import_new_from_path       (CpgNetwork   *network,
+                                             CpgGroup     *parent,
+                                             const gchar  *id,
+                                             const gchar  *path,
+                                             GError      **error);
+
+
 gboolean     cpg_import_load                (CpgImport    *self,
                                              CpgNetwork   *network,
                                              CpgGroup     *parent,

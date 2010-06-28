@@ -36,7 +36,8 @@ enum
 {
 	PROP_0,
 	PROP_INTEGRATOR,
-	PROP_FILE
+	PROP_FILE,
+	PROP_FILENAME
 };
 
 struct _CpgNetworkPrivate
@@ -103,6 +104,16 @@ cpg_network_get_property (GObject     *object,
 		break;
 		case PROP_FILE:
 			g_value_set_object (value, self->priv->file);
+		break;
+		case PROP_FILENAME:
+			if (self->priv->file)
+			{
+				g_value_take_string (value, g_file_get_path (self->priv->file));
+			}
+			else
+			{
+				g_value_set_string (value, NULL);
+			}
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -349,6 +360,15 @@ cpg_network_class_init (CpgNetworkClass *klass)
 	                                                      "File",
 	                                                      G_TYPE_FILE,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_FILENAME,
+	                                 g_param_spec_string ("filename",
+	                                                      "Filename",
+	                                                      "Filename",
+	                                                      NULL,
+	                                                      G_PARAM_READABLE));
 }
 
 static void
@@ -426,6 +446,30 @@ cpg_network_new_from_file (GFile   *file,
 	}
 
 	g_object_unref (deserializer);
+
+	return network;
+}
+
+/**
+ * cpg_network_new_from_path:
+ * @path: The network file path
+ * @error: A #GError
+ * 
+ * Create a new CPG network by reading the network definition from a file path.
+ * See #cpg_network_new_from_file for more information.
+ *
+ * Returns: A #CpgNetwork
+ *
+ **/
+CpgNetwork *
+cpg_network_new_from_path (gchar const  *path,
+                           GError      **error)
+{
+	g_return_val_if_fail (path != NULL, NULL);
+
+	GFile *file = g_file_new_for_path (path);
+	CpgNetwork *network = cpg_network_new_from_file (file, error);
+	g_object_unref (file);
 
 	return network;
 }
