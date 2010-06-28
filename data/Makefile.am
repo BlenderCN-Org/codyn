@@ -1,7 +1,7 @@
 dtddir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/dtd
 dtd_DATA = cpg-network.dtd
 
-librarydir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/library
+librarydir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/import-library
 library_DATA = \
 	hopf.cpg \
 	phase.cpg

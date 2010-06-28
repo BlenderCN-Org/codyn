@@ -2,6 +2,8 @@
 #include "cpg-debug.h"
 #include "cpg-network-deserializer.h"
 
+#include <string.h>
+
 /**
  * SECTION:cpg-import
  * @short_description: Network import object
@@ -11,6 +13,10 @@
  *
  **/
 #define CPG_IMPORT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_IMPORT, CpgImportPrivate))
+
+#define IMPORT_DIR "cpg-network-2.0"
+
+static gchar **import_search_path = NULL;
 
 struct _CpgImportPrivate
 {
@@ -113,6 +119,31 @@ cpg_import_reset (CpgObject *object)
 		self->priv->modified = modified;
 		g_object_notify (G_OBJECT (self), "modified");
 	}
+}
+
+static gchar **
+default_search_path (void)
+{
+	const gchar * const *xdg_dirs;
+	GPtrArray *dirs = g_ptr_array_new ();
+
+	g_ptr_array_add (dirs, g_build_filename (g_get_user_data_dir (),
+	                                         IMPORT_DIR,
+	                                         "import-library",
+	                                         NULL));
+
+	for (xdg_dirs = g_get_system_data_dirs (); xdg_dirs && *xdg_dirs; ++xdg_dirs)
+	{
+		g_ptr_array_add (dirs, g_build_filename (*xdg_dirs,
+		                                         IMPORT_DIR,
+		                                         "import-library",
+		                                         NULL));
+	}
+
+	g_ptr_array_add (dirs, g_build_filename (DATADIR, IMPORT_DIR, "import-library", NULL));
+
+	g_ptr_array_add (dirs, NULL);
+	return (gchar **) g_ptr_array_free (dirs, FALSE);
 }
 
 static void
@@ -432,4 +463,81 @@ cpg_import_get_modified (CpgImport *self)
 	g_return_val_if_fail (CPG_IS_IMPORT (self), FALSE);
 
 	return self->priv->modified;
+}
+
+G_CONST_RETURN gchar * G_CONST_RETURN *
+cpg_import_get_search_path (void)
+{
+	if (import_search_path == NULL)
+	{
+		import_search_path = default_search_path ();
+	}
+
+	return (G_CONST_RETURN gchar * G_CONST_RETURN *)import_search_path;
+}
+
+void
+cpg_import_set_search_path (gchar **path)
+{
+	if (import_search_path)
+	{
+		g_strfreev (import_search_path);
+	}
+
+	if (path)
+	{
+		import_search_path = g_strdupv (path);
+	}
+	else
+	{
+		import_search_path = default_search_path ();
+	}
+}
+
+void
+cpg_import_append_search_path (gchar const *path)
+{
+	guint len = 0;
+
+	g_return_if_fail (path != NULL);
+
+	if (import_search_path == NULL)
+	{
+		import_search_path = default_search_path ();
+	}
+
+	g_return_if_fail (import_search_path != NULL);
+
+	len = g_strv_length (import_search_path);
+
+	import_search_path = g_renew (gchar *,
+	                              import_search_path,
+	                              len + 2);
+
+	import_search_path[len] = g_strdup (path);
+	import_search_path[len + 1] = NULL;
+}
+
+void
+cpg_import_prepend_search_path (gchar const *path)
+{
+	guint len = 0;
+	gchar **new_search_path;
+
+	g_return_if_fail (path != NULL);
+
+	if (import_search_path == NULL)
+	{
+		import_search_path = default_search_path ();
+	}
+
+	g_return_if_fail (import_search_path != NULL);
+
+	len = g_strv_length (import_search_path);
+	new_search_path = g_new (gchar *, len + 2);
+	new_search_path[0] = g_strdup (path);
+	memcpy (new_search_path + 1, import_search_path, (len + 1) * sizeof (gchar *));
+
+	g_free (import_search_path);
+	import_search_path = new_search_path;
 }

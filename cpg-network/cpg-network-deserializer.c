@@ -1271,27 +1271,80 @@ parse_import (CpgNetworkDeserializer *deserializer,
 
 	GFile *file = NULL;
 
-	if (!g_path_is_absolute (filename))
+	if (g_path_is_absolute (filename))
 	{
-		gchar *path;
+		file = g_file_new_for_path (filename);
+	}
+	else
+	{
 		GFile *parent = cpg_network_get_file (deserializer->priv->network);
 
 		if (parent)
 		{
+			/* Relative to network? */
 			gchar *parent_path = g_file_get_path (parent);
-			path = g_build_filename (parent_path, filename, NULL);
+			gchar *path = g_build_filename (parent_path, filename, NULL);
 			g_free (parent_path);
 
 			file = g_file_new_for_path (path);
 			g_free (path);
 
 			g_object_unref (parent);
+
+			if (!g_file_query_exists (file, NULL))
+			{
+				g_object_unref (file);
+				file = NULL;
+			}
+		}
+
+		if (!file)
+		{
+			/* Current working directory maybe? */
+			file = g_file_new_for_path (filename);
+
+			if (!g_file_query_exists (file, NULL))
+			{
+				g_object_unref (file);
+				file = NULL;
+			}
+		}
+
+		if (!file)
+		{
+			/* Search directories */
+			const gchar * const *dirs = cpg_import_get_search_path ();
+
+			while (dirs && *dirs)
+			{
+				gchar *path = g_build_filename (*dirs, filename, NULL);
+				file = g_file_new_for_path (path);
+				g_free (path);
+
+				if (g_file_query_exists (file, NULL))
+				{
+					break;
+				}
+
+				g_object_unref (file);
+				file = NULL;
+
+				++dirs;
+			}
 		}
 	}
 
 	if (!file)
 	{
-		file = g_file_new_for_path (filename);
+		parser_failed (deserializer,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_IMPORT,
+		               "File `%s' for import `%s' could not be found",
+		               filename,
+		               id);
+
+		xmlFree (id);
+		return FALSE;
 	}
 
 	/* Check if we already imported something like that for templates */

@@ -1,6 +1,7 @@
 INCLUDES =				\
 	-I$(srcdir)			\
-	-I$(top_srcdir)
+	-I$(top_srcdir)			\
+	-DDATADIR=\""$(datadir)"\"
 
 COMMON_SOURCES = 		\
 	cpg-compile-context.c \

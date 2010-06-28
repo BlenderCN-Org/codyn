@@ -33,22 +33,32 @@ struct _CpgImportClass
 
 GType cpg_import_get_type (void) G_GNUC_CONST;
 
-CpgImport   *cpg_import_new               (CpgNetwork   *network,
-                                           CpgGroup     *parent,
-                                           const gchar  *id,
-                                           GFile        *file,
-                                           GError      **error);
+CpgImport   *cpg_import_new                 (CpgNetwork   *network,
+                                             CpgGroup     *parent,
+                                             const gchar  *id,
+                                             GFile        *file,
+                                             GError      **error);
 
-gboolean     cpg_import_load              (CpgImport    *self,
-                                           CpgNetwork   *network,
-                                           CpgGroup     *parent,
-                                           GError      **error);
+gboolean     cpg_import_load                (CpgImport    *self,
+                                             CpgNetwork   *network,
+                                             CpgGroup     *parent,
+                                             GError      **error);
 
-GFile       *cpg_import_get_file          (CpgImport    *self);
+GFile       *cpg_import_get_file            (CpgImport    *self);
 
-gboolean     cpg_import_get_auto_imported (CpgImport    *self);
+gboolean     cpg_import_get_auto_imported   (CpgImport    *self);
 
-gboolean     cpg_import_get_modified      (CpgImport    *self);
+gboolean     cpg_import_get_modified        (CpgImport    *self);
+
+G_CONST_RETURN gchar * G_CONST_RETURN *
+             cpg_import_get_search_path     ();
+
+void         cpg_import_set_search_path     (gchar **path);
+
+void         cpg_import_append_search_path  (const gchar  *path);
+
+void         cpg_import_prepend_search_path (const gchar  *path);
+
 
 G_END_DECLS
 
