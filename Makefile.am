@@ -1,4 +1,6 @@
-SUBDIRS = cpg-network data tests docs
+SUBDIRS = cpg-network data tests docs m4
+
+ACLOCAL_AMFLAGS = -I m4
 
 if ENABLE_WEBOTS
 SUBDIRS += cpg-network-webots

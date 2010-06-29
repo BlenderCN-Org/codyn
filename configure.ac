@@ -60,7 +60,7 @@ AC_SUBST(WEBOTS_CFLAGS)
 AC_SUBST(WEBOTS_LIBS)
 
 # Introspection
-GOBJECT_INTROSPECTION_CHECK([0.6.7])
+GOBJECT_INTROSPECTION_CHECK([0.6.10])
 
 if test "$found_introspection" = "yes"; then
 	enable_introspection=yes
@@ -101,6 +101,7 @@ cpg-network-webots/Makefile
 data/Makefile
 docs/Makefile
 docs/reference/Makefile
+m4/Makefile
 tests/Makefile
 ])
 
