@@ -29,13 +29,6 @@
 
 #define CPG_EXPRESSION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_EXPRESSION, CpgExpressionPrivate))
 
-enum
-{
-	CPG_EXPRESSION_FLAG_NONE = 0,
-	CPG_EXPRESSION_FLAG_CACHED = 1 << 0,
-	CPG_EXPRESSION_FLAG_INSTANT = 1 << 1
-};
-
 struct _CpgExpressionPrivate
 {
 	// Expression to evaluate
@@ -47,7 +40,11 @@ struct _CpgExpressionPrivate
 	GSList *dependencies;
 
 	gdouble cached_output;
-	guint flags;
+
+	gboolean cached : 1;
+	gboolean prevent_cache_reset : 1;
+	gboolean modified : 1;
+	gboolean once : 1;
 };
 
 typedef struct
@@ -83,8 +80,8 @@ instructions_free (CpgExpression *expression)
 	g_slist_free (expression->priv->dependencies);
 	expression->priv->dependencies = NULL;
 
-	// reset cached and instant flags
-	expression->priv->flags = CPG_EXPRESSION_FLAG_NONE;
+	expression->priv->cached = FALSE;
+	expression->priv->modified = TRUE;
 }
 
 static void
@@ -105,8 +102,8 @@ static void
 set_value (CpgExpression *expression,
            gdouble        value)
 {
-	expression->priv->flags = CPG_EXPRESSION_FLAG_INSTANT |
-	                          CPG_EXPRESSION_FLAG_CACHED;
+	expression->priv->cached = TRUE;
+	expression->priv->prevent_cache_reset = TRUE;
 
 	expression->priv->cached_output = value;
 
@@ -1112,8 +1109,7 @@ cpg_expression_compile (CpgExpression      *expression,
                         CpgCompileContext  *context,
                         GError            **error)
 {
-	if (expression->priv->instructions != NULL &&
-	    (expression->priv->flags & CPG_EXPRESSION_FLAG_INSTANT))
+	if (!expression->priv->modified)
 	{
 		return TRUE;
 	}
@@ -1123,8 +1119,6 @@ cpg_expression_compile (CpgExpression      *expression,
 	instructions_free (expression);
 
 	cpg_stack_destroy (&(expression->priv->output));
-	expression->priv->flags &= ~CPG_EXPRESSION_FLAG_CACHED;
-
 	ParserContext ctx = {(gchar const **)&buffer, context, error};
 	gboolean ret;
 
@@ -1162,6 +1156,9 @@ cpg_expression_compile (CpgExpression      *expression,
 		}
 	}
 
+	expression->priv->modified = FALSE;
+	expression->priv->cached = FALSE;
+
 	return TRUE;
 }
 
@@ -1186,7 +1183,9 @@ cpg_expression_set_instructions (CpgExpression *expression,
 	instructions_free (expression);
 
 	cpg_stack_destroy (&(expression->priv->output));
-	expression->priv->flags &= ~CPG_EXPRESSION_FLAG_CACHED;
+
+	expression->priv->cached = FALSE;
+	expression->priv->modified = FALSE;
 
 	g_slist_free (expression->priv->dependencies);
 	expression->priv->dependencies = NULL;
@@ -1249,7 +1248,7 @@ cpg_expression_evaluate (CpgExpression *expression)
 
 	cpg_debug_evaluate ("Evaluating expression: %s", expression->priv->expression);
 
-	if (expression->priv->flags & CPG_EXPRESSION_FLAG_CACHED)
+	if (expression->priv->cached)
 	{
 		cpg_debug_evaluate ("Returning from cached: %f", expression->priv->cached_output);
 		return expression->priv->cached_output;
@@ -1305,7 +1304,7 @@ cpg_expression_evaluate (CpgExpression *expression)
 		return NAN;
 	}
 
-	expression->priv->flags |= CPG_EXPRESSION_FLAG_CACHED;
+	expression->priv->cached = TRUE;
 	expression->priv->cached_output = cpg_stack_pop (&(expression->priv->output));
 
 	return expression->priv->cached_output;
@@ -1323,9 +1322,9 @@ cpg_expression_reset_cache (CpgExpression *expression)
 {
 	g_return_if_fail (CPG_IS_EXPRESSION (expression));
 
-	if (!(expression->priv->flags & CPG_EXPRESSION_FLAG_INSTANT))
+	if (!expression->priv->prevent_cache_reset)
 	{
-		expression->priv->flags &= ~CPG_EXPRESSION_FLAG_CACHED;
+		expression->priv->cached = FALSE;
 	}
 }
 
@@ -1357,7 +1356,14 @@ cpg_expression_get_dependencies (CpgExpression *expression)
 void
 cpg_expression_reset (CpgExpression *expression)
 {
-	expression->priv->flags = CPG_EXPRESSION_FLAG_NONE;
+	expression->priv->cached = FALSE;
+
+	if (!expression->priv->once)
+	{
+		expression->priv->prevent_cache_reset = FALSE;
+	}
+
+	expression->priv->modified = TRUE;
 }
 
 /**
@@ -1472,42 +1478,36 @@ cpg_expression_equal (CpgExpression *expression,
 }
 
 /**
- * cpg_expression_get_instant:
+ * cpg_expression_get_once:
  * @expression: A #CpgExpression
  *
- * Get whether the expression is instant.
+ * Get whether the expression is only evaluated once.
  *
- * Returns: %TRUE if the expression is instant, %FALSE otherwise.
+ * Returns: %TRUE if the expression is only evaluated once, %FALSE otherwise.
  *
  **/
 gboolean
-cpg_expression_get_instant (CpgExpression *expression)
+cpg_expression_get_once (CpgExpression *expression)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
 
-	return (expression->priv->flags & CPG_EXPRESSION_FLAG_INSTANT);
+	return expression->priv->once;
 }
 
 /**
- * cpg_expression_set_instant:
+ * cpg_expression_set_once:
  * @expression: A #CpgExpression
- * @instant: Whether the expression should be instantly constant
+ * @instant: Whether the expression should be constant
  *
- * When an expression is "instant", its value will not change.
+ * When an expression is "once", its value will not change.
  *
  **/
 void
-cpg_expression_set_instant (CpgExpression *expression,
-                            gboolean       instant)
+cpg_expression_set_once (CpgExpression *expression,
+                         gboolean       once)
 {
 	g_return_if_fail (CPG_IS_EXPRESSION (expression));
 
-	if (instant)
-	{
-		expression->priv->flags |= CPG_EXPRESSION_FLAG_INSTANT;
-	}
-	else
-	{
-		expression->priv->flags &= ~CPG_EXPRESSION_FLAG_INSTANT;
-	}
+	expression->priv->once = once;
+	expression->priv->prevent_cache_reset |= once;
 }

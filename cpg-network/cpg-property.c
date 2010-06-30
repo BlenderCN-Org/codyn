@@ -132,14 +132,14 @@ set_flags (CpgProperty      *property,
 			if (!wasonce)
 			{
 				cpg_expression_reset_cache (property->priv->expression);
-				cpg_expression_set_instant (property->priv->expression,
-				                            TRUE);
+				cpg_expression_set_once (property->priv->expression,
+				                         TRUE);
 			}
 		}
 		else if (wasonce)
 		{
-			cpg_expression_set_instant (property->priv->expression,
-			                            FALSE);
+			cpg_expression_set_once (property->priv->expression,
+			                         FALSE);
 			cpg_expression_reset_cache (property->priv->expression);
 		}
 
@@ -475,8 +475,8 @@ cpg_property_reset (CpgProperty *property)
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
 	cpg_expression_reset (property->priv->expression);
-	cpg_expression_set_instant (property->priv->expression,
-	                            property->priv->flags & CPG_PROPERTY_FLAG_ONCE);
+	cpg_expression_set_once (property->priv->expression,
+	                         (property->priv->flags & CPG_PROPERTY_FLAG_ONCE) != 0);
 }
 
 /**
