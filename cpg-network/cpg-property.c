@@ -222,7 +222,8 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      "Name",
 	                                                      "Name",
 	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT_ONLY));
 
 
 	g_object_class_install_property (object_class,
@@ -231,7 +232,8 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      "Object",
 	                                                      "Object",
 	                                                      CPG_TYPE_OBJECT,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 
 
 	g_object_class_install_property (object_class,
@@ -241,7 +243,8 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                     "Flags",
 	                                                     CPG_TYPE_PROPERTY_FLAGS,
 	                                                     CPG_PROPERTY_FLAG_NONE,
-	                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                     G_PARAM_READWRITE |
+	                                                     G_PARAM_CONSTRUCT));
 
 
 	g_object_class_install_property (object_class,
@@ -250,7 +253,8 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      "Expression",
 	                                                      "Expression",
 	                                                      CPG_TYPE_EXPRESSION,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 }
 
 static void
