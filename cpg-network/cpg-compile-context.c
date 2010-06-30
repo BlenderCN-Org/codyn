@@ -102,6 +102,11 @@ cpg_compile_context_get_type ()
 void
 cpg_compile_context_save (CpgCompileContext *context)
 {
+	if (!context)
+	{
+		return;
+	}
+
 	context->contexts = g_slist_prepend (context->contexts,
 	                                     context_copy (CURRENT_CONTEXT (context)));
 }
@@ -117,6 +122,11 @@ cpg_compile_context_save (CpgCompileContext *context)
 void
 cpg_compile_context_restore (CpgCompileContext *context)
 {
+	if (!context)
+	{
+		return;
+	}
+
 	if (!context->contexts || !context->contexts->next)
 	{
 		return;
@@ -138,8 +148,14 @@ void
 cpg_compile_context_prepend_object (CpgCompileContext *context,
                                     CpgObject         *object)
 {
-	CURRENT_CONTEXT (context)->objects = g_slist_prepend (CURRENT_CONTEXT (context)->objects,
-	                                                      object);
+	if (!context)
+	{
+		return;
+	}
+
+	CURRENT_CONTEXT (context)->objects =
+		g_slist_prepend (CURRENT_CONTEXT (context)->objects,
+		                 object);
 }
 
 /**
@@ -154,8 +170,14 @@ void
 cpg_compile_context_append_object (CpgCompileContext *context,
                                    CpgObject         *object)
 {
-	CURRENT_CONTEXT (context)->objects = g_slist_append (CURRENT_CONTEXT (context)->objects,
-	                                                     object);
+	if (!context)
+	{
+		return;
+	}
+
+	CURRENT_CONTEXT (context)->objects =
+		g_slist_append (CURRENT_CONTEXT (context)->objects,
+		                object);
 }
 
 /**
@@ -171,6 +193,11 @@ void
 cpg_compile_context_set_functions (CpgCompileContext *context,
                                    GSList const      *functions)
 {
+	if (!context)
+	{
+		return;
+	}
+
 	g_slist_free (CURRENT_CONTEXT (context)->functions);
 
 	CURRENT_CONTEXT (context)->functions = g_slist_copy ((GSList *)functions);
@@ -190,6 +217,11 @@ CpgProperty *
 cpg_compile_context_lookup_property (CpgCompileContext *context,
                                      gchar const       *name)
 {
+	if (!context)
+	{
+		return NULL;
+	}
+
 	GSList *item;
 	Context *ctx = CURRENT_CONTEXT (context);
 
@@ -228,6 +260,11 @@ cpg_compile_context_lookup_property (CpgCompileContext *context,
 GSList const *
 cpg_compile_context_get_objects (CpgCompileContext *context)
 {
+	if (!context)
+	{
+		return NULL;
+	}
+
 	return CURRENT_CONTEXT (context)->objects;
 }
 
@@ -244,6 +281,11 @@ cpg_compile_context_get_objects (CpgCompileContext *context)
 GSList const *
 cpg_compile_context_get_functions (CpgCompileContext *context)
 {
+	if (!context)
+	{
+		return NULL;
+	}
+
 	return CURRENT_CONTEXT (context)->functions;
 }
 
@@ -261,6 +303,11 @@ CpgFunction *
 cpg_compile_context_lookup_function (CpgCompileContext *context,
                                      gchar const       *name)
 {
+	if (!context)
+	{
+		return NULL;
+	}
+
 	/* FIXME: bit inefficient */
 	GSList *item;
 	Context *ctx = CURRENT_CONTEXT (context);
