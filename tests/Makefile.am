@@ -6,7 +6,7 @@ INCLUDES =				\
 	-I$(top_srcdir)				\
 	$(CPG_NETWORK_CFLAGS)
 
-TEST_PROGS = expression network direct import template object group
+TEST_PROGS = expression network direct import template object group property
 progs_ldadd = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la
 
 noinst_PROGRAMS = $(TEST_PROGS)
@@ -31,6 +31,9 @@ object_LDADD = $(progs_ldadd)
 
 group_SOURCES = group.c utils.h utils.c
 group_LDADD = $(progs_ldadd)
+
+property_SOURCES = property.c utils.h utils.c
+property_LDADD = $(progs_ldadd)
 
 TESTS = $(TEST_PROGS)
 

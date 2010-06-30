@@ -11,6 +11,7 @@ static gchar simple_xml[] = ""
 "    <state id=\"state\">\n"
 "      <property name=\"x\" integrated=\"yes\" in=\"yes\" out=\"yes\" once=\"yes\">0</property>\n"
 "      <property name=\"y\">0</property>\n"
+"      <property name=\"z\" once=\"yes\">rand()</property>\n"
 "    </state>\n"
 "    <link id=\"link\" from=\"state\" to=\"state\">\n"
 "      <action target=\"x\">1</action>\n"
@@ -129,9 +130,51 @@ test_reset ()
 	                                             "state.x");
 
 	cpg_network_run (network, 0, 0.1, 1);
+	cpg_assert_tol (cpg_property_get_value (prop), 1.1);
+
 	cpg_object_reset (CPG_OBJECT (network));
 
 	cpg_assert_tol (cpg_property_get_value (prop), 0);
+}
+
+static void
+test_recompile ()
+{
+	CpgNetwork *network = cpg_network_new_from_xml (simple_xml, NULL);
+	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
+
+	CpgProperty *prop = cpg_group_find_property (CPG_GROUP (network),
+	                                             "state.x");
+	CpgExpression *expr = cpg_property_get_expression (prop);
+
+	cpg_network_run (network, 0, 0.1, 1);
+	cpg_expression_set_from_string (expr, "5");
+
+	cpg_network_run (network, 0, 0.1, 1);
+
+	cpg_assert_tol (cpg_property_get_value (prop), 6.1);
+}
+
+static void
+test_once ()
+{
+	CpgNetwork *network = cpg_network_new_from_xml (simple_xml, NULL);
+	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
+
+	CpgProperty *prop = cpg_group_find_property (CPG_GROUP (network),
+	                                             "state.z");
+
+	gdouble val = cpg_property_get_value (prop);
+	cpg_network_run (network, 0, 0.1, 1);
+
+	cpg_assert_tol (val, cpg_property_get_value (prop));
+
+	cpg_object_reset (CPG_OBJECT (network));
+	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
+
+	gdouble newval = cpg_property_get_value (prop);
+
+	cpg_assert_neq_tol (val, newval);
 }
 
 static void
@@ -204,10 +247,13 @@ main (int   argc,
 	g_test_add_func ("/network/integrate", test_integrate);
 	g_test_add_func ("/network/direct", test_direct);
 	g_test_add_func ("/network/reset", test_reset);
+	g_test_add_func ("/network/recompile", test_recompile);
+	g_test_add_func ("/network/once", test_once);
 
 	g_test_add_func ("/network/group/load", test_group_load);
 	g_test_add_func ("/network/group/integrate", test_group_integrate);
 	g_test_add_func ("/network/group/reset", test_group_reset);
+
 
 	g_test_run ();
 

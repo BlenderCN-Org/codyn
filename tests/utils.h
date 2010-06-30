@@ -16,6 +16,7 @@ typedef enum
 } CpgPath;
 
 #define cpg_assert_tol(real, expect) g_assert_cmpfloat (fabs((real) - (expect)), <, 0.00000000001)
+#define cpg_assert_neq_tol(real, expect) g_assert_cmpfloat (fabs((real) - (expect)), >, 0.00000000001)
 
 CpgNetwork *test_load_network (gchar const *network, ...) G_GNUC_NULL_TERMINATED;
 CpgLinkAction *find_action (CpgGroup *parent, gchar const *path);
