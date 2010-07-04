@@ -680,6 +680,35 @@ cpg_network_merge_from_file (CpgNetwork  *network,
 }
 
 /**
+ * cpg_network_merge_from_path:
+ * @network: a #CpgNetwork
+ * @path: network path
+ * @error: error return value
+ *
+ * Merges the network defined in the file @path into @network. This is
+ * similar to creating a network from a file and merging it with @network.
+ *
+ **/
+void
+cpg_network_merge_from_path (CpgNetwork  *network,
+                             const gchar *path,
+                             GError     **error)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (path != NULL);
+
+	CpgNetwork *other;
+
+	other = cpg_network_new_from_path (path, error);
+
+	if (other != NULL)
+	{
+		cpg_network_merge (network, other);
+		g_object_unref (other);
+	}
+}
+
+/**
  * cpg_network_merge_from_xml:
  * @network: a #CpgNetwork
  * @xml: a xml string describing the network

@@ -108,6 +108,10 @@ void              cpg_network_merge_from_file        (CpgNetwork     *network,
                                                       GFile          *file,
                                                       GError        **error);
 
+void              cpg_network_merge_from_path        (CpgNetwork     *network,
+                                                      const gchar    *path,
+                                                      GError        **error);
+
 void              cpg_network_merge_from_xml         (CpgNetwork     *network,
                                                       const gchar    *xml,
                                                       GError        **error);
