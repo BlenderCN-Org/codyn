@@ -62,6 +62,7 @@ enum
 	PROPERTY_ADDED,
 	PROPERTY_REMOVED,
 	PROPERTY_CHANGED,
+	COPIED,
 	NUM_SIGNALS
 };
 
@@ -720,6 +721,27 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              G_TYPE_NONE,
 		              0);
 
+	/**
+	 * CpgObject::copied:
+	 * @object: a #CpgObject
+	 * @copy: the copy
+	 *
+	 * Emitted when the object is copied
+	 *
+	 **/
+	object_signals[COPIED] =
+		g_signal_new ("copied",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass,
+		                               copied),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_OBJECT);
+
 	object_signals[PROPERTY_ADDED] =
 		g_signal_new ("property-added",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -1332,6 +1354,8 @@ cpg_object_copy (CpgObject *object)
 	{
 		CPG_OBJECT_GET_CLASS (ret)->copy (ret, object);
 	}
+
+	g_signal_emit (object, object_signals[COPIED], 0, ret);
 
 	return ret;
 }

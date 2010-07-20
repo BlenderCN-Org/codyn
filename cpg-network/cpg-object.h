@@ -126,6 +126,9 @@ struct _CpgObjectClass
 	void          (*resetted)         (CpgObject   *object);
 	void          (*tainted)          (CpgObject   *object);
 
+	void          (*copied)           (CpgObject   *object,
+	                                   CpgObject   *copy);
+
 	void          (*property_added)   (CpgObject   *object,
 	                                   CpgProperty *property);
 	void          (*property_removed) (CpgObject   *object,
