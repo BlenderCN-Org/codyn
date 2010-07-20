@@ -116,6 +116,10 @@ struct _CpgObjectClass
 	                                  const gchar  *name,
 	                                  GError      **error);
 
+	gboolean      (*verify_remove_property) (CpgObject    *object,
+	                                         const gchar  *name,
+	                                         GError      **error);
+
 	void          (*clear)           (CpgObject    *object);
 
 	gboolean      (*equal)           (CpgObject    *first,
@@ -159,6 +163,10 @@ gboolean          cpg_object_has_property    (CpgObject   *object,
 gboolean          cpg_object_remove_property (CpgObject    *object,
                                               const gchar  *name,
                                               GError      **error);
+
+gboolean          cpg_object_verify_remove_property (CpgObject    *object,
+                                                     const gchar  *name,
+                                                     GError      **error);
 
 GSList           *cpg_object_get_properties  (CpgObject   *object);
 CpgObject        *cpg_object_get_parent      (CpgObject   *object);

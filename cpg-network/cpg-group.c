@@ -209,6 +209,33 @@ cpg_group_cpg_get_properties (CpgObject *object)
 }
 
 static gboolean
+cpg_group_cpg_verify_remove_property (CpgObject    *object,
+                                      gchar const  *name,
+                                      GError      **error)
+{
+	CpgGroup *group = CPG_GROUP (object);
+	CpgProperty *prop;
+
+	prop = CPG_OBJECT_CLASS (cpg_group_parent_class)->get_property (object,
+	                                                                name);
+
+	if (prop)
+	{
+		return CPG_OBJECT_CLASS (cpg_group_parent_class)->verify_remove_property (object,
+		                                                                          name,
+		                                                                          error);
+	}
+	else if (group->priv->proxy)
+	{
+		return cpg_object_verify_remove_property (group->priv->proxy,
+		                                          name,
+		                                          error);
+	}
+
+	return FALSE;
+}
+
+static gboolean
 cpg_group_cpg_remove_property (CpgObject    *object,
                                gchar const  *name,
                                GError      **error)
@@ -695,6 +722,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 	cpg_class->get_property = cpg_group_cpg_get_property;
 	cpg_class->get_properties = cpg_group_cpg_get_properties;
 	cpg_class->remove_property = cpg_group_cpg_remove_property;
+	cpg_class->verify_remove_property = cpg_group_cpg_verify_remove_property;
 
 	cpg_class->compile = cpg_group_cpg_compile;
 	cpg_class->reset = cpg_group_cpg_reset;

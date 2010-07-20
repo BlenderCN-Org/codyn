@@ -425,9 +425,9 @@ remove_property (CpgObject   *object,
 }
 
 static gboolean
-cpg_object_remove_property_impl (CpgObject    *object,
-                                 const gchar  *name,
-                                 GError      **error)
+cpg_object_verify_remove_property_impl (CpgObject    *object,
+                                        const gchar  *name,
+                                        GError      **error)
 {
 	if (error)
 	{
@@ -438,7 +438,7 @@ cpg_object_remove_property_impl (CpgObject    *object,
 
 	if (property)
 	{
-		if (!remove_property (object, property, TRUE))
+		if (cpg_property_get_used (property) > 1)
 		{
 			if (error)
 			{
@@ -467,6 +467,22 @@ cpg_object_remove_property_impl (CpgObject    *object,
 		return FALSE;
 	}
 
+	return TRUE;
+}
+
+static gboolean
+cpg_object_remove_property_impl (CpgObject    *object,
+                                 const gchar  *name,
+                                 GError      **error)
+{
+	if (!cpg_object_verify_remove_property (object, name, error))
+	{
+		return FALSE;
+	}
+
+	CpgProperty *property = cpg_object_get_property (object, name);
+
+	remove_property (object, property, FALSE);
 	return TRUE;
 }
 
@@ -616,6 +632,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 	klass->get_properties = cpg_object_get_properties_impl;
 	klass->has_property = cpg_object_has_property_impl;
 	klass->remove_property = cpg_object_remove_property_impl;
+	klass->verify_remove_property = cpg_object_verify_remove_property_impl;
 	klass->add_property = cpg_object_add_property_impl;
 
 	klass->clear = cpg_object_clear_impl;
@@ -940,6 +957,38 @@ cpg_object_remove_property (CpgObject    *object,
 		return CPG_OBJECT_GET_CLASS (object)->remove_property (object,
 		                                                       name,
 		                                                       error);
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+/**
+ * cpg_object_verify_remove_property:
+ * @object: a #CpgObject
+ * @name: a property name
+ * @error: a #GError
+ *
+ * Remove the property @name from @object. If the property was not found or
+ * could not be removed, @error will be appropriately set
+ *
+ * Returns: %TRUE if the property could be removed, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_object_verify_remove_property (CpgObject    *object,
+                                   const gchar  *name,
+                                   GError      **error)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
+
+	if (CPG_OBJECT_GET_CLASS (object)->verify_remove_property)
+	{
+		return CPG_OBJECT_GET_CLASS (object)->verify_remove_property (object,
+		                                                              name,
+		                                                              error);
 	}
 	else
 	{
