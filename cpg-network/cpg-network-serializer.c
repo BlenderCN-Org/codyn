@@ -1122,3 +1122,42 @@ cpg_network_serializer_serialize_path (CpgNetworkSerializer  *serializer,
 
 	return ret;
 }
+
+/**
+ * cpg_network_serializer_serialize_memory:
+ * @serializer: A #CpgNetworkSerializer
+ * @error: A #GError
+ *
+ * Convenience function to serialize a network to a string.
+ *
+ * Returns: The serialized network or %NULL if an error occurred.
+ *
+ **/
+gchar *
+cpg_network_serializer_serialize_memory (CpgNetworkSerializer  *serializer,
+                                         GError               **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK_SERIALIZER (serializer), NULL);
+
+	GOutputStream *stream = g_memory_output_stream_new (NULL,
+	                                                    0,
+	                                                    g_realloc,
+	                                                    NULL);
+
+	gboolean ret;
+
+	ret = cpg_network_serializer_serialize (serializer,
+	                                        stream,
+	                                        error);
+
+	gpointer data = g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (stream));
+	g_object_unref (stream);
+
+	if (!ret)
+	{
+		g_free (data);
+		data = NULL;
+	}
+
+	return data;
+}

@@ -49,6 +49,9 @@ gboolean cpg_network_serializer_serialize_path (CpgNetworkSerializer  *serialize
                                                 const gchar           *path,
                                                 GError               **error);
 
+gchar *cpg_network_serializer_serialize_memory (CpgNetworkSerializer  *serializer,
+                                                GError               **error);
+
 G_END_DECLS
 
 #endif /* __CPG_NETWORK_SERIALIZER_H__ */
