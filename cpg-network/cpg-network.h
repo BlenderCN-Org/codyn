@@ -97,10 +97,6 @@ void              cpg_network_set_integrator         (CpgNetwork     *network,
 
 CpgIntegrator    *cpg_network_get_integrator         (CpgNetwork     *network);
 
-gchar            *cpg_network_write_to_xml           (CpgNetwork     *network);
-void              cpg_network_write_to_file          (CpgNetwork     *network,
-                                                      const gchar    *filename);
-
 void              cpg_network_merge                  (CpgNetwork     *network,
                                                       CpgNetwork     *other);
 
