@@ -411,7 +411,7 @@ cpg_network_init (CpgNetwork *network)
 CpgNetwork *
 cpg_network_new ()
 {
-	return g_object_new (CPG_TYPE_NETWORK, NULL);
+	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
 
 /**
@@ -431,7 +431,7 @@ cpg_network_new_from_file (GFile   *file,
 {
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
-	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK, "file", file, NULL);
+	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", "file", file, NULL);
 	CpgNetworkDeserializer *deserializer;
 
 	deserializer = cpg_network_deserializer_new (network,
