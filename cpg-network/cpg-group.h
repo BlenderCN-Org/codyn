@@ -70,6 +70,9 @@ gboolean      cpg_group_set_proxy     (CpgGroup    *group,
                                        CpgObject   *proxy);
 CpgObject    *cpg_group_get_proxy     (CpgGroup    *group);
 
+gboolean      cpg_group_property_is_proxy (CpgGroup    *group,
+                                           const gchar *name);
+
 void          cpg_group_foreach       (CpgGroup    *group,
                                        GFunc        func,
                                        gpointer     data);

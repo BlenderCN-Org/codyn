@@ -1134,3 +1134,14 @@ cpg_group_find_property (CpgGroup    *group,
 	return ret;
 }
 
+
+gboolean
+cpg_group_property_is_proxy (CpgGroup    *group,
+                             const gchar *name)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
+
+	return group->priv->proxy && cpg_object_get_property (group->priv->proxy,
+	                                                      name);
+}
