@@ -24,12 +24,21 @@
 
 #define CPG_GROUP_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_GROUP, CpgGroupPrivate))
 
+enum
+{
+	EXT_PROPERTY_ADDED,
+	EXT_PROPERTY_REMOVED,
+	NUM_EXT_SIGNALS
+};
+
 struct _CpgGroupPrivate
 {
 	CpgObject *proxy;
 
 	GSList *children;
 	GHashTable *child_hash;
+
+	guint proxy_signals[NUM_EXT_SIGNALS];
 };
 
 G_DEFINE_TYPE (CpgGroup, cpg_group, CPG_TYPE_STATE)
@@ -92,6 +101,22 @@ cpg_group_dispose (GObject *object)
 	G_OBJECT_CLASS (cpg_group_parent_class)->dispose (object);
 }
 
+static void
+on_proxy_property_added (CpgObject   *proxy,
+                         CpgProperty *property,
+                         CpgGroup    *group)
+{
+	g_signal_emit_by_name (group, "property-added", property);
+}
+
+static void
+on_proxy_property_removed (CpgObject   *proxy,
+                           CpgProperty *property,
+                           CpgGroup    *group)
+{
+	g_signal_emit_by_name (group, "property-removed", property);
+}
+
 static gboolean
 set_proxy (CpgGroup  *group,
            CpgObject *proxy)
@@ -116,10 +141,30 @@ set_proxy (CpgGroup  *group,
 			}
 		}
 
+		g_signal_handler_disconnect (group->priv->proxy,
+		                             group->priv->proxy_signals[EXT_PROPERTY_ADDED]);
+
+		g_signal_handler_disconnect (group->priv->proxy,
+		                             group->priv->proxy_signals[EXT_PROPERTY_REMOVED]);
+
+		GSList const *properties = cpg_object_get_properties (group->priv->proxy);
+
 		CpgObject *pr = group->priv->proxy;
 		group->priv->proxy = NULL;
 
-		cpg_group_remove (group, pr);
+		while (properties)
+		{
+			if (!cpg_object_get_property (CPG_OBJECT (group),
+			                              cpg_property_get_name (properties->data)))
+			{
+				g_signal_emit_by_name (group,
+				                       "property-removed",
+				                       properties->data);
+			}
+
+			properties = g_slist_next (properties);
+		}
+
 		g_object_unref (pr);
 	}
 
@@ -127,7 +172,36 @@ set_proxy (CpgGroup  *group,
 	{
 		group->priv->proxy = g_object_ref (proxy);
 		cpg_group_add (group, proxy);
+
+		GSList const *properties = cpg_object_get_properties (group->priv->proxy);
+
+		while (properties)
+		{
+			if (cpg_group_property_is_proxy (group,
+			                                 cpg_property_get_name (properties->data)))
+			{
+				g_signal_emit_by_name (group,
+				                       "property-added",
+				                       properties->data);
+			}
+
+			properties = g_slist_next (properties);
+		}
+
+		group->priv->proxy_signals[EXT_PROPERTY_ADDED] =
+			g_signal_connect (group->priv->proxy,
+			                  "property-added",
+			                  G_CALLBACK (on_proxy_property_added),
+			                  group);
+
+		group->priv->proxy_signals[EXT_PROPERTY_REMOVED] =
+			g_signal_connect (group->priv->proxy,
+			                  "property-removed",
+			                  G_CALLBACK (on_proxy_property_removed),
+			                  group);
 	}
+
+	g_object_notify (G_OBJECT (group), "proxy");
 
 	cpg_object_taint (CPG_OBJECT (group));
 	return TRUE;
@@ -897,7 +971,7 @@ cpg_group_set_proxy (CpgGroup  *group,
                      CpgObject *proxy)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
-	g_return_val_if_fail (CPG_IS_OBJECT (proxy), FALSE);
+	g_return_val_if_fail (proxy == NULL || CPG_IS_OBJECT (proxy), FALSE);
 
 	return set_proxy (group, proxy);
 }
