@@ -24,6 +24,7 @@ COMMON_SOURCES = 		\
 	cpg-import.c \
 	cpg-import-alias.c \
 	cpg-link.c \
+	cpg-link-action.c \
 	cpg-math.c \
 	cpg-monitor.c \
 	cpg-network.c \
@@ -61,6 +62,7 @@ INST_H_FILES = \
 	cpg-import.h \
 	cpg-import-alias.h \
 	cpg-link.h \
+	cpg-link-action.h \
 	cpg-math.h \
 	cpg-monitor.h \
 	cpg-network.h \

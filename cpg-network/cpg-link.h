@@ -3,6 +3,7 @@
 
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-expression.h>
+#include <cpg-network/cpg-link-action.h>
 
 G_BEGIN_DECLS
 
@@ -14,10 +15,9 @@ G_BEGIN_DECLS
 #define CPG_IS_LINK_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_LINK))
 #define CPG_LINK_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_LINK, CpgLinkClass))
 
-typedef struct _CpgLink            CpgLink;
-typedef struct _CpgLinkClass    CpgLinkClass;
-typedef struct _CpgLinkPrivate    CpgLinkPrivate;
-typedef struct _CpgLinkAction    CpgLinkAction;
+typedef struct _CpgLink        CpgLink;
+typedef struct _CpgLinkClass   CpgLinkClass;
+typedef struct _CpgLinkPrivate CpgLinkPrivate;
 
 struct _CpgLink
 {
@@ -31,9 +31,10 @@ struct _CpgLinkClass
 {
 	/*< private >*/
 	CpgObjectClass parent_class;
-};
 
-GType          cpg_link_action_get_type       (void) G_GNUC_CONST;
+	void (*action_added)   (CpgLink *link, CpgLinkAction *action);
+	void (*action_removed) (CpgLink *link, CpgLinkAction *action);
+};
 
 GType          cpg_link_get_type              (void) G_GNUC_CONST;
 
@@ -46,7 +47,7 @@ CpgObject     *cpg_link_get_to                (CpgLink       *link);
 
 CpgLinkAction *cpg_link_add_action            (CpgLink       *link,
                                                CpgProperty   *target,
-                                               const gchar   *expression);
+                                               CpgExpression *equation);
 
 gboolean       cpg_link_remove_action         (CpgLink       *link,
                                                CpgLinkAction *action);
@@ -57,14 +58,6 @@ CpgLinkAction *cpg_link_get_action            (CpgLink       *link,
 void           cpg_link_attach                (CpgLink       *link,
                                                CpgObject     *from,
                                                CpgObject     *to);
-
-CpgExpression *cpg_link_action_get_expression (CpgLinkAction *action);
-CpgProperty   *cpg_link_action_get_target     (CpgLinkAction *action);
-void           cpg_link_action_set_target     (CpgLinkAction *action,
-                                               CpgProperty   *property);
-
-gboolean       cpg_link_action_depends        (CpgLinkAction *action,
-                                               CpgProperty   *property);
 
 void           _cpg_link_resolve_actions      (CpgLink       *link);
 

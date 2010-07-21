@@ -24,12 +24,6 @@
 
 #define CPG_LINK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_LINK, CpgLinkPrivate))
 
-struct _CpgLinkAction
-{
-	CpgRefCounted parent;
-	CpgExpression *expression;
-	CpgProperty *target;
-};
 
 struct _CpgLinkPrivate
 {
@@ -49,40 +43,17 @@ enum
 	PROP_FROM
 };
 
+/* Signals */
+enum
+{
+	ACTION_ADDED,
+	ACTION_REMOVED,
+	NUM_SIGNALS
+};
+
+guint signals[NUM_SIGNALS] = {0,};
+
 G_DEFINE_TYPE (CpgLink, cpg_link, CPG_TYPE_OBJECT)
-
-static void
-cpg_link_action_free (CpgLinkAction *action)
-{
-	g_object_unref (action->expression);
-
-	if (action->target)
-	{
-		_cpg_property_unuse (action->target);
-		g_object_unref (action->target);
-	}
-
-	// do not free target, borrowed reference
-	g_slice_free (CpgLinkAction, action);
-}
-
-static CpgLinkAction *
-cpg_link_action_new (CpgProperty *target,
-                     gchar const *expression)
-{
-	CpgLinkAction *action = g_slice_new0 (CpgLinkAction);
-	cpg_ref_counted_init (action, (GDestroyNotify)cpg_link_action_free);
-
-	action->expression = cpg_expression_new (expression);
-
-	if (target)
-	{
-		action->target = g_object_ref (target);
-		_cpg_property_use (target);
-	}
-
-	return action;
-}
 
 static void
 cpg_link_finalize (GObject *object)
@@ -186,7 +157,7 @@ cpg_link_dispose (GObject *object)
 	set_to (link, NULL);
 	set_from (link, NULL);
 
-	g_slist_foreach (link->priv->actions, (GFunc)cpg_ref_counted_unref, NULL);
+	g_slist_foreach (link->priv->actions, (GFunc)g_object_unref, NULL);
 	g_slist_free (link->priv->actions);
 
 	link->priv->actions = NULL;
@@ -197,7 +168,7 @@ cpg_link_dispose (GObject *object)
 static void
 action_reset_cache (CpgLinkAction *action)
 {
-	cpg_expression_reset_cache (action->expression);
+	cpg_expression_reset_cache (cpg_link_action_get_equation (action));
 }
 
 static void
@@ -230,17 +201,19 @@ cpg_link_copy_impl (CpgObject *object,
 
 	for (item = source_link->priv->actions; item; item = g_slist_next (item))
 	{
-		CpgLinkAction *action = (CpgLinkAction *)item->data;
+		CpgLinkAction *action = item->data;
+		CpgProperty *targ = cpg_link_action_get_target (action);
 		CpgProperty *tg = NULL;
+		CpgExpression *eq = cpg_link_action_get_equation (action);
 
-		if (action->target)
+		if (targ)
 		{
-			tg = _cpg_property_copy (action->target);
+			tg = _cpg_property_copy (targ);
 		}
 
 		cpg_link_add_action (target,
 		                     tg,
-		                     cpg_expression_get_as_string (action->expression));
+		                     eq);
 
 		if (tg)
 		{
@@ -277,7 +250,7 @@ cpg_link_compile_impl (CpgObject         *object,
 	while (actions)
 	{
 		CpgLinkAction *action = actions->data;
-		CpgExpression *expr = cpg_link_action_get_expression (action);
+		CpgExpression *expr = cpg_link_action_get_equation (action);
 		GError *gerror = NULL;
 
 		if (!cpg_expression_compile (expr, context, &gerror))
@@ -359,6 +332,32 @@ cpg_link_class_init (CpgLinkClass *klass)
 	cpgobject_class->compile = cpg_link_compile_impl;
 	cpgobject_class->equal = cpg_link_equal_impl;
 
+	signals[ACTION_ADDED] =
+		g_signal_new ("action-added",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgLinkClass,
+		                               action_added),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_LINK_ACTION);
+
+	signals[ACTION_REMOVED] =
+		g_signal_new ("action-removed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgLinkClass,
+		                               action_removed),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_LINK_ACTION);
+
 	/**
 	 * CpgLink:from:
 	 *
@@ -428,12 +427,13 @@ cpg_link_new (gchar const  *id,
  * Returns: the new #CpgLinkAction
  **/
 CpgLinkAction *
-cpg_link_add_action (CpgLink      *link,
-                     CpgProperty  *target,
-                     gchar const  *expression)
+cpg_link_add_action (CpgLink       *link,
+                     CpgProperty   *target,
+                     CpgExpression *equation)
 {
 	g_return_val_if_fail (CPG_IS_LINK (link), NULL);
-	g_return_val_if_fail (expression != NULL, NULL);
+	g_return_val_if_fail (CPG_IS_PROPERTY (target), NULL);
+	g_return_val_if_fail (CPG_IS_EXPRESSION (equation), NULL);
 
 	GSList *item;
 	GSList *copy = g_slist_copy (link->priv->actions);
@@ -441,9 +441,10 @@ cpg_link_add_action (CpgLink      *link,
 	for (item = copy; item; item = g_slist_next (item))
 	{
 		CpgLinkAction *action = (CpgLinkAction *)item->data;
+		CpgProperty *targ = cpg_link_action_get_target (action);
 
-		if (!action->target ||
-		     g_strcmp0 (cpg_property_get_name (action->target),
+		if (!targ ||
+		     g_strcmp0 (cpg_property_get_name (targ),
 		                cpg_property_get_name (target)) != 0)
 		{
 			continue;
@@ -454,10 +455,13 @@ cpg_link_add_action (CpgLink      *link,
 
 	g_slist_free (copy);
 
-	CpgLinkAction *action = cpg_link_action_new (target, expression);
+	CpgLinkAction *action = cpg_link_action_new (target, equation);
 	link->priv->actions = g_slist_append (link->priv->actions, action);
 
 	cpg_object_taint (CPG_OBJECT (link));
+
+	g_signal_emit (link, signals[ACTION_ADDED], 0, action);
+
 	return action;
 }
 
@@ -476,14 +480,18 @@ cpg_link_remove_action (CpgLink       *link,
                         CpgLinkAction *action)
 {
 	g_return_val_if_fail (CPG_IS_LINK (link), FALSE);
-	g_return_val_if_fail (action != NULL, FALSE);
+	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), FALSE);
 
 	GSList *item = g_slist_find (link->priv->actions, action);
 
 	if (item != NULL)
 	{
-		cpg_ref_counted_unref (action);
 		link->priv->actions = g_slist_delete_link (link->priv->actions, item);
+
+		cpg_link_action_set_target (action, NULL);
+
+		g_signal_emit (link, signals[ACTION_REMOVED], 0, action);
+		g_object_unref (action);
 
 		return TRUE;
 	}
@@ -607,89 +615,6 @@ cpg_link_attach (CpgLink   *link,
 	g_object_set (link, "from", from, "to", to, NULL);
 }
 
-/**
- * cpg_link_action_get_expression:
- * @action: the #CpgLinkAction
- *
- * Get the expression associated with the action
- *
- * Returns: the #CpgExpression associated with the action. It is owned
- * by the action object and should not be freed.
- *
- **/
-CpgExpression *
-cpg_link_action_get_expression (CpgLinkAction *action)
-{
-	return action->expression;
-}
-
-/**
- * cpg_link_action_get_target:
- * @action: the #CpgLinkAction
- *
- * Get the target #CpgProperty associated with the action
- *
- * Returns: the target #CpgProperty. It is owned
- * by the action object and should not be freed.
- *
- **/
-CpgProperty *
-cpg_link_action_get_target (CpgLinkAction *action)
-{
-	return action->target;
-}
-
-/**
- * cpg_link_action_set_target:
- * @action: a #CpgLinkAction
- * @property: (allow-none): a #CpgProperty
- *
- * Set the target of the link action to @property
- *
- **/
-void
-cpg_link_action_set_target (CpgLinkAction *action,
-                            CpgProperty   *property)
-{
-	if (action->target)
-	{
-		_cpg_property_unuse (action->target);
-		g_object_unref (action->target);
-
-		action->target = NULL;
-	}
-
-	if (property)
-	{
-		action->target = g_object_ref (property);
-
-		_cpg_property_use (action->target);
-	}
-}
-
-gboolean
-cpg_link_action_depends (CpgLinkAction *action,
-                         CpgProperty   *property)
-{
-	return g_slist_find ((GSList *)cpg_expression_get_dependencies (action->expression),
-	                     property) != NULL;
-}
-
-GType
-cpg_link_action_get_type ()
-{
-	static GType type_id = 0;
-
-	if (G_UNLIKELY (type_id == 0))
-	{
-		type_id = g_boxed_type_register_static ("CpgLinkAction",
-		                                        cpg_ref_counted_ref,
-		                                        cpg_ref_counted_unref);
-	}
-
-	return type_id;
-}
-
 void
 _cpg_link_resolve_actions (CpgLink *link)
 {
@@ -701,17 +626,18 @@ _cpg_link_resolve_actions (CpgLink *link)
 
 	for (item = copy; item; item = g_slist_next (item))
 	{
-		CpgLinkAction *action = (CpgLinkAction *)item->data;
+		CpgLinkAction *action = item->data;
+		CpgProperty *targ = cpg_link_action_get_target (action);
 		CpgProperty *prop;
 
 		// Check if action is already valid
-		if (cpg_property_get_object (action->target) == link->priv->to)
+		if (cpg_property_get_object (targ) == link->priv->to)
 		{
 			continue;
 		}
 
 		prop = cpg_object_get_property (link->priv->to,
-		                                cpg_property_get_name (action->target));
+		                                cpg_property_get_name (targ));
 
 		if (prop == NULL)
 		{
@@ -720,16 +646,7 @@ _cpg_link_resolve_actions (CpgLink *link)
 		}
 		else
 		{
-			if (action->target)
-			{
-				_cpg_property_unuse (action->target);
-				g_object_unref (action->target);
-			}
-
-			action->target = prop;
-
-			g_object_ref (prop);
-			_cpg_property_use (prop);
+			cpg_link_action_set_target (action, prop);
 		}
 	}
 

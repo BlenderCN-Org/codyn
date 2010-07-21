@@ -470,7 +470,7 @@ action_matches_template (CpgLinkAction *action,
                          GSList const  *templates)
 {
 	CpgProperty *p1 = cpg_link_action_get_target (action);
-	CpgExpression *e1 = cpg_link_action_get_expression (action);
+	CpgExpression *e1 = cpg_link_action_get_equation (action);
 
 	while (templates)
 	{
@@ -489,7 +489,7 @@ action_matches_template (CpgLinkAction *action,
 			CpgLinkAction *other = actions->data;
 
 			CpgProperty *p2 = cpg_link_action_get_target (other);
-			CpgExpression *e2 = cpg_link_action_get_expression (other);
+			CpgExpression *e2 = cpg_link_action_get_equation (other);
 
 			if (g_strcmp0 (cpg_property_get_name (p1),
 			               cpg_property_get_name (p2)) == 0)
@@ -553,7 +553,7 @@ link_to_xml (CpgNetworkSerializer *serializer,
 		            (xmlChar *)cpg_property_get_name (cpg_link_action_get_target (action)));
 
 		xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
-		                                 (xmlChar *)cpg_expression_get_as_string (cpg_link_action_get_expression (action)));
+		                                 (xmlChar *)cpg_expression_get_as_string (cpg_link_action_get_equation (action)));
 
 		xmlAddChild (ac, text);
 		xmlAddChild (node, ac);

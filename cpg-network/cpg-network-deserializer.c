@@ -991,7 +991,9 @@ parse_actions (CpgNetworkDeserializer *deserializer,
 			expression = node->children->content;
 		}
 
-		cpg_link_add_action (link, property, (gchar const *)expression);
+		CpgExpression *expr = cpg_expression_new ((gchar const *)expression);
+		cpg_link_add_action (link, property, expr);
+		g_object_unref (expr);
 
 		if (!to)
 		{
