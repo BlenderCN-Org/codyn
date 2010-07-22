@@ -233,7 +233,7 @@ set_network (CpgMonitor *monitor,
 	                           (gpointer *)&monitor->priv->network);
 
 	monitor->priv->signals[RESETTED] =
-		g_signal_connect_swapped (monitor,
+		g_signal_connect_swapped (network,
 		                          "resetted",
 		                          G_CALLBACK (on_network_resetted),
 		                          monitor);
