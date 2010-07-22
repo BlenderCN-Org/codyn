@@ -464,6 +464,8 @@ cpg_network_load_from_xml (CpgNetwork   *network,
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (xml != NULL, FALSE);
 
+	cpg_object_clear (CPG_OBJECT (network));
+
 	CpgNetworkDeserializer *deserializer;
 
 	deserializer = cpg_network_deserializer_new (network,
