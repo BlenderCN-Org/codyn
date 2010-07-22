@@ -359,7 +359,7 @@ cpg_network_class_init (CpgNetworkClass *klass)
 	                                                      "File",
 	                                                      "File",
 	                                                      G_TYPE_FILE,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 
 	g_object_class_install_property (object_class,
@@ -414,6 +414,84 @@ cpg_network_new ()
 	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
 
+gboolean
+cpg_network_load_from_file (CpgNetwork  *network,
+                            GFile       *file,
+                            GError     **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (G_IS_FILE (file), FALSE);
+
+	g_object_set (network, "file", file, NULL);
+
+	cpg_object_clear (CPG_OBJECT (network));
+
+	CpgNetworkDeserializer *deserializer;
+
+	deserializer = cpg_network_deserializer_new (network,
+	                                             NULL);
+
+	gboolean ret;
+
+	ret = cpg_network_deserializer_deserialize_file (deserializer,
+	                                                 file,
+	                                                 error);
+
+	g_object_unref (deserializer);
+	return ret;
+}
+
+gboolean
+cpg_network_load_from_path (CpgNetwork   *network,
+                            const gchar  *path,
+                            GError      **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (path != NULL, FALSE);
+
+	GFile *file = g_file_new_for_path (path);
+	gboolean ret = cpg_network_load_from_file (network, file, error);
+	g_object_unref (file);
+
+	return ret;
+}
+
+gboolean
+cpg_network_load_from_xml (CpgNetwork   *network,
+                           const gchar  *xml,
+                           GError      **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (xml != NULL, FALSE);
+
+	CpgNetworkDeserializer *deserializer;
+
+	deserializer = cpg_network_deserializer_new (network,
+	                                             NULL);
+
+	GInputStream *stream = g_memory_input_stream_new_from_data (xml,
+	                                                            -1,
+	                                                            NULL);
+
+	if (!stream)
+	{
+		g_object_unref (deserializer);
+		return FALSE;
+	}
+
+	gboolean ret;
+
+	ret = cpg_network_deserializer_deserialize (deserializer,
+	                                            stream,
+	                                            error);
+
+	g_object_unref (stream);
+	g_object_unref (deserializer);
+
+	return ret;
+
+}
+
 /**
  * cpg_network_new_from_file:
  * @file: the file containing the network definition
@@ -431,21 +509,15 @@ cpg_network_new_from_file (GFile   *file,
 {
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
-	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", "file", file, NULL);
-	CpgNetworkDeserializer *deserializer;
+	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK,
+	                                    "id", "(cpg)",
+	                                    NULL);
 
-	deserializer = cpg_network_deserializer_new (network,
-	                                             NULL);
-
-	if (!cpg_network_deserializer_deserialize_file (deserializer,
-	                                                file,
-	                                                error))
+	if (!cpg_network_load_from_file (network, file, error))
 	{
 		g_object_unref (network);
 		network = NULL;
 	}
-
-	g_object_unref (deserializer);
 
 	return network;
 }
@@ -493,36 +565,11 @@ cpg_network_new_from_xml (gchar const  *xml,
 
 	CpgNetwork *network = cpg_network_new ();
 
-	CpgNetworkDeserializer *deserializer;
-
-	deserializer = cpg_network_deserializer_new (network,
-	                                             NULL);
-
-	GInputStream *stream = g_memory_input_stream_new_from_data (xml,
-	                                                            -1,
-	                                                            NULL);
-
-	if (!stream)
-	{
-		g_object_unref (deserializer);
-		return NULL;
-	}
-
-	gboolean ret;
-
-	ret = cpg_network_deserializer_deserialize (deserializer,
-	                                            stream,
-	                                            error);
-
-	g_object_unref (stream);
-
-	if (!ret)
+	if (!cpg_network_load_from_xml (network, xml, error))
 	{
 		g_object_unref (network);
 		network = NULL;
 	}
-
-	g_object_unref (deserializer);
 
 	return network;
 }

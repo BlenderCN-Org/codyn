@@ -90,6 +90,18 @@ CpgNetwork       *cpg_network_new_from_path          (const gchar    *path,
 CpgNetwork       *cpg_network_new_from_xml           (const gchar    *xml,
                                                       GError        **error);
 
+gboolean          cpg_network_load_from_file         (CpgNetwork     *network,
+                                                      GFile          *file,
+                                                      GError        **error);
+
+gboolean          cpg_network_load_from_path         (CpgNetwork     *network,
+                                                      const gchar    *path,
+                                                      GError        **error);
+
+gboolean          cpg_network_load_from_xml          (CpgNetwork     *network,
+                                                      const gchar    *xml,
+                                                      GError        **error);
+
 GFile            *cpg_network_get_file               (CpgNetwork     *network);
 
 void              cpg_network_set_integrator         (CpgNetwork     *network,
