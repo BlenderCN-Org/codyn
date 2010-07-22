@@ -243,6 +243,8 @@ set_network (CpgMonitor *monitor,
 		                          "notify::integrator",
 		                          G_CALLBACK (on_integrator_changed),
 		                          monitor);
+
+	connect_integrator (monitor);
 }
 static void
 monitor_set_property (GObject      *object,
