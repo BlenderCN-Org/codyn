@@ -647,7 +647,7 @@ cpg_group_remove_impl (CpgGroup  *group,
 {
 	if (object == group->priv->proxy)
 	{
-		return set_proxy (group, NULL);
+		set_proxy (group, NULL);
 	}
 
 	GSList *item = g_slist_find (group->priv->children, object);
