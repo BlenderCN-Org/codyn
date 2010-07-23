@@ -494,6 +494,7 @@ cpg_property_get_update
 cpg_property_flags_from_string
 cpg_property_flags_to_string
 cpg_property_reset
+cpg_property_get_full_name
 <SUBSECTION Standard>
 CPG_PROPERTY
 CPG_IS_PROPERTY

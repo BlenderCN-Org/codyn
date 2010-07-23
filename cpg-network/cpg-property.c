@@ -712,6 +712,35 @@ cpg_property_flags_from_string (gchar const *flags)
 	return ret;
 }
 
+/**
+ * cpg_object_get_full_name:
+ * @property: A #CpgProperty
+ *
+ * Get the full name of the property. This is the name that can be used in the
+ * outer most parent to refer to this property (i.e.
+ * <code>cpg_group_find_property (top_parent, cpg_property_get_full_name (deep_property)) == deep_property</code>)
+ *
+ * Returns: The full name of the property. This is a newly allocated string that
+ *          should be freed with g_free.
+ *
+ **/
+gchar *
+cpg_property_get_full_name (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	if (!property->priv->object)
+	{
+		return g_strdup (property->priv->name);
+	}
+
+	gchar *objid = cpg_object_get_full_id (property->priv->object);
+	gchar *ret = g_strconcat (objid, ".", property->priv->name, NULL);
+	g_free (objid);
+
+	return ret;
+}
+
 CpgProperty *
 _cpg_property_copy (CpgProperty *property)
 {
@@ -760,4 +789,3 @@ _cpg_property_set_object (CpgProperty *property,
 
 	set_object (property, object);
 }
-
