@@ -8,7 +8,7 @@
  * object, similar to GObject but without all the additional functionality.
  *
  */
- 
+
 /**
  * cpg_ref_counted_init:
  * @ref_counted: a #CpgRefCounted
@@ -42,7 +42,9 @@ gpointer
 cpg_ref_counted_ref (gpointer ref_counted)
 {
 	if (!ref_counted)
+	{
 		return ref_counted;
+	}
 
 	++(((CpgRefCounted *)ref_counted)->ref_count);
 	return ref_counted;
@@ -55,18 +57,22 @@ cpg_ref_counted_ref (gpointer ref_counted)
  * Decrease the ref count on @ref_counted.
  *
  **/
-void 
+void
 cpg_ref_counted_unref (gpointer ref_counted)
 {
-	CpgRefCounted *r = (CpgRefCounted *)ref_counted;
-	
+	CpgRefCounted *r = ref_counted;
+
 	if (!ref_counted || r->ref_count == 0)
+	{
 		return;
+	}
 
 	if (--r->ref_count == 0)
 	{
 		if (r->destroy_func)
+		{
 			r->destroy_func (ref_counted);
+		}
 	}
 }
 
