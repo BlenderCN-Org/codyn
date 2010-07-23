@@ -1506,8 +1506,11 @@ cpg_object_get_full_id (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
-	if (cpg_object_get_parent (object) == NULL ||
-	    cpg_object_get_parent (object->priv->parent) == NULL)
+	if (cpg_object_get_parent (object) == NULL)
+	{
+		return g_strdup ("");
+	}
+	else if (cpg_object_get_parent (object->priv->parent) == NULL)
 	{
 		return g_strdup (cpg_object_get_id (object));
 	}
