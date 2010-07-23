@@ -55,6 +55,8 @@ cpg_compile_context_free (CpgCompileContext *context)
 {
 	g_slist_foreach (context->contexts, (GFunc)context_free, NULL);
 	g_slist_free (context->contexts);
+
+	g_slice_free (CpgCompileContext, context);
 }
 
 /**
