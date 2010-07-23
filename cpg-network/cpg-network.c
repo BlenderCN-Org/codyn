@@ -146,6 +146,9 @@ set_integrator (CpgNetwork    *network,
 		g_object_set (network->priv->integrator,
 		              "object", network,
 		              NULL);
+
+		cpg_integrator_set_state (integrator,
+		                          network->priv->integrator_state);
 	}
 
 	cpg_object_taint (CPG_OBJECT (network));
@@ -432,9 +435,6 @@ cpg_network_init (CpgNetwork *network)
 	CpgIntegratorEuler *integrator = cpg_integrator_euler_new ();
 	cpg_network_set_integrator (network, CPG_INTEGRATOR (integrator));
 	g_object_unref (integrator);
-
-	cpg_integrator_set_state (CPG_INTEGRATOR (integrator),
-	                          network->priv->integrator_state);
 }
 
 /**
