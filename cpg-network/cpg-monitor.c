@@ -161,6 +161,11 @@ connect_integrator (CpgMonitor *monitor)
 			                          G_CALLBACK (cpg_monitor_begin),
 			                          monitor);
 	}
+
+	monitor->priv->integrator = integrator;
+
+	g_object_add_weak_pointer (G_OBJECT (monitor->priv->integrator),
+	                           (gpointer *)&monitor->priv->integrator);
 }
 
 static void
