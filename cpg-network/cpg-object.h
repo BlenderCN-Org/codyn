@@ -199,6 +199,8 @@ CpgObject        *cpg_object_copy           (CpgObject *object);
 void              cpg_object_apply_template (CpgObject *object,
                                              CpgObject *templ);
 
+gchar            *cpg_object_get_full_id    (CpgObject *object);
+
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,
                                              CPG_FORWARD_DECL (CpgLink) *link);

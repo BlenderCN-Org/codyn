@@ -1454,3 +1454,36 @@ _cpg_object_set_parent (CpgObject *object,
 
 	g_object_notify (G_OBJECT (object), "parent");
 }
+
+/**
+ * cpg_object_get_full_id:
+ * @object: A #CpgObject
+ *
+ * Get the full id of the object. This is the id that can be used in the outer
+ * most parent to refer to this object (i.e.
+ * <code>cpg_group_find_object (top_parent, cpg_object_get_full_id (deep_child)) == deep_child</code>)
+ *
+ * Returns: The full id of the object. This is a newly allocated string that
+ *          should be freed with g_free.
+ *
+ **/
+gchar *
+cpg_object_get_full_id (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	if (cpg_object_get_parent (object) == NULL ||
+	    cpg_object_get_parent (object->priv->parent) == NULL)
+	{
+		return g_strdup (cpg_object_get_id (object));
+	}
+
+	gchar *parentId = cpg_object_get_full_id (cpg_object_get_parent (object));
+	gchar *ret = g_strconcat (parentId,
+	                          ".",
+	                          cpg_object_get_id (object),
+	                          NULL);
+	g_free (parentId);
+
+	return ret;
+}
