@@ -1,5 +1,13 @@
 #include "cpg-link-action.h"
 
+/**
+ * SECTION:cpg-link-action
+ * @short_description: Link action equation
+ *
+ * A #CpgLinkAction is an action inside a link which sets a target
+ * #CpgProperty to the value of a particular #CpgExpression equation.
+ */
+
 #define CPG_LINK_ACTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_LINK_ACTION, CpgLinkActionPrivate))
 
 struct _CpgLinkActionPrivate
@@ -145,6 +153,12 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	object_class->set_property = cpg_link_action_set_property;
 	object_class->get_property = cpg_link_action_get_property;
 
+	/**
+	 * CpgLinkAction:target:
+	 *
+	 * The target #CpgProperty
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_TARGET,
 	                                 g_param_spec_object ("target",
@@ -153,6 +167,12 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	                                                      CPG_TYPE_PROPERTY,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgLinkAction:equation:
+	 *
+	 * The equation
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_EQUATION,
 	                                 g_param_spec_object ("equation",
@@ -170,6 +190,16 @@ cpg_link_action_init (CpgLinkAction *self)
 	self->priv = CPG_LINK_ACTION_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_link_action_new:
+ * @target: A #CpgProperty
+ * @equation: A #CpgExpression
+ * 
+ * Create a new #CpgLinkAction.
+ *
+ * Returns: A new #CpgLinkAction
+ *
+ **/
 CpgLinkAction *
 cpg_link_action_new (CpgProperty   *target,
                      CpgExpression *equation)
@@ -180,6 +210,15 @@ cpg_link_action_new (CpgProperty   *target,
 	                     NULL);
 }
 
+/**
+ * cpg_link_action_get_target:
+ * @action: A #CpgLinkAction
+ *
+ * Get the target of the action.
+ *
+ * Returns: A #CpgProperty
+ *
+ **/
 CpgProperty *
 cpg_link_action_get_target (CpgLinkAction *action)
 {
@@ -188,6 +227,14 @@ cpg_link_action_get_target (CpgLinkAction *action)
 	return action->priv->target;
 }
 
+/**
+ * cpg_link_action_set_target:
+ * @action: A #CpgLinkAction
+ * @target: A #CpgProperty
+ *
+ * Set the target of the action.
+ *
+ **/
 void
 cpg_link_action_set_target (CpgLinkAction *action,
                             CpgProperty   *target)
@@ -203,6 +250,15 @@ cpg_link_action_set_target (CpgLinkAction *action,
 	}
 }
 
+/**
+ * cpg_link_action_get_equation:
+ * @action: A #CpgLinkAction
+ *
+ * Get the equation of the action.
+ *
+ * Returns: A #CpgExpression
+ *
+ **/
 CpgExpression *
 cpg_link_action_get_equation (CpgLinkAction *action)
 {
@@ -211,6 +267,14 @@ cpg_link_action_get_equation (CpgLinkAction *action)
 	return action->priv->equation;
 }
 
+/**
+ * cpg_link_action_set_equation:
+ * @action: A #CpgLinkAction
+ * @equation: A #CpgExpression
+ *
+ * Set the equation of the action.
+ *
+ **/
 void
 cpg_link_action_set_equation (CpgLinkAction *action,
                               CpgExpression *equation)
@@ -226,6 +290,16 @@ cpg_link_action_set_equation (CpgLinkAction *action,
 	}
 }
 
+/**
+ * cpg_link_action_depends:
+ * @action: A #CpgLinkAction
+ * @property: A #CpgProperty
+ *
+ * Check whether the action depends on a certain property.
+ *
+ * Returns: %TRUE if the action depends on @property, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_link_action_depends (CpgLinkAction *action,
                          CpgProperty   *property)

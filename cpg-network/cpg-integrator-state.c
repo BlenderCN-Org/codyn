@@ -416,6 +416,15 @@ cpg_integrator_state_direct_link_actions (CpgIntegratorState *state)
 	return state->priv->direct_link_actions;
 }
 
+/**
+ * cpg_integrator_state_get_object:
+ * @state: A #CpgIntegratorState
+ *
+ * Get the object of the integrator state.
+ *
+ * Returns: A #CpgObject
+ *
+ **/
 CpgObject *
 cpg_integrator_state_get_object (CpgIntegratorState *state)
 {

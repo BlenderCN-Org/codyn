@@ -65,6 +65,7 @@ struct _CpgObject
  * @has_property: has property virtual function
  * @add_property: add property virtual function
  * @remove_property: remove property virtual function
+ * @verify_remove_property: verify remove property virtual function
  * @clear: clear virtual function
  * @equal: equal virtual function
  * @compiled: compiled signal default handler

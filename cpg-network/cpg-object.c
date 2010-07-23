@@ -759,6 +759,14 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              1,
 		              CPG_TYPE_OBJECT);
 
+	/**
+	 * CpgObject::property-added:
+	 * @object: a #CpgObject
+	 * @property: the added #CpgProperty
+	 *
+	 * Emitted when a property is added to the object
+	 *
+	 **/
 	object_signals[PROPERTY_ADDED] =
 		g_signal_new ("property-added",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -772,6 +780,14 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              1,
 		              CPG_TYPE_PROPERTY);
 
+	/**
+	 * CpgObject::property-removed:
+	 * @object: a #CpgObject
+	 * @property: the removed #CpgProperty
+	 *
+	 * Emitted when a property is removed from the object
+	 *
+	 **/
 	object_signals[PROPERTY_REMOVED] =
 		g_signal_new ("property-removed",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -785,6 +801,14 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              1,
 		              CPG_TYPE_PROPERTY);
 
+	/**
+	 * CpgObject::property-changed:
+	 * @object: a #CpgObject
+	 * @property: the changed #CpgProperty
+	 *
+	 * Emitted when the expression of a property of the object has changed
+	 *
+	 **/
 	object_signals[PROPERTY_CHANGED] =
 		g_signal_new ("property-changed",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -1352,6 +1376,16 @@ cpg_object_is_compiled (CpgObject *object)
 	return object->priv->compiled;
 }
 
+/**
+ * cpg_object_apply_template:
+ * @object: A #CpgObject
+ * @templ: The template
+ * 
+ * Apply a template to the object. This will apply all of the characteristics
+ * of the template to the object. Note that @object should be of the same type,
+ * or inheriting from, the type of @templ.
+ *
+ **/
 void
 cpg_object_apply_template (CpgObject *object,
                            CpgObject *templ)

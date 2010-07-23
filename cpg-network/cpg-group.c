@@ -827,6 +827,14 @@ cpg_group_class_init (CpgGroupClass *klass)
 	                                                      CPG_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+	/**
+	 * CpgGroup::child-added:
+	 * @object: a #CpgObject
+	 * @action: the added #CpgObject
+	 *
+	 * Emitted when a child object is added to the group
+	 *
+	 **/
 	group_signals[CHILD_ADDED] =
 		g_signal_new ("child-added",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -840,6 +848,14 @@ cpg_group_class_init (CpgGroupClass *klass)
 		              1,
 		              CPG_TYPE_OBJECT);
 
+	/**
+	 * CpgGroup::child-removed:
+	 * @object: a #CpgObject
+	 * @action: the removed #CpgObject
+	 *
+	 * Emitted when a child object is removed from the group
+	 *
+	 **/
 	group_signals[CHILD_REMOVED] =
 		g_signal_new ("child-removed",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -1134,10 +1150,20 @@ cpg_group_find_property (CpgGroup    *group,
 	return ret;
 }
 
-
+/**
+ * cpg_group_property_is_proxy:
+ * @group: A #CpgGroup
+ * @name: The property name
+ *
+ * Check whether a property on the group is a proxied property from the
+ * groups' proxy object.
+ *
+ * Returns: %TRUE if @name is a property on the proxy, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_group_property_is_proxy (CpgGroup    *group,
-                             const gchar *name)
+                             gchar const *name)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);

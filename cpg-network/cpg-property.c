@@ -469,6 +469,14 @@ cpg_property_reset_cache (CpgProperty *property)
 	cpg_expression_reset_cache (property->priv->expression);
 }
 
+/**
+ * cpg_property_reset:
+ * @property: A #CpgProperty
+ *
+ * Reset the property. This will reset the value of the property to the
+ * stored string representation.
+ *
+ **/
 void
 cpg_property_reset (CpgProperty *property)
 {

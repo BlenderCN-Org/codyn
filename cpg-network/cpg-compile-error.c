@@ -80,6 +80,17 @@ cpg_compile_error_new ()
 	return res;
 }
 
+/**
+ * cpg_compile_error_set:
+ * @error: A #CpgCompileError
+ * @gerror: A #GError
+ * @object: A #CpgObject
+ * @property: A #CpgProperty
+ * @action: A #CpgLinkAction
+ *
+ * Set compile error information.
+ *
+ **/
 void
 cpg_compile_error_set (CpgCompileError *error,
                        GError          *gerror,

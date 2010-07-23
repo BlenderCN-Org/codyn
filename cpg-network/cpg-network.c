@@ -79,7 +79,10 @@ cpg_network_finalize (GObject *object)
 {
 	CpgNetwork *network = CPG_NETWORK (object);
 
-	g_object_unref (network->priv->file);
+	if (network->priv->file)
+	{
+		g_object_unref (network->priv->file);
+	}
 
 	cpg_object_clear (CPG_OBJECT (network));
 
@@ -122,6 +125,54 @@ cpg_network_get_property (GObject     *object,
 }
 
 static void
+set_integrator (CpgNetwork    *network,
+                CpgIntegrator *integrator)
+{
+	if (network->priv->integrator == integrator)
+	{
+		return;
+	}
+
+	if (network->priv->integrator)
+	{
+		g_object_unref (network->priv->integrator);
+		network->priv->integrator = NULL;
+	}
+
+	if (integrator)
+	{
+		network->priv->integrator = g_object_ref (integrator);
+
+		g_object_set (network->priv->integrator,
+		              "object", network,
+		              NULL);
+	}
+
+	cpg_object_taint (CPG_OBJECT (network));
+
+	g_object_notify (G_OBJECT (network), "integrator");
+
+}
+
+static void
+set_file (CpgNetwork *network,
+          GFile      *file)
+{
+	if (network->priv->file)
+	{
+		g_object_unref (network->priv->file);
+		network->priv->file = NULL;
+	}
+
+	if (file)
+	{
+		network->priv->file = g_file_dup (file);
+	}
+
+	g_object_notify (G_OBJECT (network), "file");
+}
+
+static void
 cpg_network_set_property (GObject       *object,
                           guint          prop_id,
                           const GValue  *value,
@@ -132,25 +183,11 @@ cpg_network_set_property (GObject       *object,
 	switch (prop_id)
 	{
 		case PROP_INTEGRATOR:
-			if (self->priv->integrator == g_value_get_object (value))
-			{
-				return;
-			}
-
-			if (self->priv->integrator)
-			{
-				g_object_unref (self->priv->integrator);
-			}
-
-			self->priv->integrator = g_value_dup_object (value);
-			g_object_set (self->priv->integrator, "object", self, NULL);
-
-			cpg_object_taint (CPG_OBJECT (self));
+			set_integrator (self, CPG_INTEGRATOR (g_value_get_object (value)));
 		break;
 		case PROP_FILE:
 		{
-			GFile *file = g_value_get_object (value);
-			self->priv->file = file ? g_file_dup (file) : NULL;
+			set_file (self, G_FILE (g_value_get_object (value)));
 		}
 		break;
 		default:
@@ -414,6 +451,17 @@ cpg_network_new ()
 	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
 
+/**
+ * cpg_network_load_from_file:
+ * @network: A #CpgNetwork
+ * @file: The file to load
+ * @error: A #GError
+ * 
+ * Load a network from a file into an existing network instance.
+ *
+ * Returns: %TRUE if the file could be loaded, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_network_load_from_file (CpgNetwork  *network,
                             GFile       *file,
@@ -422,7 +470,7 @@ cpg_network_load_from_file (CpgNetwork  *network,
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_FILE (file), FALSE);
 
-	g_object_set (network, "file", file, NULL);
+	set_file (network, file);
 
 	cpg_object_clear (CPG_OBJECT (network));
 
@@ -441,6 +489,17 @@ cpg_network_load_from_file (CpgNetwork  *network,
 	return ret;
 }
 
+/**
+ * cpg_network_load_from_path:
+ * @network: A #CpgNetwork
+ * @path: The filename of the file to load
+ * @error: A #GError
+ * 
+ * Load a network from a path into an existing network instance.
+ *
+ * Returns: %TRUE if the path could be loaded, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_network_load_from_path (CpgNetwork   *network,
                             const gchar  *path,
@@ -456,6 +515,17 @@ cpg_network_load_from_path (CpgNetwork   *network,
 	return ret;
 }
 
+/**
+ * cpg_network_load_from_xml:
+ * @network: A #CpgNetwork
+ * @xml: The xml to load
+ * @error: A #GError
+ * 
+ * Load a network from xml into an existing network instance.
+ *
+ * Returns: %TRUE if the xml could be loaded, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_network_load_from_xml (CpgNetwork   *network,
                            const gchar  *xml,
@@ -491,7 +561,6 @@ cpg_network_load_from_xml (CpgNetwork   *network,
 	g_object_unref (deserializer);
 
 	return ret;
-
 }
 
 /**
@@ -801,7 +870,7 @@ cpg_network_set_integrator (CpgNetwork    *network,
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
 
-	g_object_set (network, "integrator", integrator, NULL);
+	set_integrator (network, integrator);
 }
 
 /**
@@ -855,6 +924,15 @@ cpg_network_get_function_group (CpgNetwork *network)
 	return network->priv->function_group;
 }
 
+/**
+ * cpg_network_get_file:
+ * @network: A #CpgNetwork
+ *
+ * Get the file with which the network was loaded.
+ *
+ * Returns: The file or %NULL if the network was not loaded from file.
+ *
+ **/
 GFile *
 cpg_network_get_file (CpgNetwork *network)
 {

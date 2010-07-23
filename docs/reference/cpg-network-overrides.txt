@@ -59,6 +59,10 @@ struct _CpgObjectClass
 	                                  const gchar  *name,
 	                                  GError      **error);
 
+	gboolean      (*verify_remove_property) (CpgObject    *object,
+	                                         const gchar  *name,
+	                                         GError      **error);
+
 	void          (*clear)           (CpgObject    *object);
 
 	gboolean      (*equal)           (CpgObject    *first,

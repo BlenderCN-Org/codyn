@@ -39,6 +39,8 @@ cpg_expression_set_from_string
 cpg_expression_reset_cache
 cpg_expression_get_instructions
 cpg_expression_set_instructions
+cpg_expression_get_once
+cpg_expression_set_once
 <SUBSECTION Standard>
 CPG_EXPRESSION
 CPG_IS_EXPRESSION
@@ -82,6 +84,8 @@ cpg_object_copy
 cpg_object_apply_template
 cpg_object_get_auto_imported
 cpg_object_set_auto_imported
+cpg_object_get_full_id
+cpg_object_verify_remove_property
 <SUBSECTION Standard>
 CPG_OBJECT
 CPG_IS_OBJECT
@@ -142,18 +146,35 @@ cpg_link_remove_action
 cpg_link_get_actions
 cpg_link_get_action
 cpg_link_attach
-cpg_link_action_get_expression
-cpg_link_action_get_target
-cpg_link_action_set_target
-cpg_link_action_depends
 <SUBSECTION Standard>
 CPG_LINK
 CPG_IS_LINK
 CPG_TYPE_LINK
-cpg_link_action_get_type
 CPG_LINK_CLASS
 CPG_IS_LINK_CLASS
 CPG_LINK_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>cpg-link-action</FILE>
+<TITLE>CpgLinkAction</TITLE>
+CPG_LINK_ACTION_CONST
+CpgLinkActionClass
+CpgLinkActionPrivate
+cpg_link_action_get_type
+cpg_link_action_depends
+cpg_link_action_get_equation
+cpg_link_action_get_target
+cpg_link_action_new
+cpg_link_action_set_equation
+cpg_link_action_set_target
+<SUBSECTION Standard>
+CPG_LINK_ACTION
+CPG_IS_LINK_ACTION
+CPG_TYPE_LINK_ACTION
+CPG_LINK_ACTION_CLASS
+CPG_IS_LINK_ACTION_CLASS
+CPG_LINK_ACTION_GET_CLASS
 </SECTION>
 
 <SECTION>
@@ -223,6 +244,7 @@ cpg_group_foreach
 cpg_group_get_child
 cpg_group_find_object
 cpg_group_find_property
+cpg_group_property_is_proxy
 <SUBSECTION Standard>
 CPG_GROUP
 CPG_IS_GROUP
@@ -315,13 +337,15 @@ cpg_network_new
 cpg_network_new_from_file
 cpg_network_new_from_path
 cpg_network_new_from_xml
-cpg_network_set_integrator
-cpg_network_get_integrator
-cpg_network_write_to_xml
-cpg_network_write_to_file
+cpg_network_load_from_file
+cpg_network_load_from_path
+cpg_network_load_from_xml
 cpg_network_merge
 cpg_network_merge_from_file
 cpg_network_merge_from_xml
+cpg_network_merge_from_path
+cpg_network_set_integrator
+cpg_network_get_integrator
 cpg_network_run
 cpg_network_step
 cpg_network_get_file
@@ -366,6 +390,7 @@ cpg_network_serializer_new
 cpg_network_serializer_serialize
 cpg_network_serializer_serialize_file
 cpg_network_serializer_serialize_path
+cpg_network_serializer_serialize_memory
 <SUBSECTION Standard>
 CPG_NETWORK_SERIALIZER
 CPG_NETWORK_SERIALIZER_CLASS
@@ -468,6 +493,7 @@ cpg_property_set_update
 cpg_property_get_update
 cpg_property_flags_from_string
 cpg_property_flags_to_string
+cpg_property_reset
 <SUBSECTION Standard>
 CPG_PROPERTY
 CPG_IS_PROPERTY

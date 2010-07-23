@@ -332,6 +332,14 @@ cpg_link_class_init (CpgLinkClass *klass)
 	cpgobject_class->compile = cpg_link_compile_impl;
 	cpgobject_class->equal = cpg_link_equal_impl;
 
+	/**
+	 * CpgLink::action-added:
+	 * @object: a #CpgObject
+	 * @action: the added #CpgLinkAction
+	 *
+	 * Emitted when a link action is added to the link
+	 *
+	 **/
 	signals[ACTION_ADDED] =
 		g_signal_new ("action-added",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -345,6 +353,14 @@ cpg_link_class_init (CpgLinkClass *klass)
 		              1,
 		              CPG_TYPE_LINK_ACTION);
 
+	/**
+	 * CpgLink::action-removed:
+	 * @object: a #CpgObject
+	 * @action: the removed #CpgLinkAction
+	 *
+	 * Emitted when a link action is removed from the link
+	 *
+	 **/
 	signals[ACTION_REMOVED] =
 		g_signal_new ("action-removed",
 		              G_OBJECT_CLASS_TYPE (object_class),
@@ -418,7 +434,7 @@ cpg_link_new (gchar const  *id,
  * cpg_link_add_action:
  * @link: the #CpgLink
  * @target: the target #CpgProperty
- * @expression: the expression to evaluate and push to @target
+ * @equation: the expression to evaluate and push to @target
  *
  * Add a new action to be performed when the link is evaluated during
  * simulation. An action consists of a target property and an expression

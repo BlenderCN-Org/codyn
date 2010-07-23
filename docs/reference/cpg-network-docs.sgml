@@ -28,6 +28,7 @@
     <xi:include href="xml/cpg-property.xml"/>
     <xi:include href="xml/cpg-state.xml"/>
     <xi:include href="xml/cpg-link.xml"/>
+    <xi:include href="xml/cpg-link-action.xml"/>
     <xi:include href="xml/cpg-group.xml"/>
     <xi:include href="xml/cpg-import.xml"/>
     <xi:include href="xml/cpg-import-alias.xml"/>
