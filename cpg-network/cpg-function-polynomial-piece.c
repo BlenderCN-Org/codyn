@@ -277,7 +277,7 @@ cpg_function_polynomial_piece_init (CpgFunctionPolynomialPiece *self)
  * @end: The polynomial interval end
  * @coefficients: The coefficients
  * @num_coefficients: The number of coefficients provided in @coefficients
- * 
+ *
  * Create a new polynomial to be used in a piecewise polynomial function. The
  * coefficients are specified from high to low order.
  *
@@ -317,7 +317,7 @@ cpg_function_polynomial_piece_copy (CpgFunctionPolynomialPiece *piece)
 /**
  * cpg_function_polynomial_piece_get_begin:
  * @piece: A #CpgFunctionPolynomialPiece
- * 
+ *
  * Get the interval begin of the polynomial.
  *
  * Returns: the interval begin of the polynomial
@@ -335,7 +335,7 @@ cpg_function_polynomial_piece_get_begin (CpgFunctionPolynomialPiece *piece)
  * cpg_function_polynomial_piece_set_begin:
  * @piece: A #CpgFunctionPolynomialPiece
  * @begin: the interval begin of the polynomial
- * 
+ *
  * Set the interval begin of the polynomial.
  *
  **/
@@ -351,7 +351,7 @@ cpg_function_polynomial_piece_set_begin (CpgFunctionPolynomialPiece *piece,
 /**
  * cpg_function_polynomial_piece_get_end:
  * @piece: A #CpgFunctionPolynomialPiece
- * 
+ *
  * Get the interval end of the polynomial.
  *
  * Returns: the interval end of the polynomial
@@ -369,7 +369,7 @@ cpg_function_polynomial_piece_get_end (CpgFunctionPolynomialPiece *piece)
  * cpg_function_polynomial_piece_set_end:
  * @piece: A #CpgFunctionPolynomialPiece
  * @end: the interval end of the polynomial
- * 
+ *
  * Set the interval end of the polynomial.
  *
  **/
@@ -385,12 +385,12 @@ cpg_function_polynomial_piece_set_end (CpgFunctionPolynomialPiece *piece,
 /**
  * cpg_function_polynomial_piece_get_coefficients:
  * @piece: A #CpgFunctionPolynomialPiece
- * @num: Return value for the number of coefficients
- * 
+ * @num: (out caller-allocates): Return value for the number of coefficients
+ *
  * Get the polynomial coefficients. The order of the coefficients is from high
  * to low
  *
- * Returns: the polynomial coefficients
+* Returns: (array type=double length=num): the polynomial coefficients
  *
  **/
 gdouble	const *
@@ -408,9 +408,9 @@ cpg_function_polynomial_piece_get_coefficients (CpgFunctionPolynomialPiece *piec
 /**
  * cpg_function_polynomial_piece_set_coefficients:
  * @piece: A #CpgFunctionPolynomialPiece
- * @coefficients: The polynomial coefficients
+ * @coefficients: (array type=double length=num): The polynomial coefficients
  * @num: The number of coefficients provided in @coefficients
- * 
+ *
  * Set the coefficients of the polynomial. The order of the coefficients is
  * from high to low.
  *
@@ -427,14 +427,14 @@ cpg_function_polynomial_piece_set_coefficients (CpgFunctionPolynomialPiece *piec
 }
 
 /**
- * cpg_function_polynomial_piece_get_coefficients:
+ * cpg_function_polynomial_piece_get_normalization:
  * @piece: A #CpgFunctionPolynomialPiece
- * @num: Return value for the number of coefficients
- * 
- * Get the polynomial coefficients. The order of the coefficients is from high
+ * @num: (out caller-allocates): Return value for the number of coefficients
+ *
+ * Get the polynomial normalization. The order of the normalization is from high
  * to low
  *
- * Returns: the polynomial coefficients
+ * Returns: (array type=double length=num): the polynomial coefficients
  *
  **/
 gdouble	const *
