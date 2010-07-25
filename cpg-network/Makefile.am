@@ -39,6 +39,12 @@ COMMON_SOURCES = 		\
 	cpg-state.c \
 	cpg-tokenizer.c
 
+BUILT_SOURCES = \
+	cpg-enum-types.c \
+	cpg-enum-types.h \
+	cpg-marshal.c \
+	cpg-marshal.h
+
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-network-xml.h \
@@ -105,7 +111,7 @@ libcpg_network_2_0_la_SOURCES = $(COMMON_SOURCES)
 
 libcpg_network_2_0_include_HEADERS = $(libcpg_network_headers)
 
-CLEANFILES = cpg-enum-types.c cpg-enum-types.h
+CLEANFILES = $(BUILT_SOURCES)
 
 EXTRA_DIST = \
 	$(NOINST_H_FILES) \
