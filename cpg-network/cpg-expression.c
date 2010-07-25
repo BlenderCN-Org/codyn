@@ -4,7 +4,6 @@
 #include "cpg-tokenizer.h"
 #include "cpg-math.h"
 #include "cpg-debug.h"
-#include "cpg-ref-counted-private.h"
 #include "cpg-compile-error.h"
 #include "cpg-function.h"
 #include "cpg-instructions.h"

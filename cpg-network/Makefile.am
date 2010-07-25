@@ -14,6 +14,7 @@ COMMON_SOURCES = 		\
 	cpg-function.c \
 	cpg-function-argument.c \
 	cpg-function-polynomial.c \
+	cpg-function-polynomial-piece.c \
 	cpg-group.c \
 	cpg-instructions.c \
 	cpg-integrator.c \
@@ -34,13 +35,11 @@ COMMON_SOURCES = 		\
 	cpg-network-serializer.c \
 	cpg-object.c \
 	cpg-property.c \
-	cpg-ref-counted.c \
 	cpg-stack.c \
 	cpg-state.c \
 	cpg-tokenizer.c
 
 NOINST_H_FILES = \
-	cpg-ref-counted-private.h \
 	cpg-tokenizer.h \
 	cpg-network-xml.h \
 	cpg-stack-private.h \
@@ -54,6 +53,7 @@ INST_H_FILES = \
 	cpg-function.h \
 	cpg-function-argument.h \
 	cpg-function-polynomial.h \
+	cpg-function-polynomial-piece.h \
 	cpg-group.h \
 	cpg-instructions.h \
 	cpg-integrator-euler.h \
@@ -74,7 +74,6 @@ INST_H_FILES = \
 	cpg-network-serializer.h \
 	cpg-object.h \
 	cpg-property.h \
-	cpg-ref-counted.h \
 	cpg-stack.h \
 	cpg-state.h \
 	cpg-utils.h

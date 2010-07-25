@@ -714,7 +714,7 @@ parse_function_arguments (CpgNetworkDeserializer *deserializer,
 
 		CpgFunctionArgument *argument = cpg_function_argument_new (name, optional, default_value);
 		cpg_function_add_argument (function, argument);
-		cpg_ref_counted_unref (argument);
+		g_object_unref (argument);
 	}
 
 	return TRUE;

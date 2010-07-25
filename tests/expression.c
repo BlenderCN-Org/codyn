@@ -18,7 +18,7 @@ expression_initialize_context (gchar const *exp, CpgObject *context)
 	cpg_compile_context_prepend_object (ctx, context);
 
 	gboolean ret = cpg_expression_compile (expression, ctx, NULL);
-	cpg_ref_counted_unref (ctx);
+	g_object_unref (ctx);
 
 	if (!ret)
 	{

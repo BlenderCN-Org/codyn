@@ -1,7 +1,6 @@
 #include "cpg-function.h"
 #include "cpg-compile-error.h"
 #include "cpg-debug.h"
-#include "cpg-ref-counted-private.h"
 
 /**
  * SECTION:cpg-function
@@ -484,19 +483,18 @@ on_argument_optional_changed (CpgFunctionArgument *argument,
 		function->priv->arguments =
 				g_list_remove (function->priv->arguments,
 				               argument);
-
 		if (item)
 		{
 			function->priv->arguments =
 				g_list_insert_before (function->priv->arguments,
-					              item,
-					              argument);
+				                      item,
+				                      argument);
 		}
 		else
 		{
 			function->priv->arguments =
 				g_list_append (function->priv->arguments,
-					       argument);
+				               argument);
 		}
 	}
 
@@ -508,8 +506,6 @@ on_argument_optional_changed (CpgFunctionArgument *argument,
 	{
 		--function->priv->n_optional;
 	}
-
-	/* TODO: emit reordered */
 }
 
 /**

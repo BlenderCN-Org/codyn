@@ -2,6 +2,7 @@
 #define __CPG_FUNCTION_POLYNOMIAL_H__
 
 #include <cpg-network/cpg-function.h>
+#include <cpg-network/cpg-function-polynomial-piece.h>
 
 G_BEGIN_DECLS
 
@@ -17,8 +18,6 @@ typedef struct _CpgFunctionPolynomial			CpgFunctionPolynomial;
 typedef struct _CpgFunctionPolynomialClass		CpgFunctionPolynomialClass;
 typedef struct _CpgFunctionPolynomialPrivate	CpgFunctionPolynomialPrivate;
 
-typedef struct _CpgFunctionPolynomialPiece		CpgFunctionPolynomialPiece;
-
 struct _CpgFunctionPolynomial
 {
 	/*< private >*/
@@ -33,43 +32,21 @@ struct _CpgFunctionPolynomialClass
 	CpgFunctionClass parent_class;
 };
 
-GType cpg_function_polynomial_get_type (void) G_GNUC_CONST;
-
-GType cpg_function_polynomial_piece_get_type (void);
+GType         cpg_function_polynomial_get_type   (void) G_GNUC_CONST;
 
 CpgFunctionPolynomial *
-			 cpg_function_polynomial_new 			(const gchar           *name);
+              cpg_function_polynomial_new        (const gchar                *name);
 
-CpgFunctionPolynomialPiece *
-			 cpg_function_polynomial_piece_new		(gdouble  begin,
-													 gdouble  end,
-													 gdouble *coefficients,
-													 guint    num_coefficients);
 
-void		 cpg_function_polynomial_add 			(CpgFunctionPolynomial *function,
-													 CpgFunctionPolynomialPiece *piece);
+void          cpg_function_polynomial_add        (CpgFunctionPolynomial      *function,
+                                                  CpgFunctionPolynomialPiece *piece);
 
-void 		 cpg_function_polynomial_remove 		(CpgFunctionPolynomial      *function,
-													 CpgFunctionPolynomialPiece *piece);
+void          cpg_function_polynomial_remove     (CpgFunctionPolynomial      *function,
+                                                  CpgFunctionPolynomialPiece *piece);
 
-void		 cpg_function_polynomial_clear			(CpgFunctionPolynomial *function);
+void          cpg_function_polynomial_clear      (CpgFunctionPolynomial      *function);
 
-GSList const	*cpg_function_polynomial_get_pieces		(CpgFunctionPolynomial *function);
-
-gdouble		 cpg_function_polynomial_piece_get_begin 	(CpgFunctionPolynomialPiece *piece);
-gdouble		 cpg_function_polynomial_piece_get_end 		(CpgFunctionPolynomialPiece *piece);
-
-void		 cpg_function_polynomial_piece_set_begin 	(CpgFunctionPolynomialPiece *piece,
-														 gdouble                     begin);
-void		 cpg_function_polynomial_piece_set_end 		(CpgFunctionPolynomialPiece *piece,
-														 gdouble                     end);
-
-gdouble		*cpg_function_polynomial_piece_get_coefficients (CpgFunctionPolynomialPiece *piece,
-															 guint                      *num);
-
-void		 cpg_function_polynomial_piece_set_coefficients (CpgFunctionPolynomialPiece *piece,
-															 gdouble                    *coefficients,
-															 guint                       num);
+GSList const *cpg_function_polynomial_get_pieces (CpgFunctionPolynomial      *function);
 
 G_END_DECLS
 

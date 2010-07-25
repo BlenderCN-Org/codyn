@@ -2,13 +2,35 @@
 #define __CPG_COMPILE_ERROR_H__
 
 #include <glib-object.h>
-#include <cpg-network/cpg-ref-counted.h>
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-link.h>
 
 G_BEGIN_DECLS
 
-#define CPG_TYPE_COMPILE_ERROR (cpg_compile_error_get_type ())
+#define CPG_TYPE_COMPILE_ERROR			(cpg_compile_error_get_type ())
+#define CPG_COMPILE_ERROR(obj)			(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_COMPILE_ERROR, CpgCompileError))
+#define CPG_COMPILE_ERROR_CONST(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_COMPILE_ERROR, CpgCompileError const))
+#define CPG_COMPILE_ERROR_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_COMPILE_ERROR, CpgCompileErrorClass))
+#define CPG_IS_COMPILE_ERROR(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_COMPILE_ERROR))
+#define CPG_IS_COMPILE_ERROR_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_COMPILE_ERROR))
+#define CPG_COMPILE_ERROR_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_COMPILE_ERROR, CpgCompileErrorClass))
+
+typedef struct _CpgCompileError		CpgCompileError;
+typedef struct _CpgCompileErrorClass	CpgCompileErrorClass;
+typedef struct _CpgCompileErrorPrivate	CpgCompileErrorPrivate;
+
+struct _CpgCompileError
+{
+	GObject parent;
+
+	CpgCompileErrorPrivate *priv;
+};
+
+struct _CpgCompileErrorClass
+{
+	GObjectClass parent_class;
+};
+
 #define CPG_COMPILE_ERROR_TYPE (cpg_compile_error_type_quark ())
 
 /**
@@ -33,13 +55,10 @@ typedef enum
 	CPG_COMPILE_ERROR_NUM_ERRORS
 } CpgCompileErrorCode;
 
-typedef struct _CpgCompileError CpgCompileError;
+GType            cpg_compile_error_get_type         (void) G_GNUC_CONST;
+CpgCompileError *cpg_compile_error_new              (void);
 
 GQuark           cpg_compile_error_type_quark       (void);
-
-GType            cpg_compile_error_get_type         (void);
-
-CpgCompileError *cpg_compile_error_new              (void);
 
 void             cpg_compile_error_set              (CpgCompileError *error,
                                                      GError          *gerror,

@@ -285,7 +285,7 @@ cpg_network_compile_impl (CpgObject         *object,
 	}
 	else
 	{
-		cpg_ref_counted_ref (context);
+		g_object_ref (context);
 	}
 
 	cpg_compile_context_prepend_object (context, CPG_OBJECT (network->priv->integrator));
@@ -305,7 +305,7 @@ cpg_network_compile_impl (CpgObject         *object,
 		                                                            error);
 	}
 
-	cpg_ref_counted_unref (context);
+	g_object_unref (context);
 
 	if (!ret)
 	{

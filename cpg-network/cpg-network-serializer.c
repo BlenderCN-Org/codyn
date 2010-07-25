@@ -662,8 +662,10 @@ write_function_polynomial (CpgNetworkSerializer  *serializer,
 		GString *str = g_string_new ("");
 		guint num;
 		guint i;
-		gdouble *coefficients = cpg_function_polynomial_piece_get_coefficients (piece,
-		                                                                        &num);
+		gdouble const *coefficients;
+
+		coefficients = cpg_function_polynomial_piece_get_coefficients (piece,
+		                                                               &num);
 
 		for (i = 0; i < num; ++i)
 		{

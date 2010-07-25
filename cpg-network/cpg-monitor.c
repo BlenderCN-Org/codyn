@@ -3,7 +3,6 @@
 #include "cpg-monitor.h"
 #include "cpg-property.h"
 #include "cpg-utils.h"
-#include "cpg-ref-counted-private.h"
 #include "cpg-network.h"
 #include "cpg-expression.h"
 
