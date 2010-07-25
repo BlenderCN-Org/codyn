@@ -91,6 +91,22 @@ cpg_link_get_property (GObject     *object,
 }
 
 static void
+update_action_property (CpgLink       *link,
+                        CpgLinkAction *action)
+{
+	gchar const *target = cpg_link_action_get_target (action);
+	CpgProperty *prop = NULL;
+
+	if (link->priv->to)
+	{
+		prop =  cpg_object_get_property (link->priv->to, target);
+	}
+
+	_cpg_link_action_set_property (action, prop);
+}
+
+
+static void
 resolve_link_actions (CpgLink *link)
 {
 	GSList *item;
@@ -98,27 +114,7 @@ resolve_link_actions (CpgLink *link)
 
 	for (item = copy; item; item = g_slist_next (item))
 	{
-		CpgLinkAction *action = item->data;
-
-		CpgProperty *targ = cpg_link_action_get_target (action);
-
-		if (cpg_property_get_object (targ) == link->priv->to)
-		{
-			continue;
-		}
-
-		CpgProperty *prop;
-
-		prop = cpg_object_get_property (link->priv->to,
-		                                cpg_property_get_name (targ));
-
-		if (prop == NULL)
-		{
-			/* Make a dummy, maybe it comes later */
-			prop = cpg_property_copy (targ);
-		}
-
-		cpg_link_action_set_target (action, prop);
+		update_action_property (link, item->data);
 	}
 
 	g_slist_free (copy);
@@ -219,6 +215,25 @@ cpg_link_set_property (GObject       *object,
 }
 
 static void
+on_action_target_changed (CpgLinkAction *action,
+                          GParamSpec    *spec,
+                          CpgLink       *link)
+{
+	update_action_property (link, action);
+}
+
+static void
+remove_action (CpgLink       *link,
+               CpgLinkAction *action)
+{
+	_cpg_link_action_set_property (action, NULL);
+
+	g_signal_handlers_disconnect_by_func (action,
+	                                      on_action_target_changed,
+	                                      link);
+}
+
+static void
 cpg_link_dispose (GObject *object)
 {
 	CpgLink *link = CPG_LINK (object);
@@ -226,9 +241,15 @@ cpg_link_dispose (GObject *object)
 	set_to (link, NULL);
 	set_from (link, NULL);
 
-	g_slist_foreach (link->priv->actions, (GFunc)g_object_unref, NULL);
-	g_slist_free (link->priv->actions);
+	GSList *item;
 
+	for (item = link->priv->actions; item; item = g_slist_next (item))
+	{
+		remove_action (link, item->data);
+		g_object_unref (item->data);
+	}
+
+	g_slist_free (link->priv->actions);
 	link->priv->actions = NULL;
 
 	G_OBJECT_CLASS (cpg_link_parent_class)->dispose (object);
@@ -263,7 +284,7 @@ cpg_link_copy_impl (CpgObject *object,
 		CPG_OBJECT_CLASS (cpg_link_parent_class)->copy (object, source);
 	}
 
-	// Copy over link actions
+	/* Copy over link actions */
 	GSList *item;
 	CpgLink *source_link = CPG_LINK (source);
 	CpgLink *target = CPG_LINK (object);
@@ -480,7 +501,10 @@ cpg_link_new (gchar const  *id,
               CpgObject    *from,
               CpgObject    *to)
 {
-	return g_object_new (CPG_TYPE_LINK, "id", id, "from", from, "to", to, NULL);
+	return g_object_new (CPG_TYPE_LINK,
+	                     "id", id,
+	                     "from", from,
+	                     "to", to, NULL);
 }
 
 /**
@@ -505,55 +529,32 @@ cpg_link_add_action (CpgLink       *link,
 	GSList *item;
 	GSList *copy = g_slist_copy (link->priv->actions);
 
-	CpgProperty *target = cpg_link_action_get_target (action);
+	gchar const *target = cpg_link_action_get_target (action);
 
 	for (item = copy; item; item = g_slist_next (item))
 	{
 		CpgLinkAction *ac = item->data;
-		CpgProperty *targ = cpg_link_action_get_target (ac);
+		gchar const *targ = cpg_link_action_get_target (ac);
 
-		if (!targ || targ != target)
-		{
-			continue;
-		}
-
-		if (action == ac)
+		if (g_strcmp0 (targ, target) == 0)
 		{
 			return FALSE;
 		}
-
-		cpg_link_remove_action (link, action);
 	}
 
 	g_slist_free (copy);
 
-	CpgObject *owner = cpg_property_get_object (target);
-
-	if (link->priv->to)
-	{
-		if (owner != link->priv->to)
-		{
-			CpgProperty *targ = cpg_object_get_property (link->priv->to,
-			                                             cpg_property_get_name (target));
-
-			if (targ)
-			{
-				/* This is actually the one that we need */
-				cpg_link_action_set_target (action, targ);
-			}
-		}
-	}
-	else if (owner)
-	{
-		/* Set it to a dummy for safety */
-		cpg_link_action_set_target (action,
-		                            cpg_property_copy (target));
-	}
+	update_action_property (link, action);
 
 	link->priv->actions = g_slist_append (link->priv->actions,
 	                                      action);
 
 	g_object_ref_sink (action);
+
+	g_signal_connect (action,
+	                  "notify::target",
+	                  G_CALLBACK (on_action_target_changed),
+	                  link);
 
 	cpg_object_taint (CPG_OBJECT (link));
 
@@ -585,7 +586,7 @@ cpg_link_remove_action (CpgLink       *link,
 	{
 		link->priv->actions = g_slist_delete_link (link->priv->actions, item);
 
-		cpg_link_action_set_target (action, NULL);
+		remove_action (link, action);
 
 		g_signal_emit (link, signals[ACTION_REMOVED], 0, action);
 		g_object_unref (action);
@@ -672,9 +673,8 @@ cpg_link_get_action (CpgLink     *link,
 	while (actions)
 	{
 		CpgLinkAction *action = actions->data;
-		CpgProperty *prop = cpg_link_action_get_target (action);
 
-		if (g_strcmp0 (cpg_property_get_name (prop), target) == 0)
+		if (g_strcmp0 (cpg_link_action_get_target (action), target) == 0)
 		{
 			return action;
 		}

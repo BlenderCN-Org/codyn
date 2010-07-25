@@ -62,7 +62,7 @@ test_load ()
 	cpg_assert_tol (cpg_property_get_value (property), 0);
 
 	CpgLinkAction *action = find_action (CPG_GROUP (network), "link.x");
-	g_assert (cpg_link_action_get_target (action) == property);
+	g_assert (_cpg_link_action_get_property (action) == property);
 
 	g_object_unref (network);
 }
@@ -202,7 +202,7 @@ test_group_load ()
 	cpg_assert_tol (cpg_property_get_value (property), 0);
 
 	CpgLinkAction *action = find_action (CPG_GROUP (network), "group.link.x");
-	g_assert (cpg_link_action_get_target (action) == property);
+	g_assert (_cpg_link_action_get_property (action) == property);
 
 	g_object_unref (network);
 }

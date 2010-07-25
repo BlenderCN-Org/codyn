@@ -34,13 +34,15 @@ struct _CpgLinkActionClass
 };
 
 GType          cpg_link_action_get_type      (void) G_GNUC_CONST;
-CpgLinkAction *cpg_link_action_new           (CpgProperty   *target,
+
+CpgLinkAction *cpg_link_action_new           (const gchar   *target,
                                               CpgExpression *equation);
+
 CpgLinkAction *cpg_link_action_copy          (CpgLinkAction *action);
 
-CpgProperty   *cpg_link_action_get_target    (CpgLinkAction *action);
+const gchar   *cpg_link_action_get_target    (CpgLinkAction *action);
 void           cpg_link_action_set_target    (CpgLinkAction *action,
-                                              CpgProperty   *target);
+                                              const gchar   *target);
 
 CpgExpression  *cpg_link_action_get_equation (CpgLinkAction *action);
 void            cpg_link_action_set_equation (CpgLinkAction *action,
@@ -48,6 +50,10 @@ void            cpg_link_action_set_equation (CpgLinkAction *action,
 
 gboolean        cpg_link_action_depends      (CpgLinkAction *action,
                                               CpgProperty   *property);
+
+CpgProperty    *_cpg_link_action_get_property (CpgLinkAction *action);
+void            _cpg_link_action_set_property (CpgLinkAction *action,
+                                               CpgProperty   *property);
 
 G_END_DECLS
 

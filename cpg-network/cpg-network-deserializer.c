@@ -941,7 +941,6 @@ parse_actions (CpgNetworkDeserializer *deserializer,
 {
 	GList *item;
 	CpgLink *link = CPG_LINK (deserializer->priv->object);
-	CpgObject *to = cpg_link_get_to (link);
 
 	for (item = nodes; item; item = g_list_next (item))
 	{
@@ -958,33 +957,6 @@ parse_actions (CpgNetworkDeserializer *deserializer,
 			                      cpg_object_get_id (CPG_OBJECT (link)));
 		}
 
-		/* Find target property in link.to */
-		CpgProperty *property;
-
-		if (to)
-		{
-			property = cpg_object_get_property (to, (gchar const *)target);
-
-			if (!property)
-			{
-				parser_failed (deserializer,
-				               node,
-				               CPG_NETWORK_LOAD_ERROR_LINK,
-				               "Target property %s not found for action on %s",
-				               target,
-				               cpg_object_get_id (to));
-
-				xmlFree (target);
-				return FALSE;
-			}
-		}
-		else
-		{
-			property = cpg_property_new ((gchar const *)target,
-			                             "",
-			                             CPG_PROPERTY_FLAG_NONE);
-		}
-
 		gchar const *expr = "";
 
 		if (node->children && node->children->type == XML_TEXT_NODE)
@@ -993,7 +965,7 @@ parse_actions (CpgNetworkDeserializer *deserializer,
 		}
 
 		cpg_link_add_action (link,
-		                     cpg_link_action_new (property,
+		                     cpg_link_action_new ((gchar const *)target,
 		                                          cpg_expression_new (expr)));
 
 		xmlFree (target);

@@ -12,8 +12,9 @@
 
 struct _CpgLinkActionPrivate
 {
-	CpgProperty *target;
+	gchar *target;
 	CpgExpression *equation;
+	CpgProperty *property;
 
 	guint equation_proxy_id;
 };
@@ -29,26 +30,41 @@ enum
 G_DEFINE_TYPE (CpgLinkAction, cpg_link_action, G_TYPE_INITIALLY_UNOWNED)
 
 static void
-set_target (CpgLinkAction *action,
-            CpgProperty   *target)
+set_property (CpgLinkAction *action,
+              CpgProperty   *property)
 {
-	if (action->priv->target == target)
+	if (action->priv->property == property)
 	{
 		return;
 	}
 
-	if (action->priv->target)
+	if (action->priv->property)
 	{
-		_cpg_property_unuse (action->priv->target);
-		g_object_unref (action->priv->target);
-		action->priv->target = NULL;
+		_cpg_property_unuse (action->priv->property);
+		g_object_unref (action->priv->property);
+		action->priv->property = NULL;
 	}
 
-	if (target)
+	if (property)
 	{
-		action->priv->target = g_object_ref_sink (target);
-		_cpg_property_use (action->priv->target);
+		action->priv->property = g_object_ref_sink (property);
+		_cpg_property_use (action->priv->property);
 	}
+}
+
+static void
+set_target (CpgLinkAction *action,
+            gchar const   *target)
+{
+	if (g_strcmp0 (action->priv->target, target) == 0)
+	{
+		return;
+	}
+
+	g_free (action->priv->target);
+	action->priv->target = g_strdup (target);
+
+	g_object_notify (G_OBJECT (action), "target");
 }
 
 static void
@@ -88,6 +104,16 @@ set_equation (CpgLinkAction *action,
 }
 
 static void
+cpg_link_action_dispose (GObject *object)
+{
+	CpgLinkAction *action = CPG_LINK_ACTION (object);
+
+	set_property (action, NULL);
+
+	G_OBJECT_CLASS (cpg_link_action_parent_class)->dispose (object);
+}
+
+static void
 cpg_link_action_finalize (GObject *object)
 {
 	CpgLinkAction *action = CPG_LINK_ACTION (object);
@@ -109,8 +135,7 @@ cpg_link_action_set_property (GObject      *object,
 	switch (prop_id)
 	{
 		case PROP_TARGET:
-			set_target (self,
-			            CPG_PROPERTY (g_value_get_object (value)));
+			set_target (self, g_value_get_string (value));
 		break;
 		case PROP_EQUATION:
 			set_equation (self,
@@ -150,6 +175,8 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	object_class->finalize = cpg_link_action_finalize;
+	object_class->dispose = cpg_link_action_dispose;
+
 	object_class->set_property = cpg_link_action_set_property;
 	object_class->get_property = cpg_link_action_get_property;
 
@@ -161,10 +188,10 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_TARGET,
-	                                 g_param_spec_object ("target",
+	                                 g_param_spec_string ("target",
 	                                                      "Target",
 	                                                      "Target",
-	                                                      CPG_TYPE_PROPERTY,
+	                                                      NULL,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	/**
@@ -201,7 +228,7 @@ cpg_link_action_init (CpgLinkAction *self)
  *
  **/
 CpgLinkAction *
-cpg_link_action_new (CpgProperty   *target,
+cpg_link_action_new (gchar const   *target,
                      CpgExpression *equation)
 {
 	return g_object_new (CPG_TYPE_LINK_ACTION,
@@ -219,7 +246,7 @@ cpg_link_action_new (CpgProperty   *target,
  * Returns: A #CpgProperty
  *
  **/
-CpgProperty *
+gchar const *
 cpg_link_action_get_target (CpgLinkAction *action)
 {
 	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
@@ -237,17 +264,11 @@ cpg_link_action_get_target (CpgLinkAction *action)
  **/
 void
 cpg_link_action_set_target (CpgLinkAction *action,
-                            CpgProperty   *target)
+                            gchar const   *target)
 {
 	g_return_if_fail (CPG_IS_LINK_ACTION (action));
-	g_return_if_fail (target == NULL || CPG_IS_PROPERTY (target));
 
 	set_target (action, target);
-
-	if (action->priv->target == target)
-	{
-		g_object_notify (G_OBJECT (action), "target");
-	}
 }
 
 /**
@@ -311,12 +332,29 @@ cpg_link_action_depends (CpgLinkAction *action,
 	                     property) != NULL;
 }
 
-
 CpgLinkAction *
 cpg_link_action_copy (CpgLinkAction *action)
 {
 	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
 
-	return cpg_link_action_new (cpg_property_copy (action->priv->target),
+	return cpg_link_action_new (g_strdup (action->priv->target),
 	                            cpg_expression_copy (action->priv->equation));
+}
+
+CpgProperty *
+_cpg_link_action_get_property (CpgLinkAction *action)
+{
+	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
+
+	return action->priv->property;
+}
+
+void
+_cpg_link_action_set_property (CpgLinkAction *action,
+                               CpgProperty   *property)
+{
+	g_return_if_fail (CPG_IS_LINK_ACTION (action));
+	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));
+
+	set_property (action, property);
 }
