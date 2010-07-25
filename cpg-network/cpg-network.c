@@ -718,9 +718,7 @@ cpg_network_merge (CpgNetwork  *network,
 		                              cpg_property_get_name (property)))
 		{
 			cpg_object_add_property (CPG_OBJECT (network),
-			                         cpg_property_get_name (property),
-			                         cpg_expression_get_as_string (cpg_property_get_expression (property)),
-			                         FALSE);
+			                         cpg_property_copy (property));
 		}
 	}
 

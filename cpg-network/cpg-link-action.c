@@ -26,7 +26,7 @@ enum
 	PROP_EQUATION
 };
 
-G_DEFINE_TYPE (CpgLinkAction, cpg_link_action, G_TYPE_OBJECT)
+G_DEFINE_TYPE (CpgLinkAction, cpg_link_action, G_TYPE_INITIALLY_UNOWNED)
 
 static void
 set_target (CpgLinkAction *action,
@@ -46,7 +46,7 @@ set_target (CpgLinkAction *action,
 
 	if (target)
 	{
-		action->priv->target = g_object_ref (target);
+		action->priv->target = g_object_ref_sink (target);
 		_cpg_property_use (action->priv->target);
 	}
 }
@@ -77,7 +77,7 @@ set_equation (CpgLinkAction *action,
 
 	if (equation)
 	{
-		action->priv->equation = g_object_ref (equation);
+		action->priv->equation = g_object_ref_sink (equation);
 
 		action->priv->equation_proxy_id =
 			g_signal_connect_swapped (action->priv->equation,
@@ -311,3 +311,12 @@ cpg_link_action_depends (CpgLinkAction *action,
 	                     property) != NULL;
 }
 
+
+CpgLinkAction *
+cpg_link_action_copy (CpgLinkAction *action)
+{
+	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
+
+	return cpg_link_action_new (cpg_property_copy (action->priv->target),
+	                            cpg_expression_copy (action->priv->equation));
+}

@@ -593,8 +593,8 @@ write_function (CpgNetworkSerializer *serializer,
 	}
 
 	/* Create argument elements */
-	GList *args = cpg_function_get_arguments (func);
-	GList *argitem;
+	GList const *args = cpg_function_get_arguments (func);
+	GList const *argitem;
 
 	for (argitem = args; argitem; argitem = g_list_next (argitem))
 	{

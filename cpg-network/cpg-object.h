@@ -27,9 +27,9 @@ CPG_FORWARD_DECL (CpgCompileError);
 
 /**
  * CpgObjectError:
- * @CPG_OBJECT_ERROR_PROP_UNKNOWN: unknown
- * @CPG_OBJECT_ERROR_PROP_NOT_FOUND: property not found
- * @CPG_OBJECT_ERROR_PROP_IN_USE: property in use
+ * @CPG_OBJECT_ERROR_PROPERTY_UNKNOWN: unknown
+ * @CPG_OBJECT_ERROR_PROPERTY_NOT_FOUND: property not found
+ * @CPG_OBJECT_ERROR_PROPERTY_IN_USE: property in use
  * @CPG_OBJECT_NUM_ERRORS: num errors
  *
  * Enum used to indicate an error when removing a property
@@ -37,9 +37,9 @@ CPG_FORWARD_DECL (CpgCompileError);
  **/
 typedef enum
 {
-	CPG_OBJECT_ERROR_PROP_UNKNOWN,
-	CPG_OBJECT_ERROR_PROP_NOT_FOUND,
-	CPG_OBJECT_ERROR_PROP_IN_USE,
+	CPG_OBJECT_ERROR_PROPERTY_UNKNOWN,
+	CPG_OBJECT_ERROR_PROPERTY_NOT_FOUND,
+	CPG_OBJECT_ERROR_PROPERTY_IN_USE,
 	CPG_OBJECT_NUM_ERRORS
 } CpgObjectError;
 
@@ -108,10 +108,8 @@ struct _CpgObjectClass
 	gboolean      (*has_property)    (CpgObject    *object,
 	                                  const gchar  *name);
 
-	CpgProperty  *(*add_property)    (CpgObject        *object,
-	                                  const gchar      *name,
-	                                  const gchar      *expression,
-	                                  CpgPropertyFlags  flags);
+	gboolean      (*add_property)    (CpgObject    *object,
+	                                  CpgProperty  *property);
 
 	gboolean      (*remove_property) (CpgObject    *object,
 	                                  const gchar  *name,
@@ -153,10 +151,8 @@ const gchar      *cpg_object_get_id          (CpgObject   *object);
 void              cpg_object_set_id          (CpgObject   *object,
                                               const gchar *id);
 
-CpgProperty      *cpg_object_add_property    (CpgObject        *object,
-                                              const gchar      *name,
-                                              const gchar      *expression,
-                                              CpgPropertyFlags  flags);
+gboolean          cpg_object_add_property    (CpgObject   *object,
+                                              CpgProperty *property);
 CpgProperty      *cpg_object_get_property    (CpgObject   *object,
                                               const gchar *name);
 gboolean          cpg_object_has_property    (CpgObject   *object,

@@ -45,9 +45,8 @@ CpgLink       *cpg_link_new                   (const gchar   *id,
 CpgObject     *cpg_link_get_from              (CpgLink       *link);
 CpgObject     *cpg_link_get_to                (CpgLink       *link);
 
-CpgLinkAction *cpg_link_add_action            (CpgLink       *link,
-                                               CpgProperty   *target,
-                                               CpgExpression *equation);
+gboolean       cpg_link_add_action            (CpgLink       *link,
+                                               CpgLinkAction *action);
 
 gboolean       cpg_link_remove_action         (CpgLink       *link,
                                                CpgLinkAction *action);
@@ -58,8 +57,6 @@ CpgLinkAction *cpg_link_get_action            (CpgLink       *link,
 void           cpg_link_attach                (CpgLink       *link,
                                                CpgObject     *from,
                                                CpgObject     *to);
-
-void           _cpg_link_resolve_actions      (CpgLink       *link);
 
 G_END_DECLS
 

@@ -5,8 +5,16 @@
 #include "cpg-utils.h"
 #include "cpg-enum-types.h"
 #include "cpg-object.h"
+#include "cpg-marshal.h"
 
 #define CPG_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY, CpgPropertyPrivate))
+
+/* signals */
+enum
+{
+	INVALIDATE_NAME,
+	NUM_SIGNALS
+};
 
 struct _CpgPropertyPrivate
 {
@@ -20,7 +28,9 @@ struct _CpgPropertyPrivate
 	CpgObject *object;
 };
 
-G_DEFINE_TYPE (CpgProperty, cpg_property, G_TYPE_OBJECT)
+G_DEFINE_TYPE (CpgProperty, cpg_property, G_TYPE_INITIALLY_UNOWNED)
+
+static guint signals[NUM_SIGNALS] = {0,};
 
 enum
 {
@@ -87,7 +97,7 @@ set_expression (CpgProperty *property,
 
 	if (expression)
 	{
-		property->priv->expression = g_object_ref (expression);
+		property->priv->expression = g_object_ref_sink (expression);
 
 		g_object_notify (G_OBJECT (property), "expression");
 
@@ -147,6 +157,30 @@ set_flags (CpgProperty      *property,
 	}
 }
 
+static gboolean
+set_name (CpgProperty *property,
+          gchar const *name)
+{
+	if (g_strcmp0 (property->priv->name, name) == 0)
+	{
+		return TRUE;
+	}
+
+	gboolean invalid = FALSE;
+
+	g_signal_emit (property, signals[INVALIDATE_NAME], 0, name, &invalid);
+
+	if (!invalid)
+	{
+		g_free (property->priv->name);
+		property->priv->name = g_strdup (name);
+
+		g_object_notify (G_OBJECT (property), "name");
+	}
+
+	return !invalid;
+}
+
 static void
 cpg_property_set_property (GObject      *object,
                            guint         prop_id,
@@ -158,8 +192,7 @@ cpg_property_set_property (GObject      *object,
 	switch (prop_id)
 	{
 		case PROP_NAME:
-			g_free (self->priv->name);
-			self->priv->name = g_value_dup_string (value);
+			set_name (self, g_value_get_string (value));
 		break;
 		case PROP_OBJECT:
 			set_object (self, g_value_get_object (value));
@@ -223,8 +256,7 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      "Name",
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE |
-	                                                      G_PARAM_CONSTRUCT_ONLY));
-
+	                                                      G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_OBJECT,
@@ -234,7 +266,6 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      CPG_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
-
 
 	g_object_class_install_property (object_class,
 	                                 PROP_FLAGS,
@@ -246,7 +277,6 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                     G_PARAM_READWRITE |
 	                                                     G_PARAM_CONSTRUCT));
 
-
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPRESSION,
 	                                 g_param_spec_object ("expression",
@@ -255,6 +285,19 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      CPG_TYPE_EXPRESSION,
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
+
+	signals[INVALIDATE_NAME] =
+		g_signal_new ("invalidate-name",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgPropertyClass, invalidate_name),
+		              g_signal_accumulator_true_handled,
+		              NULL,
+		              cpg_marshal_BOOLEAN__STRING,
+		              G_TYPE_BOOLEAN,
+		              1,
+		              G_TYPE_STRING);
+
 }
 
 static void
@@ -268,7 +311,6 @@ cpg_property_init (CpgProperty *self)
  * @name: the property name
  * @expression: the value expression
  * @flags: the property flags
- * @object: (type CpgObject): the #CpgObject to which the property belongs
  *
  * Create a new property object. Property objects are assigned to #CpgObject
  * objects and are of little use on their own. The provided expression will
@@ -280,23 +322,13 @@ cpg_property_init (CpgProperty *self)
 CpgProperty *
 cpg_property_new (gchar const      *name,
                   gchar const      *expression,
-                  CpgPropertyFlags  flags,
-                  CpgObject        *object)
+                  CpgPropertyFlags  flags)
 {
-	CpgExpression *expr;
-	CpgProperty *ret;
-
-	expr = cpg_expression_new (expression);
-
-	ret = g_object_new (CPG_TYPE_PROPERTY,
-	                    "name", name,
-	                    "expression", expr,
-	                    "flags", flags,
-	                    "object", object,
-	                    NULL);
-
-	g_object_unref (expr);
-	return ret;
+	return g_object_new (CPG_TYPE_PROPERTY,
+	                     "name", name,
+	                     "expression", cpg_expression_new (expression),
+	                     "flags", flags,
+	                     NULL);
 }
 
 /**
@@ -407,6 +439,16 @@ cpg_property_get_name (CpgProperty *property)
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
 
 	return property->priv->name;
+}
+
+gboolean
+cpg_property_set_name (CpgProperty *property,
+                       gchar const *name)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
+
+	return set_name (property, name);
 }
 
 /**
@@ -741,8 +783,17 @@ cpg_property_get_full_name (CpgProperty *property)
 	return ret;
 }
 
+/**
+ * cpg_property_copy:
+ * @property: A #CpgProperty
+ *
+ * Make a copy of @property.
+ *
+ * Returns: A #CpgProperty
+ *
+ **/
 CpgProperty *
-_cpg_property_copy (CpgProperty *property)
+cpg_property_copy (CpgProperty *property)
 {
 	CpgProperty *ret;
 
@@ -750,10 +801,8 @@ _cpg_property_copy (CpgProperty *property)
 
 	ret = cpg_property_new (property->priv->name,
 	                        cpg_expression_get_as_string (property->priv->expression),
-	                        property->priv->flags,
-	                        NULL);
+	                        property->priv->flags);
 
-	ret->priv->flags = property->priv->flags;
 	ret->priv->update = property->priv->update;
 
 	return ret;

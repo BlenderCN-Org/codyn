@@ -41,7 +41,7 @@ typedef enum
 struct _CpgProperty
 {
 	/*< private >*/
-	GObject parent;
+	GInitiallyUnowned parent;
 
 	CpgPropertyPrivate *priv;
 };
@@ -49,7 +49,13 @@ struct _CpgProperty
 struct _CpgPropertyClass
 {
 	/*< private >*/
-	GObjectClass parent_class;
+	GInitiallyUnownedClass parent_class;
+
+	/*< public >*/
+
+	/* signals */
+	gboolean (*invalidate_name) (CpgProperty *property,
+	                             const gchar *name);
 };
 
 /* forward declaration */
@@ -57,12 +63,13 @@ CPG_FORWARD_DECL (CpgObject);
 
 GType cpg_property_get_type (void) G_GNUC_CONST;
 
-CpgProperty       *cpg_property_new                     (const gchar                  *name,
-                                                         const gchar                  *expression,
-                                                         CpgPropertyFlags              flags,
-                                                         CPG_FORWARD_DECL (CpgObject) *object);
+CpgProperty       *cpg_property_new                     (const gchar      *name,
+                                                         const gchar      *expression,
+                                                         CpgPropertyFlags  flags);
 
 const gchar       *cpg_property_get_name                (CpgProperty        *property);
+gboolean           cpg_property_set_name                (CpgProperty        *property,
+                                                         const gchar        *name);
 
 CPG_FORWARD_DECL (CpgObject) *
                    cpg_property_get_object              (CpgProperty        *property);
@@ -110,8 +117,7 @@ gboolean           _cpg_property_unuse                  (CpgProperty        *pro
 void               _cpg_property_set_object             (CpgProperty                  *property,
                                                          CPG_FORWARD_DECL (CpgObject) *object);
 
-CpgProperty       *_cpg_property_copy                   (CpgProperty        *property);
-
+CpgProperty       *cpg_property_copy                    (CpgProperty        *property);
 
 G_END_DECLS
 

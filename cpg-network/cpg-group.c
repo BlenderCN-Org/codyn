@@ -613,11 +613,6 @@ cpg_group_add_impl (CpgGroup  *group,
 
 	register_object (group, object);
 
-	if (CPG_IS_LINK (object))
-	{
-		_cpg_link_resolve_actions (CPG_LINK (object));
-	}
-
 	_cpg_object_set_parent (object, CPG_OBJECT (group));
 
 	cpg_object_taint (CPG_OBJECT (group));
@@ -686,40 +681,34 @@ cpg_group_cpg_clear (CpgObject *object)
 	CPG_OBJECT_CLASS (cpg_group_parent_class)->clear (object);
 }
 
-static CpgProperty *
-cpg_group_cpg_add_property (CpgObject        *object,
-                            gchar const      *name,
-                            gchar const      *expression,
-                            CpgPropertyFlags  flags)
+static gboolean
+cpg_group_cpg_add_property (CpgObject   *object,
+                            CpgProperty *property)
 {
 	CpgGroup *group = CPG_GROUP (object);
-	CpgProperty *property;
+	CpgProperty *existing;
 
-	property = cpg_object_get_property (object, name);
+	existing = cpg_object_get_property (object, cpg_property_get_name (property));
 
-	if (property && cpg_property_get_object (property) != object)
+	if (existing && cpg_property_get_object (existing) != object)
 	{
-		CpgObject *owner = cpg_property_get_object (property);
+		CpgObject *owner = cpg_property_get_object (existing);
 
 		if (owner == group->priv->proxy)
 		{
 			return cpg_object_add_property (group->priv->proxy,
-			                                name,
-			                                expression,
-			                                flags);
+			                                property);
 		}
 	}
 
 	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property)
 	{
 		return CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property (object,
-		                                                                name,
-		                                                                expression,
-		                                                                flags);
+		                                                                property);
 	}
 	else
 	{
-		return NULL;
+		return FALSE;
 	}
 }
 

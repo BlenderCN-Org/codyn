@@ -22,7 +22,7 @@ typedef struct _CpgLinkActionPrivate	CpgLinkActionPrivate;
 struct _CpgLinkAction
 {
 	/*< private >*/
-	GObject parent;
+	GInitiallyUnowned parent;
 
 	CpgLinkActionPrivate *priv;
 };
@@ -30,20 +30,24 @@ struct _CpgLinkAction
 struct _CpgLinkActionClass
 {
 	/*< private >*/
-	GObjectClass parent_class;
+	GInitiallyUnownedClass parent_class;
 };
 
-GType cpg_link_action_get_type (void) G_GNUC_CONST;
-CpgLinkAction *cpg_link_action_new (CpgProperty *target, CpgExpression *equation);
+GType          cpg_link_action_get_type      (void) G_GNUC_CONST;
+CpgLinkAction *cpg_link_action_new           (CpgProperty   *target,
+                                              CpgExpression *equation);
+CpgLinkAction *cpg_link_action_copy          (CpgLinkAction *action);
 
-CpgProperty *cpg_link_action_get_target (CpgLinkAction *action);
-void cpg_link_action_set_target (CpgLinkAction *action, CpgProperty *target);
+CpgProperty   *cpg_link_action_get_target    (CpgLinkAction *action);
+void           cpg_link_action_set_target    (CpgLinkAction *action,
+                                              CpgProperty   *target);
 
-CpgExpression *cpg_link_action_get_equation (CpgLinkAction *action);
-void cpg_link_action_set_equation (CpgLinkAction *action, CpgExpression *equation);
+CpgExpression  *cpg_link_action_get_equation (CpgLinkAction *action);
+void            cpg_link_action_set_equation (CpgLinkAction *action,
+                                              CpgExpression *equation);
 
-gboolean cpg_link_action_depends (CpgLinkAction *action,
-                                  CpgProperty   *property);
+gboolean        cpg_link_action_depends      (CpgLinkAction *action,
+                                              CpgProperty   *property);
 
 G_END_DECLS
 

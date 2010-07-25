@@ -55,7 +55,7 @@ typedef struct
 	GError **error;
 } ParserContext;
 
-G_DEFINE_TYPE (CpgExpression, cpg_expression, G_TYPE_OBJECT)
+G_DEFINE_TYPE (CpgExpression, cpg_expression, G_TYPE_INITIALLY_UNOWNED)
 
 enum
 {
@@ -64,7 +64,10 @@ enum
 	PROP_VALUE
 };
 
-static int parse_expression (CpgExpression *expression, ParserContext *context, gint priority, gint left_assoc);
+static int parse_expression (CpgExpression *expression,
+                             ParserContext *context,
+                             gint           priority,
+                             gint           left_assoc);
 
 static void
 instructions_free (CpgExpression *expression)
@@ -1510,4 +1513,12 @@ cpg_expression_set_once (CpgExpression *expression,
 
 	expression->priv->once = once;
 	expression->priv->prevent_cache_reset |= once;
+}
+
+CpgExpression *
+cpg_expression_copy (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+
+	return cpg_expression_new (expression->priv->expression);
 }

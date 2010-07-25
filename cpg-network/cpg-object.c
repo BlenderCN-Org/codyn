@@ -242,10 +242,22 @@ on_property_changed (CpgObject   *object,
 	cpg_object_taint (object);
 }
 
+static gboolean
+on_property_invalidate_name (CpgProperty *property,
+                             gchar const *name,
+                             CpgObject   *object)
+{
+	CpgProperty *other = cpg_object_get_property (object, name);
+
+	return other && other != property;
+}
+
 static void
 add_property (CpgObject   *object,
               CpgProperty *property)
 {
+	g_object_ref_sink (property);
+
 	object->priv->properties = g_slist_append (object->priv->properties,
 	                                           property);
 
@@ -261,6 +273,11 @@ add_property (CpgObject   *object,
 	                          G_CALLBACK (on_property_changed),
 	                          object);
 
+	g_signal_connect (property,
+	                  "invalidate-name",
+	                  G_CALLBACK (on_property_invalidate_name),
+	                  object);
+
 	g_signal_emit (object, object_signals[PROPERTY_ADDED], 0, property);
 }
 
@@ -275,7 +292,7 @@ cpg_object_copy_impl (CpgObject *object,
 	{
 		CpgProperty *prop = item->data;
 
-		add_property (object, _cpg_property_copy (prop));
+		add_property (object, cpg_property_copy (prop));
 	}
 
 	object->priv->templates = g_slist_copy (source->priv->templates);
@@ -291,15 +308,8 @@ cpg_object_apply_template_impl (CpgObject *object,
 
 	for (item = templ->priv->properties; item; item = g_slist_next (item))
 	{
-		CpgProperty *prop = item->data;
-		CpgExpression *expression = cpg_property_get_expression (prop);
-		const gchar *str = cpg_expression_get_as_string (expression);
-		CpgProperty *new_prop;
-
-		new_prop = cpg_object_add_property (object,
-		                                    cpg_property_get_name (prop),
-		                                    str,
-		                                    cpg_property_get_flags (prop));
+		cpg_object_add_property (object,
+		                         cpg_property_copy (item->data));
 	}
 
 	object->priv->templates = g_slist_append (object->priv->templates,
@@ -413,6 +423,10 @@ remove_property (CpgObject   *object,
 	                                      on_property_changed,
 	                                      object);
 
+	g_signal_handlers_disconnect_by_func (property,
+	                                      on_property_invalidate_name,
+	                                      object);
+
 	g_signal_emit (object,
 	               object_signals[PROPERTY_REMOVED],
 	               0,
@@ -444,7 +458,7 @@ cpg_object_verify_remove_property_impl (CpgObject    *object,
 			{
 				g_set_error (error,
 				             CPG_OBJECT_ERROR,
-				             CPG_OBJECT_ERROR_PROP_IN_USE,
+				             CPG_OBJECT_ERROR_PROPERTY_IN_USE,
 				             "Property %s is still in use and can not be removed",
 				             name);
 			}
@@ -458,7 +472,7 @@ cpg_object_verify_remove_property_impl (CpgObject    *object,
 		{
 			g_set_error (error,
 			             CPG_OBJECT_ERROR,
-			             CPG_OBJECT_ERROR_PROP_NOT_FOUND,
+			             CPG_OBJECT_ERROR_PROPERTY_NOT_FOUND,
 			             "Property %s could not be found for %s",
 			             name,
 			             cpg_object_get_id (object));
@@ -486,29 +500,33 @@ cpg_object_remove_property_impl (CpgObject    *object,
 	return TRUE;
 }
 
-static CpgProperty *
-cpg_object_add_property_impl (CpgObject        *object,
-                              const gchar      *name,
-                              const gchar      *expression,
-                              CpgPropertyFlags  flags)
+static gboolean
+cpg_object_add_property_impl (CpgObject   *object,
+                              CpgProperty *property)
 {
 	// Check if property already set
-	CpgProperty *property;
+	CpgProperty *existing;
 
-	property = cpg_object_get_property (object, name);
+	existing = cpg_object_get_property (object,
+	                                    cpg_property_get_name (property));
 
-	if (property)
+	if (existing)
 	{
-		if (!cpg_object_remove_property (object, name, NULL))
+		if (!cpg_object_remove_property (object,
+		                                 cpg_property_get_name (property),
+		                                 NULL))
 		{
-			return NULL;
+			if (g_object_is_floating (G_OBJECT (property)))
+			{
+				g_object_unref (property);
+			}
+
+			return FALSE;
 		}
 	}
 
-	property = cpg_property_new (name, expression, flags, object);
-
 	add_property (object, property);
-	return property;
+	return TRUE;
 }
 
 static gint
@@ -874,36 +892,27 @@ cpg_object_new_from_template (CpgObject *templ)
 /**
  * cpg_object_add_property:
  * @object: the #CpgObject
- * @name: the property name
- * @expression: the properties initial value
- * @flags: the property flags
+ * @property: the #CpgProperty to add
  *
- * Returns the new property added to the object
- *
- * Return value: the new #CpgProperty. The returned object is owned by
- * @object and should not be freed
+ * Add a new property to the object
  *
  **/
-CpgProperty *
-cpg_object_add_property (CpgObject        *object,
-                         const gchar      *name,
-                         const gchar      *expression,
-                         CpgPropertyFlags  flags)
+gboolean
+cpg_object_add_property (CpgObject   *object,
+                         CpgProperty *property)
 {
-	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-	g_return_val_if_fail (name != NULL, NULL);
-	g_return_val_if_fail (expression != NULL, NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
+	g_return_val_if_fail (cpg_property_get_object (property) == NULL, FALSE);
 
 	if (CPG_OBJECT_GET_CLASS (object)->add_property)
 	{
 		return CPG_OBJECT_GET_CLASS (object)->add_property (object,
-		                                                    name,
-		                                                    expression,
-		                                                    flags);
+		                                                    property);
 	}
 	else
 	{
-		return NULL;
+		return FALSE;
 	}
 }
 

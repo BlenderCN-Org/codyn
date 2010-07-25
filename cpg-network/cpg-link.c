@@ -1,5 +1,4 @@
 #include "cpg-link.h"
-#include "cpg-ref-counted-private.h"
 #include "cpg-compile-error.h"
 #include "cpg-debug.h"
 #include <string.h>
@@ -24,6 +23,12 @@
 
 #define CPG_LINK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_LINK, CpgLinkPrivate))
 
+enum
+{
+	EXT_PROPERTY_ADDED,
+	EXT_PROPERTY_REMOVED,
+	NUM_EXT_SIGNALS
+};
 
 struct _CpgLinkPrivate
 {
@@ -33,6 +38,8 @@ struct _CpgLinkPrivate
 
 	// list of expressions to evaluate
 	GSList *actions;
+
+	guint ext_signals[NUM_EXT_SIGNALS];
 };
 
 /* Properties */
@@ -84,12 +91,61 @@ cpg_link_get_property (GObject     *object,
 }
 
 static void
+resolve_link_actions (CpgLink *link)
+{
+	GSList *item;
+	GSList *copy = g_slist_copy (link->priv->actions);
+
+	for (item = copy; item; item = g_slist_next (item))
+	{
+		CpgLinkAction *action = item->data;
+
+		CpgProperty *targ = cpg_link_action_get_target (action);
+
+		if (cpg_property_get_object (targ) == link->priv->to)
+		{
+			continue;
+		}
+
+		CpgProperty *prop;
+
+		prop = cpg_object_get_property (link->priv->to,
+		                                cpg_property_get_name (targ));
+
+		if (prop == NULL)
+		{
+			/* Make a dummy, maybe it comes later */
+			prop = cpg_property_copy (targ);
+		}
+
+		cpg_link_action_set_target (action, prop);
+	}
+
+	g_slist_free (copy);
+
+	cpg_object_taint (CPG_OBJECT (link));
+}
+
+static void
+on_property_added_removed (CpgLink *link)
+{
+	resolve_link_actions (link);
+}
+
+static void
 set_to (CpgLink   *link,
         CpgObject *target)
 {
 	if (link->priv->to)
 	{
 		_cpg_object_unlink (link->priv->to, link);
+
+		g_signal_handler_disconnect (link->priv->to,
+		                             link->priv->ext_signals[EXT_PROPERTY_ADDED]);
+
+		g_signal_handler_disconnect (link->priv->to,
+		                             link->priv->ext_signals[EXT_PROPERTY_REMOVED]);
+
 		g_object_unref (link->priv->to);
 
 		link->priv->to = NULL;
@@ -98,9 +154,22 @@ set_to (CpgLink   *link,
 	if (target)
 	{
 		link->priv->to = g_object_ref (target);
-
 		_cpg_object_link (target, link);
+
+		link->priv->ext_signals[EXT_PROPERTY_ADDED] =
+			g_signal_connect_swapped (link->priv->to,
+			                          "property-added",
+			                          G_CALLBACK (on_property_added_removed),
+			                          link);
+
+		link->priv->ext_signals[EXT_PROPERTY_REMOVED] =
+			g_signal_connect_swapped (link->priv->to,
+			                          "property-removed",
+			                          G_CALLBACK (on_property_added_removed),
+			                          link);
 	}
+
+	resolve_link_actions (link);
 
 	cpg_object_taint (CPG_OBJECT (link));
 }
@@ -201,24 +270,8 @@ cpg_link_copy_impl (CpgObject *object,
 
 	for (item = source_link->priv->actions; item; item = g_slist_next (item))
 	{
-		CpgLinkAction *action = item->data;
-		CpgProperty *targ = cpg_link_action_get_target (action);
-		CpgProperty *tg = NULL;
-		CpgExpression *eq = cpg_link_action_get_equation (action);
-
-		if (targ)
-		{
-			tg = _cpg_property_copy (targ);
-		}
-
 		cpg_link_add_action (target,
-		                     tg,
-		                     eq);
-
-		if (tg)
-		{
-			g_object_unref (tg);
-		}
+		                     cpg_link_action_copy (item->data));
 	}
 }
 
@@ -442,28 +495,31 @@ cpg_link_new (gchar const  *id,
  *
  * Returns: the new #CpgLinkAction
  **/
-CpgLinkAction *
+gboolean
 cpg_link_add_action (CpgLink       *link,
-                     CpgProperty   *target,
-                     CpgExpression *equation)
+                     CpgLinkAction *action)
 {
-	g_return_val_if_fail (CPG_IS_LINK (link), NULL);
-	g_return_val_if_fail (CPG_IS_PROPERTY (target), NULL);
-	g_return_val_if_fail (CPG_IS_EXPRESSION (equation), NULL);
+	g_return_val_if_fail (CPG_IS_LINK (link), FALSE);
+	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), FALSE);
 
 	GSList *item;
 	GSList *copy = g_slist_copy (link->priv->actions);
 
+	CpgProperty *target = cpg_link_action_get_target (action);
+
 	for (item = copy; item; item = g_slist_next (item))
 	{
-		CpgLinkAction *action = (CpgLinkAction *)item->data;
-		CpgProperty *targ = cpg_link_action_get_target (action);
+		CpgLinkAction *ac = item->data;
+		CpgProperty *targ = cpg_link_action_get_target (ac);
 
-		if (!targ ||
-		     g_strcmp0 (cpg_property_get_name (targ),
-		                cpg_property_get_name (target)) != 0)
+		if (!targ || targ != target)
 		{
 			continue;
+		}
+
+		if (action == ac)
+		{
+			return FALSE;
 		}
 
 		cpg_link_remove_action (link, action);
@@ -471,14 +527,39 @@ cpg_link_add_action (CpgLink       *link,
 
 	g_slist_free (copy);
 
-	CpgLinkAction *action = cpg_link_action_new (target, equation);
-	link->priv->actions = g_slist_append (link->priv->actions, action);
+	CpgObject *owner = cpg_property_get_object (target);
+
+	if (link->priv->to)
+	{
+		if (owner != link->priv->to)
+		{
+			CpgProperty *targ = cpg_object_get_property (link->priv->to,
+			                                             cpg_property_get_name (target));
+
+			if (targ)
+			{
+				/* This is actually the one that we need */
+				cpg_link_action_set_target (action, targ);
+			}
+		}
+	}
+	else if (owner)
+	{
+		/* Set it to a dummy for safety */
+		cpg_link_action_set_target (action,
+		                            cpg_property_copy (target));
+	}
+
+	link->priv->actions = g_slist_append (link->priv->actions,
+	                                      action);
+
+	g_object_ref_sink (action);
 
 	cpg_object_taint (CPG_OBJECT (link));
 
 	g_signal_emit (link, signals[ACTION_ADDED], 0, action);
 
-	return action;
+	return TRUE;
 }
 
 /**
@@ -629,44 +710,4 @@ cpg_link_attach (CpgLink   *link,
 	g_return_if_fail (to == NULL || CPG_IS_OBJECT (to));
 
 	g_object_set (link, "from", from, "to", to, NULL);
-}
-
-void
-_cpg_link_resolve_actions (CpgLink *link)
-{
-	g_return_if_fail (CPG_IS_LINK (link));
-
-	// Reroute link actions to 'to'
-	GSList *item;
-	GSList *copy = g_slist_copy (link->priv->actions);
-
-	for (item = copy; item; item = g_slist_next (item))
-	{
-		CpgLinkAction *action = item->data;
-		CpgProperty *targ = cpg_link_action_get_target (action);
-		CpgProperty *prop;
-
-		// Check if action is already valid
-		if (cpg_property_get_object (targ) == link->priv->to)
-		{
-			continue;
-		}
-
-		prop = cpg_object_get_property (link->priv->to,
-		                                cpg_property_get_name (targ));
-
-		if (prop == NULL)
-		{
-			// Property not found in new target, remove action...
-			cpg_link_remove_action (link, action);
-		}
-		else
-		{
-			cpg_link_action_set_target (action, prop);
-		}
-	}
-
-	g_slist_free (copy);
-
-	cpg_object_taint (CPG_OBJECT (link));
 }

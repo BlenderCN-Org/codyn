@@ -20,7 +20,8 @@ test_add_property ()
 	CpgObject *obj = cpg_object_new ("id");
 	CpgProperty *prop;
 
-	prop = cpg_object_add_property (obj, "prop", "0", CPG_PROPERTY_FLAG_NONE);
+	prop = cpg_property_new ("prop", "0", CPG_PROPERTY_FLAG_NONE);
+	cpg_object_add_property (obj, prop);
 
 	g_assert (prop != NULL);
 	g_assert (cpg_object_get_property (obj, "prop") != NULL);
@@ -32,7 +33,8 @@ test_remove_property ()
 	CpgObject *obj = cpg_object_new ("id");
 	CpgProperty *prop;
 
-	prop = cpg_object_add_property (obj, "prop", "0", CPG_PROPERTY_FLAG_NONE);
+	prop = cpg_property_new ("prop", "0", CPG_PROPERTY_FLAG_NONE);
+	cpg_object_add_property (obj, prop);
 	g_assert (cpg_object_remove_property (obj, "prop", NULL));
 
 	prop = cpg_object_get_property (obj, "prop");
@@ -44,8 +46,8 @@ test_clear ()
 {
 	CpgObject *obj = cpg_object_new ("id");
 
-	cpg_object_add_property (obj, "p1", "0", CPG_PROPERTY_FLAG_NONE);
-	cpg_object_add_property (obj, "p2", "0", CPG_PROPERTY_FLAG_NONE);
+	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_NONE));
+	cpg_object_add_property (obj, cpg_property_new ("p2", "0", CPG_PROPERTY_FLAG_NONE));
 
 	cpg_object_clear (obj);
 
@@ -58,8 +60,8 @@ test_copy ()
 {
 	CpgObject *obj = cpg_object_new ("id");
 
-	cpg_object_add_property (obj, "p1", "0", CPG_PROPERTY_FLAG_INTEGRATED);
-	cpg_object_add_property (obj, "p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT);
+	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_INTEGRATED));
+	cpg_object_add_property (obj, cpg_property_new ("p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT));
 
 	CpgObject *cp = cpg_object_copy (obj);
 	CpgProperty *p1 = cpg_object_get_property (cp, "p1");
@@ -82,8 +84,8 @@ test_apply_template ()
 {
 	CpgObject *obj = cpg_object_new ("id");
 
-	cpg_object_add_property (obj, "p1", "0", CPG_PROPERTY_FLAG_INTEGRATED);
-	cpg_object_add_property (obj, "p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT);
+	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_INTEGRATED));
+	cpg_object_add_property (obj, cpg_property_new ("p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT));
 
 	CpgObject *cp = cpg_object_new ("id2");
 	cpg_object_apply_template (cp, obj);
@@ -108,8 +110,8 @@ test_new_from_template ()
 {
 	CpgObject *obj = cpg_object_new ("id");
 
-	cpg_object_add_property (obj, "p1", "0", CPG_PROPERTY_FLAG_INTEGRATED);
-	cpg_object_add_property (obj, "p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT);
+	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_INTEGRATED));
+	cpg_object_add_property (obj, cpg_property_new ("p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT));
 
 	CpgObject *cp = cpg_object_new_from_template (obj);
 	cpg_object_apply_template (cp, obj);

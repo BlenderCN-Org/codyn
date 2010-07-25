@@ -9,8 +9,10 @@ COMMON_SOURCES = 		\
 	cpg-compile-error.c \
 	cpg-debug.c \
 	cpg-enum-types.c \
+	cpg-marshal.c \
 	cpg-expression.c \
 	cpg-function.c \
+	cpg-function-argument.c \
 	cpg-function-polynomial.c \
 	cpg-group.c \
 	cpg-instructions.c \
@@ -41,7 +43,8 @@ NOINST_H_FILES = \
 	cpg-ref-counted-private.h \
 	cpg-tokenizer.h \
 	cpg-network-xml.h \
-	cpg-stack-private.h
+	cpg-stack-private.h \
+	cpg-marshal.h
 
 INST_H_FILES = \
 	cpg-compile-context.h \
@@ -49,6 +52,7 @@ INST_H_FILES = \
 	cpg-debug.h \
 	cpg-expression.h \
 	cpg-function.h \
+	cpg-function-argument.h \
 	cpg-function-polynomial.h \
 	cpg-group.h \
 	cpg-instructions.h \
@@ -87,6 +91,13 @@ cpg-enum-types.h: cpg-enum-types.h.template $(INST_H_FILES) $(GLIB_MKENUMS)
 cpg-enum-types.c: cpg-enum-types.c.template cpg-enum-types.h $(INST_H_FILES) $(GLIB_MKENUMS)
 	(cd $(srcdir) && $(GLIB_MKENUMS) --template cpg-enum-types.c.template $(INST_H_FILES)) > $@
 
+cpg-marshal.h: cpg-marshal.list $(GLIB_GENMARSHAL)
+	$(AM_V_GEN) $(GLIB_GENMARSHAL) $< --header --prefix=cpg_marshal > $@
+
+cpg-marshal.c: cpg-marshal.list $(GLIB_GENMARSHAL)
+	$(AM_V_GEN) echo "#include \"cpg-marshal.h\"" > $@ && \
+	$(GLIB_GENMARSHAL) $< --body --prefix=cpg_marshal >> $@
+
 libcpg_network_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CPG_NETWORK_CFLAGS)
 libcpg_network_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) $(INTROSPECTION_LIBS) -lm
 libcpg_network_2_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
@@ -100,7 +111,8 @@ CLEANFILES = cpg-enum-types.c cpg-enum-types.h
 EXTRA_DIST = \
 	$(NOINST_H_FILES) \
 	cpg-enum-types.c.template \
-	cpg-enum-types.h.template
+	cpg-enum-types.h.template \
+	cpg-marshal.list
 
 if HAVE_INTROSPECTION
 -include $(INTROSPECTION_MAKEFILE)

@@ -386,10 +386,12 @@ parse_properties (CpgNetworkDeserializer *deserializer,
 			return FALSE;
 		}
 
-		property = cpg_object_add_property (deserializer->priv->object,
-		                                    (const gchar *)name,
-		                                    (const gchar *)expression,
-		                                    flags);
+		property = cpg_property_new ((const gchar *)name,
+		                             (const gchar *)expression,
+		                             flags);
+
+		cpg_object_add_property (deserializer->priv->object,
+		                         property);
 
 		g_object_set_data (G_OBJECT (property),
 		                   CPG_NETWORK_XML_PROPERTY_FLAGS_ATTRIBUTE,
@@ -980,25 +982,19 @@ parse_actions (CpgNetworkDeserializer *deserializer,
 		{
 			property = cpg_property_new ((gchar const *)target,
 			                             "",
-			                             FALSE,
-			                             NULL);
+			                             CPG_PROPERTY_FLAG_NONE);
 		}
 
-		xmlChar const *expression = (xmlChar *)"";
+		gchar const *expr = "";
 
 		if (node->children && node->children->type == XML_TEXT_NODE)
 		{
-			expression = node->children->content;
+			expr = (gchar const *)node->children->content;
 		}
 
-		CpgExpression *expr = cpg_expression_new ((gchar const *)expression);
-		cpg_link_add_action (link, property, expr);
-		g_object_unref (expr);
-
-		if (!to)
-		{
-			g_object_unref (property);
-		}
+		cpg_link_add_action (link,
+		                     cpg_link_action_new (property,
+		                                          cpg_expression_new (expr)));
 
 		xmlFree (target);
 	}

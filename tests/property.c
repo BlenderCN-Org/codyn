@@ -11,7 +11,7 @@ test_once ()
 {
 	CpgProperty *prop;
 
-	prop = cpg_property_new ("x", "rand()", CPG_PROPERTY_FLAG_ONCE, NULL);
+	prop = cpg_property_new ("x", "rand()", CPG_PROPERTY_FLAG_ONCE);
 	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
 
 	gdouble v1 = cpg_property_get_value (prop);
@@ -26,7 +26,7 @@ test_once_reset_cache ()
 	CpgProperty *prop;
 	CpgExpression *expr;
 
-	prop = cpg_property_new ("x", "rand()", CPG_PROPERTY_FLAG_ONCE, NULL);
+	prop = cpg_property_new ("x", "rand()", CPG_PROPERTY_FLAG_ONCE);
 	expr = cpg_property_get_expression (prop);
 
 	cpg_expression_compile (expr, NULL, NULL);

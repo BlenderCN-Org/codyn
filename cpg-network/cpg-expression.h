@@ -23,7 +23,7 @@ typedef struct _CpgExpressionPrivate	CpgExpressionPrivate;
 struct _CpgExpression
 {
 	/*< private >*/
-	GObject parent;
+	GInitiallyUnowned parent;
 
 	CpgExpressionPrivate *priv;
 };
@@ -31,11 +31,12 @@ struct _CpgExpression
 struct _CpgExpressionClass
 {
 	/*< private >*/
-	GObjectClass parent_class;
+	GInitiallyUnownedClass parent_class;
 };
 
 GType          cpg_expression_get_type         (void) G_GNUC_CONST;
-CpgExpression *cpg_expression_new              (gchar const *expression);
+CpgExpression *cpg_expression_new              (gchar const        *expression);
+CpgExpression *cpg_expression_copy             (CpgExpression      *expression);
 
 GSList const  *cpg_expression_get_dependencies (CpgExpression      *expression);
 
