@@ -1142,7 +1142,7 @@ cpg_object_get_actors (CpgObject *object)
 		while (actions)
 		{
 			CpgLinkAction *a = actions->data;
-			CpgProperty *target = _cpg_link_action_get_property (a);
+			CpgProperty *target = cpg_link_action_get_target_property (a);
 
 			if (!g_slist_find (ret, target))
 			{

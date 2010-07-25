@@ -24,7 +24,8 @@ enum
 {
 	PROP_0,
 	PROP_TARGET,
-	PROP_EQUATION
+	PROP_EQUATION,
+	PROP_TARGET_PROPERTY
 };
 
 G_DEFINE_TYPE (CpgLinkAction, cpg_link_action, G_TYPE_INITIALLY_UNOWNED)
@@ -163,6 +164,9 @@ cpg_link_action_get_property (GObject    *object,
 		case PROP_EQUATION:
 			g_value_set_object (value, self->priv->equation);
 		break;
+		case PROP_TARGET_PROPERTY:
+			g_value_set_object (value, self->priv->property);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -207,6 +211,20 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	                                                      "Equation",
 	                                                      CPG_TYPE_EXPRESSION,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	/**
+	 * CpgLinkAction:target-property:
+	 *
+	 * The target property
+	 *
+	 **/
+	g_object_class_install_property (object_class,
+	                                 PROP_TARGET_PROPERTY,
+	                                 g_param_spec_object ("target-property",
+	                                                      "Target property",
+	                                                      "Target Property",
+	                                                      CPG_TYPE_PROPERTY,
+	                                                      G_PARAM_READABLE));
 
 	g_type_class_add_private (object_class, sizeof(CpgLinkActionPrivate));
 }
@@ -342,7 +360,7 @@ cpg_link_action_copy (CpgLinkAction *action)
 }
 
 CpgProperty *
-_cpg_link_action_get_property (CpgLinkAction *action)
+cpg_link_action_get_target_property (CpgLinkAction *action)
 {
 	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
 
@@ -350,8 +368,8 @@ _cpg_link_action_get_property (CpgLinkAction *action)
 }
 
 void
-_cpg_link_action_set_property (CpgLinkAction *action,
-                               CpgProperty   *property)
+_cpg_link_action_set_target_property (CpgLinkAction *action,
+                                      CpgProperty   *property)
 {
 	g_return_if_fail (CPG_IS_LINK_ACTION (action));
 	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));

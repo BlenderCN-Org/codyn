@@ -102,7 +102,7 @@ update_action_property (CpgLink       *link,
 		prop =  cpg_object_get_property (link->priv->to, target);
 	}
 
-	_cpg_link_action_set_property (action, prop);
+	_cpg_link_action_set_target_property (action, prop);
 }
 
 
@@ -226,7 +226,7 @@ static void
 remove_action (CpgLink       *link,
                CpgLinkAction *action)
 {
-	_cpg_link_action_set_property (action, NULL);
+	_cpg_link_action_set_target_property (action, NULL);
 
 	g_signal_handlers_disconnect_by_func (action,
 	                                      on_action_target_changed,

@@ -404,7 +404,7 @@ simulation_step (CpgIntegrator *integrator)
 	{
 		CpgLinkAction *action = direct->data;
 
-		CpgProperty *target = _cpg_link_action_get_property (action);
+		CpgProperty *target = cpg_link_action_get_target_property (action);
 		CpgExpression *expr = cpg_link_action_get_equation (action);
 
 		cpg_property_set_value (target,
@@ -429,7 +429,7 @@ simulation_step (CpgIntegrator *integrator)
 	{
 		CpgLinkAction *action = integrated->data;
 
-		CpgProperty *target = _cpg_link_action_get_property (action);
+		CpgProperty *target = cpg_link_action_get_target_property (action);
 		CpgExpression *expr = cpg_link_action_get_equation (action);
 
 		cpg_property_set_update (target,

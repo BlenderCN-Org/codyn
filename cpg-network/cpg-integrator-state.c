@@ -229,7 +229,7 @@ collect_link (CpgIntegratorState *state,
 	{
 		CpgLinkAction *action = actions->data;
 
-		CpgProperty *target = _cpg_link_action_get_property (action);
+		CpgProperty *target = cpg_link_action_get_target_property (action);
 
 		if (cpg_property_get_integrated (target))
 		{
@@ -306,11 +306,11 @@ link_action_compare (CpgLinkAction *a,
 	/* if a depends on b => 1
 	   if b depends on a => -1
 	   else 0 */
-	if (cpg_link_action_depends (a, _cpg_link_action_get_property (b)))
+	if (cpg_link_action_depends (a, cpg_link_action_get_target_property (b)))
 	{
 		return 1;
 	}
-	else if (cpg_link_action_depends (b, _cpg_link_action_get_property (a)))
+	else if (cpg_link_action_depends (b, cpg_link_action_get_target_property (a)))
 	{
 		return -1;
 	}

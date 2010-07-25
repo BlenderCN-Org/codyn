@@ -51,9 +51,9 @@ void            cpg_link_action_set_equation (CpgLinkAction *action,
 gboolean        cpg_link_action_depends      (CpgLinkAction *action,
                                               CpgProperty   *property);
 
-CpgProperty    *_cpg_link_action_get_property (CpgLinkAction *action);
-void            _cpg_link_action_set_property (CpgLinkAction *action,
-                                               CpgProperty   *property);
+CpgProperty    *cpg_link_action_get_target_property  (CpgLinkAction *action);
+void            _cpg_link_action_set_target_property (CpgLinkAction *action,
+                                                      CpgProperty   *property);
 
 G_END_DECLS
 
