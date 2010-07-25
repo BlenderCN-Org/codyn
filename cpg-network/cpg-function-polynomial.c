@@ -14,8 +14,16 @@
  * polynomial by use of the optional second argument of the function.
  *
  */
- 
+
 #define CPG_FUNCTION_POLYNOMIAL_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_FUNCTION_POLYNOMIAL, CpgFunctionPolynomialPrivate))
+
+/* signals */
+enum
+{
+	PIECE_ADDED,
+	PIECE_REMOVED,
+	NUM_SIGNALS
+};
 
 struct _CpgFunctionPolynomialPrivate
 {
@@ -27,14 +35,49 @@ struct _CpgFunctionPolynomialPrivate
 
 G_DEFINE_TYPE (CpgFunctionPolynomial, cpg_function_polynomial, CPG_TYPE_FUNCTION)
 
+static guint signals[NUM_SIGNALS] = {0,};
+
+static gint
+compare_polynomials (CpgFunctionPolynomialPiece *p1,
+                     CpgFunctionPolynomialPiece *p2)
+{
+	gdouble b1;
+	gdouble b2;
+
+	b1 = cpg_function_polynomial_piece_get_begin (p1);
+	b2 = cpg_function_polynomial_piece_get_begin (p2);
+
+	return b1 < b2 ? -1 : (b2 < b1 ? 1 : 0);
+}
+
+static void
+on_piece_range_changed (CpgFunctionPolynomialPiece *piece,
+                        GParamSpec                 *spec,
+                        CpgFunctionPolynomial      *function)
+{
+	function->priv->polynomials =
+		g_slist_sort (function->priv->polynomials,
+		              (GCompareFunc)compare_polynomials);
+}
+
+static void
+remove_piece (CpgFunctionPolynomial      *function,
+              CpgFunctionPolynomialPiece *piece)
+{
+	g_signal_handlers_disconnect_by_func (piece,
+	                                      on_piece_range_changed,
+	                                      function);
+
+	g_signal_emit (function, signals[PIECE_REMOVED], 0, piece);
+	g_object_unref (piece);
+}
 
 static void
 cpg_function_polynomial_finalize (GObject *object)
 {
 	CpgFunctionPolynomial *function = CPG_FUNCTION_POLYNOMIAL (object);
 
-	g_slist_foreach (function->priv->polynomials, (GFunc)g_object_unref, NULL);
-	g_slist_free (function->priv->polynomials);
+	cpg_function_polynomial_clear_pieces (function);
 
 	G_OBJECT_CLASS (cpg_function_polynomial_parent_class)->finalize (object);
 }
@@ -157,6 +200,18 @@ cpg_function_polynomial_copy_impl (CpgObject *object,
 }
 
 static void
+cpg_function_polynomial_clear_impl (CpgObject *object)
+{
+	/* Chain up */
+	if (CPG_OBJECT_CLASS (cpg_function_polynomial_parent_class)->clear != NULL)
+	{
+		CPG_OBJECT_CLASS (cpg_function_polynomial_parent_class)->clear (object);
+	}
+
+	cpg_function_polynomial_clear_pieces (CPG_FUNCTION_POLYNOMIAL (object));
+}
+
+static void
 cpg_function_polynomial_class_init (CpgFunctionPolynomialClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -164,9 +219,35 @@ cpg_function_polynomial_class_init (CpgFunctionPolynomialClass *klass)
 	CpgObjectClass *cpg_object_class = CPG_OBJECT_CLASS (klass);
 
 	function_class->evaluate = cpg_function_polynomial_evaluate_impl;
+
 	cpg_object_class->copy = cpg_function_polynomial_copy_impl;
+	cpg_object_class->clear = cpg_function_polynomial_clear_impl;
 
 	object_class->finalize = cpg_function_polynomial_finalize;
+
+	signals[PIECE_ADDED] =
+		g_signal_new ("piece-added",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgFunctionPolynomialClass, piece_added),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_FUNCTION_POLYNOMIAL_PIECE);
+
+	signals[PIECE_REMOVED] =
+		g_signal_new ("piece-removed",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgFunctionPolynomialClass, piece_removed),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_FUNCTION_POLYNOMIAL_PIECE);
 
 	g_type_class_add_private (object_class, sizeof(CpgFunctionPolynomialPrivate));
 }
@@ -178,7 +259,7 @@ cpg_function_polynomial_init (CpgFunctionPolynomial *self)
 
 	/* Add 't' argument */
 	cpg_function_add_argument (CPG_FUNCTION (self),
-	                            cpg_function_argument_new ("__t", FALSE, 0));
+	                           cpg_function_argument_new ("__t", FALSE, 0));
 
 	/* Add optional 'order' argument */
 	cpg_function_add_argument (CPG_FUNCTION (self),
@@ -191,7 +272,7 @@ cpg_function_polynomial_init (CpgFunctionPolynomial *self)
 /**
  * cpg_function_polynomial_new:
  * @name: The function name
- * 
+ *
  * Create a new polynomial function. This is a special kind of user function
  * which calculates a piecewise polynomial. The function can be called with one
  * mandatory argument, which is the point at which to evaluate the piecewise
@@ -207,55 +288,55 @@ cpg_function_polynomial_new (gchar const *name)
 	return g_object_new (CPG_TYPE_FUNCTION_POLYNOMIAL, "id", name, NULL);
 }
 
-static gint
-compare_polynomials (CpgFunctionPolynomialPiece *p1,
-                     CpgFunctionPolynomialPiece *p2)
-{
-	gdouble b1;
-	gdouble b2;
-
-	b1 = cpg_function_polynomial_piece_get_begin (p1);
-	b2 = cpg_function_polynomial_piece_get_begin (p2);
-
-	return b1 < b2 ? -1 : (b2 < b1 ? 1 : 0);
-}
-
 /**
  * cpg_function_polynomial_add:
  * @function: A #CpgFunctionPolynomial
  * @piece: A #CpgFunctionPolynomialPiece
- * 
+ *
  * Add a polynomial piece.
  *
  **/
-void
+gboolean
 cpg_function_polynomial_add (CpgFunctionPolynomial      *function,
                              CpgFunctionPolynomialPiece *piece)
 {
-	g_return_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function));
-	g_return_if_fail (piece != NULL);
+	g_return_val_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function), FALSE);
+	g_return_val_if_fail (piece != NULL, FALSE);
+
+	if (g_slist_find (function->priv->polynomials, piece))
+	{
+		return FALSE;
+	}
 
 	function->priv->polynomials = g_slist_insert_sorted (function->priv->polynomials,
 	                                                     g_object_ref_sink (piece),
 	                                                     (GCompareFunc)compare_polynomials);
+
+	g_signal_connect (piece,
+	                  "notify::begin",
+	                  G_CALLBACK (on_piece_range_changed),
+	                  function);
+
+	g_signal_emit (function, signals[PIECE_ADDED], 0, piece);
+	return TRUE;
 }
 
 /**
  * cpg_function_polynomial_remove:
  * @function: A #CpgFunctionPolynomial
  * @piece: A #CpgFunctionPolynomialPiece
- * 
+ *
  * Remove a polynomial piece.
  *
  **/
-void
+gboolean
 cpg_function_polynomial_remove (CpgFunctionPolynomial      *function,
                                 CpgFunctionPolynomialPiece *piece)
 {
 	GSList *item;
 
-	g_return_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function));
-	g_return_if_fail (piece != NULL);
+	g_return_val_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function), FALSE);
+	g_return_val_if_fail (piece != NULL, FALSE);
 
 	item = g_slist_find (function->priv->polynomials, piece);
 
@@ -263,33 +344,44 @@ cpg_function_polynomial_remove (CpgFunctionPolynomial      *function,
 	{
 		function->priv->polynomials = g_slist_delete_link (function->priv->polynomials,
 		                                                   item);
-		g_object_unref (piece);
+
+		remove_piece (function, piece);
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
 	}
 }
 
 /**
  * cpg_function_polynomial_clear:
  * @function: A #CpgFunctionPolynomial
- * 
+ *
  * Remove all the polynomial pieces.
  *
  **/
 void
-cpg_function_polynomial_clear (CpgFunctionPolynomial *function)
+cpg_function_polynomial_clear_pieces (CpgFunctionPolynomial *function)
 {
 	g_return_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function));
 
-	g_slist_foreach (function->priv->polynomials, (GFunc)g_object_unref, NULL);
-	g_slist_free (function->priv->polynomials);
+	GSList *item;
 
+	for (item = function->priv->polynomials; item; item = g_slist_next (item))
+	{
+		remove_piece (function, item->data);
+	}
+
+	g_slist_free (function->priv->polynomials);
 	function->priv->polynomials = NULL;
 }
 
 /**
  * cpg_function_polynomial_get_pieces:
  * @function: A #CpgFunctionPolynomial
- * 
- * Get a list of the polynomials which make up the function. This returns 
+ *
+ * Get a list of the polynomials which make up the function. This returns
  * the internally used list which should not be modified or freed.
  *
  * Returns: (element-type CpgFunctionPolynomialPiece):

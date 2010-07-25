@@ -30,23 +30,32 @@ struct _CpgFunctionPolynomialClass
 {
 	/*< private >*/
 	CpgFunctionClass parent_class;
+
+	/*< public >*/
+
+	/* signals */
+	void (*piece_added)   (CpgFunctionPolynomial      *polynomial,
+	                       CpgFunctionPolynomialPiece *piece);
+
+	void (*piece_removed) (CpgFunctionPolynomial      *polynomial,
+	                       CpgFunctionPolynomialPiece *piece);
 };
 
-GType         cpg_function_polynomial_get_type   (void) G_GNUC_CONST;
+GType         cpg_function_polynomial_get_type     (void) G_GNUC_CONST;
 
 CpgFunctionPolynomial *
-              cpg_function_polynomial_new        (const gchar                *name);
+              cpg_function_polynomial_new          (const gchar                *name);
 
 
-void          cpg_function_polynomial_add        (CpgFunctionPolynomial      *function,
-                                                  CpgFunctionPolynomialPiece *piece);
+gboolean      cpg_function_polynomial_add          (CpgFunctionPolynomial      *function,
+                                                    CpgFunctionPolynomialPiece *piece);
 
-void          cpg_function_polynomial_remove     (CpgFunctionPolynomial      *function,
-                                                  CpgFunctionPolynomialPiece *piece);
+gboolean      cpg_function_polynomial_remove       (CpgFunctionPolynomial      *function,
+                                                    CpgFunctionPolynomialPiece *piece);
 
-void          cpg_function_polynomial_clear      (CpgFunctionPolynomial      *function);
+void          cpg_function_polynomial_clear_pieces (CpgFunctionPolynomial      *function);
 
-GSList const *cpg_function_polynomial_get_pieces (CpgFunctionPolynomial      *function);
+GSList const *cpg_function_polynomial_get_pieces   (CpgFunctionPolynomial      *function);
 
 G_END_DECLS
 
