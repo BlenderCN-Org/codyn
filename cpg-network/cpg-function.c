@@ -297,19 +297,23 @@ cpg_function_reset_impl (CpgObject *object)
 }
 
 static void
-cpg_function_reset_cache_impl (CpgObject *object)
+cpg_function_foreach_expression_impl (CpgObject                *object,
+                                      CpgForeachExpressionFunc  func,
+                                      gpointer                  userdata)
 {
 	/* Chain up */
-	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->reset_cache != NULL)
+	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->foreach_expression != NULL)
 	{
-		CPG_OBJECT_CLASS (cpg_function_parent_class)->reset_cache (object);
+		CPG_OBJECT_CLASS (cpg_function_parent_class)->foreach_expression (object,
+		                                                                  func,
+		                                                                  userdata);
 	}
 
 	CpgFunction *function = CPG_FUNCTION (object);
 
 	if (function->priv->expression)
 	{
-		cpg_expression_reset_cache (function->priv->expression);
+		func (function->priv->expression, userdata);
 	}
 }
 
@@ -340,7 +344,7 @@ cpg_function_class_init (CpgFunctionClass *klass)
 	cpg_object_class->compile = cpg_function_compile_impl;
 	cpg_object_class->copy = cpg_function_copy_impl;
 	cpg_object_class->reset = cpg_function_reset_impl;
-	cpg_object_class->reset_cache = cpg_function_reset_cache_impl;
+	cpg_object_class->foreach_expression = cpg_function_foreach_expression_impl;
 
 	klass->execute = cpg_function_execute_impl;
 	klass->evaluate = cpg_function_evaluate_impl;

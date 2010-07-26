@@ -195,7 +195,17 @@ cpg_integrator_run_impl (CpgIntegrator *integrator,
 static void
 reset_cache (CpgIntegrator *integrator)
 {
-	cpg_object_reset_cache (integrator->priv->object);
+	cpg_object_foreach_expression (integrator->priv->object,
+	                               (CpgForeachExpressionFunc)cpg_expression_reset_cache,
+	                               NULL);
+}
+
+static void
+reset_variadic (CpgIntegrator *integrator)
+{
+	cpg_object_foreach_expression (integrator->priv->object,
+	                               (CpgForeachExpressionFunc)cpg_expression_reset_variadic,
+	                               NULL);
 }
 
 static gdouble
@@ -559,6 +569,7 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
 	reset_cache (integrator);
+	reset_variadic (integrator);
 
 	/* Do one simulation step which will set all the update values */
 	simulation_step (integrator);

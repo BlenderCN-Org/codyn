@@ -51,6 +51,7 @@ void           cpg_expression_set_value        (CpgExpression      *expression,
                                                 gdouble             value);
 
 void           cpg_expression_reset            (CpgExpression      *expression);
+void           cpg_expression_reset_variadic   (CpgExpression      *expression);
 
 gboolean       cpg_expression_equal            (CpgExpression      *expression,
                                                 CpgExpression      *other);

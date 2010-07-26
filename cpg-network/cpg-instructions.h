@@ -9,11 +9,19 @@
 G_BEGIN_DECLS
 
 /* Forward declaration */
-typedef struct _CpgInstruction               CpgInstruction;
-typedef struct _CpgInstructionProperty       CpgInstructionProperty;
-typedef struct _CpgInstructionFunction       CpgInstructionFunction;
-typedef struct _CpgInstructionCustomFunction CpgInstructionCustomFunction;
-typedef struct _CpgInstructionNumber         CpgInstructionNumber;
+typedef struct _CpgInstruction                 CpgInstruction;
+typedef struct _CpgInstructionProperty         CpgInstructionProperty;
+typedef struct _CpgInstructionFunction         CpgInstructionFunction;
+typedef struct _CpgInstructionVariadicFunction CpgInstructionVariadicFunction;
+typedef struct _CpgInstructionCustomFunction   CpgInstructionCustomFunction;
+typedef struct _CpgInstructionNumber           CpgInstructionNumber;
+
+#define CPG_INSTRUCTION(x)                   ((CpgInstruction *)x)
+#define CPG_INSTRUCTION_PROPERTY(x)          ((CpgInstructionProperty *)x)
+#define CPG_INSTRUCTION_FUNCTION(x)          ((CpgInstructionFunction *)x)
+#define CPG_INSTRUCTION_VARIADIC_FUNCTION(x) ((CpgInstructionVariadicFunction *)x)
+#define CPG_INSTRUCTION_CUSTOM_FUNCTION(x)   ((CpgInstructionCustomFunction *)x)
+#define CPG_INSTRUCTION_NUMBER(x)            ((CpgInstructionNumber *)x)
 
 /**
  * CpgInstructionType:
@@ -34,7 +42,8 @@ typedef enum
 	CPG_INSTRUCTION_TYPE_NUMBER,
 	CPG_INSTRUCTION_TYPE_OPERATOR,
 	CPG_INSTRUCTION_TYPE_PROPERTY,
-	CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION
+	CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION,
+	CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION
 } CpgInstructionType;
 
 /**
@@ -71,6 +80,16 @@ struct _CpgInstructionFunction
 	gchar *name;
 	gint arguments;
 	gboolean variable;
+};
+
+struct _CpgInstructionVariadicFunction
+{
+	/*< private >*/
+	CpgInstructionFunction parent;
+
+	/*< public >*/
+	gboolean cached;
+	gdouble cached_result;
 };
 
 /**
@@ -146,6 +165,11 @@ CpgInstruction *cpg_instruction_function_new        (guint        id,
                                                      const gchar *name,
                                                      gint         arguments,
                                                      gboolean     variable);
+
+CpgInstruction *cpg_instruction_variadic_function_new (guint        id,
+                                                       const gchar *name,
+                                                       gint         arguments,
+                                                       gboolean     variable);
 
 CpgInstruction *cpg_instruction_custom_function_new (CpgFunction *function,
                                                      gint         arguments);

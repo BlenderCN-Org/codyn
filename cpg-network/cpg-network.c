@@ -333,13 +333,22 @@ cpg_network_clear_impl (CpgObject *object)
 }
 
 static void
-cpg_network_reset_cache_impl (CpgObject *object)
+cpg_network_foreach_expression_impl (CpgObject                *object,
+                                     CpgForeachExpressionFunc  func,
+                                     gpointer                  userdata)
 {
 	CpgNetwork *network = CPG_NETWORK (object);
 
-	CPG_OBJECT_CLASS (cpg_network_parent_class)->reset_cache (object);
+	if (CPG_OBJECT_CLASS (cpg_network_parent_class)->foreach_expression)
+	{
+		CPG_OBJECT_CLASS (cpg_network_parent_class)->foreach_expression (object,
+		                                                                 func,
+		                                                                 userdata);
+	}
 
-	cpg_object_reset_cache (CPG_OBJECT (network->priv->function_group));
+	cpg_object_foreach_expression (CPG_OBJECT (network->priv->function_group),
+	                               func,
+	                               userdata);
 }
 
 static void
@@ -357,7 +366,7 @@ cpg_network_class_init (CpgNetworkClass *klass)
 	cpg_class->reset = cpg_network_reset_impl;
 	cpg_class->compile = cpg_network_compile_impl;
 	cpg_class->clear = cpg_network_clear_impl;
-	cpg_class->reset_cache = cpg_network_reset_cache_impl;
+	cpg_class->foreach_expression = cpg_network_foreach_expression_impl;
 
 	group_class->add = cpg_network_add_impl;
 

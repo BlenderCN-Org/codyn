@@ -34,6 +34,7 @@ struct _CpgExpressionPrivate
 	gchar *expression;
 
 	GSList *instructions;
+	GSList *variadic_instructions;
 	CpgStack output;
 
 	GSList *dependencies;
@@ -76,8 +77,10 @@ instructions_free (CpgExpression *expression)
 	                 NULL);
 
 	g_slist_free (expression->priv->instructions);
-
 	expression->priv->instructions = NULL;
+
+	g_slist_free (expression->priv->variadic_instructions);
+	expression->priv->variadic_instructions = NULL;
 
 	g_slist_free (expression->priv->dependencies);
 	expression->priv->dependencies = NULL;
@@ -270,6 +273,13 @@ instructions_push (CpgExpression   *expression,
 {
 	expression->priv->instructions = g_slist_prepend (expression->priv->instructions,
 	                                                  next);
+
+	if (next->type == CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION)
+	{
+		expression->priv->variadic_instructions =
+			g_slist_prepend (expression->priv->variadic_instructions,
+			                 next);
+	}
 }
 
 static gboolean
@@ -415,10 +425,20 @@ parse_function (CpgExpression *expression,
 
 	if (function == NULL)
 	{
-		instruction = cpg_instruction_function_new (fid,
-		                                            name,
-		                                            numargs,
-		                                            cpg_math_function_is_variable (fid));
+		if (cpg_math_function_is_constant (fid))
+		{
+			instruction = cpg_instruction_function_new (fid,
+			                                            name,
+			                                            numargs,
+			                                            cpg_math_function_is_variable (fid));
+		}
+		else
+		{
+			instruction = cpg_instruction_variadic_function_new (fid,
+			                                                     name,
+			                                                     numargs,
+			                                                     cpg_math_function_is_variable (fid));
+		}
 	}
 	else
 	{
@@ -1017,12 +1037,15 @@ validate_stack (CpgExpression *expression)
 		{
 			case CPG_INSTRUCTION_TYPE_OPERATOR:
 			case CPG_INSTRUCTION_TYPE_FUNCTION:
+			case CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION:
 			{
 				CpgInstructionFunction *i = (CpgInstructionFunction *)inst;
 				stack -= i->arguments + (i->variable ? 1 : 0);
 
 				if (stack < 0)
+				{
 					return 0;
+				}
 
 				++stack;
 			}
@@ -1093,6 +1116,20 @@ empty_expression (CpgExpression *expression)
 	return TRUE;
 }
 
+void
+cpg_expression_reset_variadic (CpgExpression *expression)
+{
+	g_return_if_fail (CPG_IS_EXPRESSION (expression));
+
+	GSList *item;
+
+	for (item = expression->priv->variadic_instructions; item; item = g_slist_next (item))
+	{
+		CpgInstructionVariadicFunction *var = item->data;
+		var->cached = FALSE;
+	}
+}
+
 /**
  * cpg_expression_compile:
  * @expression: a #CpgExpression
@@ -1111,6 +1148,9 @@ cpg_expression_compile (CpgExpression      *expression,
                         CpgCompileContext  *context,
                         GError            **error)
 {
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
+	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), FALSE);
+
 	if (!expression->priv->modified)
 	{
 		return TRUE;
@@ -1146,7 +1186,11 @@ cpg_expression_compile (CpgExpression      *expression,
 	else
 	{
 		// reverse instructions
-		expression->priv->instructions = g_slist_reverse (expression->priv->instructions);
+		expression->priv->instructions =
+			g_slist_reverse (expression->priv->instructions);
+
+		expression->priv->variadic_instructions =
+			g_slist_reverse (expression->priv->variadic_instructions);
 
 		if (!validate_stack (expression))
 		{
@@ -1198,6 +1242,23 @@ cpg_expression_set_instructions (CpgExpression *expression,
 	{
 		instructions_push (expression, cpg_instruction_number_new (0.0));
 	}
+
+	GSList *item;
+
+	for (item = expression->priv->instructions; item; item = g_slist_next (item))
+	{
+		CpgInstruction *inst = item->data;
+
+		if (inst->type == CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION)
+		{
+			expression->priv->variadic_instructions =
+				g_slist_prepend (expression->priv->variadic_instructions,
+				                 inst);
+		}
+	}
+
+	expression->priv->variadic_instructions =
+		g_slist_reverse (expression->priv->variadic_instructions);
 
 	if (!validate_stack (expression))
 	{
@@ -1257,7 +1318,9 @@ cpg_expression_evaluate (CpgExpression *expression)
 	}
 
 	GSList *item;
-	cpg_stack_reset (&(expression->priv->output));
+	CpgStack *stack = &(expression->priv->output);
+
+	cpg_stack_reset (stack);
 
 	if (expression->priv->output.size == 0)
 	{
@@ -1278,22 +1341,77 @@ cpg_expression_evaluate (CpgExpression *expression)
 		switch (instruction->type)
 		{
 			case CPG_INSTRUCTION_TYPE_NUMBER:
-				cpg_stack_push (&(expression->priv->output), ((CpgInstructionNumber *)instruction)->value);
+			{
+				CpgInstructionNumber *number =
+					CPG_INSTRUCTION_NUMBER (instruction);
+
+				cpg_stack_push (stack, number->value);
+			}
 			break;
 			case CPG_INSTRUCTION_TYPE_PROPERTY:
 			{
-				CpgInstructionProperty *property = (CpgInstructionProperty *)instruction;
-				cpg_stack_push (&(expression->priv->output), cpg_property_get_value (property->property));
+				CpgInstructionProperty *property =
+					CPG_INSTRUCTION_PROPERTY (instruction);
+
+				cpg_stack_push (stack,
+				                cpg_property_get_value (property->property));
 			}
 			break;
 			case CPG_INSTRUCTION_TYPE_FUNCTION:
-				cpg_math_function_execute (((CpgInstructionFunction *)instruction)->id, &(expression->priv->output));
+			{
+				CpgInstructionFunction *func =
+					CPG_INSTRUCTION_FUNCTION (instruction);
+
+				cpg_math_function_execute (func->id, stack);
+			}
 			break;
 			case CPG_INSTRUCTION_TYPE_OPERATOR:
-				cpg_math_operator_execute (((CpgInstructionFunction *)instruction)->id, &(expression->priv->output));
+			{
+				CpgInstructionFunction *func =
+					CPG_INSTRUCTION_FUNCTION (instruction);
+
+				cpg_math_operator_execute (func->id, stack);
+			}
 			break;
 			case CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION:
-				cpg_function_execute (((CpgInstructionCustomFunction *)instruction)->function, &(expression->priv->output));
+			{
+				CpgInstructionCustomFunction *func =
+					CPG_INSTRUCTION_CUSTOM_FUNCTION (instruction);
+
+				cpg_function_execute (func->function, stack);
+			}
+			break;
+			case CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION:
+			{
+				CpgInstructionVariadicFunction *var =
+					CPG_INSTRUCTION_VARIADIC_FUNCTION (instruction);
+
+				CpgInstructionFunction *func =
+					CPG_INSTRUCTION_FUNCTION (instruction);
+
+				if (var->cached)
+				{
+					gint i;
+
+					for (i = 0; i < (func->arguments + func->variable); ++i)
+					{
+						cpg_stack_pop (stack);
+					}
+
+					cpg_stack_push (stack, var->cached_result);
+				}
+				else
+				{
+					cpg_math_function_execute (func->id, stack);
+
+					/* Cache the result */
+					var->cached_result =
+						cpg_stack_at (stack,
+						              cpg_stack_count (stack) - 1);
+
+					var->cached = TRUE;
+				}
+			}
 			break;
 			default:
 			break;
@@ -1302,7 +1420,10 @@ cpg_expression_evaluate (CpgExpression *expression)
 
 	if (cpg_stack_count (&(expression->priv->output)) != 1)
 	{
-		fprintf (stderr, "Invalid output stack after evaluating: %s!\n", expression->priv->expression);
+		fprintf (stderr,
+		         "Invalid output stack after evaluating: %s!\n",
+		         expression->priv->expression);
+
 		return NAN;
 	}
 

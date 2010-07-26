@@ -497,21 +497,6 @@ cpg_property_set_integrated (CpgProperty  *property,
 }
 
 /**
- * cpg_property_reset_cache:
- * @property: a #CpgProperty
- *
- * Reset the cached value of the property expression
- *
- **/
-void
-cpg_property_reset_cache (CpgProperty *property)
-{
-	g_return_if_fail (CPG_IS_PROPERTY (property));
-
-	cpg_expression_reset_cache (property->priv->expression);
-}
-
-/**
  * cpg_property_reset:
  * @property: A #CpgProperty
  *

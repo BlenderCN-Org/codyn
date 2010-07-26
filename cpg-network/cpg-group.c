@@ -379,14 +379,24 @@ cpg_group_cpg_reset (CpgObject *object)
 }
 
 static void
-cpg_group_cpg_reset_cache (CpgObject *object)
+cpg_group_cpg_foreach_expression (CpgObject                *object,
+                                  CpgForeachExpressionFunc  func,
+                                  gpointer                  userdata)
 {
-	CPG_OBJECT_CLASS (cpg_group_parent_class)->reset_cache (object);
+	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->foreach_expression)
+	{
+		CPG_OBJECT_CLASS (cpg_group_parent_class)->foreach_expression (object,
+		                                                               func,
+		                                                               userdata);
+	}
 
 	/* And then also the children! */
-	cpg_group_foreach (CPG_GROUP (object),
-	                   (GFunc)cpg_object_reset_cache,
-	                   NULL);
+	GSList *item;
+
+	for (item = CPG_GROUP (object)->priv->children; item; item = g_slist_next (item))
+	{
+		cpg_object_foreach_expression (item->data, func, userdata);
+	}
 }
 
 static void
@@ -789,7 +799,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 
 	cpg_class->compile = cpg_group_cpg_compile;
 	cpg_class->reset = cpg_group_cpg_reset;
-	cpg_class->reset_cache = cpg_group_cpg_reset_cache;
+	cpg_class->foreach_expression = cpg_group_cpg_foreach_expression;
 	cpg_class->clear = cpg_group_cpg_clear;
 	cpg_class->equal = cpg_group_cpg_equal;
 

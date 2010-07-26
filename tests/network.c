@@ -109,6 +109,44 @@ test_integrate ()
 }
 
 static void
+test_variadic ()
+{
+	CpgNetwork *network;
+
+	srandom (time (0));
+
+	network = cpg_network_new ();
+
+	CpgProperty *prop = cpg_property_new ("x", "rand()", CPG_PROPERTY_FLAG_NONE);
+	CpgProperty *other = cpg_property_new ("y", "0", CPG_PROPERTY_FLAG_NONE);
+
+	cpg_object_add_property (CPG_OBJECT (network), prop);
+	cpg_object_add_property (CPG_OBJECT (network), other);
+
+	CpgLink *link = cpg_link_new ("link",
+	                              CPG_OBJECT (network),
+	                              CPG_OBJECT (network));
+
+	CpgLinkAction *action = cpg_link_action_new ("y", cpg_expression_new ("x"));
+	cpg_link_add_action (link, action);
+
+	cpg_group_add (CPG_GROUP (network), CPG_OBJECT (link));
+
+	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
+
+	gdouble r = cpg_property_get_value (prop);
+	cpg_expression_reset_cache (cpg_property_get_expression (prop));
+
+	g_assert_cmpfloat (r, ==, cpg_property_get_value (prop));
+
+	cpg_network_step (network, 0.01);
+
+	g_assert_cmpfloat (cpg_property_get_value (prop), ==, cpg_property_get_value (other));
+
+	g_object_unref (network);
+}
+
+static void
 test_direct ()
 {
 	gdouble values[] = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
@@ -253,6 +291,8 @@ main (int   argc,
 	g_test_add_func ("/network/group/load", test_group_load);
 	g_test_add_func ("/network/group/integrate", test_group_integrate);
 	g_test_add_func ("/network/group/reset", test_group_reset);
+
+	g_test_add_func ("/network/variadic", test_variadic);
 
 
 	g_test_run ();

@@ -51,6 +51,8 @@ struct _CpgObject
 	CpgObjectPrivate *priv;
 };
 
+typedef void (*CpgForeachExpressionFunc) (CpgExpression *expression, gpointer userdata);
+
 /**
  * CpgObjectClass:
  * @compile: compile virtual function
@@ -89,7 +91,10 @@ struct _CpgObjectClass
 	                                  CPG_FORWARD_DECL (CpgCompileError) *error);
 
 	void          (*reset)           (CpgObject *object);
-	void          (*reset_cache)     (CpgObject *object);
+
+	void          (*foreach_expression) (CpgObject                *object,
+	                                     CpgForeachExpressionFunc  func,
+	                                     gpointer                  userdata);
 
 	void          (*apply_template)  (CpgObject *object,
 	                                  CpgObject *templ);
@@ -174,7 +179,11 @@ void              cpg_object_set_auto_imported (CpgObject    *object,
 
 /* evaluation */
 void              cpg_object_reset          (CpgObject   *object);
-void              cpg_object_reset_cache    (CpgObject	 *object);
+
+void              cpg_object_foreach_expression (CpgObject                *object,
+                                                 CpgForeachExpressionFunc  func,
+                                                 gpointer                  userdata);
+
 void              cpg_object_taint          (CpgObject   *object);
 
 gboolean          cpg_object_is_compiled    (CpgObject   *object);

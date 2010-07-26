@@ -21,6 +21,9 @@ void      cpg_stack_push    (CpgStack *stack,
 gdouble   cpg_stack_pop     (CpgStack *stack);
 void      cpg_stack_reset   (CpgStack *stack);
 
+gdouble   cpg_stack_at      (CpgStack *stack,
+                             gint      idx);
+
 G_END_DECLS
 
 #endif /* __CPG_STACK_H__ */

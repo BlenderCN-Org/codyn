@@ -256,22 +256,25 @@ cpg_link_dispose (GObject *object)
 }
 
 static void
-action_reset_cache (CpgLinkAction *action)
-{
-	cpg_expression_reset_cache (cpg_link_action_get_equation (action));
-}
-
-static void
-cpg_link_reset_cache_impl (CpgObject *object)
+cpg_link_foreach_expression_impl (CpgObject                *object,
+                                  CpgForeachExpressionFunc  func,
+                                  gpointer                  userdata)
 {
 	/* Chain up */
-	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->reset_cache != NULL)
+	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->foreach_expression != NULL)
 	{
-		CPG_OBJECT_CLASS (cpg_link_parent_class)->reset_cache (object);
+		CPG_OBJECT_CLASS (cpg_link_parent_class)->foreach_expression (object,
+		                                                              func,
+		                                                              userdata);
 	}
 
 	/* Reset action expressions */
-	g_slist_foreach (CPG_LINK (object)->priv->actions, (GFunc)action_reset_cache, NULL);
+	GSList *item;
+
+	for (item = CPG_LINK (object)->priv->actions; item; item = g_slist_next (item))
+	{
+		func (cpg_link_action_get_equation (item->data), userdata);
+	}
 }
 
 static void
@@ -401,7 +404,7 @@ cpg_link_class_init (CpgLinkClass *klass)
 	object_class->get_property = cpg_link_get_property;
 	object_class->set_property = cpg_link_set_property;
 
-	cpgobject_class->reset_cache = cpg_link_reset_cache_impl;
+	cpgobject_class->foreach_expression = cpg_link_foreach_expression_impl;
 	cpgobject_class->copy = cpg_link_copy_impl;
 	cpgobject_class->compile = cpg_link_compile_impl;
 	cpgobject_class->equal = cpg_link_equal_impl;

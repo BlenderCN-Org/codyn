@@ -226,11 +226,17 @@ cpg_object_dispose (GObject *object)
 }
 
 static void
-cpg_object_reset_cache_impl (CpgObject *object)
+cpg_object_foreach_expression_impl (CpgObject                *object,
+                                    CpgForeachExpressionFunc  func,
+                                    gpointer                  userdata)
+
 {
-	g_slist_foreach (object->priv->properties,
-	                 (GFunc)cpg_property_reset_cache,
-	                 NULL);
+	GSList *item;
+
+	for (item = object->priv->properties; item; item = g_slist_next (item))
+	{
+		func (cpg_property_get_expression (item->data), userdata);
+	}
 }
 
 static void
@@ -374,7 +380,10 @@ cpg_object_compile_impl (CpgObject         *object,
 
 	if (ret)
 	{
-		cpg_object_reset_cache (object);
+		cpg_object_foreach_expression (object,
+		                               (CpgForeachExpressionFunc)cpg_expression_reset_cache,
+		                               NULL);
+
 		g_signal_emit (object, object_signals[COMPILED], 0);
 	}
 
@@ -640,7 +649,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 	object_class->set_property = set_property;
 
 	klass->reset = cpg_object_reset_impl;
-	klass->reset_cache = cpg_object_reset_cache_impl;
+	klass->foreach_expression = cpg_object_foreach_expression_impl;
 	klass->copy = cpg_object_copy_impl;
 	klass->compile = cpg_object_compile_impl;
 	klass->apply_template = cpg_object_apply_template_impl;
@@ -1220,25 +1229,6 @@ _cpg_object_get_links (CpgObject *object)
 }
 
 /**
- * cpg_object_reset_cache:
- * @object: a #CpgObject
- *
- * Reset object expression caches. This will reset all expressions (such as
- * within properties) within the object
- *
- **/
-void
-cpg_object_reset_cache (CpgObject *object)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-
-	if (CPG_OBJECT_GET_CLASS (object)->reset_cache)
-	{
-		CPG_OBJECT_GET_CLASS (object)->reset_cache (object);
-	}
-}
-
-/**
  * cpg_object_compile:
  * @object: A #CpgObject
  * @context: A #CpgCompileContext
@@ -1532,4 +1522,22 @@ cpg_object_get_full_id (CpgObject *object)
 	g_free (parentId);
 
 	return ret;
+}
+
+void
+cpg_object_foreach_expression (CpgObject                *object,
+                               CpgForeachExpressionFunc  func,
+                               gpointer                  userdata)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+
+	if (!func)
+	{
+		return;
+	}
+
+	if (CPG_OBJECT_GET_CLASS (object)->foreach_expression)
+	{
+		CPG_OBJECT_GET_CLASS (object)->foreach_expression (object, func, userdata);
+	}
 }
