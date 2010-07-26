@@ -91,6 +91,15 @@ cpg_instruction_copy (CpgInstruction *instruction)
 			                                            function->arguments);
 		}
 		break;
+		case CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR:
+		{
+			CpgInstructionCustomOperator *op =
+				CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
+
+			return cpg_instruction_custom_operator_new (op->op,
+			                                            op->data->expressions);
+		}
+		break;
 		default:
 			return NULL;
 		break;
@@ -274,6 +283,20 @@ cpg_instruction_custom_function_new (CpgFunction *function,
 	return CPG_INSTRUCTION (res);
 }
 
+CpgInstruction *
+cpg_instruction_custom_operator_new (CpgOperator *op,
+                                     GSList      *expressions)
+{
+	CpgInstructionCustomOperator *res = instruction_new (CpgInstructionCustomOperator);
+
+	res->parent.type = CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR;
+
+	res->op = g_object_ref (op);
+	res->data = cpg_operator_create_data (op, expressions);
+
+	return CPG_INSTRUCTION (res);
+}
+
 /**
  * cpg_instruction_free:
  * @instruction: a #CpgInstruction
@@ -329,6 +352,17 @@ cpg_instruction_free (CpgInstruction *instruction)
 
 			g_object_unref (func->function);
 			g_slice_free (CpgInstructionCustomFunction, func);
+		}
+		break;
+		case CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR:
+		{
+			CpgInstructionCustomOperator *op =
+				CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
+
+			cpg_operator_free_data (op->op, op->data);
+			g_object_unref (op->op);
+
+			g_slice_free (CpgInstructionCustomOperator, op);
 		}
 		break;
 		case CPG_INSTRUCTION_TYPE_NONE:
@@ -398,6 +432,18 @@ cpg_instruction_to_string (CpgInstruction *instruction)
 				CPG_INSTRUCTION_CUSTOM_FUNCTION (instruction);
 
 			return g_strdup_printf ("FNC (%s)", cpg_object_get_id (CPG_OBJECT (inst->function)));
+		}
+		break;
+		case CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR:
+		{
+			CpgInstructionCustomOperator *inst =
+				CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
+
+			gchar *name = cpg_operator_get_name (inst->op);
+			gchar *ret = g_strdup_printf ("OPC (%s)", name);
+			g_free (name);
+
+			return ret;
 		}
 		break;
 		default:

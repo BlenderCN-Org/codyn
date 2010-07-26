@@ -5,6 +5,7 @@
 #include <cpg-network/cpg-math.h>
 #include <cpg-network/cpg-property.h>
 #include <cpg-network/cpg-function.h>
+#include <cpg-network/cpg-operator.h>
 
 G_BEGIN_DECLS
 
@@ -15,6 +16,7 @@ typedef struct _CpgInstructionFunction         CpgInstructionFunction;
 typedef struct _CpgInstructionVariadicFunction CpgInstructionVariadicFunction;
 typedef struct _CpgInstructionCustomFunction   CpgInstructionCustomFunction;
 typedef struct _CpgInstructionNumber           CpgInstructionNumber;
+typedef struct _CpgInstructionCustomOperator   CpgInstructionCustomOperator;
 
 #define CPG_INSTRUCTION(x)                   ((CpgInstruction *)x)
 #define CPG_INSTRUCTION_PROPERTY(x)          ((CpgInstructionProperty *)x)
@@ -22,6 +24,7 @@ typedef struct _CpgInstructionNumber           CpgInstructionNumber;
 #define CPG_INSTRUCTION_VARIADIC_FUNCTION(x) ((CpgInstructionVariadicFunction *)x)
 #define CPG_INSTRUCTION_CUSTOM_FUNCTION(x)   ((CpgInstructionCustomFunction *)x)
 #define CPG_INSTRUCTION_NUMBER(x)            ((CpgInstructionNumber *)x)
+#define CPG_INSTRUCTION_CUSTOM_OPERATOR(x)   ((CpgInstructionCustomOperator *)x)
 
 /**
  * CpgInstructionType:
@@ -43,7 +46,8 @@ typedef enum
 	CPG_INSTRUCTION_TYPE_OPERATOR,
 	CPG_INSTRUCTION_TYPE_PROPERTY,
 	CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION,
-	CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION
+	CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION,
+	CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR
 } CpgInstructionType;
 
 /**
@@ -126,6 +130,16 @@ struct _CpgInstructionNumber
 	gdouble value;
 };
 
+struct _CpgInstructionCustomOperator
+{
+	/*< private >*/
+	CpgInstruction parent;
+
+	/*< public >*/
+	CpgOperator *op;
+	CpgOperatorData *data;
+};
+
 /**
  * CpgInstructionBinding:
  * @CPG_INSTRUCTION_BINDING_NONE: none
@@ -178,6 +192,9 @@ CpgInstruction *cpg_instruction_number_new          (gdouble      value);
 CpgInstruction *cpg_instruction_operator_new        (guint        id,
                                                      const gchar *name,
                                                      gint         arguments);
+
+CpgInstruction *cpg_instruction_custom_operator_new (CpgOperator *op,
+                                                     GSList      *expressions);
 
 CpgInstruction *cpg_instruction_property_new        (CpgProperty           *property,
                                                      CpgInstructionBinding  binding);

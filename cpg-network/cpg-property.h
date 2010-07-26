@@ -88,6 +88,9 @@ void               cpg_property_remove_flags            (CpgProperty        *pro
 void               cpg_property_reset                   (CpgProperty        *property);
 
 gdouble            cpg_property_get_value               (CpgProperty        *property);
+gdouble            cpg_property_get_last_value          (CpgProperty        *property);
+void               cpg_property_update_last_value       (CpgProperty        *property);
+
 CpgExpression     *cpg_property_get_expression          (CpgProperty        *property);
 
 void               cpg_property_set_value               (CpgProperty        *property,

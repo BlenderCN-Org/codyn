@@ -276,6 +276,46 @@ cpg_integrator_reset_impl (CpgIntegrator *integrator)
 	                        NULL);
 }
 
+static gboolean
+ensure_compiled (CpgIntegrator *integrator)
+{
+	CpgObject *object = cpg_integrator_state_get_object (integrator->priv->state);
+
+	if (!cpg_object_is_compiled (object))
+	{
+		return cpg_object_compile (object, NULL, NULL);
+	}
+
+	return TRUE;
+}
+
+static gboolean
+cpg_integrator_step_prepare_impl (CpgIntegrator *integrator,
+                                  gdouble        t,
+                                  gdouble        timestep)
+{
+	if (!ensure_compiled (integrator))
+	{
+		return FALSE;
+	}
+
+	cpg_property_set_value (integrator->priv->property_time, t);
+	cpg_property_set_value (integrator->priv->property_timestep, timestep);
+
+	/* Store last values in properties */
+	GSList const *props;
+
+	props = cpg_integrator_state_all_properties (integrator->priv->state);
+
+	while (props)
+	{
+		cpg_property_update_last_value (props->data);
+		props = g_slist_next (props);
+	}
+
+	return TRUE;
+}
+
 static void
 cpg_integrator_class_init (CpgIntegratorClass *klass)
 {
@@ -291,6 +331,7 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 	klass->run = cpg_integrator_run_impl;
 	klass->step = cpg_integrator_step_impl;
 	klass->reset = cpg_integrator_reset_impl;
+	klass->step_prepare = cpg_integrator_step_prepare_impl;
 
 	/**
 	 * CpgIntegrator:object:
@@ -450,19 +491,6 @@ simulation_step (CpgIntegrator *integrator)
 	}
 }
 
-static gboolean
-ensure_compiled (CpgIntegrator *integrator)
-{
-	CpgObject *object = cpg_integrator_state_get_object (integrator->priv->state);
-
-	if (!cpg_object_is_compiled (object))
-	{
-		return cpg_object_compile (object, NULL, NULL);
-	}
-
-	return TRUE;
-}
-
 /**
  * cpg_integrator_run:
  * @integrator: A #CpgIntegrator
@@ -518,14 +546,6 @@ cpg_integrator_step (CpgIntegrator *integrator,
 	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), 0);
 	g_return_val_if_fail (timestep > 0, 0);
 
-	if (!ensure_compiled (integrator))
-	{
-		return 0;
-	}
-
-	cpg_property_set_value (integrator->priv->property_time, t);
-	cpg_property_set_value (integrator->priv->property_timestep, timestep);
-
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->step (integrator, t, timestep);
 }
 
@@ -573,6 +593,16 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
 
 	/* Do one simulation step which will set all the update values */
 	simulation_step (integrator);
+}
+
+gboolean
+cpg_integrator_step_prepare (CpgIntegrator *integrator,
+                             gdouble        t,
+                             gdouble        timestep)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), FALSE);
+
+	return CPG_INTEGRATOR_GET_CLASS (integrator)->step_prepare (integrator, t, timestep);
 }
 
 /**

@@ -35,6 +35,7 @@ struct _CpgExpressionClass
 };
 
 GType          cpg_expression_get_type         (void) G_GNUC_CONST;
+
 CpgExpression *cpg_expression_new              (gchar const        *expression);
 CpgExpression *cpg_expression_copy             (CpgExpression      *expression);
 

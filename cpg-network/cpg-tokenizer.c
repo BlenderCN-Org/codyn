@@ -11,10 +11,10 @@ typedef struct
 	gint left_assoc;
 } OperatorProperties;
 
-static OperatorProperties operator_properties[] = 
+static OperatorProperties operator_properties[] =
 {
 	{0, 0}, // CPG_TOKEN_OPERATOR_TYPE_NONE,
-	
+
 	// arithmetic operators
 	{0, 0}, // CPG_TOKEN_OPERATOR_TYPE_ARITHMETIC,
 	{7, 1}, // CPG_TOKEN_OPERATOR_TYPE_MULTIPLY,
@@ -23,7 +23,7 @@ static OperatorProperties operator_properties[] =
 	{6, 1}, // CPG_TOKEN_OPERATOR_TYPE_PLUS,
 	{6, 1}, // CPG_TOKEN_OPERATOR_TYPE_MINUS,
 	{9, 0}, // CPG_TOKEN_OPERATOR_TYPE_POWER,
-	
+
 	// logical operators
 	{0, 0}, // CPG_TOKEN_OPERATOR_TYPE_LOGICAL,
 	{8, 0}, // CPG_TOKEN_OPERATOR_TYPE_NEGATE,
@@ -34,16 +34,19 @@ static OperatorProperties operator_properties[] =
 	{4, 1}, // CPG_TOKEN_OPERATOR_TYPE_EQUAL,
 	{2, 1}, // CPG_TOKEN_OPERATOR_TYPE_OR,
 	{3, 1}, // CPG_TOKEN_OPERATOR_TYPE_AND,
-	
+
 	// ternary operator
 	{1, 0}, // CPG_TOKEN_OPERATOR_TYPE_TERNARY,
 	{1, 0}, // CPG_TOKEN_OPERATOR_TYPE_TERNARY_TRUE,
 	{1, 0}, // CPG_TOKEN_OPERATOR_TYPE_TERNARY_FALSE,
-	
+
 	// group 'operator'
 	{0, 0}, // CPG_TOKEN_OPERATOR_TYPE_GROUP,
 	{10, 1}, // CPG_TOKEN_OPERATOR_TYPE_GROUP_START,
 	{10, 1}, // CPG_TOKEN_OPERATOR_TYPE_GROUP_END,
+
+	{10, 1}, // CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START,
+	{10, 1}, // CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END,
 
 	{10, 1}  // CPG_TOKEN_OPERATOR_TYPE_COMMA
 };
@@ -52,7 +55,9 @@ static void
 skip_whitespace (gchar const **buffer)
 {
 	while (g_ascii_isspace (**buffer))
+	{
 		++*buffer;
+	}
 }
 
 static gint
@@ -68,41 +73,41 @@ cpg_tokenizer_parse_number (gchar const **buffer)
 {
 	// parse leading numbers
 	gchar const *start = *buffer;
-	
+
 	while (g_ascii_isdigit (*(++*buffer)))
 	;
-	
+
 	if (**buffer == '.')
 	{
 		while (g_ascii_isdigit (*(++*buffer)))
 		;
 	}
-	
+
 	// Scientific notation
 	if ((**buffer == 'e' || **buffer == 'E') && *(*buffer + 1))
 	{
 		gchar const *next = *buffer + 1;
-		
+
 		if (*next == '+' || *next == '-')
 		{
 			++next;
 		}
-		
+
 		if (*next && g_ascii_isdigit(*next))
 		{
 			while (g_ascii_isdigit(*++next))
 			;
-			
+
 			*buffer = next;
 		}
 	}
-	
+
 	CpgTokenNumber *res = g_slice_new (CpgTokenNumber);
 	res->parent.type = CPG_TOKEN_TYPE_NUMBER;
 
 	res->parent.text = g_strndup ((gchar *)start, *buffer - start);
 	res->value = g_ascii_strtod (res->parent.text, NULL);
-	
+
 	return (CpgToken *)res;
 }
 
@@ -114,7 +119,7 @@ cpg_tokenizer_parse_identifier (gchar const **buffer)
 
 	while (isalnum (*(++*buffer)) || **buffer == '_')
 	;
-	
+
 	CpgTokenIdentifier *res = g_slice_new (CpgTokenIdentifier);
 	res->parent.type = CPG_TOKEN_TYPE_IDENTIFIER;
 	res->parent.text = g_strndup (start, *buffer - start);
@@ -146,9 +151,11 @@ isoperator (gint c)
 		case '(':
 		case ')':
 		case ',':
+		case '[':
+		case ']':
 			return TRUE;
 	}
-	
+
 	return FALSE;
 }
 
@@ -161,28 +168,40 @@ cpg_tokenizer_parse_operator (gchar const **buffer)
 	CpgTokenOperatorType type = CPG_TOKEN_OPERATOR_TYPE_NONE;
 
 	gchar const *start = *buffer;
-	
+
 	// skip buffer 2 places to handle double char operators, then when it
 	// is not a double char, shift buffer one back, its the easiest way
 	*buffer += 2;
-	
+
 	// first find double char operators
 	if (c == '*' && n == '*')
+	{
 		type = CPG_TOKEN_OPERATOR_TYPE_POWER;
+	}
 	else if (c == '=' && n == '=')
+	{
 		type = CPG_TOKEN_OPERATOR_TYPE_EQUAL;
+	}
 	else if (c == '>' && n == '=')
+	{
 		type = CPG_TOKEN_OPERATOR_TYPE_GREATER_OR_EQUAL;
+	}
 	else if (c == '<' && n == '=')
+	{
 		type = CPG_TOKEN_OPERATOR_TYPE_LESS_OR_EQUAL;
+	}
 	else if (c == '|' && n == '|')
+	{
 		type = CPG_TOKEN_OPERATOR_TYPE_OR;
+	}
 	else if (c == '&' && n == '&')
+	{
 		type = CPG_TOKEN_OPERATOR_TYPE_AND;
+	}
 	else
 	{
 		--*buffer;
-		
+
 		switch (c)
 		{
 			case '*':
@@ -227,20 +246,28 @@ cpg_tokenizer_parse_operator (gchar const **buffer)
 			case '.':
 				type = CPG_TOKEN_OPERATOR_TYPE_DOT;
 			break;
+			case '[':
+				type = CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START;
+			break;
+			case ']':
+				type = CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END;
+			break;
 		}
 	}
-	
+
 	if (type == CPG_TOKEN_OPERATOR_TYPE_NONE)
+	{
 		return NULL;
-	
+	}
+
 	CpgTokenOperator *res = g_slice_new0 (CpgTokenOperator);
 	res->parent.type = CPG_TOKEN_TYPE_OPERATOR;
 	res->parent.text = g_strndup (start, *buffer - start);
-	
+
 	res->type = type;
 	res->priority = operator_properties[type].priority;
 	res->left_assoc = operator_properties[type].left_assoc;
-	
+
 	return (CpgToken *)res;
 }
 
@@ -254,16 +281,18 @@ CpgToken *
 cpg_tokenizer_next (gchar const **buffer)
 {
 	if (*buffer)
+	{
 		skip_whitespace (buffer);
-		
+	}
+
 	if (*buffer == NULL || **buffer == '\0')
 	{
 		*buffer = NULL;
 		return NULL;
 	}
-	
+
 	CpgToken *res = NULL;
-	
+
 	// check for number
 	if (isdigit (**buffer) || (**buffer == '.' && isdigit (buffer_peek (*buffer, 1))))
 	{
@@ -287,8 +316,10 @@ void
 cpg_token_free (CpgToken *token)
 {
 	if (!token)
+	{
 		return;
-	
+	}
+
 	g_free (token->text);
 
 	switch (token->type)

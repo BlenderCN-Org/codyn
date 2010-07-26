@@ -10,6 +10,7 @@
 #include "cpg-debug.h"
 #include "cpg-integrator-euler.h"
 #include "cpg-network-deserializer.h"
+#include "cpg-operator-lastof.h"
 
 /**
  * SECTION:cpg-network
@@ -49,6 +50,8 @@ struct _CpgNetworkPrivate
 
 	CpgGroup *template_group;
 	CpgGroup *function_group;
+
+	GSList *operators;
 };
 
 enum
@@ -88,6 +91,9 @@ cpg_network_finalize (GObject *object)
 
 	g_object_unref (network->priv->template_group);
 	g_object_unref (network->priv->function_group);
+
+	g_slist_foreach (network->priv->operators, (GFunc)g_object_unref, NULL);
+	g_slist_free (network->priv->operators);
 
 	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
@@ -294,6 +300,8 @@ cpg_network_compile_impl (CpgObject         *object,
 	cpg_compile_context_set_functions (context,
 	                                   cpg_group_get_children (network->priv->function_group));
 
+	cpg_compile_context_set_operators (context, network->priv->operators);
+
 	gboolean ret = cpg_object_compile (CPG_OBJECT (network->priv->function_group),
 	                                   context,
 	                                   error);
@@ -444,6 +452,9 @@ cpg_network_init (CpgNetwork *network)
 	CpgIntegratorEuler *integrator = cpg_integrator_euler_new ();
 	cpg_network_set_integrator (network, CPG_INTEGRATOR (integrator));
 	g_object_unref (integrator);
+
+	network->priv->operators = g_slist_prepend (network->priv->operators,
+	                                            cpg_operator_lastof_new ());
 }
 
 /**

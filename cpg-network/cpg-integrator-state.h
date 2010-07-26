@@ -39,6 +39,7 @@ CpgObject *cpg_integrator_state_get_object (CpgIntegratorState *state);
 
 GSList const *cpg_integrator_state_integrated_properties (CpgIntegratorState *state);
 GSList const *cpg_integrator_state_direct_properties (CpgIntegratorState *state);
+GSList const *cpg_integrator_state_all_properties (CpgIntegratorState *state);
 
 GSList const *cpg_integrator_state_integrated_link_actions (CpgIntegratorState *state);
 GSList const *cpg_integrator_state_direct_link_actions (CpgIntegratorState *state);

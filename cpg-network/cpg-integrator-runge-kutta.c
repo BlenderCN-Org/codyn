@@ -129,6 +129,11 @@ cpg_integrator_runge_kutta_step_impl (CpgIntegrator *integrator,
 {
 	CpgIntegratorRungeKutta *rk = CPG_INTEGRATOR_RUNGE_KUTTA (integrator);
 
+	if (!cpg_integrator_step_prepare (integrator, t, timestep))
+	{
+		return 0;
+	}
+
 	CpgIntegratorState *state = cpg_integrator_get_state (integrator);
 	GSList const *integrated = cpg_integrator_state_integrated_properties (state);
 

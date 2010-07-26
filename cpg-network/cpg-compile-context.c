@@ -22,6 +22,7 @@ typedef struct
 {
 	GSList *objects;
 	GSList *functions;
+	GSList *operators;
 } Context;
 
 struct _CpgCompileContextPrivate
@@ -36,6 +37,7 @@ context_free (Context *context)
 {
 	g_slist_free (context->objects);
 	g_slist_free (context->functions);
+	g_slist_free (context->operators);
 
 	g_slice_free (Context, context);
 }
@@ -47,6 +49,7 @@ context_copy (Context *context)
 
 	ctx->objects = g_slist_copy (context->objects);
 	ctx->functions = g_slist_copy (context->functions);
+	ctx->operators = g_slist_copy (context->operators);
 
 	return ctx;
 }
@@ -220,6 +223,21 @@ cpg_compile_context_set_functions (CpgCompileContext *context,
 	CURRENT_CONTEXT (context)->functions = g_slist_copy ((GSList *)functions);
 }
 
+void
+cpg_compile_context_set_operators (CpgCompileContext *context,
+                                   GSList const      *operators)
+{
+	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
+
+	if (!context)
+	{
+		return;
+	}
+
+	g_slist_free (CURRENT_CONTEXT (context)->operators);
+	CURRENT_CONTEXT (context)->operators = g_slist_copy ((GSList *)operators);
+}
+
 /**
  * cpg_compile_context_lookup_property:
  * @context: A #CpgCompileContext
@@ -313,6 +331,19 @@ cpg_compile_context_get_functions (CpgCompileContext *context)
 	return CURRENT_CONTEXT (context)->functions;
 }
 
+GSList const *
+cpg_compile_context_get_operators (CpgCompileContext *context)
+{
+	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
+
+	if (!context)
+	{
+		return NULL;
+	}
+
+	return CURRENT_CONTEXT (context)->operators;
+}
+
 /**
  * cpg_compile_context_lookup_function:
  * @context: A #CpgCompileContext
@@ -353,6 +384,46 @@ cpg_compile_context_lookup_function (CpgCompileContext *context,
 		if (g_strcmp0 (cpg_object_get_id (CPG_OBJECT (function)), name) == 0)
 		{
 			return function;
+		}
+	}
+
+	return NULL;
+}
+
+CpgOperator *
+cpg_compile_context_lookup_operator (CpgCompileContext *context,
+                                     gchar const       *name)
+{
+	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+
+	if (!context)
+	{
+		return NULL;
+	}
+
+	GSList *item;
+	Context *ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->operators; item; item = g_slist_next (item))
+	{
+		CpgOperator *op;
+
+		if (!item->data)
+		{
+			continue;
+		}
+
+		op = item->data;
+
+		gchar *opname = cpg_operator_get_name (op);
+		gboolean equal = (g_strcmp0 (name, opname) == 0);
+
+		g_free (opname);
+
+		if (equal)
+		{
+			return op;
 		}
 	}
 

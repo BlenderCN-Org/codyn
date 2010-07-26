@@ -26,6 +26,8 @@ struct _CpgPropertyPrivate
 
 	gdouble update;
 	CpgObject *object;
+
+	gdouble last_value;
 };
 
 G_DEFINE_TYPE (CpgProperty, cpg_property, G_TYPE_INITIALLY_UNOWNED)
@@ -422,6 +424,22 @@ cpg_property_get_value (CpgProperty *property)
 	{
 		return 0;
 	}
+}
+
+gdouble
+cpg_property_get_last_value (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
+
+	return property->priv->last_value;
+}
+
+void
+cpg_property_update_last_value (CpgProperty *property)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	property->priv->last_value = cpg_property_get_value (property);
 }
 
 /**

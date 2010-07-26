@@ -5,6 +5,7 @@
 #include <cpg-network/cpg-stack.h>
 #include <cpg-network/cpg-utils.h>
 #include <cpg-network/cpg-function-argument.h>
+#include <cpg-network/cpg-expression.h>
 
 #include <stdarg.h>
 
@@ -17,8 +18,6 @@ G_BEGIN_DECLS
 #define CPG_IS_FUNCTION(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_FUNCTION))
 #define CPG_IS_FUNCTION_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_FUNCTION))
 #define CPG_FUNCTION_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_FUNCTION, CpgFunctionClass))
-
-CPG_FORWARD_DECL (CpgExpression);
 
 typedef struct _CpgFunction         CpgFunction;
 typedef struct _CpgFunctionClass    CpgFunctionClass;
@@ -61,13 +60,13 @@ struct _CpgFunctionClass
 	CpgObjectClass parent_class;
 
 	/*< public >*/
-	gdouble (*evaluate) (CpgFunction *function);
-	void    (*execute)  (CpgFunction *function,
-	                     CpgStack    *stack);
+	gdouble (*evaluate)        (CpgFunction         *function);
+	void    (*execute)         (CpgFunction         *function,
+	                            CpgStack            *stack);
 
 	/* signals */
-	void   (*argument_added) (CpgFunction         *function,
-	                          CpgFunctionArgument *argument);
+	void   (*argument_added)   (CpgFunction         *function,
+	                            CpgFunctionArgument *argument);
 
 	void   (*argument_removed) (CpgFunction         *function,
 	                            CpgFunctionArgument *argument);
@@ -76,7 +75,6 @@ struct _CpgFunctionClass
 GQuark               cpg_function_error_quark                 (void);
 
 GType                cpg_function_get_type                    (void) G_GNUC_CONST;
-GType                cpg_function_argument_get_type           (void) G_GNUC_CONST;
 
 CpgFunction         *cpg_function_new                         (const gchar          *name,
                                                                const gchar          *expression);
@@ -99,7 +97,7 @@ void                 cpg_function_execute                     (CpgFunction      
 void                 cpg_function_set_expression              (CpgFunction          *function,
                                                                CpgExpression        *expression);
 
-CPG_FORWARD_DECL (CpgExpression) *cpg_function_get_expression (CpgFunction          *function);
+CpgExpression       *cpg_function_get_expression              (CpgFunction          *function);
 
 G_END_DECLS
 

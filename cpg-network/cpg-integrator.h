@@ -44,18 +44,22 @@ struct _CpgIntegratorClass
 	CpgObjectClass parent_class;
 
 	/*< public >*/
-	void         (*run)      (CpgIntegrator *integrator,
-	                          gdouble        from,
-	                          gdouble        timestep,
-	                          gdouble        to);
+	void         (*run)          (CpgIntegrator *integrator,
+	                              gdouble        from,
+	                              gdouble        timestep,
+	                              gdouble        to);
 
-	gdouble      (*step)     (CpgIntegrator *integrator,
-	                          gdouble        t,
-	                          gdouble        timestep);
+	gdouble      (*step)         (CpgIntegrator *integrator,
+	                              gdouble        t,
+	                              gdouble        timestep);
 
-	const gchar *(*get_name) (CpgIntegrator *integrator);
+	gboolean     (*step_prepare) (CpgIntegrator *integrator,
+	                              gdouble        t,
+	                              gdouble        timestep);
 
-	void         (*reset)     (CpgIntegrator *integrator);
+	const gchar *(*get_name)     (CpgIntegrator *integrator);
+
+	void         (*reset)        (CpgIntegrator *integrator);
 
 	/* private field */
 	const gchar *integrator_id;
@@ -73,6 +77,10 @@ void                 cpg_integrator_run             (CpgIntegrator *integrator,
                                                      gdouble        to);
 
 gdouble              cpg_integrator_step            (CpgIntegrator *integrator,
+                                                     gdouble        t,
+                                                     gdouble        timestep);
+
+gboolean             cpg_integrator_step_prepare    (CpgIntegrator *integrator,
                                                      gdouble        t,
                                                      gdouble        timestep);
 

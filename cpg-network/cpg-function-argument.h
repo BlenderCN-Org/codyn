@@ -38,7 +38,7 @@ struct _CpgFunctionArgumentClass
 	                             const gchar         *name);
 };
 
-GType cpg_function_argument_get_type (void) G_GNUC_CONST;
+GType                cpg_function_argument_get_type           (void) G_GNUC_CONST;
 
 CpgFunctionArgument *cpg_function_argument_new                (const gchar         *name,
                                                                gboolean             optional,

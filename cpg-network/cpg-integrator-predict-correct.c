@@ -297,8 +297,12 @@ cpg_integrator_predict_correct_step_impl (CpgIntegrator *integrator,
                                           gdouble        timestep)
 {
 	CpgIntegratorPredictCorrect *pc = CPG_INTEGRATOR_PREDICT_CORRECT (integrator);
-
 	CpgIntegratorState *state = cpg_integrator_get_state (integrator);
+
+	if (!cpg_integrator_step_prepare (integrator, t, timestep))
+	{
+		return 0;
+	}
 
 	GSList const *integrated = cpg_integrator_state_integrated_properties (state);
 	GSList const *direct = cpg_integrator_state_direct_properties (state);

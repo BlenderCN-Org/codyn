@@ -34,6 +34,8 @@ COMMON_SOURCES = 		\
 	cpg-network-deserializer.c \
 	cpg-network-serializer.c \
 	cpg-object.c \
+	cpg-operator.c \
+	cpg-operator-lastof.c \
 	cpg-property.c \
 	cpg-stack.c \
 	cpg-state.c \
@@ -79,6 +81,8 @@ INST_H_FILES = \
 	cpg-network-deserializer.h \
 	cpg-network-serializer.h \
 	cpg-object.h \
+	cpg-operator.h \
+	cpg-operator-lastof.h \
 	cpg-property.h \
 	cpg-stack.h \
 	cpg-state.h \

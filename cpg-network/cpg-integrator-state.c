@@ -20,6 +20,7 @@ struct _CpgIntegratorStatePrivate
 
 	GSList *integrated_properties;
 	GSList *direct_properties;
+	GSList *all_properties;
 
 	GSList *integrated_link_actions;
 	GSList *direct_link_actions;
@@ -55,6 +56,9 @@ clear_lists (CpgIntegratorState *state)
 
 	g_slist_free (state->priv->direct_properties);
 	state->priv->direct_properties = NULL;
+
+	g_slist_free (state->priv->all_properties);
+	state->priv->all_properties = NULL;
 
 	g_slist_free (state->priv->integrated_link_actions);
 	state->priv->integrated_link_actions = NULL;
@@ -276,9 +280,25 @@ collect_actors (CpgIntegratorState *state,
 }
 
 static void
+collect_properties (CpgIntegratorState *state,
+                    CpgObject          *object)
+{
+	GSList const *props;
+
+	for (props = cpg_object_get_properties (object); props; props = g_slist_next (props))
+	{
+		state->priv->all_properties =
+			g_slist_prepend (state->priv->all_properties,
+			                 props->data);
+	}
+}
+
+static void
 collect_states (CpgIntegratorState *state,
                 CpgObject          *object)
 {
+	collect_properties (state, object);
+
 	if (CPG_IS_LINK (object))
 	{
 		collect_link (state, CPG_LINK (object));
@@ -345,6 +365,9 @@ cpg_integrator_state_update (CpgIntegratorState *state)
 	clear_lists (state);
 
 	collect_states (state, CPG_OBJECT (state->priv->object));
+
+	state->priv->all_properties =
+		g_slist_reverse (state->priv->all_properties);
 
 	/* order the direct link actions based on their dependencies */
 	sort_link_actions (state);
@@ -414,6 +437,22 @@ cpg_integrator_state_direct_link_actions (CpgIntegratorState *state)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
 	return state->priv->direct_link_actions;
+}
+
+/**
+ * cpg_integrator_state_direct_link_actions:
+ * @state: A #CpgIntegratorState
+ * 
+ * Get the link actions that act on non-integrated properties.
+ *
+ * Returns: (element-type CpgLinkAction): A #GSList
+ *
+ **/
+GSList const *
+cpg_integrator_state_all_properties (CpgIntegratorState *state)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->all_properties;
 }
 
 /**

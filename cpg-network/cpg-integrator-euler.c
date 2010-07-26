@@ -30,6 +30,11 @@ cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
                                 gdouble        t,
                                 gdouble        timestep)
 {
+	if (!cpg_integrator_step_prepare (integrator, t, timestep))
+	{
+		return 0;
+	}
+
 	cpg_integrator_evaluate (integrator, t, timestep);
 
 	/* Update values are now contained in state, update the values in the
