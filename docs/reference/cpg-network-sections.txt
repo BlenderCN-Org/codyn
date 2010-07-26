@@ -41,6 +41,8 @@ cpg_expression_get_instructions
 cpg_expression_set_instructions
 cpg_expression_get_once
 cpg_expression_set_once
+cpg_expression_copy
+cpg_expression_reset_variadic
 <SUBSECTION Standard>
 CPG_EXPRESSION
 CPG_IS_EXPRESSION
@@ -60,6 +62,7 @@ CpgObject
 CpgObjectClass
 CpgObjectPrivate
 CpgObjectError
+CpgForeachExpressionFunc
 cpg_object_error_quark
 cpg_object_new
 cpg_object_new_from_template
@@ -72,7 +75,6 @@ cpg_object_remove_property
 cpg_object_get_properties
 cpg_object_get_parent
 cpg_object_reset
-cpg_object_reset_cache
 cpg_object_taint
 cpg_object_is_compiled
 cpg_object_compile
@@ -86,6 +88,7 @@ cpg_object_get_auto_imported
 cpg_object_set_auto_imported
 cpg_object_get_full_id
 cpg_object_verify_remove_property
+cpg_object_foreach_expression
 <SUBSECTION Standard>
 CPG_OBJECT
 CPG_IS_OBJECT
@@ -103,10 +106,9 @@ CPG_FUNCTION_CONST
 CpgFunction
 CpgFunctionClass
 CpgFunctionPrivate
-CpgFunctionArgument
-cpg_function_argument_get_type
+CpgFunctionError
+CPG_TYPE_FUNCTION_ERROR
 cpg_function_new
-cpg_function_argument_new
 cpg_function_add_argument
 cpg_function_remove_argument
 cpg_function_clear_arguments
@@ -115,10 +117,8 @@ cpg_function_get_n_optional
 cpg_function_get_n_arguments
 cpg_function_execute
 cpg_function_set_expression
-cpg_function_argument_get_name
-cpg_function_argument_get_optional
-cpg_function_argument_get_default_value
-cpg_function_argument_get_property
+cpg_function_error_get_type
+cpg_function_error_quark
 <SUBSECTION Standard>
 CPG_FUNCTION
 CPG_IS_FUNCTION
@@ -127,6 +127,31 @@ cpg_function_get_type
 CPG_FUNCTION_CLASS
 CPG_IS_FUNCTION_CLASS
 CPG_FUNCTION_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>cpg-function-argument</FILE>
+<TITLE>CpgFunctionArgument</TITLE>
+CPG_FUNCTION_ARGUMENT_CONST
+CpgFunctionArgument
+CpgFunctionArgumentClass
+CpgFunctionArgumentPrivate
+cpg_function_argument_copy
+cpg_function_argument_new
+cpg_function_argument_get_name
+cpg_function_argument_set_name
+cpg_function_argument_get_optional
+cpg_function_argument_set_optional
+cpg_function_argument_get_default_value
+cpg_function_argument_set_default_value
+<SUBSECTION Standard>
+CPG_FUNCTION_ARGUMENT
+CPG_IS_FUNCTION_ARGUMENT
+CPG_TYPE_FUNCTION_ARGUMENT
+cpg_function_argument_get_type
+CPG_FUNCTION_ARGUMENT_CLASS
+CPG_IS_FUNCTION_ARGUMENT_CLASS
+CPG_FUNCTION_ARGUMENT_GET_CLASS
 </SECTION>
 
 <SECTION>
@@ -168,6 +193,8 @@ cpg_link_action_get_target
 cpg_link_action_new
 cpg_link_action_set_equation
 cpg_link_action_set_target
+cpg_link_action_copy
+cpg_link_action_get_target_property
 <SUBSECTION Standard>
 CPG_LINK_ACTION
 CPG_IS_LINK_ACTION
@@ -204,19 +231,11 @@ CpgFunctionPolynomial
 CpgFunctionPolynomialClass
 CpgFunctionPolynomialPrivate
 CpgFunctionPolynomialPiece
-cpg_function_polynomial_piece_get_type
 cpg_function_polynomial_new
-cpg_function_polynomial_piece_new
 cpg_function_polynomial_add
 cpg_function_polynomial_remove
-cpg_function_polynomial_clear
+cpg_function_polynomial_clear_pieces
 cpg_function_polynomial_get_pieces
-cpg_function_polynomial_piece_get_begin
-cpg_function_polynomial_piece_get_end
-cpg_function_polynomial_piece_set_begin
-cpg_function_polynomial_piece_set_end
-cpg_function_polynomial_piece_get_coefficients
-cpg_function_polynomial_piece_set_coefficients
 <SUBSECTION Standard>
 CPG_FUNCTION_POLYNOMIAL
 CPG_IS_FUNCTION_POLYNOMIAL
@@ -225,6 +244,32 @@ cpg_function_polynomial_get_type
 CPG_FUNCTION_POLYNOMIAL_CLASS
 CPG_IS_FUNCTION_POLYNOMIAL_CLASS
 CPG_FUNCTION_POLYNOMIAL_GET_CLASS
+</SECTION>
+
+<SECTION>
+<FILE>cpg-function-polynomial-piece</FILE>
+<TITLE>CpgFunctionPolynomialPiece</TITLE>
+CPG_FUNCTION_POLYNOMIAL_PIECE_CONST
+CpgFunctionPolynomialPiece
+CpgFunctionPolynomialPieceClass
+CpgFunctionPolynomialPiecePrivate
+cpg_function_polynomial_piece_new
+cpg_function_polynomial_piece_get_begin
+cpg_function_polynomial_piece_get_end
+cpg_function_polynomial_piece_set_begin
+cpg_function_polynomial_piece_set_end
+cpg_function_polynomial_piece_get_coefficients
+cpg_function_polynomial_piece_set_coefficients
+cpg_function_polynomial_piece_copy
+cpg_function_polynomial_piece_get_normalization
+<SUBSECTION Standard>
+CPG_FUNCTION_POLYNOMIAL_PIECE
+CPG_IS_FUNCTION_POLYNOMIAL_PIECE
+CPG_TYPE_FUNCTION_POLYNOMIAL_PIECE
+cpg_function_polynomial_piece_get_type
+CPG_FUNCTION_POLYNOMIAL_PIECE_CLASS
+CPG_IS_FUNCTION_POLYNOMIAL_PIECE_CLASS
+CPG_FUNCTION_POLYNOMIAL_PIECE_GET_CLASS
 </SECTION>
 
 <SECTION>
@@ -482,7 +527,6 @@ cpg_property_get_flags
 cpg_property_set_flags
 cpg_property_add_flags
 cpg_property_remove_flags
-cpg_property_reset_cache
 cpg_property_get_value
 cpg_property_get_expression
 cpg_property_set_value
@@ -495,6 +539,8 @@ cpg_property_flags_from_string
 cpg_property_flags_to_string
 cpg_property_reset
 cpg_property_get_full_name
+cpg_property_copy
+cpg_property_set_name
 <SUBSECTION Standard>
 CPG_PROPERTY
 CPG_IS_PROPERTY
@@ -548,9 +594,11 @@ CPG_INTEGRATOR_RUNGE_KUTTA_GET_CLASS
 <SECTION>
 <FILE>cpg-compile-context</FILE>
 <TITLE>CpgCompileContext</TITLE>
+CPG_COMPILE_CONTEXT_CONST
 CpgCompileContext
+CpgCompileContextClass
+CpgCompileContextPrivate
 cpg_compile_context_new
-cpg_compile_context_get_type
 cpg_compile_context_prepend_object
 cpg_compile_context_save
 cpg_compile_context_restore
@@ -558,6 +606,14 @@ cpg_compile_context_append_object
 cpg_compile_context_set_functions
 cpg_compile_context_get_objects
 cpg_compile_context_get_functions
+<SUBSECTION Standard>
+CPG_COMPILE_CONTEXT
+CPG_IS_COMPILE_CONTEXT
+CPG_TYPE_COMPILE_CONTEXT
+cpg_compile_context_get_type
+CPG_COMPILE_CONTEXT_CLASS
+CPG_IS_COMPILE_CONTEXT_CLASS
+CPG_COMPILE_CONTEXT_GET_CLASS
 </SECTION>
 
 <SECTION>
@@ -583,23 +639,15 @@ cpg_property_flags_get_type
 </SECTION>
 
 <SECTION>
-<FILE>cpg-ref-counted</FILE>
-<TITLE>CpgRefCounted</TITLE>
-CpgRefCounted
-cpg_ref_counted_init
-cpg_ref_counted_ref
-cpg_ref_counted_unref
-</SECTION>
-
-<SECTION>
 <FILE>cpg-compile-error</FILE>
 <TITLE>CpgCompileError</TITLE>
-CPG_TYPE_COMPILE_ERROR
+CPG_COMPILE_ERROR_CONST
+CpgCompileError
+CpgCompileErrorClass
+CpgCompileErrorPrivate
 CPG_COMPILE_ERROR_TYPE
 CpgCompileErrorCode
-CpgCompileError
 cpg_compile_error_type_quark
-cpg_compile_error_get_type
 cpg_compile_error_new
 cpg_compile_error_set
 cpg_compile_error_get_error
@@ -610,6 +658,14 @@ cpg_compile_error_string
 cpg_compile_error_code_string
 cpg_compile_error_get_code
 cpg_compile_error_get_message
+<SUBSECTION Standard>
+CPG_COMPILE_ERROR
+CPG_IS_COMPILE_ERROR
+CPG_TYPE_COMPILE_ERROR
+cpg_compile_error_get_type
+CPG_COMPILE_ERROR_CLASS
+CPG_IS_COMPILE_ERROR_CLASS
+CPG_COMPILE_ERROR_GET_CLASS
 </SECTION>
 
 <SECTION>
@@ -652,11 +708,18 @@ cpg_stack_count
 cpg_stack_push
 cpg_stack_pop
 cpg_stack_reset
+cpg_stack_at
 </SECTION>
 
 <SECTION>
 <FILE>cpg-instructions</FILE>
 <TITLE>CpgInstructions</TITLE>
+CPG_INSTRUCTION
+CPG_INSTRUCTION_CUSTOM_FUNCTION
+CPG_INSTRUCTION_FUNCTION
+CPG_INSTRUCTION_NUMBER
+CPG_INSTRUCTION_PROPERTY
+CPG_INSTRUCTION_VARIADIC_FUNCTION
 CpgInstruction
 CpgInstructionType
 CpgInstructionBinding
@@ -664,11 +727,13 @@ CpgInstructionProperty
 CpgInstructionFunction
 CpgInstructionCustomFunction
 CpgInstructionNumber
+CpgInstructionVariadicFunction
 cpg_instruction_function_new
 cpg_instruction_custom_function_new
 cpg_instruction_number_new
 cpg_instruction_operator_new
 cpg_instruction_property_new
+cpg_instruction_variadic_function_new
 cpg_instruction_copy
 cpg_instruction_free
 cpg_instruction_to_string

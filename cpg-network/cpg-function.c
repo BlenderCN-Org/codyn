@@ -357,6 +357,14 @@ cpg_function_class_init (CpgFunctionClass *klass)
 	                                                      CPG_TYPE_EXPRESSION,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgFunction::argument-added:
+	 * @object: a #CpgFunction
+	 * @argument: a #CpgFunctionArgument
+	 *
+	 * Emitted when an argument has been added to the function
+	 *
+	 **/
 	signals[ARGUMENT_ADDED] =
 		g_signal_new ("argument-added",
 		              G_TYPE_FROM_CLASS (klass),
@@ -370,6 +378,14 @@ cpg_function_class_init (CpgFunctionClass *klass)
 		              1,
 		              CPG_TYPE_FUNCTION_ARGUMENT);
 
+	/**
+	 * CpgFunction::argument-removed:
+	 * @object: a #CpgFunction
+	 * @argument: a #CpgFunctionArgument
+	 *
+	 * Emitted when an argument has been removed from the function
+	 *
+	 **/
 	signals[ARGUMENT_REMOVED] =
 		g_signal_new ("argument-removed",
 		              G_TYPE_FROM_CLASS (klass),
@@ -602,6 +618,8 @@ cpg_function_add_argument (CpgFunction         *function,
  * @error: A #GError
  *
  * Remove a function argument.
+ *
+ * Returns: %TRUE if the argument could be removed, %FALSE otherwise
  *
  **/
 gboolean

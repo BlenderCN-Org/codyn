@@ -139,6 +139,12 @@ cpg_function_argument_class_init (CpgFunctionArgumentClass *klass)
 		              1,
 		              G_TYPE_STRING);
 
+	/**
+	 * CpgFunctionArgument:name:
+	 *
+	 * The function argument name
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_NAME,
 	                                 g_param_spec_string ("name",
@@ -147,6 +153,12 @@ cpg_function_argument_class_init (CpgFunctionArgumentClass *klass)
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
+	/**
+	 * CpgFunctionArgument:optional:
+	 *
+	 * Whether or not the function argument is optional
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_OPTIONAL,
 	                                 g_param_spec_boolean ("optional",
@@ -155,6 +167,12 @@ cpg_function_argument_class_init (CpgFunctionArgumentClass *klass)
 	                                                       FALSE,
 	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgFunctionArgument:default:
+	 *
+	 * The default value of an optional function argument
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_DEFAULT,
 	                                 g_param_spec_double ("default",
@@ -172,8 +190,22 @@ cpg_function_argument_init (CpgFunctionArgument *self)
 	self->priv = CPG_FUNCTION_ARGUMENT_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_function_argument_new:
+ * @name: The function argument name
+ * @optional: Whether the function argument is optional
+ * @def: The default value of an optional function argument
+ *
+ * Create a new #CpgFunctionArgument. Note that #CpgFunctionArgument derives
+ * from #GInitiallyUnowned. This means that initially, the newly created object
+ * has a floating reference and does not need to be freed if you add it to
+ * a function using #cpg_function_add_argument.
+ *
+ * Returns: A #CpgFunctionArgument
+ *
+ **/
 CpgFunctionArgument *
-cpg_function_argument_new (const gchar *name,
+cpg_function_argument_new (gchar const *name,
                            gboolean     optional,
                            gdouble      def)
 {
@@ -184,6 +216,18 @@ cpg_function_argument_new (const gchar *name,
 	                     NULL);
 }
 
+/**
+ * cpg_function_argument_copy:
+ * @argument: A #CpgFunctionArgument
+ *
+ * Create a copy of a function argument. Note that #CpgFunctionArgument derives
+ * from #GInitiallyUnowned. This means that initially, the newly created object
+ * has a floating reference and does not need to be freed if you add it to
+ * a function using #cpg_function_add_argument.
+ *
+ * Returns: A #CpgFunctionArgument
+ *
+ **/
 CpgFunctionArgument *
 cpg_function_argument_copy (CpgFunctionArgument *argument)
 {
@@ -211,6 +255,17 @@ cpg_function_argument_get_name (CpgFunctionArgument *argument)
 	return argument->priv->name;
 }
 
+/**
+ * cpg_function_argument_set_name:
+ * @argument: A #CpgFunctionArgument
+ * @name: The argument name
+ * 
+ * Set the function argument name.
+ *
+ * Returns: %TRUE if the function argument name could be successfully changed,
+ *          %FALSE otherwise.
+ *
+ **/
 gboolean
 cpg_function_argument_set_name (CpgFunctionArgument *argument,
                                 gchar const         *name)
@@ -240,6 +295,14 @@ cpg_function_argument_get_optional (CpgFunctionArgument *argument)
 	return argument->priv->optional;
 }
 
+/**
+ * cpg_function_argument_set_optional:
+ * @argument: A #CpgFunctionArgument
+ * @optional: Whether the argument is optional
+ *
+ * Set whether a function argument is optional.
+ *
+ **/
 void
 cpg_function_argument_set_optional (CpgFunctionArgument *argument,
                                     gboolean             optional)
@@ -270,6 +333,14 @@ cpg_function_argument_get_default_value (CpgFunctionArgument *argument)
 	return argument->priv->def;
 }
 
+/**
+ * cpg_function_argument_set_default_value:
+ * @argument: A #CpgFunctionArgument
+ * @def: The default argument value
+ *
+ * Set the default argument value for an optional function argument.
+ *
+ **/
 void
 cpg_function_argument_set_default_value (CpgFunctionArgument *argument,
                                          gdouble              def)

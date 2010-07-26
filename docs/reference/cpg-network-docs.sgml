@@ -37,10 +37,10 @@
     <xi:include href="xml/cpg-math.xml"/>
     <xi:include href="xml/cpg-stack.xml"/>
     <xi:include href="xml/cpg-monitor.xml"/>
-    <xi:include href="xml/cpg-ref-counted.xml"/>
     <xi:include href="xml/cpg-compile-error.xml"/>
     <xi:include href="xml/cpg-compile-context.xml"/>
     <xi:include href="xml/cpg-function.xml"/>
+    <xi:include href="xml/cpg-function-argument.xml"/>
     <xi:include href="xml/cpg-function-polynomial.xml"/>
     <xi:include href="xml/cpg-integrator.xml"/>
     <xi:include href="xml/cpg-integrator-state.xml"/>
