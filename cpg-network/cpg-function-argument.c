@@ -1,6 +1,15 @@
 #include "cpg-function-argument.h"
 #include "cpg-marshal.h"
 
+/**
+ * SECTION:cpg-function-argument
+ * @short_description: An argument to a custom defined function
+ *
+ * A #CpgFunctionArgument contains information on an argument (or parameter)
+ * to a custom defined function.
+ *
+ */
+
 #define CPG_FUNCTION_ARGUMENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_FUNCTION_ARGUMENT, CpgFunctionArgumentPrivate))
 
 /* signals */
@@ -127,6 +136,18 @@ cpg_function_argument_class_init (CpgFunctionArgumentClass *klass)
 
 	g_type_class_add_private (object_class, sizeof(CpgFunctionArgumentPrivate));
 
+	/**
+	 * CpgFunctionArgument::invalidate-name:
+	 * @object: a #CpgFunctionArgument
+	 * @name: the new function argument name
+	 *
+	 * This signal is emitted to validate (or rather, invalidate) a new
+	 * name for a function argument. When a signal handler returns %TRUE,
+	 * the new name is rejected.
+	 *
+	 * Returns: %TRUE if the new name should be rejected, %FALSE otherwise
+	 *
+	 **/
 	signals[INVALIDATE_NAME] =
 		g_signal_new ("invalidate-name",
 		              G_TYPE_FROM_CLASS (klass),

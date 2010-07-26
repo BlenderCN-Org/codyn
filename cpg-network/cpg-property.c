@@ -249,6 +249,12 @@ cpg_property_class_init (CpgPropertyClass *klass)
 
 	g_type_class_add_private (object_class, sizeof(CpgPropertyPrivate));
 
+	/**
+	 * CpgProperty:name:
+	 *
+	 * The property name
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_NAME,
 	                                 g_param_spec_string ("name",
@@ -258,6 +264,12 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgProperty:object:
+	 *
+	 * The object on which the property is defined
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_OBJECT,
 	                                 g_param_spec_object ("object",
@@ -267,6 +279,12 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgProperty:flags:
+	 *
+	 * The property flags
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_FLAGS,
 	                                 g_param_spec_flags ("flags",
@@ -277,6 +295,12 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                     G_PARAM_READWRITE |
 	                                                     G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgProperty:expression:
+	 *
+	 * The property expression
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPRESSION,
 	                                 g_param_spec_object ("expression",
@@ -286,6 +310,18 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgProperty::invalidate-name:
+	 * @property: a #CpgProperty
+	 * @name: the new property name
+	 *
+	 * This signal is emitted to validate (or rather, invalidate) a new
+	 * name for a property. When a signal handler returns %TRUE,
+	 * the new name is rejected.
+	 *
+	 * Returns: %TRUE if the new name should be rejected, %FALSE otherwise
+	 *
+	 **/
 	signals[INVALIDATE_NAME] =
 		g_signal_new ("invalidate-name",
 		              G_TYPE_FROM_CLASS (klass),
@@ -441,6 +477,16 @@ cpg_property_get_name (CpgProperty *property)
 	return property->priv->name;
 }
 
+/**
+ * cpg_property_set_name:
+ * @property: A #CpgProperty
+ * @name: The new property name
+ *
+ * Set a new name for a property.
+ *
+ * Returns: %TRUE if the name could be successfully changed, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_property_set_name (CpgProperty *property,
                        gchar const *name)
@@ -740,7 +786,7 @@ cpg_property_flags_from_string (gchar const *flags)
 }
 
 /**
- * cpg_object_get_full_name:
+ * cpg_property_get_full_name:
  * @property: A #CpgProperty
  *
  * Get the full name of the property. This is the name that can be used in the

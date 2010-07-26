@@ -513,14 +513,13 @@ cpg_link_new (gchar const  *id,
 /**
  * cpg_link_add_action:
  * @link: the #CpgLink
- * @target: the target #CpgProperty
- * @equation: the expression to evaluate and push to @target
+ * @action: the #CpgLinkAction
  *
  * Add a new action to be performed when the link is evaluated during
- * simulation. An action consists of a target property and an expression
- * who's result will be pushed in the target at every simulation step
+ * simulation.
  *
- * Returns: the new #CpgLinkAction
+ * Returns: %TRUE if @action could be successfully added, %FALSE otherwise
+ *
  **/
 gboolean
 cpg_link_add_action (CpgLink       *link,

@@ -350,6 +350,15 @@ cpg_link_action_depends (CpgLinkAction *action,
 	                     property) != NULL;
 }
 
+/**
+ * cpg_link_action_copy:
+ * @action: A #CpgLinkAction
+ *
+ * Create a copy of a #CpgLinkAction.
+ *
+ * Returns: A #CpgLinkAction
+ *
+ **/
 CpgLinkAction *
 cpg_link_action_copy (CpgLinkAction *action)
 {
@@ -359,6 +368,15 @@ cpg_link_action_copy (CpgLinkAction *action)
 	                            cpg_expression_copy (action->priv->equation));
 }
 
+/**
+ * cpg_link_action_get_target_property:
+ * @action: A #CpgLinkAction
+ *
+ * Get the target property of the link action.
+ *
+ * Returns: A #CpgProperty
+ *
+ **/
 CpgProperty *
 cpg_link_action_get_target_property (CpgLinkAction *action)
 {

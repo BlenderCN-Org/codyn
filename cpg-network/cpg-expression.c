@@ -1116,6 +1116,14 @@ empty_expression (CpgExpression *expression)
 	return TRUE;
 }
 
+/**
+ * cpg_expression_reset_variadic:
+ * @expression: A #CpgExpression
+ *
+ * Reset the cache of the variadic functions (such as rand()). You normally
+ * do not need to call this function directly.
+ *
+ **/
 void
 cpg_expression_reset_variadic (CpgExpression *expression)
 {
@@ -1635,6 +1643,15 @@ cpg_expression_set_once (CpgExpression *expression,
 	expression->priv->prevent_cache_reset |= once;
 }
 
+/**
+ * cpg_expression_copy:
+ * @expression: A #CpgExpression
+ *
+ * Create a copy of a #CpgExpression.
+ *
+ * Returns: A #CpgExpression
+ *
+ **/
 CpgExpression *
 cpg_expression_copy (CpgExpression *expression)
 {

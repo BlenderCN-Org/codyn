@@ -150,6 +150,16 @@ cpg_stack_pop (CpgStack *stack)
 	return *(--stack->output_ptr);
 }
 
+/**
+ * cpg_stack_at:
+ * @stack: A #CpgStack
+ * @idx: The index
+ *
+ * Get a value from the stack at the specified index @idx.
+ *
+ * Returns: The stack value at index @idx
+ *
+ **/
 gdouble
 cpg_stack_at (CpgStack *stack,
               gint      idx)

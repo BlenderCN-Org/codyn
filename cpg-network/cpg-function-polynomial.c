@@ -225,6 +225,15 @@ cpg_function_polynomial_class_init (CpgFunctionPolynomialClass *klass)
 
 	object_class->finalize = cpg_function_polynomial_finalize;
 
+	/**
+	 * CpgFunctionPolynomial::piece-added:
+	 * @object: a #CpgFunctionPolynomial
+	 * @piece: a #CpgFunctionPolynomialPiece
+	 *
+	 * Emitted when a new #CpgFunctionPolynomialPiece is added to the
+	 * piecewise polynomial function.
+	 *
+	 **/
 	signals[PIECE_ADDED] =
 		g_signal_new ("piece-added",
 		              G_TYPE_FROM_CLASS (klass),
@@ -237,6 +246,15 @@ cpg_function_polynomial_class_init (CpgFunctionPolynomialClass *klass)
 		              1,
 		              CPG_TYPE_FUNCTION_POLYNOMIAL_PIECE);
 
+	/**
+	 * CpgFunctionPolynomial::piece-removed:
+	 * @object: a #CpgFunctionPolynomial
+	 * @piece: a #CpgFunctionPolynomialPiece
+	 *
+	 * Emitted when a #CpgFunctionPolynomialPiece is removed from the
+	 * piecewise polynomial function.
+	 *
+	 **/
 	signals[PIECE_REMOVED] =
 		g_signal_new ("piece-removed",
 		              G_TYPE_FROM_CLASS (klass),
@@ -295,6 +313,8 @@ cpg_function_polynomial_new (gchar const *name)
  *
  * Add a polynomial piece.
  *
+ * Returns: %TRUE if the piece could be successfully added, %FALSE otherwise
+ *
  **/
 gboolean
 cpg_function_polynomial_add (CpgFunctionPolynomial      *function,
@@ -328,6 +348,8 @@ cpg_function_polynomial_add (CpgFunctionPolynomial      *function,
  *
  * Remove a polynomial piece.
  *
+ * Returns: %TRUE if the piece could be successfully removed, %FALSE otherwise
+ *
  **/
 gboolean
 cpg_function_polynomial_remove (CpgFunctionPolynomial      *function,
@@ -355,7 +377,7 @@ cpg_function_polynomial_remove (CpgFunctionPolynomial      *function,
 }
 
 /**
- * cpg_function_polynomial_clear:
+ * cpg_function_polynomial_clear_pieces:
  * @function: A #CpgFunctionPolynomial
  *
  * Remove all the polynomial pieces.

@@ -1,6 +1,15 @@
 #include "cpg-function-polynomial-piece.h"
-
 #include <string.h>
+
+/**
+ * SECTION:cpg-function-polynomial-piece
+ * @short_description: Piecewise polynomial piece
+ *
+ * This class provides a single piece of a piecewise polynomial function. See
+ * #CpgFunctionPolynomial for more information on the support for piecewise
+ * polynomial functions.
+ *
+ */
 
 #define CPG_FUNCTION_POLYNOMIAL_PIECE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_FUNCTION_POLYNOMIAL_PIECE, CpgFunctionPolynomialPiecePrivate))
 
@@ -216,6 +225,12 @@ cpg_function_polynomial_piece_class_init (CpgFunctionPolynomialPieceClass *klass
 
 	g_type_class_add_private (object_class, sizeof(CpgFunctionPolynomialPiecePrivate));
 
+	/**
+	 * CpgFunctionPolynomialPiece:begin:
+	 *
+	 * The begin point of the piece
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_BEGIN,
 	                                 g_param_spec_double ("begin",
@@ -226,6 +241,12 @@ cpg_function_polynomial_piece_class_init (CpgFunctionPolynomialPieceClass *klass
 	                                                      0,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgFunctionPolynomialPiece:end:
+	 *
+	 * The end point of the piece
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_END,
 	                                 g_param_spec_double ("end",
@@ -236,6 +257,12 @@ cpg_function_polynomial_piece_class_init (CpgFunctionPolynomialPieceClass *klass
 	                                                      0,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgFunctionPolynomialPiece:coefficients:
+	 *
+	 * The coefficients of the piece
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_COEFFICIENTS,
 	                                 g_param_spec_value_array ("coefficients",
@@ -250,6 +277,12 @@ cpg_function_polynomial_piece_class_init (CpgFunctionPolynomialPieceClass *klass
 	                                                                                0),
 	                                                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
+	/**
+	 * CpgFunctionPolynomialPiece:begin:
+	 *
+	 * The normalization of the piece
+	 *
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_NORMALIZATION,
 	                                 g_param_spec_value_array ("normalization",
@@ -305,6 +338,15 @@ cpg_function_polynomial_piece_new (gdouble  begin,
 	return ret;
 }
 
+/**
+ * cpg_function_polynomial_piece_copy:
+ * @piece: A #CpgFunctionPolynomialPiece
+ *
+ * Create a copy of a #CpgFunctionPolynomialPiece.
+ *
+ * Returns: A #CpgFunctionPolynomialPiece
+ *
+ **/
 CpgFunctionPolynomialPiece *
 cpg_function_polynomial_piece_copy (CpgFunctionPolynomialPiece *piece)
 {

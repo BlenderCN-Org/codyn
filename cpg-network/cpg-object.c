@@ -20,6 +20,15 @@
  *
  */
 
+/**
+ * CpgForeachExpressionFunc:
+ * @expression: a #CpgExpression
+ * @userdata: user data
+ *
+ * A function callback called on each expression found in an object.
+ *
+ **/
+
 #define CPG_OBJECT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CPG_TYPE_OBJECT, CpgObjectPrivate))
 
 struct _CpgObjectPrivate
@@ -905,6 +914,7 @@ cpg_object_new_from_template (CpgObject *templ)
  *
  * Add a new property to the object
  *
+ * Returns: %TRUE if the property was added successfully, %FALSE otherwise
  **/
 gboolean
 cpg_object_add_property (CpgObject   *object,
@@ -1524,6 +1534,18 @@ cpg_object_get_full_id (CpgObject *object)
 	return ret;
 }
 
+/**
+ * cpg_object_foreach_expression:
+ * @object: A #CpgObject
+ * @func: A #CpgForeachExpressionFunc
+ * @userdata: The userdata that will be supplied to @func
+ *
+ * Iterate over each expression defined in the object. For normal objects, this
+ * means all the property expressions. Classes that inherit from #CpgObject
+ * can implement their own iteration for additional expressions (see for
+ * example #CpgGroup).
+ *
+ **/
 void
 cpg_object_foreach_expression (CpgObject                *object,
                                CpgForeachExpressionFunc  func,

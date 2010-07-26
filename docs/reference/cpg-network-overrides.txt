@@ -31,7 +31,10 @@ struct _CpgObjectClass
 	                                  CpgCompileError                    *error);
 
 	void          (*reset)           (CpgObject *object);
-	void          (*reset_cache)     (CpgObject *object);
+
+	void          (*foreach_expression) (CpgObject                *object,
+	                                     CpgForeachExpressionFunc  func,
+	                                     gpointer                  userdata);
 
 	void          (*apply_template)  (CpgObject *object,
 	                                  CpgObject *templ);
@@ -90,9 +93,4 @@ CpgObject         *object,CpgCompileContext *context,CpgCompileError *error
 <NAME>cpg_monitor_new</NAME>
 <RETURNS>CpgMonitor		 *</RETURNS>
 CpgNetwork *network,CpgProperty          *property,
-</FUNCTION>
-<FUNCTION>
-<NAME>cpg_property_new</NAME>
-<RETURNS>CpgProperty 	  *</RETURNS>
-const gchar        *name,const gchar        *expression,CpgPropertyFlags      flags,CpgObject *object
 </FUNCTION>
