@@ -712,9 +712,10 @@ parse_function_arguments (CpgNetworkDeserializer *deserializer,
 			xmlFree (def);
 		}
 
-		CpgFunctionArgument *argument = cpg_function_argument_new (name, optional, default_value);
-		cpg_function_add_argument (function, argument);
-		g_object_unref (argument);
+		cpg_function_add_argument (function,
+		                           cpg_function_argument_new (name,
+		                                                      optional,
+		                                                      default_value));
 	}
 
 	return TRUE;
@@ -1391,6 +1392,10 @@ parse_network (CpgNetworkDeserializer *deserializer,
 		else if (g_strcmp0 (nodename, "import") == 0)
 		{
 			ret = parse_import (deserializer, node);
+		}
+		else if (g_strcmp0 (nodename, "function") == 0)
+		{
+			ret = parse_function (deserializer, node);
 		}
 		else if (atroot)
 		{
