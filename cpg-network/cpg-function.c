@@ -554,7 +554,7 @@ cpg_function_add_argument (CpgFunction         *function,
 	if (property == NULL)
 	{
 		/* Add the proxy property */
-		property = cpg_property_new (name, "0", FALSE);
+		property = cpg_property_new (name, "0", CPG_PROPERTY_FLAG_NONE);
 
 		if (!cpg_object_add_property (CPG_OBJECT (function), property))
 		{
