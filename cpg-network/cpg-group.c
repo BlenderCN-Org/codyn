@@ -507,7 +507,7 @@ unique_id (CpgGroup  *group,
 		}
 
 		g_free (newid);
-		newid = g_strdup_printf ("%s (%d)", id, ++cnt);
+		newid = g_strdup_printf ("%s_%d", id, ++cnt);
 	}
 
 	return newid;
