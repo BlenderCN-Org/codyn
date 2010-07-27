@@ -378,7 +378,7 @@ _cpg_function_argument_set_property (CpgFunctionArgument *argument,
                                      CpgProperty         *property)
 {
 	g_return_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument));
-	g_return_if_fail (CPG_IS_PROPERTY (property));
+	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));
 
 	argument->priv->property = property;
 }
