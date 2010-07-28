@@ -330,6 +330,29 @@ cpg_link_compile_impl (CpgObject         *object,
 		CpgExpression *expr = cpg_link_action_get_equation (action);
 		GError *gerror = NULL;
 
+		if (cpg_link_action_get_target_property (action) == NULL)
+		{
+			if (error)
+			{
+				gerror = g_error_new (CPG_COMPILE_ERROR_TYPE,
+				                      CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
+				                      "The property `%s' for a link action of `%s' could not be found",
+				                      cpg_link_action_get_target (action),
+				                      cpg_object_get_id (object));
+
+				cpg_compile_error_set (error,
+				                       gerror,
+				                       object,
+				                       NULL,
+				                       action);
+
+				g_error_free (gerror);
+			}
+			
+			ret = FALSE;
+			break;
+		}
+
 		if (!cpg_expression_compile (expr, context, &gerror))
 		{
 			cpg_debug_error ("Error while parsing expression [%s]<%s>: %s",
@@ -339,7 +362,11 @@ cpg_link_compile_impl (CpgObject         *object,
 
 			if (error)
 			{
-				cpg_compile_error_set (error, gerror, object, NULL, action);
+				cpg_compile_error_set (error,
+				                       gerror,
+				                       object,
+				                       NULL,
+				                       action);
 			}
 
 			g_error_free (gerror);
