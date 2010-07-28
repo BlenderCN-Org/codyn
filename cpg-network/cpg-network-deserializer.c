@@ -982,7 +982,6 @@ parse_link (CpgNetworkDeserializer *deserializer,
 {
 	CpgObject *object;
 	gboolean new_object;
-	gboolean atroot = deserializer->priv->root && CPG_IS_NETWORK (deserializer->priv->parents->data);
 
 	object = parse_object (deserializer, CPG_TYPE_LINK, node, &new_object);
 
@@ -993,18 +992,6 @@ parse_link (CpgNetworkDeserializer *deserializer,
 
 	/* Fill in from and to */
 	xmlChar *from = xmlGetProp (node, (xmlChar *)"from");
-
-	if (!from && atroot && new_object)
-	{
-		parser_failed (deserializer,
-		               node,
-		               CPG_NETWORK_LOAD_ERROR_LINK,
-		               "Link node %s is missing required `from' attribute",
-		               cpg_object_get_id (object));
-
-		g_object_unref (object);
-		return FALSE;
-	}
 
 	if (from)
 	{
@@ -1045,18 +1032,6 @@ parse_link (CpgNetworkDeserializer *deserializer,
 	}
 
 	xmlChar *to = xmlGetProp (node, (xmlChar *)"to");
-
-	if (!to && atroot && new_object)
-	{
-		parser_failed (deserializer,
-		               node,
-		               CPG_NETWORK_LOAD_ERROR_LINK,
-		               "Link node %s is missing required `to' attribute",
-		               cpg_object_get_id (object));
-
-		g_object_unref (object);
-		return FALSE;
-	}
 
 	if (to)
 	{
