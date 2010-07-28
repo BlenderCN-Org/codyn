@@ -796,8 +796,9 @@ parse_function (CpgNetworkDeserializer *deserializer,
 }
 
 static gboolean
-parse_polynomial_pieces (CpgFunctionPolynomial *function,
-                         GList                 *nodes)
+parse_polynomial_pieces (CpgNetworkDeserializer *deserializer,
+                         GList                  *nodes,
+                         CpgFunctionPolynomial  *function)
 {
 	GList *item;
 
@@ -1396,6 +1397,10 @@ parse_network (CpgNetworkDeserializer *deserializer,
 		else if (g_strcmp0 (nodename, "function") == 0)
 		{
 			ret = parse_function (deserializer, node);
+		}
+		else if (g_strcmp0 (nodename, "polynomial") == 0)
+		{
+			ret = parse_polynomial (deserializer, node);
 		}
 		else if (atroot)
 		{
