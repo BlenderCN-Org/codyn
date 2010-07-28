@@ -280,6 +280,8 @@ add_property (CpgObject   *object,
 	                     g_strdup (cpg_property_get_name (property)),
 	                     property);
 
+	_cpg_property_set_object (property, object);
+
 	_cpg_property_use (property);
 	cpg_object_taint (object);
 
@@ -433,6 +435,8 @@ remove_property (CpgObject   *object,
 
 	object->priv->properties = g_slist_remove (object->priv->properties,
 	                                           property);
+
+	_cpg_property_set_object (property, NULL);
 
 	g_hash_table_remove (object->priv->property_hash,
 	                     cpg_property_get_name (property));

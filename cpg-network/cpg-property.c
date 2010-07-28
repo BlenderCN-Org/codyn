@@ -883,7 +883,7 @@ _cpg_property_set_object (CpgProperty *property,
                           CpgObject   *object)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
-	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (object == NULL || CPG_IS_OBJECT (object));
 
 	set_object (property, object);
 }
