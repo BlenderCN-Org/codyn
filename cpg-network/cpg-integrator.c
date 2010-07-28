@@ -1,5 +1,6 @@
 #include "cpg-integrator.h"
 #include "cpg-link.h"
+#include "cpg-compile-error.h"
 
 /**
  * SECTION:cpg-integrator
@@ -283,7 +284,11 @@ ensure_compiled (CpgIntegrator *integrator)
 
 	if (!cpg_object_is_compiled (object))
 	{
-		return cpg_object_compile (object, NULL, NULL);
+		CpgCompileError *error = cpg_compile_error_new ();
+		gboolean ret = cpg_object_compile (object, NULL, error);
+		g_object_unref (error);
+
+		return ret;
 	}
 
 	return TRUE;
@@ -456,10 +461,14 @@ simulation_step (CpgIntegrator *integrator)
 		CpgLinkAction *action = direct->data;
 
 		CpgProperty *target = cpg_link_action_get_target_property (action);
-		CpgExpression *expr = cpg_link_action_get_equation (action);
 
-		cpg_property_set_value (target,
-		                        cpg_expression_evaluate (expr));
+		if (target != NULL)
+		{
+			CpgExpression *expr = cpg_link_action_get_equation (action);
+
+			cpg_property_set_value (target,
+			                        cpg_expression_evaluate (expr));
+		}
 
 		direct = g_slist_next (direct);
 	}
@@ -481,11 +490,15 @@ simulation_step (CpgIntegrator *integrator)
 		CpgLinkAction *action = integrated->data;
 
 		CpgProperty *target = cpg_link_action_get_target_property (action);
-		CpgExpression *expr = cpg_link_action_get_equation (action);
 
-		cpg_property_set_update (target,
-		                         cpg_property_get_update (target) +
-		                         cpg_expression_evaluate (expr));
+		if (target != NULL)
+		{
+			CpgExpression *expr = cpg_link_action_get_equation (action);
+
+			cpg_property_set_update (target,
+			                         cpg_property_get_update (target) +
+			                         cpg_expression_evaluate (expr));
+		}
 
 		integrated = g_slist_next (integrated);
 	}
