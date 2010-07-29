@@ -111,6 +111,7 @@ docs/Makefile
 docs/reference/Makefile
 m4/Makefile
 tests/Makefile
+win32/Makefile
 win32/make-zip
 ])
 
