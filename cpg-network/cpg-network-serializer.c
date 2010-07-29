@@ -335,10 +335,16 @@ properties_to_xml (CpgNetworkSerializer *serializer,
 
 		export_flags (node, property);
 
-		xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
-		                                 (xmlChar *)cpg_expression_get_as_string (expression));
+		gchar const *expr = cpg_expression_get_as_string (expression);
 
-		xmlAddChild (node, text);
+		if (expr && *expr)
+		{
+			xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
+			                                 (xmlChar *)expr);
+
+			xmlAddChild (node, text);
+		}
+
 		xmlAddChild (parent, node);
 	}
 
@@ -551,10 +557,16 @@ link_to_xml (CpgNetworkSerializer *serializer,
 		            (xmlChar *)"target",
 		            (xmlChar *)cpg_link_action_get_target (action));
 
-		xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
-		                                 (xmlChar *)cpg_expression_get_as_string (cpg_link_action_get_equation (action)));
+		gchar const *expr = cpg_expression_get_as_string (cpg_link_action_get_equation (action));
 
-		xmlAddChild (ac, text);
+		if (expr && *expr)
+		{
+			xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
+		                                 (xmlChar *)expr);
+
+			xmlAddChild (ac, text);
+		}
+
 		xmlAddChild (node, ac);
 	}
 
@@ -584,10 +596,17 @@ write_function (CpgNetworkSerializer *serializer,
 		                                  NULL,
 		                                  (xmlChar *)"expression",
 		                                  NULL);
-		xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
-		                                 (xmlChar *)cpg_expression_get_as_string (expression));
 
-		xmlAddChild (exprn, text);
+		gchar const *expr = cpg_expression_get_as_string (expression);
+
+		if (expr && *expr)
+		{
+			xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
+			                                 (xmlChar *)expr);
+
+			xmlAddChild (exprn, text);
+		}
+
 		xmlAddChild (funcn, exprn);
 	}
 
