@@ -429,11 +429,16 @@ static GType
 type_from_templates (GType   orig,
                      GSList *templates)
 {
+	/* This only needs to be checked for states since in the XML groups
+	   can be defined with a <state> to make it nicer to write the XML */
 	if (orig != CPG_TYPE_STATE)
 	{
 		return orig;
 	}
 
+	/* Check here if any of the templates applied are actually groups,
+	   if so, the resulting type for the new object should also be a
+	   group */
 	while (templates)
 	{
 		if (G_TYPE_FROM_INSTANCE (templates->data) == CPG_TYPE_GROUP)
@@ -469,10 +474,15 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	parts = g_strsplit_set ((gchar const *)ref, ", ", 0);
 	gboolean ret = TRUE;
 
+	/* Multiple templates are allowed, iterate over all the template ids
+	   and resolve them from the template group */
 	for (ptr = parts; *ptr; ++ptr)
 	{
 		CpgObject *template = NULL;
 
+		/* Find the reference relative to the current parent if we
+		   are parsing templates, since they can reference other
+		   templates */
 		if (g_slist_last (deserializer->priv->parents)->data ==
 		    (gpointer)template_group)
 		{
@@ -482,6 +492,7 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 
 		if (!template)
 		{
+			/* Find template in the root template group */
 			template = cpg_group_find_object (template_group,
 			                                  *ptr);
 		}
@@ -545,13 +556,22 @@ parse_object (CpgNetworkDeserializer *deserializer,
 		return NULL;
 	}
 
+	/* Get the final type by inspecting the template types. This is only
+	   needed because groups can be defined in the XML using the <state>
+	   tag (which makes it easier for the user, but a bit more effort
+	   to parse :)) */
 	gtype = type_from_templates (gtype, templates);
 
 	GSList *item;
 
+	/* Check if the template types can actually be applied to the
+	   object type that we are constructing. Only template types
+	   which are superclasses of the new object type can be
+	   applied */
 	for (item = templates; item; item = g_slist_next (item))
 	{
 		GType template_type = G_TYPE_FROM_INSTANCE (item->data);
+
 
 		if (!g_type_is_a (gtype, template_type))
 		{
@@ -576,11 +596,15 @@ parse_object (CpgNetworkDeserializer *deserializer,
 
 	if (!child)
 	{
+		/* Just construct a new object with the right type */
 		child = g_object_new (gtype, "id", (gchar const *)id, NULL);
 		*new_object = TRUE;
 	}
 	else if (!g_type_is_a (gtype, G_TYPE_FROM_INSTANCE (child)))
 	{
+		/* This means the object already existed (this can happen
+		   because existing objects created by other templates can be
+		   extended) and the type is incorrect */
 		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_OBJECT,
@@ -592,9 +616,9 @@ parse_object (CpgNetworkDeserializer *deserializer,
 		return NULL;
 	}
 
-	xmlChar *ref = xmlGetProp (node, (xmlChar *)"ref");
 	gboolean ret = TRUE;
 
+	/* Apply all the templates */
 	for (item = templates; item; item = g_slist_next (item))
 	{
 		cpg_object_apply_template (child,
@@ -604,7 +628,6 @@ parse_object (CpgNetworkDeserializer *deserializer,
 	g_slist_free (templates);
 
 	xmlFree (id);
-	xmlFree (ref);
 
 	if (!ret || !parse_object_properties (deserializer, node, child))
 	{
