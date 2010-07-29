@@ -283,6 +283,19 @@ cpg_instruction_custom_function_new (CpgFunction *function,
 	return CPG_INSTRUCTION (res);
 }
 
+/**
+ * cpg_instruction_custom_operator_new:
+ * @op: A #CpgOperator
+ * @expressions: (element-type CpgExpression): A #GSList of #CpgExpression
+ *
+ * Create a new custom operator instruction. If the number of arguments
+ * is not equal to the number of arguments @op takes, the
+ * instruction expects the first value on the stack, when the instruction is
+ * executed, to be the number of arguments to process.
+ *
+ * Returns: A #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_custom_operator_new (CpgOperator *op,
                                      GSList      *expressions)

@@ -77,6 +77,18 @@ cpg_operator_default_init (CpgOperatorInterface *iface)
 	}
 }
 
+/**
+ * cpg_operator_data_init:
+ * @data: A #CpgOperatorData
+ * @expressions: (element-type CpgExpression): A #GSList of #CpgExpression
+ *
+ * Initialize the operator data with a set of expressions. When 'inheriting'
+ * from #CpgOperatorData, make sure to call #cpg_operator_data_init from
+ * the overloaded #cpg_operator_create_data.
+ *
+ * Returns: @data for convenience
+ *
+ **/
 CpgOperatorData *
 cpg_operator_data_init (CpgOperatorData *data,
                         GSList          *expressions)
@@ -87,6 +99,16 @@ cpg_operator_data_init (CpgOperatorData *data,
 	return data;
 }
 
+/**
+ * cpg_operator_data_destroy:
+ * @data: A #CpgOperatorData
+ *
+ * Destroy the operator data. This frees the expressions stored in the
+ * #CpgOperatorData (but does not free the #CpgOperatorData itself, see
+ * also #cpg_operator_data_free). This function should be used when
+ * an operator implementation inherits its own #CpgOperatorData.
+ *
+ **/
 void
 cpg_operator_data_destroy (CpgOperatorData *data)
 {
@@ -94,6 +116,18 @@ cpg_operator_data_destroy (CpgOperatorData *data)
 	g_slist_free (data->expressions);
 }
 
+/**
+ * cpg_operator_create_data:
+ * @op: A #CpgOperator
+ * @expressions: (element-type CpgExpression): A #GSList of #CpgExpression
+ *
+ * Create a new data instance for the operator, given a set of expressions.
+ * Each instance of the operator has its own operator data associated that
+ * will be provided to #cpg_operator_evaluate.
+ *
+ * Returns: A #CpgOperatorData
+ *
+ **/
 CpgOperatorData *
 cpg_operator_create_data (CpgOperator *op,
                           GSList      *expressions)
@@ -104,6 +138,16 @@ cpg_operator_create_data (CpgOperator *op,
 	                                                     expressions);
 }
 
+/**
+ * cpg_operator_free_data:
+ * @op: A #CpgOperator
+ * @data: A #CpgOperatorData
+ *
+ * Free the operator data. This default implementation will first call
+ * #cpg_operator_data_destroy, after which the operator data slice is freed.
+ * If you have a custom data struct, make sure to override this function.
+ *
+ **/
 void
 cpg_operator_free_data (CpgOperator     *op,
                         CpgOperatorData *data)
@@ -116,6 +160,17 @@ cpg_operator_free_data (CpgOperator     *op,
 	}
 }
 
+/**
+ * cpg_operator_execute:
+ * @op: A #CpgOperator
+ * @data: A #CpgOperatorData
+ * @stack: A #CpgStack
+ *
+ * Execute the operator. This function should always be overridden by
+ * operator implementations and should always push exactly one number
+ * on the stack.
+ *
+ **/
 void
 cpg_operator_execute (CpgOperator     *op,
                       CpgOperatorData *data,
@@ -126,6 +181,17 @@ cpg_operator_execute (CpgOperator     *op,
 	return CPG_OPERATOR_GET_INTERFACE (op)->execute (op, data, stack);
 }
 
+/**
+ * cpg_operator_get_name:
+ * @op: A #CpgOperator
+ *
+ * Get the operator name. This is the identifier that is used in expressions,
+ * and thus can only contain valid identifier characters.
+ *
+ * Returns: a newly allocated string with the operator name, use #g_free to
+ * free the value when it's no longer needed.
+ *
+ **/
 gchar *
 cpg_operator_get_name (CpgOperator *op)
 {
@@ -134,6 +200,16 @@ cpg_operator_get_name (CpgOperator *op)
 	return CPG_OPERATOR_GET_INTERFACE (op)->get_name (op);
 }
 
+/**
+ * cpg_operator_get_num_arguments:
+ * @op: A #CpgOperator
+ *
+ * Get the number of arguments that the operators expects.
+ *
+ * Returns: the number of arguments or -1 if the operator accepts a variable
+ *          number of arguments.
+ *
+ **/
 gint
 cpg_operator_get_num_arguments (CpgOperator *op)
 {
@@ -142,6 +218,14 @@ cpg_operator_get_num_arguments (CpgOperator *op)
 	return CPG_OPERATOR_GET_INTERFACE (op)->get_num_arguments (op);
 }
 
+/**
+ * cpg_operator_reset_cache:
+ * @op: A #CpgOperator
+ * @data: A #CpgOperatorData
+ *
+ * Reset the cache of the operator instance.
+ *
+ **/
 void
 cpg_operator_reset_cache (CpgOperator     *op,
                           CpgOperatorData *data)
@@ -151,6 +235,14 @@ cpg_operator_reset_cache (CpgOperator     *op,
 	return CPG_OPERATOR_GET_INTERFACE (op)->reset_cache (op, data);
 }
 
+/**
+ * cpg_operator_reset_variadic:
+ * @op: A #CpgOperator
+ * @data: A #CpgOperatorData
+ *
+ * Reset the variadic cache of the operator instance.
+ *
+ **/
 void
 cpg_operator_reset_variadic (CpgOperator     *op,
                              CpgOperatorData *data)

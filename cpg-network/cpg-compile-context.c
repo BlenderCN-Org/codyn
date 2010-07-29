@@ -223,6 +223,15 @@ cpg_compile_context_set_functions (CpgCompileContext *context,
 	CURRENT_CONTEXT (context)->functions = g_slist_copy ((GSList *)functions);
 }
 
+/**
+ * cpg_compile_context_set_operators:
+ * @context: A #CpgCompileContext
+ * @operators: (element-type CpgOperator): A #GSList of #CpgOperator
+ *
+ * Set the list of operators that can be used in expressions. This function
+ * makes a copy of the list, but not of its members.
+ *
+ **/
 void
 cpg_compile_context_set_operators (CpgCompileContext *context,
                                    GSList const      *operators)
@@ -331,6 +340,16 @@ cpg_compile_context_get_functions (CpgCompileContext *context)
 	return CURRENT_CONTEXT (context)->functions;
 }
 
+/**
+ * cpg_compile_context_get_operators:
+ * @context: A #CpgCompileContext
+ *
+ * Get the list of operators. This returns the internally used
+ * list which should not be modified or freed.
+ *
+ * Returns: (element-type CpgOperator): A #GSList of #CpgOperator
+ *
+ **/
 GSList const *
 cpg_compile_context_get_operators (CpgCompileContext *context)
 {
@@ -390,6 +409,16 @@ cpg_compile_context_lookup_function (CpgCompileContext *context,
 	return NULL;
 }
 
+/**
+ * cpg_compile_context_lookup_operator:
+ * @context: A #CpgCompileContext
+ * @name: The name of the operator
+ *
+ * Lookup an operator by name
+ *
+ * Returns: A #CpgOperator or %NULL if the operator could not be found
+ *
+ **/
 CpgOperator *
 cpg_compile_context_lookup_operator (CpgCompileContext *context,
                                      gchar const       *name)
