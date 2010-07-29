@@ -320,6 +320,66 @@ cpg_object_copy_impl (CpgObject *object,
 }
 
 static void
+on_template_property_expression_changed (CpgProperty   *prop,
+                                         CpgExpression *prev,
+                                         CpgObject     *object)
+{
+	/* Check if the current prop had the same, if so, also change
+	   it here */
+	CpgProperty *orig = cpg_object_get_property (object,
+	                                             cpg_property_get_name (prop));
+
+	if (!orig)
+	{
+		return;
+	}
+
+	CpgObject *templ = cpg_object_get_property_template (object, orig, FALSE);
+
+	if (templ != cpg_property_get_object (prop))
+	{
+		return;
+	}
+
+	CpgExpression *expr = cpg_property_get_expression (orig);
+
+	if (cpg_expression_equal (prev, expr))
+	{
+		cpg_property_set_expression (orig,
+		                             cpg_expression_copy (cpg_property_get_expression (prop)));
+	}
+}
+
+static void
+on_template_property_flags_changed (CpgProperty      *prop,
+                                    CpgPropertyFlags  prev,
+                                    CpgObject        *object)
+{
+	/* Check if the current prop had the same, if so, also change
+	   it here */
+	CpgProperty *orig = cpg_object_get_property (object,
+	                                             cpg_property_get_name (prop));
+
+	if (!orig)
+	{
+		return;
+	}
+
+	CpgObject *templ = cpg_object_get_property_template (object, orig, FALSE);
+
+	if (templ != cpg_property_get_object (prop))
+	{
+		return;
+	}
+
+	if (cpg_property_get_flags (orig) == prev)
+	{
+		cpg_property_set_flags (orig,
+		                        cpg_property_get_flags (prop));
+	}
+}
+
+static void
 cpg_object_apply_template_impl (CpgObject *object,
                                 CpgObject *templ)
 {
@@ -328,8 +388,28 @@ cpg_object_apply_template_impl (CpgObject *object,
 
 	for (item = templ->priv->properties; item; item = g_slist_next (item))
 	{
-		cpg_object_add_property (object,
-		                         cpg_property_copy (item->data));
+		CpgProperty *orig =
+			cpg_object_get_property (object,
+			                         cpg_property_get_name (item->data));
+
+		if (orig == NULL ||
+		    cpg_object_get_property_template (object, orig, TRUE))
+		{
+			cpg_object_add_property (object,
+			                         cpg_property_copy (item->data));
+		}
+
+		/* TODO: disconnect somewhere too */
+
+		g_signal_connect (item->data,
+		                  "expression-changed",
+		                  G_CALLBACK (on_template_property_expression_changed),
+		                  object);
+
+		g_signal_connect (item->data,
+		                  "flags-changed",
+		                  G_CALLBACK (on_template_property_flags_changed),
+		                  object);
 	}
 
 	object->priv->templates = g_slist_append (object->priv->templates,
@@ -1484,24 +1564,27 @@ cpg_object_get_property_template (CpgObject   *object,
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
 
-	GSList const *templates = cpg_object_get_applied_templates (object);
+	GSList *templates = g_slist_copy ((GSList *)cpg_object_get_applied_templates (object));
+	templates = g_slist_reverse (templates);
+	GSList *item;
 
 	gchar const *name = cpg_property_get_name (property);
 
-	while (templates)
+	for (item = templates; item; item = g_slist_next (item))
 	{
 		CpgProperty *tprop;
+		CpgObject *templ = item->data;
 
-		tprop = cpg_object_get_property (templates->data,
-		                                 name);
+		tprop = cpg_object_get_property (templ, name);
 
 		if (tprop && (!match_full || cpg_property_equal (property, tprop)))
 		{
-			return templates->data;
+			g_slist_free (templates);
+			return templ;
 		}
-
-		templates = g_slist_next (templates);
 	}
+
+	g_slist_free (templates);
 
 	return NULL;
 }

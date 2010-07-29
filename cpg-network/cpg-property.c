@@ -13,6 +13,8 @@
 enum
 {
 	INVALIDATE_NAME,
+	EXPRESSION_CHANGED,
+	FLAGS_CHANGED,
 	NUM_SIGNALS
 };
 
@@ -88,13 +90,15 @@ static void
 set_expression (CpgProperty *property,
                 CpgExpression *expression)
 {
-	if (property->priv->expression)
+	CpgExpression *old_expression;
+
+	old_expression = property->priv->expression;
+
+	if (old_expression)
 	{
 		g_signal_handlers_disconnect_by_func (property->priv->expression,
 		                                      on_expression_changed,
 		                                      property);
-
-		g_object_unref (property->priv->expression);
 	}
 
 	if (expression)
@@ -107,6 +111,13 @@ set_expression (CpgProperty *property,
 		                          "notify::expression",
 		                          G_CALLBACK (on_expression_changed),
 		                          property);
+	}
+
+	g_signal_emit (property, signals[EXPRESSION_CHANGED], 0, old_expression);
+
+	if (old_expression)
+	{
+		g_object_unref (property->priv->expression);
 	}
 }
 
@@ -136,6 +147,7 @@ set_flags (CpgProperty      *property,
 	if (flags != property->priv->flags)
 	{
 		gboolean wasonce = property->priv->flags & CPG_PROPERTY_FLAG_ONCE;
+		CpgPropertyFlags prev = property->priv->flags;
 
 		property->priv->flags = flags;
 
@@ -156,6 +168,8 @@ set_flags (CpgProperty      *property,
 		}
 
 		g_object_notify (G_OBJECT (property), "flags");
+
+		g_signal_emit (property, signals[FLAGS_CHANGED], 0, prev);
 	}
 }
 
@@ -336,6 +350,29 @@ cpg_property_class_init (CpgPropertyClass *klass)
 		              1,
 		              G_TYPE_STRING);
 
+	signals[EXPRESSION_CHANGED] =
+		g_signal_new ("expression-changed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_EXPRESSION);
+
+	signals[FLAGS_CHANGED] =
+		g_signal_new ("flags-changed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__FLAGS,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_PROPERTY_FLAGS);
 }
 
 static void
