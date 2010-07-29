@@ -894,16 +894,32 @@ cpg_property_copy (CpgProperty *property)
 	return ret;
 }
 
+/**
+ * cpg_property_use:
+ * @property: A #CpgProperty
+ *
+ * Increase the use count of the property.
+ *
+ **/
 void
-_cpg_property_use (CpgProperty *property)
+cpg_property_use (CpgProperty *property)
 {
 	g_return_if_fail (CPG_IS_PROPERTY (property));
 
 	++(property->priv->use_count);
 }
 
+/**
+ * cpg_property_unuse:
+ * @property: A #CpgProperty
+ *
+ * Decrease the use count of the property.
+ *
+ * Returns: %TRUE if this was the last use of the property, %FALSE otherwise
+ *
+ **/
 gboolean
-_cpg_property_unuse (CpgProperty *property)
+cpg_property_unuse (CpgProperty *property)
 {
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
 

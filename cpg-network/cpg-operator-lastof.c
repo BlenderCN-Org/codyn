@@ -64,7 +64,7 @@ scan_properties (CpgOperatorLastofData *data)
 
 			newinst = cpg_instruction_number_new (0);
 
-			_cpg_property_use (prop->property);
+			cpg_property_use (prop->property);
 
 			propdata->property = g_object_ref (prop->property);
 			propdata->instruction = CPG_INSTRUCTION_NUMBER (newinst);
@@ -103,7 +103,7 @@ cpg_operator_lastof_create_data (CpgOperator *op,
 static void
 property_data_free (PropertyData *data)
 {
-	_cpg_property_unuse (data->property);
+	cpg_property_unuse (data->property);
 	g_object_unref (data->property);
 }
 

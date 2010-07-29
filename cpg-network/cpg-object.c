@@ -99,7 +99,7 @@ static void
 free_property (CpgProperty *property,
                CpgObject   *object)
 {
-	_cpg_property_unuse (property);
+	cpg_property_unuse (property);
 
 	g_signal_handlers_disconnect_by_func (property,
 	                                      cpg_object_taint,
@@ -285,7 +285,7 @@ add_property (CpgObject   *object,
 
 	_cpg_property_set_object (property, object);
 
-	_cpg_property_use (property);
+	cpg_property_use (property);
 	cpg_object_taint (object);
 
 	g_signal_connect_swapped (property,
@@ -510,9 +510,9 @@ remove_property (CpgObject   *object,
                  CpgProperty *property,
                  gboolean     check_unuse)
 {
-	if (!_cpg_property_unuse (property) && check_unuse)
+	if (!cpg_property_unuse (property) && check_unuse)
 	{
-		_cpg_property_use (property);
+		cpg_property_use (property);
 		return FALSE;
 	}
 

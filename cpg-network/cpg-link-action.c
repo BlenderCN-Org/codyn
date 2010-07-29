@@ -41,7 +41,7 @@ set_property (CpgLinkAction *action,
 
 	if (action->priv->property)
 	{
-		_cpg_property_unuse (action->priv->property);
+		cpg_property_unuse (action->priv->property);
 		g_object_unref (action->priv->property);
 		action->priv->property = NULL;
 	}
@@ -49,7 +49,7 @@ set_property (CpgLinkAction *action,
 	if (property)
 	{
 		action->priv->property = g_object_ref_sink (property);
-		_cpg_property_use (action->priv->property);
+		cpg_property_use (action->priv->property);
 	}
 }
 

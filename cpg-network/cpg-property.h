@@ -113,13 +113,13 @@ CpgPropertyFlags   cpg_property_flags_from_string       (const gchar        *fla
 
 gchar             *cpg_property_get_full_name           (CpgProperty        *property);
 
-void               _cpg_property_use                    (CpgProperty        *property);
-gboolean           _cpg_property_unuse                  (CpgProperty        *property);
+void               cpg_property_use                    (CpgProperty        *property);
+gboolean           cpg_property_unuse                  (CpgProperty        *property);
+
+CpgProperty       *cpg_property_copy                    (CpgProperty        *property);
 
 void               _cpg_property_set_object             (CpgProperty                  *property,
                                                          CPG_FORWARD_DECL (CpgObject) *object);
-
-CpgProperty       *cpg_property_copy                    (CpgProperty        *property);
 
 G_END_DECLS
 
