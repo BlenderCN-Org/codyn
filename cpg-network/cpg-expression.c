@@ -94,13 +94,55 @@ instructions_free (CpgExpression *expression)
 	expression->priv->modified = TRUE;
 }
 
+static gchar *
+normalize_expression (gchar const *expression)
+{
+	if (!expression)
+	{
+		return NULL;
+	}
+
+	GString *ret = g_string_new ("");
+	gboolean prev_space = FALSE;
+	gboolean isstart = TRUE;
+
+	while (*expression)
+	{
+		gunichar c = g_utf8_get_char (expression);
+
+		if (g_unichar_type (c) == G_UNICODE_LINE_SEPARATOR)
+		{
+			c = ' ';
+		}
+
+		gboolean isspace = g_unichar_isspace (c);
+
+		if (prev_space && !isspace && !isstart)
+		{
+			g_string_append_c (ret, ' ');
+		}
+
+		prev_space = isspace;
+
+		if (!isspace)
+		{
+			g_string_append_unichar (ret, c);
+			isstart = FALSE;
+		}
+
+		expression = g_utf8_next_char (expression);
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
 static void
 set_expression (CpgExpression *expression,
                 gchar const   *value)
 {
 	g_free (expression->priv->expression);
 
-	expression->priv->expression = g_strdup (value);
+	expression->priv->expression = normalize_expression (value);
 	instructions_free (expression);
 
 	cpg_stack_destroy (&(expression->priv->output));
