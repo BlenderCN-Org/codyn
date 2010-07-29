@@ -296,7 +296,7 @@ instructions_push (CpgExpression  *expression,
 static CpgInstruction *
 instructions_pop (CpgExpression *expression)
 {
-	CpgInstruction *inst;
+	CpgInstruction *inst = NULL;
 
 	if (expression->priv->instructions)
 	{
