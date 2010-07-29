@@ -2,6 +2,7 @@
 #include "cpg-operator.h"
 #include "cpg-instructions.h"
 #include "cpg-property.h"
+#include "cpg-usable.h"
 
 #define CPG_OPERATOR_LASTOF_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OPERATOR_LASTOF, CpgOperatorLastofPrivate))
 
@@ -64,7 +65,7 @@ scan_properties (CpgOperatorLastofData *data)
 
 			newinst = cpg_instruction_number_new (0);
 
-			cpg_property_use (prop->property);
+			cpg_usable_use (CPG_USABLE (prop->property));
 
 			propdata->property = g_object_ref (prop->property);
 			propdata->instruction = CPG_INSTRUCTION_NUMBER (newinst);
@@ -103,7 +104,7 @@ cpg_operator_lastof_create_data (CpgOperator *op,
 static void
 property_data_free (PropertyData *data)
 {
-	cpg_property_unuse (data->property);
+	cpg_usable_unuse (CPG_USABLE (data->property));
 	g_object_unref (data->property);
 }
 

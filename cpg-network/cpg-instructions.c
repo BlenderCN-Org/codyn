@@ -1,5 +1,6 @@
 #include "cpg-instructions.h"
 #include "cpg-function.h"
+#include "cpg-usable.h"
 
 /**
  * SECTION:cpg-instructions
@@ -251,7 +252,7 @@ cpg_instruction_property_new (CpgProperty           *property,
 	res->property = property;
 	res->binding = binding;
 
-	cpg_property_use (property);
+	cpg_usable_use (CPG_USABLE (property));
 	g_object_ref (property);
 
 	return CPG_INSTRUCTION (res);
@@ -327,7 +328,7 @@ cpg_instruction_free (CpgInstruction *instruction)
 			CpgInstructionProperty *prop =
 				CPG_INSTRUCTION_PROPERTY (instruction);
 
-			cpg_property_unuse (prop->property);
+			cpg_usable_unuse (CPG_USABLE (prop->property));
 			g_object_unref (prop->property);
 
 			g_slice_free (CpgInstructionProperty, prop);

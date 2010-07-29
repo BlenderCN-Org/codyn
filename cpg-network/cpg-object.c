@@ -11,6 +11,7 @@
 #include "cpg-compile-error.h"
 #include "cpg-utils.h"
 #include "cpg-marshal.h"
+#include "cpg-usable.h"
 
 /**
  * SECTION:cpg-object
@@ -35,24 +36,24 @@
 
 struct _CpgObjectPrivate
 {
+	guint use_count;
 	gchar *id;
 
-	// Properties
+	CpgObject *parent;
+
+	/* Properties */
 	GSList *properties;
 	GHashTable *property_hash;
 
-	// Links
+	/* Links */
 	GSList *links;
-
-	// Actors
 	GSList *actors;
 
+	/* Templates */
 	GSList *templates;
 
-	CpgObject *parent;
-	gboolean compiled;
-
-	gboolean auto_imported;
+	gboolean compiled : 1;
+	gboolean auto_imported : 1;
 };
 
 /* Properties */
@@ -61,7 +62,8 @@ enum
 	PROP_0,
 	PROP_ID,
 	PROP_PARENT,
-	PROP_AUTO_IMPORTED
+	PROP_AUTO_IMPORTED,
+	PROP_USE_COUNT
 };
 
 /* Signals */
@@ -78,7 +80,13 @@ enum
 	NUM_SIGNALS
 };
 
-G_DEFINE_TYPE (CpgObject, cpg_object, G_TYPE_OBJECT)
+static void cpg_usable_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgObject,
+                         cpg_object,
+                         G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_USABLE,
+                                                cpg_usable_iface_init));
 
 static guint object_signals[NUM_SIGNALS] = {0,};
 
@@ -96,10 +104,39 @@ cpg_object_error_quark (void)
 }
 
 static void
+cpg_object_use (CpgUsable *usable)
+{
+	CpgObject *obj = CPG_OBJECT (usable);
+	++obj->priv->use_count;
+}
+
+static gboolean
+cpg_object_unuse (CpgUsable *usable)
+{
+	CpgObject *obj = CPG_OBJECT (usable);
+
+	if (obj->priv->use_count == 0)
+	{
+		return TRUE;
+	}
+
+	return (--(obj->priv->use_count) == 0);
+}
+
+static void
+cpg_usable_iface_init (gpointer iface)
+{
+	CpgUsableInterface *usable = iface;
+
+	usable->use = cpg_object_use;
+	usable->unuse = cpg_object_unuse;
+}
+
+static void
 free_property (CpgProperty *property,
                CpgObject   *object)
 {
-	cpg_property_unuse (property);
+	cpg_usable_unuse (CPG_USABLE (property));
 
 	g_signal_handlers_disconnect_by_func (property,
 	                                      cpg_object_taint,
@@ -164,6 +201,9 @@ get_property (GObject     *object,
 		case PROP_AUTO_IMPORTED:
 			g_value_set_boolean (value, obj->priv->auto_imported);
 		break;
+		case PROP_USE_COUNT:
+			g_value_set_uint (value, obj->priv->use_count);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -213,6 +253,157 @@ link_destroyed (CpgObject  *object,
 }
 
 static void
+on_template_property_expression_changed (CpgProperty *prop,
+                                         GParamSpec  *spec,
+                                         CpgObject   *object)
+{
+	CpgProperty *orig = cpg_object_get_property (object,
+	                                             cpg_property_get_name (prop));
+
+	if (!orig)
+	{
+		return;
+	}
+
+	if (cpg_property_get_modified (orig))
+	{
+		return;
+	}
+
+	CpgObject *templ = cpg_object_get_property_template (object, orig, FALSE);
+
+	if (templ != cpg_property_get_object (prop))
+	{
+		return;
+	}
+
+	cpg_property_set_expression (orig,
+	                             cpg_expression_copy (cpg_property_get_expression (prop)));
+
+	cpg_property_set_modified (orig, FALSE);
+}
+
+static void
+on_template_property_flags_changed (CpgProperty *prop,
+                                    GParamSpec  *spec,
+                                    CpgObject   *object)
+{
+	/* Check if the current prop had the same, if so, also change
+	   it here */
+	CpgProperty *orig = cpg_object_get_property (object,
+	                                             cpg_property_get_name (prop));
+
+	if (!orig)
+	{
+		return;
+	}
+
+	if (cpg_property_get_modified (orig))
+	{
+		return;
+	}
+
+	CpgObject *templ = cpg_object_get_property_template (object, orig, FALSE);
+
+	if (templ != cpg_property_get_object (prop))
+	{
+		return;
+	}
+
+	cpg_property_set_flags (orig, cpg_property_get_flags (prop));
+	cpg_property_set_modified (orig, FALSE);
+}
+
+static void
+on_template_property_added (CpgObject   *templ,
+                            CpgProperty *prop,
+                            CpgObject   *object)
+{
+	CpgProperty *orig =
+		cpg_object_get_property (object,
+		                         cpg_property_get_name (prop));
+
+	if (orig == NULL ||
+	    cpg_object_get_property_template (object, orig, TRUE))
+	{
+		cpg_object_add_property (object,
+		                         cpg_property_copy (prop));
+	}
+
+	g_signal_connect (prop,
+	                  "notify::expression",
+	                  G_CALLBACK (on_template_property_expression_changed),
+	                  object);
+
+	g_signal_connect (prop,
+	                  "notify::flags",
+	                  G_CALLBACK (on_template_property_flags_changed),
+	                  object);
+}
+
+static void
+disconnect_template_property (CpgObject   *object,
+                              CpgObject   *templ,
+                              CpgProperty *prop)
+{
+	g_signal_handlers_disconnect_by_func (prop,
+	                                      on_template_property_expression_changed,
+	                                      object);
+
+	g_signal_handlers_disconnect_by_func (prop,
+	                                      on_template_property_flags_changed,
+	                                      object);
+}
+
+static void
+on_template_property_removed (CpgObject   *templ,
+                              CpgProperty *prop,
+                              CpgObject   *object)
+{
+	CpgProperty *orig =
+		cpg_object_get_property (object,
+		                         cpg_property_get_name (prop));
+
+	if (orig && !cpg_property_get_modified (orig) &&
+	    cpg_object_get_property_template (object, orig, TRUE) == templ)
+	{
+		/* Remove the original property as well */
+		cpg_object_remove_property (object,
+		                            cpg_property_get_name (orig),
+		                            NULL);
+	}
+
+	disconnect_template_property (object, templ, prop);
+}
+
+static void
+disconnect_template (CpgObject *object,
+                     CpgObject *templ,
+                     gboolean   disconnect_properties)
+{
+	if (disconnect_properties)
+	{
+		GSList *item;
+
+		for (item = templ->priv->properties; item; item = g_slist_next (item))
+		{
+			disconnect_template_property (object, templ, item->data);
+		}
+	}
+
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_property_added,
+	                                      object);
+
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_property_removed,
+	                                      object);
+
+	cpg_usable_unuse (CPG_USABLE (templ));
+	g_object_unref (templ);
+}
+
+static void
 cpg_object_dispose (GObject *object)
 {
 	CpgObject *obj = CPG_OBJECT (object);
@@ -220,11 +411,16 @@ cpg_object_dispose (GObject *object)
 	GSList *templates = obj->priv->templates;
 	obj->priv->templates = NULL;
 
-	g_slist_foreach (templates, (GFunc)g_object_unref, NULL);
+	GSList *item;
+
+	for (item = templates; item; item = g_slist_next (item))
+	{
+		disconnect_template (obj, item->data, TRUE);
+	}
+
 	g_slist_free (templates);
 
 	/* Untoggle ref all links, because we need them destroyed! */
-	GSList *item;
 	GSList *copy = g_slist_copy (obj->priv->links);
 
 	for (item = copy; item; item = g_slist_next (item))
@@ -260,6 +456,22 @@ on_property_changed (CpgObject   *object,
 	cpg_object_taint (object);
 }
 
+static void
+on_property_modified (CpgObject   *object,
+                      CpgProperty *property)
+{
+	CpgObject *templ;
+
+	templ = cpg_object_get_property_template (object,
+	                                          property,
+	                                          TRUE);
+
+	if (templ != NULL)
+	{
+		cpg_property_set_modified (property, FALSE);
+	}
+}
+
 static gboolean
 on_property_invalidate_name (CpgProperty *property,
                              gchar const *name,
@@ -285,12 +497,22 @@ add_property (CpgObject   *object,
 
 	_cpg_property_set_object (property, object);
 
-	cpg_property_use (property);
+	cpg_usable_use (CPG_USABLE (property));
 	cpg_object_taint (object);
 
 	g_signal_connect_swapped (property,
 	                          "notify::expression",
 	                          G_CALLBACK (on_property_changed),
+	                          object);
+
+	g_signal_connect_swapped (property,
+	                          "notify::flags",
+	                          G_CALLBACK (on_property_changed),
+	                          object);
+
+	g_signal_connect_swapped (property,
+	                          "modified",
+	                          G_CALLBACK (on_property_modified),
 	                          object);
 
 	g_signal_connect (property,
@@ -316,67 +538,29 @@ cpg_object_copy_impl (CpgObject *object,
 	}
 
 	object->priv->templates = g_slist_copy (source->priv->templates);
-	g_slist_foreach (object->priv->templates, (GFunc)g_object_ref, NULL);
-}
 
-static void
-on_template_property_expression_changed (CpgProperty   *prop,
-                                         CpgExpression *prev,
-                                         CpgObject     *object)
-{
-	/* Check if the current prop had the same, if so, also change
-	   it here */
-	CpgProperty *orig = cpg_object_get_property (object,
-	                                             cpg_property_get_name (prop));
-
-	if (!orig)
+	for (item = object->priv->templates; item; item = g_slist_next (item))
 	{
-		return;
-	}
-
-	CpgObject *templ = cpg_object_get_property_template (object, orig, FALSE);
-
-	if (templ != cpg_property_get_object (prop))
-	{
-		return;
-	}
-
-	CpgExpression *expr = cpg_property_get_expression (orig);
-
-	if (cpg_expression_equal (prev, expr))
-	{
-		cpg_property_set_expression (orig,
-		                             cpg_expression_copy (cpg_property_get_expression (prop)));
+		cpg_usable_use (item->data);
+		g_object_ref (item->data);
 	}
 }
 
 static void
-on_template_property_flags_changed (CpgProperty      *prop,
-                                    CpgPropertyFlags  prev,
-                                    CpgObject        *object)
+cpg_object_unapply_template_impl (CpgObject *object,
+                                  CpgObject *templ)
 {
-	/* Check if the current prop had the same, if so, also change
-	   it here */
-	CpgProperty *orig = cpg_object_get_property (object,
-	                                             cpg_property_get_name (prop));
+	GSList *item;
 
-	if (!orig)
+	for (item = templ->priv->properties; item; item = g_slist_next (item))
 	{
-		return;
+		on_template_property_removed (templ, item->data, object);
 	}
 
-	CpgObject *templ = cpg_object_get_property_template (object, orig, FALSE);
+	object->priv->templates = g_slist_remove (object->priv->templates,
+	                                          templ);
 
-	if (templ != cpg_property_get_object (prop))
-	{
-		return;
-	}
-
-	if (cpg_property_get_flags (orig) == prev)
-	{
-		cpg_property_set_flags (orig,
-		                        cpg_property_get_flags (prop));
-	}
+	disconnect_template (object, templ, FALSE);
 }
 
 static void
@@ -388,32 +572,23 @@ cpg_object_apply_template_impl (CpgObject *object,
 
 	for (item = templ->priv->properties; item; item = g_slist_next (item))
 	{
-		CpgProperty *orig =
-			cpg_object_get_property (object,
-			                         cpg_property_get_name (item->data));
-
-		if (orig == NULL ||
-		    cpg_object_get_property_template (object, orig, TRUE))
-		{
-			cpg_object_add_property (object,
-			                         cpg_property_copy (item->data));
-		}
-
-		/* TODO: disconnect somewhere too */
-
-		g_signal_connect (item->data,
-		                  "expression-changed",
-		                  G_CALLBACK (on_template_property_expression_changed),
-		                  object);
-
-		g_signal_connect (item->data,
-		                  "flags-changed",
-		                  G_CALLBACK (on_template_property_flags_changed),
-		                  object);
+		on_template_property_added (templ, item->data, object);
 	}
+
+	g_signal_connect (templ,
+	                  "property-added",
+	                  G_CALLBACK (on_template_property_added),
+	                  object);
+
+	g_signal_connect (templ,
+	                  "property-removed",
+	                  G_CALLBACK (on_template_property_removed),
+	                  object);
 
 	object->priv->templates = g_slist_append (object->priv->templates,
 	                                          g_object_ref (templ));
+
+	cpg_usable_use (CPG_USABLE (templ));
 }
 
 static gboolean
@@ -510,9 +685,9 @@ remove_property (CpgObject   *object,
                  CpgProperty *property,
                  gboolean     check_unuse)
 {
-	if (!cpg_property_unuse (property) && check_unuse)
+	if (!cpg_usable_unuse (CPG_USABLE (property)) && check_unuse)
 	{
-		cpg_property_use (property);
+		cpg_usable_use (CPG_USABLE (property));
 		return FALSE;
 	}
 
@@ -530,6 +705,10 @@ remove_property (CpgObject   *object,
 
 	g_signal_handlers_disconnect_by_func (property,
 	                                      on_property_invalidate_name,
+	                                      object);
+
+	g_signal_handlers_disconnect_by_func (property,
+	                                      on_property_modified,
 	                                      object);
 
 	g_signal_emit (object,
@@ -558,7 +737,7 @@ cpg_object_verify_remove_property_impl (CpgObject    *object,
 	if (property)
 	{
 		/* Check if the property is still used */
-		if (cpg_property_get_used (property) > 1)
+		if (cpg_usable_use_count (CPG_USABLE (property)) > 1)
 		{
 			if (error)
 			{
@@ -770,6 +949,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 	klass->copy = cpg_object_copy_impl;
 	klass->compile = cpg_object_compile_impl;
 	klass->apply_template = cpg_object_apply_template_impl;
+	klass->unapply_template = cpg_object_unapply_template_impl;
 	klass->equal = cpg_object_equal_impl;
 
 	klass->get_property = cpg_object_get_property_impl;
@@ -824,6 +1004,10 @@ cpg_object_class_init (CpgObjectClass *klass)
 	                                                       "Auto imported",
 	                                                       FALSE,
 	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_override_property (object_class,
+	                                  PROP_USE_COUNT,
+	                                  "use-count");
 
 	/**
 	 * CpgObject::tainted:
@@ -1022,7 +1206,7 @@ cpg_object_new (const gchar *id)
 /**
  * cpg_object_new_from_template:
  * @templ: A #CpgObject
- * 
+ *
  * Create a new #CpgObject based on the template @templ.
  *
  * Returns: A #CpgObject
@@ -1521,7 +1705,7 @@ cpg_object_is_compiled (CpgObject *object)
  * cpg_object_apply_template:
  * @object: A #CpgObject
  * @templ: The template
- * 
+ *
  * Apply a template to the object. This will apply all of the characteristics
  * of the template to the object. Note that @object should be of the same type,
  * or inheriting from, the type of @templ.
@@ -1539,6 +1723,28 @@ cpg_object_apply_template (CpgObject *object,
 	if (CPG_OBJECT_GET_CLASS (object)->apply_template)
 	{
 		CPG_OBJECT_GET_CLASS (object)->apply_template (object, templ);
+	}
+}
+
+/**
+ * cpg_object_unapply_template:
+ * @object: A #CpgObject
+ * @templ: The template
+ *
+ * Unapply a template from the object.
+ *
+ **/
+void
+cpg_object_unapply_template (CpgObject *object,
+                             CpgObject *templ)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (CPG_IS_OBJECT (templ));
+	g_return_if_fail (g_slist_find (object->priv->templates, templ));
+
+	if (CPG_OBJECT_GET_CLASS (object)->unapply_template)
+	{
+		CPG_OBJECT_GET_CLASS (object)->unapply_template (object, templ);
 	}
 }
 

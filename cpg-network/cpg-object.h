@@ -60,6 +60,7 @@ typedef void (*CpgForeachExpressionFunc) (CpgExpression *expression, gpointer us
  * @reset: reset virtual function
  * @reset_cache: reset cache virtual function
  * @apply_template: apply template virtual function
+ * @unapply_template: unapply template virtual function
  * @copy: copy virtual function
  * @get_copy_type: get copy type virtual function
  * @taint: taint virtual function
@@ -99,6 +100,9 @@ struct _CpgObjectClass
 
 	void          (*apply_template)  (CpgObject *object,
 	                                  CpgObject *templ);
+
+	void          (*unapply_template)  (CpgObject *object,
+	                                    CpgObject *templ);
 
 	void          (*copy)            (CpgObject *object,
 	                                  CpgObject *source);
@@ -205,6 +209,9 @@ CpgObject        *cpg_object_copy           (CpgObject *object);
 
 void              cpg_object_apply_template (CpgObject *object,
                                              CpgObject *templ);
+
+void              cpg_object_unapply_template (CpgObject *object,
+                                               CpgObject *templ);
 
 CpgObject        *cpg_object_get_property_template (CpgObject   *object,
                                                     CpgProperty *property,

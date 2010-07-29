@@ -40,6 +40,7 @@ COMMON_SOURCES = 		\
 	cpg-stack.c \
 	cpg-state.c \
 	cpg-tokenizer.c \
+	cpg-usable.c \
 	cpg-utils.c
 
 BUILT_SOURCES = \
@@ -87,6 +88,7 @@ INST_H_FILES = \
 	cpg-property.h \
 	cpg-stack.h \
 	cpg-state.h \
+	cpg-usable.h \
 	cpg-utils.h
 
 lib_LTLIBRARIES = libcpg-network-2.0.la

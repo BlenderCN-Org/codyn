@@ -102,8 +102,6 @@ void               cpg_property_set_expression          (CpgProperty        *pro
 gboolean           cpg_property_equal                   (CpgProperty        *property,
                                                          CpgProperty        *other);
 
-guint              cpg_property_get_used                (CpgProperty        *property);
-
 void               cpg_property_set_update              (CpgProperty        *property,
                                                           gdouble             value);
 gdouble            cpg_property_get_update              (CpgProperty        *property);
@@ -113,13 +111,15 @@ CpgPropertyFlags   cpg_property_flags_from_string       (const gchar        *fla
 
 gchar             *cpg_property_get_full_name           (CpgProperty        *property);
 
-void               cpg_property_use                    (CpgProperty        *property);
-gboolean           cpg_property_unuse                  (CpgProperty        *property);
-
 CpgProperty       *cpg_property_copy                    (CpgProperty        *property);
 
 void               _cpg_property_set_object             (CpgProperty                  *property,
                                                          CPG_FORWARD_DECL (CpgObject) *object);
+
+void               cpg_property_set_modified            (CpgProperty        *property,
+                                                         gboolean            modified);
+
+gboolean           cpg_property_get_modified            (CpgProperty        *property);
 
 G_END_DECLS
 

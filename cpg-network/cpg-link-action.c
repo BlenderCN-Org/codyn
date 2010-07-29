@@ -1,4 +1,5 @@
 #include "cpg-link-action.h"
+#include "cpg-usable.h"
 
 /**
  * SECTION:cpg-link-action
@@ -41,7 +42,7 @@ set_property (CpgLinkAction *action,
 
 	if (action->priv->property)
 	{
-		cpg_property_unuse (action->priv->property);
+		cpg_usable_unuse (CPG_USABLE (action->priv->property));
 		g_object_unref (action->priv->property);
 		action->priv->property = NULL;
 	}
@@ -49,7 +50,7 @@ set_property (CpgLinkAction *action,
 	if (property)
 	{
 		action->priv->property = g_object_ref_sink (property);
-		cpg_property_use (action->priv->property);
+		cpg_usable_use (CPG_USABLE (action->priv->property));
 	}
 }
 

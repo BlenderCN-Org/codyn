@@ -6,6 +6,7 @@
 #include "cpg-enum-types.h"
 #include "cpg-object.h"
 #include "cpg-marshal.h"
+#include "cpg-usable.h"
 
 #define CPG_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY, CpgPropertyPrivate))
 
@@ -30,9 +31,16 @@ struct _CpgPropertyPrivate
 	CpgObject *object;
 
 	gdouble last_value;
+	gboolean modified : 1;
 };
 
-G_DEFINE_TYPE (CpgProperty, cpg_property, G_TYPE_INITIALLY_UNOWNED)
+static void cpg_usable_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgProperty,
+                         cpg_property,
+                         G_TYPE_INITIALLY_UNOWNED,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_USABLE,
+                                                cpg_usable_iface_init));
 
 static guint signals[NUM_SIGNALS] = {0,};
 
@@ -42,7 +50,9 @@ enum
 	PROP_NAME,
 	PROP_OBJECT,
 	PROP_FLAGS,
-	PROP_EXPRESSION
+	PROP_EXPRESSION,
+	PROP_USE_COUNT,
+	PROP_MODIFIED
 };
 
 /**
@@ -53,6 +63,35 @@ enum
  * consists of a name and a mathematical expression describing its contents.
  *
  */
+
+static void
+cpg_property_use (CpgUsable *usable)
+{
+	CpgProperty *prop = CPG_PROPERTY (usable);
+	++prop->priv->use_count;
+}
+
+static gboolean
+cpg_property_unuse (CpgUsable *usable)
+{
+	CpgProperty *prop = CPG_PROPERTY (usable);
+
+	if (prop->priv->use_count == 0)
+	{
+		return TRUE;
+	}
+
+	return (--(prop->priv->use_count) == 0);
+}
+
+static void
+cpg_usable_iface_init (gpointer iface)
+{
+	CpgUsableInterface *usable = iface;
+
+	usable->use = cpg_property_use;
+	usable->unuse = cpg_property_unuse;
+}
 
 static void
 set_object (CpgProperty *property,
@@ -83,6 +122,8 @@ set_object (CpgProperty *property,
 static void
 on_expression_changed (CpgProperty *property)
 {
+	property->priv->modified = TRUE;
+
 	g_object_notify (G_OBJECT (property), "expression");
 }
 
@@ -90,22 +131,31 @@ static void
 set_expression (CpgProperty *property,
                 CpgExpression *expression)
 {
-	CpgExpression *old_expression;
+	if (property->priv->expression == expression ||
+	    cpg_expression_equal (property->priv->expression,
+	                          expression))
+	{
+		if (g_object_is_floating (expression))
+		{
+			g_object_unref (expression);
+		}
 
-	old_expression = property->priv->expression;
+		return;
+	}
 
-	if (old_expression)
+	if (property->priv->expression)
 	{
 		g_signal_handlers_disconnect_by_func (property->priv->expression,
 		                                      on_expression_changed,
 		                                      property);
+
+		g_object_unref (property->priv->expression);
+		property->priv->expression = NULL;
 	}
 
 	if (expression)
 	{
 		property->priv->expression = g_object_ref_sink (expression);
-
-		g_object_notify (G_OBJECT (property), "expression");
 
 		g_signal_connect_swapped (expression,
 		                          "notify::expression",
@@ -113,12 +163,8 @@ set_expression (CpgProperty *property,
 		                          property);
 	}
 
-	g_signal_emit (property, signals[EXPRESSION_CHANGED], 0, old_expression);
-
-	if (old_expression)
-	{
-		g_object_unref (property->priv->expression);
-	}
+	g_object_notify (G_OBJECT (property), "expression");
+	cpg_property_set_modified (property, TRUE);
 }
 
 static void
@@ -147,8 +193,6 @@ set_flags (CpgProperty      *property,
 	if (flags != property->priv->flags)
 	{
 		gboolean wasonce = property->priv->flags & CPG_PROPERTY_FLAG_ONCE;
-		CpgPropertyFlags prev = property->priv->flags;
-
 		property->priv->flags = flags;
 
 		if (flags & CPG_PROPERTY_FLAG_ONCE)
@@ -168,8 +212,7 @@ set_flags (CpgProperty      *property,
 		}
 
 		g_object_notify (G_OBJECT (property), "flags");
-
-		g_signal_emit (property, signals[FLAGS_CHANGED], 0, prev);
+		cpg_property_set_modified (property, TRUE);
 	}
 }
 
@@ -219,6 +262,9 @@ cpg_property_set_property (GObject      *object,
 		case PROP_EXPRESSION:
 			set_expression (self, g_value_get_object (value));
 		break;
+		case PROP_MODIFIED:
+			self->priv->modified = g_value_get_boolean (value);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -246,6 +292,12 @@ cpg_property_get_property (GObject    *object,
 		break;
 		case PROP_EXPRESSION:
 			g_value_set_object (value, self->priv->expression);
+		break;
+		case PROP_USE_COUNT:
+			g_value_set_uint (value, self->priv->use_count);
+		break;
+		case PROP_MODIFIED:
+			g_value_set_boolean (value, self->priv->modified);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -326,6 +378,10 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
 
+	g_object_class_override_property (object_class,
+	                                  PROP_USE_COUNT,
+	                                  "use-count");
+
 	/**
 	 * CpgProperty::invalidate-name:
 	 * @property: a #CpgProperty
@@ -373,6 +429,15 @@ cpg_property_class_init (CpgPropertyClass *klass)
 		              G_TYPE_NONE,
 		              1,
 		              CPG_TYPE_PROPERTY_FLAGS);
+
+
+	g_object_class_install_property (object_class,
+	                                 PROP_MODIFIED,
+	                                 g_param_spec_boolean ("modified",
+	                                                       "Modified",
+	                                                       "Modified",
+	                                                       FALSE,
+	                                                       G_PARAM_READWRITE));
 }
 
 static void
@@ -613,23 +678,6 @@ cpg_property_reset (CpgProperty *property)
 	cpg_expression_reset (property->priv->expression);
 	cpg_expression_set_once (property->priv->expression,
 	                         (property->priv->flags & CPG_PROPERTY_FLAG_ONCE) != 0);
-}
-
-/**
- * cpg_property_get_used:
- * @property: A #CpgProperty
- * 
- * Get how many times the property is used currently.
- *
- * Returns: The number of times the property is used
- *
- **/
-guint
-cpg_property_get_used (CpgProperty *property)
-{
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
-
-	return property->priv->use_count;
 }
 
 /**
@@ -890,45 +938,9 @@ cpg_property_copy (CpgProperty *property)
 	                        property->priv->flags);
 
 	ret->priv->update = property->priv->update;
+	ret->priv->modified = property->priv->modified;
 
 	return ret;
-}
-
-/**
- * cpg_property_use:
- * @property: A #CpgProperty
- *
- * Increase the use count of the property.
- *
- **/
-void
-cpg_property_use (CpgProperty *property)
-{
-	g_return_if_fail (CPG_IS_PROPERTY (property));
-
-	++(property->priv->use_count);
-}
-
-/**
- * cpg_property_unuse:
- * @property: A #CpgProperty
- *
- * Decrease the use count of the property.
- *
- * Returns: %TRUE if this was the last use of the property, %FALSE otherwise
- *
- **/
-gboolean
-cpg_property_unuse (CpgProperty *property)
-{
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
-
-	if (property->priv->use_count == 0)
-	{
-		return TRUE;
-	}
-
-	return (--(property->priv->use_count) == 0);
 }
 
 void
@@ -939,4 +951,25 @@ _cpg_property_set_object (CpgProperty *property,
 	g_return_if_fail (object == NULL || CPG_IS_OBJECT (object));
 
 	set_object (property, object);
+}
+
+gboolean
+cpg_property_get_modified (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
+
+	return property->priv->modified;
+}
+
+void
+cpg_property_set_modified (CpgProperty *property,
+                           gboolean     modified)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+
+	if (modified != property->priv->modified)
+	{
+		property->priv->modified = modified;
+		g_object_notify (G_OBJECT (property), "modified");
+	}
 }
