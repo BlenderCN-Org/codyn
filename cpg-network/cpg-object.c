@@ -9,6 +9,8 @@
 
 #include "cpg-debug.h"
 #include "cpg-compile-error.h"
+#include "cpg-utils.h"
+#include "cpg-marshal.h"
 
 /**
  * SECTION:cpg-object
@@ -72,6 +74,7 @@ enum
 	PROPERTY_REMOVED,
 	PROPERTY_CHANGED,
 	COPIED,
+	VERIFY_REMOVE_PROPERTY,
 	NUM_SIGNALS
 };
 
@@ -474,6 +477,7 @@ cpg_object_verify_remove_property_impl (CpgObject    *object,
 
 	if (property)
 	{
+		/* Check if the property is still used */
 		if (cpg_property_get_used (property) > 1)
 		{
 			if (error)
@@ -481,8 +485,27 @@ cpg_object_verify_remove_property_impl (CpgObject    *object,
 				g_set_error (error,
 				             CPG_OBJECT_ERROR,
 				             CPG_OBJECT_ERROR_PROPERTY_IN_USE,
-				             "Property %s is still in use and can not be removed",
+				             "Property `%s' is still in use and can not be removed",
 				             name);
+			}
+
+			return FALSE;
+		}
+
+		/* Check if the property is instantiated from a template */
+		CpgObject *temp;
+		temp = cpg_object_get_property_template (object, property, FALSE);
+
+		if (temp != NULL)
+		{
+			if (error)
+			{
+				g_set_error (error,
+				             CPG_OBJECT_ERROR,
+				             CPG_OBJECT_ERROR_PROPERTY_FROM_TEMPLATE,
+				             "The property `%s' is instantiated from the template `%s' and cannot be removed",
+				             name,
+				             cpg_object_get_id (temp));
 			}
 
 			return FALSE;
@@ -490,6 +513,7 @@ cpg_object_verify_remove_property_impl (CpgObject    *object,
 	}
 	else
 	{
+		/* Since there is no such property, it cannot be removed */
 		if (error)
 		{
 			g_set_error (error,
@@ -800,6 +824,29 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              CPG_TYPE_OBJECT);
 
 	/**
+	 * CpgObject::verify-remove-property:
+	 * @object: a #CpgObject
+	 * @name: the property name
+	 * @error: the error
+	 *
+	 * Emitted when a property is added to the object
+	 *
+	 * Returns: %TRUE if the property can be removed, %FALSE otherwise
+	 *
+	 **/
+	object_signals[VERIFY_REMOVE_PROPERTY] =
+		g_signal_new ("verify-remove-property",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass, verify_remove_property),
+		              cpg_signal_accumulator_false_handled,
+		              NULL,
+		              cpg_marshal_BOOLEAN__STRING_POINTER,
+		              G_TYPE_BOOLEAN,
+		              1,
+		              CPG_TYPE_PROPERTY);
+
+	/**
 	 * CpgObject::property-added:
 	 * @object: a #CpgObject
 	 * @property: the added #CpgProperty
@@ -1040,16 +1087,16 @@ cpg_object_verify_remove_property (CpgObject    *object,
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
 
-	if (CPG_OBJECT_GET_CLASS (object)->verify_remove_property)
-	{
-		return CPG_OBJECT_GET_CLASS (object)->verify_remove_property (object,
-		                                                              name,
-		                                                              error);
-	}
-	else
-	{
-		return FALSE;
-	}
+	gboolean ret = TRUE;
+
+	g_signal_emit (object,
+	               object_signals[VERIFY_REMOVE_PROPERTY],
+	               0,
+	               name,
+	               error,
+	               &ret);
+
+	return ret;
 }
 
 /**
@@ -1405,12 +1452,57 @@ cpg_object_apply_template (CpgObject *object,
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
 	g_return_if_fail (CPG_IS_OBJECT (templ));
-	g_return_if_fail (g_type_is_a (G_TYPE_FROM_INSTANCE (object), G_TYPE_FROM_INSTANCE (templ)));
+	g_return_if_fail (g_type_is_a (G_TYPE_FROM_INSTANCE (object),
+	                               G_TYPE_FROM_INSTANCE (templ)));
 
 	if (CPG_OBJECT_GET_CLASS (object)->apply_template)
 	{
 		CPG_OBJECT_GET_CLASS (object)->apply_template (object, templ);
 	}
+}
+
+/**
+ * cpg_object_get_property_template:
+ * @object: A #CpgObject
+ * @property: A #CpgProperty
+ * @match_full: How to match the property
+ *
+ * Get the template on which @property is defined, if any. If @match_full is
+ * %TRUE, the template will only be possitively matched if both properties are
+ * equal (i.e. if a property originated from a template, but was later modified,
+ * this function will not return the original template object).
+ *
+ * Returns: A #CpgObject
+ *
+ **/
+CpgObject *
+cpg_object_get_property_template (CpgObject   *object,
+                                  CpgProperty *property,
+                                  gboolean     match_full)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	GSList const *templates = cpg_object_get_applied_templates (object);
+
+	gchar const *name = cpg_property_get_name (property);
+
+	while (templates)
+	{
+		CpgProperty *tprop;
+
+		tprop = cpg_object_get_property (templates->data,
+		                                 name);
+
+		if (tprop && (!match_full || cpg_property_equal (property, tprop)))
+		{
+			return templates->data;
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return NULL;
 }
 
 /**

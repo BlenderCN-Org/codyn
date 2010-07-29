@@ -39,7 +39,8 @@ COMMON_SOURCES = 		\
 	cpg-property.c \
 	cpg-stack.c \
 	cpg-state.c \
-	cpg-tokenizer.c
+	cpg-tokenizer.c \
+	cpg-utils.c
 
 BUILT_SOURCES = \
 	cpg-enum-types.c \

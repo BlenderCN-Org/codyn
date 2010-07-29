@@ -40,6 +40,7 @@ typedef enum
 	CPG_OBJECT_ERROR_PROPERTY_UNKNOWN,
 	CPG_OBJECT_ERROR_PROPERTY_NOT_FOUND,
 	CPG_OBJECT_ERROR_PROPERTY_IN_USE,
+	CPG_OBJECT_ERROR_PROPERTY_FROM_TEMPLATE,
 	CPG_OBJECT_NUM_ERRORS
 } CpgObjectError;
 
@@ -204,6 +205,10 @@ CpgObject        *cpg_object_copy           (CpgObject *object);
 
 void              cpg_object_apply_template (CpgObject *object,
                                              CpgObject *templ);
+
+CpgObject        *cpg_object_get_property_template (CpgObject   *object,
+                                                    CpgProperty *property,
+                                                    gboolean     match_full);
 
 gchar            *cpg_object_get_full_id    (CpgObject *object);
 
