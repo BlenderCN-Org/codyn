@@ -843,8 +843,9 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              NULL,
 		              cpg_marshal_BOOLEAN__STRING_POINTER,
 		              G_TYPE_BOOLEAN,
-		              1,
-		              CPG_TYPE_PROPERTY);
+		              2,
+		              G_TYPE_STRING,
+		              G_TYPE_POINTER);
 
 	/**
 	 * CpgObject::property-added:
