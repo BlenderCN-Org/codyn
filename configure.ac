@@ -60,6 +60,13 @@ fi
 AC_SUBST(WEBOTS_CFLAGS)
 AC_SUBST(WEBOTS_LIBS)
 
+AC_ARG_ENABLE([doc],
+	AS_HELP_STRING([--disable-doc],[Enable building webots bindings (default: enabled)]),
+	[enable_doc=$enableval],
+	[enable_doc=yes])
+
+AM_CONDITIONAL([ENABLE_DOC],[test "x$enable_doc" = "xyes"])
+
 # Introspection
 GOBJECT_INTROSPECTION_CHECK([0.6.10])
 
@@ -104,6 +111,7 @@ docs/Makefile
 docs/reference/Makefile
 m4/Makefile
 tests/Makefile
+win32/make-zip
 ])
 
 AC_OUTPUT
@@ -112,8 +120,10 @@ echo "
 
 Configuration:
 
+	Prefix:                 ${prefix}
 	Source code location:	${srcdir}
 	Compiler:		${CC}
 	Webots support enabled:	$enable_webots
 	GObject Introspection:	$enable_introspection
+	Documentation enabled:  $enable_doc
 "
