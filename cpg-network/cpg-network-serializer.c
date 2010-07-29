@@ -405,7 +405,7 @@ template_path (CpgObject *orig,
 		}
 
 		shared_root = shared_parent;
-	} while (parent != shared_root);
+	} while (shared_root && parent != shared_root);
 
 	return g_string_free (ret, FALSE);
 }
