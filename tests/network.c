@@ -113,7 +113,7 @@ test_variadic ()
 {
 	CpgNetwork *network;
 
-	srandom (time (0));
+	srand (time (0));
 
 	network = cpg_network_new ();
 
