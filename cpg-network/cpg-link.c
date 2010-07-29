@@ -278,6 +278,19 @@ cpg_link_foreach_expression_impl (CpgObject                *object,
 }
 
 static void
+copy_link_actions (CpgLink *dest,
+                   CpgLink *source)
+{
+	GSList *item;
+
+	for (item = source->priv->actions; item; item = g_slist_next (item))
+	{
+		cpg_link_add_action (dest,
+		                     cpg_link_action_copy (item->data));
+	}
+}
+
+static void
 cpg_link_copy_impl (CpgObject *object,
                     CpgObject *source)
 {
@@ -288,15 +301,7 @@ cpg_link_copy_impl (CpgObject *object,
 	}
 
 	/* Copy over link actions */
-	GSList *item;
-	CpgLink *source_link = CPG_LINK (source);
-	CpgLink *target = CPG_LINK (object);
-
-	for (item = source_link->priv->actions; item; item = g_slist_next (item))
-	{
-		cpg_link_add_action (target,
-		                     cpg_link_action_copy (item->data));
-	}
+	copy_link_actions (CPG_LINK (object), CPG_LINK (source));
 }
 
 static gboolean
@@ -420,6 +425,23 @@ cpg_link_equal_impl (CpgObject *first, CpgObject *second)
 }
 
 static void
+cpg_link_apply_template_impl (CpgObject *object,
+                              CpgObject *templ)
+{
+	/* Chain up first, transfer properties and such */
+	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->apply_template)
+	{
+		CPG_OBJECT_CLASS (cpg_link_parent_class)->apply_template (object, templ);
+	}
+
+	/* Copy over link actions */
+	if (CPG_IS_LINK (templ))
+	{
+		copy_link_actions (CPG_LINK (object), CPG_LINK (templ));
+	}
+}
+
+static void
 cpg_link_class_init (CpgLinkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -435,6 +457,7 @@ cpg_link_class_init (CpgLinkClass *klass)
 	cpgobject_class->copy = cpg_link_copy_impl;
 	cpgobject_class->compile = cpg_link_compile_impl;
 	cpgobject_class->equal = cpg_link_equal_impl;
+	cpgobject_class->apply_template = cpg_link_apply_template_impl;
 
 	/**
 	 * CpgLink::action-added:
