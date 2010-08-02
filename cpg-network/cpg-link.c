@@ -563,7 +563,8 @@ cpg_link_compile_impl (CpgObject         *object,
 }
 
 static gboolean
-cpg_link_equal_impl (CpgObject *first, CpgObject *second)
+cpg_link_equal_impl (CpgObject *first,
+                     CpgObject *second)
 {
 	if (!CPG_OBJECT_CLASS (cpg_link_parent_class)->equal (first, second))
 	{
@@ -593,6 +594,27 @@ cpg_link_equal_impl (CpgObject *first, CpgObject *second)
 	               cpg_object_get_id (link2->priv->to)) != 0)
 	{
 		return FALSE;
+	}
+
+	if (g_slist_length (link1->priv->actions) != g_slist_length (link2->priv->actions))
+	{
+		return FALSE;
+	}
+
+	GSList const *actions1 = cpg_link_get_actions (link1);
+
+	while (actions1)
+	{
+		CpgLinkAction *ac1 = actions1->data;
+		CpgLinkAction *ac2 = cpg_link_get_action (link2,
+		                                          cpg_link_action_get_target (ac1));
+
+		if (!ac2 || !cpg_link_action_equal (ac1, ac2))
+		{
+			return FALSE;
+		}
+
+		actions1 = g_slist_next (actions1);
 	}
 
 	return TRUE;

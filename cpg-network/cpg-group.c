@@ -2,6 +2,8 @@
 #include "cpg-link.h"
 #include "cpg-compile-error.h"
 #include "cpg-compile-context.h"
+#include "cpg-marshal.h"
+#include "cpg-utils.h"
 
 /**
  * SECTION:cpg-group
@@ -53,12 +55,27 @@ enum
 {
 	CHILD_ADDED,
 	CHILD_REMOVED,
+	VERIFY_ADD_CHILD,
+	VERIFY_REMOVE_CHILD,
 	NUM_SIGNALS
 };
 
 static guint group_signals[NUM_SIGNALS] = {0,};
 
 static void remove_object (CpgGroup *group, CpgObject *object);
+
+GQuark
+cpg_group_error_quark (void)
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+	{
+		quark = g_quark_from_static_string ("cpg_group_error");
+	}
+
+	return quark;
+}
 
 static void
 cpg_group_finalize (GObject *object)
@@ -83,7 +100,7 @@ get_child_from_template (CpgGroup  *group,
 		CpgObject *obj = children->data;
 		GSList const *templates = cpg_object_get_applied_templates (obj);
 
-		if (g_slist_find ((GSList *)templates, child))
+		if (g_slist_find ((GSList *)templates, obj))
 		{
 			return obj;
 		}
@@ -110,7 +127,7 @@ on_template_child_added (CpgGroup  *templ,
 	else
 	{
 		obj = cpg_object_new_from_template (child);
-		cpg_group_add (group, obj);
+		cpg_group_add (group, obj, NULL);
 		g_object_unref (obj);
 	}
 }
@@ -254,7 +271,7 @@ set_proxy (CpgGroup  *group,
 	if (proxy)
 	{
 		group->priv->proxy = g_object_ref (proxy);
-		cpg_group_add (group, proxy);
+		cpg_group_add (group, proxy, NULL);
 
 		GSList const *properties = cpg_object_get_properties (group->priv->proxy);
 
@@ -538,7 +555,7 @@ copy_children (CpgGroup *group,
 		/* Store map from the original to the copy */
 		g_hash_table_insert (hash_table, child, copied);
 
-		cpg_group_add (group, copied);
+		cpg_group_add (group, copied, NULL);
 
 		if (child == proxy)
 		{
@@ -627,7 +644,7 @@ cpg_group_cpg_apply_template (CpgObject *object,
 		else
 		{
 			new_child = cpg_object_new_from_template (child);
-			cpg_group_add (group, new_child);
+			cpg_group_add (group, new_child, NULL);
 			g_object_unref (new_child);
 		}
 
@@ -794,13 +811,35 @@ register_object (CpgGroup  *group,
 }
 
 static gboolean
-cpg_group_add_impl (CpgGroup  *group,
-                    CpgObject *object)
+cpg_group_add_impl (CpgGroup   *group,
+                    CpgObject  *object,
+                    GError    **error)
 {
 	CpgObject *other = g_hash_table_lookup (group->priv->child_hash,
 	                                        cpg_object_get_id (object));
 
 	if (other == object)
+	{
+		g_set_error (error,
+		             CPG_GROUP_ERROR,
+		             CPG_GROUP_ERROR_CHILD_ALREADY_EXISTS,
+		             "The child `%s' already exists in the group `%s'",
+		             cpg_object_get_id (object),
+		             cpg_object_get_id (CPG_OBJECT (group)));
+
+		return FALSE;
+	}
+
+	gboolean ret = TRUE;
+
+	g_signal_emit (group,
+	               group_signals[VERIFY_ADD_CHILD],
+	               0,
+	               object,
+	               error,
+	               &ret);
+
+	if (!ret)
 	{
 		return FALSE;
 	}
@@ -834,28 +873,48 @@ remove_object (CpgGroup  *group,
 }
 
 static gboolean
-cpg_group_remove_impl (CpgGroup  *group,
-                       CpgObject *object)
+cpg_group_remove_impl (CpgGroup   *group,
+                       CpgObject  *object,
+                       GError    **error)
 {
+	GSList *item = g_slist_find (group->priv->children, object);
+
+	if (!item)
+	{
+		g_set_error (error,
+		             CPG_GROUP_ERROR,
+		             CPG_GROUP_ERROR_CHILD_DOES_NOT_EXIST,
+		             "The child `%s' does not exist in the group `%s'",
+		             cpg_object_get_id (object),
+		             cpg_object_get_id (CPG_OBJECT (group)));
+
+		return FALSE;
+	}
+
+	gboolean ret = TRUE;
+
+	g_signal_emit (group,
+	               group_signals[VERIFY_REMOVE_CHILD],
+	               0,
+	               object,
+	               error,
+	               &ret);
+
+	if (!ret)
+	{
+		return FALSE;
+	}
+
 	if (object == group->priv->proxy)
 	{
 		set_proxy (group, NULL);
 	}
 
-	GSList *item = g_slist_find (group->priv->children, object);
+	group->priv->children = g_slist_remove_link (group->priv->children,
+	                                             item);
 
-	if (item)
-	{
-		group->priv->children = g_slist_remove_link (group->priv->children,
-		                                             item);
-
-		remove_object (group, object);
-		return TRUE;
-	}
-	else
-	{
-		return FALSE;
-	}
+	remove_object (group, object);
+	return TRUE;
 }
 
 static void
@@ -870,7 +929,7 @@ cpg_group_cpg_clear (CpgObject *object)
 
 	for (child = children; child; child = g_slist_next (child))
 	{
-		cpg_group_remove (group, child->data);
+		cpg_group_remove (group, child->data, NULL);
 	}
 
 	g_slist_free (children);
@@ -1054,6 +1113,51 @@ cpg_group_class_init (CpgGroupClass *klass)
 		              G_TYPE_NONE,
 		              1,
 		              CPG_TYPE_OBJECT);
+
+	/**
+	 * CpgGroup::verify-remove-child:
+	 * @object: a #CpgObject
+	 * @child: the child to be removed
+	 * @error: the error
+	 *
+	 * Returns: %TRUE if the child can be removed, %FALSE otherwise
+	 *
+	 **/
+	group_signals[VERIFY_REMOVE_CHILD] =
+		g_signal_new ("verify-remove-child",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              cpg_signal_accumulator_false_handled,
+		              NULL,
+		              cpg_marshal_BOOLEAN__OBJECT_POINTER,
+		              G_TYPE_BOOLEAN,
+		              2,
+		              CPG_TYPE_OBJECT,
+		              G_TYPE_POINTER);
+
+
+	/**
+	 * CpgGroup::verify-add-child:
+	 * @object: a #CpgObject
+	 * @child: the child to be removed
+	 * @error: the error
+	 *
+	 * Returns: %TRUE if the child can be added, %FALSE otherwise
+	 *
+	 **/
+	group_signals[VERIFY_ADD_CHILD] =
+		g_signal_new ("verify-add-child",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              cpg_signal_accumulator_false_handled,
+		              NULL,
+		              cpg_marshal_BOOLEAN__OBJECT_POINTER,
+		              G_TYPE_BOOLEAN,
+		              2,
+		              CPG_TYPE_OBJECT,
+		              G_TYPE_POINTER);
 }
 
 static void
@@ -1115,15 +1219,16 @@ cpg_group_get_children (CpgGroup *group)
  *
  **/
 gboolean
-cpg_group_add (CpgGroup  *group,
-               CpgObject *object)
+cpg_group_add (CpgGroup   *group,
+               CpgObject  *object,
+               GError    **error)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 
 	if (CPG_GROUP_GET_CLASS (group)->add)
 	{
-		return CPG_GROUP_GET_CLASS (group)->add (group, object);
+		return CPG_GROUP_GET_CLASS (group)->add (group, object, error);
 	}
 	else
 	{
@@ -1135,6 +1240,7 @@ cpg_group_add (CpgGroup  *group,
  * cpg_group_remove:
  * @group: A #CpgGroup
  * @object: A #CpgObject
+ * @error: A #GError
  *
  * Remove a child object from the group.
  *
@@ -1142,15 +1248,16 @@ cpg_group_add (CpgGroup  *group,
  *
  **/
 gboolean
-cpg_group_remove (CpgGroup  *group,
-                  CpgObject *object)
+cpg_group_remove (CpgGroup   *group,
+                  CpgObject  *object,
+                  GError    **error)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 
 	if (CPG_GROUP_GET_CLASS (group)->remove)
 	{
-		return CPG_GROUP_GET_CLASS (group)->remove (group, object);
+		return CPG_GROUP_GET_CLASS (group)->remove (group, object, error);
 	}
 	else
 	{

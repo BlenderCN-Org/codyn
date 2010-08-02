@@ -77,6 +77,19 @@ cpg_network_load_error_quark ()
 	return quark;
 }
 
+GQuark
+cpg_network_error_quark ()
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+	{
+		quark = g_quark_from_static_string ("cpg_network_error");
+	}
+
+	return quark;
+}
+
 static void
 cpg_network_finalize (GObject *object)
 {
@@ -226,8 +239,9 @@ cpg_network_dispose (GObject *object)
 }
 
 static gboolean
-cpg_network_add_impl (CpgGroup  *group,
-                      CpgObject *object)
+cpg_network_add_impl (CpgGroup   *group,
+                      CpgObject  *object,
+                      GError    **error)
 {
 	CpgNetwork *network = CPG_NETWORK (group);
 
@@ -244,13 +258,19 @@ cpg_network_add_impl (CpgGroup  *group,
 
 		if (!eq)
 		{
+			g_set_error (error,
+			             CPG_NETWORK_ERROR,
+			             CPG_NETWORK_ERROR_UNOWNED_TEMPLATE,
+			             "The object `%s' contains templates that are not part of the network",
+			             cpg_object_get_id (object));
+
 			return FALSE;
 		}
 
 		templates = g_slist_next (templates);
 	}
 
-	if (CPG_GROUP_CLASS (cpg_network_parent_class)->add (group, object))
+	if (CPG_GROUP_CLASS (cpg_network_parent_class)->add (group, object, error))
 	{
 		return TRUE;
 	}
@@ -756,7 +776,8 @@ cpg_network_merge (CpgNetwork  *network,
 		                          cpg_object_get_id (template)))
 		{
 			cpg_group_add (network->priv->template_group,
-			               template);
+			               template,
+			               NULL);
 		}
 	}
 
@@ -765,7 +786,7 @@ cpg_network_merge (CpgNetwork  *network,
 
 	while (children)
 	{
-		cpg_group_add (CPG_GROUP (network), children->data);
+		cpg_group_add (CPG_GROUP (network), children->data, NULL);
 		children = g_slist_next (children);
 	}
 
@@ -781,7 +802,8 @@ cpg_network_merge (CpgNetwork  *network,
 		                          cpg_object_get_id (function)))
 		{
 			cpg_group_add (network->priv->function_group,
-			               function);
+			               function,
+			               NULL);
 		}
 	}
 }

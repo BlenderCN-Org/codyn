@@ -363,7 +363,7 @@ import_objects (CpgImport *self,
 
 	while (children)
 	{
-		cpg_group_add (CPG_GROUP (self), children->data);
+		cpg_group_add (CPG_GROUP (self), children->data, NULL);
 		children = g_slist_next (children);
 	}
 }
@@ -392,7 +392,8 @@ auto_import_templates (CpgImport  *self,
 	import_templates (auto_import, source);
 
 	cpg_group_add (cpg_network_get_template_group (target),
-	               CPG_OBJECT (auto_import));
+	               CPG_OBJECT (auto_import),
+	               NULL);
 }
 
 static void
@@ -412,7 +413,7 @@ auto_import_functions (CpgImport  *import,
 
 		if (!cpg_group_find_object (target_functions, id))
 		{
-			cpg_group_add (target_functions, CPG_OBJECT (function));
+			cpg_group_add (target_functions, CPG_OBJECT (function), NULL);
 			cpg_object_set_auto_imported (CPG_OBJECT (function),
 			                              TRUE);
 		}
@@ -486,7 +487,7 @@ cpg_import_load (CpgImport   *self,
 		import_templates (self, imported);
 	}
 
-	cpg_group_add (parent, CPG_OBJECT (self));
+	cpg_group_add (parent, CPG_OBJECT (self), NULL);
 
 	self->priv->modified = FALSE;
 	g_object_notify (G_OBJECT (self), "modified");

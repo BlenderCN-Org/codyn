@@ -661,8 +661,14 @@ new_object (CpgNetworkDeserializer *deserializer,
 	{
 		if (new_object)
 		{
-			cpg_group_add (CPG_GROUP (deserializer->priv->parents->data),
-			               object);
+			if (!cpg_group_add (CPG_GROUP (deserializer->priv->parents->data),
+			                    object,
+			                    NULL))
+			{
+				g_object_unref (object);
+				return NULL;
+			}
+
 			g_object_unref (object);
 		}
 
@@ -817,10 +823,12 @@ parse_function (CpgNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
-	cpg_group_add (function_group, CPG_OBJECT (function));
+	gboolean ret = cpg_group_add (function_group,
+	                              CPG_OBJECT (function),
+	                              NULL);
 	g_object_unref (function);
 
-	return TRUE;
+	return ret;
 }
 
 static gboolean
@@ -959,10 +967,12 @@ parse_polynomial (CpgNetworkDeserializer  *deserializer,
 		return FALSE;
 	}
 
-	cpg_group_add (function_group, CPG_OBJECT (function));
+	gboolean ret = cpg_group_add (function_group,
+	                              CPG_OBJECT (function),
+	                              NULL);
 	g_object_unref (function);
 
-	return TRUE;
+	return ret;
 }
 
 static gboolean
@@ -1118,13 +1128,18 @@ parse_link (CpgNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
+	gboolean ret = TRUE;
+
 	if (new_object)
 	{
-		cpg_group_add (CPG_GROUP (deserializer->priv->parents->data), object);
+		ret = cpg_group_add (CPG_GROUP (deserializer->priv->parents->data),
+		                     object,
+		                     NULL);
+
 		g_object_unref (object);
 	}
 
-	return TRUE;
+	return ret;
 }
 
 static gboolean
@@ -1332,10 +1347,12 @@ parse_import (CpgNetworkDeserializer *deserializer,
 		if (import)
 		{
 			CpgImportAlias *alias = cpg_import_alias_new (import);
-			cpg_group_add (deserializer->priv->parents->data, CPG_OBJECT (alias));
+			gboolean ret = cpg_group_add (deserializer->priv->parents->data,
+			                              CPG_OBJECT (alias),
+			                              NULL);
 			g_object_unref (alias);
 
-			return TRUE;
+			return ret;
 		}
 	}
 

@@ -50,6 +50,14 @@ typedef enum
 	CPG_NETWORK_LOAD_ERROR_IMPORT
 } CpgNetworkLoadError;
 
+#define CPG_NETWORK_ERROR (cpg_network_error_quark ())
+
+typedef enum
+{
+	CPG_NETWORK_ERROR_UNOWNED_TEMPLATE,
+	CPG_NETWORK_ERROR_NUM
+} CpgNetworkError;
+
 struct _CpgNetwork
 {
 	/*< private >*/
@@ -75,9 +83,10 @@ struct _CpgNetworkClass
 	                       CpgCompileError *error);
 };
 
-GType cpg_network_get_type (void) G_GNUC_CONST;
+GType             cpg_network_get_type              (void) G_GNUC_CONST;
 
-GQuark            cpg_network_load_error_quark  (void);
+GQuark            cpg_network_load_error_quark      (void);
+GQuark            cpg_network_error_quark           (void);
 
 CpgNetwork       *cpg_network_new                    (void);
 

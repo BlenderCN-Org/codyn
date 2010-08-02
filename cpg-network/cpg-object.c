@@ -915,11 +915,15 @@ static gboolean
 cpg_object_equal_impl (CpgObject *first,
                        CpgObject *second)
 {
-	if (G_TYPE_FROM_INSTANCE (first) != G_TYPE_FROM_INSTANCE (second))
+	GType tfirst = G_TYPE_FROM_INSTANCE (first);
+	GType tsecond = G_TYPE_FROM_INSTANCE (second);
+
+	if (!(tfirst == tsecond || g_type_is_a (tfirst, tsecond)))
 	{
 		return FALSE;
 	}
 
+	/* Compare properties */
 	GSList *prop1 = cpg_object_get_properties (first);
 	GSList *prop2 = cpg_object_get_properties (second);
 
