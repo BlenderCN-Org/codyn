@@ -1,4 +1,5 @@
 #include "cpg-link-action.h"
+#include "cpg-modifiable.h"
 #include "cpg-usable.h"
 
 /**
@@ -18,6 +19,7 @@ struct _CpgLinkActionPrivate
 	CpgProperty *property;
 
 	guint equation_proxy_id;
+	gboolean modified : 1;
 };
 
 /* Properties */
@@ -26,10 +28,23 @@ enum
 	PROP_0,
 	PROP_TARGET,
 	PROP_EQUATION,
-	PROP_TARGET_PROPERTY
+	PROP_TARGET_PROPERTY,
+	PROP_MODIFIED
 };
 
-G_DEFINE_TYPE (CpgLinkAction, cpg_link_action, G_TYPE_INITIALLY_UNOWNED)
+static void cpg_modifiable_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgLinkAction,
+                         cpg_link_action,
+                         G_TYPE_INITIALLY_UNOWNED,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
+                                                cpg_modifiable_iface_init));
+
+static void
+cpg_modifiable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+}
 
 static void
 set_property (CpgLinkAction *action,
@@ -73,6 +88,7 @@ static void
 on_expression_changed (CpgLinkAction *action)
 {
 	g_object_notify (G_OBJECT (action), "equation");
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (action), TRUE);
 }
 
 static void
@@ -103,6 +119,9 @@ set_equation (CpgLinkAction *action,
 			                          G_CALLBACK (on_expression_changed),
 			                          action);
 	}
+
+	g_object_notify (G_OBJECT (action), "equation");
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (action), TRUE);
 }
 
 static void
@@ -111,6 +130,8 @@ cpg_link_action_dispose (GObject *object)
 	CpgLinkAction *action = CPG_LINK_ACTION (object);
 
 	set_property (action, NULL);
+	set_target (action, NULL);
+	set_equation (action, NULL);
 
 	G_OBJECT_CLASS (cpg_link_action_parent_class)->dispose (object);
 }
@@ -118,11 +139,6 @@ cpg_link_action_dispose (GObject *object)
 static void
 cpg_link_action_finalize (GObject *object)
 {
-	CpgLinkAction *action = CPG_LINK_ACTION (object);
-
-	set_target (action, NULL);
-	set_equation (action, NULL);
-
 	G_OBJECT_CLASS (cpg_link_action_parent_class)->finalize (object);
 }
 
@@ -142,6 +158,9 @@ cpg_link_action_set_property (GObject      *object,
 		case PROP_EQUATION:
 			set_equation (self,
 			              CPG_EXPRESSION (g_value_get_object (value)));
+		break;
+		case PROP_MODIFIED:
+			self->priv->modified = g_value_get_boolean (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -167,6 +186,9 @@ cpg_link_action_get_property (GObject    *object,
 		break;
 		case PROP_TARGET_PROPERTY:
 			g_value_set_object (value, self->priv->property);
+		break;
+		case PROP_MODIFIED:
+			g_value_set_boolean (value, self->priv->modified);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -226,6 +248,10 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	                                                      "Target Property",
 	                                                      CPG_TYPE_PROPERTY,
 	                                                      G_PARAM_READABLE));
+
+	g_object_class_override_property (object_class,
+	                                  PROP_MODIFIED,
+	                                  "modified");
 
 	g_type_class_add_private (object_class, sizeof(CpgLinkActionPrivate));
 }
@@ -323,11 +349,6 @@ cpg_link_action_set_equation (CpgLinkAction *action,
 	g_return_if_fail (equation == NULL || CPG_IS_EXPRESSION (equation));
 
 	set_equation (action, equation);
-
-	if (action->priv->equation == equation)
-	{
-		g_object_notify (G_OBJECT (action), "equation");
-	}
 }
 
 /**
@@ -384,6 +405,32 @@ cpg_link_action_get_target_property (CpgLinkAction *action)
 	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
 
 	return action->priv->property;
+}
+
+gboolean
+cpg_link_action_equal (CpgLinkAction *action,
+                       CpgLinkAction *other)
+{
+	g_return_val_if_fail (action == NULL || CPG_IS_LINK_ACTION (action), FALSE);
+	g_return_val_if_fail (other == NULL || CPG_IS_LINK_ACTION (other), FALSE);
+
+	if (action == NULL || other == NULL)
+	{
+		return action == other;
+ 	}
+
+	if (g_strcmp0 (action->priv->target, other->priv->target) != 0)
+	{
+		return FALSE;
+	}
+
+	if (!action->priv->equation || !other->priv->equation)
+	{
+		return action->priv->equation == other->priv->equation;
+	}
+
+	return cpg_expression_equal (action->priv->equation,
+	                             other->priv->equation);
 }
 
 void

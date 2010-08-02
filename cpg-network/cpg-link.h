@@ -58,6 +58,10 @@ void           cpg_link_attach                (CpgLink       *link,
                                                CpgObject     *from,
                                                CpgObject     *to);
 
+CpgLink       *cpg_link_get_action_template   (CpgLink       *link,
+                                               CpgLinkAction *action,
+                                               gboolean       match_full);
+
 G_END_DECLS
 
 #endif /* __CPG_LINK_H__ */

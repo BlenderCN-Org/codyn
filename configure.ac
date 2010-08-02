@@ -91,7 +91,7 @@ PKG_CHECK_MODULES(CPG_NETWORK, [
 GEDIT_LIBS="${CPG_NETWORK_LIBS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
-	CPG_NETWORK_CFLAGS="$CPG_NETWORK_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations"
+	CPG_NETWORK_CFLAGS="$CPG_NETWORK_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"
 fi
 
 AC_SUBST(CPG_NETWORK_LIBS)

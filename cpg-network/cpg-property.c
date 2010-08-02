@@ -7,6 +7,7 @@
 #include "cpg-object.h"
 #include "cpg-marshal.h"
 #include "cpg-usable.h"
+#include "cpg-modifiable.h"
 
 #define CPG_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY, CpgPropertyPrivate))
 
@@ -35,12 +36,15 @@ struct _CpgPropertyPrivate
 };
 
 static void cpg_usable_iface_init (gpointer iface);
+static void cpg_modifiable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgProperty,
                          cpg_property,
                          G_TYPE_INITIALLY_UNOWNED,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_USABLE,
-                                                cpg_usable_iface_init));
+                                                cpg_usable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
+                                                cpg_modifiable_iface_init));
 
 static guint signals[NUM_SIGNALS] = {0,};
 
@@ -94,6 +98,12 @@ cpg_usable_iface_init (gpointer iface)
 }
 
 static void
+cpg_modifiable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+}
+
+static void
 set_object (CpgProperty *property,
             CpgObject   *object)
 {
@@ -122,7 +132,7 @@ set_object (CpgProperty *property,
 static void
 on_expression_changed (CpgProperty *property)
 {
-	property->priv->modified = TRUE;
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (property), TRUE);
 
 	g_object_notify (G_OBJECT (property), "expression");
 }
@@ -132,10 +142,11 @@ set_expression (CpgProperty *property,
                 CpgExpression *expression)
 {
 	if (property->priv->expression == expression ||
-	    cpg_expression_equal (property->priv->expression,
-	                          expression))
+	    (expression && property->priv->expression &&
+	     cpg_expression_equal (property->priv->expression,
+	                           expression)))
 	{
-		if (g_object_is_floating (expression))
+		if (expression && g_object_is_floating (expression))
 		{
 			g_object_unref (expression);
 		}
@@ -164,7 +175,7 @@ set_expression (CpgProperty *property,
 	}
 
 	g_object_notify (G_OBJECT (property), "expression");
-	cpg_property_set_modified (property, TRUE);
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (property), TRUE);
 }
 
 static void
@@ -176,6 +187,14 @@ cpg_property_finalize (GObject *object)
 
 	g_free (property->priv->name);
 
+	G_OBJECT_CLASS (cpg_property_parent_class)->finalize (object);
+}
+
+static void
+cpg_property_dispose (GObject *object)
+{
+	CpgProperty *property = CPG_PROPERTY (object);
+
 	g_object_freeze_notify (object);
 
 	set_expression (property, NULL);
@@ -183,7 +202,7 @@ cpg_property_finalize (GObject *object)
 
 	g_object_thaw_notify (object);
 
-	G_OBJECT_CLASS (cpg_property_parent_class)->finalize (object);
+	G_OBJECT_CLASS (cpg_property_parent_class)->dispose (object);
 }
 
 static void
@@ -212,7 +231,7 @@ set_flags (CpgProperty      *property,
 		}
 
 		g_object_notify (G_OBJECT (property), "flags");
-		cpg_property_set_modified (property, TRUE);
+		cpg_modifiable_set_modified (CPG_MODIFIABLE (property), TRUE);
 	}
 }
 
@@ -311,6 +330,7 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	object_class->finalize = cpg_property_finalize;
+	object_class->dispose = cpg_property_dispose;
 
 	object_class->get_property = cpg_property_get_property;
 	object_class->set_property = cpg_property_set_property;
@@ -430,14 +450,9 @@ cpg_property_class_init (CpgPropertyClass *klass)
 		              1,
 		              CPG_TYPE_PROPERTY_FLAGS);
 
-
-	g_object_class_install_property (object_class,
+	g_object_class_override_property (object_class,
 	                                 PROP_MODIFIED,
-	                                 g_param_spec_boolean ("modified",
-	                                                       "Modified",
-	                                                       "Modified",
-	                                                       FALSE,
-	                                                       G_PARAM_READWRITE));
+	                                 "modified");
 }
 
 static void
@@ -938,7 +953,9 @@ cpg_property_copy (CpgProperty *property)
 	                        property->priv->flags);
 
 	ret->priv->update = property->priv->update;
-	ret->priv->modified = property->priv->modified;
+
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (ret),
+	                             property->priv->modified);
 
 	return ret;
 }
@@ -951,25 +968,4 @@ _cpg_property_set_object (CpgProperty *property,
 	g_return_if_fail (object == NULL || CPG_IS_OBJECT (object));
 
 	set_object (property, object);
-}
-
-gboolean
-cpg_property_get_modified (CpgProperty *property)
-{
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
-
-	return property->priv->modified;
-}
-
-void
-cpg_property_set_modified (CpgProperty *property,
-                           gboolean     modified)
-{
-	g_return_if_fail (CPG_IS_PROPERTY (property));
-
-	if (modified != property->priv->modified)
-	{
-		property->priv->modified = modified;
-		g_object_notify (G_OBJECT (property), "modified");
-	}
 }

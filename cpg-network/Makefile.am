@@ -29,6 +29,7 @@ COMMON_SOURCES = 		\
 	cpg-link.c \
 	cpg-link-action.c \
 	cpg-math.c \
+	cpg-modifiable.c \
 	cpg-monitor.c \
 	cpg-network.c \
 	cpg-network-deserializer.c \
@@ -78,6 +79,7 @@ INST_H_FILES = \
 	cpg-link.h \
 	cpg-link-action.h \
 	cpg-math.h \
+	cpg-modifiable.h \
 	cpg-monitor.h \
 	cpg-network.h \
 	cpg-network-deserializer.h \

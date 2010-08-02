@@ -393,6 +393,11 @@ parse_properties (CpgNetworkDeserializer *deserializer,
 		cpg_object_add_property (deserializer->priv->object,
 		                         property);
 
+		property = cpg_object_get_property (deserializer->priv->object,
+		                                    (const gchar *)name);
+
+		cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);
+
 		g_object_set_data (G_OBJECT (property),
 		                   CPG_NETWORK_XML_PROPERTY_FLAGS_ATTRIBUTE,
 		                   GINT_TO_POINTER (flags_attr));

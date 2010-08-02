@@ -3,6 +3,8 @@
 
 #include <cpg-network/cpg-expression.h>
 #include <cpg-network/cpg-utils.h>
+#include <cpg-network/cpg-modifiable.h>
+#include <cpg-network/cpg-usable.h>
 
 G_BEGIN_DECLS
 
@@ -115,11 +117,6 @@ CpgProperty       *cpg_property_copy                    (CpgProperty        *pro
 
 void               _cpg_property_set_object             (CpgProperty                  *property,
                                                          CPG_FORWARD_DECL (CpgObject) *object);
-
-void               cpg_property_set_modified            (CpgProperty        *property,
-                                                         gboolean            modified);
-
-gboolean           cpg_property_get_modified            (CpgProperty        *property);
 
 G_END_DECLS
 

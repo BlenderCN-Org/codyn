@@ -4,6 +4,7 @@
 #include <glib-object.h>
 #include <cpg-network/cpg-property.h>
 #include <cpg-network/cpg-expression.h>
+#include <cpg-network/cpg-modifiable.h>
 
 G_BEGIN_DECLS
 
@@ -50,6 +51,13 @@ void            cpg_link_action_set_equation (CpgLinkAction *action,
 
 gboolean        cpg_link_action_depends      (CpgLinkAction *action,
                                               CpgProperty   *property);
+
+gboolean        cpg_link_action_equal        (CpgLinkAction *action,
+                                              CpgLinkAction *other);
+
+gboolean        cpg_link_action_get_modified (CpgLinkAction *action);
+void            cpg_link_action_set_modified (CpgLinkAction *action,
+                                              gboolean       modified);
 
 CpgProperty    *cpg_link_action_get_target_property  (CpgLinkAction *action);
 void            _cpg_link_action_set_target_property (CpgLinkAction *action,

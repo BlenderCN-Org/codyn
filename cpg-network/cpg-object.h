@@ -5,6 +5,7 @@
 #include <cpg-network/cpg-property.h>
 #include <cpg-network/cpg-compile-context.h>
 #include <cpg-network/cpg-utils.h>
+#include <cpg-network/cpg-usable.h>
 
 G_BEGIN_DECLS
 

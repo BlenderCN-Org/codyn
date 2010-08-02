@@ -265,7 +265,7 @@ on_template_property_expression_changed (CpgProperty *prop,
 		return;
 	}
 
-	if (cpg_property_get_modified (orig))
+	if (cpg_modifiable_modified (CPG_MODIFIABLE (orig)))
 	{
 		return;
 	}
@@ -280,7 +280,7 @@ on_template_property_expression_changed (CpgProperty *prop,
 	cpg_property_set_expression (orig,
 	                             cpg_expression_copy (cpg_property_get_expression (prop)));
 
-	cpg_property_set_modified (orig, FALSE);
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (orig), FALSE);
 }
 
 static void
@@ -298,7 +298,7 @@ on_template_property_flags_changed (CpgProperty *prop,
 		return;
 	}
 
-	if (cpg_property_get_modified (orig))
+	if (cpg_modifiable_modified (CPG_MODIFIABLE (orig)))
 	{
 		return;
 	}
@@ -311,7 +311,7 @@ on_template_property_flags_changed (CpgProperty *prop,
 	}
 
 	cpg_property_set_flags (orig, cpg_property_get_flags (prop));
-	cpg_property_set_modified (orig, FALSE);
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (orig), FALSE);
 }
 
 static void
@@ -326,8 +326,18 @@ on_template_property_added (CpgObject   *templ,
 	if (orig == NULL ||
 	    cpg_object_get_property_template (object, orig, TRUE))
 	{
-		cpg_object_add_property (object,
-		                         cpg_property_copy (prop));
+		if (cpg_object_add_property (object,
+		                             cpg_property_copy (prop)))
+		{
+			orig = cpg_object_get_property (object,
+			                                cpg_property_get_name (prop));
+
+			cpg_modifiable_set_modified (CPG_MODIFIABLE (orig), FALSE);
+		}
+		else
+		{
+			return;
+		}
 	}
 
 	g_signal_connect (prop,
@@ -364,8 +374,8 @@ on_template_property_removed (CpgObject   *templ,
 		cpg_object_get_property (object,
 		                         cpg_property_get_name (prop));
 
-	if (orig && !cpg_property_get_modified (orig) &&
-	    cpg_object_get_property_template (object, orig, TRUE) == templ)
+	if (orig && !cpg_modifiable_modified (CPG_MODIFIABLE (orig)) &&
+	    cpg_object_get_property_template (object, orig, TRUE) == NULL)
 	{
 		/* Remove the original property as well */
 		cpg_object_remove_property (object,
@@ -448,17 +458,8 @@ cpg_object_foreach_expression_impl (CpgObject                *object,
 }
 
 static void
-on_property_changed (CpgObject   *object,
-                     GParamSpec  *spec,
-                     CpgProperty *property)
-{
-	g_signal_emit (object, object_signals[PROPERTY_CHANGED], 0, property);
-	cpg_object_taint (object);
-}
-
-static void
-on_property_modified (CpgObject   *object,
-                      CpgProperty *property)
+check_modified_for_template (CpgObject   *object,
+                             CpgProperty *property)
 {
 	CpgObject *templ;
 
@@ -468,8 +469,28 @@ on_property_modified (CpgObject   *object,
 
 	if (templ != NULL)
 	{
-		cpg_property_set_modified (property, FALSE);
+		cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);
 	}
+}
+
+static void
+on_property_changed (CpgObject   *object,
+                     GParamSpec  *spec,
+                     CpgProperty *property)
+{
+	g_signal_emit (object, object_signals[PROPERTY_CHANGED], 0, property);
+
+	check_modified_for_template (object, property);
+
+	cpg_object_taint (object);
+}
+
+static void
+on_property_modified (CpgObject   *object,
+                      GParamSpec  *spec,
+                      CpgProperty *property)
+{
+	check_modified_for_template (object, property);
 }
 
 static gboolean
@@ -511,7 +532,7 @@ add_property (CpgObject   *object,
 	                          object);
 
 	g_signal_connect_swapped (property,
-	                          "modified",
+	                          "notify::modified",
 	                          G_CALLBACK (on_property_modified),
 	                          object);
 
@@ -552,13 +573,13 @@ cpg_object_unapply_template_impl (CpgObject *object,
 {
 	GSList *item;
 
+	object->priv->templates = g_slist_remove (object->priv->templates,
+	                                          templ);
+
 	for (item = templ->priv->properties; item; item = g_slist_next (item))
 	{
 		on_template_property_removed (templ, item->data, object);
 	}
-
-	object->priv->templates = g_slist_remove (object->priv->templates,
-	                                          templ);
 
 	disconnect_template (object, templ, FALSE);
 }
@@ -817,17 +838,18 @@ cpg_object_add_property_impl (CpgObject   *object,
 
 	if (existing)
 	{
-		if (!cpg_object_remove_property (object,
-		                                 cpg_property_get_name (property),
-		                                 NULL))
-		{
-			if (g_object_is_floating (G_OBJECT (property)))
-			{
-				g_object_unref (property);
-			}
+		cpg_property_set_expression (existing,
+		                             cpg_property_get_expression (property));
 
-			return FALSE;
+		cpg_property_set_flags (existing,
+		                        cpg_property_get_flags (property));
+
+		if (g_object_is_floating (G_OBJECT (property)))
+		{
+			g_object_unref (property);
 		}
+
+		return TRUE;
 	}
 
 	add_property (object, property);
@@ -1228,7 +1250,17 @@ cpg_object_new_from_template (CpgObject *templ)
  * @object: the #CpgObject
  * @property: the #CpgProperty to add
  *
- * Add a new property to the object
+ * Add a new property to the object. Note that if a property with the same
+ * name already exists, the property information is transfered to the existing
+ * property instance. This means that the specified @property might not actually
+ * be added to the object. Also, since a #CpgProperty is a #GInitiallyUnowned,
+ * @property will be destroyed after the call to #cpg_object_add_property in
+ * the above described case, unless you explicitly sink the floating reference.
+ *
+ * In the case that you can not know whether a property is overriding an
+ * existing property in @object, never use @property after a call to
+ * #cpg_object_add_property. Instead, retrieve the corresponding property
+ * using #cpg_object_get_property after the call to #cpg_object_add_property.
  *
  * Returns: %TRUE if the property was added successfully, %FALSE otherwise
  **/
@@ -1719,6 +1751,11 @@ cpg_object_apply_template (CpgObject *object,
 	g_return_if_fail (CPG_IS_OBJECT (templ));
 	g_return_if_fail (g_type_is_a (G_TYPE_FROM_INSTANCE (object),
 	                               G_TYPE_FROM_INSTANCE (templ)));
+
+	if (g_slist_find (object->priv->templates, templ))
+	{
+		return;
+	}
 
 	if (CPG_OBJECT_GET_CLASS (object)->apply_template)
 	{

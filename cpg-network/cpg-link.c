@@ -215,11 +215,82 @@ cpg_link_set_property (GObject       *object,
 }
 
 static void
+check_modified_for_template (CpgLink       *link,
+                             CpgLinkAction *action)
+{
+	CpgLink *templ;
+
+	templ = cpg_link_get_action_template (link,
+	                                      action,
+	                                      TRUE);
+
+	if (templ != NULL)
+	{
+		cpg_modifiable_set_modified (CPG_MODIFIABLE (action), FALSE);
+	}
+}
+
+static void
+on_template_action_equation_changed (CpgLinkAction *action,
+                                     GParamSpec    *spec,
+                                     CpgLink       *link)
+{
+	CpgLinkAction *orig = cpg_link_get_action (link,
+	                                           cpg_link_action_get_target (action));
+
+	if (!orig)
+	{
+		return;
+	}
+
+	if (cpg_modifiable_modified (CPG_MODIFIABLE (orig)))
+	{
+		return;
+	}
+
+	CpgLink *templ = cpg_link_get_action_template (link, orig, FALSE);
+
+	if (templ == NULL)
+	{
+		return;
+	}
+
+	CpgLinkAction *over = cpg_link_get_action (templ,
+	                                           cpg_link_action_get_target (action));
+
+	if (over != action)
+	{
+		return;
+	}
+
+	cpg_link_action_set_equation (orig,
+	                              cpg_expression_copy (cpg_link_action_get_equation (action)));
+
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (orig), FALSE);
+}
+
+static void
 on_action_target_changed (CpgLinkAction *action,
                           GParamSpec    *spec,
                           CpgLink       *link)
 {
 	update_action_property (link, action);
+}
+
+static void
+on_action_equation_changed (CpgLinkAction *action,
+                            GParamSpec    *spec,
+                            CpgLink       *link)
+{
+	check_modified_for_template (link, action);
+}
+
+static void
+on_action_modified (CpgLink       *link,
+                    GParamSpec    *spec,
+                    CpgLinkAction *action)
+{
+	check_modified_for_template (link, action);
 }
 
 static void
@@ -230,6 +301,100 @@ remove_action (CpgLink       *link,
 
 	g_signal_handlers_disconnect_by_func (action,
 	                                      on_action_target_changed,
+	                                      link);
+
+	g_signal_handlers_disconnect_by_func (action,
+	                                      on_action_equation_changed,
+	                                      link);
+
+	g_signal_handlers_disconnect_by_func (action,
+	                                      on_action_modified,
+	                                      link);
+}
+
+static void
+disconnect_template_action (CpgLink       *link,
+                            CpgLink       *templ,
+                            CpgLinkAction *action)
+{
+	g_signal_handlers_disconnect_by_func (action,
+	                                      on_template_action_equation_changed,
+	                                      link);
+}
+
+static void
+on_template_action_added (CpgLink       *templ,
+                          CpgLinkAction *action,
+                          CpgLink       *link)
+{
+	CpgLinkAction *orig =
+		cpg_link_get_action (link,
+		                     cpg_link_action_get_target (action));
+
+	if (orig == NULL ||
+	    cpg_link_get_action_template (link, orig, TRUE))
+	{
+		if (cpg_link_add_action (link,
+		                         cpg_link_action_copy (action)))
+		{
+			orig = cpg_link_get_action (link,
+			                            cpg_link_action_get_target (action));
+
+			cpg_modifiable_set_modified (CPG_MODIFIABLE (orig), FALSE);
+		}
+		else
+		{
+			return;
+		}
+	}
+
+	g_signal_connect (action,
+	                  "notify::equation",
+	                  G_CALLBACK (on_template_action_equation_changed),
+	                  link);
+}
+
+static void
+on_template_action_removed (CpgLink       *templ,
+                            CpgLinkAction *action,
+                            CpgLink       *link)
+{
+	CpgLinkAction *orig =
+		cpg_link_get_action (link,
+		                     cpg_link_action_get_target (action));
+
+	if (orig && !cpg_modifiable_modified (CPG_MODIFIABLE (orig)) &&
+	    cpg_link_get_action_template (link, orig, TRUE) == templ)
+	{
+		/* Remove the original property as well */
+		cpg_link_remove_action (link, orig);
+	}
+
+	disconnect_template_action (link, templ, action);
+}
+
+static void
+disconnect_template (CpgLink   *link,
+                     CpgObject *templ,
+                     gboolean   disconnect_actions)
+{
+	if (disconnect_actions && CPG_IS_LINK (templ))
+	{
+		CpgLink *templ_link = CPG_LINK (templ);
+		GSList *item;
+
+		for (item = templ_link->priv->actions; item; item = g_slist_next (item))
+		{
+			disconnect_template_action (link, templ_link, item->data);
+		}
+	}
+
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_action_added,
+	                                      link);
+
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_action_removed,
 	                                      link);
 }
 
@@ -251,6 +416,15 @@ cpg_link_dispose (GObject *object)
 
 	g_slist_free (link->priv->actions);
 	link->priv->actions = NULL;
+
+	GSList const *templates = cpg_object_get_applied_templates (CPG_OBJECT (object));
+
+	while (templates)
+	{
+		disconnect_template (link, templates->data, TRUE);
+
+		templates = g_slist_next (templates);
+	}
 
 	G_OBJECT_CLASS (cpg_link_parent_class)->dispose (object);
 }
@@ -425,6 +599,31 @@ cpg_link_equal_impl (CpgObject *first, CpgObject *second)
 }
 
 static void
+cpg_link_unapply_template_impl (CpgObject *object,
+                                CpgObject *templ)
+{
+	if (CPG_IS_LINK (templ))
+	{
+		GSList *item;
+		CpgLink *templ_link = CPG_LINK (templ);
+		CpgLink *link = CPG_LINK (object);
+
+		for (item = templ_link->priv->actions; item; item = g_slist_next (item))
+		{
+			on_template_action_removed (templ_link, item->data, link);
+		}
+
+		disconnect_template (link, templ, FALSE);
+	}
+
+	/* Chain up */
+	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->unapply_template)
+	{
+		CPG_OBJECT_CLASS (cpg_link_parent_class)->unapply_template (object, templ);
+	}
+}
+
+static void
 cpg_link_apply_template_impl (CpgObject *object,
                               CpgObject *templ)
 {
@@ -434,10 +633,25 @@ cpg_link_apply_template_impl (CpgObject *object,
 		CPG_OBJECT_CLASS (cpg_link_parent_class)->apply_template (object, templ);
 	}
 
-	/* Copy over link actions */
 	if (CPG_IS_LINK (templ))
 	{
-		copy_link_actions (CPG_LINK (object), CPG_LINK (templ));
+		CpgLink *templ_link = CPG_LINK (templ);
+		GSList *item;
+
+		for (item = templ_link->priv->actions; item; item = g_slist_next (item))
+		{
+			on_template_action_added (templ_link, item->data, CPG_LINK (object));
+		}
+
+		g_signal_connect (templ_link,
+		                  "action-added",
+		                  G_CALLBACK (on_template_action_added),
+		                  object);
+
+		g_signal_connect (templ_link,
+		                  "action-removed",
+		                  G_CALLBACK (on_template_action_removed),
+		                  object);
 	}
 }
 
@@ -458,6 +672,7 @@ cpg_link_class_init (CpgLinkClass *klass)
 	cpgobject_class->compile = cpg_link_compile_impl;
 	cpgobject_class->equal = cpg_link_equal_impl;
 	cpgobject_class->apply_template = cpg_link_apply_template_impl;
+	cpgobject_class->unapply_template = cpg_link_unapply_template_impl;
 
 	/**
 	 * CpgLink::action-added:
@@ -566,7 +781,17 @@ cpg_link_new (gchar const  *id,
  * @action: the #CpgLinkAction
  *
  * Add a new action to be performed when the link is evaluated during
- * simulation.
+ * simulation. Note that if an action with the same
+ * target already exists, the action information is transfered to the existing
+ * action instance. This means that the specified @action might not actually
+ * be added to the object. Also, since a #CpgLinkAction is a #GInitiallyUnowned,
+ * @action will be destroyed after the call to #cpg_link_add_action in
+ * the above described case, unless you explicitly sink the floating reference.
+ *
+ * In the case that you can not know whether an action is overriding an
+ * existing action in @link, never use @action after a call to
+ * #cpg_link_add_action. Instead, retrieve the corresponding action
+ * using #cpg_link_get_action after the call to #cpg_link_add_action.
  *
  * Returns: %TRUE if @action could be successfully added, %FALSE otherwise
  *
@@ -578,35 +803,44 @@ cpg_link_add_action (CpgLink       *link,
 	g_return_val_if_fail (CPG_IS_LINK (link), FALSE);
 	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), FALSE);
 
-	GSList *item;
-	GSList *copy = g_slist_copy (link->priv->actions);
-
 	gchar const *target = cpg_link_action_get_target (action);
+	CpgLinkAction *orig;
 
-	for (item = copy; item; item = g_slist_next (item))
+	orig = cpg_link_get_action (link, target);
+
+	if (orig != NULL)
 	{
-		CpgLinkAction *ac = item->data;
-		gchar const *targ = cpg_link_action_get_target (ac);
+		cpg_link_action_set_equation (orig,
+		                              cpg_link_action_get_equation (action));
 
-		if (g_strcmp0 (targ, target) == 0)
+		if (g_object_is_floating (action))
 		{
-			return FALSE;
+			g_object_unref (action);
 		}
+
+		return TRUE;
 	}
-
-	g_slist_free (copy);
-
-	update_action_property (link, action);
 
 	link->priv->actions = g_slist_append (link->priv->actions,
 	                                      action);
 
 	g_object_ref_sink (action);
+	update_action_property (link, action);
 
 	g_signal_connect (action,
 	                  "notify::target",
 	                  G_CALLBACK (on_action_target_changed),
 	                  link);
+
+	g_signal_connect (action,
+	                  "notify::equation",
+	                  G_CALLBACK (on_action_equation_changed),
+	                  link);
+
+	g_signal_connect_swapped (action,
+	                          "notify::modified",
+	                          G_CALLBACK (on_action_modified),
+	                          link);
 
 	cpg_object_taint (CPG_OBJECT (link));
 
@@ -763,3 +997,56 @@ cpg_link_attach (CpgLink   *link,
 
 	g_object_set (link, "from", from, "to", to, NULL);
 }
+
+/**
+ * cpg_link_get_action_template:
+ * @link: A #CpgLink
+ * @action: A #CpgLinkAction
+ * @match_full: How to match the action
+ *
+ * Get the template on which @action is defined, if any. If @match_full is
+ * %TRUE, the template will only be possitively matched if both actions are
+ * equal (i.e. if an action originated from a template, but was later modified,
+ * this function will not return the original template object).
+ *
+ * Returns: A #CpgLink or %NULL if the template could not be found
+ *
+ **/
+CpgLink *
+cpg_link_get_action_template (CpgLink       *link,
+                              CpgLinkAction *action,
+                              gboolean       match_full)
+{
+	g_return_val_if_fail (CPG_IS_LINK (link), NULL);
+	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
+
+	GSList *templates = g_slist_copy ((GSList *)cpg_object_get_applied_templates (CPG_OBJECT (link)));
+	templates = g_slist_reverse (templates);
+	GSList *item;
+
+	gchar const *target = cpg_link_action_get_target (action);
+
+	for (item = templates; item; item = g_slist_next (item))
+	{
+		if (!CPG_IS_LINK (item->data))
+		{
+			continue;
+		}
+
+		CpgLinkAction *taction;
+		CpgLink *templ = item->data;
+
+		taction = cpg_link_get_action (templ, target);
+
+		if (taction && (!match_full || cpg_link_action_equal (action, taction)))
+		{
+			g_slist_free (templates);
+			return templ;
+		}
+	}
+
+	g_slist_free (templates);
+
+	return NULL;
+}
+

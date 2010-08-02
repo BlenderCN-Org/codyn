@@ -54,7 +54,7 @@ test_unique_id ()
 	g_assert (cpg_group_add (group, child2));
 
 	g_assert (cpg_group_get_child (group, "child"));
-	g_assert (cpg_group_get_child (group, "child (1)"));
+	g_assert (cpg_group_get_child (group, "child_1"));
 }
 
 static void

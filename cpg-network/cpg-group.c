@@ -70,6 +70,81 @@ cpg_group_finalize (GObject *object)
 	G_OBJECT_CLASS (cpg_group_parent_class)->finalize (object);
 }
 
+static CpgObject *
+get_child_from_template (CpgGroup  *group,
+                         CpgObject *templ)
+{
+	GSList const *children;
+
+	children = group->priv->children;
+
+	while (children)
+	{
+		CpgObject *obj = children->data;
+		GSList const *templates = cpg_object_get_applied_templates (obj);
+
+		if (g_slist_find ((GSList *)templates, child))
+		{
+			return obj;
+		}
+
+		children = g_slist_next (children);
+	}
+
+	return NULL;
+}
+
+static void
+on_template_child_added (CpgGroup  *templ,
+                         CpgObject *child,
+                         CpgGroup  *group)
+{
+	CpgObject *obj;
+
+	obj = cpg_group_get_child (group, cpg_object_get_id (child));
+
+	if (obj != NULL && G_TYPE_FROM_INSTANCE (child) == G_TYPE_FROM_INSTANCE (obj))
+	{
+		cpg_object_apply_template (obj, child);
+	}
+	else
+	{
+		obj = cpg_object_new_from_template (child);
+		cpg_group_add (group, obj);
+		g_object_unref (obj);
+	}
+}
+
+static void
+on_template_child_removed (CpgGroup  *templ,
+                           CpgObject *child,
+                           CpgGroup  *group)
+{
+	CpgObject *obj;
+
+	obj = get_child_from_template (group, child);
+
+	if (obj)
+	{
+		cpg_object_unapply_template (obj, child);
+
+		/* TODO: remove the object if it is now empty...? */
+	}
+}
+
+static void
+disconnect_template (CpgGroup  *group,
+                     CpgObject *templ)
+{
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_child_added,
+	                                      group);
+
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_child_removed,
+	                                      group);
+}
+
 static void
 cpg_group_dispose (GObject *object)
 {
@@ -96,6 +171,14 @@ cpg_group_dispose (GObject *object)
 		group->priv->proxy = NULL;
 
 		g_object_unref (proxy);
+	}
+
+	GSList const *templates = cpg_object_get_applied_templates (CPG_OBJECT (object));
+
+	while (templates)
+	{
+		disconnect_template (group, templates->data);
+		templates = g_slist_next (templates);
 	}
 
 	G_OBJECT_CLASS (cpg_group_parent_class)->dispose (object);
@@ -400,6 +483,44 @@ cpg_group_cpg_foreach_expression (CpgObject                *object,
 }
 
 static void
+reconnect_children (CpgGroup   *group,
+                    CpgGroup   *source,
+                    GHashTable *mapping)
+{
+	GSList const *children;
+
+	children = cpg_group_get_children (source);
+
+	/* Reconnect all the links */
+	while (children)
+	{
+		CpgObject *child = children->data;
+
+		if (CPG_IS_LINK (child))
+		{
+			CpgLink *orig_link = CPG_LINK (child);
+			CpgLink *copied_link;
+
+			CpgObject *copied_from;
+			CpgObject *copied_to;
+
+			copied_link = g_hash_table_lookup (mapping,
+			                                   child);
+
+			copied_from = g_hash_table_lookup (mapping,
+			                                   cpg_link_get_from (orig_link));
+
+			copied_to = g_hash_table_lookup (mapping,
+			                                 cpg_link_get_to (orig_link));
+
+			cpg_link_attach (copied_link, copied_from, copied_to);
+		}
+
+		children = g_slist_next (children);
+	}
+}
+
+static void
 copy_children (CpgGroup *group,
                CpgGroup *source)
 {
@@ -427,49 +548,115 @@ copy_children (CpgGroup *group,
 		children = g_slist_next (children);
 	}
 
-	children = cpg_group_get_children (source);
+	reconnect_children (group, source, hash_table);
+	g_hash_table_destroy (hash_table);
+}
 
-	/* Reconnect all the links */
-	while (children)
+static CpgObject *
+get_template_proxy (CpgGroup *group)
+{
+	if (group->priv->proxy == NULL)
 	{
-		CpgObject *child = children->data;
-
-		if (CPG_IS_LINK (child))
-		{
-			CpgLink *orig_link = CPG_LINK (child);
-			CpgLink *copied_link;
-
-			CpgObject *copied_from;
-			CpgObject *copied_to;
-
-			copied_link = g_hash_table_lookup (hash_table,
-			                                   child);
-
-			copied_from = g_hash_table_lookup (hash_table,
-			                                   cpg_link_get_from (orig_link));
-
-			copied_to = g_hash_table_lookup (hash_table,
-			                                 cpg_link_get_to (orig_link));
-
-			cpg_link_attach (copied_link, copied_from, copied_to);
-		}
-
-		children = g_slist_next (children);
+		return NULL;
 	}
 
-	g_hash_table_destroy (hash_table);
+	GSList *templates = g_slist_copy ((GSList *)cpg_object_get_applied_templates (CPG_OBJECT (group)));
+	templates = g_slist_reverse (templates);
+
+	GSList *item;
+	GSList const *proxy_templates = cpg_object_get_applied_templates (group->priv->proxy);
+
+	for (item = templates; item; item = g_slist_next (item))
+	{
+		if (!CPG_IS_GROUP (item->data))
+		{
+			continue;
+		}
+
+		CpgObject *proxy = cpg_group_get_proxy (item->data);
+
+		if (proxy && g_slist_find ((GSList *)proxy_templates, proxy))
+		{
+			g_slist_free (templates);
+			return item->data;
+		}
+	}
+
+	g_slist_free (templates);
+	return NULL;
 }
 
 static void
 cpg_group_cpg_apply_template (CpgObject *object,
                               CpgObject *templ)
 {
-	CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template (object, templ);
-
-	if (CPG_IS_GROUP (templ))
+	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template)
 	{
-		copy_children (CPG_GROUP (object), CPG_GROUP (templ));
+		CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template (object, templ);
 	}
+
+	if (!CPG_IS_GROUP (templ))
+	{
+		return;
+	}
+
+	CpgGroup *group = CPG_GROUP (object);
+	CpgGroup *source = CPG_GROUP (templ);
+
+	CpgObject *proxy = cpg_group_get_proxy (source);
+	GSList const *children = cpg_group_get_children (source);
+
+	GHashTable *hash_table = g_hash_table_new (g_direct_hash,
+	                                           g_direct_equal);
+
+	while (children)
+	{
+		CpgObject *child = children->data;
+
+		/* Check to find existing one */
+		CpgObject *new_child;
+
+		new_child = cpg_group_get_child (group,
+		                                 cpg_object_get_id (child));
+
+		if (new_child)
+		{
+			cpg_object_apply_template (new_child,
+			                           child);
+		}
+		else
+		{
+			new_child = cpg_object_new_from_template (child);
+			cpg_group_add (group, new_child);
+			g_object_unref (new_child);
+		}
+
+		/* Store map from the original to the copy */
+		g_hash_table_insert (hash_table, child, new_child);
+
+		if (child == proxy)
+		{
+			if (get_template_proxy (group))
+			{
+				set_proxy (group, new_child);
+			}
+		}
+
+		children = g_slist_next (children);
+	}
+
+	reconnect_children (group, source, hash_table);
+	g_hash_table_destroy (hash_table);
+
+	g_signal_connect (source,
+	                  "child-added",
+	                  G_CALLBACK (on_template_child_added),
+	                  group);
+
+	g_signal_connect (source,
+	                  "child-removed",
+	                  G_CALLBACK (on_template_child_removed),
+	                  group);
 }
 
 static void
