@@ -35,10 +35,11 @@ set_error (ParseInfo *info, int code, gchar const *format, ...)
 
 	if (info->error && !*info->error)
 	{
-		g_set_error_literal (info->error,
-		                     CPG_NETWORK_LOAD_ERROR,
-		                     code,
-		                     message);
+		g_set_error (info->error,
+		             CPG_NETWORK_LOAD_ERROR,
+					 code,
+					 "%s",
+					 message);
 	}
 
 	cpg_debug_error (message);
