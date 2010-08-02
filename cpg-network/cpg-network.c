@@ -1113,16 +1113,39 @@ cpg_network_merge_from_xml (CpgNetwork   *network,
 {
 	g_return_if_fail (CPG_IS_NETWORK (network));
 	g_return_if_fail (xml != NULL);
-	
+
 	CpgNetwork *other;
-	
+
 	other = cpg_network_new_from_xml (xml, error);
-	
+
 	if (other != NULL)
 	{
 		cpg_network_merge (network, other);
 		g_object_unref (other);
 	}
+}
+
+/**
+ * cpg_network_merge_from_partial_xml:
+ * @network: a #CpgNetwork
+ * @xml: a xml string describing the partial network
+ * @error: error return value
+ *
+ * Merges a partial network definition defined in @xml into @network. This
+ * is different from @cpg_network_merge_from_xml in the sense that this
+ * function will accept single states or links (xml does not need to be
+ * a functional network file by itself).
+ *
+ **/
+gboolean
+cpg_network_merge_from_partial_xml (CpgNetwork   *network,
+                                    const gchar  *xml,
+                                    GError      **error)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (xml != NULL, FALSE);
+
+	return cpg_network_reader_parse_partial (network, xml, error);
 }
 
 /**

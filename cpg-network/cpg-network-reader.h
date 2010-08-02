@@ -14,6 +14,10 @@ gboolean cpg_network_reader_xml_string (CpgNetwork   *network,
                                         gchar const  *xml,
                                         GError      **error);
 
+gboolean cpg_network_reader_parse_partial (CpgNetwork   *network,
+                                           gchar const  *xml,
+                                           GError      **error);
+
 G_END_DECLS
 
 #endif /* __CPG_NETWORK_READER_H__ */

@@ -4,6 +4,8 @@
 #include <cpg-network/cpg-ref-counted.h>
 #include <cpg-network/cpg-utils.h>
 
+G_BEGIN_DECLS
+
 CPG_FORWARD_DECL (CpgObject);
 CPG_FORWARD_DECL (CpgProperty);
 CPG_FORWARD_DECL (CpgFunction);
@@ -33,6 +35,8 @@ CPG_FORWARD_DECL (CpgFunction) *cpg_compile_context_lookup_function (CpgCompileC
 
 GSList *cpg_compile_context_get_objects (CpgCompileContext *context);
 GSList *cpg_compile_context_get_functions (CpgCompileContext *context);
+
+G_END_DECLS
 
 #endif /* __CPG_COMPILE_CONTEXT_H__ */
 
