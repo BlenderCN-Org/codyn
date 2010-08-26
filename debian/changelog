@@ -1,3 +1,9 @@
+cpg-network (1.11-1) UNRELEASED; urgency=low
+
+  * New upstream release
+
+ -- Jesse van den Kieboom <jvanden@grijpc10.epfl.ch>  Mon, 23 Aug 2010 14:18:28 +0200
+
 cpg-network (1.10-1) UNRELEASED; urgency=low
 
   * New upstream release
