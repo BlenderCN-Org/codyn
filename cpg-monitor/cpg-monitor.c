@@ -90,7 +90,7 @@ parse_time (gchar const  *option_name,
 }
 
 static GOptionEntry entries[] = {
-	{"monitor", 'm', 0, G_OPTION_ARG_CALLBACK, parse_monitor_options, "Monitor", "VAR"},
+	{"monitor", 'm', 0, G_OPTION_ARG_CALLBACK, parse_monitor_options, "Monitor variable (state.name)", "VAR"},
 	{"include-header", 'i', 0, G_OPTION_ARG_NONE, &include_header, "Include header in output", NULL},
 	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter, "Column delimiter (defaults to tab)", "DELIM"},
 	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time, "Time range", "RANGE"},
