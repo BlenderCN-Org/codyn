@@ -1,4 +1,4 @@
-AC_INIT(cpg-network, 1.11)
+AC_INIT(cpg-network, 1.12)
 
 AM_INIT_AUTOMAKE(AC_PACKAGE_NAME, AC_PACKAGE_VERSION)
 
@@ -66,6 +66,7 @@ PKG_CHECK_MODULES(CPG_NETWORK, [
 	glib-2.0
 	gobject-2.0
 	libxml-2.0
+	gio-2.0
 ])
 
 GEDIT_LIBS="${CPG_NETWORK_LIBS}"
@@ -85,4 +86,5 @@ data/Makefile
 docs/Makefile
 docs/reference/Makefile
 tests/Makefile
+cpg-monitor/Makefile
 )
