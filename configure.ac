@@ -67,6 +67,7 @@ PKG_CHECK_MODULES(CPG_NETWORK, [
 	gobject-2.0
 	libxml-2.0
 	gio-2.0
+	gio-unix-2.0
 ])
 
 GEDIT_LIBS="${CPG_NETWORK_LIBS}"
