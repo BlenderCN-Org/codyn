@@ -2,6 +2,8 @@
 #include <gio/gio.h>
 #include <glib/gprintf.h>
 #include <string.h>
+#include <unistd.h>
+#include <gio/gunixoutputstream.h>
 
 static GPtrArray *monitors = 0;
 static gboolean include_header = FALSE;
@@ -9,6 +11,7 @@ static gchar *delimiter = NULL;
 static gdouble from = 0;
 static gdouble step = 0.001;
 static gdouble to = 1;
+static gchar *output_file = NULL;
 
 #define CPG_MONITOR_ERROR (cpg_monitor_error_quark())
 
@@ -94,6 +97,7 @@ static GOptionEntry entries[] = {
 	{"include-header", 'i', 0, G_OPTION_ARG_NONE, &include_header, "Include header in output", NULL},
 	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter, "Column delimiter (defaults to tab)", "DELIM"},
 	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time, "Time range", "RANGE"},
+	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file", "FILE"},
 	{NULL}
 };
 
@@ -277,45 +281,60 @@ monitor_network (gchar const *filename)
 	cpg_network_run (network, from, step, to);
 
 	GSList *item;
+	GOutputStream *out;
 
-	GFile *output;
-	gchar *outname = g_strconcat (filename, ".txt", NULL);
-
-	output = g_file_new_for_path (outname);
-
-	GFileOutputStream *out;
-	out = g_file_create (output, G_FILE_CREATE_REPLACE_DESTINATION, NULL, &error);
-
-	if (!out && error->code == G_IO_ERROR_EXISTS)
+	if (output_file != NULL && g_strcmp0 (output_file, "-") != 0)
 	{
-		g_error_free (error);
-		error = NULL;
+		GFile *output;
+		gchar *outname = g_strconcat (filename, ".txt", NULL);
 
-		out = g_file_replace (output,
-		                      NULL,
-		                      FALSE,
-		                      G_FILE_CREATE_NONE,
-		                      NULL,
-		                      &error);
-	}
+		output = g_file_new_for_path (outname);
 
-	if (!out)
-	{
-		g_print ("Could not create output file `%s': %s\n", outname, error->message);
-		g_error_free (error);
+		out = G_OUTPUT_STREAM (g_file_create (output,
+		                                      G_FILE_CREATE_REPLACE_DESTINATION,
+		                                      NULL,
+		                                      &error));
+
+		if (!out && error->code == G_IO_ERROR_EXISTS)
+		{
+			g_error_free (error);
+			error = NULL;
+
+			out = G_OUTPUT_STREAM (g_file_replace (output,
+			                                       NULL,
+			                                       FALSE,
+			                                       G_FILE_CREATE_NONE,
+			                                       NULL,
+			                                       &error));
+		}
+
+		if (!out)
+		{
+			g_print ("Could not create output file `%s': %s\n",
+			         outname,
+			         error->message);
+
+			g_error_free (error);
+		}
+
+		g_free (outname);
+		g_object_unref (output);
 	}
 	else
 	{
-		write_monitors (network, mons, G_OUTPUT_STREAM (out));
-
-		g_output_stream_flush (G_OUTPUT_STREAM (out), NULL, NULL);
-		g_output_stream_close (G_OUTPUT_STREAM (out), NULL, NULL);
+		out = g_unix_output_stream_new (STDOUT_FILENO,
+		                                TRUE);
 	}
 
-	g_free (outname);
-	g_slist_foreach (mons, (GFunc)cpg_ref_counted_unref, NULL);
+	if (out)
+	{
+		write_monitors (network, mons, out);
 
-	g_object_unref (output);
+		g_output_stream_flush (out, NULL, NULL);
+		g_output_stream_close (out, NULL, NULL);
+	}
+
+	g_slist_foreach (mons, (GFunc)cpg_ref_counted_unref, NULL);
 	g_object_unref (network);
 }
 
@@ -324,6 +343,7 @@ cleanup ()
 {
 	g_ptr_array_free (monitors, TRUE);
 	g_free (delimiter);
+	g_free (output_file);
 }
 
 int
