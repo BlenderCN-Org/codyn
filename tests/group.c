@@ -10,7 +10,7 @@ test_add_child ()
 	CpgGroup *group = cpg_group_new ("id", NULL);
 	CpgObject *child = cpg_object_new ("child");
 
-	cpg_group_add (group, child);
+	cpg_group_add (group, child, NULL);
 
 	g_assert (cpg_group_get_child (group, "child"));
 }
@@ -21,8 +21,8 @@ test_remove_child ()
 	CpgGroup *group = cpg_group_new ("id", NULL);
 	CpgObject *child = cpg_object_new ("child");
 
-	g_assert (cpg_group_add (group, child));
-	g_assert (cpg_group_remove (group, child));
+	g_assert (cpg_group_add (group, child, NULL));
+	g_assert (cpg_group_remove (group, child, NULL));
 
 	g_assert (cpg_group_get_child (group, "child") == NULL);
 }
@@ -34,8 +34,8 @@ test_clear ()
 	CpgObject *child = cpg_object_new ("child");
 	CpgObject *child2 = cpg_object_new ("child2");
 
-	g_assert (cpg_group_add (group, child));
-	g_assert (cpg_group_add (group, child2));
+	g_assert (cpg_group_add (group, child, NULL));
+	g_assert (cpg_group_add (group, child2, NULL));
 
 	cpg_object_clear (CPG_OBJECT (group));
 
@@ -50,8 +50,8 @@ test_unique_id ()
 	CpgObject *child = cpg_object_new ("child");
 	CpgObject *child2 = cpg_object_new ("child");
 
-	g_assert (cpg_group_add (group, child));
-	g_assert (cpg_group_add (group, child2));
+	g_assert (cpg_group_add (group, child, NULL));
+	g_assert (cpg_group_add (group, child2, NULL));
 
 	g_assert (cpg_group_get_child (group, "child"));
 	g_assert (cpg_group_get_child (group, "child_1"));
@@ -63,8 +63,8 @@ test_add_same ()
 	CpgGroup *group = cpg_group_new ("id", NULL);
 	CpgObject *child = cpg_object_new ("child");
 
-	g_assert (cpg_group_add (group, child));
-	g_assert (!cpg_group_add (group, child));
+	g_assert (cpg_group_add (group, child, NULL));
+	g_assert (!cpg_group_add (group, child, NULL));
 
 	g_assert (g_slist_length ((GSList *)cpg_group_get_children (group)) == 1);
 }
@@ -97,7 +97,7 @@ test_copy ()
 	CpgGroup *group = cpg_group_new ("id", proxy);
 
 	CpgObject *child = cpg_object_new ("child");
-	cpg_group_add (group, child);
+	cpg_group_add (group, child, NULL);
 
 	CpgGroup *copy = CPG_GROUP (cpg_object_copy (CPG_OBJECT (group)));
 

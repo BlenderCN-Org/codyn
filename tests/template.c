@@ -104,8 +104,8 @@ test_apply_group ()
 	                     cpg_link_action_new ("x",
 	                                          cpg_expression_new ("1")));
 
-	cpg_group_add (grp, state);
-	cpg_group_add (grp, link);
+	cpg_group_add (grp, state, NULL);
+	cpg_group_add (grp, link, NULL);
 
 	cpg_group_set_proxy (grp, state);
 

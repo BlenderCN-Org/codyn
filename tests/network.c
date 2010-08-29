@@ -130,7 +130,9 @@ test_variadic ()
 	CpgLinkAction *action = cpg_link_action_new ("y", cpg_expression_new ("x"));
 	cpg_link_add_action (link, action);
 
-	cpg_group_add (CPG_GROUP (network), CPG_OBJECT (link));
+	cpg_group_add (CPG_GROUP (network),
+	               CPG_OBJECT (link),
+	               NULL);
 
 	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
 
