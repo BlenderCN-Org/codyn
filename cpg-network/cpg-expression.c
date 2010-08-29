@@ -1250,6 +1250,30 @@ parse_expression (CpgExpression   *expression,
 	return ret;
 }
 
+static void
+add_custom_operator_dependencies (CpgExpression                *expression,
+                                  CpgInstructionCustomOperator *inst)
+{
+	GSList const *expressions;
+
+	expressions = cpg_operator_get_expressions (inst->op, inst->data);
+
+	while (expressions)
+	{
+		GSList *dependencies;
+		CpgExpression *expr;
+
+		expr = expressions->data;
+
+		dependencies = g_slist_reverse (g_slist_copy (expr->priv->dependencies));
+
+		expression->priv->dependencies =
+			g_slist_concat (dependencies, expression->priv->dependencies);
+
+		expressions = g_slist_next (expressions);
+	}
+}
+
 static gboolean
 validate_stack (CpgExpression *expression)
 {
@@ -1273,7 +1297,9 @@ validate_stack (CpgExpression *expression)
 			case CPG_INSTRUCTION_TYPE_FUNCTION:
 			case CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION:
 			{
-				CpgInstructionFunction *i = (CpgInstructionFunction *)inst;
+				CpgInstructionFunction *i =
+					CPG_INSTRUCTION_FUNCTION (inst);
+
 				stack -= i->arguments + (i->variable ? 1 : 0);
 
 				if (stack < 0)
@@ -1287,17 +1313,18 @@ validate_stack (CpgExpression *expression)
 			case CPG_INSTRUCTION_TYPE_PROPERTY:
 				expression->priv->dependencies =
 					g_slist_prepend (expression->priv->dependencies,
-					                 ((CpgInstructionProperty *)inst)->property);
+					                 CPG_INSTRUCTION_PROPERTY (inst)->property);
 
 				++stack;
 			break;
 			case CPG_INSTRUCTION_TYPE_NUMBER:
-				// increase stack here
+				/* increase stack here */
 				++stack;
 			break;
 			case CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION:
 			{
-				CpgInstructionCustomFunction *i = (CpgInstructionCustomFunction *)inst;
+				CpgInstructionCustomFunction *i =
+					CPG_INSTRUCTION_CUSTOM_FUNCTION (inst);
 
 				stack -= i->arguments + (cpg_function_get_n_optional (i->function) > 0 ? 1 : 0);
 
@@ -1312,6 +1339,8 @@ validate_stack (CpgExpression *expression)
 			case CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR:
 			{
 				/* TODO: add dependencies */
+				add_custom_operator_dependencies (expression,
+				                                  CPG_INSTRUCTION_CUSTOM_OPERATOR (inst));
 				++stack;
 			}
 			case CPG_INSTRUCTION_TYPE_NONE:
