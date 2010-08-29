@@ -512,22 +512,27 @@ on_argument_optional_changed (CpgFunctionArgument *argument,
 
 	GList *item;
 
-	/* TODO: check if this is actually correct... */
-
+	/* Get the item which represents the first optional argument at the
+	   moment */
 	item = g_list_nth (function->priv->arguments,
 	                   function->priv->n_arguments - function->priv->n_optional);
 
 	if (item->data != argument)
 	{
+		/* An argument other than the first optional one has changed
+		   it optionality */
+
+		/* First remove the argument from the list of arguments */
 		function->priv->arguments =
-				g_list_remove (function->priv->arguments,
-				               argument);
-		if (item)
+			g_list_remove (function->priv->arguments,
+			               argument);
+
+		if (!opt)
 		{
 			function->priv->arguments =
-				g_list_insert_before (function->priv->arguments,
-				                      item,
-				                      argument);
+				g_list_insert (function->priv->arguments,
+				               argument,
+				               function->priv->n_optional);
 		}
 		else
 		{
