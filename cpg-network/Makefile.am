@@ -1,3 +1,5 @@
+SUBDIRS = instructions
+
 INCLUDES =				\
 	-I$(srcdir)			\
 	-I$(top_srcdir)			\
@@ -16,7 +18,6 @@ COMMON_SOURCES = 		\
 	cpg-function-polynomial.c \
 	cpg-function-polynomial-piece.c \
 	cpg-group.c \
-	cpg-instructions.c \
 	cpg-integrator.c \
 	cpg-integrator-euler.c \
 	cpg-integrator-predict-correct.c \
@@ -29,6 +30,7 @@ COMMON_SOURCES = 		\
 	cpg-link.c \
 	cpg-link-action.c \
 	cpg-math.c \
+	cpg-mini-object.c \
 	cpg-modifiable.c \
 	cpg-monitor.c \
 	cpg-network.c \
@@ -66,7 +68,6 @@ INST_H_FILES = \
 	cpg-function-polynomial.h \
 	cpg-function-polynomial-piece.h \
 	cpg-group.h \
-	cpg-instructions.h \
 	cpg-integrator-euler.h \
 	cpg-integrator.h \
 	cpg-integrator-predict-correct.h \
@@ -79,6 +80,7 @@ INST_H_FILES = \
 	cpg-link.h \
 	cpg-link-action.h \
 	cpg-math.h \
+	cpg-mini-object.h \
 	cpg-modifiable.h \
 	cpg-monitor.h \
 	cpg-network.h \
@@ -113,6 +115,8 @@ cpg-marshal.c: cpg-marshal.list $(GLIB_GENMARSHAL)
 	$(GLIB_GENMARSHAL) $< --body --prefix=cpg_marshal >> $@
 
 libcpg_network_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CPG_NETWORK_CFLAGS)
+libcpg_network_2_0_la_LIBADD = instructions/libinstructions.la
+
 libcpg_network_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) $(INTROSPECTION_LIBS) -lm
 libcpg_network_2_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
 

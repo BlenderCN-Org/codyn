@@ -11,8 +11,8 @@ cpg_operator_get_name_default (CpgOperator *op)
 }
 
 static CpgOperatorData *
-cpg_operator_create_data_default (CpgOperator *op,
-                                  GSList      *expressions)
+cpg_operator_create_data_default (CpgOperator  *op,
+                                  GSList const *expressions)
 {
 	return cpg_operator_data_new (CpgOperatorData, expressions);
 }
@@ -99,9 +99,9 @@ cpg_operator_default_init (CpgOperatorInterface *iface)
  **/
 CpgOperatorData *
 cpg_operator_data_init (CpgOperatorData *data,
-                        GSList          *expressions)
+                        GSList const    *expressions)
 {
-	data->expressions = g_slist_copy (expressions);
+	data->expressions = g_slist_copy ((GSList *)expressions);
 	g_slist_foreach (data->expressions, (GFunc)g_object_ref, NULL);
 
 	return data;
@@ -137,8 +137,8 @@ cpg_operator_data_destroy (CpgOperatorData *data)
  *
  **/
 CpgOperatorData *
-cpg_operator_create_data (CpgOperator *op,
-                          GSList      *expressions)
+cpg_operator_create_data (CpgOperator  *op,
+                          GSList const *expressions)
 {
 	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
 

@@ -840,7 +840,7 @@ cpg_group_add_impl (CpgGroup   *group,
 		return FALSE;
 	}
 
-	gboolean ret = TRUE;
+	gboolean ret = FALSE;
 
 	g_signal_emit (group,
 	               group_signals[VERIFY_ADD_CHILD],
@@ -849,7 +849,7 @@ cpg_group_add_impl (CpgGroup   *group,
 	               error,
 	               &ret);
 
-	if (!ret)
+	if (ret)
 	{
 		return FALSE;
 	}
@@ -901,7 +901,7 @@ cpg_group_remove_impl (CpgGroup   *group,
 		return FALSE;
 	}
 
-	gboolean ret = TRUE;
+	gboolean ret = FALSE;
 
 	g_signal_emit (group,
 	               group_signals[VERIFY_REMOVE_CHILD],
@@ -910,7 +910,7 @@ cpg_group_remove_impl (CpgGroup   *group,
 	               error,
 	               &ret);
 
-	if (!ret)
+	if (ret)
 	{
 		return FALSE;
 	}

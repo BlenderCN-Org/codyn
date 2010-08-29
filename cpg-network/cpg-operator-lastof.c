@@ -1,8 +1,9 @@
 #include "cpg-operator-lastof.h"
 #include "cpg-operator.h"
-#include "cpg-instructions.h"
 #include "cpg-property.h"
 #include "cpg-usable.h"
+
+#include <cpg-network/instructions/cpg-instructions.h>
 
 #define CPG_OPERATOR_LASTOF_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OPERATOR_LASTOF, CpgOperatorLastofPrivate))
 
@@ -56,18 +57,19 @@ scan_properties (CpgOperatorLastofData *data)
 		CpgInstruction *inst = CPG_INSTRUCTION (instructions->data);
 		CpgInstruction *newinst;
 
-		if (inst->type == CPG_INSTRUCTION_TYPE_PROPERTY)
+		if (CPG_IS_INSTRUCTION_PROPERTY (inst))
 		{
 			CpgInstructionProperty *prop =
 				CPG_INSTRUCTION_PROPERTY (inst);
 
 			PropertyData *propdata = g_slice_new (PropertyData);
+			CpgProperty *property = cpg_instruction_property_get_property (prop);
 
 			newinst = cpg_instruction_number_new (0);
 
-			cpg_usable_use (CPG_USABLE (prop->property));
+			cpg_usable_use (CPG_USABLE (property));
 
-			propdata->property = g_object_ref (prop->property);
+			propdata->property = g_object_ref (property);
 			propdata->instruction = CPG_INSTRUCTION_NUMBER (newinst);
 
 			data->properties = g_slist_prepend (data->properties,
@@ -75,7 +77,7 @@ scan_properties (CpgOperatorLastofData *data)
 		}
 		else
 		{
-			newinst = cpg_instruction_copy (inst);
+			newinst = CPG_INSTRUCTION (cpg_mini_object_copy (CPG_MINI_OBJECT (inst)));
 		}
 
 		new_instructions = g_slist_prepend (new_instructions, newinst);
@@ -89,8 +91,8 @@ scan_properties (CpgOperatorLastofData *data)
 }
 
 static CpgOperatorData *
-cpg_operator_lastof_create_data (CpgOperator *op,
-                                 GSList      *expressions)
+cpg_operator_lastof_create_data (CpgOperator  *op,
+                                 GSList const *expressions)
 {
 	CpgOperatorLastofData *data;
 
@@ -131,7 +133,8 @@ transfer_values (CpgOperatorLastofData *data)
 	{
 		PropertyData *d = item->data;
 
-		d->instruction->value = cpg_property_get_last_value (d->property);
+		cpg_instruction_number_set_value (d->instruction,
+		                                  cpg_property_get_last_value (d->property));
 	}
 }
 

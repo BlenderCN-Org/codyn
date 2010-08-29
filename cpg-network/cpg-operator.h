@@ -34,7 +34,7 @@ struct _CpgOperatorInterface
 	gchar           *(*get_name)    (CpgOperator     *op);
 
 	CpgOperatorData *(*create_data) (CpgOperator     *op,
-	                                 GSList          *expressions);
+	                                 GSList const    *expressions);
 
 	void             (*free_data)   (CpgOperator     *op,
 	                                 CpgOperatorData *data);
@@ -55,14 +55,14 @@ struct _CpgOperatorInterface
 #define cpg_operator_data_free(Type, data) (g_slice_free (Type, data))
 
 CpgOperatorData     *cpg_operator_data_init                   (CpgOperatorData *data,
-                                                               GSList          *expressions);
+                                                               GSList const    *expressions);
 
 void                 cpg_operator_data_destroy                (CpgOperatorData *data);
 
 GType                cpg_operator_get_type                    (void) G_GNUC_CONST;
 
 CpgOperatorData     *cpg_operator_create_data                 (CpgOperator     *op,
-                                                               GSList          *expressions);
+                                                               GSList const    *expressions);
 
 void                 cpg_operator_free_data                   (CpgOperator     *op,
                                                                CpgOperatorData *data);

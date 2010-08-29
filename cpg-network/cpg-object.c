@@ -1388,7 +1388,7 @@ cpg_object_verify_remove_property (CpgObject    *object,
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
 
-	gboolean ret = TRUE;
+	gboolean ret = FALSE;
 
 	g_signal_emit (object,
 	               object_signals[VERIFY_REMOVE_PROPERTY],
@@ -1397,7 +1397,7 @@ cpg_object_verify_remove_property (CpgObject    *object,
 	               error,
 	               &ret);
 
-	return ret;
+	return !ret;
 }
 
 /**

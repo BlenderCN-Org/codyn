@@ -6,8 +6,9 @@
 #include "cpg-debug.h"
 #include "cpg-compile-error.h"
 #include "cpg-function.h"
-#include "cpg-instructions.h"
 #include "cpg-stack-private.h"
+
+#include <cpg-network/instructions/cpg-instructions.h>
 
 #include <string.h>
 #include <stdio.h>
@@ -75,7 +76,7 @@ static void
 instructions_free (CpgExpression *expression)
 {
 	g_slist_foreach (expression->priv->instructions,
-	                 (GFunc)cpg_instruction_free,
+	                 (GFunc)cpg_mini_object_free,
 	                 NULL);
 
 	g_slist_free (expression->priv->instructions);
@@ -321,13 +322,13 @@ instructions_push (CpgExpression  *expression,
 	expression->priv->instructions = g_slist_prepend (expression->priv->instructions,
 	                                                  next);
 
-	if (next->type == CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION)
+	if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (next))
 	{
 		expression->priv->variadic_instructions =
 			g_slist_prepend (expression->priv->variadic_instructions,
 			                 next);
 	}
-	else if (next->type == CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR)
+	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (next))
 	{
 		expression->priv->operator_instructions =
 			g_slist_prepend (expression->priv->operator_instructions,
@@ -349,13 +350,13 @@ instructions_pop (CpgExpression *expression)
 		g_slist_delete_link (expression->priv->instructions,
 	                             expression->priv->instructions);
 
-	if (inst->type == CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION)
+	if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (inst))
 	{
 		expression->priv->variadic_instructions =
 			g_slist_remove (expression->priv->variadic_instructions,
 			                inst);
 	}
-	else if (inst->type == CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR)
+	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (inst))
 	{
 		expression->priv->operator_instructions =
 			g_slist_remove (expression->priv->operator_instructions,
@@ -910,7 +911,9 @@ parse_property (CpgExpression *expression,
 		                      propname);
 	}
 
-	instructions_push (expression, cpg_instruction_property_new (property, 0));
+	instructions_push (expression,
+	                   cpg_instruction_property_new (property,
+	                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
 	return TRUE;
 }
 
@@ -939,17 +942,17 @@ parse_link_property (CpgExpression  *expression,
                      CpgLink        *link)
 {
 	CpgProperty *property = NULL;
-	CpgInstructionBinding binding = 0;
+	CpgInstructionPropertyBinding binding = 0;
 
 	if (strcmp (id, "from") == 0)
 	{
 		property = cpg_object_get_property (cpg_link_get_from (link), propname);
-		binding = CPG_INSTRUCTION_BINDING_FROM;
+		binding = CPG_INSTRUCTION_PROPERTY_BINDING_FROM;
 	}
 	else if (strcmp (id, "to") == 0)
 	{
 		property = cpg_object_get_property (cpg_link_get_to (link), propname);
-		binding = CPG_INSTRUCTION_BINDING_TO;
+		binding = CPG_INSTRUCTION_PROPERTY_BINDING_TO;
 	}
 
 	if (!property)
@@ -957,7 +960,8 @@ parse_link_property (CpgExpression  *expression,
 		return FALSE;
 	}
 
-	instructions_push (expression, cpg_instruction_property_new (property, binding));
+	instructions_push (expression,
+	                   cpg_instruction_property_new (property, binding));
 	return TRUE;
 }
 
@@ -983,7 +987,7 @@ parse_context_property (CpgExpression *expression,
 			{
 				instructions_push (expression,
 				                   cpg_instruction_property_new (prop,
-				                                                 CPG_INSTRUCTION_BINDING_NONE));
+				                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
 				return TRUE;
 			}
 		}
@@ -1250,30 +1254,6 @@ parse_expression (CpgExpression   *expression,
 	return ret;
 }
 
-static void
-add_custom_operator_dependencies (CpgExpression                *expression,
-                                  CpgInstructionCustomOperator *inst)
-{
-	GSList const *expressions;
-
-	expressions = cpg_operator_get_expressions (inst->op, inst->data);
-
-	while (expressions)
-	{
-		GSList *dependencies;
-		CpgExpression *expr;
-
-		expr = expressions->data;
-
-		dependencies = g_slist_reverse (g_slist_copy (expr->priv->dependencies));
-
-		expression->priv->dependencies =
-			g_slist_concat (dependencies, expression->priv->dependencies);
-
-		expressions = g_slist_next (expressions);
-	}
-}
-
 static gboolean
 validate_stack (CpgExpression *expression)
 {
@@ -1290,62 +1270,16 @@ validate_stack (CpgExpression *expression)
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{
 		CpgInstruction *inst = item->data;
+		stack += cpg_instruction_get_stack_count (inst);
 
-		switch (inst->type)
+		if (stack < 0)
 		{
-			case CPG_INSTRUCTION_TYPE_OPERATOR:
-			case CPG_INSTRUCTION_TYPE_FUNCTION:
-			case CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION:
-			{
-				CpgInstructionFunction *i =
-					CPG_INSTRUCTION_FUNCTION (inst);
-
-				stack -= i->arguments + (i->variable ? 1 : 0);
-
-				if (stack < 0)
-				{
-					return 0;
-				}
-
-				++stack;
-			}
-			break;
-			case CPG_INSTRUCTION_TYPE_PROPERTY:
-				expression->priv->dependencies =
-					g_slist_prepend (expression->priv->dependencies,
-					                 CPG_INSTRUCTION_PROPERTY (inst)->property);
-
-				++stack;
-			break;
-			case CPG_INSTRUCTION_TYPE_NUMBER:
-				/* increase stack here */
-				++stack;
-			break;
-			case CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION:
-			{
-				CpgInstructionCustomFunction *i =
-					CPG_INSTRUCTION_CUSTOM_FUNCTION (inst);
-
-				stack -= i->arguments + (cpg_function_get_n_optional (i->function) > 0 ? 1 : 0);
-
-				if (stack < 0)
-				{
-					return 0;
-				}
-
-				++stack;
-			}
-			break;
-			case CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR:
-			{
-				/* TODO: add dependencies */
-				add_custom_operator_dependencies (expression,
-				                                  CPG_INSTRUCTION_CUSTOM_OPERATOR (inst));
-				++stack;
-			}
-			case CPG_INSTRUCTION_TYPE_NONE:
 			break;
 		}
+
+		expression->priv->dependencies =
+			g_slist_concat (expression->priv->dependencies,
+			                cpg_instruction_get_dependencies (inst));
 
 		if (stack > maxstack)
 		{
@@ -1401,14 +1335,14 @@ cpg_expression_reset_variadic (CpgExpression *expression)
 
 	for (item = expression->priv->variadic_instructions; item; item = g_slist_next (item))
 	{
-		CpgInstructionVariadicFunction *var = item->data;
-		var->cached = FALSE;
+		cpg_instruction_variadic_function_reset_cache (item->data);
 	}
 
 	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
 	{
 		CpgInstructionCustomOperator *op = item->data;
-		cpg_operator_reset_variadic (op->op, op->data);
+		cpg_operator_reset_variadic (cpg_instruction_custom_operator_get_operator (op),
+		                             cpg_instruction_custom_operator_get_data (op));
 	}
 }
 
@@ -1534,13 +1468,13 @@ cpg_expression_set_instructions (CpgExpression *expression,
 	{
 		CpgInstruction *inst = item->data;
 
-		if (inst->type == CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION)
+		if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (inst))
 		{
 			expression->priv->variadic_instructions =
 				g_slist_prepend (expression->priv->variadic_instructions,
 				                 inst);
 		}
-		else if (inst->type == CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR)
+		else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (inst))
 		{
 			expression->priv->operator_instructions =
 				g_slist_prepend (expression->priv->operator_instructions,
@@ -1630,94 +1564,7 @@ cpg_expression_evaluate (CpgExpression *expression)
 
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{
-		CpgInstruction *instruction = item->data;
-
-		switch (instruction->type)
-		{
-			case CPG_INSTRUCTION_TYPE_NUMBER:
-			{
-				CpgInstructionNumber *number =
-					CPG_INSTRUCTION_NUMBER (instruction);
-
-				cpg_stack_push (stack, number->value);
-			}
-			break;
-			case CPG_INSTRUCTION_TYPE_PROPERTY:
-			{
-				CpgInstructionProperty *property =
-					CPG_INSTRUCTION_PROPERTY (instruction);
-
-				cpg_stack_push (stack,
-				                cpg_property_get_value (property->property));
-			}
-			break;
-			case CPG_INSTRUCTION_TYPE_FUNCTION:
-			{
-				CpgInstructionFunction *func =
-					CPG_INSTRUCTION_FUNCTION (instruction);
-
-				cpg_math_function_execute (func->id, stack);
-			}
-			break;
-			case CPG_INSTRUCTION_TYPE_OPERATOR:
-			{
-				CpgInstructionFunction *func =
-					CPG_INSTRUCTION_FUNCTION (instruction);
-
-				cpg_math_operator_execute (func->id, stack);
-			}
-			break;
-			case CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION:
-			{
-				CpgInstructionCustomFunction *func =
-					CPG_INSTRUCTION_CUSTOM_FUNCTION (instruction);
-
-				cpg_function_execute (func->function, stack);
-			}
-			break;
-			case CPG_INSTRUCTION_TYPE_VARIADIC_FUNCTION:
-			{
-				CpgInstructionVariadicFunction *var =
-					CPG_INSTRUCTION_VARIADIC_FUNCTION (instruction);
-
-				CpgInstructionFunction *func =
-					CPG_INSTRUCTION_FUNCTION (instruction);
-
-				if (var->cached)
-				{
-					gint i;
-
-					for (i = 0; i < (func->arguments + func->variable); ++i)
-					{
-						cpg_stack_pop (stack);
-					}
-
-					cpg_stack_push (stack, var->cached_result);
-				}
-				else
-				{
-					cpg_math_function_execute (func->id, stack);
-
-					/* Cache the result */
-					var->cached_result =
-						cpg_stack_at (stack,
-						              cpg_stack_count (stack) - 1);
-
-					var->cached = TRUE;
-				}
-			}
-			break;
-			case CPG_INSTRUCTION_TYPE_CUSTOM_OPERATOR:
-			{
-				CpgInstructionCustomOperator *op =
-					CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
-
-				cpg_operator_execute (op->op, op->data, stack);
-			}
-			break;
-			default:
-			break;
-		}
+		cpg_instruction_execute (item->data, stack);
 	}
 
 	if (cpg_stack_count (&(expression->priv->output)) != 1)
@@ -1757,7 +1604,8 @@ cpg_expression_reset_cache (CpgExpression *expression)
 	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
 	{
 		CpgInstructionCustomOperator *op = item->data;
-		cpg_operator_reset_cache (op->op, op->data);
+		cpg_operator_reset_cache (cpg_instruction_custom_operator_get_operator (op),
+		                          cpg_instruction_custom_operator_get_data (op));
 	}
 }
 
@@ -1817,50 +1665,6 @@ cpg_expression_get_instructions (CpgExpression *expression)
 	return expression->priv->instructions;
 }
 
-static gboolean
-instructions_equal (CpgInstruction *i1,
-                    CpgInstruction *i2)
-{
-	if (i1->type != i2->type)
-	{
-		return FALSE;
-	}
-
-	switch (i1->type)
-	{
-		case CPG_INSTRUCTION_TYPE_PROPERTY:
-		{
-			CpgInstructionProperty *p1 = (CpgInstructionProperty *)i1;
-			CpgInstructionProperty *p2 = (CpgInstructionProperty *)i2;
-
-			if (p1->binding != p2->binding)
-			{
-				return FALSE;
-			}
-
-			return (g_strcmp0 (cpg_property_get_name (p1->property),
-			                   cpg_property_get_name (p2->property)) == 0);
-		}
-		break;
-		case CPG_INSTRUCTION_TYPE_OPERATOR:
-		case CPG_INSTRUCTION_TYPE_FUNCTION:
-			return ((CpgInstructionFunction *)i1)->id ==
-			       ((CpgInstructionFunction *)i2)->id;
-		break;
-		case CPG_INSTRUCTION_TYPE_NUMBER:
-			return ((CpgInstructionNumber *)i1)->value ==
-			       ((CpgInstructionNumber *)i2)->value;
-		break;
-		case CPG_INSTRUCTION_TYPE_CUSTOM_FUNCTION:
-			return ((CpgInstructionCustomFunction *)i1)->function ==
-			       ((CpgInstructionCustomFunction *)i2)->function;
-		break;
-		default:
-			return FALSE;
-		break;
-	}
-}
-
 /**
  * cpg_expression_equal:
  * @expression: a #CpgExpression
@@ -1898,7 +1702,7 @@ cpg_expression_equal (CpgExpression *expression,
 
 	while (e1)
 	{
-		if (!instructions_equal ((CpgInstruction *)e1->data, (CpgInstruction *)e2->data))
+		if (!cpg_instruction_equal (e1->data, e2->data))
 		{
 			return FALSE;
 		}
