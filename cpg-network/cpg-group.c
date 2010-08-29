@@ -143,9 +143,19 @@ on_template_child_removed (CpgGroup  *templ,
 
 	if (obj)
 	{
+		GSList *properties;
+
 		cpg_object_unapply_template (obj, child);
 
-		/* TODO: remove the object if it is now empty...? */
+		properties = cpg_object_get_properties (obj);
+
+		if (cpg_object_get_applied_templates (obj) == NULL &&
+		    properties == NULL && _cpg_object_get_links (obj) == NULL)
+		{
+			cpg_group_remove (templ, child, NULL);
+		}
+
+		g_slist_free (properties);
 	}
 }
 
