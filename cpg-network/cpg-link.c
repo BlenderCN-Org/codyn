@@ -244,7 +244,7 @@ on_template_action_equation_changed (CpgLinkAction *action,
 		return;
 	}
 
-	if (cpg_modifiable_modified (CPG_MODIFIABLE (orig)))
+	if (cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)))
 	{
 		return;
 	}
@@ -364,7 +364,7 @@ on_template_action_removed (CpgLink       *templ,
 		cpg_link_get_action (link,
 		                     cpg_link_action_get_target (action));
 
-	if (orig && !cpg_modifiable_modified (CPG_MODIFIABLE (orig)) &&
+	if (orig && !cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)) &&
 	    cpg_link_get_action_template (link, orig, TRUE) == templ)
 	{
 		/* Remove the original property as well */

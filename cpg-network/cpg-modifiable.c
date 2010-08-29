@@ -4,7 +4,7 @@ G_DEFINE_INTERFACE (CpgModifiable, cpg_modifiable, G_TYPE_OBJECT);
 
 /* Default implementation */
 static gboolean
-cpg_modifiable_modified_default (CpgModifiable *modifiable)
+cpg_modifiable_get_modified_default (CpgModifiable *modifiable)
 {
 	gboolean ret = FALSE;
 
@@ -16,7 +16,7 @@ static void
 cpg_modifiable_set_modified_default (CpgModifiable *modifiable,
                                      gboolean       modified)
 {
-	gboolean orig = cpg_modifiable_modified (modifiable);
+	gboolean orig = cpg_modifiable_get_modified (modifiable);
 
 	if (orig != modified)
 	{
@@ -29,7 +29,7 @@ cpg_modifiable_default_init (CpgModifiableInterface *iface)
 {
 	static gboolean initialized = FALSE;
 
-	iface->modified = cpg_modifiable_modified_default;
+	iface->get_modified = cpg_modifiable_get_modified_default;
 	iface->set_modified = cpg_modifiable_set_modified_default;
 
 	if (!initialized)
@@ -46,11 +46,11 @@ cpg_modifiable_default_init (CpgModifiableInterface *iface)
 }
 
 gboolean
-cpg_modifiable_modified (CpgModifiable *modifiable)
+cpg_modifiable_get_modified (CpgModifiable *modifiable)
 {
 	g_return_val_if_fail (CPG_MODIFIABLE (modifiable), FALSE);
 
-	return CPG_MODIFIABLE_GET_INTERFACE (modifiable)->modified (modifiable);
+	return CPG_MODIFIABLE_GET_INTERFACE (modifiable)->get_modified (modifiable);
 }
 
 void

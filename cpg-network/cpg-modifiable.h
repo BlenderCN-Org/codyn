@@ -17,14 +17,14 @@ struct _CpgModifiableInterface
 {
 	GTypeInterface parent;
 
-	gboolean (*modified)     (CpgModifiable *modifiable);
+	gboolean (*get_modified) (CpgModifiable *modifiable);
 	void     (*set_modified) (CpgModifiable *modifiable,
 	                          gboolean       modified);
 };
 
 GType cpg_modifiable_get_type (void) G_GNUC_CONST;
 
-gboolean cpg_modifiable_modified     (CpgModifiable *modifiable);
+gboolean cpg_modifiable_get_modified (CpgModifiable *modifiable);
 void     cpg_modifiable_set_modified (CpgModifiable *modifiable,
                                       gboolean       modified);
 

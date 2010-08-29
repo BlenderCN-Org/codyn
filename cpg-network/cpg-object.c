@@ -265,7 +265,7 @@ on_template_property_expression_changed (CpgProperty *prop,
 		return;
 	}
 
-	if (cpg_modifiable_modified (CPG_MODIFIABLE (orig)))
+	if (cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)))
 	{
 		return;
 	}
@@ -298,7 +298,7 @@ on_template_property_flags_changed (CpgProperty *prop,
 		return;
 	}
 
-	if (cpg_modifiable_modified (CPG_MODIFIABLE (orig)))
+	if (cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)))
 	{
 		return;
 	}
@@ -374,7 +374,7 @@ on_template_property_removed (CpgObject   *templ,
 		cpg_object_get_property (object,
 		                         cpg_property_get_name (prop));
 
-	if (orig && !cpg_modifiable_modified (CPG_MODIFIABLE (orig)) &&
+	if (orig && !cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)) &&
 	    cpg_object_get_property_template (object, orig, TRUE) == NULL)
 	{
 		/* Remove the original property as well */
