@@ -171,8 +171,8 @@ set_to (CpgLink   *link,
 }
 
 static void
-set_from (CpgLink     *link,
-          CpgProperty *target)
+set_from (CpgLink   *link,
+          CpgObject *target)
 {
 	if (link->priv->from)
 	{
