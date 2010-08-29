@@ -122,6 +122,14 @@ cpg_instruction_custom_function_new (CpgFunction *function,
 	return CPG_INSTRUCTION (custom);
 }
 
+/**
+ * cpg_instruction_custom_function_set_function:
+ * @function: A #CpgInstructionCustomFunction
+ * @func: (transfer full): A #CpgFunction
+ *
+ * Set the function executed by the instruction.
+ *
+ **/
 void
 cpg_instruction_custom_function_set_function (CpgInstructionCustomFunction *function,
                                               CpgFunction                  *func)
@@ -141,6 +149,15 @@ cpg_instruction_custom_function_set_function (CpgInstructionCustomFunction *func
 	}
 }
 
+/**
+ * cpg_instruction_custom_function_get_function:
+ * @function: A #CpgInstructionCustomFunction
+ *
+ * Get the function executed by the instruction.
+ *
+ * Returns: (transfer none): A #CpgFunction
+ *
+ **/
 CpgFunction *
 cpg_instruction_custom_function_get_function (CpgInstructionCustomFunction *function)
 {

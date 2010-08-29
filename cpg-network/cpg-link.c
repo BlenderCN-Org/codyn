@@ -1056,7 +1056,7 @@ cpg_link_get_to (CpgLink *link)
  *
  * Get link actions
  *
- * Returns: (element-type CpgLinkAction): list of #CpgLinkAction. The list is
+ * Returns: (element-type CpgLinkAction) (transfer none): list of #CpgLinkAction. The list is
  *          owned by the link and should not be freed
  *
  **/

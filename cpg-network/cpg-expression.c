@@ -1616,7 +1616,7 @@ cpg_expression_reset_cache (CpgExpression *expression)
  * Get a list of #CpgProperty on which the expression depends. The list is owned
  * by @expression and should not be freed or modified
  *
- * Returns: (element-type CpgProperty): a list of #CpgProperty
+ * Returns: (element-type CpgProperty) (transfer container): a list of #CpgProperty
  *
  **/
 GSList const *
@@ -1654,7 +1654,7 @@ cpg_expression_reset (CpgExpression *expression)
  * Get list of #CpgInstruction. The list is owned by @expression and should
  * not be freed or modified
  *
- * Returns: (element-type CpgInstruction): list of #CpgInstruction
+ * Returns: (element-type CpgInstruction) (transfer none): list of #CpgInstruction
  *
  **/
 GSList const *

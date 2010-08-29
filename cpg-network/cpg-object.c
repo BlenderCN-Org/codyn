@@ -1488,7 +1488,7 @@ _cpg_object_unlink (CpgObject  *object,
  *
  * Get the properties which are acted upon by links.
  *
- * Returns: (element-type CpgProperty): A #GSList of #CpgProperty.
+ * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty.
  *
  **/
 GSList const *
@@ -1692,7 +1692,7 @@ cpg_object_equal (CpgObject *first,
  *
  * Get the list of applied templates.
  *
- * Returns: (element-type CpgObject): A #GSList of #CpgObject
+ * Returns: (element-type CpgObject) (transfer none): A #GSList of #CpgObject
  *
  **/
 GSList const *

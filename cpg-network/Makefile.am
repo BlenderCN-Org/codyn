@@ -136,12 +136,33 @@ if HAVE_INTROSPECTION
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS = Cpg-2.0.gir
 
+INSTRUCTIONHEADERS = \
+	instructions/cpg-instruction-custom-function.h \
+	instructions/cpg-instruction-custom-operator.h \
+	instructions/cpg-instruction-function.h \
+	instructions/cpg-instruction.h \
+	instructions/cpg-instruction-number.h \
+	instructions/cpg-instruction-operator.h \
+	instructions/cpg-instruction-property.h \
+	instructions/cpg-instructions.h \
+	instructions/cpg-instruction-variadic-function.h
+
+INSTRUCTIONSOURCES = \
+	instructions/cpg-instruction.c \
+	instructions/cpg-instruction-custom-function.c \
+	instructions/cpg-instruction-custom-operator.c \
+	instructions/cpg-instruction-function.c \
+	instructions/cpg-instruction-number.c \
+	instructions/cpg-instruction-operator.c \
+	instructions/cpg-instruction-property.c \
+	instructions/cpg-instruction-variadic-function.c
+
 Cpg-2.0.gir: libcpg-network-2.0.la
 INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --warn-error --verbose
 Cpg_2_0_gir_NAMESPACE = Cpg
 Cpg_2_0_gir_VERSION = 2.0
-Cpg_2_0_gir_LIBS = libcpg-network-2.0.la
-Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES)
+Cpg_2_0_gir_LIBS = libcpg-network-2.0.la instructions/libinstructions.la
+Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES)
 Cpg_2_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
 
 girdir = $(datadir)/gir-1.0

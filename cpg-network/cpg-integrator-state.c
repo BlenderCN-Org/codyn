@@ -381,7 +381,7 @@ cpg_integrator_state_update (CpgIntegratorState *state)
  *
  * Get the integrated properties which are acted upon by links.
  *
- * Returns: (element-type CpgProperty): A #GSList of #CpgProperty
+ * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty
  *
  **/
 GSList const *
@@ -397,7 +397,7 @@ cpg_integrator_state_integrated_properties (CpgIntegratorState *state)
  *
  * Get non-integrated properties which are acted upon by links.
  *
- * Returns: (element-type CpgProperty): A #GSList of #CpgProperty
+ * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty
  *
  **/
 GSList const *
@@ -413,7 +413,7 @@ cpg_integrator_state_direct_properties (CpgIntegratorState *state)
  *
  * Get the link actions that act on integrated properties.
  *
- * Returns: (element-type CpgLinkAction): A #GSList of #CpgLinkAction
+ * Returns: (element-type CpgLinkAction) (transfer none): A #GSList of #CpgLinkAction
  *
  **/
 GSList const *
@@ -429,7 +429,7 @@ cpg_integrator_state_integrated_link_actions (CpgIntegratorState *state)
  *
  * Get the link actions that act on non-integrated properties.
  *
- * Returns: (element-type CpgLinkAction): A #GSList of #CpgLinkAction
+ * Returns: (element-type CpgLinkAction) (transfer none): A #GSList of #CpgLinkAction
  *
  **/
 GSList const *
@@ -445,7 +445,7 @@ cpg_integrator_state_direct_link_actions (CpgIntegratorState *state)
  *
  * Get the link actions that act on non-integrated properties.
  *
- * Returns: (element-type CpgProperty): A #GSList of #CpgProperty
+ * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty
  *
  **/
 GSList const *

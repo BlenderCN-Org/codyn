@@ -88,7 +88,7 @@ cpg_operator_default_init (CpgOperatorInterface *iface)
 /**
  * cpg_operator_data_init:
  * @data: A #CpgOperatorData
- * @expressions: (element-type CpgExpression): A #GSList of #CpgExpression
+ * @expressions: (element-type CpgExpression) (transfer none): A #GSList of #CpgExpression
  *
  * Initialize the operator data with a set of expressions. When 'inheriting'
  * from #CpgOperatorData, make sure to call #cpg_operator_data_init from
@@ -127,7 +127,7 @@ cpg_operator_data_destroy (CpgOperatorData *data)
 /**
  * cpg_operator_create_data:
  * @op: A #CpgOperator
- * @expressions: (element-type CpgExpression): A #GSList of #CpgExpression
+ * @expressions: (element-type CpgExpression) (transfer none): A #GSList of #CpgExpression
  *
  * Create a new data instance for the operator, given a set of expressions.
  * Each instance of the operator has its own operator data associated that
@@ -267,6 +267,7 @@ cpg_operator_reset_variadic (CpgOperator     *op,
  *
  * Get the expressions that the operator uses.
  *
+ * Return value: (element-type CpgExpression) (transfer none): a list of #CpgExpression
  **/
 GSList const *
 cpg_operator_get_expressions (CpgOperator     *op,

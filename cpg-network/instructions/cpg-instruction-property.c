@@ -115,6 +115,16 @@ cpg_instruction_property_init (CpgInstructionProperty *self)
 	self->priv = CPG_INSTRUCTION_PROPERTY_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_instruction_property_new:
+ * @property: (transfer none): A #CpgProperty
+ * @binding: A #CpgInstructionPropertyBinding
+ *
+ * Create a new #CpgInstructionProperty.
+ *
+ * Returns: A #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_property_new (CpgProperty                   *property,
                               CpgInstructionPropertyBinding  binding)
@@ -131,6 +141,14 @@ cpg_instruction_property_new (CpgProperty                   *property,
 	return CPG_INSTRUCTION (ret);
 }
 
+/**
+ * cpg_instruction_property_set_property:
+ * @instruction: A #CpgInstructionProperty
+ * @property: (transfer none): A #CpgProperty
+ *
+ * Set the property executed by the instruction.
+ *
+ **/
 void
 cpg_instruction_property_set_property (CpgInstructionProperty *instruction,
                                        CpgProperty            *property)
@@ -152,6 +170,15 @@ cpg_instruction_property_set_property (CpgInstructionProperty *instruction,
 	}
 }
 
+/**
+ * cpg_instruction_property_get_property:
+ * @instruction: A #CpgInstructionProperty
+ *
+ * Get the property executed by the instruction.
+ *
+ * Returns: (transfer none): A #CpgProperty
+ *
+ **/
 CpgProperty *
 cpg_instruction_property_get_property (CpgInstructionProperty *instruction)
 {

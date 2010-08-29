@@ -1207,7 +1207,7 @@ cpg_group_new (gchar const *id,
  *
  * Get a list of the children in @group.
  *
- * Returns: (element-type CpgObject): A #GSList of #CpgObject
+ * Returns: (element-type CpgObject) (transfer none): A #GSList of #CpgObject
  *
  **/
 GSList const *

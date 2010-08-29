@@ -145,6 +145,15 @@ cpg_instruction_function_set_id (CpgInstructionFunction *func,
 	func->priv->id = id;
 }
 
+/**
+ * cpg_instruction_function_set_name:
+ * @func: A #CpgInstructionFunction
+ * @name: (transfer none): The function name
+ *
+ * Set the function name.
+ *
+ **/
+
 void
 cpg_instruction_function_set_name (CpgInstructionFunction *func,
                                    gchar const            *name)
@@ -181,6 +190,15 @@ cpg_instruction_function_get_id (CpgInstructionFunction *func)
 	return func->priv->id;
 }
 
+/**
+ * cpg_instruction_function_get_name:
+ * @func: A #CpgInstructionFunction
+ *
+ * Get the function name.
+ *
+ * Returns: (transfer none): the function name
+ *
+ **/
 gchar const *
 cpg_instruction_function_get_name (CpgInstructionFunction *func)
 {

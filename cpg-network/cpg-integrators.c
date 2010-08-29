@@ -34,7 +34,7 @@ ensure_defaults ()
  * 
  * Get the list of integrators.
  *
- * Returns: (element-type GTypeClass): A GSList of #GType
+ * Returns: (element-type GTypeClass) (transfer none): A GSList of #GType
  *
  **/
 GSList const *

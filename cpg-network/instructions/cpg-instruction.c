@@ -58,6 +58,17 @@ cpg_instruction_get_stack_count (CpgInstruction *instruction)
 	return CPG_INSTRUCTION_GET_CLASS (instruction)->get_stack_count (instruction);
 }
 
+/**
+ * cpg_instruction_get_dependencies:
+ * @instruction: A #CpgInstruction
+ *
+ * Get the properties on which the instruction depends.
+ *
+ * Returns: (element-type CpgProperty) (transfer container): A #GSList of #CpgProperty. The list
+ *          should be freed with g_slist_free when no longer used.
+ *
+ **/
+
 GSList *
 cpg_instruction_get_dependencies (CpgInstruction *instruction)
 {

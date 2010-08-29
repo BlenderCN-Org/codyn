@@ -202,7 +202,7 @@ cpg_compile_context_append_object (CpgCompileContext *context,
 /**
  * cpg_compile_context_set_functions:
  * @context: A #CpgCompileContext
- * @functions: (element-type CpgFunction): A #GSList of #CpgFunction
+ * @functions: (element-type CpgFunction) (transfer none): A #GSList of #CpgFunction
  *
  * Set the list of user functions available in the compile context. This
  * function makes a copy of the list but not of its members.
@@ -226,7 +226,7 @@ cpg_compile_context_set_functions (CpgCompileContext *context,
 /**
  * cpg_compile_context_set_operators:
  * @context: A #CpgCompileContext
- * @operators: (element-type CpgOperator): A #GSList of #CpgOperator
+ * @operators: (element-type CpgOperator) (transfer none): A #GSList of #CpgOperator
  *
  * Set the list of operators that can be used in expressions. This function
  * makes a copy of the list, but not of its members.
@@ -301,7 +301,7 @@ cpg_compile_context_lookup_property (CpgCompileContext *context,
  * expressions. This returns the internally used list which should not be
  * modified or freed.
  *
- * Returns: (element-type CpgObject): A #GSList of #CpgObject
+ * Returns: (element-type CpgObject) (transfer none): A #GSList of #CpgObject
  *
  **/
 GSList const *
@@ -324,10 +324,10 @@ cpg_compile_context_get_objects (CpgCompileContext *context)
  * Get the list of custom user functions. This returns the internally used
  * list which should not be modified or freed.
  *
- * Returns: (element-type CpgFunction): A #GSList of #CpgFunction
+ * Returns: (element-type CpgFunction) (transfer none): A #GSList of #CpgFunction
  *
  **/
-GSList const *
+const GSList *
 cpg_compile_context_get_functions (CpgCompileContext *context)
 {
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
@@ -347,7 +347,7 @@ cpg_compile_context_get_functions (CpgCompileContext *context)
  * Get the list of operators. This returns the internally used
  * list which should not be modified or freed.
  *
- * Returns: (element-type CpgOperator): A #GSList of #CpgOperator
+ * Returns: (element-type CpgOperator) (transfer none): A #GSList of #CpgOperator
  *
  **/
 GSList const *

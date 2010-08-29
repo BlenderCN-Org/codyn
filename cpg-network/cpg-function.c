@@ -720,7 +720,7 @@ cpg_function_remove_argument (CpgFunction          *function,
  * Get the list of function arguments. The returned list is used internally
  * and should not be modified or freed.
  *
- * Returns: (element-type CpgFunctionArgument): A #GList
+ * Returns: (element-type CpgFunctionArgument) (transfer none): A #GList
  *
  **/
 GList const *

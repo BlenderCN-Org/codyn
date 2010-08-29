@@ -107,6 +107,18 @@ cpg_instruction_variadic_function_init (CpgInstructionVariadicFunction *self)
 	self->priv = CPG_INSTRUCTION_VARIADIC_FUNCTION_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_instruction_variadic_function_new:
+ * @id: The function id
+ * @name: (transfer none): The function name
+ * @arguments: The number of arguments
+ * @variable: Whether the function accepts a variable number of arguments
+ *
+ * Create a new #CpgInstructionVariadicFunction.
+ *
+ * Returns: A #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_variadic_function_new (guint        id,
                                        gchar const *name,

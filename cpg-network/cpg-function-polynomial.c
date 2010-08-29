@@ -406,7 +406,7 @@ cpg_function_polynomial_clear_pieces (CpgFunctionPolynomial *function)
  * Get a list of the polynomials which make up the function. This returns
  * the internally used list which should not be modified or freed.
  *
- * Returns: (element-type CpgFunctionPolynomialPiece):
+ * Returns: (element-type CpgFunctionPolynomialPiece) (transfer none):
  *          A #GSList of #CpgFunctionPolynomialPiece
  *
  **/

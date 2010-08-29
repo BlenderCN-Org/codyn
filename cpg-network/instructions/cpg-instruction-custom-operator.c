@@ -123,6 +123,16 @@ cpg_instruction_custom_operator_init (CpgInstructionCustomOperator *self)
 	self->priv = CPG_INSTRUCTION_CUSTOM_OPERATOR_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_instruction_custom_operator_new:
+ * @operator: A #CpgOperator
+ * @expressions: (element-type CpgExpression) (transfer none): A #GSList of #CpgExpression
+ *
+ * Create a new #CpgInstructionCustomOperator.
+ *
+ * Returns: A #CpgInstruction
+ *
+ **/
 CpgInstruction *
 cpg_instruction_custom_operator_new (CpgOperator  *operator,
                                      GSList const *expressions)
@@ -140,6 +150,16 @@ cpg_instruction_custom_operator_new (CpgOperator  *operator,
 	return CPG_INSTRUCTION (ret);
 }
 
+/**
+ * cpg_instruction_custom_operator_get_operator:
+ * @op: A #CpgInstructionCustomOperator
+ *
+ * Get the operator executed by the instruction.
+ *
+ * Returns: (transfer none): A #CpgOperator
+ *
+ **/
+
 CpgOperator *
 cpg_instruction_custom_operator_get_operator (CpgInstructionCustomOperator *op)
 {
@@ -147,6 +167,16 @@ cpg_instruction_custom_operator_get_operator (CpgInstructionCustomOperator *op)
 
 	return op->priv->op;
 }
+
+/**
+ * cpg_instruction_custom_operator_get_data:
+ * @op: A #CpgInstructionCustomOperator
+ *
+ * Get the operator data executed by the instruction.
+ *
+ * Returns: (transfer none): A #CpgOperatorData
+ *
+ **/
 
 CpgOperatorData *
 cpg_instruction_custom_operator_get_data (CpgInstructionCustomOperator *op)
