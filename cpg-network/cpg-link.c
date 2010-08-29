@@ -2,6 +2,7 @@
 #include "cpg-compile-error.h"
 #include "cpg-debug.h"
 #include <string.h>
+#include "cpg-group.h"
 
 /**
  * SECTION:cpg-link
@@ -373,6 +374,84 @@ on_template_action_removed (CpgLink       *templ,
 	disconnect_template_action (link, templ, action);
 }
 
+static CpgLink *
+find_template_for_attachments (CpgLink *link)
+{
+	GSList const *templates;
+	CpgLink *ret = NULL;
+
+	templates = cpg_object_get_applied_templates (CPG_OBJECT (link));
+
+	/* Find the last template that has both to and from set */
+	while (templates)
+	{
+		if (CPG_IS_LINK (templates->data))
+		{
+			CpgLink *templ = templates->data;
+
+			if (templ->priv->to != NULL && templ->priv->from != NULL)
+			{
+				ret = templ;
+			}
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return ret;
+}
+
+static CpgObject *
+find_in_parent (CpgLink   *link,
+                CpgObject *obj)
+{
+	if (obj == NULL)
+	{
+		return NULL;
+	}
+
+	CpgGroup *parent;
+
+	parent = CPG_GROUP (cpg_object_get_parent (CPG_OBJECT (link)));
+
+	if (parent)
+	{
+		return cpg_group_get_child (parent,
+		                            cpg_object_get_id (obj));
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+static void
+attach_from_template (CpgLink *link)
+{
+	CpgLink *ret = find_template_for_attachments (link);
+
+	/* Find the corresponding child in the parent */
+	cpg_link_attach (link,
+	                 find_in_parent (link, ret ? ret->priv->from : NULL),
+	                 find_in_parent (link, ret ? ret->priv->to : NULL));
+}
+
+static void
+on_template_to_changed (CpgLink    *link,
+                        GParamSpec *spec,
+                        CpgLink    *templ)
+{
+	attach_from_template (link);
+}
+
+static void
+on_template_from_changed (CpgLink    *link,
+                          GParamSpec *spec,
+                          CpgLink    *templ)
+{
+	attach_from_template (link);
+}
+
 static void
 disconnect_template (CpgLink   *link,
                      CpgObject *templ,
@@ -395,6 +474,14 @@ disconnect_template (CpgLink   *link,
 
 	g_signal_handlers_disconnect_by_func (templ,
 	                                      on_template_action_removed,
+	                                      link);
+
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_to_changed,
+	                                      link);
+
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_from_changed,
 	                                      link);
 }
 
@@ -636,6 +723,8 @@ cpg_link_unapply_template_impl (CpgObject *object,
 		}
 
 		disconnect_template (link, templ, FALSE);
+
+		attach_from_template (link);
 	}
 
 	/* Chain up */
@@ -643,6 +732,31 @@ cpg_link_unapply_template_impl (CpgObject *object,
 	{
 		CPG_OBJECT_CLASS (cpg_link_parent_class)->unapply_template (object, templ);
 	}
+}
+
+static void
+connect_template (CpgLink *link,
+                  CpgLink *templ)
+{
+	g_signal_connect (templ,
+	                  "action-added",
+	                  G_CALLBACK (on_template_action_added),
+	                  link);
+
+	g_signal_connect (templ,
+	                  "action-removed",
+	                  G_CALLBACK (on_template_action_removed),
+	                  link);
+
+	g_signal_connect_swapped (templ,
+	                          "notify::to",
+	                          G_CALLBACK (on_template_to_changed),
+	                          link);
+
+	g_signal_connect_swapped (templ,
+	                          "notify::from",
+	                          G_CALLBACK (on_template_from_changed),
+	                          link);
 }
 
 static void
@@ -665,15 +779,10 @@ cpg_link_apply_template_impl (CpgObject *object,
 			on_template_action_added (templ_link, item->data, CPG_LINK (object));
 		}
 
-		g_signal_connect (templ_link,
-		                  "action-added",
-		                  G_CALLBACK (on_template_action_added),
-		                  object);
+		attach_from_template (CPG_LINK (object));
 
-		g_signal_connect (templ_link,
-		                  "action-removed",
-		                  G_CALLBACK (on_template_action_removed),
-		                  object);
+		connect_template (CPG_LINK (object),
+		                  templ_link);
 	}
 }
 
