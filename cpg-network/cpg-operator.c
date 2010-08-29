@@ -57,6 +57,13 @@ cpg_operator_get_num_arguments_default (CpgOperator *op)
 	return 1;
 }
 
+static GSList const *
+cpg_operator_get_expressions_default (CpgOperator     *op,
+                                      CpgOperatorData *data)
+{
+	return data->expressions;
+}
+
 static void
 cpg_operator_default_init (CpgOperatorInterface *iface)
 {
@@ -70,6 +77,7 @@ cpg_operator_default_init (CpgOperatorInterface *iface)
 	iface->get_num_arguments = cpg_operator_get_num_arguments_default;
 	iface->reset_cache = cpg_operator_reset_cache_default;
 	iface->reset_variadic = cpg_operator_reset_variadic_default;
+	iface->get_expressions = cpg_operator_get_expressions_default;
 
 	if (!initialized)
 	{
@@ -156,7 +164,7 @@ cpg_operator_free_data (CpgOperator     *op,
 
 	if (data)
 	{
-		return CPG_OPERATOR_GET_INTERFACE (op)->free_data (op, data);
+		CPG_OPERATOR_GET_INTERFACE (op)->free_data (op, data);
 	}
 }
 
@@ -178,7 +186,7 @@ cpg_operator_execute (CpgOperator     *op,
 {
 	g_return_if_fail (CPG_IS_OPERATOR (op));
 
-	return CPG_OPERATOR_GET_INTERFACE (op)->execute (op, data, stack);
+	CPG_OPERATOR_GET_INTERFACE (op)->execute (op, data, stack);
 }
 
 /**
@@ -232,7 +240,7 @@ cpg_operator_reset_cache (CpgOperator     *op,
 {
 	g_return_if_fail (CPG_IS_OPERATOR (op));
 
-	return CPG_OPERATOR_GET_INTERFACE (op)->reset_cache (op, data);
+	CPG_OPERATOR_GET_INTERFACE (op)->reset_cache (op, data);
 }
 
 /**
@@ -249,5 +257,22 @@ cpg_operator_reset_variadic (CpgOperator     *op,
 {
 	g_return_if_fail (CPG_IS_OPERATOR (op));
 
-	return CPG_OPERATOR_GET_INTERFACE (op)->reset_variadic (op, data);
+	CPG_OPERATOR_GET_INTERFACE (op)->reset_variadic (op, data);
+}
+
+/**
+ * cpg_operator_get_expressions:
+ * @op: A #CpgOperator
+ * @data: A #CpgOperatorData
+ *
+ * Get the expressions that the operator uses.
+ *
+ **/
+GSList const *
+cpg_operator_get_expressions (CpgOperator     *op,
+                              CpgOperatorData *data)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+
+	return CPG_OPERATOR_GET_INTERFACE (op)->get_expressions (op, data);
 }

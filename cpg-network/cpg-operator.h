@@ -46,6 +46,9 @@ struct _CpgOperatorInterface
 
 	void             (*reset_variadic) (CpgOperator     *op,
 	                                    CpgOperatorData *data);
+
+	GSList const    *(*get_expressions) (CpgOperator     *op,
+	                                     CpgOperatorData *data);
 };
 
 #define cpg_operator_data_new(Type, expressions) ((Type *)cpg_operator_data_init ((CpgOperatorData *)g_slice_new0 (Type), expressions))
@@ -75,6 +78,9 @@ void                 cpg_operator_reset_variadic              (CpgOperator     *
 
 gchar               *cpg_operator_get_name                    (CpgOperator     *op);
 gint                 cpg_operator_get_num_arguments           (CpgOperator     *op);
+
+GSList const        *cpg_operator_get_expressions             (CpgOperator     *op,
+                                                               CpgOperatorData *data);
 
 G_END_DECLS
 
