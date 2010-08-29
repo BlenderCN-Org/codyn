@@ -360,7 +360,7 @@ cpg_function_class_init (CpgFunctionClass *klass)
 
 	/**
 	 * CpgFunction::argument-added:
-	 * @object: a #CpgFunction
+	 * @function: a #CpgFunction
 	 * @argument: a #CpgFunctionArgument
 	 *
 	 * Emitted when an argument has been added to the function
@@ -381,7 +381,7 @@ cpg_function_class_init (CpgFunctionClass *klass)
 
 	/**
 	 * CpgFunction::argument-removed:
-	 * @object: a #CpgFunction
+	 * @function: a #CpgFunction
 	 * @argument: a #CpgFunctionArgument
 	 *
 	 * Emitted when an argument has been removed from the function
