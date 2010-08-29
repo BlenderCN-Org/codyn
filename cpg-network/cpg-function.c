@@ -38,6 +38,7 @@ enum
 {
 	ARGUMENT_ADDED,
 	ARGUMENT_REMOVED,
+	ARGUMENTS_REORDERED,
 	NUM_SIGNALS
 };
 
@@ -399,6 +400,24 @@ cpg_function_class_init (CpgFunctionClass *klass)
 		              1,
 		              CPG_TYPE_FUNCTION_ARGUMENT);
 
+	/**
+	 * Cpgfunction::arguments-reordered:
+	 * @function: a #CpgFunction
+	 *
+	 * Emitted when the order of the function arguments has changed.
+	 *
+	 **/
+	signals[ARGUMENTS_REORDERED] =
+		g_signal_new ("arguments-reordered",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgFunctionClass, arguments_reordered),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE,
+		              0);
+
 	g_type_class_add_private (object_class, sizeof(CpgFunctionPrivate));
 }
 
@@ -526,6 +545,8 @@ on_argument_optional_changed (CpgFunctionArgument *argument,
 	{
 		--function->priv->n_optional;
 	}
+
+	g_signal_emit (function, signals[ARGUMENTS_REORDERED], 0);
 }
 
 /**

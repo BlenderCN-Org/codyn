@@ -60,16 +60,18 @@ struct _CpgFunctionClass
 	CpgObjectClass parent_class;
 
 	/*< public >*/
-	gdouble (*evaluate)        (CpgFunction         *function);
-	void    (*execute)         (CpgFunction         *function,
-	                            CpgStack            *stack);
+	gdouble (*evaluate)           (CpgFunction         *function);
+	void    (*execute)            (CpgFunction         *function,
+	                               CpgStack            *stack);
 
 	/* signals */
-	void   (*argument_added)   (CpgFunction         *function,
-	                            CpgFunctionArgument *argument);
+	void   (*argument_added)      (CpgFunction         *function,
+	                               CpgFunctionArgument *argument);
 
-	void   (*argument_removed) (CpgFunction         *function,
-	                            CpgFunctionArgument *argument);
+	void   (*argument_removed)    (CpgFunction         *function,
+	                               CpgFunctionArgument *argument);
+
+	void   (*arguments_reordered) (CpgFunction      *function);
 };
 
 GQuark               cpg_function_error_quark                 (void);
