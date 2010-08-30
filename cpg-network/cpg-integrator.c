@@ -568,7 +568,7 @@ cpg_integrator_step (CpgIntegrator *integrator,
  *
  * Get the object associated with the integrator.
  *
- * Returns: A #CpgObject
+ * Returns: (transfer none): A #CpgObject
  *
  **/
 CpgObject *

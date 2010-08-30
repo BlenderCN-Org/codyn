@@ -210,7 +210,7 @@ cpg_compile_context_append_object (CpgCompileContext *context,
  **/
 void
 cpg_compile_context_set_functions (CpgCompileContext *context,
-                                   GSList const      *functions)
+                                   const GSList      *functions)
 {
 	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
 
@@ -234,7 +234,7 @@ cpg_compile_context_set_functions (CpgCompileContext *context,
  **/
 void
 cpg_compile_context_set_operators (CpgCompileContext *context,
-                                   GSList const      *operators)
+                                   const GSList      *operators)
 {
 	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
 
@@ -254,12 +254,13 @@ cpg_compile_context_set_operators (CpgCompileContext *context,
  *
  * Lookup a property in the list of context objects.
  *
- * Returns: (type CpgProperty): A #CpgProperty or %NULL if the property could not be found
+ * Returns: (type CpgProperty) (transfer none): A #CpgProperty or %NULL if
+                                                the property could not be found
  *
  **/
 CpgProperty *
 cpg_compile_context_lookup_property (CpgCompileContext *context,
-                                     gchar const       *name)
+                                     const gchar       *name)
 {
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
@@ -304,7 +305,7 @@ cpg_compile_context_lookup_property (CpgCompileContext *context,
  * Returns: (element-type CpgObject) (transfer none): A #GSList of #CpgObject
  *
  **/
-GSList const *
+const GSList *
 cpg_compile_context_get_objects (CpgCompileContext *context)
 {
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
@@ -350,7 +351,7 @@ cpg_compile_context_get_functions (CpgCompileContext *context)
  * Returns: (element-type CpgOperator) (transfer none): A #GSList of #CpgOperator
  *
  **/
-GSList const *
+const GSList *
 cpg_compile_context_get_operators (CpgCompileContext *context)
 {
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
@@ -370,12 +371,13 @@ cpg_compile_context_get_operators (CpgCompileContext *context)
  *
  * Lookup a custom user function.
  *
- * Returns: (type CpgFunction): A #CpgFunction or %NULL if the function could not be found
+ * Returns: (type CpgFunction) (transfer none): A #CpgFunction or %NULL if
+            the function could not be found
  *
  **/
 CpgFunction *
 cpg_compile_context_lookup_function (CpgCompileContext *context,
-                                     gchar const       *name)
+                                     const gchar       *name)
 {
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
@@ -416,12 +418,13 @@ cpg_compile_context_lookup_function (CpgCompileContext *context,
  *
  * Lookup an operator by name
  *
- * Returns: A #CpgOperator or %NULL if the operator could not be found
+ * Returns: (transfer none): A #CpgOperator or %NULL if the operator could not
+ *                           be found
  *
  **/
 CpgOperator *
 cpg_compile_context_lookup_operator (CpgCompileContext *context,
-                                     gchar const       *name)
+                                     const gchar       *name)
 {
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);

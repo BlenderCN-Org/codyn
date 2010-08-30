@@ -32,19 +32,18 @@ struct _CpgIntegratorStateClass
 	GObjectClass parent_class;
 };
 
-GType cpg_integrator_state_get_type (void) G_GNUC_CONST;
-CpgIntegratorState *cpg_integrator_state_new (CpgObject *object);
+GType               cpg_integrator_state_get_type                (void) G_GNUC_CONST;
 
-CpgObject *cpg_integrator_state_get_object (CpgIntegratorState *state);
+CpgIntegratorState *cpg_integrator_state_new                     (CpgObject *object);
+CpgObject          *cpg_integrator_state_get_object              (CpgIntegratorState *state);
 
-GSList const *cpg_integrator_state_integrated_properties (CpgIntegratorState *state);
-GSList const *cpg_integrator_state_direct_properties (CpgIntegratorState *state);
-GSList const *cpg_integrator_state_all_properties (CpgIntegratorState *state);
+const GSList       *cpg_integrator_state_integrated_properties   (CpgIntegratorState *state);
+const GSList       *cpg_integrator_state_direct_properties       (CpgIntegratorState *state);
+const GSList       *cpg_integrator_state_all_properties          (CpgIntegratorState *state);
+const GSList       *cpg_integrator_state_integrated_link_actions (CpgIntegratorState *state);
+const GSList       *cpg_integrator_state_direct_link_actions     (CpgIntegratorState *state);
 
-GSList const *cpg_integrator_state_integrated_link_actions (CpgIntegratorState *state);
-GSList const *cpg_integrator_state_direct_link_actions (CpgIntegratorState *state);
-
-void cpg_integrator_state_update (CpgIntegratorState *state);
+void                cpg_integrator_state_update                  (CpgIntegratorState *state);
 
 G_END_DECLS
 

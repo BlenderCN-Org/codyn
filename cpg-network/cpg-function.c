@@ -723,7 +723,7 @@ cpg_function_remove_argument (CpgFunction          *function,
  * Returns: (element-type CpgFunctionArgument) (transfer none): A #GList
  *
  **/
-GList const *
+const GList *
 cpg_function_get_arguments (CpgFunction *function)
 {
 	g_return_val_if_fail (CPG_IS_FUNCTION (function), NULL);
@@ -758,7 +758,7 @@ cpg_function_execute (CpgFunction *function, CpgStack *stack)
  *
  * Get the function expression.
  *
- * Returns: (type CpgExpression): A #CpgExpression
+ * Returns: (type CpgExpression) (transfer none): A #CpgExpression
  *
  **/
 CpgExpression *

@@ -202,9 +202,9 @@ gboolean          cpg_object_equal          (CpgObject *first,
                                              CpgObject *second);
 
 void              cpg_object_clear          (CpgObject   *object);
-GSList const     *cpg_object_get_actors     (CpgObject   *object);
+const GSList     *cpg_object_get_actors     (CpgObject   *object);
 
-GSList const     *cpg_object_get_applied_templates  (CpgObject   *object);
+const GSList     *cpg_object_get_applied_templates  (CpgObject   *object);
 
 CpgObject        *cpg_object_copy           (CpgObject *object);
 
@@ -227,7 +227,7 @@ void             _cpg_object_link           (CpgObject                  *object,
 void             _cpg_object_unlink         (CpgObject                  *object,
                                              CPG_FORWARD_DECL (CpgLink) *link);
 
-GSList const    *_cpg_object_get_links      (CpgObject *object);
+const GSList    *_cpg_object_get_links      (CpgObject *object);
 
 void             _cpg_object_set_parent     (CpgObject *object,
                                              CpgObject *parent);

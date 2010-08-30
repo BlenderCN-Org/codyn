@@ -1491,7 +1491,7 @@ _cpg_object_unlink (CpgObject  *object,
  * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty.
  *
  **/
-GSList const *
+const GSList *
 cpg_object_get_actors (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
@@ -1552,7 +1552,7 @@ cpg_object_reset (CpgObject *object)
  *
  * Gets the object id
  *
- * Returns: the object id
+ * Returns: (transfer none): the object id
  *
  **/
 const gchar *
@@ -1695,7 +1695,7 @@ cpg_object_equal (CpgObject *first,
  * Returns: (element-type CpgObject) (transfer none): A #GSList of #CpgObject
  *
  **/
-GSList const *
+const GSList *
 cpg_object_get_applied_templates (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
@@ -1709,7 +1709,7 @@ cpg_object_get_applied_templates (CpgObject *object)
  *
  * Get the parent of the object.
  *
- * Returns: A #CpgObject
+ * Returns: (transfer none): A #CpgObject
  *
  **/
 CpgObject *
@@ -1800,7 +1800,7 @@ cpg_object_unapply_template (CpgObject *object,
  * equal (i.e. if a property originated from a template, but was later modified,
  * this function will not return the original template object).
  *
- * Returns: A #CpgObject
+ * Returns: (transfer none): A #CpgObject
  *
  **/
 CpgObject *

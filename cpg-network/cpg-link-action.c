@@ -273,7 +273,7 @@ cpg_link_action_init (CpgLinkAction *self)
  *
  **/
 CpgLinkAction *
-cpg_link_action_new (gchar const   *target,
+cpg_link_action_new (const gchar   *target,
                      CpgExpression *equation)
 {
 	return g_object_new (CPG_TYPE_LINK_ACTION,
@@ -288,10 +288,10 @@ cpg_link_action_new (gchar const   *target,
  *
  * Get the target of the action.
  *
- * Returns: A #CpgProperty
+ * Returns: (transfer none): the action target
  *
  **/
-gchar const *
+const gchar *
 cpg_link_action_get_target (CpgLinkAction *action)
 {
 	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
@@ -309,7 +309,7 @@ cpg_link_action_get_target (CpgLinkAction *action)
  **/
 void
 cpg_link_action_set_target (CpgLinkAction *action,
-                            gchar const   *target)
+                            const gchar   *target)
 {
 	g_return_if_fail (CPG_IS_LINK_ACTION (action));
 
@@ -322,7 +322,7 @@ cpg_link_action_set_target (CpgLinkAction *action,
  *
  * Get the equation of the action.
  *
- * Returns: A #CpgExpression
+ * Returns: (transfer none): A #CpgExpression
  *
  **/
 CpgExpression *
@@ -396,7 +396,7 @@ cpg_link_action_copy (CpgLinkAction *action)
  *
  * Get the target property of the link action.
  *
- * Returns: A #CpgProperty
+ * Returns: (transfer none): A #CpgProperty
  *
  **/
 CpgProperty *

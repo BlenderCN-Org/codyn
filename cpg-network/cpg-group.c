@@ -1210,7 +1210,7 @@ cpg_group_new (gchar const *id,
  * Returns: (element-type CpgObject) (transfer none): A #GSList of #CpgObject
  *
  **/
-GSList const *
+const GSList *
 cpg_group_get_children (CpgGroup *group)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
@@ -1301,7 +1301,7 @@ cpg_group_set_proxy (CpgGroup  *group,
  *
  * Get the proxy object of @group.
  *
- * Returns: A #CpgObject
+ * Returns: (transfer none): A #CpgObject
  *
  **/
 CpgObject *
@@ -1338,12 +1338,12 @@ cpg_group_foreach (CpgGroup *group,
  *
  * Get a child from the group by name.
  *
- * Returns: A #CpgObject
+ * Returns: (transfer none): A #CpgObject
  *
  **/
 CpgObject *
 cpg_group_get_child (CpgGroup    *group,
-                     gchar const *name)
+                     const gchar *name)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
@@ -1361,12 +1361,12 @@ cpg_group_get_child (CpgGroup    *group,
  * another group "g" containing a state "s", you can use
  * cpg_group_find_object (group, "g.s") to get the object.
  *
- * Returns: A #CpgObject
+ * Returns: (transfer none): A #CpgObject
  *
  **/
 CpgObject *
 cpg_group_find_object (CpgGroup    *group,
-                       gchar const *path)
+                       const gchar *path)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 	g_return_val_if_fail (path != NULL, NULL);
@@ -1417,7 +1417,7 @@ cpg_group_find_object (CpgGroup    *group,
  * another group "g" containing a state "s" with a property "x", you can use
  * cpg_group_find_property (group, "g.s.x") to get the property.
  *
- * Returns: A #CpgProperty
+ * Returns: (transfer none): A #CpgProperty
  *
  **/
 CpgProperty *
@@ -1466,7 +1466,7 @@ cpg_group_find_property (CpgGroup    *group,
  **/
 gboolean
 cpg_group_property_is_proxy (CpgGroup    *group,
-                             gchar const *name)
+                             const gchar *name)
 {
 	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);

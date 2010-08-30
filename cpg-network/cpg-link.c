@@ -1022,7 +1022,7 @@ cpg_link_remove_action (CpgLink       *link,
  *
  * Returns the from #CpgObject of the link
  *
- * Return value: the from #CpgObject
+ * Returns: (transfer none): the from #CpgObject
  *
  **/
 CpgObject *
@@ -1039,7 +1039,7 @@ cpg_link_get_from (CpgLink *link)
  *
  * Returns the to #CpgObject of the link
  *
- * Return value: the to #CpgObject
+ * Returns: (transfer none): the to #CpgObject
  *
  **/
 CpgObject *
@@ -1060,7 +1060,7 @@ cpg_link_get_to (CpgLink *link)
  *          owned by the link and should not be freed
  *
  **/
-GSList const *
+const GSList *
 cpg_link_get_actions (CpgLink *link)
 {
 	g_return_val_if_fail (CPG_IS_LINK (link), NULL);
@@ -1075,7 +1075,7 @@ cpg_link_get_actions (CpgLink *link)
  *
  * Get a #CpgLinkAction targetting the property @target.
  *
- * Returns: A #CpgLinkAction
+ * Returns: (transfer none): A #CpgLinkAction
  *
  **/
 CpgLinkAction *
@@ -1140,7 +1140,7 @@ cpg_link_attach (CpgLink   *link,
  * equal (i.e. if an action originated from a template, but was later modified,
  * this function will not return the original template object).
  *
- * Returns: A #CpgLink or %NULL if the template could not be found
+ * Returns: (transfer none): A #CpgLink or %NULL if the template could not be found
  *
  **/
 CpgLink *

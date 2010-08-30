@@ -919,7 +919,7 @@ cpg_network_set_integrator (CpgNetwork    *network,
  *
  * Get the integrator currently associated with the network.
  *
- * Returns: A #CpgIntegrator
+ * Returns: (transfer none): A #CpgIntegrator
  *
  **/
 CpgIntegrator *
@@ -936,7 +936,7 @@ cpg_network_get_integrator (CpgNetwork *network)
  * 
  * Get the group containing the templates.
  *
- * Returns: A #CpgGroup
+ * Returns: (transfer none): A #CpgGroup
  *
  **/
 CpgGroup *
@@ -953,7 +953,7 @@ cpg_network_get_template_group (CpgNetwork *network)
  * 
  * Get the group containing the user defined functions.
  *
- * Returns: A #CpgGroup
+ * Returns: (transfer none): A #CpgGroup
  *
  **/
 CpgGroup *

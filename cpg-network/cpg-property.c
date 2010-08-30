@@ -492,7 +492,7 @@ cpg_property_new (gchar const      *name,
  *
  * Get the object associated with the property
  *
- * Returns: (type CpgObject): the object associated with the property
+ * Returns: (type CpgObject) (transfer none): the object associated with the property
  **/
 CpgObject *
 cpg_property_get_object (CpgProperty *property)
@@ -565,8 +565,8 @@ cpg_property_update_last_value (CpgProperty *property)
  *
  * Get the property value expression
  *
- * Returns: a #CpgExpression. The expression is owned by the property and
- *          should not be freed
+ * Returns (transfer none): a #CpgExpression. The expression is owned by the
+ *                          property and should not be freed
  *
  **/
 CpgExpression *
@@ -601,7 +601,7 @@ cpg_property_set_expression (CpgProperty   *property,
  *
  * Get the property name
  *
- * Returns: the property name
+ * Returns: (transfer none): the property name
  *
  **/
 gchar const *

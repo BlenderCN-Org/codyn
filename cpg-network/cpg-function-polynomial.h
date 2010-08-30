@@ -55,7 +55,7 @@ gboolean      cpg_function_polynomial_remove       (CpgFunctionPolynomial      *
 
 void          cpg_function_polynomial_clear_pieces (CpgFunctionPolynomial      *function);
 
-GSList const *cpg_function_polynomial_get_pieces   (CpgFunctionPolynomial      *function);
+const GSList *cpg_function_polynomial_get_pieces   (CpgFunctionPolynomial      *function);
 
 G_END_DECLS
 

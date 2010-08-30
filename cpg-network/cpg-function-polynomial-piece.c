@@ -435,7 +435,7 @@ cpg_function_polynomial_piece_set_end (CpgFunctionPolynomialPiece *piece,
 * Returns: (array type=double length=num): the polynomial coefficients
  *
  **/
-gdouble	const *
+const gdouble *
 cpg_function_polynomial_piece_get_coefficients (CpgFunctionPolynomialPiece *piece,
                                                 guint                      *num)
 {
@@ -479,7 +479,7 @@ cpg_function_polynomial_piece_set_coefficients (CpgFunctionPolynomialPiece *piec
  * Returns: (array type=double length=num): the polynomial coefficients
  *
  **/
-gdouble	const *
+const gdouble *
 cpg_function_polynomial_piece_get_normalization (CpgFunctionPolynomialPiece *piece,
                                                  guint                      *num)
 {

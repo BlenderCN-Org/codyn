@@ -289,7 +289,7 @@ cpg_function_argument_get_name (CpgFunctionArgument *argument)
  **/
 gboolean
 cpg_function_argument_set_name (CpgFunctionArgument *argument,
-                                gchar const         *name)
+                                const gchar         *name)
 {
 	g_return_val_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);

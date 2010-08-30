@@ -159,7 +159,6 @@ cpg_instruction_custom_operator_new (CpgOperator  *operator,
  * Returns: (transfer none): A #CpgOperator
  *
  **/
-
 CpgOperator *
 cpg_instruction_custom_operator_get_operator (CpgInstructionCustomOperator *op)
 {
@@ -177,7 +176,6 @@ cpg_instruction_custom_operator_get_operator (CpgInstructionCustomOperator *op)
  * Returns: (transfer none): A #CpgOperatorData
  *
  **/
-
 CpgOperatorData *
 cpg_instruction_custom_operator_get_data (CpgInstructionCustomOperator *op)
 {

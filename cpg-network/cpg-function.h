@@ -91,7 +91,7 @@ gboolean             cpg_function_remove_argument             (CpgFunction      
 gboolean             cpg_function_clear_arguments             (CpgFunction          *function,
                                                                GError              **error);
 
-GList const         *cpg_function_get_arguments               (CpgFunction          *function);
+const GList         *cpg_function_get_arguments               (CpgFunction          *function);
 guint                cpg_function_get_n_optional              (CpgFunction          *function);
 guint                cpg_function_get_n_arguments             (CpgFunction          *function);
 void                 cpg_function_execute                     (CpgFunction          *function,

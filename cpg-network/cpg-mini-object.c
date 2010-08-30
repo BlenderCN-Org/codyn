@@ -252,6 +252,16 @@ cpg_value_take_mini_object (GValue        *value,
 	}
 }
 
+/**
+ * cpg_value_get_mini_object:
+ * @value: A #GValue
+ *
+ * Get the mini object from the value. The returned object is owned by the
+ * value and should not be freed.
+ *
+ * Returns: (transfer none): A #CpgMiniObject
+ *
+ **/
 CpgMiniObject *
 cpg_value_get_mini_object (GValue const *value)
 {

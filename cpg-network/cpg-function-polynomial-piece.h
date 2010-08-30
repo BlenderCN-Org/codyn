@@ -48,14 +48,14 @@ void           cpg_function_polynomial_piece_set_begin        (CpgFunctionPolyno
 void           cpg_function_polynomial_piece_set_end          (CpgFunctionPolynomialPiece *piece,
                                                                gdouble                     end);
 
-gdouble const *cpg_function_polynomial_piece_get_coefficients (CpgFunctionPolynomialPiece *piece,
+const gdouble *cpg_function_polynomial_piece_get_coefficients (CpgFunctionPolynomialPiece *piece,
                                                                guint                      *num);
 
 void           cpg_function_polynomial_piece_set_coefficients (CpgFunctionPolynomialPiece *piece,
                                                                gdouble                    *coefficients,
                                                                guint                       num);
 
-gdouble const *cpg_function_polynomial_piece_get_normalization (CpgFunctionPolynomialPiece *piece,
+const gdouble *cpg_function_polynomial_piece_get_normalization (CpgFunctionPolynomialPiece *piece,
                                                                 guint                      *num);
 
 G_END_DECLS

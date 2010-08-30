@@ -301,7 +301,7 @@ cpg_function_polynomial_init (CpgFunctionPolynomial *self)
  *
  **/
 CpgFunctionPolynomial *
-cpg_function_polynomial_new (gchar const *name)
+cpg_function_polynomial_new (const gchar *name)
 {
 	return g_object_new (CPG_TYPE_FUNCTION_POLYNOMIAL, "id", name, NULL);
 }
@@ -410,7 +410,7 @@ cpg_function_polynomial_clear_pieces (CpgFunctionPolynomial *function)
  *          A #GSList of #CpgFunctionPolynomialPiece
  *
  **/
-GSList const *
+const GSList *
 cpg_function_polynomial_get_pieces (CpgFunctionPolynomial *function)
 {
 	g_return_val_if_fail (CPG_IS_FUNCTION_POLYNOMIAL (function), NULL);

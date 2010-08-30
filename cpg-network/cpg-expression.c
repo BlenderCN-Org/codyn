@@ -273,7 +273,7 @@ cpg_expression_init (CpgExpression *self)
  * Returns: the string representation of the expression
  *
  **/
-gchar const *
+const gchar *
 cpg_expression_get_as_string (CpgExpression *expression)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
@@ -291,7 +291,7 @@ cpg_expression_get_as_string (CpgExpression *expression)
  **/
 void
 cpg_expression_set_from_string (CpgExpression *expression,
-                                gchar const   *value)
+                                const gchar   *value)
 {
 	g_return_if_fail (CPG_IS_EXPRESSION (expression));
 
@@ -308,7 +308,7 @@ cpg_expression_set_from_string (CpgExpression *expression,
  *
  **/
 CpgExpression *
-cpg_expression_new (gchar const *expression)
+cpg_expression_new (const gchar *expression)
 {
 	return g_object_new (CPG_TYPE_EXPRESSION,
 	                     "expression", expression,
@@ -1619,7 +1619,7 @@ cpg_expression_reset_cache (CpgExpression *expression)
  * Returns: (element-type CpgProperty) (transfer container): a list of #CpgProperty
  *
  **/
-GSList const *
+const GSList *
 cpg_expression_get_dependencies (CpgExpression *expression)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
@@ -1657,7 +1657,7 @@ cpg_expression_reset (CpgExpression *expression)
  * Returns: (element-type CpgInstruction) (transfer none): list of #CpgInstruction
  *
  **/
-GSList const *
+const GSList *
 cpg_expression_get_instructions (CpgExpression *expression)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);

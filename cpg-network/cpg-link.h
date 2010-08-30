@@ -51,7 +51,7 @@ gboolean       cpg_link_add_action            (CpgLink       *link,
 gboolean       cpg_link_remove_action         (CpgLink       *link,
                                                CpgLinkAction *action);
 
-GSList const  *cpg_link_get_actions           (CpgLink       *link);
+const GSList  *cpg_link_get_actions           (CpgLink       *link);
 CpgLinkAction *cpg_link_get_action            (CpgLink       *link,
                                                const gchar   *target);
 void           cpg_link_attach                (CpgLink       *link,

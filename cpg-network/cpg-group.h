@@ -73,7 +73,7 @@ GType         cpg_group_get_type      (void) G_GNUC_CONST;
 CpgGroup     *cpg_group_new           (const gchar *id,
                                        CpgObject   *proxy);
 
-GSList const *cpg_group_get_children  (CpgGroup    *group);
+const GSList *cpg_group_get_children  (CpgGroup    *group);
 
 gboolean      cpg_group_add           (CpgGroup    *group,
                                        CpgObject   *object,

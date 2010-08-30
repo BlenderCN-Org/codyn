@@ -384,7 +384,7 @@ cpg_integrator_state_update (CpgIntegratorState *state)
  * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty
  *
  **/
-GSList const *
+const GSList *
 cpg_integrator_state_integrated_properties (CpgIntegratorState *state)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
@@ -400,7 +400,7 @@ cpg_integrator_state_integrated_properties (CpgIntegratorState *state)
  * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty
  *
  **/
-GSList const *
+const GSList *
 cpg_integrator_state_direct_properties (CpgIntegratorState *state)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
@@ -416,7 +416,7 @@ cpg_integrator_state_direct_properties (CpgIntegratorState *state)
  * Returns: (element-type CpgLinkAction) (transfer none): A #GSList of #CpgLinkAction
  *
  **/
-GSList const *
+const GSList *
 cpg_integrator_state_integrated_link_actions (CpgIntegratorState *state)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
@@ -432,7 +432,7 @@ cpg_integrator_state_integrated_link_actions (CpgIntegratorState *state)
  * Returns: (element-type CpgLinkAction) (transfer none): A #GSList of #CpgLinkAction
  *
  **/
-GSList const *
+const GSList *
 cpg_integrator_state_direct_link_actions (CpgIntegratorState *state)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
@@ -448,7 +448,7 @@ cpg_integrator_state_direct_link_actions (CpgIntegratorState *state)
  * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty
  *
  **/
-GSList const *
+const GSList *
 cpg_integrator_state_all_properties (CpgIntegratorState *state)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
@@ -461,7 +461,7 @@ cpg_integrator_state_all_properties (CpgIntegratorState *state)
  *
  * Get the object of the integrator state.
  *
- * Returns: A #CpgObject
+ * Returns: (transfer none): A #CpgObject
  *
  **/
 CpgObject *

@@ -501,7 +501,7 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
  *
  * Returns the property which is being monitored.
  *
- * Returns: a pointer to the #CpgProperty
+ * Returns: (transfer none): a pointer to the #CpgProperty
  *
  **/
 CpgProperty *
