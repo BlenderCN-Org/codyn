@@ -10,8 +10,8 @@ G_BEGIN_DECLS
 #define CPG_IS_MODIFIABLE(obj)			(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_MODIFIABLE))
 #define CPG_MODIFIABLE_GET_INTERFACE(obj)	(G_TYPE_INSTANCE_GET_INTERFACE ((obj), CPG_TYPE_MODIFIABLE, CpgModifiableInterface))
 
-typedef struct _CpgModifiable		CpgModifiable;
-typedef struct _CpgModifiableInterface	CpgModifiableInterface;
+typedef struct _CpgModifiable			CpgModifiable;
+typedef struct _CpgModifiableInterface		CpgModifiableInterface;
 
 struct _CpgModifiableInterface
 {
