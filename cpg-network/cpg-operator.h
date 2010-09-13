@@ -18,6 +18,7 @@ typedef struct _CpgOperatorData      CpgOperatorData;
 
 struct _CpgOperatorData
 {
+	/*< private >*/
 	GSList *expressions;
 };
 
