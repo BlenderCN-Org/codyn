@@ -158,7 +158,7 @@ INSTRUCTIONSOURCES = \
 	instructions/cpg-instruction-variadic-function.c
 
 Cpg-2.0.gir: libcpg-network-2.0.la
-INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --warn-error --verbose
+INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --verbose
 Cpg_2_0_gir_NAMESPACE = Cpg
 Cpg_2_0_gir_VERSION = 2.0
 Cpg_2_0_gir_LIBS = libcpg-network-2.0.la instructions/libinstructions.la
