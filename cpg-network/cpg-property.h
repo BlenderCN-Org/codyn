@@ -58,6 +58,11 @@ struct _CpgPropertyClass
 	/* signals */
 	gboolean (*invalidate_name) (CpgProperty *property,
 	                             const gchar *name);
+
+	void (*expression_changed) (CpgProperty      *property,
+	                            CpgExpression    *expression);
+	void (*flags_changed)      (CpgProperty      *property,
+	                            CpgPropertyFlags  flags);
 };
 
 /* forward declaration */
