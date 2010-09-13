@@ -476,7 +476,7 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	gchar **parts;
 	gchar **ptr;
 
-	parts = g_strsplit_set ((gchar const *)ref, ", ", 0);
+	parts = g_strsplit_set ((gchar const *)ref, ", ", -1);
 	gboolean ret = TRUE;
 
 	/* Multiple templates are allowed, iterate over all the template ids
@@ -484,6 +484,11 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	for (ptr = parts; *ptr; ++ptr)
 	{
 		CpgObject *template = NULL;
+
+		if (!**ptr)
+		{
+			continue;
+		}
 
 		/* Find the reference relative to the current parent if we
 		   are parsing templates, since they can reference other
