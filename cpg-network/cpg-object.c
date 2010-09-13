@@ -372,17 +372,30 @@ on_template_property_removed (CpgObject   *templ,
                               CpgProperty *prop,
                               CpgObject   *object)
 {
-	CpgProperty *orig =
-		cpg_object_get_property (object,
-		                         cpg_property_get_name (prop));
+	gchar const *name = cpg_property_get_name (prop);
+	CpgProperty *orig = cpg_object_get_property (object, name);
 
-	if (orig && !cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)) &&
-	    cpg_object_get_property_template (object, orig, TRUE) == NULL)
+	if (orig && !cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)))
 	{
-		/* Remove the original property as well */
-		cpg_object_remove_property (object,
-		                            cpg_property_get_name (orig),
-		                            NULL);
+		CpgObject *temp = cpg_object_get_property_template (object, orig, FALSE);
+
+		if (temp == NULL)
+		{
+			/* Remove the original property as well */
+			cpg_object_remove_property (object,
+			                            cpg_property_get_name (orig),
+			                            NULL);
+		}
+		else
+		{
+			/* Then, reupdate the property value from the other
+			   template */
+			CpgProperty *tempProp = cpg_object_get_property (temp,
+			                                                 name);
+
+			cpg_object_add_property (object,
+			                         cpg_property_copy (tempProp));
+		}
 	}
 
 	disconnect_template_property (object, templ, prop);
