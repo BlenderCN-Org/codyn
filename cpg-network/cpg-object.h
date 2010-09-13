@@ -150,6 +150,11 @@ struct _CpgObjectClass
 	                                   CpgProperty *property);
 	void          (*property_changed) (CpgObject   *object,
 	                                   CpgProperty *property);
+
+	void          (*template_applied) (CpgObject   *object,
+	                                   CpgObject   *templ);
+	void          (*template_unapplied) (CpgObject *object,
+	                                     CpgObject *templ);
 };
 
 GQuark cpg_object_error_quark (void);

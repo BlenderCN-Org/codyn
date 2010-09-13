@@ -77,6 +77,8 @@ enum
 	PROPERTY_CHANGED,
 	COPIED,
 	VERIFY_REMOVE_PROPERTY,
+	TEMPLATE_APPLIED,
+	TEMPLATE_UNAPPLIED,
 	NUM_SIGNALS
 };
 
@@ -581,7 +583,16 @@ cpg_object_unapply_template_impl (CpgObject *object,
 		on_template_property_removed (templ, item->data, object);
 	}
 
+	/* Keep the template around for the signal emission */
+	g_object_ref (templ);
+	cpg_usable_use (CPG_USABLE (templ));
+
 	disconnect_template (object, templ, FALSE);
+
+	g_signal_emit (object, object_signals[TEMPLATE_UNAPPLIED], 0, templ);
+
+	cpg_usable_unuse (CPG_USABLE (templ));
+	g_object_unref (templ);
 }
 
 static void
@@ -610,6 +621,8 @@ cpg_object_apply_template_impl (CpgObject *object,
 	                                          g_object_ref (templ));
 
 	cpg_usable_use (CPG_USABLE (templ));
+
+	g_signal_emit (object, object_signals[TEMPLATE_APPLIED], 0, templ);
 }
 
 static gboolean
@@ -1199,6 +1212,48 @@ cpg_object_class_init (CpgObjectClass *klass)
 		              G_TYPE_NONE,
 		              1,
 		              CPG_TYPE_PROPERTY);
+
+	/**
+	 * CpgObject::template-applied:
+	 * @object: a #CpgObject
+	 * @templ: the applied #CpgObject
+	 *
+	 * Emitted when a template is applied to the object
+	 *
+	 **/
+	object_signals[TEMPLATE_APPLIED] =
+		g_signal_new ("template-applied",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass,
+		                               template_applied),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_OBJECT);
+
+	/**
+	 * CpgObject::template-unapplied:
+	 * @object: a #CpgObject
+	 * @templ: the unapplied #CpgObject
+	 *
+	 * Emitted when a template is unapplied from the object
+	 *
+	 **/
+	object_signals[TEMPLATE_UNAPPLIED] =
+		g_signal_new ("template-unapplied",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgObjectClass,
+		                               template_unapplied),
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_OBJECT);
 
 	g_type_class_add_private (object_class, sizeof (CpgObjectPrivate));
 }
