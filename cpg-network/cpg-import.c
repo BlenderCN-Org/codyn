@@ -501,7 +501,7 @@ cpg_import_load (CpgImport   *self,
  *
  * Get the file that was imported.
  *
- * Returns: A #GFile
+ * Returns: (transfer full) (allow-none): A #GFile
  *
  **/
 GFile *

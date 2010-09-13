@@ -59,6 +59,7 @@ typedef void (*CpgForeachExpressionFunc) (CpgExpression *expression, gpointer us
  * CpgObjectClass:
  * @compile: compile virtual function
  * @reset: reset virtual function
+ * @foreach_expression: call callback for each expression
  * @reset_cache: reset cache virtual function
  * @apply_template: apply template virtual function
  * @unapply_template: unapply template virtual function

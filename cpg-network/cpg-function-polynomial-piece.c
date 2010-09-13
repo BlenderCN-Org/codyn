@@ -344,7 +344,7 @@ cpg_function_polynomial_piece_new (gdouble  begin,
  *
  * Create a copy of a #CpgFunctionPolynomialPiece.
  *
- * Returns: A #CpgFunctionPolynomialPiece
+ * Returns: (transfer full): A #CpgFunctionPolynomialPiece
  *
  **/
 CpgFunctionPolynomialPiece *

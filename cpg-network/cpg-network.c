@@ -970,7 +970,7 @@ cpg_network_get_function_group (CpgNetwork *network)
  *
  * Get the file with which the network was loaded.
  *
- * Returns: The file or %NULL if the network was not loaded from file.
+ * Returns: (transfer full) (allow-none): The file or %NULL if the network was not loaded from file.
  *
  **/
 GFile *

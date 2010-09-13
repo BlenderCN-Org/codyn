@@ -1315,7 +1315,7 @@ cpg_group_get_proxy (CpgGroup *group)
 /**
  * cpg_group_foreach:
  * @group: A #CpgGroup
- * @func: A #GFunc
+ * @func: (scope call): A #GFunc
  * @data: User data
  *
  * Call @func for each child object in the group.

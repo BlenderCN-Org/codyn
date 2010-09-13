@@ -246,7 +246,7 @@ cpg_function_argument_new (gchar const *name,
  * has a floating reference and does not need to be freed if you add it to
  * a function using #cpg_function_add_argument.
  *
- * Returns: A #CpgFunctionArgument
+ * Returns: (transfer full): A #CpgFunctionArgument
  *
  **/
 CpgFunctionArgument *
@@ -383,6 +383,15 @@ _cpg_function_argument_set_property (CpgFunctionArgument *argument,
 	argument->priv->property = property;
 }
 
+/**
+ * _cpg_function_argument_get_property:
+ * @argument: A #CpgFunctionArgument
+ *
+ * Get the function argument property.
+ *
+ * Returns: (transfer none): A #CpgProperty
+ *
+ **/
 CpgProperty *
 _cpg_function_argument_get_property (CpgFunctionArgument *argument)
 {

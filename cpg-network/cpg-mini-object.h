@@ -17,6 +17,13 @@ G_BEGIN_DECLS
 typedef struct _CpgMiniObject		CpgMiniObject;
 typedef struct _CpgMiniObjectClass	CpgMiniObjectClass;
 
+/**
+ * CpgMiniObjectCopyFunction:
+ * @obj: a #CpgMiniObject
+ *
+ * Returns: (transfer full):
+ *
+ **/
 typedef CpgMiniObject *(*CpgMiniObjectCopyFunction)     (CpgMiniObject const *obj);
 typedef void           (*CpgMiniObjectFinalizeFunction) (CpgMiniObject *obj);
 

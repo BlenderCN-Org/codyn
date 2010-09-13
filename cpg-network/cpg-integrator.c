@@ -674,7 +674,7 @@ cpg_integrator_get_name (CpgIntegrator *integrator)
  *
  * Get the integrator state.
  *
- * Returns: A #CpgIntegratorState
+ * Returns: (transfer none): A #CpgIntegratorState
  *
  **/
 CpgIntegratorState *

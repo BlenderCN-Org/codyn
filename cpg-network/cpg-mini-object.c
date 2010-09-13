@@ -104,6 +104,15 @@ cpg_mini_object_new (GType type)
 	return CPG_MINI_OBJECT_CAST (g_type_create_instance (type));
 }
 
+/**
+ * cpg_mini_object_copy:
+ * @obj: A #CpgMiniObject
+ *
+ * Copy a mini object.
+ *
+ * Returns: (transfer full): A #CpgMiniObject
+ *
+ **/
 CpgMiniObject *
 cpg_mini_object_copy (CpgMiniObject const *obj)
 {
@@ -270,6 +279,15 @@ cpg_value_get_mini_object (GValue const *value)
 	return value->data[0].v_pointer;
 }
 
+/**
+ * cpg_value_dup_mini_object:
+ * @value: A #GValue
+ *
+ * Duplicate a mini object.
+ *
+ * Returns: (transfer full): A #CpgMiniObject
+ *
+ **/
 CpgMiniObject *
 cpg_value_dup_mini_object (GValue const *value)
 {
@@ -341,6 +359,17 @@ cpg_param_spec_mini_object_get_type (void)
 	return type;
 }
 
+/**
+ * cpg_param_spec_mini_object:
+ * @name: the name
+ * @nick: the nick
+ * @blurb: the blurb
+ * @object_type: the object type
+ * @flags: the flags
+ *
+ * Returns: (transfer full): a new #GParamSpec
+ *
+ **/
 GParamSpec *
 cpg_param_spec_mini_object (const char  *name,
                             const char  *nick,

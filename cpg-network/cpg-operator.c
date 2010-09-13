@@ -94,7 +94,7 @@ cpg_operator_default_init (CpgOperatorInterface *iface)
  * from #CpgOperatorData, make sure to call #cpg_operator_data_init from
  * the overloaded #cpg_operator_create_data.
  *
- * Returns: @data for convenience
+ * Returns: (transfer none): @data for convenience
  *
  **/
 CpgOperatorData *
@@ -133,7 +133,7 @@ cpg_operator_data_destroy (CpgOperatorData *data)
  * Each instance of the operator has its own operator data associated that
  * will be provided to #cpg_operator_evaluate.
  *
- * Returns: A #CpgOperatorData
+ * Returns: (transfer full): A #CpgOperatorData
  *
  **/
 CpgOperatorData *

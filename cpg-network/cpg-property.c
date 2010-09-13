@@ -565,7 +565,7 @@ cpg_property_update_last_value (CpgProperty *property)
  *
  * Get the property value expression
  *
- * Returns (transfer none): a #CpgExpression. The expression is owned by the
+ * Returns: (transfer none): a #CpgExpression. The expression is owned by the
  *                          property and should not be freed
  *
  **/
@@ -938,7 +938,7 @@ cpg_property_get_full_name (CpgProperty *property)
  *
  * Make a copy of @property.
  *
- * Returns: A #CpgProperty
+ * Returns: (transfer full): A #CpgProperty
  *
  **/
 CpgProperty *

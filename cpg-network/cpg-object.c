@@ -1294,8 +1294,8 @@ cpg_object_add_property (CpgObject   *object,
  *
  * Get a #CpgProperty from the object by name
  *
- * Returns: the #CpgProperty with name @name, or %NULL if no such property could
- *          be found
+ * Returns: (transfer none) (allow-none): the #CpgProperty with name @name, or
+ *          %NULL if no such property could be found
  *
  **/
 CpgProperty *
@@ -1846,7 +1846,7 @@ cpg_object_get_property_template (CpgObject   *object,
  * See the documentation of specific subclasses of #CpgObject to see the
  * copy semantics for those classes.
  *
- * Returns: A #CpgObject
+ * Returns: (transfer full): A #CpgObject
  *
  **/
 CpgObject *
@@ -1964,7 +1964,7 @@ cpg_object_get_full_id (CpgObject *object)
 /**
  * cpg_object_foreach_expression:
  * @object: A #CpgObject
- * @func: A #CpgForeachExpressionFunc
+ * @func: (scope call): A #CpgForeachExpressionFunc
  * @userdata: The userdata that will be supplied to @func
  *
  * Iterate over each expression defined in the object. For normal objects, this

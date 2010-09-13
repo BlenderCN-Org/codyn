@@ -161,7 +161,7 @@ cpg_compile_error_set (CpgCompileError *error,
  *
  * Get the associated #GError
  *
- * Returns: the associated #GError
+ * Returns: (transfer none): the associated #GError
  *
  **/
 GError *
@@ -178,7 +178,7 @@ cpg_compile_error_get_error (CpgCompileError *error)
  *
  * Get the associated #CpgObject
  *
- * Returns: the associated #CpgObject
+ * Returns: (transfer none): the associated #CpgObject
  *
  **/
 CpgObject *
@@ -195,7 +195,7 @@ cpg_compile_error_get_object (CpgCompileError *error)
  *
  * Get the associated #CpgProperty
  *
- * Returns: the associated #CpgProperty
+ * Returns: (transfer none): the associated #CpgProperty
  *
  **/
 CpgProperty *
@@ -212,7 +212,7 @@ cpg_compile_error_get_property (CpgCompileError *error)
  *
  * Get the associated #CpgLinkAction
  *
- * Returns: the associated #CpgLinkAction
+ * Returns: (transfer none): the associated #CpgLinkAction
  *
  **/
 CpgLinkAction *

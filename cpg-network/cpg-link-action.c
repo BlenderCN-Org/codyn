@@ -378,7 +378,7 @@ cpg_link_action_depends (CpgLinkAction *action,
  *
  * Create a copy of a #CpgLinkAction.
  *
- * Returns: A #CpgLinkAction
+ * Returns: (transfer full): A #CpgLinkAction
  *
  **/
 CpgLinkAction *

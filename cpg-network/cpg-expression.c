@@ -1755,7 +1755,7 @@ cpg_expression_set_once (CpgExpression *expression,
  *
  * Create a copy of a #CpgExpression.
  *
- * Returns: A #CpgExpression
+ * Returns: (transfer full): A #CpgExpression
  *
  **/
 CpgExpression *
