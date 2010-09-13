@@ -512,8 +512,8 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 			ret = parser_failed (deserializer,
 			                     node,
 			                     CPG_NETWORK_LOAD_ERROR_OBJECT,
-			                     "Could not find template %s for object %s",
-			                     ref,
+			                     "Could not find template `%s' for object `%s'",
+			                     *ptr,
 			                     id);
 		}
 		else
