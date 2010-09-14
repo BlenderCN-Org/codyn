@@ -946,13 +946,29 @@ group_to_xml (CpgNetworkSerializer *serializer,
 	}
 
 	GSList const *children = cpg_group_get_children (group);
+	GSList *links = NULL;
 
 	while (children)
 	{
-		cpg_object_to_xml (serializer, group_node, children->data);
-		children = g_slist_next (children);
+		if (CPG_IS_LINK (children->data))
+		{
+			links = g_slist_prepend (links, children->data);
+		}
+		else
+		{
+			cpg_object_to_xml (serializer, group_node, children->data);
+			children = g_slist_next (children);
+		}
 	}
 
+	GSList *item;
+
+	for (item = links; item; item = g_slist_next (item))
+	{
+		cpg_object_to_xml (serializer, group_node, item->data);
+	}
+
+	g_slist_free (links);
 }
 
 static void
