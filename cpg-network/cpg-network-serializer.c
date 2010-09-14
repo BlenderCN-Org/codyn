@@ -992,8 +992,9 @@ group_to_xml (CpgNetworkSerializer *serializer,
 		else
 		{
 			cpg_object_to_xml (serializer, group_node, children->data);
-			children = g_slist_next (children);
 		}
+
+		children = g_slist_next (children);
 	}
 
 	GSList *item;
