@@ -167,6 +167,23 @@ cpg_network_deserializer_init (CpgNetworkDeserializer *self)
 	self->priv = CPG_NETWORK_DESERIALIZER_GET_PRIVATE (self);
 }
 
+static void
+save_comment (xmlNodePtr  node,
+              GObject    *object)
+{
+	xmlNodePtr prev = node->prev;
+
+	if (prev == NULL || prev->type != XML_COMMENT_NODE)
+	{
+		return;
+	}
+
+	g_object_set_data_full (object,
+	                        CPG_NETWORK_XML_COMMENT_DATA_KEY,
+	                        g_strdup ((gchar const *)prev->content),
+	                        (GDestroyNotify)g_free);
+}
+
 static gboolean
 xml_xpath (CpgNetworkDeserializer *deserializer,
            xmlNodePtr              root,
@@ -390,6 +407,8 @@ parse_properties (CpgNetworkDeserializer *deserializer,
 		                             (const gchar *)expression,
 		                             flags);
 
+		save_comment (node, G_OBJECT (property));
+
 		cpg_object_add_property (deserializer->priv->object,
 		                         property);
 
@@ -582,7 +601,6 @@ parse_object (CpgNetworkDeserializer *deserializer,
 	{
 		GType template_type = G_TYPE_FROM_INSTANCE (item->data);
 
-
 		if (!g_type_is_a (gtype, template_type))
 		{
 			parser_failed (deserializer,
@@ -609,6 +627,8 @@ parse_object (CpgNetworkDeserializer *deserializer,
 		/* Just construct a new object with the right type */
 		child = g_object_new (gtype, "id", (gchar const *)id, NULL);
 		*new_object = TRUE;
+
+		save_comment (node, G_OBJECT (child));
 	}
 	else if (!g_type_is_a (gtype, G_TYPE_FROM_INSTANCE (child)))
 	{
@@ -697,21 +717,21 @@ parse_globals (CpgNetworkDeserializer *deserializer,
 static gboolean
 get_function_expression (CpgNetworkDeserializer  *deserializer,
                          GList                   *nodes,
-                         gchar                  **ret)
+                         xmlNodePtr              *ret)
 {
 	if (nodes == NULL)
 	{
 		return FALSE;
 	}
 
-	xmlNode *node = (xmlNode *)nodes->data;
+	xmlNodePtr node = (xmlNodePtr)nodes->data;
 
 	if (!(node->children && node->children->type == XML_TEXT_NODE))
 	{
 		return FALSE;
 	}
 
-	*ret = g_strdup ((gchar const *)node->children->content);
+	*ret = node;
 	return TRUE;
 }
 
@@ -751,10 +771,14 @@ parse_function_arguments (CpgNetworkDeserializer *deserializer,
 			xmlFree (def);
 		}
 
-		cpg_function_add_argument (function,
-		                           cpg_function_argument_new (name,
-		                                                      optional,
-		                                                      default_value));
+		CpgFunctionArgument *argument =
+			cpg_function_argument_new (name,
+			                           optional,
+			                           default_value);
+
+		save_comment (node, G_OBJECT (argument));
+
+		cpg_function_add_argument (function, argument);
 	}
 
 	return TRUE;
@@ -789,13 +813,14 @@ parse_function (CpgNetworkDeserializer *deserializer,
 	}
 
 	gchar *expression = NULL;
+	xmlNodePtr expressionNode;
 
 	if (!xml_xpath (deserializer,
 	                node,
 	                "expression",
 	                XML_ELEMENT_NODE,
 	                (XPathResultFunc)get_function_expression,
-	                &expression))
+	                &expressionNode))
 	{
 		parser_failed (deserializer,
 		               node,
@@ -807,9 +832,15 @@ parse_function (CpgNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
+	expression = g_strdup ((gchar const *)expressionNode->children->content);
+
 	CpgFunction *function = cpg_function_new ((gchar const *)name, expression);
 	g_free (expression);
 	xmlFree (name);
+
+	save_comment (expressionNode, G_OBJECT (cpg_function_get_expression (function)));
+
+	save_comment (node, G_OBJECT (function));
 
 	if (!xml_xpath (deserializer,
 	                node,
@@ -916,6 +947,8 @@ parse_polynomial_pieces (CpgNetworkDeserializer *deserializer,
 				                                   coefficients,
 				                                   num_coefficients);
 
+		save_comment (node, G_OBJECT (piece));
+
 		cpg_function_polynomial_add (function, piece);
 
 		g_free (coefficients);
@@ -954,6 +987,8 @@ parse_polynomial (CpgNetworkDeserializer  *deserializer,
 
 	CpgFunctionPolynomial *function = cpg_function_polynomial_new ((gchar const *)name);
 	xmlFree (name);
+
+	save_comment (node, G_OBJECT (function));
 
 	if (!xml_xpath (deserializer,
 	                node,
@@ -1009,9 +1044,12 @@ parse_actions (CpgNetworkDeserializer *deserializer,
 			expr = (gchar const *)node->children->content;
 		}
 
-		cpg_link_add_action (link,
-		                     cpg_link_action_new ((gchar const *)target,
-		                                          cpg_expression_new (expr)));
+		CpgLinkAction *action = cpg_link_action_new ((gchar const *)target,
+		                                              cpg_expression_new (expr));
+
+		save_comment (node, G_OBJECT (action));
+
+		cpg_link_add_action (link, action);
 
 		xmlFree (target);
 	}
@@ -1357,6 +1395,8 @@ parse_import (CpgNetworkDeserializer *deserializer,
 			                              NULL);
 			g_object_unref (alias);
 
+			save_comment (node, G_OBJECT (alias));
+
 			return ret;
 		}
 	}
@@ -1375,6 +1415,7 @@ parse_import (CpgNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
+	save_comment (node, G_OBJECT (imp));
 	g_object_unref (imp);
 
 	return TRUE;
@@ -1504,6 +1545,8 @@ parse_objects (CpgNetworkDeserializer *deserializer,
 	{
 		return TRUE;
 	}
+
+	save_comment (root_node, G_OBJECT (root));
 
 	return parse_all (deserializer,
 	                  root_node,

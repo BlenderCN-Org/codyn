@@ -298,6 +298,25 @@ export_flags (xmlNodePtr   node,
 }
 
 static void
+restore_comment (CpgNetworkSerializer *serializer,
+                 xmlNodePtr            parent,
+                 GObject              *object)
+{
+	gchar *comment = g_object_get_data (object,
+	                                    CPG_NETWORK_XML_COMMENT_DATA_KEY);
+
+	if (comment == NULL)
+	{
+		return;
+	}
+
+	xmlNodePtr node = xmlNewDocComment (serializer->priv->doc,
+	                                    (xmlChar *)comment);
+
+	xmlAddChild (parent, node);
+}
+
+static void
 properties_to_xml (CpgNetworkSerializer *serializer,
                    xmlNodePtr            parent,
                    CpgObject            *object,
@@ -324,6 +343,8 @@ properties_to_xml (CpgNetworkSerializer *serializer,
 		{
 			continue;
 		}
+
+		restore_comment (serializer, parent, G_OBJECT (property));
 
 		xmlNodePtr node = xmlNewDocNode (serializer->priv->doc,
 		                                 NULL,
@@ -416,6 +437,8 @@ object_to_xml (CpgNetworkSerializer *serializer,
                CpgObject            *object,
                gchar const          *name)
 {
+	restore_comment (serializer, parent, G_OBJECT (object));
+
 	xmlNodePtr ptr = xmlNewDocNode (serializer->priv->doc,
 	                                NULL,
 	                                (xmlChar *)name,
@@ -549,6 +572,8 @@ link_to_xml (CpgNetworkSerializer *serializer,
 			continue;
 		}
 
+		restore_comment (serializer, node, G_OBJECT (action));
+
 		xmlNodePtr ac = xmlNewDocNode (serializer->priv->doc,
 		                               NULL,
 		                               (xmlChar *)"action",
@@ -580,6 +605,8 @@ write_function (CpgNetworkSerializer *serializer,
                 CpgFunction          *func,
                 xmlNodePtr            funcs)
 {
+	restore_comment (serializer, funcs, G_OBJECT (func));
+
 	xmlNodePtr funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"function", NULL);
 	xmlNewProp (funcn,
 	            (xmlChar *)"name",
@@ -592,6 +619,8 @@ write_function (CpgNetworkSerializer *serializer,
 
 	if (expression)
 	{
+		restore_comment (serializer, funcn, G_OBJECT (expression));
+
 		xmlNodePtr exprn = xmlNewDocNode (serializer->priv->doc,
 		                                  NULL,
 		                                  (xmlChar *)"expression",
@@ -616,7 +645,9 @@ write_function (CpgNetworkSerializer *serializer,
 
 	for (argitem = args; argitem; argitem = g_list_next (argitem))
 	{
-		CpgFunctionArgument *argument = (CpgFunctionArgument *)argitem->data;
+		CpgFunctionArgument *argument = argitem->data;
+
+		restore_comment (serializer, funcn, G_OBJECT (argument));
 
 		xmlNodePtr argn = xmlNewDocNode (serializer->priv->doc,
 		                                 NULL,
@@ -648,6 +679,8 @@ write_function_polynomial (CpgNetworkSerializer  *serializer,
                            CpgFunctionPolynomial *func,
                            xmlNodePtr             funcs)
 {
+	restore_comment (serializer, funcs, G_OBJECT (func));
+
 	xmlNodePtr funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"polynomial", NULL);
 	xmlNewProp (funcn,
 	            (xmlChar *)"name",
@@ -816,6 +849,8 @@ import_to_xml (CpgNetworkSerializer *serializer,
 		group_to_xml (serializer, root, CPG_GROUP (import));
 		return;
 	}
+
+	restore_comment (serializer, root, G_OBJECT (import));
 
 	xmlNodePtr node = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"import", NULL);
 
