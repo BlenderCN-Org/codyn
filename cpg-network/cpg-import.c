@@ -294,7 +294,7 @@ cpg_import_new (CpgNetwork   *network,
 	CpgImport *obj = g_object_new (CPG_TYPE_IMPORT,
 	                               "id", id,
 	                               "file", file,
-	                                NULL);
+	                               NULL);
 
 	if (!cpg_import_load (obj, network, parent, error))
 	{
