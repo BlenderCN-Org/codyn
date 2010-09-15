@@ -33,6 +33,7 @@ struct _CpgPropertyPrivate
 
 	gdouble last_value;
 	gboolean modified : 1;
+	gboolean disposing : 1;
 };
 
 static void cpg_usable_iface_init (gpointer iface);
@@ -126,7 +127,10 @@ set_object (CpgProperty *property,
 		                           (gpointer *)&property->priv->object);
 	}
 
-	g_object_notify (G_OBJECT (property), "object");
+	if (!property->priv->disposing)
+	{
+		g_object_notify (G_OBJECT (property), "object");
+	}
 }
 
 static void
@@ -174,8 +178,11 @@ set_expression (CpgProperty *property,
 		                          property);
 	}
 
-	g_object_notify (G_OBJECT (property), "expression");
-	cpg_modifiable_set_modified (CPG_MODIFIABLE (property), TRUE);
+	if (!property->priv->disposing)
+	{
+		g_object_notify (G_OBJECT (property), "expression");
+		cpg_modifiable_set_modified (CPG_MODIFIABLE (property), TRUE);
+	}
 }
 
 static void
@@ -195,12 +202,10 @@ cpg_property_dispose (GObject *object)
 {
 	CpgProperty *property = CPG_PROPERTY (object);
 
-	g_object_freeze_notify (object);
+	property->priv->disposing = TRUE;
 
 	set_expression (property, NULL);
 	set_object (property, NULL);
-
-	g_object_thaw_notify (object);
 
 	G_OBJECT_CLASS (cpg_property_parent_class)->dispose (object);
 }
