@@ -1,7 +1,6 @@
 #include "cpg-state.h"
 #include "cpg-expression.h"
 #include "cpg-link.h"
-#include "cpg-debug.h"
 
 /**
  * SECTION:cpg-state

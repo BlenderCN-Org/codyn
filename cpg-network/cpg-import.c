@@ -1,5 +1,4 @@
 #include "cpg-import.h"
-#include "cpg-debug.h"
 #include "cpg-network-deserializer.h"
 #include "cpg-import-alias.h"
 
@@ -252,7 +251,7 @@ import_failed (GError     **error,
 		*error = NULL;
 	}
 
-	cpg_debug_error ("Import error: %s", message);
+	g_warning ("Import error: %s", message);
 
 	g_set_error (error,
 	             CPG_NETWORK_LOAD_ERROR,

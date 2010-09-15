@@ -9,7 +9,6 @@ INCLUDES =				\
 COMMON_SOURCES = 		\
 	cpg-compile-context.c \
 	cpg-compile-error.c \
-	cpg-debug.c \
 	cpg-enum-types.c \
 	cpg-marshal.c \
 	cpg-expression.c \
@@ -61,7 +60,6 @@ NOINST_H_FILES = \
 INST_H_FILES = \
 	cpg-compile-context.h \
 	cpg-compile-error.h \
-	cpg-debug.h \
 	cpg-expression.h \
 	cpg-function.h \
 	cpg-function-argument.h \

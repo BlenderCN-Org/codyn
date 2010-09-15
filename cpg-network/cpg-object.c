@@ -7,7 +7,6 @@
 #include "cpg-state.h"
 #include "cpg-expression.h"
 
-#include "cpg-debug.h"
 #include "cpg-compile-error.h"
 #include "cpg-utils.h"
 #include "cpg-marshal.h"
@@ -667,11 +666,11 @@ cpg_object_compile_impl (CpgObject         *object,
 		                             context,
 		                             &gerror))
 		{
-			cpg_debug_error ("Error while parsing expression [%s].%s<%s>: %s",
-			                 cpg_object_get_id (object),
-			                 cpg_property_get_name (property),
-			                 cpg_expression_get_as_string (expr),
-			                 gerror->message);
+			g_warning ("Error while parsing expression [%s].%s<%s>: %s",
+			           cpg_object_get_id (object),
+			           cpg_property_get_name (property),
+			           cpg_expression_get_as_string (expr),
+			           gerror->message);
 
 
 			if (error)

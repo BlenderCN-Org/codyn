@@ -3,7 +3,6 @@
 #include "cpg-utils.h"
 #include "cpg-tokenizer.h"
 #include "cpg-math.h"
-#include "cpg-debug.h"
 #include "cpg-compile-error.h"
 #include "cpg-function.h"
 #include "cpg-stack-private.h"
@@ -899,12 +898,8 @@ parse_property (CpgExpression *expression,
 	CpgProperty *property = cpg_compile_context_lookup_property (context->context,
 	                                                             propname);
 
-	cpg_debug_expression ("Parsing property: %s", propname);
-
 	if (!property)
 	{
-		cpg_debug_expression ("Property %s not found", propname);
-
 		return parser_failed (context,
 		                      CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
 		                      "Property `%s' not found",
@@ -1131,23 +1126,14 @@ parse_expression (CpgExpression   *expression,
                   gint             priority,
                   gint             left_assoc)
 {
-	static gint depth = 0;
-
 	// peek next token
 	CpgToken *token;
 	gboolean ret = FALSE;
 	gint num = 0;
 
-	cpg_debug_expression ("Parse begin (%d): %s", ++depth, *context->buffer);
-
 	while ((token = cpg_tokenizer_peek (*context->buffer)))
 	{
 		ret = TRUE;
-
-		cpg_debug_expression ("Parsing next: (%d) %d, %s",
-		                      depth,
-		                      num,
-		                      *context->buffer);
 
 		switch (token->type)
 		{
@@ -1173,9 +1159,6 @@ parse_expression (CpgExpression   *expression,
 				    op->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)
 				{
 					cpg_token_free (token);
-					cpg_debug_expression ("Parse end group (%d): %s",
-					                      depth--,
-					                      *context->buffer);
 
 					return TRUE;
 				}
@@ -1197,9 +1180,6 @@ parse_expression (CpgExpression   *expression,
 				{
 					// Do not handle the operator here yet
 					cpg_token_free (token);
-					cpg_debug_expression ("Parse end op (%d): %s",
-					                      depth--,
-					                      *context->buffer);
 					return TRUE;
 				}
 				else
@@ -1250,7 +1230,6 @@ parse_expression (CpgExpression   *expression,
 		               "Expected expression but got (nothing)");
 	}
 
-	cpg_debug_expression ("Parse end (%d): %s", depth--, *context->buffer);
 	return ret;
 }
 
@@ -1387,7 +1366,6 @@ cpg_expression_compile (CpgExpression      *expression,
 	}
 	else
 	{
-		cpg_debug_expression ("Starting to parse: %s", expression->priv->expression);
 		ret = parse_expression (expression, &ctx, -1, 0);
 	}
 
@@ -1537,11 +1515,8 @@ cpg_expression_evaluate (CpgExpression *expression)
 		return 0.0;
 	}
 
-	cpg_debug_evaluate ("Evaluating expression: %s", expression->priv->expression);
-
 	if (expression->priv->cached)
 	{
-		cpg_debug_evaluate ("Returning from cached: %f", expression->priv->cached_output);
 		return expression->priv->cached_output;
 	}
 
@@ -1552,13 +1527,15 @@ cpg_expression_evaluate (CpgExpression *expression)
 
 	if (expression->priv->output.size == 0)
 	{
-		cpg_debug_error ("Stack size should not be 0 (%s)!", expression->priv->expression);
+		g_warning ("Stack size should not be 0 (%s)!",
+		           expression->priv->expression);
 		return 0.0;
 	}
 
 	if (!expression->priv->instructions)
 	{
-		fprintf (stderr, "No instructions found, maybe the expression was not parsed?");
+		g_warning ("No instructions found, maybe the expression was not parsed? (%s)",
+		           expression->priv->expression);
 		return 0.0;
 	}
 

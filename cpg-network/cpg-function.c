@@ -1,6 +1,5 @@
 #include "cpg-function.h"
 #include "cpg-compile-error.h"
-#include "cpg-debug.h"
 
 /**
  * SECTION:cpg-function
@@ -153,10 +152,10 @@ cpg_function_compile_impl (CpgObject         *object,
 		                         context,
 		                         &gerror))
 	{
-		cpg_debug_error ("Error while parsing function expression [%s]<%s>: %s",
-		                 cpg_object_get_id (object),
-		                 cpg_expression_get_as_string (self->priv->expression),
-		                 gerror->message);
+		g_warning ("Error while parsing function expression [%s]<%s>: %s",
+		           cpg_object_get_id (object),
+		           cpg_expression_get_as_string (self->priv->expression),
+		           gerror->message);
 
 		if (error)
 		{

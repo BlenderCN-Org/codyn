@@ -1,6 +1,5 @@
 #include "cpg-link.h"
 #include "cpg-compile-error.h"
-#include "cpg-debug.h"
 #include <string.h>
 #include "cpg-group.h"
 
@@ -621,10 +620,10 @@ cpg_link_compile_impl (CpgObject         *object,
 
 		if (!cpg_expression_compile (expr, context, &gerror))
 		{
-			cpg_debug_error ("Error while parsing expression [%s]<%s>: %s",
-			                 cpg_object_get_id (object),
-			                 cpg_expression_get_as_string (expr),
-			                 gerror->message);
+			g_warning ("Error while parsing expression [%s]<%s>: %s",
+			           cpg_object_get_id (object),
+			           cpg_expression_get_as_string (expr),
+			           gerror->message);
 
 			if (error)
 			{

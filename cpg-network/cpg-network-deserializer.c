@@ -10,7 +10,6 @@
 #include <string.h>
 
 #include "cpg-network.h"
-#include "cpg-debug.h"
 #include "cpg-integrators.h"
 #include "cpg-function-polynomial.h"
 #include "cpg-enum-types.h"
@@ -217,7 +216,7 @@ xml_xpath (CpgNetworkDeserializer *deserializer,
 
 		if (!ctx)
 		{
-			cpg_debug_error ("Could not create XPath context");
+			g_warning ("Could not create XPath context");
 			return FALSE;
 		}
 
@@ -225,7 +224,7 @@ xml_xpath (CpgNetworkDeserializer *deserializer,
 
 		if (!obj)
 		{
-			cpg_debug_error ("Failed to evaluate xpath expression '%s'", expr);
+			g_warning ("Failed to evaluate xpath expression '%s'", expr);
 			xmlXPathFreeContext (ctx);
 			return FALSE;
 		}
@@ -304,7 +303,7 @@ parser_failed (CpgNetworkDeserializer *deserializer,
 			*deserializer->priv->error = NULL;
 		}
 
-		cpg_debug_error ("XML load error: %s", message);
+		g_warning ("XML load error: %s", message);
 
 		g_set_error (deserializer->priv->error,
 		             CPG_NETWORK_LOAD_ERROR,
@@ -441,7 +440,7 @@ parse_object_properties (CpgNetworkDeserializer *deserializer,
 	                (XPathResultFunc)parse_properties,
 	                NULL))
 	{
-		cpg_debug_error ("Could not parse object properties for: %s",
+		g_warning ("Could not parse object properties for: %s",
 		                 cpg_object_get_id (object));
 		return FALSE;
 	}
@@ -882,7 +881,7 @@ parse_polynomial_pieces (CpgNetworkDeserializer *deserializer,
 
 		if (!beginPtr)
 		{
-			cpg_debug_error ("Piece does not define a begin");
+			g_warning ("Piece does not define a begin");
 			return FALSE;
 		}
 
@@ -890,7 +889,7 @@ parse_polynomial_pieces (CpgNetworkDeserializer *deserializer,
 
 		if (!endPtr)
 		{
-			cpg_debug_error ("Piece does not define an end");
+			g_warning ("Piece does not define an end");
 			xmlFree (beginPtr);
 			return FALSE;
 		}
@@ -903,13 +902,13 @@ parse_polynomial_pieces (CpgNetworkDeserializer *deserializer,
 
 		if (begin >= end)
 		{
-			cpg_debug_error ("Begin of piece should be smaller than end");
+			g_warning ("Begin of piece should be smaller than end");
 			return FALSE;
 		}
 
 		if (!(node->children && node->children->type == XML_TEXT_NODE))
 		{
-			cpg_debug_error ("No coefficients are specified for polynomial piece");
+			g_warning ("No coefficients are specified for polynomial piece");
 			return FALSE;
 		}
 
@@ -918,7 +917,7 @@ parse_polynomial_pieces (CpgNetworkDeserializer *deserializer,
 
 		if (!ptrs || !*ptrs)
 		{
-			cpg_debug_error ("No coefficients are specified for polynomial piece");
+			g_warning ("No coefficients are specified for polynomial piece");
 			g_strfreev (ptrs);
 
 			return FALSE;
@@ -1092,7 +1091,7 @@ parse_link (CpgNetworkDeserializer *deserializer,
 		}
 		else if (CPG_IS_LINK (fromobj))
 		{
-			cpg_debug_error ("The `from` object can not be a link (%s)",
+			g_warning ("The `from` object can not be a link (%s)",
 			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
@@ -1132,7 +1131,7 @@ parse_link (CpgNetworkDeserializer *deserializer,
 		}
 		else if (CPG_IS_LINK (toobj))
 		{
-			cpg_debug_error ("The `to' object can not be a link (%s)",
+			g_warning ("The `to' object can not be a link (%s)",
 			                 cpg_object_get_id (object));
 			ret = FALSE;
 		}
@@ -1161,7 +1160,7 @@ parse_link (CpgNetworkDeserializer *deserializer,
 	                (XPathResultFunc)parse_actions,
 	                NULL))
 	{
-		cpg_debug_error ("Could not parse actions successfully");
+		g_warning ("Could not parse actions successfully");
 
 		if (new_object)
 		{
@@ -1493,12 +1492,12 @@ parse_network (CpgNetworkDeserializer *deserializer,
 			}
 			else
 			{
-				cpg_debug_error ("Unknown element: %s", node->name);
+				g_warning ("Unknown element: %s", node->name);
 			}
 		}
 		else
 		{
-			cpg_debug_error ("Unknown element: %s", node->name);
+			g_warning ("Unknown element: %s", node->name);
 		}
 
 		if (!ret)
