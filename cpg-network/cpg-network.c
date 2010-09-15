@@ -170,7 +170,7 @@ set_integrator (CpgNetwork    *network,
 		                          network->priv->integrator_state);
 	}
 
-	cpg_object_taint (CPG_OBJECT (network));
+	cpg_object_reset (CPG_OBJECT (network));
 
 	g_object_notify (G_OBJECT (network), "integrator");
 
@@ -900,7 +900,8 @@ cpg_network_merge_from_xml (CpgNetwork   *network,
  * @network: A #CpgNetwork
  * @integrator: A #CpgIntegrator
  *
- * Set the integrator used to integrate the network.
+ * Set the integrator used to integrate the network. Note that the network
+ * is automatically reset when the integrator is changed.
  *
  **/
 void
