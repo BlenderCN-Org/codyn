@@ -220,7 +220,7 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
 
 	reset_cache (integrator);
 
-	g_signal_emit (integrator, integrator_signals[STEP], 0, timestep, t);
+	g_signal_emit (integrator, integrator_signals[STEP], 0, timestep, t + timestep);
 	return timestep;
 }
 
