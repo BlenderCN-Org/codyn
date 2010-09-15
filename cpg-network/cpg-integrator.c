@@ -1,6 +1,7 @@
 #include "cpg-integrator.h"
 #include "cpg-link.h"
 #include "cpg-compile-error.h"
+#include "cpg-marshal.h"
 
 /**
  * SECTION:cpg-integrator
@@ -219,7 +220,7 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
 
 	reset_cache (integrator);
 
-	g_signal_emit (integrator, integrator_signals[STEP], 0);
+	g_signal_emit (integrator, integrator_signals[STEP], 0, timestep, t);
 	return timestep;
 }
 
@@ -370,6 +371,9 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 
 	/**
 	 * CpgIntegrator::step:
+	 * @object: the integrator
+	 * @timestep: the timestep
+	 * @time: the elapsed time
 	 *
 	 * Emitted when an integrator step has been performed
 	 *
@@ -380,12 +384,18 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 			              G_SIGNAL_RUN_LAST,
 			              0,
 			              NULL, NULL,
-			              g_cclosure_marshal_VOID__VOID,
+			              cpg_marshal_VOID__DOUBLE_DOUBLE,
 			              G_TYPE_NONE,
-			              0);
+			              2,
+			              G_TYPE_DOUBLE,
+			              G_TYPE_DOUBLE);
 
 	/**
 	 * CpgIntegrator::begin:
+	 * @object: the integrator
+	 * @from: from where to start the simulation
+	 * @timestep: the desired timestep
+	 * @to: to where to simulate
 	 *
 	 * Emitted before running an integration of several steps
 	 *
@@ -396,9 +406,12 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 			              G_SIGNAL_RUN_LAST,
 			              0,
 			              NULL, NULL,
-			              g_cclosure_marshal_VOID__VOID,
+			              cpg_marshal_VOID__DOUBLE_DOUBLE_DOUBLE,
 			              G_TYPE_NONE,
-			              0);
+			              3,
+			              G_TYPE_DOUBLE,
+			              G_TYPE_DOUBLE,
+			              G_TYPE_DOUBLE);
 
 	/**
 	 * CpgIntegrator::end:
@@ -531,7 +544,7 @@ cpg_integrator_run (CpgIntegrator *integrator,
 
 	if (CPG_INTEGRATOR_GET_CLASS (integrator)->run)
 	{
-		g_signal_emit (integrator, integrator_signals[BEGIN], 0);
+		g_signal_emit (integrator, integrator_signals[BEGIN], 0, from, timestep, to);
 
 		CPG_INTEGRATOR_GET_CLASS (integrator)->run (integrator, from, timestep, to);
 
