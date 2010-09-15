@@ -7,6 +7,7 @@
 #include "cpg-expression.h"
 
 #include <string.h>
+#include <math.h>
 
 /**
  * SECTION:cpg-monitor
@@ -482,12 +483,22 @@ cpg_monitor_get_data_resampled (CpgMonitor     *monitor,
 		if (fidx >= monitor->priv->num_values ||
 		    sidx >= monitor->priv->num_values)
 		{
-			ret[i] = 0.0;
+			ret[i] = data[monitor->priv->num_values - 1];
 		}
 		else
 		{
 			// interpolate between the values
-			gdouble factor = monsites[sidx] == monsites[fidx] ? 1 : (monsites[sidx] - sites[i]) / (monsites[sidx] - monsites[fidx]);
+			gdouble factor;
+
+			if (fabs(monsites[sidx] - monsites[fidx]) < 0.00000001)
+			{
+				factor = 1;
+			}
+			else
+			{
+				factor = (monsites[sidx] - sites[i]) / (monsites[sidx] - monsites[fidx]);
+			}
+
 			ret[i] = data[fidx] * factor + (data[sidx] * (1 - factor));
 		}
 	}
