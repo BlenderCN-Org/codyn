@@ -112,6 +112,7 @@ gboolean          cpg_network_load_from_xml          (CpgNetwork     *network,
                                                       GError        **error);
 
 GFile            *cpg_network_get_file               (CpgNetwork     *network);
+gchar            *cpg_network_get_path               (CpgNetwork     *network);
 
 void              cpg_network_set_integrator         (CpgNetwork     *network,
                                                       CpgIntegrator  *integrator);

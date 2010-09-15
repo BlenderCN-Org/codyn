@@ -980,3 +980,20 @@ cpg_network_get_file (CpgNetwork *network)
 
 	return network->priv->file ? g_file_dup (network->priv->file) : NULL;
 }
+
+/**
+ * cpg_network_get_path:
+ * @network: A #CpgNetwork
+ *
+ * Get the path with which the network was loaded.
+ *
+ * Returns: (transfer full) (allow-none): The path or %NULL if the network was not loaded from file.
+ *
+ **/
+gchar *
+cpg_network_get_path (CpgNetwork *network)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+
+	return network->priv->file ? g_file_get_path (network->priv->file) : NULL;
+}
