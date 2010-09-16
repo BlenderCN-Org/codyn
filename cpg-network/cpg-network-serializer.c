@@ -952,6 +952,38 @@ check_proxy_template (CpgObject *object,
 }
 
 static void
+group_children_to_xml (CpgNetworkSerializer *serializer,
+                       xmlNodePtr            group_node,
+                       CpgGroup             *group)
+{
+	GSList const *children = cpg_group_get_children (group);
+	GSList *links = NULL;
+
+	while (children)
+	{
+		if (CPG_IS_LINK (children->data))
+		{
+			links = g_slist_prepend (links, children->data);
+		}
+		else
+		{
+			cpg_object_to_xml (serializer, group_node, children->data);
+		}
+
+		children = g_slist_next (children);
+	}
+
+	GSList *item;
+
+	for (item = links; item; item = g_slist_next (item))
+	{
+		cpg_object_to_xml (serializer, group_node, item->data);
+	}
+
+	g_slist_free (links);
+}
+
+static void
 group_to_xml (CpgNetworkSerializer *serializer,
               xmlNodePtr            root,
               CpgGroup             *group)
@@ -980,31 +1012,7 @@ group_to_xml (CpgNetworkSerializer *serializer,
 		group_node = root;
 	}
 
-	GSList const *children = cpg_group_get_children (group);
-	GSList *links = NULL;
-
-	while (children)
-	{
-		if (CPG_IS_LINK (children->data))
-		{
-			links = g_slist_prepend (links, children->data);
-		}
-		else
-		{
-			cpg_object_to_xml (serializer, group_node, children->data);
-		}
-
-		children = g_slist_next (children);
-	}
-
-	GSList *item;
-
-	for (item = links; item; item = g_slist_next (item))
-	{
-		cpg_object_to_xml (serializer, group_node, item->data);
-	}
-
-	g_slist_free (links);
+	group_children_to_xml (serializer, group_node, group);
 }
 
 static void
@@ -1074,15 +1082,8 @@ cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
 	{
 		templates = xmlNewDocNode (doc, NULL, (xmlChar *)"templates", NULL);
 		xmlAddChild (nnetwork, templates);
-	}
 
-	GSList const *item;
-
-	for (item = list; item; item = g_slist_next (item))
-	{
-		CpgObject *template = item->data;
-
-		cpg_object_to_xml (serializer, templates, template);
+		group_children_to_xml (serializer, templates, template_group);
 	}
 
 	// Generate state and link nodes
