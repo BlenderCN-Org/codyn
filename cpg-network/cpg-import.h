@@ -75,6 +75,9 @@ gboolean     cpg_import_load                (CpgImport    *self,
 GFile       *cpg_import_get_file            (CpgImport    *self);
 gchar       *cpg_import_get_path            (CpgImport    *self);
 
+gboolean     cpg_import_imports_object      (CpgImport    *self,
+                                             CpgObject    *object);
+
 G_CONST_RETURN gchar * G_CONST_RETURN *
              cpg_import_get_search_path     ();
 

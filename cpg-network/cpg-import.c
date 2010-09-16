@@ -944,3 +944,13 @@ cpg_import_prepend_search_path (gchar const *path)
 	g_free (import_search_path);
 	import_search_path = new_search_path;
 }
+
+gboolean
+cpg_import_imports_object (CpgImport *self,
+                           CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_IMPORT (self), FALSE);
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+
+	return g_slist_find (self->priv->imported_objects, object) != NULL;
+}
