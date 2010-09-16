@@ -211,20 +211,6 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT_ONLY));
 
-	/**
-	 * CpgImport:modified:
-	 *
-	 * Whether any of the imported objects have been modified.
-	 *
-	 **/
-	g_object_class_install_property (object_class,
-	                                 PROP_MODIFIED,
-	                                 g_param_spec_boolean ("modified",
-	                                                       "Modified",
-	                                                       "Modified",
-	                                                       FALSE,
-	                                                       G_PARAM_READABLE));
-
 	g_object_class_install_property (object_class,
 	                                 PROP_PATH,
 	                                 g_param_spec_string ("path",
@@ -232,6 +218,10 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                      "Path",
 	                                                      NULL,
 	                                                      G_PARAM_READABLE));
+
+	g_object_class_override_property (object_class,
+	                                  PROP_MODIFIED,
+	                                  "modified");
 }
 
 static void
