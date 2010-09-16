@@ -923,6 +923,8 @@ verify_all (CpgGroup   *group,
 			{
 				return FALSE;
 			}
+
+			children = g_slist_next (children);
 		}
 	}
 
