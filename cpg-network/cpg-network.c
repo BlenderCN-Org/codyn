@@ -10,6 +10,7 @@
 #include "cpg-integrator-euler.h"
 #include "cpg-network-deserializer.h"
 #include "cpg-operator-lastof.h"
+#include "cpg-import.h"
 
 /**
  * SECTION:cpg-network
@@ -51,6 +52,8 @@ struct _CpgNetworkPrivate
 	CpgGroup *function_group;
 
 	GSList *operators;
+
+	GHashTable *imports;
 };
 
 enum
@@ -62,6 +65,10 @@ enum
 static guint network_signals[NUM_SIGNALS] = {0,};
 
 G_DEFINE_TYPE (CpgNetwork, cpg_network, CPG_TYPE_GROUP)
+
+static void on_import_parent_changed (CpgImport  *import,
+                                      GParamSpec *spec,
+                                      CpgNetwork *network);
 
 GQuark
 cpg_network_load_error_quark ()
@@ -89,6 +96,44 @@ cpg_network_error_quark ()
 	return quark;
 }
 
+static gboolean
+remove_destroyed_import (gpointer key,
+                         gpointer value,
+                         gpointer data)
+{
+	return value == data;
+}
+
+static void
+on_registered_import_destroyed (CpgNetwork *network,
+                                gpointer    data)
+{
+	g_hash_table_foreach_remove (network->priv->imports,
+	                             (GHRFunc)remove_destroyed_import,
+	                             data);
+}
+
+static void
+unregister_import (CpgNetwork *network,
+                   CpgImport  *import)
+{
+	g_object_weak_unref (G_OBJECT (import),
+	                     (GWeakNotify)on_registered_import_destroyed,
+	                     network);
+
+	g_signal_handlers_disconnect_by_func (import,
+	                                      G_CALLBACK (on_import_parent_changed),
+	                                      network);
+}
+
+static void
+unregister_all_imports (GFile      *file,
+                        CpgImport  *import,
+                        CpgNetwork *network)
+{
+	unregister_import (network, import);
+}
+
 static void
 cpg_network_finalize (GObject *object)
 {
@@ -106,6 +151,12 @@ cpg_network_finalize (GObject *object)
 
 	g_slist_foreach (network->priv->operators, (GFunc)g_object_unref, NULL);
 	g_slist_free (network->priv->operators);
+
+	g_hash_table_foreach (network->priv->imports,
+	                      (GHFunc)unregister_all_imports,
+	                      network);
+
+	g_hash_table_destroy (network->priv->imports);
 
 	G_OBJECT_CLASS (cpg_network_parent_class)->finalize (object);
 }
@@ -474,6 +525,11 @@ cpg_network_init (CpgNetwork *network)
 
 	network->priv->operators = g_slist_prepend (network->priv->operators,
 	                                            cpg_operator_lastof_new ());
+
+	network->priv->imports = g_hash_table_new_full (g_file_hash,
+	                                                (GEqualFunc)g_file_equal,
+	                                                (GDestroyNotify)g_object_unref,
+	                                                NULL);
 }
 
 /**
@@ -996,4 +1052,44 @@ cpg_network_get_path (CpgNetwork *network)
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 
 	return network->priv->file ? g_file_get_path (network->priv->file) : NULL;
+}
+
+static void
+on_import_parent_changed (CpgImport  *import,
+                          GParamSpec *spec,
+                          CpgNetwork *network)
+{
+	if (cpg_object_get_parent (CPG_OBJECT (import)) == NULL)
+	{
+		unregister_import (network, import);
+	}
+}
+
+void
+_cpg_network_register_import (CpgNetwork *network,
+                              CpgImport  *import)
+{
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (CPG_IS_IMPORT (import));
+
+	GFile *file = cpg_import_get_file (import);
+
+	if (g_hash_table_lookup (network->priv->imports, file))
+	{
+		g_object_unref (file);
+		return;
+	}
+
+	g_hash_table_insert (network->priv->imports,
+	                     file,
+	                     import);
+
+	g_signal_connect (import,
+	                  "notify::parent",
+	                  G_CALLBACK (on_import_parent_changed),
+	                  network);
+
+	g_object_weak_ref (G_OBJECT (import),
+	                   (GWeakNotify)on_registered_import_destroyed,
+	                   network);
 }
