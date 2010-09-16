@@ -1093,3 +1093,47 @@ _cpg_network_register_import (CpgNetwork *network,
 	                   (GWeakNotify)on_registered_import_destroyed,
 	                   network);
 }
+
+/**
+ * cpg_network_get_import:
+ * @network: A #CpgNetwork
+ * @file: A #GFile
+ *
+ * Get a registered import which imports the given file.
+ *
+ * Returns: (transfer none): A #CpgImport
+ *
+ **/
+CpgImport *
+cpg_network_get_import (CpgNetwork   *network,
+                        GFile        *file)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (G_IS_FILE (file), NULL);
+
+	return g_hash_table_lookup (network->priv->imports, file);
+}
+
+/**
+ * cpg_network_get_import:
+ * @network: A #CpgNetwork
+ * @path: A file path
+ *
+ * Get a registered import which imports the given path.
+ *
+ * Returns: (transfer none): A #CpgImport
+ *
+ **/
+CpgImport *
+cpg_network_get_import_from_path  (CpgNetwork   *network,
+                                   const gchar  *path)
+{
+	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
+	g_return_val_if_fail (path != NULL, NULL);
+
+	GFile *file = g_file_new_for_path (path);
+	CpgImport *ret = cpg_network_get_import (network, file);
+	g_object_unref (file);
+
+	return ret;
+}

@@ -148,8 +148,15 @@ void              cpg_network_step                   (CpgNetwork *network,
 CpgGroup         *cpg_network_get_template_group     (CpgNetwork   *network);
 CpgGroup         *cpg_network_get_function_group     (CpgNetwork   *network);
 
-void              _cpg_network_register_import       (CpgNetwork   *network,
-                                                      struct _CpgImport *import);
+CPG_FORWARD_DECL (CpgImport) *cpg_network_get_import  (CpgNetwork   *network,
+                                                       GFile        *file);
+
+CPG_FORWARD_DECL (CpgImport) *cpg_network_get_import_from_path  (CpgNetwork   *network,
+                                                                 const gchar  *path);
+
+
+void              _cpg_network_register_import       (CpgNetwork        *network,
+                                                      CPG_FORWARD_DECL (CpgImport) *import);
 
 G_END_DECLS
 
