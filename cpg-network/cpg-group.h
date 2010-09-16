@@ -102,6 +102,10 @@ CpgObject    *cpg_group_find_object   (CpgGroup    *group,
 CpgProperty  *cpg_group_find_property (CpgGroup    *group,
                                        const gchar *path);
 
+gboolean      cpg_group_verify_remove_child (CpgGroup   *group,
+                                             CpgObject  *child,
+                                             GError    **error);
+
 G_END_DECLS
 
 #endif /* __CPG_GROUP_H__ */

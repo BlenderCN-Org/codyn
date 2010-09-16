@@ -22,9 +22,15 @@ struct _CpgImportPrivate
 {
 	GFile *file;
 	gboolean modified;
+	CpgObject *prev_parent;
+
+	GSList *imported_objects;
+	gboolean check_remove;
 };
 
 static void cpg_modifiable_iface_init (gpointer iface);
+static void unregister_imported_property (CpgImport *import, CpgProperty *property);
+static void unregister_imported_object (CpgImport *import, CpgObject *object);
 
 G_DEFINE_TYPE_WITH_CODE (CpgImport,
                          cpg_import,
@@ -40,12 +46,41 @@ enum
 	PROP_PATH
 };
 
+GQuark
+cpg_import_error_quark ()
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+	{
+		quark = g_quark_from_static_string ("cpg_import_error");
+	}
+
+	return quark;
+}
+
 static void
 cpg_import_finalize (GObject *object)
 {
 	CpgImport *self = CPG_IMPORT (object);
 
 	g_object_unref (self->priv->file);
+
+	GSList *item;
+
+	for (item = self->priv->imported_objects; item; item = g_slist_next (item))
+	{
+		if (CPG_IS_OBJECT (item->data))
+		{
+			unregister_imported_object (self, item->data);
+		}
+		else if (CPG_IS_PROPERTY (item->data))
+		{
+			unregister_imported_property (self, item->data);
+		}
+	}
+
+	g_slist_free (self->priv->imported_objects);
 
 	G_OBJECT_CLASS (cpg_import_parent_class)->finalize (object);
 }
@@ -71,6 +106,9 @@ cpg_import_set_property (GObject      *object,
 			GFile *file = g_value_get_object (value);
 			self->priv->file = file ? g_file_dup (file) : NULL;
 		}
+		break;
+		case PROP_MODIFIED:
+			self->priv->modified = g_value_get_boolean (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -224,10 +262,118 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                  "modified");
 }
 
+static gboolean
+verify_remove_import (CpgGroup   *group,
+                      CpgObject  *child,
+                      GError    **error,
+                      CpgImport  *import)
+{
+	if (child != CPG_OBJECT (import))
+	{
+		return TRUE;
+	}
+
+	GSList *item;
+
+	import->priv->check_remove = TRUE;
+
+	for (item = import->priv->imported_objects; item; item = g_slist_next (item))
+	{
+		if (CPG_IS_OBJECT (item->data))
+		{
+			CpgObject *parent = cpg_object_get_parent (item->data);
+
+			if (!cpg_group_verify_remove_child (CPG_GROUP (parent),
+			                                    item->data,
+			                                    error))
+			{
+				import->priv->check_remove = FALSE;
+				return FALSE;
+			}
+		}
+		else if (CPG_IS_PROPERTY (item->data))
+		{
+			CpgObject *parent = cpg_property_get_object (item->data);
+
+			if (!cpg_object_verify_remove_property (parent,
+			                                        item->data,
+			                                        error))
+			{
+				import->priv->check_remove = FALSE;
+				return FALSE;
+			}
+		}
+	}
+
+	import->priv->check_remove = TRUE;
+	return TRUE;
+}
+
+static void
+import_removed (CpgImport *import)
+{
+	GSList *item;
+
+	for (item = import->priv->imported_objects; item; item = g_slist_next (item))
+	{
+		if (CPG_IS_OBJECT (item->data))
+		{
+			CpgObject *parent = cpg_object_get_parent (item->data);
+
+			unregister_imported_object (import, item->data);
+			cpg_group_remove (CPG_GROUP (parent), item->data, NULL);
+		}
+		else if (CPG_IS_PROPERTY (item->data))
+		{
+			CpgObject *parent = cpg_property_get_object (item->data);
+
+			unregister_imported_property (import, item->data);
+			cpg_object_remove_property (parent, item->data, NULL);
+		}
+	}
+
+	g_slist_free (import->priv->imported_objects);
+	import->priv->imported_objects = NULL;
+}
+
+static void
+on_parent_changed (CpgImport *import)
+{
+	CpgObject *parent = cpg_object_get_parent (CPG_OBJECT (import));
+
+	if (import->priv->prev_parent != NULL)
+	{
+		g_signal_handlers_disconnect_by_func (import->priv->prev_parent,
+		                                      G_CALLBACK (verify_remove_import),
+		                                      import);
+		import->priv->prev_parent = NULL;
+	}
+
+	import->priv->prev_parent = parent;
+
+	if (parent != NULL)
+	{
+		g_signal_connect (parent,
+		                  "verify-remove-child",
+		                  G_CALLBACK (verify_remove_import),
+		                  import);
+	}
+	else
+	{
+		/* Remove all imported objects and properties as well */
+		import_removed (import);
+	}
+}
+
 static void
 cpg_import_init (CpgImport *self)
 {
 	self->priv = CPG_IMPORT_GET_PRIVATE (self);
+
+	g_signal_connect (self,
+	                  "notify::parent",
+	                  G_CALLBACK (on_parent_changed),
+	                  NULL);
 }
 
 static gboolean
@@ -343,6 +489,128 @@ cpg_import_new_from_path (CpgNetwork   *network,
 }
 
 static gboolean
+deny_remove_imported_child (CpgGroup   *parent,
+                            CpgObject  *child,
+                            GError    **error,
+                            CpgImport  *import)
+{
+	if (!import->priv->check_remove &&
+	    g_slist_find (import->priv->imported_objects, child))
+	{
+		if (error)
+		{
+			g_set_error (error,
+			             CPG_IMPORT_ERROR,
+			             CPG_IMPORT_ERROR_REMOVE,
+			             "The object `%s' cannot be removed because it was automatically imported from `%s'",
+			             cpg_object_get_id (child),
+			             cpg_object_get_id (CPG_OBJECT (import)));
+		}
+
+		return FALSE;
+	}
+	else
+	{
+		return TRUE;
+	}
+}
+
+static gboolean
+deny_remove_imported_property (CpgObject    *parent,
+                               CpgProperty  *child,
+                               GError      **error,
+                               CpgImport    *import)
+{
+	if (!import->priv->check_remove &&
+	    g_slist_find (import->priv->imported_objects, child))
+	{
+		if (error)
+		{
+			g_set_error (error,
+			             CPG_IMPORT_ERROR,
+			             CPG_IMPORT_ERROR_REMOVE,
+			             "The property `%s' cannot be removed because it was automatically imported from `%s'",
+			             cpg_property_get_name (child),
+			             cpg_object_get_id (CPG_OBJECT (import)));
+		}
+
+		return FALSE;
+	}
+	else
+	{
+		return TRUE;
+	}
+}
+
+static void
+register_imported_object (CpgImport *import,
+                          CpgObject *object)
+{
+	CpgObject *parent = cpg_object_get_parent (object);
+
+	g_signal_connect (parent,
+	                  "verify-remove-child",
+	                  G_CALLBACK (deny_remove_imported_child),
+	                  import);
+}
+
+static void
+unregister_imported_object (CpgImport *import,
+                            CpgObject *object)
+{
+	CpgObject *parent = cpg_object_get_parent (object);
+
+	g_signal_handlers_disconnect_by_func (parent,
+	                                      G_CALLBACK (deny_remove_imported_child),
+	                                      import);
+}
+
+static void
+register_imported_property (CpgImport   *import,
+                            CpgProperty *property)
+{
+	CpgObject *parent = cpg_property_get_object (property);
+
+	g_signal_connect (parent,
+	                  "verify-remove-property",
+	                  G_CALLBACK (deny_remove_imported_property),
+	                  import);
+}
+
+static void
+unregister_imported_property (CpgImport   *import,
+                              CpgProperty *property)
+{
+	CpgObject *parent = cpg_property_get_object (property);
+
+	g_signal_handlers_disconnect_by_func (parent,
+	                                      G_CALLBACK (deny_remove_imported_property),
+	                                      import);
+}
+
+static void
+add_imported_object (CpgImport *import,
+                     gpointer   object)
+{
+	import->priv->imported_objects =
+		g_slist_prepend (import->priv->imported_objects, object);
+
+	if (CPG_IS_OBJECT (object))
+	{
+		register_imported_object (import, CPG_OBJECT (object));
+	}
+	else if (CPG_IS_PROPERTY (object))
+	{
+		register_imported_property (import, CPG_PROPERTY (object));
+	}
+	else
+	{
+		g_warning ("Unknown imported object: %s",
+		           g_type_name (G_TYPE_FROM_INSTANCE (object)));
+	}
+}
+
+static gboolean
 object_in_templates (CpgNetwork *network,
                      CpgObject  *obj)
 {
@@ -365,6 +633,9 @@ import_objects (CpgImport *self,
 	while (children)
 	{
 		cpg_group_add (CPG_GROUP (self), children->data, NULL);
+
+		add_imported_object (self, children->data);
+
 		children = g_slist_next (children);
 	}
 }
@@ -395,6 +666,8 @@ auto_import_templates (CpgImport  *self,
 	cpg_group_add (cpg_network_get_template_group (target),
 	               CPG_OBJECT (auto_import),
 	               NULL);
+
+	add_imported_object (self, auto_import);
 }
 
 static void
@@ -414,12 +687,40 @@ auto_import_functions (CpgImport  *import,
 
 		if (!cpg_group_find_object (target_functions, id))
 		{
-			cpg_group_add (target_functions, CPG_OBJECT (function), NULL);
+			cpg_group_add (target_functions,
+			               CPG_OBJECT (function),
+			               NULL);
+
 			cpg_object_set_auto_imported (CPG_OBJECT (function),
 			                              TRUE);
+
+			add_imported_object (import, function);
 		}
 
 		children = g_slist_next (children);
+	}
+}
+
+static void
+import_globals (CpgImport  *self,
+                CpgNetwork *source,
+                CpgNetwork *target)
+{
+	GSList *properties = cpg_object_get_properties (CPG_OBJECT (source));
+	GSList *item;
+
+	for (item = properties; item; item = g_slist_next (item))
+	{
+		CpgProperty *property = item->data;
+
+		if (!cpg_object_get_property (CPG_OBJECT (target),
+		                              cpg_property_get_name (property)))
+		{
+			CpgProperty *copy = cpg_property_copy (property);
+
+			cpg_object_add_property (CPG_OBJECT (target), copy);
+			add_imported_object (self, copy);
+		}
 	}
 }
 
@@ -468,6 +769,9 @@ cpg_import_load (CpgImport   *self,
 	}
 
 	g_object_unref (deserializer);
+
+	/* Import globals */
+	import_globals (self, network, imported);
 
 	/* Check if importing in templates or normal objects */
 	gboolean templ = object_in_templates (network,

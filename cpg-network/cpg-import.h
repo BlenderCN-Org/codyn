@@ -13,6 +13,20 @@ G_BEGIN_DECLS
 #define CPG_IS_IMPORT_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_IMPORT))
 #define CPG_IMPORT_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_IMPORT, CpgImportClass))
 
+#define CPG_IMPORT_ERROR (cpg_import_error_quark ())
+
+/**
+ * CpgImportError:
+ * @CPG_IMPORT_ERROR_REMOVE: cannot remove imported object
+ *
+ * Import error types.
+ *
+ */
+typedef enum
+{
+	CPG_IMPORT_ERROR_REMOVE,
+} CpgImportError;
+
 typedef struct _CpgImport		CpgImport;
 typedef struct _CpgImportClass		CpgImportClass;
 typedef struct _CpgImportPrivate	CpgImportPrivate;
@@ -38,6 +52,8 @@ struct _CpgImportClass
 };
 
 GType cpg_import_get_type (void) G_GNUC_CONST;
+
+GQuark cpg_import_error_quark (void);
 
 CpgImport   *cpg_import_new                 (CpgNetwork   *network,
                                              CpgGroup     *parent,

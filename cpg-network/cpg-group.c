@@ -882,6 +882,53 @@ remove_object (CpgGroup  *group,
 	g_object_unref (object);
 }
 
+gboolean
+cpg_group_verify_remove_child (CpgGroup   *group,
+                               CpgObject  *child,
+                               GError    **error)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
+	g_return_val_if_fail (CPG_IS_OBJECT (child), FALSE);
+
+	gboolean ret = FALSE;
+
+	g_signal_emit (group,
+	               group_signals[VERIFY_REMOVE_CHILD],
+	               0,
+	               child,
+	               error,
+	               &ret);
+
+	return !ret;
+}
+
+static gboolean
+verify_all (CpgGroup   *group,
+            CpgObject  *object,
+            GError    **error)
+{
+	if (!cpg_group_verify_remove_child (group, object, error))
+	{
+		return FALSE;
+	}
+
+	if (CPG_IS_GROUP (object))
+	{
+		CpgGroup *other = CPG_GROUP (object);
+		GSList const *children = cpg_group_get_children (other);
+
+		while (children)
+		{
+			if (!verify_all (other, children->data, error))
+			{
+				return FALSE;
+			}
+		}
+	}
+
+	return TRUE;
+}
+
 static gboolean
 cpg_group_remove_impl (CpgGroup   *group,
                        CpgObject  *object,
@@ -901,16 +948,7 @@ cpg_group_remove_impl (CpgGroup   *group,
 		return FALSE;
 	}
 
-	gboolean ret = FALSE;
-
-	g_signal_emit (group,
-	               group_signals[VERIFY_REMOVE_CHILD],
-	               0,
-	               object,
-	               error,
-	               &ret);
-
-	if (ret)
+	if (!verify_all (group, object, error))
 	{
 		return FALSE;
 	}
