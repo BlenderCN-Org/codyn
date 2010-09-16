@@ -24,14 +24,20 @@ struct _CpgImportPrivate
 	gboolean modified;
 };
 
-G_DEFINE_TYPE (CpgImport, cpg_import, CPG_TYPE_GROUP)
+static void cpg_modifiable_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgImport,
+                         cpg_import,
+                         CPG_TYPE_GROUP,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
+                                                cpg_modifiable_iface_init));
 
 enum
 {
 	PROP_0,
 	PROP_FILE,
 	PROP_MODIFIED,
-	PROP_FILENAME
+	PROP_PATH
 };
 
 static void
@@ -42,6 +48,12 @@ cpg_import_finalize (GObject *object)
 	g_object_unref (self->priv->file);
 
 	G_OBJECT_CLASS (cpg_import_parent_class)->finalize (object);
+}
+
+static void
+cpg_modifiable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
 }
 
 static void
@@ -82,7 +94,7 @@ cpg_import_get_property (GObject    *object,
 		case PROP_MODIFIED:
 			g_value_set_boolean (value, self->priv->modified);
 		break;
-		case PROP_FILENAME:
+		case PROP_PATH:
 			if (self->priv->file)
 			{
 				g_value_take_string (value, g_file_get_path (self->priv->file));
@@ -214,10 +226,10 @@ cpg_import_class_init (CpgImportClass *klass)
 	                                                       G_PARAM_READABLE));
 
 	g_object_class_install_property (object_class,
-	                                 PROP_FILENAME,
-	                                 g_param_spec_string ("filename",
-	                                                      "Filename",
-	                                                      "Filename",
+	                                 PROP_PATH,
+	                                 g_param_spec_string ("path",
+	                                                      "Path",
+	                                                      "Path",
 	                                                      NULL,
 	                                                      G_PARAM_READABLE));
 }
@@ -491,6 +503,8 @@ cpg_import_load (CpgImport   *self,
 	self->priv->modified = FALSE;
 	g_object_notify (G_OBJECT (self), "modified");
 
+	_cpg_network_register_import (network, self);
+
 	return TRUE;
 }
 
@@ -512,20 +526,20 @@ cpg_import_get_file (CpgImport *self)
 }
 
 /**
- * cpg_import_get_modified:
+ * cpg_import_get_path:
  * @self: A #CpgImport
  *
- * Get whether any of the imported objects were modified after the import.
+ * Get the path that was imported.
  *
- * Returns: %TRUE if there were any imported objects modified, %FALSE otherwise
+ * Returns: (transfer full) (allow-none): the path
  *
  **/
-gboolean
-cpg_import_get_modified (CpgImport *self)
+gchar *
+cpg_import_get_path (CpgImport *self)
 {
-	g_return_val_if_fail (CPG_IS_IMPORT (self), FALSE);
+	g_return_val_if_fail (CPG_IS_IMPORT (self), NULL);
 
-	return self->priv->modified;
+	return self->priv->file ? g_file_get_path (self->priv->file) : NULL;
 }
 
 /**

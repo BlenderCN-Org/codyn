@@ -844,7 +844,7 @@ import_to_xml (CpgNetworkSerializer *serializer,
                xmlNodePtr            root,
                CpgImport            *import)
 {
-	if (cpg_import_get_modified (import))
+	if (cpg_modifiable_get_modified (CPG_MODIFIABLE(import)))
 	{
 		group_to_xml (serializer, root, CPG_GROUP (import));
 		return;

@@ -51,15 +51,13 @@ CpgImport   *cpg_import_new_from_path       (CpgNetwork   *network,
                                              const gchar  *path,
                                              GError      **error);
 
-
 gboolean     cpg_import_load                (CpgImport    *self,
                                              CpgNetwork   *network,
                                              CpgGroup     *parent,
                                              GError      **error);
 
 GFile       *cpg_import_get_file            (CpgImport    *self);
-
-gboolean     cpg_import_get_modified        (CpgImport    *self);
+gchar       *cpg_import_get_path            (CpgImport    *self);
 
 G_CONST_RETURN gchar * G_CONST_RETURN *
              cpg_import_get_search_path     ();
