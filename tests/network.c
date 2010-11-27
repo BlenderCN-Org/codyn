@@ -201,20 +201,20 @@ test_once ()
 	CpgNetwork *network = cpg_network_new_from_xml (simple_xml, NULL);
 	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
 
+	CpgMonitor *monitor;
 	CpgProperty *prop = cpg_group_find_property (CPG_GROUP (network),
 	                                             "state.z");
 
-	gdouble val = cpg_property_get_value (prop);
-	cpg_network_run (network, 0, 0.1, 1);
+	monitor = cpg_monitor_new (network, prop);
+	cpg_network_run (network, 0, 0.1, 0.3);
 
-	cpg_assert_tol (val, cpg_property_get_value (prop));
+	guint size;
+	const gdouble *data = cpg_monitor_get_data (monitor, &size);
 
-	cpg_object_reset (CPG_OBJECT (network));
-	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
+	g_assert_cmpint ((gint)size, =, 3);
 
-	gdouble newval = cpg_property_get_value (prop);
-
-	cpg_assert_neq_tol (val, newval);
+	cpg_assert_tol (data[0], data[1]);
+	cpg_assert_tol (data[1], data[2]);
 }
 
 static void
