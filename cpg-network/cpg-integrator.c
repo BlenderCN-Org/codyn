@@ -537,6 +537,8 @@ cpg_integrator_run (CpgIntegrator *integrator,
 	g_return_if_fail (from < to);
 	g_return_if_fail (timestep > 0);
 
+	cpg_object_reset (integrator->priv->object);
+
 	if (!ensure_compiled (integrator))
 	{
 		return;
