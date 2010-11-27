@@ -43,10 +43,10 @@ struct _CpgExpressionPrivate
 
 	gdouble cached_output;
 
-	gboolean cached : 1;
-	gboolean prevent_cache_reset : 1;
-	gboolean modified : 1;
-	gboolean once : 1;
+	guint cached : 1;
+	guint prevent_cache_reset : 1;
+	guint modified : 1;
+	guint once : 1;
 };
 
 typedef struct
