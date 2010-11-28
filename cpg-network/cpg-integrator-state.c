@@ -1,5 +1,6 @@
 #include "cpg-integrator-state.h"
 #include "cpg-link.h"
+#include "cpg-input.h"
 
 #define CPG_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_STATE, CpgIntegratorStatePrivate))
 
@@ -24,6 +25,8 @@ struct _CpgIntegratorStatePrivate
 
 	GSList *integrated_link_actions;
 	GSList *direct_link_actions;
+
+	GSList *inputs;
 };
 
 G_DEFINE_TYPE (CpgIntegratorState, cpg_integrator_state, G_TYPE_OBJECT)
@@ -65,6 +68,9 @@ clear_lists (CpgIntegratorState *state)
 
 	g_slist_free (state->priv->direct_link_actions);
 	state->priv->direct_link_actions = NULL;
+
+	g_slist_free (state->priv->inputs);
+	state->priv->inputs = NULL;
 }
 
 static void
@@ -307,6 +313,13 @@ collect_states (CpgIntegratorState *state,
 
 	collect_actors (state, object);
 
+	if (CPG_IS_INPUT (object))
+	{
+		state->priv->inputs =
+			g_slist_prepend (state->priv->inputs,
+			                 object);
+	}
+
 	if (CPG_IS_GROUP (object))
 	{
 		GSList const *children = cpg_group_get_children (CPG_GROUP (object));
@@ -368,6 +381,9 @@ cpg_integrator_state_update (CpgIntegratorState *state)
 
 	state->priv->all_properties =
 		g_slist_reverse (state->priv->all_properties);
+
+	state->priv->inputs =
+		g_slist_reverse (state->priv->inputs);
 
 	/* order the direct link actions based on their dependencies */
 	sort_link_actions (state);
@@ -453,6 +469,23 @@ cpg_integrator_state_all_properties (CpgIntegratorState *state)
 {
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
 	return state->priv->all_properties;
+}
+
+/**
+ * cpg_integrator_state_inputs:
+ * @state: A #CpgIntegratorState
+ *
+ * Get the input states.
+ *
+ * Returns: (element-type CpgInput) (transfer none): A #GSList of #CpgInput
+ *
+ **/
+const GSList *
+cpg_integrator_state_inputs (CpgIntegratorState *state)
+{
+	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+
+	return state->priv->inputs;
 }
 
 /**

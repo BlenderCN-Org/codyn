@@ -17,7 +17,7 @@
  * @short_description: The main CPG network object
  *
  * The cpg network is the main component of the cpg-network library. The network
- * consists of #CpgState and #CpgLink objects which combined make
+ * consists of #CpgObject and #CpgLink objects which combined make
  * up the network.
  *
  * The easiest way of using the library is to write the network using the

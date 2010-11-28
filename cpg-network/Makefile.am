@@ -17,6 +17,8 @@ COMMON_SOURCES = 		\
 	cpg-function-polynomial.c \
 	cpg-function-polynomial-piece.c \
 	cpg-group.c \
+	cpg-input.c \
+	cpg-input-file.c \
 	cpg-integrator.c \
 	cpg-integrator-euler.c \
 	cpg-integrator-predict-correct.c \
@@ -40,7 +42,6 @@ COMMON_SOURCES = 		\
 	cpg-operator-lastof.c \
 	cpg-property.c \
 	cpg-stack.c \
-	cpg-state.c \
 	cpg-tokenizer.c \
 	cpg-usable.c \
 	cpg-utils.c
@@ -66,6 +67,8 @@ INST_H_FILES = \
 	cpg-function-polynomial.h \
 	cpg-function-polynomial-piece.h \
 	cpg-group.h \
+	cpg-input.h \
+	cpg-input-file.h \
 	cpg-integrator-euler.h \
 	cpg-integrator.h \
 	cpg-integrator-predict-correct.h \
@@ -89,7 +92,6 @@ INST_H_FILES = \
 	cpg-operator-lastof.h \
 	cpg-property.h \
 	cpg-stack.h \
-	cpg-state.h \
 	cpg-usable.h \
 	cpg-utils.h
 

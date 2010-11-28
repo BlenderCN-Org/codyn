@@ -43,7 +43,7 @@ struct _CpgGroupPrivate
 	guint proxy_signals[NUM_EXT_SIGNALS];
 };
 
-G_DEFINE_TYPE (CpgGroup, cpg_group, CPG_TYPE_STATE)
+G_DEFINE_TYPE (CpgGroup, cpg_group, CPG_TYPE_OBJECT)
 
 enum
 {

@@ -1,7 +1,7 @@
 #ifndef __CPG_GROUP_H__
 #define __CPG_GROUP_H__
 
-#include <cpg-network/cpg-state.h>
+#include <cpg-network/cpg-object.h>
 
 G_BEGIN_DECLS
 
@@ -27,7 +27,7 @@ typedef struct _CpgGroupPrivate	CpgGroupPrivate;
 struct _CpgGroup
 {
 	/*< private >*/
-	CpgState parent;
+	CpgObject parent;
 
 	CpgGroupPrivate *priv;
 };
@@ -44,7 +44,7 @@ struct _CpgGroup
 struct _CpgGroupClass
 {
 	/*< private >*/
-	CpgStateClass parent_class;
+	CpgObjectClass parent_class;
 
 	/*< public >*/
 	gboolean      (*add)           (CpgGroup   *group,

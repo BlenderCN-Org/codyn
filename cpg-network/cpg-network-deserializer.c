@@ -16,6 +16,7 @@
 #include "cpg-network-xml.h"
 #include "cpg-import.h"
 #include "cpg-import-alias.h"
+#include "cpg-input-file.h"
 
 /**
  * SECTION:cpg-network-deserializer
@@ -36,6 +37,8 @@ struct _CpgNetworkDeserializerPrivate
 	GError     **error;
 	CpgObject   *object;
 	GSList      *parents;
+
+	GFile *file;
 };
 
 static gboolean parse_all (CpgNetworkDeserializer *deserializer,
@@ -454,7 +457,7 @@ type_from_templates (GType   orig,
 {
 	/* This only needs to be checked for states since in the XML groups
 	   can be defined with a <state> to make it nicer to write the XML */
-	if (orig != CPG_TYPE_STATE)
+	if (orig != CPG_TYPE_OBJECT)
 	{
 		return orig;
 	}
@@ -1269,6 +1272,134 @@ find_template_import (CpgObject *child,
 }
 
 static gboolean
+parse_input_file (CpgNetworkDeserializer *deserializer,
+                  xmlNodePtr              node)
+{
+	CpgObject *object;
+
+	object = new_object (deserializer, CPG_TYPE_INPUT_FILE, node);
+
+	if (!object)
+	{
+		return FALSE;
+	}
+
+	gchar const *filename = NULL;
+
+	if (node->children && node->children->type == XML_TEXT_NODE)
+	{
+		filename = (gchar const *)node->children->content;
+	}
+
+	if (!filename)
+	{
+		parser_failed (deserializer,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
+		               "Input file node `%s' does not have a filename",
+		               cpg_object_get_id (object));
+
+		g_object_unref (object);
+		return FALSE;
+	}
+
+	GFile *file;
+
+	if (!g_path_is_absolute (filename))
+	{
+		GFile *parent = NULL;
+
+		if (deserializer->priv->file)
+		{
+			parent = g_file_get_parent (deserializer->priv->file);
+		}
+		else
+		{
+			GFile *f;
+
+			f = cpg_network_get_file (deserializer->priv->network);
+			parent = g_file_get_parent (f);
+			g_object_unref (f);
+		}
+
+		if (!parent)
+		{
+			parser_failed (deserializer,
+			               node,
+			               CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
+			               "Input file node `%s' cannot find file `%s'",
+			               cpg_object_get_id (object),
+			               filename);
+
+			g_object_unref (object);
+			return FALSE;
+		}
+
+		/* Relative to file being imported */
+		file = g_file_get_child (parent, filename);
+		g_object_unref (parent);
+	}
+	else
+	{
+		file = g_file_new_for_path (filename);
+	}
+
+	if (!g_file_query_exists (file, NULL))
+	{
+		g_object_unref (file);
+
+		parser_failed (deserializer,
+		               node,
+		               CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
+		               "Input file node `%s' cannot find file `%s'",
+		               cpg_object_get_id (object),
+		               filename);
+
+		g_object_unref (object);
+		return FALSE;
+	}
+
+	cpg_input_file_set_file (CPG_INPUT_FILE (object), file);
+	g_object_unref (file);
+
+	gchar const *tc = (gchar const *)xmlGetProp (node, (xmlChar *)"time-column");
+
+	if (tc)
+	{
+		gint column = atoi (tc);
+
+		if (column >= 0)
+		{
+			cpg_input_file_set_time_column (CPG_INPUT_FILE (object),
+			                                column);
+		}
+		else
+		{
+			parser_failed (deserializer,
+			               node,
+			               CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
+			               "Input file node `%s' invalid column: %d",
+			               cpg_object_get_id (object),
+			               column);
+
+			g_object_unref (object);
+			return FALSE;
+		}
+	}
+
+	gchar const *repeat = (gchar const *)xmlGetProp (node, (xmlChar *)"repeat");
+
+	if (repeat)
+	{
+		gboolean r = g_ascii_strcasecmp (repeat, "yes");
+
+		cpg_input_file_set_repeat (CPG_INPUT_FILE (object), r);
+	}
+
+	return TRUE;
+}
+
+static gboolean
 parse_import (CpgNetworkDeserializer *deserializer,
               xmlNodePtr              node)
 {
@@ -1309,18 +1440,25 @@ parse_import (CpgNetworkDeserializer *deserializer,
 	}
 	else
 	{
-		GFile *parent = cpg_network_get_file (deserializer->priv->network);
+		GFile *parent = NULL;
+
+		if (deserializer->priv->file)
+		{
+			parent = g_file_get_parent (deserializer->priv->file);
+		}
+		else
+		{
+			GFile *f;
+
+			f = cpg_network_get_file (deserializer->priv->network);
+			parent = g_file_get_parent (f);
+			g_object_unref (f);
+		}
 
 		if (parent)
 		{
-			/* Relative to network? */
-			gchar *parent_path = g_file_get_path (parent);
-			gchar *path = g_build_filename (parent_path, filename, NULL);
-			g_free (parent_path);
-
-			file = g_file_new_for_path (path);
-			g_free (path);
-
+			/* Relative to file being imported */
+			file = g_file_get_child (parent, filename);
 			g_object_unref (parent);
 
 			if (!g_file_query_exists (file, NULL))
@@ -1448,7 +1586,7 @@ parse_network (CpgNetworkDeserializer *deserializer,
 			}
 			else
 			{
-				ret = new_object (deserializer, CPG_TYPE_STATE, node) != NULL;
+				ret = new_object (deserializer, CPG_TYPE_OBJECT, node) != NULL;
 			}
 		}
 		else if (g_strcmp0 (nodename, "link") == 0)
@@ -1466,6 +1604,10 @@ parse_network (CpgNetworkDeserializer *deserializer,
 		else if (g_strcmp0 (nodename, "polynomial") == 0)
 		{
 			ret = parse_polynomial (deserializer, node);
+		}
+		else if (g_strcmp0 (nodename, "input-file") == 0)
+		{
+			ret = parse_input_file (deserializer, node);
 		}
 		else if (atroot)
 		{
@@ -1520,7 +1662,7 @@ parse_all (CpgNetworkDeserializer *deserializer,
 
 	ret = xml_xpath (deserializer,
 	                 root,
-	                 "state | link | templates | functions | function | globals | polynomial | import",
+	                 "state | link | templates | functions | function | globals | polynomial | import | input-file",
 	                 XML_ELEMENT_NODE,
 	                 (XPathResultFunc)parse_network,
 	                 NULL);
@@ -1779,11 +1921,16 @@ cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer
 		return FALSE;
 	}
 
+	deserializer->priv->file = g_file_dup (file);
+
 	gboolean ret;
 
 	ret = cpg_network_deserializer_deserialize (deserializer,
 	                                            G_INPUT_STREAM (stream),
 	                                            error);
+
+	g_object_unref (deserializer->priv->file);
+	deserializer->priv->file = NULL;
 
 	g_object_unref (stream);
 

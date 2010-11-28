@@ -2,6 +2,9 @@
 #include "cpg-link.h"
 #include "cpg-compile-error.h"
 #include "cpg-marshal.h"
+#include "cpg-input.h"
+
+#include <math.h>
 
 /**
  * SECTION:cpg-integrator
@@ -179,9 +182,7 @@ cpg_integrator_run_impl (CpgIntegrator *integrator,
 		return;
 	}
 
-	to += timestep / 2;
-
-	while (from < to)
+	while (from <= to)
 	{
 		gdouble realstep = step_func (integrator, from, timestep);
 
@@ -219,6 +220,17 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
 	reset_cache (integrator);
+
+	/* Update inputs */
+	GSList const *inputs;
+
+	inputs = cpg_integrator_state_inputs (integrator->priv->state);
+
+	while (inputs)
+	{
+		cpg_input_update (CPG_INPUT (inputs->data), integrator);
+		inputs = g_slist_next (inputs);
+	}
 
 	g_signal_emit (integrator, integrator_signals[STEP], 0, timestep, t + timestep);
 	return timestep;
@@ -317,6 +329,17 @@ cpg_integrator_step_prepare_impl (CpgIntegrator *integrator,
 	{
 		cpg_property_update_last_value (props->data);
 		props = g_slist_next (props);
+	}
+
+	/* Update inputs */
+	GSList const *inputs;
+
+	inputs = cpg_integrator_state_inputs (integrator->priv->state);
+
+	while (inputs)
+	{
+		cpg_input_update (CPG_INPUT (inputs->data), integrator);
+		inputs = g_slist_next (inputs);
 	}
 
 	return TRUE;

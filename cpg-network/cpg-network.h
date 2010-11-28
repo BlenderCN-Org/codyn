@@ -4,7 +4,6 @@
 #include <gio/gio.h>
 
 #include <cpg-network/cpg-object.h>
-#include <cpg-network/cpg-state.h>
 #include <cpg-network/cpg-link.h>
 #include <cpg-network/cpg-monitor.h>
 #include <cpg-network/cpg-compile-error.h>
@@ -50,7 +49,8 @@ typedef enum
 	CPG_NETWORK_LOAD_ERROR_OBJECT,
 	CPG_NETWORK_LOAD_ERROR_LINK,
 	CPG_NETWORK_LOAD_ERROR_FUNCTION,
-	CPG_NETWORK_LOAD_ERROR_IMPORT
+	CPG_NETWORK_LOAD_ERROR_IMPORT,
+	CPG_NETWORK_LOAD_ERROR_INPUT_FILE
 } CpgNetworkLoadError;
 
 #define CPG_NETWORK_ERROR (cpg_network_error_quark ())

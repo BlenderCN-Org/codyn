@@ -14,7 +14,7 @@ test_switch ()
 
 	network = cpg_network_new ();
 
-	CpgObject *state = CPG_OBJECT (cpg_state_new ("state"));
+	CpgObject *state = cpg_object_new ("state");
 	CpgProperty *property = cpg_property_new ("x", "sin(t)", 0);
 
 	cpg_object_add_property (state, property);

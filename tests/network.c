@@ -211,7 +211,7 @@ test_once ()
 	guint size;
 	const gdouble *data = cpg_monitor_get_data (monitor, &size);
 
-	g_assert_cmpint ((gint)size, =, 3);
+	g_assert_cmpint ((gint)size, ==, 4);
 
 	cpg_assert_tol (data[0], data[1]);
 	cpg_assert_tol (data[1], data[2]);

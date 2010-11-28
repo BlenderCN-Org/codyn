@@ -489,9 +489,9 @@ object_to_xml (CpgNetworkSerializer *serializer,
 static xmlNodePtr
 state_to_xml (CpgNetworkSerializer *serializer,
               xmlNodePtr            parent,
-              CpgState             *state)
+              CpgObject            *state)
 {
-	return object_to_xml (serializer, parent, CPG_OBJECT (state), "state");
+	return object_to_xml (serializer, parent, state, "state");
 }
 
 static gboolean
@@ -913,13 +913,13 @@ cpg_object_to_xml (CpgNetworkSerializer *serializer,
 	{
 		group_to_xml (serializer, root, CPG_GROUP (object));
 	}
-	else if (CPG_IS_STATE (object))
-	{
-		state_to_xml (serializer, root, CPG_STATE (object));
-	}
 	else if (CPG_IS_LINK (object))
 	{
 		link_to_xml (serializer, root, CPG_LINK (object));
+	}
+	else
+	{
+		state_to_xml (serializer, root, object);
 	}
 }
 

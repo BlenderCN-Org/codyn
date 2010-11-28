@@ -4,7 +4,6 @@
 #include "cpg-object.h"
 
 #include "cpg-link.h"
-#include "cpg-state.h"
 #include "cpg-expression.h"
 
 #include "cpg-compile-error.h"
