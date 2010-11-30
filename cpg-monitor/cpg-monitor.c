@@ -101,32 +101,6 @@ static GOptionEntry entries[] = {
 	{NULL}
 };
 
-static CpgProperty *
-find_property (CpgNetwork  *network,
-               gchar const *id)
-{
-	gchar **parts = g_strsplit (id, ".", 0);
-	CpgObject *obj;
-	gchar const *prop;
-	CpgProperty *ret;
-
-	if (g_strv_length (parts) == 1)
-	{
-		obj = cpg_network_get_globals (network);
-		prop = parts[0];
-	}
-	else
-	{
-		obj = cpg_network_get_object (network, parts[0]);
-		prop = parts[1];
-	}
-
-	ret = cpg_object_get_property (obj, prop);
-	g_strfreev (parts);
-
-	return ret;
-}
-
 static void
 write_monitors (CpgNetwork    *network,
                 GSList        *monitors,
@@ -161,9 +135,11 @@ write_monitors (CpgNetwork    *network,
 				                           NULL);
 			}
 
-			gchar *name = g_strconcat (cpg_object_get_id (cpg_monitor_get_object (monitor)),
+			CpgProperty *prop = cpg_monitor_get_property (monitor);
+
+			gchar *name = g_strconcat (cpg_object_get_id (cpg_property_get_object (prop)),
 			                           ".",
-			                           cpg_property_get_name (cpg_monitor_get_property (monitor)),
+			                           cpg_property_get_name (prop),
 			                           NULL);
 
 			g_output_stream_write_all (stream,
@@ -242,8 +218,13 @@ monitor_network (gchar const *filename)
 	CpgNetwork *network;
 	GError *error = NULL;
 	gint i;
+	GFile *file;
+	CpgCompileError *err;
 
-	network = cpg_network_new_from_file (filename, &error);
+	file = g_file_new_for_commandline_arg (filename);
+
+	network = cpg_network_new_from_file (file, &error);
+	g_object_unref (file);
 
 	if (!network)
 	{
@@ -253,6 +234,22 @@ monitor_network (gchar const *filename)
 		return;
 	}
 
+	err = cpg_compile_error_new ();
+
+	if (!cpg_object_compile (CPG_OBJECT (network), NULL, err))
+	{
+		g_print ("Failed to compile network `%s': %s",
+		         filename,
+		         cpg_compile_error_string (err));
+
+		g_object_unref (network);
+		g_object_unref (err);
+
+		return;
+	}
+
+	g_object_unref (err);
+
 	GSList *mons = NULL;
 
 	for (i = 0; i < monitors->len; ++i)
@@ -260,7 +257,8 @@ monitor_network (gchar const *filename)
 		CpgMonitor *monitor;
 		CpgProperty *prop;
 
-		prop = find_property (network, monitors->pdata[i]);
+		prop = cpg_group_find_property (CPG_GROUP (network),
+		                                monitors->pdata[i]);
 
 		if (!prop)
 		{
@@ -272,15 +270,14 @@ monitor_network (gchar const *filename)
 		}
 
 		monitor = cpg_monitor_new (network,
-		                           cpg_property_get_object (prop),
-		                           cpg_property_get_name (prop));
+		                           prop);
+
 		mons = g_slist_prepend (mons, monitor);
 	}
 
 	mons = g_slist_reverse (mons);
 	cpg_network_run (network, from, step, to);
 
-	GSList *item;
 	GOutputStream *out;
 
 	if (output_file != NULL && g_strcmp0 (output_file, "-") != 0)
@@ -334,7 +331,7 @@ monitor_network (gchar const *filename)
 		g_output_stream_close (out, NULL, NULL);
 	}
 
-	g_slist_foreach (mons, (GFunc)cpg_ref_counted_unref, NULL);
+	g_slist_foreach (mons, (GFunc)g_object_unref, NULL);
 	g_object_unref (network);
 }
 
