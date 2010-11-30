@@ -114,6 +114,7 @@ m4/Makefile
 tests/Makefile
 win32/Makefile
 win32/make-zip
+cpg-monitor/Makefile
 ])
 
 AC_OUTPUT
