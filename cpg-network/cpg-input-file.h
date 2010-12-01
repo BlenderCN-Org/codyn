@@ -58,9 +58,10 @@ gboolean cpg_input_file_get_repeat (CpgInputFile *input);
 void cpg_input_file_set_repeat (CpgInputFile *input,
                                 gboolean       repeat);
 
-gint cpg_input_file_get_time_column (CpgInputFile *input);
+gint cpg_input_file_get_time_column (CpgInputFile *input,
+                                     gboolean     *isset);
 void cpg_input_file_set_time_column (CpgInputFile *input,
-                                     gint           column);
+                                     gint          column);
 
 gdouble const * const *cpg_input_file_get_data (CpgInputFile *input,
                                                 guint         *num_rows,

@@ -922,9 +922,15 @@ cpg_input_file_set_repeat (CpgInputFile *input,
 }
 
 gint
-cpg_input_file_get_time_column (CpgInputFile *input)
+cpg_input_file_get_time_column (CpgInputFile *input,
+                                gboolean     *isset)
 {
 	g_return_val_if_fail (CPG_IS_INPUT_FILE (input), 0);
+
+	if (isset)
+	{
+		*isset = input->priv->time_column_set;
+	}
 
 	return input->priv->time_column;
 }
