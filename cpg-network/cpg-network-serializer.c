@@ -911,19 +911,20 @@ input_file_to_xml (CpgNetworkSerializer *serializer,
 {
 	xmlNodePtr node;
 	GSList *properties;
-	CpgProperty **columns;
-	guint num_columns;
-	guint i;
+	gchar **columns;
+	gchar **item;
 
 	properties = cpg_object_get_properties (CPG_OBJECT (input));
 
-	columns = cpg_input_file_get_columns (input, &num_columns);
+	columns = cpg_input_file_get_columns (input);
 
-	for (i = 0; i < num_columns; ++i)
+	for (item = columns; *item; ++item)
 	{
 		properties = g_slist_remove (properties,
-		                             columns[i]);
+		                             cpg_object_get_property (CPG_OBJECT (input), *item));
 	}
+
+	g_strfreev (columns);
 
 	node = object_to_xml (serializer,
 	                      parent,
