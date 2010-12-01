@@ -1311,64 +1311,55 @@ parse_input_file (CpgNetworkDeserializer *deserializer,
 		}
 	}
 
-	if (!filename)
+	GFile *file = NULL;
+
+	if (filename)
 	{
-		parser_failed (deserializer,
-		               node,
-		               CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
-		               "Input file node `%s' does not have a filename",
-		               cpg_object_get_id (object));
-
-		g_object_unref (object);
-		return FALSE;
-	}
-
-	GFile *file;
-
-	if (!g_path_is_absolute (filename))
-	{
-		GFile *parent = NULL;
-
-		if (deserializer->priv->file)
+		if (!g_path_is_absolute (filename))
 		{
-			parent = g_file_get_parent (deserializer->priv->file);
+			GFile *parent = NULL;
+
+			if (deserializer->priv->file)
+			{
+				parent = g_file_get_parent (deserializer->priv->file);
+			}
+			else
+			{
+				GFile *f;
+
+				f = cpg_network_get_file (deserializer->priv->network);
+				parent = g_file_get_parent (f);
+				g_object_unref (f);
+			}
+
+			if (!parent)
+			{
+				parser_failed (deserializer,
+					       node,
+					       CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
+					       "Input file node `%s' cannot find file `%s'",
+					       cpg_object_get_id (object),
+					       filename);
+
+				g_object_unref (object);
+				g_free (filename);
+
+				return FALSE;
+			}
+
+			/* Relative to file being imported */
+			file = g_file_get_child (parent, filename);
+			g_object_unref (parent);
 		}
 		else
 		{
-			GFile *f;
-
-			f = cpg_network_get_file (deserializer->priv->network);
-			parent = g_file_get_parent (f);
-			g_object_unref (f);
+			file = g_file_new_for_path (filename);
 		}
 
-		if (!parent)
-		{
-			parser_failed (deserializer,
-			               node,
-			               CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
-			               "Input file node `%s' cannot find file `%s'",
-			               cpg_object_get_id (object),
-			               filename);
-
-			g_object_unref (object);
-			g_free (filename);
-
-			return FALSE;
-		}
-
-		/* Relative to file being imported */
-		file = g_file_get_child (parent, filename);
-		g_object_unref (parent);
-	}
-	else
-	{
-		file = g_file_new_for_path (filename);
+		g_free (filename);
 	}
 
-	g_free (filename);
-
-	if (!g_file_query_exists (file, NULL))
+	if (file && !g_file_query_exists (file, NULL))
 	{
 		g_object_unref (file);
 
@@ -1384,7 +1375,11 @@ parse_input_file (CpgNetworkDeserializer *deserializer,
 	}
 
 	cpg_input_file_set_file (CPG_INPUT_FILE (object), file);
-	g_object_unref (file);
+
+	if (file)
+	{
+		g_object_unref (file);
+	}
 
 	gchar const *tc = (gchar const *)xmlGetProp (node, (xmlChar *)"time-column");
 
