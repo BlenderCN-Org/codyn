@@ -1284,11 +1284,31 @@ parse_input_file (CpgNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
-	gchar const *filename = NULL;
+	xmlChar *prop;
+	gchar *filename = NULL;
 
-	if (node->children && node->children->type == XML_TEXT_NODE)
+	prop = xmlGetProp (node, (xmlChar *)"filename");
+
+	if (prop)
 	{
-		filename = (gchar const *)node->children->content;
+		filename = g_strdup ((gchar const *)prop);
+		xmlFree (prop);
+	}
+
+	if (!filename)
+	{
+		xmlNodePtr child = node->children;
+
+		while (child)
+		{
+			if (child->type == XML_TEXT_NODE)
+			{
+				filename = g_strdup ((gchar const *)child->content);
+				break;
+			}
+
+			child = child->next;
+		}
 	}
 
 	if (!filename)
@@ -1332,6 +1352,8 @@ parse_input_file (CpgNetworkDeserializer *deserializer,
 			               filename);
 
 			g_object_unref (object);
+			g_free (filename);
+
 			return FALSE;
 		}
 
@@ -1343,6 +1365,8 @@ parse_input_file (CpgNetworkDeserializer *deserializer,
 	{
 		file = g_file_new_for_path (filename);
 	}
+
+	g_free (filename);
 
 	if (!g_file_query_exists (file, NULL))
 	{
