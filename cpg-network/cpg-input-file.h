@@ -66,6 +66,9 @@ gdouble const * const *cpg_input_file_get_data (CpgInputFile *input,
                                                 guint         *num_rows,
                                                 guint         *num_columns);
 
+gboolean cpg_input_file_ensure (CpgInputFile  *file,
+                                GError       **error);
+
 G_END_DECLS
 
 #endif /* __CPG_INPUT_FILE_H__ */

@@ -985,3 +985,21 @@ cpg_input_file_get_data (CpgInputFile *input,
 
 	return (gdouble const * const *)input->priv->values;
 }
+
+gboolean
+cpg_input_file_ensure (CpgInputFile  *input,
+                       GError       **error)
+{
+	g_return_val_if_fail (CPG_IS_INPUT_FILE (input), FALSE);
+
+	if (input->priv->file && !input->priv->values)
+	{
+		return read_file (input, error);
+	}
+	else if (!input->priv->file && input->priv->values)
+	{
+		set_column_names (input, NULL);
+	}
+
+	return TRUE;
+}
