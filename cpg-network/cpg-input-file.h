@@ -48,15 +48,14 @@ gchar *cpg_input_file_get_file_path (CpgInputFile *input);
 void cpg_input_file_set_file_path (CpgInputFile *input,
                                    gchar const  *path);
 
-void cpg_input_file_set_column_names (CpgInputFile       *input,
-                                      gchar const * const *names);
+void cpg_input_file_set_columns (CpgInputFile       *input,
+                                 gchar const * const *names);
 
-CpgProperty **cpg_input_file_get_columns (CpgInputFile *input,
-                                          guint        *num_columns);
+gchar **cpg_input_file_get_columns (CpgInputFile *input);
 
 gboolean cpg_input_file_get_repeat (CpgInputFile *input);
 void cpg_input_file_set_repeat (CpgInputFile *input,
-                                gboolean       repeat);
+                                gboolean      repeat);
 
 gint cpg_input_file_get_time_column (CpgInputFile *input,
                                      gboolean     *isset);

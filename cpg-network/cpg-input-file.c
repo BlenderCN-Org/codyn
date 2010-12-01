@@ -886,8 +886,8 @@ cpg_input_file_set_file_path (CpgInputFile *input,
 }
 
 void
-cpg_input_file_set_column_names (CpgInputFile       *input,
-                                 gchar const * const *names)
+cpg_input_file_set_columns (CpgInputFile       *input,
+                            gchar const * const *names)
 {
 	g_return_if_fail (CPG_IS_INPUT_FILE (input));
 
@@ -900,25 +900,30 @@ cpg_input_file_set_column_names (CpgInputFile       *input,
 /**
  * cpg_input_file_get_columns:
  * @input: A #CpgInputFilecolumn
- * @num_columns: (out callee-allocates): Return location for the number of columns
  *
  * Get the columns.
  *
- * Returns: (transfer none) (array length=num_columns): A list of #CpgProperty
+ * Returns: (transfer full): A list of column names
  *
  **/
-CpgProperty **
-cpg_input_file_get_columns (CpgInputFile *input,
-                            guint        *num_columns)
+gchar **
+cpg_input_file_get_columns (CpgInputFile *input)
 {
+	GPtrArray *ret;
+	guint i;
+
 	g_return_val_if_fail (CPG_IS_INPUT_FILE (input), NULL);
 
-	if (num_columns)
+	ret = g_ptr_array_new ();
+
+	for (i = 0; i < input->priv->num_columns; ++i)
 	{
-		*num_columns = input->priv->num_columns;
+		g_ptr_array_add (ret, g_strdup (cpg_property_get_name (input->priv->columns[i])));
 	}
 
-	return input->priv->columns;
+	g_ptr_array_add (ret, NULL);
+
+	return (gchar **)g_ptr_array_free (ret, FALSE);
 }
 
 gboolean
