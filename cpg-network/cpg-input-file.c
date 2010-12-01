@@ -380,7 +380,7 @@ set_column_names (CpgInputFile        *input,
 	for (item = oldc; item; item = g_slist_next (item))
 	{
 		cpg_object_remove_property (CPG_OBJECT (input),
-		                            item->data,
+		                            cpg_property_get_name (item->data),
 		                            NULL);
 	}
 
