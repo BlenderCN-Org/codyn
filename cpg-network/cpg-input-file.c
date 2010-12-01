@@ -320,7 +320,10 @@ set_column_names (CpgInputFile        *input,
 
 	guint num_columns = 0;
 
-	set_time_from_columns (input, columns);
+	if (columns)
+	{
+		set_time_from_columns (input, columns);
+	}
 
 	gint tc = input->priv->time_column;
 
