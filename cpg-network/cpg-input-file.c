@@ -25,6 +25,7 @@ struct _CpgInputFilePrivate
 	guint column_names_set : 1;
 	guint time_column_set : 1;
 	guint repeat : 1;
+	guint warned : 1;
 };
 
 G_DEFINE_TYPE (CpgInputFile, cpg_input_file, CPG_TYPE_INPUT)
@@ -65,6 +66,8 @@ clear (CpgInputFile *input, gboolean finalize)
 
 	g_free (input->priv->values);
 	input->priv->values = NULL;
+
+	input->priv->warned = FALSE;
 }
 
 static void
@@ -493,9 +496,14 @@ add_values (CpgInputFile  *input,
 	{
 		gchar *uri;
 
-		uri = g_file_get_uri (input->priv->file);
-		g_warning ("Time is not monotonic in: %s, %d", uri, input->priv->time_column);
-		g_free (uri);
+		if (!input->priv->warned)
+		{
+			uri = g_file_get_uri (input->priv->file);
+			g_warning ("Time is not monotonic in: %s, column = %d", uri, input->priv->time_column);
+			g_free (uri);
+
+			input->priv->warned = TRUE;
+		}
 	}
 }
 
