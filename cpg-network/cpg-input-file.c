@@ -800,11 +800,17 @@ cpg_input_file_new_for_path (gchar const *id,
 	CpgInputFile *ret;
 
 	g_return_val_if_fail (id != NULL, NULL);
-	g_return_val_if_fail (path != NULL, NULL);
 
-	file = g_file_new_for_path (path);
-	ret = cpg_input_file_new (id, file);
-	g_object_unref (file);
+	if (path)
+	{
+		file = g_file_new_for_path (path);
+		ret = cpg_input_file_new (id, file);
+		g_object_unref (file);
+	}
+	else
+	{
+		ret = cpg_input_file_new (id, NULL);
+	}
 
 	return ret;
 }
