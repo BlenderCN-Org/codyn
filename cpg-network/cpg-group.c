@@ -663,7 +663,8 @@ cpg_group_cpg_apply_template (CpgObject *object,
 
 		if (child == proxy)
 		{
-			if (get_template_proxy (group))
+			if (group->priv->proxy == NULL ||
+			    get_template_proxy (group))
 			{
 				set_proxy (group, new_child);
 			}
