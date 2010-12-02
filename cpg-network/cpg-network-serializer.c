@@ -874,8 +874,14 @@ import_to_xml (CpgNetworkSerializer *serializer,
 
 	if (network_file)
 	{
-		path = g_file_get_relative_path (network_file, import_file);
+		GFile *parent;
+
+		parent = g_file_get_parent (network_file);
+
+		path = g_file_get_relative_path (parent, import_file);
+
 		g_object_unref (network_file);
+		g_object_unref (parent);
 	}
 
 	if (!path)
@@ -940,7 +946,26 @@ input_file_to_xml (CpgNetworkSerializer *serializer,
 
 	if (file)
 	{
-		gchar *path = g_file_get_path (file);
+		GFile *network_file;
+		GFile *parent;
+
+		network_file = cpg_network_get_file (serializer->priv->network);
+		gchar *path = NULL;
+
+		if (network_file)
+		{
+			parent = g_file_get_parent (network_file);
+
+			path = g_file_get_relative_path (parent, file);
+
+			g_object_unref (parent);
+			g_object_unref (network_file);
+		}
+
+		if (!path)
+		{
+			path = g_file_get_path (file);
+		}
 
 		if (node->children)
 		{
