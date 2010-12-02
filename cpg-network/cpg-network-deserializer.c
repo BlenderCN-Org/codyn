@@ -1361,6 +1361,9 @@ parse_input_file (CpgNetworkDeserializer *deserializer,
 
 	if (file && !g_file_query_exists (file, NULL))
 	{
+		gchar *path;
+
+		path = g_file_get_path (file);
 		g_object_unref (file);
 
 		parser_failed (deserializer,
@@ -1368,8 +1371,9 @@ parse_input_file (CpgNetworkDeserializer *deserializer,
 		               CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
 		               "Input file node `%s' cannot find file `%s'",
 		               cpg_object_get_id (object),
-		               filename);
+		               path);
 
+		g_free (path);
 		g_object_unref (object);
 		return FALSE;
 	}
