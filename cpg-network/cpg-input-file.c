@@ -449,6 +449,10 @@ parse_numeric_columns (CpgInputFile  *input,
 			name = g_strdup_printf ("y%d", column);
 			g_ptr_array_add (columns, name);
 		}
+		else
+		{
+			g_ptr_array_add (columns, g_strdup ("t"));
+		}
 
 		++parts;
 		++ptr;
