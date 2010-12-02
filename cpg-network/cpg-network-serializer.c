@@ -831,6 +831,8 @@ skip_object (CpgObject *object)
 	                                 "id", cpg_object_get_id (object),
 	                                 NULL);
 
+	_cpg_object_set_parent (dummy, cpg_object_get_parent (object));
+
 	GSList *item;
 
 	for (item = templates; item; item = g_slist_next (item))
