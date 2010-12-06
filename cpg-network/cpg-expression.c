@@ -556,6 +556,7 @@ parse_function (CpgExpression *expression,
 		                      CPG_COMPILE_ERROR_MAXARG,
 		                      "Number of arguments (%d) for function `%s' does not match (got %d)",
 		                      numargs,
+		                      name,
 		                      arguments);
 	}
 	
