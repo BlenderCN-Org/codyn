@@ -478,6 +478,57 @@ type_from_templates (GType   orig,
 	return orig;
 }
 
+static gchar **
+split_templates (gchar const *templates)
+{
+	GPtrArray *ret;
+	gchar const *ptr;
+	gchar const *lastc;
+
+	ret = g_ptr_array_new ();
+
+	while (*templates && g_ascii_isspace (*templates))
+	{
+		++templates;
+	}
+
+	ptr = templates;
+	lastc = ptr;
+
+	while (*templates)
+	{
+		if (*templates == ',')
+		{
+			if (ptr && lastc - ptr > 0)
+			{
+				g_ptr_array_add (ret, g_strndup (ptr, lastc - ptr + 1));
+			}
+
+			ptr = NULL;
+		}
+		else if (!g_ascii_isspace (*templates))
+		{
+			lastc = templates;
+
+			if (!ptr)
+			{
+				ptr = templates;
+			}
+		}
+
+		++templates;
+	}
+
+	if (ptr && lastc - ptr > 0)
+	{
+		g_ptr_array_add (ret, g_strndup (ptr, lastc - ptr + 1));
+	}
+
+	g_ptr_array_add (ret, NULL);
+
+	return (gchar **)g_ptr_array_free (ret, FALSE);
+}
+
 static gboolean
 get_templates (CpgNetworkDeserializer  *deserializer,
                xmlNodePtr               node,
@@ -497,7 +548,7 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	gchar **parts;
 	gchar **ptr;
 
-	parts = g_strsplit_set ((gchar const *)ref, ", ", -1);
+	parts = split_templates ((gchar const *)ref);
 	gboolean ret = TRUE;
 
 	/* Multiple templates are allowed, iterate over all the template ids
