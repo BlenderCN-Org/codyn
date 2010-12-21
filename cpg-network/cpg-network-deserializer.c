@@ -1379,8 +1379,12 @@ parse_input_file (CpgNetworkDeserializer *deserializer,
 				GFile *f;
 
 				f = cpg_network_get_file (deserializer->priv->network);
-				parent = g_file_get_parent (f);
-				g_object_unref (f);
+
+				if (f)
+				{
+					parent = g_file_get_parent (f);
+					g_object_unref (f);
+				}
 			}
 
 			if (!parent)
@@ -1525,8 +1529,12 @@ parse_import (CpgNetworkDeserializer *deserializer,
 			GFile *f;
 
 			f = cpg_network_get_file (deserializer->priv->network);
-			parent = g_file_get_parent (f);
-			g_object_unref (f);
+
+			if (f)
+			{
+				parent = g_file_get_parent (f);
+				g_object_unref (f);
+			}
 		}
 
 		if (parent)
