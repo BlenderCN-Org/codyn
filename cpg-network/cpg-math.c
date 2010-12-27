@@ -336,7 +336,7 @@ cpg_math_function_lookup (gchar const  *name,
 {
 	guint i;
 	
-	for (i = 1; i < CPG_FUNCTION_OPERATOR_NUM; ++i)
+	for (i = 1; i < CPG_MATH_FUNCTION_TYPE_NUM; ++i)
 	{
 		if (strcmp (function_entries[i].name, name) == 0)
 		{
