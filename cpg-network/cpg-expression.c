@@ -604,6 +604,9 @@ parse_custom_operator (CpgExpression *expression,
 		CpgExpression *sub = cpg_expression_new (t);
 		cpg_expression_set_instructions (sub, newinst);
 
+		g_slist_foreach (newinst, (GFunc)cpg_mini_object_free, NULL);
+		g_slist_free (newinst);
+
 		expressions = g_slist_prepend (expressions, sub);
 
 		// see what's next
@@ -1419,7 +1422,7 @@ cpg_expression_compile (CpgExpression      *expression,
  **/
 gboolean
 cpg_expression_set_instructions (CpgExpression *expression,
-                                 GSList        *instructions)
+                                 GSList const  *instructions)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
 
@@ -1433,7 +1436,17 @@ cpg_expression_set_instructions (CpgExpression *expression,
 	g_slist_free (expression->priv->dependencies);
 	expression->priv->dependencies = NULL;
 
-	expression->priv->instructions = instructions;
+	while (instructions)
+	{
+		expression->priv->instructions =
+			g_slist_prepend (expression->priv->instructions,
+			                 cpg_mini_object_copy (instructions->data));
+
+		instructions = g_slist_next (instructions);
+	}
+
+	expression->priv->instructions =
+		g_slist_reverse (expression->priv->instructions);
 
 	if (!expression->priv->instructions)
 	{

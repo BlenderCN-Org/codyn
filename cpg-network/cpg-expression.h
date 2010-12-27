@@ -64,7 +64,7 @@ void           cpg_expression_reset_cache      (CpgExpression      *expression);
 
 const GSList  *cpg_expression_get_instructions (CpgExpression      *expression);
 gboolean       cpg_expression_set_instructions (CpgExpression      *expression,
-                                                GSList             *instructions);
+                                                const GSList       *instructions);
 
 gboolean       cpg_expression_get_once         (CpgExpression      *expression);
 void           cpg_expression_set_once         (CpgExpression      *expression,
