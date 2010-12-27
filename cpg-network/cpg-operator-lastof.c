@@ -87,10 +87,7 @@ scan_properties (CpgOperatorLastofData *data)
 	new_instructions = g_slist_reverse (new_instructions);
 	data->properties = g_slist_reverse (data->properties);
 
-	cpg_expression_set_instructions (expression, new_instructions);
-
-	g_slist_foreach (new_instructions, (GFunc)cpg_mini_object_free, NULL);
-	g_slist_free (new_instructions);
+	_cpg_expression_set_instructions_take (expression, new_instructions);
 }
 
 static CpgOperatorData *

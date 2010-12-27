@@ -150,7 +150,7 @@ on_template_child_removed (CpgGroup  *templ,
 		properties = cpg_object_get_properties (obj);
 
 		if (cpg_object_get_applied_templates (obj) == NULL &&
-		    properties == NULL && _cpg_object_get_links (obj) == NULL)
+		    properties == NULL && cpg_object_get_links (obj) == NULL)
 		{
 			cpg_group_remove (templ, child, NULL);
 		}

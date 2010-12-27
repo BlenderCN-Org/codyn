@@ -1648,8 +1648,17 @@ cpg_object_set_id (CpgObject    *object,
 	g_object_notify (G_OBJECT (object), "id");
 }
 
+/**
+ * cpg_object_get_links:
+ * @object: A #CpgObject
+ *
+ * Get a list of links that act on this object.
+ *
+ * Returns: (element-type CpgLink): A list of #CpgLink
+ *
+ */
 GSList const *
-_cpg_object_get_links (CpgObject *object)
+cpg_object_get_links (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 

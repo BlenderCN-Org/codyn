@@ -226,14 +226,14 @@ CpgObject        *cpg_object_get_property_template (CpgObject   *object,
 
 gchar            *cpg_object_get_full_id    (CpgObject *object);
 
+const GSList     *cpg_object_get_links      (CpgObject *object);
+
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,
                                              CPG_FORWARD_DECL (CpgLink) *link);
 
 void             _cpg_object_unlink         (CpgObject                  *object,
                                              CPG_FORWARD_DECL (CpgLink) *link);
-
-const GSList    *_cpg_object_get_links      (CpgObject *object);
 
 void             _cpg_object_set_parent     (CpgObject *object,
                                              CpgObject *parent);
