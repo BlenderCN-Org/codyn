@@ -498,11 +498,6 @@ parse_function (CpgExpression *expression,
 		                      arguments);
 	}
 
-	if (arguments == -1 || n_optional > 0)
-	{
-		instructions_push (expression, cpg_instruction_number_new ((gdouble)numargs));
-	}
-
 	CpgInstruction *instruction;
 
 	if (function == NULL)
@@ -511,15 +506,13 @@ parse_function (CpgExpression *expression,
 		{
 			instruction = cpg_instruction_function_new (fid,
 			                                            name,
-			                                            numargs,
-			                                            cpg_math_function_is_variable (fid));
+			                                            numargs);
 		}
 		else
 		{
 			instruction = cpg_instruction_variadic_function_new (fid,
 			                                                     name,
-			                                                     numargs,
-			                                                     cpg_math_function_is_variable (fid));
+			                                                     numargs);
 		}
 	}
 	else
@@ -1417,12 +1410,11 @@ cpg_expression_compile (CpgExpression      *expression,
  * Returns: %TRUE if the new instruction set is valid, %FALSE otherwise
  *
  **/
-gboolean
+void
 cpg_expression_set_instructions (CpgExpression *expression,
                                  GSList const  *instructions)
 {
 	GSList *copy = NULL;
-	gboolean ret;
 
 	while (instructions)
 	{
@@ -1432,19 +1424,17 @@ cpg_expression_set_instructions (CpgExpression *expression,
 		instructions = g_slist_next (instructions);
 	}
 
-	ret = _cpg_expression_set_instructions_take (expression, copy);
+	_cpg_expression_set_instructions_take (expression, copy);
 
 	g_slist_foreach (copy, (GFunc)cpg_mini_object_free, NULL);
 	g_slist_free (copy);
-
-	return ret;
 }
 
-gboolean
-_cpg_expression_set_instructions_take (CpgExpression      *expression,
-                                       GSList             *instructions)
+void
+_cpg_expression_set_instructions_take (CpgExpression *expression,
+                                       GSList        *instructions)
 {
-	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
+	g_return_if_fail (CPG_IS_EXPRESSION (expression));
 
 	instructions_free (expression);
 
@@ -1489,12 +1479,7 @@ _cpg_expression_set_instructions_take (CpgExpression      *expression,
 	expression->priv->operator_instructions =
 		g_slist_reverse (expression->priv->operator_instructions);
 
-	if (!validate_stack (expression))
-	{
-		return FALSE;
-	}
-
-	return TRUE;
+	validate_stack (expression);
 }
 
 /**

@@ -34,8 +34,7 @@ GType cpg_instruction_variadic_function_get_type (void) G_GNUC_CONST;
 
 CpgInstruction *cpg_instruction_variadic_function_new (guint        id,
                                                        gchar const *name,
-                                                       gint         arguments,
-                                                       gboolean     variable);
+                                                       gint         arguments);
 
 void cpg_instruction_variadic_function_reset_cache (CpgInstructionVariadicFunction *self);
 

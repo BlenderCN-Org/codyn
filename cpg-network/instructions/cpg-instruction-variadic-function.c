@@ -63,8 +63,7 @@ cpg_instruction_variadic_function_execute (CpgInstruction *instruction,
 	if (self->priv->cached)
 	{
 		gint i;
-		gint num = cpg_instruction_function_get_arguments (func) +
-		           cpg_instruction_function_get_variable (func);
+		gint num = cpg_instruction_function_get_arguments (func);
 
 		for (i = 0; i < num; ++i)
 		{
@@ -76,6 +75,7 @@ cpg_instruction_variadic_function_execute (CpgInstruction *instruction,
 	else
 	{
 		cpg_math_function_execute (cpg_instruction_function_get_id (func),
+		                           cpg_instruction_function_get_arguments (func),
 		                           stack);
 
 		/* Cache the result */
@@ -122,8 +122,7 @@ cpg_instruction_variadic_function_init (CpgInstructionVariadicFunction *self)
 CpgInstruction *
 cpg_instruction_variadic_function_new (guint        id,
                                        gchar const *name,
-                                       gint         arguments,
-                                       gboolean     variable)
+                                       gint         arguments)
 {
 	CpgMiniObject *ret;
 	CpgInstructionFunction *func;
@@ -134,7 +133,6 @@ cpg_instruction_variadic_function_new (guint        id,
 	cpg_instruction_function_set_id (func, id);
 	cpg_instruction_function_set_name (func, name);
 	cpg_instruction_function_set_arguments (func, arguments);
-	cpg_instruction_function_set_variable (func, variable);
 
 	return CPG_INSTRUCTION (ret);
 }

@@ -125,8 +125,10 @@ gdouble              cpg_math_constant_lookup      (const gchar         *name,
                                                     gboolean            *found);
 CpgMathOperatorType  cpg_math_operator_lookup      (CpgMathOperatorType  type);
 void                 cpg_math_function_execute     (CpgMathFunctionType  type,
+                                                    gint                 numargs,
                                                     CpgStack            *stack);
 void                 cpg_math_operator_execute     (CpgMathOperatorType  type,
+                                                    gint                 numargs,
                                                     CpgStack            *stack);
 gboolean             cpg_math_function_is_constant (CpgMathFunctionType  type);
 gboolean             cpg_math_operator_is_constant (CpgMathOperatorType  type);

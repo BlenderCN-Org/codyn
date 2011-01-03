@@ -22,8 +22,6 @@ typedef struct _CpgInstructionFunctionPrivate	CpgInstructionFunctionPrivate;
  * @id: The function/operator id (see #cpg_math_function_lookup)
  * @name: The function/operator name
  * @arguments: The number of arguments the function receives
- * @variable: Whether the function is called with a variable number of
- *            arguments
  *
  * The instruction class for %CPG_INSTRUCTION_TYPE_FUNCTION. Note: this
  * instruction is used both for functions and for operators!
@@ -46,8 +44,7 @@ GType cpg_instruction_function_get_type (void) G_GNUC_CONST;
 
 CpgInstruction *cpg_instruction_function_new (guint        id,
                                               const gchar *name,
-                                              gint         arguments,
-                                              gboolean     variable);
+                                              gint         arguments);
 
 void         cpg_instruction_function_set_id          (CpgInstructionFunction *func,
                                                        guint                   id);
@@ -60,10 +57,6 @@ gchar const *cpg_instruction_function_get_name        (CpgInstructionFunction *f
 void         cpg_instruction_function_set_arguments   (CpgInstructionFunction *func,
                                                        gint                    arguments);
 gint         cpg_instruction_function_get_arguments   (CpgInstructionFunction *func);
-
-void         cpg_instruction_function_set_variable    (CpgInstructionFunction *func,
-                                                       gboolean                variable);
-gboolean     cpg_instruction_function_get_variable    (CpgInstructionFunction *func);
 
 G_END_DECLS
 

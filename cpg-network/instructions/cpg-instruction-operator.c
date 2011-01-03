@@ -27,6 +27,7 @@ cpg_instruction_operator_execute (CpgInstruction *instruction,
 	func = (CpgInstructionFunction *)instruction;
 
 	cpg_math_operator_execute (cpg_instruction_function_get_id (func),
+	                           cpg_instruction_function_get_arguments (func),
 	                           stack);
 }
 
@@ -58,7 +59,6 @@ cpg_instruction_operator_new (guint        id,
 	cpg_instruction_function_set_id (func, id);
 	cpg_instruction_function_set_name (func, name);
 	cpg_instruction_function_set_arguments (func, arguments);
-	cpg_instruction_function_set_variable (func, cpg_math_operator_is_variable (id));
 
 	return CPG_INSTRUCTION (ret);
 }

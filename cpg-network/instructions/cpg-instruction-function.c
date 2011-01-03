@@ -8,7 +8,6 @@ struct _CpgInstructionFunctionPrivate
 	guint id;
 	gchar *name;
 	gint arguments;
-	gboolean variable;
 };
 
 G_DEFINE_TYPE (CpgInstructionFunction, cpg_instruction_function, CPG_TYPE_INSTRUCTION)
@@ -40,7 +39,6 @@ cpg_instruction_function_copy (CpgMiniObject const *object)
 	self->priv->id = src->priv->id;
 	self->priv->name = g_strdup (src->priv->name);
 	self->priv->arguments = src->priv->arguments;
-	self->priv->variable = src->priv->variable;
 
 	return ret;
 }
@@ -63,7 +61,7 @@ cpg_instruction_function_execute (CpgInstruction *instruction,
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CpgInstructionFunction *)instruction;
-	cpg_math_function_execute (self->priv->id, stack);
+	cpg_math_function_execute (self->priv->id, self->priv->arguments, stack);
 }
 
 static gint
@@ -74,11 +72,6 @@ cpg_instruction_function_get_stack_count (CpgInstruction *instruction)
 
 	self = CPG_INSTRUCTION_FUNCTION (instruction);
 	fromstack = self->priv->arguments;
-
-	if (self->priv->variable)
-	{
-		++fromstack;
-	}
 
 	return -fromstack + 1;
 }
@@ -119,8 +112,7 @@ cpg_instruction_function_init (CpgInstructionFunction *self)
 CpgInstruction *
 cpg_instruction_function_new (guint        id,
                               const gchar *name,
-                              gint         arguments,
-                              gboolean     variable)
+                              gint         arguments)
 {
 	CpgMiniObject *ret;
 	CpgInstructionFunction *func;
@@ -131,7 +123,6 @@ cpg_instruction_function_new (guint        id,
 	func->priv->id = id;
 	func->priv->name = g_strdup (name);
 	func->priv->arguments = arguments;
-	func->priv->variable = variable;
 
 	return CPG_INSTRUCTION (ret);
 }
@@ -173,15 +164,6 @@ cpg_instruction_function_set_arguments (CpgInstructionFunction *func,
 	func->priv->arguments = arguments;
 }
 
-void
-cpg_instruction_function_set_variable (CpgInstructionFunction *func,
-                                       gboolean                variable)
-{
-	g_return_if_fail (CPG_IS_INSTRUCTION_FUNCTION (func));
-
-	func->priv->variable = variable;
-}
-
 guint
 cpg_instruction_function_get_id (CpgInstructionFunction *func)
 {
@@ -213,12 +195,4 @@ cpg_instruction_function_get_arguments (CpgInstructionFunction *func)
 	g_return_val_if_fail (CPG_IS_INSTRUCTION_FUNCTION (func), 0);
 
 	return func->priv->arguments;
-}
-
-gboolean
-cpg_instruction_function_get_variable (CpgInstructionFunction *func)
-{
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_FUNCTION (func), FALSE);
-
-	return func->priv->variable;
 }
