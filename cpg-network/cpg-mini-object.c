@@ -89,8 +89,7 @@ cpg_mini_object_class_init (gpointer g_class, gpointer class_data)
 static CpgMiniObject *
 cpg_mini_object_copy_default (CpgMiniObject const *obj)
 {
-	g_warning ("CpgMiniObject classes must implement CpgMiniObject::copy");
-	return NULL;
+	return cpg_mini_object_new (G_TYPE_FROM_INSTANCE (obj));
 }
 
 static void
@@ -116,9 +115,11 @@ cpg_mini_object_new (GType type)
 CpgMiniObject *
 cpg_mini_object_copy (CpgMiniObject const *obj)
 {
-	CpgMiniObject *ret = cpg_mini_object_new (G_TYPE_FROM_INSTANCE (obj));
+	CpgMiniObjectClass *mo_class;
 
-	return ret;
+	mo_class = CPG_MINI_OBJECT_GET_CLASS (obj);
+
+	return mo_class->copy(obj);
 }
 
 void
