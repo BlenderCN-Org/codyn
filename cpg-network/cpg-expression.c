@@ -1424,9 +1424,9 @@ cpg_expression_set_instructions (CpgExpression *expression,
 		instructions = g_slist_next (instructions);
 	}
 
-	_cpg_expression_set_instructions_take (expression, copy);
+	copy = g_slist_reverse (copy);
 
-	g_slist_free (copy);
+	_cpg_expression_set_instructions_take (expression, copy);
 }
 
 void
