@@ -1426,7 +1426,6 @@ cpg_expression_set_instructions (CpgExpression *expression,
 
 	_cpg_expression_set_instructions_take (expression, copy);
 
-	g_slist_foreach (copy, (GFunc)cpg_mini_object_free, NULL);
 	g_slist_free (copy);
 }
 
