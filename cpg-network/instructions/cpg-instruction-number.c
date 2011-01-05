@@ -43,7 +43,7 @@ cpg_instruction_number_to_string (CpgInstruction *instruction)
 
 	self = CPG_INSTRUCTION_NUMBER (instruction);
 
-	return g_strdup_printf ("FUN (%.3f)", self->priv->value);
+	return g_strdup_printf ("NUM (%.3f)", self->priv->value);
 }
 
 static void
