@@ -132,8 +132,12 @@ void                 cpg_math_operator_execute     (CpgMathOperatorType  type,
                                                     CpgStack            *stack);
 gboolean             cpg_math_function_is_constant (CpgMathFunctionType  type);
 gboolean             cpg_math_operator_is_constant (CpgMathOperatorType  type);
+
 gboolean             cpg_math_function_is_variable (CpgMathFunctionType  type);
 gboolean             cpg_math_operator_is_variable (CpgMathOperatorType  type);
+
+gboolean             cpg_math_function_is_commutative (CpgMathFunctionType  type);
+gboolean             cpg_math_operator_is_commutative (CpgMathOperatorType  type);
 
 const gchar        *cpg_math_function_lookup_by_id (CpgMathFunctionType  type,
                                                     gint                *arguments);

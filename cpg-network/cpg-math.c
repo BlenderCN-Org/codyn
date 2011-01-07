@@ -296,37 +296,38 @@ typedef struct
 	FunctionClosure function;
 	gint arguments;
 	gboolean constant;
+	gboolean commutative;
 } FunctionEntry;
 
 static FunctionEntry function_entries[] = {
-	{NULL, op_noop, 0, TRUE},
-	{"sin", op_sin, 1, TRUE},
-	{"cos", op_cos, 1, TRUE},
-	{"tan", op_tan, 1, TRUE},
-	{"asin", op_asin, 1, TRUE},
-	{"acos", op_acos, 1, TRUE},
-	{"atan", op_atan, 1, TRUE},
-	{"atan2", op_atan2, 2, TRUE},
-	{"sqrt", op_sqrt, 1, TRUE},
-	{"invsqrt", op_invsqrt, 1, TRUE},
-	{"min", op_min, -1, TRUE},
-	{"max", op_max, -1, TRUE},
-	{"exp", op_exp, 1, TRUE},
-	{"floor", op_floor, 1, TRUE},
-	{"ceil", op_ceil, 1, TRUE},
-	{"round", op_round, 1, TRUE},
-	{"abs", op_abs, 1, TRUE},
-	{"pow", op_pow, 2, TRUE},
-	{"rand", op_rand, -1, FALSE},
-	{"ln", op_ln, 1, TRUE},
-	{"log10", op_log10, 1, TRUE},
-	{"hypot", op_hypot, 2, TRUE},
-	{"exp2", op_exp2, 1, TRUE},
-	{"sinh", op_sinh, 1, TRUE},
-	{"cosh", op_cosh, 1, TRUE},
-	{"tanh", op_tanh, 1, TRUE},
-	{"lerp", op_lerp, 3, TRUE},
-	{"sqsum", op_sqsum, -1, TRUE}
+	{NULL, op_noop, 0, TRUE, FALSE},
+	{"sin", op_sin, 1, TRUE, FALSE},
+	{"cos", op_cos, 1, TRUE, FALSE},
+	{"tan", op_tan, 1, TRUE, FALSE},
+	{"asin", op_asin, 1, TRUE, FALSE},
+	{"acos", op_acos, 1, TRUE, FALSE},
+	{"atan", op_atan, 1, TRUE, FALSE},
+	{"atan2", op_atan2, 2, TRUE, FALSE},
+	{"sqrt", op_sqrt, 1, TRUE, FALSE},
+	{"invsqrt", op_invsqrt, 1, TRUE, FALSE},
+	{"min", op_min, -1, TRUE, TRUE},
+	{"max", op_max, -1, TRUE, TRUE},
+	{"exp", op_exp, 1, TRUE, FALSE},
+	{"floor", op_floor, 1, TRUE, FALSE},
+	{"ceil", op_ceil, 1, TRUE, FALSE},
+	{"round", op_round, 1, TRUE, FALSE},
+	{"abs", op_abs, 1, TRUE, FALSE},
+	{"pow", op_pow, 2, TRUE, FALSE},
+	{"rand", op_rand, -1, FALSE, FALSE},
+	{"ln", op_ln, 1, TRUE, FALSE},
+	{"log10", op_log10, 1, TRUE, FALSE},
+	{"hypot", op_hypot, 2, TRUE, TRUE},
+	{"exp2", op_exp2, 1, TRUE, FALSE},
+	{"sinh", op_sinh, 1, TRUE, FALSE},
+	{"cosh", op_cosh, 1, TRUE, FALSE},
+	{"tanh", op_tanh, 1, TRUE, FALSE},
+	{"lerp", op_lerp, 3, TRUE, FALSE},
+	{"sqsum", op_sqsum, -1, TRUE, TRUE}
 };
 
 /**
@@ -406,6 +407,21 @@ gboolean
 cpg_math_function_is_variable (CpgMathFunctionType type)
 {
 	return function_entries[type].arguments == -1;
+}
+
+/**
+ * cpg_math_function_is_commutative:
+ * @type: A #CpgMathOperatorType
+ *
+ * Get whether an function is commutative.
+ *
+ * Returns: %TRUE if the function is commutative, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_math_function_is_commutative (CpgMathFunctionType type)
+{
+	return function_entries[type].commutative;
 }
 
 /**
@@ -596,26 +612,27 @@ typedef struct
 	FunctionClosure function;
 	gint arguments;
 	gboolean constant;
+	gboolean commutative;
 } OperatorEntry;
 
 static OperatorEntry operator_entries[] = {
-	{NULL, op_noop, 0, TRUE},
-	{"--", op_unary_minus, 1, TRUE},
-	{"-", op_minus, 2, TRUE},
-	{"+", op_plus, 2, TRUE},
-	{"*", op_multiply, 2, TRUE},
-	{"/", op_divide, 2, TRUE},
-	{"%", op_modulo, 2, TRUE},
-	{"^", op_power, 2, TRUE},
-	{">", op_greater, 2, TRUE},
-	{"<", op_less, 2, TRUE},
-	{">=", op_greater_or_equal, 2, TRUE},
-	{"<=", op_less_or_equal, 2, TRUE},
-	{"==", op_equal, 2, TRUE},
-	{"||", op_or, 2, TRUE},
-	{"&&", op_and, 2, TRUE},
-	{"!", op_negate, 1, TRUE},
-	{"?:", op_ternary, 3, TRUE}
+	{NULL, op_noop, 0, TRUE, FALSE},
+	{"--", op_unary_minus, 1, TRUE, FALSE},
+	{"-", op_minus, 2, TRUE, FALSE},
+	{"+", op_plus, 2, TRUE, TRUE},
+	{"*", op_multiply, 2, TRUE, TRUE},
+	{"/", op_divide, 2, TRUE, FALSE},
+	{"%", op_modulo, 2, TRUE, FALSE},
+	{"^", op_power, 2, TRUE, FALSE},
+	{">", op_greater, 2, TRUE, FALSE},
+	{"<", op_less, 2, TRUE, FALSE},
+	{">=", op_greater_or_equal, 2, TRUE, FALSE},
+	{"<=", op_less_or_equal, 2, TRUE, FALSE},
+	{"==", op_equal, 2, TRUE, FALSE},
+	{"||", op_or, 2, TRUE, TRUE},
+	{"&&", op_and, 2, TRUE, TRUE},
+	{"!", op_negate, 1, TRUE, FALSE},
+	{"?:", op_ternary, 3, TRUE, FALSE}
 };
 
 /**
@@ -678,6 +695,21 @@ gboolean
 cpg_math_operator_is_variable (CpgMathOperatorType type)
 {
 	return operator_entries[type].arguments == -1;
+}
+
+/**
+ * cpg_math_operator_is_commutative:
+ * @type: A #CpgMathOperatorType
+ *
+ * Get whether an operator is commutative.
+ *
+ * Returns: %TRUE if the operator is commutative, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_math_operator_is_commutative (CpgMathOperatorType type)
+{
+	return operator_entries[type].commutative;
 }
 
 typedef struct
