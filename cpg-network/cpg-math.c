@@ -628,7 +628,7 @@ static OperatorEntry operator_entries[] = {
 	{"<", op_less, 2, TRUE, FALSE},
 	{">=", op_greater_or_equal, 2, TRUE, FALSE},
 	{"<=", op_less_or_equal, 2, TRUE, FALSE},
-	{"==", op_equal, 2, TRUE, FALSE},
+	{"==", op_equal, 2, TRUE, TRUE},
 	{"||", op_or, 2, TRUE, TRUE},
 	{"&&", op_and, 2, TRUE, TRUE},
 	{"!", op_negate, 1, TRUE, FALSE},
