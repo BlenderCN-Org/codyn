@@ -38,6 +38,8 @@ struct _CpgNetworkDeserializerPrivate
 	CpgObject   *object;
 	GSList      *parents;
 
+	GHashTable  *queue_hash;
+
 	GFile *file;
 };
 
@@ -59,6 +61,10 @@ enum
 static void
 cpg_network_deserializer_finalize (GObject *object)
 {
+	CpgNetworkDeserializer *deserializer = CPG_NETWORK_DESERIALIZER (object);
+
+	g_hash_table_destroy (deserializer->priv->queue_hash);
+
 	G_OBJECT_CLASS (cpg_network_deserializer_parent_class)->finalize (object);
 }
 
@@ -167,6 +173,7 @@ static void
 cpg_network_deserializer_init (CpgNetworkDeserializer *self)
 {
 	self->priv = CPG_NETWORK_DESERIALIZER_GET_PRIVATE (self);
+	self->priv->queue_hash = g_hash_table_new (g_direct_hash, g_direct_equal);
 }
 
 static void
@@ -533,10 +540,15 @@ static gboolean
 get_templates (CpgNetworkDeserializer  *deserializer,
                xmlNodePtr               node,
                gchar const             *id,
-               GSList                 **templates)
+               GSList                 **templates,
+               gchar                  **missing)
 {
 	xmlChar *ref = xmlGetProp (node, (xmlChar *)"ref");
-	*templates = NULL;
+
+	if (templates)
+	{
+		*templates = NULL;
+	}
 
 	if (!ref)
 	{
@@ -550,6 +562,11 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 
 	parts = split_templates ((gchar const *)ref);
 	gboolean ret = TRUE;
+
+	if (missing)
+	{
+		*missing = NULL;
+	}
 
 	/* Multiple templates are allowed, iterate over all the template ids
 	   and resolve them from the template group */
@@ -581,14 +598,14 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 
 		if (!template)
 		{
-			ret = parser_failed (deserializer,
-			                     node,
-			                     CPG_NETWORK_LOAD_ERROR_OBJECT,
-			                     "Could not find template `%s' for object `%s'",
-			                     *ptr,
-			                     id);
+			if (missing)
+			{
+				*missing = g_strdup (*ptr);
+			}
+
+			ret = FALSE;
 		}
-		else
+		else if (templates)
 		{
 			*templates = g_slist_prepend (*templates, template);
 		}
@@ -599,13 +616,16 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 		}
 	}
 
-	if (ret)
+	if (templates)
 	{
-		*templates = g_slist_reverse (*templates);
-	}
-	else
-	{
-		g_slist_free (*templates);
+		if (ret)
+		{
+			*templates = g_slist_reverse (*templates);
+		}
+		else
+		{
+			g_slist_free (*templates);
+		}
 	}
 
 	g_strfreev (parts);
@@ -633,8 +653,9 @@ parse_object (CpgNetworkDeserializer *deserializer,
 
 	GSList *templates;
 
-	if (!get_templates (deserializer, node, (gchar const *)id, &templates))
+	if (!get_templates (deserializer, node, (gchar const *)id, &templates, NULL))
 	{
+		g_hash_table_insert (deserializer->priv->queue_hash, node, GINT_TO_POINTER (1));
 		return NULL;
 	}
 
@@ -1640,18 +1661,72 @@ parse_import (CpgNetworkDeserializer *deserializer,
 	return TRUE;
 }
 
+static gchar *
+template_error_message (CpgNetworkDeserializer *deserializer,
+                        GQueue                 *queue)
+{
+	GString *ret;
+	gboolean first = TRUE;
+	gchar *missing;
+
+	ret = g_string_new ("Could not find templates for: ");
+
+	while (!g_queue_is_empty (queue))
+	{
+		xmlNodePtr node = g_queue_pop_head (queue);
+
+		xmlChar *id = xmlGetProp (node, (xmlChar *)"id");
+
+		get_templates (deserializer,
+		               node,
+		               (gchar const *)id,
+		               NULL,
+		               &missing);
+
+		if (!first)
+		{
+			if (g_queue_is_empty (queue))
+			{
+				g_string_append (ret, " and ");
+			}
+			else
+			{
+				g_string_append (ret, ", ");
+			}
+		}
+
+		g_string_append_printf (ret, "%s (%s:%d)", id, missing, node->line);
+		g_free (missing);
+
+		first = FALSE;
+
+		xmlFree (id);
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
 static gboolean
 parse_network (CpgNetworkDeserializer *deserializer,
                GList                  *nodes)
 {
 	GList *item;
 	gboolean ret = TRUE;
+	GQueue *queue;
+	xmlNodePtr seen = NULL;
 
 	gboolean atroot = deserializer->priv->root && CPG_IS_NETWORK (deserializer->priv->parents->data);
 
+	queue = g_queue_new ();
+
 	for (item = nodes; item; item = g_list_next (item))
 	{
-		xmlNodePtr node = item->data;
+		g_queue_push_tail (queue, item->data);
+	}
+
+	while (!g_queue_is_empty (queue))
+	{
+		xmlNodePtr node = g_queue_pop_head (queue);
 
 		gboolean has_child = xml_xpath_first (deserializer,
 		                                      node,
@@ -1726,9 +1801,47 @@ parse_network (CpgNetworkDeserializer *deserializer,
 
 		if (!ret)
 		{
-			break;
+			if (g_hash_table_lookup (deserializer->priv->queue_hash, node))
+			{
+				g_queue_push_tail (queue, node);
+
+				if (seen == node)
+				{
+					break;
+				}
+				else if (!seen)
+				{
+					seen = node;
+				}
+			}
+			else
+			{
+				break;
+			}
+		}
+		else
+		{
+			seen = NULL;
+			g_hash_table_remove (deserializer->priv->queue_hash, node);
 		}
 	}
+
+	if (!g_queue_is_empty (queue))
+	{
+		gchar *msg;
+
+		msg = template_error_message (deserializer, queue);
+
+		ret = parser_failed (deserializer,
+		                     NULL,
+		                     CPG_NETWORK_LOAD_ERROR_OBJECT,
+		                     "%s",
+		                     msg);
+
+		g_free (msg);
+	}
+
+	g_queue_free (queue);
 
 	return ret;
 }
