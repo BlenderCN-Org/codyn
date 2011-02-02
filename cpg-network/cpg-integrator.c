@@ -519,20 +519,7 @@ simulation_step (CpgIntegrator *integrator)
 			cpg_property_set_update (target,
 			                         cpg_property_get_update (target) +
 			                         cpg_expression_evaluate (expr));
-		}
 
-		direct = g_slist_next (direct);
-	}
-
-	direct = cpg_integrator_state_direct_link_actions (integrator->priv->state);
-
-	while (direct)
-	{
-		CpgLinkAction *action = direct->data;
-		CpgProperty *target = cpg_link_action_get_target_property (action);
-
-		if (target)
-		{
 			cpg_property_set_value (target,
 			                        cpg_property_get_update (target));
 		}
