@@ -111,6 +111,27 @@ cpg_tokenizer_parse_number (gchar const **buffer)
 	return (CpgToken *)res;
 }
 
+gboolean
+cpg_tokenizer_validate_identifier (const gchar *identifier)
+{
+	if (!identifier || !*identifier || (!isalpha (*identifier) && *identifier != '_'))
+	{
+		return FALSE;
+	}
+
+	while (*identifier)
+	{
+		if (!(isalnum (*identifier) || *identifier == '_'))
+		{
+			return FALSE;
+		}
+
+		++identifier;
+	}
+
+	return TRUE;
+}
+
 /* parse identifier */
 static CpgToken *
 cpg_tokenizer_parse_identifier (gchar const **buffer)

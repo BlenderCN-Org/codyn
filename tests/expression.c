@@ -91,16 +91,16 @@ test_complex ()
 	CpgProperty *prop;
 
 	prop = cpg_property_new ("x", "1", 0);
-	cpg_object_add_property (obj, prop);
+	cpg_object_add_property (obj, prop, NULL);
 
 	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
 
 	prop = cpg_property_new ("phase", "2", 0);
-	cpg_object_add_property (obj, prop);
+	cpg_object_add_property (obj, prop, NULL);
 	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
 
 	prop = cpg_property_new ("y", "3", 0);
-	cpg_object_add_property (obj, prop);
+	cpg_object_add_property (obj, prop, NULL);
 	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
 
 	cpg_object_reset (obj);
@@ -156,7 +156,7 @@ test_globals ()
 	CpgNetwork *network = cpg_network_new ();
 
 	CpgProperty *x = cpg_property_new ("x", "0", FALSE);
-	cpg_object_add_property (CPG_OBJECT (network), x);
+	cpg_object_add_property (CPG_OBJECT (network), x, NULL);
 
 	cpg_network_step (network, 0.001);
 

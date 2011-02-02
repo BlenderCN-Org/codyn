@@ -293,6 +293,32 @@ xml_xpath_first (CpgNetworkDeserializer *deserializer,
 }
 
 static gboolean
+parser_failed_error (CpgNetworkDeserializer *deserializer,
+                     xmlNodePtr              node,
+                     GError                 *error)
+{
+	if (deserializer->priv->error != NULL)
+	{
+		if (*deserializer->priv->error)
+		{
+			g_error_free (*deserializer->priv->error);
+			*deserializer->priv->error = NULL;
+		}
+
+		g_warning ("XML load error: %s", error->message);
+
+		g_set_error (deserializer->priv->error,
+		             error->domain,
+		             error->code,
+		             "%s (line %d)",
+		             error->message,
+		             node ? node->line : 0);
+	}
+
+	return FALSE;
+}
+
+static gboolean
 parser_failed (CpgNetworkDeserializer *deserializer,
                xmlNodePtr              node,
                gint                    code,
@@ -302,27 +328,22 @@ parser_failed (CpgNetworkDeserializer *deserializer,
 	if (deserializer->priv->error != NULL)
 	{
 		va_list ap;
+		GError *error;
+
 		va_start (ap, format);
 
-		gchar *message = g_strdup_vprintf (format, ap);
+		error = g_error_new_valist (CPG_NETWORK_LOAD_ERROR,
+		                            code,
+		                            format,
+		                            ap);
+
+		parser_failed_error (deserializer,
+		                     node,
+		                     error);
+
+		g_error_free (error);
+
 		va_end (ap);
-
-		if (*deserializer->priv->error)
-		{
-			g_error_free (*deserializer->priv->error);
-			*deserializer->priv->error = NULL;
-		}
-
-		g_warning ("XML load error: %s", message);
-
-		g_set_error (deserializer->priv->error,
-		             CPG_NETWORK_LOAD_ERROR,
-		             code,
-		             "%s (line %d)",
-		             message,
-		             node ? node->line : 0);
-
-		g_free (message);
 	}
 
 	return FALSE;
@@ -380,6 +401,7 @@ parse_properties (CpgNetworkDeserializer *deserializer,
 	{
 		xmlNodePtr node = (xmlNodePtr)item->data;
 		xmlChar *name = xmlGetProp (node, (xmlChar *)"name");
+		GError *error = NULL;
 
 		if (!name)
 		{
@@ -418,8 +440,19 @@ parse_properties (CpgNetworkDeserializer *deserializer,
 
 		save_comment (node, G_OBJECT (property));
 
-		cpg_object_add_property (deserializer->priv->object,
-		                         property);
+		if (!cpg_object_add_property (deserializer->priv->object,
+		                              property,
+		                              &error))
+		{
+			parser_failed_error (deserializer,
+			                     node,
+			                     error);
+
+			g_object_unref (property);
+			xmlFree (name);
+
+			return FALSE;
+		}
 
 		property = cpg_object_get_property (deserializer->priv->object,
 		                                    (const gchar *)name);

@@ -989,8 +989,9 @@ cpg_group_cpg_clear (CpgObject *object)
 }
 
 static gboolean
-cpg_group_cpg_add_property (CpgObject   *object,
-                            CpgProperty *property)
+cpg_group_cpg_add_property (CpgObject    *object,
+                            CpgProperty  *property,
+                            GError      **error)
 {
 	CpgGroup *group = CPG_GROUP (object);
 	CpgProperty *existing;
@@ -1004,14 +1005,16 @@ cpg_group_cpg_add_property (CpgObject   *object,
 		if (owner == group->priv->proxy)
 		{
 			return cpg_object_add_property (group->priv->proxy,
-			                                property);
+			                                property,
+			                                error);
 		}
 	}
 
 	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property)
 	{
 		return CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property (object,
-		                                                                property);
+		                                                                property,
+		                                                                error);
 	}
 	else
 	{

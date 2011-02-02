@@ -10,6 +10,7 @@
 #include "cpg-utils.h"
 #include "cpg-marshal.h"
 #include "cpg-usable.h"
+#include "cpg-tokenizer.h"
 
 /**
  * SECTION:cpg-object
@@ -327,7 +328,8 @@ on_template_property_added (CpgObject   *templ,
 	    cpg_object_get_property_template (object, orig, TRUE))
 	{
 		if (cpg_object_add_property (object,
-		                             cpg_property_copy (prop)))
+		                             cpg_property_copy (prop),
+		                             NULL))
 		{
 			orig = cpg_object_get_property (object,
 			                                cpg_property_get_name (prop));
@@ -392,7 +394,8 @@ on_template_property_removed (CpgObject   *templ,
 			                                                 name);
 
 			cpg_object_add_property (object,
-			                         cpg_property_copy (tempProp));
+			                         cpg_property_copy (tempProp),
+			                         NULL);
 		}
 	}
 
@@ -851,8 +854,9 @@ cpg_object_remove_property_impl (CpgObject    *object,
 }
 
 static gboolean
-cpg_object_add_property_impl (CpgObject   *object,
-                              CpgProperty *property)
+cpg_object_add_property_impl (CpgObject    *object,
+                              CpgProperty  *property,
+                              GError      **error)
 {
 	// Check if property already set
 	CpgProperty *existing;
@@ -874,6 +878,24 @@ cpg_object_add_property_impl (CpgObject   *object,
 		}
 
 		return TRUE;
+	}
+
+	if (!cpg_tokenizer_validate_identifier (cpg_property_get_name (property)))
+	{
+		gchar *nm;
+
+		nm = cpg_object_get_full_id (object);
+
+		g_set_error (error,
+		             CPG_OBJECT_ERROR,
+		             CPG_OBJECT_ERROR_INVALID_PROPERTY_NAME,
+		             "Invalid property name `%s.%s'",
+		             nm,
+		             cpg_property_get_name (property));
+
+		g_free (nm);
+
+		return FALSE;
 	}
 
 	add_property (object, property);
@@ -1319,6 +1341,7 @@ cpg_object_new_from_template (CpgObject *templ)
  * cpg_object_add_property:
  * @object: the #CpgObject
  * @property: the #CpgProperty to add
+ * @error: a #GError
  *
  * Add a new property to the object. Note that if a property with the same
  * name already exists, the property information is transfered to the existing
@@ -1335,8 +1358,9 @@ cpg_object_new_from_template (CpgObject *templ)
  * Returns: %TRUE if the property was added successfully, %FALSE otherwise
  **/
 gboolean
-cpg_object_add_property (CpgObject   *object,
-                         CpgProperty *property)
+cpg_object_add_property (CpgObject    *object,
+                         CpgProperty  *property,
+                         GError       **error)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
@@ -1345,7 +1369,8 @@ cpg_object_add_property (CpgObject   *object,
 	if (CPG_OBJECT_GET_CLASS (object)->add_property)
 	{
 		return CPG_OBJECT_GET_CLASS (object)->add_property (object,
-		                                                    property);
+		                                                    property,
+		                                                    error);
 	}
 	else
 	{

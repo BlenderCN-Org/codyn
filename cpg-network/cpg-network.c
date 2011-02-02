@@ -813,7 +813,8 @@ cpg_network_merge (CpgNetwork  *network,
 		                              cpg_property_get_name (property)))
 		{
 			cpg_object_add_property (CPG_OBJECT (network),
-			                         cpg_property_copy (property));
+			                         cpg_property_copy (property),
+			                         NULL);
 		}
 	}
 

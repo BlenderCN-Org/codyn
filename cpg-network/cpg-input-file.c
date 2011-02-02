@@ -353,7 +353,8 @@ set_column_names (CpgInputFile        *input,
 				                         CPG_PROPERTY_FLAG_NONE);
 
 				cpg_object_add_property (CPG_OBJECT (input),
-				                         prop);
+				                         prop,
+				                         NULL);
 			}
 			else
 			{

@@ -38,6 +38,31 @@ test_once_reset_cache ()
 	cpg_assert_tol (v1, v2);
 }
 
+static void
+invalid_property_name (gchar const *name)
+{
+	CpgObject *obj;
+	GError *error = NULL;
+	gboolean ret;
+
+	obj = cpg_object_new ("s");
+
+	ret = cpg_object_add_property (obj,
+	                               cpg_property_new (name, "0", CPG_PROPERTY_FLAG_NONE),
+	                               &error);
+
+	g_assert (!ret);
+	g_assert_error (error, CPG_OBJECT_ERROR, CPG_OBJECT_ERROR_INVALID_PROPERTY_NAME);
+}
+
+static void
+test_invalid_name ()
+{
+	invalid_property_name (" prop");
+	invalid_property_name ("1prop");
+	invalid_property_name ("prop-e");
+}
+
 int
 main (int   argc,
       char *argv[])
@@ -49,6 +74,7 @@ main (int   argc,
 
 	g_test_add_func ("/property/once", test_once);
 	g_test_add_func ("/property/once_reset_cache", test_once_reset_cache);
+	g_test_add_func ("/property/invalid_name", test_invalid_name);
 
 	g_test_run ();
 

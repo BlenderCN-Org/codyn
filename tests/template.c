@@ -46,7 +46,8 @@ test_apply_state ()
 {
 	CpgObject *state = cpg_object_new ("state");
 	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED));
+	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
 
 	CpgObject *instance = cpg_object_new_from_template (state);
 
@@ -64,7 +65,8 @@ test_apply_link ()
 {
 	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", NULL, NULL));
 	cpg_object_add_property (link,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED));
+	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
 
 	cpg_link_add_action (CPG_LINK (link),
 	                     cpg_link_action_new ("x", cpg_expression_new ("2")));
@@ -95,7 +97,8 @@ test_apply_group ()
 	CpgObject *state = cpg_object_new ("state");
 
 	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "0", CPG_PROPERTY_FLAG_INTEGRATED));
+	                         cpg_property_new ("x", "0", CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
 
 	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", state, state));
 	cpg_link_add_action (CPG_LINK (link),
@@ -255,7 +258,8 @@ test_track_modified_state ()
 {
 	CpgObject *state = cpg_object_new ("state");
 	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED));
+	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
 
 	CpgObject *instance = cpg_object_new_from_template (state);
 
@@ -299,7 +303,8 @@ test_track_modified_link ()
 {
 	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", NULL, NULL));
 	cpg_object_add_property (link,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED));
+	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
 
 	cpg_link_add_action (CPG_LINK (link),
 	                     cpg_link_action_new ("x", cpg_expression_new ("2")));
@@ -324,7 +329,8 @@ test_unapply_state ()
 {
 	CpgObject *state = cpg_object_new ("state");
 	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED));
+	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
 
 	CpgObject *instance = cpg_object_new_from_template (state);
 
@@ -339,7 +345,8 @@ test_unapply_modified_state ()
 {
 	CpgObject *state = cpg_object_new ("state");
 	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED));
+	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
 
 	CpgObject *instance = cpg_object_new_from_template (state);
 
@@ -389,8 +396,8 @@ test_apply_multiple_state ()
 	CpgObject *t1 = cpg_object_new ("s1");
 	CpgObject *t2 = cpg_object_new ("s2");
 
-	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0));
-	cpg_object_add_property (t2, cpg_property_new ("y", "2", 0));
+	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
+	cpg_object_add_property (t2, cpg_property_new ("y", "2", 0), NULL);
 
 	CpgObject *o = cpg_object_new ("o1");
 
@@ -410,8 +417,8 @@ test_apply_multiple_state_override ()
 	CpgObject *t1 = cpg_object_new ("s1");
 	CpgObject *t2 = cpg_object_new ("s2");
 
-	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0));
-	cpg_object_add_property (t2, cpg_property_new ("x", "2", 0));
+	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
+	cpg_object_add_property (t2, cpg_property_new ("x", "2", 0), NULL);
 
 	CpgObject *o = cpg_object_new ("o1");
 
@@ -431,8 +438,8 @@ test_unapply_multiple_state_override ()
 	CpgObject *t1 = cpg_object_new ("s1");
 	CpgObject *t2 = cpg_object_new ("s2");
 
-	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0));
-	cpg_object_add_property (t2, cpg_property_new ("x", "2", 0));
+	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
+	cpg_object_add_property (t2, cpg_property_new ("x", "2", 0), NULL);
 
 	CpgObject *o = cpg_object_new ("o1");
 

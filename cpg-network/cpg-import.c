@@ -718,7 +718,7 @@ import_globals (CpgImport  *self,
 		{
 			CpgProperty *copy = cpg_property_copy (property);
 
-			cpg_object_add_property (CPG_OBJECT (target), copy);
+			cpg_object_add_property (CPG_OBJECT (target), copy, NULL);
 			add_imported_object (self, copy);
 		}
 	}

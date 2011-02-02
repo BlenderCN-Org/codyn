@@ -42,6 +42,7 @@ typedef enum
 	CPG_OBJECT_ERROR_PROPERTY_NOT_FOUND,
 	CPG_OBJECT_ERROR_PROPERTY_IN_USE,
 	CPG_OBJECT_ERROR_PROPERTY_FROM_TEMPLATE,
+	CPG_OBJECT_ERROR_INVALID_PROPERTY_NAME,
 	CPG_OBJECT_NUM_ERRORS
 } CpgObjectError;
 
@@ -121,7 +122,8 @@ struct _CpgObjectClass
 	                                  const gchar  *name);
 
 	gboolean      (*add_property)    (CpgObject    *object,
-	                                  CpgProperty  *property);
+	                                  CpgProperty  *property,
+	                                  GError      **error);
 
 	gboolean      (*remove_property) (CpgObject    *object,
 	                                  const gchar  *name,
@@ -168,8 +170,9 @@ const gchar      *cpg_object_get_id          (CpgObject   *object);
 void              cpg_object_set_id          (CpgObject   *object,
                                               const gchar *id);
 
-gboolean          cpg_object_add_property    (CpgObject   *object,
-                                              CpgProperty *property);
+gboolean          cpg_object_add_property    (CpgObject    *object,
+                                              CpgProperty  *property,
+                                              GError      **error);
 CpgProperty      *cpg_object_get_property    (CpgObject   *object,
                                               const gchar *name);
 gboolean          cpg_object_has_property    (CpgObject   *object,
