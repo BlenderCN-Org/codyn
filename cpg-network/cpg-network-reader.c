@@ -29,6 +29,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <ctype.h>
 
 #include "cpg-network.h"
 #include "cpg-debug.h"
@@ -132,6 +133,27 @@ attribute_true (xmlNodePtr node, gchar const *name)
 }
 
 static gboolean
+valid_property_name (gchar const *name)
+{
+	if (!name || !*name || (!isalpha (*name) && *name != '_'))
+	{
+		return FALSE;
+	}
+
+	while (*name)
+	{
+		if (!(isalnum (*name) || *name == '_'))
+		{
+			return FALSE;
+		}
+
+		++name;
+	}
+
+	return TRUE;
+}
+
+static gboolean
 parse_properties (xmlDocPtr  doc,
                   GList     *nodes,
                   ParseInfo *info)
@@ -151,6 +173,19 @@ parse_properties (xmlDocPtr  doc,
 			           CPG_NETWORK_LOAD_ERROR_PROPERTY,
 			           "Property on %s has no name",
 			           cpg_object_get_id (info->object));
+
+			return FALSE;
+		}
+
+		if (!valid_property_name ((gchar const *)name))
+		{
+			set_error (info,
+			           CPG_NETWORK_LOAD_ERROR_PROPERTY,
+			           "Invalid property name `%s' on object `%s'",
+			           name,
+			           cpg_object_get_id (info->object));
+
+			xmlFree (name);
 
 			return FALSE;
 		}
