@@ -229,6 +229,20 @@ cpg_integrator_state_new (CpgObject *object)
 	                     NULL);
 }
 
+static GSList *
+prepend_gslist_unique (GSList   *list,
+                       gpointer  data)
+{
+	if (!g_slist_find (list, data))
+	{
+		return g_slist_prepend (list, data);
+	}
+	else
+	{
+		return list;
+	}
+}
+
 static void
 collect_link (CpgIntegratorState *state,
               CpgLink            *link)
@@ -244,14 +258,14 @@ collect_link (CpgIntegratorState *state,
 		if (cpg_property_get_integrated (target))
 		{
 			state->priv->integrated_link_actions =
-				g_slist_prepend (state->priv->integrated_link_actions,
-				                 action);
+				prepend_gslist_unique (state->priv->integrated_link_actions,
+				                       action);
 		}
 		else
 		{
 			state->priv->direct_link_actions =
-				g_slist_prepend (state->priv->direct_link_actions,
-				                 action);
+				prepend_gslist_unique (state->priv->direct_link_actions,
+				                       action);
 		}
 
 		actions = g_slist_next (actions);
@@ -271,14 +285,14 @@ collect_actors (CpgIntegratorState *state,
 		if (cpg_property_get_integrated (property))
 		{
 			state->priv->integrated_properties =
-				g_slist_prepend (state->priv->integrated_properties,
-				                 property);
+				prepend_gslist_unique (state->priv->integrated_properties,
+				                       property);
 		}
 		else
 		{
 			state->priv->direct_properties =
-				g_slist_prepend (state->priv->direct_properties,
-				                 property);
+				prepend_gslist_unique (state->priv->direct_properties,
+				                       property);
 		}
 
 		actors = g_slist_next (actors);
@@ -294,8 +308,8 @@ collect_properties (CpgIntegratorState *state,
 	for (props = cpg_object_get_properties (object); props; props = g_slist_next (props))
 	{
 		state->priv->all_properties =
-			g_slist_prepend (state->priv->all_properties,
-			                 props->data);
+			prepend_gslist_unique (state->priv->all_properties,
+			                       props->data);
 	}
 }
 
@@ -316,8 +330,8 @@ collect_states (CpgIntegratorState *state,
 	if (CPG_IS_INPUT (object))
 	{
 		state->priv->inputs =
-			g_slist_prepend (state->priv->inputs,
-			                 object);
+			prepend_gslist_unique (state->priv->inputs,
+			                       object);
 	}
 
 	if (CPG_IS_GROUP (object))
