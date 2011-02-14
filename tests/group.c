@@ -111,6 +111,27 @@ test_copy ()
 	g_assert (cpg_group_get_child (copy, "child"));
 }
 
+static void
+test_integrate_multiple_euler ()
+{
+	CpgNetwork *network;
+	CpgProperty *prop;
+
+	network = cpg_network_new_from_path ("test_group_integrate_multiple_euler.cpg", NULL);
+
+	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
+
+	cpg_network_step (network, 0.1);
+
+	prop = cpg_group_find_property (CPG_GROUP (network), "group.x");
+
+	cpg_assert_tol (cpg_property_get_value (prop), 0.1);
+
+	g_assert (network);
+
+	g_object_unref (network);
+}
+
 int
 main (int   argc,
       char *argv[])
@@ -127,6 +148,7 @@ main (int   argc,
 	g_test_add_func ("/group/add_same", test_add_same);
 	g_test_add_func ("/group/proxy", test_proxy);
 	g_test_add_func ("/group/copy", test_copy);
+	g_test_add_func ("/group/integrate_multiple_euler", test_integrate_multiple_euler);
 
 	g_test_run ();
 
