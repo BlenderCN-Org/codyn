@@ -289,6 +289,44 @@ cpg_network_dispose (GObject *object)
 }
 
 static gboolean
+template_exists (CpgGroup  *group,
+                 CpgObject *template)
+{
+	GSList const *children;
+
+	if (CPG_OBJECT (group) == template)
+	{
+		return TRUE;
+	}
+
+	children = cpg_group_get_children (group);
+
+	while (children)
+	{
+		CpgObject *child;
+
+		child = children->data;
+
+		if (child == template)
+		{
+			return TRUE;
+		}
+
+		if (CPG_IS_GROUP (child))
+		{
+			if (template_exists (CPG_GROUP (child), template))
+			{
+				return TRUE;
+			}
+		}
+
+		children = g_slist_next (children);
+	}
+
+	return FALSE;
+}
+
+static gboolean
 cpg_network_add_impl (CpgGroup   *group,
                       CpgObject  *object,
                       GError    **error)
@@ -301,18 +339,15 @@ cpg_network_add_impl (CpgGroup   *group,
 	while (templates)
 	{
 		CpgObject *template = templates->data;
-		CpgObject *other = cpg_group_get_child (network->priv->template_group,
-		                                        cpg_object_get_id (template));
 
-		gboolean eq = other == template;
-
-		if (!eq)
+		if (!template_exists (network->priv->template_group, template))
 		{
 			g_set_error (error,
 			             CPG_NETWORK_ERROR,
 			             CPG_NETWORK_ERROR_UNOWNED_TEMPLATE,
-			             "The object `%s' contains templates that are not part of the network",
-			             cpg_object_get_id (object));
+			             "The object `%s' contains template `%s' which is not part of the network",
+			             cpg_object_get_id (object),
+			             cpg_object_get_id (template));
 
 			return FALSE;
 		}
