@@ -1172,7 +1172,7 @@ find_non_template_interfaces (CpgGroup *group)
 
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
-		if (group_interface_is_template (group, *ptr))
+		if (!group_interface_is_template (group, *ptr))
 		{
 			g_ptr_array_add (ret, g_strdup (*ptr));
 		}
