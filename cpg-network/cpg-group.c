@@ -161,10 +161,187 @@ on_template_child_removed (CpgGroup  *templ,
 	}
 }
 
+static gboolean
+interface_should_override (CpgGroup     *group,
+                           CpgGroup     *template,
+                           gchar const  *name,
+                           CpgGroup    **last_templ)
+{
+	GSList const *templates;
+	gboolean found = FALSE;
+
+	templates = cpg_object_get_applied_templates (CPG_OBJECT (group));
+
+	while (templates)
+	{
+		CpgGroup *tmpl;
+		CpgPropertyInterface *iface;
+		CpgProperty *templprop;
+
+		tmpl = templates->data;
+
+		iface = cpg_group_get_property_interface (tmpl);
+
+		templprop = cpg_property_interface_lookup (iface, name);
+
+		if (!found && templprop && last_templ && tmpl != template)
+		{
+			*last_templ = tmpl;
+		}
+
+		if (found && templprop)
+		{
+			return FALSE;
+		}
+
+		if (tmpl == template)
+		{
+			found = TRUE;
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return TRUE;
+}
+
+static void
+add_template_interface (CpgGroup    *group,
+                        CpgGroup    *source,
+                        gchar const *name,
+                        CpgProperty *property)
+{
+	gchar *path;
+	gchar *proppath;
+	CpgPropertyInterface *iface;
+
+	iface = cpg_group_get_property_interface (group);
+
+	if (property == NULL)
+	{
+		CpgPropertyInterface *source_iface;
+
+		source_iface = cpg_group_get_property_interface (source);
+		property = cpg_property_interface_lookup (source_iface, name);
+	}
+
+	path = cpg_object_get_relative_id (cpg_property_get_object (property),
+	                                   CPG_OBJECT (source));
+
+	if (path && *path)
+	{
+		proppath = g_strconcat (path, ".", cpg_property_get_name (property), NULL);
+	}
+	else
+	{
+		proppath = g_strdup (cpg_property_get_name (property));
+	}
+
+	property = cpg_group_find_property (group, proppath);
+
+	if (property)
+	{
+		CpgProperty *origprop;
+
+		origprop = cpg_property_interface_lookup (iface, name);
+
+		if (origprop)
+		{
+			/* See if this template should override this interface */
+			if (interface_should_override (group, source, name, NULL))
+			{
+				cpg_property_interface_remove (iface, name, NULL);
+				cpg_property_interface_add (iface, name, property, NULL);
+			}
+		}
+		else
+		{
+			cpg_property_interface_add (iface, name, property, NULL);
+		}
+	}
+	else
+	{
+		g_warning ("Could not find interface property `%s' for applied template `%s'",
+		           proppath,
+		           cpg_object_get_id (CPG_OBJECT (source)));
+	}
+
+	g_free (path);
+	g_free (proppath);
+}
+
+static void
+remove_template_interface (CpgGroup    *group,
+                           CpgGroup    *source,
+                           gchar const *name,
+                           CpgProperty *property)
+{
+	CpgPropertyInterface *iface;
+	GError *error = NULL;
+	CpgGroup *last = NULL;
+
+	/* Check if this interface actually owns that property */
+	if (!interface_should_override (group, source, name, &last))
+	{
+		return;
+	}
+
+	/* Remove the mapping */
+	iface = cpg_group_get_property_interface (group);
+
+	if (!cpg_property_interface_remove (iface, name, &error))
+	{
+		g_warning ("Could not remove interface property `%s' from template `%s': %s",
+		           name,
+		           cpg_object_get_id (CPG_OBJECT (source)),
+		           error->message);
+
+		g_error_free (error);
+		return;
+	}
+
+	if (last)
+	{
+		add_template_interface (group, last, name, NULL);
+	}
+}
+
+static void
+on_template_interface_property_added (CpgPropertyInterface *templ_iface,
+                                      gchar const          *name,
+                                      CpgProperty          *property,
+                                      CpgGroup             *group)
+{
+	add_template_interface (group,
+	                        CPG_GROUP (cpg_property_interface_get_object (templ_iface)),
+	                        name,
+	                        property);
+}
+
+static void
+on_template_interface_property_removed (CpgPropertyInterface *templ_iface,
+                                        gchar const          *name,
+                                        CpgProperty          *property,
+                                        CpgGroup             *group)
+{
+	remove_template_interface (group,
+	                           CPG_GROUP (cpg_property_interface_get_object (templ_iface)),
+	                           name,
+	                           property);
+}
+
 static void
 disconnect_template (CpgGroup  *group,
                      CpgObject *templ)
 {
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_interface_property_added,
+	                                      group);
+
+	g_signal_handlers_disconnect_by_func (templ,
+	                                      on_template_interface_property_removed,
+	                                      group);
+
 	g_signal_handlers_disconnect_by_func (templ,
 	                                      on_template_child_added,
 	                                      group);
@@ -593,6 +770,65 @@ copy_children (CpgGroup *group,
 	g_hash_table_destroy (hash_table);
 }
 
+static void
+copy_interface (CpgGroup *group,
+                CpgGroup *source)
+{
+	CpgPropertyInterface *iface;
+	CpgPropertyInterface *source_iface;
+	gchar **names;
+	gchar **ptr;
+
+	iface = cpg_group_get_property_interface (group);
+	source_iface = cpg_group_get_property_interface (source);
+
+	names = cpg_property_interface_get_names (source_iface);
+
+	for (ptr = names; ptr && *ptr; ++ptr)
+	{
+		CpgProperty *prop;
+		gchar *path;
+		gchar *proppath;
+
+		prop = cpg_property_interface_lookup (source_iface, *ptr);
+
+		path = cpg_object_get_relative_id (cpg_property_get_object (prop),
+		                                   CPG_OBJECT (source));
+
+		if (path && *path)
+		{
+			proppath = g_strconcat (path, ".", cpg_property_get_name (prop), NULL);
+		}
+		else
+		{
+			proppath = g_strdup (cpg_property_get_name (prop));
+		}
+
+		prop = cpg_group_find_property (group, proppath);
+
+		if (prop != NULL)
+		{
+			GError *error = NULL;
+
+			if (!cpg_property_interface_add (iface,
+			                                 *ptr,
+			                                 prop,
+			                                 &error))
+			{
+				g_warning ("Could not copy interface property: %s",
+				           error->message);
+
+				g_error_free (error);
+			}
+		}
+
+		g_free (path);
+		g_free (proppath);
+	}
+
+	g_strfreev (names);
+}
+
 static CpgObject *
 get_template_proxy (CpgGroup *group)
 {
@@ -628,9 +864,50 @@ get_template_proxy (CpgGroup *group)
 }
 
 static void
+cpg_group_cpg_unapply_template (CpgObject *object,
+                                CpgObject *templ)
+{
+	gchar **names;
+	gchar **ptr;
+	CpgPropertyInterface *source_iface;
+	CpgGroup *group;
+	CpgGroup *source;
+
+	group = CPG_GROUP (object);
+	source = CPG_GROUP (templ);
+
+	/* Remove children */
+	/* TODO */
+
+	/* Remove interface */
+	source_iface = cpg_group_get_property_interface (source);
+
+	names = cpg_property_interface_get_names (source_iface);
+
+	for (ptr = names; ptr && *ptr; ++ptr)
+	{
+		CpgProperty *prop;
+
+		prop = cpg_property_interface_lookup (source_iface, *ptr);
+
+		remove_template_interface (group, source, *ptr, prop);
+	}
+}
+
+static void
 cpg_group_cpg_apply_template (CpgObject *object,
                               CpgObject *templ)
 {
+	CpgPropertyInterface *iface;
+	CpgPropertyInterface *source_iface;
+	CpgGroup *group;
+	CpgGroup *source;
+	CpgObject *proxy;
+	GSList const *children;
+	GHashTable *hash_table;
+	gchar **names;
+	gchar **ptr;
+
 	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template)
 	{
 		CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template (object, templ);
@@ -641,14 +918,14 @@ cpg_group_cpg_apply_template (CpgObject *object,
 		return;
 	}
 
-	CpgGroup *group = CPG_GROUP (object);
-	CpgGroup *source = CPG_GROUP (templ);
+	group = CPG_GROUP (object);
+	source = CPG_GROUP (templ);
 
-	CpgObject *proxy = cpg_group_get_proxy (source);
-	GSList const *children = cpg_group_get_children (source);
+	proxy = cpg_group_get_proxy (source);
+	children = cpg_group_get_children (source);
 
-	GHashTable *hash_table = g_hash_table_new (g_direct_hash,
-	                                           g_direct_equal);
+	hash_table = g_hash_table_new (g_direct_hash,
+	                               g_direct_equal);
 
 	while (children)
 	{
@@ -690,6 +967,33 @@ cpg_group_cpg_apply_template (CpgObject *object,
 	reconnect_children (group, source, hash_table);
 	g_hash_table_destroy (hash_table);
 
+	/* Apply interfaces from template */
+	iface = cpg_group_get_property_interface (group);
+	source_iface = cpg_group_get_property_interface (source);
+
+	names = cpg_property_interface_get_names (source_iface);
+
+	for (ptr = names; ptr && *ptr; ++ptr)
+	{
+		CpgProperty *prop;
+
+		prop = cpg_property_interface_lookup (source_iface, *ptr);
+
+		add_template_interface (group, source, *ptr, prop);
+	}
+
+	g_strfreev (names);
+
+	g_signal_connect (source_iface,
+	                  "added",
+	                  G_CALLBACK (on_template_interface_property_added),
+	                  group);
+
+	g_signal_connect (source_iface,
+	                  "removed",
+	                  G_CALLBACK (on_template_interface_property_removed),
+	                  group);
+
 	g_signal_connect (source,
 	                  "child-added",
 	                  G_CALLBACK (on_template_child_added),
@@ -709,6 +1013,9 @@ cpg_group_cpg_copy (CpgObject *object,
 
 	/* Copy over children */
 	copy_children (CPG_GROUP (object), CPG_GROUP (source));
+
+	/* Copy over interface */
+	copy_interface (CPG_GROUP (object), CPG_GROUP (source));
 }
 
 static gchar *
@@ -1119,6 +1426,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 
 	cpg_class->copy = cpg_group_cpg_copy;
 	cpg_class->apply_template = cpg_group_cpg_apply_template;
+	cpg_class->unapply_template = cpg_group_cpg_unapply_template;
 
 	klass->add = cpg_group_add_impl;
 	klass->remove = cpg_group_remove_impl;
@@ -1229,6 +1537,12 @@ cpg_group_class_init (CpgGroupClass *klass)
 }
 
 static void
+on_property_interface_changed (CpgObject *object)
+{
+	cpg_object_taint (object);
+}
+
+static void
 cpg_group_init (CpgGroup *self)
 {
 	self->priv = CPG_GROUP_GET_PRIVATE (self);
@@ -1239,6 +1553,16 @@ cpg_group_init (CpgGroup *self)
 	                                                NULL);
 
 	self->priv->property_interface = cpg_property_interface_new (CPG_OBJECT (self));
+
+	g_signal_connect_swapped (self->priv->property_interface,
+	                          "added",
+	                          G_CALLBACK (on_property_interface_changed),
+	                          self);
+
+	g_signal_connect_swapped (self->priv->property_interface,
+	                          "removed",
+	                          G_CALLBACK (on_property_interface_changed),
+	                          self);
 }
 
 /**

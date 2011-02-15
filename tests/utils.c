@@ -43,23 +43,10 @@ find_action (CpgGroup    *parent,
 	}\
 }
 
-CpgNetwork *
-test_load_network (gchar const *xml,
-                   ...)
+static void
+check_objects (CpgNetwork *network,
+               va_list     ap)
 {
-	va_list ap;
-
-	CpgNetwork *network;
-	GError *error = NULL;
-
-	network = cpg_network_new_from_xml (xml, &error);
-
-	g_assert (network != NULL);
-	g_assert_no_error (error);
-
-	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
-
-	va_start (ap, xml);
 	CpgPath type;
 
 	while ((type = va_arg (ap, CpgPath)) != CPG_PATH_NONE)
@@ -102,7 +89,49 @@ test_load_network (gchar const *xml,
 			break;
 		}
 	}
+}
 
+CpgNetwork *
+test_load_network_from_path (gchar const *path,
+                             ...)
+{
+	va_list ap;
+
+	CpgNetwork *network;
+	GError *error = NULL;
+
+	network = cpg_network_new_from_path (path, &error);
+
+	g_assert (network != NULL);
+	g_assert_no_error (error);
+
+	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
+
+	va_start (ap, path);
+	check_objects (network, ap);
+	va_end (ap);
+
+	return network;
+}
+
+CpgNetwork *
+test_load_network (gchar const *xml,
+                   ...)
+{
+	va_list ap;
+
+	CpgNetwork *network;
+	GError *error = NULL;
+
+	network = cpg_network_new_from_xml (xml, &error);
+
+	g_assert (network != NULL);
+	g_assert_no_error (error);
+
+	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
+
+	va_start (ap, xml);
+	check_objects (network, ap);
 	va_end (ap);
 
 	return network;

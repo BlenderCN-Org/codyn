@@ -1103,26 +1103,85 @@ group_children_to_xml (CpgNetworkSerializer *serializer,
 	g_slist_free (links);
 }
 
-static gchar *
-relative_property_path (CpgObject   *parent,
-                        CpgProperty *property)
+static gboolean
+group_interface_is_template (CpgGroup    *group,
+                             gchar const *name)
 {
-	GString *ret;
-	CpgObject *obj;
+	CpgPropertyInterface *iface;
+	CpgProperty *prop;
+	GSList const *templates;
+	gboolean ret = FALSE;
+	gchar *path;
 
-	ret = g_string_new (cpg_property_get_name (property));
+	iface = cpg_group_get_property_interface (group);
+	prop = cpg_property_interface_lookup (iface, name);
 
-	obj = cpg_property_get_object (property);
+	templates = cpg_object_get_applied_templates (CPG_OBJECT (group));
 
-	while (obj && obj != parent)
+	path = cpg_object_get_relative_id (cpg_property_get_object (prop),
+	                                   CPG_OBJECT (group));
+
+	while (templates)
 	{
-		g_string_prepend (ret, ".");
-		g_string_prepend (ret, cpg_object_get_id (obj));
+		CpgGroup *template;
+		CpgPropertyInterface *template_iface;
+		CpgProperty *tempprop;
 
-		obj = cpg_object_get_parent (obj);
+		template = templates->data;
+
+		template_iface = cpg_group_get_property_interface (template);
+		tempprop = cpg_property_interface_lookup (template_iface, name);
+
+		if (tempprop && g_strcmp0 (cpg_property_get_name (prop),
+		                           cpg_property_get_name (tempprop)) == 0)
+		{
+			gchar *origpath;
+
+			origpath = cpg_object_get_relative_id (cpg_property_get_object (tempprop),
+			                                       CPG_OBJECT (template));
+
+			ret = g_strcmp0 (origpath, path) == 0;
+			g_free (origpath);
+
+			if (ret)
+			{
+				break;
+			}
+		}
+
+		templates = g_slist_next (templates);
 	}
 
-	return g_string_free (ret, FALSE);
+	g_free (path);
+
+	return ret;
+}
+
+static gchar **
+find_non_template_interfaces (CpgGroup *group)
+{
+	GPtrArray *ret;
+	gchar **names;
+	gchar **ptr;
+	CpgPropertyInterface *iface;
+
+	ret = g_ptr_array_new ();
+
+	iface = cpg_group_get_property_interface (group);
+	names = cpg_property_interface_get_names (iface);
+
+	for (ptr = names; ptr && *ptr; ++ptr)
+	{
+		if (group_interface_is_template (group, *ptr))
+		{
+			g_ptr_array_add (ret, g_strdup (*ptr));
+		}
+	}
+
+	g_ptr_array_add (ret, NULL);
+	g_strfreev (names);
+
+	return (gchar **)g_ptr_array_free (ret, FALSE);
 }
 
 static void
@@ -1131,33 +1190,56 @@ group_interface_to_xml (CpgNetworkSerializer *serializer,
                         CpgGroup             *group)
 {
 	CpgPropertyInterface *iface;
-	gchar const * const *names;
+	gchar **names;
+	gchar **ptr;
+	xmlNodePtr parent;
 
 	iface = cpg_group_get_property_interface (group);
-	names = cpg_property_interface_get_names (iface);
 
-	while (names && *names)
+	names = find_non_template_interfaces (group);
+
+	if (names && *names)
+	{
+		parent = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"interface", NULL);
+		xmlAddChild (group_node, parent);
+	}
+
+	for (ptr = names; ptr && *ptr; ++ptr)
 	{
 		CpgProperty *property;
 		gchar *path;
+		gchar *proppath;
 		xmlNodePtr node;
 		xmlNodePtr text;
 
 		property = cpg_property_interface_lookup (iface, *names);
-		path = relative_property_path (CPG_OBJECT (group), property);
+
+		path = cpg_object_get_relative_id (cpg_property_get_object (property),
+		                                   CPG_OBJECT (group));
+
+		if (path && *path)
+		{
+			proppath = g_strconcat (path, ".", cpg_property_get_name (property), NULL);
+		}
+		else
+		{
+			proppath = g_strdup (cpg_property_get_name (property));
+		}
 
 		node = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"property", NULL);
 		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)*names);
 
 		text = xmlNewDocText (serializer->priv->doc,
-		                      (xmlChar *)path);
+		                      (xmlChar *)proppath);
 
 		xmlAddChild (node, text);
+		xmlAddChild (parent, node);
 
 		g_free (path);
-
-		++names;
+		g_free (proppath);
 	}
+
+	g_strfreev (names);
 }
 
 static void
