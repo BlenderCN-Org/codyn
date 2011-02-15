@@ -1293,6 +1293,81 @@ parse_link (CpgNetworkDeserializer *deserializer,
 }
 
 static gboolean
+parse_interface (CpgNetworkDeserializer *deserializer,
+                 GList                  *nodes,
+                 CpgGroup               *group)
+{
+	CpgPropertyInterface *iface;
+
+	iface = cpg_group_get_property_interface (group);
+
+	while (nodes)
+	{
+		xmlNodePtr node = nodes->data;
+		xmlChar *name;
+		xmlChar const *target = NULL;
+		CpgProperty *property;
+		GError *error = NULL;
+
+		name = xmlGetProp (node, (xmlChar const *)"name");
+
+		if (!name)
+		{
+			return parser_failed (deserializer,
+			                      node,
+			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
+			                      "Missing name for interface property on `%s'",
+			                      cpg_object_get_id (CPG_OBJECT (group)));
+		}
+
+		if (node->children && node->children->type == XML_TEXT_NODE)
+		{
+			target = node->children->content;
+		}
+		else
+		{
+			return parser_failed (deserializer,
+			                      node,
+			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
+			                      "Missing target for interface property `%s' on `%s'",
+			                      name,
+			                      cpg_object_get_id (CPG_OBJECT (group)));
+		}
+
+		property = cpg_group_find_property (group, (gchar const *)target);
+
+		if (!property)
+		{
+			return parser_failed (deserializer,
+			                      node,
+			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
+			                      "Could not find interface target `%s' for interface property `%s' on `%s'",
+			                      target,
+			                      name,
+			                      cpg_object_get_id (CPG_OBJECT (group)));
+		}
+
+		if (!cpg_property_interface_add (iface,
+		                                 (gchar const *)name,
+		                                 property,
+		                                 &error))
+		{
+			parser_failed_error (deserializer,
+			                     node,
+			                     error);
+
+			g_error_free (error);
+
+			return FALSE;
+		}
+
+		nodes = g_list_next (nodes);
+	}
+
+	return TRUE;
+}
+
+static gboolean
 parse_group (CpgNetworkDeserializer *deserializer,
              xmlNodePtr              node)
 {
@@ -1334,6 +1409,19 @@ parse_group (CpgNetworkDeserializer *deserializer,
 		cpg_group_set_proxy (CPG_GROUP (object), child);
 
 		xmlFree (proxy);
+	}
+
+	if (!xml_xpath (deserializer,
+	                node,
+	                "interface/property",
+	                XML_ELEMENT_NODE,
+	                (XPathResultFunc)parse_interface,
+	                object))
+	{
+		g_warning ("Could not parse interfaces successfully");
+
+		g_object_unref (object);
+		return FALSE;
 	}
 
 	return TRUE;
@@ -1763,7 +1851,7 @@ parse_network (CpgNetworkDeserializer *deserializer,
 
 		gboolean has_child = xml_xpath_first (deserializer,
 		                                      node,
-		                                      "state | link",
+		                                      "state | link | interface",
 		                                      XML_ELEMENT_NODE) != NULL;
 
 		gchar const *nodename = (gchar const *)node->name;

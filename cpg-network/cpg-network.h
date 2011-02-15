@@ -38,6 +38,7 @@ CPG_FORWARD_DECL (CpgImport);
  * @CPG_NETWORK_LOAD_ERROR_LINK: error occurred in loading a link
  * @CPG_NETWORK_LOAD_ERROR_FUNCTION: error occurred in loading a function
  * @CPG_NETWORK_LOAD_ERROR_IMPORT: error occurred in an import
+ * @CPG_NETWORK_LOAD_ERROR_INTERFACE: error occurred in an interface
  *
  * Network load error types.
  *
@@ -50,7 +51,8 @@ typedef enum
 	CPG_NETWORK_LOAD_ERROR_LINK,
 	CPG_NETWORK_LOAD_ERROR_FUNCTION,
 	CPG_NETWORK_LOAD_ERROR_IMPORT,
-	CPG_NETWORK_LOAD_ERROR_INPUT_FILE
+	CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
+	CPG_NETWORK_LOAD_ERROR_INTERFACE
 } CpgNetworkLoadError;
 
 #define CPG_NETWORK_ERROR (cpg_network_error_quark ())

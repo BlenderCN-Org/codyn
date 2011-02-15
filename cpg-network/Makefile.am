@@ -41,6 +41,7 @@ COMMON_SOURCES = 		\
 	cpg-operator.c \
 	cpg-operator-lastof.c \
 	cpg-property.c \
+	cpg-property-interface.c \
 	cpg-stack.c \
 	cpg-tokenizer.c \
 	cpg-usable.c \
@@ -91,6 +92,7 @@ INST_H_FILES = \
 	cpg-operator.h \
 	cpg-operator-lastof.h \
 	cpg-property.h \
+	cpg-property-interface.h \
 	cpg-stack.h \
 	cpg-usable.h \
 	cpg-utils.h

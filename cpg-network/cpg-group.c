@@ -40,6 +40,8 @@ struct _CpgGroupPrivate
 	GSList *children;
 	GHashTable *child_hash;
 
+	CpgPropertyInterface *property_interface;
+
 	guint proxy_signals[NUM_EXT_SIGNALS];
 };
 
@@ -208,6 +210,12 @@ cpg_group_dispose (GObject *object)
 		templates = g_slist_next (templates);
 	}
 
+	if (group->priv->property_interface)
+	{
+		g_object_unref (group->priv->property_interface);
+		group->priv->property_interface = NULL;
+	}
+
 	G_OBJECT_CLASS (cpg_group_parent_class)->dispose (object);
 }
 
@@ -369,6 +377,12 @@ cpg_group_cpg_get_property (CpgObject   *object,
 	{
 		prop = cpg_object_get_property (group->priv->proxy,
 		                                name);
+	}
+
+	if (!prop)
+	{
+		prop = cpg_property_interface_lookup (group->priv->property_interface,
+		                                      name);
 	}
 
 	return prop;
@@ -1223,6 +1237,8 @@ cpg_group_init (CpgGroup *self)
 	                                                g_str_equal,
 	                                                (GDestroyNotify)g_free,
 	                                                NULL);
+
+	self->priv->property_interface = cpg_property_interface_new (CPG_OBJECT (self));
 }
 
 /**
@@ -1517,4 +1533,21 @@ cpg_group_property_is_proxy (CpgGroup    *group,
 
 	return group->priv->proxy && cpg_object_get_property (group->priv->proxy,
 	                                                      name);
+}
+
+/**
+ * cpg_group_get_property_interface:
+ * @group: A #CpgGroup
+ *
+ * Get the property interface of the group.
+ *
+ * Returns: (transfer none): A #CpgPropertyInterface
+ *
+ **/
+CpgPropertyInterface *
+cpg_group_get_property_interface (CpgGroup *group)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+
+	return group->priv->property_interface;
 }

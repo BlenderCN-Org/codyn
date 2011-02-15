@@ -2,6 +2,7 @@
 #define __CPG_GROUP_H__
 
 #include <cpg-network/cpg-object.h>
+#include <cpg-network/cpg-property-interface.h>
 
 G_BEGIN_DECLS
 
@@ -105,6 +106,9 @@ CpgProperty  *cpg_group_find_property (CpgGroup    *group,
 gboolean      cpg_group_verify_remove_child (CpgGroup   *group,
                                              CpgObject  *child,
                                              GError    **error);
+
+CpgPropertyInterface *
+              cpg_group_get_property_interface (CpgGroup *group);
 
 G_END_DECLS
 

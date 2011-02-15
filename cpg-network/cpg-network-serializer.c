@@ -1103,6 +1103,63 @@ group_children_to_xml (CpgNetworkSerializer *serializer,
 	g_slist_free (links);
 }
 
+static gchar *
+relative_property_path (CpgObject   *parent,
+                        CpgProperty *property)
+{
+	GString *ret;
+	CpgObject *obj;
+
+	ret = g_string_new (cpg_property_get_name (property));
+
+	obj = cpg_property_get_object (property);
+
+	while (obj && obj != parent)
+	{
+		g_string_prepend (ret, ".");
+		g_string_prepend (ret, cpg_object_get_id (obj));
+
+		obj = cpg_object_get_parent (obj);
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
+static void
+group_interface_to_xml (CpgNetworkSerializer *serializer,
+                        xmlNodePtr            group_node,
+                        CpgGroup             *group)
+{
+	CpgPropertyInterface *iface;
+	gchar const * const *names;
+
+	iface = cpg_group_get_property_interface (group);
+	names = cpg_property_interface_get_names (iface);
+
+	while (names && *names)
+	{
+		CpgProperty *property;
+		gchar *path;
+		xmlNodePtr node;
+		xmlNodePtr text;
+
+		property = cpg_property_interface_lookup (iface, *names);
+		path = relative_property_path (CPG_OBJECT (group), property);
+
+		node = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"property", NULL);
+		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)*names);
+
+		text = xmlNewDocText (serializer->priv->doc,
+		                      (xmlChar *)path);
+
+		xmlAddChild (node, text);
+
+		g_free (path);
+
+		++names;
+	}
+}
+
 static void
 group_to_xml (CpgNetworkSerializer *serializer,
               xmlNodePtr            root,
@@ -1132,6 +1189,8 @@ group_to_xml (CpgNetworkSerializer *serializer,
 	{
 		group_node = root;
 	}
+
+	group_interface_to_xml (serializer, group_node, group);
 
 	group_children_to_xml (serializer, group_node, group);
 }

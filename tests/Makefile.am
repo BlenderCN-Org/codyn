@@ -6,7 +6,7 @@ INCLUDES =				\
 	-I$(top_srcdir)				\
 	$(CPG_NETWORK_CFLAGS)
 
-TEST_PROGS = expression network direct import template object group property operator integrator
+TEST_PROGS = expression network direct import template object group property operator integrator interface
 progs_ldadd = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la
 
 noinst_PROGRAMS = $(TEST_PROGS)
@@ -40,6 +40,9 @@ operator_LDADD = $(progs_ldadd)
 
 integrator_SOURCES = integrator.c utils.h utils.c
 integrator_LDADD = $(progs_ldadd)
+
+interface_SOURCES = interface.c utils.h utils.c
+interface_LDADD = $(progs_ldadd)
 
 TESTS = $(TEST_PROGS)
 
