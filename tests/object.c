@@ -131,6 +131,36 @@ test_new_from_template ()
 	g_assert_cmpuint (cpg_property_get_flags (p2), ==, CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT);
 }
 
+static void
+test_relative_id ()
+{
+	CpgGroup *g1;
+	CpgGroup *g2;
+	CpgObject *obj;
+
+	g1 = cpg_group_new ("g1", NULL);
+	g2 = cpg_group_new ("g2", NULL);
+
+	obj = cpg_object_new ("o1");
+
+	cpg_group_add (g1, CPG_OBJECT (g2), NULL);
+	cpg_group_add (g2, obj, NULL);
+
+	g_assert (cpg_group_find_object (g1, "g2"));
+	g_assert (cpg_group_find_object (g2, "o1"));
+	g_assert (cpg_group_find_object (g1, "g2.o1"));
+
+	g_assert_cmpstr (cpg_object_get_relative_id (CPG_OBJECT (g2),
+	                                             CPG_OBJECT (g1)), ==, "g2");
+
+	g_assert_cmpstr (cpg_object_get_relative_id (obj,
+	                                             CPG_OBJECT (g1)), ==, "g2.o1");
+
+	g_object_unref (g1);
+	g_object_unref (g2);
+	g_object_unref (obj);
+}
+
 int
 main (int   argc,
       char *argv[])
@@ -147,6 +177,7 @@ main (int   argc,
 	g_test_add_func ("/object/copy", test_copy);
 	g_test_add_func ("/object/apply_template", test_apply_template);
 	g_test_add_func ("/object/new_from_template", test_new_from_template);
+	g_test_add_func ("/object/relative_id", test_relative_id);
 
 	g_test_run ();
 

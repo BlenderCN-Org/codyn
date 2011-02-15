@@ -2042,23 +2042,7 @@ cpg_object_get_full_id (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
-	if (cpg_object_get_parent (object) == NULL)
-	{
-		return g_strdup ("");
-	}
-	else if (cpg_object_get_parent (object->priv->parent) == NULL)
-	{
-		return g_strdup (cpg_object_get_id (object));
-	}
-
-	gchar *parentId = cpg_object_get_full_id (cpg_object_get_parent (object));
-	gchar *ret = g_strconcat (parentId,
-	                          ".",
-	                          cpg_object_get_id (object),
-	                          NULL);
-	g_free (parentId);
-
-	return ret;
+	return cpg_object_get_relative_id (object, NULL);
 }
 
 /**
@@ -2089,4 +2073,39 @@ cpg_object_foreach_expression (CpgObject                *object,
 	{
 		CPG_OBJECT_GET_CLASS (object)->foreach_expression (object, func, userdata);
 	}
+}
+
+gchar *
+cpg_object_get_relative_id (CpgObject *object,
+                            CpgObject *parent)
+{
+	gchar *ret;
+	gchar *par;
+
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
+
+	if (parent == NULL)
+	{
+		return g_strdup (object->priv->id);
+	}
+
+	if (object == parent)
+	{
+		return g_strdup ("");
+	}
+
+	par = cpg_object_get_relative_id (cpg_object_get_parent (object), parent);
+
+	if (par && *par)
+	{
+		ret = g_strconcat (par, ".", object->priv->id, NULL);
+	}
+	else
+	{
+		ret = g_strdup (object->priv->id);
+	}
+
+	g_free (par);
+	return ret;
 }
