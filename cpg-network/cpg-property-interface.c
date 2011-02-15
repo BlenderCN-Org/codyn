@@ -1,8 +1,20 @@
 #include "cpg-property-interface.h"
-
 #include "cpg-group.h"
 #include "cpg-tokenizer.h"
 #include "cpg-marshal.h"
+
+/**
+ * SECTION:cpg-property-interface
+ * @short_description: Property interface for #CpgGroup
+ *
+ * The property interface is a mapping of property aliases to arbitrary
+ * properties. Each #CpgGroup has a property interface which manages which
+ * properties of children of the group are exposed on the group itself.
+ *
+ * This allows for controlled accessibility of certain properties of certain
+ * children of a group, and ensures data integrity (in a sense).
+ *
+ */
 
 #define CPG_PROPERTY_INTERFACE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY_INTERFACE, CpgPropertyInterfacePrivate))
 

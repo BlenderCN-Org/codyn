@@ -14,7 +14,9 @@
  * providing some common functionality.
  *
  * Each group can have a proxy object associated which serves as a bridge
- * between the outside and the inside of the group.
+ * between the outside and the inside of the group. In addition, each group
+ * has an interface (#CpgPropertyInterface) which allows the designer of the
+ * group to expose a certain subset of its child properties on the group.
  *
  * <refsect2 id="CpgGroup-COPY">
  * <title>CpgGroup Copy Semantics</title>
