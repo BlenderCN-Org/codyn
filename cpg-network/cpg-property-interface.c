@@ -376,13 +376,23 @@ cpg_property_interface_get_object (CpgPropertyInterface *iface)
  *
  * Get the names of the mappings defined on the interface
  *
- * Returns: (transfer none): A %NULL terminated list of strings
+ * Returns: (transfer full): A %NULL terminated list of strings
  *
  **/
-gchar const * const *
+gchar **
 cpg_property_interface_get_names (CpgPropertyInterface *iface)
 {
+	GPtrArray *ptr;
+	gint i;
+
 	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), NULL);
 
-	return (gchar const * const *)(iface->priv->names);
+	ptr = g_ptr_array_sized_new (iface->priv->names->len);
+
+	for (i = 0; i < iface->priv->names->len; ++i)
+	{
+		g_ptr_array_add (ptr, g_strdup (g_ptr_array_index (iface->priv->names, i)));
+	}
+
+	return (gchar **)g_ptr_array_free (ptr, FALSE);
 }

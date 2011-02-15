@@ -57,7 +57,7 @@ CpgPropertyInterface *cpg_property_interface_new (CpgObject *object);
 
 CpgObject *cpg_property_interface_get_object (CpgPropertyInterface *iface);
 
-gchar const * const *cpg_property_interface_get_names (CpgPropertyInterface *iface);
+gchar **cpg_property_interface_get_names (CpgPropertyInterface *iface);
 
 CpgProperty *cpg_property_interface_lookup (CpgPropertyInterface *iface,
                                             gchar const          *name);
