@@ -19,7 +19,9 @@ struct _CpgLinkActionPrivate
 	CpgProperty *property;
 
 	guint equation_proxy_id;
-	gboolean modified : 1;
+
+	guint modified : 1;
+	guint enabled : 1;
 };
 
 /* Properties */
@@ -29,7 +31,8 @@ enum
 	PROP_TARGET,
 	PROP_EQUATION,
 	PROP_TARGET_PROPERTY,
-	PROP_MODIFIED
+	PROP_MODIFIED,
+	PROP_ENABLED
 };
 
 static void cpg_modifiable_iface_init (gpointer iface);
@@ -162,6 +165,10 @@ cpg_link_action_set_property (GObject      *object,
 		case PROP_MODIFIED:
 			self->priv->modified = g_value_get_boolean (value);
 		break;
+		case PROP_ENABLED:
+			cpg_link_action_set_enabled (self,
+			                             g_value_get_boolean (value));
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -189,6 +196,9 @@ cpg_link_action_get_property (GObject    *object,
 		break;
 		case PROP_MODIFIED:
 			g_value_set_boolean (value, self->priv->modified);
+		break;
+		case PROP_ENABLED:
+			g_value_set_boolean (value, self->priv->enabled);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -254,6 +264,14 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	                                  "modified");
 
 	g_type_class_add_private (object_class, sizeof(CpgLinkActionPrivate));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_ENABLED,
+	                                 g_param_spec_boolean ("enabled",
+	                                                       "Enabled",
+	                                                       "Enabled",
+	                                                       TRUE,
+	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -431,6 +449,27 @@ cpg_link_action_equal (CpgLinkAction *action,
 
 	return cpg_expression_equal (action->priv->equation,
 	                             other->priv->equation);
+}
+
+void
+cpg_link_action_set_enabled (CpgLinkAction *action,
+                             gboolean       enabled)
+{
+	g_return_if_fail (CPG_IS_LINK_ACTION (action));
+
+	if (action->priv->enabled != enabled)
+	{
+		action->priv->enabled = enabled;
+		g_object_notify (G_OBJECT (action), "enabled");
+	}
+}
+
+gboolean
+cpg_link_action_get_enabled (CpgLinkAction *action)
+{
+	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), FALSE);
+
+	return action->priv->enabled;
 }
 
 void

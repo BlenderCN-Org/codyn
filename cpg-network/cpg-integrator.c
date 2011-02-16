@@ -495,11 +495,15 @@ simulation_step (CpgIntegrator *integrator)
 	while (direct)
 	{
 		CpgLinkAction *action = direct->data;
-		CpgProperty *target = cpg_link_action_get_target_property (action);
 
-		if (target)
+		if (cpg_link_action_get_enabled (action))
 		{
-			cpg_property_set_update (target, 0);
+			CpgProperty *target = cpg_link_action_get_target_property (action);
+
+			if (target)
+			{
+				cpg_property_set_update (target, 0);
+			}
 		}
 
 		direct = g_slist_next (direct);
@@ -510,18 +514,22 @@ simulation_step (CpgIntegrator *integrator)
 	while (direct)
 	{
 		CpgLinkAction *action = direct->data;
-		CpgProperty *target = cpg_link_action_get_target_property (action);
 
-		if (target != NULL)
+		if (cpg_link_action_get_enabled (action))
 		{
-			CpgExpression *expr = cpg_link_action_get_equation (action);
+			CpgProperty *target = cpg_link_action_get_target_property (action);
 
-			cpg_property_set_update (target,
-			                         cpg_property_get_update (target) +
-			                         cpg_expression_evaluate (expr));
+			if (target != NULL)
+			{
+				CpgExpression *expr = cpg_link_action_get_equation (action);
 
-			cpg_property_set_value (target,
-			                        cpg_property_get_update (target));
+				cpg_property_set_update (target,
+				                         cpg_property_get_update (target) +
+				                         cpg_expression_evaluate (expr));
+
+				cpg_property_set_value (target,
+				                        cpg_property_get_update (target));
+			}
 		}
 
 		direct = g_slist_next (direct);
@@ -543,15 +551,18 @@ simulation_step (CpgIntegrator *integrator)
 	{
 		CpgLinkAction *action = integrated->data;
 
-		CpgProperty *target = cpg_link_action_get_target_property (action);
-
-		if (target != NULL)
+		if (cpg_link_action_get_enabled (action))
 		{
-			CpgExpression *expr = cpg_link_action_get_equation (action);
+			CpgProperty *target = cpg_link_action_get_target_property (action);
 
-			cpg_property_set_update (target,
-			                         cpg_property_get_update (target) +
-			                         cpg_expression_evaluate (expr));
+			if (target != NULL)
+			{
+				CpgExpression *expr = cpg_link_action_get_equation (action);
+
+				cpg_property_set_update (target,
+				                         cpg_property_get_update (target) +
+				                         cpg_expression_evaluate (expr));
+			}
 		}
 
 		integrated = g_slist_next (integrated);

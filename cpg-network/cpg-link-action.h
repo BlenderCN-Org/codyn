@@ -55,6 +55,11 @@ gboolean        cpg_link_action_depends      (CpgLinkAction *action,
 gboolean        cpg_link_action_equal        (CpgLinkAction *action,
                                               CpgLinkAction *other);
 
+void            cpg_link_action_set_enabled  (CpgLinkAction *action,
+                                              gboolean       enabled);
+
+gboolean        cpg_link_action_get_enabled  (CpgLinkAction *action);
+
 CpgProperty    *cpg_link_action_get_target_property  (CpgLinkAction *action);
 void            _cpg_link_action_set_target_property (CpgLinkAction *action,
                                                       CpgProperty   *property);
