@@ -38,6 +38,8 @@ enum
 {
 	ADDED,
 	REMOVED,
+	VERIFY_ADD,
+	VERIFY_REMOVE,
 	NUM_SIGNALS
 };
 
@@ -122,6 +124,80 @@ cpg_property_interface_get_property (GObject    *object,
 	}
 }
 
+static gboolean
+cpg_property_interface_verify_remove_impl (CpgPropertyInterface  *iface,
+                                           gchar const           *name,
+                                           GError               **error)
+{
+	CpgProperty *property;
+
+	property = g_hash_table_lookup (iface->priv->properties, name);
+
+	if (!property)
+	{
+		gchar *id;
+
+		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
+
+		g_set_error (error,
+		             CPG_PROPERTY_INTERFACE_ERROR,
+		             CPG_PROPERTY_INTERFACE_ERROR_NOT_FOUND,
+		             "The property `%s' does not exist on the interface of `%s'",
+		             name,
+		             id);
+
+		g_free (id);
+		return FALSE;
+	}
+
+	return TRUE;
+
+}
+
+static gboolean
+cpg_property_interface_verify_add_impl (CpgPropertyInterface  *iface,
+                                        gchar const           *name,
+                                        CpgProperty           *property,
+                                        GError               **error)
+{
+	if (!cpg_tokenizer_validate_identifier (name))
+	{
+		gchar *id;
+
+		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
+
+		g_set_error (error,
+		             CPG_OBJECT_ERROR,
+		             CPG_OBJECT_ERROR_INVALID_PROPERTY_NAME,
+		             "Invalid interface property name `%s' for interface of `%s'",
+		             name,
+		             id);
+
+		g_free (id);
+
+		return FALSE;
+	}
+
+	if (g_hash_table_lookup (iface->priv->properties, name))
+	{
+		gchar *id;
+
+		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
+
+		g_set_error (error,
+		             CPG_PROPERTY_INTERFACE_ERROR,
+		             CPG_PROPERTY_INTERFACE_ERROR_EXISTS,
+		             "The property `%s' already exists on the interface of `%s'",
+		             name,
+		             id);
+
+		g_free (id);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static void
 cpg_property_interface_class_init (CpgPropertyInterfaceClass *klass)
 {
@@ -133,6 +209,9 @@ cpg_property_interface_class_init (CpgPropertyInterfaceClass *klass)
 	object_class->set_property = cpg_property_interface_set_property;
 
 	object_class->dispose = cpg_property_interface_dispose;
+
+	klass->verify_add = cpg_property_interface_verify_add_impl;
+	klass->verify_remove = cpg_property_interface_verify_remove_impl;
 
 	g_type_class_add_private (object_class, sizeof(CpgPropertyInterfacePrivate));
 
@@ -163,6 +242,35 @@ cpg_property_interface_class_init (CpgPropertyInterfaceClass *klass)
 		              2,
 		              G_TYPE_STRING,
 		              CPG_TYPE_PROPERTY);
+
+	signals[VERIFY_REMOVE] =
+		g_signal_new ("verify-remove",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgPropertyInterfaceClass,
+		                               verify_remove),
+		              cpg_signal_accumulator_false_handled,
+		              NULL,
+		              cpg_marshal_BOOLEAN__STRING_POINTER,
+		              G_TYPE_BOOLEAN,
+		              2,
+		              G_TYPE_STRING,
+		              G_TYPE_POINTER);
+
+	signals[VERIFY_ADD] =
+		g_signal_new ("verify-add",
+		              G_TYPE_FROM_CLASS (klass),
+		              G_SIGNAL_RUN_LAST,
+		              G_STRUCT_OFFSET (CpgPropertyInterfaceClass,
+		                               verify_add),
+		              cpg_signal_accumulator_false_handled,
+		              NULL,
+		              cpg_marshal_BOOLEAN__STRING_OBJECT_POINTER,
+		              G_TYPE_BOOLEAN,
+		              3,
+		              G_TYPE_STRING,
+		              CPG_TYPE_PROPERTY,
+		              G_TYPE_POINTER);
 
 	g_object_class_install_property (object_class,
 	                                 PROP_OBJECT,
@@ -247,42 +355,16 @@ cpg_property_interface_add (CpgPropertyInterface  *iface,
                             CpgProperty           *property,
                             GError               **error)
 {
+	gboolean ret = FALSE;
+
 	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
 
-	if (!cpg_tokenizer_validate_identifier (name))
+	g_signal_emit (iface, signals[VERIFY_ADD], 0, name, property, error, &ret);
+
+	if (ret)
 	{
-		gchar *id;
-
-		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
-
-		g_set_error (error,
-		             CPG_OBJECT_ERROR,
-		             CPG_OBJECT_ERROR_INVALID_PROPERTY_NAME,
-		             "Invalid interface property name `%s' for interface of `%s'",
-		             name,
-		             id);
-
-		g_free (id);
-
-		return FALSE;
-	}
-
-	if (g_hash_table_lookup (iface->priv->properties, name))
-	{
-		gchar *id;
-
-		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
-
-		g_set_error (error,
-		             CPG_PROPERTY_INTERFACE_ERROR,
-		             CPG_PROPERTY_INTERFACE_ERROR_EXISTS,
-		             "The property `%s' already exists on the interface of `%s'",
-		             name,
-		             id);
-
-		g_free (id);
 		return FALSE;
 	}
 
@@ -319,28 +401,19 @@ cpg_property_interface_remove (CpgPropertyInterface  *iface,
 {
 	gint i;
 	CpgProperty *property;
+	gboolean ret = FALSE;
 
 	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
 
-	property = g_hash_table_lookup (iface->priv->properties, name);
+	g_signal_emit (iface, signals[VERIFY_REMOVE], 0, name, error, &ret);
 
-	if (!property)
+	if (ret)
 	{
-		gchar *id;
-
-		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
-
-		g_set_error (error,
-		             CPG_PROPERTY_INTERFACE_ERROR,
-		             CPG_PROPERTY_INTERFACE_ERROR_NOT_FOUND,
-		             "The property `%s' does not exist on the interface of `%s'",
-		             name,
-		             id);
-
-		g_free (id);
 		return FALSE;
 	}
+
+	property = g_hash_table_lookup (iface->priv->properties, name);
 
 	/* Keep property alive during signal emission later */
 	g_object_ref (property);

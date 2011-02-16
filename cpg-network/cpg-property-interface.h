@@ -48,6 +48,15 @@ struct _CpgPropertyInterfaceClass
 
 	void (*added) (CpgPropertyInterface *iface, gchar const *name, CpgProperty *property);
 	void (*removed) (CpgPropertyInterface *iface, gchar const *name, CpgProperty *property);
+
+	gboolean (*verify_remove) (CpgPropertyInterface *iface,
+	                           gchar const *name,
+	                           GError **error);
+
+	gboolean (*verify_add) (CpgPropertyInterface *iface,
+	                        gchar const *name,
+	                        CpgProperty *property,
+	                        GError **error);
 };
 
 GQuark cpg_property_interface_error_quark (void);

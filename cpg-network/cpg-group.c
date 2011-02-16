@@ -399,11 +399,53 @@ cpg_group_dispose (GObject *object)
 }
 
 static void
+proxy_add_property (CpgGroup    *group,
+                    CpgProperty *property)
+{
+	gchar const *name;
+
+	name = cpg_property_get_name (property);
+
+	if (cpg_property_interface_lookup (group->priv->property_interface,
+	                                   name))
+	{
+		cpg_property_interface_remove (group->priv->property_interface,
+		                               name,
+		                               NULL);
+	}
+
+	cpg_property_interface_add (group->priv->property_interface,
+	                            name,
+	                            property,
+	                            NULL);
+}
+
+static void
+proxy_remove_property (CpgGroup    *group,
+                       CpgProperty *property)
+{
+	CpgProperty *prop;
+	gchar const *name;
+
+	name = cpg_property_get_name (property);
+
+	prop = cpg_property_interface_lookup (group->priv->property_interface,
+	                                      name);
+
+	if (prop == property)
+	{
+		cpg_property_interface_remove (group->priv->property_interface,
+		                               name,
+		                               NULL);
+	}
+}
+
+static void
 on_proxy_property_added (CpgObject   *proxy,
                          CpgProperty *property,
                          CpgGroup    *group)
 {
-	g_signal_emit_by_name (group, "property-added", property);
+	proxy_add_property (group, property);
 }
 
 static void
@@ -411,33 +453,24 @@ on_proxy_property_removed (CpgObject   *proxy,
                            CpgProperty *property,
                            CpgGroup    *group)
 {
-	g_signal_emit_by_name (group, "property-removed", property);
+	proxy_remove_property (group, property);
 }
 
 static gboolean
 set_proxy (CpgGroup  *group,
            CpgObject *proxy)
 {
+	CpgPropertyInterface *iface;
+
 	if (group->priv->proxy == proxy)
 	{
 		return TRUE;
 	}
 
+	iface = cpg_group_get_property_interface (group);
+
 	if (group->priv->proxy)
 	{
-		GSList const *actors = cpg_object_get_actors (CPG_OBJECT (group));
-
-		// Check if there are still actors on this proxy
-		while (actors)
-		{
-			CpgProperty *prop = actors->data;
-
-			if (cpg_property_get_object (prop) == group->priv->proxy)
-			{
-				return FALSE;
-			}
-		}
-
 		g_signal_handler_disconnect (group->priv->proxy,
 		                             group->priv->proxy_signals[EXT_PROPERTY_ADDED]);
 
@@ -449,15 +482,10 @@ set_proxy (CpgGroup  *group,
 		CpgObject *pr = group->priv->proxy;
 		group->priv->proxy = NULL;
 
+		/* Remove properties from interface */
 		while (properties)
 		{
-			if (!cpg_object_get_property (CPG_OBJECT (group),
-			                              cpg_property_get_name (properties->data)))
-			{
-				g_signal_emit_by_name (group,
-				                       "property-removed",
-				                       properties->data);
-			}
+			proxy_remove_property (group, properties->data);
 
 			properties = g_slist_next (properties);
 		}
@@ -474,13 +502,7 @@ set_proxy (CpgGroup  *group,
 
 		while (properties)
 		{
-			if (cpg_group_property_is_proxy (group,
-			                                 cpg_property_get_name (properties->data)))
-			{
-				g_signal_emit_by_name (group,
-				                       "property-added",
-				                       properties->data);
-			}
+			proxy_add_property (group, properties->data);
 
 			properties = g_slist_next (properties);
 		}
@@ -552,12 +574,6 @@ cpg_group_cpg_get_property (CpgObject   *object,
 	prop = CPG_OBJECT_CLASS (cpg_group_parent_class)->get_property (object,
 	                                                                name);
 
-	if (!prop && group->priv->proxy)
-	{
-		prop = cpg_object_get_property (group->priv->proxy,
-		                                name);
-	}
-
 	if (!prop)
 	{
 		prop = cpg_property_interface_lookup (group->priv->property_interface,
@@ -565,78 +581,6 @@ cpg_group_cpg_get_property (CpgObject   *object,
 	}
 
 	return prop;
-}
-
-static GSList *
-cpg_group_cpg_get_properties (CpgObject *object)
-{
-	CpgGroup *group = CPG_GROUP (object);
-	GSList *properties;
-
-	properties = CPG_OBJECT_CLASS (cpg_group_parent_class)->get_properties (object);
-
-	if (group->priv->proxy)
-	{
-		properties = g_slist_concat (properties,
-		                             cpg_object_get_properties (group->priv->proxy));
-	}
-
-	return properties;
-
-}
-
-static gboolean
-cpg_group_cpg_verify_remove_property (CpgObject    *object,
-                                      gchar const  *name,
-                                      GError      **error)
-{
-	CpgGroup *group = CPG_GROUP (object);
-	CpgProperty *prop;
-
-	prop = CPG_OBJECT_CLASS (cpg_group_parent_class)->get_property (object,
-	                                                                name);
-
-	if (prop)
-	{
-		return CPG_OBJECT_CLASS (cpg_group_parent_class)->verify_remove_property (object,
-		                                                                          name,
-		                                                                          error);
-	}
-	else if (group->priv->proxy)
-	{
-		return cpg_object_verify_remove_property (group->priv->proxy,
-		                                          name,
-		                                          error);
-	}
-
-	return FALSE;
-}
-
-static gboolean
-cpg_group_cpg_remove_property (CpgObject    *object,
-                               gchar const  *name,
-                               GError      **error)
-{
-	CpgGroup *group = CPG_GROUP (object);
-	CpgProperty *prop;
-
-	prop = CPG_OBJECT_CLASS (cpg_group_parent_class)->get_property (object,
-	                                                                name);
-
-	if (prop)
-	{
-		return CPG_OBJECT_CLASS (cpg_group_parent_class)->remove_property (object,
-		                                                                   name,
-		                                                                   error);
-	}
-	else if (group->priv->proxy)
-	{
-		return cpg_object_remove_property (group->priv->proxy,
-		                                   name,
-		                                   error);
-	}
-
-	return FALSE;
 }
 
 static gboolean
@@ -1312,40 +1256,6 @@ cpg_group_cpg_clear (CpgObject *object)
 }
 
 static gboolean
-cpg_group_cpg_add_property (CpgObject    *object,
-                            CpgProperty  *property,
-                            GError      **error)
-{
-	CpgGroup *group = CPG_GROUP (object);
-	CpgProperty *existing;
-
-	existing = cpg_object_get_property (object, cpg_property_get_name (property));
-
-	if (existing && cpg_property_get_object (existing) != object)
-	{
-		CpgObject *owner = cpg_property_get_object (existing);
-
-		if (owner == group->priv->proxy)
-		{
-			return cpg_object_add_property (group->priv->proxy,
-			                                property,
-			                                error);
-		}
-	}
-
-	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property)
-	{
-		return CPG_OBJECT_CLASS (cpg_group_parent_class)->add_property (object,
-		                                                                property,
-		                                                                error);
-	}
-	else
-	{
-		return FALSE;
-	}
-}
-
-static gboolean
 cpg_group_cpg_equal (CpgObject *first,
                      CpgObject *second)
 {
@@ -1414,11 +1324,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 	object_class->get_property = cpg_group_get_property;
 	object_class->set_property = cpg_group_set_property;
 
-	cpg_class->add_property = cpg_group_cpg_add_property;
 	cpg_class->get_property = cpg_group_cpg_get_property;
-	cpg_class->get_properties = cpg_group_cpg_get_properties;
-	cpg_class->remove_property = cpg_group_cpg_remove_property;
-	cpg_class->verify_remove_property = cpg_group_cpg_verify_remove_property;
 
 	cpg_class->compile = cpg_group_cpg_compile;
 	cpg_class->reset = cpg_group_cpg_reset;
@@ -1544,6 +1450,34 @@ on_property_interface_changed (CpgObject *object)
 	cpg_object_taint (object);
 }
 
+static gboolean
+on_property_interface_verify_remove (CpgPropertyInterface  *iface,
+                                     gchar const           *name,
+                                     GError               **error,
+                                     CpgGroup              *group)
+{
+	/* If it comes from a proxy, we deny */
+	CpgProperty *property;
+
+	property = cpg_property_interface_lookup (iface, name);
+
+	if (property &&
+	    cpg_property_get_object (property) == group->priv->proxy &&
+	    g_strcmp0 (cpg_property_get_name (property), name) == 0)
+	{
+		g_set_error (error,
+		             CPG_GROUP_ERROR,
+		             CPG_GROUP_ERROR_INTERFACE_IS_PROXY,
+		             "The interface `%s' is automatically generated from the proxy `%s' and cannot be removed manually",
+		             name,
+		             cpg_object_get_id (group->priv->proxy));
+
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static void
 cpg_group_init (CpgGroup *self)
 {
@@ -1565,6 +1499,11 @@ cpg_group_init (CpgGroup *self)
 	                          "removed",
 	                          G_CALLBACK (on_property_interface_changed),
 	                          self);
+
+	g_signal_connect (self->priv->property_interface,
+	                  "verify-remove",
+	                  G_CALLBACK (on_property_interface_verify_remove),
+	                  self);
 }
 
 /**
@@ -1837,28 +1776,6 @@ cpg_group_find_property (CpgGroup    *group,
 	g_free (copy);
 
 	return ret;
-}
-
-/**
- * cpg_group_property_is_proxy:
- * @group: A #CpgGroup
- * @name: The property name
- *
- * Check whether a property on the group is a proxied property from the
- * groups' proxy object.
- *
- * Returns: %TRUE if @name is a property on the proxy, %FALSE otherwise
- *
- **/
-gboolean
-cpg_group_property_is_proxy (CpgGroup    *group,
-                             const gchar *name)
-{
-	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
-	g_return_val_if_fail (name != NULL, FALSE);
-
-	return group->priv->proxy && cpg_object_get_property (group->priv->proxy,
-	                                                      name);
 }
 
 /**
