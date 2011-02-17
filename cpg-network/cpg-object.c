@@ -2040,9 +2040,18 @@ _cpg_object_set_parent (CpgObject *object,
 gchar *
 cpg_object_get_full_id (CpgObject *object)
 {
+	CpgObject *parent;
+
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
-	return cpg_object_get_relative_id (object, NULL);
+	parent = cpg_object_get_parent (object);
+
+	while (parent->priv->parent)
+	{
+		parent = parent->priv->parent;
+	}
+
+	return cpg_object_get_relative_id (object, parent);
 }
 
 /**
@@ -2083,7 +2092,7 @@ cpg_object_get_relative_id (CpgObject *object,
 	gchar *par = NULL;
 
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
 
 	if (object == parent)
 	{

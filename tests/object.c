@@ -156,7 +156,8 @@ test_relative_id ()
 	g_assert_cmpstr (cpg_object_get_relative_id (obj,
 	                                             CPG_OBJECT (g1)), ==, "g2.o1");
 
-	g_assert_cmpstr (cpg_object_get_full_id (CPG_OBJECT (g2)), ==, "g1.g2");
+	g_assert_cmpstr (cpg_object_get_full_id (CPG_OBJECT (g2)), ==, "g2");
+	g_assert_cmpstr (cpg_object_get_full_id (obj), ==, "g2.o1");
 
 	g_object_unref (g1);
 	g_object_unref (g2);
