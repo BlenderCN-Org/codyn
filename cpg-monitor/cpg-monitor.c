@@ -367,9 +367,9 @@ main (int argc, char *argv[])
 		return 1;
 	}
 
-	if (argc <= 1)
+	if (argc != 2)
 	{
-		g_print ("Please provide at least one network to monitor\n");
+		g_print ("Please provide exactly one network to monitor\n");
 		cleanup ();
 
 		return 1;
@@ -383,10 +383,7 @@ main (int argc, char *argv[])
 		return 1;
 	}
 
-	for (i = 1; i < argc; ++i)
-	{
-		monitor_network (argv[i]);
-	}
+	monitor_network (argv[1]);
 
 	cleanup ();
 
