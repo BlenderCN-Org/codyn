@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <gio/gunixoutputstream.h>
 
-static GPtrArray *monitors = 0;
+static GPtrArray *monitored = 0;
 static gboolean include_header = FALSE;
 static gchar *delimiter = NULL;
 static gdouble from = 0;
@@ -32,7 +32,7 @@ parse_monitor_options (gchar const  *option_name,
                        gpointer      data,
                        GError      **error)
 {
-	g_ptr_array_add (monitors, g_strdup (value));
+	g_ptr_array_add (monitored, g_strdup (value));
 	return TRUE;
 }
 
@@ -250,20 +250,20 @@ monitor_network (gchar const *filename)
 
 	g_object_unref (err);
 
-	GSList *mons = NULL;
+	GSList *monitors = NULL;
 
-	for (i = 0; i < monitors->len; ++i)
+	for (i = 0; i < monitored->len; ++i)
 	{
 		CpgMonitor *monitor;
 		CpgProperty *prop;
 
 		prop = cpg_group_find_property (CPG_GROUP (network),
-		                                monitors->pdata[i]);
+		                                monitored->pdata[i]);
 
 		if (!prop)
 		{
 			g_print ("Could not find property `%s' for network `%s'\n",
-			         (gchar const *)monitors->pdata[i],
+			         (gchar const *)monitored->pdata[i],
 			         filename);
 
 			continue;
@@ -272,10 +272,10 @@ monitor_network (gchar const *filename)
 		monitor = cpg_monitor_new (network,
 		                           prop);
 
-		mons = g_slist_prepend (mons, monitor);
+		monitors = g_slist_prepend (monitors, monitor);
 	}
 
-	mons = g_slist_reverse (mons);
+	monitors = g_slist_reverse (monitors);
 	cpg_network_run (network, from, step, to);
 
 	GOutputStream *out;
@@ -325,20 +325,20 @@ monitor_network (gchar const *filename)
 
 	if (out)
 	{
-		write_monitors (network, mons, out);
+		write_monitors (network, monitors, out);
 
 		g_output_stream_flush (out, NULL, NULL);
 		g_output_stream_close (out, NULL, NULL);
 	}
 
-	g_slist_foreach (mons, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (monitors, (GFunc)g_object_unref, NULL);
 	g_object_unref (network);
 }
 
 static void
 cleanup ()
 {
-	g_ptr_array_free (monitors, TRUE);
+	g_ptr_array_free (monitored, TRUE);
 	g_free (delimiter);
 	g_free (output_file);
 }
@@ -352,7 +352,7 @@ main (int argc, char *argv[])
 
 	g_type_init ();
 
-	monitors = g_ptr_array_new ();
+	monitored = g_ptr_array_new ();
 	delimiter = g_strdup ("\t");
 
 	ctx = g_option_context_new ("- monitor cpg network");
@@ -375,7 +375,7 @@ main (int argc, char *argv[])
 		return 1;
 	}
 
-	if (monitors->len == 0)
+	if (monitored->len == 0)
 	{
 		g_print ("Please provide at least one state variable to monitor\n");
 		cleanup ();
