@@ -2046,6 +2046,11 @@ cpg_object_get_full_id (CpgObject *object)
 
 	parent = cpg_object_get_parent (object);
 
+	if (!parent)
+	{
+		return g_strdup (object->priv->id);
+	}
+
 	while (parent->priv->parent)
 	{
 		parent = parent->priv->parent;
