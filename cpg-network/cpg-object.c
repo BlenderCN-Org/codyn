@@ -2080,22 +2080,25 @@ cpg_object_get_relative_id (CpgObject *object,
                             CpgObject *parent)
 {
 	gchar *ret;
-	gchar *par;
+	gchar *par = NULL;
 
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
-
-	if (parent == NULL)
-	{
-		return g_strdup (object->priv->id);
-	}
 
 	if (object == parent)
 	{
 		return g_strdup ("");
 	}
 
-	par = cpg_object_get_relative_id (cpg_object_get_parent (object), parent);
+	if (cpg_object_get_parent (object) == NULL)
+	{
+		return g_strdup (object->priv->id);
+	}
+
+	if (object->priv->parent)
+	{
+		par = cpg_object_get_relative_id (object->priv->parent, parent);
+	}
 
 	if (par && *par)
 	{
