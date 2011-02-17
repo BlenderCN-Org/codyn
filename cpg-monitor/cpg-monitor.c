@@ -283,9 +283,8 @@ monitor_network (gchar const *filename)
 	if (output_file != NULL && g_strcmp0 (output_file, "-") != 0)
 	{
 		GFile *output;
-		gchar *outname = g_strconcat (filename, ".txt", NULL);
 
-		output = g_file_new_for_path (outname);
+		output = g_file_new_for_path (output_file);
 
 		out = G_OUTPUT_STREAM (g_file_create (output,
 		                                      G_FILE_CREATE_REPLACE_DESTINATION,
@@ -308,13 +307,12 @@ monitor_network (gchar const *filename)
 		if (!out)
 		{
 			g_print ("Could not create output file `%s': %s\n",
-			         outname,
+			         output_file,
 			         error->message);
 
 			g_error_free (error);
 		}
 
-		g_free (outname);
 		g_object_unref (output);
 	}
 	else
