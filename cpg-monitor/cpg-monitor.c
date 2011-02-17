@@ -104,12 +104,14 @@ static GOptionEntry entries[] = {
 static void
 write_monitors (CpgNetwork    *network,
                 GSList        *monitors,
+                GSList        *names,
                 GOutputStream *stream)
 {
 	gint i;
 	gint num;
 	gint row;
-	GSList *item;
+	GSList *item_monitor;
+	GSList *item_name;
 	gdouble time = from;
 
 	if (include_header)
@@ -123,26 +125,22 @@ write_monitors (CpgNetwork    *network,
 		                           NULL,
 		                           NULL);
 
-		for (item = monitors; item; item = g_slist_next (item))
-		{
-			CpgMonitor *monitor = item->data;
+		item_monitor = monitors;
+		item_name = names;
 
-			if (item != monitors)
-			{
-				g_output_stream_write_all (stream,
-				                           delimiter,
-				                           strlen (delimiter),
-				                           NULL,
-				                           NULL,
-				                           NULL);
-			}
+		while (item_monitor)
+		{
+			CpgMonitor *monitor = item_monitor->data;
+			gchar *name = item_name->data;
+
+			g_output_stream_write_all (stream,
+			                           delimiter,
+			                           strlen (delimiter),
+			                           NULL,
+			                           NULL,
+			                           NULL);
 
 			CpgProperty *prop = cpg_monitor_get_property (monitor);
-
-			gchar *name = g_strconcat (cpg_object_get_id (cpg_property_get_object (prop)),
-			                           ".",
-			                           cpg_property_get_name (prop),
-			                           NULL);
 
 			g_output_stream_write_all (stream,
 			                           name,
@@ -150,6 +148,9 @@ write_monitors (CpgNetwork    *network,
 			                           NULL,
 			                           NULL,
 			                           NULL);
+
+			item_monitor = g_slist_next (item_monitor);
+			item_name = g_slist_next (item_name);
 		}
 
 		g_output_stream_write_all (stream,
@@ -255,6 +256,7 @@ monitor_network (gchar const *filename)
 	g_object_unref (err);
 
 	GSList *monitors = NULL;
+	GSList *names = NULL;
 
 	for (i = 0; i < monitored->len; ++i)
 	{
@@ -277,9 +279,12 @@ monitor_network (gchar const *filename)
 		                           prop);
 
 		monitors = g_slist_prepend (monitors, monitor);
+		names = g_slist_prepend (names, monitored->pdata[i]);
 	}
 
 	monitors = g_slist_reverse (monitors);
+	names = g_slist_reverse (names);
+
 	cpg_network_run (network, from, step, to);
 
 	GOutputStream *out;
@@ -327,13 +332,16 @@ monitor_network (gchar const *filename)
 
 	if (out)
 	{
-		write_monitors (network, monitors, out);
+		write_monitors (network, monitors, names, out);
 
 		g_output_stream_flush (out, NULL, NULL);
 		g_output_stream_close (out, NULL, NULL);
 	}
 
 	g_slist_foreach (monitors, (GFunc)g_object_unref, NULL);
+	g_slist_free (monitors);
+	g_slist_free (names);
+
 	g_object_unref (network);
 }
 
