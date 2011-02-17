@@ -114,9 +114,11 @@ write_monitors (CpgNetwork    *network,
 
 	if (include_header)
 	{
+		gchar *header_start = g_strdup_printf ("#%1$st%1$s", delimiter);
+
 		g_output_stream_write_all (stream,
-		                           "# ",
-		                           2,
+		                           header_start,
+		                           strlen (header_start),
 		                           NULL,
 		                           NULL,
 		                           NULL);
@@ -156,6 +158,8 @@ write_monitors (CpgNetwork    *network,
 		                           NULL,
 		                           NULL,
 		                           NULL);
+
+		g_free (header_start);
 	}
 
 	num = g_slist_length (monitors);
