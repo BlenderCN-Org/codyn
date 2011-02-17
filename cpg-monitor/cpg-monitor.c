@@ -96,8 +96,8 @@ static GOptionEntry entries[] = {
 	{"monitor", 'm', 0, G_OPTION_ARG_CALLBACK, parse_monitor_options, "Monitor variable (state.name)", "VAR"},
 	{"include-header", 'i', 0, G_OPTION_ARG_NONE, &include_header, "Include header in output", NULL},
 	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter, "Column delimiter (defaults to tab)", "DELIM"},
-	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time, "Time range", "RANGE"},
-	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file", "FILE"},
+	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time, "Time range, (from:to or from:step:to)", "RANGE"},
+	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
 	{NULL}
 };
 
@@ -355,7 +355,7 @@ main (int argc, char *argv[])
 	monitored = g_ptr_array_new ();
 	delimiter = g_strdup ("\t");
 
-	ctx = g_option_context_new ("- monitor cpg network");
+	ctx = g_option_context_new ("<NETWORK> - monitor cpg network");
 	g_option_context_add_main_entries (ctx, entries, NULL);
 
 	if (!g_option_context_parse (ctx, &argc, &argv, &error))
