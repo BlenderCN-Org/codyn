@@ -130,7 +130,6 @@ write_monitors (CpgNetwork    *network,
 
 		while (item_monitor)
 		{
-			CpgMonitor *monitor = item_monitor->data;
 			gchar *name = item_name->data;
 
 			g_output_stream_write_all (stream,
@@ -139,8 +138,6 @@ write_monitors (CpgNetwork    *network,
 			                           NULL,
 			                           NULL,
 			                           NULL);
-
-			CpgProperty *prop = cpg_monitor_get_property (monitor);
 
 			g_output_stream_write_all (stream,
 			                           name,
@@ -358,7 +355,6 @@ main (int argc, char *argv[])
 {
 	GOptionContext *ctx;
 	GError *error = NULL;
-	gint i;
 
 	g_type_init ();
 
