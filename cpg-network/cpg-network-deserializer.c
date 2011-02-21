@@ -583,6 +583,11 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 		*templates = NULL;
 	}
 
+	if (missing)
+	{
+		*missing = NULL;
+	}
+
 	if (!ref)
 	{
 		return TRUE;
@@ -595,11 +600,6 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 
 	parts = split_templates ((gchar const *)ref);
 	gboolean ret = TRUE;
-
-	if (missing)
-	{
-		*missing = NULL;
-	}
 
 	/* Multiple templates are allowed, iterate over all the template ids
 	   and resolve them from the template group */
