@@ -1157,6 +1157,36 @@ group_interface_is_template (CpgGroup    *group,
 	return ret;
 }
 
+static gboolean
+group_interface_is_proxy (CpgGroup    *group,
+                          gchar const *name)
+{
+	CpgObject *proxy;
+	CpgProperty *property;
+	CpgPropertyInterface *iface;
+
+	/* Check if the interface is an automatically generated interface from
+	   a property on the proxy object */
+
+	proxy = cpg_group_get_proxy (group);
+
+	if (!proxy)
+	{
+		return FALSE;
+	}
+
+	property = cpg_object_get_property (proxy, name);
+
+	if (!property)
+	{
+		return FALSE;
+	}
+
+	iface = cpg_group_get_property_interface (group);
+
+	return cpg_property_interface_lookup (iface, name) == property;
+}
+
 static gchar **
 find_non_template_interfaces (CpgGroup *group)
 {
@@ -1172,10 +1202,17 @@ find_non_template_interfaces (CpgGroup *group)
 
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
-		if (!group_interface_is_template (group, *ptr))
+		if (group_interface_is_template (group, *ptr))
 		{
-			g_ptr_array_add (ret, g_strdup (*ptr));
+			continue;
 		}
+
+		if (group_interface_is_proxy (group, *ptr))
+		{
+			continue;
+		}
+
+		g_ptr_array_add (ret, g_strdup (*ptr));
 	}
 
 	g_ptr_array_add (ret, NULL);
