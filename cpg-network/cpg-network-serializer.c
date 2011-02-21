@@ -1212,7 +1212,7 @@ group_interface_to_xml (CpgNetworkSerializer *serializer,
 		xmlNodePtr node;
 		xmlNodePtr text;
 
-		property = cpg_property_interface_lookup (iface, *names);
+		property = cpg_property_interface_lookup (iface, *ptr);
 
 		path = cpg_object_get_relative_id (cpg_property_get_object (property),
 		                                   CPG_OBJECT (group));
@@ -1227,7 +1227,7 @@ group_interface_to_xml (CpgNetworkSerializer *serializer,
 		}
 
 		node = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"property", NULL);
-		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)*names);
+		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)*ptr);
 
 		text = xmlNewDocText (serializer->priv->doc,
 		                      (xmlChar *)proppath);
