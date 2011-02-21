@@ -2068,6 +2068,68 @@ parse_config (CpgNetworkDeserializer *deserializer)
 	                  NULL);
 }
 
+static void
+store_extra_nodes (CpgNetworkDeserializer *deserializer,
+                   GList                  *nodes,
+                   xmlDocPtr               doc)
+{
+	xmlNodePtr root;
+
+	root = xmlDocGetRootElement (doc);
+
+	while (nodes)
+	{
+		xmlNodePtr cp;
+		gchar const *nodename;
+
+		nodename = (gchar const *)((xmlNodePtr)(nodes->data))->name;
+
+		if (g_strcmp0 (nodename, "network") != 0)
+		{
+			cp = xmlDocCopyNode (nodes->data, doc, 1);
+
+			if (cp)
+			{
+				xmlAddChild (root, cp);
+			}
+		}
+
+		nodes = g_list_next (nodes);
+	}
+}
+
+static void
+parse_extra_nodes (CpgNetworkDeserializer *deserializer)
+{
+	/* Store additional xml nodes as document in the network... */
+	xmlDocPtr doc;
+
+	doc = g_object_get_data (G_OBJECT (deserializer->priv->network),
+	                         CPG_NETWORK_XML_EXTRA_DATA_KEY);
+
+	if (doc == NULL)
+	{
+		xmlNodePtr root;
+
+		doc = xmlNewDoc ((xmlChar const *)"1.0");
+		root = xmlNewDocNode (doc, NULL, (xmlChar const *)"cpg", NULL);
+
+		xmlDocSetRootElement (doc, root);
+
+		g_object_set_data_full (G_OBJECT (deserializer->priv->network),
+		                        CPG_NETWORK_XML_EXTRA_DATA_KEY,
+		                        doc,
+		                        (GDestroyNotify)xmlFreeDoc);
+	}
+
+	xml_xpath (deserializer,
+	           NULL,
+	           "/cpg/*",
+	           XML_ELEMENT_NODE,
+	           (XPathResultFunc)store_extra_nodes,
+	           doc);
+}
+
 static gboolean
 reader_xml (CpgNetworkDeserializer *deserializer)
 {
@@ -2085,6 +2147,8 @@ reader_xml (CpgNetworkDeserializer *deserializer)
 	{
 		return FALSE;
 	}
+
+	parse_extra_nodes (deserializer);
 
 	return TRUE;
 }

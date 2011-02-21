@@ -1328,6 +1328,42 @@ write_config (CpgNetworkSerializer *serializer,
 	}
 }
 
+static void
+write_extra_nodes (CpgNetworkSerializer *serializer)
+{
+	/* Restore additional xml nodes from network... */
+	xmlDocPtr doc;
+	xmlNodePtr root;
+	xmlNodePtr write_root;
+
+	doc = g_object_get_data (G_OBJECT (serializer->priv->network),
+	                         CPG_NETWORK_XML_EXTRA_DATA_KEY);
+
+	if (!doc)
+	{
+		return;
+	}
+
+	root = xmlDocGetRootElement (doc);
+	xmlNodePtr child = root->children;
+
+	write_root = xmlDocGetRootElement (serializer->priv->doc);
+
+	while (child)
+	{
+		xmlNodePtr cp;
+
+		cp = xmlDocCopyNode (child, serializer->priv->doc, 1);
+
+		if (cp)
+		{
+			xmlAddChild (write_root, cp);
+		}
+
+		child = child->next;
+	}
+}
+
 /**
  * cpg_network_serializer_serialize:
  * @serializer: A #CpgNetworkSerializer
@@ -1396,6 +1432,7 @@ cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
 	}
 
 	write_functions (serializer, nnetwork);
+	write_extra_nodes (serializer);
 
 	xmlIndentTreeOutput = 1;
 
