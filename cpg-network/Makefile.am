@@ -7,6 +7,7 @@ INCLUDES =				\
 	-DDATADIR=\""$(datadir)"\"
 
 COMMON_SOURCES = 		\
+	cpg-annotatable.c	\
 	cpg-compile-context.c \
 	cpg-compile-error.c \
 	cpg-enum-types.c \
@@ -60,6 +61,7 @@ NOINST_H_FILES = \
 	cpg-marshal.h
 
 INST_H_FILES = \
+	cpg-annotatable.h \
 	cpg-compile-context.h \
 	cpg-compile-error.h \
 	cpg-expression.h \

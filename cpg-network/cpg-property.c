@@ -8,6 +8,7 @@
 #include "cpg-marshal.h"
 #include "cpg-usable.h"
 #include "cpg-modifiable.h"
+#include "cpg-annotatable.h"
 
 #define CPG_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY, CpgPropertyPrivate))
 
@@ -31,6 +32,8 @@ struct _CpgPropertyPrivate
 	gdouble update;
 	CpgObject *object;
 
+	gchar *annotation;
+
 	gdouble last_value;
 	gboolean modified : 1;
 	gboolean disposing : 1;
@@ -38,6 +41,7 @@ struct _CpgPropertyPrivate
 
 static void cpg_usable_iface_init (gpointer iface);
 static void cpg_modifiable_iface_init (gpointer iface);
+static void cpg_annotatable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgProperty,
                          cpg_property,
@@ -45,7 +49,9 @@ G_DEFINE_TYPE_WITH_CODE (CpgProperty,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_USABLE,
                                                 cpg_usable_iface_init);
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
-                                                cpg_modifiable_iface_init));
+                                                cpg_modifiable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
+                                                cpg_annotatable_iface_init));
 
 static guint signals[NUM_SIGNALS] = {0,};
 
@@ -57,7 +63,8 @@ enum
 	PROP_FLAGS,
 	PROP_EXPRESSION,
 	PROP_USE_COUNT,
-	PROP_MODIFIED
+	PROP_MODIFIED,
+	PROP_ANNOTATION
 };
 
 /**
@@ -87,6 +94,11 @@ cpg_property_unuse (CpgUsable *usable)
 	}
 
 	return (--(prop->priv->use_count) == 0);
+}
+
+static void
+cpg_annotatable_iface_init (gpointer iface)
+{
 }
 
 static void
@@ -193,6 +205,7 @@ cpg_property_finalize (GObject *object)
 	property = CPG_PROPERTY (object);
 
 	g_free (property->priv->name);
+	g_free (property->priv->annotation);
 
 	G_OBJECT_CLASS (cpg_property_parent_class)->finalize (object);
 }
@@ -289,6 +302,10 @@ cpg_property_set_property (GObject      *object,
 		case PROP_MODIFIED:
 			self->priv->modified = g_value_get_boolean (value);
 		break;
+		case PROP_ANNOTATION:
+			g_free (self->priv->annotation);
+			self->priv->annotation = g_value_dup_string (value);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -322,6 +339,9 @@ cpg_property_get_property (GObject    *object,
 		break;
 		case PROP_MODIFIED:
 			g_value_set_boolean (value, self->priv->modified);
+		break;
+		case PROP_ANNOTATION:
+			g_value_set_string (value, self->priv->annotation);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -456,8 +476,12 @@ cpg_property_class_init (CpgPropertyClass *klass)
 		              CPG_TYPE_PROPERTY_FLAGS);
 
 	g_object_class_override_property (object_class,
-	                                 PROP_MODIFIED,
-	                                 "modified");
+	                                  PROP_MODIFIED,
+	                                  "modified");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_ANNOTATION,
+	                                  "annotation");
 }
 
 static void

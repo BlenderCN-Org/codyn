@@ -1,6 +1,7 @@
 #include "cpg-link-action.h"
 #include "cpg-modifiable.h"
 #include "cpg-usable.h"
+#include "cpg-annotatable.h"
 
 /**
  * SECTION:cpg-link-action
@@ -20,6 +21,8 @@ struct _CpgLinkActionPrivate
 
 	guint equation_proxy_id;
 
+	gchar *annotation;
+
 	guint modified : 1;
 	guint enabled : 1;
 };
@@ -32,21 +35,30 @@ enum
 	PROP_EQUATION,
 	PROP_TARGET_PROPERTY,
 	PROP_MODIFIED,
-	PROP_ENABLED
+	PROP_ENABLED,
+	PROP_ANNOTATION
 };
 
 static void cpg_modifiable_iface_init (gpointer iface);
+static void cpg_annotatable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgLinkAction,
                          cpg_link_action,
                          G_TYPE_INITIALLY_UNOWNED,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
-                                                cpg_modifiable_iface_init));
+                                                cpg_modifiable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
+                                                cpg_annotatable_iface_init));
 
 static void
 cpg_modifiable_iface_init (gpointer iface)
 {
 	/* Use default implementation */
+}
+
+static void
+cpg_annotatable_iface_init (gpointer iface)
+{
 }
 
 static void
@@ -142,6 +154,10 @@ cpg_link_action_dispose (GObject *object)
 static void
 cpg_link_action_finalize (GObject *object)
 {
+	CpgLinkAction *action = CPG_LINK_ACTION (object);
+
+	g_free (action->priv->annotation);
+
 	G_OBJECT_CLASS (cpg_link_action_parent_class)->finalize (object);
 }
 
@@ -168,6 +184,10 @@ cpg_link_action_set_property (GObject      *object,
 		case PROP_ENABLED:
 			cpg_link_action_set_enabled (self,
 			                             g_value_get_boolean (value));
+		break;
+		case PROP_ANNOTATION:
+			g_free (self->priv->annotation);
+			self->priv->annotation = g_value_dup_string (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -199,6 +219,9 @@ cpg_link_action_get_property (GObject    *object,
 		break;
 		case PROP_ENABLED:
 			g_value_set_boolean (value, self->priv->enabled);
+		break;
+		case PROP_ANNOTATION:
+			g_value_set_string (value, self->priv->annotation);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -262,6 +285,10 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	g_object_class_override_property (object_class,
 	                                  PROP_MODIFIED,
 	                                  "modified");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_ANNOTATION,
+	                                  "annotation");
 
 	g_type_class_add_private (object_class, sizeof(CpgLinkActionPrivate));
 

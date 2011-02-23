@@ -17,6 +17,7 @@
 #include "cpg-import.h"
 #include "cpg-import-alias.h"
 #include "cpg-input-file.h"
+#include "cpg-annotatable.h"
 
 /**
  * SECTION:cpg-network-deserializer
@@ -187,10 +188,18 @@ save_comment (xmlNodePtr  node,
 		return;
 	}
 
-	g_object_set_data_full (object,
-	                        CPG_NETWORK_XML_COMMENT_DATA_KEY,
-	                        g_strdup ((gchar const *)prev->content),
-	                        (GDestroyNotify)g_free);
+	if (CPG_IS_ANNOTATABLE (object))
+	{
+		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (object),
+		                                (gchar const *)prev->content);
+	}
+	else
+	{
+		g_object_set_data_full (object,
+		                        CPG_NETWORK_XML_COMMENT_DATA_KEY,
+		                        g_strdup ((gchar const *)prev->content),
+		                        (GDestroyNotify)g_free);
+	}
 }
 
 static gboolean

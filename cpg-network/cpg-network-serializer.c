@@ -4,6 +4,7 @@
 #include "cpg-network-xml.h"
 #include "cpg-import.h"
 #include "cpg-input-file.h"
+#include "cpg-annotatable.h"
 
 #include <libxml/tree.h>
 
@@ -303,8 +304,17 @@ restore_comment (CpgNetworkSerializer *serializer,
                  xmlNodePtr            parent,
                  GObject              *object)
 {
-	gchar *comment = g_object_get_data (object,
-	                                    CPG_NETWORK_XML_COMMENT_DATA_KEY);
+	gchar *comment;
+
+	if (CPG_IS_ANNOTATABLE (object))
+	{
+		comment = cpg_annotatable_get_annotation (CPG_ANNOTATABLE (object));
+	}
+	else
+	{
+		comment = g_strdup (g_object_get_data (object,
+		                                       CPG_NETWORK_XML_COMMENT_DATA_KEY));
+	}
 
 	if (comment == NULL)
 	{

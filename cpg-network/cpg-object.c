@@ -11,6 +11,7 @@
 #include "cpg-marshal.h"
 #include "cpg-usable.h"
 #include "cpg-tokenizer.h"
+#include "cpg-annotatable.h"
 
 /**
  * SECTION:cpg-object
@@ -51,6 +52,8 @@ struct _CpgObjectPrivate
 	/* Templates */
 	GSList *templates;
 
+	gchar *annotation;
+
 	gboolean compiled : 1;
 	gboolean auto_imported : 1;
 };
@@ -62,7 +65,8 @@ enum
 	PROP_ID,
 	PROP_PARENT,
 	PROP_AUTO_IMPORTED,
-	PROP_USE_COUNT
+	PROP_USE_COUNT,
+	PROP_ANNOTATION
 };
 
 /* Signals */
@@ -82,12 +86,15 @@ enum
 };
 
 static void cpg_usable_iface_init (gpointer iface);
+static void cpg_annotatable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgObject,
                          cpg_object,
                          G_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_USABLE,
-                                                cpg_usable_iface_init));
+                                                cpg_usable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
+                                                cpg_annotatable_iface_init));
 
 static guint object_signals[NUM_SIGNALS] = {0,};
 
@@ -134,6 +141,11 @@ cpg_usable_iface_init (gpointer iface)
 }
 
 static void
+cpg_annotatable_iface_init (gpointer iface)
+{
+}
+
+static void
 free_property (CpgProperty *property,
                CpgObject   *object)
 {
@@ -158,6 +170,8 @@ cpg_object_finalize (GObject *object)
 	g_slist_free (obj->priv->actors);
 
 	g_free (obj->priv->id);
+
+	g_free (obj->priv->annotation);
 
 	g_hash_table_destroy (obj->priv->property_hash);
 
@@ -205,6 +219,9 @@ get_property (GObject     *object,
 		case PROP_USE_COUNT:
 			g_value_set_uint (value, obj->priv->use_count);
 		break;
+		case PROP_ANNOTATION:
+			g_value_set_string (value, obj->priv->annotation);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -226,6 +243,10 @@ set_property (GObject       *object,
 		break;
 		case PROP_AUTO_IMPORTED:
 			obj->priv->auto_imported = g_value_get_boolean (value);
+		break;
+		case PROP_ANNOTATION:
+			g_free (obj->priv->annotation);
+			obj->priv->annotation = g_value_dup_string (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object,
@@ -1080,6 +1101,10 @@ cpg_object_class_init (CpgObjectClass *klass)
 	g_object_class_override_property (object_class,
 	                                  PROP_USE_COUNT,
 	                                  "use-count");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_ANNOTATION,
+	                                  "annotation");
 
 	/**
 	 * CpgObject::tainted:
