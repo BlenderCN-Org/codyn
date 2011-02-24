@@ -181,25 +181,39 @@ static void
 save_comment (xmlNodePtr  node,
               GObject    *object)
 {
+	gchar *annotation;
 	xmlNodePtr prev = node->prev;
+
+	while (prev && prev->type == XML_TEXT_NODE)
+	{
+		prev = prev->prev;
+	}
 
 	if (prev == NULL || prev->type != XML_COMMENT_NODE)
 	{
 		return;
 	}
 
-	if (CPG_IS_ANNOTATABLE (object))
+	annotation = g_strdup ((gchar const *)prev->content);
+	g_strstrip (annotation);
+
+	if (*annotation)
 	{
-		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (object),
-		                                (gchar const *)prev->content);
+		if (CPG_IS_ANNOTATABLE (object))
+		{
+			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (object),
+			                                annotation);
+		}
+		else
+		{
+			g_object_set_data_full (object,
+			                        CPG_NETWORK_XML_COMMENT_DATA_KEY,
+			                        g_strdup (annotation),
+			                        (GDestroyNotify)g_free);
+		}
 	}
-	else
-	{
-		g_object_set_data_full (object,
-		                        CPG_NETWORK_XML_COMMENT_DATA_KEY,
-		                        g_strdup ((gchar const *)prev->content),
-		                        (GDestroyNotify)g_free);
-	}
+
+	g_free (annotation);
 }
 
 static gboolean

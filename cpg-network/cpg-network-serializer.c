@@ -305,6 +305,7 @@ restore_comment (CpgNetworkSerializer *serializer,
                  GObject              *object)
 {
 	gchar *comment;
+	gchar *with_spaces;
 
 	if (CPG_IS_ANNOTATABLE (object))
 	{
@@ -321,8 +322,12 @@ restore_comment (CpgNetworkSerializer *serializer,
 		return;
 	}
 
+	with_spaces = g_strconcat (" ", comment, " ", NULL);
+
 	xmlNodePtr node = xmlNewDocComment (serializer->priv->doc,
-	                                    (xmlChar *)comment);
+	                                    (xmlChar *)with_spaces);
+
+	g_free (with_spaces);
 
 	xmlAddChild (parent, node);
 }
