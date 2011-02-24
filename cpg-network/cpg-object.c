@@ -600,6 +600,7 @@ cpg_object_copy_impl (CpgObject *object,
 {
 	/* Copy properties */
 	GSList *item;
+	gchar *annotation;
 
 	for (item = source->priv->properties; item; item = g_slist_next (item))
 	{
@@ -615,6 +616,12 @@ cpg_object_copy_impl (CpgObject *object,
 		cpg_usable_use (item->data);
 		g_object_ref (item->data);
 	}
+
+	annotation = cpg_annotatable_get_annotation (CPG_ANNOTATABLE (source));
+	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (object),
+	                                annotation);
+
+	g_free (annotation);
 }
 
 static void

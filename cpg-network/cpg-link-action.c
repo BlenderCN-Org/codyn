@@ -514,10 +514,17 @@ cpg_link_action_depends (CpgLinkAction *action,
 CpgLinkAction *
 cpg_link_action_copy (CpgLinkAction *action)
 {
+	CpgLinkAction *newaction;
+
 	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
 
-	return cpg_link_action_new (g_strdup (action->priv->target),
-	                            cpg_expression_copy (action->priv->equation));
+	newaction = cpg_link_action_new (g_strdup (action->priv->target),
+	                                 cpg_expression_copy (action->priv->equation));
+
+	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (newaction),
+	                                action->priv->annotation);
+
+	return newaction;
 }
 
 /**

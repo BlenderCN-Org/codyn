@@ -999,6 +999,9 @@ cpg_property_copy (CpgProperty *property)
 	cpg_modifiable_set_modified (CPG_MODIFIABLE (ret),
 	                             property->priv->modified);
 
+	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (ret),
+	                                property->priv->annotation);
+
 	return ret;
 }
 
