@@ -1404,7 +1404,11 @@ cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
 	xmlDocSetRootElement (doc, root);
 
 	xmlNodePtr nnetwork = xmlNewDocNode (doc, NULL, (xmlChar *)"network", NULL);
+
+	restore_comment (serializer, root, G_OBJECT (serializer->priv->network));
+
 	xmlAddChild (root, nnetwork);
+
 
 	serializer->priv->doc = doc;
 
