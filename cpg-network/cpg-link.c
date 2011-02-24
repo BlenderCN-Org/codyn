@@ -298,6 +298,7 @@ remove_action (CpgLink       *link,
                CpgLinkAction *action)
 {
 	_cpg_link_action_set_target_property (action, NULL);
+	_cpg_link_action_set_link (action, NULL);
 
 	g_signal_handlers_disconnect_by_func (action,
 	                                      on_action_target_changed,
@@ -971,6 +972,8 @@ cpg_link_add_action (CpgLink       *link,
 	                          "notify::modified",
 	                          G_CALLBACK (on_action_modified),
 	                          link);
+
+	_cpg_link_action_set_link (action, link);
 
 	cpg_object_taint (CPG_OBJECT (link));
 

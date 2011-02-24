@@ -2,6 +2,7 @@
 #include "cpg-modifiable.h"
 #include "cpg-usable.h"
 #include "cpg-annotatable.h"
+#include "cpg-link.h"
 
 /**
  * SECTION:cpg-link-action
@@ -18,6 +19,7 @@ struct _CpgLinkActionPrivate
 	gchar *target;
 	CpgExpression *equation;
 	CpgProperty *property;
+	CpgLink *link;
 
 	guint equation_proxy_id;
 
@@ -25,6 +27,7 @@ struct _CpgLinkActionPrivate
 
 	guint modified : 1;
 	guint enabled : 1;
+	guint disposing : 1;
 };
 
 /* Properties */
@@ -36,7 +39,8 @@ enum
 	PROP_TARGET_PROPERTY,
 	PROP_MODIFIED,
 	PROP_ENABLED,
-	PROP_ANNOTATION
+	PROP_LINK,
+	PROP_ANNOTATION,
 };
 
 static void cpg_modifiable_iface_init (gpointer iface);
@@ -81,6 +85,35 @@ set_property (CpgLinkAction *action,
 	{
 		action->priv->property = g_object_ref_sink (property);
 		cpg_usable_use (CPG_USABLE (action->priv->property));
+	}
+}
+
+static void
+set_link (CpgLinkAction *action,
+          CpgLink       *link)
+{
+	if (action->priv->link == link)
+	{
+		return;
+	}
+
+	if (action->priv->link)
+	{
+		g_object_remove_weak_pointer (G_OBJECT (action->priv->link),
+		                              (gpointer *)&action->priv->link);
+	}
+
+	action->priv->link = link;
+
+	if (action->priv->link)
+	{
+		g_object_add_weak_pointer (G_OBJECT (action->priv->link),
+		                           (gpointer *)&action->priv->link);
+	}
+
+	if (!action->priv->disposing)
+	{
+		g_object_notify (G_OBJECT (action), "link");
 	}
 }
 
@@ -144,9 +177,12 @@ cpg_link_action_dispose (GObject *object)
 {
 	CpgLinkAction *action = CPG_LINK_ACTION (object);
 
+	action->priv->disposing = TRUE;
+
 	set_property (action, NULL);
 	set_target (action, NULL);
 	set_equation (action, NULL);
+	set_link (action, NULL);
 
 	G_OBJECT_CLASS (cpg_link_action_parent_class)->dispose (object);
 }
@@ -171,6 +207,9 @@ cpg_link_action_set_property (GObject      *object,
 
 	switch (prop_id)
 	{
+		case PROP_LINK:
+			set_link (self, g_value_get_object (value));
+		break;
 		case PROP_TARGET:
 			set_target (self, g_value_get_string (value));
 		break;
@@ -205,6 +244,9 @@ cpg_link_action_get_property (GObject    *object,
 	
 	switch (prop_id)
 	{
+		case PROP_LINK:
+			g_value_set_object (value, self->priv->link);
+		break;
 		case PROP_TARGET:
 			g_value_set_object (value, self->priv->target);
 		break;
@@ -239,6 +281,20 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 
 	object_class->set_property = cpg_link_action_set_property;
 	object_class->get_property = cpg_link_action_get_property;
+
+	/**
+	 * CpgLinkAction:link:
+	 *
+	 * The link
+	 *
+	 **/
+	g_object_class_install_property (object_class,
+	                                 PROP_LINK,
+	                                 g_param_spec_object ("link",
+	                                                      "Link",
+	                                                      "Link",
+	                                                      CPG_TYPE_LINK,
+	                                                      G_PARAM_READABLE));
 
 	/**
 	 * CpgLinkAction:target:
@@ -507,4 +563,30 @@ _cpg_link_action_set_target_property (CpgLinkAction *action,
 	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));
 
 	set_property (action, property);
+}
+
+/**
+ * cpg_link_action_get_link:
+ * @action: the #CpgLinkAction
+ *
+ * Get the link associated with the action
+ *
+ * Returns: (type CpgLink) (transfer none): the link associated with the action
+ **/
+CpgLink *
+cpg_link_action_get_link (CpgLinkAction *action)
+{
+	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
+
+	return action->priv->link;
+}
+
+void
+_cpg_link_action_set_link (CpgLinkAction *action,
+                           CpgLink       *link)
+{
+	g_return_if_fail (CPG_IS_LINK_ACTION (action));
+	g_return_if_fail (link == NULL || CPG_IS_LINK (link));
+
+	set_link (action, link);
 }

@@ -16,6 +16,8 @@ G_BEGIN_DECLS
 #define CPG_IS_LINK_ACTION_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_LINK_ACTION))
 #define CPG_LINK_ACTION_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_LINK_ACTION, CpgLinkActionClass))
 
+CPG_FORWARD_DECL (CpgLink);
+
 typedef struct _CpgLinkAction		CpgLinkAction;
 typedef struct _CpgLinkActionClass	CpgLinkActionClass;
 typedef struct _CpgLinkActionPrivate	CpgLinkActionPrivate;
@@ -63,6 +65,11 @@ gboolean        cpg_link_action_get_enabled  (CpgLinkAction *action);
 CpgProperty    *cpg_link_action_get_target_property  (CpgLinkAction *action);
 void            _cpg_link_action_set_target_property (CpgLinkAction *action,
                                                       CpgProperty   *property);
+
+CPG_FORWARD_DECL (CpgLink) *cpg_link_action_get_link (CpgLinkAction *action);
+
+void            _cpg_link_action_set_link             (CpgLinkAction              *action,
+                                                       CPG_FORWARD_DECL (CpgLink) *link);
 
 G_END_DECLS
 
