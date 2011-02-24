@@ -60,9 +60,38 @@ cpg_modifiable_iface_init (gpointer iface)
 	/* Use default implementation */
 }
 
+static gchar *
+cpg_link_action_annotatable_get_title (CpgAnnotatable *annotatable)
+{
+	CpgLinkAction *action;
+	gchar *ret = NULL;
+
+	action = CPG_LINK_ACTION (annotatable);
+
+	if (action->priv->link)
+	{
+		gchar *id;
+
+		id = cpg_annotatable_get_title (CPG_ANNOTATABLE (action->priv->link));
+
+		ret = g_strconcat (id, " (", action->priv->target, ")", NULL);
+
+		g_free (id);
+	}
+	else
+	{
+		ret = g_strdup (action->priv->target);
+	}
+
+	return ret;
+}
+
 static void
 cpg_annotatable_iface_init (gpointer iface)
 {
+	CpgAnnotatableInterface *annotatable = iface;
+
+	annotatable->get_title = cpg_link_action_annotatable_get_title;
 }
 
 static void

@@ -140,9 +140,22 @@ cpg_usable_iface_init (gpointer iface)
 	usable->unuse = cpg_object_unuse;
 }
 
+static gchar *
+cpg_object_annotatable_get_title (CpgAnnotatable *annotatable)
+{
+	CpgObject *obj;
+
+	obj = CPG_OBJECT (annotatable);
+
+	return cpg_object_get_full_id (obj);
+}
+
 static void
 cpg_annotatable_iface_init (gpointer iface)
 {
+	CpgAnnotatableInterface *annotatable = iface;
+
+	annotatable->get_title = cpg_object_annotatable_get_title;
 }
 
 static void

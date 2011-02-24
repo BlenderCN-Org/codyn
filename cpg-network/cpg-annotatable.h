@@ -16,9 +16,18 @@ typedef struct _CpgAnnotatableInterface	CpgAnnotatableInterface;
 struct _CpgAnnotatableInterface
 {
 	GTypeInterface parent;
+
+	gchar *(*get_title) (CpgAnnotatable *annotatable);
+
+	void (*set_annotation) (CpgAnnotatable *annotatable,
+	                        gchar const    *annotation);
+
+	gchar *(*get_annotation) (CpgAnnotatable *annotatable);
 };
 
 GType cpg_annotatable_get_type (void) G_GNUC_CONST;
+
+gchar *cpg_annotatable_get_title (CpgAnnotatable *self);
 
 gchar *cpg_annotatable_get_annotation (CpgAnnotatable *self);
 

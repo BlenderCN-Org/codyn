@@ -96,9 +96,22 @@ cpg_property_unuse (CpgUsable *usable)
 	return (--(prop->priv->use_count) == 0);
 }
 
+static gchar *
+cpg_property_annotatable_get_title (CpgAnnotatable *annotatable)
+{
+	CpgProperty *property;
+
+	property = CPG_PROPERTY (annotatable);
+
+	return cpg_property_get_full_name (property);
+}
+
 static void
 cpg_annotatable_iface_init (gpointer iface)
 {
+	CpgAnnotatableInterface *annotatable = iface;
+
+	annotatable->get_title = cpg_property_annotatable_get_title;
 }
 
 static void
