@@ -45,11 +45,14 @@ static void
 test_apply_state ()
 {
 	CpgObject *state = cpg_object_new ("state");
+	GError *error = NULL;
+
 	cpg_object_add_property (state,
 	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *instance = cpg_object_new_from_template (state);
+	CpgObject *instance = cpg_object_new_from_template (state, &error);
+	g_assert_no_error (error);
 
 	CpgProperty *prop = cpg_object_get_property (instance, "x");
 
@@ -64,6 +67,8 @@ static void
 test_apply_link ()
 {
 	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", NULL, NULL));
+	GError *error = NULL;
+
 	cpg_object_add_property (link,
 	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
 	                         NULL);
@@ -71,7 +76,8 @@ test_apply_link ()
 	cpg_link_add_action (CPG_LINK (link),
 	                     cpg_link_action_new ("x", cpg_expression_new ("2")));
 
-	CpgObject *instance = cpg_object_new_from_template (link);
+	CpgObject *instance = cpg_object_new_from_template (link, &error);
+	g_assert_no_error (error);
 
 	g_assert (CPG_IS_LINK (instance));
 
@@ -257,11 +263,14 @@ static void
 test_track_modified_state ()
 {
 	CpgObject *state = cpg_object_new ("state");
+	GError *error = NULL;
+
 	cpg_object_add_property (state,
 	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *instance = cpg_object_new_from_template (state);
+	CpgObject *instance = cpg_object_new_from_template (state, &error);
+	g_assert_no_error (error);
 
 	CpgProperty *prop = cpg_object_get_property (instance, "x");
 	g_assert (prop);
@@ -302,6 +311,8 @@ static void
 test_track_modified_link ()
 {
 	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", NULL, NULL));
+	GError *error = NULL;
+
 	cpg_object_add_property (link,
 	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
 	                         NULL);
@@ -309,7 +320,9 @@ test_track_modified_link ()
 	cpg_link_add_action (CPG_LINK (link),
 	                     cpg_link_action_new ("x", cpg_expression_new ("2")));
 
-	CpgObject *instance = cpg_object_new_from_template (link);
+	CpgObject *instance = cpg_object_new_from_template (link, &error);
+	g_assert_no_error (error);
+
 	g_assert (CPG_IS_LINK (instance));
 
 	CpgLinkAction *orig = cpg_link_get_action (CPG_LINK (link), "x");
@@ -328,13 +341,18 @@ static void
 test_unapply_state ()
 {
 	CpgObject *state = cpg_object_new ("state");
+	GError *error = NULL;
+
 	cpg_object_add_property (state,
 	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *instance = cpg_object_new_from_template (state);
+	CpgObject *instance = cpg_object_new_from_template (state, &error);
+	g_assert_no_error (error);
 
-	cpg_object_unapply_template (instance, state);
+	cpg_object_unapply_template (instance, state, &error);
+
+	g_assert_no_error (error);
 
 	CpgProperty *prop = cpg_object_get_property (instance, "x");
 	g_assert (prop == NULL);
@@ -344,16 +362,21 @@ static void
 test_unapply_modified_state ()
 {
 	CpgObject *state = cpg_object_new ("state");
+	GError *error = NULL;
+
 	cpg_object_add_property (state,
 	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *instance = cpg_object_new_from_template (state);
+	CpgObject *instance = cpg_object_new_from_template (state, &error);
+	g_assert_no_error (error);
 
 	CpgProperty *orig = cpg_object_get_property (instance, "x");
 	cpg_property_set_expression (orig, cpg_expression_new ("5"));
 
-	cpg_object_unapply_template (instance, state);
+	cpg_object_unapply_template (instance, state, &error);
+
+	g_assert_no_error (error);
 
 	CpgProperty *prop = cpg_object_get_property (instance, "x");
 	g_assert (CPG_IS_PROPERTY (prop));
@@ -363,11 +386,16 @@ static void
 test_unapply_link ()
 {
 	CpgLink *link = cpg_link_new ("link", NULL, NULL);
+	GError *error = NULL;
+
 	cpg_link_add_action (link, cpg_link_action_new ("x", cpg_expression_new ("1")));
 
-	CpgLink *instance = CPG_LINK (cpg_object_new_from_template (CPG_OBJECT (link)));
+	CpgLink *instance = CPG_LINK (cpg_object_new_from_template (CPG_OBJECT (link), &error));
+	g_assert_no_error (error);
 
-	cpg_object_unapply_template (CPG_OBJECT (instance), CPG_OBJECT (link));
+	cpg_object_unapply_template (CPG_OBJECT (instance), CPG_OBJECT (link), &error);
+
+	g_assert_no_error (error);
 
 	CpgLinkAction *action = cpg_link_get_action (instance, "x");
 	g_assert (action == NULL);
@@ -377,14 +405,19 @@ static void
 test_unapply_modified_link ()
 {
 	CpgLink *link = cpg_link_new ("link", NULL, NULL);
+	GError *error = NULL;
+
 	cpg_link_add_action (link, cpg_link_action_new ("x", cpg_expression_new ("1")));
 
-	CpgLink *instance = CPG_LINK (cpg_object_new_from_template (CPG_OBJECT (link)));
+	CpgLink *instance = CPG_LINK (cpg_object_new_from_template (CPG_OBJECT (link), &error));
+	g_assert_no_error (error);
 
 	CpgLinkAction *action = cpg_link_get_action (instance, "x");
 	cpg_link_action_set_equation (action, cpg_expression_new ("2"));
 
-	cpg_object_unapply_template (CPG_OBJECT (instance), CPG_OBJECT (link));
+	cpg_object_unapply_template (CPG_OBJECT (instance), CPG_OBJECT (link), &error);
+
+	g_assert_no_error (error);
 
 	action = cpg_link_get_action (instance, "x");
 	g_assert (action != NULL);
@@ -395,14 +428,18 @@ test_apply_multiple_state ()
 {
 	CpgObject *t1 = cpg_object_new ("s1");
 	CpgObject *t2 = cpg_object_new ("s2");
+	GError *error = NULL;
 
 	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
 	cpg_object_add_property (t2, cpg_property_new ("y", "2", 0), NULL);
 
 	CpgObject *o = cpg_object_new ("o1");
 
-	cpg_object_apply_template (o, t1);
-	cpg_object_apply_template (o, t2);
+	cpg_object_apply_template (o, t1, &error);
+	g_assert_no_error (error);
+
+	cpg_object_apply_template (o, t2, &error);
+	g_assert_no_error (error);
 
 	CpgProperty *p1 = cpg_object_get_property (o, "x");
 	CpgProperty *p2 = cpg_object_get_property (o, "y");
@@ -416,14 +453,18 @@ test_apply_multiple_state_override ()
 {
 	CpgObject *t1 = cpg_object_new ("s1");
 	CpgObject *t2 = cpg_object_new ("s2");
+	GError *error = NULL;
 
 	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
 	cpg_object_add_property (t2, cpg_property_new ("x", "2", 0), NULL);
 
 	CpgObject *o = cpg_object_new ("o1");
 
-	cpg_object_apply_template (o, t1);
-	cpg_object_apply_template (o, t2);
+	cpg_object_apply_template (o, t1, &error);
+	g_assert_no_error (error);
+
+	cpg_object_apply_template (o, t2, &error);
+	g_assert_no_error (error);
 
 	CpgProperty *p1 = cpg_object_get_property (o, "x");
 	g_assert (CPG_IS_PROPERTY (p1));
@@ -437,16 +478,21 @@ test_unapply_multiple_state_override ()
 {
 	CpgObject *t1 = cpg_object_new ("s1");
 	CpgObject *t2 = cpg_object_new ("s2");
+	GError *error = NULL;
 
 	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
 	cpg_object_add_property (t2, cpg_property_new ("x", "2", 0), NULL);
 
 	CpgObject *o = cpg_object_new ("o1");
 
-	cpg_object_apply_template (o, t1);
-	cpg_object_apply_template (o, t2);
+	cpg_object_apply_template (o, t1, &error);
+	g_assert_no_error (error);
 
-	cpg_object_unapply_template (o, t1);
+	cpg_object_apply_template (o, t2, &error);
+	g_assert_no_error (error);
+
+	cpg_object_unapply_template (o, t1, &error);
+	g_assert_no_error (error);
 
 	CpgProperty *p1 = cpg_object_get_property (o, "x");
 	g_assert (CPG_IS_PROPERTY (p1));
@@ -460,14 +506,18 @@ test_apply_multiple_link ()
 {
 	CpgLink *t1 = cpg_link_new ("l1", NULL, NULL);
 	CpgLink *t2 = cpg_link_new ("l2", NULL, NULL);
+	GError *error = NULL;
 
 	cpg_link_add_action (t1, cpg_link_action_new ("x", cpg_expression_new ("1")));
 	cpg_link_add_action (t2, cpg_link_action_new ("y", cpg_expression_new ("2")));
 
 	CpgLink *l = cpg_link_new ("o1", NULL, NULL);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1));
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2));
+	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1), &error);
+	g_assert_no_error (error);
+
+	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2), &error);
+	g_assert_no_error (error);
 
 	CpgLinkAction *a1 = cpg_link_get_action (l, "x");
 	CpgLinkAction *a2 = cpg_link_get_action (l, "y");
@@ -481,14 +531,18 @@ test_apply_multiple_link_override ()
 {
 	CpgLink *t1 = cpg_link_new ("l1", NULL, NULL);
 	CpgLink *t2 = cpg_link_new ("l2", NULL, NULL);
+	GError *error = NULL;
 
 	cpg_link_add_action (t1, cpg_link_action_new ("x", cpg_expression_new ("1")));
 	cpg_link_add_action (t2, cpg_link_action_new ("x", cpg_expression_new ("2")));
 
 	CpgLink *l = cpg_link_new ("o1", NULL, NULL);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1));
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2));
+	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1), &error);
+	g_assert_no_error (error);
+
+	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2), &error);
+	g_assert_no_error (error);
 
 	CpgLinkAction *a1 = cpg_link_get_action (l, "x");
 	g_assert (CPG_IS_LINK_ACTION (a1));
@@ -503,16 +557,21 @@ test_unapply_multiple_link_override ()
 {
 	CpgLink *t1 = cpg_link_new ("l1", NULL, NULL);
 	CpgLink *t2 = cpg_link_new ("l2", NULL, NULL);
+	GError *error = NULL;
 
 	cpg_link_add_action (t1, cpg_link_action_new ("x", cpg_expression_new ("1")));
 	cpg_link_add_action (t2, cpg_link_action_new ("x", cpg_expression_new ("2")));
 
 	CpgLink *l = cpg_link_new ("o1", NULL, NULL);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1));
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2));
+	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1), &error);
+	g_assert_no_error (error);
 
-	cpg_object_unapply_template (CPG_OBJECT (l), CPG_OBJECT (t1));
+	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2), &error);
+	g_assert_no_error (error);
+
+	cpg_object_unapply_template (CPG_OBJECT (l), CPG_OBJECT (t1), &error);
+	g_assert_no_error (error);
 
 	CpgLinkAction *a1 = cpg_link_get_action (l, "x");
 	g_assert (CPG_IS_LINK_ACTION (a1));

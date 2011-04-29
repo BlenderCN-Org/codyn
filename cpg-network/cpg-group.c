@@ -126,11 +126,11 @@ on_template_child_added (CpgGroup  *templ,
 
 	if (obj != NULL && G_TYPE_FROM_INSTANCE (child) == G_TYPE_FROM_INSTANCE (obj))
 	{
-		cpg_object_apply_template (obj, child);
+		cpg_object_apply_template (obj, child, NULL);
 	}
 	else
 	{
-		obj = cpg_object_new_from_template (child);
+		obj = cpg_object_new_from_template (child, NULL);
 		cpg_group_add (group, obj, NULL);
 		g_object_unref (obj);
 	}
@@ -149,7 +149,7 @@ on_template_child_removed (CpgGroup  *templ,
 	{
 		GSList *properties;
 
-		cpg_object_unapply_template (obj, child);
+		cpg_object_unapply_template (obj, child, NULL);
 
 		properties = cpg_object_get_properties (obj);
 
@@ -171,6 +171,21 @@ interface_should_override (CpgGroup     *group,
 {
 	GSList const *templates;
 	gboolean found = FALSE;
+
+	/* Check if it's not automatically generated from the proxy, we don't
+	   override that */
+	if (group->priv->proxy)
+	{
+		CpgProperty *prop;
+
+		prop = cpg_property_interface_lookup (group->priv->property_interface,
+		                                      name);
+
+		if (prop && cpg_property_get_object (prop) == group->priv->proxy)
+		{
+			return FALSE;
+		}
+	}
 
 	templates = cpg_object_get_applied_templates (CPG_OBJECT (group));
 
@@ -421,6 +436,48 @@ proxy_add_property (CpgGroup    *group,
 }
 
 static void
+add_interface_after_proxy_remove (CpgGroup    *group,
+                                  gchar const *name)
+{
+	GSList const *templates;
+	CpgProperty *last = NULL;
+	CpgGroup *templ = NULL;
+
+	templates = cpg_object_get_applied_templates (CPG_OBJECT (group));
+
+	while (templates)
+	{
+		CpgObject *temp = templates->data;
+
+		if (CPG_IS_GROUP (temp))
+		{
+			CpgPropertyInterface *iface;
+			CpgProperty *look;
+
+			iface = cpg_group_get_property_interface (CPG_GROUP (temp));
+
+			look = cpg_property_interface_lookup (iface, name);
+
+			if (look)
+			{
+				templ = CPG_GROUP (temp);
+				last = look;
+			}
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	if (last != NULL)
+	{
+		add_template_interface (group,
+		                        templ,
+		                        name,
+		                        last);
+	}
+}
+
+static void
 proxy_remove_property (CpgGroup    *group,
                        CpgProperty *property)
 {
@@ -437,6 +494,9 @@ proxy_remove_property (CpgGroup    *group,
 		cpg_property_interface_remove (group->priv->property_interface,
 		                               name,
 		                               NULL);
+
+		/* Then maybe generate property for interfaces */
+		add_interface_after_proxy_remove (group, name);
 	}
 }
 
@@ -482,7 +542,7 @@ set_proxy (CpgGroup  *group,
 		CpgObject *pr = group->priv->proxy;
 		group->priv->proxy = NULL;
 
-		/* Remove properties from interface */
+		/* Remove automatically mapped properties from interface */
 		while (properties)
 		{
 			proxy_remove_property (group, properties->data);
@@ -809,18 +869,60 @@ get_template_proxy (CpgGroup *group)
 	return NULL;
 }
 
-static void
-cpg_group_cpg_unapply_template (CpgObject *object,
-                                CpgObject *templ)
+static gboolean
+cpg_group_cpg_unapply_template (CpgObject  *object,
+                                CpgObject  *templ,
+                                GError    **error)
 {
 	gchar **names;
 	gchar **ptr;
 	CpgPropertyInterface *source_iface;
 	CpgGroup *group;
 	CpgGroup *source;
+	gboolean hadproxy;
 
 	group = CPG_GROUP (object);
 	source = CPG_GROUP (templ);
+
+	hadproxy = (get_template_proxy (group) == templ);
+
+	if (!CPG_OBJECT_CLASS (cpg_group_parent_class)->unapply_template (object, templ, error))
+	{
+		return FALSE;
+	}
+
+	if (!CPG_IS_GROUP (templ))
+	{
+		return TRUE;
+	}
+
+	if (hadproxy)
+	{
+		/* Set to next proxy */
+		GSList const *templates;
+		CpgObject *proxy = NULL;
+
+		templates = cpg_object_get_applied_templates (object);
+
+		while (templates)
+		{
+			CpgObject *pr;
+
+			if (CPG_IS_GROUP (templates->data))
+			{
+				pr = cpg_group_get_proxy (templates->data);
+
+				if (pr != NULL)
+				{
+					proxy = pr;
+				}
+			}
+
+			templates = g_slist_next (templates);
+		}
+
+		set_proxy (group, proxy);
+	}
 
 	/* Remove children */
 	/* TODO */
@@ -838,11 +940,14 @@ cpg_group_cpg_unapply_template (CpgObject *object,
 
 		remove_template_interface (group, source, *ptr, prop);
 	}
+
+	return TRUE;
 }
 
-static void
-cpg_group_cpg_apply_template (CpgObject *object,
-                              CpgObject *templ)
+static gboolean
+cpg_group_cpg_apply_template (CpgObject  *object,
+                              CpgObject  *templ,
+                              GError    **error)
 {
 	CpgPropertyInterface *iface;
 	CpgPropertyInterface *source_iface;
@@ -854,14 +959,14 @@ cpg_group_cpg_apply_template (CpgObject *object,
 	gchar **names;
 	gchar **ptr;
 
-	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template)
+	if (!CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template (object, templ, error))
 	{
-		CPG_OBJECT_CLASS (cpg_group_parent_class)->apply_template (object, templ);
+		return FALSE;
 	}
 
 	if (!CPG_IS_GROUP (templ))
 	{
-		return;
+		return TRUE;
 	}
 
 	group = CPG_GROUP (object);
@@ -873,6 +978,7 @@ cpg_group_cpg_apply_template (CpgObject *object,
 	hash_table = g_hash_table_new (g_direct_hash,
 	                               g_direct_equal);
 
+	/* Copy in children */
 	while (children)
 	{
 		CpgObject *child = children->data;
@@ -885,12 +991,24 @@ cpg_group_cpg_apply_template (CpgObject *object,
 
 		if (new_child)
 		{
-			cpg_object_apply_template (new_child,
-			                           child);
+			if (!cpg_object_apply_template (new_child,
+			                                child,
+			                                error))
+			{
+				/* TODO: make atomic */
+				return FALSE;
+			}
 		}
 		else
 		{
-			new_child = cpg_object_new_from_template (child);
+			new_child = cpg_object_new_from_template (child, error);
+
+			if (!new_child)
+			{
+				/* TODO: make atomic */
+				return FALSE;
+			}
+
 			cpg_group_add (group, new_child, NULL);
 			g_object_unref (new_child);
 		}
@@ -949,6 +1067,8 @@ cpg_group_cpg_apply_template (CpgObject *object,
 	                  "child-removed",
 	                  G_CALLBACK (on_template_child_removed),
 	                  group);
+
+	return TRUE;
 }
 
 static void

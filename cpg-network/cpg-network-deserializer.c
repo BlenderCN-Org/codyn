@@ -696,6 +696,7 @@ parse_object (CpgNetworkDeserializer *deserializer,
 {
 	xmlChar *id = xmlGetProp (node, (xmlChar *)"id");
 	*new_object = FALSE;
+	GError *error = NULL;
 
 	if (!id)
 	{
@@ -781,8 +782,12 @@ parse_object (CpgNetworkDeserializer *deserializer,
 	/* Apply all the templates */
 	for (item = templates; item; item = g_slist_next (item))
 	{
-		cpg_object_apply_template (child,
-		                           item->data);
+		if (!cpg_object_apply_template (child, item->data, &error))
+		{
+			parser_failed_error (deserializer,
+			                     node,
+			                     error);
+		}
 	}
 
 	g_slist_free (templates);

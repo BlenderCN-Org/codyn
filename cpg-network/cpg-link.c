@@ -707,9 +707,10 @@ cpg_link_equal_impl (CpgObject *first,
 	return TRUE;
 }
 
-static void
-cpg_link_unapply_template_impl (CpgObject *object,
-                                CpgObject *templ)
+static gboolean
+cpg_link_unapply_template_impl (CpgObject  *object,
+                                CpgObject  *templ,
+                                GError    **error)
 {
 	if (CPG_IS_LINK (templ))
 	{
@@ -728,10 +729,7 @@ cpg_link_unapply_template_impl (CpgObject *object,
 	}
 
 	/* Chain up */
-	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->unapply_template)
-	{
-		CPG_OBJECT_CLASS (cpg_link_parent_class)->unapply_template (object, templ);
-	}
+	return CPG_OBJECT_CLASS (cpg_link_parent_class)->unapply_template (object, templ, error);
 }
 
 static void
@@ -759,14 +757,15 @@ connect_template (CpgLink *link,
 	                          link);
 }
 
-static void
-cpg_link_apply_template_impl (CpgObject *object,
-                              CpgObject *templ)
+static gboolean
+cpg_link_apply_template_impl (CpgObject  *object,
+                              CpgObject  *templ,
+                              GError    **error)
 {
 	/* Chain up first, transfer properties and such */
-	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->apply_template)
+	if (!CPG_OBJECT_CLASS (cpg_link_parent_class)->apply_template (object, templ, error))
 	{
-		CPG_OBJECT_CLASS (cpg_link_parent_class)->apply_template (object, templ);
+		return FALSE;
 	}
 
 	if (CPG_IS_LINK (templ))
@@ -784,6 +783,8 @@ cpg_link_apply_template_impl (CpgObject *object,
 		connect_template (CPG_LINK (object),
 		                  templ_link);
 	}
+
+	return TRUE;
 }
 
 static void

@@ -101,11 +101,13 @@ struct _CpgObjectClass
 	                                     CpgForeachExpressionFunc  func,
 	                                     gpointer                  userdata);
 
-	void          (*apply_template)  (CpgObject *object,
-	                                  CpgObject *templ);
+	gboolean      (*apply_template)  (CpgObject  *object,
+	                                  CpgObject  *templ,
+	                                  GError    **error);
 
-	void          (*unapply_template)  (CpgObject *object,
-	                                    CpgObject *templ);
+	gboolean      (*unapply_template)  (CpgObject  *object,
+	                                    CpgObject  *templ,
+	                                    GError    **error);
 
 	void          (*copy)            (CpgObject *object,
 	                                  CpgObject *source);
@@ -164,7 +166,7 @@ GQuark cpg_object_error_quark (void);
 GType cpg_object_get_type (void) G_GNUC_CONST;
 
 CpgObject        *cpg_object_new               (const gchar *id);
-CpgObject        *cpg_object_new_from_template (CpgObject *templ);
+CpgObject        *cpg_object_new_from_template (CpgObject *templ, GError **error);
 
 const gchar      *cpg_object_get_id          (CpgObject   *object);
 void              cpg_object_set_id          (CpgObject   *object,
@@ -217,11 +219,13 @@ const GSList     *cpg_object_get_applied_templates  (CpgObject   *object);
 
 CpgObject        *cpg_object_copy           (CpgObject *object);
 
-void              cpg_object_apply_template (CpgObject *object,
-                                             CpgObject *templ);
+gboolean          cpg_object_apply_template (CpgObject  *object,
+                                             CpgObject  *templ,
+                                             GError    **error);
 
-void              cpg_object_unapply_template (CpgObject *object,
-                                               CpgObject *templ);
+gboolean          cpg_object_unapply_template (CpgObject  *object,
+                                               CpgObject  *templ,
+                                               GError    **error);
 
 CpgObject        *cpg_object_get_property_template (CpgObject   *object,
                                                     CpgProperty *property,

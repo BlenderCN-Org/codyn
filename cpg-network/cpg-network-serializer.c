@@ -852,7 +852,7 @@ skip_object (CpgObject *object)
 
 	for (item = templates; item; item = g_slist_next (item))
 	{
-		cpg_object_apply_template (dummy, item->data);
+		cpg_object_apply_template (dummy, item->data, NULL);
 	}
 
 	g_slist_free (templates);

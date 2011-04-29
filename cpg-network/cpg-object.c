@@ -624,9 +624,10 @@ cpg_object_copy_impl (CpgObject *object,
 	g_free (annotation);
 }
 
-static void
-cpg_object_unapply_template_impl (CpgObject *object,
-                                  CpgObject *templ)
+static gboolean
+cpg_object_unapply_template_impl (CpgObject  *object,
+                                  CpgObject  *templ,
+                                  GError    **error)
 {
 	GSList *item;
 
@@ -648,11 +649,14 @@ cpg_object_unapply_template_impl (CpgObject *object,
 
 	cpg_usable_unuse (CPG_USABLE (templ));
 	g_object_unref (templ);
+
+	return TRUE;
 }
 
-static void
-cpg_object_apply_template_impl (CpgObject *object,
-                                CpgObject *templ)
+static gboolean
+cpg_object_apply_template_impl (CpgObject  *object,
+                                CpgObject  *templ,
+                                GError    **error)
 {
 	/* Apply properties */
 	GSList *item;
@@ -678,6 +682,8 @@ cpg_object_apply_template_impl (CpgObject *object,
 	cpg_usable_use (CPG_USABLE (templ));
 
 	g_signal_emit (object, object_signals[TEMPLATE_APPLIED], 0, templ);
+
+	return TRUE;
 }
 
 static gboolean
@@ -1372,13 +1378,19 @@ cpg_object_new (const gchar *id)
  *
  **/
 CpgObject *
-cpg_object_new_from_template (CpgObject *templ)
+cpg_object_new_from_template (CpgObject  *templ,
+                              GError    **error)
 {
 	CpgObject *obj = g_object_new (G_TYPE_FROM_INSTANCE (templ),
 	                               "id", cpg_object_get_id (templ),
 	                               NULL);
 
-	cpg_object_apply_template (obj, templ);
+	if (!cpg_object_apply_template (obj, templ, error))
+	{
+		g_object_unref (obj);
+		return NULL;
+	}
+
 	return obj;
 }
 
@@ -1886,52 +1898,65 @@ cpg_object_is_compiled (CpgObject *object)
  * cpg_object_apply_template:
  * @object: A #CpgObject
  * @templ: The template
+ * @error: The #GError
  *
  * Apply a template to the object. This will apply all of the characteristics
  * of the template to the object. Note that @object should be of the same type,
  * or inheriting from, the type of @templ.
  *
+ * Returns: %TRUE if the template could be successfully applied,
+ *          %FALSE otherwise
  **/
-void
-cpg_object_apply_template (CpgObject *object,
-                           CpgObject *templ)
+gboolean
+cpg_object_apply_template (CpgObject  *object,
+                           CpgObject  *templ,
+                           GError    **error)
 {
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (CPG_IS_OBJECT (templ));
-	g_return_if_fail (g_type_is_a (G_TYPE_FROM_INSTANCE (object),
-	                               G_TYPE_FROM_INSTANCE (templ)));
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+	g_return_val_if_fail (CPG_IS_OBJECT (templ), FALSE);
+	g_return_val_if_fail (g_type_is_a (G_TYPE_FROM_INSTANCE (object),
+	                                   G_TYPE_FROM_INSTANCE (templ)), FALSE);
 
 	if (g_slist_find (object->priv->templates, templ))
 	{
-		return;
+		/* TODO: Set error */
+		return FALSE;
 	}
 
-	if (CPG_OBJECT_GET_CLASS (object)->apply_template)
-	{
-		CPG_OBJECT_GET_CLASS (object)->apply_template (object, templ);
-	}
+	return CPG_OBJECT_GET_CLASS (object)->apply_template (object,
+	                                                      templ,
+	                                                      error);
 }
 
 /**
  * cpg_object_unapply_template:
  * @object: A #CpgObject
  * @templ: The template
+ * @error: The #GError
  *
  * Unapply a template from the object.
  *
+ * Returns: %TRUE if the template could be successfully unapplied,
+ *          %FALSE otherwise
+ *
  **/
-void
-cpg_object_unapply_template (CpgObject *object,
-                             CpgObject *templ)
+gboolean
+cpg_object_unapply_template (CpgObject  *object,
+                             CpgObject  *templ,
+                             GError    **error)
 {
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (CPG_IS_OBJECT (templ));
-	g_return_if_fail (g_slist_find (object->priv->templates, templ));
+	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
+	g_return_val_if_fail (CPG_IS_OBJECT (templ), FALSE);
 
-	if (CPG_OBJECT_GET_CLASS (object)->unapply_template)
+	if (!g_slist_find (object->priv->templates, templ))
 	{
-		CPG_OBJECT_GET_CLASS (object)->unapply_template (object, templ);
+		/* TODO: set error */
+		return FALSE;
 	}
+
+	return CPG_OBJECT_GET_CLASS (object)->unapply_template (object,
+	                                                        templ,
+	                                                        error);
 }
 
 /**
