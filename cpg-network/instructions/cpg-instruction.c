@@ -1,6 +1,6 @@
 #include "cpg-instruction.h"
 
-G_DEFINE_ABSTRACT_TYPE (CpgInstruction, cpg_instruction, CPG_TYPE_MINI_OBJECT)
+G_DEFINE_TYPE (CpgInstruction, cpg_instruction, CPG_TYPE_MINI_OBJECT)
 
 static gchar *
 cpg_instruction_to_string_impl (CpgInstruction *instruction)
