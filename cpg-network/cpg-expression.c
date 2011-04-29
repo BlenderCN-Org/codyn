@@ -991,14 +991,15 @@ parse_constant (CpgExpression  *expression,
                 gchar const    *name)
 {
 	gboolean found = FALSE;
-	gdouble val = cpg_math_constant_lookup (name, &found);
+
+	cpg_math_constant_lookup (name, &found);
 
 	if (!found)
 	{
 		return FALSE;
 	}
 
-	instructions_push (expression, cpg_instruction_number_new (val));
+	instructions_push (expression, cpg_instruction_constant_new (name));
 	return TRUE;
 }
 

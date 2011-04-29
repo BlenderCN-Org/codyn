@@ -9,6 +9,7 @@
 #include <cpg-network/instructions/cpg-instruction-operator.h>
 #include <cpg-network/instructions/cpg-instruction-variadic-function.h>
 #include <cpg-network/instructions/cpg-instruction-property.h>
+#include <cpg-network/instructions/cpg-instruction-constant.h>
 
 #endif /* __CPG_INSTRUCTIONS_H__ */
 
