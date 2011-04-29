@@ -410,6 +410,16 @@ cpg_property_interface_remove (CpgPropertyInterface  *iface,
 
 	if (ret)
 	{
+		gchar *id;
+
+		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
+
+		g_warning ("Could not remove property interface: %s.%s",
+		           id,
+		           name);
+
+		g_free (id);
+
 		return FALSE;
 	}
 
