@@ -396,6 +396,12 @@ cpg_integrator_state_update (CpgIntegratorState *state)
 	state->priv->all_properties =
 		g_slist_reverse (state->priv->all_properties);
 
+	state->priv->integrated_properties =
+		g_slist_reverse (state->priv->integrated_properties);
+
+	state->priv->direct_properties =
+		g_slist_reverse (state->priv->direct_properties);
+
 	state->priv->inputs =
 		g_slist_reverse (state->priv->inputs);
 
