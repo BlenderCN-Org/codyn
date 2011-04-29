@@ -469,10 +469,10 @@ cpg_integrator_init (CpgIntegrator *self)
 {
 	self->priv = CPG_INTEGRATOR_GET_PRIVATE (self);
 
-	self->priv->property_time = cpg_property_new ("t", "0", FALSE);
+	self->priv->property_time = cpg_property_new ("t", "0", CPG_PROPERTY_FLAG_INOUT);
 	cpg_object_add_property (CPG_OBJECT (self), self->priv->property_time, NULL);
 
-	self->priv->property_timestep = cpg_property_new ("dt", "0", FALSE);
+	self->priv->property_timestep = cpg_property_new ("dt", "0", CPG_PROPERTY_FLAG_INOUT);
 	cpg_object_add_property (CPG_OBJECT (self), self->priv->property_timestep, NULL);
 
 	cpg_expression_compile (cpg_property_get_expression (self->priv->property_time),
