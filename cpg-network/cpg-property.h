@@ -27,6 +27,7 @@ typedef struct _CpgPropertyPrivate    CpgPropertyPrivate;
  * @CPG_PROPERTY_FLAG_IN: in
  * @CPG_PROPERTY_FLAG_OUT: out
  * @CPG_PROPERTY_FLAG_ONCE: once
+ * @CPG_PROPERTY_FLAG_INOUT: convenience for CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT
  *
  * Property flags.
  *
@@ -38,6 +39,8 @@ typedef enum
 	CPG_PROPERTY_FLAG_IN = 1 << 1,
 	CPG_PROPERTY_FLAG_OUT = 1 << 2,
 	CPG_PROPERTY_FLAG_ONCE = 1 << 3,
+
+	CPG_PROPERTY_FLAG_INOUT = CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT
 } CpgPropertyFlags;
 
 struct _CpgProperty
