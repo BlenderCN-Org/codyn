@@ -753,7 +753,10 @@ cpg_math_constant_lookup (gchar const  *name,
 	{
 		if (g_strcmp0 (constant_entries[i].name, name) == 0)
 		{
-			*found = TRUE;
+			if (found)
+			{
+				*found = TRUE;
+			}
 
 			if (constant_entries[i].function)
 			{
@@ -766,6 +769,10 @@ cpg_math_constant_lookup (gchar const  *name,
 		}
 	}
 
-	*found = FALSE;
+	if (found)
+	{
+		*found = FALSE;
+	}
+
 	return 0.0;
 }
