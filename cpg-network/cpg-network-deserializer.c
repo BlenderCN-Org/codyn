@@ -550,19 +550,23 @@ split_templates (gchar const *templates)
 
 	ret = g_ptr_array_new ();
 
+	/* Skip leading spaces */
 	while (*templates && g_ascii_isspace (*templates))
 	{
 		++templates;
 	}
 
 	ptr = templates;
+
+	/* lastc stores the last location of a non space character */
 	lastc = ptr;
 
 	while (*templates)
 	{
+		/* Split on comma for sure */
 		if (*templates == ',')
 		{
-			if (ptr && lastc - ptr > 0)
+			if (ptr && lastc - ptr >= 0)
 			{
 				g_ptr_array_add (ret, g_strndup (ptr, lastc - ptr + 1));
 			}
@@ -582,7 +586,7 @@ split_templates (gchar const *templates)
 		++templates;
 	}
 
-	if (ptr && lastc - ptr > 0)
+	if (ptr && lastc - ptr >= 0)
 	{
 		g_ptr_array_add (ret, g_strndup (ptr, lastc - ptr + 1));
 	}
