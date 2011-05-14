@@ -38,6 +38,8 @@ COMMON_SOURCES = 		\
 	cpg-network.c \
 	cpg-network-deserializer.c \
 	cpg-network-serializer.c \
+	cpg-network-parser-utils.c \
+	cpg-parser-context.c \
 	cpg-object.c \
 	cpg-operator.c \
 	cpg-operator-lastof.c \
@@ -58,6 +60,9 @@ NOINST_H_FILES = \
 	cpg-tokenizer.h \
 	cpg-network-xml.h \
 	cpg-stack-private.h \
+	cpg-network-parser-utils.h \
+	cpg-parser-private.h \
+	cpg-parser-context.h \
 	cpg-marshal.h
 
 INST_H_FILES = \
