@@ -520,14 +520,10 @@ static gboolean
 set_proxy (CpgGroup  *group,
            CpgObject *proxy)
 {
-	CpgPropertyInterface *iface;
-
 	if (group->priv->proxy == proxy)
 	{
 		return TRUE;
 	}
-
-	iface = cpg_group_get_property_interface (group);
 
 	if (group->priv->proxy)
 	{
@@ -949,7 +945,6 @@ cpg_group_cpg_apply_template (CpgObject  *object,
                               CpgObject  *templ,
                               GError    **error)
 {
-	CpgPropertyInterface *iface;
 	CpgPropertyInterface *source_iface;
 	CpgGroup *group;
 	CpgGroup *source;
@@ -1032,7 +1027,6 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 	g_hash_table_destroy (hash_table);
 
 	/* Apply interfaces from template */
-	iface = cpg_group_get_property_interface (group);
 	source_iface = cpg_group_get_property_interface (source);
 
 	names = cpg_property_interface_get_names (source_iface);

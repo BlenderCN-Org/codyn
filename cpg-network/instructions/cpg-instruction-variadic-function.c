@@ -15,10 +15,6 @@ G_DEFINE_TYPE (CpgInstructionVariadicFunction, cpg_instruction_variadic_function
 static void
 cpg_instruction_variadic_function_finalize (CpgMiniObject *object)
 {
-	CpgInstructionVariadicFunction *self;
-
-	self = CPG_INSTRUCTION_VARIADIC_FUNCTION (object);
-
 	CPG_MINI_OBJECT_CLASS (cpg_instruction_variadic_function_parent_class)->finalize (object);
 }
 
@@ -26,14 +22,8 @@ static CpgMiniObject *
 cpg_instruction_variadic_function_copy (CpgMiniObject const *object)
 {
 	CpgMiniObject *ret;
-	CpgInstructionVariadicFunction *self;
-	CpgInstructionVariadicFunction const *src;
-
-	src = CPG_INSTRUCTION_VARIADIC_FUNCTION_CONST (object);
 
 	ret = CPG_MINI_OBJECT_CLASS (cpg_instruction_variadic_function_parent_class)->copy (object);
-
-	self = CPG_INSTRUCTION_VARIADIC_FUNCTION (ret);
 
 	return ret;
 }
@@ -41,10 +31,6 @@ cpg_instruction_variadic_function_copy (CpgMiniObject const *object)
 static gchar *
 cpg_instruction_variadic_function_to_string (CpgInstruction *instruction)
 {
-	CpgInstructionVariadicFunction *self;
-
-	self = CPG_INSTRUCTION_VARIADIC_FUNCTION (instruction);
-
 	return g_strdup_printf ("VAR (%s)",
 	                        cpg_instruction_function_get_name (CPG_INSTRUCTION_FUNCTION (instruction)));
 }

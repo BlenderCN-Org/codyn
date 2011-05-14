@@ -12,10 +12,6 @@ G_DEFINE_TYPE (CpgInstructionNumber, cpg_instruction_number, CPG_TYPE_INSTRUCTIO
 static void
 cpg_instruction_number_finalize (CpgMiniObject *object)
 {
-	CpgInstructionNumber *self;
-
-	self = CPG_INSTRUCTION_NUMBER (object);
-
 	CPG_MINI_OBJECT_CLASS (cpg_instruction_number_parent_class)->finalize (object);
 }
 

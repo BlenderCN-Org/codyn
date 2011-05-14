@@ -19,12 +19,10 @@ static void
 cpg_instruction_operator_execute (CpgInstruction *instruction,
                                   CpgStack       *stack)
 {
-	CpgInstructionOperator *self;
 	CpgInstructionFunction *func;
 
 	/* Direct cast to reduce overhead of GType cast */
-	self = (CpgInstructionOperator *)instruction;
-	func = (CpgInstructionFunction *)instruction;
+	func = CPG_INSTRUCTION_FUNCTION (instruction);
 
 	cpg_math_operator_execute (cpg_instruction_function_get_id (func),
 	                           cpg_instruction_function_get_arguments (func),
