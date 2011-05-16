@@ -1509,7 +1509,8 @@ cpg_parser_context_read (CpgParserContext *context,
 }
 
 gboolean
-cpg_parser_context_parse (CpgParserContext *context)
+cpg_parser_context_parse (CpgParserContext  *context,
+                          GError           **error)
 {
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), FALSE);
 	g_return_val_if_fail (context->priv->file || context->priv->stream, FALSE);
@@ -1526,7 +1527,19 @@ cpg_parser_context_parse (CpgParserContext *context)
 		return FALSE;
 	}
 
-	return cpg_parser_parse (context) == 0;
+	if (cpg_parser_parse (context) == 0)
+	{
+		return TRUE;
+	}
+	else
+	{
+		if (error && context->priv->error)
+		{
+			*error = g_error_copy (context->priv->error);
+		}
+
+		return FALSE;
+	}
 }
 
 void

@@ -78,7 +78,8 @@ void                 cpg_parser_context_set_token             (CpgParserContext 
 
 gchar const         *cpg_parser_context_get_token             (CpgParserContext *context);
 
-gboolean             cpg_parser_context_parse                 (CpgParserContext *context);
+gboolean             cpg_parser_context_parse                 (CpgParserContext  *context,
+                                                               GError           **error);
 
 void                 cpg_parser_context_set_id                (CpgParserContext *context,
                                                                gchar const      *id,

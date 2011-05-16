@@ -11,6 +11,7 @@
 #include "cpg-network-deserializer.h"
 #include "cpg-operator-lastof.h"
 #include "cpg-import.h"
+#include "cpg-parser-context.h"
 
 /**
  * SECTION:cpg-network
@@ -597,6 +598,11 @@ cpg_network_load_from_file (CpgNetwork  *network,
                             GFile       *file,
                             GError     **error)
 {
+	gboolean xmlformat;
+	GFileInfo *info;
+	gboolean ret;
+	gchar const *content_type;
+
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_FILE (file), FALSE);
 
@@ -604,18 +610,52 @@ cpg_network_load_from_file (CpgNetwork  *network,
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	CpgNetworkDeserializer *deserializer;
+	info = g_file_query_info (file,
+	                          G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
+	                          G_FILE_QUERY_INFO_NONE,
+	                          NULL,
+	                          NULL);
 
-	deserializer = cpg_network_deserializer_new (network,
-	                                             NULL);
+	content_type = g_file_info_get_content_type (info);
 
-	gboolean ret;
+	if (g_content_type_is_a (content_type, "application/xml"))
+	{
+		xmlformat = TRUE;
+	}
+	else if (g_content_type_is_a (content_type, "text/x-cpg"))
+	{
+		xmlformat = FALSE;
+	}
+	else
+	{
+		xmlformat = TRUE;
+	}
 
-	ret = cpg_network_deserializer_deserialize_file (deserializer,
-	                                                 file,
-	                                                 error);
+	g_object_unref (info);
 
-	g_object_unref (deserializer);
+	if (xmlformat)
+	{
+		CpgNetworkDeserializer *deserializer;
+
+		deserializer = cpg_network_deserializer_new (network,
+		                                             NULL);
+
+		ret = cpg_network_deserializer_deserialize_file (deserializer,
+		                                                 file,
+		                                                 error);
+
+		g_object_unref (deserializer);
+	}
+	else
+	{
+		CpgParserContext *ctx;
+
+		ctx = cpg_parser_context_new (network, file);
+		ret = cpg_parser_context_parse (ctx, error);
+
+		g_object_unref (ctx);
+	}
+
 	return ret;
 }
 
