@@ -1109,6 +1109,7 @@ group_children_to_xml (CpgNetworkSerializer *serializer,
 	}
 
 	GSList *item;
+	links = g_slist_reverse (links);
 
 	for (item = links; item; item = g_slist_next (item))
 	{

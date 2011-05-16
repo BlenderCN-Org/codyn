@@ -32,6 +32,8 @@ typedef enum
 	SELECTOR_PSEUDO_TYPE_STATES,
 	SELECTOR_PSEUDO_TYPE_LINKS,
 	SELECTOR_PSEUDO_TYPE_NTH_SIBLING,
+	SELECTOR_PSEUDO_TYPE_CHILDREN,
+	SELECTOR_PSEUDO_TYPE_TEMPLATES,
 	NUM_PSEUDO_SELECTORS
 } SelectorPseudoType;
 
@@ -44,8 +46,9 @@ typedef struct
 
 typedef struct
 {
-	int a;
-	int b;
+	gint a;
+	gint b;
+	gint max;
 } Nth;
 
 typedef struct
@@ -67,7 +70,9 @@ static SelectorPseudoDefinition const pseudo_selectors[] =
 	{SELECTOR_PSEUDO_TYPE_NTH, "nth", TRUE},
 	{SELECTOR_PSEUDO_TYPE_STATES, "states", FALSE},
 	{SELECTOR_PSEUDO_TYPE_LINKS, "links", FALSE},
-	{SELECTOR_PSEUDO_TYPE_NTH_SIBLING, "nth-sibling", TRUE}
+	{SELECTOR_PSEUDO_TYPE_NTH_SIBLING, "nth-sibling", TRUE},
+	{SELECTOR_PSEUDO_TYPE_CHILDREN, "children", FALSE},
+	{SELECTOR_PSEUDO_TYPE_TEMPLATES, "templates", FALSE}
 };
 
 typedef struct
@@ -156,7 +161,8 @@ selector_regex_new (gchar const *regex)
 
 static int
 parse_nth_num (GMatchInfo *info,
-               gint        num)
+               gint        num,
+               gint        def)
 {
 	gchar *s;
 	gint ret;
@@ -165,7 +171,7 @@ parse_nth_num (GMatchInfo *info,
 
 	if (!s || !*s)
 	{
-		ret = 0;
+		ret = def;
 	}
 	else
 	{
@@ -180,7 +186,7 @@ parse_nth_num (GMatchInfo *info,
 static Nth
 parse_nth (gchar const *argument)
 {
-	Nth ret = {0, 0};
+	Nth ret = {0, 0, -1};
 	GMatchInfo *info;
 
 	if (!argument)
@@ -190,30 +196,39 @@ parse_nth (gchar const *argument)
 
 	if (nth_regex == NULL)
 	{
-		nth_regex = g_regex_new ("(([+-]?[0-9]+)n)?([+-]?[0-9]+)?",
+		nth_regex = g_regex_new ("((([+-]?[0-9]+)n)?([+-]?[0-9]+)?|odd|even)(,([0-9]+))?",
 		                         G_REGEX_CASELESS |
-		                         G_REGEX_ANCHORED,
+		                         G_REGEX_ANCHORED |
+		                         G_REGEX_EXTENDED,
 		                         G_REGEX_MATCH_ANCHORED |
 		                         G_REGEX_MATCH_NOTEMPTY,
 		                         NULL);
 	}
 
-	if (g_strcmp0 (argument, "odd") == 0)
+	if (g_regex_match (nth_regex, argument, 0, &info))
 	{
-		ret.a = 2;
-		ret.b = 1;
-	}
-	else if (g_strcmp0 (argument, "even") == 0)
-	{
-		ret.a = 2;
-		ret.b = 0;
-	}
-	else if (g_regex_match (nth_regex, argument, 0, &info))
-	{
-		ret.a = parse_nth_num (info, 2);
-		ret.b = parse_nth_num (info, 3);
+		gchar *first = g_match_info_fetch (info, 1);
+
+		if (g_strcmp0 (first, "odd") == 0)
+		{
+			ret.a = 2;
+			ret.b = 1;
+		}
+		else if (g_strcmp0 (first, "even") == 0)
+		{
+			ret.a = 2;
+			ret.b = 0;
+		}
+		else
+		{
+			ret.a = parse_nth_num (info, 3, 0);
+			ret.b = parse_nth_num (info, 4, 0);
+		}
+
+		ret.max = parse_nth_num (info, 6, -1);
 
 		g_match_info_free (info);
+		g_free (first);
 	}
 
 	return ret;
@@ -230,7 +245,17 @@ selector_pseudo_new (SelectorPseudoDefinition const *definition,
 
 	if (definition->has_argument)
 	{
-		selector->pseudo.nth = parse_nth (argument);
+		switch (definition->type)
+		{
+			case SELECTOR_PSEUDO_TYPE_NTH:
+			case SELECTOR_PSEUDO_TYPE_NTH_CHILD:
+			case SELECTOR_PSEUDO_TYPE_NTH_SIBLING:
+				selector->pseudo.nth = parse_nth (argument);
+			break;
+			default:
+				g_assert_not_reached ();
+			break;
+		}
 	}
 
 	return selector;
@@ -576,7 +601,7 @@ nth_match (Nth const *nth,
 {
 	if (nth->a == 0)
 	{
-		return nth->b == nth->a;
+		return i == nth->b;
 	}
 
 	return (i - nth->b) % nth->a == 0 && (i - nth->b) / nth->a >= 0;
@@ -590,15 +615,23 @@ select_nth (GSList const *children,
 {
 	GSList *ret = NULL;
 	gint i = 1 - offset;
+	gint num = 0;
 
-	while (children)
+	while (children && (nth->max < 0 || num < nth->max))
 	{
-		if (nth_match (nth, i) && check_type (children->data, type))
+		gboolean correcttype = check_type (children->data, type);
+
+		if (correcttype)
 		{
-			ret = g_slist_prepend (ret, children->data);
+			if (nth_match (nth, i))
+			{
+				ret = g_slist_prepend (ret, children->data);
+				++num;
+			}
+
+			++i;
 		}
 
-		++i;
 		children = g_slist_next (children);
 	}
 
@@ -717,6 +750,19 @@ selector_select_pseudo (Selector   *selector,
 				}
 			}
 			break;
+			case SELECTOR_PSEUDO_TYPE_TEMPLATES:
+			{
+				CpgObject *top;
+
+				top = top_parent (obj);
+
+				if (top && CPG_IS_NETWORK (top))
+				{
+					return g_slist_prepend (ret,
+					                        cpg_network_get_template_group (CPG_NETWORK (top)));
+				}
+			}
+			break;
 			case SELECTOR_PSEUDO_TYPE_NTH_CHILD:
 			{
 				if (CPG_IS_GROUP (obj))
@@ -750,7 +796,7 @@ selector_select_pseudo (Selector   *selector,
 					ret = g_slist_concat (select_nth (children,
 					                                  &(selector->pseudo.nth),
 					                                  idx,
-					                                  type),
+					                                  type == TYPE_ALL ? (CPG_IS_LINK (obj) ? TYPE_LINK : TYPE_STATE) : type),
 					                      ret);
 				}
 			}
@@ -764,6 +810,21 @@ selector_select_pseudo (Selector   *selector,
 					ret = g_slist_prepend (ret, parent);
 				}
 			}
+			case SELECTOR_PSEUDO_TYPE_CHILDREN:
+			{
+				if (CPG_IS_GROUP (obj))
+				{
+					GSList const *children;
+					GSList *copy;
+
+					children = cpg_group_get_children (CPG_GROUP (obj));
+
+					copy = g_slist_reverse (g_slist_copy ((GSList *)children));
+
+					ret = g_slist_concat (copy, ret);
+				}
+			}
+			break;
 			break;
 			case SELECTOR_PSEUDO_TYPE_FIRST_CHILD:
 			{

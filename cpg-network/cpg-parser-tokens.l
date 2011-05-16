@@ -4,6 +4,9 @@
 
 static char *unquote_string (char *s, int len, gchar c);
 
+void cpg_parser_set_column (int column_no, yyscan_t yyscanner);
+int cpg_parser_get_column (yyscan_t yyscanner);
+
 static int yyccolumn = 1;
 
 #define YY_EXTRA_TYPE CpgParserContext *
@@ -24,12 +27,24 @@ static int yyccolumn = 1;
 		}								\
 	}
 
+#define unputs(s) unputs(s, strlen (s))
+
+#define unputsl(s, len)								\
+	if (s)									\
+	{									\
+		gint i;								\
+										\
+		for (i = len - 1; i >= 0; ++i)					\
+		{								\
+			unput (s[i]);						\
+		}								\
+	}
 %}
 
 %option yylineno
 %option noyywrap
-%option nounput
 %option noinput
+%option nounput
 %option reentrant
 %option prefix="cpg_parser_"
 %option bison-bridge bison-locations
@@ -63,15 +78,17 @@ static int yyccolumn = 1;
 "piece"				return T_KEY_PIECE;
 "attach"			return T_KEY_ATTACH;
 "apply"				return T_KEY_APPLY;
+"define"			return T_KEY_DEFINE;
+"bidirectional"			return T_KEY_BIDIRECTIONAL;
+"all"				return T_KEY_ALL;
+"remove"			return T_KEY_REMOVE;
+"integrator"			return T_KEY_INTEGRATOR;
 
 [-+]?[0-9]+((\.|eE[-+]?)[0-9]*) {yylval->numf = g_ascii_strtod (yytext, NULL);
 				 return T_DOUBLE;}
 
 [a-zA-Z_][a-zA-Z0-9_-]*	 	{yylval->id = g_strdup (yytext);
 				 return T_IDENTIFIER;}
-
-[-+]?[0-9]n([-+][0-9])?  	{yylval->id = g_strdup (yytext);
-				 return T_SELECTOR_NTH;}
 
 [-+]?[0-9]+			{yylval->numf = (gint)g_ascii_strtoll (yytext, NULL, 10);
 				 return T_INTEGER;}
@@ -82,6 +99,17 @@ static int yyccolumn = 1;
 "/"(\\[/]|[^/])*"/"		{yylval->id = unquote_string (yytext + 1, yyleng - 2, '/');
 				 return T_REGEX;}
 
+"@{"[a-zA-Z_][a-zA-Z0-9_-]*/"}"	{gchar const *s;
+
+				 s = cpg_parser_context_lookup_define (yyextra, yytext + 2);
+
+				 if (s)
+				 {
+				 	yylval->id = g_strdup (s);
+				 	return T_IDENTIFIER;
+				 }
+				}
+
 "{"				return '{';
 "}"				return '}';
 "("				return '(';
@@ -90,6 +118,7 @@ static int yyccolumn = 1;
 "="				return '=';
 "<"				return '<';
 ","				return ',';
+"."				return '.';
 
 %%
 

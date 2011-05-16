@@ -108,12 +108,16 @@ void                 cpg_parser_context_add_interface         (CpgParserContext 
 gboolean             cpg_parser_context_link                  (CpgParserContext *context,
                                                                CpgSelector      *link,
                                                                CpgSelector      *from,
-                                                               CpgSelector      *to);
+                                                               CpgSelector      *to,
+                                                               gboolean          bidirectional,
+                                                               gboolean          all_to_all);
 
 gboolean             cpg_parser_context_link_one              (CpgParserContext *context,
                                                                CpgLink          *link,
                                                                CpgSelector      *from,
-                                                               CpgSelector      *to);
+                                                               CpgSelector      *to,
+                                                               gboolean          bidirectional,
+                                                               gboolean          all_to_all);
 
 void                 cpg_parser_context_apply_template        (CpgParserContext *context,
                                                                CpgSelector      *objects,
@@ -150,6 +154,22 @@ gssize               cpg_parser_context_read                  (CpgParserContext 
                                                                gsize             max_size);
 
 gpointer             cpg_parser_context_get_scanner           (CpgParserContext *context);
+
+void                 cpg_parser_context_define                (CpgParserContext *context,
+                                                               gchar const      *name,
+                                                               gchar const      *define);
+
+gchar const         *cpg_parser_context_lookup_define         (CpgParserContext *context,
+                                                               gchar const      *define);
+
+gchar               *cpg_parser_context_expand_defines        (CpgParserContext *context,
+                                                               gchar const      *s);
+
+void                 cpg_parser_context_remove                (CpgParserContext *context,
+                                                               GArray           *selectors);
+
+void                 cpg_parser_context_set_integrator        (CpgParserContext *context,
+                                                               gchar const      *integrator);
 
 G_END_DECLS
 

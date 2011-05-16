@@ -13,14 +13,14 @@
         <style id="string"            _name="String"              map-to="def:string"/>
         <style id="keyword"           _name="Keyword"             map-to="def:keyword"/>
         <style id="preprocessor"      _name="Preprocessor"        map-to="def:preprocessor"/>
-        <style id="specifiers"        _name="Specifiers"          map-to="def:builtin"/>
-        <style id="regex"             _name="Regex"               map-to="def:string"/>
+        <style id="specifiers"        _name="Specifiers"          map-to="def:keyword"/>
+        <style id="regex"             _name="Regex"               map-to="def:builtin"/>
         <style id="property"          _name="Property"            map-to="def:identifier"/>
+        <style id="operator"          _name="Operator"            map-to="def:operator"/>
+        <style id="selector"          _name="Selector"            map-to="def:identifier"/>
     </styles>
 
     <default-regex-options case-sensitive="false"/>
-
-    <keyword-char-class>[a-z_-]</keyword-char-class>
 
     <definitions>
 
@@ -37,16 +37,17 @@
                 <context id="escape-in-string">
                     <match>\\"</match>
                 </context>
+                <context ref="defined"/>
+                <context ref="expansion"/>
             </include>
         </context>
 
         <context id="specifiers" style-ref="specifiers">
-            <keyword>templates</keyword>
-            <keyword>template</keyword>
             <keyword>integrated</keyword>
             <keyword>in</keyword>
             <keyword>out</keyword>
             <keyword>once</keyword>
+            <keyword>bidirectional</keyword>
         </context>
 
         <context id="preprocessor" style-ref="preprocessor">
@@ -70,7 +71,12 @@
             <keyword>input-file</keyword>
             <keyword>piece</keyword>
             <keyword>attach</keyword>
+            <keyword>attach</keyword>
             <keyword>apply</keyword>
+            <keyword>define</keyword>
+            <keyword>all</keyword>
+            <keyword>remove</keyword>
+            <keyword>integrator</keyword>
         </context>
 
         <context id="colon-error" style-ref="error">
@@ -78,18 +84,46 @@
         </context>
 
         <context id="property">
-            <match>(\%{identifier})\s*=\s*(\%{string})</match>
+            <match>(\%{identifier})\s*(=)\s*(\%{string})</match>
             <include>
                 <context sub-pattern="1" style-ref="property"/>
-                <context sub-pattern="2" style-ref="string"/>
+                <context sub-pattern="3" style-ref="string"/>
             </include>
         </context>
 
         <context id="action">
-            <match>(\%{identifier})\s*&lt;\s*(\%{string})</match>
+            <match>(\%{identifier})\s*(&lt;)\s*(\%{string})</match>
             <include>
                 <context sub-pattern="1" style-ref="property"/>
-                <context sub-pattern="2" style-ref="string"/>
+                <context sub-pattern="3" style-ref="string"/>
+            </include>
+        </context>
+
+        <context id="selector">
+            <match>([:.][a-z_-]+)(\(([^)]*)\))?</match>
+            <include>
+                <context sub-pattern="1" style-ref="selector"/>
+                <context sub-pattern="3" style-ref="string"/>
+            </include>
+        </context>
+
+        <context id="defined" style-ref="preprocessor" extend-parent="true">
+            <match>@({[a-z0-9_-]+}|[a-z0-9_-]+)</match>
+        </context>
+
+        <context id="define">
+            <match>\b(define)\s+([a-z0-9_-]+)</match>
+            <include>
+                <context sub-pattern="1" style-ref="keyword"/>
+                <context sub-pattern="2" style-ref="preprocessor"/>
+            </include>
+        </context>
+
+        <context id="expansion" style-ref="comment" style-inside="true">
+            <start>{</start>
+            <end>}</end>
+            <include>
+                <context ref="defined" />
             </include>
         </context>
 
@@ -97,6 +131,7 @@
             <include>
                 <context ref="def:shebang"/>
                 <context ref="def:shell-like-comment"/>
+                <context ref="define"/>
                 <context ref="keywords"/>
                 <context ref="specifiers"/>
                 <context ref="preprocessor"/>
@@ -105,6 +140,7 @@
                 <context ref="regex"/>
                 <context ref="string"/>
                 <context ref="colon-error"/>
+                <context ref="selector"/>
             </include>
         </context>
     </definitions>
