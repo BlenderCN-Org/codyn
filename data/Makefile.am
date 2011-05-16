@@ -9,10 +9,19 @@ library_DATA = \
 mimedir = $(datadir)/mime/packages
 mime_DATA = cpg.xml
 
+lang3dir = $(datadir)/gtksourceview-3.0/language-specs
+lang3_DATA = cpg.lang
+
+lang2dir = $(datadir)/gtksourceview-2.0/language-specs
+lang2_DATA = cpg.lang
+
 EXTRA_DIST = \
 	$(dtd_DATA) \
 	$(library_DATA) \
-	$(mime_DATA)
+	cpg.xml.in \
+	cpg.lang
+
+CLEANFILES = cpg.xml
 
 update_mime_database = update-mime-database $(datadir)/mime
 

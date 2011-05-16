@@ -32,7 +32,8 @@ CPG_FORWARD_DECL (CpgImport);
 
 /**
  * CpgNetworkLoadError:
- * @CPG_NETWORK_LOAD_ERROR_XML: error occurred in parsing xml
+ * @CPG_NETWORK_LOAD_ERROR_NONE:
+ * @CPG_NETWORK_LOAD_ERROR_SYNTAX: syntax error
  * @CPG_NETWORK_LOAD_ERROR_PROPERTY: error occurred in loading a property
  * @CPG_NETWORK_LOAD_ERROR_OBJECT: error occurred in loading an object
  * @CPG_NETWORK_LOAD_ERROR_LINK: error occurred in loading a link
@@ -45,7 +46,8 @@ CPG_FORWARD_DECL (CpgImport);
  */
 typedef enum
 {
-	CPG_NETWORK_LOAD_ERROR_XML,
+	CPG_NETWORK_LOAD_ERROR_NONE,
+	CPG_NETWORK_LOAD_ERROR_SYNTAX,
 	CPG_NETWORK_LOAD_ERROR_PROPERTY,
 	CPG_NETWORK_LOAD_ERROR_OBJECT,
 	CPG_NETWORK_LOAD_ERROR_LINK,

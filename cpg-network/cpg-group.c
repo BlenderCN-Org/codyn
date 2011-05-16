@@ -4,6 +4,7 @@
 #include "cpg-compile-context.h"
 #include "cpg-marshal.h"
 #include "cpg-utils.h"
+#include "cpg-selector.h"
 
 /**
  * SECTION:cpg-group
@@ -1805,45 +1806,26 @@ cpg_group_get_child (CpgGroup    *group,
  **/
 CpgObject *
 cpg_group_find_object (CpgGroup    *group,
-                       const gchar *path)
+                       const gchar *selector)
 {
-	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
-	g_return_val_if_fail (path != NULL, NULL);
-
-	gchar **parts = g_strsplit (path, ".", -1);
-	gchar **ptr = parts;
-
+	CpgSelector *sel;
+	GSList *all;
 	CpgObject *ret = NULL;
-	CpgGroup *parent = group;
 
-	while (ptr && *ptr)
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+	g_return_val_if_fail (selector != NULL, NULL);
+
+	sel = cpg_selector_parse (selector);
+	all = cpg_selector_select (sel, CPG_OBJECT (group));
+
+	if (all)
 	{
-		if (!parent)
-		{
-			ret = NULL;
-			break;
-		}
-
-		ret = cpg_group_get_child (parent, *ptr);
-
-		if (!ret)
-		{
-			break;
-		}
-
-		if (CPG_IS_GROUP (ret))
-		{
-			parent = CPG_GROUP (ret);
-		}
-		else
-		{
-			parent = NULL;
-		}
-
-		++ptr;
+		ret = all->data;
 	}
 
-	g_strfreev (parts);
+	g_slist_free (all);
+	g_object_unref (sel);
+
 	return ret;
 }
 

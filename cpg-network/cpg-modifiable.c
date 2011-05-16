@@ -60,5 +60,5 @@ cpg_modifiable_set_modified (CpgModifiable *modifiable,
 	g_return_if_fail (CPG_MODIFIABLE (modifiable));
 
 	CPG_MODIFIABLE_GET_INTERFACE (modifiable)->set_modified (modifiable,
-	                                                         modified);
+	                                                         modified ? TRUE : FALSE);
 }

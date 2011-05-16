@@ -45,10 +45,13 @@ COMMON_SOURCES = 		\
 	cpg-operator-lastof.c \
 	cpg-property.c \
 	cpg-property-interface.c \
+	cpg-selector.c \
 	cpg-stack.c \
 	cpg-tokenizer.c \
 	cpg-usable.c \
-	cpg-utils.c
+	cpg-utils.c \
+	cpg-parser.y \
+	cpg-parser-tokens.l
 
 BUILT_SOURCES = \
 	cpg-enum-types.c \
@@ -61,7 +64,6 @@ NOINST_H_FILES = \
 	cpg-network-xml.h \
 	cpg-stack-private.h \
 	cpg-network-parser-utils.h \
-	cpg-parser-private.h \
 	cpg-parser-context.h \
 	cpg-marshal.h
 
@@ -100,6 +102,7 @@ INST_H_FILES = \
 	cpg-operator-lastof.h \
 	cpg-property.h \
 	cpg-property-interface.h \
+	cpg-selector.h \
 	cpg-stack.h \
 	cpg-usable.h \
 	cpg-utils.h

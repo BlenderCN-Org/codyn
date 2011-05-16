@@ -11,6 +11,8 @@ AC_PROG_CC
 AM_PROG_CC_STDC
 AC_HEADER_STDC
 AM_PROG_LIBTOOL
+AM_PROG_LEX
+AC_PROG_YACC
 
 GTK_DOC_CHECK(1.9)
 
@@ -89,7 +91,7 @@ PKG_CHECK_MODULES(CPG_NETWORK, [
 	gio-unix-2.0
 ])
 
-GEDIT_LIBS="${CPG_NETWORK_LIBS}"
+CPG_NETWORK_LIBS="${CPG_NETWORK_LIBS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
 	CPG_NETWORK_CFLAGS="$CPG_NETWORK_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"
@@ -101,6 +103,13 @@ AC_SUBST(CPG_NETWORK_CFLAGS)
 CPG_NETWORK_API_VERSION=2.0
 AC_SUBST(CPG_NETWORK_API_VERSION)
 
+AC_CHECK_LIB([termcap],
+             [tgetent],
+             [CPG_PARSER_LIBS=-ltermcap],
+             [AC_MSG_ERROR(could not find termcap library)])
+
+AC_SUBST(CPG_PARSER_LIBS)
+
 AC_CONFIG_FILES([
 Makefile
 cpg-network.pc
@@ -109,6 +118,7 @@ cpg-network/Makefile
 cpg-network/instructions/Makefile
 cpg-network-webots/Makefile
 data/Makefile
+data/cpg.xml
 docs/Makefile
 docs/reference/Makefile
 m4/Makefile
@@ -116,6 +126,7 @@ tests/Makefile
 win32/Makefile
 win32/make-zip
 cpg-monitor/Makefile
+cpg-parser/Makefile
 ])
 
 AC_OUTPUT

@@ -5,7 +5,12 @@
     <comment xml:lang="nl">Cpg netwerk bestand</comment>
     <!-- more translated comment elements -->
     <glob pattern="*.cpg"/>
-    <sub-class-of type="application/xml"/>
+    <sub-class-of type="text/plain"/>
     <generic-icon name="document"/>
+    <magic priority="50">
+      <match type="string" offset="0" value="#!/usr/bin/cpg-parser"/>
+      <match type="string" offset="0" value="#!/usr/local/bin/cpg-parser"/>
+      <match type="string" offset="0" value="#!@prefix@/bin/cpg-parser"/>
+    </magic>
   </mime-type>
 </mime-info>

@@ -501,6 +501,8 @@ static void
 cpg_property_init (CpgProperty *self)
 {
 	self->priv = CPG_PROPERTY_GET_PRIVATE (self);
+
+	self->priv->modified = FALSE;
 }
 
 /**

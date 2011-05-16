@@ -99,7 +99,7 @@ CpgObject    *cpg_group_get_child     (CpgGroup    *group,
                                        const gchar *name);
 
 CpgObject    *cpg_group_find_object   (CpgGroup    *group,
-                                       const gchar *path);
+                                       const gchar *selector);
 
 CpgProperty  *cpg_group_find_property (CpgGroup    *group,
                                        const gchar *path);

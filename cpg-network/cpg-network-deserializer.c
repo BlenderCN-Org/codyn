@@ -2122,7 +2122,7 @@ cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
 
 		return parser_failed (deserializer,
 		                      NULL,
-		                      CPG_NETWORK_LOAD_ERROR_XML,
+		                      CPG_NETWORK_LOAD_ERROR_SYNTAX,
 		                      "Failed parsing xml at %d:%d: %s",
 		                      xmlLastError.line,
 		                      xmlLastError.int2,

@@ -1,5 +1,13 @@
 #include "cpg-network-parser-utils.h"
 
+struct _CpgExpandedId
+{
+	gchar *id;
+
+	GPtrArray *expansions;
+	gint num_expansions;
+};
+
 gboolean
 cpg_network_parser_utils_get_templates (CpgNetwork           *network,
                                         CpgGroup             *parent,
@@ -219,4 +227,150 @@ cpg_network_parser_utils_find_template_import (CpgObject *child,
 	}
 
 	return NULL;
+}
+
+GSList *
+parse_expansion (gchar const **id)
+{
+	gchar const *ptr = *id;
+	GSList *ret = NULL;
+	gint depth = 0;
+
+	while (**id && (**id != '}' || depth != 0))
+	{
+		if (**id == ',')
+		{
+			if (ptr != *id)
+			{
+				ret = g_slist_prepend (ret,
+				                       g_strndup (ptr,
+				                                  *id - ptr));
+			}
+
+			ptr = *id + 1;
+		}
+		else if (**id == '{')
+		{
+			++depth;
+		}
+		else if (**id == '}')
+		{
+			--depth;
+		}
+
+		++*id;
+	}
+
+	if (ptr != *id)
+	{
+		ret = g_slist_prepend (ret, g_strndup (ptr, *id - ptr));
+	}
+
+	if (**id == '}')
+	{
+		++*id;
+	}
+
+	return g_slist_reverse (ret);
+}
+
+static GPtrArray *
+copy_expansions (CpgExpandedId *id)
+{
+	GPtrArray *ptr;
+	gchar **s;
+
+	ptr = g_ptr_array_sized_new (id->num_expansions + 1);
+
+	for (s = id->expansions; s && *s; ++s)
+	{
+		g_ptr_array_add (ptr, g_strdup (*s));
+	}
+
+	return ptr;
+}
+
+static CpgExpandedId *
+expand_id (CpgExpandedId *id,
+           gchar const   *s)
+{
+	CpgExpandedId *ret;
+	gchar *c;
+	GPtrArray *ptr;
+
+	c = g_strconcat (id->id, s);
+	ptr = copy_expansions (id);
+	g_ptr_array_add (ptr, g_strdup (s));
+
+	return cpg_expanded_id_new (c, ptr, id->num + 1);
+}
+
+static GSList *
+append_expansion (GSList *items,
+                  GSList *expansions)
+{
+	GSList *ret = NULL;
+	GSList *ptr;
+
+	for (ptr = items; ptr; ptr = g_slist_next (ptr))
+	{
+		CpgExpandedId *id = ptr->data;
+		GSList *ex;
+
+		for (ex = expansions; ex; ex = g_slist_next (ex))
+		{
+			gchar const *s = ex->data;
+
+			
+		}
+	}
+
+	g_slist_free (items);
+}
+
+GSList *
+cpg_network_parser_utils_expand_id (gchar const *id)
+{
+	GSList *ret = NULL;
+
+	while (*id)
+	{
+		if (*id == '{')
+		{
+			ex = parse_expansion (&(++id));
+		}
+	}
+}
+
+gchar const *
+cpg_expanded_id_get_id (CpgExpandedId *id)
+{
+	return id->id;
+}
+
+gint
+cpg_expanded_id_get_num_expansions (CpgExpandedId *id)
+{
+	return id->num_expansions;
+}
+
+gchar const *
+cpg_expanded_id_get_expansion (CpgExpandedId *id,
+                               gint           idx)
+{
+	if (idx < 0 || idx >= id->num_expansions)
+	{
+		return NULL;
+	}
+
+	return id->expansions[idx];
+}
+
+void
+cpg_expanded_id_free (CpgExpandedId *id)
+{
+	g_strfreev (id->expansions);
+	g_free (id->id);
+
+	g_slice_free (CpgExpandedId, id);
 }
