@@ -565,10 +565,10 @@ set_proxy (CpgGroup  *group,
 		}
 
 		group->priv->proxy_signals[EXT_PROPERTY_ADDED] =
-			g_signal_connect (group->priv->proxy,
-			                  "property-added",
-			                  G_CALLBACK (on_proxy_property_added),
-			                  group);
+			g_signal_connect_after (group->priv->proxy,
+			                        "property-added",
+			                        G_CALLBACK (on_proxy_property_added),
+			                        group);
 
 		group->priv->proxy_signals[EXT_PROPERTY_REMOVED] =
 			g_signal_connect (group->priv->proxy,
