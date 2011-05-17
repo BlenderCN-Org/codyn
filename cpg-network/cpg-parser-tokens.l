@@ -27,19 +27,18 @@ static int yyccolumn = 1;
 		}								\
 	}
 
-#define unputs(s) unputs(s, strlen (s))
+#define unputs(s) unputsl(s, strlen (s))
 
 #define unputsl(s, len)								\
-	if (s)									\
-	{									\
-		gint i;								\
+	gint i;									\
 										\
-		for (i = len - 1; i >= 0; ++i)					\
-		{								\
-			unput (s[i]);						\
-		}								\
+	for (i = len - 1; i >= 0; ++i)						\
+	{									\
+		unput (s[i]);							\
 	}
 %}
+
+STRING "\""(\\["]|[^"])*"\""
 
 %option yylineno
 %option noyywrap
@@ -50,15 +49,41 @@ static int yyccolumn = 1;
 %option bison-bridge bison-locations
 %option outfile="lex.yy.c"
 
+%x incl
+%x instring
+%x inregex
+
 %%
 
 [ \t]				;
-\n.*				{ yyccolumn = 1;
-				  cpg_parser_context_set_line (yyextra, yytext + 1, yylineno);
-				  cpg_parser_context_set_column (yyextra, 0, 0);
-				  yyless (1);
+\n.*				{
+					yyccolumn = 1;
+
+					cpg_parser_context_set_line (yyextra, yytext + 1, yylineno);
+					cpg_parser_context_set_column (yyextra, 0, 0);
+					yyless (1);
 				}
 "#"[^\n]*$			;
+
+"include"			BEGIN(incl);
+
+<incl>[ \t]*			;
+<incl>{STRING}			{
+					yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, yyscanner), yyscanner);
+					cpg_parser_context_push_input_from_path (yyextra, yytext);
+
+					BEGIN(INITIAL);
+				}
+
+<<EOF>>				{
+					yypop_buffer_state (yyscanner);
+					cpg_parser_context_pop_input (yyextra);
+
+					if (!YY_CURRENT_BUFFER)
+					{
+						yyterminate ();
+					}
+				}
 
 "templates"			return T_KEY_TEMPLATES;
 "state"				return T_KEY_STATE;
@@ -93,21 +118,47 @@ static int yyccolumn = 1;
 [-+]?[0-9]+			{yylval->numf = (gint)g_ascii_strtoll (yytext, NULL, 10);
 				 return T_INTEGER;}
 
-"\""(\\["]|[^"])*"\""		{yylval->id = unquote_string (yytext + 1, yyleng - 2, '"');
-				 return T_STRING;}
+"\""				{
+					BEGIN(instring);
+					yylval->string = g_string_new ("");
+					return T_STRING_BEGIN;
+				}
 
-"/"(\\[/]|[^/])*"/"		{yylval->id = unquote_string (yytext + 1, yyleng - 2, '/');
-				 return T_REGEX;}
+<instring,inregex>"@{"[a-zA-Z_][a-zA-Z0-9_-]*/"}" {
+					yylval->id = g_strdup (yytext + 2);
+					return T_DEFINED;
+				}
 
-"@{"[a-zA-Z_][a-zA-Z0-9_-]*/"}"	{gchar const *s;
+<instring,inregex>"@"[a-zA-Z_][a-zA-Z0-9_-]* {
+					yylval->id = g_strdup (yytext + 1);
+					return T_DEFINED;
+				}
 
-				 s = cpg_parser_context_lookup_define (yyextra, yytext + 2);
+<instring,inregex>"@{"[^}]*/"}"		{
+					yylval->id = g_strdup (yytext + 2);
+					return T_EQUATION;
+				}
+<instring>(\\["@]|[^"@])+	{
+					yylval->id = unquote_string (yytext, yyleng, '"');
+					return T_STRING;
+				}
+<instring>"\""			{
+					BEGIN(INITIAL);
+					return T_STRING_END;
+				}
 
-				 if (s)
-				 {
-				 	yylval->id = g_strdup (s);
-				 	return T_IDENTIFIER;
-				 }
+"/"				{
+					BEGIN(inregex);
+					return T_REGEX_BEGIN;
+				}
+
+<inregex>(\\[/@]|[^/@])+	{
+					yylval->id = unquote_string (yytext, yyleng, '/');
+					return T_STRING;
+				}
+<inregex>"/"			{
+					BEGIN(INITIAL);
+					return T_REGEX_END;
 				}
 
 "{"				return '{';

@@ -30,16 +30,17 @@ parse_network (gchar const *filename)
 	GFile *file;
 	CpgNetwork *network;
 	gboolean ret;
+	GError *error = NULL;
 
 	file = g_file_new_for_commandline_arg (filename);
 	network = cpg_network_new ();
 
-	context = cpg_parser_context_new (network, file);
+	context = cpg_parser_context_new (network);
+	cpg_parser_context_push_input (context, file, NULL);
 
-	if (cpg_parser_context_parse (context))
+	if (cpg_parser_context_parse (context, &error))
 	{
 		CpgNetworkSerializer *serializer;
-		GError *error = NULL;
 
 		serializer = cpg_network_serializer_new (network, NULL);
 
@@ -84,7 +85,7 @@ parse_network (gchar const *filename)
 		gchar *lstr;
 		gchar *dash;
 
-		g_printerr ("Failed to parse: %s\n\n", cpg_parser_context_get_error (context)->message);
+		g_printerr ("Failed to parse: %s\n\n", error->message);
 
 		line = cpg_parser_context_get_line (context, &lineno);
 		cpg_parser_context_get_column (context, &cstart, &cend);

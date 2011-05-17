@@ -49,14 +49,9 @@ struct _CpgParserContextClass
 
 GType                cpg_parser_context_get_type              (void) G_GNUC_CONST;
 
-CpgParserContext    *cpg_parser_context_new                   (CpgNetwork *network,
-                                                               GFile      *file);
+CpgParserContext    *cpg_parser_context_new                   (CpgNetwork *network);
 
-CpgParserContext    *cpg_parser_context_new_for_path          (CpgNetwork  *network,
-                                                               gchar const *path);
-
-CpgParserContext    *cpg_parser_context_new_for_stream        (CpgNetwork   *network,
-                                                               GInputStream *stream);
+GFile               *cpg_parser_context_get_file              (CpgParserContext *context);
 
 void                 cpg_parser_context_set_line              (CpgParserContext *context,
                                                                gchar const      *line,
@@ -163,14 +158,26 @@ void                 cpg_parser_context_define                (CpgParserContext 
 gchar const         *cpg_parser_context_lookup_define         (CpgParserContext *context,
                                                                gchar const      *define);
 
-gchar               *cpg_parser_context_expand_defines        (CpgParserContext *context,
-                                                               gchar const      *s);
-
 void                 cpg_parser_context_remove                (CpgParserContext *context,
                                                                GArray           *selectors);
 
 void                 cpg_parser_context_set_integrator        (CpgParserContext *context,
                                                                gchar const      *integrator);
+
+void                 cpg_parser_context_push_input_from_path  (CpgParserContext *context,
+                                                               gchar const      *filename);
+
+void                 cpg_parser_context_push_input            (CpgParserContext *context,
+                                                               GFile            *file,
+                                                               GInputStream     *stream);
+
+void                 cpg_parser_context_pop_input             (CpgParserContext *context);
+
+gdouble              cpg_parser_context_calculate             (CpgParserContext *context,
+                                                               gchar const      *expression);
+
+gchar               *cpg_parser_context_calculate_str         (CpgParserContext *context,
+                                                               gchar const      *expression);
 
 G_END_DECLS
 

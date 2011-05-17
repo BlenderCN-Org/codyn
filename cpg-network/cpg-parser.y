@@ -46,8 +46,16 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %token <numf> T_DOUBLE
 %token <numf> T_INTEGER
 %token <id> T_IDENTIFIER
-%token <id> T_REGEX
 %token <id> T_STRING
+
+%token T_STRING_BEGIN
+%token T_STRING_END
+
+%token T_REGEX_BEGIN
+%token T_REGEX_END
+
+%token <id> T_DEFINED
+%token <id> T_EQUATION
 
 %type <flags> flags
 %type <flags> flag
@@ -72,6 +80,8 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <object> state
 %type <id> identifier_or_string
 %type <id> expanded_string
+%type <id> expanded_regex
+%type <id> string_contents
 
 %define api.pure
 %name-prefix="cpg_parser_"
@@ -96,6 +106,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 	CpgFunctionArgument *argument;
 	CpgObject *object;
 	CpgSelector *selector;
+	GString *string;
 }
 
 %start document
@@ -152,8 +163,19 @@ define
 	: T_KEY_DEFINE T_IDENTIFIER '=' expanded_string { cpg_parser_context_define (context, $2, $4); }
 	;
 
+expanded_regex
+	: T_REGEX_BEGIN string_contents T_REGEX_END	{ $$ = $2; }
+	;
+
 expanded_string
-	: T_STRING			{ $$ = cpg_parser_context_expand_defines (context, $1); }
+	: T_STRING_BEGIN string_contents T_STRING_END	{ $$ = $2; }
+	;
+
+string_contents
+	:				{ $$ = g_strdup (""); }
+	| string_contents T_STRING	{ $$ = g_strconcat ($1, $2, NULL); }
+	| string_contents T_DEFINED	{ $$ = g_strconcat ($1, cpg_parser_context_lookup_define (context, $2), NULL); }
+	| string_contents T_EQUATION	{ $$ = g_strconcat ($1, cpg_parser_context_calculate_str (context, $2), NULL); }
 	;
 
 templates
@@ -330,8 +352,8 @@ flag
 	;
 
 action
-	: T_IDENTIFIER '<' expanded_string
-					{ cpg_parser_context_add_action (context, $1, $3); errb }
+	: T_IDENTIFIER '<' '=' expanded_string
+					{ cpg_parser_context_add_action (context, $1, $4); errb }
 	;
 
 selector
@@ -348,7 +370,7 @@ selector_identifier
 	;
 
 selector_regex
-	: T_REGEX 			{ cpg_parser_context_push_selector_regex (context, $1); errb }
+	: expanded_regex		{ cpg_parser_context_push_selector_regex (context, $1); errb }
 	;
 
 nested_selector

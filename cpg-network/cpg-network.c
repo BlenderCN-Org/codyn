@@ -650,7 +650,9 @@ cpg_network_load_from_file (CpgNetwork  *network,
 	{
 		CpgParserContext *ctx;
 
-		ctx = cpg_parser_context_new (network, file);
+		ctx = cpg_parser_context_new (network);
+		cpg_parser_context_push_input (ctx, file, NULL);
+
 		ret = cpg_parser_context_parse (ctx, error);
 
 		g_object_unref (ctx);

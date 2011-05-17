@@ -18,6 +18,59 @@ typedef struct
 
 typedef struct
 {
+	GFile *file;
+	GInputStream *stream;
+} InputItem;
+
+static InputItem *
+input_item_new (GFile        *file,
+                GInputStream *stream)
+{
+	InputItem *ret;
+
+	ret = g_slice_new0 (InputItem);
+
+	ret->file = file ? g_file_dup (file) : NULL;
+
+	if (stream)
+	{
+		ret->stream = g_object_ref (stream);
+	}
+	else if (ret->file)
+	{
+		GFileInputStream *is;
+
+		is = g_file_read (ret->file,
+		                  NULL,
+		                  NULL);
+
+		if (is)
+		{
+			ret->stream = G_INPUT_STREAM (is);
+		}
+	}
+
+	return ret;
+}
+
+static void
+input_item_free (InputItem *self)
+{
+	if (self->file)
+	{
+		g_object_unref (self->file);
+	}
+
+	if (self->stream)
+	{
+		g_object_unref (self->stream);
+	}
+
+	g_slice_free (InputItem, self);
+}
+
+typedef struct
+{
 	gchar *id;
 	GSList *ids;
 
@@ -34,8 +87,7 @@ typedef struct
 struct _CpgParserContextPrivate
 {
 	CpgNetwork *network;
-	GFile *file;
-	GInputStream *stream;
+	GSList *inputs;
 	gpointer scanner;
 	GHashTable *defines;
 
@@ -139,18 +191,10 @@ cpg_parser_context_finalize (GObject *object)
 
 	g_object_unref (self->priv->network);
 
-	if (self->priv->file)
-	{
-		g_object_unref (self->priv->file);
-	}
+	g_slist_foreach (self->priv->inputs, (GFunc)input_item_free, NULL);
+	g_slist_free (self->priv->inputs);
 
 	g_free (self->priv->line);
-
-	if (self->priv->stream)
-	{
-		g_object_unref (self->priv->stream);
-	}
-
 	g_free (self->priv->token);
 
 	cpg_parser_lex_destroy (self->priv->scanner);
@@ -168,20 +212,6 @@ cpg_parser_context_set_property (GObject *object, guint prop_id, const GValue *v
 		case PROP_NETWORK:
 			self->priv->network = g_value_dup_object (value);
 		break;
-		case PROP_FILE:
-		{
-			GFile *file = g_value_get_object (value);
-
-			if (file)
-			{
-				self->priv->file = g_file_dup (file);
-			}
-
-			break;
-		}
-		case PROP_STREAM:
-			self->priv->stream = g_value_dup_object (value);
-			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -197,12 +227,6 @@ cpg_parser_context_get_property (GObject *object, guint prop_id, GValue *value, 
 	{
 		case PROP_NETWORK:
 			g_value_set_object (value, self->priv->network);
-			break;
-		case PROP_FILE:
-			g_value_take_object (value, g_file_dup (self->priv->file));
-			break;
-		case PROP_STREAM:
-			g_value_set_object (value, self->priv->stream);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -252,22 +276,6 @@ cpg_parser_context_class_init (CpgParserContextClass *klass)
 	                                                      "Network",
 	                                                      CPG_TYPE_NETWORK,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_FILE,
-	                                 g_param_spec_object ("file",
-	                                                      "File",
-	                                                      "File",
-	                                                      G_TYPE_FILE,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_STREAM,
-	                                 g_param_spec_object ("stream",
-	                                                      "Stream",
-	                                                      "Stream",
-	                                                      G_TYPE_INPUT_STREAM,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -277,36 +285,10 @@ cpg_parser_context_init (CpgParserContext *self)
 }
 
 CpgParserContext *
-cpg_parser_context_new (CpgNetwork   *network,
-                        GFile        *file)
+cpg_parser_context_new (CpgNetwork *network)
 {
 	return g_object_new (CPG_TYPE_PARSER_CONTEXT,
 	                     "network", network,
-	                     "file", file,
-	                     NULL);
-}
-
-CpgParserContext *
-cpg_parser_context_new_for_path (CpgNetwork   *network,
-                                 gchar const  *path)
-{
-	GFile *file;
-	CpgParserContext *ret;
-
-	file = g_file_new_for_path (path);
-	ret = cpg_parser_context_new (network, file);
-	g_object_unref (file);
-
-	return ret;
-}
-
-CpgParserContext *
-cpg_parser_context_new_for_stream (CpgNetwork   *network,
-                                   GInputStream *stream)
-{
-	return g_object_new (CPG_TYPE_PARSER_CONTEXT,
-	                     "network", network,
-	                     "stream", stream,
 	                     NULL);
 }
 
@@ -1348,17 +1330,24 @@ cpg_parser_context_import (CpgParserContext *context,
                            gchar const      *id,
                            gchar const      *path)
 {
-	GFile *file;
+	GFile *file = NULL;
 	GSList *parent;
 	CpgImport *import;
 	GError *error = NULL;
+	GFile *curfile;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (id != NULL);
 	g_return_if_fail (path != NULL);
 
-	file = cpg_network_parser_utils_resolve_import (context->priv->file,
-	                                                path);
+	curfile = cpg_parser_context_get_file (context);
+
+	if (curfile)
+	{
+		file = cpg_network_parser_utils_resolve_import (curfile,
+		                                                path);
+		g_object_unref (curfile);
+	}
 
 	if (!file)
 	{
@@ -1498,10 +1487,24 @@ cpg_parser_context_read (CpgParserContext *context,
                          gchar            *buffer,
                          gsize             max_size)
 {
+	InputItem *item;
+
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), EOF);
 	g_return_val_if_fail (buffer != NULL, EOF);
 
-	return g_input_stream_read (context->priv->stream,
+	if (!context->priv->inputs)
+	{
+		return 0;
+	}
+
+	item = context->priv->inputs->data;
+
+	if (!item->stream)
+	{
+		return 0;
+	}
+
+	return g_input_stream_read (item->stream,
 	                            buffer,
 	                            max_size,
 	                            NULL,
@@ -1513,19 +1516,7 @@ cpg_parser_context_parse (CpgParserContext  *context,
                           GError           **error)
 {
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), FALSE);
-	g_return_val_if_fail (context->priv->file || context->priv->stream, FALSE);
-
-	if (!context->priv->stream)
-	{
-		context->priv->stream = G_INPUT_STREAM (g_file_read (context->priv->file,
-		                                                     NULL,
-		                                                     NULL));
-	}
-
-	if (!context->priv->stream)
-	{
-		return FALSE;
-	}
+	g_return_val_if_fail (context->priv->inputs, FALSE);
 
 	if (cpg_parser_parse (context) == 0)
 	{
@@ -1634,97 +1625,14 @@ gchar const *
 cpg_parser_context_lookup_define (CpgParserContext *context,
                                   gchar const      *define)
 {
+	gchar const *ret;
+
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
 	g_return_val_if_fail (define != NULL, NULL);
 
-	return g_hash_table_lookup (context->priv->defines, define);
-}
+	ret = g_hash_table_lookup (context->priv->defines, define);
 
-static gboolean
-expand_define (GMatchInfo const *info,
-               GString          *result,
-               CpgParserContext *context)
-{
-	gchar *esc;
-
-	esc = g_match_info_fetch (info, 1);
-
-	if (esc && strlen (esc) % 2 != 0)
-	{
-		gchar *rest;
-
-		if (strlen (esc) > 1)
-		{
-			gchar *es;
-
-			es = g_strnfill ((strlen (esc) - 1) / 2, '\\');
-			g_string_append (result, es);
-			g_free (es);
-		}
-
-		rest = g_match_info_fetch (info, 2);
-		g_string_append (result, rest);
-
-		g_free (rest);
-	}
-	else
-	{
-		gchar *def;
-		gchar const *ret;
-
-		if (esc && *esc)
-		{
-			gchar *es;
-
-			es = g_strnfill (strlen (esc) / 2, '\\');
-			g_string_append (result, es);
-			g_free (es);
-		}
-
-		def = g_match_info_fetch (info, 3);
-		ret = cpg_parser_context_lookup_define (context, def);
-
-		if (ret)
-		{
-			g_string_append (result, ret);
-		}
-
-		g_free (def);
-	}
-
-	g_free (esc);
-	return TRUE;
-}
-
-gchar *
-cpg_parser_context_expand_defines (CpgParserContext *context,
-                                   gchar const      *s)
-{
-	static GRegex *reg = NULL;
-
-	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-
-	if (s == NULL)
-	{
-		return NULL;
-	}
-
-	if (reg == NULL)
-	{
-		reg = g_regex_new ("(\\\\*)(@{?([a-z_][a-z0-9_-]*)}?)",
-		                   G_REGEX_CASELESS,
-		                   0,
-		                   NULL);
-	}
-
-	return g_regex_replace_eval (reg,
-	                             s,
-	                             -1,
-	                             0,
-	                             0,
-	                             (GRegexEvalCallback)expand_define,
-	                             context,
-	                             NULL);
+	return ret ? ret : "";
 }
 
 static gboolean
@@ -1810,4 +1718,175 @@ cpg_parser_context_set_integrator (CpgParserContext *context,
 	it = g_object_new (type, NULL);
 	cpg_network_set_integrator (context->priv->network, it);
 	g_object_unref (it);
+}
+
+void
+cpg_parser_context_push_input (CpgParserContext *context,
+                               GFile            *file,
+                               GInputStream     *stream)
+{
+	InputItem *item;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (file != NULL || stream != NULL);
+
+	item = input_item_new (file, stream);
+
+	context->priv->inputs = g_slist_prepend (context->priv->inputs,
+	                                         item);
+}
+
+void
+cpg_parser_context_push_input_from_path (CpgParserContext *context,
+                                         gchar const      *filename)
+{
+	GFile *file = NULL;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (filename != NULL);
+
+	if (g_path_is_absolute (filename))
+	{
+		file = g_file_new_for_path (filename);
+	}
+	else
+	{
+		GSList *item;
+
+		for (item = context->priv->inputs; item; item = g_slist_next (item))
+		{
+			InputItem *ip = item->data;
+
+			if (!ip->file)
+			{
+				continue;
+			}
+
+			file = g_file_resolve_relative_path (ip->file, filename);
+			break;
+		}
+
+		if (!file)
+		{
+			file = g_file_new_for_commandline_arg (filename);
+		}
+	}
+
+	cpg_parser_context_push_input (context, file, NULL);
+	g_object_unref (file);
+}
+
+void
+cpg_parser_context_pop_input (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	if (context->priv->inputs)
+	{
+		input_item_free (context->priv->inputs->data);
+
+		context->priv->inputs = g_slist_delete_link (context->priv->inputs,
+		                                             context->priv->inputs);
+	}
+}
+
+GFile *
+cpg_parser_context_get_file (CpgParserContext *context)
+{
+	GSList *item;
+
+	for (item = context->priv->inputs; item; item = g_slist_next (item))
+	{
+		InputItem *ip = item->data;
+
+		if (ip->file)
+		{
+			return g_file_dup (ip->file);
+		}
+	}
+
+	return NULL;
+}
+
+static void
+import_define (gchar const *key,
+               gchar const *value,
+               CpgObject   *ret)
+{
+	cpg_object_add_property (ret,
+	                         cpg_property_new (key,
+	                                           value,
+	                                           CPG_PROPERTY_FLAG_NONE),
+	                         NULL);
+}
+
+static CpgObject *
+create_context (CpgParserContext *context)
+{
+	CpgObject *ret;
+
+	ret = cpg_object_new ("s");
+
+	g_hash_table_foreach (context->priv->defines,
+	                      (GHFunc)import_define,
+	                      ret);
+
+
+	if (!cpg_object_compile (ret, NULL, NULL))
+	{
+		return NULL;
+	}
+
+	return ret;
+}
+
+gdouble
+cpg_parser_context_calculate (CpgParserContext *context,
+                              gchar const      *expression)
+{
+	CpgObject *obj;
+	CpgExpression *expr;
+	gdouble ret;
+	CpgCompileContext *ctx;
+
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), 0.0);
+	g_return_val_if_fail (expression != NULL, 0.0);
+
+	obj = create_context (context);
+
+	expr = cpg_expression_new (expression);
+
+	ctx = cpg_compile_context_new ();
+	cpg_compile_context_prepend_object (ctx, obj);
+
+	if (!cpg_expression_compile (expr, ctx, NULL))
+	{
+		ret = 0.0;
+	}
+	else
+	{
+		ret = cpg_expression_evaluate (expr);
+	}
+
+	g_object_unref (obj);
+	g_object_unref (expr);
+	g_object_unref (ctx);
+
+	return ret;
+}
+
+gchar *
+cpg_parser_context_calculate_str (CpgParserContext *context,
+                                  gchar const      *expression)
+{
+	gdouble val;
+	gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
+
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+	g_return_val_if_fail (expression != NULL, NULL);
+
+	val = cpg_parser_context_calculate (context, expression);
+
+	g_ascii_dtostr (buf, G_ASCII_DTOSTR_BUF_SIZE, val);
+	return g_strdup (buf);
 }
