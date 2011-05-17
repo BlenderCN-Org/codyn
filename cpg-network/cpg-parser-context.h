@@ -27,6 +27,12 @@ typedef struct _CpgParserContextPrivate	CpgParserContextPrivate;
 
 typedef enum
 {
+	CPG_PARSER_CONTEXT_LINK_FLAG_BIDIRECTIONAL = 1 << 0,
+	CPG_PARSER_CONTEXT_LINK_FLAG_ALL = 1 << 1
+} CpgParserContextLinkFlags;
+
+typedef enum
+{
 	CPG_PARSER_CONTEXT_SCOPE_NONE,
 	CPG_PARSER_CONTEXT_SCOPE_STATE,
 	CPG_PARSER_CONTEXT_SCOPE_LINK,
@@ -79,6 +85,10 @@ gboolean             cpg_parser_context_parse                 (CpgParserContext 
 void                 cpg_parser_context_set_id                (CpgParserContext *context,
                                                                gchar const      *id,
                                                                GArray           *templates);
+
+void                 cpg_parser_context_set_link              (CpgParserContext *context,
+                                                               CpgParserContextLinkFlags flags,
+                                                               GArray           *fromto);
 
 CpgProperty         *cpg_parser_context_add_property          (CpgParserContext *context,
                                                                gchar const      *name,
@@ -142,7 +152,8 @@ void                 cpg_parser_context_push_selector_regex   (CpgParserContext 
                                                                gchar const      *regex);
 void                 cpg_parser_context_push_selector_pseudo  (CpgParserContext *context,
                                                                gchar const      *identifier,
-                                                               gchar const      *argument);
+                                                               GArray           *arguments);
+
 CpgSelector         *cpg_parser_context_pop_selector          (CpgParserContext *context);
 
 gssize               cpg_parser_context_read                  (CpgParserContext *context,
@@ -178,6 +189,12 @@ gdouble              cpg_parser_context_calculate             (CpgParserContext 
 
 gchar               *cpg_parser_context_calculate_str         (CpgParserContext *context,
                                                                gchar const      *expression);
+
+gint                 cpg_parser_context_steal_start_token     (CpgParserContext *context);
+gint                 cpg_parser_context_get_start_token     (CpgParserContext *context);
+
+void                 cpg_parser_context_set_start_token       (CpgParserContext *context,
+                                                               gint              token);
 
 G_END_DECLS
 

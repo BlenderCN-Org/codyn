@@ -26,7 +26,6 @@
     <xi:include href="xml/cpg-network-deserializer.xml"/>
     <xi:include href="xml/cpg-object.xml"/>
     <xi:include href="xml/cpg-property.xml"/>
-    <xi:include href="xml/cpg-state.xml"/>
     <xi:include href="xml/cpg-link.xml"/>
     <xi:include href="xml/cpg-link-action.xml"/>
     <xi:include href="xml/cpg-group.xml"/>

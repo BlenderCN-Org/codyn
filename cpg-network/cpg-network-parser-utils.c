@@ -1,23 +1,15 @@
 #include "cpg-network-parser-utils.h"
 
-struct _CpgExpandedId
-{
-	gchar *id;
-
-	GPtrArray *expansions;
-};
-
 gboolean
 cpg_network_parser_utils_get_templates (CpgNetwork           *network,
                                         CpgGroup             *parent,
                                         gboolean              for_template,
-                                        gchar const * const  *names,
+                                        GSList               *selectors,
                                         gchar               **missing,
                                         GSList              **templates)
 {
 	CpgGroup *template_group;
 	gboolean ret;
-	gchar const * const *ptr;
 
 	if (templates)
 	{
@@ -29,7 +21,7 @@ cpg_network_parser_utils_get_templates (CpgNetwork           *network,
 		*missing = NULL;
 	}
 
-	if (!names)
+	if (!selectors)
 	{
 		return TRUE;
 	}
@@ -37,59 +29,57 @@ cpg_network_parser_utils_get_templates (CpgNetwork           *network,
 	template_group = cpg_network_get_template_group (network);
 	ret = TRUE;
 
-	/* Multiple templates are allowed, iterate over all the template ids
-	   and resolve them from the template group */
-	for (ptr = names; *ptr; ++ptr)
+	while (selectors)
 	{
-		CpgObject *template = NULL;
-
-		if (!**ptr)
-		{
-			continue;
-		}
+		GSList *template = NULL;
 
 		/* Find the reference relative to the current parent if we
 		   are parsing templates, since they can reference other
 		   templates */
 		if (for_template && parent)
 		{
-			template = cpg_group_find_object (parent, *ptr);
+			template = cpg_selector_select (selectors->data,
+			                                CPG_OBJECT (parent),
+			                                NULL);
 		}
 
 		if (!template)
 		{
 			/* Find template in the root template group */
-			template = cpg_group_find_object (template_group,
-			                                  *ptr);
+			template = cpg_selector_select (selectors->data,
+			                                CPG_OBJECT (template_group),
+			                                NULL);
 		}
 
 		if (!template)
 		{
 			if (missing)
 			{
-				*missing = g_strdup (*ptr);
+				*missing = g_strdup (cpg_selector_as_string (selectors->data));
 			}
 
 			ret = FALSE;
 		}
 		else if (templates)
 		{
-			*templates = g_slist_prepend (*templates, template);
+			*templates = g_slist_concat (*templates, template);
+		}
+		else
+		{
+			g_slist_free (template);
 		}
 
 		if (!ret)
 		{
 			break;
 		}
+
+		selectors = g_slist_next (selectors);
 	}
 
 	if (templates)
 	{
-		if (ret)
-		{
-			*templates = g_slist_reverse (*templates);
-		}
-		else
+		if (!ret)
 		{
 			g_slist_free (*templates);
 		}
@@ -330,51 +320,20 @@ parse_expansion (gchar const **id)
 	return g_slist_reverse (ret);
 }
 
-static CpgExpandedId *
-cpg_expanded_id_new (gchar const *s,
-                     GPtrArray   *ptr)
-{
-	CpgExpandedId *ret;
-
-	ret = g_slice_new (CpgExpandedId);
-
-	ret->id = g_strdup (s);
-	ret->expansions = ptr ? ptr : g_ptr_array_new ();
-
-	return ret;
-}
-
-static GPtrArray *
-copy_expansions (CpgExpandedId *id)
-{
-	GPtrArray *ptr;
-	gint i;
-
-	ptr = g_ptr_array_sized_new (id->expansions->len + 1);
-
-	for (i = 0; i < cpg_expanded_id_get_num_expansions (id); ++i)
-	{
-		g_ptr_array_add (ptr,
-		                 g_strdup (cpg_expanded_id_get_expansion (id, i)));
-	}
-
-	return ptr;
-}
-
-static CpgExpandedId *
-expand_id (CpgExpandedId *id,
-           gchar const   *s)
+static CpgExpansion *
+expand_id (CpgExpansion *id,
+           gchar const  *s)
 {
 	gchar *c;
-	GPtrArray *ptr;
-	CpgExpandedId *ret;
+	CpgExpansion *ret;
 
-	c = g_strconcat (id->id, s, NULL);
-	ptr = copy_expansions (id);
-	g_ptr_array_add (ptr, g_strdup (s));
+	c = g_strconcat (cpg_expansion_get (id, 0), s, NULL);
 
-	ret = cpg_expanded_id_new (c, ptr);
+	ret = cpg_expansion_copy (id);
+	cpg_expansion_set (id, 0, c);
 	g_free (c);
+
+	cpg_expansion_add (id, s);
 
 	return ret;
 }
@@ -388,15 +347,17 @@ prepend_expansion (GSList *items,
 
 	for (ptr = items; ptr; ptr = g_slist_next (ptr))
 	{
-		CpgExpandedId *id = ptr->data;
+		CpgExpansion *id = ptr->data;
 		GSList *ex;
 
 		for (ex = expansions; ex; ex = g_slist_next (ex))
 		{
-			ret = g_slist_prepend (ret, expand_id (id, ex->data));
+			ret = g_slist_prepend (ret,
+			                       expand_id (id,
+			                                  ex->data));
 		}
 
-		cpg_expanded_id_free (id);
+		cpg_expansion_free (id);
 	}
 
 	g_slist_free (items);
@@ -414,13 +375,16 @@ add_to_expansions (GSList      *ids,
 
 	while (ids)
 	{
-		CpgExpandedId *p;
+		CpgExpansion *p;
 		gchar *tmp;
 
 		p = ids->data;
 
-		tmp = p->id;
-		p->id = g_strconcat (p->id, added, NULL);
+		tmp = g_strconcat (cpg_expansion_get (p, 0),
+		                   added,
+		                   NULL);
+
+		cpg_expansion_set (p, 0, tmp);
 		g_free (tmp);
 
 		ids = g_slist_next (ids);
@@ -436,7 +400,7 @@ cpg_network_parser_utils_expand_id (gchar const *id)
 	gchar const *ptr = id;
 
 	ret = g_slist_prepend (NULL,
-	                       cpg_expanded_id_new ("", NULL));
+	                       cpg_expansion_new (NULL));
 
 	while (*id)
 	{
@@ -469,117 +433,4 @@ cpg_network_parser_utils_expand_id (gchar const *id)
 	}
 
 	return g_slist_reverse (ret);
-}
-
-gchar const *
-cpg_expanded_id_get_id (CpgExpandedId *id)
-{
-	return id->id;
-}
-
-gint
-cpg_expanded_id_get_num_expansions (CpgExpandedId *id)
-{
-	return id->expansions->len;
-}
-
-gchar const *
-cpg_expanded_id_get_expansion (CpgExpandedId *id,
-                               gint           idx)
-{
-	if (idx < 0 || idx >= id->expansions->len)
-	{
-		return NULL;
-	}
-
-	return (gchar const *)g_ptr_array_index (id->expansions, idx);
-}
-
-void
-cpg_expanded_id_free (CpgExpandedId *id)
-{
-	gint i;
-
-	for (i = 0; i < id->expansions->len; ++i)
-	{
-		g_free (g_ptr_array_index (id->expansions, i));
-	}
-
-	g_free (id->id);
-
-	g_slice_free (CpgExpandedId, id);
-}
-
-static gboolean
-expand_replace (GMatchInfo const *info,
-                GString          *result,
-                CpgExpandedId    *id)
-{
-	gchar *n;
-	gint num;
-	gchar const *rep;
-
-	n = g_match_info_fetch (info, 1);
-	num = g_ascii_strtoll (n, NULL, 10);
-
-	if (num == 0)
-	{
-		rep = cpg_expanded_id_get_id (id);
-	}
-	else
-	{
-		rep = cpg_expanded_id_get_expansion (id, num - 1);
-	}
-
-	if (rep != NULL)
-	{
-		g_string_append (result, rep);
-		return TRUE;
-	}
-	else
-	{
-		return FALSE;
-	}
-}
-
-gchar *
-cpg_expanded_id_expand (CpgExpandedId *id,
-                        gchar const   *s)
-{
-	static GRegex *reg = NULL;
-
-	if (!reg)
-	{
-		reg = g_regex_new ("@([0-9]+)",
-		                   0,
-		                   0,
-		                   NULL);
-	}
-
-	return g_regex_replace_eval (reg,
-	                             s,
-	                             -1,
-	                             0,
-	                             0,
-	                             (GRegexEvalCallback)expand_replace,
-	                             id,
-	                             NULL);
-}
-
-gchar **
-cpg_expanded_id_expand_all (CpgExpandedId       *id,
-                            gchar const * const *s)
-{
-	GPtrArray *ret;
-
-	ret = g_ptr_array_new ();
-
-	while (s && *s)
-	{
-		g_ptr_array_add (ret, cpg_expanded_id_expand (id, *s));
-		++s;
-	}
-
-	g_ptr_array_add (ret, NULL);
-	return (gchar **)g_ptr_array_free (ret, FALSE);
 }

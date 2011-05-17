@@ -580,8 +580,10 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	xmlChar *ref = xmlGetProp (node, (xmlChar *)"ref");
 	gboolean for_template;
 	gchar **parts;
+	gchar **p;
 	CpgGroup *template_group;
 	gboolean ret;
+	GSList *selectors = NULL;
 
 	if (templates)
 	{
@@ -604,12 +606,25 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	template_group = cpg_network_get_template_group (deserializer->priv->network);
 	for_template = g_slist_last (deserializer->priv->parents)->data == (gpointer)template_group;
 
+	for (p = parts; *p; ++p)
+	{
+		CpgSelector *selector;
+
+		selector = cpg_selector_new ();
+		cpg_selector_add (selector, *p);
+
+		selectors = g_slist_prepend (selectors, selector);
+	}
+
 	ret = cpg_network_parser_utils_get_templates (deserializer->priv->network,
 	                                              deserializer->priv->parents->data,
 	                                              for_template,
-	                                              (gchar const * const *)parts,
+	                                              selectors,
 	                                              missing,
 	                                              templates);
+
+	g_slist_foreach (selectors, (GFunc)g_object_unref, NULL);
+	g_slist_free (selectors);
 
 	g_strfreev (parts);
 	return ret;

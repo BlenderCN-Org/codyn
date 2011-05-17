@@ -55,6 +55,13 @@ STRING "\""(\\["]|[^"])*"\""
 
 %%
 
+%{
+	if (cpg_parser_context_get_start_token (yyextra))
+	{
+		return cpg_parser_context_steal_start_token (yyextra);
+	}
+%}
+
 [ \t]				;
 \n.*				{
 					yyccolumn = 1;

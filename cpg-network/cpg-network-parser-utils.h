@@ -3,13 +3,14 @@
 
 #include <cpg-network/cpg-network.h>
 #include <cpg-network/cpg-import.h>
+#include <cpg-network/cpg-selector.h>
 
 typedef struct _CpgExpandedId CpgExpandedId;
 
 gboolean     cpg_network_parser_utils_get_templates        (CpgNetwork           *network,
                                                             CpgGroup             *parent,
                                                             gboolean              for_template,
-                                                            gchar const * const  *names,
+                                                            GSList               *selectors,
                                                             gchar               **missing,
                                                             GSList              **templates);
 
@@ -23,21 +24,6 @@ CpgImport   *cpg_network_parser_utils_find_template_import (CpgObject           
                                                             GFile                *file);
 
 GSList      *cpg_network_parser_utils_expand_id            (gchar const          *id);
-
-gchar const *cpg_expanded_id_get_id                        (CpgExpandedId        *id);
-
-gint         cpg_expanded_id_get_num_expansions            (CpgExpandedId        *id);
-
-gchar const *cpg_expanded_id_get_expansion                 (CpgExpandedId        *id,
-                                                            gint                  idx);
-
-void         cpg_expanded_id_free                          (CpgExpandedId        *id);
-
-gchar       *cpg_expanded_id_expand                        (CpgExpandedId        *id,
-                                                            gchar const          *s);
-
-gchar      **cpg_expanded_id_expand_all                    (CpgExpandedId        *id,
-                                                            gchar const * const  *s);
 
 #endif /* __CPG_NETWORK_PARSER_UTILS_H__ */
 

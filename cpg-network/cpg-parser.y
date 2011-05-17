@@ -54,21 +54,23 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %token T_REGEX_BEGIN
 %token T_REGEX_END
 
+%token T_START_DOCUMENT
+%token T_START_SELECTOR
+
 %token <id> T_DEFINED
 %token <id> T_EQUATION
 
 %type <flags> flags
 %type <flags> flag
 
-%type <id> nth
 %type <id> selector_pseudo_identifier
 
 %type <property> property_def
 %type <array> double_list
+%type <array> pseudo_args_list
 %type <piece> polynomial_piece
 %type <array> polynomial_pieces
 %type <array> function_argument_list
-%type <array> template_list
 %type <array> selector_list
 %type <argument> function_argument
 %type <selector> selector
@@ -82,6 +84,10 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <id> expanded_string
 %type <id> expanded_regex
 %type <id> string_contents
+
+%type <num> link_start
+%type <array> link_templates
+%type <array> link_connect
 
 %define api.pure
 %name-prefix="cpg_parser_"
@@ -109,7 +115,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 	GString *string;
 }
 
-%start document
+%start choose_parser
 
 %destructor { cpg_parser_context_pop_scope (context); } scope_start
 %destructor { cpg_parser_context_pop_scope (context); } state_scope_start
@@ -118,9 +124,14 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %destructor { cpg_parser_context_pop_template (context); } template_scope_start
 
-%expect 5
+%expect 7
 
 %%
+
+choose_parser
+	: T_START_DOCUMENT document
+	| T_START_SELECTOR selector
+	;
 
 document
 	:
@@ -169,6 +180,8 @@ expanded_regex
 
 expanded_string
 	: T_STRING_BEGIN string_contents T_STRING_END	{ $$ = $2; }
+	| T_INTEGER					{ $$ = g_strdup_printf ("%d", (gint)$1); }
+	| T_DOUBLE					{ $$ = g_strdup_printf ("%f", $1); }
 	;
 
 string_contents
@@ -214,7 +227,7 @@ network_scope_start
 
 state
 	: T_KEY_STATE identifier_or_string state_scope_start { cpg_parser_context_set_id (context, $2, NULL); } state_contents scope_end { $<object>$ = $6; }
-	| T_KEY_STATE identifier_or_string ':' template_list state_scope_start { cpg_parser_context_set_id (context, $2, $4); } state_contents scope_end { $<object>$ = $8; }
+	| T_KEY_STATE identifier_or_string ':' selector_list state_scope_start { cpg_parser_context_set_id (context, $2, $4); } state_contents scope_end { $<object>$ = $8; }
 	;
 
 state_scope_start
@@ -231,20 +244,35 @@ scope_end
 	: '}' 				{ $$ = cpg_parser_context_pop_scope (context); errb }
 	;
 
-link
-	: T_KEY_LINK identifier_or_string link_scope_start { cpg_parser_context_set_id (context, $2, NULL); } link_contents scope_end { $<object>$ = $6; } connect_link
-	| T_KEY_LINK identifier_or_string ':' template_list link_scope_start { cpg_parser_context_set_id (context, $2, $4); } link_contents scope_end { $<object>$ = $8; } connect_link
+link_start
+	: T_KEY_BIDIRECTIONAL T_KEY_LINK	{ $$ = TRUE; }
+	| T_KEY_LINK				{ $$ = FALSE; }
 	;
 
-connect_link
-	:
-	| directional T_KEY_FROM selector T_KEY_TO selector
-					{ cpg_parser_context_link_one (context,
-					                               CPG_LINK ($<object>0),
-					                               $3,
-					                               $5,
-					                               $1,
-					                               FALSE); errb }
+link_connect
+	:				{ $$ = NULL; }
+	| T_KEY_FROM selector T_KEY_TO selector
+					{ append_array (NULL, CpgSelector *, $2, $$ = arret);
+					  append_array ($$, CpgSelector *, $4, $$ = arret);
+					}
+	;
+
+link_templates
+	:				{ $$ = NULL; }
+	| ':' selector_list		{ $$ = $2; }
+	;
+
+link
+	: link_start
+	  identifier_or_string
+	  link_connect
+	  link_templates
+	  link_scope_start 		{
+	  					cpg_parser_context_set_id (context, $2, $4);
+	  					cpg_parser_context_set_link (context, $1, $3);
+	  				}
+	  link_contents scope_end	{ $<object>$ = $8; }
+	;
 
 link_scope_start
 	: '{'				{ cpg_parser_context_push_scope (context,
@@ -277,12 +305,6 @@ double_list
 	| T_INTEGER			{ append_array (NULL, gdouble, $1, $$ = arret); }
 	| double_list ',' T_DOUBLE	{ append_array ($1, gdouble, $3, $$ = arret); }
 	| double_list ',' T_INTEGER	{ append_array ($1, gdouble, $3, $$ = arret); }
-	;
-
-template_list
-	: identifier_or_string		{ append_array (NULL, gchar *, g_strdup ($1), $$ = arret); }
-	| template_list ',' identifier_or_string
-					{ append_array ($1, gchar *, g_strdup ($3), $$ = arret); }
 	;
 
 selector_list
@@ -380,9 +402,9 @@ nested_selector
 	| nested_selector selector_pseudo
 	;
 
-nth
-	: T_INTEGER			{ $$ = g_strdup_printf ("%d", (gint)$1); }
-	| expanded_string		{ $$ = $1; }
+pseudo_args_list
+	:					{ $$ = NULL; }
+	| pseudo_args_list expanded_string	{ append_array ($1, gchar *, $2, $$ = arret); }
 	;
 
 selector_pseudo_identifier
@@ -393,7 +415,7 @@ selector_pseudo_identifier
 	;
 
 selector_pseudo
-	: ':' selector_pseudo_identifier '(' nth ')'
+	: ':' selector_pseudo_identifier '(' pseudo_args_list ')'
 					{ cpg_parser_context_push_selector_pseudo (context, $2, $4); errb }
 	| ':' selector_pseudo_identifier		{ cpg_parser_context_push_selector_pseudo (context, $2, NULL); errb }
 	;
