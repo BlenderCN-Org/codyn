@@ -1823,14 +1823,16 @@ cpg_group_find_object (CpgGroup    *group,
 		return NULL;
 	}
 
-	all = cpg_selector_select (sel, CPG_OBJECT (group), NULL);
+	all = cpg_selector_select (sel, CPG_OBJECT (group));
 
 	if (all)
 	{
-		ret = all->data;
+		ret = cpg_selection_get_object (all->data);
 	}
 
+	g_slist_foreach (all, (GFunc)cpg_selection_free, NULL);
 	g_slist_free (all);
+
 	g_object_unref (sel);
 
 	return ret;

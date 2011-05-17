@@ -115,15 +115,13 @@ gboolean             cpg_parser_context_link                  (CpgParserContext 
                                                                CpgSelector      *link,
                                                                CpgSelector      *from,
                                                                CpgSelector      *to,
-                                                               gboolean          bidirectional,
-                                                               gboolean          all_to_all);
+                                                               CpgParserContextLinkFlags flags);
 
 gboolean             cpg_parser_context_link_one              (CpgParserContext *context,
                                                                CpgLink          *link,
                                                                CpgSelector      *from,
                                                                CpgSelector      *to,
-                                                               gboolean          bidirectional,
-                                                               gboolean          all_to_all);
+                                                               CpgParserContextLinkFlags flags);
 
 void                 cpg_parser_context_apply_template        (CpgParserContext *context,
                                                                CpgSelector      *objects,

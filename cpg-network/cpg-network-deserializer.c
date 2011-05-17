@@ -584,6 +584,7 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	CpgGroup *template_group;
 	gboolean ret;
 	GSList *selectors = NULL;
+	GSList *item;
 
 	if (templates)
 	{
@@ -627,6 +628,18 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	g_slist_free (selectors);
 
 	g_strfreev (parts);
+
+	if (templates)
+	{
+		for (item = *templates; item; item = g_slist_next (item))
+		{
+			CpgObject *o = cpg_selection_get_object (item->data);
+			cpg_selection_free (item->data);
+
+			item->data = o;
+		}
+	}
+
 	return ret;
 }
 

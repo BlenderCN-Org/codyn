@@ -74,8 +74,6 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <array> selector_list
 %type <argument> function_argument
 %type <selector> selector
-%type <num> directional
-%type <num> all
 
 %type <object> scope_end
 %type <object> link
@@ -85,7 +83,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <id> expanded_regex
 %type <id> string_contents
 
-%type <num> link_start
+%type <num> link_flags
 %type <array> link_templates
 %type <array> link_connect
 
@@ -244,9 +242,10 @@ scope_end
 	: '}' 				{ $$ = cpg_parser_context_pop_scope (context); errb }
 	;
 
-link_start
-	: T_KEY_BIDIRECTIONAL T_KEY_LINK	{ $$ = TRUE; }
-	| T_KEY_LINK				{ $$ = FALSE; }
+link_flags
+	:					{ $$ = 0; }
+	| link_flags T_KEY_ALL			{ $$ = $1 | CPG_PARSER_CONTEXT_LINK_FLAG_ALL; }
+	| link_flags T_KEY_BIDIRECTIONAL	{ $$ = $1 | CPG_PARSER_CONTEXT_LINK_FLAG_BIDIRECTIONAL; }
 	;
 
 link_connect
@@ -263,15 +262,16 @@ link_templates
 	;
 
 link
-	: link_start
+	: link_flags
+	  T_KEY_LINK
 	  identifier_or_string
 	  link_connect
 	  link_templates
 	  link_scope_start 		{
-	  					cpg_parser_context_set_id (context, $2, $4);
-	  					cpg_parser_context_set_link (context, $1, $3);
+	  					cpg_parser_context_set_id (context, $3, $5);
+	  					cpg_parser_context_set_link (context, $1, $4);
 	  				}
-	  link_contents scope_end	{ $<object>$ = $8; }
+	  link_contents scope_end	{ $<object>$ = $9; }
 	;
 
 link_scope_start
@@ -420,19 +420,9 @@ selector_pseudo
 	| ':' selector_pseudo_identifier		{ cpg_parser_context_push_selector_pseudo (context, $2, NULL); errb }
 	;
 
-directional
-	:				{ $$ = FALSE; }
-	| T_KEY_BIDIRECTIONAL		{ $$ = TRUE; }
-	;
-
-all
-	:				{ $$ = FALSE; }
-	| T_KEY_ALL			{ $$ = TRUE; }
-	;
-
 coupling
-	: T_KEY_ATTACH all directional selector T_KEY_FROM selector T_KEY_TO selector
-					{ cpg_parser_context_link (context, $4, $6, $8, $3, $2); errb }
+	: T_KEY_ATTACH link_flags selector T_KEY_FROM selector T_KEY_TO selector
+					{ cpg_parser_context_link (context, $3, $5, $7, $2); errb }
 	;
 
 import

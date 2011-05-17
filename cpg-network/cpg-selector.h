@@ -19,6 +19,7 @@ typedef struct _CpgSelectorClass	CpgSelectorClass;
 typedef struct _CpgSelectorPrivate	CpgSelectorPrivate;
 
 typedef struct _CpgExpansion CpgExpansion;
+typedef struct _CpgSelection CpgSelection;
 
 struct _CpgSelector
 {
@@ -31,9 +32,6 @@ struct _CpgSelectorClass
 {
 	GObjectClass parent_class;
 };
-
-typedef gchar * (*CpgSelectorExpandFunc) (gchar const *id,
-                                          gpointer userdata);
 
 GType         cpg_selector_get_type          (void) G_GNUC_CONST;
 
@@ -60,28 +58,20 @@ void          cpg_selector_add_regex         (CpgSelector            *selector,
                                               gchar const            *regex);
 
 GSList       *cpg_selector_select            (CpgSelector            *selector,
-                                              CpgObject              *parent,
-                                              GSList                **expansions);
+                                              CpgObject              *parent);
 
 GSList       *cpg_selector_select_link_to    (CpgSelector            *selector,
                                               CpgObject              *parent,
-                                              CpgObject              *from,
-                                              GSList                **expansions);
+                                              CpgObject              *from);
 
 GSList       *cpg_selector_select_links      (CpgSelector            *selector,
-                                              CpgObject              *parent,
-                                              GSList                **expansions);
+                                              CpgObject              *parent);
 
 GSList       *cpg_selector_select_states     (CpgSelector            *selector,
-                                              CpgObject              *parent,
-                                              GSList                **expansions);
+                                              CpgObject              *parent);
 
 GSList       *cpg_selector_select_properties (CpgSelector            *selector,
-                                              CpgObject              *parent,
-                                              GSList                **expansions);
-
-void          cpg_selector_free_expansions   (CpgSelector            *selector,
-                                              GSList                 *expansions);
+                                              CpgObject              *parent);
 
 CpgExpansion *cpg_expansion_new              (gchar const * const    *items);
 CpgExpansion *cpg_expansion_copy             (CpgExpansion           *id);
@@ -106,6 +96,15 @@ gchar        *cpg_expansion_expand           (CpgExpansion           *id,
 gchar       **cpg_expansion_expand_all       (CpgExpansion           *id,
                                               gchar const * const    *s);
 
+CpgSelection *cpg_selection_new              (gpointer                object,
+                                              GSList                 *expansions);
+
+void          cpg_selection_free             (CpgSelection           *selection);
+CpgSelection *cpg_selection_copy             (CpgSelection           *selection);
+
+CpgObject    *cpg_selection_get_object       (CpgSelection           *selection);
+CpgProperty  *cpg_selection_get_property     (CpgSelection           *selection);
+GSList       *cpg_selection_get_expansions   (CpgSelection           *selection);
 
 G_END_DECLS
 

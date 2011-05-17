@@ -39,16 +39,14 @@ cpg_network_parser_utils_get_templates (CpgNetwork           *network,
 		if (for_template && parent)
 		{
 			template = cpg_selector_select (selectors->data,
-			                                CPG_OBJECT (parent),
-			                                NULL);
+			                                CPG_OBJECT (parent));
 		}
 
 		if (!template)
 		{
 			/* Find template in the root template group */
 			template = cpg_selector_select (selectors->data,
-			                                CPG_OBJECT (template_group),
-			                                NULL);
+			                                CPG_OBJECT (template_group));
 		}
 
 		if (!template)
@@ -81,6 +79,7 @@ cpg_network_parser_utils_get_templates (CpgNetwork           *network,
 	{
 		if (!ret)
 		{
+			g_slist_foreach (*templates, (GFunc)cpg_selection_free, NULL);
 			g_slist_free (*templates);
 		}
 	}
