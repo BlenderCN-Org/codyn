@@ -41,7 +41,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_ATTACH T_KEY_APPLY T_KEY_DEFINE T_KEY_BIDIRECTIONAL T_KEY_ALL T_KEY_REMOVE T_KEY_INTEGRATOR
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_ATTACH T_KEY_APPLY T_KEY_DEFINE T_KEY_BIDIRECTIONAL T_KEY_ALL T_KEY_REMOVE T_KEY_INTEGRATOR T_KEY_GROUP
 
 %token <numf> T_DOUBLE
 %token <numf> T_INTEGER
@@ -65,7 +65,6 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %type <id> selector_pseudo_identifier
 
-%type <property> property_def
 %type <array> double_list
 %type <array> pseudo_args_list
 %type <piece> polynomial_piece
@@ -75,7 +74,6 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <argument> function_argument
 %type <selector> selector
 
-%type <object> scope_end
 %type <object> link
 %type <object> state
 %type <id> identifier_or_string
@@ -84,8 +82,8 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <id> string_contents
 
 %type <num> link_flags
-%type <array> link_templates
 %type <array> link_connect
+%type <array> templated
 
 %define api.pure
 %name-prefix="cpg_parser_"
@@ -115,14 +113,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %start choose_parser
 
-%destructor { cpg_parser_context_pop_scope (context); } scope_start
-%destructor { cpg_parser_context_pop_scope (context); } state_scope_start
-%destructor { cpg_parser_context_pop_scope (context); } link_scope_start
-%destructor { cpg_parser_context_pop_scope (context); } network_scope_start
-
-%destructor { cpg_parser_context_pop_template (context); } template_scope_start
-
-%expect 7
+%expect 19
 
 %%
 
@@ -139,12 +130,11 @@ document
 toplevel
 	: network
 	| state
+	| group
 	| link
 	| function
 	| polynomial
-	| coupling
 	| import
-	| apply_template
 	| templates
 	| define
 	| remove
@@ -155,7 +145,10 @@ remove
 	;
 
 network
-	: T_KEY_NETWORK network_scope_start network_contents scope_end
+	: T_KEY_NETWORK
+	  '{'				{ cpg_parser_context_push_network (context); }
+	  network_contents
+	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
 network_contents
@@ -190,22 +183,17 @@ string_contents
 	;
 
 templates
-	: T_KEY_TEMPLATES template_scope_start template_contents template_scope_end
-	;
-
-template_scope_end
-	: '}'				{ cpg_parser_context_pop_template (context); }
-	;
-
-template_scope_start
-	: '{'				{ cpg_parser_context_push_template (context); }
+	: T_KEY_TEMPLATES
+	  '{'				{ cpg_parser_context_push_templates (context); }
+	  template_contents
+	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
 template_item
 	: state
 	| link
+	| group
 	| import
-	| apply_template
 	;
 
 template_contents
@@ -213,33 +201,27 @@ template_contents
 	| template_contents template_item;
 	;
 
-identifier_or_string
-	: T_IDENTIFIER
-	| expanded_string
-	;
-
-network_scope_start
-	: '{'				{ cpg_parser_context_push_scope (context,
-					                                 CPG_PARSER_CONTEXT_SCOPE_NETWORK); errb }
+templated
+	:				{ $$ = NULL; }
+	| ':' selector_list		{ $$ = $2; }
 	;
 
 state
-	: T_KEY_STATE identifier_or_string state_scope_start { cpg_parser_context_set_id (context, $2, NULL); } state_contents scope_end { $<object>$ = $6; }
-	| T_KEY_STATE identifier_or_string ':' selector_list state_scope_start { cpg_parser_context_set_id (context, $2, $4); } state_contents scope_end { $<object>$ = $8; }
+	: T_KEY_STATE
+	  expanded_string
+	  templated
+	  '{' 				{ cpg_parser_context_push_state (context, $2, $3); errb }
+	  state_contents
+	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
-state_scope_start
-	: '{'				{ cpg_parser_context_push_scope (context,
-					                                 CPG_PARSER_CONTEXT_SCOPE_STATE); errb }
-	;
-
-scope_start
-	: '{'				{ cpg_parser_context_push_scope (context,
-					                                 CPG_PARSER_CONTEXT_SCOPE_NONE); errb }
-	;
-
-scope_end
-	: '}' 				{ $$ = cpg_parser_context_pop_scope (context); errb }
+group
+	: T_KEY_GROUP
+	  expanded_string
+	  templated
+	  '{' 				{ cpg_parser_context_push_group (context, $2, $3); errb }
+	  group_contents
+	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
 link_flags
@@ -256,37 +238,36 @@ link_connect
 					}
 	;
 
-link_templates
-	:				{ $$ = NULL; }
-	| ':' selector_list		{ $$ = $2; }
-	;
-
 link
 	: link_flags
 	  T_KEY_LINK
-	  identifier_or_string
+	  expanded_string
 	  link_connect
-	  link_templates
-	  link_scope_start 		{
-	  					cpg_parser_context_set_id (context, $3, $5);
-	  					cpg_parser_context_set_link (context, $1, $4);
-	  				}
-	  link_contents scope_end	{ $<object>$ = $9; }
-	;
-
-link_scope_start
-	: '{'				{ cpg_parser_context_push_scope (context,
-					                                 CPG_PARSER_CONTEXT_SCOPE_LINK); errb }
+	  templated
+	  '{'	 			{ cpg_parser_context_push_link (context, $3, $5, $1, $4); errb }
+	  link_contents
+	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
 function
-	: T_KEY_FUNCTION T_IDENTIFIER '(' function_argument_list ')' scope_start expanded_string scope_end
-					{ cpg_parser_context_add_function (context, $2, $7, $4); errb }
+	: T_KEY_FUNCTION
+	  T_IDENTIFIER
+	  '('
+	  function_argument_list
+	  ')'
+	  '{'
+	  expanded_string
+	  '}'				{ cpg_parser_context_add_function (context, $2, $7, $4); errb }
 	;
 
 polynomial
-	: T_KEY_POLYNOMIAL T_IDENTIFIER '(' ')' scope_start polynomial_pieces scope_end
-					{ cpg_parser_context_add_polynomial (context, $2, $6); errb }
+	: T_KEY_POLYNOMIAL
+	  T_IDENTIFIER
+	  '('
+	  ')'
+	  '{'
+	  polynomial_pieces
+	  '}'				{ cpg_parser_context_add_polynomial (context, $2, $6); errb }
 	;
 
 polynomial_pieces
@@ -326,10 +307,19 @@ function_argument
 state_contents
 	:
 	| state_contents property
-	| state_contents state
-	| state_contents link
-	| state_contents interface
-	| state_contents coupling
+	;
+
+group_item
+	: property
+	| state
+	| link
+	| interface
+	| group
+	;
+
+group_contents
+	:
+	| group_contents group_item
 	;
 
 interface
@@ -351,14 +341,16 @@ link_contents
 	| link_contents property
 	;
 
-property
-	: flags property_def		{ cpg_property_set_flags ($2, $1); }
-	| property_def
+identifier_or_string
+	: T_IDENTIFIER
+	| expanded_string
 	;
 
-property_def
-	: T_IDENTIFIER '=' expanded_string
-					{ $$ = cpg_parser_context_add_property (context, $1, $3); errb }
+property
+	: flags identifier_or_string '=' expanded_string
+					{ cpg_parser_context_add_property (context, $2, $4, $1); errb }
+	| identifier_or_string '=' expanded_string
+					{ cpg_parser_context_add_property (context, $1, $3, CPG_PROPERTY_FLAG_NONE); errb }
 	;
 
 flags
@@ -420,19 +412,9 @@ selector_pseudo
 	| ':' selector_pseudo_identifier		{ cpg_parser_context_push_selector_pseudo (context, $2, NULL); errb }
 	;
 
-coupling
-	: T_KEY_ATTACH link_flags selector T_KEY_FROM selector T_KEY_TO selector
-					{ cpg_parser_context_link (context, $3, $5, $7, $2); errb }
-	;
-
 import
 	: T_KEY_IMPORT T_IDENTIFIER T_KEY_FROM expanded_string
 					{ cpg_parser_context_import (context, $2, $4); errb }
-	;
-
-apply_template
-	: T_KEY_APPLY T_KEY_TEMPLATES selector T_KEY_TO selector
-					{ cpg_parser_context_apply_template (context, $5, $3); errb }
 	;
 
 %%

@@ -329,10 +329,10 @@ expand_id (CpgExpansion *id,
 	c = g_strconcat (cpg_expansion_get (id, 0), s, NULL);
 
 	ret = cpg_expansion_copy (id);
-	cpg_expansion_set (id, 0, c);
+	cpg_expansion_set (ret, 0, c);
 	g_free (c);
 
-	cpg_expansion_add (id, s);
+	cpg_expansion_add (ret, s);
 
 	return ret;
 }
@@ -423,7 +423,10 @@ cpg_network_parser_utils_expand_id (gchar const *id)
 			ptr = id;
 		}
 
-		++id;
+		if (*id)
+		{
+			++id;
+		}
 	}
 
 	if (ptr != id)

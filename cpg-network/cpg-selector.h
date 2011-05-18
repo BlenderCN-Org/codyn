@@ -90,6 +90,9 @@ void          cpg_expansion_set              (CpgExpansion           *id,
 
 void          cpg_expansion_free             (CpgExpansion           *id);
 
+gchar        *cpg_expansions_expand          (GSList                 *expansions,
+                                              gchar const            *s);
+
 gchar        *cpg_expansion_expand           (CpgExpansion           *id,
                                               gchar const            *s);
 

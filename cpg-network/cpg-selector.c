@@ -637,6 +637,7 @@ selector_select_regex (Selector    *selector,
 				CpgSelection *childsel;
 
 				childsel = cpg_selection_new (child, parent->expansions);
+				
 				childsel->expansions =
 					g_slist_append (childsel->expansions,
 					                expansion_from_match (info));
@@ -1202,7 +1203,7 @@ expand_string_eval (GMatchInfo const *info,
 	CpgExpansion *ex;
 
 	first = g_match_info_fetch (info, 1);
-	second = g_match_info_fetch (info, 2);
+	second = g_match_info_fetch (info, 3);
 
 	if (second && *second)
 	{
@@ -1244,7 +1245,7 @@ expand_string (gchar const *s,
 
 	if (!expander)
 	{
-		expander = g_regex_new ("@([0-9]+)(:[0-9]+)?",
+		expander = g_regex_new ("@([0-9]+)(:([0-9]+))?",
 		                        0,
 		                        0,
 		                        NULL);
@@ -1377,6 +1378,7 @@ cpg_expansion_new (gchar const * const *items)
 	while (items && *items)
 	{
 		g_ptr_array_add (ret->expansions, g_strdup (*items));
+		++items;
 	}
 
 	if (ret->expansions->len == 0)
@@ -1539,4 +1541,11 @@ cpg_expansion_add (CpgExpansion *id,
 	}
 
 	g_ptr_array_add (id->expansions, g_strdup (item));
+}
+
+gchar *
+cpg_expansions_expand (GSList      *expansions,
+                       gchar const *s)
+{
+	return expand_string (s, expansions);
 }

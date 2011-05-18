@@ -52,6 +52,8 @@ STRING "\""(\\["]|[^"])*"\""
 %x incl
 %x instring
 %x inregex
+%x annotation
+%x comment
 
 %%
 
@@ -70,7 +72,13 @@ STRING "\""(\\["]|[^"])*"\""
 					cpg_parser_context_set_column (yyextra, 0, 0);
 					yyless (1);
 				}
-"#"[^\n]*$			;
+"##"[ \t]*			BEGIN(annotation);
+<annotation>[^\n]*$		{
+					cpg_parser_context_push_annotation (yyextra, yytext);
+					BEGIN(INITIAL);
+				}
+"#"				BEGIN(comment);
+<comment>[^\n]*$		BEGIN(INITIAL);
 
 "include"			BEGIN(incl);
 
@@ -115,6 +123,7 @@ STRING "\""(\\["]|[^"])*"\""
 "all"				return T_KEY_ALL;
 "remove"			return T_KEY_REMOVE;
 "integrator"			return T_KEY_INTEGRATOR;
+"group"				return T_KEY_GROUP;
 
 [-+]?[0-9]+((\.|eE[-+]?)[0-9]*) {yylval->numf = g_ascii_strtod (yytext, NULL);
 				 return T_DOUBLE;}
@@ -134,6 +143,11 @@ STRING "\""(\\["]|[^"])*"\""
 <instring,inregex>"@{"[a-zA-Z_][a-zA-Z0-9_-]*/"}" {
 					yylval->id = g_strdup (yytext + 2);
 					return T_DEFINED;
+				}
+
+<instring,inregex>"@"[0-9]+(:[0-9]+)? {
+					yylval->id = g_strdup (yytext);
+					return T_STRING;
 				}
 
 <instring,inregex>"@"[a-zA-Z_][a-zA-Z0-9_-]* {

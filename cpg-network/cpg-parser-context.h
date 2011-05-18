@@ -82,19 +82,12 @@ gchar const         *cpg_parser_context_get_token             (CpgParserContext 
 gboolean             cpg_parser_context_parse                 (CpgParserContext  *context,
                                                                GError           **error);
 
-void                 cpg_parser_context_set_id                (CpgParserContext *context,
-                                                               gchar const      *id,
-                                                               GArray           *templates);
-
-void                 cpg_parser_context_set_link              (CpgParserContext *context,
-                                                               CpgParserContextLinkFlags flags,
-                                                               GArray           *fromto);
-
-CpgProperty         *cpg_parser_context_add_property          (CpgParserContext *context,
+void                 cpg_parser_context_add_property          (CpgParserContext *context,
                                                                gchar const      *name,
-                                                               gchar const      *expression);
+                                                               gchar const      *expression,
+                                                               CpgPropertyFlags  flags);
 
-CpgLinkAction       *cpg_parser_context_add_action            (CpgParserContext *context,
+void                 cpg_parser_context_add_action            (CpgParserContext *context,
                                                                gchar const      *target,
                                                                gchar const      *expression);
 
@@ -111,22 +104,6 @@ void                 cpg_parser_context_add_interface         (CpgParserContext 
                                                                gchar const      *name,
                                                                CpgSelector      *target);
 
-gboolean             cpg_parser_context_link                  (CpgParserContext *context,
-                                                               CpgSelector      *link,
-                                                               CpgSelector      *from,
-                                                               CpgSelector      *to,
-                                                               CpgParserContextLinkFlags flags);
-
-gboolean             cpg_parser_context_link_one              (CpgParserContext *context,
-                                                               CpgLink          *link,
-                                                               CpgSelector      *from,
-                                                               CpgSelector      *to,
-                                                               CpgParserContextLinkFlags flags);
-
-void                 cpg_parser_context_apply_template        (CpgParserContext *context,
-                                                               CpgSelector      *objects,
-                                                               CpgSelector      *templates);
-
 void                 cpg_parser_context_import                (CpgParserContext *context,
                                                                gchar const      *id,
                                                                gchar const      *path);
@@ -136,13 +113,27 @@ void                 cpg_parser_context_error                 (CpgParserContext 
 
 GError              *cpg_parser_context_get_error             (CpgParserContext *context);
 
-void                 cpg_parser_context_push_scope            (CpgParserContext     *context,
-                                                               CpgParserContextScope scope);
+void                 cpg_parser_context_push_object           (CpgParserContext     *context,
+                                                               GSList               *objects);
 
-CpgObject           *cpg_parser_context_pop_scope             (CpgParserContext *context);
+void                 cpg_parser_context_push_state            (CpgParserContext     *context,
+                                                               gchar const          *id,
+                                                               GArray               *templates);
 
-void                 cpg_parser_context_push_template         (CpgParserContext *context);
-void                 cpg_parser_context_pop_template          (CpgParserContext *context);
+void                 cpg_parser_context_push_group            (CpgParserContext     *context,
+                                                               gchar const          *id,
+                                                               GArray               *templates);
+
+void                 cpg_parser_context_push_link             (CpgParserContext          *context,
+                                                               gchar const               *id,
+                                                               GArray                    *templates,
+                                                               CpgParserContextLinkFlags  flags,
+                                                               GArray                    *fromto);
+
+void                 cpg_parser_context_push_network          (CpgParserContext *context);
+void                 cpg_parser_context_push_templates        (CpgParserContext *context);
+
+void                 cpg_parser_context_pop                   (CpgParserContext *context);
 
 void                 cpg_parser_context_push_selector         (CpgParserContext *context,
                                                                gchar const      *identifier);
@@ -189,10 +180,13 @@ gchar               *cpg_parser_context_calculate_str         (CpgParserContext 
                                                                gchar const      *expression);
 
 gint                 cpg_parser_context_steal_start_token     (CpgParserContext *context);
-gint                 cpg_parser_context_get_start_token     (CpgParserContext *context);
+gint                 cpg_parser_context_get_start_token       (CpgParserContext *context);
 
 void                 cpg_parser_context_set_start_token       (CpgParserContext *context,
                                                                gint              token);
+
+void                 cpg_parser_context_push_annotation       (CpgParserContext *context,
+                                                               gchar const      *annotation);
 
 G_END_DECLS
 

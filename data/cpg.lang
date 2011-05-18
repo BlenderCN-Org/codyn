@@ -48,6 +48,7 @@
             <keyword>out</keyword>
             <keyword>once</keyword>
             <keyword>bidirectional</keyword>
+            <keyword>all</keyword>
         </context>
 
         <context id="preprocessor" style-ref="preprocessor">
@@ -62,6 +63,7 @@
             <keyword>templates</keyword>
             <keyword>state</keyword>
             <keyword>link</keyword>
+            <keyword>group</keyword>
             <keyword>network</keyword>
             <keyword>function</keyword>
             <keyword>interface</keyword>
@@ -74,7 +76,6 @@
             <keyword>attach</keyword>
             <keyword>apply</keyword>
             <keyword>define</keyword>
-            <keyword>all</keyword>
             <keyword>remove</keyword>
             <keyword>integrator</keyword>
         </context>
