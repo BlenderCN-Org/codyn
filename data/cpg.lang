@@ -29,7 +29,9 @@
         <define-regex id="nth">[-+]?[0-9]n([-+][0-9])?</define-regex>
         <define-regex id="string">"(\\["]|[^"])*"</define-regex>
         <define-regex id="regex">/(\\/|[^/])*/</define-regex>
+        <define-regex id="define">@({[^}]*}|\%{identifier}|[0-9]+)</define-regex>
         <define-regex id="identifier_or_string">((\%{identifier})|(\%{string}))</define-regex>
+        <define-regex id="string_like">(\%{string}|\%{def:decimal}|\%{def:float}|\%{define})</define-regex>
 
         <context id="string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
             <start>"</start>
@@ -79,11 +81,7 @@
             <keyword>polynomial</keyword>
             <keyword>input-file</keyword>
             <keyword>piece</keyword>
-            <keyword>attach</keyword>
-            <keyword>attach</keyword>
-            <keyword>apply</keyword>
             <keyword>define</keyword>
-            <keyword>remove</keyword>
             <keyword>integrator</keyword>
         </context>
 
@@ -92,7 +90,7 @@
         </context>
 
         <context id="property">
-            <match>(\%{identifier})\s*(=)\s*(\%{string}|\%{def:decimal}|\%{def:float})</match>
+            <match>(\%{identifier})\s*(=)\s*\%{string_like}</match>
             <include>
                 <context sub-pattern="1" style-ref="property"/>
                 <context sub-pattern="3" style-ref="string"/>
@@ -100,7 +98,7 @@
         </context>
 
         <context id="action">
-            <match>(\%{identifier})\s*(&lt;)\s*(\%{string})</match>
+            <match>(\%{identifier})\s*(&lt;)\s*(\%{string_like})</match>
             <include>
                 <context sub-pattern="1" style-ref="property"/>
                 <context sub-pattern="3" style-ref="string"/>
