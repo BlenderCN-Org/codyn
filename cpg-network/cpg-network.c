@@ -582,6 +582,114 @@ cpg_network_new ()
 	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
 
+static gint
+stream_is_xml_format (GInputStream *stream,
+                      gboolean      seekback)
+{
+	gchar buffer[64];
+
+	if (seekback && (!G_IS_SEEKABLE (stream) || !g_seekable_can_seek (G_SEEKABLE (stream))))
+	{
+		return FALSE;
+	}
+
+	while (TRUE)
+	{
+		gssize r;
+		gssize i;
+
+		r = g_input_stream_read (stream,
+		                         buffer,
+		                         sizeof (buffer),
+		                         NULL,
+		                         NULL);
+
+		if (!r)
+		{
+			return -1;
+		}
+
+		for (i = 0; i < r; ++i)
+		{
+			if (!g_ascii_isspace (buffer[i]))
+			{
+				if (seekback)
+				{
+					g_seekable_seek (G_SEEKABLE (stream),
+					                 0,
+					                 G_SEEK_SET,
+					                 NULL,
+					                 NULL);
+				}
+
+				return buffer[i] == '<' ? 1 : 0;
+			}
+		}
+	}
+}
+
+static gboolean
+file_is_xml_format_from_content_type (GFile *file)
+{
+	GFileInfo *info;
+	gchar const *ctype;
+	gboolean ret;
+
+	info = g_file_query_info (file,
+	                          G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
+	                          0,
+	                          NULL,
+	                          NULL);
+
+	if (!info)
+	{
+		return TRUE;
+	}
+
+	ctype = g_file_info_get_content_type (info);
+
+	if (g_content_type_is_a (ctype, "application/xml"))
+	{
+		ret = TRUE;
+	}
+	else if (g_content_type_is_a (ctype, "text/x-cpg"))
+	{
+		ret = FALSE;
+	}
+	else
+	{
+		ret = TRUE;
+	}
+
+	g_object_unref (info);
+	return ret;
+}
+
+static gboolean
+file_is_xml_format (GFile *file)
+{
+	GFileInputStream *fstream;
+	gint ret;
+
+	fstream = g_file_read (file, NULL, NULL);
+
+	if (!fstream)
+	{
+		return file_is_xml_format_from_content_type (file);
+	}
+
+	ret = stream_is_xml_format (G_INPUT_STREAM (fstream), FALSE);
+
+	g_object_unref (fstream);
+
+	if (ret == -1)
+	{
+		return file_is_xml_format_from_content_type (file);
+	}
+
+	return ret == 1 ? TRUE : FALSE;
+}
+
 /**
  * cpg_network_load_from_file:
  * @network: A #CpgNetwork
@@ -598,10 +706,7 @@ cpg_network_load_from_file (CpgNetwork  *network,
                             GFile       *file,
                             GError     **error)
 {
-	gboolean xmlformat;
-	GFileInfo *info;
 	gboolean ret;
-	gchar const *content_type;
 
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_FILE (file), FALSE);
@@ -610,30 +715,7 @@ cpg_network_load_from_file (CpgNetwork  *network,
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	info = g_file_query_info (file,
-	                          G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
-	                          G_FILE_QUERY_INFO_NONE,
-	                          NULL,
-	                          NULL);
-
-	content_type = g_file_info_get_content_type (info);
-
-	if (g_content_type_is_a (content_type, "application/xml"))
-	{
-		xmlformat = TRUE;
-	}
-	else if (g_content_type_is_a (content_type, "text/x-cpg"))
-	{
-		xmlformat = FALSE;
-	}
-	else
-	{
-		xmlformat = TRUE;
-	}
-
-	g_object_unref (info);
-
-	if (xmlformat)
+	if (file_is_xml_format (file))
 	{
 		CpgNetworkDeserializer *deserializer;
 
