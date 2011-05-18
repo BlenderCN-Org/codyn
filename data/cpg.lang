@@ -18,6 +18,7 @@
         <style id="property"          _name="Property"            map-to="def:identifier"/>
         <style id="operator"          _name="Operator"            map-to="def:operator"/>
         <style id="selector"          _name="Selector"            map-to="def:identifier"/>
+        <style id="define"            _name="Define"              map-to="def:constant"/>
     </styles>
 
     <default-regex-options case-sensitive="false"/>
@@ -38,6 +39,7 @@
                     <match>\\"</match>
                 </context>
                 <context ref="defined"/>
+                <context ref="simple_defined"/>
                 <context ref="expansion"/>
             </include>
         </context>
@@ -56,7 +58,12 @@
         </context>
 
         <context id="regex" style-ref="regex">
-            <match>\%{regex}</match>
+            <start>/</start>
+            <end>/</end>
+            <include>
+                <context ref="simple_defined"/>
+                <context ref="defined"/>
+            </include>
         </context>
 
         <context id="keywords" style-ref="keyword">
@@ -85,7 +92,7 @@
         </context>
 
         <context id="property">
-            <match>(\%{identifier})\s*(=)\s*(\%{string})</match>
+            <match>(\%{identifier})\s*(=)\s*(\%{string}|\%{def:decimal}|\%{def:float})</match>
             <include>
                 <context sub-pattern="1" style-ref="property"/>
                 <context sub-pattern="3" style-ref="string"/>
@@ -108,8 +115,17 @@
             </include>
         </context>
 
-        <context id="defined" style-ref="preprocessor" extend-parent="true">
-            <match>@({[a-z0-9_-]+}|[a-z0-9_-]+)</match>
+        <context id="defined" extend-parent="true">
+            <start>@{</start>
+            <end>}</end>
+            <include>
+                <context sub-pattern="0" where="start" style-ref="define"/>
+                <context sub-pattern="0" where="end" style-ref="define"/>
+            </include>
+        </context>
+
+        <context id="simple_defined" style-ref="define">
+            <match>@[a-z0-9_-]+</match>
         </context>
 
         <context id="define">
@@ -142,6 +158,10 @@
                 <context ref="string"/>
                 <context ref="colon-error"/>
                 <context ref="selector"/>
+                <context ref="def:decimal"/>
+                <context ref="def:float"/>
+                <context ref="defined"/>
+                <context ref="simple_defined"/>
             </include>
         </context>
     </definitions>

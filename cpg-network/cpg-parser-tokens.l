@@ -140,23 +140,23 @@ STRING "\""(\\["]|[^"])*"\""
 					return T_STRING_BEGIN;
 				}
 
-<instring,inregex>"@{"[a-zA-Z_][a-zA-Z0-9_-]*/"}" {
-					yylval->id = g_strdup (yytext + 2);
+<instring,inregex,INITIAL>"@{"[a-zA-Z_][a-zA-Z0-9_-]*"}" {
+					yylval->id = g_strndup (yytext + 2, yyleng - 3);
 					return T_DEFINED;
 				}
 
-<instring,inregex>"@"[0-9]+(:[0-9]+)? {
+<instring,inregex,INITIAL>"@"[0-9]+(:[0-9]+)?	{
 					yylval->id = g_strdup (yytext);
 					return T_STRING;
 				}
 
-<instring,inregex>"@"[a-zA-Z_][a-zA-Z0-9_-]* {
+<instring,inregex,INITIAL>"@"[a-zA-Z_][a-zA-Z0-9_-]*	{
 					yylval->id = g_strdup (yytext + 1);
 					return T_DEFINED;
 				}
 
-<instring,inregex>"@{"[^}]*/"}"		{
-					yylval->id = g_strdup (yytext + 2);
+<instring,inregex,INITIAL>"@{"[^}]*"}"	{
+					yylval->id = g_strndup (yytext + 2, yyleng - 3);
 					return T_EQUATION;
 				}
 <instring>(\\["@]|[^"@])+	{

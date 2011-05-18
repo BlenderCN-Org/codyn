@@ -297,6 +297,45 @@ steal_annotation (CpgParserContext *context)
 	return ret;
 }
 
+static void
+print_expansions (CpgParserContext *context)
+{
+	GSList *expansions;
+	Context *ctx;
+	GSList *item;
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->objects; item; item = g_slist_next (item))
+	{
+		g_printerr ("Object: %s\n", cpg_object_get_full_id (cpg_selection_get_object (item->data)));
+
+		expansions = cpg_selection_get_expansions (item->data);
+
+		while (expansions)
+		{
+			CpgExpansion *e = expansions->data;
+			gint i;
+
+			g_printerr ("\t");
+
+			for (i = 0; i < cpg_expansion_num (e); ++i)
+			{
+				if (i != 0)
+				{
+					g_printerr (", ");
+				}
+
+				g_printerr ("{%s}", cpg_expansion_get (e, i));
+			}
+
+			g_printerr ("\n");
+
+			expansions = g_slist_next (expansions);
+		}
+	}
+}
+
 void
 cpg_parser_context_add_property (CpgParserContext *context,
                                  gchar const      *name,
@@ -323,6 +362,8 @@ cpg_parser_context_add_property (CpgParserContext *context,
 		gchar *ex;
 
 		obj = cpg_selection_get_object (item->data);
+
+		print_expansions (context);
 
 		ex = cpg_expansions_expand (cpg_selection_get_expansions (item->data),
 		                            expression);

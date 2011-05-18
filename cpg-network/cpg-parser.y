@@ -113,7 +113,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %start choose_parser
 
-%expect 19
+%expect 31
 
 %%
 
@@ -173,6 +173,9 @@ expanded_string
 	: T_STRING_BEGIN string_contents T_STRING_END	{ $$ = $2; }
 	| T_INTEGER					{ $$ = g_strdup_printf ("%d", (gint)$1); }
 	| T_DOUBLE					{ $$ = g_strdup_printf ("%f", $1); }
+	| T_DEFINED					{ $$ = g_strdup (cpg_parser_context_lookup_define (context, $1)); }
+	| T_EQUATION					{ $$ = cpg_parser_context_calculate_str (context, $1); }
+	| T_STRING					{ $$ = $1; }
 	;
 
 string_contents
