@@ -51,7 +51,8 @@ COMMON_SOURCES = 		\
 	cpg-usable.c \
 	cpg-utils.c \
 	cpg-parser.y \
-	cpg-parser-tokens.l
+	cpg-parser-tokens.l \
+	cpg-layout.c
 
 BUILT_SOURCES = \
 	cpg-enum-types.c \
@@ -105,7 +106,8 @@ INST_H_FILES = \
 	cpg-selector.h \
 	cpg-stack.h \
 	cpg-usable.h \
-	cpg-utils.h
+	cpg-utils.h \
+	cpg-layout.h
 
 lib_LTLIBRARIES = libcpg-network-2.0.la
 

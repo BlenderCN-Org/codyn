@@ -41,7 +41,12 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_ATTACH T_KEY_APPLY T_KEY_DEFINE T_KEY_BIDIRECTIONAL T_KEY_ALL T_KEY_REMOVE T_KEY_INTEGRATOR T_KEY_GROUP
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_BIDIRECTIONAL T_KEY_ALL T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT
+
+%token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
+%type <num> relation
+%type <num> relation_item
+%type <num> relation_all
 
 %token <numf> T_DOUBLE
 %token <numf> T_INTEGER
@@ -82,6 +87,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <id> string_contents
 
 %type <num> link_flags
+
 %type <array> link_connect
 %type <array> templated
 
@@ -137,11 +143,7 @@ toplevel
 	| import
 	| templates
 	| define
-	| remove
-	;
-
-remove
-	: T_KEY_REMOVE selector_list	{ cpg_parser_context_remove (context, $2); }
+	| layout
 	;
 
 network
@@ -418,6 +420,42 @@ selector_pseudo
 import
 	: T_KEY_IMPORT T_IDENTIFIER T_KEY_FROM expanded_string
 					{ cpg_parser_context_import (context, $2, $4); errb }
+	;
+
+layout
+	: T_KEY_LAYOUT
+	  '{'			{ cpg_parser_context_push_layout (context); }
+	  layout_items
+	  '}'
+	;
+
+relation_item
+	: T_KEY_LEFT_OF		{ $$ = CPG_LAYOUT_RELATION_LEFT_OF; }
+	| T_KEY_RIGHT_OF	{ $$ = CPG_LAYOUT_RELATION_RIGHT_OF; }
+	| T_KEY_ABOVE		{ $$ = CPG_LAYOUT_RELATION_ABOVE; }
+	| T_KEY_BELOW		{ $$ = CPG_LAYOUT_RELATION_BELOW; }
+	;
+
+relation
+	: relation_item			{ $$ = $1; }
+	| relation relation_item	{ $$ = $1 | $2; }
+	;
+
+relation_all
+	:				{ $$ = FALSE; }
+	| T_KEY_ALL			{ $$ = TRUE; }
+	;
+
+layout_item
+	: selector
+	  relation
+	  relation_all
+	  selector		{ cpg_parser_context_add_layout (context, $2, $1, $4, $3); }
+	;
+
+layout_items
+	:
+	| layout_items layout_item
 	;
 
 %%

@@ -83,6 +83,11 @@
             <keyword>piece</keyword>
             <keyword>define</keyword>
             <keyword>integrator</keyword>
+            <keyword>layout</keyword>
+            <keyword>left-of</keyword>
+            <keyword>right-of</keyword>
+            <keyword>above</keyword>
+            <keyword>below</keyword>
         </context>
 
         <context id="colon-error" style-ref="error">

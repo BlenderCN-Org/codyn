@@ -96,6 +96,8 @@ struct _CpgParserContextPrivate
 
 	GError *error;
 	gboolean error_occurred;
+
+	CpgLayout *layout;
 };
 
 G_DEFINE_TYPE (CpgParserContext, cpg_parser_context, G_TYPE_OBJECT)
@@ -297,7 +299,7 @@ steal_annotation (CpgParserContext *context)
 	return ret;
 }
 
-static void
+/*static void
 print_expansions (CpgParserContext *context)
 {
 	GSList *expansions;
@@ -334,7 +336,7 @@ print_expansions (CpgParserContext *context)
 			expansions = g_slist_next (expansions);
 		}
 	}
-}
+}*/
 
 void
 cpg_parser_context_add_property (CpgParserContext *context,
@@ -362,8 +364,6 @@ cpg_parser_context_add_property (CpgParserContext *context,
 		gchar *ex;
 
 		obj = cpg_selection_get_object (item->data);
-
-		print_expansions (context);
 
 		ex = cpg_expansions_expand (cpg_selection_get_expansions (item->data),
 		                            expression);
@@ -2000,4 +2000,85 @@ cpg_parser_context_push_annotation (CpgParserContext *context,
 	}
 
 	context->priv->previous_annotation = context->priv->lineno;
+}
+
+void
+cpg_parser_context_push_layout (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	if (!context->priv->layout)
+	{
+		context->priv->layout = cpg_layout_new (context->priv->network);
+	}
+}
+
+void
+cpg_parser_context_add_layout (CpgParserContext *context,
+                               CpgLayoutRelation relation,
+                               CpgSelector      *left,
+                               CpgSelector      *right,
+                               gboolean          all)
+{
+	GSList *leftobjs;
+	GSList *leftobj;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTOR (left));
+	g_return_if_fail (CPG_IS_SELECTOR (right));
+
+	leftobjs = cpg_selector_select_states (left,
+	                                       CPG_OBJECT (context->priv->network));
+
+	if (!leftobjs)
+	{
+		return;
+	}
+
+	for (leftobj = leftobjs; leftobj; leftobj = g_slist_next (leftobj))
+	{
+		CpgSelection *leftsel = leftobj->data;
+		GSList *rightobjs;
+		CpgSelector *sel;
+
+		sel = cpg_selector_expand (right,
+		                           cpg_selection_get_expansions (leftsel));
+
+		rightobjs = cpg_selector_select_link_to (sel,
+		                                         CPG_OBJECT (context->priv->network),
+		                                         cpg_selection_get_object (leftsel));
+
+		g_object_unref (sel);
+
+		if (!rightobjs)
+		{
+			continue;
+		}
+
+		if (!all)
+		{
+			cpg_layout_add (context->priv->layout,
+			                cpg_selection_get_object (leftsel),
+			                cpg_selection_get_object (rightobjs->data),
+			                relation);
+		}
+		else
+		{
+			GSList *rightobj;
+
+			for (rightobj = rightobjs; rightobj; rightobj = g_slist_next (rightobj))
+			{
+				cpg_layout_add (context->priv->layout,
+				                cpg_selection_get_object (leftsel),
+				                cpg_selection_get_object (rightobj->data),
+				                relation);
+			}
+		}
+
+		g_slist_foreach (rightobjs, (GFunc)cpg_selection_free, NULL);
+		g_slist_free (rightobjs);
+	}
+
+	g_slist_foreach (leftobjs, (GFunc)cpg_selection_free, NULL);
+	g_slist_free (leftobjs);
 }

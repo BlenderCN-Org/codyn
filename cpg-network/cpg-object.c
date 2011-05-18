@@ -39,6 +39,9 @@ struct _CpgObjectPrivate
 	guint use_count;
 	gchar *id;
 
+	gint x;
+	gint y;
+
 	CpgObject *parent;
 
 	/* Properties */
@@ -66,7 +69,9 @@ enum
 	PROP_PARENT,
 	PROP_AUTO_IMPORTED,
 	PROP_USE_COUNT,
-	PROP_ANNOTATION
+	PROP_ANNOTATION,
+	PROP_X,
+	PROP_Y
 };
 
 /* Signals */
@@ -235,6 +240,12 @@ get_property (GObject     *object,
 		case PROP_ANNOTATION:
 			g_value_set_string (value, obj->priv->annotation);
 		break;
+		case PROP_X:
+			g_value_set_int (value, obj->priv->x);
+		break;
+		case PROP_Y:
+			g_value_set_int (value, obj->priv->y);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -260,6 +271,12 @@ set_property (GObject       *object,
 		case PROP_ANNOTATION:
 			g_free (obj->priv->annotation);
 			obj->priv->annotation = g_value_dup_string (value);
+		break;
+		case PROP_X:
+			obj->priv->x = g_value_get_int (value);
+		break;
+		case PROP_Y:
+			obj->priv->y = g_value_get_int (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object,
@@ -1109,6 +1126,38 @@ cpg_object_class_init (CpgObjectClass *klass)
 	                                                      "Parent",
 	                                                      CPG_TYPE_OBJECT,
 	                                                      G_PARAM_READABLE));
+
+	/**
+	 * CpgObject:x:
+	 *
+	 * The #CpgObject x position.
+	 *
+	 **/
+	g_object_class_install_property (object_class,
+	                                 PROP_X,
+	                                 g_param_spec_int ("x",
+	                                                   "X",
+	                                                   "The x position",
+	                                                   G_MININT,
+	                                                   G_MAXINT,
+	                                                   0,
+	                                                   G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	/**
+	 * CpgObject:y:
+	 *
+	 * The #CpgObject y position.
+	 *
+	 **/
+	g_object_class_install_property (object_class,
+	                                 PROP_Y,
+	                                 g_param_spec_int ("y",
+	                                                   "Y",
+	                                                   "The y position",
+	                                                   G_MININT,
+	                                                   G_MAXINT,
+	                                                   0,
+	                                                   G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	/**
 	 * CpgObject:auto-imported:
@@ -2195,4 +2244,33 @@ cpg_object_get_relative_id (CpgObject *object,
 
 	g_free (par);
 	return ret;
+}
+
+void
+cpg_object_set_position (CpgObject *object,
+                         gint       x,
+                         gint       y)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+
+	object->priv->x = x;
+	object->priv->y = y;
+}
+
+void
+cpg_object_get_position (CpgObject *object,
+                         gint      *x,
+                         gint      *y)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+
+	if (x)
+	{
+		*x = object->priv->x;
+	}
+
+	if (y)
+	{
+		*y = object->priv->y;
+	}
 }

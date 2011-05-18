@@ -10,6 +10,7 @@
 #include <cpg-network/cpg-import.h>
 #include <cpg-network/cpg-import-alias.h>
 #include <cpg-network/cpg-selector.h>
+#include <cpg-network/cpg-layout.h>
 
 G_BEGIN_DECLS
 
@@ -53,140 +54,148 @@ struct _CpgParserContextClass
 	GObjectClass parent_class;
 };
 
-GType                cpg_parser_context_get_type              (void) G_GNUC_CONST;
+GType                  cpg_parser_context_get_type             (void) G_GNUC_CONST;
 
-CpgParserContext    *cpg_parser_context_new                   (CpgNetwork *network);
+CpgParserContext      *cpg_parser_context_new                  (CpgNetwork                 *network);
 
-GFile               *cpg_parser_context_get_file              (CpgParserContext *context);
+GFile                 *cpg_parser_context_get_file             (CpgParserContext           *context);
 
-void                 cpg_parser_context_set_line              (CpgParserContext *context,
-                                                               gchar const      *line,
-                                                               gint              lineno);
+void                   cpg_parser_context_set_line             (CpgParserContext           *context,
+                                                                gchar const                *line,
+                                                                gint                        lineno);
 
-gchar const         *cpg_parser_context_get_line              (CpgParserContext *context,
-                                                               gint             *lineno);
+gchar const           *cpg_parser_context_get_line             (CpgParserContext           *context,
+                                                                gint                       *lineno);
 
-void                 cpg_parser_context_set_column            (CpgParserContext *context,
-                                                               gint              start,
-                                                               gint              end);
+void                   cpg_parser_context_set_column           (CpgParserContext           *context,
+                                                                gint                        start,
+                                                                gint                        end);
 
-void                 cpg_parser_context_get_column            (CpgParserContext *context,
-                                                               gint             *start,
-                                                               gint             *end);
+void                   cpg_parser_context_get_column           (CpgParserContext           *context,
+                                                                gint                       *start,
+                                                                gint                       *end);
 
-void                 cpg_parser_context_set_token             (CpgParserContext *context,
-                                                               gchar const      *token);
+void                   cpg_parser_context_set_token            (CpgParserContext           *context,
+                                                                gchar const                *token);
 
-gchar const         *cpg_parser_context_get_token             (CpgParserContext *context);
+gchar const           *cpg_parser_context_get_token            (CpgParserContext           *context);
 
-gboolean             cpg_parser_context_parse                 (CpgParserContext  *context,
-                                                               GError           **error);
+gboolean               cpg_parser_context_parse                (CpgParserContext           *context,
+                                                                GError                    **error);
 
-void                 cpg_parser_context_add_property          (CpgParserContext *context,
-                                                               gchar const      *name,
-                                                               gchar const      *expression,
-                                                               CpgPropertyFlags  flags);
+void                   cpg_parser_context_add_property         (CpgParserContext           *context,
+                                                                gchar const                *name,
+                                                                gchar const                *expression,
+                                                                CpgPropertyFlags            flags);
 
-void                 cpg_parser_context_add_action            (CpgParserContext *context,
-                                                               gchar const      *target,
-                                                               gchar const      *expression);
+void                   cpg_parser_context_add_action           (CpgParserContext           *context,
+                                                                gchar const                *target,
+                                                                gchar const                *expression);
 
-CpgFunction         *cpg_parser_context_add_function          (CpgParserContext *context,
-                                                               gchar const      *name,
-                                                               gchar const      *expression,
-                                                               GArray           *arguments);
+CpgFunction           *cpg_parser_context_add_function         (CpgParserContext           *context,
+                                                                gchar const                *name,
+                                                                gchar const                *expression,
+                                                                GArray                     *arguments);
 
-CpgFunctionPolynomial *cpg_parser_context_add_polynomial      (CpgParserContext *context,
-                                                               gchar const      *name,
-                                                               GArray           *pieces);
+CpgFunctionPolynomial *cpg_parser_context_add_polynomial       (CpgParserContext           *context,
+                                                                gchar const                *name,
+                                                                GArray                     *pieces);
 
-void                 cpg_parser_context_add_interface         (CpgParserContext *context,
-                                                               gchar const      *name,
-                                                               CpgSelector      *target);
+void                   cpg_parser_context_add_interface        (CpgParserContext           *context,
+                                                                gchar const                *name,
+                                                                CpgSelector                *target);
 
-void                 cpg_parser_context_import                (CpgParserContext *context,
-                                                               gchar const      *id,
-                                                               gchar const      *path);
+void                   cpg_parser_context_import               (CpgParserContext           *context,
+                                                                gchar const                *id,
+                                                                gchar const                *path);
 
-void                 cpg_parser_context_error                 (CpgParserContext *context,
-                                                               gchar const      *message);
+void                   cpg_parser_context_error                (CpgParserContext           *context,
+                                                                gchar const                *message);
 
-GError              *cpg_parser_context_get_error             (CpgParserContext *context);
+GError                *cpg_parser_context_get_error            (CpgParserContext           *context);
 
-void                 cpg_parser_context_push_object           (CpgParserContext     *context,
-                                                               GSList               *objects);
+void                   cpg_parser_context_push_object          (CpgParserContext           *context,
+                                                                GSList                     *objects);
 
-void                 cpg_parser_context_push_state            (CpgParserContext     *context,
-                                                               gchar const          *id,
-                                                               GArray               *templates);
+void                   cpg_parser_context_push_state           (CpgParserContext           *context,
+                                                                gchar const                *id,
+                                                                GArray                     *templates);
 
-void                 cpg_parser_context_push_group            (CpgParserContext     *context,
-                                                               gchar const          *id,
-                                                               GArray               *templates);
+void                   cpg_parser_context_push_group           (CpgParserContext           *context,
+                                                                gchar const                *id,
+                                                                GArray                     *templates);
 
-void                 cpg_parser_context_push_link             (CpgParserContext          *context,
-                                                               gchar const               *id,
-                                                               GArray                    *templates,
-                                                               CpgParserContextLinkFlags  flags,
-                                                               GArray                    *fromto);
+void                   cpg_parser_context_push_link            (CpgParserContext           *context,
+                                                                gchar const                *id,
+                                                                GArray                     *templates,
+                                                                CpgParserContextLinkFlags   flags,
+                                                                GArray                     *fromto);
 
-void                 cpg_parser_context_push_network          (CpgParserContext *context);
-void                 cpg_parser_context_push_templates        (CpgParserContext *context);
+void                   cpg_parser_context_push_network         (CpgParserContext           *context);
+void                   cpg_parser_context_push_templates       (CpgParserContext           *context);
 
-void                 cpg_parser_context_pop                   (CpgParserContext *context);
+void                   cpg_parser_context_pop                  (CpgParserContext           *context);
 
-void                 cpg_parser_context_push_selector         (CpgParserContext *context,
-                                                               gchar const      *identifier);
-void                 cpg_parser_context_push_selector_regex   (CpgParserContext *context,
-                                                               gchar const      *regex);
-void                 cpg_parser_context_push_selector_pseudo  (CpgParserContext *context,
-                                                               gchar const      *identifier,
-                                                               GArray           *arguments);
+void                   cpg_parser_context_push_selector        (CpgParserContext           *context,
+                                                                gchar const                *identifier);
+void                   cpg_parser_context_push_selector_regex  (CpgParserContext           *context,
+                                                                gchar const                *regex);
+void                   cpg_parser_context_push_selector_pseudo (CpgParserContext           *context,
+                                                                gchar const                *identifier,
+                                                                GArray                     *arguments);
 
-CpgSelector         *cpg_parser_context_pop_selector          (CpgParserContext *context);
+CpgSelector           *cpg_parser_context_pop_selector         (CpgParserContext           *context);
 
-gssize               cpg_parser_context_read                  (CpgParserContext *context,
-                                                               gchar            *buffer,
-                                                               gsize             max_size);
+gssize                 cpg_parser_context_read                 (CpgParserContext           *context,
+                                                                gchar                      *buffer,
+                                                                gsize                       max_size);
 
-gpointer             cpg_parser_context_get_scanner           (CpgParserContext *context);
+gpointer               cpg_parser_context_get_scanner          (CpgParserContext           *context);
 
-void                 cpg_parser_context_define                (CpgParserContext *context,
-                                                               gchar const      *name,
-                                                               gchar const      *define);
+void                   cpg_parser_context_define               (CpgParserContext           *context,
+                                                                gchar const                *name,
+                                                                gchar const                *define);
 
-gchar const         *cpg_parser_context_lookup_define         (CpgParserContext *context,
-                                                               gchar const      *define);
+gchar const           *cpg_parser_context_lookup_define        (CpgParserContext           *context,
+                                                                gchar const                *define);
 
-void                 cpg_parser_context_remove                (CpgParserContext *context,
-                                                               GArray           *selectors);
+void                   cpg_parser_context_remove               (CpgParserContext           *context,
+                                                                GArray                     *selectors);
 
-void                 cpg_parser_context_set_integrator        (CpgParserContext *context,
-                                                               gchar const      *integrator);
+void                   cpg_parser_context_set_integrator       (CpgParserContext           *context,
+                                                                gchar const                *integrator);
 
-void                 cpg_parser_context_push_input_from_path  (CpgParserContext *context,
-                                                               gchar const      *filename);
+void                   cpg_parser_context_push_input_from_path (CpgParserContext           *context,
+                                                                gchar const                *filename);
 
-void                 cpg_parser_context_push_input            (CpgParserContext *context,
-                                                               GFile            *file,
-                                                               GInputStream     *stream);
+void                   cpg_parser_context_push_input           (CpgParserContext           *context,
+                                                                GFile                      *file,
+                                                                GInputStream               *stream);
 
-void                 cpg_parser_context_pop_input             (CpgParserContext *context);
+void                   cpg_parser_context_pop_input            (CpgParserContext           *context);
 
-gdouble              cpg_parser_context_calculate             (CpgParserContext *context,
-                                                               gchar const      *expression);
+gdouble                cpg_parser_context_calculate            (CpgParserContext           *context,
+                                                                gchar const                *expression);
 
-gchar               *cpg_parser_context_calculate_str         (CpgParserContext *context,
-                                                               gchar const      *expression);
+gchar                 *cpg_parser_context_calculate_str        (CpgParserContext           *context,
+                                                                gchar const                *expression);
 
-gint                 cpg_parser_context_steal_start_token     (CpgParserContext *context);
-gint                 cpg_parser_context_get_start_token       (CpgParserContext *context);
+gint                   cpg_parser_context_steal_start_token    (CpgParserContext           *context);
+gint                   cpg_parser_context_get_start_token      (CpgParserContext           *context);
 
-void                 cpg_parser_context_set_start_token       (CpgParserContext *context,
-                                                               gint              token);
+void                   cpg_parser_context_set_start_token      (CpgParserContext           *context,
+                                                                gint                        token);
 
-void                 cpg_parser_context_push_annotation       (CpgParserContext *context,
-                                                               gchar const      *annotation);
+void                   cpg_parser_context_push_annotation      (CpgParserContext           *context,
+                                                                gchar const                *annotation);
+
+void                   cpg_parser_context_push_layout          (CpgParserContext           *context);
+
+void                   cpg_parser_context_add_layout           (CpgParserContext           *context,
+                                                                CpgLayoutRelation           relation,
+                                                                CpgSelector                *left,
+                                                                CpgSelector                *right,
+                                                                gboolean                    all);
 
 G_END_DECLS
 

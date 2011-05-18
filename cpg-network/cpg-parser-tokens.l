@@ -116,14 +116,16 @@ STRING "\""(\\["]|[^"])*"\""
 "from"				return T_KEY_FROM;
 "to"				return T_KEY_TO;
 "piece"				return T_KEY_PIECE;
-"attach"			return T_KEY_ATTACH;
-"apply"				return T_KEY_APPLY;
 "define"			return T_KEY_DEFINE;
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
 "all"				return T_KEY_ALL;
-"remove"			return T_KEY_REMOVE;
 "integrator"			return T_KEY_INTEGRATOR;
 "group"				return T_KEY_GROUP;
+"layout"			return T_KEY_LAYOUT;
+"above"				return T_KEY_ABOVE;
+"below"				return T_KEY_BELOW;
+"left-of"			return T_KEY_LEFT_OF;
+"right-of"			return T_KEY_RIGHT_OF;
 
 [-+]?[0-9]+((\.|eE[-+]?)[0-9]*) {yylval->numf = g_ascii_strtod (yytext, NULL);
 				 return T_DOUBLE;}
