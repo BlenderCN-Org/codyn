@@ -33,16 +33,29 @@ struct _CpgSelectorClass
 	GObjectClass parent_class;
 };
 
+typedef gchar *(*CpgSelectorExpandFunc) (CpgSelector      *selector,
+                                         GMatchInfo const *info,
+                                         gpointer          userdata);
+
 GType         cpg_selector_get_type          (void) G_GNUC_CONST;
 
 CpgSelector  *cpg_selector_new               (void);
 CpgSelector  *cpg_selector_parse             (gchar const            *ptr,
                                               GError                **error);
 
+CpgSelector  *cpg_selector_copy              (CpgSelector            *selector);
+
 gchar const  *cpg_selector_as_string         (CpgSelector            *selector);
 
 CpgSelector  *cpg_selector_expand            (CpgSelector            *selector,
-                                              GSList                 *expansions);
+                                              GSList                 *expansions,
+                                              GRegex                 *regex);
+
+CpgSelector  *cpg_selector_expand_func       (CpgSelector            *selector,
+                                              GRegex                 *regex,
+                                              CpgSelectorExpandFunc   func,
+                                              gpointer                userdata,
+                                              GDestroyNotify          destroy_func);
 
 GSList       *cpg_selector_get_expansions    (CpgSelector            *selector,
                                               gpointer                matched);
@@ -91,13 +104,8 @@ void          cpg_expansion_set              (CpgExpansion           *id,
 void          cpg_expansion_free             (CpgExpansion           *id);
 
 gchar        *cpg_expansions_expand          (GSList                 *expansions,
-                                              gchar const            *s);
-
-gchar        *cpg_expansion_expand           (CpgExpansion           *id,
-                                              gchar const            *s);
-
-gchar       **cpg_expansion_expand_all       (CpgExpansion           *id,
-                                              gchar const * const    *s);
+                                              gchar const            *s,
+                                              GRegex                 *regex);
 
 CpgSelection *cpg_selection_new              (gpointer                object,
                                               GSList                 *expansions);

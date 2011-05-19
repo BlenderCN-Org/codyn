@@ -25,6 +25,7 @@ G_BEGIN_DECLS
 typedef struct _CpgParserContext	CpgParserContext;
 typedef struct _CpgParserContextClass	CpgParserContextClass;
 typedef struct _CpgParserContextPrivate	CpgParserContextPrivate;
+typedef struct _CpgParserContextClassPrivate	CpgParserContextClassPrivate;
 
 typedef enum
 {
@@ -52,6 +53,8 @@ struct _CpgParserContextClass
 {
 	/*< private >*/
 	GObjectClass parent_class;
+
+	CpgParserContextClassPrivate *priv;
 };
 
 GType                  cpg_parser_context_get_type             (void) G_GNUC_CONST;
@@ -133,8 +136,12 @@ void                   cpg_parser_context_push_link            (CpgParserContext
 
 void                   cpg_parser_context_push_network         (CpgParserContext           *context);
 void                   cpg_parser_context_push_templates       (CpgParserContext           *context);
+void                   cpg_parser_context_push_integrator      (CpgParserContext           *context);
 
-void                   cpg_parser_context_pop                  (CpgParserContext           *context);
+void                   cpg_parser_context_set_proxy            (CpgParserContext           *context,
+                                                                GSList                     *objects);
+
+GSList                *cpg_parser_context_pop                  (CpgParserContext           *context);
 
 void                   cpg_parser_context_push_selector        (CpgParserContext           *context,
                                                                 gchar const                *identifier);
@@ -180,12 +187,6 @@ void                   cpg_parser_context_push_input           (CpgParserContext
 
 void                   cpg_parser_context_pop_input            (CpgParserContext           *context);
 
-gdouble                cpg_parser_context_calculate            (CpgParserContext           *context,
-                                                                gchar const                *expression);
-
-gchar                 *cpg_parser_context_calculate_str        (CpgParserContext           *context,
-                                                                gchar const                *expression);
-
 gint                   cpg_parser_context_steal_start_token    (CpgParserContext           *context);
 gint                   cpg_parser_context_get_start_token      (CpgParserContext           *context);
 
@@ -200,8 +201,17 @@ void                   cpg_parser_context_push_layout          (CpgParserContext
 void                   cpg_parser_context_add_layout           (CpgParserContext           *context,
                                                                 CpgLayoutRelation           relation,
                                                                 CpgSelector                *left,
-                                                                CpgSelector                *right,
-                                                                gboolean                    all);
+                                                                CpgSelector                *right);
+
+void                   cpg_parser_context_add_layout_position  (CpgParserContext           *context,
+                                                                CpgSelector                *selector,
+                                                                gchar const                *x,
+                                                                gchar const                *y,
+                                                                CpgSelector                *of);
+
+void                   cpg_parser_context_add_integrator_property (CpgParserContext        *context,
+                                                                   gchar const             *name,
+                                                                   gchar const             *value);
 
 G_END_DECLS
 

@@ -41,12 +41,11 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_BIDIRECTIONAL T_KEY_ALL T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_BIDIRECTIONAL T_KEY_ALL T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
 %type <num> relation_item
-%type <num> relation_all
 
 %token <numf> T_DOUBLE
 %token <numf> T_INTEGER
@@ -69,8 +68,11 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %token <id> T_EQUATION
 %token <id> T_EXPANSION
 
-%type <flags> flags
-%type <flags> flag
+%type <flags> property_flags
+%type <flags> property_flags_contents
+%type <flags> property_flag
+
+%type <selector> layout_relative
 
 %type <id> selector_pseudo_identifier
 
@@ -83,15 +85,17 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <argument> function_argument
 %type <selector> selector
 
-%type <object> link
-%type <object> state
 %type <id> identifier_or_string
 %type <id> expanded_string
 %type <id> expanded_regex
 %type <id> string_contents
 %type <id> equation_contents
+%type <id> equation
 
 %type <num> link_flags
+%type <num> link_flag
+%type <num> link_flags_contents
+%type <list> state
 
 %type <array> link_connect
 %type <array> templated
@@ -124,7 +128,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %start choose_parser
 
-%expect 31
+%expect 11
 
 %%
 
@@ -149,6 +153,7 @@ toplevel
 	| templates
 	| define
 	| layout
+	| integrator
 	;
 
 network
@@ -161,11 +166,22 @@ network
 network_contents
 	:
 	| network_contents property
-	| network_contents integrator
+	;
+
+integrator_item
+	: identifier_or_string '=' expanded_string { cpg_parser_context_add_integrator_property (context, $1, $3); }
+	;
+
+integrator_contents
+	:
+	| integrator_contents integrator_item
 	;
 
 integrator
-	: T_KEY_INTEGRATOR '=' expanded_string	{ cpg_parser_context_set_integrator (context, $3); }
+	: T_KEY_INTEGRATOR
+	  '{'				{ cpg_parser_context_push_integrator (context); }
+	  integrator_contents
+	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
 define
@@ -177,7 +193,7 @@ expanded_regex
 	;
 
 equation
-	: T_EQUATION_BEGIN equation_contents T_EQUATION_END
+	: T_EQUATION_BEGIN equation_contents T_EQUATION_END { $$ = $2; }
 	;
 
 equation_contents
@@ -235,7 +251,12 @@ state
 	  templated
 	  '{' 				{ cpg_parser_context_push_state (context, $2, $3); errb }
 	  state_contents
-	  '}'				{ cpg_parser_context_pop (context); errb }
+	  '}'				{ $$ = cpg_parser_context_pop (context); errb }
+	;
+
+state_in_group
+	: '[' T_KEY_PROXY ']' state	{ cpg_parser_context_set_proxy (context, $4); errb }
+	| state
 	;
 
 group
@@ -247,10 +268,19 @@ group
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
+link_flag
+	: T_KEY_ALL			{ $$ = CPG_PARSER_CONTEXT_LINK_FLAG_ALL; }
+	| T_KEY_BIDIRECTIONAL		{ $$ = CPG_PARSER_CONTEXT_LINK_FLAG_BIDIRECTIONAL; }
+	;
+
+link_flags_contents
+	: link_flag			{ $$ = $1; }
+	| link_flags link_flag		{ $$ = $1 | $2; }
+	;
+
 link_flags
-	:					{ $$ = 0; }
-	| link_flags T_KEY_ALL			{ $$ = $1 | CPG_PARSER_CONTEXT_LINK_FLAG_ALL; }
-	| link_flags T_KEY_BIDIRECTIONAL	{ $$ = $1 | CPG_PARSER_CONTEXT_LINK_FLAG_BIDIRECTIONAL; }
+	:				{ $$ = 0; }
+	| '[' link_flags_contents ']'	{ $$ = $2; }
 	;
 
 link_connect
@@ -259,6 +289,7 @@ link_connect
 					{ append_array (NULL, CpgSelector *, $2, $$ = arret);
 					  append_array ($$, CpgSelector *, $4, $$ = arret);
 					}
+	| T_KEY_ON selector		{ append_array (NULL, CpgSelector *, $2, $$ = arret); }
 	;
 
 link
@@ -334,7 +365,7 @@ state_contents
 
 group_item
 	: property
-	| state
+	| state_in_group
 	| link
 	| interface
 	| group
@@ -370,18 +401,21 @@ identifier_or_string
 	;
 
 property
-	: flags identifier_or_string '=' expanded_string
-					{ cpg_parser_context_add_property (context, $2, $4, $1); errb }
-	| identifier_or_string '=' expanded_string
-					{ cpg_parser_context_add_property (context, $1, $3, CPG_PROPERTY_FLAG_NONE); errb }
+	: identifier_or_string '=' expanded_string property_flags
+					{ cpg_parser_context_add_property (context, $1, $3, $4); errb }
 	;
 
-flags
+property_flags_contents
+	: property_flag			{ $$ = $1; }
+	| property_flags property_flag	{ $$ = $1 | $2; }
+	;
+
+property_flags
 	: 				{ $$ = 0; }
-	| flags flag 			{ $$ = $1 | $2; }
+	| '|' property_flags_contents	{ $$ = $2; }
 	;
 
-flag
+property_flag
 	: T_KEY_IN			{ $$ = CPG_PROPERTY_FLAG_IN; }
 	| T_KEY_OUT			{ $$ = CPG_PROPERTY_FLAG_OUT; }
 	| T_KEY_INTEGRATED		{ $$ = CPG_PROPERTY_FLAG_INTEGRATED; }
@@ -459,16 +493,15 @@ relation
 	| relation relation_item	{ $$ = $1 | $2; }
 	;
 
-relation_all
-	:				{ $$ = FALSE; }
-	| T_KEY_ALL			{ $$ = TRUE; }
+layout_relative
+	:				{ $$ = NULL; }
+	| T_KEY_OF selector		{ $$ = $2; }
 	;
 
 layout_item
 	: selector
 	  relation
-	  relation_all
-	  selector		{ cpg_parser_context_add_layout (context, $2, $1, $4, $3); }
+	  selector			{ cpg_parser_context_add_layout (context, $2, $1, $3); }
 	| selector
 	  T_KEY_AT
 	  '('
@@ -476,6 +509,7 @@ layout_item
 	  ','
 	  expanded_string
 	  ')'
+	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $4, $6, $8); }
 	;
 
 layout_items

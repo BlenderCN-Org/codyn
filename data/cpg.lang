@@ -29,7 +29,7 @@
         <define-regex id="nth">[-+]?[0-9]n([-+][0-9])?</define-regex>
         <define-regex id="string">"(\\["]|[^"])*"</define-regex>
         <define-regex id="regex">/(\\/|[^/])*/</define-regex>
-        <define-regex id="define">@({[^}]*}|\%{identifier}|[0-9]+)</define-regex>
+        <define-regex id="define">@({[^}]*}|\%{identifier}|([0-9]+(:[0-9]+)?))</define-regex>
         <define-regex id="identifier_or_string">((\%{identifier})|(\%{string}))</define-regex>
         <define-regex id="string_like">(\%{string}|\%{def:decimal}|\%{def:float}|\%{define})</define-regex>
 
@@ -53,6 +53,7 @@
             <keyword>once</keyword>
             <keyword>bidirectional</keyword>
             <keyword>all</keyword>
+            <keyword>proxy</keyword>
         </context>
 
         <context id="preprocessor" style-ref="preprocessor">
@@ -88,10 +89,9 @@
             <keyword>right-of</keyword>
             <keyword>above</keyword>
             <keyword>below</keyword>
-        </context>
-
-        <context id="colon-error" style-ref="error">
-            <match>:\s*[^a-z_" ]</match>
+            <keyword>at</keyword>
+            <keyword>on</keyword>
+            <keyword>of</keyword>
         </context>
 
         <context id="property">
@@ -128,7 +128,7 @@
         </context>
 
         <context id="simple_defined" style-ref="define">
-            <match>@[a-z0-9_-]+</match>
+            <match>\%{define}</match>
         </context>
 
         <context id="define">
@@ -159,7 +159,6 @@
                 <context ref="action"/>
                 <context ref="regex"/>
                 <context ref="string"/>
-                <context ref="colon-error"/>
                 <context ref="selector"/>
                 <context ref="def:decimal"/>
                 <context ref="def:float"/>

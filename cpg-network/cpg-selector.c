@@ -1192,83 +1192,106 @@ cpg_selector_as_string (CpgSelector *selector)
 	return selector->priv->as_string->str;
 }
 
-static gboolean
-expand_string_eval (GMatchInfo const *info,
-                    GString          *result,
-                    GSList           *expansions)
+typedef struct
 {
-	gchar *first;
-	gchar *second;
+	CpgSelector *selector;
+	GRegex *regex;
+	CpgSelectorExpandFunc func;
+	gpointer userdata;
+} ExpandInfo;
+
+static gchar *
+expand_expansion (CpgSelector      *selector,
+                  GMatchInfo const *info,
+                  GSList           *expansions)
+{
+	gchar *parent;
+	gchar *idx;
 	gchar const *num;
 	CpgExpansion *ex;
+	gchar *ret = NULL;
 
-	first = g_match_info_fetch (info, 1);
-	second = g_match_info_fetch (info, 3);
+	parent = g_match_info_fetch_named (info, "parent");
+	idx = g_match_info_fetch_named (info, "index");
 
-	if (second && *second)
+	if (idx && *idx)
 	{
 		ex = g_slist_nth_data (expansions,
-		                       (gint)g_ascii_strtoll (first, NULL, 10));
+		                       (gint)g_ascii_strtoll (parent, NULL, 10));
 
-		num = second;
+		num = idx;
 	}
 	else
 	{
 		ex = expansions ? expansions->data : NULL;
-		num = first;
+		num = parent;
 	}
 
 	if (ex)
 	{
-		gint idx = (gint)g_ascii_strtoll (num, NULL, 10);
+		gint idd = (gint)g_ascii_strtoll (num, NULL, 10);
 		gchar const *ss;
 
-		ss = cpg_expansion_get (ex, idx);
+		ss = cpg_expansion_get (ex, idd);
 
 		if (ss)
 		{
-			g_string_append (result, ss);
+			ret = g_strdup (ss);
 		}
 	}
 
-	g_free (first);
-	g_free (second);
+	g_free (parent);
+	g_free (idx);
+
+	return ret;
+}
+
+static gboolean
+expand_string_eval (GMatchInfo const *info,
+                    GString          *result,
+                    ExpandInfo       *exinfo)
+{
+	gchar *ret;
+
+	if (!exinfo->func)
+	{
+		return TRUE;
+	}
+
+	ret = exinfo->func (exinfo->selector, info, exinfo->userdata);
+
+	if (ret)
+	{
+		g_string_append (result, ret);
+	}
+
+	g_free (ret);
 
 	return TRUE;
 }
 
 static gchar *
-expand_string (gchar const *s,
-               GSList      *expansions)
+expand_string (ExpandInfo  *info,
+               gchar const *s)
 {
-	static GRegex *expander = NULL;
-
-	if (!expander)
-	{
-		expander = g_regex_new ("@([0-9]+)(:([0-9]+))?",
-		                        0,
-		                        0,
-		                        NULL);
-	}
-
-	return g_regex_replace_eval (expander,
+	return g_regex_replace_eval (info->regex,
 	                             s,
 	                             -1,
 	                             0,
 	                             0,
 	                             (GRegexEvalCallback)expand_string_eval,
-	                             expansions,
+	                             info,
 	                             NULL);
 }
 
 static Selector *
-expand_selector_identifier (Selector *selector,
-                            GSList   *expansions)
+expand_selector_identifier (ExpandInfo *info,
+                            Selector   *selector)
 {
 	gchar *expanded;
 	Selector *ret;
 
-	expanded = expand_string (selector->identifier, expansions);
+	expanded = expand_string (info, selector->identifier);
 	ret = selector_identifier_new (expanded);
 	g_free (expanded);
 
@@ -1276,13 +1299,13 @@ expand_selector_identifier (Selector *selector,
 }
 
 static Selector *
-expand_selector_regex (Selector *selector,
-                       GSList   *expansions)
+expand_selector_regex (ExpandInfo *info,
+                       Selector *selector)
 {
 	gchar *expanded;
 	Selector *ret;
 
-	expanded = expand_string (selector->as_string, expansions);
+	expanded = expand_string (info, selector->as_string);
 	ret = selector_regex_new (expanded);
 	g_free (expanded);
 
@@ -1290,8 +1313,8 @@ expand_selector_regex (Selector *selector,
 }
 
 static Selector *
-expand_selector_pseudo (Selector *selector,
-                        GSList   *expansions)
+expand_selector_pseudo (ExpandInfo *info,
+                        Selector *selector)
 {
 	GPtrArray *args;
 	Selector *ret;
@@ -1306,8 +1329,8 @@ expand_selector_pseudo (Selector *selector,
 
 	for (ptr = selector->pseudo.arguments; *ptr; ++ptr)
 	{
-		g_ptr_array_add (args, expand_string (*ptr,
-		                                      expansions));
+		g_ptr_array_add (args, expand_string (info,
+		                                      *ptr));
 	}
 
 	g_ptr_array_add (args, NULL);
@@ -1322,22 +1345,20 @@ expand_selector_pseudo (Selector *selector,
 }
 
 static Selector *
-expand_selector (Selector *selector,
-                 GSList   *expansions)
+expand_selector (ExpandInfo *info,
+                 Selector *selector)
 {
 	switch (selector->type)
 	{
 		case SELECTOR_TYPE_IDENTIFIER:
-			return expand_selector_identifier (selector,
-			                                   expansions);
+			return expand_selector_identifier (info,
+			                                   selector);
 		break;
 		case SELECTOR_TYPE_REGEX:
-			return expand_selector_regex (selector,
-			                              expansions);
+			return expand_selector_regex (info, selector);
 		break;
 		case SELECTOR_TYPE_PSEUDO:
-			return expand_selector_pseudo (selector,
-			                               expansions);
+			return expand_selector_pseudo (info, selector);
 		break;
 		default:
 			g_assert_not_reached ();
@@ -1347,20 +1368,50 @@ expand_selector (Selector *selector,
 
 CpgSelector *
 cpg_selector_expand (CpgSelector *selector,
-                     GSList      *expansions)
+                     GSList      *expansions,
+                     GRegex      *regex)
+{
+	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
+	g_return_val_if_fail (regex != NULL, NULL);
+
+	return cpg_selector_expand_func (selector,
+	                                 regex,
+	                                 (CpgSelectorExpandFunc)expand_expansion,
+	                                 expansions,
+	                                 NULL);
+}
+
+CpgSelector *
+cpg_selector_expand_func (CpgSelector           *selector,
+                          GRegex                *regex,
+                          CpgSelectorExpandFunc  func,
+                          gpointer               userdata,
+                          GDestroyNotify         destroy_func)
 {
 	CpgSelector *sel;
+	ExpandInfo info;
 	GSList *item;
 
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
+	g_return_val_if_fail (regex != NULL, NULL);
 
 	sel = cpg_selector_new ();
+
+	info.selector = selector;
+	info.regex = regex;
+	info.func = func;
+	info.userdata = userdata;
 
 	for (item = selector->priv->selectors; item; item = g_slist_next (item))
 	{
 		add_selector (sel,
-		              expand_selector (item->data,
-		                               expansions));
+		              expand_selector (&info,
+		                               item->data));
+	}
+
+	if (destroy_func)
+	{
+		destroy_func (userdata);
 	}
 
 	return sel;
@@ -1437,74 +1488,6 @@ cpg_expansion_free (CpgExpansion *id)
 	g_slice_free (CpgExpansion, id);
 }
 
-static gboolean
-expand_replace (GMatchInfo const *info,
-                GString          *result,
-                CpgExpansion     *id)
-{
-	gchar *n;
-	gint num;
-	gchar const *rep;
-
-	n = g_match_info_fetch (info, 1);
-	num = g_ascii_strtoll (n, NULL, 10);
-	g_free (n);
-
-	rep = cpg_expansion_get (id, num - 1);
-
-	if (rep != NULL)
-	{
-		g_string_append (result, rep);
-		return TRUE;
-	}
-	else
-	{
-		return FALSE;
-	}
-}
-
-gchar *
-cpg_expansion_expand (CpgExpansion *id,
-                      gchar const  *s)
-{
-	static GRegex *reg = NULL;
-
-	if (!reg)
-	{
-		reg = g_regex_new ("@([0-9]+)",
-		                   0,
-		                   0,
-		                   NULL);
-	}
-
-	return g_regex_replace_eval (reg,
-	                             s,
-	                             -1,
-	                             0,
-	                             0,
-	                             (GRegexEvalCallback)expand_replace,
-	                             id,
-	                             NULL);
-}
-
-gchar **
-cpg_expansion_expand_all (CpgExpansion        *id,
-                          gchar const * const *s)
-{
-	GPtrArray *ret;
-
-	ret = g_ptr_array_new ();
-
-	while (s && *s)
-	{
-		g_ptr_array_add (ret, cpg_expansion_expand (id, *s));
-		++s;
-	}
-
-	g_ptr_array_add (ret, NULL);
-	return (gchar **)g_ptr_array_free (ret, FALSE);
-}
-
 CpgExpansion *
 cpg_expansion_copy (CpgExpansion *id)
 {
@@ -1545,7 +1528,15 @@ cpg_expansion_add (CpgExpansion *id,
 
 gchar *
 cpg_expansions_expand (GSList      *expansions,
-                       gchar const *s)
+                       gchar const *s,
+                       GRegex      *regex)
 {
-	return expand_string (s, expansions);
+	ExpandInfo info;
+
+	info.selector = NULL;
+	info.func = (CpgSelectorExpandFunc)expand_expansion;
+	info.userdata = expansions;
+	info.regex = regex;
+
+	return expand_string (&info, s);
 }
