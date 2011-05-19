@@ -1,4 +1,5 @@
 #include "cpg-network-parser-utils.h"
+#include <string.h>
 
 gboolean
 cpg_network_parser_utils_get_templates (CpgNetwork           *network,
@@ -218,11 +219,13 @@ cpg_network_parser_utils_find_template_import (CpgObject *child,
 }
 
 static GSList *
-parse_expansion_range (GSList *ret,
-                       gchar  *id)
+parse_expansion_range (gchar const *s,
+                       gint         len)
 {
 	static GRegex *rangereg = NULL;
 	GMatchInfo *info;
+	gchar *id;
+	GSList *ret = NULL;
 
 	if (rangereg == NULL)
 	{
@@ -231,6 +234,8 @@ parse_expansion_range (GSList *ret,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
 	}
+
+	id = g_strndup (s, len);
 
 	if (g_regex_match (rangereg, id, 0, &info))
 	{
@@ -242,8 +247,14 @@ parse_expansion_range (GSList *ret,
 
 		while (TRUE)
 		{
+			gchar *it;
+
+			it = g_strdup_printf ("%d", cstart);
+
 			ret = g_slist_prepend (ret,
-			                       g_strdup_printf ("%d", cstart));
+			                       cpg_expansion_new_one (it));
+
+			g_free (it);
 
 			if (cstart == cend)
 			{
@@ -264,175 +275,237 @@ parse_expansion_range (GSList *ret,
 		g_free (end);
 
 		g_match_info_free (info);
-		g_free (id);
 	}
 	else
 	{
-		ret = g_slist_prepend (ret, id);
+		ret = g_slist_prepend (ret,
+		                       cpg_expansion_new_one (id));
 	}
 
-	return ret;
+	g_free (id);
+
+	return g_slist_reverse (ret);
+}
+
+static void
+expansions_add (GSList      *expansions,
+                gchar const *s,
+                gint         len,
+                gboolean     prepend)
+{
+	gchar *ss;
+
+	if (len < 0)
+	{
+		len = strlen (s);
+	}
+
+	if (len == 0)
+	{
+		return;
+	}
+
+	ss = g_strndup (s, len);
+
+	while (expansions)
+	{
+		gchar *c;
+		gchar const *cur = cpg_expansion_get (expansions->data, 0);
+
+		if (prepend)
+		{
+			c = g_strconcat (ss, cur, NULL);
+		}
+		else
+		{
+			c = g_strconcat (cur, ss, NULL);
+		}
+
+		cpg_expansion_set (expansions->data, 0, c);
+		g_free (c);
+
+		expansions = g_slist_next (expansions);
+	}
+
+	g_free (ss);
+}
+
+static void
+expansions_prepend (GSList      *expansions,
+                    gchar const *s,
+                    gint         len)
+{
+	expansions_add (expansions, s, len, TRUE);
+}
+
+static void
+expansions_append (GSList      *expansions,
+                   gchar const *s,
+                   gint         len)
+{
+	expansions_add (expansions, s, len, FALSE);
+}
+
+static CpgExpansion *
+expansion_concat (CpgExpansion *s1,
+                  CpgExpansion *s2)
+{
+	CpgExpansion *copy;
+	gchar *n0;
+	gint i;
+
+	copy = cpg_expansion_copy (s1);
+	n0 = g_strconcat (cpg_expansion_get (s1, 0),
+	                  cpg_expansion_get (s2, 0),
+	                  NULL);
+
+	cpg_expansion_set (copy, 0, n0);
+	g_free (n0);
+
+	for (i = 1; i < cpg_expansion_num (s2); ++i)
+	{
+		cpg_expansion_add (copy, cpg_expansion_get (s2, i));
+	}
+
+	return copy;
+}
+
+static GSList *
+expansions_concat (GSList *s1,
+                   GSList *s2)
+{
+	GSList *ret = NULL;
+
+	if (s1 == NULL)
+	{
+		s1 = g_slist_prepend (s1, cpg_expansion_new (NULL));
+	}
+
+	while (s1)
+	{
+		GSList *item = s2;
+
+		while (item)
+		{
+			ret = g_slist_prepend (ret,
+			                       expansion_concat (s1->data,
+			                                         item->data));
+
+			if (s1->next)
+			{
+				item = g_slist_next (item);
+			}
+			else
+			{
+				cpg_expansion_free (item->data);
+				item = g_slist_delete_link (item, item);
+			}
+		}
+
+		cpg_expansion_free (s1->data);
+		s1 = g_slist_delete_link (s1, s1);
+	}
+
+	return g_slist_reverse (ret);
+}
+
+static GSList *expand_id_recurse (gchar const **id, gchar const *endings);
+
+static void
+expansion_shift (CpgExpansion *expansion)
+{
+	gint i;
+
+	cpg_expansion_add (expansion, "");
+
+	for (i = cpg_expansion_num (expansion) - 2; i >= 0; --i)
+	{
+		cpg_expansion_set (expansion,
+		                   i + 1,
+		                   cpg_expansion_get (expansion, i));
+	}
 }
 
 static GSList *
 parse_expansion (gchar const **id)
 {
-	gchar const *ptr = *id;
 	GSList *ret = NULL;
-	gint depth = 0;
 
-	while (**id && (**id != '}' || depth != 0))
+	while (**id)
 	{
-		if (**id == ',')
+		GSList *items;
+		GSList *it;
+
+		items = expand_id_recurse (id, ",}");
+
+		for (it = items; it; it = g_slist_next (it))
 		{
-			if (ptr != *id)
+			expansion_shift (it->data);
+		}
+
+		ret = g_slist_concat (ret, items);
+
+		if (**id)
+		{
+			if (*((*id)++) == '}')
 			{
-				ret = parse_expansion_range (ret,
-				                             g_strndup (ptr, *id - ptr));
+				break;
 			}
+		}
+	}
 
-			ptr = *id + 1;
-		}
-		else if (**id == '{')
-		{
-			++depth;
-		}
-		else if (**id == '}')
-		{
-			--depth;
-		}
+	return ret;
+}
 
-		++*id;
+GSList *
+expand_id_recurse (gchar const **id,
+                   gchar const *endings)
+{
+	GSList *ret = NULL;
+	gchar const *ptr = *id;
+
+	while (**id && strchr (endings, **id) == NULL)
+	{
+		if (**id == '{')
+		{
+			GSList *ex;
+			gint len = *id - ptr;
+
+			++*id;
+
+			/* Recursively parse the expansions */
+			ex = parse_expansion (id);
+
+			/* Prepend what we got till now */
+			expansions_prepend (ex, ptr, len);
+
+			/* Concatenate the expansions */
+			ret = expansions_concat (ret, ex);
+			ptr = *id;
+		}
+		else if (**id)
+		{
+			++*id;
+		}
 	}
 
 	if (ptr != *id)
 	{
-		ret = parse_expansion_range (ret,
-		                             g_strndup (ptr, *id - ptr));
-	}
-
-	if (**id == '}')
-	{
-		++*id;
-	}
-
-	return g_slist_reverse (ret);
-}
-
-static CpgExpansion *
-expand_id (CpgExpansion *id,
-           gchar const  *s)
-{
-	gchar *c;
-	CpgExpansion *ret;
-
-	c = g_strconcat (cpg_expansion_get (id, 0), s, NULL);
-
-	ret = cpg_expansion_copy (id);
-	cpg_expansion_set (ret, 0, c);
-	g_free (c);
-
-	cpg_expansion_add (ret, s);
-
-	return ret;
-}
-
-static GSList *
-prepend_expansion (GSList *items,
-                   GSList *expansions)
-{
-	GSList *ret = NULL;
-	GSList *ptr;
-
-	for (ptr = items; ptr; ptr = g_slist_next (ptr))
-	{
-		CpgExpansion *id = ptr->data;
-		GSList *ex;
-
-		for (ex = expansions; ex; ex = g_slist_next (ex))
+		if (ret != NULL)
 		{
-			ret = g_slist_prepend (ret,
-			                       expand_id (id,
-			                                  ex->data));
+			expansions_append (ret, ptr, *id - ptr);
 		}
-
-		cpg_expansion_free (id);
+		else
+		{
+			ret = parse_expansion_range (ptr, *id - ptr);
+		}
 	}
 
-	g_slist_free (items);
 	return ret;
-}
-
-static void
-add_to_expansions (GSList      *ids,
-                   gchar const *id,
-                   gint         len)
-{
-	gchar *added;
-
-	added = g_strndup (id, len);
-
-	while (ids)
-	{
-		CpgExpansion *p;
-		gchar *tmp;
-
-		p = ids->data;
-
-		tmp = g_strconcat (cpg_expansion_get (p, 0),
-		                   added,
-		                   NULL);
-
-		cpg_expansion_set (p, 0, tmp);
-		g_free (tmp);
-
-		ids = g_slist_next (ids);
-	}
-
-	g_free (added);
 }
 
 GSList *
 cpg_network_parser_utils_expand_id (gchar const *id)
 {
-	GSList *ret = NULL;
-	gchar const *ptr = id;
-
-	ret = g_slist_prepend (NULL,
-	                       cpg_expansion_new (NULL));
-
-	while (*id)
-	{
-		if (*id == '{')
-		{
-			GSList *ex;
-
-			if (ptr != id)
-			{
-				add_to_expansions (ret, ptr, id - ptr);
-			}
-
-			++id;
-
-			ex = parse_expansion (&id);
-			ret = prepend_expansion (g_slist_reverse (ret), ex);
-
-			g_slist_foreach (ex, (GFunc)g_free, NULL);
-			g_slist_free (ex);
-
-			ptr = id;
-		}
-
-		if (*id)
-		{
-			++id;
-		}
-	}
-
-	if (ptr != id)
-	{
-		add_to_expansions (ret, ptr, id - ptr);
-	}
-
-	return g_slist_reverse (ret);
+	return expand_id_recurse (&id, "\0");
 }

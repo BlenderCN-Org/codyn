@@ -1418,6 +1418,17 @@ cpg_selector_expand_func (CpgSelector           *selector,
 }
 
 CpgExpansion *
+cpg_expansion_new_one (gchar const *item)
+{
+	gchar const *items[] = {
+		item,
+		NULL
+	};
+
+	return cpg_expansion_new (items);
+}
+
+CpgExpansion *
 cpg_expansion_new (gchar const * const *items)
 {
 	CpgExpansion *ret;

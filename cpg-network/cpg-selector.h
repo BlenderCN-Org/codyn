@@ -87,6 +87,8 @@ GSList       *cpg_selector_select_properties (CpgSelector            *selector,
                                               CpgObject              *parent);
 
 CpgExpansion *cpg_expansion_new              (gchar const * const    *items);
+CpgExpansion *cpg_expansion_new_one          (gchar const            *item);
+
 CpgExpansion *cpg_expansion_copy             (CpgExpansion           *id);
 
 gint          cpg_expansion_num              (CpgExpansion           *id);
