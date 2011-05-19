@@ -48,6 +48,7 @@ STRING "\""(\\["]|[^"])*"\""
 %option prefix="cpg_parser_"
 %option bison-bridge bison-locations
 %option outfile="lex.yy.c"
+%option stack
 
 %x incl
 %x instring
@@ -147,18 +148,26 @@ STRING "\""(\\["]|[^"])*"\""
 					return T_DEFINED;
 				}
 
-<instring,inregex,INITIAL>"@"[0-9]+(:[0-9]+)?	{
-					yylval->id = g_strdup (yytext);
-					return T_STRING;
+<instring,inregex,equation,INITIAL>"@"[0-9]+(:[0-9]+)?	{
+					yylval->id = g_strdup (yytext + 1);
+					return T_EXPANSION;
 				}
 
-<instring,inregex,INITIAL>"@"[a-zA-Z_][a-zA-Z0-9_-]*	{
+<instring,inregex,equation,INITIAL>"@"[a-zA-Z_][a-zA-Z0-9_-]*	{
 					yylval->id = g_strdup (yytext + 1);
 					return T_DEFINED;
 				}
 
-<instring,inregex,INITIAL>"@{"[^}]*"}"	{
-					yylval->id = g_strndup (yytext + 2, yyleng - 3);
+<instring,inregex,INITIAL>"@{"	{
+					BEGIN(equation);
+					return T_EQUATION_BEGIN;
+				}
+<equation>"}"			{
+					yy_pop_state ();
+					return T_EQUATION_END;
+				}
+<equation>(\\[}@]|[^}@])+	{
+					yylval->id = unquote_string (yytext, yyleng, '}');
 					return T_EQUATION;
 				}
 <instring>(\\["@]|[^"@])+	{

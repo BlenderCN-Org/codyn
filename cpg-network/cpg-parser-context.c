@@ -8,6 +8,10 @@
 
 #define CPG_PARSER_CONTEXT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PARSER_CONTEXT, CpgParserContextPrivate))
 
+#define EXPANSION_EMBEDDING 1
+#define EQUATION_EMBEDDING 2
+#define DEFINE_EMBEDDING 3
+
 void cpg_parser_lex_destroy (gpointer scanner);
 void cpg_parser_lex_init_extra (gpointer context, gpointer *scanner);
 int cpg_parser_parse (gpointer context);
@@ -1678,81 +1682,45 @@ cpg_parser_context_define (CpgParserContext *context,
 	                     g_strdup (define));
 }
 
-gchar const *
-cpg_parser_context_lookup_define (CpgParserContext *context,
+gchar *
+cpg_parser_context_embed_define (CpgParserContext *context,
                                   gchar const      *define)
 {
-	gchar const *ret;
-
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
 	g_return_val_if_fail (define != NULL, NULL);
 
-	ret = g_hash_table_lookup (context->priv->defines, define);
-
-	return ret ? ret : "";
+	return g_strdup_printf ("%c%s%c",
+	                        DEFINE_EMBEDDING,
+	                        define,
+	                        DEFINE_EMBEDDING);
 }
 
-static gboolean
-remove_selector (CpgParserContext *context,
-                 CpgSelector      *selector)
+gchar *
+cpg_parser_context_embed_equation (CpgParserContext *context,
+                                   gchar const      *equation)
 {
-	GSList *ret;
-	GSList *item;
-	gboolean val = TRUE;
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+	g_return_val_if_fail (equation != NULL, NULL);
 
-	ret = cpg_selector_select (selector,
-	                           CPG_OBJECT (context->priv->network));
-
-	for (item = ret; item; item = g_slist_next (item))
-	{
-		CpgObject *parent;
-		GError *error = NULL;
-
-		parent = cpg_object_get_parent (cpg_selection_get_object (item->data));
-
-		if (!parent)
-		{
-			val = FALSE;
-			break;
-		}
-
-		if (!cpg_group_remove (CPG_GROUP (parent),
-		                       cpg_selection_get_object (item->data),
-		                       &error))
-		{
-			parser_failed_error (context, error);
-			val = FALSE;
-
-			break;
-		}
-	}
-
-	g_slist_foreach (ret, (GFunc)cpg_selection_free, NULL);
-	g_slist_free (ret);
-
-	return val;
+	return g_strdup_printf ("%c%s%c",
+	                        EQUATION_EMBEDDING,
+	                        equation,
+	                        EQUATION_EMBEDDING);
 }
 
-void
-cpg_parser_context_remove (CpgParserContext *context,
-                           GArray           *selectors)
+gchar *
+cpg_parser_context_embed_expansion (CpgParserContext *context,
+                                    gchar const      *expansion)
 {
-	gint i;
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+	g_return_val_if_fail (equation != NULL, NULL);
 
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (selectors != NULL);
-
-	for (i = 0; i < selectors->len; ++i)
-	{
-		if (!remove_selector (context,
-		                      g_array_index (selectors,
-		                                     CpgSelector *,
-		                                     i)))
-		{
-			break;
-		}
-	}
+	return g_strdup_printf ("%c%s%c",
+	                        EXPANSION_EMBEDDING,
+	                        expansion,
+	                        EXPANSION_EMBEDDING);
 }
+
 
 void
 cpg_parser_context_set_integrator (CpgParserContext *context,
@@ -1946,10 +1914,37 @@ cpg_parser_context_calculate_str (CpgParserContext *context,
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
 	g_return_val_if_fail (expression != NULL, NULL);
 
-	val = cpg_parser_context_calculate (context, expression);
+	if (context->priv->suspend_embeddings)
+	{
+		return g_strdup_printf ("%c%s%c",
+		                        CALCULATION_MARK,
+		                        expression,
+		                        CALCULATION_MARK);
+	}
+	else
+	{
 
-	g_ascii_dtostr (buf, G_ASCII_DTOSTR_BUF_SIZE, val);
-	return g_strdup (buf);
+		val = cpg_parser_context_calculate (context, expression);
+
+		g_ascii_dtostr (buf, G_ASCII_DTOSTR_BUF_SIZE, val);
+		return g_strdup (buf);
+	}
+}
+
+void
+cpg_parser_context_suspend_embeddings (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	context->priv->suspend_embeddings = TRUE;
+}
+
+void
+cpg_parser_context_unsuspend_embeddings (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	context->priv->suspend_embeddings = FALSE;
 }
 
 gint

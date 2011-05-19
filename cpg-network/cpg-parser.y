@@ -59,11 +59,15 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %token T_REGEX_BEGIN
 %token T_REGEX_END
 
+%token T_EQUATION_BEGIN
+%token T_EQUATION_END
+
 %token T_START_DOCUMENT
 %token T_START_SELECTOR
 
 %token <id> T_DEFINED
 %token <id> T_EQUATION
+%token <id> T_EXPANSION
 
 %type <flags> flags
 %type <flags> flag
@@ -85,6 +89,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 %type <id> expanded_string
 %type <id> expanded_regex
 %type <id> string_contents
+%type <id> equation_contents
 
 %type <num> link_flags
 
@@ -171,20 +176,33 @@ expanded_regex
 	: T_REGEX_BEGIN string_contents T_REGEX_END	{ $$ = $2; }
 	;
 
+equation
+	: T_EQUATION_BEGIN equation_contents T_EQUATION_END
+	;
+
+equation_contents
+	:						{ $$ = g_strdup (""); }
+	| equation_contents T_EQUATION			{ $$ = g_strconcat ($1, $2, NULL); }
+	| equation_contents T_DEFINED			{ $$ = g_strconcat ($1, cpg_parser_context_embed_define (context, $2), NULL); }
+	| equation_contents T_EXPANSION			{ $$ = g_strconcat ($1, cpg_parser_context_embed_expansion (context, $2), NULL); }
+	;
+
 expanded_string
 	: T_STRING_BEGIN string_contents T_STRING_END	{ $$ = $2; }
 	| T_INTEGER					{ $$ = g_strdup_printf ("%d", (gint)$1); }
 	| T_DOUBLE					{ $$ = g_strdup_printf ("%f", $1); }
-	| T_DEFINED					{ $$ = g_strdup (cpg_parser_context_lookup_define (context, $1)); }
-	| T_EQUATION					{ $$ = cpg_parser_context_calculate_str (context, $1); }
+	| T_DEFINED					{ $$ = cpg_parser_context_embed_define (context, $1); }
+	| equation					{ $$ = cpg_parser_context_embed_equation (context, $1); }
+	| T_EXPANSION					{ $$ = cpg_parser_context_embed_expansion (context, $1); }
 	| T_STRING					{ $$ = $1; }
 	;
 
 string_contents
 	:				{ $$ = g_strdup (""); }
 	| string_contents T_STRING	{ $$ = g_strconcat ($1, $2, NULL); }
-	| string_contents T_DEFINED	{ $$ = g_strconcat ($1, cpg_parser_context_lookup_define (context, $2), NULL); }
-	| string_contents T_EQUATION	{ $$ = g_strconcat ($1, cpg_parser_context_calculate_str (context, $2), NULL); }
+	| string_contents T_DEFINED	{ $$ = g_strconcat ($1, cpg_parser_context_embed_define (context, $2), NULL); }
+	| string_contents equation	{ $$ = g_strconcat ($1, cpg_parser_context_embed_equation (context, $2), NULL); }
+	| string_contents T_EXPANSION	{ $$ = g_strconcat ($1, cpg_parser_context_embed_expansion (context, $2), NULL); }
 	;
 
 templates
@@ -451,6 +469,13 @@ layout_item
 	  relation
 	  relation_all
 	  selector		{ cpg_parser_context_add_layout (context, $2, $1, $4, $3); }
+	| selector
+	  T_KEY_AT
+	  '('
+	  expanded_string
+	  ','
+	  expanded_string
+	  ')'
 	;
 
 layout_items

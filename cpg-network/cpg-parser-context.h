@@ -156,8 +156,14 @@ void                   cpg_parser_context_define               (CpgParserContext
                                                                 gchar const                *name,
                                                                 gchar const                *define);
 
-gchar const           *cpg_parser_context_lookup_define        (CpgParserContext           *context,
+gchar                 *cpg_parser_context_embed_define         (CpgParserContext           *context,
                                                                 gchar const                *define);
+
+gchar                 *cpg_parser_context_embed_equation       (CpgParserContext           *context,
+                                                                gchar const                *equation);
+
+gchar                 *cpg_parser_context_embed_expansion      (CpgParserContext           *context,
+                                                                gchar const                *expansion);
 
 void                   cpg_parser_context_remove               (CpgParserContext           *context,
                                                                 GArray                     *selectors);
