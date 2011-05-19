@@ -1823,7 +1823,7 @@ cpg_group_find_object (CpgGroup    *group,
 		return NULL;
 	}
 
-	all = cpg_selector_select (sel, CPG_OBJECT (group));
+	all = cpg_selector_select (sel, CPG_OBJECT (group), NULL);
 
 	if (all)
 	{

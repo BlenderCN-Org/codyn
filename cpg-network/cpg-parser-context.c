@@ -3,6 +3,9 @@
 #include "cpg-integrators.h"
 #include "cpg-parser.h"
 #include "cpg-annotatable.h"
+#include "cpg-embedded-context.h"
+#include "cpg-selection.h"
+#include "cpg-expansion.h"
 
 #include <string.h>
 
@@ -34,7 +37,6 @@ struct _CpgParserContextPrivate
 	CpgNetwork *network;
 	GSList *inputs;
 	gpointer scanner;
-	GHashTable *defines;
 	gint start_token;
 
 	gint lineno;
@@ -52,6 +54,7 @@ struct _CpgParserContextPrivate
 	CpgSelector *selector;
 
 	Context *is_template;
+	CpgEmbeddedContext *embedded;
 
 	GError *error;
 	gboolean error_occurred;
@@ -59,17 +62,7 @@ struct _CpgParserContextPrivate
 	CpgLayout *layout;
 };
 
-struct _CpgParserContextClassPrivate
-{
-	GRegex *embed_equation;
-	GRegex *embed_expansion;
-};
-
-G_DEFINE_TYPE_WITH_CODE (CpgParserContext,
-                         cpg_parser_context,
-                         G_TYPE_OBJECT,
-                         g_type_add_class_private (g_define_type_id,
-                                                   sizeof (CpgParserContextClassPrivate)))
+G_DEFINE_TYPE (CpgParserContext, cpg_parser_context, G_TYPE_OBJECT)
 
 enum
 {
@@ -217,11 +210,6 @@ cpg_parser_context_constructed (GObject *object)
 
 	cpg_parser_context_push_network (self);
 
-	self->priv->defines = g_hash_table_new_full (g_str_hash,
-	                                             g_str_equal,
-	                                             (GDestroyNotify)g_free,
-	                                             (GDestroyNotify)g_free);
-
 	cpg_parser_lex_init_extra (self, &(self->priv->scanner));
 }
 
@@ -235,24 +223,6 @@ cpg_parser_context_class_init (CpgParserContextClass *klass)
 	object_class->get_property = cpg_parser_context_get_property;
 	object_class->set_property = cpg_parser_context_set_property;
 	object_class->constructed = cpg_parser_context_constructed;
-
-	klass->priv = CPG_PARSER_CONTEXT_CLASS_GET_PRIVATE (klass);
-
-	klass->priv->embed_expansion = g_regex_new (EXPANSION_EMBEDDING
-	                                            "(?P<parent>[0-9]+)(:(?P<index>[0-9]+))?"
-	                                            EXPANSION_EMBEDDING,
-	                                            0,
-	                                            0,
-	                                            NULL);
-
-	klass->priv->embed_equation = g_regex_new (EQUATION_EMBEDDING
-	                                           "([^"
-	                                           EQUATION_EMBEDDING
-	                                           "]+)"
-	                                           EQUATION_EMBEDDING,
-	                                           0,
-	                                           0,
-	                                           NULL);
 
 	g_type_class_add_private (object_class, sizeof(CpgParserContextPrivate));
 
@@ -272,6 +242,7 @@ cpg_parser_context_init (CpgParserContext *self)
 
 	self->priv->start_token = T_START_DOCUMENT;
 	self->priv->annotation = g_string_new ("");
+	self->priv->embedded = cpg_embedded_context_new ();
 }
 
 CpgParserContext *
@@ -372,145 +343,10 @@ print_expansions (CpgParserContext *context)
 	}
 }*/
 
-static gchar *
-expand_equation_real (CpgParserContext *context,
-                      GMatchInfo const *info)
-{
-	gchar *s;
-	gchar *ret = NULL;
-
-	s = g_match_info_fetch (info, 1);
-
-	if (s && *s)
-	{
-		CpgExpression *expr;
-		CpgCompileContext *ctx;
-
-		ctx = cpg_compile_context_new ();
-
-		expr = cpg_expression_new (s);
-
-		if (cpg_expression_compile (expr, ctx, NULL))
-		{
-			gdouble val;
-			gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
-
-			val = cpg_expression_evaluate (expr);
-			g_ascii_dtostr (buf, G_ASCII_DTOSTR_BUF_SIZE, val);
-
-			ret = g_strdup (buf);
-		}
-
-		g_object_unref (expr);
-		g_object_unref (ctx);
-	}
-
-	g_free (s);
-	return ret;
-}
-
-static gboolean
-expand_equation_eval (GMatchInfo const *info,
-                      GString          *result,
-                      CpgParserContext *context)
-{
-	gchar *s;
-
-	s = expand_equation_real (context, info);
-
-	if (s)
-	{
-		g_string_append (result, s);
-	}
-
-	g_free (s);
-	return TRUE;
-}
-
-
-static gchar *
-expand_equation (CpgParserContext *context,
-                 gchar const      *s)
-{
-	CpgParserContextClass *klass;
-
-	klass = CPG_PARSER_CONTEXT_GET_CLASS (context);
-
-	return g_regex_replace_eval (klass->priv->embed_equation,
-	                             s,
-	                             -1,
-	                             0,
-	                             0,
-	                             (GRegexEvalCallback)expand_equation_eval,
-	                             context,
-	                             NULL);
-}
-
-static gchar *
-expand_string (CpgParserContext *context,
-               gchar const      *s,
-               CpgSelection     *selection)
-{
-	gchar *expanded;
-	gchar *ret;
-	CpgParserContextClass *klass;
-
-	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-	g_return_val_if_fail (s != NULL, NULL);
-
-	klass = CPG_PARSER_CONTEXT_GET_CLASS (context);
-
-	/* Embed expansions */
-	expanded = cpg_expansions_expand (cpg_selection_get_expansions (selection),
-	                                  s,
-	                                  klass->priv->embed_expansion);
-
-	/* Embed equation */
-	ret = expand_equation (context, expanded);
-
-	g_free (expanded);
-	return ret;
-}
-
-static gchar *
-expand_selector_equations (CpgSelector      *selector,
-                           GMatchInfo const *info,
-                           CpgParserContext *context)
-{
-	return expand_equation_real (context, info);
-}
-
-static CpgSelector *
-expand_selector (CpgParserContext *context,
-                 CpgSelector      *selector,
-                 GSList           *expansions)
-{
-	CpgSelector *ret;
-	CpgSelector *fin;
-	CpgParserContextClass *klass;
-
-	klass = CPG_PARSER_CONTEXT_GET_CLASS (context);
-
-	/* First expand the expansions */
-	ret = cpg_selector_expand (selector,
-	                           expansions,
-	                           klass->priv->embed_expansion);
-
-	/* Then expand the equations */
-	fin = cpg_selector_expand_func (ret,
-	                                klass->priv->embed_equation,
-	                                (CpgSelectorExpandFunc)expand_selector_equations,
-	                                context,
-	                                NULL);
-
-	g_object_unref (ret);
-	return fin;
-}
-
 void
-cpg_parser_context_add_property (CpgParserContext *context,
-                                 gchar const      *name,
-                                 gchar const      *expression,
+cpg_parser_context_add_property (CpgParserContext  *context,
+                                 CpgEmbeddedString *name,
+                                 CpgEmbeddedString *expression,
                                  CpgPropertyFlags  flags)
 {
 	Context *ctx;
@@ -530,24 +366,26 @@ cpg_parser_context_add_property (CpgParserContext *context,
 		GError *error = NULL;
 		CpgObject *obj;
 		CpgProperty *property;
-		gchar *ex;
+		gchar const *exname;
+		gchar const *exexpression;
 
 		obj = cpg_selection_get_object (item->data);
 
-		ex = expand_string (context, expression, item->data);
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (item->data));
+
+		exname = cpg_embedded_string_expand (name, context->priv->embedded);
+		exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
 
 		if (!cpg_object_add_property (obj,
-		                              cpg_property_new (name, ex, flags),
+		                              cpg_property_new (exname, exexpression, flags),
 		                              &error))
 		{
-			g_free (ex);
 			parser_failed_error (context, error);
 			break;
 		}
 
-		g_free (ex);
-
-		property = cpg_object_get_property (obj, name);
+		property = cpg_object_get_property (obj, exname);
 		cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);
 
 		if (annotation)
@@ -558,16 +396,20 @@ cpg_parser_context_add_property (CpgParserContext *context,
 	}
 
 	g_free (annotation);
+
+	g_object_unref (name);
+	g_object_unref (expression);
 }
 
 void
-cpg_parser_context_add_action (CpgParserContext *context,
-                               gchar const      *target,
-                               gchar const      *expression)
+cpg_parser_context_add_action (CpgParserContext  *context,
+                               CpgEmbeddedString *target,
+                               CpgEmbeddedString *expression)
 {
 	Context *ctx;
 	GSList *item;
 	gchar *annotation;
+
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (target != NULL);
@@ -579,9 +421,19 @@ cpg_parser_context_add_action (CpgParserContext *context,
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
 		CpgLinkAction *action;
+		gchar const *extarget;
+		gchar const *exexpression;
 
-		action = cpg_link_action_new (target,
-		                              cpg_expression_new (expression));
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (item->data));
+
+		extarget = cpg_embedded_string_expand (target, context->priv->embedded);
+		exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
+
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
+
+		action = cpg_link_action_new (extarget,
+		                              cpg_expression_new (exexpression));
 
 		cpg_link_add_action (CPG_LINK (cpg_selection_get_object (item->data)),
 		                     action);
@@ -593,25 +445,36 @@ cpg_parser_context_add_action (CpgParserContext *context,
 		}
 	}
 
+	g_object_unref (target);
+	g_object_unref (expression);
+
 	g_free (annotation);
 }
 
 CpgFunction *
-cpg_parser_context_add_function (CpgParserContext *context,
-                                 gchar const      *name,
-                                 gchar const      *expression,
-                                 GArray           *arguments)
+cpg_parser_context_add_function (CpgParserContext  *context,
+                                 CpgEmbeddedString *name,
+                                 CpgEmbeddedString *expression,
+                                 GArray            *arguments)
 {
 	CpgFunction *function;
 	gint i;
 	gchar *annotation;
+	gchar const *exname;
+	gchar const *exexpression;
 
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 	g_return_val_if_fail (expression != NULL, NULL);
 
-	function = cpg_function_new (name, expression);
+	exname = cpg_embedded_string_expand (name, context->priv->embedded);
+	exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
+
+	function = cpg_function_new (exname, exexpression);
 	annotation = steal_annotation (context);
+
+	g_object_unref (name);
+	g_object_unref (expression);
 
 	for (i = 0; i < arguments->len; ++i)
 	{
@@ -639,20 +502,23 @@ cpg_parser_context_add_function (CpgParserContext *context,
 }
 
 CpgFunctionPolynomial *
-cpg_parser_context_add_polynomial (CpgParserContext *context,
-                                   gchar const      *name,
-                                   GArray           *pieces)
+cpg_parser_context_add_polynomial (CpgParserContext  *context,
+                                   CpgEmbeddedString *name,
+                                   GArray            *pieces)
 {
 	CpgFunctionPolynomial *function;
 	gint i;
 	gchar *annotation;
+	gchar const *exname;
 
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
 	annotation = steal_annotation (context);
 
-	function = cpg_function_polynomial_new (name);
+	exname = cpg_embedded_string_expand (name, context->priv->embedded);
+	function = cpg_function_polynomial_new (exname);
+	g_object_unref (name);
 
 	for (i = 0; i < pieces->len; ++i)
 	{
@@ -680,9 +546,9 @@ cpg_parser_context_add_polynomial (CpgParserContext *context,
 }
 
 void
-cpg_parser_context_add_interface (CpgParserContext *context,
-                                  gchar const      *name,
-                                  CpgSelector      *target)
+cpg_parser_context_add_interface (CpgParserContext  *context,
+                                  CpgEmbeddedString *name,
+                                  CpgSelector       *target)
 {
 	Context *ctx;
 	GSList *item;
@@ -696,32 +562,37 @@ cpg_parser_context_add_interface (CpgParserContext *context,
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
 		CpgPropertyInterface *iface;
-		CpgSelector *sel;
 		CpgGroup *parent;
 		GSList *props;
 		gboolean ret = TRUE;
 		GError *error = NULL;
+		gchar const *exname;
 
 		parent = CPG_GROUP (cpg_selection_get_object (item->data));
 
 		iface = cpg_group_get_property_interface (parent);
 
-		sel = expand_selector (context, target, item->data);
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (item->data));
 
-		props = cpg_selector_select_properties (sel, CPG_OBJECT (parent));
+		props = cpg_selector_select_properties (target,
+		                                        CPG_OBJECT (parent),
+		                                        context->priv->embedded);
+
+		exname = cpg_embedded_string_expand (name, context->priv->embedded);
 
 		if (!props)
 		{
 			parser_failed (context,
 			               CPG_NETWORK_LOAD_ERROR_INTERFACE,
 			               "Could not find target property `%s' for `%s'",
-			               cpg_selector_as_string (sel),
+			               cpg_selector_as_string (target),
 			               name);
 
 			ret = FALSE;
 		}
 		else if (!cpg_property_interface_add (iface,
-		                                      name,
+		                                      exname,
 		                                      cpg_selection_get_property (props->data),
 		                                      &error))
 		{
@@ -732,13 +603,13 @@ cpg_parser_context_add_interface (CpgParserContext *context,
 		g_slist_foreach (props, (GFunc)cpg_selection_free, NULL);
 		g_slist_free (props);
 
-		g_object_unref (sel);
-
 		if (!ret)
 		{
 			break;
 		}
 	}
+
+	g_object_unref (name);
 }
 
 void
@@ -762,41 +633,9 @@ cpg_parser_context_get_error (CpgParserContext *context)
 	return context->priv->error;
 }
 
-static GSList *
-append_parent_expansions (GSList       *expansions,
-                          CpgSelection *parent)
-{
-	GSList *ret = NULL;
-	GSList *item;
-
-	ret = g_slist_reverse (g_slist_copy (expansions));
-
-	for (item = cpg_selection_get_expansions (parent); item; item = g_slist_next (item))
-	{
-		ret = g_slist_prepend (ret, item->data);
-	}
-
-	return g_slist_reverse (ret);
-}
-
-static GSList *
-expansions_for_id (CpgExpansion *id,
-                   CpgSelection *parent)
-{
-	GSList *loc;
-	GSList *ret;
-
-	loc = g_slist_prepend (NULL, id);
-	ret = append_parent_expansions (loc, parent);
-	g_slist_free (loc);
-
-	return ret;
-}
-
 static CpgSelection *
 parse_object_single_id (CpgParserContext *context,
                         CpgExpansion     *id,
-                        GSList           *idexpansions,
                         GSList           *temps,
                         CpgSelection     *parent,
                         GType             gtype)
@@ -813,22 +652,11 @@ parse_object_single_id (CpgParserContext *context,
 
 	parent_group = CPG_GROUP (cpg_selection_get_object (parent));
 
-	expansions = append_parent_expansions (idexpansions,
-	                                       parent);
-
-	for (item = temps; item; item = g_slist_next (item))
-	{
-		expanded =
-			g_slist_prepend (expanded,
-			                 expand_selector (context, item->data, expansions));
-	}
-
-	expanded = g_slist_reverse (expanded);
-
 	if (!cpg_network_parser_utils_get_templates (context->priv->network,
 	                                             parent_group,
 	                                             context->priv->is_template ? TRUE : FALSE,
-	                                             expanded,
+	                                             temps,
+	                                             context->priv->embedded,
 	                                             &missing,
 	                                             &templates))
 	{
@@ -941,22 +769,21 @@ parse_object_single (CpgParserContext  *context,
                      GType              gtype)
 {
 	GSList *ret = NULL;
-	GSList *expansions;
 
 	while (ids)
 	{
 		CpgSelection *sel;
 
-		expansions = g_slist_prepend (NULL, ids->data);
+		cpg_embedded_context_push_expansion (context->priv->embedded,
+		                                     ids->data);
 
 		sel = parse_object_single_id (context,
 		                              ids->data,
-		                              expansions,
 		                              templates,
 		                              parent,
 		                              gtype);
 
-		g_slist_free (expansions);
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
 
 		if (!sel)
 		{
@@ -973,7 +800,7 @@ parse_object_single (CpgParserContext  *context,
 
 static GSList *
 parse_objects (CpgParserContext  *context,
-               gchar const       *id,
+               CpgEmbeddedString *id,
                GSList            *templates,
                GType              gtype)
 {
@@ -987,12 +814,11 @@ parse_objects (CpgParserContext  *context,
 	{
 		GSList *objs;
 		GSList *ids;
-		gchar *expanded;
 
-		expanded = expand_string (context, id, parent->data);
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (parent->data));
 
-		ids = cpg_network_parser_utils_expand_id (expanded);
-		g_free (expanded);
+		ids = cpg_embedded_string_expand_multiple (id, context->priv->embedded);
 
 		objs = parse_object_single (context,
 		                            ids,
@@ -1025,48 +851,40 @@ link_pairs (CpgParserContext *context,
 {
 	GSList *fromobjs;
 	GSList *fromobj;
-	CpgSelector *fromsel;
 	GSList *ret = NULL;
-	GSList *expansions;
 	gboolean bidi;
 
 	bidi = flags & CPG_PARSER_CONTEXT_LINK_FLAG_BIDIRECTIONAL;
 
-	expansions = expansions_for_id (id, parent);
+	cpg_embedded_context_push_expansion (context->priv->embedded, id);
+	cpg_embedded_context_push_expansions (context->priv->embedded,
+	                                      cpg_selection_get_expansions (parent));
 
-	fromsel = expand_selector (context, from, expansions);
+	fromobjs = cpg_selector_select_states (from,
+	                                       cpg_selection_get_object (parent),
+	                                       context->priv->embedded);
 
-	fromobjs = cpg_selector_select_states (fromsel,
-	                                       cpg_selection_get_object (parent));
+	cpg_embedded_context_pop_expansions (context->priv->embedded);
+	cpg_embedded_context_pop_expansions (context->priv->embedded);
 
 	if (!fromobjs)
 	{
-		g_slist_free (expansions);
-		g_object_unref (fromsel);
-
 		return NULL;
 	}
 
 	for (fromobj = fromobjs; fromobj; fromobj = g_slist_next (fromobj))
 	{
-		CpgObject *fobj;
-		CpgSelector *tosel;
 		GSList *toobjs;
-		GSList *newexp;
 
-		fobj = cpg_selection_get_object (fromobj->data);
-
-		newexp = g_slist_concat (g_slist_reverse (g_slist_copy (cpg_selection_get_expansions (fromobj->data))),
-		                         g_slist_copy (expansions));
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (fromobj->data));
 
 		/* Select TO states */
-		tosel = expand_selector (context, to, newexp);
+		toobjs = cpg_selector_select_states (to,
+		                                     cpg_selection_get_object (parent),
+		                                     context->priv->embedded);
 
-		g_slist_free (newexp);
-
-		toobjs = cpg_selector_select_link_to (tosel,
-		                                      cpg_selection_get_object (parent),
-		                                      fobj);
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
 
 		if (!(flags & CPG_PARSER_CONTEXT_LINK_FLAG_ALL) && toobjs)
 		{
@@ -1114,8 +932,6 @@ link_pairs (CpgParserContext *context,
 
 	g_slist_foreach (fromobjs, (GFunc)cpg_selection_free, NULL);
 	g_slist_free (fromobjs);
-
-	g_slist_free (expansions);
 
 	return g_slist_reverse (ret);
 }
@@ -1180,10 +996,10 @@ convert_templates (GArray *array)
 }
 
 static GSList *
-create_objects (CpgParserContext *context,
-                gchar const      *id,
-                GArray           *templates,
-                GType             type)
+create_objects (CpgParserContext  *context,
+                CpgEmbeddedString *id,
+                GArray            *templates,
+                GType              type)
 {
 	GSList *temps;
 	GSList *ret;
@@ -1225,7 +1041,6 @@ create_links_single (CpgParserContext          *context,
 		CpgSelection *tosel;
 		CpgExpansion *realid;
 		CpgSelection *obj;
-		GSList *expansions;
 		CpgSelection *firstsel;
 		CpgSelection *secondsel;
 
@@ -1272,22 +1087,24 @@ create_links_single (CpgParserContext          *context,
 			realid = id;
 		}
 
-		expansions = g_slist_prepend (NULL, realid);
+		cpg_embedded_context_push_expansion (context->priv->embedded,
+		                                     realid);
 
-		expansions = g_slist_concat (g_slist_reverse (g_slist_copy (cpg_selection_get_expansions (firstsel))),
-		                             expansions);
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (firstsel));
 
-		expansions = g_slist_concat (g_slist_reverse (g_slist_copy (cpg_selection_get_expansions (secondsel))),
-		                             expansions);
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (secondsel));
 
 		obj = parse_object_single_id (context,
 		                              realid,
-		                              expansions,
 		                              templates,
 		                              parent,
 		                              CPG_TYPE_LINK);
 
-		g_slist_free (expansions);
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
 
 		if (multiple)
 		{
@@ -1316,7 +1133,7 @@ create_links_single (CpgParserContext          *context,
 
 static GSList *
 create_links (CpgParserContext          *context,
-              gchar const               *id,
+              CpgEmbeddedString         *id,
               GArray                    *templates,
               CpgParserContextLinkFlags  flags,
               GArray                    *fromto)
@@ -1345,16 +1162,14 @@ create_links (CpgParserContext          *context,
 
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		gchar *expanded;
 		GSList *it;
 
 		/* Expand the id with the parent expansions */
-		expanded = expand_string (context,
-		                          id,
-		                          item->data);
+		cpg_embedded_context_set_expansions (context->priv->embedded,
+		                                     cpg_selection_get_expansions (item->data));
 
-		ids = cpg_network_parser_utils_expand_id (expanded);
-		g_free (expanded);
+		ids = cpg_embedded_string_expand_multiple (id,
+		                                           context->priv->embedded);
 
 		for (it = ids; it; it = g_slist_next (it))
 		{
@@ -1378,9 +1193,9 @@ create_links (CpgParserContext          *context,
 }
 
 void
-cpg_parser_context_push_state (CpgParserContext *context,
-                               gchar const      *id,
-                               GArray           *templates)
+cpg_parser_context_push_state (CpgParserContext  *context,
+                               CpgEmbeddedString *id,
+                               GArray            *templates)
 {
 	GSList *objects;
 
@@ -1397,9 +1212,9 @@ cpg_parser_context_push_state (CpgParserContext *context,
 }
 
 void
-cpg_parser_context_push_group (CpgParserContext *context,
-                               gchar const      *id,
-                               GArray           *templates)
+cpg_parser_context_push_group (CpgParserContext  *context,
+                               CpgEmbeddedString *id,
+                               GArray            *templates)
 {
 	GSList *objects;
 
@@ -1417,7 +1232,7 @@ cpg_parser_context_push_group (CpgParserContext *context,
 
 void
 cpg_parser_context_push_link (CpgParserContext          *context,
-                              gchar const               *id,
+                              CpgEmbeddedString         *id,
                               GArray                    *templates,
                               CpgParserContextLinkFlags  flags,
                               GArray                    *fromto)
@@ -1530,9 +1345,9 @@ cpg_parser_context_pop (CpgParserContext *context)
 }
 
 void
-cpg_parser_context_import (CpgParserContext *context,
-                           gchar const      *id,
-                           gchar const      *path)
+cpg_parser_context_import (CpgParserContext  *context,
+                           CpgEmbeddedString *id,
+                           CpgEmbeddedString *path)
 {
 	Context *ctx;
 	GSList *item;
@@ -1547,99 +1362,113 @@ cpg_parser_context_import (CpgParserContext *context,
 
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		GFile *file = NULL;
-		CpgImport *import;
-		GError *error = NULL;
-		gchar *expath;
-		gchar *exid;
-		GFile *curfile;
-		CpgGroup *parent_group;
 		GSList *ids;
 		GSList *idi;
 
-		expath = expand_string (context, path, item->data);
-		exid = expand_string (context, id, item->data);
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (item->data));
 
-		curfile = cpg_parser_context_get_file (context);
-
-		if (curfile)
-		{
-			file = cpg_network_parser_utils_resolve_import (curfile,
-				                                        expath);
-			g_object_unref (curfile);
-		}
-
-		g_free (expath);
-
-		if (!file)
-		{
-			g_free (exid);
-
-			parser_failed (context,
-				       CPG_NETWORK_LOAD_ERROR_IMPORT,
-				       "File `%s' for import `%s' could not be found",
-				       expath,
-				       exid);
-
-			break;
-		}
-
-		parent_group = CPG_GROUP (cpg_selection_get_object (item->data));
-
-		if (context->priv->is_template)
-		{
-			CpgGroup *template_group;
-
-			template_group = cpg_network_get_template_group (context->priv->network);
-			import = cpg_network_parser_utils_find_template_import (CPG_OBJECT (template_group), file);
-
-			if (import)
-			{
-				CpgImportAlias *alias;
-
-				alias = cpg_import_alias_new (import);
-
-				if (!cpg_group_add (parent_group,
-				                    CPG_OBJECT (alias),
-				                    &error))
-				{
-					parser_failed_error (context, error);
-				}
-
-				if (annotation)
-				{
-					cpg_annotatable_set_annotation (CPG_ANNOTATABLE (alias),
-					                                annotation);
-				}
-
-				g_object_unref (alias);
-
-				g_free (exid);
-				g_object_unref (file);
-
-				continue;
-			}
-		}
-
-		ids = cpg_network_parser_utils_expand_id (exid);
+		ids = cpg_embedded_string_expand_multiple (id, context->priv->embedded);
 
 		for (idi = ids; idi; idi = g_slist_next (idi))
 		{
+			gchar const *expath;
+			GFile *file = NULL;
+			CpgImport *import;
+			GError *error = NULL;
+			GFile *curfile;
+			CpgGroup *parent_group;
+			gchar const *exid;
+
+			exid = cpg_expansion_get (idi->data, 0);
+
+			cpg_embedded_context_push_expansion (context->priv->embedded,
+			                                     idi->data);
+
+			expath = cpg_embedded_string_expand (path, context->priv->embedded);
+
+			cpg_embedded_context_pop_expansions (context->priv->embedded);
+			curfile = cpg_parser_context_get_file (context);
+
+			if (curfile)
+			{
+				file = cpg_network_parser_utils_resolve_import (curfile,
+				                                                expath);
+				g_object_unref (curfile);
+			}
+
+			if (!file)
+			{
+				parser_failed (context,
+				               CPG_NETWORK_LOAD_ERROR_IMPORT,
+				               "File `%s' for import `%s' could not be found",
+				               expath,
+				               exid);
+
+				break;
+			}
+
+			parent_group = CPG_GROUP (cpg_selection_get_object (item->data));
+
+			if (context->priv->is_template)
+			{
+				CpgGroup *template_group;
+
+				template_group = cpg_network_get_template_group (context->priv->network);
+				import = cpg_network_parser_utils_find_template_import (CPG_OBJECT (template_group), file);
+
+				if (import)
+				{
+					CpgImportAlias *alias;
+
+					alias = cpg_import_alias_new (import);
+
+					if (!cpg_group_add (parent_group,
+					                    CPG_OBJECT (alias),
+					                    &error))
+					{
+						parser_failed_error (context, error);
+						cpg_embedded_context_pop_expansions (context->priv->embedded);
+
+						g_slist_foreach (ids,
+						                 (GFunc)cpg_expansion_free,
+						                 NULL);
+
+						g_slist_free (ids);
+						goto cleanup;
+					}
+
+					if (annotation)
+					{
+						cpg_annotatable_set_annotation (CPG_ANNOTATABLE (alias),
+						                                annotation);
+					}
+
+					g_object_unref (alias);
+					g_object_unref (file);
+
+					continue;
+				}
+			}
+
 			import = cpg_import_new (context->priv->network,
 			                         parent_group,
 			                         cpg_expansion_get (idi->data, 0),
 			                         file,
 			                         &error);
+
 			if (!import)
 			{
 				parser_failed_error (context, error);
+				cpg_embedded_context_pop_expansions (context->priv->embedded);
 
-				g_free (exid);
-				g_slist_foreach (ids, (GFunc)cpg_expansion_free, NULL);
+				g_slist_foreach (ids,
+				                 (GFunc)cpg_expansion_free,
+				                 NULL);
+
 				g_slist_free (ids);
-				g_free (annotation);
 
-				return;
+				goto cleanup;
 			}
 
 			if (annotation)
@@ -1654,10 +1483,16 @@ cpg_parser_context_import (CpgParserContext *context,
 		g_slist_foreach (ids, (GFunc)cpg_expansion_free, NULL);
 		g_slist_free (ids);
 
-		g_free (exid);
+		ids = NULL;
+
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
 	}
 
+cleanup:
 	g_free (annotation);
+
+	g_object_unref (id);
+	g_object_unref (path);
 }
 
 static CpgSelector *
@@ -1672,55 +1507,55 @@ ensure_selector (CpgParserContext *context)
 }
 
 void
-cpg_parser_context_push_selector (CpgParserContext *context,
-                                  gchar const      *identifier)
+cpg_parser_context_push_selector (CpgParserContext  *context,
+                                  CpgEmbeddedString *identifier)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (identifier != NULL);
 
 	cpg_selector_add (ensure_selector (context), identifier);
+	g_object_unref (identifier);
 }
 
 void
-cpg_parser_context_push_selector_regex (CpgParserContext *context,
-                                        gchar const      *regex)
+cpg_parser_context_push_selector_regex (CpgParserContext  *context,
+                                        CpgEmbeddedString *regex)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (regex != NULL);
 
 	cpg_selector_add_regex (ensure_selector (context), regex);
+	g_object_unref (regex);
 }
 
 void
-cpg_parser_context_push_selector_pseudo (CpgParserContext *context,
-                                         gchar const      *identifier,
-                                         GArray           *argument)
+cpg_parser_context_push_selector_pseudo (CpgParserContext  *context,
+                                         CpgEmbeddedString *identifier,
+                                         GArray            *argument)
 {
-	gchar **args;
-	GPtrArray *ptr;
+	GSList *ptr = NULL;
 	gint i;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (identifier != NULL);
 
-	ptr = g_ptr_array_new ();
-
 	if (argument)
 	{
 		for (i = 0; i < argument->len; ++i)
 		{
-			g_ptr_array_add (ptr, g_strdup (g_array_index (argument, gchar const *, i)));
+			ptr = g_slist_prepend (ptr,
+			                       g_array_index (argument, CpgEmbeddedString *, i));
 		}
-	}
 
-	g_ptr_array_add (ptr, NULL);
-	args = (gchar **)g_ptr_array_free (ptr, FALSE);
+		ptr = g_slist_reverse (ptr);
+	}
 
 	cpg_selector_add_pseudo (ensure_selector (context),
 	                         identifier,
-	                         (gchar const * const *)args);
+	                         ptr);
 
-	g_strfreev (args);
+	g_slist_free (ptr);
+	g_object_unref (identifier);
 }
 
 CpgSelector *
@@ -1871,57 +1706,26 @@ cpg_parser_context_get_token (CpgParserContext *context)
 }
 
 void
-cpg_parser_context_define (CpgParserContext *context,
-                           gchar const      *name,
-                           gchar const      *define)
+cpg_parser_context_define (CpgParserContext  *context,
+                           CpgEmbeddedString *name,
+                           CpgEmbeddedString *define)
 {
+	gchar const *exname;
+	gchar const *exdefine;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
 	g_return_if_fail (define != NULL);
 
-	g_hash_table_insert (context->priv->defines,
-	                     g_strdup (name),
-	                     g_strdup (define));
-}
+	exname = cpg_embedded_string_expand (name, context->priv->embedded);
+	exdefine = cpg_embedded_string_expand (define, context->priv->embedded);
 
-gchar *
-cpg_parser_context_embed_define (CpgParserContext *context,
-                                 gchar const      *define)
-{
-	gchar const *ret;
+	cpg_embedded_context_define (context->priv->embedded,
+	                             exname,
+	                             exdefine);
 
-	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-	g_return_val_if_fail (define != NULL, NULL);
-
-	ret = g_hash_table_lookup (context->priv->defines, define);
-
-	return g_strdup (ret ? ret : "");
-}
-
-gchar *
-cpg_parser_context_embed_equation (CpgParserContext *context,
-                                   gchar const      *equation)
-{
-	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-	g_return_val_if_fail (equation != NULL, NULL);
-
-	return g_strdup_printf ("%s%s%s",
-	                        EQUATION_EMBEDDING,
-	                        equation,
-	                        EQUATION_EMBEDDING);
-}
-
-gchar *
-cpg_parser_context_embed_expansion (CpgParserContext *context,
-                                    gchar const      *expansion)
-{
-	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-	g_return_val_if_fail (expansion != NULL, NULL);
-
-	return g_strdup_printf ("%s%s%s",
-	                        EXPANSION_EMBEDDING,
-	                        expansion,
-	                        EXPANSION_EMBEDDING);
+	g_object_unref (name);
+	g_object_unref (define);
 }
 
 void
@@ -1941,17 +1745,20 @@ cpg_parser_context_push_input (CpgParserContext *context,
 }
 
 void
-cpg_parser_context_push_input_from_path (CpgParserContext *context,
-                                         gchar const      *filename)
+cpg_parser_context_push_input_from_path (CpgParserContext  *context,
+                                         CpgEmbeddedString *filename)
 {
 	GFile *file = NULL;
+	gchar const *res;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
 
-	if (g_path_is_absolute (filename))
+	res = cpg_embedded_string_expand (filename, context->priv->embedded);
+
+	if (g_path_is_absolute (res))
 	{
-		file = g_file_new_for_path (filename);
+		file = g_file_new_for_path (res);
 	}
 	else
 	{
@@ -1966,18 +1773,20 @@ cpg_parser_context_push_input_from_path (CpgParserContext *context,
 				continue;
 			}
 
-			file = g_file_resolve_relative_path (ip->file, filename);
+			file = g_file_resolve_relative_path (ip->file, res);
 			break;
 		}
 
 		if (!file)
 		{
-			file = g_file_new_for_commandline_arg (filename);
+			file = g_file_new_for_commandline_arg (res);
 		}
 	}
 
 	cpg_parser_context_push_input (context, file, NULL);
 	g_object_unref (file);
+
+	g_object_unref (filename);
 }
 
 void
@@ -2043,23 +1852,29 @@ cpg_parser_context_set_start_token (CpgParserContext *context,
 }
 
 void
-cpg_parser_context_push_annotation (CpgParserContext *context,
-                                    gchar const      *annotation)
+cpg_parser_context_push_annotation (CpgParserContext  *context,
+                                    CpgEmbeddedString *annotation)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (annotation != NULL);
 
 	if (context->priv->previous_annotation != context->priv->lineno + 1)
 	{
-		g_string_assign (context->priv->annotation, annotation);
+		g_string_assign (context->priv->annotation,
+		                 cpg_embedded_string_expand (annotation,
+		                                               context->priv->embedded));
 	}
 	else
 	{
-		g_string_append (context->priv->annotation, annotation);
+		g_string_append (context->priv->annotation,
+		                 cpg_embedded_string_expand (annotation,
+		                                               context->priv->embedded));
+
 		g_string_append_c (context->priv->annotation, '\n');
 	}
 
 	context->priv->previous_annotation = context->priv->lineno;
+	g_object_unref (annotation);
 }
 
 void
@@ -2087,7 +1902,8 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_SELECTOR (right));
 
 	leftobjs = cpg_selector_select_states (left,
-	                                       CPG_OBJECT (context->priv->network));
+	                                       CPG_OBJECT (context->priv->network),
+	                                       context->priv->embedded);
 
 	if (!leftobjs)
 	{
@@ -2098,17 +1914,13 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 	{
 		CpgSelection *leftsel = leftobj->data;
 		GSList *rightobjs;
-		CpgSelector *sel;
 
-		sel = expand_selector (context,
-		                       right,
-		                       cpg_selection_get_expansions (leftsel));
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (leftsel));
 
-		rightobjs = cpg_selector_select_link_to (sel,
-		                                         CPG_OBJECT (context->priv->network),
-		                                         cpg_selection_get_object (leftsel));
-
-		g_object_unref (sel);
+		rightobjs = cpg_selector_select_states (right,
+		                                        CPG_OBJECT (context->priv->network),
+		                                        context->priv->embedded);
 
 		if (!rightobjs)
 		{
@@ -2134,17 +1946,19 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 }
 
 void
-cpg_parser_context_add_layout_position (CpgParserContext *context,
-                                        CpgSelector      *selector,
-                                        gchar const      *x,
-                                        gchar const      *y,
-                                        CpgSelector      *of)
+cpg_parser_context_add_layout_position (CpgParserContext  *context,
+                                        CpgSelector       *selector,
+                                        CpgEmbeddedString *x,
+                                        CpgEmbeddedString *y,
+                                        CpgSelector       *of)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
 	g_return_if_fail (x != NULL);
 	g_return_if_fail (y != NULL);
 	g_return_if_fail (of == NULL || CPG_IS_SELECTOR (of));
+
+	/* TODO */
 }
 
 void
@@ -2177,35 +1991,37 @@ cpg_parser_context_set_proxy (CpgParserContext *context,
 }
 
 void
-cpg_parser_context_add_integrator_property (CpgParserContext        *context,
-                                            gchar const             *name,
-                                            gchar const             *value)
+cpg_parser_context_add_integrator_property (CpgParserContext  *context,
+                                            CpgEmbeddedString *name,
+                                            CpgEmbeddedString *value)
 {
-	gchar *val;
-	Context *ctx;
+	gchar const *exname;
+	gchar const *exval;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
 	g_return_if_fail (value != NULL);
 
-	ctx = CONTEXT (context);
-	val = expand_string (context, value, ctx->objects->data);
+	exname = cpg_embedded_string_expand (name, context->priv->embedded);
+	exval = cpg_embedded_string_expand (value, context->priv->embedded);
 
-	if (g_strcmp0 (name, "method") == 0)
+	if (g_strcmp0 (exname, "method") == 0)
 	{
 		GType type;
 		CpgIntegrator *it;
 
-		type = cpg_integrators_find (val);
+		type = cpg_integrators_find (exval);
 
 		if (type == G_TYPE_INVALID)
 		{
 			parser_failed (context,
 			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 			               "Could not find integrator `%s'",
-			               val);
+			               exval);
 
-			g_free (val);
+			g_object_unref (name);
+			g_object_unref (value);
+
 			return;
 		}
 
@@ -2226,17 +2042,19 @@ cpg_parser_context_add_integrator_property (CpgParserContext        *context,
 		it = cpg_network_get_integrator (context->priv->network);
 		klass = G_OBJECT_GET_CLASS (it);
 
-		spec = g_object_class_find_property (klass, name);
+		spec = g_object_class_find_property (klass, exname);
 
 		if (spec == NULL)
 		{
 			parser_failed (context,
 			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 			               "Invalid integrator property `%s' for `%s'",
-			               name,
+			               exname,
 			               cpg_integrator_get_name (it));
 
-			g_free (val);
+			g_object_unref (name);
+			g_object_unref (value);
+
 			return;
 		}
 
@@ -2245,15 +2063,17 @@ cpg_parser_context_add_integrator_property (CpgParserContext        *context,
 			parser_failed (context,
 			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 			               "Could not convert `%s' to `%s'",
-			               val,
+			               exval,
 			               g_type_name (spec->value_type));
 
-			g_free (val);
+			g_object_unref (name);
+			g_object_unref (value);
+
 			return;
 		}
 
 		g_value_init (&v, G_TYPE_STRING);
-		g_value_set_string (&v, val);
+		g_value_set_string (&v, exval);
 
 		g_value_init (&dest, spec->value_type);
 
@@ -2264,16 +2084,19 @@ cpg_parser_context_add_integrator_property (CpgParserContext        *context,
 			parser_failed (context,
 			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 			               "Could not convert `%s' to `%s'",
-			               val,
+			               exval,
 			               g_type_name (spec->value_type));
 
-			g_free (val);
+			g_object_unref (name);
+			g_object_unref (value);
+
 			return;
 		}
 
-		g_object_set_property (G_OBJECT (it), name, &v);
+		g_object_set_property (G_OBJECT (it), exname, &v);
 		g_value_unset (&v);
 	}
 
-	g_free (val);
+	g_object_unref (name);
+	g_object_unref (value);
 }

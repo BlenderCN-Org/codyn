@@ -1,21 +1,12 @@
 #include "cpg-selector.h"
 #include "cpg-parser-context.h"
 #include "cpg-parser.h"
+#include "cpg-expansion.h"
+#include "cpg-selection.h"
 
 #include <string.h>
 
 #define CPG_SELECTOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_SELECTOR, CpgSelectorPrivate))
-
-struct _CpgExpansion
-{
-	GPtrArray *expansions;
-};
-
-struct _CpgSelection
-{
-	gpointer  object;
-	GSList   *expansions;
-};
 
 typedef enum
 {
@@ -65,13 +56,6 @@ typedef struct
 	gint max;
 } Nth;
 
-typedef struct
-{
-	SelectorPseudoDefinition const *definition;
-	gchar **arguments;
-	Nth nth;
-} SelectorPseudo;
-
 static SelectorPseudoDefinition const pseudo_selectors[] =
 {
 	{SELECTOR_PSEUDO_TYPE_ROOT, "root", FALSE},
@@ -97,9 +81,14 @@ typedef struct
 
 	union
 	{
-		gchar *identifier;
-		GRegex *regex;
-		SelectorPseudo pseudo;
+		CpgEmbeddedString *identifier;
+		CpgEmbeddedString *regex;
+
+		struct
+		{
+			CpgEmbeddedString *identifier;
+			GSList *arguments;
+		} pseudo;
 	};
 } Selector;
 
@@ -111,84 +100,6 @@ struct _CpgSelectorPrivate
 };
 
 G_DEFINE_TYPE (CpgSelector, cpg_selector, G_TYPE_OBJECT)
-
-static GSList *
-copy_expansions (GSList *list)
-{
-	GSList *ret = NULL;
-
-	while (list)
-	{
-		ret = g_slist_prepend (ret,
-		                       cpg_expansion_copy (list->data));
-
-		list = g_slist_next (list);
-	}
-
-	return g_slist_reverse (ret);
-}
-
-CpgSelection *
-cpg_selection_new (gpointer  object,
-                   GSList   *expansions)
-{
-	CpgSelection *ret;
-
-	ret = g_slice_new0 (CpgSelection);
-
-	ret->object = g_object_ref (object);
-	ret->expansions = copy_expansions (expansions);
-
-	return ret;
-}
-
-CpgSelection *
-cpg_selection_copy (CpgSelection *selection)
-{
-	return cpg_selection_new (selection->object, selection->expansions);
-}
-
-void
-cpg_selection_free (CpgSelection *selection)
-{
-	g_object_unref (selection->object);
-
-	g_slist_foreach (selection->expansions, (GFunc)cpg_expansion_free, NULL);
-	g_slist_free (selection->expansions);
-
-	g_slice_free (CpgSelection, selection);
-}
-
-CpgObject *
-cpg_selection_get_object (CpgSelection *selection)
-{
-	g_return_val_if_fail (CPG_IS_OBJECT (selection->object), NULL);
-
-	return CPG_OBJECT (selection->object);
-}
-
-CpgProperty *
-cpg_selection_get_property (CpgSelection *selection)
-{
-	g_return_val_if_fail (CPG_IS_PROPERTY (selection->object), NULL);
-
-	return CPG_PROPERTY (selection->object);
-}
-
-GSList *
-cpg_selection_get_expansions (CpgSelection *selection)
-{
-	return selection->expansions;
-}
-
-static void
-selector_pseudo_free (SelectorPseudo *selector)
-{
-	if (selector->arguments)
-	{
-		g_strfreev (selector->arguments);
-	}
-}
 
 static Selector *
 selector_new (SelectorType type)
@@ -207,13 +118,16 @@ selector_free (Selector *selector)
 	switch (selector->type)
 	{
 		case SELECTOR_TYPE_IDENTIFIER:
-			g_free (selector->identifier);
+			g_object_unref (selector->identifier);
 		break;
 		case SELECTOR_TYPE_REGEX:
-			g_regex_unref (selector->regex);
+			g_object_unref (selector->regex);
 		break;
 		case SELECTOR_TYPE_PSEUDO:
-			selector_pseudo_free (&(selector->pseudo));
+			g_object_unref (selector->pseudo.identifier);
+
+			g_slist_foreach (selector->pseudo.arguments, (GFunc)g_object_unref, NULL);
+			g_slist_free (selector->pseudo.arguments);
 		break;
 	}
 
@@ -223,149 +137,125 @@ selector_free (Selector *selector)
 }
 
 static Selector *
-selector_identifier_new (gchar const *identifier)
+selector_identifier_new (CpgEmbeddedString *identifier)
 {
 	Selector *selector;
+	gchar const *r;
 
 	selector = selector_new (SELECTOR_TYPE_IDENTIFIER);
-	selector->identifier = g_strdup (identifier);
-	selector->as_string = g_strdup_printf ("\"%s\"", identifier);
+
+	r = cpg_embedded_string_expand (identifier, NULL);
+
+	selector->identifier = g_object_ref (identifier);
+	selector->as_string = g_strdup_printf ("\"%s\"", r);
 
 	return selector;
 }
 
 static Selector *
-selector_regex_new (gchar const *regex)
+selector_regex_new (CpgEmbeddedString *regex)
 {
 	Selector *selector;
+	gchar const *r;
 
 	selector = selector_new (SELECTOR_TYPE_REGEX);
-	selector->as_string = g_strdup (regex);
-	selector->regex = g_regex_new (regex,
-	                               G_REGEX_CASELESS |
-	                               G_REGEX_ANCHORED,
-	                               G_REGEX_MATCH_ANCHORED |
-	                               G_REGEX_MATCH_NOTEMPTY,
-	                               NULL);
+
+	r = cpg_embedded_string_expand (regex, NULL);
+
+	selector->regex = g_object_ref (regex);
+	selector->as_string = g_strdup_printf ("/%s/", r);
 
 	return selector;
 }
 
 static Nth
-parse_nth (gchar const * const *arguments)
+parse_nth (GSList             *arguments,
+           CpgEmbeddedContext *context)
 {
 	Nth ret = {0, 0, -1};
-	gint maxpos = 2;
+	GSList *maxpos = NULL;
+	gchar const *first;
 
 	if (!arguments)
 	{
 		return ret;
 	}
 
-	if (g_strcmp0 (arguments[0], "odd"))
+	first = cpg_embedded_string_expand (arguments->data, context);
+
+	if (g_strcmp0 (first, "odd") == 0)
 	{
 		ret.a = 2;
 		ret.b = 1;
 
-		maxpos = 1;
+		maxpos = arguments->next;
 	}
-	else if (g_strcmp0 (arguments[0], "even"))
+	else if (g_strcmp0 (first, "even") == 0)
 	{
 		ret.a = 2;
 		ret.b = 0;
 
-		maxpos = 1;
+		maxpos = arguments->next;
 	}
-	else if (arguments[1])
+	else if (arguments->next)
 	{
-		ret.a = (gint)g_ascii_strtoll (arguments[0], NULL, 10);
-		ret.b = (gint)g_ascii_strtoll (arguments[1], NULL, 10);
+		gchar const *second;
 
-		maxpos = 2;
+		second = cpg_embedded_string_expand (arguments->next->data, context);
+
+		ret.a = (gint)g_ascii_strtoll (first, NULL, 10);
+		ret.b = (gint)g_ascii_strtoll (second, NULL, 10);
+
+		maxpos = arguments->next->next;
 	}
 	else
 	{
-		ret.a = (gint)g_ascii_strtoll (arguments[0], NULL, 10);
-		maxpos = 1;
+		ret.a = (gint)g_ascii_strtoll (first, NULL, 10);
 	}
 
-	if (arguments[maxpos])
+	if (maxpos)
 	{
-		ret.max = (gint)g_ascii_strtoll (arguments[maxpos], NULL, 10);
+		ret.max = (gint)g_ascii_strtoll (cpg_embedded_string_expand (maxpos->data, context), NULL, 10);
 	}
 
 	return ret;
 }
 
-static gchar **
-strcopyv (gchar const * const *s)
-{
-	GPtrArray *ptr;
-
-	if (!s)
-	{
-		return NULL;
-	}
-
-	ptr = g_ptr_array_new ();
-
-	while (*s)
-	{
-		g_ptr_array_add (ptr, g_strdup (*s));
-		++s;
-	}
-
-	g_ptr_array_add (ptr, NULL);
-
-	return (gchar **)g_ptr_array_free (ptr, FALSE);
-}
-
 static Selector *
-selector_pseudo_new (SelectorPseudoDefinition const *definition,
-                     gchar const * const            *arguments)
+selector_pseudo_new (CpgEmbeddedString *identifier,
+                     GSList            *arguments)
 {
 	Selector *selector;
 	GString *args;
 
 	selector = selector_new (SELECTOR_TYPE_PSEUDO);
-	selector->pseudo.definition = definition;
 
-	if (definition->has_argument)
-	{
-		switch (definition->type)
-		{
-			case SELECTOR_PSEUDO_TYPE_NTH:
-			case SELECTOR_PSEUDO_TYPE_NTH_CHILD:
-			case SELECTOR_PSEUDO_TYPE_NTH_SIBLING:
-				selector->pseudo.nth = parse_nth (arguments);
-			break;
-			default:
-				g_assert_not_reached ();
-			break;
-		}
-	}
+	selector->pseudo.identifier = g_object_ref (identifier);
 
-	selector->pseudo.arguments = strcopyv (arguments);
+	selector->pseudo.arguments = g_slist_copy (arguments);
+	g_slist_foreach (selector->pseudo.arguments, (GFunc)g_object_ref, NULL);
 
 	args = g_string_new ("");
 
-	while (arguments && *arguments)
+	while (arguments)
 	{
 		if (args->len != 0)
 		{
 			g_string_append (args, ", ");
 		}
 
-		g_string_append_printf (args, "\"%s\"", *arguments);
+		g_string_append_printf (args,
+		                        "\"%s\"",
+		                        cpg_embedded_string_expand (arguments->data, NULL));
 
-		++arguments;
+		arguments = g_slist_next (arguments);
 	}
 
 	selector->as_string = g_strdup_printf ("%s%s%s%s",
-	                                       definition->name,
+	                                       cpg_embedded_string_expand (selector->pseudo.identifier, NULL),
 	                                       args->len ? "(" : "",
 	                                       args->str,
-	                                       args->len ? "(" : "");
+	                                       args->len ? ")" : "");
 
 	g_string_free (args, TRUE);
 
@@ -479,48 +369,33 @@ add_selector (CpgSelector *selector,
 }
 
 void
-cpg_selector_add (CpgSelector *selector,
-                  gchar const *identifier)
+cpg_selector_add (CpgSelector       *selector,
+                  CpgEmbeddedString *identifier)
 {
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
-	g_return_if_fail (identifier != NULL);
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (identifier));
 
 	add_selector (selector, selector_identifier_new (identifier));
 }
 
 void
-cpg_selector_add_pseudo (CpgSelector *selector,
-                         gchar const *pseudo,
-                         gchar const * const *arguments)
+cpg_selector_add_pseudo (CpgSelector       *selector,
+                         CpgEmbeddedString *pseudo,
+                         GSList            *arguments)
 {
-	gint i;
-
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
-	g_return_if_fail (pseudo != NULL);
-	g_return_if_fail (arguments != NULL);
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (pseudo));
 
-	for (i = 0; i < NUM_PSEUDO_SELECTORS; ++i)
-	{
-		SelectorPseudoDefinition const *def;
-
-		def = &pseudo_selectors[i];
-
-		if (g_strcmp0 (def->name, pseudo) == 0)
-		{
-			add_selector (selector,
-			              selector_pseudo_new (def, arguments));
-			break;
-		}
-	}
+	add_selector (selector, selector_pseudo_new (pseudo, arguments));
 }
 
 void
-cpg_selector_add_regex (CpgSelector *selector,
-                        gchar const *regex)
+cpg_selector_add_regex (CpgSelector       *selector,
+                        CpgEmbeddedString *regex)
 {
 
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
-	g_return_if_fail (regex != NULL);
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (regex));
 
 	add_selector (selector, selector_regex_new (regex));
 }
@@ -549,9 +424,10 @@ check_type (CpgObject  *object,
 }
 
 static GSList *
-selector_select_identifier (Selector   *selector,
-                            CpgSelection  *parent,
-                            SelectType  type)
+selector_select_identifier (Selector           *selector,
+                            CpgSelection       *parent,
+                            SelectType          type,
+                            CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
 
@@ -559,31 +435,34 @@ selector_select_identifier (Selector   *selector,
 	{
 		CpgObject *child;
 
-		if (!CPG_IS_GROUP (parent->object))
+		if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
 		{
 			return NULL;
 		}
 
-		child = cpg_group_get_child (CPG_GROUP (parent->object),
-		                             selector->identifier);
+		child = cpg_group_get_child (CPG_GROUP (cpg_selection_get_object (parent)),
+		                             cpg_embedded_string_expand (selector->identifier,
+		                                                         context));
 
 		if (child && check_type (child, type))
 		{
 			ret = g_slist_prepend (NULL,
-			                       cpg_selection_new (child, parent->expansions));
+			                       cpg_selection_new (child,
+			                                          cpg_selection_get_expansions (parent)));
 		}
 	}
 	else
 	{
 		CpgProperty *prop;
 
-		prop = cpg_object_get_property (parent->object,
-		                                selector->identifier);
+		prop = cpg_object_get_property (cpg_selection_get_object (parent),
+		                                cpg_embedded_string_expand (selector->identifier,
+		                                                            context));
 
 		if (prop)
 		{
 			ret = g_slist_prepend (NULL,
-			                       cpg_selection_new (prop, parent->expansions));
+			                       cpg_selection_new (prop, cpg_selection_get_expansions (parent)));
 		}
 	}
 
@@ -604,22 +483,34 @@ expansion_from_match (GMatchInfo *info)
 }
 
 static GSList *
-selector_select_regex (Selector    *selector,
-                       CpgSelection   *parent,
-                       SelectType   type)
+selector_select_regex (Selector           *selector,
+                       CpgSelection       *parent,
+                       SelectType          type,
+                       CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
+	GRegex *regex = NULL;
 
 	if (type != TYPE_PROPERTY)
 	{
 		GSList const *children;
 
-		if (!CPG_IS_GROUP (parent->object))
+		if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
 		{
 			return NULL;
 		}
 
-		children = cpg_group_get_children (CPG_GROUP (parent->object));
+		regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
+		                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
+		                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
+		                     NULL);
+
+		if (!regex)
+		{
+			return NULL;
+		}
+
+		children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (parent)));
 
 		while (children)
 		{
@@ -629,18 +520,24 @@ selector_select_regex (Selector    *selector,
 			child = children->data;
 
 			if (check_type (child, type) &&
-			    g_regex_match (selector->regex,
+			    g_regex_match (regex,
 			                   cpg_object_get_id (child),
 			                   0,
 			                   &info))
 			{
 				CpgSelection *childsel;
+				GSList *expansions;
+				CpgExpansion *expansion;
 
-				childsel = cpg_selection_new (child, parent->expansions);
-				
-				childsel->expansions =
-					g_slist_append (childsel->expansions,
-					                expansion_from_match (info));
+				expansions = g_slist_copy (cpg_selection_get_expansions (parent));
+
+				expansion = expansion_from_match (info);
+				expansions = g_slist_append (expansions, expansion);
+
+				childsel = cpg_selection_new (child, expansions);
+				g_slist_free (expansions);
+
+				cpg_expansion_free (expansion);
 
 				ret = g_slist_prepend (ret, childsel);
 
@@ -655,23 +552,34 @@ selector_select_regex (Selector    *selector,
 		GSList *props;
 		GSList *item;
 
-		props = cpg_object_get_properties (parent->object);
+		regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
+		                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
+		                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
+		                     NULL);
+
+		props = cpg_object_get_properties (cpg_selection_get_object (parent));
 
 		for (item = props; item; item = g_slist_next (item))
 		{
 			GMatchInfo *info;
 
-			if (g_regex_match (selector->regex,
+			if (g_regex_match (regex,
 			                   cpg_property_get_name (item->data),
 			                   0,
 			                   &info))
 			{
 				CpgSelection *childsel;
+				GSList *expansions;
+				CpgExpansion *expansion;
 
-				childsel = cpg_selection_new (item->data, parent->expansions);
-				childsel->expansions =
-					g_slist_append (childsel->expansions,
-					                expansion_from_match (info));
+				expansions = g_slist_copy (cpg_selection_get_expansions (parent));
+				expansion = expansion_from_match (info);
+				expansions = g_slist_append (expansions, expansion);
+
+				childsel = cpg_selection_new (item->data, expansions);
+
+				g_slist_free (expansions);
+				cpg_expansion_free (expansion);
 
 				ret = g_slist_prepend (ret, childsel);
 
@@ -680,6 +588,11 @@ selector_select_regex (Selector    *selector,
 		}
 
 		g_slist_free (props);
+	}
+
+	if (regex)
+	{
+		g_regex_unref (regex);
 	}
 
 	return g_slist_reverse (ret);
@@ -710,7 +623,8 @@ select_nth_reverse (GSList const *children,
 	while (children && (nth->max < 0 || num < nth->max))
 	{
 		CpgSelection *sel = children->data;
-		gboolean correcttype = check_type (sel->object, type);
+		gboolean correcttype = check_type (cpg_selection_get_object (sel),
+		                                   type);
 
 		if (correcttype)
 		{
@@ -742,7 +656,7 @@ filter_list_reverse (GSList    *objs,
 
 		sel = objs->data;
 
-		if (states == !CPG_IS_LINK (sel->object))
+		if (states == !CPG_IS_LINK (cpg_selection_get_object (sel)))
 		{
 			ret = g_slist_prepend (ret,
 			                       cpg_selection_copy (sel));
@@ -782,7 +696,7 @@ expand_children (CpgSelection *selection,
 	{
 		ret = g_slist_prepend (ret,
 		                       cpg_selection_new (children->data,
-		                                      selection->expansions));
+		                                          cpg_selection_get_expansions (selection)));
 
 		children = g_slist_next (children);
 	}
@@ -790,62 +704,107 @@ expand_children (CpgSelection *selection,
 	return g_slist_reverse (ret);
 }
 
+static SelectorPseudoDefinition const *
+find_pseudo_definition (Selector           *pseudo,
+                        CpgEmbeddedContext *context)
+{
+	gint i;
+	gchar const *id;
+
+	id = cpg_embedded_string_expand (pseudo->pseudo.identifier, context);
+
+	for (i = 0; i < NUM_PSEUDO_SELECTORS; ++i)
+	{
+		if (g_strcmp0 (pseudo_selectors[i].name, id) == 0)
+		{
+			return &(pseudo_selectors[i]);
+		}
+	}
+
+	return NULL;
+}
+
 static GSList *
 selector_select_pseudo (Selector    *selector,
                         GSList      *parent,
-                        CpgObject   *from,
-                        SelectType   type)
+                        SelectType   type,
+                        CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
 	GSList *item;
 	CpgSelection *last = NULL;
+	SelectorPseudoDefinition const *def;
 
-	switch (selector->pseudo.definition->type)
+	def = find_pseudo_definition (selector, context);
+
+	if (def)
 	{
-		case SELECTOR_PSEUDO_TYPE_FROM:
-			if (from != NULL && check_type (from, type))
+		switch (def->type)
+		{
+			case SELECTOR_PSEUDO_TYPE_NTH:
 			{
-				return g_slist_prepend (NULL,
-				                        cpg_selection_new (from, NULL));
+				Nth nth = parse_nth (selector->pseudo.arguments,
+				                     context);
+
+				return g_slist_reverse (select_nth_reverse (parent,
+					                                    &nth,
+					                                    0,
+					                                    type));
 			}
-			else
-			{
-				return NULL;
-			}
-		break;
-		case SELECTOR_PSEUDO_TYPE_NTH:
-			return g_slist_reverse (select_nth_reverse (parent,
-			                                            &(selector->pseudo.nth),
-			                                            0,
-			                                            type));
-		break;
-		case SELECTOR_PSEUDO_TYPE_STATES:
-			return g_slist_reverse (filter_list_reverse (parent,
-			                                             TRUE));
-		break;
-		case SELECTOR_PSEUDO_TYPE_LINKS:
-			return g_slist_reverse (filter_list_reverse (parent,
-			                                             FALSE));
-		break;
-		default:
-		break;
+			break;
+			case SELECTOR_PSEUDO_TYPE_STATES:
+				return g_slist_reverse (filter_list_reverse (parent,
+					                                     TRUE));
+			break;
+			case SELECTOR_PSEUDO_TYPE_LINKS:
+				return g_slist_reverse (filter_list_reverse (parent,
+					                                     FALSE));
+			break;
+			default:
+			break;
+		}
 	}
 
 	for (item = parent; item; item = g_slist_next (item))
 	{
 		CpgSelection *sel = item->data;
+		Nth nth = {0,};
 
-		switch (selector->pseudo.definition->type)
+		cpg_embedded_context_push_expansions (context,
+		                                      cpg_selection_get_expansions (sel));
+
+		def = find_pseudo_definition (selector, context);
+
+		if (!def)
+		{
+			cpg_embedded_context_pop_expansions (context);
+			continue;
+		}
+
+		switch (def->type)
+		{
+			case SELECTOR_PSEUDO_TYPE_NTH_CHILD:
+			case SELECTOR_PSEUDO_TYPE_NTH_SIBLING:
+				nth = parse_nth (selector->pseudo.arguments,
+				                 context);
+			break;
+			default:
+			break;
+		}
+
+		cpg_embedded_context_pop_expansions (context);
+
+		switch (def->type)
 		{
 			case SELECTOR_PSEUDO_TYPE_FIRST:
-				if (check_type (sel->object, type))
+				if (check_type (cpg_selection_get_object (sel), type))
 				{
 					return g_slist_prepend (ret,
 					                        cpg_selection_copy (sel));
 				}
 			break;
 			case SELECTOR_PSEUDO_TYPE_LAST:
-				if (check_type (sel->object, type))
+				if (check_type (cpg_selection_get_object (sel), type))
 				{
 					last = sel;
 				}
@@ -854,12 +813,12 @@ selector_select_pseudo (Selector    *selector,
 			{
 				CpgObject *top;
 
-				top = top_parent (sel->object);
+				top = top_parent (cpg_selection_get_object (sel));
 
 				if (top && check_type (top, type))
 				{
 					return g_slist_prepend (ret,
-					                        cpg_selection_new (top, sel->expansions));
+					                        cpg_selection_new (top, cpg_selection_get_expansions (sel)));
 				}
 			}
 			break;
@@ -867,7 +826,7 @@ selector_select_pseudo (Selector    *selector,
 			{
 				CpgObject *top;
 
-				top = top_parent (sel->object);
+				top = top_parent (cpg_selection_get_object (sel));
 
 				if (top && CPG_IS_NETWORK (top))
 				{
@@ -877,21 +836,21 @@ selector_select_pseudo (Selector    *selector,
 
 					return g_slist_prepend (ret,
 					                        cpg_selection_new (template_group,
-					                                       sel->expansions));
+					                                       cpg_selection_get_expansions (sel)));
 				}
 			}
 			break;
 			case SELECTOR_PSEUDO_TYPE_NTH_CHILD:
 			{
-				if (CPG_IS_GROUP (sel->object))
+				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
 				{
 					GSList *children;
 
 					children = expand_children (sel,
-					                            cpg_group_get_children (CPG_GROUP (sel->object)));
+					                            cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (sel))));
 
 					ret = g_slist_concat (select_nth_reverse (children,
-					                                          &(selector->pseudo.nth),
+					                                          &nth,
 					                                          0,
 					                                          type),
 					                     ret);
@@ -905,7 +864,7 @@ selector_select_pseudo (Selector    *selector,
 			{
 				CpgObject *parent;
 
-				parent = cpg_object_get_parent (sel->object);
+				parent = cpg_object_get_parent (cpg_selection_get_object (sel));
 
 				if (parent)
 				{
@@ -914,15 +873,15 @@ selector_select_pseudo (Selector    *selector,
 					gint idx;
 
 					realchildren = cpg_group_get_children (CPG_GROUP (parent));
-					idx = g_slist_index ((GSList *)realchildren, sel->object);
+					idx = g_slist_index ((GSList *)realchildren, cpg_selection_get_object (sel));
 
 					children = expand_children (sel,
 					                            realchildren);
 
 					ret = g_slist_concat (select_nth_reverse (children,
-					                                          &(selector->pseudo.nth),
+					                                          &nth,
 					                                          idx,
-					                                          type == TYPE_ALL ? (CPG_IS_LINK (sel->object) ? TYPE_LINK : TYPE_STATE) : type),
+					                                          type == TYPE_ALL ? (CPG_IS_LINK (cpg_selection_get_object (sel)) ? TYPE_LINK : TYPE_STATE) : type),
 					                      ret);
 
 					g_slist_foreach (children, (GFunc)cpg_selection_free, NULL);
@@ -932,29 +891,29 @@ selector_select_pseudo (Selector    *selector,
 			break;
 			case SELECTOR_PSEUDO_TYPE_PARENT:
 			{
-				CpgObject *parent = cpg_object_get_parent (sel->object);
+				CpgObject *parent = cpg_object_get_parent (cpg_selection_get_object (sel));
 
 				if (parent && check_type (parent, type))
 				{
 					ret = g_slist_prepend (ret,
 					                       cpg_selection_new (parent,
-					                                      sel->expansions));
+					                                          cpg_selection_get_expansions (sel)));
 				}
 			}
 			case SELECTOR_PSEUDO_TYPE_CHILDREN:
 			{
-				if (CPG_IS_GROUP (sel->object))
+				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
 				{
 					GSList const *children;
 					GSList *copy = NULL;
 
-					children = cpg_group_get_children (CPG_GROUP (sel->object));
+					children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (sel)));
 
 					while (children)
 					{
 						copy = g_slist_prepend (copy,
 						                        cpg_selection_new (children->data,
-						                                       sel->expansions));
+						                                           cpg_selection_get_expansions (sel)));
 
 						children = g_slist_next (children);
 					}
@@ -966,11 +925,11 @@ selector_select_pseudo (Selector    *selector,
 			break;
 			case SELECTOR_PSEUDO_TYPE_FIRST_CHILD:
 			{
-				if (CPG_IS_GROUP (sel->object))
+				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
 				{
 					GSList const *children;
 
-					children = cpg_group_get_children (CPG_GROUP (sel->object));
+					children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (sel)));
 
 					while (children)
 					{
@@ -978,7 +937,7 @@ selector_select_pseudo (Selector    *selector,
 						{
 							ret = g_slist_prepend (ret,
 							                       cpg_selection_new (children->data,
-							                                      sel->expansions));
+							                                          cpg_selection_get_expansions (sel)));
 
 							break;
 						}
@@ -990,12 +949,12 @@ selector_select_pseudo (Selector    *selector,
 			break;
 			case SELECTOR_PSEUDO_TYPE_LAST_CHILD:
 			{
-				if (CPG_IS_GROUP (sel->object))
+				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
 				{
 					GSList const *children;
 					CpgObject *thelast = NULL;
 
-					children = cpg_group_get_children (CPG_GROUP (sel->object));
+					children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (sel)));
 
 					while (children)
 					{
@@ -1011,7 +970,7 @@ selector_select_pseudo (Selector    *selector,
 					{
 						ret = g_slist_prepend (ret,
 						                       cpg_selection_new (thelast,
-						                                      sel->expansions));
+						                                          cpg_selection_get_expansions (sel)));
 					}
 				}
 			}
@@ -1032,10 +991,10 @@ selector_select_pseudo (Selector    *selector,
 }
 
 static GSList *
-selector_select (Selector    *selector,
-                 GSList      *parent,
-                 CpgObject   *from,
-                 SelectType   type)
+selector_select (Selector           *selector,
+                 GSList             *parent,
+                 SelectType          type,
+                 CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
 	GSList *item;
@@ -1046,8 +1005,8 @@ selector_select (Selector    *selector,
 		{
 			ret = selector_select_pseudo (selector,
 			                              parent,
-			                              from,
-			                              type);
+			                              type,
+			                              context);
 		}
 	}
 	else
@@ -1057,22 +1016,29 @@ selector_select (Selector    *selector,
 			CpgSelection *sel = item->data;
 			GSList *r = NULL;
 
+			cpg_embedded_context_push_expansions (context,
+			                                      cpg_selection_get_expansions (sel));
+
 			switch (selector->type)
 			{
 				case SELECTOR_TYPE_IDENTIFIER:
 					r = selector_select_identifier (selector,
 					                                sel,
-					                                type);
+					                                type,
+					                                context);
 				break;
 				case SELECTOR_TYPE_REGEX:
 					r = selector_select_regex (selector,
 					                           sel,
-					                           type);
+					                           type,
+					                           context);
 				break;
 				default:
 					g_assert_not_reached ();
 				break;
 			}
+
+			cpg_embedded_context_pop_expansions (context);
 
 			ret = g_slist_concat (ret, r);
 		}
@@ -1082,17 +1048,13 @@ selector_select (Selector    *selector,
 }
 
 static GSList *
-selector_select_all (CpgSelector  *selector,
-                     CpgObject    *parent,
-                     CpgObject    *from,
-                     SelectType    type)
+selector_select_all (CpgSelector        *selector,
+                     CpgObject          *parent,
+                     SelectType          type,
+                     CpgEmbeddedContext *context)
 {
 	GSList *item;
 	GSList *ctx = NULL;
-
-	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (from == NULL || CPG_IS_OBJECT (from), NULL);
 
 	if (!selector->priv->has_selected)
 	{
@@ -1117,8 +1079,8 @@ selector_select_all (CpgSelector  *selector,
 		tmp = ctx;
 		ctx = selector_select (item->data,
 		                       ctx,
-		                       from,
-		                       item->next ? TYPE_ALL : type);
+		                       item->next ? TYPE_ALL : type,
+		                       context);
 
 		g_slist_foreach (tmp, (GFunc)cpg_selection_free, NULL);
 		g_slist_free (tmp);
@@ -1133,55 +1095,51 @@ selector_select_all (CpgSelector  *selector,
 }
 
 GSList *
-cpg_selector_select (CpgSelector  *selector,
-                     CpgObject    *parent)
+cpg_selector_select (CpgSelector        *selector,
+                     CpgObject          *parent,
+                     CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	return selector_select_all (selector, parent, NULL, TYPE_ALL);
+	return selector_select_all (selector, parent, TYPE_ALL, context);
 }
 
 GSList *
-cpg_selector_select_states (CpgSelector  *selector,
-                            CpgObject    *parent)
+cpg_selector_select_states (CpgSelector        *selector,
+                            CpgObject          *parent,
+                            CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	return selector_select_all (selector, parent, NULL, TYPE_STATE);
+	return selector_select_all (selector, parent, TYPE_STATE, context);
 }
 
 GSList *
-cpg_selector_select_links (CpgSelector  *selector,
-                           CpgObject    *parent)
+cpg_selector_select_links (CpgSelector        *selector,
+                           CpgObject          *parent,
+                           CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	return selector_select_all (selector, parent, NULL, TYPE_LINK);
+	return selector_select_all (selector, parent, TYPE_LINK, context);
 }
 
 GSList *
-cpg_selector_select_link_to (CpgSelector  *selector,
-                             CpgObject    *parent,
-                             CpgObject    *from)
+cpg_selector_select_properties (CpgSelector        *selector,
+                                CpgObject          *parent,
+                                CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (from), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	return selector_select_all (selector, parent, from, TYPE_STATE);
-}
-
-GSList *
-cpg_selector_select_properties (CpgSelector  *selector,
-                                CpgObject    *parent)
-{
-	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
-
-	return selector_select_all (selector, parent, NULL, TYPE_PROPERTY);
+	return selector_select_all (selector, parent, TYPE_PROPERTY, context);
 }
 
 gchar const *
@@ -1190,364 +1148,4 @@ cpg_selector_as_string (CpgSelector *selector)
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 
 	return selector->priv->as_string->str;
-}
-
-typedef struct
-{
-	CpgSelector *selector;
-	GRegex *regex;
-	CpgSelectorExpandFunc func;
-	gpointer userdata;
-} ExpandInfo;
-
-static gchar *
-expand_expansion (CpgSelector      *selector,
-                  GMatchInfo const *info,
-                  GSList           *expansions)
-{
-	gchar *parent;
-	gchar *idx;
-	gchar const *num;
-	CpgExpansion *ex;
-	gchar *ret = NULL;
-
-	parent = g_match_info_fetch_named (info, "parent");
-	idx = g_match_info_fetch_named (info, "index");
-
-	if (idx && *idx)
-	{
-		ex = g_slist_nth_data (expansions,
-		                       (gint)g_ascii_strtoll (parent, NULL, 10));
-
-		num = idx;
-	}
-	else
-	{
-		ex = expansions ? expansions->data : NULL;
-		num = parent;
-	}
-
-	if (ex)
-	{
-		gint idd = (gint)g_ascii_strtoll (num, NULL, 10);
-		gchar const *ss;
-
-		ss = cpg_expansion_get (ex, idd);
-
-		if (ss)
-		{
-			ret = g_strdup (ss);
-		}
-	}
-
-	g_free (parent);
-	g_free (idx);
-
-	return ret;
-}
-
-static gboolean
-expand_string_eval (GMatchInfo const *info,
-                    GString          *result,
-                    ExpandInfo       *exinfo)
-{
-	gchar *ret;
-
-	if (!exinfo->func)
-	{
-		return TRUE;
-	}
-
-	ret = exinfo->func (exinfo->selector, info, exinfo->userdata);
-
-	if (ret)
-	{
-		g_string_append (result, ret);
-	}
-
-	g_free (ret);
-
-	return TRUE;
-}
-
-static gchar *
-expand_string (ExpandInfo  *info,
-               gchar const *s)
-{
-	return g_regex_replace_eval (info->regex,
-	                             s,
-	                             -1,
-	                             0,
-	                             0,
-	                             (GRegexEvalCallback)expand_string_eval,
-	                             info,
-	                             NULL);
-}
-
-static Selector *
-expand_selector_identifier (ExpandInfo *info,
-                            Selector   *selector)
-{
-	gchar *expanded;
-	Selector *ret;
-
-	expanded = expand_string (info, selector->identifier);
-	ret = selector_identifier_new (expanded);
-	g_free (expanded);
-
-	return ret;
-}
-
-static Selector *
-expand_selector_regex (ExpandInfo *info,
-                       Selector *selector)
-{
-	gchar *expanded;
-	Selector *ret;
-
-	expanded = expand_string (info, selector->as_string);
-	ret = selector_regex_new (expanded);
-	g_free (expanded);
-
-	return ret;
-}
-
-static Selector *
-expand_selector_pseudo (ExpandInfo *info,
-                        Selector *selector)
-{
-	GPtrArray *args;
-	Selector *ret;
-	gchar **ptr;
-
-	if (!selector->pseudo.arguments)
-	{
-		return selector_pseudo_new (selector->pseudo.definition, NULL);
-	}
-
-	args = g_ptr_array_new ();
-
-	for (ptr = selector->pseudo.arguments; *ptr; ++ptr)
-	{
-		g_ptr_array_add (args, expand_string (info,
-		                                      *ptr));
-	}
-
-	g_ptr_array_add (args, NULL);
-	ptr = (gchar **)g_ptr_array_free (args, FALSE);
-
-	ret = selector_pseudo_new (selector->pseudo.definition,
-	                           (gchar const * const *)ptr);
-
-	g_strfreev (ptr);
-
-	return ret;
-}
-
-static Selector *
-expand_selector (ExpandInfo *info,
-                 Selector *selector)
-{
-	switch (selector->type)
-	{
-		case SELECTOR_TYPE_IDENTIFIER:
-			return expand_selector_identifier (info,
-			                                   selector);
-		break;
-		case SELECTOR_TYPE_REGEX:
-			return expand_selector_regex (info, selector);
-		break;
-		case SELECTOR_TYPE_PSEUDO:
-			return expand_selector_pseudo (info, selector);
-		break;
-		default:
-			g_assert_not_reached ();
-		break;
-	}
-}
-
-CpgSelector *
-cpg_selector_expand (CpgSelector *selector,
-                     GSList      *expansions,
-                     GRegex      *regex)
-{
-	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (regex != NULL, NULL);
-
-	return cpg_selector_expand_func (selector,
-	                                 regex,
-	                                 (CpgSelectorExpandFunc)expand_expansion,
-	                                 expansions,
-	                                 NULL);
-}
-
-CpgSelector *
-cpg_selector_expand_func (CpgSelector           *selector,
-                          GRegex                *regex,
-                          CpgSelectorExpandFunc  func,
-                          gpointer               userdata,
-                          GDestroyNotify         destroy_func)
-{
-	CpgSelector *sel;
-	ExpandInfo info;
-	GSList *item;
-
-	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (regex != NULL, NULL);
-
-	sel = cpg_selector_new ();
-
-	info.selector = selector;
-	info.regex = regex;
-	info.func = func;
-	info.userdata = userdata;
-
-	for (item = selector->priv->selectors; item; item = g_slist_next (item))
-	{
-		add_selector (sel,
-		              expand_selector (&info,
-		                               item->data));
-	}
-
-	if (destroy_func)
-	{
-		destroy_func (userdata);
-	}
-
-	return sel;
-}
-
-CpgExpansion *
-cpg_expansion_new_one (gchar const *item)
-{
-	gchar const *items[] = {
-		item,
-		NULL
-	};
-
-	return cpg_expansion_new (items);
-}
-
-CpgExpansion *
-cpg_expansion_new (gchar const * const *items)
-{
-	CpgExpansion *ret;
-
-	ret = g_slice_new (CpgExpansion);
-
-	ret->expansions = g_ptr_array_new ();
-
-	while (items && *items)
-	{
-		g_ptr_array_add (ret->expansions, g_strdup (*items));
-		++items;
-	}
-
-	if (ret->expansions->len == 0)
-	{
-		g_ptr_array_add (ret->expansions, g_strdup (""));
-	}
-
-	return ret;
-}
-
-gint
-cpg_expansion_num (CpgExpansion *id)
-{
-	return id->expansions->len;
-}
-
-gchar const *
-cpg_expansion_get (CpgExpansion *id,
-                   gint           idx)
-{
-	if (idx < 0 || idx >= id->expansions->len)
-	{
-		return NULL;
-	}
-
-	return (gchar const *)g_ptr_array_index (id->expansions, idx);
-}
-
-void
-cpg_expansion_set (CpgExpansion *id,
-                   gint           idx,
-                   gchar const   *val)
-{
-	if (idx >= 0 && idx < id->expansions->len)
-	{
-		g_free (g_ptr_array_index (id->expansions, idx));
-		id->expansions->pdata[idx] = g_strdup (val);
-	}
-}
-
-void
-cpg_expansion_free (CpgExpansion *id)
-{
-	gint i;
-
-	if (!id)
-	{
-		return;
-	}
-
-	for (i = 0; i < id->expansions->len; ++i)
-	{
-		g_free (g_ptr_array_index (id->expansions, i));
-	}
-
-	g_slice_free (CpgExpansion, id);
-}
-
-CpgExpansion *
-cpg_expansion_copy (CpgExpansion *id)
-{
-	CpgExpansion *ret;
-	GPtrArray *ptr;
-	gint i;
-
-	if (id == NULL)
-	{
-		return NULL;
-	}
-
-	ptr = g_ptr_array_sized_new (cpg_expansion_num (id) + 1);
-
-	for (i = 0; i < cpg_expansion_num (id); ++i)
-	{
-		g_ptr_array_add (ptr,
-		                 g_strdup (cpg_expansion_get (id, i)));
-	}
-
-	ret = g_slice_new (CpgExpansion);
-	ret->expansions = ptr;
-
-	return ret;
-}
-
-void
-cpg_expansion_add (CpgExpansion *id,
-                   gchar const  *item)
-{
-	if (!id || !item)
-	{
-		return;
-	}
-
-	g_ptr_array_add (id->expansions, g_strdup (item));
-}
-
-gchar *
-cpg_expansions_expand (GSList      *expansions,
-                       gchar const *s,
-                       GRegex      *regex)
-{
-	ExpandInfo info;
-
-	info.selector = NULL;
-	info.func = (CpgSelectorExpandFunc)expand_expansion;
-	info.userdata = expansions;
-	info.regex = regex;
-
-	return expand_string (&info, s);
 }

@@ -610,9 +610,13 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	for (p = parts; *p; ++p)
 	{
 		CpgSelector *selector;
+		CpgEmbeddedString *es;
 
 		selector = cpg_selector_new ();
-		cpg_selector_add (selector, *p);
+		es = cpg_embedded_string_new_from_string (*p);
+
+		cpg_selector_add (selector, es);
+		g_object_unref (es);
 
 		selectors = g_slist_prepend (selectors, selector);
 	}
@@ -621,6 +625,7 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	                                              deserializer->priv->parents->data,
 	                                              for_template,
 	                                              selectors,
+	                                              NULL,
 	                                              missing,
 	                                              templates);
 

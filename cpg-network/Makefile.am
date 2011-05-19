@@ -40,6 +40,8 @@ COMMON_SOURCES = 		\
 	cpg-network-serializer.c \
 	cpg-network-parser-utils.c \
 	cpg-parser-context.c \
+	cpg-embedded-string.c \
+	cpg-embedded-context.c \
 	cpg-object.c \
 	cpg-operator.c \
 	cpg-operator-lastof.c \
@@ -52,7 +54,9 @@ COMMON_SOURCES = 		\
 	cpg-utils.c \
 	cpg-parser.y \
 	cpg-parser-tokens.l \
-	cpg-layout.c
+	cpg-layout.c \
+	cpg-expansion.c \
+	cpg-selection.c
 
 BUILT_SOURCES = \
 	cpg-enum-types.c \
@@ -107,7 +111,11 @@ INST_H_FILES = \
 	cpg-stack.h \
 	cpg-usable.h \
 	cpg-utils.h \
-	cpg-layout.h
+	cpg-layout.h \
+	cpg-embedded-string.h \
+	cpg-embedded-context.h \
+	cpg-expansion.h \
+	cpg-selection.h
 
 lib_LTLIBRARIES = libcpg-network-2.0.la
 

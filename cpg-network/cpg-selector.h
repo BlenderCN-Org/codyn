@@ -3,6 +3,8 @@
 
 #include <cpg-network/cpg-network.h>
 #include <cpg-network/cpg-link.h>
+#include <cpg-network/cpg-embedded-string.h>
+#include <cpg-network/cpg-selection.h>
 
 G_BEGIN_DECLS
 
@@ -18,9 +20,6 @@ typedef struct _CpgSelector		CpgSelector;
 typedef struct _CpgSelectorClass	CpgSelectorClass;
 typedef struct _CpgSelectorPrivate	CpgSelectorPrivate;
 
-typedef struct _CpgExpansion CpgExpansion;
-typedef struct _CpgSelection CpgSelection;
-
 struct _CpgSelector
 {
 	GObject parent;
@@ -33,10 +32,6 @@ struct _CpgSelectorClass
 	GObjectClass parent_class;
 };
 
-typedef gchar *(*CpgSelectorExpandFunc) (CpgSelector      *selector,
-                                         GMatchInfo const *info,
-                                         gpointer          userdata);
-
 GType         cpg_selector_get_type          (void) G_GNUC_CONST;
 
 CpgSelector  *cpg_selector_new               (void);
@@ -47,77 +42,31 @@ CpgSelector  *cpg_selector_copy              (CpgSelector            *selector);
 
 gchar const  *cpg_selector_as_string         (CpgSelector            *selector);
 
-CpgSelector  *cpg_selector_expand            (CpgSelector            *selector,
-                                              GSList                 *expansions,
-                                              GRegex                 *regex);
-
-CpgSelector  *cpg_selector_expand_func       (CpgSelector            *selector,
-                                              GRegex                 *regex,
-                                              CpgSelectorExpandFunc   func,
-                                              gpointer                userdata,
-                                              GDestroyNotify          destroy_func);
-
-GSList       *cpg_selector_get_expansions    (CpgSelector            *selector,
-                                              gpointer                matched);
-
 void          cpg_selector_add               (CpgSelector            *selector,
-                                              gchar const            *identifier);
+                                              CpgEmbeddedString      *identifier);
 
 void          cpg_selector_add_pseudo        (CpgSelector            *selector,
-                                              gchar const            *pseudo,
-                                              gchar const * const    *arguments);
+                                              CpgEmbeddedString      *pseudo,
+                                              GSList                 *arguments);
 
 void          cpg_selector_add_regex         (CpgSelector            *selector,
-                                              gchar const            *regex);
+                                              CpgEmbeddedString      *regex);
 
 GSList       *cpg_selector_select            (CpgSelector            *selector,
-                                              CpgObject              *parent);
-
-GSList       *cpg_selector_select_link_to    (CpgSelector            *selector,
                                               CpgObject              *parent,
-                                              CpgObject              *from);
+                                              CpgEmbeddedContext     *context);
 
 GSList       *cpg_selector_select_links      (CpgSelector            *selector,
-                                              CpgObject              *parent);
+                                              CpgObject              *parent,
+                                              CpgEmbeddedContext     *context);
 
 GSList       *cpg_selector_select_states     (CpgSelector            *selector,
-                                              CpgObject              *parent);
+                                              CpgObject              *parent,
+                                              CpgEmbeddedContext     *context);
 
 GSList       *cpg_selector_select_properties (CpgSelector            *selector,
-                                              CpgObject              *parent);
-
-CpgExpansion *cpg_expansion_new              (gchar const * const    *items);
-CpgExpansion *cpg_expansion_new_one          (gchar const            *item);
-
-CpgExpansion *cpg_expansion_copy             (CpgExpansion           *id);
-
-gint          cpg_expansion_num              (CpgExpansion           *id);
-
-gchar const  *cpg_expansion_get              (CpgExpansion           *id,
-                                              gint                    idx);
-
-void          cpg_expansion_add              (CpgExpansion           *id,
-                                              gchar const            *item);
-
-void          cpg_expansion_set              (CpgExpansion           *id,
-                                              gint                    idx,
-                                              gchar const            *val);
-
-void          cpg_expansion_free             (CpgExpansion           *id);
-
-gchar        *cpg_expansions_expand          (GSList                 *expansions,
-                                              gchar const            *s,
-                                              GRegex                 *regex);
-
-CpgSelection *cpg_selection_new              (gpointer                object,
-                                              GSList                 *expansions);
-
-void          cpg_selection_free             (CpgSelection           *selection);
-CpgSelection *cpg_selection_copy             (CpgSelection           *selection);
-
-CpgObject    *cpg_selection_get_object       (CpgSelection           *selection);
-CpgProperty  *cpg_selection_get_property     (CpgSelection           *selection);
-GSList       *cpg_selection_get_expansions   (CpgSelection           *selection);
+                                              CpgObject              *parent,
+                                              CpgEmbeddedContext     *context);
 
 G_END_DECLS
 

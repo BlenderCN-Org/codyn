@@ -5,12 +5,11 @@
 #include <cpg-network/cpg-import.h>
 #include <cpg-network/cpg-selector.h>
 
-typedef struct _CpgExpandedId CpgExpandedId;
-
 gboolean     cpg_network_parser_utils_get_templates        (CpgNetwork           *network,
                                                             CpgGroup             *parent,
                                                             gboolean              for_template,
                                                             GSList               *selectors,
+                                                            CpgEmbeddedContext   *context,
                                                             gchar               **missing,
                                                             GSList              **templates);
 
@@ -22,8 +21,6 @@ GFile       *cpg_network_parser_utils_resolve_import       (GFile               
 
 CpgImport   *cpg_network_parser_utils_find_template_import (CpgObject            *child,
                                                             GFile                *file);
-
-GSList      *cpg_network_parser_utils_expand_id            (gchar const          *id);
 
 #endif /* __CPG_NETWORK_PARSER_UTILS_H__ */
 
