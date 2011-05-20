@@ -1012,6 +1012,30 @@ create_objects (CpgParserContext  *context,
 	return ret;
 }
 
+static gchar *
+unique_id (CpgGroup    *parent,
+           gchar const *prefix)
+{
+	gint i = 1;
+
+	if (!cpg_group_get_child (parent, prefix))
+	{
+		return g_strdup (prefix);
+	}
+
+	while (TRUE)
+	{
+		gchar *id = g_strdup_printf ("%s_%d", prefix, i++);
+
+		if (!cpg_group_get_child (parent, id))
+		{
+			return id;
+		}
+
+		g_free (id);
+	}
+}
+
 static GSList *
 create_links_single (CpgParserContext          *context,
                      CpgExpansion              *id,
@@ -1047,6 +1071,8 @@ create_links_single (CpgParserContext          *context,
 		CpgSelection *secondsel;
 		gboolean argswitch;
 		gboolean popone;
+		gchar *newid;
+		gchar *uniq;
 
 		++idx;
 
@@ -1077,23 +1103,28 @@ create_links_single (CpgParserContext          *context,
 			continue;
 		}
 
+		/* Alter id to be numeric incremental */
+
+		realid = cpg_expansion_copy (id);
+
 		if (multiple)
 		{
-			/* Alter id to be numeric incremental */
-			gchar *newid;
-
-			realid = cpg_expansion_copy (id);
 			newid = g_strdup_printf ("%s_%d",
 			                         cpg_expansion_get (id, 0),
 			                         num);
-
-			cpg_expansion_set (realid, 0, newid);
-			g_free (newid);
 		}
 		else
 		{
-			realid = id;
+			newid = g_strdup (cpg_expansion_get (id, 0));
 		}
+
+		uniq = unique_id (CPG_GROUP (cpg_selection_get_object (parent)),
+		                  newid);
+
+		g_free (newid);
+
+		cpg_expansion_set (realid, 0, uniq);
+		g_free (uniq);
 
 		popone = FALSE;
 
@@ -1145,10 +1176,7 @@ create_links_single (CpgParserContext          *context,
 			cpg_embedded_context_pop_expansions (context->priv->embedded);
 		}
 
-		if (multiple)
-		{
-			cpg_expansion_free (realid);
-		}
+		cpg_expansion_free (realid);
 
 		if (!obj)
 		{
@@ -1279,18 +1307,12 @@ cpg_parser_context_push_link (CpgParserContext          *context,
                               GArray                    *fromto)
 {
 	GSList *objects;
-	gboolean freeid;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
 	if (id == NULL)
 	{
-		freeid = TRUE;
 		id = cpg_embedded_string_new_from_string ("link");
-	}
-	else
-	{
-		freeid = FALSE;
 	}
 
 	if (!fromto)
@@ -1312,10 +1334,7 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 	cpg_parser_context_push_object (context, objects);
 	g_slist_free (objects);
 
-	if (freeid)
-	{
-		g_object_unref (id);
-	}
+	g_object_unref (id);
 }
 
 void
