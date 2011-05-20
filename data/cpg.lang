@@ -124,7 +124,7 @@
         </context>
 
         <context id="selector">
-            <match>([:.][a-z_-]+)(\(([^)]*)\))?</match>
+            <match>([|.][a-z_-]+)(\(([^)]*)\))?</match>
             <include>
                 <context sub-pattern="1" style-ref="selector"/>
                 <context sub-pattern="3" style-ref="string"/>
