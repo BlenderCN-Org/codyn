@@ -43,14 +43,16 @@ CpgSelector  *cpg_selector_copy              (CpgSelector            *selector);
 gchar const  *cpg_selector_as_string         (CpgSelector            *selector);
 
 void          cpg_selector_add               (CpgSelector            *selector,
-                                              CpgEmbeddedString      *identifier);
+                                              CpgEmbeddedString      *identifier,
+                                              gboolean                onset);
 
 void          cpg_selector_add_pseudo        (CpgSelector            *selector,
                                               CpgEmbeddedString      *pseudo,
                                               GSList                 *arguments);
 
 void          cpg_selector_add_regex         (CpgSelector            *selector,
-                                              CpgEmbeddedString      *regex);
+                                              CpgEmbeddedString      *regex,
+                                              gboolean                onset);
 
 GSList       *cpg_selector_select            (CpgSelector            *selector,
                                               CpgObject              *parent,

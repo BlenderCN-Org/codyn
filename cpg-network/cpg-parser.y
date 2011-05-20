@@ -52,7 +52,6 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token <id> T_IDENTIFIER
 %token <id> T_STRING
-%token <id> T_PSEUDO_SELECTOR
 
 %token T_STRING_BEGIN
 %token T_STRING_END
@@ -478,17 +477,27 @@ selector
 	;
 
 selector_identifier
-	: identifier_or_string 		{ cpg_parser_context_push_selector (context, $1); errb }
+	: identifier_or_string 		{ cpg_parser_context_push_selector (context, $1, FALSE); errb }
 	;
 
 selector_regex
-	: regex				{ cpg_parser_context_push_selector_regex (context, $1); errb }
+	: regex				{ cpg_parser_context_push_selector_regex (context, $1, FALSE); errb }
+	;
+
+selector_identifier_set
+	: string			{ cpg_parser_context_push_selector (context, $1, TRUE); errb }
+	;
+
+selector_regex_set
+	: regex				{ cpg_parser_context_push_selector_regex (context, $1, TRUE); errb }
 	;
 
 nested_selector
 	:
 	| nested_selector '.' selector_identifier
 	| nested_selector '.' selector_regex
+	| nested_selector '|' selector_identifier_set
+	| nested_selector '|' selector_regex_set
 	| nested_selector selector_pseudo
 	;
 
@@ -503,7 +512,7 @@ pseudo_args_list
 	;
 
 selector_pseudo_identifier
-	: T_PSEUDO_SELECTOR		{ $$ = cpg_embedded_string_new_from_string ($1); }
+	: '|' T_IDENTIFIER		{ $$ = cpg_embedded_string_new_from_string ($2); }
 	;
 
 selector_pseudo

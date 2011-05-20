@@ -76,6 +76,7 @@ typedef struct
 {
 	SelectorType type;
 	gchar *as_string;
+	gboolean onset;
 
 	union
 	{
@@ -135,7 +136,8 @@ selector_free (Selector *selector)
 }
 
 static Selector *
-selector_identifier_new (CpgEmbeddedString *identifier)
+selector_identifier_new (CpgEmbeddedString *identifier,
+                         gboolean           onset)
 {
 	Selector *selector;
 	gchar const *r;
@@ -146,12 +148,14 @@ selector_identifier_new (CpgEmbeddedString *identifier)
 
 	selector->identifier = g_object_ref (identifier);
 	selector->as_string = g_strdup_printf ("\"%s\"", r);
+	selector->onset = onset;
 
 	return selector;
 }
 
 static Selector *
-selector_regex_new (CpgEmbeddedString *regex)
+selector_regex_new (CpgEmbeddedString *regex,
+                    gboolean           onset)
 {
 	Selector *selector;
 	gchar const *r;
@@ -162,6 +166,7 @@ selector_regex_new (CpgEmbeddedString *regex)
 
 	selector->regex = g_object_ref (regex);
 	selector->as_string = g_strdup_printf ("/%s/", r);
+	selector->onset = onset;
 
 	return selector;
 }
@@ -374,12 +379,13 @@ add_selector (CpgSelector *selector,
 
 void
 cpg_selector_add (CpgSelector       *selector,
-                  CpgEmbeddedString *identifier)
+                  CpgEmbeddedString *identifier,
+                  gboolean           onset)
 {
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (identifier));
 
-	add_selector (selector, selector_identifier_new (identifier));
+	add_selector (selector, selector_identifier_new (identifier, onset));
 }
 
 void
@@ -395,13 +401,14 @@ cpg_selector_add_pseudo (CpgSelector       *selector,
 
 void
 cpg_selector_add_regex (CpgSelector       *selector,
-                        CpgEmbeddedString *regex)
+                        CpgEmbeddedString *regex,
+                        gboolean           onset)
 {
 
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (regex));
 
-	add_selector (selector, selector_regex_new (regex));
+	add_selector (selector, selector_regex_new (regex, onset));
 }
 
 static gboolean
@@ -439,25 +446,46 @@ selector_select_identifier (Selector           *selector,
 	{
 		CpgObject *child;
 
-		if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
+		if (selector->onset)
 		{
-			return NULL;
+			if (g_strcmp0 (cpg_embedded_string_expand (selector->identifier,
+			                                           context),
+			               cpg_object_get_id (cpg_selection_get_object (parent))) == 0 &&
+			    check_type (cpg_selection_get_object (parent), type))
+			{
+				ret = g_slist_prepend (NULL,
+				                        cpg_selection_copy (parent));
+			}
+
 		}
-
-		child = cpg_group_get_child (CPG_GROUP (cpg_selection_get_object (parent)),
-		                             cpg_embedded_string_expand (selector->identifier,
-		                                                         context));
-
-		if (child && check_type (child, type))
+		else
 		{
-			ret = g_slist_prepend (NULL,
-			                       cpg_selection_new (child,
-			                                          cpg_selection_get_expansions (parent)));
+			if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
+			{
+				return NULL;
+			}
+
+			child = cpg_group_get_child (CPG_GROUP (cpg_selection_get_object (parent)),
+			                             cpg_embedded_string_expand (selector->identifier,
+			                                                         context));
+
+			if (child && check_type (child, type))
+			{
+				ret = g_slist_prepend (NULL,
+				                       cpg_selection_new (child,
+				                                          cpg_selection_get_expansions (parent)));
+			}
 		}
 	}
 	else
 	{
 		CpgProperty *prop;
+
+		if (selector->onset)
+		{
+			/* FIXME: make this work? */
+			return NULL;
+		}
 
 		prop = cpg_object_get_property (cpg_selection_get_object (parent),
 		                                cpg_embedded_string_expand (selector->identifier,
@@ -486,6 +514,24 @@ expansion_from_match (GMatchInfo *info)
 	return ret;
 }
 
+static gboolean
+regex_match_full (GRegex       *regex,
+                  gchar const  *s,
+                  GMatchInfo  **info)
+{
+	if (g_regex_match (regex, s, 0, info))
+	{
+		gint startpos;
+		gint endpos;
+
+		g_match_info_fetch_pos (*info, 0, &startpos, &endpos);
+
+		return startpos == 0 && endpos == strlen (s);
+	}
+
+	return FALSE;
+}
+
 static GSList *
 selector_select_regex (Selector           *selector,
                        CpgSelection       *parent,
@@ -499,11 +545,6 @@ selector_select_regex (Selector           *selector,
 	{
 		GSList const *children;
 
-		if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
-		{
-			return NULL;
-		}
-
 		regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
 		                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
 		                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
@@ -514,20 +555,17 @@ selector_select_regex (Selector           *selector,
 			return NULL;
 		}
 
-		children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (parent)));
-
-		while (children)
+		if (selector->onset)
 		{
-			CpgObject *child;
+			CpgObject *obj;
 			GMatchInfo *info;
 
-			child = children->data;
+			obj = cpg_selection_get_object (parent);
 
-			if (check_type (child, type) &&
-			    g_regex_match (regex,
-			                   cpg_object_get_id (child),
-			                   0,
-			                   &info))
+			if (check_type (obj, type) &&
+			    regex_match_full (regex,
+			                      cpg_object_get_id (obj),
+			                      &info))
 			{
 				CpgSelection *childsel;
 				GSList *expansions;
@@ -538,7 +576,7 @@ selector_select_regex (Selector           *selector,
 				expansion = expansion_from_match (info);
 				expansions = g_slist_append (expansions, expansion);
 
-				childsel = cpg_selection_new (child, expansions);
+				childsel = cpg_selection_new (obj, expansions);
 				g_slist_free (expansions);
 
 				cpg_expansion_free (expansion);
@@ -547,14 +585,61 @@ selector_select_regex (Selector           *selector,
 
 				g_match_info_free (info);
 			}
+		}
+		else
+		{
+			if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
+			{
+				return NULL;
+			}
 
-			children = g_slist_next (children);
+			children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (parent)));
+
+			while (children)
+			{
+				CpgObject *child;
+				GMatchInfo *info;
+
+				child = children->data;
+
+				if (check_type (child, type) &&
+				    regex_match_full (regex,
+				                      cpg_object_get_id (child),
+				                      &info))
+				{
+					CpgSelection *childsel;
+					GSList *expansions;
+					CpgExpansion *expansion;
+
+					expansions = g_slist_copy (cpg_selection_get_expansions (parent));
+
+					expansion = expansion_from_match (info);
+					expansions = g_slist_append (expansions, expansion);
+
+					childsel = cpg_selection_new (child, expansions);
+					g_slist_free (expansions);
+
+					cpg_expansion_free (expansion);
+
+					ret = g_slist_prepend (ret, childsel);
+
+					g_match_info_free (info);
+				}
+
+				children = g_slist_next (children);
+			}
 		}
 	}
 	else
 	{
 		GSList *props;
 		GSList *item;
+
+		if (selector->onset)
+		{
+			/* FIXME: implement this? */
+			return NULL;
+		}
 
 		regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
 		                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
@@ -567,10 +652,9 @@ selector_select_regex (Selector           *selector,
 		{
 			GMatchInfo *info;
 
-			if (g_regex_match (regex,
-			                   cpg_property_get_name (item->data),
-			                   0,
-			                   &info))
+			if (regex_match_full (regex,
+			                      cpg_property_get_name (item->data),
+			                      &info))
 			{
 				CpgSelection *childsel;
 				GSList *expansions;

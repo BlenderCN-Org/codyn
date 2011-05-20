@@ -1583,23 +1583,25 @@ ensure_selector (CpgParserContext *context)
 
 void
 cpg_parser_context_push_selector (CpgParserContext  *context,
-                                  CpgEmbeddedString *identifier)
+                                  CpgEmbeddedString *identifier,
+                                  gboolean           onset)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (identifier != NULL);
 
-	cpg_selector_add (ensure_selector (context), identifier);
+	cpg_selector_add (ensure_selector (context), identifier, onset);
 	g_object_unref (identifier);
 }
 
 void
 cpg_parser_context_push_selector_regex (CpgParserContext  *context,
-                                        CpgEmbeddedString *regex)
+                                        CpgEmbeddedString *regex,
+                                        gboolean           onset)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (regex != NULL);
 
-	cpg_selector_add_regex (ensure_selector (context), regex);
+	cpg_selector_add_regex (ensure_selector (context), regex, onset);
 	g_object_unref (regex);
 }
 
@@ -2247,14 +2249,19 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 	g_object_unref (value);
 }
 
-void
+CpgEmbeddedString *
 cpg_parser_context_push_string (CpgParserContext *context)
 {
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	CpgEmbeddedString *s;
+
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+
+	s = cpg_embedded_string_new ();
 
 	context->priv->strings =
-		g_slist_prepend (context->priv->strings,
-		                 cpg_embedded_string_new ());
+		g_slist_prepend (context->priv->strings, s);
+
+	return s;
 }
 
 CpgEmbeddedString *

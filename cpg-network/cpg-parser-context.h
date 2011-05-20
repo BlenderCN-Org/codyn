@@ -138,9 +138,11 @@ void                   cpg_parser_context_set_proxy            (CpgParserContext
 GSList                *cpg_parser_context_pop                  (CpgParserContext           *context);
 
 void                   cpg_parser_context_push_selector        (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *identifier);
+                                                                CpgEmbeddedString          *identifier,
+                                                                gboolean                    onset);
 void                   cpg_parser_context_push_selector_regex  (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *regex);
+                                                                CpgEmbeddedString          *regex,
+                                                                gboolean                    onset);
 void                   cpg_parser_context_push_selector_pseudo (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *identifier,
                                                                 GArray                     *arguments);
@@ -198,7 +200,7 @@ void                   cpg_parser_context_add_integrator_property (CpgParserCont
                                                                    CpgEmbeddedString       *name,
                                                                    CpgEmbeddedString       *value);
 
-void                   cpg_parser_context_push_string           (CpgParserContext *context);
+CpgEmbeddedString     *cpg_parser_context_push_string           (CpgParserContext *context);
 CpgEmbeddedString     *cpg_parser_context_peek_string           (CpgParserContext *context);
 CpgEmbeddedString     *cpg_parser_context_pop_string            (CpgParserContext *context);
 

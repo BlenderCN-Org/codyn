@@ -615,7 +615,7 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 		selector = cpg_selector_new ();
 		es = cpg_embedded_string_new_from_string (*p);
 
-		cpg_selector_add (selector, es);
+		cpg_selector_add (selector, es, FALSE);
 		g_object_unref (es);
 
 		selectors = g_slist_prepend (selectors, selector);
