@@ -5,14 +5,38 @@
 
 typedef struct
 {
-	CpgObject *left;
-	CpgObject *right;
+	CpgLayoutable *left;
+	CpgLayoutable *right;
 	CpgLayoutRelation relation;
 } Relation;
 
+typedef struct
+{
+	gint x;
+	gint y;
+} Position;
+
+static Position *
+position_new (gint x, gint y)
+{
+	Position *ret;
+
+	ret = g_slice_new0 (Position);
+	ret->x = x;
+	ret->y = y;
+
+	return ret;
+}
+
+static void
+position_free (Position *self)
+{
+	g_slice_free (Position, self);
+}
+
 static Relation *
-relation_new (CpgObject *left,
-              CpgObject *right,
+relation_new (CpgLayoutable *left,
+              CpgLayoutable *right,
               CpgLayoutRelation relation)
 {
 	Relation *ret;
@@ -40,6 +64,7 @@ struct _CpgLayoutPrivate
 	CpgNetwork *network;
 
 	GSList *relations;
+	GHashTable *fixed;
 };
 
 G_DEFINE_TYPE (CpgLayout, cpg_layout, G_TYPE_OBJECT)
@@ -59,6 +84,8 @@ cpg_layout_finalize (GObject *object)
 
 	g_slist_foreach (layout->priv->relations, (GFunc)relation_free, NULL);
 	g_slist_free (layout->priv->relations);
+
+	g_hash_table_destroy (layout->priv->fixed);
 
 	G_OBJECT_CLASS (cpg_layout_parent_class)->finalize (object);
 }
@@ -137,6 +164,11 @@ static void
 cpg_layout_init (CpgLayout *self)
 {
 	self->priv = CPG_LAYOUT_GET_PRIVATE (self);
+
+	self->priv->fixed = g_hash_table_new_full (g_direct_hash,
+	                                           g_direct_equal,
+	                                           (GDestroyNotify)g_object_unref,
+	                                           (GDestroyNotify)position_free);
 }
 
 CpgLayout *
@@ -150,18 +182,31 @@ cpg_layout_new (CpgNetwork *network)
 }
 
 void
-cpg_layout_add (CpgLayout *layout,
-                CpgObject *left,
-                CpgObject *right,
-                CpgLayoutRelation relation)
+cpg_layout_add (CpgLayout         *layout,
+                CpgLayoutable         *left,
+                CpgLayoutable         *right,
+                CpgLayoutRelation  relation)
 {
 	g_return_if_fail (CPG_IS_LAYOUT (layout));
-	g_return_if_fail (CPG_IS_OBJECT (left));
-	g_return_if_fail (!CPG_IS_LINK (left));
-	g_return_if_fail (CPG_IS_OBJECT (right));
-	g_return_if_fail (!CPG_IS_LINK (right));
+	g_return_if_fail (CPG_IS_LAYOUTABLE (left));
+	g_return_if_fail (CPG_IS_LAYOUTABLE (right));
 
 	layout->priv->relations =
 		g_slist_prepend (layout->priv->relations,
 		                 relation_new (left, right, relation));
+}
+
+void
+cpg_layout_set (CpgLayout *layout,
+                CpgLayoutable *object,
+                gint       x,
+                gint       y)
+{
+	g_return_if_fail (CPG_IS_LAYOUT (layout));
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (CPG_IS_LINK (object));
+
+	g_hash_table_insert (layout->priv->fixed,
+	                     g_object_ref (object),
+	                     position_new (x, y));
 }

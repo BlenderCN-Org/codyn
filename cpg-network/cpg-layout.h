@@ -2,6 +2,7 @@
 #define __CPG_LAYOUT_H__
 
 #include <cpg-network/cpg-network.h>
+#include <cpg-network/cpg-layoutable.h>
 
 G_BEGIN_DECLS
 
@@ -44,9 +45,14 @@ GType      cpg_layout_get_type (void) G_GNUC_CONST;
 CpgLayout *cpg_layout_new      (CpgNetwork        *network);
 
 void       cpg_layout_add      (CpgLayout         *layout,
-                                CpgObject         *left,
-                                CpgObject         *right,
+                                CpgLayoutable     *left,
+                                CpgLayoutable     *right,
                                 CpgLayoutRelation  relation);
+
+void       cpg_layout_set      (CpgLayout         *layout,
+                                CpgLayoutable     *layoutable,
+                                gint               x,
+                                gint               y);
 
 G_END_DECLS
 

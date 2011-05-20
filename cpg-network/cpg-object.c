@@ -12,6 +12,7 @@
 #include "cpg-usable.h"
 #include "cpg-tokenizer.h"
 #include "cpg-annotatable.h"
+#include "cpg-layoutable.h"
 
 /**
  * SECTION:cpg-object
@@ -92,6 +93,7 @@ enum
 
 static void cpg_usable_iface_init (gpointer iface);
 static void cpg_annotatable_iface_init (gpointer iface);
+static void cpg_layoutable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgObject,
                          cpg_object,
@@ -99,7 +101,9 @@ G_DEFINE_TYPE_WITH_CODE (CpgObject,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_USABLE,
                                                 cpg_usable_iface_init);
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
-                                                cpg_annotatable_iface_init));
+                                                cpg_annotatable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_LAYOUTABLE,
+                                                cpg_layoutable_iface_init));
 
 static guint object_signals[NUM_SIGNALS] = {0,};
 
@@ -134,6 +138,11 @@ cpg_object_unuse (CpgUsable *usable)
 	}
 
 	return (--(obj->priv->use_count) == 0);
+}
+
+static void
+cpg_layoutable_iface_init (gpointer iface)
+{
 }
 
 static void
@@ -1127,37 +1136,13 @@ cpg_object_class_init (CpgObjectClass *klass)
 	                                                      CPG_TYPE_OBJECT,
 	                                                      G_PARAM_READABLE));
 
-	/**
-	 * CpgObject:x:
-	 *
-	 * The #CpgObject x location.
-	 *
-	 **/
-	g_object_class_install_property (object_class,
-	                                 PROP_X,
-	                                 g_param_spec_int ("x",
-	                                                   "X",
-	                                                   "The x location",
-	                                                   G_MININT,
-	                                                   G_MAXINT,
-	                                                   0,
-	                                                   G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	g_object_class_override_property (object_class,
+	                                  PROP_X,
+	                                  "x");
 
-	/**
-	 * CpgObject:y:
-	 *
-	 * The #CpgObject y location.
-	 *
-	 **/
-	g_object_class_install_property (object_class,
-	                                 PROP_Y,
-	                                 g_param_spec_int ("y",
-	                                                   "Y",
-	                                                   "The y location",
-	                                                   G_MININT,
-	                                                   G_MAXINT,
-	                                                   0,
-	                                                   G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	g_object_class_override_property (object_class,
+	                                  PROP_Y,
+	                                  "y");
 
 	/**
 	 * CpgObject:auto-imported:
@@ -2244,33 +2229,4 @@ cpg_object_get_relative_id (CpgObject *object,
 
 	g_free (par);
 	return ret;
-}
-
-void
-cpg_object_set_location (CpgObject *object,
-                         gint       x,
-                         gint       y)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-
-	object->priv->x = x;
-	object->priv->y = y;
-}
-
-void
-cpg_object_get_location (CpgObject *object,
-                         gint      *x,
-                         gint      *y)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-
-	if (x)
-	{
-		*x = object->priv->x;
-	}
-
-	if (y)
-	{
-		*y = object->priv->y;
-	}
 }

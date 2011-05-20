@@ -172,14 +172,6 @@ const gchar      *cpg_object_get_id          (CpgObject   *object);
 void              cpg_object_set_id          (CpgObject   *object,
                                               const gchar *id);
 
-void              cpg_object_set_location    (CpgObject    *object,
-                                              gint          x,
-                                              gint          y);
-
-void              cpg_object_get_location    (CpgObject    *object,
-                                              gint         *x,
-                                              gint         *y);
-
 gboolean          cpg_object_add_property    (CpgObject    *object,
                                               CpgProperty  *property,
                                               GError      **error);

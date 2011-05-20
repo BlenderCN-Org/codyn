@@ -5,6 +5,7 @@
 #include "cpg-import.h"
 #include "cpg-input-file.h"
 #include "cpg-annotatable.h"
+#include "cpg-layoutable.h"
 
 #include <libxml/tree.h>
 
@@ -472,23 +473,20 @@ object_to_xml (CpgNetworkSerializer *serializer,
 	xmlNewProp (ptr, (xmlChar *)"id", (xmlChar *)cpg_object_get_id (object));
 	xmlAddChild (parent, ptr);
 
-	if (!CPG_IS_LINK (object))
+	if (CPG_IS_LAYOUTABLE (object))
 	{
 		gchar *pos;
 		gint x;
 		gint y;
 
-		cpg_object_get_location (object, &x, &y);
+		cpg_layoutable_get_location (CPG_LAYOUTABLE (object), &x, &y);
 
-		if (x != 0)
+		if (x != 0 || y != 0)
 		{
 			pos = g_strdup_printf ("%d", x);
 			xmlNewProp (ptr, (xmlChar *)"x", (xmlChar *)pos);
 			g_free (pos);
-		}
 
-		if (y != 0)
-		{
 			pos = g_strdup_printf ("%d", y);
 			xmlNewProp (ptr, (xmlChar *)"y", (xmlChar *)pos);
 			g_free (pos);

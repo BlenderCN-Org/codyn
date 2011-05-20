@@ -6,6 +6,7 @@
 #include "cpg-embedded-context.h"
 #include "cpg-selection.h"
 #include "cpg-expansion.h"
+#include "cpg-layoutable.h"
 
 #include <string.h>
 
@@ -2009,8 +2010,8 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 		for (rightobj = rightobjs; rightobj; rightobj = g_slist_next (rightobj))
 		{
 			cpg_layout_add (context->priv->layout,
-			                cpg_selection_get_object (leftsel),
-			                cpg_selection_get_object (rightobj->data),
+			                CPG_LAYOUTABLE (cpg_selection_get_object (leftsel)),
+			                CPG_LAYOUTABLE (cpg_selection_get_object (rightobj->data)),
 			                relation);
 		}
 
@@ -2049,6 +2050,11 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 		gint xx;
 		gint yy;
 
+		if (!CPG_IS_LAYOUTABLE (cpg_selection_get_object (obj->data)))
+		{
+			continue;
+		}
+
 		cpg_embedded_context_push_expansions (context->priv->embedded,
 		                                      cpg_selection_get_expansions (obj->data));
 
@@ -2058,10 +2064,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 		xx = (gint)g_ascii_strtoll (exx, NULL, 10);
 		yy = (gint)g_ascii_strtoll (exy, NULL, 10);
 
-		if (!of)
-		{
-		}
-		else
+		if (of)
 		{
 			GSList *ofobjs;
 			GSList *ofobj;
@@ -2080,12 +2083,18 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 				gint oy;
 
 				o = cpg_selection_get_object (ofobj->data);
-				cpg_object_get_location (o, &ox, &oy);
 
-				mx += ox;
-				my += oy;
+				if (CPG_IS_LAYOUTABLE (o))
+				{
+					cpg_layoutable_get_location (CPG_LAYOUTABLE (o),
+					                             &ox,
+					                             &oy);
 
-				++num;
+					mx += ox;
+					my += oy;
+
+					++num;
+				}
 			}
 
 			if (num > 0)
@@ -2098,9 +2107,9 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 			yy += my;
 		}
 
-		cpg_object_set_location (cpg_selection_get_object (obj->data),
-		                         xx,
-		                         yy);
+		cpg_layoutable_set_location (CPG_LAYOUTABLE (cpg_selection_get_object (obj->data)),
+		                             xx,
+		                             yy);
 
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
 	}

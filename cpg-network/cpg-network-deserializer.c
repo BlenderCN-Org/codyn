@@ -19,6 +19,7 @@
 #include "cpg-input-file.h"
 #include "cpg-annotatable.h"
 #include "cpg-network-parser-utils.h"
+#include "cpg-layoutable.h"
 
 /**
  * SECTION:cpg-network-deserializer
@@ -655,8 +656,9 @@ parse_object (CpgNetworkDeserializer *deserializer,
               gboolean               *new_object)
 {
 	xmlChar *id = xmlGetProp (node, (xmlChar *)"id");
-	*new_object = FALSE;
 	GError *error = NULL;
+
+	*new_object = FALSE;
 
 	if (!id)
 	{
@@ -767,6 +769,37 @@ parse_object (CpgNetworkDeserializer *deserializer,
 		}
 
 		return NULL;
+	}
+
+	if (CPG_IS_LAYOUTABLE (child))
+	{
+		xmlChar *xs;
+		xmlChar *ys;
+
+		xs = xmlGetProp (node, (xmlChar *)"x");
+		ys = xmlGetProp (node, (xmlChar *)"y");
+
+		if (xs || ys)
+		{
+			gint xx = 0;
+			gint yy = 0;
+
+			if (xs)
+			{
+				xx = (gint)g_ascii_strtoll ((gchar const *)xs, NULL, 10);
+				xmlFree (xs);
+			}
+
+			if (ys)
+			{
+				yy = (gint)g_ascii_strtoll ((gchar const *)ys, NULL, 10);
+				xmlFree (ys);
+			}
+
+			cpg_layoutable_set_location (CPG_LAYOUTABLE (child),
+			                             xx,
+			                             yy);
+		}
 	}
 
 	return child;
