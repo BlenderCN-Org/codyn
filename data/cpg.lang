@@ -28,7 +28,6 @@
     <definitions>
 
         <define-regex id="identifier">[a-z_][a-z0-9_-]*</define-regex>
-        <define-regex id="nth">[-+]?[0-9]n([-+][0-9])?</define-regex>
         <define-regex id="string">"(\\["]|[^"])*"</define-regex>
         <define-regex id="regex">/(\\/|[^/])*/</define-regex>
         <define-regex id="define">@(\%{identifier}|@*([0-9]+))</define-regex>
