@@ -183,32 +183,6 @@ cpg_embedded_context_lookup_define (CpgEmbeddedContext *context,
 	return g_strdup (ret ? ret : "");
 }
 
-static void
-print_expansions (GSList *expansions)
-{
-	while (expansions)
-	{
-		CpgExpansion *e = expansions->data;
-		gint i;
-
-		g_printerr ("\t");
-
-		for (i = 0; i < cpg_expansion_num (e); ++i)
-		{
-			if (i != 0)
-			{
-				g_printerr (", ");
-			}
-
-			g_printerr ("{%s}", cpg_expansion_get (e, i));
-		}
-
-		g_printerr ("\n");
-
-		expansions = g_slist_next (expansions);
-	}
-}
-
 gchar *
 cpg_embedded_context_lookup_ref (CpgEmbeddedContext *context,
                                  gint                parent,
@@ -222,12 +196,6 @@ cpg_embedded_context_lookup_ref (CpgEmbeddedContext *context,
 	ex = g_slist_nth_data (context->priv->expansions, parent);
 
 	ret = ex ? cpg_expansion_get (ex, idx) : NULL;
-
-	if (!ret)
-	{
-		g_message ("%d, %d", parent, idx);
-		print_expansions (cpg_embedded_context_get_expansions (context));
-	}
 
 	return g_strdup (ret ? ret : "");
 }
