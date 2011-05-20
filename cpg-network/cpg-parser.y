@@ -86,6 +86,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <array> polynomial_pieces
 %type <array> function_argument_list
 %type <array> template_list
+%type <array> pseudo_args
 %type <argument> function_argument
 %type <selector> selector
 
@@ -491,9 +492,14 @@ nested_selector
 	| nested_selector selector_pseudo
 	;
 
+pseudo_args
+	: value_as_string			{ append_array (NULL, CpgEmbeddedString *, $1, $$ = arret); }
+	| pseudo_args ',' value_as_string	{ append_array ($1, CpgEmbeddedString *, $3, $$ = arret); }
+	;
+
 pseudo_args_list
 	:					{ $$ = NULL; }
-	| pseudo_args_list value_as_string	{ append_array ($1, CpgEmbeddedString *, $2, $$ = arret); }
+	| pseudo_args				{ $$ = $1; }
 	;
 
 selector_pseudo_identifier
