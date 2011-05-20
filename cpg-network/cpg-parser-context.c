@@ -1993,13 +1993,84 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
                                         CpgEmbeddedString *y,
                                         CpgSelector       *of)
 {
+	GSList *objs;
+	GSList *obj;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
 	g_return_if_fail (x != NULL);
 	g_return_if_fail (y != NULL);
 	g_return_if_fail (of == NULL || CPG_IS_SELECTOR (of));
 
-	/* TODO */
+	objs = cpg_selector_select_states (selector,
+	                                   CPG_OBJECT (context->priv->network),
+	                                   context->priv->embedded);
+
+	for (obj = objs; obj; obj = g_slist_next (obj))
+	{
+		gchar const *exx;
+		gchar const *exy;
+		gint xx;
+		gint yy;
+
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (obj->data));
+
+		exx = cpg_embedded_string_expand (x, context->priv->embedded);
+		exy = cpg_embedded_string_expand (y, context->priv->embedded);
+
+		xx = (gint)g_ascii_strtoll (exx, NULL, 10);
+		yy = (gint)g_ascii_strtoll (exy, NULL, 10);
+
+		if (!of)
+		{
+		}
+		else
+		{
+			GSList *ofobjs;
+			GSList *ofobj;
+			gint mx = 0;
+			gint my = 0;
+			gint num = 0;
+
+			ofobjs = cpg_selector_select_states (of,
+			                                     CPG_OBJECT (context->priv->network),
+			                                     context->priv->embedded);
+
+			for (ofobj = ofobjs; ofobj; ofobj = g_slist_next (ofobj))
+			{
+				CpgObject *o;
+				gint ox;
+				gint oy;
+
+				o = cpg_selection_get_object (ofobj->data);
+				cpg_object_get_location (o, &ox, &oy);
+
+				mx += ox;
+				my += oy;
+
+				++num;
+			}
+
+			if (num > 0)
+			{
+				mx /= num;
+				my /= num;
+			}
+
+			xx += mx;
+			yy += my;
+		}
+
+		cpg_object_set_location (cpg_selection_get_object (obj->data),
+		                         xx,
+		                         yy);
+
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
+	}
+
+	g_slist_foreach (objs, (GFunc)cpg_selection_free, NULL);
+	g_slist_free (objs);
 }
 
 void

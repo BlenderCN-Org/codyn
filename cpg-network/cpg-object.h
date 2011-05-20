@@ -172,11 +172,11 @@ const gchar      *cpg_object_get_id          (CpgObject   *object);
 void              cpg_object_set_id          (CpgObject   *object,
                                               const gchar *id);
 
-void              cpg_object_set_position    (CpgObject    *object,
+void              cpg_object_set_location    (CpgObject    *object,
                                               gint          x,
                                               gint          y);
 
-void              cpg_object_get_position    (CpgObject    *object,
+void              cpg_object_get_location    (CpgObject    *object,
                                               gint         *x,
                                               gint         *y);
 

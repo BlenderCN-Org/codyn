@@ -472,6 +472,29 @@ object_to_xml (CpgNetworkSerializer *serializer,
 	xmlNewProp (ptr, (xmlChar *)"id", (xmlChar *)cpg_object_get_id (object));
 	xmlAddChild (parent, ptr);
 
+	if (!CPG_IS_LINK (object))
+	{
+		gchar *pos;
+		gint x;
+		gint y;
+
+		cpg_object_get_location (object, &x, &y);
+
+		if (x != 0)
+		{
+			pos = g_strdup_printf ("%d", x);
+			xmlNewProp (ptr, (xmlChar *)"x", (xmlChar *)pos);
+			g_free (pos);
+		}
+
+		if (y != 0)
+		{
+			pos = g_strdup_printf ("%d", y);
+			xmlNewProp (ptr, (xmlChar *)"y", (xmlChar *)pos);
+			g_free (pos);
+		}
+	}
+
 	GSList const *templates = cpg_object_get_applied_templates (object);
 
 	GPtrArray *refs = g_ptr_array_new ();

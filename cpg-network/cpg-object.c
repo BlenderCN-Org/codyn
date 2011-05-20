@@ -1130,14 +1130,14 @@ cpg_object_class_init (CpgObjectClass *klass)
 	/**
 	 * CpgObject:x:
 	 *
-	 * The #CpgObject x position.
+	 * The #CpgObject x location.
 	 *
 	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_X,
 	                                 g_param_spec_int ("x",
 	                                                   "X",
-	                                                   "The x position",
+	                                                   "The x location",
 	                                                   G_MININT,
 	                                                   G_MAXINT,
 	                                                   0,
@@ -1146,14 +1146,14 @@ cpg_object_class_init (CpgObjectClass *klass)
 	/**
 	 * CpgObject:y:
 	 *
-	 * The #CpgObject y position.
+	 * The #CpgObject y location.
 	 *
 	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_Y,
 	                                 g_param_spec_int ("y",
 	                                                   "Y",
-	                                                   "The y position",
+	                                                   "The y location",
 	                                                   G_MININT,
 	                                                   G_MAXINT,
 	                                                   0,
@@ -2247,7 +2247,7 @@ cpg_object_get_relative_id (CpgObject *object,
 }
 
 void
-cpg_object_set_position (CpgObject *object,
+cpg_object_set_location (CpgObject *object,
                          gint       x,
                          gint       y)
 {
@@ -2258,7 +2258,7 @@ cpg_object_set_position (CpgObject *object,
 }
 
 void
-cpg_object_get_position (CpgObject *object,
+cpg_object_get_location (CpgObject *object,
                          gint      *x,
                          gint      *y)
 {
