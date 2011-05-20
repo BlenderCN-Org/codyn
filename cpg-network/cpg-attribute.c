@@ -123,6 +123,7 @@ cpg_attribute_set_arguments (CpgAttribute *attribute,
 			                 g_object_ref (arguments->data));
 
 		++attribute->priv->num_arguments;
+		arguments = g_slist_next (arguments);
 	}
 
 	attribute->priv->arguments = g_slist_reverse (attribute->priv->arguments);
