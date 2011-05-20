@@ -1,4 +1,5 @@
 #include <cpg-network/cpg-network.h>
+#include <cpg-network/cpg-selector.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
 #include <string.h>
@@ -12,6 +13,7 @@ static gdouble from = 0;
 static gdouble step = 0.001;
 static gdouble to = 1;
 static gchar *output_file = NULL;
+static gint64 seed = 1;
 
 #define CPG_MONITOR_ERROR (cpg_monitor_error_quark())
 
@@ -27,10 +29,10 @@ typedef enum
 } CpgMonitorError;
 
 static gboolean
-parse_monitor_options (gchar const  *option_name,
-                       gchar const  *value,
-                       gpointer      data,
-                       GError      **error)
+parse_monitored (gchar const  *option_name,
+                 gchar const  *value,
+                 gpointer      data,
+                 GError      **error)
 {
 	g_ptr_array_add (monitored, g_strdup (value));
 	return TRUE;
@@ -93,11 +95,12 @@ parse_time (gchar const  *option_name,
 }
 
 static GOptionEntry entries[] = {
-	{"monitor", 'm', 0, G_OPTION_ARG_CALLBACK, parse_monitor_options, "Monitor variable (state.name)", "VAR"},
+	{"monitor", 'm', 0, G_OPTION_ARG_CALLBACK, parse_monitored, "Selector for properties to monitor (e.g. /state_.*/.\"{x,y}\")", "SEL"},
 	{"include-header", 'i', 0, G_OPTION_ARG_NONE, &include_header, "Include header in output", NULL},
 	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter, "Column delimiter (defaults to tab)", "DELIM"},
-	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time, "Time range, (from:to or from:step:to)", "RANGE"},
+	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time, "Time range (from:to or from:step:to, defaults to 0:0.01:1)", "RANGE"},
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
+	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to 1)", "SEED"},
 	{NULL}
 };
 
@@ -214,6 +217,42 @@ write_monitors (CpgNetwork    *network,
 	g_free (data);
 }
 
+static GSList *
+find_matching_properties (CpgNetwork  *network,
+                          gchar const *expression)
+{
+	GError *err = NULL;
+	CpgSelector *sel = cpg_selector_parse (expression, &err);
+
+	if (err)
+	{
+		g_printerr ("Failed to parse selector \"%s\": %s\n", expression, err->message);
+		g_error_free (err);
+
+		return NULL;
+	}
+
+	CpgEmbeddedContext *context = cpg_embedded_context_new ();
+	GSList *selection = cpg_selector_select_properties (sel, CPG_OBJECT (network), context);
+	GSList *element = selection;
+	GSList *properties = NULL;
+
+	while (element)
+	{
+		CpgProperty *property = cpg_selection_get_property (element->data);
+		properties = g_slist_prepend (properties, property);
+
+		cpg_selection_free (element->data);
+		element = g_slist_next (element);
+	}
+
+	g_slist_free (selection);
+	g_object_unref (context);
+	g_object_unref (sel);
+
+	return properties;
+}
+
 static void
 monitor_network (gchar const *filename)
 {
@@ -230,7 +269,7 @@ monitor_network (gchar const *filename)
 
 	if (!network)
 	{
-		g_print ("Failed to load network `%s': %s\n", filename, error->message);
+		g_printerr ("Failed to load network `%s': %s\n", filename, error->message);
 		g_error_free (error);
 
 		return;
@@ -240,9 +279,9 @@ monitor_network (gchar const *filename)
 
 	if (!cpg_object_compile (CPG_OBJECT (network), NULL, err))
 	{
-		g_print ("Failed to compile network `%s': %s",
-		         filename,
-		         cpg_compile_error_string (err));
+		g_printerr ("Failed to compile network `%s': %s",
+		            filename,
+		            cpg_compile_error_string (err));
 
 		g_object_unref (network);
 		g_object_unref (err);
@@ -255,32 +294,26 @@ monitor_network (gchar const *filename)
 	GSList *monitors = NULL;
 	GSList *names = NULL;
 
-	for (i = 0; i < monitored->len; ++i)
+	for (i = monitored->len - 1; i >= 0; --i)
 	{
-		CpgMonitor *monitor;
-		CpgProperty *prop;
+		GSList *properties = find_matching_properties (network, monitored->pdata[i]);
+		GSList *prop = properties;
 
-		prop = cpg_group_find_property (CPG_GROUP (network),
-		                                monitored->pdata[i]);
-
-		if (!prop)
+		while (prop)
 		{
-			g_print ("Could not find property `%s' for network `%s'\n",
-			         (gchar const *)monitored->pdata[i],
-			         filename);
+			CpgMonitor *monitor;
 
-			continue;
+			monitor = cpg_monitor_new (network,
+			                           prop->data);
+
+			monitors = g_slist_prepend (monitors, monitor);
+			names = g_slist_prepend (names, cpg_property_get_full_name (prop->data));
+
+			prop = g_slist_next (prop);
 		}
 
-		monitor = cpg_monitor_new (network,
-		                           prop);
-
-		monitors = g_slist_prepend (monitors, monitor);
-		names = g_slist_prepend (names, monitored->pdata[i]);
+		g_slist_free (properties);
 	}
-
-	monitors = g_slist_reverse (monitors);
-	names = g_slist_reverse (names);
 
 	cpg_network_run (network, from, step, to);
 
@@ -312,9 +345,9 @@ monitor_network (gchar const *filename)
 
 		if (!out)
 		{
-			g_print ("Could not create output file `%s': %s\n",
-			         output_file,
-			         error->message);
+			g_printerr ("Could not create output file `%s': %s\n",
+			            output_file,
+			            error->message);
 
 			g_error_free (error);
 		}
@@ -337,6 +370,7 @@ monitor_network (gchar const *filename)
 
 	g_slist_foreach (monitors, (GFunc)g_object_unref, NULL);
 	g_slist_free (monitors);
+	g_slist_foreach (names, (GFunc)g_free, NULL);
 	g_slist_free (names);
 
 	g_object_unref (network);
@@ -351,7 +385,8 @@ cleanup ()
 }
 
 int
-main (int argc, char *argv[])
+main (int argc,
+      char *argv[])
 {
 	GOptionContext *ctx;
 	GError *error = NULL;
@@ -361,12 +396,12 @@ main (int argc, char *argv[])
 	monitored = g_ptr_array_new ();
 	delimiter = g_strdup ("\t");
 
-	ctx = g_option_context_new ("<NETWORK> - monitor cpg network");
+	ctx = g_option_context_new ("-m <SELECTOR> [-m ...] <NETWORK> - monitor cpg network");
 	g_option_context_add_main_entries (ctx, entries, NULL);
 
 	if (!g_option_context_parse (ctx, &argc, &argv, &error))
 	{
-		g_print ("Failed to parse options: %s\n", error->message);
+		g_printerr ("Failed to parse options: %s\n", error->message);
 		g_error_free (error);
 		cleanup ();
 
@@ -375,7 +410,7 @@ main (int argc, char *argv[])
 
 	if (argc != 2)
 	{
-		g_print ("Please provide exactly one network to monitor\n");
+		g_printerr ("Please provide exactly one network to monitor\n");
 		cleanup ();
 
 		return 1;
@@ -383,11 +418,13 @@ main (int argc, char *argv[])
 
 	if (monitored->len == 0)
 	{
-		g_print ("Please provide at least one state variable to monitor\n");
+		g_printerr ("Please specify state variables to monitor\n");
 		cleanup ();
 
 		return 1;
 	}
+
+	srand (seed);
 
 	monitor_network (argv[1]);
 
