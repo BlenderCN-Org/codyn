@@ -130,8 +130,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "to"				return T_KEY_TO;
 "piece"				return T_KEY_PIECE;
 "define"			return T_KEY_DEFINE;
-"bidirectional"			return T_KEY_BIDIRECTIONAL;
-"all"				return T_KEY_ALL;
 "integrator"			return T_KEY_INTEGRATOR;
 "group"				return T_KEY_GROUP;
 "layout"			return T_KEY_LAYOUT;
