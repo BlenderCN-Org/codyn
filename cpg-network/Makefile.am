@@ -56,13 +56,17 @@ COMMON_SOURCES = 		\
 	cpg-parser-tokens.l \
 	cpg-layout.c \
 	cpg-expansion.c \
-	cpg-selection.c
+	cpg-selection.c \
+	cpg-attribute.c
 
 BUILT_SOURCES = \
 	cpg-enum-types.c \
 	cpg-enum-types.h \
 	cpg-marshal.c \
-	cpg-marshal.h
+	cpg-marshal.h \
+	cpg-parser.c \
+	cpg-parser.h \
+	cpg-parser-tokens.c
 
 NOINST_H_FILES = \
 	cpg-tokenizer.h \
@@ -115,7 +119,8 @@ INST_H_FILES = \
 	cpg-embedded-string.h \
 	cpg-embedded-context.h \
 	cpg-expansion.h \
-	cpg-selection.h
+	cpg-selection.h \
+	cpg-attribute.h
 
 lib_LTLIBRARIES = libcpg-network-2.0.la
 
@@ -146,7 +151,7 @@ libcpg_network_2_0_la_SOURCES = $(COMMON_SOURCES)
 
 libcpg_network_2_0_include_HEADERS = $(libcpg_network_headers)
 
-CLEANFILES = $(BUILT_SOURCES) cpg-parser.c cpg-parser.h cpg-parser-tokens.c
+CLEANFILES = $(BUILT_SOURCES)
 
 EXTRA_DIST = \
 	$(NOINST_H_FILES) \

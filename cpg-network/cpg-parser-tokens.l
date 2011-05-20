@@ -2,7 +2,8 @@
 #include "cpg-parser-context.h"
 #include "cpg-parser.h"
 
-static char *unquote_string (char *s, int len, gchar const *escape);
+static gchar *unquote_string (gchar const *s, gint len, gchar const *escape);
+static gint count_ref_parent (gchar const *s);
 
 void cpg_parser_set_column (int column_no, yyscan_t yyscanner);
 int cpg_parser_get_column (yyscan_t yyscanner);
@@ -36,9 +37,11 @@ static int yyccolumn = 1;
 	{									\
 		unput (s[i]);							\
 	}
+
 %}
 
 STRING "\""(\\["]|[^"])*"\""
+IDENTIFIER [a-z_][a-z0-9_-]*
 
 %option yylineno
 %option noyywrap
@@ -49,6 +52,7 @@ STRING "\""(\\["]|[^"])*"\""
 %option bison-bridge bison-locations
 %option outfile="lex.yy.c"
 %option stack
+%option case-insensitive
 
 %x incl
 %x instring
@@ -78,17 +82,19 @@ STRING "\""(\\["]|[^"])*"\""
 					cpg_parser_context_set_column (yyextra, 0, 0);
 					yyless (1);
 				}
-"##"[ \t]*			yy_push_state (annotation, yyscanner);
-<annotation>[^\n]*$		{
-					cpg_parser_context_push_annotation (yyextra, yytext);
+"##"[ \t]*			{
+					yy_push_state (annotation, yyscanner);
+				}
+<annotation>[^\n]+		{
+					cpg_parser_context_push_annotation (yyextra,
+					                                    cpg_embedded_string_new_from_string (yytext));
 					yy_pop_state (yyscanner);
 				}
 "#"				yy_push_state (comment, yyscanner);
 <comment>[^\n]*$		yy_pop_state (yyscanner);
 
-"include"			yy_push_state (incl, yyscanner);
+"include"[ \t]+"\""		yy_push_state (incl, yyscanner);
 
-<incl>[ \t]+"\""		;
 <incl>"\""			{
 					yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, yyscanner), yyscanner);
 					cpg_parser_context_push_input_from_path (yyextra,
@@ -138,24 +144,88 @@ STRING "\""(\\["]|[^"])*"\""
 "on"				return T_KEY_ON;
 "proxy"				return T_KEY_PROXY;
 
-[-+]?[0-9]+((\.|eE[-+]?)[0-9]*) {yylval->numf = g_ascii_strtod (yytext, NULL);
-				 return T_DOUBLE;}
+{IDENTIFIER}		 	{
+					yylval->id = g_strdup (yytext);
+					return T_IDENTIFIER;
+				}
 
-[a-zA-Z_][a-zA-Z0-9_-]*	 	{yylval->id = g_strdup (yytext);
-				 return T_IDENTIFIER;}
+[-+]?[0-9]+((\.|eE[-+]?)[0-9]*) {
+					yylval->numf = g_ascii_strtod (yytext, NULL);
+					return T_DOUBLE;
+				}
 
-[-+]?[0-9]+			{yylval->numf = (gint)g_ascii_strtoll (yytext, NULL, 10);
-				 return T_INTEGER;}
+[-+]?[0-9]+			{
+					yylval->numf = (gint)g_ascii_strtoll (yytext, NULL, 10);
+					return T_INTEGER;
+				}
 
 "\""				{
 					yy_push_state (instring, yyscanner);
 					return T_STRING_BEGIN;
 				}
 
-<instring,inregex,incl,equation,indirection,INITIAL>"@["
-				{
+"/"				{
+					yy_push_state (inregex, yyscanner);
+					return T_REGEX_BEGIN;
+				}
+
+"@"+"["				{
 					yy_push_state (indirection, yyscanner);
+					yylval->num = yyleng - 1;
 					return T_INDIRECTION_BEGIN;
+				}
+
+"$("				{
+					cpg_parser_context_push_equation (yyextra);
+					yy_push_state (equation, yyscanner);
+
+					return T_EQUATION_BEGIN;
+				}
+
+<instring,inregex,incl,indirection,INITIAL>"@"{IDENTIFIER} {
+					yylval->id = g_strdup (yytext + 1);
+					return T_DEFINED;
+				}
+
+<equation>{IDENTIFIER}		{
+					yylval->id = g_strdup (yytext);
+					return T_DEFINED;
+				}
+
+<instring,inregex,incl,indirection,equation,INITIAL>"@"+[0-9]+ {
+					yylval->ref.parent = count_ref_parent (yytext);
+					yylval->ref.idx = (gint)g_ascii_strtoll (yytext + yylval->ref.parent + 1, NULL, 10);
+					return T_REFERENCE;
+				}
+
+<instring,incl>(\\["@$]|[^"@$])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@\"$");
+					return T_STRING;
+				}
+
+<equation>(\\[)@$(]|[^a-z_)@$(])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@)$(");
+					return T_STRING;
+				}
+
+<indirection>(\\[]@$]|[^]@$])+	{
+					yylval->id = unquote_string (yytext, yyleng, "@]$");
+					return T_STRING;
+				}
+
+<inregex>(\\[/@$]|[^/@$])+	{
+					yylval->id = unquote_string (yytext, yyleng, "@/$");
+					return T_STRING;
+				}
+
+<instring>"\""			{
+					yy_pop_state (yyscanner);
+					return T_STRING_END;
+				}
+
+<inregex>"/"			{
+					yy_pop_state (yyscanner);
+					return T_REGEX_END;
 				}
 
 <indirection>"]"		{
@@ -163,31 +233,15 @@ STRING "\""(\\["]|[^"])*"\""
 					return T_INDIRECTION_END;
 				}
 
-<instring,inregex,incl,indirection,INITIAL>"@"[a-zA-Z_][a-zA-Z0-9_-]*
-				{
-					yylval->id = g_strdup (yytext + 1);
-					return T_DEFINED;
-				}
-
-<instring,inregex,incl,indirection,equation,INITIAL>"@"+[0-9]+
-				{
-					yylval->id = g_strdup (yytext);
-					return T_REF;
-				}
-<instring,inregex,incl,indirection,equation,INITIAL>"$("
-				{
-					cpg_parser_context_begin_equation (context);
-					yy_push_state (equation, yyscanner);
-
-					return T_EQUATION_BEGIN;
-				}
 <equation>"("			{
 					yylval->id = g_strdup (yytext);
-					cpg_parser_context_push_equation_depth (context);
+					cpg_parser_context_push_equation_depth (yyextra);
+
 					return T_STRING;
 				}
+
 <equation>")"			{
-					if (cpg_parser_context_pop_equation_depth (context))
+					if (cpg_parser_context_pop_equation_depth (yyextra))
 					{
 						yy_pop_state (yyscanner);
 						return T_EQUATION_END;
@@ -198,37 +252,10 @@ STRING "\""(\\["]|[^"])*"\""
 						return T_STRING;
 					}
 				}
-<equation>(\\[)@]|[^a-z_)@])+	{
-					yylval->id = unquote_string (yytext, yyleng, "@}");
-					return T_STRING;
+":"{IDENTIFIER}			{
+					yylval->id = g_strdup (yytext);
+					return T_PSEUDO_SELECTOR;
 				}
-<indirection>(\\[]@]|[^]@])+	{
-					yylval->id = unquote_string (yytext, yyleng, "@]");
-					return T_STRING;
-				}
-<instring,incl>(\\["@]|[^"@])+	{
-					yylval->id = unquote_string (yytext, yyleng, "@\"");
-					return T_STRING;
-				}
-<instring>"\""			{
-					yy_pop_state (yyscanner);
-					return T_STRING_END;
-				}
-
-"/"				{
-					yy_push_state (inregex, yyscanner);
-					return T_REGEX_BEGIN;
-				}
-
-<inregex>(\\[/@]|[^/@])+	{
-					yylval->id = unquote_string (yytext, yyleng, "@/");
-					return T_STRING;
-				}
-<inregex>"/"			{
-					yy_pop_state (yyscanner);
-					return T_REGEX_END;
-				}
-
 "{"				return '{';
 "}"				return '}';
 "("				return '(';
@@ -245,7 +272,7 @@ STRING "\""(\\["]|[^"])*"\""
 %%
 
 static gchar *
-unquote_string (gchar *s, gint len, gchar const *escape)
+unquote_string (gchar const *s, gint len, gchar const *escape)
 {
 	gchar *ret;
 	gchar *ptr;
@@ -267,4 +294,17 @@ unquote_string (gchar *s, gint len, gchar const *escape)
 
 	*ptr = '\0';
 	return ret;
+}
+
+gint
+count_ref_parent (gchar const *s)
+{
+	gchar const *start = s;
+
+	while (*s == '@')
+	{
+		++s;
+	}
+
+	return s - start - 1;
 }

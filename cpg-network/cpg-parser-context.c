@@ -11,12 +11,6 @@
 
 #define CPG_PARSER_CONTEXT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PARSER_CONTEXT, CpgParserContextPrivate))
 
-#define CPG_PARSER_CONTEXT_CLASS_GET_PRIVATE(klass)(G_TYPE_CLASS_GET_PRIVATE((klass), CPG_TYPE_PARSER_CONTEXT, CpgParserContextClassPrivate))
-
-#define EXPANSION_EMBEDDING "\x01"
-#define EQUATION_EMBEDDING "\x02"
-#define DEFINE_EMBEDDING "\x03"
-
 void cpg_parser_lex_destroy (gpointer scanner);
 void cpg_parser_lex_init_extra (gpointer context, gpointer *scanner);
 int cpg_parser_parse (gpointer context);
@@ -55,6 +49,9 @@ struct _CpgParserContextPrivate
 
 	Context *is_template;
 	CpgEmbeddedContext *embedded;
+
+	GSList *strings;
+	GSList *equations;
 
 	GError *error;
 	gboolean error_occurred;
@@ -304,44 +301,54 @@ steal_annotation (CpgParserContext *context)
 	return ret;
 }
 
-/*static void
-print_expansions (CpgParserContext *context)
+#if 0
+static void
+print_expansions (GSList *expansions)
 {
-	GSList *expansions;
-	Context *ctx;
-	GSList *item;
-
-	ctx = CURRENT_CONTEXT (context);
-
-	for (item = ctx->objects; item; item = g_slist_next (item))
+	while (expansions)
 	{
-		g_printerr ("Object: %s\n", cpg_object_get_full_id (cpg_selection_get_object (item->data)));
+		CpgExpansion *e = expansions->data;
+		gint i;
 
-		expansions = cpg_selection_get_expansions (item->data);
+		g_printerr ("\t");
 
-		while (expansions)
+		for (i = 0; i < cpg_expansion_num (e); ++i)
 		{
-			CpgExpansion *e = expansions->data;
-			gint i;
-
-			g_printerr ("\t");
-
-			for (i = 0; i < cpg_expansion_num (e); ++i)
+			if (i != 0)
 			{
-				if (i != 0)
-				{
-					g_printerr (", ");
-				}
-
-				g_printerr ("{%s}", cpg_expansion_get (e, i));
+				g_printerr (", ");
 			}
 
-			g_printerr ("\n");
-
-			expansions = g_slist_next (expansions);
+			g_printerr ("{%s}", cpg_expansion_get (e, i));
 		}
+
+		g_printerr ("\n");
+
+		expansions = g_slist_next (expansions);
 	}
-}*/
+}
+
+static void
+print_selection (CpgSelection *selection)
+{
+	g_printerr ("%s:\n", cpg_object_get_full_id (cpg_selection_get_object (selection)));
+	print_expansions (cpg_selection_get_expansions (selection));
+	g_printerr ("\n");
+}
+
+#if 0
+static void
+print_selections (GSList *list)
+{
+	while (list)
+	{
+		print_selection (list->data);
+
+		list = g_slist_next (list);
+	}
+}
+#endif
+#endif
 
 void
 cpg_parser_context_add_property (CpgParserContext  *context,
@@ -376,6 +383,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 		exname = cpg_embedded_string_expand (name, context->priv->embedded);
 		exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
+
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
 
 		if (!cpg_object_add_property (obj,
 		                              cpg_property_new (exname, exexpression, flags),
@@ -542,7 +551,6 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 	g_free (annotation);
 
 	return function;
-
 }
 
 void
@@ -646,8 +654,6 @@ parse_object_single_id (CpgParserContext *context,
 	GSList *item;
 	CpgObject *child = NULL;
 	GError *error = NULL;
-	GSList *expanded = NULL;
-	GSList *expansions = NULL;
 	CpgGroup *parent_group;
 
 	parent_group = CPG_GROUP (cpg_selection_get_object (parent));
@@ -742,14 +748,10 @@ parse_object_single_id (CpgParserContext *context,
 		}
 	}
 
-	sel = cpg_selection_new (child, expansions);
+	sel = cpg_selection_new (child,
+	                         cpg_embedded_context_get_expansions (context->priv->embedded));
 
 cleanup:
-	g_slist_foreach (expanded, (GFunc)g_object_unref, NULL);
-	g_slist_free (expanded);
-
-	g_slist_free (expansions);
-
 	g_slist_foreach (templates, (GFunc)cpg_selection_free, NULL);
 	g_slist_free (templates);
 
@@ -841,20 +843,37 @@ parse_objects (CpgParserContext  *context,
 	return ret;
 }
 
+static CpgAttribute *
+find_attribute (GSList *attributes,
+                gchar const *name)
+{
+	while (attributes)
+	{
+		if (g_strcmp0 (name, cpg_attribute_get_id (attributes->data)) == 0)
+		{
+			return attributes->data;
+		}
+
+		attributes = g_slist_next (attributes);
+	}
+
+	return NULL;
+}
+
 static GSList *
 link_pairs (CpgParserContext *context,
             CpgExpansion     *id,
             CpgSelection     *parent,
-            CpgParserContextLinkFlags flags,
+            GSList           *attributes,
             CpgSelector      *from,
             CpgSelector      *to)
 {
 	GSList *fromobjs;
 	GSList *fromobj;
 	GSList *ret = NULL;
-	gboolean bidi;
+	CpgAttribute *bidi;
 
-	bidi = flags & CPG_PARSER_CONTEXT_LINK_FLAG_BIDIRECTIONAL;
+	bidi = find_attribute (attributes, "bidirectional");
 
 	cpg_embedded_context_push_expansion (context->priv->embedded, id);
 	cpg_embedded_context_push_expansions (context->priv->embedded,
@@ -886,43 +905,23 @@ link_pairs (CpgParserContext *context,
 
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
 
-		if (!(flags & CPG_PARSER_CONTEXT_LINK_FLAG_ALL) && toobjs)
+		GSList *toobj;
+
+		for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
 		{
 			ret = g_slist_prepend (ret,
 			                       cpg_selection_copy (fromobj->data));
 
 			ret = g_slist_prepend (ret,
-			                       cpg_selection_copy (toobjs->data));
+			                       cpg_selection_copy (toobj->data));
 
-			if (bidi)
+			if (bidi != NULL)
 			{
-				ret = g_slist_prepend (ret,
-				                       cpg_selection_copy (toobjs->data));
-
-				ret = g_slist_prepend (ret,
-				                       cpg_selection_copy (fromobj->data));
-			}
-		}
-		else if (flags & CPG_PARSER_CONTEXT_LINK_FLAG_ALL)
-		{
-			GSList *toobj;
-
-			for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
-			{
-				ret = g_slist_prepend (ret,
-				                       cpg_selection_copy (fromobj->data));
-
 				ret = g_slist_prepend (ret,
 				                       cpg_selection_copy (toobj->data));
 
-				if (bidi)
-				{
-					ret = g_slist_prepend (ret,
-					                       cpg_selection_copy (toobj->data));
-
-					ret = g_slist_prepend (ret,
-					                       cpg_selection_copy (fromobj->data));
-				}
+				ret = g_slist_prepend (ret,
+				                       cpg_selection_copy (fromobj->data));
 			}
 		}
 
@@ -1018,7 +1017,7 @@ create_links_single (CpgParserContext          *context,
                      CpgExpansion              *id,
                      GSList                    *templates,
                      CpgSelection              *parent,
-                     CpgParserContextLinkFlags  flags,
+                     GSList                    *attributes,
                      CpgSelector               *from,
                      CpgSelector               *to)
 {
@@ -1028,10 +1027,13 @@ create_links_single (CpgParserContext          *context,
 	gboolean multiple;
 	gint num = 1;
 	gint idx = 0;
+	CpgAttribute *bidi;
 
 	/* For each pair FROM -> TO generate a link */
-	pairs = link_pairs (context, id, parent, flags, from, to);
+	pairs = link_pairs (context, id, parent, attributes, from, to);
 	item = pairs;
+
+	bidi = find_attribute (attributes, "bidirectional");
 
 	multiple = pairs && pairs->next && pairs->next->next;
 
@@ -1043,6 +1045,8 @@ create_links_single (CpgParserContext          *context,
 		CpgSelection *obj;
 		CpgSelection *firstsel;
 		CpgSelection *secondsel;
+		gboolean argswitch;
+		gboolean popone;
 
 		++idx;
 
@@ -1052,15 +1056,19 @@ create_links_single (CpgParserContext          *context,
 		tosel = item->data;
 		item = g_slist_next (item);
 
-		if (idx % 4 < 2)
+		if (bidi == NULL || idx % 2 == 1)
 		{
 			firstsel = fromsel;
 			secondsel = tosel;
+
+			argswitch = FALSE;
 		}
 		else
 		{
 			firstsel = tosel;
 			secondsel = fromsel;
+
+			argswitch = TRUE;
 		}
 
 		if (cpg_object_get_parent (cpg_selection_get_object (fromsel)) !=
@@ -1087,6 +1095,32 @@ create_links_single (CpgParserContext          *context,
 			realid = id;
 		}
 
+		popone = FALSE;
+
+		if (bidi != NULL)
+		{
+			gint widx = argswitch ? 1 : 0;
+			CpgEmbeddedString *s;
+
+			s = cpg_attribute_get_argument (bidi, widx);
+
+			if (s)
+			{
+				gchar const *ex;
+				CpgExpansion *expansion;
+
+				ex = cpg_embedded_string_expand (s,
+				                                 context->priv->embedded);
+
+				expansion = cpg_expansion_new_one (ex);
+				cpg_embedded_context_push_expansion (context->priv->embedded,
+				                                     expansion);
+				cpg_expansion_free (expansion);
+
+				popone = TRUE;
+			}
+		}
+
 		cpg_embedded_context_push_expansion (context->priv->embedded,
 		                                     realid);
 
@@ -1105,6 +1139,11 @@ create_links_single (CpgParserContext          *context,
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
+
+		if (popone)
+		{
+			cpg_embedded_context_pop_expansions (context->priv->embedded);
+		}
 
 		if (multiple)
 		{
@@ -1135,7 +1174,7 @@ static GSList *
 create_links (CpgParserContext          *context,
               CpgEmbeddedString         *id,
               GArray                    *templates,
-              CpgParserContextLinkFlags  flags,
+              GSList                    *attributes,
               GArray                    *fromto)
 {
 	GSList *temps;
@@ -1165,8 +1204,8 @@ create_links (CpgParserContext          *context,
 		GSList *it;
 
 		/* Expand the id with the parent expansions */
-		cpg_embedded_context_set_expansions (context->priv->embedded,
-		                                     cpg_selection_get_expansions (item->data));
+		cpg_embedded_context_push_expansions (context->priv->embedded,
+		                                      cpg_selection_get_expansions (item->data));
 
 		ids = cpg_embedded_string_expand_multiple (id,
 		                                           context->priv->embedded);
@@ -1178,10 +1217,12 @@ create_links (CpgParserContext          *context,
 			                                           it->data,
 			                                           temps,
 			                                           item->data,
-			                                           flags,
+			                                           attributes,
 			                                           from,
 			                                           to));
 		}
+
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
 
 		g_slist_foreach (ids, (GFunc)cpg_expansion_free, NULL);
 		g_slist_free (ids);
@@ -1234,7 +1275,7 @@ void
 cpg_parser_context_push_link (CpgParserContext          *context,
                               CpgEmbeddedString         *id,
                               GArray                    *templates,
-                              CpgParserContextLinkFlags  flags,
+                              GSList                    *attributes,
                               GArray                    *fromto)
 {
 	GSList *objects;
@@ -1254,7 +1295,7 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 		objects = create_links (context,
 		                        id,
 		                        templates,
-		                        flags,
+		                        attributes,
 		                        fromto);
 	}
 
@@ -2099,4 +2140,89 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 
 	g_object_unref (name);
 	g_object_unref (value);
+}
+
+void
+cpg_parser_context_push_string (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	context->priv->strings =
+		g_slist_prepend (context->priv->strings,
+		                 cpg_embedded_string_new ());
+}
+
+CpgEmbeddedString *
+cpg_parser_context_peek_string (CpgParserContext *context)
+{
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+	g_return_val_if_fail (context->priv->strings, NULL);
+
+	return context->priv->strings->data;
+}
+
+CpgEmbeddedString *
+cpg_parser_context_pop_string (CpgParserContext *context)
+{
+	CpgEmbeddedString *s;
+
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+	g_return_val_if_fail (context->priv->strings, NULL);
+
+	s = context->priv->strings->data;
+
+	context->priv->strings =
+		g_slist_delete_link (context->priv->strings,
+		                     context->priv->strings);
+
+	return s;
+}
+
+void
+cpg_parser_context_push_equation (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	context->priv->equations =
+		g_slist_prepend (context->priv->equations,
+		                 GINT_TO_POINTER (1));
+}
+
+void
+cpg_parser_context_push_equation_depth (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (context->priv->equations);
+
+	context->priv->equations->data =
+		GINT_TO_POINTER (GPOINTER_TO_INT (context->priv->equations->data) + 1);
+}
+
+gboolean
+cpg_parser_context_pop_equation_depth (CpgParserContext *context)
+{
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), FALSE);
+	g_return_val_if_fail (context->priv->equations, FALSE);
+
+	context->priv->equations->data =
+		GINT_TO_POINTER (GPOINTER_TO_INT (context->priv->equations->data) - 1);
+
+	if (GPOINTER_TO_INT (context->priv->equations->data) == 0)
+	{
+		context->priv->equations =
+			g_slist_delete_link (context->priv->equations,
+			                     context->priv->equations);
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+CpgEmbeddedContext *
+cpg_parser_context_get_embedded (CpgParserContext *context)
+{
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+
+	return context->priv->embedded;
 }

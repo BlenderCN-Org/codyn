@@ -26,19 +26,18 @@ typedef enum
 typedef enum
 {
 	SELECTOR_PSEUDO_TYPE_ROOT,
-	SELECTOR_PSEUDO_TYPE_FROM,
-	SELECTOR_PSEUDO_TYPE_NTH_CHILD,
+	SELECTOR_PSEUDO_TYPE_CHILDREN,
 	SELECTOR_PSEUDO_TYPE_PARENT,
 	SELECTOR_PSEUDO_TYPE_FIRST_CHILD,
 	SELECTOR_PSEUDO_TYPE_LAST_CHILD,
 	SELECTOR_PSEUDO_TYPE_FIRST,
 	SELECTOR_PSEUDO_TYPE_LAST,
-	SELECTOR_PSEUDO_TYPE_NTH,
+	SELECTOR_PSEUDO_TYPE_SUBSET,
 	SELECTOR_PSEUDO_TYPE_STATES,
 	SELECTOR_PSEUDO_TYPE_LINKS,
-	SELECTOR_PSEUDO_TYPE_NTH_SIBLING,
-	SELECTOR_PSEUDO_TYPE_CHILDREN,
+	SELECTOR_PSEUDO_TYPE_SIBLINGS,
 	SELECTOR_PSEUDO_TYPE_TEMPLATES,
+	SELECTOR_PSEUDO_TYPE_COUNT,
 	NUM_PSEUDO_SELECTORS
 } SelectorPseudoType;
 
@@ -59,19 +58,18 @@ typedef struct
 static SelectorPseudoDefinition const pseudo_selectors[] =
 {
 	{SELECTOR_PSEUDO_TYPE_ROOT, "root", FALSE},
-	{SELECTOR_PSEUDO_TYPE_FROM, "from", FALSE},
-	{SELECTOR_PSEUDO_TYPE_NTH_CHILD, "nth-child", TRUE},
+	{SELECTOR_PSEUDO_TYPE_CHILDREN, "children", TRUE},
 	{SELECTOR_PSEUDO_TYPE_PARENT, "parent", FALSE},
 	{SELECTOR_PSEUDO_TYPE_FIRST_CHILD, "first-child", FALSE},
 	{SELECTOR_PSEUDO_TYPE_LAST_CHILD, "last-child", FALSE},
 	{SELECTOR_PSEUDO_TYPE_FIRST, "first", FALSE},
 	{SELECTOR_PSEUDO_TYPE_LAST, "last", FALSE},
-	{SELECTOR_PSEUDO_TYPE_NTH, "nth", TRUE},
+	{SELECTOR_PSEUDO_TYPE_SUBSET, "subset", TRUE},
 	{SELECTOR_PSEUDO_TYPE_STATES, "states", FALSE},
 	{SELECTOR_PSEUDO_TYPE_LINKS, "links", FALSE},
-	{SELECTOR_PSEUDO_TYPE_NTH_SIBLING, "nth-sibling", TRUE},
-	{SELECTOR_PSEUDO_TYPE_CHILDREN, "children", FALSE},
-	{SELECTOR_PSEUDO_TYPE_TEMPLATES, "templates", FALSE}
+	{SELECTOR_PSEUDO_TYPE_SIBLINGS, "siblings", TRUE},
+	{SELECTOR_PSEUDO_TYPE_TEMPLATES, "templates", FALSE},
+	{SELECTOR_PSEUDO_TYPE_COUNT, "count", FALSE}
 };
 
 typedef struct
@@ -725,6 +723,55 @@ find_pseudo_definition (Selector           *pseudo,
 }
 
 static GSList *
+count_selection (GSList     *selection,
+                 SelectType  type)
+{
+	GSList *ret = NULL;
+	GSList *item;
+	gint i = 0;
+	gchar *s;
+	CpgExpansion *ex;
+
+	while (selection)
+	{
+		if (check_type (cpg_selection_get_object (selection->data), type))
+		{
+			ret = g_slist_prepend (ret, selection->data);
+			++i;
+		}
+
+		selection = g_slist_next (selection);
+	}
+
+	s = g_strdup_printf ("%d", i);
+	ex = cpg_expansion_new_one (s);
+	g_free (s);
+
+	for (item = ret; item; item = g_slist_next (item))
+	{
+		CpgSelection *sel;
+		GSList *expansions;
+		CpgExpansion *expansion;
+
+		expansions = g_slist_copy (cpg_selection_get_expansions (item->data));
+		expansion = cpg_expansion_copy (ex);
+		expansions = g_slist_append (expansions, expansion);
+
+		sel = cpg_selection_new (cpg_selection_get_object (item->data),
+		                         expansions);
+
+		g_slist_free (expansions);
+		cpg_expansion_free (ex);
+
+		ret->data = sel;
+	}
+
+	cpg_expansion_free (ex);
+
+	return g_slist_reverse (ret);
+}
+
+static GSList *
 selector_select_pseudo (Selector    *selector,
                         GSList      *parent,
                         SelectType   type,
@@ -741,7 +788,7 @@ selector_select_pseudo (Selector    *selector,
 	{
 		switch (def->type)
 		{
-			case SELECTOR_PSEUDO_TYPE_NTH:
+			case SELECTOR_PSEUDO_TYPE_SUBSET:
 			{
 				Nth nth = parse_nth (selector->pseudo.arguments,
 				                     context);
@@ -759,6 +806,9 @@ selector_select_pseudo (Selector    *selector,
 			case SELECTOR_PSEUDO_TYPE_LINKS:
 				return g_slist_reverse (filter_list_reverse (parent,
 					                                     FALSE));
+			break;
+			case SELECTOR_PSEUDO_TYPE_COUNT:
+				return count_selection (parent, type);
 			break;
 			default:
 			break;
@@ -783,8 +833,8 @@ selector_select_pseudo (Selector    *selector,
 
 		switch (def->type)
 		{
-			case SELECTOR_PSEUDO_TYPE_NTH_CHILD:
-			case SELECTOR_PSEUDO_TYPE_NTH_SIBLING:
+			case SELECTOR_PSEUDO_TYPE_CHILDREN:
+			case SELECTOR_PSEUDO_TYPE_SIBLINGS:
 				nth = parse_nth (selector->pseudo.arguments,
 				                 context);
 			break;
@@ -840,7 +890,7 @@ selector_select_pseudo (Selector    *selector,
 				}
 			}
 			break;
-			case SELECTOR_PSEUDO_TYPE_NTH_CHILD:
+			case SELECTOR_PSEUDO_TYPE_CHILDREN:
 			{
 				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
 				{
@@ -860,7 +910,7 @@ selector_select_pseudo (Selector    *selector,
 				}
 			}
 			break;
-			case SELECTOR_PSEUDO_TYPE_NTH_SIBLING:
+			case SELECTOR_PSEUDO_TYPE_SIBLINGS:
 			{
 				CpgObject *parent;
 
@@ -900,28 +950,6 @@ selector_select_pseudo (Selector    *selector,
 					                                          cpg_selection_get_expansions (sel)));
 				}
 			}
-			case SELECTOR_PSEUDO_TYPE_CHILDREN:
-			{
-				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
-				{
-					GSList const *children;
-					GSList *copy = NULL;
-
-					children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (sel)));
-
-					while (children)
-					{
-						copy = g_slist_prepend (copy,
-						                        cpg_selection_new (children->data,
-						                                           cpg_selection_get_expansions (sel)));
-
-						children = g_slist_next (children);
-					}
-
-					ret = g_slist_concat (copy, ret);
-				}
-			}
-			break;
 			break;
 			case SELECTOR_PSEUDO_TYPE_FIRST_CHILD:
 			{

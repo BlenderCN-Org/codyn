@@ -43,7 +43,10 @@ struct _CpgEmbeddedStringClass
 GType cpg_embedded_string_get_type (void) G_GNUC_CONST;
 
 CpgEmbeddedString *cpg_embedded_string_new (void);
+
 CpgEmbeddedString *cpg_embedded_string_new_from_string (gchar const *s);
+CpgEmbeddedString *cpg_embedded_string_new_from_double (gdouble s);
+CpgEmbeddedString *cpg_embedded_string_new_from_integer (gint s);
 
 void cpg_embedded_string_push (CpgEmbeddedString *s,
                                CpgEmbeddedStringNodeType type,
@@ -57,9 +60,9 @@ void cpg_embedded_string_add_text (CpgEmbeddedString *s,
 void cpg_embedded_string_add_define (CpgEmbeddedString *s,
                                      gchar const       *text);
 
-void cpg_embedded_string_add_ref (CpgEmbeddedString *s,
-                                  gint               parent,
-                                  gint               idx);
+void cpg_embedded_string_add_reference (CpgEmbeddedString *s,
+                                        gint               parent,
+                                        gint               idx);
 
 gchar const *cpg_embedded_string_expand (CpgEmbeddedString *s,
                                          CpgEmbeddedContext *ctx);

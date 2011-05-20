@@ -47,6 +47,8 @@ void cpg_embedded_context_push_expansions (CpgEmbeddedContext *context,
 void cpg_embedded_context_set_expansions (CpgEmbeddedContext *context,
                                           GSList             *expansions);
 
+GSList *cpg_embedded_context_get_expansions (CpgEmbeddedContext *context);
+
 void cpg_embedded_context_pop_expansions (CpgEmbeddedContext *context);
 
 gchar *cpg_embedded_context_lookup_define (CpgEmbeddedContext *context,

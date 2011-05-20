@@ -7,16 +7,13 @@ typedef struct
 {
 	CpgEmbeddedStringNodeType type;
 
-	union
-	{
-		gchar *text;
+	gchar *text;
 
-		struct
-		{
-			gint parent;
-			gint idx;
-		} ref;
-	};
+	struct
+	{
+		gint parent;
+		gint idx;
+	} ref;
 
 	GSList *nodes;
 } Node;
@@ -40,13 +37,10 @@ node_new (CpgEmbeddedStringNodeType  type,
 	ret = g_slice_new0 (Node);
 
 	ret->type = type;
-	ret->text = g_strdup (text);
+	ret->text = g_strdup (text ? text : "");
 
-	if (text == NULL)
-	{
-		ret->ref.parent = parent;
-		ret->ref.idx = idx;
-	}
+	ret->ref.parent = parent;
+	ret->ref.idx = idx;
 
 	return ret;
 }
@@ -54,11 +48,11 @@ node_new (CpgEmbeddedStringNodeType  type,
 static void
 node_free (Node *node)
 {
-	g_free (node->text);
-
 	g_slist_foreach (node->nodes, (GFunc)node_free, NULL);
 	g_slist_free (node->nodes);
 	g_free (node->text);
+
+	g_slice_free (Node, node);
 }
 
 static void
@@ -115,6 +109,29 @@ cpg_embedded_string_new_from_string (gchar const *s)
 	return ret;
 }
 
+CpgEmbeddedString *
+cpg_embedded_string_new_from_double (gdouble s)
+{
+	gchar buffer[G_ASCII_DTOSTR_BUF_SIZE];
+	g_ascii_dtostr (buffer, G_ASCII_DTOSTR_BUF_SIZE, s);
+
+	return cpg_embedded_string_new_from_string (buffer);
+}
+
+CpgEmbeddedString *
+cpg_embedded_string_new_from_integer (gint s)
+{
+	gchar *ss;
+	CpgEmbeddedString *ret;
+
+	ss = g_strdup_printf ("%d", s);
+
+	ret = cpg_embedded_string_new_from_string (ss);
+
+	g_free (ss);
+	return ret;
+}
+
 static Node *
 add_node (CpgEmbeddedString *s,
           CpgEmbeddedStringNodeType type,
@@ -126,9 +143,16 @@ add_node (CpgEmbeddedString *s,
 	Node *par;
 
 	node = node_new (type, text, parent, idx);
-	par = s->priv->stack->data;
 
-	par->nodes = g_slist_prepend (par->nodes, node);
+	if (s->priv->stack)
+	{
+		par = s->priv->stack->data;
+		par->nodes = g_slist_prepend (par->nodes, node);
+	}
+	else
+	{
+		s->priv->stack = g_slist_prepend (NULL, node);
+	}
 
 	return node;
 }
@@ -162,9 +186,9 @@ cpg_embedded_string_add_define (CpgEmbeddedString *s,
 }
 
 void
-cpg_embedded_string_add_ref (CpgEmbeddedString *s,
-                             gint               parent,
-                             gint               idx)
+cpg_embedded_string_add_reference (CpgEmbeddedString *s,
+                                   gint               parent,
+                                   gint               idx)
 {
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
 
@@ -180,7 +204,7 @@ cpg_embedded_string_push (CpgEmbeddedString         *s,
 
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
 
-	node = add_node (s, type, NULL, num, 0);
+	node = node_new (type, NULL, num, 0);
 
 	s->priv->stack = g_slist_prepend (s->priv->stack,
 	                                  node);

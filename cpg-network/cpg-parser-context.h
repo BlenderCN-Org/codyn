@@ -11,6 +11,7 @@
 #include <cpg-network/cpg-import-alias.h>
 #include <cpg-network/cpg-selector.h>
 #include <cpg-network/cpg-layout.h>
+#include <cpg-network/cpg-attribute.h>
 
 G_BEGIN_DECLS
 
@@ -26,12 +27,6 @@ typedef struct _CpgParserContext	CpgParserContext;
 typedef struct _CpgParserContextClass	CpgParserContextClass;
 typedef struct _CpgParserContextPrivate	CpgParserContextPrivate;
 typedef struct _CpgParserContextClassPrivate	CpgParserContextClassPrivate;
-
-typedef enum
-{
-	CPG_PARSER_CONTEXT_LINK_FLAG_BIDIRECTIONAL = 1 << 0,
-	CPG_PARSER_CONTEXT_LINK_FLAG_ALL = 1 << 1
-} CpgParserContextLinkFlags;
 
 typedef enum
 {
@@ -58,6 +53,7 @@ struct _CpgParserContextClass
 GType                  cpg_parser_context_get_type             (void) G_GNUC_CONST;
 
 CpgParserContext      *cpg_parser_context_new                  (CpgNetwork                 *network);
+CpgEmbeddedContext    *cpg_parser_context_get_embedded         (CpgParserContext           *context);
 
 GFile                 *cpg_parser_context_get_file             (CpgParserContext           *context);
 
@@ -129,7 +125,7 @@ void                   cpg_parser_context_push_group           (CpgParserContext
 void                   cpg_parser_context_push_link            (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
                                                                 GArray                     *templates,
-                                                                CpgParserContextLinkFlags   flags,
+                                                                GSList                     *attributes,
                                                                 GArray                     *fromto);
 
 void                   cpg_parser_context_push_network         (CpgParserContext           *context);
@@ -201,6 +197,14 @@ void                   cpg_parser_context_add_layout_position  (CpgParserContext
 void                   cpg_parser_context_add_integrator_property (CpgParserContext        *context,
                                                                    CpgEmbeddedString       *name,
                                                                    CpgEmbeddedString       *value);
+
+void                   cpg_parser_context_push_string           (CpgParserContext *context);
+CpgEmbeddedString     *cpg_parser_context_peek_string           (CpgParserContext *context);
+CpgEmbeddedString     *cpg_parser_context_pop_string            (CpgParserContext *context);
+
+gboolean               cpg_parser_context_pop_equation_depth    (CpgParserContext *context);
+void                   cpg_parser_context_push_equation_depth   (CpgParserContext *context);
+void                   cpg_parser_context_push_equation         (CpgParserContext *context);
 
 G_END_DECLS
 

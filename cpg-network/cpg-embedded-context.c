@@ -81,6 +81,14 @@ cpg_embedded_context_set_expansions (CpgEmbeddedContext *context,
 	cpg_embedded_context_push_expansions (context, expansions);
 }
 
+GSList *
+cpg_embedded_context_get_expansions (CpgEmbeddedContext *context)
+{
+	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+
+	return context->priv->expansions;
+}
+
 void
 cpg_embedded_context_push_expansion (CpgEmbeddedContext *context,
                                      CpgExpansion       *expansion)
@@ -100,17 +108,35 @@ cpg_embedded_context_push_expansions (CpgEmbeddedContext *context,
                                       GSList             *expansions)
 {
 	gint i = 0;
+	GSList *rev = NULL;
+	GSList *last = NULL;
 
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 
 	while (expansions)
 	{
-		context->priv->expansions =
-			g_slist_prepend (context->priv->expansions,
-			                 cpg_expansion_copy (expansions->data));
+		GSList *tmp = g_slist_prepend (NULL, cpg_expansion_copy (expansions->data));
 
+		if (rev == NULL)
+		{
+			rev = tmp;
+		}
+		else
+		{
+			last->next = tmp;
+		}
+
+		last = tmp;
 		expansions = g_slist_next (expansions);
+
 		++i;
+	}
+
+	if (last)
+	{
+		last->next = context->priv->expansions;
+		context->priv->expansions = rev;
+		
 	}
 
 	context->priv->numexp = g_slist_prepend (context->priv->numexp,
@@ -157,18 +183,53 @@ cpg_embedded_context_lookup_define (CpgEmbeddedContext *context,
 	return g_strdup (ret ? ret : "");
 }
 
+static void
+print_expansions (GSList *expansions)
+{
+	while (expansions)
+	{
+		CpgExpansion *e = expansions->data;
+		gint i;
+
+		g_printerr ("\t");
+
+		for (i = 0; i < cpg_expansion_num (e); ++i)
+		{
+			if (i != 0)
+			{
+				g_printerr (", ");
+			}
+
+			g_printerr ("{%s}", cpg_expansion_get (e, i));
+		}
+
+		g_printerr ("\n");
+
+		expansions = g_slist_next (expansions);
+	}
+}
+
 gchar *
 cpg_embedded_context_lookup_ref (CpgEmbeddedContext *context,
                                  gint                parent,
                                  gint                idx)
 {
 	CpgExpansion *ex;
+	gchar const *ret;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	ex = g_slist_nth_data (context->priv->expansions, parent);
 
-	return g_strdup (ex ? cpg_expansion_get (ex, idx) : "");
+	ret = ex ? cpg_expansion_get (ex, idx) : NULL;
+
+	if (!ret)
+	{
+		g_message ("%d, %d", parent, idx);
+		print_expansions (cpg_embedded_context_get_expansions (context));
+	}
+
+	return g_strdup (ret ? ret : "");
 }
 
 gchar *
