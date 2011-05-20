@@ -628,15 +628,23 @@ string
 	;
 
 equation
-	: T_EQUATION_BEGIN		{ cpg_parser_context_push_string (context); }
+	: T_EQUATION_BEGIN		{
+						cpg_embedded_string_push (cpg_parser_context_push_string (context),
+						                          CPG_EMBEDDED_STRING_NODE_EQUATION,
+						                          0);
+					}
 	  string_contents
-	  T_EQUATION_END		{ $$ = cpg_parser_context_pop_string (context); }
+	  T_EQUATION_END		{ $$ = cpg_embedded_string_pop (cpg_parser_context_pop_string (context)); }
 	;
 
 indirection
-	: T_INDIRECTION_BEGIN		{ cpg_parser_context_push_string (context); }
+	: T_INDIRECTION_BEGIN		{
+						cpg_embedded_string_push (cpg_parser_context_push_string (context),
+						                          CPG_EMBEDDED_STRING_NODE_INDIRECTION,
+						                          $1);
+					}
 	  string_contents
-	  T_INDIRECTION_END		{ $$ = cpg_parser_context_pop_string (context); }
+	  T_INDIRECTION_END		{ $$ = cpg_embedded_string_pop (cpg_parser_context_pop_string (context)); }
 	;
 
 regex
@@ -650,7 +658,7 @@ equation_inside
 	                                                            CPG_EMBEDDED_STRING_NODE_EQUATION,
 	                                                            0);}
 	  string_contents
-	  T_EQUATION_END
+	  T_EQUATION_END		{ cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
 	;
 
 indirection_inside
@@ -658,7 +666,7 @@ indirection_inside
 	                                                            CPG_EMBEDDED_STRING_NODE_INDIRECTION,
 	                                                            $1);}
 	  string_contents
-	  T_INDIRECTION_END
+	  T_INDIRECTION_END		{ cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
 	;
 
 %%

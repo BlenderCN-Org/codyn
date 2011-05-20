@@ -48,11 +48,11 @@ CpgEmbeddedString *cpg_embedded_string_new_from_string (gchar const *s);
 CpgEmbeddedString *cpg_embedded_string_new_from_double (gdouble s);
 CpgEmbeddedString *cpg_embedded_string_new_from_integer (gint s);
 
-void cpg_embedded_string_push (CpgEmbeddedString *s,
+CpgEmbeddedString *cpg_embedded_string_push (CpgEmbeddedString *s,
                                CpgEmbeddedStringNodeType type,
                                gint num);
 
-void cpg_embedded_string_pop (CpgEmbeddedString *s);
+CpgEmbeddedString *cpg_embedded_string_pop (CpgEmbeddedString *s);
 
 void cpg_embedded_string_add_text (CpgEmbeddedString *s,
                                    gchar const       *text);

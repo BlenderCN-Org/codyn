@@ -195,34 +195,46 @@ cpg_embedded_string_add_reference (CpgEmbeddedString *s,
 	add_node (s, CPG_EMBEDDED_STRING_NODE_REF, NULL, parent, idx);
 }
 
-void
+CpgEmbeddedString *
 cpg_embedded_string_push (CpgEmbeddedString         *s,
                           CpgEmbeddedStringNodeType  type,
                           gint                       num)
 {
 	Node *node;
 
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 
 	node = node_new (type, NULL, num, 0);
 
 	s->priv->stack = g_slist_prepend (s->priv->stack,
 	                                  node);
+
+	return s;
 }
 
-void
+CpgEmbeddedString *
 cpg_embedded_string_pop (CpgEmbeddedString *s)
 {
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
+	Node *node;
+	Node *parent;
 
-	if (!s->priv->stack)
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
+
+	if (!s->priv->stack || !s->priv->stack->next)
 	{
-		return;
+		return s;
 	}
 
-	node_free (s->priv->stack->data);
+	node = s->priv->stack->data;
 	s->priv->stack = g_slist_delete_link (s->priv->stack,
 	                                      s->priv->stack);
+
+	parent = s->priv->stack->data;
+
+	parent->nodes = g_slist_prepend (parent->nodes,
+	                                 node);
+
+	return s;
 }
 
 static gchar *
@@ -663,5 +675,14 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
 
 	id = cpg_embedded_string_expand (s, ctx);
-	return expand_id_recurse (&id, "\0");
+
+	if (!*id)
+	{
+		CpgExpansion *ex = cpg_expansion_new_one ("");
+		return g_slist_prepend (NULL, ex);
+	}
+	else
+	{
+		return expand_id_recurse (&id, "\0");
+	}
 }

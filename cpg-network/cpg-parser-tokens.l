@@ -178,13 +178,13 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_REGEX_BEGIN;
 				}
 
-"@"+"["				{
+<instring,inregex,incl,equation,INITIAL>"@"+"[" {
 					yy_push_state (indirection, yyscanner);
 					yylval->num = yyleng - 1;
 					return T_INDIRECTION_BEGIN;
 				}
 
-"$("				{
+<instring,inregex,incl,indirection,INITIAL>"$("	{
 					cpg_parser_context_push_equation (yyextra);
 					yy_push_state (equation, yyscanner);
 
