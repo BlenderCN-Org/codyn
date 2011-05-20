@@ -1023,7 +1023,7 @@ selector_select_pseudo (Selector    *selector,
 
 					ret = g_slist_concat (select_nth_reverse (children,
 					                                          &nth,
-					                                          idx,
+					                                          idx + 1,
 					                                          type == TYPE_ALL ? (CPG_IS_LINK (cpg_selection_get_object (sel)) ? TYPE_LINK : TYPE_STATE) : type),
 					                      ret);
 
