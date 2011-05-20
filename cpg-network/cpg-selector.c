@@ -833,6 +833,9 @@ selector_select_pseudo (Selector    *selector,
 
 		if (!def)
 		{
+			g_warning ("Could not find pseudo selector: %s",
+			           cpg_embedded_string_expand (selector->pseudo.identifier, context));
+
 			cpg_embedded_context_pop_expansions (context);
 			continue;
 		}
