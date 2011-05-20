@@ -61,6 +61,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %x comment
 %x equation
 %x indirection
+%x inclstart
 
 %%
 
@@ -93,14 +94,24 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "#"				yy_push_state (comment, yyscanner);
 <comment>[^\n]*$		yy_pop_state (yyscanner);
 
-"include"[ \t]+"\""		yy_push_state (incl, yyscanner);
+"include"			{
+					yy_push_state (inclstart, yyscanner);
+					return T_KEY_INCLUDE;
+				}
+<inclstart>"\""			{
+					yy_pop_state (yyscanner);
+					yy_push_state (incl, yyscanner);
 
+					cpg_parser_context_push_string (yyextra);
+					return T_STRING_BEGIN;
+				}
 <incl>"\""			{
 					yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, yyscanner), yyscanner);
 					cpg_parser_context_push_input_from_path (yyextra,
 					                                         cpg_parser_context_pop_string (yyextra));
 
 					yy_pop_state (yyscanner);
+					return T_STRING_END;
 				}
 
 <<EOF>>				{

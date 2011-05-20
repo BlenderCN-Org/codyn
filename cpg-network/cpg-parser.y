@@ -174,6 +174,17 @@ toplevel
 	| define
 	| layout
 	| integrator
+	| include
+	;
+
+include_path
+	: T_STRING_BEGIN
+	  string_contents
+	  T_STRING_END
+	;
+
+include
+	: T_KEY_INCLUDE include_path
 	;
 
 network
