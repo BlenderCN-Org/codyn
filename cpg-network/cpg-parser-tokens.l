@@ -56,6 +56,7 @@ STRING "\""(\\["]|[^"])*"\""
 %x annotation
 %x comment
 %x equation
+%x indirection
 
 %%
 
@@ -87,10 +88,11 @@ STRING "\""(\\["]|[^"])*"\""
 
 "include"			yy_push_state (incl, yyscanner);
 
-<incl>[ \t]*			;
-<incl>{STRING}			{
+<incl>[ \t]+"\""		;
+<incl>"\""			{
 					yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, yyscanner), yyscanner);
-					cpg_parser_context_push_input_from_path (yyextra, yytext);
+					cpg_parser_context_push_input_from_path (yyextra,
+					                                         cpg_parser_context_pop_string (yyextra));
 
 					yy_pop_state (yyscanner);
 				}
@@ -147,38 +149,64 @@ STRING "\""(\\["]|[^"])*"\""
 
 "\""				{
 					yy_push_state (instring, yyscanner);
-					yylval->string = g_string_new ("");
 					return T_STRING_BEGIN;
 				}
 
-<instring,inregex,INITIAL>"@{"[a-zA-Z_][a-zA-Z0-9_-]*"}" {
-					yylval->id = g_strndup (yytext + 2, yyleng - 3);
+<instring,inregex,incl,equation,indirection,INITIAL>"@["
+				{
+					yy_push_state (indirection, yyscanner);
+					return T_INDIRECTION_BEGIN;
+				}
+
+<indirection>"]"		{
+					yy_pop_state (yyscanner);
+					return T_INDIRECTION_END;
+				}
+
+<instring,inregex,incl,indirection,INITIAL>"@"[a-zA-Z_][a-zA-Z0-9_-]*
+				{
+					yylval->id = g_strdup (yytext + 1);
 					return T_DEFINED;
 				}
 
-<instring,inregex,equation,INITIAL>"@"[0-9]+(:[0-9]+)?	{
-					yylval->id = g_strdup (yytext + 1);
-					return T_EXPANSION;
+<instring,inregex,incl,indirection,equation,INITIAL>"@"+[0-9]+
+				{
+					yylval->id = g_strdup (yytext);
+					return T_REF;
 				}
-
-<instring,inregex,equation,INITIAL>"@"[a-zA-Z_][a-zA-Z0-9_-]*	{
-					yylval->id = g_strdup (yytext + 1);
-					return T_DEFINED;
-				}
-
-<instring,inregex,INITIAL>"@{"	{
+<instring,inregex,incl,indirection,equation,INITIAL>"$("
+				{
+					cpg_parser_context_begin_equation (context);
 					yy_push_state (equation, yyscanner);
+
 					return T_EQUATION_BEGIN;
 				}
-<equation>"}"			{
-					yy_pop_state (yyscanner);
-					return T_EQUATION_END;
+<equation>"("			{
+					yylval->id = g_strdup (yytext);
+					cpg_parser_context_push_equation_depth (context);
+					return T_STRING;
 				}
-<equation>(\\[}@]|[^}@])+	{
+<equation>")"			{
+					if (cpg_parser_context_pop_equation_depth (context))
+					{
+						yy_pop_state (yyscanner);
+						return T_EQUATION_END;
+					}
+					else
+					{
+						yylval->id = g_strdup (yytext);
+						return T_STRING;
+					}
+				}
+<equation>(\\[)@]|[^a-z_)@])+	{
 					yylval->id = unquote_string (yytext, yyleng, "@}");
-					return T_EQUATION;
+					return T_STRING;
 				}
-<instring>(\\["@]|[^"@])+	{
+<indirection>(\\[]@]|[^]@])+	{
+					yylval->id = unquote_string (yytext, yyleng, "@]");
+					return T_STRING;
+				}
+<instring,incl>(\\["@]|[^"@])+	{
 					yylval->id = unquote_string (yytext, yyleng, "@\"");
 					return T_STRING;
 				}

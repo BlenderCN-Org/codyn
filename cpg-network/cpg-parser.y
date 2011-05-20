@@ -112,7 +112,7 @@ static CpgFunctionArgument *create_function_argument (gchar const *name,
 
 %union
 {
-	char *id;
+	CpgEmbeddedString *id;
 	CpgProperty *property;
 	CpgPropertyFlags flags;
 	gdouble numf;
