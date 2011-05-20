@@ -251,7 +251,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					}
 				}
 ":"{IDENTIFIER}			{
-					yylval->id = g_strdup (yytext);
+					yylval->id = g_strdup (yytext + 1);
 					return T_PSEUDO_SELECTOR;
 				}
 "{"				return '{';
