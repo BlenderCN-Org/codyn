@@ -33,7 +33,7 @@
         <define-regex id="regex">/(\\/|[^/])*/</define-regex>
         <define-regex id="define">@(\%{identifier}|@*([0-9]+))</define-regex>
         <define-regex id="identifier_or_string">((\%{identifier})|(\%{string}))</define-regex>
-        <define-regex id="string_like">(\%{string}|\%{def:decimal}|\%{def:float}|\%{define})</define-regex>
+        <define-regex id="string_like">(\%{string}|-?\%{def:decimal}|-?\%{def:float}|\%{define})</define-regex>
 
         <context id="identifier" style-ref="identifier">
             <match>\%{identifier}</match>
