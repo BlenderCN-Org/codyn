@@ -15,10 +15,12 @@
         <style id="preprocessor"      _name="Preprocessor"        map-to="def:preprocessor"/>
         <style id="specifiers"        _name="Specifiers"          map-to="def:keyword"/>
         <style id="regex"             _name="Regex"               map-to="def:builtin"/>
-        <style id="property"          _name="Property"            map-to="def:identifier"/>
         <style id="operator"          _name="Operator"            map-to="def:operator"/>
         <style id="selector"          _name="Selector"            map-to="def:identifier"/>
         <style id="define"            _name="Define"              map-to="def:constant"/>
+        <style id="equation"          _name="Equation"            map-to="def:comment"/>
+        <style id="indirection"       _name="Indirection"         map-to="def:constant"/>
+        <style id="identifier"        _name="Identifier"          map-to="def:identifier"/>
     </styles>
 
     <default-regex-options case-sensitive="false"/>
@@ -29,9 +31,13 @@
         <define-regex id="nth">[-+]?[0-9]n([-+][0-9])?</define-regex>
         <define-regex id="string">"(\\["]|[^"])*"</define-regex>
         <define-regex id="regex">/(\\/|[^/])*/</define-regex>
-        <define-regex id="define">@({[^}]*}|\%{identifier}|@*([0-9]+))</define-regex>
+        <define-regex id="define">@(\%{identifier}|@*([0-9]+))</define-regex>
         <define-regex id="identifier_or_string">((\%{identifier})|(\%{string}))</define-regex>
         <define-regex id="string_like">(\%{string}|\%{def:decimal}|\%{def:float}|\%{define})</define-regex>
+
+        <context id="identifier" style-ref="identifier">
+            <match>\%{identifier}</match>
+        </context>
 
         <context id="string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
             <start>"</start>
@@ -40,9 +46,34 @@
                 <context id="escape-in-string">
                     <match>\\"</match>
                 </context>
-                <context ref="defined"/>
-                <context ref="simple_defined"/>
-                <context ref="expansion"/>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="paren-inside">
+            <start>[(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+            </include>
+        </context>
+
+        <context id="equation" style-ref="equation" style-inside="true" end-at-line-end="true">
+            <start>[$][(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+                <context ref="identifier"/>
+                <context ref="stuff_in_string"/>
+            </include>
+        </context>
+
+        <context id="indirection" style-ref="indirection" style-inside="true" end-at-line-end="true">
+            <start>@[[]</start>
+            <end>[]]</end>
+            <include>
+                <context ref="stuff_in_string"/>
             </include>
         </context>
 
@@ -52,7 +83,6 @@
             <keyword>out</keyword>
             <keyword>once</keyword>
             <keyword>bidirectional</keyword>
-            <keyword>all</keyword>
             <keyword>proxy</keyword>
         </context>
 
@@ -64,8 +94,7 @@
             <start>/</start>
             <end>/</end>
             <include>
-                <context ref="simple_defined"/>
-                <context ref="defined"/>
+                <context ref="stuff_in_string"/>
             </include>
         </context>
 
@@ -94,22 +123,6 @@
             <keyword>of</keyword>
         </context>
 
-        <context id="property">
-            <match>(\%{identifier})\s*(=)\s*\%{string_like}</match>
-            <include>
-                <context sub-pattern="1" style-ref="property"/>
-                <context sub-pattern="3" style-ref="string"/>
-            </include>
-        </context>
-
-        <context id="action">
-            <match>(\%{identifier})\s*(&lt;)\s*(\%{string_like})</match>
-            <include>
-                <context sub-pattern="1" style-ref="property"/>
-                <context sub-pattern="3" style-ref="string"/>
-            </include>
-        </context>
-
         <context id="selector">
             <match>([:.][a-z_-]+)(\(([^)]*)\))?</match>
             <include>
@@ -118,24 +131,15 @@
             </include>
         </context>
 
-        <context id="defined" extend-parent="true">
-            <start>@[</start>
-            <end>]</end>
-            <include>
-                <context sub-pattern="0" where="start" style-ref="define"/>
-                <context sub-pattern="0" where="end" style-ref="define"/>
-            </include>
-        </context>
-
-        <context id="simple_defined" style-ref="define">
+        <context id="defined" style-ref="define">
             <match>\%{define}</match>
         </context>
 
-        <context id="define">
-            <match>\b(define)\s+([a-z0-9_-]+)</match>
+        <context id="stuff_in_string">
             <include>
-                <context sub-pattern="1" style-ref="keyword"/>
-                <context sub-pattern="2" style-ref="preprocessor"/>
+                <context ref="defined" />
+                <context ref="equation" />
+                <context ref="indirection" />
             </include>
         </context>
 
@@ -143,7 +147,7 @@
             <start>{</start>
             <end>}</end>
             <include>
-                <context ref="defined" />
+                <context ref="stuff_in_string" />
             </include>
         </context>
 
@@ -151,19 +155,18 @@
             <include>
                 <context ref="def:shebang"/>
                 <context ref="def:shell-like-comment"/>
-                <context ref="define"/>
                 <context ref="keywords"/>
                 <context ref="specifiers"/>
                 <context ref="preprocessor"/>
-                <context ref="property"/>
-                <context ref="action"/>
                 <context ref="regex"/>
                 <context ref="string"/>
                 <context ref="selector"/>
                 <context ref="def:decimal"/>
                 <context ref="def:float"/>
+                <context ref="indirection"/>
+                <context ref="equation"/>
                 <context ref="defined"/>
-                <context ref="simple_defined"/>
+                <context ref="identifier"/>
             </include>
         </context>
     </definitions>
