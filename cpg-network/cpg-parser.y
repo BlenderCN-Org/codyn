@@ -222,7 +222,7 @@ define_item
 
 define_contents
 	:
-	| define_item
+	| define_contents define_item
 	;
 
 define
