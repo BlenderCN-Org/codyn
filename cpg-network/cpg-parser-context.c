@@ -153,7 +153,10 @@ cpg_parser_context_finalize (GObject *object)
 		cpg_parser_context_pop (self);
 	}
 
-	g_object_unref (self->priv->network);
+	if (self->priv->network)
+	{
+		g_object_unref (self->priv->network);
+	}
 
 	g_slist_foreach (self->priv->inputs, (GFunc)input_item_free, NULL);
 	g_slist_free (self->priv->inputs);

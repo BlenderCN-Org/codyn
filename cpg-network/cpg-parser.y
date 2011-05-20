@@ -154,7 +154,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 choose_parser
 	: T_START_DOCUMENT document
-	| T_START_SELECTOR selector
+	| T_START_SELECTOR selector_parse
 	;
 
 document
@@ -474,6 +474,12 @@ selector
 					{ $$ = cpg_parser_context_pop_selector (context); errb }
 	| selector_regex nested_selector
 					{ $$ = cpg_parser_context_pop_selector (context); errb }
+	;
+
+selector_parse
+	: selector_pseudo nested_selector
+	| selector_identifier nested_selector
+	| selector_regex nested_selector
 	;
 
 selector_identifier

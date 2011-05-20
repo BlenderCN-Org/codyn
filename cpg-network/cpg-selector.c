@@ -1222,7 +1222,7 @@ cpg_selector_select (CpgSelector        *selector,
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	return selector_select_all (selector, parent, TYPE_ALL, context);
 }
@@ -1233,8 +1233,8 @@ cpg_selector_select_states (CpgSelector        *selector,
                             CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	return selector_select_all (selector, parent, TYPE_STATE, context);
 }
@@ -1245,8 +1245,8 @@ cpg_selector_select_links (CpgSelector        *selector,
                            CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	return selector_select_all (selector, parent, TYPE_LINK, context);
 }
@@ -1257,8 +1257,8 @@ cpg_selector_select_properties (CpgSelector        *selector,
                                 CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (parent == NULL || CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	return selector_select_all (selector, parent, TYPE_PROPERTY, context);
 }

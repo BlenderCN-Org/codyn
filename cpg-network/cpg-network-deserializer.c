@@ -586,6 +586,7 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	gboolean ret;
 	GSList *selectors = NULL;
 	GSList *item;
+	CpgEmbeddedContext *context;
 
 	if (templates)
 	{
@@ -622,13 +623,17 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 		selectors = g_slist_prepend (selectors, selector);
 	}
 
+	context = cpg_embedded_context_new ();
+
 	ret = cpg_network_parser_utils_get_templates (deserializer->priv->network,
 	                                              deserializer->priv->parents->data,
 	                                              for_template,
 	                                              selectors,
-	                                              NULL,
+	                                              context,
 	                                              missing,
 	                                              templates);
+
+	g_object_unref (context);
 
 	g_slist_foreach (selectors, (GFunc)g_object_unref, NULL);
 	g_slist_free (selectors);

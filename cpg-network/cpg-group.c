@@ -1811,12 +1811,11 @@ cpg_group_find_object (CpgGroup    *group,
 	CpgSelector *sel;
 	GSList *all;
 	CpgObject *ret = NULL;
-	GError *error = NULL;
 
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	sel = cpg_selector_parse (selector, &error);
+	sel = cpg_selector_parse (selector, NULL);
 
 	if (!sel)
 	{

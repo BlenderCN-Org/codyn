@@ -31,7 +31,7 @@ cpg_selection_new (gpointer  object,
 
 	ret = g_slice_new0 (CpgSelection);
 
-	ret->object = g_object_ref (object);
+	ret->object = object ? g_object_ref (object) : NULL;
 	ret->expansions = copy_expansions (expansions);
 
 	return ret;
@@ -46,7 +46,10 @@ cpg_selection_copy (CpgSelection *selection)
 void
 cpg_selection_free (CpgSelection *selection)
 {
-	g_object_unref (selection->object);
+	if (selection->object)
+	{
+		g_object_unref (selection->object);
+	}
 
 	g_slist_foreach (selection->expansions, (GFunc)cpg_expansion_free, NULL);
 	g_slist_free (selection->expansions);
@@ -57,17 +60,17 @@ cpg_selection_free (CpgSelection *selection)
 CpgObject *
 cpg_selection_get_object (CpgSelection *selection)
 {
-	g_return_val_if_fail (CPG_IS_OBJECT (selection->object), NULL);
+	g_return_val_if_fail (selection->object == NULL || CPG_IS_OBJECT (selection->object), NULL);
 
-	return CPG_OBJECT (selection->object);
+	return selection->object ? CPG_OBJECT (selection->object) : NULL;
 }
 
 CpgProperty *
 cpg_selection_get_property (CpgSelection *selection)
 {
-	g_return_val_if_fail (CPG_IS_PROPERTY (selection->object), NULL);
+	g_return_val_if_fail (selection->object == NULL || CPG_IS_PROPERTY (selection->object), NULL);
 
-	return CPG_PROPERTY (selection->object);
+	return selection->object ? CPG_PROPERTY (selection->object) : NULL;
 }
 
 GSList *
