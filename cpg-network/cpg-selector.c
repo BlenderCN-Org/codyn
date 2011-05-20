@@ -170,8 +170,9 @@ static Nth
 parse_nth (GSList             *arguments,
            CpgEmbeddedContext *context)
 {
-	Nth ret = {0, 0, -1};
+	Nth ret = {1, 1, -1};
 	GSList *maxpos = NULL;
+	GSList *apos = NULL;
 	gchar const *first;
 
 	if (!arguments)
@@ -201,19 +202,24 @@ parse_nth (GSList             *arguments,
 
 		second = cpg_embedded_string_expand (arguments->next->data, context);
 
-		ret.a = (gint)g_ascii_strtoll (first, NULL, 10);
-		ret.b = (gint)g_ascii_strtoll (second, NULL, 10);
+		ret.b = (gint)g_ascii_strtoll (first, NULL, 10);
+		ret.max = (gint)g_ascii_strtoll (second, NULL, 10);
 
-		maxpos = arguments->next->next;
+		apos = arguments->next->next;
 	}
 	else
 	{
-		ret.a = (gint)g_ascii_strtoll (first, NULL, 10);
+		ret.b = (gint)g_ascii_strtoll (first, NULL, 10);
 	}
 
 	if (maxpos)
 	{
 		ret.max = (gint)g_ascii_strtoll (cpg_embedded_string_expand (maxpos->data, context), NULL, 10);
+	}
+
+	if (apos)
+	{
+		ret.a = (gint)g_ascii_strtoll (cpg_embedded_string_expand (apos->data, context), NULL, 10);
 	}
 
 	return ret;
