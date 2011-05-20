@@ -309,7 +309,8 @@ attributes_contents
 	;
 
 attributes
-	: '[' ']'			{ $$ = NULL; }
+	:				{ $$ = NULL; }
+	| '[' ']'			{ $$ = NULL; }
 	| '[' attributes_contents ']'	{ $$ = g_slist_reverse ($2); }
 	;
 
