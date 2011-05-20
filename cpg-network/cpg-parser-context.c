@@ -1279,9 +1279,19 @@ cpg_parser_context_push_link (CpgParserContext          *context,
                               GArray                    *fromto)
 {
 	GSList *objects;
+	gboolean freeid;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (id != NULL);
+
+	if (id == NULL)
+	{
+		freeid = TRUE;
+		id = cpg_embedded_string_new_from_string ("link");
+	}
+	else
+	{
+		freeid = FALSE;
+	}
 
 	if (!fromto)
 	{
@@ -1301,6 +1311,11 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 
 	cpg_parser_context_push_object (context, objects);
 	g_slist_free (objects);
+
+	if (freeid)
+	{
+		g_object_unref (id);
+	}
 }
 
 void

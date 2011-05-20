@@ -331,7 +331,7 @@ link
 	  T_KEY_LINK
 	  link_connect_fast
 	  templated
-	  '{'				{ cpg_parser_context_push_link (context, cpg_embedded_string_new_from_string (""), $4, $1, $3); errb }
+	  '{'				{ cpg_parser_context_push_link (context, NULL, $4, $1, $3); errb }
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
