@@ -62,18 +62,29 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %x equation
 %x indirection
 %x inclstart
+%x onlyselector
 
 %%
 
 %{
 	if (cpg_parser_context_get_start_token (yyextra))
 	{
+		if (cpg_parser_context_get_start_token (yyextra) == T_START_SELECTOR)
+		{
+			yy_push_state (onlyselector, yyscanner);
+		}
+
 		return cpg_parser_context_steal_start_token (yyextra);
 	}
 
 	/* To not get a compiler warning about defined but not used... */
 	yy_top_state (yyscanner);
 %}
+
+<onlyselector>{IDENTIFIER}	{
+					yylval->id = g_strdup (yytext);
+					return T_IDENTIFIER;
+				}
 
 [ \t]				;
 \n.*				{
@@ -120,7 +131,12 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 					if (!YY_CURRENT_BUFFER)
 					{
+						g_message ("done");
 						yyterminate ();
+					}
+					else
+					{
+						g_message ("not yet done");
 					}
 				}
 
@@ -178,20 +194,20 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_REGEX_BEGIN;
 				}
 
-<instring,inregex,incl,equation,INITIAL>"@"+"[" {
+<instring,inregex,incl,equation,onlyselector,INITIAL>"@"+"[" {
 					yy_push_state (indirection, yyscanner);
 					yylval->num = yyleng - 1;
 					return T_INDIRECTION_BEGIN;
 				}
 
-<instring,inregex,incl,indirection,INITIAL>"$("	{
+<instring,inregex,incl,indirection,onlyselector,INITIAL>"$("	{
 					cpg_parser_context_push_equation (yyextra);
 					yy_push_state (equation, yyscanner);
 
 					return T_EQUATION_BEGIN;
 				}
 
-<instring,inregex,incl,indirection,INITIAL>"@"{IDENTIFIER} {
+<instring,inregex,incl,indirection,onlyselector,INITIAL>"@"{IDENTIFIER} {
 					yylval->id = g_strdup (yytext + 1);
 					return T_DEFINED;
 				}
@@ -201,7 +217,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_DEFINED;
 				}
 
-<instring,inregex,incl,indirection,equation,INITIAL>"@"+[0-9]+ {
+<instring,inregex,incl,indirection,equation,onlyselector,INITIAL>"@"+[0-9]+ {
 					yylval->ref.parent = count_ref_parent (yytext);
 					yylval->ref.idx = (gint)g_ascii_strtoll (yytext + yylval->ref.parent + 1, NULL, 10);
 					return T_REFERENCE;
@@ -270,8 +286,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "="				return '=';
 "<"				return '<';
 ","				return ',';
-"."				return '.';
-"|"				return '|';
+<onlyselector,INITIAL>"."	return '.';
+<onlyselector,INITIAL>"|"	return '|';
 "["				return '[';
 "]"				return ']';
 
