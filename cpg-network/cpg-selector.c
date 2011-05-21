@@ -1177,6 +1177,15 @@ selector_select_all (CpgSelector        *selector,
 	GSList *item;
 	GSList *ctx = NULL;
 
+	if (context == NULL)
+	{
+		context = cpg_embedded_context_new ();
+	}
+	else
+	{
+		g_object_ref (context);
+	}
+
 	if (!selector->priv->has_selected)
 	{
 		selector->priv->selectors =
@@ -1187,6 +1196,7 @@ selector_select_all (CpgSelector        *selector,
 
 	if (!selector->priv->selectors)
 	{
+		g_object_unref (context);
 		return NULL;
 	}
 
@@ -1212,6 +1222,8 @@ selector_select_all (CpgSelector        *selector,
 		}
 	}
 
+	g_object_unref (context);
+
 	return ctx;
 }
 
@@ -1222,7 +1234,7 @@ cpg_selector_select (CpgSelector        *selector,
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	return selector_select_all (selector, parent, TYPE_ALL, context);
 }
@@ -1234,7 +1246,7 @@ cpg_selector_select_states (CpgSelector        *selector,
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	return selector_select_all (selector, parent, TYPE_STATE, context);
 }
@@ -1246,7 +1258,7 @@ cpg_selector_select_links (CpgSelector        *selector,
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	return selector_select_all (selector, parent, TYPE_LINK, context);
 }
@@ -1258,7 +1270,7 @@ cpg_selector_select_properties (CpgSelector        *selector,
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
 	return selector_select_all (selector, parent, TYPE_PROPERTY, context);
 }
