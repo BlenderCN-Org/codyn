@@ -101,8 +101,14 @@ CpgObject    *cpg_group_get_child     (CpgGroup    *group,
 CpgObject    *cpg_group_find_object   (CpgGroup    *group,
                                        const gchar *selector);
 
+GSList       *cpg_group_find_objects  (CpgGroup    *group,
+                                       const gchar *selector);
+
 CpgProperty  *cpg_group_find_property (CpgGroup    *group,
-                                       const gchar *path);
+                                       const gchar *selector);
+
+GSList       *cpg_group_find_properties (CpgGroup    *group,
+                                         const gchar *selector);
 
 gboolean      cpg_group_verify_remove_child (CpgGroup   *group,
                                              CpgObject  *child,

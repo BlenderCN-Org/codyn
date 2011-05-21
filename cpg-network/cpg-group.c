@@ -1793,11 +1793,61 @@ cpg_group_get_child (CpgGroup    *group,
 }
 
 /**
- * cpg_group_find_object:
+ * cpg_group_find_objects:
  * @group: A #CpgGroup
  * @path: The object path
  *
- * Find an object by specifying a path. For example, if there is
+ * Find objects by specifying a path. For example, if there is
+ * another group "g" containing a state "s", you can use
+ * cpg_group_find_object (group, "g.s") to get the object.
+ *
+ * Returns: (transfer container) (element-type CpgObject): A #CpgObject
+ *
+ **/
+GSList *
+cpg_group_find_objects (CpgGroup    *group,
+                        const gchar *selector)
+{
+	CpgSelector *sel;
+	GSList *all;
+	GSList *ret = NULL;
+	GError *error = NULL;
+
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+	g_return_val_if_fail (selector != NULL, NULL);
+
+	sel = cpg_selector_parse (selector, &error);
+
+	if (!sel)
+	{
+		g_warning ("Failed to parse selector: %s", error->message);
+		g_error_free (error);
+
+		return NULL;
+	}
+
+	all = cpg_selector_select (sel, CPG_OBJECT (group), NULL);
+
+	while (all)
+	{
+		ret = g_slist_prepend (ret,
+		                       cpg_selection_get_object (all->data));
+
+		cpg_selection_free (all->data);
+		all = g_slist_delete_link (all, all);
+	}
+
+	g_object_unref (sel);
+
+	return g_slist_reverse (ret);
+}
+
+/**
+ * cpg_group_find_objects:
+ * @group: A #CpgGroup
+ * @path: The object path
+ *
+ * Find object by specifying a path. For example, if there is
  * another group "g" containing a state "s", you can use
  * cpg_group_find_object (group, "g.s") to get the object.
  *
@@ -1808,33 +1858,71 @@ CpgObject *
 cpg_group_find_object (CpgGroup    *group,
                        const gchar *selector)
 {
-	CpgSelector *sel;
 	GSList *all;
 	CpgObject *ret = NULL;
 
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	sel = cpg_selector_parse (selector, NULL);
-
-	if (!sel)
-	{
-		return NULL;
-	}
-
-	all = cpg_selector_select (sel, CPG_OBJECT (group), NULL);
+	all = cpg_group_find_objects (group, selector);
 
 	if (all)
 	{
-		ret = cpg_selection_get_object (all->data);
+		ret =  all->data;
 	}
 
-	g_slist_foreach (all, (GFunc)cpg_selection_free, NULL);
 	g_slist_free (all);
+
+	return ret;
+}
+
+/**
+ * cpg_group_find_properties:
+ * @group: A #CpgGroup
+ * @path: The object path
+ *
+ * Find properties by specifying a path. For example, if there is
+ * another group "g" containing a state "s" with property "x", you can use
+ * cpg_group_find_properties (group, "g.s.x") to get the property.
+ *
+ * Returns: (transfer container) (element-type CpgProperty): A list of #CpgProperty
+ *
+ **/
+GSList *
+cpg_group_find_properties (CpgGroup    *group,
+                           gchar const *selector)
+{
+	CpgSelector *sel;
+	GSList *all;
+	GSList *ret = NULL;
+	GError *error = NULL;
+
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+	g_return_val_if_fail (selector != NULL, NULL);
+
+	sel = cpg_selector_parse (selector, &error);
+
+	if (!sel)
+	{
+		g_warning ("Failed to parse selector: %s", error->message);
+		g_error_free (error);
+		return NULL;
+	}
+
+	all = cpg_selector_select_properties (sel, CPG_OBJECT (group), NULL);
+
+	while (all)
+	{
+		ret = g_slist_prepend (ret,
+		                       cpg_selection_get_property (all->data));
+
+		cpg_selection_free (all->data);
+		all = g_slist_delete_link (all, all);
+	}
 
 	g_object_unref (sel);
 
-	return ret;
+	return g_slist_reverse (ret);
 }
 
 /**
@@ -1851,33 +1939,22 @@ cpg_group_find_object (CpgGroup    *group,
  **/
 CpgProperty *
 cpg_group_find_property (CpgGroup    *group,
-                         gchar const *path)
+                         gchar const *selector)
 {
+	GSList *all;
+	CpgProperty *ret = NULL;
+
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
-	g_return_val_if_fail (path != NULL, NULL);
+	g_return_val_if_fail (selector != NULL, NULL);
 
-	gchar *copy = g_strdup (path);
-	gchar *ptr = g_utf8_strrchr (copy, -1, '.');
+	all = cpg_group_find_properties (group, selector);
 
-	if (!ptr)
+	if (all)
 	{
-		g_free (copy);
-		return NULL;
+		ret = all->data;
 	}
 
-	*ptr = '\0';
-	CpgObject *object;
-
-	object = cpg_group_find_object (group, copy);
-
-	if (!object)
-	{
-		g_free (copy);
-		return NULL;
-	}
-
-	CpgProperty *ret = cpg_object_get_property (object, ptr + 1);
-	g_free (copy);
+	g_slist_free (all);
 
 	return ret;
 }
