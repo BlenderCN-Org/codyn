@@ -1684,6 +1684,7 @@ cpg_parser_context_read (CpgParserContext *context,
                          gsize             max_size)
 {
 	InputItem *item;
+	gssize ret;
 
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), EOF);
 	g_return_val_if_fail (buffer != NULL, EOF);
@@ -1872,7 +1873,16 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 			}
 
 			file = g_file_resolve_relative_path (ip->file, res);
-			break;
+
+			if (file && !g_file_query_exists (file, NULL))
+			{
+				g_object_unref (file);
+				file = NULL;
+			}
+			else
+			{
+				break;
+			}
 		}
 
 		if (!file)
