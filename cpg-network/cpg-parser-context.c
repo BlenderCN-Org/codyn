@@ -628,13 +628,30 @@ void
 cpg_parser_context_error (CpgParserContext *context,
                           gchar const      *message)
 {
+	gchar *fname = NULL;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	if (context->priv->inputs)
+	{
+		InputItem *item = context->priv->inputs->data;
+
+		if (item->file)
+		{
+			fname = g_file_get_basename (item->file);
+		}
+	}
 
 	parser_failed (context,
 	               CPG_NETWORK_LOAD_ERROR_SYNTAX,
-	               "Unexpected token `%s' on line %d",
+	               "Unexpected token `%s' at %s%s%d.%d",
 	               context->priv->token,
-	               context->priv->lineno);
+	               fname ? fname : "",
+	               fname ? ":" : "",
+	               context->priv->lineno,
+	               context->priv->cstart);
+
+	g_free (fname);
 }
 
 GError *
