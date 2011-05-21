@@ -226,8 +226,7 @@ define_contents
 	;
 
 define
-	: T_KEY_DEFINE define_item
-	| T_KEY_DEFINE '{' define_contents '}'
+	: T_KEY_DEFINE '{' define_contents '}'
 	;
 
 templates
