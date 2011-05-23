@@ -2467,3 +2467,146 @@ cpg_parser_context_get_embedded (CpgParserContext *context)
 
 	return context->priv->embedded;
 }
+
+static void
+debug_selector (CpgParserContext *context,
+                CpgSelection     *selection,
+                GSList           *objects)
+{
+	gchar *fullid;
+	GSList *orig = objects;
+
+	fullid = cpg_object_get_full_id (cpg_selection_get_object (selection));
+
+	while (objects)
+	{
+		gchar *msg;
+		CpgSelection *sel;
+
+		sel = objects->data;
+
+		if (cpg_selection_is_object (sel))
+		{
+			msg = cpg_object_get_full_id (cpg_selection_get_object (sel));
+		}
+		else
+		{
+			msg = cpg_property_get_full_name (cpg_selection_get_property (sel));
+		}
+
+		g_printerr ("[debug] (%d): {%s} => %s\n",
+		            context->priv->lineno,
+		            fullid,
+		            msg);
+
+		g_free (msg);
+		objects = g_slist_next (objects);
+	}
+
+	g_free (fullid);
+
+	g_slist_foreach (orig, (GFunc)g_object_unref, NULL);
+	g_slist_free (orig);
+}
+
+void
+cpg_parser_context_debug_selector (CpgParserContext *context,
+                                   CpgSelector      *selector)
+{
+	GSList *item;
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->objects; item; item = g_slist_next (item))
+	{
+		debug_selector (context,
+		                item->data,
+		                cpg_selector_select (selector,
+		                                     cpg_selection_get_object (item->data),
+		                                     context->priv->embedded));
+	}
+}
+
+void
+cpg_parser_context_debug_selector_state (CpgParserContext *context,
+                                         CpgSelector      *selector)
+{
+	GSList *item;
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->objects; item; item = g_slist_next (item))
+	{
+		debug_selector (context,
+		                item->data,
+		                cpg_selector_select_states (selector,
+		                                            cpg_selection_get_object (item->data),
+		                                            context->priv->embedded));
+	}
+}
+
+void
+cpg_parser_context_debug_selector_link (CpgParserContext *context,
+                                        CpgSelector      *selector)
+{
+	GSList *item;
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->objects; item; item = g_slist_next (item))
+	{
+		debug_selector (context,
+		                item->data,
+		                cpg_selector_select_links (selector,
+		                                           cpg_selection_get_object (item->data),
+		                                           context->priv->embedded));
+	}
+}
+
+void
+cpg_parser_context_debug_selector_property (CpgParserContext *context,
+                                            CpgSelector      *selector)
+{
+	GSList *item;
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->objects; item; item = g_slist_next (item))
+	{
+		debug_selector (context,
+		                item->data,
+		                cpg_selector_select_properties (selector,
+		                                                cpg_selection_get_object (item->data),
+		                                                context->priv->embedded));
+	}
+}
+
+void
+cpg_parser_context_debug_string (CpgParserContext  *context,
+                                 CpgEmbeddedString *s)
+{
+	gchar const *ret;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
+
+	ret = cpg_embedded_string_expand (s, context->priv->embedded);
+
+	g_printerr ("[debug] (%d): %s\n", context->priv->lineno, ret);
+}

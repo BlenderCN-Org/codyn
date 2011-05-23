@@ -41,7 +41,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECT T_KEY_PROPERTY
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -174,6 +174,7 @@ toplevel
 	| layout
 	| integrator
 	| include
+	| debug
 	;
 
 include_path
@@ -193,9 +194,14 @@ network
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
+network_item
+	: property
+	| debug
+	;
+
 network_contents
 	:
-	| network_contents property
+	| network_contents network_item
 	;
 
 integrator_item
@@ -219,6 +225,7 @@ define_item
 					{ cpg_parser_context_define (context, $2, $5, TRUE); }
 	| identifier_or_string '=' value_as_string
 					{ cpg_parser_context_define (context, $1, $3, FALSE); }
+	| debug
 	;
 
 define_contents
@@ -245,6 +252,7 @@ template_item
 	| link
 	| group
 	| import
+	| debug
 	;
 
 template_contents
@@ -403,6 +411,7 @@ function_argument
 state_item
 	: property
 	| define
+	| debug
 	;
 
 state_contents
@@ -417,6 +426,7 @@ group_item
 	| interface
 	| group
 	| define
+	| debug
 	;
 
 group_contents
@@ -441,6 +451,7 @@ link_item
 	: action
 	| property
 	| define
+	| debug
 	;
 
 link_contents
@@ -697,6 +708,14 @@ indirection_inside
 	                                                            $1);}
 	  equation_contents
 	  T_INDIRECTION_END		{ cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
+	;
+
+debug
+	: T_KEY_DEBUG T_KEY_SELECT selector { cpg_parser_context_debug_selector (context, $3); }
+	| T_KEY_DEBUG T_KEY_SELECT T_KEY_LINK selector { cpg_parser_context_debug_selector_state (context, $4); }
+	| T_KEY_DEBUG T_KEY_SELECT T_KEY_STATE selector { cpg_parser_context_debug_selector_link (context, $4); }
+	| T_KEY_DEBUG T_KEY_SELECT T_KEY_PROPERTY selector { cpg_parser_context_debug_selector_property (context, $4); }
+	| T_KEY_DEBUG value_as_string		{ cpg_parser_context_debug_string (context, $2); }
 	;
 
 %%

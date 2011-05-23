@@ -163,6 +163,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "of"				return T_KEY_OF;
 "on"				return T_KEY_ON;
 "proxy"				return T_KEY_PROXY;
+"debug"				return T_KEY_DEBUG;
+"select"			return T_KEY_SELECT;
 
 <equation,INITIAL>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);

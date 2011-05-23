@@ -114,3 +114,20 @@ cpg_selection_get_expansions (CpgSelection *selection)
 
 	return selection->priv->expansions;
 }
+
+gboolean
+cpg_selection_is_object (CpgSelection *selection)
+{
+	g_return_val_if_fail (CPG_IS_SELECTION (selection), FALSE);
+
+	return CPG_IS_OBJECT (selection->priv->object);
+}
+
+gboolean
+cpg_selection_is_property (CpgSelection *selection)
+{
+	g_return_val_if_fail (CPG_IS_SELECTION (selection), FALSE);
+
+	return CPG_IS_PROPERTY (selection->priv->object);
+}
+

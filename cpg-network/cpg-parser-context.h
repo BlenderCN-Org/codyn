@@ -212,6 +212,21 @@ gboolean               cpg_parser_context_pop_equation_depth    (CpgParserContex
 void                   cpg_parser_context_push_equation_depth   (CpgParserContext *context);
 void                   cpg_parser_context_push_equation         (CpgParserContext *context);
 
+void                   cpg_parser_context_debug_selector        (CpgParserContext *context,
+                                                                 CpgSelector      *selector);
+
+void                   cpg_parser_context_debug_selector_state  (CpgParserContext *context,
+                                                                 CpgSelector      *selector);
+
+void                   cpg_parser_context_debug_selector_link   (CpgParserContext *context,
+                                                                 CpgSelector      *selector);
+
+void                   cpg_parser_context_debug_selector_property (CpgParserContext *context,
+                                                                   CpgSelector      *selector);
+
+void                   cpg_parser_context_debug_string          (CpgParserContext  *context,
+                                                                 CpgEmbeddedString *s);
+
 G_END_DECLS
 
 #endif /* __CPG_PARSER_CONTEXT_H__ */
