@@ -242,7 +242,7 @@ find_matching_properties (CpgNetwork  *network,
 		CpgProperty *property = cpg_selection_get_property (element->data);
 		properties = g_slist_prepend (properties, property);
 
-		cpg_selection_free (element->data);
+		g_object_unref (element->data);
 		element = g_slist_next (element);
 	}
 
