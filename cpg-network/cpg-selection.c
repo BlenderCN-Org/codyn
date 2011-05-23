@@ -68,9 +68,9 @@ cpg_selection_new (gpointer  object,
 	CpgSelection *ret;
 
 	ret = g_object_new (CPG_TYPE_SELECTION,
-	                    "object", object,
 	                    NULL);
 
+	ret->priv->object = g_object_ref (object);
 	ret->priv->expansions = copy_expansions (expansions);
 
 	return ret;
