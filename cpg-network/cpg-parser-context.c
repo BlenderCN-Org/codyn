@@ -995,6 +995,8 @@ cpg_parser_context_push_object (CpgParserContext *context,
 	context->priv->context_stack =
 		g_slist_prepend (context->priv->context_stack,
 		                 context_new (objects));
+
+	cpg_embedded_context_push_define (context->priv->embedded);
 }
 
 static GSList *
@@ -1436,6 +1438,8 @@ cpg_parser_context_pop (CpgParserContext *context)
 	context->priv->context_stack =
 		g_slist_delete_link (context->priv->context_stack,
 		                     context->priv->context_stack);
+
+	cpg_embedded_context_pop_define (context->priv->embedded);
 
 	return ret;
 }

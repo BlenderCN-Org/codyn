@@ -38,6 +38,9 @@ void cpg_embedded_context_define (CpgEmbeddedContext *context,
                                   gchar const        *name,
                                   gchar const        *value);
 
+void cpg_embedded_context_push_define     (CpgEmbeddedContext *context);
+void cpg_embedded_context_pop_define      (CpgEmbeddedContext *context);
+
 void cpg_embedded_context_push_expansion  (CpgEmbeddedContext *context,
                                            CpgExpansion       *expansion);
 

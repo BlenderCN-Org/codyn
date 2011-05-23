@@ -5,7 +5,7 @@
 
 struct _CpgEmbeddedContextPrivate
 {
-	GHashTable *defines;
+	GSList *defines;
 
 	GSList *expansions;
 	GSList *numexp;
@@ -20,7 +20,10 @@ cpg_embedded_context_finalize (GObject *object)
 
 	context = CPG_EMBEDDED_CONTEXT (object);
 
-	g_hash_table_destroy (context->priv->defines);
+	while (context->priv->defines)
+	{
+		cpg_embedded_context_pop_define (context);
+	}
 
 	cpg_embedded_context_set_expansions (context, NULL);
 
@@ -42,10 +45,7 @@ cpg_embedded_context_init (CpgEmbeddedContext *self)
 {
 	self->priv = CPG_EMBEDDED_CONTEXT_GET_PRIVATE (self);
 
-	self->priv->defines = g_hash_table_new_full (g_str_hash,
-	                                             g_str_equal,
-	                                             (GDestroyNotify)g_free,
-	                                             (GDestroyNotify)g_free);
+	cpg_embedded_context_push_define (self);
 }
 
 CpgEmbeddedContext *
@@ -62,9 +62,12 @@ cpg_embedded_context_define (CpgEmbeddedContext *context,
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 	g_return_if_fail (name != NULL);
 
-	g_hash_table_insert (context->priv->defines,
-	                     g_strdup (name),
-	                     g_strdup (value ? value : ""));
+	if (context->priv->defines)
+	{
+		g_hash_table_insert (context->priv->defines->data,
+		                     g_strdup (name),
+		                     g_strdup (value ? value : ""));
+	}
 }
 
 void
@@ -234,4 +237,35 @@ cpg_embedded_context_calculate (CpgEmbeddedContext *context,
 	g_object_unref (ctx);
 
 	return ret;
+}
+
+void
+cpg_embedded_context_push_define (CpgEmbeddedContext *context)
+{
+	GHashTable *table;
+
+	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
+
+	table = g_hash_table_new_full (g_str_hash,
+	                               g_str_equal,
+	                               (GDestroyNotify)g_free,
+	                               (GDestroyNotify)g_free);
+
+	context->priv->defines = g_slist_prepend (context->priv->defines,
+	                                          table);
+}
+
+void
+cpg_embedded_context_pop_define (CpgEmbeddedContext *context)
+{
+	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
+
+	if (!context->priv->defines)
+	{
+		return;
+	}
+
+	g_hash_table_destroy (context->priv->defines->data);
+	context->priv->defines = g_slist_delete_link (context->priv->defines,
+	                                              context->priv->defines);
 }
