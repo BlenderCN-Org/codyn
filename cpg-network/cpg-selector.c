@@ -579,7 +579,7 @@ selector_select_regex (Selector           *selector,
 				childsel = cpg_selection_new (obj, expansions);
 				g_slist_free (expansions);
 
-				cpg_expansion_free (expansion);
+				g_object_unref (expansion);
 
 				ret = g_slist_prepend (ret, childsel);
 
@@ -619,7 +619,7 @@ selector_select_regex (Selector           *selector,
 					childsel = cpg_selection_new (child, expansions);
 					g_slist_free (expansions);
 
-					cpg_expansion_free (expansion);
+					g_object_unref (expansion);
 
 					ret = g_slist_prepend (ret, childsel);
 
@@ -667,7 +667,7 @@ selector_select_regex (Selector           *selector,
 				childsel = cpg_selection_new (item->data, expansions);
 
 				g_slist_free (expansions);
-				cpg_expansion_free (expansion);
+				g_object_unref (expansion);
 
 				ret = g_slist_prepend (ret, childsel);
 
@@ -851,12 +851,12 @@ count_selection (GSList     *selection,
 		                         expansions);
 
 		g_slist_free (expansions);
-		cpg_expansion_free (ex);
+		g_object_unref (ex);
 
 		ret->data = sel;
 	}
 
-	cpg_expansion_free (ex);
+	g_object_unref (ex);
 
 	return g_slist_reverse (ret);
 }
@@ -998,7 +998,7 @@ selector_select_pseudo (Selector    *selector,
 					                                          type),
 					                     ret);
 
-					g_slist_foreach (children, (GFunc)cpg_selection_free, NULL);
+					g_slist_foreach (children, (GFunc)g_object_unref, NULL);
 					g_slist_free (children);
 				}
 			}
@@ -1027,7 +1027,7 @@ selector_select_pseudo (Selector    *selector,
 					                                          type == TYPE_ALL ? (CPG_IS_LINK (cpg_selection_get_object (sel)) ? TYPE_LINK : TYPE_STATE) : type),
 					                      ret);
 
-					g_slist_foreach (children, (GFunc)cpg_selection_free, NULL);
+					g_slist_foreach (children, (GFunc)g_object_unref, NULL);
 					g_slist_free (children);
 				}
 			}
@@ -1213,7 +1213,7 @@ selector_select_all (CpgSelector        *selector,
 		                       item->next ? TYPE_ALL : type,
 		                       context);
 
-		g_slist_foreach (tmp, (GFunc)cpg_selection_free, NULL);
+		g_slist_foreach (tmp, (GFunc)g_object_unref, NULL);
 		g_slist_free (tmp);
 
 		if (ctx == NULL)

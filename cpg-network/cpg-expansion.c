@@ -1,9 +1,46 @@
 #include "cpg-expansion.h"
 
-struct _CpgExpansion
+
+#define CPG_EXPANSION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_EXPANSION, CpgExpansionPrivate))
+
+struct _CpgExpansionPrivate
 {
 	GPtrArray *expansions;
 };
+
+G_DEFINE_TYPE (CpgExpansion, cpg_expansion, G_TYPE_OBJECT)
+
+static void
+cpg_expansion_finalize (GObject *object)
+{
+	CpgExpansion *expansion;
+	gint i;
+
+	expansion = CPG_EXPANSION (object);
+
+	for (i = 0; i < expansion->priv->expansions->len; ++i)
+	{
+		g_free (g_ptr_array_index (expansion->priv->expansions, i));
+	}
+
+	G_OBJECT_CLASS (cpg_expansion_parent_class)->finalize (object);
+}
+
+static void
+cpg_expansion_class_init (CpgExpansionClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->finalize = cpg_expansion_finalize;
+
+	g_type_class_add_private (object_class, sizeof (CpgExpansionPrivate));
+}
+
+static void
+cpg_expansion_init (CpgExpansion *self)
+{
+	self->priv = CPG_EXPANSION_GET_PRIVATE (self);
+}
 
 CpgExpansion *
 cpg_expansion_new_one (gchar const *item)
@@ -21,19 +58,19 @@ cpg_expansion_new (gchar const * const *items)
 {
 	CpgExpansion *ret;
 
-	ret = g_slice_new (CpgExpansion);
+	ret = g_object_new (CPG_TYPE_EXPANSION, NULL);
 
-	ret->expansions = g_ptr_array_new ();
+	ret->priv->expansions = g_ptr_array_new ();
 
 	while (items && *items)
 	{
-		g_ptr_array_add (ret->expansions, g_strdup (*items));
+		g_ptr_array_add (ret->priv->expansions, g_strdup (*items));
 		++items;
 	}
 
-	if (ret->expansions->len == 0)
+	if (ret->priv->expansions->len == 0)
 	{
-		g_ptr_array_add (ret->expansions, g_strdup (""));
+		g_ptr_array_add (ret->priv->expansions, g_strdup (""));
 	}
 
 	return ret;
@@ -42,19 +79,23 @@ cpg_expansion_new (gchar const * const *items)
 gint
 cpg_expansion_num (CpgExpansion *id)
 {
-	return id->expansions->len;
+	g_return_val_if_fail (CPG_IS_EXPANSION (id), 0);
+
+	return id->priv->expansions->len;
 }
 
 gchar const *
 cpg_expansion_get (CpgExpansion *id,
                    gint           idx)
 {
-	if (idx < 0 || idx >= id->expansions->len)
+	g_return_val_if_fail (CPG_IS_EXPANSION (id), NULL);
+
+	if (idx < 0 || idx >= id->priv->expansions->len)
 	{
 		return NULL;
 	}
 
-	return (gchar const *)g_ptr_array_index (id->expansions, idx);
+	return (gchar const *)g_ptr_array_index (id->priv->expansions, idx);
 }
 
 void
@@ -62,29 +103,13 @@ cpg_expansion_set (CpgExpansion *id,
                    gint           idx,
                    gchar const   *val)
 {
-	if (idx >= 0 && idx < id->expansions->len)
+	g_return_if_fail (CPG_IS_EXPANSION (id));
+
+	if (idx >= 0 && idx < id->priv->expansions->len)
 	{
-		g_free (g_ptr_array_index (id->expansions, idx));
-		id->expansions->pdata[idx] = g_strdup (val);
+		g_free (g_ptr_array_index (id->priv->expansions, idx));
+		id->priv->expansions->pdata[idx] = g_strdup (val);
 	}
-}
-
-void
-cpg_expansion_free (CpgExpansion *id)
-{
-	gint i;
-
-	if (!id)
-	{
-		return;
-	}
-
-	for (i = 0; i < id->expansions->len; ++i)
-	{
-		g_free (g_ptr_array_index (id->expansions, i));
-	}
-
-	g_slice_free (CpgExpansion, id);
 }
 
 CpgExpansion *
@@ -92,7 +117,10 @@ cpg_expansion_copy (CpgExpansion *id)
 {
 	CpgExpansion *ret;
 	GPtrArray *ptr;
+	gchar **args;
 	gint i;
+
+	g_return_val_if_fail (id == NULL || CPG_IS_EXPANSION (id), NULL);
 
 	if (id == NULL)
 	{
@@ -107,8 +135,11 @@ cpg_expansion_copy (CpgExpansion *id)
 		                 g_strdup (cpg_expansion_get (id, i)));
 	}
 
-	ret = g_slice_new (CpgExpansion);
-	ret->expansions = ptr;
+	g_ptr_array_add (ptr, NULL);
+	args = (gchar **)g_ptr_array_free (ptr, FALSE);
+
+	ret = cpg_expansion_new ((gchar const * const *)args);
+	g_strfreev (args);
 
 	return ret;
 }
@@ -117,10 +148,8 @@ void
 cpg_expansion_add (CpgExpansion *id,
                    gchar const  *item)
 {
-	if (!id || !item)
-	{
-		return;
-	}
+	g_return_if_fail (CPG_IS_EXPANSION (id));
+	g_return_if_fail (item != NULL);
 
-	g_ptr_array_add (id->expansions, g_strdup (item));
+	g_ptr_array_add (id->priv->expansions, g_strdup (item));
 }

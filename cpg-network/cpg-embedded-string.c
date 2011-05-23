@@ -558,12 +558,12 @@ expansions_concat (GSList *s1,
 			}
 			else
 			{
-				cpg_expansion_free (item->data);
+				g_object_unref (item->data);
 				item = g_slist_delete_link (item, item);
 			}
 		}
 
-		cpg_expansion_free (s1->data);
+		g_object_unref (s1->data);
 		s1 = g_slist_delete_link (s1, s1);
 	}
 

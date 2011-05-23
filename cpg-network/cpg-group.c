@@ -1833,7 +1833,7 @@ cpg_group_find_objects (CpgGroup    *group,
 		ret = g_slist_prepend (ret,
 		                       cpg_selection_get_object (all->data));
 
-		cpg_selection_free (all->data);
+		g_object_unref (all->data);
 		all = g_slist_delete_link (all, all);
 	}
 
@@ -1916,7 +1916,7 @@ cpg_group_find_properties (CpgGroup    *group,
 		ret = g_slist_prepend (ret,
 		                       cpg_selection_get_property (all->data));
 
-		cpg_selection_free (all->data);
+		g_object_unref (all->data);
 		all = g_slist_delete_link (all, all);
 	}
 

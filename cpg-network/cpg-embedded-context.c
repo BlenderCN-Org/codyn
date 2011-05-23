@@ -155,7 +155,7 @@ cpg_embedded_context_pop_expansions (CpgEmbeddedContext *context)
 
 	while (num > 0)
 	{
-		cpg_expansion_free (context->priv->expansions->data);
+		g_object_unref (context->priv->expansions->data);
 
 		context->priv->expansions =
 			g_slist_delete_link (context->priv->expansions,

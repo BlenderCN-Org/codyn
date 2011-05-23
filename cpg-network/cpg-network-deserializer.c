@@ -640,7 +640,7 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 		for (item = *templates; item; item = g_slist_next (item))
 		{
 			CpgObject *o = cpg_selection_get_object (item->data);
-			cpg_selection_free (item->data);
+			g_object_unref (item->data);
 
 			item->data = o;
 		}
