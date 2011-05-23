@@ -1897,6 +1897,28 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 }
 
 void
+cpg_parser_context_push_input_from_string (CpgParserContext *context,
+                                           gchar const      *s)
+{
+	GInputStream *stream;
+	gchar *ret;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (s != NULL);
+
+	ret = g_strdup (s);
+
+	stream = g_memory_input_stream_new_from_data (ret,
+	                                              strlen (ret),
+	                                              (GDestroyNotify)g_free);
+
+	cpg_parser_context_push_input (context, NULL, stream);
+
+	g_object_unref (stream);
+}
+
+
+void
 cpg_parser_context_pop_input (CpgParserContext *context)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));

@@ -168,6 +168,9 @@ void                   cpg_parser_context_set_integrator       (CpgParserContext
 void                   cpg_parser_context_push_input_from_path (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *path);
 
+void                   cpg_parser_context_push_input_from_string (CpgParserContext         *context,
+                                                                  gchar const              *s);
+
 void                   cpg_parser_context_push_input           (CpgParserContext           *context,
                                                                 GFile                      *file,
                                                                 GInputStream               *stream);
