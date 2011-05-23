@@ -625,8 +625,8 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 }
 
 void
-cpg_parser_context_error (CpgParserContext *context,
-                          gchar const      *message)
+cpg_parser_context_set_error (CpgParserContext *context,
+                              gchar const      *message)
 {
 	gchar *fname = NULL;
 

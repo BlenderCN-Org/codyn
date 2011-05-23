@@ -679,8 +679,7 @@ indirection_inside
 static void
 yyerror (YYLTYPE *locp, CpgParserContext *context, char *s)
 {
-	cpg_parser_context_error (context,
-	                          s);
+	cpg_parser_context_set_error (context, s);
 }
 
 static CpgFunctionPolynomialPiece *

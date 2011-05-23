@@ -106,7 +106,7 @@ void                   cpg_parser_context_import               (CpgParserContext
                                                                 CpgEmbeddedString          *id,
                                                                 CpgEmbeddedString          *path);
 
-void                   cpg_parser_context_error                (CpgParserContext           *context,
+void                   cpg_parser_context_set_error            (CpgParserContext           *context,
                                                                 gchar const                *message);
 
 GError                *cpg_parser_context_get_error            (CpgParserContext           *context);
