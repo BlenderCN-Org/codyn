@@ -1806,7 +1806,8 @@ cpg_parser_context_get_token (CpgParserContext *context)
 void
 cpg_parser_context_define (CpgParserContext  *context,
                            CpgEmbeddedString *name,
-                           CpgEmbeddedString *define)
+                           CpgEmbeddedString *define,
+                           gboolean           expand)
 {
 	gchar const *exname;
 	gchar const *exdefine;
@@ -1818,9 +1819,71 @@ cpg_parser_context_define (CpgParserContext  *context,
 	exname = cpg_embedded_string_expand (name, context->priv->embedded);
 	exdefine = cpg_embedded_string_expand (define, context->priv->embedded);
 
-	cpg_embedded_context_define (context->priv->embedded,
-	                             exname,
-	                             exdefine);
+	if (expand)
+	{
+		GSList *items;
+		GSList *item;
+		gint num = 0;
+		gchar *cntname;
+		gchar *cntval;
+		gchar *s0;
+
+		s0 = g_strdup_printf ("%s0", exname);
+
+		cpg_embedded_context_define (context->priv->embedded,
+		                             s0,
+		                             exdefine);
+
+		g_free (s0);
+
+		items = cpg_embedded_string_expand_multiple (define, context->priv->embedded);
+
+		for (item = items; item; item = g_slist_next (item))
+		{
+			CpgExpansion *ex = item->data;
+			gint i;
+			gchar *name;
+
+			name = g_strdup_printf ("%s%d", exname, ++num);
+
+			cpg_embedded_context_define (context->priv->embedded,
+			                             name, cpg_expansion_get (ex, 0));
+
+			for (i = 0; i < cpg_expansion_num (ex); ++i)
+			{
+				gchar *sub;
+
+				sub = g_strdup_printf ("%s,%d", name, i);
+
+				cpg_embedded_context_define (context->priv->embedded,
+				                             sub,
+				                             cpg_expansion_get (ex, i));
+
+				g_free (sub);
+			}
+
+			g_free (name);
+		}
+
+		g_slist_foreach (items, (GFunc)g_object_unref, NULL);
+		g_slist_free (items);
+
+		cntname = g_strconcat (exname, "~", NULL);
+		cntval = g_strdup_printf ("%d", num);
+
+		cpg_embedded_context_define (context->priv->embedded,
+		                             cntname,
+		                             cntval);
+
+		g_free (cntname);
+		g_free (cntval);
+	}
+	else
+	{
+		cpg_embedded_context_define (context->priv->embedded,
+		                             exname,
+		                             exdefine);
+	}
 
 	g_object_unref (name);
 	g_object_unref (define);

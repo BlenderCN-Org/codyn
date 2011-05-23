@@ -54,9 +54,8 @@ void cpg_embedded_context_pop_expansions (CpgEmbeddedContext *context);
 gchar *cpg_embedded_context_lookup_define (CpgEmbeddedContext *context,
                                            gchar const        *name);
 
-gchar *cpg_embedded_context_lookup_ref (CpgEmbeddedContext *context,
-                                        gint                parent,
-                                        gint                idx);
+CpgExpansion *cpg_embedded_context_lookup_expansion (CpgEmbeddedContext *context,
+                                                     gint                depth);
 
 gchar *cpg_embedded_context_calculate (CpgEmbeddedContext *context,
                                        gchar const        *equation);

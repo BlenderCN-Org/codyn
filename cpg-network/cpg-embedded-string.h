@@ -23,8 +23,6 @@ typedef enum
 {
 	CPG_EMBEDDED_STRING_NODE_TEXT,
 	CPG_EMBEDDED_STRING_NODE_EQUATION,
-	CPG_EMBEDDED_STRING_NODE_DEFINE,
-	CPG_EMBEDDED_STRING_NODE_REF,
 	CPG_EMBEDDED_STRING_NODE_INDIRECTION
 } CpgEmbeddedStringNodeType;
 
@@ -40,35 +38,28 @@ struct _CpgEmbeddedStringClass
 	GObjectClass parent_class;
 };
 
-GType cpg_embedded_string_get_type (void) G_GNUC_CONST;
+GType              cpg_embedded_string_get_type         (void) G_GNUC_CONST;
 
-CpgEmbeddedString *cpg_embedded_string_new (void);
+CpgEmbeddedString *cpg_embedded_string_new              (void);
 
-CpgEmbeddedString *cpg_embedded_string_new_from_string (gchar const *s);
-CpgEmbeddedString *cpg_embedded_string_new_from_double (gdouble s);
-CpgEmbeddedString *cpg_embedded_string_new_from_integer (gint s);
+CpgEmbeddedString *cpg_embedded_string_new_from_string  (gchar const               *s);
+CpgEmbeddedString *cpg_embedded_string_new_from_double  (gdouble                    s);
+CpgEmbeddedString *cpg_embedded_string_new_from_integer (gint                       s);
 
-CpgEmbeddedString *cpg_embedded_string_push (CpgEmbeddedString *s,
-                               CpgEmbeddedStringNodeType type,
-                               gint num);
+CpgEmbeddedString *cpg_embedded_string_push             (CpgEmbeddedString         *s,
+                                                         CpgEmbeddedStringNodeType  type,
+                                                         gint                       depth);
 
-CpgEmbeddedString *cpg_embedded_string_pop (CpgEmbeddedString *s);
+CpgEmbeddedString *cpg_embedded_string_pop              (CpgEmbeddedString         *s);
 
-void cpg_embedded_string_add_text (CpgEmbeddedString *s,
-                                   gchar const       *text);
+void               cpg_embedded_string_add_text         (CpgEmbeddedString         *s,
+                                                         gchar const               *text);
 
-void cpg_embedded_string_add_define (CpgEmbeddedString *s,
-                                     gchar const       *text);
+gchar const       *cpg_embedded_string_expand           (CpgEmbeddedString         *s,
+                                                         CpgEmbeddedContext        *ctx);
 
-void cpg_embedded_string_add_reference (CpgEmbeddedString *s,
-                                        gint               parent,
-                                        gint               idx);
-
-gchar const *cpg_embedded_string_expand (CpgEmbeddedString *s,
-                                         CpgEmbeddedContext *ctx);
-
-GSList *cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
-                                             CpgEmbeddedContext *ctx);
+GSList            *cpg_embedded_string_expand_multiple  (CpgEmbeddedString         *s,
+                                                         CpgEmbeddedContext        *ctx);
 
 G_END_DECLS
 

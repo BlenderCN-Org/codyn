@@ -8,14 +8,9 @@ typedef struct
 	CpgEmbeddedStringNodeType type;
 
 	gchar *text;
-
-	struct
-	{
-		gint parent;
-		gint idx;
-	} ref;
-
 	GSList *nodes;
+
+	gint depth;
 } Node;
 
 struct _CpgEmbeddedStringPrivate
@@ -28,9 +23,8 @@ G_DEFINE_TYPE (CpgEmbeddedString, cpg_embedded_string, G_TYPE_OBJECT)
 
 static Node *
 node_new (CpgEmbeddedStringNodeType  type,
-          gchar const       *text,
-          gint               parent,
-          gint               idx)
+          gchar const               *text,
+          gint                       depth)
 {
 	Node *ret;
 
@@ -38,9 +32,7 @@ node_new (CpgEmbeddedStringNodeType  type,
 
 	ret->type = type;
 	ret->text = g_strdup (text ? text : "");
-
-	ret->ref.parent = parent;
-	ret->ref.idx = idx;
+	ret->depth = depth;
 
 	return ret;
 }
@@ -132,17 +124,21 @@ cpg_embedded_string_new_from_integer (gint s)
 	return ret;
 }
 
-static Node *
-add_node (CpgEmbeddedString *s,
-          CpgEmbeddedStringNodeType type,
-          gchar const       *text,
-          gint               parent,
-          gint               idx)
+void
+cpg_embedded_string_add_text (CpgEmbeddedString *s,
+                              gchar const       *text)
 {
 	Node *node;
 	Node *par;
 
-	node = node_new (type, text, parent, idx);
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
+
+	if (text == NULL)
+	{
+		return;
+	}
+
+	node = node_new (CPG_EMBEDDED_STRING_NODE_TEXT, text, 0);
 
 	if (s->priv->stack)
 	{
@@ -153,58 +149,18 @@ add_node (CpgEmbeddedString *s,
 	{
 		s->priv->stack = g_slist_prepend (NULL, node);
 	}
-
-	return node;
-}
-
-void
-cpg_embedded_string_add_text (CpgEmbeddedString *s,
-                              gchar const       *text)
-{
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
-
-	if (text == NULL)
-	{
-		return;
-	}
-
-	add_node (s, CPG_EMBEDDED_STRING_NODE_TEXT, text, 0, 0);
-}
-
-void
-cpg_embedded_string_add_define (CpgEmbeddedString *s,
-                                gchar const       *text)
-{
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
-
-	if (text == NULL)
-	{
-		return;
-	}
-
-	add_node (s, CPG_EMBEDDED_STRING_NODE_DEFINE, text, 0, 0);
-}
-
-void
-cpg_embedded_string_add_reference (CpgEmbeddedString *s,
-                                   gint               parent,
-                                   gint               idx)
-{
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
-
-	add_node (s, CPG_EMBEDDED_STRING_NODE_REF, NULL, parent, idx);
 }
 
 CpgEmbeddedString *
 cpg_embedded_string_push (CpgEmbeddedString         *s,
                           CpgEmbeddedStringNodeType  type,
-                          gint                       num)
+                          gint                       depth)
 {
 	Node *node;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 
-	node = node_new (type, NULL, num, 0);
+	node = node_new (type, NULL, depth);
 
 	s->priv->stack = g_slist_prepend (s->priv->stack,
 	                                  node);
@@ -238,11 +194,37 @@ cpg_embedded_string_pop (CpgEmbeddedString *s)
 }
 
 static gchar *
+collect_expansion (CpgExpansion *expansion)
+{
+	GString *ret;
+	gint i;
+
+	ret = g_string_new ("{");
+
+	for (i = 0; i < cpg_expansion_num (expansion); ++i)
+	{
+		if (i != 0)
+		{
+			g_string_append_c (ret, ',');
+		}
+
+		g_string_append (ret, cpg_expansion_get (expansion, i));
+	}
+
+	g_string_append_c (ret, '}');
+
+	return g_string_free (ret, FALSE);
+}
+
+static gchar *
 resolve_indirection (CpgEmbeddedContext *context,
                      Node               *node,
                      gchar const        *s)
 {
 	gboolean isnum = TRUE;
+	gboolean isall = FALSE;
+	gboolean iscount = FALSE;
+
 	gchar const *ptr = s;
 
 	while (*ptr)
@@ -250,19 +232,56 @@ resolve_indirection (CpgEmbeddedContext *context,
 		if (!g_ascii_isdigit (*ptr))
 		{
 			isnum = FALSE;
+
+			if (!*(ptr + 1))
+			{
+				isall = (*ptr == '*');
+				iscount = (*ptr == '~');
+			}
+
 			break;
 		}
 
 		++ptr;
 	}
 
-	if (isnum)
+	if (isnum || isall || iscount)
 	{
-		gint idx = (gint)g_ascii_strtoll (s, NULL, 10);
+		CpgExpansion *ex;
+		gchar const *ret = NULL;
 
-		return cpg_embedded_context_lookup_ref (context,
-		                                        node->ref.parent,
-		                                        idx);
+		ex = cpg_embedded_context_lookup_expansion (context,
+		                                            node->depth);
+
+		if (!ex)
+		{
+			if (isall)
+			{
+				ret = "{}";
+			}
+			else if (iscount)
+			{
+				ret = "0";
+			}
+		}
+		else
+		{
+			if (isnum)
+			{
+				gint idx = (gint)g_ascii_strtoll (s, NULL, 10);
+				ret = cpg_expansion_get (ex, idx);
+			}
+			else if (iscount)
+			{
+				return g_strdup_printf ("%d", cpg_expansion_num (ex));
+			}
+			else if (isall)
+			{
+				return collect_expansion (ex);
+			}
+		}
+
+		return g_strdup (ret ? ret : "");
 	}
 	else
 	{
@@ -293,20 +312,6 @@ evaluate_node (Node *node,
 			g_string_prepend (ret, node->text);
 			return g_string_free (ret, FALSE);
 		break;
-		case CPG_EMBEDDED_STRING_NODE_DEFINE:
-			g_string_prepend (ret, node->text);
-
-			if (context)
-			{
-				r = cpg_embedded_context_lookup_define (context,
-				                                        ret->str);
-			}
-			else
-			{
-				g_string_prepend_c (ret, '@');
-				return g_string_free (ret, FALSE);
-			}
-		break;
 		case CPG_EMBEDDED_STRING_NODE_EQUATION:
 			if (context)
 			{
@@ -316,28 +321,6 @@ evaluate_node (Node *node,
 			{
 				return g_string_free (ret, FALSE);
 			}
-		break;
-		case CPG_EMBEDDED_STRING_NODE_REF:
-		{
-			if (context)
-			{
-				r = cpg_embedded_context_lookup_ref (context,
-				                                     node->ref.parent,
-				                                     node->ref.idx);
-			}
-			else
-			{
-				gchar *n = g_strnfill (node->ref.parent, '@');
-				gchar *ss = g_strdup_printf ("%s%d", n, node->ref.idx);
-			
-				g_string_prepend (ret, ss);
-
-				g_free (n);
-				g_free (ss);
-
-				return g_string_free (ret, FALSE);
-			}
-		}
 		break;
 		case CPG_EMBEDDED_STRING_NODE_INDIRECTION:
 			if (context)

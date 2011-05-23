@@ -174,30 +174,31 @@ cpg_embedded_context_lookup_define (CpgEmbeddedContext *context,
                                     gchar const        *name)
 {
 	gchar const *ret;
+	GSList *item;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	ret = g_hash_table_lookup (context->priv->defines, name);
+	for (item = context->priv->defines; item; item = g_slist_next (item))
+	{
+		ret = g_hash_table_lookup (item->data, name);
 
-	return g_strdup (ret ? ret : "");
+		if (ret)
+		{
+			return g_strdup (ret);
+		}
+	}
+
+	return g_strdup ("");
 }
 
-gchar *
-cpg_embedded_context_lookup_ref (CpgEmbeddedContext *context,
-                                 gint                parent,
-                                 gint                idx)
+CpgExpansion *
+cpg_embedded_context_lookup_expansion (CpgEmbeddedContext *context,
+                                       gint                depth)
 {
-	CpgExpansion *ex;
-	gchar const *ret;
-
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	ex = g_slist_nth_data (context->priv->expansions, parent);
-
-	ret = ex ? cpg_expansion_get (ex, idx) : NULL;
-
-	return g_strdup (ret ? ret : "");
+	return g_slist_nth_data (context->priv->expansions, depth);
 }
 
 gchar *

@@ -65,11 +65,12 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token <num> T_INDIRECTION_BEGIN
 %token T_INDIRECTION_END
 
+%token T_INDIRECTION_EMBEDDING_BEGIN
+%token T_INDIRECTION_EMBEDDING_END
+
+
 %token T_START_DOCUMENT
 %token T_START_SELECTOR
-
-%token <id> T_DEFINED
-%token <ref> T_REFERENCE
 
 %type <flags> property_flags
 %type <flags> property_flags_contents
@@ -94,9 +95,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <string> regex
 %type <string> equation
 %type <string> indirection
-%type <string> defined
 %type <string> identifier
-%type <string> reference
 %type <string> value_as_string
 %type <string> double
 %type <string> integer
@@ -216,8 +215,10 @@ integrator
 	;
 
 define_item
-	: identifier_or_string '=' value_as_string
-					{ cpg_parser_context_define (context, $1, $3); }
+	: '{' identifier_or_string '}' '=' value_as_string
+					{ cpg_parser_context_define (context, $2, $5, TRUE); }
+	| identifier_or_string '=' value_as_string
+					{ cpg_parser_context_define (context, $1, $3, FALSE); }
 	;
 
 define_contents
@@ -226,7 +227,10 @@ define_contents
 	;
 
 define
-	: T_KEY_DEFINE '{' define_contents '}'
+	: T_KEY_DEFINE
+	'{'
+	define_contents
+	'}'
 	;
 
 templates
@@ -396,9 +400,14 @@ function_argument
 	| identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0); }
 	;
 
+state_item
+	: property
+	| define
+	;
+
 state_contents
 	:
-	| state_contents property
+	| state_contents state_item
 	;
 
 group_item
@@ -407,6 +416,7 @@ group_item
 	| link
 	| interface
 	| group
+	| define
 	;
 
 group_contents
@@ -427,10 +437,15 @@ interface_item
 	: identifier_or_string '=' selector	{ cpg_parser_context_add_interface (context, $1, $3); errb }
 	;
 
+link_item
+	: action
+	| property
+	| define
+	;
+
 link_contents
 	:
-	| link_contents action
-	| link_contents property
+	| link_contents link_item
 	;
 
 identifier_or_string
@@ -578,20 +593,6 @@ identifier
 	: T_IDENTIFIER			{ $$ = cpg_embedded_string_new_from_string ($1); }
 	;
 
-reference
-	: T_REFERENCE			{
-						$$ = cpg_embedded_string_new ();
-						cpg_embedded_string_add_reference ($$, $1.parent, $1.idx);
-					}
-	;
-
-defined
-	: T_DEFINED			{
-						$$ = cpg_embedded_string_new ();
-						cpg_embedded_string_add_define ($$, $1);
-					}
-	;
-
 double
 	: T_DOUBLE			{ $$ = cpg_embedded_string_new_from_double ($1); }
 	;
@@ -604,9 +605,7 @@ value_as_string
 	: string
 	| equation
 	| indirection
-	| defined
 	| identifier
-	| reference
 	| integer
 	| double
 	;
@@ -614,10 +613,6 @@ value_as_string
 string_item
 	: equation_inside
 	| indirection_inside
-	| T_DEFINED			{ cpg_embedded_string_add_define (cpg_parser_context_peek_string (context), $1); }
-	| T_REFERENCE			{ cpg_embedded_string_add_reference (cpg_parser_context_peek_string (context),
-	                                                                     $1.parent,
-	                                                                     $1.idx); }
 	| T_STRING			{ cpg_embedded_string_add_text (cpg_parser_context_peek_string (context), $1); }
 	;
 
@@ -642,13 +637,28 @@ equation
 	  T_EQUATION_END		{ $$ = cpg_embedded_string_pop (cpg_parser_context_pop_string (context)); }
 	;
 
+indirection_embedding
+	: T_INDIRECTION_EMBEDDING_BEGIN
+	  string_contents
+	  T_INDIRECTION_EMBEDDING_END
+	;
+
+indirection_item
+	: string_item
+	| indirection_embedding;
+
+indirection_contents
+	: indirection_item
+	| indirection_contents indirection_item
+	;
+
 indirection
 	: T_INDIRECTION_BEGIN		{
 						cpg_embedded_string_push (cpg_parser_context_push_string (context),
 						                          CPG_EMBEDDED_STRING_NODE_INDIRECTION,
 						                          $1);
 					}
-	  string_contents
+	  indirection_contents
 	  T_INDIRECTION_END		{ $$ = cpg_embedded_string_pop (cpg_parser_context_pop_string (context)); }
 	;
 
@@ -658,11 +668,26 @@ regex
 	  T_REGEX_END			{ $$ = cpg_parser_context_pop_string (context); }
 	;
 
+equation_item
+	: string_item
+	| T_IDENTIFIER			{ cpg_embedded_string_push (cpg_parser_context_peek_string (context),
+	                                                            CPG_EMBEDDED_STRING_NODE_INDIRECTION,
+	                                                            0);
+	                                  cpg_embedded_string_add_text (cpg_parser_context_peek_string (context),
+	                                                                $1);
+	                                  cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
+	;
+
+equation_contents
+	:
+	| equation_item equation_contents
+	;
+
 equation_inside
 	: T_EQUATION_BEGIN		{ cpg_embedded_string_push (cpg_parser_context_peek_string (context),
 	                                                            CPG_EMBEDDED_STRING_NODE_EQUATION,
 	                                                            0);}
-	  string_contents
+	  equation_contents
 	  T_EQUATION_END		{ cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
 	;
 
@@ -670,7 +695,7 @@ indirection_inside
 	: T_INDIRECTION_BEGIN		{ cpg_embedded_string_push (cpg_parser_context_peek_string (context),
 	                                                            CPG_EMBEDDED_STRING_NODE_INDIRECTION,
 	                                                            $1);}
-	  string_contents
+	  equation_contents
 	  T_INDIRECTION_END		{ cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
 	;
 

@@ -3,7 +3,6 @@
 #include "cpg-parser.h"
 
 static gchar *unquote_string (gchar const *s, gint len, gchar const *escape);
-static gint count_ref_parent (gchar const *s);
 
 void cpg_parser_set_column (int column_no, yyscan_t yyscanner);
 int cpg_parser_get_column (yyscan_t yyscanner);
@@ -61,6 +60,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %x comment
 %x equation
 %x indirection
+%x indirection_embedding
 %x inclstart
 %x onlyselector
 
@@ -131,12 +131,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 					if (!YY_CURRENT_BUFFER)
 					{
-						g_message ("done");
 						yyterminate ();
-					}
-					else
-					{
-						g_message ("not yet done");
 					}
 				}
 
@@ -169,7 +164,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "on"				return T_KEY_ON;
 "proxy"				return T_KEY_PROXY;
 
-{IDENTIFIER}		 	{
+<equation,INITIAL>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);
 					return T_IDENTIFIER;
 				}
@@ -179,7 +174,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_DOUBLE;
 				}
 
-[-+]?[0-9]+			{
+[-+]?[0-9]+ {
 					yylval->numf = (gint)g_ascii_strtoll (yytext, NULL, 10);
 					return T_INTEGER;
 				}
@@ -194,33 +189,38 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_REGEX_BEGIN;
 				}
 
-<instring,inregex,incl,equation,onlyselector,INITIAL>"@"+"[" {
+<*>"@"+				{
 					yy_push_state (indirection, yyscanner);
 					yylval->num = yyleng - 1;
 					return T_INDIRECTION_BEGIN;
 				}
 
-<instring,inregex,incl,indirection,onlyselector,INITIAL>"$("	{
+<indirection>"["		{
+					yy_push_state (indirection_embedding, yyscanner);
+					return T_INDIRECTION_EMBEDDING_BEGIN;
+				}
+
+<indirection_embedding>(\\[]@$]|[^]@$])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@]$");
+					return T_STRING;
+				}
+
+<indirection>[a-z0-9_*~]+	{
+					yylval->id = g_strdup (yytext);
+					return T_STRING;
+}
+
+<indirection>.			{
+					yy_pop_state (yyscanner);
+					yyless(0);
+					return T_INDIRECTION_END;
+				}
+
+<*>"$("	{
 					cpg_parser_context_push_equation (yyextra);
 					yy_push_state (equation, yyscanner);
 
 					return T_EQUATION_BEGIN;
-				}
-
-<instring,inregex,incl,indirection,onlyselector,INITIAL>"@"{IDENTIFIER} {
-					yylval->id = g_strdup (yytext + 1);
-					return T_DEFINED;
-				}
-
-<equation>{IDENTIFIER}		{
-					yylval->id = g_strdup (yytext);
-					return T_DEFINED;
-				}
-
-<instring,inregex,incl,indirection,equation,onlyselector,INITIAL>"@"+[0-9]+ {
-					yylval->ref.parent = count_ref_parent (yytext);
-					yylval->ref.idx = (gint)g_ascii_strtoll (yytext + yylval->ref.parent + 1, NULL, 10);
-					return T_REFERENCE;
 				}
 
 <instring,incl>(\\["@$]|[^"@$])+ {
@@ -233,10 +233,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
-<indirection>(\\[]@$]|[^]@$])+	{
-					yylval->id = unquote_string (yytext, yyleng, "@]$");
-					return T_STRING;
-				}
 
 <inregex>(\\[/@$]|[^/@$])+	{
 					yylval->id = unquote_string (yytext, yyleng, "@/$");
@@ -253,9 +249,9 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_REGEX_END;
 				}
 
-<indirection>"]"		{
+<indirection_embedding>"]"	{
 					yy_pop_state (yyscanner);
-					return T_INDIRECTION_END;
+					return T_INDIRECTION_EMBEDDING_END;
 				}
 
 <equation>"("			{
@@ -316,17 +312,4 @@ unquote_string (gchar const *s, gint len, gchar const *escape)
 
 	*ptr = '\0';
 	return ret;
-}
-
-gint
-count_ref_parent (gchar const *s)
-{
-	gchar const *start = s;
-
-	while (*s == '@')
-	{
-		++s;
-	}
-
-	return s - start - 1;
 }
