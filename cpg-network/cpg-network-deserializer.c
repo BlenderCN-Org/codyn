@@ -771,7 +771,8 @@ parse_object (CpgNetworkDeserializer *deserializer,
 		return NULL;
 	}
 
-	if (CPG_IS_LAYOUTABLE (child))
+	if (CPG_IS_LAYOUTABLE (child) &&
+	    cpg_layoutable_supports_location (CPG_LAYOUTABLE (child)))
 	{
 		xmlChar *xs;
 		xmlChar *ys;

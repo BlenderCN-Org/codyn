@@ -17,24 +17,28 @@ struct _CpgLayoutableInterface
 {
 	GTypeInterface parent;
 
-	gboolean (*get_location) (CpgLayoutable *layoutable,
+	void (*get_location) (CpgLayoutable *layoutable,
 	                          gint          *x,
 	                          gint          *y);
 
 	void (*set_location) (CpgLayoutable *layoutable,
 	                      gint           x,
 	                      gint           y);
+
+	gboolean (*supports_location) (CpgLayoutable *layoutable);
 };
 
 GType cpg_layoutable_get_type (void) G_GNUC_CONST;
 
-gboolean cpg_layoutable_get_location (CpgLayoutable *self,
-                                      gint          *x,
-                                      gint          *y);
+void cpg_layoutable_get_location (CpgLayoutable *self,
+                                  gint          *x,
+                                  gint          *y);
 
 void cpg_layoutable_set_location (CpgLayoutable *self,
                                   gint           x,
                                   gint           y);
+
+gboolean cpg_layoutable_supports_location (CpgLayoutable *self);
 
 G_END_DECLS
 

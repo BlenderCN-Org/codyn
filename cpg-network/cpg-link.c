@@ -2,6 +2,7 @@
 #include "cpg-compile-error.h"
 #include <string.h>
 #include "cpg-group.h"
+#include "cpg-layoutable.h"
 
 /**
  * SECTION:cpg-link
@@ -60,7 +61,33 @@ enum
 
 guint signals[NUM_SIGNALS] = {0,};
 
-G_DEFINE_TYPE (CpgLink, cpg_link, CPG_TYPE_OBJECT)
+static void cpg_layoutable_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgLink,
+                         cpg_link,
+                         CPG_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_LAYOUTABLE,
+                                                cpg_layoutable_iface_init))
+
+static gboolean
+cpg_layoutable_supports_location_impl (CpgLayoutable *layoutable)
+{
+	CpgLink *link;
+
+	link = CPG_LINK (layoutable);
+
+	return (link->priv->from == NULL || link->priv->to == NULL);
+}
+
+static void
+cpg_layoutable_iface_init (gpointer iface)
+{
+	CpgLayoutableInterface *layout;
+
+	layout = iface;
+
+	layout->supports_location = cpg_layoutable_supports_location_impl;
+}
 
 static void
 cpg_link_finalize (GObject *object)

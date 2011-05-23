@@ -473,7 +473,8 @@ object_to_xml (CpgNetworkSerializer *serializer,
 	xmlNewProp (ptr, (xmlChar *)"id", (xmlChar *)cpg_object_get_id (object));
 	xmlAddChild (parent, ptr);
 
-	if (CPG_IS_LAYOUTABLE (object))
+	if (CPG_IS_LAYOUTABLE (object) &&
+	    cpg_layoutable_supports_location (CPG_LAYOUTABLE (object)))
 	{
 		gchar *pos;
 		gint x;

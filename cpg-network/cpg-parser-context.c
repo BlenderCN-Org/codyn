@@ -2079,7 +2079,8 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 		gint xx;
 		gint yy;
 
-		if (!CPG_IS_LAYOUTABLE (cpg_selection_get_object (obj->data)))
+		if (!CPG_IS_LAYOUTABLE (cpg_selection_get_object (obj->data)) ||
+		    !cpg_layoutable_supports_location (obj->data))
 		{
 			continue;
 		}
@@ -2113,7 +2114,8 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 
 				o = cpg_selection_get_object (ofobj->data);
 
-				if (CPG_IS_LAYOUTABLE (o))
+				if (CPG_IS_LAYOUTABLE (o) &&
+				    cpg_layoutable_supports_location (CPG_LAYOUTABLE (o)))
 				{
 					cpg_layoutable_get_location (CPG_LAYOUTABLE (o),
 					                             &ox,
