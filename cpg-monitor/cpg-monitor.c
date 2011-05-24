@@ -233,13 +233,16 @@ find_matching_properties (CpgNetwork  *network,
 	}
 
 	CpgEmbeddedContext *context = cpg_embedded_context_new ();
-	GSList *selection = cpg_selector_select_properties (sel, CPG_OBJECT (network), context);
+	GSList *selection = cpg_selector_select (sel,
+	                                         CPG_OBJECT (network),
+	                                         CPG_SELECTOR_TYPE_PROPERTY,
+	                                         context);
 	GSList *element = selection;
 	GSList *properties = NULL;
 
 	while (element)
 	{
-		CpgProperty *property = cpg_selection_get_property (element->data);
+		CpgProperty *property = cpg_selection_get_object (element->data);
 		properties = g_slist_prepend (properties, property);
 
 		g_object_unref (element->data);
