@@ -196,73 +196,6 @@ property_matches_template (CpgProperty  *property,
 	return FALSE;
 }
 
-static CpgObject *
-template_selector (CpgObject *parent,
-                   GSList    *selectors,
-                   CpgObject *child)
-{
-	while (selectors)
-	{
-		CpgObject *selector = selectors->data;
-
-		parent = cpg_group_get_child (CPG_GROUP (parent),
-		                              cpg_object_get_id (selector));
-
-		if (!parent)
-		{
-			return NULL;
-		}
-
-		selectors = g_slist_next (selectors);
-	}
-
-	return cpg_group_get_child (CPG_GROUP (parent),
-	                            cpg_object_get_id (child));
-}
-
-static GSList *
-templates_for_object (CpgObject *object,
-                      gboolean   include_own)
-{
-	/* These include the 'direct' templates on object, but also the
-	   indirect ones that were applied by a template group */
-	GSList *ret = NULL;
-
-	if (include_own)
-	{
-		ret = g_slist_copy ((GSList *)cpg_object_get_applied_templates (object));
-	}
-
-	CpgObject *parent = cpg_object_get_parent (object);
-	GSList *selectors = NULL;
-
-	while (parent)
-	{
-		GSList const *templates = cpg_object_get_applied_templates (parent);
-
-		while (templates)
-		{
-			CpgObject *template;
-
-			template = template_selector (templates->data,
-			                              selectors,
-			                              object);
-
-			if (template)
-			{
-				ret = g_slist_prepend (ret, template);
-			}
-
-			templates = g_slist_next (templates);
-		}
-
-		selectors = g_slist_prepend (selectors, parent);
-		parent = cpg_object_get_parent (parent);
-	}
-
-	return g_slist_reverse (ret);
-}
-
 static void
 export_flags (xmlNodePtr   node,
               CpgProperty *property)
@@ -337,11 +270,11 @@ static void
 properties_to_xml (CpgNetworkSerializer *serializer,
                    xmlNodePtr            parent,
                    CpgObject            *object,
-                   GSList const         *templates,
                    GSList const         *props)
 {
 	GSList *item;
 	GSList *properties;
+	GSList const *templates;
 
 	if (props)
 	{
@@ -351,6 +284,8 @@ properties_to_xml (CpgNetworkSerializer *serializer,
 	{
 		properties = cpg_object_get_properties (object);
 	}
+
+	templates = cpg_object_get_applied_templates (object);
 
 	for (item = properties; item; item = g_slist_next (item))
 	{
@@ -395,25 +330,6 @@ properties_to_xml (CpgNetworkSerializer *serializer,
 	}
 
 	g_slist_free (properties);
-}
-
-static gboolean
-check_inherited (CpgObject *object,
-                 CpgObject *template)
-{
-	GSList *fakes = templates_for_object (object, FALSE);
-	GSList *item;
-
-	for (item = fakes; item; item = g_slist_next (item))
-	{
-		if (item->data == template)
-		{
-			return TRUE;
-		}
-	}
-
-	g_slist_free (fakes);
-	return FALSE;
 }
 
 static gchar *
@@ -487,13 +403,14 @@ object_to_xml (CpgNetworkSerializer *serializer,
 	}
 
 	GSList const *templates = cpg_object_get_applied_templates (object);
-
+	GSList *inherited = cpg_group_get_auto_templates_for_child (CPG_GROUP (cpg_object_get_parent (object)),
+	                                                            object);
 	GPtrArray *refs = g_ptr_array_new ();
 
 	while (templates)
 	{
 		/* only apply templates that are not inherited */
-		if (!check_inherited (object, templates->data))
+		if (!g_slist_find (inherited, templates->data))
 		{
 			gchar *path = template_path (object, templates->data);
 
@@ -516,11 +433,10 @@ object_to_xml (CpgNetworkSerializer *serializer,
 
 	g_strfreev (refs_ptr);
 
-	GSList *all_templates = templates_for_object (object, TRUE);
-
-	properties_to_xml (serializer, ptr, object, all_templates, properties);
-
-	g_slist_free (all_templates);
+	properties_to_xml (serializer,
+	                   ptr,
+	                   object,
+	                   properties);
 
 	return ptr;
 }
@@ -601,7 +517,7 @@ link_to_xml (CpgNetworkSerializer *serializer,
 
 	// Link actions
 	GSList const *item;
-	GSList *templates = templates_for_object (CPG_OBJECT (link), TRUE);
+	GSList const *templates = cpg_object_get_applied_templates (CPG_OBJECT (link));
 
 	for (item = cpg_link_get_actions (link); item; item = g_slist_next (item))
 	{
@@ -634,8 +550,6 @@ link_to_xml (CpgNetworkSerializer *serializer,
 
 		xmlAddChild (node, ac);
 	}
-
-	g_slist_free (templates);
 
 	return node;
 }
@@ -837,6 +751,9 @@ write_functions (CpgNetworkSerializer *serializer,
 static gboolean
 skip_object (CpgObject *object)
 {
+	gint len;
+	GSList *templates;
+
 	if (!cpg_object_get_parent (object))
 	{
 		return FALSE;
@@ -847,11 +764,12 @@ skip_object (CpgObject *object)
 		return TRUE;
 	}
 
-	GSList *templates = g_slist_reverse (templates_for_object (object,
-	                                                           TRUE));
+	templates = cpg_group_get_auto_templates_for_child (CPG_GROUP (cpg_object_get_parent (object)),
+	                                                    object);
+	len = g_slist_length (templates);
+	g_slist_free (templates);
 
-	if (g_slist_length (templates) ==
-	    g_slist_length ((GSList *)cpg_object_get_applied_templates (object)))
+	if (len == g_slist_length ((GSList *)cpg_object_get_applied_templates (object)))
 	{
 		return FALSE;
 	}
@@ -862,9 +780,9 @@ skip_object (CpgObject *object)
 
 	_cpg_object_set_parent (dummy, cpg_object_get_parent (object));
 
-	GSList *item;
+	GSList const *item;
 
-	for (item = templates; item; item = g_slist_next (item))
+	for (item = cpg_object_get_applied_templates (object); item; item = g_slist_next (item))
 	{
 		cpg_object_apply_template (dummy, item->data, NULL);
 	}
@@ -1076,14 +994,13 @@ static gboolean
 check_proxy_template (CpgObject *object,
                       CpgObject *proxy)
 {
-	GSList *templates = templates_for_object (object, TRUE);
-	GSList *item;
+	GSList const *templates = cpg_object_get_applied_templates (object);
 
-	for (item = templates; item; item = g_slist_next (item))
+	while (templates)
 	{
-		if (CPG_IS_GROUP (item->data))
+		if (CPG_IS_GROUP (templates->data))
 		{
-			CpgObject *other_proxy = cpg_group_get_proxy (item->data);
+			CpgObject *other_proxy = cpg_group_get_proxy (templates->data);
 
 			if (other_proxy != NULL &&
 			    g_strcmp0 (cpg_object_get_id (proxy),
@@ -1093,10 +1010,9 @@ check_proxy_template (CpgObject *object,
 			}
 		}
 
-		item = g_slist_next (item);
+		templates = g_slist_next (templates);
 	}
 
-	g_slist_free (templates);
 	return FALSE;
 }
 
@@ -1437,7 +1353,7 @@ cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
 		xmlNodePtr gbl = xmlNewDocNode (doc, NULL, (xmlChar *)"globals", NULL);
 		xmlAddChild (nnetwork, gbl);
 
-		properties_to_xml (serializer, gbl, CPG_OBJECT (serializer->priv->network), NULL, NULL);
+		properties_to_xml (serializer, gbl, CPG_OBJECT (serializer->priv->network), NULL);
 	}
 
 	g_slist_free (properties);

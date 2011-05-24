@@ -1975,3 +1975,38 @@ cpg_group_get_property_interface (CpgGroup *group)
 
 	return group->priv->property_interface;
 }
+
+GSList *
+cpg_group_get_auto_templates_for_child (CpgGroup  *group,
+                                        CpgObject *child)
+{
+	GSList const *templates;
+	GSList *ret = NULL;
+
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (child), NULL);
+
+	templates = cpg_object_get_applied_templates (CPG_OBJECT (group));
+
+	while (templates)
+	{
+		if (CPG_IS_GROUP (templates->data))
+		{
+			CpgGroup *grp = templates->data;
+			CpgObject *tchild;
+
+			tchild = cpg_group_get_child (grp,
+			                              cpg_object_get_id (child));
+
+			if (tchild)
+			{
+				ret = g_slist_prepend (ret, tchild);
+			}
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return g_slist_reverse (ret);
+}
+

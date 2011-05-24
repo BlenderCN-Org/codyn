@@ -117,6 +117,9 @@ gboolean      cpg_group_verify_remove_child (CpgGroup   *group,
 CpgPropertyInterface *
               cpg_group_get_property_interface (CpgGroup *group);
 
+GSList       *cpg_group_get_auto_templates_for_child (CpgGroup  *group,
+                                                      CpgObject *child);
+
 G_END_DECLS
 
 #endif /* __CPG_GROUP_H__ */
