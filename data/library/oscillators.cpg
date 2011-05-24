@@ -2,12 +2,12 @@ templates
 {
     import "hopf" from "hopf.cpg"
     import "phase" from "phase.cpg"
-}
 
-layout
-{
-    |templates."hopf" at (-1, 0)
-    |templates."phase" at (1, 0)
+    layout
+    {
+        "hopf" at (@[++], 0)
+        "phase" at (@[++], 0)
+    }
 }
 
 # vi:ex:ts=4:et

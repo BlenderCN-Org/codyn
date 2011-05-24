@@ -56,12 +56,12 @@ templates
         x <= "weight * -summed * to.y"
         y <= "weight * summed * to.x"
     }
-}
 
-layout
-{
-    |templates."oscillator" at (-1, 0)
-    |templates."coupling" at (1, 0)
+    layout
+    {
+        "oscillator" at (@[++], 0)
+        "coupling" at (@[++], 0)
+    }
 }
 
 # vi:ex:ts=4:et
