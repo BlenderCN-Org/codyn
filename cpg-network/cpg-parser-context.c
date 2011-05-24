@@ -2336,7 +2336,7 @@ cpg_parser_context_set_proxy (CpgParserContext *context,
 
 		objects = g_slist_next (objects);
 
-		if (!CPG_IS_LINK (obj))
+		if (CPG_IS_LINK (obj))
 		{
 			continue;
 		}
