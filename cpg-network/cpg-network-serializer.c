@@ -364,23 +364,10 @@ template_path (CpgObject *orig,
 	return g_string_free (ret, FALSE);
 }
 
-static xmlNodePtr
-object_to_xml (CpgNetworkSerializer *serializer,
-               xmlNodePtr            parent,
-               CpgObject            *object,
-               gchar const          *name,
-               GSList const         *properties)
+static void
+add_layout (CpgObject  *object,
+            xmlNodePtr  ptr)
 {
-	restore_comment (serializer, parent, G_OBJECT (object));
-
-	xmlNodePtr ptr = xmlNewDocNode (serializer->priv->doc,
-	                                NULL,
-	                                (xmlChar *)name,
-	                                NULL);
-
-	xmlNewProp (ptr, (xmlChar *)"id", (xmlChar *)cpg_object_get_id (object));
-	xmlAddChild (parent, ptr);
-
 	if (CPG_IS_LAYOUTABLE (object) &&
 	    cpg_layoutable_supports_location (CPG_LAYOUTABLE (object)))
 	{
@@ -401,6 +388,26 @@ object_to_xml (CpgNetworkSerializer *serializer,
 			g_free (pos);
 		}
 	}
+}
+
+static xmlNodePtr
+object_to_xml (CpgNetworkSerializer *serializer,
+               xmlNodePtr            parent,
+               CpgObject            *object,
+               gchar const          *name,
+               GSList const         *properties)
+{
+	restore_comment (serializer, parent, G_OBJECT (object));
+
+	xmlNodePtr ptr = xmlNewDocNode (serializer->priv->doc,
+	                                NULL,
+	                                (xmlChar *)name,
+	                                NULL);
+
+	xmlNewProp (ptr, (xmlChar *)"id", (xmlChar *)cpg_object_get_id (object));
+	xmlAddChild (parent, ptr);
+
+	add_layout (object, ptr);
 
 	GSList const *templates = cpg_object_get_applied_templates (object);
 	GSList *inherited = cpg_group_get_auto_templates_for_child (CPG_GROUP (cpg_object_get_parent (object)),
@@ -813,6 +820,8 @@ import_to_xml (CpgNetworkSerializer *serializer,
 	xmlNodePtr node = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"import", NULL);
 
 	xmlNewProp (node, (xmlChar *)"id", (xmlChar *)cpg_object_get_id (CPG_OBJECT (import)));
+
+	add_layout (CPG_OBJECT (import), node);
 
 	GFile *network_file = cpg_network_get_file (serializer->priv->network);
 	GFile *import_file = cpg_import_get_file (import);
