@@ -118,11 +118,13 @@ void                   cpg_parser_context_push_object          (CpgParserContext
 
 void                   cpg_parser_context_push_state           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
-                                                                GArray                     *templates);
+                                                                GArray                     *templates,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_push_group           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
-                                                                GArray                     *templates);
+                                                                GArray                     *templates,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_push_link            (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
@@ -130,9 +132,12 @@ void                   cpg_parser_context_push_link            (CpgParserContext
                                                                 GSList                     *attributes,
                                                                 GArray                     *fromto);
 
-void                   cpg_parser_context_push_network         (CpgParserContext           *context);
-void                   cpg_parser_context_push_templates       (CpgParserContext           *context);
-void                   cpg_parser_context_push_integrator      (CpgParserContext           *context);
+void                   cpg_parser_context_push_network         (CpgParserContext           *context,
+                                                                GSList                     *attributes);
+void                   cpg_parser_context_push_templates       (CpgParserContext           *context,
+                                                                GSList                     *attributes);
+void                   cpg_parser_context_push_integrator      (CpgParserContext           *context,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_set_proxy            (CpgParserContext           *context,
                                                                 GSList                     *objects);
@@ -190,7 +195,11 @@ void                   cpg_parser_context_set_start_token      (CpgParserContext
 void                   cpg_parser_context_push_annotation      (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *annotation);
 
-void                   cpg_parser_context_push_layout          (CpgParserContext           *context);
+void                   cpg_parser_context_push_scope           (CpgParserContext           *context,
+                                                                GSList                     *attributes);
+
+void                   cpg_parser_context_push_layout          (CpgParserContext           *context,
+                                                                GSList                     *attributes);
 void                   cpg_parser_context_pop_layout           (CpgParserContext           *context);
 
 void                   cpg_parser_context_add_layout           (CpgParserContext           *context,
