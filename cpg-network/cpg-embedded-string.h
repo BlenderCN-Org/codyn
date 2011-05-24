@@ -61,6 +61,8 @@ gchar const       *cpg_embedded_string_expand           (CpgEmbeddedString      
 GSList            *cpg_embedded_string_expand_multiple  (CpgEmbeddedString         *s,
                                                          CpgEmbeddedContext        *ctx);
 
+void               cpg_embedded_string_clear_cache      (CpgEmbeddedString         *s);
+
 G_END_DECLS
 
 #endif /* __CPG_EMBEDDED_STRING_H__ */

@@ -1,5 +1,6 @@
 #include "cpg-embedded-string.h"
 #include <string.h>
+#include <stdlib.h>
 
 #define CPG_EMBEDDED_STRING_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_EMBEDDED_STRING, CpgEmbeddedStringPrivate))
 
@@ -61,7 +62,7 @@ cpg_embedded_string_finalize (GObject *object)
 		                                      s->priv->stack);
 	}
 
-	g_free (s->priv->cached);
+	cpg_embedded_string_clear_cache (s);
 
 	G_OBJECT_CLASS (cpg_embedded_string_parent_class)->finalize (object);
 }
@@ -149,6 +150,8 @@ cpg_embedded_string_add_text (CpgEmbeddedString *s,
 	{
 		s->priv->stack = g_slist_prepend (NULL, node);
 	}
+
+	cpg_embedded_string_clear_cache (s);
 }
 
 CpgEmbeddedString *
@@ -164,6 +167,8 @@ cpg_embedded_string_push (CpgEmbeddedString         *s,
 
 	s->priv->stack = g_slist_prepend (s->priv->stack,
 	                                  node);
+
+	cpg_embedded_string_clear_cache (s);
 
 	return s;
 }
@@ -189,6 +194,8 @@ cpg_embedded_string_pop (CpgEmbeddedString *s)
 
 	parent->nodes = g_slist_prepend (parent->nodes,
 	                                 node);
+
+	cpg_embedded_string_clear_cache (s);
 
 	return s;
 }
@@ -216,6 +223,25 @@ collect_expansion (CpgExpansion *expansion)
 	return g_string_free (ret, FALSE);
 }
 
+static gboolean
+count_chars (gchar const *s, gchar t, gint *num)
+{
+	*num = 0;
+
+	while (*s)
+	{
+		if (*s != t)
+		{
+			return FALSE;
+		}
+
+		++*num;
+		++s;
+	}
+
+	return TRUE;
+}
+
 static gchar *
 resolve_indirection (CpgEmbeddedContext *context,
                      Node               *node,
@@ -224,6 +250,8 @@ resolve_indirection (CpgEmbeddedContext *context,
 	gboolean isnum = TRUE;
 	gboolean isall = FALSE;
 	gboolean iscount = FALSE;
+	gint isadd = 0;
+	gint issub = 0;
 
 	gchar const *ptr = s;
 
@@ -238,6 +266,9 @@ resolve_indirection (CpgEmbeddedContext *context,
 				isall = (*ptr == '*');
 				iscount = (*ptr == '~');
 			}
+
+			count_chars (ptr, '+', &isadd);
+			count_chars (ptr, '-', &issub);
 
 			break;
 		}
@@ -285,7 +316,46 @@ resolve_indirection (CpgEmbeddedContext *context,
 	}
 	else
 	{
-		return cpg_embedded_context_lookup_define (context, s);
+		gchar *def;
+
+		if (issub > 0 || isadd > 0)
+		{
+			gchar *sval;
+			gint val;
+			gchar *norm;
+
+			norm = g_strndup (s, strlen (s) - abs(issub + isadd) + 1);
+			def = cpg_embedded_context_lookup_define (context, norm);
+
+			if (!*def)
+			{
+				g_free (def);
+				def = g_strdup ("0");
+			}
+
+			val = (gint)g_ascii_strtoll (def, NULL, 10);
+
+			if (isadd > 0)
+			{
+				val += isadd;
+			}
+			else if (issub > 0)
+			{
+				val -= issub;
+			}
+
+			sval = g_strdup_printf ("%d", val);
+			cpg_embedded_context_define (context, norm, sval);
+
+			g_free (norm);
+			g_free (sval);
+		}
+		else
+		{
+			def = cpg_embedded_context_lookup_define (context, s);
+		}
+
+		return def;
 	}
 }
 
@@ -342,22 +412,24 @@ gchar const *
 cpg_embedded_string_expand (CpgEmbeddedString  *s,
                             CpgEmbeddedContext *ctx)
 {
-	gchar *r;
-
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
 
+	if (s->priv->cached)
+	{
+		return s->priv->cached;
+	}
+
+	cpg_embedded_string_clear_cache (s);
+
 	if (!s->priv->stack)
 	{
-		r = g_strdup ("");
+		s->priv->cached = g_strdup ("");
 	}
 	else
 	{
-		r = evaluate_node (s->priv->stack->data, ctx);
+		s->priv->cached = evaluate_node (s->priv->stack->data, ctx);
 	}
-
-	g_free (s->priv->cached);
-	s->priv->cached = r;
 
 	return s->priv->cached;
 }
@@ -668,4 +740,13 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
 	{
 		return expand_id_recurse (&id, "\0");
 	}
+}
+
+void
+cpg_embedded_string_clear_cache (CpgEmbeddedString *s)
+{
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
+
+	g_free (s->priv->cached);
+	s->priv->cached = NULL;
 }
