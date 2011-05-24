@@ -446,6 +446,7 @@ state_item
 	: property
 	| define
 	| debug
+	| layout
 	;
 
 state_contents
@@ -461,6 +462,7 @@ group_item
 	| group
 	| define
 	| debug
+	| layout
 	;
 
 group_contents
@@ -486,6 +488,7 @@ link_item
 	| property
 	| define
 	| debug
+	| layout
 	;
 
 link_contents
@@ -601,6 +604,8 @@ layout
 	  '{'			{ cpg_parser_context_push_layout (context); }
 	  layout_items
 	  '}'			{ cpg_parser_context_pop_layout (context); }
+	| T_KEY_LAYOUT          { cpg_parser_context_push_layout (context); }
+	  layout_item           { cpg_parser_context_pop_layout (context); }
 	;
 
 relation_item
@@ -620,11 +625,16 @@ layout_relative
 	| T_KEY_OF selector		{ $$ = $2; }
 	;
 
-layout_item
+layout_item_relative
 	: selector
 	  relation
 	  selector			{ cpg_parser_context_add_layout (context, $2, $1, $3); }
-	| selector
+	| relation
+	  selector			{ cpg_parser_context_add_layout (context, $1, NULL, $2); }
+	;
+
+layout_item_absolute
+	: selector
 	  T_KEY_AT
 	  '('
 	  value_as_string
@@ -632,12 +642,28 @@ layout_item
 	  value_as_string
 	  ')'
 	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $4, $6, $8); }
+	| T_KEY_AT
+	  '('
+	  value_as_string
+	  ','
+	  value_as_string
+	  ')'
+	  layout_relative		{ cpg_parser_context_add_layout_position (context, NULL, $3, $5, $7); }
+	;
+
+layout_item
+	: layout_item_relative
+	| layout_item_absolute
+	;
+
+layout_item_or_define
+	: layout_item
 	| define
 	;
 
 layout_items
 	:
-	| layout_items layout_item
+	| layout_items layout_item_or_define
 	;
 
 identifier

@@ -2175,7 +2175,7 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 	Context *ctx;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CPG_IS_SELECTOR (left));
+	g_return_if_fail (left == NULL || CPG_IS_SELECTOR (left));
 	g_return_if_fail (CPG_IS_SELECTOR (right));
 
 	ctx = context->priv->context_stack->next->data;
@@ -2189,11 +2189,18 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 		cpg_embedded_context_push_expansions (context->priv->embedded,
 		                                      cpg_selection_get_expansions (sel));
 
-		leftobjs = cpg_selector_select (left,
-		                                CPG_OBJECT (cpg_selection_get_object (sel)),
-		                                CPG_SELECTOR_TYPE_STATE |
-		                                CPG_SELECTOR_TYPE_GROUP,
-		                                context->priv->embedded);
+		if (left != NULL)
+		{
+			leftobjs = cpg_selector_select (left,
+			                                CPG_OBJECT (cpg_selection_get_object (sel)),
+			                                CPG_SELECTOR_TYPE_STATE |
+			                                CPG_SELECTOR_TYPE_GROUP,
+			                                context->priv->embedded);
+		}
+		else
+		{
+			leftobjs = g_slist_prepend (NULL, cpg_selection_copy (sel));
+		}
 
 		if (!leftobjs)
 		{
@@ -2257,7 +2264,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 	Context *ctx;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CPG_IS_SELECTOR (selector));
+	g_return_if_fail (selector == NULL || CPG_IS_SELECTOR (selector));
 	g_return_if_fail (x != NULL);
 	g_return_if_fail (y != NULL);
 	g_return_if_fail (of == NULL || CPG_IS_SELECTOR (of));
@@ -2273,10 +2280,17 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 		cpg_embedded_context_push_expansions (context->priv->embedded,
 		                                      cpg_selection_get_expansions (sel));
 
-		objs = cpg_selector_select (selector,
-		                            cpg_selection_get_object (sel),
-		                            CPG_SELECTOR_TYPE_OBJECT,
-		                            context->priv->embedded);
+		if (selector != NULL)
+		{
+			objs = cpg_selector_select (selector,
+			                            cpg_selection_get_object (sel),
+			                            CPG_SELECTOR_TYPE_OBJECT,
+			                            context->priv->embedded);
+		}
+		else
+		{
+			objs = g_slist_prepend (NULL, cpg_selection_copy (sel));
+		}
 
 		for (obj = objs; obj; obj = g_slist_next (obj))
 		{
