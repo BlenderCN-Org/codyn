@@ -751,7 +751,6 @@ write_functions (CpgNetworkSerializer *serializer,
 static gboolean
 skip_object (CpgObject *object)
 {
-	gint len;
 	GSList *templates;
 
 	if (!cpg_object_get_parent (object))
@@ -764,15 +763,16 @@ skip_object (CpgObject *object)
 		return TRUE;
 	}
 
+	/* Check if it was not solely instantiated from templates */
 	templates = cpg_group_get_auto_templates_for_child (CPG_GROUP (cpg_object_get_parent (object)),
 	                                                    object);
-	len = g_slist_length (templates);
-	g_slist_free (templates);
 
-	if (len == g_slist_length ((GSList *)cpg_object_get_applied_templates (object)))
+	if (!templates)
 	{
 		return FALSE;
 	}
+
+	g_slist_free (templates);
 
 	CpgObject *dummy = g_object_new (G_TYPE_FROM_INSTANCE (object),
 	                                 "id", cpg_object_get_id (object),
@@ -786,8 +786,6 @@ skip_object (CpgObject *object)
 	{
 		cpg_object_apply_template (dummy, item->data, NULL);
 	}
-
-	g_slist_free (templates);
 
 	if (cpg_object_equal (object, dummy))
 	{
