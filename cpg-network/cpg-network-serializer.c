@@ -406,17 +406,9 @@ check_inherited (CpgObject *object,
 
 	for (item = fakes; item; item = g_slist_next (item))
 	{
-		GSList const *templates = cpg_object_get_applied_templates (item->data);
-
-		while (templates)
+		if (item->data == template)
 		{
-			if (g_strcmp0 (cpg_object_get_id (template),
-			               cpg_object_get_id (templates->data)) == 0)
-			{
-				return TRUE;
-			}
-
-			templates = g_slist_next (templates);
+			return TRUE;
 		}
 	}
 
