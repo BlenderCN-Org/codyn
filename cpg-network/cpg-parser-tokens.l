@@ -31,6 +31,14 @@ advance_column (CpgParserContext *context, gint offset)
 		}								\
 	}
 
+#define HANDLE_NEWLINE								\
+	yyccolumn = 1;								\
+										\
+	cpg_parser_context_set_line (yyextra, yytext + 1, yylineno);		\
+	cpg_parser_context_set_column (yyextra, 0, 0);				\
+										\
+	yyless (1);
+
 %}
 
 STRING "\""(\\["]|[^"])*"\""
@@ -83,11 +91,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 [ \t]				;
 \n.*				{
-					yyccolumn = 1;
-
-					cpg_parser_context_set_line (yyextra, yytext + 1, yylineno);
-					cpg_parser_context_set_column (yyextra, 0, 0);
-					yyless (1);
+					HANDLE_NEWLINE
 				}
 "##"[ \t]*			{
 					yy_push_state (annotation, yyscanner);
@@ -202,8 +206,15 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_INDIRECTION_EMBEDDING_BEGIN;
 				}
 
+<indirection_had_some>\n.*	{
+					HANDLE_NEWLINE
+
+					yy_pop_state (yyscanner);
+					return T_INDIRECTION_END;
+				}
 <indirection_had_some>.?	{
 					yy_pop_state (yyscanner);
+
 					advance_column (yyextra, -yyleng);
 					yyless(0);
 
