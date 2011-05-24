@@ -436,26 +436,49 @@ check_type (gpointer        object,
 	return FALSE;
 }
 
+static CpgSelection *
+make_child_selection (CpgSelection *parent,
+                      CpgExpansion *expansion,
+                      gpointer      obj)
+{
+	GSList *expansions;
+	CpgSelection *ret;
+
+	expansions = g_slist_copy (cpg_selection_get_expansions (parent));
+	expansions = g_slist_append (expansions, expansion);
+
+	ret = cpg_selection_new (obj, expansions);
+
+	g_slist_free (expansions);
+
+	return ret;
+}
+
 static GSList *
 selector_select_identifier_object (Selector           *selector,
                                    CpgSelection       *parent,
                                    CpgSelectorType     type,
                                    CpgEmbeddedContext *context,
+                                   CpgExpansion       *expansion,
                                    GSList             *ret)
 {
 	CpgObject *child;
 
 	if (selector->onset)
 	{
-		if (g_strcmp0 (cpg_embedded_string_expand (selector->identifier,
-		                                           context),
-		               cpg_object_get_id (cpg_selection_get_object (parent))) == 0 &&
-		    check_type (cpg_selection_get_object (parent), type))
+		gpointer obj;
+
+		obj = cpg_selection_get_object (parent);
+
+		if (g_strcmp0 (cpg_expansion_get (expansion, 0),
+		               cpg_object_get_id (obj)) == 0 &&
+		    check_type (obj, type))
 		{
 			ret = g_slist_prepend (NULL,
-			                        cpg_selection_copy (parent));
+			                       make_child_selection (parent,
+			                                             expansion,
+			                                             obj));
 		}
-
 	}
 	else
 	{
@@ -465,14 +488,14 @@ selector_select_identifier_object (Selector           *selector,
 		}
 
 		child = cpg_group_get_child (CPG_GROUP (cpg_selection_get_object (parent)),
-		                             cpg_embedded_string_expand (selector->identifier,
-		                                                         context));
+		                             cpg_expansion_get (expansion, 0));
 
 		if (child && check_type (child, type))
 		{
 			ret = g_slist_prepend (NULL,
-			                       cpg_selection_new (child,
-			                                          cpg_selection_get_expansions (parent)));
+			                       make_child_selection (parent,
+			                                             expansion,
+			                                             child));
 		}
 	}
 
@@ -484,6 +507,7 @@ selector_select_identifier_property (Selector           *selector,
                                      CpgSelection       *parent,
                                      CpgSelectorType     type,
                                      CpgEmbeddedContext *context,
+                                     CpgExpansion       *expansion,
                                      GSList             *ret)
 {
 	CpgProperty *prop;
@@ -495,13 +519,14 @@ selector_select_identifier_property (Selector           *selector,
 	}
 
 	prop = cpg_object_get_property (cpg_selection_get_object (parent),
-	                                cpg_embedded_string_expand (selector->identifier,
-	                                                            context));
+	                                cpg_expansion_get (expansion, 0));
 
 	if (prop)
 	{
 		ret = g_slist_prepend (NULL,
-		                       cpg_selection_new (prop, cpg_selection_get_expansions (parent)));
+		                       make_child_selection (parent,
+		                                             expansion,
+		                                             prop));
 	}
 
 	return ret;
@@ -512,6 +537,7 @@ selector_select_identifier_action (Selector           *selector,
                                    CpgSelection       *parent,
                                    CpgSelectorType     type,
                                    CpgEmbeddedContext *context,
+                                   CpgExpansion       *expansion,
                                    GSList             *ret)
 {
 	GObject *obj;
@@ -531,13 +557,14 @@ selector_select_identifier_action (Selector           *selector,
 	}
 
 	action = cpg_link_get_action (CPG_LINK (obj),
-	                              cpg_embedded_string_expand (selector->identifier,
-	                                                          context));
+	                              cpg_expansion_get (expansion, 0));
 
 	if (action)
 	{
 		ret = g_slist_prepend (NULL,
-		                       cpg_selection_new (action, cpg_selection_get_expansions (parent)));
+		                       make_child_selection (parent,
+		                                             expansion,
+		                                             action));
 	}
 
 	return ret;
@@ -550,33 +577,47 @@ selector_select_identifier (Selector           *selector,
                             CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
+	GSList *exps;
+	GSList *e;
 
-	if (type & CPG_SELECTOR_TYPE_OBJECT)
+	exps = cpg_embedded_string_expand_multiple (selector->identifier,
+	                                            context);
+
+	for (e = exps; e; e = g_slist_next (e))
 	{
-		ret = selector_select_identifier_object (selector,
-		                                         parent,
-		                                         type,
-		                                         context,
-		                                         ret);
+		if (type & CPG_SELECTOR_TYPE_OBJECT)
+		{
+			ret = selector_select_identifier_object (selector,
+				                                 parent,
+				                                 type,
+				                                 context,
+				                                 e->data,
+				                                 ret);
+		}
+
+		if (type & CPG_SELECTOR_TYPE_PROPERTY)
+		{
+			ret = selector_select_identifier_property (selector,
+				                                   parent,
+				                                   type,
+				                                   context,
+				                                   e->data,
+				                                   ret);
+		}
+
+		if (type & CPG_SELECTOR_TYPE_ACTION)
+		{
+			ret = selector_select_identifier_action (selector,
+				                                 parent,
+				                                 type,
+				                                 context,
+				                                 e->data,
+				                                 ret);
+		}
 	}
 
-	if (type & CPG_SELECTOR_TYPE_PROPERTY)
-	{
-		ret = selector_select_identifier_property (selector,
-		                                           parent,
-		                                           type,
-		                                           context,
-		                                           ret);
-	}
-
-	if (type & CPG_SELECTOR_TYPE_ACTION)
-	{
-		ret = selector_select_identifier_action (selector,
-		                                         parent,
-		                                         type,
-		                                         context,
-		                                         ret);
-	}
+	g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
+	g_slist_free (exps);
 
 	return g_slist_reverse (ret);
 }
@@ -612,22 +653,17 @@ regex_match_full (GRegex       *regex,
 	return FALSE;
 }
 
+
 static CpgSelection *
-make_child_selection (CpgSelection     *parent,
-                      GMatchInfo const *info,
-                      gpointer          obj)
+make_child_selection_from_match (CpgSelection     *parent,
+                                 GMatchInfo const *info,
+                                 gpointer          obj)
 {
-	GSList *expansions;
 	CpgExpansion *expansion;
 	CpgSelection *ret;
 
-	expansions = g_slist_copy (cpg_selection_get_expansions (parent));
 	expansion = expansion_from_match (info);
-	expansions = g_slist_append (expansions, expansion);
-
-	ret = cpg_selection_new (obj, expansions);
-
-	g_slist_free (expansions);
+	ret = make_child_selection (parent, expansion, obj);
 	g_object_unref (expansion);
 
 	return ret;
@@ -667,9 +703,9 @@ selector_select_regex_object (Selector           *selector,
 		{
 			CpgSelection *childsel;
 
-			childsel = make_child_selection (parent,
-			                                 info,
-			                                 obj);
+			childsel = make_child_selection_from_match (parent,
+			                                            info,
+			                                            obj);
 
 			ret = g_slist_prepend (ret, childsel);
 			g_match_info_free (info);
@@ -698,9 +734,9 @@ selector_select_regex_object (Selector           *selector,
 			{
 				CpgSelection *childsel;
 
-				childsel = make_child_selection (parent,
-				                                 info,
-				                                 child);
+				childsel = make_child_selection_from_match (parent,
+				                                            info,
+				                                            child);
 
 				ret = g_slist_prepend (ret, childsel);
 
@@ -756,9 +792,9 @@ selector_select_regex_property (Selector           *selector,
 			continue;
 		}
 
-		childsel = make_child_selection (parent,
-		                                 info,
-		                                 item->data);
+		childsel = make_child_selection_from_match (parent,
+		                                            info,
+		                                            item->data);
 
 		ret = g_slist_prepend (ret, childsel);
 
@@ -813,7 +849,9 @@ selector_select_regex_action (Selector           *selector,
 		{
 			CpgSelection *childsel;
 
-			childsel = make_child_selection (parent, info, actions->data);
+			childsel = make_child_selection_from_match (parent,
+			                                            info,
+			                                            actions->data);
 			ret = g_slist_prepend (ret, childsel);
 
 			g_match_info_free (info);
