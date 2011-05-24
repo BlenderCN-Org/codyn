@@ -853,6 +853,7 @@ debug
 
 delete_item
 	: selector_type selector	{ cpg_parser_context_delete_selector (context, $1, $2); }
+	| define
 	;
 
 delete
