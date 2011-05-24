@@ -188,6 +188,7 @@ void                   cpg_parser_context_push_annotation      (CpgParserContext
                                                                 CpgEmbeddedString          *annotation);
 
 void                   cpg_parser_context_push_layout          (CpgParserContext           *context);
+void                   cpg_parser_context_pop_layout           (CpgParserContext           *context);
 
 void                   cpg_parser_context_add_layout           (CpgParserContext           *context,
                                                                 CpgLayoutRelation           relation,

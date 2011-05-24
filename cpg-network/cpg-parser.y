@@ -559,7 +559,7 @@ layout
 	: T_KEY_LAYOUT
 	  '{'			{ cpg_parser_context_push_layout (context); }
 	  layout_items
-	  '}'
+	  '}'			{ cpg_parser_context_pop_layout (context); }
 	;
 
 relation_item
@@ -591,6 +591,7 @@ layout_item
 	  value_as_string
 	  ')'
 	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $4, $6, $8); }
+	| define
 	;
 
 layout_items

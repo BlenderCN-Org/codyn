@@ -2082,6 +2082,17 @@ cpg_parser_context_push_layout (CpgParserContext *context)
 	{
 		context->priv->layout = cpg_layout_new (context->priv->network);
 	}
+
+	cpg_parser_context_push_object (context,
+	                                NULL);
+}
+
+void
+cpg_parser_context_pop_layout (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	cpg_parser_context_pop (context);
 }
 
 void
