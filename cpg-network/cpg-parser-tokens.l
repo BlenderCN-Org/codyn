@@ -27,16 +27,6 @@ static int yyccolumn = 1;
 		}								\
 	}
 
-#define unputs(s) unputsl(s, strlen (s))
-
-#define unputsl(s, len)								\
-	gint i;									\
-										\
-	for (i = len - 1; i >= 0; ++i)						\
-	{									\
-		unput (s[i]);							\
-	}
-
 %}
 
 STRING "\""(\\["]|[^"])*"\""
@@ -63,6 +53,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %x indirection_embedding
 %x inclstart
 %x onlyselector
+%x indirection_had_some
 
 %%
 
@@ -166,7 +157,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "debug"				return T_KEY_DEBUG;
 "select"			return T_KEY_SELECT;
 
-<equation,INITIAL>{IDENTIFIER} {
+{IDENTIFIER}			{
 					yylval->id = g_strdup (yytext);
 					return T_IDENTIFIER;
 				}
@@ -176,7 +167,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_DOUBLE;
 				}
 
-[-+]?[0-9]+ {
+[-+]?[0-9]+			{
 					yylval->numf = (gint)g_ascii_strtoll (yytext, NULL, 10);
 					return T_INTEGER;
 				}
@@ -194,12 +185,19 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <*>"@"+				{
 					yy_push_state (indirection, yyscanner);
 					yylval->num = yyleng - 1;
+
 					return T_INDIRECTION_BEGIN;
 				}
 
-<indirection>"["		{
+<indirection,indirection_had_some>"["		{
 					yy_push_state (indirection_embedding, yyscanner);
 					return T_INDIRECTION_EMBEDDING_BEGIN;
+				}
+
+<indirection_had_some>.?	{
+					yy_pop_state (yyscanner);
+					yyless(0);
+					return T_INDIRECTION_END;
 				}
 
 <indirection_embedding>(\\[]@$]|[^]@$])+ {
@@ -207,16 +205,13 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
-<indirection>[a-z0-9_*~]+	{
+<indirection>({IDENTIFIER}|[0-9]+|[~*])	{
 					yylval->id = g_strdup (yytext);
+					yy_pop_state (yyscanner);
+					yy_push_state (indirection_had_some, yyscanner);
+
 					return T_STRING;
 }
-
-<indirection>.			{
-					yy_pop_state (yyscanner);
-					yyless(0);
-					return T_INDIRECTION_END;
-				}
 
 <*>"$("	{
 					cpg_parser_context_push_equation (yyextra);
@@ -253,7 +248,9 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 <indirection_embedding>"]"	{
 					yy_pop_state (yyscanner);
-					return T_INDIRECTION_EMBEDDING_END;
+					yy_pop_state (yyscanner);
+
+					return T_INDIRECTION_END;
 				}
 
 <equation>"("			{

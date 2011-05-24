@@ -66,8 +66,6 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token T_INDIRECTION_END
 
 %token T_INDIRECTION_EMBEDDING_BEGIN
-%token T_INDIRECTION_EMBEDDING_END
-
 
 %token T_START_DOCUMENT
 %token T_START_SELECTOR
@@ -651,16 +649,15 @@ equation
 indirection_embedding
 	: T_INDIRECTION_EMBEDDING_BEGIN
 	  string_contents
-	  T_INDIRECTION_EMBEDDING_END
 	;
 
-indirection_item
-	: string_item
-	| indirection_embedding;
-
 indirection_contents
-	: indirection_item
-	| indirection_contents indirection_item
+	: T_STRING			{ cpg_embedded_string_add_text (cpg_parser_context_peek_string (context),
+	                                                                $1); }
+	| T_STRING 			{ cpg_embedded_string_add_text (cpg_parser_context_peek_string (context),
+	                                                                $1); }
+	  indirection_embedding
+	| indirection_embedding
 	;
 
 indirection
@@ -691,7 +688,7 @@ equation_item
 
 equation_contents
 	:
-	| equation_item equation_contents
+	| equation_contents equation_item
 	;
 
 equation_inside
@@ -706,14 +703,14 @@ indirection_inside
 	: T_INDIRECTION_BEGIN		{ cpg_embedded_string_push (cpg_parser_context_peek_string (context),
 	                                                            CPG_EMBEDDED_STRING_NODE_INDIRECTION,
 	                                                            $1);}
-	  equation_contents
+	  indirection_contents
 	  T_INDIRECTION_END		{ cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
 	;
 
 debug
 	: T_KEY_DEBUG T_KEY_SELECT selector { cpg_parser_context_debug_selector (context, $3); }
-	| T_KEY_DEBUG T_KEY_SELECT T_KEY_LINK selector { cpg_parser_context_debug_selector_state (context, $4); }
-	| T_KEY_DEBUG T_KEY_SELECT T_KEY_STATE selector { cpg_parser_context_debug_selector_link (context, $4); }
+	| T_KEY_DEBUG T_KEY_SELECT T_KEY_STATE selector { cpg_parser_context_debug_selector_state (context, $4); }
+	| T_KEY_DEBUG T_KEY_SELECT T_KEY_LINK selector { cpg_parser_context_debug_selector_link (context, $4); }
 	| T_KEY_DEBUG T_KEY_SELECT T_KEY_PROPERTY selector { cpg_parser_context_debug_selector_property (context, $4); }
 	| T_KEY_DEBUG value_as_string		{ cpg_parser_context_debug_string (context, $2); }
 	;
