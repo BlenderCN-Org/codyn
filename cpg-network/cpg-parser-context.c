@@ -2169,7 +2169,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 		gint yy;
 
 		if (!CPG_IS_LAYOUTABLE (cpg_selection_get_object (obj->data)) ||
-		    !cpg_layoutable_supports_location (obj->data))
+		    !cpg_layoutable_supports_location (CPG_LAYOUTABLE (cpg_selection_get_object (obj->data))))
 		{
 			continue;
 		}
