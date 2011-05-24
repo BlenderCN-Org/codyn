@@ -9,13 +9,17 @@ int cpg_parser_get_column (yyscan_t yyscanner);
 
 static int yyccolumn = 1;
 
+static void
+advance_column (CpgParserContext *context, gint offset)
+{
+	cpg_parser_context_set_column (context, yyccolumn, yyccolumn + offset - 1);
+	yyccolumn += offset;
+}
+
 #define YY_EXTRA_TYPE CpgParserContext *
-#define YY_USER_ACTION yylloc->first_line = yylloc->last_line = yylineno;	\
-	yylloc->first_column = yyccolumn;					\
-	yylloc->last_column = yyccolumn + yyleng - 1; 				\
-	cpg_parser_context_set_column (yyextra, yyccolumn, yyccolumn + yyleng - 1); \
-	cpg_parser_context_set_token (yyextra, yytext);			\
-	yyccolumn += yyleng;
+#define YY_USER_ACTION								\
+	advance_column (yyextra, yyleng);					\
+	cpg_parser_context_set_token (yyextra, yytext);				\
 
 #define YY_INPUT(buf,result,max_size)						\
 	{									\
@@ -200,7 +204,9 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 <indirection_had_some>.?	{
 					yy_pop_state (yyscanner);
+					advance_column (yyextra, -yyleng);
 					yyless(0);
+
 					return T_INDIRECTION_END;
 				}
 
