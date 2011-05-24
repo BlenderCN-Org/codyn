@@ -715,14 +715,15 @@ layout_item
 	| layout_item_absolute
 	;
 
-layout_item_or_define
+layout_item_or_others
 	: layout_item
 	| define
+	| debug
 	;
 
 layout_items
 	:
-	| layout_items layout_item_or_define
+	| layout_items layout_item_or_others
 	;
 
 identifier
