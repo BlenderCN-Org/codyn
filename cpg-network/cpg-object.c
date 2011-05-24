@@ -953,6 +953,7 @@ cpg_object_add_property_impl (CpgObject    *object,
 		                             cpg_property_get_expression (property));
 
 		cpg_property_set_flags (existing,
+		                        cpg_property_get_flags (existing) |
 		                        cpg_property_get_flags (property));
 
 		if (g_object_is_floating (G_OBJECT (property)))
