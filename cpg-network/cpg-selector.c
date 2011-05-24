@@ -491,7 +491,7 @@ selector_select_identifier_object (Selector           *selector,
 		               cpg_object_get_id (obj)) == 0 &&
 		    check_type (obj, type))
 		{
-			ret = g_slist_prepend (NULL,
+			ret = g_slist_prepend (ret,
 			                       make_child_selection (parent,
 			                                             expansion,
 			                                             obj));
@@ -501,7 +501,7 @@ selector_select_identifier_object (Selector           *selector,
 	{
 		if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
 		{
-			return NULL;
+			return ret;
 		}
 
 		child = cpg_group_get_child (CPG_GROUP (cpg_selection_get_object (parent)),
@@ -509,7 +509,7 @@ selector_select_identifier_object (Selector           *selector,
 
 		if (child && check_type (child, type))
 		{
-			ret = g_slist_prepend (NULL,
+			ret = g_slist_prepend (ret,
 			                       make_child_selection (parent,
 			                                             expansion,
 			                                             child));
@@ -532,7 +532,7 @@ selector_select_identifier_property (Selector           *selector,
 	if (selector->onset)
 	{
 		/* FIXME: make this work? */
-		return NULL;
+		return ret;
 	}
 
 	prop = cpg_object_get_property (cpg_selection_get_object (parent),
@@ -540,7 +540,7 @@ selector_select_identifier_property (Selector           *selector,
 
 	if (prop)
 	{
-		ret = g_slist_prepend (NULL,
+		ret = g_slist_prepend (ret,
 		                       make_child_selection (parent,
 		                                             expansion,
 		                                             prop));
@@ -563,14 +563,14 @@ selector_select_identifier_action (Selector           *selector,
 	if (selector->onset)
 	{
 		/* FIXME: make this work? */
-		return NULL;
+		return ret;
 	}
 
 	obj = cpg_selection_get_object (parent);
 
 	if (!CPG_IS_LINK (obj))
 	{
-		return NULL;
+		return ret;
 	}
 
 	action = cpg_link_get_action (CPG_LINK (obj),
@@ -578,7 +578,7 @@ selector_select_identifier_action (Selector           *selector,
 
 	if (action)
 	{
-		ret = g_slist_prepend (NULL,
+		ret = g_slist_prepend (ret,
 		                       make_child_selection (parent,
 		                                             expansion,
 		                                             action));
