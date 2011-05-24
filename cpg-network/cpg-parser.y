@@ -432,7 +432,7 @@ double_list
 	;
 
 function_argument_list
-	: function_argument		{ append_array (NULL, CpgFunctionArgument *, $1, $$ = arret); }
+	:				{ $$ = NULL; }
 	| function_argument_list ',' function_argument
 					{ append_array ($1, CpgFunctionArgument *, $3, $$ = arret); }
 	;
