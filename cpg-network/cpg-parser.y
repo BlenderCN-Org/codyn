@@ -151,7 +151,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 10
+%expect 7
 
 %%
 
@@ -254,7 +254,6 @@ define
 	'{'
 	define_contents
 	'}'
-	| T_KEY_DEFINE define_item
 	;
 
 templates
