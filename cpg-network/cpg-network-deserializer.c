@@ -649,6 +649,45 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	return ret;
 }
 
+static void
+transfer_layout (CpgObject  *child,
+                 xmlNodePtr  node)
+{
+	xmlChar *xs;
+	xmlChar *ys;
+
+	if (!CPG_IS_LAYOUTABLE (child) ||
+	    !cpg_layoutable_supports_location (CPG_LAYOUTABLE (child)))
+	{
+		return;
+	}
+
+	xs = xmlGetProp (node, (xmlChar *)"x");
+	ys = xmlGetProp (node, (xmlChar *)"y");
+
+	if (xs || ys)
+	{
+		gint xx = 0;
+		gint yy = 0;
+
+		if (xs)
+		{
+			xx = (gint)g_ascii_strtoll ((gchar const *)xs, NULL, 10);
+			xmlFree (xs);
+		}
+
+		if (ys)
+		{
+			yy = (gint)g_ascii_strtoll ((gchar const *)ys, NULL, 10);
+			xmlFree (ys);
+		}
+
+		cpg_layoutable_set_location (CPG_LAYOUTABLE (child),
+		                             xx,
+		                             yy);
+	}
+}
+
 static CpgObject *
 parse_object (CpgNetworkDeserializer *deserializer,
               GType                   gtype,
@@ -771,37 +810,7 @@ parse_object (CpgNetworkDeserializer *deserializer,
 		return NULL;
 	}
 
-	if (CPG_IS_LAYOUTABLE (child) &&
-	    cpg_layoutable_supports_location (CPG_LAYOUTABLE (child)))
-	{
-		xmlChar *xs;
-		xmlChar *ys;
-
-		xs = xmlGetProp (node, (xmlChar *)"x");
-		ys = xmlGetProp (node, (xmlChar *)"y");
-
-		if (xs || ys)
-		{
-			gint xx = 0;
-			gint yy = 0;
-
-			if (xs)
-			{
-				xx = (gint)g_ascii_strtoll ((gchar const *)xs, NULL, 10);
-				xmlFree (xs);
-			}
-
-			if (ys)
-			{
-				yy = (gint)g_ascii_strtoll ((gchar const *)ys, NULL, 10);
-				xmlFree (ys);
-			}
-
-			cpg_layoutable_set_location (CPG_LAYOUTABLE (child),
-			                             xx,
-			                             yy);
-		}
-	}
+	transfer_layout (child, node);
 
 	return child;
 }
@@ -1711,6 +1720,8 @@ parse_import (CpgNetworkDeserializer *deserializer,
 	}
 
 	save_comment (node, G_OBJECT (imp));
+	transfer_layout (CPG_OBJECT (imp), node);
+
 	g_object_unref (imp);
 
 	return TRUE;
