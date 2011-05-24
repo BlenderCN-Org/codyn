@@ -881,22 +881,36 @@ gchar *
 cpg_property_flags_to_string (CpgPropertyFlags flags)
 {
 	GFlagsClass *klass;
-	guint i;
+	gint i;
+	CpgPropertyFlags building = CPG_PROPERTY_FLAG_NONE;
+	GPtrArray *attrs;
+	GSList *items = NULL;
+	GSList *item;
 
 	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
-	GPtrArray *attrs;
 
 	attrs = g_ptr_array_new ();
 
-	for (i = 0; i < klass->n_values; ++i)
+	for (i = klass->n_values - 1; i >= 0; --i)
 	{
 		GFlagsValue *value = &(klass->values[i]);
+		guint v = value->value;
 
-		if (flags & value->value)
+		if ((flags & v) == v && (building & v) != v)
 		{
-			g_ptr_array_add (attrs, (gpointer)value->value_nick);
+			building |= value->value;
+
+			items = g_slist_prepend (items,
+			                         (gpointer)value->value_nick);
 		}
 	}
+
+	for (item = items; item; item = g_slist_next (item))
+	{
+		g_ptr_array_add (attrs, item->data);
+	}
+
+	g_slist_free (items);
 
 	g_ptr_array_add (attrs, NULL);
 
