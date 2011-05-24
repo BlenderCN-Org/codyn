@@ -153,7 +153,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 7
+%expect 4
 
 %%
 
@@ -537,19 +537,29 @@ action
 					{ cpg_parser_context_add_action (context, $1, $4); errb }
 	;
 
+selector_item
+	: selector_pseudo
+	| selector_identifier
+	| selector_regex
+	;
+
+selector_item_set
+	: selector_identifier_set
+	| selector_regex_set
+	;
+
+selector_items
+	: selector_item
+	| selector_items '.' selector_item
+	| selector_items '|' selector_item_set
+	;
+
 selector
-	: selector_pseudo nested_selector
-					{ $$ = cpg_parser_context_pop_selector (context); errb }
-	| selector_identifier nested_selector
-					{ $$ = cpg_parser_context_pop_selector (context); errb }
-	| selector_regex nested_selector
-					{ $$ = cpg_parser_context_pop_selector (context); errb }
+	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
 	;
 
 selector_parse
-	: selector_pseudo nested_selector
-	| selector_identifier nested_selector
-	| selector_regex nested_selector
+	: selector_items
 	;
 
 selector_identifier
@@ -561,20 +571,11 @@ selector_regex
 	;
 
 selector_identifier_set
-	: string			{ cpg_parser_context_push_selector_identifier (context, $1, TRUE); errb }
+	: identifier_or_string		{ cpg_parser_context_push_selector_identifier (context, $1, TRUE); errb }
 	;
 
 selector_regex_set
 	: regex				{ cpg_parser_context_push_selector_regex (context, $1, TRUE); errb }
-	;
-
-nested_selector
-	:
-	| nested_selector '.' selector_identifier
-	| nested_selector '.' selector_regex
-	| nested_selector '|' selector_identifier_set
-	| nested_selector '|' selector_regex_set
-	| nested_selector selector_pseudo
 	;
 
 selector_pseudo_simple_key
@@ -650,8 +651,8 @@ selector_pseudo_with_args
 	;
 
 selector_pseudo
-	: '|' selector_pseudo_simple
-	| '|' selector_pseudo_with_args
+	: selector_pseudo_simple
+	| selector_pseudo_with_args
 	;
 
 import
