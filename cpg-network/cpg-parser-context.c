@@ -885,6 +885,7 @@ find_attribute (GSList *attributes,
 static GSList *
 link_pairs (CpgParserContext *context,
             CpgExpansion     *id,
+            gboolean          autoid,
             CpgSelection     *parent,
             GSList           *attributes,
             CpgSelector      *from,
@@ -897,9 +898,10 @@ link_pairs (CpgParserContext *context,
 
 	bidi = find_attribute (attributes, "bidirectional");
 
-	cpg_embedded_context_push_expansion (context->priv->embedded, id);
-	cpg_embedded_context_push_expansions (context->priv->embedded,
-	                                      cpg_selection_get_expansions (parent));
+	if (!autoid)
+	{
+		cpg_embedded_context_push_expansion (context->priv->embedded, id);
+	}
 
 	fromobjs = cpg_selector_select (from,
 	                                cpg_selection_get_object (parent),
@@ -907,11 +909,13 @@ link_pairs (CpgParserContext *context,
 	                                CPG_SELECTOR_TYPE_GROUP,
 	                                context->priv->embedded);
 
-	cpg_embedded_context_pop_expansions (context->priv->embedded);
-	cpg_embedded_context_pop_expansions (context->priv->embedded);
-
 	if (!fromobjs)
 	{
+		if (!autoid)
+		{
+			cpg_embedded_context_pop_expansions (context->priv->embedded);
+		}
+
 		return NULL;
 	}
 
@@ -957,6 +961,11 @@ link_pairs (CpgParserContext *context,
 
 	g_slist_foreach (fromobjs, (GFunc)g_object_unref, NULL);
 	g_slist_free (fromobjs);
+
+	if (!autoid)
+	{
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
+	}
 
 	return g_slist_reverse (ret);
 }
@@ -1083,7 +1092,13 @@ create_links_single (CpgParserContext          *context,
 	CpgAttribute *bidi;
 
 	/* For each pair FROM -> TO generate a link */
-	pairs = link_pairs (context, id, parent, attributes, from, to);
+	pairs = link_pairs (context,
+	                    id,
+	                    autoid,
+	                    parent,
+	                    attributes,
+	                    from,
+	                    to);
 	item = pairs;
 
 	bidi = find_attribute (attributes, "bidirectional");
