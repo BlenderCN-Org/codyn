@@ -1067,6 +1067,7 @@ unique_id (CpgGroup    *parent,
 static GSList *
 create_links_single (CpgParserContext          *context,
                      CpgExpansion              *id,
+                     gboolean                   autoid,
                      GSList                    *templates,
                      CpgSelection              *parent,
                      GSList                    *attributes,
@@ -1180,8 +1181,11 @@ create_links_single (CpgParserContext          *context,
 			}
 		}
 
-		cpg_embedded_context_push_expansion (context->priv->embedded,
-		                                     realid);
+		if (!autoid)
+		{
+			cpg_embedded_context_push_expansion (context->priv->embedded,
+			                                     realid);
+		}
 
 		cpg_embedded_context_push_expansions (context->priv->embedded,
 		                                      cpg_selection_get_expansions (firstsel));
@@ -1195,7 +1199,11 @@ create_links_single (CpgParserContext          *context,
 		                              parent,
 		                              CPG_TYPE_LINK);
 
-		cpg_embedded_context_pop_expansions (context->priv->embedded);
+		if (!autoid)
+		{
+			cpg_embedded_context_pop_expansions (context->priv->embedded);
+		}
+
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
 
@@ -1229,6 +1237,7 @@ create_links_single (CpgParserContext          *context,
 static GSList *
 create_links (CpgParserContext          *context,
               CpgEmbeddedString         *id,
+              gboolean                   autoid,
               GArray                    *templates,
               GSList                    *attributes,
               GArray                    *fromto)
@@ -1271,6 +1280,7 @@ create_links (CpgParserContext          *context,
 			ret = g_slist_concat (ret,
 			                      create_links_single (context,
 			                                           it->data,
+			                                           autoid,
 			                                           temps,
 			                                           item->data,
 			                                           attributes,
@@ -1335,8 +1345,11 @@ cpg_parser_context_push_link (CpgParserContext          *context,
                               GArray                    *fromto)
 {
 	GSList *objects;
+	gboolean autoid;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	autoid = id == NULL;
 
 	if (id == NULL)
 	{
@@ -1354,6 +1367,7 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 	{
 		objects = create_links (context,
 		                        id,
+		                        autoid,
 		                        templates,
 		                        attributes,
 		                        fromto);
