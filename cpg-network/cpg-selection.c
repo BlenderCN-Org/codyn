@@ -70,7 +70,7 @@ cpg_selection_new (gpointer  object,
 	ret = g_object_new (CPG_TYPE_SELECTION,
 	                    NULL);
 
-	ret->priv->object = g_object_ref (object);
+	ret->priv->object = object ? g_object_ref (object) : NULL;
 	ret->priv->expansions = copy_expansions (expansions);
 
 	return ret;
