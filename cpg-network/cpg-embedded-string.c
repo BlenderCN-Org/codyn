@@ -481,7 +481,7 @@ parse_expansion_range (gchar const *s,
 		gint cstart = (gint)g_ascii_strtoll (start, NULL, 10);
 		gint cend = (gint)g_ascii_strtoll (end, NULL, 10);
 
-		while (TRUE)
+		while (cstart <= cend)
 		{
 			gchar *it;
 
@@ -492,19 +492,7 @@ parse_expansion_range (gchar const *s,
 
 			g_free (it);
 
-			if (cstart == cend)
-			{
-				break;
-			}
-
-			if (cstart > cend)
-			{
-				--cstart;
-			}
-			else
-			{
-				++cstart;
-			}
+			++cstart;
 		}
 
 		g_free (start);
