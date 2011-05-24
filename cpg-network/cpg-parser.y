@@ -87,6 +87,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <piece> polynomial_piece
 %type <array> polynomial_pieces
 %type <array> function_argument_list
+%type <array> function_argument_list_or_empty
 %type <array> template_list
 %type <array> pseudo_args
 %type <argument> function_argument
@@ -385,10 +386,15 @@ function_polynomial
 	  '}'				{ cpg_parser_context_add_polynomial (context, $2, $6); errb }
 	;
 
+function_argument_list_or_empty
+	:				{ $$ = NULL; }
+	| function_argument_list	{ $$ = $1; }
+	;
+
 function_custom
 	: identifier_or_string
 	  '('
-	  function_argument_list
+	  function_argument_list_or_empty
 	  ')'
 	  '{'
 	  value_as_string
@@ -432,7 +438,7 @@ double_list
 	;
 
 function_argument_list
-	:				{ $$ = NULL; }
+	: function_argument		{ append_array (NULL, CpgFunctionArgument *, $1, $$ = arret); }
 	| function_argument_list ',' function_argument
 					{ append_array ($1, CpgFunctionArgument *, $3, $$ = arret); }
 	;
