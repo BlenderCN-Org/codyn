@@ -462,7 +462,7 @@ make_child_selection (CpgSelection *parent,
 	CpgSelection *ret;
 
 	expansions = g_slist_copy (cpg_selection_get_expansions (parent));
-	expansions = g_slist_append (expansions, expansion);
+	expansions = g_slist_prepend (expansions, expansion);
 
 	ret = cpg_selection_new (obj, expansions);
 
@@ -1123,8 +1123,8 @@ selector_pseudo_from_to (Selector           *selector,
 			}
 
 			expansions = g_slist_copy (cpg_selection_get_expansions (sel));
-			expansions = g_slist_concat (expansions,
-			                             g_slist_copy (cpg_selection_get_expansions (subsel)));
+			expansions = g_slist_concat (g_slist_copy (cpg_selection_get_expansions (subsel)),
+			                             expansions);
 
 			childsel = cpg_selection_new (cpg_selection_get_object (sel),
 			                              expansions);
@@ -1448,6 +1448,60 @@ selector_select (Selector           *selector,
 	return ret;
 }
 
+static void
+annotate_expansions (GSList *selections)
+{
+	GSList *ptrs = NULL;
+	GSList *item;
+	gboolean breakit = FALSE;
+
+	for (item = selections; item; item = g_slist_next (item))
+	{
+		CpgSelection *sel;
+
+		sel = item->data;
+
+		ptrs = g_slist_prepend (ptrs, cpg_selection_get_expansions (sel));
+	}
+
+	ptrs = g_slist_reverse (ptrs);
+
+	while (!breakit)
+	{
+		GSList *expansions = NULL;
+
+		breakit = TRUE;
+
+		for (item = ptrs; item; item = g_slist_next (item))
+		{
+			GSList *i;
+
+			i = item->data;
+
+			if (i)
+			{
+				expansions =
+					g_slist_prepend (expansions,
+					                 i ? i->data : NULL);
+
+				item->data = g_slist_next (item->data);
+
+				if (item->data)
+				{
+					breakit = FALSE;
+				}
+			}
+		}
+
+		expansions = g_slist_reverse (expansions);
+		cpg_expansions_annotate_indices (expansions);
+
+		g_slist_free (expansions);
+	}
+
+	g_slist_free (ptrs);
+}
+
 static GSList *
 selector_select_all (CpgSelector        *selector,
                      CpgObject          *parent,
@@ -1492,6 +1546,8 @@ selector_select_all (CpgSelector        *selector,
 		                       ctx,
 		                       item->next ? CPG_SELECTOR_TYPE_OBJECT : type,
 		                       context);
+
+		annotate_expansions (ctx);
 
 		g_slist_foreach (tmp, (GFunc)g_object_unref, NULL);
 		g_slist_free (tmp);

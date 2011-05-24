@@ -41,6 +41,9 @@ gint          cpg_expansion_num              (CpgExpansion           *id);
 gchar const  *cpg_expansion_get              (CpgExpansion           *id,
                                               gint                    idx);
 
+gint          cpg_expansion_get_index        (CpgExpansion           *id,
+                                              gint                    idx);
+
 void          cpg_expansion_add              (CpgExpansion           *id,
                                               gchar const            *item);
 
@@ -51,6 +54,8 @@ void          cpg_expansion_set              (CpgExpansion           *id,
 gchar        *cpg_expansions_expand          (GSList                 *expansions,
                                               gchar const            *s,
                                               GRegex                 *regex);
+
+void          cpg_expansions_annotate_indices (GSList                *expansions);
 
 G_END_DECLS
 

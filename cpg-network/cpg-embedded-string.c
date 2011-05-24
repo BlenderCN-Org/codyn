@@ -253,6 +253,8 @@ resolve_indirection (CpgEmbeddedContext *context,
 	gboolean isnum = TRUE;
 	gboolean isall = FALSE;
 	gboolean iscount = FALSE;
+	gboolean isindex = FALSE;
+
 	gint isadd = 0;
 	gint issub = 0;
 
@@ -268,6 +270,7 @@ resolve_indirection (CpgEmbeddedContext *context,
 			{
 				isall = (*ptr == '*');
 				iscount = (*ptr == '~');
+				isindex = (*ptr == '?');
 			}
 
 			break;
@@ -294,7 +297,7 @@ resolve_indirection (CpgEmbeddedContext *context,
 		}
 	}
 
-	if (isnum || isall || iscount)
+	if (isnum || isall || iscount || isindex)
 	{
 		CpgExpansion *ex;
 		gchar const *ret = NULL;
@@ -309,6 +312,10 @@ resolve_indirection (CpgEmbeddedContext *context,
 				ret = "{}";
 			}
 			else if (iscount)
+			{
+				ret = "0";
+			}
+			else if (isindex)
 			{
 				ret = "0";
 			}
@@ -327,6 +334,12 @@ resolve_indirection (CpgEmbeddedContext *context,
 			else if (isall)
 			{
 				return collect_expansion (ex);
+			}
+			else if (isindex)
+			{
+				gint idx = (gint)g_ascii_strtoll (s, NULL, 10);
+
+				return g_strdup_printf ("%d", cpg_expansion_get_index (ex, idx));
 			}
 		}
 
@@ -733,6 +746,7 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
                                      CpgEmbeddedContext *ctx)
 {
 	gchar const *id;
+	GSList *ret;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
@@ -742,12 +756,15 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
 	if (!*id)
 	{
 		CpgExpansion *ex = cpg_expansion_new_one ("");
-		return g_slist_prepend (NULL, ex);
+		ret = g_slist_prepend (NULL, ex);
 	}
 	else
 	{
-		return expand_id_recurse (&id, "\0");
+		ret = expand_id_recurse (&id, "\0");
 	}
+
+	cpg_expansions_annotate_indices (ret);
+	return ret;
 }
 
 void

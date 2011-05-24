@@ -374,6 +374,7 @@ link
 	  link_connect_fast
 	  templated
 	  '{'				{ cpg_parser_context_push_link (context, NULL, $4, $1, $3); errb }
+	  link_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
