@@ -1,4 +1,13 @@
-include "hopf.cpg"
-include "phase.cpg"
+templates
+{
+    import "hopf" from "hopf.cpg"
+    import "phase" from "phase.cpg"
+}
+
+layout
+{
+    |templates."hopf" at (-1, 0)
+    |templates."phase" at (1, 0)
+}
 
 # vi:ex:ts=4:et

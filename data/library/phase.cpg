@@ -46,4 +46,10 @@ templates
     }
 }
 
+layout
+{
+    |templates."oscillator" at (-1, 0)
+    |templates."coupling" at (1, 0)
+}
+
 # vi:ex:ts=4:et
