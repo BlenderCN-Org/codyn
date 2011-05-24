@@ -1,6 +1,9 @@
 templates
 {
+    ## Hopf oscillator
     import "hopf" from "hopf.cpg"
+
+    ## Phase oscillator
     import "phase" from "phase.cpg"
 
     layout
