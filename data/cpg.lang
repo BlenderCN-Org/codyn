@@ -125,6 +125,7 @@
             <keyword>delete</keyword>
             <keyword>property</keyword>
             <keyword>action</keyword>
+            <keyword>or</keyword>
         </context>
 
         <context id="selector">
