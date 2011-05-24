@@ -647,6 +647,16 @@ cpg_object_copy_impl (CpgObject *object,
 	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (object),
 	                                annotation);
 
+	if (cpg_layoutable_supports_location (CPG_LAYOUTABLE (source)) &&
+	    cpg_layoutable_supports_location (CPG_LAYOUTABLE (object)))
+	{
+		gint x;
+		gint y;
+
+		cpg_layoutable_get_location (CPG_LAYOUTABLE (source), &x, &y);
+		cpg_layoutable_set_location (CPG_LAYOUTABLE (object), x, y);
+	}
+
 	g_free (annotation);
 }
 
