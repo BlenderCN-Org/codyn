@@ -278,11 +278,11 @@ resolve_indirection (CpgEmbeddedContext *context,
 
 	ptr = s;
 
-	if (g_ascii_isalpha (*ptr) || *ptr == '+' || *ptr == '-')
+	if (g_ascii_isalpha (*ptr) || *ptr == '+' || *ptr == '-' || *ptr == '_')
 	{
 		while (*ptr)
 		{
-			if (!g_ascii_isalnum (*ptr))
+			if (!g_ascii_isalnum (*ptr) && *ptr != '_')
 			{
 				count_chars (ptr, '+', &isadd);
 				count_chars (ptr, '-', &issub);
