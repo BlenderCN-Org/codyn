@@ -755,20 +755,11 @@ cpg_import_load (CpgImport   *self,
 	}
 
 	CpgNetwork *imported = cpg_network_new ();
-	CpgNetworkDeserializer *deserializer;
 
-	deserializer = cpg_network_deserializer_new (imported, NULL);
-
-	if (!cpg_network_deserializer_deserialize_file (deserializer,
-	                                                self->priv->file,
-	                                                error))
+	if (!cpg_network_load_from_file (imported, self->priv->file, error))
 	{
-		g_object_unref (deserializer);
-
 		return FALSE;
 	}
-
-	g_object_unref (deserializer);
 
 	/* Import globals */
 	import_globals (self, network, imported);
@@ -798,6 +789,8 @@ cpg_import_load (CpgImport   *self,
 	g_object_notify (G_OBJECT (self), "modified");
 
 	_cpg_network_register_import (network, self);
+
+	g_object_unref (imported);
 
 	return TRUE;
 }
