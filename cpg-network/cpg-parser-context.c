@@ -1991,13 +1991,22 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 		for (item = context->priv->inputs; item; item = g_slist_next (item))
 		{
 			InputItem *ip = item->data;
+			GFile *dir;
 
 			if (!ip->file)
 			{
 				continue;
 			}
 
-			file = g_file_resolve_relative_path (ip->file, res);
+			dir = g_file_get_parent (ip->file);
+
+			if (!dir)
+			{
+				continue;
+			}
+
+			file = g_file_resolve_relative_path (dir, res);
+			g_object_unref (dir);
 
 			if (file && !g_file_query_exists (file, NULL))
 			{
