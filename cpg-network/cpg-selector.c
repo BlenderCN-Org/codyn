@@ -10,14 +10,6 @@
 
 typedef enum
 {
-	TYPE_ALL,
-	TYPE_LINK,
-	TYPE_PROPERTY,
-	TYPE_STATE
-} SelectType;
-
-typedef enum
-{
 	SELECTOR_TYPE_IDENTIFIER,
 	SELECTOR_TYPE_REGEX,
 	SELECTOR_TYPE_PSEUDO
@@ -69,7 +61,7 @@ static SelectorPseudoDefinition const pseudo_selectors[] =
 	{SELECTOR_PSEUDO_TYPE_LINKS, "links", FALSE},
 	{SELECTOR_PSEUDO_TYPE_SIBLINGS, "siblings", TRUE},
 	{SELECTOR_PSEUDO_TYPE_TEMPLATES, "templates", FALSE},
-	{SELECTOR_PSEUDO_TYPE_COUNT, "count", FALSE}
+	{SELECTOR_PSEUDO_TYPE_COUNT, "count", FALSE},
 };
 
 typedef struct
@@ -412,97 +404,185 @@ cpg_selector_add_regex (CpgSelector       *selector,
 }
 
 static gboolean
-check_type (CpgObject  *object,
-            SelectType  type)
+check_type (gpointer        object,
+            CpgSelectorType type)
 {
-	switch (type)
+	if ((type & CPG_SELECTOR_TYPE_STATE) &&
+	         G_TYPE_FROM_INSTANCE (object) == CPG_TYPE_OBJECT)
 	{
-		case TYPE_ALL:
-			return TRUE;
-		break;
-		case TYPE_LINK:
-			return CPG_IS_LINK (object);
-		break;
-		case TYPE_PROPERTY:
-			return FALSE;
-		break;
-		case TYPE_STATE:
-			return !CPG_IS_LINK (object);
-		break;
+		return TRUE;
+	}
+	else if ((type & CPG_SELECTOR_TYPE_LINK) &&
+	         CPG_IS_LINK (object))
+	{
+		return TRUE;
+	}
+	else if ((type & CPG_SELECTOR_TYPE_GROUP) &&
+	         CPG_IS_GROUP (object))
+	{
+		return TRUE;
+	}
+	else if ((type & CPG_SELECTOR_TYPE_ACTION) &&
+	         CPG_IS_LINK_ACTION (object))
+	{
+		return TRUE;
+	}
+	else if ((type & CPG_SELECTOR_TYPE_PROPERTY) &&
+	         CPG_IS_PROPERTY (object))
+	{
+		return TRUE;
 	}
 
 	return FALSE;
 }
 
 static GSList *
+selector_select_identifier_object (Selector           *selector,
+                                   CpgSelection       *parent,
+                                   CpgSelectorType     type,
+                                   CpgEmbeddedContext *context,
+                                   GSList             *ret)
+{
+	CpgObject *child;
+
+	if (selector->onset)
+	{
+		if (g_strcmp0 (cpg_embedded_string_expand (selector->identifier,
+		                                           context),
+		               cpg_object_get_id (cpg_selection_get_object (parent))) == 0 &&
+		    check_type (cpg_selection_get_object (parent), type))
+		{
+			ret = g_slist_prepend (NULL,
+			                        cpg_selection_copy (parent));
+		}
+
+	}
+	else
+	{
+		if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
+		{
+			return NULL;
+		}
+
+		child = cpg_group_get_child (CPG_GROUP (cpg_selection_get_object (parent)),
+		                             cpg_embedded_string_expand (selector->identifier,
+		                                                         context));
+
+		if (child && check_type (child, type))
+		{
+			ret = g_slist_prepend (NULL,
+			                       cpg_selection_new (child,
+			                                          cpg_selection_get_expansions (parent)));
+		}
+	}
+
+	return ret;
+}
+
+static GSList *
+selector_select_identifier_property (Selector           *selector,
+                                     CpgSelection       *parent,
+                                     CpgSelectorType     type,
+                                     CpgEmbeddedContext *context,
+                                     GSList             *ret)
+{
+	CpgProperty *prop;
+
+	if (selector->onset)
+	{
+		/* FIXME: make this work? */
+		return NULL;
+	}
+
+	prop = cpg_object_get_property (cpg_selection_get_object (parent),
+	                                cpg_embedded_string_expand (selector->identifier,
+	                                                            context));
+
+	if (prop)
+	{
+		ret = g_slist_prepend (NULL,
+		                       cpg_selection_new (prop, cpg_selection_get_expansions (parent)));
+	}
+
+	return ret;
+}
+
+static GSList *
+selector_select_identifier_action (Selector           *selector,
+                                   CpgSelection       *parent,
+                                   CpgSelectorType     type,
+                                   CpgEmbeddedContext *context,
+                                   GSList             *ret)
+{
+	GObject *obj;
+	CpgLinkAction *action;
+
+	if (selector->onset)
+	{
+		/* FIXME: make this work? */
+		return NULL;
+	}
+
+	obj = cpg_selection_get_object (parent);
+
+	if (!CPG_IS_LINK (obj))
+	{
+		return NULL;
+	}
+
+	action = cpg_link_get_action (CPG_LINK (obj),
+	                              cpg_embedded_string_expand (selector->identifier,
+	                                                          context));
+
+	if (action)
+	{
+		ret = g_slist_prepend (NULL,
+		                       cpg_selection_new (action, cpg_selection_get_expansions (parent)));
+	}
+
+	return ret;
+}
+
+static GSList *
 selector_select_identifier (Selector           *selector,
                             CpgSelection       *parent,
-                            SelectType          type,
+                            CpgSelectorType     type,
                             CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
 
-	if (type != TYPE_PROPERTY)
+	if (type & CPG_SELECTOR_TYPE_OBJECT)
 	{
-		CpgObject *child;
-
-		if (selector->onset)
-		{
-			if (g_strcmp0 (cpg_embedded_string_expand (selector->identifier,
-			                                           context),
-			               cpg_object_get_id (cpg_selection_get_object (parent))) == 0 &&
-			    check_type (cpg_selection_get_object (parent), type))
-			{
-				ret = g_slist_prepend (NULL,
-				                        cpg_selection_copy (parent));
-			}
-
-		}
-		else
-		{
-			if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
-			{
-				return NULL;
-			}
-
-			child = cpg_group_get_child (CPG_GROUP (cpg_selection_get_object (parent)),
-			                             cpg_embedded_string_expand (selector->identifier,
-			                                                         context));
-
-			if (child && check_type (child, type))
-			{
-				ret = g_slist_prepend (NULL,
-				                       cpg_selection_new (child,
-				                                          cpg_selection_get_expansions (parent)));
-			}
-		}
+		ret = selector_select_identifier_object (selector,
+		                                         parent,
+		                                         type,
+		                                         context,
+		                                         ret);
 	}
-	else
+
+	if (type & CPG_SELECTOR_TYPE_PROPERTY)
 	{
-		CpgProperty *prop;
+		ret = selector_select_identifier_property (selector,
+		                                           parent,
+		                                           type,
+		                                           context,
+		                                           ret);
+	}
 
-		if (selector->onset)
-		{
-			/* FIXME: make this work? */
-			return NULL;
-		}
-
-		prop = cpg_object_get_property (cpg_selection_get_object (parent),
-		                                cpg_embedded_string_expand (selector->identifier,
-		                                                            context));
-
-		if (prop)
-		{
-			ret = g_slist_prepend (NULL,
-			                       cpg_selection_new (prop, cpg_selection_get_expansions (parent)));
-		}
+	if (type & CPG_SELECTOR_TYPE_ACTION)
+	{
+		ret = selector_select_identifier_action (selector,
+		                                         parent,
+		                                         type,
+		                                         context,
+		                                         ret);
 	}
 
 	return g_slist_reverse (ret);
 }
 
 static CpgExpansion *
-expansion_from_match (GMatchInfo *info)
+expansion_from_match (GMatchInfo const *info)
 {
 	gchar **s;
 	CpgExpansion *ret;
@@ -532,155 +612,254 @@ regex_match_full (GRegex       *regex,
 	return FALSE;
 }
 
-static GSList *
-selector_select_regex (Selector           *selector,
-                       CpgSelection       *parent,
-                       SelectType          type,
-                       CpgEmbeddedContext *context)
+static CpgSelection *
+make_child_selection (CpgSelection     *parent,
+                      GMatchInfo const *info,
+                      gpointer          obj)
 {
-	GSList *ret = NULL;
-	GRegex *regex = NULL;
+	GSList *expansions;
+	CpgExpansion *expansion;
+	CpgSelection *ret;
 
-	if (type != TYPE_PROPERTY)
+	expansions = g_slist_copy (cpg_selection_get_expansions (parent));
+	expansion = expansion_from_match (info);
+	expansions = g_slist_append (expansions, expansion);
+
+	ret = cpg_selection_new (obj, expansions);
+
+	g_slist_free (expansions);
+	g_object_unref (expansion);
+
+	return ret;
+}
+
+static GSList *
+selector_select_regex_object (Selector           *selector,
+                              CpgSelection       *parent,
+                              CpgSelectorType     type,
+                              CpgEmbeddedContext *context,
+                              GSList             *ret)
+{
+	GSList const *children;
+	GRegex *regex;
+
+	regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
+	                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
+	                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
+	                     NULL);
+
+	if (!regex)
 	{
-		GSList const *children;
+		return NULL;
+	}
 
-		regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
-		                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
-		                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
-		                     NULL);
+	if (selector->onset)
+	{
+		CpgObject *obj;
+		GMatchInfo *info;
 
-		if (!regex)
+		obj = cpg_selection_get_object (parent);
+
+		if (check_type (obj, type) &&
+		    regex_match_full (regex,
+		                      cpg_object_get_id (obj),
+		                      &info))
 		{
-			return NULL;
-		}
+			CpgSelection *childsel;
 
-		if (selector->onset)
-		{
-			CpgObject *obj;
-			GMatchInfo *info;
+			childsel = make_child_selection (parent,
+			                                 info,
+			                                 obj);
 
-			obj = cpg_selection_get_object (parent);
-
-			if (check_type (obj, type) &&
-			    regex_match_full (regex,
-			                      cpg_object_get_id (obj),
-			                      &info))
-			{
-				CpgSelection *childsel;
-				GSList *expansions;
-				CpgExpansion *expansion;
-
-				expansions = g_slist_copy (cpg_selection_get_expansions (parent));
-
-				expansion = expansion_from_match (info);
-				expansions = g_slist_append (expansions, expansion);
-
-				childsel = cpg_selection_new (obj, expansions);
-				g_slist_free (expansions);
-
-				g_object_unref (expansion);
-
-				ret = g_slist_prepend (ret, childsel);
-
-				g_match_info_free (info);
-			}
-		}
-		else
-		{
-			if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
-			{
-				return NULL;
-			}
-
-			children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (parent)));
-
-			while (children)
-			{
-				CpgObject *child;
-				GMatchInfo *info;
-
-				child = children->data;
-
-				if (check_type (child, type) &&
-				    regex_match_full (regex,
-				                      cpg_object_get_id (child),
-				                      &info))
-				{
-					CpgSelection *childsel;
-					GSList *expansions;
-					CpgExpansion *expansion;
-
-					expansions = g_slist_copy (cpg_selection_get_expansions (parent));
-
-					expansion = expansion_from_match (info);
-					expansions = g_slist_append (expansions, expansion);
-
-					childsel = cpg_selection_new (child, expansions);
-					g_slist_free (expansions);
-
-					g_object_unref (expansion);
-
-					ret = g_slist_prepend (ret, childsel);
-
-					g_match_info_free (info);
-				}
-
-				children = g_slist_next (children);
-			}
+			ret = g_slist_prepend (ret, childsel);
+			g_match_info_free (info);
 		}
 	}
 	else
 	{
-		GSList *props;
-		GSList *item;
-
-		if (selector->onset)
+		if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
 		{
-			/* FIXME: implement this? */
 			return NULL;
 		}
 
-		regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
-		                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
-		                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
-		                     NULL);
+		children = cpg_group_get_children (CPG_GROUP (cpg_selection_get_object (parent)));
 
-		props = cpg_object_get_properties (cpg_selection_get_object (parent));
-
-		for (item = props; item; item = g_slist_next (item))
+		while (children)
 		{
+			CpgObject *child;
 			GMatchInfo *info;
 
-			if (regex_match_full (regex,
-			                      cpg_property_get_name (item->data),
+			child = children->data;
+
+			if (check_type (child, type) &&
+			    regex_match_full (regex,
+			                      cpg_object_get_id (child),
 			                      &info))
 			{
 				CpgSelection *childsel;
-				GSList *expansions;
-				CpgExpansion *expansion;
 
-				expansions = g_slist_copy (cpg_selection_get_expansions (parent));
-				expansion = expansion_from_match (info);
-				expansions = g_slist_append (expansions, expansion);
-
-				childsel = cpg_selection_new (item->data, expansions);
-
-				g_slist_free (expansions);
-				g_object_unref (expansion);
+				childsel = make_child_selection (parent,
+				                                 info,
+				                                 child);
 
 				ret = g_slist_prepend (ret, childsel);
 
 				g_match_info_free (info);
 			}
-		}
 
-		g_slist_free (props);
+			children = g_slist_next (children);
+		}
 	}
 
-	if (regex)
+	g_regex_unref (regex);
+	return ret;
+}
+
+static GSList *
+selector_select_regex_property (Selector           *selector,
+                                CpgSelection       *parent,
+                                CpgSelectorType     type,
+                                CpgEmbeddedContext *context,
+                                GSList             *ret)
+{
+	GSList *props;
+	GSList *item;
+	GRegex *regex;
+
+	if (selector->onset)
 	{
-		g_regex_unref (regex);
+		/* FIXME: implement this? */
+		return NULL;
+	}
+
+	regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
+	                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
+	                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
+	                     NULL);
+
+	if (!regex)
+	{
+		return NULL;
+	}
+
+	props = cpg_object_get_properties (cpg_selection_get_object (parent));
+
+	for (item = props; item; item = g_slist_next (item))
+	{
+		GMatchInfo *info;
+		CpgSelection *childsel;
+
+		if (!regex_match_full (regex,
+		                      cpg_property_get_name (item->data),
+		                      &info))
+		{
+			continue;
+		}
+
+		childsel = make_child_selection (parent,
+		                                 info,
+		                                 item->data);
+
+		ret = g_slist_prepend (ret, childsel);
+
+		g_match_info_free (info);
+	}
+
+	g_regex_unref (regex);
+	g_slist_free (props);
+	return ret;
+}
+
+static GSList *
+selector_select_regex_action (Selector           *selector,
+                              CpgSelection       *parent,
+                              CpgSelectorType     type,
+                              CpgEmbeddedContext *context,
+                              GSList             *ret)
+{
+	GSList const *actions;
+	GRegex *regex;
+
+	if (selector->onset)
+	{
+		/* FIXME: implement this? */
+		return NULL;
+	}
+
+	if (!CPG_IS_LINK (cpg_selection_get_object (parent)))
+	{
+		return NULL;
+	}
+
+	regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
+	                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
+	                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
+	                     NULL);
+
+	if (!regex)
+	{
+		return NULL;
+	}
+
+	actions = cpg_link_get_actions (cpg_selection_get_object (parent));
+
+	while (actions)
+	{
+		GMatchInfo *info;
+
+		if (regex_match_full (regex,
+		                      cpg_link_action_get_target (actions->data),
+		                      &info))
+		{
+			CpgSelection *childsel;
+
+			childsel = make_child_selection (parent, info, actions->data);
+			ret = g_slist_prepend (ret, childsel);
+
+			g_match_info_free (info);
+		}
+
+		actions = g_slist_next (actions);
+	}
+
+	g_regex_unref (regex);
+
+	return ret;
+}
+
+static GSList *
+selector_select_regex (Selector           *selector,
+                       CpgSelection       *parent,
+                       CpgSelectorType     type,
+                       CpgEmbeddedContext *context)
+{
+	GSList *ret = NULL;
+
+	if (type & CPG_SELECTOR_TYPE_OBJECT)
+	{
+		ret = selector_select_regex_object (selector,
+		                                    parent,
+		                                    type,
+		                                    context,
+		                                    ret);
+	}
+
+	if (type & CPG_SELECTOR_TYPE_PROPERTY)
+	{
+		ret = selector_select_regex_property (selector,
+		                                      parent,
+		                                      type,
+		                                      context,
+		                                      ret);
+	}
+
+	if (type & CPG_SELECTOR_TYPE_ACTION)
+	{
+		ret = selector_select_regex_action (selector,
+		                                    parent,
+		                                    type,
+		                                    context,
+		                                    ret);
 	}
 
 	return g_slist_reverse (ret);
@@ -699,10 +878,10 @@ nth_match (Nth const *nth,
 }
 
 static GSList *
-select_nth_reverse (GSList const *children,
-                    Nth const    *nth,
-                    gint          offset,
-                    SelectType    type)
+select_nth_reverse (GSList const    *children,
+                    Nth const       *nth,
+                    gint             offset,
+                    CpgSelectorType  type)
 {
 	GSList *ret = NULL;
 	gint i = 1 - offset;
@@ -813,8 +992,8 @@ find_pseudo_definition (Selector           *pseudo,
 }
 
 static GSList *
-count_selection (GSList     *selection,
-                 SelectType  type)
+count_selection (GSList          *selection,
+                 CpgSelectorType  type)
 {
 	GSList *ret = NULL;
 	GSList *item;
@@ -862,9 +1041,9 @@ count_selection (GSList     *selection,
 }
 
 static GSList *
-selector_select_pseudo (Selector    *selector,
-                        GSList      *parent,
-                        SelectType   type,
+selector_select_pseudo (Selector           *selector,
+                        GSList             *parent,
+                        CpgSelectorType     type,
                         CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
@@ -1024,7 +1203,7 @@ selector_select_pseudo (Selector    *selector,
 					ret = g_slist_concat (select_nth_reverse (children,
 					                                          &nth,
 					                                          idx + 1,
-					                                          type == TYPE_ALL ? (CPG_IS_LINK (cpg_selection_get_object (sel)) ? TYPE_LINK : TYPE_STATE) : type),
+					                                          type),
 					                      ret);
 
 					g_slist_foreach (children, (GFunc)g_object_unref, NULL);
@@ -1114,7 +1293,7 @@ selector_select_pseudo (Selector    *selector,
 static GSList *
 selector_select (Selector           *selector,
                  GSList             *parent,
-                 SelectType          type,
+                 CpgSelectorType     type,
                  CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
@@ -1122,7 +1301,7 @@ selector_select (Selector           *selector,
 
 	if (selector->type == SELECTOR_TYPE_PSEUDO)
 	{
-		if (type != TYPE_PROPERTY)
+		if (type & CPG_SELECTOR_TYPE_OBJECT)
 		{
 			ret = selector_select_pseudo (selector,
 			                              parent,
@@ -1171,7 +1350,7 @@ selector_select (Selector           *selector,
 static GSList *
 selector_select_all (CpgSelector        *selector,
                      CpgObject          *parent,
-                     SelectType          type,
+                     CpgSelectorType     type,
                      CpgEmbeddedContext *context)
 {
 	GSList *item;
@@ -1210,7 +1389,7 @@ selector_select_all (CpgSelector        *selector,
 		tmp = ctx;
 		ctx = selector_select (item->data,
 		                       ctx,
-		                       item->next ? TYPE_ALL : type,
+		                       item->next ? CPG_SELECTOR_TYPE_OBJECT : type,
 		                       context);
 
 		g_slist_foreach (tmp, (GFunc)g_object_unref, NULL);
@@ -1230,49 +1409,14 @@ selector_select_all (CpgSelector        *selector,
 GSList *
 cpg_selector_select (CpgSelector        *selector,
                      CpgObject          *parent,
+                     CpgSelectorType     type,
                      CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
 	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	return selector_select_all (selector, parent, TYPE_ALL, context);
-}
-
-GSList *
-cpg_selector_select_states (CpgSelector        *selector,
-                            CpgObject          *parent,
-                            CpgEmbeddedContext *context)
-{
-	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
-
-	return selector_select_all (selector, parent, TYPE_STATE, context);
-}
-
-GSList *
-cpg_selector_select_links (CpgSelector        *selector,
-                           CpgObject          *parent,
-                           CpgEmbeddedContext *context)
-{
-	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
-
-	return selector_select_all (selector, parent, TYPE_LINK, context);
-}
-
-GSList *
-cpg_selector_select_properties (CpgSelector        *selector,
-                                CpgObject          *parent,
-                                CpgEmbeddedContext *context)
-{
-	g_return_val_if_fail (CPG_IS_SELECTOR (selector), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
-	g_return_val_if_fail (context == NULL || CPG_IS_EMBEDDED_CONTEXT (context), NULL);
-
-	return selector_select_all (selector, parent, TYPE_PROPERTY, context);
+	return selector_select_all (selector, parent, type, context);
 }
 
 gchar const *

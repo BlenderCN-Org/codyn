@@ -20,6 +20,20 @@ typedef struct _CpgSelector		CpgSelector;
 typedef struct _CpgSelectorClass	CpgSelectorClass;
 typedef struct _CpgSelectorPrivate	CpgSelectorPrivate;
 
+typedef enum
+{
+	CPG_SELECTOR_TYPE_STATE = 1 << 0,
+	CPG_SELECTOR_TYPE_LINK = 1 << 1,
+	CPG_SELECTOR_TYPE_GROUP = 1 << 2,
+	CPG_SELECTOR_TYPE_PROPERTY = 1 << 3,
+	CPG_SELECTOR_TYPE_ACTION = 1 << 4,
+	CPG_SELECTOR_TYPE_FUNCTION = 1 << 5,
+	CPG_SELECTOR_TYPE_OBJECT = CPG_SELECTOR_TYPE_STATE |
+	                           CPG_SELECTOR_TYPE_LINK |
+	                           CPG_SELECTOR_TYPE_GROUP |
+	                           CPG_SELECTOR_TYPE_FUNCTION
+} CpgSelectorType;
+
 struct _CpgSelector
 {
 	GObject parent;
@@ -56,18 +70,7 @@ void          cpg_selector_add_regex         (CpgSelector            *selector,
 
 GSList       *cpg_selector_select            (CpgSelector            *selector,
                                               CpgObject              *parent,
-                                              CpgEmbeddedContext     *context);
-
-GSList       *cpg_selector_select_links      (CpgSelector            *selector,
-                                              CpgObject              *parent,
-                                              CpgEmbeddedContext     *context);
-
-GSList       *cpg_selector_select_states     (CpgSelector            *selector,
-                                              CpgObject              *parent,
-                                              CpgEmbeddedContext     *context);
-
-GSList       *cpg_selector_select_properties (CpgSelector            *selector,
-                                              CpgObject              *parent,
+                                              CpgSelectorType         type,
                                               CpgEmbeddedContext     *context);
 
 G_END_DECLS

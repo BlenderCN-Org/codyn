@@ -155,7 +155,10 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "on"				return T_KEY_ON;
 "proxy"				return T_KEY_PROXY;
 "debug"				return T_KEY_DEBUG;
-"select"			return T_KEY_SELECT;
+"selector"			return T_KEY_SELECTOR;
+"action"			return T_KEY_ACTION;
+"property"			return T_KEY_PROPERTY;
+"delete"			return T_KEY_DELETE;
 
 {IDENTIFIER}			{
 					yylval->id = g_strdup (yytext);

@@ -42,6 +42,7 @@ cpg_network_parser_utils_get_templates (CpgNetwork           *network,
 		{
 			template = cpg_selector_select (selectors->data,
 			                                CPG_OBJECT (parent),
+			                                CPG_SELECTOR_TYPE_OBJECT,
 			                                context);
 		}
 
@@ -50,6 +51,7 @@ cpg_network_parser_utils_get_templates (CpgNetwork           *network,
 			/* Find template in the root template group */
 			template = cpg_selector_select (selectors->data,
 			                                CPG_OBJECT (template_group),
+			                                CPG_SELECTOR_TYPE_OBJECT,
 			                                context);
 		}
 

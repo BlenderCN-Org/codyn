@@ -1826,7 +1826,10 @@ cpg_group_find_objects (CpgGroup    *group,
 		return NULL;
 	}
 
-	all = cpg_selector_select (sel, CPG_OBJECT (group), NULL);
+	all = cpg_selector_select (sel,
+	                           CPG_OBJECT (group),
+	                           CPG_SELECTOR_TYPE_OBJECT,
+	                           NULL);
 
 	while (all)
 	{
@@ -1909,12 +1912,15 @@ cpg_group_find_properties (CpgGroup    *group,
 		return NULL;
 	}
 
-	all = cpg_selector_select_properties (sel, CPG_OBJECT (group), NULL);
+	all = cpg_selector_select (sel,
+	                           CPG_OBJECT (group),
+	                           CPG_SELECTOR_TYPE_PROPERTY,
+	                           NULL);
 
 	while (all)
 	{
 		ret = g_slist_prepend (ret,
-		                       cpg_selection_get_property (all->data));
+		                       cpg_selection_get_object (all->data));
 
 		g_object_unref (all->data);
 		all = g_slist_delete_link (all, all);

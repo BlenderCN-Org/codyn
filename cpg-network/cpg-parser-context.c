@@ -587,9 +587,10 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		cpg_embedded_context_push_expansions (context->priv->embedded,
 		                                      cpg_selection_get_expansions (item->data));
 
-		props = cpg_selector_select_properties (target,
-		                                        CPG_OBJECT (parent),
-		                                        context->priv->embedded);
+		props = cpg_selector_select (target,
+		                             CPG_OBJECT (parent),
+		                             CPG_SELECTOR_TYPE_PROPERTY,
+		                             context->priv->embedded);
 
 		exname = cpg_embedded_string_expand (name, context->priv->embedded);
 
@@ -605,7 +606,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		}
 		else if (!cpg_property_interface_add (iface,
 		                                      exname,
-		                                      cpg_selection_get_property (props->data),
+		                                      cpg_selection_get_object (props->data),
 		                                      &error))
 		{
 			parser_failed_error (context, error);
@@ -900,9 +901,11 @@ link_pairs (CpgParserContext *context,
 	cpg_embedded_context_push_expansions (context->priv->embedded,
 	                                      cpg_selection_get_expansions (parent));
 
-	fromobjs = cpg_selector_select_states (from,
-	                                       cpg_selection_get_object (parent),
-	                                       context->priv->embedded);
+	fromobjs = cpg_selector_select (from,
+	                                cpg_selection_get_object (parent),
+	                                CPG_SELECTOR_TYPE_STATE |
+	                                CPG_SELECTOR_TYPE_GROUP,
+	                                context->priv->embedded);
 
 	cpg_embedded_context_pop_expansions (context->priv->embedded);
 	cpg_embedded_context_pop_expansions (context->priv->embedded);
@@ -920,9 +923,11 @@ link_pairs (CpgParserContext *context,
 		                                      cpg_selection_get_expansions (fromobj->data));
 
 		/* Select TO states */
-		toobjs = cpg_selector_select_states (to,
-		                                     cpg_selection_get_object (parent),
-		                                     context->priv->embedded);
+		toobjs = cpg_selector_select (to,
+		                              cpg_selection_get_object (parent),
+		                              CPG_SELECTOR_TYPE_STATE |
+		                              CPG_SELECTOR_TYPE_GROUP,
+		                              context->priv->embedded);
 
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
 
@@ -2108,9 +2113,11 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_SELECTOR (left));
 	g_return_if_fail (CPG_IS_SELECTOR (right));
 
-	leftobjs = cpg_selector_select_states (left,
-	                                       CPG_OBJECT (context->priv->network),
-	                                       context->priv->embedded);
+	leftobjs = cpg_selector_select (left,
+	                                CPG_OBJECT (context->priv->network),
+	                                CPG_SELECTOR_TYPE_STATE |
+	                                CPG_SELECTOR_TYPE_GROUP,
+	                                context->priv->embedded);
 
 	if (!leftobjs)
 	{
@@ -2125,9 +2132,11 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 		cpg_embedded_context_push_expansions (context->priv->embedded,
 		                                      cpg_selection_get_expansions (leftsel));
 
-		rightobjs = cpg_selector_select_states (right,
-		                                        CPG_OBJECT (context->priv->network),
-		                                        context->priv->embedded);
+		rightobjs = cpg_selector_select (right,
+		                                 CPG_OBJECT (context->priv->network),
+		                                 CPG_SELECTOR_TYPE_STATE |
+		                                 CPG_SELECTOR_TYPE_GROUP,
+		                                 context->priv->embedded);
 
 		if (!rightobjs)
 		{
@@ -2170,6 +2179,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 
 	objs = cpg_selector_select (selector,
 	                            CPG_OBJECT (context->priv->network),
+	                            CPG_SELECTOR_TYPE_OBJECT,
 	                            context->priv->embedded);
 
 	for (obj = objs; obj; obj = g_slist_next (obj))
@@ -2204,6 +2214,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 
 			ofobjs = cpg_selector_select (of,
 			                              CPG_OBJECT (context->priv->network),
+			                              CPG_SELECTOR_TYPE_OBJECT,
 			                              context->priv->embedded);
 
 			for (ofobj = ofobjs; ofobj; ofobj = g_slist_next (ofobj))
@@ -2496,13 +2507,13 @@ debug_selector (CpgParserContext *context,
 
 		sel = objects->data;
 
-		if (cpg_selection_is_object (sel))
+		if (CPG_IS_OBJECT (cpg_selection_get_object (sel)))
 		{
 			msg = cpg_object_get_full_id (cpg_selection_get_object (sel));
 		}
 		else
 		{
-			msg = cpg_property_get_full_name (cpg_selection_get_property (sel));
+			msg = cpg_property_get_full_name (cpg_selection_get_object (sel));
 		}
 
 		g_printerr ("[debug] (%d): {%s} => %s\n",
@@ -2522,6 +2533,7 @@ debug_selector (CpgParserContext *context,
 
 void
 cpg_parser_context_debug_selector (CpgParserContext *context,
+                                   CpgSelectorType   type,
                                    CpgSelector      *selector)
 {
 	GSList *item;
@@ -2538,73 +2550,8 @@ cpg_parser_context_debug_selector (CpgParserContext *context,
 		                item->data,
 		                cpg_selector_select (selector,
 		                                     cpg_selection_get_object (item->data),
+		                                     type,
 		                                     context->priv->embedded));
-	}
-}
-
-void
-cpg_parser_context_debug_selector_state (CpgParserContext *context,
-                                         CpgSelector      *selector)
-{
-	GSList *item;
-	Context *ctx;
-
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CPG_IS_SELECTOR (selector));
-
-	ctx = CURRENT_CONTEXT (context);
-
-	for (item = ctx->objects; item; item = g_slist_next (item))
-	{
-		debug_selector (context,
-		                item->data,
-		                cpg_selector_select_states (selector,
-		                                            cpg_selection_get_object (item->data),
-		                                            context->priv->embedded));
-	}
-}
-
-void
-cpg_parser_context_debug_selector_link (CpgParserContext *context,
-                                        CpgSelector      *selector)
-{
-	GSList *item;
-	Context *ctx;
-
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CPG_IS_SELECTOR (selector));
-
-	ctx = CURRENT_CONTEXT (context);
-
-	for (item = ctx->objects; item; item = g_slist_next (item))
-	{
-		debug_selector (context,
-		                item->data,
-		                cpg_selector_select_links (selector,
-		                                           cpg_selection_get_object (item->data),
-		                                           context->priv->embedded));
-	}
-}
-
-void
-cpg_parser_context_debug_selector_property (CpgParserContext *context,
-                                            CpgSelector      *selector)
-{
-	GSList *item;
-	Context *ctx;
-
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CPG_IS_SELECTOR (selector));
-
-	ctx = CURRENT_CONTEXT (context);
-
-	for (item = ctx->objects; item; item = g_slist_next (item))
-	{
-		debug_selector (context,
-		                item->data,
-		                cpg_selector_select_properties (selector,
-		                                                cpg_selection_get_object (item->data),
-		                                                context->priv->embedded));
 	}
 }
 
@@ -2621,3 +2568,64 @@ cpg_parser_context_debug_string (CpgParserContext  *context,
 
 	g_printerr ("[debug] (%d): %s\n", context->priv->lineno, ret);
 }
+
+void
+cpg_parser_context_delete_selector (CpgParserContext *context,
+                                    CpgSelectorType   type,
+                                    CpgSelector      *selector)
+{
+	GSList *ret;
+	GSList *item;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+
+	ret = cpg_selector_select (selector,
+	                           CPG_OBJECT (context->priv->network),
+	                           type,
+	                           context->priv->embedded);
+
+	for (item = ret; item; item = g_slist_next (item))
+	{
+		CpgSelection *sel = item->data;
+		gpointer obj = cpg_selection_get_object (sel);
+		GError *error = NULL;
+
+		if (CPG_IS_PROPERTY (obj))
+		{
+			CpgObject *parent;
+
+			parent = cpg_property_get_object (obj);
+
+			if (!cpg_object_remove_property (parent, obj, &error))
+			{
+				parser_failed_error (context, error);
+				break;
+			}
+		}
+		else if (CPG_IS_LINK_ACTION (obj))
+		{
+			CpgLink *link;
+
+			link = cpg_link_action_get_link (obj);
+
+			cpg_link_remove_action (link, obj);
+		}
+		else if (CPG_IS_OBJECT (obj))
+		{
+			CpgObject *parent;
+
+			parent = cpg_object_get_parent (obj);
+
+			if (!cpg_group_remove (CPG_GROUP (parent), obj, &error))
+			{
+				parser_failed_error (context, error);
+				break;
+			}
+		}
+	}
+
+	g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+	g_slist_free (ret);
+}
+

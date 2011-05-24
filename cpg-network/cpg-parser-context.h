@@ -30,11 +30,13 @@ typedef struct _CpgParserContextClassPrivate	CpgParserContextClassPrivate;
 
 typedef enum
 {
-	CPG_PARSER_CONTEXT_SCOPE_NONE,
-	CPG_PARSER_CONTEXT_SCOPE_STATE,
-	CPG_PARSER_CONTEXT_SCOPE_LINK,
-	CPG_PARSER_CONTEXT_SCOPE_NETWORK
-} CpgParserContextScope;
+	CPG_PARSER_CONTEXT_SELECTOR_TYPE_OBJECT,
+	CPG_PARSER_CONTEXT_SELECTOR_TYPE_STATE,
+	CPG_PARSER_CONTEXT_SELECTOR_TYPE_LINK,
+	CPG_PARSER_CONTEXT_SELECTOR_TYPE_PROPERTY,
+	CPG_PARSER_CONTEXT_SELECTOR_TYPE_ACTION,
+	CPG_PARSER_CONTEXT_SELECTOR_TYPE_FUNCTION
+} CpgParserContextDeleteType;
 
 struct _CpgParserContext
 {
@@ -213,17 +215,13 @@ gboolean               cpg_parser_context_pop_equation_depth    (CpgParserContex
 void                   cpg_parser_context_push_equation_depth   (CpgParserContext *context);
 void                   cpg_parser_context_push_equation         (CpgParserContext *context);
 
+void                   cpg_parser_context_delete_selector       (CpgParserContext *context,
+                                                                 CpgSelectorType   type,
+                                                                 CpgSelector      *selector);
+
 void                   cpg_parser_context_debug_selector        (CpgParserContext *context,
+                                                                 CpgSelectorType   type,
                                                                  CpgSelector      *selector);
-
-void                   cpg_parser_context_debug_selector_state  (CpgParserContext *context,
-                                                                 CpgSelector      *selector);
-
-void                   cpg_parser_context_debug_selector_link   (CpgParserContext *context,
-                                                                 CpgSelector      *selector);
-
-void                   cpg_parser_context_debug_selector_property (CpgParserContext *context,
-                                                                   CpgSelector      *selector);
 
 void                   cpg_parser_context_debug_string          (CpgParserContext  *context,
                                                                  CpgEmbeddedString *s);

@@ -41,11 +41,13 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECT T_KEY_PROPERTY
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
 %type <num> relation_item
+
+%type <id> pseudo_identifier
 
 %token <numf> T_DOUBLE
 %token <numf> T_INTEGER
@@ -61,6 +63,8 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_EQUATION_BEGIN
 %token T_EQUATION_END
+
+%type <num> selector_type
 
 %token <num> T_INDIRECTION_BEGIN
 %token T_INDIRECTION_END
@@ -173,6 +177,8 @@ toplevel
 	| integrator
 	| include
 	| debug
+	| delete
+	| delete_context
 	;
 
 include_path
@@ -540,8 +546,13 @@ pseudo_args_list
 	| pseudo_args				{ $$ = $1; }
 	;
 
+pseudo_identifier
+	: T_IDENTIFIER			{ $$ = $1; }
+	| T_KEY_TEMPLATES		{ $$ = g_strdup ("templates"); }
+	;
+
 selector_pseudo_identifier
-	: '|' T_IDENTIFIER		{ $$ = cpg_embedded_string_new_from_string ($2); }
+	: '|' pseudo_identifier		{ $$ = cpg_embedded_string_new_from_string ($2); }
 	;
 
 selector_pseudo
@@ -708,12 +719,38 @@ indirection_inside
 	  T_INDIRECTION_END		{ cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
 	;
 
+selector_type
+	:				{ $$ = CPG_SELECTOR_TYPE_OBJECT; }
+	| T_KEY_STATE			{ $$ = CPG_SELECTOR_TYPE_STATE; }
+	| T_KEY_LINK			{ $$ = CPG_SELECTOR_TYPE_LINK; }
+	| T_KEY_GROUP			{ $$ = CPG_SELECTOR_TYPE_GROUP; }
+	| T_KEY_ACTION			{ $$ = CPG_SELECTOR_TYPE_ACTION; }
+	| T_KEY_PROPERTY		{ $$ = CPG_SELECTOR_TYPE_PROPERTY; }
+	| T_KEY_FUNCTION		{ $$ = CPG_SELECTOR_TYPE_FUNCTION; }
+	;
+
 debug
-	: T_KEY_DEBUG T_KEY_SELECT selector { cpg_parser_context_debug_selector (context, $3); }
-	| T_KEY_DEBUG T_KEY_SELECT T_KEY_STATE selector { cpg_parser_context_debug_selector_state (context, $4); }
-	| T_KEY_DEBUG T_KEY_SELECT T_KEY_LINK selector { cpg_parser_context_debug_selector_link (context, $4); }
-	| T_KEY_DEBUG T_KEY_SELECT T_KEY_PROPERTY selector { cpg_parser_context_debug_selector_property (context, $4); }
-	| T_KEY_DEBUG value_as_string		{ cpg_parser_context_debug_string (context, $2); }
+	: T_KEY_DEBUG T_KEY_SELECTOR selector_type selector	{ cpg_parser_context_debug_selector (context, $3, $4); }
+	| T_KEY_DEBUG value_as_string				{ cpg_parser_context_debug_string (context, $2); }
+	;
+
+delete_item
+	: selector_type selector	{ cpg_parser_context_delete_selector (context, $1, $2); }
+	;
+
+delete
+	: T_KEY_DELETE delete_item
+	;
+
+delete_items
+	:
+	| delete_items delete_item;
+
+delete_context
+	: T_KEY_DELETE
+	  '{'
+	  delete_items
+	  '}'
 	;
 
 %%

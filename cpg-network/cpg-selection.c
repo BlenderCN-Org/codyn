@@ -85,26 +85,12 @@ cpg_selection_copy (CpgSelection *selection)
 	                          selection->priv->expansions);
 }
 
-CpgObject *
+gpointer
 cpg_selection_get_object (CpgSelection *selection)
 {
 	g_return_val_if_fail (CPG_IS_SELECTION (selection), NULL);
 
-	g_return_val_if_fail (selection->priv->object == NULL ||
-	                      CPG_IS_OBJECT (selection->priv->object), NULL);
-
-	return selection->priv->object ? CPG_OBJECT (selection->priv->object) : NULL;
-}
-
-CpgProperty *
-cpg_selection_get_property (CpgSelection *selection)
-{
-	g_return_val_if_fail (CPG_IS_SELECTION (selection), NULL);
-
-	g_return_val_if_fail (selection->priv->object == NULL ||
-	                      CPG_IS_PROPERTY (selection->priv->object), NULL);
-
-	return selection->priv->object ? CPG_PROPERTY (selection->priv->object) : NULL;
+	return selection->priv->object;
 }
 
 GSList *
@@ -114,20 +100,3 @@ cpg_selection_get_expansions (CpgSelection *selection)
 
 	return selection->priv->expansions;
 }
-
-gboolean
-cpg_selection_is_object (CpgSelection *selection)
-{
-	g_return_val_if_fail (CPG_IS_SELECTION (selection), FALSE);
-
-	return CPG_IS_OBJECT (selection->priv->object);
-}
-
-gboolean
-cpg_selection_is_property (CpgSelection *selection)
-{
-	g_return_val_if_fail (CPG_IS_SELECTION (selection), FALSE);
-
-	return CPG_IS_PROPERTY (selection->priv->object);
-}
-

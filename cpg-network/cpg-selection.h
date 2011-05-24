@@ -37,11 +37,7 @@ CpgSelection *cpg_selection_new              (gpointer                object,
 
 CpgSelection *cpg_selection_copy             (CpgSelection           *selection);
 
-gboolean      cpg_selection_is_object        (CpgSelection           *selection);
-gboolean      cpg_selection_is_property      (CpgSelection           *selection);
-
-CpgObject    *cpg_selection_get_object       (CpgSelection           *selection);
-CpgProperty  *cpg_selection_get_property     (CpgSelection           *selection);
+gpointer      cpg_selection_get_object       (CpgSelection           *selection);
 GSList       *cpg_selection_get_expansions   (CpgSelection           *selection);
 
 

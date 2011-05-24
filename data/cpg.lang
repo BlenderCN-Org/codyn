@@ -121,6 +121,10 @@
             <keyword>at</keyword>
             <keyword>on</keyword>
             <keyword>of</keyword>
+            <keyword>selector</keyword>
+            <keyword>delete</keyword>
+            <keyword>property</keyword>
+            <keyword>action</keyword>
         </context>
 
         <context id="selector">
