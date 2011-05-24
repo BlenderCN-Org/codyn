@@ -2153,6 +2153,9 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 void
 cpg_parser_context_push_layout (CpgParserContext *context)
 {
+	GSList *objs = NULL;
+	GSList *obj;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
 	if (!context->priv->layout)
@@ -2160,8 +2163,18 @@ cpg_parser_context_push_layout (CpgParserContext *context)
 		context->priv->layout = cpg_layout_new (context->priv->network);
 	}
 
+	for (obj = CURRENT_CONTEXT (context)->objects; obj; obj = g_slist_next (obj))
+	{
+		objs = g_slist_prepend (objs,
+		                        cpg_selection_copy (obj->data));
+	}
+
+	objs = g_slist_reverse (objs);
+
 	cpg_parser_context_push_object (context,
-	                                NULL);
+	                                objs);
+
+	g_slist_free (objs);
 }
 
 void
