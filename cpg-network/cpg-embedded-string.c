@@ -270,13 +270,28 @@ resolve_indirection (CpgEmbeddedContext *context,
 				iscount = (*ptr == '~');
 			}
 
-			count_chars (ptr, '+', &isadd);
-			count_chars (ptr, '-', &issub);
-
 			break;
 		}
 
 		++ptr;
+	}
+
+	ptr = s;
+
+	if (g_ascii_isalpha (*ptr))
+	{
+		while (*ptr)
+		{
+			if (!g_ascii_isalnum (*ptr))
+			{
+				count_chars (ptr, '+', &isadd);
+				count_chars (ptr, '-', &issub);
+
+				break;
+			}
+
+			++ptr;
+		}
 	}
 
 	if (isnum || isall || iscount)
