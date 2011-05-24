@@ -194,13 +194,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_REGEX_BEGIN;
 				}
 
-<*>"@"+				{
-					yy_push_state (indirection, yyscanner);
-					yylval->num = yyleng - 1;
-
-					return T_INDIRECTION_BEGIN;
-				}
-
 <indirection,indirection_had_some>"["		{
 					yy_push_state (indirection_embedding, yyscanner);
 					return T_INDIRECTION_EMBEDDING_BEGIN;
@@ -212,13 +205,20 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					yy_pop_state (yyscanner);
 					return T_INDIRECTION_END;
 				}
-<indirection_had_some>.?	{
+<indirection_had_some>.*	{
 					yy_pop_state (yyscanner);
 
 					advance_column (yyextra, -yyleng);
 					yyless(0);
 
 					return T_INDIRECTION_END;
+				}
+
+<*>"@"+				{
+					yy_push_state (indirection, yyscanner);
+					yylval->num = yyleng - 1;
+
+					return T_INDIRECTION_BEGIN;
 				}
 
 <indirection_embedding>(\\[]@$]|[^]@$])+ {
