@@ -546,6 +546,7 @@ selector_item
 selector_item_set
 	: selector_identifier_set
 	| selector_regex_set
+	| selector_pseudo
 	;
 
 selector_items
@@ -635,7 +636,6 @@ selector_pseudo_with_args
 	  ')'					{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
 						                                           $4); }
-
 	| selector_pseudo_nth_key '(' selector_pseudo_nth_args ')'
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
