@@ -278,7 +278,7 @@ resolve_indirection (CpgEmbeddedContext *context,
 
 	ptr = s;
 
-	if (g_ascii_isalpha (*ptr))
+	if (g_ascii_isalpha (*ptr) || *ptr == '+' || *ptr == '-')
 	{
 		while (*ptr)
 		{
