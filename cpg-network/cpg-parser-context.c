@@ -1815,17 +1815,42 @@ cpg_parser_context_get_token (CpgParserContext *context)
 void
 cpg_parser_context_define (CpgParserContext  *context,
                            CpgEmbeddedString *name,
-                           CpgEmbeddedString *define,
+                           GSList            *defines,
                            gboolean           expand)
 {
 	gchar const *exname;
 	gchar const *exdefine;
+	CpgEmbeddedString *define = NULL;
+	GSList *item;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
-	g_return_if_fail (define != NULL);
+	g_return_if_fail (defines != NULL);
 
 	exname = cpg_embedded_string_expand (name, context->priv->embedded);
+
+	for (item = defines; item; item = g_slist_next (item))
+	{
+		gchar const *s;
+
+		s = cpg_embedded_string_expand (item->data,
+		                                context->priv->embedded);
+
+		if (s && *s)
+		{
+			define = g_object_ref (item->data);
+			break;
+		}
+	}
+
+	if (!define)
+	{
+		define = g_object_ref (defines->data);
+	}
+
+	g_slist_foreach (defines, (GFunc)g_object_unref, NULL);
+	g_slist_free (defines);
+
 	exdefine = cpg_embedded_string_expand (define, context->priv->embedded);
 
 	if (expand)

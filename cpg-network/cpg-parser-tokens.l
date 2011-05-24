@@ -159,6 +159,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "action"			return T_KEY_ACTION;
 "property"			return T_KEY_PROPERTY;
 "delete"			return T_KEY_DELETE;
+"or"				return T_KEY_OR;
 
 {IDENTIFIER}			{
 					yylval->id = g_strdup (yytext);

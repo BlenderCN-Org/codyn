@@ -41,7 +41,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -109,6 +109,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <attribute> attribute_contents
 
 %type <list> state
+%type <list> define_values
 
 %type <array> link_connect
 %type <array> link_connect_fast
@@ -224,11 +225,22 @@ integrator
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
+define_values
+	: value_as_string				{ $$ = g_slist_prepend (NULL, $1); }
+	| define_values T_KEY_OR value_as_string	{ $$ = g_slist_prepend ($1, $3); }
+	;
+
 define_item
-	: '{' identifier_or_string '}' '=' value_as_string
-					{ cpg_parser_context_define (context, $2, $5, TRUE); }
-	| identifier_or_string '=' value_as_string
-					{ cpg_parser_context_define (context, $1, $3, FALSE); }
+	: '{' identifier_or_string '}' '=' define_values
+					{ cpg_parser_context_define (context,
+					                             $2,
+					                             g_slist_reverse ($5),
+					                             TRUE); }
+	| identifier_or_string '=' define_values
+					{ cpg_parser_context_define (context,
+					                             $1,
+					                             g_slist_reverse ($3),
+					                             FALSE); }
 	| debug
 	;
 
