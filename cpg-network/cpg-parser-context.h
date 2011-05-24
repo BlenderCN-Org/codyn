@@ -139,17 +139,18 @@ void                   cpg_parser_context_set_proxy            (CpgParserContext
 
 GSList                *cpg_parser_context_pop                  (CpgParserContext           *context);
 
-void                   cpg_parser_context_push_selector        (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *identifier,
-                                                                gboolean                    onset);
+void                   cpg_parser_context_push_selector_identifier (CpgParserContext           *context,
+                                                                    CpgEmbeddedString          *identifier,
+                                                                    gboolean                    onset);
 void                   cpg_parser_context_push_selector_regex  (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *regex,
                                                                 gboolean                    onset);
 void                   cpg_parser_context_push_selector_pseudo (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *identifier,
-                                                                GArray                     *arguments);
+                                                                CpgSelectorPseudoType       type,
+                                                                GSList                     *arguments);
 
 CpgSelector           *cpg_parser_context_pop_selector         (CpgParserContext           *context);
+void                   cpg_parser_context_push_selector        (CpgParserContext           *context);
 
 gssize                 cpg_parser_context_read                 (CpgParserContext           *context,
                                                                 gchar                      *buffer,

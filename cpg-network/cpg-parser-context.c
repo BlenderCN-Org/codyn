@@ -46,7 +46,7 @@ struct _CpgParserContextPrivate
 
 	/* Stack of Context */
 	GSList *context_stack;
-	CpgSelector *selector;
+	GSList *selectors;
 
 	Context *is_template;
 	CpgEmbeddedContext *embedded;
@@ -925,20 +925,28 @@ link_pairs (CpgParserContext *context,
 	for (fromobj = fromobjs; fromobj; fromobj = g_slist_next (fromobj))
 	{
 		GSList *toobjs;
-
-		cpg_embedded_context_push_expansions (context->priv->embedded,
-		                                      cpg_selection_get_expansions (fromobj->data));
-
-		/* Select TO states */
-		toobjs = cpg_selector_select (to,
-		                              cpg_selection_get_object (parent),
-		                              CPG_SELECTOR_TYPE_STATE |
-		                              CPG_SELECTOR_TYPE_GROUP,
-		                              context->priv->embedded);
-
-		cpg_embedded_context_pop_expansions (context->priv->embedded);
-
 		GSList *toobj;
+
+		if (!to)
+		{
+			toobjs = g_slist_prepend (NULL,
+			                          cpg_selection_new (cpg_selection_get_object (fromobj->data),
+			                                                                       NULL));
+		}
+		else
+		{
+			cpg_embedded_context_push_expansions (context->priv->embedded,
+			                                      cpg_selection_get_expansions (fromobj->data));
+
+			/* Select TO states */
+			toobjs = cpg_selector_select (to,
+			                              cpg_selection_get_object (parent),
+			                              CPG_SELECTOR_TYPE_STATE |
+			                              CPG_SELECTOR_TYPE_GROUP,
+			                              context->priv->embedded);
+
+			cpg_embedded_context_pop_expansions (context->priv->embedded);
+		}
 
 		for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
 		{
@@ -1275,7 +1283,7 @@ create_links (CpgParserContext          *context,
 
 	if (fromto->len == 1)
 	{
-		to = from;
+		to = NULL;
 	}
 	else
 	{
@@ -1635,18 +1643,28 @@ cleanup:
 static CpgSelector *
 ensure_selector (CpgParserContext *context)
 {
-	if (!context->priv->selector)
+	if (!context->priv->selectors)
 	{
-		context->priv->selector = cpg_selector_new ();
+		cpg_parser_context_push_selector (context);
 	}
 
-	return context->priv->selector;
+	return context->priv->selectors->data;
 }
 
 void
-cpg_parser_context_push_selector (CpgParserContext  *context,
-                                  CpgEmbeddedString *identifier,
-                                  gboolean           onset)
+cpg_parser_context_push_selector (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	context->priv->selectors =
+		g_slist_prepend (context->priv->selectors,
+		                 cpg_selector_new ());
+}
+
+void
+cpg_parser_context_push_selector_identifier (CpgParserContext  *context,
+                                             CpgEmbeddedString *identifier,
+                                             gboolean           onset)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (identifier != NULL);
@@ -1668,33 +1686,18 @@ cpg_parser_context_push_selector_regex (CpgParserContext  *context,
 }
 
 void
-cpg_parser_context_push_selector_pseudo (CpgParserContext  *context,
-                                         CpgEmbeddedString *identifier,
-                                         GArray            *argument)
+cpg_parser_context_push_selector_pseudo (CpgParserContext      *context,
+                                         CpgSelectorPseudoType  type,
+                                         GSList                *argument)
 {
-	GSList *ptr = NULL;
-	gint i;
-
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (identifier != NULL);
-
-	if (argument)
-	{
-		for (i = 0; i < argument->len; ++i)
-		{
-			ptr = g_slist_prepend (ptr,
-			                       g_array_index (argument, CpgEmbeddedString *, i));
-		}
-
-		ptr = g_slist_reverse (ptr);
-	}
 
 	cpg_selector_add_pseudo (ensure_selector (context),
-	                         identifier,
-	                         ptr);
+	                         type,
+	                         argument);
 
-	g_slist_free (ptr);
-	g_object_unref (identifier);
+	g_slist_foreach (argument, (GFunc)g_object_unref, NULL);
+	g_slist_free (argument);
 }
 
 CpgSelector *
@@ -1703,10 +1706,13 @@ cpg_parser_context_pop_selector (CpgParserContext *context)
 	CpgSelector *ret;
 
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-	g_return_val_if_fail (context->priv->selector != NULL, NULL);
+	g_return_val_if_fail (context->priv->selectors, NULL);
 
-	ret = context->priv->selector;
-	context->priv->selector = NULL;
+	ret = context->priv->selectors->data;
+
+	context->priv->selectors =
+		g_slist_delete_link (context->priv->selectors,
+		                     context->priv->selectors);
 
 	return ret;
 }

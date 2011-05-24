@@ -168,6 +168,18 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "property"			return T_KEY_PROPERTY;
 "delete"			return T_KEY_DELETE;
 "or"				return T_KEY_OR;
+"root"				return T_KEY_ROOT;
+"children"			return T_KEY_CHILDREN;
+"parent"			return T_KEY_PARENT;
+"first-child"			return T_KEY_FIRST_CHILD;
+"last-child"			return T_KEY_LAST_CHILD;
+"first"				return T_KEY_FIRST;
+"last"				return T_KEY_LAST;
+"subset"			return T_KEY_SUBSET;
+"states"			return T_KEY_STATES;
+"links"				return T_KEY_LINKS;
+"siblings"			return T_KEY_SIBLINGS;
+"count"				return T_KEY_COUNT;
 
 {IDENTIFIER}			{
 					yylval->id = g_strdup (yytext);

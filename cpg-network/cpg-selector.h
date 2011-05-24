@@ -34,6 +34,25 @@ typedef enum
 	                           CPG_SELECTOR_TYPE_FUNCTION
 } CpgSelectorType;
 
+typedef enum
+{
+	CPG_SELECTOR_PSEUDO_TYPE_ROOT,
+	CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
+	CPG_SELECTOR_PSEUDO_TYPE_PARENT,
+	CPG_SELECTOR_PSEUDO_TYPE_FIRST_CHILD,
+	CPG_SELECTOR_PSEUDO_TYPE_LAST_CHILD,
+	CPG_SELECTOR_PSEUDO_TYPE_FIRST,
+	CPG_SELECTOR_PSEUDO_TYPE_LAST,
+	CPG_SELECTOR_PSEUDO_TYPE_SUBSET,
+	CPG_SELECTOR_PSEUDO_TYPE_STATES,
+	CPG_SELECTOR_PSEUDO_TYPE_LINKS,
+	CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS,
+	CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES,
+	CPG_SELECTOR_PSEUDO_TYPE_COUNT,
+	CPG_SELECTOR_PSEUDO_TYPE_FROM,
+	CPG_SELECTOR_PSEUDO_TYPE_TO
+} CpgSelectorPseudoType;
+
 struct _CpgSelector
 {
 	GObject parent;
@@ -56,12 +75,15 @@ CpgSelector  *cpg_selector_copy              (CpgSelector            *selector);
 
 gchar const  *cpg_selector_as_string         (CpgSelector            *selector);
 
+void          cpg_selector_set_first_onset   (CpgSelector            *selector,
+                                              gboolean                onset);
+
 void          cpg_selector_add               (CpgSelector            *selector,
                                               CpgEmbeddedString      *identifier,
                                               gboolean                onset);
 
 void          cpg_selector_add_pseudo        (CpgSelector            *selector,
-                                              CpgEmbeddedString      *pseudo,
+                                              CpgSelectorPseudoType  type,
                                               GSList                 *arguments);
 
 void          cpg_selector_add_regex         (CpgSelector            *selector,

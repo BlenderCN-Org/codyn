@@ -41,13 +41,11 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST_CHILD T_KEY_LAST_CHILD T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
 %type <num> relation_item
-
-%type <id> pseudo_identifier
 
 %token <numf> T_DOUBLE
 %token <numf> T_INTEGER
@@ -65,6 +63,14 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token T_EQUATION_END
 
 %type <num> selector_type
+%type <num> selector_pseudo_simple_key
+%type <num> selector_pseudo_selector_key
+%type <num> selector_pseudo_nth_key
+
+%type <list> selector_pseudo_nth_args
+%type <list> selector_pseudo_nth_args_rev
+%type <list> selector_pseudo_selector_args
+%type <list> selector_pseudo_selector_args_rev
 
 %token <num> T_INDIRECTION_BEGIN
 %token T_INDIRECTION_END
@@ -80,16 +86,12 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %type <selector> layout_relative
 
-%type <string> selector_pseudo_identifier
-
 %type <array> double_list
-%type <array> pseudo_args_list
 %type <piece> polynomial_piece
 %type <array> polynomial_pieces
 %type <array> function_argument_list
 %type <array> function_argument_list_or_empty
 %type <array> template_list
-%type <array> pseudo_args
 %type <argument> function_argument
 %type <selector> selector
 
@@ -137,7 +139,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 	GArray *array;
 	CpgFunctionPolynomialPiece *piece;
 	CpgFunctionArgument *argument;
-	CpgObject *object;
+	GObject *object;
 	CpgSelector *selector;
 	CpgEmbeddedString *string;
 	CpgAttribute *attribute;
@@ -550,7 +552,7 @@ selector_parse
 	;
 
 selector_identifier
-	: identifier_or_string 		{ cpg_parser_context_push_selector (context, $1, FALSE); errb }
+	: identifier_or_string 		{ cpg_parser_context_push_selector_identifier (context, $1, FALSE); errb }
 	;
 
 selector_regex
@@ -558,7 +560,7 @@ selector_regex
 	;
 
 selector_identifier_set
-	: string			{ cpg_parser_context_push_selector (context, $1, TRUE); errb }
+	: string			{ cpg_parser_context_push_selector_identifier (context, $1, TRUE); errb }
 	;
 
 selector_regex_set
@@ -574,29 +576,81 @@ nested_selector
 	| nested_selector selector_pseudo
 	;
 
-pseudo_args
-	: value_as_string			{ append_array (NULL, CpgEmbeddedString *, $1, $$ = arret); }
-	| pseudo_args ',' value_as_string	{ append_array ($1, CpgEmbeddedString *, $3, $$ = arret); }
+selector_pseudo_simple_key
+	: T_KEY_ROOT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_ROOT; }
+	| T_KEY_PARENT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_PARENT; }
+	| T_KEY_FIRST_CHILD			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FIRST_CHILD; }
+	| T_KEY_LAST_CHILD			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_LAST_CHILD; }
+	| T_KEY_FIRST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FIRST; }
+	| T_KEY_LAST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_LAST; }
+	| T_KEY_STATES				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_STATES; }
+	| T_KEY_LINKS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_LINKS; }
+	| T_KEY_TEMPLATES			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES; }
+	| T_KEY_COUNT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_COUNT; }
 	;
 
-pseudo_args_list
-	:					{ $$ = NULL; }
-	| pseudo_args				{ $$ = $1; }
+selector_pseudo_simple
+	: selector_pseudo_simple_key		{ cpg_parser_context_push_selector_pseudo (context, $1, NULL); }
 	;
 
-pseudo_identifier
-	: T_IDENTIFIER			{ $$ = $1; }
-	| T_KEY_TEMPLATES		{ $$ = g_strdup ("templates"); }
+selector_pseudo_selector_key
+	: T_KEY_FROM				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FROM; }
+	| T_KEY_TO				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TO; }
 	;
 
-selector_pseudo_identifier
-	: '|' pseudo_identifier		{ $$ = cpg_embedded_string_new_from_string ($2); }
+selector_pseudo_nth_key
+	: T_KEY_SIBLINGS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS; }
+	| T_KEY_CHILDREN			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_CHILDREN; }
+	| T_KEY_SUBSET				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SUBSET; }
+	;
+
+selector_pseudo_nth_args_rev
+	: value_as_string			{ $$ = g_slist_prepend (NULL, $1); }
+	| selector_pseudo_nth_args_rev ',' value_as_string
+						{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+selector_pseudo_nth_args
+	: selector_pseudo_nth_args_rev		{ $$ = g_slist_reverse ($1); }
+	;
+
+selector_pseudo_selector_args_rev
+	: selector				{ cpg_selector_set_first_onset ($1, TRUE);
+						  $$ = g_slist_prepend (NULL, $1); }
+	| selector_pseudo_selector_args_rev ',' { cpg_parser_context_push_selector (context); }
+	  selector				{ cpg_selector_set_first_onset ($4, TRUE);
+						  $$ = g_slist_prepend ($1, $4); }
+	;
+
+selector_pseudo_selector_args
+	: selector_pseudo_selector_args_rev	{ $$ = g_slist_reverse ($1); }
+	;
+
+selector_pseudo_with_args
+	: selector_pseudo_selector_key
+	  '('					{ cpg_parser_context_push_selector (context); }
+	  selector_pseudo_selector_args
+	  ')'					{ cpg_parser_context_push_selector_pseudo (context,
+						                                           $1,
+						                                           $4); }
+
+	| selector_pseudo_nth_key '(' selector_pseudo_nth_args ')'
+						{ cpg_parser_context_push_selector_pseudo (context,
+						                                           $1,
+						                                           $3); }
+	| selector_pseudo_nth_key '(' ')'
+						{ cpg_parser_context_push_selector_pseudo (context,
+						                                           $1,
+						                                           NULL); }
+	| selector_pseudo_nth_key
+						{ cpg_parser_context_push_selector_pseudo (context,
+						                                           $1,
+						                                           NULL); }
 	;
 
 selector_pseudo
-	: selector_pseudo_identifier '(' pseudo_args_list ')'
-					{ cpg_parser_context_push_selector_pseudo (context, $1, $3); errb }
-	| selector_pseudo_identifier		{ cpg_parser_context_push_selector_pseudo (context, $1, NULL); errb }
+	: '|' selector_pseudo_simple
+	| '|' selector_pseudo_with_args
 	;
 
 import

@@ -15,54 +15,12 @@ typedef enum
 	SELECTOR_TYPE_PSEUDO
 } SelectorType;
 
-typedef enum
-{
-	SELECTOR_PSEUDO_TYPE_ROOT,
-	SELECTOR_PSEUDO_TYPE_CHILDREN,
-	SELECTOR_PSEUDO_TYPE_PARENT,
-	SELECTOR_PSEUDO_TYPE_FIRST_CHILD,
-	SELECTOR_PSEUDO_TYPE_LAST_CHILD,
-	SELECTOR_PSEUDO_TYPE_FIRST,
-	SELECTOR_PSEUDO_TYPE_LAST,
-	SELECTOR_PSEUDO_TYPE_SUBSET,
-	SELECTOR_PSEUDO_TYPE_STATES,
-	SELECTOR_PSEUDO_TYPE_LINKS,
-	SELECTOR_PSEUDO_TYPE_SIBLINGS,
-	SELECTOR_PSEUDO_TYPE_TEMPLATES,
-	SELECTOR_PSEUDO_TYPE_COUNT,
-	NUM_PSEUDO_SELECTORS
-} SelectorPseudoType;
-
-typedef struct
-{
-	SelectorPseudoType type;
-	gchar const *name;
-	gboolean has_argument;
-} SelectorPseudoDefinition;
-
 typedef struct
 {
 	gint a;
 	gint b;
 	gint max;
 } Nth;
-
-static SelectorPseudoDefinition const pseudo_selectors[] =
-{
-	{SELECTOR_PSEUDO_TYPE_ROOT, "root", FALSE},
-	{SELECTOR_PSEUDO_TYPE_CHILDREN, "children", TRUE},
-	{SELECTOR_PSEUDO_TYPE_PARENT, "parent", FALSE},
-	{SELECTOR_PSEUDO_TYPE_FIRST_CHILD, "first-child", FALSE},
-	{SELECTOR_PSEUDO_TYPE_LAST_CHILD, "last-child", FALSE},
-	{SELECTOR_PSEUDO_TYPE_FIRST, "first", FALSE},
-	{SELECTOR_PSEUDO_TYPE_LAST, "last", FALSE},
-	{SELECTOR_PSEUDO_TYPE_SUBSET, "subset", TRUE},
-	{SELECTOR_PSEUDO_TYPE_STATES, "states", FALSE},
-	{SELECTOR_PSEUDO_TYPE_LINKS, "links", FALSE},
-	{SELECTOR_PSEUDO_TYPE_SIBLINGS, "siblings", TRUE},
-	{SELECTOR_PSEUDO_TYPE_TEMPLATES, "templates", FALSE},
-	{SELECTOR_PSEUDO_TYPE_COUNT, "count", FALSE},
-};
 
 typedef struct
 {
@@ -77,7 +35,7 @@ typedef struct
 
 		struct
 		{
-			CpgEmbeddedString *identifier;
+			CpgSelectorPseudoType type;
 			GSList *arguments;
 		} pseudo;
 	};
@@ -115,8 +73,6 @@ selector_free (Selector *selector)
 			g_object_unref (selector->regex);
 		break;
 		case SELECTOR_TYPE_PSEUDO:
-			g_object_unref (selector->pseudo.identifier);
-
 			g_slist_foreach (selector->pseudo.arguments, (GFunc)g_object_unref, NULL);
 			g_slist_free (selector->pseudo.arguments);
 		break;
@@ -222,18 +178,73 @@ parse_nth (GSList             *arguments,
 	return ret;
 }
 
+static gchar const *
+pseudo_name (CpgSelectorPseudoType type)
+{
+	switch (type)
+	{
+		case CPG_SELECTOR_PSEUDO_TYPE_ROOT:
+			return "root";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_CHILDREN:
+			return "children";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_PARENT:
+			return "parent";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_FIRST_CHILD:
+			return "first-child";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_LAST_CHILD:
+			return "last-child";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_FIRST:
+			return "first";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_LAST:
+			return "last";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_SUBSET:
+			return "subset";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_STATES:
+			return "states";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_LINKS:
+			return "links";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS:
+			return "siblings";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES:
+			return "templates";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_COUNT:
+			return "count";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_FROM:
+			return "from";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_TO:
+			return "to";
+		break;
+	}
+
+	g_assert_not_reached ();
+}
+
 static Selector *
-selector_pseudo_new (CpgEmbeddedString *identifier,
-                     GSList            *arguments)
+selector_pseudo_new (CpgSelectorPseudoType  type,
+                     GSList                *arguments)
 {
 	Selector *selector;
 	GString *args;
 
 	selector = selector_new (SELECTOR_TYPE_PSEUDO);
 
-	selector->pseudo.identifier = g_object_ref (identifier);
-
+	selector->pseudo.type = type;
 	selector->pseudo.arguments = g_slist_copy (arguments);
+
 	g_slist_foreach (selector->pseudo.arguments, (GFunc)g_object_ref, NULL);
 
 	args = g_string_new ("");
@@ -245,15 +256,22 @@ selector_pseudo_new (CpgEmbeddedString *identifier,
 			g_string_append (args, ", ");
 		}
 
-		g_string_append_printf (args,
-		                        "\"%s\"",
-		                        cpg_embedded_string_expand (arguments->data, NULL));
+		if (CPG_IS_EMBEDDED_STRING (arguments->data))
+		{
+			g_string_append_printf (args,
+			                        "\"%s\"",
+			                        cpg_embedded_string_expand (arguments->data, NULL));
+		}
+		else if (CPG_IS_SELECTOR (arguments->data))
+		{
+			g_string_append (args, cpg_selector_as_string (arguments->data));
+		}
 
 		arguments = g_slist_next (arguments);
 	}
 
 	selector->as_string = g_strdup_printf ("%s%s%s%s",
-	                                       cpg_embedded_string_expand (selector->pseudo.identifier, NULL),
+	                                       pseudo_name (type),
 	                                       args->len ? "(" : "",
 	                                       args->str,
 	                                       args->len ? ")" : "");
@@ -381,14 +399,13 @@ cpg_selector_add (CpgSelector       *selector,
 }
 
 void
-cpg_selector_add_pseudo (CpgSelector       *selector,
-                         CpgEmbeddedString *pseudo,
-                         GSList            *arguments)
+cpg_selector_add_pseudo (CpgSelector           *selector,
+                         CpgSelectorPseudoType  type,
+                         GSList                *arguments)
 {
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (pseudo));
 
-	add_selector (selector, selector_pseudo_new (pseudo, arguments));
+	add_selector (selector, selector_pseudo_new (type, arguments));
 }
 
 void
@@ -1009,26 +1026,6 @@ expand_children (CpgSelection *selection,
 	return g_slist_reverse (ret);
 }
 
-static SelectorPseudoDefinition const *
-find_pseudo_definition (Selector           *pseudo,
-                        CpgEmbeddedContext *context)
-{
-	gint i;
-	gchar const *id;
-
-	id = cpg_embedded_string_expand (pseudo->pseudo.identifier, context);
-
-	for (i = 0; i < NUM_PSEUDO_SELECTORS; ++i)
-	{
-		if (g_strcmp0 (pseudo_selectors[i].name, id) == 0)
-		{
-			return &(pseudo_selectors[i]);
-		}
-	}
-
-	return NULL;
-}
-
 static GSList *
 count_selection (GSList          *selection,
                  CpgSelectorType  type)
@@ -1079,6 +1076,75 @@ count_selection (GSList          *selection,
 }
 
 static GSList *
+selector_pseudo_from_to (Selector           *selector,
+                         gchar const        *name,
+                         GSList             *ret,
+                         CpgSelection       *sel,
+                         CpgEmbeddedContext *context)
+{
+	CpgObject *obj;
+	GSList *item;
+
+	if (!CPG_IS_LINK (cpg_selection_get_object (sel)))
+	{
+		return ret;
+	}
+
+	g_object_get (cpg_selection_get_object (sel), name, &obj, NULL);
+
+	if (!obj)
+	{
+		return ret;
+	}
+
+	cpg_embedded_context_push_expansions (context,
+	                                      cpg_selection_get_expansions (sel));
+
+	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	{
+		CpgSelector *s = item->data;
+		GSList *sub;
+		GSList *subitem;
+
+		sub = cpg_selector_select (s,
+		                           obj,
+		                           CPG_SELECTOR_TYPE_OBJECT,
+		                           context);
+
+		for (subitem = sub; subitem; subitem = g_slist_next (subitem))
+		{
+			CpgSelection *subsel = subitem->data;
+			CpgSelection *childsel;
+			GSList *expansions;
+
+			if (cpg_selection_get_object (subsel) != obj)
+			{
+				continue;
+			}
+
+			expansions = g_slist_copy (cpg_selection_get_expansions (sel));
+			expansions = g_slist_concat (expansions,
+			                             g_slist_copy (cpg_selection_get_expansions (subsel)));
+
+			childsel = cpg_selection_new (cpg_selection_get_object (sel),
+			                              expansions);
+
+			ret = g_slist_prepend (ret, childsel);
+
+			g_slist_free (expansions);
+		}
+
+		g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
+		g_slist_free (sub);
+	}
+
+	g_object_unref (obj);
+
+	cpg_embedded_context_pop_expansions (context);
+	return ret;
+}
+
+static GSList *
 selector_select_pseudo (Selector           *selector,
                         GSList             *parent,
                         CpgSelectorType     type,
@@ -1087,39 +1153,33 @@ selector_select_pseudo (Selector           *selector,
 	GSList *ret = NULL;
 	GSList *item;
 	CpgSelection *last = NULL;
-	SelectorPseudoDefinition const *def;
 
-	def = find_pseudo_definition (selector, context);
-
-	if (def)
+	switch (selector->pseudo.type)
 	{
-		switch (def->type)
+		case CPG_SELECTOR_PSEUDO_TYPE_SUBSET:
 		{
-			case SELECTOR_PSEUDO_TYPE_SUBSET:
-			{
-				Nth nth = parse_nth (selector->pseudo.arguments,
-				                     context);
+			Nth nth = parse_nth (selector->pseudo.arguments,
+			                     context);
 
-				return g_slist_reverse (select_nth_reverse (parent,
-					                                    &nth,
-					                                    0,
-					                                    type));
-			}
-			break;
-			case SELECTOR_PSEUDO_TYPE_STATES:
-				return g_slist_reverse (filter_list_reverse (parent,
-					                                     TRUE));
-			break;
-			case SELECTOR_PSEUDO_TYPE_LINKS:
-				return g_slist_reverse (filter_list_reverse (parent,
-					                                     FALSE));
-			break;
-			case SELECTOR_PSEUDO_TYPE_COUNT:
-				return count_selection (parent, type);
-			break;
-			default:
-			break;
+			return g_slist_reverse (select_nth_reverse (parent,
+				                                    &nth,
+				                                    0,
+				                                    type));
 		}
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_STATES:
+			return g_slist_reverse (filter_list_reverse (parent,
+				                                     TRUE));
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_LINKS:
+			return g_slist_reverse (filter_list_reverse (parent,
+				                                     FALSE));
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_COUNT:
+			return count_selection (parent, type);
+		break;
+		default:
+		break;
 	}
 
 	for (item = parent; item; item = g_slist_next (item))
@@ -1130,21 +1190,10 @@ selector_select_pseudo (Selector           *selector,
 		cpg_embedded_context_push_expansions (context,
 		                                      cpg_selection_get_expansions (sel));
 
-		def = find_pseudo_definition (selector, context);
-
-		if (!def)
+		switch (selector->pseudo.type)
 		{
-			g_warning ("Could not find pseudo selector: %s",
-			           cpg_embedded_string_expand (selector->pseudo.identifier, context));
-
-			cpg_embedded_context_pop_expansions (context);
-			continue;
-		}
-
-		switch (def->type)
-		{
-			case SELECTOR_PSEUDO_TYPE_CHILDREN:
-			case SELECTOR_PSEUDO_TYPE_SIBLINGS:
+			case CPG_SELECTOR_PSEUDO_TYPE_CHILDREN:
+			case CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS:
 				nth = parse_nth (selector->pseudo.arguments,
 				                 context);
 			break;
@@ -1154,22 +1203,22 @@ selector_select_pseudo (Selector           *selector,
 
 		cpg_embedded_context_pop_expansions (context);
 
-		switch (def->type)
+		switch (selector->pseudo.type)
 		{
-			case SELECTOR_PSEUDO_TYPE_FIRST:
+			case CPG_SELECTOR_PSEUDO_TYPE_FIRST:
 				if (check_type (cpg_selection_get_object (sel), type))
 				{
 					return g_slist_prepend (ret,
 					                        cpg_selection_copy (sel));
 				}
 			break;
-			case SELECTOR_PSEUDO_TYPE_LAST:
+			case CPG_SELECTOR_PSEUDO_TYPE_LAST:
 				if (check_type (cpg_selection_get_object (sel), type))
 				{
 					last = sel;
 				}
 			break;
-			case SELECTOR_PSEUDO_TYPE_ROOT:
+			case CPG_SELECTOR_PSEUDO_TYPE_ROOT:
 			{
 				CpgObject *top;
 
@@ -1182,7 +1231,7 @@ selector_select_pseudo (Selector           *selector,
 				}
 			}
 			break;
-			case SELECTOR_PSEUDO_TYPE_TEMPLATES:
+			case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES:
 			{
 				CpgObject *top;
 
@@ -1200,7 +1249,7 @@ selector_select_pseudo (Selector           *selector,
 				}
 			}
 			break;
-			case SELECTOR_PSEUDO_TYPE_CHILDREN:
+			case CPG_SELECTOR_PSEUDO_TYPE_CHILDREN:
 			{
 				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
 				{
@@ -1220,7 +1269,7 @@ selector_select_pseudo (Selector           *selector,
 				}
 			}
 			break;
-			case SELECTOR_PSEUDO_TYPE_SIBLINGS:
+			case CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS:
 			{
 				CpgObject *parent;
 
@@ -1249,7 +1298,7 @@ selector_select_pseudo (Selector           *selector,
 				}
 			}
 			break;
-			case SELECTOR_PSEUDO_TYPE_PARENT:
+			case CPG_SELECTOR_PSEUDO_TYPE_PARENT:
 			{
 				CpgObject *parent = cpg_object_get_parent (cpg_selection_get_object (sel));
 
@@ -1261,7 +1310,7 @@ selector_select_pseudo (Selector           *selector,
 				}
 			}
 			break;
-			case SELECTOR_PSEUDO_TYPE_FIRST_CHILD:
+			case CPG_SELECTOR_PSEUDO_TYPE_FIRST_CHILD:
 			{
 				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
 				{
@@ -1285,7 +1334,7 @@ selector_select_pseudo (Selector           *selector,
 				}
 			}
 			break;
-			case SELECTOR_PSEUDO_TYPE_LAST_CHILD:
+			case CPG_SELECTOR_PSEUDO_TYPE_LAST_CHILD:
 			{
 				if (CPG_IS_GROUP (cpg_selection_get_object (sel)))
 				{
@@ -1312,6 +1361,20 @@ selector_select_pseudo (Selector           *selector,
 					}
 				}
 			}
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_FROM:
+				ret = selector_pseudo_from_to (selector,
+				                               "from",
+				                               ret,
+				                               sel,
+				                               context);
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_TO:
+				ret = selector_pseudo_from_to (selector,
+				                               "to",
+				                               ret,
+				                               sel,
+				                               context);
 			break;
 			default:
 				g_assert_not_reached ();
@@ -1464,3 +1527,21 @@ cpg_selector_as_string (CpgSelector *selector)
 
 	return selector->priv->as_string->str;
 }
+
+void
+cpg_selector_set_first_onset (CpgSelector *selector,
+                              gboolean     onset)
+{
+	Selector *sel;
+
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+
+	if (!selector->priv->selectors)
+	{
+		return;
+	}
+
+	sel = selector->priv->selectors->data;
+	sel->onset = onset;
+}
+
