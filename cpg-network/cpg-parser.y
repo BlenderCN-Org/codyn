@@ -150,7 +150,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 7
+%expect 10
 
 %%
 
@@ -170,7 +170,6 @@ toplevel
 	| group
 	| link
 	| function
-	| polynomial
 	| import
 	| templates
 	| define
@@ -254,6 +253,7 @@ define
 	'{'
 	define_contents
 	'}'
+	| T_KEY_DEFINE define_item
 	;
 
 templates
@@ -375,18 +375,7 @@ link
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
-function
-	: T_KEY_FUNCTION
-	  identifier_or_string
-	  '('
-	  function_argument_list
-	  ')'
-	  '{'
-	  value_as_string
-	  '}'				{ cpg_parser_context_add_function (context, $2, $7, $4); errb }
-	;
-
-polynomial
+function_polynomial
 	: T_KEY_POLYNOMIAL
 	  identifier_or_string
 	  '('
@@ -394,6 +383,34 @@ polynomial
 	  '{'
 	  polynomial_pieces
 	  '}'				{ cpg_parser_context_add_polynomial (context, $2, $6); errb }
+	;
+
+function_custom
+	: identifier_or_string
+	  '('
+	  function_argument_list
+	  ')'
+	  '{'
+	  value_as_string
+	  '}'				{ cpg_parser_context_add_function (context, $1, $6, $3); errb }
+	;
+
+function_item
+	: function_custom
+	| function_polynomial
+	;
+
+function_items
+	:
+	| function_items function_item
+	;
+
+function
+	: T_KEY_FUNCTION function_item
+	| T_KEY_FUNCTION
+	  '{'
+	  function_items
+	  '}'
 	;
 
 polynomial_pieces
