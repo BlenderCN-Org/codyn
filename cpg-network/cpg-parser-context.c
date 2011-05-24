@@ -2171,57 +2171,77 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 {
 	GSList *leftobjs;
 	GSList *leftobj;
+	GSList *objs;
+	Context *ctx;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (CPG_IS_SELECTOR (left));
 	g_return_if_fail (CPG_IS_SELECTOR (right));
 
-	leftobjs = cpg_selector_select (left,
-	                                CPG_OBJECT (context->priv->network),
-	                                CPG_SELECTOR_TYPE_STATE |
-	                                CPG_SELECTOR_TYPE_GROUP,
-	                                context->priv->embedded);
+	ctx = context->priv->context_stack->next->data;
 
-	if (!leftobjs)
+	for (objs = ctx->objects; objs; objs = g_slist_next (objs))
 	{
-		return;
-	}
+		CpgSelection *sel;
 
-	for (leftobj = leftobjs; leftobj; leftobj = g_slist_next (leftobj))
-	{
-		CpgSelection *leftsel = leftobj->data;
-		GSList *rightobjs;
+		sel = objs->data;
 
 		cpg_embedded_context_push_expansions (context->priv->embedded,
-		                                      cpg_selection_get_expansions (leftsel));
+		                                      cpg_selection_get_expansions (sel));
 
-		rightobjs = cpg_selector_select (right,
-		                                 CPG_OBJECT (context->priv->network),
-		                                 CPG_SELECTOR_TYPE_STATE |
-		                                 CPG_SELECTOR_TYPE_GROUP,
-		                                 context->priv->embedded);
+		leftobjs = cpg_selector_select (left,
+		                                CPG_OBJECT (cpg_selection_get_object (sel)),
+		                                CPG_SELECTOR_TYPE_STATE |
+		                                CPG_SELECTOR_TYPE_GROUP,
+		                                context->priv->embedded);
 
-		if (!rightobjs)
+		if (!leftobjs)
 		{
-			continue;
+			cpg_embedded_context_pop_expansions (context->priv->embedded);
+			return;
 		}
 
-		GSList *rightobj;
-
-		for (rightobj = rightobjs; rightobj; rightobj = g_slist_next (rightobj))
+		for (leftobj = leftobjs; leftobj; leftobj = g_slist_next (leftobj))
 		{
-			cpg_layout_add (context->priv->layout,
-			                CPG_LAYOUTABLE (cpg_selection_get_object (leftsel)),
-			                CPG_LAYOUTABLE (cpg_selection_get_object (rightobj->data)),
-			                relation);
+			CpgSelection *leftsel = leftobj->data;
+			GSList *rightobjs;
+
+			cpg_embedded_context_push_expansions (context->priv->embedded,
+			                                      cpg_selection_get_expansions (leftsel));
+
+			rightobjs = cpg_selector_select (right,
+			                                 CPG_OBJECT (cpg_selection_get_object (sel)),
+			                                 CPG_SELECTOR_TYPE_STATE |
+			                                 CPG_SELECTOR_TYPE_GROUP,
+			                                 context->priv->embedded);
+
+			cpg_embedded_context_pop_expansions (context->priv->embedded);
+
+			if (!rightobjs)
+			{
+
+				continue;
+			}
+
+			GSList *rightobj;
+
+			for (rightobj = rightobjs; rightobj; rightobj = g_slist_next (rightobj))
+			{
+				cpg_layout_add (context->priv->layout,
+				                CPG_LAYOUTABLE (cpg_selection_get_object (leftsel)),
+				                CPG_LAYOUTABLE (cpg_selection_get_object (rightobj->data)),
+				                relation);
+			}
+
+			g_slist_foreach (rightobjs, (GFunc)g_object_unref, NULL);
+			g_slist_free (rightobjs);
 		}
 
-		g_slist_foreach (rightobjs, (GFunc)g_object_unref, NULL);
-		g_slist_free (rightobjs);
+		g_slist_foreach (leftobjs, (GFunc)g_object_unref, NULL);
+		g_slist_free (leftobjs);
+
+		cpg_embedded_context_pop_expansions (context->priv->embedded);
 	}
-
-	g_slist_foreach (leftobjs, (GFunc)g_object_unref, NULL);
-	g_slist_free (leftobjs);
 }
 
 void
@@ -2232,7 +2252,9 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
                                         CpgSelector       *of)
 {
 	GSList *objs;
+	GSList *cobjs;
 	GSList *obj;
+	Context *ctx;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
@@ -2240,87 +2262,98 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 	g_return_if_fail (y != NULL);
 	g_return_if_fail (of == NULL || CPG_IS_SELECTOR (of));
 
-	objs = cpg_selector_select (selector,
-	                            CPG_OBJECT (context->priv->network),
-	                            CPG_SELECTOR_TYPE_OBJECT,
-	                            context->priv->embedded);
+	ctx = context->priv->context_stack->next->data;
 
-	for (obj = objs; obj; obj = g_slist_next (obj))
+	for (cobjs = ctx->objects; cobjs; cobjs = g_slist_next (cobjs))
 	{
-		gchar const *exx;
-		gchar const *exy;
-		gint xx;
-		gint yy;
+		CpgSelection *sel;
 
-		if (!CPG_IS_LAYOUTABLE (cpg_selection_get_object (obj->data)) ||
-		    !cpg_layoutable_supports_location (CPG_LAYOUTABLE (cpg_selection_get_object (obj->data))))
-		{
-			continue;
-		}
+		sel = cobjs->data;
 
 		cpg_embedded_context_push_expansions (context->priv->embedded,
-		                                      cpg_selection_get_expansions (obj->data));
+		                                      cpg_selection_get_expansions (sel));
 
-		exx = cpg_embedded_string_expand (x, context->priv->embedded);
-		exy = cpg_embedded_string_expand (y, context->priv->embedded);
+		objs = cpg_selector_select (selector,
+		                            cpg_selection_get_object (sel),
+		                            CPG_SELECTOR_TYPE_OBJECT,
+		                            context->priv->embedded);
 
-		xx = (gint)g_ascii_strtoll (exx, NULL, 10);
-		yy = (gint)g_ascii_strtoll (exy, NULL, 10);
-
-		if (of)
+		for (obj = objs; obj; obj = g_slist_next (obj))
 		{
-			GSList *ofobjs;
-			GSList *ofobj;
-			gint mx = 0;
-			gint my = 0;
-			gint num = 0;
+			gchar const *exx;
+			gchar const *exy;
+			gint xx;
+			gint yy;
 
-			ofobjs = cpg_selector_select (of,
-			                              CPG_OBJECT (context->priv->network),
-			                              CPG_SELECTOR_TYPE_OBJECT,
-			                              context->priv->embedded);
-
-			for (ofobj = ofobjs; ofobj; ofobj = g_slist_next (ofobj))
+			if (!CPG_IS_LAYOUTABLE (cpg_selection_get_object (obj->data)) ||
+			    !cpg_layoutable_supports_location (CPG_LAYOUTABLE (cpg_selection_get_object (obj->data))))
 			{
-				CpgObject *o;
-				gint ox;
-				gint oy;
+				continue;
+			}
 
-				o = cpg_selection_get_object (ofobj->data);
+			cpg_embedded_context_push_expansions (context->priv->embedded,
+			                                      cpg_selection_get_expansions (obj->data));
 
-				if (CPG_IS_LAYOUTABLE (o) &&
-				    cpg_layoutable_supports_location (CPG_LAYOUTABLE (o)))
+			exx = cpg_embedded_string_expand (x, context->priv->embedded);
+			exy = cpg_embedded_string_expand (y, context->priv->embedded);
+
+			xx = (gint)g_ascii_strtoll (exx, NULL, 10);
+			yy = (gint)g_ascii_strtoll (exy, NULL, 10);
+
+			if (of)
+			{
+				GSList *ofobjs;
+				GSList *ofobj;
+				gint mx = 0;
+				gint my = 0;
+				gint num = 0;
+
+				ofobjs = cpg_selector_select (of,
+				                              cpg_selection_get_object (sel),
+				                              CPG_SELECTOR_TYPE_OBJECT,
+				                              context->priv->embedded);
+
+				for (ofobj = ofobjs; ofobj; ofobj = g_slist_next (ofobj))
 				{
-					cpg_layoutable_get_location (CPG_LAYOUTABLE (o),
-					                             &ox,
-					                             &oy);
+					CpgObject *o;
+					gint ox;
+					gint oy;
 
-					mx += ox;
-					my += oy;
+					o = cpg_selection_get_object (ofobj->data);
 
-					++num;
+					if (CPG_IS_LAYOUTABLE (o) &&
+					    cpg_layoutable_supports_location (CPG_LAYOUTABLE (o)))
+					{
+						cpg_layoutable_get_location (CPG_LAYOUTABLE (o),
+						                             &ox,
+						                             &oy);
+
+						mx += ox;
+						my += oy;
+
+						++num;
+					}
 				}
+
+				if (num > 0)
+				{
+					mx /= num;
+					my /= num;
+				}
+
+				xx += mx;
+				yy += my;
 			}
 
-			if (num > 0)
-			{
-				mx /= num;
-				my /= num;
-			}
+			cpg_layoutable_set_location (CPG_LAYOUTABLE (cpg_selection_get_object (obj->data)),
+			                             xx,
+			                             yy);
 
-			xx += mx;
-			yy += my;
+			cpg_embedded_context_pop_expansions (context->priv->embedded);
 		}
-
-		cpg_layoutable_set_location (CPG_LAYOUTABLE (cpg_selection_get_object (obj->data)),
-		                             xx,
-		                             yy);
 
 		cpg_embedded_context_pop_expansions (context->priv->embedded);
 	}
-
-	g_slist_foreach (objs, (GFunc)g_object_unref, NULL);
-	g_slist_free (objs);
 }
 
 void

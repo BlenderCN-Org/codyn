@@ -269,6 +269,7 @@ template_item
 	| group
 	| import
 	| debug
+	| layout
 	;
 
 template_contents
