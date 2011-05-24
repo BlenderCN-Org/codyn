@@ -489,14 +489,17 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 	g_object_unref (name);
 	g_object_unref (expression);
 
-	for (i = 0; i < arguments->len; ++i)
+	if (arguments)
 	{
-		CpgFunctionArgument *argument;
+		for (i = 0; i < arguments->len; ++i)
+		{
+			CpgFunctionArgument *argument;
 
-		argument = g_array_index (arguments, CpgFunctionArgument *, i);
-		cpg_function_add_argument (function, argument);
+			argument = g_array_index (arguments, CpgFunctionArgument *, i);
+			cpg_function_add_argument (function, argument);
 
-		g_object_unref (argument);
+			g_object_unref (argument);
+		}
 	}
 
 	cpg_group_add (cpg_network_get_function_group (context->priv->network),
