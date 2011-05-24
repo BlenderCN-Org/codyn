@@ -18,6 +18,9 @@ struct _CpgEmbeddedStringPrivate
 {
 	GSList *stack;
 	gchar *cached;
+
+	CpgEmbeddedContext *cached_context;
+	gulong cached_marker;
 };
 
 G_DEFINE_TYPE (CpgEmbeddedString, cpg_embedded_string, G_TYPE_OBJECT)
@@ -415,7 +418,9 @@ cpg_embedded_string_expand (CpgEmbeddedString  *s,
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
 
-	if (s->priv->cached)
+	if (s->priv->cached &&
+	    ctx == s->priv->cached_context &&
+	    cpg_embedded_context_get_marker (ctx) == s->priv->cached_marker)
 	{
 		return s->priv->cached;
 	}

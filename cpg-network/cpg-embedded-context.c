@@ -9,6 +9,8 @@ struct _CpgEmbeddedContextPrivate
 
 	GSList *expansions;
 	GSList *numexp;
+
+	gulong marker;
 };
 
 G_DEFINE_TYPE (CpgEmbeddedContext, cpg_embedded_context, G_TYPE_OBJECT)
@@ -68,6 +70,8 @@ cpg_embedded_context_define (CpgEmbeddedContext *context,
 		                     g_strdup (name),
 		                     g_strdup (value ? value : ""));
 	}
+
+	++context->priv->marker;
 }
 
 void
@@ -82,6 +86,7 @@ cpg_embedded_context_set_expansions (CpgEmbeddedContext *context,
 	}
 
 	cpg_embedded_context_push_expansions (context, expansions);
+	++context->priv->marker;
 }
 
 GSList *
@@ -104,6 +109,8 @@ cpg_embedded_context_push_expansion (CpgEmbeddedContext *context,
 	r = g_slist_prepend (NULL, expansion);
 	cpg_embedded_context_push_expansions (context, r);
 	g_slist_free (r);
+
+	++context->priv->marker;
 }
 
 void
@@ -144,6 +151,8 @@ cpg_embedded_context_push_expansions (CpgEmbeddedContext *context,
 
 	context->priv->numexp = g_slist_prepend (context->priv->numexp,
 	                                         GINT_TO_POINTER (i));
+
+	++context->priv->marker;
 }
 
 void
@@ -170,6 +179,8 @@ cpg_embedded_context_pop_expansions (CpgEmbeddedContext *context)
 	context->priv->numexp =
 		g_slist_delete_link (context->priv->numexp,
 		                     context->priv->numexp);
+
+	++context->priv->marker;
 }
 
 gchar *
@@ -253,6 +264,8 @@ cpg_embedded_context_push_define (CpgEmbeddedContext *context)
 
 	context->priv->defines = g_slist_prepend (context->priv->defines,
 	                                          table);
+
+	++context->priv->marker;
 }
 
 void
@@ -268,4 +281,14 @@ cpg_embedded_context_pop_define (CpgEmbeddedContext *context)
 	g_hash_table_destroy (context->priv->defines->data);
 	context->priv->defines = g_slist_delete_link (context->priv->defines,
 	                                              context->priv->defines);
+
+	++context->priv->marker;
+}
+
+gulong
+cpg_embedded_context_get_marker (CpgEmbeddedContext *context)
+{
+	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), 0);
+
+	return context->priv->marker;
 }

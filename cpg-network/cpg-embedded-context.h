@@ -63,6 +63,8 @@ CpgExpansion *cpg_embedded_context_lookup_expansion (CpgEmbeddedContext *context
 gchar *cpg_embedded_context_calculate (CpgEmbeddedContext *context,
                                        gchar const        *equation);
 
+gulong cpg_embedded_context_get_marker (CpgEmbeddedContext *context);
+
 G_END_DECLS
 
 #endif /* __CPG_EMBEDDED_CONTEXT_H__ */
