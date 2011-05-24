@@ -1,10 +1,7 @@
+SUBDIRS = library
+
 dtddir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/dtd
 dtd_DATA = cpg-network.dtd
-
-librarydir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/import-library
-library_DATA = \
-	hopf.cpg \
-	phase.cpg
 
 mimedir = $(datadir)/mime/packages
 mime_DATA = cpg.xml
@@ -17,7 +14,6 @@ lang2_DATA = cpg.lang
 
 EXTRA_DIST = \
 	$(dtd_DATA) \
-	$(library_DATA) \
 	cpg.xml.in \
 	cpg.lang
 

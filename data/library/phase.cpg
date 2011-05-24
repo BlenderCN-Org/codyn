@@ -1,0 +1,49 @@
+templates
+{
+    group "oscillator"
+    {
+        [proxy]
+        state "state"
+        {
+            ## Desired amplitude
+            R = 1
+
+            ## Phase state variable
+            phase = "0" | integrated
+
+            ## Amplitude state variable
+            r = 0 | integrated
+
+            ## Amplitude squared
+            r2 = "r * r"
+
+            ## Angular frequency
+            w = "2 * pi"
+
+            ## Output variable (r * sin(phase))
+            output = "r * sin(p)"
+        }
+
+        link "integrate" on "state"
+        {
+            ## Gain on amplitude convergence
+            g_r = 1
+
+            r <= "g_r * (R * R - r2) * r"
+            phase <= "w"
+        }
+    }
+
+    link "coupling"
+    {
+        ## Desired phase bias between oscillators
+        phase_bias = 0
+
+        ## Gain on phase coupling convergence
+        weight = 1
+
+        phase <= "weight * sin(from.phase - to.phase - phase_bias)"
+    }
+}
+
+# vi:ex:ts=4:et

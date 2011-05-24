@@ -119,6 +119,7 @@ cpg-network/instructions/Makefile
 cpg-network-webots/Makefile
 data/Makefile
 data/cpg.xml
+data/library/Makefile
 docs/Makefile
 docs/reference/Makefile
 m4/Makefile
