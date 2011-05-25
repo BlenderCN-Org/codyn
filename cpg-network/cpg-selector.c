@@ -227,6 +227,11 @@ pseudo_name (CpgSelectorPseudoType type)
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_TO:
 			return "to";
+		case CPG_SELECTOR_PSEUDO_TYPE_SELF:
+			return "self";
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_DEBUG:
+			return "debug";
 		break;
 	}
 
@@ -591,7 +596,8 @@ selector_select_identifier_action (Selector           *selector,
 }
 
 static GSList *
-selector_select_identifier (Selector           *selector,
+selector_select_identifier (CpgSelector        *self,
+                            Selector           *selector,
                             CpgSelection       *parent,
                             CpgSelectorType     type,
                             CpgEmbeddedContext *context)
@@ -886,7 +892,8 @@ selector_select_regex_action (Selector           *selector,
 }
 
 static GSList *
-selector_select_regex (Selector           *selector,
+selector_select_regex (CpgSelector        *self,
+                       Selector           *selector,
                        CpgSelection       *parent,
                        CpgSelectorType     type,
                        CpgEmbeddedContext *context)
@@ -991,6 +998,20 @@ filter_list_reverse (GSList    *objs,
 	}
 
 	return ret;
+}
+
+static GSList *
+copy_selections (GSList *selections)
+{
+	GSList *ret = NULL;
+
+	while (selections)
+	{
+		ret = g_slist_prepend (ret, cpg_selection_copy (selections->data));
+		selections = g_slist_next (selections);
+	}
+
+	return g_slist_reverse (ret);
 }
 
 static CpgObject *
@@ -1147,8 +1168,134 @@ selector_pseudo_from_to (Selector           *selector,
 	return ret;
 }
 
+static gchar *
+selector_until_as_string (CpgSelector *self,
+                          Selector    *selector)
+{
+	GSList *item;
+	GString *ret;
+
+	ret = g_string_new ("");
+
+	for (item = self->priv->selectors; item && item->data != selector; item = g_slist_next (item))
+	{
+		Selector *sel;
+
+		sel = item->data;
+
+		if (ret->len != 0)
+		{
+			g_string_append_c (ret, sel->onset ? '|' : '.');
+		}
+
+		g_string_append (ret, sel->as_string);
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
+static gchar *
+expansion_as_string (CpgExpansion *expansion)
+{
+	GString *ret;
+	gint i;
+
+	ret = g_string_new ("{");
+
+	for (i = 0; i < cpg_expansion_num (expansion); ++i)
+	{
+		if (i != 0)
+		{
+			g_string_append_c (ret, ',');
+		}
+
+		g_string_append (ret, cpg_expansion_get (expansion, i));
+		g_string_append_printf (ret, ":%d", cpg_expansion_get_index (expansion, i));
+	}
+
+	g_string_append_c (ret, '}');
+
+	return g_string_free (ret, FALSE);
+}
+
 static GSList *
-selector_select_pseudo (Selector           *selector,
+debug_selections (CpgSelector        *self,
+                  Selector           *selector,
+                  GSList             *parent,
+                  CpgEmbeddedContext *context)
+{
+	GSList *item;
+	gchar *s;
+
+	s = selector_until_as_string (self, selector);
+
+	g_printerr ("[debug] Selector (%s)\n", s);
+	g_free (s);
+
+	for (item = parent; item; item = g_slist_next (item))
+	{
+		CpgSelection *sel;
+		gpointer obj;
+		GSList *expansions;
+
+		sel = item->data;
+		obj = cpg_selection_get_object (sel);
+
+		g_printerr ("[debug]   => ");
+
+		if (CPG_IS_OBJECT (obj))
+		{
+			s = cpg_object_get_full_id (obj);
+			g_printerr ("%s", s);
+			g_free (s);
+		}
+		else if (CPG_IS_PROPERTY (obj))
+		{
+			s = cpg_property_get_full_name (obj);
+			g_printerr ("%s", s);
+			g_free (s);
+		}
+		else if (CPG_IS_LINK_ACTION (obj))
+		{
+			gchar const *target;
+			gchar *id;
+
+			target = cpg_link_action_get_target (obj);
+			id = cpg_object_get_full_id (CPG_OBJECT (cpg_link_action_get_link (obj)));
+
+			g_printerr ("%s < %s", id, target);
+			g_free (id);
+		}
+
+		expansions = cpg_selection_get_expansions (sel);
+
+		g_printerr (" <= [");
+
+		while (expansions)
+		{
+			s = expansion_as_string (expansions->data);
+			g_printerr ("%s", s);
+			g_free (s);
+
+			expansions = g_slist_next (expansions);
+
+			if (expansions)
+			{
+				g_printerr (", ");
+			}
+		}
+
+		g_printerr ("]\n");
+	}
+
+	g_printerr ("\n");
+
+	return copy_selections (parent);
+}
+
+static GSList *
+selector_select_pseudo (CpgSelector        *self,
+                        Selector           *selector,
                         GSList             *parent,
                         CpgSelectorType     type,
                         CpgEmbeddedContext *context)
@@ -1180,6 +1327,12 @@ selector_select_pseudo (Selector           *selector,
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_COUNT:
 			return count_selection (parent, type);
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_SELF:
+			return copy_selections (parent);
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_DEBUG:
+			return debug_selections (self, selector, parent, context);
 		break;
 		default:
 		break;
@@ -1395,7 +1548,8 @@ selector_select_pseudo (Selector           *selector,
 }
 
 static GSList *
-selector_select (Selector           *selector,
+selector_select (CpgSelector        *self,
+                 Selector           *selector,
                  GSList             *parent,
                  CpgSelectorType     type,
                  CpgEmbeddedContext *context)
@@ -1407,7 +1561,8 @@ selector_select (Selector           *selector,
 	{
 		if (type & CPG_SELECTOR_TYPE_OBJECT)
 		{
-			ret = selector_select_pseudo (selector,
+			ret = selector_select_pseudo (self,
+			                              selector,
 			                              parent,
 			                              type,
 			                              context);
@@ -1426,13 +1581,15 @@ selector_select (Selector           *selector,
 			switch (selector->type)
 			{
 				case SELECTOR_TYPE_IDENTIFIER:
-					r = selector_select_identifier (selector,
+					r = selector_select_identifier (self,
+					                                selector,
 					                                sel,
 					                                type,
 					                                context);
 				break;
 				case SELECTOR_TYPE_REGEX:
-					r = selector_select_regex (selector,
+					r = selector_select_regex (self,
+					                           selector,
 					                           sel,
 					                           type,
 					                           context);
@@ -1545,7 +1702,8 @@ selector_select_all (CpgSelector        *selector,
 		GSList *tmp;
 
 		tmp = ctx;
-		ctx = selector_select (item->data,
+		ctx = selector_select (selector,
+		                       item->data,
 		                       ctx,
 		                       item->next ? CPG_SELECTOR_TYPE_OBJECT : type,
 		                       context);

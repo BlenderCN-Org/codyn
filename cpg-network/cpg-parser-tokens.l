@@ -180,6 +180,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "links"				return T_KEY_LINKS;
 "siblings"			return T_KEY_SIBLINGS;
 "count"				return T_KEY_COUNT;
+"self"				return T_KEY_SELF;
 
 {IDENTIFIER}			{
 					yylval->id = g_strdup (yytext);
