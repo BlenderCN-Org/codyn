@@ -426,6 +426,12 @@ link
 	  '{'				{ cpg_parser_context_push_link (context, NULL, $4, $1, $3); errb }
 	  link_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
+	| attributes
+	  T_KEY_LINK
+	  templated
+	  '{'				{ cpg_parser_context_push_link (context, NULL, $3, $1, NULL); errb }
+	  link_contents
+	  '}'
 	;
 
 function_polynomial
