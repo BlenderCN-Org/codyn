@@ -879,7 +879,8 @@ each_selections (CpgParserContext *context,
                  GSList           *selections,
                  GSList           *attributes,
                  CpgSelectorType   type,
-                 gboolean         *selected)
+                 gboolean         *selected,
+                 gboolean         *couldselect)
 {
 	gint i;
 	GSList *ret = NULL;
@@ -890,6 +891,11 @@ each_selections (CpgParserContext *context,
 	if (selected)
 	{
 		*selected = FALSE;
+	}
+
+	if (couldselect)
+	{
+		*couldselect = FALSE;
 	}
 
 	if (!attr)
@@ -944,16 +950,21 @@ each_selections (CpgParserContext *context,
 		{
 			GSList *item;
 
+			if (couldselect)
+			{
+				*couldselect = TRUE;
+			}
+
 			for (item = selections; item; item = g_slist_next (item))
 			{
 				GSList *sels;
 
 				sels = cpg_selector_select (obj,
 				                            cpg_selection_get_object (item->data),
-				                            CPG_SELECTOR_TYPE_OBJECT,
+				                            type,
 				                            context->priv->embedded);
 
-				if (selected && sels->data)
+				if (selected && sels)
 				{
 					*selected = TRUE;
 				}
@@ -1024,12 +1035,19 @@ parse_objects (CpgParserContext  *context,
 	GSList *parent;
 	GSList *ret = NULL;
 	gboolean selected;
+	gboolean couldselect;
 
 	parents = each_selections (context,
 	                           CURRENT_CONTEXT (context)->objects,
 	                           attributes,
 	                           selector_type_from_gtype (gtype),
-	                           &selected);
+	                           &selected,
+	                           &couldselect);
+
+	if (id == NULL && couldselect && !selected)
+	{
+		return NULL;
+	}
 
 	for (parent = parents; parent; parent = g_slist_next (parent))
 	{
@@ -1474,6 +1492,7 @@ create_links (CpgParserContext          *context,
 	                           ctx->objects,
 	                           attributes,
 	                           CPG_SELECTOR_TYPE_LINK,
+	                           NULL,
 	                           NULL);
 
 	for (item = parents; item; item = g_slist_next (item))
@@ -1617,6 +1636,7 @@ selections_from_attributes_obj (CpgParserContext *context,
 	                       selections,
 	                       attributes,
 	                       CPG_SELECTOR_TYPE_OBJECT,
+	                       NULL,
 	                       NULL);
 
 	g_object_unref (sel);
@@ -1637,6 +1657,7 @@ cpg_parser_context_push_scope (CpgParserContext *context,
 	                           CURRENT_CONTEXT (context)->objects,
 	                           attributes,
 	                           CPG_SELECTOR_TYPE_OBJECT,
+	                           NULL,
 	                           NULL);
 
 	cpg_parser_context_push_object (context, objects);
