@@ -114,7 +114,8 @@ void                   cpg_parser_context_set_error            (CpgParserContext
 GError                *cpg_parser_context_get_error            (CpgParserContext           *context);
 
 void                   cpg_parser_context_push_object          (CpgParserContext           *context,
-                                                                GSList                     *objects);
+                                                                GSList                     *objects,
+                                                                gboolean                    push_define);
 
 void                   cpg_parser_context_push_state           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
@@ -196,7 +197,8 @@ void                   cpg_parser_context_push_annotation      (CpgParserContext
                                                                 CpgEmbeddedString          *annotation);
 
 void                   cpg_parser_context_push_scope           (CpgParserContext           *context,
-                                                                GSList                     *attributes);
+                                                                GSList                     *attributes,
+                                                                gboolean                    push_define);
 
 void                   cpg_parser_context_push_layout          (CpgParserContext           *context,
                                                                 GSList                     *attributes);

@@ -187,7 +187,7 @@ toplevel
 	| delete_context
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  toplevel
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -219,7 +219,7 @@ network_item
 	: property
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  network_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -237,7 +237,7 @@ integrator_item
 	: integrator_property
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  integrator_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -273,7 +273,7 @@ define_item
 					                             FALSE); }
 	| debug
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, FALSE); }
 	  define_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -286,7 +286,7 @@ define_contents
 define
 	: attributes
 	  T_KEY_DEFINE
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, FALSE); }
 	  define_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -307,7 +307,7 @@ template_item
 	| common_scopes
 	| layout
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  template_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -440,7 +440,7 @@ function_polynomial
 	  identifier_or_string
 	  '('
 	  ')'
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  polynomial_pieces
 	  '}'				{ cpg_parser_context_add_polynomial (context, $3, $8); errb
 	                                  cpg_parser_context_pop (context); errb }
@@ -457,7 +457,7 @@ function_custom
 	  '('
 	  function_argument_list_or_empty
 	  ')'
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  value_as_string
 	  '}'				{ cpg_parser_context_add_function (context, $2, $8, $4); errb
 	                                  cpg_parser_context_pop (context); errb }
@@ -468,7 +468,7 @@ function_item
 	| function_polynomial
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  function_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -482,7 +482,7 @@ function
 	: T_KEY_FUNCTION function_item
 	| attributes
 	  T_KEY_FUNCTION
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  function_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -521,7 +521,7 @@ state_item
 	| common_scopes
 	| layout
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  state_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -540,7 +540,7 @@ group_item
 	| common_scopes
 	| layout
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  group_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -553,7 +553,7 @@ group_contents
 interface
 	: attributes
 	  T_KEY_INTERFACE
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  interface_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -571,7 +571,7 @@ interface_item
 	: interface_property
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  interface_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -582,7 +582,7 @@ link_item
 	| common_scopes
 	| layout
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  link_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -819,7 +819,7 @@ layout_item_or_others
 	: layout_item
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  layout_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -957,7 +957,7 @@ delete_item
 	: selector_type selector	{ cpg_parser_context_delete_selector (context, $1, $2); }
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  delete_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -973,7 +973,7 @@ delete_contents
 delete_context
 	: attributes
 	  T_KEY_DELETE
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
 	  delete_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;

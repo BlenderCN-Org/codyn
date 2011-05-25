@@ -25,6 +25,7 @@ typedef struct
 typedef struct
 {
 	GSList *objects;
+	gboolean push_define;
 } Context;
 
 struct _CpgParserContextPrivate
@@ -121,13 +122,15 @@ input_item_free (InputItem *self)
 }
 
 static Context *
-context_new (GSList *objects)
+context_new (GSList   *objects,
+             gboolean  push_define)
 {
 	Context *ret;
 
 	ret = g_slice_new0 (Context);
 
 	ret->objects = g_slist_copy (objects);
+	ret->push_define = push_define;
 
 	return ret;
 }
@@ -1231,7 +1234,8 @@ store_annotation_objects (CpgParserContext *context,
 
 void
 cpg_parser_context_push_object (CpgParserContext *context,
-                                GSList           *objects)
+                                GSList           *objects,
+                                gboolean          push_define)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
@@ -1239,9 +1243,12 @@ cpg_parser_context_push_object (CpgParserContext *context,
 
 	context->priv->context_stack =
 		g_slist_prepend (context->priv->context_stack,
-		                 context_new (objects));
+		                 context_new (objects, push_define));
 
-	cpg_embedded_context_push_define (context->priv->embedded);
+	if (push_define)
+	{
+		cpg_embedded_context_push_define (context->priv->embedded);
+	}
 }
 
 static GSList *
@@ -1549,7 +1556,7 @@ cpg_parser_context_push_state (CpgParserContext  *context,
 	                          CPG_TYPE_OBJECT,
 	                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, TRUE);
 	g_slist_free (objects);
 }
 
@@ -1569,7 +1576,7 @@ cpg_parser_context_push_group (CpgParserContext  *context,
 	                          CPG_TYPE_GROUP,
 	                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, TRUE);
 	g_slist_free (objects);
 }
 
@@ -1611,7 +1618,7 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 		                        fromto);
 	}
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, TRUE);
 	g_slist_free (objects);
 
 	if (id != NULL)
@@ -1647,7 +1654,8 @@ selections_from_attributes_obj (CpgParserContext *context,
 
 void
 cpg_parser_context_push_scope (CpgParserContext *context,
-                               GSList           *attributes)
+                               GSList           *attributes,
+                               gboolean          push_define)
 {
 	GSList *objects;
 
@@ -1660,7 +1668,7 @@ cpg_parser_context_push_scope (CpgParserContext *context,
 	                           NULL,
 	                           NULL);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, push_define);
 
 	g_slist_free (objects);
 }
@@ -1677,7 +1685,7 @@ cpg_parser_context_push_network (CpgParserContext *context,
 	                                          CPG_OBJECT (context->priv->network),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, TRUE);
 	g_slist_free (objects);
 }
 
@@ -1693,7 +1701,7 @@ cpg_parser_context_push_integrator (CpgParserContext *context,
 	                                          CPG_OBJECT (cpg_network_get_integrator (context->priv->network)),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, TRUE);
 
 	g_slist_free (objects);
 }
@@ -1710,7 +1718,7 @@ cpg_parser_context_push_templates (CpgParserContext *context,
 	                                          CPG_OBJECT (cpg_network_get_template_group (context->priv->network)),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, TRUE);
 	context->priv->is_template = CURRENT_CONTEXT (context);
 
 	g_slist_free (objects);
@@ -1741,13 +1749,16 @@ cpg_parser_context_pop (CpgParserContext *context)
 
 	ret = g_slist_reverse (ret);
 
+	if (ctx->push_define)
+	{
+		cpg_embedded_context_pop_define (context->priv->embedded);
+	}
+
 	context_free (ctx);
 
 	context->priv->context_stack =
 		g_slist_delete_link (context->priv->context_stack,
 		                     context->priv->context_stack);
-
-	cpg_embedded_context_pop_define (context->priv->embedded);
 
 	return ret;
 }
@@ -2424,7 +2435,7 @@ cpg_parser_context_push_layout (CpgParserContext *context,
 		context->priv->layout = cpg_layout_new (context->priv->network);
 	}
 
-	cpg_parser_context_push_scope (context, attributes);
+	cpg_parser_context_push_scope (context, attributes, TRUE);
 }
 
 void
