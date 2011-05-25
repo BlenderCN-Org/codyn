@@ -358,11 +358,14 @@ add_selector_to_string (CpgSelector *selector,
 		case SELECTOR_TYPE_REGEX:
 			if (selector->priv->as_string->len != 0)
 			{
-				g_string_append_c (selector->priv->as_string, '.');
+				g_string_append_c (selector->priv->as_string, sel->onset ? '|' : '.');
 			}
 		break;
 		case SELECTOR_TYPE_PSEUDO:
-			g_string_append_c (selector->priv->as_string, ':');
+			if (selector->priv->as_string->len != 0)
+			{
+				g_string_append_c (selector->priv->as_string, '|');
+			}
 		break;
 	}
 
