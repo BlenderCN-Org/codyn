@@ -163,16 +163,16 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %%
 
 choose_parser
-	: T_START_DOCUMENT document
+	: T_START_DOCUMENT document_contents
 	| T_START_SELECTOR selector_parse
 	;
 
-document
+document_contents
 	:
-	| document toplevel
+	| document_contents document_item
 	;
 
-toplevel
+document_item
 	: network
 	| state
 	| group
@@ -188,7 +188,7 @@ toplevel
 	| common_scopes
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
-	  toplevel
+	  document_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
