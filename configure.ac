@@ -105,8 +105,13 @@ AC_SUBST(CPG_NETWORK_API_VERSION)
 
 AC_CHECK_LIB([termcap],
              [tgetent],
-             [CPG_PARSER_LIBS=-ltermcap],
+              [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -ltermcap"],
              [AC_MSG_ERROR(could not find termcap library)])
+
+AC_CHECK_LIB([readline],
+             [rl_redisplay],
+             [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -lreadline"],
+             [AC_MSG_ERROR(Could not find readline library)])
 
 AC_SUBST(CPG_PARSER_LIBS)
 

@@ -4,8 +4,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <gio/gunixoutputstream.h>
+#include <gio/gunixinputstream.h>
 #include <cpg-network/cpg-network-serializer.h>
 #include <termcap.h>
+#include "cpg-readline-stream.h"
 
 static gchar *output_file;
 static gboolean no_colors = FALSE;
@@ -82,20 +84,43 @@ parse_network (gchar const *args[], gint argc)
 	GError *error = NULL;
 	CpgExpansion *expansion;
 	CpgEmbeddedContext *embedded;
+	gboolean fromstdin;
 
-	file = g_file_new_for_commandline_arg (args[0]);
 	network = cpg_network_new ();
 
 	context = cpg_parser_context_new (network);
 
+	fromstdin = (argc == 0 || g_strcmp0 (args[0], "-") == 0);
 	expansion = cpg_expansion_new (args);
+
 	embedded = cpg_parser_context_get_embedded (context);
 	cpg_embedded_context_push_expansion (embedded, expansion);
 	g_object_unref (expansion);
 
 	add_defines (context);
 
-	cpg_parser_context_push_input (context, file, NULL);
+	if (!fromstdin)
+	{
+		file = g_file_new_for_commandline_arg (args[0]);
+		cpg_parser_context_push_input (context, file, NULL);
+		g_object_unref (file);
+	}
+	else
+	{
+		GInputStream *stream;
+
+		if (isatty (STDIN_FILENO))
+		{
+			stream = cpg_readline_stream_new ("* ");
+		}
+		else
+		{
+			stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
+		}
+
+		cpg_parser_context_push_input (context, NULL, stream);
+		g_object_unref (stream);
+	}
 
 	if (cpg_parser_context_parse (context, &error))
 	{
@@ -225,13 +250,6 @@ main (int argc, char *argv[])
 	{
 		g_printerr ("%sFailed to parse options:%s %s\n", color_red, color_off, error->message);
 		g_error_free (error);
-
-		return 1;
-	}
-
-	if (argc < 2)
-	{
-		g_printerr ("%sPlease provide exactly one network to parse%s\n", color_red, color_off);
 
 		return 1;
 	}
