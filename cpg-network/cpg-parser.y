@@ -62,6 +62,8 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token T_EQUATION_BEGIN
 %token T_EQUATION_END
 
+%type <object> attribute_argument
+
 %type <num> selector_type
 %type <num> selector_pseudo_simple_key
 %type <num> selector_pseudo_selector_key
@@ -94,6 +96,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <array> template_list
 %type <argument> function_argument
 %type <selector> selector
+%type <selector> strict_selector
 
 %type <string> identifier_or_string
 %type <string> string
@@ -139,7 +142,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 	GArray *array;
 	CpgFunctionPolynomialPiece *piece;
 	CpgFunctionArgument *argument;
-	GObject *object;
+	gpointer object;
 	CpgSelector *selector;
 	CpgEmbeddedString *string;
 	CpgAttribute *attribute;
@@ -319,9 +322,14 @@ group
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
+attribute_argument
+	: value_as_string		{ $$ = $1; }
+	| strict_selector		{ $$ = $1; }
+	;
+
 attribute_arguments_list
-	: value_as_string		{ $$ = g_slist_prepend (NULL, $1); }
-	| attribute_arguments_list ',' value_as_string
+	: attribute_argument		{ $$ = g_slist_prepend (NULL, $1); }
+	| attribute_arguments_list ',' attribute_argument
 					{ $$ = g_slist_prepend ($1, $3); }
 	;
 
@@ -572,10 +580,16 @@ selector_items
 
 selector
 	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
+	| strict_selector
+	;
+
+strict_selector
+	: ':' selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb}
 	;
 
 selector_parse
 	: selector_items
+	| ':' selector_items
 	;
 
 selector_identifier

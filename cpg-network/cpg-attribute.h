@@ -42,7 +42,7 @@ void cpg_attribute_set_arguments (CpgAttribute *attr, GSList *arguments);
 gchar const *cpg_attribute_get_id (CpgAttribute *attr);
 GSList *cpg_attribute_get_arguments (CpgAttribute *attr);
 
-CpgEmbeddedString *cpg_attribute_get_argument (CpgAttribute *attr, gint i);
+gpointer cpg_attribute_get_argument (CpgAttribute *attr, gint i);
 gint cpg_attribute_num_arguments (CpgAttribute *attr);
 
 G_END_DECLS

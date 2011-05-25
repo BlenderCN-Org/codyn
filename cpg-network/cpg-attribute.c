@@ -145,7 +145,7 @@ cpg_attribute_get_arguments (CpgAttribute *attr)
 	return attr->priv->arguments;
 }
 
-CpgEmbeddedString *
+gpointer
 cpg_attribute_get_argument (CpgAttribute *attr,
                             gint          i)
 {
