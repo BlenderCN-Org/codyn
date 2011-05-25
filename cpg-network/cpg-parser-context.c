@@ -962,17 +962,35 @@ each_selections (CpgParserContext *context,
 			{
 				GSList *sels;
 
+				cpg_embedded_context_push_expansions (context->priv->embedded,
+				                                      cpg_selection_get_expansions (item->data));
+
 				sels = cpg_selector_select (obj,
 				                            cpg_selection_get_object (item->data),
 				                            type,
 				                            context->priv->embedded);
 
-				if (selected && sels)
+				if (selected && sels != NULL)
 				{
 					*selected = TRUE;
 				}
 
-				ret = g_slist_concat (g_slist_reverse (sels), ret);
+				while (sels)
+				{
+					cpg_embedded_context_push_expansions (context->priv->embedded,
+					                                      cpg_selection_get_expansions (sels->data));
+
+					ret = g_slist_prepend (ret,
+					                       cpg_selection_new (cpg_selection_get_object (sels->data),
+					                                          cpg_embedded_context_get_expansions (context->priv->embedded)));
+
+					cpg_embedded_context_pop_expansions (context->priv->embedded);
+
+					g_object_unref (sels->data);
+					sels = g_slist_delete_link (sels, sels);
+				}
+
+				cpg_embedded_context_pop_expansions (context->priv->embedded);
 			}
 		}
 	}
