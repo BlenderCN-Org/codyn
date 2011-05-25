@@ -681,7 +681,14 @@ parse_object_single_id (CpgParserContext *context,
 	GError *error = NULL;
 	CpgGroup *parent_group;
 
-	parent_group = CPG_GROUP (cpg_selection_get_object (parent));
+	if (id)
+	{
+		parent_group = CPG_GROUP (cpg_selection_get_object (parent));
+	}
+	else
+	{
+		parent_group = CPG_GROUP (cpg_object_get_parent (cpg_selection_get_object (parent)));
+	}
 
 	if (!cpg_network_parser_utils_get_templates (context->priv->network,
 	                                             parent_group,
@@ -723,8 +730,15 @@ parse_object_single_id (CpgParserContext *context,
 		}
 	}
 
-	child = cpg_group_get_child (parent_group,
-	                             cpg_expansion_get (id, 0));
+	if (id)
+	{
+		child = cpg_group_get_child (parent_group,
+		                             cpg_expansion_get (id, 0));
+	}
+	else
+	{
+		child = cpg_selection_get_object (parent);
+	}
 
 	if (!child)
 	{
@@ -797,6 +811,24 @@ parse_object_single (CpgParserContext  *context,
 {
 	GSList *ret = NULL;
 
+	if (!ids)
+	{
+		CpgSelection *sel;
+
+		sel = parse_object_single_id (context,
+		                              NULL,
+		                              templates,
+		                              parent,
+		                              gtype);
+
+		if (sel)
+		{
+			ret = g_slist_prepend (NULL, sel);
+		}
+
+		return ret;
+	}
+
 	while (ids)
 	{
 		CpgSelection *sel;
@@ -845,13 +877,20 @@ find_attribute (GSList *attributes,
 static GSList *
 each_selections (CpgParserContext *context,
                  GSList           *selections,
-                 GSList           *attributes)
+                 GSList           *attributes,
+                 CpgSelectorType   type,
+                 gboolean         *selected)
 {
 	gint i;
 	GSList *ret = NULL;
 	CpgAttribute *attr;
 
 	attr = find_attribute (attributes, "each");
+
+	if (selected)
+	{
+		*selected = FALSE;
+	}
 
 	if (!attr)
 	{
@@ -914,12 +953,64 @@ each_selections (CpgParserContext *context,
 				                            CPG_SELECTOR_TYPE_OBJECT,
 				                            context->priv->embedded);
 
+				if (selected && sels->data)
+				{
+					*selected = TRUE;
+				}
+
 				ret = g_slist_concat (g_slist_reverse (sels), ret);
 			}
 		}
 	}
 
 	return g_slist_reverse (ret);
+}
+
+static CpgSelectorType
+selector_type_from_gtype (GType gtype)
+{
+	if (g_type_is_a (gtype, CPG_TYPE_GROUP) ||
+	    gtype == CPG_TYPE_GROUP)
+	{
+		return CPG_SELECTOR_TYPE_GROUP;
+	}
+	else if (g_type_is_a (gtype, CPG_TYPE_LINK) ||
+	         gtype == CPG_TYPE_LINK)
+	{
+		return CPG_SELECTOR_TYPE_LINK;
+	}
+	else if (gtype == CPG_TYPE_OBJECT)
+	{
+		return CPG_SELECTOR_TYPE_STATE;
+	}
+	else
+	{
+		return CPG_SELECTOR_TYPE_OBJECT;
+	}
+}
+
+static gchar *
+unique_id (CpgGroup    *parent,
+           gchar const *prefix)
+{
+	gint i = 1;
+
+	if (!cpg_group_get_child (parent, prefix))
+	{
+		return g_strdup (prefix);
+	}
+
+	while (TRUE)
+	{
+		gchar *id = g_strdup_printf ("%s_%d", prefix, i++);
+
+		if (!cpg_group_get_child (parent, id))
+		{
+			return id;
+		}
+
+		g_free (id);
+	}
 }
 
 static GSList *
@@ -932,10 +1023,13 @@ parse_objects (CpgParserContext  *context,
 	GSList *parents;
 	GSList *parent;
 	GSList *ret = NULL;
+	gboolean selected;
 
 	parents = each_selections (context,
 	                           CURRENT_CONTEXT (context)->objects,
-	                           attributes);
+	                           attributes,
+	                           selector_type_from_gtype (gtype),
+	                           &selected);
 
 	for (parent = parents; parent; parent = g_slist_next (parent))
 	{
@@ -945,7 +1039,22 @@ parse_objects (CpgParserContext  *context,
 		cpg_embedded_context_push_expansions (context->priv->embedded,
 		                                      cpg_selection_get_expansions (parent->data));
 
-		ids = cpg_embedded_string_expand_multiple (id, context->priv->embedded);
+		if (!selected && id == NULL)
+		{
+			gchar *newid;
+
+			newid = unique_id (CPG_GROUP (cpg_selection_get_object (parent->data)),
+			                  "object");
+
+			id = cpg_embedded_string_new_from_string (newid);
+			g_free (newid);
+		}
+		else if (id != NULL)
+		{
+			g_object_ref (id);
+		}
+
+		ids = id ? cpg_embedded_string_expand_multiple (id, context->priv->embedded) : NULL;
 
 		objs = parse_object_single (context,
 		                            ids,
@@ -955,6 +1064,11 @@ parse_objects (CpgParserContext  *context,
 
 		g_slist_foreach (ids, (GFunc)g_object_unref, NULL);
 		g_slist_free (ids);
+
+		if (id != NULL)
+		{
+			g_object_unref (id);
+		}
 
 		if (!objs)
 		{
@@ -1147,30 +1261,6 @@ create_objects (CpgParserContext  *context,
 	g_slist_free (temps);
 
 	return ret;
-}
-
-static gchar *
-unique_id (CpgGroup    *parent,
-           gchar const *prefix)
-{
-	gint i = 1;
-
-	if (!cpg_group_get_child (parent, prefix))
-	{
-		return g_strdup (prefix);
-	}
-
-	while (TRUE)
-	{
-		gchar *id = g_strdup_printf ("%s_%d", prefix, i++);
-
-		if (!cpg_group_get_child (parent, id))
-		{
-			return id;
-		}
-
-		g_free (id);
-	}
 }
 
 static GSList *
@@ -1382,7 +1472,9 @@ create_links (CpgParserContext          *context,
 
 	parents = each_selections (context,
 	                           ctx->objects,
-	                           attributes);
+	                           attributes,
+	                           CPG_SELECTOR_TYPE_LINK,
+	                           NULL);
 
 	for (item = parents; item; item = g_slist_next (item))
 	{
@@ -1431,7 +1523,6 @@ cpg_parser_context_push_state (CpgParserContext  *context,
 	GSList *objects;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (id != NULL);
 
 	objects = create_objects (context,
 	                          id,
@@ -1452,7 +1543,6 @@ cpg_parser_context_push_group (CpgParserContext  *context,
 	GSList *objects;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (id != NULL);
 
 	objects = create_objects (context,
 	                          id,
@@ -1472,16 +1562,8 @@ cpg_parser_context_push_link (CpgParserContext          *context,
                               GArray                    *fromto)
 {
 	GSList *objects;
-	gboolean autoid;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-
-	autoid = id == NULL;
-
-	if (id == NULL)
-	{
-		id = cpg_embedded_string_new_from_string ("link");
-	}
 
 	if (!fromto)
 	{
@@ -1493,6 +1575,15 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 	}
 	else
 	{
+		gboolean autoid;
+	
+		autoid = id == NULL;
+
+		if (id == NULL)
+		{
+			id = cpg_embedded_string_new_from_string ("link");
+		}
+
 		objects = create_links (context,
 		                        id,
 		                        autoid,
@@ -1504,7 +1595,10 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 	cpg_parser_context_push_object (context, objects);
 	g_slist_free (objects);
 
-	g_object_unref (id);
+	if (id != NULL)
+	{
+		g_object_unref (id);
+	}
 }
 
 static GSList *
@@ -1519,7 +1613,11 @@ selections_from_attributes_obj (CpgParserContext *context,
 	sel = cpg_selection_new (obj, NULL);
 	selections = g_slist_prepend (NULL, sel);
 
-	ret = each_selections (context, selections, attributes);
+	ret = each_selections (context,
+	                       selections,
+	                       attributes,
+	                       CPG_SELECTOR_TYPE_OBJECT,
+	                       NULL);
 
 	g_object_unref (sel);
 	g_slist_free (selections);
@@ -1537,7 +1635,9 @@ cpg_parser_context_push_scope (CpgParserContext *context,
 
 	objects = each_selections (context,
 	                           CURRENT_CONTEXT (context)->objects,
-	                           attributes);
+	                           attributes,
+	                           CPG_SELECTOR_TYPE_OBJECT,
+	                           NULL);
 
 	cpg_parser_context_push_object (context, objects);
 

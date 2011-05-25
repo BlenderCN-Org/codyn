@@ -74,6 +74,8 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <list> selector_pseudo_selector_args
 %type <list> selector_pseudo_selector_args_rev
 
+%type <string> identifier_or_string_or_nothing
+
 %token <num> T_INDIRECTION_BEGIN
 %token T_INDIRECTION_END
 
@@ -326,10 +328,15 @@ templated
 	| template_list			{ $$ = $1; }
 	;
 
+identifier_or_string_or_nothing
+	:				{ $$ = NULL; }
+	| identifier_or_string		{ $$ = $1; }
+	;
+
 state
 	: attributes
 	  T_KEY_STATE
-	  identifier_or_string
+	  identifier_or_string_or_nothing
 	  templated
 	  '{' 				{ cpg_parser_context_push_state (context, $3, $4, $1); errb }
 	  state_contents
@@ -344,7 +351,7 @@ state_in_group
 group
 	: attributes
 	  T_KEY_GROUP
-	  identifier_or_string
+	  identifier_or_string_or_nothing
 	  templated
 	  '{' 				{ cpg_parser_context_push_group (context, $3, $4, $1); errb }
 	  group_contents
