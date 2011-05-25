@@ -420,7 +420,8 @@ evaluate_node (Node *node,
 			}
 			else
 			{
-				return g_string_free (ret, FALSE);
+				r = g_strdup_printf ("$(%s)",
+				                     ret->str);
 			}
 		break;
 		case CPG_EMBEDDED_STRING_NODE_INDIRECTION:
@@ -430,7 +431,11 @@ evaluate_node (Node *node,
 			}
 			else
 			{
-				return g_string_free (ret, FALSE);
+				gchar *s;
+
+				s = g_strnfill (node->depth + 1, '@');
+				r = g_strdup_printf ("%s[%s]", s, ret->str);
+				g_free (s);
 			}
 		break;
 	}
