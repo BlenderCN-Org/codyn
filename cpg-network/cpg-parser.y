@@ -574,6 +574,7 @@ selector_item_set
 
 selector_items
 	: selector_item
+	| '&' selector_item_set
 	| selector_items '.' selector_item
 	| selector_items '|' selector_item_set
 	;

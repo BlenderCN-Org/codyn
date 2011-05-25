@@ -316,6 +316,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 ","				return ',';
 <onlyselector,INITIAL>"."	return '.';
 <onlyselector,INITIAL>"|"	return '|';
+<onlyselector,INITIAL>"&"	return '&';
 "["				return '[';
 "]"				return ']';
 
