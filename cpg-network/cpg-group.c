@@ -33,6 +33,8 @@ enum
 {
 	EXT_PROPERTY_ADDED,
 	EXT_PROPERTY_REMOVED,
+	EXT_INTERFACE_PROPERTY_ADDED,
+	EXT_INTERFACE_PROPERTY_REMOVED,
 	NUM_EXT_SIGNALS
 };
 
@@ -517,6 +519,24 @@ on_proxy_property_removed (CpgObject   *proxy,
 	proxy_remove_property (group, property);
 }
 
+static void
+on_proxy_interface_property_added (CpgPropertyInterface *iface,
+                                   gchar const          *name,
+                                   CpgProperty          *property,
+                                   CpgGroup             *group)
+{
+	proxy_add_property (group, property);
+}
+
+static void
+on_proxy_interface_property_removed (CpgPropertyInterface *iface,
+                                     gchar const          *name,
+                                     CpgProperty          *property,
+                                     CpgGroup             *group)
+{
+	proxy_remove_property (group, property);
+}
+
 static gboolean
 set_proxy (CpgGroup  *group,
            CpgObject *proxy)
@@ -533,6 +553,19 @@ set_proxy (CpgGroup  *group,
 
 		g_signal_handler_disconnect (group->priv->proxy,
 		                             group->priv->proxy_signals[EXT_PROPERTY_REMOVED]);
+
+		if (CPG_IS_GROUP (group->priv->proxy))
+		{
+			CpgPropertyInterface *iface;
+
+			iface = cpg_group_get_property_interface (CPG_GROUP (group->priv->proxy));
+
+			g_signal_handler_disconnect (iface,
+			                             group->priv->proxy_signals[EXT_INTERFACE_PROPERTY_ADDED]);
+
+			g_signal_handler_disconnect (iface,
+			                             group->priv->proxy_signals[EXT_INTERFACE_PROPERTY_REMOVED]);
+		}
 
 		GSList const *properties = cpg_object_get_properties (group->priv->proxy);
 
@@ -575,6 +608,38 @@ set_proxy (CpgGroup  *group,
 			                  "property-removed",
 			                  G_CALLBACK (on_proxy_property_removed),
 			                  group);
+
+		if (CPG_IS_GROUP (group->priv->proxy))
+		{
+			CpgPropertyInterface *iface;
+			gchar **names;
+			gchar **ptr;
+
+			iface = cpg_group_get_property_interface (CPG_GROUP (group->priv->proxy));
+			names = cpg_property_interface_get_names (iface);
+
+			for (ptr = names; ptr && *ptr; ++ptr)
+			{
+				CpgProperty *prop;
+
+				prop = cpg_property_interface_lookup (iface, *ptr);
+				proxy_add_property (group, prop);
+			}
+
+			g_strfreev (names);
+
+			group->priv->proxy_signals[EXT_INTERFACE_PROPERTY_ADDED] =
+				g_signal_connect_after (iface,
+				                        "added",
+				                        G_CALLBACK (on_proxy_interface_property_added),
+				                        group);
+
+			group->priv->proxy_signals[EXT_INTERFACE_PROPERTY_REMOVED] =
+				g_signal_connect (iface,
+				                  "removed",
+				                  G_CALLBACK (on_proxy_interface_property_removed),
+				                  group);
+		}
 	}
 
 	g_object_notify (G_OBJECT (group), "proxy");
