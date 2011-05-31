@@ -580,6 +580,27 @@ set_proxy (CpgGroup  *group,
 			properties = g_slist_next (properties);
 		}
 
+		if (CPG_IS_GROUP (pr))
+		{
+			CpgPropertyInterface *iface;
+			gchar **names;
+			gchar **ptr;
+
+			iface = cpg_group_get_property_interface (CPG_GROUP (pr));
+
+			names = cpg_property_interface_get_names (iface);
+
+			for (ptr = names; ptr && *ptr; ++ptr)
+			{
+				CpgProperty *prop;
+
+				prop = cpg_property_interface_lookup (iface, *ptr);
+				proxy_remove_property (group, prop);
+			}
+
+			g_strfreev (names);
+		}
+
 		g_object_unref (pr);
 	}
 
@@ -1642,7 +1663,7 @@ on_property_interface_verify_remove (CpgPropertyInterface  *iface,
 	property = cpg_property_interface_lookup (iface, name);
 
 	if (property &&
-	    cpg_property_get_object (property) == group->priv->proxy &&
+	    cpg_property_get_object (property) != CPG_OBJECT (group) &&
 	    g_strcmp0 (cpg_property_get_name (property), name) == 0)
 	{
 		g_set_error (error,
