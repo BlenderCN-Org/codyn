@@ -354,11 +354,78 @@ print_selections (GSList *list)
 #endif
 #endif
 
+static CpgLink *
+find_or_create_self_link (CpgParserContext *context,
+                          CpgObject        *object,
+                          CpgProperty      *prop)
+{
+	GSList const *links;
+	GError *error = NULL;
+	gchar *id;
+	CpgLink *link;
+
+	links = cpg_object_get_links (object);
+
+	while (links)
+	{
+		GSList const *actions;
+		gboolean hasprop = FALSE;
+
+		link = links->data;
+		links = g_slist_next (links);
+
+		if (cpg_link_get_from (link) != object)
+		{
+			continue;
+		}
+
+		actions = cpg_link_get_actions (link);
+
+		while (actions)
+		{
+			if (g_strcmp0 (cpg_link_action_get_target (actions->data),
+			               cpg_property_get_name (prop)) == 0)
+			{
+				hasprop = TRUE;
+				break;
+			}
+
+			actions = g_slist_next (actions);
+		}
+
+		if (!hasprop)
+		{
+			return link;
+		}
+
+		links = g_slist_next (links);
+	}
+
+	/* Create a new self link */
+	id = g_strconcat ("on_", cpg_object_get_id (object), NULL);
+	link = cpg_link_new (id, object, object);
+	g_free (id);
+
+	if (!cpg_group_add (CPG_GROUP (cpg_object_get_parent (object)),
+	                    CPG_OBJECT (link),
+	                    &error))
+	{
+		g_object_unref (link);
+		parser_failed_error (context, error);
+
+		return NULL;
+	}
+
+	g_object_unref (link);
+	return link;
+}
+
 void
 cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
                                  CpgEmbeddedString *expression,
-                                 CpgPropertyFlags  flags)
+                                 CpgPropertyFlags   flags,
+                                 CpgEmbeddedString *integration)
 {
 	Context *ctx;
 	GSList *item;
@@ -390,12 +457,12 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 		exname = cpg_embedded_string_expand (name, context->priv->embedded);
 		exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
 
-		cpg_embedded_context_restore (context->priv->embedded);
-
 		if (!cpg_object_add_property (obj,
 		                              cpg_property_new (exname, exexpression, flags),
 		                              &error))
 		{
+			cpg_embedded_context_restore (context->priv->embedded);
+
 			parser_failed_error (context, error);
 			break;
 		}
@@ -408,6 +475,27 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (property),
 			                                annotation);
 		}
+
+		if (integration != NULL)
+		{
+			CpgLink *link;
+
+			link = find_or_create_self_link (context, obj, property);
+
+			if (!link)
+			{
+				cpg_embedded_context_restore (context->priv->embedded);
+
+				break;
+			}
+
+			cpg_link_add_action (link,
+			                     cpg_link_action_new (cpg_property_get_name (property),
+			                                          cpg_expression_new (cpg_embedded_string_expand (integration,
+			                                                                                          context->priv->embedded))));
+		}
+
+		cpg_embedded_context_restore (context->priv->embedded);
 	}
 
 	g_free (annotation);

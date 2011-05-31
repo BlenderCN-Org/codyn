@@ -599,8 +599,10 @@ identifier_or_string
 	;
 
 property
-	: identifier_or_string '=' value_as_string property_flags
-					{ cpg_parser_context_add_property (context, $1, $3, $4); errb }
+	: identifier_or_string '=' value_as_string '<' '=' value_as_string property_flags
+					{ cpg_parser_context_add_property (context, $1, $3, $7, $6); errb }
+	| identifier_or_string '=' value_as_string property_flags
+					{ cpg_parser_context_add_property (context, $1, $3, $4, NULL); errb }
 	;
 
 property_flags_contents
