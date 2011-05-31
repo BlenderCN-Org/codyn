@@ -452,9 +452,8 @@ function_custom
 	  '('
 	  function_argument_list_or_empty
 	  ')'
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
-	  value_as_string
-	  '}'				{ cpg_parser_context_add_function (context, $2, $8, $4); errb
+	  '='				{ cpg_parser_context_push_scope (context, $1); }
+	  value_as_string		{ cpg_parser_context_add_function (context, $2, $8, $4); errb
 	                                  cpg_parser_context_pop (context); errb }
 	;
 
