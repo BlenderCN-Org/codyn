@@ -161,7 +161,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "right-of"			return T_KEY_RIGHT_OF;
 "of"				return T_KEY_OF;
 "on"				return T_KEY_ON;
-"proxy"				return T_KEY_PROXY;
 "debug"				return T_KEY_DEBUG;
 "selector"			return T_KEY_SELECTOR;
 "action"			return T_KEY_ACTION;

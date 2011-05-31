@@ -1164,6 +1164,34 @@ unique_id (CpgGroup    *parent,
 	}
 }
 
+static void
+set_proxy (CpgParserContext *context,
+           GSList           *objects)
+{
+	while (objects)
+	{
+		CpgObject *obj;
+		CpgObject *parent;
+
+		obj = cpg_selection_get_object (objects->data);
+		objects = g_slist_next (objects);
+
+		if (CPG_IS_LINK (obj))
+		{
+			continue;
+		}
+
+		parent = cpg_object_get_parent (obj);
+
+		if (!parent)
+		{
+			continue;
+		}
+
+		cpg_group_set_proxy (CPG_GROUP (parent), obj);
+	}
+}
+
 static GSList *
 parse_objects (CpgParserContext  *context,
                CpgEmbeddedString *id,
@@ -1176,6 +1204,7 @@ parse_objects (CpgParserContext  *context,
 	GSList *ret = NULL;
 	gboolean selected;
 	gboolean couldselect;
+	gboolean isproxy;
 
 	parents = each_selections (context,
 	                           CURRENT_CONTEXT (context)->objects,
@@ -1189,6 +1218,8 @@ parse_objects (CpgParserContext  *context,
 	{
 		return NULL;
 	}
+
+	isproxy = find_attribute (attributes, "proxy") != NULL;
 
 	for (parent = parents; parent; parent = g_slist_next (parent))
 	{
@@ -1222,6 +1253,11 @@ parse_objects (CpgParserContext  *context,
 		                            templates,
 		                            parent->data,
 		                            gtype);
+
+		if (isproxy)
+		{
+			set_proxy (context, objs);
+		}
 
 		g_slist_foreach (ids, (GFunc)g_object_unref, NULL);
 		g_slist_free (ids);
@@ -2842,35 +2878,6 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 		}
 
 		cpg_embedded_context_restore (context->priv->embedded);
-	}
-}
-
-void
-cpg_parser_context_set_proxy (CpgParserContext *context,
-                              GSList           *objects)
-{
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-
-	while (objects)
-	{
-		CpgObject *obj = objects->data;
-		CpgObject *parent;
-
-		objects = g_slist_next (objects);
-
-		if (CPG_IS_LINK (obj))
-		{
-			continue;
-		}
-
-		parent = cpg_object_get_parent (obj);
-
-		if (!parent)
-		{
-			continue;
-		}
-
-		cpg_group_set_proxy (CPG_GROUP (parent), obj);
 	}
 }
 
