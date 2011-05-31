@@ -195,7 +195,7 @@ document_item
 include_path
 	: T_STRING_BEGIN
 	  string_contents
-	  T_STRING_END
+	  T_STRING_END			{ errb; }
 	;
 
 include

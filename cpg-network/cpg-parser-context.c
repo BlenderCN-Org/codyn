@@ -73,9 +73,26 @@ enum
 #define CONTEXT(x) ((Context *)x)
 #define CURRENT_CONTEXT(context) CONTEXT(context->priv->context_stack->data)
 
+static void
+input_item_free (InputItem *self)
+{
+	if (self->file)
+	{
+		g_object_unref (self->file);
+	}
+
+	if (self->stream)
+	{
+		g_object_unref (self->stream);
+	}
+
+	g_slice_free (InputItem, self);
+}
+
 static InputItem *
-input_item_new (GFile        *file,
-                GInputStream *stream)
+input_item_new (GFile         *file,
+                GInputStream  *stream,
+                GError       **error)
 {
 	InputItem *ret;
 
@@ -93,31 +110,20 @@ input_item_new (GFile        *file,
 
 		is = g_file_read (ret->file,
 		                  NULL,
-		                  NULL);
+		                  error);
 
 		if (is)
 		{
 			ret->stream = G_INPUT_STREAM (is);
 		}
+		else
+		{
+			input_item_free (ret);
+			ret = NULL;
+		}
 	}
 
 	return ret;
-}
-
-static void
-input_item_free (InputItem *self)
-{
-	if (self->file)
-	{
-		g_object_unref (self->file);
-	}
-
-	if (self->stream)
-	{
-		g_object_unref (self->stream);
-	}
-
-	g_slice_free (InputItem, self);
 }
 
 static Context *
@@ -2418,14 +2424,22 @@ cpg_parser_context_push_input (CpgParserContext *context,
                                GInputStream     *stream)
 {
 	InputItem *item;
+	GError *error = NULL;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (file != NULL || stream != NULL);
 
-	item = input_item_new (file, stream);
+	item = input_item_new (file, stream, &error);
 
-	context->priv->inputs = g_slist_prepend (context->priv->inputs,
-	                                         item);
+	if (item)
+	{
+		context->priv->inputs = g_slist_prepend (context->priv->inputs,
+		                                         item);
+	}
+	else
+	{
+		parser_failed_error (context, error);
+	}
 }
 
 void
