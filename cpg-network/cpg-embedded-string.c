@@ -246,7 +246,8 @@ count_chars (gchar const *s, gchar t, gint *num)
 }
 
 static gchar *
-resolve_indirection (CpgEmbeddedContext *context,
+resolve_indirection (CpgEmbeddedString  *em,
+                     CpgEmbeddedContext *context,
                      Node               *node,
                      gchar const        *s)
 {
@@ -302,8 +303,8 @@ resolve_indirection (CpgEmbeddedContext *context,
 		CpgExpansion *ex;
 		gchar const *ret = NULL;
 
-		ex = cpg_embedded_context_lookup_expansion (context,
-		                                            node->depth);
+		ex = cpg_embedded_context_get_expansion (context,
+		                                         node->depth);
 
 		if (!ex)
 		{
@@ -356,7 +357,7 @@ resolve_indirection (CpgEmbeddedContext *context,
 			gchar *norm;
 
 			norm = g_strndup (s, strlen (s) - abs(issub + isadd) + 1);
-			def = cpg_embedded_context_lookup_define (context, norm);
+			def = cpg_embedded_context_get_define (context, norm);
 
 			if (!*def)
 			{
@@ -376,14 +377,14 @@ resolve_indirection (CpgEmbeddedContext *context,
 			}
 
 			sval = g_strdup_printf ("%d", val);
-			cpg_embedded_context_define (context, norm, sval);
+			cpg_embedded_context_add_define (context, norm, sval);
 
 			g_free (norm);
 			g_free (sval);
 		}
 		else
 		{
-			def = cpg_embedded_context_lookup_define (context, s);
+			def = cpg_embedded_context_get_define (context, s);
 		}
 
 		return def;
@@ -391,7 +392,8 @@ resolve_indirection (CpgEmbeddedContext *context,
 }
 
 static gchar *
-evaluate_node (Node *node,
+evaluate_node (CpgEmbeddedString *em,
+               Node *node,
                CpgEmbeddedContext *context)
 {
 	GString *ret;
@@ -403,7 +405,8 @@ evaluate_node (Node *node,
 	for (item = node->nodes; item; item = g_slist_next (item))
 	{
 		g_string_prepend (ret,
-		                  evaluate_node (item->data,
+		                  evaluate_node (em,
+		                                 item->data,
 		                                 context));
 	}
 
@@ -427,7 +430,7 @@ evaluate_node (Node *node,
 		case CPG_EMBEDDED_STRING_NODE_INDIRECTION:
 			if (context)
 			{
-				r = resolve_indirection (context, node, ret->str);
+				r = resolve_indirection (em, context, node, ret->str);
 			}
 			else
 			{
@@ -466,7 +469,7 @@ cpg_embedded_string_expand (CpgEmbeddedString  *s,
 	}
 	else
 	{
-		s->priv->cached = evaluate_node (s->priv->stack->data, ctx);
+		s->priv->cached = evaluate_node (s, s->priv->stack->data, ctx);
 	}
 
 	return s->priv->cached;

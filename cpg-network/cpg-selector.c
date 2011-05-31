@@ -227,6 +227,7 @@ pseudo_name (CpgSelectorPseudoType type)
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_TO:
 			return "to";
+		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_SELF:
 			return "self";
 		break;
@@ -246,6 +247,7 @@ selector_pseudo_new (CpgSelectorPseudoType  type,
 	GString *args;
 
 	selector = selector_new (SELECTOR_TYPE_PSEUDO);
+	selector->onset = TRUE;
 
 	selector->pseudo.type = type;
 	selector->pseudo.arguments = g_slist_copy (arguments);
@@ -472,7 +474,7 @@ make_child_selection (CpgSelection *parent,
 	expansions = g_slist_copy (cpg_selection_get_expansions (parent));
 	expansions = g_slist_prepend (expansions, expansion);
 
-	ret = cpg_selection_new (obj, expansions);
+	ret = cpg_selection_new (obj, expansions, cpg_selection_get_defines (parent));
 
 	g_slist_free (expansions);
 
@@ -1042,7 +1044,8 @@ expand_children (CpgSelection *selection,
 	{
 		ret = g_slist_prepend (ret,
 		                       cpg_selection_new (children->data,
-		                                          cpg_selection_get_expansions (selection)));
+		                                          cpg_selection_get_expansions (selection),
+		                                          cpg_selection_get_defines (selection)));
 
 		children = g_slist_next (children);
 	}
@@ -1086,7 +1089,8 @@ count_selection (GSList          *selection,
 		expansions = g_slist_append (expansions, expansion);
 
 		sel = cpg_selection_new (cpg_selection_get_object (item->data),
-		                         expansions);
+		                         expansions,
+		                         cpg_selection_get_defines (item->data));
 
 		g_slist_free (expansions);
 		g_object_unref (ex);
@@ -1121,8 +1125,9 @@ selector_pseudo_from_to (Selector           *selector,
 		return ret;
 	}
 
-	cpg_embedded_context_push_expansions (context,
-	                                      cpg_selection_get_expansions (sel));
+	cpg_embedded_context_save (context);
+
+	cpg_embedded_context_add_selection (context, sel);
 
 	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
 	{
@@ -1151,7 +1156,8 @@ selector_pseudo_from_to (Selector           *selector,
 			                             expansions);
 
 			childsel = cpg_selection_new (cpg_selection_get_object (sel),
-			                              expansions);
+			                              expansions,
+			                              cpg_selection_get_defines (sel));
 
 			ret = g_slist_prepend (ret, childsel);
 
@@ -1164,7 +1170,7 @@ selector_pseudo_from_to (Selector           *selector,
 
 	g_object_unref (obj);
 
-	cpg_embedded_context_pop_expansions (context);
+	cpg_embedded_context_restore (context);
 	return ret;
 }
 
@@ -1218,6 +1224,33 @@ expansion_as_string (CpgExpansion *expansion)
 	return g_string_free (ret, FALSE);
 }
 
+static gchar *
+expansions_as_string (GSList *expansions)
+{
+	GString *ret;
+
+	ret = g_string_new ("[");
+
+	while (expansions)
+	{
+		gchar *s;
+
+		s = expansion_as_string (expansions->data);
+		g_string_append (ret, s);
+		g_free (s);
+
+		expansions = g_slist_next (expansions);
+
+		if (expansions)
+		{
+			g_string_append (ret, ", ");
+		}
+	}
+
+	g_string_append_c (ret, ']');
+	return g_string_free (ret, FALSE);
+}
+
 static GSList *
 debug_selections (CpgSelector        *self,
                   Selector           *selector,
@@ -1228,8 +1261,11 @@ debug_selections (CpgSelector        *self,
 	gchar *s;
 
 	s = selector_until_as_string (self, selector);
+	g_printerr ("[debug] Selector : %s\n", s);
+	g_free (s);
 
-	g_printerr ("[debug] Selector (%s)\n", s);
+	s = expansions_as_string (cpg_embedded_context_get_expansions (context));
+	g_printerr ("[debug] Context  : %s\n", s);
 	g_free (s);
 
 	for (item = parent; item; item = g_slist_next (item))
@@ -1268,24 +1304,10 @@ debug_selections (CpgSelector        *self,
 		}
 
 		expansions = cpg_selection_get_expansions (sel);
+		s = expansions_as_string (expansions);
 
-		g_printerr (" <= [");
-
-		while (expansions)
-		{
-			s = expansion_as_string (expansions->data);
-			g_printerr ("%s", s);
-			g_free (s);
-
-			expansions = g_slist_next (expansions);
-
-			if (expansions)
-			{
-				g_printerr (", ");
-			}
-		}
-
-		g_printerr ("]\n");
+		g_printerr (" <= %s\n", s);
+		g_free (s);
 	}
 
 	g_printerr ("\n");
@@ -1343,8 +1365,9 @@ selector_select_pseudo (CpgSelector        *self,
 		CpgSelection *sel = item->data;
 		Nth nth = {0,};
 
-		cpg_embedded_context_push_expansions (context,
-		                                      cpg_selection_get_expansions (sel));
+		cpg_embedded_context_save (context);
+
+		cpg_embedded_context_add_selection (context, sel);
 
 		switch (selector->pseudo.type)
 		{
@@ -1357,7 +1380,7 @@ selector_select_pseudo (CpgSelector        *self,
 			break;
 		}
 
-		cpg_embedded_context_pop_expansions (context);
+		cpg_embedded_context_restore (context);
 
 		switch (selector->pseudo.type)
 		{
@@ -1383,7 +1406,9 @@ selector_select_pseudo (CpgSelector        *self,
 				if (top && check_type (top, type))
 				{
 					return g_slist_prepend (ret,
-					                        cpg_selection_new (top, cpg_selection_get_expansions (sel)));
+					                        cpg_selection_new (top,
+					                                           cpg_selection_get_expansions (sel),
+					                                           cpg_selection_get_defines (sel)));
 				}
 			}
 			break;
@@ -1401,7 +1426,8 @@ selector_select_pseudo (CpgSelector        *self,
 
 					return g_slist_prepend (ret,
 					                        cpg_selection_new (template_group,
-					                                       cpg_selection_get_expansions (sel)));
+					                                           cpg_selection_get_expansions (sel),
+					                                           cpg_selection_get_defines (sel)));
 				}
 			}
 			break;
@@ -1462,7 +1488,8 @@ selector_select_pseudo (CpgSelector        *self,
 				{
 					ret = g_slist_prepend (ret,
 					                       cpg_selection_new (parent,
-					                                          cpg_selection_get_expansions (sel)));
+					                                          cpg_selection_get_expansions (sel),
+					                                          cpg_selection_get_defines (sel)));
 				}
 			}
 			break;
@@ -1480,7 +1507,8 @@ selector_select_pseudo (CpgSelector        *self,
 						{
 							ret = g_slist_prepend (ret,
 							                       cpg_selection_new (children->data,
-							                                          cpg_selection_get_expansions (sel)));
+							                                          cpg_selection_get_expansions (sel),
+							                                          cpg_selection_get_defines (sel)));
 
 							break;
 						}
@@ -1513,7 +1541,8 @@ selector_select_pseudo (CpgSelector        *self,
 					{
 						ret = g_slist_prepend (ret,
 						                       cpg_selection_new (thelast,
-						                                          cpg_selection_get_expansions (sel)));
+						                                          cpg_selection_get_expansions (sel),
+						                                          cpg_selection_get_defines (sel)));
 					}
 				}
 			}
@@ -1575,8 +1604,9 @@ selector_select (CpgSelector        *self,
 			CpgSelection *sel = item->data;
 			GSList *r = NULL;
 
-			cpg_embedded_context_push_expansions (context,
-			                                      cpg_selection_get_expansions (sel));
+			cpg_embedded_context_save (context);
+
+			cpg_embedded_context_add_selection (context, sel);
 
 			switch (selector->type)
 			{
@@ -1599,7 +1629,7 @@ selector_select (CpgSelector        *self,
 				break;
 			}
 
-			cpg_embedded_context_pop_expansions (context);
+			cpg_embedded_context_restore (context);
 
 			ret = g_slist_concat (ret, r);
 		}
@@ -1670,6 +1700,7 @@ selector_select_all (CpgSelector        *selector,
 {
 	GSList *item;
 	GSList *ctx = NULL;
+	GHashTable *defines;
 
 	if (context == NULL)
 	{
@@ -1694,8 +1725,10 @@ selector_select_all (CpgSelector        *selector,
 		return NULL;
 	}
 
+	defines = context ? cpg_embedded_context_get_defines (context) : NULL;
+
 	ctx = g_slist_prepend (NULL,
-	                       cpg_selection_new (parent, NULL));
+	                       cpg_selection_new (parent, NULL, defines));
 
 	for (item = selector->priv->selectors; item; item = g_slist_next (item))
 	{

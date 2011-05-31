@@ -30,17 +30,32 @@ struct _CpgSelectionClass
 	GObjectClass parent_class;
 };
 
-GType cpg_selection_get_type (void) G_GNUC_CONST;
+GType         cpg_selection_get_type       (void) G_GNUC_CONST;
 
-CpgSelection *cpg_selection_new              (gpointer                object,
-                                              GSList                 *expansions);
+CpgSelection *cpg_selection_new            (gpointer      object,
+                                            GSList       *expansions,
+                                            GHashTable   *defines);
 
-CpgSelection *cpg_selection_copy             (CpgSelection           *selection);
+CpgSelection *cpg_selection_new_defines    (gpointer      object,
+                                            GSList       *expansions,
+                                            GHashTable   *defines,
+                                            gboolean      copy_defines);
 
-gpointer      cpg_selection_get_object       (CpgSelection           *selection);
-GSList       *cpg_selection_get_expansions   (CpgSelection           *selection);
+CpgSelection *cpg_selection_copy           (CpgSelection *selection);
+CpgSelection *cpg_selection_copy_defines   (CpgSelection *selection,
+                                            gboolean      copy_defines);
 
+gpointer      cpg_selection_get_object     (CpgSelection *selection);
+GSList       *cpg_selection_get_expansions (CpgSelection *selection);
 
+gchar const  *cpg_selection_get_define     (CpgSelection *selection,
+                                            gchar const  *key);
+
+GHashTable   *cpg_selection_get_defines    (CpgSelection *selection);
+
+void          cpg_selection_add_define     (CpgSelection *selection,
+                                            gchar const  *key,
+                                            gchar const  *value);
 
 G_END_DECLS
 

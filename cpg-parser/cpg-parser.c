@@ -94,7 +94,7 @@ parse_network (gchar const *args[], gint argc)
 	expansion = cpg_expansion_new (args);
 
 	embedded = cpg_parser_context_get_embedded (context);
-	cpg_embedded_context_push_expansion (embedded, expansion);
+	cpg_embedded_context_add_expansion (embedded, expansion);
 	g_object_unref (expansion);
 
 	add_defines (context);

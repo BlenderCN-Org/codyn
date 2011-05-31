@@ -3,17 +3,158 @@
 
 #define CPG_EMBEDDED_CONTEXT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_EMBEDDED_CONTEXT, CpgEmbeddedContextPrivate))
 
-struct _CpgEmbeddedContextPrivate
-{
-	GSList *defines;
+#define CURRENT_CONTEXT(self) ((Context *)(self->priv->contexts ? self->priv->contexts->data : NULL))
 
+static gulong global_marker = 0;
+
+typedef struct
+{
+	GHashTable *defines;
 	GSList *expansions;
-	GSList *numexp;
 
 	gulong marker;
+
+	guint copy_defines_on_write : 1;
+	guint copy_expansions_on_write : 1;
+} Context;
+
+struct _CpgEmbeddedContextPrivate
+{
+	GSList *contexts;
 };
 
 G_DEFINE_TYPE (CpgEmbeddedContext, cpg_embedded_context, G_TYPE_OBJECT)
+
+static Context *
+context_new ()
+{
+	Context *ret;
+
+	ret = g_slice_new0 (Context);
+	ret->marker = ++global_marker;
+
+	return ret;
+}
+
+static void
+context_free (Context *self)
+{
+	g_hash_table_unref (self->defines);
+
+	if (!self->copy_expansions_on_write)
+	{
+		g_slist_foreach (self->expansions, (GFunc)g_object_unref, NULL);
+		g_slist_free (self->expansions);
+	}
+
+	g_slice_free (Context, self);
+}
+
+typedef struct
+{
+	GHashTable *table;
+	gboolean overwrite;
+} CopyEntryInfo;
+
+static void
+copy_entry (gchar const *key,
+            gchar const *value,
+            CopyEntryInfo *info)
+{
+	if (info->overwrite || !g_hash_table_lookup (info->table, key))
+	{
+		g_hash_table_insert (info->table, g_strdup (key), g_strdup (value));
+	}
+}
+
+static GHashTable *
+hash_table_copy (GHashTable *table)
+{
+	GHashTable *ret;
+
+	ret = g_hash_table_new_full (g_str_hash,
+	                             g_str_equal,
+	                             (GDestroyNotify)g_free,
+	                             (GDestroyNotify)g_free);
+
+	if (table)
+	{
+		CopyEntryInfo info = {ret, FALSE};
+
+		g_hash_table_foreach (table, (GHFunc)copy_entry, &info);
+	}
+
+	return ret;
+}
+
+static void
+copy_expansions_on_write (Context *context)
+{
+	GSList *expansions;
+
+	if (!context->copy_expansions_on_write)
+	{
+		return;
+	}
+
+	expansions = context->expansions;
+	context->expansions = NULL;
+
+	while (expansions)
+	{
+		context->expansions = g_slist_prepend (context->expansions,
+		                                       cpg_expansion_copy (expansions->data));
+
+		expansions = g_slist_next (expansions);
+	}
+
+	context->expansions = g_slist_reverse (context->expansions);
+	context->copy_expansions_on_write = FALSE;
+}
+
+static void
+copy_defines_on_write (Context *context)
+{
+	GHashTable *orig;
+
+	if (!context->copy_defines_on_write)
+	{
+		return;
+	}
+
+	orig = context->defines;
+
+	context->defines = hash_table_copy (context->defines);
+	context->copy_defines_on_write = FALSE;
+
+	if (orig)
+	{
+		g_hash_table_unref (orig);
+	}
+}
+
+static Context *
+context_copy (Context *self)
+{
+	Context *ret;
+
+	ret = context_new ();
+
+	if (self)
+	{
+		ret->copy_defines_on_write = TRUE;
+		ret->copy_expansions_on_write = TRUE;
+
+		ret->expansions = self->expansions;
+		ret->defines = self->defines ? g_hash_table_ref (self->defines) : NULL;
+	}
+	else
+	{
+		ret->defines = hash_table_copy (NULL);
+	}
+
+	return ret;
+}
 
 static void
 cpg_embedded_context_finalize (GObject *object)
@@ -22,12 +163,10 @@ cpg_embedded_context_finalize (GObject *object)
 
 	context = CPG_EMBEDDED_CONTEXT (object);
 
-	while (context->priv->defines)
+	while (context->priv->contexts)
 	{
-		cpg_embedded_context_pop_define (context);
+		cpg_embedded_context_restore (context);
 	}
-
-	cpg_embedded_context_set_expansions (context, NULL);
 
 	G_OBJECT_CLASS (cpg_embedded_context_parent_class)->finalize (object);
 }
@@ -47,7 +186,7 @@ cpg_embedded_context_init (CpgEmbeddedContext *self)
 {
 	self->priv = CPG_EMBEDDED_CONTEXT_GET_PRIVATE (self);
 
-	cpg_embedded_context_push_define (self);
+	cpg_embedded_context_save (self);
 }
 
 CpgEmbeddedContext *
@@ -57,36 +196,114 @@ cpg_embedded_context_new ()
 }
 
 void
-cpg_embedded_context_define (CpgEmbeddedContext *context,
-                             gchar const        *name,
-                             gchar const        *value)
+cpg_embedded_context_save (CpgEmbeddedContext *context)
 {
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
+
+	ctx = context_copy (CURRENT_CONTEXT (context));
+
+	context->priv->contexts = g_slist_prepend (context->priv->contexts,
+	                                           ctx);
+}
+
+void
+cpg_embedded_context_restore (CpgEmbeddedContext *context)
+{
+	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
+
+	if (context->priv->contexts)
+	{
+		context_free (context->priv->contexts->data);
+
+		context->priv->contexts =
+			g_slist_delete_link (context->priv->contexts,
+			                     context->priv->contexts);
+	}
+}
+
+void
+cpg_embedded_context_add_define (CpgEmbeddedContext *context,
+                                 gchar const        *name,
+                                 gchar const        *value)
+{
+	Context *ctx;
+
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 	g_return_if_fail (name != NULL);
 
-	if (context->priv->defines)
+	ctx = CURRENT_CONTEXT (context);
+
+	copy_defines_on_write (ctx);
+
+	g_hash_table_insert (ctx->defines,
+	                     g_strdup (name),
+	                     g_strdup (value ? value : ""));
+
+	ctx->marker = ++global_marker;
+}
+
+void
+cpg_embedded_context_set_selection (CpgEmbeddedContext *context,
+                                    CpgSelection       *selection)
+{
+	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTION (selection));
+
+	cpg_embedded_context_set_expansions (context,
+	                                     cpg_selection_get_expansions (selection));
+
+	cpg_embedded_context_set_defines (context,
+	                                  cpg_selection_get_defines (selection),
+	                                  TRUE);
+}
+
+void
+cpg_embedded_context_set_defines (CpgEmbeddedContext *context,
+                                  GHashTable         *defines,
+                                  gboolean            inherit)
+{
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
+
+	ctx = CURRENT_CONTEXT (context);
+
+	if (ctx->defines)
 	{
-		g_hash_table_insert (context->priv->defines->data,
-		                     g_strdup (name),
-		                     g_strdup (value ? value : ""));
+		g_hash_table_unref (ctx->defines);
 	}
 
-	++context->priv->marker;
+	ctx->defines = defines ? g_hash_table_ref (defines) : hash_table_copy (NULL);
+	ctx->copy_defines_on_write = !inherit;
+
+	ctx->marker = ++global_marker;
 }
 
 void
 cpg_embedded_context_set_expansions (CpgEmbeddedContext *context,
                                      GSList             *expansions)
 {
+	Context *ctx;
+
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 
-	while (context->priv->numexp)
+	ctx = CURRENT_CONTEXT (context);
+
+	if (!ctx->copy_expansions_on_write)
 	{
-		cpg_embedded_context_pop_expansions (context);
+		g_slist_foreach (ctx->expansions, (GFunc)g_object_unref, NULL);
+		g_slist_free (ctx->expansions);
+	}
+	else
+	{
+		ctx->copy_expansions_on_write = FALSE;
 	}
 
-	cpg_embedded_context_push_expansions (context, expansions);
-	++context->priv->marker;
+	ctx->expansions = NULL;
+
+	cpg_embedded_context_add_expansions (context, expansions);
 }
 
 GSList *
@@ -94,12 +311,51 @@ cpg_embedded_context_get_expansions (CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	return context->priv->expansions;
+	return CURRENT_CONTEXT (context)->expansions;
 }
 
 void
-cpg_embedded_context_push_expansion (CpgEmbeddedContext *context,
-                                     CpgExpansion       *expansion)
+cpg_embedded_context_add_selection (CpgEmbeddedContext *context,
+                                    CpgSelection       *selection)
+{
+	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTION (selection));
+
+	cpg_embedded_context_add_expansions (context,
+	                                     cpg_selection_get_expansions (selection));
+
+	cpg_embedded_context_add_defines (context,
+	                                  cpg_selection_get_defines (selection));
+}
+
+void
+cpg_embedded_context_add_defines (CpgEmbeddedContext *context,
+                                  GHashTable         *defines)
+{
+	CopyEntryInfo info;
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
+
+	if (!defines)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+	copy_defines_on_write (ctx);
+
+	info.table = ctx->defines;
+	info.overwrite = TRUE;
+
+	g_hash_table_foreach (defines,
+	                      (GHFunc)copy_entry,
+	                      &info);
+}
+
+void
+cpg_embedded_context_add_expansion (CpgEmbeddedContext *context,
+                                    CpgExpansion       *expansion)
 {
 	GSList *r;
 
@@ -107,25 +363,32 @@ cpg_embedded_context_push_expansion (CpgEmbeddedContext *context,
 	g_return_if_fail (expansion != NULL);
 
 	r = g_slist_prepend (NULL, expansion);
-	cpg_embedded_context_push_expansions (context, r);
-	g_slist_free (r);
 
-	++context->priv->marker;
+	cpg_embedded_context_add_expansions (context, r);
+	g_slist_free (r);
 }
 
 void
-cpg_embedded_context_push_expansions (CpgEmbeddedContext *context,
-                                      GSList             *expansions)
+cpg_embedded_context_add_expansions (CpgEmbeddedContext *context,
+                                     GSList             *expansions)
 {
-	gint i = 0;
 	GSList *rev = NULL;
 	GSList *last = NULL;
+	Context *ctx;
+
+	ctx = CURRENT_CONTEXT (context);
+
+	if (expansions)
+	{
+		copy_expansions_on_write (ctx);
+	}
 
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 
 	while (expansions)
 	{
-		GSList *tmp = g_slist_prepend (NULL, cpg_expansion_copy (expansions->data));
+		GSList *tmp = g_slist_prepend (NULL,
+		                               cpg_expansion_copy (expansions->data));
 
 		if (rev == NULL)
 		{
@@ -138,81 +401,38 @@ cpg_embedded_context_push_expansions (CpgEmbeddedContext *context,
 
 		last = tmp;
 		expansions = g_slist_next (expansions);
-
-		++i;
 	}
 
 	if (last)
 	{
-		last->next = context->priv->expansions;
-		context->priv->expansions = rev;
-		
+		last->next = ctx->expansions;
+		ctx->expansions = rev;
 	}
 
-	context->priv->numexp = g_slist_prepend (context->priv->numexp,
-	                                         GINT_TO_POINTER (i));
-
-	++context->priv->marker;
-}
-
-void
-cpg_embedded_context_pop_expansions (CpgEmbeddedContext *context)
-{
-	gint num;
-
-	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
-	g_return_if_fail (context->priv->numexp);
-
-	num = GPOINTER_TO_INT (context->priv->numexp->data);
-
-	while (num > 0)
-	{
-		g_object_unref (context->priv->expansions->data);
-
-		context->priv->expansions =
-			g_slist_delete_link (context->priv->expansions,
-			                     context->priv->expansions);
-
-		--num;
-	}
-
-	context->priv->numexp =
-		g_slist_delete_link (context->priv->numexp,
-		                     context->priv->numexp);
-
-	++context->priv->marker;
+	ctx->marker = ++global_marker;
 }
 
 gchar *
-cpg_embedded_context_lookup_define (CpgEmbeddedContext *context,
-                                    gchar const        *name)
+cpg_embedded_context_get_define (CpgEmbeddedContext *context,
+                                 gchar const        *name)
 {
 	gchar const *ret;
-	GSList *item;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	for (item = context->priv->defines; item; item = g_slist_next (item))
-	{
-		ret = g_hash_table_lookup (item->data, name);
+	ret = g_hash_table_lookup (CURRENT_CONTEXT (context)->defines, name);
 
-		if (ret)
-		{
-			return g_strdup (ret);
-		}
-	}
-
-	return g_strdup ("");
+	return g_strdup (ret ? ret : "");
 }
 
 CpgExpansion *
-cpg_embedded_context_lookup_expansion (CpgEmbeddedContext *context,
-                                       gint                depth)
+cpg_embedded_context_get_expansion (CpgEmbeddedContext *context,
+                                    gint                depth)
 {
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	return g_slist_nth_data (context->priv->expansions, depth);
+	return g_slist_nth_data (CURRENT_CONTEXT (context)->expansions, depth);
 }
 
 gchar *
@@ -250,45 +470,18 @@ cpg_embedded_context_calculate (CpgEmbeddedContext *context,
 	return ret;
 }
 
-void
-cpg_embedded_context_push_define (CpgEmbeddedContext *context)
-{
-	GHashTable *table;
-
-	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
-
-	table = g_hash_table_new_full (g_str_hash,
-	                               g_str_equal,
-	                               (GDestroyNotify)g_free,
-	                               (GDestroyNotify)g_free);
-
-	context->priv->defines = g_slist_prepend (context->priv->defines,
-	                                          table);
-
-	++context->priv->marker;
-}
-
-void
-cpg_embedded_context_pop_define (CpgEmbeddedContext *context)
-{
-	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
-
-	if (!context->priv->defines)
-	{
-		return;
-	}
-
-	g_hash_table_destroy (context->priv->defines->data);
-	context->priv->defines = g_slist_delete_link (context->priv->defines,
-	                                              context->priv->defines);
-
-	++context->priv->marker;
-}
-
 gulong
 cpg_embedded_context_get_marker (CpgEmbeddedContext *context)
 {
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), 0);
 
-	return context->priv->marker;
+	return CURRENT_CONTEXT (context)->marker;
+}
+
+GHashTable *
+cpg_embedded_context_get_defines (CpgEmbeddedContext *context)
+{
+	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
+
+	return CURRENT_CONTEXT (context)->defines;
 }

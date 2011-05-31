@@ -127,6 +127,7 @@
             <keyword>action</keyword>
             <keyword>or</keyword>
             <keyword>debug</keyword>
+            <keyword>context</keyword>
         </context>
 
         <context id="selector">

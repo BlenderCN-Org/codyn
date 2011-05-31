@@ -181,6 +181,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "siblings"			return T_KEY_SIBLINGS;
 "count"				return T_KEY_COUNT;
 "self"				return T_KEY_SELF;
+"context"			return T_KEY_CONTEXT;
 
 {IDENTIFIER}			{
 					yylval->id = g_strdup (yytext);

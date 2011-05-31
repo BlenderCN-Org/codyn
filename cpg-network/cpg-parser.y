@@ -41,7 +41,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST_CHILD T_KEY_LAST_CHILD T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTION T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_PROXY T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST_CHILD T_KEY_LAST_CHILD T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -187,7 +187,7 @@ document_item
 	| delete_context
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  document_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -219,7 +219,7 @@ network_item
 	: property
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  network_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -237,7 +237,7 @@ integrator_item
 	: integrator_property
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  integrator_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -273,7 +273,7 @@ define_item
 					                             FALSE); }
 	| debug
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, FALSE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  define_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -286,7 +286,7 @@ define_contents
 define
 	: attributes
 	  T_KEY_DEFINE
-	  '{'				{ cpg_parser_context_push_scope (context, $1, FALSE); }
+	  '{'				{ cpg_parser_context_push_define (context, $1); }
 	  define_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -307,7 +307,7 @@ template_item
 	| common_scopes
 	| layout
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  template_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -440,7 +440,7 @@ function_polynomial
 	  identifier_or_string
 	  '('
 	  ')'
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  polynomial_pieces
 	  '}'				{ cpg_parser_context_add_polynomial (context, $3, $8); errb
 	                                  cpg_parser_context_pop (context); errb }
@@ -457,7 +457,7 @@ function_custom
 	  '('
 	  function_argument_list_or_empty
 	  ')'
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  value_as_string
 	  '}'				{ cpg_parser_context_add_function (context, $2, $8, $4); errb
 	                                  cpg_parser_context_pop (context); errb }
@@ -468,7 +468,7 @@ function_item
 	| function_polynomial
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  function_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -482,7 +482,7 @@ function
 	: T_KEY_FUNCTION function_item
 	| attributes
 	  T_KEY_FUNCTION
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  function_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -521,7 +521,7 @@ state_item
 	| common_scopes
 	| layout
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  state_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -540,7 +540,7 @@ group_item
 	| common_scopes
 	| layout
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  group_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -553,7 +553,7 @@ group_contents
 interface
 	: attributes
 	  T_KEY_INTERFACE
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  interface_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -571,7 +571,7 @@ interface_item
 	: interface_property
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  interface_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -582,7 +582,7 @@ link_item
 	| common_scopes
 	| layout
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  link_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -820,7 +820,7 @@ layout_item_or_others
 	: layout_item
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  layout_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -952,13 +952,14 @@ selector_type
 debug
 	: T_KEY_DEBUG selector_type strict_selector	{ cpg_parser_context_debug_selector (context, $2, $3); }
 	| T_KEY_DEBUG value_as_string			{ cpg_parser_context_debug_string (context, $2); }
+	| T_KEY_DEBUG T_KEY_CONTEXT			{ cpg_parser_context_debug_context (context); }
 	;
 
 delete_item
 	: selector_type selector	{ cpg_parser_context_delete_selector (context, $1, $2); }
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  delete_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
@@ -974,7 +975,7 @@ delete_contents
 delete_context
 	: attributes
 	  T_KEY_DELETE
-	  '{'				{ cpg_parser_context_push_scope (context, $1, TRUE); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  delete_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;

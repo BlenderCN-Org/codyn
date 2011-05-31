@@ -3,6 +3,7 @@
 
 #include <glib-object.h>
 #include <cpg-network/cpg-expansion.h>
+#include <cpg-network/cpg-selection.h>
 
 G_BEGIN_DECLS
 
@@ -30,40 +31,53 @@ struct _CpgEmbeddedContextClass
 	GObjectClass parent_class;
 };
 
-GType cpg_embedded_context_get_type (void) G_GNUC_CONST;
+GType               cpg_embedded_context_get_type       (void) G_GNUC_CONST;
 
-CpgEmbeddedContext *cpg_embedded_context_new (void);
+CpgEmbeddedContext *cpg_embedded_context_new            (void);
 
-void cpg_embedded_context_define (CpgEmbeddedContext *context,
-                                  gchar const        *name,
-                                  gchar const        *value);
+void                cpg_embedded_context_add_define         (CpgEmbeddedContext *context,
+                                                             gchar const        *name,
+                                                             gchar const        *value);
 
-void cpg_embedded_context_push_define     (CpgEmbeddedContext *context);
-void cpg_embedded_context_pop_define      (CpgEmbeddedContext *context);
+void                cpg_embedded_context_add_defines        (CpgEmbeddedContext *context,
+                                                             GHashTable         *defines);
 
-void cpg_embedded_context_push_expansion  (CpgEmbeddedContext *context,
-                                           CpgExpansion       *expansion);
+void                cpg_embedded_context_save           (CpgEmbeddedContext *context);
+void                cpg_embedded_context_restore        (CpgEmbeddedContext *context);
 
-void cpg_embedded_context_push_expansions (CpgEmbeddedContext *context,
-                                           GSList *expansions);
+void                cpg_embedded_context_add_selection  (CpgEmbeddedContext *context,
+                                                         CpgSelection       *selection);
 
-void cpg_embedded_context_set_expansions (CpgEmbeddedContext *context,
-                                          GSList             *expansions);
+void                cpg_embedded_context_set_selection  (CpgEmbeddedContext *context,
+                                                         CpgSelection       *selection);
 
-GSList *cpg_embedded_context_get_expansions (CpgEmbeddedContext *context);
+void                cpg_embedded_context_add_expansion  (CpgEmbeddedContext *context,
+                                                         CpgExpansion       *expansion);
 
-void cpg_embedded_context_pop_expansions (CpgEmbeddedContext *context);
+void                cpg_embedded_context_add_expansions (CpgEmbeddedContext *context,
+                                                         GSList             *expansions);
 
-gchar *cpg_embedded_context_lookup_define (CpgEmbeddedContext *context,
-                                           gchar const        *name);
+void                cpg_embedded_context_set_expansions (CpgEmbeddedContext *context,
+                                                         GSList             *expansions);
 
-CpgExpansion *cpg_embedded_context_lookup_expansion (CpgEmbeddedContext *context,
-                                                     gint                depth);
+GSList             *cpg_embedded_context_get_expansions (CpgEmbeddedContext *context);
 
-gchar *cpg_embedded_context_calculate (CpgEmbeddedContext *context,
-                                       gchar const        *equation);
+gchar              *cpg_embedded_context_get_define     (CpgEmbeddedContext *context,
+                                                         gchar const        *name);
 
-gulong cpg_embedded_context_get_marker (CpgEmbeddedContext *context);
+GHashTable         *cpg_embedded_context_get_defines    (CpgEmbeddedContext *context);
+
+void                cpg_embedded_context_set_defines    (CpgEmbeddedContext *context,
+                                                         GHashTable         *defines,
+                                                         gboolean            inherit);
+
+CpgExpansion       *cpg_embedded_context_get_expansion  (CpgEmbeddedContext *context,
+                                                         gint                depth);
+
+gchar              *cpg_embedded_context_calculate      (CpgEmbeddedContext *context,
+                                                         gchar const        *equation);
+
+gulong              cpg_embedded_context_get_marker     (CpgEmbeddedContext *context);
 
 G_END_DECLS
 

@@ -114,8 +114,7 @@ void                   cpg_parser_context_set_error            (CpgParserContext
 GError                *cpg_parser_context_get_error            (CpgParserContext           *context);
 
 void                   cpg_parser_context_push_object          (CpgParserContext           *context,
-                                                                GSList                     *objects,
-                                                                gboolean                    push_define);
+                                                                GSList                     *objects);
 
 void                   cpg_parser_context_push_state           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
@@ -197,8 +196,10 @@ void                   cpg_parser_context_push_annotation      (CpgParserContext
                                                                 CpgEmbeddedString          *annotation);
 
 void                   cpg_parser_context_push_scope           (CpgParserContext           *context,
-                                                                GSList                     *attributes,
-                                                                gboolean                    push_define);
+                                                                GSList                     *attributes);
+
+void                   cpg_parser_context_push_define          (CpgParserContext           *context,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_push_layout          (CpgParserContext           *context,
                                                                 GSList                     *attributes);
@@ -237,6 +238,8 @@ void                   cpg_parser_context_debug_selector        (CpgParserContex
 
 void                   cpg_parser_context_debug_string          (CpgParserContext  *context,
                                                                  CpgEmbeddedString *s);
+
+void                   cpg_parser_context_debug_context         (CpgParserContext  *context);
 
 G_END_DECLS
 
