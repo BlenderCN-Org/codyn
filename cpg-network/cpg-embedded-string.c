@@ -474,7 +474,11 @@ cpg_embedded_string_expand (CpgEmbeddedString  *s,
 	}
 
 	s->priv->cached_context = ctx;
-	s->priv->cached_marker = cpg_embedded_context_get_marker (ctx);
+
+	if (ctx)
+	{
+		s->priv->cached_marker = cpg_embedded_context_get_marker (ctx);
+	}
 
 	return s->priv->cached;
 }
