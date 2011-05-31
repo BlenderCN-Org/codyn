@@ -2199,9 +2199,10 @@ cpg_parser_context_parse (CpgParserContext  *context,
                           GError           **error)
 {
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), FALSE);
-	g_return_val_if_fail (context->priv->inputs, FALSE);
+	g_return_val_if_fail (context->priv->error != NULL || context->priv->inputs, FALSE);
 
-	if (cpg_parser_parse (context) == 0)
+	if (context->priv->error == NULL &&
+	    cpg_parser_parse (context) == 0)
 	{
 		return TRUE;
 	}

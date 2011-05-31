@@ -86,11 +86,23 @@ parse_network (gchar const *args[], gint argc)
 	CpgEmbeddedContext *embedded;
 	gboolean fromstdin;
 
-	network = cpg_network_new ();
-
-	context = cpg_parser_context_new (network);
-
 	fromstdin = (argc == 0 || g_strcmp0 (args[0], "-") == 0);
+
+	if (!fromstdin)
+	{
+		file = g_file_new_for_commandline_arg (args[0]);
+
+		if (!g_file_query_exists (file, NULL))
+		{
+			g_printerr ("Could not open file: %s\n", args[0]);
+			g_object_unref (file);
+
+			return 1;
+		}
+	}
+
+	network = cpg_network_new ();
+	context = cpg_parser_context_new (network);
 	expansion = cpg_expansion_new (args);
 
 	embedded = cpg_parser_context_get_embedded (context);
@@ -101,7 +113,6 @@ parse_network (gchar const *args[], gint argc)
 
 	if (!fromstdin)
 	{
-		file = g_file_new_for_commandline_arg (args[0]);
 		cpg_parser_context_push_input (context, file, NULL);
 		g_object_unref (file);
 	}
