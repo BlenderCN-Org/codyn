@@ -31,7 +31,7 @@ context_new ()
 	Context *ret;
 
 	ret = g_slice_new0 (Context);
-	ret->marker = ++global_marker;
+	ret->marker = global_marker;
 
 	return ret;
 }

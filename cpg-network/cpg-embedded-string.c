@@ -472,6 +472,9 @@ cpg_embedded_string_expand (CpgEmbeddedString  *s,
 		s->priv->cached = evaluate_node (s, s->priv->stack->data, ctx);
 	}
 
+	s->priv->cached_context = ctx;
+	s->priv->cached_marker = cpg_embedded_context_get_marker (ctx);
+
 	return s->priv->cached;
 }
 
@@ -781,5 +784,7 @@ cpg_embedded_string_clear_cache (CpgEmbeddedString *s)
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
 
 	g_free (s->priv->cached);
+
 	s->priv->cached = NULL;
+	s->priv->cached_context = NULL;
 }
