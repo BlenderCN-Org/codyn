@@ -456,7 +456,7 @@ cpg_embedded_string_expand (CpgEmbeddedString  *s,
 
 	if (s->priv->cached &&
 	    ctx == s->priv->cached_context &&
-	    (ctx == NULL &&
+	    (ctx == NULL ||
 	     cpg_embedded_context_get_marker (ctx) == s->priv->cached_marker))
 	{
 		return s->priv->cached;
