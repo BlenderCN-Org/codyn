@@ -507,6 +507,7 @@ function_argument_list
 
 function_argument
 	: identifier_or_string '=' T_DOUBLE	{ $$ = create_function_argument ($1, TRUE, $3); }
+	| identifier_or_string '=' T_INTEGER	{ $$ = create_function_argument ($1, TRUE, $3); }
 	| identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0); }
 	;
 
