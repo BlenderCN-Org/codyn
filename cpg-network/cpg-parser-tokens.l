@@ -84,11 +84,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 	yy_top_state (yyscanner);
 %}
 
-<onlyselector>{IDENTIFIER}	{
-					yylval->id = g_strdup (yytext);
-					return T_IDENTIFIER;
-				}
-
 [ \t]				;
 \n.*				{
 					HANDLE_NEWLINE
@@ -182,7 +177,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "self"				return T_KEY_SELF;
 "context"			return T_KEY_CONTEXT;
 
-{IDENTIFIER}			{
+<INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);
 					return T_IDENTIFIER;
 				}
@@ -197,12 +192,12 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_INTEGER;
 				}
 
-"\""				{
+<onlyselector,INITIAL>"\""	{
 					yy_push_state (instring, yyscanner);
 					return T_STRING_BEGIN;
 				}
 
-"/"				{
+<onlyselector,INITIAL>"/"	{
 					yy_push_state (inregex, yyscanner);
 					return T_REGEX_BEGIN;
 				}
