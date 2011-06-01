@@ -314,6 +314,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <onlyselector,INITIAL>"|"	return '|';
 "["				return '[';
 "]"				return ']';
+"-"				return '-';
+"+"				return '+';
 
 %%
 

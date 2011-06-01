@@ -378,13 +378,16 @@ static gboolean
 extract_flags (CpgNetworkDeserializer *deserializer,
                xmlNodePtr              node,
                gchar const            *name,
-               CpgPropertyFlags       *flags,
+               CpgPropertyFlags       *add_flags,
+               CpgPropertyFlags       *remove_flags,
                gboolean               *flags_attr)
 {
 	GFlagsClass *klass;
 	guint i;
 
-	*flags = CPG_PROPERTY_FLAG_NONE;
+	*add_flags = CPG_PROPERTY_FLAG_NONE;
+	*remove_flags = CPG_PROPERTY_FLAG_NONE;
+
 	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
 
 	for (i = 0; i < klass->n_values; ++i)
@@ -393,7 +396,11 @@ extract_flags (CpgNetworkDeserializer *deserializer,
 
 		if (prop && g_ascii_strcasecmp ((gchar const *)prop, "yes") == 0)
 		{
-			*flags |= klass->values[i].value;
+			*add_flags |= klass->values[i].value;
+		}
+		else if (prop && g_ascii_strcasecmp ((gchar const *)prop, "no") == 0)
+		{
+			*remove_flags |= klass->values[i].value;
 		}
 
 		xmlFree (prop);
@@ -408,7 +415,9 @@ extract_flags (CpgNetworkDeserializer *deserializer,
 
 	if (prop)
 	{
-		*flags |= cpg_property_flags_from_string ((gchar const *)prop);
+		cpg_property_flags_from_string ((gchar const *)prop,
+		                                add_flags,
+		                                remove_flags);
 	}
 
 	xmlFree (prop);
@@ -447,17 +456,37 @@ parse_properties (CpgNetworkDeserializer *deserializer,
 		}
 
 		CpgProperty *property;
-		CpgPropertyFlags flags;
+		CpgPropertyFlags add_flags;
+		CpgPropertyFlags remove_flags;
 		gboolean flags_attr;
+		CpgPropertyFlags flags;
 
 		if (!extract_flags (deserializer,
 		                    node,
 		                    (gchar const *)name,
-		                    &flags,
+		                    &add_flags,
+		                    &remove_flags,
 		                    &flags_attr))
 		{
 			return FALSE;
 		}
+
+		CpgProperty *origprop;
+
+		origprop = cpg_object_get_property (deserializer->priv->object,
+		                                    (gchar const *)name);
+
+		if (origprop)
+		{
+			flags = cpg_property_get_flags (origprop);
+		}
+		else
+		{
+			flags = CPG_PROPERTY_FLAG_NONE;
+		}
+
+		flags &= ~remove_flags;
+		flags |= add_flags;
 
 		property = cpg_property_new ((const gchar *)name,
 		                             (const gchar *)expression,

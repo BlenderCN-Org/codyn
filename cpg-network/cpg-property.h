@@ -116,8 +116,12 @@ void               cpg_property_set_update              (CpgProperty        *pro
                                                           gdouble             value);
 gdouble            cpg_property_get_update              (CpgProperty        *property);
 
-gchar             *cpg_property_flags_to_string         (CpgPropertyFlags    flags);
-CpgPropertyFlags   cpg_property_flags_from_string       (const gchar        *flags);
+gchar             *cpg_property_flags_to_string         (CpgPropertyFlags    add_flags,
+                                                         CpgPropertyFlags    remove_flags);
+
+void               cpg_property_flags_from_string       (const gchar        *flags,
+                                                         CpgPropertyFlags   *add_flags,
+                                                         CpgPropertyFlags   *remove_flags);
 
 gchar             *cpg_property_get_full_name           (CpgProperty        *property);
 

@@ -84,9 +84,10 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token T_START_DOCUMENT
 %token T_START_SELECTOR
 
+%type <num> property_flag_sign
 %type <flags> property_flags
 %type <flags> property_flags_contents
-%type <flags> property_flag
+%type <num> property_flag
 
 %type <selector> layout_relative
 
@@ -137,7 +138,6 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 {
 	gchar *id;
 	CpgProperty *property;
-	CpgPropertyFlags flags;
 	gdouble numf;
 	gint num;
 	GSList *list;
@@ -154,11 +154,17 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 		gint parent;
 		gint idx;
 	} ref;
+
+	struct
+	{
+		CpgPropertyFlags add;
+		CpgPropertyFlags remove;
+	} flags;
 }
 
 %start choose_parser
 
-%expect 13
+%expect 9
 
 %%
 
@@ -595,18 +601,25 @@ identifier_or_string
 
 property
 	: identifier_or_string '=' value_as_string '<' '=' value_as_string property_flags
-					{ cpg_parser_context_add_property (context, $1, $3, $7, $6); errb }
+					{ cpg_parser_context_add_property (context, $1, $3, $7.add, $7.remove, $6); errb }
 	| identifier_or_string '=' value_as_string property_flags
-					{ cpg_parser_context_add_property (context, $1, $3, $4, NULL); errb }
+					{ cpg_parser_context_add_property (context, $1, $3, $4.add, $4.remove, NULL); errb }
+	;
+
+property_flag_sign
+	:				{ $$ = 1; }
+	| '-'				{ $$ = 0; }
+	| '+'				{ $$ = 1; }
 	;
 
 property_flags_contents
-	: property_flag			{ $$ = $1; }
-	| property_flags property_flag	{ $$ = $1 | $2; }
+	: property_flag_sign property_flag	{ $$.add = 0; $$.remove = 0; ($1 ? (($$.add) = $2) : (($$.remove) = $2)); }
+	| property_flags_contents property_flag_sign property_flag
+					{ $2 ? (($$.add) |= $3) : (($$.remove) |= $3); }
 	;
 
 property_flags
-	: 				{ $$ = 0; }
+	: 				{ $$.add = 0; $$.remove = 0; }
 	| '|' property_flags_contents	{ $$ = $2; }
 	;
 

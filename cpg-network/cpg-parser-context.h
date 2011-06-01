@@ -84,8 +84,9 @@ gboolean               cpg_parser_context_parse                (CpgParserContext
 
 void                   cpg_parser_context_add_property         (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
-                                                                CpgEmbeddedString           *expression,
-                                                                CpgPropertyFlags            flags,
+                                                                CpgEmbeddedString          *expression,
+                                                                CpgPropertyFlags            add_flags,
+                                                                CpgPropertyFlags            remove_flags,
                                                                 CpgEmbeddedString          *integration);
 
 void                   cpg_parser_context_add_action           (CpgParserContext           *context,

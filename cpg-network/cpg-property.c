@@ -878,30 +878,45 @@ cpg_property_get_update (CpgProperty *property)
  *
  **/
 gchar *
-cpg_property_flags_to_string (CpgPropertyFlags flags)
+cpg_property_flags_to_string (CpgPropertyFlags add_flags,
+                              CpgPropertyFlags remove_flags)
 {
 	GFlagsClass *klass;
 	gint i;
-	CpgPropertyFlags building = CPG_PROPERTY_FLAG_NONE;
+	CpgPropertyFlags add_building;
+	CpgPropertyFlags remove_building;
 	GPtrArray *attrs;
 	GSList *items = NULL;
 	GSList *item;
 
 	klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
-
 	attrs = g_ptr_array_new ();
+
+	add_building = CPG_PROPERTY_FLAG_NONE;
+	remove_building = CPG_PROPERTY_FLAG_NONE;
 
 	for (i = klass->n_values - 1; i >= 0; --i)
 	{
 		GFlagsValue *value = &(klass->values[i]);
 		guint v = value->value;
 
-		if ((flags & v) == v && (building & v) != v)
+		if ((add_flags & v) == v && (add_building & v) != v)
 		{
-			building |= value->value;
+			add_building |= value->value;
 
 			items = g_slist_prepend (items,
-			                         (gpointer)value->value_nick);
+			                         g_strdup (value->value_nick));
+		}
+
+		if ((remove_flags & v) == v && (remove_building & v) != v)
+		{
+			gchar *n;
+
+			remove_building |= value->value;
+			n = g_strconcat ("-", value->value_nick, NULL);
+
+			items = g_slist_prepend (items,
+			                         n);
 		}
 	}
 
@@ -916,7 +931,7 @@ cpg_property_flags_to_string (CpgPropertyFlags flags)
 
 	gchar **vals = (gchar **)g_ptr_array_free (attrs, FALSE);
 	gchar *ret = g_strjoinv (" | ", vals);
-	g_free (vals);
+	g_strfreev (vals);
 
 	g_type_class_unref (klass);
 
@@ -934,22 +949,42 @@ cpg_property_flags_to_string (CpgPropertyFlags flags)
  * Returns: A #CpgPropertyFlags
  *
  **/
-CpgPropertyFlags
-cpg_property_flags_from_string (gchar const *flags)
+void
+cpg_property_flags_from_string (gchar const      *flags,
+                                CpgPropertyFlags *add_flags,
+                                CpgPropertyFlags *remove_flags)
 {
-	CpgPropertyFlags ret = CPG_PROPERTY_FLAG_NONE;
 	GFlagsClass *klass = g_type_class_ref (CPG_TYPE_PROPERTY_FLAGS);
 
 	gchar **parts = g_strsplit_set (flags, ",| ", -1);
 	gchar **ptr = parts;
 
+	*add_flags = CPG_PROPERTY_FLAG_NONE;
+	*remove_flags = CPG_PROPERTY_FLAG_NONE;
+
 	while (ptr && *ptr)
 	{
-		GFlagsValue *value = g_flags_get_value_by_nick (klass, *ptr);
+		gchar const *name;
+		CpgPropertyFlags *fptr;
+
+		name = *ptr;
+		fptr = add_flags;
+
+		if (*name == '-' || *name == '+')
+		{
+			if (*name == '-')
+			{
+				fptr = remove_flags;
+			}
+
+			++name;
+		}
+
+		GFlagsValue *value = g_flags_get_value_by_nick (klass, name);
 
 		if (value)
 		{
-			ret |= value->value;
+			*fptr |= value->value;
 		}
 
 		++ptr;
@@ -957,8 +992,6 @@ cpg_property_flags_from_string (gchar const *flags)
 
 	g_strfreev (parts);
 	g_type_class_unref (klass);
-
-	return ret;
 }
 
 /**

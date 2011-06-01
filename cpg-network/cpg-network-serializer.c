@@ -200,18 +200,38 @@ static void
 export_flags (xmlNodePtr   node,
               CpgProperty *property)
 {
-	CpgPropertyFlags flags = cpg_property_get_flags (property);
+	CpgPropertyFlags add_flags;
+	CpgPropertyFlags remove_flags;
 	GFlagsClass *klass;
 	guint i;
+	CpgObject *templ;
 
 	gboolean flags_attr;
 
 	flags_attr = GPOINTER_TO_INT (g_object_get_data (G_OBJECT (property),
 	                                                 CPG_NETWORK_XML_PROPERTY_FLAGS_ATTRIBUTE));
 
+	add_flags = cpg_property_get_flags (property);
+	remove_flags = CPG_PROPERTY_FLAG_NONE;
+
+	templ = cpg_object_get_property_template (cpg_property_get_object (property),
+	                                          property,
+	                                          FALSE);
+
+	if (templ)
+	{
+		/* See how to change */
+		CpgProperty *orig;
+
+		orig = cpg_object_get_property (templ, cpg_property_get_name (property));
+
+		remove_flags = ~add_flags & cpg_property_get_flags (orig);
+		add_flags = add_flags & ~cpg_property_get_flags (orig);
+	}
+
 	if (flags_attr)
 	{
-		gchar *s = cpg_property_flags_to_string (flags);
+		gchar *s = cpg_property_flags_to_string (add_flags, remove_flags);
 		xmlNewProp (node, (xmlChar *)"flags", (xmlChar *)s);
 		g_free (s);
 
@@ -224,11 +244,22 @@ export_flags (xmlNodePtr   node,
 	{
 		GFlagsValue *value = &(klass->values[i]);
 
-		if (flags & value->value)
+		if (value->value == 0)
+		{
+			continue;
+		}
+
+		if ((add_flags & value->value) == value->value)
 		{
 			xmlNewProp (node,
 			            (xmlChar *)value->value_nick,
 			            (xmlChar *)"yes");
+		}
+		else if ((remove_flags & value->value) == value->value)
+		{
+			xmlNewProp (node,
+			            (xmlChar *)value->value_nick,
+			            (xmlChar *)"no");
 		}
 	}
 }

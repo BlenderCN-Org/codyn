@@ -430,7 +430,8 @@ void
 cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
                                  CpgEmbeddedString *expression,
-                                 CpgPropertyFlags   flags,
+                                 CpgPropertyFlags   add_flags,
+                                 CpgPropertyFlags   remove_flags,
                                  CpgEmbeddedString *integration)
 {
 	Context *ctx;
@@ -452,6 +453,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 		CpgProperty *property;
 		gchar const *exname;
 		gchar const *exexpression;
+		CpgPropertyFlags flags = CPG_PROPERTY_FLAG_NONE;
 
 		obj = cpg_selection_get_object (item->data);
 
@@ -462,6 +464,16 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 		exname = cpg_embedded_string_expand (name, context->priv->embedded);
 		exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
+
+		property = cpg_object_get_property (obj, exname);
+
+		if (property)
+		{
+			flags = cpg_property_get_flags (property);
+		}
+
+		flags &= ~remove_flags;
+		flags |= add_flags;
 
 		if (!cpg_object_add_property (obj,
 		                              cpg_property_new (exname, exexpression, flags),
