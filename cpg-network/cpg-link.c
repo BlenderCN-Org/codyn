@@ -637,7 +637,8 @@ cpg_link_compile_impl (CpgObject         *object,
 				                       gerror,
 				                       object,
 				                       NULL,
-				                       action);
+				                       action,
+				                       0);
 
 				g_error_free (gerror);
 			}
@@ -659,7 +660,8 @@ cpg_link_compile_impl (CpgObject         *object,
 				                       gerror,
 				                       object,
 				                       NULL,
-				                       action);
+				                       action,
+				                       cpg_expression_get_error_at (expr));
 			}
 
 			g_error_free (gerror);

@@ -816,7 +816,8 @@ cpg_object_compile_impl (CpgObject         *object,
 				                       gerror,
 				                       object,
 				                       property,
-				                       NULL);
+				                       NULL,
+				                       cpg_expression_get_error_at (expr));
 			}
 
 			g_error_free (gerror);
@@ -837,7 +838,8 @@ cpg_object_compile_impl (CpgObject         *object,
 				                       gerror,
 				                       object,
 				                       property,
-				                       NULL);
+				                       NULL,
+				                       0);
 
 				g_error_free (gerror);
 				ret = FALSE;

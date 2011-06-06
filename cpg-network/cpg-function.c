@@ -149,8 +149,8 @@ cpg_function_compile_impl (CpgObject         *object,
 	cpg_compile_context_prepend_object (context, object);
 
 	if (!cpg_expression_compile (self->priv->expression,
-		                         context,
-		                         &gerror))
+	                             context,
+	                             &gerror))
 	{
 		g_warning ("Error while parsing function expression [%s]<%s>: %s",
 		           cpg_object_get_id (object),
@@ -159,7 +159,12 @@ cpg_function_compile_impl (CpgObject         *object,
 
 		if (error)
 		{
-			cpg_compile_error_set (error, gerror, object, NULL, NULL);
+			cpg_compile_error_set (error,
+			                       gerror,
+			                       object,
+			                       NULL,
+			                       NULL,
+			                       cpg_expression_get_error_at (self->priv->expression));
 		}
 
 		g_error_free (gerror);

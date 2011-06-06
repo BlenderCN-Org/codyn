@@ -73,6 +73,8 @@ gboolean       cpg_expression_get_once         (CpgExpression      *expression);
 void           cpg_expression_set_once         (CpgExpression      *expression,
                                                 gboolean            instant);
 
+gint           cpg_expression_get_error_at     (CpgExpression      *expression);
+
 G_END_DECLS
 
 #endif /* __CPG_EXPRESSION_H__ */

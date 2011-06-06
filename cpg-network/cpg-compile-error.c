@@ -1,5 +1,7 @@
 #include "cpg-compile-error.h"
 
+#include <string.h>
+
 /**
  * SECTION:cpg-compile-error
  * @short_description: Compile error message container
@@ -17,6 +19,8 @@ struct _CpgCompileErrorPrivate
 	CpgObject *object;
 	CpgProperty *property;
 	CpgLinkAction *action;
+
+	gint pos;
 };
 
 G_DEFINE_TYPE (CpgCompileError, cpg_compile_error, G_TYPE_OBJECT)
@@ -125,7 +129,8 @@ cpg_compile_error_set (CpgCompileError *error,
                        GError          *gerror,
                        CpgObject       *object,
                        CpgProperty     *property,
-                       CpgLinkAction   *action)
+                       CpgLinkAction   *action,
+                       gint             pos)
 {
 	g_return_if_fail (CPG_IS_COMPILE_ERROR (error));
 	g_return_if_fail (CPG_IS_OBJECT (object));
@@ -153,6 +158,8 @@ cpg_compile_error_set (CpgCompileError *error,
 	{
 		error->priv->action = g_object_ref (action);
 	}
+
+	error->priv->pos = pos;
 }
 
 /**
@@ -187,6 +194,23 @@ cpg_compile_error_get_object (CpgCompileError *error)
 	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
 
 	return error->priv->object;
+}
+
+/**
+ * cpg_compile_error_get_pos:
+ * @error: A #CpgCompileError
+ *
+ * Get the character position of the compile error in the expression.
+ *
+ * Returns: The character position of the compile error in the expression
+ *
+ **/
+gint
+cpg_compile_error_get_pos (CpgCompileError *error)
+{
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), 0);
+
+	return error->priv->pos;
 }
 
 /**
@@ -318,6 +342,8 @@ cpg_compile_error_get_formatted_string (CpgCompileError *error)
 	GString *ret;
 	gchar *fullid;
 	gchar const *expr;
+	gchar *pad;
+	gchar *prefix;
 
 	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
 
@@ -356,11 +382,19 @@ cpg_compile_error_get_formatted_string (CpgCompileError *error)
 		expr = NULL;
 	}
 
+	prefix = g_strdup_printf ("[%d]:", cpg_compile_error_get_pos (error));
+	pad = g_strnfill (strlen (prefix) + cpg_compile_error_get_pos (error), ' ');
+
 	g_string_append_printf (ret,
-	                        "'\n%s: %s\n\nExpression: %s",
+	                        "': %s\n\n%s %s\n%s^ %s",
 	                        cpg_compile_error_string (error),
-	                        cpg_compile_error_get_message (error),
-	                        expr);
+	                        prefix,
+	                        expr,
+	                        pad,
+	                        cpg_compile_error_get_message (error));
+
+	g_free (pad);
+	g_free (prefix);
 
 	return g_string_free (ret, FALSE);
 }

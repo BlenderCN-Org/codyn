@@ -42,6 +42,7 @@ struct _CpgExpressionPrivate
 	GSList *dependencies;
 
 	gdouble cached_output;
+	gint error_at;
 
 	guint cached : 1;
 	guint prevent_cache_reset : 1;
@@ -610,7 +611,7 @@ parse_custom_operator (CpgExpression *expression,
 
 			return parser_failed (context,
 			                      CPG_COMPILE_ERROR_INVALID_TOKEN,
-			                      "Expected `operator', but got %s",
+			                      "Expected `,' or `)', but got %s",
 			                      next ? next->text : "(nothing)");
 		}
 
@@ -1354,6 +1355,8 @@ cpg_expression_compile (CpgExpression      *expression,
 	ParserContext ctx = {(gchar const **)&buffer, context, error};
 	gboolean ret;
 
+	expression->priv->error_at = 0;
+
 	if (empty_expression (expression))
 	{
 		instructions_push (expression, cpg_instruction_number_new (0.0));
@@ -1362,6 +1365,11 @@ cpg_expression_compile (CpgExpression      *expression,
 	else
 	{
 		ret = parse_expression (expression, &ctx, -1, 0);
+
+		if (!ret)
+		{
+			expression->priv->error_at = *(ctx.buffer) - expression->priv->expression + 1;
+		}
 	}
 
 	g_slist_free (expression->priv->dependencies);
@@ -1750,4 +1758,22 @@ cpg_expression_copy (CpgExpression *expression)
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
 
 	return cpg_expression_new (expression->priv->expression);
+}
+
+/**
+ * cpg_expression_get_error_at:
+ * @expression: A #CpgExpression
+ *
+ * Get the character position in the expression at which an error occurred
+ * while compiling the expression
+ *
+ * Returns: the character position at which an error occurred
+ *
+ **/
+gint
+cpg_expression_get_error_at (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), 0);
+
+	return expression->priv->error_at;
 }
