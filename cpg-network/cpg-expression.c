@@ -493,9 +493,10 @@ parse_function (CpgExpression *expression,
 	{
 		return parser_failed (context,
 		                      CPG_COMPILE_ERROR_MAXARG,
-		                      "Number of arguments (%d) for function `%s' does not match (got %d)",
-		                      numargs,
-		                      arguments);
+		                      "Expected number of arguments (%d) for function `%s' does not match (got %d)",
+		                      arguments,
+		                      name,
+		                      numargs);
 	}
 
 	CpgInstruction *instruction;
