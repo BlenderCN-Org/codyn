@@ -739,12 +739,12 @@ expression_depends_on_real (CpgExpression *expression,
 		}
 
 		/* Don't scan again */
-		if (g_hash_table_lookup (processed, property))
+		if (g_hash_table_lookup (processed, dependencies->data))
 		{
 			return FALSE;
 		}
 
-		g_hash_table_insert (processed, property, GINT_TO_POINTER (TRUE));
+		g_hash_table_insert (processed, dependencies->data, GINT_TO_POINTER (TRUE));
 
 		if (expression_depends_on_real (cpg_property_get_expression (dependencies->data),
 		                                property,
