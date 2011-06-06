@@ -42,6 +42,10 @@ void                cpg_embedded_context_add_define         (CpgEmbeddedContext 
 void                cpg_embedded_context_add_defines        (CpgEmbeddedContext *context,
                                                              GHashTable         *defines);
 
+gint                cpg_embedded_context_increment_define  (CpgEmbeddedContext  *context,
+                                                            gchar const         *name,
+                                                            gint                 num);
+
 void                cpg_embedded_context_save           (CpgEmbeddedContext *context);
 void                cpg_embedded_context_restore        (CpgEmbeddedContext *context);
 

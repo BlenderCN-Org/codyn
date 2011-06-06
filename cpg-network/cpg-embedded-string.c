@@ -352,35 +352,21 @@ resolve_indirection (CpgEmbeddedString  *em,
 
 		if (issub > 0 || isadd > 0)
 		{
-			gchar *sval;
-			gint val;
 			gchar *norm;
+			gchar *lookup;
+			gint val;
 
-			norm = g_strndup (s, strlen (s) - abs(issub + isadd) + 1);
-			def = cpg_embedded_context_get_define (context, norm);
-
-			if (!*def)
-			{
-				g_free (def);
-				def = g_strdup ("0");
-			}
-
-			val = (gint)g_ascii_strtoll (def, NULL, 10);
-
-			if (isadd > 0)
-			{
-				val += isadd;
-			}
-			else if (issub > 0)
-			{
-				val -= issub;
-			}
-
-			sval = g_strdup_printf ("%d", val);
-			cpg_embedded_context_add_define (context, norm, sval);
-
+			norm = g_strndup (s, strlen (s) - (issub + isadd) + 1);
+			lookup = g_strconcat ("_cnt_", norm, NULL);
 			g_free (norm);
-			g_free (sval);
+
+			/* Note either issub or isadd is 0 */
+			val = cpg_embedded_context_increment_define (context,
+			                                             lookup,
+			                                             -issub + isadd);
+
+			def = g_strdup_printf ("%d", val);
+			g_free (lookup);
 		}
 		else
 		{
