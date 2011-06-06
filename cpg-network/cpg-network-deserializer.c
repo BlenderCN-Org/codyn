@@ -640,16 +640,23 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	for (p = parts; *p; ++p)
 	{
 		CpgSelector *selector;
-		CpgEmbeddedString *es;
 
-		selector = cpg_selector_new ();
-		es = cpg_embedded_string_new_from_string (*p);
+		selector = cpg_selector_parse (*p, NULL);
 
-		cpg_selector_add (selector, es, FALSE);
-		g_object_unref (es);
+		if (!selector)
+		{
+			CpgEmbeddedString *em;
+
+			selector = cpg_selector_new ();
+			em = cpg_embedded_string_new_from_string (*p);
+			cpg_selector_add (selector, em, FALSE);
+			g_object_unref (em);
+		}
 
 		selectors = g_slist_prepend (selectors, selector);
 	}
+
+	selectors = g_slist_reverse (selectors);
 
 	ret = cpg_network_parser_utils_get_templates (deserializer->priv->network,
 	                                              deserializer->priv->parents->data,
