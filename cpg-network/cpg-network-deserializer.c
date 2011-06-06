@@ -1848,6 +1848,10 @@ parse_network (CpgNetworkDeserializer *deserializer,
 				ret = new_object (deserializer, CPG_TYPE_OBJECT, node) != NULL;
 			}
 		}
+		else if (g_strcmp0 (nodename, "group") == 0)
+		{
+			ret = parse_group (deserializer, node);
+		}
 		else if (g_strcmp0 (nodename, "link") == 0)
 		{
 			ret = parse_link (deserializer, node);
@@ -1959,7 +1963,7 @@ parse_all (CpgNetworkDeserializer *deserializer,
 
 	ret = xml_xpath (deserializer,
 	                 root,
-	                 "state | link | templates | functions | function | globals | polynomial | import | input-file",
+	                 "state | group | link | templates | functions | function | globals | polynomial | import | input-file",
 	                 XML_ELEMENT_NODE,
 	                 (XPathResultFunc)parse_network,
 	                 NULL);

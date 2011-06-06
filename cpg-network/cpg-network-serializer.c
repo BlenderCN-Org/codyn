@@ -1275,7 +1275,7 @@ group_to_xml (CpgNetworkSerializer *serializer,
 		group_node = object_to_xml (serializer,
 		                            root,
 		                            CPG_OBJECT (group),
-		                            "state",
+		                            "group",
 		                            NULL);
 
 		CpgObject *proxy = cpg_group_get_proxy (group);
