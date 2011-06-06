@@ -723,6 +723,58 @@ cpg_object_apply_template_impl (CpgObject  *object,
 }
 
 static gboolean
+expression_depends_on_real (CpgExpression *expression,
+                            CpgProperty   *property,
+                            GHashTable    *processed)
+{
+	GSList const *dependencies;
+
+	dependencies = cpg_expression_get_dependencies (expression);
+
+	while (dependencies)
+	{
+		if (dependencies->data == property)
+		{
+			return TRUE;
+		}
+
+		/* Don't scan again */
+		if (g_hash_table_lookup (processed, property))
+		{
+			return FALSE;
+		}
+
+		g_hash_table_insert (processed, property, GINT_TO_POINTER (TRUE));
+
+		if (expression_depends_on_real (cpg_property_get_expression (dependencies->data),
+		                                property,
+		                                processed))
+		{
+			return TRUE;
+		}
+
+		dependencies = g_slist_next (dependencies);
+	}
+
+	return FALSE;
+}
+
+static gboolean
+expression_depends_on (CpgExpression *expression,
+                       CpgProperty   *property)
+{
+	GHashTable *processed;
+	gboolean ret;
+
+	processed = g_hash_table_new (g_direct_hash, g_direct_equal);
+	ret = expression_depends_on_real (expression, property, processed);
+
+	g_hash_table_destroy (processed);
+
+	return ret;
+}
+
+static gboolean
 cpg_object_compile_impl (CpgObject         *object,
                          CpgCompileContext *context,
                          CpgCompileError   *error)
@@ -771,6 +823,26 @@ cpg_object_compile_impl (CpgObject         *object,
 
 			ret = FALSE;
 			break;
+		}
+
+		if (expression_depends_on (expr, property))
+		{
+			if (error)
+			{
+				gerror = g_error_new (CPG_COMPILE_ERROR_TYPE,
+				                      CPG_COMPILE_ERROR_PROPERTY_RECURSE,
+				                      "Infinite recursion in property expression");
+
+				cpg_compile_error_set (error,
+				                       gerror,
+				                       object,
+				                       property,
+				                       NULL);
+
+				g_error_free (gerror);
+				ret = FALSE;
+				break;
+			}
 		}
 
 		properties = g_slist_next (properties);

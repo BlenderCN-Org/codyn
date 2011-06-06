@@ -252,6 +252,9 @@ cpg_compile_error_code_string (gint code)
 		case CPG_COMPILE_ERROR_INVALID_STACK:
 			return "Invalid stack";
 		break;
+		case CPG_COMPILE_ERROR_PROPERTY_RECURSE:
+			return "Property recusion";
+		break;
 		default:
 			return "Unknown";
 		break;
@@ -307,4 +310,57 @@ cpg_compile_error_get_message (CpgCompileError *error)
 	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
 
 	return error->priv->error ? error->priv->error->message : "Unknown";
+}
+
+gchar *
+cpg_compile_error_get_formatted_string (CpgCompileError *error)
+{
+	GString *ret;
+	gchar *fullid;
+	gchar const *expr;
+
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
+
+	ret = g_string_new ("Error while compiling `[");
+
+	if (error->priv->object)
+	{
+		fullid = cpg_object_get_full_id (error->priv->object);
+	}
+	else
+	{
+		fullid = NULL;
+	}
+
+	g_string_append (ret, fullid);
+	g_free (fullid);
+
+	g_string_append_c (ret, ']');
+
+	if (error->priv->property != NULL)
+	{
+		g_string_append_c (ret, '.');
+		g_string_append (ret, cpg_property_get_name (error->priv->property));
+
+		expr = cpg_expression_get_as_string (cpg_property_get_expression (error->priv->property));
+	}
+	else if (error->priv->action != NULL)
+	{
+		g_string_append (ret, " < ");
+		g_string_append (ret, cpg_link_action_get_target (error->priv->action));
+
+		expr = cpg_expression_get_as_string (cpg_link_action_get_equation (error->priv->action));
+	}
+	else
+	{
+		expr = NULL;
+	}
+
+	g_string_append_printf (ret,
+	                        "'\n%s: %s\n\nExpression: %s",
+	                        cpg_compile_error_string (error),
+	                        cpg_compile_error_get_message (error),
+	                        expr);
+
+	return g_string_free (ret, FALSE);
 }

@@ -41,6 +41,7 @@ struct _CpgCompileErrorClass
  * @CPG_COMPILE_ERROR_INVALID_TOKEN: invalid token
  * @CPG_COMPILE_ERROR_MAXARG: maximum number of arguments exceeded
  * @CPG_COMPILE_ERROR_INVALID_STACK: invalid stack produced
+ * @CPG_COMPILE_ERROR_PROPERTY_RECURSE: property recurses on itself
  * @CPG_COMPILE_ERROR_NUM_ERRORS: num errors
  *
  * Enum used to indicate the type of compile error
@@ -54,6 +55,7 @@ typedef enum
 	CPG_COMPILE_ERROR_INVALID_TOKEN,
 	CPG_COMPILE_ERROR_MAXARG,
 	CPG_COMPILE_ERROR_INVALID_STACK,
+	CPG_COMPILE_ERROR_PROPERTY_RECURSE,
 	CPG_COMPILE_ERROR_NUM_ERRORS
 } CpgCompileErrorCode;
 
@@ -77,6 +79,8 @@ const gchar      *cpg_compile_error_string          (CpgCompileError *error);
 const gchar      *cpg_compile_error_code_string     (gint             code);
 gint              cpg_compile_error_get_code        (CpgCompileError *error);
 const gchar      *cpg_compile_error_get_message     (CpgCompileError *error);
+
+gchar *           cpg_compile_error_get_formatted_string (CpgCompileError *error);
 
 G_END_DECLS
 
