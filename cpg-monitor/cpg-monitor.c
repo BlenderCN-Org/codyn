@@ -282,9 +282,15 @@ monitor_network (gchar const *filename)
 
 	if (!cpg_object_compile (CPG_OBJECT (network), NULL, err))
 	{
-		g_printerr ("Failed to compile network `%s': %s",
+		gchar *msg;
+
+		msg = cpg_compile_error_get_formatted_string (err);
+
+		g_printerr ("Failed to compile network `%s'\n\n%s\n",
 		            filename,
-		            cpg_compile_error_string (err));
+		            msg);
+
+		g_free (msg);
 
 		g_object_unref (network);
 		g_object_unref (err);
