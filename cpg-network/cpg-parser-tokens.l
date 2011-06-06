@@ -176,6 +176,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "count"				return T_KEY_COUNT;
 "self"				return T_KEY_SELF;
 "context"			return T_KEY_CONTEXT;
+"as"				return T_KEY_AS;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);
