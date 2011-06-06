@@ -120,6 +120,8 @@ cpg_monitor_grow (CpgMonitor *monitor)
 
 static void
 cpg_monitor_update (CpgMonitor    *monitor,
+                    gdouble        timestep,
+                    gdouble        time,
                     CpgIntegrator *integrator)
 {
 	if (monitor->priv->size == 0 ||
@@ -129,15 +131,18 @@ cpg_monitor_update (CpgMonitor    *monitor,
 	}
 
 	monitor->priv->values[monitor->priv->num_values] = cpg_property_get_value (monitor->priv->property);
-	monitor->priv->sites[monitor->priv->num_values++] = integrator ? cpg_integrator_get_time (integrator) : 0;
+	monitor->priv->sites[monitor->priv->num_values++] = time;
 }
 
 static void
 cpg_monitor_begin (CpgMonitor    *monitor,
+                   gdouble        from,
+                   gdouble        step,
+                   gdouble        to,
                    CpgIntegrator *integrator)
 {
 	/* Record first value */
-	cpg_monitor_update (monitor, integrator);
+	cpg_monitor_update (monitor, step, from, integrator);
 }
 
 static void
