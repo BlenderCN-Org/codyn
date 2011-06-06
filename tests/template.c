@@ -153,7 +153,7 @@ test_apply_overload_state ()
 	"    </templates>\n"
 	"\n"
 	"    <state id=\"state\" ref=\"state\">\n"
-	"      <property name=\"x\">1</property>\n"
+	"      <property name=\"x\" integrated=\"no\">1</property>\n"
 	"    </state>\n"
 	"  </network>\n"
 	"</cpg>\n";
@@ -256,7 +256,7 @@ test_apply_overload_group ()
 
 	CpgExpression *expr = cpg_property_get_expression (prop);
 	g_assert_cmpstr (cpg_expression_get_as_string (expr), ==, "2");
-	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_NONE);
+	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_INTEGRATED);
 }
 
 static void
