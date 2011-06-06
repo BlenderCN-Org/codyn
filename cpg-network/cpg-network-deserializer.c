@@ -2206,6 +2206,8 @@ cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
                                       GInputStream            *stream,
                                       GError                 **error)
 {
+	gboolean retval = TRUE;
+
 	g_return_val_if_fail (CPG_IS_NETWORK_DESERIALIZER (deserializer), FALSE);
 	g_return_val_if_fail (G_INPUT_STREAM (stream), FALSE);
 
@@ -2236,28 +2238,28 @@ cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
 
 	if (ret != 0)
 	{
-		xmlFreeTextReader (reader);
-
-		return parser_failed (deserializer,
-		                      NULL,
-		                      CPG_NETWORK_LOAD_ERROR_SYNTAX,
-		                      "Failed parsing xml at %d:%d: %s",
-		                      xmlLastError.line,
-		                      xmlLastError.int2,
-		                      xmlLastError.message);
+		retval = parser_failed (deserializer,
+		                        NULL,
+		                        CPG_NETWORK_LOAD_ERROR_SYNTAX,
+		                        "Failed parsing xml at %d:%d: %s",
+		                        xmlLastError.line,
+		                        xmlLastError.int2,
+		                        xmlLastError.message);
 	}
 	else
 	{
 		xmlDocPtr doc = xmlTextReaderCurrentDoc(reader);
 
 		deserializer->priv->doc = doc;
-		reader_xml (deserializer);
+
+		retval = reader_xml (deserializer);
 
 		xmlFreeDoc (doc);
 	}
 
 	xmlFreeTextReader (reader);
-	return TRUE;
+
+	return retval;
 }
 
 /**
