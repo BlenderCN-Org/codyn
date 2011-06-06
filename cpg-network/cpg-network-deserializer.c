@@ -350,7 +350,7 @@ parser_failed (CpgNetworkDeserializer *deserializer,
                gchar const            *format,
                ...)
 {
-	if (deserializer->priv->error == NULL)
+	if (deserializer->priv->error != NULL)
 	{
 		va_list ap;
 		GError *error;
