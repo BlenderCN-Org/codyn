@@ -100,6 +100,9 @@ CpgNetwork       *cpg_network_new                    (void);
 CpgNetwork       *cpg_network_new_from_file          (GFile          *file,
                                                       GError        **error);
 
+CpgNetwork       *cpg_network_new_from_stream        (GInputStream   *stream,
+                                                      GError        **error);
+
 CpgNetwork       *cpg_network_new_from_path          (const gchar    *path,
                                                       GError        **error);
 
@@ -108,6 +111,10 @@ CpgNetwork       *cpg_network_new_from_xml           (const gchar    *xml,
 
 gboolean          cpg_network_load_from_file         (CpgNetwork     *network,
                                                       GFile          *file,
+                                                      GError        **error);
+
+gboolean          cpg_network_load_from_stream       (CpgNetwork     *network,
+                                                      GInputStream   *stream,
                                                       GError        **error);
 
 gboolean          cpg_network_load_from_path         (CpgNetwork     *network,

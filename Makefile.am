@@ -1,4 +1,4 @@
-SUBDIRS = cpg-network data tests m4 win32 cpg-monitor cpg-parser
+SUBDIRS = cpg-network data tests m4 win32 tools
 
 if ENABLE_DOC
 SUBDIRS += docs

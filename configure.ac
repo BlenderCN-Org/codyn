@@ -131,8 +131,10 @@ m4/Makefile
 tests/Makefile
 win32/Makefile
 win32/make-zip
-cpg-monitor/Makefile
-cpg-parser/Makefile
+tools/Makefile
+tools/cpg-monitor/Makefile
+tools/cpg-parser/Makefile
+tools/cpg-to-eps/Makefile
 ])
 
 AC_OUTPUT

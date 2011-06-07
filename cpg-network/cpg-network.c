@@ -691,6 +691,58 @@ file_is_xml_format (GFile *file)
 }
 
 /**
+ * cpg_network_load_from_stream:
+ * @network: A #CpgNetwork
+ * @stream: The stream to load
+ * @error: A #GError
+ * 
+ * Load a network from a stream
+ *
+ * Returns: %TRUE if the stream could be loaded, %FALSE otherwise
+ *
+ **/
+gboolean
+cpg_network_load_from_stream (CpgNetwork    *network,
+                              GInputStream  *stream,
+                              GError       **error)
+{
+	gboolean ret;
+
+	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), FALSE);
+
+	cpg_object_clear (CPG_OBJECT (network));
+
+	if (stream_is_xml_format (stream, TRUE))
+	{
+		CpgNetworkDeserializer *deserializer;
+
+		deserializer = cpg_network_deserializer_new (network,
+		                                             NULL);
+
+		ret = cpg_network_deserializer_deserialize (deserializer,
+		                                            stream,
+		                                            error);
+
+		g_object_unref (deserializer);
+	}
+	else
+	{
+		CpgParserContext *ctx;
+
+		ctx = cpg_parser_context_new (network);
+		cpg_parser_context_push_input (ctx, NULL, stream);
+
+		ret = cpg_parser_context_parse (ctx, error);
+
+		g_object_unref (ctx);
+	}
+
+	return ret;
+}
+
+
+/**
  * cpg_network_load_from_file:
  * @network: A #CpgNetwork
  * @file: The file to load
@@ -815,6 +867,36 @@ cpg_network_load_from_xml (CpgNetwork   *network,
 	g_object_unref (deserializer);
 
 	return ret;
+}
+
+/**
+ * cpg_network_new_from_stream:
+ * @stream: the stream containing the network definition
+ * @error: error return value
+ *
+ * Create a new CPG network by reading the network definition from a stream
+ *
+ * Return value: the newly created CPG network or %NULL if there was an
+ * error reading the stream
+ *
+ **/
+CpgNetwork *
+cpg_network_new_from_stream (GInputStream  *stream,
+                             GError       **error)
+{
+	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), NULL);
+
+	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK,
+	                                    "id", "(cpg)",
+	                                    NULL);
+
+	if (!cpg_network_load_from_stream (network, stream, error))
+	{
+		g_object_unref (network);
+		network = NULL;
+	}
+
+	return network;
 }
 
 /**
