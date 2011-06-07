@@ -2069,7 +2069,13 @@ cpg_object_apply_template (CpgObject  *object,
 
 	if (g_slist_find (object->priv->templates, templ))
 	{
-		/* TODO: Set error */
+		g_set_error (error,
+		             CPG_OBJECT_ERROR,
+		             CPG_OBJECT_ERROR_TEMPLATE_ALREADY_APPLIED,
+		             "The template `%s' is already applied to `%s'",
+		             cpg_object_get_id (object),
+		             cpg_object_get_id (templ));
+
 		return FALSE;
 	}
 
@@ -2100,7 +2106,13 @@ cpg_object_unapply_template (CpgObject  *object,
 
 	if (!g_slist_find (object->priv->templates, templ))
 	{
-		/* TODO: set error */
+		g_set_error (error,
+		             CPG_OBJECT_ERROR,
+		             CPG_OBJECT_ERROR_TEMPLATE_NOT_FOUND,
+		             "The template `%s' is not applied to `%s'",
+		             cpg_object_get_id (object),
+		             cpg_object_get_id (templ));
+
 		return FALSE;
 	}
 
