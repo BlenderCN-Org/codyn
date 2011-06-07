@@ -106,6 +106,27 @@ do {										\
 #define write_stream_nl(s) write_stream (s); write_stream ("\n")
 
 static gboolean
+get_location (CpgObject *o, gint *x, gint *y)
+{
+	CpgLayoutable *l;
+
+	if (!CPG_IS_LAYOUTABLE (o))
+	{
+		return FALSE;
+	}
+
+	l = CPG_LAYOUTABLE (o);
+
+	if (!cpg_layoutable_supports_location (l))
+	{
+		return FALSE;
+	}
+
+	cpg_layoutable_get_location (l, x, y);
+	return TRUE;
+}
+
+static gboolean
 output_to_dot (CpgNetwork  *network,
                CpgGroup    *root,
                GError     **error)
@@ -121,13 +142,15 @@ output_to_dot (CpgNetwork  *network,
 		return FALSE;
 	}
 
-	write_stream_nl ("digraph cpg {");
+	write_stream_nl ("strict digraph cpg {");
 
 	children = cpg_group_get_children (root);
 
 	while (children)
 	{
 		CpgObject *child;
+		gint x;
+		gint y;
 
 		child = children->data;
 		children = g_slist_next (children);
@@ -142,24 +165,12 @@ output_to_dot (CpgNetwork  *network,
 		                     cpg_object_get_id (child),
 		                     cpg_object_get_id (child));
 
-		if (CPG_IS_LAYOUTABLE (child))
+		if (get_location (child, &x, &y))
 		{
-			CpgLayoutable *l;
+			x *= 1;
+			y *= -1;
 
-			l = CPG_LAYOUTABLE (child);
-
-			if (cpg_layoutable_supports_location (l))
-			{
-				gint x;
-				gint y;
-
-				cpg_layoutable_get_location (l, &x, &y);
-
-				x *= 1;
-				y *= -1;
-
-				write_stream_printf (",pos=\"%d,%d!\",pin=true", x, y);
-			}
+			write_stream_printf (",pos=\"%d,%d!\",pin=true", x, y);
 		}
 
 		write_stream_nl ("];");
