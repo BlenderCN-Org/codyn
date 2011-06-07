@@ -1524,6 +1524,14 @@ cpg_object_new_from_template (CpgObject  *templ,
 		return NULL;
 	}
 
+	if (CPG_IS_LAYOUTABLE (templ) &&
+	    cpg_layoutable_supports_location (CPG_LAYOUTABLE (templ)))
+	{
+		cpg_layoutable_get_location (CPG_LAYOUTABLE (templ),
+		                             &obj->priv->x,
+		                             &obj->priv->y);
+	}
+
 	return obj;
 }
 
