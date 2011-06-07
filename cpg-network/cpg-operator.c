@@ -238,8 +238,7 @@ void
 cpg_operator_reset_cache (CpgOperator     *op,
                           CpgOperatorData *data)
 {
-	g_return_if_fail (CPG_IS_OPERATOR (op));
-
+	/* Omit type check to increase speed */
 	CPG_OPERATOR_GET_INTERFACE (op)->reset_cache (op, data);
 }
 

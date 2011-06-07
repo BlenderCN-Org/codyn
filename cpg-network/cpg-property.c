@@ -558,8 +558,7 @@ void
 cpg_property_set_value (CpgProperty  *property,
                         gdouble       value)
 {
-	g_return_if_fail (CPG_IS_PROPERTY (property));
-
+	/* Omit type check to increase speed */
 	cpg_expression_set_value (property->priv->expression, value);
 }
 
@@ -575,8 +574,7 @@ cpg_property_set_value (CpgProperty  *property,
 gdouble
 cpg_property_get_value (CpgProperty *property)
 {
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
-
+	/* Omit type check to increase speed */
 	if (property->priv->expression)
 	{
 		return cpg_expression_evaluate (property->priv->expression);
@@ -590,16 +588,14 @@ cpg_property_get_value (CpgProperty *property)
 gdouble
 cpg_property_get_last_value (CpgProperty *property)
 {
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
-
+	/* Omit type check to increase speed */
 	return property->priv->last_value;
 }
 
 void
 cpg_property_update_last_value (CpgProperty *property)
 {
-	g_return_if_fail (CPG_IS_PROPERTY (property));
-
+	/* Omit type check to increase speed */
 	property->priv->last_value = cpg_property_get_value (property);
 }
 
@@ -616,8 +612,7 @@ cpg_property_update_last_value (CpgProperty *property)
 CpgExpression *
 cpg_property_get_expression (CpgProperty *property)
 {
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
-
+	/* Omit type check to increase speed */
 	return property->priv->expression;
 }
 
@@ -690,8 +685,7 @@ cpg_property_set_name (CpgProperty *property,
 gboolean
 cpg_property_get_integrated (CpgProperty *property)
 {
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
-
+	/* Omit type check to increase speed */
 	return property->priv->flags & CPG_PROPERTY_FLAG_INTEGRATED;
 }
 
@@ -732,8 +726,7 @@ cpg_property_set_integrated (CpgProperty  *property,
 void
 cpg_property_reset (CpgProperty *property)
 {
-	g_return_if_fail (CPG_IS_PROPERTY (property));
-
+	/* Omit type check to increase speed */
 	cpg_expression_reset (property->priv->expression);
 	cpg_expression_set_once (property->priv->expression,
 	                         (property->priv->flags & CPG_PROPERTY_FLAG_ONCE) != 0);
@@ -774,8 +767,7 @@ cpg_property_equal (CpgProperty *property,
 CpgPropertyFlags
 cpg_property_get_flags (CpgProperty *property)
 {
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), CPG_PROPERTY_FLAG_NONE);
-
+	/* Omit type check to increase speed */
 	return property->priv->flags;
 }
 
@@ -844,8 +836,7 @@ void
 cpg_property_set_update (CpgProperty  *property,
                          gdouble       value)
 {
-	g_return_if_fail (CPG_IS_PROPERTY (property));
-
+	/* Omit type check to increase speed */
 	property->priv->update = value;
 }
 
@@ -863,8 +854,7 @@ cpg_property_set_update (CpgProperty  *property,
 gdouble
 cpg_property_get_update (CpgProperty *property)
 {
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), 0);
-
+	/* Omit type check to increase speed */
 	return property->priv->update;
 }
 

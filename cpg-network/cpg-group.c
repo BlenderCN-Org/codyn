@@ -773,12 +773,9 @@ cpg_group_cpg_foreach_expression (CpgObject                *object,
                                   CpgForeachExpressionFunc  func,
                                   gpointer                  userdata)
 {
-	if (CPG_OBJECT_CLASS (cpg_group_parent_class)->foreach_expression)
-	{
-		CPG_OBJECT_CLASS (cpg_group_parent_class)->foreach_expression (object,
-		                                                               func,
-		                                                               userdata);
-	}
+	((CpgObjectClass *)cpg_group_parent_class)->foreach_expression (object,
+	                                                               func,
+	                                                               userdata);
 
 	/* And then also the children! */
 	GSList *item;
@@ -1518,6 +1515,9 @@ cpg_group_verify_remove_child_impl (CpgGroup   *group,
                                     CpgObject  *object,
                                     GError    **error)
 {
+	/* Check if there are any objects that use the child as a template
+	   while this template is not inherited from applying a template to
+	   the parent of the child */
 	if (cpg_usable_use_count (CPG_USABLE (object)))
 	{
 		g_set_error (error,

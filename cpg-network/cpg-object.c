@@ -2316,17 +2316,13 @@ cpg_object_foreach_expression (CpgObject                *object,
                                CpgForeachExpressionFunc  func,
                                gpointer                  userdata)
 {
-	g_return_if_fail (CPG_IS_OBJECT (object));
-
+	/* Omit type check to increase speed */
 	if (!func)
 	{
 		return;
 	}
 
-	if (CPG_OBJECT_GET_CLASS (object)->foreach_expression)
-	{
-		CPG_OBJECT_GET_CLASS (object)->foreach_expression (object, func, userdata);
-	}
+	CPG_OBJECT_GET_CLASS (object)->foreach_expression (object, func, userdata);
 }
 
 gchar *

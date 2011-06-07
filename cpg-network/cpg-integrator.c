@@ -198,17 +198,29 @@ cpg_integrator_run_impl (CpgIntegrator *integrator,
 static void
 reset_cache (CpgIntegrator *integrator)
 {
-	cpg_object_foreach_expression (integrator->priv->object,
-	                               (CpgForeachExpressionFunc)cpg_expression_reset_cache,
-	                               NULL);
+	GSList const *expr;
+
+	expr = cpg_integrator_state_expressions (integrator->priv->state);
+
+	while (expr)
+	{
+		cpg_expression_reset_cache (expr->data);
+		expr = g_slist_next (expr);
+	}
 }
 
 static void
 reset_variadic (CpgIntegrator *integrator)
 {
-	cpg_object_foreach_expression (integrator->priv->object,
-	                               (CpgForeachExpressionFunc)cpg_expression_reset_variadic,
-	                               NULL);
+	GSList const *expr;
+
+	expr = cpg_integrator_state_expressions (integrator->priv->state);
+
+	while (expr)
+	{
+		cpg_expression_reset_variadic (expr->data);
+		expr = g_slist_next (expr);
+	}
 }
 
 static gdouble
@@ -663,8 +675,7 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
                          gdouble        t,
                          gdouble        timestep)
 {
-	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
-
+	/* Omit type check to increase speed */
 	cpg_property_set_value (integrator->priv->property_time, t);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
@@ -680,8 +691,7 @@ cpg_integrator_step_prepare (CpgIntegrator *integrator,
                              gdouble        t,
                              gdouble        timestep)
 {
-	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), FALSE);
-
+	/* Omit type check to increase speed */
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->step_prepare (integrator, t, timestep);
 }
 
@@ -697,8 +707,7 @@ cpg_integrator_step_prepare (CpgIntegrator *integrator,
 gdouble
 cpg_integrator_get_time	(CpgIntegrator *integrator)
 {
-	g_return_val_if_fail (CPG_IS_INTEGRATOR (integrator), 0);
-
+	/* Omit type check to increase speed */
 	return cpg_property_get_value (integrator->priv->property_time);
 }
 
@@ -713,8 +722,7 @@ cpg_integrator_get_time	(CpgIntegrator *integrator)
 void
 cpg_integrator_reset (CpgIntegrator *integrator)
 {
-	g_return_if_fail (CPG_IS_INTEGRATOR (integrator));
-
+	/* Omit type check to increase speed */
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->reset (integrator);
 }
 

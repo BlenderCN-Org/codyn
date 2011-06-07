@@ -159,8 +159,6 @@ set_value (CpgExpression *expression,
 	expression->priv->prevent_cache_reset = TRUE;
 
 	expression->priv->cached_output = value;
-
-	g_object_notify (G_OBJECT (expression), "value");
 }
 
 static void
@@ -232,9 +230,7 @@ cpg_expression_class_init (CpgExpressionClass *klass)
 	object_class->get_property = cpg_expression_get_property;
 	object_class->set_property = cpg_expression_set_property;
 
-
 	g_type_class_add_private (object_class, sizeof(CpgExpressionPrivate));
-
 
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPRESSION,
@@ -243,7 +239,6 @@ cpg_expression_class_init (CpgExpressionClass *klass)
 	                                                      "Expression",
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
-
 
 	g_object_class_install_property (object_class,
 	                                 PROP_VALUE,
@@ -1304,8 +1299,7 @@ empty_expression (CpgExpression *expression)
 void
 cpg_expression_reset_variadic (CpgExpression *expression)
 {
-	g_return_if_fail (CPG_IS_EXPRESSION (expression));
-
+	/* Omit type check to increase speed */
 	GSList *item;
 
 	for (item = expression->priv->variadic_instructions; item; item = g_slist_next (item))
@@ -1525,8 +1519,7 @@ cpg_expression_set_value (CpgExpression  *expression,
 gdouble
 cpg_expression_evaluate (CpgExpression *expression)
 {
-	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), 0);
-
+	/* Omit type check to increase speed */
 	if (!expression)
 	{
 		return 0.0;
@@ -1586,8 +1579,7 @@ cpg_expression_evaluate (CpgExpression *expression)
 void
 cpg_expression_reset_cache (CpgExpression *expression)
 {
-	g_return_if_fail (CPG_IS_EXPRESSION (expression));
-
+	/* Omit type check to increase speed */
 	if (!expression->priv->prevent_cache_reset)
 	{
 		expression->priv->cached = FALSE;
@@ -1616,8 +1608,7 @@ cpg_expression_reset_cache (CpgExpression *expression)
 const GSList *
 cpg_expression_get_dependencies (CpgExpression *expression)
 {
-	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
-
+	/* Omit type check to increase speed */
 	return expression->priv->dependencies;
 }
 
@@ -1631,6 +1622,7 @@ cpg_expression_get_dependencies (CpgExpression *expression)
 void
 cpg_expression_reset (CpgExpression *expression)
 {
+	/* Omit type check to increase speed */
 	expression->priv->cached = FALSE;
 
 	if (!expression->priv->once)

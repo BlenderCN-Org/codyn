@@ -27,6 +27,7 @@ struct _CpgIntegratorStatePrivate
 	GSList *direct_link_actions;
 
 	GSList *inputs;
+	GSList *expressions;
 };
 
 G_DEFINE_TYPE (CpgIntegratorState, cpg_integrator_state, G_TYPE_OBJECT)
@@ -71,6 +72,9 @@ clear_lists (CpgIntegratorState *state)
 
 	g_slist_free (state->priv->inputs);
 	state->priv->inputs = NULL;
+
+	g_slist_free (state->priv->expressions);
+	state->priv->expressions = NULL;
 }
 
 static void
@@ -375,6 +379,14 @@ sort_link_actions (CpgIntegratorState *state)
 		              (GCompareFunc)link_action_compare);
 }
 
+static void
+collect_expressions (CpgExpression      *expression,
+                     CpgIntegratorState *state)
+{
+	state->priv->expressions =
+		g_slist_prepend (state->priv->expressions, expression);
+}
+
 /**
  * cpg_integrator_state_update:
  * @state: A #CpgIntegratorState
@@ -407,6 +419,13 @@ cpg_integrator_state_update (CpgIntegratorState *state)
 
 	/* order the direct link actions based on their dependencies */
 	sort_link_actions (state);
+
+	cpg_object_foreach_expression (CPG_OBJECT (state->priv->object),
+	                               (CpgForeachExpressionFunc)collect_expressions,
+	                               state);
+
+	state->priv->expressions =
+		g_slist_reverse (state->priv->expressions);
 
 	g_signal_emit (state, signals[UPDATED], 0);
 }
@@ -506,6 +525,21 @@ cpg_integrator_state_inputs (CpgIntegratorState *state)
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
 
 	return state->priv->inputs;
+}
+
+/**
+ * cpg_integrator_state_expressions:
+ * @state: A #CpgIntegratorState
+ *
+ * Get the expressions in the network.
+ *
+ * Returns: (element-type CpgExpression) (transfer none): A #GSList of #CpgExpression
+ *
+ **/
+const GSList *
+cpg_integrator_state_expressions (CpgIntegratorState *state)
+{
+	return state->priv->expressions;
 }
 
 /**

@@ -458,8 +458,7 @@ cpg_link_action_set_target (CpgLinkAction *action,
 CpgExpression *
 cpg_link_action_get_equation (CpgLinkAction *action)
 {
-	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
-
+	/* Omit type check to increase speed */
 	return action->priv->equation;
 }
 
@@ -539,8 +538,7 @@ cpg_link_action_copy (CpgLinkAction *action)
 CpgProperty *
 cpg_link_action_get_target_property (CpgLinkAction *action)
 {
-	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), NULL);
-
+	/* Omit type check to increase speed */
 	return action->priv->property;
 }
 
@@ -586,8 +584,7 @@ cpg_link_action_set_enabled (CpgLinkAction *action,
 gboolean
 cpg_link_action_get_enabled (CpgLinkAction *action)
 {
-	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), FALSE);
-
+	/* Omit type check to increase speed */
 	return action->priv->enabled;
 }
 

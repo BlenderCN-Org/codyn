@@ -72,8 +72,7 @@ cpg_instruction_get_stack_count (CpgInstruction *instruction)
 GSList *
 cpg_instruction_get_dependencies (CpgInstruction *instruction)
 {
-	g_return_val_if_fail (CPG_IS_INSTRUCTION (instruction), NULL);
-
+	/* Omit type check to increase speed */
 	return CPG_INSTRUCTION_GET_CLASS (instruction)->get_dependencies (instruction);
 }
 

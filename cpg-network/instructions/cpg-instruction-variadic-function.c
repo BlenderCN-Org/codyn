@@ -126,7 +126,6 @@ cpg_instruction_variadic_function_new (guint        id,
 void
 cpg_instruction_variadic_function_reset_cache (CpgInstructionVariadicFunction *self)
 {
-	g_return_if_fail (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (self));
-
+	/* Omit type check to increase speed */
 	self->priv->cached = FALSE;
 }

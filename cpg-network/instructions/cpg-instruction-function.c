@@ -167,8 +167,7 @@ cpg_instruction_function_set_arguments (CpgInstructionFunction *func,
 guint
 cpg_instruction_function_get_id (CpgInstructionFunction *func)
 {
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_FUNCTION (func), 0);
-
+	/* Omit type check to increase speed */
 	return func->priv->id;
 }
 
@@ -184,15 +183,13 @@ cpg_instruction_function_get_id (CpgInstructionFunction *func)
 gchar const *
 cpg_instruction_function_get_name (CpgInstructionFunction *func)
 {
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_FUNCTION (func), NULL);
-
+	/* Omit type check to increase speed */
 	return func->priv->name;
 }
 
 gint
 cpg_instruction_function_get_arguments (CpgInstructionFunction *func)
 {
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_FUNCTION (func), 0);
-
+	/* Omit type check to increase speed */
 	return func->priv->arguments;
 }
