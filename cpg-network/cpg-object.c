@@ -55,6 +55,7 @@ struct _CpgObjectPrivate
 
 	/* Templates */
 	GSList *templates;
+	GSList *templates_reverse_map;
 
 	gchar *annotation;
 
@@ -506,6 +507,9 @@ cpg_object_dispose (GObject *object)
 
 	g_slist_free (templates);
 
+	g_slist_free (obj->priv->templates_reverse_map);
+	obj->priv->templates_reverse_map = NULL;
+
 	/* Untoggle ref all links, because we need them destroyed! */
 	GSList *copy = g_slist_copy (obj->priv->links);
 
@@ -643,6 +647,9 @@ cpg_object_copy_impl (CpgObject *object,
 		g_object_ref (item->data);
 	}
 
+	object->priv->templates_reverse_map =
+		g_slist_copy (object->priv->templates_reverse_map);
+
 	annotation = cpg_annotatable_get_annotation (CPG_ANNOTATABLE (source));
 	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (object),
 	                                annotation);
@@ -669,6 +676,10 @@ cpg_object_unapply_template_impl (CpgObject  *object,
 
 	object->priv->templates = g_slist_remove (object->priv->templates,
 	                                          templ);
+
+	templ->priv->templates_reverse_map =
+		g_slist_remove (templ->priv->templates_reverse_map,
+		                object);
 
 	for (item = templ->priv->properties; item; item = g_slist_next (item))
 	{
@@ -714,6 +725,10 @@ cpg_object_apply_template_impl (CpgObject  *object,
 
 	object->priv->templates = g_slist_append (object->priv->templates,
 	                                          g_object_ref (templ));
+
+	templ->priv->templates_reverse_map =
+		g_slist_append (templ->priv->templates_reverse_map,
+		                object);
 
 	cpg_usable_use (CPG_USABLE (templ));
 
@@ -1976,6 +1991,23 @@ cpg_object_get_applied_templates (CpgObject *object)
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
 	return object->priv->templates;
+}
+
+/**
+ * cpg_object_get_template_applies_to:
+ * @object: A #CpgObject
+ *
+ * Get the list objects that this object (as a template) applies to
+ *
+ * Returns: (element-type CpgObject) (transfer none): A #GSList of #CpgObject
+ *
+ **/
+const GSList *
+cpg_object_get_template_applies_to (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	return object->priv->templates_reverse_map;
 }
 
 /**

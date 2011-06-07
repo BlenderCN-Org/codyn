@@ -216,6 +216,7 @@ void              cpg_object_clear          (CpgObject   *object);
 const GSList     *cpg_object_get_actors     (CpgObject   *object);
 
 const GSList     *cpg_object_get_applied_templates  (CpgObject   *object);
+const GSList     *cpg_object_get_template_applies_to  (CpgObject   *object);
 
 CpgObject        *cpg_object_copy           (CpgObject *object);
 

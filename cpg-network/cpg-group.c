@@ -1513,6 +1513,24 @@ cpg_group_get_children_impl (CpgGroup *group)
 	return group->priv->children;
 }
 
+static gboolean
+cpg_group_verify_remove_child_impl (CpgGroup   *group,
+                                    CpgObject  *object,
+                                    GError    **error)
+{
+	if (cpg_usable_use_count (CPG_USABLE (object)))
+	{
+		g_set_error (error,
+		             CPG_GROUP_ERROR,
+		             CPG_GROUP_ERROR_CHILD_IN_USE,
+		             "The object is still in use");
+
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static void
 cpg_group_class_init (CpgGroupClass *klass)
 {
@@ -1540,6 +1558,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 	klass->add = cpg_group_add_impl;
 	klass->remove = cpg_group_remove_impl;
 	klass->get_children = cpg_group_get_children_impl;
+	klass->verify_remove_child = cpg_group_verify_remove_child_impl;
 
 	g_type_class_add_private (object_class, sizeof(CpgGroupPrivate));
 
@@ -1612,7 +1631,8 @@ cpg_group_class_init (CpgGroupClass *klass)
 		g_signal_new ("verify-remove-child",
 		              G_TYPE_FROM_CLASS (klass),
 		              G_SIGNAL_RUN_LAST,
-		              0,
+		              G_STRUCT_OFFSET (CpgGroupClass,
+		                               verify_remove_child),
 		              cpg_signal_accumulator_false_handled,
 		              NULL,
 		              cpg_marshal_BOOLEAN__OBJECT_POINTER,

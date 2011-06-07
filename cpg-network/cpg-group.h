@@ -19,6 +19,7 @@ typedef enum
 	CPG_GROUP_ERROR_CHILD_ALREADY_EXISTS,
 	CPG_GROUP_ERROR_CHILD_DOES_NOT_EXIST,
 	CPG_GROUP_ERROR_INTERFACE_IS_PROXY,
+	CPG_GROUP_ERROR_CHILD_IN_USE,
 	CPG_GROUP_ERROR_NUM
 } CpgGroupError;
 
@@ -56,6 +57,10 @@ struct _CpgGroupClass
 	gboolean      (*remove)        (CpgGroup   *group,
 	                                CpgObject  *object,
 	                                GError    **error);
+
+	gboolean      (*verify_remove_child) (CpgGroup   *group,
+	                                      CpgObject  *object,
+	                                      GError    **error);
 
 	GSList const *(*get_children)  (CpgGroup   *group);
 
