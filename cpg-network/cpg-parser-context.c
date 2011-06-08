@@ -448,12 +448,9 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		GError *error = NULL;
 		CpgObject *obj;
-		CpgProperty *property;
-		gchar const *exname;
-		gchar const *exexpression;
-		CpgPropertyFlags flags = CPG_PROPERTY_FLAG_NONE;
+		GSList *exps;
+		GSList *iteme;
 
 		obj = cpg_selection_get_object (item->data);
 
@@ -462,55 +459,77 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		exname = cpg_embedded_string_expand (name, context->priv->embedded);
-		exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
+		exps = cpg_embedded_string_expand_multiple (name,
+		                                            context->priv->embedded);
 
-		property = cpg_object_get_property (obj, exname);
-
-		if (property)
+		for (iteme = exps; iteme; iteme = g_slist_next (iteme))
 		{
-			flags = cpg_property_get_flags (property);
-		}
+			GError *error = NULL;
+			CpgProperty *property;
+			gchar const *exname;
+			gchar const *exexpression;
+			CpgPropertyFlags flags = CPG_PROPERTY_FLAG_NONE;
 
-		flags &= ~remove_flags;
-		flags |= add_flags;
+			cpg_embedded_context_save (context->priv->embedded);
+			cpg_embedded_context_add_expansion (context->priv->embedded,
+			                                    iteme->data);
 
-		if (!cpg_object_add_property (obj,
-		                              cpg_property_new (exname, exexpression, flags),
-		                              &error))
-		{
-			cpg_embedded_context_restore (context->priv->embedded);
+			exname = cpg_expansion_get (iteme->data, 0);
+			exexpression = cpg_embedded_string_expand (expression,
+			                                           context->priv->embedded);
 
-			parser_failed_error (context, error);
-			break;
-		}
+			property = cpg_object_get_property (obj, exname);
 
-		property = cpg_object_get_property (obj, exname);
-		cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);
+			if (property)
+			{
+				flags = cpg_property_get_flags (property);
+			}
 
-		if (annotation)
-		{
-			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (property),
-			                                annotation);
-		}
+			flags &= ~remove_flags;
+			flags |= add_flags;
 
-		if (integration != NULL)
-		{
-			CpgLink *link;
-
-			link = find_or_create_self_link (context, obj, property);
-
-			if (!link)
+			if (!cpg_object_add_property (obj,
+			                              cpg_property_new (exname, exexpression, flags),
+			                              &error))
 			{
 				cpg_embedded_context_restore (context->priv->embedded);
 
+				parser_failed_error (context, error);
 				break;
 			}
 
-			cpg_link_add_action (link,
-			                     cpg_link_action_new (cpg_property_get_name (property),
-			                                          cpg_expression_new (cpg_embedded_string_expand (integration,
-			                                                                                          context->priv->embedded))));
+			property = cpg_object_get_property (obj, exname);
+			cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);
+
+			if (annotation)
+			{
+				cpg_annotatable_set_annotation (CPG_ANNOTATABLE (property),
+				                                annotation);
+			}
+
+			if (integration != NULL)
+			{
+				CpgLink *link;
+				gchar const *expr;
+
+				link = find_or_create_self_link (context, obj, property);
+
+				if (!link)
+				{
+					cpg_embedded_context_restore (context->priv->embedded);
+
+					break;
+				}
+
+				expr = cpg_embedded_string_expand (integration,
+				                                   context->priv->embedded);
+
+				cpg_link_add_action (link,
+				                     cpg_link_action_new (cpg_property_get_name (property),
+				                                          cpg_expression_new (expr)));
+			}
+
+			cpg_embedded_context_restore (context->priv->embedded);
 		}
 
 		cpg_embedded_context_restore (context->priv->embedded);
