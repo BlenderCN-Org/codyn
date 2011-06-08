@@ -532,6 +532,9 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			cpg_embedded_context_restore (context->priv->embedded);
 		}
 
+		g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
+		g_slist_free (exps);
+
 		cpg_embedded_context_restore (context->priv->embedded);
 	}
 
