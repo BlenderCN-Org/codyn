@@ -150,6 +150,23 @@ cpg_expansion_get_index (CpgExpansion *id,
 }
 
 void
+cpg_expansion_set_index (CpgExpansion *id,
+                         gint          idx,
+                         gint          val)
+{
+	Expansion *ex;
+
+	g_return_if_fail (CPG_IS_EXPANSION (id));
+
+	ex = get_ex (id, idx);
+
+	if (ex)
+	{
+		ex->idx = val;
+	}
+}
+
+void
 cpg_expansion_set (CpgExpansion *id,
                    gint          idx,
                    gchar const  *val)

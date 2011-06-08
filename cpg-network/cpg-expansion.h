@@ -44,6 +44,10 @@ gchar const  *cpg_expansion_get              (CpgExpansion           *id,
 gint          cpg_expansion_get_index        (CpgExpansion           *id,
                                               gint                    idx);
 
+void          cpg_expansion_set_index        (CpgExpansion           *id,
+                                              gint                    idx,
+                                              gint                    val);
+
 void          cpg_expansion_add              (CpgExpansion           *id,
                                               gchar const            *item);
 

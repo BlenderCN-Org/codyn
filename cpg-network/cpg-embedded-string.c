@@ -631,6 +631,9 @@ expansion_concat (CpgExpansion *s1,
 	for (i = 1; i < cpg_expansion_num (s2); ++i)
 	{
 		cpg_expansion_add (copy, cpg_expansion_get (s2, i));
+		cpg_expansion_set_index (copy,
+		                         cpg_expansion_num (copy) - 1,
+		                         cpg_expansion_get_index (s2, i));
 	}
 
 	return copy;
@@ -686,9 +689,15 @@ expansion_shift (CpgExpansion *expansion)
 
 	for (i = cpg_expansion_num (expansion) - 2; i >= 0; --i)
 	{
+		gint idx = cpg_expansion_get_index (expansion, i);
+
 		cpg_expansion_set (expansion,
 		                   i + 1,
 		                   cpg_expansion_get (expansion, i));
+
+		cpg_expansion_set_index (expansion,
+		                         i + 1,
+		                         idx);
 	}
 }
 
@@ -696,6 +705,7 @@ static GSList *
 parse_expansion (gchar const **id)
 {
 	GSList *ret = NULL;
+	gint i = 0;
 
 	while (**id)
 	{
@@ -706,6 +716,10 @@ parse_expansion (gchar const **id)
 
 		for (it = items; it; it = g_slist_next (it))
 		{
+			cpg_expansion_set_index (it->data,
+			                         0,
+			                         i++);
+
 			expansion_shift (it->data);
 		}
 
@@ -792,7 +806,6 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
 		ret = expand_id_recurse (&id, "\0");
 	}
 
-	cpg_expansions_annotate_indices (ret);
 	return ret;
 }
 
