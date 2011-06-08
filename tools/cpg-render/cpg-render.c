@@ -12,6 +12,7 @@ static gchar *select_root = NULL;
 static gboolean output_dot = TRUE;
 static gboolean output_tikz = FALSE;
 static gboolean use_labels = FALSE;
+static gboolean no_preview = FALSE;
 
 static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
@@ -19,6 +20,7 @@ static GOptionEntry entries[] = {
 	{"tikz", 't', 0, G_OPTION_ARG_NONE, &output_tikz, "Output a TiKz file", NULL},
 	{"root", 'r', 0, G_OPTION_ARG_STRING, &select_root, "Select root group to output", NULL},
 	{"labels", 'l', 0, G_OPTION_ARG_NONE, &use_labels, "Use labels in nodes", NULL},
+	{"no-preview", 0, 0, G_OPTION_ARG_NONE, &no_preview, "Do not create preview file for TiKz output", NULL},
 	{NULL}
 };
 
@@ -65,6 +67,7 @@ parse_network (gchar const *filename, GError **error)
 static GDataOutputStream *
 create_output_stream (GFile        *input_file,
                       gchar const  *suffix,
+                      gchar       **name,
                       GError      **error)
 {
 	GOutputStream *ret;
@@ -74,21 +77,25 @@ create_output_stream (GFile        *input_file,
 	     g_strcmp0 (output_file, "-") == 0)
 	{
 		ret = g_unix_output_stream_new (STDOUT_FILENO, TRUE);
+
+		if (name)
+		{
+			*name = NULL;
+		}
 	}
 	else
 	{
 		GFile *file;
+		gchar *b;
+		gchar *p;
+		gchar *prefix;
 
 		if (output_file)
 		{
-			file = g_file_new_for_commandline_arg (output_file);
+			prefix = g_strdup (output_file);
 		}
 		else
 		{
-			gchar *b;
-			gchar *p;
-			gchar *prefix;
-
 			b = g_file_get_basename (input_file);
 			p = strrchr (b, '.');
 
@@ -102,12 +109,19 @@ create_output_stream (GFile        *input_file,
 			}
 
 			g_free (b);
-			b = g_strconcat (prefix, ".", suffix, NULL);
-
-			file = g_file_new_for_path (b);
-
-			g_free (b);
 		}
+
+		b = g_strconcat (prefix, ".", suffix, NULL);
+
+		file = g_file_new_for_path (b);
+
+		if (name)
+		{
+			*name = g_strdup (prefix);
+		}
+
+		g_free (b);
+		g_free (prefix);
 
 		ret = G_OUTPUT_STREAM (g_file_replace (file, NULL, FALSE, G_FILE_CREATE_NONE, NULL, error));
 
@@ -167,7 +181,7 @@ output_to_dot (CpgNetwork  *network,
 	GFile *file;
 
 	file = cpg_network_get_file (network);
-	stream = create_output_stream (file, "dot", error);
+	stream = create_output_stream (file, "dot", NULL, error);
 
 	if (file)
 	{
@@ -484,9 +498,56 @@ output_to_tikz (CpgNetwork  *network,
 	GSList const *children;
 	GSList *links = NULL;
 	GSList *infos;
+	gchar *name;
 
 	file = cpg_network_get_file (network);
-	stream = create_output_stream (file, "tex", error);
+
+	if (!no_preview)
+	{
+		stream = create_output_stream (file, "tex", &name, error);
+
+		if (!stream)
+		{
+			if (file)
+			{
+				g_object_unref (file);
+			}
+
+			return FALSE;
+		}
+
+		write_stream_nl ("\\documentclass{article}"
+"\\usepackage{tikz}\n"
+"\\usepackage[active,tightpage]{preview}\n"
+"\n"
+"\\usetikzlibrary{calc,positioning,arrows,shapes}\n"
+"\n"
+"\\PreviewEnvironment{tikzpicture}\n"
+"\\setlength\\PreviewBorder{5pt}\n");
+
+		if (name)
+		{
+			write_stream_printf ("\\include{%s.inc}\n\n", name);
+		}
+
+		write_stream_nl ("\\begin{document}\n"
+"	\\begin{tikzpicture}\n"
+"		\\rendercpg[20]\n"
+"	\\end{tikzpicture}\n"
+"\\end{document}");
+
+		if (name)
+		{
+			g_object_unref (stream);
+			stream = create_output_stream (file, "inc.tex", NULL, error);
+		}
+
+		g_free (name);
+	}
+	else
+	{
+		stream = create_output_stream (file, "inc.tex", NULL, error);
+	}
 
 	if (file)
 	{
