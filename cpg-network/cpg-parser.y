@@ -966,7 +966,7 @@ debug
 	;
 
 delete_item
-	: selector_type selector	{ cpg_parser_context_delete_selector (context, $1, $2); }
+	: selector_type selector	{ cpg_parser_context_delete_selector (context, $1, $2); errb }
 	| common_scopes
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }

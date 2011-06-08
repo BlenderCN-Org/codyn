@@ -3353,7 +3353,9 @@ cpg_parser_context_delete_selector (CpgParserContext *context,
 
 				parent = cpg_property_get_object (obj);
 
-				if (!cpg_object_remove_property (parent, obj, &error))
+				if (!cpg_object_remove_property (parent,
+				                                 cpg_property_get_name (obj),
+				                                 &error))
 				{
 					parser_failed_error (context, error);
 					break;
