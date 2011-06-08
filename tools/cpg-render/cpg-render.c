@@ -204,10 +204,7 @@ output_to_dot (CpgNetwork  *network,
 
 		if (get_location (child, &x, &y))
 		{
-			x *= 1;
-			y *= -1;
-
-			write_stream_printf (",pos=\"%d,%d!\",pin=true", x, y);
+			write_stream_printf (",pos=\"%d,%d!\",pin=true", x, -y);
 		}
 
 		write_stream_nl ("];");
@@ -250,6 +247,233 @@ output_to_dot (CpgNetwork  *network,
 	return TRUE;
 }
 
+#define write_style(name,val) write_stream_printf ("\t\\tikzstyle{%s custom}+=[]\n\t\\tikzstyle{%s}=[%s,%s custom]\n\n", name, name, val, name)
+
+static gboolean
+tikz_styles (CpgGroup           *root,
+             GDataOutputStream  *stream,
+             GError            **error)
+{
+	GSList const *children;
+	GHashTable *table;
+
+	write_style ("state", "circle, draw, minimum size=6mm");
+	write_style ("coupling", "max distance=6mm, -stealth'");
+	write_style ("sinewave", "scale=0.5,semithick");
+
+	write_stream_nl ("\t\\tikzstyle{bends custom}+=[]");
+	write_stream_nl ("\t\\tikzset{bends/.style={bend left=##1,bends custom=##1}}");
+	write_stream_nl ("");
+
+	children = cpg_group_get_children (root);
+
+	table = g_hash_table_new_full (g_str_hash,
+	                               g_str_equal,
+	                               (GDestroyNotify)g_free,
+	                               NULL);
+
+	while (children)
+	{
+		CpgObject *obj = children->data;
+		GSList const *temps = cpg_object_get_applied_templates (obj);
+
+		write_stream_printf ("\t\\tikzstyle{%s %s}+=[]\n",
+		                     CPG_IS_LINK (obj) ? "link" : "state",
+		                     cpg_object_get_id (obj));
+
+		while (temps)
+		{
+			CpgObject *t = temps->data;
+			gchar *id;
+
+			id = cpg_object_get_full_id (t);
+
+			if (!g_hash_table_lookup (table, id))
+			{
+				write_stream_printf ("\t\\tikzstyle{template %s}+=[]\n", id);
+				g_hash_table_insert (table, id, GINT_TO_POINTER (1));
+			}
+			else
+			{
+				g_free (id);
+			}
+
+			temps = g_slist_next (temps);
+		}
+
+		children = g_slist_next (children);
+	}
+
+	g_hash_table_destroy (table);
+
+	write_stream_nl ("");
+
+	return TRUE;
+}
+
+typedef struct
+{
+	CpgLink *link;
+	gchar const *bendname;
+	gint offset;
+} LinkInfo;
+
+static LinkInfo *
+link_info_new (CpgLink     *link,
+               gchar const *bendname,
+               gint         offset)
+{
+	LinkInfo *ret;
+
+	ret = g_slice_new0 (LinkInfo);
+
+	ret->link = link;
+	ret->bendname = bendname;
+	ret->offset = offset;
+
+	return ret;
+}
+
+static void
+link_info_free (LinkInfo *self)
+{
+	g_slice_free (LinkInfo, self);
+}
+
+static GSList *
+calculate_link_info (GSList *links)
+{
+	GSList *ret = NULL;
+	GHashTable *offset;
+	GHashTable *fromto;
+
+	offset = g_hash_table_new_full (g_str_hash,
+	                                g_str_equal,
+	                                (GDestroyNotify)g_free,
+	                                NULL);
+
+	fromto = g_hash_table_new_full (g_str_hash,
+	                                g_str_equal,
+	                                (GDestroyNotify)g_free,
+	                                NULL);
+
+	while (links)
+	{
+		CpgLink *link;
+		CpgObject *from;
+		CpgObject *to;
+		LinkInfo *other;
+		LinkInfo *info;
+
+		gchar *ptr;
+		gchar *optr;
+		gint ofs;
+
+		link = links->data;
+		links = g_slist_next (links);
+
+		from = cpg_link_get_from (link);
+		to = cpg_link_get_to (link);
+
+		if (!from || !to)
+		{
+			continue;
+		}
+
+		ptr = g_strconcat (cpg_object_get_id (from),
+		                   "##",
+		                   cpg_object_get_id (to),
+		                   NULL);
+
+		optr = g_strconcat (cpg_object_get_id (to),
+		                    "##",
+		                    cpg_object_get_id (from),
+		                    NULL);
+
+		other = g_hash_table_lookup (fromto,
+		                             optr);
+
+		if (other)
+		{
+			ofs = 1;
+			other->offset = 1;
+
+			g_hash_table_remove (fromto, optr);
+		}
+		else
+		{
+			ofs = GPOINTER_TO_INT (g_hash_table_lookup (offset, ptr));
+		}
+
+		info = link_info_new (link, "bend left", ofs);
+		ret = g_slist_prepend (ret, info);
+
+		if (ofs == 0)
+		{
+			g_hash_table_insert (fromto, g_strdup (ptr), info);
+		}
+
+		g_free (optr);
+
+		g_hash_table_insert (offset, ptr, GINT_TO_POINTER (ofs + 1));
+	}
+
+	g_hash_table_destroy (fromto);
+	g_hash_table_destroy (offset);
+
+	return g_slist_reverse (ret);
+}
+
+static gchar *
+object_styles (CpgObject *obj)
+{
+	GString *ret;
+	GSList const *temps;
+
+	ret = g_string_new ("");
+
+	temps = cpg_object_get_applied_templates (obj);
+
+	while (temps)
+	{
+		CpgObject *t;
+		gchar *id;
+
+		t = temps->data;
+
+		if (ret->len != 0)
+		{
+			g_string_append_c (ret, ',');
+		}
+
+		g_string_append (ret, "template ");
+
+		id = cpg_object_get_full_id (t);
+		g_string_append (ret, id);
+		g_free (id);
+
+		temps = g_slist_next (temps);
+	}
+
+	if (ret->len != 0)
+	{
+		g_string_append_c (ret, ',');
+	}
+
+	if (CPG_IS_LINK (obj))
+	{
+		g_string_append (ret, "link ");
+	}
+	else
+	{
+		g_string_append (ret, "state ");
+	}
+
+	g_string_append (ret, cpg_object_get_id (obj));
+
+	return g_string_free (ret, FALSE);
+}
+
 static gboolean
 output_to_tikz (CpgNetwork  *network,
                 CpgGroup    *root,
@@ -257,6 +481,9 @@ output_to_tikz (CpgNetwork  *network,
 {
 	GDataOutputStream *stream;
 	GFile *file;
+	GSList const *children;
+	GSList *links = NULL;
+	GSList *infos;
 
 	file = cpg_network_get_file (network);
 	stream = create_output_stream (file, "tex", error);
@@ -270,6 +497,90 @@ output_to_tikz (CpgNetwork  *network,
 	{
 		return FALSE;
 	}
+
+	write_stream_nl ("\\newcommand{\\cpgconnect}[4] {");
+	write_stream_nl ("\t\\path (#1) edge [coupling,bends=#3,#4] (#2);");
+	write_stream_nl ("}\n");
+
+	write_stream_nl ("\\newcommand{\\cpgbendandconnect}[5] {");
+	write_stream_nl ("\t\\pgfmathsetmacro{\\ThisBend}{#3 * #4}");
+	write_stream_nl ("\t\\cpgconnect{#1}{#2}{\\ThisBend}{#5}");
+	write_stream_nl ("}\n");
+
+	write_stream_nl ("\\newcommand{\\rendercpg}[1][30]{");
+	write_stream_nl ("\t\\def\\Bending{#1}");
+
+	if (!tikz_styles (root, stream, error))
+	{
+		return FALSE;
+	}
+
+	children = cpg_group_get_children (root);
+
+	while (children)
+	{
+		CpgObject *child;
+		gint x;
+		gint y;
+		gchar *styles;
+
+		child = children->data;
+		children = g_slist_next (children);
+
+		if (CPG_IS_LINK (child))
+		{
+			links = g_slist_prepend (links, child);
+			continue;
+		}
+
+		styles = object_styles (child);
+
+		write_stream_printf ("\t\\node[state,%s] (%s)",
+		                     styles,
+		                     cpg_object_get_id (child));
+
+		g_free (styles);
+
+		if (get_location (child, &x, &y))
+		{
+			write_stream_printf (" at (%d, %d)", x, -y);
+		}
+
+		write_stream_printf (" {%s}",
+		                     use_labels ? cpg_object_get_id (child) : "");
+
+		write_stream_nl (";");
+
+		write_stream_printf ("\t\\draw [sinewave,x=1.57ex,y=1ex] ($(%s.center) - (2,0)$) sin +(1,1) cos +(1,-1) sin +(1,-1) cos +(1,1);\n\n", cpg_object_get_id (child));
+
+	}
+
+	links = g_slist_reverse (links);
+	infos = calculate_link_info (links);
+	g_slist_free (links);
+
+	for (links = infos; links; links = g_slist_next (links))
+	{
+		LinkInfo *info;
+		gchar *styles;
+
+		info = links->data;
+
+		styles = object_styles (CPG_OBJECT (info->link));
+
+		write_stream_printf ("\t\\cpgbendandconnect{%s}{%s}{%d}{\\Bending}{%s}\n",
+		                     cpg_object_get_id (cpg_link_get_from (info->link)),
+		                     cpg_object_get_id (cpg_link_get_to (info->link)),
+		                     info->offset,
+		                     styles);
+
+		g_free (styles);
+	}
+
+	write_stream_nl ("}");
+
+	g_slist_foreach (infos, (GFunc)link_info_free, NULL);
+	g_slist_free (infos);
 
 	g_object_unref (stream);
 
@@ -318,13 +629,13 @@ generate (gchar const  *filename,
 		root = CPG_GROUP (network);
 	}
 
-	if (output_dot)
+	if (output_tikz)
 	{
-		ret = output_to_dot (network, root, error);
+		ret = output_to_tikz (network, root, error);
 	}
 	else
 	{
-		ret = output_to_tikz (network, root, error);
+		ret = output_to_dot (network, root, error);
 	}
 
 	g_object_unref (network);
