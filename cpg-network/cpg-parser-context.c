@@ -553,7 +553,6 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 	GSList *item;
 	gchar *annotation;
 
-
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (target != NULL);
 	g_return_if_fail (expression != NULL);
@@ -563,31 +562,49 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		CpgLinkAction *action;
-		gchar const *extarget;
-		gchar const *exexpression;
+		GSList *exps;
+		GSList *iteme;
 
 		cpg_embedded_context_save (context->priv->embedded);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		extarget = cpg_embedded_string_expand (target, context->priv->embedded);
-		exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
+		exps = cpg_embedded_string_expand_multiple (target, context->priv->embedded);
+
+		for (iteme = exps; iteme; iteme = g_slist_next (iteme))
+		{
+			gchar const *extarget;
+			gchar const *exexpression;
+			CpgLinkAction *action;
+
+			cpg_embedded_context_save (context->priv->embedded);
+			cpg_embedded_context_add_expansion (context->priv->embedded,
+			                                    iteme->data);
+
+			extarget = cpg_expansion_get (iteme->data, 0);
+			exexpression = cpg_embedded_string_expand (expression,
+			                                           context->priv->embedded);
+
+			action = cpg_link_action_new (extarget,
+			                              cpg_expression_new (exexpression));
+
+			cpg_link_add_action (CPG_LINK (cpg_selection_get_object (item->data)),
+			                     action);
+
+			if (annotation)
+			{
+				cpg_annotatable_set_annotation (CPG_ANNOTATABLE (action),
+				                                annotation);
+			}
+
+			cpg_embedded_context_restore (context->priv->embedded);
+		}
 
 		cpg_embedded_context_restore (context->priv->embedded);
 
-		action = cpg_link_action_new (extarget,
-		                              cpg_expression_new (exexpression));
-
-		cpg_link_add_action (CPG_LINK (cpg_selection_get_object (item->data)),
-		                     action);
-
-		if (annotation)
-		{
-			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (action),
-			                                annotation);
-		}
+		g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
+		g_slist_free (exps);
 	}
 
 	g_object_unref (target);
