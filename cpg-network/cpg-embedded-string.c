@@ -474,6 +474,8 @@ parse_expansion_range (gchar const *s,
                        gint         len)
 {
 	static GRegex *rangereg = NULL;
+	static GRegex *timesreg = NULL;
+
 	GMatchInfo *info;
 	gchar *id;
 	GSList *ret = NULL;
@@ -481,6 +483,14 @@ parse_expansion_range (gchar const *s,
 	if (rangereg == NULL)
 	{
 		rangereg = g_regex_new ("([0-9]+)-([0-9]+)",
+		                        G_REGEX_ANCHORED,
+		                        G_REGEX_MATCH_ANCHORED,
+		                        NULL);
+	}
+
+	if (timesreg == NULL)
+	{
+		timesreg = g_regex_new ("([0-9]+)[*](.*)",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -514,6 +524,23 @@ parse_expansion_range (gchar const *s,
 		g_free (end);
 
 		g_match_info_free (info);
+	}
+	else if (g_regex_match (timesreg, id, 0, &info))
+	{
+		gchar *start = g_match_info_fetch (info, 1);
+		gchar *rest = g_match_info_fetch (info, 2);
+
+		gint cstart = (gint)g_ascii_strtoll (start, NULL, 10);
+
+		while (cstart > 0)
+		{
+			ret = g_slist_prepend (ret,
+			                       cpg_expansion_new_one (rest));
+			--cstart;
+		}
+
+		g_free (start);
+		g_free (rest);
 	}
 	else
 	{
