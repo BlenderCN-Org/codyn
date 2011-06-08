@@ -134,7 +134,7 @@ win32/make-zip
 tools/Makefile
 tools/cpg-monitor/Makefile
 tools/cpg-parser/Makefile
-tools/cpg-to-eps/Makefile
+tools/cpg-render/Makefile
 ])
 
 AC_OUTPUT

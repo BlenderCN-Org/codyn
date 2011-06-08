@@ -11,36 +11,34 @@ static gchar *output_file = NULL;
 static gchar *select_root = NULL;
 static gboolean output_dot = TRUE;
 static gboolean output_tikz = FALSE;
-static gboolean preserve_format = FALSE;
-static gboolean no_compile = FALSE;
+static gboolean use_labels = FALSE;
 
 static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
 	{"dot", 'd', 0, G_OPTION_ARG_NONE, &output_dot, "Output a DOT file (default)", NULL},
 	{"tikz", 't', 0, G_OPTION_ARG_NONE, &output_tikz, "Output a TiKz file", NULL},
-	{"preserve", 'p', 0, G_OPTION_ARG_NONE, &preserve_format, "Preserve the generated formatted file", NULL},
-	{"no-compile", 'n', 0, G_OPTION_ARG_NONE, &no_compile, "Do not compile to EPS (implies --preserve)", NULL},
 	{"root", 'r', 0, G_OPTION_ARG_STRING, &select_root, "Select root group to output", NULL},
+	{"labels", 'l', 0, G_OPTION_ARG_NONE, &use_labels, "Use labels in nodes", NULL},
 	{NULL}
 };
 
 static CpgNetwork *
-parse_network (gchar const *args[], gint argc, GError **error)
+parse_network (gchar const *filename, GError **error)
 {
 	CpgNetwork *network;
 	gboolean fromstdin;
 
-	fromstdin = (argc == 0 || g_strcmp0 (args[0], "-") == 0);
+	fromstdin = (filename == NULL || g_strcmp0 (filename, "-") == 0);
 
 	if (!fromstdin)
 	{
 		GFile *file;
 
-		file = g_file_new_for_commandline_arg (args[0]);
+		file = g_file_new_for_commandline_arg (filename);
 
 		if (!g_file_query_exists (file, NULL))
 		{
-			g_printerr ("Could not open file: %s\n", args[0]);
+			g_printerr ("Could not open file: %s\n", filename);
 			g_object_unref (file);
 
 			return NULL;
@@ -65,12 +63,15 @@ parse_network (gchar const *args[], gint argc, GError **error)
 }
 
 static GDataOutputStream *
-create_output_stream (GError **error)
+create_output_stream (GFile        *input_file,
+                      gchar const  *suffix,
+                      GError      **error)
 {
 	GOutputStream *ret;
 	GDataOutputStream *data;
 
-	if (output_file == NULL || (output_file[0] == '-' && !output_file[1]))
+	if ((output_file == NULL && input_file == NULL) ||
+	     g_strcmp0 (output_file, "-") == 0)
 	{
 		ret = g_unix_output_stream_new (STDOUT_FILENO, TRUE);
 	}
@@ -78,7 +79,36 @@ create_output_stream (GError **error)
 	{
 		GFile *file;
 
-		file = g_file_new_for_commandline_arg (output_file);
+		if (output_file)
+		{
+			file = g_file_new_for_commandline_arg (output_file);
+		}
+		else
+		{
+			gchar *b;
+			gchar *p;
+			gchar *prefix;
+
+			b = g_file_get_basename (input_file);
+			p = strrchr (b, '.');
+
+			if (p != NULL)
+			{
+				prefix = g_strndup (b, p - b);
+			}
+			else
+			{
+				prefix = g_strdup (b);
+			}
+
+			g_free (b);
+			b = g_strconcat (prefix, ".", suffix, NULL);
+
+			file = g_file_new_for_path (b);
+
+			g_free (b);
+		}
+
 		ret = G_OUTPUT_STREAM (g_file_replace (file, NULL, FALSE, G_FILE_CREATE_NONE, NULL, error));
 
 		g_object_unref (file);
@@ -134,8 +164,15 @@ output_to_dot (CpgNetwork  *network,
 	GDataOutputStream *stream;
 	GSList const *children;
 	GSList *links = NULL;
+	GFile *file;
 
-	stream = create_output_stream (error);
+	file = cpg_network_get_file (network);
+	stream = create_output_stream (file, "dot", error);
+
+	if (file)
+	{
+		g_object_unref (file);
+	}
 
 	if (!stream)
 	{
@@ -163,7 +200,7 @@ output_to_dot (CpgNetwork  *network,
 
 		write_stream_printf ("\t%s [label=\"%s\"",
 		                     cpg_object_get_id (child),
-		                     cpg_object_get_id (child));
+		                     use_labels ? cpg_object_get_id (child) : "");
 
 		if (get_location (child, &x, &y))
 		{
@@ -219,8 +256,15 @@ output_to_tikz (CpgNetwork  *network,
                 GError     **error)
 {
 	GDataOutputStream *stream;
+	GFile *file;
 
-	stream = create_output_stream (error);
+	file = cpg_network_get_file (network);
+	stream = create_output_stream (file, "tex", error);
+
+	if (file)
+	{
+		g_object_unref (file);
+	}
 
 	if (!stream)
 	{
@@ -232,41 +276,19 @@ output_to_tikz (CpgNetwork  *network,
 	return TRUE;
 }
 
-int
-main (int argc, char *argv[])
+static gboolean
+generate (gchar const  *filename,
+          GError      **error)
 {
-	GOptionContext *ctx;
-	GError *error = NULL;
-	gboolean ret;
 	CpgNetwork *network;
 	CpgGroup *root;
+	gboolean ret;
 
-	g_type_init ();
-
-	ctx = g_option_context_new ("<NETWORK> - parse cpg network");
-	g_option_context_add_main_entries (ctx, entries, NULL);
-
-	ret = g_option_context_parse (ctx, &argc, &argv, &error);
-
-	if (!ret)
-	{
-		g_printerr ("Failed to parse options:%s\n", error->message);
-		g_error_free (error);
-
-		return 1;
-	}
-
-	network = parse_network ((gchar const **)(argv + 1), argc - 1, &error);
+	network = parse_network (filename, error);
 
 	if (!network)
 	{
-		if (error)
-		{
-			g_printerr ("Failed to parse network: %s\n", error->message);
-			g_error_free (error);
-		}
-
-		return 1;
+		return FALSE;
 	}
 
 	if (select_root)
@@ -280,13 +302,13 @@ main (int argc, char *argv[])
 		{
 			g_printerr ("Could not find root `%s'", select_root);
 			g_object_unref (network);
-			return 1;
+			return FALSE;
 		}
 		else if (!CPG_IS_GROUP (obj))
 		{
 			g_printerr ("The selected root `%s' is not a group", select_root);
 			g_object_unref (network);
-			return 1;
+			return FALSE;
 		}
 
 		root = CPG_GROUP (obj);
@@ -298,24 +320,61 @@ main (int argc, char *argv[])
 
 	if (output_dot)
 	{
-		ret = output_to_dot (network, root, &error);
+		ret = output_to_dot (network, root, error);
 	}
 	else
 	{
-		ret = output_to_tikz (network, root, &error);
+		ret = output_to_tikz (network, root, error);
 	}
 
 	g_object_unref (network);
 
+	return ret;
+}
+
+int
+main (int argc, char *argv[])
+{
+	GOptionContext *ctx;
+	GError *error = NULL;
+	gboolean ret;
+	gint i;
+
+	g_type_init ();
+
+	ctx = g_option_context_new ("[FILES...] - render cpg network");
+	g_option_context_add_main_entries (ctx, entries, NULL);
+
+	ret = g_option_context_parse (ctx, &argc, &argv, &error);
+
 	if (!ret)
 	{
-		if (error)
-		{
-			g_printerr ("Failed: %s", error->message);
-			g_error_free (error);
-		}
+		g_printerr ("Failed to parse options:%s\n", error->message);
+		g_error_free (error);
 
 		return 1;
+	}
+
+	for (i = 1; i < argc; ++i)
+	{
+		if (!generate (argv[i], &error))
+		{
+			g_printerr ("Failed to parse network: %s\n", error->message);
+			g_error_free (error);
+
+			return 1;
+		}
+	}
+
+	if (argc == 1)
+	{
+		if (!generate (NULL, &error))
+		{
+			g_printerr ("Failed to parse network: %s\n", error->message);
+			g_error_free (error);
+
+			return 1;
+		}
 	}
 
 	return 0;
