@@ -3,6 +3,7 @@ AC_INIT(cpg-network, 2.0)
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([-Wno-portability])
 
+AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_MACRO_DIR([m4])
 
 AC_ISC_POSIX
