@@ -3,6 +3,7 @@
 #include "cpg-import-alias.h"
 
 #include <string.h>
+#include "config.h"
 
 /**
  * SECTION:cpg-import
@@ -14,7 +15,8 @@
  **/
 #define CPG_IMPORT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_IMPORT, CpgImportPrivate))
 
-#define IMPORT_DIR "cpg-network-2.0"
+#define IMPORT_DIR "cpg-network-" API_VERSION
+#define IMPORT_ENV "CPG_NETWORK_IMPORT_PATH"
 
 static gchar **import_search_path = NULL;
 
@@ -178,22 +180,43 @@ static gchar **
 default_search_path (void)
 {
 	const gchar * const *xdg_dirs;
+	gchar const *ienv;
 	GPtrArray *dirs = g_ptr_array_new ();
+
+	ienv = g_getenv (IMPORT_ENV);
+
+	if (ienv)
+	{
+		gchar **parts;
+		gchar **ptr;
+
+		parts = g_strsplit (ienv, ":", -1);
+
+		for (ptr = parts; *ptr; ++ptr)
+		{
+			if (**ptr)
+			{
+				g_ptr_array_add (dirs, *ptr);
+			}
+		}
+
+		g_free (parts);
+	}
 
 	g_ptr_array_add (dirs, g_build_filename (g_get_user_data_dir (),
 	                                         IMPORT_DIR,
-	                                         "import-library",
+	                                         "library",
 	                                         NULL));
 
 	for (xdg_dirs = g_get_system_data_dirs (); xdg_dirs && *xdg_dirs; ++xdg_dirs)
 	{
 		g_ptr_array_add (dirs, g_build_filename (*xdg_dirs,
 		                                         IMPORT_DIR,
-		                                         "import-library",
+		                                         "library",
 		                                         NULL));
 	}
 
-	g_ptr_array_add (dirs, g_build_filename (DATADIR, IMPORT_DIR, "import-library", NULL));
+	g_ptr_array_add (dirs, g_build_filename (DATADIR, IMPORT_DIR, "library", NULL));
 
 	g_ptr_array_add (dirs, NULL);
 	return (gchar **) g_ptr_array_free (dirs, FALSE);
