@@ -84,6 +84,10 @@ void          cpg_selector_add               (CpgSelector            *selector,
                                               CpgEmbeddedString      *identifier,
                                               gboolean                onset);
 
+void          cpg_selector_add_partial       (CpgSelector            *selector,
+                                              CpgEmbeddedString      *identifier,
+                                              gboolean                onset);
+
 void          cpg_selector_add_pseudo        (CpgSelector            *selector,
                                               CpgSelectorPseudoType  type,
                                               GSList                 *arguments);
@@ -92,10 +96,17 @@ void          cpg_selector_add_regex         (CpgSelector            *selector,
                                               CpgEmbeddedString      *regex,
                                               gboolean                onset);
 
+void          cpg_selector_add_regex_partial (CpgSelector            *selector,
+                                              CpgEmbeddedString      *regex,
+                                              gboolean                onset);
+
 GSList       *cpg_selector_select            (CpgSelector            *selector,
                                               CpgObject              *parent,
                                               CpgSelectorType         type,
                                               CpgEmbeddedContext     *context);
+
+void          cpg_selector_set_partial       (CpgSelector          *selector,
+                                              gboolean              partial);
 
 G_END_DECLS
 

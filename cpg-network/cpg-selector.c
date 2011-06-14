@@ -30,8 +30,17 @@ typedef struct
 
 	union
 	{
-		CpgEmbeddedString *identifier;
-		CpgEmbeddedString *regex;
+		struct
+		{
+			CpgEmbeddedString *identifier;
+			gboolean partial;
+		} identifier;
+
+		struct
+		{
+			CpgEmbeddedString *regex;
+			gboolean partial;
+		} regex;
 
 		struct
 		{
@@ -67,10 +76,10 @@ selector_free (Selector *selector)
 	switch (selector->type)
 	{
 		case SELECTOR_TYPE_IDENTIFIER:
-			g_object_unref (selector->identifier);
+			g_object_unref (selector->identifier.identifier);
 		break;
 		case SELECTOR_TYPE_REGEX:
-			g_object_unref (selector->regex);
+			g_object_unref (selector->regex.regex);
 		break;
 		case SELECTOR_TYPE_PSEUDO:
 			g_slist_foreach (selector->pseudo.arguments, (GFunc)g_object_unref, NULL);
@@ -85,7 +94,8 @@ selector_free (Selector *selector)
 
 static Selector *
 selector_identifier_new (CpgEmbeddedString *identifier,
-                         gboolean           onset)
+                         gboolean           onset,
+                         gboolean           partial)
 {
 	Selector *selector;
 	gchar const *r;
@@ -94,7 +104,9 @@ selector_identifier_new (CpgEmbeddedString *identifier,
 
 	r = cpg_embedded_string_expand (identifier, NULL);
 
-	selector->identifier = g_object_ref (identifier);
+	selector->identifier.identifier = g_object_ref (identifier);
+	selector->identifier.partial = partial;
+
 	selector->as_string = g_strdup_printf ("\"%s\"", r);
 	selector->onset = onset;
 
@@ -103,7 +115,8 @@ selector_identifier_new (CpgEmbeddedString *identifier,
 
 static Selector *
 selector_regex_new (CpgEmbeddedString *regex,
-                    gboolean           onset)
+                    gboolean           onset,
+                    gboolean           partial)
 {
 	Selector *selector;
 	gchar const *r;
@@ -112,7 +125,9 @@ selector_regex_new (CpgEmbeddedString *regex,
 
 	r = cpg_embedded_string_expand (regex, NULL);
 
-	selector->regex = g_object_ref (regex);
+	selector->regex.regex = g_object_ref (regex);
+	selector->regex.partial = partial;
+
 	selector->as_string = g_strdup_printf ("/%s/", r);
 	selector->onset = onset;
 
@@ -405,7 +420,18 @@ cpg_selector_add (CpgSelector       *selector,
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (identifier));
 
-	add_selector (selector, selector_identifier_new (identifier, onset));
+	add_selector (selector, selector_identifier_new (identifier, onset, FALSE));
+}
+
+void
+cpg_selector_add_partial (CpgSelector       *selector,
+                          CpgEmbeddedString *identifier,
+                          gboolean           onset)
+{
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (identifier));
+
+	add_selector (selector, selector_identifier_new (identifier, onset, TRUE));
 }
 
 void
@@ -427,7 +453,19 @@ cpg_selector_add_regex (CpgSelector       *selector,
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (regex));
 
-	add_selector (selector, selector_regex_new (regex, onset));
+	add_selector (selector, selector_regex_new (regex, onset, FALSE));
+}
+
+void
+cpg_selector_add_regex_partial (CpgSelector       *selector,
+                                CpgEmbeddedString *regex,
+                                gboolean           onset)
+{
+
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (regex));
+
+	add_selector (selector, selector_regex_new (regex, onset, TRUE));
 }
 
 static gboolean
@@ -481,6 +519,50 @@ make_child_selection (CpgSelection *parent,
 	return ret;
 }
 
+static gboolean
+identifier_match (Selector     *selector,
+                  CpgExpansion *expansion,
+                  gchar const  *name)
+{
+	gchar const *ex;
+
+	ex = cpg_expansion_get (expansion, 0);
+
+	if (!selector->identifier.partial)
+	{
+		return g_strcmp0 (ex, name) == 0;
+	}
+	else
+	{
+		return strstr (name, ex) != NULL;
+	}
+}
+
+static GSList *
+identifier_match_child (Selector     *selector,
+                        CpgExpansion *expansion,
+                        CpgGroup     *group)
+{
+	GSList const *children;
+	GSList *ret = NULL;
+
+	children = cpg_group_get_children (group);
+
+	while (children)
+	{
+		if (identifier_match (selector,
+		                      expansion,
+		                      cpg_object_get_id (children->data)))
+		{
+			ret = g_slist_prepend (ret, children->data);
+		}
+
+		children = g_slist_next (children);
+	}
+
+	return g_slist_reverse (ret);
+}
+
 static GSList *
 selector_select_identifier_object (Selector           *selector,
                                    CpgSelection       *parent,
@@ -489,16 +571,15 @@ selector_select_identifier_object (Selector           *selector,
                                    CpgExpansion       *expansion,
                                    GSList             *ret)
 {
-	CpgObject *child;
-
 	if (selector->onset)
 	{
 		gpointer obj;
 
 		obj = cpg_selection_get_object (parent);
 
-		if (g_strcmp0 (cpg_expansion_get (expansion, 0),
-		               cpg_object_get_id (obj)) == 0 &&
+		if (identifier_match (selector,
+		                      expansion,
+		                      cpg_object_get_id (obj)) &&
 		    check_type (obj, type))
 		{
 			ret = g_slist_prepend (ret,
@@ -509,21 +590,30 @@ selector_select_identifier_object (Selector           *selector,
 	}
 	else
 	{
+		GSList *childm;
+		GSList *item;
+
 		if (!CPG_IS_GROUP (cpg_selection_get_object (parent)))
 		{
 			return ret;
 		}
 
-		child = cpg_group_get_child (CPG_GROUP (cpg_selection_get_object (parent)),
-		                             cpg_expansion_get (expansion, 0));
+		childm = identifier_match_child (selector,
+		                                 expansion,
+		                                 CPG_GROUP (cpg_selection_get_object (parent)));
 
-		if (child && check_type (child, type))
+		for (item = childm; item; item = g_slist_next (item))
 		{
-			ret = g_slist_prepend (ret,
-			                       make_child_selection (parent,
-			                                             expansion,
-			                                             child));
+			if (check_type (item->data, type))
+			{
+				ret = g_slist_prepend (ret,
+				                       make_child_selection (parent,
+				                                             expansion,
+				                                             item->data));
+			}
 		}
+
+		g_slist_free (childm);
 	}
 
 	return ret;
@@ -537,7 +627,8 @@ selector_select_identifier_property (Selector           *selector,
                                      CpgExpansion       *expansion,
                                      GSList             *ret)
 {
-	CpgProperty *prop;
+	GSList *properties;
+	GSList *item;
 
 	if (selector->onset)
 	{
@@ -545,16 +636,26 @@ selector_select_identifier_property (Selector           *selector,
 		return ret;
 	}
 
-	prop = cpg_object_get_property (cpg_selection_get_object (parent),
-	                                cpg_expansion_get (expansion, 0));
+	properties = cpg_object_get_properties (cpg_selection_get_object (parent));
 
-	if (prop)
+	for (item = properties; item; item = g_slist_next (item))
 	{
-		ret = g_slist_prepend (ret,
-		                       make_child_selection (parent,
-		                                             expansion,
-		                                             prop));
+		CpgProperty *prop;
+
+		prop = item->data;
+
+		if (identifier_match (selector,
+		                      expansion,
+		                      cpg_property_get_name (prop)))
+		{
+			ret = g_slist_prepend (ret,
+			                       make_child_selection (parent,
+			                                             expansion,
+			                                             prop));
+		}
 	}
+
+	g_slist_free (properties);
 
 	return ret;
 }
@@ -568,7 +669,7 @@ selector_select_identifier_action (Selector           *selector,
                                    GSList             *ret)
 {
 	GObject *obj;
-	CpgLinkAction *action;
+	GSList const *actions;
 
 	if (selector->onset)
 	{
@@ -583,15 +684,25 @@ selector_select_identifier_action (Selector           *selector,
 		return ret;
 	}
 
-	action = cpg_link_get_action (CPG_LINK (obj),
-	                              cpg_expansion_get (expansion, 0));
+	actions = cpg_link_get_actions (CPG_LINK (obj));
 
-	if (action)
+	while (actions)
 	{
-		ret = g_slist_prepend (ret,
-		                       make_child_selection (parent,
-		                                             expansion,
-		                                             action));
+		CpgLinkAction *action;
+
+		action = actions->data;
+
+		if (identifier_match (selector,
+		                      expansion,
+		                      cpg_link_action_get_target (action)))
+		{
+			ret = g_slist_prepend (ret,
+			                       make_child_selection (parent,
+			                                             expansion,
+			                                             action));
+		}
+
+		actions = g_slist_next (actions);
 	}
 
 	return ret;
@@ -608,7 +719,7 @@ selector_select_identifier (CpgSelector        *self,
 	GSList *exps;
 	GSList *e;
 
-	exps = cpg_embedded_string_expand_multiple (selector->identifier,
+	exps = cpg_embedded_string_expand_multiple (selector->identifier.identifier,
 	                                            context);
 
 	for (e = exps; e; e = g_slist_next (e))
@@ -697,6 +808,17 @@ make_child_selection_from_match (CpgSelection     *parent,
 	return ret;
 }
 
+static GRegex *
+regex_create (Selector            *selector,
+              CpgEmbeddedContext  *context,
+              GError             **error)
+{
+	return g_regex_new (cpg_embedded_string_expand (selector->regex.regex, context),
+	                     G_REGEX_CASELESS | (selector->regex.partial ? 0 : G_REGEX_ANCHORED),
+	                     G_REGEX_MATCH_NOTEMPTY | (selector->regex.partial ? 0 : G_REGEX_MATCH_ANCHORED),
+	                     error);
+}
+
 static GSList *
 selector_select_regex_object (Selector           *selector,
                               CpgSelection       *parent,
@@ -707,10 +829,7 @@ selector_select_regex_object (Selector           *selector,
 	GSList const *children;
 	GRegex *regex;
 
-	regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
-	                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
-	                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
-	                     NULL);
+	regex = regex_create (selector, context, NULL);
 
 	if (!regex)
 	{
@@ -796,10 +915,7 @@ selector_select_regex_property (Selector           *selector,
 		return NULL;
 	}
 
-	regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
-	                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
-	                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
-	                     NULL);
+	regex = regex_create (selector, context, NULL);
 
 	if (!regex)
 	{
@@ -855,10 +971,7 @@ selector_select_regex_action (Selector           *selector,
 		return NULL;
 	}
 
-	regex = g_regex_new (cpg_embedded_string_expand (selector->regex, context),
-	                     G_REGEX_CASELESS | G_REGEX_ANCHORED,
-	                     G_REGEX_MATCH_ANCHORED | G_REGEX_MATCH_NOTEMPTY,
-	                     NULL);
+	regex = regex_create (selector, context, NULL);
 
 	if (!regex)
 	{
@@ -1795,3 +1908,27 @@ cpg_selector_set_first_onset (CpgSelector *selector,
 	sel->onset = onset;
 }
 
+void
+cpg_selector_set_partial (CpgSelector *selector,
+                          gboolean     partial)
+{
+	GSList *item;
+
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+
+	for (item = selector->priv->selectors; item; item = g_slist_next (item))
+	{
+		Selector *sel;
+
+		sel = item->data;
+
+		if (sel->type == SELECTOR_TYPE_IDENTIFIER)
+		{
+			sel->identifier.partial = partial;
+		}
+		else if (sel->type == SELECTOR_TYPE_REGEX)
+		{
+			sel->regex.partial = partial;
+		}
+	}
+}
