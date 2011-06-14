@@ -103,6 +103,7 @@ AC_SUBST(CPG_NETWORK_CFLAGS)
 
 CPG_NETWORK_API_VERSION=2.0
 AC_SUBST(CPG_NETWORK_API_VERSION)
+AC_DEFINE_UNQUOTED([API_VERSION], ["$CPG_NETWORK_API_VERSION"], [API version])
 
 AC_CHECK_LIB([termcap],
              [tgetent],
@@ -126,6 +127,7 @@ cpg-network-webots/Makefile
 data/Makefile
 data/cpg.xml
 data/library/Makefile
+data/library/oscillators/Makefile
 docs/Makefile
 docs/reference/Makefile
 m4/Makefile
@@ -151,3 +153,4 @@ Configuration:
 	GObject Introspection:	$enable_introspection
 	Documentation enabled:  $enable_doc
 "
+
