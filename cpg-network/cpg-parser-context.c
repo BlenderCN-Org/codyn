@@ -2285,23 +2285,33 @@ gboolean
 cpg_parser_context_parse (CpgParserContext  *context,
                           GError           **error)
 {
+	gboolean ret;
+
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), FALSE);
 	g_return_val_if_fail (context->priv->error != NULL || context->priv->inputs, FALSE);
 
-	if (context->priv->error == NULL &&
-	    cpg_parser_parse (context) == 0)
+	if (context->priv->error == NULL)
 	{
-		return TRUE;
+		cpg_parser_context_push_network (context, NULL);
+
+		ret = cpg_parser_parse (context) == 0;
+
+		cpg_parser_context_pop (context);
 	}
 	else
+	{
+		ret = FALSE;
+	}
+
+	if (!ret)
 	{
 		if (error && context->priv->error)
 		{
 			*error = g_error_copy (context->priv->error);
 		}
-
-		return FALSE;
 	}
+
+	return ret;
 }
 
 void
