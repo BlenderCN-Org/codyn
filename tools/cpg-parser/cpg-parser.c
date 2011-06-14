@@ -63,8 +63,6 @@ add_defines (CpgParserContext *context)
 			                           cpg_embedded_string_new_from_string (parts[0]),
 			                           defines,
 			                           FALSE);
-
-			g_slist_free (defines);
 		}
 
 		g_strfreev (parts);
