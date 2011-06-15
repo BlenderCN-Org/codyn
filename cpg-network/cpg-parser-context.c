@@ -1845,49 +1845,52 @@ selections_from_attributes_obj (CpgParserContext *context,
                                 CpgObject        *obj,
                                 GSList           *attributes)
 {
-	CpgSelection *sel;
-	GSList *ret;
-	GSList *selections;
-	GHashTable *defines = NULL;
-	GSList *ctx;
+	GSList *ret = NULL;
+	GSList *parents;
+	GSList *item;
 
-	ctx = g_slist_last (context->priv->context_stack);
-
-	if (ctx)
+	if (!context->priv->context_stack)
 	{
-		Context *c;
+		CpgSelection *sel;
 
-		c = ctx->data;
+		sel = cpg_selection_new (obj,
+		                         cpg_embedded_context_get_expansions (context->priv->embedded),
+		                         cpg_embedded_context_get_defines (context->priv->embedded));
 
-		if (c->objects)
-		{
-			defines = cpg_selection_get_defines (c->objects->data);
-		}
+		ret = g_slist_prepend (NULL, sel);
+
+		return ret;
 	}
 
-	if (!defines)
+	parents = each_selections (context,
+	                           CURRENT_CONTEXT (context)->objects,
+	                           attributes,
+	                           CPG_SELECTOR_TYPE_OBJECT,
+	                           NULL,
+	                           NULL,
+	                           TRUE);
+
+	for (item = parents; item; item = g_slist_next (item))
 	{
-		defines = cpg_embedded_context_get_defines (context->priv->embedded);
+		CpgSelection *sel;
+
+		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_add_selection (context->priv->embedded,
+		                                    item->data);
+
+		sel = cpg_selection_new (obj,
+		                         cpg_embedded_context_get_expansions (context->priv->embedded),
+		                         cpg_embedded_context_get_defines (context->priv->embedded));
+
+		cpg_embedded_context_restore (context->priv->embedded);
+
+		ret = g_slist_prepend (ret, sel);
 	}
 
-	sel = cpg_selection_new (obj,
-	                         cpg_embedded_context_get_expansions (context->priv->embedded),
-	                         defines);
+	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
+	g_slist_free (parents);
 
-	selections = g_slist_prepend (NULL, sel);
-
-	ret = each_selections (context,
-	                       selections,
-	                       attributes,
-	                       CPG_SELECTOR_TYPE_OBJECT,
-	                       NULL,
-	                       NULL,
-	                       TRUE);
-
-	g_object_unref (sel);
-	g_slist_free (selections);
-
-	return ret;
+	return g_slist_reverse (ret);
 }
 
 static void
