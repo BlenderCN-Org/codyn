@@ -84,7 +84,9 @@ parse_network (gchar const *args[], gint argc)
 	CpgEmbeddedContext *embedded;
 	gboolean fromstdin;
 
-	fromstdin = (argc == 0 || g_strcmp0 (args[0], "-") == 0);
+	remove_double_dash (args, &argc);
+
+	fromstdin = (argc == 0 || g_strcmp0 (args[0], "-") == 0 || !isatty (STDIN_FILENO));
 
 	if (!fromstdin)
 	{
