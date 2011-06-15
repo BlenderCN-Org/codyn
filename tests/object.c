@@ -120,7 +120,7 @@ test_new_from_template ()
 	g_assert_no_error (error);
 
 	cpg_object_apply_template (cp, obj, &error);
-	g_assert_no_error (error);
+	g_assert_error (error, CPG_OBJECT_ERROR, CPG_OBJECT_ERROR_TEMPLATE_ALREADY_APPLIED);
 
 	CpgProperty *p1 = cpg_object_get_property (cp, "p1");
 
