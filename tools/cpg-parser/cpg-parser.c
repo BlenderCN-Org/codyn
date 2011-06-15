@@ -72,6 +72,32 @@ add_defines (CpgParserContext *context)
 	g_slist_free (defs);
 }
 
+static void
+remove_double_dash (gchar const **args, gint *argc)
+{
+	gint i = 0;
+	gboolean shiftit = FALSE;
+
+	while (i < *argc)
+	{
+		if (!shiftit && g_strcmp0 (args[i], "--") == 0)
+		{
+			shiftit = TRUE;
+		}
+		else if (shiftit)
+		{
+			args[i - 1] = args[i];
+		}
+
+		++i;
+	}
+
+	if (shiftit)
+	{
+		args[--*argc] = NULL;
+	}
+}
+
 static int
 parse_network (gchar const *args[], gint argc)
 {
