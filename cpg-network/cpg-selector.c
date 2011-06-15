@@ -655,6 +655,39 @@ selector_select_identifier_property (Selector           *selector,
 		}
 	}
 
+	if (!ret && CPG_IS_GROUP (cpg_selection_get_object (parent)))
+	{
+		gchar **names;
+		gchar **ptr;
+		CpgGroup *grp;
+		CpgPropertyInterface *piface;
+
+		grp = CPG_GROUP (cpg_selection_get_object (parent));
+		piface = cpg_group_get_property_interface (grp);
+
+		names = cpg_property_interface_get_names (piface);
+
+		for (ptr = names; *ptr; ++ptr)
+		{
+			CpgProperty *prop;
+
+			prop = cpg_object_get_property (cpg_selection_get_object (parent),
+			                                *ptr);
+
+			if (prop && identifier_match (selector,
+			                              expansion,
+			                              *ptr))
+			{
+				ret = g_slist_prepend (ret,
+				                       make_child_selection (parent,
+				                                             expansion,
+				                                             prop));
+			}
+		}
+
+		g_strfreev (names);
+	}
+
 	g_slist_free (properties);
 
 	return ret;
