@@ -2408,11 +2408,9 @@ cpg_parser_context_define (CpgParserContext  *context,
 
 	for (ob = ctx->objects; ob; ob = g_slist_next (ob))
 	{
+		GSList *names;
+		GSList *nameit;
 		CpgSelection *sel;
-		gchar const *exname;
-		gchar const *exdefine;
-		CpgEmbeddedString *define = NULL;
-		GSList *item;
 
 		sel = ob->data;
 
@@ -2420,97 +2418,116 @@ cpg_parser_context_define (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    sel);
 
-		exname = cpg_embedded_string_expand (name,
-		                                     context->priv->embedded);
+		names = cpg_embedded_string_expand_multiple (name,
+		                                             context->priv->embedded);
 
-		for (item = defines; item; item = g_slist_next (item))
+		for (nameit = names; nameit; nameit = g_slist_next (nameit))
 		{
-			gchar const *s;
-
-			s = cpg_embedded_string_expand (item->data,
-			                                context->priv->embedded);
-
-			if (s && *s)
-			{
-				define = item->data;
-				break;
-			}
-		}
-
-		if (!define)
-		{
-			define = defines->data;
-		}
-
-		exdefine = cpg_embedded_string_expand (define, context->priv->embedded);
-
-		if (expand)
-		{
-			GSList *items;
+			gchar const *exname;
+			gchar const *exdefine;
+			CpgEmbeddedString *define = NULL;
 			GSList *item;
-			gint num = 0;
-			gchar *cntname;
-			gchar *cntval;
-			gchar *s0;
 
-			s0 = g_strdup_printf ("%s0", exname);
+			exname = cpg_expansion_get (nameit->data, 0);
 
-			cpg_selection_add_define (sel,
-			                          s0,
-			                          exdefine);
+			cpg_embedded_context_save (context->priv->embedded);
+			cpg_embedded_context_add_expansion (context->priv->embedded,
+			                                    nameit->data);
 
-			g_free (s0);
-
-			items = cpg_embedded_string_expand_multiple (define,
-			                                             context->priv->embedded);
-
-			for (item = items; item; item = g_slist_next (item))
+			for (item = defines; item; item = g_slist_next (item))
 			{
-				CpgExpansion *ex = item->data;
-				gint i;
-				gchar *name;
+				gchar const *s;
 
-				name = g_strdup_printf ("%s%d", exname, ++num);
+				s = cpg_embedded_string_expand (item->data,
+				                                context->priv->embedded);
+
+				if (s && *s)
+				{
+					define = item->data;
+					break;
+				}
+			}
+
+			if (!define)
+			{
+				define = defines->data;
+			}
+
+			exdefine = cpg_embedded_string_expand (define, context->priv->embedded);
+
+			if (expand)
+			{
+				GSList *items;
+				GSList *item;
+				gint num = 0;
+				gchar *cntname;
+				gchar *cntval;
+				gchar *s0;
+
+				s0 = g_strdup_printf ("%s0", exname);
 
 				cpg_selection_add_define (sel,
-				                          name,
-				                          cpg_expansion_get (ex, 0));
+				                          s0,
+				                          exdefine);
 
-				for (i = 0; i < cpg_expansion_num (ex); ++i)
+				g_free (s0);
+
+				items = cpg_embedded_string_expand_multiple (define,
+				                                             context->priv->embedded);
+
+				for (item = items; item; item = g_slist_next (item))
 				{
-					gchar *sub;
+					CpgExpansion *ex = item->data;
+					gint i;
+					gchar *name;
 
-					sub = g_strdup_printf ("%s,%d", name, i);
+					name = g_strdup_printf ("%s%d", exname, ++num);
 
 					cpg_selection_add_define (sel,
-					                          sub,
-					                          cpg_expansion_get (ex, i));
+					                          name,
+					                          cpg_expansion_get (ex, 0));
 
-					g_free (sub);
+					for (i = 0; i < cpg_expansion_num (ex); ++i)
+					{
+						gchar *sub;
+
+						sub = g_strdup_printf ("%s,%d", name, i);
+
+						cpg_selection_add_define (sel,
+						                          sub,
+						                          cpg_expansion_get (ex, i));
+
+						g_free (sub);
+					}
+
+					g_free (name);
 				}
 
-				g_free (name);
+				g_slist_foreach (items, (GFunc)g_object_unref, NULL);
+				g_slist_free (items);
+
+				cntname = g_strconcat (exname, "~", NULL);
+				cntval = g_strdup_printf ("%d", num);
+
+				cpg_selection_add_define (sel,
+				                          cntname,
+				                          cntval);
+
+				g_free (cntname);
+				g_free (cntval);
+			}
+			else
+			{
+				cpg_selection_add_define (sel, exname, exdefine);
 			}
 
-			g_slist_foreach (items, (GFunc)g_object_unref, NULL);
-			g_slist_free (items);
-
-			cntname = g_strconcat (exname, "~", NULL);
-			cntval = g_strdup_printf ("%d", num);
-
-			cpg_selection_add_define (sel,
-			                          cntname,
-			                          cntval);
-
-			g_free (cntname);
-			g_free (cntval);
-		}
-		else
-		{
-			cpg_selection_add_define (sel, exname, exdefine);
+			cpg_embedded_context_restore (context->priv->embedded);
 		}
 
 		cpg_embedded_context_restore (context->priv->embedded);
+
+		g_slist_foreach (names, (GFunc)g_object_unref, NULL);
+		g_slist_free (names);
 	}
 
 	g_object_unref (name);
