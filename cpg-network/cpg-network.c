@@ -696,15 +696,7 @@ cpg_network_format_from_stream (GInputStream *stream)
 	if (G_IS_SEEKABLE (stream) &&
 	    g_seekable_can_seek (G_SEEKABLE (stream)))
 	{
-		/* Try first to seek it */
-		if (g_seekable_seek (G_SEEKABLE (stream),
-		                     0,
-		                     G_SEEK_CUR,
-		                     NULL,
-		                     NULL))
-		{
-			return format_from_seekable_stream (stream);
-		}
+		return format_from_seekable_stream (stream);
 	}
 
 	if (G_IS_BUFFERED_INPUT_STREAM (stream))
