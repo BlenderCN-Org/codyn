@@ -582,16 +582,13 @@ cpg_network_new ()
 	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
 
-static gint
-stream_is_xml_format (GInputStream *stream,
-                      gboolean      seekback)
+static CpgNetworkFormat
+format_from_seekable_stream (GInputStream *stream)
 {
 	gchar buffer[64];
+	CpgNetworkFormat ret;
 
-	if (seekback && (!G_IS_SEEKABLE (stream) || !g_seekable_can_seek (G_SEEKABLE (stream))))
-	{
-		return FALSE;
-	}
+	ret = CPG_NETWORK_FORMAT_UNKNOWN;
 
 	while (TRUE)
 	{
@@ -606,34 +603,124 @@ stream_is_xml_format (GInputStream *stream,
 
 		if (!r)
 		{
-			return -1;
+			break;
 		}
 
 		for (i = 0; i < r; ++i)
 		{
 			if (!g_ascii_isspace (buffer[i]))
 			{
-				if (seekback)
-				{
-					g_seekable_seek (G_SEEKABLE (stream),
-					                 0,
-					                 G_SEEK_SET,
-					                 NULL,
-					                 NULL);
-				}
+				ret = (buffer[i] == '<' ? CPG_NETWORK_FORMAT_XML
+				                        : CPG_NETWORK_FORMAT_CPG);
 
-				return buffer[i] == '<' ? 1 : 0;
+				break;
 			}
 		}
 	}
+
+	g_seekable_seek (G_SEEKABLE (stream),
+	                 0,
+	                 G_SEEK_SET,
+	                 NULL,
+	                 NULL);
+
+	return ret;
 }
 
-static gboolean
-file_is_xml_format_from_content_type (GFile *file)
+static CpgNetworkFormat
+format_from_buffered_stream (GBufferedInputStream *stream)
+{
+	/* Get the buffer size */
+	gsize bufsize;
+	gsize start;
+	CpgNetworkFormat fmt;
+
+	start = 0;
+	bufsize = g_buffered_input_stream_get_buffer_size (stream);
+
+	if (bufsize == 0)
+	{
+		/* Make sure initial buffer size is not 0 */
+		bufsize = 64;
+		g_buffered_input_stream_set_buffer_size (stream, bufsize);
+	}
+
+	fmt = CPG_NETWORK_FORMAT_UNKNOWN;
+
+	while (TRUE)
+	{
+		gchar const *buf;
+		gsize count;
+		gsize ret;
+
+		ret = g_buffered_input_stream_fill (stream,
+		                                    bufsize,
+		                                    NULL,
+		                                    NULL);
+
+		if (ret <= 0)
+		{
+			/* Either an error or EOF */
+			break;
+		}
+
+		buf = g_buffered_input_stream_peek_buffer (stream, &count);
+
+		while (start < count)
+		{
+			if (!g_ascii_isspace (buf[start]))
+			{
+				fmt = (buf[start] == '<' ? CPG_NETWORK_FORMAT_XML
+				                         : CPG_NETWORK_FORMAT_CPG);
+
+				break;
+			}
+
+			++start;
+		}
+
+		start = count;
+
+		/* Read 64 more bytes */
+		bufsize += 64;
+
+		g_buffered_input_stream_set_buffer_size (stream, bufsize);
+	}
+
+	return fmt;
+}
+
+CpgNetworkFormat
+cpg_network_format_from_stream (GInputStream *stream)
+{
+	if (G_IS_SEEKABLE (stream) &&
+	    g_seekable_can_seek (G_SEEKABLE (stream)))
+	{
+		/* Try first to seek it */
+		if (g_seekable_seek (G_SEEKABLE (stream),
+		                     0,
+		                     G_SEEK_CUR,
+		                     NULL,
+		                     NULL))
+		{
+			return format_from_seekable_stream (stream);
+		}
+	}
+
+	if (G_IS_BUFFERED_INPUT_STREAM (stream))
+	{
+		return format_from_buffered_stream (G_BUFFERED_INPUT_STREAM (stream));
+	}
+
+	return CPG_NETWORK_FORMAT_UNKNOWN;
+}
+
+CpgNetworkFormat
+cpg_network_format_from_file (GFile *file)
 {
 	GFileInfo *info;
 	gchar const *ctype;
-	gboolean ret;
+	CpgNetworkFormat ret;
 
 	info = g_file_query_info (file,
 	                          G_FILE_ATTRIBUTE_STANDARD_CONTENT_TYPE,
@@ -643,51 +730,26 @@ file_is_xml_format_from_content_type (GFile *file)
 
 	if (!info)
 	{
-		return TRUE;
+		return CPG_NETWORK_FORMAT_UNKNOWN;
 	}
 
 	ctype = g_file_info_get_content_type (info);
 
 	if (g_content_type_is_a (ctype, "application/xml"))
 	{
-		ret = TRUE;
+		ret = CPG_NETWORK_FORMAT_XML;
 	}
 	else if (g_content_type_is_a (ctype, "text/x-cpg"))
 	{
-		ret = FALSE;
+		ret = CPG_NETWORK_FORMAT_CPG;
 	}
 	else
 	{
-		ret = TRUE;
+		ret = CPG_NETWORK_FORMAT_UNKNOWN;
 	}
 
 	g_object_unref (info);
 	return ret;
-}
-
-static gboolean
-file_is_xml_format (GFile *file)
-{
-	GFileInputStream *fstream;
-	gint ret;
-
-	fstream = g_file_read (file, NULL, NULL);
-
-	if (!fstream)
-	{
-		return file_is_xml_format_from_content_type (file);
-	}
-
-	ret = stream_is_xml_format (G_INPUT_STREAM (fstream), FALSE);
-
-	g_object_unref (fstream);
-
-	if (ret == -1)
-	{
-		return file_is_xml_format_from_content_type (file);
-	}
-
-	return ret == 1 ? TRUE : FALSE;
 }
 
 /**
@@ -707,13 +769,27 @@ cpg_network_load_from_stream (CpgNetwork    *network,
                               GError       **error)
 {
 	gboolean ret;
+	CpgNetworkFormat fmt;
 
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), FALSE);
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	if (stream_is_xml_format (stream, TRUE))
+	fmt = cpg_network_format_from_stream (stream);
+
+	if (fmt == CPG_NETWORK_FORMAT_CPG)
+	{
+		CpgParserContext *ctx;
+
+		ctx = cpg_parser_context_new (network);
+		cpg_parser_context_push_input (ctx, NULL, stream);
+
+		ret = cpg_parser_context_parse (ctx, error);
+
+		g_object_unref (ctx);
+	}
+	else
 	{
 		CpgNetworkDeserializer *deserializer;
 
@@ -725,17 +801,6 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		                                            error);
 
 		g_object_unref (deserializer);
-	}
-	else
-	{
-		CpgParserContext *ctx;
-
-		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, NULL, stream);
-
-		ret = cpg_parser_context_parse (ctx, error);
-
-		g_object_unref (ctx);
 	}
 
 	return ret;
@@ -759,37 +824,71 @@ cpg_network_load_from_file (CpgNetwork  *network,
                             GError     **error)
 {
 	gboolean ret;
+	CpgNetworkFormat fmt;
+	GInputStream *stream;
 
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_FILE (file), FALSE);
 
 	set_file (network, file);
+	stream = NULL;
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	if (file_is_xml_format (file))
+	fmt = cpg_network_format_from_file (file);
+
+	if (fmt == CPG_NETWORK_FORMAT_UNKNOWN)
+	{
+		GFileInputStream *bstream;
+
+		bstream = g_file_read (file, NULL, NULL);
+
+		if (bstream)
+		{
+			stream = g_buffered_input_stream_new (G_INPUT_STREAM (bstream));
+			g_object_unref (bstream);
+
+			fmt = cpg_network_format_from_stream (stream);
+		}
+	}
+
+	if (fmt == CPG_NETWORK_FORMAT_CPG)
+	{
+		CpgParserContext *ctx;
+
+		ctx = cpg_parser_context_new (network);
+		cpg_parser_context_push_input (ctx, file, stream);
+
+		ret = cpg_parser_context_parse (ctx, error);
+
+		g_object_unref (ctx);
+	}
+	else
 	{
 		CpgNetworkDeserializer *deserializer;
 
 		deserializer = cpg_network_deserializer_new (network,
 		                                             NULL);
 
-		ret = cpg_network_deserializer_deserialize_file (deserializer,
-		                                                 file,
-		                                                 error);
+		if (stream)
+		{
+			ret = cpg_network_deserializer_deserialize (deserializer,
+			                                            stream,
+			                                            error);
+		}
+		else
+		{
+			ret = cpg_network_deserializer_deserialize_file (deserializer,
+			                                                 file,
+			                                                 error);
+		}
 
 		g_object_unref (deserializer);
 	}
-	else
+
+	if (stream)
 	{
-		CpgParserContext *ctx;
-
-		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, file, NULL);
-
-		ret = cpg_parser_context_parse (ctx, error);
-
-		g_object_unref (ctx);
+		g_object_unref (stream);
 	}
 
 	return ret;

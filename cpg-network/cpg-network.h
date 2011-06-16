@@ -57,6 +57,13 @@ typedef enum
 	CPG_NETWORK_LOAD_ERROR_INTERFACE
 } CpgNetworkLoadError;
 
+typedef enum
+{
+	CPG_NETWORK_FORMAT_UNKNOWN,
+	CPG_NETWORK_FORMAT_CPG,
+	CPG_NETWORK_FORMAT_XML
+} CpgNetworkFormat;
+
 #define CPG_NETWORK_ERROR (cpg_network_error_quark ())
 
 typedef enum
@@ -124,6 +131,10 @@ gboolean          cpg_network_load_from_path         (CpgNetwork     *network,
 gboolean          cpg_network_load_from_xml          (CpgNetwork     *network,
                                                       const gchar    *xml,
                                                       GError        **error);
+
+CpgNetworkFormat  cpg_network_format_from_file       (GFile          *file);
+
+CpgNetworkFormat  cpg_network_format_from_stream     (GInputStream   *stream);
 
 GFile            *cpg_network_get_file               (CpgNetwork     *network);
 gchar            *cpg_network_get_path               (CpgNetwork     *network);
