@@ -818,6 +818,7 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		                                             NULL);
 
 		ret = cpg_network_deserializer_deserialize (deserializer,
+		                                            NULL,
 		                                            wrapped,
 		                                            error);
 
@@ -859,6 +860,7 @@ cpg_network_load_from_file (CpgNetwork  *network,
 	gboolean ret;
 	CpgNetworkFormat fmt;
 	GInputStream *stream;
+	GFileInputStream *bstream;
 
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_FILE (file), FALSE);
@@ -868,21 +870,21 @@ cpg_network_load_from_file (CpgNetwork  *network,
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	fmt = cpg_network_format_from_file (file);
+	bstream = g_file_read (file, NULL, NULL);
+
+	fmt = CPG_NETWORK_FORMAT_UNKNOWN;
+
+	if (bstream)
+	{
+		stream = g_buffered_input_stream_new (G_INPUT_STREAM (bstream));
+		g_object_unref (bstream);
+
+		fmt = cpg_network_format_from_stream (stream);
+	}
 
 	if (fmt == CPG_NETWORK_FORMAT_UNKNOWN)
 	{
-		GFileInputStream *bstream;
-
-		bstream = g_file_read (file, NULL, NULL);
-
-		if (bstream)
-		{
-			stream = g_buffered_input_stream_new (G_INPUT_STREAM (bstream));
-			g_object_unref (bstream);
-
-			fmt = cpg_network_format_from_stream (stream);
-		}
+		fmt = cpg_network_format_from_file (file);
 	}
 
 	if (fmt == CPG_NETWORK_FORMAT_XML)
