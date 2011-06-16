@@ -695,6 +695,18 @@ format_from_buffered_stream (GBufferedInputStream *stream)
 	return fmt;
 }
 
+/**
+ * cpg_network_format_from_stream:
+ * @stream: A #GInputStream
+ *
+ * Determine the type of CPG format from a stream. This only works if either
+ * the stream is seekable (see #GSeekable), or if the stream is a
+ * #GBufferedInputStream. If needed, you can wrap your stream in a
+ * #GBufferedInputStream before passing it.
+ *
+ * Returns: A #CpgNetworkFormat
+ *
+ **/
 CpgNetworkFormat
 cpg_network_format_from_stream (GInputStream *stream)
 {
@@ -712,6 +724,18 @@ cpg_network_format_from_stream (GInputStream *stream)
 	return CPG_NETWORK_FORMAT_UNKNOWN;
 }
 
+/**
+ * cpg_network_format_from_file:
+ * @file: A #GFile
+ *
+ * Determine the type of CPG format from a file. If the type of the file
+ * could not be determined, #CPG_NETWORK_FORMAT_UNKNOWN is returned. This
+ * function only uses the mime type of a file. Use
+ * #cpg_network_format_from_stream to determine the format from the contents.
+ *
+ * Returns: A #CpgNetworkFormat
+ *
+ **/
 CpgNetworkFormat
 cpg_network_format_from_file (GFile *file)
 {
