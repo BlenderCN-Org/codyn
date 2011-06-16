@@ -762,11 +762,22 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 {
 	gboolean ret;
 	CpgNetworkFormat fmt;
+	GInputStream *wrapped;
 
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), FALSE);
 
 	cpg_object_clear (CPG_OBJECT (network));
+
+	if (!(G_IS_SEEKABLE (stream) && g_seekable_can_seek (G_SEEKABLE (stream))) &&
+	    !G_IS_BUFFERED_INPUT_STREAM (stream))
+	{
+		wrapped = g_buffered_input_stream_new (stream);
+	}
+	else
+	{
+		wrapped = g_object_ref (stream);
+	}
 
 	fmt = cpg_network_format_from_stream (stream);
 
@@ -794,6 +805,8 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 
 		g_object_unref (deserializer);
 	}
+
+	g_object_unref (wrapped);
 
 	return ret;
 }
