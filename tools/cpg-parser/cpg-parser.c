@@ -113,7 +113,7 @@ parse_network (gchar const *args[], gint argc)
 
 	remove_double_dash (args, &argc);
 
-	fromstdin = (argc == 0 || g_strcmp0 (args[0], "-") == 0 || !isatty (STDIN_FILENO));
+	fromstdin = (argc > 0 && g_strcmp0 (args[0], "-") == 0);
 
 	if (!fromstdin)
 	{
@@ -274,7 +274,13 @@ main (int argc, char *argv[])
 
 	determine_color_support ();
 
-	ctx = g_option_context_new ("<NETWORK> - parse cpg network");
+	ctx = g_option_context_new ("NETWORK [--] [PARAMETER...] - parse cpg network");
+
+	g_option_context_set_summary (ctx,
+	                              "Use a dash '-' for the network name to read from standard input.\n"
+	                              "Parameters provided after the network name will will be assigned to @1, etc.\n"
+	                              "Use a double dash '--' to prevent option parsing in the parameter list.");
+
 	g_option_context_add_main_entries (ctx, entries, NULL);
 
 	ret = g_option_context_parse (ctx, &argc, &argv, &error);
@@ -288,6 +294,13 @@ main (int argc, char *argv[])
 	{
 		g_printerr ("%sFailed to parse options:%s %s\n", color_red, color_off, error->message);
 		g_error_free (error);
+
+		return 1;
+	}
+
+	if (argc < 2)
+	{
+		g_printerr ("%sPlease provide a network to parse%s\n", color_red, color_off);
 
 		return 1;
 	}
