@@ -4,6 +4,7 @@
 #include <glib/gprintf.h>
 #include <string.h>
 #include <unistd.h>
+#include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
 
 static GPtrArray *monitored = 0;
@@ -262,13 +263,20 @@ monitor_network (gchar const *filename)
 	CpgNetwork *network;
 	GError *error = NULL;
 	gint i;
-	GFile *file;
 	CpgCompileError *err;
 
-	file = g_file_new_for_commandline_arg (filename);
-
-	network = cpg_network_new_from_file (file, &error);
-	g_object_unref (file);
+	if (g_strcmp0 (filename, "-") == 0)
+	{
+		GInputStream *stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
+		network = cpg_network_new_from_stream (stream, &error);
+		g_object_unref (stream);
+	}
+	else
+	{
+		GFile *file = g_file_new_for_commandline_arg (filename);
+		network = cpg_network_new_from_file (file, &error);
+		g_object_unref (file);
+	}
 
 	if (!network)
 	{
@@ -399,13 +407,15 @@ main (int argc,
 {
 	GOptionContext *ctx;
 	GError *error = NULL;
+	gchar const *file;
 
 	g_type_init ();
 
 	monitored = g_ptr_array_new ();
 	delimiter = g_strdup ("\t");
 
-	ctx = g_option_context_new ("-m <SELECTOR> [-m ...] <NETWORK> - monitor cpg network");
+	ctx = g_option_context_new ("-m <SELECTOR> [-m ...] [NETWORK] - monitor cpg network");
+	g_option_context_set_summary (ctx, "Omit the network name or use a dash '-' to read from standard input.");
 	g_option_context_add_main_entries (ctx, entries, NULL);
 
 	if (!g_option_context_parse (ctx, &argc, &argv, &error))
@@ -417,9 +427,17 @@ main (int argc,
 		return 1;
 	}
 
-	if (argc != 2)
+	if (argc == 1)
 	{
-		g_printerr ("Please provide exactly one network to monitor\n");
+		file = "-";
+	}
+	else if (argc == 2)
+	{
+		file = argv[1];
+	}
+	else
+	{
+		g_printerr ("Too many arguments. Please provide at most one network to monitor\n");
 		cleanup ();
 
 		return 1;
@@ -435,7 +453,7 @@ main (int argc,
 
 	srand (seed);
 
-	monitor_network (argv[1]);
+	monitor_network (file);
 
 	cleanup ();
 
