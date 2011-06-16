@@ -781,18 +781,7 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 
 	fmt = cpg_network_format_from_stream (stream);
 
-	if (fmt == CPG_NETWORK_FORMAT_CPG)
-	{
-		CpgParserContext *ctx;
-
-		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, NULL, stream);
-
-		ret = cpg_parser_context_parse (ctx, error);
-
-		g_object_unref (ctx);
-	}
-	else
+	if (fmt == CPG_NETWORK_FORMAT_XML)
 	{
 		CpgNetworkDeserializer *deserializer;
 
@@ -804,6 +793,17 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		                                            error);
 
 		g_object_unref (deserializer);
+	}
+	else
+	{
+		CpgParserContext *ctx;
+
+		ctx = cpg_parser_context_new (network);
+		cpg_parser_context_push_input (ctx, NULL, stream);
+
+		ret = cpg_parser_context_parse (ctx, error);
+
+		g_object_unref (ctx);
 	}
 
 	g_object_unref (wrapped);
@@ -857,18 +857,7 @@ cpg_network_load_from_file (CpgNetwork  *network,
 		}
 	}
 
-	if (fmt == CPG_NETWORK_FORMAT_CPG)
-	{
-		CpgParserContext *ctx;
-
-		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, file, stream);
-
-		ret = cpg_parser_context_parse (ctx, error);
-
-		g_object_unref (ctx);
-	}
-	else
+	if (fmt == CPG_NETWORK_FORMAT_XML)
 	{
 		CpgNetworkDeserializer *deserializer;
 
@@ -889,6 +878,17 @@ cpg_network_load_from_file (CpgNetwork  *network,
 		}
 
 		g_object_unref (deserializer);
+	}
+	else
+	{
+		CpgParserContext *ctx;
+
+		ctx = cpg_parser_context_new (network);
+		cpg_parser_context_push_input (ctx, file, stream);
+
+		ret = cpg_parser_context_parse (ctx, error);
+
+		g_object_unref (ctx);
 	}
 
 	if (stream)
