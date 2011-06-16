@@ -616,6 +616,11 @@ format_from_seekable_stream (GInputStream *stream)
 				break;
 			}
 		}
+
+		if (i != r)
+		{
+			break;
+		}
 	}
 
 	g_seekable_seek (G_SEEKABLE (stream),
