@@ -62,6 +62,7 @@ add_defines (CpgParserContext *context)
 			cpg_parser_context_define (context,
 			                           cpg_embedded_string_new_from_string (parts[0]),
 			                           defines,
+			                           FALSE,
 			                           FALSE);
 		}
 
