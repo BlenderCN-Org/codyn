@@ -113,7 +113,7 @@ CpgNetwork       *cpg_network_new_from_stream        (GInputStream   *stream,
 CpgNetwork       *cpg_network_new_from_path          (const gchar    *path,
                                                       GError        **error);
 
-CpgNetwork       *cpg_network_new_from_xml           (const gchar    *xml,
+CpgNetwork       *cpg_network_new_from_string        (const gchar    *s,
                                                       GError        **error);
 
 gboolean          cpg_network_load_from_file         (CpgNetwork     *network,
@@ -128,8 +128,8 @@ gboolean          cpg_network_load_from_path         (CpgNetwork     *network,
                                                       const gchar    *path,
                                                       GError        **error);
 
-gboolean          cpg_network_load_from_xml          (CpgNetwork     *network,
-                                                      const gchar    *xml,
+gboolean          cpg_network_load_from_string       (CpgNetwork     *network,
+                                                      const gchar    *s,
                                                       GError        **error);
 
 CpgNetworkFormat  cpg_network_format_from_file       (GFile          *file);
@@ -155,8 +155,8 @@ void              cpg_network_merge_from_path        (CpgNetwork     *network,
                                                       const gchar    *path,
                                                       GError        **error);
 
-void              cpg_network_merge_from_xml         (CpgNetwork     *network,
-                                                      const gchar    *xml,
+void              cpg_network_merge_from_string      (CpgNetwork     *network,
+                                                      const gchar    *s,
                                                       GError        **error);
 
 /* simulation functions */

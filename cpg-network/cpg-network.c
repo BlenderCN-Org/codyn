@@ -749,7 +749,7 @@ cpg_network_format_from_file (GFile *file)
  * @network: A #CpgNetwork
  * @stream: The stream to load
  * @error: A #GError
- * 
+ *
  * Load a network from a stream
  *
  * Returns: %TRUE if the stream could be loaded, %FALSE otherwise
@@ -811,14 +811,13 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 	return ret;
 }
 
-
 /**
  * cpg_network_load_from_file:
  * @network: A #CpgNetwork
  * @file: The file to load
  * @error: A #GError
- * 
- * Load a network from a file into an existing network instance.
+ *
+ * Load a network from a file
  *
  * Returns: %TRUE if the file could be loaded, %FALSE otherwise
  *
@@ -926,49 +925,32 @@ cpg_network_load_from_path (CpgNetwork   *network,
 }
 
 /**
- * cpg_network_load_from_xml:
+ * cpg_network_load_from_string:
  * @network: A #CpgNetwork
- * @xml: The xml to load
+ * @xml: The network to load
  * @error: A #GError
  * 
- * Load a network from xml into an existing network instance.
+ * Load a network from text into an existing network instance.
  *
- * Returns: %TRUE if the xml could be loaded, %FALSE otherwise
+ * Returns: %TRUE if the text could be loaded, %FALSE otherwise
  *
  **/
 gboolean
-cpg_network_load_from_xml (CpgNetwork   *network,
-                           const gchar  *xml,
-                           GError      **error)
+cpg_network_load_from_string (CpgNetwork   *network,
+                              const gchar  *s,
+                              GError      **error)
 {
+	GInputStream *stream;
+	gboolean ret;
+
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
-	g_return_val_if_fail (xml != NULL, FALSE);
+	g_return_val_if_fail (s != NULL, FALSE);
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	CpgNetworkDeserializer *deserializer;
-
-	deserializer = cpg_network_deserializer_new (network,
-	                                             NULL);
-
-	GInputStream *stream = g_memory_input_stream_new_from_data (xml,
-	                                                            -1,
-	                                                            NULL);
-
-	if (!stream)
-	{
-		g_object_unref (deserializer);
-		return FALSE;
-	}
-
-	gboolean ret;
-
-	ret = cpg_network_deserializer_deserialize (deserializer,
-	                                            stream,
-	                                            error);
-
+	stream = g_memory_input_stream_new_from_data (s, -1, NULL);
+	ret = cpg_network_load_from_stream (network, stream, error);
 	g_object_unref (stream);
-	g_object_unref (deserializer);
 
 	return ret;
 }
@@ -1058,25 +1040,25 @@ cpg_network_new_from_path (gchar const  *path,
 }
 
 /**
- * cpg_network_new_from_xml:
- * @xml: xml definition of the network
+ * cpg_network_new_from_string:
+ * @s: definition of the network
  * @error: error return value
  *
- * Create a new CPG network from the network xml definition
+ * Create a new CPG network from the network definition
  *
  * Return value: the newly created CPG network or %NULL if there was an
- * error reading the file
+ * error
  *
  **/
 CpgNetwork *
-cpg_network_new_from_xml (gchar const  *xml,
-                          GError      **error)
+cpg_network_new_from_string (gchar const  *s,
+                             GError      **error)
 {
-	g_return_val_if_fail (xml != NULL, NULL);
+	g_return_val_if_fail (s != NULL, NULL);
 
 	CpgNetwork *network = cpg_network_new ();
 
-	if (!cpg_network_load_from_xml (network, xml, error))
+	if (!cpg_network_load_from_string (network, s, error))
 	{
 		g_object_unref (network);
 		network = NULL;
@@ -1268,26 +1250,26 @@ cpg_network_merge_from_path (CpgNetwork  *network,
 }
 
 /**
- * cpg_network_merge_from_xml:
+ * cpg_network_merge_from_string:
  * @network: a #CpgNetwork
- * @xml: a xml string describing the network
+ * @s: a string describing the network
  * @error: error return value
  *
- * Merges the network defined in @xml into @network. This is
+ * Merges the network defined in @s into @network. This is
  * similar to creating a network from xml and merging it with @network.
  *
  **/
 void
-cpg_network_merge_from_xml (CpgNetwork   *network,
-                            gchar const  *xml,
-                            GError      **error)
+cpg_network_merge_from_string (CpgNetwork   *network,
+                               gchar const  *s,
+                               GError      **error)
 {
-	g_return_if_fail (CPG_IS_NETWORK (network));
-	g_return_if_fail (xml != NULL);
-
 	CpgNetwork *other;
 
-	other = cpg_network_new_from_xml (xml, error);
+	g_return_if_fail (CPG_IS_NETWORK (network));
+	g_return_if_fail (s != NULL);
+
+	other = cpg_network_new_from_string (s, error);
 
 	if (other != NULL)
 	{
