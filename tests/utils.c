@@ -123,7 +123,7 @@ test_load_network (gchar const *xml,
 	CpgNetwork *network;
 	GError *error = NULL;
 
-	network = cpg_network_new_from_xml (xml, &error);
+	network = cpg_network_new_from_string (xml, &error);
 
 	g_assert (network != NULL);
 	g_assert_no_error (error);

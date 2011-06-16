@@ -31,7 +31,7 @@ test_direct ()
 {
 	CpgNetwork *network;
 
-	network = cpg_network_new_from_xml (simple_xml, NULL);
+	network = cpg_network_new_from_string (simple_xml, NULL);
 
 	CpgProperty *p1 = cpg_group_find_property (CPG_GROUP (network), "s2.b");
 
@@ -47,7 +47,7 @@ test_dependencies ()
 {
 	CpgNetwork *network;
 
-	network = cpg_network_new_from_xml (simple_xml, NULL);
+	network = cpg_network_new_from_string (simple_xml, NULL);
 
 	CpgProperty *p1 = cpg_group_find_property (CPG_GROUP (network), "s3.c");
 

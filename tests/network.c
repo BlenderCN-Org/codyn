@@ -74,7 +74,7 @@ test_integrate_network (gchar const *xml,
                         gdouble     *values,
                         guint        size)
 {
-	CpgNetwork *network = cpg_network_new_from_xml (xml, NULL);
+	CpgNetwork *network = cpg_network_new_from_string (xml, NULL);
 	g_assert (network != NULL);
 
 	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
@@ -163,7 +163,7 @@ test_direct ()
 static void
 test_reset ()
 {
-	CpgNetwork *network = cpg_network_new_from_xml (simple_xml, NULL);
+	CpgNetwork *network = cpg_network_new_from_string (simple_xml, NULL);
 	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
 
 	CpgProperty *prop = cpg_group_find_property (CPG_GROUP (network),
@@ -180,7 +180,7 @@ test_reset ()
 static void
 test_recompile ()
 {
-	CpgNetwork *network = cpg_network_new_from_xml (simple_xml, NULL);
+	CpgNetwork *network = cpg_network_new_from_string (simple_xml, NULL);
 	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
 
 	CpgProperty *prop = cpg_group_find_property (CPG_GROUP (network),
@@ -198,7 +198,7 @@ test_recompile ()
 static void
 test_once ()
 {
-	CpgNetwork *network = cpg_network_new_from_xml (simple_xml, NULL);
+	CpgNetwork *network = cpg_network_new_from_string (simple_xml, NULL);
 	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
 
 	CpgMonitor *monitor;
@@ -262,7 +262,7 @@ test_group_integrate ()
 static void
 test_group_reset ()
 {
-	CpgNetwork *network = cpg_network_new_from_xml (simple_group_xml, NULL);
+	CpgNetwork *network = cpg_network_new_from_string (simple_group_xml, NULL);
 	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
 
 	CpgProperty *prop = cpg_group_find_property (CPG_GROUP (network),

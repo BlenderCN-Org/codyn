@@ -158,7 +158,7 @@ test_apply_overload_state ()
 	"  </network>\n"
 	"</cpg>\n";
 
-	CpgNetwork *network = cpg_network_new_from_xml (xml, NULL);
+	CpgNetwork *network = cpg_network_new_from_string (xml, NULL);
 	g_assert (network);
 
 	CpgObject *obj = cpg_group_get_child (CPG_GROUP (network), "state");
@@ -198,7 +198,7 @@ test_apply_overload_link ()
 	"  </network>\n"
 	"</cpg>\n";
 
-	CpgNetwork *network = cpg_network_new_from_xml (xml, NULL);
+	CpgNetwork *network = cpg_network_new_from_string (xml, NULL);
 	g_assert (CPG_IS_NETWORK (network));
 
 	CpgObject *obj = cpg_group_get_child (CPG_GROUP (network), "link");
@@ -242,7 +242,7 @@ test_apply_overload_group ()
 	"  </network>\n"
 	"</cpg>\n";
 
-	CpgNetwork *network = cpg_network_new_from_xml (xml, NULL);
+	CpgNetwork *network = cpg_network_new_from_string (xml, NULL);
 	g_assert (CPG_IS_NETWORK (network));
 
 	CpgObject *obj = cpg_group_get_child (CPG_GROUP (network), "state");
