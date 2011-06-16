@@ -271,12 +271,26 @@ define_item
 					{ cpg_parser_context_define (context,
 					                             $2,
 					                             g_slist_reverse ($5),
-					                             TRUE); }
+					                             TRUE,
+					                             FALSE); }
 	| identifier_or_string '=' define_values
 					{ cpg_parser_context_define (context,
 					                             $1,
 					                             g_slist_reverse ($3),
+					                             FALSE,
 					                             FALSE); }
+	| '{' identifier_or_string '}' '?' '=' define_values
+					{ cpg_parser_context_define (context,
+					                             $2,
+					                             g_slist_reverse ($6),
+					                             TRUE,
+					                             TRUE); }
+	| identifier_or_string '?' '=' define_values
+					{ cpg_parser_context_define (context,
+					                             $1,
+					                             g_slist_reverse ($4),
+					                             FALSE,
+					                             TRUE); }
 	| debug
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }

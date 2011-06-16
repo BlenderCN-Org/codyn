@@ -2395,7 +2395,8 @@ void
 cpg_parser_context_define (CpgParserContext  *context,
                            CpgEmbeddedString *name,
                            GSList            *defines,
-                           gboolean           expand)
+                           gboolean           expand,
+                           gboolean           optional)
 {
 	GSList *ob;
 	Context *ctx;
@@ -2429,6 +2430,23 @@ cpg_parser_context_define (CpgParserContext  *context,
 			GSList *item;
 
 			exname = cpg_expansion_get (nameit->data, 0);
+
+			if (optional)
+			{
+				gchar *d;
+				gboolean exists;
+
+				d = cpg_embedded_context_get_define (context->priv->embedded,
+				                                     exname);
+
+				exists = (d && *d);
+				g_free (d);
+
+				if (exists)
+				{
+					continue;
+				}
+			}
 
 			cpg_embedded_context_save (context->priv->embedded);
 			cpg_embedded_context_add_expansion (context->priv->embedded,
