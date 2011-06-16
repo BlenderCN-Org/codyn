@@ -37,12 +37,9 @@ CpgNetworkDeserializer *cpg_network_deserializer_new (CpgNetwork *network,
                                                       CpgGroup   *root);
 
 gboolean cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
+                                               GFile                   *file,
                                                GInputStream            *stream,
                                                GError                 **error);
-
-gboolean cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer,
-                                                    GFile                   *file,
-                                                    GError                 **error);
 
 gboolean cpg_network_deserializer_deserialize_path (CpgNetworkDeserializer  *deserializer,
                                                     const gchar             *path,

@@ -892,18 +892,10 @@ cpg_network_load_from_file (CpgNetwork  *network,
 		deserializer = cpg_network_deserializer_new (network,
 		                                             NULL);
 
-		if (stream)
-		{
-			ret = cpg_network_deserializer_deserialize (deserializer,
-			                                            stream,
-			                                            error);
-		}
-		else
-		{
-			ret = cpg_network_deserializer_deserialize_file (deserializer,
-			                                                 file,
-			                                                 error);
-		}
+		ret = cpg_network_deserializer_deserialize (deserializer,
+		                                            file,
+		                                            stream,
+		                                            error);
 
 		g_object_unref (deserializer);
 	}

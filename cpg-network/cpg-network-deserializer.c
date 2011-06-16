@@ -2203,15 +2203,36 @@ xml_ioclose (CpgNetworkDeserializer *deserializer)
  **/
 gboolean
 cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
+                                      GFile                   *file,
                                       GInputStream            *stream,
                                       GError                 **error)
 {
 	gboolean retval = TRUE;
+	xmlTextReaderPtr reader;
 
 	g_return_val_if_fail (CPG_IS_NETWORK_DESERIALIZER (deserializer), FALSE);
-	g_return_val_if_fail (G_INPUT_STREAM (stream), FALSE);
+	g_return_val_if_fail (file != NULL || stream != NULL, FALSE);
+	g_return_val_if_fail (file == NULL || G_IS_FILE (file), FALSE);
+	g_return_val_if_fail (stream == NULL || G_INPUT_STREAM (stream), FALSE);
 
-	xmlTextReaderPtr reader;
+	if (!stream)
+	{
+		stream = G_INPUT_STREAM (g_file_read (file, NULL, error));
+	}
+	else
+	{
+		stream = g_object_ref (stream);
+	}
+
+	if (!stream)
+	{
+		return FALSE;
+	}
+
+	if (file)
+	{
+		deserializer->priv->file = g_file_dup (file);
+	}
 
 	deserializer->priv->stream = stream;
 	deserializer->priv->error = error;
@@ -2258,50 +2279,14 @@ cpg_network_deserializer_deserialize (CpgNetworkDeserializer  *deserializer,
 	}
 
 	xmlFreeTextReader (reader);
-
-	return retval;
-}
-
-/**
- * cpg_network_deserializer_deserialize_file:
- * @deserializer: A #CpgNetworkDeserializer
- * @file: A #GFile
- * @error: A #GError
- *
- * Convenience function to deserialize a network from a file.
- *
- * Returns: %TRUE if the deserialization was successful, %FALSE otherwise.
- *
- **/
-gboolean
-cpg_network_deserializer_deserialize_file (CpgNetworkDeserializer  *deserializer,
-                                           GFile                   *file,
-                                           GError                 **error)
-{
-	g_return_val_if_fail (CPG_IS_NETWORK_DESERIALIZER (deserializer), FALSE);
-	g_return_val_if_fail (G_IS_FILE (file), FALSE);
-
-	GFileInputStream *stream = g_file_read (file, NULL, error);
-
-	if (!stream)
-	{
-		return FALSE;
-	}
-
-	deserializer->priv->file = g_file_dup (file);
-
-	gboolean ret;
-
-	ret = cpg_network_deserializer_deserialize (deserializer,
-	                                            G_INPUT_STREAM (stream),
-	                                            error);
-
-	g_object_unref (deserializer->priv->file);
-	deserializer->priv->file = NULL;
-
 	g_object_unref (stream);
 
-	return ret;
+	if (deserializer->priv->file)
+	{
+		g_object_unref (deserializer->priv->file);
+	}
+
+	return retval;
 }
 
 /**
@@ -2327,9 +2312,10 @@ cpg_network_deserializer_deserialize_path (CpgNetworkDeserializer  *deserializer
 
 	gboolean ret;
 
-	ret = cpg_network_deserializer_deserialize_file (deserializer,
-	                                                 file,
-	                                                 error);
+	ret = cpg_network_deserializer_deserialize (deserializer,
+	                                            file,
+	                                            NULL,
+	                                            error);
 
 	g_object_unref (file);
 
