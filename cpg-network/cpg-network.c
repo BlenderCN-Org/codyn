@@ -779,7 +779,7 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		wrapped = g_object_ref (stream);
 	}
 
-	fmt = cpg_network_format_from_stream (stream);
+	fmt = cpg_network_format_from_stream (wrapped);
 
 	if (fmt == CPG_NETWORK_FORMAT_XML)
 	{
@@ -789,7 +789,7 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		                                             NULL);
 
 		ret = cpg_network_deserializer_deserialize (deserializer,
-		                                            stream,
+		                                            wrapped,
 		                                            error);
 
 		g_object_unref (deserializer);
@@ -799,7 +799,7 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		CpgParserContext *ctx;
 
 		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, NULL, stream);
+		cpg_parser_context_push_input (ctx, NULL, wrapped);
 
 		ret = cpg_parser_context_parse (ctx, error);
 
