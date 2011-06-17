@@ -137,7 +137,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "out"				return T_KEY_OUT;
 "once"				return T_KEY_ONCE;
 "network"			return T_KEY_NETWORK;
-"function"			return T_KEY_FUNCTION;
+"functions"			return T_KEY_FUNCTIONS;
 "interface"			return T_KEY_INTERFACE;
 "polynomial"			return T_KEY_POLYNOMIAL;
 "import"			return T_KEY_IMPORT;
