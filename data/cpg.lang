@@ -102,7 +102,7 @@
             <keyword>link</keyword>
             <keyword>group</keyword>
             <keyword>network</keyword>
-            <keyword>function</keyword>
+            <keyword>functions</keyword>
             <keyword>interface</keyword>
             <keyword>from</keyword>
             <keyword>to</keyword>
@@ -126,6 +126,20 @@
             <keyword>or</keyword>
             <keyword>debug</keyword>
             <keyword>context</keyword>
+            <keyword>as</keyword>
+            <keyword>root</keyword>
+            <keyword>self</keyword>
+            <keyword>states</keyword>
+            <keyword>links</keyword>
+            <keyword>count</keyword>
+            <keyword>children</keyword>
+            <keyword>parent</keyword>
+            <keyword>first-child</keyword>
+            <keyword>last-child</keyword>
+            <keyword>first</keyword>
+            <keyword>last</keyword>
+            <keyword>subset</keyword>
+            <keyword>siblings</keyword>
         </context>
 
         <context id="selector">
