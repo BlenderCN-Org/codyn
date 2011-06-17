@@ -15,11 +15,15 @@ lang2_DATA = cpg.lang
 latexdir = $(datadir)/texmf/tex/latex/cpg
 latex_DATA = cpg.sty
 
+emacsdir = $(datadir)/emacs/site-lisp
+emacs_DATA = cpg-mode.el
+
 EXTRA_DIST = \
 	$(dtd_DATA) \
 	cpg.xml.in \
 	cpg.lang \
-	cpg.sty
+	cpg.sty \
+	cpg-mode.el
 
 CLEANFILES = cpg.xml
 
