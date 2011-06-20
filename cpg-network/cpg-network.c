@@ -617,7 +617,7 @@ format_from_seekable_stream (GInputStream *stream)
 			}
 		}
 
-		if (i != r)
+		if (ret != CPG_NETWORK_FORMAT_UNKNOWN)
 		{
 			break;
 		}
@@ -682,6 +682,11 @@ format_from_buffered_stream (GBufferedInputStream *stream)
 			}
 
 			++start;
+		}
+
+		if (fmt != CPG_NETWORK_FORMAT_UNKNOWN)
+		{
+			break;
 		}
 
 		start = count;
