@@ -391,6 +391,8 @@ on_template_action_removed (CpgLink       *templ,
 		cpg_link_get_action (link,
 		                     cpg_link_action_get_target (action));
 
+	g_message ("%p", cpg_link_get_action_template (link, orig, TRUE));
+
 	if (orig && !cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)) &&
 	    cpg_link_get_action_template (link, orig, TRUE) == templ)
 	{
@@ -817,6 +819,15 @@ cpg_link_apply_template_impl (CpgObject  *object,
 }
 
 static void
+action_removed_impl (CpgLink   *link,
+                     CpgLinkAction *action)
+{
+	link->priv->actions = g_slist_remove (link->priv->actions, action);
+
+	remove_action (link, action);
+}
+
+static void
 cpg_link_class_init (CpgLinkClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -827,6 +838,8 @@ cpg_link_class_init (CpgLinkClass *klass)
 
 	object_class->get_property = cpg_link_get_property;
 	object_class->set_property = cpg_link_set_property;
+
+	klass->action_removed = action_removed_impl;
 
 	cpgobject_class->foreach_expression = cpg_link_foreach_expression_impl;
 	cpgobject_class->copy = cpg_link_copy_impl;
@@ -1033,10 +1046,6 @@ cpg_link_remove_action (CpgLink       *link,
 
 	if (item != NULL)
 	{
-		link->priv->actions = g_slist_delete_link (link->priv->actions, item);
-
-		remove_action (link, action);
-
 		g_signal_emit (link, signals[ACTION_REMOVED], 0, action);
 		g_object_unref (action);
 
