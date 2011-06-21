@@ -115,6 +115,8 @@ parse_network (gchar const *args[], gint argc)
 
 	fromstdin = (argc > 0 && g_strcmp0 (args[0], "-") == 0);
 
+	file = NULL;
+
 	if (!fromstdin)
 	{
 		file = g_file_new_for_commandline_arg (args[0]);
