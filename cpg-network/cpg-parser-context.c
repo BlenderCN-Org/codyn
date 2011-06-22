@@ -2582,61 +2582,72 @@ void
 cpg_parser_context_push_input_from_path (CpgParserContext  *context,
                                          CpgEmbeddedString *filename)
 {
-	GFile *file = NULL;
-	gchar const *res;
+	GSList *items;
+	GSList *item;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
 
-	res = cpg_embedded_string_expand (filename, context->priv->embedded);
+	items = cpg_embedded_string_expand_multiple (filename, context->priv->embedded);
 
-	if (g_path_is_absolute (res))
+	for (item = items; item; item = g_slist_next (item))
 	{
-		file = g_file_new_for_path (res);
-	}
-	else
-	{
-		GSList *item;
+		gchar const *res;
+		GFile *file = NULL;
 
-		for (item = context->priv->inputs; item; item = g_slist_next (item))
+		res = cpg_expansion_get (item->data, 0);
+
+		if (g_path_is_absolute (res))
 		{
-			InputItem *ip = item->data;
-			GFile *dir;
+			file = g_file_new_for_path (res);
+		}
+		else
+		{
+			GSList *it;
 
-			if (!ip->file)
+			for (it = context->priv->inputs; it; it = g_slist_next (it))
 			{
-				continue;
+				InputItem *ip = it->data;
+				GFile *dir;
+
+				if (!ip->file)
+				{
+					continue;
+				}
+
+				dir = g_file_get_parent (ip->file);
+
+				if (!dir)
+				{
+					continue;
+				}
+
+				file = g_file_resolve_relative_path (dir, res);
+				g_object_unref (dir);
+
+				if (file && !g_file_query_exists (file, NULL))
+				{
+					g_object_unref (file);
+					file = NULL;
+				}
+				else
+				{
+					break;
+				}
 			}
 
-			dir = g_file_get_parent (ip->file);
-
-			if (!dir)
+			if (!file)
 			{
-				continue;
-			}
-
-			file = g_file_resolve_relative_path (dir, res);
-			g_object_unref (dir);
-
-			if (file && !g_file_query_exists (file, NULL))
-			{
-				g_object_unref (file);
-				file = NULL;
-			}
-			else
-			{
-				break;
+				file = g_file_new_for_commandline_arg (res);
 			}
 		}
 
-		if (!file)
-		{
-			file = g_file_new_for_commandline_arg (res);
-		}
+		cpg_parser_context_push_input (context, file, NULL);
+		g_object_unref (file);
 	}
 
-	cpg_parser_context_push_input (context, file, NULL);
-	g_object_unref (file);
+	g_slist_foreach (items, (GFunc)g_object_unref, NULL);
+	g_slist_free (items);
 
 	g_object_unref (filename);
 }
