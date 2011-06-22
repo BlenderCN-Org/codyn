@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <readline/readline.h>
 #include <readline/history.h>
+#include <string.h>
 
 #define CPG_READLINE_STREAM_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_READLINE_STREAM, CpgReadlineStreamPrivate))
 
