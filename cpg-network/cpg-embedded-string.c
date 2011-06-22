@@ -261,6 +261,8 @@ resolve_indirection (CpgEmbeddedString  *em,
 
 	gchar const *ptr = s;
 
+	isnum = g_ascii_isdigit (*ptr);
+
 	while (*ptr)
 	{
 		if (!g_ascii_isdigit (*ptr))
