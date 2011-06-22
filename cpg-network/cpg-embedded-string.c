@@ -269,14 +269,20 @@ resolve_indirection (CpgEmbeddedString  *em,
 	{
 		if (!g_ascii_isdigit (*ptr))
 		{
-			isnum = FALSE;
-
 			if (!*(ptr + 1))
 			{
-				isall = (*ptr == '*');
-				iscount = (*ptr == '~');
-				isindex = (*ptr == '?');
+				if (isnum)
+				{
+					isindex = (*ptr == '?');
+				}
+				else
+				{
+					isall = (*ptr == '*');
+					iscount = (*ptr == '~');
+				}
 			}
+
+			isnum = FALSE;
 
 			break;
 		}
@@ -780,9 +786,20 @@ expand_id_recurse (gchar const **id,
 		{
 			expansions_append (ret, ptr, *id - ptr);
 		}
-		else
+		else if (*endings)
 		{
 			ret = parse_expansion_range (ptr, *id - ptr);
+		}
+		else
+		{
+			gchar *r;
+
+			r = g_strndup (ptr, *id - ptr);
+
+			ret = g_slist_prepend (NULL,
+			                       cpg_expansion_new_one (r));
+
+			g_free (r);
 		}
 	}
 
