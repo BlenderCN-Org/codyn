@@ -19,7 +19,7 @@ advance_column (CpgParserContext *context, gint offset)
 #define YY_EXTRA_TYPE CpgParserContext *
 #define YY_USER_ACTION								\
 	advance_column (yyextra, yyleng);					\
-	cpg_parser_context_set_token (yyextra, yytext);				\
+	cpg_parser_context_set_token (yyextra, yytext);
 
 #define YY_INPUT(buf,result,max_size)						\
 	{									\
@@ -66,23 +66,36 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %x inclstart
 %x onlyselector
 %x indirection_had_some
+%x firstline
 
 %%
 
 %{
 	if (cpg_parser_context_get_start_token (yyextra))
 	{
-		if (cpg_parser_context_get_start_token (yyextra) == T_START_SELECTOR)
-		{
-			yy_push_state (onlyselector, yyscanner);
-		}
-
-		return cpg_parser_context_steal_start_token (yyextra);
+		yy_push_state (firstline, yyscanner);
 	}
 
 	/* To not get a compiler warning about defined but not used... */
 	yy_top_state (yyscanner);
 %}
+
+<firstline>.*			{
+					yyccolumn = 1;
+
+					cpg_parser_context_set_line (yyextra, yytext, yylineno);
+					cpg_parser_context_set_column (yyextra, 0, 0);
+
+					yyless (0);
+					yy_pop_state (yyscanner);
+
+					if (cpg_parser_context_get_start_token (yyextra) == T_START_SELECTOR)
+					{
+						yy_push_state (onlyselector, yyscanner);
+					}
+
+					return cpg_parser_context_steal_start_token (yyextra);
+				}
 
 [ \t]				;
 \n.*				{
