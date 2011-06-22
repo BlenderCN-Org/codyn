@@ -229,7 +229,7 @@ collect_expansion (CpgExpansion *expansion)
 static gboolean
 count_chars (gchar const *s, gchar t, gint *num)
 {
-	*num = 0;
+	gint cnt = 0;
 
 	while (*s)
 	{
@@ -238,9 +238,11 @@ count_chars (gchar const *s, gchar t, gint *num)
 			return FALSE;
 		}
 
-		++*num;
+		++cnt;
 		++s;
 	}
+
+	*num = cnt;
 
 	return TRUE;
 }
@@ -288,12 +290,13 @@ resolve_indirection (CpgEmbeddedString  *em,
 	{
 		while (*ptr)
 		{
-			if (!g_ascii_isalnum (*ptr) && *ptr != '_')
+			if (*ptr == '+' || *ptr == '-')
 			{
-				count_chars (ptr, '+', &isadd);
-				count_chars (ptr, '-', &issub);
-
-				break;
+				if (count_chars (ptr, '+', &isadd) ||
+				    count_chars (ptr, '-', &issub))
+				{
+					break;
+				}
 			}
 
 			++ptr;
