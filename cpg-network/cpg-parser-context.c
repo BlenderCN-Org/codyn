@@ -2065,10 +2065,11 @@ cpg_parser_context_import (CpgParserContext  *context,
 
 			curfile = cpg_parser_context_get_file (context);
 
+			file = cpg_network_parser_utils_resolve_import (curfile,
+			                                                expath);
+
 			if (curfile)
 			{
-				file = cpg_network_parser_utils_resolve_import (curfile,
-				                                                expath);
 				g_object_unref (curfile);
 			}
 
