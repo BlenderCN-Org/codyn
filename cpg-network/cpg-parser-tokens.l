@@ -8,6 +8,7 @@ void cpg_parser_set_column (int column_no, yyscan_t yyscanner);
 int cpg_parser_get_column (yyscan_t yyscanner);
 
 static int yyccolumn = 1;
+static int includestart = 0;
 
 static void
 advance_column (CpgParserContext *context, gint offset)
@@ -121,10 +122,16 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					yy_push_state (incl, yyscanner);
 
 					cpg_parser_context_push_string (yyextra);
+					includestart = yyccolumn - 1;
+
 					return T_STRING_BEGIN;
 				}
 <incl>"\""			{
 					yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, yyscanner), yyscanner);
+					cpg_parser_context_set_column (yyextra,
+					                               includestart,
+					                               yyccolumn - 1);
+
 					cpg_parser_context_push_input_from_path (yyextra,
 					                                         cpg_parser_context_pop_string (yyextra));
 
