@@ -480,6 +480,30 @@ cpg_embedded_string_expand (CpgEmbeddedString  *s,
 	return s->priv->cached;
 }
 
+static void
+unescape_slashes (gchar *s)
+{
+	gchar *write_ptr;
+	gchar *read_ptr;
+
+	read_ptr = write_ptr = s;
+
+	while (*read_ptr)
+	{
+		if (*read_ptr == '\\')
+		{
+			++read_ptr;
+		}
+
+		if (*read_ptr)
+		{
+			*write_ptr++ = *read_ptr;
+		}
+
+		++read_ptr;
+	}
+}
+
 static GSList *
 parse_expansion_range (gchar const *s,
                        gint         len)
@@ -508,6 +532,7 @@ parse_expansion_range (gchar const *s,
 	}
 
 	id = g_strndup (s, len);
+	unescape_slashes (id);
 
 	if (g_regex_match (rangereg, id, 0, &info))
 	{
@@ -583,6 +608,7 @@ expansions_add (GSList      *expansions,
 	}
 
 	ss = g_strndup (s, len);
+	unescape_slashes (ss);
 
 	while (expansions)
 	{
@@ -757,7 +783,16 @@ expand_id_recurse (gchar const **id,
 
 	while (**id && strchr (endings, **id) == NULL)
 	{
-		if (**id == '{')
+		if (**id == '\\')
+		{
+			++*id;
+
+			if (**id)
+			{
+				++*id;
+			}
+		}
+		else if (**id == '{')
 		{
 			GSList *ex;
 			gint len = *id - ptr;
@@ -795,6 +830,7 @@ expand_id_recurse (gchar const **id,
 			gchar *r;
 
 			r = g_strndup (ptr, *id - ptr);
+			unescape_slashes (r);
 
 			ret = g_slist_prepend (NULL,
 			                       cpg_expansion_new_one (r));
