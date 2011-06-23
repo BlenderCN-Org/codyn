@@ -42,7 +42,6 @@ advance_column (CpgParserContext *context, gint offset)
 
 %}
 
-STRING "\""(\\["]|[^"])*"\""
 IDENTIFIER [a-z_][a-z0-9_-]*
 
 %option yylineno
@@ -254,8 +253,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_INDIRECTION_BEGIN;
 				}
 
-<indirection_embedding>(\\[]@$]|[^]@$])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@]$");
+<indirection_embedding>(\\[]@$\\]|[^]@$\\])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@]$\\");
 					return T_STRING;
 				}
 
@@ -274,19 +273,19 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_EQUATION_BEGIN;
 				}
 
-<instring,incl>(\\["@$]|[^"@$])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@\"$");
+<instring,incl>(\\["@$\\]|[^"@$\\])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@\"$\\");
 					return T_STRING;
 				}
 
-<equation>(\\[)@$(]|[^a-z_)@$(])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@)$(");
+<equation>(\\[)@$(\\]|[^a-z_)@$(\\])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@)$(\\");
 					return T_STRING;
 				}
 
 
-<inregex>(\\[/@$]|[^/@$])+	{
-					yylval->id = unquote_string (yytext, yyleng, "@/$");
+<inregex>(\\[/@$\\]|[^/@$\\])+	{
+					yylval->id = unquote_string (yytext, yyleng, "@/$\\");
 					return T_STRING;
 				}
 
