@@ -190,6 +190,10 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "self"				return T_KEY_SELF;
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
+"proxy"				return T_KEY_PROXY;
+"bidirectional"			return T_KEY_BIDIRECTIONAL;
+"select"			return T_KEY_SELECT;
+"each"				return T_KEY_EACH;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);

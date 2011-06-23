@@ -90,8 +90,7 @@ cpg_attribute_init (CpgAttribute *self)
 }
 
 CpgAttribute *
-cpg_attribute_new (gchar const *id,
-                   GSList      *arguments)
+cpg_attribute_new (gchar const *id)
 {
 	CpgAttribute *ret;
 
@@ -99,10 +98,39 @@ cpg_attribute_new (gchar const *id,
 	                    "id", id,
 	                     NULL);
 
-	cpg_attribute_set_arguments (ret, arguments);
+	return ret;
+}
+
+CpgAttribute *
+cpg_attribute_newv (gchar const *id,
+                    ...)
+{
+	CpgAttribute *ret;
+	va_list ap;
+	GObject *obj;
+
+	ret = g_object_new (CPG_TYPE_ATTRIBUTE,
+	                    "id", id,
+	                     NULL);
+
+	va_start (ap, id);
+
+	while ((obj = G_OBJECT (va_arg (ap, GObject *))) != NULL)
+	{
+		ret->priv->arguments =
+			g_slist_prepend (ret->priv->arguments,
+			                 g_object_ref (obj));
+
+		++ret->priv->num_arguments;
+	}
+
+	ret->priv->arguments = g_slist_reverse (ret->priv->arguments);
+
+	va_end (ap);
 
 	return ret;
 }
+
 
 void
 cpg_attribute_set_arguments (CpgAttribute *attribute,

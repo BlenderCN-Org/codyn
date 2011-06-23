@@ -41,7 +41,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST_CHILD T_KEY_LAST_CHILD T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST_CHILD T_KEY_LAST_CHILD T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_SELECT T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -61,8 +61,6 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_EQUATION_BEGIN
 %token T_EQUATION_END
-
-%type <object> attribute_argument
 
 %type <num> selector_type
 %type <num> selector_pseudo_simple_key
@@ -111,11 +109,13 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <string> double
 %type <string> integer
 
-%type <list> attribute_arguments
-%type <list> attribute_arguments_list
 %type <list> attributes
 %type <list> attributes_contents
 %type <attribute> attribute_contents
+%type <attribute> attribute_proxy
+%type <attribute> attribute_each
+%type <attribute> attribute_select
+%type <attribute> attribute_bidirectional
 
 %type <list> state
 %type <list> define_values
@@ -373,28 +373,33 @@ group
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
-attribute_argument
-	: value_as_string		{ $$ = $1; }
-	| strict_selector		{ $$ = $1; }
+attribute_proxy
+	: T_KEY_PROXY			{ $$ = cpg_attribute_new ("proxy"); }
+	| T_KEY_PROXY '(' ')'		{ $$ = cpg_attribute_new ("proxy"); }
 	;
 
-attribute_arguments_list
-	: attribute_argument		{ $$ = g_slist_prepend (NULL, $1); }
-	| attribute_arguments_list ',' attribute_argument
-					{ $$ = g_slist_prepend ($1, $3); }
+attribute_each
+	: T_KEY_EACH '(' value_as_string ')'
+					{ $$ = cpg_attribute_newv ("each", $3, NULL); }
 	;
 
-attribute_arguments
-	:				{ $$ = NULL; }
-	| '(' ')'			{ $$ = NULL; }
-	| '(' attribute_arguments_list ')'
-					{ $$ = $2; }
+attribute_select
+	: T_KEY_SELECT '(' selector ')'
+					{ $$ = cpg_attribute_newv ("select", $3, NULL); }
+	;
+
+attribute_bidirectional
+	: T_KEY_BIDIRECTIONAL		{ $$ = cpg_attribute_new ("bidirectional"); }
+	| T_KEY_BIDIRECTIONAL '(' ')'	{ $$ = cpg_attribute_new ("bidirectional"); }
+	| T_KEY_BIDIRECTIONAL '(' value_as_string ',' value_as_string ')'
+					{ $$ = cpg_attribute_newv ("bidirectional", $3, $5, NULL); }
 	;
 
 attribute_contents
-	: identifier_or_string attribute_arguments
-					{ $$ = cpg_attribute_new (cpg_embedded_string_expand ($1, cpg_parser_context_get_embedded (context)),
-					                          $2); }
+	: attribute_proxy
+	| attribute_each
+	| attribute_select
+	| attribute_bidirectional
 	;
 
 attributes_contents

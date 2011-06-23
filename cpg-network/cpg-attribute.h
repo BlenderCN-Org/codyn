@@ -34,8 +34,9 @@ struct _CpgAttributeClass
 
 GType cpg_attribute_get_type (void) G_GNUC_CONST;
 
-CpgAttribute *cpg_attribute_new (gchar const *id,
-                                 GSList *arguments);
+CpgAttribute *cpg_attribute_new (gchar const *id);
+CpgAttribute *cpg_attribute_newv (gchar const *id,
+                                  ...) G_GNUC_NULL_TERMINATED;
 
 void cpg_attribute_set_arguments (CpgAttribute *attr, GSList *arguments);
 
