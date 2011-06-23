@@ -2143,6 +2143,25 @@ cpg_parser_context_import (CpgParserContext  *context,
 				CpgGroup *template_group;
 
 				template_group = cpg_network_get_template_group (context->priv->network);
+
+				if (cpg_group_get_child (template_group, exid) != NULL)
+				{
+					parser_failed (context,
+					               CPG_NETWORK_LOAD_ERROR_IMPORT,
+					               "There is already an object with the id `%s'",
+					               exid);
+
+					cpg_embedded_context_restore (context->priv->embedded);
+
+					g_slist_foreach (ids,
+					                 (GFunc)g_object_unref,
+					                 NULL);
+
+					g_slist_free (ids);
+
+					goto cleanup;
+				}
+
 				import = cpg_network_parser_utils_find_template_import (CPG_OBJECT (template_group), file);
 
 				if (import)
@@ -2179,9 +2198,27 @@ cpg_parser_context_import (CpgParserContext  *context,
 				}
 			}
 
+			if (cpg_group_get_child (CPG_GROUP (context->priv->network), exid) != NULL)
+			{
+				parser_failed (context,
+				               CPG_NETWORK_LOAD_ERROR_IMPORT,
+				               "There is already an object with the id `%s'",
+				               exid);
+
+				cpg_embedded_context_restore (context->priv->embedded);
+
+				g_slist_foreach (ids,
+				                 (GFunc)g_object_unref,
+				                 NULL);
+
+				g_slist_free (ids);
+
+				goto cleanup;
+			}
+
 			import = cpg_import_new (context->priv->network,
 			                         parent_group,
-			                         cpg_expansion_get (idi->data, 0),
+			                         exid,
 			                         file,
 			                         &error);
 
