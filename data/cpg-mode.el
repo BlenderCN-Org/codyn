@@ -36,11 +36,11 @@
     (if (bobp)
         (indent-line-to 0)
       (let ((not-indented t) cur-indent)
-        (if (looking-at "[ \t]*}")
+        (if (looking-at "[^#\n]*}[ \t]*$")
             (progn
               (save-excursion
                 (previous-non-empty-line)
-                (if (looking-at "[ \t]*{")
+                (if (looking-at "[^#\n]*{[ \t]*$")
                     (setq cur-indent (current-indentation))
                   (setq cur-indent (- (current-indentation) default-tab-width))))
               (if (< cur-indent 0)
