@@ -109,7 +109,7 @@
             <keyword>polynomial</keyword>
             <keyword>input-file</keyword>
             <keyword>piece</keyword>
-            <keyword>define</keyword>
+            <keyword>defines</keyword>
             <keyword>integrator</keyword>
             <keyword>layout</keyword>
             <keyword>left-of</keyword>
@@ -118,10 +118,14 @@
             <keyword>below</keyword>
             <keyword>at</keyword>
             <keyword>on</keyword>
+            <keyword>as</keyword>
             <keyword>of</keyword>
-            <keyword>selector</keyword>
             <keyword>delete</keyword>
             <keyword>property</keyword>
+            <keyword>properties</keyword>
+            <keyword>actions</keyword>
+            <keyword>objects</keyword>
+            <keyword>groups</keyword>
             <keyword>action</keyword>
             <keyword>or</keyword>
             <keyword>debug</keyword>
@@ -134,12 +138,11 @@
             <keyword>count</keyword>
             <keyword>children</keyword>
             <keyword>parent</keyword>
-            <keyword>first-child</keyword>
-            <keyword>last-child</keyword>
             <keyword>first</keyword>
             <keyword>last</keyword>
             <keyword>subset</keyword>
             <keyword>siblings</keyword>
+            <keyword>settings</keyword>
         </context>
 
         <context id="selector">
