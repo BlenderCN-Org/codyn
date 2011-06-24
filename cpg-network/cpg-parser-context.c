@@ -1083,7 +1083,7 @@ each_selections_attr (CpgParserContext *context,
                       gboolean          isempty,
                       GSList           *ret)
 {
-	if (CPG_IS_EMBEDDED_STRING (obj) && !isempty)
+	if (CPG_IS_EMBEDDED_STRING (obj))
 	{
 		GSList *item;
 
