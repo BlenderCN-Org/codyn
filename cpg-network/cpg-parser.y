@@ -671,7 +671,7 @@ selector_items
 selector
 	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb;
 	                                  cpg_selector_prepend_pseudo ($$,
-	                                                               CPG_SELECTOR_PSEUDO_TYPE_ACTIONS,
+	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
 	                                                               NULL); }
 	| strict_selector
 	;
