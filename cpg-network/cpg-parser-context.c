@@ -1572,7 +1572,61 @@ cpg_parser_context_push_object (CpgParserContext *context,
 	context->priv->context_stack =
 		g_slist_prepend (context->priv->context_stack,
 		                 context_new (objects));
+}
 
+void
+cpg_parser_context_push_selection (CpgParserContext *context,
+                                   CpgSelector      *selector,
+                                   CpgSelectorType   type,
+                                   GSList           *attributes)
+{
+	Context *ctx;
+	GSList *item;
+	GSList *objs = NULL;
+	GSList *parents;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	/* Select on the current context and create a new context based on
+	   the result */
+
+	ctx = CURRENT_CONTEXT (context);
+
+	parents = each_selections (context,
+	                           ctx->objects,
+	                           attributes,
+	                           type,
+	                           NULL,
+	                           NULL,
+	                           TRUE);
+
+	for (item = parents; item; item = g_slist_next (item))
+	{
+		CpgSelection *sel;
+		GSList *ret;
+
+		sel = item->data;
+
+		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_add_selection (context->priv->embedded,
+		                                    sel);
+
+		ret = cpg_selector_select (selector,
+		                           cpg_selection_get_object (sel),
+		                           type,
+		                           context->priv->embedded);
+
+		objs = g_slist_concat (objs, ret);
+
+		cpg_embedded_context_restore (context->priv->embedded);
+	}
+
+	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
+	g_slist_free (parents);
+
+	cpg_parser_context_push_object (context, objs);
+
+	g_slist_free (objs);
 }
 
 static GSList *

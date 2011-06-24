@@ -115,6 +115,11 @@ void                   cpg_parser_context_set_error            (CpgParserContext
 
 GError                *cpg_parser_context_get_error            (CpgParserContext           *context);
 
+void                   cpg_parser_context_push_selection       (CpgParserContext           *context,
+                                                                CpgSelector                *selector,
+                                                                CpgSelectorType             type,
+                                                                GSList                     *attributes);
+
 void                   cpg_parser_context_push_object          (CpgParserContext           *context,
                                                                 GSList                     *objects);
 
