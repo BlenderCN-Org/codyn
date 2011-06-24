@@ -1373,28 +1373,31 @@ parse_objects (CpgParserContext  *context,
 	{
 		GSList *objs;
 		GSList *ids;
+		CpgEmbeddedString *theid;
+
+		theid = id;
 
 		cpg_embedded_context_save (context->priv->embedded);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    parent->data);
 
-		if (!selected && id == NULL)
+		if (!selected && theid == NULL)
 		{
 			gchar *newid;
 
 			newid = unique_id (CPG_GROUP (cpg_selection_get_object (parent->data)),
 			                  "object");
 
-			id = cpg_embedded_string_new_from_string (newid);
+			theid = cpg_embedded_string_new_from_string (newid);
 			g_free (newid);
 		}
-		else if (id != NULL)
+		else if (theid != NULL)
 		{
-			g_object_ref (id);
+			g_object_ref (theid);
 		}
 
-		ids = id ? cpg_embedded_string_expand_multiple (id, context->priv->embedded) : NULL;
+		ids = theid ? cpg_embedded_string_expand_multiple (theid, context->priv->embedded) : NULL;
 
 		objs = parse_object_single (context,
 		                            ids,
@@ -1412,9 +1415,9 @@ parse_objects (CpgParserContext  *context,
 
 		cpg_embedded_context_restore (context->priv->embedded);
 
-		if (id != NULL)
+		if (theid != NULL)
 		{
-			g_object_unref (id);
+			g_object_unref (theid);
 		}
 
 		if (!objs)
