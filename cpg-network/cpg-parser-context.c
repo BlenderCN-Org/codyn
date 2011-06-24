@@ -2980,7 +2980,7 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (annotation != NULL);
 
-	if (context->priv->previous_annotation != context->priv->lineno + 1)
+	if (context->priv->previous_annotation != context->priv->lineno - 1)
 	{
 		g_string_assign (context->priv->annotation,
 		                 cpg_embedded_string_expand (annotation,
