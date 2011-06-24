@@ -41,7 +41,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_SELECT T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_PROPERTIES T_KEY_ACTIONS
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -113,8 +113,8 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <attribute> attribute_contents
 %type <attribute> attribute_proxy
 %type <attribute> attribute_each
-%type <attribute> attribute_select
 %type <attribute> attribute_bidirectional
+%type <attribute> attribute_if
 
 %type <list> state
 %type <list> define_values
@@ -382,11 +382,6 @@ attribute_each
 					{ $$ = cpg_attribute_newv ("each", $3, NULL); }
 	;
 
-attribute_select
-	: T_KEY_SELECT '(' selector ')'
-					{ $$ = cpg_attribute_newv ("select", $3, NULL); }
-	;
-
 attribute_bidirectional
 	: T_KEY_BIDIRECTIONAL		{ $$ = cpg_attribute_new ("bidirectional"); }
 	| T_KEY_BIDIRECTIONAL '(' ')'	{ $$ = cpg_attribute_new ("bidirectional"); }
@@ -394,11 +389,16 @@ attribute_bidirectional
 					{ $$ = cpg_attribute_newv ("bidirectional", $3, $5, NULL); }
 	;
 
+attribute_if
+	: T_KEY_IF '(' value_as_string ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
+	| T_KEY_IF '(' strict_selector ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
+	;
+
 attribute_contents
 	: attribute_proxy
 	| attribute_each
-	| attribute_select
 	| attribute_bidirectional
+	| attribute_if
 	;
 
 attributes_contents

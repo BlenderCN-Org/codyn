@@ -176,7 +176,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "of"				return T_KEY_OF;
 "on"				return T_KEY_ON;
 "debug"				return T_KEY_DEBUG;
-"selector"			return T_KEY_SELECTOR;
 "action"			return T_KEY_ACTION;
 "property"			return T_KEY_PROPERTY;
 "delete"			return T_KEY_DELETE;
@@ -196,12 +195,12 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "as"				return T_KEY_AS;
 "proxy"				return T_KEY_PROXY;
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
-"select"			return T_KEY_SELECT;
 "each"				return T_KEY_EACH;
 "groups"			return T_KEY_GROUPS;
 "objects"			return T_KEY_OBJECTS;
 "properties"			return T_KEY_PROPERTIES;
 "actions"			return T_KEY_ACTION;
+"if"				return T_KEY_IF;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);

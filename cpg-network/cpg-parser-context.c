@@ -1035,6 +1035,42 @@ find_attribute (GSList *attributes,
 	return NULL;
 }
 
+static gboolean
+test_string_empty (gchar const *s)
+{
+	gdouble num;
+	gchar *endptr;
+
+	num = g_ascii_strtod (s, &endptr);
+
+	if (!*endptr)
+	{
+		/* number == 0 */
+		return num == 0;
+	}
+	else
+	{
+		/* Empty string */
+		return !*s;
+	}
+}
+
+static GSList *
+copy_selections (GSList   *selections,
+                 gboolean  copy_defines)
+{
+	GSList *ret = NULL;
+
+	while (selections)
+	{
+		ret = g_slist_prepend (ret, cpg_selection_copy_defines (selections->data,
+		                                                        copy_defines));
+		selections = g_slist_next (selections);
+	}
+
+	return g_slist_reverse (ret);
+}
+
 static GSList *
 each_selections_attr (CpgParserContext *context,
                       GSList           *selections,
@@ -1044,9 +1080,10 @@ each_selections_attr (CpgParserContext *context,
                       gboolean         *couldselect,
                       gboolean          copy_defines,
                       gpointer          obj,
+                      gboolean          isempty,
                       GSList           *ret)
 {
-	if (CPG_IS_EMBEDDED_STRING (obj))
+	if (CPG_IS_EMBEDDED_STRING (obj) && !isempty)
 	{
 		GSList *item;
 
@@ -1067,6 +1104,11 @@ each_selections_attr (CpgParserContext *context,
 			{
 				CpgSelection *sel;
 				GSList *expansions;
+
+				if (isempty && test_string_empty (cpg_expansion_get (expp->data, 0)))
+				{
+					continue;
+				}
 
 				expansions = g_slist_copy (cpg_selection_get_expansions (item->data));
 				expansions = g_slist_prepend (expansions,
@@ -1124,12 +1166,20 @@ each_selections_attr (CpgParserContext *context,
 				                                     cpg_selection_get_expansions (sels->data));
 
 				ret = g_slist_prepend (ret,
-				                       cpg_selection_new_defines (cpg_selection_get_object (sels->data),
+				                       cpg_selection_new_defines (cpg_selection_get_object (isempty ? item->data : sels->data),
 				                                                  cpg_embedded_context_get_expansions (context->priv->embedded),
 				                                                  cpg_embedded_context_get_defines (context->priv->embedded),
 				                                                  copy_defines));
 
 				cpg_embedded_context_restore (context->priv->embedded);
+
+				if (isempty)
+				{
+					g_slist_foreach (sels, (GFunc)g_object_unref, NULL);
+					g_slist_free (sels);
+
+					break;
+				}
 
 				g_object_unref (sels->data);
 				sels = g_slist_delete_link (sels, sels);
@@ -1153,10 +1203,10 @@ each_selections (CpgParserContext *context,
 {
 	gint i;
 	GSList *ret = NULL;
-	CpgAttribute *attrselect;
+	CpgAttribute *attrif;
 	CpgAttribute *attreach;
 
-	attrselect = find_attribute (attributes, "select");
+	attrif = find_attribute (attributes, "if");
 	attreach = find_attribute (attributes, "each");
 
 	if (selected)
@@ -1169,16 +1219,9 @@ each_selections (CpgParserContext *context,
 		*couldselect = FALSE;
 	}
 
-	if (!attrselect && !attreach)
+	if (!attrif && !attreach)
 	{
-		while (selections)
-		{
-			ret = g_slist_prepend (ret, cpg_selection_copy_defines (selections->data,
-			                                                        copy_defines));
-			selections = g_slist_next (selections);
-		}
-
-		return g_slist_reverse (ret);
+		return copy_selections (selections, copy_defines);
 	}
 
 	if (attreach)
@@ -1188,32 +1231,34 @@ each_selections (CpgParserContext *context,
 			gpointer obj = cpg_attribute_get_argument (attreach, i);
 
 			ret = each_selections_attr (context,
-				                    selections,
-				                    attributes,
-				                    type,
-				                    selected,
-				                    couldselect,
-				                    copy_defines,
-				                    obj,
-				                    ret);
+			                            selections,
+			                            attributes,
+			                            type,
+			                            selected,
+			                            couldselect,
+			                            copy_defines,
+			                            obj,
+			                            FALSE,
+			                            ret);
 		}
 	}
 
-	if (attrselect)
+	if (attrif)
 	{
-		for (i = 0; i < cpg_attribute_num_arguments (attrselect); ++i)
+		for (i = 0; i < cpg_attribute_num_arguments (attrif); ++i)
 		{
-			gpointer obj = cpg_attribute_get_argument (attrselect, i);
+			gpointer obj = cpg_attribute_get_argument (attrif, i);
 
 			ret = each_selections_attr (context,
-				                    selections,
-				                    attributes,
-				                    type,
-				                    selected,
-				                    couldselect,
-				                    copy_defines,
-				                    obj,
-				                    ret);
+			                            selections,
+			                            attributes,
+			                            type,
+			                            selected,
+			                            couldselect,
+			                            copy_defines,
+			                            obj,
+			                            TRUE,
+			                            ret);
 		}
 	}
 
