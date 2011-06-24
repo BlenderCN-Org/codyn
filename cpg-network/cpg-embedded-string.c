@@ -485,12 +485,13 @@ unescape_slashes (gchar *s)
 {
 	gchar *write_ptr;
 	gchar *read_ptr;
+	gchar escaped[] = "{},";
 
 	read_ptr = write_ptr = s;
 
 	while (*read_ptr)
 	{
-		if (*read_ptr == '\\')
+		if (*read_ptr == '\\' && strchr (escaped, *(read_ptr + 1)) != NULL)
 		{
 			++read_ptr;
 		}
@@ -502,6 +503,8 @@ unescape_slashes (gchar *s)
 
 		++read_ptr;
 	}
+
+	*write_ptr = '\0';
 }
 
 static GSList *
