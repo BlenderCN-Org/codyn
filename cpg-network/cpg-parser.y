@@ -361,6 +361,15 @@ state
 	  '{' 				{ cpg_parser_context_push_state (context, $3, $4, $1); errb }
 	  state_contents
 	  '}'				{ $$ = cpg_parser_context_pop (context); errb }
+	| attributes
+	  T_KEY_STATE
+	  strict_selector		{ cpg_parser_context_push_selection (context,
+	                                                                     $3,
+	                                                                     CPG_SELECTOR_TYPE_LINK,
+	                                                                     $1); }
+	  '{'
+	  state_contents
+	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
 group
@@ -369,6 +378,15 @@ group
 	  identifier_or_string_or_nothing
 	  templated
 	  '{' 				{ cpg_parser_context_push_group (context, $3, $4, $1); errb }
+	  group_contents
+	  '}'				{ cpg_parser_context_pop (context); errb }
+	| attributes
+	  T_KEY_GROUP
+	  strict_selector		{ cpg_parser_context_push_selection (context,
+	                                                                     $3,
+	                                                                     CPG_SELECTOR_TYPE_GROUP,
+	                                                                     $1); }
+	  '{'
 	  group_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
@@ -451,7 +469,16 @@ link
 	  templated
 	  '{'				{ cpg_parser_context_push_link (context, NULL, $3, $1, NULL); errb }
 	  link_contents
-	  '}'
+	  '}'				{ cpg_parser_context_pop (context); errb }
+	| attributes
+	  T_KEY_LINK
+	  strict_selector		{ cpg_parser_context_push_selection (context,
+	                                                                     $3,
+	                                                                     CPG_SELECTOR_TYPE_LINK,
+	                                                                     $1); }
+	  '{'
+	  link_contents
+	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
 function_polynomial
