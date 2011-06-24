@@ -43,7 +43,7 @@
             <end>"</end>
             <include>
                 <context id="escape-in-string">
-                    <match>\\"</match>
+                    <match>\\["\\]</match>
                 </context>
                 <context ref="stuff_in_string"/>
                 <context ref="expansion" />
