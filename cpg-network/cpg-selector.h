@@ -93,7 +93,7 @@ void          cpg_selector_prepend            (CpgSelector            *selector,
 
 void          cpg_selector_prepend_partial    (CpgSelector            *selector,
                                                CpgEmbeddedString      *identifier);
-                                              
+
 void          cpg_selector_append_pseudo     (CpgSelector            *selector,
                                               CpgSelectorPseudoType  type,
                                               GSList                 *arguments);
