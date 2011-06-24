@@ -97,6 +97,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <argument> function_argument
 %type <selector> selector
 %type <selector> strict_selector
+%type <selector> selector_self
 
 %type <string> identifier_or_string
 %type <string> string
@@ -675,6 +676,11 @@ selector
 	| strict_selector
 	;
 
+selector_self
+	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb; }
+	| strict_selector
+	;
+
 strict_selector
 	: '|' selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
 	| '.'				{ cpg_parser_context_push_selector_pseudo (context,
@@ -741,9 +747,9 @@ selector_pseudo_nth_args
 	;
 
 selector_pseudo_selector_args_rev
-	: selector				{ $$ = g_slist_prepend (NULL, $1); }
+	: selector_self				{ $$ = g_slist_prepend (NULL, $1); }
 	| selector_pseudo_selector_args_rev ',' { cpg_parser_context_push_selector (context); }
-	  selector				{ $$ = g_slist_prepend ($1, $4); }
+	  selector_self				{ $$ = g_slist_prepend ($1, $4); }
 	;
 
 selector_pseudo_selector_args
