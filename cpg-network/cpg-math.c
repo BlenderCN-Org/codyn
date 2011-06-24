@@ -553,7 +553,7 @@ op_less_or_equal (CpgStack *stack,
 	double second = cpg_stack_pop (stack);
 	double first = cpg_stack_pop (stack);
 
-	cpg_stack_push (stack, first < second);
+	cpg_stack_push (stack, first <= second);
 }
 
 static void
