@@ -255,7 +255,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 				}
 
 <indirection_embedding>(\\[]@$\\]|[^]@$\\])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@]$\\");
+					yylval->id = unquote_string (yytext, yyleng, "@]$");
 					return T_STRING;
 				}
 
@@ -275,12 +275,12 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 				}
 
 <instring,incl>(\\["@$\\]|[^"@$\\])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@\"$\\");
+					yylval->id = unquote_string (yytext, yyleng, "@\"$");
 					return T_STRING;
 				}
 
 <equation>(\\[)@$(\\]|[^a-z_)@$(\\])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@)$(\\");
+					yylval->id = unquote_string (yytext, yyleng, "@)$(");
 					return T_STRING;
 				}
 
@@ -367,5 +367,6 @@ unquote_string (gchar const *s, gint len, gchar const *escape)
 	}
 
 	*ptr = '\0';
+
 	return ret;
 }
