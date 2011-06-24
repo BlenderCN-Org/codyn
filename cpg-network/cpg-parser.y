@@ -41,7 +41,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINE T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST_CHILD T_KEY_LAST_CHILD T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_SELECT T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_SELECTOR T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_SELECT T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_PROPERTIES T_KEY_ACTIONS
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -62,7 +62,6 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token T_EQUATION_BEGIN
 %token T_EQUATION_END
 
-%type <num> selector_type
 %type <num> selector_pseudo_simple_key
 %type <num> selector_pseudo_selector_key
 %type <num> selector_pseudo_nth_key
@@ -164,7 +163,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 9
+%expect 15
 
 %%
 
@@ -305,7 +304,7 @@ define_contents
 
 define
 	: attributes
-	  T_KEY_DEFINE
+	  T_KEY_DEFINES
 	  '{'				{ cpg_parser_context_push_define (context, $1); }
 	  define_contents
 	  '}'				{ cpg_parser_context_pop (context); }
@@ -498,8 +497,7 @@ function_contents
 	;
 
 functions
-	: T_KEY_FUNCTIONS function_item
-	| attributes
+	: attributes
 	  T_KEY_FUNCTIONS
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  function_contents
@@ -660,53 +658,48 @@ selector_item
 	| selector_regex
 	;
 
-selector_item_set
-	: selector_identifier_set
-	| selector_regex_set
-	| selector_pseudo
-	;
-
 selector_items
 	: selector_item
-	| selector_items '.' selector_item
-	| selector_items '|' selector_item_set
+	| selector_items '.'		{ cpg_parser_context_push_selector_pseudo (context,
+	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
+	                                                                           NULL); errb }
+	  selector_item
+	| selector_items '|' selector_item
 	;
 
 selector
-	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
+	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb;
+	                                  cpg_selector_prepend_pseudo ($$,
+	                                                               CPG_SELECTOR_PSEUDO_TYPE_ACTIONS,
+	                                                               NULL); }
 	| strict_selector
 	;
 
 strict_selector
-	: ':' selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb}
+	: '|' selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
+	| '.'				{ cpg_parser_context_push_selector_pseudo (context,
+	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN, NULL); errb }
+	  selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
 	;
 
 selector_parse
 	: selector_items
-	| ':' selector_items
+	| '|' selector_items
+	| '.' selector_items		{ cpg_parser_context_push_selector_pseudo (context,
+	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN, NULL); errb }
 	;
 
 selector_identifier
-	: identifier_or_string 		{ cpg_parser_context_push_selector_identifier (context, $1, FALSE); errb }
+	: identifier_or_string 		{ cpg_parser_context_push_selector_identifier (context, $1); errb }
 	;
 
 selector_regex
-	: regex				{ cpg_parser_context_push_selector_regex (context, $1, FALSE); errb }
-	;
-
-selector_identifier_set
-	: identifier_or_string		{ cpg_parser_context_push_selector_identifier (context, $1, TRUE); errb }
-	;
-
-selector_regex_set
-	: regex				{ cpg_parser_context_push_selector_regex (context, $1, TRUE); errb }
+	: regex				{ cpg_parser_context_push_selector_regex (context, $1); errb }
 	;
 
 selector_pseudo_simple_key
 	: T_KEY_ROOT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_ROOT; }
 	| T_KEY_PARENT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_PARENT; }
-	| T_KEY_FIRST_CHILD			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FIRST_CHILD; }
-	| T_KEY_LAST_CHILD			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_LAST_CHILD; }
 	| T_KEY_FIRST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FIRST; }
 	| T_KEY_LAST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_LAST; }
 	| T_KEY_STATES				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_STATES; }
@@ -715,6 +708,12 @@ selector_pseudo_simple_key
 	| T_KEY_COUNT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_COUNT; }
 	| T_KEY_SELF				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SELF; }
 	| T_KEY_DEBUG				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_DEBUG; }
+	| T_KEY_CHILDREN			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_CHILDREN; }
+	| T_KEY_GROUPS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_GROUPS; }
+	| T_KEY_OBJECTS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_OBJECTS; }
+	| T_KEY_PROPERTIES			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_PROPERTIES; }
+	| T_KEY_ACTIONS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_ACTIONS; }
+	| T_KEY_FUNCTIONS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FUNCTIONS; }
 	;
 
 selector_pseudo_simple
@@ -728,7 +727,6 @@ selector_pseudo_selector_key
 
 selector_pseudo_nth_key
 	: T_KEY_SIBLINGS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS; }
-	| T_KEY_CHILDREN			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_CHILDREN; }
 	| T_KEY_SUBSET				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SUBSET; }
 	;
 
@@ -743,11 +741,9 @@ selector_pseudo_nth_args
 	;
 
 selector_pseudo_selector_args_rev
-	: selector				{ cpg_selector_set_first_onset ($1, TRUE);
-						  $$ = g_slist_prepend (NULL, $1); }
+	: selector				{ $$ = g_slist_prepend (NULL, $1); }
 	| selector_pseudo_selector_args_rev ',' { cpg_parser_context_push_selector (context); }
-	  selector				{ cpg_selector_set_first_onset ($4, TRUE);
-						  $$ = g_slist_prepend ($1, $4); }
+	  selector				{ $$ = g_slist_prepend ($1, $4); }
 	;
 
 selector_pseudo_selector_args
@@ -968,29 +964,19 @@ indirection_inside
 	  T_INDIRECTION_END		{ cpg_embedded_string_pop (cpg_parser_context_peek_string (context)); }
 	;
 
-selector_type
-	:				{ $$ = CPG_SELECTOR_TYPE_OBJECT; }
-	| T_KEY_STATE			{ $$ = CPG_SELECTOR_TYPE_STATE; }
-	| T_KEY_LINK			{ $$ = CPG_SELECTOR_TYPE_LINK; }
-	| T_KEY_GROUP			{ $$ = CPG_SELECTOR_TYPE_GROUP; }
-	| T_KEY_ACTION			{ $$ = CPG_SELECTOR_TYPE_ACTION; }
-	| T_KEY_PROPERTY		{ $$ = CPG_SELECTOR_TYPE_PROPERTY; }
-	| T_KEY_FUNCTIONS		{ $$ = CPG_SELECTOR_TYPE_FUNCTION; }
-	;
-
 debug
-	: T_KEY_DEBUG selector_type strict_selector	{ cpg_parser_context_debug_selector (context, $2, $3); }
-	| T_KEY_DEBUG value_as_string			{ cpg_parser_context_debug_string (context, $2); }
-	| T_KEY_DEBUG T_KEY_CONTEXT			{ cpg_parser_context_debug_context (context); }
+	: T_KEY_DEBUG strict_selector		{ cpg_parser_context_debug_selector (context, $2); }
+	| T_KEY_DEBUG value_as_string		{ cpg_parser_context_debug_string (context, $2); }
+	| T_KEY_DEBUG T_KEY_CONTEXT		{ cpg_parser_context_debug_context (context); }
 	;
 
 delete_item
-	: selector_type selector	{ cpg_parser_context_delete_selector (context, $1, $2); errb }
+	: selector		{ cpg_parser_context_delete_selector (context, $1); errb }
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'			{ cpg_parser_context_push_scope (context, $1); }
 	  delete_contents
-	  '}'				{ cpg_parser_context_pop (context); }
+	  '}'			{ cpg_parser_context_pop (context); }
 	;
 
 delete

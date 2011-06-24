@@ -648,8 +648,13 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 			CpgEmbeddedString *em;
 
 			selector = cpg_selector_new ();
+
+			cpg_selector_append_pseudo (selector,
+			                            CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
+			                            NULL);
+
 			em = cpg_embedded_string_new_from_string (*p);
-			cpg_selector_add (selector, em, FALSE);
+			cpg_selector_append (selector, em);
 			g_object_unref (em);
 		}
 

@@ -22,12 +22,14 @@ typedef struct _CpgSelectorPrivate	CpgSelectorPrivate;
 
 typedef enum
 {
-	CPG_SELECTOR_TYPE_STATE = 1 << 0,
-	CPG_SELECTOR_TYPE_LINK = 1 << 1,
-	CPG_SELECTOR_TYPE_GROUP = 1 << 2,
-	CPG_SELECTOR_TYPE_PROPERTY = 1 << 3,
-	CPG_SELECTOR_TYPE_ACTION = 1 << 4,
-	CPG_SELECTOR_TYPE_FUNCTION = 1 << 5,
+	CPG_SELECTOR_TYPE_NONE = 0,
+	CPG_SELECTOR_TYPE_ANY = 1 << 0,
+	CPG_SELECTOR_TYPE_STATE = 1 << 1,
+	CPG_SELECTOR_TYPE_LINK = 1 << 2,
+	CPG_SELECTOR_TYPE_GROUP = 1 << 3,
+	CPG_SELECTOR_TYPE_PROPERTY = 1 << 4,
+	CPG_SELECTOR_TYPE_ACTION = 1 << 5,
+	CPG_SELECTOR_TYPE_FUNCTION = 1 << 6,
 	CPG_SELECTOR_TYPE_OBJECT = CPG_SELECTOR_TYPE_STATE |
 	                           CPG_SELECTOR_TYPE_LINK |
 	                           CPG_SELECTOR_TYPE_GROUP |
@@ -39,13 +41,16 @@ typedef enum
 	CPG_SELECTOR_PSEUDO_TYPE_ROOT,
 	CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
 	CPG_SELECTOR_PSEUDO_TYPE_PARENT,
-	CPG_SELECTOR_PSEUDO_TYPE_FIRST_CHILD,
-	CPG_SELECTOR_PSEUDO_TYPE_LAST_CHILD,
 	CPG_SELECTOR_PSEUDO_TYPE_FIRST,
 	CPG_SELECTOR_PSEUDO_TYPE_LAST,
 	CPG_SELECTOR_PSEUDO_TYPE_SUBSET,
 	CPG_SELECTOR_PSEUDO_TYPE_STATES,
 	CPG_SELECTOR_PSEUDO_TYPE_LINKS,
+	CPG_SELECTOR_PSEUDO_TYPE_GROUPS,
+	CPG_SELECTOR_PSEUDO_TYPE_PROPERTIES,
+	CPG_SELECTOR_PSEUDO_TYPE_ACTIONS,
+	CPG_SELECTOR_PSEUDO_TYPE_FUNCTIONS,
+	CPG_SELECTOR_PSEUDO_TYPE_OBJECTS,
 	CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS,
 	CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES,
 	CPG_SELECTOR_PSEUDO_TYPE_COUNT,
@@ -77,31 +82,40 @@ CpgSelector  *cpg_selector_copy              (CpgSelector            *selector);
 
 gchar const  *cpg_selector_as_string         (CpgSelector            *selector);
 
-void          cpg_selector_set_first_onset   (CpgSelector            *selector,
-                                              gboolean                onset);
+void          cpg_selector_append            (CpgSelector            *selector,
+                                              CpgEmbeddedString      *identifier);
 
-void          cpg_selector_add               (CpgSelector            *selector,
-                                              CpgEmbeddedString      *identifier,
-                                              gboolean                onset);
+void          cpg_selector_append_partial    (CpgSelector            *selector,
+                                              CpgEmbeddedString      *identifier);
 
-void          cpg_selector_add_partial       (CpgSelector            *selector,
-                                              CpgEmbeddedString      *identifier,
-                                              gboolean                onset);
+void          cpg_selector_prepend            (CpgSelector            *selector,
+                                               CpgEmbeddedString      *identifier);
 
-void          cpg_selector_add_pseudo        (CpgSelector            *selector,
+void          cpg_selector_prepend_partial    (CpgSelector            *selector,
+                                               CpgEmbeddedString      *identifier);
+                                              
+void          cpg_selector_append_pseudo     (CpgSelector            *selector,
                                               CpgSelectorPseudoType  type,
                                               GSList                 *arguments);
 
-void          cpg_selector_add_regex         (CpgSelector            *selector,
-                                              CpgEmbeddedString      *regex,
-                                              gboolean                onset);
+void          cpg_selector_prepend_pseudo    (CpgSelector            *selector,
+                                              CpgSelectorPseudoType  type,
+                                              GSList                 *arguments);
 
-void          cpg_selector_add_regex_partial (CpgSelector            *selector,
-                                              CpgEmbeddedString      *regex,
-                                              gboolean                onset);
+void          cpg_selector_append_regex      (CpgSelector            *selector,
+                                              CpgEmbeddedString      *regex);
+
+void          cpg_selector_append_regex_partial (CpgSelector            *selector,
+                                                 CpgEmbeddedString      *regex);
+
+void          cpg_selector_prepend_regex      (CpgSelector            *selector,
+                                               CpgEmbeddedString      *regex);
+
+void          cpg_selector_prepend_regex_partial (CpgSelector            *selector,
+                                                  CpgEmbeddedString      *regex);
 
 GSList       *cpg_selector_select            (CpgSelector            *selector,
-                                              CpgObject              *parent,
+                                              gpointer                parent,
                                               CpgSelectorType         type,
                                               CpgEmbeddedContext     *context);
 

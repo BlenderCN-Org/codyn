@@ -147,11 +147,9 @@ void                   cpg_parser_context_set_proxy            (CpgParserContext
 GSList                *cpg_parser_context_pop                  (CpgParserContext           *context);
 
 void                   cpg_parser_context_push_selector_identifier (CpgParserContext           *context,
-                                                                    CpgEmbeddedString          *identifier,
-                                                                    gboolean                    onset);
+                                                                    CpgEmbeddedString          *identifier);
 void                   cpg_parser_context_push_selector_regex  (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *regex,
-                                                                gboolean                    onset);
+                                                                CpgEmbeddedString          *regex);
 void                   cpg_parser_context_push_selector_pseudo (CpgParserContext           *context,
                                                                 CpgSelectorPseudoType       type,
                                                                 GSList                     *arguments);
@@ -232,11 +230,9 @@ void                   cpg_parser_context_push_equation_depth   (CpgParserContex
 void                   cpg_parser_context_push_equation         (CpgParserContext *context);
 
 void                   cpg_parser_context_delete_selector       (CpgParserContext *context,
-                                                                 CpgSelectorType   type,
                                                                  CpgSelector      *selector);
 
 void                   cpg_parser_context_debug_selector        (CpgParserContext *context,
-                                                                 CpgSelectorType   type,
                                                                  CpgSelector      *selector);
 
 void                   cpg_parser_context_debug_string          (CpgParserContext  *context,

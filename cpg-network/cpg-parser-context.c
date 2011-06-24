@@ -2283,25 +2283,23 @@ cpg_parser_context_push_selector (CpgParserContext *context)
 
 void
 cpg_parser_context_push_selector_identifier (CpgParserContext  *context,
-                                             CpgEmbeddedString *identifier,
-                                             gboolean           onset)
+                                             CpgEmbeddedString *identifier)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (identifier != NULL);
 
-	cpg_selector_add (ensure_selector (context), identifier, onset);
+	cpg_selector_append (ensure_selector (context), identifier);
 	g_object_unref (identifier);
 }
 
 void
 cpg_parser_context_push_selector_regex (CpgParserContext  *context,
-                                        CpgEmbeddedString *regex,
-                                        gboolean           onset)
+                                        CpgEmbeddedString *regex)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (regex != NULL);
 
-	cpg_selector_add_regex (ensure_selector (context), regex, onset);
+	cpg_selector_append_regex (ensure_selector (context), regex);
 	g_object_unref (regex);
 }
 
@@ -2312,7 +2310,7 @@ cpg_parser_context_push_selector_pseudo (CpgParserContext      *context,
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	cpg_selector_add_pseudo (ensure_selector (context),
+	cpg_selector_append_pseudo (ensure_selector (context),
 	                         type,
 	                         argument);
 
@@ -3325,7 +3323,6 @@ debug_selector (CpgParserContext *context,
 
 void
 cpg_parser_context_debug_selector (CpgParserContext *context,
-                                   CpgSelectorType   type,
                                    CpgSelector      *selector)
 {
 	GSList *item;
@@ -3347,7 +3344,7 @@ cpg_parser_context_debug_selector (CpgParserContext *context,
 		                item->data,
 		                cpg_selector_select (selector,
 		                                     cpg_selection_get_object (item->data),
-		                                     type,
+		                                     CPG_SELECTOR_TYPE_ANY,
 		                                     context->priv->embedded));
 
 		cpg_embedded_context_restore (context->priv->embedded);
@@ -3486,7 +3483,6 @@ cpg_parser_context_debug_context (CpgParserContext *context)
 
 void
 cpg_parser_context_delete_selector (CpgParserContext *context,
-                                    CpgSelectorType   type,
                                     CpgSelector      *selector)
 {
 	GSList *ret;
@@ -3507,7 +3503,7 @@ cpg_parser_context_delete_selector (CpgParserContext *context,
 
 		ret = cpg_selector_select (selector,
 		                           cpg_selection_get_object (oo->data),
-		                           type,
+		                           CPG_SELECTOR_TYPE_ANY,
 		                           context->priv->embedded);
 
 		for (item = ret; item; item = g_slist_next (item))

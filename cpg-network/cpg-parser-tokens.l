@@ -164,7 +164,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "from"				return T_KEY_FROM;
 "to"				return T_KEY_TO;
 "piece"				return T_KEY_PIECE;
-"define"			return T_KEY_DEFINE;
+"defines"			return T_KEY_DEFINES;
 "integrator"			return T_KEY_INTEGRATOR;
 "group"				return T_KEY_GROUP;
 "layout"			return T_KEY_LAYOUT;
@@ -184,8 +184,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "root"				return T_KEY_ROOT;
 "children"			return T_KEY_CHILDREN;
 "parent"			return T_KEY_PARENT;
-"first-child"			return T_KEY_FIRST_CHILD;
-"last-child"			return T_KEY_LAST_CHILD;
 "first"				return T_KEY_FIRST;
 "last"				return T_KEY_LAST;
 "subset"			return T_KEY_SUBSET;
@@ -200,6 +198,10 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
 "select"			return T_KEY_SELECT;
 "each"				return T_KEY_EACH;
+"groups"			return T_KEY_GROUPS;
+"objects"			return T_KEY_OBJECTS;
+"properties"			return T_KEY_PROPERTIES;
+"actions"			return T_KEY_ACTION;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);
