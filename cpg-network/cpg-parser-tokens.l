@@ -201,6 +201,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "properties"			return T_KEY_PROPERTIES;
 "actions"			return T_KEY_ACTION;
 "if"				return T_KEY_IF;
+"settings"			return T_KEY_SETTINGS;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);

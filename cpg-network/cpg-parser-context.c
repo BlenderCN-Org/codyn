@@ -7,6 +7,7 @@
 #include "cpg-selection.h"
 #include "cpg-expansion.h"
 #include "cpg-layoutable.h"
+#include "cpg-input-file.h"
 
 #include <string.h>
 
@@ -1948,6 +1949,52 @@ cpg_parser_context_push_group (CpgParserContext  *context,
 }
 
 void
+cpg_parser_context_push_input_file (CpgParserContext  *context,
+                                    CpgEmbeddedString *id,
+                                    CpgEmbeddedString *path,
+                                    GSList            *attributes)
+{
+	GSList *objects;
+	GSList *paths;
+	GSList *item;
+	GSList *obj;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	objects = create_objects (context,
+	                          id,
+	                          NULL,
+	                          CPG_TYPE_INPUT_FILE,
+	                          attributes);
+
+	paths = cpg_embedded_string_expand_multiple (path, context->priv->embedded);
+
+	for (item = paths; item; item = g_slist_next (item))
+	{
+		CpgExpansion *ex;
+
+		ex = item->data;
+
+		for (obj = objects; obj; obj = g_slist_next (obj))
+		{
+			CpgInputFile *f;
+
+			f = CPG_INPUT_FILE (cpg_selection_get_object (obj->data));
+
+			cpg_input_file_set_file_path (f,
+			                              cpg_expansion_get (ex, 0));
+		}
+	}
+
+	g_slist_foreach (paths, (GFunc)g_object_unref, NULL);
+	g_slist_free (paths);
+
+	cpg_parser_context_push_object (context, objects);
+	g_slist_free (objects);
+}
+
+
+void
 cpg_parser_context_push_link (CpgParserContext          *context,
                               CpgEmbeddedString         *id,
                               GArray                    *templates,
@@ -3657,3 +3704,150 @@ cpg_parser_context_delete_selector (CpgParserContext *context,
 	}
 }
 
+static gchar **
+multiexpand_to_strv (GSList *expansions)
+{
+	GPtrArray *ret;
+
+	ret = g_ptr_array_new ();
+
+	while (expansions)
+	{
+		g_ptr_array_add (ret, (gchar *)cpg_expansion_get (expansions->data, 0));
+		expansions = g_slist_next (expansions);
+	}
+
+	g_ptr_array_add (ret, NULL);
+	return (gchar **)g_ptr_array_free (ret, FALSE);
+}
+
+static gboolean
+any_multiexpand_true (GSList *expansions)
+{
+	while (expansions)
+	{
+		gchar const *n;
+		gchar *endptr;
+		gdouble r;
+
+		n = cpg_expansion_get (expansions->data, 0);
+
+		if (*n)
+		{
+			r = g_ascii_strtod (n, &endptr);
+
+			if (!*endptr)
+			{
+				if (r != 0)
+				{
+					return TRUE;
+				}
+			}
+			else
+			{
+				return TRUE;
+			}
+		}
+
+		expansions = g_slist_next (expansions);
+	}
+
+	return FALSE;
+}
+
+void
+cpg_parser_context_set_input_file_setting (CpgParserContext  *context,
+                                           CpgEmbeddedString *name,
+                                           CpgEmbeddedString *value)
+{
+	Context *ctx;
+	GSList *obj;
+
+	gboolean ret = TRUE;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (name));
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (value));
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (obj = ctx->objects; obj; obj = g_slist_next (obj))
+	{
+		CpgInputFile *f;
+		GSList *names;
+		GSList *nm;
+
+		f = cpg_selection_get_object (obj->data);
+
+		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_add_selection (context->priv->embedded,
+		                                    obj->data);
+
+		names = cpg_embedded_string_expand_multiple (name, context->priv->embedded);
+
+		for (nm = names; nm; nm = g_slist_next (nm))
+		{
+			gchar const *n;
+			GSList *values;
+
+			cpg_embedded_context_save (context->priv->embedded);
+			cpg_embedded_context_add_expansion (context->priv->embedded,
+			                                    nm->data);
+
+			values = cpg_embedded_string_expand_multiple (value,
+			                                              context->priv->embedded);
+
+			cpg_embedded_context_restore (context->priv->embedded);
+
+			n = cpg_expansion_get (nm->data, 0);
+
+			if (g_strcmp0 (n, "columns") == 0)
+			{
+				gchar **r;
+
+				r = multiexpand_to_strv (values);
+
+				cpg_input_file_set_columns (f, (gchar const * const *)r);
+
+				g_free (r);
+			}
+			else if (g_strcmp0 (n, "repeat") == 0)
+			{
+				cpg_input_file_set_repeat (f, any_multiexpand_true (values));
+			}
+			else if (g_strcmp0 (n, "time") == 0)
+			{
+				gint c = (gint)g_ascii_strtoll (values->data, NULL, 10);
+
+				cpg_input_file_set_time_column (f, c);
+			}
+			else
+			{
+				parser_failed (context,
+				               CPG_NETWORK_LOAD_ERROR_OBJECT,
+				               "The input file setting `%s' does not exist",
+				               n);
+
+				ret = FALSE;
+			}
+
+			g_slist_foreach (values, (GFunc)g_object_unref, NULL);
+			g_slist_free (values);
+
+			if (!ret)
+			{
+				break;
+			}
+		}
+
+		g_slist_foreach (names, (GFunc)g_object_unref, NULL);
+		g_slist_free (names);
+
+		cpg_embedded_context_restore (context->priv->embedded);
+
+		if (!ret)
+		{
+			break;
+		}
+	}
+}

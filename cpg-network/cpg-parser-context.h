@@ -146,6 +146,15 @@ void                   cpg_parser_context_push_templates       (CpgParserContext
 void                   cpg_parser_context_push_integrator      (CpgParserContext           *context,
                                                                 GSList                     *attributes);
 
+void                   cpg_parser_context_push_input_file      (CpgParserContext           *context,
+                                                                CpgEmbeddedString          *id,
+                                                                CpgEmbeddedString          *path,
+                                                                GSList                     *attributes);
+
+void                   cpg_parser_context_set_input_file_setting (CpgParserContext         *context,
+                                                                  CpgEmbeddedString        *name,
+                                                                  CpgEmbeddedString        *value);
+
 void                   cpg_parser_context_set_proxy            (CpgParserContext           *context,
                                                                 GSList                     *objects);
 
