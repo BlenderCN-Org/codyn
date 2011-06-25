@@ -28,4 +28,10 @@ class WindowActivatable(BaseWindowActivatable, GObject.Object, Gedit.WindowActiv
     def __init__(self):
         GObject.Object.__init__(self)
 
+    def do_activate(self):
+        BaseWindowActivatable.do_activate(self)
+
+    def do_deactivate(self):
+        BaseWindowActivatable.do_deactivate(self)
+
 # vi:ex:ts=4:et

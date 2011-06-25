@@ -29,4 +29,10 @@ class ViewActivatable(BaseViewActivatable, GObject.Object, Gedit.ViewActivatable
         GObject.Object.__init__(self)
         BaseViewActivatable.__init__(self)
 
+    def do_activate(self):
+        BaseViewActivatable.do_activate(self)
+
+    def do_deactivate(self):
+        BaseViewActivatable.do_deactivate(self)
+
 # vi:ex:ts=4:et
