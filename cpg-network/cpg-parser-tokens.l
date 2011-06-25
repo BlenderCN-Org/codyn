@@ -40,6 +40,8 @@ advance_column (CpgParserContext *context, gint offset)
 										\
 	yyless (1);
 
+#define ECHO
+
 %}
 
 IDENTIFIER [a-z_][a-z0-9_-]*
