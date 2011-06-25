@@ -138,6 +138,7 @@ tools/Makefile
 tools/cpg-monitor/Makefile
 tools/cpg-parser/Makefile
 tools/cpg-render/Makefile
+tools/cpg-context/Makefile
 ])
 
 AC_OUTPUT
