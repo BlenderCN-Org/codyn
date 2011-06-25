@@ -19,8 +19,8 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330,
 #  Boston, MA 02111-1307, USA.
 
-from gi.repository import GObject, Gio
-import threading, os, json, subprocess, tempfile
+import threading, os, json, subprocess, tempfile, signal, fcntl, sys
+import utils
 
 class Expansion:
     class Item:
@@ -53,7 +53,15 @@ class Context:
 
         self.selections = [Selection(x) for x in context['selections']]
 
-class Parser(threading.Thread):
+class Error:
+    def __init__(self, error):
+        self.message = error['message']
+        self.line = error['line']
+        self.lineno = error['lineno']
+        self.column_start = error['column_start']
+        self.column_end = error['column_end']
+
+class Parser:
     def __init__(self, doc, finishedcb):
         self.doc = doc
         self.contexts = []
@@ -62,6 +70,7 @@ class Parser(threading.Thread):
 
         self.filename = None
         self.istmp = False
+        self.pipe = None
 
         if doc.get_modified() or doc.is_untitled():
             loc = doc.get_location()
@@ -70,17 +79,17 @@ class Parser(threading.Thread):
                 dirname = loc.get_parent()
                 basename = loc.get_basename()
 
-                f = dirname.get_child("." + basename + ".parse-tmp")
-                fp = file(f.get_path(), 'w')
+                f = dirname.get_child("." + basename + ".parse-tmp").get_path()
+                fp = file(f, 'w')
             else:
                 fp = tempfile.NamedTemporaryFile(mode='w', delete=False)
-                f = Gio.file_new_for_path(fp.name)
+                f = fp.name
 
             bounds = doc.get_bounds()
             fp.write(doc.get_text(bounds[0], bounds[1], True))
             fp.close()
 
-            self.filename = os.path.realpath(f.get_path())
+            self.filename = os.path.realpath(f)
             self.istmp = True
         else:
             self.filename = doc.get_location().get_path()
@@ -88,19 +97,48 @@ class Parser(threading.Thread):
     def cancel(self):
         self.finishedcb = None
 
+        if self.pipe:
+            os.kill(self.pipe.pid, signal.SIGTERM)
+            self.pipe = None
+
     def run(self):
+        dirname = os.path.dirname(self.filename)
+        filename = os.path.basename(self.filename)
+
+        self.ret = None
+
         try:
-            dirname = os.path.dirname(self.filename)
-            filename = os.path.basename(self.filename)
-
-            p = subprocess.Popen(['cpg-context', filename], cwd=dirname, stdout=subprocess.PIPE)
-
-            self.ret = json.load(p.stdout)
+            self.pipe = subprocess.Popen(['cpg-context', filename],
+                                         cwd=dirname,
+                                         stdout=subprocess.PIPE)
         except Exception as (e):
+            sys.stderr.write('Failed to execute cpg-context: %s\n' % (e,))
+            self.pipe = None
+            return False
+
+        self.read_buffer = ''
+
+        flags = fcntl.fcntl(self.pipe.stdout.fileno(), fcntl.F_GETFL) | os.O_NONBLOCK
+        fcntl.fcntl(self.pipe.stdout.fileno(), fcntl.F_SETFL, flags)
+
+        utils.io_add_watch(self.pipe.stdout, self.on_output)
+        utils.child_watch_add(self.pipe.pid, self.on_parser_end)
+
+    def on_parser_end(self, pid, error_code):
+        try:
+            self.ret = json.loads(self.read_buffer)
+        except Exception as (e):
+            sys.stderr.write('Failed to load json: %s\n' % (e,))
             self.ret = None
 
+        self.pipe = None
+        self.read_buffer = ''
+
         if self.ret and self.ret['status'] == 'ok':
-            self.ret['data'] = filter(lambda x: x['filename'] == self.filename, self.ret['data'])
+            # Filter data so we just keep our own
+            self.ret['data'] = map(lambda x: Context(x), filter(lambda x: x['filename'] == self.filename, self.ret['data']))
+        elif self.ret and self.ret['status'] == 'error':
+            self.ret['data'] = Error(self.ret['data'])
 
         if self.istmp:
             try:
@@ -108,12 +146,29 @@ class Parser(threading.Thread):
             except:
                 pass
 
-        GObject.idle_add(self.idle_finished)
+        if self.finishedcb:
+            utils.idle_add(self.idle_finished)
 
     def idle_finished(self):
         if self.finishedcb:
-            self.finishedcb(self)
+            self.finishedcb(self.ret)
 
         return False
+
+    def on_output(self, source, condition):
+        if utils.io_is_in(condition):
+            line = source.read()
+
+            if len(line) > 0:
+                try:
+                    line = unicode(line, 'utf-8')
+                except:
+                    line = unicode(line, locale.getdefaultlocale()[1], 'replace')
+
+                self.read_buffer += line
+        elif utils.io_is_close(condition):
+            return False
+
+        return True
 
 # vi:ex:ts=4:et

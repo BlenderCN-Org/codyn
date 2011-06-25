@@ -19,13 +19,17 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330,
 #  Boston, MA 02111-1307, USA.
 
-from gi.repository import Gtk
+import utils
 
-class Selections(Gtk.TreeStore):
+class Selections(utils.gtk.TreeStore):
     def __init__(self):
-        super(Gtk.TreeStore, self).__init__()
+        super(utils.gtk.TreeStore, self).__init__()
 
-        self.set_column_types(('gchararray', 'gboolean'))
+        if utils.isgi:
+            self.set_column_types(('gchararray', 'gboolean'))
+        else:
+            self.set_column_types(str, bool)
+
         self.context = None
 
     def update(self, context):

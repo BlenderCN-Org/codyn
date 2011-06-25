@@ -136,17 +136,33 @@ if test "x$enable_gedit" != "xno"; then
 
 	if test "x$have_gedit" = "xyes"; then
 		enable_gedit="yes"
-
+		GEDIT_MAJOR_VERSION=3
 		GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
-		AC_SUBST(GEDIT_PLUGIN_DIR)
 	else
-		if test "x$enable_gedit" = "xyes"; then
-			AC_MSG_ERROR([Could not find gedit])
+		PKG_CHECK_MODULES(GEDIT,
+		                  [gedit-2.20],
+		                  [have_gedit=yes],
+		                  [have_gedit=no])
+
+		if test "x$have_gedit" = "xyes"; then
+			enable_gedit="yes"
+			GEDIT_MAJOR_VERSION=2
+			GEDIT_PLUGIN_DIR="$libdir/gedit-2.0/plugins"
+		else
+			enable_gedit="no"
+
+			if test "x$enable_gedit" = "xyes"; then
+				AC_MSG_ERROR([Could not find gedit])
+			fi
 		fi
 	fi
+
+	AC_SUBST(GEDIT_PLUGIN_DIR)
+	AC_SUBST(GEDIT_MAJOR_VERSION)
 fi
 
 AM_CONDITIONAL(ENABLE_GEDIT, test "x$enable_gedit" = "xyes")
+AM_CONDITIONAL(ENABLE_GEDIT3, test "x$GEDIT_MAJOR_VERSION" = "x3")
 
 AC_CONFIG_FILES([
 Makefile
@@ -173,6 +189,8 @@ tools/cpg-context/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cpgcontext/Makefile
+tools/plugins/gedit/cpgcontext.plugin
+tools/plugins/gedit/cpgcontext.gedit-plugin
 ])
 
 AC_OUTPUT

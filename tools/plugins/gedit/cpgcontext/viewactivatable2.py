@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#  windowactivatable.py - cpgcontext gedit plugin
+#  viewactivatable.py - cpgcontext gedit plugin
 #
 #  Copyright (C) 2011 - Jesse van den Kieboom
 #
@@ -19,26 +19,12 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330,
 #  Boston, MA 02111-1307, USA.
 
-from gi.repository import GObject, Gedit, Gtk
-from panel import Panel
-from shareddata import SharedData
+from baseviewactivatable import BaseViewActivatable
 
-class WindowActivatable(GObject.Object, Gedit.WindowActivatable):
-    window = GObject.property(type=Gedit.Window)
+class ViewActivatable(BaseViewActivatable):
+    def __init__(self, view):
+        self.view = view
 
-    def __init__(self):
-        GObject.Object.__init__(self)
-
-    def do_activate(self):
-        panel = Panel()
-        panel.show()
-
-        side = self.window.get_side_panel()
-        side.add_item_with_stock_icon(panel, "cpgcontext", "CPG Context", Gtk.STOCK_INDEX)
-
-        SharedData().panel = panel
-
-    def do_deactivate(self):
-        pass
+        BaseViewActivatable.__init__(self)
 
 # vi:ex:ts=4:et

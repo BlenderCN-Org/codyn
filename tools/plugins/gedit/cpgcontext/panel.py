@@ -19,22 +19,23 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330,
 #  Boston, MA 02111-1307, USA.
 
-from gi.repository import Gtk, Pango
 from selections import Selections
+from utils import gtk, pango
 
-class Panel(Gtk.Box):
+import utils
+
+class Panel(gtk.VBox):
     __gtype_name__ = "CpgPanel"
 
     def __init__(self):
-        super(Gtk.Box, self).__init__()
+        super(gtk.VBox, self).__init__()
 
-        self.set_orientation(Gtk.Orientation.VERTICAL)
-
-        sw = Gtk.ScrolledWindow()
-        sw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        sw = gtk.ScrolledWindow()
+        sw.set_policy(utils.PolicyType.AUTOMATIC, utils.PolicyType.AUTOMATIC)
+        sw.set_shadow_type(utils.ShadowType.ETCHED_IN)
         sw.show()
 
-        self.treeview = Gtk.TreeView()
+        self.treeview = gtk.TreeView()
         self.model = Selections()
 
         self.treeview.set_model(self.model)
@@ -43,12 +44,14 @@ class Panel(Gtk.Box):
         self.treeview.set_show_expanders(False)
         self.treeview.set_level_indentation(12)
 
-        cell = Gtk.CellRendererText()
-        cell.props.ellipsize = Pango.EllipsizeMode.END
+        cell = gtk.CellRendererText()
+        cell.props.ellipsize = utils.EllipsizeMode.END
 
-        column = Gtk.TreeViewColumn(title='Context',
-                                    cell_renderer=cell,
-                                    markup=0)
+        column = gtk.TreeViewColumn()
+        column.props.title = 'Context'
+
+        column.pack_start(cell, True)
+        column.add_attribute(cell, 'markup', 0)
 
         column.set_cell_data_func(cell, self.on_cell_data)
 
@@ -58,20 +61,22 @@ class Panel(Gtk.Box):
 
         self.pack_start(sw, True, True, 0)
 
-    def on_cell_data(self, column, renderer, model, piter, data):
+    def on_cell_data(self, column, renderer, model, piter, data=None):
         if model.get_value(piter, 1):
-            context = self.treeview.get_style_context()
-
             if not model.iter_parent(piter):
-                state = Gtk.StateFlags.ACTIVE
+                state = utils.StateFlags.ACTIVE
             else:
-                state = Gtk.StateFlags.INSENSITIVE
+                state = utils.StateFlags.INSENSITIVE
 
-            bg = context.get_background_color(state)
-            fg = context.get_color(state)
+            bg = utils.get_style_bg(self.treeview, state)
+            fg = utils.get_style_fg(self.treeview, state)
 
-            renderer.props.background_rgba = bg
-            renderer.props.foreground_rgba = fg
+            if utils.isgi:
+                renderer.props.background_rgba = bg
+                renderer.props.foreground_rgba = fg
+            else:
+                renderer.props.background_gdk = bg
+                renderer.props.foreground_gdk = fg
         else:
             renderer.props.background_set = False
             renderer.props.foreground_set = False

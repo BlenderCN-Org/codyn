@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#  viewactivatable.py - cpgcontext gedit plugin
+#  baseviewactivatable.py - cpgcontext gedit plugin
 #
 #  Copyright (C) 2011 - Jesse van den Kieboom
 #
@@ -19,16 +19,12 @@
 #  Foundation, Inc., 59 Temple Place, Suite 330,
 #  Boston, MA 02111-1307, USA.
 
-from gi.repository import GObject, Gedit, Pango, Gtk
 from shareddata import SharedData
 import parser
+import utils
 
-class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
-    view = GObject.property(type=Gedit.View)
-
+class BaseViewActivatable:
     def __init__(self):
-        GObject.Object.__init__(self)
-
         self.timeout = None
         self.cursor_timeout = None
         self.parser = None
@@ -47,7 +43,7 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
 
         self.error_tag = doc.create_tag('CpgParsed::error')
         doc.get_tag_table().remove(self.error_tag)
-        self.error_tag.props.underline = Pango.Underline.ERROR
+        self.error_tag.props.underline = utils.Underline.ERROR
 
         self.language_changed()
 
@@ -55,7 +51,7 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
         if not self.last_error:
             return False
 
-        xy = self.view.window_to_buffer_coords(Gtk.TextWindowType.WIDGET, x, y)
+        xy = self.view.window_to_buffer_coords(utils.TextWindowType.WIDGET, x, y)
 
         if not xy:
             return False
@@ -68,7 +64,7 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
         if not piter.has_tag(self.error_tag):
             return False
 
-        tooltip.set_text(self.last_error['message'])
+        tooltip.set_text(self.last_error.message)
         return True
 
     def cancel(self):
@@ -89,11 +85,11 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
             self.parser = None
 
         if self.timeout:
-            GObject.source_remove(self.timeout)
+            utils.source_remove(self.timeout)
             self.timeout = None
 
         if self.cursor_timeout:
-            GObject.source_remove(self.cursor_timeout)
+            utils.source_remove(self.cursor_timeout)
             self.cursor_timeout = None
 
     def language_changed(self):
@@ -128,10 +124,10 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
 
     def reparse(self):
         if self.timeout:
-            GObject.source_remove(self.timeout)
+            utils.source_remove(self.timeout)
             self.timeout = None
 
-        self.timeout = GObject.timeout_add(200, self.on_doc_parse_timeout)
+        self.timeout = utils.timeout_add(200, self.on_doc_parse_timeout)
 
     def on_doc_changed(self, doc):
         self.reparse()
@@ -146,10 +142,10 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
         self.last_parsed = []
         self.last_error = data
 
-        message = data['message']
-        lineno = data['lineno']
-        cstart = data['column_start']
-        cend = data['column_end']
+        message = data.message
+        lineno = data.lineno
+        cstart = data.column_start
+        cend = data.column_end
 
         doc = self.view.get_buffer()
         piter = doc.get_iter_at_line(max(0, lineno - 1))
@@ -170,7 +166,7 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
         piter = doc.get_iter_at_mark(doc.get_insert())
 
         line = piter.get_line() + 1
-        col = piter.get_offset() + 1
+        col = piter.get_line_offset() + 1
 
         # Find the last context containing the cursor location
         lastmatch = None
@@ -183,7 +179,7 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
                 continue
 
             # Start line condition
-            if line == context.line_start and col < context.column_start:
+            if line == context.line_start and col <= context.column_start:
                 continue
 
             # End line condition
@@ -204,16 +200,16 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
 
     def cursor_moved(self):
         if self.cursor_timeout:
-            GObject.source_remove(self.cursor_timeout)
+            utils.source_remove(self.cursor_timeout)
             self.cursor_timeout = None
 
-        self.cursor_timeout = GObject.timeout_add(100, self.timeout_cursor_moved)
+        self.cursor_timeout = utils.timeout_add(100, self.timeout_cursor_moved)
 
     def on_cursor_moved(self, doc):
         self.cursor_moved()
 
     def update_parsed_ok(self, data):
-        self.last_parsed = [parser.Context(x) for x in data]
+        self.last_parsed = data
         self.last_error = None
 
         self.cursor_moved()
@@ -229,10 +225,10 @@ class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
         else:
             self.update_parsed_ok(ret['data'])
 
-    def on_parser_finished(self, parser):
+    def on_parser_finished(self, ret):
         self.parser = None
 
-        self.update_parsed(parser.ret)
+        self.update_parsed(ret)
 
     def on_doc_parse_timeout(self):
         self.timeout = None

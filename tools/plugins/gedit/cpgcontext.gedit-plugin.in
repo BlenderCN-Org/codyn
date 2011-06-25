@@ -1,10 +1,10 @@
-[Plugin]
+[Gedit Plugin]
 Loader=python
 Module=cpgcontext
-IAge=3
+IAge=2
 Name=Cpg Context
 Description=Show cpg context while editing cpg network files
 Authors=Jesse van den Kieboom <jessevdk@gnome.org>
 Copyright=Copyright © 2011 Jesse van den Kieboom
 Website=http://www.gedit.org
-Version=1.0
+Version=@VERSION@
