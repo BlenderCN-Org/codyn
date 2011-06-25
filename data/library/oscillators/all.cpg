@@ -6,10 +6,14 @@ templates
     ## Phase oscillator
     import "phase.cpg" as "phase"
 
+    ## Matsuoka oscillator
+    import "matsuoka.cpg" as "matsuoka"
+
     layout
     {
         "hopf" at (@[++], 0)
         "phase" at (@[++], 0)
+        "matsuoka" at (@[++], 0)
     }
 }
 
