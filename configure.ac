@@ -107,7 +107,8 @@ AC_DEFINE_UNQUOTED([API_VERSION], ["$CPG_NETWORK_API_VERSION"], [API version])
 
 AC_CHECK_LIB([termcap],
              [tgetent],
-              [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -ltermcap"],
+              [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -ltermcap"
+               CPG_CONTEXT_LIBS="$CPG_CONTEXT_LIBS -ltermcap"],
              [AC_MSG_ERROR(could not find termcap library)])
 
 AC_CHECK_LIB([readline],
@@ -116,6 +117,36 @@ AC_CHECK_LIB([readline],
              [AC_MSG_ERROR(Could not find readline library)])
 
 AC_SUBST(CPG_PARSER_LIBS)
+AC_SUBST(CPG_CONTEXT_LIBS)
+
+dnl ================================================================
+dnl Check for gedit
+dnl ================================================================
+
+AC_ARG_ENABLE([gedit],
+              AS_HELP_STRING([--enable-gedit=[yes/no/auto]],[Enable installation of gedit plugin (default: auto)]),
+              [enable_gedit=$enableval],
+              [enable_gedit=auto])
+
+if test "x$enable_gedit" != "xno"; then
+	PKG_CHECK_MODULES(GEDIT,
+		[gedit >= 3.0],
+		[have_gedit=yes],
+		[have_gedit=no])
+
+	if test "x$have_gedit" = "xyes"; then
+		enable_gedit="yes"
+
+		GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
+		AC_SUBST(GEDIT_PLUGIN_DIR)
+	else
+		if test "x$enable_gedit" = "xyes"; then
+			AC_MSG_ERROR([Could not find gedit])
+		fi
+	fi
+fi
+
+AM_CONDITIONAL(ENABLE_GEDIT, test "x$enable_gedit" = "xyes")
 
 AC_CONFIG_FILES([
 Makefile
@@ -139,6 +170,9 @@ tools/cpg-monitor/Makefile
 tools/cpg-parser/Makefile
 tools/cpg-render/Makefile
 tools/cpg-context/Makefile
+tools/plugins/Makefile
+tools/plugins/gedit/Makefile
+tools/plugins/gedit/cpgcontext/Makefile
 ])
 
 AC_OUTPUT
@@ -153,5 +187,6 @@ Configuration:
 	Webots support enabled:	$enable_webots
 	GObject Introspection:	$enable_introspection
 	Documentation enabled:  $enable_doc
+	gedit plugin:           $enable_gedit
 "
 
