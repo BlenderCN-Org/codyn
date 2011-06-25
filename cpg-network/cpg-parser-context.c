@@ -1638,11 +1638,12 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 	{
 		CpgSelection *sel;
 		GSList *ret;
+		GSList *it;
 
 		sel = item->data;
 
 		cpg_embedded_context_save (context->priv->embedded);
-		cpg_embedded_context_add_selection (context->priv->embedded,
+		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    sel);
 
 		ret = cpg_selector_select (selector,
@@ -1650,13 +1651,32 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 		                           type,
 		                           context->priv->embedded);
 
-		objs = g_slist_concat (objs, ret);
+		for (it = ret; it; it = g_slist_next (it))
+		{
+			cpg_embedded_context_save (context->priv->embedded);
+
+			cpg_embedded_context_add_expansions (context->priv->embedded,
+			                                     cpg_selection_get_expansions (it->data));
+
+			objs = g_slist_prepend (objs,
+			                        cpg_selection_new_defines (cpg_selection_get_object (it->data),
+			                                                   cpg_embedded_context_get_expansions (context->priv->embedded),
+			                                                   cpg_embedded_context_get_defines (context->priv->embedded),
+			                                                   TRUE));
+
+			cpg_embedded_context_restore (context->priv->embedded);
+		}
+
+		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+		g_slist_free (ret);
 
 		cpg_embedded_context_restore (context->priv->embedded);
 	}
 
 	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
 	g_slist_free (parents);
+
+	objs = g_slist_reverse (objs);
 
 	cpg_parser_context_push_object (context, objs);
 
