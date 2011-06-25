@@ -367,7 +367,7 @@ state
 	  T_KEY_STATE
 	  strict_selector		{ cpg_parser_context_push_selection (context,
 	                                                                     $3,
-	                                                                     CPG_SELECTOR_TYPE_LINK,
+	                                                                     CPG_SELECTOR_TYPE_STATE,
 	                                                                     $1); }
 	  '{'
 	  state_contents
