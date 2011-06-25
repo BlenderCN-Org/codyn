@@ -3851,3 +3851,16 @@ cpg_parser_context_set_input_file_setting (CpgParserContext  *context,
 		}
 	}
 }
+
+GSList const *
+cpg_parser_context_current_selections (CpgParserContext *context)
+{
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+
+	if (!context->priv->context_stack)
+	{
+		return NULL;
+	}
+
+	return CURRENT_CONTEXT (context)->objects;
+}
