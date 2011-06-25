@@ -61,6 +61,15 @@ struct _CpgParserContextPrivate
 	CpgLayout *layout;
 };
 
+enum
+{
+	CONTEXT_PUSHED,
+	CONTEXT_POPPED,
+	NUM_SIGNALS
+};
+
+static guint signals[NUM_SIGNALS];
+
 G_DEFINE_TYPE (CpgParserContext, cpg_parser_context, G_TYPE_OBJECT)
 
 enum
@@ -241,6 +250,28 @@ cpg_parser_context_class_init (CpgParserContextClass *klass)
 	                                                      "Network",
 	                                                      CPG_TYPE_NETWORK,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+
+	signals[CONTEXT_PUSHED] =
+		g_signal_new ("context-pushed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE,
+		              0);
+
+	signals[CONTEXT_POPPED] =
+		g_signal_new ("context-popped",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE,
+		              0);
 }
 
 static void
@@ -1573,6 +1604,8 @@ cpg_parser_context_push_object (CpgParserContext *context,
 	context->priv->context_stack =
 		g_slist_prepend (context->priv->context_stack,
 		                 context_new (objects));
+
+	g_signal_emit (context, signals[CONTEXT_PUSHED], 0);
 }
 
 void
@@ -2211,6 +2244,8 @@ cpg_parser_context_pop (CpgParserContext *context)
 	context->priv->context_stack =
 		g_slist_delete_link (context->priv->context_stack,
 		                     context->priv->context_stack);
+
+	g_signal_emit (context, signals[CONTEXT_POPPED], 0);
 
 	return ret;
 }
