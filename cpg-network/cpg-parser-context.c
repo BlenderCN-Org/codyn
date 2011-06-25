@@ -93,6 +93,7 @@ input_item_free (InputItem *self)
 
 	if (self->stream)
 	{
+		g_input_stream_close (self->stream, NULL, NULL);
 		g_object_unref (self->stream);
 	}
 
