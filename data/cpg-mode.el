@@ -35,35 +35,20 @@
     (beginning-of-line)
     (if (bobp)
         (indent-line-to 0)
-      (let ((not-indented t) cur-indent)
-        (if (looking-at "[^#\n]*}[ \t]*$")
-            (progn
-              (save-excursion
-                (previous-non-empty-line)
-                (if (looking-at "[^#\n]*{[ \t]*$")
-                    (setq cur-indent (current-indentation))
-                  (setq cur-indent (- (current-indentation) default-tab-width))))
-              (if (< cur-indent 0)
-                  (setq cur-indent 0)))
-          (save-excursion
-            (while not-indented
-              (previous-non-empty-line)
-              (if (looking-at "[^#\n]*}[ \t]*$")
-                  (progn
-                    (setq cur-indent (current-indentation))
-                    (setq not-indented nil))
-                (if (looking-at "[^#\n]*{[ \t]*$")
-                    (progn
-                      (setq cur-indent (+ (current-indentation) default-tab-width))
-                      (setq not-indented nil))
-                  (if (bobp)
-                      (setq not-indented nil)))))))
-        (if cur-indent
-            (indent-line-to cur-indent)
-          (indent-line-to 0))))
+      (let (cur-indent closing)
+        (save-excursion
+          (setq closing (looking-at "[ \t]*}[ \t]*$"))
+          (previous-non-empty-line)
+          (setq cur-indent (current-indentation))
+          (if closing
+              (if (not (looking-at "[^#\n]*{[ \t]*$"))
+                  (setq cur-indent (max 0 (- (current-indentation) default-tab-width))))
+            (if (looking-at "[^#\n]*{[ \t]*$")
+                (setq cur-indent (+ (current-indentation) default-tab-width)))))
+        (indent-line-to cur-indent)))
     (if was-in-text
         (goto-char start-pos))))
-            
+
 (defvar cpg-mode-syntax-table
   (let ((cpg-mode-syntax-table (make-syntax-table)))
     (modify-syntax-entry ?# ".12" cpg-mode-syntax-table)
