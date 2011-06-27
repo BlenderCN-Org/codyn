@@ -46,7 +46,18 @@ class Selections(utils.gtk.TreeStore):
             self.add_selection(selection)
 
     def add_selection(self, selection):
-        piter = self.append(None, ("[<b>%s</b>] %s" % (selection.typename, selection.name), True))
+        piter = self.append(None, ('[<b>in</b>]', False))
+
+        for item in selection.ins:
+            self.add_selection_item(piter, item)
+
+        piter = self.append(None, ('[<b>out</b>]', False))
+
+        for item in selection.outs:
+            self.add_selection_item(piter, item)
+
+    def add_selection_item(self, parent, selection):
+        piter = self.append(parent, ("[<b>%s</b>] %s" % (selection.typename, selection.name), True))
 
         cnt = 1
 

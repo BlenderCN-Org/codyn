@@ -3971,6 +3971,19 @@ cpg_parser_context_current_selections (CpgParserContext *context)
 	return CURRENT_CONTEXT (context)->objects;
 }
 
+GSList const *
+cpg_parser_context_previous_selections (CpgParserContext *context)
+{
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+
+	if (!context->priv->context_stack || !context->priv->context_stack->next)
+	{
+		return NULL;
+	}
+
+	return ((Context *)context->priv->context_stack->next->data)->objects;
+}
+
 void
 cpg_parser_context_begin_selector_item (CpgParserContext *context)
 {

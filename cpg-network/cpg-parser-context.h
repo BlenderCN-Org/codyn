@@ -170,6 +170,7 @@ void                   cpg_parser_context_set_proxy            (CpgParserContext
 
 GSList                *cpg_parser_context_pop                  (CpgParserContext           *context);
 GSList const          *cpg_parser_context_current_selections   (CpgParserContext           *context);
+GSList const          *cpg_parser_context_previous_selections  (CpgParserContext           *context);
 
 void                   cpg_parser_context_push_selector_identifier (CpgParserContext           *context,
                                                                     CpgEmbeddedString          *identifier);

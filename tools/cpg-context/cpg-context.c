@@ -92,9 +92,21 @@ context_new (CpgParserContext *context)
 	cpg_parser_context_get_line (context, &ret->line_start);
 	cpg_parser_context_get_column (context, &ret->column_start, NULL);
 
-	selections = cpg_parser_context_current_selections (context);
-
 	s = g_slice_new0 (Selection);
+
+	selections = cpg_parser_context_previous_selections (context);
+
+	while (selections)
+	{
+		s->in = g_slist_prepend (s->in,
+		                         cpg_selection_copy_defines (selections->data, FALSE));
+
+		selections = g_slist_next (selections);
+	}
+
+	s->in = g_slist_reverse (s->in);
+
+	selections = cpg_parser_context_current_selections (context);
 
 	while (selections)
 	{

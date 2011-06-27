@@ -36,13 +36,18 @@ class Define:
         self.key = define['key']
         self.value = define['value']
 
-class Selection:
+class SelectionItem:
     def __init__(self, selection):
         self.name = selection['name']
         self.typename = selection['typename']
 
         self.expansions = [Expansion(x) for x in selection['expansions']]
         self.defines = [Define(x) for x in selection['defines']]
+
+class Selection:
+    def __init__(self, selection):
+        self.ins = [SelectionItem(x) for x in selection['in']]
+        self.outs = [SelectionItem(x) for x in selection['out']]
 
 class Context:
     def __init__(self, context):

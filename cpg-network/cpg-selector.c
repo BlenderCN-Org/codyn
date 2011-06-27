@@ -1834,8 +1834,6 @@ selector_select_all (CpgSelector        *selector,
 
 		sel->selections_out = g_slist_reverse (sel->selections_out);
 
-		g_message ("Emitting");
-
 		g_signal_emit (selector,
 		               signals[SELECT],
 		               0,
