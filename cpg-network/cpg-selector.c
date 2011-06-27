@@ -1206,7 +1206,28 @@ children_reverse (CpgSelection       *selection,
 		g_slist_free (props);
 	}
 
-	/* TODO: interface properties */
+	if (CPG_IS_GROUP (obj))
+	{
+		CpgPropertyInterface *iface;
+		gchar **names;
+		gchar **ptr;
+
+		iface = cpg_group_get_property_interface (CPG_GROUP (obj));
+		names = cpg_property_interface_get_names (iface);
+
+		ptr = names;
+
+		while (ptr && *ptr)
+		{
+			ret = g_slist_prepend (ret,
+			                       expand_obj (selection,
+			                                   cpg_property_interface_lookup (iface, *ptr)));
+
+			++ptr;
+		}
+
+		g_strfreev (names);
+	}
 
 	if (CPG_IS_LINK (obj))
 	{
