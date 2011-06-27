@@ -33,11 +33,9 @@ struct _CpgInstructionCustomOperatorClass
 
 GType cpg_instruction_custom_operator_get_type (void) G_GNUC_CONST;
 
-CpgInstruction *cpg_instruction_custom_operator_new (CpgOperator  *op,
-                                                     GSList const *expressions);
+CpgInstruction *cpg_instruction_custom_operator_new (CpgOperator *op);
 
 CpgOperator     *cpg_instruction_custom_operator_get_operator (CpgInstructionCustomOperator *op);
-CpgOperatorData *cpg_instruction_custom_operator_get_data (CpgInstructionCustomOperator *op);
 
 G_END_DECLS
 

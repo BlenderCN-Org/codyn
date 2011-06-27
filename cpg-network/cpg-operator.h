@@ -8,80 +8,101 @@ G_BEGIN_DECLS
 
 #define CPG_TYPE_OPERATOR		(cpg_operator_get_type ())
 #define CPG_OPERATOR(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_OPERATOR, CpgOperator))
+#define CPG_OPERATOR_CONST(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_OPERATOR, CpgOperator const))
+#define CPG_OPERATOR_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_OPERATOR, CpgOperatorClass))
 #define CPG_IS_OPERATOR(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_OPERATOR))
-#define CPG_OPERATOR_GET_INTERFACE(obj)	(G_TYPE_INSTANCE_GET_INTERFACE ((obj), CPG_TYPE_OPERATOR, CpgOperatorInterface))
+#define CPG_IS_OPERATOR_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_OPERATOR))
+#define CPG_OPERATOR_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_OPERATOR, CpgOperatorClass))
 
-typedef struct _CpgOperator          CpgOperator;
-typedef struct _CpgOperatorInterface CpgOperatorInterface;
+typedef struct _CpgOperator		CpgOperator;
+typedef struct _CpgOperatorClass	CpgOperatorClass;
+typedef struct _CpgOperatorPrivate	CpgOperatorPrivate;
+typedef struct _CpgOperatorClassPrivate CpgOperatorClassPrivate;
 
-typedef struct _CpgOperatorData      CpgOperatorData;
+struct _CpgIntegrator;
 
-struct _CpgOperatorData
+struct _CpgOperator
 {
-	/*< private >*/
-	GSList *expressions;
+	GObject parent;
+
+	CpgOperatorPrivate *priv;
 };
 
-struct _CpgOperatorInterface
+struct _CpgOperatorClass
 {
 	/*< private >*/
-	GTypeInterface parent;
+	GObjectClass parent_class;
+
+	CpgOperatorClassPrivate *priv;
 
 	/*< public >*/
 	void             (*execute)     (CpgOperator     *op,
-	                                 CpgOperatorData *data,
 	                                 CpgStack        *stack);
 
-	gchar           *(*get_name)    (CpgOperator     *op);
+	void             (*initialize) (CpgOperator *op,
+	                                GSList const *expressions);
 
-	CpgOperatorData *(*create_data) (CpgOperator     *op,
-	                                 GSList const    *expressions);
+	gchar           *(*get_name) ();
 
-	void             (*free_data)   (CpgOperator     *op,
-	                                 CpgOperatorData *data);
+	gboolean         (*validate_num_arguments) (gint         num);
 
-	gint             (*get_num_arguments) (CpgOperator *op);
+	void             (*reset_cache) (CpgOperator     *op);
 
-	void             (*reset_cache) (CpgOperator     *op,
-	                                 CpgOperatorData *data);
+	void             (*reset_variadic) (CpgOperator     *op);
 
-	void             (*reset_variadic) (CpgOperator     *op,
-	                                    CpgOperatorData *data);
+	void             (*reset)           (CpgOperator *op);
 
-	GSList const    *(*get_expressions) (CpgOperator     *op,
-	                                     CpgOperatorData *data);
+	void             (*step)            (CpgOperator *op,
+	                                     struct _CpgIntegrator *integrator,
+	                                     gdouble      t,
+	                                     gdouble      timestep);
+
+	void             (*step_prepare)    (CpgOperator *op,
+	                                     struct _CpgIntegrator *integrator,
+	                                     gdouble      t,
+	                                     gdouble      timestep);
+
+	void             (*step_evaluate)   (CpgOperator *op,
+	                                     struct _CpgIntegrator *integrator,
+	                                     gdouble      t,
+	                                     gdouble      timestep);
 };
-
-#define cpg_operator_data_new(Type, expressions) ((Type *)cpg_operator_data_init ((CpgOperatorData *)g_slice_new0 (Type), expressions))
-#define cpg_operator_data_free(Type, data) (g_slice_free (Type, data))
-
-CpgOperatorData     *cpg_operator_data_init                   (CpgOperatorData *data,
-                                                               GSList const    *expressions);
-
-void                 cpg_operator_data_destroy                (CpgOperatorData *data);
 
 GType                cpg_operator_get_type                    (void) G_GNUC_CONST;
 
-CpgOperatorData     *cpg_operator_create_data                 (CpgOperator     *op,
+void                 cpg_operator_initialize                  (CpgOperator     *op,
                                                                GSList const    *expressions);
 
-void                 cpg_operator_free_data                   (CpgOperator     *op,
-                                                               CpgOperatorData *data);
-
 void                 cpg_operator_execute                     (CpgOperator     *op,
-                                                               CpgOperatorData *data,
                                                                CpgStack        *stack);
 
-void                 cpg_operator_reset_cache                 (CpgOperator     *op,
-                                                               CpgOperatorData *data);
-void                 cpg_operator_reset_variadic              (CpgOperator     *op,
-                                                               CpgOperatorData *data);
+void                 cpg_operator_reset_cache                 (CpgOperator     *op);
+void                 cpg_operator_reset_variadic              (CpgOperator     *op);
 
-gchar               *cpg_operator_get_name                    (CpgOperator     *op);
-gint                 cpg_operator_get_num_arguments           (CpgOperator     *op);
+gchar const         *cpg_operator_get_name                    (CpgOperatorClass *op);
+gboolean             cpg_operator_validate_num_arguments      (CpgOperatorClass *op,
+                                                               gint             num);
 
-GSList const        *cpg_operator_get_expressions             (CpgOperator     *op,
-                                                               CpgOperatorData *data);
+GSList const        *cpg_operator_get_expressions             (CpgOperator     *op);
+
+void                 cpg_operator_step                        (CpgOperator     *op,
+                                                               struct _CpgIntegrator *integrator,
+                                                               gdouble          t,
+                                                               gdouble          timestep);
+
+void                 cpg_operator_step_prepare                (CpgOperator     *op,
+                                                               struct _CpgIntegrator *integrator,
+                                                               gdouble          t,
+                                                               gdouble          timestep);
+
+void                 cpg_operator_step_evaluate               (CpgOperator     *op,
+                                                               struct _CpgIntegrator *integrator,
+                                                               gdouble          t,
+                                                               gdouble          timestep);
+
+void                 cpg_operator_reset                       (CpgOperator     *op);
+
+CpgOperator         *cpg_operator_copy                        (CpgOperator     *op);
 
 G_END_DECLS
 

@@ -3,7 +3,6 @@
 
 #include <glib-object.h>
 #include <cpg-network/cpg-utils.h>
-#include <cpg-network/cpg-operator.h>
 
 G_BEGIN_DECLS
 
@@ -50,21 +49,14 @@ void cpg_compile_context_append_object (CpgCompileContext *context,
 void cpg_compile_context_set_functions (CpgCompileContext *context,
                                         const GSList      *functions);
 
-void cpg_compile_context_set_operators (CpgCompileContext *context,
-                                        const GSList      *operators);
-
 CPG_FORWARD_DECL (CpgProperty) *cpg_compile_context_lookup_property (CpgCompileContext *context,
                                                           const gchar       *name);
 
 CPG_FORWARD_DECL (CpgFunction) *cpg_compile_context_lookup_function (CpgCompileContext *context,
                                                           const gchar       *name);
 
-CpgOperator *cpg_compile_context_lookup_operator (CpgCompileContext *context,
-                                                  const gchar       *name);
-
 const GSList *cpg_compile_context_get_objects (CpgCompileContext *context);
 const GSList *cpg_compile_context_get_functions (CpgCompileContext *context);
-const GSList *cpg_compile_context_get_operators (CpgCompileContext *context);
 
 G_END_DECLS
 

@@ -9,7 +9,7 @@
 #include "cpg-link.h"
 #include "cpg-integrator-euler.h"
 #include "cpg-network-deserializer.h"
-#include "cpg-operator-lastof.h"
+#include "cpg-operator-delayed.h"
 #include "cpg-import.h"
 #include "cpg-parser-context.h"
 
@@ -406,8 +406,6 @@ cpg_network_compile_impl (CpgObject         *object,
 	cpg_compile_context_set_functions (context,
 	                                   cpg_group_get_children (network->priv->function_group));
 
-	cpg_compile_context_set_operators (context, network->priv->operators);
-
 	gboolean ret = cpg_object_compile (CPG_OBJECT (network->priv->function_group),
 	                                   context,
 	                                   error);
@@ -560,7 +558,7 @@ cpg_network_init (CpgNetwork *network)
 	g_object_unref (integrator);
 
 	network->priv->operators = g_slist_prepend (network->priv->operators,
-	                                            cpg_operator_lastof_new ());
+	                                            cpg_operator_delayed_new ());
 
 	network->priv->imports = g_hash_table_new_full (g_file_hash,
 	                                                (GEqualFunc)g_file_equal,

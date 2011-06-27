@@ -44,7 +44,8 @@ COMMON_SOURCES = 		\
 	cpg-embedded-context.c \
 	cpg-object.c \
 	cpg-operator.c \
-	cpg-operator-lastof.c \
+	cpg-operators.c \
+	cpg-operator-delayed.c \
 	cpg-property.c \
 	cpg-property-interface.c \
 	cpg-selector.c \
@@ -109,7 +110,8 @@ INST_H_FILES = \
 	cpg-network-serializer.h \
 	cpg-object.h \
 	cpg-operator.h \
-	cpg-operator-lastof.h \
+	cpg-operators.h \
+	cpg-operator-delayed.h \
 	cpg-property.h \
 	cpg-property-interface.h \
 	cpg-selector.h \

@@ -6,6 +6,7 @@
 #include "cpg-compile-error.h"
 #include "cpg-function.h"
 #include "cpg-stack-private.h"
+#include "cpg-operators.h"
 
 #include <cpg-network/instructions/cpg-instructions.h>
 
@@ -527,20 +528,17 @@ parse_custom_operator (CpgExpression *expression,
                        gchar const   *name,
                        ParserContext *context)
 {
-	CpgOperator *op;
+	CpgOperatorClass *klass;
 
-	op = cpg_compile_context_lookup_operator (context->context,
-	                                          name);
+	klass = cpg_operators_find_class (name);
 
-	if (op == NULL)
+	if (klass == NULL)
 	{
 		return parser_failed (context,
 		                      CPG_COMPILE_ERROR_OPERATOR_NOT_FOUND,
 		                      "Custom operator %s could not be found",
 		                      name);
 	}
-
-	gint arguments = cpg_operator_get_num_arguments (op);
 
 	// parse arguments
 	gint numargs = 0;
@@ -638,27 +636,21 @@ parse_custom_operator (CpgExpression *expression,
 		expr_start = *(context->buffer);
 	}
 
-	if (arguments != -1 && numargs != arguments)
+	if (!cpg_operator_validate_num_arguments (klass, numargs))
 	{
 		return parser_failed (context,
 		                      CPG_COMPILE_ERROR_MAXARG,
-		                      "Number of arguments (%d) for operator `%s' does not match (got %d)",
+		                      "Number of arguments (%d) for operator `%s' does not match",
 		                      numargs,
-		                      name,
-		                      arguments);
-	}
-
-	if (arguments == -1)
-	{
-		instructions_push (expression, cpg_instruction_number_new ((gdouble)numargs));
+		                      name);
 	}
 
 	CpgInstruction *instruction;
 
 	expressions = g_slist_reverse (expressions);
 
-	instruction = cpg_instruction_custom_operator_new (op,
-	                                                   expressions);
+	instruction = cpg_instruction_custom_operator_new (
+		cpg_operators_instantiate (name, expressions));
 
 	g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
 	g_slist_free (expressions);
@@ -1310,8 +1302,7 @@ cpg_expression_reset_variadic (CpgExpression *expression)
 	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
 	{
 		CpgInstructionCustomOperator *op = item->data;
-		cpg_operator_reset_variadic (cpg_instruction_custom_operator_get_operator (op),
-		                             cpg_instruction_custom_operator_get_data (op));
+		cpg_operator_reset_variadic (cpg_instruction_custom_operator_get_operator (op));
 	}
 }
 
@@ -1590,8 +1581,7 @@ cpg_expression_reset_cache (CpgExpression *expression)
 	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
 	{
 		CpgInstructionCustomOperator *op = item->data;
-		cpg_operator_reset_cache (cpg_instruction_custom_operator_get_operator (op),
-		                          cpg_instruction_custom_operator_get_data (op));
+		cpg_operator_reset_cache (cpg_instruction_custom_operator_get_operator (op));
 	}
 }
 
@@ -1628,6 +1618,14 @@ cpg_expression_reset (CpgExpression *expression)
 	if (!expression->priv->once)
 	{
 		expression->priv->prevent_cache_reset = FALSE;
+	}
+
+	GSList *item;
+
+	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
+	{
+		CpgInstructionCustomOperator *op = item->data;
+		cpg_operator_reset (cpg_instruction_custom_operator_get_operator (op));
 	}
 
 	expression->priv->modified = TRUE;
@@ -1768,4 +1766,12 @@ cpg_expression_get_error_at (CpgExpression *expression)
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), 0);
 
 	return expression->priv->error_at;
+}
+
+const GSList *
+cpg_expression_get_operators (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+
+	return expression->priv->operator_instructions;
 }

@@ -1,6 +1,7 @@
 #include "cpg-integrator-state.h"
 #include "cpg-link.h"
 #include "cpg-input.h"
+#include "instructions/cpg-instruction-custom-operator.h"
 
 #define CPG_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_STATE, CpgIntegratorStatePrivate))
 
@@ -25,6 +26,7 @@ struct _CpgIntegratorStatePrivate
 
 	GSList *integrated_link_actions;
 	GSList *direct_link_actions;
+	GSList *operators;
 
 	GSList *inputs;
 	GSList *expressions;
@@ -75,6 +77,9 @@ clear_lists (CpgIntegratorState *state)
 
 	g_slist_free (state->priv->expressions);
 	state->priv->expressions = NULL;
+
+	g_slist_free (state->priv->operators);
+	state->priv->operators = NULL;
 }
 
 static void
@@ -380,11 +385,24 @@ sort_link_actions (CpgIntegratorState *state)
 }
 
 static void
+collect_operators (CpgInstructionCustomOperator *instruction,
+                   CpgIntegratorState           *state)
+{
+	state->priv->operators =
+		g_slist_prepend (state->priv->operators,
+		                 cpg_instruction_custom_operator_get_operator (instruction));
+}
+
+static void
 collect_expressions (CpgExpression      *expression,
                      CpgIntegratorState *state)
 {
 	state->priv->expressions =
 		g_slist_prepend (state->priv->expressions, expression);
+
+	g_slist_foreach ((GSList *)cpg_expression_get_operators (expression),
+	                 (GFunc)collect_operators,
+	                 state);
 }
 
 /**
@@ -557,4 +575,10 @@ cpg_integrator_state_get_object (CpgIntegratorState *state)
 	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
 
 	return state->priv->object;
+}
+
+const GSList *
+cpg_integrator_state_operators (CpgIntegratorState *state)
+{
+	return state->priv->operators;
 }

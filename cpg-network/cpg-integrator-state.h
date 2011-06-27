@@ -45,6 +45,7 @@ const GSList       *cpg_integrator_state_direct_link_actions     (CpgIntegratorS
 const GSList       *cpg_integrator_state_inputs                  (CpgIntegratorState *state);
 
 const GSList       *cpg_integrator_state_expressions             (CpgIntegratorState *state);
+const GSList       *cpg_integrator_state_operators               (CpgIntegratorState *state);
 
 void                cpg_integrator_state_update                  (CpgIntegratorState *state);
 

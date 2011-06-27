@@ -3,6 +3,7 @@
 #include "cpg-compile-error.h"
 #include "cpg-marshal.h"
 #include "cpg-input.h"
+#include "cpg-operator.h"
 
 #include <math.h>
 
@@ -244,6 +245,21 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
 		inputs = g_slist_next (inputs);
 	}
 
+	GSList const *op;
+
+	/* Prepare all custom operators */
+	op = cpg_integrator_state_operators (integrator->priv->state);
+
+	while (op)
+	{
+		cpg_operator_step (op->data,
+		                   integrator,
+		                   t + timestep,
+		                   timestep);
+
+		op = g_slist_next (op);
+	}
+
 	g_signal_emit (integrator, integrator_signals[STEP], 0, timestep, t + timestep);
 	return timestep;
 }
@@ -352,6 +368,21 @@ cpg_integrator_step_prepare_impl (CpgIntegrator *integrator,
 	{
 		cpg_input_update (CPG_INPUT (inputs->data), integrator);
 		inputs = g_slist_next (inputs);
+	}
+
+	GSList const *op;
+
+	/* Prepare all custom operators */
+	op = cpg_integrator_state_operators (integrator->priv->state);
+
+	while (op)
+	{
+		cpg_operator_step_prepare (op->data,
+		                           integrator,
+		                           t,
+		                           timestep);
+
+		op = g_slist_next (op);
 	}
 
 	return TRUE;
@@ -675,12 +706,27 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
                          gdouble        t,
                          gdouble        timestep)
 {
+	GSList const *op;
+
 	/* Omit type check to increase speed */
 	cpg_property_set_value (integrator->priv->property_time, t);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
 	reset_cache (integrator);
 	reset_variadic (integrator);
+
+	/* Do a step on all custom operators */
+	op = cpg_integrator_state_operators (integrator->priv->state);
+
+	while (op)
+	{
+		cpg_operator_step_evaluate (op->data,
+		                            integrator,
+		                            t,
+		                            timestep);
+
+		op = g_slist_next (op);
+	}
 
 	/* Do one simulation step which will set all the update values */
 	simulation_step (integrator);
@@ -692,6 +738,7 @@ cpg_integrator_step_prepare (CpgIntegrator *integrator,
                              gdouble        timestep)
 {
 	/* Omit type check to increase speed */
+
 	return CPG_INTEGRATOR_GET_CLASS (integrator)->step_prepare (integrator, t, timestep);
 }
 
@@ -710,6 +757,15 @@ cpg_integrator_get_time	(CpgIntegrator *integrator)
 	/* Omit type check to increase speed */
 	return cpg_property_get_value (integrator->priv->property_time);
 }
+
+void
+cpg_integrator_set_time (CpgIntegrator *integrator,
+                         gdouble        t)
+{
+	/* Omit type check to increase speed */
+	cpg_property_set_value (integrator->priv->property_time, t);
+}
+
 
 /**
  * cpg_integrator_reset:

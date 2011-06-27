@@ -1,171 +1,151 @@
 #include "cpg-operator.h"
 #include "cpg-expression.h"
+#include "cpg-integrator.h"
 
-G_DEFINE_INTERFACE (CpgOperator, cpg_operator, G_TYPE_OBJECT);
+#define CPG_OPERATOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OPERATOR, CpgOperatorPrivate))
+#define CPG_OPERATOR_CLASS_GET_PRIVATE(klass)(G_TYPE_CLASS_GET_PRIVATE((klass), CPG_TYPE_OPERATOR, CpgOperatorClassPrivate))
+
+struct _CpgOperatorPrivate
+{
+	GSList *expressions;
+};
+
+struct _CpgOperatorClassPrivate
+{
+	gchar *name;
+};
+
+G_DEFINE_ABSTRACT_TYPE_WITH_CODE (CpgOperator,
+                                  cpg_operator,
+                                  G_TYPE_OBJECT,
+                                  g_type_add_class_private (g_define_type_id, sizeof (CpgOperatorClassPrivate)));
 
 /* Default implementation */
 static gchar *
-cpg_operator_get_name_default (CpgOperator *op)
+cpg_operator_get_name_default ()
 {
-	g_return_val_if_reached (NULL);
-}
-
-static CpgOperatorData *
-cpg_operator_create_data_default (CpgOperator  *op,
-                                  GSList const *expressions)
-{
-	return cpg_operator_data_new (CpgOperatorData, expressions);
-}
-
-static void
-cpg_operator_free_data_default (CpgOperator     *op,
-                                CpgOperatorData *data)
-{
-	cpg_operator_data_destroy (data);
-	g_slice_free (CpgOperatorData, data);
+	g_assert_not_reached ();
 }
 
 static void
 cpg_operator_execute_default (CpgOperator     *op,
-                              CpgOperatorData *data,
                               CpgStack        *stack)
 {
 	cpg_stack_push (stack, 0);
 }
 
 static void
-cpg_operator_reset_cache_default (CpgOperator     *op,
-                                  CpgOperatorData *data)
+cpg_operator_reset_cache_default (CpgOperator *op)
 {
-	g_slist_foreach (data->expressions,
+	g_slist_foreach (op->priv->expressions,
 	                 (GFunc)cpg_expression_reset_cache,
 	                 NULL);
 }
 
 static void
-cpg_operator_reset_variadic_default (CpgOperator     *op,
-                                     CpgOperatorData *data)
+cpg_operator_reset_variadic_default (CpgOperator *op)
 {
-	g_slist_foreach (data->expressions,
+	g_slist_foreach (op->priv->expressions,
 	                 (GFunc)cpg_expression_reset_variadic,
 	                 NULL);
 }
 
-static gint
-cpg_operator_get_num_arguments_default (CpgOperator *op)
+static void
+cpg_operator_reset_default (CpgOperator *op)
 {
-	return 1;
+	g_slist_foreach (op->priv->expressions,
+	                 (GFunc)cpg_expression_reset,
+	                 NULL);
 }
 
-static GSList const *
-cpg_operator_get_expressions_default (CpgOperator     *op,
-                                      CpgOperatorData *data)
+static gboolean
+cpg_operator_validate_num_arguments_default (gint num)
 {
-	return data->expressions;
+	return TRUE;
 }
 
 static void
-cpg_operator_default_init (CpgOperatorInterface *iface)
+cpg_operator_step_default (CpgOperator     *op,
+                           CpgIntegrator   *integrator,
+                           gdouble          t,
+                           gdouble          timestep)
 {
-	static gboolean initialized = FALSE;
+}
 
-	iface->create_data = cpg_operator_create_data_default;
-	iface->free_data = cpg_operator_free_data_default;
+static void
+cpg_operator_step_prepare_default (CpgOperator     *op,
+                                  CpgIntegrator   *integrator,
+                                  gdouble          t,
+                                  gdouble          timestep)
+{
+}
 
-	iface->execute = cpg_operator_execute_default;
-	iface->get_name = cpg_operator_get_name_default;
-	iface->get_num_arguments = cpg_operator_get_num_arguments_default;
-	iface->reset_cache = cpg_operator_reset_cache_default;
-	iface->reset_variadic = cpg_operator_reset_variadic_default;
-	iface->get_expressions = cpg_operator_get_expressions_default;
+static void
+cpg_operator_step_evaluate_default (CpgOperator     *op,
+                                    CpgIntegrator   *integrator,
+                                    gdouble          t,
+                                    gdouble          timestep)
+{
+}
 
-	if (!initialized)
+
+static void
+cpg_operator_initialize_default (CpgOperator  *op,
+                                 GSList const *expressions)
+{
+	while (expressions)
 	{
-		initialized = TRUE;
+		op->priv->expressions =
+			g_slist_prepend (op->priv->expressions,
+			                 g_object_ref (expressions->data));
+
+		expressions = g_slist_next (expressions);
 	}
+
+	op->priv->expressions = g_slist_reverse (op->priv->expressions);
 }
 
-/**
- * cpg_operator_data_init:
- * @data: A #CpgOperatorData
- * @expressions: (element-type CpgExpression) (transfer none): A #GSList of #CpgExpression
- *
- * Initialize the operator data with a set of expressions. When 'inheriting'
- * from #CpgOperatorData, make sure to call #cpg_operator_data_init from
- * the overloaded #cpg_operator_create_data.
- *
- * Returns: (transfer none): @data for convenience
- *
- **/
-CpgOperatorData *
-cpg_operator_data_init (CpgOperatorData *data,
-                        GSList const    *expressions)
+static void
+cpg_operator_finalize (GObject *object)
 {
-	data->expressions = g_slist_copy ((GSList *)expressions);
-	g_slist_foreach (data->expressions, (GFunc)g_object_ref, NULL);
+	CpgOperator *operator;
 
-	return data;
+	operator = CPG_OPERATOR (object);
+
+	g_slist_foreach (operator->priv->expressions, (GFunc)g_object_unref, NULL);
+	g_slist_free (operator->priv->expressions);
+
+	G_OBJECT_CLASS (cpg_operator_parent_class)->finalize (object);
 }
 
-/**
- * cpg_operator_data_destroy:
- * @data: A #CpgOperatorData
- *
- * Destroy the operator data. This frees the expressions stored in the
- * #CpgOperatorData (but does not free the #CpgOperatorData itself, see
- * also #cpg_operator_data_free). This function should be used when
- * an operator implementation inherits its own #CpgOperatorData.
- *
- **/
-void
-cpg_operator_data_destroy (CpgOperatorData *data)
+
+static void
+cpg_operator_class_init (CpgOperatorClass *klass)
 {
-	g_slist_foreach (data->expressions, (GFunc)g_object_unref, NULL);
-	g_slist_free (data->expressions);
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->finalize = cpg_operator_finalize;
+
+	klass->execute = cpg_operator_execute_default;
+	klass->validate_num_arguments = cpg_operator_validate_num_arguments_default;
+	klass->reset_cache = cpg_operator_reset_cache_default;
+	klass->reset = cpg_operator_reset_default;
+	klass->reset_variadic = cpg_operator_reset_variadic_default;
+	klass->step = cpg_operator_step_default;
+	klass->step_prepare = cpg_operator_step_prepare_default;
+	klass->step_evaluate = cpg_operator_step_evaluate_default;
+	klass->get_name = cpg_operator_get_name_default;
+	klass->initialize = cpg_operator_initialize_default;
+
+	klass->priv =  CPG_OPERATOR_CLASS_GET_PRIVATE (klass);
+
+	g_type_class_add_private (object_class, sizeof (CpgOperatorPrivate));
 }
 
-/**
- * cpg_operator_create_data:
- * @op: A #CpgOperator
- * @expressions: (element-type CpgExpression) (transfer none): A #GSList of #CpgExpression
- *
- * Create a new data instance for the operator, given a set of expressions.
- * Each instance of the operator has its own operator data associated that
- * will be provided to #cpg_operator_evaluate.
- *
- * Returns: (transfer full): A #CpgOperatorData
- *
- **/
-CpgOperatorData *
-cpg_operator_create_data (CpgOperator  *op,
-                          GSList const *expressions)
+static void
+cpg_operator_init (CpgOperator *self)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
-
-	return CPG_OPERATOR_GET_INTERFACE (op)->create_data (op,
-	                                                     expressions);
-}
-
-/**
- * cpg_operator_free_data:
- * @op: A #CpgOperator
- * @data: A #CpgOperatorData
- *
- * Free the operator data. This default implementation will first call
- * #cpg_operator_data_destroy, after which the operator data slice is freed.
- * If you have a custom data struct, make sure to override this function.
- *
- **/
-void
-cpg_operator_free_data (CpgOperator     *op,
-                        CpgOperatorData *data)
-{
-	g_return_if_fail (CPG_IS_OPERATOR (op));
-
-	if (data)
-	{
-		CPG_OPERATOR_GET_INTERFACE (op)->free_data (op, data);
-	}
+	self->priv = CPG_OPERATOR_GET_PRIVATE (self);
 }
 
 /**
@@ -181,12 +161,10 @@ cpg_operator_free_data (CpgOperator     *op,
  **/
 void
 cpg_operator_execute (CpgOperator     *op,
-                      CpgOperatorData *data,
                       CpgStack        *stack)
 {
-	g_return_if_fail (CPG_IS_OPERATOR (op));
-
-	CPG_OPERATOR_GET_INTERFACE (op)->execute (op, data, stack);
+	/* Omit type check to increase speed */
+	CPG_OPERATOR_GET_CLASS (op)->execute (op, stack);
 }
 
 /**
@@ -200,16 +178,21 @@ cpg_operator_execute (CpgOperator     *op,
  * free the value when it's no longer needed.
  *
  **/
-gchar *
-cpg_operator_get_name (CpgOperator *op)
+gchar const *
+cpg_operator_get_name (CpgOperatorClass *klass)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), NULL);
 
-	return CPG_OPERATOR_GET_INTERFACE (op)->get_name (op);
+	if (!klass->priv->name)
+	{
+		klass->priv->name = klass->get_name ();
+	}
+
+	return klass->priv->name;
 }
 
 /**
- * cpg_operator_get_num_arguments:
+ * cpg_operator_validate_num_arguments:
  * @op: A #CpgOperator
  *
  * Get the number of arguments that the operators expects.
@@ -218,12 +201,13 @@ cpg_operator_get_name (CpgOperator *op)
  *          number of arguments.
  *
  **/
-gint
-cpg_operator_get_num_arguments (CpgOperator *op)
+gboolean
+cpg_operator_validate_num_arguments (CpgOperatorClass *klass,
+                                     gint         num)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR (op), 0);
+	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), FALSE);
 
-	return CPG_OPERATOR_GET_INTERFACE (op)->get_num_arguments (op);
+	return klass->validate_num_arguments (num);
 }
 
 /**
@@ -235,11 +219,10 @@ cpg_operator_get_num_arguments (CpgOperator *op)
  *
  **/
 void
-cpg_operator_reset_cache (CpgOperator     *op,
-                          CpgOperatorData *data)
+cpg_operator_reset_cache (CpgOperator *op)
 {
 	/* Omit type check to increase speed */
-	CPG_OPERATOR_GET_INTERFACE (op)->reset_cache (op, data);
+	CPG_OPERATOR_GET_CLASS (op)->reset_cache (op);
 }
 
 /**
@@ -251,28 +234,84 @@ cpg_operator_reset_cache (CpgOperator     *op,
  *
  **/
 void
-cpg_operator_reset_variadic (CpgOperator     *op,
-                             CpgOperatorData *data)
+cpg_operator_reset_variadic (CpgOperator *op)
 {
-	g_return_if_fail (CPG_IS_OPERATOR (op));
-
-	CPG_OPERATOR_GET_INTERFACE (op)->reset_variadic (op, data);
+	/* Omit type check to increase speed */
+	CPG_OPERATOR_GET_CLASS (op)->reset_variadic (op);
 }
 
 /**
  * cpg_operator_get_expressions:
  * @op: A #CpgOperator
- * @data: A #CpgOperatorData
  *
  * Get the expressions that the operator uses.
  *
  * Return value: (element-type CpgExpression) (transfer none): a list of #CpgExpression
  **/
 GSList const *
-cpg_operator_get_expressions (CpgOperator     *op,
-                              CpgOperatorData *data)
+cpg_operator_get_expressions (CpgOperator *op)
 {
 	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
 
-	return CPG_OPERATOR_GET_INTERFACE (op)->get_expressions (op, data);
+	return op->priv->expressions;
+}
+
+void
+cpg_operator_step (CpgOperator     *op,
+                   CpgIntegrator   *integrator,
+                   gdouble          t,
+                   gdouble          timestep)
+{
+	/* Omit type check to increase speed */
+	return CPG_OPERATOR_GET_CLASS (op)->step (op, integrator, t, timestep);
+}
+
+void
+cpg_operator_step_prepare (CpgOperator     *op,
+                          CpgIntegrator   *integrator,
+                          gdouble          t,
+                          gdouble          timestep)
+{
+	/* Omit type check to increase speed */
+	return CPG_OPERATOR_GET_CLASS (op)->step_prepare (op, integrator, t, timestep);
+}
+
+void
+cpg_operator_step_evaluate (CpgOperator     *op,
+                            CpgIntegrator   *integrator,
+                            gdouble          t,
+                            gdouble          timestep)
+{
+	/* Omit type check to increase speed */
+	return CPG_OPERATOR_GET_CLASS (op)->step_evaluate (op, integrator, t, timestep);
+}
+
+void
+cpg_operator_initialize (CpgOperator  *op,
+                         GSList const *expressions)
+{
+	g_return_if_fail (CPG_IS_OPERATOR (op));
+
+	return CPG_OPERATOR_GET_CLASS (op)->initialize (op, expressions);
+}
+
+CpgOperator *
+cpg_operator_copy (CpgOperator *op)
+{
+	CpgOperator *ret;
+
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+
+	ret = g_object_new (G_OBJECT_TYPE (op), NULL);
+	cpg_operator_initialize (ret, op->priv->expressions);
+
+	return ret;
+}
+
+void
+cpg_operator_reset (CpgOperator *op)
+{
+	g_return_if_fail (CPG_IS_OPERATOR (op));
+
+	CPG_OPERATOR_GET_CLASS (op)->reset (op);
 }

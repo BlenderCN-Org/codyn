@@ -6,7 +6,6 @@
 struct _CpgInstructionCustomOperatorPrivate
 {
 	CpgOperator *op;
-	CpgOperatorData *data;
 };
 
 G_DEFINE_TYPE (CpgInstructionCustomOperator, cpg_instruction_custom_operator, CPG_TYPE_INSTRUCTION)
@@ -18,7 +17,6 @@ cpg_instruction_custom_operator_finalize (CpgMiniObject *object)
 
 	op = CPG_INSTRUCTION_CUSTOM_OPERATOR (object);
 
-	cpg_operator_free_data (op->priv->op, op->priv->data);
 	g_object_unref (op->priv->op);
 
 	CPG_MINI_OBJECT_CLASS (cpg_instruction_custom_operator_parent_class)->finalize (object);
@@ -36,9 +34,7 @@ cpg_instruction_custom_operator_copy (CpgMiniObject const *object)
 	src = CPG_INSTRUCTION_CUSTOM_OPERATOR_CONST (object);
 	op = CPG_INSTRUCTION_CUSTOM_OPERATOR (ret);
 
-	op->priv->op = g_object_ref (src->priv->op);
-	op->priv->data = cpg_operator_create_data (op->priv->op,
-	                                           src->priv->data->expressions);
+	op->priv->op = cpg_operator_copy (src->priv->op);
 
 	return ret;
 }
@@ -50,9 +46,8 @@ cpg_instruction_custom_operator_to_string (CpgInstruction *instruction)
 
 	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
 
-	gchar *name = cpg_operator_get_name (self->priv->op);
+	gchar const *name = cpg_operator_get_name (CPG_OPERATOR_GET_CLASS (self->priv->op));
 	gchar *ret = g_strdup_printf ("OPC (%s)", name);
-	g_free (name);
 
 	return ret;
 }
@@ -65,7 +60,7 @@ cpg_instruction_custom_operator_execute (CpgInstruction *instruction,
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CpgInstructionCustomOperator *)instruction;
-	cpg_operator_execute (self->priv->op, self->priv->data, stack);
+	cpg_operator_execute (self->priv->op, stack);
 }
 
 static gint
@@ -82,7 +77,7 @@ cpg_instruction_custom_operator_get_dependencies (CpgInstruction *instruction)
 	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
 
 	GSList const *expressions;
-	expressions = cpg_operator_get_expressions (self->priv->op, self->priv->data);
+	expressions = cpg_operator_get_expressions (self->priv->op);
 
 	GSList *dependencies = NULL;
 
@@ -134,8 +129,7 @@ cpg_instruction_custom_operator_init (CpgInstructionCustomOperator *self)
  *
  **/
 CpgInstruction *
-cpg_instruction_custom_operator_new (CpgOperator  *operator,
-                                     GSList const *expressions)
+cpg_instruction_custom_operator_new (CpgOperator *operator)
 {
 	CpgMiniObject *ret;
 	CpgInstructionCustomOperator *op;
@@ -144,8 +138,6 @@ cpg_instruction_custom_operator_new (CpgOperator  *operator,
 	op = CPG_INSTRUCTION_CUSTOM_OPERATOR (ret);
 
 	op->priv->op = g_object_ref (operator);
-	op->priv->data = cpg_operator_create_data (op->priv->op,
-	                                           expressions);
 
 	return CPG_INSTRUCTION (ret);
 }
@@ -165,21 +157,4 @@ cpg_instruction_custom_operator_get_operator (CpgInstructionCustomOperator *op)
 	g_return_val_if_fail (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (op), NULL);
 
 	return op->priv->op;
-}
-
-/**
- * cpg_instruction_custom_operator_get_data:
- * @op: A #CpgInstructionCustomOperator
- *
- * Get the operator data executed by the instruction.
- *
- * Returns: (transfer none): A #CpgOperatorData
- *
- **/
-CpgOperatorData *
-cpg_instruction_custom_operator_get_data (CpgInstructionCustomOperator *op)
-{
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (op), NULL);
-
-	return op->priv->data;
 }

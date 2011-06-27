@@ -93,7 +93,8 @@ void                 cpg_integrator_reset           (CpgIntegrator *integrator);
 const gchar         *cpg_integrator_get_name        (CpgIntegrator *integrator);
 
 gdouble              cpg_integrator_get_time        (CpgIntegrator *integrator);
-
+void                 cpg_integrator_set_time        (CpgIntegrator *integrator,
+                                                     gdouble        t);
 
 CpgObject           *cpg_integrator_get_object        (CpgIntegrator *integrator);
 

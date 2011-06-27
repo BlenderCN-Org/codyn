@@ -69,6 +69,8 @@ void           cpg_expression_set_instructions (CpgExpression      *expression,
 void          _cpg_expression_set_instructions_take (CpgExpression      *expression,
                                                      GSList             *instructions);
 
+const GSList  *cpg_expression_get_operators    (CpgExpression     *expression);
+
 gboolean       cpg_expression_get_once         (CpgExpression      *expression);
 void           cpg_expression_set_once         (CpgExpression      *expression,
                                                 gboolean            instant);
