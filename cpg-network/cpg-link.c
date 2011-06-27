@@ -391,8 +391,6 @@ on_template_action_removed (CpgLink       *templ,
 		cpg_link_get_action (link,
 		                     cpg_link_action_get_target (action));
 
-	g_message ("%p", cpg_link_get_action_template (link, orig, TRUE));
-
 	if (orig && !cpg_modifiable_get_modified (CPG_MODIFIABLE (orig)) &&
 	    cpg_link_get_action_template (link, orig, TRUE) == templ)
 	{
