@@ -1075,7 +1075,7 @@ expansion_as_string (CpgExpansion *expansion)
 	{
 		if (i != 0)
 		{
-			g_string_append_c (ret, ',');
+			g_string_append (ret, ", ");
 		}
 
 		g_string_append (ret, cpg_expansion_get (expansion, i));
@@ -1169,8 +1169,33 @@ debug_selections (CpgSelector        *self,
 		expansions = cpg_selection_get_expansions (sel);
 		s = expansions_as_string (expansions);
 
-		g_printerr (" <= %s\n", s);
+		g_printerr (" <= %s", s);
 		g_free (s);
+
+		if (selector->pseudo.arguments)
+		{
+			g_printerr (" with [");
+
+			cpg_embedded_context_save (context);
+			cpg_embedded_context_add_selection (context, sel);
+
+			for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+			{
+				if (item != selector->pseudo.arguments)
+				{
+					g_printerr (", ");
+				}
+
+				g_printerr ("%s", cpg_embedded_string_expand (item->data, context));
+			}
+
+			cpg_embedded_context_restore (context);
+
+			g_printerr ("]");
+		}
+
+		g_printerr ("\n");
+
 	}
 
 	g_printerr ("\n");

@@ -64,10 +64,10 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %type <num> selector_pseudo_simple_key
 %type <num> selector_pseudo_selector_key
-%type <num> selector_pseudo_nth_key
+%type <num> selector_pseudo_strargs_key
 
-%type <list> selector_pseudo_nth_args
-%type <list> selector_pseudo_nth_args_rev
+%type <list> selector_pseudo_strargs_args
+%type <list> selector_pseudo_strargs_args_rev
 %type <list> selector_pseudo_selector_args
 %type <list> selector_pseudo_selector_args_rev
 
@@ -812,7 +812,6 @@ selector_pseudo_simple_key
 	| T_KEY_TEMPLATES			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES; }
 	| T_KEY_COUNT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_COUNT; }
 	| T_KEY_SELF				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SELF; }
-	| T_KEY_DEBUG				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_DEBUG; }
 	| T_KEY_CHILDREN			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_CHILDREN; }
 	| T_KEY_GROUPS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_GROUPS; }
 	| T_KEY_OBJECTS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_OBJECTS; }
@@ -830,19 +829,20 @@ selector_pseudo_selector_key
 	| T_KEY_TO				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TO; }
 	;
 
-selector_pseudo_nth_key
+selector_pseudo_strargs_key
 	: T_KEY_SIBLINGS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS; }
 	| T_KEY_SUBSET				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SUBSET; }
+	| T_KEY_DEBUG				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_DEBUG; }
 	;
 
-selector_pseudo_nth_args_rev
+selector_pseudo_strargs_args_rev
 	: value_as_string			{ $$ = g_slist_prepend (NULL, $1); }
-	| selector_pseudo_nth_args_rev ',' value_as_string
+	| selector_pseudo_strargs_args_rev ',' value_as_string
 						{ $$ = g_slist_prepend ($1, $3); }
 	;
 
-selector_pseudo_nth_args
-	: selector_pseudo_nth_args_rev		{ $$ = g_slist_reverse ($1); }
+selector_pseudo_strargs_args
+	: selector_pseudo_strargs_args_rev	{ $$ = g_slist_reverse ($1); }
 	;
 
 selector_pseudo_selector_args_rev
@@ -862,15 +862,15 @@ selector_pseudo_with_args
 	  ')'					{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
 						                                           $4); }
-	| selector_pseudo_nth_key '(' selector_pseudo_nth_args ')'
+	| selector_pseudo_strargs_key '(' selector_pseudo_strargs_args ')'
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
 						                                           $3); }
-	| selector_pseudo_nth_key '(' ')'
+	| selector_pseudo_strargs_key '(' ')'
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
 						                                           NULL); }
-	| selector_pseudo_nth_key
+	| selector_pseudo_strargs_key
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
 						                                           NULL); }
