@@ -776,7 +776,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		                                    item->data);
 
 		props = cpg_selector_select (target,
-		                             CPG_OBJECT (parent),
+		                             G_OBJECT (parent),
 		                             CPG_SELECTOR_TYPE_PROPERTY,
 		                             context->priv->embedded);
 
@@ -2524,6 +2524,14 @@ cpg_parser_context_push_selector_pseudo (CpgParserContext      *context,
 }
 
 CpgSelector *
+cpg_parser_context_peek_selector (CpgParserContext *context)
+{
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+
+	return ensure_selector (context);
+}
+
+CpgSelector *
 cpg_parser_context_pop_selector (CpgParserContext *context)
 {
 	CpgSelector *ret;
@@ -3100,7 +3108,7 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 		if (left != NULL)
 		{
 			leftobjs = cpg_selector_select (left,
-			                                CPG_OBJECT (cpg_selection_get_object (sel)),
+			                                G_OBJECT (cpg_selection_get_object (sel)),
 			                                CPG_SELECTOR_TYPE_STATE |
 			                                CPG_SELECTOR_TYPE_GROUP,
 			                                context->priv->embedded);
@@ -3127,7 +3135,7 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 			                                      cpg_selection_get_expansions (leftsel));
 
 			rightobjs = cpg_selector_select (right,
-			                                 CPG_OBJECT (cpg_selection_get_object (sel)),
+			                                 G_OBJECT (cpg_selection_get_object (sel)),
 			                                 CPG_SELECTOR_TYPE_STATE |
 			                                 CPG_SELECTOR_TYPE_GROUP,
 			                                 context->priv->embedded);

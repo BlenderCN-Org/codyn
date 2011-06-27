@@ -760,10 +760,13 @@ strict_selector
 	;
 
 selector_parse
-	: selector_items
+	: selector_items		{ g_message ("ok"); cpg_selector_prepend_pseudo (cpg_parser_context_peek_selector (context),
+	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
+	                                                               NULL); errb }
 	| '|' selector_items
-	| '.' selector_items		{ cpg_parser_context_push_selector_pseudo (context,
-	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN, NULL); errb }
+	| '.' selector_items		{ cpg_selector_prepend_pseudo (cpg_parser_context_peek_selector (context),
+	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
+	                                                               NULL); errb }
 	;
 
 selector_identifier

@@ -1933,7 +1933,7 @@ cpg_group_find_objects (CpgGroup    *group,
 	}
 
 	all = cpg_selector_select (sel,
-	                           CPG_OBJECT (group),
+	                           G_OBJECT (group),
 	                           CPG_SELECTOR_TYPE_OBJECT,
 	                           NULL);
 
@@ -2019,7 +2019,7 @@ cpg_group_find_properties (CpgGroup    *group,
 	}
 
 	all = cpg_selector_select (sel,
-	                           CPG_OBJECT (group),
+	                           G_OBJECT (group),
 	                           CPG_SELECTOR_TYPE_PROPERTY,
 	                           NULL);
 

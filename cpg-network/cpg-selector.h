@@ -115,7 +115,7 @@ void          cpg_selector_prepend_regex_partial (CpgSelector            *select
                                                   CpgEmbeddedString      *regex);
 
 GSList       *cpg_selector_select            (CpgSelector            *selector,
-                                              gpointer                parent,
+                                              GObject                *parent,
                                               CpgSelectorType         type,
                                               CpgEmbeddedContext     *context);
 

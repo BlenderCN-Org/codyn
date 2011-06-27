@@ -235,7 +235,7 @@ find_matching_properties (CpgNetwork  *network,
 
 	CpgEmbeddedContext *context = cpg_embedded_context_new ();
 	GSList *selection = cpg_selector_select (sel,
-	                                         CPG_OBJECT (network),
+	                                         G_OBJECT (network),
 	                                         CPG_SELECTOR_TYPE_PROPERTY,
 	                                         context);
 	GSList *element = selection;
@@ -257,13 +257,14 @@ find_matching_properties (CpgNetwork  *network,
 	return properties;
 }
 
-static void
+static gint
 monitor_network (gchar const *filename)
 {
 	CpgNetwork *network;
 	GError *error = NULL;
 	gint i;
 	CpgCompileError *err;
+	gint ret;
 
 	if (g_strcmp0 (filename, "-") == 0)
 	{
@@ -283,7 +284,7 @@ monitor_network (gchar const *filename)
 		g_printerr ("Failed to load network `%s': %s\n", filename, error->message);
 		g_error_free (error);
 
-		return;
+		return 1;
 	}
 
 	err = cpg_compile_error_new ();
@@ -303,7 +304,7 @@ monitor_network (gchar const *filename)
 		g_object_unref (network);
 		g_object_unref (err);
 
-		return;
+		return 1;
 	}
 
 	g_object_unref (err);
@@ -330,6 +331,14 @@ monitor_network (gchar const *filename)
 		}
 
 		g_slist_free (properties);
+	}
+
+	if (!monitors)
+	{
+		g_printerr ("There were no properties found to monitor\n");
+		g_object_unref (network);
+
+		return 1;
 	}
 
 	cpg_network_run (network, from, step, to);
@@ -383,6 +392,12 @@ monitor_network (gchar const *filename)
 
 		g_output_stream_flush (out, NULL, NULL);
 		g_output_stream_close (out, NULL, NULL);
+
+		ret = 0;
+	}
+	else
+	{
+		ret = 1;
 	}
 
 	g_slist_foreach (monitors, (GFunc)g_object_unref, NULL);
@@ -391,6 +406,8 @@ monitor_network (gchar const *filename)
 	g_slist_free (names);
 
 	g_object_unref (network);
+
+	return ret;
 }
 
 static void
@@ -408,6 +425,7 @@ main (int argc,
 	GOptionContext *ctx;
 	GError *error = NULL;
 	gchar const *file;
+	gint ret = 1;
 
 	g_type_init ();
 
@@ -453,9 +471,9 @@ main (int argc,
 
 	srand (seed);
 
-	monitor_network (file);
+	ret = monitor_network (file);
 
 	cleanup ();
 
-	return 0;
+	return ret;
 }

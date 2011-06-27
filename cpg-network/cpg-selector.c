@@ -377,14 +377,29 @@ cpg_selector_parse (gchar const *s,
 
 static void
 add_selector_to_string (CpgSelector *selector,
-                        Selector    *sel)
+                        Selector    *sel,
+                        gboolean     prepend)
 {
 	if (selector->priv->as_string->len != 0)
 	{
-		g_string_append_c (selector->priv->as_string, '|');
+		if (prepend)
+		{
+			g_string_prepend_c (selector->priv->as_string, '|');
+		}
+		else
+		{
+			g_string_append_c (selector->priv->as_string, '|');
+		}
 	}
 
-	g_string_append (selector->priv->as_string, sel->as_string);
+	if (prepend)
+	{
+		g_string_prepend (selector->priv->as_string, sel->as_string);
+	}
+	else
+	{
+		g_string_append (selector->priv->as_string, sel->as_string);
+	}
 }
 
 static void
@@ -392,9 +407,13 @@ add_selector (CpgSelector *selector,
               Selector    *sel,
               gboolean     append)
 {
-	add_selector_to_string (selector, sel);
+	gboolean prepend;
 
-	if (!selector->priv->has_selected == append)
+	prepend = (!selector->priv->has_selected) == append;
+
+	add_selector_to_string (selector, sel, !append);
+
+	if (prepend)
 	{
 		selector->priv->selectors =
 			g_slist_prepend (selector->priv->selectors, sel);
@@ -636,12 +655,18 @@ expansion_from_match (GMatchInfo const *info)
 static gboolean
 regex_match_full (GRegex       *regex,
                   gchar const  *s,
-                  GMatchInfo  **info)
+                  GMatchInfo  **info,
+                  gboolean      partial)
 {
 	if (g_regex_match (regex, s, 0, info))
 	{
 		gint startpos;
 		gint endpos;
+
+		if (partial)
+		{
+			return TRUE;
+		}
 
 		g_match_info_fetch_pos (*info, 0, &startpos, &endpos);
 
@@ -671,10 +696,29 @@ regex_create (Selector            *selector,
               CpgEmbeddedContext  *context,
               GError             **error)
 {
-	return g_regex_new (cpg_embedded_string_expand (selector->regex.regex, context),
-	                     G_REGEX_CASELESS | (selector->regex.partial ? 0 : G_REGEX_ANCHORED),
-	                     G_REGEX_MATCH_NOTEMPTY | (selector->regex.partial ? 0 : G_REGEX_MATCH_ANCHORED),
-	                     error);
+	gchar const *s;
+	gchar *r;
+	GRegex *ret;
+
+	s = cpg_embedded_string_expand (selector->regex.regex, context);
+
+	/* Manually anchor it if needed */
+	if (!selector->regex.partial)
+	{
+		r = g_strconcat ("(?:", s, ")$", NULL);
+	}
+	else
+	{
+		r = g_strdup (s);
+	}
+
+	ret = g_regex_new (r,
+	                   G_REGEX_CASELESS | (selector->regex.partial ? 0 : G_REGEX_ANCHORED),
+	                   G_REGEX_MATCH_NOTEMPTY | (selector->regex.partial ? 0 : G_REGEX_MATCH_ANCHORED),
+	                   error);
+
+	g_free (r);
+	return ret;
 }
 
 static GSList *
@@ -694,7 +738,7 @@ selector_select_regex_name (Selector           *selector,
 		return ret;
 	}
 
-	if (regex_match_full (regex, name, &info))
+	if (regex_match_full (regex, name, &info, selector->regex.partial))
 	{
 		CpgSelection *childsel;
 
@@ -955,7 +999,7 @@ selector_pseudo_from_to (Selector           *selector,
 		GSList *subitem;
 
 		sub = cpg_selector_select (s,
-		                           obj,
+		                           G_OBJECT (obj),
 		                           CPG_SELECTOR_TYPE_OBJECT,
 		                           context);
 
@@ -1690,7 +1734,7 @@ selector_select_all (CpgSelector        *selector,
 
 GSList *
 cpg_selector_select (CpgSelector        *selector,
-                     gpointer            parent,
+                     GObject            *parent,
                      CpgSelectorType     type,
                      CpgEmbeddedContext *context)
 {

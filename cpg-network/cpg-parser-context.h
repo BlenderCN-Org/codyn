@@ -170,6 +170,7 @@ void                   cpg_parser_context_push_selector_pseudo (CpgParserContext
                                                                 GSList                     *arguments);
 
 CpgSelector           *cpg_parser_context_pop_selector         (CpgParserContext           *context);
+CpgSelector           *cpg_parser_context_peek_selector        (CpgParserContext           *context);
 void                   cpg_parser_context_push_selector        (CpgParserContext           *context);
 
 gssize                 cpg_parser_context_read                 (CpgParserContext           *context,

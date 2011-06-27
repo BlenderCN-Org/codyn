@@ -150,7 +150,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					}
 				}
 
-"templates"			return T_KEY_TEMPLATES;
 "state"				return T_KEY_STATE;
 "link"				return T_KEY_LINK;
 "integrated"			return T_KEY_INTEGRATED;
@@ -177,31 +176,34 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "right-of"			return T_KEY_RIGHT_OF;
 "of"				return T_KEY_OF;
 "on"				return T_KEY_ON;
-"debug"				return T_KEY_DEBUG;
 "action"			return T_KEY_ACTION;
 "property"			return T_KEY_PROPERTY;
 "delete"			return T_KEY_DELETE;
 "or"				return T_KEY_OR;
-"root"				return T_KEY_ROOT;
-"children"			return T_KEY_CHILDREN;
-"parent"			return T_KEY_PARENT;
-"first"				return T_KEY_FIRST;
-"last"				return T_KEY_LAST;
-"subset"			return T_KEY_SUBSET;
-"states"			return T_KEY_STATES;
-"links"				return T_KEY_LINKS;
-"siblings"			return T_KEY_SIBLINGS;
-"count"				return T_KEY_COUNT;
-"self"				return T_KEY_SELF;
+
+<*>"templates"			return T_KEY_TEMPLATES;
+<*>"root"			return T_KEY_ROOT;
+<*>"debug"			return T_KEY_DEBUG;
+<*>"children"			return T_KEY_CHILDREN;
+<*>"parent"			return T_KEY_PARENT;
+<*>"first"			return T_KEY_FIRST;
+<*>"last"			return T_KEY_LAST;
+<*>"subset"			return T_KEY_SUBSET;
+<*>"states"			return T_KEY_STATES;
+<*>"links"			return T_KEY_LINKS;
+<*>"siblings"			return T_KEY_SIBLINGS;
+<*>"count"			return T_KEY_COUNT;
+<*>"self"			return T_KEY_SELF;
+<*>"groups"			return T_KEY_GROUPS;
+<*>"objects"			return T_KEY_OBJECTS;
+<*>"properties"			return T_KEY_PROPERTIES;
+<*>"actions"			return T_KEY_ACTION;
+
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
 "proxy"				return T_KEY_PROXY;
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
 "each"				return T_KEY_EACH;
-"groups"			return T_KEY_GROUPS;
-"objects"			return T_KEY_OBJECTS;
-"properties"			return T_KEY_PROPERTIES;
-"actions"			return T_KEY_ACTION;
 "if"				return T_KEY_IF;
 "settings"			return T_KEY_SETTINGS;
 
