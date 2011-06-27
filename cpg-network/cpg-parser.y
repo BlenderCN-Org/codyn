@@ -77,6 +77,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token T_INDIRECTION_END
 
 %token T_INDIRECTION_EMBEDDING_BEGIN
+%token T_INDIRECTION_EMEDDING_END
 
 %token T_START_DOCUMENT
 %token T_START_SELECTOR
@@ -985,9 +986,15 @@ equation
 	  T_EQUATION_END		{ $$ = cpg_embedded_string_pop (cpg_parser_context_pop_string (context)); }
 	;
 
-indirection_embedding
+indirection_embedding_item
 	: T_INDIRECTION_EMBEDDING_BEGIN
 	  string_contents
+	  T_INDIRECTION_EMEDDING_END
+	;
+
+indirection_embedding
+	: indirection_embedding_item
+	| indirection_embedding indirection_embedding_item
 	;
 
 indirection_contents

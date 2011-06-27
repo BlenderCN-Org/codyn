@@ -307,9 +307,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 <indirection_embedding>"]"	{
 					yy_pop_state (yyscanner);
-					yy_pop_state (yyscanner);
 
-					return T_INDIRECTION_END;
+					return T_INDIRECTION_EMEDDING_END;
 				}
 
 <equation>"("			{
