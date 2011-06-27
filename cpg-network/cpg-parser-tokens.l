@@ -232,7 +232,14 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_REGEX_BEGIN;
 				}
 
-<indirection,indirection_had_some>"["		{
+<indirection>"["		{
+					yy_pop_state (yyscanner);
+					yy_push_state (indirection_had_some, yyscanner);
+					yy_push_state (indirection_embedding, yyscanner);
+					return T_INDIRECTION_EMBEDDING_BEGIN;
+				}
+
+<indirection_had_some>"["	{
 					yy_push_state (indirection_embedding, yyscanner);
 					return T_INDIRECTION_EMBEDDING_BEGIN;
 				}
