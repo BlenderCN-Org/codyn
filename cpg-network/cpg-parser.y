@@ -98,6 +98,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <argument> function_argument
 %type <selector> selector
 %type <selector> strict_selector
+%type <selector> strict_selector_only
 %type <selector> selector_self
 
 %type <string> identifier_or_string
@@ -165,7 +166,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 15
+%expect 44
 
 %%
 
@@ -366,7 +367,7 @@ state
 	  '}'				{ $$ = cpg_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_STATE
-	  strict_selector		{ cpg_parser_context_push_selection (context,
+	  strict_selector_only		{ cpg_parser_context_push_selection (context,
 	                                                                     $3,
 	                                                                     CPG_SELECTOR_TYPE_STATE,
 	                                                                     $1); }
@@ -427,7 +428,7 @@ group
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_GROUP
-	  strict_selector		{ cpg_parser_context_push_selection (context,
+	  strict_selector_only		{ cpg_parser_context_push_selection (context,
 	                                                                     $3,
 	                                                                     CPG_SELECTOR_TYPE_GROUP,
 	                                                                     $1); }
@@ -455,7 +456,7 @@ attribute_bidirectional
 
 attribute_if
 	: T_KEY_IF '(' value_as_string ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
-	| T_KEY_IF '(' strict_selector ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
+	| T_KEY_IF '(' strict_selector_only ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
 	;
 
 attribute_contents
@@ -517,7 +518,7 @@ link
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_LINK
-	  strict_selector		{ cpg_parser_context_push_selection (context,
+	  strict_selector_only		{ cpg_parser_context_push_selection (context,
 	                                                                     $3,
 	                                                                     CPG_SELECTOR_TYPE_LINK,
 	                                                                     $1); }
@@ -725,10 +726,14 @@ action
 					{ cpg_parser_context_add_action (context, $1, $4); errb }
 	;
 
-selector_item
+selector_nonambi
 	: selector_pseudo
-	| selector_identifier
 	| selector_regex
+	;
+
+selector_item
+	: selector_identifier
+	| selector_nonambi
 	;
 
 selector_items
@@ -753,11 +758,30 @@ selector_self
 	| strict_selector
 	;
 
+zero_or_more_selectors
+	:
+	| '|' selector_items
+	| '.'				{ cpg_parser_context_push_selector_pseudo (context,
+	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
+	                                                                           NULL); errb }
+	  selector_items
+	;
+
 strict_selector
 	: '|' selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
 	| '.'				{ cpg_parser_context_push_selector_pseudo (context,
-	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN, NULL); errb }
+	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
+	                                                                           NULL); errb }
 	  selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
+	;
+
+strict_selector_only
+	: strict_selector		{ $$ = $1; }
+	| selector_nonambi
+	  zero_or_more_selectors	{ $$ = cpg_parser_context_pop_selector (context); errb;
+	                                  cpg_selector_prepend_pseudo ($$,
+	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
+	                                                               NULL); errb }
 	;
 
 selector_parse
@@ -1054,7 +1078,7 @@ indirection_inside
 	;
 
 debug
-	: T_KEY_DEBUG strict_selector		{ cpg_parser_context_debug_selector (context, $2); }
+	: T_KEY_DEBUG strict_selector_only	{ cpg_parser_context_debug_selector (context, $2); }
 	| T_KEY_DEBUG value_as_string		{ cpg_parser_context_debug_string (context, $2); }
 	| T_KEY_DEBUG T_KEY_CONTEXT		{ cpg_parser_context_debug_context (context); }
 	;
