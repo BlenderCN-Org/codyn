@@ -74,6 +74,14 @@ void                   cpg_parser_context_get_column           (CpgParserContext
                                                                 gint                       *start,
                                                                 gint                       *end);
 
+void                   cpg_parser_context_get_last_selector_item_line (CpgParserContext *context,
+                                                                       gint             *line_start,
+                                                                       gint             *line_end);
+
+void                   cpg_parser_context_get_last_selector_item_column (CpgParserContext *context,
+                                                                         gint             *start,
+                                                                         gint             *end);
+
 void                   cpg_parser_context_set_token            (CpgParserContext           *context,
                                                                 gchar const                *token);
 
@@ -81,6 +89,8 @@ gchar const           *cpg_parser_context_get_token            (CpgParserContext
 
 gboolean               cpg_parser_context_parse                (CpgParserContext           *context,
                                                                 GError                    **error);
+
+void                   cpg_parser_context_begin_selector_item  (CpgParserContext           *context);
 
 void                   cpg_parser_context_add_property         (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,

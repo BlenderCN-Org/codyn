@@ -63,8 +63,11 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token T_EQUATION_END
 
 %type <num> selector_pseudo_simple_key
+%type <num> selector_pseudo_simple_key_real
 %type <num> selector_pseudo_selector_key
+%type <num> selector_pseudo_selector_key_real
 %type <num> selector_pseudo_strargs_key
+%type <num> selector_pseudo_strargs_key_real
 
 %type <list> selector_pseudo_strargs_args
 %type <list> selector_pseudo_strargs_args_rev
@@ -166,7 +169,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 44
+%expect 47
 
 %%
 
@@ -795,14 +798,15 @@ selector_parse
 	;
 
 selector_identifier
-	: identifier_or_string 		{ cpg_parser_context_push_selector_identifier (context, $1); errb }
+	:				{ cpg_parser_context_begin_selector_item (context); }
+	  identifier_or_string 		{ cpg_parser_context_push_selector_identifier (context, $2); errb }
 	;
 
 selector_regex
 	: regex				{ cpg_parser_context_push_selector_regex (context, $1); errb }
 	;
 
-selector_pseudo_simple_key
+selector_pseudo_simple_key_real
 	: T_KEY_ROOT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_ROOT; }
 	| T_KEY_PARENT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_PARENT; }
 	| T_KEY_FIRST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FIRST; }
@@ -820,19 +824,31 @@ selector_pseudo_simple_key
 	| T_KEY_FUNCTIONS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FUNCTIONS; }
 	;
 
+selector_pseudo_simple_key
+	: selector_pseudo_simple_key_real	{ cpg_parser_context_begin_selector_item (context); }
+	;
+
 selector_pseudo_simple
 	: selector_pseudo_simple_key		{ cpg_parser_context_push_selector_pseudo (context, $1, NULL); }
 	;
 
-selector_pseudo_selector_key
+selector_pseudo_selector_key_real
 	: T_KEY_FROM				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FROM; }
 	| T_KEY_TO				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TO; }
 	;
 
-selector_pseudo_strargs_key
+selector_pseudo_selector_key
+	: selector_pseudo_selector_key_real	{ cpg_parser_context_begin_selector_item (context); }
+	;
+
+selector_pseudo_strargs_key_real
 	: T_KEY_SIBLINGS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS; }
 	| T_KEY_SUBSET				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SUBSET; }
 	| T_KEY_DEBUG				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_DEBUG; }
+	;
+
+selector_pseudo_strargs_key
+	: selector_pseudo_strargs_key_real	{ cpg_parser_context_begin_selector_item (context); }
 	;
 
 selector_pseudo_strargs_args_rev
@@ -1041,7 +1057,7 @@ indirection
 	;
 
 regex
-	: T_REGEX_BEGIN			{ cpg_parser_context_push_string (context); }
+	: T_REGEX_BEGIN			{ cpg_parser_context_push_string (context); cpg_parser_context_begin_selector_item (context); }
 	  string_contents
 	  T_REGEX_END			{ $$ = cpg_parser_context_pop_string (context); }
 	;

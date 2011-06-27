@@ -82,36 +82,36 @@ CpgSelector  *cpg_selector_copy              (CpgSelector            *selector);
 
 gchar const  *cpg_selector_as_string         (CpgSelector            *selector);
 
-void          cpg_selector_append            (CpgSelector            *selector,
+guint         cpg_selector_append            (CpgSelector            *selector,
                                               CpgEmbeddedString      *identifier);
 
-void          cpg_selector_append_partial    (CpgSelector            *selector,
+guint         cpg_selector_append_partial    (CpgSelector            *selector,
                                               CpgEmbeddedString      *identifier);
 
-void          cpg_selector_prepend            (CpgSelector            *selector,
+guint         cpg_selector_prepend            (CpgSelector            *selector,
                                                CpgEmbeddedString      *identifier);
 
-void          cpg_selector_prepend_partial    (CpgSelector            *selector,
+guint         cpg_selector_prepend_partial    (CpgSelector            *selector,
                                                CpgEmbeddedString      *identifier);
 
-void          cpg_selector_append_pseudo     (CpgSelector            *selector,
+guint         cpg_selector_append_pseudo     (CpgSelector            *selector,
                                               CpgSelectorPseudoType  type,
                                               GSList                 *arguments);
 
-void          cpg_selector_prepend_pseudo    (CpgSelector            *selector,
+guint         cpg_selector_prepend_pseudo    (CpgSelector            *selector,
                                               CpgSelectorPseudoType  type,
                                               GSList                 *arguments);
 
-void          cpg_selector_append_regex      (CpgSelector            *selector,
+guint         cpg_selector_append_regex      (CpgSelector            *selector,
                                               CpgEmbeddedString      *regex);
 
-void          cpg_selector_append_regex_partial (CpgSelector            *selector,
+guint         cpg_selector_append_regex_partial (CpgSelector            *selector,
                                                  CpgEmbeddedString      *regex);
 
-void          cpg_selector_prepend_regex      (CpgSelector            *selector,
+guint         cpg_selector_prepend_regex      (CpgSelector            *selector,
                                                CpgEmbeddedString      *regex);
 
-void          cpg_selector_prepend_regex_partial (CpgSelector            *selector,
+guint         cpg_selector_prepend_regex_partial (CpgSelector            *selector,
                                                   CpgEmbeddedString      *regex);
 
 GSList       *cpg_selector_select            (CpgSelector            *selector,
@@ -121,6 +121,14 @@ GSList       *cpg_selector_select            (CpgSelector            *selector,
 
 void          cpg_selector_set_partial       (CpgSelector          *selector,
                                               gboolean              partial);
+
+guint         cpg_selector_get_last_id       (CpgSelector          *selector);
+
+GSList const *cpg_selector_get_in_context    (CpgSelector          *selector,
+                                              guint                 id);
+
+GSList const *cpg_selector_get_out_context    (CpgSelector          *selector,
+                                               guint                 id);
 
 G_END_DECLS
 

@@ -59,12 +59,18 @@ struct _CpgParserContextPrivate
 	gboolean error_occurred;
 
 	CpgLayout *layout;
+
+	gint last_selector_line_start;
+	gint last_selector_line_end;
+	gint last_selector_cstart;
+	gint last_selector_cend;
 };
 
 enum
 {
 	CONTEXT_PUSHED,
 	CONTEXT_POPPED,
+	SELECTOR_ITEM_PUSHED,
 	NUM_SIGNALS
 };
 
@@ -273,6 +279,18 @@ cpg_parser_context_class_init (CpgParserContextClass *klass)
 		              g_cclosure_marshal_VOID__VOID,
 		              G_TYPE_NONE,
 		              0);
+
+	signals[SELECTOR_ITEM_PUSHED] =
+		g_signal_new ("selector-item-pushed",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              NULL,
+		              NULL,
+		              g_cclosure_marshal_VOID__OBJECT,
+		              G_TYPE_NONE,
+		              1,
+		              CPG_TYPE_SELECTOR);
 }
 
 static void
@@ -2495,6 +2513,14 @@ cpg_parser_context_push_selector_identifier (CpgParserContext  *context,
 
 	cpg_selector_append (ensure_selector (context), identifier);
 	g_object_unref (identifier);
+
+	context->priv->last_selector_line_end = context->priv->lineno;
+	context->priv->last_selector_cend = context->priv->cend;
+
+	g_signal_emit (context,
+	               signals[SELECTOR_ITEM_PUSHED],
+	               0,
+	               ensure_selector (context));
 }
 
 void
@@ -2506,6 +2532,14 @@ cpg_parser_context_push_selector_regex (CpgParserContext  *context,
 
 	cpg_selector_append_regex (ensure_selector (context), regex);
 	g_object_unref (regex);
+
+	context->priv->last_selector_line_end = context->priv->lineno;
+	context->priv->last_selector_cend = context->priv->cend;
+
+	g_signal_emit (context,
+	               signals[SELECTOR_ITEM_PUSHED],
+	               0,
+	               ensure_selector (context));
 }
 
 void
@@ -2521,6 +2555,14 @@ cpg_parser_context_push_selector_pseudo (CpgParserContext      *context,
 
 	g_slist_foreach (argument, (GFunc)g_object_unref, NULL);
 	g_slist_free (argument);
+
+	context->priv->last_selector_line_end = context->priv->lineno;
+	context->priv->last_selector_cend = context->priv->cend;
+
+	g_signal_emit (context,
+	               signals[SELECTOR_ITEM_PUSHED],
+	               0,
+	               ensure_selector (context));
 }
 
 CpgSelector *
@@ -3928,3 +3970,49 @@ cpg_parser_context_current_selections (CpgParserContext *context)
 
 	return CURRENT_CONTEXT (context)->objects;
 }
+
+void
+cpg_parser_context_begin_selector_item (CpgParserContext *context)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	context->priv->last_selector_line_start = context->priv->lineno;
+	context->priv->last_selector_cstart = context->priv->cstart;
+}
+
+void
+cpg_parser_context_get_last_selector_item_line (CpgParserContext *context,
+                                                gint             *line_start,
+                                                gint             *line_end)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	if (line_start)
+	{
+		*line_start = context->priv->last_selector_line_start;
+	}
+
+	if (line_end)
+	{
+		*line_end = context->priv->last_selector_line_end;
+	}
+}
+
+void
+cpg_parser_context_get_last_selector_item_column (CpgParserContext *context,
+                                                  gint             *start,
+                                                  gint             *end)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	if (start)
+	{
+		*start = context->priv->last_selector_cstart;
+	}
+
+	if (end)
+	{
+		*end = context->priv->last_selector_cend;
+	}
+}
+
