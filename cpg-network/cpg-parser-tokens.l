@@ -282,7 +282,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
-<equation>(\\[)@$(\\]|[^a-z_)@$(\\])+ {
+<equation>(\\[)@$(\\]|[^)@$(\\])+ {
 					yylval->id = unquote_string (yytext, yyleng, "@)$(");
 					return T_STRING;
 				}
