@@ -165,9 +165,9 @@ can be used to respectively add and remove properties from the object.
 </para>
 <para>
 To get the current value of a <link linkend="cpg-network-CpgProperty">CpgProperty</link>
-you can use <link linkend="cpg_property_get_value">cpg_property_get_value</link>.
+you can use <link linkend="cpg-property-get-value">cpg_property_get_value</link>.
 Similarly, use 
-<link linkend="cpg_property_set_value_expression">cpg_property_set_value_expression</link>
+<link linkend="cpg-property-set-expression">cpg_property_set_value_expression</link>
 to set the value of a property to a mathematical expression.
 <note>
 Make sure that your network has been compiled 

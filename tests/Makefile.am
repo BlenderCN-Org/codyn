@@ -6,26 +6,44 @@ INCLUDES =				\
 	-I$(top_srcdir)				\
 	$(CPG_NETWORK_CFLAGS)
 
-EXTRA_PROGRAMS = expression test template
+TEST_PROGS = expression network direct import template object group property operator integrator interface
+progs_ldadd = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la
 
-noinst_PROGRAMS = expression test template
-expression_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la -lm $(CPG_NETWORK_LIBS)
+noinst_PROGRAMS = $(TEST_PROGS)
 
-expression_SOURCES = \
-	expression.c \
-	utils.c \
-	utils.h
+expression_SOURCES = expression.c utils.h utils.c
+expression_LDADD = $(progs_ldadd)
 
-test_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la -lm $(CPG_NETWORK_LIBS)
+network_SOURCES = network.c utils.h utils.c
+network_LDADD = $(progs_ldadd)
 
-test_SOURCES = \
-	test.c
+direct_SOURCES = direct.c utils.h utils.c
+direct_LDADD = $(progs_ldadd)
 
-template_LDADD = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la -lm $(CPG_NETWORK_LIBS)
+import_SOURCES = import.c utils.h utils.c
+import_LDADD = $(progs_ldadd)
 
-template_SOURCES = \
-	template.c
+template_SOURCES = template.c utils.h utils.c
+template_LDADD = $(progs_ldadd)
 
-EXTRA_DIST = template.cpg
+object_SOURCES = object.c utils.h utils.c
+object_LDADD = $(progs_ldadd)
+
+group_SOURCES = group.c utils.h utils.c
+group_LDADD = $(progs_ldadd)
+
+property_SOURCES = property.c utils.h utils.c
+property_LDADD = $(progs_ldadd)
+
+operator_SOURCES = operator.c utils.h utils.c
+operator_LDADD = $(progs_ldadd)
+
+integrator_SOURCES = integrator.c utils.h utils.c
+integrator_LDADD = $(progs_ldadd)
+
+interface_SOURCES = interface.c utils.h utils.c
+interface_LDADD = $(progs_ldadd)
+
+TESTS = $(TEST_PROGS)
 
 -include $(top_srcdir)/git.mk

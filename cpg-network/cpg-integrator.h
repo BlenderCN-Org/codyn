@@ -25,91 +25,100 @@
 
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-utils.h>
+#include <cpg-network/cpg-integrator-state.h>
 
 G_BEGIN_DECLS
 
-#define CPG_TYPE_INTEGRATOR				(cpg_integrator_get_type ())
-#define CPG_INTEGRATOR(obj)				(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_INTEGRATOR, CpgIntegrator))
-#define CPG_INTEGRATOR_CONST(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_INTEGRATOR, CpgIntegrator const))
-#define CPG_INTEGRATOR_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_INTEGRATOR, CpgIntegratorClass))
-#define CPG_IS_INTEGRATOR(obj)			(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_INTEGRATOR))
-#define CPG_IS_INTEGRATOR_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_INTEGRATOR))
-#define CPG_INTEGRATOR_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_INTEGRATOR, CpgIntegratorClass))
+#define CPG_TYPE_INTEGRATOR            (cpg_integrator_get_type ())
+#define CPG_INTEGRATOR(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_INTEGRATOR, CpgIntegrator))
+#define CPG_INTEGRATOR_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_INTEGRATOR, CpgIntegrator const))
+#define CPG_INTEGRATOR_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_INTEGRATOR, CpgIntegratorClass))
+#define CPG_IS_INTEGRATOR(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_INTEGRATOR))
+#define CPG_IS_INTEGRATOR_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_INTEGRATOR))
+#define CPG_INTEGRATOR_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_INTEGRATOR, CpgIntegratorClass))
 
-typedef struct _CpgIntegrator			CpgIntegrator;
-typedef struct _CpgIntegratorClass		CpgIntegratorClass;
-typedef struct _CpgIntegratorPrivate	CpgIntegratorPrivate;
+typedef struct _CpgIntegrator        CpgIntegrator;
+typedef struct _CpgIntegratorClass   CpgIntegratorClass;
+typedef struct _CpgIntegratorPrivate CpgIntegratorPrivate;
 
-typedef struct _CpgIntegratorState		CpgIntegratorState;
-
-struct _CpgIntegrator {
+struct _CpgIntegrator
+{
+	/*< private >*/
 	CpgObject parent;
 
 	CpgIntegratorPrivate *priv;
 };
 
-CPG_FORWARD_DECL (CpgNetwork);
-
-struct _CpgIntegratorClass {
+/**
+ * CpgIntegratorClass:
+ * @run: run virtual function
+ * @step: step virtual function
+ * @get_name: get_name virtual function
+ * @reset: reset virtual function
+ * @integrator_id: the integrator id
+ *
+ * The CpgIntegrator class
+ *
+ */
+struct _CpgIntegratorClass
+{
+	/*< private >*/
 	CpgObjectClass parent_class;
 
-	/* virtual functions */
-	void	(*run)		(CpgIntegrator *integrator,
-	                     GSList        *state,
-	                     gdouble        from,
-	                     gdouble        timestep,
-	                     gdouble        to);
+	/*< public >*/
+	void         (*run)          (CpgIntegrator *integrator,
+	                              gdouble        from,
+	                              gdouble        timestep,
+	                              gdouble        to);
 
-	gdouble	(*step)		(CpgIntegrator *integrator,
-	                     GSList        *state,
-	                     gdouble        t,
-	                     gdouble        timestep);
+	gdouble      (*step)         (CpgIntegrator *integrator,
+	                              gdouble        t,
+	                              gdouble        timestep);
 
-	gchar const *(*get_name)	(CpgIntegrator *integrator);
+	gboolean     (*step_prepare) (CpgIntegrator *integrator,
+	                              gdouble        t,
+	                              gdouble        timestep);
 
-	void (*reset)        (CpgIntegrator *integrator,
-	                      GSList        *state);
+	const gchar *(*get_name)     (CpgIntegrator *integrator);
+
+	void         (*reset)        (CpgIntegrator *integrator);
 
 	/* private field */
-	gchar const *integrator_id;
+	const gchar *integrator_id;
 };
 
-GType				 cpg_integrator_get_type		(void) G_GNUC_CONST;
-GType				 cpg_integrator_state_get_type	(void) G_GNUC_CONST;
+GType                cpg_integrator_get_type        (void) G_GNUC_CONST;
 
-CpgIntegratorState	*cpg_integrator_state_new		(CpgProperty *property);
+CpgIntegratorState  *cpg_integrator_get_state       (CpgIntegrator *integrator);
+void                 cpg_integrator_set_state       (CpgIntegrator *integrator,
+                                                     CpgIntegratorState *state);
 
-void				 cpg_integrator_run				(CpgIntegrator 		*integrator,
-													 GSList				*state,
-													 gdouble			 from,
-													 gdouble			 timestep,
-													 gdouble			 to);
+void                 cpg_integrator_run             (CpgIntegrator *integrator,
+                                                     gdouble        from,
+                                                     gdouble        timestep,
+                                                     gdouble        to);
 
-gdouble				 cpg_integrator_step			(CpgIntegrator		*integrator,
-													 GSList				*state,
-													 gdouble             t,
-													 gdouble			 timestep);
+gdouble              cpg_integrator_step            (CpgIntegrator *integrator,
+                                                     gdouble        t,
+                                                     gdouble        timestep);
 
-void 				 cpg_integrator_evaluate		(CpgIntegrator		*integrator,
-													 GSList				*state,
-													 gdouble             t,
-													 gdouble             timestep);
+gboolean             cpg_integrator_step_prepare    (CpgIntegrator *integrator,
+                                                     gdouble        t,
+                                                     gdouble        timestep);
 
-void				 cpg_integrator_reset			(CpgIntegrator		*integrator,
-                                                     GSList             *state);
+void                 cpg_integrator_evaluate        (CpgIntegrator *integrator,
+                                                     gdouble        t,
+                                                     gdouble        timestep);
 
-gchar const			*cpg_integrator_get_name		(CpgIntegrator 		*integrator);
+void                 cpg_integrator_reset           (CpgIntegrator *integrator);
 
-gdouble				 cpg_integrator_get_time		(CpgIntegrator		*integrator);
+const gchar         *cpg_integrator_get_name        (CpgIntegrator *integrator);
 
+gdouble              cpg_integrator_get_time        (CpgIntegrator *integrator);
+void                 cpg_integrator_set_time        (CpgIntegrator *integrator,
+                                                     gdouble        t);
 
-gdouble				 cpg_integrator_state_get_update	(CpgIntegratorState *state);
-CpgProperty			*cpg_integrator_state_get_property	(CpgIntegratorState *state);
-
-void				 cpg_integrator_state_set_update	(CpgIntegratorState *state,
-														 gdouble             value);
-
-struct _CpgNetwork	*cpg_integrator_get_network		(CpgIntegrator *integrator);
+CpgObject           *cpg_integrator_get_object        (CpgIntegrator *integrator);
 
 G_END_DECLS
 

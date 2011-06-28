@@ -25,9 +25,10 @@ that object.
 </para>
 <para>
 To add a template programmatically to the network, you can use
-<link linkend="cpg-network-add-template">cpg_network_add_template</link> which
+<link linkend="cpg-group-add">cpg_group_add</link> to the template group
+of the network (<link linkend="cpg-network-get-template-group">cpg_network_get_template_group</link>) which
 simply takes an object. Similarly you can remove a template from the network
-using <link linkend="cpg-network-remove-template">cpg_network_remove_template</link>.
+using <link linkend="cpg-group-remove">cpg_group_remove</link>.
 The XML specification also supports specifying templates similar to specifying
 normal states and links, but in a separate <emphasis>templates</emphasis>
 section (see <link linkend="xml-specification">CPG Network XML specification</link>).

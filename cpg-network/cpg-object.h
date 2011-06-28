@@ -27,18 +27,19 @@
 #include <cpg-network/cpg-property.h>
 #include <cpg-network/cpg-compile-context.h>
 #include <cpg-network/cpg-utils.h>
+#include <cpg-network/cpg-usable.h>
 
 G_BEGIN_DECLS
 
 #define CPG_OBJECT_ERROR (cpg_object_error_quark ())
 
-#define CPG_TYPE_OBJECT				(cpg_object_get_type ())
-#define CPG_OBJECT(obj)				(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_OBJECT, CpgObject))
-#define CPG_OBJECT_CONST(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_OBJECT, CpgObject const))
-#define CPG_OBJECT_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_OBJECT, CpgObjectClass))
-#define CPG_IS_OBJECT(obj)			(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_OBJECT))
-#define CPG_IS_OBJECT_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_OBJECT))
-#define CPG_OBJECT_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_OBJECT, CpgObjectClass))
+#define CPG_TYPE_OBJECT            (cpg_object_get_type ())
+#define CPG_OBJECT(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_OBJECT, CpgObject))
+#define CPG_OBJECT_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_OBJECT, CpgObject const))
+#define CPG_OBJECT_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_OBJECT, CpgObjectClass))
+#define CPG_IS_OBJECT(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_OBJECT))
+#define CPG_IS_OBJECT_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_OBJECT))
+#define CPG_OBJECT_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_OBJECT, CpgObjectClass))
 
 typedef struct _CpgObject			CpgObject;
 typedef struct _CpgObjectClass		CpgObjectClass;
@@ -49,9 +50,9 @@ CPG_FORWARD_DECL (CpgCompileError);
 
 /**
  * CpgObjectError:
- * @CPG_OBJECT_ERROR_PROP_UNKNOWN: unknown
- * @CPG_OBJECT_ERROR_PROP_NOT_FOUND: property not found
- * @CPG_OBJECT_ERROR_PROP_IN_USE: property in use
+ * @CPG_OBJECT_ERROR_PROPERTY_UNKNOWN: unknown
+ * @CPG_OBJECT_ERROR_PROPERTY_NOT_FOUND: property not found
+ * @CPG_OBJECT_ERROR_PROPERTY_IN_USE: property in use
  * @CPG_OBJECT_NUM_ERRORS: num errors
  *
  * Enum used to indicate an error when removing a property
@@ -59,81 +60,218 @@ CPG_FORWARD_DECL (CpgCompileError);
  **/
 typedef enum
 {
-	CPG_OBJECT_ERROR_PROP_UNKNOWN,
-	CPG_OBJECT_ERROR_PROP_NOT_FOUND,
-	CPG_OBJECT_ERROR_PROP_IN_USE,
+	CPG_OBJECT_ERROR_PROPERTY_UNKNOWN,
+	CPG_OBJECT_ERROR_PROPERTY_NOT_FOUND,
+	CPG_OBJECT_ERROR_PROPERTY_IN_USE,
+	CPG_OBJECT_ERROR_PROPERTY_FROM_TEMPLATE,
+	CPG_OBJECT_ERROR_INVALID_PROPERTY_NAME,
+	CPG_OBJECT_ERROR_TEMPLATE_ALREADY_APPLIED,
+	CPG_OBJECT_ERROR_TEMPLATE_NOT_FOUND,
 	CPG_OBJECT_NUM_ERRORS
 } CpgObjectError;
 
-struct _CpgObject {
+struct _CpgObject
+{
 	/*< private >*/
 	GObject parent;
-	
+
 	CpgObjectPrivate *priv;
 };
 
-struct _CpgObjectClass {
+typedef void (*CpgForeachExpressionFunc) (CpgExpression *expression, gpointer userdata);
+
+/**
+ * CpgObjectClass:
+ * @compile: compile virtual function
+ * @reset: reset virtual function
+ * @foreach_expression: call callback for each expression
+ * @reset_cache: reset cache virtual function
+ * @apply_template: apply template virtual function
+ * @unapply_template: unapply template virtual function
+ * @copy: copy virtual function
+ * @get_copy_type: get copy type virtual function
+ * @taint: taint virtual function
+ * @get_properties: get properties virtual function
+ * @get_property: get property virtual function
+ * @has_property: has property virtual function
+ * @add_property: add property virtual function
+ * @remove_property: remove property virtual function
+ * @verify_remove_property: verify remove property virtual function
+ * @clear: clear virtual function
+ * @equal: equal virtual function
+ * @compiled: compiled signal default handler
+ * @resetted: resetted signal default handler
+ * @tainted: tainted signal default handler
+ * @property_added: property added signal default handler
+ * @property_removed: property added signal default handler
+ * @property_changed: property added signal default handler
+ *
+ * The CpgObject class
+ *
+ */
+struct _CpgObjectClass
+{
 	/*< private >*/
 	GObjectClass parent_class;
 
-	/*< public >*/	
-	gboolean (*compile)	(CpgObject *object,
-	                     CpgCompileContext *context,
-	                     CPG_FORWARD_DECL (CpgCompileError) *error);
-	void (*reset)		(CpgObject *object);
-	void (*evaluate)	(CpgObject *object);
-	
-	void (*tainted)		(CpgObject *object);
-	
-	void (*reset_cache) (CpgObject *object);
-	
-	void (*copy)		(CpgObject *object,
-	                     CpgObject *source);
+	/*< public >*/
+	gboolean      (*compile)         (CpgObject                          *object,
+	                                  CpgCompileContext                  *context,
+	                                  CPG_FORWARD_DECL (CpgCompileError) *error);
+
+	void          (*reset)           (CpgObject *object);
+
+	void          (*foreach_expression) (CpgObject                *object,
+	                                     CpgForeachExpressionFunc  func,
+	                                     gpointer                  userdata);
+
+	gboolean      (*apply_template)  (CpgObject  *object,
+	                                  CpgObject  *templ,
+	                                  GError    **error);
+
+	gboolean      (*unapply_template)  (CpgObject  *object,
+	                                    CpgObject  *templ,
+	                                    GError    **error);
+
+	void          (*copy)            (CpgObject *object,
+	                                  CpgObject *source);
+
+	GType         (*get_copy_type)   (CpgObject *object);
+
+	void          (*taint)           (CpgObject *object);
+
+	GSList       *(*get_properties)  (CpgObject    *object);
+	CpgProperty  *(*get_property)    (CpgObject    *object,
+	                                  const gchar  *name);
+
+	gboolean      (*has_property)    (CpgObject    *object,
+	                                  const gchar  *name);
+
+	gboolean      (*add_property)    (CpgObject    *object,
+	                                  CpgProperty  *property,
+	                                  GError      **error);
+
+	gboolean      (*remove_property) (CpgObject    *object,
+	                                  const gchar  *name,
+	                                  GError      **error);
+
+	gboolean      (*verify_remove_property) (CpgObject    *object,
+	                                         const gchar  *name,
+	                                         GError      **error);
+
+	void          (*clear)           (CpgObject    *object);
+
+	gboolean      (*equal)           (CpgObject    *first,
+	                                  CpgObject    *last);
+
+	/* signals */
+	void          (*compiled)         (CpgObject   *object);
+	void          (*resetted)         (CpgObject   *object);
+	void          (*tainted)          (CpgObject   *object);
+
+	void          (*copied)           (CpgObject   *object,
+	                                   CpgObject   *copy);
+
+	void          (*property_added)   (CpgObject   *object,
+	                                   CpgProperty *property);
+	void          (*property_removed) (CpgObject   *object,
+	                                   CpgProperty *property);
+	void          (*property_changed) (CpgObject   *object,
+	                                   CpgProperty *property);
+
+	void          (*template_applied) (CpgObject   *object,
+	                                   CpgObject   *templ);
+	void          (*template_unapplied) (CpgObject *object,
+	                                     CpgObject *templ);
 };
 
 GQuark cpg_object_error_quark (void);
 
 GType cpg_object_get_type (void) G_GNUC_CONST;
-CpgObject *cpg_object_new (const gchar *id);
 
-CpgObject        *_cpg_object_copy			(CpgObject   *object);
-const gchar 	 *cpg_object_get_id			(CpgObject   *object);
-void              cpg_object_set_id			(CpgObject   *object,
-                                             const gchar *id);
-gchar 			 *cpg_object_get_local_id	(CpgObject   *object);
+CpgObject        *cpg_object_new               (const gchar *id);
+CpgObject        *cpg_object_new_from_template (CpgObject *templ, GError **error);
 
-CpgProperty 	 *cpg_object_add_property	(CpgObject   *object, 
-											 const gchar *name, 
-											 const gchar *expression, 
-											 gboolean     integrated);
-CpgProperty 	 *cpg_object_get_property	(CpgObject   *object, 
-											 const gchar *name);
-gboolean		  cpg_object_has_property   (CpgObject   *object,
-											 const gchar *name);
-gboolean		  cpg_object_remove_property (CpgObject    *object,
-											  const gchar  *name,
-											  GError      **error);
+const gchar      *cpg_object_get_id          (CpgObject   *object);
+void              cpg_object_set_id          (CpgObject   *object,
+                                              const gchar *id);
 
-GSList			*cpg_object_get_properties	(CpgObject   *object);
+gboolean          cpg_object_add_property    (CpgObject    *object,
+                                              CpgProperty  *property,
+                                              GError      **error);
+CpgProperty      *cpg_object_get_property    (CpgObject   *object,
+                                              const gchar *name);
+gboolean          cpg_object_has_property    (CpgObject   *object,
+                                              const gchar *name);
+gboolean          cpg_object_remove_property (CpgObject    *object,
+                                              const gchar  *name,
+                                              GError      **error);
+
+gboolean          cpg_object_verify_remove_property (CpgObject    *object,
+                                                     const gchar  *name,
+                                                     GError      **error);
+
+GSList           *cpg_object_get_properties  (CpgObject   *object);
+CpgObject        *cpg_object_get_parent      (CpgObject   *object);
+
+gboolean          cpg_object_get_auto_imported (CpgObject    *object);
+void              cpg_object_set_auto_imported (CpgObject    *object,
+                                                gboolean      auto_imported);
 
 /* evaluation */
-void			  cpg_object_reset			(CpgObject   *object);
-void			  cpg_object_evaluate		(CpgObject   *object);
+void              cpg_object_reset          (CpgObject   *object);
 
-void			  cpg_object_reset_cache	(CpgObject	 *object);
-void			  cpg_object_taint			(CpgObject   *object);
+void              cpg_object_foreach_expression (CpgObject                *object,
+                                                 CpgForeachExpressionFunc  func,
+                                                 gpointer                  userdata);
 
-gboolean		  cpg_object_compile		(CpgObject         *object,
-											 CpgCompileContext *context,
-											 CPG_FORWARD_DECL (CpgCompileError) *error);
+void              cpg_object_taint          (CpgObject   *object);
+
+gboolean          cpg_object_is_compiled    (CpgObject   *object);
+
+gboolean          cpg_object_compile        (CpgObject                          *object,
+                                             CpgCompileContext                  *context,
+                                             CPG_FORWARD_DECL (CpgCompileError) *error);
+
+gboolean          cpg_object_equal          (CpgObject *first,
+                                             CpgObject *second);
+
+void              cpg_object_clear          (CpgObject   *object);
+const GSList     *cpg_object_get_actors     (CpgObject   *object);
+
+const GSList     *cpg_object_get_applied_templates  (CpgObject   *object);
+const GSList     *cpg_object_get_template_applies_to  (CpgObject   *object);
+
+CpgObject        *cpg_object_copy           (CpgObject *object);
+
+gboolean          cpg_object_apply_template (CpgObject  *object,
+                                             CpgObject  *templ,
+                                             GError    **error);
+
+gboolean          cpg_object_unapply_template (CpgObject  *object,
+                                               CpgObject  *templ,
+                                               GError    **error);
+
+CpgObject        *cpg_object_get_property_template (CpgObject   *object,
+                                                    CpgProperty *property,
+                                                    gboolean     match_full);
+
+gchar            *cpg_object_get_full_id     (CpgObject *object);
+
+gchar            *cpg_object_get_relative_id (CpgObject *object,
+                                              CpgObject *parent);
+
+const GSList     *cpg_object_get_links      (CpgObject *object);
 
 /* used for referencing links */
-void 			 _cpg_object_link			(CpgObject       *object, 
-											 CPG_FORWARD_DECL (CpgLink) *link);
-GSList 			 *cpg_object_get_actors		(CpgObject       *object);
-GSList 			*_cpg_object_get_links		(CpgObject       *object);
+void             _cpg_object_link           (CpgObject                  *object,
+                                             CPG_FORWARD_DECL (CpgLink) *link);
 
-void 			 _cpg_object_taint			(CpgObject 		 *object);
+void             _cpg_object_unlink         (CpgObject                  *object,
+                                             CPG_FORWARD_DECL (CpgLink) *link);
+
+void             _cpg_object_set_parent     (CpgObject *object,
+                                             CpgObject *parent);
 
 G_END_DECLS
 

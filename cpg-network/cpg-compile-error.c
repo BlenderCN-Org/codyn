@@ -21,58 +21,31 @@
  */
 
 #include "cpg-compile-error.h"
-#include "cpg-ref-counted-private.h"
+
+#include <string.h>
 
 /**
- * SECTION:compile-error
+ * SECTION:cpg-compile-error
  * @short_description: Compile error message container
  *
  * Object used to store information on expression compile errors.
  *
  */
- 
-struct _CpgCompileError
+
+#define CPG_COMPILE_ERROR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_COMPILE_ERROR, CpgCompileErrorPrivate))
+
+struct _CpgCompileErrorPrivate
 {
-	CpgRefCounted parent;
-	
 	GError *error;
-	
+
 	CpgObject *object;
-	
 	CpgProperty *property;
 	CpgLinkAction *action;
+
+	gint pos;
 };
 
-GType 
-cpg_compile_error_get_type ()
-{
-	static GType type_id = 0;
-	
-	if (G_UNLIKELY (type_id == 0))
-	{
-		type_id = g_boxed_type_register_static ("CpgCompileError", 
-		                                        cpg_ref_counted_ref, 
-		                                        cpg_ref_counted_unref);
-	}
-
-	return type_id;
-}
-
-static void
-cpg_compile_error_free (CpgCompileError *error)
-{
-	if (error->error)
-	{
-		g_error_free (error->error);
-	}
-	
-	if (error->object)
-	{
-		g_object_unref (error->object);
-	}
-	
-	g_slice_free (CpgCompileError, error);
-}
+G_DEFINE_TYPE (CpgCompileError, cpg_compile_error, G_TYPE_OBJECT)
 
 GQuark
 cpg_compile_error_type_quark ()
@@ -80,54 +53,135 @@ cpg_compile_error_type_quark ()
 	static GQuark quark = 0;
 
 	if (G_UNLIKELY (quark == 0))
+	{
 		quark = g_quark_from_static_string ("cpg_compile_error_type");
+	}
 
 	return quark;
+}
+
+static void
+clear_objects (CpgCompileError *error)
+{
+	if (error->priv->error)
+	{
+		g_error_free (error->priv->error);
+		error->priv->error = NULL;
+	}
+
+	if (error->priv->object)
+	{
+		g_object_unref (error->priv->object);
+		error->priv->object = NULL;
+	}
+
+	if (error->priv->property)
+	{
+		g_object_unref (error->priv->property);
+		error->priv->property = NULL;
+	}
+
+	if (error->priv->action)
+	{
+		g_object_unref (error->priv->action);
+		error->priv->action = NULL;
+	}
+}
+
+static void
+cpg_compile_error_dispose (GObject *object)
+{
+	CpgCompileError *error = CPG_COMPILE_ERROR (object);
+
+	clear_objects (error);
+
+	G_OBJECT_CLASS (cpg_compile_error_parent_class)->dispose (object);
+}
+
+static void
+cpg_compile_error_finalize (GObject *object)
+{
+	G_OBJECT_CLASS (cpg_compile_error_parent_class)->finalize (object);
+}
+
+static void
+cpg_compile_error_class_init (CpgCompileErrorClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->dispose = cpg_compile_error_dispose;
+	object_class->finalize = cpg_compile_error_finalize;
+
+	g_type_class_add_private (object_class, sizeof(CpgCompileErrorPrivate));
+}
+
+static void
+cpg_compile_error_init (CpgCompileError *self)
+{
+	self->priv = CPG_COMPILE_ERROR_GET_PRIVATE (self);
 }
 
 /**
  * cpg_compile_error_new:
  *
  * Create new empty compile error
- * 
+ *
  * Returns: a new #CpgCompileError
  *
  **/
 CpgCompileError *
 cpg_compile_error_new ()
 {
-	CpgCompileError *res = g_slice_new0 (CpgCompileError);
-	
-	cpg_ref_counted_init (res, (GDestroyNotify)cpg_compile_error_free);
-	return res;
+	return g_object_new (CPG_TYPE_COMPILE_ERROR, NULL);
 }
 
+/**
+ * cpg_compile_error_set:
+ * @error: A #CpgCompileError
+ * @gerror: A #GError
+ * @object: A #CpgObject
+ * @property: A #CpgProperty
+ * @action: A #CpgLinkAction
+ *
+ * Set compile error information.
+ *
+ **/
 void
 cpg_compile_error_set (CpgCompileError *error,
                        GError          *gerror,
                        CpgObject       *object,
                        CpgProperty     *property,
-                       CpgLinkAction   *action)
+                       CpgLinkAction   *action,
+                       gint             pos)
 {
-	if (error->object)
-	{
-		g_object_unref (error->object);
-	}
+	g_return_if_fail (CPG_IS_COMPILE_ERROR (error));
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));
+	g_return_if_fail (action == NULL || CPG_IS_LINK_ACTION (action));
 
-	if (error->error)
-	{
-		g_error_free (error->error);
-		error->error = NULL;
-	}
+	clear_objects (error);
 
 	if (gerror)
 	{
-		error->error = g_error_copy (gerror);
+		error->priv->error = g_error_copy (gerror);
 	}
 
-	error->object = g_object_ref (object);
-	error->property = property;
-	error->action = action;
+	if (object)
+	{
+		error->priv->object = g_object_ref (object);
+	}
+
+	if (property)
+	{
+		error->priv->property = g_object_ref (property);
+	}
+
+	if (action)
+	{
+		error->priv->action = g_object_ref (action);
+	}
+
+	error->priv->pos = pos;
 }
 
 /**
@@ -136,13 +190,15 @@ cpg_compile_error_set (CpgCompileError *error,
  *
  * Get the associated #GError
  *
- * Returns: the associated #GError
+ * Returns: (transfer none): the associated #GError
  *
  **/
 GError *
-cpg_compile_error_get_error	(CpgCompileError *error)
+cpg_compile_error_get_error (CpgCompileError *error)
 {
-	return error->error;
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
+
+	return error->priv->error;
 }
 
 /**
@@ -151,13 +207,32 @@ cpg_compile_error_get_error	(CpgCompileError *error)
  *
  * Get the associated #CpgObject
  *
- * Returns: the associated #CpgObject
+ * Returns: (transfer none): the associated #CpgObject
  *
  **/
 CpgObject *
 cpg_compile_error_get_object (CpgCompileError *error)
 {
-	return error->object;
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
+
+	return error->priv->object;
+}
+
+/**
+ * cpg_compile_error_get_pos:
+ * @error: A #CpgCompileError
+ *
+ * Get the character position of the compile error in the expression.
+ *
+ * Returns: The character position of the compile error in the expression
+ *
+ **/
+gint
+cpg_compile_error_get_pos (CpgCompileError *error)
+{
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), 0);
+
+	return error->priv->pos;
 }
 
 /**
@@ -166,13 +241,15 @@ cpg_compile_error_get_object (CpgCompileError *error)
  *
  * Get the associated #CpgProperty
  *
- * Returns: the associated #CpgProperty
+ * Returns: (transfer none): the associated #CpgProperty
  *
  **/
-CpgProperty	*
+CpgProperty *
 cpg_compile_error_get_property (CpgCompileError *error)
 {
-	return error->property;
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
+
+	return error->priv->property;
 }
 
 /**
@@ -181,13 +258,15 @@ cpg_compile_error_get_property (CpgCompileError *error)
  *
  * Get the associated #CpgLinkAction
  *
- * Returns: the associated #CpgLinkAction
+ * Returns: (transfer none): the associated #CpgLinkAction
  *
  **/
 CpgLinkAction *
 cpg_compile_error_get_link_action (CpgCompileError *error)
 {
-	return error->action;
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
+
+	return error->priv->action;
 }
 
 /**
@@ -219,6 +298,9 @@ cpg_compile_error_code_string (gint code)
 		case CPG_COMPILE_ERROR_INVALID_STACK:
 			return "Invalid stack";
 		break;
+		case CPG_COMPILE_ERROR_PROPERTY_RECURSE:
+			return "Property recusion";
+		break;
 		default:
 			return "Unknown";
 		break;
@@ -237,6 +319,8 @@ cpg_compile_error_code_string (gint code)
 gchar const *
 cpg_compile_error_string (CpgCompileError *error)
 {
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
+
 	return cpg_compile_error_code_string (cpg_compile_error_get_code (error));
 }
 
@@ -252,7 +336,9 @@ cpg_compile_error_string (CpgCompileError *error)
 gint
 cpg_compile_error_get_code (CpgCompileError *error)
 {
-	return error->error ? error->error->code : 0;
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), 0);
+
+	return error->priv->error ? error->priv->error->code : 0;
 }
 
 /**
@@ -267,5 +353,70 @@ cpg_compile_error_get_code (CpgCompileError *error)
 gchar const *
 cpg_compile_error_get_message (CpgCompileError *error)
 {
-	return error->error ? error->error->message : "Unknown";
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
+
+	return error->priv->error ? error->priv->error->message : "Unknown";
+}
+
+gchar *
+cpg_compile_error_get_formatted_string (CpgCompileError *error)
+{
+	GString *ret;
+	gchar *fullid;
+	gchar const *expr;
+	gchar *pad;
+	gchar *prefix;
+
+	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
+
+	ret = g_string_new ("Error while compiling `[");
+
+	if (error->priv->object)
+	{
+		fullid = cpg_object_get_full_id (error->priv->object);
+	}
+	else
+	{
+		fullid = NULL;
+	}
+
+	g_string_append (ret, fullid);
+	g_free (fullid);
+
+	g_string_append_c (ret, ']');
+
+	if (error->priv->property != NULL)
+	{
+		g_string_append_c (ret, '.');
+		g_string_append (ret, cpg_property_get_name (error->priv->property));
+
+		expr = cpg_expression_get_as_string (cpg_property_get_expression (error->priv->property));
+	}
+	else if (error->priv->action != NULL)
+	{
+		g_string_append (ret, " < ");
+		g_string_append (ret, cpg_link_action_get_target (error->priv->action));
+
+		expr = cpg_expression_get_as_string (cpg_link_action_get_equation (error->priv->action));
+	}
+	else
+	{
+		expr = NULL;
+	}
+
+	prefix = g_strdup_printf ("[%d]:", cpg_compile_error_get_pos (error));
+	pad = g_strnfill (strlen (prefix) + cpg_compile_error_get_pos (error), ' ');
+
+	g_string_append_printf (ret,
+	                        "': %s\n\n%s %s\n%s^ %s",
+	                        cpg_compile_error_string (error),
+	                        prefix,
+	                        expr,
+	                        pad,
+	                        cpg_compile_error_get_message (error));
+
+	g_free (pad);
+	g_free (prefix);
+
+	return g_string_free (ret, FALSE);
 }

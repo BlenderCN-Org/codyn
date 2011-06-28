@@ -56,13 +56,10 @@ CFILE_GLOB=$(top_srcdir)/cpg-network/*.c
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
 IGNORE_HFILES= \
 	cpg-tokenizer.h \
-	cpg-network-reader.h \
-	cpg-network-writer.h \
 	cpg-utils.h \
-	cpg-ref-counted-private.h \
-	cpg-math.h \
-	cpg-stack.h \
-	cpg-debug.h
+	cpg-network-xml.h \
+	cpg-debug.h \
+	cpg-marshal.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png

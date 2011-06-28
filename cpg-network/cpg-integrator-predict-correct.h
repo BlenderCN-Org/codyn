@@ -39,13 +39,17 @@ typedef struct _CpgIntegratorPredictCorrect	        CpgIntegratorPredictCorrect;
 typedef struct _CpgIntegratorPredictCorrectClass    CpgIntegratorPredictCorrectClass;
 typedef struct _CpgIntegratorPredictCorrectPrivate  CpgIntegratorPredictCorrectPrivate;
 
-struct _CpgIntegratorPredictCorrect {
+struct _CpgIntegratorPredictCorrect
+{
+	/*< private >*/
 	CpgIntegrator parent;
 	
 	CpgIntegratorPredictCorrectPrivate *priv;
 };
 
-struct _CpgIntegratorPredictCorrectClass {
+struct _CpgIntegratorPredictCorrectClass
+{
+	/*< private >*/
 	CpgIntegratorClass parent_class;
 };
 
