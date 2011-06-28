@@ -409,6 +409,16 @@ cpg_selector_new ()
 	return g_object_new (CPG_TYPE_SELECTOR, NULL);
 }
 
+/**
+ * cpg_selector_parse:
+ * @s: Description
+ * @error: A #GError
+ *
+ * Parse a selector from a string.
+ *
+ * Returns: (transfer full): A #CpgSelector
+ *
+ **/
 CpgSelector *
 cpg_selector_parse (gchar const *s,
                     GError      **error)
@@ -1877,6 +1887,18 @@ selector_select_all (CpgSelector        *selector,
 	return ctx;
 }
 
+/**
+ * cpg_selector_select:
+ * @selector: A #CpgSelector
+ * @parent: A #GObject
+ * @type: A #CpgSelectorType
+ * @context: A #CpgEmbeddedContext
+ *
+ * Select objects (from @parent) using the selector.
+ *
+ * Returns: (element-type CpgSelection) (transfer full): A #GSList of #CpgSelection
+ *
+ **/
 GSList *
 cpg_selector_select (CpgSelector        *selector,
                      GObject            *parent,
@@ -1952,6 +1974,16 @@ find_selector_by_id (CpgSelector *selector,
 	return NULL;
 }
 
+/**
+ * cpg_selector_get_in_context:
+ * @selector: A #CpgSelector
+ * @id: The selector id
+ *
+ * Get the in-context for a particular selector.
+ *
+ * Returns: (element-type CpgSelection) (transfer none): A #GSList of #CpgSelection
+ *
+ **/
 GSList const *
 cpg_selector_get_in_context (CpgSelector *selector,
                              guint        id)
@@ -1966,6 +1998,16 @@ cpg_selector_get_in_context (CpgSelector *selector,
 	return sel ? sel->selections_in : NULL;
 }
 
+/**
+ * cpg_selector_get_out_context:
+ * @selector: A #CpgSelector
+ * @id: The selector id
+ *
+ * Get the out-context for a particular selector.
+ *
+ * Returns: (element-type CpgSelection) (transfer none): A #GSList of #CpgSelection
+ *
+ **/
 GSList const *
 cpg_selector_get_out_context (CpgSelector *selector,
                               guint        id)

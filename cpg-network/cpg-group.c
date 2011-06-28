@@ -1974,7 +1974,7 @@ cpg_group_find_objects (CpgGroup    *group,
 }
 
 /**
- * cpg_group_find_objects:
+ * cpg_group_find_object:
  * @group: A #CpgGroup
  * @path: The object path
  *
@@ -2110,6 +2110,17 @@ cpg_group_get_property_interface (CpgGroup *group)
 	return group->priv->property_interface;
 }
 
+/**
+ * cpg_group_get_auto_templates_for_child:
+ * @group: A #CpgGroup
+ * @child: A #CpgObject
+ *
+ * Get the templates that were automatically applied from the group to the
+ * child.
+ *
+ * Returns: (transfer container) (allow-none): A #GSList of #CpgObject
+ *
+ **/
 GSList *
 cpg_group_get_auto_templates_for_child (CpgGroup  *group,
                                         CpgObject *child)

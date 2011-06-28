@@ -317,6 +317,15 @@ cpg_operator_initialize (CpgOperator  *op,
 	return CPG_OPERATOR_GET_CLASS (op)->initialize (op, expressions);
 }
 
+/**
+ * cpg_operator_copy:
+ * @op: A #CpgOperator
+ *
+ * Copy an operator.
+ *
+ * Returns: (transfer full): A #CpgOperator
+ *
+ **/
 CpgOperator *
 cpg_operator_copy (CpgOperator *op)
 {

@@ -216,6 +216,15 @@ expansion_copy (Expansion *ex)
 	return ret;
 }
 
+/**
+ * cpg_expansion_copy:
+ * @id: A #CpgExpansion
+ *
+ * Copy an expansion.
+ *
+ * Returns: (transfer full): A #CpgExpansion
+ *
+ **/
 CpgExpansion *
 cpg_expansion_copy (CpgExpansion *id)
 {

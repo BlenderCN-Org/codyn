@@ -153,6 +153,15 @@ cpg_selection_new_defines (gpointer    object,
 	return ret;
 }
 
+/**
+ * cpg_selection_copy:
+ * @selection: A #CpgSelection
+ *
+ * Copy a selection.
+ *
+ * Returns: (transfer full): A #CpgSelection
+ *
+ **/
 CpgSelection *
 cpg_selection_copy (CpgSelection *selection)
 {
@@ -163,6 +172,16 @@ cpg_selection_copy (CpgSelection *selection)
 	                          selection->priv->defines);
 }
 
+/**
+ * cpg_selection_copy_defines:
+ * @selection: A #CpgSelection
+ * @copy_defines: Whether to copy the defines
+ *
+ * Copy selection with defines.
+ *
+ * Returns: (transfer full): A #CpgSelection
+ *
+ **/
 CpgSelection *
 cpg_selection_copy_defines (CpgSelection *selection,
                             gboolean      copy_defines)
@@ -175,6 +194,15 @@ cpg_selection_copy_defines (CpgSelection *selection,
 	                                  copy_defines);
 }
 
+/**
+ * cpg_selection_get_object:
+ * @selection: A #CpgSelection
+ *
+ * Get the object being selected.
+ *
+ * Returns: (transfer none): The object being selected
+ *
+ **/
 gpointer
 cpg_selection_get_object (CpgSelection *selection)
 {
@@ -183,6 +211,15 @@ cpg_selection_get_object (CpgSelection *selection)
 	return selection->priv->object;
 }
 
+/**
+ * cpg_selection_get_expansions:
+ * @selection: A #CpgSelection
+ *
+ * Get the list of expansions.
+ *
+ * Returns: (element-type CpgExpansion) (transfer none): A #GSList of #CpgExpansion
+ *
+ **/
 GSList *
 cpg_selection_get_expansions (CpgSelection *selection)
 {
@@ -203,6 +240,15 @@ cpg_selection_add_define (CpgSelection *selection,
 	                     g_strdup (value));
 }
 
+/**
+ * cpg_selection_get_defines:
+ * @selection: A #CpgSelection
+ *
+ * Get the hash table of defines for the selection.
+ *
+ * Returns: (transfer none): A #GHashTable
+ *
+ **/
 GHashTable *
 cpg_selection_get_defines (CpgSelection *selection)
 {

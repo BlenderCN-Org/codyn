@@ -179,6 +179,17 @@ cpg_embedded_string_add_text (CpgEmbeddedString *s,
 	cpg_embedded_string_clear_cache (s);
 }
 
+/**
+ * cpg_embedded_string_push:
+ * @s: A #CpgEmbeddedString
+ * @type: A #CpgEmbeddedStringNodeType
+ * @depth: The depth of the embedded string
+ *
+ * Push a context type into the embedded string.
+ *
+ * Returns: (transfer none): The #CpgEmbeddedString (@s)
+ *
+ **/
 CpgEmbeddedString *
 cpg_embedded_string_push (CpgEmbeddedString         *s,
                           CpgEmbeddedStringNodeType  type,
@@ -198,6 +209,15 @@ cpg_embedded_string_push (CpgEmbeddedString         *s,
 	return s;
 }
 
+/**
+ * cpg_embedded_string_pop:
+ * @s: A #CpgEmbeddedString
+ *
+ * Pop an embedded context.
+ *
+ * Returns: (transfer none): The #CpgEmbeddedString (@s)
+ *
+ **/
 CpgEmbeddedString *
 cpg_embedded_string_pop (CpgEmbeddedString *s)
 {
@@ -867,6 +887,16 @@ expand_id_recurse (gchar const **id,
 	return ret;
 }
 
+/**
+ * cpg_embedded_string_expand_multiple:
+ * @s: A #CpgEmbeddedString
+ * @ctx: A #CpgEmbeddedContext
+ *
+ * Expand string with braces syntax.
+ *
+ * Returns: (element-type CpgExpansion) (transfer full): A #GSList of #CpgExpansion
+ *
+ **/
 GSList *
 cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
                                      CpgEmbeddedContext *ctx)

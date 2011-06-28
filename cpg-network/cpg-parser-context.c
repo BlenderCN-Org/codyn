@@ -1887,7 +1887,7 @@ create_links_single (CpgParserContext          *context,
 			gint widx = argswitch ? 1 : 0;
 			CpgEmbeddedString *s;
 
-			s = cpg_attribute_get_argument (bidi, widx);
+			s = CPG_EMBEDDED_STRING (cpg_attribute_get_argument (bidi, widx));
 
 			if (s)
 			{

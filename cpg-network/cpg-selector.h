@@ -100,8 +100,6 @@ CpgSelector  *cpg_selector_new               (void);
 CpgSelector  *cpg_selector_parse             (gchar const            *ptr,
                                               GError                **error);
 
-CpgSelector  *cpg_selector_copy              (CpgSelector            *selector);
-
 gchar const  *cpg_selector_as_string         (CpgSelector            *selector);
 
 guint         cpg_selector_append            (CpgSelector            *selector,

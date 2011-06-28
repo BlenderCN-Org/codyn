@@ -1491,7 +1491,7 @@ cpg_network_get_import (CpgNetwork   *network,
 }
 
 /**
- * cpg_network_get_import:
+ * cpg_network_get_import_from_path:
  * @network: A #CpgNetwork
  * @path: A file path
  *

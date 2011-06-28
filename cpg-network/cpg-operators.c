@@ -38,16 +38,34 @@ ensure_defaults ()
 	}
 }
 
+/**
+ * cpg_operators_list:
+ *
+ * Get the list of operators.
+ *
+ * Returns: (element-type CpgOperatorClass) (transfer none): A #GSList of
+            #CpgOperatorClass
+ *
+ **/
 GSList const *
 cpg_operators_list ()
 {
 	return operator_registry;
 }
 
+/**
+ * cpg_operators_register:
+ * @gtype: A #GType
+ *
+ * Register an operator. The type @gtype should derive from #CpgOperator
+ *
+ **/
 void
 cpg_operators_register (GType gtype)
 {
 	gpointer klass;
+
+	g_return_if_fail (g_type_is_a (gtype, CPG_TYPE_OPERATOR));
 
 	ensure_defaults ();
 
@@ -63,6 +81,13 @@ cpg_operators_register (GType gtype)
 	                                    klass);
 }
 
+/**
+ * cpg_operators_unregister:
+ * @gtype: A #GType
+ *
+ * Unregister an operator.
+ *
+ **/
 void
 cpg_operators_unregister (GType gtype)
 {
@@ -75,6 +100,15 @@ cpg_operators_unregister (GType gtype)
 	}
 }
 
+/**
+ * cpg_operators_find_class:
+ * @name: The name of the operator
+ *
+ * Find the class of an operator by name.
+ *
+ * Returns: (transfer none) (allow-none): A #CpgOperatorClass or %NULL if the operator with @name is not found
+ *
+ **/
 CpgOperatorClass *
 cpg_operators_find_class (gchar const *name)
 {
@@ -101,6 +135,15 @@ cpg_operators_find_class (gchar const *name)
 	return NULL;
 }
 
+/**
+ * cpg_operators_find:
+ * @name: The name of the operator
+ *
+ * Find a custom operator by name.
+ *
+ * Returns: The #GType of the operator or #G_TYPE_INVALID if not found
+ *
+ **/
 GType
 cpg_operators_find (gchar const *name)
 {
@@ -118,7 +161,17 @@ cpg_operators_find (gchar const *name)
 	}
 }
 
-CpgOperator  *
+/**
+ * cpg_operators_instantiate:
+ * @name: The name of the operator
+ * @expressions: (element-type CpgExpression): A #GSList of #CpgExpression
+ *
+ * Instantiate an operator from a name.
+ *
+ * Returns: (transfer full) (allow-none): A #CpgOperator or %NULL if the operator with @name could not be found
+ *
+ **/
+CpgOperator *
 cpg_operators_instantiate (gchar const     *name,
                            GSList const    *expressions)
 {

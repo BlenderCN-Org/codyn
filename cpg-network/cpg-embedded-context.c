@@ -375,6 +375,15 @@ cpg_embedded_context_set_expansions (CpgEmbeddedContext *context,
 	cpg_embedded_context_add_expansions (context, expansions);
 }
 
+/**
+ * cpg_embedded_context_get_expansions:
+ * @context: A #CpgEmbeddedContext
+ *
+ * Get the list of expansions.
+ *
+ * Returns: (element-type CpgExpansion) (transfer none): A #GSList of #CpgExpansion
+ *
+ **/
 GSList *
 cpg_embedded_context_get_expansions (CpgEmbeddedContext *context)
 {
@@ -495,6 +504,16 @@ cpg_embedded_context_get_define (CpgEmbeddedContext *context,
 	return g_strdup (ret ? ret : "");
 }
 
+/**
+ * cpg_embedded_context_get_expansion:
+ * @context: A #CpgEmbeddedContext
+ * @depth: The depth of the context at which to get the expansion
+ *
+ * Get an expansion at a particular depth.
+ *
+ * Returns: (transfer none) (allow-none): A #CpgExpansion
+ *
+ **/
 CpgExpansion *
 cpg_embedded_context_get_expansion (CpgEmbeddedContext *context,
                                     gint                depth)
@@ -554,6 +573,15 @@ cpg_embedded_context_get_marker (CpgEmbeddedContext *context)
 	return CURRENT_CONTEXT (context)->marker;
 }
 
+/**
+ * cpg_embedded_context_get_defines:
+ * @context: A #CpgEmbeddedContext
+ *
+ * Get the defines.
+ *
+ * Returns: (transfer none): A #GHashTable
+ *
+ **/
 GHashTable *
 cpg_embedded_context_get_defines (CpgEmbeddedContext *context)
 {

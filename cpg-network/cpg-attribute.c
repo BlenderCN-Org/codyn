@@ -122,6 +122,15 @@ cpg_attribute_new (gchar const *id)
 	return ret;
 }
 
+/**
+ * cpg_attribute_newv:
+ * @id: the attribute id
+ *
+ * Create a new attribute.
+ *
+ * Returns: (transfer full): the new attribute
+ *
+ **/
 CpgAttribute *
 cpg_attribute_newv (gchar const *id,
                     ...)
@@ -186,6 +195,15 @@ cpg_attribute_get_id (CpgAttribute *attr)
 	return attr->priv->id;
 }
 
+/**
+ * cpg_attribute_get_arguments:
+ * @attr: A #CpgAttribute
+ *
+ * Get the list of arguments of the attribute.
+ *
+ * Returns: (element-type GObject) (transfer none): A #GSList of #GObject
+ *
+ **/
 GSList *
 cpg_attribute_get_arguments (CpgAttribute *attr)
 {
@@ -194,7 +212,17 @@ cpg_attribute_get_arguments (CpgAttribute *attr)
 	return attr->priv->arguments;
 }
 
-gpointer
+/**
+ * cpg_attribute_get_argument:
+ * @attr: A #CpgAttribute
+ * @i: The index of the argument
+ *
+ * Get an argument.
+ *
+ * Returns: (transfer none): The argument
+ *
+ **/
+GObject *
 cpg_attribute_get_argument (CpgAttribute *attr,
                             gint          i)
 {
