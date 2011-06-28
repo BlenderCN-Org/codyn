@@ -320,7 +320,7 @@ on_selector_item_pushed (CpgParserContext *context,
 
 	annot = g_hash_table_lookup (info->selectors, selector);
 
-	an = g_slice_new (SelectorItemAnnotation);
+	an = g_slice_new0 (SelectorItemAnnotation);
 	an->id = cpg_selector_get_last_id (selector);
 
 	cpg_parser_context_get_last_selector_item_line (context,
