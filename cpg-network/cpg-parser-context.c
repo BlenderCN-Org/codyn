@@ -611,7 +611,11 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 	g_free (annotation);
 
 	g_object_unref (name);
-	g_object_unref (expression);
+
+	if (expression)
+	{
+		g_object_unref (expression);
+	}
 }
 
 void
