@@ -491,7 +491,6 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
-	g_return_if_fail (expression != NULL);
 
 	ctx = CURRENT_CONTEXT (context);
 
@@ -518,7 +517,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			GError *error = NULL;
 			CpgProperty *property;
 			gchar const *exname;
-			gchar const *exexpression;
+			gchar *exexpression = NULL;
 			CpgPropertyFlags flags = CPG_PROPERTY_FLAG_NONE;
 
 			cpg_embedded_context_save (context->priv->embedded);
@@ -526,14 +525,31 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			                                    iteme->data);
 
 			exname = cpg_expansion_get (iteme->data, 0);
-			exexpression = cpg_embedded_string_expand (expression,
-			                                           context->priv->embedded);
+
+			if (expression)
+			{
+				exexpression = g_strdup (cpg_embedded_string_expand (expression,
+				                                                     context->priv->embedded));
+			}
 
 			property = cpg_object_get_property (obj, exname);
 
 			if (property)
 			{
 				flags = cpg_property_get_flags (property);
+
+				if (!expression)
+				{
+					CpgExpression *expr;
+
+					expr = cpg_property_get_expression (property);
+					exexpression = g_strdup (cpg_expression_get_as_string (expr));
+				}
+			}
+
+			if (!exexpression)
+			{
+				exexpression = g_strdup ("");
 			}
 
 			flags &= ~remove_flags;
@@ -544,10 +560,13 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			                              &error))
 			{
 				cpg_embedded_context_restore (context->priv->embedded);
+				g_free (exexpression);
 
 				parser_failed_error (context, error);
 				break;
 			}
+
+			g_free (exexpression);
 
 			property = cpg_object_get_property (obj, exname);
 			cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);

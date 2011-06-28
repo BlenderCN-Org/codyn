@@ -87,6 +87,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %type <num> property_flag_sign
 %type <flags> property_flags
+%type <flags> property_flags_strict
 %type <flags> property_flags_contents
 %type <num> property_flag
 
@@ -698,6 +699,8 @@ property
 					{ cpg_parser_context_add_property (context, $1, $3, $7.add, $7.remove, $6); errb }
 	| identifier_or_string '=' value_as_string property_flags
 					{ cpg_parser_context_add_property (context, $1, $3, $4.add, $4.remove, NULL); errb }
+	| identifier_or_string property_flags_strict
+					{ cpg_parser_context_add_property (context, $1, NULL, $2.add, $2.remove, NULL); errb }
 	;
 
 property_flag_sign
@@ -712,9 +715,12 @@ property_flags_contents
 					{ $2 ? (($$.add) |= $3) : (($$.remove) |= $3); }
 	;
 
+property_flags_strict
+	: '|' property_flags_contents	{ $$ = $2; }
+
 property_flags
 	: 				{ $$.add = 0; $$.remove = 0; }
-	| '|' property_flags_contents	{ $$ = $2; }
+	| property_flags_strict
 	;
 
 property_flag
