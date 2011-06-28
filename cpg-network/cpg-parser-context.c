@@ -1556,8 +1556,8 @@ link_pairs (CpgParserContext *context,
 		{
 			toobjs = g_slist_prepend (NULL,
 			                          cpg_selection_new (cpg_selection_get_object (fromobj->data),
-			                                             cpg_embedded_context_get_expansions (context->priv->embedded),
-			                                             cpg_embedded_context_get_defines (context->priv->embedded)));
+			                                             NULL,
+			                                             NULL));
 
 		}
 		else
