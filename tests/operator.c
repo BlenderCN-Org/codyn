@@ -4,19 +4,10 @@
 
 #include "utils.h"
 
-static gchar simple_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cpg>\n"
-"  <network>\n"
-"    <state id=\"state\">\n"
-"      <property name=\"x\">t</property>\n"
-"      <property name=\"last_x\">lastof[x]</property>\n"
-"    </state>\n"
-"  </network>\n"
-"</cpg>\n";
+static gchar simple_xml[] = "state \"state\" { x = \"t\" last_x = \"delayed[x, 0.1]\" }";
 
 static void
-test_lastof ()
+test_delayed ()
 {
 	CpgNetwork *network;
 
@@ -56,7 +47,7 @@ main (int   argc,
 
 	g_type_init ();
 
-	g_test_add_func ("/operator/lastof", test_lastof);
+	g_test_add_func ("/operator/delayed", test_delayed);
 
 	g_test_run ();
 
