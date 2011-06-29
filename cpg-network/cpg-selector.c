@@ -30,6 +30,8 @@
 
 #define CPG_SELECTOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_SELECTOR, CpgSelectorPrivate))
 
+#define CPG_SELECTOR_KEY_OVERRIDE_NAME "CpgSelectorKeyOverrideName"
+
 typedef enum
 {
 	SELECTOR_TYPE_IDENTIFIER,
@@ -681,6 +683,38 @@ selector_select_identifier_name (Selector           *selector,
 	return ret;
 }
 
+static gchar const *
+name_from_selection (CpgSelection *selection)
+{
+	gchar const *ret;
+	gpointer obj;
+
+	ret = g_object_get_data (G_OBJECT (selection),
+	                         CPG_SELECTOR_KEY_OVERRIDE_NAME);
+
+	if (ret)
+	{
+		return ret;
+	}
+
+	obj = cpg_selection_get_object (selection);
+
+	if (CPG_IS_OBJECT (obj))
+	{
+		return cpg_object_get_id (obj);
+	}
+	else if (CPG_IS_PROPERTY (obj))
+	{
+		return cpg_property_get_name (obj);
+	}
+	else if (CPG_IS_LINK_ACTION (obj))
+	{
+		return cpg_link_action_get_target (obj);
+	}
+
+	return NULL;
+}
+
 static GSList *
 selector_select_identifier (CpgSelector        *self,
                             Selector           *selector,
@@ -690,42 +724,21 @@ selector_select_identifier (CpgSelector        *self,
 	GSList *ret = NULL;
 	GSList *exps;
 	GSList *e;
-	gpointer obj;
+	gchar const *name;
 
 	exps = cpg_embedded_string_expand_multiple (selector->identifier.identifier,
 	                                            context);
 
-	obj = cpg_selection_get_object (parent);
+	name = name_from_selection (parent);
 
 	for (e = exps; e; e = g_slist_next (e))
 	{
-		if (CPG_IS_OBJECT (obj))
-		{
-			ret = selector_select_identifier_name (selector,
-			                                       parent,
-			                                       cpg_object_get_id (obj),
-			                                       context,
-			                                       e->data,
-			                                       ret);
-		}
-		else if (CPG_IS_PROPERTY (obj))
-		{
-			ret = selector_select_identifier_name (selector,
-			                                       parent,
-			                                       cpg_property_get_name (obj),
-			                                       context,
-			                                       e->data,
-			                                       ret);
-		}
-		else if (CPG_IS_LINK_ACTION (obj))
-		{
-			ret = selector_select_identifier_name (selector,
-			                                       parent,
-			                                       cpg_link_action_get_target (obj),
-			                                       context,
-			                                       e->data,
-			                                       ret);
-		}
+		ret = selector_select_identifier_name (selector,
+		                                       parent,
+		                                       name,
+		                                       context,
+		                                       e->data,
+		                                       ret);
 	}
 
 	g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
@@ -856,34 +869,15 @@ selector_select_regex (CpgSelector        *self,
                        CpgEmbeddedContext *context)
 {
 	GSList *ret = NULL;
-	gpointer obj;
+	gchar const *name;
 
-	obj = cpg_selection_get_object (parent);
+	name = name_from_selection (parent);
 
-	if (CPG_IS_OBJECT (obj))
-	{
-		ret = selector_select_regex_name (selector,
-		                                  parent,
-		                                  cpg_object_get_id (obj),
-		                                  context,
-		                                  ret);
-	}
-	else if (CPG_IS_PROPERTY (obj))
-	{
-		ret = selector_select_regex_name (selector,
-		                                  parent,
-		                                  cpg_property_get_name (obj),
-		                                  context,
-		                                  ret);
-	}
-	else if (CPG_IS_LINK_ACTION (obj))
-	{
-		ret = selector_select_regex_name (selector,
-		                                  parent,
-		                                  cpg_link_action_get_target (obj),
-		                                  context,
-		                                  ret);
-	}
+	ret = selector_select_regex_name (selector,
+	                                  parent,
+	                                  name,
+	                                  context,
+	                                  ret);
 
 	return g_slist_reverse (ret);
 }
@@ -1339,9 +1333,17 @@ children_reverse (CpgSelection       *selection,
 
 		while (ptr && *ptr)
 		{
-			ret = g_slist_prepend (ret,
-			                       expand_obj (selection,
-			                                   cpg_property_interface_lookup (iface, *ptr)));
+			CpgSelection *s;
+
+			s = expand_obj (selection,
+			                cpg_property_interface_lookup (iface, *ptr));
+
+			g_object_set_data_full (G_OBJECT (s),
+			                        CPG_SELECTOR_KEY_OVERRIDE_NAME,
+			                        g_strdup (*ptr),
+			                        (GDestroyNotify)g_free);
+
+			ret = g_slist_prepend (ret, s);
 
 			++ptr;
 		}
