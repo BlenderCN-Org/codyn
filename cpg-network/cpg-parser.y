@@ -170,7 +170,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 47
+%expect 42
 
 %%
 
@@ -492,8 +492,8 @@ link_connect
 	;
 
 link_connect_fast
-	: selector T_KEY_TO selector	{ append_array (NULL, CpgSelector *, $1, $$ = arret);
-					  append_array ($$, CpgSelector *, $3, $$ = arret);
+	: T_KEY_FROM selector T_KEY_TO selector	{ append_array (NULL, CpgSelector *, $2, $$ = arret);
+					  append_array ($$, CpgSelector *, $4, $$ = arret);
 					}
 	| T_KEY_ON selector		{ append_array (NULL, CpgSelector *, $2, $$ = arret); }
 	;
