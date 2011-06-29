@@ -93,6 +93,30 @@ enum
 	NUM_SIGNALS
 };
 
+static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
+{
+	"root",
+	"children",
+	"parent",
+	"first",
+	"last",
+	"subset",
+	"states",
+	"links",
+	"groups",
+	"properties",
+	"actions",
+	"functions",
+	"objects",
+	"siblings",
+	"templates",
+	"count",
+	"from",
+	"to",
+	"self",
+	"debug"
+};
+
 static guint signals[NUM_SIGNALS];
 
 G_DEFINE_TYPE (CpgSelector, cpg_selector, G_TYPE_OBJECT)
@@ -245,71 +269,9 @@ parse_nth (GSList             *arguments,
 static gchar const *
 pseudo_name (CpgSelectorPseudoType type)
 {
-	switch (type)
-	{
-		case CPG_SELECTOR_PSEUDO_TYPE_ROOT:
-			return "root";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_CHILDREN:
-			return "children";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_PARENT:
-			return "parent";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_FIRST:
-			return "first";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_LAST:
-			return "last";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_SUBSET:
-			return "subset";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_STATES:
-			return "states";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_LINKS:
-			return "links";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_GROUPS:
-			return "groups";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_PROPERTIES:
-			return "properties";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_ACTIONS:
-			return "actions";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_FUNCTIONS:
-			return "functions";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_OBJECTS:
-			return "objects";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS:
-			return "siblings";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES:
-			return "templates";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_COUNT:
-			return "count";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_FROM:
-			return "from";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_TO:
-			return "to";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_SELF:
-			return "self";
-		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_DEBUG:
-			return "debug";
-		break;
-	}
+	g_return_val_if_fail (type >= 0 && type < CPG_SELECTOR_PSEUDO_NUM, NULL);
 
-	g_assert_not_reached ();
+	return selector_pseudo_names[type];
 }
 
 static Selector *
@@ -2022,4 +1984,49 @@ cpg_selector_get_out_context (CpgSelector *selector,
 	sel = find_selector_by_id (selector, id);
 
 	return sel ? sel->selections_out : NULL;
+}
+
+gboolean
+cpg_selector_is_pseudo_name (gchar const *name)
+{
+	gint i;
+
+	for (i = 0; i < CPG_SELECTOR_PSEUDO_NUM; ++i)
+	{
+		if (g_strcmp0 (selector_pseudo_names[i], name) == 0)
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+gchar *
+cpg_selector_escape_identifier (gchar const *name)
+{
+	GString *ret;
+
+	if (!cpg_selector_is_pseudo_name (name) &&
+	    strchr (name, '"') == NULL &&
+	    strchr (name, '\\') == NULL)
+	{
+		return g_strdup (name);
+	}
+
+	ret = g_string_new_len ("\"", strlen (name));
+
+	while (*name)
+	{
+		if (*name == '"' || *name == '\\')
+		{
+			g_string_append_c (ret, '\\');
+		}
+
+		g_string_append_c (ret, *name);
+
+		++name;
+	}
+
+	return g_string_free (ret, FALSE);
 }

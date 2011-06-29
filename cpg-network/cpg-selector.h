@@ -79,7 +79,8 @@ typedef enum
 	CPG_SELECTOR_PSEUDO_TYPE_FROM,
 	CPG_SELECTOR_PSEUDO_TYPE_TO,
 	CPG_SELECTOR_PSEUDO_TYPE_SELF,
-	CPG_SELECTOR_PSEUDO_TYPE_DEBUG
+	CPG_SELECTOR_PSEUDO_TYPE_DEBUG,
+	CPG_SELECTOR_PSEUDO_NUM
 } CpgSelectorPseudoType;
 
 struct _CpgSelector
@@ -149,6 +150,9 @@ GSList const *cpg_selector_get_in_context    (CpgSelector          *selector,
 
 GSList const *cpg_selector_get_out_context    (CpgSelector          *selector,
                                                guint                 id);
+
+gboolean      cpg_selector_is_pseudo_name     (gchar const          *name);
+gchar        *cpg_selector_escape_identifier  (gchar const          *name);
 
 G_END_DECLS
 
