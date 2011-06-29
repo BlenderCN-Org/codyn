@@ -102,8 +102,8 @@ test_load_network_from_path (gchar const *path,
 
 	network = cpg_network_new_from_path (path, &error);
 
-	g_assert (network != NULL);
 	g_assert_no_error (error);
+	g_assert (network != NULL);
 
 	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
 
