@@ -76,7 +76,6 @@ NOINST_H_FILES = \
 	cpg-network-xml.h \
 	cpg-stack-private.h \
 	cpg-network-parser-utils.h \
-	cpg-parser-context.h \
 	cpg-marshal.h
 
 INST_H_FILES = \
@@ -113,6 +112,7 @@ INST_H_FILES = \
 	cpg-operator.h \
 	cpg-operators.h \
 	cpg-operator-delayed.h \
+	cpg-parser-context.h \
 	cpg-property.h \
 	cpg-property-interface.h \
 	cpg-selector.h \
