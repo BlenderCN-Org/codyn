@@ -27,9 +27,20 @@ DOC_SOURCE_DIR=../../cpg-network
 # Extra options to pass to gtkdoc-scangobj. Not normally needed.
 SCANGOBJ_OPTIONS=
 
+# Header files to ignore when scanning.
+# e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
+IGNORE_HFILES= \
+	cpg-tokenizer.h \
+	cpg-utils.h \
+	cpg-network-xml.h \
+	cpg-parser.h \
+	cpg-debug.h \
+	cpg-marshal.h \
+	cpg-network-parser-utils.h
+
 # Extra options to supply to gtkdoc-scan.
 # e.g. SCAN_OPTIONS=--deprecated-guards="GTK_DISABLE_DEPRECATED"
-SCAN_OPTIONS=--rebuild-types
+SCAN_OPTIONS=--rebuild-types --rebuild-sections --ignore-hfiles="$IGNORE_HFILES"
 
 # Extra options to supply to gtkdoc-mkdb.
 # e.g. MKDB_OPTIONS=--sgml-mode --output-format=xml
@@ -51,15 +62,6 @@ FIXXREF_OPTIONS=
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
 HFILE_GLOB=$(top_srcdir)/cpg-network/*.h
 CFILE_GLOB=$(top_srcdir)/cpg-network/*.c
-
-# Header files to ignore when scanning.
-# e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
-IGNORE_HFILES= \
-	cpg-tokenizer.h \
-	cpg-utils.h \
-	cpg-network-xml.h \
-	cpg-debug.h \
-	cpg-marshal.h
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png
