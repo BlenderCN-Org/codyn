@@ -6,6 +6,8 @@ INCLUDES =				\
 	$(INTROSPECTION_CFLAGS)		\
 	-DDATADIR=\""$(datadir)"\"
 
+AM_YFLAGS = -d
+
 COMMON_SOURCES = 		\
 	cpg-annotatable.c	\
 	cpg-compile-context.c \
@@ -66,7 +68,6 @@ BUILT_SOURCES = \
 	cpg-enum-types.h \
 	cpg-marshal.c \
 	cpg-marshal.h \
-	cpg-parser.c \
 	cpg-parser.h \
 	cpg-parser-tokens.c
 
