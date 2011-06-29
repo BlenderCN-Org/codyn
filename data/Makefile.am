@@ -31,7 +31,7 @@ update_mime_database = update-mime-database $(datadir)/mime
 
 update_tex = texhash
 
-install-data-hook:
+install-data-local-hook:
 	if echo "Updating mime database" && $(update_mime_database); then       \
 		echo "Done.";                           			\
 	else                                    				\
@@ -40,7 +40,7 @@ install-data-hook:
 	fi;									\
 	echo "Updating tex database" && $(update_tex) && echo "Done."
 
-uninstall-hook:
+uninstall-local-hook:
 	echo "Updating mime database" && $(update_mime_database) && echo "Done."; \
 	echo "Updating tex database" && $(update_tex) && echo "Done."
 
