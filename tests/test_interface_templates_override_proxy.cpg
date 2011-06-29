@@ -1,23 +1,30 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<cpg>
-  <network>
-    <templates>
-      <state id="t1" proxy="c1">
-        <state id="c1">
-          <property name="p1">0</property>
-        </state>
-      </state>
-      <state id="t2">
-        <interface>
-          <property name="p1">c2.p2</property>
-        </interface>
-        <state id="c2">
-          <property name="p2">1</property>
-        </state>
-      </state>
-    </templates>
-    <state id="state" ref="t1, t2">
-    </state>
-  </network>
-</cpg>
-<!-- vi:ex:ts=2:et -->
+templates
+{
+    group "t1"
+    {
+        [proxy]
+        state "c1"
+        {
+            p1 = 0
+        }
+    }
+
+    group "t2"
+    {
+        interface
+        {
+            p1 = c2.p2
+        }
+
+        state "c2"
+        {
+            p2 = 1
+        }
+    }
+}
+
+group "state" : "t1" : "t2"
+{
+}
+
+# vi:ex:ts=4:et
