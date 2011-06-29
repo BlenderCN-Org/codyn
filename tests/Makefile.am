@@ -46,4 +46,12 @@ interface_LDADD = $(progs_ldadd)
 
 TESTS = $(TEST_PROGS)
 
+EXTRA_DIST = \
+	test_import.cpg \
+	test_import_templates.cpg \
+	import.cpg \
+	test_group_integrate_multiple_euler.cpg \
+	test_interface_templates.cpg \
+	test_interface_templates_override_proxy.cpg
+
 -include $(top_srcdir)/git.mk

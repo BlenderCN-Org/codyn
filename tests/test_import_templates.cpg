@@ -1,0 +1,4 @@
+templates
+{
+	import "import.cpg" as "imported"
+}

@@ -117,7 +117,7 @@ test_integrate_multiple_euler ()
 	CpgNetwork *network;
 	CpgProperty *prop;
 
-	network = cpg_network_new_from_path ("test_group_integrate_multiple_euler.cpg", NULL);
+	network = test_load_network_from_path ("test_group_integrate_multiple_euler.cpg", NULL);
 
 	cpg_object_compile (CPG_OBJECT (network), NULL, NULL);
 

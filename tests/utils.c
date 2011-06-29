@@ -99,8 +99,20 @@ test_load_network_from_path (gchar const *path,
 
 	CpgNetwork *network;
 	GError *error = NULL;
+	gchar *p;
 
-	network = cpg_network_new_from_path (path, &error);
+	if (!g_path_is_absolute (path) && g_getenv ("srcdir"))
+	{
+		p = g_build_filename (g_getenv ("srcdir"), path, NULL);
+	}
+	else
+	{
+		p = g_strdup (path);
+	}
+
+	network = cpg_network_new_from_path (p, &error);
+
+	g_free (p);
 
 	g_assert_no_error (error);
 	g_assert (network != NULL);

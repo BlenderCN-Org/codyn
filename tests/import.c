@@ -4,40 +4,22 @@
 
 #include "utils.h"
 
-static gchar simple_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cpg>\n"
-"  <network>\n"
-"    <import id=\"imported\">import.cpg</import>"
-"  </network>\n"
-"</cpg>\n";
-
-static gchar simple_template_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cpg>\n"
-"  <network>\n"
-"    <templates>\n"
-"      <import id=\"imported\">import.cpg</import>"
-"    </templates>\n"
-"  </network>\n"
-"</cpg>\n";
-
 static void
 test_import ()
 {
 	CpgNetwork *network;
 
-	network = test_load_network (simple_xml,
-	                             CPG_PATH_TEMPLATE_OBJECT, "imported.template1",
-	                             CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.x",
-	                             CPG_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
-	                             CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
-	                             CPG_PATH_OBJECT, "imported",
-	                             CPG_PATH_OBJECT, "imported.state1",
-	                             CPG_PATH_PROPERTY, "imported.state1.x",
-	                             CPG_PATH_OBJECT, "imported.state1.nested1",
-	                             CPG_PATH_PROPERTY, "imported.state1.nested1.y",
-	                             NULL);
+	network = test_load_network_from_path ("test_import.cpg",
+	                                       CPG_PATH_TEMPLATE_OBJECT, "imported.template1",
+	                                       CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.x",
+	                                       CPG_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
+	                                       CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
+	                                       CPG_PATH_OBJECT, "imported",
+	                                       CPG_PATH_OBJECT, "imported.state1",
+	                                       CPG_PATH_PROPERTY, "imported.state1.x",
+	                                       CPG_PATH_OBJECT, "imported.state1.nested1",
+	                                       CPG_PATH_PROPERTY, "imported.state1.nested1.y",
+	                                       NULL);
 
 	g_object_unref (network);
 }
@@ -47,12 +29,12 @@ test_import_templates ()
 {
 	CpgNetwork *network;
 
-	network = test_load_network (simple_template_xml,
-	                             CPG_PATH_TEMPLATE_OBJECT, "imported.template1",
-	                             CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.x",
-	                             CPG_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
-	                             CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
-	                             NULL);
+	network = test_load_network_from_path ("test_import_templates.cpg",
+	                                       CPG_PATH_TEMPLATE_OBJECT, "imported.template1",
+	                                       CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.x",
+	                                       CPG_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
+	                                       CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
+	                                       NULL);
 
 	g_object_unref (network);
 }
