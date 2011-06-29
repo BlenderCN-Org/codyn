@@ -35,6 +35,7 @@
 #include "cpg-tokenizer.h"
 #include "cpg-annotatable.h"
 #include "cpg-layoutable.h"
+#include "cpg-selector.h"
 
 /**
  * SECTION:cpg-object
@@ -2310,7 +2311,7 @@ cpg_object_get_full_id (CpgObject *object)
 
 	if (!parent)
 	{
-		return g_strdup (object->priv->id);
+		return cpg_selector_escape_identifier (object->priv->id);
 	}
 
 	while (parent->priv->parent)
@@ -2364,7 +2365,7 @@ cpg_object_get_relative_id (CpgObject *object,
 
 	if (cpg_object_get_parent (object) == NULL)
 	{
-		return g_strdup (object->priv->id);
+		return cpg_selector_escape_identifier (object->priv->id);
 	}
 
 	if (object->priv->parent)
@@ -2374,7 +2375,11 @@ cpg_object_get_relative_id (CpgObject *object,
 
 	if (par && *par)
 	{
-		ret = g_strconcat (par, ".", object->priv->id, NULL);
+		gchar *esc;
+
+		esc = cpg_selector_escape_identifier (object->priv->id);
+		ret = g_strconcat (par, ".", esc, NULL);
+		g_free (esc);
 	}
 	else
 	{
