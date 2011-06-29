@@ -11,14 +11,14 @@ templates
 
     group "t2"
     {
-        interface
-        {
-            p1 = c2.p2
-        }
-
         state "c2"
         {
             p2 = 1
+        }
+
+        interface
+        {
+            p1 = c2.p2
         }
     }
 }
