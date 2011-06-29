@@ -124,37 +124,18 @@ dnl Check for gedit
 dnl ================================================================
 
 AC_ARG_ENABLE([gedit],
-              AS_HELP_STRING([--enable-gedit=[yes/no/auto]],[Enable installation of gedit plugin (default: auto)]),
+              AS_HELP_STRING([--enable-gedit=[2/3/no]],[Enable installation of gedit plugin (default: 2)]),
               [enable_gedit=$enableval],
-              [enable_gedit=auto])
+              [enable_gedit=2])
 
 if test "x$enable_gedit" != "xno"; then
-	PKG_CHECK_MODULES(GEDIT,
-		[gedit >= 3.0],
-		[have_gedit=yes],
-		[have_gedit=no])
+	GEDIT_MAJOR_VERSION="$enable_gedit"
+	enable_gedit="yes"
 
-	if test "x$have_gedit" = "xyes"; then
-		enable_gedit="yes"
-		GEDIT_MAJOR_VERSION=3
-		GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
+	if "x$GEDIT_MAJOR_VERSION" = "x2"; then
+		GEDIT_PLUGIN_DIR="$libdir/gedit-2.0/plugins"
 	else
-		PKG_CHECK_MODULES(GEDIT,
-		                  [gedit-2.20],
-		                  [have_gedit=yes],
-		                  [have_gedit=no])
-
-		if test "x$have_gedit" = "xyes"; then
-			enable_gedit="yes"
-			GEDIT_MAJOR_VERSION=2
-			GEDIT_PLUGIN_DIR="$libdir/gedit-2.0/plugins"
-		else
-			enable_gedit="no"
-
-			if test "x$enable_gedit" = "xyes"; then
-				AC_MSG_ERROR([Could not find gedit])
-			fi
-		fi
+		GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
 	fi
 
 	AC_SUBST(GEDIT_PLUGIN_DIR)
