@@ -16,7 +16,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with cpg-network; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Foundation, Inc., 51 Franklin St, Fifth Floor,
  * Boston, MA  02110-1301  USA
  */
 
@@ -30,107 +30,138 @@
 #include <webots/gyro.h>
 
 #include "cpg-network-webots-private.h"
-#include "cpg-network/cpg-expression.h"
+#include <cpg-network/cpg-expression.h>
+#include <cpg-network/instructions/cpg-instruction-property.h>
 
 #include <stdlib.h>
 #include <string.h>
 
 static CpgWebotsBinding *
-webots_binding_new(CpgWebotsBindingType type, CpgWebotsBindingFunc func, gpointer data, gchar const *device, CpgProperty *property)
+webots_binding_new (CpgWebotsBindingType  type,
+                    CpgWebotsBindingFunc  func,
+                    gpointer              data,
+                    gchar const          *device,
+                    CpgProperty          *property)
 {
-	CpgWebotsBinding *binding = g_slice_new(CpgWebotsBinding);
+	CpgWebotsBinding *binding;
+
+	binding = g_slice_new (CpgWebotsBinding);
 
 	binding->type = type;
 	binding->func = func;
-	binding->device = wb_robot_get_device(device);
+	binding->device = wb_robot_get_device (device);
 	binding->property = property;
 	binding->initial = 0;
-	binding->name = g_strdup(device);
+	binding->name = g_strdup (device);
 	binding->data = data;
-	
+
 	return binding;
 }
 
 static void
-webots_binding_free(CpgWebotsBinding *binding)
+webots_binding_free (CpgWebotsBinding *binding)
 {
-	g_free(binding->name);
-	g_slice_free(CpgWebotsBinding, binding);
+	g_free (binding->name);
+	g_slice_free (CpgWebotsBinding, binding);
 }
 
 static void
-binding_handler_servo(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+binding_handler_servo (CpgNetworkWebots *webots,
+                       CpgWebotsBinding *binding)
 {
 	if (binding->device)
 	{
-		wb_servo_set_position(binding->device, cpg_property_get_value(binding->property));
+		wb_servo_set_position (binding->device,
+		                       cpg_property_get_value (binding->property));
 	}
 }
 
 static void
-binding_handler_servo_force(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+binding_handler_servo_force (CpgNetworkWebots *webots,
+                             CpgWebotsBinding *binding)
 {
 	if (binding->device)
 	{
-		wb_servo_set_force(binding->device, cpg_property_get_value(binding->property));
+		wb_servo_set_force (binding->device,
+		                    cpg_property_get_value (binding->property));
 	}
 }
 
 static void
-binding_handler_touch_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+binding_handler_touch_sensor (CpgNetworkWebots *webots,
+                              CpgWebotsBinding *binding)
 {
 	if (binding->device)
 	{
-		cpg_property_set_value(binding->property, (gdouble)wb_touch_sensor_get_value(binding->device));
+		cpg_property_set_value (binding->property,
+		                        (gdouble)wb_touch_sensor_get_value (binding->device));
 	}
 }
 
 static void
-binding_handler_light_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+binding_handler_light_sensor (CpgNetworkWebots *webots,
+                              CpgWebotsBinding *binding)
 {
 	if (binding->device)
 	{
-		cpg_property_set_value(binding->property, (gdouble)wb_light_sensor_get_value(binding->device));
+		cpg_property_set_value (binding->property,
+		                        (gdouble)wb_light_sensor_get_value (binding->device));
 	}
 }
 
 static void
-binding_handler_gyro_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+binding_handler_gyro_sensor (CpgNetworkWebots *webots,
+                             CpgWebotsBinding *binding)
 {
 	if (binding->device)
 	{
-		gdouble const *values = wb_gyro_get_values(binding->device);
-		cpg_property_set_value(binding->property, values[GPOINTER_TO_INT(binding->data)]);
+		gdouble const *values;
+
+		values = wb_gyro_get_values (binding->device);
+		cpg_property_set_value (binding->property,
+		                        values[GPOINTER_TO_INT (binding->data)]);
 	}
 }
 
 static void
-binding_handler_gps_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+binding_handler_gps_sensor (CpgNetworkWebots *webots,
+                            CpgWebotsBinding *binding)
 {
 	if (binding->device)
 	{
-		gdouble const *values = wb_gps_get_values(binding->device);
-		cpg_property_set_value(binding->property, values[GPOINTER_TO_INT(binding->data)]);
+		gdouble const *values;
+
+		values = wb_gps_get_values (binding->device);
+		cpg_property_set_value (binding->property,
+		                        values[GPOINTER_TO_INT (binding->data)]);
 	}
 }
 
 static void
-binding_handler_accelerometer_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+binding_handler_accelerometer_sensor (CpgNetworkWebots *webots,
+                                      CpgWebotsBinding *binding)
 {
 	if (binding->device)
 	{
-		gdouble const *values = wb_accelerometer_get_values(binding->device);
-		cpg_property_set_value(binding->property, values[GPOINTER_TO_INT(binding->data)]);
+		gdouble const *values;
+
+		values = wb_accelerometer_get_values (binding->device);
+		cpg_property_set_value (binding->property,
+		                        values[GPOINTER_TO_INT (binding->data)]);
 	}
 }
 
 static void
-binding_handler_compass_sensor(CpgNetworkWebots *webots, CpgWebotsBinding *binding)
+binding_handler_compass_sensor (CpgNetworkWebots *webots,
+                                CpgWebotsBinding *binding)
 {
 	if (binding->device)
 	{
-		gdouble const *values = wb_compass_get_values(binding->device);
-		cpg_property_set_value(binding->property, values[GPOINTER_TO_INT(binding->data)]);
+		gdouble const *values;
+
+		values = wb_compass_get_values (binding->device);
+		cpg_property_set_value (binding->property,
+		                        values[GPOINTER_TO_INT (binding->data)]);
 	}
 }
 
@@ -150,116 +181,116 @@ typedef struct
 	AccessType access;
 } BindingDefinition;
 
-static BindingDefinition binding_definitions[] = 
+static BindingDefinition binding_definitions[] =
 {
 	{
-		"wb_servo_pos", 
-		CPG_WEBOTS_BINDING_TYPE_SERVO, 
-		binding_handler_servo, 
-		NULL, 
+		"wb_servo_pos",
+		CPG_WEBOTS_BINDING_TYPE_SERVO,
+		binding_handler_servo,
+		NULL,
 		ACCESS_TYPE_WRITE
 	},
 	{
 		"wb_servo_force",
-		CPG_WEBOTS_BINDING_TYPE_SERVO, 
-		binding_handler_servo_force, 
-		NULL, 
+		CPG_WEBOTS_BINDING_TYPE_SERVO,
+		binding_handler_servo_force,
+		NULL,
 		ACCESS_TYPE_WRITE
 	},
 	{
-		"wb_touch", 
-		CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR, 
-		binding_handler_touch_sensor, 
+		"wb_touch",
+		CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR,
+		binding_handler_touch_sensor,
 		NULL,
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_light", 
-		CPG_WEBOTS_BINDING_TYPE_LIGHT_SENSOR, 
-		binding_handler_light_sensor, 
+		"wb_light",
+		CPG_WEBOTS_BINDING_TYPE_LIGHT_SENSOR,
+		binding_handler_light_sensor,
 		NULL,
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_gyro_x", 
-		CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR, 
+		"wb_gyro_x",
+		CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR,
 		binding_handler_gyro_sensor,
 		GINT_TO_POINTER(0),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_gyro_y", 
-		CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR, 
+		"wb_gyro_y",
+		CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR,
 		binding_handler_gyro_sensor,
 		GINT_TO_POINTER(1),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_gyro_z", 
-		CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR, 
+		"wb_gyro_z",
+		CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR,
 		binding_handler_gyro_sensor,
 		GINT_TO_POINTER(2),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_gps_x", 
-		CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR, 
+		"wb_gps_x",
+		CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR,
 		binding_handler_gps_sensor,
 		GINT_TO_POINTER(0),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_gps_y", 
-		CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR, 
+		"wb_gps_y",
+		CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR,
 		binding_handler_gps_sensor,
 		GINT_TO_POINTER(1),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_gps_z", 
-		CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR, 
+		"wb_gps_z",
+		CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR,
 		binding_handler_gps_sensor,
 		GINT_TO_POINTER(2),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_accelerometer_x", 
-		CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR, 
+		"wb_accelerometer_x",
+		CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR,
 		binding_handler_accelerometer_sensor,
 		GINT_TO_POINTER(0),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_accelerometer_y", 
-		CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR, 
+		"wb_accelerometer_y",
+		CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR,
 		binding_handler_accelerometer_sensor,
 		GINT_TO_POINTER(1),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_accelerometer_z", 
-		CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR, 
+		"wb_accelerometer_z",
+		CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR,
 		binding_handler_accelerometer_sensor,
 		GINT_TO_POINTER(2),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_compass_x", 
-		CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR, 
+		"wb_compass_x",
+		CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR,
 		binding_handler_compass_sensor,
 		GINT_TO_POINTER(0),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_compass_y", 
-		CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR, 
+		"wb_compass_y",
+		CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR,
 		binding_handler_compass_sensor,
 		GINT_TO_POINTER(1),
 		ACCESS_TYPE_READ
 	},
 	{
-		"wb_compass_z", 
-		CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR, 
+		"wb_compass_z",
+		CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR,
 		binding_handler_compass_sensor,
 		GINT_TO_POINTER(2),
 		ACCESS_TYPE_READ
@@ -267,88 +298,124 @@ static BindingDefinition binding_definitions[] =
 };
 
 static CpgProperty *
-resolve_property(CpgProperty *property)
+resolve_property (CpgProperty *property)
 {
-	CpgExpression *expr = cpg_property_get_value_expression(property);
-	GSList *instructions = cpg_expression_get_instructions(expr);
+	CpgExpression *expr;
+	GSList const *instructions;
+	CpgInstruction *instruction;
+
+	expr = cpg_property_get_expression (property);
+	instructions = cpg_expression_get_instructions (expr);
 
 	if (instructions == NULL || instructions->next != NULL)
+	{
 		return property;
-	
-	CpgInstruction *instruction = (CpgInstruction *)instructions->data;
-	if (instruction->type != CPG_INSTRUCTION_TYPE_PROPERTY)
+	}
+
+	instruction = instructions->data;
+
+	if (!CPG_IS_INSTRUCTION_PROPERTY (instruction))
+	{
 		return property;
-	
-	return resolve_property(((CpgInstructionProperty *)instruction)->property);
+	}
+
+	return resolve_property (cpg_instruction_property_get_property (CPG_INSTRUCTION_PROPERTY (instruction)));
 }
 
 static void
-resolve_bindings(CpgNetworkWebots *webots)
+resolve_bindings (CpgNetworkWebots *webots,
+                  CpgGroup         *group)
 {
-	GSList *item;
+	GSList const *children;
 
-	for (item = cpg_network_get_states(webots->network); item; item = g_slist_next(item))
+	children = cpg_group_get_children (group ? group : CPG_GROUP (webots->network));
+
+	while (children)
 	{
 		guint d;
-		CpgObject *object = CPG_OBJECT(item->data);
-		
-		for (d = 0; d < sizeof(binding_definitions) / sizeof(BindingDefinition); ++d)
+		CpgObject *object;
+
+		object = children->data;
+
+		if (CPG_IS_GROUP (object))
 		{
-			CpgProperty *property = cpg_object_get_property(object, binding_definitions[d].propname);
-			CpgWebotsBinding *binding;
-			gchar *id;
-			
-			if (!property)
-				continue;
-				
-			if (binding_definitions[d].access == ACCESS_TYPE_READ)
-				property = resolve_property(property);
-
-			id = cpg_object_get_local_id(object);
-			binding = webots_binding_new(binding_definitions[d].type, 
-										 binding_definitions[d].func,
-										 binding_definitions[d].data,
-										 id,
-										 property);
-			g_free(id);
-
-			webots->bindings = g_slist_append(webots->bindings, binding);
+			resolve_bindings (webots, CPG_GROUP (object));
 		}
+
+		for (d = 0; d < sizeof (binding_definitions) / sizeof (BindingDefinition); ++d)
+		{
+			CpgProperty *property;
+			CpgWebotsBinding *binding;
+			gchar const *id;
+
+			property = cpg_object_get_property (object,
+			                                    binding_definitions[d].propname);
+
+			if (!property)
+			{
+				continue;
+			}
+
+			if (binding_definitions[d].access == ACCESS_TYPE_READ)
+			{
+				property = resolve_property (property);
+			}
+
+			id = cpg_object_get_id (object);
+
+			binding = webots_binding_new (binding_definitions[d].type,
+			                              binding_definitions[d].func,
+			                              binding_definitions[d].data,
+			                              id,
+			                              property);
+
+			webots->bindings = g_slist_prepend (webots->bindings, binding);
+		}
+	}
+
+	if (group == NULL)
+	{
+		webots->bindings = g_slist_reverse (webots->bindings);
 	}
 }
 
 CpgNetworkWebots *
-cpg_network_webots_new(CpgNetwork *network)
+cpg_network_webots_new (CpgNetwork *network)
 {
-	CpgNetworkWebots *webots = g_slice_new0(CpgNetworkWebots);
-	
+	CpgNetworkWebots *webots = g_slice_new0 (CpgNetworkWebots);
+
 	webots->network = network;
-	resolve_bindings(webots);
-	
+	resolve_bindings (webots, NULL);
+
 	return webots;
 }
 
 void
-cpg_network_webots_initial(CpgNetworkWebots *webots, guint ms)
+cpg_network_webots_initial (CpgNetworkWebots *webots,
+                            guint             ms)
 {
 	GSList *item;
 
-	for (item = webots->bindings; item; item = g_slist_next(item))
+	for (item = webots->bindings; item; item = g_slist_next (item))
 	{
-		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
-		
+		CpgWebotsBinding *binding;
+
+		binding = item->data;
+
 		switch (binding->type)
 		{
 			case CPG_WEBOTS_BINDING_TYPE_SERVO:
 			{
 				if (!binding->device)
+				{
 					continue;
+				}
 
-				wb_servo_enable_position(binding->device, ms);
-				wb_robot_step(ms);
-				
-				binding->initial = wb_servo_get_position(binding->device);
-				wb_servo_disable_position(binding->device);
+				wb_servo_enable_position (binding->device, ms);
+				wb_robot_step (ms);
+
+				binding->initial = wb_servo_get_position (binding->device);
+				wb_servo_disable_position (binding->device);
 			}
 			default:
 			break;
@@ -356,48 +423,51 @@ cpg_network_webots_initial(CpgNetworkWebots *webots, guint ms)
 	}
 }
 
-void 
-cpg_network_webots_free(CpgNetworkWebots *webots)
+void
+cpg_network_webots_free (CpgNetworkWebots *webots)
 {
-	g_slist_foreach(webots->bindings, (GFunc)webots_binding_free, NULL);
-	g_slist_free(webots->bindings);
+	g_slist_foreach (webots->bindings, (GFunc)webots_binding_free, NULL);
+	g_slist_free (webots->bindings);
 
-	g_slice_free(CpgNetworkWebots, webots);
+	g_slice_free (CpgNetworkWebots, webots);
 }
 
 void
-cpg_network_webots_enable(CpgNetworkWebots *webots, guint ms)
+cpg_network_webots_enable (CpgNetworkWebots *webots,
+                           guint             ms)
 {
 	GSList *item;
-	
-	for (item = webots->bindings; item; item = g_slist_next(item))
+
+	for (item = webots->bindings; item; item = g_slist_next (item))
 	{
-		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
-		
+		CpgWebotsBinding *binding;
+
+		binding = item->data;
+
 		if (!binding->device)
 		{
 			continue;
 		}
-		
+
 		switch (binding->type)
 		{
 			case CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR:
-				wb_touch_sensor_enable(binding->device, ms);
+				wb_touch_sensor_enable (binding->device, ms);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_LIGHT_SENSOR:
-				wb_light_sensor_enable(binding->device, ms);
+				wb_light_sensor_enable (binding->device, ms);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR:
-				wb_gyro_enable(binding->device, ms);
+				wb_gyro_enable (binding->device, ms);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR:
-				wb_gps_enable(binding->device, ms);
+				wb_gps_enable (binding->device, ms);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR:
-				wb_accelerometer_enable(binding->device, ms);
+				wb_accelerometer_enable (binding->device, ms);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR:
-				wb_compass_enable(binding->device, ms);
+				wb_compass_enable (binding->device, ms);
 			break;
 			default:
 			break;
@@ -406,38 +476,40 @@ cpg_network_webots_enable(CpgNetworkWebots *webots, guint ms)
 }
 
 void
-cpg_network_webots_disable(CpgNetworkWebots *webots)
+cpg_network_webots_disable (CpgNetworkWebots *webots)
 {
 	GSList *item;
-	
+
 	for (item = webots->bindings; item; item = g_slist_next(item))
 	{
-		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
-		
+		CpgWebotsBinding *binding;
+
+		binding = item->data;
+
 		if (!binding->device)
 		{
 			continue;
 		}
-		
+
 		switch (binding->type)
 		{
 			case CPG_WEBOTS_BINDING_TYPE_TOUCH_SENSOR:
-				wb_touch_sensor_disable(binding->device);
+				wb_touch_sensor_disable (binding->device);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_LIGHT_SENSOR:
-				wb_light_sensor_disable(binding->device);
+				wb_light_sensor_disable (binding->device);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_GYRO_SENSOR:
-				wb_gyro_disable(binding->device);
+				wb_gyro_disable (binding->device);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_GPS_SENSOR:
-				wb_gps_disable(binding->device);
+				wb_gps_disable (binding->device);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_ACCELEROMETER_SENSOR:
-				wb_accelerometer_disable(binding->device);
+				wb_accelerometer_disable (binding->device);
 			break;
 			case CPG_WEBOTS_BINDING_TYPE_COMPASS_SENSOR:
-				wb_compass_disable(binding->device);
+				wb_compass_disable (binding->device);
 			break;
 			default:
 			break;
@@ -445,45 +517,54 @@ cpg_network_webots_disable(CpgNetworkWebots *webots)
 	}
 }
 
-void 
-cpg_network_webots_update(CpgNetworkWebots *webots)
+void
+cpg_network_webots_update (CpgNetworkWebots *webots)
 {
 	GSList *item;
-	
-	for (item = webots->bindings; item; item = g_slist_next(item))
+
+	for (item = webots->bindings; item; item = g_slist_next (item))
 	{
-		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
-		binding->func(webots, binding);
+		CpgWebotsBinding *binding;
+
+		binding = item->data;
+		binding->func (webots, binding);
 	}
 }
 
 guint
-cpg_network_webots_size(CpgNetworkWebots *webots)
+cpg_network_webots_size (CpgNetworkWebots *webots)
 {
-	return g_slist_length(webots->bindings);
+	return g_slist_length (webots->bindings);
 }
 
 void
-cpg_network_webots_scale_initial(CpgNetworkWebots *webots, gdouble fraction)
+cpg_network_webots_scale_initial (CpgNetworkWebots *webots,
+                                  gdouble           fraction)
 {
 	GSList *item;
-	
+
 	/* Scale from initial webots values, to initial value of network, according
 	   to fraction */
 
-	for (item = webots->bindings; item; item = g_slist_next(item))
+	for (item = webots->bindings; item; item = g_slist_next (item))
 	{
-		CpgWebotsBinding *binding = (CpgWebotsBinding *)item->data;
-		
+		CpgWebotsBinding *binding;
+
+		binding = item->data;
+
 		switch (binding->type)
 		{
 			case CPG_WEBOTS_BINDING_TYPE_SERVO:
 			{
+				gdouble p;
+
 				if (!binding->device)
+				{
 					continue;
-					
-				gdouble p = fraction * (cpg_property_get_value(binding->property) - binding->initial);
-				wb_servo_set_position(binding->device, binding->initial + p);
+				}
+
+				p = fraction * (cpg_property_get_value (binding->property) - binding->initial);
+				wb_servo_set_position (binding->device, binding->initial + p);
 			}
 			break;
 			default:
