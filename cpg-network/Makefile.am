@@ -156,7 +156,7 @@ libcpg_network_2_0_la_SOURCES = $(COMMON_SOURCES)
 
 libcpg_network_2_0_include_HEADERS = $(libcpg_network_headers)
 
-CLEANFILES = $(BUILT_SOURCES)
+CLEANFILES = $(BUILT_SOURCES) cpg-parser.c
 
 EXTRA_DIST = \
 	$(NOINST_H_FILES) \
