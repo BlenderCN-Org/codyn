@@ -215,16 +215,16 @@ pool_to_history (CpgOperatorDelayed  *operator,
 		HistoryItem *slice_start = NULL;
 		HistoryItem *slice_end = NULL;
 
+		n = num - operator->priv->history_pool.size;
+
 		history_concat (&operator->priv->history,
 		                &operator->priv->history_pool);
-
-		n = num - operator->priv->history_pool.size;
 
 		for (i = 0; i < n; ++i)
 		{
 			HistoryItem *h;
 
-			h = g_slice_new (HistoryItem);
+			h = g_slice_new0 (HistoryItem);
 
 			h->t = 0;
 			h->v = 0;
@@ -388,7 +388,7 @@ evaluate_at (CpgOperatorDelayed *operator,
 
 	if (!h->next)
 	{
-		if (h->t != td)
+		if (fabs (h->t - td) > 0.00000001)
 		{
 			g_warning ("Needed history in the future, which I don't have...");
 		}
@@ -411,7 +411,6 @@ evaluate_at (CpgOperatorDelayed *operator,
 
 		return h->v + factor * (h->next->v - h->v);
 	}
-
 }
 
 static void
