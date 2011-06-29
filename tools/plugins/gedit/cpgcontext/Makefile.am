@@ -27,6 +27,7 @@ appactivatable.py: appactivatable$(GEDIT_MAJOR_VERSION).py
 	cp $(srcdir)/appactivatable$(GEDIT_MAJOR_VERSION).py $@
 
 EXTRA_DIST = \
+	$(plugin_DATA) \
 	viewactivatable2.py \
 	viewactivatable3.py \
 	windowactivatable2.py \
