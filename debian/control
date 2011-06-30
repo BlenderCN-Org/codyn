@@ -1,54 +1,74 @@
 Source: cpg-network
 Priority: extra
 Maintainer: Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>
-Build-Depends: debhelper (>= 7), 
+Build-Depends: debhelper (>= 7),
                autotools-dev,
                cdbs,
                pkg-config,
                libglib2.0-dev,
                libxml2-dev,
                gtk-doc-tools,
-               webots (>= 6.1.0)
+               webots (>= 6.1.0),
+               libreadline6-dev,
+               libncurses5-dev,
+               bison,
+               flex,
+               gobject-introspection (>= 0.6.10),
+               libgirepository1.0-dev (>= 0.6.10)
 Standards-Version: 3.8.0
 Section: libs
 Homepage: http://birg2.epfl.ch
 
-Package: cpg-network1-dev
+Package: cpg-network2-dev
 Section: libdevel
 Architecture: any
-Depends: cpg-network1 (= ${binary:Version}),
+Depends: cpg-network2 (= ${binary:Version}),
          libglib2.0-dev,
          libxml2-dev,
-         gtk-doc-tools
+         gtk-doc-tools,
+         libncurses5-dev,
+         libreadline6-dev
 Suggests: libglib2.0-doc
 Description: Development files for CPG network library
  CPG network library
 
-Package: cpg-network1
+Package: cpg-network2
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          libglib2.0-0,
-         libxml2
+         libxml2,
+         libreadline6,
+         libncurses5
 Description: CPG network library
  CPG network library
 
-Package: cpg-network-webots1-dev
+Package: cpg-network2-tools
+Section: main
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         cpg-network2
+Conflicts: cpg-network1
+Description: CPG network library tools
+ CPG network library tools
+
+Package: cpg-network-webots2-dev
 Section: libdevel
 Architecture: any
-Depends: cpg-network-webots1 (= ${binary:Version}),
-         cpg-network1-dev,
+Depends: cpg-network-webots2 (= ${binary:Version}),
+         cpg-network2-dev,
          webots (>= 6.1.0)
 Description: Development files for CPG network library - webots bindings
  CPG network library webots bindings
 
-Package: cpg-network-webots1
+Package: cpg-network-webots2
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-         cpg-network1,
+         cpg-network2,
          webots (>= 6.1.0)
 Description: CPG network library - webots bindings
  CPG network library webots bindings

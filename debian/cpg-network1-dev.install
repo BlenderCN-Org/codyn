@@ -1,6 +1,0 @@
-usr/include/cpg-network-1.0/cpg-network/*
-usr/lib/libcpg-network-1*.a
-usr/lib/libcpg-network-1*.so
-usr/lib/pkgconfig/cpg-network-1*
-usr/lib/libcpg-network-1*.la
-usr/share/gtk-doc/html/cpg-network/*

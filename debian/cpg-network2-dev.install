@@ -1,0 +1,7 @@
+usr/include/cpg-network-2.0/cpg-network/*
+usr/lib/libcpg-network-2*.a
+usr/lib/libcpg-network-2*.so
+usr/lib/pkgconfig/cpg-network-2*
+usr/lib/libcpg-network-2*.la
+usr/share/gtk-doc/html/cpg-network2/*
+usr/share/gir-1.0
