@@ -40,7 +40,7 @@ IGNORE_HFILES= \
 
 # Extra options to supply to gtkdoc-scan.
 # e.g. SCAN_OPTIONS=--deprecated-guards="GTK_DISABLE_DEPRECATED"
-SCAN_OPTIONS=--rebuild-types --rebuild-sections --ignore-hfiles="$IGNORE_HFILES"
+SCAN_OPTIONS=--rebuild-types --rebuild-sections
 
 # Extra options to supply to gtkdoc-mkdb.
 # e.g. MKDB_OPTIONS=--sgml-mode --output-format=xml
