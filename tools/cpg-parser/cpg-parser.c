@@ -132,6 +132,10 @@ parse_network (gchar const *args[], gint argc)
 
 	network = cpg_network_new ();
 	context = cpg_parser_context_new (network);
+
+	/* We replace the filename here with the collapsed arguments */
+	args[0] = cpg_embedded_string_collapse (args + 1);
+
 	expansion = cpg_expansion_new (args);
 
 	embedded = cpg_parser_context_get_embedded (context);
