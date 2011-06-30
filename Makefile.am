@@ -1,4 +1,10 @@
-SUBDIRS = cpg-network data tests docs cpg-monitor
+SUBDIRS = cpg-network data tests m4 win32 tools
+
+if ENABLE_DOC
+SUBDIRS += docs
+endif
+
+ACLOCAL_AMFLAGS = -I m4
 
 if ENABLE_WEBOTS
 SUBDIRS += cpg-network-webots
@@ -27,7 +33,11 @@ if ENABLE_WEBOTS
 EXTRA_DIST += cpg-network-webots.pc.in
 endif
 
-DISTCHECK_CONFIGURE_FLAGS = --enable-gtk-doc --enable-webots
+DISTCHECK_CONFIGURE_FLAGS = --enable-webots
+
+if ENABLE_DOC
+DISTCHECK_CONFIGURE_FLAGS += --enable-gtk-doc
+endif
 
 DISTCLEANFILES = \
 	gnome-doc-utils.make

@@ -39,13 +39,17 @@ typedef struct _CpgIntegratorRungeKutta			CpgIntegratorRungeKutta;
 typedef struct _CpgIntegratorRungeKuttaClass	CpgIntegratorRungeKuttaClass;
 typedef struct _CpgIntegratorRungeKuttaPrivate	CpgIntegratorRungeKuttaPrivate;
 
-struct _CpgIntegratorRungeKutta {
+struct _CpgIntegratorRungeKutta
+{
+	/*< private >*/
 	CpgIntegrator parent;
-	
+
 	CpgIntegratorRungeKuttaPrivate *priv;
 };
 
-struct _CpgIntegratorRungeKuttaClass {
+struct _CpgIntegratorRungeKuttaClass
+{
+	/*< private >*/
 	CpgIntegratorClass parent_class;
 };
 

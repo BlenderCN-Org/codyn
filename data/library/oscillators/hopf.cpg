@@ -1,0 +1,67 @@
+templates
+{
+    group "oscillator"
+    {
+        [proxy]
+        state "state"
+        {
+            ## Desired amplitude
+            R = 1
+
+            ## x state variables of hopf oscillator
+            x = 0 | integrated
+
+            ## y state variables of hopf oscillator
+            y = 1 | integrated
+
+            ## Angular frequency
+            w = "2 * pi"
+
+            ## Amplitude squared
+            r2 = "x * x + y * y"
+
+            ## Amplitude
+            r = "sqrt(r2)"
+
+            ## Oscillator phase
+            phase = "atan2(y, x)"
+
+            ## Output variable (x)
+            output = "x"
+        }
+
+        link "integrate" on "state"
+        {
+            ## Gain on amplitude for x
+            g_x = 1
+
+            ## Gain on amplitude for y
+            g_y = 1
+
+            x <= "g_x * (R * R - r * r) * x - w * y"
+            y <= "g_y * (R * R - r * r) * y + w * x"
+        }
+    }
+
+    link "coupling"
+    {
+        ## Desired phase bias between oscillators
+        phase_bias = 0
+
+        ## Gain on phase coupling convergence
+        weight = 1
+
+        summed = "w / to.r * ((to.x * y - x * to.y) * cos(phase_bias) - (x * to.x + y * to.y) * sin(phase_bias))"
+
+        x <= "weight * -summed * to.y"
+        y <= "weight * summed * to.x"
+    }
+
+    layout
+    {
+        "oscillator" at (@[++], 0)
+        "coupling" at (@[++], 0)
+    }
+}
+
+# vi:ex:ts=4:et

@@ -23,157 +23,184 @@
 #ifndef __CPG_NETWORK_H__
 #define __CPG_NETWORK_H__
 
-#include <glib-object.h>
+#include <gio/gio.h>
 
 #include <cpg-network/cpg-object.h>
-#include <cpg-network/cpg-state.h>
-#include <cpg-network/cpg-relay.h>
 #include <cpg-network/cpg-link.h>
 #include <cpg-network/cpg-monitor.h>
 #include <cpg-network/cpg-compile-error.h>
 #include <cpg-network/cpg-function.h>
 #include <cpg-network/cpg-integrator.h>
+#include <cpg-network/cpg-group.h>
 
 G_BEGIN_DECLS
 
-#define CPG_TYPE_NETWORK			(cpg_network_get_type ())
-#define CPG_NETWORK(obj)			(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK, CpgNetwork))
-#define CPG_NETWORK_CONST(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK, CpgNetwork const))
-#define CPG_NETWORK_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_NETWORK, CpgNetworkClass))
-#define CPG_IS_NETWORK(obj)			(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_NETWORK))
-#define CPG_IS_NETWORK_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_NETWORK))
-#define CPG_NETWORK_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_NETWORK, CpgNetworkClass))
+#define CPG_TYPE_NETWORK            (cpg_network_get_type ())
+#define CPG_NETWORK(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK, CpgNetwork))
+#define CPG_NETWORK_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK, CpgNetwork const))
+#define CPG_NETWORK_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_NETWORK, CpgNetworkClass))
+#define CPG_IS_NETWORK(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_NETWORK))
+#define CPG_IS_NETWORK_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_NETWORK))
+#define CPG_NETWORK_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_NETWORK, CpgNetworkClass))
 
-typedef struct _CpgNetwork			CpgNetwork;
-typedef struct _CpgNetworkClass		CpgNetworkClass;
-typedef struct _CpgNetworkPrivate	CpgNetworkPrivate;
+typedef struct _CpgNetwork        CpgNetwork;
+typedef struct _CpgNetworkClass   CpgNetworkClass;
+typedef struct _CpgNetworkPrivate CpgNetworkPrivate;
+
+/* Forward declaration */
+CPG_FORWARD_DECL (CpgImport);
 
 #define CPG_NETWORK_LOAD_ERROR (cpg_network_load_error_quark ())
 
+/**
+ * CpgNetworkLoadError:
+ * @CPG_NETWORK_LOAD_ERROR_NONE:
+ * @CPG_NETWORK_LOAD_ERROR_SYNTAX: syntax error
+ * @CPG_NETWORK_LOAD_ERROR_PROPERTY: error occurred in loading a property
+ * @CPG_NETWORK_LOAD_ERROR_OBJECT: error occurred in loading an object
+ * @CPG_NETWORK_LOAD_ERROR_LINK: error occurred in loading a link
+ * @CPG_NETWORK_LOAD_ERROR_FUNCTION: error occurred in loading a function
+ * @CPG_NETWORK_LOAD_ERROR_IMPORT: error occurred in an import
+ * @CPG_NETWORK_LOAD_ERROR_INTERFACE: error occurred in an interface
+ *
+ * Network load error types.
+ *
+ */
 typedef enum
 {
-	CPG_NETWORK_LOAD_ERROR_XML,
+	CPG_NETWORK_LOAD_ERROR_NONE,
+	CPG_NETWORK_LOAD_ERROR_SYNTAX,
 	CPG_NETWORK_LOAD_ERROR_PROPERTY,
 	CPG_NETWORK_LOAD_ERROR_OBJECT,
 	CPG_NETWORK_LOAD_ERROR_LINK,
-	CPG_NETWORK_LOAD_ERROR_FUNCTION
+	CPG_NETWORK_LOAD_ERROR_FUNCTION,
+	CPG_NETWORK_LOAD_ERROR_IMPORT,
+	CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
+	CPG_NETWORK_LOAD_ERROR_INTERFACE
 } CpgNetworkLoadError;
 
-struct _CpgNetwork {
+typedef enum
+{
+	CPG_NETWORK_FORMAT_UNKNOWN,
+	CPG_NETWORK_FORMAT_CPG,
+	CPG_NETWORK_FORMAT_XML
+} CpgNetworkFormat;
+
+#define CPG_NETWORK_ERROR (cpg_network_error_quark ())
+
+typedef enum
+{
+	CPG_NETWORK_ERROR_UNOWNED_TEMPLATE,
+	CPG_NETWORK_ERROR_NUM
+} CpgNetworkError;
+
+struct _CpgNetwork
+{
 	/*< private >*/
-	GObject parent;
-	
+	CpgGroup parent;
+
 	CpgNetworkPrivate *priv;
 };
 
-struct _CpgNetworkClass {
+/**
+ * CpgNetworkClass:
+ * @compile_error: compile error default signal handler
+ *
+ * The CpgNetwork class
+ *
+ */
+struct _CpgNetworkClass
+{
 	/*< private >*/
-	GObjectClass parent_class;
-	
+	CpgGroupClass parent_class;
+
 	/*< public >*/
-	void (*reset)			(CpgNetwork *network);
-	void (*compile_error)	(CpgNetwork *network, CpgCompileError *error);
+	void (*compile_error) (CpgNetwork      *network,
+	                       CpgCompileError *error);
 };
 
-GType cpg_network_get_type (void) G_GNUC_CONST;
+GType             cpg_network_get_type              (void) G_GNUC_CONST;
 
-GQuark            cpg_network_load_error_quark  (void);
+GQuark            cpg_network_load_error_quark      (void);
+GQuark            cpg_network_error_quark           (void);
 
-CpgNetwork 		 *cpg_network_new_from_file		(const gchar *filename, GError **error);
-CpgNetwork 		 *cpg_network_new_from_xml		(const gchar *xml, GError **error);
-CpgNetwork		 *cpg_network_new				(void);
+CpgNetwork       *cpg_network_new                    (void);
 
-void			  cpg_network_set_integrator	(CpgNetwork    *network,
-												 CpgIntegrator *integrator);
+CpgNetwork       *cpg_network_new_from_file          (GFile          *file,
+                                                      GError        **error);
 
-CpgIntegrator	 *cpg_network_get_integrator	(CpgNetwork    *network);
+CpgNetwork       *cpg_network_new_from_stream        (GInputStream   *stream,
+                                                      GError        **error);
 
-gchar 			 *cpg_network_write_to_xml		(CpgNetwork  *network);
-void			  cpg_network_write_to_file		(CpgNetwork  *network,
-												 const gchar *filename);
+CpgNetwork       *cpg_network_new_from_path          (const gchar    *path,
+                                                      GError        **error);
 
-void              cpg_network_merge             (CpgNetwork *network,
-												 CpgNetwork *other);
+CpgNetwork       *cpg_network_new_from_string        (const gchar    *s,
+                                                      GError        **error);
 
-void			  cpg_network_merge_from_file	(CpgNetwork   *network,
-												 const gchar  *filename,
-												 GError      **error);
+gboolean          cpg_network_load_from_file         (CpgNetwork     *network,
+                                                      GFile          *file,
+                                                      GError        **error);
 
-void			  cpg_network_merge_from_xml	(CpgNetwork   *network,
-												 const gchar  *xml,
-												 GError      **error);
+gboolean          cpg_network_load_from_stream       (CpgNetwork     *network,
+                                                      GInputStream   *stream,
+                                                      GError        **error);
 
-gboolean          cpg_network_merge_from_partial_xml (CpgNetwork   *network,
-													  const gchar  *xml,
-													  GError      **error);
+gboolean          cpg_network_load_from_path         (CpgNetwork     *network,
+                                                      const gchar    *path,
+                                                      GError        **error);
 
-void 			  cpg_network_set_global_constant (CpgNetwork *network,
-												 const gchar  *name,
-												 gdouble       constant);
+gboolean          cpg_network_load_from_string       (CpgNetwork     *network,
+                                                      const gchar    *s,
+                                                      GError        **error);
 
-CpgObject 		 *cpg_network_get_globals       (CpgNetwork  *network);
+CpgNetworkFormat  cpg_network_format_from_file       (GFile          *file);
 
-void			  cpg_network_clear				(CpgNetwork *network);
+CpgNetworkFormat  cpg_network_format_from_stream     (GInputStream   *stream);
 
-CpgObject		 *cpg_network_get_object		(CpgNetwork *network, 
-												 const gchar *id);
+GFile            *cpg_network_get_file               (CpgNetwork     *network);
+gchar            *cpg_network_get_path               (CpgNetwork     *network);
 
-/* network manipulation */
-void			  cpg_network_add_object		(CpgNetwork *network, 
-												 CpgObject  *object);
-void			  cpg_network_remove_object		(CpgNetwork *network, 
-												 CpgObject  *object);
+void              cpg_network_set_integrator         (CpgNetwork     *network,
+                                                      CpgIntegrator  *integrator);
 
-gboolean		  cpg_network_compile			(CpgNetwork      *network,
-												 CpgCompileError *error);
+CpgIntegrator    *cpg_network_get_integrator         (CpgNetwork     *network);
 
-gboolean		  cpg_network_get_compiled		(CpgNetwork		 *network);
+void              cpg_network_merge                  (CpgNetwork     *network,
+                                                      CpgNetwork     *other);
 
-void			  cpg_network_taint				(CpgNetwork *network);
+void              cpg_network_merge_from_file        (CpgNetwork     *network,
+                                                      GFile          *file,
+                                                      GError        **error);
 
-GSList			 *cpg_network_get_states		(CpgNetwork *network);
-GSList 			 *cpg_network_get_links			(CpgNetwork *network);
-												 
+void              cpg_network_merge_from_path        (CpgNetwork     *network,
+                                                      const gchar    *path,
+                                                      GError        **error);
+
+void              cpg_network_merge_from_string      (CpgNetwork     *network,
+                                                      const gchar    *s,
+                                                      GError        **error);
+
 /* simulation functions */
-void			  cpg_network_run				(CpgNetwork *network, 
-												 gdouble	 from, 
-												 gdouble	 timestep, 
-												 gdouble	 to);
-void			  cpg_network_step				(CpgNetwork *network, 
-												 gdouble	 timestep);
-void			  cpg_network_reset				(CpgNetwork *network);
+void              cpg_network_run                    (CpgNetwork *network,
+                                                      gdouble     from,
+                                                      gdouble     timestep,
+                                                      gdouble     to);
+void              cpg_network_step                   (CpgNetwork *network,
+                                                      gdouble     timestep);
 
-GSList			 *cpg_network_get_templates     (CpgNetwork   *network);
-void			  cpg_network_add_template 		(CpgNetwork   *network,
-												 const gchar  *name,
-												 CpgObject    *object);
+CpgGroup         *cpg_network_get_template_group     (CpgNetwork   *network);
+CpgGroup         *cpg_network_get_function_group     (CpgNetwork   *network);
 
-CpgObject		 *cpg_network_get_template 		(CpgNetwork   *network,
-												 const gchar  *name);
+CPG_FORWARD_DECL (CpgImport) *cpg_network_get_import  (CpgNetwork   *network,
+                                                       GFile        *file);
 
-void			  cpg_network_remove_template 	(CpgNetwork   *network,
-												 const gchar  *name);
+CPG_FORWARD_DECL (CpgImport) *cpg_network_get_import_from_path  (CpgNetwork   *network,
+                                                                 const gchar  *path);
 
-CpgObject        *cpg_network_add_from_template (CpgNetwork   *network,
-												 const gchar  *name);
 
-CpgObject        *cpg_network_add_link_from_template (CpgNetwork   *network,
-												 const gchar  *name,
-												 CpgObject    *from,
-												 CpgObject    *to);
-
-void			  cpg_network_add_function		(CpgNetwork   *network,
-												 CpgFunction  *function);
-
-void			  cpg_network_remove_function	(CpgNetwork   *network,
-												 CpgFunction  *function);
-
-GSList			 *cpg_network_get_functions		(CpgNetwork   *network);
-
-CpgFunction		 *cpg_network_get_function		(CpgNetwork   *network,
-                                                 gchar const  *name);
-
-GSList 			 *cpg_network_get_integration_state (CpgNetwork *network);
+void              _cpg_network_register_import       (CpgNetwork        *network,
+                                                      CPG_FORWARD_DECL (CpgImport) *import);
 
 G_END_DECLS
 

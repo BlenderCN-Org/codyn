@@ -20,23 +20,68 @@ CpgProperty *property,CpgInstructionBinding binding
 </FUNCTION>
 <STRUCT>
 <NAME>CpgObjectClass</NAME>
-struct _CpgObjectClass {
+struct _CpgObjectClass
+{
 	/*< private >*/
 	GObjectClass parent_class;
 
-	/*< public >*/	
-	gboolean (*compile)	(CpgObject *object,
-	                     CpgCompileContext *context,
-	                     CpgCompileError *error);
-	void (*reset)		(CpgObject *object);
-	void (*evaluate)	(CpgObject *object);
-	
-	void (*tainted)		(CpgObject *object);
-	
-	void (*reset_cache) (CpgObject *object);
-	
-	void (*copy)		(CpgObject *object,
-	                     CpgObject *source);
+	/*< public >*/
+	gboolean      (*compile)         (CpgObject                          *object,
+	                                  CpgCompileContext                  *context,
+	                                  CpgCompileError                    *error);
+
+	void          (*reset)           (CpgObject *object);
+
+	void          (*foreach_expression) (CpgObject                *object,
+	                                     CpgForeachExpressionFunc  func,
+	                                     gpointer                  userdata);
+
+	void          (*apply_template)  (CpgObject *object,
+	                                  CpgObject *templ);
+
+	void          (*copy)            (CpgObject *object,
+	                                  CpgObject *source);
+
+	GType         (*get_copy_type)   (CpgObject *object);
+
+	void          (*taint)           (CpgObject *object);
+
+	GSList       *(*get_properties)  (CpgObject    *object);
+	CpgProperty  *(*get_property)    (CpgObject    *object,
+	                                  const gchar  *name);
+
+	gboolean      (*has_property)    (CpgObject    *object,
+	                                  const gchar  *name);
+
+	CpgProperty  *(*add_property)    (CpgObject    *object,
+	                                  const gchar  *name,
+	                                  const gchar  *expression,
+	                                  gboolean      integrated);
+
+	gboolean      (*remove_property) (CpgObject    *object,
+	                                  const gchar  *name,
+	                                  GError      **error);
+
+	gboolean      (*verify_remove_property) (CpgObject    *object,
+	                                         const gchar  *name,
+	                                         GError      **error);
+
+	void          (*clear)           (CpgObject    *object);
+
+	gboolean      (*equal)           (CpgObject    *first,
+	                                  CpgObject    *last);
+
+	/* signals */
+	void          (*compiled)        (CpgObject *object);
+	void          (*resetted)        (CpgObject *object);
+	void          (*tainted)         (CpgObject *object);
+
+	void          (*property_added)   (CpgObject   *object,
+	                                   CpgProperty *property);
+	void          (*property_removed) (CpgObject   *object,
+	                                   CpgProperty *property);
+	void          (*property_changed) (CpgObject   *object,
+	                                   CpgProperty *property);
 };
 </STRUCT>
 <FUNCTION>
@@ -47,10 +92,5 @@ CpgObject         *object,CpgCompileContext *context,CpgCompileError *error
 <FUNCTION>
 <NAME>cpg_monitor_new</NAME>
 <RETURNS>CpgMonitor		 *</RETURNS>
-CpgNetwork *network,CpgObject          *object,const gchar        *property_name
-</FUNCTION>
-<FUNCTION>
-<NAME>cpg_property_new</NAME>
-<RETURNS>CpgProperty 	  *</RETURNS>
-const gchar        *name,const gchar        *expression,gboolean            integrated,CpgObject *object
+CpgNetwork *network,CpgProperty          *property,
 </FUNCTION>

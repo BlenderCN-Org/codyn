@@ -26,66 +26,102 @@
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-stack.h>
 #include <cpg-network/cpg-utils.h>
+#include <cpg-network/cpg-function-argument.h>
+#include <cpg-network/cpg-expression.h>
 
 #include <stdarg.h>
 
 G_BEGIN_DECLS
 
-#define CPG_TYPE_FUNCTION				(cpg_function_get_type ())
-#define CPG_FUNCTION(obj)				(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_FUNCTION, CpgFunction))
-#define CPG_FUNCTION_CONST(obj)			(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_FUNCTION, CpgFunction const))
-#define CPG_FUNCTION_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_FUNCTION, CpgFunctionClass))
-#define CPG_IS_FUNCTION(obj)			(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_FUNCTION))
-#define CPG_IS_FUNCTION_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_FUNCTION))
-#define CPG_FUNCTION_GET_CLASS(obj)		(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_FUNCTION, CpgFunctionClass))
+#define CPG_TYPE_FUNCTION            (cpg_function_get_type ())
+#define CPG_FUNCTION(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_FUNCTION, CpgFunction))
+#define CPG_FUNCTION_CONST(obj)      (G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_FUNCTION, CpgFunction const))
+#define CPG_FUNCTION_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_FUNCTION, CpgFunctionClass))
+#define CPG_IS_FUNCTION(obj)         (G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_FUNCTION))
+#define CPG_IS_FUNCTION_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_FUNCTION))
+#define CPG_FUNCTION_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_FUNCTION, CpgFunctionClass))
 
-CPG_FORWARD_DECL (CpgExpression);
+typedef struct _CpgFunction         CpgFunction;
+typedef struct _CpgFunctionClass    CpgFunctionClass;
+typedef struct _CpgFunctionPrivate  CpgFunctionPrivate;
 
-typedef struct _CpgFunction			CpgFunction;
-typedef struct _CpgFunctionClass	CpgFunctionClass;
-typedef struct _CpgFunctionPrivate	CpgFunctionPrivate;
+/**
+ * CpgFunctionError:
+ * @CPG_FUNCTION_ERROR_UNKNOWN: unknown
+ * @CPG_FUNCTION_ERROR_ARGUMENT_NOT_FOUND: property not found
+ * @CPG_FUNCTION_NUM_ERRORS: num errors
+ *
+ *
+ **/
+typedef enum
+{
+	CPG_FUNCTION_ERROR_UNKNOWN,
+	CPG_FUNCTION_ERROR_ARGUMENT_NOT_FOUND,
+	CPG_FUNCTION_NUM_ERRORS
+} CpgFunctionError;
 
-typedef struct _CpgFunctionArgument CpgFunctionArgument;
-
-struct _CpgFunction {
+struct _CpgFunction
+{
+	/*< private >*/
 	CpgObject parent;
-	
+
 	CpgFunctionPrivate *priv;
 };
 
-struct _CpgFunctionClass {
+/**
+ * CpgFunctionClass:
+ * @evaluate: evaluate virtual function
+ * @execute: execute virtual function
+ *
+ * The CpgFunction class
+ *
+ */
+struct _CpgFunctionClass
+{
+	/*< private >*/
 	CpgObjectClass parent_class;
 
-	gdouble (*evaluate) (CpgFunction *function);
-	void (*execute) (CpgFunction *function, CpgStack *stack);
+	/*< public >*/
+	gdouble (*evaluate)           (CpgFunction         *function);
+	void    (*execute)            (CpgFunction         *function,
+	                               CpgStack            *stack);
+
+	/* signals */
+	void   (*argument_added)      (CpgFunction         *function,
+	                               CpgFunctionArgument *argument);
+
+	void   (*argument_removed)    (CpgFunction         *function,
+	                               CpgFunctionArgument *argument);
+
+	void   (*arguments_reordered) (CpgFunction      *function);
 };
 
-GType cpg_function_get_type (void) G_GNUC_CONST;
-GType cpg_function_argument_get_type (void) G_GNUC_CONST;
+GQuark               cpg_function_error_quark                 (void);
 
-CpgFunction *cpg_function_new (gchar const *name, gchar const *expression);
-CpgFunctionArgument *cpg_function_argument_new (gchar const *name, gboolean optional, gdouble def);
+GType                cpg_function_get_type                    (void) G_GNUC_CONST;
 
-void cpg_function_add_argument (CpgFunction *function, CpgFunctionArgument *argument);
-void cpg_function_remove_argument (CpgFunction *function, CpgFunctionArgument *argument);
+CpgFunction         *cpg_function_new                         (const gchar          *name,
+                                                               const gchar          *expression);
 
-void cpg_function_clear_arguments (CpgFunction *function);
+void                 cpg_function_add_argument                (CpgFunction          *function,
+                                                               CpgFunctionArgument  *argument);
 
-GList *cpg_function_get_arguments (CpgFunction *function);
+gboolean             cpg_function_remove_argument             (CpgFunction          *function,
+                                                               CpgFunctionArgument  *argument,
+                                                               GError              **error);
 
-guint cpg_function_get_n_optional (CpgFunction *function);
-guint cpg_function_get_n_arguments (CpgFunction *function);
+gboolean             cpg_function_clear_arguments             (CpgFunction          *function,
+                                                               GError              **error);
 
-void cpg_function_execute (CpgFunction *function, CpgStack *stack);
+const GList         *cpg_function_get_arguments               (CpgFunction          *function);
+guint                cpg_function_get_n_optional              (CpgFunction          *function);
+guint                cpg_function_get_n_arguments             (CpgFunction          *function);
+void                 cpg_function_execute                     (CpgFunction          *function,
+                                                               CpgStack             *stack);
+void                 cpg_function_set_expression              (CpgFunction          *function,
+                                                               CpgExpression        *expression);
 
-void cpg_function_set_expression (CpgFunction *function, CpgExpression *expression);
-CPG_FORWARD_DECL (CpgExpression) *cpg_function_get_expression (CpgFunction *function);
-
-gchar const *cpg_function_argument_get_name (CpgFunctionArgument *argument);
-gboolean cpg_function_argument_get_optional (CpgFunctionArgument *argument);
-gdouble cpg_function_argument_get_default_value (CpgFunctionArgument *argument);
-
-CpgProperty *cpg_function_argument_get_property (CpgFunctionArgument *argument);
+CpgExpression       *cpg_function_get_expression              (CpgFunction          *function);
 
 G_END_DECLS
 

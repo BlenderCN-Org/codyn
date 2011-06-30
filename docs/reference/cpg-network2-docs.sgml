@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" 
+               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
+<!ENTITY specification SYSTEM "xml-specification.sgml">
+<!ENTITY makinganetwork SYSTEM "making-a-network.sgml">
+<!ENTITY monitoring SYSTEM "monitoring-variables.sgml">
+<!ENTITY templates SYSTEM "using-templates.sgml">
+<!ENTITY webots SYSTEM "use-with-webots.sgml">
+]>
+<book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
+  <bookinfo>
+    <title>cpg-network Reference Manual</title>
+  </bookinfo>
+
+  <chapter>
+    <title>CPG Network</title>
+    &makinganetwork;
+    &monitoring;
+    &templates;
+    &webots;
+  </chapter>
+  <chapter>
+    <title>Network</title>
+    <xi:include href="xml/cpg-network.xml"/>
+    <xi:include href="xml/cpg-network-serializer.xml"/>
+    <xi:include href="xml/cpg-network-deserializer.xml"/>
+    <xi:include href="xml/cpg-object.xml"/>
+    <xi:include href="xml/cpg-property.xml"/>
+    <xi:include href="xml/cpg-link.xml"/>
+    <xi:include href="xml/cpg-link-action.xml"/>
+    <xi:include href="xml/cpg-group.xml"/>
+    <xi:include href="xml/cpg-import.xml"/>
+    <xi:include href="xml/cpg-import-alias.xml"/>
+    <xi:include href="xml/cpg-stack.xml"/>
+    <xi:include href="xml/cpg-monitor.xml"/>
+    <xi:include href="xml/cpg-compile-error.xml"/>
+    <xi:include href="xml/cpg-compile-context.xml"/>
+    <xi:include href="xml/cpg-function.xml"/>
+    <xi:include href="xml/cpg-function-argument.xml"/>
+    <xi:include href="xml/cpg-function-polynomial.xml"/>
+    <xi:include href="xml/cpg-usable.xml"/>
+    <xi:include href="xml/cpg-modifiable.xml"/>
+    <xi:include href="xml/cpg-annotatable.xml"/>
+    <xi:include href="xml/cpg-layoutable.xml"/>
+    <xi:include href="xml/cpg-layout.xml"/>
+  </chapter>
+  <chapter>
+    <title>Math</title>
+    <xi:include href="xml/cpg-math.xml"/>
+    <xi:include href="xml/cpg-expression.xml"/>
+    <xi:include href="xml/cpg-instructions.xml"/>
+    <xi:include href="xml/cpg-instruction.xml"/>
+    <xi:include href="xml/cpg-instruction-constant.xml"/>
+    <xi:include href="xml/cpg-instruction-function.xml"/>
+    <xi:include href="xml/cpg-instruction-custom-function.xml"/>
+    <xi:include href="xml/cpg-instruction-operator.xml"/>
+    <xi:include href="xml/cpg-instruction-custom-operator.xml"/>
+    <xi:include href="xml/cpg-instruction-number.xml"/>
+    <xi:include href="xml/cpg-instruction-property.xml"/>
+    <xi:include href="xml/cpg-instruction-variadic-function.xml"/>
+    <xi:include href="xml/cpg-operator.xml"/>
+    <xi:include href="xml/cpg-operator-delayed.xml"/>
+  </chapter>
+  <chapter>
+    <title>Integration</title>
+    <xi:include href="xml/cpg-integrator.xml"/>
+    <xi:include href="xml/cpg-integrator-state.xml"/>
+    <xi:include href="xml/cpg-integrators.xml"/>
+    <xi:include href="xml/cpg-integrator-euler.xml"/>
+    <xi:include href="xml/cpg-integrator-runge-kutta.xml"/>
+    <xi:include href="xml/cpg-integrator-predict-correct.xml"/>
+    <xi:include href="xml/cpg-integrator-stub.xml"/>
+  </chapter>
+  <chapter>
+    <title>CPG format</title>
+    <xi:include href="xml/cpg-embedded-string.xml"/>
+    <xi:include href="xml/cpg-embedded-context.xml"/>
+    <xi:include href="xml/cpg-parser-context.xml"/>
+    <xi:include href="xml/cpg-selector.xml"/>
+    <xi:include href="xml/cpg-selection.xml"/>
+    <xi:include href="xml/cpg-attribute.xml"/>
+    <xi:include href="xml/cpg-expansion.xml"/>
+  </chapter>
+  <chapter>
+    <title>XML format</title>
+    &specification;
+  </chapter>
+</book>
+
+<!-- vi:ex:ts=2:et -->

@@ -23,7 +23,7 @@
 #include "cpg-integrators.h"
 
 /**
- * SECTION:integrators
+ * SECTION:cpg-integrators
  * @short_description: Integrator registry
  *
  * #CpgIntegrators provides a registry for integrators. All integrators must
@@ -56,7 +56,7 @@ ensure_defaults ()
  * 
  * Get the list of integrators.
  *
- * Returns: A GSList of #GType
+ * Returns: (element-type GTypeClass) (transfer none): A GSList of #GType
  *
  **/
 GSList const *
@@ -144,6 +144,14 @@ cpg_integrators_find (gchar const *id)
 	return ret;
 }
 
+/**
+ * cpg_integrators_create:
+ *
+ * Create a list of instances of all registered integrators.
+ *
+ * Returns: (element-type CpgIntegrator) (transfer full): A #GSList
+ *
+ **/
 GSList *
 cpg_integrators_create (void)
 {

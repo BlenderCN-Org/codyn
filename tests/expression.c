@@ -10,210 +10,184 @@ static CpgExpression *expression;
 #define RAND(A, B)  ((A) + rand() * 1.0 / RAND_MAX * ((B) - (A)))
 
 static void
-expression_initialize_context(gchar const *exp, CpgObject *context)
+expression_initialize_context (gchar const *exp, CpgObject *context)
 {
-	expression = cpg_expression_new(exp);
+	expression = cpg_expression_new (exp);
 
 	CpgCompileContext *ctx = cpg_compile_context_new ();
 	cpg_compile_context_prepend_object (ctx, context);
 
-	gboolean ret = cpg_expression_compile(expression, ctx, NULL);
-	cpg_ref_counted_unref (ctx);
-	
+	gboolean ret = cpg_expression_compile (expression, ctx, NULL);
+	g_object_unref (ctx);
+
 	if (!ret)
 	{
-		fprintf(stderr, "Could not parse expression: %s\n", exp);
-		exit(1);
+		fprintf (stderr, "Could not parse expression: %s\n", exp);
+		exit (1);
 	}
 }
 
 static void
-expression_initialize(gchar const *exp)
+expression_initialize (gchar const *exp)
 {
-	expression_initialize_context(exp, NULL);
+	expression_initialize_context (exp, NULL);
 }
 
 static gdouble
-expression_eval()
+expression_eval ()
 {
-	return cpg_expression_evaluate(expression);
+	return cpg_expression_evaluate (expression);
 }
 
-static gboolean
-test_operator_plus()
+static void
+test_operator_plus ()
 {
-	expression_initialize("3 + 4");
-	assert(expression_eval(), (3 + 4));
-	
-	return TRUE;
+	expression_initialize ("3 + 4");
+	cpg_assert_tol (expression_eval (), (3 + 4));
 }
 
-static gboolean
-test_operator_minus()
+static void
+test_operator_minus ()
 {
-	expression_initialize("3 - 4");
-	assert(expression_eval(), (3 - 4));
-	
-	return TRUE;
+	expression_initialize ("3 - 4");
+	cpg_assert_tol (expression_eval (), (3 - 4));
 }
 
-static gboolean
-test_operator_minus_unary()
+static void
+test_operator_minus_unary ()
 {
-	expression_initialize("3 + -4");
-	assert(expression_eval(), (3 + -4));
-	
-	return TRUE;
+	expression_initialize ("3 + -4");
+	cpg_assert_tol (expression_eval (), (3 + -4));
 }
 
-static gboolean
-test_priority()
+static void
+test_priority ()
 {
-	expression_initialize("3 * 4 + 3");
-	assert(expression_eval(), (3 * 4 + 3));
-	
-	expression_initialize("3 + 4 * 2");
-	assert(expression_eval(), (3 + 4 * 2));
-	
-	return TRUE;
+	expression_initialize ("3 * 4 + 3");
+	cpg_assert_tol (expression_eval (), (3 * 4 + 3));
+
+	expression_initialize ("3 + 4 * 2");
+	cpg_assert_tol (expression_eval (), (3 + 4 * 2));
 }
 
-static gboolean
-test_function_sin()
+static void
+test_function_sin ()
 {
-	expression_initialize("sin(pi)");
-	assert(expression_eval(), sin(M_PI));
-	
-	return TRUE;
+	expression_initialize ("sin (pi)");
+	cpg_assert_tol (expression_eval (), sin (M_PI));
 }
 
-static gboolean
-test_function_varargs()
+static void
+test_function_varargs ()
 {
-	expression_initialize("max(0, 2 * pi)");
-	assert(expression_eval(), 2 * M_PI);
-	
-	return TRUE;
+	expression_initialize ("max (0, 2 * pi)");
+	cpg_assert_tol (expression_eval (), 2 * M_PI);
 }
 
-static gboolean
-test_complex()
+static void
+test_complex ()
 {
-	CpgObject *obj = cpg_object_new(NULL);
+	CpgObject *obj = cpg_object_new (NULL);
 	CpgProperty *prop;
-	
-	prop = cpg_object_add_property(obj, "x", "1", 0);
-	
-	cpg_expression_compile(cpg_property_get_value_expression(prop), NULL, NULL);
-	
-	prop = cpg_object_add_property(obj, "phase", "2", 0);
-	cpg_expression_compile(cpg_property_get_value_expression(prop), NULL, NULL);
-	
-	prop = cpg_object_add_property(obj, "y", "3", 0);
-	cpg_expression_compile(cpg_property_get_value_expression(prop), NULL, NULL);
-	
-	cpg_object_reset(obj);
 
-	expression_initialize_context("x * sin(phase) + 2 * y * PI", obj);
-	assert(expression_eval(), 1 * sin(2) + 2 * 3 * M_PI);
-	
-	g_object_unref(obj);
-	return TRUE;
+	prop = cpg_property_new ("x", "1", 0);
+	cpg_object_add_property (obj, prop, NULL);
+
+	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
+
+	prop = cpg_property_new ("phase", "2", 0);
+	cpg_object_add_property (obj, prop, NULL);
+	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
+
+	prop = cpg_property_new ("y", "3", 0);
+	cpg_object_add_property (obj, prop, NULL);
+	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
+
+	cpg_object_reset (obj);
+
+	expression_initialize_context ("x * sin (phase) + 2 * y * PI", obj);
+	cpg_assert_tol (expression_eval (), 1 * sin (2) + 2 * 3 * M_PI);
+
+	g_object_unref (obj);
 }
 
-static gboolean
-test_scientific_notation()
+static void
+test_scientific_notation ()
 {
-	expression_initialize("1e-2");
-	assert(expression_eval(), 1e-2);
-	
-	expression_initialize("1e+20");
-	assert(expression_eval(), 1e+20);
-	
-	expression_initialize("1.25e-5");
-	assert(expression_eval(), 1.25e-5);
-	
-	expression_initialize("10.2523e+4");
-	assert(expression_eval(), 10.2523e+4);
-	
-	return TRUE;
+	expression_initialize ("1e-2");
+	cpg_assert_tol (expression_eval (), 1e-2);
+
+	expression_initialize ("1e+20");
+	cpg_assert_tol (expression_eval (), 1e+20);
+
+	expression_initialize ("1.25e-5");
+	cpg_assert_tol (expression_eval (), 1.25e-5);
+
+	expression_initialize ("10.2523e+4");
+	cpg_assert_tol (expression_eval (), 10.2523e+4);
 }
 
-static gboolean
-test_random()
+static void
+test_random ()
 {
 	double ret;
 	double val;
-	
-	srand(1);
-	expression_initialize("rand()");
-	ret = expression_eval();
-	
-	srand(1);
-	val = RAND(0, 1);
-	assert(ret, val);
-	
-	srand(4);
-	expression_initialize("rand(-1, 1)");
-	ret = expression_eval();
-	
-	srand(4);
-	val = RAND(-1, 1);
-	assert(ret, val);
-	
-	return TRUE;
+
+	srand (1);
+	expression_initialize ("rand ()");
+	ret = expression_eval ();
+
+	srand (1);
+	val = RAND (0, 1);
+	cpg_assert_tol (ret, val);
+
+	srand (4);
+	expression_initialize ("rand (-1, 1)");
+	ret = expression_eval ();
+
+	srand (4);
+	val = RAND (-1, 1);
+	cpg_assert_tol (ret, val);
 }
 
-static gboolean
+static void
 test_globals ()
 {
 	CpgNetwork *network = cpg_network_new ();
-	CpgObject *globals = cpg_network_get_globals (network);
-	CpgProperty *x = cpg_object_add_property (globals, "x", "0", FALSE);
+
+	CpgProperty *x = cpg_property_new ("x", "0", FALSE);
+	cpg_object_add_property (CPG_OBJECT (network), x, NULL);
 
 	cpg_network_step (network, 0.001);
 
 	cpg_property_set_value (x, 1);
-	assert(1, cpg_property_get_value (x));
+	cpg_assert_tol (1, cpg_property_get_value (x));
 
 	cpg_network_step (network, 0.001);
-	assert(1, cpg_property_get_value (x));
-
-	return TRUE;
+	cpg_assert_tol (1, cpg_property_get_value (x));
 }
 
-typedef gboolean (*TestFunction)();
-
-typedef struct
+int
+main (int   argc,
+      char *argv[])
 {
-	TestFunction function;
-	gchar const *name;
-} Test;
+	g_type_init ();
+	g_test_init (&argc, &argv, NULL);
 
-static Test functions[] = {
-	{test_operator_plus, "test_operator_plus"},
-	{test_operator_minus, "test_operator_minus"},
-	{test_operator_minus_unary, "test_operator_minus_unary"},
-	{test_priority, "test_priority"},
-	{test_function_sin, "test_function_sin"},
-	{test_complex, "test_complex"},
-	{test_function_varargs, "test_function_varargs"},
-	{test_scientific_notation, "test_scientific_notation"},
-	{test_random, "test_random"},
-	{test_globals, "test_globals"}
-};
+	g_type_init ();
 
-gint 
-main (gint argc, gchar *argv[])
-{
-	guint i;
-	
-	g_type_init();
-	for (i = 0; i < sizeof(functions) / sizeof(Test); ++i)
-	{
-		if (functions[i].function())
-			printf("Test `\e[;1m%s\e[0m' \e[32msuccessful\e[0m...\n", functions[i].name);
-	}
-	
+	g_test_add_func ("/expression/operator_plus", test_operator_plus);
+	g_test_add_func ("/expression/operator_minus", test_operator_minus);
+	g_test_add_func ("/expression/operator_minus_unary", test_operator_minus_unary);
+	g_test_add_func ("/expression/priority", test_priority);
+	g_test_add_func ("/expression/function_sin", test_function_sin);
+	g_test_add_func ("/expression/complex", test_complex);
+	g_test_add_func ("/expression/function_varargs", test_function_varargs);
+	g_test_add_func ("/expression/scientific_notation", test_scientific_notation);
+	g_test_add_func ("/expression/random", test_random);
+	g_test_add_func ("/expression/globals", test_globals);
+
+	g_test_run ();
+
 	return 0;
 }

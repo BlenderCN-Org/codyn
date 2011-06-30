@@ -82,6 +82,9 @@ typedef enum
 	CPG_TOKEN_OPERATOR_TYPE_GROUP_START,
 	CPG_TOKEN_OPERATOR_TYPE_GROUP_END,
 
+	CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START,
+	CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END,
+
 	CPG_TOKEN_OPERATOR_TYPE_COMMA,
 	CPG_TOKEN_OPERATOR_TYPE_DOT
 } CpgTokenOperatorType;
@@ -112,10 +115,12 @@ typedef struct
 	gint left_assoc;
 } CpgTokenOperator;
 
-CpgToken *cpg_tokenizer_next(gchar const **buffer);
-CpgToken *cpg_tokenizer_peek(gchar const *buffer);
+CpgToken *cpg_tokenizer_next (const gchar **buffer);
+CpgToken *cpg_tokenizer_peek (const gchar *buffer);
 
-void cpg_token_free(CpgToken *token);
+gboolean cpg_tokenizer_validate_identifier (const gchar *identifier);
+
+void cpg_token_free (CpgToken *token);
 
 G_END_DECLS
 
