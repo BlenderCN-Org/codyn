@@ -1131,6 +1131,22 @@ find_attribute (GSList *attributes,
 	return NULL;
 }
 
+static GSList *
+copy_selections (GSList   *selections,
+                 gboolean  copy_defines)
+{
+	GSList *ret = NULL;
+
+	while (selections)
+	{
+		ret = g_slist_prepend (ret, cpg_selection_copy_defines (selections->data,
+		                                                        copy_defines));
+		selections = g_slist_next (selections);
+	}
+
+	return g_slist_reverse (ret);
+}
+
 static gboolean
 test_string_empty (gchar const *s)
 {
@@ -1149,22 +1165,6 @@ test_string_empty (gchar const *s)
 		/* Empty string */
 		return !*s;
 	}
-}
-
-static GSList *
-copy_selections (GSList   *selections,
-                 gboolean  copy_defines)
-{
-	GSList *ret = NULL;
-
-	while (selections)
-	{
-		ret = g_slist_prepend (ret, cpg_selection_copy_defines (selections->data,
-		                                                        copy_defines));
-		selections = g_slist_next (selections);
-	}
-
-	return g_slist_reverse (ret);
 }
 
 static GSList *
@@ -2847,7 +2847,10 @@ cpg_parser_context_define (CpgParserContext  *context,
 				s = cpg_embedded_string_expand (item->data,
 				                                context->priv->embedded);
 
-				if (s && *s)
+				/* Note that if we are not optional (in the case
+				   where ?= syntax is not used), we also consider
+				   a numeric 0 string to be empty */
+				if (s && *s && (optional || !test_string_empty (s)))
 				{
 					define = item->data;
 					break;
