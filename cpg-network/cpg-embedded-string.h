@@ -85,6 +85,8 @@ GSList            *cpg_embedded_string_expand_multiple  (CpgEmbeddedString      
 
 void               cpg_embedded_string_clear_cache      (CpgEmbeddedString         *s);
 
+gchar             *cpg_embedded_string_collapse         (gchar const * const       *s);
+
 G_END_DECLS
 
 #endif /* __CPG_EMBEDDED_STRING_H__ */

@@ -932,3 +932,63 @@ cpg_embedded_string_clear_cache (CpgEmbeddedString *s)
 	s->priv->cached = NULL;
 	s->priv->cached_context = NULL;
 }
+
+static gchar *
+escape_expand (gchar const *s)
+{
+	GString *ret;
+
+	ret = g_string_new ("");
+
+	while (*s)
+	{
+		if (*s == '{' || *s == '\\' || *s == ',' || *s == '}')
+		{
+			g_string_append_c (ret, '\\');
+		}
+
+		g_string_append_c (ret, *s);
+		++s;
+
+		g_message ("%s", ret->str);
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
+gchar *
+cpg_embedded_string_collapse (gchar const * const *s)
+{
+	GString *ret;
+	gboolean first;
+
+	g_return_val_if_fail (s != NULL, NULL);
+
+	ret = g_string_new ("{");
+	first = TRUE;
+
+	while (*s)
+	{
+		gchar *item;
+
+		item = escape_expand (*s);
+
+		if (!first)
+		{
+			g_string_append_c (ret, ',');
+		}
+		else
+		{
+			first = FALSE;
+		}
+
+		g_string_append (ret, item);
+		g_free(item);
+
+		++s;
+	}
+
+	g_string_append_c (ret, '}');
+
+	return g_string_free (ret, FALSE);
+}
