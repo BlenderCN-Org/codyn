@@ -1175,28 +1175,22 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 		new_child = cpg_group_get_child (group,
 		                                 cpg_object_get_id (child));
 
-		if (new_child)
+		if (!new_child)
 		{
-			if (!cpg_object_apply_template (new_child,
-			                                child,
-			                                error))
-			{
-				/* TODO: make atomic */
-				return FALSE;
-			}
-		}
-		else
-		{
-			new_child = cpg_object_new_from_template (child, error);
-
-			if (!new_child)
-			{
-				/* TODO: make atomic */
-				return FALSE;
-			}
+			new_child = g_object_new (G_TYPE_FROM_INSTANCE (child),
+			                          "id", cpg_object_get_id (child),
+			                          NULL);
 
 			cpg_group_add (group, new_child, NULL);
 			g_object_unref (new_child);
+		}
+
+		if (!cpg_object_apply_template (new_child,
+		                                child,
+		                                error))
+		{
+			/* TODO: make atomic */
+			return FALSE;
 		}
 
 		if (child == proxy)
