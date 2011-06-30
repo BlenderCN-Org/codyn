@@ -245,29 +245,6 @@ cpg_embedded_string_pop (CpgEmbeddedString *s)
 	return s;
 }
 
-static gchar *
-collect_expansion (CpgExpansion *expansion)
-{
-	GString *ret;
-	gint i;
-
-	ret = g_string_new ("{");
-
-	for (i = 0; i < cpg_expansion_num (expansion); ++i)
-	{
-		if (i != 0)
-		{
-			g_string_append_c (ret, ',');
-		}
-
-		g_string_append (ret, cpg_expansion_get (expansion, i));
-	}
-
-	g_string_append_c (ret, '}');
-
-	return g_string_free (ret, FALSE);
-}
-
 static gboolean
 count_chars (gchar const *s, gchar t, gint *num)
 {
@@ -296,7 +273,6 @@ resolve_indirection (CpgEmbeddedString  *em,
                      gchar const        *s)
 {
 	gboolean isnum = TRUE;
-	gboolean isall = FALSE;
 	gboolean iscount = FALSE;
 	gboolean isindex = FALSE;
 
@@ -319,7 +295,6 @@ resolve_indirection (CpgEmbeddedString  *em,
 				}
 				else
 				{
-					isall = (*ptr == '*');
 					iscount = (*ptr == '~');
 				}
 			}
@@ -351,7 +326,7 @@ resolve_indirection (CpgEmbeddedString  *em,
 		}
 	}
 
-	if (isnum || isall || iscount || isindex)
+	if (isnum || iscount || isindex)
 	{
 		CpgExpansion *ex;
 		gchar const *ret = NULL;
@@ -361,11 +336,7 @@ resolve_indirection (CpgEmbeddedString  *em,
 
 		if (!ex)
 		{
-			if (isall)
-			{
-				ret = "{}";
-			}
-			else if (iscount)
+			if (iscount)
 			{
 				ret = "0";
 			}
@@ -384,10 +355,6 @@ resolve_indirection (CpgEmbeddedString  *em,
 			else if (iscount)
 			{
 				return g_strdup_printf ("%d", cpg_expansion_num (ex));
-			}
-			else if (isall)
-			{
-				return collect_expansion (ex);
 			}
 			else if (isindex)
 			{
