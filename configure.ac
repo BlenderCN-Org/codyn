@@ -132,7 +132,7 @@ if test "x$enable_gedit" != "xno"; then
 	GEDIT_MAJOR_VERSION="$enable_gedit"
 	enable_gedit="yes"
 
-	if "x$GEDIT_MAJOR_VERSION" = "x2"; then
+	if test "x$GEDIT_MAJOR_VERSION" = "x2"; then
 		GEDIT_PLUGIN_DIR="$libdir/gedit-2.0/plugins"
 	else
 		GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
