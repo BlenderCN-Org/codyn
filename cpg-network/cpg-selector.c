@@ -2014,7 +2014,7 @@ cpg_selector_escape_identifier (gchar const *name)
 		return g_strdup (name);
 	}
 
-	ret = g_string_new_len ("\"", strlen (name));
+	ret = g_string_new ("\"");
 
 	while (*name)
 	{
