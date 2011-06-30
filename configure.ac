@@ -68,6 +68,10 @@ AC_ARG_ENABLE([doc],
 	[enable_doc=$enableval],
 	[enable_doc=yes])
 
+if test "x$enable_doc" = "xyes"; then
+	AC_PATH_PROG([XSLTPROC], [xsltproc])
+fi
+
 AM_CONDITIONAL([ENABLE_DOC],[test "x$enable_doc" = "xyes"])
 
 # Introspection
@@ -158,6 +162,7 @@ data/library/Makefile
 data/library/oscillators/Makefile
 docs/Makefile
 docs/reference/Makefile
+docs/man/Makefile
 m4/Makefile
 tests/Makefile
 win32/Makefile
