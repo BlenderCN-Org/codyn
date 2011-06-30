@@ -148,7 +148,7 @@ update_action_property (CpgLink       *link,
 
 	if (link->priv->to)
 	{
-		prop =  cpg_object_get_property (link->priv->to, target);
+		prop = cpg_object_get_property (link->priv->to, target);
 	}
 
 	_cpg_link_action_set_target_property (action, prop);
