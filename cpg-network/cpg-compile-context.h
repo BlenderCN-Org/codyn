@@ -82,7 +82,5 @@ const GSList *cpg_compile_context_get_functions (CpgCompileContext *context);
 
 G_END_DECLS
 
-G_END_DECLS
-
 #endif /* __CPG_COMPILE_CONTEXT_H__ */
 
