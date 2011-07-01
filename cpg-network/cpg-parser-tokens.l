@@ -193,6 +193,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <*>"links"			return T_KEY_LINKS;
 <*>"siblings"			return T_KEY_SIBLINGS;
 <*>"count"			return T_KEY_COUNT;
+<*>"name"			return T_KEY_NAME;
 <*>"self"			return T_KEY_SELF;
 <*>"groups"			return T_KEY_GROUPS;
 <*>"objects"			return T_KEY_OBJECTS;
