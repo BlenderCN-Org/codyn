@@ -1518,7 +1518,7 @@ selector_select_pseudo (CpgSelector        *self,
 
 					for (item = filtered; item; item = g_slist_next (item))
 					{
-						if (cpg_selection_get_object (obj) == obj)
+						if (cpg_selection_get_object (item->data) == obj)
 						{
 							break;
 						}
