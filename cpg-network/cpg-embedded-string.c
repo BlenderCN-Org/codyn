@@ -529,7 +529,7 @@ parse_expansion_range (gchar const *s,
 
 	if (rangereg == NULL)
 	{
-		rangereg = g_regex_new ("([0-9]+)-([0-9]+)",
+		rangereg = g_regex_new ("([0-9]+)-([0-9]+)$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);

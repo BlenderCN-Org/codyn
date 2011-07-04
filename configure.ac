@@ -1,4 +1,4 @@
-AC_INIT(cpg-network, 2.0)
+AC_INIT(cpg-network, 2.1)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([-Wno-portability])
@@ -67,6 +67,10 @@ AC_ARG_ENABLE([doc],
 	AS_HELP_STRING([--disable-doc],[Enable building webots bindings (default: enabled)]),
 	[enable_doc=$enableval],
 	[enable_doc=yes])
+
+if test "x$enable_doc" = "xyes"; then
+	AC_PATH_PROG([XSLTPROC], [xsltproc])
+fi
 
 AM_CONDITIONAL([ENABLE_DOC],[test "x$enable_doc" = "xyes"])
 
@@ -158,6 +162,7 @@ data/library/Makefile
 data/library/oscillators/Makefile
 docs/Makefile
 docs/reference/Makefile
+docs/man/Makefile
 m4/Makefile
 tests/Makefile
 win32/Makefile

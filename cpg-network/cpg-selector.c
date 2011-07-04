@@ -114,7 +114,8 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"from",
 	"to",
 	"self",
-	"debug"
+	"debug",
+	"name"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -972,6 +973,42 @@ expand_objs_reverse (CpgSelection *selection,
 }
 
 static GSList *
+annotate_names (GSList *selection)
+{
+	GSList *ret = NULL;
+
+	while (selection)
+	{
+		CpgExpansion *ex;
+		gchar const *s;
+		CpgSelection *sel;
+		GSList *expansions;
+		CpgExpansion *expansion;
+
+		s = name_from_selection (selection->data);
+		ex = cpg_expansion_new_one (s);
+
+		expansions = g_slist_copy (cpg_selection_get_expansions (selection->data));
+		expansion = cpg_expansion_copy (ex);
+		expansions = g_slist_append (expansions, expansion);
+
+		sel = cpg_selection_new (cpg_selection_get_object (selection->data),
+		                         expansions,
+		                         cpg_selection_get_defines (selection->data));
+
+		g_slist_free (expansions);
+		g_object_unref (ex);
+		g_object_unref (expansion);
+
+		ret = g_slist_prepend (ret, sel);
+
+		selection = g_slist_next (selection);
+	}
+
+	return g_slist_reverse (ret);
+}
+
+static GSList *
 count_selection (GSList *selection)
 {
 	GSList *ret = NULL;
@@ -1400,6 +1437,9 @@ selector_select_pseudo (CpgSelector        *self,
 		case CPG_SELECTOR_PSEUDO_TYPE_COUNT:
 			return count_selection (parent);
 		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_NAME:
+			return annotate_names (parent);
+		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_SELF:
 			if (parent->data)
 			{
@@ -1518,7 +1558,7 @@ selector_select_pseudo (CpgSelector        *self,
 
 					for (item = filtered; item; item = g_slist_next (item))
 					{
-						if (cpg_selection_get_object (obj) == obj)
+						if (cpg_selection_get_object (item->data) == obj)
 						{
 							break;
 						}

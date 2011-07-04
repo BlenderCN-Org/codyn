@@ -1898,6 +1898,8 @@ create_links_single (CpgParserContext          *context,
 				                                 context->priv->embedded);
 
 				expansion = cpg_expansion_new_one (ex);
+				cpg_expansion_set_index (expansion, 0, widx);
+
 				cpg_embedded_context_add_expansion (context->priv->embedded,
 				                                    expansion);
 				g_object_unref (expansion);

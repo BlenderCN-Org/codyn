@@ -643,7 +643,7 @@ parse_network (gchar const *args[], gint argc)
 	CpgParserContext *context;
 	GFile *file;
 	CpgNetwork *network;
-	gboolean ret;
+	gboolean ret = TRUE;
 	GError *error = NULL;
 	CpgExpansion *expansion;
 	CpgEmbeddedContext *embedded;

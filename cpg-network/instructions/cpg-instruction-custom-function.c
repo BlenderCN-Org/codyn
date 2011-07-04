@@ -54,7 +54,7 @@ cpg_instruction_custom_function_execute (CpgInstruction *instruction,
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CpgInstructionCustomFunction *)instruction;
-	cpg_function_execute (self->priv->function, stack);
+	cpg_function_execute (self->priv->function, self->priv->arguments, stack);
 }
 
 static gint
@@ -64,14 +64,7 @@ cpg_instruction_custom_function_get_stack_count (CpgInstruction *instruction)
 
 	self = CPG_INSTRUCTION_CUSTOM_FUNCTION (instruction);
 
-	gint fromstack = self->priv->arguments;
-
-	if (cpg_function_get_n_optional (self->priv->function))
-	{
-		++fromstack;
-	}
-
-	return -fromstack + 1;
+	return -self->priv->arguments + 1;
 }
 
 static gboolean

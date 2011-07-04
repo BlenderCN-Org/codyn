@@ -215,27 +215,19 @@ cpg_function_evaluate_impl (CpgFunction *function)
 }
 
 static void
-cpg_function_execute_impl (CpgFunction *function, CpgStack *stack)
+cpg_function_execute_impl (CpgFunction *function,
+                           guint        nargs,
+                           CpgStack    *stack)
 {
 	GList *item;
-	guint num_provided;
-
-	/* Set arguments as properties in the object */
-	if (function->priv->n_optional > 0)
-	{
-		num_provided = (guint)cpg_stack_pop (stack);
-	}
-	else
-	{
-		num_provided = function->priv->n_arguments;
-	}
-
 	guint i;
-	GList *from = g_list_nth (function->priv->arguments, num_provided - 1);
+	GList *from;
+
+	from = g_list_nth (function->priv->arguments, nargs - 1);
 	item = from;
 
 	/* Set provided arguments */
-	for (i = 0; i < num_provided; ++i)
+	for (i = 0; i < nargs; ++i)
 	{
 		CpgFunctionArgument *argument = item->data;
 		CpgProperty *property = _cpg_function_argument_get_property (argument);
@@ -767,14 +759,18 @@ cpg_function_get_arguments (CpgFunction *function)
  *
  **/
 void
-cpg_function_execute (CpgFunction *function, CpgStack *stack)
+cpg_function_execute (CpgFunction *function,
+                      guint        nargs,
+                      CpgStack    *stack)
 {
 	g_return_if_fail (CPG_IS_FUNCTION (function));
 	g_return_if_fail (stack != NULL);
 
 	if (CPG_FUNCTION_GET_CLASS (function)->execute)
 	{
-		CPG_FUNCTION_GET_CLASS (function)->execute (function, stack);
+		CPG_FUNCTION_GET_CLASS (function)->execute (function,
+		                                            nargs,
+		                                            stack);
 	}
 }
 
