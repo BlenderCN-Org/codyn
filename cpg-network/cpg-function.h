@@ -84,6 +84,7 @@ struct _CpgFunctionClass
 	/*< public >*/
 	gdouble (*evaluate)           (CpgFunction         *function);
 	void    (*execute)            (CpgFunction         *function,
+	                               guint                nargs,
 	                               CpgStack            *stack);
 
 	/* signals */
@@ -117,6 +118,7 @@ const GList         *cpg_function_get_arguments               (CpgFunction      
 guint                cpg_function_get_n_optional              (CpgFunction          *function);
 guint                cpg_function_get_n_arguments             (CpgFunction          *function);
 void                 cpg_function_execute                     (CpgFunction          *function,
+                                                               guint                 nargs,
                                                                CpgStack             *stack);
 void                 cpg_function_set_expression              (CpgFunction          *function,
                                                                CpgExpression        *expression);
