@@ -2068,5 +2068,7 @@ cpg_selector_escape_identifier (gchar const *name)
 		++name;
 	}
 
+	g_string_append_c (ret, '"');
+
 	return g_string_free (ret, FALSE);
 }
