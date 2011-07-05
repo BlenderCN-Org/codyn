@@ -185,7 +185,7 @@ cpg_object_annotatable_get_title (CpgAnnotatable *annotatable)
 
 	obj = CPG_OBJECT (annotatable);
 
-	return cpg_object_get_full_id (obj);
+	return g_strdup (cpg_object_get_id (obj));
 }
 
 static void
