@@ -95,10 +95,17 @@ void cpg_parser_lex_destroy (gpointer scanner);
 void cpg_parser_lex_init_extra (gpointer context, gpointer *scanner);
 int cpg_parser_parse (gpointer context);
 
+#define CURRENT_INPUT(ctx) ((InputItem *)((ctx)->priv->inputs->data))
+
 typedef struct
 {
 	GFile *file;
 	GInputStream *stream;
+	gint lineno;
+	gint cstart;
+	gint cend;
+	gchar *line;
+	gchar *token;
 } InputItem;
 
 typedef struct
@@ -113,15 +120,8 @@ struct _CpgParserContextPrivate
 	gpointer scanner;
 	gint start_token;
 
-	gint lineno;
-	gint cstart;
-	gint cend;
-
 	gint previous_annotation;
 	GString *annotation;
-
-	gchar *line;
-	gchar *token;
 
 	/* Stack of Context */
 	GSList *context_stack;
@@ -180,6 +180,9 @@ input_item_free (InputItem *self)
 		g_input_stream_close (self->stream, NULL, NULL);
 		g_object_unref (self->stream);
 	}
+
+	g_free (self->line);
+	g_free (self->token);
 
 	g_slice_free (InputItem, self);
 }
@@ -261,9 +264,6 @@ cpg_parser_context_finalize (GObject *object)
 
 	g_slist_foreach (self->priv->inputs, (GFunc)input_item_free, NULL);
 	g_slist_free (self->priv->inputs);
-
-	g_free (self->priv->line);
-	g_free (self->priv->token);
 
 	cpg_parser_lex_destroy (self->priv->scanner);
 	g_string_free (self->priv->annotation, TRUE);
@@ -965,11 +965,11 @@ cpg_parser_context_set_error (CpgParserContext *context,
 	parser_failed (context,
 	               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 	               "Unexpected token `%s' at %s%s%d.%d",
-	               context->priv->token,
+	               CURRENT_INPUT (context)->token,
 	               fname ? fname : "",
 	               fname ? ":" : "",
-	               context->priv->lineno,
-	               context->priv->cstart);
+	               CURRENT_INPUT (context)->lineno,
+	               CURRENT_INPUT (context)->cstart);
 
 	g_free (fname);
 }
@@ -2627,8 +2627,8 @@ cpg_parser_context_push_selector_identifier (CpgParserContext  *context,
 	cpg_selector_append (ensure_selector (context), identifier);
 	g_object_unref (identifier);
 
-	context->priv->last_selector_line_end = context->priv->lineno;
-	context->priv->last_selector_cend = context->priv->cend;
+	context->priv->last_selector_line_end = CURRENT_INPUT (context)->lineno;
+	context->priv->last_selector_cend = CURRENT_INPUT (context)->cend;
 
 	g_signal_emit (context,
 	               signals[SELECTOR_ITEM_PUSHED],
@@ -2646,8 +2646,8 @@ cpg_parser_context_push_selector_regex (CpgParserContext  *context,
 	cpg_selector_append_regex (ensure_selector (context), regex);
 	g_object_unref (regex);
 
-	context->priv->last_selector_line_end = context->priv->lineno;
-	context->priv->last_selector_cend = context->priv->cend;
+	context->priv->last_selector_line_end = CURRENT_INPUT (context)->lineno;
+	context->priv->last_selector_cend = CURRENT_INPUT (context)->cend;
 
 	g_signal_emit (context,
 	               signals[SELECTOR_ITEM_PUSHED],
@@ -2669,8 +2669,8 @@ cpg_parser_context_push_selector_pseudo (CpgParserContext      *context,
 	g_slist_foreach (argument, (GFunc)g_object_unref, NULL);
 	g_slist_free (argument);
 
-	context->priv->last_selector_line_end = context->priv->lineno;
-	context->priv->last_selector_cend = context->priv->cend;
+	context->priv->last_selector_line_end = CURRENT_INPUT (context)->lineno;
+	context->priv->last_selector_cend = CURRENT_INPUT (context)->cend;
 
 	g_signal_emit (context,
 	               signals[SELECTOR_ITEM_PUSHED],
@@ -2778,12 +2778,15 @@ cpg_parser_context_set_line (CpgParserContext *context,
                              gchar const      *line,
                              gint              lineno)
 {
+	InputItem *input;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	g_free (context->priv->line);
+	input = CURRENT_INPUT (context);
+	g_free (input->line);
 
-	context->priv->line = g_strdup (line);
-	context->priv->lineno = lineno;
+	input->line = g_strdup (line);
+	input->lineno = lineno;
 }
 
 void
@@ -2791,10 +2794,14 @@ cpg_parser_context_set_column (CpgParserContext *context,
                                gint              start,
                                gint              end)
 {
+	InputItem *input;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	context->priv->cstart = start;
-	context->priv->cend = end;
+	input = CURRENT_INPUT (context);
+
+	input->cstart = start;
+	input->cend = end;
 }
 
 gchar const *
@@ -2805,10 +2812,10 @@ cpg_parser_context_get_line (CpgParserContext *context,
 
 	if (lineno)
 	{
-		*lineno = context->priv->lineno;
+		*lineno = CURRENT_INPUT (context)->lineno;
 	}
 
-	return context->priv->line;
+	return CURRENT_INPUT (context)->line;
 }
 
 void
@@ -2820,12 +2827,12 @@ cpg_parser_context_get_column (CpgParserContext *context,
 
 	if (start)
 	{
-		*start = context->priv->cstart;
+		*start = CURRENT_INPUT (context)->cstart;
 	}
 
 	if (end)
 	{
-		*end = context->priv->cend;
+		*end = CURRENT_INPUT (context)->cend;
 	}
 }
 
@@ -2833,10 +2840,14 @@ void
 cpg_parser_context_set_token (CpgParserContext *context,
                               gchar const      *token)
 {
+	InputItem *input;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	g_free (context->priv->token);
-	context->priv->token = g_strdup (token);
+	input = CURRENT_INPUT (context);
+
+	g_free (input->token);
+	input->token = g_strdup (token);
 }
 
 gchar const *
@@ -2844,7 +2855,7 @@ cpg_parser_context_get_token (CpgParserContext *context)
 {
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
 
-	return context->priv->token;
+	return CURRENT_INPUT (context)->token;
 }
 
 void
@@ -3199,7 +3210,7 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (annotation != NULL);
 
-	if (context->priv->previous_annotation != context->priv->lineno - 1)
+	if (context->priv->previous_annotation != CURRENT_INPUT (context)->lineno - 1)
 	{
 		gchar const *expanded;
 
@@ -3218,7 +3229,7 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 		g_string_append_c (context->priv->annotation, '\n');
 	}
 
-	context->priv->previous_annotation = context->priv->lineno;
+	context->priv->previous_annotation = CURRENT_INPUT (context)->lineno;
 	g_object_unref (annotation);
 }
 
@@ -3679,7 +3690,7 @@ debug_selector (CpgParserContext *context,
 		}
 
 		g_printerr ("[debug] (%d): {%s} => %s\n",
-		            context->priv->lineno,
+		            CURRENT_INPUT (context)->lineno,
 		            fullid,
 		            msg);
 
@@ -3745,7 +3756,9 @@ cpg_parser_context_debug_string (CpgParserContext  *context,
 		                                    item->data);
 
 		embedded_string_expand (ret, s, context);
-		g_printerr ("[debug] (%d): %s\n", context->priv->lineno, ret);
+		g_printerr ("[debug] (%d): %s\n",
+		            CURRENT_INPUT (context)->lineno,
+		            ret);
 
 		cpg_embedded_context_restore (context->priv->embedded);
 	}
@@ -4105,8 +4118,8 @@ cpg_parser_context_begin_selector_item (CpgParserContext *context)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	context->priv->last_selector_line_start = context->priv->lineno;
-	context->priv->last_selector_cstart = context->priv->cstart;
+	context->priv->last_selector_line_start = CURRENT_INPUT (context)->lineno;
+	context->priv->last_selector_cstart = CURRENT_INPUT (context)->cstart;
 }
 
 void

@@ -148,6 +148,14 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					{
 						yyterminate ();
 					}
+					else
+					{
+						cpg_parser_context_get_column (yyextra,
+						                               NULL,
+						                               &yyccolumn);
+
+						++yyccolumn;
+					}
 				}
 
 "state"				return T_KEY_STATE;
