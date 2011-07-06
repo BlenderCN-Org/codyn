@@ -60,6 +60,7 @@ typedef struct
 typedef struct
 {
 	CpgParserContext *parser;
+	GFile *file;
 
 	GSList *context_stack;
 	GSList *contexts;
@@ -210,13 +211,39 @@ remove_double_dash (gchar const **args, gint *argc)
 	}
 }
 
+static gboolean
+same_file (Info *info)
+{
+	GFile *ctxfile;
+
+	ctxfile = cpg_parser_context_get_file (info->parser);
+
+	if (!ctxfile)
+	{
+		return TRUE;
+	}
+
+	if (!info->file)
+	{
+		return FALSE;
+	}
+
+	return g_file_equal (ctxfile, info->file);
+}
+
 static void
 on_context_pushed (CpgParserContext *context,
                    Info             *info)
 {
 	Context *ctx;
 
+	if (!same_file (info))
+	{
+		return;
+	}
+
 	ctx = context_new (context);
+
 	info->contexts = g_slist_prepend (info->contexts, ctx);
 	info->context_stack = g_slist_prepend (info->context_stack, ctx);
 }
@@ -226,6 +253,11 @@ on_context_popped (CpgParserContext *context,
                    Info             *info)
 {
 	Context *ctx;
+
+	if (!same_file (info) || !info->context_stack)
+	{
+		return;
+	}
 
 	ctx = info->context_stack->data;
 
@@ -351,6 +383,11 @@ info_free (Info *info)
 	g_slist_free (info->contexts);
 
 	g_slist_free (info->context_stack);
+
+	if (info->file)
+	{
+		g_object_unref (info->file);
+	}
 }
 
 #define write_stream_format(stream, format, ...) do {				\
@@ -683,7 +720,7 @@ parse_network (gchar const *args[], gint argc)
 	if (!fromstdin)
 	{
 		cpg_parser_context_push_input (context, file, NULL);
-		g_object_unref (file);
+		info.file = file;
 	}
 	else
 	{
