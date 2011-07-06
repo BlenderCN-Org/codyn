@@ -3185,6 +3185,15 @@ cpg_parser_context_pop_input (CpgParserContext *context)
 
 	if (context->priv->inputs)
 	{
+		if (!context->priv->inputs->next)
+		{
+			/* Pop all the scopes */
+			while (context->priv->context_stack)
+			{
+				cpg_parser_context_pop (context);
+			}
+		}
+
 		input_item_free (context->priv->inputs->data);
 
 		context->priv->inputs = g_slist_delete_link (context->priv->inputs,
