@@ -524,13 +524,14 @@ cpg_embedded_context_get_expansion (CpgEmbeddedContext *context,
 }
 
 gchar *
-cpg_embedded_context_calculate (CpgEmbeddedContext *context,
-                                gchar const        *equation)
+cpg_embedded_context_calculate (CpgEmbeddedContext  *context,
+                                gchar const         *equation,
+                                GError             **error)
 {
 	CpgExpression *expr;
 	CpgCompileContext *ctx;
-	GError *error = NULL;
-	gchar *ret;
+	gchar *ret = NULL;
+	GError *err = NULL;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 	g_return_val_if_fail (equation != NULL, NULL);
@@ -538,7 +539,7 @@ cpg_embedded_context_calculate (CpgEmbeddedContext *context,
 	ctx = cpg_compile_context_new ();
 	expr = cpg_expression_new (equation);
 
-	if (cpg_expression_compile (expr, ctx, &error))
+	if (cpg_expression_compile (expr, ctx, &err))
 	{
 		gdouble val;
 		gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
@@ -550,13 +551,14 @@ cpg_embedded_context_calculate (CpgEmbeddedContext *context,
 	}
 	else
 	{
-		g_warning ("Could not compile expression `%s': %s",
-		           equation,
-		           error->message);
+		if (!error)
+		{
+			g_warning ("Could not compile expression `%s': %s",
+			           equation,
+			           err->message);
+		}
 
-		g_error_free (error);
-
-		ret = g_strdup ("");
+		g_propagate_error (error, err);
 	}
 
 	g_object_unref (expr);

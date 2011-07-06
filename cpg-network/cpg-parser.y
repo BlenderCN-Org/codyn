@@ -1172,7 +1172,7 @@ create_function_argument (CpgEmbeddedString *name,
                           gboolean     is_optional,
                           gdouble      default_value)
 {
-	return g_object_ref_sink (cpg_function_argument_new (cpg_embedded_string_expand (name, NULL),
+	return g_object_ref_sink (cpg_function_argument_new (cpg_embedded_string_expand (name, NULL, NULL),
 	                                                     is_optional,
 	                                                     default_value));
 }

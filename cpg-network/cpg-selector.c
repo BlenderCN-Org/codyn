@@ -178,7 +178,7 @@ selector_identifier_new (CpgSelector       *sel,
 
 	selector = selector_new (sel, SELECTOR_TYPE_IDENTIFIER);
 
-	r = cpg_embedded_string_expand (identifier, NULL);
+	r = cpg_embedded_string_expand (identifier, NULL, NULL);
 
 	selector->identifier.identifier = g_object_ref (identifier);
 	selector->identifier.partial = partial;
@@ -198,7 +198,7 @@ selector_regex_new (CpgSelector       *sel,
 
 	selector = selector_new (sel, SELECTOR_TYPE_REGEX);
 
-	r = cpg_embedded_string_expand (regex, NULL);
+	r = cpg_embedded_string_expand (regex, NULL, NULL);
 
 	selector->regex.regex = g_object_ref (regex);
 	selector->regex.partial = partial;
@@ -222,7 +222,7 @@ parse_nth (GSList             *arguments,
 		return ret;
 	}
 
-	first = cpg_embedded_string_expand (arguments->data, context);
+	first = cpg_embedded_string_expand (arguments->data, context, NULL);
 
 	if (g_strcmp0 (first, "odd") == 0)
 	{
@@ -242,7 +242,9 @@ parse_nth (GSList             *arguments,
 	{
 		gchar const *second;
 
-		second = cpg_embedded_string_expand (arguments->next->data, context);
+		second = cpg_embedded_string_expand (arguments->next->data,
+		                                     context,
+		                                     NULL);
 
 		ret.b = (gint)g_ascii_strtoll (first, NULL, 10);
 		ret.max = (gint)g_ascii_strtoll (second, NULL, 10);
@@ -256,12 +258,12 @@ parse_nth (GSList             *arguments,
 
 	if (maxpos)
 	{
-		ret.max = (gint)g_ascii_strtoll (cpg_embedded_string_expand (maxpos->data, context), NULL, 10);
+		ret.max = (gint)g_ascii_strtoll (cpg_embedded_string_expand (maxpos->data, context, NULL), NULL, 10);
 	}
 
 	if (apos)
 	{
-		ret.a = (gint)g_ascii_strtoll (cpg_embedded_string_expand (apos->data, context), NULL, 10);
+		ret.a = (gint)g_ascii_strtoll (cpg_embedded_string_expand (apos->data, context, NULL), NULL, 10);
 	}
 
 	return ret;
@@ -303,7 +305,7 @@ selector_pseudo_new (CpgSelector           *sel,
 		{
 			g_string_append_printf (args,
 			                        "\"%s\"",
-			                        cpg_embedded_string_expand (arguments->data, NULL));
+			                        cpg_embedded_string_expand (arguments->data, NULL, NULL));
 		}
 		else if (CPG_IS_SELECTOR (arguments->data))
 		{
@@ -690,7 +692,8 @@ selector_select_identifier (CpgSelector        *self,
 	gchar const *name;
 
 	exps = cpg_embedded_string_expand_multiple (selector->identifier.identifier,
-	                                            context);
+	                                            context,
+	                                            NULL);
 
 	name = name_from_selection (parent);
 
@@ -771,7 +774,7 @@ regex_create (Selector            *selector,
 	gchar *r;
 	GRegex *ret;
 
-	s = cpg_embedded_string_expand (selector->regex.regex, context);
+	s = cpg_embedded_string_expand (selector->regex.regex, context, NULL);
 
 	/* Manually anchor it if needed */
 	if (!selector->regex.partial)
@@ -1274,7 +1277,7 @@ debug_selections (CpgSelector        *self,
 					g_printerr (", ");
 				}
 
-				g_printerr ("%s", cpg_embedded_string_expand (item->data, context));
+				g_printerr ("%s", cpg_embedded_string_expand (item->data, context, NULL));
 			}
 
 			cpg_embedded_context_restore (context);

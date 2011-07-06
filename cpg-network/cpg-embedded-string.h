@@ -78,10 +78,12 @@ void               cpg_embedded_string_add_text         (CpgEmbeddedString      
                                                          gchar const               *text);
 
 gchar const       *cpg_embedded_string_expand           (CpgEmbeddedString         *s,
-                                                         CpgEmbeddedContext        *ctx);
+                                                         CpgEmbeddedContext        *ctx,
+                                                         GError                   **error);
 
 GSList            *cpg_embedded_string_expand_multiple  (CpgEmbeddedString         *s,
-                                                         CpgEmbeddedContext        *ctx);
+                                                         CpgEmbeddedContext        *ctx,
+                                                         GError                   **error);
 
 void               cpg_embedded_string_clear_cache      (CpgEmbeddedString         *s);
 

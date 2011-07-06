@@ -35,6 +35,62 @@
 
 #define CPG_PARSER_CONTEXT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PARSER_CONTEXT, CpgParserContextPrivate))
 
+#define embedded_string_expand(ret,s,parser)					\
+do										\
+{										\
+	GError *__err = NULL;							\
+	ret = cpg_embedded_string_expand (s, parser->priv->embedded, &__err);	\
+										\
+	if (!ret)								\
+	{									\
+		parser_failed_error (parser, __err);				\
+		return;								\
+	}									\
+}										\
+while (0);
+
+#define embedded_string_expand_val(ret,s,parser,retval)				\
+do										\
+{										\
+	GError *__err = NULL;							\
+	ret = cpg_embedded_string_expand (s, parser->priv->embedded, &__err);	\
+										\
+	if (!ret)								\
+	{									\
+		parser_failed_error (parser, __err);				\
+		return retval;							\
+	}									\
+}										\
+while (0);
+
+#define embedded_string_expand_multiple(ret,s,parser)				\
+do										\
+{										\
+	GError *__err = NULL;							\
+	ret = cpg_embedded_string_expand_multiple (s, parser->priv->embedded, &__err);	\
+										\
+	if (!ret && __err)							\
+	{									\
+		parser_failed_error (parser, __err);				\
+		return;								\
+	}									\
+}										\
+while (0);
+
+#define embedded_string_expand_multiple_val(ret,s,parser,retval)		\
+do										\
+{										\
+	GError *__err = NULL;							\
+	ret = cpg_embedded_string_expand_multiple (s, parser->priv->embedded, &__err);	\
+										\
+	if (!ret && __err)							\
+	{									\
+		parser_failed_error (parser, __err);				\
+		return retval;							\
+	}									\
+}										\
+while (0);
+
 void cpg_parser_lex_destroy (gpointer scanner);
 void cpg_parser_lex_init_extra (gpointer context, gpointer *scanner);
 int cpg_parser_parse (gpointer context);
@@ -531,8 +587,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		exps = cpg_embedded_string_expand_multiple (name,
-		                                            context->priv->embedded);
+		embedded_string_expand_multiple (exps, name, context);
 
 		for (iteme = exps; iteme; iteme = g_slist_next (iteme))
 		{
@@ -550,8 +605,10 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 			if (expression)
 			{
-				exexpression = g_strdup (cpg_embedded_string_expand (expression,
-				                                                     context->priv->embedded));
+				gchar const *expanded;
+
+				embedded_string_expand (expanded, expression, context);
+				exexpression = g_strdup (expanded);
 			}
 
 			property = cpg_object_get_property (obj, exname);
@@ -613,8 +670,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 					break;
 				}
 
-				expr = cpg_embedded_string_expand (integration,
-				                                   context->priv->embedded);
+				embedded_string_expand (expr, integration, context);
 
 				cpg_link_add_action (link,
 				                     cpg_link_action_new (cpg_property_get_name (property),
@@ -666,7 +722,7 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		exps = cpg_embedded_string_expand_multiple (target, context->priv->embedded);
+		embedded_string_expand_multiple (exps, target, context);
 
 		for (iteme = exps; iteme; iteme = g_slist_next (iteme))
 		{
@@ -679,8 +735,7 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 			                                    iteme->data);
 
 			extarget = cpg_expansion_get (iteme->data, 0);
-			exexpression = cpg_embedded_string_expand (expression,
-			                                           context->priv->embedded);
+			embedded_string_expand (exexpression, expression, context);
 
 			action = cpg_link_action_new (extarget,
 			                              cpg_expression_new (exexpression));
@@ -725,8 +780,8 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 	g_return_val_if_fail (name != NULL, NULL);
 	g_return_val_if_fail (expression != NULL, NULL);
 
-	exname = cpg_embedded_string_expand (name, context->priv->embedded);
-	exexpression = cpg_embedded_string_expand (expression, context->priv->embedded);
+	embedded_string_expand_val (exname, name, context, NULL);
+	embedded_string_expand_val (exexpression, expression, context, NULL);
 
 	function = cpg_function_new (exname, exexpression);
 	annotation = steal_annotation (context);
@@ -777,7 +832,7 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 
 	annotation = steal_annotation (context);
 
-	exname = cpg_embedded_string_expand (name, context->priv->embedded);
+	embedded_string_expand_val (exname, name, context, NULL);
 	function = cpg_function_polynomial_new (exname);
 	g_object_unref (name);
 
@@ -838,7 +893,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		exps = cpg_embedded_string_expand_multiple (name, context->priv->embedded);
+		embedded_string_expand_multiple (exps, name, context);
 
 		for (exp = exps; exp; exp = g_slist_next (exp))
 		{
@@ -1200,8 +1255,7 @@ each_selections_attr (CpgParserContext *context,
 			cpg_embedded_context_set_selection (context->priv->embedded,
 			                                    item->data);
 
-			exps = cpg_embedded_string_expand_multiple (obj,
-			                                            context->priv->embedded);
+			embedded_string_expand_multiple_val (exps, obj, context, NULL);
 
 			for (expp = exps; expp; expp = g_slist_next (expp))
 			{
@@ -1500,7 +1554,14 @@ parse_objects (CpgParserContext  *context,
 			g_object_ref (theid);
 		}
 
-		ids = theid ? cpg_embedded_string_expand_multiple (theid, context->priv->embedded) : NULL;
+		if (theid)
+		{
+			embedded_string_expand_multiple_val (ids, theid, context, NULL);
+		}
+		else
+		{
+			ids = NULL;
+		}
 
 		objs = parse_object_single (context,
 		                            ids,
@@ -1901,8 +1962,7 @@ create_links_single (CpgParserContext          *context,
 				gchar const *ex;
 				CpgExpansion *expansion;
 
-				ex = cpg_embedded_string_expand (s,
-				                                 context->priv->embedded);
+				embedded_string_expand_val (ex, s, context, NULL);
 
 				expansion = cpg_expansion_new_one (ex);
 				cpg_expansion_set_index (expansion, 0, widx);
@@ -2004,8 +2064,7 @@ create_links (CpgParserContext          *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		ids = cpg_embedded_string_expand_multiple (id,
-		                                           context->priv->embedded);
+		embedded_string_expand_multiple_val (ids, id, context, NULL);
 
 		for (it = ids; it; it = g_slist_next (it))
 		{
@@ -2093,7 +2152,7 @@ cpg_parser_context_push_input_file (CpgParserContext  *context,
 	                          CPG_TYPE_INPUT_FILE,
 	                          attributes);
 
-	paths = cpg_embedded_string_expand_multiple (path, context->priv->embedded);
+	embedded_string_expand_multiple (paths, path, context);
 
 	for (item = paths; item; item = g_slist_next (item))
 	{
@@ -2369,7 +2428,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		ids = cpg_embedded_string_expand_multiple (id, context->priv->embedded);
+		embedded_string_expand_multiple (ids, id, context);
 
 		for (idi = ids; idi; idi = g_slist_next (idi))
 		{
@@ -2388,7 +2447,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 			cpg_embedded_context_add_expansion (context->priv->embedded,
 			                                     idi->data);
 
-			expath = cpg_embedded_string_expand (path, context->priv->embedded);
+			embedded_string_expand (expath, path, context);
 
 			cpg_embedded_context_restore (context->priv->embedded);
 
@@ -2816,8 +2875,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    sel);
 
-		names = cpg_embedded_string_expand_multiple (name,
-		                                             context->priv->embedded);
+		embedded_string_expand_multiple (names, name, context);
 
 		for (nameit = names; nameit; nameit = g_slist_next (nameit))
 		{
@@ -2853,8 +2911,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 			{
 				gchar const *s;
 
-				s = cpg_embedded_string_expand (item->data,
-				                                context->priv->embedded);
+				embedded_string_expand (s, item->data, context);
 
 				/* Note that if we are not optional (in the case
 				   where ?= syntax is not used), we also consider
@@ -2871,7 +2928,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 				define = defines->data;
 			}
 
-			exdefine = cpg_embedded_string_expand (define, context->priv->embedded);
+			embedded_string_expand (exdefine, define, context);
 
 			if (expand)
 			{
@@ -2890,8 +2947,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 
 				g_free (s0);
 
-				items = cpg_embedded_string_expand_multiple (define,
-				                                             context->priv->embedded);
+				embedded_string_expand_multiple (items, define, context);
 
 				for (item = items; item; item = g_slist_next (item))
 				{
@@ -2988,7 +3044,7 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
 
-	items = cpg_embedded_string_expand_multiple (filename, context->priv->embedded);
+	embedded_string_expand_multiple (items, filename, context);
 
 	for (item = items; item; item = g_slist_next (item))
 	{
@@ -3145,15 +3201,19 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 
 	if (context->priv->previous_annotation != context->priv->lineno - 1)
 	{
-		g_string_assign (context->priv->annotation,
-		                 cpg_embedded_string_expand (annotation,
-		                                               context->priv->embedded));
+		gchar const *expanded;
+
+		embedded_string_expand (expanded, annotation, context);
+
+		g_string_assign (context->priv->annotation, expanded);
 	}
 	else
 	{
-		g_string_append (context->priv->annotation,
-		                 cpg_embedded_string_expand (annotation,
-		                                               context->priv->embedded));
+		gchar const *expanded;
+
+		embedded_string_expand (expanded, annotation, context);
+
+		g_string_append (context->priv->annotation, expanded);
 
 		g_string_append_c (context->priv->annotation, '\n');
 	}
@@ -3329,8 +3389,8 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 			cpg_embedded_context_add_expansions (context->priv->embedded,
 			                                     cpg_selection_get_expansions (obj->data));
 
-			exx = cpg_embedded_string_expand (x, context->priv->embedded);
-			exy = cpg_embedded_string_expand (y, context->priv->embedded);
+			embedded_string_expand (exx, x, context);
+			embedded_string_expand (exy, y, context);
 
 			xx = (gint)g_ascii_strtoll (exx, NULL, 10);
 			yy = (gint)g_ascii_strtoll (exy, NULL, 10);
@@ -3403,8 +3463,8 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 	g_return_if_fail (name != NULL);
 	g_return_if_fail (value != NULL);
 
-	exname = cpg_embedded_string_expand (name, context->priv->embedded);
-	exval = cpg_embedded_string_expand (value, context->priv->embedded);
+	embedded_string_expand (exname, name, context);
+	embedded_string_expand (exval, value, context);
 
 	if (g_strcmp0 (exname, "method") == 0)
 	{
@@ -3684,7 +3744,7 @@ cpg_parser_context_debug_string (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		ret = cpg_embedded_string_expand (s, context->priv->embedded);
+		embedded_string_expand (ret, s, context);
 		g_printerr ("[debug] (%d): %s\n", context->priv->lineno, ret);
 
 		cpg_embedded_context_restore (context->priv->embedded);
@@ -3946,7 +4006,7 @@ cpg_parser_context_set_input_file_setting (CpgParserContext  *context,
 		cpg_embedded_context_add_selection (context->priv->embedded,
 		                                    obj->data);
 
-		names = cpg_embedded_string_expand_multiple (name, context->priv->embedded);
+		embedded_string_expand_multiple (names, name, context);
 
 		for (nm = names; nm; nm = g_slist_next (nm))
 		{
@@ -3957,8 +4017,7 @@ cpg_parser_context_set_input_file_setting (CpgParserContext  *context,
 			cpg_embedded_context_add_expansion (context->priv->embedded,
 			                                    nm->data);
 
-			values = cpg_embedded_string_expand_multiple (value,
-			                                              context->priv->embedded);
+			embedded_string_expand_multiple (values, value, context);
 
 			cpg_embedded_context_restore (context->priv->embedded);
 

@@ -398,9 +398,10 @@ resolve_indirection (CpgEmbeddedString  *em,
 }
 
 static gchar *
-evaluate_node (CpgEmbeddedString *em,
-               Node *node,
-               CpgEmbeddedContext *context)
+evaluate_node (CpgEmbeddedString   *em,
+               Node                *node,
+               CpgEmbeddedContext  *context,
+               GError             **error)
 {
 	GString *ret;
 	GSList *item;
@@ -410,10 +411,20 @@ evaluate_node (CpgEmbeddedString *em,
 
 	for (item = node->nodes; item; item = g_slist_next (item))
 	{
-		g_string_prepend (ret,
-		                  evaluate_node (em,
-		                                 item->data,
-		                                 context));
+		gchar *s;
+
+		s = evaluate_node (em,
+		                   item->data,
+		                   context,
+		                   error);
+
+		if (!s)
+		{
+			g_string_free (ret, TRUE);
+			return NULL;
+		}
+
+		g_string_prepend (ret, s);
 	}
 
 	switch (node->type)
@@ -425,7 +436,7 @@ evaluate_node (CpgEmbeddedString *em,
 		case CPG_EMBEDDED_STRING_NODE_EQUATION:
 			if (context)
 			{
-				r = cpg_embedded_context_calculate (context, ret->str);
+				r = cpg_embedded_context_calculate (context, ret->str, error);
 			}
 			else
 			{
@@ -454,8 +465,9 @@ evaluate_node (CpgEmbeddedString *em,
 }
 
 gchar const *
-cpg_embedded_string_expand (CpgEmbeddedString  *s,
-                            CpgEmbeddedContext *ctx)
+cpg_embedded_string_expand (CpgEmbeddedString   *s,
+                            CpgEmbeddedContext  *ctx,
+                            GError             **error)
 {
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
@@ -476,7 +488,12 @@ cpg_embedded_string_expand (CpgEmbeddedString  *s,
 	}
 	else
 	{
-		s->priv->cached = evaluate_node (s, s->priv->stack->data, ctx);
+		s->priv->cached = evaluate_node (s, s->priv->stack->data, ctx, error);
+	}
+
+	if (!s->priv->cached && !error)
+	{
+		s->priv->cached = g_strdup ("");
 	}
 
 	s->priv->cached_context = ctx;
@@ -865,8 +882,9 @@ expand_id_recurse (gchar const **id,
  *
  **/
 GSList *
-cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
-                                     CpgEmbeddedContext *ctx)
+cpg_embedded_string_expand_multiple (CpgEmbeddedString   *s,
+                                     CpgEmbeddedContext  *ctx,
+                                     GError             **error)
 {
 	gchar const *id;
 	GSList *ret;
@@ -874,7 +892,12 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
 
-	id = cpg_embedded_string_expand (s, ctx);
+	id = cpg_embedded_string_expand (s, ctx, error);
+
+	if (!id)
+	{
+		return NULL;
+	}
 
 	if (!*id)
 	{
