@@ -305,7 +305,10 @@ on_context_popped (CpgParserContext *context,
 		g_slist_delete_link (info->context_stack,
 		                     info->context_stack);
 
-	if (!check_region (ctx->line_start, ctx->line_end, ctx->column_start, ctx->column_end))
+	if (!check_region (ctx->line_start,
+	                   ctx->line_end,
+	                   ctx->column_start,
+	                   ctx->column_end))
 	{
 		info->contexts = g_slist_remove (info->contexts, ctx);
 		context_free (ctx);
@@ -834,7 +837,18 @@ parse_network (gchar const *args[], gint argc)
 
 		if (cpg_parser_context_parse (context, &error))
 		{
-			info.contexts = g_slist_reverse (info.contexts);
+			if (context_line != -1 && context_column != -1)
+			{
+				/* Only keep the last */
+				g_slist_foreach (info.contexts->next, (GFunc)context_free, NULL);
+
+				info.contexts = g_slist_delete_link (info.contexts,
+				                                     info.contexts->next);
+			}
+			else
+			{
+				info.contexts = g_slist_reverse (info.contexts);
+			}
 			write_contexts (&info, stream);
 		}
 		else
@@ -971,6 +985,11 @@ main (int argc, char *argv[])
 		g_error_free (error);
 
 		return 1;
+	}
+
+	if (context_line != -1 && context_column == -1)
+	{
+		context_column = 0;
 	}
 
 	if (argc < 2)
