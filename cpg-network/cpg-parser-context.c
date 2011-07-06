@@ -95,7 +95,7 @@ void cpg_parser_lex_destroy (gpointer scanner);
 void cpg_parser_lex_init_extra (gpointer context, gpointer *scanner);
 int cpg_parser_parse (gpointer context);
 
-#define CURRENT_INPUT(ctx) ((InputItem *)((ctx)->priv->inputs->data))
+#define CURRENT_INPUT(ctx) ((ctx)->priv->inputs ? ((InputItem *)((ctx)->priv->inputs->data)) : NULL)
 
 typedef struct
 {
@@ -2374,7 +2374,11 @@ cpg_parser_context_pop (CpgParserContext *context)
 	GSList *item;
 
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-	g_return_val_if_fail (context->priv->context_stack, NULL);
+
+	if (!context->priv->context_stack)
+	{
+		return NULL;
+	}
 
 	ctx = CURRENT_CONTEXT (context);
 
@@ -2808,14 +2812,28 @@ gchar const *
 cpg_parser_context_get_line (CpgParserContext *context,
                              gint             *lineno)
 {
+	InputItem *input;
+
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+
+	input = CURRENT_INPUT (context);
+
+	if (!input)
+	{
+		if (lineno)
+		{
+			*lineno = 0;
+		}
+
+		return NULL;
+	}
 
 	if (lineno)
 	{
-		*lineno = CURRENT_INPUT (context)->lineno;
+		*lineno = input->lineno;
 	}
 
-	return CURRENT_INPUT (context)->line;
+	return input->line;
 }
 
 void
@@ -2823,16 +2841,35 @@ cpg_parser_context_get_column (CpgParserContext *context,
                                gint             *start,
                                gint             *end)
 {
+	InputItem *input;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	input = CURRENT_INPUT (context);
 
 	if (start)
 	{
-		*start = CURRENT_INPUT (context)->cstart;
+		*start = 0;
 	}
 
 	if (end)
 	{
-		*end = CURRENT_INPUT (context)->cend;
+		*end = 0;
+	}
+
+	if (!input)
+	{
+		return;
+	}
+
+	if (start)
+	{
+		*start = input->cstart;
+	}
+
+	if (end)
+	{
+		*end = input->cend;
 	}
 }
 
