@@ -272,7 +272,7 @@ check_region (gint line_start, gint line_end, gint cstart, gint cend)
 		return TRUE;
 	}
 
-	if (context_line == line_start && context_column < cstart)
+	if (context_line == line_start && context_column <= cstart)
 	{
 		return FALSE;
 	}
