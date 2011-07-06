@@ -118,6 +118,10 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					yy_push_state (inclstart, yyscanner);
 					return T_KEY_INCLUDE;
 				}
+<inclstart>[ \t]		;
+<inclstart>[^"]			{
+					return *yytext;
+				}
 <inclstart>"\""			{
 					yy_pop_state (yyscanner);
 					yy_push_state (incl, yyscanner);
