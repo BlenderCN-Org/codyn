@@ -3185,6 +3185,14 @@ cpg_parser_context_pop_input (CpgParserContext *context)
 
 	if (context->priv->inputs)
 	{
+		InputItem *input;
+
+		input = CURRENT_INPUT (context);
+
+		++(input->lineno);
+		input->cstart = 0;
+		input->cend = 0;
+
 		if (!context->priv->inputs->next)
 		{
 			/* Pop all the scopes */
