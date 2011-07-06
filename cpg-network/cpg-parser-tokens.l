@@ -82,7 +82,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 	yy_top_state (yyscanner);
 %}
 
-<firstline>.*			{
+<firstline>.*|\n			{
 					yyccolumn = 1;
 
 					cpg_parser_context_set_line (yyextra, yytext, yylineno);
