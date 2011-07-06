@@ -838,22 +838,27 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		props = cpg_selector_select (target,
-		                             G_OBJECT (parent),
-		                             CPG_SELECTOR_TYPE_PROPERTY,
-		                             context->priv->embedded);
+		exps = cpg_embedded_string_expand_multiple (name, context->priv->embedded);
 
-		if (props)
+		for (exp = exps; exp; exp = g_slist_next (exp))
 		{
-			exps = cpg_embedded_string_expand_multiple (name, context->priv->embedded);
+			cpg_embedded_context_save (context->priv->embedded);
+
+			cpg_embedded_context_add_expansion (context->priv->embedded,
+			                                    exp->data);
+
+			props = cpg_selector_select (target,
+			                             G_OBJECT (parent),
+			                             CPG_SELECTOR_TYPE_PROPERTY,
+			                             context->priv->embedded);
+
 			cpg_embedded_context_restore (context->priv->embedded);
 
-			for (exp = exps; exp; exp = g_slist_next (exp))
+			if (props)
 			{
 				gchar const *exname;
 
 				exname = cpg_expansion_get (exp->data, 0);
-
 
 				if (!cpg_property_interface_add (iface,
 				                                 exname,
@@ -868,10 +873,12 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 
 			g_slist_foreach (props, (GFunc)g_object_unref, NULL);
 			g_slist_free (props);
-
-			g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
-			g_slist_free (exps);
 		}
+
+		cpg_embedded_context_restore (context->priv->embedded);
+
+		g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
+		g_slist_free (exps);
 
 		if (!ret)
 		{
