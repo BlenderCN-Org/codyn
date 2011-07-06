@@ -115,7 +115,10 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"to",
 	"self",
 	"debug",
-	"name"
+	"name",
+	"descendants",
+	"ancestors",
+	"unique"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -601,7 +604,11 @@ make_child_selection (CpgSelection *parent,
 	CpgSelection *ret;
 
 	expansions = g_slist_copy (cpg_selection_get_expansions (parent));
-	expansions = g_slist_prepend (expansions, expansion);
+
+	if (expansion)
+	{
+		expansions = g_slist_prepend (expansions, expansion);
+	}
 
 	ret = cpg_selection_new (obj, expansions, cpg_selection_get_defines (parent));
 
@@ -1295,8 +1302,8 @@ debug_selections (CpgSelector        *self,
 }
 
 static GSList *
-children_reverse (CpgSelection       *selection,
-                  gpointer            obj)
+children_reverse (CpgSelection *selection,
+                  gpointer      obj)
 {
 	GSList *ret = NULL;
 
@@ -1364,7 +1371,43 @@ children_reverse (CpgSelection       *selection,
 	}
 
 	return ret;
+}
 
+static GSList *
+descendants_reverse (CpgSelection *selection)
+{
+	GSList *ret = NULL;
+	GQueue *queue;
+
+	queue = g_queue_new ();
+	g_queue_push_head (queue, selection);
+
+	while (!g_queue_is_empty (queue))
+	{
+		CpgSelection *sel;
+		GSList *children;
+		GSList *item;
+		gpointer obj;
+
+		sel = g_queue_pop_head (queue);
+
+		if (sel != selection)
+		{
+			ret = g_slist_prepend (ret, sel);
+		}
+
+		obj = cpg_selection_get_object (sel);
+		children = g_slist_reverse (children_reverse (sel, obj));
+
+		for (item = children; item; item = g_slist_next (item))
+		{
+			g_queue_push_tail (queue, item->data);
+		}
+
+		g_slist_free (item->data);
+	}
+
+	return ret;
 }
 
 static gpointer
@@ -1384,6 +1427,65 @@ pseudo_parent (gpointer obj)
 	}
 
 	return NULL;
+}
+
+static GSList *
+ancestors_reverse (CpgSelection *selection)
+{
+	GSList *ret = NULL;
+	gpointer obj;
+
+	obj = cpg_selection_get_object (selection);
+
+	while (TRUE)
+	{
+		obj = pseudo_parent (obj);
+
+		if (!obj)
+		{
+			break;
+		}
+
+		ret = g_slist_prepend (ret,
+		                       make_child_selection (selection, NULL, obj));
+	}
+
+	return ret;
+}
+
+static GSList *
+unique_selections (GSList *parent)
+{
+	GSList *objs = NULL;
+	GSList *item;
+
+	item = parent;
+
+	while (item)
+	{
+		gpointer obj;
+
+		obj = cpg_selection_get_object (item->data);
+
+		if (g_slist_find (objs, obj) != NULL)
+		{
+			GSList *tmp;
+
+			tmp = item->next;
+
+			g_object_unref (item->data);
+			parent = g_slist_delete_link (parent, item);
+
+			item = tmp;
+		}
+		else
+		{
+			objs = g_slist_prepend (objs, obj);
+		}
+	}
+
+	g_slist_free (objs);
+	return parent;
 }
 
 static GSList *
@@ -1460,6 +1562,9 @@ selector_select_pseudo (CpgSelector        *self,
 		case CPG_SELECTOR_PSEUDO_TYPE_DEBUG:
 			return debug_selections (self, selector, parent, context);
 		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_UNIQUE:
+			return unique_selections (parent);
+		break;
 		default:
 		break;
 	}
@@ -1531,6 +1636,18 @@ selector_select_pseudo (CpgSelector        *self,
 			{
 				ret = g_slist_concat (children_reverse (sel,
 				                                        obj),
+				                      ret);
+			}
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_DESCENDANTS:
+			{
+				ret = g_slist_concat (descendants_reverse (sel),
+				                      ret);
+			}
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_ANCESTORS:
+			{
+				ret = g_slist_concat (ancestors_reverse (sel),
 				                      ret);
 			}
 			break;
