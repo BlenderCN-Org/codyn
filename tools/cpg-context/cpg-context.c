@@ -20,6 +20,9 @@ static gchar const *color_off = "\e[0m";
 
 static GSList *defines = NULL;
 
+static gint context_line = -1;
+static gint context_column = -1;
+
 static gboolean
 add_define (gchar const  *option_name,
             gchar const  *value,
@@ -35,6 +38,8 @@ static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
+	{"line", 'l', 0, G_OPTION_ARG_INT, &context_line, "Only report contexts on a particular line", "LINE"},
+	{"column", 'c', 0, G_OPTION_ARG_INT, &context_column, "Only report contexts on a particular column (requires --line/-l)", "COL"},
 	{NULL}
 };
 
@@ -248,6 +253,29 @@ on_context_pushed (CpgParserContext *context,
 	info->context_stack = g_slist_prepend (info->context_stack, ctx);
 }
 
+static gboolean
+check_region (gint line_start, gint line_end, gint cstart, gint cend)
+{
+	if (context_line == -1)
+	{
+		return TRUE;
+	}
+
+	if (line_start > context_line ||
+	    line_end < context_line)
+	{
+		return FALSE;
+	}
+
+	if (context_column == -1)
+	{
+		return TRUE;
+	}
+
+	return (cstart <= context_column &&
+	        cend >= context_column);
+}
+
 static void
 on_context_popped (CpgParserContext *context,
                    Info             *info)
@@ -267,6 +295,12 @@ on_context_popped (CpgParserContext *context,
 	info->context_stack =
 		g_slist_delete_link (info->context_stack,
 		                     info->context_stack);
+
+	if (!check_region (ctx->line_start, ctx->line_end, ctx->column_start, ctx->column_end))
+	{
+		info->contexts = g_slist_remove (info->contexts, ctx);
+		context_free (ctx);
+	}
 }
 
 static void
@@ -343,6 +377,23 @@ on_selector_item_pushed (CpgParserContext *context,
 {
 	GSList *annot;
 	SelectorItemAnnotation *an;
+	gint line_start;
+	gint line_end;
+	gint cstart;
+	gint cend;
+
+	cpg_parser_context_get_last_selector_item_line (context,
+	                                                &line_start,
+	                                                &line_end);
+
+	cpg_parser_context_get_last_selector_item_column (context,
+	                                                  &cstart,
+	                                                  &cend);
+
+	if (!check_region (line_start, line_end, cstart, cend))
+	{
+		return;
+	}
 
 	if (!info->selectors)
 	{
@@ -355,13 +406,10 @@ on_selector_item_pushed (CpgParserContext *context,
 	an = g_slice_new0 (SelectorItemAnnotation);
 	an->id = cpg_selector_get_last_id (selector);
 
-	cpg_parser_context_get_last_selector_item_line (context,
-	                                                &an->line_start,
-	                                                &an->line_end);
-
-	cpg_parser_context_get_last_selector_item_column (context,
-	                                                  &an->cstart,
-	                                                  &an->cend);
+	an->line_start = line_start;
+	an->line_end = line_end;
+	an->cstart = cstart;
+	an->cend = cend;
 
 	if (annot == NULL)
 	{
