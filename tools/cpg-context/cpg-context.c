@@ -272,8 +272,17 @@ check_region (gint line_start, gint line_end, gint cstart, gint cend)
 		return TRUE;
 	}
 
-	return (cstart <= context_column &&
-	        cend >= context_column);
+	if (context_line == line_start && context_column < cstart)
+	{
+		return FALSE;
+	}
+
+	if (context_line == line_end && context_column > cend)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static void
