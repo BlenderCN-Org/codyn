@@ -842,13 +842,14 @@ parse_network (gchar const *args[], gint argc)
 				/* Only keep the last */
 				g_slist_foreach (info.contexts->next, (GFunc)context_free, NULL);
 
-				info.contexts = g_slist_delete_link (info.contexts,
-				                                     info.contexts->next);
+				g_slist_free (info.contexts->next);
+				info.contexts->next = NULL;
 			}
 			else
 			{
 				info.contexts = g_slist_reverse (info.contexts);
 			}
+
 			write_contexts (&info, stream);
 		}
 		else
