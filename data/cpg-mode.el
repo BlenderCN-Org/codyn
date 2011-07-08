@@ -21,7 +21,7 @@
         (forward-list)
         (setq end (point))))
     (if prefix
-        (align-regexp start end "\\(\s-*\\)[=|]" 1 1 t)
+        (align-regexp start end "\\(\s-*\\)\\(=\\||\\|<=\\)" 1 1 t)
       (align-regexp start end "\\(\s-*\\)|" 1 1 t))))
 
 (defun cpg-context-check-error (cpg-file)
@@ -56,7 +56,7 @@
     ))
 
 (defun cpg-context-print-defines (selections)
-  (insert (propertize "\nDefines\n\n" 'face '(:weight bold :foreground "green")))
+  (insert (propertize "\nDefines\n\n" 'face '(:inherit font-lock-type-face :weight bold)))
   (let ((defines (cdr (assoc 'defines (elt (cdr (assoc 'out (elt selections 0))) 0)))))
     (mapc (lambda (define)
             (insert (concat "\t"
@@ -146,7 +146,7 @@
               (insert "\n")
               (mapc (lambda (selection)
                       (setq i-selection (+ i-selection 1))
-                      (insert (propertize (concat "\nSelection " (number-to-string i-selection) "\n") 'face '(:weight bold :foreground "green")))
+                      (insert (propertize (concat "\nSelection " (number-to-string i-selection) "\n") 'face '(:inherit font-lock-type-face :weight bold)))
                       (cpg-context-print-group selection 'in)
                       (cpg-context-print-group selection 'out))
                     selections)
@@ -157,7 +157,7 @@
 (defun cpg-context-update ()
   "Runs cpg-context, parse JSON, check error"
   ;; (if (and (eq major-mode 'cpg-mode) (not cpg-context-updating))
-  (if (eq major-mode 'cpg-mode)
+  (if (and (eq major-mode 'cpg-mode) (file-readable-p buffer-file-name))
       (let (json-buf proc)
         ;; (setq cpg-context-updating t)
         (setq json-buf (generate-new-buffer (concat (buffer-name) " cpg-context")))
@@ -188,8 +188,7 @@
 (defvar cpg-font-lock-keywords
   (list
    '("\\(\\(\\w\\|_\\)+\\)}?[ \t]*\\(\\?=\\|<=\\|=\\)" 1 font-lock-variable-name-face)
-   '("\\(\\(\\w\\|_\\)+\\)}?[ \t]*\\(\\?=\\|<=\\|=\\)" 1 font-lock-variable-name-face)
-   '("\\(@\\(\\w\\|_\\)*\\(\\[.*\\]\\)?\\)" 1 font-lock-constant-face)
+   '("@\\([0-9]+\\|[a-zA-Z_]\\(\\w\\|_\\)*\\)?\\(\\[\\([^[]*\\|\\[[^[]*\\]\\)*\\]\\)*" . font-lock-constant-face) ; allow nesting [] 1 level
    '("\\_<\\(defines\\|or\\|network\\|templates\\|functions\\|integrator\\|interface\\)\\_>" . font-lock-keyword-face)
    '("\\_<\\(group\\|state\\|link\\|on\\|from\\|to\\|input-file\\)\\_>" . font-lock-keyword-face)
    '("\\_<\\(polynomial\\|piece\\)\\_>" . font-lock-keyword-face)
@@ -198,7 +197,7 @@
    '("\\_<\\(integrated\\|in\\|out\\|once\\)\\_>" . font-lock-type-face)
    '("\\_<\\(debug\\|context\\|selector\\)\\_>" . font-lock-keyword-face)
    '("\\_<\\(import\\|as\\|include\\)\\_>" . font-lock-keyword-face)
-   '("\\_<\\(root\\|self\\|states\\|links\\|count\\)\\_>" . font-lock-keyword-face)
+   '("\\_<\\(root\\|self\\|states\\|groups\\|links\\|count\\)\\_>" . font-lock-keyword-face)
    '("\\_<\\(children\\|parent\\|first-child\\|last-child\\|first\\|last\\|subset\\|siblings\\)\\_>" . font-lock-keyword-face)
    '("\\_<\\(bidirectional\\|proxy\\|each\\)\\_>" . font-lock-type-face)
    )
