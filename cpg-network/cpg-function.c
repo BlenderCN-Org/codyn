@@ -206,6 +206,8 @@ cpg_function_evaluate_impl (CpgFunction *function)
 
 		/* Don't cache results from functions */
 		cpg_expression_reset_cache (function->priv->expression);
+		cpg_expression_reset_variadic (function->priv->expression);
+
 		return ret;
 	}
 	else
