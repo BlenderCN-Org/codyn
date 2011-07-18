@@ -744,26 +744,41 @@ expansions_concat (GSList *s1,
 	return g_slist_reverse (ret);
 }
 
-static GSList *expand_id_recurse (gchar const **id, gchar const *endings);
+static GSList *expand_id_recurse (gchar const **id, gchar const *endings, gboolean *nested);
 
 static void
-expansion_shift (CpgExpansion *expansion)
+expansion_shift (CpgExpansion *expansion, gint num, gboolean clear)
 {
 	gint i;
 
-	cpg_expansion_add (expansion, "");
+	if (num <= 0)
+	{
+		return;
+	}
 
-	for (i = cpg_expansion_num (expansion) - 2; i >= 0; --i)
+	/* Add an empty expansion slot at the end */
+	for (i = 0; i < num; ++i)
+	{
+		cpg_expansion_add (expansion, "");
+	}
+
+	/* Move all expansion slots up one time ex(i + 1) = ex(i) */
+	for (i = cpg_expansion_num (expansion) - num - 1; i >= (clear ? 1 : 0); --i)
 	{
 		gint idx = cpg_expansion_get_index (expansion, i);
 
 		cpg_expansion_set (expansion,
-		                   i + 1,
+		                   i + num,
 		                   cpg_expansion_get (expansion, i));
 
 		cpg_expansion_set_index (expansion,
-		                         i + 1,
+		                         i + num,
 		                         idx);
+
+		if (clear)
+		{
+			cpg_expansion_set (expansion, i, "");
+		}
 	}
 }
 
@@ -772,13 +787,15 @@ parse_expansion (gchar const **id)
 {
 	GSList *ret = NULL;
 	gint i = 0;
+	gint numnest = 0;
 
 	while (**id)
 	{
 		GSList *items;
 		GSList *it;
+		gboolean nested;
 
-		items = expand_id_recurse (id, ",}");
+		items = expand_id_recurse (id, ",}", &nested);
 
 		for (it = items; it; it = g_slist_next (it))
 		{
@@ -786,7 +803,21 @@ parse_expansion (gchar const **id)
 			                         0,
 			                         i++);
 
-			expansion_shift (it->data);
+			/* Shift empty elements for nesting */
+			expansion_shift (it->data, numnest, TRUE);
+
+			/* Shift and duplicate by 1 */
+			expansion_shift (it->data, 1, FALSE);
+		}
+
+		if (nested)
+		{
+			++numnest;
+
+			for (it = ret; it; it = g_slist_next (it))
+			{
+				cpg_expansion_add (it->data, "");
+			}
 		}
 
 		ret = g_slist_concat (ret, items);
@@ -805,10 +836,13 @@ parse_expansion (gchar const **id)
 
 GSList *
 expand_id_recurse (gchar const **id,
-                   gchar const *endings)
+                   gchar const *endings,
+                   gboolean    *nested)
 {
 	GSList *ret = NULL;
 	gchar const *ptr = *id;
+
+	*nested = FALSE;
 
 	while (**id && strchr (endings, **id) == NULL)
 	{
@@ -827,6 +861,7 @@ expand_id_recurse (gchar const **id,
 			gint len = *id - ptr;
 
 			++*id;
+			*nested = TRUE;
 
 			/* Recursively parse the expansions */
 			ex = parse_expansion (id);
@@ -906,7 +941,9 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString   *s,
 	}
 	else
 	{
-		ret = expand_id_recurse (&id, "\0");
+		gboolean nested;
+
+		ret = expand_id_recurse (&id, "\0", &nested);
 	}
 
 	return ret;
