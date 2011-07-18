@@ -188,7 +188,7 @@
 (defvar cpg-font-lock-keywords
   (list
    '("\\(\\(\\w\\|_\\)+\\)}?[ \t]*\\(\\?=\\|<=\\|=\\)" 1 font-lock-variable-name-face)
-   '("@\\([0-9]+\\|[a-zA-Z_]\\(\\w\\|_\\)*\\)?\\(\\[\\([^[]*\\|\\[[^[]*\\]\\)*\\]\\)*" . font-lock-constant-face) ; allow nesting [] 1 level
+   '("@\\([0-9]+\\|[a-zA-Z_]\\(\\w\\|_\\)*\\)?\\(\\[[^[]*\\(\\[[^[]*\\]\\)?[^[]*\\]\\)*" . font-lock-constant-face)
    '("\\_<\\(defines\\|or\\|network\\|templates\\|functions\\|integrator\\|interface\\)\\_>" . font-lock-keyword-face)
    '("\\_<\\(group\\|state\\|link\\|on\\|from\\|to\\|input-file\\)\\_>" . font-lock-keyword-face)
    '("\\_<\\(polynomial\\|piece\\)\\_>" . font-lock-keyword-face)
