@@ -942,8 +942,15 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString   *s,
 	else
 	{
 		gboolean nested;
+		GSList *item;
+		gint i = 0;
 
 		ret = expand_id_recurse (&id, "\0", &nested);
+
+		for (item = ret; item; item = g_slist_next (item))
+		{
+			cpg_expansion_set_index (item->data, 0, i++);
+		}
 	}
 
 	return ret;
