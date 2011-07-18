@@ -96,7 +96,8 @@
           <varlistentry>
             <term><option>-s <replaceable>SEED</replaceable></option>, <option>--seed <replaceable>SEED</replaceable></option></term>
             <listitem><para>
-              specify the number by which to seed to random number generator
+              specify the number by which to seed to random number generator. The default
+              value for the seed is the current unix time (seconds since epoch)
             </para></listitem>
           </varlistentry>
         </variablelist>

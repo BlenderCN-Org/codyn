@@ -242,6 +242,22 @@ reset_variadic (CpgIntegrator *integrator)
 	while (expr)
 	{
 		cpg_expression_reset_variadic (expr->data);
+
+		expr = g_slist_next (expr);
+	}
+}
+
+static void
+evaluate_variadic (CpgIntegrator *integrator)
+{
+	GSList const *expr;
+
+	expr = cpg_integrator_state_expressions (integrator->priv->state);
+
+	while (expr)
+	{
+		cpg_expression_evaluate (expr->data);
+
 		expr = g_slist_next (expr);
 	}
 }
@@ -255,6 +271,8 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
 	reset_cache (integrator);
+	reset_variadic (integrator);
+	evaluate_variadic (integrator);
 
 	/* Update inputs */
 	GSList const *inputs;
@@ -281,6 +299,8 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
 
 		op = g_slist_next (op);
 	}
+
+	reset_cache (integrator);
 
 	g_signal_emit (integrator, integrator_signals[STEP], 0, timestep, t + timestep);
 	return timestep;
@@ -663,6 +683,9 @@ cpg_integrator_run (CpgIntegrator *integrator,
 
 	if (CPG_INTEGRATOR_GET_CLASS (integrator)->run)
 	{
+		reset_variadic (integrator);
+		evaluate_variadic (integrator);
+
 		g_signal_emit (integrator, integrator_signals[BEGIN], 0, from, timestep, to);
 
 		CPG_INTEGRATOR_GET_CLASS (integrator)->run (integrator, from, timestep, to);
@@ -735,7 +758,6 @@ cpg_integrator_evaluate (CpgIntegrator *integrator,
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
 	reset_cache (integrator);
-	reset_variadic (integrator);
 
 	/* Do a step on all custom operators */
 	op = cpg_integrator_state_operators (integrator->priv->state);

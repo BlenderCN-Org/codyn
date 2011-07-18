@@ -82,7 +82,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 	yy_top_state (yyscanner);
 %}
 
-<firstline>.*			{
+<firstline>.*|\n			{
 					yyccolumn = 1;
 
 					cpg_parser_context_set_line (yyextra, yytext, yylineno);
@@ -118,6 +118,10 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					yy_push_state (inclstart, yyscanner);
 					return T_KEY_INCLUDE;
 				}
+<inclstart>[ \t]		;
+<inclstart>[^"]			{
+					return *yytext;
+				}
 <inclstart>"\""			{
 					yy_pop_state (yyscanner);
 					yy_push_state (incl, yyscanner);
@@ -147,6 +151,14 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					if (!YY_CURRENT_BUFFER)
 					{
 						yyterminate ();
+					}
+					else
+					{
+						cpg_parser_context_get_column (yyextra,
+						                               NULL,
+						                               &yyccolumn);
+
+						++yyccolumn;
 					}
 				}
 
@@ -181,24 +193,27 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "delete"			return T_KEY_DELETE;
 "or"				return T_KEY_OR;
 
-<*>"templates"			return T_KEY_TEMPLATES;
-<*>"root"			return T_KEY_ROOT;
-<*>"debug"			return T_KEY_DEBUG;
-<*>"children"			return T_KEY_CHILDREN;
-<*>"parent"			return T_KEY_PARENT;
-<*>"first"			return T_KEY_FIRST;
-<*>"last"			return T_KEY_LAST;
-<*>"subset"			return T_KEY_SUBSET;
-<*>"states"			return T_KEY_STATES;
-<*>"links"			return T_KEY_LINKS;
-<*>"siblings"			return T_KEY_SIBLINGS;
-<*>"count"			return T_KEY_COUNT;
-<*>"name"			return T_KEY_NAME;
-<*>"self"			return T_KEY_SELF;
-<*>"groups"			return T_KEY_GROUPS;
-<*>"objects"			return T_KEY_OBJECTS;
-<*>"properties"			return T_KEY_PROPERTIES;
-<*>"actions"			return T_KEY_ACTION;
+<INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
+<INITIAL,onlyselector>"root"		return T_KEY_ROOT;
+<INITIAL,onlyselector>"debug"		return T_KEY_DEBUG;
+<INITIAL,onlyselector>"children"	return T_KEY_CHILDREN;
+<INITIAL,onlyselector>"parent"		return T_KEY_PARENT;
+<INITIAL,onlyselector>"first"		return T_KEY_FIRST;
+<INITIAL,onlyselector>"last"		return T_KEY_LAST;
+<INITIAL,onlyselector>"subset"		return T_KEY_SUBSET;
+<INITIAL,onlyselector>"states"		return T_KEY_STATES;
+<INITIAL,onlyselector>"links"		return T_KEY_LINKS;
+<INITIAL,onlyselector>"siblings"	return T_KEY_SIBLINGS;
+<INITIAL,onlyselector>"descendants"	return T_KEY_DESCENDANTS;
+<INITIAL,onlyselector>"ancestors"	return T_KEY_ANCESTORS;
+<INITIAL,onlyselector>"unique"		return T_KEY_UNIQUE;
+<INITIAL,onlyselector>"count"		return T_KEY_COUNT;
+<INITIAL,onlyselector>"name"		return T_KEY_NAME;
+<INITIAL,onlyselector>"self"		return T_KEY_SELF;
+<INITIAL,onlyselector>"groups"		return T_KEY_GROUPS;
+<INITIAL,onlyselector>"objects"		return T_KEY_OBJECTS;
+<INITIAL,onlyselector>"properties"	return T_KEY_PROPERTIES;
+<INITIAL,onlyselector>"actions"		return T_KEY_ACTION;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;

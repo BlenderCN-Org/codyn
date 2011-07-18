@@ -143,7 +143,7 @@ test_variadic ()
 
 	cpg_network_step (network, 0.01);
 
-	g_assert_cmpfloat (cpg_property_get_value (prop), ==, cpg_property_get_value (other));
+	g_assert_cmpfloat (r, ==, cpg_property_get_value (other));
 
 	g_object_unref (network);
 }

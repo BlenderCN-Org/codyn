@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <gio/gunixinputstream.h>
 #include <gio/gunixoutputstream.h>
+#include <sys/time.h>
 
 static GPtrArray *monitored = 0;
 static gboolean include_header = FALSE;
@@ -14,7 +15,7 @@ static gdouble from = 0;
 static gdouble step = 0.001;
 static gdouble to = 1;
 static gchar *output_file = NULL;
-static gint64 seed = 1;
+static gint64 seed = 0;
 
 #define CPG_MONITOR_ERROR (cpg_monitor_error_quark())
 
@@ -101,7 +102,7 @@ static GOptionEntry entries[] = {
 	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter, "Column delimiter (defaults to tab)", "DELIM"},
 	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time, "Time range (from:to or from:step:to, defaults to 0:0.01:1)", "RANGE"},
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
-	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to 1)", "SEED"},
+	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
 	{NULL}
 };
 
@@ -426,8 +427,13 @@ main (int argc,
 	GError *error = NULL;
 	gchar const *file;
 	gint ret = 1;
+	struct timeval tv;
 
 	g_type_init ();
+
+
+	gettimeofday (&tv, NULL);
+	seed = tv.tv_sec;
 
 	monitored = g_ptr_array_new ();
 	delimiter = g_strdup ("\t");

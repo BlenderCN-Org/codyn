@@ -398,9 +398,10 @@ resolve_indirection (CpgEmbeddedString  *em,
 }
 
 static gchar *
-evaluate_node (CpgEmbeddedString *em,
-               Node *node,
-               CpgEmbeddedContext *context)
+evaluate_node (CpgEmbeddedString   *em,
+               Node                *node,
+               CpgEmbeddedContext  *context,
+               GError             **error)
 {
 	GString *ret;
 	GSList *item;
@@ -410,10 +411,20 @@ evaluate_node (CpgEmbeddedString *em,
 
 	for (item = node->nodes; item; item = g_slist_next (item))
 	{
-		g_string_prepend (ret,
-		                  evaluate_node (em,
-		                                 item->data,
-		                                 context));
+		gchar *s;
+
+		s = evaluate_node (em,
+		                   item->data,
+		                   context,
+		                   error);
+
+		if (!s)
+		{
+			g_string_free (ret, TRUE);
+			return NULL;
+		}
+
+		g_string_prepend (ret, s);
 	}
 
 	switch (node->type)
@@ -425,7 +436,7 @@ evaluate_node (CpgEmbeddedString *em,
 		case CPG_EMBEDDED_STRING_NODE_EQUATION:
 			if (context)
 			{
-				r = cpg_embedded_context_calculate (context, ret->str);
+				r = cpg_embedded_context_calculate (context, ret->str, error);
 			}
 			else
 			{
@@ -454,8 +465,9 @@ evaluate_node (CpgEmbeddedString *em,
 }
 
 gchar const *
-cpg_embedded_string_expand (CpgEmbeddedString  *s,
-                            CpgEmbeddedContext *ctx)
+cpg_embedded_string_expand (CpgEmbeddedString   *s,
+                            CpgEmbeddedContext  *ctx,
+                            GError             **error)
 {
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
@@ -476,7 +488,12 @@ cpg_embedded_string_expand (CpgEmbeddedString  *s,
 	}
 	else
 	{
-		s->priv->cached = evaluate_node (s, s->priv->stack->data, ctx);
+		s->priv->cached = evaluate_node (s, s->priv->stack->data, ctx, error);
+	}
+
+	if (!s->priv->cached && !error)
+	{
+		s->priv->cached = g_strdup ("");
 	}
 
 	s->priv->cached_context = ctx;
@@ -727,26 +744,41 @@ expansions_concat (GSList *s1,
 	return g_slist_reverse (ret);
 }
 
-static GSList *expand_id_recurse (gchar const **id, gchar const *endings);
+static GSList *expand_id_recurse (gchar const **id, gchar const *endings, gboolean *nested);
 
 static void
-expansion_shift (CpgExpansion *expansion)
+expansion_shift (CpgExpansion *expansion, gint num, gboolean clear)
 {
 	gint i;
 
-	cpg_expansion_add (expansion, "");
+	if (num <= 0)
+	{
+		return;
+	}
 
-	for (i = cpg_expansion_num (expansion) - 2; i >= 0; --i)
+	/* Add an empty expansion slot at the end */
+	for (i = 0; i < num; ++i)
+	{
+		cpg_expansion_add (expansion, "");
+	}
+
+	/* Move all expansion slots up one time ex(i + 1) = ex(i) */
+	for (i = cpg_expansion_num (expansion) - num - 1; i >= (clear ? 1 : 0); --i)
 	{
 		gint idx = cpg_expansion_get_index (expansion, i);
 
 		cpg_expansion_set (expansion,
-		                   i + 1,
+		                   i + num,
 		                   cpg_expansion_get (expansion, i));
 
 		cpg_expansion_set_index (expansion,
-		                         i + 1,
+		                         i + num,
 		                         idx);
+
+		if (clear)
+		{
+			cpg_expansion_set (expansion, i, "");
+		}
 	}
 }
 
@@ -755,13 +787,15 @@ parse_expansion (gchar const **id)
 {
 	GSList *ret = NULL;
 	gint i = 0;
+	gint numnest = 0;
 
 	while (**id)
 	{
 		GSList *items;
 		GSList *it;
+		gboolean nested;
 
-		items = expand_id_recurse (id, ",}");
+		items = expand_id_recurse (id, ",}", &nested);
 
 		for (it = items; it; it = g_slist_next (it))
 		{
@@ -769,7 +803,21 @@ parse_expansion (gchar const **id)
 			                         0,
 			                         i++);
 
-			expansion_shift (it->data);
+			/* Shift empty elements for nesting */
+			expansion_shift (it->data, numnest, TRUE);
+
+			/* Shift and duplicate by 1 */
+			expansion_shift (it->data, 1, FALSE);
+		}
+
+		if (nested)
+		{
+			++numnest;
+
+			for (it = ret; it; it = g_slist_next (it))
+			{
+				cpg_expansion_add (it->data, "");
+			}
 		}
 
 		ret = g_slist_concat (ret, items);
@@ -788,10 +836,13 @@ parse_expansion (gchar const **id)
 
 GSList *
 expand_id_recurse (gchar const **id,
-                   gchar const *endings)
+                   gchar const *endings,
+                   gboolean    *nested)
 {
 	GSList *ret = NULL;
 	gchar const *ptr = *id;
+
+	*nested = FALSE;
 
 	while (**id && strchr (endings, **id) == NULL)
 	{
@@ -810,6 +861,7 @@ expand_id_recurse (gchar const **id,
 			gint len = *id - ptr;
 
 			++*id;
+			*nested = TRUE;
 
 			/* Recursively parse the expansions */
 			ex = parse_expansion (id);
@@ -865,8 +917,9 @@ expand_id_recurse (gchar const **id,
  *
  **/
 GSList *
-cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
-                                     CpgEmbeddedContext *ctx)
+cpg_embedded_string_expand_multiple (CpgEmbeddedString   *s,
+                                     CpgEmbeddedContext  *ctx,
+                                     GError             **error)
 {
 	gchar const *id;
 	GSList *ret;
@@ -874,7 +927,12 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
 
-	id = cpg_embedded_string_expand (s, ctx);
+	id = cpg_embedded_string_expand (s, ctx, error);
+
+	if (!id)
+	{
+		return NULL;
+	}
 
 	if (!*id)
 	{
@@ -883,7 +941,16 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString  *s,
 	}
 	else
 	{
-		ret = expand_id_recurse (&id, "\0");
+		gboolean nested;
+		GSList *item;
+		gint i = 0;
+
+		ret = expand_id_recurse (&id, "\0", &nested);
+
+		for (item = ret; item; item = g_slist_next (item))
+		{
+			cpg_expansion_set_index (item->data, 0, i++);
+		}
 	}
 
 	return ret;

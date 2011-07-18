@@ -31,6 +31,7 @@
 #include "cpg-usable.h"
 #include "cpg-modifiable.h"
 #include "cpg-annotatable.h"
+#include "cpg-selector.h"
 
 #define CPG_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY, CpgPropertyPrivate))
 
@@ -125,7 +126,7 @@ cpg_property_annotatable_get_title (CpgAnnotatable *annotatable)
 
 	property = CPG_PROPERTY (annotatable);
 
-	return cpg_property_get_full_name (property);
+	return cpg_property_get_full_name_for_display (property);
 }
 
 static void
@@ -1025,10 +1026,29 @@ cpg_property_get_full_name (CpgProperty *property)
 
 	if (!property->priv->object)
 	{
-		return g_strdup (property->priv->name);
+		return cpg_selector_escape_identifier (property->priv->name);
 	}
 
 	gchar *objid = cpg_object_get_full_id (property->priv->object);
+	gchar *esc = cpg_selector_escape_identifier (property->priv->name);
+	gchar *ret = g_strconcat (objid, ".", esc, NULL);
+	g_free (objid);
+	g_free (esc);
+
+	return ret;
+}
+
+gchar *
+cpg_property_get_full_name_for_display (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	if (!property->priv->object)
+	{
+		return g_strdup (property->priv->name);
+	}
+
+	gchar *objid = cpg_object_get_full_id_for_display (property->priv->object);
 	gchar *ret = g_strconcat (objid, ".", property->priv->name, NULL);
 	g_free (objid);
 

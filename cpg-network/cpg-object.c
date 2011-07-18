@@ -185,7 +185,7 @@ cpg_object_annotatable_get_title (CpgAnnotatable *annotatable)
 
 	obj = CPG_OBJECT (annotatable);
 
-	return cpg_object_get_full_id (obj);
+	return cpg_object_get_full_id_for_display (obj);
 }
 
 static void
@@ -2322,6 +2322,28 @@ cpg_object_get_full_id (CpgObject *object)
 	return cpg_object_get_relative_id (object, parent);
 }
 
+gchar *
+cpg_object_get_full_id_for_display (CpgObject *object)
+{
+	CpgObject *parent;
+
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	parent = cpg_object_get_parent (object);
+
+	if (!parent)
+	{
+		return g_strdup (object->priv->id);
+	}
+
+	while (parent->priv->parent)
+	{
+		parent = parent->priv->parent;
+	}
+
+	return cpg_object_get_relative_id_for_display (object, parent);
+}
+
 /**
  * cpg_object_foreach_expression:
  * @object: A #CpgObject
@@ -2348,15 +2370,13 @@ cpg_object_foreach_expression (CpgObject                *object,
 	CPG_OBJECT_GET_CLASS (object)->foreach_expression (object, func, userdata);
 }
 
-gchar *
-cpg_object_get_relative_id (CpgObject *object,
-                            CpgObject *parent)
+static gchar *
+get_relative_id (CpgObject *object,
+                 CpgObject *parent,
+                 gboolean   for_display)
 {
 	gchar *ret;
 	gchar *par = NULL;
-
-	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
 
 	if (object == parent)
 	{
@@ -2365,27 +2385,71 @@ cpg_object_get_relative_id (CpgObject *object,
 
 	if (cpg_object_get_parent (object) == NULL)
 	{
-		return cpg_selector_escape_identifier (object->priv->id);
+		return for_display ?
+		       g_strdup (object->priv->id) :
+		       cpg_selector_escape_identifier (object->priv->id);
 	}
 
 	if (object->priv->parent)
 	{
-		par = cpg_object_get_relative_id (object->priv->parent, parent);
+		if (for_display)
+		{
+			par = cpg_object_get_relative_id_for_display (object->priv->parent, parent);
+		}
+		else
+		{
+			par = cpg_object_get_relative_id (object->priv->parent, parent);
+		}
 	}
 
 	if (par && *par)
 	{
 		gchar *esc;
 
-		esc = cpg_selector_escape_identifier (object->priv->id);
+		if (for_display)
+		{
+			esc = g_strdup (object->priv->id);
+		}
+		else
+		{
+			esc = cpg_selector_escape_identifier (object->priv->id);
+		}
+
 		ret = g_strconcat (par, ".", esc, NULL);
 		g_free (esc);
 	}
 	else
 	{
-		ret = g_strdup (object->priv->id);
+		if (for_display)
+		{
+			ret = g_strdup (object->priv->id);
+		}
+		else
+		{
+			ret = cpg_selector_escape_identifier (object->priv->id);
+		}
 	}
 
 	g_free (par);
 	return ret;
+}
+
+gchar *
+cpg_object_get_relative_id (CpgObject *object,
+                            CpgObject *parent)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
+
+	return get_relative_id (object, parent, FALSE);
+}
+
+gchar *
+cpg_object_get_relative_id_for_display (CpgObject *object,
+                                        CpgObject *parent)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
+
+	return get_relative_id (object, parent, TRUE);
 }

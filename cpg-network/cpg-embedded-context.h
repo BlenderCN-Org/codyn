@@ -100,8 +100,9 @@ void                cpg_embedded_context_set_defines    (CpgEmbeddedContext *con
 CpgExpansion       *cpg_embedded_context_get_expansion  (CpgEmbeddedContext *context,
                                                          gint                depth);
 
-gchar              *cpg_embedded_context_calculate      (CpgEmbeddedContext *context,
-                                                         gchar const        *equation);
+gchar              *cpg_embedded_context_calculate      (CpgEmbeddedContext  *context,
+                                                         gchar const         *equation,
+                                                         GError             **error);
 
 gulong              cpg_embedded_context_get_marker     (CpgEmbeddedContext *context);
 

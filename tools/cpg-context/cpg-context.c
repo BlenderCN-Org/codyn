@@ -20,6 +20,9 @@ static gchar const *color_off = "\e[0m";
 
 static GSList *defines = NULL;
 
+static gint context_line = -1;
+static gint context_column = -1;
+
 static gboolean
 add_define (gchar const  *option_name,
             gchar const  *value,
@@ -35,6 +38,8 @@ static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
+	{"line", 'l', 0, G_OPTION_ARG_INT, &context_line, "Only report contexts on a particular line", "LINE"},
+	{"column", 'c', 0, G_OPTION_ARG_INT, &context_column, "Only report contexts on a particular column (requires --line/-l)", "COL"},
 	{NULL}
 };
 
@@ -60,6 +65,7 @@ typedef struct
 typedef struct
 {
 	CpgParserContext *parser;
+	GFile *file;
 
 	GSList *context_stack;
 	GSList *contexts;
@@ -210,15 +216,73 @@ remove_double_dash (gchar const **args, gint *argc)
 	}
 }
 
+static gboolean
+same_file (Info *info)
+{
+	GFile *ctxfile;
+
+	ctxfile = cpg_parser_context_get_file (info->parser);
+
+	if (!ctxfile)
+	{
+		return TRUE;
+	}
+
+	if (!info->file)
+	{
+		return FALSE;
+	}
+
+	return g_file_equal (ctxfile, info->file);
+}
+
 static void
 on_context_pushed (CpgParserContext *context,
                    Info             *info)
 {
 	Context *ctx;
 
+	if (!same_file (info))
+	{
+		return;
+	}
+
 	ctx = context_new (context);
+
 	info->contexts = g_slist_prepend (info->contexts, ctx);
 	info->context_stack = g_slist_prepend (info->context_stack, ctx);
+}
+
+static gboolean
+check_region (gint line_start, gint line_end, gint cstart, gint cend)
+{
+	if (context_line == -1)
+	{
+		return TRUE;
+	}
+
+	if (line_start > context_line ||
+	    line_end < context_line)
+	{
+		return FALSE;
+	}
+
+	if (context_column == -1)
+	{
+		return TRUE;
+	}
+
+	if (context_line == line_start && context_column <= cstart)
+	{
+		return FALSE;
+	}
+
+	if (context_line == line_end && context_column > cend)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static void
@@ -226,6 +290,11 @@ on_context_popped (CpgParserContext *context,
                    Info             *info)
 {
 	Context *ctx;
+
+	if (!same_file (info) || !info->context_stack)
+	{
+		return;
+	}
 
 	ctx = info->context_stack->data;
 
@@ -235,6 +304,15 @@ on_context_popped (CpgParserContext *context,
 	info->context_stack =
 		g_slist_delete_link (info->context_stack,
 		                     info->context_stack);
+
+	if (!check_region (ctx->line_start,
+	                   ctx->line_end,
+	                   ctx->column_start,
+	                   ctx->column_end))
+	{
+		info->contexts = g_slist_remove (info->contexts, ctx);
+		context_free (ctx);
+	}
 }
 
 static void
@@ -311,6 +389,23 @@ on_selector_item_pushed (CpgParserContext *context,
 {
 	GSList *annot;
 	SelectorItemAnnotation *an;
+	gint line_start;
+	gint line_end;
+	gint cstart;
+	gint cend;
+
+	cpg_parser_context_get_last_selector_item_line (context,
+	                                                &line_start,
+	                                                &line_end);
+
+	cpg_parser_context_get_last_selector_item_column (context,
+	                                                  &cstart,
+	                                                  &cend);
+
+	if (!check_region (line_start, line_end, cstart, cend))
+	{
+		return;
+	}
 
 	if (!info->selectors)
 	{
@@ -323,13 +418,10 @@ on_selector_item_pushed (CpgParserContext *context,
 	an = g_slice_new0 (SelectorItemAnnotation);
 	an->id = cpg_selector_get_last_id (selector);
 
-	cpg_parser_context_get_last_selector_item_line (context,
-	                                                &an->line_start,
-	                                                &an->line_end);
-
-	cpg_parser_context_get_last_selector_item_column (context,
-	                                                  &an->cstart,
-	                                                  &an->cend);
+	an->line_start = line_start;
+	an->line_end = line_end;
+	an->cstart = cstart;
+	an->cend = cend;
 
 	if (annot == NULL)
 	{
@@ -351,6 +443,11 @@ info_free (Info *info)
 	g_slist_free (info->contexts);
 
 	g_slist_free (info->context_stack);
+
+	if (info->file)
+	{
+		g_object_unref (info->file);
+	}
 }
 
 #define write_stream_format(stream, format, ...) do {				\
@@ -683,7 +780,7 @@ parse_network (gchar const *args[], gint argc)
 	if (!fromstdin)
 	{
 		cpg_parser_context_push_input (context, file, NULL);
-		g_object_unref (file);
+		info.file = file;
 	}
 	else
 	{
@@ -740,7 +837,19 @@ parse_network (gchar const *args[], gint argc)
 
 		if (cpg_parser_context_parse (context, &error))
 		{
-			info.contexts = g_slist_reverse (info.contexts);
+			if (context_line != -1 && context_column != -1)
+			{
+				/* Only keep the last */
+				g_slist_foreach (info.contexts->next, (GFunc)context_free, NULL);
+
+				g_slist_free (info.contexts->next);
+				info.contexts->next = NULL;
+			}
+			else
+			{
+				info.contexts = g_slist_reverse (info.contexts);
+			}
+
 			write_contexts (&info, stream);
 		}
 		else
@@ -877,6 +986,11 @@ main (int argc, char *argv[])
 		g_error_free (error);
 
 		return 1;
+	}
+
+	if (context_line != -1 && context_column == -1)
+	{
+		context_column = 0;
 	}
 
 	if (argc < 2)

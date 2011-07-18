@@ -256,10 +256,14 @@ CpgObject        *cpg_object_get_property_template (CpgObject   *object,
                                                     CpgProperty *property,
                                                     gboolean     match_full);
 
-gchar            *cpg_object_get_full_id     (CpgObject *object);
+gchar            *cpg_object_get_full_id             (CpgObject *object);
+gchar            *cpg_object_get_full_id_for_display (CpgObject *object);
 
 gchar            *cpg_object_get_relative_id (CpgObject *object,
                                               CpgObject *parent);
+
+gchar            *cpg_object_get_relative_id_for_display (CpgObject *object,
+                                                          CpgObject *parent);
 
 const GSList     *cpg_object_get_links      (CpgObject *object);
 

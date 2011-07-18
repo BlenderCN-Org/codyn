@@ -145,7 +145,8 @@ void               cpg_property_flags_from_string       (const gchar        *fla
                                                          CpgPropertyFlags   *add_flags,
                                                          CpgPropertyFlags   *remove_flags);
 
-gchar             *cpg_property_get_full_name           (CpgProperty        *property);
+gchar             *cpg_property_get_full_name             (CpgProperty        *property);
+gchar             *cpg_property_get_full_name_for_display (CpgProperty        *property);
 
 CpgProperty       *cpg_property_copy                    (CpgProperty        *property);
 

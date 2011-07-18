@@ -1610,19 +1610,9 @@ cpg_group_verify_remove_child_impl (CpgGroup   *group,
                                     CpgObject  *object,
                                     GError    **error)
 {
-	/* Check if there are any objects that use the child as a template
+	/* TODO: Check if there are any objects that use the child as a template
 	   while this template is not inherited from applying a template to
 	   the parent of the child */
-	if (cpg_usable_use_count (CPG_USABLE (object)))
-	{
-		g_set_error (error,
-		             CPG_GROUP_ERROR,
-		             CPG_GROUP_ERROR_CHILD_IN_USE,
-		             "The object is still in use");
-
-		return FALSE;
-	}
-
 	return TRUE;
 }
 
