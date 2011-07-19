@@ -1,3 +1,11 @@
+cpg-network (2.2-1) UNRELEASED; urgency=low
+
+  * New upstream release
+  * Fix various parser bugs
+  * Fix handling of random numbers
+
+ -- Jesse van den Kieboom <jvanden@grijpc10.epfl.ch>  Mon, 18 Jul 2011 17:48:06 +0200
+
 cpg-network (2.1-1) UNRELEASED; urgency=low
 
   * New upstream release
