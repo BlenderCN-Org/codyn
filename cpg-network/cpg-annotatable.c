@@ -22,6 +22,14 @@
 
 #include "cpg-annotatable.h"
 
+/**
+ * SECTION:cpg-annotatable
+ * @short_description: Interface for annotating objects
+ *
+ * This interface can be implemented when an object supports annotations.
+ *
+ **/
+
 G_DEFINE_INTERFACE (CpgAnnotatable, cpg_annotatable, G_TYPE_OBJECT);
 
 static gchar *
@@ -69,6 +77,15 @@ cpg_annotatable_default_init (CpgAnnotatableInterface *iface)
 	}
 }
 
+/**
+ * cpg_annotatable_get_title:
+ * @annotatable: A #CpgAnnotatable
+ *
+ * Get the title (display name) of the annotatable object.
+ *
+ * Returns: (transfer full): the title
+ *
+ **/
 gchar *
 cpg_annotatable_get_title (CpgAnnotatable *annotatable)
 {
@@ -77,6 +94,14 @@ cpg_annotatable_get_title (CpgAnnotatable *annotatable)
 	return CPG_ANNOTATABLE_GET_INTERFACE (annotatable)->get_title (annotatable);
 }
 
+/**
+ * cpg_annotatable_set_annotation:
+ * @annotatable: A #CpgAnnotatable
+ * @annotation: The annotation
+ *
+ * Set the object annotation.
+ *
+ **/
 void
 cpg_annotatable_set_annotation (CpgAnnotatable *annotatable,
                                 gchar const    *annotation)
@@ -87,6 +112,15 @@ cpg_annotatable_set_annotation (CpgAnnotatable *annotatable,
 	                                                             annotation);
 }
 
+/**
+ * cpg_annotatable_get_annotation:
+ * @annotatable: A #CpgAnnotatable
+ *
+ * Get the annotation.
+ *
+ * Returns: (transfer full): Get the object annotation
+ *
+ **/
 gchar *
 cpg_annotatable_get_annotation (CpgAnnotatable *annotatable)
 {

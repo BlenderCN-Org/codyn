@@ -23,6 +23,14 @@
 #include "cpg-layoutable.h"
 #include <cpg-network/cpg-network.h>
 
+/**
+ * SECTION:cpg-layoutable
+ * @short_description: Interface for object layouting
+ *
+ * This interface can be implemented when an object can be layouted.
+ *
+ **/
+
 G_DEFINE_INTERFACE (CpgLayoutable, cpg_layoutable, G_TYPE_OBJECT)
 
 /* Default implementation */
@@ -81,6 +89,15 @@ cpg_layoutable_default_init (CpgLayoutableInterface *iface)
 	}
 }
 
+/**
+ * cpg_layoutable_get_location:
+ * @layoutable: A #CpgLayoutable
+ * @x: (out): x
+ * @y: (out): y
+ *
+ * Get the location of the layoutable.
+ *
+ **/
 void
 cpg_layoutable_get_location (CpgLayoutable *layoutable,
                              gint          *x,
@@ -108,6 +125,15 @@ cpg_layoutable_get_location (CpgLayoutable *layoutable,
 	}
 }
 
+/**
+ * cpg_layoutable_set_location:
+ * @layoutable: A #CpgLayoutable
+ * @x: x
+ * @y: y
+ *
+ * Set the location of the layoutable.
+ *
+ **/
 void
 cpg_layoutable_set_location (CpgLayoutable *layoutable,
                              gint           x,
@@ -123,6 +149,15 @@ cpg_layoutable_set_location (CpgLayoutable *layoutable,
 	}
 }
 
+/**
+ * cpg_layoutable_supports_location:
+ * @layoutable: A #CpgLayoutable
+ *
+ * Whether the layoutable supports a location.
+ *
+ * Returns: %TRUE if the layoutable supports location, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_layoutable_supports_location (CpgLayoutable *layoutable)
 {

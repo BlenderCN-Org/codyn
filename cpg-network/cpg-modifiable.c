@@ -22,6 +22,15 @@
 
 #include "cpg-modifiable.h"
 
+/**
+ * SECTION:cpg-modifiable
+ * @short_description: Interface for keeping track of the modified state of an object
+ *
+ * This interface can be implemented when an object needs to keep track of
+ * whether or not it has been modified.
+ *
+ **/
+
 G_DEFINE_INTERFACE (CpgModifiable, cpg_modifiable, G_TYPE_OBJECT);
 
 /* Default implementation */
@@ -67,6 +76,15 @@ cpg_modifiable_default_init (CpgModifiableInterface *iface)
 	}
 }
 
+/**
+ * cpg_modifiable_get_modified:
+ * @modifiable: A #CpgModifiable
+ *
+ * Get the modified state.
+ *
+ * Returns: %TRUE if the object has been modified, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_modifiable_get_modified (CpgModifiable *modifiable)
 {
@@ -75,6 +93,15 @@ cpg_modifiable_get_modified (CpgModifiable *modifiable)
 	return CPG_MODIFIABLE_GET_INTERFACE (modifiable)->get_modified (modifiable);
 }
 
+
+/**
+ * cpg_modifiable_set_modified:
+ * @modifiable: A #CpgModifiable
+ * @modified: Modified state
+ *
+ * Set the modified state of the object.
+ *
+ **/
 void
 cpg_modifiable_set_modified (CpgModifiable *modifiable,
                              gboolean       modified)
