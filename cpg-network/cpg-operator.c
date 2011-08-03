@@ -190,6 +190,30 @@ cpg_operator_execute (CpgOperator     *op,
 }
 
 /**
+ * cpg_operator_get_class_name:
+ * @op: A #CpgOperatorClass
+ *
+ * Get the operator name. This is the identifier that is used in expressions,
+ * and thus can only contain valid identifier characters.
+ *
+ * Returns: a newly allocated string with the operator name, use #g_free to
+ * free the value when it's no longer needed.
+ *
+ **/
+gchar const *
+cpg_operator_get_class_name (CpgOperatorClass *klass)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), NULL);
+
+	if (!klass->priv->name)
+	{
+		klass->priv->name = klass->get_name ();
+	}
+
+	return klass->priv->name;
+}
+
+/**
  * cpg_operator_get_name:
  * @op: A #CpgOperator
  *
@@ -201,16 +225,11 @@ cpg_operator_execute (CpgOperator     *op,
  *
  **/
 gchar const *
-cpg_operator_get_name (CpgOperatorClass *klass)
+cpg_operator_get_name (CpgOperator *op)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), NULL);
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
 
-	if (!klass->priv->name)
-	{
-		klass->priv->name = klass->get_name ();
-	}
-
-	return klass->priv->name;
+	return cpg_operator_get_class_name (CPG_OPERATOR_GET_CLASS (op));
 }
 
 /**

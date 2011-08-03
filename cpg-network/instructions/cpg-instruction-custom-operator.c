@@ -46,7 +46,7 @@ cpg_instruction_custom_operator_to_string (CpgInstruction *instruction)
 
 	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
 
-	gchar const *name = cpg_operator_get_name (CPG_OPERATOR_GET_CLASS (self->priv->op));
+	gchar const *name = cpg_operator_get_name (self->priv->op);
 	gchar *ret = g_strdup_printf ("OPC (%s)", name);
 
 	return ret;

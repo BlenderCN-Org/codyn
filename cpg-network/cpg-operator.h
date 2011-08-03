@@ -101,7 +101,8 @@ void                 cpg_operator_execute                     (CpgOperator     *
 void                 cpg_operator_reset_cache                 (CpgOperator     *op);
 void                 cpg_operator_reset_variadic              (CpgOperator     *op);
 
-gchar const         *cpg_operator_get_name                    (CpgOperatorClass *op);
+gchar const         *cpg_operator_get_name                    (CpgOperator      *op);
+gchar const         *cpg_operator_get_class_name              (CpgOperatorClass *op);
 gboolean             cpg_operator_validate_num_arguments      (CpgOperatorClass *op,
                                                                gint             num);
 

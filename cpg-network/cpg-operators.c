@@ -124,7 +124,7 @@ cpg_operators_find_class (gchar const *name)
 
 		klass = ops->data;
 
-		if (g_strcmp0 (name, cpg_operator_get_name (klass)) == 0)
+		if (g_strcmp0 (name, cpg_operator_get_class_name (klass)) == 0)
 		{
 			return klass;
 		}
