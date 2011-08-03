@@ -431,7 +431,6 @@ main (int argc,
 
 	g_type_init ();
 
-
 	gettimeofday (&tv, NULL);
 	seed = tv.tv_sec;
 
