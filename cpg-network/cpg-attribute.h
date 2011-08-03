@@ -60,13 +60,13 @@ CpgAttribute *cpg_attribute_new (gchar const *id);
 CpgAttribute *cpg_attribute_newv (gchar const *id,
                                   ...) G_GNUC_NULL_TERMINATED;
 
-void cpg_attribute_set_arguments (CpgAttribute *attr, GSList *arguments);
+void cpg_attribute_set_arguments (CpgAttribute *attribute, GSList *arguments);
 
-gchar const *cpg_attribute_get_id (CpgAttribute *attr);
-GSList *cpg_attribute_get_arguments (CpgAttribute *attr);
+gchar const *cpg_attribute_get_id (CpgAttribute *attribute);
+GSList *cpg_attribute_get_arguments (CpgAttribute *attribute);
 
-GObject *cpg_attribute_get_argument (CpgAttribute *attr, gint i);
-gint cpg_attribute_num_arguments (CpgAttribute *attr);
+GObject *cpg_attribute_get_argument (CpgAttribute *attribute, gint i);
+gint cpg_attribute_num_arguments (CpgAttribute *attribute);
 
 G_END_DECLS
 

@@ -47,14 +47,14 @@ struct _CpgAnnotatableInterface
 	gchar *(*get_annotation) (CpgAnnotatable *annotatable);
 };
 
-GType cpg_annotatable_get_type (void) G_GNUC_CONST;
+GType  cpg_annotatable_get_type       (void) G_GNUC_CONST;
 
-gchar *cpg_annotatable_get_title (CpgAnnotatable *self);
+gchar *cpg_annotatable_get_title      (CpgAnnotatable *annotatable);
 
-gchar *cpg_annotatable_get_annotation (CpgAnnotatable *self);
+gchar *cpg_annotatable_get_annotation (CpgAnnotatable *annotatable);
 
-void cpg_annotatable_set_annotation (CpgAnnotatable *self,
-                                     gchar const    *annotation);
+void   cpg_annotatable_set_annotation (CpgAnnotatable *annotatable,
+                                       gchar const    *annotation);
 
 G_END_DECLS
 

@@ -22,6 +22,14 @@
 
 #include "cpg-attribute.h"
 
+/**
+ * SECTION:cpg-attribute
+ * @short_description: Cpg format attribute
+ *
+ * This object represents an attribute in the Cpg format.
+ *
+ **/
+
 #define CPG_ATTRIBUTE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_ATTRIBUTE, CpgAttributePrivate))
 
 struct _CpgAttributePrivate
@@ -110,6 +118,15 @@ cpg_attribute_init (CpgAttribute *self)
 	self->priv = CPG_ATTRIBUTE_GET_PRIVATE (self);
 }
 
+/**
+ * cpg_attribute_new:
+ * @id: attribute id
+ *
+ * Create a new attribute.
+ *
+ * Returns: A #CpgAttribute
+ *
+ **/
 CpgAttribute *
 cpg_attribute_new (gchar const *id)
 {
@@ -161,7 +178,14 @@ cpg_attribute_newv (gchar const *id,
 	return ret;
 }
 
-
+/**
+ * cpg_attribute_set_arguments:
+ * @attribute: A #CpgAttribute
+ * @arguments: (element-type GObject) (transfer none): A list of #GObject
+ *
+ * Set the arguments of the attribute.
+ *
+ **/
 void
 cpg_attribute_set_arguments (CpgAttribute *attribute,
                              GSList       *arguments)
@@ -187,17 +211,26 @@ cpg_attribute_set_arguments (CpgAttribute *attribute,
 	attribute->priv->arguments = g_slist_reverse (attribute->priv->arguments);
 }
 
+/**
+ * cpg_attribute_get_id:
+ * @attribute: A #CpgAttribute
+ *
+ * Get the attribute id.
+ *
+ * Returns: the attribute id.
+ *
+ **/
 gchar const *
-cpg_attribute_get_id (CpgAttribute *attr)
+cpg_attribute_get_id (CpgAttribute *attribute)
 {
-	g_return_val_if_fail (CPG_IS_ATTRIBUTE (attr), NULL);
+	g_return_val_if_fail (CPG_IS_ATTRIBUTE (attribute), NULL);
 
-	return attr->priv->id;
+	return attribute->priv->id;
 }
 
 /**
  * cpg_attribute_get_arguments:
- * @attr: A #CpgAttribute
+ * @attribute: A #CpgAttribute
  *
  * Get the list of arguments of the attribute.
  *
@@ -205,16 +238,16 @@ cpg_attribute_get_id (CpgAttribute *attr)
  *
  **/
 GSList *
-cpg_attribute_get_arguments (CpgAttribute *attr)
+cpg_attribute_get_arguments (CpgAttribute *attribute)
 {
-	g_return_val_if_fail (CPG_IS_ATTRIBUTE (attr), NULL);
+	g_return_val_if_fail (CPG_IS_ATTRIBUTE (attribute), NULL);
 
-	return attr->priv->arguments;
+	return attribute->priv->arguments;
 }
 
 /**
  * cpg_attribute_get_argument:
- * @attr: A #CpgAttribute
+ * @attribute: A #CpgAttribute
  * @i: The index of the argument
  *
  * Get an argument.
@@ -223,18 +256,27 @@ cpg_attribute_get_arguments (CpgAttribute *attr)
  *
  **/
 GObject *
-cpg_attribute_get_argument (CpgAttribute *attr,
+cpg_attribute_get_argument (CpgAttribute *attribute,
                             gint          i)
 {
-	g_return_val_if_fail (CPG_IS_ATTRIBUTE (attr), NULL);
+	g_return_val_if_fail (CPG_IS_ATTRIBUTE (attribute), NULL);
 
-	return g_slist_nth_data (attr->priv->arguments, i);
+	return g_slist_nth_data (attribute->priv->arguments, i);
 }
 
+/**
+ * cpg_attribute_num_arguments:
+ * @attribute: A #CpgAttribute
+ *
+ * Get the number of arguments.
+ *
+ * Returns: the number of attribute arguments
+ *
+ **/
 gint
-cpg_attribute_num_arguments (CpgAttribute *attr)
+cpg_attribute_num_arguments (CpgAttribute *attribute)
 {
-	g_return_val_if_fail (CPG_IS_ATTRIBUTE (attr), 0);
+	g_return_val_if_fail (CPG_IS_ATTRIBUTE (attribute), 0);
 
-	return attr->priv->num_arguments;
+	return attribute->priv->num_arguments;
 }
