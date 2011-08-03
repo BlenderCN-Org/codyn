@@ -1054,9 +1054,9 @@ count_selection (GSList *selection)
 		                         cpg_selection_get_defines (item->data));
 
 		g_slist_free (expansions);
-		g_object_unref (ex);
+		g_object_unref (expansion);
 
-		ret->data = sel;
+		item->data = sel;
 	}
 
 	g_object_unref (ex);
