@@ -47,17 +47,22 @@
 
 (defun cpg-context-parse (proc event)
   "Parses the JSON from cpg-context"
-  (setq cpg-context (json-read-from-string
-                     (with-current-buffer (process-buffer proc) (buffer-string))))
-  (kill-buffer (process-buffer proc))
-  (cpg-context-check-error (nth 1 (process-command proc)))
-  (with-current-buffer (get-file-buffer (nth 1 (process-command proc)))
-    ;; (setq cpg-context-updating nil)
-    ))
+  (if (string= event "finished\n")
+      (progn
+        (setq cpg-context (json-read-from-string
+                           (with-current-buffer (process-buffer proc) (buffer-string))))
+        (kill-buffer (process-buffer proc))
+        (cpg-context-check-error (nth 1 (process-command proc)))
+        ;; (with-current-buffer (get-file-buffer (nth 1 (process-command proc)))
+        ;;   (setq cpg-context-updating nil))
+        )
+    (with-current-buffer (get-file-buffer (nth 1 (process-command proc)))
+      (setq cpg-context-do-show nil)
+      (message (concat "cpg-context failed: " (substring event 0 -1))))))
 
 (defun cpg-context-print-defines (selections)
   (insert (propertize "\nDefines\n\n" 'face '(:inherit font-lock-type-face :weight bold)))
-  (let ((defines (cdr (assoc 'defines (elt (cdr (assoc 'out (elt selections 0))) 0)))))
+  (let ((defines (cdr (assoc 'defines (elt (cdr (assoc 'in (elt selections 0))) 0)))))
     (mapc (lambda (define)
             (insert (concat "\t"
                             (propertize (cdr (assoc 'key define)) 'face font-lock-variable-name-face)
@@ -267,7 +272,7 @@
   ;; (set (make-local-variable 'cpg-context-updating) nil)
   (make-local-variable 'before-change-functions)
   (add-to-list 'before-change-functions 'cpg-context-clear)
-  (add-hook 'after-save-hook 'cpg-context-check)
+  (add-hook 'after-save-hook 'cpg-context-update)
   (run-hooks 'cpg-mode-hook)
   (cpg-context-update))
 
