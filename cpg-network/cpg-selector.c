@@ -1135,6 +1135,152 @@ selector_pseudo_from_to (Selector           *selector,
 	return ret;
 }
 
+static gboolean
+test_string_empty (gchar const *s)
+{
+	gdouble num;
+	gchar *endptr;
+
+	num = g_ascii_strtod (s, &endptr);
+
+	if (!*endptr)
+	{
+		/* number == 0 */
+		return num == 0;
+	}
+	else
+	{
+		/* Empty string */
+		return !*s;
+	}
+}
+
+static GSList *
+selector_pseudo_if (Selector           *selector,
+                    GSList             *ret,
+                    CpgSelection       *sel,
+                    CpgEmbeddedContext *context,
+                    gboolean            condition)
+{
+	gpointer obj;
+	GSList *item;
+
+	cpg_embedded_context_save (context);
+
+	cpg_embedded_context_add_selection (context, sel);
+
+	obj = cpg_selection_get_object (sel);
+
+	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	{
+		GSList *sub = NULL;
+		gboolean r = FALSE;
+
+		if (CPG_IS_SELECTOR (item->data))
+		{
+			sub = cpg_selector_select (item->data,
+			                           obj,
+			                           CPG_SELECTOR_TYPE_ANY,
+			                           context);
+
+			r = (sub != NULL);
+		}
+		else if (CPG_IS_EMBEDDED_STRING (item->data))
+		{
+			gchar const *ex;
+
+			ex = cpg_embedded_string_expand (item->data, context, NULL);
+
+			r = !test_string_empty (ex);
+		}
+
+		if (!condition)
+		{
+			/* Remove if in selection */
+			GSList *subitem;
+			gboolean found = FALSE;
+
+			for (subitem = sub; subitem; subitem = g_slist_next (subitem))
+			{
+				if (cpg_selection_get_object (subitem->data) == obj)
+				{
+					found = TRUE;
+					break;
+				}
+			}
+
+			if (!found)
+			{
+				r = TRUE;
+			}
+		}
+
+		g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
+		g_slist_free (sub);
+
+		if (condition == r)
+		{
+			ret = g_slist_prepend (ret,
+			                       cpg_selection_copy (sel));
+			break;
+		}
+	}
+
+	cpg_embedded_context_restore (context);
+	return ret;
+}
+
+static GSList *
+selector_pseudo_isempty (CpgSelector        *self,
+                         Selector           *selector,
+                         GSList             *ret,
+                         CpgSelection       *sel,
+                         CpgEmbeddedContext *context)
+{
+	GSList *item;
+
+	cpg_embedded_context_save (context);
+
+	cpg_embedded_context_add_selection (context, sel);
+
+	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	{
+		gboolean r = FALSE;
+
+		if (CPG_IS_SELECTOR (item->data))
+		{
+			GSList *sub;
+
+			sub = cpg_selector_select (item->data,
+			                           cpg_selection_get_object (sel),
+			                           CPG_SELECTOR_TYPE_ANY,
+			                           context);
+
+			r = (sub == NULL);
+
+			g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
+			g_slist_free (sub);
+		}
+		else if (CPG_IS_EMBEDDED_STRING (item->data))
+		{
+			gchar const *ex;
+
+			ex = cpg_embedded_string_expand (item->data, context, NULL);
+
+			r = test_string_empty (ex);
+		}
+
+		if (r)
+		{
+			ret = g_slist_prepend (ret,
+			                       cpg_selection_copy (self->priv->self));
+		}
+	}
+
+	cpg_embedded_context_restore (context);
+	return ret;
+}
+
 static gchar *
 selector_until_as_string (CpgSelector *self,
                           Selector    *selector)
@@ -1724,6 +1870,27 @@ selector_select_pseudo (CpgSelector        *self,
 				                               sel,
 				                               context);
 			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_IF:
+				ret = selector_pseudo_if (selector,
+				                          ret,
+				                          sel,
+				                          context,
+				                          TRUE);
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_REMOVE:
+				ret = selector_pseudo_if (selector,
+				                          ret,
+				                          sel,
+				                          context,
+				                          FALSE);
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_ISEMPTY:
+				ret = selector_pseudo_isempty (self,
+				                               selector,
+				                               ret,
+				                               sel,
+				                               context);
+			break;
 			default:
 				g_assert_not_reached ();
 			break;
@@ -2146,6 +2313,15 @@ cpg_selector_get_out_context (CpgSelector *selector,
 	return sel ? sel->selections_out : NULL;
 }
 
+/**
+ * cpg_selector_is_pseudo_name:
+ * @name: the name
+ *
+ * Check whether a name is a pseudo selector.
+ *
+ * Returns: %TRUE if the name is a pseudo selector, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_selector_is_pseudo_name (gchar const *name)
 {
@@ -2162,6 +2338,15 @@ cpg_selector_is_pseudo_name (gchar const *name)
 	return FALSE;
 }
 
+/**
+ * cpg_selector_escape_identifier:
+ * @name: the name
+ *
+ * Escapes an identifier if needed.
+ *
+ * Returns: (transfer full): the escaped identifier
+ *
+ **/
 gchar *
 cpg_selector_escape_identifier (gchar const *name)
 {

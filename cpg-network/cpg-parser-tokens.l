@@ -214,13 +214,15 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"objects"		return T_KEY_OBJECTS;
 <INITIAL,onlyselector>"properties"	return T_KEY_PROPERTIES;
 <INITIAL,onlyselector>"actions"		return T_KEY_ACTION;
+<INITIAL,onlyselector>"isempty"		return T_KEY_ISEMPTY;
+<INITIAL,onlyselector>"remove"		return T_KEY_REMOVE;
+<INITIAL,onlyselector>"if"		return T_KEY_IF;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
 "proxy"				return T_KEY_PROXY;
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
 "each"				return T_KEY_EACH;
-"if"				return T_KEY_IF;
 "settings"			return T_KEY_SETTINGS;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
