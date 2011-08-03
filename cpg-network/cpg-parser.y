@@ -103,6 +103,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <selector> selector
 %type <selector> strict_selector
 %type <selector> strict_selector_only
+%type <selector> strict_selector_only_noimp
 %type <selector> selector_self
 %type <num> selector_pseudo_mixargs_key
 %type <object> selector_pseudo_mixargs_arg
@@ -797,6 +798,12 @@ strict_selector_only
 	                                                               NULL); errb }
 	;
 
+strict_selector_only_noimp
+	: strict_selector		{ $$ = $1; }
+	| selector_nonambi
+	  zero_or_more_selectors	{ $$ = cpg_parser_context_pop_selector (context); errb; }
+	;
+
 selector_parse
 	: selector_items		{ cpg_selector_prepend_pseudo (cpg_parser_context_peek_selector (context),
 	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
@@ -893,7 +900,8 @@ selector_pseudo_mixargs_key
 
 selector_pseudo_mixargs_arg
 	: value_as_string			{ $$ = $1; }
-	| strict_selector_only			{ $$ = $1; }
+	| strict_selector_only_noimp		{ $$ = $1;
+						  cpg_parser_context_push_selector (context); }
 	;
 
 selector_pseudo_mixargs_args_rev
@@ -908,11 +916,11 @@ selector_pseudo_mixargs_args
 
 selector_pseudo_with_args
 	: selector_pseudo_selector_key
-	  '('
+	  '('					{ cpg_parser_context_push_selector (context); }
 	  selector_pseudo_selector_args
 	  ')'					{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
-						                                           $3); }
+						                                           $4); }
 	| selector_pseudo_strargs_key '(' selector_pseudo_strargs_args ')'
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
@@ -925,10 +933,14 @@ selector_pseudo_with_args
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
 						                                           NULL); }
-	| selector_pseudo_mixargs_key '(' selector_pseudo_mixargs_args ')'
-						{ cpg_parser_context_push_selector_pseudo (context,
+	| selector_pseudo_mixargs_key
+	  '('					{ cpg_parser_context_push_selector (context); }
+	  selector_pseudo_mixargs_args
+	  ')'
+						{ cpg_parser_context_pop_selector (context);
+						  cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
-						                                           $3); }
+						                                           $4); }
 	| selector_pseudo_mixargs_key '(' ')'
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,

@@ -118,7 +118,10 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"name",
 	"descendants",
 	"ancestors",
-	"unique"
+	"unique",
+	"if",
+	"isempty",
+	"remove"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1194,7 +1197,7 @@ selector_pseudo_if (Selector           *selector,
 			r = !test_string_empty (ex);
 		}
 
-		if (!condition)
+		if (!condition && sub != NULL)
 		{
 			/* Remove if in selection */
 			GSList *subitem;
@@ -1233,52 +1236,74 @@ selector_pseudo_if (Selector           *selector,
 static GSList *
 selector_pseudo_isempty (CpgSelector        *self,
                          Selector           *selector,
-                         GSList             *ret,
-                         CpgSelection       *sel,
+                         GSList             *parent,
                          CpgEmbeddedContext *context)
 {
 	GSList *item;
+	GSList *seli;
+	gboolean isempty = TRUE;
 
-	cpg_embedded_context_save (context);
-
-	cpg_embedded_context_add_selection (context, sel);
-
-	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	for (seli = parent; seli; seli = g_slist_next (seli))
 	{
-		gboolean r = FALSE;
+		CpgSelection *sel;
 
-		if (CPG_IS_SELECTOR (item->data))
+		sel = seli->data;
+
+		cpg_embedded_context_save (context);
+
+		cpg_embedded_context_add_selection (context, sel);
+
+		for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
 		{
-			GSList *sub;
+			gboolean r = FALSE;
 
-			sub = cpg_selector_select (item->data,
-			                           cpg_selection_get_object (sel),
-			                           CPG_SELECTOR_TYPE_ANY,
-			                           context);
+			if (CPG_IS_SELECTOR (item->data))
+			{
+				GSList *sub;
 
-			r = (sub == NULL);
+				sub = cpg_selector_select (item->data,
+				                           cpg_selection_get_object (sel),
+				                           CPG_SELECTOR_TYPE_ANY,
+				                           context);
 
-			g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
-			g_slist_free (sub);
+				r = (sub == NULL);
+
+				g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
+				g_slist_free (sub);
+			}
+			else if (CPG_IS_EMBEDDED_STRING (item->data))
+			{
+				gchar const *ex;
+
+				ex = cpg_embedded_string_expand (item->data, context, NULL);
+
+				r = test_string_empty (ex);
+			}
+
+			if (!r)
+			{
+				isempty = FALSE;
+				break;
+			}
 		}
-		else if (CPG_IS_EMBEDDED_STRING (item->data))
+
+		cpg_embedded_context_restore (context);
+
+		if (!isempty)
 		{
-			gchar const *ex;
-
-			ex = cpg_embedded_string_expand (item->data, context, NULL);
-
-			r = test_string_empty (ex);
-		}
-
-		if (r)
-		{
-			ret = g_slist_prepend (ret,
-			                       cpg_selection_copy (self->priv->self));
+			break;
 		}
 	}
 
-	cpg_embedded_context_restore (context);
-	return ret;
+	if (isempty)
+	{
+		return g_slist_prepend (NULL,
+		                        cpg_selection_copy (self->priv->self));
+	}
+	else
+	{
+		return NULL;
+	}
 }
 
 static gchar *
@@ -1711,6 +1736,12 @@ selector_select_pseudo (CpgSelector        *self,
 		case CPG_SELECTOR_PSEUDO_TYPE_UNIQUE:
 			return unique_selections (parent);
 		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_ISEMPTY:
+			return selector_pseudo_isempty (self,
+			                                selector,
+			                                parent,
+			                                context);
+		break;
 		default:
 		break;
 	}
@@ -1883,13 +1914,6 @@ selector_select_pseudo (CpgSelector        *self,
 				                          sel,
 				                          context,
 				                          FALSE);
-			break;
-			case CPG_SELECTOR_PSEUDO_TYPE_ISEMPTY:
-				ret = selector_pseudo_isempty (self,
-				                               selector,
-				                               ret,
-				                               sel,
-				                               context);
 			break;
 			default:
 				g_assert_not_reached ();
