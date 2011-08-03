@@ -7,6 +7,7 @@
 #include <gio/gunixinputstream.h>
 #include <cpg-network/cpg-network-serializer.h>
 #include <termcap.h>
+#include <sys/time.h>
 #include "cpg-readline-stream.h"
 
 static gchar *output_file;
@@ -20,6 +21,7 @@ static gchar const *color_bold = "\e[1m";
 static gchar const *color_off = "\e[0m";
 
 static GSList *defines = NULL;
+static gint64 seed = 0;
 
 static gboolean
 add_define (gchar const  *option_name,
@@ -36,6 +38,7 @@ static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
+	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
 	{NULL}
 };
 
@@ -275,8 +278,12 @@ main (int argc, char *argv[])
 	GOptionContext *ctx;
 	GError *error = NULL;
 	gboolean ret;
+	struct timeval tv;
 
 	g_type_init ();
+
+	gettimeofday (&tv, NULL);
+	seed = tv.tv_sec;
 
 	determine_color_support ();
 
@@ -310,6 +317,8 @@ main (int argc, char *argv[])
 
 		return 1;
 	}
+
+	srand (seed);
 
 	return parse_network ((gchar const **)(argv + 1), argc - 1);
 }
