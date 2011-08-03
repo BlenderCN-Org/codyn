@@ -432,7 +432,7 @@ main (int argc,
 	g_type_init ();
 
 	gettimeofday (&tv, NULL);
-	seed = tv.tv_sec;
+	seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
 	monitored = g_ptr_array_new ();
 	delimiter = g_strdup ("\t");

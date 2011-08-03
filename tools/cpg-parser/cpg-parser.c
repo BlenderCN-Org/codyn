@@ -283,7 +283,7 @@ main (int argc, char *argv[])
 	g_type_init ();
 
 	gettimeofday (&tv, NULL);
-	seed = tv.tv_sec;
+	seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
 	determine_color_support ();
 
