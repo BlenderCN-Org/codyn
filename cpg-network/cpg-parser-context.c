@@ -1602,6 +1602,54 @@ parse_objects (CpgParserContext  *context,
 }
 
 static GSList *
+link_pairs_sparse (CpgParserContext *context,
+                   gdouble           probability,
+                   gboolean          bidi,
+                   gboolean          noself,
+                   GSList           *fromobjs,
+                   GSList           *toobjs)
+{
+	/* Connect probabilistically */
+	GSList *fromobj;
+	GSList *ret = NULL;
+	long int p;
+
+	p = (long int)(RAND_MAX * probability);
+
+	for (fromobj = fromobjs; fromobj; fromobj = g_slist_next (fromobj))
+	{
+		GSList *toobj;
+
+		for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
+		{
+			if (random () > p || (noself &&
+			                      cpg_selection_get_object (toobj->data) ==
+			                      cpg_selection_get_object (fromobj->data)))
+			{
+				continue;
+			}
+
+			ret = g_slist_prepend (ret,
+			                       cpg_selection_copy (fromobj->data));
+
+			ret = g_slist_prepend (ret,
+			                       cpg_selection_copy (toobj->data));
+
+			if (bidi)
+			{
+				ret = g_slist_prepend (ret,
+				                       cpg_selection_copy (toobj->data));
+
+				ret = g_slist_prepend (ret,
+				                       cpg_selection_copy (fromobj->data));
+			}
+		}
+	}
+
+	return ret;
+}
+
+static GSList *
 link_pairs (CpgParserContext *context,
             CpgExpansion     *id,
             gboolean          autoid,
@@ -1614,8 +1662,35 @@ link_pairs (CpgParserContext *context,
 	GSList *fromobj;
 	GSList *ret = NULL;
 	CpgAttribute *bidi;
+	CpgAttribute *noself;
+	CpgAttribute *iff;
+	gdouble iffprob = 0.0;
 
 	bidi = find_attribute (attributes, "bidirectional");
+	iff = find_attribute (attributes, "probability");
+	noself = find_attribute (attributes, "no-self");
+
+	if (iff)
+	{
+		CpgEmbeddedString *s;
+		GObject *obj;
+
+		obj = cpg_attribute_get_argument (iff, 0);
+
+		if (CPG_IS_EMBEDDED_STRING (obj))
+		{
+			gchar const *ex;
+			s = CPG_EMBEDDED_STRING (obj);
+
+			embedded_string_expand_val (ex, s, context, NULL);
+
+			iffprob = g_ascii_strtod (ex, NULL);
+		}
+		else
+		{
+			iff = NULL;
+		}
+	}
 
 	cpg_embedded_context_save (context->priv->embedded);
 
@@ -1637,56 +1712,91 @@ link_pairs (CpgParserContext *context,
 		return NULL;
 	}
 
-	for (fromobj = fromobjs; fromobj; fromobj = g_slist_next (fromobj))
+	if (!to && iff)
 	{
-		GSList *toobjs;
-		GSList *toobj;
-
-		if (!to)
+		ret = link_pairs_sparse (context,
+		                         iffprob,
+		                         bidi != NULL,
+		                         noself != NULL,
+		                         fromobjs,
+		                         fromobjs);
+	}
+	else
+	{
+		for (fromobj = fromobjs; fromobj; fromobj = g_slist_next (fromobj))
 		{
-			toobjs = g_slist_prepend (NULL,
-			                          cpg_selection_new (cpg_selection_get_object (fromobj->data),
-			                                             NULL,
-			                                             NULL));
+			GSList *toobjs = NULL;
+			GSList *toobj;
 
-		}
-		else
-		{
-			cpg_embedded_context_save (context->priv->embedded);
-
-			cpg_embedded_context_add_expansions (context->priv->embedded,
-			                                      cpg_selection_get_expansions (fromobj->data));
-
-			/* Select TO states */
-			toobjs = cpg_selector_select (to,
-			                              cpg_selection_get_object (parent),
-			                              CPG_SELECTOR_TYPE_STATE |
-			                              CPG_SELECTOR_TYPE_GROUP,
-			                              context->priv->embedded);
-
-			cpg_embedded_context_restore (context->priv->embedded);
-		}
-
-		for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
-		{
-			ret = g_slist_prepend (ret,
-			                       cpg_selection_copy (fromobj->data));
-
-			ret = g_slist_prepend (ret,
-			                       cpg_selection_copy (toobj->data));
-
-			if (bidi != NULL)
+			if (!to && !noself)
 			{
-				ret = g_slist_prepend (ret,
-				                       cpg_selection_copy (toobj->data));
-
-				ret = g_slist_prepend (ret,
-				                       cpg_selection_copy (fromobj->data));
+				toobjs = g_slist_prepend (NULL,
+				                          cpg_selection_copy (fromobj->data));
 			}
-		}
+			else if (to)
+			{
+				cpg_embedded_context_save (context->priv->embedded);
 
-		g_slist_foreach (toobjs, (GFunc)g_object_unref, NULL);
-		g_slist_free (toobjs);
+				cpg_embedded_context_add_expansions (context->priv->embedded,
+				                                      cpg_selection_get_expansions (fromobj->data));
+
+				/* Select TO states */
+				toobjs = cpg_selector_select (to,
+				                              cpg_selection_get_object (parent),
+				                              CPG_SELECTOR_TYPE_STATE |
+				                              CPG_SELECTOR_TYPE_GROUP,
+				                              context->priv->embedded);
+
+				cpg_embedded_context_restore (context->priv->embedded);
+			}
+
+			if (iff && toobjs)
+			{
+				GSList *fromcol;
+
+				fromcol = g_slist_prepend (NULL, fromobj);
+
+				ret = g_slist_concat (link_pairs_sparse (context,
+				                                         iffprob,
+				                                         bidi != NULL,
+				                                         noself != NULL,
+				                                         fromcol,
+				                                         toobjs),
+				                      ret);
+
+				g_slist_free (fromcol);
+			}
+			else
+			{
+				for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
+				{
+					if (noself &&
+					    (cpg_selection_get_object (fromobj->data) ==
+					     cpg_selection_get_object (toobj->data)))
+					{
+						continue;
+					}
+
+					ret = g_slist_prepend (ret,
+					                       cpg_selection_copy (fromobj->data));
+
+					ret = g_slist_prepend (ret,
+					                       cpg_selection_copy (toobj->data));
+
+					if (bidi != NULL)
+					{
+						ret = g_slist_prepend (ret,
+						                       cpg_selection_copy (toobj->data));
+
+						ret = g_slist_prepend (ret,
+						                       cpg_selection_copy (fromobj->data));
+					}
+				}
+			}
+
+			g_slist_foreach (toobjs, (GFunc)g_object_unref, NULL);
+			g_slist_free (toobjs);
+		}
 	}
 
 	g_slist_foreach (fromobjs, (GFunc)g_object_unref, NULL);

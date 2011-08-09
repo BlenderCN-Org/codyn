@@ -224,6 +224,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
 "each"				return T_KEY_EACH;
 "settings"			return T_KEY_SETTINGS;
+"no-self"			return T_KEY_NO_SELF;
+"probability"			return T_KEY_PROBABILITY;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);
