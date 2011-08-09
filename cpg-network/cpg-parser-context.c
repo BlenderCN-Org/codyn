@@ -1754,7 +1754,7 @@ link_pairs (CpgParserContext *context,
 			{
 				GSList *fromcol;
 
-				fromcol = g_slist_prepend (NULL, fromobj);
+				fromcol = g_slist_prepend (NULL, fromobj->data);
 
 				ret = g_slist_concat (link_pairs_sparse (context,
 				                                         iffprob,
