@@ -609,9 +609,9 @@ parse_custom_operator (CpgExpression *expression,
 		}
 
 		gchar *t = g_strndup (expr_start, expr_end - expr_start);
-		g_free (t);
-
 		CpgExpression *sub = cpg_expression_new (t);
+
+		g_free (t);
 		_cpg_expression_set_instructions_take (sub, newinst);
 
 		expressions = g_slist_prepend (expressions, sub);
