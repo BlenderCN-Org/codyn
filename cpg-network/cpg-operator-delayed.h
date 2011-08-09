@@ -24,6 +24,7 @@
 #define __CPG_OPERATOR_DELAYED_H__
 
 #include <cpg-network/cpg-operator.h>
+#include <cpg-network/cpg-expression.h>
 
 G_BEGIN_DECLS
 
@@ -53,8 +54,12 @@ struct _CpgOperatorDelayedClass
 	CpgOperatorClass parent_class;
 };
 
-GType              cpg_operator_delayed_get_type (void) G_GNUC_CONST;
-CpgOperatorDelayed *cpg_operator_delayed_new      (void);
+GType               cpg_operator_delayed_get_type          (void) G_GNUC_CONST;
+CpgOperatorDelayed *cpg_operator_delayed_new               (void);
+
+CpgExpression      *cpg_operator_delayed_get_expression    (CpgOperatorDelayed *delayed);
+CpgExpression      *cpg_operator_delayed_get_initial_value (CpgOperatorDelayed *delayed);
+gdouble             cpg_operator_delayed_get_delay         (CpgOperatorDelayed *delayed);
 
 G_END_DECLS
 
