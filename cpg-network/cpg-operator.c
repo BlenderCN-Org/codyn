@@ -140,6 +140,12 @@ cpg_operator_finalize (GObject *object)
 	G_OBJECT_CLASS (cpg_operator_parent_class)->finalize (object);
 }
 
+static gboolean
+cpg_operator_equal_default (CpgOperator *op,
+                            CpgOperator *other)
+{
+	return FALSE;
+}
 
 static void
 cpg_operator_class_init (CpgOperatorClass *klass)
@@ -158,6 +164,7 @@ cpg_operator_class_init (CpgOperatorClass *klass)
 	klass->step_evaluate = cpg_operator_step_evaluate_default;
 	klass->get_name = cpg_operator_get_name_default;
 	klass->initialize = cpg_operator_initialize_default;
+	klass->equal = cpg_operator_equal_default;
 
 	klass->priv =  CPG_OPERATOR_CLASS_GET_PRIVATE (klass);
 
@@ -364,4 +371,18 @@ cpg_operator_reset (CpgOperator *op)
 	g_return_if_fail (CPG_IS_OPERATOR (op));
 
 	CPG_OPERATOR_GET_CLASS (op)->reset (op);
+}
+
+gboolean
+cpg_operator_equal (CpgOperator *op,
+                    CpgOperator *other)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), FALSE);
+
+	if (other == NULL)
+	{
+		return FALSE;
+	}
+
+	return CPG_OPERATOR_GET_CLASS (op)->equal (op, other);
 }

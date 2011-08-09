@@ -88,6 +88,9 @@ struct _CpgOperatorClass
 	                                     struct _CpgIntegrator *integrator,
 	                                     gdouble      t,
 	                                     gdouble      timestep);
+
+	gboolean         (*equal)           (CpgOperator *op,
+	                                     CpgOperator *other);
 };
 
 GType                cpg_operator_get_type                    (void) G_GNUC_CONST;
@@ -107,6 +110,9 @@ gboolean             cpg_operator_validate_num_arguments      (CpgOperatorClass 
                                                                gint             num);
 
 GSList const        *cpg_operator_get_expressions             (CpgOperator     *op);
+
+gboolean             cpg_operator_equal                       (CpgOperator     *op,
+                                                               CpgOperator     *other);
 
 void                 cpg_operator_step                        (CpgOperator     *op,
                                                                struct _CpgIntegrator *integrator,
