@@ -84,6 +84,8 @@ struct _CpgSelectorPrivate
 	gboolean has_selected;
 	GString *as_string;
 
+	GSList *from_set;
+
 	guint last_id;
 };
 
@@ -121,7 +123,8 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"unique",
 	"if",
 	"isempty",
-	"remove"
+	"remove",
+	"from-set"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -343,6 +346,9 @@ cpg_selector_finalize (GObject *object)
 	g_slist_free (selector->priv->selectors);
 
 	g_string_free (selector->priv->as_string, TRUE);
+
+	g_slist_foreach (selector->priv->from_set, (GFunc)g_object_unref, NULL);
+	g_slist_free (selector->priv->from_set);
 
 	G_OBJECT_CLASS (cpg_selector_parent_class)->finalize (object);
 }
@@ -1022,7 +1028,8 @@ annotate_names (GSList *selection)
 }
 
 static GSList *
-count_selection (GSList *selection)
+count_selection (CpgEmbeddedContext *context,
+                 GSList             *selection)
 {
 	GSList *ret = NULL;
 	GSList *item;
@@ -1062,7 +1069,10 @@ count_selection (GSList *selection)
 		item->data = sel;
 	}
 
+	cpg_embedded_context_add_expansion (context, ex);
+
 	g_object_unref (ex);
+
 
 	return g_slist_reverse (ret);
 }
@@ -1711,7 +1721,7 @@ selector_select_pseudo (CpgSelector        *self,
 				                                     TRUE));
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_COUNT:
-			return count_selection (parent);
+			return count_selection (context, parent);
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_NAME:
 			return annotate_names (parent);
@@ -1741,6 +1751,9 @@ selector_select_pseudo (CpgSelector        *self,
 			                                selector,
 			                                parent,
 			                                context);
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_FROM_SET:
+			return copy_selections (self->priv->from_set);
 		break;
 		default:
 		break;
@@ -2401,3 +2414,16 @@ cpg_selector_escape_identifier (gchar const *name)
 
 	return g_string_free (ret, FALSE);
 }
+
+void
+cpg_selector_set_from_set (CpgSelector *selector,
+                           GSList      *selections)
+{
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+
+	g_slist_foreach (selector->priv->from_set, (GFunc)g_object_unref, NULL);
+	g_slist_free (selector->priv->from_set);
+
+	selector->priv->from_set = copy_selections (selections);
+}
+

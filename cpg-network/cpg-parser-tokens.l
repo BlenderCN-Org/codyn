@@ -218,6 +218,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"isempty"		return T_KEY_ISEMPTY;
 <INITIAL,onlyselector>"remove"		return T_KEY_REMOVE;
 <INITIAL,onlyselector>"if"		return T_KEY_IF;
+<INITIAL,onlyselector>"from-set"	return T_KEY_FROM_SET;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
