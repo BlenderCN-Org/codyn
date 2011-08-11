@@ -192,6 +192,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "property"			return T_KEY_PROPERTY;
 "delete"			return T_KEY_DELETE;
 "or"				return T_KEY_OR;
+"debug-print"			return T_KEY_DEBUG_PRINT;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"root"		return T_KEY_ROOT;
