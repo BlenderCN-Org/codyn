@@ -375,7 +375,7 @@ resolve_indirection (CpgEmbeddedString  *em,
 			gchar *lookup;
 			gint val;
 
-			lookup = g_strndup (s, strlen (s) - (issub + isadd) + 1);
+			lookup = g_strndup (s, strlen (s) - (issub + isadd));
 
 			/* Note either issub or isadd is 0 */
 			val = cpg_embedded_context_increment_define (context,
