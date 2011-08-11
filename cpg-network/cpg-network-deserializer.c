@@ -971,16 +971,27 @@ parse_function_arguments (CpgNetworkDeserializer *deserializer,
 		xmlChar *def = xmlGetProp (node, (xmlChar *)"default");
 		gdouble default_value = 0;
 
+		xmlChar *impl = xmlGetProp (node, (xmlChar *)"optional");
+		gboolean isexplicit = impl ? g_ascii_strcasecmp ((gchar const *)impl, "yes") != 0 : TRUE;
+		xmlFree (impl);
+
 		if (def)
 		{
 			default_value = g_ascii_strtod ((gchar const *)def, NULL);
 			xmlFree (def);
 		}
 
+		if (isexplicit)
+		{
+			optional = FALSE;
+			default_value = 0.0;
+		}
+
 		CpgFunctionArgument *argument =
 			cpg_function_argument_new (name,
 			                           optional,
-			                           default_value);
+			                           default_value,
+			                           isexplicit);
 
 		save_comment (node, G_OBJECT (argument));
 

@@ -46,6 +46,7 @@ struct _CpgFunctionArgumentPrivate
 	gchar *name;
 	gboolean optional;
 	gdouble def;
+	gboolean isexplicit;
 
 	CpgProperty *property;
 };
@@ -57,7 +58,8 @@ enum
 	PROP_0,
 	PROP_NAME,
 	PROP_OPTIONAL,
-	PROP_DEFAULT
+	PROP_DEFAULT,
+	PROP_EXPLICIT
 };
 
 static guint signals[NUM_SIGNALS] = {0,};
@@ -115,6 +117,9 @@ cpg_function_argument_set_property (GObject      *object,
 		case PROP_DEFAULT:
 			self->priv->def = g_value_get_double (value);
 		break;
+		case PROP_EXPLICIT:
+			self->priv->isexplicit = g_value_get_boolean (value);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -140,6 +145,9 @@ cpg_function_argument_get_property (GObject    *object,
 		case PROP_DEFAULT:
 			g_value_set_double (value, self->priv->def);
 		break;
+		case PROP_EXPLICIT:
+			g_value_set_boolean (value, self->priv->isexplicit);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -225,6 +233,14 @@ cpg_function_argument_class_init (CpgFunctionArgumentClass *klass)
 	                                                      G_MAXDOUBLE,
 	                                                      0,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_EXPLICIT,
+	                                 g_param_spec_boolean ("explicit",
+	                                                       "Explicit",
+	                                                       "Explicit",
+	                                                       TRUE,
+	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -250,12 +266,14 @@ cpg_function_argument_init (CpgFunctionArgument *self)
 CpgFunctionArgument *
 cpg_function_argument_new (gchar const *name,
                            gboolean     optional,
-                           gdouble      def)
+                           gdouble      def,
+                           gboolean     isexplicit)
 {
 	return g_object_new (CPG_TYPE_FUNCTION_ARGUMENT,
 	                     "name", name,
 	                     "optional", optional,
 	                     "default", def,
+	                     "explicit", isexplicit,
 	                     NULL);
 }
 
@@ -278,7 +296,8 @@ cpg_function_argument_copy (CpgFunctionArgument *argument)
 
 	return cpg_function_argument_new (argument->priv->name,
 	                                  argument->priv->optional,
-	                                  argument->priv->def);
+	                                  argument->priv->def,
+	                                  argument->priv->isexplicit);
 }
 
 /**
@@ -393,6 +412,44 @@ cpg_function_argument_set_default_value (CpgFunctionArgument *argument,
 	argument->priv->def = def;
 
 	g_object_notify (G_OBJECT (argument), "default");
+}
+
+/**
+ * cpg_function_argument_get_explicit:
+ * @argument: A #CpgFunctionArgument
+ *
+ * Get whether the function argument is explicit.
+ *
+ * Returns: whether the argument is explicit
+ *
+ **/
+gboolean
+cpg_function_argument_get_explicit (CpgFunctionArgument *argument)
+{
+	g_return_val_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument), TRUE);
+
+	return argument->priv->isexplicit;
+}
+
+/**
+ * cpg_function_argument_set_explicit:
+ * @argument: A #CpgFunctionArgument
+ * @isexplicit: Whether the argument is explicit
+ *
+ * Set whether a function argument is explicit.
+ *
+ **/
+void
+cpg_function_argument_set_explicit (CpgFunctionArgument *argument,
+                                    gboolean             isexplicit)
+{
+	g_return_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument));
+
+	if (argument->priv->isexplicit != isexplicit)
+	{
+		argument->priv->isexplicit = isexplicit;
+		g_object_notify (G_OBJECT (argument), "explicit");
+	}
 }
 
 void

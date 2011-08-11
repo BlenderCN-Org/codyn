@@ -427,6 +427,7 @@ parse_function (CpgExpression *expression,
 	guint fid = 0;
 	gint arguments = 0;
 	gint n_optional = 0;
+	gint n_implicit = 0;
 
 	/* Try builtin function */
 	if (function == NULL)
@@ -444,6 +445,7 @@ parse_function (CpgExpression *expression,
 	else
 	{
 		n_optional = (gint)cpg_function_get_n_optional (function);
+		n_implicit = (gint)cpg_function_get_n_implicit (function);
 		arguments = (gint)cpg_function_get_n_arguments (function);
 	}
 
@@ -507,15 +509,83 @@ parse_function (CpgExpression *expression,
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 	}
 
-	if ((function != NULL && (numargs > arguments || numargs < arguments - n_optional)) ||
+	if ((function != NULL && (numargs > (arguments - n_implicit) || numargs < (arguments - n_optional - n_implicit))) ||
 	    (function == NULL && arguments != -1 && numargs != arguments))
 	{
 		return parser_failed (context,
 		                      CPG_COMPILE_ERROR_MAXARG,
-		                      "Expected number of arguments (%d) for function `%s' does not match (got %d)",
-		                      arguments,
+		                      "Expected number of arguments (%d|%d) for function `%s' does not match (got %d)",
+		                      arguments - n_implicit - n_optional,
+		                      n_optional,
 		                      name,
 		                      numargs);
+	}
+
+	/* Now lookup implicit arguments */
+	if (function)
+	{
+		GList const *ar;
+		GList *start;
+
+		ar = cpg_function_get_arguments (function);
+
+		/* Set defaults for the rest of the optional arguments on the stack */
+		if (numargs < arguments - n_implicit + n_optional)
+		{
+
+			start = g_list_nth ((GList *)ar, numargs);
+
+			while (start)
+			{
+				CpgFunctionArgument *a;
+
+				a = start->data;
+
+				if (!cpg_function_argument_get_optional (a))
+				{
+					break;
+				}
+
+				instructions_push (expression,
+				                   cpg_instruction_number_new (cpg_function_argument_get_default_value (a)));
+
+				start = g_list_next (start);
+				++numargs;
+			}
+		}
+
+		start = g_list_nth ((GList *)ar, arguments - n_implicit);
+
+		while (start)
+		{
+			CpgFunctionArgument *a;
+			gchar const *aname;
+			CpgProperty *prop;
+
+			a = start->data;
+
+			aname = cpg_function_argument_get_name (a);
+			prop = cpg_compile_context_lookup_property (context->context,
+			                                            aname);
+
+			if (!prop)
+			{
+				return parser_failed (context,
+				                      CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
+				                      "The implicit property `%s' for function `%s' is not found",
+				                      aname,
+				                      name);
+			}
+
+			instructions_push (expression,
+			                   cpg_instruction_property_new (prop,
+			                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+
+			start = g_list_next (start);
+			++numargs;
+		}
+
+		g_message ("2. %d", numargs);
 	}
 
 	CpgInstruction *instruction;

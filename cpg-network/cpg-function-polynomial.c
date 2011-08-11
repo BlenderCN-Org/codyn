@@ -299,11 +299,11 @@ cpg_function_polynomial_init (CpgFunctionPolynomial *self)
 
 	/* Add 't' argument */
 	cpg_function_add_argument (CPG_FUNCTION (self),
-	                           cpg_function_argument_new ("__t", FALSE, 0));
+	                           cpg_function_argument_new ("__t", FALSE, 0, TRUE));
 
 	/* Add optional 'order' argument */
 	cpg_function_add_argument (CPG_FUNCTION (self),
-	                           cpg_function_argument_new ("__order", TRUE, 0));
+	                           cpg_function_argument_new ("__order", TRUE, 0, TRUE));
 
 	self->priv->t = cpg_object_get_property (CPG_OBJECT (self), "__t");
 	self->priv->order = cpg_object_get_property (CPG_OBJECT (self), "__order");

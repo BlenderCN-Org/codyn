@@ -684,6 +684,11 @@ write_function (CpgNetworkSerializer *serializer,
 			xmlNewProp (argn, (xmlChar *)"default", (xmlChar *)defPtr);
 		}
 
+		if (!cpg_function_argument_get_explicit (argument))
+		{
+			xmlNewProp (argn, (xmlChar *)"implicit", (xmlChar *)"yes");
+		}
+
 		xmlAddChild (funcn, argn);
 	}
 }

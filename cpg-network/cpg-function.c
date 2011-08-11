@@ -70,6 +70,7 @@ struct _CpgFunctionPrivate
 
 	guint n_arguments;
 	guint n_optional;
+	guint n_implicit;
 };
 
 G_DEFINE_TYPE (CpgFunction, cpg_function, CPG_TYPE_OBJECT)
@@ -535,7 +536,7 @@ on_argument_optional_changed (CpgFunctionArgument *argument,
 	/* Get the item which represents the first optional argument at the
 	   moment */
 	item = g_list_nth (function->priv->arguments,
-	                   function->priv->n_arguments - function->priv->n_optional);
+	                   function->priv->n_arguments - function->priv->n_optional - function->priv->n_implicit);
 
 	if (item->data != argument)
 	{
@@ -616,18 +617,36 @@ cpg_function_add_argument (CpgFunction         *function,
 
 	_cpg_function_argument_set_property (argument, property);
 
-	if (cpg_function_argument_get_optional (argument))
+	if (!cpg_function_argument_get_explicit (argument))
 	{
 		/* Just append */
 		function->priv->arguments = g_list_append (function->priv->arguments,
 		                                           g_object_ref_sink (argument));
 	}
+	else if (cpg_function_argument_get_optional (argument))
+	{
+		/* Insert before first implicit */
+		gint n;
+
+		n = (gint)function->priv->n_arguments -
+		    (gint)function->priv->n_implicit;
+
+		function->priv->arguments = g_list_insert (function->priv->arguments,
+		                                           g_object_ref_sink (argument),
+		                                           n);
+	}
 	else
 	{
 		/* Insert before first optional */
+		gint n;
+
+		n = (gint)function->priv->n_arguments -
+		    (gint)function->priv->n_optional -
+		    (gint)function->priv->n_implicit;
+
 		function->priv->arguments = g_list_insert (function->priv->arguments,
 		                                           g_object_ref_sink (argument),
-		                                           (gint)function->priv->n_optional - 1);
+		                                           n);
 	}
 
 	++function->priv->n_arguments;
@@ -635,6 +654,11 @@ cpg_function_add_argument (CpgFunction         *function,
 	if (cpg_function_argument_get_optional (argument))
 	{
 		++function->priv->n_optional;
+	}
+
+	if (!cpg_function_argument_get_explicit (argument))
+	{
+		++function->priv->n_implicit;
 	}
 
 	g_signal_connect (argument,
@@ -699,6 +723,11 @@ cpg_function_remove_argument (CpgFunction          *function,
 		if (cpg_function_argument_get_optional (argument))
 		{
 			--function->priv->n_optional;
+		}
+
+		if (!cpg_function_argument_get_explicit (argument))
+		{
+			--function->priv->n_implicit;
 		}
 
 		function->priv->arguments = g_list_delete_link (function->priv->arguments,
@@ -875,4 +904,21 @@ cpg_function_get_n_arguments (CpgFunction *function)
 	g_return_val_if_fail (CPG_IS_FUNCTION (function), 0);
 
 	return function->priv->n_arguments;
+}
+
+/**
+ * cpg_function_get_n_implicit:
+ * @function: A #CpgFunction
+ *
+ * Get the number of implicit arguments.
+ *
+ * Returns: the number of implicit arguments
+ *
+ **/
+guint
+cpg_function_get_n_implicit (CpgFunction *function)
+{
+	g_return_val_if_fail (CPG_IS_FUNCTION (function), 0);
+
+	return function->priv->n_implicit;
 }

@@ -34,8 +34,9 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
                                                             GArray  *coefficients);
 
 static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
-                                                      gboolean     is_optional,
-                                                      gdouble      default_value);
+                                                      gboolean           is_optional,
+                                                      gdouble            default_value,
+                                                      gboolean           is_explicit);
 
 %}
 
@@ -97,13 +98,21 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <piece> polynomial_piece
 %type <list> polynomial_pieces
 %type <list> polynomial_pieces_rev
+
+%type <argument> function_argument
 %type <list> function_argument_list
 %type <list> function_argument_list_rev
 %type <list> function_argument_list_or_empty
+
+%type <list> function_argument_implicit
+%type <argument> function_argument_impl
+%type <list> function_argument_list_impl
+%type <list> function_argument_list_impl_rev
+%type <list> function_argument_list_or_empty_impl
+
 %type <list> template_list_more
 %type <list> template_list_rev
 %type <list> template_list
-%type <argument> function_argument
 %type <selector> selector
 %type <selector> strict_selector
 %type <selector> strict_selector_only
@@ -577,14 +586,26 @@ function_argument_list_or_empty
 	| function_argument_list	{ $$ = $1; }
 	;
 
+function_argument_list_or_empty_impl
+	:				{ $$ = NULL; }
+	| function_argument_list_impl	{$$ = $1; }
+	;
+
+function_argument_implicit
+	:				{ $$ = NULL; }
+	| '(' function_argument_list_or_empty_impl ')'
+					{ $$ = $2; }
+	;
+
 function_custom
 	: attributes
 	  identifier_or_string
 	  '('
 	  function_argument_list_or_empty
 	  ')'
+	  function_argument_implicit
 	  '='				{ cpg_parser_context_push_scope (context, $1); }
-	  value_as_string		{ cpg_parser_context_add_function (context, $2, $8, $4); errb
+	  value_as_string		{ cpg_parser_context_add_function (context, $2, $9, g_slist_concat ($4, $6)); errb
 	                                  cpg_parser_context_pop (context); errb }
 	;
 
@@ -633,6 +654,21 @@ double_list
 	| double_list ',' T_INTEGER	{ append_array ($1, gdouble, $3, $$ = arret); }
 	;
 
+function_argument_impl
+	: identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0, FALSE); }
+	;
+
+function_argument_list_impl_rev
+	: function_argument_impl	{ $$ = g_slist_prepend (NULL, $1); }
+	| function_argument_list_impl ',' function_argument_impl
+					{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+function_argument_list_impl
+	: function_argument_list_impl_rev
+					{ $$ = g_slist_reverse ($1); }
+	;
+
 function_argument_list_rev
 	: function_argument		{ $$ = g_slist_prepend (NULL, $1); }
 	| function_argument_list ',' function_argument
@@ -644,9 +680,9 @@ function_argument_list
 	;
 
 function_argument
-	: identifier_or_string '=' T_DOUBLE	{ $$ = create_function_argument ($1, TRUE, $3); }
-	| identifier_or_string '=' T_INTEGER	{ $$ = create_function_argument ($1, TRUE, $3); }
-	| identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0); }
+	: identifier_or_string '=' T_DOUBLE	{ $$ = create_function_argument ($1, TRUE, $3, TRUE); }
+	| identifier_or_string '=' T_INTEGER	{ $$ = create_function_argument ($1, TRUE, $3, TRUE); }
+	| identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0, TRUE); }
 	;
 
 state_item
@@ -1254,10 +1290,12 @@ create_polynomial_piece (gdouble  start,
 
 static CpgFunctionArgument *
 create_function_argument (CpgEmbeddedString *name,
-                          gboolean     is_optional,
-                          gdouble      default_value)
+                          gboolean           is_optional,
+                          gdouble            default_value,
+                          gboolean           is_explicit)
 {
 	return g_object_ref_sink (cpg_function_argument_new (cpg_embedded_string_expand (name, NULL, NULL),
 	                                                     is_optional,
-	                                                     default_value));
+	                                                     default_value,
+	                                                     is_explicit));
 }
