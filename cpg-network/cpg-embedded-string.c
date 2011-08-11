@@ -372,13 +372,10 @@ resolve_indirection (CpgEmbeddedString  *em,
 
 		if (issub > 0 || isadd > 0)
 		{
-			gchar *norm;
 			gchar *lookup;
 			gint val;
 
-			norm = g_strndup (s, strlen (s) - (issub + isadd) + 1);
-			lookup = g_strconcat ("_cnt_", norm, NULL);
-			g_free (norm);
+			lookup = g_strndup (s, strlen (s) - (issub + isadd) + 1);
 
 			/* Note either issub or isadd is 0 */
 			val = cpg_embedded_context_increment_define (context,
