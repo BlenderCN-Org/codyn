@@ -124,7 +124,8 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"if",
 	"isempty",
 	"remove",
-	"from-set"
+	"from-set",
+	"type"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1316,6 +1317,128 @@ selector_pseudo_isempty (CpgSelector        *self,
 	}
 }
 
+static gchar const *
+object_type_name (gpointer obj)
+{
+	if (CPG_IS_FUNCTION (obj))
+	{
+		return "function";
+	}
+	else if (CPG_IS_NETWORK (obj))
+	{
+		return "network";
+	}
+	else if (CPG_IS_GROUP (obj))
+	{
+		return "group";
+	}
+	else if (CPG_IS_LINK (obj))
+	{
+		return "link";
+	}
+	else if (CPG_IS_PROPERTY (obj))
+	{
+		return "property";
+	}
+	else if (CPG_IS_LINK_ACTION (obj))
+	{
+		return "action";
+	}
+	else if (CPG_IS_OBJECT (obj))
+	{
+		return "state";
+	}
+	else
+	{
+		return "";
+	}
+}
+
+static GSList *
+selector_pseudo_type (CpgEmbeddedContext *context,
+                      GSList             *selection)
+{
+	GSList *ret = NULL;
+	gint numtypes = 0;
+	GHashTable *types;
+	GSList *item;
+
+	types = g_hash_table_new_full (g_str_hash,
+	                               g_str_equal,
+	                               NULL,
+	                               (GDestroyNotify)g_free);
+
+	for (item = selection; item; item = g_slist_next (item))
+	{
+		gint *val;
+		gchar const *tname;
+
+		tname = object_type_name (cpg_selection_get_object (item->data));
+
+		val = g_hash_table_lookup (types, tname);
+
+		if (val)
+		{
+			++(val[1]);
+		}
+		else
+		{
+			val = g_new0 (gint, 2);
+
+			val[0] = numtypes++;
+			val[1] = 1;
+
+			g_hash_table_insert (types, (gchar *)tname, val);
+		}
+	}
+
+	while (selection)
+	{
+		GSList *expansions;
+		CpgSelection *sel;
+		gchar const *tname;
+		gint *val;
+		CpgExpansion *expansion;
+		gchar const *ex[3];
+		gchar *cnt;
+
+		sel = selection->data;
+
+		tname = object_type_name (cpg_selection_get_object (sel));
+
+		val = g_hash_table_lookup (types, tname);
+
+		expansions = g_slist_copy (cpg_selection_get_expansions (sel));
+
+		cnt = g_strdup_printf ("%d", val[1]);
+
+		ex[0] = tname;
+		ex[1] = cnt;
+		ex[2] = NULL;
+
+		expansion = cpg_expansion_new (ex);
+		g_free (cnt);
+
+		expansions = g_slist_append (expansions, expansion);
+
+		cpg_expansion_set_index (expansion, 0, val[0]);
+
+		ret = g_slist_prepend (ret,
+		                       cpg_selection_new (cpg_selection_get_object (sel),
+		                                          expansions,
+		                                          cpg_selection_get_defines (sel)));
+
+		g_slist_free (expansions);
+		g_object_unref (expansion);
+
+		selection = g_slist_next (selection);
+	}
+
+	g_hash_table_destroy (types);
+
+	return g_slist_reverse (ret);
+}
+
 static gchar *
 selector_until_as_string (CpgSelector *self,
                           Selector    *selector)
@@ -1725,6 +1848,9 @@ selector_select_pseudo (CpgSelector        *self,
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_NAME:
 			return annotate_names (parent);
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_TYPE:
+			return selector_pseudo_type (context, parent);
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_SELF:
 			if (parent->data)
