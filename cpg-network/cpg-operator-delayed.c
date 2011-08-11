@@ -692,7 +692,7 @@ cpg_operator_delayed_get_expression (CpgOperatorDelayed *delayed)
 }
 
 /**
- * cpg_operator_delayed_get_expression:
+ * cpg_operator_delayed_get_initial_value:
  * @delayed: A #CpgOperatorDelayed
  *
  * Get the initial value of the expression to be delayed.
