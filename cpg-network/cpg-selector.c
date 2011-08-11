@@ -1050,6 +1050,8 @@ count_selection (CpgEmbeddedContext *context,
 	ex = cpg_expansion_new_one (s);
 	g_free (s);
 
+	i = 0;
+
 	for (item = ret; item; item = g_slist_next (item))
 	{
 		CpgSelection *sel;
@@ -1059,6 +1061,8 @@ count_selection (CpgEmbeddedContext *context,
 		expansions = g_slist_copy (cpg_selection_get_expansions (item->data));
 		expansion = cpg_expansion_copy (ex);
 		expansions = g_slist_append (expansions, expansion);
+
+		cpg_expansion_set_index (expansion, 0, i++);
 
 		sel = cpg_selection_new (cpg_selection_get_object (item->data),
 		                         expansions,
