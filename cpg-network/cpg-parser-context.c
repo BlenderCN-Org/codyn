@@ -1730,6 +1730,8 @@ link_pairs (CpgParserContext *context,
 				cpg_embedded_context_add_expansions (context->priv->embedded,
 				                                      cpg_selection_get_expansions (fromobj->data));
 
+				cpg_selector_set_from_set (to, fromobjs);
+
 				/* Select TO states */
 				toobjs = cpg_selector_select (to,
 				                              cpg_selection_get_object (parent),
