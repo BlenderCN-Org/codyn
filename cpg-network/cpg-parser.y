@@ -95,10 +95,14 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %type <array> double_list
 %type <piece> polynomial_piece
-%type <array> polynomial_pieces
-%type <array> function_argument_list
-%type <array> function_argument_list_or_empty
-%type <array> template_list
+%type <list> polynomial_pieces
+%type <list> polynomial_pieces_rev
+%type <list> function_argument_list
+%type <list> function_argument_list_rev
+%type <list> function_argument_list_or_empty
+%type <list> template_list_more
+%type <list> template_list_rev
+%type <list> template_list
 %type <argument> function_argument
 %type <selector> selector
 %type <selector> strict_selector
@@ -133,9 +137,9 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <list> state
 %type <list> define_values
 
-%type <array> link_connect
-%type <array> link_connect_fast
-%type <array> templated
+%type <list> link_connect
+%type <list> link_connect_fast
+%type <list> templated
 
 %define api.pure
 %name-prefix="cpg_parser_"
@@ -352,10 +356,20 @@ template_contents
 	| template_contents template_item;
 	;
 
-	
+template_list_more
+	: ',' selector
+					{ $$ = g_slist_prepend (NULL, $2); }
+	| template_list_more ',' selector
+					{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+template_list_rev
+	: ':' selector template_list_more { $$ = g_slist_append ($3, $2); }
+	| ':' selector			{ $$ = g_slist_prepend (NULL, $2); }
+	;
+
 template_list
-	: ':' selector			{ append_array (NULL, CpgSelector *, $2, $$ = arret); }
-	| template_list ':' selector	{ append_array ($1, CpgSelector *, $3, $$ = arret); }
+	: template_list_rev		{ $$ = g_slist_reverse ($1); }
 	;
 
 templated
@@ -500,20 +514,17 @@ attributes
 	| '[' attributes_contents ']'	{ $$ = g_slist_reverse ($2); }
 	;
 
-link_connect
-	:				{ $$ = NULL; }
-	| T_KEY_FROM selector T_KEY_TO selector
-					{ append_array (NULL, CpgSelector *, $2, $$ = arret);
-					  append_array ($$, CpgSelector *, $4, $$ = arret);
+link_connect_fast
+	: T_KEY_FROM selector T_KEY_TO selector
+					{ $$ = g_slist_prepend (NULL, $4);
+					  $$ = g_slist_prepend (NULL, $2);
 					}
-	| T_KEY_ON selector		{ append_array (NULL, CpgSelector *, $2, $$ = arret); }
+	| T_KEY_ON selector		{ $$ = g_slist_prepend (NULL, $2); }
 	;
 
-link_connect_fast
-	: T_KEY_FROM selector T_KEY_TO selector	{ append_array (NULL, CpgSelector *, $2, $$ = arret);
-					  append_array ($$, CpgSelector *, $4, $$ = arret);
-					}
-	| T_KEY_ON selector		{ append_array (NULL, CpgSelector *, $2, $$ = arret); }
+link_connect
+	:				{ $$ = NULL; }
+	| link_connect_fast		{ $$ = $1; }
 	;
 
 link
@@ -600,10 +611,14 @@ functions
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
-polynomial_pieces
+polynomial_pieces_rev
 	: 				{ $$ = NULL; }
 	| polynomial_pieces polynomial_piece
-					{ append_array ($1, CpgFunctionPolynomialPiece *, $2, $$ = arret); }
+					{ $$ = g_slist_prepend ($1, $2); }
+	;
+
+polynomial_pieces
+	: polynomial_pieces_rev		{ $$ = g_slist_reverse ($1); }
 	;
 
 polynomial_piece
@@ -618,10 +633,14 @@ double_list
 	| double_list ',' T_INTEGER	{ append_array ($1, gdouble, $3, $$ = arret); }
 	;
 
-function_argument_list
-	: function_argument		{ append_array (NULL, CpgFunctionArgument *, $1, $$ = arret); }
+function_argument_list_rev
+	: function_argument		{ $$ = g_slist_prepend (NULL, $1); }
 	| function_argument_list ',' function_argument
-					{ append_array ($1, CpgFunctionArgument *, $3, $$ = arret); }
+					{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+function_argument_list
+	: function_argument_list_rev	{ $$ = g_slist_reverse ($1); }
 	;
 
 function_argument

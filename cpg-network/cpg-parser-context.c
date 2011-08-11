@@ -768,10 +768,9 @@ CpgFunction *
 cpg_parser_context_add_function (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
                                  CpgEmbeddedString *expression,
-                                 GArray            *arguments)
+                                 GSList            *arguments)
 {
 	CpgFunction *function;
-	gint i;
 	gchar *annotation;
 	gchar const *exname;
 	gchar const *exexpression;
@@ -789,17 +788,12 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 	g_object_unref (name);
 	g_object_unref (expression);
 
-	if (arguments)
+	while (arguments)
 	{
-		for (i = 0; i < arguments->len; ++i)
-		{
-			CpgFunctionArgument *argument;
+		cpg_function_add_argument (function, arguments->data);
 
-			argument = g_array_index (arguments, CpgFunctionArgument *, i);
-			cpg_function_add_argument (function, argument);
-
-			g_object_unref (argument);
-		}
+		g_object_unref (arguments->data);
+		arguments = g_slist_next (arguments);
 	}
 
 	cpg_group_add (cpg_network_get_function_group (context->priv->network),
@@ -820,10 +814,9 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 CpgFunctionPolynomial *
 cpg_parser_context_add_polynomial (CpgParserContext  *context,
                                    CpgEmbeddedString *name,
-                                   GArray            *pieces)
+                                   GSList            *pieces)
 {
 	CpgFunctionPolynomial *function;
-	gint i;
 	gchar *annotation;
 	gchar const *exname;
 
@@ -836,13 +829,10 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 	function = cpg_function_polynomial_new (exname);
 	g_object_unref (name);
 
-	for (i = 0; i < pieces->len; ++i)
+	while (pieces)
 	{
-		CpgFunctionPolynomialPiece *piece;
-
-		piece = g_array_index (pieces, CpgFunctionPolynomialPiece *, i);
-
-		cpg_function_polynomial_add (function, piece);
+		cpg_function_polynomial_add (function, pieces->data);
+		pieces = g_slist_next (pieces);
 	}
 
 	cpg_group_add (cpg_network_get_function_group (context->priv->network),
@@ -1926,40 +1916,13 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 }
 
 static GSList *
-convert_templates (GArray *array)
-{
-	GSList *temps = NULL;
-	gint i;
-
-	if (array)
-	{
-		for (i = 0; i < array->len; ++i)
-		{
-			temps = g_slist_prepend (temps,
-			                         g_array_index (array, CpgSelector *, i));
-		}
-	}
-
-	return g_slist_reverse (temps);
-}
-
-static GSList *
 create_objects (CpgParserContext  *context,
                 CpgEmbeddedString *id,
-                GArray            *templates,
+                GSList            *templates,
                 GType              type,
                 GSList            *attributes)
 {
-	GSList *temps;
-	GSList *ret;
-
-	temps = convert_templates (templates);
-
-	ret = parse_objects (context, id, temps, type, attributes);
-
-	g_slist_free (temps);
-
-	return ret;
+	return parse_objects (context, id, templates, type, attributes);
 }
 
 static GSList *
@@ -2129,11 +2092,10 @@ static GSList *
 create_links (CpgParserContext          *context,
               CpgEmbeddedString         *id,
               gboolean                   autoid,
-              GArray                    *templates,
+              GSList                    *templates,
               GSList                    *attributes,
-              GArray                    *fromto)
+              GSList                    *fromto)
 {
-	GSList *temps;
 	GSList *ids;
 	GSList *ret = NULL;
 	GSList *item;
@@ -2143,17 +2105,16 @@ create_links (CpgParserContext          *context,
 	GSList *parents;
 
 	ctx = CURRENT_CONTEXT (context);
-	temps = convert_templates (templates);
 
-	from = g_array_index (fromto, CpgSelector *, 0);
+	from = fromto->data;
 
-	if (fromto->len == 1)
+	if (fromto->next)
 	{
-		to = NULL;
+		to = fromto->next->data;
 	}
 	else
 	{
-		to = g_array_index (fromto, CpgSelector *, 1);
+		to = NULL;
 	}
 
 	parents = each_selections (context,
@@ -2182,7 +2143,7 @@ create_links (CpgParserContext          *context,
 			                      create_links_single (context,
 			                                           it->data,
 			                                           autoid,
-			                                           temps,
+			                                           templates,
 			                                           item->data,
 			                                           attributes,
 			                                           from,
@@ -2198,15 +2159,13 @@ create_links (CpgParserContext          *context,
 	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
 	g_slist_free (parents);
 
-	g_slist_free (temps);
-
 	return ret;
 }
 
 void
 cpg_parser_context_push_state (CpgParserContext  *context,
                                CpgEmbeddedString *id,
-                               GArray            *templates,
+                               GSList            *templates,
                                GSList            *attributes)
 {
 	GSList *objects;
@@ -2226,7 +2185,7 @@ cpg_parser_context_push_state (CpgParserContext  *context,
 void
 cpg_parser_context_push_group (CpgParserContext  *context,
                                CpgEmbeddedString *id,
-                               GArray            *templates,
+                               GSList            *templates,
                                GSList            *attributes)
 {
 	GSList *objects;
@@ -2292,9 +2251,9 @@ cpg_parser_context_push_input_file (CpgParserContext  *context,
 void
 cpg_parser_context_push_link (CpgParserContext          *context,
                               CpgEmbeddedString         *id,
-                              GArray                    *templates,
+                              GSList                    *templates,
                               GSList                    *attributes,
-                              GArray                    *fromto)
+                              GSList                    *fromto)
 {
 	GSList *objects;
 
