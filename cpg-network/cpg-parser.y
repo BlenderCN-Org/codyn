@@ -1065,9 +1065,9 @@ layout_relative
 layout_item_relative
 	: selector
 	  relation
-	  selector			{ cpg_parser_context_add_layout (context, $2, $1, $3); }
+	  selector			{ cpg_parser_context_add_layout (context, $2, $1, $3); errb }
 	| relation
-	  selector			{ cpg_parser_context_add_layout (context, $1, NULL, $2); }
+	  selector			{ cpg_parser_context_add_layout (context, $1, NULL, $2); errb }
 	;
 
 layout_item_absolute
@@ -1078,14 +1078,14 @@ layout_item_absolute
 	  ','
 	  value_as_string
 	  ')'
-	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $4, $6, $8); }
+	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $4, $6, $8); errb }
 	| T_KEY_AT
 	  '('
 	  value_as_string
 	  ','
 	  value_as_string
 	  ')'
-	  layout_relative		{ cpg_parser_context_add_layout_position (context, NULL, $3, $5, $7); }
+	  layout_relative		{ cpg_parser_context_add_layout_position (context, NULL, $3, $5, $7); errb }
 	;
 
 layout_item
