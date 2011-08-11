@@ -3528,8 +3528,8 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 			embedded_string_expand (exx, x, context);
 			embedded_string_expand (exy, y, context);
 
-			xx = (gint)g_ascii_strtoll (exx, NULL, 10);
-			yy = (gint)g_ascii_strtoll (exy, NULL, 10);
+			xx = (gint)g_strtod (exx, NULL);
+			yy = (gint)g_strtod (exy, NULL);
 
 			if (of)
 			{
