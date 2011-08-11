@@ -421,7 +421,14 @@ evaluate_node (CpgEmbeddedString   *em,
 			return NULL;
 		}
 
+		if (node->type == CPG_EMBEDDED_STRING_NODE_EQUATION && !*s)
+		{
+			g_free (s);
+			s = g_strdup ("0");
+		}
+
 		g_string_prepend (ret, s);
+		g_free (s);
 	}
 
 	switch (node->type)
