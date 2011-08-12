@@ -103,6 +103,7 @@
             <keyword>probability</keyword>
             <keyword>no-self</keyword>
             <keyword>proxy</keyword>
+            <keyword>tag</keyword>
         </context>
 
         <context id="selectors" style-ref="keyword">
@@ -135,6 +136,9 @@
             <keyword>from-set</keyword>
             <keyword>from</keyword>
             <keyword>to</keyword>
+            <keyword>has-template</keyword>
+            <keyword>has-tag</keyword>
+            <keyword>has-flag</keyword>
         </context>
 
         <context id="keywords" style-ref="keyword">
