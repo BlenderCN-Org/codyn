@@ -189,7 +189,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"objects"		return T_KEY_OBJECTS;
 <INITIAL,onlyselector>"properties"	return T_KEY_PROPERTIES;
 <INITIAL,onlyselector>"actions"		return T_KEY_ACTION;
-<INITIAL,onlyselector>"isempty"		return T_KEY_ISEMPTY;
+<INITIAL,onlyselector>"is-empty"	return T_KEY_IS_EMPTY;
 <INITIAL,onlyselector>"remove"		return T_KEY_REMOVE;
 <INITIAL,onlyselector>"if"		return T_KEY_IF;
 <INITIAL,onlyselector>"from-set"	return T_KEY_FROM_SET;

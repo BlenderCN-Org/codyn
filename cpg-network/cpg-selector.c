@@ -129,7 +129,7 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"ancestors",
 	"unique",
 	"if",
-	"isempty",
+	"is-empty",
 	"remove",
 	"from-set",
 	"type"
@@ -1985,7 +1985,7 @@ selector_select_pseudo (CpgSelector        *self,
 		case CPG_SELECTOR_PSEUDO_TYPE_UNIQUE:
 			return unique_selections (parent);
 		break;
-		case CPG_SELECTOR_PSEUDO_TYPE_ISEMPTY:
+		case CPG_SELECTOR_PSEUDO_TYPE_IS_EMPTY:
 			return selector_pseudo_isempty (self,
 			                                selector,
 			                                parent,
