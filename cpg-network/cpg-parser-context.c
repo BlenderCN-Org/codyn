@@ -1472,7 +1472,7 @@ each_selections_attr (CpgParserContext *context,
 				                                     cpg_selection_get_expansions (sels->data));
 
 				ret = g_slist_prepend (ret,
-				                       cpg_selection_new_defines (cpg_selection_get_object (isempty ? item->data : sels->data),
+				                       cpg_selection_new_defines (cpg_selection_get_object (item->data),
 				                                                  cpg_embedded_context_get_expansions (context->priv->embedded),
 				                                                  cpg_embedded_context_get_defines (context->priv->embedded),
 				                                                  copy_defines));
