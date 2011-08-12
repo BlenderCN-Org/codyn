@@ -134,6 +134,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <string> integer
 
 %type <list> attributes
+%type <list> attributes_strict
 %type <list> attributes_contents
 %type <attribute> attribute_contents
 %type <attribute> attribute_proxy
@@ -190,7 +191,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 16
+%expect 14
 
 %%
 
@@ -320,7 +321,7 @@ define_item
 					                             FALSE,
 					                             TRUE); }
 	| debug
-	| attributes
+	| attributes_strict
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  define_contents
 	  '}'				{ cpg_parser_context_pop (context); }
@@ -520,6 +521,11 @@ attributes_contents
 attributes
 	:				{ $$ = NULL; }
 	| '[' ']'			{ $$ = NULL; }
+	| '[' attributes_contents ']'	{ $$ = g_slist_reverse ($2); }
+	;
+
+attributes_strict
+	: '[' ']'			{ $$ = NULL; }
 	| '[' attributes_contents ']'	{ $$ = g_slist_reverse ($2); }
 	;
 
