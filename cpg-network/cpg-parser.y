@@ -42,7 +42,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -74,6 +74,10 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <list> selector_pseudo_strargs_args_rev
 %type <list> selector_pseudo_selector_args
 %type <list> selector_pseudo_selector_args_rev
+
+%type <string> selector_pseudo_hasflag_arg
+%type <list> selector_pseudo_hasflag_args
+%type <list> selector_pseudo_hasflag_args_rev
 
 %type <string> identifier_or_string_or_nothing
 
@@ -808,6 +812,7 @@ property_flags_contents
 
 property_flags_strict
 	: '|' property_flags_contents	{ $$ = $2; }
+	;
 
 property_flags
 	: 				{ $$.add = 0; $$.remove = 0; }
@@ -951,6 +956,30 @@ selector_pseudo_selector_key
 	: selector_pseudo_selector_key_real	{ cpg_parser_context_begin_selector_item (context); }
 	;
 
+selector_pseudo_hasflag_arg
+	: property_flag				{ $$ = cpg_embedded_string_new_from_string (cpg_property_flags_to_string ($1, CPG_PROPERTY_FLAG_NONE)); }
+	| value_as_string			{ $$ = $1; }
+	;
+
+selector_pseudo_hasflag_args_rev
+	: selector_pseudo_hasflag_arg		{ $$ = g_slist_prepend (NULL, $1); }
+	| selector_pseudo_hasflag_args_rev ',' selector_pseudo_hasflag_arg
+						{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+selector_pseudo_hasflag_args
+	: selector_pseudo_hasflag_args_rev	{ $$ = g_slist_reverse ($1); }
+	;
+
+selector_pseudo_hasflag
+	: T_KEY_HAS_FLAG
+	  '('
+	  selector_pseudo_hasflag_args
+	  ')'					{ cpg_parser_context_push_selector_pseudo (context,
+	                                                                                   CPG_SELECTOR_PSEUDO_TYPE_HAS_FLAG,
+	                                                                                   $3);}
+	;
+
 selector_pseudo_strargs_key_real
 	: T_KEY_SIBLINGS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS; }
 	| T_KEY_SUBSET				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SUBSET; }
@@ -1038,6 +1067,7 @@ selector_pseudo_with_args
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
 						                                           NULL); }
+	| selector_pseudo_hasflag
 	;
 
 selector_pseudo

@@ -132,7 +132,8 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"is-empty",
 	"remove",
 	"from-set",
-	"type"
+	"type",
+	"has-flag"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1902,6 +1903,74 @@ unique_selections (GSList *parent)
 }
 
 static GSList *
+selector_pseudo_has_flag (CpgSelector        *self,
+                          Selector           *selector,
+                          CpgSelection       *selection,
+                          CpgEmbeddedContext *context,
+                          GSList             *ret)
+{
+	gpointer obj;
+	GSList *arg;
+	CpgPropertyFlags flags;
+	gboolean valid = TRUE;
+
+	obj = cpg_selection_get_object (selection);
+
+	if (!CPG_IS_PROPERTY (obj))
+	{
+		return ret;
+	}
+
+	flags = cpg_property_get_flags (obj);
+
+	for (arg = selector->pseudo.arguments; arg; arg = g_slist_next (arg))
+	{
+		CpgEmbeddedString *s;
+		GSList *ret;
+		GSList *item;
+
+		if (!CPG_IS_EMBEDDED_STRING (arg->data))
+		{
+			continue;
+		}
+
+		s = CPG_EMBEDDED_STRING (arg->data);
+		ret = cpg_embedded_string_expand_multiple (s, context, NULL);
+
+		for (item = ret; item; item = g_slist_next (item))
+		{
+			CpgPropertyFlags add = 0;
+
+			cpg_property_flags_from_string (cpg_expansion_get (item->data, 0),
+			                                &add,
+			                                NULL);
+
+			if ((flags & add) == 0)
+			{
+				valid = FALSE;
+				break;
+			}
+		}
+
+		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+		g_slist_free (ret);
+
+		if (!valid)
+		{
+			break;
+		}
+	}
+
+	if (valid)
+	{
+		ret = g_slist_prepend (ret,
+		                       cpg_selection_copy (selection));
+	}
+
+	return ret;
+}
+
+static GSList *
 selector_select_pseudo (CpgSelector        *self,
                         Selector           *selector,
                         GSList             *parent,
@@ -2166,6 +2235,13 @@ selector_select_pseudo (CpgSelector        *self,
 				                          sel,
 				                          context,
 				                          FALSE);
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_HAS_FLAG:
+				ret = selector_pseudo_has_flag (self,
+				                                selector,
+				                                sel,
+				                                context,
+				                                ret);
 			break;
 			default:
 				g_assert_not_reached ();
