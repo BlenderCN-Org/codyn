@@ -496,8 +496,9 @@ attribute_proxy
 	;
 
 attribute_each
-	: T_KEY_EACH '(' value_as_string ')'
-					{ $$ = cpg_attribute_newv ("each", $3, NULL); }
+	: T_KEY_EACH '(' string_list ')'
+					{ $$ = cpg_attribute_new ("each");
+					  cpg_attribute_set_arguments ($$, $3); }
 	;
 
 attribute_bidirectional
@@ -508,7 +509,9 @@ attribute_bidirectional
 	;
 
 attribute_if
-	: T_KEY_IF '(' value_as_string ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
+	: T_KEY_IF '(' string_list ')' { $$ = cpg_attribute_new ("if");
+	                                 cpg_attribute_set_arguments ($$, $3);
+	                               }
 	| T_KEY_IF '(' strict_selector_only ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
 	;
 
@@ -532,7 +535,8 @@ attribute_probability
 
 attribute_tag
 	: T_KEY_TAG '(' ')'		{ $$ = cpg_attribute_new ("tag"); }
-	| T_KEY_TAG '(' string_list ')' { $$ = cpg_attribute_new ("tag"); cpg_attribute_set_arguments ($$, $3); }
+	| T_KEY_TAG '(' string_list ')' { $$ = cpg_attribute_new ("tag");
+	                                  cpg_attribute_set_arguments ($$, $3); }
 	;
 
 attribute_contents
