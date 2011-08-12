@@ -26,6 +26,7 @@
 #include "cpg-expansion.h"
 #include "cpg-selection.h"
 #include "cpg-statement.h"
+#include "cpg-taggable.h"
 
 #include <string.h>
 
@@ -134,7 +135,8 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"from-set",
 	"type",
 	"has-flag",
-	"has-template"
+	"has-template",
+	"has-tag"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1327,6 +1329,67 @@ has_all_templates (CpgObject *obj,
 }
 
 static GSList *
+selector_pseudo_has_tag (CpgSelector        *self,
+                         Selector           *selector,
+                         CpgSelection       *sel,
+                         CpgEmbeddedContext *context,
+                         GSList             *ret)
+{
+	gpointer obj;
+	gboolean valid = TRUE;
+	GSList *item;
+
+	obj = cpg_selection_get_object (sel);
+
+	if (!CPG_IS_TAGGABLE (obj))
+	{
+		return ret;
+	}
+
+	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	{
+		CpgEmbeddedString *s;
+		GSList *ex;
+		GSList *exitem;
+
+		s = item->data;
+
+		if (!CPG_IS_EMBEDDED_STRING (s))
+		{
+			continue;
+		}
+
+		ex = cpg_embedded_string_expand_multiple (s, context, NULL);
+
+		for (exitem = ex; exitem; exitem = g_slist_next (exitem))
+		{
+			if (!cpg_taggable_has_tag (obj,
+			                           cpg_expansion_get (exitem->data, 0)))
+			{
+				valid = FALSE;
+				break;
+			}
+		}
+
+		g_slist_foreach (ex, (GFunc)g_object_unref, NULL);
+		g_slist_free (ex);
+
+		if (!valid)
+		{
+			break;
+		}
+	}
+
+	if (valid)
+	{
+		ret = g_slist_prepend (ret,
+		                       cpg_selection_copy (sel));
+	}
+
+	return ret;
+}
+
+static GSList *
 selector_pseudo_has_template (CpgSelector        *self,
                               Selector           *selector,
                               CpgSelection       *sel,
@@ -2393,6 +2456,13 @@ selector_select_pseudo (CpgSelector        *self,
 				                                    sel,
 				                                    context,
 				                                    ret);
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_HAS_TAG:
+				ret = selector_pseudo_has_tag (self,
+				                               selector,
+				                               sel,
+				                               context,
+				                               ret);
 			break;
 			default:
 				g_assert_not_reached ();

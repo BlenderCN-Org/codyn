@@ -25,6 +25,7 @@
 #include "cpg-usable.h"
 #include "cpg-annotatable.h"
 #include "cpg-link.h"
+#include "cpg-taggable.h"
 
 /**
  * SECTION:cpg-link-action
@@ -46,6 +47,7 @@ struct _CpgLinkActionPrivate
 	guint equation_proxy_id;
 
 	gchar *annotation;
+	GHashTable *tags;
 
 	guint modified : 1;
 	guint enabled : 1;
@@ -67,6 +69,7 @@ enum
 
 static void cpg_modifiable_iface_init (gpointer iface);
 static void cpg_annotatable_iface_init (gpointer iface);
+static void cpg_taggable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgLinkAction,
                          cpg_link_action,
@@ -74,7 +77,24 @@ G_DEFINE_TYPE_WITH_CODE (CpgLinkAction,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
                                                 cpg_modifiable_iface_init);
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
-                                                cpg_annotatable_iface_init));
+                                                cpg_annotatable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_TAGGABLE,
+                                                cpg_taggable_iface_init));
+
+static GHashTable *
+get_tagtable (CpgTaggable *taggable)
+{
+	return CPG_LINK_ACTION (taggable)->priv->tags;
+}
+
+static void
+cpg_taggable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+	CpgTaggableInterface *taggable = iface;
+
+	taggable->get_tagtable = get_tagtable;
+}
 
 static void
 cpg_modifiable_iface_init (gpointer iface)
@@ -244,6 +264,7 @@ cpg_link_action_finalize (GObject *object)
 	CpgLinkAction *action = CPG_LINK_ACTION (object);
 
 	g_free (action->priv->annotation);
+	g_hash_table_destroy (action->priv->tags);
 
 	G_OBJECT_CLASS (cpg_link_action_parent_class)->finalize (object);
 }
@@ -412,6 +433,11 @@ static void
 cpg_link_action_init (CpgLinkAction *self)
 {
 	self->priv = CPG_LINK_ACTION_GET_PRIVATE (self);
+
+	self->priv->tags = g_hash_table_new_full (g_str_hash,
+	                                          g_str_equal,
+	                                          (GDestroyNotify)g_free,
+	                                          NULL);
 }
 
 /**

@@ -130,20 +130,24 @@ void                   cpg_parser_context_add_property         (CpgParserContext
                                                                 CpgEmbeddedString          *expression,
                                                                 CpgPropertyFlags            add_flags,
                                                                 CpgPropertyFlags            remove_flags,
-                                                                CpgEmbeddedString          *integration);
+                                                                CpgEmbeddedString          *integration,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_add_action           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *target,
-                                                                CpgEmbeddedString          *expression);
+                                                                CpgEmbeddedString          *expression,
+                                                                GSList                     *attributes);
 
 CpgFunction           *cpg_parser_context_add_function         (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
                                                                 CpgEmbeddedString          *expression,
-                                                                GSList                     *arguments);
+                                                                GSList                     *arguments,
+                                                                GSList                     *attributes);
 
 CpgFunctionPolynomial *cpg_parser_context_add_polynomial       (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
-                                                                GSList                     *pieces);
+                                                                GSList                     *pieces,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_add_interface        (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
@@ -151,7 +155,8 @@ void                   cpg_parser_context_add_interface        (CpgParserContext
 
 void                   cpg_parser_context_import               (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
-                                                                CpgEmbeddedString          *path);
+                                                                CpgEmbeddedString          *path,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_set_error            (CpgParserContext           *context,
                                                                 gchar const                *message);
@@ -164,7 +169,8 @@ void                   cpg_parser_context_push_selection       (CpgParserContext
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_push_object          (CpgParserContext           *context,
-                                                                GSList                     *objects);
+                                                                GSList                     *objects,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_push_state           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,

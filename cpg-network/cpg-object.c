@@ -36,6 +36,7 @@
 #include "cpg-annotatable.h"
 #include "cpg-layoutable.h"
 #include "cpg-selector.h"
+#include "cpg-taggable.h"
 
 /**
  * SECTION:cpg-object
@@ -81,6 +82,7 @@ struct _CpgObjectPrivate
 	GSList *templates_reverse_map;
 
 	gchar *annotation;
+	GHashTable *tags;
 
 	gboolean compiled : 1;
 	gboolean auto_imported : 1;
@@ -118,6 +120,7 @@ enum
 static void cpg_usable_iface_init (gpointer iface);
 static void cpg_annotatable_iface_init (gpointer iface);
 static void cpg_layoutable_iface_init (gpointer iface);
+static void cpg_taggable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgObject,
                          cpg_object,
@@ -127,9 +130,26 @@ G_DEFINE_TYPE_WITH_CODE (CpgObject,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
                                                 cpg_annotatable_iface_init);
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_LAYOUTABLE,
-                                                cpg_layoutable_iface_init));
+                                                cpg_layoutable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_TAGGABLE,
+                                                cpg_taggable_iface_init));
 
 static guint object_signals[NUM_SIGNALS] = {0,};
+
+static GHashTable *
+get_tagtable (CpgTaggable *taggable)
+{
+	return CPG_OBJECT (taggable)->priv->tags;
+}
+
+static void
+cpg_taggable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+	CpgTaggableInterface *taggable = iface;
+
+	taggable->get_tagtable = get_tagtable;
+}
 
 GQuark
 cpg_object_error_quark (void)
@@ -225,6 +245,7 @@ cpg_object_finalize (GObject *object)
 	g_free (obj->priv->annotation);
 
 	g_hash_table_destroy (obj->priv->property_hash);
+	g_hash_table_destroy (obj->priv->tags);
 
 	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
@@ -1507,6 +1528,11 @@ cpg_object_init (CpgObject *self)
 	                                                   g_str_equal,
 	                                                   (GDestroyNotify)g_free,
 	                                                   NULL);
+
+	self->priv->tags = g_hash_table_new_full (g_str_hash,
+	                                          g_str_equal,
+	                                          (GDestroyNotify)g_free,
+	                                          NULL);
 }
 
 /**

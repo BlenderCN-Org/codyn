@@ -31,6 +31,7 @@
 #include "cpg-layoutable.h"
 #include "cpg-input-file.h"
 #include "cpg-statement.h"
+#include "cpg-taggable.h"
 
 #include <string.h>
 
@@ -628,13 +629,104 @@ find_or_create_self_link (CpgParserContext *context,
 	return link;
 }
 
+static GSList *
+find_attributes (GSList *attributes,
+                gchar const *name)
+{
+	GSList *ret = NULL;
+
+	while (attributes)
+	{
+		if (g_strcmp0 (name, cpg_attribute_get_id (attributes->data)) == 0)
+		{
+			ret = g_slist_prepend (ret, attributes->data);
+		}
+
+		attributes = g_slist_next (attributes);
+	}
+
+	return g_slist_reverse (ret);
+}
+
+static CpgAttribute *
+find_attribute (GSList *attributes,
+                gchar const *name)
+{
+	GSList *all;
+	CpgAttribute *ret = NULL;
+
+	all = find_attributes (attributes, name);
+
+	if (all)
+	{
+		ret = all->data;
+		g_slist_free (all);
+	}
+
+	return ret;
+}
+
+static void
+set_taggable (CpgParserContext *context,
+              gpointer          obj,
+              GSList           *attributes)
+{
+	GSList *attrs;
+	GSList *attr;
+
+	if (!CPG_IS_TAGGABLE (obj))
+	{
+		return;
+	}
+
+	attrs = find_attributes (attributes, "tag");
+
+	for (attr = attrs; attr; attr = g_slist_next (attr))
+	{
+		CpgAttribute *a;
+		gint i;
+
+		a = attr->data;
+
+		for (i = 0; i < cpg_attribute_num_arguments (a); ++i)
+		{
+			gpointer o;
+			GSList *ex;
+			GSList *item;
+
+			o = cpg_attribute_get_argument (a, i);
+
+			if (!CPG_IS_EMBEDDED_STRING (o))
+			{
+				continue;
+			}
+
+			ex = cpg_embedded_string_expand_multiple (o,
+			                                          context->priv->embedded,
+			                                          NULL);
+
+			for (item = ex; item; item = g_slist_next (item))
+			{
+				cpg_taggable_add_tag (CPG_TAGGABLE (obj),
+				                      cpg_expansion_get (item->data, 0));
+			}
+
+			g_slist_foreach (ex, (GFunc)g_object_unref, NULL);
+			g_slist_free (ex);
+		}
+	}
+
+	g_slist_free (attrs);
+}
+
 void
 cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
                                  CpgEmbeddedString *expression,
                                  CpgPropertyFlags   add_flags,
                                  CpgPropertyFlags   remove_flags,
-                                 CpgEmbeddedString *integration)
+                                 CpgEmbeddedString *integration,
+                                 GSList            *attributes)
 {
 	Context *ctx;
 	GSList *item;
@@ -729,6 +821,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 				                                annotation);
 			}
 
+			set_taggable (context, property, attributes);
+
 			if (integration != NULL)
 			{
 				CpgLink *link;
@@ -772,7 +866,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 void
 cpg_parser_context_add_action (CpgParserContext  *context,
                                CpgEmbeddedString *target,
-                               CpgEmbeddedString *expression)
+                               CpgEmbeddedString *expression,
+                               GSList            *attributes)
 {
 	Context *ctx;
 	GSList *item;
@@ -822,6 +917,8 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 				                                annotation);
 			}
 
+			set_taggable (context, action, attributes);
+
 			cpg_embedded_context_restore (context->priv->embedded);
 		}
 
@@ -841,7 +938,8 @@ CpgFunction *
 cpg_parser_context_add_function (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
                                  CpgEmbeddedString *expression,
-                                 GSList            *arguments)
+                                 GSList            *arguments,
+                                 GSList            *attributes)
 {
 	CpgFunction *function;
 	gchar *annotation;
@@ -879,6 +977,8 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 		                                annotation);
 	}
 
+	set_taggable (context, function, attributes);
+
 	g_free (annotation);
 
 	return function;
@@ -887,7 +987,8 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 CpgFunctionPolynomial *
 cpg_parser_context_add_polynomial (CpgParserContext  *context,
                                    CpgEmbeddedString *name,
-                                   GSList            *pieces)
+                                   GSList            *pieces,
+                                   GSList            *attributes)
 {
 	CpgFunctionPolynomial *function;
 	gchar *annotation;
@@ -917,6 +1018,8 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
 		                                annotation);
 	}
+
+	set_taggable (context, function, attributes);
 
 	g_free (annotation);
 
@@ -1237,23 +1340,6 @@ parse_object_single (CpgParserContext  *context,
 	}
 
 	return g_slist_reverse (ret);
-}
-
-static CpgAttribute *
-find_attribute (GSList *attributes,
-                gchar const *name)
-{
-	while (attributes)
-	{
-		if (g_strcmp0 (name, cpg_attribute_get_id (attributes->data)) == 0)
-		{
-			return attributes->data;
-		}
-
-		attributes = g_slist_next (attributes);
-	}
-
-	return NULL;
 }
 
 static GSList *
@@ -1902,11 +1988,21 @@ store_annotation_objects (CpgParserContext *context,
 
 void
 cpg_parser_context_push_object (CpgParserContext *context,
-                                GSList           *objects)
+                                GSList           *objects,
+                                GSList           *attributes)
 {
+	GSList *item;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
 	store_annotation_objects (context, objects);
+
+	for (item = objects; item; item = g_slist_next (item))
+	{
+		set_taggable (context,
+		              cpg_selection_get_object (item->data),
+		              attributes);
+	}
 
 	context->priv->context_stack =
 		g_slist_prepend (context->priv->context_stack,
@@ -1985,7 +2081,7 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 
 	objs = g_slist_reverse (objs);
 
-	cpg_parser_context_push_object (context, objs);
+	cpg_parser_context_push_object (context, objs, attributes);
 
 	g_slist_free (objs);
 }
@@ -2253,7 +2349,7 @@ cpg_parser_context_push_state (CpgParserContext  *context,
 	                          CPG_TYPE_OBJECT,
 	                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, attributes);
 	g_slist_free (objects);
 }
 
@@ -2273,7 +2369,7 @@ cpg_parser_context_push_group (CpgParserContext  *context,
 	                          CPG_TYPE_GROUP,
 	                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, attributes);
 	g_slist_free (objects);
 }
 
@@ -2318,7 +2414,7 @@ cpg_parser_context_push_input_file (CpgParserContext  *context,
 	g_slist_foreach (paths, (GFunc)g_object_unref, NULL);
 	g_slist_free (paths);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, attributes);
 	g_slist_free (objects);
 }
 
@@ -2361,7 +2457,7 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 		                        fromto);
 	}
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, attributes);
 	g_slist_free (objects);
 
 	if (id != NULL)
@@ -2440,7 +2536,7 @@ push_scope (CpgParserContext *context,
 	                           NULL,
 	                           copy_defines);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, attributes);
 
 	g_slist_free (objects);
 }
@@ -2471,7 +2567,7 @@ cpg_parser_context_push_network (CpgParserContext *context,
 	                                          CPG_OBJECT (context->priv->network),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, attributes);
 	g_slist_free (objects);
 }
 
@@ -2487,7 +2583,7 @@ cpg_parser_context_push_integrator (CpgParserContext *context,
 	                                          CPG_OBJECT (cpg_network_get_integrator (context->priv->network)),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, attributes);
 
 	g_slist_free (objects);
 }
@@ -2504,7 +2600,7 @@ cpg_parser_context_push_templates (CpgParserContext *context,
 	                                          CPG_OBJECT (cpg_network_get_template_group (context->priv->network)),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects);
+	cpg_parser_context_push_object (context, objects, attributes);
 	context->priv->is_template = CURRENT_CONTEXT (context);
 
 	g_slist_free (objects);
@@ -2553,7 +2649,8 @@ cpg_parser_context_pop (CpgParserContext *context)
 void
 cpg_parser_context_import (CpgParserContext  *context,
                            CpgEmbeddedString *id,
-                           CpgEmbeddedString *path)
+                           CpgEmbeddedString *path,
+                           GSList            *attributes)
 {
 	Context *ctx;
 	GSList *item;
@@ -2675,6 +2772,8 @@ cpg_parser_context_import (CpgParserContext  *context,
 						                                annotation);
 					}
 
+					set_taggable (context, alias, attributes);
+
 					g_object_unref (alias);
 					g_object_unref (file);
 
@@ -2725,6 +2824,8 @@ cpg_parser_context_import (CpgParserContext  *context,
 				cpg_annotatable_set_annotation (CPG_ANNOTATABLE (import),
 				                                annotation);
 			}
+
+			set_taggable (context, import, attributes);
 
 			g_object_unref (import);
 		}

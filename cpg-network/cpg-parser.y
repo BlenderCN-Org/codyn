@@ -42,7 +42,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -147,6 +147,10 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <attribute> attribute_if
 %type <attribute> attribute_no_self
 %type <attribute> attribute_probability
+%type <attribute> attribute_tag
+
+%type <list> string_list
+%type <list> string_list_rev
 
 %type <list> state
 %type <list> define_values
@@ -508,13 +512,27 @@ attribute_if
 	| T_KEY_IF '(' strict_selector_only ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
 	;
 
+string_list_rev
+	: value_as_string			{ $$ = g_slist_prepend (NULL, $1); }
+	| string_list ',' value_as_string	{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+string_list
+	: string_list_rev			{ $$ = g_slist_reverse ($1); }
+	;
+
 attribute_no_self
-	: T_KEY_NO_SELF '(' ')' { $$ = cpg_attribute_newv ("no-self", NULL); }
+	: T_KEY_NO_SELF '(' ')' { $$ = cpg_attribute_new ("no-self"); }
 	| T_KEY_NO_SELF { $$ = cpg_attribute_newv ("no-self", NULL); }
 	;
 
 attribute_probability
 	: T_KEY_PROBABILITY '(' value_as_string ')' { $$ = cpg_attribute_newv ("probability", $3, NULL); }
+	;
+
+attribute_tag
+	: T_KEY_TAG '(' ')'		{ $$ = cpg_attribute_new ("tag"); }
+	| T_KEY_TAG '(' string_list ')' { $$ = cpg_attribute_new ("tag"); cpg_attribute_set_arguments ($$, $3); }
 	;
 
 attribute_contents
@@ -524,6 +542,7 @@ attribute_contents
 	| attribute_if
 	| attribute_no_self
 	| attribute_probability
+	| attribute_tag
 	;
 
 attributes_contents
@@ -597,7 +616,7 @@ function_polynomial
 	  ')'
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  polynomial_pieces
-	  '}'				{ cpg_parser_context_add_polynomial (context, $3, $8); errb
+	  '}'				{ cpg_parser_context_add_polynomial (context, $3, $8, $1); errb
 	                                  cpg_parser_context_pop (context); errb }
 	;
 
@@ -625,7 +644,7 @@ function_custom
 	  ')'
 	  function_argument_implicit
 	  '='				{ cpg_parser_context_push_scope (context, $1); }
-	  value_as_string		{ cpg_parser_context_add_function (context, $2, $9, g_slist_concat ($4, $6)); errb
+	  value_as_string		{ cpg_parser_context_add_function (context, $2, $9, g_slist_concat ($4, $6), $1); errb
 	                                  cpg_parser_context_pop (context); errb }
 	;
 
@@ -790,12 +809,24 @@ identifier_or_string
 	;
 
 property
-	: identifier_or_string '=' value_as_string '<' '=' value_as_string property_flags
-					{ cpg_parser_context_add_property (context, $1, $3, $7.add, $7.remove, $6); errb }
-	| identifier_or_string '=' value_as_string property_flags
-					{ cpg_parser_context_add_property (context, $1, $3, $4.add, $4.remove, NULL); errb }
-	| identifier_or_string property_flags_strict
-					{ cpg_parser_context_add_property (context, $1, NULL, $2.add, $2.remove, NULL); errb }
+	: attributes
+	  identifier_or_string
+	  '='
+	  value_as_string
+	  '<' '='
+	  value_as_string
+	  property_flags
+					{ cpg_parser_context_add_property (context, $2, $4, $8.add, $8.remove, $7, $1); errb }
+	| attributes
+	  identifier_or_string
+	  '='
+	  value_as_string
+	  property_flags
+					{ cpg_parser_context_add_property (context, $2, $4, $5.add, $5.remove, NULL, $1); errb }
+	| attributes
+	  identifier_or_string
+	  property_flags_strict
+					{ cpg_parser_context_add_property (context, $2, NULL, $3.add, $3.remove, NULL, $1); errb }
 	;
 
 property_flag_sign
@@ -827,8 +858,11 @@ property_flag
 	;
 
 action
-	: identifier_or_string '<' '=' value_as_string
-					{ cpg_parser_context_add_action (context, $1, $4); errb }
+	: attributes
+	  identifier_or_string
+	  '<' '='
+	  value_as_string
+					{ cpg_parser_context_add_action (context, $2, $5, $1); errb }
 	;
 
 selector_nonambi
@@ -985,6 +1019,7 @@ selector_pseudo_strargs_key_real
 	: T_KEY_SIBLINGS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS; }
 	| T_KEY_SUBSET				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SUBSET; }
 	| T_KEY_DEBUG				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_DEBUG; }
+	| T_KEY_HAS_TAG				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_HAS_TAG; }
 	;
 
 selector_pseudo_strargs_key
@@ -1077,10 +1112,11 @@ selector_pseudo
 	;
 
 import
-	: T_KEY_IMPORT
+	: attributes
+	  T_KEY_IMPORT
 	  value_as_string
 	  T_KEY_AS
-	  identifier_or_string	{ cpg_parser_context_import (context, $4, $2); errb }
+	  identifier_or_string	{ cpg_parser_context_import (context, $5, $3, $1); errb }
 	;
 
 layout
