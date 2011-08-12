@@ -25,6 +25,7 @@
 #include "cpg-parser.h"
 #include "cpg-expansion.h"
 #include "cpg-selection.h"
+#include "cpg-statement.h"
 
 #include <string.h>
 
@@ -87,6 +88,11 @@ struct _CpgSelectorPrivate
 	GSList *from_set;
 
 	guint last_id;
+
+	gint line_start;
+	gint line_end;
+	gint column_start;
+	gint column_end;
 };
 
 enum
@@ -131,7 +137,27 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 
 static guint signals[NUM_SIGNALS];
 
-G_DEFINE_TYPE (CpgSelector, cpg_selector, G_TYPE_OBJECT)
+static void cpg_statement_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgSelector,
+                         cpg_selector,
+                         G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_STATEMENT, cpg_statement_iface_init))
+
+enum
+{
+	PROP_0,
+	PROP_LINE_START,
+	PROP_LINE_END,
+	PROP_COLUMN_START,
+	PROP_COLUMN_END
+};
+
+static void
+cpg_statement_iface_init (gpointer iface)
+{
+
+}
 
 static Selector *
 selector_new (CpgSelector  *selector,
@@ -356,11 +382,65 @@ cpg_selector_finalize (GObject *object)
 }
 
 static void
+cpg_selector_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+{
+	CpgSelector *self = CPG_SELECTOR (object);
+
+	switch (prop_id)
+	{
+		case PROP_LINE_START:
+			self->priv->line_start = g_value_get_int (value);
+			break;
+		case PROP_LINE_END:
+			self->priv->line_end = g_value_get_int (value);
+			break;
+		case PROP_COLUMN_START:
+			self->priv->column_start = g_value_get_int (value);
+			break;
+		case PROP_COLUMN_END:
+			self->priv->column_end = g_value_get_int (value);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_selector_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+{
+	CpgSelector *self = CPG_SELECTOR (object);
+
+	switch (prop_id)
+	{
+		case PROP_LINE_START:
+			g_value_set_int (value, self->priv->line_start);
+			break;
+		case PROP_LINE_END:
+			g_value_set_int (value, self->priv->line_end);
+			break;
+		case PROP_COLUMN_START:
+			g_value_set_int (value, self->priv->column_start);
+			break;
+		case PROP_COLUMN_END:
+			g_value_set_int (value, self->priv->column_end);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
 cpg_selector_class_init (CpgSelectorClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	object_class->finalize = cpg_selector_finalize;
+
+	object_class->get_property = cpg_selector_get_property;
+	object_class->set_property = cpg_selector_set_property;
+
 
 	signals[SELECT] =
 		g_signal_new ("select",
@@ -375,6 +455,22 @@ cpg_selector_class_init (CpgSelectorClass *klass)
 		              G_TYPE_UINT);
 
 	g_type_class_add_private (object_class, sizeof (CpgSelectorPrivate));
+
+	g_object_class_override_property (object_class,
+	                                  PROP_LINE_START,
+	                                  "line-start");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_LINE_END,
+	                                  "line-end");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_COLUMN_START,
+	                                  "column-start");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_COLUMN_END,
+	                                  "column-end");
 }
 
 static void
