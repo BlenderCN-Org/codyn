@@ -655,7 +655,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 		obj = cpg_selection_get_object (item->data);
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
@@ -790,7 +790,7 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 		GSList *exps;
 		GSList *iteme;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
@@ -951,7 +951,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 
 		iface = cpg_group_get_property_interface (parent);
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
@@ -1597,7 +1597,7 @@ parse_objects (CpgParserContext  *context,
 
 		theid = id;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    parent->data);
@@ -1949,7 +1949,7 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 
 		sel = item->data;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    sel);
 
@@ -2205,7 +2205,7 @@ create_links (CpgParserContext          *context,
 		GSList *it;
 
 		/* Expand the id with the parent expansions */
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
@@ -2404,7 +2404,7 @@ selections_from_attributes_obj (CpgParserContext *context,
 	{
 		CpgSelection *sel;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 		cpg_embedded_context_add_selection (context->priv->embedded,
 		                                    item->data);
 
@@ -2571,7 +2571,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 		GSList *ids;
 		GSList *idi;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
@@ -3070,7 +3070,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 
 		sel = ob->data;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    sel);
 
@@ -3505,7 +3505,7 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 
 		sel = objs->data;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    sel);
@@ -3600,7 +3600,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 
 		sel = cobjs->data;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    sel);
@@ -3957,7 +3957,7 @@ cpg_parser_context_debug_selector (CpgParserContext *context,
 
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
@@ -3989,7 +3989,7 @@ cpg_parser_context_debug_string (CpgParserContext  *context,
 	{
 		gchar const *ret;
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
@@ -4121,7 +4121,7 @@ cpg_parser_context_delete_selector (CpgParserContext *context,
 
 	for (oo = ctx->objects; oo; oo = g_slist_next (oo))
 	{
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    oo->data);
 
@@ -4254,7 +4254,7 @@ cpg_parser_context_set_input_file_setting (CpgParserContext  *context,
 
 		f = cpg_selection_get_object (obj->data);
 
-		cpg_embedded_context_save (context->priv->embedded);
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 		cpg_embedded_context_add_selection (context->priv->embedded,
 		                                    obj->data);
 

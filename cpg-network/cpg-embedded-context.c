@@ -156,7 +156,8 @@ copy_defines_on_write (Context *context)
 }
 
 static Context *
-context_copy (Context *self)
+context_copy (Context  *self,
+              gboolean  copy_defines)
 {
 	Context *ret;
 
@@ -164,7 +165,7 @@ context_copy (Context *self)
 
 	if (self)
 	{
-		ret->copy_defines_on_write = TRUE;
+		ret->copy_defines_on_write = copy_defines;
 		ret->copy_expansions_on_write = TRUE;
 
 		ret->expansions = self->expansions;
@@ -220,11 +221,18 @@ cpg_embedded_context_new ()
 void
 cpg_embedded_context_save (CpgEmbeddedContext *context)
 {
+	cpg_embedded_context_save_defines (context, FALSE);
+}
+
+void
+cpg_embedded_context_save_defines (CpgEmbeddedContext *context,
+                                   gboolean            copy_defines)
+{
 	Context *ctx;
 
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 
-	ctx = context_copy (CURRENT_CONTEXT (context));
+	ctx = context_copy (CURRENT_CONTEXT (context), copy_defines);
 
 	context->priv->contexts = g_slist_prepend (context->priv->contexts,
 	                                           ctx);
@@ -293,6 +301,7 @@ cpg_embedded_context_add_define (CpgEmbeddedContext *context,
                                  gchar const        *value)
 {
 	Context *ctx;
+	GSList *item;
 
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 	g_return_if_fail (name != NULL);
@@ -304,6 +313,20 @@ cpg_embedded_context_add_define (CpgEmbeddedContext *context,
 	g_hash_table_insert (ctx->defines,
 	                     g_strdup (name),
 	                     g_strdup (value ? value : ""));
+
+	for (item = context->priv->contexts->next; item; item = g_slist_next (item))
+	{
+		Context *c;
+
+		c = item->data;
+
+		if (c->defines != ctx->defines)
+		{
+			continue;
+		}
+
+		c->marker = ++global_marker;
+	}
 
 	ctx->marker = ++global_marker;
 }

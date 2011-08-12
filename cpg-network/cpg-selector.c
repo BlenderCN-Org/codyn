@@ -717,7 +717,10 @@ make_child_selection (CpgSelection *parent,
 		expansions = g_slist_prepend (expansions, expansion);
 	}
 
-	ret = cpg_selection_new (obj, expansions, cpg_selection_get_defines (parent));
+	ret = cpg_selection_new_defines (obj,
+	                                 expansions,
+	                                 cpg_selection_get_defines (parent),
+	                                 FALSE);
 
 	g_slist_free (expansions);
 
@@ -1068,9 +1071,10 @@ static CpgSelection *
 expand_obj (CpgSelection *selection,
             gpointer      obj)
 {
-	return cpg_selection_new (obj,
-	                          cpg_selection_get_expansions (selection),
-	                          cpg_selection_get_defines (selection));
+	return cpg_selection_new_defines (obj,
+	                                  cpg_selection_get_expansions (selection),
+	                                  cpg_selection_get_defines (selection),
+	                                  FALSE);
 }
 
 static GSList *
@@ -1109,9 +1113,10 @@ annotate_names (GSList *selection)
 		expansion = cpg_expansion_copy (ex);
 		expansions = g_slist_append (expansions, expansion);
 
-		sel = cpg_selection_new (cpg_selection_get_object (selection->data),
-		                         expansions,
-		                         cpg_selection_get_defines (selection->data));
+		sel = cpg_selection_new_defines (cpg_selection_get_object (selection->data),
+		                                 expansions,
+		                                 cpg_selection_get_defines (selection->data),
+		                                 FALSE);
 
 		g_slist_free (expansions);
 		g_object_unref (ex);
@@ -1161,9 +1166,10 @@ count_selection (CpgEmbeddedContext *context,
 
 		cpg_expansion_set_index (expansion, 0, i++);
 
-		sel = cpg_selection_new (cpg_selection_get_object (item->data),
-		                         expansions,
-		                         cpg_selection_get_defines (item->data));
+		sel = cpg_selection_new_defines (cpg_selection_get_object (item->data),
+		                                 expansions,
+		                                 cpg_selection_get_defines (item->data),
+		                                 FALSE);
 
 		g_slist_free (expansions);
 		g_object_unref (expansion);
@@ -1231,9 +1237,10 @@ selector_pseudo_from_to (Selector           *selector,
 			expansions = g_slist_concat (g_slist_copy (cpg_selection_get_expansions (subsel)),
 			                             expansions);
 
-			childsel = cpg_selection_new (cpg_selection_get_object (sel),
-			                              expansions,
-			                              cpg_selection_get_defines (sel));
+			childsel = cpg_selection_new_defines (cpg_selection_get_object (sel),
+			                                      expansions,
+			                                      cpg_selection_get_defines (sel),
+			                                      FALSE);
 
 			ret = g_slist_prepend (ret, childsel);
 
@@ -1525,9 +1532,10 @@ selector_pseudo_type (CpgEmbeddedContext *context,
 		cpg_expansion_set_index (expansion, 0, val[0]);
 
 		ret = g_slist_prepend (ret,
-		                       cpg_selection_new (cpg_selection_get_object (sel),
-		                                          expansions,
-		                                          cpg_selection_get_defines (sel)));
+		                       cpg_selection_new_defines (cpg_selection_get_object (sel),
+		                                                  expansions,
+		                                                  cpg_selection_get_defines (sel),
+		                                                  FALSE));
 
 		g_slist_free (expansions);
 		g_object_unref (expansion);
@@ -2395,7 +2403,10 @@ selector_select_all (CpgSelector        *selector,
 
 	defines = context ? cpg_embedded_context_get_defines (context) : NULL;
 
-	selector->priv->self = cpg_selection_new (parent, NULL, defines);
+	selector->priv->self = cpg_selection_new_defines (parent,
+	                                                  NULL,
+	                                                  defines,
+	                                                  FALSE);
 
 	ctx = g_slist_prepend (NULL,
 	                       g_object_ref (selector->priv->self));
