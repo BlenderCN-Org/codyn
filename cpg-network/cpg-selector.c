@@ -1833,7 +1833,7 @@ selector_select_pseudo (CpgSelector        *self,
 				                                     FALSE));
 		case CPG_SELECTOR_PSEUDO_TYPE_IMPORTS:
 			return g_slist_reverse (filter_list_reverse (parent,
-				                                     CPG_TYPE_IMPORTS,
+				                                     CPG_TYPE_IMPORT,
 				                                     FALSE));
 		case CPG_SELECTOR_PSEUDO_TYPE_PROPERTIES:
 			return g_slist_reverse (filter_list_reverse (parent,
