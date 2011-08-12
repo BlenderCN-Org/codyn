@@ -584,8 +584,6 @@ parse_function (CpgExpression *expression,
 			start = g_list_next (start);
 			++numargs;
 		}
-
-		g_message ("2. %d", numargs);
 	}
 
 	CpgInstruction *instruction;

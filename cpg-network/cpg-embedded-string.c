@@ -1087,8 +1087,6 @@ escape_expand (gchar const *s)
 
 		g_string_append_c (ret, *s);
 		++s;
-
-		g_message ("%s", ret->str);
 	}
 
 	return g_string_free (ret, FALSE);
