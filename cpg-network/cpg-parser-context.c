@@ -30,6 +30,7 @@
 #include "cpg-expansion.h"
 #include "cpg-layoutable.h"
 #include "cpg-input-file.h"
+#include "cpg-statement.h"
 
 #include <string.h>
 
@@ -104,8 +105,9 @@ typedef struct
 	gint lineno;
 	gint cstart;
 	gint cend;
-	gchar *line;
 	gchar *token;
+
+	GHashTable *lines;
 } InputItem;
 
 typedef struct
@@ -135,13 +137,9 @@ struct _CpgParserContextPrivate
 
 	GError *error;
 	gboolean error_occurred;
+	CpgStatement *error_statement;
 
 	CpgLayout *layout;
-
-	gint last_selector_line_start;
-	gint last_selector_line_end;
-	gint last_selector_cstart;
-	gint last_selector_cend;
 };
 
 enum
@@ -181,8 +179,9 @@ input_item_free (InputItem *self)
 		g_object_unref (self->stream);
 	}
 
-	g_free (self->line);
 	g_free (self->token);
+
+	g_hash_table_destroy (self->lines);
 
 	g_slice_free (InputItem, self);
 }
@@ -220,6 +219,11 @@ input_item_new (GFile         *file,
 			ret = NULL;
 		}
 	}
+
+	ret->lines = g_hash_table_new_full (g_direct_hash,
+	                                    g_direct_equal,
+	                                    NULL,
+	                                    (GDestroyNotify)g_free);
 
 	return ret;
 }
@@ -260,6 +264,11 @@ cpg_parser_context_finalize (GObject *object)
 	if (self->priv->network)
 	{
 		g_object_unref (self->priv->network);
+	}
+
+	if (self->priv->error_statement)
+	{
+		g_object_unref (self->priv->error_statement);
 	}
 
 	g_slist_foreach (self->priv->inputs, (GFunc)input_item_free, NULL);
@@ -389,12 +398,74 @@ cpg_parser_context_new (CpgNetwork *network)
 	                     NULL);
 }
 
+static void
+statement_start (CpgParserContext *context,
+                 gpointer          obj)
+{
+	CpgStatement *st;
+	InputItem *inp;
+
+	if (!CPG_IS_STATEMENT (obj))
+	{
+		return;
+	}
+
+	st = CPG_STATEMENT (obj);
+	inp = CURRENT_INPUT (context);
+
+	cpg_statement_set_line (st, inp->lineno, inp->lineno);
+	cpg_statement_set_column (st, inp->cstart, inp->cend);
+}
+
+static void
+statement_end (CpgParserContext *context,
+               gpointer          obj)
+{
+	CpgStatement *st;
+	InputItem *inp;
+	gint lstart;
+	gint cstart;
+
+	if (!CPG_IS_STATEMENT (obj))
+	{
+		return;
+	}
+
+	st = CPG_STATEMENT (obj);
+	inp = CURRENT_INPUT (context);
+
+	cpg_statement_get_line (st, &lstart, NULL);
+	cpg_statement_get_column (st, &cstart, NULL);
+
+	cpg_statement_set_line (st, lstart, inp->lineno);
+	cpg_statement_set_column (st, cstart, inp->cend);
+}
+
+static gboolean
+parser_failed_error_at (CpgParserContext *context,
+                        CpgStatement     *statement,
+                        GError           *error)
+{
+	if (context->priv->error_statement)
+	{
+		g_object_unref (context->priv->error_statement);
+		context->priv->error_statement = NULL;
+	}
+
+	if (statement)
+	{
+		context->priv->error_statement = g_object_ref (statement);
+	}
+
+	context->priv->error = error;
+	return FALSE;
+}
+
 static gboolean
 parser_failed_error (CpgParserContext *context,
                      GError           *error)
 {
-	context->priv->error = error;
-	return FALSE;
+	return parser_failed_error_at (context, NULL, error);
 }
 
 static gboolean
@@ -2702,8 +2773,7 @@ cpg_parser_context_push_selector_identifier (CpgParserContext  *context,
 	cpg_selector_append (ensure_selector (context), identifier);
 	g_object_unref (identifier);
 
-	context->priv->last_selector_line_end = CURRENT_INPUT (context)->lineno;
-	context->priv->last_selector_cend = CURRENT_INPUT (context)->cend;
+	statement_end (context, ensure_selector (context));
 
 	g_signal_emit (context,
 	               signals[SELECTOR_ITEM_PUSHED],
@@ -2721,8 +2791,7 @@ cpg_parser_context_push_selector_regex (CpgParserContext  *context,
 	cpg_selector_append_regex (ensure_selector (context), regex);
 	g_object_unref (regex);
 
-	context->priv->last_selector_line_end = CURRENT_INPUT (context)->lineno;
-	context->priv->last_selector_cend = CURRENT_INPUT (context)->cend;
+	statement_end (context, ensure_selector (context));
 
 	g_signal_emit (context,
 	               signals[SELECTOR_ITEM_PUSHED],
@@ -2744,8 +2813,7 @@ cpg_parser_context_push_selector_pseudo (CpgParserContext      *context,
 	g_slist_foreach (argument, (GFunc)g_object_unref, NULL);
 	g_slist_free (argument);
 
-	context->priv->last_selector_line_end = CURRENT_INPUT (context)->lineno;
-	context->priv->last_selector_cend = CURRENT_INPUT (context)->cend;
+	statement_end (context, ensure_selector (context));
 
 	g_signal_emit (context,
 	               signals[SELECTOR_ITEM_PUSHED],
@@ -2858,10 +2926,12 @@ cpg_parser_context_set_line (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
 	input = CURRENT_INPUT (context);
-	g_free (input->line);
 
-	input->line = g_strdup (line);
 	input->lineno = lineno;
+
+	g_hash_table_insert (input->lines,
+	                     GINT_TO_POINTER (lineno),
+	                     g_strdup (line));
 }
 
 void
@@ -2889,22 +2959,30 @@ cpg_parser_context_get_line (CpgParserContext *context,
 
 	input = CURRENT_INPUT (context);
 
+	if (lineno)
+	{
+		*lineno = input ? input->lineno : 0;
+	}
+
+	return cpg_parser_context_get_line_at (context, input->lineno);
+}
+
+gchar const *
+cpg_parser_context_get_line_at (CpgParserContext *context,
+                                gint              lineno)
+{
+	InputItem *input;
+
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+
+	input = CURRENT_INPUT (context);
+
 	if (!input)
 	{
-		if (lineno)
-		{
-			*lineno = 0;
-		}
-
 		return NULL;
 	}
 
-	if (lineno)
-	{
-		*lineno = input->lineno;
-	}
-
-	return input->line;
+	return g_hash_table_lookup (input->lines, GINT_TO_POINTER (lineno));
 }
 
 void
@@ -3732,6 +3810,10 @@ cpg_parser_context_pop_string (CpgParserContext *context)
 
 	s = context->priv->strings->data;
 
+	statement_start (context, s);
+
+	statement_end (context, s);
+
 	context->priv->strings =
 		g_slist_delete_link (context->priv->strings,
 		                     context->priv->strings);
@@ -4243,43 +4325,78 @@ cpg_parser_context_begin_selector_item (CpgParserContext *context)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	context->priv->last_selector_line_start = CURRENT_INPUT (context)->lineno;
-	context->priv->last_selector_cstart = CURRENT_INPUT (context)->cstart;
+	statement_start (context, ensure_selector (context));
 }
 
 void
-cpg_parser_context_get_last_selector_item_line (CpgParserContext *context,
-                                                gint             *line_start,
-                                                gint             *line_end)
+cpg_parser_context_get_error_location (CpgParserContext *context,
+                                       gint             *lstart,
+                                       gint             *lend,
+                                       gint             *cstart,
+                                       gint             *cend)
 {
+	CpgStatement *st;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (line_start)
-	{
-		*line_start = context->priv->last_selector_line_start;
-	}
+	st = context->priv->error_statement;
 
-	if (line_end)
+	if (st)
 	{
-		*line_end = context->priv->last_selector_line_end;
+		cpg_statement_get_line (st, lstart, lend);
+		cpg_statement_get_column (st, cstart, cend);
+	}
+	else
+	{
+		cpg_parser_context_get_line (context, lstart);
+		cpg_parser_context_get_line (context, lend);
+
+		cpg_parser_context_get_column (context, cstart, cend);
 	}
 }
 
-void
-cpg_parser_context_get_last_selector_item_column (CpgParserContext *context,
-                                                  gint             *start,
-                                                  gint             *end)
+gchar *
+cpg_parser_context_get_error_lines (CpgParserContext *context)
 {
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	gint lstart;
+	gint lend;
+	gint cstart;
+	gint cend;
+	InputItem *inp;
+	GString *ret;
+	gboolean first;
 
-	if (start)
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
+
+	cpg_parser_context_get_error_location (context,
+	                                       &lstart,
+	                                       &lend,
+	                                       &cstart,
+	                                       &cend);
+
+	inp = CURRENT_INPUT (context);
+	ret = g_string_new ("");
+	first = TRUE;
+
+	while (lstart <= lend)
 	{
-		*start = context->priv->last_selector_cstart;
+		gchar const *line;
+
+		line = cpg_parser_context_get_line_at (context, lstart);
+
+		if (!first)
+		{
+			g_string_append_c (ret, '\n');
+		}
+		else
+		{
+			first = FALSE;
+		}
+
+		g_string_append (ret, line);
+
+		++lstart;
 	}
 
-	if (end)
-	{
-		*end = context->priv->last_selector_cend;
-	}
+	return g_string_free (ret, FALSE);
 }
-

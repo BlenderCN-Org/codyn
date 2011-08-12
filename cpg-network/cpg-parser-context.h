@@ -88,6 +88,9 @@ void                   cpg_parser_context_set_line             (CpgParserContext
 gchar const           *cpg_parser_context_get_line             (CpgParserContext           *context,
                                                                 gint                       *lineno);
 
+gchar const           *cpg_parser_context_get_line_at          (CpgParserContext           *context,
+                                                                gint                        lineno);
+
 void                   cpg_parser_context_set_column           (CpgParserContext           *context,
                                                                 gint                        start,
                                                                 gint                        end);
@@ -95,6 +98,14 @@ void                   cpg_parser_context_set_column           (CpgParserContext
 void                   cpg_parser_context_get_column           (CpgParserContext           *context,
                                                                 gint                       *start,
                                                                 gint                       *end);
+
+void                   cpg_parser_context_get_error_location   (CpgParserContext           *context,
+                                                                gint                       *lstart,
+                                                                gint                       *lend,
+                                                                gint                       *cstart,
+                                                                gint                       *cend);
+
+gchar                 *cpg_parser_context_get_error_lines      (CpgParserContext           *context);
 
 void                   cpg_parser_context_get_last_selector_item_line (CpgParserContext *context,
                                                                        gint             *line_start,

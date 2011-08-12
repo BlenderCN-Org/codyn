@@ -61,7 +61,8 @@ COMMON_SOURCES = 		\
 	cpg-expansion.c \
 	cpg-selection.c \
 	cpg-attribute.c \
-	cpg-layoutable.c
+	cpg-layoutable.c \
+	cpg-statement.c
 
 BUILT_SOURCES = \
 	cpg-enum-types.c \
@@ -125,7 +126,8 @@ INST_H_FILES = \
 	cpg-expansion.h \
 	cpg-selection.h \
 	cpg-attribute.h \
-	cpg-layoutable.h
+	cpg-layoutable.h \
+	cpg-statement.h
 
 lib_LTLIBRARIES = libcpg-network-2.0.la
 

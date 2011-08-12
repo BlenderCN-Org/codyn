@@ -23,6 +23,7 @@
 #include "cpg-embedded-string.h"
 #include <string.h>
 #include <stdlib.h>
+#include "cpg-statement.h"
 
 #define CPG_EMBEDDED_STRING_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_EMBEDDED_STRING, CpgEmbeddedStringPrivate))
 
@@ -43,9 +44,33 @@ struct _CpgEmbeddedStringPrivate
 
 	CpgEmbeddedContext *cached_context;
 	gulong cached_marker;
+
+	gint line_start;
+	gint line_end;
+	gint column_start;
+	gint column_end;
 };
 
-G_DEFINE_TYPE (CpgEmbeddedString, cpg_embedded_string, G_TYPE_OBJECT)
+static void cpg_statement_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgEmbeddedString,
+                         cpg_embedded_string,
+                         G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_STATEMENT, cpg_statement_iface_init))
+
+enum
+{
+	PROP_0,
+	PROP_LINE_START,
+	PROP_LINE_END,
+	PROP_COLUMN_START,
+	PROP_COLUMN_END
+};
+
+static void
+cpg_statement_iface_init (gpointer iface)
+{
+}
 
 static Node *
 node_new (CpgEmbeddedStringNodeType  type,
@@ -93,13 +118,88 @@ cpg_embedded_string_finalize (GObject *object)
 }
 
 static void
+cpg_embedded_string_set_property (GObject      *object,
+                                  guint         prop_id,
+                                  const GValue *value,
+                                  GParamSpec   *pspec)
+{
+	CpgEmbeddedString *self = CPG_EMBEDDED_STRING (object);
+
+	switch (prop_id)
+	{
+		case PROP_LINE_START:
+			self->priv->line_start = g_value_get_int (value);
+			break;
+		case PROP_LINE_END:
+			self->priv->line_end = g_value_get_int (value);
+			break;
+		case PROP_COLUMN_START:
+			self->priv->column_start = g_value_get_int (value);
+			break;
+		case PROP_COLUMN_END:
+			self->priv->column_end = g_value_get_int (value);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_embedded_string_get_property (GObject    *object,
+                                  guint       prop_id,
+                                  GValue     *value,
+                                  GParamSpec *pspec)
+{
+	CpgEmbeddedString *self = CPG_EMBEDDED_STRING (object);
+
+	switch (prop_id)
+	{
+		case PROP_LINE_START:
+			g_value_set_int (value, self->priv->line_start);
+			break;
+		case PROP_LINE_END:
+			g_value_set_int (value, self->priv->line_end);
+			break;
+		case PROP_COLUMN_START:
+			g_value_set_int (value, self->priv->column_start);
+			break;
+		case PROP_COLUMN_END:
+			g_value_set_int (value, self->priv->column_end);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
 cpg_embedded_string_class_init (CpgEmbeddedStringClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	object_class->finalize = cpg_embedded_string_finalize;
 
+	object_class->get_property = cpg_embedded_string_get_property;
+	object_class->set_property = cpg_embedded_string_set_property;
+
 	g_type_class_add_private (object_class, sizeof (CpgEmbeddedStringPrivate));
+
+	g_object_class_override_property (object_class,
+	                                  PROP_LINE_START,
+	                                  "line-start");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_LINE_END,
+	                                  "line-end");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_COLUMN_START,
+	                                  "column-start");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_COLUMN_END,
+	                                  "column-end");
 }
 
 static void
