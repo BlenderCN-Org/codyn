@@ -1,4 +1,5 @@
 #include <cpg-network/cpg-parser-context.h>
+#include <cpg-network/cpg-statement.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
 #include <string.h>
@@ -394,13 +395,8 @@ on_selector_item_pushed (CpgParserContext *context,
 	gint cstart;
 	gint cend;
 
-	cpg_parser_context_get_last_selector_item_line (context,
-	                                                &line_start,
-	                                                &line_end);
-
-	cpg_parser_context_get_last_selector_item_column (context,
-	                                                  &cstart,
-	                                                  &cend);
+	cpg_statement_get_line (CPG_STATEMENT (selector), &line_start, &line_end);
+	cpg_statement_get_column (CPG_STATEMENT (selector), &cstart, &cend);
 
 	if (!check_region (line_start, line_end, cstart, cend))
 	{
@@ -854,10 +850,11 @@ parse_network (gchar const *args[], gint argc)
 		}
 		else
 		{
-			gchar const *line;
+			gchar *line;
 			GFile *file;
 			gchar *filename;
-			gint lineno;
+			gint lstart;
+			gint lend;
 			gint cstart;
 			gint cend;
 			gchar *esc;
@@ -873,8 +870,11 @@ parse_network (gchar const *args[], gint argc)
 			write_stream_format (out, "    \"message\": \"%s\",\n", esc);
 			g_free (esc);
 
-			line = cpg_parser_context_get_line (context, &lineno);
-			cpg_parser_context_get_column (context, &cstart, &cend);
+			cpg_parser_context_get_error_location (context,
+			                                       &lstart,
+			                                       &lend,
+			                                       &cstart,
+			                                       &cend);
 
 			file = cpg_parser_context_get_file (context);
 			filename = file ? g_file_get_path (file) : g_strdup ("");
@@ -889,11 +889,15 @@ parse_network (gchar const *args[], gint argc)
 			write_stream_format (out, "    \"filename\": \"%s\",\n", esc);
 			g_free (esc);
 
+			line = cpg_parser_context_get_error_lines (context);
+
 			esc = g_strescape (line, NULL);
+			g_free (line);
 			write_stream_format (out, "    \"line\": \"%s\",\n", esc);
 			g_free (esc);
 
-			write_stream_format (out, "    \"lineno\": %d,\n", lineno);
+			write_stream_format (out, "    \"line_start\": %d,\n", lstart);
+			write_stream_format (out, "    \"line_end\": %d,\n", lend);
 			write_stream_format (out, "    \"column_start\": %d,\n", cstart);
 			write_stream_format (out, "    \"column_end\": %d\n", cend);
 

@@ -62,7 +62,8 @@ class Error:
     def __init__(self, error):
         self.message = error['message']
         self.line = error['line']
-        self.lineno = error['lineno']
+        self.line_start = error['line_start']
+        self.line_end = error['line_end']
         self.column_start = error['column_start']
         self.column_end = error['column_end']
 

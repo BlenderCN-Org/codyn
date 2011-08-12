@@ -218,8 +218,13 @@ parse_network (gchar const *args[], gint argc)
 
 		g_printerr ("Failed to parse: %s\n\n", error->message);
 
-		line = cpg_parser_context_get_line (context, &lineno);
-		cpg_parser_context_get_column (context, &cstart, &cend);
+		cpg_parser_context_get_error_location (context,
+		                                       &lineno,
+		                                       NULL,
+		                                       &cstart,
+		                                       &cend);
+
+		line = cpg_parser_context_get_line_at (context, lineno);
 
 		lstr = g_strdup_printf ("%d.%d", lineno, cstart);
 
