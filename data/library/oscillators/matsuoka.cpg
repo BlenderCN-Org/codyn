@@ -1,64 +1,108 @@
+## Reference: Kiyotoshi Matsuoka, Biol Cybern (2011) 104:297–304
+## DOI 10.1007/s00422-011-0432-z
+
 templates
 {
-    ## Basic matsuoka oscillator
-    group "oscillator"
+    import "generic.cpg" as "generic"
+
+    ## Parameters for the Matsuoka oscillator dynamics
+    ## Split out from the 'oscillator' group to be appliable to another group
+    group "parameters"
+    {
+        a = "2"
+        b = "2"
+        c = "1"
+
+        tau = "0.1"
+        Tau = "0.2"
+
+        ## True if the condition for stable oscillations is satisfied.
+        stable_oscillation = "a > 1 + tau / Tau && a < 1 + b"
+
+        ## The ratio Ay / Ax of x and y amplitudes.
+        ## It is also a measure of the error on frequency and amplitude estimates.
+        ## Low values indicate bad estimates. A perfect estimate would yield a value of 1.
+        kn = "(tau + Tau) / (Tau * a)"
+
+        ## An estimate for the frequency of the isolated oscillator.
+        frequency_estimate = "sqrt(((tau + Tau) * b - tau * a) / (tau * a)) / (Tau * 2 * pi)"
+
+        ## An estimate for the amplitude of the isolated oscillator.
+        amplitude_estimate = "c / (2 * (tau + Tau) / (Tau * a) - 1 + 2 / pi * (a + b) * asin(kn))"
+    }
+
+    ## Basic Matsuoka neuron
+    group "neuron"
     {
         [proxy]
         state "state"
         {
-            ## State variable x1
-            x1 = "x1_0" | integrated
+            ## State variable x
+            x = "rand(-0.1, 0.1)" | integrated
 
-            ## State variable v1
-            v1 = "v1_0" | integrated
+            ## State variable v
+            v = "rand(-0.1, 0.1)" | integrated
 
-            ## State variable x2
-            x2 = "x2_0" | integrated
-
-            ## State variable v2
-            v2 = "v2_0" | integrated
-
-            x1_0 = "rand(-0.1, 0.1)" | once
-            x2_0 = "rand(-0.1, 0.1)" | once
-            v1_0 = "rand(-0.1, 0.1)" | once
-            v2_0 = "rand(-0.1, 0.1)" | once
-
-            y1 = "max(x1, 0)"
-            y2 = "max(x2, 0)"
-
-            c = "1"
-            beta = "2"
-            gamma = "2"
-
-            tau1 = "0.1"
-            tau2 = "0.2"
-
-            ## The output of the oscillator
-            output = "y1 - y2"
+            ## Neuron output
+            y = "max(x, 0)"
         }
 
-        link "integrate" on "state"
+        ## Neuron dynamics
+        link "neuron_dynamics" on "state"
         {
-            x1 <= "1/tau1 * (c - x1 - beta * v1 - gamma * y2)"
-            x2 <= "1/tau1 * (c - x2 - beta * v2 - gamma * y1)"
-            v1 <= "1/tau2 * (y1 - v1)"
-            v2 <= "1/tau2 * (y2 - v2)"
+            ## X dynamics targeting c, with adaptation through v
+            x <= "1 / tau * (c - to.x - b * to.v)"
+            
+            ## Adaptation dynamics
+            v <= "1 / Tau * (to.y - to.v)"
         }
     }
 
+    ## Inhibition between neurons
+    link "inhibition"
+    {
+        x <= "-1 / tau * a * from.y"
+    }
+
+    ## Basic Matsuoka oscillator made of 2 neurons
+    group "oscillator" : "parameters"
+    {
+        ## One of the half-center neurons
+        group "neuron{1,2}" : "neuron" {}
+
+        apply "generic"."interface-children-numeric"
+
+        [bidirectional]
+        link from "neuron1" to "neuron2" : "inhibition" {}
+
+        ## The output of the oscillator
+        output = "y1 - y2"
+
+        ## Estimated amplitude
+        amplitude = "amplitude_estimate"
+
+        ## Estimated frequency
+        frequency = "frequency_estimate"
+
+        layout
+        {
+            type at @[@0++], $(@0[?] * 5)
+        }
+    }
+
+    ## Example coupling to a Matsuoka oscillator
     link "coupling"
     {
-        h = "1"
-        g = "1"
+        strength = "1"
+        signal = "1"
 
-        x1 <= "-(h * max(0, g))"
-        x2 <= "-(h * -min(0, g))"
+        x1 <= "-(strength * max(0, signal))"
+        x2 <= "-(strength * -min(0, signal))"
     }
 
     layout
     {
-        "oscillator" at (@[++], 0)
-        "coupling" at (@[++], 0)
+        type at @[@0++], $(@0[?] * 5)
     }
 }
 

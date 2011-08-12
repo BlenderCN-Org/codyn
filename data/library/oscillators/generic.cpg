@@ -1,0 +1,201 @@
+templates
+{
+    group "functions"
+    {
+        functions
+        {
+            XDot(r_dot, theta_dot)(x, y, amplitude) = "amplitude == 0 ? r_dot : r_dot * x / amplitude - theta_dot * y"
+            YDot(r_dot, theta_dot)(x, y, amplitude) = "ampitude == 0 ? r_dot : r_dot * y / amplitude + theta_dot * x"
+
+            RDot(xdot, ydot)(theta) = "x_dot * cos(theta) + y_dot * sin(theta)"
+            ThetaDot(xdot, ydot)(r, theta) = "r == 0 ? 0 : (ydot * cos(theta) - xdot * sin(theta)) / r"
+
+            PhaseCoupling(weight, bias)(from.r, from.theta, to.theta) = "weight * from.r * sin(from.theta - to.theta - bias)"
+        }
+    }
+
+    ## Create properties to store initial conditions for all state variables in the group's children
+    group "initial"
+    {
+        # Get the list of instance properties at apply time
+        # (not the list of this template's properties)
+        when-applied
+        {
+            # Look into all states and groups
+            state objects
+            {
+                # Get all properties that are integrated or marked as representing a state variable
+                [each(if(has-flag(integrated), has-tag("state-like")) | name)]
+                {
+                    # For each 'prop', create 'prop0 = prop' if it doesn't exist, evaluate only once
+                    ## For reading only!
+                    "@[0]0" ?= "@@0" | once
+                }
+            }
+        }
+    }
+
+    ## Generates an interface for all properties of all the group's children
+    ## (links, states and groups) exposing "object"."property" as object_property.
+    group "interface-children"
+    {
+        when-applied
+        {
+            [each(name . properties | name)]
+            {
+                interface
+                {
+                    "@@0_@0" = "@@@0"."@@@0"
+                }
+            }
+        }
+    }
+
+    ## Generates an interface for all properties of all the group's children
+    ## that have a name ending with a number. The number is used to name the interface.
+    ## For example, "neuron3"."x" will be exposed as "x3".
+    group "interface-children-numeric"
+    {
+        when-applied
+        {
+            [each(/.*?([0-9]+)/ . properties | name)]
+            {
+                interface
+                {
+                    "@0@@1" = "@@@0"."@@@0"
+                }
+            }
+        }
+    }
+
+    ## Polar properties for Cartesian oscillator
+    group "polar"
+    {
+        state "state"
+        {
+            [tag("state-like")]
+            r = "amplitude"
+
+            [tag("state-like")]
+            theta = "atan2(y, x)"
+        }
+    }
+
+    ## Cartesian properties for polar oscillator
+    group "add-cartesian"
+    {
+        state "state"
+        {
+            [tag("state-like")]
+            x = "r * cos(theta)"
+
+            [tag("state-like")]
+            y = "r * sin(theta)"
+        }
+    }
+
+    ## Polar derivatives
+    group "polar_dot" : "functions"
+    {
+        r_dot = "RDot(x', y')"
+        theta_dot = "ThetaDot(x', y')"
+
+        ## Instantaneous frequency
+        frequency = "Thetadot / (2 * pi)"
+    }
+
+    ## Cartesian derivatives
+    group "cartesian_dot" : "functions"
+    {
+        x_dot = "XDot(r', theta')"
+        y_dot = "YDot(r', theta')"
+    }
+
+    ## Polar input properties for Cartesian oscillator
+    group "polar_input" : "functions"
+    {
+        state "state"
+        {
+            ## r input
+            s_r = 0
+            
+            ## theta input
+            s_theta = 0
+        }
+
+        link "polar_input" on "state"
+        {
+            x <= "XDot(s_r, s_theta)"
+            y <= "YDdot(s_r, s_theta)"
+        }
+    }
+
+    ## Cartesian input properties for polar oscillator
+    group "cartesian_input" : "functions"
+    {
+        state "state"
+        {
+            ## x input
+            s_x = 0
+            
+            ## y input
+            s_y = 0
+        }
+
+        link "cartesian_input" on "state"
+        {
+            r <= "R_Dot(s_x, s_y)"
+            theta <= "Theta_dot(s_x, s_y)"
+        }
+    }
+
+    ## This is an 'indirect' template. Apply this to templates that need
+    ## 'functions' in their parent.
+    link "link_functions"
+    {
+        when-applied
+        {
+            when-applied
+            {
+                apply "functions" to self | parent
+            }
+        }
+    }
+
+    ## Diffusive phase coupling for polar oscillators
+    link "polar_phase_coupling" : "link_functions"
+    {
+        ## Desired phase bias between oscillators (sender_phase - receiver_phase)
+        phase_bias = 0
+
+        ## Gain on phase coupling convergence
+        weight = 1
+
+        ## Value added by the coupling to the instantaneous angular frequency
+        theta <= "PhaseCoupling(weight, phase_bias)"
+    }
+
+    ## Diffusive phase coupling for Cartesian oscillators
+    ## To use this: 1) the receiver must implement the 'polar' template
+    ##              2) the sender must be polar or implement the 'polar' template
+    link "cartesian_phase_coupling" : "link_functions"
+    {
+        ## Desired phase bias between oscillators (sender_phase - receiver_phase)
+        phase_bias = 0
+
+        ## Gain on phase coupling convergence
+        weight = 1
+
+        ## Value added by the coupling to the instantaneous angular frequency
+        omega_increment = "PhaseCoupling(weight, phase_bias)"
+
+        x <= "-to.y * omega_increment"
+        y <= "to.x * omega_increment"
+    }
+
+    layout
+    {
+        type at @[@0++], $(@0[?] * 5)
+        # type at ($(5 * (@0[?] + 1) * cos(2 * pi * @[@0] / @1)), $(5 * (@0[?] + 1) * sin(2 * pi * @[@0+] / @1)))
+    }
+}
