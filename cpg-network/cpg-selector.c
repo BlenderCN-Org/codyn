@@ -2238,7 +2238,7 @@ selector_select_pseudo (CpgSelector        *self,
 			return selector_pseudo_type (context, parent);
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_SELF:
-			if (parent->data)
+			if (parent && parent->data)
 			{
 				/* Keep the context from the first parent */
 				return g_slist_prepend (NULL,
@@ -2265,6 +2265,14 @@ selector_select_pseudo (CpgSelector        *self,
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_FROM_SET:
 			return copy_selections (self->priv->from_set);
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_ROOT:
+			if (!parent)
+			{
+				return g_slist_prepend (NULL,
+				                        expand_obj (self->priv->self,
+				                                    top_parent (cpg_selection_get_object (self->priv->self))));
+			}
 		break;
 		default:
 		break;
