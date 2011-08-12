@@ -8,7 +8,6 @@ void cpg_parser_set_column (int column_no, yyscan_t yyscanner);
 int cpg_parser_get_column (yyscan_t yyscanner);
 
 static int yyccolumn = 1;
-static int includestart = 0;
 
 static void
 advance_column (CpgParserContext *context, gint offset)
@@ -41,6 +40,8 @@ advance_column (CpgParserContext *context, gint offset)
 	yyless (1);
 
 #define ECHO
+
+void cpg_parser_tokens_push_input (gpointer scanner);
 
 %}
 
@@ -114,36 +115,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "#"				yy_push_state (comment, yyscanner);
 <comment>[^\n]*$		yy_pop_state (yyscanner);
 
-"include"			{
-					yy_push_state (inclstart, yyscanner);
-					return T_KEY_INCLUDE;
-				}
-<inclstart>[ \t]		;
-<inclstart>[^"]			{
-					return *yytext;
-				}
-<inclstart>"\""			{
-					yy_pop_state (yyscanner);
-					yy_push_state (incl, yyscanner);
-
-					cpg_parser_context_push_string (yyextra);
-					includestart = yyccolumn - 1;
-
-					return T_STRING_BEGIN;
-				}
-<incl>"\""			{
-					yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, yyscanner), yyscanner);
-					cpg_parser_context_set_column (yyextra,
-					                               includestart,
-					                               yyccolumn - 1);
-
-					cpg_parser_context_push_input_from_path (yyextra,
-					                                         cpg_parser_context_pop_string (yyextra));
-
-					yy_pop_state (yyscanner);
-					return T_STRING_END;
-				}
-
 <<EOF>>				{
 					yypop_buffer_state (yyscanner);
 					cpg_parser_context_pop_input (yyextra);
@@ -162,6 +133,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					}
 				}
 
+"include"			return T_KEY_INCLUDE;
 "state"				return T_KEY_STATE;
 "link"				return T_KEY_LINK;
 "integrated"			return T_KEY_INTEGRATED;
@@ -404,4 +376,11 @@ unquote_string (gchar const *s, gint len, gchar const *escape)
 	*ptr = '\0';
 
 	return ret;
+}
+
+void
+cpg_parser_tokens_push_input (gpointer scanner)
+{
+	yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, scanner),
+	                     scanner);
 }

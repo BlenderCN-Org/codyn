@@ -217,7 +217,6 @@ document_item
 	| templates
 	| layout
 	| integrator
-	| include
 	| delete
 	| delete_context
 	| common_scopes
@@ -227,14 +226,13 @@ document_item
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
-include_path
-	: T_STRING_BEGIN
-	  string_contents
-	  T_STRING_END			{ errb; }
-	;
-
 include
-	: T_KEY_INCLUDE include_path
+	: attributes
+	  T_KEY_INCLUDE
+	  value_as_string	{ cpg_parser_context_push_input_from_path (context,
+				                                           $3,
+				                                           $1); errb
+				}
 	;
 
 network
@@ -248,6 +246,7 @@ network
 common_scopes
 	: define
 	| debug
+	| include
 	;
 
 network_item

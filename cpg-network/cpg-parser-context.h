@@ -236,14 +236,17 @@ void                   cpg_parser_context_set_integrator       (CpgParserContext
                                                                 CpgEmbeddedString          *value);
 
 void                   cpg_parser_context_push_input_from_path (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *path);
+                                                                CpgEmbeddedString          *path,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_push_input_from_string (CpgParserContext         *context,
-                                                                  gchar const              *s);
+                                                                  gchar const              *s,
+                                                                  GSList                   *attributes);
 
 void                   cpg_parser_context_push_input           (CpgParserContext           *context,
                                                                 GFile                      *file,
-                                                                GInputStream               *stream);
+                                                                GInputStream               *stream,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_pop_input            (CpgParserContext           *context);
 

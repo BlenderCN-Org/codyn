@@ -149,7 +149,7 @@ parse_network (gchar const *args[], gint argc)
 
 	if (!fromstdin)
 	{
-		cpg_parser_context_push_input (context, file, NULL);
+		cpg_parser_context_push_input (context, file, NULL, NULL);
 		g_object_unref (file);
 	}
 	else
@@ -165,7 +165,7 @@ parse_network (gchar const *args[], gint argc)
 			stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
 		}
 
-		cpg_parser_context_push_input (context, NULL, stream);
+		cpg_parser_context_push_input (context, NULL, stream, NULL);
 		g_object_unref (stream);
 	}
 

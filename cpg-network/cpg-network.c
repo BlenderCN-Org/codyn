@@ -854,7 +854,7 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		CpgParserContext *ctx;
 
 		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, NULL, wrapped);
+		cpg_parser_context_push_input (ctx, NULL, wrapped, NULL);
 
 		ret = cpg_parser_context_parse (ctx, error);
 
@@ -931,7 +931,7 @@ cpg_network_load_from_file (CpgNetwork  *network,
 		CpgParserContext *ctx;
 
 		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, file, stream);
+		cpg_parser_context_push_input (ctx, file, stream, NULL);
 
 		ret = cpg_parser_context_parse (ctx, error);
 

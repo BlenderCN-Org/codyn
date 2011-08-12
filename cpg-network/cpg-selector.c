@@ -415,7 +415,7 @@ cpg_selector_parse (gchar const *s,
 
 	stream = g_memory_input_stream_new_from_data (s, strlen (s), NULL);
 
-	cpg_parser_context_push_input (ctx, NULL, stream);
+	cpg_parser_context_push_input (ctx, NULL, stream, NULL);
 	g_object_unref (stream);
 
 	if (!cpg_parser_context_parse (ctx, error))

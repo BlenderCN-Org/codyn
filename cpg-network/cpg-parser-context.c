@@ -94,6 +94,8 @@ while (0);
 
 void cpg_parser_lex_destroy (gpointer scanner);
 void cpg_parser_lex_init_extra (gpointer context, gpointer *scanner);
+void cpg_parser_tokens_push_input (gpointer scanner);
+
 int cpg_parser_parse (gpointer context);
 
 #define CURRENT_INPUT(ctx) ((ctx)->priv->inputs ? ((InputItem *)((ctx)->priv->inputs->data)) : NULL)
@@ -3210,7 +3212,8 @@ cpg_parser_context_define (CpgParserContext  *context,
 void
 cpg_parser_context_push_input (CpgParserContext *context,
                                GFile            *file,
-                               GInputStream     *stream)
+                               GInputStream     *stream,
+                               GSList           *attributes)
 {
 	InputItem *item;
 	GError *error = NULL;
@@ -3224,6 +3227,13 @@ cpg_parser_context_push_input (CpgParserContext *context,
 	{
 		context->priv->inputs = g_slist_prepend (context->priv->inputs,
 		                                         item);
+
+		if (context->priv->inputs->next)
+		{
+			cpg_parser_tokens_push_input (context->priv->scanner);
+		}
+
+		push_scope (context, attributes, FALSE);
 	}
 	else
 	{
@@ -3233,7 +3243,8 @@ cpg_parser_context_push_input (CpgParserContext *context,
 
 void
 cpg_parser_context_push_input_from_path (CpgParserContext  *context,
-                                         CpgEmbeddedString *filename)
+                                         CpgEmbeddedString *filename,
+                                         GSList            *attributes)
 {
 	GSList *items;
 	GSList *item;
@@ -3292,10 +3303,28 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 			if (!file)
 			{
 				file = g_file_new_for_commandline_arg (res);
+
+				if (!g_file_query_exists (file, NULL))
+				{
+					g_object_unref (file);
+					file = NULL;
+				}
 			}
 		}
 
-		cpg_parser_context_push_input (context, file, NULL);
+		if (!file)
+		{
+			parser_failed_error_at (context,
+			                        CPG_STATEMENT (filename),
+			                        g_error_new (G_IO_ERROR,
+			                                     G_IO_ERROR_NOT_FOUND,
+			                                     "Could not find file `%s'",
+			                                     res));
+
+			break;
+		}
+
+		cpg_parser_context_push_input (context, file, NULL, attributes);
 		g_object_unref (file);
 	}
 
@@ -3307,7 +3336,8 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 
 void
 cpg_parser_context_push_input_from_string (CpgParserContext *context,
-                                           gchar const      *s)
+                                           gchar const      *s,
+                                           GSList           *attributes)
 {
 	GInputStream *stream;
 	gchar *ret;
@@ -3321,7 +3351,7 @@ cpg_parser_context_push_input_from_string (CpgParserContext *context,
 	                                              strlen (ret),
 	                                              (GDestroyNotify)g_free);
 
-	cpg_parser_context_push_input (context, NULL, stream);
+	cpg_parser_context_push_input (context, NULL, stream, attributes);
 
 	g_object_unref (stream);
 }
@@ -3341,6 +3371,8 @@ cpg_parser_context_pop_input (CpgParserContext *context)
 		++(input->lineno);
 		input->cstart = 0;
 		input->cend = 0;
+
+		cpg_parser_context_pop (context);
 
 		if (!context->priv->inputs->next)
 		{
@@ -3785,6 +3817,8 @@ cpg_parser_context_push_string (CpgParserContext *context)
 
 	s = cpg_embedded_string_new ();
 
+	statement_start (context, s);
+
 	context->priv->strings =
 		g_slist_prepend (context->priv->strings, s);
 
@@ -3809,8 +3843,6 @@ cpg_parser_context_pop_string (CpgParserContext *context)
 	g_return_val_if_fail (context->priv->strings, NULL);
 
 	s = context->priv->strings->data;
-
-	statement_start (context, s);
 
 	statement_end (context, s);
 
