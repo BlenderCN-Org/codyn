@@ -972,8 +972,15 @@ cpg_property_flags_from_string (gchar const      *flags,
 	gchar **parts = g_strsplit_set (flags, ",| ", -1);
 	gchar **ptr = parts;
 
-	*add_flags = CPG_PROPERTY_FLAG_NONE;
-	*remove_flags = CPG_PROPERTY_FLAG_NONE;
+	if (add_flags)
+	{
+		*add_flags = CPG_PROPERTY_FLAG_NONE;
+	}
+
+	if (remove_flags)
+	{
+		*remove_flags = CPG_PROPERTY_FLAG_NONE;
+	}
 
 	while (ptr && *ptr)
 	{
@@ -995,7 +1002,7 @@ cpg_property_flags_from_string (gchar const      *flags,
 
 		GFlagsValue *value = g_flags_get_value_by_nick (klass, name);
 
-		if (value)
+		if (value && fptr)
 		{
 			*fptr |= value->value;
 		}
