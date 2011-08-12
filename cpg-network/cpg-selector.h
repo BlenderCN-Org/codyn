@@ -154,6 +154,9 @@ GSList       *cpg_selector_select            (CpgSelector            *selector,
 void          cpg_selector_set_partial       (CpgSelector          *selector,
                                               gboolean              partial);
 
+void          cpg_selector_set_self          (CpgSelector          *selector,
+                                              CpgSelection         *selection);
+
 guint         cpg_selector_get_last_id       (CpgSelector          *selector);
 
 GSList const *cpg_selector_get_in_context    (CpgSelector          *selector,

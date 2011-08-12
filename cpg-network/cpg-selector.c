@@ -379,6 +379,11 @@ cpg_selector_finalize (GObject *object)
 	g_slist_foreach (selector->priv->from_set, (GFunc)g_object_unref, NULL);
 	g_slist_free (selector->priv->from_set);
 
+	if (selector->priv->self)
+	{
+		g_object_unref (selector->priv->self);
+	}
+
 	G_OBJECT_CLASS (cpg_selector_parent_class)->finalize (object);
 }
 
@@ -1187,7 +1192,8 @@ count_selection (CpgEmbeddedContext *context,
 }
 
 static GSList *
-selector_pseudo_from_to (Selector           *selector,
+selector_pseudo_from_to (CpgSelector        *self,
+                         Selector           *selector,
                          gchar const        *name,
                          GSList             *ret,
                          CpgSelection       *sel,
@@ -1218,10 +1224,14 @@ selector_pseudo_from_to (Selector           *selector,
 		GSList *sub;
 		GSList *subitem;
 
+		cpg_selector_set_self (s, self->priv->self);
+
 		sub = cpg_selector_select (s,
 		                           G_OBJECT (obj),
 		                           CPG_SELECTOR_TYPE_OBJECT,
 		                           context);
+
+		cpg_selector_set_self (s, NULL);
 
 		for (subitem = sub; subitem; subitem = g_slist_next (subitem))
 		{
@@ -1279,7 +1289,8 @@ test_string_empty (gchar const *s)
 }
 
 static GSList *
-selector_pseudo_if (Selector           *selector,
+selector_pseudo_if (CpgSelector        *self,
+                    Selector           *selector,
                     GSList             *ret,
                     CpgSelection       *sel,
                     CpgEmbeddedContext *context,
@@ -1301,10 +1312,14 @@ selector_pseudo_if (Selector           *selector,
 
 		if (CPG_IS_SELECTOR (item->data))
 		{
+			cpg_selector_set_self (item->data, self->priv->self);
+
 			sub = cpg_selector_select (item->data,
 			                           obj,
 			                           CPG_SELECTOR_TYPE_ANY,
 			                           context);
+
+			cpg_selector_set_self (item->data, NULL);
 
 			r = (sub != NULL);
 		}
@@ -1381,10 +1396,14 @@ selector_pseudo_isempty (CpgSelector        *self,
 			{
 				GSList *sub;
 
+				cpg_selector_set_self (item->data, self->priv->self);
+
 				sub = cpg_selector_select (item->data,
 				                           cpg_selection_get_object (sel),
 				                           CPG_SELECTOR_TYPE_ANY,
 				                           context);
+
+				cpg_selector_set_self (item->data, NULL);
 
 				r = (sub == NULL);
 
@@ -2209,28 +2228,32 @@ selector_select_pseudo (CpgSelector        *self,
 			}
 			break;
 			case CPG_SELECTOR_PSEUDO_TYPE_FROM:
-				ret = selector_pseudo_from_to (selector,
+				ret = selector_pseudo_from_to (self,
+				                               selector,
 				                               "from",
 				                               ret,
 				                               sel,
 				                               context);
 			break;
 			case CPG_SELECTOR_PSEUDO_TYPE_TO:
-				ret = selector_pseudo_from_to (selector,
+				ret = selector_pseudo_from_to (self,
+				                               selector,
 				                               "to",
 				                               ret,
 				                               sel,
 				                               context);
 			break;
 			case CPG_SELECTOR_PSEUDO_TYPE_IF:
-				ret = selector_pseudo_if (selector,
+				ret = selector_pseudo_if (self,
+				                          selector,
 				                          ret,
 				                          sel,
 				                          context,
 				                          TRUE);
 			break;
 			case CPG_SELECTOR_PSEUDO_TYPE_REMOVE:
-				ret = selector_pseudo_if (selector,
+				ret = selector_pseudo_if (self,
+				                          selector,
 				                          ret,
 				                          sel,
 				                          context,
@@ -2453,6 +2476,7 @@ selector_select_all (CpgSelector        *selector,
 	GSList *item;
 	GSList *ctx = NULL;
 	GHashTable *defines;
+	gboolean release_self = FALSE;
 
 	if (context == NULL)
 	{
@@ -2479,10 +2503,15 @@ selector_select_all (CpgSelector        *selector,
 
 	defines = context ? cpg_embedded_context_get_defines (context) : NULL;
 
-	selector->priv->self = cpg_selection_new_defines (parent,
-	                                                  NULL,
-	                                                  defines,
-	                                                  FALSE);
+	if (!selector->priv->self)
+	{
+		release_self = TRUE;
+
+		selector->priv->self = cpg_selection_new_defines (parent,
+		                                                  NULL,
+		                                                  defines,
+		                                                  FALSE);
+	}
 
 	ctx = g_slist_prepend (NULL,
 	                       g_object_ref (selector->priv->self));
@@ -2523,8 +2552,11 @@ selector_select_all (CpgSelector        *selector,
 		}
 	}
 
-	g_object_unref (selector->priv->self);
-	selector->priv->self = NULL;
+	if (release_self)
+	{
+		g_object_unref (selector->priv->self);
+		selector->priv->self = NULL;
+	}
 
 	ctx = filter_selection (ctx, type);
 
@@ -2743,5 +2775,24 @@ cpg_selector_set_from_set (CpgSelector *selector,
 	g_slist_free (selector->priv->from_set);
 
 	selector->priv->from_set = copy_selections (selections);
+}
+
+void
+cpg_selector_set_self (CpgSelector  *selector,
+                       CpgSelection *selection)
+{
+	g_return_if_fail (CPG_IS_SELECTOR (selector));
+	g_return_if_fail (selection == NULL || CPG_IS_SELECTION (selection));
+
+	if (selector->priv->self)
+	{
+		g_object_unref (selector->priv->self);
+		selector->priv->self = NULL;
+	}
+
+	if (selection)
+	{
+		selector->priv->self = g_object_ref (selection);
+	}
 }
 
