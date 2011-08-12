@@ -2477,6 +2477,7 @@ selector_select_all (CpgSelector        *selector,
 	GSList *ctx = NULL;
 	GHashTable *defines;
 	gboolean release_self = FALSE;
+	CpgSelection *sel;
 
 	if (context == NULL)
 	{
@@ -2502,19 +2503,18 @@ selector_select_all (CpgSelector        *selector,
 	}
 
 	defines = context ? cpg_embedded_context_get_defines (context) : NULL;
+	sel = cpg_selection_new_defines (parent,
+	                                 NULL,
+	                                 defines,
+	                                 FALSE);
 
 	if (!selector->priv->self)
 	{
 		release_self = TRUE;
-
-		selector->priv->self = cpg_selection_new_defines (parent,
-		                                                  NULL,
-		                                                  defines,
-		                                                  FALSE);
+		selector->priv->self = sel;
 	}
 
-	ctx = g_slist_prepend (NULL,
-	                       g_object_ref (selector->priv->self));
+	ctx = g_slist_prepend (NULL, g_object_ref (sel));
 
 	for (item = selector->priv->selectors; item; item = g_slist_next (item))
 	{
