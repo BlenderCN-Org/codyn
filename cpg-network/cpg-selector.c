@@ -133,7 +133,8 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"remove",
 	"from-set",
 	"type",
-	"has-flag"
+	"has-flag",
+	"has-template"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1055,14 +1056,33 @@ copy_selections (GSList *selections)
 	return g_slist_reverse (ret);
 }
 
+static gpointer
+pseudo_parent (gpointer obj)
+{
+	if (CPG_IS_OBJECT (obj))
+	{
+		return cpg_object_get_parent (obj);
+	}
+	else if (CPG_IS_PROPERTY (obj))
+	{
+		return cpg_property_get_object (obj);
+	}
+	else if (CPG_IS_LINK_ACTION (obj))
+	{
+		return cpg_link_action_get_link (obj);
+	}
+
+	return NULL;
+}
+
 static CpgObject *
-top_parent (CpgObject *object)
+top_parent (gpointer object)
 {
 	while (TRUE)
 	{
-		CpgObject *parent;
+		gpointer parent;
 
-		parent = cpg_object_get_parent (object);
+		parent = pseudo_parent (object);
 
 		if (parent == NULL)
 		{
@@ -1071,6 +1091,8 @@ top_parent (CpgObject *object)
 
 		object = parent;
 	}
+
+	return NULL;
 }
 
 static CpgSelection *
@@ -1265,6 +1287,124 @@ selector_pseudo_from_to (CpgSelector        *self,
 	g_object_unref (obj);
 
 	cpg_embedded_context_restore (context);
+	return ret;
+}
+
+static gboolean
+has_all_templates (CpgObject *obj,
+                   GSList    *templates)
+{
+	GSList *selitem;
+
+	for (selitem = templates; selitem; selitem = g_slist_next (selitem))
+	{
+		gpointer t;
+		GSList const *templ;
+		gboolean found;
+
+		t = cpg_selection_get_object (selitem->data);
+		templ = cpg_object_get_applied_templates (obj);
+		found = FALSE;
+
+		while (templ)
+		{
+			if (templ->data == t)
+			{
+				found = TRUE;
+				break;
+			}
+
+			templ = g_slist_next (templ);
+		}
+
+		if (!found)
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+static GSList *
+selector_pseudo_has_template (CpgSelector        *self,
+                              Selector           *selector,
+                              CpgSelection       *sel,
+                              CpgEmbeddedContext *context,
+                              GSList             *ret)
+{
+	CpgObject *obj;
+	CpgObject *tp;
+	CpgGroup *template_group;
+	GSList *item;
+	gboolean valid = TRUE;
+
+	obj = cpg_selection_get_object (sel);
+
+	if (!CPG_IS_OBJECT (obj))
+	{
+		return ret;
+	}
+
+	tp = top_parent (obj);
+
+	if (!CPG_IS_NETWORK (tp))
+	{
+		return ret;
+	}
+
+	template_group = cpg_network_get_template_group (CPG_NETWORK (tp));
+
+	cpg_embedded_context_save (context);
+	cpg_embedded_context_add_selection (context, sel);
+
+	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	{
+		CpgSelector *s = item->data;
+		GSList *sub;
+		GSList const *children;
+
+		children = cpg_group_get_children (template_group);
+		cpg_selector_set_self (s, self->priv->self);
+
+		while (children)
+		{
+			sub = cpg_selector_select (s,
+			                           G_OBJECT (children->data),
+			                           CPG_SELECTOR_TYPE_OBJECT,
+			                           context);
+
+			if (!has_all_templates (obj, sub))
+			{
+				valid = FALSE;
+			}
+
+			g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
+			g_slist_free (sub);
+
+			children = g_slist_next (children);
+
+			if (!valid)
+			{
+				break;
+			}
+		}
+
+		cpg_selector_set_self (s, NULL);
+
+		if (!valid)
+		{
+			break;
+		}
+	}
+
+	cpg_embedded_context_restore (context);
+
+	if (valid)
+	{
+		ret = g_slist_prepend (ret, cpg_selection_copy (sel));
+	}
+
 	return ret;
 }
 
@@ -1843,25 +1983,6 @@ descendants_reverse (CpgSelection *selection)
 	return ret;
 }
 
-static gpointer
-pseudo_parent (gpointer obj)
-{
-	if (CPG_IS_OBJECT (obj))
-	{
-		return cpg_object_get_parent (obj);
-	}
-	else if (CPG_IS_PROPERTY (obj))
-	{
-		return cpg_property_get_object (obj);
-	}
-	else if (CPG_IS_LINK_ACTION (obj))
-	{
-		return cpg_link_action_get_link (obj);
-	}
-
-	return NULL;
-}
-
 static GSList *
 ancestors_reverse (CpgSelection *selection)
 {
@@ -2265,6 +2386,13 @@ selector_select_pseudo (CpgSelector        *self,
 				                                sel,
 				                                context,
 				                                ret);
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_HAS_TEMPLATE:
+				ret = selector_pseudo_has_template (self,
+				                                    selector,
+				                                    sel,
+				                                    context,
+				                                    ret);
 			break;
 			default:
 				g_assert_not_reached ();

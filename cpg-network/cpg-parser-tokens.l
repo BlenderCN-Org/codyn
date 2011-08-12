@@ -195,6 +195,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"from-set"	return T_KEY_FROM_SET;
 <INITIAL,onlyselector>"type"		return T_KEY_TYPE;
 <INITIAL,onlyselector>"has-flag"	return T_KEY_HAS_FLAG;
+<INITIAL,onlyselector>"has-template"	return T_KEY_HAS_TEMPLATE;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
