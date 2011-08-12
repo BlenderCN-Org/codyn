@@ -152,6 +152,9 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <list> string_list
 %type <list> string_list_rev
 
+%type <list> strict_selector_only_list
+%type <list> strict_selector_only_list_rev
+
 %type <list> state
 %type <list> define_values
 
@@ -496,7 +499,11 @@ attribute_proxy
 	;
 
 attribute_each
-	: T_KEY_EACH '(' string_list ')'
+	: T_KEY_EACH '(' ')'		{ $$ = cpg_attribute_new ("each"); }
+	| T_KEY_EACH '(' string_list ')'
+					{ $$ = cpg_attribute_new ("each");
+					  cpg_attribute_set_arguments ($$, $3); }
+	| T_KEY_EACH '(' strict_selector_only_list ')'
 					{ $$ = cpg_attribute_new ("each");
 					  cpg_attribute_set_arguments ($$, $3); }
 	;
@@ -509,10 +516,14 @@ attribute_bidirectional
 	;
 
 attribute_if
-	: T_KEY_IF '(' string_list ')' { $$ = cpg_attribute_new ("if");
-	                                 cpg_attribute_set_arguments ($$, $3);
-	                               }
-	| T_KEY_IF '(' strict_selector_only ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
+	: T_KEY_IF '(' ')'		{ $$ = cpg_attribute_new ("if"); }
+	| T_KEY_IF '(' string_list ')'	{ $$ = cpg_attribute_new ("if");
+					  cpg_attribute_set_arguments ($$, $3);
+					}
+	| T_KEY_IF '(' strict_selector_only_list ')'
+					{ $$ = cpg_attribute_new ("if");
+					  cpg_attribute_set_arguments ($$, $3);
+					}
 	;
 
 string_list_rev
@@ -925,6 +936,16 @@ strict_selector_only
 	                                  cpg_selector_prepend_pseudo ($$,
 	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
 	                                                               NULL); errb }
+	;
+
+strict_selector_only_list_rev
+	: strict_selector_only		{ $$ = g_slist_prepend (NULL, $1); }
+	| strict_selector_only_list_rev strict_selector_only
+					{ $$ = g_slist_prepend ($1, $2); }
+	;
+
+strict_selector_only_list
+	: strict_selector_only_list_rev { $$ = g_slist_reverse ($1); }
 	;
 
 strict_selector_only_noimp
