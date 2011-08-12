@@ -124,12 +124,17 @@
             <keyword>name</keyword>
             <keyword>self</keyword>
             <keyword>groups</keyword>
+            <keyword>imports</keyword>
             <keyword>objects</keyword>
             <keyword>properties</keyword>
             <keyword>actions</keyword>
+            <keyword>type</keyword>
             <keyword>isempty</keyword>
             <keyword>remove</keyword>
             <keyword>if</keyword>
+            <keyword>from-set</keyword>
+            <keyword>from</keyword>
+            <keyword>to</keyword>
         </context>
 
         <context id="keywords" style-ref="keyword">
@@ -159,10 +164,11 @@
             <keyword>property</keyword>
             <keyword>action</keyword>
             <keyword>or</keyword>
-            <keyword>debug</keyword>
             <keyword>context</keyword>
             <keyword>as</keyword>
             <keyword>settings</keyword>
+            <keyword>parse</keyword>
+            <keyword>debug-print</keyword>
         </context>
 
         <context id="selector">
