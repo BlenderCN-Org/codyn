@@ -250,18 +250,18 @@ cpg_embedded_string_new_from_integer (gint s)
 	return ret;
 }
 
-void
+CpgEmbeddedString *
 cpg_embedded_string_add_text (CpgEmbeddedString *s,
                               gchar const       *text)
 {
 	Node *node;
 	Node *par;
 
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), s);
 
-	if (text == NULL)
+	if (text == NULL || !*text)
 	{
-		return;
+		return s;
 	}
 
 	node = node_new (CPG_EMBEDDED_STRING_NODE_TEXT, text, 0);
@@ -277,6 +277,37 @@ cpg_embedded_string_add_text (CpgEmbeddedString *s,
 	}
 
 	cpg_embedded_string_clear_cache (s);
+	return s;
+}
+
+CpgEmbeddedString *
+cpg_embedded_string_prepend_text (CpgEmbeddedString *s,
+                                  gchar const       *text)
+{
+	Node *node;
+	Node *par;
+
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), s);
+
+	if (text == NULL || !*text)
+	{
+		return s;
+	}
+
+	node = node_new (CPG_EMBEDDED_STRING_NODE_TEXT, text, 0);
+
+	if (s->priv->stack)
+	{
+		par = s->priv->stack->data;
+		par->nodes = g_slist_append (par->nodes, node);
+	}
+	else
+	{
+		s->priv->stack = g_slist_prepend (NULL, node);
+	}
+
+	cpg_embedded_string_clear_cache (s);
+	return s;
 }
 
 /**

@@ -72,10 +72,15 @@ CpgEmbeddedString *cpg_embedded_string_push             (CpgEmbeddedString      
                                                          CpgEmbeddedStringNodeType  type,
                                                          gint                       depth);
 
+
 CpgEmbeddedString *cpg_embedded_string_pop              (CpgEmbeddedString         *s);
 
-void               cpg_embedded_string_add_text         (CpgEmbeddedString         *s,
+CpgEmbeddedString *cpg_embedded_string_add_text         (CpgEmbeddedString         *s,
                                                          gchar const               *text);
+
+CpgEmbeddedString *cpg_embedded_string_prepend_text     (CpgEmbeddedString         *s,
+                                                         gchar const               *text);
+
 
 gchar const       *cpg_embedded_string_expand           (CpgEmbeddedString         *s,
                                                          CpgEmbeddedContext        *ctx,

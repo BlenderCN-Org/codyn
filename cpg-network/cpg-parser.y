@@ -672,6 +672,8 @@ double_list
 
 function_argument_impl
 	: identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0, FALSE); }
+	| T_KEY_FROM '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "from."), FALSE, 0.0, FALSE); }
+	| T_KEY_TO '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "to."), FALSE, 0.0, FALSE); }
 	;
 
 function_argument_list_impl_rev

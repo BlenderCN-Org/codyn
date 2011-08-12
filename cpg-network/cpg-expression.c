@@ -416,6 +416,161 @@ parser_failed (ParserContext *context,
 	return FALSE;
 }
 
+static CpgLink *
+find_link (CpgCompileContext *context)
+{
+	GSList const *objects = cpg_compile_context_get_objects (context);
+
+	while (objects)
+	{
+		if (objects->data && CPG_IS_LINK (objects->data))
+		{
+			return CPG_LINK (objects->data);
+		}
+
+		objects = g_slist_next (objects);
+	}
+
+	return NULL;
+}
+
+static gboolean
+parse_link_property (CpgExpression  *expression,
+                     gchar const    *id,
+                     gchar const    *propname,
+                     CpgLink        *link)
+{
+	CpgProperty *property = NULL;
+	CpgInstructionPropertyBinding binding = 0;
+
+	if (strcmp (id, "from") == 0)
+	{
+		property = cpg_object_get_property (cpg_link_get_from (link), propname);
+		binding = CPG_INSTRUCTION_PROPERTY_BINDING_FROM;
+	}
+	else if (strcmp (id, "to") == 0)
+	{
+		property = cpg_object_get_property (cpg_link_get_to (link), propname);
+		binding = CPG_INSTRUCTION_PROPERTY_BINDING_TO;
+	}
+
+	if (!property)
+	{
+		return FALSE;
+	}
+
+	instructions_push (expression,
+	                   cpg_instruction_property_new (property, binding));
+
+	return TRUE;
+}
+
+static gboolean
+parse_context_combined_property (CpgExpression *expression,
+                                 gchar const   *id,
+                                 gchar const   *propid,
+                                 ParserContext *context)
+{
+	gchar *combined;
+	CpgProperty *prop;
+
+	combined = g_strconcat (id, ".", propid, NULL);
+	prop = cpg_compile_context_lookup_property (context->context, combined);
+	g_free (combined);
+
+	if (prop)
+	{
+		instructions_push (expression,
+		                   cpg_instruction_property_new (prop,
+		                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static gboolean
+parse_context_property (CpgExpression *expression,
+                        gchar const   *id,
+                        gchar const   *propid,
+                        ParserContext *context)
+{
+	GSList const *objs;
+
+	objs = cpg_compile_context_get_objects (context->context);
+
+	while (objs)
+	{
+		CpgObject *o = objs->data;
+
+		if (g_strcmp0 (id, cpg_object_get_id (o)) == 0)
+		{
+			CpgProperty *prop;
+
+			prop = cpg_object_get_property (o, propid);
+
+			if (prop)
+			{
+				instructions_push (expression,
+				                   cpg_instruction_property_new (prop,
+				                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+				return TRUE;
+			}
+		}
+
+		objs = g_slist_next (objs);
+	}
+
+	return FALSE;
+}
+
+static gboolean
+parse_dot_property (CpgExpression *expression,
+                    gchar const   *id,
+                    gchar const   *propid,
+                    ParserContext *context)
+{
+	CpgLink *link;
+	gboolean ret = FALSE;
+
+	link = find_link (context->context);
+
+	if (link)
+	{
+		ret = parse_link_property (expression,
+		                           id,
+		                           propid,
+		                           link);
+	}
+
+	if (!ret)
+	{
+		ret = parse_context_combined_property (expression,
+		                                       id,
+		                                       propid,
+		                                       context);
+	}
+
+	if (!ret)
+	{
+		ret = parse_context_property (expression,
+		                              id,
+		                              propid,
+		                              context);
+	}
+
+	if (!ret)
+	{
+		parser_failed (context,
+		               CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
+		               "Link property `%s.%s' could not be found",
+		               id, propid);
+	}
+
+	return ret;
+}
+
 static gboolean
 parse_function (CpgExpression *expression,
                 gchar const   *name,
@@ -561,10 +716,30 @@ parse_function (CpgExpression *expression,
 			CpgFunctionArgument *a;
 			gchar const *aname;
 			CpgProperty *prop;
+			gchar const *ptr;
 
 			a = start->data;
 
 			aname = cpg_function_argument_get_name (a);
+
+			start = g_list_next (start);
+			++numargs;
+
+			if ((ptr = strchr (aname, '.')) != NULL)
+			{
+				gchar *id;
+
+				id = g_strndup (aname, ptr - aname);
+
+				if (parse_dot_property (expression, id, ptr + 1, context))
+				{
+					g_free (id);
+					continue;
+				}
+
+				g_free (id);
+			}
+
 			prop = cpg_compile_context_lookup_property (context->context,
 			                                            aname);
 
@@ -580,9 +755,6 @@ parse_function (CpgExpression *expression,
 			instructions_push (expression,
 			                   cpg_instruction_property_new (prop,
 			                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
-
-			start = g_list_next (start);
-			++numargs;
 		}
 	}
 
@@ -984,87 +1156,6 @@ parse_property (CpgExpression *expression,
 	return TRUE;
 }
 
-static CpgLink *
-find_link (CpgCompileContext *context)
-{
-	GSList const *objects = cpg_compile_context_get_objects (context);
-
-	while (objects)
-	{
-		if (objects->data && CPG_IS_LINK (objects->data))
-		{
-			return CPG_LINK (objects->data);
-		}
-
-		objects = g_slist_next (objects);
-	}
-
-	return NULL;
-}
-
-static gboolean
-parse_link_property (CpgExpression  *expression,
-                     gchar const    *id,
-                     gchar const    *propname,
-                     CpgLink        *link)
-{
-	CpgProperty *property = NULL;
-	CpgInstructionPropertyBinding binding = 0;
-
-	if (strcmp (id, "from") == 0)
-	{
-		property = cpg_object_get_property (cpg_link_get_from (link), propname);
-		binding = CPG_INSTRUCTION_PROPERTY_BINDING_FROM;
-	}
-	else if (strcmp (id, "to") == 0)
-	{
-		property = cpg_object_get_property (cpg_link_get_to (link), propname);
-		binding = CPG_INSTRUCTION_PROPERTY_BINDING_TO;
-	}
-
-	if (!property)
-	{
-		return FALSE;
-	}
-
-	instructions_push (expression,
-	                   cpg_instruction_property_new (property, binding));
-	return TRUE;
-}
-
-static gboolean
-parse_context_property (CpgExpression *expression,
-                        gchar const   *id,
-                        gchar const   *propid,
-                        ParserContext *context)
-{
-	GSList const *objs = cpg_compile_context_get_objects (context->context);
-
-	while (objs)
-	{
-		CpgObject *o = objs->data;
-
-		if (g_strcmp0 (id, cpg_object_get_id (o)) == 0)
-		{
-			CpgProperty *prop;
-
-			prop = cpg_object_get_property (o, propid);
-
-			if (prop)
-			{
-				instructions_push (expression,
-				                   cpg_instruction_property_new (prop,
-				                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
-				return TRUE;
-			}
-		}
-
-		objs = g_slist_next (objs);
-	}
-
-	return FALSE;
-}
-
 static gboolean
 parse_constant (CpgExpression  *expression,
                 gchar const    *name)
@@ -1103,7 +1194,6 @@ parse_identifier (CpgExpression      *expression,
 	// call
 	cpg_token_free (cpg_tokenizer_next (context->buffer));
 	CpgToken *next = cpg_tokenizer_peek (*context->buffer);
-	CpgLink *link;
 
 	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 		CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_START)
@@ -1128,31 +1218,8 @@ parse_identifier (CpgExpression      *expression,
 		if (CPG_TOKEN_IS_IDENTIFIER (propname))
 		{
 			gchar const *propid = CPG_TOKEN_IDENTIFIER (propname)->identifier;
-			link = find_link (context->context);
 
-			if (link)
-			{
-				ret = parse_link_property (expression,
-				                           id,
-				                           propid,
-				                           link);
-			}
-
-			if (!ret)
-			{
-				ret = parse_context_property (expression,
-				                              id,
-				                              propid,
-				                              context);
-			}
-
-			if (!ret)
-			{
-				parser_failed (context,
-				               CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
-				               "Link property `%s' could not be found",
-				               propname->text);
-			}
+			ret = parse_dot_property (expression, id, propid, context);
 		}
 		else
 		{

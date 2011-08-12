@@ -143,7 +143,7 @@ cpg_tokenizer_validate_identifier (const gchar *identifier)
 
 	while (*identifier)
 	{
-		if (!(isalnum (*identifier) || *identifier == '_'))
+		if (!(isalnum (*identifier) || *identifier == '_' || *identifier == '.'))
 		{
 			return FALSE;
 		}
