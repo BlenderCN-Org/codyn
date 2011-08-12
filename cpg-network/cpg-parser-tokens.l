@@ -212,6 +212,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"name"		return T_KEY_NAME;
 <INITIAL,onlyselector>"self"		return T_KEY_SELF;
 <INITIAL,onlyselector>"groups"		return T_KEY_GROUPS;
+<INITIAL,onlyselector>"imports"		return T_KEY_IMPORTS;
 <INITIAL,onlyselector>"objects"		return T_KEY_OBJECTS;
 <INITIAL,onlyselector>"properties"	return T_KEY_PROPERTIES;
 <INITIAL,onlyselector>"actions"		return T_KEY_ACTION;

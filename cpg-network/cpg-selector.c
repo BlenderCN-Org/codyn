@@ -106,6 +106,7 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"states",
 	"links",
 	"groups",
+	"imports",
 	"properties",
 	"actions",
 	"functions",
@@ -1829,6 +1830,10 @@ selector_select_pseudo (CpgSelector        *self,
 		case CPG_SELECTOR_PSEUDO_TYPE_GROUPS:
 			return g_slist_reverse (filter_list_reverse (parent,
 				                                     CPG_TYPE_GROUP,
+				                                     FALSE));
+		case CPG_SELECTOR_PSEUDO_TYPE_IMPORTS:
+			return g_slist_reverse (filter_list_reverse (parent,
+				                                     CPG_TYPE_IMPORTS,
 				                                     FALSE));
 		case CPG_SELECTOR_PSEUDO_TYPE_PROPERTIES:
 			return g_slist_reverse (filter_list_reverse (parent,
