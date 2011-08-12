@@ -346,7 +346,10 @@ cpg_embedded_string_pop (CpgEmbeddedString *s)
 }
 
 static gboolean
-count_chars (gchar const *s, gchar t, gint *num)
+count_chars (gchar const *s,
+             gchar        t,
+             gint        *num,
+             gboolean     retold)
 {
 	gint cnt = 0;
 
@@ -354,6 +357,12 @@ count_chars (gchar const *s, gchar t, gint *num)
 	{
 		if (*s != t)
 		{
+			if (!retold && num > 0)
+			{
+				*num = cnt;
+				return TRUE;
+			}
+
 			return FALSE;
 		}
 
@@ -375,6 +384,7 @@ resolve_indirection (CpgEmbeddedString  *em,
 	gboolean isnum = TRUE;
 	gboolean iscount = FALSE;
 	gboolean isindex = FALSE;
+	gboolean retold = TRUE;
 
 	gint isadd = 0;
 	gint issub = 0;
@@ -411,12 +421,17 @@ resolve_indirection (CpgEmbeddedString  *em,
 
 	if (g_ascii_isalpha (*ptr) || *ptr == '+' || *ptr == '-' || *ptr == '_')
 	{
+		if (*ptr == '+' || *ptr == '-')
+		{
+			retold = FALSE;
+		}
+
 		while (*ptr)
 		{
 			if (*ptr == '+' || *ptr == '-')
 			{
-				if (count_chars (ptr, '+', &isadd) ||
-				    count_chars (ptr, '-', &issub))
+				if (count_chars (ptr, '+', &isadd, retold) ||
+				    count_chars (ptr, '-', &issub, retold))
 				{
 					break;
 				}
@@ -475,12 +490,20 @@ resolve_indirection (CpgEmbeddedString  *em,
 			gchar *lookup;
 			gint val;
 
-			lookup = g_strndup (s, strlen (s) - (issub + isadd));
+			if (retold)
+			{
+				lookup = g_strndup (s, strlen (s) - (issub + isadd));
+			}
+			else
+			{
+				lookup = g_strdup (s + issub + isadd);
+			}
 
 			/* Note either issub or isadd is 0 */
 			val = cpg_embedded_context_increment_define (context,
 			                                             lookup,
-			                                             -issub + isadd);
+			                                             -issub + isadd,
+			                                             retold);
 
 			def = g_strdup_printf ("%d", val);
 			g_free (lookup);

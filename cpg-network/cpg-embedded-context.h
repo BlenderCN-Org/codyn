@@ -66,9 +66,12 @@ void                cpg_embedded_context_add_defines        (CpgEmbeddedContext 
 
 gint                cpg_embedded_context_increment_define  (CpgEmbeddedContext  *context,
                                                             gchar const         *name,
-                                                            gint                 num);
+                                                            gint                 num,
+                                                            gboolean             retold);
 
 void                cpg_embedded_context_save           (CpgEmbeddedContext *context);
+void                cpg_embedded_context_save_defines   (CpgEmbeddedContext *context,
+                                                         gboolean            copy_defines);
 void                cpg_embedded_context_restore        (CpgEmbeddedContext *context);
 
 void                cpg_embedded_context_add_selection  (CpgEmbeddedContext *context,

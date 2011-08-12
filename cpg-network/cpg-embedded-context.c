@@ -248,13 +248,14 @@ cpg_embedded_context_restore (CpgEmbeddedContext *context)
 gint
 cpg_embedded_context_increment_define (CpgEmbeddedContext *context,
                                        gchar const        *name,
-                                       gint                num)
+                                       gint                num,
+                                       gboolean            retold)
 {
 	Context *ctx;
 	gpointer key;
 	gpointer val;
 	gint ret;
-	GSList *item;
+	gchar *incval;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), 0);
 	g_return_val_if_fail (name != NULL, 0);
@@ -263,32 +264,26 @@ cpg_embedded_context_increment_define (CpgEmbeddedContext *context,
 
 	if (g_hash_table_lookup_extended (ctx->defines, name, &key, &val))
 	{
-		ret = g_ascii_strtoll (val, NULL, 10);
+		ret = (gint)g_ascii_strtod (val, NULL);
 	}
 	else
 	{
 		ret = 0;
 	}
 
-	g_hash_table_insert (ctx->defines,
-	                     g_strdup (name),
-	                     g_strdup_printf ("%d", ret + num));
+	incval = g_strdup_printf ("%d", ret + num);
 
-	for (item = context->priv->contexts->next; item; item = g_slist_next (item))
+	cpg_embedded_context_add_define (context,
+	                                 name,
+	                                 incval);
+
+	g_free (incval);
+
+	if (!retold)
 	{
-		Context *c;
-
-		c = item->data;
-
-		if (c->defines != ctx->defines)
-		{
-			break;
-		}
-
-		c->marker = ++global_marker;
+		ret += num;
 	}
 
-	ctx->marker = ++global_marker;
 	return ret;
 }
 
