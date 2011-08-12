@@ -2751,11 +2751,6 @@ selector_select_all (CpgSelector        *selector,
 		               signals[SELECT],
 		               0,
 		               sel->id);
-
-		if (ctx == NULL)
-		{
-			break;
-		}
 	}
 
 	if (release_self)
