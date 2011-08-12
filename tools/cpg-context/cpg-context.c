@@ -966,6 +966,8 @@ main (int argc, char *argv[])
 
 	g_type_init ();
 
+	close (STDERR_FILENO);
+
 	determine_color_support ();
 
 	ctx = g_option_context_new ("NETWORK [--] [PARAMETER...] - dump contexts in cpg format");
