@@ -83,7 +83,10 @@ cpg_network_serializer_dispose (GObject *object)
 }
 
 static void
-cpg_network_serializer_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+cpg_network_serializer_set_property (GObject      *object,
+                                     guint         prop_id,
+                                     const GValue *value,
+                                     GParamSpec   *pspec)
 {
 	CpgNetworkSerializer *self = CPG_NETWORK_SERIALIZER (object);
 
@@ -102,7 +105,10 @@ cpg_network_serializer_set_property (GObject *object, guint prop_id, const GValu
 }
 
 static void
-cpg_network_serializer_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+cpg_network_serializer_get_property (GObject    *object,
+                                     guint       prop_id,
+                                     GValue     *value,
+                                     GParamSpec *pspec)
 {
 	CpgNetworkSerializer *self = CPG_NETWORK_SERIALIZER (object);
 
@@ -615,18 +621,19 @@ link_to_xml (CpgNetworkSerializer *serializer,
 }
 
 static void
-write_function (CpgNetworkSerializer *serializer,
-                CpgFunction          *func,
-                xmlNodePtr            funcs)
+function_to_xml (CpgNetworkSerializer *serializer,
+                 xmlNodePtr            parent,
+                 CpgFunction          *func)
 {
-	restore_comment (serializer, funcs, G_OBJECT (func));
+	xmlNodePtr funcn;
 
-	xmlNodePtr funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"function", NULL);
+	funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"function", NULL);
+
 	xmlNewProp (funcn,
 	            (xmlChar *)"name",
 	            (xmlChar *)cpg_object_get_id (CPG_OBJECT (func)));
 
-	xmlAddChild (funcs, funcn);
+	xmlAddChild (parent, funcn);
 
 	/* Create expression element */
 	CpgExpression *expression = cpg_function_get_expression (func);
@@ -694,18 +701,19 @@ write_function (CpgNetworkSerializer *serializer,
 }
 
 static void
-write_function_polynomial (CpgNetworkSerializer  *serializer,
-                           CpgFunctionPolynomial *func,
-                           xmlNodePtr             funcs)
+function_polynomial_to_xml (CpgNetworkSerializer  *serializer,
+                            xmlNodePtr             parent,
+                            CpgFunctionPolynomial *func)
 {
-	restore_comment (serializer, funcs, G_OBJECT (func));
+	xmlNodePtr funcn;
 
-	xmlNodePtr funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"polynomial", NULL);
+	funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"polynomial", NULL);
+
 	xmlNewProp (funcn,
 	            (xmlChar *)"name",
 	            (xmlChar *)cpg_object_get_id (CPG_OBJECT (func)));
 
-	xmlAddChild (funcs, funcn);
+	xmlAddChild (parent, funcn);
 
 	/* Create pieces */
 	GSList const *pieces = cpg_function_polynomial_get_pieces (func);
@@ -760,57 +768,6 @@ write_function_polynomial (CpgNetworkSerializer  *serializer,
 
 		pieces = g_slist_next (pieces);
 	}
-}
-
-static GSList *
-filter_functions (GSList const *functions)
-{
-	GSList *ret = NULL;
-
-	while (functions)
-	{
-		if (!cpg_object_get_auto_imported (functions->data))
-		{
-			ret = g_slist_prepend (ret, functions->data);
-		}
-
-		functions = g_slist_next (functions);
-	}
-
-	return g_slist_reverse (ret);
-}
-
-static void
-write_functions (CpgNetworkSerializer *serializer,
-                 xmlNodePtr            nnetwork)
-{
-	CpgGroup *function_group = cpg_network_get_function_group (serializer->priv->network);
-	GSList *functions = filter_functions (cpg_group_get_children (function_group));
-	GSList *item;
-
-	if (functions == NULL)
-	{
-		return;
-	}
-
-	xmlNodePtr funcs = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"functions", NULL);
-	xmlAddChild (nnetwork, funcs);
-
-	for (item = functions; item; item = g_slist_next (item))
-	{
-		CpgFunction *func = CPG_FUNCTION (item->data);
-
-		if (CPG_IS_FUNCTION_POLYNOMIAL (func))
-		{
-			write_function_polynomial (serializer, CPG_FUNCTION_POLYNOMIAL (func), funcs);
-		}
-		else
-		{
-			write_function (serializer, func, funcs);
-		}
-	}
-
-	g_slist_free (functions);
 }
 
 static gboolean
@@ -1022,7 +979,7 @@ input_file_to_xml (CpgNetworkSerializer *serializer,
 }
 
 static void
-cpg_object_to_xml (CpgNetworkSerializer *serializer,
+any_object_to_xml (CpgNetworkSerializer *serializer,
                    xmlNodePtr            root,
                    CpgObject            *object)
 {
@@ -1048,6 +1005,14 @@ cpg_object_to_xml (CpgNetworkSerializer *serializer,
 	else if (CPG_IS_INPUT_FILE (object))
 	{
 		input_file_to_xml (serializer, root, CPG_INPUT_FILE (object));
+	}
+	else if (CPG_IS_FUNCTION_POLYNOMIAL (object))
+	{
+		function_polynomial_to_xml (serializer, root, CPG_FUNCTION_POLYNOMIAL (object));
+	}
+	else if (CPG_IS_FUNCTION (object))
+	{
+		function_to_xml (serializer, root, CPG_FUNCTION (object));
 	}
 	else
 	{
@@ -1097,7 +1062,7 @@ group_children_to_xml (CpgNetworkSerializer *serializer,
 		}
 		else
 		{
-			cpg_object_to_xml (serializer, group_node, children->data);
+			any_object_to_xml (serializer, group_node, children->data);
 		}
 
 		children = g_slist_next (children);
@@ -1108,7 +1073,7 @@ group_children_to_xml (CpgNetworkSerializer *serializer,
 
 	for (item = links; item; item = g_slist_next (item))
 	{
-		cpg_object_to_xml (serializer, group_node, item->data);
+		any_object_to_xml (serializer, group_node, item->data);
 	}
 
 	g_slist_free (links);
@@ -1446,7 +1411,6 @@ cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
 		group_to_xml (serializer, nnetwork, CPG_GROUP (serializer->priv->network));
 	}
 
-	write_functions (serializer, nnetwork);
 	write_extra_nodes (serializer);
 
 	xmlIndentTreeOutput = 1;

@@ -934,96 +934,123 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 	g_free (annotation);
 }
 
-CpgFunction *
+void
 cpg_parser_context_add_function (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
                                  CpgEmbeddedString *expression,
                                  GSList            *arguments,
                                  GSList            *attributes)
 {
-	CpgFunction *function;
+	GSList *item;
+	Context *ctx;
 	gchar *annotation;
-	gchar const *exname;
-	gchar const *exexpression;
 
-	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-	g_return_val_if_fail (name != NULL, NULL);
-	g_return_val_if_fail (expression != NULL, NULL);
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (name != NULL);
+	g_return_if_fail (expression != NULL);
 
-	embedded_string_expand_val (exname, name, context, NULL);
-	embedded_string_expand_val (exexpression, expression, context, NULL);
-
-	function = cpg_function_new (exname, exexpression);
+	ctx = CURRENT_CONTEXT (context);
 	annotation = steal_annotation (context);
 
-	g_object_unref (name);
-	g_object_unref (expression);
-
-	while (arguments)
+	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		cpg_function_add_argument (function, arguments->data);
+		gchar const *exname;
+		gchar const *exexpression;
+		CpgFunction *function;
+		GSList *arg;
+		CpgGroup *parent;
+		CpgObject *child;
 
-		g_object_unref (arguments->data);
-		arguments = g_slist_next (arguments);
+		parent = cpg_selection_get_object (item->data);
+
+		cpg_embedded_context_save_defines (context->priv->embedded, FALSE);
+		cpg_embedded_context_add_selection (context->priv->embedded, item->data);
+
+		embedded_string_expand (exname, name, context);
+		embedded_string_expand (exexpression, expression, context);
+
+		child = cpg_group_get_child (parent, exname);
+
+		if (child && CPG_IS_FUNCTION (child))
+		{
+			function = CPG_FUNCTION (child);
+			cpg_function_set_expression (function,
+			                             cpg_expression_new (exexpression));
+		}
+		else
+		{
+			function = cpg_function_new (exname, exexpression);
+			cpg_group_add (parent, CPG_OBJECT (function), NULL);
+		}
+
+		for (arg = arguments; arg; arg = g_slist_next (arg))
+		{
+			cpg_function_add_argument (function,
+			                           cpg_function_argument_copy (arg->data));
+		}
+
+		if (annotation)
+		{
+			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
+			                                annotation);
+		}
+
+		set_taggable (context, function, attributes);
 	}
-
-	cpg_group_add (cpg_network_get_function_group (context->priv->network),
-	               CPG_OBJECT (function),
-	               NULL);
-
-	if (annotation)
-	{
-		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
-		                                annotation);
-	}
-
-	set_taggable (context, function, attributes);
 
 	g_free (annotation);
 
-	return function;
+	g_object_unref (name);
+	g_object_unref (expression);
 }
 
-CpgFunctionPolynomial *
+void
 cpg_parser_context_add_polynomial (CpgParserContext  *context,
                                    CpgEmbeddedString *name,
                                    GSList            *pieces,
                                    GSList            *attributes)
 {
-	CpgFunctionPolynomial *function;
 	gchar *annotation;
-	gchar const *exname;
+	Context *ctx;
+	GSList *item;
 
-	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
-	g_return_val_if_fail (name != NULL, NULL);
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (name != NULL);
+
+	ctx = CURRENT_CONTEXT (context);
 
 	annotation = steal_annotation (context);
 
-	embedded_string_expand_val (exname, name, context, NULL);
-	function = cpg_function_polynomial_new (exname);
-	g_object_unref (name);
-
-	while (pieces)
+	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		cpg_function_polynomial_add (function, pieces->data);
-		pieces = g_slist_next (pieces);
+		gchar const *exname;
+		CpgFunctionPolynomial *function;
+		CpgGroup *parent;
+
+		parent = cpg_selection_get_object (item->data);
+
+		embedded_string_expand (exname, name, context);
+		function = cpg_function_polynomial_new (exname);
+
+		while (pieces)
+		{
+			cpg_function_polynomial_add (function, pieces->data);
+			pieces = g_slist_next (pieces);
+		}
+
+		cpg_group_add (parent, CPG_OBJECT (function), NULL);
+
+		if (annotation)
+		{
+			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
+			                                annotation);
+		}
+
+		set_taggable (context, function, attributes);
 	}
-
-	cpg_group_add (cpg_network_get_function_group (context->priv->network),
-	               CPG_OBJECT (function),
-	               NULL);
-
-	if (annotation)
-	{
-		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
-		                                annotation);
-	}
-
-	set_taggable (context, function, attributes);
 
 	g_free (annotation);
-
-	return function;
+	g_object_unref (name);
 }
 
 void
@@ -4495,7 +4522,6 @@ cpg_parser_context_get_error_lines (CpgParserContext *context)
 	gint lend;
 	gint cstart;
 	gint cend;
-	InputItem *inp;
 	GString *ret;
 	gboolean first;
 
@@ -4507,7 +4533,6 @@ cpg_parser_context_get_error_lines (CpgParserContext *context)
 	                                       &cstart,
 	                                       &cend);
 
-	inp = CURRENT_INPUT (context);
 	ret = g_string_new ("");
 	first = TRUE;
 

@@ -673,7 +673,9 @@ static void
 import_objects (CpgImport *self,
                 CpgGroup  *parent)
 {
-	GSList const *children = cpg_group_get_children (parent);
+	GSList const *children;
+
+	children = cpg_group_get_children (parent);
 
 	while (children)
 	{
@@ -713,37 +715,6 @@ auto_import_templates (CpgImport  *self,
 	               NULL);
 
 	add_imported_object (self, auto_import);
-}
-
-static void
-auto_import_functions (CpgImport  *import,
-                       CpgNetwork *source,
-                       CpgNetwork *target)
-{
-	CpgGroup *function_group = cpg_network_get_function_group (source);
-	CpgGroup *target_functions = cpg_network_get_function_group (target);
-
-	GSList const *children = cpg_group_get_children (function_group);
-
-	while (children)
-	{
-		CpgFunction *function = children->data;
-		gchar const *id = cpg_object_get_id (CPG_OBJECT (function));
-
-		if (!cpg_group_find_object (target_functions, id))
-		{
-			cpg_group_add (target_functions,
-			               CPG_OBJECT (function),
-			               NULL);
-
-			cpg_object_set_auto_imported (CPG_OBJECT (function),
-			                              TRUE);
-
-			add_imported_object (import, function);
-		}
-
-		children = g_slist_next (children);
-	}
 }
 
 static void
@@ -812,8 +783,6 @@ cpg_import_load (CpgImport   *self,
 	/* Check if importing in templates or normal objects */
 	gboolean templ = object_in_templates (network,
 	                                      CPG_OBJECT (parent));
-
-	auto_import_functions (self, imported, network);
 
 	if (!templ)
 	{

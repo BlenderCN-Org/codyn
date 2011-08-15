@@ -664,11 +664,10 @@ function_custom
 function_item
 	: function_custom
 	| function_polynomial
-	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); errb }
 	  function_contents
-	  '}'				{ cpg_parser_context_pop (context); }
+	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
 function_contents
@@ -679,9 +678,9 @@ function_contents
 functions
 	: attributes
 	  T_KEY_FUNCTIONS
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); errb }
 	  function_contents
-	  '}'				{ cpg_parser_context_pop (context); }
+	  '}'				{ cpg_parser_context_pop (context); errb}
 	;
 
 polynomial_pieces_rev
@@ -762,6 +761,7 @@ group_item
 	| group
 	| common_scopes
 	| layout
+	| functions
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  group_contents

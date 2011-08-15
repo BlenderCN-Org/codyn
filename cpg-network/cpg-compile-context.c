@@ -219,27 +219,53 @@ cpg_compile_context_append_object (CpgCompileContext *context,
 }
 
 /**
- * cpg_compile_context_set_functions:
+ * cpg_compile_context_prepend_function:
  * @context: A #CpgCompileContext
- * @functions: (element-type CpgFunction) (transfer none): A #GSList of #CpgFunction
+ * @function: (type CpgFunction): A #CpgFunction
  *
- * Set the list of user functions available in the compile context. This
- * function makes a copy of the list but not of its members.
+ * Prepend a context function to the list of context functions.
  *
  **/
 void
-cpg_compile_context_set_functions (CpgCompileContext *context,
-                                   const GSList      *functions)
+cpg_compile_context_prepend_function (CpgCompileContext *context,
+                                      CpgFunction       *function)
 {
 	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
+	g_return_if_fail (function == NULL || CPG_IS_FUNCTION (function));
 
-	if (!context)
+	if (!context || !function)
 	{
 		return;
 	}
 
-	g_slist_free (CURRENT_CONTEXT (context)->functions);
-	CURRENT_CONTEXT (context)->functions = g_slist_copy ((GSList *)functions);
+	CURRENT_CONTEXT (context)->functions =
+		g_slist_prepend (CURRENT_CONTEXT (context)->functions,
+		                 function);
+}
+
+/**
+ * cpg_compile_context_append_function:
+ * @context: A #CpgCompileContext
+ * @function: (type CpgFunction): A #CpgFunction
+ *
+ * Append a context function to the list of context functions.
+ *
+ **/
+void
+cpg_compile_context_append_function (CpgCompileContext *context,
+                                     CpgFunction       *function)
+{
+	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
+	g_return_if_fail (function == NULL || CPG_IS_FUNCTION (function));
+
+	if (!context || !function)
+	{
+		return;
+	}
+
+	CURRENT_CONTEXT (context)->functions =
+		g_slist_append (CURRENT_CONTEXT (context)->functions,
+		                function);
 }
 
 /**

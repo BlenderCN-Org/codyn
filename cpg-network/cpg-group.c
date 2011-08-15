@@ -787,44 +787,86 @@ cpg_group_cpg_get_property (CpgObject   *object,
 	return prop;
 }
 
+static void
+prepend_functions (CpgGroup          *group,
+                   CpgCompileContext *context)
+{
+	GSList *item;
+
+	if (!group)
+	{
+		return;
+	}
+
+	item = group->priv->children;
+
+	while (item)
+	{
+		if (CPG_IS_FUNCTION (item->data))
+		{
+			cpg_compile_context_prepend_function (context,
+			                                      item->data);
+		}
+
+		item = g_slist_next (item);
+	}
+}
+
 static gboolean
 cpg_group_cpg_compile (CpgObject         *object,
                        CpgCompileContext *context,
                        CpgCompileError   *error)
 {
-	/* And then also the children! */
 	CpgGroup *group = CPG_GROUP (object);
-	GSList *item = group->priv->children;
+	GSList *item;
+	gboolean ret;
+
+	cpg_compile_context_save (context);
+
+	/* Prepend all the defined functions in the instances */
+	prepend_functions (group, context);
+
+	cpg_compile_context_save (context);
+
+	cpg_compile_context_prepend_object (context, object);
+
+	item = group->priv->children;
 
 	while (item)
 	{
-		if (!cpg_object_compile (item->data,
-		                         context,
-		                         error))
+		if (!cpg_object_compile (item->data, context, error))
 		{
+			cpg_compile_context_restore (context);
+			cpg_compile_context_restore (context);
+
 			return FALSE;
 		}
 
 		item = g_slist_next (item);
 	}
 
-	if (!CPG_OBJECT_CLASS (cpg_group_parent_class)->compile (object,
-	                                                         context,
-	                                                         error))
-	{
-		return FALSE;
-	}
+	cpg_compile_context_restore (context);
 
-	return TRUE;
+	ret = CPG_OBJECT_CLASS (cpg_group_parent_class)->compile (object,
+	                                                          context,
+	                                                          error);
+
+	cpg_compile_context_restore (context);
+
+	return ret;
 }
 
 static void
 cpg_group_cpg_reset (CpgObject *object)
 {
+	CpgGroup *group;
+
 	CPG_OBJECT_CLASS (cpg_group_parent_class)->reset (object);
 
+	group = CPG_GROUP (object);
+
 	/* And then also the children! */
-	cpg_group_foreach (CPG_GROUP (object),
+	cpg_group_foreach (group,
 	                   (GFunc)cpg_object_reset,
 	                   NULL);
 }
@@ -834,14 +876,17 @@ cpg_group_cpg_foreach_expression (CpgObject                *object,
                                   CpgForeachExpressionFunc  func,
                                   gpointer                  userdata)
 {
-	((CpgObjectClass *)cpg_group_parent_class)->foreach_expression (object,
+	CpgGroup *group;
+	GSList *item;
+
+	group = CPG_GROUP (object);
+
+	CPG_OBJECT_CLASS (cpg_group_parent_class)->foreach_expression (object,
 	                                                               func,
 	                                                               userdata);
 
 	/* And then also the children! */
-	GSList *item;
-
-	for (item = CPG_GROUP (object)->priv->children; item; item = g_slist_next (item))
+	for (item = group->priv->children; item; item = g_slist_next (item))
 	{
 		cpg_object_foreach_expression (item->data, func, userdata);
 	}
@@ -1386,8 +1431,10 @@ cpg_group_add_impl (CpgGroup   *group,
                     CpgObject  *object,
                     GError    **error)
 {
-	CpgObject *other = g_hash_table_lookup (group->priv->child_hash,
-	                                        cpg_object_get_id (object));
+	CpgObject *other;
+
+	other = g_hash_table_lookup (group->priv->child_hash,
+	                             cpg_object_get_id (object));
 
 	if (other == object)
 	{
@@ -1497,7 +1544,9 @@ cpg_group_remove_impl (CpgGroup   *group,
                        CpgObject  *object,
                        GError    **error)
 {
-	GSList *item = g_slist_find (group->priv->children, object);
+	GSList *item;
+
+	item = g_slist_find (group->priv->children, object);
 
 	if (!item)
 	{
@@ -2217,4 +2266,4 @@ cpg_group_get_auto_templates_for_child (CpgGroup  *group,
 
 	return g_slist_reverse (ret);
 }
-
+	

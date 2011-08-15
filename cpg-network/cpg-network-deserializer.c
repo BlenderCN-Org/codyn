@@ -894,7 +894,7 @@ new_object (CpgNetworkDeserializer *deserializer,
 		{
 			if (!cpg_group_add (CPG_GROUP (deserializer->priv->parents->data),
 			                    object,
-			                    NULL))
+			                    deserializer->priv->error))
 			{
 				g_object_unref (object);
 				return NULL;
@@ -1015,15 +1015,16 @@ parse_function (CpgNetworkDeserializer *deserializer,
 		                      "One of the functions does not have a name");
 	}
 
-	CpgGroup *function_group = cpg_network_get_function_group (deserializer->priv->network);
+	CpgGroup *parent = deserializer->priv->parents->data;
 
-	if (cpg_group_get_child (function_group, (gchar const *)name))
+	if (cpg_group_get_child (parent, (gchar const *)name))
 	{
 		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
-		               "The function `%s' is already defined",
-		               name);
+		               "The function `%s' is already defined in `%s'",
+		               name,
+		               cpg_object_get_id (CPG_OBJECT (parent)));
 
 		xmlFree (name);
 		return FALSE;
@@ -1076,9 +1077,9 @@ parse_function (CpgNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
-	gboolean ret = cpg_group_add (function_group,
+	gboolean ret = cpg_group_add (parent,
 	                              CPG_OBJECT (function),
-	                              NULL);
+	                              deserializer->priv->error);
 	g_object_unref (function);
 
 	return ret;
@@ -1188,15 +1189,16 @@ parse_polynomial (CpgNetworkDeserializer  *deserializer,
 		                      "One of the polynomials does not have a name");
 	}
 
-	CpgGroup *function_group = cpg_network_get_function_group (deserializer->priv->network);
+	CpgGroup *parent = deserializer->priv->parents->data;
 
-	if (cpg_group_get_child (function_group, (gchar const *)name))
+	if (cpg_group_get_child (parent, (gchar const *)name))
 	{
 		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
-		               "The polynomial `%s' is already defined",
-		               name);
+		               "The polynomial `%s' is already defined in `%s'",
+		               name,
+		               cpg_object_get_id (CPG_OBJECT (parent)));
 
 		xmlFree (name);
 		return FALSE;
@@ -1224,9 +1226,9 @@ parse_polynomial (CpgNetworkDeserializer  *deserializer,
 		return FALSE;
 	}
 
-	gboolean ret = cpg_group_add (function_group,
+	gboolean ret = cpg_group_add (parent,
 	                              CPG_OBJECT (function),
-	                              NULL);
+	                              deserializer->priv->error);
 	g_object_unref (function);
 
 	return ret;
@@ -1394,7 +1396,7 @@ parse_link (CpgNetworkDeserializer *deserializer,
 	{
 		ret = cpg_group_add (CPG_GROUP (deserializer->priv->parents->data),
 		                     object,
-		                     NULL);
+		                     deserializer->priv->error);
 
 		g_object_unref (object);
 	}
@@ -1770,7 +1772,7 @@ parse_import (CpgNetworkDeserializer *deserializer,
 			CpgImportAlias *alias = cpg_import_alias_new (import);
 			gboolean ret = cpg_group_add (deserializer->priv->parents->data,
 			                              CPG_OBJECT (alias),
-			                              NULL);
+			                              deserializer->priv->error);
 			g_object_unref (alias);
 
 			save_comment (node, G_OBJECT (alias));
@@ -1870,7 +1872,7 @@ parse_network (CpgNetworkDeserializer *deserializer,
 
 		gboolean has_child = xml_xpath_first (deserializer,
 		                                      node,
-		                                      "state | link | interface",
+		                                      "state | link | interface | function",
 		                                      XML_ELEMENT_NODE) != NULL;
 
 		gchar const *nodename = (gchar const *)node->name;
@@ -1915,18 +1917,6 @@ parse_network (CpgNetworkDeserializer *deserializer,
 			if (g_strcmp0 (nodename, "globals") == 0)
 			{
 				ret = parse_globals (deserializer, node);
-			}
-			else if (g_strcmp0 (nodename, "functions") == 0)
-			{
-				ret = parse_all (deserializer, node, NULL);
-			}
-			else if (g_strcmp0 (nodename, "function") == 0)
-			{
-				ret = parse_function (deserializer, node);
-			}
-			else if (g_strcmp0 (nodename, "polynomial") == 0)
-			{
-				ret = parse_polynomial (deserializer, node);
 			}
 			else if (g_strcmp0 (nodename, "templates") == 0)
 			{
@@ -2001,7 +1991,7 @@ parse_all (CpgNetworkDeserializer *deserializer,
 
 	ret = xml_xpath (deserializer,
 	                 root,
-	                 "state | group | link | templates | functions | function | globals | polynomial | import | input-file",
+	                 "state | group | link | templates | function | globals | polynomial | import | input-file",
 	                 XML_ELEMENT_NODE,
 	                 (XPathResultFunc)parse_network,
 	                 NULL);

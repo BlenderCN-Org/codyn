@@ -101,7 +101,8 @@ cpg_function_finalize (GObject *object)
 		g_object_unref (self->priv->expression);
 	}
 
-	cpg_function_clear_arguments (self, NULL);
+	g_list_foreach (self->priv->arguments, (GFunc)g_object_unref, NULL);
+	g_list_free (self->priv->arguments);
 
 	G_OBJECT_CLASS (cpg_function_parent_class)->finalize (object);
 }
@@ -351,6 +352,521 @@ cpg_function_constructed (GObject *object)
 }
 
 static void
+cpg_function_template_expression_changed (CpgFunction *function,
+                                          GParamSpec  *spec,
+                                          CpgFunction *templ)
+{
+	GSList const *templates;
+	GSList *last;
+
+	templates = cpg_object_get_applied_templates (CPG_OBJECT (function));
+	last = g_slist_last ((GSList *)templates);
+
+	if (!last)
+	{
+		return;
+	}
+
+	if (templ == last->data)
+	{
+		g_object_set (function,
+		              "expression",
+		              cpg_expression_copy (cpg_function_get_expression (templ)),
+		              NULL);
+	}
+}
+
+static CpgFunction *
+last_template (CpgFunction *target)
+{
+	CpgFunction *ret = NULL;
+	GSList const *templates;
+
+	templates = cpg_object_get_applied_templates (CPG_OBJECT (target));
+
+	while (templates)
+	{
+		if (CPG_IS_FUNCTION (templates->data))
+		{
+			ret = templates->data;
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return ret;
+}
+
+static gboolean
+is_from_template (CpgFunction *target)
+{
+	CpgFunction *templ;
+
+	templ = last_template (target);
+
+	if (!templ)
+	{
+		return target->priv->expression == NULL &&
+		       target->priv->n_arguments == 0;
+	}
+
+	return cpg_object_equal (CPG_OBJECT (target), CPG_OBJECT (templ));
+}
+
+static void
+from_template (CpgFunction *target,
+               CpgFunction *source)
+{
+	GList *item;
+
+	g_list_foreach (target->priv->arguments,
+	                (GFunc)g_object_unref,
+	                NULL);
+
+	g_list_free (target->priv->arguments);
+	target->priv->arguments = NULL;
+
+	target->priv->n_arguments = 0;
+	target->priv->n_optional = 0;
+	target->priv->n_implicit = 0;
+
+	cpg_function_template_expression_changed (target, NULL, source);
+
+	for (item = source->priv->arguments; item; item = g_list_next (item))
+	{
+		cpg_function_add_argument (target,
+		                           cpg_function_argument_copy (item->data));
+	}
+}
+
+static void
+cpg_function_template_argument_added (CpgFunction         *source,
+                                      CpgFunctionArgument *arg,
+                                      CpgFunction         *target)
+{
+	if (last_template (target) == source)
+	{
+		cpg_function_add_argument (target, cpg_function_argument_copy (arg));
+	}
+}
+
+static gint
+find_argument (CpgFunctionArgument *a1,
+               CpgFunctionArgument *a2)
+{
+	return g_strcmp0 (cpg_function_argument_get_name (a1),
+	                  cpg_function_argument_get_name (a2));
+}
+
+static gboolean
+arguments_equal (CpgFunction         *a,
+                 CpgFunction         *b,
+                 CpgFunctionArgument *ignore)
+{
+	GList *arg1;
+	GList *arg2;
+
+	arg1 = a->priv->arguments;
+	arg2 = a->priv->arguments;
+
+	while (arg1 != NULL && arg2 != NULL)
+	{
+		CpgFunctionArgument *a1;
+		CpgFunctionArgument *a2;
+
+		if ((arg1 == NULL) != (arg2 == NULL))
+		{
+			return FALSE;
+		}
+
+		a1 = arg1->data;
+		a2 = arg2->data;
+
+		arg1 = g_list_next (arg1);
+		arg2 = g_list_next (arg2);
+
+		if (ignore == a1)
+		{
+			continue;
+		}
+
+		if (g_strcmp0 (cpg_function_argument_get_name (a1),
+		               cpg_function_argument_get_name (a2)) != 0)
+		{
+			return FALSE;
+		}
+
+		if (cpg_function_argument_get_explicit (a1) !=
+		    cpg_function_argument_get_explicit (a2))
+		{
+			return FALSE;
+		}
+
+		if (cpg_function_argument_get_optional (a1) !=
+		    cpg_function_argument_get_optional (a2))
+		{
+			return FALSE;
+		}
+
+		if (cpg_function_argument_get_optional (a1))
+		{
+			if (cpg_function_argument_get_default_value (a1) !=
+			    cpg_function_argument_get_default_value (a2))
+			{
+				return FALSE;
+			}
+		}
+	}
+
+	return TRUE;
+}
+
+static void
+cpg_function_template_argument_removed (CpgFunction         *source,
+                                        CpgFunctionArgument *arg,
+                                        CpgFunction         *target)
+{
+	CpgFunction *templ;
+	GList *item;
+
+	item = g_list_find_custom (target->priv->arguments,
+	                           arg,
+	                           (GCompareFunc)find_argument);
+
+	templ = last_template (target);
+
+	if (templ &&
+	    item &&
+	    arguments_equal (target, templ, item->data) &&
+	    cpg_expression_equal (target->priv->expression,
+	                          templ->priv->expression))
+	{
+		cpg_function_remove_argument (target,
+		                              item->data,
+		                              NULL);
+	}
+}
+
+static gboolean
+cpg_function_apply_template_impl (CpgObject  *object,
+                                  CpgObject  *templ,
+                                  GError    **error)
+{
+	CpgFunction *target = NULL;
+	CpgFunction *source = NULL;
+	gboolean apply;
+
+	target = CPG_FUNCTION (object);
+
+	if (CPG_IS_FUNCTION (templ))
+	{
+		source = CPG_FUNCTION (templ);
+	}
+
+	apply = source && is_from_template (target);
+
+	/* Remove all function arguments */
+	if (apply)
+	{
+		g_list_foreach (target->priv->arguments,
+		                (GFunc)g_object_unref,
+		                NULL);
+
+		g_list_free (target->priv->arguments);
+		target->priv->arguments = NULL;
+
+		target->priv->n_arguments = 0;
+		target->priv->n_optional = 0;
+		target->priv->n_implicit = 0;
+	}
+
+	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->apply_template)
+	{
+		if (!CPG_OBJECT_CLASS (cpg_function_parent_class)->apply_template (object, templ, error))
+		{
+			return FALSE;
+		}
+	}
+
+	if (source)
+	{
+		g_signal_connect_swapped (source,
+		                          "notify::expression",
+		                          G_CALLBACK (cpg_function_template_expression_changed),
+		                          target);
+
+		g_signal_connect (source,
+		                  "argument-added",
+		                  G_CALLBACK (cpg_function_template_argument_added),
+		                  target);
+
+		g_signal_connect (source,
+		                  "argument-removed",
+		                  G_CALLBACK (cpg_function_template_argument_removed),
+		                  target);
+	}
+
+	if (apply)
+	{
+		from_template (target, source);
+	}
+
+	return TRUE;
+}
+
+
+static gboolean
+cpg_function_unapply_template_impl (CpgObject  *object,
+                                    CpgObject  *templ,
+                                    GError    **error)
+{
+	GSList *last;
+	GSList const *templates;
+	gboolean waslast = FALSE;
+	CpgFunction *target = NULL;
+	CpgFunction *source = NULL;
+
+	templates = cpg_object_get_applied_templates (object);
+	last = g_slist_last ((GSList *)templates);
+
+	target = CPG_FUNCTION (object);
+
+	/* Remove all function arguments */
+	if (CPG_IS_FUNCTION (templ) && last && last->data == templ)
+	{
+		source = CPG_FUNCTION (templ);
+
+		g_list_foreach (target->priv->arguments,
+		                (GFunc)g_object_unref,
+		                NULL);
+
+		g_list_free (target->priv->arguments);
+		target->priv->arguments = NULL;
+
+		target->priv->n_arguments = 0;
+		target->priv->n_optional = 0;
+		target->priv->n_implicit = 0;
+
+		waslast = TRUE;
+	}
+
+	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->unapply_template)
+	{
+		if (!CPG_OBJECT_CLASS (cpg_function_parent_class)->unapply_template (object, templ, error))
+		{
+			return FALSE;
+		}
+	}
+
+	if (source)
+	{
+		g_signal_handlers_disconnect_by_func (target,
+		                                      G_CALLBACK (cpg_function_template_argument_added),
+		                                      object);
+
+		g_signal_handlers_disconnect_by_func (target,
+		                                      G_CALLBACK (cpg_function_template_argument_removed),
+		                                      object);
+
+		g_signal_handlers_disconnect_by_func (target,
+		                                      G_CALLBACK (cpg_function_template_expression_changed),
+		                                      object);
+	}
+
+	if (waslast)
+	{
+		templates = cpg_object_get_applied_templates (object);
+		last = g_slist_last ((GSList *)templates);
+
+		if (last)
+		{
+			from_template (source, last->data);
+		}
+		else
+		{
+			g_object_set (source, "expression", NULL, NULL);
+		}
+	}
+
+	return TRUE;
+}
+
+static gboolean
+cpg_function_equal_impl (CpgObject *a,
+                         CpgObject *b)
+{
+	CpgFunction *fa;
+	CpgFunction *fb;
+
+	if (!CPG_OBJECT_CLASS (cpg_function_parent_class)->equal (a, b))
+	{
+		return FALSE;
+	}
+
+	fa = CPG_FUNCTION (a);
+	fb = CPG_FUNCTION (b);
+
+	if (!arguments_equal (fa, fb, NULL))
+	{
+		return FALSE;
+	}
+
+	return cpg_expression_equal (fa->priv->expression, fb->priv->expression);
+}
+
+static gboolean
+on_argument_invalidate_name (CpgFunctionArgument *argument,
+                             gchar const         *name,
+                             CpgFunction         *function)
+{
+	CpgProperty *property = cpg_object_get_property (CPG_OBJECT (function),
+	                                                 name);
+
+	CpgProperty *current = _cpg_function_argument_get_property (argument);
+
+	return property && current != property;
+}
+
+static void
+on_argument_name_changed (CpgFunctionArgument *argument,
+                          GParamSpec          *spec,
+                          CpgFunction         *function)
+{
+	gchar const *name = cpg_function_argument_get_name (argument);
+	CpgProperty *property = cpg_object_get_property (CPG_OBJECT (function),
+	                                                 name);
+
+	CpgProperty *current = _cpg_function_argument_get_property (argument);
+
+	if (property == current)
+	{
+		return;
+	}
+	else if (property || !cpg_property_set_name (current, name))
+	{
+		cpg_function_argument_set_name (argument,
+		                                cpg_property_get_name (current));
+	}
+}
+
+static void
+on_argument_optional_changed (CpgFunctionArgument *argument,
+                              GParamSpec          *spec,
+                              CpgFunction         *function)
+{
+	gboolean opt = cpg_function_argument_get_optional (argument);
+
+	GList *item;
+
+	/* Get the item which represents the first optional argument at the
+	   moment */
+	item = g_list_nth (function->priv->arguments,
+	                   function->priv->n_arguments - function->priv->n_optional - function->priv->n_implicit);
+
+	if (item->data != argument)
+	{
+		/* An argument other than the first optional one has changed
+		   it optionality */
+
+		/* First remove the argument from the list of arguments */
+		function->priv->arguments =
+			g_list_remove (function->priv->arguments,
+			               argument);
+
+		if (!opt)
+		{
+			function->priv->arguments =
+				g_list_insert (function->priv->arguments,
+				               argument,
+				               function->priv->n_optional);
+		}
+		else
+		{
+			function->priv->arguments =
+				g_list_append (function->priv->arguments,
+				               argument);
+		}
+	}
+
+	if (opt)
+	{
+		++function->priv->n_optional;
+	}
+	else
+	{
+		--function->priv->n_optional;
+	}
+
+	g_signal_emit (function, signals[ARGUMENTS_REORDERED], 0);
+}
+
+static void
+cpg_function_argument_added_impl (CpgFunction         *function,
+                                  CpgFunctionArgument *argument)
+{
+	if (!cpg_function_argument_get_explicit (argument))
+	{
+		/* Just append */
+		function->priv->arguments = g_list_append (function->priv->arguments,
+		                                           g_object_ref_sink (argument));
+	}
+	else if (cpg_function_argument_get_optional (argument))
+	{
+		/* Insert before first implicit */
+		gint n;
+
+		n = (gint)function->priv->n_arguments -
+		    (gint)function->priv->n_implicit;
+
+		function->priv->arguments = g_list_insert (function->priv->arguments,
+		                                           g_object_ref_sink (argument),
+		                                           n);
+	}
+	else
+	{
+		/* Insert before first optional */
+		gint n;
+
+		n = (gint)function->priv->n_arguments -
+		    (gint)function->priv->n_optional -
+		    (gint)function->priv->n_implicit;
+
+		function->priv->arguments = g_list_insert (function->priv->arguments,
+		                                           g_object_ref_sink (argument),
+		                                           n);
+	}
+
+	++function->priv->n_arguments;
+
+	if (cpg_function_argument_get_optional (argument))
+	{
+		++function->priv->n_optional;
+	}
+
+	if (!cpg_function_argument_get_explicit (argument))
+	{
+		++function->priv->n_implicit;
+	}
+
+	g_signal_connect (argument,
+	                  "notify::name",
+	                  G_CALLBACK (on_argument_name_changed),
+	                  function);
+
+	g_signal_connect (argument,
+	                  "invalidate-name",
+	                  G_CALLBACK (on_argument_invalidate_name),
+	                  function);
+
+	g_signal_connect (argument,
+	                  "notify::optional",
+	                  G_CALLBACK (on_argument_optional_changed),
+	                  function);
+
+	cpg_object_taint (CPG_OBJECT (function));
+}
+
+static void
 cpg_function_class_init (CpgFunctionClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -366,9 +882,13 @@ cpg_function_class_init (CpgFunctionClass *klass)
 	cpg_object_class->copy = cpg_function_copy_impl;
 	cpg_object_class->reset = cpg_function_reset_impl;
 	cpg_object_class->foreach_expression = cpg_function_foreach_expression_impl;
+	cpg_object_class->apply_template = cpg_function_apply_template_impl;
+	cpg_object_class->unapply_template = cpg_function_unapply_template_impl;
+	cpg_object_class->equal = cpg_function_equal_impl;
 
 	klass->execute = cpg_function_execute_impl;
 	klass->evaluate = cpg_function_evaluate_impl;
+	klass->argument_added = cpg_function_argument_added_impl;
 
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPRESSION,
@@ -480,100 +1000,6 @@ cpg_function_new (gchar const *name,
 	return ret;
 }
 
-static gint
-find_argument (CpgFunctionArgument *a1,
-               CpgFunctionArgument *a2)
-{
-	return g_strcmp0 (cpg_function_argument_get_name (a1),
-	                  cpg_function_argument_get_name (a2));
-}
-
-static gboolean
-on_argument_invalidate_name (CpgFunctionArgument *argument,
-                             gchar const         *name,
-                             CpgFunction         *function)
-{
-	CpgProperty *property = cpg_object_get_property (CPG_OBJECT (function),
-	                                                 name);
-
-	CpgProperty *current = _cpg_function_argument_get_property (argument);
-
-	return property && current != property;
-}
-
-static void
-on_argument_name_changed (CpgFunctionArgument *argument,
-                          GParamSpec          *spec,
-                          CpgFunction         *function)
-{
-	gchar const *name = cpg_function_argument_get_name (argument);
-	CpgProperty *property = cpg_object_get_property (CPG_OBJECT (function),
-	                                                 name);
-
-	CpgProperty *current = _cpg_function_argument_get_property (argument);
-
-	if (property == current)
-	{
-		return;
-	}
-	else if (property || !cpg_property_set_name (current, name))
-	{
-		cpg_function_argument_set_name (argument,
-		                                cpg_property_get_name (current));
-	}
-}
-
-static void
-on_argument_optional_changed (CpgFunctionArgument *argument,
-                              GParamSpec          *spec,
-                              CpgFunction         *function)
-{
-	gboolean opt = cpg_function_argument_get_optional (argument);
-
-	GList *item;
-
-	/* Get the item which represents the first optional argument at the
-	   moment */
-	item = g_list_nth (function->priv->arguments,
-	                   function->priv->n_arguments - function->priv->n_optional - function->priv->n_implicit);
-
-	if (item->data != argument)
-	{
-		/* An argument other than the first optional one has changed
-		   it optionality */
-
-		/* First remove the argument from the list of arguments */
-		function->priv->arguments =
-			g_list_remove (function->priv->arguments,
-			               argument);
-
-		if (!opt)
-		{
-			function->priv->arguments =
-				g_list_insert (function->priv->arguments,
-				               argument,
-				               function->priv->n_optional);
-		}
-		else
-		{
-			function->priv->arguments =
-				g_list_append (function->priv->arguments,
-				               argument);
-		}
-	}
-
-	if (opt)
-	{
-		++function->priv->n_optional;
-	}
-	else
-	{
-		--function->priv->n_optional;
-	}
-
-	g_signal_emit (function, signals[ARGUMENTS_REORDERED], 0);
-}
-
 /**
  * cpg_function_add_argument:
  * @function: A #CpgFunction
@@ -615,68 +1041,6 @@ cpg_function_add_argument (CpgFunction         *function,
 	}
 
 	_cpg_function_argument_set_property (argument, property);
-
-	if (!cpg_function_argument_get_explicit (argument))
-	{
-		/* Just append */
-		function->priv->arguments = g_list_append (function->priv->arguments,
-		                                           g_object_ref_sink (argument));
-	}
-	else if (cpg_function_argument_get_optional (argument))
-	{
-		/* Insert before first implicit */
-		gint n;
-
-		n = (gint)function->priv->n_arguments -
-		    (gint)function->priv->n_implicit;
-
-		function->priv->arguments = g_list_insert (function->priv->arguments,
-		                                           g_object_ref_sink (argument),
-		                                           n);
-	}
-	else
-	{
-		/* Insert before first optional */
-		gint n;
-
-		n = (gint)function->priv->n_arguments -
-		    (gint)function->priv->n_optional -
-		    (gint)function->priv->n_implicit;
-
-		function->priv->arguments = g_list_insert (function->priv->arguments,
-		                                           g_object_ref_sink (argument),
-		                                           n);
-	}
-
-	++function->priv->n_arguments;
-
-	if (cpg_function_argument_get_optional (argument))
-	{
-		++function->priv->n_optional;
-	}
-
-	if (!cpg_function_argument_get_explicit (argument))
-	{
-		++function->priv->n_implicit;
-	}
-
-	g_signal_connect (argument,
-	                  "notify::name",
-	                  G_CALLBACK (on_argument_name_changed),
-	                  function);
-
-	g_signal_connect (argument,
-	                  "invalidate-name",
-	                  G_CALLBACK (on_argument_invalidate_name),
-	                  function);
-
-	g_signal_connect (argument,
-	                  "notify::optional",
-	                  G_CALLBACK (on_argument_optional_changed),
-	                  function);
-
-	cpg_object_taint (CPG_OBJECT (function));
-
 	g_signal_emit (function, signals[ARGUMENT_ADDED], 0, argument);
 }
 
@@ -834,6 +1198,7 @@ cpg_function_set_expression (CpgFunction   *function,
                              CpgExpression *expression)
 {
 	g_return_if_fail (CPG_IS_FUNCTION (function));
+
 	g_object_set (G_OBJECT (function), "expression", expression, NULL);
 }
 

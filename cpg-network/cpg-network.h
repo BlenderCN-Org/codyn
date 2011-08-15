@@ -190,7 +190,6 @@ void              cpg_network_step                   (CpgNetwork *network,
                                                       gdouble     timestep);
 
 CpgGroup         *cpg_network_get_template_group     (CpgNetwork   *network);
-CpgGroup         *cpg_network_get_function_group     (CpgNetwork   *network);
 
 CPG_FORWARD_DECL (CpgImport) *cpg_network_get_import  (CpgNetwork   *network,
                                                        GFile        *file);
