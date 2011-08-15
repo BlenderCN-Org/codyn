@@ -109,6 +109,7 @@
         <context id="selectors" style-ref="keyword">
             <keyword>templates</keyword>
             <keyword>root</keyword>
+            <keyword>templates-root</keyword>
             <keyword>debug</keyword>
             <keyword>children</keyword>
             <keyword>parent</keyword>
@@ -162,6 +163,7 @@
             <keyword>below</keyword>
             <keyword>at</keyword>
             <keyword>on</keyword>
+            <keyword>all</keyword>
             <keyword>as</keyword>
             <keyword>of</keyword>
             <keyword>delete</keyword>
@@ -173,6 +175,7 @@
             <keyword>settings</keyword>
             <keyword>parse</keyword>
             <keyword>debug-print</keyword>
+            <keyword>all</keyword>
         </context>
 
         <context id="selector">
