@@ -2499,7 +2499,7 @@ selector_select_pseudo (CpgSelector        *self,
 			{
 				gpointer parent;
 
-				parent = pseudo_parent (sel);
+				parent = pseudo_parent (obj);
 
 				if (parent)
 				{
