@@ -282,12 +282,9 @@ cpg_function_copy_impl (CpgObject *object,
 
 	if (source_function->priv->expression)
 	{
-		gchar const *str;
-
-		str = cpg_expression_get_as_string (source_function->priv->expression);
-
 		g_object_set (target,
-		              "expression", cpg_expression_new (str),
+		              "expression",
+		              cpg_expression_copy (source_function->priv->expression),
 		              NULL);
 	}
 
