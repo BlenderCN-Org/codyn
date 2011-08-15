@@ -346,10 +346,10 @@ cpg_function_constructed (GObject *object)
 {
 	CpgFunction *function = CPG_FUNCTION (object);
 
-	if (function->priv->expression == NULL)
+	if (function->priv->expression != NULL)
 	{
-		function->priv->expression = cpg_expression_new ("0");
 		g_object_ref_sink (function->priv->expression);
+		g_object_unref (function->priv->expression);
 	}
 }
 
