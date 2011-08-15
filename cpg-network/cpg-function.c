@@ -120,6 +120,13 @@ cpg_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 			}
 
 			self->priv->expression = g_value_dup_object (value);
+
+			if (self->priv->expression)
+			{
+				cpg_expression_set_has_cache (self->priv->expression,
+				                              FALSE);
+			}
+
 			cpg_object_taint (CPG_OBJECT (self));
 		break;
 		default:
@@ -204,11 +211,6 @@ cpg_function_evaluate_impl (CpgFunction *function)
 	if (function->priv->expression)
 	{
 		gdouble ret = cpg_expression_evaluate (function->priv->expression);
-
-		/* Don't cache results from functions */
-		cpg_expression_reset_cache (function->priv->expression);
-		cpg_expression_reset_variadic (function->priv->expression);
-
 		return ret;
 	}
 	else
