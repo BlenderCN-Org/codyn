@@ -27,6 +27,7 @@
 #include "cpg-marshal.h"
 #include "cpg-utils.h"
 #include "cpg-selector.h"
+#include "cpg-layoutable.h"
 
 /**
  * SECTION:cpg-group
@@ -140,14 +141,98 @@ get_child_from_template (CpgGroup  *group,
 	return NULL;
 }
 
+static CpgLayoutable *
+last_layoutable_template (CpgObject *child)
+{
+	CpgLayoutable *last = NULL;
+	GSList const *templates;
+
+	templates = cpg_object_get_applied_templates (child);
+
+	while (templates)
+	{
+		if (CPG_IS_LAYOUTABLE (templates->data) &&
+		    cpg_layoutable_supports_location (templates->data) &&
+		    cpg_layoutable_get_has_location (templates->data))
+		{
+			last = templates->data;
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return last;
+}
+
+static gboolean
+should_propagate_layout (CpgGroup  *group,
+                         CpgObject *child,
+                         CpgObject *templ)
+{
+	CpgLayoutable *last;
+
+	if (!CPG_IS_LAYOUTABLE (templ) ||
+	    !cpg_layoutable_supports_location (CPG_LAYOUTABLE (templ)) ||
+	    !cpg_layoutable_get_has_location (CPG_LAYOUTABLE (templ)))
+	{
+		return FALSE;
+	}
+
+	if (!cpg_layoutable_get_has_location (CPG_LAYOUTABLE (child)))
+	{
+		return TRUE;
+	}
+
+	last = last_layoutable_template (child);
+
+	if (last)
+	{
+		gint lx;
+		gint ly;
+		gint x;
+		gint y;
+
+		cpg_layoutable_get_location (last, &lx, &ly);
+		cpg_layoutable_get_location (CPG_LAYOUTABLE (child), &x, &y);
+
+		return x == lx && y == ly;
+	}
+
+	return TRUE;
+}
+
+static void
+layout_from_template (CpgLayoutable *layoutable)
+{
+	CpgLayoutable *templ;
+	gint x;
+	gint y;
+
+	cpg_layoutable_set_location (layoutable, 0, 0);
+	cpg_layoutable_set_has_location (layoutable, FALSE);
+
+	templ = last_layoutable_template (CPG_OBJECT (layoutable));
+
+	if (!templ)
+	{
+		return;
+	}
+
+	cpg_layoutable_get_location (templ, &x, &y);
+	cpg_layoutable_set_location (layoutable, x, y);
+}
+
+
 static void
 on_template_child_added (CpgGroup  *templ,
                          CpgObject *child,
                          CpgGroup  *group)
 {
 	CpgObject *obj;
+	gboolean layout;
 
 	obj = cpg_group_get_child (group, cpg_object_get_id (child));
+	layout = should_propagate_layout (group, obj, child);
 
 	if (obj != NULL && G_TYPE_FROM_INSTANCE (child) == G_TYPE_FROM_INSTANCE (obj))
 	{
@@ -158,6 +243,11 @@ on_template_child_added (CpgGroup  *templ,
 		obj = cpg_object_new_from_template (child, NULL);
 		cpg_group_add (group, obj, NULL);
 		g_object_unref (obj);
+	}
+
+	if (layout)
+	{
+		layout_from_template (CPG_LAYOUTABLE (child));
 	}
 }
 
@@ -173,6 +263,10 @@ on_template_child_removed (CpgGroup  *templ,
 	if (obj)
 	{
 		GSList *properties;
+		gboolean relayout;
+
+		relayout = should_propagate_layout (group, obj, child) &&
+		           last_layoutable_template (obj) == CPG_LAYOUTABLE (child);
 
 		cpg_object_unapply_template (obj, child, NULL);
 
@@ -182,6 +276,11 @@ on_template_child_removed (CpgGroup  *templ,
 		    properties == NULL && cpg_object_get_links (obj) == NULL)
 		{
 			cpg_group_remove (templ, child, NULL);
+		}
+
+		if (relayout)
+		{
+			layout_from_template (CPG_LAYOUTABLE (child));
 		}
 
 		g_slist_free (properties);
@@ -1145,6 +1244,12 @@ cpg_group_cpg_unapply_template (CpgObject  *object,
 		if (orig != NULL)
 		{
 			GSList *properties;
+			gboolean layout;
+
+			layout = should_propagate_layout (group,
+			                                  orig,
+			                                  child) &&
+			         last_layoutable_template (orig) == CPG_LAYOUTABLE (child);
 
 			/* TODO: make atomic */
 			if (!cpg_object_unapply_template (orig, child, error))
@@ -1169,6 +1274,11 @@ cpg_group_cpg_unapply_template (CpgObject  *object,
 					g_slist_free (properties);
 					return FALSE;
 				}
+			}
+
+			if (layout)
+			{
+				layout_from_template (CPG_LAYOUTABLE (orig));
 			}
 
 			g_slist_free (properties);
@@ -1213,6 +1323,7 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 	while (children)
 	{
 		CpgObject *child = children->data;
+		gboolean layout;
 
 		/* Check to find existing one */
 		CpgObject *new_child;
@@ -1230,6 +1341,8 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 			g_object_unref (new_child);
 		}
 
+		layout = should_propagate_layout (group, new_child, child);
+
 		if (!cpg_object_apply_template (new_child,
 		                                child,
 		                                error))
@@ -1245,6 +1358,11 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 			{
 				set_proxy (group, new_child);
 			}
+		}
+
+		if (layout)
+		{
+			layout_from_template (CPG_LAYOUTABLE (new_child));
 		}
 
 		children = g_slist_next (children);

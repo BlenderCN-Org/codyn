@@ -48,17 +48,25 @@ struct _CpgLayoutableInterface
 	                      gint           y);
 
 	gboolean (*supports_location) (CpgLayoutable *layoutable);
+
+	gboolean (*get_has_location) (CpgLayoutable *layoutable);
+	void (*set_has_location) (CpgLayoutable *layoutable,
+	                          gboolean       has_location);
 };
 
-GType cpg_layoutable_get_type (void) G_GNUC_CONST;
+GType    cpg_layoutable_get_type          (void) G_GNUC_CONST;
 
-void cpg_layoutable_get_location (CpgLayoutable *self,
-                                  gint          *x,
-                                  gint          *y);
+void     cpg_layoutable_get_location      (CpgLayoutable *self,
+                                           gint          *x,
+                                           gint          *y);
 
-void cpg_layoutable_set_location (CpgLayoutable *self,
-                                  gint           x,
-                                  gint           y);
+void     cpg_layoutable_set_location      (CpgLayoutable *self,
+                                           gint           x,
+                                           gint           y);
+
+gboolean cpg_layoutable_get_has_location  (CpgLayoutable *self);
+void     cpg_layoutable_set_has_location  (CpgLayoutable *self,
+                                           gboolean       has_location);
 
 gboolean cpg_layoutable_supports_location (CpgLayoutable *self);
 

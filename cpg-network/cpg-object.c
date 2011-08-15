@@ -86,6 +86,7 @@ struct _CpgObjectPrivate
 
 	gboolean compiled : 1;
 	gboolean auto_imported : 1;
+	gboolean has_location : 1;
 };
 
 /* Properties */
@@ -98,7 +99,8 @@ enum
 	PROP_USE_COUNT,
 	PROP_ANNOTATION,
 	PROP_X,
-	PROP_Y
+	PROP_Y,
+	PROP_HAS_LOCATION
 };
 
 /* Signals */
@@ -300,6 +302,9 @@ get_property (GObject     *object,
 		case PROP_Y:
 			g_value_set_int (value, obj->priv->y);
 		break;
+		case PROP_HAS_LOCATION:
+			g_value_set_boolean (value, obj->priv->has_location);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -331,6 +336,9 @@ set_property (GObject       *object,
 		break;
 		case PROP_Y:
 			obj->priv->y = g_value_get_int (value);
+		break;
+		case PROP_HAS_LOCATION:
+			obj->priv->has_location = g_value_get_boolean (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object,
@@ -1286,6 +1294,10 @@ cpg_object_class_init (CpgObjectClass *klass)
 	g_object_class_override_property (object_class,
 	                                  PROP_Y,
 	                                  "y");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_HAS_LOCATION,
+	                                  "has-location");
 
 	/**
 	 * CpgObject:auto-imported:

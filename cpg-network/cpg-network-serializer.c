@@ -423,12 +423,65 @@ template_path (CpgObject *orig,
 	return g_string_free (ret, FALSE);
 }
 
+static gboolean
+should_write_layout (CpgObject *object)
+{
+	CpgLayoutable *layoutable;
+	CpgLayoutable *last;
+	gint x;
+	gint y;
+	gint tx;
+	gint ty;
+	GSList *templates;
+	GSList *item;
+
+	if (!CPG_IS_LAYOUTABLE (object))
+	{
+		return FALSE;
+	}
+
+	layoutable = CPG_LAYOUTABLE (object);
+
+	if (!cpg_layoutable_supports_location (layoutable) ||
+	    !cpg_layoutable_get_has_location (layoutable))
+	{
+		return FALSE;
+	}
+
+	/* Check if the layout was not applied by some template */
+	templates = cpg_group_get_auto_templates_for_child (CPG_GROUP (cpg_object_get_parent (object)),
+	                                                    object);
+
+	last = NULL;
+
+	for (item = templates; item; item = g_slist_next (item))
+	{
+		if (CPG_IS_LAYOUTABLE (item->data) &&
+		    cpg_layoutable_supports_location (item->data) &&
+		    cpg_layoutable_get_has_location (item->data))
+		{
+			last = item->data;
+		}
+	}
+
+	g_slist_free (templates);
+
+	if (!last)
+	{
+		return TRUE;
+	}
+
+	cpg_layoutable_get_location (layoutable, &x, &y);
+	cpg_layoutable_get_location (last, &tx, &ty);
+
+	return x != tx || y != ty;
+}
+
 static void
 add_layout (CpgObject  *object,
             xmlNodePtr  ptr)
 {
-	if (CPG_IS_LAYOUTABLE (object) &&
-	    cpg_layoutable_supports_location (CPG_LAYOUTABLE (object)))
+	if (should_write_layout (object))
 	{
 		gchar *pos;
 		gint x;
@@ -485,6 +538,8 @@ object_to_xml (CpgNetworkSerializer *serializer,
 
 		templates = g_slist_next (templates);
 	}
+
+	g_slist_free (inherited);
 
 	g_ptr_array_add (refs, NULL);
 
@@ -785,6 +840,11 @@ skip_object (CpgObject *object)
 		return TRUE;
 	}
 
+	if (should_write_layout (object))
+	{
+		return FALSE;
+	}
+
 	/* Check if it was not solely instantiated from templates */
 	templates = cpg_group_get_auto_templates_for_child (CPG_GROUP (cpg_object_get_parent (object)),
 	                                                    object);
@@ -811,7 +871,6 @@ skip_object (CpgObject *object)
 
 	if (cpg_object_equal (object, dummy))
 	{
-		g_object_unref (dummy);
 		return TRUE;
 	}
 
