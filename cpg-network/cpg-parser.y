@@ -579,9 +579,7 @@ attributes_strict
 
 link_connect_fast
 	: T_KEY_FROM selector T_KEY_TO selector
-					{ $$ = g_slist_prepend (NULL, $4);
-					  $$ = g_slist_prepend (NULL, $2);
-					}
+					{ $$ = g_slist_prepend (g_slist_prepend (NULL, $4), $2); }
 	| T_KEY_ON selector		{ $$ = g_slist_prepend (NULL, $2); }
 	;
 
