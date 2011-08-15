@@ -97,6 +97,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <num> property_flag
 
 %type <selector> layout_relative
+%type <num> layout_item_separator
 
 %type <array> double_list
 %type <piece> polynomial_piece
@@ -1180,22 +1181,23 @@ layout_item_relative
 	  selector			{ cpg_parser_context_add_layout (context, $1, NULL, $2); errb }
 	;
 
+layout_item_separator
+	: ','				{ $$ = TRUE; }
+	| ':'				{ $$ = FALSE; }
+	;
+
 layout_item_absolute
 	: selector
 	  T_KEY_AT
-	  '('
 	  value_as_string
-	  ','
+	  layout_item_separator
 	  value_as_string
-	  ')'
-	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $4, $6, $8); errb }
+	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $3, $5, $6, $4); errb }
 	| T_KEY_AT
-	  '('
 	  value_as_string
-	  ','
+	  layout_item_separator
 	  value_as_string
-	  ')'
-	  layout_relative		{ cpg_parser_context_add_layout_position (context, NULL, $3, $5, $7); errb }
+	  layout_relative		{ cpg_parser_context_add_layout_position (context, NULL, $2, $4, $5, $3); errb }
 	;
 
 layout_item

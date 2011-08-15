@@ -1222,8 +1222,6 @@ count_selection (CpgEmbeddedContext *context,
 	ex = cpg_expansion_new_one (s);
 	g_free (s);
 
-	i = 0;
-
 	for (item = ret; item; item = g_slist_next (item))
 	{
 		CpgSelection *sel;
@@ -1234,7 +1232,7 @@ count_selection (CpgEmbeddedContext *context,
 		expansion = cpg_expansion_copy (ex);
 		expansions = g_slist_append (expansions, expansion);
 
-		cpg_expansion_set_index (expansion, 0, i++);
+		cpg_expansion_set_index (expansion, 0, --i);
 
 		sel = cpg_selection_new_defines (cpg_selection_get_object (item->data),
 		                                 expansions,
@@ -2643,60 +2641,6 @@ selector_select (CpgSelector        *self,
 	return ret;
 }
 
-static void
-annotate_expansions (GSList *selections)
-{
-	GSList *ptrs = NULL;
-	GSList *item;
-	gboolean breakit = FALSE;
-
-	for (item = selections; item; item = g_slist_next (item))
-	{
-		CpgSelection *sel;
-
-		sel = item->data;
-
-		ptrs = g_slist_prepend (ptrs, cpg_selection_get_expansions (sel));
-	}
-
-	ptrs = g_slist_reverse (ptrs);
-
-	while (!breakit)
-	{
-		GSList *expansions = NULL;
-
-		breakit = TRUE;
-
-		for (item = ptrs; item; item = g_slist_next (item))
-		{
-			GSList *i;
-
-			i = item->data;
-
-			if (i)
-			{
-				expansions =
-					g_slist_prepend (expansions,
-					                 i ? i->data : NULL);
-
-				item->data = g_slist_next (item->data);
-
-				if (item->data)
-				{
-					breakit = FALSE;
-				}
-			}
-		}
-
-		expansions = g_slist_reverse (expansions);
-		cpg_expansions_annotate_indices (expansions);
-
-		g_slist_free (expansions);
-	}
-
-	g_slist_free (ptrs);
-}
-
 static gboolean
 selection_match_type (CpgSelection    *selection,
                       CpgSelectorType  type)
@@ -2836,8 +2780,6 @@ selector_select_all (CpgSelector        *selector,
 		                       sel,
 		                       ctx,
 		                       context);
-
-		annotate_expansions (ctx);
 
 		for (item = ctx; item; item = g_slist_next (item))
 		{

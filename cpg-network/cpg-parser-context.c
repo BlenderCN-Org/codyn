@@ -33,6 +33,8 @@
 #include "cpg-statement.h"
 #include "cpg-taggable.h"
 
+#include <math.h>
+
 #include <string.h>
 
 #define CPG_PARSER_CONTEXT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PARSER_CONTEXT, CpgParserContextPrivate))
@@ -3707,7 +3709,8 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
                                         CpgSelector       *selector,
                                         CpgEmbeddedString *x,
                                         CpgEmbeddedString *y,
-                                        CpgSelector       *of)
+                                        CpgSelector       *of,
+                                        gboolean           cartesian)
 {
 	GSList *objs;
 	GSList *cobjs;
@@ -3751,6 +3754,8 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 			gchar const *exy;
 			gint xx;
 			gint yy;
+			gdouble dx;
+			gdouble dy;
 
 			if (!CPG_IS_LAYOUTABLE (cpg_selection_get_object (obj->data)) ||
 			    !cpg_layoutable_supports_location (CPG_LAYOUTABLE (cpg_selection_get_object (obj->data))))
@@ -3766,8 +3771,19 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 			embedded_string_expand (exx, x, context);
 			embedded_string_expand (exy, y, context);
 
-			xx = (gint)g_strtod (exx, NULL);
-			yy = (gint)g_strtod (exy, NULL);
+			dx = g_strtod (exx, NULL);
+			dy = g_strtod (exy, NULL);
+
+			if (!cartesian)
+			{
+				xx = dx * cos (dy);
+				yy = dx * sin (dy);
+			}
+			else
+			{
+				xx = (gint)dx;
+				yy = (gint)dy;
+			}
 
 			if (of)
 			{

@@ -284,7 +284,8 @@ void                   cpg_parser_context_add_layout_position  (CpgParserContext
                                                                 CpgSelector                *selector,
                                                                 CpgEmbeddedString          *x,
                                                                 CpgEmbeddedString          *y,
-                                                                CpgSelector                *of);
+                                                                CpgSelector                *of,
+                                                                gboolean                    cartesian);
 
 void                   cpg_parser_context_add_integrator_property (CpgParserContext        *context,
                                                                    CpgEmbeddedString       *name,
