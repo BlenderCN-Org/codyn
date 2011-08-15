@@ -71,6 +71,7 @@ struct _CpgExpressionPrivate
 	guint prevent_cache_reset : 1;
 	guint modified : 1;
 	guint once : 1;
+	guint has_cache : 1;
 };
 
 typedef struct
@@ -87,7 +88,8 @@ enum
 {
 	PROP_0,
 	PROP_EXPRESSION,
-	PROP_VALUE
+	PROP_VALUE,
+	PROP_HAS_CACHE
 };
 
 static int parse_expression (CpgExpression *expression,
@@ -200,6 +202,26 @@ cpg_expression_finalize (GObject *object)
 }
 
 static void
+set_has_cache (CpgExpression *expression,
+               gboolean       cache)
+{
+	if (cache == expression->priv->has_cache)
+	{
+		return;
+	}
+
+	expression->priv->has_cache = cache;
+
+	if (!cache)
+	{
+		expression->priv->cached = FALSE;
+		cpg_expression_reset_variadic (expression);
+	}
+
+	g_object_notify (G_OBJECT (expression), "has-cache");
+}
+
+static void
 cpg_expression_set_property (GObject      *object,
                              guint         prop_id,
                              const GValue *value,
@@ -214,6 +236,9 @@ cpg_expression_set_property (GObject      *object,
 		break;
 		case PROP_VALUE:
 			set_value (self, g_value_get_double (value));
+		break;
+		case PROP_HAS_CACHE:
+			set_has_cache (self, g_value_get_boolean (value));
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -236,6 +261,9 @@ cpg_expression_get_property (GObject    *object,
 		break;
 		case PROP_VALUE:
 			g_value_set_double (value, cpg_expression_evaluate (self));
+		break;
+		case PROP_HAS_CACHE:
+			g_value_set_boolean (value, cpg_expression_has_cache (self));
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -272,6 +300,14 @@ cpg_expression_class_init (CpgExpressionClass *klass)
 	                                                      G_MAXDOUBLE,
 	                                                      0,
 	                                                      G_PARAM_READWRITE));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_HAS_CACHE,
+	                                 g_param_spec_boolean ("has-cache",
+	                                                       "Has Cache",
+	                                                       "Has cache",
+	                                                       TRUE,
+	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -1711,7 +1747,15 @@ cpg_expression_evaluate (CpgExpression *expression)
 		return NAN;
 	}
 
-	expression->priv->cached = TRUE;
+	if (expression->priv->has_cache)
+	{
+		expression->priv->cached = TRUE;
+	}
+	else
+	{
+		cpg_expression_reset_variadic (expression);
+	}
+
 	expression->priv->cached_output = cpg_stack_pop (&(expression->priv->output));
 
 	return expression->priv->cached_output;
@@ -1932,3 +1976,21 @@ cpg_expression_get_operators (CpgExpression *expression)
 
 	return expression->priv->operator_instructions;
 }
+
+gboolean
+cpg_expression_has_cache (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), TRUE);
+
+	return expression->priv->has_cache;
+}
+
+void
+cpg_expression_set_has_cache (CpgExpression *expression,
+                              gboolean       cache)
+{
+	g_return_if_fail (CPG_IS_EXPRESSION (expression));
+
+	set_has_cache (expression, cache);
+}
+
