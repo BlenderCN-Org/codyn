@@ -489,16 +489,13 @@ add_layout (CpgObject  *object,
 
 		cpg_layoutable_get_location (CPG_LAYOUTABLE (object), &x, &y);
 
-		if (x != 0 || y != 0)
-		{
-			pos = g_strdup_printf ("%d", x);
-			xmlNewProp (ptr, (xmlChar *)"x", (xmlChar *)pos);
-			g_free (pos);
+		pos = g_strdup_printf ("%d", x);
+		xmlNewProp (ptr, (xmlChar *)"x", (xmlChar *)pos);
+		g_free (pos);
 
-			pos = g_strdup_printf ("%d", y);
-			xmlNewProp (ptr, (xmlChar *)"y", (xmlChar *)pos);
-			g_free (pos);
-		}
+		pos = g_strdup_printf ("%d", y);
+		xmlNewProp (ptr, (xmlChar *)"y", (xmlChar *)pos);
+		g_free (pos);
 	}
 }
 
