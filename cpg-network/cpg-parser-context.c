@@ -4038,8 +4038,6 @@ debug_selector (CpgParserContext *context,
 	gchar *fullid;
 	GSList *orig = objects;
 
-	g_message ("hmm");
-
 	fullid = cpg_object_get_full_id (cpg_selection_get_object (selection));
 
 	while (objects)
