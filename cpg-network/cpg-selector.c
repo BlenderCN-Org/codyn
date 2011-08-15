@@ -2119,36 +2119,33 @@ ancestors_reverse (CpgSelection *selection)
 static GSList *
 unique_selections (GSList *parent)
 {
-	GSList *objs = NULL;
-	GSList *item;
+	GSList *ret = NULL;
+	GHashTable *objs;
 
-	item = parent;
+	objs = g_hash_table_new (g_direct_hash,
+	                         g_direct_equal);
 
-	while (item)
+	while (parent)
 	{
 		gpointer obj;
 
-		obj = cpg_selection_get_object (item->data);
+		obj = cpg_selection_get_object (parent->data);
 
-		if (g_slist_find (objs, obj) != NULL)
+		if (g_hash_table_lookup (objs, obj) == NULL)
 		{
-			GSList *tmp;
+			g_hash_table_insert (objs, obj, GINT_TO_POINTER (1));
 
-			tmp = item->next;
-
-			g_object_unref (item->data);
-			parent = g_slist_delete_link (parent, item);
-
-			item = tmp;
+			ret = g_slist_prepend (ret,
+			                       cpg_selection_copy_defines (parent->data,
+			                                                   FALSE));
 		}
-		else
-		{
-			objs = g_slist_prepend (objs, obj);
-		}
+
+		parent = g_slist_next (parent);
 	}
 
-	g_slist_free (objs);
-	return parent;
+	g_hash_table_destroy (objs);
+
+	return g_slist_reverse (ret);
 }
 
 static GSList *
