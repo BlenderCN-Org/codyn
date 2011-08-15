@@ -938,7 +938,7 @@ strict_selector_only
 
 strict_selector_only_list_rev
 	: strict_selector_only		{ $$ = g_slist_prepend (NULL, $1); }
-	| strict_selector_only_list_rev strict_selector_only
+	| strict_selector_only_list_rev ',' strict_selector_only
 					{ $$ = g_slist_prepend ($1, $2); }
 	;
 
