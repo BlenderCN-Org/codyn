@@ -2086,7 +2086,7 @@ descendants_reverse (CpgSelection *selection)
 			g_queue_push_tail (queue, item->data);
 		}
 
-		g_slist_free (item->data);
+		g_slist_free (children);
 	}
 
 	return ret;
