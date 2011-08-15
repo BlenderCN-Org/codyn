@@ -61,6 +61,7 @@ typedef enum
 typedef enum
 {
 	CPG_SELECTOR_PSEUDO_TYPE_ROOT,
+	CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT,
 	CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
 	CPG_SELECTOR_PSEUDO_TYPE_PARENT,
 	CPG_SELECTOR_PSEUDO_TYPE_FIRST,
@@ -110,8 +111,9 @@ struct _CpgSelectorClass
 
 GType         cpg_selector_get_type          (void) G_GNUC_CONST;
 
-CpgSelector  *cpg_selector_new               (void);
-CpgSelector  *cpg_selector_parse             (gchar const            *ptr,
+CpgSelector  *cpg_selector_new               (CpgObject              *root);
+CpgSelector  *cpg_selector_parse             (CpgObject              *root,
+                                              gchar const            *ptr,
                                               GError                **error);
 
 gchar const  *cpg_selector_as_string         (CpgSelector            *selector);

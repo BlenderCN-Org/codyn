@@ -2056,7 +2056,7 @@ cpg_group_find_objects (CpgGroup    *group,
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	sel = cpg_selector_parse (selector, &error);
+	sel = cpg_selector_parse (CPG_OBJECT (group), selector, &error);
 
 	if (!sel)
 	{
@@ -2143,7 +2143,7 @@ cpg_group_find_properties (CpgGroup    *group,
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	sel = cpg_selector_parse (selector, &error);
+	sel = cpg_selector_parse (CPG_OBJECT (group), selector, &error);
 
 	if (!sel)
 	{

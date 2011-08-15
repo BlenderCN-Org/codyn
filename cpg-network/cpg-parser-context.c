@@ -2890,7 +2890,7 @@ cpg_parser_context_push_selector (CpgParserContext *context)
 
 	context->priv->selectors =
 		g_slist_prepend (context->priv->selectors,
-		                 cpg_selector_new ());
+		                 cpg_selector_new (CPG_OBJECT (context->priv->network)));
 }
 
 void
@@ -4037,6 +4037,8 @@ debug_selector (CpgParserContext *context,
 {
 	gchar *fullid;
 	GSList *orig = objects;
+
+	g_message ("hmm");
 
 	fullid = cpg_object_get_full_id (cpg_selection_get_object (selection));
 

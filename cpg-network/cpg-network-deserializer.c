@@ -663,13 +663,15 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	{
 		CpgSelector *selector;
 
-		selector = cpg_selector_parse (*p, NULL);
+		selector = cpg_selector_parse (CPG_OBJECT (deserializer->priv->network),
+		                               *p,
+		                               NULL);
 
 		if (!selector)
 		{
 			CpgEmbeddedString *em;
 
-			selector = cpg_selector_new ();
+			selector = cpg_selector_new (CPG_OBJECT (deserializer->priv->network));
 
 			cpg_selector_append_pseudo (selector,
 			                            CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,

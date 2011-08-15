@@ -1,6 +1,6 @@
 /*
  * cpg-selector.c
- * This file is part of cpg-network
+ * This file is part of cpg-root
  *
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
@@ -80,6 +80,7 @@ typedef struct
 
 struct _CpgSelectorPrivate
 {
+	CpgObject *root;
 	CpgSelection *self;
 
 	GSList *selectors;
@@ -105,6 +106,7 @@ enum
 static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 {
 	"root",
+	"templates-root",
 	"children",
 	"parent",
 	"first",
@@ -154,7 +156,8 @@ enum
 	PROP_LINE_START,
 	PROP_LINE_END,
 	PROP_COLUMN_START,
-	PROP_COLUMN_END
+	PROP_COLUMN_END,
+	PROP_ROOT
 };
 
 static void
@@ -391,6 +394,22 @@ cpg_selector_finalize (GObject *object)
 }
 
 static void
+cpg_selector_dispose (GObject *object)
+{
+	CpgSelector *selector;
+
+	selector = CPG_SELECTOR (object);
+
+	if (selector->priv->root)
+	{
+		g_object_unref (selector->priv->root);
+		selector->priv->root = NULL;
+	}
+
+	G_OBJECT_CLASS (cpg_selector_parent_class)->dispose (object);
+}
+
+static void
 cpg_selector_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
 {
 	CpgSelector *self = CPG_SELECTOR (object);
@@ -408,6 +427,9 @@ cpg_selector_set_property (GObject *object, guint prop_id, const GValue *value, 
 			break;
 		case PROP_COLUMN_END:
 			self->priv->column_end = g_value_get_int (value);
+			break;
+		case PROP_ROOT:
+			self->priv->root = g_value_dup_object (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -434,6 +456,9 @@ cpg_selector_get_property (GObject *object, guint prop_id, GValue *value, GParam
 		case PROP_COLUMN_END:
 			g_value_set_int (value, self->priv->column_end);
 			break;
+		case PROP_ROOT:
+			g_value_set_object (value, self->priv->root);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -446,10 +471,10 @@ cpg_selector_class_init (CpgSelectorClass *klass)
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	object_class->finalize = cpg_selector_finalize;
+	object_class->dispose = cpg_selector_dispose;
 
 	object_class->get_property = cpg_selector_get_property;
 	object_class->set_property = cpg_selector_set_property;
-
 
 	signals[SELECT] =
 		g_signal_new ("select",
@@ -480,6 +505,14 @@ cpg_selector_class_init (CpgSelectorClass *klass)
 	g_object_class_override_property (object_class,
 	                                  PROP_COLUMN_END,
 	                                  "column-end");
+
+	g_object_class_install_property (object_class,
+	                                 PROP_ROOT,
+	                                 g_param_spec_object ("root",
+	                                                      "Root",
+	                                                      "Root",
+	                                                      CPG_TYPE_OBJECT,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
@@ -490,14 +523,17 @@ cpg_selector_init (CpgSelector *self)
 }
 
 CpgSelector *
-cpg_selector_new ()
+cpg_selector_new (CpgObject *root)
 {
-	return g_object_new (CPG_TYPE_SELECTOR, NULL);
+	return g_object_new (CPG_TYPE_SELECTOR,
+	                     "root", root,
+	                     NULL);
 }
 
 /**
  * cpg_selector_parse:
- * @s: Description
+ * @root: (allow-none): A #CpgObject
+ * @s: The selector
  * @error: A #GError
  *
  * Parse a selector from a string.
@@ -506,13 +542,15 @@ cpg_selector_new ()
  *
  **/
 CpgSelector *
-cpg_selector_parse (gchar const *s,
+cpg_selector_parse (CpgObject    *root,
+                    gchar const  *s,
                     GError      **error)
 {
 	CpgSelector *ret;
 	CpgParserContext *ctx;
 	GInputStream *stream;
 
+	g_return_val_if_fail (root == NULL || CPG_IS_OBJECT (root), NULL);
 	g_return_val_if_fail (s != NULL, NULL);
 
 	ctx = cpg_parser_context_new (NULL);
@@ -529,6 +567,8 @@ cpg_selector_parse (gchar const *s,
 	}
 
 	ret = cpg_parser_context_pop_selector (ctx);
+	ret->priv->root = root ? g_object_ref (root) : NULL;
+
 	g_object_unref (ctx);
 
 	return ret;
@@ -1397,7 +1437,6 @@ selector_pseudo_has_template (CpgSelector        *self,
                               GSList             *ret)
 {
 	CpgObject *obj;
-	CpgObject *tp;
 	CpgGroup *template_group;
 	GSList *item;
 	gboolean valid = TRUE;
@@ -1409,14 +1448,23 @@ selector_pseudo_has_template (CpgSelector        *self,
 		return ret;
 	}
 
-	tp = top_parent (obj);
-
-	if (!CPG_IS_NETWORK (tp))
+	if (self->priv->root && CPG_IS_NETWORK (self->priv->root))
 	{
-		return ret;
+		template_group = cpg_network_get_template_group (CPG_NETWORK (self->priv->root));
 	}
+	else
+	{
+		CpgObject *tp;
 
-	template_group = cpg_network_get_template_group (CPG_NETWORK (tp));
+		tp = top_parent (obj);
+
+		if (!CPG_IS_OBJECT (tp))
+		{
+			return ret;
+		}
+
+		template_group = cpg_network_get_template_group (CPG_NETWORK (tp));
+	}
 
 	cpg_embedded_context_save (context);
 	cpg_embedded_context_add_selection (context, sel);
@@ -1655,9 +1703,9 @@ object_type_name (gpointer obj)
 	{
 		return "function";
 	}
-	else if (CPG_IS_NETWORK (obj))
+	else if (CPG_IS_OBJECT (obj))
 	{
-		return "network";
+		return "root";
 	}
 	else if (CPG_IS_GROUP (obj))
 	{
@@ -2173,6 +2221,27 @@ selector_pseudo_has_flag (CpgSelector        *self,
 	return ret;
 }
 
+static gboolean
+is_template (CpgSelector *selector,
+             gpointer     obj)
+{
+	CpgObject *parent;
+
+	if (!selector->priv->root || !CPG_IS_NETWORK (selector->priv->root))
+	{
+		return FALSE;
+	}
+
+	parent = top_parent (obj);
+
+	if (!parent)
+	{
+		return FALSE;
+	}
+
+	return (CPG_GROUP (parent) == cpg_network_get_template_group (CPG_NETWORK (selector->priv->root)));
+}
+
 static GSList *
 selector_select_pseudo (CpgSelector        *self,
                         Selector           *selector,
@@ -2271,7 +2340,17 @@ selector_select_pseudo (CpgSelector        *self,
 			{
 				return g_slist_prepend (NULL,
 				                        expand_obj (self->priv->self,
+				                                    self->priv->root ?
+				                                    self->priv->root :
 				                                    top_parent (cpg_selection_get_object (self->priv->self))));
+			}
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT:
+			if (!parent && self->priv->root && CPG_IS_NETWORK (self->priv->root))
+			{
+				return g_slist_prepend (NULL,
+				                        expand_obj (self->priv->self,
+				                                    cpg_network_get_template_group (CPG_NETWORK (self->priv->root))));
 			}
 		break;
 		default:
@@ -2324,20 +2403,36 @@ selector_select_pseudo (CpgSelector        *self,
 				}
 			}
 			break;
-			case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES:
+			case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT:
 			{
-				CpgObject *top;
+				CpgGroup *template_group;
 
-				top = top_parent (obj);
+				template_group = NULL;
 
-				if (top && CPG_IS_NETWORK (top))
+				if (self->priv->root && CPG_IS_NETWORK (self->priv->root))
 				{
-					CpgGroup *template_group;
+					template_group = cpg_network_get_template_group (CPG_NETWORK (self->priv->root));
+				}
+				else
+				{
+					CpgObject *top;
 
-					template_group = cpg_network_get_template_group (CPG_NETWORK (top));
+					top = top_parent (obj);
 
+					if (top && CPG_IS_NETWORK (top))
+					{
+						template_group = cpg_network_get_template_group (CPG_NETWORK (top));
+					}
+				}
+
+				if (template_group)
+				{
 					return g_slist_prepend (ret,
 					                        expand_obj (sel, template_group));
+				}
+				else
+				{
+					return NULL;
 				}
 			}
 			break;
@@ -2472,6 +2567,12 @@ selector_select_pseudo (CpgSelector        *self,
 				                               context,
 				                               ret);
 			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES:
+				if (is_template (self, obj))
+				{
+					ret = g_slist_prepend (ret,
+					                       cpg_selection_copy_defines (sel, FALSE));
+				}
 			default:
 				g_assert_not_reached ();
 			break;
