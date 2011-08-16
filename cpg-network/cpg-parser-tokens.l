@@ -91,6 +91,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					cpg_parser_context_set_line (yyextra, yytext, yylineno);
 					cpg_parser_context_set_column (yyextra, 0, 0);
 
+					yyless (0);
 					cpg_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
