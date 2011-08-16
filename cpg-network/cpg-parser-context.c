@@ -516,121 +516,6 @@ steal_annotation (CpgParserContext *context)
 	return ret;
 }
 
-#if 0
-static void
-print_expansions (GSList *expansions)
-{
-	while (expansions)
-	{
-		CpgExpansion *e = expansions->data;
-		gint i;
-
-		g_printerr ("\t");
-
-		for (i = 0; i < cpg_expansion_num (e); ++i)
-		{
-			if (i != 0)
-			{
-				g_printerr (", ");
-			}
-
-			g_printerr ("{%s}", cpg_expansion_get (e, i));
-		}
-
-		g_printerr ("\n");
-
-		expansions = g_slist_next (expansions);
-	}
-}
-
-static void
-print_selection (CpgSelection *selection)
-{
-	g_printerr ("%s:\n", cpg_object_get_full_id (cpg_selection_get_object (selection)));
-	print_expansions (cpg_selection_get_expansions (selection));
-	g_printerr ("\n");
-}
-
-#if 0
-static void
-print_selections (GSList *list)
-{
-	while (list)
-	{
-		print_selection (list->data);
-
-		list = g_slist_next (list);
-	}
-}
-#endif
-#endif
-
-static CpgLink *
-find_or_create_self_link (CpgParserContext *context,
-                          CpgObject        *object,
-                          CpgProperty      *prop)
-{
-	GSList const *links;
-	GError *error = NULL;
-	gchar *id;
-	CpgLink *link;
-
-	links = cpg_object_get_links (object);
-
-	while (links)
-	{
-		GSList const *actions;
-		gboolean hasprop = FALSE;
-
-		link = links->data;
-		links = g_slist_next (links);
-
-		if (cpg_link_get_from (link) != object)
-		{
-			continue;
-		}
-
-		actions = cpg_link_get_actions (link);
-
-		while (actions)
-		{
-			if (g_strcmp0 (cpg_link_action_get_target (actions->data),
-			               cpg_property_get_name (prop)) == 0)
-			{
-				hasprop = TRUE;
-				break;
-			}
-
-			actions = g_slist_next (actions);
-		}
-
-		if (!hasprop)
-		{
-			return link;
-		}
-
-		links = g_slist_next (links);
-	}
-
-	/* Create a new self link */
-	id = g_strconcat ("on_", cpg_object_get_id (object), NULL);
-	link = cpg_link_new (id, object, object);
-	g_free (id);
-
-	if (!cpg_group_add (CPG_GROUP (cpg_object_get_parent (object)),
-	                    CPG_OBJECT (link),
-	                    &error))
-	{
-		g_object_unref (link);
-		parser_failed_error (context, error);
-
-		return NULL;
-	}
-
-	g_object_unref (link);
-	return link;
-}
-
 static GSList *
 find_attributes (GSList *attributes,
                 gchar const *name)
@@ -727,8 +612,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgEmbeddedString *expression,
                                  CpgPropertyFlags   add_flags,
                                  CpgPropertyFlags   remove_flags,
-                                 CpgEmbeddedString *integration,
-                                 GSList            *attributes)
+                                 GSList            *attributes,
+                                 gboolean           assign_optional)
 {
 	Context *ctx;
 	GSList *item;
@@ -780,6 +665,12 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 			property = cpg_object_get_property (obj, exname);
 
+			if (property && assign_optional)
+			{
+				cpg_embedded_context_restore (context->priv->embedded);
+				continue;
+			}
+
 			if (property)
 			{
 				flags = cpg_property_get_flags (property);
@@ -824,27 +715,6 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			}
 
 			set_taggable (context, property, attributes);
-
-			if (integration != NULL)
-			{
-				CpgLink *link;
-				gchar const *expr;
-
-				link = find_or_create_self_link (context, obj, property);
-
-				if (!link)
-				{
-					cpg_embedded_context_restore (context->priv->embedded);
-
-					break;
-				}
-
-				embedded_string_expand (expr, integration, context);
-
-				cpg_link_add_action (link,
-				                     cpg_link_action_new (cpg_property_get_name (property),
-				                                          cpg_expression_new (expr)));
-			}
 
 			cpg_embedded_context_restore (context->priv->embedded);
 		}

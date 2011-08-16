@@ -95,6 +95,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <flags> property_flags_strict
 %type <flags> property_flags_contents
 %type <num> property_flag
+%type <num> property_assign_optional
 
 %type <selector> layout_relative
 %type <num> layout_item_separator
@@ -832,25 +833,34 @@ identifier_or_string
 	| indirection
 	;
 
+property_assign_optional
+	: '='				{ $$ = FALSE; }
+	| '?' '='			{ $$ = TRUE; }
+	;
+
 property
 	: attributes
 	  identifier_or_string
-	  '='
-	  value_as_string
-	  '<' '='
+	  property_assign_optional
 	  value_as_string
 	  property_flags
-					{ cpg_parser_context_add_property (context, $2, $4, $8.add, $8.remove, $7, $1); errb }
-	| attributes
-	  identifier_or_string
-	  '='
-	  value_as_string
-	  property_flags
-					{ cpg_parser_context_add_property (context, $2, $4, $5.add, $5.remove, NULL, $1); errb }
+					{ cpg_parser_context_add_property (context,
+					                                   $2,
+					                                   $4,
+					                                   $5.add,
+					                                   $5.remove,
+					                                   $1,
+					                                   $3); errb }
 	| attributes
 	  identifier_or_string
 	  property_flags_strict
-					{ cpg_parser_context_add_property (context, $2, NULL, $3.add, $3.remove, NULL, $1); errb }
+					{ cpg_parser_context_add_property (context,
+					                                   $2,
+					                                   NULL,
+					                                   $3.add,
+					                                   $3.remove,
+					                                   $1,
+					                                   FALSE); errb }
 	;
 
 property_flag_sign

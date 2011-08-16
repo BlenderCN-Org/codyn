@@ -130,8 +130,8 @@ void                   cpg_parser_context_add_property         (CpgParserContext
                                                                 CpgEmbeddedString          *expression,
                                                                 CpgPropertyFlags            add_flags,
                                                                 CpgPropertyFlags            remove_flags,
-                                                                CpgEmbeddedString          *integration,
-                                                                GSList                     *attributes);
+                                                                GSList                     *attributes,
+                                                                gboolean                    assign_optional);
 
 void                   cpg_parser_context_add_action           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *target,
