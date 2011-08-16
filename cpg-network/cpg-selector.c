@@ -1189,7 +1189,7 @@ annotate_names (GSList *selection)
 
 		expansions = g_slist_copy (cpg_selection_get_expansions (selection->data));
 		expansion = cpg_expansion_copy (ex);
-		expansions = g_slist_append (expansions, expansion);
+		expansions = g_slist_prepend (expansions, expansion);
 
 		sel = cpg_selection_new_defines (cpg_selection_get_object (selection->data),
 		                                 expansions,
@@ -1238,7 +1238,7 @@ count_selection (CpgEmbeddedContext *context,
 
 		expansions = g_slist_copy (cpg_selection_get_expansions (item->data));
 		expansion = cpg_expansion_copy (ex);
-		expansions = g_slist_append (expansions, expansion);
+		expansions = g_slist_prepend (expansions, expansion);
 
 		cpg_expansion_set_index (expansion, 0, --i);
 
@@ -1253,10 +1253,7 @@ count_selection (CpgEmbeddedContext *context,
 		item->data = sel;
 	}
 
-	cpg_embedded_context_add_expansion (context, ex);
-
 	g_object_unref (ex);
-
 
 	return g_slist_reverse (ret);
 }
@@ -1804,7 +1801,7 @@ selector_pseudo_type (CpgEmbeddedContext *context,
 		expansion = cpg_expansion_new (ex);
 		g_free (cnt);
 
-		expansions = g_slist_append (expansions, expansion);
+		expansions = g_slist_prepend (expansions, expansion);
 
 		cpg_expansion_set_index (expansion, 0, val[0]);
 
