@@ -237,7 +237,6 @@ document_item
 	| delete
 	| delete_context
 	| common_scopes
-	| eof
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  document_contents
@@ -281,6 +280,7 @@ common_scopes
 	| include
 	| parse
 	| actions
+	| eof
 	;
 
 when_apply_or_unapply
