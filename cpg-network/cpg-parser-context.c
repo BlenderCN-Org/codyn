@@ -3551,6 +3551,11 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
 
+	if (context->priv->in_when_applied)
+	{
+		return;
+	}
+
 	embedded_string_expand_multiple (items, filename, context);
 
 	for (item = items; item; item = g_slist_next (item))
