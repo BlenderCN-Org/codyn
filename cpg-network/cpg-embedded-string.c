@@ -250,6 +250,16 @@ cpg_embedded_string_new_from_integer (gint s)
 	return ret;
 }
 
+/**
+ * cpg_embedded_string_add_text:
+ * @s: A #CpgEmbeddedString
+ * @text: The text to add
+ *
+ * Adds a text node to the embedded string.
+ *
+ * Returns: (transfer none): A #CpgEmbeddedString
+ *
+ **/
 CpgEmbeddedString *
 cpg_embedded_string_add_text (CpgEmbeddedString *s,
                               gchar const       *text)
@@ -280,6 +290,16 @@ cpg_embedded_string_add_text (CpgEmbeddedString *s,
 	return s;
 }
 
+/**
+ * cpg_embedded_string_prepend_text:
+ * @s: A #CpgEmbeddedString
+ * @text: The text to add
+ *
+ * Prepends a text node to the embedded string.
+ *
+ * Returns: (transfer none): A #CpgEmbeddedString
+ *
+ **/
 CpgEmbeddedString *
 cpg_embedded_string_prepend_text (CpgEmbeddedString *s,
                                   gchar const       *text)

@@ -1383,6 +1383,15 @@ cpg_parser_context_set_error (CpgParserContext *context,
 	g_free (fname);
 }
 
+/**
+ * cpg_parser_context_get_error:
+ * @context: A #CpgParserContext
+ *
+ * Get the parse error.
+ *
+ * Returns: (transfer none): A #GError
+ *
+ **/
 GError *
 cpg_parser_context_get_error (CpgParserContext *context)
 {
@@ -2684,6 +2693,15 @@ cpg_parser_context_push_templates (CpgParserContext *context,
 	g_slist_free (objects);
 }
 
+/**
+ * cpg_parser_context_pop:
+ * @context: A #CpgParserContext
+ *
+ * Description.
+ *
+ * Returns: (transfer container) (element-type CpgObject): A #GSList
+ *
+ **/
 GSList *
 cpg_parser_context_pop (CpgParserContext *context)
 {
@@ -3024,6 +3042,15 @@ cpg_parser_context_push_selector_pseudo (CpgParserContext      *context,
 	               ensure_selector (context));
 }
 
+/**
+ * cpg_parser_context_peek_selector:
+ * @context: A #CpgParserContext
+ *
+ * Description.
+ *
+ * Returns: (transfer none): A #CpgSelector
+ *
+ **/
 CpgSelector *
 cpg_parser_context_peek_selector (CpgParserContext *context)
 {
@@ -3032,6 +3059,15 @@ cpg_parser_context_peek_selector (CpgParserContext *context)
 	return ensure_selector (context);
 }
 
+/**
+ * cpg_parser_context_pop_selector:
+ * @context: A #CpgParserContext
+ * 
+ * Description.
+ *
+ * Returns: (transfer full): A #CpgSelector
+ *
+ **/
 CpgSelector *
 cpg_parser_context_pop_selector (CpgParserContext *context)
 {
@@ -3049,6 +3085,15 @@ cpg_parser_context_pop_selector (CpgParserContext *context)
 	return ret;
 }
 
+/**
+ * cpg_parser_context_get_scanner:
+ * @context: A #CpgParserContext
+ *
+ * Description.
+ *
+ * Returns: (transfer none): Description
+ *
+ **/
 gpointer
 cpg_parser_context_get_scanner (CpgParserContext *context)
 {
@@ -3619,6 +3664,16 @@ cpg_parser_context_pop_input (CpgParserContext *context)
 	}
 }
 
+/**
+ * cpg_parser_context_get_file:
+ * @context: A #CpgParserContext
+ *
+ * Get the current parsed file. If the current parsing stage is from memory
+ * or a stream only, the result will be %NULL.
+ *
+ * Returns: (transfer full) (allow-none): A #GFile
+ *
+ **/
 GFile *
 cpg_parser_context_get_file (CpgParserContext *context)
 {
@@ -4076,6 +4131,15 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 	g_object_unref (value);
 }
 
+/**
+ * cpg_parser_context_push_string:
+ * @context: A #CpgParserContext
+ *
+ * Description.
+ *
+ * Returns: (transfer none): A #CpgEmbeddedString
+ *
+ **/
 CpgEmbeddedString *
 cpg_parser_context_push_string (CpgParserContext *context)
 {
@@ -4093,6 +4157,15 @@ cpg_parser_context_push_string (CpgParserContext *context)
 	return s;
 }
 
+/**
+ * cpg_parser_context_peek_string:
+ * @context: A #CpgParserContext
+ *
+ * Description.
+ *
+ * Returns: (transfer none): A #CpgEmbeddedString
+ *
+ **/
 CpgEmbeddedString *
 cpg_parser_context_peek_string (CpgParserContext *context)
 {
@@ -4102,6 +4175,15 @@ cpg_parser_context_peek_string (CpgParserContext *context)
 	return context->priv->strings->data;
 }
 
+/**
+ * cpg_parser_context_pop_string:
+ * @context: A #CpgParserContext
+ *
+ * Description.
+ *
+ * Returns: (transfer full): A #CpgEmbeddedString
+ *
+ **/
 CpgEmbeddedString *
 cpg_parser_context_pop_string (CpgParserContext *context)
 {
@@ -4162,6 +4244,15 @@ cpg_parser_context_pop_equation_depth (CpgParserContext *context)
 	return FALSE;
 }
 
+/**
+ * cpg_parser_context_get_embedded:
+ * @context: A #CpgParserContext
+ *
+ * Get the embedded context.
+ *
+ * Returns: (transfer none): A #CpgEmbeddedContext
+ *
+ **/
 CpgEmbeddedContext *
 cpg_parser_context_get_embedded (CpgParserContext *context)
 {
@@ -4635,6 +4726,15 @@ cpg_parser_context_set_input_file_setting (CpgParserContext  *context,
 	}
 }
 
+/**
+ * cpg_parser_context_current_selections:
+ * @context: A #CpgParserContext
+ *
+ * Description.
+ *
+ * Returns: (element-type CpgSelection) (transfer none): A #GSList
+ *
+ **/
 GSList const *
 cpg_parser_context_current_selections (CpgParserContext *context)
 {
@@ -4648,6 +4748,15 @@ cpg_parser_context_current_selections (CpgParserContext *context)
 	return CURRENT_CONTEXT (context)->objects;
 }
 
+/**
+ * cpg_parser_context_previous_selections:
+ * @context: A #CpgParserContext
+ *
+ * Description.
+ *
+ * Returns: (element-type CpgSelection) (transfer none): A #GSList
+ *
+ **/
 GSList const *
 cpg_parser_context_previous_selections (CpgParserContext *context)
 {
@@ -4696,6 +4805,15 @@ cpg_parser_context_get_error_location (CpgParserContext *context,
 	}
 }
 
+/**
+ * cpg_parser_context_get_error_lines:
+ * @context: A #CpgParserContext
+ *
+ * Get the lines of text on which the error occurred.
+ *
+ * Returns: (transfer full): The lines on which the error occurred
+ *
+ **/
 gchar *
 cpg_parser_context_get_error_lines (CpgParserContext *context)
 {
