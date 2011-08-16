@@ -250,10 +250,7 @@ eof
 include
 	: attributes
 	  T_KEY_INCLUDE
-	  value_as_string	{ cpg_parser_context_push_input_from_path (context,
-				                                           $3,
-				                                           $1); errb
-				}
+	  value_as_string	{ cpg_parser_context_include (context, $3, $1); errb }
 	;
 
 parse

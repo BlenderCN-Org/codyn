@@ -247,7 +247,7 @@ void                   cpg_parser_context_set_integrator       (CpgParserContext
                                                                 CpgEmbeddedString          *value);
 
 void                   cpg_parser_context_push_input_from_path (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *path,
+                                                                CpgEmbeddedString          *filename,
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_push_input_from_string (CpgParserContext         *context,
@@ -257,6 +257,10 @@ void                   cpg_parser_context_push_input_from_string (CpgParserConte
 void                   cpg_parser_context_push_input           (CpgParserContext           *context,
                                                                 GFile                      *file,
                                                                 GInputStream               *stream,
+                                                                GSList                     *attributes);
+
+void                   cpg_parser_context_include              (CpgParserContext           *context,
+                                                                CpgEmbeddedString          *filename,
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_pop_input            (CpgParserContext           *context);
@@ -336,6 +340,7 @@ void                   cpg_parser_context_remove_record         (CpgParserContex
 gboolean               cpg_parser_context_get_first_eof         (CpgParserContext  *context);
 void                   cpg_parser_context_set_first_eof         (CpgParserContext  *context,
                                                                  gboolean           firsteof);
+
 
 G_END_DECLS
 

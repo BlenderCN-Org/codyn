@@ -3516,6 +3516,31 @@ cpg_parser_context_push_input (CpgParserContext *context,
 }
 
 void
+cpg_parser_context_include (CpgParserContext  *context,
+                            CpgEmbeddedString *filename,
+                            GSList            *attributes)
+{
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (filename != NULL);
+
+	if (context->priv->in_when_applied)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	if (!ctx || !ctx->objects)
+	{
+		return;
+	}
+
+	cpg_parser_context_push_input_from_path (context, filename, attributes);
+}
+
+void
 cpg_parser_context_push_input_from_path (CpgParserContext  *context,
                                          CpgEmbeddedString *filename,
                                          GSList            *attributes)
