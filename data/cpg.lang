@@ -175,6 +175,8 @@
             <keyword>settings</keyword>
             <keyword>parse</keyword>
             <keyword>debug-print</keyword>
+            <keyword>apply</keyword>
+            <keyword>unapply</keyword>
         </context>
 
         <context id="selector">
