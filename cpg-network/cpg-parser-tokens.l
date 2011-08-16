@@ -8,6 +8,7 @@ void cpg_parser_set_column (int column_no, yyscan_t yyscanner);
 int cpg_parser_get_column (yyscan_t yyscanner);
 
 static int yyccolumn = 1;
+static int firsteof = 1;
 
 static void
 advance_column (CpgParserContext *context, gint offset)
@@ -116,20 +117,29 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <comment>[^\n]*$		yy_pop_state (yyscanner);
 
 <<EOF>>				{
-					yypop_buffer_state (yyscanner);
-					cpg_parser_context_pop_input (yyextra);
-
-					if (!YY_CURRENT_BUFFER)
+					if (firsteof)
 					{
-						yyterminate ();
+						firsteof = 0;
+						return T_EOF;
 					}
 					else
 					{
-						cpg_parser_context_get_column (yyextra,
-						                               NULL,
-						                               &yyccolumn);
+						yypop_buffer_state (yyscanner);
 
-						++yyccolumn;
+						if (!YY_CURRENT_BUFFER)
+						{
+							yyterminate ();
+						}
+						else
+						{
+							cpg_parser_context_get_column (yyextra,
+								                       NULL,
+								                       &yyccolumn);
+
+							++yyccolumn;
+						}
+
+						firsteof = 1;
 					}
 				}
 

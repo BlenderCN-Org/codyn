@@ -54,6 +54,8 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %token <id> T_IDENTIFIER
 %token <id> T_STRING
 
+%token T_EOF
+
 %token T_STRING_BEGIN
 %token T_STRING_END
 
@@ -233,10 +235,15 @@ document_item
 	| delete
 	| delete_context
 	| common_scopes
+	| eof
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  document_contents
 	  '}'				{ cpg_parser_context_pop (context); }
+	;
+
+eof
+	: T_EOF				{ cpg_parser_context_pop_input (context); }
 	;
 
 include
