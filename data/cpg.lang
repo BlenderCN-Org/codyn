@@ -131,7 +131,7 @@
             <keyword>properties</keyword>
             <keyword>actions</keyword>
             <keyword>type</keyword>
-            <keyword>isempty</keyword>
+            <keyword>is-empty</keyword>
             <keyword>remove</keyword>
             <keyword>if</keyword>
             <keyword>from-set</keyword>
@@ -140,6 +140,7 @@
             <keyword>has-template</keyword>
             <keyword>has-tag</keyword>
             <keyword>has-flag</keyword>
+            <keyword>reverse</keyword>
         </context>
 
         <context id="keywords" style-ref="keyword">
