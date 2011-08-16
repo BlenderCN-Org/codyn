@@ -3783,9 +3783,8 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 
 		embedded_string_expand (expanded, annotation, context);
 
-		g_string_append (context->priv->annotation, expanded);
-
 		g_string_append_c (context->priv->annotation, '\n');
+		g_string_append (context->priv->annotation, expanded);
 	}
 
 	context->priv->previous_annotation = CURRENT_INPUT (context)->lineno;
