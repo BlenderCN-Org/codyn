@@ -142,15 +142,16 @@ struct _CpgParserContextPrivate
 	GSList *equations;
 
 	GError *error;
-	gboolean error_occurred;
 	CpgStatement *error_statement;
 
 	CpgLayout *layout;
 
-	gboolean in_when_applied;
-	gboolean when_applied;
 	GSList *when_applied_attributes;
 	GString *when_applied_text;
+
+	guint in_when_applied : 1;
+	guint when_applied : 1;
+	guint error_occurred : 1;
 };
 
 enum
