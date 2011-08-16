@@ -202,6 +202,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"has-flag"	return T_KEY_HAS_FLAG;
 <INITIAL,onlyselector>"has-template"	return T_KEY_HAS_TEMPLATE;
 <INITIAL,onlyselector>"has-tag"		return T_KEY_HAS_TAG;
+<INITIAL,onlyselector>"reverse"		return T_KEY_REVERSE;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;

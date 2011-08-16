@@ -138,7 +138,8 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"type",
 	"has-flag",
 	"has-template",
-	"has-tag"
+	"has-tag",
+	"reverse"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1085,7 +1086,7 @@ filter_list_reverse (GSList  *objs,
 }
 
 static GSList *
-copy_selections (GSList *selections)
+copy_selections_reverse (GSList *selections)
 {
 	GSList *ret = NULL;
 
@@ -1095,7 +1096,14 @@ copy_selections (GSList *selections)
 		selections = g_slist_next (selections);
 	}
 
-	return g_slist_reverse (ret);
+	return ret;
+}
+
+
+static GSList *
+copy_selections (GSList *selections)
+{
+	return g_slist_reverse (copy_selections_reverse (selections));
 }
 
 static gpointer
@@ -2295,6 +2303,9 @@ selector_select_pseudo (CpgSelector        *self,
 				                                    &nth,
 				                                    0));
 		}
+		break;
+		case CPG_SELECTOR_PSEUDO_TYPE_REVERSE:
+			return copy_selections_reverse (parent);
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_STATES:
 			return g_slist_reverse (filter_list_reverse (parent,
