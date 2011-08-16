@@ -2584,7 +2584,7 @@ push_scope (CpgParserContext *context,
 	objects = each_selections (context,
 	                           CURRENT_CONTEXT (context)->objects,
 	                           attributes,
-	                           CPG_SELECTOR_TYPE_OBJECT,
+	                           CPG_SELECTOR_TYPE_ANY,
 	                           NULL,
 	                           NULL,
 	                           copy_defines);
