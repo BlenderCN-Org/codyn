@@ -175,7 +175,6 @@
             <keyword>settings</keyword>
             <keyword>parse</keyword>
             <keyword>debug-print</keyword>
-            <keyword>all</keyword>
         </context>
 
         <context id="selector">
