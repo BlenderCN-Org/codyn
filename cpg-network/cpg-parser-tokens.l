@@ -38,6 +38,7 @@ advance_column (CpgParserContext *context, gint offset)
 	cpg_parser_context_set_line (yyextra, yytext + 1, yylineno);		\
 	cpg_parser_context_set_column (yyextra, 0, 0);				\
 										\
+	cpg_parser_context_remove_record (yyextra, yyleng - 1, 0);		\
 	yyless (1);
 
 #define ECHO
@@ -90,7 +91,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					cpg_parser_context_set_line (yyextra, yytext, yylineno);
 					cpg_parser_context_set_column (yyextra, 0, 0);
 
-					yyless (0);
+					cpg_parser_context_remove_record (yyextra, yyleng, 0);
+
 					yy_pop_state (yyscanner);
 
 					if (cpg_parser_context_get_start_token (yyextra) == T_START_SELECTOR)
@@ -179,6 +181,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "debug-print"			return T_KEY_DEBUG_PRINT;
 "apply"				return T_KEY_APPLY;
 "unapply"			return T_KEY_UNAPPLY;
+"when-applied"			return T_KEY_WHEN_APPLIED;
+"when-unapplied"		return T_KEY_WHEN_UNAPPLIED;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;
@@ -269,6 +273,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					yy_pop_state (yyscanner);
 
 					advance_column (yyextra, -yyleng);
+
+					cpg_parser_context_remove_record (yyextra, yyleng, 0);
 					yyless(0);
 
 					return T_INDIRECTION_END;

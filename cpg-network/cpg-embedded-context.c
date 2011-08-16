@@ -218,6 +218,48 @@ cpg_embedded_context_new ()
 	return g_object_new (CPG_TYPE_EMBEDDED_CONTEXT, NULL);
 }
 
+/**
+ * cpg_embedded_context_copy_top:
+ * @context: A #CpgEmbeddedContext
+ *
+ * Copy the top of the stack in the embedded context into a new
+ * embedded context.
+ *
+ * Returns: (transfer full): A #CpgEmbeddedContext
+ *
+ **/
+CpgEmbeddedContext *
+cpg_embedded_context_copy_top (CpgEmbeddedContext *context)
+{
+	CpgEmbeddedContext *ret;
+	Context *ctx;
+	Context *cp;
+
+	ret = cpg_embedded_context_new ();
+
+	ctx = CURRENT_CONTEXT (context);
+
+	if (!ctx)
+	{
+		return ret;
+	}
+
+	cp = context_copy (ctx, TRUE);
+
+	/* Make copy now */
+	copy_defines_on_write (cp);
+	copy_expansions_on_write (cp);
+
+	/* Remove initial context */
+	cpg_embedded_context_restore (ret);
+
+	/* Add new top context */
+	ret->priv->contexts = g_slist_prepend (ret->priv->contexts,
+	                                       cp);
+
+	return ret;
+}
+
 void
 cpg_embedded_context_save (CpgEmbeddedContext *context)
 {

@@ -516,6 +516,8 @@ cpg_network_init (CpgNetwork *network)
 	network->priv = CPG_NETWORK_GET_PRIVATE (network);
 
 	network->priv->template_group = cpg_group_new ("templates", NULL);
+	_cpg_object_set_parent (CPG_OBJECT (network->priv->template_group),
+	                        CPG_OBJECT (network));
 
 	g_signal_connect_swapped (network->priv->template_group,
 	                          "tainted",
@@ -806,7 +808,7 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		ctx = cpg_parser_context_new (network);
 		cpg_parser_context_push_input (ctx, NULL, wrapped, NULL);
 
-		ret = cpg_parser_context_parse (ctx, error);
+		ret = cpg_parser_context_parse (ctx, TRUE, error);
 
 		g_object_unref (ctx);
 	}
@@ -883,7 +885,7 @@ cpg_network_load_from_file (CpgNetwork  *network,
 		ctx = cpg_parser_context_new (network);
 		cpg_parser_context_push_input (ctx, file, stream, NULL);
 
-		ret = cpg_parser_context_parse (ctx, error);
+		ret = cpg_parser_context_parse (ctx, TRUE, error);
 
 		g_object_unref (ctx);
 	}

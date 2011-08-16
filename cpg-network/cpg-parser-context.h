@@ -77,7 +77,10 @@ struct _CpgParserContextClass
 GType                  cpg_parser_context_get_type             (void) G_GNUC_CONST;
 
 CpgParserContext      *cpg_parser_context_new                  (CpgNetwork                 *network);
+
 CpgEmbeddedContext    *cpg_parser_context_get_embedded         (CpgParserContext           *context);
+void                   cpg_parser_context_set_embedded         (CpgParserContext           *context,
+                                                                CpgEmbeddedContext         *embedded);
 
 GFile                 *cpg_parser_context_get_file             (CpgParserContext           *context);
 
@@ -121,6 +124,7 @@ void                   cpg_parser_context_set_token            (CpgParserContext
 gchar const           *cpg_parser_context_get_token            (CpgParserContext           *context);
 
 gboolean               cpg_parser_context_parse                (CpgParserContext           *context,
+                                                                gboolean                    push_network,
                                                                 GError                    **error);
 
 void                   cpg_parser_context_begin_selector_item  (CpgParserContext           *context);
@@ -151,7 +155,8 @@ void                   cpg_parser_context_add_polynomial       (CpgParserContext
 
 void                   cpg_parser_context_add_interface        (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
-                                                                CpgSelector                *target);
+                                                                CpgSelector                *target,
+                                                                GSList                     *attributes);
 
 void                   cpg_parser_context_import               (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
@@ -317,6 +322,16 @@ void                   cpg_parser_context_apply_template        (CpgParserContex
 void                   cpg_parser_context_unapply_template      (CpgParserContext  *context,
                                                                  CpgSelector       *templates,
                                                                  CpgSelector       *targets);
+
+void                   cpg_parser_context_set_when_applied      (CpgParserContext  *context,
+                                                                 gboolean           apply,
+                                                                 GSList            *attributes);
+
+void                   cpg_parser_context_unset_when_applied    (CpgParserContext  *context);
+
+void                   cpg_parser_context_remove_record         (CpgParserContext  *context,
+                                                                 gint               len,
+                                                                 gint               offset);
 
 G_END_DECLS
 

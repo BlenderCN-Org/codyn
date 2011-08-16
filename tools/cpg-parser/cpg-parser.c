@@ -169,7 +169,7 @@ parse_network (gchar const *args[], gint argc)
 		g_object_unref (stream);
 	}
 
-	if (cpg_parser_context_parse (context, &error))
+	if (cpg_parser_context_parse (context, TRUE, &error))
 	{
 		CpgNetworkSerializer *serializer;
 

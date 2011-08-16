@@ -561,7 +561,7 @@ cpg_selector_parse (CpgObject    *root,
 	cpg_parser_context_push_input (ctx, NULL, stream, NULL);
 	g_object_unref (stream);
 
-	if (!cpg_parser_context_parse (ctx, error))
+	if (!cpg_parser_context_parse (ctx, TRUE, error))
 	{
 		return NULL;
 	}
@@ -2216,25 +2216,63 @@ selector_pseudo_has_flag (CpgSelector        *self,
 	return ret;
 }
 
+static CpgObject *
+find_template_group (CpgSelector *selector,
+                     gpointer     obj)
+{
+	if (!selector->priv->root || !CPG_IS_NETWORK (selector->priv->root))
+	{
+		CpgObject *p;
+
+		if (!obj)
+		{
+			return NULL;
+		}
+
+		p = top_parent (obj);
+
+		if (CPG_IS_NETWORK (p))
+		{
+			return CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (p)));
+		}
+		else
+		{
+			return NULL;
+		}
+	}
+	else
+	{
+		return CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (selector->priv->root)));
+	}
+}
+
 static gboolean
 is_template (CpgSelector *selector,
              gpointer     obj)
 {
-	CpgObject *parent;
+	gpointer parent;
+	CpgObject *template_group;
 
-	if (!selector->priv->root || !CPG_IS_NETWORK (selector->priv->root))
+	template_group = find_template_group (selector, obj);
+
+	if (!template_group)
 	{
 		return FALSE;
 	}
 
-	parent = top_parent (obj);
+	parent = pseudo_parent (obj);
 
-	if (!parent)
+	while (parent)
 	{
-		return FALSE;
+		if (parent == template_group)
+		{
+			return TRUE;
+		}
+
+		parent = pseudo_parent (parent);
 	}
 
-	return (CPG_GROUP (parent) == cpg_network_get_template_group (CPG_NETWORK (selector->priv->root)));
+	return FALSE;
 }
 
 static GSList *
@@ -2341,12 +2379,22 @@ selector_select_pseudo (CpgSelector        *self,
 			}
 		break;
 		case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT:
-			if (!parent && self->priv->root && CPG_IS_NETWORK (self->priv->root))
+		{
+			CpgObject *tg;
+
+			tg = find_template_group (self, parent ? cpg_selection_get_object (parent->data) : NULL);
+
+			if (tg)
 			{
 				return g_slist_prepend (NULL,
 				                        expand_obj (self->priv->self,
-				                                    cpg_network_get_template_group (CPG_NETWORK (self->priv->root))));
+				                                    tg));
 			}
+			else
+			{
+				return NULL;
+			}
+		}
 		break;
 		default:
 		break;
@@ -2395,39 +2443,6 @@ selector_select_pseudo (CpgSelector        *self,
 				{
 					return g_slist_prepend (ret,
 					                        expand_obj (sel, top));
-				}
-			}
-			break;
-			case CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT:
-			{
-				CpgGroup *template_group;
-
-				template_group = NULL;
-
-				if (self->priv->root && CPG_IS_NETWORK (self->priv->root))
-				{
-					template_group = cpg_network_get_template_group (CPG_NETWORK (self->priv->root));
-				}
-				else
-				{
-					CpgObject *top;
-
-					top = top_parent (obj);
-
-					if (top && CPG_IS_NETWORK (top))
-					{
-						template_group = cpg_network_get_template_group (CPG_NETWORK (top));
-					}
-				}
-
-				if (template_group)
-				{
-					return g_slist_prepend (ret,
-					                        expand_obj (sel, template_group));
-				}
-				else
-				{
-					return NULL;
 				}
 			}
 			break;
@@ -2568,6 +2583,7 @@ selector_select_pseudo (CpgSelector        *self,
 					ret = g_slist_prepend (ret,
 					                       cpg_selection_copy_defines (sel, FALSE));
 				}
+			break;
 			default:
 				g_assert_not_reached ();
 			break;

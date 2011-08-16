@@ -63,7 +63,8 @@ COMMON_SOURCES = 		\
 	cpg-attribute.c \
 	cpg-layoutable.c \
 	cpg-statement.c \
-	cpg-taggable.c
+	cpg-taggable.c \
+	cpg-when-applied.c
 
 BUILT_SOURCES = \
 	cpg-enum-types.c \
@@ -129,7 +130,8 @@ INST_H_FILES = \
 	cpg-attribute.h \
 	cpg-layoutable.h \
 	cpg-statement.h \
-	cpg-taggable.h
+	cpg-taggable.h \
+	cpg-when-applied.h
 
 lib_LTLIBRARIES = libcpg-network-2.0.la
 

@@ -57,6 +57,8 @@ GType               cpg_embedded_context_get_type       (void) G_GNUC_CONST;
 
 CpgEmbeddedContext *cpg_embedded_context_new            (void);
 
+CpgEmbeddedContext *cpg_embedded_context_copy_top       (CpgEmbeddedContext *context);
+
 void                cpg_embedded_context_add_define         (CpgEmbeddedContext *context,
                                                              gchar const        *name,
                                                              gchar const        *value);

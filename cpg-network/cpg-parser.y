@@ -42,7 +42,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_WHEN_APPLIED T_KEY_WHEN_UNAPPLIED
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -80,6 +80,8 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <string> selector_pseudo_hasflag_arg
 %type <list> selector_pseudo_hasflag_args
 %type <list> selector_pseudo_hasflag_args_rev
+
+%type <num> when_apply_or_unapply
 
 %type <string> identifier_or_string_or_nothing
 
@@ -281,6 +283,11 @@ common_scopes
 	| actions
 	;
 
+when_apply_or_unapply
+	: T_KEY_WHEN_APPLIED		{ $$ = TRUE; }
+	| T_KEY_WHEN_UNAPPLIED		{ $$ = FALSE; }
+	;
+
 action_apply
 	: T_KEY_APPLY selector T_KEY_TO selector
 					{ cpg_parser_context_apply_template (context,
@@ -294,7 +301,7 @@ action_unapply
 					{ cpg_parser_context_unapply_template (context,
 					                                       $2, $4); }
 	| T_KEY_UNAPPLY selector	{ cpg_parser_context_unapply_template (context,
-	                                                                       $2, NULL); }
+					                                       $2, NULL); }
 	;
 
 actions
@@ -784,6 +791,11 @@ state_item
 	| common_scopes
 	| layout
 	| attributes
+	  when_apply_or_unapply
+	  '{'				{ cpg_parser_context_set_when_applied (context, $2, $1); }
+	  state_contents
+	  '}'				{ cpg_parser_context_unset_when_applied (context); }
+	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  state_contents
 	  '}'				{ cpg_parser_context_pop (context); }
@@ -800,6 +812,11 @@ group_item
 	| link
 	| interface
 	| group
+	| attributes
+	  when_apply_or_unapply
+	  '{'				{ cpg_parser_context_set_when_applied (context, $2, $1); }
+	  group_contents
+	  '}'				{ cpg_parser_context_unset_when_applied (context); }
 	| common_scopes
 	| layout
 	| functions
@@ -828,7 +845,10 @@ interface_contents
 	;
 
 interface_property
-	: identifier_or_string '=' selector	{ cpg_parser_context_add_interface (context, $1, $3); errb }
+	: attributes
+	  identifier_or_string
+	  '='
+	  selector	{ cpg_parser_context_add_interface (context, $2, $4, $1); errb }
 	;
 
 interface_item
@@ -844,6 +864,11 @@ link_item
 	: action
 	| property
 	| common_scopes
+	| attributes
+	  when_apply_or_unapply
+	  '{'				{ cpg_parser_context_set_when_applied (context, $2, $1); }
+	  link_contents
+	  '}'				{ cpg_parser_context_unset_when_applied (context); }
 	| layout
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }

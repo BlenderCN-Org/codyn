@@ -84,6 +84,8 @@ struct _CpgObjectPrivate
 	gchar *annotation;
 	GHashTable *tags;
 
+	GSList *when_applied;
+
 	gboolean compiled : 1;
 	gboolean auto_imported : 1;
 	gboolean has_location : 1;
@@ -248,6 +250,9 @@ cpg_object_finalize (GObject *object)
 
 	g_hash_table_destroy (obj->priv->property_hash);
 	g_hash_table_destroy (obj->priv->tags);
+
+	g_slist_foreach (obj->priv->when_applied, (GFunc)g_object_unref, NULL);
+	g_slist_free (obj->priv->when_applied);
 
 	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
@@ -2113,6 +2118,30 @@ cpg_object_is_compiled (CpgObject *object)
 	return object->priv->compiled;
 }
 
+static gboolean
+run_when_applied (CpgObject  *object,
+                  CpgObject  *templ,
+                  GError    **error)
+{
+	GSList *applied;
+
+	applied = templ->priv->when_applied;
+
+	while (applied)
+	{
+		if (!cpg_when_applied_run (applied->data,
+		                           object,
+		                           error))
+		{
+			return FALSE;
+		}
+
+		applied = g_slist_next (applied);
+	}
+
+	return TRUE;
+}
+
 /**
  * cpg_object_apply_template:
  * @object: A #CpgObject
@@ -2131,6 +2160,8 @@ cpg_object_apply_template (CpgObject  *object,
                            CpgObject  *templ,
                            GError    **error)
 {
+	gboolean ret;
+
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (templ), FALSE);
 	g_return_val_if_fail (g_type_is_a (G_TYPE_FROM_INSTANCE (object),
@@ -2148,9 +2179,16 @@ cpg_object_apply_template (CpgObject  *object,
 		return FALSE;
 	}
 
-	return CPG_OBJECT_GET_CLASS (object)->apply_template (object,
-	                                                      templ,
-	                                                      error);
+	ret = CPG_OBJECT_GET_CLASS (object)->apply_template (object,
+	                                                     templ,
+	                                                     error);
+
+	if (ret)
+	{
+		ret = run_when_applied (object, templ, error);
+	}
+
+	return ret;
 }
 
 /**
@@ -2347,13 +2385,19 @@ cpg_object_get_full_id (CpgObject *object)
 
 	parent = cpg_object_get_parent (object);
 
-	if (!parent)
+	if (!parent ||
+	    (CPG_IS_NETWORK (parent) && object == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent)))))
 	{
 		return cpg_selector_escape_identifier (object->priv->id);
 	}
 
 	while (parent->priv->parent)
 	{
+		if ((CPG_IS_NETWORK (parent->priv->parent) && parent == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent->priv->parent)))))
+		{
+			break;
+		}
+
 		parent = parent->priv->parent;
 	}
 
@@ -2369,13 +2413,19 @@ cpg_object_get_full_id_for_display (CpgObject *object)
 
 	parent = cpg_object_get_parent (object);
 
-	if (!parent)
+	if (!parent ||
+	    (CPG_IS_NETWORK (parent) && object == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent)))))
 	{
 		return g_strdup (object->priv->id);
 	}
 
 	while (parent->priv->parent)
 	{
+		if ((CPG_IS_NETWORK (parent->priv->parent) && parent == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent->priv->parent)))))
+		{
+			break;
+		}
+
 		parent = parent->priv->parent;
 	}
 
@@ -2490,4 +2540,60 @@ cpg_object_get_relative_id_for_display (CpgObject *object,
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
 
 	return get_relative_id (object, parent, TRUE);
+}
+
+void
+cpg_object_add_when_applied (CpgObject      *object,
+                             CpgWhenApplied *applied)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (CPG_IS_WHEN_APPLIED (applied));
+
+	if (g_slist_find (object->priv->when_applied, applied))
+	{
+		return;
+	}
+
+	object->priv->when_applied =
+		g_slist_append (object->priv->when_applied,
+		                g_object_ref (applied));
+}
+
+void
+cpg_object_remove_when_applied (CpgObject      *object,
+                                CpgWhenApplied *applied)
+{
+	GSList *item;
+
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (CPG_IS_WHEN_APPLIED (applied));
+
+	item = g_slist_find (object->priv->when_applied, applied);
+
+	if (item)
+	{
+		g_object_unref (item->data);
+
+		object->priv->when_applied =
+			g_slist_delete_link (object->priv->when_applied,
+			                     item);
+	}
+}
+
+/**
+ * cpg_object_get_when_applied:
+ * @object: A #CpgObject
+ *
+ * Get the list of #CpgWhenApplied which are run when the object is applied
+ * as a template.
+ *
+ * Returns: (element-type CpgWhenApplied): A #GSList
+ *
+ **/
+GSList const *
+cpg_object_get_when_applied (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	return object->priv->when_applied;
 }

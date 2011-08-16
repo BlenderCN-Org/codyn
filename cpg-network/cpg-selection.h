@@ -24,7 +24,6 @@
 #define __CPG_SELECTION_H__
 
 #include <glib-object.h>
-#include <cpg-network/cpg-object.h>
 
 G_BEGIN_DECLS
 

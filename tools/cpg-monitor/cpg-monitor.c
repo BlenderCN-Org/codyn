@@ -224,7 +224,9 @@ find_matching_properties (CpgNetwork  *network,
                           gchar const *expression)
 {
 	GError *err = NULL;
-	CpgSelector *sel = cpg_selector_parse (expression, &err);
+	CpgSelector *sel;
+
+	sel = cpg_selector_parse (CPG_OBJECT (network), expression, &err);
 
 	if (err)
 	{

@@ -28,6 +28,7 @@
 #include <cpg-network/cpg-compile-context.h>
 #include <cpg-network/cpg-utils.h>
 #include <cpg-network/cpg-usable.h>
+#include <cpg-network/cpg-when-applied.h>
 
 G_BEGIN_DECLS
 
@@ -266,6 +267,14 @@ gchar            *cpg_object_get_relative_id_for_display (CpgObject *object,
                                                           CpgObject *parent);
 
 const GSList     *cpg_object_get_links      (CpgObject *object);
+
+void              cpg_object_add_when_applied (CpgObject      *object,
+                                               CpgWhenApplied *applied);
+
+void              cpg_object_remove_when_applied (CpgObject      *object,
+                                               CpgWhenApplied *applied);
+
+const GSList     *cpg_object_get_when_applied (CpgObject      *object);
 
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,
