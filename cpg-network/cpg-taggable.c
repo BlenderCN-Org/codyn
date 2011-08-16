@@ -68,7 +68,8 @@ cpg_taggable_has_tag (CpgTaggable *taggable,
 
 void
 cpg_taggable_add_tag (CpgTaggable *taggable,
-                      gchar const *tag)
+                      gchar const *tag,
+                      gchar const *value)
 {
 	GHashTable *table;
 
@@ -76,7 +77,7 @@ cpg_taggable_add_tag (CpgTaggable *taggable,
 
 	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
 
-	g_hash_table_insert (table, g_strdup (tag), GINT_TO_POINTER (1));
+	g_hash_table_insert (table, g_strdup (tag), g_strdup (value));
 }
 
 void
@@ -90,4 +91,41 @@ cpg_taggable_remove_tag (CpgTaggable *taggable,
 	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
 
 	g_hash_table_remove (table, tag);
+}
+
+GHashTable *
+cpg_taggable_create_table ()
+{
+	return g_hash_table_new_full (g_str_hash,
+	                              g_str_equal,
+	                              (GDestroyNotify)g_free,
+	                              (GDestroyNotify)g_free);
+}
+
+gchar const *
+cpg_taggable_get_tag (CpgTaggable  *taggable,
+                      gchar const  *tag)
+
+{
+	GHashTable *table;
+
+	g_return_val_if_fail (CPG_IS_TAGGABLE (taggable), NULL);
+
+	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
+
+	return g_hash_table_lookup (table, tag);
+}
+
+gboolean
+cpg_taggable_try_get_tag  (CpgTaggable  *taggable,
+                           gchar const  *tag,
+                           gchar const **value)
+{
+	GHashTable *table;
+
+	g_return_val_if_fail (CPG_IS_TAGGABLE (taggable), FALSE);
+
+	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
+
+	return g_hash_table_lookup_extended (table, tag, NULL, (gpointer *)value);
 }

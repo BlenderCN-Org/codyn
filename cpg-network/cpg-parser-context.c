@@ -602,7 +602,8 @@ set_taggable (CpgParserContext *context,
 			for (item = ex; item; item = g_slist_next (item))
 			{
 				cpg_taggable_add_tag (CPG_TAGGABLE (obj),
-				                      cpg_expansion_get (item->data, 0));
+				                      cpg_expansion_get (item->data, 0),
+				                      NULL);
 			}
 
 			g_slist_foreach (ex, (GFunc)g_object_unref, NULL);

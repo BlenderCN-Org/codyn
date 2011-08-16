@@ -820,8 +820,8 @@ name_from_selection (CpgSelection *selection)
 	gchar const *ret;
 	gpointer obj;
 
-	ret = g_object_get_data (G_OBJECT (selection),
-	                         CPG_SELECTOR_KEY_OVERRIDE_NAME);
+	ret = cpg_taggable_get_tag (CPG_TAGGABLE (selection),
+	                            CPG_SELECTOR_KEY_OVERRIDE_NAME);
 
 	if (ret)
 	{
@@ -2029,10 +2029,9 @@ children_reverse (CpgSelection *selection,
 			s = expand_obj (selection,
 			                cpg_property_interface_lookup (iface, *ptr));
 
-			g_object_set_data_full (G_OBJECT (s),
-			                        CPG_SELECTOR_KEY_OVERRIDE_NAME,
-			                        g_strdup (*ptr),
-			                        (GDestroyNotify)g_free);
+			cpg_taggable_add_tag (CPG_TAGGABLE (s),
+			                      CPG_SELECTOR_KEY_OVERRIDE_NAME,
+			                      *ptr);
 
 			ret = g_slist_prepend (ret, s);
 

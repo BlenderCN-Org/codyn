@@ -434,10 +434,7 @@ cpg_link_action_init (CpgLinkAction *self)
 {
 	self->priv = CPG_LINK_ACTION_GET_PRIVATE (self);
 
-	self->priv->tags = g_hash_table_new_full (g_str_hash,
-	                                          g_str_equal,
-	                                          (GDestroyNotify)g_free,
-	                                          NULL);
+	self->priv->tags = cpg_taggable_create_table ();
 }
 
 /**

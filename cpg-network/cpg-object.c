@@ -1546,10 +1546,7 @@ cpg_object_init (CpgObject *self)
 	                                                   (GDestroyNotify)g_free,
 	                                                   NULL);
 
-	self->priv->tags = g_hash_table_new_full (g_str_hash,
-	                                          g_str_equal,
-	                                          (GDestroyNotify)g_free,
-	                                          NULL);
+	self->priv->tags = cpg_taggable_create_table ();
 }
 
 /**
