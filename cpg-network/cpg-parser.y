@@ -215,7 +215,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 choose_parser
 	:
 	| T_START_DOCUMENT document_contents
-	| T_START_SELECTOR selector_parse
+	| T_START_SELECTOR selector_parse T_EOF
 	;
 
 document_contents
