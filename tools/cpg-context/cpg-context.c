@@ -831,7 +831,7 @@ parse_network (gchar const *args[], gint argc)
 
 		info.parser = context;
 
-		if (cpg_parser_context_parse (context, &error))
+		if (cpg_parser_context_parse (context, TRUE, &error))
 		{
 			if (context_line != -1 && context_column != -1)
 			{
