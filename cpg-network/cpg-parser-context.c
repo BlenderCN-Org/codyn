@@ -113,6 +113,7 @@ typedef struct
 	gchar *token;
 
 	GHashTable *lines;
+	gboolean firsteof;
 } InputItem;
 
 typedef struct
@@ -234,6 +235,8 @@ input_item_new (GFile         *file,
 	                                    g_direct_equal,
 	                                    NULL,
 	                                    (GDestroyNotify)g_free);
+
+	ret->firsteof = TRUE;
 
 	return ret;
 }
@@ -5108,3 +5111,34 @@ cpg_parser_context_remove_record (CpgParserContext *context,
 	                context->priv->when_applied_text->len - len - offset,
 	                len);
 }
+
+gboolean
+cpg_parser_context_get_first_eof (CpgParserContext *context)
+{
+	InputItem *inp;
+
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), FALSE);
+
+	inp = CURRENT_INPUT (context);
+
+	if (!inp)
+	{
+		return FALSE;
+	}
+
+	return inp->firsteof;
+}
+
+void
+cpg_parser_context_set_first_eof (CpgParserContext *context,
+                                  gboolean          firsteof)
+{
+	InputItem *inp;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	inp = CURRENT_INPUT (context);
+
+	inp->firsteof = firsteof;
+}
+

@@ -245,7 +245,7 @@ document_item
 	;
 
 eof
-	: T_EOF				{ cpg_parser_context_pop_input (context); }
+	: T_EOF
 	;
 
 include

@@ -333,6 +333,10 @@ void                   cpg_parser_context_remove_record         (CpgParserContex
                                                                  gint               len,
                                                                  gint               offset);
 
+gboolean               cpg_parser_context_get_first_eof         (CpgParserContext  *context);
+void                   cpg_parser_context_set_first_eof         (CpgParserContext  *context,
+                                                                 gboolean           firsteof);
+
 G_END_DECLS
 
 #endif /* __CPG_PARSER_CONTEXT_H__ */

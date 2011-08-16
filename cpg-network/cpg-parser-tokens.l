@@ -7,14 +7,13 @@ static gchar *unquote_string (gchar const *s, gint len, gchar const *escape);
 void cpg_parser_set_column (int column_no, yyscan_t yyscanner);
 int cpg_parser_get_column (yyscan_t yyscanner);
 
-static int yyccolumn = 1;
-static int firsteof = 1;
-
 static void
 advance_column (CpgParserContext *context, gint offset)
 {
-	cpg_parser_context_set_column (context, yyccolumn, yyccolumn + offset - 1);
-	yyccolumn += offset;
+	gint yyccolumn;
+
+	cpg_parser_context_get_column (context, NULL, &yyccolumn);
+	cpg_parser_context_set_column (context, yyccolumn + 1, yyccolumn + offset);
 }
 
 #define YY_EXTRA_TYPE CpgParserContext *
@@ -33,8 +32,6 @@ advance_column (CpgParserContext *context, gint offset)
 	}
 
 #define HANDLE_NEWLINE								\
-	yyccolumn = 1;								\
-										\
 	cpg_parser_context_set_line (yyextra, yytext + 1, yylineno);		\
 	cpg_parser_context_set_column (yyextra, 0, 0);				\
 										\
@@ -86,8 +83,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %}
 
 <firstline>.*|\n			{
-					yyccolumn = 1;
-
 					cpg_parser_context_set_line (yyextra, yytext, yylineno);
 					cpg_parser_context_set_column (yyextra, 0, 0);
 
@@ -120,29 +115,20 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <comment>[^\n]*$		yy_pop_state (yyscanner);
 
 <<EOF>>				{
-					if (firsteof)
+					if (cpg_parser_context_get_first_eof (yyextra))
 					{
-						firsteof = 0;
+						cpg_parser_context_set_first_eof (yyextra, FALSE);
 						return T_EOF;
 					}
 					else
 					{
+						cpg_parser_context_pop_input (yyextra);
 						yypop_buffer_state (yyscanner);
 
 						if (!YY_CURRENT_BUFFER)
 						{
 							yyterminate ();
 						}
-						else
-						{
-							cpg_parser_context_get_column (yyextra,
-								                       NULL,
-								                       &yyccolumn);
-
-							++yyccolumn;
-						}
-
-						firsteof = 1;
 					}
 				}
 
