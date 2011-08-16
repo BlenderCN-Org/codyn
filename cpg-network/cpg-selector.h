@@ -52,10 +52,12 @@ typedef enum
 	CPG_SELECTOR_TYPE_PROPERTY = 1 << 4,
 	CPG_SELECTOR_TYPE_ACTION = 1 << 5,
 	CPG_SELECTOR_TYPE_FUNCTION = 1 << 6,
+	CPG_SELECTOR_TYPE_TEMPLATE = 1 << 7,
 	CPG_SELECTOR_TYPE_OBJECT = CPG_SELECTOR_TYPE_STATE |
 	                           CPG_SELECTOR_TYPE_LINK |
 	                           CPG_SELECTOR_TYPE_GROUP |
-	                           CPG_SELECTOR_TYPE_FUNCTION
+	                           CPG_SELECTOR_TYPE_FUNCTION |
+	                           CPG_SELECTOR_TYPE_TEMPLATE
 } CpgSelectorType;
 
 typedef enum

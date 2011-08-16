@@ -310,6 +310,14 @@ void                   cpg_parser_context_debug_string          (CpgParserContex
 
 void                   cpg_parser_context_debug_context         (CpgParserContext  *context);
 
+void                   cpg_parser_context_apply_template        (CpgParserContext  *context,
+                                                                 CpgSelector       *templates,
+                                                                 CpgSelector       *targets);
+
+void                   cpg_parser_context_unapply_template      (CpgParserContext  *context,
+                                                                 CpgSelector       *templates,
+                                                                 CpgSelector       *targets);
+
 G_END_DECLS
 
 #endif /* __CPG_PARSER_CONTEXT_H__ */

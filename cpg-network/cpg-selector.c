@@ -2639,7 +2639,8 @@ selector_select (CpgSelector        *self,
 }
 
 static gboolean
-selection_match_type (CpgSelection    *selection,
+selection_match_type (CpgSelector     *selector,
+                      CpgSelection    *selection,
                       CpgSelectorType  type)
 {
 	gpointer obj;
@@ -2687,11 +2688,18 @@ selection_match_type (CpgSelection    *selection,
 		return TRUE;
 	}
 
+	if ((type & CPG_SELECTOR_TYPE_TEMPLATE) &&
+	     is_template (selector, obj))
+	{
+		return TRUE;
+	}
+
 	return FALSE;
 }
 
 static GSList *
-filter_selection (GSList          *selection,
+filter_selection (CpgSelector     *selector,
+                  GSList          *selection,
                   CpgSelectorType  type)
 {
 	GSList *item;
@@ -2699,7 +2707,7 @@ filter_selection (GSList          *selection,
 
 	for (item = selection; item; item = g_slist_next (item))
 	{
-		if (!selection_match_type (item->data, type))
+		if (!selection_match_type (selector, item->data, type))
 		{
 			g_object_unref (item->data);
 		}
@@ -2799,7 +2807,7 @@ selector_select_all (CpgSelector        *selector,
 		selector->priv->self = NULL;
 	}
 
-	ctx = filter_selection (ctx, type);
+	ctx = filter_selection (selector, ctx, type);
 
 	g_object_unref (context);
 

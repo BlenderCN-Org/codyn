@@ -177,6 +177,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "delete"			return T_KEY_DELETE;
 "or"				return T_KEY_OR;
 "debug-print"			return T_KEY_DEBUG_PRINT;
+"apply"				return T_KEY_APPLY;
+"unapply"			return T_KEY_UNAPPLY;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;

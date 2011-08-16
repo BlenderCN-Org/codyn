@@ -4471,3 +4471,146 @@ cpg_parser_context_get_error_lines (CpgParserContext *context)
 
 	return g_string_free (ret, FALSE);
 }
+
+static void
+apply_unapply_template (CpgParserContext *context,
+                        CpgSelector      *templates,
+                        CpgSelector      *targets,
+                        gboolean          apply)
+{
+	Context *ctx;
+	GSList *obj;
+	CpgGroup *template_group;
+	gboolean ret = TRUE;
+
+	ctx = CURRENT_CONTEXT (context);
+
+	template_group = cpg_network_get_template_group (context->priv->network);
+
+	for (obj = ctx->objects; obj; obj = g_slist_next (obj))
+	{
+		GSList *temps;
+		GSList *temp;
+
+		cpg_embedded_context_save_defines (context->priv->embedded,
+		                                   FALSE);
+
+		cpg_embedded_context_add_selection (context->priv->embedded,
+		                                    obj->data);
+
+		/* Select templates now */
+		temps = cpg_selector_select (templates,
+		                             G_OBJECT (template_group),
+		                             CPG_SELECTOR_TYPE_TEMPLATE,
+		                             context->priv->embedded);
+
+		if (!temps)
+		{
+			cpg_embedded_context_restore (context->priv->embedded);
+			continue;
+		}
+
+		for (temp = temps; temp; temp = g_slist_next (temp))
+		{
+			GSList *targobjs;
+			GSList *targobj;
+			gboolean freetargs;
+			gpointer templobj;
+
+			templobj = cpg_selection_get_object (temp->data);
+
+			if (!targets)
+			{
+				targobjs = g_slist_prepend (NULL, obj->data);
+				freetargs = FALSE;
+			}
+			else
+			{
+				cpg_embedded_context_save_defines (context->priv->embedded,
+				                                   FALSE);
+
+				targobjs = cpg_selector_select (targets,
+				                                cpg_selection_get_object (obj->data),
+				                                CPG_SELECTOR_TYPE_OBJECT,
+				                                context->priv->embedded);
+
+				cpg_embedded_context_restore (context->priv->embedded);
+				freetargs = TRUE;
+			}
+
+			for (targobj = targobjs; targobj; targobj = g_slist_next (targobj))
+			{
+				CpgSelection *s;
+				GError *error = NULL;
+				gboolean ret;
+
+				s = targobj->data;
+
+				if (apply)
+				{
+					ret = cpg_object_apply_template (cpg_selection_get_object (s),
+					                                 templobj,
+					                                 &error);
+				}
+				else
+				{
+					ret = cpg_object_unapply_template (cpg_selection_get_object (s),
+					                                   templobj,
+					                                   &error);
+				}
+
+				if (!ret)
+				{
+					parser_failed_error (context, error);
+					break;
+				}
+			}
+
+			if (freetargs)
+			{
+				g_slist_foreach (targobjs, (GFunc)g_object_unref, NULL);
+			}
+
+			g_slist_free (targobjs);
+
+			if (!ret)
+			{
+				break;
+			}
+		}
+
+		g_slist_foreach (temps, (GFunc)g_object_unref, NULL);
+		g_slist_free (temps);
+
+		if (!ret)
+		{
+			break;
+		}
+	}
+}
+
+void
+cpg_parser_context_apply_template (CpgParserContext *context,
+                                   CpgSelector      *templates,
+                                   CpgSelector      *targets)
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTOR (templates));
+	g_return_if_fail (targets == NULL || CPG_IS_SELECTOR (targets));
+
+	apply_unapply_template (context, templates, targets, TRUE);
+
+}
+
+void
+cpg_parser_context_unapply_template (CpgParserContext *context,
+                                     CpgSelector      *templates,
+                                     CpgSelector      *targets)
+
+{
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_SELECTOR (templates));
+	g_return_if_fail (targets == NULL || CPG_IS_SELECTOR (targets));
+
+	apply_unapply_template (context, templates, targets, FALSE);
+}
