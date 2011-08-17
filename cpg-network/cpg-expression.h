@@ -84,7 +84,7 @@ void           cpg_expression_set_from_string  (CpgExpression      *expression,
 
 void           cpg_expression_reset_cache      (CpgExpression      *expression);
 
-gboolean       cpg_expression_has_cache        (CpgExpression      *expression);
+gboolean       cpg_expression_get_has_cache    (CpgExpression      *expression);
 void           cpg_expression_set_has_cache    (CpgExpression      *expression,
                                                 gboolean            cache);
 

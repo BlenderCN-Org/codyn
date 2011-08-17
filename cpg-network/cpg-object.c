@@ -141,7 +141,7 @@ G_DEFINE_TYPE_WITH_CODE (CpgObject,
 static guint object_signals[NUM_SIGNALS] = {0,};
 
 static GHashTable *
-get_tagtable (CpgTaggable *taggable)
+get_tag_table (CpgTaggable *taggable)
 {
 	return CPG_OBJECT (taggable)->priv->tags;
 }
@@ -152,7 +152,7 @@ cpg_taggable_iface_init (gpointer iface)
 	/* Use default implementation */
 	CpgTaggableInterface *taggable = iface;
 
-	taggable->get_tagtable = get_tagtable;
+	taggable->get_tag_table = get_tag_table;
 }
 
 GQuark

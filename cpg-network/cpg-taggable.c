@@ -35,7 +35,7 @@ G_DEFINE_INTERFACE (CpgTaggable, cpg_taggable, G_TYPE_OBJECT);
 
 /* Default implementation */
 static GHashTable *
-cpg_taggable_get_tagtable_default (CpgTaggable *taggable)
+cpg_taggable_get_tag_table_default (CpgTaggable *taggable)
 {
 	return NULL;
 }
@@ -45,7 +45,7 @@ cpg_taggable_default_init (CpgTaggableInterface *iface)
 {
 	static gboolean initialized = FALSE;
 
-	iface->get_tagtable = cpg_taggable_get_tagtable_default;
+	iface->get_tag_table = cpg_taggable_get_tag_table_default;
 
 	if (!initialized)
 	{
@@ -61,7 +61,7 @@ cpg_taggable_has_tag (CpgTaggable *taggable,
 
 	g_return_val_if_fail (CPG_TAGGABLE (taggable), FALSE);
 
-	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
+	table = cpg_taggable_get_tag_table (taggable);
 
 	return g_hash_table_lookup (table, tag) != NULL;
 }
@@ -75,7 +75,7 @@ cpg_taggable_add_tag (CpgTaggable *taggable,
 
 	g_return_if_fail (CPG_TAGGABLE (taggable));
 
-	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
+	table = cpg_taggable_get_tag_table (taggable);
 
 	g_hash_table_insert (table, g_strdup (tag), g_strdup (value));
 }
@@ -88,11 +88,19 @@ cpg_taggable_remove_tag (CpgTaggable *taggable,
 
 	g_return_if_fail (CPG_TAGGABLE (taggable));
 
-	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
+	table = cpg_taggable_get_tag_table (taggable);
 
 	g_hash_table_remove (table, tag);
 }
 
+/**
+ * cpg_taggable_create_table:
+ *
+ * Create a hash table suitable to store tags using #CpgTaggable.
+ *
+ * Returns: (transfer full): A #GHashTable
+ *
+ **/
 GHashTable *
 cpg_taggable_create_table ()
 {
@@ -111,7 +119,7 @@ cpg_taggable_get_tag (CpgTaggable  *taggable,
 
 	g_return_val_if_fail (CPG_IS_TAGGABLE (taggable), NULL);
 
-	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
+	table = cpg_taggable_get_tag_table (taggable);
 
 	return g_hash_table_lookup (table, tag);
 }
@@ -125,7 +133,24 @@ cpg_taggable_try_get_tag  (CpgTaggable  *taggable,
 
 	g_return_val_if_fail (CPG_IS_TAGGABLE (taggable), FALSE);
 
-	table = CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tagtable (taggable);
+	table = cpg_taggable_get_tag_table (taggable);
 
 	return g_hash_table_lookup_extended (table, tag, NULL, (gpointer *)value);
+}
+
+/**
+ * cpg_taggable_get_tag_table:
+ * @taggable: A #CpgTaggable
+ *
+ * Get the tag hash table.
+ *
+ * Returns: (transfer none): A #GHashTable
+ *
+ **/
+GHashTable *
+cpg_taggable_get_tag_table (CpgTaggable *taggable)
+{
+	g_return_val_if_fail (CPG_IS_TAGGABLE (taggable), NULL);
+
+	return CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tag_table (taggable);
 }

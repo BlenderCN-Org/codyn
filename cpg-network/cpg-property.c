@@ -158,7 +158,7 @@ cpg_modifiable_iface_init (gpointer iface)
 }
 
 static GHashTable *
-get_tagtable (CpgTaggable *taggable)
+get_tag_table (CpgTaggable *taggable)
 {
 	return CPG_PROPERTY (taggable)->priv->tags;
 }
@@ -169,7 +169,7 @@ cpg_taggable_iface_init (gpointer iface)
 	/* Use default implementation */
 	CpgTaggableInterface *taggable = iface;
 
-	taggable->get_tagtable = get_tagtable;
+	taggable->get_tag_table = get_tag_table;
 }
 
 static void

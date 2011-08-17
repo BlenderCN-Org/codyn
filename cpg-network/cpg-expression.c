@@ -263,7 +263,7 @@ cpg_expression_get_property (GObject    *object,
 			g_value_set_double (value, cpg_expression_evaluate (self));
 		break;
 		case PROP_HAS_CACHE:
-			g_value_set_boolean (value, cpg_expression_has_cache (self));
+			g_value_set_boolean (value, cpg_expression_get_has_cache (self));
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1978,7 +1978,7 @@ cpg_expression_get_operators (CpgExpression *expression)
 }
 
 gboolean
-cpg_expression_has_cache (CpgExpression *expression)
+cpg_expression_get_has_cache (CpgExpression *expression)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), TRUE);
 

@@ -82,7 +82,7 @@ G_DEFINE_TYPE_WITH_CODE (CpgLinkAction,
                                                 cpg_taggable_iface_init));
 
 static GHashTable *
-get_tagtable (CpgTaggable *taggable)
+get_tag_table (CpgTaggable *taggable)
 {
 	return CPG_LINK_ACTION (taggable)->priv->tags;
 }
@@ -93,7 +93,7 @@ cpg_taggable_iface_init (gpointer iface)
 	/* Use default implementation */
 	CpgTaggableInterface *taggable = iface;
 
-	taggable->get_tagtable = get_tagtable;
+	taggable->get_tag_table = get_tag_table;
 }
 
 static void

@@ -40,7 +40,7 @@ struct _CpgTaggableInterface
 {
 	GTypeInterface parent;
 
-	GHashTable *(*get_tagtable) (CpgTaggable *taggable);
+	GHashTable *(*get_tag_table) (CpgTaggable *taggable);
 };
 
 GType        cpg_taggable_get_type     (void) G_GNUC_CONST;
@@ -61,6 +61,8 @@ gchar const *cpg_taggable_get_tag      (CpgTaggable  *taggable,
 gboolean     cpg_taggable_try_get_tag  (CpgTaggable  *taggable,
                                         gchar const  *tag,
                                         gchar const **value);
+
+GHashTable  *cpg_taggable_get_tag_table (CpgTaggable *taggable);
 
 GHashTable  *cpg_taggable_create_table ();
 
