@@ -81,7 +81,7 @@ cpg_network_parser_utils_get_templates (CpgNetwork           *network,
 		{
 			if (missing)
 			{
-				*missing = g_strdup (cpg_selector_as_string (selectors->data));
+				*missing = cpg_selector_as_string (selectors->data);
 			}
 
 			ret = FALSE;
@@ -191,6 +191,7 @@ cpg_network_parser_utils_resolve_import (GFile       *root,
 		{
 			gchar *path = g_build_filename (*dirs, filename, NULL);
 			file = g_file_new_for_path (path);
+
 			g_free (path);
 
 			if (g_file_query_exists (file, NULL))

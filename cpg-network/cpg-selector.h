@@ -119,7 +119,9 @@ CpgSelector  *cpg_selector_parse             (CpgObject              *root,
                                               gchar const            *ptr,
                                               GError                **error);
 
-gchar const  *cpg_selector_as_string         (CpgSelector            *selector);
+CpgSelector  *cpg_selector_copy_with         (CpgSelector            *selector);
+
+gchar        *cpg_selector_as_string         (CpgSelector            *selector);
 
 guint         cpg_selector_append            (CpgSelector            *selector,
                                               CpgEmbeddedString      *identifier);
@@ -127,17 +129,7 @@ guint         cpg_selector_append            (CpgSelector            *selector,
 guint         cpg_selector_append_partial    (CpgSelector            *selector,
                                               CpgEmbeddedString      *identifier);
 
-guint         cpg_selector_prepend            (CpgSelector            *selector,
-                                               CpgEmbeddedString      *identifier);
-
-guint         cpg_selector_prepend_partial    (CpgSelector            *selector,
-                                               CpgEmbeddedString      *identifier);
-
 guint         cpg_selector_append_pseudo     (CpgSelector            *selector,
-                                              CpgSelectorPseudoType  type,
-                                              GSList                 *arguments);
-
-guint         cpg_selector_prepend_pseudo    (CpgSelector            *selector,
                                               CpgSelectorPseudoType  type,
                                               GSList                 *arguments);
 
@@ -146,12 +138,6 @@ guint         cpg_selector_append_regex      (CpgSelector            *selector,
 
 guint         cpg_selector_append_regex_partial (CpgSelector            *selector,
                                                  CpgEmbeddedString      *regex);
-
-guint         cpg_selector_prepend_regex      (CpgSelector            *selector,
-                                               CpgEmbeddedString      *regex);
-
-guint         cpg_selector_prepend_regex_partial (CpgSelector            *selector,
-                                                  CpgEmbeddedString      *regex);
 
 GSList       *cpg_selector_select            (CpgSelector            *selector,
                                               GObject                *parent,
@@ -177,6 +163,9 @@ gchar        *cpg_selector_escape_identifier  (gchar const          *name);
 
 void          cpg_selector_set_from_set      (CpgSelector            *selector,
                                               GSList                 *selections);
+
+void          cpg_selector_set_implicit_children (CpgSelector *selector,
+                                                  gboolean     isimplicit);
 
 G_END_DECLS
 

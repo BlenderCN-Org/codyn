@@ -170,6 +170,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "unapply"			return T_KEY_UNAPPLY;
 "when-applied"			return T_KEY_WHEN_APPLIED;
 "when-unapplied"		return T_KEY_WHEN_UNAPPLIED;
+"with"				return T_KEY_WITH;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;

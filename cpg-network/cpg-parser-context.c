@@ -119,6 +119,7 @@ typedef struct
 typedef struct
 {
 	GSList *objects;
+	CpgSelector *with;
 } Context;
 
 struct _CpgParserContextPrivate
@@ -175,7 +176,7 @@ enum
 };
 
 #define CONTEXT(x) ((Context *)x)
-#define CURRENT_CONTEXT(context) CONTEXT(context->priv->context_stack->data)
+#define CURRENT_CONTEXT(context) (context->priv->context_stack ? CONTEXT(context->priv->context_stack->data) : NULL)
 
 static void
 input_item_free (InputItem *self)
@@ -243,13 +244,19 @@ input_item_new (GFile         *file,
 }
 
 static Context *
-context_new (GSList *objects)
+context_new (GSList      *objects,
+             CpgSelector *with)
 {
 	Context *ret;
 
 	ret = g_slice_new0 (Context);
 
 	ret->objects = g_slist_copy (objects);
+
+	if (with)
+	{
+		ret->with = g_object_ref (with);
+	}
 
 	return ret;
 }
@@ -259,6 +266,11 @@ context_free (Context *context)
 {
 	g_slist_foreach (context->objects, (GFunc)g_object_unref, NULL);
 	g_slist_free (context->objects);
+
+	if (context->with)
+	{
+		g_object_unref (context->with);
+	}
 
 	g_slice_free (Context, context);
 }
@@ -2015,6 +2027,8 @@ cpg_parser_context_push_object (CpgParserContext *context,
                                 GSList           *attributes)
 {
 	GSList *item;
+	CpgAttribute *with;
+	CpgSelector *wsel;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
@@ -2032,9 +2046,23 @@ cpg_parser_context_push_object (CpgParserContext *context,
 		              attributes);
 	}
 
+	with = find_attribute (attributes, "with");
+
+	if (with)
+	{
+		wsel = CPG_SELECTOR (cpg_attribute_get_argument (with, 0));
+	}
+	else
+	{
+		Context *cur;
+
+		cur = CURRENT_CONTEXT (context);
+		wsel = cur ? cur->with : NULL;
+	}
+
 	context->priv->context_stack =
 		g_slist_prepend (context->priv->context_stack,
-		                 context_new (objects));
+		                 context_new (objects, wsel));
 
 	g_signal_emit (context, signals[CONTEXT_PUSHED], 0);
 }
@@ -2982,11 +3010,25 @@ ensure_selector (CpgParserContext *context)
 void
 cpg_parser_context_push_selector (CpgParserContext *context)
 {
+	CpgSelector *selector;
+	Context *ctx;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	ctx = CURRENT_CONTEXT (context);
+
+	if (ctx && ctx->with)
+	{
+		selector = cpg_selector_copy_with (ctx->with);
+	}
+	else
+	{
+		selector = cpg_selector_new (CPG_OBJECT (context->priv->network));
+	}
 
 	context->priv->selectors =
 		g_slist_prepend (context->priv->selectors,
-		                 cpg_selector_new (CPG_OBJECT (context->priv->network)));
+		                 selector);
 }
 
 void
@@ -3547,6 +3589,7 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 {
 	GSList *items;
 	GSList *item;
+	InputItem *inp;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
@@ -3557,6 +3600,7 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 	}
 
 	embedded_string_expand_multiple (items, filename, context);
+	inp = CURRENT_INPUT (context);
 
 	for (item = items; item; item = g_slist_next (item))
 	{
@@ -3564,57 +3608,9 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 		GFile *file = NULL;
 
 		res = cpg_expansion_get (item->data, 0);
-
-		if (g_path_is_absolute (res))
-		{
-			file = g_file_new_for_path (res);
-		}
-		else
-		{
-			GSList *it;
-
-			for (it = context->priv->inputs; it; it = g_slist_next (it))
-			{
-				InputItem *ip = it->data;
-				GFile *dir;
-
-				if (!ip->file)
-				{
-					continue;
-				}
-
-				dir = g_file_get_parent (ip->file);
-
-				if (!dir)
-				{
-					continue;
-				}
-
-				file = g_file_resolve_relative_path (dir, res);
-				g_object_unref (dir);
-
-				if (file && !g_file_query_exists (file, NULL))
-				{
-					g_object_unref (file);
-					file = NULL;
-				}
-				else
-				{
-					break;
-				}
-			}
-
-			if (!file)
-			{
-				file = g_file_new_for_commandline_arg (res);
-
-				if (!g_file_query_exists (file, NULL))
-				{
-					g_object_unref (file);
-					file = NULL;
-				}
-			}
-		}
+		
+		file = cpg_network_parser_utils_resolve_import (inp ? inp->file : NULL,
+		                                                res);
 
 		if (!file)
 		{
@@ -3931,7 +3927,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 		return;
 	}
 
-	ctx = context->priv->context_stack->next->data;
+	ctx = CURRENT_CONTEXT (context);
 
 	for (cobjs = ctx->objects; cobjs; cobjs = g_slist_next (cobjs))
 	{
@@ -3939,8 +3935,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 
 		sel = cobjs->data;
 
-		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
-
+		cpg_embedded_context_save_defines (context->priv->embedded, FALSE);
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    sel);
 
@@ -3953,7 +3948,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 		}
 		else
 		{
-			objs = g_slist_prepend (NULL, cpg_selection_copy (sel));
+			objs = g_slist_prepend (NULL, cpg_selection_copy_defines (sel, FALSE));
 		}
 
 		for (obj = objs; obj; obj = g_slist_next (obj))
