@@ -181,22 +181,6 @@ cpg_selection_new_defines (gpointer    object,
 	return ret;
 }
 
-static void
-copy_tag (gchar const  *key,
-          gchar const  *value,
-          CpgSelection *ret)
-{
-	g_hash_table_insert (ret->priv->tags, g_strdup (key), g_strdup (value));
-}
-
-static void
-copy_tags (CpgSelection *ret,
-           CpgSelection *selection)
-{
-	g_hash_table_foreach (selection->priv->tags,
-	                      (GHFunc)copy_tag,
-	                      ret);
-}
 
 /**
  * cpg_selection_copy:
@@ -218,7 +202,9 @@ cpg_selection_copy (CpgSelection *selection)
 	                         selection->priv->expansions,
 	                         selection->priv->defines);
 
-	copy_tags (ret, selection);
+	cpg_taggable_copy_to (CPG_TAGGABLE (selection),
+	                      ret->priv->tags);
+
 	return ret;
 }
 

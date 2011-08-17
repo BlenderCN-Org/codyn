@@ -43,28 +43,30 @@ struct _CpgTaggableInterface
 	GHashTable *(*get_tag_table) (CpgTaggable *taggable);
 };
 
-GType        cpg_taggable_get_type     (void) G_GNUC_CONST;
+GType        cpg_taggable_get_type      (void) G_GNUC_CONST;
 
-gboolean     cpg_taggable_has_tag      (CpgTaggable  *taggable,
-                                        gchar const  *tag);
+gboolean     cpg_taggable_has_tag       (CpgTaggable  *taggable,
+                                         gchar const  *tag);
 
-void         cpg_taggable_add_tag      (CpgTaggable  *taggable,
-                                        gchar const  *tag,
-                                        gchar const  *value);
+void         cpg_taggable_add_tag       (CpgTaggable  *taggable,
+                                         gchar const  *tag,
+                                         gchar const  *value);
 
-void         cpg_taggable_remove_tag   (CpgTaggable  *taggable,
-                                        gchar const  *tag);
+void         cpg_taggable_remove_tag    (CpgTaggable  *taggable,
+                                         gchar const  *tag);
 
-gchar const *cpg_taggable_get_tag      (CpgTaggable  *taggable,
-                                        gchar const  *tag);
+gchar const *cpg_taggable_get_tag       (CpgTaggable  *taggable,
+                                         gchar const  *tag);
 
-gboolean     cpg_taggable_try_get_tag  (CpgTaggable  *taggable,
-                                        gchar const  *tag,
-                                        gchar const **value);
+gboolean     cpg_taggable_try_get_tag   (CpgTaggable  *taggable,
+                                         gchar const  *tag,
+                                         gchar const **value);
 
-GHashTable  *cpg_taggable_get_tag_table (CpgTaggable *taggable);
+GHashTable  *cpg_taggable_get_tag_table (CpgTaggable  *taggable);
 
-GHashTable  *cpg_taggable_create_table ();
+GHashTable  *cpg_taggable_create_table  (void);
+void         cpg_taggable_copy_to       (CpgTaggable  *taggable,
+                                         GHashTable   *tags);
 
 G_END_DECLS
 

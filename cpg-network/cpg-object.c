@@ -721,6 +721,9 @@ cpg_object_copy_impl (CpgObject *object,
 		cpg_layoutable_set_location (CPG_LAYOUTABLE (object), x, y);
 	}
 
+	cpg_taggable_copy_to (CPG_TAGGABLE (source),
+	                      object->priv->tags);
+
 	g_free (annotation);
 }
 

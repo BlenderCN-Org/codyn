@@ -1113,6 +1113,9 @@ cpg_property_copy (CpgProperty *property)
 	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (ret),
 	                                property->priv->annotation);
 
+	cpg_taggable_copy_to (CPG_TAGGABLE (property),
+	                      ret->priv->tags);
+
 	return ret;
 }
 

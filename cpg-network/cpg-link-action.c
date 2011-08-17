@@ -568,6 +568,9 @@ cpg_link_action_copy (CpgLinkAction *action)
 	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (newaction),
 	                                action->priv->annotation);
 
+	cpg_taggable_copy_to (CPG_TAGGABLE (action),
+	                      action->priv->tags);
+
 	return newaction;
 }
 

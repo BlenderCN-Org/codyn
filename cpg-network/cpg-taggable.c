@@ -150,3 +150,22 @@ cpg_taggable_get_tag_table (CpgTaggable *taggable)
 
 	return CPG_TAGGABLE_GET_INTERFACE (taggable)->get_tag_table (taggable);
 }
+
+static void
+copy_tag (gchar const  *key,
+          gchar const  *value,
+          GHashTable   *ret)
+{
+	g_hash_table_insert (ret, g_strdup (key), g_strdup (value));
+}
+
+void
+cpg_taggable_copy_to (CpgTaggable *taggable,
+                      GHashTable  *tags)
+{
+	g_return_if_fail (CPG_IS_TAGGABLE (taggable));
+
+	g_hash_table_foreach (cpg_taggable_get_tag_table (taggable),
+	                      (GHFunc)copy_tag,
+	                      tags);
+}
