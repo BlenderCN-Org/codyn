@@ -47,7 +47,7 @@ do										\
 										\
 	if (!ret)								\
 	{									\
-		parser_failed_error (parser, __err);				\
+		parser_failed_error (parser, CPG_STATEMENT (s), __err);		\
 		return;								\
 	}									\
 }										\
@@ -61,7 +61,7 @@ do										\
 										\
 	if (!ret)								\
 	{									\
-		parser_failed_error (parser, __err);				\
+		parser_failed_error (parser, CPG_STATEMENT (s), __err);		\
 		return retval;							\
 	}									\
 }										\
@@ -75,7 +75,7 @@ do										\
 										\
 	if (!ret && __err)							\
 	{									\
-		parser_failed_error (parser, __err);				\
+		parser_failed_error (parser, CPG_STATEMENT (s), __err);		\
 		return;								\
 	}									\
 }										\
@@ -89,7 +89,7 @@ do										\
 										\
 	if (!ret && __err)							\
 	{									\
-		parser_failed_error (parser, __err);				\
+		parser_failed_error (parser, CPG_STATEMENT (s), __err);		\
 		return retval;							\
 	}									\
 }										\
@@ -469,9 +469,9 @@ statement_end (CpgParserContext *context,
 }
 
 static gboolean
-parser_failed_error_at (CpgParserContext *context,
-                        CpgStatement     *statement,
-                        GError           *error)
+parser_failed_error (CpgParserContext *context,
+                     CpgStatement     *statement,
+                     GError           *error)
 {
 	if (context->priv->error_statement)
 	{
@@ -491,14 +491,8 @@ parser_failed_error_at (CpgParserContext *context,
 }
 
 static gboolean
-parser_failed_error (CpgParserContext *context,
-                     GError           *error)
-{
-	return parser_failed_error_at (context, NULL, error);
-}
-
-static gboolean
 parser_failed (CpgParserContext *context,
+               CpgStatement     *statement,
                gint              code,
                gchar const      *format,
                ...)
@@ -516,6 +510,7 @@ parser_failed (CpgParserContext *context,
 		                            ap);
 
 		parser_failed_error (context,
+		                     statement,
 		                     error);
 
 		va_end (ap);
@@ -990,7 +985,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 				cpg_embedded_context_restore (context->priv->embedded);
 				g_free (exexpression);
 
-				parser_failed_error (context, error);
+				parser_failed_error (context, NULL, error);
 				break;
 			}
 
@@ -1344,7 +1339,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 				                                 cpg_selection_get_object (props->data),
 				                                 &error))
 				{
-					parser_failed_error (context, error);
+					parser_failed_error (context, NULL, error);
 					ret = FALSE;
 					break;
 				}
@@ -1390,6 +1385,7 @@ cpg_parser_context_set_error (CpgParserContext *context,
 	}
 
 	parser_failed (context,
+	               NULL,
 	               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 	               "Unexpected token `%s' at %s%s%d.%d",
 	               CURRENT_INPUT (context)->token,
@@ -1451,6 +1447,7 @@ parse_object_single_id (CpgParserContext *context,
 	                                             &templates))
 	{
 		parser_failed (context,
+		               NULL,
 		               CPG_NETWORK_LOAD_ERROR_OBJECT,
 		               "Could not find template `%s'",
 		               missing);
@@ -1473,6 +1470,7 @@ parse_object_single_id (CpgParserContext *context,
 		if (!g_type_is_a (gtype, template_type))
 		{
 			parser_failed (context,
+			               NULL,
 			               CPG_NETWORK_LOAD_ERROR_OBJECT,
 			               "Referenced template is of incorrect type %s (need %s)",
 			               g_type_name (template_type),
@@ -1501,7 +1499,7 @@ parse_object_single_id (CpgParserContext *context,
 		                    child,
 		                    &error))
 		{
-			parser_failed_error (context, error);
+			parser_failed_error (context, NULL, error);
 
 			goto cleanup;
 		}
@@ -1516,6 +1514,7 @@ parse_object_single_id (CpgParserContext *context,
 			   because existing objects created by other templates can be
 			   extended) and the type is incorrect */
 			parser_failed (context,
+			               NULL,
 			               CPG_NETWORK_LOAD_ERROR_OBJECT,
 			               "Cannot extend type %s with type %s",
 			               g_type_name (G_TYPE_FROM_INSTANCE (child)),
@@ -1533,6 +1532,7 @@ parse_object_single_id (CpgParserContext *context,
 		                                &error))
 		{
 			parser_failed_error (context,
+			                     NULL,
 			                     error);
 
 			goto cleanup;
@@ -2858,6 +2858,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 			if (!file)
 			{
 				parser_failed (context,
+				               CPG_STATEMENT (path),
 				               CPG_NETWORK_LOAD_ERROR_IMPORT,
 				               "File `%s' for import `%s' could not be found",
 				               expath,
@@ -2877,6 +2878,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 				if (cpg_group_get_child (template_group, exid) != NULL)
 				{
 					parser_failed (context,
+					               CPG_STATEMENT (id),
 					               CPG_NETWORK_LOAD_ERROR_IMPORT,
 					               "There is already an object with the id `%s'",
 					               exid);
@@ -2904,7 +2906,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 					                    CPG_OBJECT (alias),
 					                    &error))
 					{
-						parser_failed_error (context, error);
+						parser_failed_error (context, NULL, error);
 						cpg_embedded_context_restore (context->priv->embedded);
 
 						g_slist_foreach (ids,
@@ -2933,6 +2935,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 			if (cpg_group_get_child (CPG_GROUP (context->priv->network), exid) != NULL)
 			{
 				parser_failed (context,
+				               CPG_STATEMENT (id),
 				               CPG_NETWORK_LOAD_ERROR_IMPORT,
 				               "There is already an object with the id `%s'",
 				               exid);
@@ -2956,7 +2959,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 
 			if (!import)
 			{
-				parser_failed_error (context, error);
+				parser_failed_error (context, NULL, error);
 				cpg_embedded_context_restore (context->priv->embedded);
 
 				g_slist_foreach (ids,
@@ -3554,7 +3557,7 @@ cpg_parser_context_push_input (CpgParserContext *context,
 	}
 	else
 	{
-		parser_failed_error (context, error);
+		parser_failed_error (context, NULL, error);
 	}
 }
 
@@ -3615,12 +3618,12 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 
 		if (!file)
 		{
-			parser_failed_error_at (context,
-			                        CPG_STATEMENT (filename),
-			                        g_error_new (G_IO_ERROR,
-			                                     G_IO_ERROR_NOT_FOUND,
-			                                     "Could not find file `%s'",
-			                                     res));
+			parser_failed_error (context,
+			                     CPG_STATEMENT (filename),
+			                     g_error_new (G_IO_ERROR,
+			                                  G_IO_ERROR_NOT_FOUND,
+			                                  "Could not find file `%s'",
+			                                  res));
 
 			break;
 		}
@@ -4075,6 +4078,7 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 		if (type == G_TYPE_INVALID)
 		{
 			parser_failed (context,
+			               CPG_STATEMENT (name),
 			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 			               "Could not find integrator `%s'",
 			               exval);
@@ -4107,6 +4111,7 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 		if (spec == NULL)
 		{
 			parser_failed (context,
+			               CPG_STATEMENT (name),
 			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 			               "Invalid integrator property `%s' for `%s'",
 			               exname,
@@ -4121,6 +4126,7 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 		if (!g_value_type_transformable (G_TYPE_STRING, spec->value_type))
 		{
 			parser_failed (context,
+			               CPG_STATEMENT (value),
 			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 			               "Could not convert `%s' to `%s'",
 			               exval,
@@ -4142,6 +4148,7 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 			g_value_unset (&v);
 
 			parser_failed (context,
+			               CPG_STATEMENT (value),
 			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
 			               "Could not convert `%s' to `%s'",
 			               exval,
@@ -4571,7 +4578,9 @@ cpg_parser_context_delete_selector (CpgParserContext *context,
 				                                 cpg_property_get_name (obj),
 				                                 &error))
 				{
-					parser_failed_error (context, error);
+					parser_failed_error (context,
+					                     CPG_STATEMENT (selector),
+					                     error);
 					break;
 				}
 			}
@@ -4591,7 +4600,9 @@ cpg_parser_context_delete_selector (CpgParserContext *context,
 
 				if (!cpg_group_remove (CPG_GROUP (parent), obj, &error))
 				{
-					parser_failed_error (context, error);
+					parser_failed_error (context,
+					                     CPG_STATEMENT (selector),
+					                     error);
 					break;
 				}
 			}
@@ -4728,6 +4739,7 @@ cpg_parser_context_set_input_file_setting (CpgParserContext  *context,
 			else
 			{
 				parser_failed (context,
+				               CPG_STATEMENT (name),
 				               CPG_NETWORK_LOAD_ERROR_OBJECT,
 				               "The input file setting `%s' does not exist",
 				               n);
@@ -4982,7 +4994,9 @@ apply_unapply_template (CpgParserContext *context,
 
 				if (!ret)
 				{
-					parser_failed_error (context, error);
+					parser_failed_error (context,
+					                     CPG_STATEMENT (targets),
+					                     error);
 					break;
 				}
 			}
