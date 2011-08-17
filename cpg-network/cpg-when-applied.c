@@ -248,7 +248,7 @@ cpg_when_applied_run (CpgWhenApplied  *applied,
 	                                       TRUE);
 
 	sels = g_slist_prepend (NULL, selection);
-	cpg_parser_context_push_object (parser, sels, NULL);
+	cpg_parser_context_push_objects (parser, sels, NULL);
 	g_slist_free (sels);
 
 	ret = cpg_parser_context_parse (parser, FALSE, error);

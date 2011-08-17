@@ -1414,16 +1414,77 @@ cpg_parser_context_get_error (CpgParserContext *context)
 	return context->priv->error;
 }
 
+static GSList *
+get_templates (CpgParserContext  *context,
+               CpgObject         *object,
+               CpgGroup          *parent_group,
+               GSList            *templates,
+               GType              gtype)
+{
+	gchar *missing;
+	GSList *ret = NULL;
+	GSList *item;
+
+	if (!cpg_network_parser_utils_get_templates (context->priv->network,
+	                                             parent_group,
+	                                             context->priv->is_template ? TRUE : FALSE,
+	                                             templates,
+	                                             context->priv->embedded,
+	                                             &missing,
+	                                             &ret))
+	{
+		parser_failed (context,
+		               NULL,
+		               CPG_NETWORK_LOAD_ERROR_OBJECT,
+		               "Could not find template `%s'",
+		               missing);
+
+		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+		g_slist_free (ret);
+
+		g_free (missing);
+		return NULL;
+	}
+
+	g_free (missing);
+	gtype = cpg_network_parser_utils_type_from_templates (gtype, ret);
+
+	/* Check if the template types can actually be applied to the
+	   object type that we are constructing. Only template types
+	   which are superclasses of the new object type can be
+	   applied */
+	for (item = ret; item; item = g_slist_next (item))
+	{
+		GType template_type = G_TYPE_FROM_INSTANCE (object);
+
+		if (!g_type_is_a (gtype, template_type))
+		{
+			parser_failed (context,
+			               NULL,
+			               CPG_NETWORK_LOAD_ERROR_OBJECT,
+			               "Referenced template is of incorrect type %s (need %s)",
+			               g_type_name (template_type),
+			               g_type_name (gtype));
+
+			g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+			g_slist_free (ret);
+			return NULL;
+		}
+	}
+
+	return ret;
+}
+
 static CpgSelection *
 parse_object_single_id (CpgParserContext *context,
                         CpgExpansion     *id,
                         GSList           *temps,
                         CpgSelection     *parent,
-                        GType             gtype)
+                        GType             gtype,
+                        gboolean          allow_create)
 {
 	GSList *templates;
 	CpgSelection *sel = NULL;
-	gchar *missing;
 	GSList *item;
 	CpgObject *child = NULL;
 	GError *error = NULL;
@@ -1438,46 +1499,15 @@ parse_object_single_id (CpgParserContext *context,
 		parent_group = CPG_GROUP (cpg_object_get_parent (cpg_selection_get_object (parent)));
 	}
 
-	if (!cpg_network_parser_utils_get_templates (context->priv->network,
-	                                             parent_group,
-	                                             context->priv->is_template ? TRUE : FALSE,
-	                                             temps,
-	                                             context->priv->embedded,
-	                                             &missing,
-	                                             &templates))
+	templates = get_templates (context,
+	                           cpg_selection_get_object (parent),
+	                           parent_group,
+	                           temps,
+	                           gtype);
+
+	if (context->priv->error_occurred)
 	{
-		parser_failed (context,
-		               NULL,
-		               CPG_NETWORK_LOAD_ERROR_OBJECT,
-		               "Could not find template `%s'",
-		               missing);
-
-		g_free (missing);
-
 		goto cleanup;
-	}
-
-	gtype = cpg_network_parser_utils_type_from_templates (gtype, templates);
-
-	/* Check if the template types can actually be applied to the
-	   object type that we are constructing. Only template types
-	   which are superclasses of the new object type can be
-	   applied */
-	for (item = templates; item; item = g_slist_next (item))
-	{
-		GType template_type = G_TYPE_FROM_INSTANCE (cpg_selection_get_object (item->data));
-
-		if (!g_type_is_a (gtype, template_type))
-		{
-			parser_failed (context,
-			               NULL,
-			               CPG_NETWORK_LOAD_ERROR_OBJECT,
-			               "Referenced template is of incorrect type %s (need %s)",
-			               g_type_name (template_type),
-			               g_type_name (gtype));
-
-			goto cleanup;
-		}
 	}
 
 	if (id)
@@ -1492,6 +1522,12 @@ parse_object_single_id (CpgParserContext *context,
 
 	if (!child)
 	{
+		if (!allow_create)
+		{
+			sel = NULL;
+			goto cleanup;
+		}
+
 		/* Just construct a new object with the right type */
 		child = g_object_new (gtype, "id", cpg_expansion_get (id, 0), NULL);
 
@@ -1560,7 +1596,8 @@ parse_object_single (CpgParserContext  *context,
                      GSList            *ids,
                      GSList            *templates,
                      CpgSelection      *parent,
-                     GType              gtype)
+                     GType              gtype,
+                     gboolean           allow_create)
 {
 	GSList *ret = NULL;
 
@@ -1572,7 +1609,8 @@ parse_object_single (CpgParserContext  *context,
 		                              NULL,
 		                              templates,
 		                              parent,
-		                              gtype);
+		                              gtype,
+		                              allow_create);
 
 		if (sel)
 		{
@@ -1595,7 +1633,8 @@ parse_object_single (CpgParserContext  *context,
 		                              ids->data,
 		                              templates,
 		                              parent,
-		                              gtype);
+		                              gtype,
+		                              allow_create);
 
 		cpg_embedded_context_restore (context->priv->embedded);
 
@@ -1669,7 +1708,8 @@ parse_objects (CpgParserContext  *context,
                CpgEmbeddedString *id,
                GSList            *templates,
                GType              gtype,
-               GSList            *attributes)
+               GSList            *attributes,
+               gboolean           allow_create)
 {
 	GSList *parents;
 	GSList *parent;
@@ -1734,7 +1774,8 @@ parse_objects (CpgParserContext  *context,
 		                            ids,
 		                            templates,
 		                            parent->data,
-		                            gtype);
+		                            gtype,
+		                            allow_create);
 
 		if (isproxy)
 		{
@@ -2023,9 +2064,9 @@ store_annotation_objects (CpgParserContext *context,
 }
 
 void
-cpg_parser_context_push_object (CpgParserContext *context,
-                                GSList           *objects,
-                                GSList           *attributes)
+cpg_parser_context_push_objects (CpgParserContext *context,
+                                 GSList           *objects,
+                                 GSList           *attributes)
 {
 	GSList *item;
 	CpgAttribute *with;
@@ -2068,10 +2109,32 @@ cpg_parser_context_push_object (CpgParserContext *context,
 	g_signal_emit (context, signals[CONTEXT_PUSHED], 0);
 }
 
+static GType
+gtype_from_selector_type (CpgSelectorType type)
+{
+	if (type & CPG_SELECTOR_TYPE_OBJECT)
+	{
+		return CPG_TYPE_OBJECT;
+	}
+	else if (type & CPG_SELECTOR_TYPE_GROUP)
+	{
+		return CPG_TYPE_GROUP;
+	}
+	else if (type & CPG_SELECTOR_TYPE_LINK)
+	{
+		return CPG_TYPE_LINK;
+	}
+	else
+	{
+		return G_TYPE_INVALID;
+	}
+}
+
 void
 cpg_parser_context_push_selection (CpgParserContext *context,
                                    CpgSelector      *selector,
                                    CpgSelectorType   type,
+                                   GSList           *templates,
                                    GSList           *attributes)
 {
 	Context *ctx;
@@ -2118,10 +2181,45 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 
 		for (it = ret; it; it = g_slist_next (it))
 		{
-			cpg_embedded_context_save (context->priv->embedded);
+			CpgObject *obj;
+			GSList *temps;
+			GSList *temp;
 
-			cpg_embedded_context_add_expansions (context->priv->embedded,
-			                                     cpg_selection_get_expansions (it->data));
+			obj = cpg_selection_get_object (it->data);
+
+			cpg_embedded_context_save_defines (context->priv->embedded,
+			                                   TRUE);
+
+			cpg_embedded_context_set_selection (context->priv->embedded,
+			                                    it->data);
+
+			temps = get_templates (context,
+			                       obj,
+			                       CPG_GROUP (cpg_object_get_parent (it->data)),
+			                       templates,
+			                       gtype_from_selector_type (type));
+
+			if (context->priv->error_occurred)
+			{
+				return;
+			}
+
+			for (temp = temps; temp; temp = g_slist_next (temp))
+			{
+				GError *error = NULL;
+
+				if (!cpg_object_apply_template (obj,
+				                                cpg_selection_get_object (temp->data),
+				                                &error))
+				{
+					parser_failed_error (context,
+					                     CPG_STATEMENT (selector),
+					                     error);
+				}
+			}
+
+			g_slist_foreach (temps, (GFunc)g_object_unref, NULL);
+			g_slist_free (temps);
 
 			objs = g_slist_prepend (objs,
 			                        cpg_selection_new_defines (cpg_selection_get_object (it->data),
@@ -2143,7 +2241,7 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 
 	objs = g_slist_reverse (objs);
 
-	cpg_parser_context_push_object (context, objs, attributes);
+	cpg_parser_context_push_objects (context, objs, attributes);
 
 	g_slist_free (objs);
 }
@@ -2153,9 +2251,10 @@ create_objects (CpgParserContext  *context,
                 CpgEmbeddedString *id,
                 GSList            *templates,
                 GType              type,
-                GSList            *attributes)
+                GSList            *attributes,
+                gboolean           allow_create)
 {
-	return parse_objects (context, id, templates, type, attributes);
+	return parse_objects (context, id, templates, type, attributes, allow_create);
 }
 
 static GSList *
@@ -2297,7 +2396,8 @@ create_links_single (CpgParserContext          *context,
 		                              realid,
 		                              templates,
 		                              parent,
-		                              CPG_TYPE_LINK);
+		                              CPG_TYPE_LINK,
+		                              TRUE);
 
 		cpg_embedded_context_restore (context->priv->embedded);
 
@@ -2405,6 +2505,32 @@ create_links (CpgParserContext          *context,
 }
 
 void
+cpg_parser_context_push_object (CpgParserContext  *context,
+                                CpgEmbeddedString *id,
+                                GSList            *templates,
+                                GSList            *attributes)
+{
+	GSList *objects;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+
+	if (context->priv->in_when_applied)
+	{
+		return;
+	}
+
+	objects = create_objects (context,
+	                          id,
+	                          templates,
+	                          CPG_TYPE_OBJECT,
+	                          attributes,
+	                          FALSE);
+
+	cpg_parser_context_push_objects (context, objects, attributes);
+	g_slist_free (objects);
+}
+
+void
 cpg_parser_context_push_state (CpgParserContext  *context,
                                CpgEmbeddedString *id,
                                GSList            *templates,
@@ -2423,9 +2549,10 @@ cpg_parser_context_push_state (CpgParserContext  *context,
 	                          id,
 	                          templates,
 	                          CPG_TYPE_OBJECT,
-	                          attributes);
+	                          attributes,
+	                          TRUE);
 
-	cpg_parser_context_push_object (context, objects, attributes);
+	cpg_parser_context_push_objects (context, objects, attributes);
 	g_slist_free (objects);
 }
 
@@ -2448,9 +2575,10 @@ cpg_parser_context_push_group (CpgParserContext  *context,
 	                          id,
 	                          templates,
 	                          CPG_TYPE_GROUP,
-	                          attributes);
+	                          attributes,
+	                          TRUE);
 
-	cpg_parser_context_push_object (context, objects, attributes);
+	cpg_parser_context_push_objects (context, objects, attributes);
 	g_slist_free (objects);
 }
 
@@ -2476,7 +2604,8 @@ cpg_parser_context_push_input_file (CpgParserContext  *context,
 	                          id,
 	                          NULL,
 	                          CPG_TYPE_INPUT_FILE,
-	                          attributes);
+	                          attributes,
+	                          TRUE);
 
 	embedded_string_expand_multiple (paths, path, context);
 
@@ -2500,7 +2629,7 @@ cpg_parser_context_push_input_file (CpgParserContext  *context,
 	g_slist_foreach (paths, (GFunc)g_object_unref, NULL);
 	g_slist_free (paths);
 
-	cpg_parser_context_push_object (context, objects, attributes);
+	cpg_parser_context_push_objects (context, objects, attributes);
 	g_slist_free (objects);
 }
 
@@ -2527,7 +2656,8 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 		                          id,
 		                          templates,
 		                          CPG_TYPE_LINK,
-		                          attributes);
+		                          attributes,
+		                          TRUE);
 	}
 	else
 	{
@@ -2548,7 +2678,7 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 		                        fromto);
 	}
 
-	cpg_parser_context_push_object (context, objects, attributes);
+	cpg_parser_context_push_objects (context, objects, attributes);
 	g_slist_free (objects);
 
 	if (id != NULL)
@@ -2632,7 +2762,7 @@ push_scope (CpgParserContext *context,
 	                           NULL,
 	                           copy_defines);
 
-	cpg_parser_context_push_object (context, objects, attributes);
+	cpg_parser_context_push_objects (context, objects, attributes);
 
 	g_slist_free (objects);
 }
@@ -2678,7 +2808,7 @@ cpg_parser_context_push_network (CpgParserContext *context,
 	                                          CPG_OBJECT (context->priv->network),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects, attributes);
+	cpg_parser_context_push_objects (context, objects, attributes);
 	g_slist_free (objects);
 }
 
@@ -2699,7 +2829,7 @@ cpg_parser_context_push_integrator (CpgParserContext *context,
 	                                          CPG_OBJECT (cpg_network_get_integrator (context->priv->network)),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects, attributes);
+	cpg_parser_context_push_objects (context, objects, attributes);
 
 	g_slist_free (objects);
 }
@@ -2721,7 +2851,7 @@ cpg_parser_context_push_templates (CpgParserContext *context,
 	                                          CPG_OBJECT (cpg_network_get_template_group (context->priv->network)),
 	                                          attributes);
 
-	cpg_parser_context_push_object (context, objects, attributes);
+	cpg_parser_context_push_objects (context, objects, attributes);
 	context->priv->is_template = CURRENT_CONTEXT (context);
 
 	g_slist_free (objects);

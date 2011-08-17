@@ -135,6 +135,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "include"			return T_KEY_INCLUDE;
 "parse"				return T_KEY_PARSE;
 "state"				return T_KEY_STATE;
+"object"			return T_KEY_OBJECT;
 "link"				return T_KEY_LINK;
 "integrated"			return T_KEY_INTEGRATED;
 "in"				return T_KEY_IN;

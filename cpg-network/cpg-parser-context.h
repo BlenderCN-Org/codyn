@@ -171,10 +171,16 @@ GError                *cpg_parser_context_get_error            (CpgParserContext
 void                   cpg_parser_context_push_selection       (CpgParserContext           *context,
                                                                 CpgSelector                *selector,
                                                                 CpgSelectorType             type,
+                                                                GSList                     *templates,
+                                                                GSList                     *attributes);
+
+void                   cpg_parser_context_push_objects         (CpgParserContext           *context,
+                                                                GSList                     *objects,
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_push_object          (CpgParserContext           *context,
-                                                                GSList                     *objects,
+                                                                CpgEmbeddedString          *id,
+                                                                GSList                     *templates,
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_push_state           (CpgParserContext           *context,
