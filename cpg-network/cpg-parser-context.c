@@ -5051,6 +5051,11 @@ cpg_parser_context_set_when_applied (CpgParserContext  *context,
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
+	if (context->priv->in_when_applied)
+	{
+		return;
+	}
+
 	context->priv->in_when_applied = TRUE;
 	context->priv->when_applied = apply;
 	context->priv->when_applied_attributes = attributes;
