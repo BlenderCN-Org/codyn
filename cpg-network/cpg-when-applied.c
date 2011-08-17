@@ -2,6 +2,7 @@
 #include "cpg-object.h"
 #include "cpg-network.h"
 #include "cpg-parser-context.h"
+#include "cpg-parser.h"
 
 #define CPG_WHEN_APPLIED_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_WHEN_APPLIED, CpgWhenAppliedPrivate))
 
@@ -223,6 +224,20 @@ cpg_when_applied_run (CpgWhenApplied  *applied,
 	}
 
 	parser = cpg_parser_context_new (parent ? CPG_NETWORK (parent) : NULL);
+
+	if (CPG_IS_GROUP (object))
+	{
+		cpg_parser_context_set_start_token (parser, T_START_GROUP);
+	}
+	else if (CPG_IS_LINK (object))
+	{
+		cpg_parser_context_set_start_token (parser, T_START_LINK);
+	}
+	else
+	{
+		cpg_parser_context_set_start_token (parser, T_START_STATE);
+	}
+
 	cpg_parser_context_set_embedded (parser, applied->priv->closure);
 
 	cpg_parser_context_push_input_from_string (parser, applied->priv->code, NULL);

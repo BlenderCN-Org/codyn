@@ -97,6 +97,9 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_START_DOCUMENT
 %token T_START_SELECTOR
+%token T_START_GROUP
+%token T_START_LINK
+%token T_START_STATE
 
 %type <num> property_flag_sign
 %type <flags> property_flags
@@ -219,6 +222,9 @@ choose_parser
 	:
 	| T_START_DOCUMENT document_contents
 	| T_START_SELECTOR selector_parse T_EOF
+	| T_START_GROUP group_contents
+	| T_START_LINK link_contents
+	| T_START_STATE state_contents
 	;
 
 document_contents
