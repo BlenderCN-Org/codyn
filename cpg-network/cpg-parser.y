@@ -135,6 +135,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <selector> selector_explicit
 %type <selector> selector_non_ambiguous
 %type <selector> selector_as_pseudo_arg
+%type <selector> selector_non_ambiguous_as_pseudo_arg
 
 %type <num> selector_pseudo_mixargs_key
 %type <object> selector_pseudo_mixargs_arg
@@ -1008,8 +1009,7 @@ selector
 	;
 
 selector_as_pseudo_arg
-	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb; }
-	| '|' selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb; }
+	: selector			{ $$ = $1; cpg_selector_set_implicit_children ($1, FALSE); }
 	;
 
 selector_non_ambiguous_beginning
@@ -1024,11 +1024,16 @@ selector_non_ambiguous_beginning
 	  selector_items
 	;
 
+
 selector_non_ambiguous
 	: selector_explicit		{ $$ = $1; }
 	| selector_non_ambiguous_beginning
 					{ $$ = cpg_parser_context_pop_selector (context); errb;
 					  cpg_selector_set_implicit_children ($$, TRUE); }
+	;
+
+selector_non_ambiguous_as_pseudo_arg
+	: selector_non_ambiguous	{ $$ = $1; cpg_selector_set_implicit_children ($1, FALSE); }
 	;
 
 selector_parse_contents
@@ -1157,7 +1162,7 @@ selector_pseudo_mixargs_key
 
 selector_pseudo_mixargs_arg
 	: value_as_string			{ $$ = $1; }
-	| selector_non_ambiguous		{ $$ = $1;
+	| selector_non_ambiguous_as_pseudo_arg	{ $$ = $1;
 						  cpg_parser_context_push_selector (context); }
 	;
 
