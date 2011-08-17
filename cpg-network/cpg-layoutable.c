@@ -172,11 +172,11 @@ cpg_layoutable_set_location (CpgLayoutable *layoutable,
 
 	if (cpg_layoutable_supports_location (layoutable))
 	{
+		cpg_layoutable_set_has_location (layoutable, TRUE);
+
 		CPG_LAYOUTABLE_GET_INTERFACE (layoutable)->set_location (layoutable,
 		                                                         x,
 		                                                         y);
-
-		cpg_layoutable_set_has_location (layoutable, TRUE);
 	}
 }
 
