@@ -159,6 +159,7 @@ cpg-network-webots/Makefile
 data/Makefile
 data/cpg.xml
 data/library/Makefile
+data/library/layout/Makefile
 data/library/oscillators/Makefile
 docs/Makefile
 docs/reference/Makefile

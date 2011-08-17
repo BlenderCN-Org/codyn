@@ -1,0 +1,11 @@
+layout
+{
+  defines
+  {
+    minimum_distance ?= 3
+  }
+
+  count at $(0.5 * @minimum_distance / sin(pi / @0)): $(@0[?] / @0 * 2 * pi)
+}
+
+# vi:ex:ts=2:et
