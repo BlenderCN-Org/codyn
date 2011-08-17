@@ -3,9 +3,18 @@ layout
   defines
   {
     minimum_distance ?= 3
+    per_type ?= 0
   }
 
-  count at $(0.5 * @minimum_distance / sin(pi / @0)): $(@0[?] / @0 * 2 * pi)
+  [if(@per_type)]
+  {
+    type at $(0.5 * @minimum_distance / sin(pi / @1) * (@0[?] + 1)): $(@[@0+] / @1 * 2 * pi)
+  }
+
+  [if($(@per_type ? 0 : 1))]
+  {
+    count at $(0.5 * @minimum_distance / sin(pi / @0)): $(@0[?] / @0 * 2 * pi)
+  }
 }
 
 # vi:ex:ts=2:et
