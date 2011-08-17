@@ -57,13 +57,9 @@ gboolean
 cpg_taggable_has_tag (CpgTaggable *taggable,
                       gchar const *tag)
 {
-	GHashTable *table;
-
 	g_return_val_if_fail (CPG_TAGGABLE (taggable), FALSE);
 
-	table = cpg_taggable_get_tag_table (taggable);
-
-	return g_hash_table_lookup (table, tag) != NULL;
+	return cpg_taggable_try_get_tag (taggable, tag, NULL);
 }
 
 void
