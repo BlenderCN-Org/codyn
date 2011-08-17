@@ -2094,7 +2094,7 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 	parents = each_selections (context,
 	                           ctx->objects,
 	                           attributes,
-	                           type,
+	                           CPG_SELECTOR_TYPE_ANY,
 	                           NULL,
 	                           NULL,
 	                           TRUE);
