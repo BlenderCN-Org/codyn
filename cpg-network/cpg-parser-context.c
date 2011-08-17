@@ -1508,7 +1508,7 @@ parse_object_single_id (CpgParserContext *context,
 	{
 		g_object_ref (child);
 
-		if (!g_type_is_a (gtype, G_TYPE_FROM_INSTANCE (child)))
+		if (!g_type_is_a (G_TYPE_FROM_INSTANCE (child), gtype))
 		{
 			/* This means the object already existed (this can happen
 			   because existing objects created by other templates can be
