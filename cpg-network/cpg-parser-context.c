@@ -150,7 +150,8 @@ struct _CpgParserContextPrivate
 	GSList *when_applied_attributes;
 	GString *when_applied_text;
 
-	guint in_when_applied : 1;
+	guint in_when_applied;
+
 	guint when_applied : 1;
 	guint error_occurred : 1;
 };
@@ -484,7 +485,7 @@ parser_failed_error_at (CpgParserContext *context,
 	}
 
 	context->priv->error = error;
-	context->priv->in_when_applied = FALSE;
+	context->priv->in_when_applied = 0;
 
 	return FALSE;
 }
@@ -5053,10 +5054,11 @@ cpg_parser_context_set_when_applied (CpgParserContext  *context,
 
 	if (context->priv->in_when_applied)
 	{
+		++context->priv->in_when_applied;
 		return;
 	}
 
-	context->priv->in_when_applied = TRUE;
+	context->priv->in_when_applied = 1;
 	context->priv->when_applied = apply;
 	context->priv->when_applied_attributes = attributes;
 	context->priv->when_applied_text = g_string_new ("");
@@ -5072,7 +5074,15 @@ cpg_parser_context_unset_when_applied (CpgParserContext *context)
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	context->priv->in_when_applied = FALSE;
+	if (!context->priv->in_when_applied)
+	{
+		return;
+	}
+
+	if (--(context->priv->in_when_applied))
+	{
+		return;
+	}
 
 	g_string_erase (context->priv->when_applied_text,
 	                context->priv->when_applied_text->len - 1,
