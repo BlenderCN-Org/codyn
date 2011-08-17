@@ -43,6 +43,11 @@ struct _CpgTaggableInterface
 	GHashTable *(*get_tag_table) (CpgTaggable *taggable);
 };
 
+typedef void (*CpgTaggableForeachFunc) (CpgTaggable *taggable,
+                                        gchar const *key,
+                                        gchar const *value,
+                                        gpointer     userdata);
+
 GType        cpg_taggable_get_type      (void) G_GNUC_CONST;
 
 gboolean     cpg_taggable_has_tag       (CpgTaggable  *taggable,
@@ -67,6 +72,10 @@ GHashTable  *cpg_taggable_get_tag_table (CpgTaggable  *taggable);
 GHashTable  *cpg_taggable_create_table  (void);
 void         cpg_taggable_copy_to       (CpgTaggable  *taggable,
                                          GHashTable   *tags);
+
+void         cpg_taggable_foreach       (CpgTaggable            *taggable,
+                                         CpgTaggableForeachFunc  func,
+                                         gpointer                userdata);
 
 G_END_DECLS
 

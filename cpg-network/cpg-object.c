@@ -727,6 +727,37 @@ cpg_object_copy_impl (CpgObject *object,
 	g_free (annotation);
 }
 
+static void
+remove_template_tag (CpgTaggable *templ,
+                     gchar const *key,
+                     gchar const *value,
+                     CpgTaggable *object)
+{
+	GSList const *tt;
+
+	if (g_strcmp0 (cpg_taggable_get_tag (object, key),
+	               value) != 0)
+	{
+		return;
+	}
+
+	cpg_taggable_remove_tag (object, key);
+
+	for (tt = cpg_object_get_applied_templates (CPG_OBJECT (object));
+	     tt;
+	     tt = g_slist_next (tt))
+	{
+		gchar const *oval;
+
+		if (cpg_taggable_try_get_tag (tt->data, key, &oval))
+		{
+			cpg_taggable_add_tag (object,
+			                      key,
+			                      oval);
+		}
+	}
+}
+
 static gboolean
 cpg_object_unapply_template_impl (CpgObject  *object,
                                   CpgObject  *templ,
@@ -746,6 +777,10 @@ cpg_object_unapply_template_impl (CpgObject  *object,
 		on_template_property_removed (templ, item->data, object);
 	}
 
+	cpg_taggable_foreach (CPG_TAGGABLE (templ),
+	                      (CpgTaggableForeachFunc)remove_template_tag,
+	                      object);
+
 	/* Keep the template around for the signal emission */
 	g_object_ref (templ);
 	cpg_usable_use (CPG_USABLE (templ));
@@ -760,6 +795,15 @@ cpg_object_unapply_template_impl (CpgObject  *object,
 	return TRUE;
 }
 
+static void
+foreach_tag_copy (CpgTaggable *source,
+                  gchar const *key,
+                  gchar const *value,
+                  CpgTaggable *target)
+{
+	cpg_taggable_add_tag (target, key, value);
+}
+
 static gboolean
 cpg_object_apply_template_impl (CpgObject  *object,
                                 CpgObject  *templ,
@@ -772,6 +816,10 @@ cpg_object_apply_template_impl (CpgObject  *object,
 	{
 		on_template_property_added (templ, item->data, object);
 	}
+
+	cpg_taggable_foreach (CPG_TAGGABLE (templ),
+	                      (CpgTaggableForeachFunc)foreach_tag_copy,
+	                      object);
 
 	g_signal_connect (templ,
 	                  "property-added",

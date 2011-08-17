@@ -169,3 +169,37 @@ cpg_taggable_copy_to (CpgTaggable *taggable,
 	                      (GHFunc)copy_tag,
 	                      tags);
 }
+
+typedef struct
+{
+	CpgTaggable *taggable;
+	CpgTaggableForeachFunc func;
+	gpointer userdata;
+} ForeachInfo;
+
+static void
+taggable_foreach (gchar const *key,
+                  gchar const *value,
+                  ForeachInfo *info)
+{
+	info->func (info->taggable, key, value, info->userdata);
+}
+
+void
+cpg_taggable_foreach (CpgTaggable *taggable,
+                      CpgTaggableForeachFunc  func,
+                      gpointer                userdata)
+{
+	ForeachInfo info;
+
+	g_return_if_fail (CPG_IS_TAGGABLE (taggable));
+	g_return_if_fail (func != NULL);
+
+	info.taggable = taggable;
+	info.func = func;
+	info.userdata = userdata;
+
+	g_hash_table_foreach (cpg_taggable_get_tag_table (taggable),
+	                      (GHFunc)taggable_foreach,
+	                      &info);
+}
