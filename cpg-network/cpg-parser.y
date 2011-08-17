@@ -470,7 +470,8 @@ state
 	  T_KEY_STATE
 	  selector_non_ambiguous		{ cpg_parser_context_push_selection (context,
 	                                                                     $3,
-	                                                                     CPG_SELECTOR_TYPE_STATE,
+	                                                                     CPG_SELECTOR_TYPE_STATE |
+	                                                                     CPG_SELECTOR_TYPE_GROUP,
 	                                                                     $1); }
 	  '{'
 	  state_contents
