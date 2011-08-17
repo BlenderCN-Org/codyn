@@ -1682,7 +1682,7 @@ object_type_name (gpointer obj)
 	{
 		return "function";
 	}
-	else if (CPG_IS_OBJECT (obj))
+	else if (CPG_IS_NETWORK (obj))
 	{
 		return "root";
 	}
