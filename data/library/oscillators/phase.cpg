@@ -45,11 +45,7 @@ templates
         phase <= "weight * sin(from.phase - to.phase - phase_bias)"
     }
 
-    layout
-    {
-        "oscillator" at (@[++], 0)
-        "coupling" at (@[++], 0)
-    }
+    include "layout/line.cpg"
 }
 
 # vi:ex:ts=4:et
