@@ -907,11 +907,11 @@ interface_contents
 
 interface_property
 	: attributes
-	  value_as_string
+	  identifier_or_string
 	  '='
-	  value_as_string
+	  identifier_or_string
 	  T_KEY_ON
-	  value_as_string	{ cpg_parser_context_add_interface (context,
+	  identifier_or_string	{ cpg_parser_context_add_interface (context,
 	                                                            $2,
 	                                                            $6,
 	                                                            $4,
