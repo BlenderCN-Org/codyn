@@ -2217,14 +2217,7 @@ cpg_object_apply_template (CpgObject  *object,
 
 	if (g_slist_find (object->priv->templates, templ))
 	{
-		g_set_error (error,
-		             CPG_OBJECT_ERROR,
-		             CPG_OBJECT_ERROR_TEMPLATE_ALREADY_APPLIED,
-		             "The template `%s' is already applied to `%s'",
-		             cpg_object_get_id (object),
-		             cpg_object_get_id (templ));
-
-		return FALSE;
+		return TRUE;
 	}
 
 	ret = CPG_OBJECT_GET_CLASS (object)->apply_template (object,
