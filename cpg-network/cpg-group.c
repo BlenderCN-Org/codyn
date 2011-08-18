@@ -1870,6 +1870,8 @@ on_property_interface_changed (CpgObject *object)
 static gboolean
 on_property_interface_verify_remove (CpgPropertyInterface  *iface,
                                      gchar const           *name,
+                                     gchar const           *child_name,
+                                     gchar const           *property_name,
                                      GError               **error,
                                      CpgGroup              *group)
 {
