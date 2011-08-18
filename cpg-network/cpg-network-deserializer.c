@@ -1419,8 +1419,8 @@ parse_interface (CpgNetworkDeserializer *deserializer,
 	{
 		xmlNodePtr node = nodes->data;
 		xmlChar *name;
+		xmlChar *child;
 		xmlChar const *target = NULL;
-		CpgProperty *property;
 		GError *error = NULL;
 
 		name = xmlGetProp (node, (xmlChar const *)"name");
@@ -1431,6 +1431,17 @@ parse_interface (CpgNetworkDeserializer *deserializer,
 			                      node,
 			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
 			                      "Missing name for interface property on `%s'",
+			                      cpg_object_get_id (CPG_OBJECT (group)));
+		}
+
+		child = xmlGetProp (node, (xmlChar const *)"child");
+
+		if (!child)
+		{
+			return parser_failed (deserializer,
+			                      node,
+			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
+			                      "Missing child for interface property on `%s'",
 			                      cpg_object_get_id (CPG_OBJECT (group)));
 		}
 
@@ -1448,22 +1459,10 @@ parse_interface (CpgNetworkDeserializer *deserializer,
 			                      cpg_object_get_id (CPG_OBJECT (group)));
 		}
 
-		property = cpg_group_find_property (group, (gchar const *)target);
-
-		if (!property)
-		{
-			return parser_failed (deserializer,
-			                      node,
-			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
-			                      "Could not find interface target `%s' for interface property `%s' on `%s'",
-			                      target,
-			                      name,
-			                      cpg_object_get_id (CPG_OBJECT (group)));
-		}
-
 		if (!cpg_property_interface_add (iface,
 		                                 (gchar const *)name,
-		                                 property,
+		                                 (gchar const *)child,
+		                                 (gchar const *)target,
 		                                 &error))
 		{
 			parser_failed_error (deserializer,

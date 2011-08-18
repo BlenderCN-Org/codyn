@@ -40,11 +40,41 @@
 
 #define CPG_PROPERTY_INTERFACE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY_INTERFACE, CpgPropertyInterfacePrivate))
 
+typedef struct
+{
+	gchar *child_name;
+	gchar *name;
+} Property;
+
+static Property *
+property_new (gchar const *child_name,
+              gchar const *name)
+{
+	Property *ret;
+
+	ret = g_slice_new0 (Property);
+
+	ret->child_name = g_strdup (child_name);
+	ret->name = g_strdup (name);
+
+	return ret;
+}
+
+static void
+property_free (Property *self)
+{
+	g_free (self->child_name);
+	g_free (self->name);
+
+	g_slice_free (Property, self);
+}
+
 struct _CpgPropertyInterfacePrivate
 {
-	CpgGroup *object;
+	CpgGroup *group;
 
 	GPtrArray *names;
+
 	GHashTable *properties;
 };
 
@@ -53,7 +83,7 @@ G_DEFINE_TYPE (CpgPropertyInterface, cpg_property_interface, G_TYPE_OBJECT)
 enum
 {
 	PROP_0,
-	PROP_OBJECT
+	PROP_GROUP
 };
 
 enum
@@ -118,8 +148,8 @@ cpg_property_interface_set_property (GObject      *object,
 
 	switch (prop_id)
 	{
-		case PROP_OBJECT:
-			self->priv->object = g_value_get_object (value);
+		case PROP_GROUP:
+			self->priv->group = g_value_get_object (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -137,8 +167,8 @@ cpg_property_interface_get_property (GObject    *object,
 
 	switch (prop_id)
 	{
-		case PROP_OBJECT:
-			g_value_set_object (value, self->priv->object);
+		case PROP_GROUP:
+			g_value_set_object (value, self->priv->group);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -149,9 +179,11 @@ cpg_property_interface_get_property (GObject    *object,
 static gboolean
 cpg_property_interface_verify_remove_impl (CpgPropertyInterface  *iface,
                                            gchar const           *name,
+                                           gchar const           *child_name,
+                                           gchar const           *property_name,
                                            GError               **error)
 {
-	CpgProperty *property;
+	Property *property;
 
 	property = g_hash_table_lookup (iface->priv->properties, name);
 
@@ -159,7 +191,7 @@ cpg_property_interface_verify_remove_impl (CpgPropertyInterface  *iface,
 	{
 		gchar *id;
 
-		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
+		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->group));
 
 		g_set_error (error,
 		             CPG_PROPERTY_INTERFACE_ERROR,
@@ -179,14 +211,15 @@ cpg_property_interface_verify_remove_impl (CpgPropertyInterface  *iface,
 static gboolean
 cpg_property_interface_verify_add_impl (CpgPropertyInterface  *iface,
                                         gchar const           *name,
-                                        CpgProperty           *property,
+                                        gchar const           *child_name,
+                                        gchar const           *property_name,
                                         GError               **error)
 {
 	if (!cpg_tokenizer_validate_identifier (name))
 	{
 		gchar *id;
 
-		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
+		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->group));
 
 		g_set_error (error,
 		             CPG_OBJECT_ERROR,
@@ -204,7 +237,7 @@ cpg_property_interface_verify_add_impl (CpgPropertyInterface  *iface,
 	{
 		gchar *id;
 
-		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
+		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->group));
 
 		g_set_error (error,
 		             CPG_PROPERTY_INTERFACE_ERROR,
@@ -245,11 +278,12 @@ cpg_property_interface_class_init (CpgPropertyInterfaceClass *klass)
 		                               added),
 		              NULL,
 		              NULL,
-		              cpg_marshal_VOID__STRING_OBJECT,
+		              cpg_marshal_VOID__STRING_STRING_STRING,
 		              G_TYPE_NONE,
-		              2,
+		              3,
 		              G_TYPE_STRING,
-		              CPG_TYPE_PROPERTY);
+		              G_TYPE_STRING,
+		              G_TYPE_STRING);
 
 	signals[REMOVED] =
 		g_signal_new ("removed",
@@ -259,11 +293,12 @@ cpg_property_interface_class_init (CpgPropertyInterfaceClass *klass)
 		                               removed),
 		              NULL,
 		              NULL,
-		              cpg_marshal_VOID__STRING_OBJECT,
+		              cpg_marshal_VOID__STRING_STRING_STRING,
 		              G_TYPE_NONE,
-		              2,
+		              3,
 		              G_TYPE_STRING,
-		              CPG_TYPE_PROPERTY);
+		              G_TYPE_STRING,
+		              G_TYPE_STRING);
 
 	signals[VERIFY_REMOVE] =
 		g_signal_new ("verify-remove",
@@ -273,9 +308,11 @@ cpg_property_interface_class_init (CpgPropertyInterfaceClass *klass)
 		                               verify_remove),
 		              cpg_signal_accumulator_false_handled,
 		              NULL,
-		              cpg_marshal_BOOLEAN__STRING_POINTER,
+		              cpg_marshal_BOOLEAN__STRING_STRING_STRING_POINTER,
 		              G_TYPE_BOOLEAN,
-		              2,
+		              4,
+		              G_TYPE_STRING,
+		              G_TYPE_STRING,
 		              G_TYPE_STRING,
 		              G_TYPE_POINTER);
 
@@ -287,27 +324,21 @@ cpg_property_interface_class_init (CpgPropertyInterfaceClass *klass)
 		                               verify_add),
 		              cpg_signal_accumulator_false_handled,
 		              NULL,
-		              cpg_marshal_BOOLEAN__STRING_OBJECT_POINTER,
+		              cpg_marshal_BOOLEAN__STRING_STRING_STRING_POINTER,
 		              G_TYPE_BOOLEAN,
-		              3,
+		              4,
 		              G_TYPE_STRING,
-		              CPG_TYPE_PROPERTY,
+		              G_TYPE_STRING,
+		              G_TYPE_STRING,
 		              G_TYPE_POINTER);
 
 	g_object_class_install_property (object_class,
-	                                 PROP_OBJECT,
-	                                 g_param_spec_object ("object",
-	                                                      "Object",
-	                                                      "Object",
+	                                 PROP_GROUP,
+	                                 g_param_spec_object ("group",
+	                                                      "Group",
+	                                                      "Group",
 	                                                      CPG_TYPE_GROUP,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
-}
-
-static void
-destroy_property (CpgProperty *property)
-{
-	cpg_usable_unuse (CPG_USABLE (property));
-	g_object_unref (property);
 }
 
 static void
@@ -321,7 +352,7 @@ cpg_property_interface_init (CpgPropertyInterface *self)
 	self->priv->properties = g_hash_table_new_full (g_str_hash,
 	                                                g_str_equal,
 	                                                (GDestroyNotify)g_free,
-	                                                (GDestroyNotify)destroy_property);
+	                                                (GDestroyNotify)property_free);
 }
 
 /**
@@ -334,9 +365,11 @@ cpg_property_interface_init (CpgPropertyInterface *self)
  *
  **/
 CpgPropertyInterface *
-cpg_property_interface_new (CpgObject *object)
+cpg_property_interface_new (CpgGroup *group)
 {
-	return g_object_new (CPG_TYPE_PROPERTY_INTERFACE, "object", object, NULL);
+	return g_object_new (CPG_TYPE_PROPERTY_INTERFACE,
+	                     "group", group,
+	                     NULL);
 }
 
 /**
@@ -353,10 +386,27 @@ CpgProperty *
 cpg_property_interface_lookup (CpgPropertyInterface *iface,
                                gchar const          *name)
 {
+	Property *prop;
+	CpgObject *child;
+
 	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), NULL);
 	g_return_val_if_fail (name != NULL, FALSE);
 
-	return g_hash_table_lookup (iface->priv->properties, name);
+	prop = g_hash_table_lookup (iface->priv->properties, name);
+
+	if (!prop)
+	{
+		return NULL;
+	}
+
+	child = cpg_group_get_child (iface->priv->group, prop->child_name);
+
+	if (!child)
+	{
+		return NULL;
+	}
+
+	return cpg_object_get_property (child, prop->name);
 }
 
 /**
@@ -374,16 +424,25 @@ cpg_property_interface_lookup (CpgPropertyInterface *iface,
 gboolean
 cpg_property_interface_add (CpgPropertyInterface  *iface,
                             gchar const           *name,
-                            CpgProperty           *property,
+                            gchar const           *child_name,
+                            gchar const           *property_name,
                             GError               **error)
 {
 	gboolean ret = FALSE;
 
 	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
+	g_return_val_if_fail (child_name != NULL, FALSE);
+	g_return_val_if_fail (property_name != NULL, FALSE);
 
-	g_signal_emit (iface, signals[VERIFY_ADD], 0, name, property, error, &ret);
+	g_signal_emit (iface,
+	               signals[VERIFY_ADD],
+	               0,
+	               name,
+	               child_name,
+	               property_name,
+	               error,
+	               &ret);
 
 	if (ret)
 	{
@@ -392,15 +451,14 @@ cpg_property_interface_add (CpgPropertyInterface  *iface,
 
 	g_hash_table_insert (iface->priv->properties,
 	                     g_strdup (name),
-	                     g_object_ref (property));
-
-	cpg_usable_use (CPG_USABLE (property));
+	                     property_new (child_name, property_name));
 
 	g_ptr_array_remove_index (iface->priv->names, iface->priv->names->len - 1);
+
 	g_ptr_array_add (iface->priv->names, g_strdup (name));
 	g_ptr_array_add (iface->priv->names, NULL);
 
-	g_signal_emit (iface, signals[ADDED], 0, name, property);
+	g_signal_emit (iface, signals[ADDED], 0, name, child_name, property_name);
 
 	return TRUE;
 }
@@ -422,33 +480,42 @@ cpg_property_interface_remove (CpgPropertyInterface  *iface,
                                GError               **error)
 {
 	gint i;
-	CpgProperty *property;
+	Property *property;
 	gboolean ret = FALSE;
 
 	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
 
-	g_signal_emit (iface, signals[VERIFY_REMOVE], 0, name, error, &ret);
+	property = g_hash_table_lookup (iface->priv->properties, name);
 
-	if (ret)
+	if (!property)
 	{
-		gchar *id;
-
-		id = cpg_object_get_full_id (CPG_OBJECT (iface->priv->object));
-
-		g_warning ("Could not remove property interface: %s.%s",
-		           id,
-		           name);
-
-		g_free (id);
+		g_set_error (error,
+		             CPG_OBJECT_ERROR,
+		             CPG_OBJECT_ERROR_PROPERTY_NOT_FOUND,
+		             "Interface property `%s' does not exist",
+		             name);
 
 		return FALSE;
 	}
 
-	property = g_hash_table_lookup (iface->priv->properties, name);
+	g_signal_emit (iface,
+	               signals[VERIFY_REMOVE],
+	               0,
+	               name,
+	               property->child_name,
+	               property->name,
+	               error,
+	               &ret);
 
-	/* Keep property alive during signal emission later */
-	g_object_ref (property);
+	if (ret)
+	{
+		return FALSE;
+	}
+
+	/* Make a copy for the signal emission */
+	property = property_new (property->child_name, property->name);
+
 	g_hash_table_remove (iface->priv->properties, name);
 
 	for (i = 0; i < iface->priv->names->len; ++i)
@@ -464,27 +531,27 @@ cpg_property_interface_remove (CpgPropertyInterface  *iface,
 		}
 	}
 
-	g_signal_emit (iface, signals[REMOVED], 0, name, property);
-	g_object_unref (property);
+	g_signal_emit (iface, signals[REMOVED], 0, name, property->child_name, property->name);
+	property_free (property);
 
 	return TRUE;
 }
 
 /**
- * cpg_property_interface_get_object:
+ * cpg_property_interface_get_group:
  * @iface: A #CpgPropertyInterface
  *
  * Get the object on which the interface is defined.
  *
- * Returns: (transfer none): A #CpgObject
+ * Returns: (transfer none): A #CpgGroup
  *
  **/
-CpgObject *
-cpg_property_interface_get_object (CpgPropertyInterface *iface)
+CpgGroup *
+cpg_property_interface_get_group (CpgPropertyInterface *iface)
 {
 	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), NULL);
 
-	return CPG_OBJECT (iface->priv->object);
+	return iface->priv->group;
 }
 
 /**
@@ -512,4 +579,53 @@ cpg_property_interface_get_names (CpgPropertyInterface *iface)
 	}
 
 	return (gchar **)g_ptr_array_free (ptr, FALSE);
+}
+
+gboolean
+cpg_property_interface_implements (CpgPropertyInterface *iface,
+                                   gchar const          *name)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), FALSE);
+	g_return_val_if_fail (name != NULL, FALSE);
+
+	return g_hash_table_lookup (iface->priv->properties, name) != NULL;
+}
+
+
+gchar const *
+cpg_property_interface_lookup_child_name (CpgPropertyInterface  *iface,
+                                          gchar const           *name)
+{
+	Property *prop;
+
+	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+
+	prop = g_hash_table_lookup (iface->priv->properties, name);
+
+	if (!prop)
+	{
+		return NULL;
+	}
+
+	return prop->child_name;
+}
+
+gchar const *
+cpg_property_interface_lookup_property_name (CpgPropertyInterface *iface,
+                                             gchar const          *name)
+{
+	Property *prop;
+
+	g_return_val_if_fail (CPG_IS_PROPERTY_INTERFACE (iface), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
+
+	prop = g_hash_table_lookup (iface->priv->properties, name);
+
+	if (!prop)
+	{
+		return NULL;
+	}
+
+	return prop->name;
 }

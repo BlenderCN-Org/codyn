@@ -1152,51 +1152,41 @@ group_interface_is_template (CpgGroup    *group,
                              gchar const *name)
 {
 	CpgPropertyInterface *iface;
-	CpgProperty *prop;
 	GSList const *templates;
 	gboolean ret = FALSE;
-	gchar *path;
+	gchar const *my_child_name;
+	gchar const *my_property_name;
 
 	iface = cpg_group_get_property_interface (group);
-	prop = cpg_property_interface_lookup (iface, name);
+
+	my_child_name = cpg_property_interface_lookup_child_name (iface, name);
+	my_property_name = cpg_property_interface_lookup_property_name (iface, name);
 
 	templates = cpg_object_get_applied_templates (CPG_OBJECT (group));
-
-	path = cpg_object_get_relative_id (cpg_property_get_object (prop),
-	                                   CPG_OBJECT (group));
 
 	while (templates)
 	{
 		CpgGroup *template;
 		CpgPropertyInterface *template_iface;
-		CpgProperty *tempprop;
+		gchar const *child_name;
+		gchar const *property_name;
 
 		template = templates->data;
 
 		template_iface = cpg_group_get_property_interface (template);
-		tempprop = cpg_property_interface_lookup (template_iface, name);
 
-		if (tempprop && g_strcmp0 (cpg_property_get_name (prop),
-		                           cpg_property_get_name (tempprop)) == 0)
+		child_name = cpg_property_interface_lookup_child_name (template_iface, name);
+		property_name = cpg_property_interface_lookup_property_name (template_iface, name);
+
+		if (g_strcmp0 (my_child_name, child_name) == 0 &&
+		    g_strcmp0 (my_property_name, property_name) == 0)
 		{
-			gchar *origpath;
-
-			origpath = cpg_object_get_relative_id (cpg_property_get_object (tempprop),
-			                                       CPG_OBJECT (template));
-
-			ret = g_strcmp0 (origpath, path) == 0;
-			g_free (origpath);
-
-			if (ret)
-			{
-				break;
-			}
+			ret = TRUE;
+			break;
 		}
 
 		templates = g_slist_next (templates);
 	}
-
-	g_free (path);
 
 	return ret;
 }
@@ -1206,12 +1196,11 @@ group_interface_is_proxy (CpgGroup    *group,
                           gchar const *name)
 {
 	CpgObject *proxy;
-	CpgProperty *property;
+	gchar const *child_name;
 	CpgPropertyInterface *iface;
 
 	/* Check if the interface is an automatically generated interface from
 	   a property on the proxy object */
-
 	proxy = cpg_group_get_proxy (group);
 
 	if (!proxy)
@@ -1219,16 +1208,10 @@ group_interface_is_proxy (CpgGroup    *group,
 		return FALSE;
 	}
 
-	property = cpg_object_get_property (proxy, name);
-
-	if (!property)
-	{
-		return FALSE;
-	}
-
 	iface = cpg_group_get_property_interface (group);
+	child_name = cpg_property_interface_lookup_child_name (iface, name);
 
-	return cpg_property_interface_lookup (iface, name) == property;
+	return g_strcmp0 (cpg_object_get_id (proxy), child_name) == 0;
 }
 
 static gchar **
@@ -1287,37 +1270,23 @@ group_interface_to_xml (CpgNetworkSerializer *serializer,
 
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
-		CpgProperty *property;
-		gchar *path;
-		gchar *proppath;
+		gchar const *child_name;
+		gchar const *property_name;
 		xmlNodePtr node;
 		xmlNodePtr text;
 
-		property = cpg_property_interface_lookup (iface, *ptr);
-
-		path = cpg_object_get_relative_id (cpg_property_get_object (property),
-		                                   CPG_OBJECT (group));
-
-		if (path && *path)
-		{
-			proppath = g_strconcat (path, ".", cpg_property_get_name (property), NULL);
-		}
-		else
-		{
-			proppath = g_strdup (cpg_property_get_name (property));
-		}
+		child_name = cpg_property_interface_lookup_child_name (iface, *ptr);
+		property_name = cpg_property_interface_lookup_property_name (iface, *ptr);
 
 		node = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"property", NULL);
 		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)*ptr);
+		xmlNewProp (node, (xmlChar *)"child", (xmlChar *)child_name);
 
 		text = xmlNewDocText (serializer->priv->doc,
-		                      (xmlChar *)proppath);
+		                      (xmlChar *)property_name);
 
 		xmlAddChild (node, text);
 		xmlAddChild (parent, node);
-
-		g_free (path);
-		g_free (proppath);
 	}
 
 	g_strfreev (names);

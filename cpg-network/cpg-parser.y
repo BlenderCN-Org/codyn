@@ -905,9 +905,15 @@ interface_contents
 
 interface_property
 	: attributes
-	  identifier_or_string
+	  value_as_string
 	  '='
-	  selector	{ cpg_parser_context_add_interface (context, $2, $4, $1); errb }
+	  value_as_string
+	  T_KEY_ON
+	  value_as_string	{ cpg_parser_context_add_interface (context,
+	                                                            $2,
+	                                                            $6,
+	                                                            $4,
+	                                                            $1); errb }
 	;
 
 interface_item

@@ -1271,7 +1271,8 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 void
 cpg_parser_context_add_interface (CpgParserContext  *context,
                                   CpgEmbeddedString *name,
-                                  CpgSelector       *target,
+                                  CpgEmbeddedString *child_name,
+                                  CpgEmbeddedString *property_name,
                                   GSList            *attributes)
 {
 	Context *ctx;
@@ -1280,7 +1281,8 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
-	g_return_if_fail (CPG_IS_SELECTOR (target));
+	g_return_if_fail (child_name != NULL);
+	g_return_if_fail (property_name != NULL);
 
 	if (context->priv->in_when_applied)
 	{
@@ -1301,9 +1303,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 	{
 		CpgPropertyInterface *iface;
 		CpgGroup *parent;
-		GSList *props;
 		gboolean ret = TRUE;
-		GError *error = NULL;
 		GSList *exps;
 		GSList *exp;
 
@@ -1320,37 +1320,67 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 
 		for (exp = exps; exp; exp = g_slist_next (exp))
 		{
+			GSList *children;
+			GSList *child;
+
 			cpg_embedded_context_save (context->priv->embedded);
 
 			cpg_embedded_context_add_expansion (context->priv->embedded,
 			                                    exp->data);
 
-			props = cpg_selector_select (target,
-			                             G_OBJECT (parent),
-			                             CPG_SELECTOR_TYPE_PROPERTY,
-			                             context->priv->embedded);
+			embedded_string_expand_multiple (children, child_name, context);
 
-			cpg_embedded_context_restore (context->priv->embedded);
-
-			if (props)
+			for (child = children; child; child = g_slist_next (child))
 			{
-				gchar const *exname;
+				GSList *properties;
+				GSList *prop;
 
-				exname = cpg_expansion_get (exp->data, 0);
+				cpg_embedded_context_save (context->priv->embedded);
 
-				if (!cpg_property_interface_add (iface,
-				                                 exname,
-				                                 cpg_selection_get_object (props->data),
-				                                 &error))
+				cpg_embedded_context_add_expansion (context->priv->embedded,
+				                                    child->data);
+
+				embedded_string_expand_multiple (properties, property_name, context);
+
+				for (prop = properties; prop; prop = g_slist_next (prop))
 				{
-					parser_failed_error (context, NULL, error);
-					ret = FALSE;
+					GError *error = NULL;
+
+					if (!cpg_property_interface_add (iface,
+					                                 cpg_expansion_get (exp->data, 0),
+					                                 cpg_expansion_get (child->data, 0),
+					                                 cpg_expansion_get (prop->data, 0),
+					                                 &error))
+					{
+						parser_failed_error (context,
+						                     CPG_STATEMENT (name),
+						                     error);
+
+						ret = FALSE;
+						break;
+					}
+				}
+
+				g_slist_foreach (properties, (GFunc)g_object_unref, NULL);
+				g_slist_free (properties);
+
+				cpg_embedded_context_restore (context->priv->embedded);
+
+				if (!ret)
+				{
 					break;
 				}
 			}
 
-			g_slist_foreach (props, (GFunc)g_object_unref, NULL);
-			g_slist_free (props);
+			g_slist_foreach (children, (GFunc)g_object_unref, NULL);
+			g_slist_free (children);
+
+			cpg_embedded_context_restore (context->priv->embedded);
+
+			if (!ret)
+			{
+				break;
+			}
 		}
 
 		cpg_embedded_context_restore (context->priv->embedded);

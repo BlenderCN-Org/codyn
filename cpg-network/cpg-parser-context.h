@@ -155,7 +155,8 @@ void                   cpg_parser_context_add_polynomial       (CpgParserContext
 
 void                   cpg_parser_context_add_interface        (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
-                                                                CpgSelector                *target,
+                                                                CpgEmbeddedString          *child_name,
+                                                                CpgEmbeddedString          *property_name,
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_import               (CpgParserContext           *context,
