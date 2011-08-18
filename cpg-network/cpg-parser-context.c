@@ -302,7 +302,11 @@ cpg_parser_context_finalize (GObject *object)
 	g_slist_free (self->priv->inputs);
 
 	cpg_parser_lex_destroy (self->priv->scanner);
-	g_string_free (self->priv->annotation, TRUE);
+
+	if (self->priv->annotation)
+	{
+		g_string_free (self->priv->annotation, TRUE);
+	}
 
 	G_OBJECT_CLASS (cpg_parser_context_parent_class)->finalize (object);
 }
@@ -413,7 +417,7 @@ cpg_parser_context_init (CpgParserContext *self)
 	self->priv = CPG_PARSER_CONTEXT_GET_PRIVATE (self);
 
 	self->priv->start_token = T_START_DOCUMENT;
-	self->priv->annotation = g_string_new ("");
+	self->priv->annotation = NULL;
 	self->priv->embedded = cpg_embedded_context_new ();
 }
 
@@ -524,13 +528,13 @@ steal_annotation (CpgParserContext *context)
 {
 	gchar *ret;
 
-	if (context->priv->annotation->len == 0)
+	if (!context->priv->annotation)
 	{
 		return NULL;
 	}
 
 	ret = g_string_free (context->priv->annotation, FALSE);
-	context->priv->annotation = g_string_new ("");
+	context->priv->annotation = NULL;
 
 	return ret;
 }
@@ -3895,6 +3899,8 @@ void
 cpg_parser_context_push_annotation (CpgParserContext  *context,
                                     CpgEmbeddedString *annotation)
 {
+	gchar const *expanded;
+
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (annotation != NULL);
 
@@ -3903,20 +3909,18 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 		return;
 	}
 
-	if (context->priv->previous_annotation != CURRENT_INPUT (context)->lineno - 1)
+	embedded_string_expand (expanded, annotation, context);
+
+	if (!context->priv->annotation)
 	{
-		gchar const *expanded;
-
-		embedded_string_expand (expanded, annotation, context);
-
+		context->priv->annotation = g_string_new (expanded);
+	}
+	else if (context->priv->previous_annotation != CURRENT_INPUT (context)->lineno - 1)
+	{
 		g_string_assign (context->priv->annotation, expanded);
 	}
 	else
 	{
-		gchar const *expanded;
-
-		embedded_string_expand (expanded, annotation, context);
-
 		g_string_append_c (context->priv->annotation, '\n');
 		g_string_append (context->priv->annotation, expanded);
 	}

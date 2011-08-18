@@ -106,11 +106,20 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "##"[ \t]*			{
 					yy_push_state (annotation, yyscanner);
 				}
-<annotation>[^\n]+		{
+<annotation>[^\n]*		{
 					cpg_parser_context_push_annotation (yyextra,
 					                                    cpg_embedded_string_new_from_string (yytext));
 					yy_pop_state (yyscanner);
 				}
+<annotation>\n.*		{
+					cpg_parser_context_push_annotation (yyextra,
+					                                    cpg_embedded_string_new_from_string (""));
+
+					HANDLE_NEWLINE
+
+					yy_pop_state (yyscanner);
+				}
+
 "#"				yy_push_state (comment, yyscanner);
 <comment>[^\n]*$		yy_pop_state (yyscanner);
 
