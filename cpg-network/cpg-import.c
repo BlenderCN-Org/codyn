@@ -659,14 +659,21 @@ static gboolean
 object_in_templates (CpgNetwork *network,
                      CpgObject  *obj)
 {
-	CpgObject *parent;
+	CpgObject *tg;
 
-	while ((parent = cpg_object_get_parent (obj)))
+	tg = CPG_OBJECT (cpg_network_get_template_group (network));
+
+	while (obj)
 	{
-		obj = parent;
+		if (obj == tg)
+		{
+			return TRUE;
+		}
+
+		obj = cpg_object_get_parent (obj);
 	}
 
-	return obj != CPG_OBJECT (network);
+	return FALSE;
 }
 
 static void
