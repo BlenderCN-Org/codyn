@@ -1455,7 +1455,11 @@ get_templates (CpgParserContext  *context,
 	   applied */
 	for (item = ret; item; item = g_slist_next (item))
 	{
-		GType template_type = G_TYPE_FROM_INSTANCE (object);
+		CpgObject *temp;
+		GType template_type;
+
+		temp = cpg_selection_get_object (item->data);
+		template_type = G_TYPE_FROM_INSTANCE (temp);
 
 		if (!g_type_is_a (gtype, template_type))
 		{
@@ -2195,7 +2199,7 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 
 			temps = get_templates (context,
 			                       obj,
-			                       CPG_GROUP (cpg_object_get_parent (it->data)),
+			                       CPG_GROUP (cpg_object_get_parent (obj)),
 			                       templates,
 			                       gtype_from_selector_type (type));
 
