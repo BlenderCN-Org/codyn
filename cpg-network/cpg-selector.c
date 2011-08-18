@@ -3062,6 +3062,15 @@ cpg_selector_set_self (CpgSelector  *selector,
 	}
 }
 
+/**
+ * cpg_selector_copy_with:
+ * @selector: A #CpgSelector
+ *
+ * Copy a selector for a with block.
+ *
+ * Returns: (transfer full): A #CpgSelector
+ *
+ **/
 CpgSelector *
 cpg_selector_copy_with (CpgSelector *selector)
 {
