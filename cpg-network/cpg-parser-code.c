@@ -1,48 +1,49 @@
-#include "cpg-when-applied.h"
+#include "cpg-parser-code.h"
 #include "cpg-object.h"
 #include "cpg-network.h"
 #include "cpg-parser-context.h"
 #include "cpg-parser.h"
+#include "cpg-enum-types.h"
 
-#define CPG_WHEN_APPLIED_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_WHEN_APPLIED, CpgWhenAppliedPrivate))
+#define CPG_PARSER_CODE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PARSER_CODE, CpgParserCodePrivate))
 
-struct _CpgWhenAppliedPrivate
+struct _CpgParserCodePrivate
 {
 	CpgEmbeddedContext *closure;
 	gchar *code;
-	gboolean is_apply;
+	CpgParserCodeEvent event;
 };
 
-G_DEFINE_TYPE (CpgWhenApplied, cpg_when_applied, G_TYPE_OBJECT)
+G_DEFINE_TYPE (CpgParserCode, cpg_parser_code, G_TYPE_OBJECT)
 
 enum
 {
 	PROP_0,
 	PROP_CLOSURE,
 	PROP_CODE,
-	PROP_IS_APPLY
+	PROP_EVENT
 };
 
 static void
-cpg_when_applied_finalize (GObject *object)
+cpg_parser_code_finalize (GObject *object)
 {
-	CpgWhenApplied *applied;
+	CpgParserCode *applied;
 
-	applied = CPG_WHEN_APPLIED (object);
+	applied = CPG_PARSER_CODE (object);
 
 	g_object_unref (applied->priv->closure);
 	g_free (applied->priv->code);
 
-	G_OBJECT_CLASS (cpg_when_applied_parent_class)->finalize (object);
+	G_OBJECT_CLASS (cpg_parser_code_parent_class)->finalize (object);
 }
 
 static void
-cpg_when_applied_set_property (GObject      *object,
+cpg_parser_code_set_property (GObject      *object,
                                guint         prop_id,
                                const GValue *value,
                                GParamSpec   *pspec)
 {
-	CpgWhenApplied *self = CPG_WHEN_APPLIED (object);
+	CpgParserCode *self = CPG_PARSER_CODE (object);
 
 	switch (prop_id)
 	{
@@ -65,8 +66,8 @@ cpg_when_applied_set_property (GObject      *object,
 		case PROP_CODE:
 			self->priv->code = g_value_dup_string (value);
 			break;
-		case PROP_IS_APPLY:
-			self->priv->is_apply = g_value_get_boolean (value);
+		case PROP_EVENT:
+			self->priv->event = g_value_get_enum (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -75,12 +76,12 @@ cpg_when_applied_set_property (GObject      *object,
 }
 
 static void
-cpg_when_applied_get_property (GObject    *object,
+cpg_parser_code_get_property (GObject    *object,
                                guint       prop_id,
                                GValue     *value,
                                GParamSpec *pspec)
 {
-	CpgWhenApplied *self = CPG_WHEN_APPLIED (object);
+	CpgParserCode *self = CPG_PARSER_CODE (object);
 
 	switch (prop_id)
 	{
@@ -90,8 +91,8 @@ cpg_when_applied_get_property (GObject    *object,
 		case PROP_CODE:
 			g_value_set_string (value, self->priv->code);
 			break;
-		case PROP_IS_APPLY:
-			g_value_set_boolean (value, self->priv->is_apply);
+		case PROP_EVENT:
+			g_value_set_enum (value, self->priv->event);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -100,16 +101,16 @@ cpg_when_applied_get_property (GObject    *object,
 }
 
 static void
-cpg_when_applied_class_init (CpgWhenAppliedClass *klass)
+cpg_parser_code_class_init (CpgParserCodeClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-	object_class->finalize = cpg_when_applied_finalize;
+	object_class->finalize = cpg_parser_code_finalize;
 
-	object_class->get_property = cpg_when_applied_get_property;
-	object_class->set_property = cpg_when_applied_set_property;
+	object_class->get_property = cpg_parser_code_get_property;
+	object_class->set_property = cpg_parser_code_set_property;
 
-	g_type_class_add_private (object_class, sizeof(CpgWhenAppliedPrivate));
+	g_type_class_add_private (object_class, sizeof(CpgParserCodePrivate));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_CLOSURE,
@@ -128,36 +129,37 @@ cpg_when_applied_class_init (CpgWhenAppliedClass *klass)
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 
 	g_object_class_install_property (object_class,
-	                                 PROP_IS_APPLY,
-	                                 g_param_spec_boolean ("is-apply",
-	                                                       "Is Apply",
-	                                                       "Is apply",
-	                                                       TRUE,
-	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+	                                 PROP_EVENT,
+	                                 g_param_spec_enum ("event",
+	                                                    "Event",
+	                                                    "Event",
+	                                                    CPG_TYPE_PARSER_CODE_EVENT,
+	                                                    CPG_PARSER_CODE_EVENT_NONE,
+	                                                    G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
 
 static void
-cpg_when_applied_init (CpgWhenApplied *self)
+cpg_parser_code_init (CpgParserCode *self)
 {
-	self->priv = CPG_WHEN_APPLIED_GET_PRIVATE (self);
+	self->priv = CPG_PARSER_CODE_GET_PRIVATE (self);
 }
 
-CpgWhenApplied *
-cpg_when_applied_new (CpgEmbeddedContext *closure,
-                      gchar const        *code,
-                      gboolean            isapply)
+CpgParserCode *
+cpg_parser_code_new (CpgEmbeddedContext *closure,
+                     gchar const        *code,
+                     CpgParserCodeEvent  event)
 
 {
-	return g_object_new (CPG_TYPE_WHEN_APPLIED,
+	return g_object_new (CPG_TYPE_PARSER_CODE,
 	                     "closure", closure,
 	                     "code", code,
-	                     "is-apply", isapply,
+	                     "event", event,
 	                     NULL);
 }
 
 /**
- * cpg_when_applied_get_closure:
- * @applied: A #CpgWhenApplied
+ * cpg_parser_code_get_closure:
+ * @applied: A #CpgParserCode
  *
  * Get the closure.
  *
@@ -165,33 +167,33 @@ cpg_when_applied_new (CpgEmbeddedContext *closure,
  *
  **/
 CpgEmbeddedContext *
-cpg_when_applied_get_closure (CpgWhenApplied *applied)
+cpg_parser_code_get_closure (CpgParserCode *applied)
 {
-	g_return_val_if_fail (CPG_IS_WHEN_APPLIED (applied), NULL);
+	g_return_val_if_fail (CPG_IS_PARSER_CODE (applied), NULL);
 
 	return applied->priv->closure;
 }
 
 gchar const *
-cpg_when_applied_get_code (CpgWhenApplied *applied)
+cpg_parser_code_get_code (CpgParserCode *applied)
 {
-	g_return_val_if_fail (CPG_IS_WHEN_APPLIED (applied), NULL);
+	g_return_val_if_fail (CPG_IS_PARSER_CODE (applied), NULL);
 
 	return applied->priv->code;
 }
 
-gboolean
-cpg_when_applied_get_is_apply (CpgWhenApplied *applied)
+CpgParserCodeEvent
+cpg_parser_code_get_event (CpgParserCode *applied)
 {
-	g_return_val_if_fail (CPG_IS_WHEN_APPLIED (applied), FALSE);
+	g_return_val_if_fail (CPG_IS_PARSER_CODE (applied), CPG_PARSER_CODE_EVENT_NONE);
 
-	return applied->priv->is_apply;
+	return applied->priv->event;
 }
 
 gboolean
-cpg_when_applied_run (CpgWhenApplied  *applied,
-                      CpgObject       *object,
-                      GError         **error)
+cpg_parser_code_run (CpgParserCode  *applied,
+                     CpgObject       *object,
+                     GError         **error)
 {
 	CpgObject *parent;
 	CpgParserContext *parser;
@@ -199,7 +201,7 @@ cpg_when_applied_run (CpgWhenApplied  *applied,
 	gboolean ret;
 	CpgSelection *selection;
 
-	g_return_val_if_fail (CPG_IS_WHEN_APPLIED (applied), FALSE);
+	g_return_val_if_fail (CPG_IS_PARSER_CODE (applied), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 
 	parent = object;

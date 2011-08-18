@@ -84,7 +84,7 @@ struct _CpgObjectPrivate
 	gchar *annotation;
 	GHashTable *tags;
 
-	GSList *when_applied;
+	GSList *event_handlers;
 
 	gboolean compiled : 1;
 	gboolean auto_imported : 1;
@@ -251,8 +251,8 @@ cpg_object_finalize (GObject *object)
 	g_hash_table_destroy (obj->priv->property_hash);
 	g_hash_table_destroy (obj->priv->tags);
 
-	g_slist_foreach (obj->priv->when_applied, (GFunc)g_object_unref, NULL);
-	g_slist_free (obj->priv->when_applied);
+	g_slist_foreach (obj->priv->event_handlers, (GFunc)g_object_unref, NULL);
+	g_slist_free (obj->priv->event_handlers);
 
 	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
@@ -2167,24 +2167,28 @@ cpg_object_is_compiled (CpgObject *object)
 }
 
 static gboolean
-run_when_applied (CpgObject  *object,
-                  CpgObject  *templ,
-                  GError    **error)
+run_template_parser_codes (CpgObject          *object,
+                           CpgObject          *templ,
+                           CpgParserCodeEvent  event,
+                           GError    **error)
 {
-	GSList *applied;
+	GSList *code;
 
-	applied = templ->priv->when_applied;
+	code = templ->priv->event_handlers;
 
-	while (applied)
+	while (code)
 	{
-		if (!cpg_when_applied_run (applied->data,
-		                           object,
-		                           error))
+		if (cpg_parser_code_get_event (code->data) == event)
 		{
-			return FALSE;
+			if (!cpg_parser_code_run (code->data,
+			                          object,
+			                          error))
+			{
+				return FALSE;
+			}
 		}
 
-		applied = g_slist_next (applied);
+		code = g_slist_next (code);
 	}
 
 	return TRUE;
@@ -2220,13 +2224,26 @@ cpg_object_apply_template (CpgObject  *object,
 		return TRUE;
 	}
 
+	ret = run_template_parser_codes (object,
+	                                 templ,
+	                                 CPG_PARSER_CODE_EVENT_BEFORE_APPLY,
+	                                 error);
+
+	if (!ret)
+	{
+		return ret;
+	}
+
 	ret = CPG_OBJECT_GET_CLASS (object)->apply_template (object,
 	                                                     templ,
 	                                                     error);
 
 	if (ret)
 	{
-		ret = run_when_applied (object, templ, error);
+		ret = run_template_parser_codes (object,
+		                                 templ,
+		                                 CPG_PARSER_CODE_EVENT_AFTER_APPLY,
+		                                 error);
 	}
 
 	return ret;
@@ -2249,6 +2266,8 @@ cpg_object_unapply_template (CpgObject  *object,
                              CpgObject  *templ,
                              GError    **error)
 {
+	gboolean ret;
+
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (templ), FALSE);
 
@@ -2264,9 +2283,31 @@ cpg_object_unapply_template (CpgObject  *object,
 		return FALSE;
 	}
 
-	return CPG_OBJECT_GET_CLASS (object)->unapply_template (object,
-	                                                        templ,
-	                                                        error);
+	ret = run_template_parser_codes (object,
+	                                 templ,
+	                                 CPG_PARSER_CODE_EVENT_BEFORE_UNAPPLY,
+	                                 error);
+
+	if (!ret)
+	{
+		return ret;
+	}
+
+	ret = CPG_OBJECT_GET_CLASS (object)->unapply_template (object,
+	                                                       templ,
+	                                                       error);
+
+	if (!ret)
+	{
+		return ret;
+	}
+
+	ret = run_template_parser_codes (object,
+	                                 templ,
+	                                 CPG_PARSER_CODE_EVENT_AFTER_UNAPPLY,
+	                                 error);
+
+	return ret;
 }
 
 /**
@@ -2584,57 +2625,57 @@ cpg_object_get_relative_id_for_display (CpgObject *object,
 }
 
 void
-cpg_object_add_when_applied (CpgObject      *object,
-                             CpgWhenApplied *applied)
+cpg_object_add_event_handler (CpgObject      *object,
+                              CpgParserCode  *code)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (CPG_IS_WHEN_APPLIED (applied));
+	g_return_if_fail (CPG_IS_PARSER_CODE (code));
 
-	if (g_slist_find (object->priv->when_applied, applied))
+	if (g_slist_find (object->priv->event_handlers, code))
 	{
 		return;
 	}
 
-	object->priv->when_applied =
-		g_slist_append (object->priv->when_applied,
-		                g_object_ref (applied));
+	object->priv->event_handlers =
+		g_slist_append (object->priv->event_handlers,
+		                g_object_ref (code));
 }
 
 void
-cpg_object_remove_when_applied (CpgObject      *object,
-                                CpgWhenApplied *applied)
+cpg_object_remove_event_handler (CpgObject     *object,
+                                 CpgParserCode *code)
 {
 	GSList *item;
 
 	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (CPG_IS_WHEN_APPLIED (applied));
+	g_return_if_fail (CPG_IS_PARSER_CODE (code));
 
-	item = g_slist_find (object->priv->when_applied, applied);
+	item = g_slist_find (object->priv->event_handlers, code);
 
 	if (item)
 	{
 		g_object_unref (item->data);
 
-		object->priv->when_applied =
-			g_slist_delete_link (object->priv->when_applied,
+		object->priv->event_handlers =
+			g_slist_delete_link (object->priv->event_handlers,
 			                     item);
 	}
 }
 
 /**
- * cpg_object_get_when_applied:
+ * cpg_object_get_parser_codes:
  * @object: A #CpgObject
  *
- * Get the list of #CpgWhenApplied which are run when the object is applied
+ * Get the list of #CpgParserCode which are run when the object is applied
  * as a template.
  *
- * Returns: (element-type CpgWhenApplied): A #GSList
+ * Returns: (element-type CpgParserCode): A #GSList
  *
  **/
 GSList const *
-cpg_object_get_when_applied (CpgObject *object)
+cpg_object_get_event_handlers (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
-	return object->priv->when_applied;
+	return object->priv->event_handlers;
 }

@@ -334,11 +334,11 @@ void                   cpg_parser_context_unapply_template      (CpgParserContex
                                                                  CpgSelector       *templates,
                                                                  CpgSelector       *targets);
 
-void                   cpg_parser_context_set_when_applied      (CpgParserContext  *context,
-                                                                 gboolean           apply,
-                                                                 GSList            *attributes);
+void                   cpg_parser_context_set_event_handler     (CpgParserContext   *context,
+                                                                 CpgParserCodeEvent  event,
+                                                                 GSList             *attributes);
 
-void                   cpg_parser_context_unset_when_applied    (CpgParserContext  *context);
+void                   cpg_parser_context_unset_event_handler  (CpgParserContext  *context);
 
 void                   cpg_parser_context_remove_record         (CpgParserContext  *context,
                                                                  gint               len,

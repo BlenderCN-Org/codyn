@@ -178,8 +178,10 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "debug-print"			return T_KEY_DEBUG_PRINT;
 "apply"				return T_KEY_APPLY;
 "unapply"			return T_KEY_UNAPPLY;
-"when-applied"			return T_KEY_WHEN_APPLIED;
-"when-unapplied"		return T_KEY_WHEN_UNAPPLIED;
+"before-apply"			return T_KEY_BEFORE_APPLY;
+"after-apply"			return T_KEY_AFTER_APPLY;
+"before-unapply"		return T_KEY_BEFORE_UNAPPLY;
+"after-unapply"			return T_KEY_AFTER_UNAPPLY;
 "with"				return T_KEY_WITH;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;

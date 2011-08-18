@@ -32,6 +32,7 @@
 #include "cpg-input-file.h"
 #include "cpg-statement.h"
 #include "cpg-taggable.h"
+#include "cpg-parser-code.h"
 
 #include <math.h>
 
@@ -147,12 +148,12 @@ struct _CpgParserContextPrivate
 
 	CpgLayout *layout;
 
-	GSList *when_applied_attributes;
-	GString *when_applied_text;
+	GSList *event_handler_attributes;
+	GString *event_handler_code;
+	CpgParserCodeEvent event_handler_event;
 
-	guint in_when_applied;
+	guint in_event_handler;
 
-	guint when_applied : 1;
 	guint error_occurred : 1;
 };
 
@@ -489,7 +490,7 @@ parser_failed_error (CpgParserContext *context,
 	}
 
 	context->priv->error = error;
-	context->priv->in_when_applied = 0;
+	context->priv->in_event_handler = 0;
 
 	return FALSE;
 }
@@ -899,7 +900,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -1042,7 +1043,7 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 	g_return_if_fail (target != NULL);
 	g_return_if_fail (expression != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -1131,7 +1132,7 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 	g_return_if_fail (name != NULL);
 	g_return_if_fail (expression != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -1216,7 +1217,7 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -1284,7 +1285,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 	g_return_if_fail (child_name != NULL);
 	g_return_if_fail (property_name != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2112,7 +2113,7 @@ cpg_parser_context_push_objects (CpgParserContext *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2182,7 +2183,7 @@ cpg_parser_context_push_selection (CpgParserContext *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2552,7 +2553,7 @@ cpg_parser_context_push_object (CpgParserContext  *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2578,7 +2579,7 @@ cpg_parser_context_push_state (CpgParserContext  *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2604,7 +2605,7 @@ cpg_parser_context_push_group (CpgParserContext  *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2633,7 +2634,7 @@ cpg_parser_context_push_input_file (CpgParserContext  *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2683,7 +2684,7 @@ cpg_parser_context_push_link (CpgParserContext          *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2787,7 +2788,7 @@ push_scope (CpgParserContext *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2809,7 +2810,7 @@ void
 cpg_parser_context_push_define (CpgParserContext *context,
                                 GSList           *attributes)
 {
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2821,7 +2822,7 @@ void
 cpg_parser_context_push_scope (CpgParserContext *context,
                                GSList           *attributes)
 {
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2837,7 +2838,7 @@ cpg_parser_context_push_network (CpgParserContext *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2858,7 +2859,7 @@ cpg_parser_context_push_integrator (CpgParserContext *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2880,7 +2881,7 @@ cpg_parser_context_push_templates (CpgParserContext *context,
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -2913,7 +2914,7 @@ cpg_parser_context_pop (CpgParserContext *context)
 
 	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return NULL;
 	}
@@ -2964,7 +2965,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 	g_return_if_fail (id != NULL);
 	g_return_if_fail (path != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -3510,9 +3511,9 @@ cpg_parser_context_set_token (CpgParserContext *context,
 
 	input->token = g_strdup (token);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
-		g_string_append (context->priv->when_applied_text, token);
+		g_string_append (context->priv->event_handler_code, token);
 	}
 }
 
@@ -3538,7 +3539,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 	g_return_if_fail (name != NULL);
 	g_return_if_fail (defines != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -3704,7 +3705,7 @@ cpg_parser_context_push_input (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (file != NULL || stream != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -3739,7 +3740,7 @@ cpg_parser_context_include (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -3766,7 +3767,7 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -3817,7 +3818,7 @@ cpg_parser_context_push_input_from_string (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (s != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -3934,7 +3935,7 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (annotation != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -3965,7 +3966,7 @@ cpg_parser_context_push_layout (CpgParserContext *context,
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -3993,7 +3994,7 @@ cpg_parser_context_add_layout (CpgParserContext *context,
 	g_return_if_fail (left == NULL || CPG_IS_SELECTOR (left));
 	g_return_if_fail (CPG_IS_SELECTOR (right));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -4094,7 +4095,7 @@ cpg_parser_context_add_layout_position (CpgParserContext  *context,
 	g_return_if_fail (y != NULL);
 	g_return_if_fail (of == NULL || CPG_IS_SELECTOR (of));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -4228,7 +4229,7 @@ cpg_parser_context_add_integrator_property (CpgParserContext  *context,
 	g_return_if_fail (name != NULL);
 	g_return_if_fail (value != NULL);
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -4490,7 +4491,7 @@ debug_selector (CpgParserContext *context,
 	gchar *fullid;
 	GSList *orig = objects;
 
-	fullid = cpg_object_get_full_id (cpg_selection_get_object (selection));
+	fullid = cpg_object_get_full_id_for_display (cpg_selection_get_object (selection));
 
 	while (objects)
 	{
@@ -4501,11 +4502,11 @@ debug_selector (CpgParserContext *context,
 
 		if (CPG_IS_OBJECT (cpg_selection_get_object (sel)))
 		{
-			msg = cpg_object_get_full_id (cpg_selection_get_object (sel));
+			msg = cpg_object_get_full_id_for_display (cpg_selection_get_object (sel));
 		}
 		else
 		{
-			msg = cpg_property_get_full_name (cpg_selection_get_object (sel));
+			msg = cpg_property_get_full_name_for_display (cpg_selection_get_object (sel));
 		}
 
 		g_printerr ("[debug] (%d): {%s} => %s\n",
@@ -4533,7 +4534,7 @@ cpg_parser_context_debug_selector (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -4568,7 +4569,7 @@ cpg_parser_context_debug_string (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -4674,7 +4675,7 @@ cpg_parser_context_debug_context (CpgParserContext *context)
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -4712,7 +4713,7 @@ cpg_parser_context_delete_selector (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (CPG_IS_SELECTOR (selector));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -4848,7 +4849,7 @@ cpg_parser_context_set_input_file_setting (CpgParserContext  *context,
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (name));
 	g_return_if_fail (CPG_IS_EMBEDDED_STRING (value));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -5079,7 +5080,7 @@ apply_unapply_template (CpgParserContext *context,
 	CpgGroup *template_group;
 	gboolean ret = TRUE;
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -5201,7 +5202,7 @@ cpg_parser_context_apply_template (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_SELECTOR (templates));
 	g_return_if_fail (targets == NULL || CPG_IS_SELECTOR (targets));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -5219,7 +5220,7 @@ cpg_parser_context_unapply_template (CpgParserContext *context,
 	g_return_if_fail (CPG_IS_SELECTOR (templates));
 	g_return_if_fail (targets == NULL || CPG_IS_SELECTOR (targets));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
 		return;
 	}
@@ -5228,26 +5229,26 @@ cpg_parser_context_unapply_template (CpgParserContext *context,
 }
 
 void
-cpg_parser_context_set_when_applied (CpgParserContext  *context,
-                                     gboolean           apply,
-                                     GSList            *attributes)
+cpg_parser_context_set_event_handler (CpgParserContext   *context,
+                                      CpgParserCodeEvent  event,
+                                      GSList             *attributes)
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (context->priv->in_when_applied)
+	if (context->priv->in_event_handler)
 	{
-		++context->priv->in_when_applied;
+		++context->priv->in_event_handler;
 		return;
 	}
 
-	context->priv->in_when_applied = 1;
-	context->priv->when_applied = apply;
-	context->priv->when_applied_attributes = attributes;
-	context->priv->when_applied_text = g_string_new ("");
+	context->priv->in_event_handler = 1;
+	context->priv->event_handler_event = event;
+	context->priv->event_handler_attributes = attributes;
+	context->priv->event_handler_code = g_string_new ("");
 }
 
 void
-cpg_parser_context_unset_when_applied (CpgParserContext *context)
+cpg_parser_context_unset_event_handler (CpgParserContext *context)
 {
 	gchar *code;
 	Context *ctx;
@@ -5256,27 +5257,27 @@ cpg_parser_context_unset_when_applied (CpgParserContext *context)
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (!context->priv->in_when_applied)
+	if (!context->priv->in_event_handler)
 	{
 		return;
 	}
 
-	if (--(context->priv->in_when_applied))
+	if (--(context->priv->in_event_handler))
 	{
 		return;
 	}
 
-	g_string_erase (context->priv->when_applied_text,
-	                context->priv->when_applied_text->len - 1,
+	g_string_erase (context->priv->event_handler_code,
+	                context->priv->event_handler_code->len - 1,
 	                1);
 
-	code = g_string_free (context->priv->when_applied_text, FALSE);
+	code = g_string_free (context->priv->event_handler_code, FALSE);
 
 	ctx = CURRENT_CONTEXT (context);
 
 	objects = each_selections (context,
 	                           ctx->objects,
-	                           context->priv->when_applied_attributes,
+	                           context->priv->event_handler_attributes,
 	                           CPG_SELECTOR_TYPE_ANY,
 	                           NULL,
 	                           NULL,
@@ -5284,7 +5285,7 @@ cpg_parser_context_unset_when_applied (CpgParserContext *context)
 
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		CpgWhenApplied *applied;
+		CpgParserCode *handler;
 		gpointer obj;
 
 		obj = cpg_selection_get_object (item->data);
@@ -5300,12 +5301,12 @@ cpg_parser_context_unset_when_applied (CpgParserContext *context)
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		applied = cpg_when_applied_new (context->priv->embedded,
-		                                code,
-		                                context->priv->when_applied);
+		handler = cpg_parser_code_new (context->priv->embedded,
+		                               code,
+		                               context->priv->event_handler_event);
 
-		cpg_object_add_when_applied (obj, applied);
-		g_object_unref (applied);
+		cpg_object_add_event_handler (obj, handler);
+		g_object_unref (handler);
 
 		cpg_embedded_context_restore (context->priv->embedded);
 	}
@@ -5324,13 +5325,13 @@ cpg_parser_context_remove_record (CpgParserContext *context,
 {
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 
-	if (!context->priv->in_when_applied)
+	if (!context->priv->in_event_handler)
 	{
 		return;
 	}
 
-	g_string_erase (context->priv->when_applied_text,
-	                context->priv->when_applied_text->len - len - offset,
+	g_string_erase (context->priv->event_handler_code,
+	                context->priv->event_handler_code->len - len - offset,
 	                len);
 }
 

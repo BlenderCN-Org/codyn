@@ -42,7 +42,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_WHEN_APPLIED T_KEY_WHEN_UNAPPLIED T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_BEFORE_APPLY T_KEY_AFTER_APPLY T_KEY_BEFORE_UNAPPLY T_KEY_AFTER_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -85,7 +85,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <list> selector_or_string_list
 %type <list> selector_or_string_list_rev
 
-%type <num> when_apply_or_unapply
+%type <num> event_handler_code
 
 %type <string> identifier_or_string_or_nothing
 
@@ -291,9 +291,11 @@ common_scopes
 	| eof
 	;
 
-when_apply_or_unapply
-	: T_KEY_WHEN_APPLIED		{ $$ = TRUE; }
-	| T_KEY_WHEN_UNAPPLIED		{ $$ = FALSE; }
+event_handler_code
+	: T_KEY_BEFORE_APPLY		{ $$ = CPG_PARSER_CODE_EVENT_BEFORE_APPLY; }
+	| T_KEY_AFTER_APPLY		{ $$ = CPG_PARSER_CODE_EVENT_AFTER_APPLY; }
+	| T_KEY_BEFORE_UNAPPLY		{ $$ = CPG_PARSER_CODE_EVENT_BEFORE_UNAPPLY; }
+	| T_KEY_AFTER_UNAPPLY		{ $$ = CPG_PARSER_CODE_EVENT_AFTER_UNAPPLY; }
 	;
 
 action_apply
@@ -849,10 +851,10 @@ state_item
 	| common_scopes
 	| layout
 	| attributes
-	  when_apply_or_unapply
-	  '{'				{ cpg_parser_context_set_when_applied (context, $2, $1); }
+	  event_handler_code
+	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
 	  state_contents
-	  '}'				{ cpg_parser_context_unset_when_applied (context); }
+	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  state_contents
@@ -872,10 +874,10 @@ group_item
 	| interface
 	| group
 	| attributes
-	  when_apply_or_unapply
-	  '{'				{ cpg_parser_context_set_when_applied (context, $2, $1); }
+	  event_handler_code
+	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
 	  group_contents
-	  '}'				{ cpg_parser_context_unset_when_applied (context); }
+	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| common_scopes
 	| layout
 	| functions
@@ -930,10 +932,10 @@ link_item
 	| property
 	| common_scopes
 	| attributes
-	  when_apply_or_unapply
-	  '{'				{ cpg_parser_context_set_when_applied (context, $2, $1); }
+	  event_handler_code
+	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
 	  link_contents
-	  '}'				{ cpg_parser_context_unset_when_applied (context); }
+	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| layout
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
