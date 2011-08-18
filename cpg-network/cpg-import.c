@@ -23,6 +23,7 @@
 #include "cpg-import.h"
 #include "cpg-network-deserializer.h"
 #include "cpg-import-alias.h"
+#include "cpg-annotatable.h"
 
 #include <string.h>
 #include "config.h"
@@ -766,6 +767,8 @@ cpg_import_load (CpgImport   *self,
                  CpgGroup    *parent,
                  GError     **error)
 {
+	gchar const *annotation;
+
 	g_return_val_if_fail (CPG_IS_IMPORT (self), FALSE);
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (CPG_IS_GROUP (parent), FALSE);
@@ -782,6 +785,13 @@ cpg_import_load (CpgImport   *self,
 	if (!cpg_network_load_from_file (imported, self->priv->file, error))
 	{
 		return FALSE;
+	}
+
+	annotation = cpg_annotatable_get_annotation (CPG_ANNOTATABLE (imported));
+
+	if (annotation)
+	{
+		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (self), annotation);
 	}
 
 	/* Import globals */
