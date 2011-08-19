@@ -188,7 +188,7 @@ test_templates_overrides_add_inherited ()
 	g_assert (prop);
 	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p3");
 
-	cpg_property_interface_add (iface, "cc_p3", cpg_group_find_property (group, "c1.p1"), NULL);
+	cpg_property_interface_add (iface, "cc_p3", "c1", "p1", NULL);
 
 	prop = cpg_object_get_property (CPG_OBJECT (state), "cc_p3");
 
@@ -228,7 +228,7 @@ test_templates_overrides_add_uninherited ()
 	g_assert (prop);
 	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p1");
 
-	cpg_property_interface_add (iface, "cc_p1", cpg_group_find_property (group, "c3.p3"), NULL);
+	cpg_property_interface_add (iface, "cc_p1", "c3", "p3", NULL);
 
 	prop = cpg_object_get_property (CPG_OBJECT (state), "cc_p1");
 
