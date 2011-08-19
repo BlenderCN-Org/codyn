@@ -3,6 +3,7 @@ library_DATA = \
 	hopf.cpg \
 	phase.cpg \
 	matsuoka.cpg \
+	awo.cpg \
 	all.cpg
 
 EXTRA_DIST = \
