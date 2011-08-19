@@ -130,8 +130,7 @@ struct _CpgParserContextPrivate
 	gpointer scanner;
 	gint start_token;
 
-	gint previous_annotation;
-	GString *annotation;
+	CpgEmbeddedString *annotation;
 
 	/* Stack of Context */
 	GSList *context_stack;
@@ -306,7 +305,7 @@ cpg_parser_context_finalize (GObject *object)
 
 	if (self->priv->annotation)
 	{
-		g_string_free (self->priv->annotation, TRUE);
+		g_object_unref (self->priv->annotation);
 	}
 
 	G_OBJECT_CLASS (cpg_parser_context_parent_class)->finalize (object);
@@ -418,7 +417,6 @@ cpg_parser_context_init (CpgParserContext *self)
 	self->priv = CPG_PARSER_CONTEXT_GET_PRIVATE (self);
 
 	self->priv->start_token = T_START_DOCUMENT;
-	self->priv->annotation = NULL;
 	self->priv->embedded = cpg_embedded_context_new ();
 }
 
@@ -524,20 +522,27 @@ parser_failed (CpgParserContext *context,
 	return FALSE;
 }
 
-static gchar *
-steal_annotation (CpgParserContext *context)
+static gchar const *
+current_annotation (CpgParserContext *context)
 {
-	gchar *ret;
-
 	if (!context->priv->annotation)
 	{
 		return NULL;
 	}
 
-	ret = g_string_free (context->priv->annotation, FALSE);
-	context->priv->annotation = NULL;
+	return cpg_embedded_string_expand (context->priv->annotation,
+	                                   context->priv->embedded,
+	                                   NULL);
+}
 
-	return ret;
+static void
+clear_annotation (CpgParserContext *context)
+{
+	if (context->priv->annotation)
+	{
+		g_object_unref (context->priv->annotation);
+		context->priv->annotation = NULL;
+	}
 }
 
 static GSList *
@@ -895,7 +900,6 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 	Context *ctx;
 	GSList *item;
 	GSList *objects;
-	gchar *annotation;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
@@ -906,8 +910,6 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 	}
 
 	ctx = CURRENT_CONTEXT (context);
-
-	annotation = steal_annotation (context);
 
 	objects = each_selections (context,
 	                           ctx->objects,
@@ -922,6 +924,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 		CpgObject *obj;
 		GSList *exps;
 		GSList *iteme;
+		gchar const *annotation;
 
 		obj = cpg_selection_get_object (item->data);
 
@@ -929,6 +932,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
+
+		annotation = current_annotation (context);
 
 		embedded_string_expand_multiple (exps, name, context);
 
@@ -999,11 +1004,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			property = cpg_object_get_property (obj, exname);
 			cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);
 
-			if (annotation)
-			{
-				cpg_annotatable_set_annotation (CPG_ANNOTATABLE (property),
-				                                annotation);
-			}
+			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (property),
+				                        annotation);
 
 			set_taggable (context, property, attributes);
 
@@ -1019,7 +1021,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
 	g_slist_free (objects);
 
-	g_free (annotation);
+	clear_annotation (context);
 	g_object_unref (name);
 
 	if (expression)
@@ -1036,7 +1038,7 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 {
 	Context *ctx;
 	GSList *item;
-	gchar *annotation;
+
 	GSList *objects;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
@@ -1049,7 +1051,6 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 	}
 
 	ctx = CURRENT_CONTEXT (context);
-	annotation = steal_annotation (context);
 
 	objects = each_selections (context,
 	                           ctx->objects,
@@ -1063,11 +1064,14 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 	{
 		GSList *exps;
 		GSList *iteme;
+		gchar const *annotation;
 
 		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
+
+		annotation = current_annotation (context);
 
 		embedded_string_expand_multiple (exps, target, context);
 
@@ -1090,11 +1094,8 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 			cpg_link_add_action (CPG_LINK (cpg_selection_get_object (item->data)),
 			                     action);
 
-			if (annotation)
-			{
-				cpg_annotatable_set_annotation (CPG_ANNOTATABLE (action),
-				                                annotation);
-			}
+			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (action),
+			                                annotation);
 
 			set_taggable (context, action, attributes);
 
@@ -1113,7 +1114,7 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 	g_object_unref (target);
 	g_object_unref (expression);
 
-	g_free (annotation);
+	clear_annotation (context);
 }
 
 void
@@ -1125,7 +1126,6 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 {
 	GSList *item;
 	Context *ctx;
-	gchar *annotation;
 	GSList *objects;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
@@ -1138,7 +1138,6 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 	}
 
 	ctx = CURRENT_CONTEXT (context);
-	annotation = steal_annotation (context);
 
 	objects = each_selections (context,
 	                           ctx->objects,
@@ -1156,11 +1155,14 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 		GSList *arg;
 		CpgGroup *parent;
 		CpgObject *child;
+		gchar const *annotation;
 
 		parent = cpg_selection_get_object (item->data);
 
 		cpg_embedded_context_save_defines (context->priv->embedded, FALSE);
 		cpg_embedded_context_set_selection (context->priv->embedded, item->data);
+
+		annotation = current_annotation (context);
 
 		embedded_string_expand (exname, name, context);
 		embedded_string_expand (exexpression, expression, context);
@@ -1185,11 +1187,8 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 			                           cpg_function_argument_copy (arg->data));
 		}
 
-		if (annotation)
-		{
-			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
-			                                annotation);
-		}
+		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
+		                                annotation);
 
 		set_taggable (context, function, attributes);
 	}
@@ -1197,7 +1196,7 @@ cpg_parser_context_add_function (CpgParserContext  *context,
 	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
 	g_slist_free (objects);
 
-	g_free (annotation);
+	clear_annotation (context);
 
 	g_object_unref (name);
 	g_object_unref (expression);
@@ -1209,7 +1208,6 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
                                    GSList            *pieces,
                                    GSList            *attributes)
 {
-	gchar *annotation;
 	Context *ctx;
 	GSList *item;
 	GSList *objects;
@@ -1224,8 +1222,6 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 
 	ctx = CURRENT_CONTEXT (context);
 
-	annotation = steal_annotation (context);
-
 	objects = each_selections (context,
 	                           ctx->objects,
 	                           attributes,
@@ -1239,8 +1235,14 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 		gchar const *exname;
 		CpgFunctionPolynomial *function;
 		CpgGroup *parent;
+		gchar const *annotation;
 
 		parent = cpg_selection_get_object (item->data);
+
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
+		cpg_embedded_context_set_selection (context->priv->embedded, item->data);
+
+		annotation = current_annotation (context);
 
 		embedded_string_expand (exname, name, context);
 		function = cpg_function_polynomial_new (exname);
@@ -1253,19 +1255,18 @@ cpg_parser_context_add_polynomial (CpgParserContext  *context,
 
 		cpg_group_add (parent, CPG_OBJECT (function), NULL);
 
-		if (annotation)
-		{
-			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
-			                                annotation);
-		}
+		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (function),
+		                                annotation);
 
 		set_taggable (context, function, attributes);
+
+		cpg_embedded_context_restore (context->priv->embedded);
 	}
 
 	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
 	g_slist_free (objects);
 
-	g_free (annotation);
+	clear_annotation (context);
 	g_object_unref (name);
 }
 
@@ -2078,11 +2079,7 @@ static void
 store_annotation_objects (CpgParserContext *context,
                           GSList           *objects)
 {
-	gchar *s;
-
-	s = steal_annotation (context);
-
-	if (!s)
+	if (!context->priv->annotation)
 	{
 		return;
 	}
@@ -2091,15 +2088,24 @@ store_annotation_objects (CpgParserContext *context,
 	{
 		CpgObject *obj;
 
+		cpg_embedded_context_save_defines (context->priv->embedded,
+		                                   FALSE);
+
+		cpg_embedded_context_set_selection (context->priv->embedded,
+		                                    objects->data);
+
 		obj = cpg_selection_get_object (objects->data);
 
+		/* TODO: not the right context */
 		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (obj),
-		                                s);
+		                                current_annotation (context));
+
+		cpg_embedded_context_restore (context->priv->embedded);
 
 		objects = g_slist_next (objects);
 	}
 
-	g_free (s);
+	clear_annotation (context);
 }
 
 void
@@ -2958,7 +2964,6 @@ cpg_parser_context_import (CpgParserContext  *context,
 {
 	Context *ctx;
 	GSList *item;
-	gchar *annotation;
 	GSList *objects;
 
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
@@ -2971,7 +2976,6 @@ cpg_parser_context_import (CpgParserContext  *context,
 	}
 
 	ctx = CURRENT_CONTEXT (context);
-	annotation = steal_annotation (context);
 
 	objects = each_selections (context,
 	                           ctx->objects,
@@ -2985,11 +2989,14 @@ cpg_parser_context_import (CpgParserContext  *context,
 	{
 		GSList *ids;
 		GSList *idi;
+		gchar const *annotation;
 
 		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
+
+		annotation = current_annotation (context);
 
 		embedded_string_expand_multiple (ids, id, context);
 
@@ -3086,11 +3093,8 @@ cpg_parser_context_import (CpgParserContext  *context,
 						goto cleanup;
 					}
 
-					if (annotation)
-					{
-						cpg_annotatable_set_annotation (CPG_ANNOTATABLE (alias),
-						                                annotation);
-					}
+					cpg_annotatable_set_annotation (CPG_ANNOTATABLE (alias),
+					                                annotation);
 
 					set_taggable (context, alias, attributes);
 
@@ -3140,11 +3144,8 @@ cpg_parser_context_import (CpgParserContext  *context,
 				goto cleanup;
 			}
 
-			if (annotation)
-			{
-				cpg_annotatable_set_annotation (CPG_ANNOTATABLE (import),
-				                                annotation);
-			}
+			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (import),
+			                                annotation);
 
 			set_taggable (context, import, attributes);
 
@@ -3163,7 +3164,7 @@ cleanup:
 	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
 	g_slist_free (objects);
 
-	g_free (annotation);
+	clear_annotation (context);
 
 	g_object_unref (id);
 	g_object_unref (path);
@@ -3930,8 +3931,6 @@ void
 cpg_parser_context_push_annotation (CpgParserContext  *context,
                                     CpgEmbeddedString *annotation)
 {
-	gchar const *expanded;
-
 	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (annotation != NULL);
 
@@ -3940,24 +3939,13 @@ cpg_parser_context_push_annotation (CpgParserContext  *context,
 		return;
 	}
 
-	embedded_string_expand (expanded, annotation, context);
-
-	if (!context->priv->annotation)
+	if (context->priv->annotation)
 	{
-		context->priv->annotation = g_string_new (expanded);
-	}
-	else if (context->priv->previous_annotation != CURRENT_INPUT (context)->lineno - 1)
-	{
-		g_string_assign (context->priv->annotation, expanded);
-	}
-	else
-	{
-		g_string_append_c (context->priv->annotation, '\n');
-		g_string_append (context->priv->annotation, expanded);
+		g_object_unref (context->priv->annotation);
+		context->priv->annotation = NULL;
 	}
 
-	context->priv->previous_annotation = CURRENT_INPUT (context)->lineno;
-	g_object_unref (annotation);
+	context->priv->annotation = annotation;
 }
 
 void

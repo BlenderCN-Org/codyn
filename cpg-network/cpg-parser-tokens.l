@@ -61,6 +61,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %x instring
 %x inregex
 %x annotation
+%x annotation_start
 %x comment
 %x equation
 %x indirection
@@ -105,19 +106,23 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 				}
 "##"[ \t]*			{
 					yy_push_state (annotation, yyscanner);
-				}
-<annotation>[^\n]*		{
-					cpg_parser_context_push_annotation (yyextra,
-					                                    cpg_embedded_string_new_from_string (yytext));
-					yy_pop_state (yyscanner);
+					return T_ANNOTATION_START;
 				}
 <annotation>\n.*		{
-					cpg_parser_context_push_annotation (yyextra,
-					                                    cpg_embedded_string_new_from_string (""));
-
 					HANDLE_NEWLINE
+					yy_push_state (annotation_start, yyscanner);
+				}
+<annotation_start>[\t ]*##[\t ]* {
+					yy_pop_state (yyscanner);
+				}
+<annotation_start>.		{
+					yyless (0);
+					cpg_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
+					yy_pop_state (yyscanner);
+
+					return T_ANNOTATION_END;
 				}
 
 "#"				yy_push_state (comment, yyscanner);
@@ -265,7 +270,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 				}
 
 <indirection_had_some>\n.*	{
-					HANDLE_NEWLINE
+					yyless (0);
+					cpg_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
 					return T_INDIRECTION_END;
@@ -310,6 +316,11 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 <instring,incl>(\\["@$\\]|[^"@$\\])+ {
 					yylval->id = unquote_string (yytext, yyleng, "@\"$");
+					return T_STRING;
+				}
+
+<annotation>(\\["@$\\]|[^"@$\\\n])+	{
+					yylval->id = g_strdup (yytext);
 					return T_STRING;
 				}
 

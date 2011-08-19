@@ -53,6 +53,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token <id> T_IDENTIFIER
 %token <id> T_STRING
+%token T_ANNOTATION_START T_ANNOTATION_END
 
 %token T_EOF
 
@@ -289,6 +290,14 @@ common_scopes
 	| parse
 	| actions
 	| eof
+	| annotation
+	;
+
+annotation
+	: T_ANNOTATION_START		{ cpg_parser_context_push_string (context); }
+	  string_contents
+	  T_ANNOTATION_END		{ cpg_parser_context_push_annotation (context,
+	                                                                      cpg_parser_context_pop_string (context)); }
 	;
 
 event_handler_code
