@@ -190,12 +190,33 @@ cpg_parser_code_get_event (CpgParserCode *applied)
 	return applied->priv->event;
 }
 
+static CpgNetwork *
+find_network (CpgObject *object)
+{
+	while (TRUE)
+	{
+		CpgObject *p;
+
+		p = cpg_object_get_parent (object);
+
+		if (!p)
+		{
+			break;
+		}
+
+		object = p;
+	}
+
+	return CPG_IS_NETWORK (object) ? CPG_NETWORK (object) : NULL;
+}
+
 gboolean
 cpg_parser_code_run (CpgParserCode  *applied,
                      CpgObject       *object,
+                     CpgObject       *context,
                      GError         **error)
 {
-	CpgObject *parent;
+	CpgNetwork *parent;
 	CpgParserContext *parser;
 	GSList *sels;
 	gboolean ret;
@@ -204,28 +225,14 @@ cpg_parser_code_run (CpgParserCode  *applied,
 	g_return_val_if_fail (CPG_IS_PARSER_CODE (applied), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 
-	parent = object;
+	parent = find_network (object);
 
-	while (TRUE)
+	if (!parent)
 	{
-		CpgObject *p;
-
-		p = cpg_object_get_parent (parent);
-
-		if (!p)
-		{
-			break;
-		}
-
-		parent = p;
+		parent = find_network (context);
 	}
 
-	if (!CPG_IS_NETWORK (parent))
-	{
-		parent = NULL;
-	}
-
-	parser = cpg_parser_context_new (parent ? CPG_NETWORK (parent) : NULL);
+	parser = cpg_parser_context_new (parent);
 
 	if (CPG_IS_GROUP (object))
 	{

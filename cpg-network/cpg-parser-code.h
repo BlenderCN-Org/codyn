@@ -30,6 +30,8 @@ typedef enum
 
 CPG_FORWARD_DECL (CpgObject);
 
+typedef CPG_FORWARD_DECL (CpgObject) CpgObjectForward;
+
 struct _CpgParserCode
 {
 	/*< private >*/
@@ -51,7 +53,8 @@ CpgParserCode      *cpg_parser_code_new          (CpgEmbeddedContext  *closure,
                                                    CpgParserCodeEvent  event);
 
 gboolean            cpg_parser_code_run          (CpgParserCode     *applied,
-                                                  CPG_FORWARD_DECL (CpgObject) *object,
+                                                  CpgObjectForward  *object,
+                                                  CpgObjectForward  *context,
                                                   GError            **error);
 
 CpgEmbeddedContext *cpg_parser_code_get_closure  (CpgParserCode     *applied);

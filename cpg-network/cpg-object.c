@@ -2182,6 +2182,7 @@ run_template_parser_codes (CpgObject          *object,
 		{
 			if (!cpg_parser_code_run (code->data,
 			                          object,
+			                          templ,
 			                          error))
 			{
 				return FALSE;
