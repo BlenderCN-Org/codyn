@@ -551,6 +551,8 @@ cpg_network_init (CpgNetwork *network)
 CpgNetwork *
 cpg_network_new ()
 {
+	g_type_init ();
+
 	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
 
@@ -970,6 +972,8 @@ CpgNetwork *
 cpg_network_new_from_stream (GInputStream  *stream,
                              GError       **error)
 {
+	g_type_init ();
+
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), NULL);
 
 	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK,
@@ -1000,6 +1004,8 @@ CpgNetwork *
 cpg_network_new_from_file (GFile   *file,
                            GError **error)
 {
+	g_type_init ();
+
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
 	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK,
@@ -1030,6 +1036,8 @@ CpgNetwork *
 cpg_network_new_from_path (gchar const  *path,
                            GError      **error)
 {
+	g_type_init ();
+
 	g_return_val_if_fail (path != NULL, NULL);
 
 	GFile *file = g_file_new_for_path (path);
@@ -1054,6 +1062,8 @@ CpgNetwork *
 cpg_network_new_from_string (gchar const  *s,
                              GError      **error)
 {
+	g_type_init ();
+
 	g_return_val_if_fail (s != NULL, NULL);
 
 	CpgNetwork *network = cpg_network_new ();
