@@ -86,10 +86,14 @@ templates
       apply awo.oscillator
     }
 
+    [proxy]
     state "state"
     {
-      target_amplitude = 1
+      ## The integrated amplitude of the oscillator
       amplitude = target_amplitude | integrated
+
+      ## The target amplitude of the oscillator
+      target_amplitude = 1
     }
 
     link "integrate"
@@ -112,8 +116,10 @@ templates
       apply awo.oscillator
     }
 
+    [proxy]
     state "state"
     {
+      ## The target offset of the oscillator
       target_offset = 0
     }
 
