@@ -157,6 +157,7 @@ void                   cpg_parser_context_add_interface        (CpgParserContext
                                                                 CpgEmbeddedString          *name,
                                                                 CpgEmbeddedString          *child_name,
                                                                 CpgEmbeddedString          *property_name,
+                                                                gboolean                    is_optional,
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_import               (CpgParserContext           *context,

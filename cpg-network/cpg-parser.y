@@ -107,7 +107,7 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <flags> property_flags_strict
 %type <flags> property_flags_contents
 %type <num> property_flag
-%type <num> property_assign_optional
+%type <num> assign_optional
 
 %type <selector> layout_relative
 %type <num> layout_item_separator
@@ -917,13 +917,14 @@ interface_contents
 interface_property
 	: attributes
 	  identifier_or_string
-	  '='
+	  assign_optional
 	  identifier_or_string
 	  T_KEY_ON
 	  identifier_or_string	{ cpg_parser_context_add_interface (context,
 	                                                            $2,
 	                                                            $6,
 	                                                            $4,
+	                                                            $3,
 	                                                            $1); errb }
 	;
 
@@ -963,7 +964,7 @@ identifier_or_string
 	| indirection
 	;
 
-property_assign_optional
+assign_optional
 	: '='				{ $$ = FALSE; }
 	| '?' '='			{ $$ = TRUE; }
 	;
@@ -971,7 +972,7 @@ property_assign_optional
 property
 	: attributes
 	  identifier_or_string
-	  property_assign_optional
+	  assign_optional
 	  value_as_string
 	  property_flags
 					{ cpg_parser_context_add_property (context,

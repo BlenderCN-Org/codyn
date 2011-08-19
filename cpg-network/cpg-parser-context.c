@@ -1275,6 +1275,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
                                   CpgEmbeddedString *name,
                                   CpgEmbeddedString *child_name,
                                   CpgEmbeddedString *property_name,
+                                  gboolean           is_optional,
                                   GSList            *attributes)
 {
 	Context *ctx;
@@ -1347,9 +1348,19 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 				for (prop = properties; prop; prop = g_slist_next (prop))
 				{
 					GError *error = NULL;
+					gchar const *name;
+
+					name = cpg_expansion_get (exp->data, 0);
+
+					if (is_optional &&
+					    cpg_property_interface_implements (iface,
+					                                       name))
+					{
+						continue;
+					}
 
 					if (!cpg_property_interface_add (iface,
-					                                 cpg_expansion_get (exp->data, 0),
+					                                 name,
 					                                 cpg_expansion_get (child->data, 0),
 					                                 cpg_expansion_get (prop->data, 0),
 					                                 &error))
