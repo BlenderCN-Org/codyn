@@ -9,6 +9,9 @@ templates
     ## Matsuoka oscillator
     import "matsuoka.cpg" as "matsuoka"
 
+    ## AWO oscillator
+    import "awo.cpg" as "awo"
+
     include "layout/line.cpg"
 }
 
