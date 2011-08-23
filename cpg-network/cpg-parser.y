@@ -781,6 +781,7 @@ function_custom
 function_item
 	: function_custom
 	| function_polynomial
+	| common_scopes
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); errb }
 	  function_contents
