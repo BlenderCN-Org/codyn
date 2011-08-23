@@ -1431,15 +1431,25 @@ cpg_parser_context_set_error (CpgParserContext *context,
 		}
 	}
 
-	parser_failed (context,
-	               NULL,
-	               CPG_NETWORK_LOAD_ERROR_SYNTAX,
-	               "Unexpected token `%s' at %s%s%d.%d",
-	               CURRENT_INPUT (context)->token,
-	               fname ? fname : "",
-	               fname ? ":" : "",
-	               CURRENT_INPUT (context)->lineno,
-	               CURRENT_INPUT (context)->cstart);
+	if (CURRENT_INPUT (context))
+	{
+		parser_failed (context,
+		               NULL,
+		               CPG_NETWORK_LOAD_ERROR_SYNTAX,
+		               "Unexpected token `%s' at %s%s%d.%d",
+		               CURRENT_INPUT (context)->token,
+		               fname ? fname : "",
+		               fname ? ":" : "",
+		               CURRENT_INPUT (context)->lineno,
+		               CURRENT_INPUT (context)->cstart);
+	}
+	else
+	{
+		parser_failed (context,
+		               NULL,
+		               CPG_NETWORK_LOAD_ERROR_SYNTAX,
+		               "Unexpected end of file");
+	}
 
 	g_free (fname);
 }
@@ -3451,7 +3461,7 @@ cpg_parser_context_get_line (CpgParserContext *context,
 		*lineno = input ? input->lineno : 0;
 	}
 
-	return cpg_parser_context_get_line_at (context, input->lineno);
+	return cpg_parser_context_get_line_at (context, input ? input->lineno : 0);
 }
 
 gchar const *
