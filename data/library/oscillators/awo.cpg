@@ -13,6 +13,20 @@ network
 
 templates
 {
+  group "functions"
+  {
+    functions
+    {
+      ## Function for gamma such that it takes <i>tau</i> seconds to
+      ## forget a perturbation of size (1 - <i>alpha</i>) * <i>perturb</i>
+      ##
+      ## This function can be used for gamma on the initial conditions of the
+      ## oscillator states so there is a known behavior of convergence from
+      ## initial conditions.
+      GammaForRelConv(tau, alpha, perturb) = "ln(alpha / perturb) / -tau"
+    }
+  }
+
   ## Arbitrary Waveform Oscillator (AWO)
   ##
   ## This 'oscillator' implements a very simple feedforward/feedback dynamical
@@ -51,6 +65,11 @@ templates
 
       ## Output variable
       output = "r"
+    }
+
+    interface
+    {
+      f_scaled = f_scaled on integrate
     }
 
     ## Integration link
