@@ -19,7 +19,7 @@ templates
     {
         # Get the list of instance properties at apply time
         # (not the list of this template's properties)
-        when-applied
+        after-apply
         {
             # Look into all states and groups
             state objects
@@ -39,13 +39,13 @@ templates
     ## (links, states and groups) exposing "object"."property" as object_property.
     group "interface-children"
     {
-        when-applied
+        after-apply
         {
             [each(name . properties | name)]
             {
                 interface
                 {
-                    "@@0_@0" = "@@@0"."@@@0"
+                    "@@0_@0" ?= "@@@0"."@@@0"
                 }
             }
         }
@@ -62,7 +62,7 @@ templates
             {
                 interface
                 {
-                    "@0@@1" = "@@@0"."@@@0"
+                    "@0@@1" ?= "@@@0"."@@@0"
                 }
             }
         }
