@@ -478,11 +478,24 @@ static void
 attach_from_template (CpgLink *link)
 {
 	CpgLink *ret = find_template_for_attachments (link);
+	CpgObject *from;
+	CpgObject *to;
+
+	if (ret == NULL)
+	{
+		return;
+	}
+
+	from = find_in_parent (link, ret->priv->from);
+	to = find_in_parent (link, ret->priv->to);
+
+	if (from == NULL || to == NULL)
+	{
+		return;
+	}
 
 	/* Find the corresponding child in the parent */
-	cpg_link_attach (link,
-	                 find_in_parent (link, ret ? ret->priv->from : NULL),
-	                 find_in_parent (link, ret ? ret->priv->to : NULL));
+	cpg_link_attach (link, from, to);
 }
 
 static void
