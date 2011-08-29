@@ -849,17 +849,19 @@ cpg_network_load_from_file (CpgNetwork  *network,
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	bstream = g_file_read (file, NULL, NULL);
+	bstream = g_file_read (file, NULL, error);
+
+	if (!bstream)
+	{
+		return FALSE;
+	}
 
 	fmt = CPG_NETWORK_FORMAT_UNKNOWN;
 
-	if (bstream)
-	{
-		stream = g_buffered_input_stream_new (G_INPUT_STREAM (bstream));
-		g_object_unref (bstream);
+	stream = g_buffered_input_stream_new (G_INPUT_STREAM (bstream));
+	g_object_unref (bstream);
 
-		fmt = cpg_network_format_from_stream (stream);
-	}
+	fmt = cpg_network_format_from_stream (stream);
 
 	if (fmt == CPG_NETWORK_FORMAT_UNKNOWN)
 	{
