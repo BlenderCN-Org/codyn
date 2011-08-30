@@ -920,7 +920,7 @@ interface_property
 	  identifier_or_string
 	  assign_optional
 	  identifier_or_string
-	  T_KEY_ON
+	  T_KEY_IN
 	  identifier_or_string	{ cpg_parser_context_add_interface (context,
 	                                                            $2,
 	                                                            $6,
