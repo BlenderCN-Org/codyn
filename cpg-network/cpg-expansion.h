@@ -81,7 +81,8 @@ gchar        *cpg_expansions_expand          (GSList                 *expansions
                                               gchar const            *s,
                                               GRegex                 *regex);
 
-void          cpg_expansions_annotate_indices (GSList                *expansions);
+void          cpg_expansions_annotate_indices (GSList                *expansions,
+                                               gint                   start);
 
 G_END_DECLS
 

@@ -310,9 +310,10 @@ annotate_group (GSList *expansions,
 }
 
 void
-cpg_expansions_annotate_indices (GSList *expansions)
+cpg_expansions_annotate_indices (GSList *expansions,
+                                 gint    start)
 {
-	gint i = 0;
+	gint i = start;
 
 	while (TRUE)
 	{
