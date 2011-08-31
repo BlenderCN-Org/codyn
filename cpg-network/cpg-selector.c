@@ -2590,6 +2590,41 @@ selector_select_pseudo (CpgSelector        *self,
 	return g_slist_reverse (ret);
 }
 
+static void
+annotate_first_expansion (GSList *ret)
+{
+	GSList *expansions = NULL;
+	GSList *ptr;
+	gint i;
+
+	while (ret)
+	{
+		GSList *exp;
+
+		exp = cpg_selection_get_expansions (ret->data);
+
+		expansions = g_slist_prepend (expansions,
+		                              exp->data);
+
+		ret = g_slist_next (ret);
+	}
+
+	expansions = g_slist_reverse (expansions);
+
+	/* Annotate indices by string for the explicit groups in the regex */
+	cpg_expansions_annotate_indices (expansions, 1);
+
+	i = 0;
+
+	/* Annotate the implicit match as a unique index */
+	for (ptr = expansions; ptr; ptr = g_slist_next (ptr))
+	{
+		cpg_expansion_set_index (ptr->data, 0, i++);
+	}
+
+	g_slist_free (expansions);
+}
+
 static GSList *
 selector_select (CpgSelector        *self,
                  Selector           *selector,
@@ -2639,6 +2674,11 @@ selector_select (CpgSelector        *self,
 			cpg_embedded_context_restore (context);
 
 			ret = g_slist_concat (ret, r);
+		}
+
+		if (selector->type == SELECTOR_TYPE_REGEX)
+		{
+			annotate_first_expansion (ret);
 		}
 	}
 
