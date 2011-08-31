@@ -772,23 +772,25 @@ identifier_match (Selector     *selector,
 	}
 }
 
-static GSList *
-selector_select_identifier_name (Selector           *selector,
-                                 CpgSelection       *parent,
-                                 gchar const        *name,
-                                 CpgEmbeddedContext *context,
-                                 CpgExpansion       *expansion,
-                                 GSList             *ret)
+static gboolean
+selector_select_identifier_name (Selector            *selector,
+                                 CpgSelection        *parent,
+                                 gchar const         *name,
+                                 CpgEmbeddedContext  *context,
+                                 CpgExpansion        *expansion,
+                                 GSList             **ret)
 {
 	if (identifier_match (selector, expansion, name))
 	{
-		ret = g_slist_prepend (ret,
-		                       make_child_selection (parent,
-		                                             expansion,
-		                                             cpg_selection_get_object (parent)));
+		*ret = g_slist_prepend (*ret,
+		                        make_child_selection (parent,
+		                                              expansion,
+		                                              cpg_selection_get_object (parent)));
+
+		return TRUE;
 	}
 
-	return ret;
+	return FALSE;
 }
 
 static gchar const *
@@ -842,12 +844,15 @@ selector_select_identifier (CpgSelector        *self,
 
 	for (e = exps; e; e = g_slist_next (e))
 	{
-		ret = selector_select_identifier_name (selector,
-		                                       parent,
-		                                       name,
-		                                       context,
-		                                       e->data,
-		                                       ret);
+		if (selector_select_identifier_name (selector,
+		                                     parent,
+		                                     name,
+		                                     context,
+		                                     e->data,
+		                                     &ret))
+		{
+			break;
+		}
 	}
 
 	g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
