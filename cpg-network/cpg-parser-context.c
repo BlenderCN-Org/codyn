@@ -2828,6 +2828,8 @@ push_scope (CpgParserContext *context,
 	                           NULL,
 	                           copy_defines);
 
+	clear_annotation (context);
+
 	cpg_parser_context_push_objects (context, objects, attributes);
 
 	g_slist_free (objects);
