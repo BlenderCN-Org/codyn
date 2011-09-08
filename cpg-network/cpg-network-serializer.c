@@ -745,14 +745,10 @@ function_to_xml (CpgNetworkSerializer *serializer,
 
 		if (cpg_function_argument_get_optional (argument))
 		{
-			gchar defPtr[G_ASCII_DTOSTR_BUF_SIZE];
+			CpgExpression *expr;
 
-			xmlNewProp (argn, (xmlChar *)"optional", (xmlChar *)"yes");
-
-			g_ascii_dtostr (defPtr,
-			                G_ASCII_DTOSTR_BUF_SIZE,
-			                cpg_function_argument_get_default_value (argument));
-			xmlNewProp (argn, (xmlChar *)"default", (xmlChar *)defPtr);
+			expr = cpg_function_argument_get_default_value (argument);
+			xmlNewProp (argn, (xmlChar *)"default", (xmlChar *)cpg_expression_get_as_string (expr));
 		}
 
 		if (!cpg_function_argument_get_explicit (argument))
@@ -762,6 +758,8 @@ function_to_xml (CpgNetworkSerializer *serializer,
 
 		xmlAddChild (funcn, argn);
 	}
+
+	add_layout (CPG_OBJECT (func), funcn);
 }
 
 static void
@@ -832,6 +830,8 @@ function_polynomial_to_xml (CpgNetworkSerializer  *serializer,
 
 		pieces = g_slist_next (pieces);
 	}
+
+	add_layout (CPG_OBJECT (func), funcn);
 }
 
 static gboolean

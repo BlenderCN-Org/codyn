@@ -44,8 +44,7 @@ enum
 struct _CpgFunctionArgumentPrivate
 {
 	gchar *name;
-	gboolean optional;
-	gdouble def;
+	CpgExpression *def;
 	gboolean isexplicit;
 
 	CpgProperty *property;
@@ -58,7 +57,7 @@ enum
 	PROP_0,
 	PROP_NAME,
 	PROP_OPTIONAL,
-	PROP_DEFAULT,
+	PROP_DEFAULT_VALUE,
 	PROP_EXPLICIT
 };
 
@@ -70,6 +69,11 @@ cpg_function_argument_finalize (GObject *object)
 	CpgFunctionArgument *argument = CPG_FUNCTION_ARGUMENT (object);
 
 	g_free (argument->priv->name);
+
+	if (argument->priv->def)
+	{
+		g_object_unref (argument->priv->def);
+	}
 
 	G_OBJECT_CLASS (cpg_function_argument_parent_class)->finalize (object);
 }
@@ -99,6 +103,38 @@ set_name (CpgFunctionArgument *argument,
 }
 
 static void
+set_default_value (CpgFunctionArgument *self,
+                   CpgExpression       *def)
+{
+	gboolean isoptional;
+
+	isoptional = self->priv->def != NULL;
+
+	if (self->priv->def == def)
+	{
+		return;
+	}
+
+	if (self->priv->def)
+	{
+		g_object_unref (self->priv->def);
+		self->priv->def = NULL;
+	}
+
+	if (def)
+	{
+		self->priv->def = g_object_ref_sink (def);
+	}
+
+	g_object_notify (G_OBJECT (self), "default-value");
+
+	if (isoptional != (self->priv->def != NULL))
+	{
+		g_object_notify (G_OBJECT (self), "optional");
+	}
+}
+
+static void
 cpg_function_argument_set_property (GObject      *object,
                                     guint         prop_id,
                                     const GValue *value,
@@ -111,11 +147,8 @@ cpg_function_argument_set_property (GObject      *object,
 		case PROP_NAME:
 			set_name (self, g_value_get_string (value));
 		break;
-		case PROP_OPTIONAL:
-			self->priv->optional = g_value_get_boolean (value);
-		break;
-		case PROP_DEFAULT:
-			self->priv->def = g_value_get_double (value);
+		case PROP_DEFAULT_VALUE:
+			set_default_value (self, g_value_get_object (value));
 		break;
 		case PROP_EXPLICIT:
 			self->priv->isexplicit = g_value_get_boolean (value);
@@ -140,10 +173,10 @@ cpg_function_argument_get_property (GObject    *object,
 			g_value_set_string (value, self->priv->name);
 		break;
 		case PROP_OPTIONAL:
-			g_value_set_boolean (value, self->priv->optional);
+			g_value_set_boolean (value, self->priv->def != NULL);
 		break;
-		case PROP_DEFAULT:
-			g_value_set_double (value, self->priv->def);
+		case PROP_DEFAULT_VALUE:
+			g_value_set_object (value, self->priv->def);
 		break;
 		case PROP_EXPLICIT:
 			g_value_set_boolean (value, self->priv->isexplicit);
@@ -202,7 +235,7 @@ cpg_function_argument_class_init (CpgFunctionArgumentClass *klass)
 	                                                      "Name",
 	                                                      "Name",
 	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	/**
 	 * CpgFunctionArgument:optional:
@@ -216,7 +249,7 @@ cpg_function_argument_class_init (CpgFunctionArgumentClass *klass)
 	                                                       "Optional",
 	                                                       "Optional",
 	                                                       FALSE,
-	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                       G_PARAM_READABLE));
 
 	/**
 	 * CpgFunctionArgument:default:
@@ -225,13 +258,11 @@ cpg_function_argument_class_init (CpgFunctionArgumentClass *klass)
 	 *
 	 **/
 	g_object_class_install_property (object_class,
-	                                 PROP_DEFAULT,
-	                                 g_param_spec_double ("default",
-	                                                      "Default",
-	                                                      "Default",
-	                                                      -G_MAXDOUBLE,
-	                                                      G_MAXDOUBLE,
-	                                                      0,
+	                                 PROP_DEFAULT_VALUE,
+	                                 g_param_spec_object ("default-value",
+	                                                      "Default value",
+	                                                      "Default Value",
+	                                                      CPG_TYPE_EXPRESSION,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
@@ -264,15 +295,13 @@ cpg_function_argument_init (CpgFunctionArgument *self)
  *
  **/
 CpgFunctionArgument *
-cpg_function_argument_new (gchar const *name,
-                           gboolean     optional,
-                           gdouble      def,
-                           gboolean     isexplicit)
+cpg_function_argument_new (gchar const   *name,
+                           CpgExpression *def,
+                           gboolean       isexplicit)
 {
 	return g_object_new (CPG_TYPE_FUNCTION_ARGUMENT,
 	                     "name", name,
-	                     "optional", optional,
-	                     "default", def,
+	                     "default-value", def,
 	                     "explicit", isexplicit,
 	                     NULL);
 }
@@ -295,8 +324,7 @@ cpg_function_argument_copy (CpgFunctionArgument *argument)
 	g_return_val_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument), NULL);
 
 	return cpg_function_argument_new (argument->priv->name,
-	                                  argument->priv->optional,
-	                                  argument->priv->def,
+	                                  cpg_expression_copy (argument->priv->def),
 	                                  argument->priv->isexplicit);
 }
 
@@ -354,28 +382,7 @@ cpg_function_argument_get_optional (CpgFunctionArgument *argument)
 {
 	g_return_val_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument), FALSE);
 
-	return argument->priv->optional;
-}
-
-/**
- * cpg_function_argument_set_optional:
- * @argument: A #CpgFunctionArgument
- * @optional: Whether the argument is optional
- *
- * Set whether a function argument is optional.
- *
- **/
-void
-cpg_function_argument_set_optional (CpgFunctionArgument *argument,
-                                    gboolean             optional)
-{
-	g_return_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument));
-
-	if (argument->priv->optional != optional)
-	{
-		argument->priv->optional = optional;
-		g_object_notify (G_OBJECT (argument), "optional");
-	}
+	return argument->priv->def != NULL;
 }
 
 /**
@@ -384,10 +391,10 @@ cpg_function_argument_set_optional (CpgFunctionArgument *argument,
  *
  * Get the function argument default value.
  *
- * Returns: the default value
+ * Returns: (transfer none): the default value
  *
  **/
-gdouble
+CpgExpression *
 cpg_function_argument_get_default_value (CpgFunctionArgument *argument)
 {
 	g_return_val_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument), 0);
@@ -405,13 +412,12 @@ cpg_function_argument_get_default_value (CpgFunctionArgument *argument)
  **/
 void
 cpg_function_argument_set_default_value (CpgFunctionArgument *argument,
-                                         gdouble              def)
+                                         CpgExpression       *def)
 {
 	g_return_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument));
+	g_return_if_fail (def == NULL || CPG_IS_EXPRESSION (def));
 
-	argument->priv->def = def;
-
-	g_object_notify (G_OBJECT (argument), "default");
+	set_default_value (argument, def);
 }
 
 /**

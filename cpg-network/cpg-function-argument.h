@@ -63,8 +63,7 @@ struct _CpgFunctionArgumentClass
 GType                cpg_function_argument_get_type           (void) G_GNUC_CONST;
 
 CpgFunctionArgument *cpg_function_argument_new                (const gchar         *name,
-                                                               gboolean             optional,
-                                                               gdouble              def,
+                                                               CpgExpression       *expression,
                                                                gboolean             isexplicit);
 
 CpgFunctionArgument *cpg_function_argument_copy               (CpgFunctionArgument *argument);
@@ -77,9 +76,9 @@ gboolean             cpg_function_argument_get_optional       (CpgFunctionArgume
 void                 cpg_function_argument_set_optional       (CpgFunctionArgument *argument,
                                                                gboolean             optional);
 
-gdouble              cpg_function_argument_get_default_value  (CpgFunctionArgument *argument);
+CpgExpression       *cpg_function_argument_get_default_value  (CpgFunctionArgument *argument);
 void                 cpg_function_argument_set_default_value  (CpgFunctionArgument *argument,
-                                                               gdouble              def);
+                                                               CpgExpression       *expression);
 
 gboolean             cpg_function_argument_get_explicit       (CpgFunctionArgument *argument);
 void                 cpg_function_argument_set_explicit       (CpgFunctionArgument *argument,

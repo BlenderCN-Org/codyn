@@ -723,12 +723,13 @@ parse_function (CpgExpression *expression,
 		/* Set defaults for the rest of the optional arguments on the stack */
 		if (numargs < arguments - n_implicit + n_optional)
 		{
-
 			start = g_list_nth ((GList *)ar, numargs);
 
 			while (start)
 			{
 				CpgFunctionArgument *a;
+				CpgExpression *expr;
+				GSList *inst;
 
 				a = start->data;
 
@@ -737,8 +738,14 @@ parse_function (CpgExpression *expression,
 					break;
 				}
 
-				instructions_push (expression,
-				                   cpg_instruction_number_new (cpg_function_argument_get_default_value (a)));
+				/* Inline the expression here */
+				expr = cpg_function_argument_get_default_value (a);
+
+				for (inst = expr->priv->instructions; inst; inst = g_slist_next (inst))
+				{
+					instructions_push (expression,
+					                   CPG_INSTRUCTION (cpg_mini_object_copy (inst->data)));
+				}
 
 				start = g_list_next (start);
 				++numargs;

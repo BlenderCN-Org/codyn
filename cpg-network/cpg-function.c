@@ -250,8 +250,19 @@ cpg_function_execute_impl (CpgFunction *function,
 		CpgFunctionArgument *argument = item->data;
 		CpgProperty *property = _cpg_function_argument_get_property (argument);
 
-		cpg_property_set_value (property,
-		                        cpg_function_argument_get_default_value (argument));
+		CpgExpression *def;
+
+		def = cpg_function_argument_get_default_value (argument);
+
+		if (def)
+		{
+			cpg_property_set_value (property,
+			                        cpg_expression_evaluate (def));
+		}
+		else
+		{
+			cpg_property_set_value (property, 0);
+		}
 
 		item = g_list_next (item);
 	}
@@ -316,6 +327,20 @@ cpg_function_reset_impl (CpgObject *object)
 	{
 		cpg_expression_reset (function->priv->expression);
 	}
+
+	GList *item;
+
+	for (item = function->priv->arguments; item; item = g_list_next (item))
+	{
+		CpgExpression *def;
+
+		def = cpg_function_argument_get_default_value (item->data);
+
+		if (def != NULL)
+		{
+			cpg_expression_reset (def);
+		}
+	}
 }
 
 static void
@@ -323,6 +348,9 @@ cpg_function_foreach_expression_impl (CpgObject                *object,
                                       CpgForeachExpressionFunc  func,
                                       gpointer                  userdata)
 {
+	CpgFunction *function = CPG_FUNCTION (object);
+	GList *item;
+
 	/* Chain up */
 	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->foreach_expression != NULL)
 	{
@@ -331,7 +359,17 @@ cpg_function_foreach_expression_impl (CpgObject                *object,
 		                                                                  userdata);
 	}
 
-	CpgFunction *function = CPG_FUNCTION (object);
+	for (item = function->priv->arguments; item; item = g_list_next (item))
+	{
+		CpgExpression *def;
+
+		def = cpg_function_argument_get_default_value (item->data);
+
+		if (def != NULL)
+		{
+			func (def, userdata);
+		}
+	}
 
 	if (function->priv->expression)
 	{
@@ -510,8 +548,8 @@ arguments_equal (CpgFunction         *a,
 
 		if (cpg_function_argument_get_optional (a1))
 		{
-			if (cpg_function_argument_get_default_value (a1) !=
-			    cpg_function_argument_get_default_value (a2))
+			if (!cpg_expression_equal (cpg_function_argument_get_default_value (a1),
+			                           cpg_function_argument_get_default_value (a2)))
 			{
 				return FALSE;
 			}
@@ -763,7 +801,7 @@ on_argument_optional_changed (CpgFunctionArgument *argument,
 	item = g_list_nth (function->priv->arguments,
 	                   function->priv->n_arguments - function->priv->n_optional - function->priv->n_implicit);
 
-	if (item->data != argument)
+	if (item == NULL || item->data != argument)
 	{
 		/* An argument other than the first optional one has changed
 		   it optionality */
@@ -773,12 +811,12 @@ on_argument_optional_changed (CpgFunctionArgument *argument,
 			g_list_remove (function->priv->arguments,
 			               argument);
 
-		if (!opt)
+		if (opt || item)
 		{
 			function->priv->arguments =
-				g_list_insert (function->priv->arguments,
-				               argument,
-				               function->priv->n_optional);
+				g_list_insert_before (function->priv->arguments,
+				                      item,
+				                      argument);
 		}
 		else
 		{

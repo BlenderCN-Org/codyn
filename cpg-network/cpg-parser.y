@@ -34,8 +34,7 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
                                                             GArray  *coefficients);
 
 static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
-                                                      gboolean           is_optional,
-                                                      gdouble            default_value,
+                                                      CpgEmbeddedString *default_value,
                                                       gboolean           is_explicit);
 
 %}
@@ -824,9 +823,9 @@ double_list
 	;
 
 function_argument_impl
-	: identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0, FALSE); }
-	| T_KEY_FROM '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "from."), FALSE, 0.0, FALSE); }
-	| T_KEY_TO '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "to."), FALSE, 0.0, FALSE); }
+	: identifier_or_string			{ $$ = create_function_argument ($1, NULL, FALSE); }
+	| T_KEY_FROM '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "from."), NULL, FALSE); }
+	| T_KEY_TO '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "to."), NULL, FALSE); }
 	;
 
 function_argument_list_impl_rev
@@ -851,9 +850,8 @@ function_argument_list
 	;
 
 function_argument
-	: identifier_or_string '=' T_DOUBLE	{ $$ = create_function_argument ($1, TRUE, $3, TRUE); }
-	| identifier_or_string '=' T_INTEGER	{ $$ = create_function_argument ($1, TRUE, $3, TRUE); }
-	| identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0, TRUE); }
+	: identifier_or_string '=' value_as_string	{ $$ = create_function_argument ($1, $3, TRUE); }
+	| identifier_or_string			        { $$ = create_function_argument ($1, NULL, TRUE); }
 	;
 
 state_item
@@ -1539,12 +1537,10 @@ create_polynomial_piece (gdouble  start,
 
 static CpgFunctionArgument *
 create_function_argument (CpgEmbeddedString *name,
-                          gboolean           is_optional,
-                          gdouble            default_value,
+                          CpgEmbeddedString *default_value,
                           gboolean           is_explicit)
 {
 	return g_object_ref_sink (cpg_function_argument_new (cpg_embedded_string_expand (name, NULL, NULL),
-	                                                     is_optional,
-	                                                     default_value,
+	                                                     default_value ? cpg_expression_new (cpg_embedded_string_expand (default_value, NULL, NULL)) : NULL,
 	                                                     is_explicit));
 }

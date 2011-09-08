@@ -966,32 +966,25 @@ parse_function_arguments (CpgNetworkDeserializer *deserializer,
 			continue;
 		}
 
-		xmlChar *opt = xmlGetProp (node, (xmlChar *)"optional");
-		gboolean optional = opt ? g_ascii_strcasecmp ((gchar const *)opt, "yes") == 0 : FALSE;
-		xmlFree (opt);
-
 		xmlChar *def = xmlGetProp (node, (xmlChar *)"default");
-		gdouble default_value = 0;
+		CpgExpression *default_value = NULL;
 
-		xmlChar *impl = xmlGetProp (node, (xmlChar *)"optional");
+		xmlChar *impl = xmlGetProp (node, (xmlChar *)"implicit");
 		gboolean isexplicit = impl ? g_ascii_strcasecmp ((gchar const *)impl, "yes") != 0 : TRUE;
 		xmlFree (impl);
 
 		if (def)
 		{
-			default_value = g_ascii_strtod ((gchar const *)def, NULL);
-			xmlFree (def);
-		}
+			if (isexplicit)
+			{
+				default_value = cpg_expression_new ((gchar const *)def);
+			}
 
-		if (isexplicit)
-		{
-			optional = FALSE;
-			default_value = 0.0;
+			xmlFree (def);
 		}
 
 		CpgFunctionArgument *argument =
 			cpg_function_argument_new (name,
-			                           optional,
 			                           default_value,
 			                           isexplicit);
 
@@ -1078,6 +1071,8 @@ parse_function (CpgNetworkDeserializer *deserializer,
 		g_object_unref (function);
 		return FALSE;
 	}
+
+	transfer_layout (CPG_OBJECT (function), node);
 
 	gboolean ret = cpg_group_add (parent,
 	                              CPG_OBJECT (function),
@@ -1227,6 +1222,8 @@ parse_polynomial (CpgNetworkDeserializer  *deserializer,
 		g_object_unref (function);
 		return FALSE;
 	}
+
+	transfer_layout (CPG_OBJECT (function), node);
 
 	gboolean ret = cpg_group_add (parent,
 	                              CPG_OBJECT (function),
