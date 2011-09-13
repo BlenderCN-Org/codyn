@@ -183,10 +183,12 @@ connect_integrator (CpgMonitor *monitor)
 			                          monitor);
 
 		monitor->priv->signals[BEGIN] =
-			g_signal_connect_swapped (integrator,
-			                          "begin",
-			                          G_CALLBACK (cpg_monitor_begin),
-			                          monitor);
+			g_signal_connect_data (integrator,
+			                        "begin",
+			                        G_CALLBACK (cpg_monitor_begin),
+			                        monitor,
+			                        NULL,
+			                        G_CONNECT_AFTER | G_CONNECT_SWAPPED);
 	}
 
 	monitor->priv->integrator = integrator;
