@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -25,6 +25,7 @@
 #include "cpg-usable.h"
 #include "cpg-annotatable.h"
 #include "cpg-link.h"
+#include "cpg-taggable.h"
 
 /**
  * SECTION:cpg-link-action
@@ -46,6 +47,7 @@ struct _CpgLinkActionPrivate
 	guint equation_proxy_id;
 
 	gchar *annotation;
+	GHashTable *tags;
 
 	guint modified : 1;
 	guint enabled : 1;
@@ -67,6 +69,7 @@ enum
 
 static void cpg_modifiable_iface_init (gpointer iface);
 static void cpg_annotatable_iface_init (gpointer iface);
+static void cpg_taggable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgLinkAction,
                          cpg_link_action,
@@ -74,7 +77,24 @@ G_DEFINE_TYPE_WITH_CODE (CpgLinkAction,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
                                                 cpg_modifiable_iface_init);
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
-                                                cpg_annotatable_iface_init));
+                                                cpg_annotatable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_TAGGABLE,
+                                                cpg_taggable_iface_init));
+
+static GHashTable *
+get_tag_table (CpgTaggable *taggable)
+{
+	return CPG_LINK_ACTION (taggable)->priv->tags;
+}
+
+static void
+cpg_taggable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+	CpgTaggableInterface *taggable = iface;
+
+	taggable->get_tag_table = get_tag_table;
+}
 
 static void
 cpg_modifiable_iface_init (gpointer iface)
@@ -244,6 +264,7 @@ cpg_link_action_finalize (GObject *object)
 	CpgLinkAction *action = CPG_LINK_ACTION (object);
 
 	g_free (action->priv->annotation);
+	g_hash_table_destroy (action->priv->tags);
 
 	G_OBJECT_CLASS (cpg_link_action_parent_class)->finalize (object);
 }
@@ -412,6 +433,8 @@ static void
 cpg_link_action_init (CpgLinkAction *self)
 {
 	self->priv = CPG_LINK_ACTION_GET_PRIVATE (self);
+
+	self->priv->tags = cpg_taggable_create_table ();
 }
 
 /**
@@ -544,6 +567,9 @@ cpg_link_action_copy (CpgLinkAction *action)
 
 	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (newaction),
 	                                action->priv->annotation);
+
+	cpg_taggable_copy_to (CPG_TAGGABLE (action),
+	                      action->priv->tags);
 
 	return newaction;
 }

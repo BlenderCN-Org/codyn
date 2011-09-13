@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -72,10 +72,15 @@ CpgEmbeddedString *cpg_embedded_string_push             (CpgEmbeddedString      
                                                          CpgEmbeddedStringNodeType  type,
                                                          gint                       depth);
 
+
 CpgEmbeddedString *cpg_embedded_string_pop              (CpgEmbeddedString         *s);
 
-void               cpg_embedded_string_add_text         (CpgEmbeddedString         *s,
+CpgEmbeddedString *cpg_embedded_string_add_text         (CpgEmbeddedString         *s,
                                                          gchar const               *text);
+
+CpgEmbeddedString *cpg_embedded_string_prepend_text     (CpgEmbeddedString         *s,
+                                                         gchar const               *text);
+
 
 gchar const       *cpg_embedded_string_expand           (CpgEmbeddedString         *s,
                                                          CpgEmbeddedContext        *ctx,

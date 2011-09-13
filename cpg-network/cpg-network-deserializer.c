@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -663,13 +663,15 @@ get_templates (CpgNetworkDeserializer  *deserializer,
 	{
 		CpgSelector *selector;
 
-		selector = cpg_selector_parse (*p, NULL);
+		selector = cpg_selector_parse (CPG_OBJECT (deserializer->priv->network),
+		                               *p,
+		                               NULL);
 
 		if (!selector)
 		{
 			CpgEmbeddedString *em;
 
-			selector = cpg_selector_new ();
+			selector = cpg_selector_new (CPG_OBJECT (deserializer->priv->network));
 
 			cpg_selector_append_pseudo (selector,
 			                            CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
@@ -894,7 +896,7 @@ new_object (CpgNetworkDeserializer *deserializer,
 		{
 			if (!cpg_group_add (CPG_GROUP (deserializer->priv->parents->data),
 			                    object,
-			                    NULL))
+			                    deserializer->priv->error))
 			{
 				g_object_unref (object);
 				return NULL;
@@ -964,23 +966,27 @@ parse_function_arguments (CpgNetworkDeserializer *deserializer,
 			continue;
 		}
 
-		xmlChar *opt = xmlGetProp (node, (xmlChar *)"optional");
-		gboolean optional = opt ? g_ascii_strcasecmp ((gchar const *)opt, "yes") == 0 : FALSE;
-		xmlFree (opt);
-
 		xmlChar *def = xmlGetProp (node, (xmlChar *)"default");
-		gdouble default_value = 0;
+		CpgExpression *default_value = NULL;
+
+		xmlChar *impl = xmlGetProp (node, (xmlChar *)"implicit");
+		gboolean isexplicit = impl ? g_ascii_strcasecmp ((gchar const *)impl, "yes") != 0 : TRUE;
+		xmlFree (impl);
 
 		if (def)
 		{
-			default_value = g_ascii_strtod ((gchar const *)def, NULL);
+			if (isexplicit)
+			{
+				default_value = cpg_expression_new ((gchar const *)def);
+			}
+
 			xmlFree (def);
 		}
 
 		CpgFunctionArgument *argument =
 			cpg_function_argument_new (name,
-			                           optional,
-			                           default_value);
+			                           default_value,
+			                           isexplicit);
 
 		save_comment (node, G_OBJECT (argument));
 
@@ -1004,15 +1010,16 @@ parse_function (CpgNetworkDeserializer *deserializer,
 		                      "One of the functions does not have a name");
 	}
 
-	CpgGroup *function_group = cpg_network_get_function_group (deserializer->priv->network);
+	CpgGroup *parent = deserializer->priv->parents->data;
 
-	if (cpg_group_get_child (function_group, (gchar const *)name))
+	if (cpg_group_get_child (parent, (gchar const *)name))
 	{
 		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
-		               "The function `%s' is already defined",
-		               name);
+		               "The function `%s' is already defined in `%s'",
+		               name,
+		               cpg_object_get_id (CPG_OBJECT (parent)));
 
 		xmlFree (name);
 		return FALSE;
@@ -1065,9 +1072,11 @@ parse_function (CpgNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
-	gboolean ret = cpg_group_add (function_group,
+	transfer_layout (CPG_OBJECT (function), node);
+
+	gboolean ret = cpg_group_add (parent,
 	                              CPG_OBJECT (function),
-	                              NULL);
+	                              deserializer->priv->error);
 	g_object_unref (function);
 
 	return ret;
@@ -1177,15 +1186,16 @@ parse_polynomial (CpgNetworkDeserializer  *deserializer,
 		                      "One of the polynomials does not have a name");
 	}
 
-	CpgGroup *function_group = cpg_network_get_function_group (deserializer->priv->network);
+	CpgGroup *parent = deserializer->priv->parents->data;
 
-	if (cpg_group_get_child (function_group, (gchar const *)name))
+	if (cpg_group_get_child (parent, (gchar const *)name))
 	{
 		parser_failed (deserializer,
 		               node,
 		               CPG_NETWORK_LOAD_ERROR_FUNCTION,
-		               "The polynomial `%s' is already defined",
-		               name);
+		               "The polynomial `%s' is already defined in `%s'",
+		               name,
+		               cpg_object_get_id (CPG_OBJECT (parent)));
 
 		xmlFree (name);
 		return FALSE;
@@ -1213,9 +1223,11 @@ parse_polynomial (CpgNetworkDeserializer  *deserializer,
 		return FALSE;
 	}
 
-	gboolean ret = cpg_group_add (function_group,
+	transfer_layout (CPG_OBJECT (function), node);
+
+	gboolean ret = cpg_group_add (parent,
 	                              CPG_OBJECT (function),
-	                              NULL);
+	                              deserializer->priv->error);
 	g_object_unref (function);
 
 	return ret;
@@ -1383,7 +1395,7 @@ parse_link (CpgNetworkDeserializer *deserializer,
 	{
 		ret = cpg_group_add (CPG_GROUP (deserializer->priv->parents->data),
 		                     object,
-		                     NULL);
+		                     deserializer->priv->error);
 
 		g_object_unref (object);
 	}
@@ -1404,8 +1416,8 @@ parse_interface (CpgNetworkDeserializer *deserializer,
 	{
 		xmlNodePtr node = nodes->data;
 		xmlChar *name;
+		xmlChar *child;
 		xmlChar const *target = NULL;
-		CpgProperty *property;
 		GError *error = NULL;
 
 		name = xmlGetProp (node, (xmlChar const *)"name");
@@ -1416,6 +1428,17 @@ parse_interface (CpgNetworkDeserializer *deserializer,
 			                      node,
 			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
 			                      "Missing name for interface property on `%s'",
+			                      cpg_object_get_id (CPG_OBJECT (group)));
+		}
+
+		child = xmlGetProp (node, (xmlChar const *)"child");
+
+		if (!child)
+		{
+			return parser_failed (deserializer,
+			                      node,
+			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
+			                      "Missing child for interface property on `%s'",
 			                      cpg_object_get_id (CPG_OBJECT (group)));
 		}
 
@@ -1433,22 +1456,10 @@ parse_interface (CpgNetworkDeserializer *deserializer,
 			                      cpg_object_get_id (CPG_OBJECT (group)));
 		}
 
-		property = cpg_group_find_property (group, (gchar const *)target);
-
-		if (!property)
-		{
-			return parser_failed (deserializer,
-			                      node,
-			                      CPG_NETWORK_LOAD_ERROR_INTERFACE,
-			                      "Could not find interface target `%s' for interface property `%s' on `%s'",
-			                      target,
-			                      name,
-			                      cpg_object_get_id (CPG_OBJECT (group)));
-		}
-
 		if (!cpg_property_interface_add (iface,
 		                                 (gchar const *)name,
-		                                 property,
+		                                 (gchar const *)child,
+		                                 (gchar const *)target,
 		                                 &error))
 		{
 			parser_failed_error (deserializer,
@@ -1759,7 +1770,7 @@ parse_import (CpgNetworkDeserializer *deserializer,
 			CpgImportAlias *alias = cpg_import_alias_new (import);
 			gboolean ret = cpg_group_add (deserializer->priv->parents->data,
 			                              CPG_OBJECT (alias),
-			                              NULL);
+			                              deserializer->priv->error);
 			g_object_unref (alias);
 
 			save_comment (node, G_OBJECT (alias));
@@ -1859,7 +1870,7 @@ parse_network (CpgNetworkDeserializer *deserializer,
 
 		gboolean has_child = xml_xpath_first (deserializer,
 		                                      node,
-		                                      "state | link | interface",
+		                                      "state | link | interface | function",
 		                                      XML_ELEMENT_NODE) != NULL;
 
 		gchar const *nodename = (gchar const *)node->name;
@@ -1904,18 +1915,6 @@ parse_network (CpgNetworkDeserializer *deserializer,
 			if (g_strcmp0 (nodename, "globals") == 0)
 			{
 				ret = parse_globals (deserializer, node);
-			}
-			else if (g_strcmp0 (nodename, "functions") == 0)
-			{
-				ret = parse_all (deserializer, node, NULL);
-			}
-			else if (g_strcmp0 (nodename, "function") == 0)
-			{
-				ret = parse_function (deserializer, node);
-			}
-			else if (g_strcmp0 (nodename, "polynomial") == 0)
-			{
-				ret = parse_polynomial (deserializer, node);
 			}
 			else if (g_strcmp0 (nodename, "templates") == 0)
 			{
@@ -1990,7 +1989,7 @@ parse_all (CpgNetworkDeserializer *deserializer,
 
 	ret = xml_xpath (deserializer,
 	                 root,
-	                 "state | group | link | templates | functions | function | globals | polynomial | import | input-file",
+	                 "state | group | link | templates | function | globals | polynomial | import | input-file",
 	                 XML_ELEMENT_NODE,
 	                 (XPathResultFunc)parse_network,
 	                 NULL);

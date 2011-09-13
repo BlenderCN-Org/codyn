@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -28,6 +28,16 @@
 
 #include <math.h>
 #include <cpg-network/instructions/cpg-instructions.h>
+
+/**
+ * SECTION:cpg-operator-delayed
+ * @short_description: Math operator for delayed evaluation of an expression
+ *
+ * The #CpgOperatorDelayed is a special operator that can be used in
+ * mathematical expressions ('delay'). When evaluated, it will return the
+ * delayed value of its argument (which can be an arbitrary expression).
+ *
+ */
 
 #define CPG_OPERATOR_DELAYED_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OPERATOR_DELAYED, CpgOperatorDelayedPrivate))
 
@@ -64,6 +74,14 @@ struct _CpgOperatorDelayedPrivate
 G_DEFINE_TYPE (CpgOperatorDelayed,
                cpg_operator_delayed,
                CPG_TYPE_OPERATOR)
+
+enum
+{
+	PROP_0,
+	PROP_EXPRESSION,
+	PROP_INITIAL_VALUE,
+	PROP_DELAY
+};
 
 static void
 history_remove_slice (HistoryList *history,
@@ -171,7 +189,7 @@ cpg_operator_delayed_initialize (CpgOperator  *op,
 
 		if (expressions->next->next)
 		{
-			delayed->priv->initial_value = expressions->next->next->data;
+			delayed->priv->initial_value = g_object_ref (expressions->next->next->data);
 		}
 	}
 }
@@ -504,7 +522,93 @@ cpg_operator_delayed_finalize (GObject *object)
 
 	g_object_unref (delayed->priv->expression);
 
+	if (delayed->priv->initial_value)
+	{
+		g_object_unref (delayed->priv->initial_value);
+	}
+
 	G_OBJECT_CLASS (cpg_operator_delayed_parent_class)->finalize (object);
+}
+
+static void
+cpg_operator_delayed_set_property (GObject      *object,
+                                   guint         prop_id,
+                                   const GValue *value,
+                                   GParamSpec   *pspec)
+{
+	switch (prop_id)
+	{
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_operator_delayed_get_property (GObject    *object,
+                                   guint       prop_id,
+                                   GValue     *value,
+                                   GParamSpec *pspec)
+{
+	CpgOperatorDelayed *self = CPG_OPERATOR_DELAYED (object);
+
+	switch (prop_id)
+	{
+		case PROP_EXPRESSION:
+			g_value_set_object (value, self->priv->expression);
+			break;
+		case PROP_INITIAL_VALUE:
+			g_value_set_object (value, self->priv->initial_value);
+			break;
+		case PROP_DELAY:
+			g_value_set_double (value, self->priv->delay);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static gboolean
+cpg_operator_delayed_equal (CpgOperator *op,
+                            CpgOperator *other)
+{
+	CpgOperatorDelayed *delayed;
+	CpgOperatorDelayed *odel;
+
+	if (!CPG_IS_OPERATOR_DELAYED (other))
+	{
+		return FALSE;
+	}
+
+	delayed = CPG_OPERATOR_DELAYED (op);
+	odel = CPG_OPERATOR_DELAYED (other);
+
+	if (delayed->priv->delay != odel->priv->delay)
+	{
+		return FALSE;
+	}
+
+	if ((delayed->priv->initial_value != NULL) !=
+	    (odel->priv->initial_value != NULL))
+	{
+		return FALSE;
+	}
+
+	if (!cpg_expression_equal (delayed->priv->expression,
+	                           odel->priv->expression))
+	{
+		return FALSE;
+	}
+
+	if (delayed->priv->initial_value &&
+	    !cpg_expression_equal (delayed->priv->expression,
+	                           odel->priv->expression))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static void
@@ -515,6 +619,10 @@ cpg_operator_delayed_class_init (CpgOperatorDelayedClass *klass)
 
 	object_class->finalize = cpg_operator_delayed_finalize;
 
+	object_class->get_property = cpg_operator_delayed_get_property;
+	object_class->set_property = cpg_operator_delayed_set_property;
+
+
 	op_class->get_name = cpg_operator_delayed_get_name;
 	op_class->execute = cpg_operator_delayed_execute;
 	op_class->initialize = cpg_operator_delayed_initialize;
@@ -523,8 +631,35 @@ cpg_operator_delayed_class_init (CpgOperatorDelayedClass *klass)
 	op_class->step_evaluate = cpg_operator_delayed_step_evaluate;
 	op_class->step = cpg_operator_delayed_step;
 	op_class->validate_num_arguments = cpg_operator_delayed_validate_num_arguments;
+	op_class->equal = cpg_operator_delayed_equal;
 
 	g_type_class_add_private (object_class, sizeof(CpgOperatorDelayedPrivate));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_EXPRESSION,
+	                                 g_param_spec_object ("expression",
+	                                                      "Expression",
+	                                                      "Expression",
+	                                                      CPG_TYPE_EXPRESSION,
+	                                                      G_PARAM_READABLE));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_INITIAL_VALUE,
+	                                 g_param_spec_object ("initial-value",
+	                                                      "Initial Value",
+	                                                      "Initial value",
+	                                                      CPG_TYPE_EXPRESSION,
+	                                                      G_PARAM_READABLE));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_DELAY,
+	                                 g_param_spec_double ("delay",
+	                                                      "Delay",
+	                                                      "Delay",
+	                                                      0,
+	                                                      G_MAXDOUBLE,
+	                                                      0,
+	                                                      G_PARAM_READABLE));
 }
 
 static void
@@ -537,4 +672,55 @@ CpgOperatorDelayed *
 cpg_operator_delayed_new ()
 {
 	return g_object_new (CPG_TYPE_OPERATOR_DELAYED, NULL);
+}
+
+/**
+ * cpg_operator_delayed_get_expression:
+ * @delayed: A #CpgOperatorDelayed
+ *
+ * Get the expression to be delayed.
+ *
+ * Returns: (transfer none): A #CpgExpression
+ *
+ **/
+CpgExpression *
+cpg_operator_delayed_get_expression (CpgOperatorDelayed *delayed)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR_DELAYED (delayed), NULL);
+
+	return delayed->priv->expression;
+}
+
+/**
+ * cpg_operator_delayed_get_initial_value:
+ * @delayed: A #CpgOperatorDelayed
+ *
+ * Get the initial value of the expression to be delayed.
+ *
+ * Returns: (transfer none): A #CpgExpression
+ *
+ **/
+CpgExpression *
+cpg_operator_delayed_get_initial_value (CpgOperatorDelayed *delayed)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR_DELAYED (delayed), NULL);
+
+	return delayed->priv->initial_value;
+}
+
+/**
+ * cpg_operator_delayed_get_delay:
+ * @delayed: A #CpgOperatorDelayed
+ *
+ * Get the time delay in seconds.
+ *
+ * Returns: The time delay in seconds
+ *
+ **/
+gdouble
+cpg_operator_delayed_get_delay (CpgOperatorDelayed *delayed)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR_DELAYED (delayed), 0.0);
+
+	return delayed->priv->delay;
 }

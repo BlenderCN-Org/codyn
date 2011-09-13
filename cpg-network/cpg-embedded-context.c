@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -156,7 +156,8 @@ copy_defines_on_write (Context *context)
 }
 
 static Context *
-context_copy (Context *self)
+context_copy (Context  *self,
+              gboolean  copy_defines)
 {
 	Context *ret;
 
@@ -164,7 +165,7 @@ context_copy (Context *self)
 
 	if (self)
 	{
-		ret->copy_defines_on_write = TRUE;
+		ret->copy_defines_on_write = copy_defines;
 		ret->copy_expansions_on_write = TRUE;
 
 		ret->expansions = self->expansions;
@@ -217,14 +218,63 @@ cpg_embedded_context_new ()
 	return g_object_new (CPG_TYPE_EMBEDDED_CONTEXT, NULL);
 }
 
+/**
+ * cpg_embedded_context_copy_top:
+ * @context: A #CpgEmbeddedContext
+ *
+ * Copy the top of the stack in the embedded context into a new
+ * embedded context.
+ *
+ * Returns: (transfer full): A #CpgEmbeddedContext
+ *
+ **/
+CpgEmbeddedContext *
+cpg_embedded_context_copy_top (CpgEmbeddedContext *context)
+{
+	CpgEmbeddedContext *ret;
+	Context *ctx;
+	Context *cp;
+
+	ret = cpg_embedded_context_new ();
+
+	ctx = CURRENT_CONTEXT (context);
+
+	if (!ctx)
+	{
+		return ret;
+	}
+
+	cp = context_copy (ctx, TRUE);
+
+	/* Make copy now */
+	copy_defines_on_write (cp);
+	copy_expansions_on_write (cp);
+
+	/* Remove initial context */
+	cpg_embedded_context_restore (ret);
+
+	/* Add new top context */
+	ret->priv->contexts = g_slist_prepend (ret->priv->contexts,
+	                                       cp);
+
+	return ret;
+}
+
 void
 cpg_embedded_context_save (CpgEmbeddedContext *context)
+{
+	cpg_embedded_context_save_defines (context, FALSE);
+}
+
+void
+cpg_embedded_context_save_defines (CpgEmbeddedContext *context,
+                                   gboolean            copy_defines)
 {
 	Context *ctx;
 
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 
-	ctx = context_copy (CURRENT_CONTEXT (context));
+	ctx = context_copy (CURRENT_CONTEXT (context), copy_defines);
 
 	context->priv->contexts = g_slist_prepend (context->priv->contexts,
 	                                           ctx);
@@ -248,13 +298,14 @@ cpg_embedded_context_restore (CpgEmbeddedContext *context)
 gint
 cpg_embedded_context_increment_define (CpgEmbeddedContext *context,
                                        gchar const        *name,
-                                       gint                num)
+                                       gint                num,
+                                       gboolean            retold)
 {
 	Context *ctx;
 	gpointer key;
 	gpointer val;
 	gint ret;
-	GSList *item;
+	gchar *incval;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), 0);
 	g_return_val_if_fail (name != NULL, 0);
@@ -263,32 +314,26 @@ cpg_embedded_context_increment_define (CpgEmbeddedContext *context,
 
 	if (g_hash_table_lookup_extended (ctx->defines, name, &key, &val))
 	{
-		ret = g_ascii_strtoll (val, NULL, 10);
+		ret = (gint)g_ascii_strtod (val, NULL);
 	}
 	else
 	{
 		ret = 0;
 	}
 
-	g_hash_table_insert (ctx->defines,
-	                     g_strdup (name),
-	                     g_strdup_printf ("%d", ret + num));
+	incval = g_strdup_printf ("%d", ret + num);
 
-	for (item = context->priv->contexts->next; item; item = g_slist_next (item))
+	cpg_embedded_context_add_define (context,
+	                                 name,
+	                                 incval);
+
+	g_free (incval);
+
+	if (!retold)
 	{
-		Context *c;
-
-		c = item->data;
-
-		if (c->defines != ctx->defines)
-		{
-			break;
-		}
-
-		c->marker = ++global_marker;
+		ret += num;
 	}
 
-	ctx->marker = ++global_marker;
 	return ret;
 }
 
@@ -298,6 +343,7 @@ cpg_embedded_context_add_define (CpgEmbeddedContext *context,
                                  gchar const        *value)
 {
 	Context *ctx;
+	GSList *item;
 
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 	g_return_if_fail (name != NULL);
@@ -309,6 +355,20 @@ cpg_embedded_context_add_define (CpgEmbeddedContext *context,
 	g_hash_table_insert (ctx->defines,
 	                     g_strdup (name),
 	                     g_strdup (value ? value : ""));
+
+	for (item = context->priv->contexts->next; item; item = g_slist_next (item))
+	{
+		Context *c;
+
+		c = item->data;
+
+		if (c->defines != ctx->defines)
+		{
+			continue;
+		}
+
+		c->marker = ++global_marker;
+	}
 
 	ctx->marker = ++global_marker;
 }

@@ -8,14 +8,14 @@ static gchar simple_xml[] = ""
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 "<cpg>\n"
 "  <network>\n"
-"    <state id=\"state\">\n"
+"    <group id=\"state\">\n"
 "      <interface>\n"
-"        <property name=\"c1_x\">c1.x</property>\n"
+"        <property name=\"c1_x\" child=\"c1\">x</property>\n"
 "      </interface>\n"
 "      <state id=\"c1\">\n"
 "        <property name=\"x\">1</property>\n"
 "      </state>\n"
-"    </state>\n"
+"    </group>\n"
 "  </network>\n"
 "</cpg>\n";
 
@@ -188,7 +188,7 @@ test_templates_overrides_add_inherited ()
 	g_assert (prop);
 	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p3");
 
-	cpg_property_interface_add (iface, "cc_p3", cpg_group_find_property (group, "c1.p1"), NULL);
+	cpg_property_interface_add (iface, "cc_p3", "c1", "p1", NULL);
 
 	prop = cpg_object_get_property (CPG_OBJECT (state), "cc_p3");
 
@@ -228,7 +228,7 @@ test_templates_overrides_add_uninherited ()
 	g_assert (prop);
 	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p1");
 
-	cpg_property_interface_add (iface, "cc_p1", cpg_group_find_property (group, "c3.p3"), NULL);
+	cpg_property_interface_add (iface, "cc_p1", "c3", "p3", NULL);
 
 	prop = cpg_object_get_property (CPG_OBJECT (state), "cc_p1");
 

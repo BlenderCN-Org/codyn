@@ -46,7 +46,7 @@ cpg_instruction_custom_operator_to_string (CpgInstruction *instruction)
 
 	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
 
-	gchar const *name = cpg_operator_get_name (CPG_OPERATOR_GET_CLASS (self->priv->op));
+	gchar const *name = cpg_operator_get_name (self->priv->op);
 	gchar *ret = g_strdup_printf ("OPC (%s)", name);
 
 	return ret;
@@ -95,6 +95,19 @@ cpg_instruction_custom_operator_get_dependencies (CpgInstruction *instruction)
 	return dependencies;
 }
 
+static gboolean
+cpg_instruction_custom_operator_equal (CpgInstruction *a,
+                                       CpgInstruction *b)
+{
+	CpgInstructionCustomOperator *ac;
+	CpgInstructionCustomOperator *bc;
+
+	ac = CPG_INSTRUCTION_CUSTOM_OPERATOR (a);
+	bc = CPG_INSTRUCTION_CUSTOM_OPERATOR (b);
+
+	return cpg_operator_equal (ac->priv->op, bc->priv->op);
+}
+
 static void
 cpg_instruction_custom_operator_class_init (CpgInstructionCustomOperatorClass *klass)
 {
@@ -108,6 +121,7 @@ cpg_instruction_custom_operator_class_init (CpgInstructionCustomOperatorClass *k
 	inst_class->execute = cpg_instruction_custom_operator_execute;
 	inst_class->get_stack_count = cpg_instruction_custom_operator_get_stack_count;
 	inst_class->get_dependencies = cpg_instruction_custom_operator_get_dependencies;
+	inst_class->equal = cpg_instruction_custom_operator_equal;
 
 	g_type_class_add_private (object_class, sizeof(CpgInstructionCustomOperatorPrivate));
 }

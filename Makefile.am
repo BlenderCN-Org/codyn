@@ -52,6 +52,7 @@ MAINTAINERCLEANFILES = 		\
 	install-sh		\
 	ltmain.sh		\
 	missing			\
+	ylwrap			\
 	mkinstalldirs		\
 	omf.make		\
 	py-compile		\

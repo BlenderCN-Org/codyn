@@ -96,8 +96,54 @@
             </include>
         </context>
 
-        <context id="keywords" style-ref="keyword">
+        <context id="attributes" style-ref="keyword">
+            <keyword>bidirectional</keyword>
+            <keyword>if</keyword>
+            <keyword>each</keyword>
+            <keyword>probability</keyword>
+            <keyword>no-self</keyword>
+            <keyword>proxy</keyword>
+            <keyword>tag</keyword>
+        </context>
+
+        <context id="selectors" style-ref="keyword">
             <keyword>templates</keyword>
+            <keyword>root</keyword>
+            <keyword>templates-root</keyword>
+            <keyword>debug</keyword>
+            <keyword>children</keyword>
+            <keyword>parent</keyword>
+            <keyword>first</keyword>
+            <keyword>last</keyword>
+            <keyword>subset</keyword>
+            <keyword>states</keyword>
+            <keyword>links</keyword>
+            <keyword>siblings</keyword>
+            <keyword>descendants</keyword>
+            <keyword>ancestors</keyword>
+            <keyword>unique</keyword>
+            <keyword>count</keyword>
+            <keyword>name</keyword>
+            <keyword>self</keyword>
+            <keyword>groups</keyword>
+            <keyword>imports</keyword>
+            <keyword>objects</keyword>
+            <keyword>properties</keyword>
+            <keyword>actions</keyword>
+            <keyword>type</keyword>
+            <keyword>is-empty</keyword>
+            <keyword>remove</keyword>
+            <keyword>if</keyword>
+            <keyword>from-set</keyword>
+            <keyword>from</keyword>
+            <keyword>to</keyword>
+            <keyword>has-template</keyword>
+            <keyword>has-tag</keyword>
+            <keyword>has-flag</keyword>
+            <keyword>reverse</keyword>
+        </context>
+
+        <context id="keywords" style-ref="keyword">
             <keyword>state</keyword>
             <keyword>link</keyword>
             <keyword>group</keyword>
@@ -107,7 +153,7 @@
             <keyword>from</keyword>
             <keyword>to</keyword>
             <keyword>polynomial</keyword>
-            <keyword>input-file</keyword>
+            <keyword>input</keyword>
             <keyword>piece</keyword>
             <keyword>defines</keyword>
             <keyword>integrator</keyword>
@@ -118,31 +164,22 @@
             <keyword>below</keyword>
             <keyword>at</keyword>
             <keyword>on</keyword>
+            <keyword>all</keyword>
             <keyword>as</keyword>
             <keyword>of</keyword>
             <keyword>delete</keyword>
             <keyword>property</keyword>
-            <keyword>properties</keyword>
-            <keyword>actions</keyword>
-            <keyword>objects</keyword>
-            <keyword>groups</keyword>
             <keyword>action</keyword>
             <keyword>or</keyword>
-            <keyword>debug</keyword>
             <keyword>context</keyword>
             <keyword>as</keyword>
-            <keyword>root</keyword>
-            <keyword>self</keyword>
-            <keyword>states</keyword>
-            <keyword>links</keyword>
-            <keyword>count</keyword>
-            <keyword>children</keyword>
-            <keyword>parent</keyword>
-            <keyword>first</keyword>
-            <keyword>last</keyword>
-            <keyword>subset</keyword>
-            <keyword>siblings</keyword>
             <keyword>settings</keyword>
+            <keyword>parse</keyword>
+            <keyword>debug-print</keyword>
+            <keyword>apply</keyword>
+            <keyword>unapply</keyword>
+            <keyword>when-applied</keyword>
+            <keyword>when-unapplied</keyword>
         </context>
 
         <context id="selector">
@@ -178,6 +215,8 @@
                 <context ref="def:shebang"/>
                 <context ref="def:shell-like-comment"/>
                 <context ref="keywords"/>
+                <context ref="selectors"/>
+                <context ref="attributes"/>
                 <context ref="specifiers"/>
                 <context ref="preprocessor"/>
                 <context ref="regex"/>

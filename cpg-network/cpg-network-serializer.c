@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -83,7 +83,10 @@ cpg_network_serializer_dispose (GObject *object)
 }
 
 static void
-cpg_network_serializer_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+cpg_network_serializer_set_property (GObject      *object,
+                                     guint         prop_id,
+                                     const GValue *value,
+                                     GParamSpec   *pspec)
 {
 	CpgNetworkSerializer *self = CPG_NETWORK_SERIALIZER (object);
 
@@ -102,7 +105,10 @@ cpg_network_serializer_set_property (GObject *object, guint prop_id, const GValu
 }
 
 static void
-cpg_network_serializer_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+cpg_network_serializer_get_property (GObject    *object,
+                                     guint       prop_id,
+                                     GValue     *value,
+                                     GParamSpec *pspec)
 {
 	CpgNetworkSerializer *self = CPG_NETWORK_SERIALIZER (object);
 
@@ -386,7 +392,8 @@ properties_to_xml (CpgNetworkSerializer *serializer,
 }
 
 static gchar *
-template_path (CpgObject *orig,
+template_path (CpgNetwork *network,
+               CpgObject *orig,
                CpgObject *template)
 {
 	CpgObject *parent = cpg_object_get_parent (orig);
@@ -395,9 +402,18 @@ template_path (CpgObject *orig,
 	GString *ret = g_string_new ("");
 	gboolean first = TRUE;
 
+	CpgObject *tg;
+
+	tg = CPG_OBJECT (cpg_network_get_template_group (network));
+
 	do
 	{
 		CpgObject *shared_parent = cpg_object_get_parent (shared_root);
+
+		if (shared_root == tg)
+		{
+			break;
+		}
 
 		if (shared_parent != NULL)
 		{
@@ -417,12 +433,65 @@ template_path (CpgObject *orig,
 	return g_string_free (ret, FALSE);
 }
 
+static gboolean
+should_write_layout (CpgObject *object)
+{
+	CpgLayoutable *layoutable;
+	CpgLayoutable *last;
+	gint x;
+	gint y;
+	gint tx;
+	gint ty;
+	GSList *templates;
+	GSList *item;
+
+	if (!CPG_IS_LAYOUTABLE (object))
+	{
+		return FALSE;
+	}
+
+	layoutable = CPG_LAYOUTABLE (object);
+
+	if (!cpg_layoutable_supports_location (layoutable) ||
+	    !cpg_layoutable_get_has_location (layoutable))
+	{
+		return FALSE;
+	}
+
+	/* Check if the layout was not applied by some template */
+	templates = cpg_group_get_auto_templates_for_child (CPG_GROUP (cpg_object_get_parent (object)),
+	                                                    object);
+
+	last = NULL;
+
+	for (item = templates; item; item = g_slist_next (item))
+	{
+		if (CPG_IS_LAYOUTABLE (item->data) &&
+		    cpg_layoutable_supports_location (item->data) &&
+		    cpg_layoutable_get_has_location (item->data))
+		{
+			last = item->data;
+		}
+	}
+
+	g_slist_free (templates);
+
+	if (!last)
+	{
+		return TRUE;
+	}
+
+	cpg_layoutable_get_location (layoutable, &x, &y);
+	cpg_layoutable_get_location (last, &tx, &ty);
+
+	return x != tx || y != ty;
+}
+
 static void
 add_layout (CpgObject  *object,
             xmlNodePtr  ptr)
 {
-	if (CPG_IS_LAYOUTABLE (object) &&
-	    cpg_layoutable_supports_location (CPG_LAYOUTABLE (object)))
+	if (should_write_layout (object))
 	{
 		gchar *pos;
 		gint x;
@@ -430,16 +499,13 @@ add_layout (CpgObject  *object,
 
 		cpg_layoutable_get_location (CPG_LAYOUTABLE (object), &x, &y);
 
-		if (x != 0 || y != 0)
-		{
-			pos = g_strdup_printf ("%d", x);
-			xmlNewProp (ptr, (xmlChar *)"x", (xmlChar *)pos);
-			g_free (pos);
+		pos = g_strdup_printf ("%d", x);
+		xmlNewProp (ptr, (xmlChar *)"x", (xmlChar *)pos);
+		g_free (pos);
 
-			pos = g_strdup_printf ("%d", y);
-			xmlNewProp (ptr, (xmlChar *)"y", (xmlChar *)pos);
-			g_free (pos);
-		}
+		pos = g_strdup_printf ("%d", y);
+		xmlNewProp (ptr, (xmlChar *)"y", (xmlChar *)pos);
+		g_free (pos);
 	}
 }
 
@@ -472,13 +538,17 @@ object_to_xml (CpgNetworkSerializer *serializer,
 		/* only apply templates that are not inherited */
 		if (!g_slist_find (inherited, templates->data))
 		{
-			gchar *path = template_path (object, templates->data);
+			gchar *path = template_path (serializer->priv->network,
+			                             object,
+			                             templates->data);
 
 			g_ptr_array_add (refs, path);
 		}
 
 		templates = g_slist_next (templates);
 	}
+
+	g_slist_free (inherited);
 
 	g_ptr_array_add (refs, NULL);
 
@@ -615,18 +685,19 @@ link_to_xml (CpgNetworkSerializer *serializer,
 }
 
 static void
-write_function (CpgNetworkSerializer *serializer,
-                CpgFunction          *func,
-                xmlNodePtr            funcs)
+function_to_xml (CpgNetworkSerializer *serializer,
+                 xmlNodePtr            parent,
+                 CpgFunction          *func)
 {
-	restore_comment (serializer, funcs, G_OBJECT (func));
+	xmlNodePtr funcn;
 
-	xmlNodePtr funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"function", NULL);
+	funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"function", NULL);
+
 	xmlNewProp (funcn,
 	            (xmlChar *)"name",
 	            (xmlChar *)cpg_object_get_id (CPG_OBJECT (func)));
 
-	xmlAddChild (funcs, funcn);
+	xmlAddChild (parent, funcn);
 
 	/* Create expression element */
 	CpgExpression *expression = cpg_function_get_expression (func);
@@ -674,33 +745,37 @@ write_function (CpgNetworkSerializer *serializer,
 
 		if (cpg_function_argument_get_optional (argument))
 		{
-			gchar defPtr[G_ASCII_DTOSTR_BUF_SIZE];
+			CpgExpression *expr;
 
-			xmlNewProp (argn, (xmlChar *)"optional", (xmlChar *)"yes");
+			expr = cpg_function_argument_get_default_value (argument);
+			xmlNewProp (argn, (xmlChar *)"default", (xmlChar *)cpg_expression_get_as_string (expr));
+		}
 
-			g_ascii_dtostr (defPtr,
-			                G_ASCII_DTOSTR_BUF_SIZE,
-			                cpg_function_argument_get_default_value (argument));
-			xmlNewProp (argn, (xmlChar *)"default", (xmlChar *)defPtr);
+		if (!cpg_function_argument_get_explicit (argument))
+		{
+			xmlNewProp (argn, (xmlChar *)"implicit", (xmlChar *)"yes");
 		}
 
 		xmlAddChild (funcn, argn);
 	}
+
+	add_layout (CPG_OBJECT (func), funcn);
 }
 
 static void
-write_function_polynomial (CpgNetworkSerializer  *serializer,
-                           CpgFunctionPolynomial *func,
-                           xmlNodePtr             funcs)
+function_polynomial_to_xml (CpgNetworkSerializer  *serializer,
+                            xmlNodePtr             parent,
+                            CpgFunctionPolynomial *func)
 {
-	restore_comment (serializer, funcs, G_OBJECT (func));
+	xmlNodePtr funcn;
 
-	xmlNodePtr funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"polynomial", NULL);
+	funcn = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"polynomial", NULL);
+
 	xmlNewProp (funcn,
 	            (xmlChar *)"name",
 	            (xmlChar *)cpg_object_get_id (CPG_OBJECT (func)));
 
-	xmlAddChild (funcs, funcn);
+	xmlAddChild (parent, funcn);
 
 	/* Create pieces */
 	GSList const *pieces = cpg_function_polynomial_get_pieces (func);
@@ -755,57 +830,8 @@ write_function_polynomial (CpgNetworkSerializer  *serializer,
 
 		pieces = g_slist_next (pieces);
 	}
-}
 
-static GSList *
-filter_functions (GSList const *functions)
-{
-	GSList *ret = NULL;
-
-	while (functions)
-	{
-		if (!cpg_object_get_auto_imported (functions->data))
-		{
-			ret = g_slist_prepend (ret, functions->data);
-		}
-
-		functions = g_slist_next (functions);
-	}
-
-	return g_slist_reverse (ret);
-}
-
-static void
-write_functions (CpgNetworkSerializer *serializer,
-                 xmlNodePtr            nnetwork)
-{
-	CpgGroup *function_group = cpg_network_get_function_group (serializer->priv->network);
-	GSList *functions = filter_functions (cpg_group_get_children (function_group));
-	GSList *item;
-
-	if (functions == NULL)
-	{
-		return;
-	}
-
-	xmlNodePtr funcs = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"functions", NULL);
-	xmlAddChild (nnetwork, funcs);
-
-	for (item = functions; item; item = g_slist_next (item))
-	{
-		CpgFunction *func = CPG_FUNCTION (item->data);
-
-		if (CPG_IS_FUNCTION_POLYNOMIAL (func))
-		{
-			write_function_polynomial (serializer, CPG_FUNCTION_POLYNOMIAL (func), funcs);
-		}
-		else
-		{
-			write_function (serializer, func, funcs);
-		}
-	}
-
-	g_slist_free (functions);
+	add_layout (CPG_OBJECT (func), funcn);
 }
 
 static gboolean
@@ -821,6 +847,11 @@ skip_object (CpgObject *object)
 	if (cpg_object_get_auto_imported (object))
 	{
 		return TRUE;
+	}
+
+	if (should_write_layout (object))
+	{
+		return FALSE;
 	}
 
 	/* Check if it was not solely instantiated from templates */
@@ -849,7 +880,6 @@ skip_object (CpgObject *object)
 
 	if (cpg_object_equal (object, dummy))
 	{
-		g_object_unref (dummy);
 		return TRUE;
 	}
 
@@ -1017,7 +1047,7 @@ input_file_to_xml (CpgNetworkSerializer *serializer,
 }
 
 static void
-cpg_object_to_xml (CpgNetworkSerializer *serializer,
+any_object_to_xml (CpgNetworkSerializer *serializer,
                    xmlNodePtr            root,
                    CpgObject            *object)
 {
@@ -1043,6 +1073,14 @@ cpg_object_to_xml (CpgNetworkSerializer *serializer,
 	else if (CPG_IS_INPUT_FILE (object))
 	{
 		input_file_to_xml (serializer, root, CPG_INPUT_FILE (object));
+	}
+	else if (CPG_IS_FUNCTION_POLYNOMIAL (object))
+	{
+		function_polynomial_to_xml (serializer, root, CPG_FUNCTION_POLYNOMIAL (object));
+	}
+	else if (CPG_IS_FUNCTION (object))
+	{
+		function_to_xml (serializer, root, CPG_FUNCTION (object));
 	}
 	else
 	{
@@ -1092,7 +1130,7 @@ group_children_to_xml (CpgNetworkSerializer *serializer,
 		}
 		else
 		{
-			cpg_object_to_xml (serializer, group_node, children->data);
+			any_object_to_xml (serializer, group_node, children->data);
 		}
 
 		children = g_slist_next (children);
@@ -1103,7 +1141,7 @@ group_children_to_xml (CpgNetworkSerializer *serializer,
 
 	for (item = links; item; item = g_slist_next (item))
 	{
-		cpg_object_to_xml (serializer, group_node, item->data);
+		any_object_to_xml (serializer, group_node, item->data);
 	}
 
 	g_slist_free (links);
@@ -1114,51 +1152,41 @@ group_interface_is_template (CpgGroup    *group,
                              gchar const *name)
 {
 	CpgPropertyInterface *iface;
-	CpgProperty *prop;
 	GSList const *templates;
 	gboolean ret = FALSE;
-	gchar *path;
+	gchar const *my_child_name;
+	gchar const *my_property_name;
 
 	iface = cpg_group_get_property_interface (group);
-	prop = cpg_property_interface_lookup (iface, name);
+
+	my_child_name = cpg_property_interface_lookup_child_name (iface, name);
+	my_property_name = cpg_property_interface_lookup_property_name (iface, name);
 
 	templates = cpg_object_get_applied_templates (CPG_OBJECT (group));
-
-	path = cpg_object_get_relative_id (cpg_property_get_object (prop),
-	                                   CPG_OBJECT (group));
 
 	while (templates)
 	{
 		CpgGroup *template;
 		CpgPropertyInterface *template_iface;
-		CpgProperty *tempprop;
+		gchar const *child_name;
+		gchar const *property_name;
 
 		template = templates->data;
 
 		template_iface = cpg_group_get_property_interface (template);
-		tempprop = cpg_property_interface_lookup (template_iface, name);
 
-		if (tempprop && g_strcmp0 (cpg_property_get_name (prop),
-		                           cpg_property_get_name (tempprop)) == 0)
+		child_name = cpg_property_interface_lookup_child_name (template_iface, name);
+		property_name = cpg_property_interface_lookup_property_name (template_iface, name);
+
+		if (g_strcmp0 (my_child_name, child_name) == 0 &&
+		    g_strcmp0 (my_property_name, property_name) == 0)
 		{
-			gchar *origpath;
-
-			origpath = cpg_object_get_relative_id (cpg_property_get_object (tempprop),
-			                                       CPG_OBJECT (template));
-
-			ret = g_strcmp0 (origpath, path) == 0;
-			g_free (origpath);
-
-			if (ret)
-			{
-				break;
-			}
+			ret = TRUE;
+			break;
 		}
 
 		templates = g_slist_next (templates);
 	}
-
-	g_free (path);
 
 	return ret;
 }
@@ -1168,12 +1196,11 @@ group_interface_is_proxy (CpgGroup    *group,
                           gchar const *name)
 {
 	CpgObject *proxy;
-	CpgProperty *property;
+	gchar const *child_name;
 	CpgPropertyInterface *iface;
 
 	/* Check if the interface is an automatically generated interface from
 	   a property on the proxy object */
-
 	proxy = cpg_group_get_proxy (group);
 
 	if (!proxy)
@@ -1181,16 +1208,10 @@ group_interface_is_proxy (CpgGroup    *group,
 		return FALSE;
 	}
 
-	property = cpg_object_get_property (proxy, name);
-
-	if (!property)
-	{
-		return FALSE;
-	}
-
 	iface = cpg_group_get_property_interface (group);
+	child_name = cpg_property_interface_lookup_child_name (iface, name);
 
-	return cpg_property_interface_lookup (iface, name) == property;
+	return g_strcmp0 (cpg_object_get_id (proxy), child_name) == 0;
 }
 
 static gchar **
@@ -1249,37 +1270,23 @@ group_interface_to_xml (CpgNetworkSerializer *serializer,
 
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
-		CpgProperty *property;
-		gchar *path;
-		gchar *proppath;
+		gchar const *child_name;
+		gchar const *property_name;
 		xmlNodePtr node;
 		xmlNodePtr text;
 
-		property = cpg_property_interface_lookup (iface, *ptr);
-
-		path = cpg_object_get_relative_id (cpg_property_get_object (property),
-		                                   CPG_OBJECT (group));
-
-		if (path && *path)
-		{
-			proppath = g_strconcat (path, ".", cpg_property_get_name (property), NULL);
-		}
-		else
-		{
-			proppath = g_strdup (cpg_property_get_name (property));
-		}
+		child_name = cpg_property_interface_lookup_child_name (iface, *ptr);
+		property_name = cpg_property_interface_lookup_property_name (iface, *ptr);
 
 		node = xmlNewDocNode (serializer->priv->doc, NULL, (xmlChar *)"property", NULL);
 		xmlNewProp (node, (xmlChar *)"name", (xmlChar *)*ptr);
+		xmlNewProp (node, (xmlChar *)"child", (xmlChar *)child_name);
 
 		text = xmlNewDocText (serializer->priv->doc,
-		                      (xmlChar *)proppath);
+		                      (xmlChar *)property_name);
 
 		xmlAddChild (node, text);
 		xmlAddChild (parent, node);
-
-		g_free (path);
-		g_free (proppath);
 	}
 
 	g_strfreev (names);
@@ -1441,7 +1448,6 @@ cpg_network_serializer_serialize (CpgNetworkSerializer  *serializer,
 		group_to_xml (serializer, nnetwork, CPG_GROUP (serializer->priv->network));
 	}
 
-	write_functions (serializer, nnetwork);
 	write_extra_nodes (serializer);
 
 	xmlIndentTreeOutput = 1;

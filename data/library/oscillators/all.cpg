@@ -9,12 +9,10 @@ templates
     ## Matsuoka oscillator
     import "matsuoka.cpg" as "matsuoka"
 
-    layout
-    {
-        "hopf" at (@[++], 0)
-        "phase" at (@[++], 0)
-        "matsuoka" at (@[++], 0)
-    }
+    ## AWO oscillator
+    import "awo.cpg" as "awo"
+
+    include "layout/line.cpg"
 }
 
 # vi:ex:ts=4:et

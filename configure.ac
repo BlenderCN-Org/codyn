@@ -1,4 +1,4 @@
-AC_INIT(cpg-network, 2.2)
+AC_INIT(cpg-network, 2.3)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([-Wno-portability])
@@ -17,7 +17,7 @@ AC_PROG_YACC
 
 GTK_DOC_CHECK(1.9)
 
-AM_MAINTAINER_MODE
+AM_MAINTAINER_MODE([enable])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
 AC_PROG_INSTALL
@@ -159,6 +159,7 @@ cpg-network-webots/Makefile
 data/Makefile
 data/cpg.xml
 data/library/Makefile
+data/library/layout/Makefile
 data/library/oscillators/Makefile
 docs/Makefile
 docs/reference/Makefile

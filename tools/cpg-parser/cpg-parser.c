@@ -1,3 +1,25 @@
+/*
+ * cpg-parser.c
+ * This file is part of cpg-network
+ *
+ * Copyright (C) 2011 - Jesse van den Kieboom
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Boston, MA  02110-1301  USA
+ */
+
 #include <cpg-network/cpg-parser-context.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
@@ -7,6 +29,7 @@
 #include <gio/gunixinputstream.h>
 #include <cpg-network/cpg-network-serializer.h>
 #include <termcap.h>
+#include <sys/time.h>
 #include "cpg-readline-stream.h"
 
 static gchar *output_file;
@@ -20,6 +43,7 @@ static gchar const *color_bold = "\e[1m";
 static gchar const *color_off = "\e[0m";
 
 static GSList *defines = NULL;
+static gint64 seed = 0;
 
 static gboolean
 add_define (gchar const  *option_name,
@@ -36,6 +60,7 @@ static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
+	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
 	{NULL}
 };
 
@@ -146,7 +171,7 @@ parse_network (gchar const *args[], gint argc)
 
 	if (!fromstdin)
 	{
-		cpg_parser_context_push_input (context, file, NULL);
+		cpg_parser_context_push_input (context, file, NULL, NULL);
 		g_object_unref (file);
 	}
 	else
@@ -162,11 +187,11 @@ parse_network (gchar const *args[], gint argc)
 			stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
 		}
 
-		cpg_parser_context_push_input (context, NULL, stream);
+		cpg_parser_context_push_input (context, NULL, stream, NULL);
 		g_object_unref (stream);
 	}
 
-	if (cpg_parser_context_parse (context, &error))
+	if (cpg_parser_context_parse (context, TRUE, &error))
 	{
 		CpgNetworkSerializer *serializer;
 
@@ -215,8 +240,13 @@ parse_network (gchar const *args[], gint argc)
 
 		g_printerr ("Failed to parse: %s\n\n", error->message);
 
-		line = cpg_parser_context_get_line (context, &lineno);
-		cpg_parser_context_get_column (context, &cstart, &cend);
+		cpg_parser_context_get_error_location (context,
+		                                       &lineno,
+		                                       NULL,
+		                                       &cstart,
+		                                       &cend);
+
+		line = cpg_parser_context_get_line_at (context, lineno);
 
 		lstr = g_strdup_printf ("%d.%d", lineno, cstart);
 
@@ -275,8 +305,12 @@ main (int argc, char *argv[])
 	GOptionContext *ctx;
 	GError *error = NULL;
 	gboolean ret;
+	struct timeval tv;
 
 	g_type_init ();
+
+	gettimeofday (&tv, NULL);
+	seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
 	determine_color_support ();
 
@@ -310,6 +344,8 @@ main (int argc, char *argv[])
 
 		return 1;
 	}
+
+	srand (seed);
 
 	return parse_network ((gchar const **)(argv + 1), argc - 1);
 }

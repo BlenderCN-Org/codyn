@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -88,6 +88,9 @@ struct _CpgOperatorClass
 	                                     struct _CpgIntegrator *integrator,
 	                                     gdouble      t,
 	                                     gdouble      timestep);
+
+	gboolean         (*equal)           (CpgOperator *op,
+	                                     CpgOperator *other);
 };
 
 GType                cpg_operator_get_type                    (void) G_GNUC_CONST;
@@ -101,11 +104,15 @@ void                 cpg_operator_execute                     (CpgOperator     *
 void                 cpg_operator_reset_cache                 (CpgOperator     *op);
 void                 cpg_operator_reset_variadic              (CpgOperator     *op);
 
-gchar const         *cpg_operator_get_name                    (CpgOperatorClass *op);
+gchar const         *cpg_operator_get_name                    (CpgOperator      *op);
+gchar const         *cpg_operator_get_class_name              (CpgOperatorClass *op);
 gboolean             cpg_operator_validate_num_arguments      (CpgOperatorClass *op,
                                                                gint             num);
 
 GSList const        *cpg_operator_get_expressions             (CpgOperator     *op);
+
+gboolean             cpg_operator_equal                       (CpgOperator     *op,
+                                                               CpgOperator     *other);
 
 void                 cpg_operator_step                        (CpgOperator     *op,
                                                                struct _CpgIntegrator *integrator,

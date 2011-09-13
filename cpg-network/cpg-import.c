@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -23,6 +23,7 @@
 #include "cpg-import.h"
 #include "cpg-network-deserializer.h"
 #include "cpg-import-alias.h"
+#include "cpg-annotatable.h"
 
 #include <string.h>
 #include "config.h"
@@ -659,21 +660,30 @@ static gboolean
 object_in_templates (CpgNetwork *network,
                      CpgObject  *obj)
 {
-	CpgObject *parent;
+	CpgObject *tg;
 
-	while ((parent = cpg_object_get_parent (obj)))
+	tg = CPG_OBJECT (cpg_network_get_template_group (network));
+
+	while (obj)
 	{
-		obj = parent;
+		if (obj == tg)
+		{
+			return TRUE;
+		}
+
+		obj = cpg_object_get_parent (obj);
 	}
 
-	return obj != CPG_OBJECT (network);
+	return FALSE;
 }
 
 static void
 import_objects (CpgImport *self,
                 CpgGroup  *parent)
 {
-	GSList const *children = cpg_group_get_children (parent);
+	GSList const *children;
+
+	children = cpg_group_get_children (parent);
 
 	while (children)
 	{
@@ -713,37 +723,6 @@ auto_import_templates (CpgImport  *self,
 	               NULL);
 
 	add_imported_object (self, auto_import);
-}
-
-static void
-auto_import_functions (CpgImport  *import,
-                       CpgNetwork *source,
-                       CpgNetwork *target)
-{
-	CpgGroup *function_group = cpg_network_get_function_group (source);
-	CpgGroup *target_functions = cpg_network_get_function_group (target);
-
-	GSList const *children = cpg_group_get_children (function_group);
-
-	while (children)
-	{
-		CpgFunction *function = children->data;
-		gchar const *id = cpg_object_get_id (CPG_OBJECT (function));
-
-		if (!cpg_group_find_object (target_functions, id))
-		{
-			cpg_group_add (target_functions,
-			               CPG_OBJECT (function),
-			               NULL);
-
-			cpg_object_set_auto_imported (CPG_OBJECT (function),
-			                              TRUE);
-
-			add_imported_object (import, function);
-		}
-
-		children = g_slist_next (children);
-	}
 }
 
 static void
@@ -788,6 +767,8 @@ cpg_import_load (CpgImport   *self,
                  CpgGroup    *parent,
                  GError     **error)
 {
+	gchar const *annotation;
+
 	g_return_val_if_fail (CPG_IS_IMPORT (self), FALSE);
 	g_return_val_if_fail (CPG_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (CPG_IS_GROUP (parent), FALSE);
@@ -806,14 +787,19 @@ cpg_import_load (CpgImport   *self,
 		return FALSE;
 	}
 
+	annotation = cpg_annotatable_get_annotation (CPG_ANNOTATABLE (imported));
+
+	if (annotation)
+	{
+		cpg_annotatable_set_annotation (CPG_ANNOTATABLE (self), annotation);
+	}
+
 	/* Import globals */
 	import_globals (self, network, imported);
 
 	/* Check if importing in templates or normal objects */
 	gboolean templ = object_in_templates (network,
 	                                      CPG_OBJECT (parent));
-
-	auto_import_functions (self, imported, network);
 
 	if (!templ)
 	{

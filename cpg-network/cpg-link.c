@@ -2,19 +2,19 @@
  * cpg-link.c
  * This file is part of cpg-network
  *
- * Copyright (C) 2010 - Jesse van den Kieboom
+ * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * cpg-network is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * cpg-network is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with cpg-network; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -61,6 +61,8 @@ struct _CpgLinkPrivate
 
 	// list of expressions to evaluate
 	GSList *actions;
+
+	CpgObject *prev_parent;
 
 	guint ext_signals[NUM_EXT_SIGNALS];
 };
@@ -478,11 +480,24 @@ static void
 attach_from_template (CpgLink *link)
 {
 	CpgLink *ret = find_template_for_attachments (link);
+	CpgObject *from;
+	CpgObject *to;
+
+	if (ret == NULL)
+	{
+		return;
+	}
+
+	from = find_in_parent (link, ret->priv->from);
+	to = find_in_parent (link, ret->priv->to);
+
+	if (from == NULL || to == NULL)
+	{
+		return;
+	}
 
 	/* Find the corresponding child in the parent */
-	cpg_link_attach (link,
-	                 find_in_parent (link, ret ? ret->priv->from : NULL),
-	                 find_in_parent (link, ret ? ret->priv->to : NULL));
+	cpg_link_attach (link, from, to);
 }
 
 static void
@@ -535,6 +550,17 @@ disconnect_template (CpgLink   *link,
 }
 
 static void
+on_parent_child_removed (CpgObject *parent,
+                         CpgObject *child,
+                         CpgLink   *self)
+{
+	if (child == self->priv->to || child == self->priv->from)
+	{
+		cpg_link_attach (self, NULL, NULL);
+	}
+}
+
+static void
 cpg_link_dispose (GObject *object)
 {
 	CpgLink *link = CPG_LINK (object);
@@ -560,6 +586,18 @@ cpg_link_dispose (GObject *object)
 		disconnect_template (link, templates->data, TRUE);
 
 		templates = g_slist_next (templates);
+	}
+
+	if (link->priv->prev_parent != NULL)
+	{
+		g_object_remove_weak_pointer (G_OBJECT (link->priv->prev_parent),
+		                              (gpointer *)&(link->priv->prev_parent));
+
+		g_signal_handlers_disconnect_by_func (link->priv->prev_parent,
+		                                      on_parent_child_removed,
+		                                      link);
+
+		link->priv->prev_parent = NULL;
 	}
 
 	G_OBJECT_CLASS (cpg_link_parent_class)->dispose (object);
@@ -942,9 +980,40 @@ cpg_link_class_init (CpgLinkClass *klass)
 }
 
 static void
+on_parent_changed (CpgLink *self)
+{
+	if (self->priv->prev_parent != NULL)
+	{
+		g_object_remove_weak_pointer (G_OBJECT (self->priv->prev_parent),
+		                              (gpointer *)&(self->priv->prev_parent));
+
+		g_signal_handlers_disconnect_by_func (self->priv->prev_parent,
+		                                      on_parent_child_removed,
+		                                      self);
+
+		self->priv->prev_parent = NULL;
+	}
+
+	self->priv->prev_parent = cpg_object_get_parent (CPG_OBJECT (self));
+
+	if (self->priv->prev_parent != NULL)
+	{
+		g_object_add_weak_pointer (G_OBJECT (self->priv->prev_parent),
+		                           (gpointer *)&(self->priv->prev_parent));
+
+		g_signal_connect (self->priv->prev_parent,
+		                  "child-removed",
+		                  G_CALLBACK (on_parent_child_removed),
+		                  self);
+	}
+}
+
+static void
 cpg_link_init (CpgLink *self)
 {
 	self->priv = CPG_LINK_GET_PRIVATE (self);
+
+	g_signal_connect (self, "notify::parent", G_CALLBACK (on_parent_changed), NULL);
 }
 
 /**

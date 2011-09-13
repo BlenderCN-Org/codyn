@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -27,6 +27,7 @@
 #include "cpg-marshal.h"
 #include "cpg-utils.h"
 #include "cpg-selector.h"
+#include "cpg-layoutable.h"
 
 /**
  * SECTION:cpg-group
@@ -140,14 +141,98 @@ get_child_from_template (CpgGroup  *group,
 	return NULL;
 }
 
+static CpgLayoutable *
+last_layoutable_template (CpgObject *child)
+{
+	CpgLayoutable *last = NULL;
+	GSList const *templates;
+
+	templates = cpg_object_get_applied_templates (child);
+
+	while (templates)
+	{
+		if (CPG_IS_LAYOUTABLE (templates->data) &&
+		    cpg_layoutable_supports_location (templates->data) &&
+		    cpg_layoutable_get_has_location (templates->data))
+		{
+			last = templates->data;
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return last;
+}
+
+static gboolean
+should_propagate_layout (CpgGroup  *group,
+                         CpgObject *child,
+                         CpgObject *templ)
+{
+	CpgLayoutable *last;
+
+	if (!CPG_IS_LAYOUTABLE (templ) ||
+	    !cpg_layoutable_supports_location (CPG_LAYOUTABLE (templ)) ||
+	    !cpg_layoutable_get_has_location (CPG_LAYOUTABLE (templ)))
+	{
+		return FALSE;
+	}
+
+	if (!cpg_layoutable_get_has_location (CPG_LAYOUTABLE (child)))
+	{
+		return TRUE;
+	}
+
+	last = last_layoutable_template (child);
+
+	if (last)
+	{
+		gint lx;
+		gint ly;
+		gint x;
+		gint y;
+
+		cpg_layoutable_get_location (last, &lx, &ly);
+		cpg_layoutable_get_location (CPG_LAYOUTABLE (child), &x, &y);
+
+		return x == lx && y == ly;
+	}
+
+	return TRUE;
+}
+
+static void
+layout_from_template (CpgLayoutable *layoutable)
+{
+	CpgLayoutable *templ;
+	gint x;
+	gint y;
+
+	cpg_layoutable_set_location (layoutable, 0, 0);
+	cpg_layoutable_set_has_location (layoutable, FALSE);
+
+	templ = last_layoutable_template (CPG_OBJECT (layoutable));
+
+	if (!templ)
+	{
+		return;
+	}
+
+	cpg_layoutable_get_location (templ, &x, &y);
+	cpg_layoutable_set_location (layoutable, x, y);
+}
+
+
 static void
 on_template_child_added (CpgGroup  *templ,
                          CpgObject *child,
                          CpgGroup  *group)
 {
 	CpgObject *obj;
+	gboolean layout;
 
 	obj = cpg_group_get_child (group, cpg_object_get_id (child));
+	layout = should_propagate_layout (group, obj, child);
 
 	if (obj != NULL && G_TYPE_FROM_INSTANCE (child) == G_TYPE_FROM_INSTANCE (obj))
 	{
@@ -158,6 +243,11 @@ on_template_child_added (CpgGroup  *templ,
 		obj = cpg_object_new_from_template (child, NULL);
 		cpg_group_add (group, obj, NULL);
 		g_object_unref (obj);
+	}
+
+	if (layout)
+	{
+		layout_from_template (CPG_LAYOUTABLE (child));
 	}
 }
 
@@ -173,6 +263,10 @@ on_template_child_removed (CpgGroup  *templ,
 	if (obj)
 	{
 		GSList *properties;
+		gboolean relayout;
+
+		relayout = should_propagate_layout (group, obj, child) &&
+		           last_layoutable_template (obj) == CPG_LAYOUTABLE (child);
 
 		cpg_object_unapply_template (obj, child, NULL);
 
@@ -184,6 +278,11 @@ on_template_child_removed (CpgGroup  *templ,
 			cpg_group_remove (templ, child, NULL);
 		}
 
+		if (relayout)
+		{
+			layout_from_template (CPG_LAYOUTABLE (child));
+		}
+
 		g_slist_free (properties);
 	}
 }
@@ -192,22 +291,17 @@ static gboolean
 interface_is_from_proxy (CpgGroup    *group,
                          gchar const *name)
 {
-	CpgProperty *prop;
+	gchar const *child_name;
 
 	if (!group->priv->proxy)
 	{
 		return FALSE;
 	}
 
-	prop = cpg_property_interface_lookup (group->priv->property_interface,
-	                                      name);
+	child_name = cpg_property_interface_lookup_child_name (group->priv->property_interface,
+	                                                       name);
 
-	if (!prop)
-	{
-		return FALSE;
-	}
-
-	return (cpg_property_get_object (prop) == group->priv->proxy);
+	return g_strcmp0 (cpg_object_get_id (group->priv->proxy), child_name) == 0;
 }
 
 static gboolean
@@ -240,12 +334,18 @@ interface_should_override (CpgGroup     *group,
 	{
 		CpgGroup *tmpl;
 		CpgPropertyInterface *iface;
-		CpgProperty *templprop;
+		gboolean templprop;
 
 		tmpl = templates->data;
-		iface = cpg_group_get_property_interface (tmpl);
+		templates = g_slist_next (templates);
 
-		templprop = cpg_property_interface_lookup (iface, name);
+		if (!CPG_IS_GROUP (tmpl))
+		{
+			continue;
+		}
+
+		iface = cpg_group_get_property_interface (tmpl);
+		templprop = cpg_property_interface_implements (iface, name);
 
 		if (!found && templprop && last_templ && tmpl != template)
 		{
@@ -261,95 +361,71 @@ interface_should_override (CpgGroup     *group,
 		{
 			found = TRUE;
 		}
+	}
 
-		templates = g_slist_next (templates);
+	return TRUE;
+}
+
+static gboolean
+add_template_interface (CpgGroup     *group,
+                        CpgGroup     *source,
+                        gchar const  *name,
+                        gchar const  *child_name,
+                        gchar const  *property_name,
+                        GError      **error)
+{
+	CpgProperty *property = NULL;
+	CpgPropertyInterface *iface;
+	CpgObject *child;
+
+	iface = cpg_group_get_property_interface (group);
+	child = cpg_group_get_child (group, child_name);
+
+	if (child)
+	{
+		property = cpg_object_get_property (child, property_name);
+	}
+
+	if (cpg_property_interface_implements (iface, name))
+	{
+		if (interface_should_override (group, source, name, NULL))
+		{
+			if (!cpg_property_interface_remove (iface, name, error))
+			{
+				return FALSE;
+			}
+
+			if (!cpg_property_interface_add (iface,
+			                                 name,
+			                                 child_name,
+			                                 property_name,
+			                                 error))
+			{
+				return FALSE;
+			}
+		}
+	}
+	else
+	{
+		if (!cpg_property_interface_add (iface,
+		                                 name,
+		                                 child_name,
+		                                 property_name,
+		                                 NULL))
+		{
+			return FALSE;
+		}
 	}
 
 	return TRUE;
 }
 
 static void
-add_template_interface (CpgGroup    *group,
-                        CpgGroup    *source,
-                        gchar const *name,
-                        CpgProperty *property)
-{
-	gchar *path;
-	gchar *proppath;
-	CpgPropertyInterface *iface;
-
-	iface = cpg_group_get_property_interface (group);
-
-	if (property == NULL)
-	{
-		CpgPropertyInterface *source_iface;
-
-		/* Resolve property in the template (source) interface here if
-		   it was not provided */
-		source_iface = cpg_group_get_property_interface (source);
-		property = cpg_property_interface_lookup (source_iface, name);
-	}
-
-	/* Compute the relative path of the object to which the interfaced
-	   property belongs (relative to the template) */
-	path = cpg_object_get_relative_id (cpg_property_get_object (property),
-	                                   CPG_OBJECT (source));
-
-	if (path && *path)
-	{
-		gchar *esc;
-
-		/* If there was such a path, then append here the property name
-		   to make the full path to the property */
-		esc = cpg_selector_escape_identifier (cpg_property_get_name (property));
-		proppath = g_strconcat (path, ".", esc, NULL);
-		g_free (esc);
-	}
-	else
-	{
-		proppath = cpg_selector_escape_identifier (cpg_property_get_name (property));
-	}
-
-	/* Find the corresponding property in our group */
-	property = cpg_group_find_property (group, proppath);
-
-	if (property)
-	{
-		CpgProperty *origprop;
-
-		/* See if we already have an interface with this name */
-		origprop = cpg_property_interface_lookup (iface, name);
-
-		if (origprop)
-		{
-			/* See if this template should override this interface */
-			if (interface_should_override (group, source, name, NULL))
-			{
-				cpg_property_interface_remove (iface, name, NULL);
-				cpg_property_interface_add (iface, name, property, NULL);
-			}
-		}
-		else
-		{
-			cpg_property_interface_add (iface, name, property, NULL);
-		}
-	}
-	else
-	{
-		g_warning ("Could not find interface property `%s' for applied template `%s'",
-		           proppath,
-		           cpg_object_get_id (CPG_OBJECT (source)));
-	}
-
-	g_free (path);
-	g_free (proppath);
-}
-
-static void
 remove_template_interface (CpgGroup    *group,
                            CpgGroup    *source,
                            gchar const *name,
-                           CpgProperty *property)
+                           gchar const *child_name,
+                           gchar const *property_name)
 {
 	CpgPropertyInterface *iface;
 	GError *error = NULL;
@@ -377,32 +453,47 @@ remove_template_interface (CpgGroup    *group,
 
 	if (last)
 	{
-		add_template_interface (group, last, name, NULL);
+		/* Lookup new child and property name */
+		iface = cpg_group_get_property_interface (last);
+		child_name = cpg_property_interface_lookup_child_name (iface, name);
+		property_name = cpg_property_interface_lookup_property_name (iface, name);
+
+		add_template_interface (group,
+		                        last,
+		                        name,
+		                        child_name,
+		                        property_name,
+		                        &error);
 	}
 }
 
 static void
 on_template_interface_property_added (CpgPropertyInterface *templ_iface,
                                       gchar const          *name,
-                                      CpgProperty          *property,
+                                      gchar const          *child_name,
+                                      gchar const          *property_name,
                                       CpgGroup             *group)
 {
 	add_template_interface (group,
-	                        CPG_GROUP (cpg_property_interface_get_object (templ_iface)),
+	                        cpg_property_interface_get_group (templ_iface),
 	                        name,
-	                        property);
+	                        child_name,
+	                        property_name,
+	                        NULL);
 }
 
 static void
 on_template_interface_property_removed (CpgPropertyInterface *templ_iface,
                                         gchar const          *name,
-                                        CpgProperty          *property,
+                                        gchar const          *child_name,
+                                        gchar const          *property_name,
                                         CpgGroup             *group)
 {
 	remove_template_interface (group,
-	                           CPG_GROUP (cpg_property_interface_get_object (templ_iface)),
+	                           cpg_property_interface_get_group (templ_iface),
 	                           name,
-	                           property);
+	                           child_name,
+	                           property_name);
 }
 
 static void
@@ -477,14 +568,11 @@ cpg_group_dispose (GObject *object)
 
 static void
 proxy_add_property (CpgGroup    *group,
-                    CpgProperty *property)
+                    gchar const *name,
+                    gchar const *child_name)
 {
-	gchar const *name;
-
-	name = cpg_property_get_name (property);
-
-	if (cpg_property_interface_lookup (group->priv->property_interface,
-	                                   name))
+	if (cpg_property_interface_implements (group->priv->property_interface,
+	                                       name))
 	{
 		cpg_property_interface_remove (group->priv->property_interface,
 		                               name,
@@ -493,7 +581,8 @@ proxy_add_property (CpgGroup    *group,
 
 	cpg_property_interface_add (group->priv->property_interface,
 	                            name,
-	                            property,
+	                            child_name,
+	                            name,
 	                            NULL);
 }
 
@@ -502,7 +591,6 @@ add_interface_after_proxy_remove (CpgGroup    *group,
                                   gchar const *name)
 {
 	GSList const *templates;
-	CpgProperty *last = NULL;
 	CpgGroup *templ = NULL;
 
 	templates = cpg_object_get_applied_templates (CPG_OBJECT (group));
@@ -514,44 +602,39 @@ add_interface_after_proxy_remove (CpgGroup    *group,
 		if (CPG_IS_GROUP (temp))
 		{
 			CpgPropertyInterface *iface;
-			CpgProperty *look;
 
 			iface = cpg_group_get_property_interface (CPG_GROUP (temp));
 
-			look = cpg_property_interface_lookup (iface, name);
-
-			if (look)
+			if (cpg_property_interface_implements (iface, name))
 			{
 				templ = CPG_GROUP (temp);
-				last = look;
 			}
 		}
 
 		templates = g_slist_next (templates);
 	}
 
-	if (last != NULL)
+	if (templ != NULL)
 	{
+		CpgPropertyInterface *iface;
+
+		iface = cpg_group_get_property_interface (templ);
+
 		add_template_interface (group,
 		                        templ,
 		                        name,
-		                        last);
+		                        cpg_property_interface_lookup_child_name (iface, name),
+		                        cpg_property_interface_lookup_property_name (iface, name),
+		                        NULL);
 	}
 }
 
 static void
 proxy_remove_property (CpgGroup    *group,
-                       CpgProperty *property)
+                       gchar const *name)
 {
-	CpgProperty *prop;
-	gchar const *name;
-
-	name = cpg_property_get_name (property);
-
-	prop = cpg_property_interface_lookup (group->priv->property_interface,
-	                                      name);
-
-	if (prop == property)
+	if (cpg_property_interface_implements (group->priv->property_interface,
+	                                       name))
 	{
 		cpg_property_interface_remove (group->priv->property_interface,
 		                               name,
@@ -567,7 +650,9 @@ on_proxy_property_added (CpgObject   *proxy,
                          CpgProperty *property,
                          CpgGroup    *group)
 {
-	proxy_add_property (group, property);
+	proxy_add_property (group,
+	                    cpg_property_get_name (property),
+	                    cpg_object_get_id (proxy));
 }
 
 static void
@@ -575,25 +660,28 @@ on_proxy_property_removed (CpgObject   *proxy,
                            CpgProperty *property,
                            CpgGroup    *group)
 {
-	proxy_remove_property (group, property);
+	proxy_remove_property (group,
+	                       cpg_property_get_name (property));
 }
 
 static void
 on_proxy_interface_property_added (CpgPropertyInterface *iface,
                                    gchar const          *name,
-                                   CpgProperty          *property,
+                                   gchar const          *child_name,
+                                   gchar const          *property_name,
                                    CpgGroup             *group)
 {
-	proxy_add_property (group, property);
+	proxy_add_property (group, name, child_name);
 }
 
 static void
 on_proxy_interface_property_removed (CpgPropertyInterface *iface,
                                      gchar const          *name,
-                                     CpgProperty          *property,
+                                     gchar const          *child_name,
+                                     gchar const          *property_name,
                                      CpgGroup             *group)
 {
-	proxy_remove_property (group, property);
+	proxy_remove_property (group, name);
 }
 
 static gboolean
@@ -635,7 +723,8 @@ set_proxy (CpgGroup  *group,
 		/* Remove automatically mapped properties from interface */
 		for (item = properties; item; item = g_slist_next (item))
 		{
-			proxy_remove_property (group, item->data);
+			proxy_remove_property (group,
+			                       cpg_property_get_name (item->data));
 		}
 
 		g_slist_free (properties);
@@ -652,10 +741,7 @@ set_proxy (CpgGroup  *group,
 
 			for (ptr = names; ptr && *ptr; ++ptr)
 			{
-				CpgProperty *prop;
-
-				prop = cpg_property_interface_lookup (iface, *ptr);
-				proxy_remove_property (group, prop);
+				proxy_remove_property (group, *ptr);
 			}
 
 			g_strfreev (names);
@@ -674,7 +760,9 @@ set_proxy (CpgGroup  *group,
 
 		for (item = properties; item; item = g_slist_next (item))
 		{
-			proxy_add_property (group, item->data);
+			proxy_add_property (group,
+			                    cpg_property_get_name (item->data),
+			                    cpg_object_get_id (proxy));
 		}
 
 		g_slist_free (properties);
@@ -702,10 +790,9 @@ set_proxy (CpgGroup  *group,
 
 			for (ptr = names; ptr && *ptr; ++ptr)
 			{
-				CpgProperty *prop;
-
-				prop = cpg_property_interface_lookup (iface, *ptr);
-				proxy_add_property (group, prop);
+				proxy_add_property (group,
+				                    *ptr,
+				                    cpg_object_get_id (proxy));
 			}
 
 			g_strfreev (names);
@@ -787,44 +874,86 @@ cpg_group_cpg_get_property (CpgObject   *object,
 	return prop;
 }
 
+static void
+prepend_functions (CpgGroup          *group,
+                   CpgCompileContext *context)
+{
+	GSList *item;
+
+	if (!group)
+	{
+		return;
+	}
+
+	item = group->priv->children;
+
+	while (item)
+	{
+		if (CPG_IS_FUNCTION (item->data))
+		{
+			cpg_compile_context_prepend_function (context,
+			                                      item->data);
+		}
+
+		item = g_slist_next (item);
+	}
+}
+
 static gboolean
 cpg_group_cpg_compile (CpgObject         *object,
                        CpgCompileContext *context,
                        CpgCompileError   *error)
 {
-	/* And then also the children! */
 	CpgGroup *group = CPG_GROUP (object);
-	GSList *item = group->priv->children;
+	GSList *item;
+	gboolean ret;
+
+	cpg_compile_context_save (context);
+
+	/* Prepend all the defined functions in the instances */
+	prepend_functions (group, context);
+
+	cpg_compile_context_save (context);
+
+	cpg_compile_context_prepend_object (context, object);
+
+	item = group->priv->children;
 
 	while (item)
 	{
-		if (!cpg_object_compile (item->data,
-		                         context,
-		                         error))
+		if (!cpg_object_compile (item->data, context, error))
 		{
+			cpg_compile_context_restore (context);
+			cpg_compile_context_restore (context);
+
 			return FALSE;
 		}
 
 		item = g_slist_next (item);
 	}
 
-	if (!CPG_OBJECT_CLASS (cpg_group_parent_class)->compile (object,
-	                                                         context,
-	                                                         error))
-	{
-		return FALSE;
-	}
+	cpg_compile_context_restore (context);
 
-	return TRUE;
+	ret = CPG_OBJECT_CLASS (cpg_group_parent_class)->compile (object,
+	                                                          context,
+	                                                          error);
+
+	cpg_compile_context_restore (context);
+
+	return ret;
 }
 
 static void
 cpg_group_cpg_reset (CpgObject *object)
 {
+	CpgGroup *group;
+
 	CPG_OBJECT_CLASS (cpg_group_parent_class)->reset (object);
 
+	group = CPG_GROUP (object);
+
 	/* And then also the children! */
-	cpg_group_foreach (CPG_GROUP (object),
+	cpg_group_foreach (group,
 	                   (GFunc)cpg_object_reset,
 	                   NULL);
 }
@@ -834,14 +963,17 @@ cpg_group_cpg_foreach_expression (CpgObject                *object,
                                   CpgForeachExpressionFunc  func,
                                   gpointer                  userdata)
 {
-	((CpgObjectClass *)cpg_group_parent_class)->foreach_expression (object,
+	CpgGroup *group;
+	GSList *item;
+
+	group = CPG_GROUP (object);
+
+	CPG_OBJECT_CLASS (cpg_group_parent_class)->foreach_expression (object,
 	                                                               func,
 	                                                               userdata);
 
 	/* And then also the children! */
-	GSList *item;
-
-	for (item = CPG_GROUP (object)->priv->children; item; item = g_slist_next (item))
+	for (item = group->priv->children; item; item = g_slist_next (item))
 	{
 		cpg_object_foreach_expression (item->data, func, userdata);
 	}
@@ -933,44 +1065,24 @@ copy_interface (CpgGroup *group,
 
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
-		CpgProperty *prop;
-		gchar *path;
-		gchar *proppath;
+		gchar const *child_name;
+		gchar const *property_name;
+		GError *error = NULL;
 
-		prop = cpg_property_interface_lookup (source_iface, *ptr);
+		child_name = cpg_property_interface_lookup_child_name (source_iface, *ptr);
+		property_name = cpg_property_interface_lookup_property_name (source_iface, *ptr);
 
-		path = cpg_object_get_relative_id (cpg_property_get_object (prop),
-		                                   CPG_OBJECT (source));
-
-		if (path && *path)
+		if (!cpg_property_interface_add (iface,
+		                                 *ptr,
+		                                 child_name,
+		                                 property_name,
+		                                 &error))
 		{
-			proppath = g_strconcat (path, ".", cpg_property_get_name (prop), NULL);
+			g_warning ("Could not copy interface property: %s",
+			           error->message);
+
+			g_error_free (error);
 		}
-		else
-		{
-			proppath = g_strdup (cpg_property_get_name (prop));
-		}
-
-		prop = cpg_group_find_property (group, proppath);
-
-		if (prop != NULL)
-		{
-			GError *error = NULL;
-
-			if (!cpg_property_interface_add (iface,
-			                                 *ptr,
-			                                 prop,
-			                                 &error))
-			{
-				g_warning ("Could not copy interface property: %s",
-				           error->message);
-
-				g_error_free (error);
-			}
-		}
-
-		g_free (path);
-		g_free (proppath);
 	}
 
 	g_strfreev (names);
@@ -1050,11 +1162,13 @@ cpg_group_cpg_unapply_template (CpgObject  *object,
 
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
-		CpgProperty *prop;
+		gchar const *child_name;
+		gchar const *property_name;
 
-		prop = cpg_property_interface_lookup (source_iface, *ptr);
+		child_name = cpg_property_interface_lookup_child_name (source_iface, *ptr);
+		property_name = cpg_property_interface_lookup_property_name (source_iface, *ptr);
 
-		remove_template_interface (group, source, *ptr, prop);
+		remove_template_interface (group, source, *ptr, child_name, property_name);
 	}
 
 	if (hadproxy)
@@ -1100,6 +1214,12 @@ cpg_group_cpg_unapply_template (CpgObject  *object,
 		if (orig != NULL)
 		{
 			GSList *properties;
+			gboolean layout;
+
+			layout = should_propagate_layout (group,
+			                                  orig,
+			                                  child) &&
+			         last_layoutable_template (orig) == CPG_LAYOUTABLE (child);
 
 			/* TODO: make atomic */
 			if (!cpg_object_unapply_template (orig, child, error))
@@ -1124,6 +1244,11 @@ cpg_group_cpg_unapply_template (CpgObject  *object,
 					g_slist_free (properties);
 					return FALSE;
 				}
+			}
+
+			if (layout)
+			{
+				layout_from_template (CPG_LAYOUTABLE (orig));
 			}
 
 			g_slist_free (properties);
@@ -1168,6 +1293,7 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 	while (children)
 	{
 		CpgObject *child = children->data;
+		gboolean layout;
 
 		/* Check to find existing one */
 		CpgObject *new_child;
@@ -1184,6 +1310,8 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 			cpg_group_add (group, new_child, NULL);
 			g_object_unref (new_child);
 		}
+
+		layout = should_propagate_layout (group, new_child, child);
 
 		if (!cpg_object_apply_template (new_child,
 		                                child,
@@ -1202,6 +1330,11 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 			}
 		}
 
+		if (layout)
+		{
+			layout_from_template (CPG_LAYOUTABLE (new_child));
+		}
+
 		children = g_slist_next (children);
 	}
 
@@ -1212,11 +1345,22 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
-		CpgProperty *prop;
+		gchar const *child_name;
+		gchar const *property_name;
 
-		prop = cpg_property_interface_lookup (source_iface, *ptr);
+		child_name = cpg_property_interface_lookup_child_name (source_iface, *ptr);
+		property_name = cpg_property_interface_lookup_property_name (source_iface, *ptr);
 
-		add_template_interface (group, source, *ptr, prop);
+		if (!add_template_interface (group,
+		                             source,
+		                             *ptr,
+		                             child_name,
+		                             property_name,
+		                             error))
+		{
+			/* TODO: make atomic */
+			return FALSE;
+		}
 	}
 
 	g_strfreev (names);
@@ -1386,8 +1530,10 @@ cpg_group_add_impl (CpgGroup   *group,
                     CpgObject  *object,
                     GError    **error)
 {
-	CpgObject *other = g_hash_table_lookup (group->priv->child_hash,
-	                                        cpg_object_get_id (object));
+	CpgObject *other;
+
+	other = g_hash_table_lookup (group->priv->child_hash,
+	                             cpg_object_get_id (object));
 
 	if (other == object)
 	{
@@ -1497,7 +1643,9 @@ cpg_group_remove_impl (CpgGroup   *group,
                        CpgObject  *object,
                        GError    **error)
 {
-	GSList *item = g_slist_find (group->priv->children, object);
+	GSList *item;
+
+	item = g_slist_find (group->priv->children, object);
 
 	if (!item)
 	{
@@ -1759,17 +1907,13 @@ on_property_interface_changed (CpgObject *object)
 static gboolean
 on_property_interface_verify_remove (CpgPropertyInterface  *iface,
                                      gchar const           *name,
+                                     gchar const           *child_name,
+                                     gchar const           *property_name,
                                      GError               **error,
                                      CpgGroup              *group)
 {
 	/* If it comes from a proxy, we deny */
-	CpgProperty *property;
-
-	property = cpg_property_interface_lookup (iface, name);
-
-	if (property &&
-	    cpg_property_get_object (property) == group->priv->proxy &&
-	    g_strcmp0 (cpg_property_get_name (property), name) == 0)
+	if (interface_is_from_proxy (group, name))
 	{
 		g_set_error (error,
 		             CPG_GROUP_ERROR,
@@ -1794,7 +1938,7 @@ cpg_group_init (CpgGroup *self)
 	                                                (GDestroyNotify)g_free,
 	                                                NULL);
 
-	self->priv->property_interface = cpg_property_interface_new (CPG_OBJECT (self));
+	self->priv->property_interface = cpg_property_interface_new (self);
 
 	g_signal_connect_swapped (self->priv->property_interface,
 	                          "added",
@@ -2007,7 +2151,7 @@ cpg_group_find_objects (CpgGroup    *group,
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	sel = cpg_selector_parse (selector, &error);
+	sel = cpg_selector_parse (CPG_OBJECT (group), selector, &error);
 
 	if (!sel)
 	{
@@ -2094,7 +2238,7 @@ cpg_group_find_properties (CpgGroup    *group,
 	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	sel = cpg_selector_parse (selector, &error);
+	sel = cpg_selector_parse (CPG_OBJECT (group), selector, &error);
 
 	if (!sel)
 	{
@@ -2217,4 +2361,4 @@ cpg_group_get_auto_templates_for_child (CpgGroup  *group,
 
 	return g_slist_reverse (ret);
 }
-
+	

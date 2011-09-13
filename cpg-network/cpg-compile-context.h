@@ -2,19 +2,19 @@
  * cpg-compile-context.h
  * This file is part of cpg-network
  *
- * Copyright (C) 2010 - Jesse van den Kieboom
+ * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * cpg-network is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * cpg-network is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with cpg-network; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -59,23 +59,28 @@ struct _CpgCompileContextClass
 GType cpg_compile_context_get_type (void) G_GNUC_CONST;
 CpgCompileContext *cpg_compile_context_new (void);
 
-void cpg_compile_context_prepend_object (CpgCompileContext *context,
-                                         CPG_FORWARD_DECL (CpgObject) *object);
-
 void cpg_compile_context_save (CpgCompileContext *context);
 void cpg_compile_context_restore (CpgCompileContext *context);
+
+void cpg_compile_context_prepend_object (CpgCompileContext *context,
+                                         CPG_FORWARD_DECL (CpgObject) *object);
 
 void cpg_compile_context_append_object (CpgCompileContext *context,
                                         CPG_FORWARD_DECL (CpgObject) *object);
 
-void cpg_compile_context_set_functions (CpgCompileContext *context,
-                                        const GSList      *functions);
+void cpg_compile_context_prepend_function (CpgCompileContext *context,
+                                           CPG_FORWARD_DECL (CpgFunction) *function);
 
-CPG_FORWARD_DECL (CpgProperty) *cpg_compile_context_lookup_property (CpgCompileContext *context,
-                                                          const gchar       *name);
+void cpg_compile_context_append_function (CpgCompileContext *context,
+                                          CPG_FORWARD_DECL (CpgFunction) *function);
 
-CPG_FORWARD_DECL (CpgFunction) *cpg_compile_context_lookup_function (CpgCompileContext *context,
-                                                          const gchar       *name);
+CPG_FORWARD_DECL (CpgProperty) *
+cpg_compile_context_lookup_property (CpgCompileContext *context,
+                                     const gchar       *name);
+
+CPG_FORWARD_DECL (CpgFunction) *
+cpg_compile_context_lookup_function (CpgCompileContext *context,
+                                     const gchar       *name);
 
 const GSList *cpg_compile_context_get_objects (CpgCompileContext *context);
 const GSList *cpg_compile_context_get_functions (CpgCompileContext *context);

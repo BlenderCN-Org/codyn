@@ -1,4 +1,26 @@
+/*
+ * cpg-context.c
+ * This file is part of cpg-network
+ *
+ * Copyright (C) 2011 - Jesse van den Kieboom
+ *
+ * cpg-network is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * cpg-network is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+
 #include <cpg-network/cpg-parser-context.h>
+#include <cpg-network/cpg-statement.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
 #include <string.h>
@@ -394,13 +416,8 @@ on_selector_item_pushed (CpgParserContext *context,
 	gint cstart;
 	gint cend;
 
-	cpg_parser_context_get_last_selector_item_line (context,
-	                                                &line_start,
-	                                                &line_end);
-
-	cpg_parser_context_get_last_selector_item_column (context,
-	                                                  &cstart,
-	                                                  &cend);
+	cpg_statement_get_line (CPG_STATEMENT (selector), &line_start, &line_end);
+	cpg_statement_get_column (CPG_STATEMENT (selector), &cstart, &cend);
 
 	if (!check_region (line_start, line_end, cstart, cend))
 	{
@@ -779,7 +796,7 @@ parse_network (gchar const *args[], gint argc)
 
 	if (!fromstdin)
 	{
-		cpg_parser_context_push_input (context, file, NULL);
+		cpg_parser_context_push_input (context, file, NULL, NULL);
 		info.file = file;
 	}
 	else
@@ -788,7 +805,7 @@ parse_network (gchar const *args[], gint argc)
 
 		stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
 
-		cpg_parser_context_push_input (context, NULL, stream);
+		cpg_parser_context_push_input (context, NULL, stream, NULL);
 		g_object_unref (stream);
 	}
 
@@ -835,7 +852,7 @@ parse_network (gchar const *args[], gint argc)
 
 		info.parser = context;
 
-		if (cpg_parser_context_parse (context, &error))
+		if (cpg_parser_context_parse (context, TRUE, &error))
 		{
 			if (context_line != -1 && context_column != -1)
 			{
@@ -854,10 +871,11 @@ parse_network (gchar const *args[], gint argc)
 		}
 		else
 		{
-			gchar const *line;
+			gchar *line;
 			GFile *file;
 			gchar *filename;
-			gint lineno;
+			gint lstart;
+			gint lend;
 			gint cstart;
 			gint cend;
 			gchar *esc;
@@ -873,8 +891,11 @@ parse_network (gchar const *args[], gint argc)
 			write_stream_format (out, "    \"message\": \"%s\",\n", esc);
 			g_free (esc);
 
-			line = cpg_parser_context_get_line (context, &lineno);
-			cpg_parser_context_get_column (context, &cstart, &cend);
+			cpg_parser_context_get_error_location (context,
+			                                       &lstart,
+			                                       &lend,
+			                                       &cstart,
+			                                       &cend);
 
 			file = cpg_parser_context_get_file (context);
 			filename = file ? g_file_get_path (file) : g_strdup ("");
@@ -889,11 +910,15 @@ parse_network (gchar const *args[], gint argc)
 			write_stream_format (out, "    \"filename\": \"%s\",\n", esc);
 			g_free (esc);
 
+			line = cpg_parser_context_get_error_lines (context);
+
 			esc = g_strescape (line, NULL);
+			g_free (line);
 			write_stream_format (out, "    \"line\": \"%s\",\n", esc);
 			g_free (esc);
 
-			write_stream_format (out, "    \"lineno\": %d,\n", lineno);
+			write_stream_format (out, "    \"line_start\": %d,\n", lstart);
+			write_stream_format (out, "    \"line_end\": %d,\n", lend);
 			write_stream_format (out, "    \"column_start\": %d,\n", cstart);
 			write_stream_format (out, "    \"column_end\": %d\n", cend);
 
@@ -961,6 +986,8 @@ main (int argc, char *argv[])
 	gboolean ret;
 
 	g_type_init ();
+
+	close (STDERR_FILENO);
 
 	determine_color_support ();
 

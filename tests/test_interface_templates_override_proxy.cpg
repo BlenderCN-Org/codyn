@@ -3,28 +3,17 @@ templates
     group "t1"
     {
         [proxy]
-        state "c1"
-        {
-            p1 = 0
-        }
+        state "c1" { p1 = 0 }
     }
 
     group "t2"
     {
-        state "c2"
-        {
-            p2 = 1
-        }
+        state "c2" { p2 = 1 }
 
-        interface
-        {
-            p1 = c2.p2
-        }
+        interface { p1 = p2 in c2 }
     }
 }
 
-group "state" : "t1" : "t2"
-{
-}
+group "state" : "t1", "t2" {}
 
 # vi:ex:ts=4:et

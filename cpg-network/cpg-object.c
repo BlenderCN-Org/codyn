@@ -2,19 +2,19 @@
  * cpg-object.c
  * This file is part of cpg-network
  *
- * Copyright (C) 2010 - Jesse van den Kieboom
+ * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * cpg-network is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * cpg-network is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with cpg-network; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -36,6 +36,7 @@
 #include "cpg-annotatable.h"
 #include "cpg-layoutable.h"
 #include "cpg-selector.h"
+#include "cpg-taggable.h"
 
 /**
  * SECTION:cpg-object
@@ -81,9 +82,13 @@ struct _CpgObjectPrivate
 	GSList *templates_reverse_map;
 
 	gchar *annotation;
+	GHashTable *tags;
+
+	GSList *event_handlers;
 
 	gboolean compiled : 1;
 	gboolean auto_imported : 1;
+	gboolean has_location : 1;
 };
 
 /* Properties */
@@ -96,7 +101,8 @@ enum
 	PROP_USE_COUNT,
 	PROP_ANNOTATION,
 	PROP_X,
-	PROP_Y
+	PROP_Y,
+	PROP_HAS_LOCATION
 };
 
 /* Signals */
@@ -118,6 +124,7 @@ enum
 static void cpg_usable_iface_init (gpointer iface);
 static void cpg_annotatable_iface_init (gpointer iface);
 static void cpg_layoutable_iface_init (gpointer iface);
+static void cpg_taggable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgObject,
                          cpg_object,
@@ -127,9 +134,26 @@ G_DEFINE_TYPE_WITH_CODE (CpgObject,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
                                                 cpg_annotatable_iface_init);
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_LAYOUTABLE,
-                                                cpg_layoutable_iface_init));
+                                                cpg_layoutable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_TAGGABLE,
+                                                cpg_taggable_iface_init));
 
 static guint object_signals[NUM_SIGNALS] = {0,};
+
+static GHashTable *
+get_tag_table (CpgTaggable *taggable)
+{
+	return CPG_OBJECT (taggable)->priv->tags;
+}
+
+static void
+cpg_taggable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+	CpgTaggableInterface *taggable = iface;
+
+	taggable->get_tag_table = get_tag_table;
+}
 
 GQuark
 cpg_object_error_quark (void)
@@ -225,6 +249,10 @@ cpg_object_finalize (GObject *object)
 	g_free (obj->priv->annotation);
 
 	g_hash_table_destroy (obj->priv->property_hash);
+	g_hash_table_destroy (obj->priv->tags);
+
+	g_slist_foreach (obj->priv->event_handlers, (GFunc)g_object_unref, NULL);
+	g_slist_free (obj->priv->event_handlers);
 
 	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
@@ -279,6 +307,9 @@ get_property (GObject     *object,
 		case PROP_Y:
 			g_value_set_int (value, obj->priv->y);
 		break;
+		case PROP_HAS_LOCATION:
+			g_value_set_boolean (value, obj->priv->has_location);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -310,6 +341,9 @@ set_property (GObject       *object,
 		break;
 		case PROP_Y:
 			obj->priv->y = g_value_get_int (value);
+		break;
+		case PROP_HAS_LOCATION:
+			obj->priv->has_location = g_value_get_boolean (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object,
@@ -687,7 +721,41 @@ cpg_object_copy_impl (CpgObject *object,
 		cpg_layoutable_set_location (CPG_LAYOUTABLE (object), x, y);
 	}
 
+	cpg_taggable_copy_to (CPG_TAGGABLE (source),
+	                      object->priv->tags);
+
 	g_free (annotation);
+}
+
+static void
+remove_template_tag (CpgTaggable *templ,
+                     gchar const *key,
+                     gchar const *value,
+                     CpgTaggable *object)
+{
+	GSList const *tt;
+
+	if (g_strcmp0 (cpg_taggable_get_tag (object, key),
+	               value) != 0)
+	{
+		return;
+	}
+
+	cpg_taggable_remove_tag (object, key);
+
+	for (tt = cpg_object_get_applied_templates (CPG_OBJECT (object));
+	     tt;
+	     tt = g_slist_next (tt))
+	{
+		gchar const *oval;
+
+		if (cpg_taggable_try_get_tag (tt->data, key, &oval))
+		{
+			cpg_taggable_add_tag (object,
+			                      key,
+			                      oval);
+		}
+	}
 }
 
 static gboolean
@@ -709,6 +777,10 @@ cpg_object_unapply_template_impl (CpgObject  *object,
 		on_template_property_removed (templ, item->data, object);
 	}
 
+	cpg_taggable_foreach (CPG_TAGGABLE (templ),
+	                      (CpgTaggableForeachFunc)remove_template_tag,
+	                      object);
+
 	/* Keep the template around for the signal emission */
 	g_object_ref (templ);
 	cpg_usable_use (CPG_USABLE (templ));
@@ -723,6 +795,15 @@ cpg_object_unapply_template_impl (CpgObject  *object,
 	return TRUE;
 }
 
+static void
+foreach_tag_copy (CpgTaggable *source,
+                  gchar const *key,
+                  gchar const *value,
+                  CpgTaggable *target)
+{
+	cpg_taggable_add_tag (target, key, value);
+}
+
 static gboolean
 cpg_object_apply_template_impl (CpgObject  *object,
                                 CpgObject  *templ,
@@ -735,6 +816,10 @@ cpg_object_apply_template_impl (CpgObject  *object,
 	{
 		on_template_property_added (templ, item->data, object);
 	}
+
+	cpg_taggable_foreach (CPG_TAGGABLE (templ),
+	                      (CpgTaggableForeachFunc)foreach_tag_copy,
+	                      object);
 
 	g_signal_connect (templ,
 	                  "property-added",
@@ -1266,6 +1351,10 @@ cpg_object_class_init (CpgObjectClass *klass)
 	                                  PROP_Y,
 	                                  "y");
 
+	g_object_class_override_property (object_class,
+	                                  PROP_HAS_LOCATION,
+	                                  "has-location");
+
 	/**
 	 * CpgObject:auto-imported:
 	 *
@@ -1507,6 +1596,8 @@ cpg_object_init (CpgObject *self)
 	                                                   g_str_equal,
 	                                                   (GDestroyNotify)g_free,
 	                                                   NULL);
+
+	self->priv->tags = cpg_taggable_create_table ();
 }
 
 /**
@@ -2075,6 +2166,35 @@ cpg_object_is_compiled (CpgObject *object)
 	return object->priv->compiled;
 }
 
+static gboolean
+run_template_parser_codes (CpgObject          *object,
+                           CpgObject          *templ,
+                           CpgParserCodeEvent  event,
+                           GError    **error)
+{
+	GSList *code;
+
+	code = templ->priv->event_handlers;
+
+	while (code)
+	{
+		if (cpg_parser_code_get_event (code->data) == event)
+		{
+			if (!cpg_parser_code_run (code->data,
+			                          object,
+			                          templ,
+			                          error))
+			{
+				return FALSE;
+			}
+		}
+
+		code = g_slist_next (code);
+	}
+
+	return TRUE;
+}
+
 /**
  * cpg_object_apply_template:
  * @object: A #CpgObject
@@ -2093,6 +2213,8 @@ cpg_object_apply_template (CpgObject  *object,
                            CpgObject  *templ,
                            GError    **error)
 {
+	gboolean ret;
+
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (templ), FALSE);
 	g_return_val_if_fail (g_type_is_a (G_TYPE_FROM_INSTANCE (object),
@@ -2100,19 +2222,32 @@ cpg_object_apply_template (CpgObject  *object,
 
 	if (g_slist_find (object->priv->templates, templ))
 	{
-		g_set_error (error,
-		             CPG_OBJECT_ERROR,
-		             CPG_OBJECT_ERROR_TEMPLATE_ALREADY_APPLIED,
-		             "The template `%s' is already applied to `%s'",
-		             cpg_object_get_id (object),
-		             cpg_object_get_id (templ));
-
-		return FALSE;
+		return TRUE;
 	}
 
-	return CPG_OBJECT_GET_CLASS (object)->apply_template (object,
-	                                                      templ,
-	                                                      error);
+	ret = run_template_parser_codes (object,
+	                                 templ,
+	                                 CPG_PARSER_CODE_EVENT_BEFORE_APPLY,
+	                                 error);
+
+	if (!ret)
+	{
+		return ret;
+	}
+
+	ret = CPG_OBJECT_GET_CLASS (object)->apply_template (object,
+	                                                     templ,
+	                                                     error);
+
+	if (ret)
+	{
+		ret = run_template_parser_codes (object,
+		                                 templ,
+		                                 CPG_PARSER_CODE_EVENT_AFTER_APPLY,
+		                                 error);
+	}
+
+	return ret;
 }
 
 /**
@@ -2132,6 +2267,8 @@ cpg_object_unapply_template (CpgObject  *object,
                              CpgObject  *templ,
                              GError    **error)
 {
+	gboolean ret;
+
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 	g_return_val_if_fail (CPG_IS_OBJECT (templ), FALSE);
 
@@ -2147,9 +2284,31 @@ cpg_object_unapply_template (CpgObject  *object,
 		return FALSE;
 	}
 
-	return CPG_OBJECT_GET_CLASS (object)->unapply_template (object,
-	                                                        templ,
-	                                                        error);
+	ret = run_template_parser_codes (object,
+	                                 templ,
+	                                 CPG_PARSER_CODE_EVENT_BEFORE_UNAPPLY,
+	                                 error);
+
+	if (!ret)
+	{
+		return ret;
+	}
+
+	ret = CPG_OBJECT_GET_CLASS (object)->unapply_template (object,
+	                                                       templ,
+	                                                       error);
+
+	if (!ret)
+	{
+		return ret;
+	}
+
+	ret = run_template_parser_codes (object,
+	                                 templ,
+	                                 CPG_PARSER_CODE_EVENT_AFTER_UNAPPLY,
+	                                 error);
+
+	return ret;
 }
 
 /**
@@ -2309,13 +2468,19 @@ cpg_object_get_full_id (CpgObject *object)
 
 	parent = cpg_object_get_parent (object);
 
-	if (!parent)
+	if (!parent ||
+	    (CPG_IS_NETWORK (parent) && object == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent)))))
 	{
 		return cpg_selector_escape_identifier (object->priv->id);
 	}
 
 	while (parent->priv->parent)
 	{
+		if ((CPG_IS_NETWORK (parent->priv->parent) && parent == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent->priv->parent)))))
+		{
+			break;
+		}
+
 		parent = parent->priv->parent;
 	}
 
@@ -2331,13 +2496,19 @@ cpg_object_get_full_id_for_display (CpgObject *object)
 
 	parent = cpg_object_get_parent (object);
 
-	if (!parent)
+	if (!parent ||
+	    (CPG_IS_NETWORK (parent) && object == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent)))))
 	{
 		return g_strdup (object->priv->id);
 	}
 
 	while (parent->priv->parent)
 	{
+		if ((CPG_IS_NETWORK (parent->priv->parent) && parent == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent->priv->parent)))))
+		{
+			break;
+		}
+
 		parent = parent->priv->parent;
 	}
 
@@ -2452,4 +2623,60 @@ cpg_object_get_relative_id_for_display (CpgObject *object,
 	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
 
 	return get_relative_id (object, parent, TRUE);
+}
+
+void
+cpg_object_add_event_handler (CpgObject      *object,
+                              CpgParserCode  *code)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (CPG_IS_PARSER_CODE (code));
+
+	if (g_slist_find (object->priv->event_handlers, code))
+	{
+		return;
+	}
+
+	object->priv->event_handlers =
+		g_slist_append (object->priv->event_handlers,
+		                g_object_ref (code));
+}
+
+void
+cpg_object_remove_event_handler (CpgObject     *object,
+                                 CpgParserCode *code)
+{
+	GSList *item;
+
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (CPG_IS_PARSER_CODE (code));
+
+	item = g_slist_find (object->priv->event_handlers, code);
+
+	if (item)
+	{
+		g_object_unref (item->data);
+
+		object->priv->event_handlers =
+			g_slist_delete_link (object->priv->event_handlers,
+			                     item);
+	}
+}
+
+/**
+ * cpg_object_get_parser_codes:
+ * @object: A #CpgObject
+ *
+ * Get the list of #CpgParserCode which are run when the object is applied
+ * as a template.
+ *
+ * Returns: (element-type CpgParserCode): A #GSList
+ *
+ **/
+GSList const *
+cpg_object_get_event_handlers (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	return object->priv->event_handlers;
 }

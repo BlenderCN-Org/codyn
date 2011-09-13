@@ -143,17 +143,22 @@ class BaseViewActivatable:
         self.last_error = data
 
         message = data.message
-        lineno = data.lineno
+        lstart = data.line_start
+        lend = data.line_end
         cstart = data.column_start
         cend = data.column_end
 
         doc = self.view.get_buffer()
-        piter = doc.get_iter_at_line(max(0, lineno - 1))
+        piter = doc.get_iter_at_line(max(0, lstart - 1))
 
         if piter:
             pend = piter.copy()
 
             piter.forward_chars(max(cstart - 1, 0))
+
+            if lend > lstart:
+                pend.forward_lines(lend - lstart)
+
             pend.forward_chars(max(cend, 0))
 
             doc.apply_tag(self.error_tag, piter, pend)

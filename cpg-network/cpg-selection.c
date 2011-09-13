@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -22,6 +22,7 @@
 
 #include "cpg-selection.h"
 #include "cpg-expansion.h"
+#include "cpg-taggable.h"
 
 #define CPG_SELECTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_SELECTION, CpgSelectionPrivate))
 
@@ -31,9 +32,32 @@ struct _CpgSelectionPrivate
 
 	GSList   *expansions;
 	GHashTable *defines;
+
+	GHashTable *tags;
 };
 
-G_DEFINE_TYPE (CpgSelection, cpg_selection, G_TYPE_OBJECT)
+static void cpg_taggable_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgSelection,
+                         cpg_selection,
+                         G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_TAGGABLE,
+                                                cpg_taggable_iface_init))
+
+static GHashTable *
+get_tag_table (CpgTaggable *taggable)
+{
+	return CPG_SELECTION (taggable)->priv->tags;
+}
+
+static void
+cpg_taggable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+	CpgTaggableInterface *taggable = iface;
+
+	taggable->get_tag_table = get_tag_table;
+}
 
 static void
 cpg_selection_finalize (GObject *object)
@@ -55,6 +79,8 @@ cpg_selection_finalize (GObject *object)
 		g_hash_table_unref (selection->priv->defines);
 	}
 
+	g_hash_table_destroy (selection->priv->tags);
+
 	G_OBJECT_CLASS (cpg_selection_parent_class)->finalize (object);
 }
 
@@ -72,6 +98,8 @@ static void
 cpg_selection_init (CpgSelection *self)
 {
 	self->priv = CPG_SELECTION_GET_PRIVATE (self);
+
+	self->priv->tags = cpg_taggable_create_table ();
 }
 
 static GSList *
@@ -153,6 +181,7 @@ cpg_selection_new_defines (gpointer    object,
 	return ret;
 }
 
+
 /**
  * cpg_selection_copy:
  * @selection: A #CpgSelection
@@ -165,11 +194,18 @@ cpg_selection_new_defines (gpointer    object,
 CpgSelection *
 cpg_selection_copy (CpgSelection *selection)
 {
+	CpgSelection *ret;
+
 	g_return_val_if_fail (CPG_IS_SELECTION (selection), NULL);
 
-	return cpg_selection_new (selection->priv->object,
-	                          selection->priv->expansions,
-	                          selection->priv->defines);
+	ret = cpg_selection_new (selection->priv->object,
+	                         selection->priv->expansions,
+	                         selection->priv->defines);
+
+	cpg_taggable_copy_to (CPG_TAGGABLE (selection),
+	                      ret->priv->tags);
+
+	return ret;
 }
 
 /**

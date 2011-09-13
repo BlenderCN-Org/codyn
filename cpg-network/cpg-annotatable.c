@@ -5,22 +5,30 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
  */
 
 #include "cpg-annotatable.h"
+
+/**
+ * SECTION:cpg-annotatable
+ * @short_description: Interface for annotating objects
+ *
+ * This interface can be implemented when an object supports annotations.
+ *
+ **/
 
 G_DEFINE_INTERFACE (CpgAnnotatable, cpg_annotatable, G_TYPE_OBJECT);
 
@@ -69,6 +77,15 @@ cpg_annotatable_default_init (CpgAnnotatableInterface *iface)
 	}
 }
 
+/**
+ * cpg_annotatable_get_title:
+ * @annotatable: A #CpgAnnotatable
+ *
+ * Get the title (display name) of the annotatable object.
+ *
+ * Returns: (transfer full): the title
+ *
+ **/
 gchar *
 cpg_annotatable_get_title (CpgAnnotatable *annotatable)
 {
@@ -77,6 +94,14 @@ cpg_annotatable_get_title (CpgAnnotatable *annotatable)
 	return CPG_ANNOTATABLE_GET_INTERFACE (annotatable)->get_title (annotatable);
 }
 
+/**
+ * cpg_annotatable_set_annotation:
+ * @annotatable: A #CpgAnnotatable
+ * @annotation: The annotation
+ *
+ * Set the object annotation.
+ *
+ **/
 void
 cpg_annotatable_set_annotation (CpgAnnotatable *annotatable,
                                 gchar const    *annotation)
@@ -87,6 +112,15 @@ cpg_annotatable_set_annotation (CpgAnnotatable *annotatable,
 	                                                             annotation);
 }
 
+/**
+ * cpg_annotatable_get_annotation:
+ * @annotatable: A #CpgAnnotatable
+ *
+ * Get the annotation.
+ *
+ * Returns: (transfer full): Get the object annotation
+ *
+ **/
 gchar *
 cpg_annotatable_get_annotation (CpgAnnotatable *annotatable)
 {

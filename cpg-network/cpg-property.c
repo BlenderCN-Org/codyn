@@ -2,19 +2,19 @@
  * cpg-property.c
  * This file is part of cpg-network
  *
- * Copyright (C) 2010 - Jesse van den Kieboom
+ * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * cpg-network is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * cpg-network is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with cpg-network; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -32,6 +32,7 @@
 #include "cpg-modifiable.h"
 #include "cpg-annotatable.h"
 #include "cpg-selector.h"
+#include "cpg-taggable.h"
 
 #define CPG_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY, CpgPropertyPrivate))
 
@@ -56,6 +57,7 @@ struct _CpgPropertyPrivate
 	CpgObject *object;
 
 	gchar *annotation;
+	GHashTable *tags;
 
 	gdouble last_value;
 	gboolean modified : 1;
@@ -65,6 +67,7 @@ struct _CpgPropertyPrivate
 static void cpg_usable_iface_init (gpointer iface);
 static void cpg_modifiable_iface_init (gpointer iface);
 static void cpg_annotatable_iface_init (gpointer iface);
+static void cpg_taggable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CpgProperty,
                          cpg_property,
@@ -74,7 +77,9 @@ G_DEFINE_TYPE_WITH_CODE (CpgProperty,
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
                                                 cpg_modifiable_iface_init);
                          G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
-                                                cpg_annotatable_iface_init));
+                                                cpg_annotatable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_TAGGABLE,
+                                                cpg_taggable_iface_init));
 
 static guint signals[NUM_SIGNALS] = {0,};
 
@@ -150,6 +155,21 @@ static void
 cpg_modifiable_iface_init (gpointer iface)
 {
 	/* Use default implementation */
+}
+
+static GHashTable *
+get_tag_table (CpgTaggable *taggable)
+{
+	return CPG_PROPERTY (taggable)->priv->tags;
+}
+
+static void
+cpg_taggable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+	CpgTaggableInterface *taggable = iface;
+
+	taggable->get_tag_table = get_tag_table;
 }
 
 static void
@@ -242,6 +262,8 @@ cpg_property_finalize (GObject *object)
 
 	g_free (property->priv->name);
 	g_free (property->priv->annotation);
+
+	g_hash_table_destroy (property->priv->tags);
 
 	G_OBJECT_CLASS (cpg_property_parent_class)->finalize (object);
 }
@@ -526,6 +548,7 @@ cpg_property_init (CpgProperty *self)
 	self->priv = CPG_PROPERTY_GET_PRIVATE (self);
 
 	self->priv->modified = FALSE;
+	self->priv->tags = cpg_taggable_create_table ();
 }
 
 /**
@@ -972,8 +995,15 @@ cpg_property_flags_from_string (gchar const      *flags,
 	gchar **parts = g_strsplit_set (flags, ",| ", -1);
 	gchar **ptr = parts;
 
-	*add_flags = CPG_PROPERTY_FLAG_NONE;
-	*remove_flags = CPG_PROPERTY_FLAG_NONE;
+	if (add_flags)
+	{
+		*add_flags = CPG_PROPERTY_FLAG_NONE;
+	}
+
+	if (remove_flags)
+	{
+		*remove_flags = CPG_PROPERTY_FLAG_NONE;
+	}
 
 	while (ptr && *ptr)
 	{
@@ -995,7 +1025,7 @@ cpg_property_flags_from_string (gchar const      *flags,
 
 		GFlagsValue *value = g_flags_get_value_by_nick (klass, name);
 
-		if (value)
+		if (value && fptr)
 		{
 			*fptr |= value->value;
 		}
@@ -1082,6 +1112,9 @@ cpg_property_copy (CpgProperty *property)
 
 	cpg_annotatable_set_annotation (CPG_ANNOTATABLE (ret),
 	                                property->priv->annotation);
+
+	cpg_taggable_copy_to (CPG_TAGGABLE (property),
+	                      ret->priv->tags);
 
 	return ret;
 }

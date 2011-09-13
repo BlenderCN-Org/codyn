@@ -7,14 +7,13 @@ static gchar *unquote_string (gchar const *s, gint len, gchar const *escape);
 void cpg_parser_set_column (int column_no, yyscan_t yyscanner);
 int cpg_parser_get_column (yyscan_t yyscanner);
 
-static int yyccolumn = 1;
-static int includestart = 0;
-
 static void
 advance_column (CpgParserContext *context, gint offset)
 {
-	cpg_parser_context_set_column (context, yyccolumn, yyccolumn + offset - 1);
-	yyccolumn += offset;
+	gint yyccolumn;
+
+	cpg_parser_context_get_column (context, NULL, &yyccolumn);
+	cpg_parser_context_set_column (context, yyccolumn + 1, yyccolumn + offset);
 }
 
 #define YY_EXTRA_TYPE CpgParserContext *
@@ -33,14 +32,15 @@ advance_column (CpgParserContext *context, gint offset)
 	}
 
 #define HANDLE_NEWLINE								\
-	yyccolumn = 1;								\
-										\
 	cpg_parser_context_set_line (yyextra, yytext + 1, yylineno);		\
 	cpg_parser_context_set_column (yyextra, 0, 0);				\
 										\
+	cpg_parser_context_remove_record (yyextra, yyleng - 1, 0);		\
 	yyless (1);
 
 #define ECHO
+
+void cpg_parser_tokens_push_input (gpointer scanner);
 
 %}
 
@@ -61,6 +61,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %x instring
 %x inregex
 %x annotation
+%x annotation_start
 %x comment
 %x equation
 %x indirection
@@ -83,12 +84,12 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %}
 
 <firstline>.*|\n			{
-					yyccolumn = 1;
-
 					cpg_parser_context_set_line (yyextra, yytext, yylineno);
 					cpg_parser_context_set_column (yyextra, 0, 0);
 
 					yyless (0);
+					cpg_parser_context_remove_record (yyextra, yyleng, 0);
+
 					yy_pop_state (yyscanner);
 
 					if (cpg_parser_context_get_start_token (yyextra) == T_START_SELECTOR)
@@ -105,64 +106,50 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 				}
 "##"[ \t]*			{
 					yy_push_state (annotation, yyscanner);
+					return T_ANNOTATION_START;
 				}
-<annotation>[^\n]+		{
-					cpg_parser_context_push_annotation (yyextra,
-					                                    cpg_embedded_string_new_from_string (yytext));
+<annotation>\n.*		{
+					HANDLE_NEWLINE
+					yy_push_state (annotation_start, yyscanner);
+				}
+<annotation_start>[\t ]*##[\t ]* {
 					yy_pop_state (yyscanner);
 				}
+<annotation_start>.		{
+					yyless (0);
+					cpg_parser_context_remove_record (yyextra, yyleng, 0);
+
+					yy_pop_state (yyscanner);
+					yy_pop_state (yyscanner);
+
+					return T_ANNOTATION_END;
+				}
+
 "#"				yy_push_state (comment, yyscanner);
 <comment>[^\n]*$		yy_pop_state (yyscanner);
 
-"include"			{
-					yy_push_state (inclstart, yyscanner);
-					return T_KEY_INCLUDE;
-				}
-<inclstart>[ \t]		;
-<inclstart>[^"]			{
-					return *yytext;
-				}
-<inclstart>"\""			{
-					yy_pop_state (yyscanner);
-					yy_push_state (incl, yyscanner);
-
-					cpg_parser_context_push_string (yyextra);
-					includestart = yyccolumn - 1;
-
-					return T_STRING_BEGIN;
-				}
-<incl>"\""			{
-					yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, yyscanner), yyscanner);
-					cpg_parser_context_set_column (yyextra,
-					                               includestart,
-					                               yyccolumn - 1);
-
-					cpg_parser_context_push_input_from_path (yyextra,
-					                                         cpg_parser_context_pop_string (yyextra));
-
-					yy_pop_state (yyscanner);
-					return T_STRING_END;
-				}
-
 <<EOF>>				{
-					yypop_buffer_state (yyscanner);
-					cpg_parser_context_pop_input (yyextra);
-
-					if (!YY_CURRENT_BUFFER)
+					if (cpg_parser_context_get_first_eof (yyextra))
 					{
-						yyterminate ();
+						cpg_parser_context_set_first_eof (yyextra, FALSE);
+						return T_EOF;
 					}
 					else
 					{
-						cpg_parser_context_get_column (yyextra,
-						                               NULL,
-						                               &yyccolumn);
+						cpg_parser_context_pop_input (yyextra);
+						yypop_buffer_state (yyscanner);
 
-						++yyccolumn;
+						if (!YY_CURRENT_BUFFER)
+						{
+							yyterminate ();
+						}
 					}
 				}
 
+"include"			return T_KEY_INCLUDE;
+"parse"				return T_KEY_PARSE;
 "state"				return T_KEY_STATE;
+"object"			return T_KEY_OBJECT;
 "link"				return T_KEY_LINK;
 "integrated"			return T_KEY_INTEGRATED;
 "in"				return T_KEY_IN;
@@ -188,12 +175,22 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "right-of"			return T_KEY_RIGHT_OF;
 "of"				return T_KEY_OF;
 "on"				return T_KEY_ON;
+"all"				return T_KEY_ALL;
 "action"			return T_KEY_ACTION;
 "property"			return T_KEY_PROPERTY;
 "delete"			return T_KEY_DELETE;
 "or"				return T_KEY_OR;
+"debug-print"			return T_KEY_DEBUG_PRINT;
+"apply"				return T_KEY_APPLY;
+"unapply"			return T_KEY_UNAPPLY;
+"before-apply"			return T_KEY_BEFORE_APPLY;
+"after-apply"			return T_KEY_AFTER_APPLY;
+"before-unapply"		return T_KEY_BEFORE_UNAPPLY;
+"after-unapply"			return T_KEY_AFTER_UNAPPLY;
+"with"				return T_KEY_WITH;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
+<INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;
 <INITIAL,onlyselector>"root"		return T_KEY_ROOT;
 <INITIAL,onlyselector>"debug"		return T_KEY_DEBUG;
 <INITIAL,onlyselector>"children"	return T_KEY_CHILDREN;
@@ -211,17 +208,29 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"name"		return T_KEY_NAME;
 <INITIAL,onlyselector>"self"		return T_KEY_SELF;
 <INITIAL,onlyselector>"groups"		return T_KEY_GROUPS;
+<INITIAL,onlyselector>"imports"		return T_KEY_IMPORTS;
 <INITIAL,onlyselector>"objects"		return T_KEY_OBJECTS;
 <INITIAL,onlyselector>"properties"	return T_KEY_PROPERTIES;
 <INITIAL,onlyselector>"actions"		return T_KEY_ACTION;
+<INITIAL,onlyselector>"is-empty"	return T_KEY_IS_EMPTY;
+<INITIAL,onlyselector>"remove"		return T_KEY_REMOVE;
+<INITIAL,onlyselector>"if"		return T_KEY_IF;
+<INITIAL,onlyselector>"from-set"	return T_KEY_FROM_SET;
+<INITIAL,onlyselector>"type"		return T_KEY_TYPE;
+<INITIAL,onlyselector>"has-flag"	return T_KEY_HAS_FLAG;
+<INITIAL,onlyselector>"has-template"	return T_KEY_HAS_TEMPLATE;
+<INITIAL,onlyselector>"has-tag"		return T_KEY_HAS_TAG;
+<INITIAL,onlyselector>"reverse"		return T_KEY_REVERSE;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
 "proxy"				return T_KEY_PROXY;
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
 "each"				return T_KEY_EACH;
-"if"				return T_KEY_IF;
 "settings"			return T_KEY_SETTINGS;
+"no-self"			return T_KEY_NO_SELF;
+"probability"			return T_KEY_PROBABILITY;
+"tag"				return T_KEY_TAG;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);
@@ -261,7 +270,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 				}
 
 <indirection_had_some>\n.*	{
-					HANDLE_NEWLINE
+					yyless (0);
+					cpg_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
 					return T_INDIRECTION_END;
@@ -270,6 +280,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					yy_pop_state (yyscanner);
 
 					advance_column (yyextra, -yyleng);
+
+					cpg_parser_context_remove_record (yyextra, yyleng, 0);
 					yyless(0);
 
 					return T_INDIRECTION_END;
@@ -304,6 +316,11 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 <instring,incl>(\\["@$\\]|[^"@$\\])+ {
 					yylval->id = unquote_string (yytext, yyleng, "@\"$");
+					return T_STRING;
+				}
+
+<annotation>(\\["@$\\]|[^"@$\\\n])+	{
+					yylval->id = g_strdup (yytext);
 					return T_STRING;
 				}
 
@@ -356,12 +373,12 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 "{"				return '{';
 "}"				return '}';
-"("				return '(';
-")"				return ')';
+<onlyselector,INITIAL>"("	return '(';
+<onlyselector,INITIAL>")"	return ')';
 ":"				return ':';
 "="				return '=';
 "<"				return '<';
-","				return ',';
+<onlyselector,INITIAL>","	return ',';
 <onlyselector,INITIAL>"."	return '.';
 <onlyselector,INITIAL>"|"	return '|';
 "["				return '[';
@@ -396,4 +413,11 @@ unquote_string (gchar const *s, gint len, gchar const *escape)
 	*ptr = '\0';
 
 	return ret;
+}
+
+void
+cpg_parser_tokens_push_input (gpointer scanner)
+{
+	yypush_buffer_state (yy_create_buffer (NULL, YY_BUF_SIZE, scanner),
+	                     scanner);
 }

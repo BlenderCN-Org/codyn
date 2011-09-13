@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -23,6 +23,7 @@
 #include "cpg-embedded-string.h"
 #include <string.h>
 #include <stdlib.h>
+#include "cpg-statement.h"
 
 #define CPG_EMBEDDED_STRING_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_EMBEDDED_STRING, CpgEmbeddedStringPrivate))
 
@@ -43,9 +44,33 @@ struct _CpgEmbeddedStringPrivate
 
 	CpgEmbeddedContext *cached_context;
 	gulong cached_marker;
+
+	gint line_start;
+	gint line_end;
+	gint column_start;
+	gint column_end;
 };
 
-G_DEFINE_TYPE (CpgEmbeddedString, cpg_embedded_string, G_TYPE_OBJECT)
+static void cpg_statement_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgEmbeddedString,
+                         cpg_embedded_string,
+                         G_TYPE_OBJECT,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_STATEMENT, cpg_statement_iface_init))
+
+enum
+{
+	PROP_0,
+	PROP_LINE_START,
+	PROP_LINE_END,
+	PROP_COLUMN_START,
+	PROP_COLUMN_END
+};
+
+static void
+cpg_statement_iface_init (gpointer iface)
+{
+}
 
 static Node *
 node_new (CpgEmbeddedStringNodeType  type,
@@ -93,13 +118,88 @@ cpg_embedded_string_finalize (GObject *object)
 }
 
 static void
+cpg_embedded_string_set_property (GObject      *object,
+                                  guint         prop_id,
+                                  const GValue *value,
+                                  GParamSpec   *pspec)
+{
+	CpgEmbeddedString *self = CPG_EMBEDDED_STRING (object);
+
+	switch (prop_id)
+	{
+		case PROP_LINE_START:
+			self->priv->line_start = g_value_get_int (value);
+			break;
+		case PROP_LINE_END:
+			self->priv->line_end = g_value_get_int (value);
+			break;
+		case PROP_COLUMN_START:
+			self->priv->column_start = g_value_get_int (value);
+			break;
+		case PROP_COLUMN_END:
+			self->priv->column_end = g_value_get_int (value);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cpg_embedded_string_get_property (GObject    *object,
+                                  guint       prop_id,
+                                  GValue     *value,
+                                  GParamSpec *pspec)
+{
+	CpgEmbeddedString *self = CPG_EMBEDDED_STRING (object);
+
+	switch (prop_id)
+	{
+		case PROP_LINE_START:
+			g_value_set_int (value, self->priv->line_start);
+			break;
+		case PROP_LINE_END:
+			g_value_set_int (value, self->priv->line_end);
+			break;
+		case PROP_COLUMN_START:
+			g_value_set_int (value, self->priv->column_start);
+			break;
+		case PROP_COLUMN_END:
+			g_value_set_int (value, self->priv->column_end);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
 cpg_embedded_string_class_init (CpgEmbeddedStringClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
 	object_class->finalize = cpg_embedded_string_finalize;
 
+	object_class->get_property = cpg_embedded_string_get_property;
+	object_class->set_property = cpg_embedded_string_set_property;
+
 	g_type_class_add_private (object_class, sizeof (CpgEmbeddedStringPrivate));
+
+	g_object_class_override_property (object_class,
+	                                  PROP_LINE_START,
+	                                  "line-start");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_LINE_END,
+	                                  "line-end");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_COLUMN_START,
+	                                  "column-start");
+
+	g_object_class_override_property (object_class,
+	                                  PROP_COLUMN_END,
+	                                  "column-end");
 }
 
 static void
@@ -150,18 +250,28 @@ cpg_embedded_string_new_from_integer (gint s)
 	return ret;
 }
 
-void
+/**
+ * cpg_embedded_string_add_text:
+ * @s: A #CpgEmbeddedString
+ * @text: The text to add
+ *
+ * Adds a text node to the embedded string.
+ *
+ * Returns: (transfer none): A #CpgEmbeddedString
+ *
+ **/
+CpgEmbeddedString *
 cpg_embedded_string_add_text (CpgEmbeddedString *s,
                               gchar const       *text)
 {
 	Node *node;
 	Node *par;
 
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), s);
 
-	if (text == NULL)
+	if (text == NULL || !*text)
 	{
-		return;
+		return s;
 	}
 
 	node = node_new (CPG_EMBEDDED_STRING_NODE_TEXT, text, 0);
@@ -177,6 +287,47 @@ cpg_embedded_string_add_text (CpgEmbeddedString *s,
 	}
 
 	cpg_embedded_string_clear_cache (s);
+	return s;
+}
+
+/**
+ * cpg_embedded_string_prepend_text:
+ * @s: A #CpgEmbeddedString
+ * @text: The text to add
+ *
+ * Prepends a text node to the embedded string.
+ *
+ * Returns: (transfer none): A #CpgEmbeddedString
+ *
+ **/
+CpgEmbeddedString *
+cpg_embedded_string_prepend_text (CpgEmbeddedString *s,
+                                  gchar const       *text)
+{
+	Node *node;
+	Node *par;
+
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), s);
+
+	if (text == NULL || !*text)
+	{
+		return s;
+	}
+
+	node = node_new (CPG_EMBEDDED_STRING_NODE_TEXT, text, 0);
+
+	if (s->priv->stack)
+	{
+		par = s->priv->stack->data;
+		par->nodes = g_slist_append (par->nodes, node);
+	}
+	else
+	{
+		s->priv->stack = g_slist_prepend (NULL, node);
+	}
+
+	cpg_embedded_string_clear_cache (s);
+	return s;
 }
 
 /**
@@ -246,7 +397,10 @@ cpg_embedded_string_pop (CpgEmbeddedString *s)
 }
 
 static gboolean
-count_chars (gchar const *s, gchar t, gint *num)
+count_chars (gchar const *s,
+             gchar        t,
+             gint        *num,
+             gboolean     retold)
 {
 	gint cnt = 0;
 
@@ -254,6 +408,12 @@ count_chars (gchar const *s, gchar t, gint *num)
 	{
 		if (*s != t)
 		{
+			if (!retold && num > 0)
+			{
+				*num = cnt;
+				return TRUE;
+			}
+
 			return FALSE;
 		}
 
@@ -275,6 +435,7 @@ resolve_indirection (CpgEmbeddedString  *em,
 	gboolean isnum = TRUE;
 	gboolean iscount = FALSE;
 	gboolean isindex = FALSE;
+	gboolean retold = TRUE;
 
 	gint isadd = 0;
 	gint issub = 0;
@@ -311,12 +472,17 @@ resolve_indirection (CpgEmbeddedString  *em,
 
 	if (g_ascii_isalpha (*ptr) || *ptr == '+' || *ptr == '-' || *ptr == '_')
 	{
+		if (*ptr == '+' || *ptr == '-')
+		{
+			retold = FALSE;
+		}
+
 		while (*ptr)
 		{
 			if (*ptr == '+' || *ptr == '-')
 			{
-				if (count_chars (ptr, '+', &isadd) ||
-				    count_chars (ptr, '-', &issub))
+				if (count_chars (ptr, '+', &isadd, retold) ||
+				    count_chars (ptr, '-', &issub, retold))
 				{
 					break;
 				}
@@ -372,18 +538,23 @@ resolve_indirection (CpgEmbeddedString  *em,
 
 		if (issub > 0 || isadd > 0)
 		{
-			gchar *norm;
 			gchar *lookup;
 			gint val;
 
-			norm = g_strndup (s, strlen (s) - (issub + isadd) + 1);
-			lookup = g_strconcat ("_cnt_", norm, NULL);
-			g_free (norm);
+			if (retold)
+			{
+				lookup = g_strndup (s, strlen (s) - (issub + isadd));
+			}
+			else
+			{
+				lookup = g_strdup (s + issub + isadd);
+			}
 
 			/* Note either issub or isadd is 0 */
 			val = cpg_embedded_context_increment_define (context,
 			                                             lookup,
-			                                             -issub + isadd);
+			                                             -issub + isadd,
+			                                             retold);
 
 			def = g_strdup_printf ("%d", val);
 			g_free (lookup);
@@ -424,7 +595,14 @@ evaluate_node (CpgEmbeddedString   *em,
 			return NULL;
 		}
 
+		if (node->type == CPG_EMBEDDED_STRING_NODE_EQUATION && !*s)
+		{
+			g_free (s);
+			s = g_strdup ("0");
+		}
+
 		g_string_prepend (ret, s);
+		g_free (s);
 	}
 
 	switch (node->type)
@@ -983,8 +1161,6 @@ escape_expand (gchar const *s)
 
 		g_string_append_c (ret, *s);
 		++s;
-
-		g_message ("%s", ret->str);
 	}
 
 	return g_string_free (ret, FALSE);

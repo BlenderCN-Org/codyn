@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -24,7 +24,7 @@
 #define __CPG_PROPERTY_INTERFACE_H__
 
 #include <glib-object.h>
-#include <cpg-network/cpg-object.h>
+#include <cpg-network/cpg-property.h>
 
 G_BEGIN_DECLS
 
@@ -55,6 +55,8 @@ typedef struct _CpgPropertyInterface		CpgPropertyInterface;
 typedef struct _CpgPropertyInterfaceClass	CpgPropertyInterfaceClass;
 typedef struct _CpgPropertyInterfacePrivate	CpgPropertyInterfacePrivate;
 
+typedef CPG_FORWARD_DECL (CpgGroup) CpgGroupForward;
+
 struct _CpgPropertyInterface
 {
 	/*< private >*/
@@ -68,39 +70,59 @@ struct _CpgPropertyInterfaceClass
 	/*< private >*/
 	GObjectClass parent_class;
 
-	void (*added) (CpgPropertyInterface *iface, gchar const *name, CpgProperty *property);
-	void (*removed) (CpgPropertyInterface *iface, gchar const *name, CpgProperty *property);
+	void (*added) (CpgPropertyInterface *iface,
+	               gchar const *name,
+	               gchar const *child_name,
+	               gchar const *property_name);
+
+	void (*removed) (CpgPropertyInterface *iface,
+	                 gchar const *name,
+	                 gchar const *child_name,
+	                 gchar const *property_name);
 
 	gboolean (*verify_remove) (CpgPropertyInterface *iface,
 	                           gchar const *name,
+	                           gchar const *child_name,
+	                           gchar const *property_name,
 	                           GError **error);
 
 	gboolean (*verify_add) (CpgPropertyInterface *iface,
 	                        gchar const *name,
-	                        CpgProperty *property,
+	                        gchar const *child_name,
+	                        gchar const *property_name,
 	                        GError **error);
 };
 
-GQuark cpg_property_interface_error_quark (void);
+GQuark                 cpg_property_interface_error_quark (void);
 
-GType cpg_property_interface_get_type (void) G_GNUC_CONST;
-CpgPropertyInterface *cpg_property_interface_new (CpgObject *object);
+GType                  cpg_property_interface_get_type    (void) G_GNUC_CONST;
+CpgPropertyInterface  *cpg_property_interface_new         (CpgGroupForward *group);
 
-CpgObject *cpg_property_interface_get_object (CpgPropertyInterface *iface);
+CpgGroupForward       *cpg_property_interface_get_group  (CpgPropertyInterface  *iface);
 
-gchar **cpg_property_interface_get_names (CpgPropertyInterface *iface);
+gchar                **cpg_property_interface_get_names   (CpgPropertyInterface  *iface);
 
-CpgProperty *cpg_property_interface_lookup (CpgPropertyInterface *iface,
-                                            gchar const          *name);
+gboolean               cpg_property_interface_implements  (CpgPropertyInterface *iface,
+                                                           gchar const          *name);
 
-gboolean cpg_property_interface_add (CpgPropertyInterface  *iface,
-                                     gchar const           *name,
-                                     CpgProperty           *property,
-                                     GError               **error);
+CpgProperty           *cpg_property_interface_lookup      (CpgPropertyInterface  *iface,
+                                                           gchar const           *name);
 
-gboolean cpg_property_interface_remove (CpgPropertyInterface  *iface,
-                                        gchar const           *name,
-                                        GError               **error);
+gchar const           *cpg_property_interface_lookup_child_name (CpgPropertyInterface  *iface,
+                                                                 gchar const           *name);
+
+gchar const           *cpg_property_interface_lookup_property_name (CpgPropertyInterface  *iface,
+                                                                    gchar const           *name);
+
+gboolean               cpg_property_interface_add         (CpgPropertyInterface  *iface,
+                                                           gchar const           *name,
+                                                           gchar const           *child_name,
+                                                           gchar const           *property_name,
+                                                           GError               **error);
+
+gboolean               cpg_property_interface_remove      (CpgPropertyInterface  *iface,
+                                                           gchar const           *name,
+                                                           GError               **error);
 
 G_END_DECLS
 

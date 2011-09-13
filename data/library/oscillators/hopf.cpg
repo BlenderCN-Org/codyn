@@ -1,67 +1,63 @@
 templates
 {
+    # include "hopf_functions.cpg"
+
     group "oscillator"
     {
         [proxy]
         state "state"
         {
-            ## Desired amplitude
-            R = 1
-
-            ## x state variables of hopf oscillator
+            ## x state variable of Hopf oscillator
             x = 0 | integrated
 
-            ## y state variables of hopf oscillator
+            ## y state variable of Hopf oscillator
             y = 1 | integrated
 
+
+            ## Desired amplitude
+            ## Unused if you define mu directly.
+            target_amplitude = 1
+
+            ## Desired frequency
+            target_frequency = 1
+
+
+            ## Instantaneous amplitude
+            amplitude = "hypot(x, y)"
+
+
+            ## Desired mu
+            ## Controlls the Hopf bifurcation.
+            ## With positive mu, the dynamical system will oscillate with amplitude sqrt(mu). 
+            ## With negative mu, the system will have a stable fix point at (x, y) = (0, 0).
+            mu = "target_amplitude * target_amplitude"
+
+            ## Gain on amplitude
+            ## Unused if you define gamma_x and gamma_y directly.
+            gamma = 1
+
+            ## Gain on amplitude for x
+            gamma_x = "gamma"
+
+            ## Gain on amplitude for y
+            gamma_y = "gamma"
+
+
             ## Angular frequency
-            w = "2 * pi"
+            omega = "2 * pi * target_frequency"
 
             ## Amplitude squared
-            r2 = "x * x + y * y"
+            r2 = "amplitude * amplitude"
 
-            ## Amplitude
-            r = "sqrt(r2)"
 
-            ## Oscillator phase
-            phase = "atan2(y, x)"
-
-            ## Output variable (x)
+            ## Output variable
             output = "x"
         }
 
         link "integrate" on "state"
         {
-            ## Gain on amplitude for x
-            g_x = 1
-
-            ## Gain on amplitude for y
-            g_y = 1
-
-            x <= "g_x * (R * R - r * r) * x - w * y"
-            y <= "g_y * (R * R - r * r) * y + w * x"
+            x <= "gamma_x * (mu - r2) * x - omega * y"
+            y <= "gamma_y * (mu - r2) * y + omega * x"
         }
     }
-
-    link "coupling"
-    {
-        ## Desired phase bias between oscillators
-        phase_bias = 0
-
-        ## Gain on phase coupling convergence
-        weight = 1
-
-        summed = "w / to.r * ((to.x * y - x * to.y) * cos(phase_bias) - (x * to.x + y * to.y) * sin(phase_bias))"
-
-        x <= "weight * -summed * to.y"
-        y <= "weight * summed * to.x"
-    }
-
-    layout
-    {
-        "oscillator" at (@[++], 0)
-        "coupling" at (@[++], 0)
-    }
 }
-
-# vi:ex:ts=4:et

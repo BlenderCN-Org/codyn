@@ -5,16 +5,16 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -140,6 +140,12 @@ cpg_operator_finalize (GObject *object)
 	G_OBJECT_CLASS (cpg_operator_parent_class)->finalize (object);
 }
 
+static gboolean
+cpg_operator_equal_default (CpgOperator *op,
+                            CpgOperator *other)
+{
+	return FALSE;
+}
 
 static void
 cpg_operator_class_init (CpgOperatorClass *klass)
@@ -158,6 +164,7 @@ cpg_operator_class_init (CpgOperatorClass *klass)
 	klass->step_evaluate = cpg_operator_step_evaluate_default;
 	klass->get_name = cpg_operator_get_name_default;
 	klass->initialize = cpg_operator_initialize_default;
+	klass->equal = cpg_operator_equal_default;
 
 	klass->priv =  CPG_OPERATOR_CLASS_GET_PRIVATE (klass);
 
@@ -190,6 +197,30 @@ cpg_operator_execute (CpgOperator     *op,
 }
 
 /**
+ * cpg_operator_get_class_name:
+ * @op: A #CpgOperatorClass
+ *
+ * Get the operator name. This is the identifier that is used in expressions,
+ * and thus can only contain valid identifier characters.
+ *
+ * Returns: a newly allocated string with the operator name, use #g_free to
+ * free the value when it's no longer needed.
+ *
+ **/
+gchar const *
+cpg_operator_get_class_name (CpgOperatorClass *klass)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), NULL);
+
+	if (!klass->priv->name)
+	{
+		klass->priv->name = klass->get_name ();
+	}
+
+	return klass->priv->name;
+}
+
+/**
  * cpg_operator_get_name:
  * @op: A #CpgOperator
  *
@@ -201,16 +232,11 @@ cpg_operator_execute (CpgOperator     *op,
  *
  **/
 gchar const *
-cpg_operator_get_name (CpgOperatorClass *klass)
+cpg_operator_get_name (CpgOperator *op)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), NULL);
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
 
-	if (!klass->priv->name)
-	{
-		klass->priv->name = klass->get_name ();
-	}
-
-	return klass->priv->name;
+	return cpg_operator_get_class_name (CPG_OPERATOR_GET_CLASS (op));
 }
 
 /**
@@ -345,4 +371,18 @@ cpg_operator_reset (CpgOperator *op)
 	g_return_if_fail (CPG_IS_OPERATOR (op));
 
 	CPG_OPERATOR_GET_CLASS (op)->reset (op);
+}
+
+gboolean
+cpg_operator_equal (CpgOperator *op,
+                    CpgOperator *other)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), FALSE);
+
+	if (other == NULL)
+	{
+		return FALSE;
+	}
+
+	return CPG_OPERATOR_GET_CLASS (op)->equal (op, other);
 }

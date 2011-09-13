@@ -2,19 +2,19 @@
  * cpg-network.c
  * This file is part of cpg-network
  *
- * Copyright (C) 2010 - Jesse van den Kieboom
+ * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * cpg-network is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * cpg-network is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with cpg-network; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -72,7 +72,6 @@ struct _CpgNetworkPrivate
 	CpgIntegratorState *integrator_state;
 
 	CpgGroup *template_group;
-	CpgGroup *function_group;
 
 	GSList *operators;
 
@@ -170,7 +169,6 @@ cpg_network_finalize (GObject *object)
 	cpg_object_clear (CPG_OBJECT (network));
 
 	g_object_unref (network->priv->template_group);
-	g_object_unref (network->priv->function_group);
 
 	g_slist_foreach (network->priv->operators, (GFunc)g_object_unref, NULL);
 	g_slist_free (network->priv->operators);
@@ -388,16 +386,6 @@ cpg_network_add_impl (CpgGroup   *group,
 	}
 }
 
-static void
-cpg_network_reset_impl (CpgObject *object)
-{
-	CpgNetwork *network = CPG_NETWORK (object);
-
-	cpg_object_reset (CPG_OBJECT (network->priv->function_group));
-
-	CPG_OBJECT_CLASS (cpg_network_parent_class)->reset (object);
-}
-
 typedef struct
 {
 	CpgNetwork *network;
@@ -412,6 +400,7 @@ cpg_network_compile_impl (CpgObject         *object,
                           CpgCompileError   *error)
 {
 	CpgNetwork *network = CPG_NETWORK (object);
+	gboolean ret;
 
 	if (!context)
 	{
@@ -423,21 +412,10 @@ cpg_network_compile_impl (CpgObject         *object,
 	}
 
 	cpg_compile_context_prepend_object (context, CPG_OBJECT (network->priv->integrator));
-	cpg_compile_context_prepend_object (context, object);
 
-	cpg_compile_context_set_functions (context,
-	                                   cpg_group_get_children (network->priv->function_group));
-
-	gboolean ret = cpg_object_compile (CPG_OBJECT (network->priv->function_group),
-	                                   context,
-	                                   error);
-
-	if (ret)
-	{
-		ret = CPG_OBJECT_CLASS (cpg_network_parent_class)->compile (object,
-		                                                            context,
-		                                                            error);
-	}
+	ret = CPG_OBJECT_CLASS (cpg_network_parent_class)->compile (object,
+	                                                            context,
+	                                                            error);
 
 	g_object_unref (context);
 
@@ -463,26 +441,6 @@ cpg_network_clear_impl (CpgObject *object)
 	CPG_OBJECT_CLASS (cpg_network_parent_class)->clear (object);
 
 	cpg_object_clear (CPG_OBJECT (network->priv->template_group));
-	cpg_object_clear (CPG_OBJECT (network->priv->function_group));
-}
-
-static void
-cpg_network_foreach_expression_impl (CpgObject                *object,
-                                     CpgForeachExpressionFunc  func,
-                                     gpointer                  userdata)
-{
-	CpgNetwork *network = CPG_NETWORK (object);
-
-	if (CPG_OBJECT_CLASS (cpg_network_parent_class)->foreach_expression)
-	{
-		CPG_OBJECT_CLASS (cpg_network_parent_class)->foreach_expression (object,
-		                                                                 func,
-		                                                                 userdata);
-	}
-
-	cpg_object_foreach_expression (CPG_OBJECT (network->priv->function_group),
-	                               func,
-	                               userdata);
 }
 
 static void
@@ -497,10 +455,8 @@ cpg_network_class_init (CpgNetworkClass *klass)
 	object_class->get_property = cpg_network_get_property;
 	object_class->set_property = cpg_network_set_property;
 
-	cpg_class->reset = cpg_network_reset_impl;
 	cpg_class->compile = cpg_network_compile_impl;
 	cpg_class->clear = cpg_network_clear_impl;
-	cpg_class->foreach_expression = cpg_network_foreach_expression_impl;
 
 	group_class->add = cpg_network_add_impl;
 
@@ -560,14 +516,10 @@ cpg_network_init (CpgNetwork *network)
 	network->priv = CPG_NETWORK_GET_PRIVATE (network);
 
 	network->priv->template_group = cpg_group_new ("templates", NULL);
-	network->priv->function_group = cpg_group_new ("functions", NULL);
+	_cpg_object_set_parent (CPG_OBJECT (network->priv->template_group),
+	                        CPG_OBJECT (network));
 
 	g_signal_connect_swapped (network->priv->template_group,
-	                          "tainted",
-	                          G_CALLBACK (cpg_object_taint),
-	                          network);
-
-	g_signal_connect_swapped (network->priv->function_group,
 	                          "tainted",
 	                          G_CALLBACK (cpg_object_taint),
 	                          network);
@@ -599,6 +551,8 @@ cpg_network_init (CpgNetwork *network)
 CpgNetwork *
 cpg_network_new ()
 {
+	g_type_init ();
+
 	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
 
@@ -854,9 +808,9 @@ cpg_network_load_from_stream (CpgNetwork    *network,
 		CpgParserContext *ctx;
 
 		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, NULL, wrapped);
+		cpg_parser_context_push_input (ctx, NULL, wrapped, NULL);
 
-		ret = cpg_parser_context_parse (ctx, error);
+		ret = cpg_parser_context_parse (ctx, TRUE, error);
 
 		g_object_unref (ctx);
 	}
@@ -895,17 +849,19 @@ cpg_network_load_from_file (CpgNetwork  *network,
 
 	cpg_object_clear (CPG_OBJECT (network));
 
-	bstream = g_file_read (file, NULL, NULL);
+	bstream = g_file_read (file, NULL, error);
+
+	if (!bstream)
+	{
+		return FALSE;
+	}
 
 	fmt = CPG_NETWORK_FORMAT_UNKNOWN;
 
-	if (bstream)
-	{
-		stream = g_buffered_input_stream_new (G_INPUT_STREAM (bstream));
-		g_object_unref (bstream);
+	stream = g_buffered_input_stream_new (G_INPUT_STREAM (bstream));
+	g_object_unref (bstream);
 
-		fmt = cpg_network_format_from_stream (stream);
-	}
+	fmt = cpg_network_format_from_stream (stream);
 
 	if (fmt == CPG_NETWORK_FORMAT_UNKNOWN)
 	{
@@ -931,9 +887,9 @@ cpg_network_load_from_file (CpgNetwork  *network,
 		CpgParserContext *ctx;
 
 		ctx = cpg_parser_context_new (network);
-		cpg_parser_context_push_input (ctx, file, stream);
+		cpg_parser_context_push_input (ctx, file, stream, NULL);
 
-		ret = cpg_parser_context_parse (ctx, error);
+		ret = cpg_parser_context_parse (ctx, TRUE, error);
 
 		g_object_unref (ctx);
 	}
@@ -1018,6 +974,8 @@ CpgNetwork *
 cpg_network_new_from_stream (GInputStream  *stream,
                              GError       **error)
 {
+	g_type_init ();
+
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), NULL);
 
 	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK,
@@ -1048,6 +1006,8 @@ CpgNetwork *
 cpg_network_new_from_file (GFile   *file,
                            GError **error)
 {
+	g_type_init ();
+
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
 	CpgNetwork *network = g_object_new (CPG_TYPE_NETWORK,
@@ -1078,6 +1038,8 @@ CpgNetwork *
 cpg_network_new_from_path (gchar const  *path,
                            GError      **error)
 {
+	g_type_init ();
+
 	g_return_val_if_fail (path != NULL, NULL);
 
 	GFile *file = g_file_new_for_path (path);
@@ -1102,6 +1064,8 @@ CpgNetwork *
 cpg_network_new_from_string (gchar const  *s,
                              GError      **error)
 {
+	g_type_init ();
+
 	g_return_val_if_fail (s != NULL, NULL);
 
 	CpgNetwork *network = cpg_network_new ();
@@ -1219,23 +1183,6 @@ cpg_network_merge (CpgNetwork  *network,
 	{
 		cpg_group_add (CPG_GROUP (network), children->data, NULL);
 		children = g_slist_next (children);
-	}
-
-	CpgGroup *function_group = cpg_network_get_template_group (other);
-	GSList const *functions = cpg_group_get_children (function_group);
-
-	/* Copy over functions */
-	while (functions)
-	{
-		CpgObject *function = functions->data;
-
-		if (!cpg_group_get_child (network->priv->function_group,
-		                          cpg_object_get_id (function)))
-		{
-			cpg_group_add (network->priv->function_group,
-			               function,
-			               NULL);
-		}
 	}
 }
 
@@ -1377,23 +1324,6 @@ cpg_network_get_template_group (CpgNetwork *network)
 	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
 
 	return network->priv->template_group;
-}
-
-/**
- * cpg_network_get_function_group:
- * @network: A #CpgNetwork
- * 
- * Get the group containing the user defined functions.
- *
- * Returns: (transfer none): A #CpgGroup
- *
- **/
-CpgGroup *
-cpg_network_get_function_group (CpgNetwork *network)
-{
-	g_return_val_if_fail (CPG_IS_NETWORK (network), NULL);
-
-	return network->priv->function_group;
 }
 
 /**

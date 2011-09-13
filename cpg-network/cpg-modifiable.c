@@ -5,22 +5,31 @@
  * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
  */
 
 #include "cpg-modifiable.h"
+
+/**
+ * SECTION:cpg-modifiable
+ * @short_description: Interface for keeping track of the modified state of an object
+ *
+ * This interface can be implemented when an object needs to keep track of
+ * whether or not it has been modified.
+ *
+ **/
 
 G_DEFINE_INTERFACE (CpgModifiable, cpg_modifiable, G_TYPE_OBJECT);
 
@@ -67,6 +76,15 @@ cpg_modifiable_default_init (CpgModifiableInterface *iface)
 	}
 }
 
+/**
+ * cpg_modifiable_get_modified:
+ * @modifiable: A #CpgModifiable
+ *
+ * Get the modified state.
+ *
+ * Returns: %TRUE if the object has been modified, %FALSE otherwise
+ *
+ **/
 gboolean
 cpg_modifiable_get_modified (CpgModifiable *modifiable)
 {
@@ -75,6 +93,15 @@ cpg_modifiable_get_modified (CpgModifiable *modifiable)
 	return CPG_MODIFIABLE_GET_INTERFACE (modifiable)->get_modified (modifiable);
 }
 
+
+/**
+ * cpg_modifiable_set_modified:
+ * @modifiable: A #CpgModifiable
+ * @modified: Modified state
+ *
+ * Set the modified state of the object.
+ *
+ **/
 void
 cpg_modifiable_set_modified (CpgModifiable *modifiable,
                              gboolean       modified)

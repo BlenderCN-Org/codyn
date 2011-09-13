@@ -34,14 +34,14 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
                                                             GArray  *coefficients);
 
 static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
-                                                      gboolean     is_optional,
-                                                      gdouble      default_value);
+                                                      CpgEmbeddedString *default_value,
+                                                      gboolean           is_explicit);
 
 %}
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_OR T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_BEFORE_APPLY T_KEY_AFTER_APPLY T_KEY_BEFORE_UNAPPLY T_KEY_AFTER_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -52,6 +52,9 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token <id> T_IDENTIFIER
 %token <id> T_STRING
+%token T_ANNOTATION_START T_ANNOTATION_END
+
+%token T_EOF
 
 %token T_STRING_BEGIN
 %token T_STRING_END
@@ -74,6 +77,16 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <list> selector_pseudo_selector_args
 %type <list> selector_pseudo_selector_args_rev
 
+%type <string> selector_pseudo_hasflag_arg
+%type <list> selector_pseudo_hasflag_args
+%type <list> selector_pseudo_hasflag_args_rev
+
+%type <object> selector_or_string_list_item
+%type <list> selector_or_string_list
+%type <list> selector_or_string_list_rev
+
+%type <num> event_handler_code
+
 %type <string> identifier_or_string_or_nothing
 
 %token <num> T_INDIRECTION_BEGIN
@@ -84,26 +97,50 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %token T_START_DOCUMENT
 %token T_START_SELECTOR
+%token T_START_GROUP
+%token T_START_LINK
+%token T_START_STATE
 
 %type <num> property_flag_sign
 %type <flags> property_flags
 %type <flags> property_flags_strict
 %type <flags> property_flags_contents
 %type <num> property_flag
+%type <num> assign_optional
 
 %type <selector> layout_relative
+%type <num> layout_item_separator
 
 %type <array> double_list
 %type <piece> polynomial_piece
-%type <array> polynomial_pieces
-%type <array> function_argument_list
-%type <array> function_argument_list_or_empty
-%type <array> template_list
+%type <list> polynomial_pieces
+%type <list> polynomial_pieces_rev
+
 %type <argument> function_argument
+%type <list> function_argument_list
+%type <list> function_argument_list_rev
+%type <list> function_argument_list_or_empty
+
+%type <list> function_argument_implicit
+%type <argument> function_argument_impl
+%type <list> function_argument_list_impl
+%type <list> function_argument_list_impl_rev
+%type <list> function_argument_list_or_empty_impl
+
+%type <list> template_list_more
+%type <list> template_list_rev
+%type <list> template_list
+
 %type <selector> selector
-%type <selector> strict_selector
-%type <selector> strict_selector_only
-%type <selector> selector_self
+%type <selector> selector_explicit
+%type <selector> selector_non_ambiguous
+%type <selector> selector_as_pseudo_arg
+%type <selector> selector_non_ambiguous_as_pseudo_arg
+
+%type <num> selector_pseudo_mixargs_key
+%type <object> selector_pseudo_mixargs_arg
+%type <list> selector_pseudo_mixargs_args
+%type <list> selector_pseudo_mixargs_args_rev
 
 %type <string> identifier_or_string
 %type <string> string
@@ -116,19 +153,27 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <string> integer
 
 %type <list> attributes
+%type <list> attributes_strict
 %type <list> attributes_contents
 %type <attribute> attribute_contents
 %type <attribute> attribute_proxy
 %type <attribute> attribute_each
 %type <attribute> attribute_bidirectional
 %type <attribute> attribute_if
+%type <attribute> attribute_with
+%type <attribute> attribute_no_self
+%type <attribute> attribute_probability
+%type <attribute> attribute_tag
+
+%type <list> string_list
+%type <list> string_list_rev
 
 %type <list> state
 %type <list> define_values
 
-%type <array> link_connect
-%type <array> link_connect_fast
-%type <array> templated
+%type <list> link_connect
+%type <list> link_connect_fast
+%type <list> templated
 
 %define api.pure
 %name-prefix="cpg_parser_"
@@ -170,14 +215,17 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 
 %start choose_parser
 
-%expect 46
+%expect 9
 
 %%
 
 choose_parser
 	:
 	| T_START_DOCUMENT document_contents
-	| T_START_SELECTOR selector_parse
+	| T_START_SELECTOR selector_parse T_EOF
+	| T_START_GROUP group_contents
+	| T_START_LINK link_contents
+	| T_START_STATE state_contents
 	;
 
 document_contents
@@ -190,13 +238,13 @@ document_item
 	| state
 	| group
 	| link
+	| object
 	| input_file
 	| functions
 	| import
 	| templates
 	| layout
 	| integrator
-	| include
 	| delete
 	| delete_context
 	| common_scopes
@@ -206,14 +254,24 @@ document_item
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
-include_path
-	: T_STRING_BEGIN
-	  string_contents
-	  T_STRING_END			{ errb; }
+eof
+	: T_EOF
 	;
 
 include
-	: T_KEY_INCLUDE include_path
+	: attributes
+	  T_KEY_INCLUDE
+	  value_as_string	{ cpg_parser_context_include (context, $3, $1); errb }
+	;
+
+parse
+	: attributes
+	  T_KEY_PARSE
+	  value_as_string
+	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  define_contents
+	  '}'				{ cpg_parser_context_push_input_from_path (context, $3, $1); errb;
+	                                  cpg_parser_context_pop (context); }
 	;
 
 network
@@ -227,6 +285,46 @@ network
 common_scopes
 	: define
 	| debug
+	| include
+	| parse
+	| actions
+	| eof
+	| annotation
+	;
+
+annotation
+	: T_ANNOTATION_START		{ cpg_parser_context_push_string (context); }
+	  string_contents
+	  T_ANNOTATION_END		{ cpg_parser_context_push_annotation (context,
+	                                                                      cpg_parser_context_pop_string (context)); }
+	;
+
+event_handler_code
+	: T_KEY_BEFORE_APPLY		{ $$ = CPG_PARSER_CODE_EVENT_BEFORE_APPLY; }
+	| T_KEY_AFTER_APPLY		{ $$ = CPG_PARSER_CODE_EVENT_AFTER_APPLY; }
+	| T_KEY_BEFORE_UNAPPLY		{ $$ = CPG_PARSER_CODE_EVENT_BEFORE_UNAPPLY; }
+	| T_KEY_AFTER_UNAPPLY		{ $$ = CPG_PARSER_CODE_EVENT_AFTER_UNAPPLY; }
+	;
+
+action_apply
+	: T_KEY_APPLY selector T_KEY_TO selector
+					{ cpg_parser_context_apply_template (context,
+					                                     $2, $4); }
+	| T_KEY_APPLY selector		{ cpg_parser_context_apply_template (context,
+	                                                                     $2, NULL); }
+	;
+
+action_unapply
+	: T_KEY_UNAPPLY selector T_KEY_FROM selector
+					{ cpg_parser_context_unapply_template (context,
+					                                       $2, $4); }
+	| T_KEY_UNAPPLY selector	{ cpg_parser_context_unapply_template (context,
+					                                       $2, NULL); }
+	;
+
+actions
+	: action_apply
+	| action_unapply
 	;
 
 network_item
@@ -300,7 +398,7 @@ define_item
 					                             FALSE,
 					                             TRUE); }
 	| debug
-	| attributes
+	| attributes_strict
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  define_contents
 	  '}'				{ cpg_parser_context_pop (context); }
@@ -330,6 +428,7 @@ templates
 template_item
 	: state
 	| link
+	| object
 	| group
 	| import
 	| common_scopes
@@ -345,10 +444,20 @@ template_contents
 	| template_contents template_item;
 	;
 
-	
+template_list_more
+	: ',' selector
+					{ $$ = g_slist_prepend (NULL, $2); }
+	| template_list_more ',' selector
+					{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+template_list_rev
+	: ':' selector template_list_more { $$ = g_slist_append ($3, $2); }
+	| ':' selector			{ $$ = g_slist_prepend (NULL, $2); }
+	;
+
 template_list
-	: ':' selector			{ append_array (NULL, CpgSelector *, $2, $$ = arret); }
-	| template_list ':' selector	{ append_array ($1, CpgSelector *, $3, $$ = arret); }
+	: template_list_rev		{ $$ = g_slist_reverse ($1); }
 	;
 
 templated
@@ -371,11 +480,14 @@ state
 	  '}'				{ $$ = cpg_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_STATE
-	  strict_selector_only		{ cpg_parser_context_push_selection (context,
+	  selector_non_ambiguous
+	  templated
+	  '{'				{ cpg_parser_context_push_selection (context,
 	                                                                     $3,
-	                                                                     CPG_SELECTOR_TYPE_STATE,
+	                                                                     CPG_SELECTOR_TYPE_STATE |
+	                                                                     CPG_SELECTOR_TYPE_GROUP,
+	                                                                     $4,
 	                                                                     $1); }
-	  '{'
 	  state_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
@@ -432,13 +544,31 @@ group
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_GROUP
-	  strict_selector_only		{ cpg_parser_context_push_selection (context,
+	  selector_non_ambiguous
+	  templated
+	  '{'				{ cpg_parser_context_push_selection (context,
 	                                                                     $3,
 	                                                                     CPG_SELECTOR_TYPE_GROUP,
+	                                                                     $4,
 	                                                                     $1); }
-	  '{'
 	  group_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
+	;
+
+selector_or_string_list_item
+	: value_as_string		{ $$ = $1; }
+	| selector_non_ambiguous	{ $$ = $1; }
+	;
+
+selector_or_string_list_rev
+	: selector_or_string_list_item	{ $$ = g_slist_prepend (NULL, $1); }
+	| selector_or_string_list
+	  ','
+	  selector_or_string_list_item	{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+selector_or_string_list
+	: selector_or_string_list_rev	{ $$ = g_slist_reverse ($1); }
 	;
 
 attribute_proxy
@@ -447,8 +577,12 @@ attribute_proxy
 	;
 
 attribute_each
-	: T_KEY_EACH '(' value_as_string ')'
-					{ $$ = cpg_attribute_newv ("each", $3, NULL); }
+	: T_KEY_EACH '(' ')'		{ $$ = cpg_attribute_new ("each"); }
+	| T_KEY_EACH
+	  '('
+	  selector_or_string_list
+	  ')'				{ $$ = cpg_attribute_new ("each");
+					  cpg_attribute_set_arguments ($$, $3); }
 	;
 
 attribute_bidirectional
@@ -459,8 +593,40 @@ attribute_bidirectional
 	;
 
 attribute_if
-	: T_KEY_IF '(' value_as_string ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
-	| T_KEY_IF '(' strict_selector_only ')' { $$ = cpg_attribute_newv ("if", $3, NULL); }
+	: T_KEY_IF '(' ')'		{ $$ = cpg_attribute_new ("if"); }
+	| T_KEY_IF
+	  '('
+	  selector_or_string_list
+	  ')'				{ $$ = cpg_attribute_new ("if");
+					  cpg_attribute_set_arguments ($$, $3); }
+	;
+
+attribute_with
+	: T_KEY_WITH '(' selector ')'	{ $$ = cpg_attribute_newv ("with", $3, NULL); }
+	;
+
+string_list_rev
+	: value_as_string			{ $$ = g_slist_prepend (NULL, $1); }
+	| string_list ',' value_as_string	{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+string_list
+	: string_list_rev			{ $$ = g_slist_reverse ($1); }
+	;
+
+attribute_no_self
+	: T_KEY_NO_SELF '(' ')' { $$ = cpg_attribute_new ("no-self"); }
+	| T_KEY_NO_SELF { $$ = cpg_attribute_newv ("no-self", NULL); }
+	;
+
+attribute_probability
+	: T_KEY_PROBABILITY '(' value_as_string ')' { $$ = cpg_attribute_newv ("probability", $3, NULL); }
+	;
+
+attribute_tag
+	: T_KEY_TAG '(' ')'		{ $$ = cpg_attribute_new ("tag"); }
+	| T_KEY_TAG '(' string_list ')' { $$ = cpg_attribute_new ("tag");
+	                                  cpg_attribute_set_arguments ($$, $3); }
 	;
 
 attribute_contents
@@ -468,6 +634,10 @@ attribute_contents
 	| attribute_each
 	| attribute_bidirectional
 	| attribute_if
+	| attribute_with
+	| attribute_no_self
+	| attribute_probability
+	| attribute_tag
 	;
 
 attributes_contents
@@ -482,20 +652,30 @@ attributes
 	| '[' attributes_contents ']'	{ $$ = g_slist_reverse ($2); }
 	;
 
-link_connect
-	:				{ $$ = NULL; }
-	| T_KEY_FROM selector T_KEY_TO selector
-					{ append_array (NULL, CpgSelector *, $2, $$ = arret);
-					  append_array ($$, CpgSelector *, $4, $$ = arret);
-					}
-	| T_KEY_ON selector		{ append_array (NULL, CpgSelector *, $2, $$ = arret); }
+attributes_strict
+	: '[' ']'			{ $$ = NULL; }
+	| '[' attributes_contents ']'	{ $$ = g_slist_reverse ($2); }
 	;
 
 link_connect_fast
-	: T_KEY_FROM selector T_KEY_TO selector	{ append_array (NULL, CpgSelector *, $2, $$ = arret);
-					  append_array ($$, CpgSelector *, $4, $$ = arret);
+	: T_KEY_FROM selector T_KEY_TO selector
+					{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (0));
+					  $$ = g_slist_prepend ($$, $4);
+					  $$ = g_slist_prepend ($$, $2);
 					}
-	| T_KEY_ON selector		{ append_array (NULL, CpgSelector *, $2, $$ = arret); }
+	| T_KEY_ALL selector		{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (0));
+					  $$ = g_slist_prepend ($$, NULL);
+					  $$ = g_slist_prepend ($$, $2);
+					}
+	| T_KEY_ON selector		{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (1));
+					  $$ = g_slist_prepend ($$, NULL);
+					  $$ = g_slist_prepend ($$, $2);
+					}
+	;
+
+link_connect
+	:				{ $$ = NULL; }
+	| link_connect_fast		{ $$ = $1; }
 	;
 
 link
@@ -522,12 +702,38 @@ link
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_LINK
-	  strict_selector_only		{ cpg_parser_context_push_selection (context,
+	  selector_non_ambiguous
+	  templated
+	  '{'				{ cpg_parser_context_push_selection (context,
 	                                                                     $3,
 	                                                                     CPG_SELECTOR_TYPE_LINK,
+	                                                                     $4,
 	                                                                     $1); }
-	  '{'
 	  link_contents
+	  '}'				{ cpg_parser_context_pop (context); errb }
+	;
+
+object
+	: attributes
+	  T_KEY_OBJECT
+	  identifier_or_string
+	  templated
+	  '{'				{ cpg_parser_context_push_object (context,
+	                                                                  $3,
+	                                                                  $4,
+	                                                                  $1); }
+	  state_contents
+	  '}'
+	| attributes
+	  T_KEY_OBJECT
+	  selector_non_ambiguous
+	  templated
+	  '{'				{ cpg_parser_context_push_selection (context,
+	                                                                     $3,
+	                                                                     CPG_SELECTOR_TYPE_OBJECT,
+	                                                                     $1,
+	                                                                     $4); }
+	  state_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
@@ -539,7 +745,7 @@ function_polynomial
 	  ')'
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  polynomial_pieces
-	  '}'				{ cpg_parser_context_add_polynomial (context, $3, $8); errb
+	  '}'				{ cpg_parser_context_add_polynomial (context, $3, $8, $1); errb
 	                                  cpg_parser_context_pop (context); errb }
 	;
 
@@ -548,14 +754,26 @@ function_argument_list_or_empty
 	| function_argument_list	{ $$ = $1; }
 	;
 
+function_argument_list_or_empty_impl
+	:				{ $$ = NULL; }
+	| function_argument_list_impl	{$$ = $1; }
+	;
+
+function_argument_implicit
+	:				{ $$ = NULL; }
+	| '(' function_argument_list_or_empty_impl ')'
+					{ $$ = $2; }
+	;
+
 function_custom
 	: attributes
 	  identifier_or_string
 	  '('
 	  function_argument_list_or_empty
 	  ')'
+	  function_argument_implicit
 	  '='				{ cpg_parser_context_push_scope (context, $1); }
-	  value_as_string		{ cpg_parser_context_add_function (context, $2, $8, $4); errb
+	  value_as_string		{ cpg_parser_context_add_function (context, $2, $9, g_slist_concat ($4, $6), $1); errb
 	                                  cpg_parser_context_pop (context); errb }
 	;
 
@@ -564,9 +782,9 @@ function_item
 	| function_polynomial
 	| common_scopes
 	| attributes
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); errb }
 	  function_contents
-	  '}'				{ cpg_parser_context_pop (context); }
+	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
 function_contents
@@ -577,15 +795,19 @@ function_contents
 functions
 	: attributes
 	  T_KEY_FUNCTIONS
-	  '{'				{ cpg_parser_context_push_scope (context, $1); }
+	  '{'				{ cpg_parser_context_push_scope (context, $1); errb }
 	  function_contents
-	  '}'				{ cpg_parser_context_pop (context); }
+	  '}'				{ cpg_parser_context_pop (context); errb}
+	;
+
+polynomial_pieces_rev
+	: 				{ $$ = NULL; }
+	| polynomial_pieces polynomial_piece
+					{ $$ = g_slist_prepend ($1, $2); }
 	;
 
 polynomial_pieces
-	: 				{ $$ = NULL; }
-	| polynomial_pieces polynomial_piece
-					{ append_array ($1, CpgFunctionPolynomialPiece *, $2, $$ = arret); }
+	: polynomial_pieces_rev		{ $$ = g_slist_reverse ($1); }
 	;
 
 polynomial_piece
@@ -600,22 +822,47 @@ double_list
 	| double_list ',' T_INTEGER	{ append_array ($1, gdouble, $3, $$ = arret); }
 	;
 
-function_argument_list
-	: function_argument		{ append_array (NULL, CpgFunctionArgument *, $1, $$ = arret); }
+function_argument_impl
+	: identifier_or_string			{ $$ = create_function_argument ($1, NULL, FALSE); }
+	| T_KEY_FROM '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "from."), NULL, FALSE); }
+	| T_KEY_TO '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "to."), NULL, FALSE); }
+	;
+
+function_argument_list_impl_rev
+	: function_argument_impl	{ $$ = g_slist_prepend (NULL, $1); }
+	| function_argument_list_impl ',' function_argument_impl
+					{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+function_argument_list_impl
+	: function_argument_list_impl_rev
+					{ $$ = g_slist_reverse ($1); }
+	;
+
+function_argument_list_rev
+	: function_argument		{ $$ = g_slist_prepend (NULL, $1); }
 	| function_argument_list ',' function_argument
-					{ append_array ($1, CpgFunctionArgument *, $3, $$ = arret); }
+					{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+function_argument_list
+	: function_argument_list_rev	{ $$ = g_slist_reverse ($1); }
 	;
 
 function_argument
-	: identifier_or_string '=' T_DOUBLE	{ $$ = create_function_argument ($1, TRUE, $3); }
-	| identifier_or_string '=' T_INTEGER	{ $$ = create_function_argument ($1, TRUE, $3); }
-	| identifier_or_string			{ $$ = create_function_argument ($1, FALSE, 0.0); }
+	: identifier_or_string '=' value_as_string	{ $$ = create_function_argument ($1, $3, TRUE); }
+	| identifier_or_string			        { $$ = create_function_argument ($1, NULL, TRUE); }
 	;
 
 state_item
 	: property
 	| common_scopes
 	| layout
+	| attributes
+	  event_handler_code
+	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
+	  state_contents
+	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  state_contents
@@ -630,11 +877,18 @@ state_contents
 group_item
 	: property
 	| state
+	| object
 	| link
 	| interface
 	| group
+	| attributes
+	  event_handler_code
+	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
+	  group_contents
+	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| common_scopes
 	| layout
+	| functions
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  group_contents
@@ -660,7 +914,17 @@ interface_contents
 	;
 
 interface_property
-	: identifier_or_string '=' selector	{ cpg_parser_context_add_interface (context, $1, $3); errb }
+	: attributes
+	  identifier_or_string
+	  assign_optional
+	  identifier_or_string
+	  T_KEY_IN
+	  identifier_or_string	{ cpg_parser_context_add_interface (context,
+	                                                            $2,
+	                                                            $6,
+	                                                            $4,
+	                                                            $3,
+	                                                            $1); errb }
 	;
 
 interface_item
@@ -676,6 +940,11 @@ link_item
 	: action
 	| property
 	| common_scopes
+	| attributes
+	  event_handler_code
+	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
+	  link_contents
+	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| layout
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
@@ -694,13 +963,34 @@ identifier_or_string
 	| indirection
 	;
 
+assign_optional
+	: '='				{ $$ = FALSE; }
+	| '?' '='			{ $$ = TRUE; }
+	;
+
 property
-	: identifier_or_string '=' value_as_string '<' '=' value_as_string property_flags
-					{ cpg_parser_context_add_property (context, $1, $3, $7.add, $7.remove, $6); errb }
-	| identifier_or_string '=' value_as_string property_flags
-					{ cpg_parser_context_add_property (context, $1, $3, $4.add, $4.remove, NULL); errb }
-	| identifier_or_string property_flags_strict
-					{ cpg_parser_context_add_property (context, $1, NULL, $2.add, $2.remove, NULL); errb }
+	: attributes
+	  identifier_or_string
+	  assign_optional
+	  value_as_string
+	  property_flags
+					{ cpg_parser_context_add_property (context,
+					                                   $2,
+					                                   $4,
+					                                   $5.add,
+					                                   $5.remove,
+					                                   $1,
+					                                   $3); errb }
+	| attributes
+	  identifier_or_string
+	  property_flags_strict
+					{ cpg_parser_context_add_property (context,
+					                                   $2,
+					                                   NULL,
+					                                   $3.add,
+					                                   $3.remove,
+					                                   $1,
+					                                   FALSE); errb }
 	;
 
 property_flag_sign
@@ -717,6 +1007,7 @@ property_flags_contents
 
 property_flags_strict
 	: '|' property_flags_contents	{ $$ = $2; }
+	;
 
 property_flags
 	: 				{ $$.add = 0; $$.remove = 0; }
@@ -731,18 +1022,21 @@ property_flag
 	;
 
 action
-	: identifier_or_string '<' '=' value_as_string
-					{ cpg_parser_context_add_action (context, $1, $4); errb }
+	: attributes
+	  identifier_or_string
+	  '<' '='
+	  value_as_string
+					{ cpg_parser_context_add_action (context, $2, $5, $1); errb }
 	;
 
-selector_nonambi
+selector_item_non_ambiguous
 	: selector_pseudo
 	| selector_regex
 	;
 
 selector_item
 	: selector_identifier
-	| selector_nonambi
+	| selector_item_non_ambiguous
 	;
 
 selector_items
@@ -754,53 +1048,52 @@ selector_items
 	| selector_items '|' selector_item
 	;
 
+selector_explicit
+	: '|'				{ cpg_selector_set_implicit_children (cpg_parser_context_peek_selector (context), TRUE); }
+	  selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
+	;
+
 selector
 	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb;
-	                                  cpg_selector_prepend_pseudo ($$,
-	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
-	                                                               NULL); }
-	| strict_selector
+	                                  cpg_selector_set_implicit_children ($$, TRUE); }
+	| selector_explicit
 	;
 
-selector_self
-	: selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb; }
-	| strict_selector
+selector_as_pseudo_arg
+	: selector			{ $$ = $1; cpg_selector_set_implicit_children ($1, FALSE); }
 	;
 
-zero_or_more_selectors
-	:
-	| '|' selector_items
-	| '.'				{ cpg_parser_context_push_selector_pseudo (context,
+selector_non_ambiguous_beginning
+	: selector_item_non_ambiguous
+	| selector_item_non_ambiguous
+	  '|'
+	  selector_items
+	| selector_item_non_ambiguous
+	  '.'				{ cpg_parser_context_push_selector_pseudo (context,
 	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
 	                                                                           NULL); errb }
 	  selector_items
 	;
 
-strict_selector
-	: '|' selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
-	| '.'				{ cpg_parser_context_push_selector_pseudo (context,
-	                                                                           CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
-	                                                                           NULL); errb }
-	  selector_items		{ $$ = cpg_parser_context_pop_selector (context); errb }
+
+selector_non_ambiguous
+	: selector_explicit		{ $$ = $1; }
+	| selector_non_ambiguous_beginning
+					{ $$ = cpg_parser_context_pop_selector (context); errb;
+					  cpg_selector_set_implicit_children ($$, TRUE); }
 	;
 
-strict_selector_only
-	: strict_selector		{ $$ = $1; }
-	| selector_nonambi
-	  zero_or_more_selectors	{ $$ = cpg_parser_context_pop_selector (context); errb;
-	                                  cpg_selector_prepend_pseudo ($$,
-	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
-	                                                               NULL); errb }
+selector_non_ambiguous_as_pseudo_arg
+	: selector_non_ambiguous	{ $$ = $1; cpg_selector_set_implicit_children ($1, FALSE); }
+	;
+
+selector_parse_contents
+	: selector_items
+	| '|' selector_items
 	;
 
 selector_parse
-	: selector_items		{ cpg_selector_prepend_pseudo (cpg_parser_context_peek_selector (context),
-	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
-	                                                               NULL); errb }
-	| '|' selector_items
-	| '.' selector_items		{ cpg_selector_prepend_pseudo (cpg_parser_context_peek_selector (context),
-	                                                               CPG_SELECTOR_PSEUDO_TYPE_CHILDREN,
-	                                                               NULL); errb }
+	: selector_parse_contents	{ cpg_selector_set_implicit_children (cpg_parser_context_peek_selector (context), TRUE); }
 	;
 
 selector_identifier
@@ -814,6 +1107,7 @@ selector_regex
 
 selector_pseudo_simple_key_real
 	: T_KEY_ROOT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_ROOT; }
+	| T_KEY_TEMPLATES_ROOT			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT; }
 	| T_KEY_PARENT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_PARENT; }
 	| T_KEY_FIRST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FIRST; }
 	| T_KEY_LAST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_LAST; }
@@ -823,15 +1117,19 @@ selector_pseudo_simple_key_real
 	| T_KEY_COUNT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_COUNT; }
 	| T_KEY_NAME				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_NAME; }
 	| T_KEY_SELF				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SELF; }
+	| T_KEY_FROM_SET			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FROM_SET; }
+	| T_KEY_TYPE				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TYPE; }
 	| T_KEY_CHILDREN			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_CHILDREN; }
 	| T_KEY_DESCENDANTS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_DESCENDANTS; }
 	| T_KEY_UNIQUE				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_UNIQUE; }
 	| T_KEY_ANCESTORS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_ANCESTORS; }
 	| T_KEY_GROUPS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_GROUPS; }
+	| T_KEY_IMPORTS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_IMPORTS; }
 	| T_KEY_OBJECTS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_OBJECTS; }
 	| T_KEY_PROPERTIES			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_PROPERTIES; }
 	| T_KEY_ACTIONS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_ACTIONS; }
 	| T_KEY_FUNCTIONS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FUNCTIONS; }
+	| T_KEY_REVERSE				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_REVERSE; }
 	;
 
 selector_pseudo_simple_key
@@ -845,16 +1143,42 @@ selector_pseudo_simple
 selector_pseudo_selector_key_real
 	: T_KEY_FROM				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FROM; }
 	| T_KEY_TO				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TO; }
+	| T_KEY_HAS_TEMPLATE			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_HAS_TEMPLATE; }
 	;
 
 selector_pseudo_selector_key
 	: selector_pseudo_selector_key_real	{ cpg_parser_context_begin_selector_item (context); }
 	;
 
+selector_pseudo_hasflag_arg
+	: property_flag				{ $$ = cpg_embedded_string_new_from_string (cpg_property_flags_to_string ($1, CPG_PROPERTY_FLAG_NONE)); }
+	| value_as_string			{ $$ = $1; }
+	;
+
+selector_pseudo_hasflag_args_rev
+	: selector_pseudo_hasflag_arg		{ $$ = g_slist_prepend (NULL, $1); }
+	| selector_pseudo_hasflag_args_rev ',' selector_pseudo_hasflag_arg
+						{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+selector_pseudo_hasflag_args
+	: selector_pseudo_hasflag_args_rev	{ $$ = g_slist_reverse ($1); }
+	;
+
+selector_pseudo_hasflag
+	: T_KEY_HAS_FLAG
+	  '('
+	  selector_pseudo_hasflag_args
+	  ')'					{ cpg_parser_context_push_selector_pseudo (context,
+	                                                                                   CPG_SELECTOR_PSEUDO_TYPE_HAS_FLAG,
+	                                                                                   $3);}
+	;
+
 selector_pseudo_strargs_key_real
 	: T_KEY_SIBLINGS			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SIBLINGS; }
 	| T_KEY_SUBSET				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_SUBSET; }
 	| T_KEY_DEBUG				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_DEBUG; }
+	| T_KEY_HAS_TAG				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_HAS_TAG; }
 	;
 
 selector_pseudo_strargs_key
@@ -872,13 +1196,35 @@ selector_pseudo_strargs_args
 	;
 
 selector_pseudo_selector_args_rev
-	: selector_self				{ $$ = g_slist_prepend (NULL, $1); }
+	: selector_as_pseudo_arg		{ $$ = g_slist_prepend (NULL, $1); }
 	| selector_pseudo_selector_args_rev ',' { cpg_parser_context_push_selector (context); }
-	  selector_self				{ $$ = g_slist_prepend ($1, $4); }
+	  selector_as_pseudo_arg		{ $$ = g_slist_prepend ($1, $4); }
 	;
 
 selector_pseudo_selector_args
 	: selector_pseudo_selector_args_rev	{ $$ = g_slist_reverse ($1); }
+	;
+
+selector_pseudo_mixargs_key
+	: T_KEY_IF				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_IF; }
+	| T_KEY_REMOVE				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_REMOVE; }
+	| T_KEY_IS_EMPTY				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_IS_EMPTY; }
+	;
+
+selector_pseudo_mixargs_arg
+	: value_as_string			{ $$ = $1; }
+	| selector_non_ambiguous_as_pseudo_arg	{ $$ = $1;
+						  cpg_parser_context_push_selector (context); }
+	;
+
+selector_pseudo_mixargs_args_rev
+	: selector_pseudo_mixargs_arg		{ $$ = g_slist_prepend (NULL, $1); }
+	| selector_pseudo_mixargs_args ',' selector_pseudo_mixargs_arg
+						{ $$ = g_slist_prepend ($1, $3); }
+	;
+
+selector_pseudo_mixargs_args
+	: selector_pseudo_mixargs_args_rev	{ $$ = g_slist_reverse ($1); }
 	;
 
 selector_pseudo_with_args
@@ -900,6 +1246,23 @@ selector_pseudo_with_args
 						{ cpg_parser_context_push_selector_pseudo (context,
 						                                           $1,
 						                                           NULL); }
+	| selector_pseudo_mixargs_key
+	  '('					{ cpg_parser_context_push_selector (context); }
+	  selector_pseudo_mixargs_args
+	  ')'
+						{ cpg_parser_context_pop_selector (context);
+						  cpg_parser_context_push_selector_pseudo (context,
+						                                           $1,
+						                                           $4); }
+	| selector_pseudo_mixargs_key '(' ')'
+						{ cpg_parser_context_push_selector_pseudo (context,
+						                                           $1,
+						                                           NULL); }
+	| selector_pseudo_mixargs_key
+						{ cpg_parser_context_push_selector_pseudo (context,
+						                                           $1,
+						                                           NULL); }
+	| selector_pseudo_hasflag
 	;
 
 selector_pseudo
@@ -908,10 +1271,11 @@ selector_pseudo
 	;
 
 import
-	: T_KEY_IMPORT
+	: attributes
+	  T_KEY_IMPORT
 	  value_as_string
 	  T_KEY_AS
-	  identifier_or_string	{ cpg_parser_context_import (context, $4, $2); errb }
+	  identifier_or_string	{ cpg_parser_context_import (context, $5, $3, $1); errb }
 	;
 
 layout
@@ -946,27 +1310,28 @@ layout_relative
 layout_item_relative
 	: selector
 	  relation
-	  selector			{ cpg_parser_context_add_layout (context, $2, $1, $3); }
+	  selector			{ cpg_parser_context_add_layout (context, $2, $1, $3); errb }
 	| relation
-	  selector			{ cpg_parser_context_add_layout (context, $1, NULL, $2); }
+	  selector			{ cpg_parser_context_add_layout (context, $1, NULL, $2); errb }
+	;
+
+layout_item_separator
+	: ','				{ $$ = TRUE; }
+	| ':'				{ $$ = FALSE; }
 	;
 
 layout_item_absolute
 	: selector
 	  T_KEY_AT
-	  '('
 	  value_as_string
-	  ','
+	  layout_item_separator
 	  value_as_string
-	  ')'
-	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $4, $6, $8); }
+	  layout_relative		{ cpg_parser_context_add_layout_position (context, $1, $3, $5, $6, $4); errb }
 	| T_KEY_AT
-	  '('
 	  value_as_string
-	  ','
+	  layout_item_separator
 	  value_as_string
-	  ')'
-	  layout_relative		{ cpg_parser_context_add_layout_position (context, NULL, $3, $5, $7); }
+	  layout_relative		{ cpg_parser_context_add_layout_position (context, NULL, $2, $4, $5, $3); errb }
 	;
 
 layout_item
@@ -1104,9 +1469,9 @@ indirection_inside
 	;
 
 debug
-	: T_KEY_DEBUG strict_selector_only	{ cpg_parser_context_debug_selector (context, $2); }
-	| T_KEY_DEBUG value_as_string		{ cpg_parser_context_debug_string (context, $2); }
-	| T_KEY_DEBUG T_KEY_CONTEXT		{ cpg_parser_context_debug_context (context); }
+	: T_KEY_DEBUG_PRINT selector_non_ambiguous	{ cpg_parser_context_debug_selector (context, $2); }
+	| T_KEY_DEBUG_PRINT value_as_string		{ cpg_parser_context_debug_string (context, $2); }
+	| T_KEY_DEBUG_PRINT T_KEY_CONTEXT		{ cpg_parser_context_debug_context (context); }
 	;
 
 delete_item
@@ -1172,10 +1537,10 @@ create_polynomial_piece (gdouble  start,
 
 static CpgFunctionArgument *
 create_function_argument (CpgEmbeddedString *name,
-                          gboolean     is_optional,
-                          gdouble      default_value)
+                          CpgEmbeddedString *default_value,
+                          gboolean           is_explicit)
 {
 	return g_object_ref_sink (cpg_function_argument_new (cpg_embedded_string_expand (name, NULL, NULL),
-	                                                     is_optional,
-	                                                     default_value));
+	                                                     default_value ? cpg_expression_new (cpg_embedded_string_expand (default_value, NULL, NULL)) : NULL,
+	                                                     is_explicit));
 }

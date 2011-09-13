@@ -2,19 +2,19 @@
  * cpg-object.h
  * This file is part of cpg-network
  *
- * Copyright (C) 2010 - Jesse van den Kieboom
+ * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * cpg-network is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * cpg-network is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with cpg-network; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -28,6 +28,7 @@
 #include <cpg-network/cpg-compile-context.h>
 #include <cpg-network/cpg-utils.h>
 #include <cpg-network/cpg-usable.h>
+#include <cpg-network/cpg-parser-code.h>
 
 G_BEGIN_DECLS
 
@@ -266,6 +267,14 @@ gchar            *cpg_object_get_relative_id_for_display (CpgObject *object,
                                                           CpgObject *parent);
 
 const GSList     *cpg_object_get_links      (CpgObject *object);
+
+void              cpg_object_add_event_handler (CpgObject      *object,
+                                              CpgParserCode *code);
+
+void              cpg_object_remove_event_handler (CpgObject      *object,
+                                               CpgParserCode *code);
+
+const GSList     *cpg_object_get_event_handlers (CpgObject      *object);
 
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,

@@ -2,19 +2,19 @@
  * cpg-compile-context.c
  * This file is part of cpg-network
  *
- * Copyright (C) 2010 - Jesse van den Kieboom
+ * Copyright (C) 2011 - Jesse van den Kieboom
  *
  * cpg-network is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
  * (at your option) any later version.
  *
  * cpg-network is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * GNU Lesser General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
+ * You should have received a copy of the GNU Lesser General Public License
  * along with cpg-network; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
@@ -219,27 +219,53 @@ cpg_compile_context_append_object (CpgCompileContext *context,
 }
 
 /**
- * cpg_compile_context_set_functions:
+ * cpg_compile_context_prepend_function:
  * @context: A #CpgCompileContext
- * @functions: (element-type CpgFunction) (transfer none): A #GSList of #CpgFunction
+ * @function: (type CpgFunction): A #CpgFunction
  *
- * Set the list of user functions available in the compile context. This
- * function makes a copy of the list but not of its members.
+ * Prepend a context function to the list of context functions.
  *
  **/
 void
-cpg_compile_context_set_functions (CpgCompileContext *context,
-                                   const GSList      *functions)
+cpg_compile_context_prepend_function (CpgCompileContext *context,
+                                      CpgFunction       *function)
 {
 	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
+	g_return_if_fail (function == NULL || CPG_IS_FUNCTION (function));
 
-	if (!context)
+	if (!context || !function)
 	{
 		return;
 	}
 
-	g_slist_free (CURRENT_CONTEXT (context)->functions);
-	CURRENT_CONTEXT (context)->functions = g_slist_copy ((GSList *)functions);
+	CURRENT_CONTEXT (context)->functions =
+		g_slist_prepend (CURRENT_CONTEXT (context)->functions,
+		                 function);
+}
+
+/**
+ * cpg_compile_context_append_function:
+ * @context: A #CpgCompileContext
+ * @function: (type CpgFunction): A #CpgFunction
+ *
+ * Append a context function to the list of context functions.
+ *
+ **/
+void
+cpg_compile_context_append_function (CpgCompileContext *context,
+                                     CpgFunction       *function)
+{
+	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
+	g_return_if_fail (function == NULL || CPG_IS_FUNCTION (function));
+
+	if (!context || !function)
+	{
+		return;
+	}
+
+	CURRENT_CONTEXT (context)->functions =
+		g_slist_append (CURRENT_CONTEXT (context)->functions,
+		                function);
 }
 
 /**

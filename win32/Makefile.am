@@ -4,3 +4,6 @@ EXTRA_DIST = \
 	README
 
 CLEANFILES = make-zip *.zip
+
+
+-include $(top_srcdir)/git.mk
