@@ -4,8 +4,8 @@
     <templates>
       <state id="t1">
         <interface>
-          <property name="c1_p1">c1.p1</property>
-          <property name="cc_p1">c1.p1</property>
+          <property name="c1_p1" child="c1">p1</property>
+          <property name="cc_p1" child="c1">p1</property>
         </interface>
         <state id="c1">
           <property name="p1">0</property>
@@ -13,7 +13,7 @@
       </state>
       <state id="t2">
         <interface>
-          <property name="c2_p2">c2.p2</property>
+          <property name="c2_p2" child="c2">p2</property>
         </interface>
         <state id="c2">
           <property name="p2">0</property>
@@ -21,8 +21,8 @@
       </state>
       <state id="t3">
         <interface>
-          <property name="c1_p1">c3.p3</property>
-          <property name="cc_p3">c3.p3</property>
+          <property name="c1_p1" child="c3">p3</property>
+          <property name="cc_p3" child="c3">p3</property>
         </interface>
         <state id="c3">
           <property name="p3">0</property>

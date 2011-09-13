@@ -113,14 +113,23 @@ test_new_from_template ()
 	CpgObject *obj = cpg_object_new ("id");
 	GError *error = NULL;
 
-	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_INTEGRATED), NULL);
-	cpg_object_add_property (obj, cpg_property_new ("p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT), NULL);
+	cpg_object_add_property (obj,
+	                         cpg_property_new ("p1",
+	                                           "0",
+	                                           CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
+
+	cpg_object_add_property (obj,
+	                         cpg_property_new ("p2",
+	                                           "1",
+	                                           CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT),
+	                         NULL);
 
 	CpgObject *cp = cpg_object_new_from_template (obj, &error);
 	g_assert_no_error (error);
 
 	cpg_object_apply_template (cp, obj, &error);
-	g_assert_error (error, CPG_OBJECT_ERROR, CPG_OBJECT_ERROR_TEMPLATE_ALREADY_APPLIED);
+	g_assert_no_error (error);
 
 	CpgProperty *p1 = cpg_object_get_property (cp, "p1");
 
