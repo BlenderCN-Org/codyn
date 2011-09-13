@@ -337,8 +337,14 @@ interface_should_override (CpgGroup     *group,
 		gboolean templprop;
 
 		tmpl = templates->data;
-		iface = cpg_group_get_property_interface (tmpl);
+		templates = g_slist_next (templates);
 
+		if (!CPG_IS_GROUP (tmpl))
+		{
+			continue;
+		}
+
+		iface = cpg_group_get_property_interface (tmpl);
 		templprop = cpg_property_interface_implements (iface, name);
 
 		if (!found && templprop && last_templ && tmpl != template)
@@ -355,19 +361,18 @@ interface_should_override (CpgGroup     *group,
 		{
 			found = TRUE;
 		}
-
-		templates = g_slist_next (templates);
 	}
 
 	return TRUE;
 }
 
-static void
-add_template_interface (CpgGroup    *group,
-                        CpgGroup    *source,
-                        gchar const *name,
-                        gchar const *child_name,
-                        gchar const *property_name)
+static gboolean
+add_template_interface (CpgGroup     *group,
+                        CpgGroup     *source,
+                        gchar const  *name,
+                        gchar const  *child_name,
+                        gchar const  *property_name,
+                        GError      **error)
 {
 	CpgProperty *property = NULL;
 	CpgPropertyInterface *iface;
@@ -385,23 +390,34 @@ add_template_interface (CpgGroup    *group,
 	{
 		if (interface_should_override (group, source, name, NULL))
 		{
-			cpg_property_interface_remove (iface, name, NULL);
+			if (!cpg_property_interface_remove (iface, name, error))
+			{
+				return FALSE;
+			}
 
-			cpg_property_interface_add (iface,
-			                            name,
-			                            child_name,
-			                            property_name,
-			                            NULL);
+			if (!cpg_property_interface_add (iface,
+			                                 name,
+			                                 child_name,
+			                                 property_name,
+			                                 error))
+			{
+				return FALSE;
+			}
 		}
 	}
 	else
 	{
-		cpg_property_interface_add (iface,
-		                            name,
-		                            child_name,
-		                            property_name,
-		                            NULL);
+		if (!cpg_property_interface_add (iface,
+		                                 name,
+		                                 child_name,
+		                                 property_name,
+		                                 NULL))
+		{
+			return FALSE;
+		}
 	}
+
+	return TRUE;
 }
 
 static void
@@ -437,7 +453,17 @@ remove_template_interface (CpgGroup    *group,
 
 	if (last)
 	{
-		add_template_interface (group, last, name, child_name, property_name);
+		/* Lookup new child and property name */
+		iface = cpg_group_get_property_interface (last);
+		child_name = cpg_property_interface_lookup_child_name (iface, name);
+		property_name = cpg_property_interface_lookup_property_name (iface, name);
+
+		add_template_interface (group,
+		                        last,
+		                        name,
+		                        child_name,
+		                        property_name,
+		                        &error);
 	}
 }
 
@@ -452,7 +478,8 @@ on_template_interface_property_added (CpgPropertyInterface *templ_iface,
 	                        cpg_property_interface_get_group (templ_iface),
 	                        name,
 	                        child_name,
-	                        property_name);
+	                        property_name,
+	                        NULL);
 }
 
 static void
@@ -597,7 +624,8 @@ add_interface_after_proxy_remove (CpgGroup    *group,
 		                        templ,
 		                        name,
 		                        cpg_property_interface_lookup_child_name (iface, name),
-		                        cpg_property_interface_lookup_property_name (iface, name));
+		                        cpg_property_interface_lookup_property_name (iface, name),
+		                        NULL);
 	}
 }
 
@@ -1323,7 +1351,16 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 		child_name = cpg_property_interface_lookup_child_name (source_iface, *ptr);
 		property_name = cpg_property_interface_lookup_property_name (source_iface, *ptr);
 
-		add_template_interface (group, source, *ptr, child_name, property_name);
+		if (!add_template_interface (group,
+		                             source,
+		                             *ptr,
+		                             child_name,
+		                             property_name,
+		                             error))
+		{
+			/* TODO: make atomic */
+			return FALSE;
+		}
 	}
 
 	g_strfreev (names);
