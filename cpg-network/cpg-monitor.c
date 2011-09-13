@@ -164,6 +164,8 @@ cpg_monitor_begin (CpgMonitor    *monitor,
                    CpgIntegrator *integrator)
 {
 	/* Record first value */
+	reset_monitor (monitor);
+
 	cpg_monitor_update (monitor, step, from, integrator);
 }
 
