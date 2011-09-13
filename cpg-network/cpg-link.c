@@ -62,6 +62,8 @@ struct _CpgLinkPrivate
 	// list of expressions to evaluate
 	GSList *actions;
 
+	CpgObject *prev_parent;
+
 	guint ext_signals[NUM_EXT_SIGNALS];
 };
 
@@ -548,6 +550,17 @@ disconnect_template (CpgLink   *link,
 }
 
 static void
+on_parent_child_removed (CpgObject *parent,
+                         CpgObject *child,
+                         CpgLink   *self)
+{
+	if (child == self->priv->to || child == self->priv->from)
+	{
+		cpg_link_attach (self, NULL, NULL);
+	}
+}
+
+static void
 cpg_link_dispose (GObject *object)
 {
 	CpgLink *link = CPG_LINK (object);
@@ -573,6 +586,18 @@ cpg_link_dispose (GObject *object)
 		disconnect_template (link, templates->data, TRUE);
 
 		templates = g_slist_next (templates);
+	}
+
+	if (link->priv->prev_parent != NULL)
+	{
+		g_object_remove_weak_pointer (G_OBJECT (link->priv->prev_parent),
+		                              (gpointer *)&(link->priv->prev_parent));
+
+		g_signal_handlers_disconnect_by_func (link->priv->prev_parent,
+		                                      on_parent_child_removed,
+		                                      link);
+
+		link->priv->prev_parent = NULL;
 	}
 
 	G_OBJECT_CLASS (cpg_link_parent_class)->dispose (object);
@@ -955,9 +980,40 @@ cpg_link_class_init (CpgLinkClass *klass)
 }
 
 static void
+on_parent_changed (CpgLink *self)
+{
+	if (self->priv->prev_parent != NULL)
+	{
+		g_object_remove_weak_pointer (G_OBJECT (self->priv->prev_parent),
+		                              (gpointer *)&(self->priv->prev_parent));
+
+		g_signal_handlers_disconnect_by_func (self->priv->prev_parent,
+		                                      on_parent_child_removed,
+		                                      self);
+
+		self->priv->prev_parent = NULL;
+	}
+
+	self->priv->prev_parent = cpg_object_get_parent (CPG_OBJECT (self));
+
+	if (self->priv->prev_parent != NULL)
+	{
+		g_object_add_weak_pointer (G_OBJECT (self->priv->prev_parent),
+		                           (gpointer *)&(self->priv->prev_parent));
+
+		g_signal_connect (self->priv->prev_parent,
+		                  "child-removed",
+		                  G_CALLBACK (on_parent_child_removed),
+		                  self);
+	}
+}
+
+static void
 cpg_link_init (CpgLink *self)
 {
 	self->priv = CPG_LINK_GET_PRIVATE (self);
+
+	g_signal_connect (self, "notify::parent", G_CALLBACK (on_parent_changed), NULL);
 }
 
 /**
