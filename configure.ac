@@ -1,4 +1,4 @@
-AC_INIT(cpg-network, 2.2)
+AC_INIT(cpg-network, 2.3)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([-Wno-portability])
