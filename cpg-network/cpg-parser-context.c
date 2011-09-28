@@ -1307,8 +1307,8 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		CpgPropertyInterface *iface;
 		CpgGroup *parent;
 		gboolean ret = TRUE;
-		GSList *exps;
-		GSList *exp;
+		GSList *children;
+		GSList *child;
 
 		parent = CPG_GROUP (cpg_selection_get_object (item->data));
 
@@ -1319,21 +1319,21 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		embedded_string_expand_multiple (exps, name, context);
+		embedded_string_expand_multiple (children, child_name, context);
 
-		for (exp = exps; exp; exp = g_slist_next (exp))
+		for (child = children; child; child = g_slist_next (child))
 		{
-			GSList *children;
-			GSList *child;
+			GSList *exps;
+			GSList *exp;
 
 			cpg_embedded_context_save (context->priv->embedded);
 
 			cpg_embedded_context_add_expansion (context->priv->embedded,
-			                                    exp->data);
+			                                    child->data);
 
-			embedded_string_expand_multiple (children, child_name, context);
+			embedded_string_expand_multiple (exps, name, context);
 
-			for (child = children; child; child = g_slist_next (child))
+			for (exp = exps; exp; exp = g_slist_next (exp))
 			{
 				GSList *properties;
 				GSList *prop;
@@ -1341,7 +1341,7 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 				cpg_embedded_context_save (context->priv->embedded);
 
 				cpg_embedded_context_add_expansion (context->priv->embedded,
-				                                    child->data);
+				                                    exp->data);
 
 				embedded_string_expand_multiple (properties, property_name, context);
 
@@ -1385,8 +1385,8 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 				}
 			}
 
-			g_slist_foreach (children, (GFunc)g_object_unref, NULL);
-			g_slist_free (children);
+			g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
+			g_slist_free (exps);
 
 			cpg_embedded_context_restore (context->priv->embedded);
 
@@ -1398,8 +1398,8 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 
 		cpg_embedded_context_restore (context->priv->embedded);
 
-		g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
-		g_slist_free (exps);
+		g_slist_foreach (children, (GFunc)g_object_unref, NULL);
+		g_slist_free (children);
 
 		if (!ret)
 		{
