@@ -66,6 +66,7 @@ struct _CpgOperatorDelayedPrivate
 
 	CpgExpression *expression;
 	CpgExpression *initial_value;
+	CpgExpression *delay_expression;
 
 	gdouble delay;
 	gdouble value;
@@ -205,7 +206,8 @@ cpg_operator_delayed_initialize (CpgOperator  *op,
 
 	if (expressions->next)
 	{
-		delayed->priv->delay = cpg_expression_evaluate (expressions->next->data);
+		delayed->priv->delay_expression = g_object_ref (expressions->next->data);
+		delayed->priv->delay = cpg_expression_evaluate (delayed->priv->delay_expression);
 
 		if (expressions->next->next)
 		{
@@ -328,6 +330,12 @@ init_history (CpgOperatorDelayed *operator,
 {
 	HistoryItem *item;
 	gint i;
+
+	if (operator->priv->delay_expression)
+	{
+		cpg_expression_reset_cache (operator->priv->delay_expression);
+		operator->priv->delay = cpg_expression_evaluate (operator->priv->delay_expression);
+	}
 
 	/* History is empty */
 	item = pool_to_history (operator, (guint)(ceil (operator->priv->delay / fabs (timestep))));
@@ -475,6 +483,13 @@ cpg_operator_delayed_step_prepare (CpgOperator     *operator,
 
 	d = (CpgOperatorDelayed *)operator;
 
+	if (d->priv->history.first == NULL &&
+	    d->priv->delay_expression)
+	{
+		cpg_expression_reset_cache (d->priv->delay_expression);
+		d->priv->delay = cpg_expression_evaluate (d->priv->delay_expression);
+	}
+
 	if (d->priv->delay == 0)
 	{
 		d->priv->value = cpg_expression_evaluate (d->priv->expression);
@@ -541,6 +556,11 @@ cpg_operator_delayed_finalize (GObject *object)
 	history_free (&delayed->priv->history_pool);
 
 	g_object_unref (delayed->priv->expression);
+
+	if (delayed->priv->delay_expression)
+	{
+		g_object_unref (delayed->priv->delay_expression);
+	}
 
 	if (delayed->priv->initial_value)
 	{
