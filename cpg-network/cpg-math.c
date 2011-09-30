@@ -307,6 +307,32 @@ op_sqsum (CpgStack *stack,
 }
 
 static void
+op_sign (CpgStack *stack,
+         gint      numargs)
+{
+	double num = cpg_stack_pop (stack);
+
+	if (signbit (num))
+	{
+		cpg_stack_push (stack, -1);
+	}
+	else
+	{
+		cpg_stack_push (stack, 1);
+	}
+}
+
+static void
+op_csign (CpgStack *stack,
+          gint      numargs)
+{
+	double second = cpg_stack_pop (stack);
+	double first = cpg_stack_pop (stack);
+
+	cpg_stack_push (stack, copysign (first, second));
+}
+
+static void
 op_noop (CpgStack *stack,
          gint      numargs)
 {
@@ -349,7 +375,9 @@ static FunctionEntry function_entries[] = {
 	{"cosh", op_cosh, 1, TRUE, FALSE},
 	{"tanh", op_tanh, 1, TRUE, FALSE},
 	{"lerp", op_lerp, 3, TRUE, FALSE},
-	{"sqsum", op_sqsum, -1, TRUE, TRUE}
+	{"sqsum", op_sqsum, -1, TRUE, TRUE},
+	{"sign", op_sign, 1, TRUE, FALSE},
+	{"csign", op_csign, 2, TRUE, FALSE}
 };
 
 /**
