@@ -309,6 +309,12 @@ annotate_group (GSList *expansions,
 	return ret;
 }
 
+/**
+ * cpg_expansions_annotate_indices:
+ * @expansions: (element-type CpgExpansion): expansions
+ * @start: the start
+ *
+ **/
 void
 cpg_expansions_annotate_indices (GSList *expansions,
                                  gint    start)

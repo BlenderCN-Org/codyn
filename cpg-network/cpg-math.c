@@ -355,7 +355,7 @@ static FunctionEntry function_entries[] = {
 /**
  * cpg_math_function_lookup_by_id:
  * @type: A #CpgMathFunctionType
- * @arguments: return value for the number of arguments
+ * @arguments: (out): return value for the number of arguments
  *
  * Lookup the name of a function by its id.
  *
@@ -374,7 +374,7 @@ cpg_math_function_lookup_by_id (CpgMathFunctionType  type,
 /**
  * cpg_math_function_lookup:
  * @name: The function name
- * @arguments: The number of arguments
+ * @arguments: (out): The number of arguments
  *
  * Lookup a math function given the name @name and number of arguments.
  *
