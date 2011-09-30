@@ -89,6 +89,11 @@ history_remove_slice (HistoryList *history,
                       HistoryItem *end,
                       guint        num)
 {
+	if (num == 0)
+	{
+		return;
+	}
+
 	if (start->prev)
 	{
 		start->prev->next = end->next;
