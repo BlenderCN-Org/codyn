@@ -168,13 +168,28 @@ static void
 cpg_operator_delayed_reset (CpgOperator *op)
 {
 	CpgOperatorDelayed *delayed;
+	HistoryItem *first;
+	HistoryItem *last;
+	guint size;
 
 	CPG_OPERATOR_CLASS (cpg_operator_delayed_parent_class)->reset (op);
 
 	delayed = CPG_OPERATOR_DELAYED (op);
 
-	/* TODO */
-	/* move all history items to the pool */
+	first = delayed->priv->history.first;
+	last = delayed->priv->history.last;
+
+	size = delayed->priv->history.size;
+
+	history_remove_slice (&delayed->priv->history,
+	                      delayed->priv->history.first,
+	                      delayed->priv->history.last,
+	                      size);
+
+	history_append_slice (&delayed->priv->history_pool,
+	                      first,
+	                      last,
+	                      size);
 }
 
 static void
@@ -626,7 +641,6 @@ cpg_operator_delayed_class_init (CpgOperatorDelayedClass *klass)
 
 	object_class->get_property = cpg_operator_delayed_get_property;
 	object_class->set_property = cpg_operator_delayed_set_property;
-
 
 	op_class->get_name = cpg_operator_delayed_get_name;
 	op_class->execute = cpg_operator_delayed_execute;
