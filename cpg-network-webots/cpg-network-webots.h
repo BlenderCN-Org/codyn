@@ -23,24 +23,44 @@
 #ifndef __CPG_NETWORK_WEBOTS_H__
 #define __CPG_NETWORK_WEBOTS_H__
 
+#include <glib-object.h>
 #include <cpg-network/cpg-network.h>
-#include <glib.h>
 
 G_BEGIN_DECLS
 
-typedef struct _CpgNetworkWebots CpgNetworkWebots;
+#define CPG_TYPE_NETWORK_WEBOTS			(cpg_network_webots_get_type ())
+#define CPG_NETWORK_WEBOTS(obj)			(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK_WEBOTS, CpgNetworkWebots))
+#define CPG_NETWORK_WEBOTS_CONST(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CPG_TYPE_NETWORK_WEBOTS, CpgNetworkWebots const))
+#define CPG_NETWORK_WEBOTS_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST ((klass), CPG_TYPE_NETWORK_WEBOTS, CpgNetworkWebotsClass))
+#define CPG_IS_NETWORK_WEBOTS(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CPG_TYPE_NETWORK_WEBOTS))
+#define CPG_IS_NETWORK_WEBOTS_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CPG_TYPE_NETWORK_WEBOTS))
+#define CPG_NETWORK_WEBOTS_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CPG_TYPE_NETWORK_WEBOTS, CpgNetworkWebotsClass))
 
-CpgNetworkWebots *cpg_network_webots_new(CpgNetwork *network);
-void cpg_network_webots_free(CpgNetworkWebots *webots);
+typedef struct _CpgNetworkWebots	CpgNetworkWebots;
+typedef struct _CpgNetworkWebotsClass	CpgNetworkWebotsClass;
+typedef struct _CpgNetworkWebotsPrivate	CpgNetworkWebotsPrivate;
 
-void cpg_network_webots_initial(CpgNetworkWebots *webots, guint ms);
-void cpg_network_webots_scale_initial(CpgNetworkWebots *webots, gdouble fraction);
+struct _CpgNetworkWebots
+{
+	/*< private >*/
+	GObject parent;
 
-void cpg_network_webots_enable(CpgNetworkWebots *webots, guint ms);
-void cpg_network_webots_disable(CpgNetworkWebots *webots);
+	CpgNetworkWebotsPrivate *priv;
+};
 
-void cpg_network_webots_update(CpgNetworkWebots *webots);
-guint cpg_network_webots_size(CpgNetworkWebots *webots);
+struct _CpgNetworkWebotsClass
+{
+	/*< private >*/
+	GObjectClass parent_class;
+};
+
+GType cpg_network_webots_get_type (void) G_GNUC_CONST;
+
+CpgNetworkWebots *cpg_network_webots_new           (CpgNetwork       *network,
+                                                    guint             basic_time_step);
+
+void              cpg_network_webots_read_inputs (CpgNetworkWebots *webots);
+void              cpg_network_webots_write_outputs (CpgNetworkWebots *webots);
 
 G_END_DECLS
 
