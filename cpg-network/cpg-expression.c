@@ -741,6 +741,8 @@ parse_function (CpgExpression *expression,
 				/* Inline the expression here */
 				expr = cpg_function_argument_get_default_value (a);
 
+				/* TODO: actually, the context is really not
+				   correct here */
 				if (!cpg_expression_compile (expr,
 				                             context->context,
 				                             context->error))
