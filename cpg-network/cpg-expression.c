@@ -721,7 +721,7 @@ parse_function (CpgExpression *expression,
 		ar = cpg_function_get_arguments (function);
 
 		/* Set defaults for the rest of the optional arguments on the stack */
-		if (numargs < arguments - n_implicit + n_optional)
+		if (numargs < arguments - n_implicit)
 		{
 			start = g_list_nth ((GList *)ar, numargs);
 
@@ -740,6 +740,13 @@ parse_function (CpgExpression *expression,
 
 				/* Inline the expression here */
 				expr = cpg_function_argument_get_default_value (a);
+
+				if (!cpg_expression_compile (expr,
+				                             context->context,
+				                             context->error))
+				{
+					return FALSE;
+				}
 
 				for (inst = expr->priv->instructions; inst; inst = g_slist_next (inst))
 				{
@@ -1434,7 +1441,7 @@ validate_stack (CpgExpression *expression)
 		CpgInstruction *inst = item->data;
 		stack += cpg_instruction_get_stack_count (inst);
 
-		if (stack < 0)
+		if (stack <= 0)
 		{
 			break;
 		}
