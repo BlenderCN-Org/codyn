@@ -774,7 +774,6 @@ void
 cpg_property_reset (CpgProperty *property)
 {
 	/* Omit type check to increase speed */
-	cpg_expression_reset (property->priv->expression);
 	cpg_expression_set_once (property->priv->expression,
 	                         (property->priv->flags & CPG_PROPERTY_FLAG_ONCE) != 0);
 }

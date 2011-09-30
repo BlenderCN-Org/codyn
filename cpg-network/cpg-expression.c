@@ -1833,6 +1833,7 @@ cpg_expression_reset (CpgExpression *expression)
 	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
 	{
 		CpgInstructionCustomOperator *op = item->data;
+
 		cpg_operator_reset (cpg_instruction_custom_operator_get_operator (op));
 	}
 
