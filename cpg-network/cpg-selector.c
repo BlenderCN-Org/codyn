@@ -2793,6 +2793,7 @@ selector_select_all (CpgSelector        *selector,
 	}
 	else
 	{
+		cpg_embedded_context_save (context);
 		g_object_ref (context);
 	}
 
@@ -2806,6 +2807,7 @@ selector_select_all (CpgSelector        *selector,
 
 	if (!selector->priv->selectors)
 	{
+		cpg_embedded_context_restore (context);
 		g_object_unref (context);
 		return NULL;
 	}
@@ -2871,6 +2873,7 @@ selector_select_all (CpgSelector        *selector,
 
 	ctx = filter_selection (selector, ctx, type);
 
+	cpg_embedded_context_restore (context);
 	g_object_unref (context);
 
 	return ctx;
