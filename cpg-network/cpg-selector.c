@@ -1234,6 +1234,8 @@ count_selection (CpgEmbeddedContext *context,
 		item->data = sel;
 	}
 
+	cpg_embedded_context_add_expansion (context, ex);
+
 	g_object_unref (ex);
 
 	return g_slist_reverse (ret);
