@@ -56,7 +56,7 @@ add_define (gchar const  *option_name,
 }
 
 static GOptionEntry entries[] = {
-	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
+	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to input.tar.bz2)", "FILE"},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
 	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
