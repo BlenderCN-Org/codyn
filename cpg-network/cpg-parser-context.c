@@ -33,6 +33,7 @@
 #include "cpg-statement.h"
 #include "cpg-taggable.h"
 #include "cpg-parser-code.h"
+#include "cpg-marshal.h"
 
 #include <math.h>
 
@@ -161,6 +162,7 @@ enum
 	CONTEXT_PUSHED,
 	CONTEXT_POPPED,
 	SELECTOR_ITEM_PUSHED,
+	FILE_USED,
 	NUM_SIGNALS
 };
 
@@ -409,6 +411,19 @@ cpg_parser_context_class_init (CpgParserContextClass *klass)
 		              G_TYPE_NONE,
 		              1,
 		              CPG_TYPE_SELECTOR);
+
+	signals[FILE_USED] =
+		g_signal_new ("file-used",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              NULL,
+		              NULL,
+		              cpg_marshal_VOID__OBJECT_STRING,
+		              G_TYPE_NONE,
+		              2,
+		              G_TYPE_FILE,
+		              G_TYPE_STRING);
 }
 
 static void
@@ -3167,6 +3182,8 @@ cpg_parser_context_import (CpgParserContext  *context,
 				goto cleanup;
 			}
 
+			g_signal_emit (context, signals[FILE_USED], 0, file, expath);
+
 			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (import),
 			                                annotation);
 
@@ -3822,6 +3839,16 @@ cpg_parser_context_push_input_from_path (CpgParserContext  *context,
 		}
 
 		cpg_parser_context_push_input (context, file, NULL, attributes);
+
+		if (!context->priv->error)
+		{
+			g_signal_emit (context,
+			               signals[FILE_USED],
+			               0,
+			               file,
+			               res);
+		}
+
 		g_object_unref (file);
 	}
 
