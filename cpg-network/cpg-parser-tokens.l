@@ -182,7 +182,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "action"			return T_KEY_ACTION;
 "property"			return T_KEY_PROPERTY;
 "delete"			return T_KEY_DELETE;
-"or"				return T_KEY_OR;
 "debug-print"			return T_KEY_DEBUG_PRINT;
 "apply"				return T_KEY_APPLY;
 "unapply"			return T_KEY_UNAPPLY;
