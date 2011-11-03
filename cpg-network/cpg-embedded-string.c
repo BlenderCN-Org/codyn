@@ -1145,11 +1145,12 @@ expansion_shift (CpgExpansion *expansion, gint num, gboolean clear)
 	}
 }
 
-static Node *
+static GSList *
 find_filter (CpgEmbeddedString *s,
              gint position)
 {
 	GSList *item;
+	GSList *ret = NULL;
 
 	for (item = s->priv->filters; item; item = g_slist_next (item))
 	{
@@ -1157,11 +1158,11 @@ find_filter (CpgEmbeddedString *s,
 
 		if (node->position == position)
 		{
-			return node;
+			ret = g_slist_prepend (ret, node);
 		}
 	}
 
-	return NULL;
+	return g_slist_reverse (ret);
 }
 
 static gchar *
@@ -1257,12 +1258,13 @@ apply_filters (CpgEmbeddedString *s,
                gint position,
                GError **error)
 {
-	Node *filt;
+	GSList *filt;
 	gchar *val;
 	CpgExpansion *all;
 	GPtrArray *ptr;
 	gchar **ptrs;
 	GSList *part;
+	GSList *fitem;
 
 	filt = find_filter (s, position);
 
@@ -1291,22 +1293,27 @@ apply_filters (CpgEmbeddedString *s,
 
 	g_object_unref (all);
 
-	/* First filter here what we have until now */
-	if (filt->type == CPG_EMBEDDED_STRING_NODE_REDUCE)
+	for (fitem = filt; fitem; fitem = g_slist_next (fitem))
 	{
-		val = apply_reduce (s, ctx, items, filt, error);
+		Node *n = fitem->data;
 
-		g_slist_foreach (items, (GFunc)g_object_unref, NULL);
-		g_slist_free (items);
+		/* First filter here what we have until now */
+		if (n->type == CPG_EMBEDDED_STRING_NODE_REDUCE)
+		{
+			val = apply_reduce (s, ctx, items, n, error);
 
-		items = g_slist_prepend (NULL,
-		                         cpg_expansion_new_one (val));
+			g_slist_foreach (items, (GFunc)g_object_unref, NULL);
+			g_slist_free (items);
 
-		g_free (val);
-	}
-	else
-	{
-		items = apply_map (s, ctx, items, filt, error);
+			items = g_slist_prepend (NULL,
+				                 cpg_expansion_new_one (val));
+
+			g_free (val);
+		}
+		else
+		{
+			items = apply_map (s, ctx, items, n, error);
+		}
 	}
 
 	cpg_embedded_context_restore (ctx);

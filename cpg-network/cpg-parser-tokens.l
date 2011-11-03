@@ -323,14 +323,14 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_EQUATION_BEGIN;
 				}
 
-<inreduce>[},]			{
+<inreduce>[},|]			{
 					yy_pop_state (yyscanner);
 					yyless (0);
 
 					return T_STRING_REDUCE_END;
 				}
 
-<inmap>[},]			{
+<inmap>[},|]			{
 					yy_pop_state (yyscanner);
 					yyless (0);
 
@@ -342,8 +342,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
-<inreduce,inmap>(\\["@$\\}]|[^"@$\\}])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@}");
+<inreduce,inmap>(\\["@$\\}|]|[^"@$\\|}])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@$}|");
 					return T_STRING;
 				}
 
