@@ -79,16 +79,12 @@ add_defines (CpgParserContext *context)
 
 		if (parts && parts[0] && parts[1])
 		{
-			GSList *defines;
-
-			defines = g_slist_prepend (NULL,
-			                           cpg_embedded_string_new_from_string (parts[1]));
-
 			cpg_parser_context_define (context,
 			                           cpg_embedded_string_new_from_string (parts[0]),
-			                           defines,
+			                           cpg_embedded_string_new_from_string (parts[1]),
 			                           FALSE,
-			                           FALSE);
+			                           NULL,
+			                           NULL);
 		}
 
 		g_strfreev (parts);
