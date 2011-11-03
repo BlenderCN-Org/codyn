@@ -442,6 +442,7 @@ resolve_indirection (CpgEmbeddedString  *em,
 	gboolean iscount = FALSE;
 	gboolean isindex = FALSE;
 	gboolean retold = TRUE;
+	gboolean isexists = FALSE;
 
 	gint isadd = 0;
 	gint issub = 0;
@@ -456,9 +457,13 @@ resolve_indirection (CpgEmbeddedString  *em,
 		{
 			if (!*(ptr + 1))
 			{
-				if (isnum)
+				if (*ptr == '?')
 				{
-					isindex = (*ptr == '?');
+					isexists = TRUE;
+				}
+				else if (isnum)
+				{
+					isindex = (*ptr == '!');
 				}
 				else
 				{
@@ -498,7 +503,7 @@ resolve_indirection (CpgEmbeddedString  *em,
 		}
 	}
 
-	if (isnum || iscount || isindex)
+	if (isnum || iscount || isindex || isexists)
 	{
 		CpgExpansion *ex;
 		gchar const *ret = NULL;
@@ -513,6 +518,10 @@ resolve_indirection (CpgEmbeddedString  *em,
 				ret = "0";
 			}
 			else if (isindex)
+			{
+				ret = "0";
+			}
+			else if (isexists)
 			{
 				ret = "0";
 			}
@@ -533,6 +542,21 @@ resolve_indirection (CpgEmbeddedString  *em,
 				gint idx = (gint)g_ascii_strtoll (s, NULL, 10);
 
 				return g_strdup_printf ("%d", cpg_expansion_get_index (ex, idx));
+			}
+			else if (isexists)
+			{
+				gint idx = (gint)g_ascii_strtoll (s, NULL, 10);
+
+				ret = cpg_expansion_get (ex, idx);
+
+				if (ret && *ret)
+				{
+					ret = "1";
+				}
+				else
+				{
+					ret = "0";
+				}
 			}
 		}
 
@@ -567,7 +591,34 @@ resolve_indirection (CpgEmbeddedString  *em,
 		}
 		else
 		{
-			def = cpg_embedded_context_get_define (context, s);
+			gint size;
+
+			size = strlen (s);
+
+			if (size > 0 && s[size - 1] == '?')
+			{
+				gboolean exi;
+				gchar *realname;
+
+				realname = g_strndup (s, size - 1);
+
+				def = cpg_embedded_context_get_define (context, realname);
+				exi = def && *def;
+				g_free (def);
+
+				if (exi)
+				{
+					def = g_strdup ("1");
+				}
+				else
+				{
+					def = g_strdup ("0");
+				}
+			}
+			else
+			{
+				def = cpg_embedded_context_get_define (context, s);
+			}
 		}
 
 		return def;
