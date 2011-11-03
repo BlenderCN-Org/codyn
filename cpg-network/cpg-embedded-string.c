@@ -884,7 +884,7 @@ parse_expansion_range (gchar const *s,
 
 	if (rangereg == NULL)
 	{
-		rangereg = g_regex_new ("([0-9]+):([0-9]+)(:([0-9]+))?$",
+		rangereg = g_regex_new ("\\s*([0-9]+):([0-9]+)(:([0-9]+))?\\s*$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -892,7 +892,7 @@ parse_expansion_range (gchar const *s,
 
 	if (timesreg == NULL)
 	{
-		timesreg = g_regex_new ("([0-9]+)[*](.*)",
+		timesreg = g_regex_new ("\\s*([0-9]+)\\s*[*](.*)",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
