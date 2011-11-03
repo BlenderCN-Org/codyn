@@ -780,7 +780,7 @@ parse_expansion_range (gchar const *s,
 
 	if (rangereg == NULL)
 	{
-		rangereg = g_regex_new ("([0-9]+)-([0-9]+)$",
+		rangereg = g_regex_new ("([0-9]+):([0-9]+)(?:([0-9]+))?$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -800,27 +800,46 @@ parse_expansion_range (gchar const *s,
 	if (g_regex_match (rangereg, id, 0, &info))
 	{
 		gchar *start = g_match_info_fetch (info, 1);
-		gchar *end = g_match_info_fetch (info, 2);
+		gchar *step = g_match_info_fetch (info, 2);
+		gchar *end = g_match_info_fetch (info, 3);
+
+		if (!end || !*end)
+		{
+			g_free (end);
+
+			end = step;
+			step = NULL;
+		}
 
 		gint cstart = (gint)g_ascii_strtoll (start, NULL, 10);
 		gint cend = (gint)g_ascii_strtoll (end, NULL, 10);
+		gint cstep = 1;
 
-		while (cstart <= cend)
+		if (step)
 		{
-			gchar *it;
+			cstep = (gint)g_ascii_strtoll (step, NULL, 10);
+		}
 
-			it = g_strdup_printf ("%d", cstart);
+		if (cend - (cstart + cstep) < cend - cstart)
+		{
+			while (cstart <= cend)
+			{
+				gchar *it;
 
-			ret = g_slist_prepend (ret,
-			                       cpg_expansion_new_one (it));
+				it = g_strdup_printf ("%d", cstart);
 
-			g_free (it);
+				ret = g_slist_prepend (ret,
+				                       cpg_expansion_new_one (it));
 
-			++cstart;
+				g_free (it);
+
+				cstart += cstep;
+			}
 		}
 
 		g_free (start);
 		g_free (end);
+		g_free (step);
 
 		g_match_info_free (info);
 	}
