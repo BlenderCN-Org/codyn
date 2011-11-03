@@ -780,7 +780,7 @@ parse_expansion_range (gchar const *s,
 
 	if (rangereg == NULL)
 	{
-		rangereg = g_regex_new ("([0-9]+):([0-9]+)(?:([0-9]+))?$",
+		rangereg = g_regex_new ("([0-9]+):([0-9]+)(:([0-9]+))?$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -801,7 +801,7 @@ parse_expansion_range (gchar const *s,
 	{
 		gchar *start = g_match_info_fetch (info, 1);
 		gchar *step = g_match_info_fetch (info, 2);
-		gchar *end = g_match_info_fetch (info, 3);
+		gchar *end = g_match_info_fetch (info, 4);
 
 		if (!end || !*end)
 		{
