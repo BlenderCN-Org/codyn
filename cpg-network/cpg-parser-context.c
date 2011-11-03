@@ -2222,7 +2222,7 @@ link_pairs (CpgParserContext *context,
 	CpgAttribute *noself;
 	CpgAttribute *iff;
 	gdouble iffprob = 2.0; /* Something bigger than 1 */
-	long int p;
+	long int p = 1;
 
 	bidi = find_attribute (attributes, "bidirectional");
 	iff = find_attribute (attributes, "probability");
