@@ -59,7 +59,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 %x incl
 %x instring
-%x infilter
+%x inreduce
+%x inmap
 %x inregex
 %x annotation
 %x annotation_start
@@ -315,11 +316,18 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_EQUATION_BEGIN;
 				}
 
-<infilter>[},]			{
+<inreduce>[},]			{
 					yy_pop_state (yyscanner);
 					yyless (0);
 
-					return T_STRING_FILTER_END;
+					return T_STRING_REDUCE_END;
+				}
+
+<inmap>[},]			{
+					yy_pop_state (yyscanner);
+					yyless (0);
+
+					return T_STRING_MAP_END;
 				}
 
 <instring,incl>(\\["@$\\|{}]|[^"@$\\|{}])+ {
@@ -327,7 +335,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
-<infilter>(\\["@$\\}]|[^"@$\\}])+ {
+<inreduce,inmap>(\\["@$\\}]|[^"@$\\}])+ {
 					yylval->id = unquote_string (yytext, yyleng, "@}");
 					return T_STRING;
 				}
@@ -387,8 +395,21 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <instring,incl>"|"		{
 					if (cpg_embedded_string_brace_level (cpg_parser_context_peek_string (yyextra)))
 					{
-						yy_push_state (infilter, yyscanner);
-						return T_STRING_FILTER_BEGIN;
+						yy_push_state (inmap, yyscanner);
+						return T_STRING_MAP_BEGIN;
+					}
+					else
+					{
+						yylval->id = g_strdup (yytext);
+						return T_STRING;
+					}
+				}
+
+<instring,incl>"||"		{
+					if (cpg_embedded_string_brace_level (cpg_parser_context_peek_string (yyextra)))
+					{
+						yy_push_state (inreduce, yyscanner);
+						return T_STRING_REDUCE_BEGIN;
 					}
 					else
 					{

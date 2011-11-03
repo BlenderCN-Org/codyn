@@ -131,6 +131,8 @@ void                   cpg_parser_context_begin_selector_item  (CpgParserContext
 
 void                   cpg_parser_context_add_property         (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
+                                                                CpgEmbeddedString          *count_name,
+                                                                CpgEmbeddedString          *unexpanded_name,
                                                                 CpgEmbeddedString          *expression,
                                                                 CpgPropertyFlags            add_flags,
                                                                 CpgPropertyFlags            remove_flags,

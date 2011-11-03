@@ -86,6 +86,7 @@ node_new (CpgEmbeddedStringNodeType  type,
 
 	ret = g_slice_new0 (Node);
 
+	ret->position = -1;
 	ret->type = type;
 	ret->text = g_strdup (text ? text : "");
 	ret->depth = depth;
@@ -608,30 +609,36 @@ evaluate_node (CpgEmbeddedString   *em,
 
 	ret = g_string_new ("");
 
-	for (item = node->nodes; item; item = g_slist_next (item))
+	if (!(flags & EVALUATE_SELF) ||
+	    (node->type != CPG_EMBEDDED_STRING_NODE_REDUCE &&
+	    node->type != CPG_EMBEDDED_STRING_NODE_MAP))
 	{
-		gchar *s;
 
-		s = evaluate_node (em,
-		                   item->data,
-		                   context,
-		                   flags | EVALUATE_SELF,
-		                   error);
-
-		if (!s)
+		for (item = node->nodes; item; item = g_slist_next (item))
 		{
-			g_string_free (ret, TRUE);
-			return NULL;
-		}
+			gchar *s;
 
-		if (node->type == CPG_EMBEDDED_STRING_NODE_EQUATION && !*s)
-		{
+			s = evaluate_node (em,
+				           item->data,
+				           context,
+				           flags | EVALUATE_SELF,
+				           error);
+
+			if (!s)
+			{
+				g_string_free (ret, TRUE);
+				return NULL;
+			}
+
+			if (node->type == CPG_EMBEDDED_STRING_NODE_EQUATION && !*s)
+			{
+				g_free (s);
+				s = g_strdup ("0");
+			}
+
+			g_string_prepend (ret, s);
 			g_free (s);
-			s = g_strdup ("0");
 		}
-
-		g_string_prepend (ret, s);
-		g_free (s);
 	}
 
 	if (!(flags & EVALUATE_SELF))
@@ -669,7 +676,8 @@ evaluate_node (CpgEmbeddedString   *em,
 				g_free (s);
 			}
 		break;
-		case CPG_EMBEDDED_STRING_NODE_FILTER:
+		case CPG_EMBEDDED_STRING_NODE_REDUCE:
+		case CPG_EMBEDDED_STRING_NODE_MAP:
 			/* Filters do not appear in the output... */
 			r = g_strdup ("");
 		break;
@@ -681,7 +689,8 @@ evaluate_node (CpgEmbeddedString   *em,
 		increase_filters (em, strlen (r));
 	}
 
-	if (node->type == CPG_EMBEDDED_STRING_NODE_FILTER)
+	if (node->type == CPG_EMBEDDED_STRING_NODE_REDUCE ||
+	    node->type == CPG_EMBEDDED_STRING_NODE_MAP)
 	{
 		node->position = 0;
 
@@ -1061,7 +1070,7 @@ find_filter (CpgEmbeddedString *s,
 }
 
 static gchar *
-apply_filter (CpgEmbeddedString *s,
+apply_reduce (CpgEmbeddedString *s,
               CpgEmbeddedContext *ctx,
               GSList *parts,
               Node   *filter,
@@ -1105,7 +1114,45 @@ apply_filter (CpgEmbeddedString *s,
 		parts = g_slist_next (parts);
 	}
 
+	cpg_embedded_context_restore (ctx);
+
 	return ret;
+}
+
+static GSList *
+apply_map (CpgEmbeddedString *s,
+           CpgEmbeddedContext *ctx,
+           GSList *parts,
+           Node   *filter,
+           GError  **error)
+{
+	GSList *ret = NULL;
+	GSList *part = parts;
+
+	while (part)
+	{
+		gchar *item;
+
+		// Make a context
+		cpg_embedded_context_save (ctx);
+		cpg_embedded_context_add_expansion (ctx, part->data);
+
+		item = evaluate_node (s, filter, ctx, 0, error);
+
+		cpg_embedded_context_restore (ctx);
+
+		ret = g_slist_prepend (ret, cpg_expansion_new_one (item));
+		g_free (item);
+
+		g_object_unref (part->data);
+
+		part = g_slist_next (part);
+	}
+
+	g_slist_free (parts);
+	cpg_embedded_context_restore (ctx);
+
+	return g_slist_reverse (ret);
 }
 
 static GSList *
@@ -1117,6 +1164,10 @@ apply_filters (CpgEmbeddedString *s,
 {
 	Node *filt;
 	gchar *val;
+	CpgExpansion *all;
+	GPtrArray *ptr;
+	gchar **ptrs;
+	GSList *part;
 
 	filt = find_filter (s, position);
 
@@ -1125,16 +1176,45 @@ apply_filters (CpgEmbeddedString *s,
 		return items;
 	}
 
+	// Add one expansion of all the parts
+	all = cpg_expansion_new (NULL);
+	ptr = g_ptr_array_new ();
+
+	for (part = items; part; part = g_slist_next (part))
+	{
+		g_ptr_array_add (ptr, g_strdup (cpg_expansion_get (part->data, 0)));
+	}
+
+	g_ptr_array_add (ptr, NULL);
+	ptrs = (gchar **)g_ptr_array_free (ptr, FALSE);
+
+	all = cpg_expansion_new ((gchar const * const *)ptrs);
+	g_strfreev (ptrs);
+
+	cpg_embedded_context_save (ctx);
+	cpg_embedded_context_add_expansion (ctx, all);
+
+	g_object_unref (all);
+
 	/* First filter here what we have until now */
-	val = apply_filter (s, ctx, items, filt, error);
+	if (filt->type == CPG_EMBEDDED_STRING_NODE_REDUCE)
+	{
+		val = apply_reduce (s, ctx, items, filt, error);
 
-	g_slist_foreach (items, (GFunc)g_object_unref, NULL);
-	g_slist_free (items);
+		g_slist_foreach (items, (GFunc)g_object_unref, NULL);
+		g_slist_free (items);
 
-	items = g_slist_prepend (NULL,
-	                         cpg_expansion_new_one (val));
+		items = g_slist_prepend (NULL,
+		                         cpg_expansion_new_one (val));
 
-	g_free (val);
+		g_free (val);
+	}
+	else
+	{
+		items = apply_map (s, ctx, items, filt, error);
+	}
+
+	cpg_embedded_context_restore (ctx);
 
 	return items;
 }
@@ -1189,8 +1269,6 @@ parse_expansion (CpgEmbeddedString  *s,
 		{
 			if (*((*id)++) == '}')
 			{
-				ret = apply_filters (s, ctx, ret, *id - origid - 1, error);
-
 				break;
 			}
 		}
