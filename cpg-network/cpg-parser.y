@@ -169,7 +169,6 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <list> string_list_rev
 
 %type <list> state
-%type <list> define_values
 
 %type <list> link_connect
 %type <list> link_connect_fast
@@ -367,36 +366,49 @@ integrator
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
-define_values
-	: value_as_string				{ $$ = g_slist_prepend (NULL, $1); }
-	| define_values T_KEY_OR value_as_string	{ $$ = g_slist_prepend ($1, $3); }
-	;
-
 define_item
-	: '{' identifier_or_string '}' '=' define_values
-					{ cpg_parser_context_define (context,
-					                             $2,
-					                             g_slist_reverse ($5),
-					                             TRUE,
-					                             FALSE); }
-	| identifier_or_string '=' define_values
+	: identifier_or_string '=' value_as_string
 					{ cpg_parser_context_define (context,
 					                             $1,
-					                             g_slist_reverse ($3),
+					                             $3,
 					                             FALSE,
-					                             FALSE); }
-	| '{' identifier_or_string '}' '?' '=' define_values
-					{ cpg_parser_context_define (context,
-					                             $2,
-					                             g_slist_reverse ($6),
-					                             TRUE,
-					                             TRUE); }
-	| identifier_or_string '?' '=' define_values
+					                             NULL,
+					                             NULL); }
+	| identifier_or_string ',' identifier_or_string '=' value_as_string
 					{ cpg_parser_context_define (context,
 					                             $1,
-					                             g_slist_reverse ($4),
+					                             $5,
 					                             FALSE,
-					                             TRUE); }
+					                             $3,
+					                             NULL); }
+	| identifier_or_string ',' identifier_or_string ',' identifier_or_string '=' value_as_string
+					{ cpg_parser_context_define (context,
+					                             $1,
+					                             $7,
+					                             FALSE,
+					                             $3,
+					                             $5); }
+	| identifier_or_string '?' '=' value_as_string
+					{ cpg_parser_context_define (context,
+					                             $1,
+					                             $4,
+					                             TRUE,
+					                             NULL,
+					                             NULL); }
+	| identifier_or_string ',' identifier_or_string '?' '=' value_as_string
+					{ cpg_parser_context_define (context,
+					                             $1,
+					                             $6,
+					                             FALSE,
+					                             $3,
+					                             NULL); }
+	| identifier_or_string ',' identifier_or_string ',' identifier_or_string '?' '=' value_as_string
+					{ cpg_parser_context_define (context,
+					                             $1,
+					                             $8,
+					                             FALSE,
+					                             $3,
+					                             $5); }
 	| debug
 	| attributes_strict
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }

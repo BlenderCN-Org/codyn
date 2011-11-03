@@ -244,9 +244,10 @@ gpointer               cpg_parser_context_get_scanner          (CpgParserContext
 
 void                   cpg_parser_context_define               (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
-                                                                GSList                     *values,
-                                                                gboolean                    expand,
-                                                                gboolean                    optional);
+                                                                CpgEmbeddedString          *value,
+                                                                gboolean                    optional,
+                                                                CpgEmbeddedString          *count_name,
+                                                                CpgEmbeddedString          *unexpanded_name);
 
 void                   cpg_parser_context_remove               (CpgParserContext           *context,
                                                                 GSList                     *selectors);
