@@ -657,12 +657,13 @@ evaluate_node (CpgEmbeddedString   *em,
 	GString *ret;
 	GSList *item;
 	gchar *r = NULL;
+	GSList *children = NULL;
 
 	ret = g_string_new ("");
 
 	if (!(flags & EVALUATE_SELF) ||
 	    (node->type != CPG_EMBEDDED_STRING_NODE_REDUCE &&
-	    node->type != CPG_EMBEDDED_STRING_NODE_MAP))
+	     node->type != CPG_EMBEDDED_STRING_NODE_MAP))
 	{
 
 		for (item = node->nodes; item; item = g_slist_next (item))
@@ -670,10 +671,10 @@ evaluate_node (CpgEmbeddedString   *em,
 			gchar *s;
 
 			s = evaluate_node (em,
-				           item->data,
-				           context,
-				           flags | EVALUATE_SELF,
-				           error);
+			                   item->data,
+			                   context,
+			                   flags | EVALUATE_SELF,
+			                   error);
 
 			if (!s)
 			{
@@ -688,7 +689,15 @@ evaluate_node (CpgEmbeddedString   *em,
 			}
 
 			g_string_prepend (ret, s);
-			g_free (s);
+
+			if (flags & EVALUATE_SELF)
+			{
+				children = g_slist_prepend (children, s);
+			}
+			else
+			{
+				g_free (s);
+			}
 		}
 	}
 
@@ -701,6 +710,38 @@ evaluate_node (CpgEmbeddedString   *em,
 	{
 		case CPG_EMBEDDED_STRING_NODE_TEXT:
 			r = g_strconcat (node->text, ret->str, NULL);
+		break;
+		case CPG_EMBEDDED_STRING_NODE_CONDITION:
+			if (context)
+			{
+				gboolean istrue;
+
+				if (children)
+				{
+					r = cpg_embedded_context_calculate (context, children->data, error);
+				}
+
+				istrue = r && (gint)g_ascii_strtoll (r, NULL, 10) == 1;
+				g_free (r);
+
+				if (istrue && children->next)
+				{
+					r = g_strdup (children->next->data);
+				}
+				else if (children->next->next)
+				{
+					r = g_strdup (children->next->next->data);
+				}
+				else
+				{
+					r = g_strdup ("");
+				}
+			}
+			else
+			{
+				r = g_strdup_printf ("$$(%s)",
+				                     ret->str);
+			}
 		break;
 		case CPG_EMBEDDED_STRING_NODE_EQUATION:
 			if (context)
@@ -748,6 +789,9 @@ evaluate_node (CpgEmbeddedString   *em,
 		em->priv->filters = g_slist_prepend (em->priv->filters,
 		                                     node);
 	}
+
+	g_slist_foreach (children, (GFunc)g_free, NULL);
+	g_slist_free (children);
 
 	g_string_free (ret, TRUE);
 

@@ -66,6 +66,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %x annotation_start
 %x comment
 %x equation
+%x condition
 %x indirection
 %x indirection_embedding
 %x inclstart
@@ -309,7 +310,14 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 }
 
-<*>"$("	{
+<*>"$$("			{
+					cpg_parser_context_push_equation (yyextra);
+					yy_push_state (condition, yyscanner);
+
+					return T_CONDITION_BEGIN;
+				}
+
+<*>"$("				{
 					cpg_parser_context_push_equation (yyextra);
 					yy_push_state (equation, yyscanner);
 
@@ -350,6 +358,22 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
+<condition>(\\[)@$(\\,]|[^)@$(\\,])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@)$(,");
+					return T_STRING;
+				}
+
+<condition>,			{
+					if (cpg_parser_context_peek_equation_depth (yyextra) == 1)
+					{
+						return ',';
+					}
+					else
+					{
+						yylval->id = g_strdup (yytext);
+						return T_STRING;
+					}
+				}
 
 <inregex>(\\[/@$\\]|[^/@$\\])+	{
 					yylval->id = unquote_string (yytext, yyleng, "@/$\\");
@@ -377,6 +401,26 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					cpg_parser_context_push_equation_depth (yyextra);
 
 					return T_STRING;
+				}
+
+<condition>[([]			{
+					yylval->id = g_strdup (yytext);
+					cpg_parser_context_push_equation_depth (yyextra);
+
+					return T_STRING;
+				}
+
+<condition>[)\]]		{
+					if (cpg_parser_context_pop_equation_depth (yyextra))
+					{
+						yy_pop_state (yyscanner);
+						return T_CONDITION_END;
+					}
+					else
+					{
+						yylval->id = g_strdup (yytext);
+						return T_STRING;
+					}
 				}
 
 <equation>")"			{

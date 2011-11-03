@@ -4589,6 +4589,15 @@ cpg_parser_context_push_equation_depth (CpgParserContext *context)
 		GINT_TO_POINTER (GPOINTER_TO_INT (context->priv->equations->data) + 1);
 }
 
+gint
+cpg_parser_context_peek_equation_depth (CpgParserContext *context)
+{
+	g_return_val_if_fail (CPG_IS_PARSER_CONTEXT (context), 0);
+	g_return_val_if_fail (context->priv->equations, 0);
+
+	return GPOINTER_TO_INT (context->priv->equations->data);
+}
+
 gboolean
 cpg_parser_context_pop_equation_depth (CpgParserContext *context)
 {

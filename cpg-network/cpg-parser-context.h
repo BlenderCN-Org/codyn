@@ -317,6 +317,7 @@ CpgEmbeddedString     *cpg_parser_context_pop_string            (CpgParserContex
 
 gboolean               cpg_parser_context_pop_equation_depth    (CpgParserContext *context);
 void                   cpg_parser_context_push_equation_depth   (CpgParserContext *context);
+gint                   cpg_parser_context_peek_equation_depth   (CpgParserContext *context);
 void                   cpg_parser_context_push_equation         (CpgParserContext *context);
 
 void                   cpg_parser_context_delete_selector       (CpgParserContext *context,
