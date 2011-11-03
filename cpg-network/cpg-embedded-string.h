@@ -45,7 +45,8 @@ typedef enum
 {
 	CPG_EMBEDDED_STRING_NODE_TEXT,
 	CPG_EMBEDDED_STRING_NODE_EQUATION,
-	CPG_EMBEDDED_STRING_NODE_INDIRECTION
+	CPG_EMBEDDED_STRING_NODE_INDIRECTION,
+	CPG_EMBEDDED_STRING_NODE_FILTER
 } CpgEmbeddedStringNodeType;
 
 struct _CpgEmbeddedString
@@ -72,8 +73,12 @@ CpgEmbeddedString *cpg_embedded_string_push             (CpgEmbeddedString      
                                                          CpgEmbeddedStringNodeType  type,
                                                          gint                       depth);
 
-
 CpgEmbeddedString *cpg_embedded_string_pop              (CpgEmbeddedString         *s);
+
+CpgEmbeddedString *cpg_embedded_string_push_brace       (CpgEmbeddedString         *s);
+CpgEmbeddedString *cpg_embedded_string_pop_brace        (CpgEmbeddedString         *s);
+
+gint               cpg_embedded_string_brace_level      (CpgEmbeddedString         *s);
 
 CpgEmbeddedString *cpg_embedded_string_add_text         (CpgEmbeddedString         *s,
                                                          gchar const               *text);
