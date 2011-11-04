@@ -27,7 +27,9 @@ Depends: cpg-network2 (= ${binary:Version}),
          libxml2-dev,
          gtk-doc-tools,
          libncurses5-dev,
-         libreadline6-dev
+         libreadline6-dev,
+         libtar-dev,
+         libbz2-dev
 Suggests: libglib2.0-doc
 Description: Development files for CPG network library
  CPG network library
@@ -40,7 +42,9 @@ Depends: ${shlibs:Depends},
          libglib2.0-0,
          libxml2,
          libreadline6,
-         libncurses5
+         libncurses5,
+         libtar,
+         libbz2-1.0
 Description: CPG network library
  CPG network library
 
