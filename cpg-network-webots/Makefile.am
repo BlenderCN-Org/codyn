@@ -9,8 +9,7 @@ lib_LTLIBRARIES = libcpg-network-webots-2.0.la
 libcpg_network_webots_headers = \
 	cpg-network-webots.h
 
-NOINST_H_FILES = \
-	cpg-network-webots-private.h
+NOINST_H_FILES =
 
 libcpg_network_webots_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(WEBOTS_CFLAGS) $(CPG_NETWORK_CFLAGS)
 libcpg_network_webots_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) $(WEBOTS_LIBS) -L$(top_builddir)/cpg-network -lcpg-network-2.0
