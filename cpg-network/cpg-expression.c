@@ -82,20 +82,33 @@ typedef struct
 	GError **error;
 } ParserContext;
 
-G_DEFINE_TYPE (CpgExpression, cpg_expression, G_TYPE_INITIALLY_UNOWNED)
+static void cpg_modifiable_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CpgExpression,
+                         cpg_expression,
+                         G_TYPE_INITIALLY_UNOWNED,
+                         G_IMPLEMENT_INTERFACE (CPG_TYPE_MODIFIABLE,
+                                                cpg_modifiable_iface_init))
 
 enum
 {
 	PROP_0,
 	PROP_EXPRESSION,
 	PROP_VALUE,
-	PROP_HAS_CACHE
+	PROP_HAS_CACHE,
+	PROP_MODIFIED
 };
 
 static int parse_expression (CpgExpression *expression,
                              ParserContext *context,
                              gint           priority,
                              gint           left_assoc);
+
+static void
+cpg_modifiable_iface_init (gpointer iface)
+{
+	/* Use default implementation */
+}
 
 static void
 instructions_free (CpgExpression *expression)
@@ -117,7 +130,12 @@ instructions_free (CpgExpression *expression)
 	expression->priv->dependencies = NULL;
 
 	expression->priv->cached = FALSE;
-	expression->priv->modified = TRUE;
+
+	if (!expression->priv->modified)
+	{
+		expression->priv->modified = TRUE;
+		g_object_notify (G_OBJECT (expression), "modified");
+	}
 }
 
 static gchar *
@@ -240,6 +258,9 @@ cpg_expression_set_property (GObject      *object,
 		case PROP_HAS_CACHE:
 			set_has_cache (self, g_value_get_boolean (value));
 		break;
+		case PROP_MODIFIED:
+			self->priv->modified = self->priv->modified;
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -264,6 +285,9 @@ cpg_expression_get_property (GObject    *object,
 		break;
 		case PROP_HAS_CACHE:
 			g_value_set_boolean (value, cpg_expression_get_has_cache (self));
+		break;
+		case PROP_MODIFIED:
+			g_value_set_boolean (value, self->priv->modified);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -308,6 +332,10 @@ cpg_expression_class_init (CpgExpressionClass *klass)
 	                                                       "Has cache",
 	                                                       TRUE,
 	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_override_property (object_class,
+	                                  PROP_MODIFIED,
+	                                  "modified");
 }
 
 static void
@@ -721,7 +749,7 @@ parse_function (CpgExpression *expression,
 		ar = cpg_function_get_arguments (function);
 
 		/* Set defaults for the rest of the optional arguments on the stack */
-		if (numargs < arguments - n_implicit + n_optional)
+		if (numargs < arguments - n_implicit)
 		{
 			start = g_list_nth ((GList *)ar, numargs);
 
@@ -740,6 +768,15 @@ parse_function (CpgExpression *expression,
 
 				/* Inline the expression here */
 				expr = cpg_function_argument_get_default_value (a);
+
+				/* TODO: actually, the context is really not
+				   correct here */
+				if (!cpg_expression_compile (expr,
+				                             context->context,
+				                             context->error))
+				{
+					return FALSE;
+				}
 
 				for (inst = expr->priv->instructions; inst; inst = g_slist_next (inst))
 				{
@@ -1434,7 +1471,7 @@ validate_stack (CpgExpression *expression)
 		CpgInstruction *inst = item->data;
 		stack += cpg_instruction_get_stack_count (inst);
 
-		if (stack < 0)
+		if (stack <= 0)
 		{
 			break;
 		}
@@ -1587,8 +1624,13 @@ cpg_expression_compile (CpgExpression      *expression,
 		}
 	}
 
-	expression->priv->modified = FALSE;
 	expression->priv->cached = FALSE;
+
+	if (expression->priv->modified)
+	{
+		expression->priv->modified = FALSE;
+		g_object_notify (G_OBJECT (expression), "modified");
+	}
 
 	return TRUE;
 }
@@ -1635,7 +1677,12 @@ _cpg_expression_set_instructions_take (CpgExpression *expression,
 	cpg_stack_destroy (&(expression->priv->output));
 
 	expression->priv->cached = FALSE;
-	expression->priv->modified = FALSE;
+
+	if (expression->priv->modified)
+	{
+		expression->priv->modified = FALSE;
+		g_object_notify (G_OBJECT (expression), "modified");
+	}
 
 	g_slist_free (expression->priv->dependencies);
 	expression->priv->dependencies = NULL;
@@ -1833,10 +1880,15 @@ cpg_expression_reset (CpgExpression *expression)
 	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
 	{
 		CpgInstructionCustomOperator *op = item->data;
+
 		cpg_operator_reset (cpg_instruction_custom_operator_get_operator (op));
 	}
 
-	expression->priv->modified = TRUE;
+	if (!expression->priv->modified)
+	{
+		expression->priv->modified = TRUE;
+		g_object_notify (G_OBJECT (expression), "modified");
+	}
 }
 
 /**
@@ -1953,7 +2005,12 @@ cpg_expression_set_once (CpgExpression *expression,
 CpgExpression *
 cpg_expression_copy (CpgExpression *expression)
 {
-	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+	g_return_val_if_fail (expression == NULL || CPG_IS_EXPRESSION (expression), NULL);
+
+	if (expression == NULL)
+	{
+		return NULL;
+	}
 
 	return cpg_expression_new (expression->priv->expression);
 }

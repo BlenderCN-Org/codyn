@@ -1,4 +1,4 @@
-AC_INIT(cpg-network, 2.3)
+AC_INIT(cpg-network, 2.4)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([-Wno-portability])
@@ -112,7 +112,8 @@ AC_DEFINE_UNQUOTED([API_VERSION], ["$CPG_NETWORK_API_VERSION"], [API version])
 AC_CHECK_LIB([termcap],
              [tgetent],
               [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -ltermcap"
-               CPG_CONTEXT_LIBS="$CPG_CONTEXT_LIBS -ltermcap"],
+               CPG_CONTEXT_LIBS="$CPG_CONTEXT_LIBS -ltermcap"
+               CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -ltermcap"],
              [AC_MSG_ERROR(could not find termcap library)])
 
 AC_CHECK_LIB([readline],
@@ -120,8 +121,20 @@ AC_CHECK_LIB([readline],
              [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -lreadline"],
              [AC_MSG_ERROR(Could not find readline library)])
 
+AC_CHECK_LIB([tar],
+             [tar_open],
+              [CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -ltar"],
+             [AC_MSG_ERROR(could not find tar library)])
+
+AC_CHECK_LIB([bz2],
+             [BZ2_bzCompressInit],
+              [CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -lbz2"],
+             [AC_MSG_ERROR(could not find bz2 library)])
+
 AC_SUBST(CPG_PARSER_LIBS)
 AC_SUBST(CPG_CONTEXT_LIBS)
+AC_SUBST(CPG_ARCHIVE_LIBS)
+
 
 dnl ================================================================
 dnl Check for gedit
@@ -161,6 +174,7 @@ data/cpg.xml
 data/library/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
+data/library/webots/Makefile
 docs/Makefile
 docs/reference/Makefile
 docs/man/Makefile
@@ -173,6 +187,7 @@ tools/cpg-monitor/Makefile
 tools/cpg-parser/Makefile
 tools/cpg-render/Makefile
 tools/cpg-context/Makefile
+tools/cpg-archive/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cpgcontext/Makefile

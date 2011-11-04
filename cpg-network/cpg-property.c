@@ -33,6 +33,7 @@
 #include "cpg-annotatable.h"
 #include "cpg-selector.h"
 #include "cpg-taggable.h"
+#include "cpg-group.h"
 
 #define CPG_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_PROPERTY, CpgPropertyPrivate))
 
@@ -773,7 +774,6 @@ void
 cpg_property_reset (CpgProperty *property)
 {
 	/* Omit type check to increase speed */
-	cpg_expression_reset (property->priv->expression);
 	cpg_expression_set_once (property->priv->expression,
 	                         (property->priv->flags & CPG_PROPERTY_FLAG_ONCE) != 0);
 }
@@ -1068,9 +1068,68 @@ cpg_property_get_full_name (CpgProperty *property)
 	return ret;
 }
 
+static CpgObject *
+find_interfaced (CpgObject    *object,
+                 gchar const  *name,
+                 gchar       **iname)
+{
+	CpgObject *parent;
+	CpgPropertyInterface *iface;
+
+	parent = cpg_object_get_parent (object);
+
+	if (parent == NULL)
+	{
+		return NULL;
+	}
+
+	iface = cpg_group_get_property_interface (CPG_GROUP (parent));
+
+	gchar **names = cpg_property_interface_get_names (iface);
+	gchar **ptr;
+
+	gchar const *pid = cpg_object_get_id (object);
+
+	for (ptr = names; ptr && *ptr; ++ptr)
+	{
+		if (g_strcmp0 (cpg_property_interface_lookup_child_name (iface, *ptr),
+		               pid) != 0)
+		{
+			continue;
+		}
+
+		if (g_strcmp0 (cpg_property_interface_lookup_property_name (iface, *ptr),
+		               name) != 0)
+		{
+			continue;
+		}
+
+		CpgObject *ret;
+		ret = find_interfaced (parent, *ptr, iname);
+
+		if (!ret)
+		{
+			ret = parent;
+
+			if (iname)
+			{
+				*iname = g_strdup (*ptr);
+			}
+		}
+
+		g_strfreev (names);
+		return ret;
+	}
+
+	g_strfreev (names);
+	return NULL;
+}
+
 gchar *
 cpg_property_get_full_name_for_display (CpgProperty *property)
 {
+	CpgObject *group;
+
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
 
 	if (!property->priv->object)
@@ -1078,9 +1137,28 @@ cpg_property_get_full_name_for_display (CpgProperty *property)
 		return g_strdup (property->priv->name);
 	}
 
-	gchar *objid = cpg_object_get_full_id_for_display (property->priv->object);
-	gchar *ret = g_strconcat (objid, ".", property->priv->name, NULL);
+	/* Find out if there is somewhere an interface to us */
+	gchar *propid;
+
+	group = find_interfaced (property->priv->object,
+	                         property->priv->name,
+	                         &propid);
+
+	gchar *objid;
+
+	if (group != NULL)
+	{
+		objid = cpg_object_get_full_id_for_display (group);
+	}
+	else
+	{
+		objid = cpg_object_get_full_id_for_display (property->priv->object);
+		propid = g_strdup (property->priv->name);
+	}
+
+	gchar *ret = g_strconcat (objid, ".", propid, NULL);
 	g_free (objid);
+	g_free (propid);
 
 	return ret;
 }

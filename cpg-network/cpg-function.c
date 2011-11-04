@@ -160,6 +160,7 @@ cpg_function_compile_impl (CpgObject         *object,
 	CpgFunction *self = CPG_FUNCTION (object);
 	GError *gerror = NULL;
 	gboolean ret = TRUE;
+	GList *item;
 
 	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->compile)
 	{
@@ -171,13 +172,42 @@ cpg_function_compile_impl (CpgObject         *object,
 		}
 	}
 
-	if (!self->priv->expression)
-	{
-		return TRUE;
-	}
-
 	cpg_compile_context_save (context);
 	cpg_compile_context_prepend_object (context, object);
+
+	for (item = self->priv->arguments; item; item = g_list_next (item))
+	{
+		CpgExpression *expr;
+
+		expr = cpg_function_argument_get_default_value (item->data);
+
+		if (expr)
+		{
+			if (!cpg_expression_compile (expr, context, &gerror))
+			{
+				if (error)
+				{
+					cpg_compile_error_set (error,
+					                       gerror,
+					                       object,
+					                       NULL,
+					                       NULL,
+					                       cpg_expression_get_error_at (self->priv->expression));
+				}
+
+				ret = FALSE;
+				g_error_free (gerror);
+
+				break;
+			}
+		}
+	}
+
+	if (!self->priv->expression || !ret)
+	{
+		cpg_compile_context_restore (context);
+		return ret;
+	}
 
 	if (!cpg_expression_compile (self->priv->expression,
 	                             context,

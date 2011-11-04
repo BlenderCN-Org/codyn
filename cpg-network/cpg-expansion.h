@@ -54,6 +54,7 @@ struct _CpgExpansionClass
 GType         cpg_expansion_get_type         (void) G_GNUC_CONST;
 
 CpgExpansion *cpg_expansion_new              (gchar const * const    *items);
+
 CpgExpansion *cpg_expansion_new_one          (gchar const            *item);
 
 CpgExpansion *cpg_expansion_copy             (CpgExpansion           *id);
@@ -73,9 +74,17 @@ void          cpg_expansion_set_index        (CpgExpansion           *id,
 void          cpg_expansion_add              (CpgExpansion           *id,
                                               gchar const            *item);
 
+void          cpg_expansion_insert           (CpgExpansion           *id,
+                                              gint                    idx,
+                                              gchar const            *item);
+
 void          cpg_expansion_set              (CpgExpansion           *id,
                                               gint                    idx,
                                               gchar const            *val);
+
+void          cpg_expansion_append           (CpgExpansion           *id,
+                                              CpgExpansion           *other,
+                                              gint                    idx);
 
 gchar        *cpg_expansions_expand          (GSList                 *expansions,
                                               gchar const            *s,

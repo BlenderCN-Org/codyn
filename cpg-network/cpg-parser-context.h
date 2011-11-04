@@ -131,6 +131,8 @@ void                   cpg_parser_context_begin_selector_item  (CpgParserContext
 
 void                   cpg_parser_context_add_property         (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
+                                                                CpgEmbeddedString          *count_name,
+                                                                CpgEmbeddedString          *unexpanded_name,
                                                                 CpgEmbeddedString          *expression,
                                                                 CpgPropertyFlags            add_flags,
                                                                 CpgPropertyFlags            remove_flags,
@@ -244,9 +246,10 @@ gpointer               cpg_parser_context_get_scanner          (CpgParserContext
 
 void                   cpg_parser_context_define               (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
-                                                                GSList                     *values,
-                                                                gboolean                    expand,
-                                                                gboolean                    optional);
+                                                                CpgEmbeddedString          *value,
+                                                                gboolean                    optional,
+                                                                CpgEmbeddedString          *count_name,
+                                                                CpgEmbeddedString          *unexpanded_name);
 
 void                   cpg_parser_context_remove               (CpgParserContext           *context,
                                                                 GSList                     *selectors);
@@ -314,6 +317,7 @@ CpgEmbeddedString     *cpg_parser_context_pop_string            (CpgParserContex
 
 gboolean               cpg_parser_context_pop_equation_depth    (CpgParserContext *context);
 void                   cpg_parser_context_push_equation_depth   (CpgParserContext *context);
+gint                   cpg_parser_context_peek_equation_depth   (CpgParserContext *context);
 void                   cpg_parser_context_push_equation         (CpgParserContext *context);
 
 void                   cpg_parser_context_delete_selector       (CpgParserContext *context,

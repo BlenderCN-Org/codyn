@@ -103,6 +103,8 @@ typedef enum
  * @CPG_MATH_FUNCTION_TYPE_TANH: hyperbolic tangent
  * @CPG_MATH_FUNCTION_TYPE_LERP: linear interpolation
  * @CPG_MATH_FUNCTION_TYPE_SQSUM: squared sum
+ * @CPG_MATH_FUNCTION_TYPE_SIGN: sign
+ * @CPG_MATH_FUNCTION_TYPE_CSIGN: copy sign
  * @CPG_MATH_FUNCTION_TYPE_NUM: number of function types
  *
  * Function types.
@@ -138,6 +140,8 @@ typedef enum
 	CPG_MATH_FUNCTION_TYPE_TANH,
 	CPG_MATH_FUNCTION_TYPE_LERP,
 	CPG_MATH_FUNCTION_TYPE_SQSUM,
+	CPG_MATH_FUNCTION_TYPE_SIGN,
+	CPG_MATH_FUNCTION_TYPE_CSIGN,
 	CPG_MATH_FUNCTION_TYPE_NUM
 } CpgMathFunctionType;
 

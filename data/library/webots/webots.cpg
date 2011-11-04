@@ -1,0 +1,22 @@
+templates
+{
+    state "servo"
+    {
+        position = 0 | in
+        force = 0 | in
+    }
+
+    state "{touch,light}"
+    {
+        value = 0 | in
+    }
+
+    state "{gps,gyro,accelerometer,compass}"
+    {
+        x = 0 | in
+        y = 0 | in
+        z = 0 | in
+    }
+}
+
+# vi:ex:ts=4:et

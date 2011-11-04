@@ -295,15 +295,21 @@ cpg_function_polynomial_class_init (CpgFunctionPolynomialClass *klass)
 static void
 cpg_function_polynomial_init (CpgFunctionPolynomial *self)
 {
+	CpgFunctionArgument *arg;
+
 	self->priv = CPG_FUNCTION_POLYNOMIAL_GET_PRIVATE (self);
 
 	/* Add 't' argument */
 	cpg_function_add_argument (CPG_FUNCTION (self),
 	                           cpg_function_argument_new ("__t", NULL, TRUE));
 
+	arg = cpg_function_argument_new ("__order", NULL, TRUE);
+	cpg_function_argument_set_default_value (arg,
+	                                         cpg_expression_new ("0"));
+
 	/* Add optional 'order' argument */
 	cpg_function_add_argument (CPG_FUNCTION (self),
-	                           cpg_function_argument_new ("__order", NULL, TRUE));
+	                           arg);
 
 	self->priv->t = cpg_object_get_property (CPG_OBJECT (self), "__t");
 	self->priv->order = cpg_object_get_property (CPG_OBJECT (self), "__order");

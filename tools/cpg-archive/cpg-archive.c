@@ -1,5 +1,5 @@
 /*
- * cpg-parser.c
+ * cpg-archive.c
  * This file is part of cpg-network
  *
  * Copyright (C) 2011 - Jesse van den Kieboom
@@ -25,12 +25,11 @@
 #include <glib/gprintf.h>
 #include <string.h>
 #include <unistd.h>
-#include <gio/gunixoutputstream.h>
-#include <gio/gunixinputstream.h>
-#include <cpg-network/cpg-network-serializer.h>
-#include <termcap.h>
 #include <sys/time.h>
-#include "cpg-readline-stream.h"
+#include <termcap.h>
+#include <libtar.h>
+#include <bzlib.h>
+#include <fcntl.h>
 
 static gchar *output_file;
 static gboolean no_colors = FALSE;
@@ -57,7 +56,7 @@ add_define (gchar const  *option_name,
 }
 
 static GOptionEntry entries[] = {
-	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
+	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to input.tar.bz2)", "FILE"},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
 	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
@@ -120,6 +119,106 @@ remove_double_dash (gchar const **args, gint *argc)
 	}
 }
 
+typedef struct
+{
+	gchar *filename;
+	GFile *file;
+} InputFile;
+
+static InputFile *
+input_file_new (GFile *file, gchar const *filename)
+{
+	InputFile *ret;
+
+	ret = g_slice_new0 (InputFile);
+
+	ret->file = g_file_dup (file);
+	ret->filename = g_strdup (filename);
+
+	return ret;
+}
+
+static void
+input_file_free (InputFile *self)
+{
+	g_object_unref (self->file);
+	g_free (self->filename);
+
+	g_slice_free (InputFile, self);
+}
+
+typedef struct
+{
+	GSList *files;
+} InputInfo;
+
+static gint
+find_file (InputFile *f1, GFile *file)
+{
+	if (g_file_equal (f1->file, file))
+	{
+		return 0;
+	}
+	else
+	{
+		return 1;
+	}
+}
+
+static void
+on_context_file_used (CpgParserContext *context,
+                      GFile            *file,
+                      gchar const      *filename,
+                      InputInfo        *info)
+{
+	if (g_slist_find_custom (info->files, file, (GCompareFunc)find_file))
+	{
+		return;
+	}
+
+	info->files = g_slist_prepend (info->files,
+	                               input_file_new (file, filename));
+}
+
+static void
+clear_files (InputInfo *info)
+{
+	g_slist_foreach (info->files, (GFunc)input_file_free, NULL);
+	g_slist_free (info->files);
+}
+
+static FILE *archive_file;
+static BZFILE *archive_bzfile;
+
+static ssize_t
+do_bzwrite (int fd, void const *data, size_t len)
+{
+	gint err;
+	BZ2_bzWrite (&err, archive_bzfile, (void *)data, len);
+
+	if (err != BZ_OK)
+	{
+		return -1;
+	}
+
+	return (ssize_t)len;
+}
+
+static int
+do_bzclose (int fd)
+{
+	gint err;
+
+	BZ2_bzWriteClose (&err, archive_bzfile, 0, NULL, NULL);
+
+	if (err == BZ_OK)
+	{
+		return 0;
+	}
+
+	return -1;
+}
+
 static int
 parse_network (gchar const *args[], gint argc)
 {
@@ -130,29 +229,30 @@ parse_network (gchar const *args[], gint argc)
 	GError *error = NULL;
 	CpgExpansion *expansion;
 	CpgEmbeddedContext *embedded;
-	gboolean fromstdin;
 
 	remove_double_dash (args, &argc);
 
-	fromstdin = (argc > 0 && g_strcmp0 (args[0], "-") == 0);
+	file = g_file_new_for_commandline_arg (args[0]);
 
-	file = NULL;
-
-	if (!fromstdin)
+	if (!g_file_query_exists (file, NULL))
 	{
-		file = g_file_new_for_commandline_arg (args[0]);
+		g_printerr ("Could not open file: %s\n", args[0]);
+		g_object_unref (file);
 
-		if (!g_file_query_exists (file, NULL))
-		{
-			g_printerr ("Could not open file: %s\n", args[0]);
-			g_object_unref (file);
-
-			return 1;
-		}
+		return 1;
 	}
 
 	network = cpg_network_new ();
 	context = cpg_parser_context_new (network);
+
+	InputInfo info = {NULL};
+
+	info.files = g_slist_prepend (info.files, input_file_new (file, args[0]));
+
+	g_signal_connect (context,
+	                  "file-used",
+	                  G_CALLBACK (on_context_file_used),
+	                  &info);
 
 	/* We replace the filename here with the collapsed arguments */
 	args[0] = cpg_embedded_string_collapse (args + 1);
@@ -165,64 +265,87 @@ parse_network (gchar const *args[], gint argc)
 
 	add_defines (context);
 
-	if (!fromstdin)
-	{
-		cpg_parser_context_push_input (context, file, NULL, NULL);
-		g_object_unref (file);
-	}
-	else
-	{
-		GInputStream *stream;
-
-		if (isatty (STDIN_FILENO))
-		{
-			stream = cpg_readline_stream_new ("* ");
-		}
-		else
-		{
-			stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
-		}
-
-		cpg_parser_context_push_input (context, NULL, stream, NULL);
-		g_object_unref (stream);
-	}
+	cpg_parser_context_push_input (context, file, NULL, NULL);
 
 	if (cpg_parser_context_parse (context, TRUE, &error))
 	{
-		CpgNetworkSerializer *serializer;
+		info.files = g_slist_reverse (info.files);
 
-		serializer = cpg_network_serializer_new (network, NULL);
+		tartype_t tartype = {
+			NULL,
+			(closefunc_t)do_bzclose,
+			NULL,
+			(writefunc_t)do_bzwrite
+		};
 
-		if (output_file && strcmp (output_file, "-") != 0)
+		TAR *tar = NULL;
+
+		if (output_file)
 		{
-			GFile *outfile;
-
-			outfile = g_file_new_for_commandline_arg (output_file);
-
-			ret = cpg_network_serializer_serialize_file (serializer,
-			                                             outfile,
-			                                             &error);
-			g_object_unref (outfile);
+			if (strcmp (output_file, "-") != 0)
+			{
+				archive_file = fopen (output_file, "w");
+			}
+			else
+			{
+				archive_file = stdout;
+			}
 		}
 		else
 		{
-			GOutputStream *stream;
+			gchar *path;
+			gchar *cmb;
 
-			stream = g_unix_output_stream_new (STDOUT_FILENO, TRUE);
+			path = g_file_get_path (file);
+			cmb = g_strconcat (path, ".tar.bz2", NULL);
+			g_free (path);
 
-			ret = cpg_network_serializer_serialize (serializer,
-			                                        stream,
-			                                        &error);
-			g_object_unref (stream);
+			archive_file = fopen (cmb, "w");
+			g_free (cmb);
 		}
 
-		if (!ret)
+		tar_fdopen (&tar,
+		            fileno (archive_file),
+		            NULL,
+		            &tartype,
+		            O_WRONLY,
+		            0644,
+		            0);
+
+		if (!tar)
 		{
-			g_printerr ("Failed to write network: %s\n", error->message);
-			g_error_free (error);
+			ret = FALSE;
+			goto cleanup;
 		}
 
-		g_object_unref (serializer);
+		gint bzerr = 0;
+
+		archive_bzfile = BZ2_bzWriteOpen (&bzerr,
+		                                  archive_file,
+		                                  9,
+		                                  0,
+		                                  0);
+
+		if (!archive_bzfile)
+		{
+			ret = FALSE;
+			goto cleanup;
+		}
+
+		GSList *item;
+
+		for (item = info.files; item; item = g_slist_next (item))
+		{
+			InputFile *f = item->data;
+			gchar *path;
+
+			path = g_file_get_path (f->file);
+
+			tar_append_file (tar, path, f->filename);
+			g_free (path);
+		}
+
+		tar_close (tar);
 	}
 	else
 	{
@@ -254,6 +377,11 @@ parse_network (gchar const *args[], gint argc)
 
 		ret = FALSE;
 	}
+
+cleanup:
+	g_object_unref (file);
+
+	clear_files (&info);
 
 	g_object_unref (network);
 	g_object_unref (context);
@@ -310,10 +438,9 @@ main (int argc, char *argv[])
 
 	determine_color_support ();
 
-	ctx = g_option_context_new ("NETWORK [--] [PARAMETER...] - parse cpg network");
+	ctx = g_option_context_new ("NETWORK [--] [PARAMETER...] - create network archive");
 
 	g_option_context_set_summary (ctx,
-	                              "Use a dash '-' for the network name to read from standard input.\n"
 	                              "Parameters provided after the network name will will be assigned to @1, etc.\n"
 	                              "Use a double dash '--' to prevent option parsing in the parameter list.");
 

@@ -589,6 +589,15 @@ output_to_tikz (CpgNetwork  *network,
 	write_stream_nl ("\t\\cpgconnect{#1}{#2}{\\ThisBend}{#5}");
 	write_stream_nl ("}\n");
 
+	write_stream_nl ("\\newcommand{\\cpgconnectself}[4] {");
+	write_stream_nl ("\t\\path (#1) edge [loop above,in=60,out=120,min distance=#3cm,coupling,#4] (#2);");
+	write_stream_nl ("}\n");
+
+	write_stream_nl ("\\newcommand{\\cpgbendandconnectself}[4] {");
+	write_stream_nl ("\t\\pgfmathsetmacro{\\ThisLength}{(#3 + 1) * 0.5}");
+	write_stream_nl ("\t\\cpgconnectself{#1}{#2}{\\ThisLength}{#4}");
+	write_stream_nl ("}\n");
+
 	write_stream_nl ("\\newcommand{\\rendercpg}[1][30]{");
 	write_stream_nl ("\t\\def\\Bending{#1}");
 
@@ -650,11 +659,23 @@ output_to_tikz (CpgNetwork  *network,
 
 		styles = object_styles (CPG_OBJECT (info->link));
 
-		write_stream_printf ("\t\\cpgbendandconnect{%s}{%s}{%d}{\\Bending}{%s}\n",
-		                     cpg_object_get_id (cpg_link_get_from (info->link)),
-		                     cpg_object_get_id (cpg_link_get_to (info->link)),
-		                     info->offset,
-		                     styles);
+		if (cpg_link_get_from (info->link) ==
+		    cpg_link_get_to (info->link))
+		{
+			write_stream_printf ("\t\\cpgbendandconnectself{%s}{%s}{%d}{%s}\n",
+			                     cpg_object_get_id (cpg_link_get_from (info->link)),
+			                     cpg_object_get_id (cpg_link_get_to (info->link)),
+			                     info->offset,
+			                     styles);
+		}
+		else
+		{
+			write_stream_printf ("\t\\cpgbendandconnect{%s}{%s}{%d}{\\Bending}{%s}\n",
+			                     cpg_object_get_id (cpg_link_get_from (info->link)),
+			                     cpg_object_get_id (cpg_link_get_to (info->link)),
+			                     info->offset,
+			                     styles);
+		}
 
 		g_free (styles);
 	}

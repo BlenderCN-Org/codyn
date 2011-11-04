@@ -257,10 +257,20 @@ cpg_object_finalize (GObject *object)
 	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
 
+static void
+reset_expression (CpgExpression *expression)
+{
+	cpg_expression_reset (expression);
+}
+
 /* interface implementations */
 static void
 cpg_object_reset_impl (CpgObject *object)
 {
+	cpg_object_foreach_expression (object,
+	                               (CpgForeachExpressionFunc)reset_expression,
+	                               NULL);
+
 	g_slist_foreach (object->priv->properties, (GFunc)cpg_property_reset, NULL);
 
 	cpg_object_taint (object);

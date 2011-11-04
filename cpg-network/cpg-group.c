@@ -374,17 +374,9 @@ add_template_interface (CpgGroup     *group,
                         gchar const  *property_name,
                         GError      **error)
 {
-	CpgProperty *property = NULL;
 	CpgPropertyInterface *iface;
-	CpgObject *child;
 
 	iface = cpg_group_get_property_interface (group);
-	child = cpg_group_get_child (group, child_name);
-
-	if (child)
-	{
-		property = cpg_object_get_property (child, property_name);
-	}
 
 	if (cpg_property_interface_implements (iface, name))
 	{

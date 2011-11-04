@@ -56,6 +56,7 @@ enum
 enum
 {
 	STEP,
+	STEP_PREPARE,
 	BEGIN,
 	END,
 	NUM_SIGNALS
@@ -427,6 +428,8 @@ cpg_integrator_step_prepare_impl (CpgIntegrator *integrator,
 		op = g_slist_next (op);
 	}
 
+	g_signal_emit (integrator, integrator_signals[STEP_PREPARE], 0, t, timestep);
+
 	return TRUE;
 }
 
@@ -488,6 +491,18 @@ cpg_integrator_class_init (CpgIntegratorClass *klass)
 	 **/
 	integrator_signals[STEP] =
 			g_signal_new ("step",
+			              G_OBJECT_CLASS_TYPE (object_class),
+			              G_SIGNAL_RUN_LAST,
+			              0,
+			              NULL, NULL,
+			              cpg_marshal_VOID__DOUBLE_DOUBLE,
+			              G_TYPE_NONE,
+			              2,
+			              G_TYPE_DOUBLE,
+			              G_TYPE_DOUBLE);
+
+	integrator_signals[STEP_PREPARE] =
+			g_signal_new ("step-prepare",
 			              G_OBJECT_CLASS_TYPE (object_class),
 			              G_SIGNAL_RUN_LAST,
 			              0,

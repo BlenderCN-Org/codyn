@@ -59,11 +59,14 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 %x incl
 %x instring
+%x inreduce
+%x inmap
 %x inregex
 %x annotation
 %x annotation_start
 %x comment
 %x equation
+%x condition
 %x indirection
 %x indirection_embedding
 %x inclstart
@@ -179,7 +182,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "action"			return T_KEY_ACTION;
 "property"			return T_KEY_PROPERTY;
 "delete"			return T_KEY_DELETE;
-"or"				return T_KEY_OR;
 "debug-print"			return T_KEY_DEBUG_PRINT;
 "apply"				return T_KEY_APPLY;
 "unapply"			return T_KEY_UNAPPLY;
@@ -307,15 +309,41 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 }
 
-<*>"$("	{
+<*>"$$("			{
+					cpg_parser_context_push_equation (yyextra);
+					yy_push_state (condition, yyscanner);
+
+					return T_CONDITION_BEGIN;
+				}
+
+<*>"$("				{
 					cpg_parser_context_push_equation (yyextra);
 					yy_push_state (equation, yyscanner);
 
 					return T_EQUATION_BEGIN;
 				}
 
-<instring,incl>(\\["@$\\]|[^"@$\\])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@\"$");
+<inreduce>[},|]			{
+					yy_pop_state (yyscanner);
+					yyless (0);
+
+					return T_STRING_REDUCE_END;
+				}
+
+<inmap>[},|]			{
+					yy_pop_state (yyscanner);
+					yyless (0);
+
+					return T_STRING_MAP_END;
+				}
+
+<instring,incl>(\\["@$\\|{}]|[^"@$\\|{}])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@\"$|{}");
+					return T_STRING;
+				}
+
+<inreduce,inmap>(\\["@$\\}|]|[^"@$\\|}])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@$}|");
 					return T_STRING;
 				}
 
@@ -329,6 +357,22 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
+<condition>(\\[)@$(\\,]|[^)@$(\\,])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@)$(,");
+					return T_STRING;
+				}
+
+<condition>,			{
+					if (cpg_parser_context_peek_equation_depth (yyextra) == 1)
+					{
+						return ',';
+					}
+					else
+					{
+						yylval->id = g_strdup (yytext);
+						return T_STRING;
+					}
+				}
 
 <inregex>(\\[/@$\\]|[^/@$\\])+	{
 					yylval->id = unquote_string (yytext, yyleng, "@/$\\");
@@ -358,6 +402,26 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
+<condition>[([]			{
+					yylval->id = g_strdup (yytext);
+					cpg_parser_context_push_equation_depth (yyextra);
+
+					return T_STRING;
+				}
+
+<condition>[)\]]		{
+					if (cpg_parser_context_pop_equation_depth (yyextra))
+					{
+						yy_pop_state (yyscanner);
+						return T_CONDITION_END;
+					}
+					else
+					{
+						yylval->id = g_strdup (yytext);
+						return T_STRING;
+					}
+				}
+
 <equation>")"			{
 					if (cpg_parser_context_pop_equation_depth (yyextra))
 					{
@@ -371,8 +435,34 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					}
 				}
 
-"{"				return '{';
-"}"				return '}';
+<instring,incl>"|"		{
+					if (cpg_embedded_string_brace_level (cpg_parser_context_peek_string (yyextra)))
+					{
+						yy_push_state (inmap, yyscanner);
+						return T_STRING_MAP_BEGIN;
+					}
+					else
+					{
+						yylval->id = g_strdup (yytext);
+						return T_STRING;
+					}
+				}
+
+<instring,incl>"||"		{
+					if (cpg_embedded_string_brace_level (cpg_parser_context_peek_string (yyextra)))
+					{
+						yy_push_state (inreduce, yyscanner);
+						return T_STRING_REDUCE_BEGIN;
+					}
+					else
+					{
+						yylval->id = g_strdup (yytext);
+						return T_STRING;
+					}
+				}
+
+<*>"{"				return '{';
+<*>"}"				return '}';
 <onlyselector,INITIAL>"("	return '(';
 <onlyselector,INITIAL>")"	return ')';
 ":"				return ':';
