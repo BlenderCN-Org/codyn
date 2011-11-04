@@ -2005,7 +2005,12 @@ cpg_expression_set_once (CpgExpression *expression,
 CpgExpression *
 cpg_expression_copy (CpgExpression *expression)
 {
-	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+	g_return_val_if_fail (expression == NULL || CPG_IS_EXPRESSION (expression), NULL);
+
+	if (expression == NULL)
+	{
+		return NULL;
+	}
 
 	return cpg_expression_new (expression->priv->expression);
 }
