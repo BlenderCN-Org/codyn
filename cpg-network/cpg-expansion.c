@@ -265,6 +265,35 @@ cpg_expansion_add (CpgExpansion *id,
 	                 expansion_new (item));
 }
 
+void
+cpg_expansion_insert (CpgExpansion *id,
+                      gint          idx,
+                      gchar const  *item)
+{
+	gint n;
+	gint i;
+
+	g_return_if_fail (CPG_IS_EXPANSION (id));
+
+	g_ptr_array_add (id->priv->expansions,
+	                 expansion_new (NULL));
+
+	n = cpg_expansion_num (id);
+
+	for (i = n - 1; i > idx; --i)
+	{
+		Expansion *e1 = get_ex (id, i);
+		Expansion *e2 = get_ex (id, i - 1);
+
+		g_free (e1->text);
+
+		e1->text = g_strdup (e2->text);
+		e1->idx = e2->idx;
+	}
+
+	cpg_expansion_set (id, idx, item);
+}
+
 static gboolean
 annotate_group (GSList *expansions,
                 gint    i)
@@ -329,5 +358,26 @@ cpg_expansions_annotate_indices (GSList *expansions,
 		}
 
 		++i;
+	}
+}
+
+void
+cpg_expansion_append (CpgExpansion *id,
+                      CpgExpansion *other,
+                      gint          idx)
+{
+	gint i;
+
+	g_return_if_fail (CPG_IS_EXPANSION (id));
+	g_return_if_fail (CPG_IS_EXPANSION (other));
+
+	for (i = idx; i < cpg_expansion_num (other); ++i)
+	{
+		cpg_expansion_add (id,
+		                   cpg_expansion_get (other, i));
+
+		cpg_expansion_set_index (id,
+		                         cpg_expansion_num (id) - 1,
+		                         cpg_expansion_get_index (other, i));
 	}
 }

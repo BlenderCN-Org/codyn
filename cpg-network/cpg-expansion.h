@@ -74,9 +74,17 @@ void          cpg_expansion_set_index        (CpgExpansion           *id,
 void          cpg_expansion_add              (CpgExpansion           *id,
                                               gchar const            *item);
 
+void          cpg_expansion_insert           (CpgExpansion           *id,
+                                              gint                    idx,
+                                              gchar const            *item);
+
 void          cpg_expansion_set              (CpgExpansion           *id,
                                               gint                    idx,
                                               gchar const            *val);
+
+void          cpg_expansion_append           (CpgExpansion           *id,
+                                              CpgExpansion           *other,
+                                              gint                    idx);
 
 gchar        *cpg_expansions_expand          (GSList                 *expansions,
                                               gchar const            *s,
