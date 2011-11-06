@@ -600,7 +600,16 @@ cpg_object_foreach_expression_impl (CpgObject                *object,
 
 	for (item = object->priv->properties; item; item = g_slist_next (item))
 	{
+		CpgExpression *cons;
+
 		func (cpg_property_get_expression (item->data), userdata);
+
+		cons = cpg_property_get_constraint (item->data);
+
+		if (cons)
+		{
+			func (cons, userdata);
+		}
 	}
 }
 
@@ -931,6 +940,7 @@ cpg_object_compile_impl (CpgObject         *object,
 		CpgProperty *property = (CpgProperty *)properties->data;
 		CpgExpression *expr = cpg_property_get_expression (property);
 		GError *gerror = NULL;
+		CpgExpression *cons;
 
 		if (!cpg_expression_compile (expr,
 		                             context,
@@ -941,7 +951,6 @@ cpg_object_compile_impl (CpgObject         *object,
 			           cpg_property_get_name (property),
 			           cpg_expression_get_as_string (expr),
 			           gerror->message);
-
 
 			if (error)
 			{
@@ -957,6 +966,33 @@ cpg_object_compile_impl (CpgObject         *object,
 
 			ret = FALSE;
 			break;
+		}
+
+		cons = cpg_property_get_constraint (property);
+
+		if (cons && !cpg_expression_compile (cons, context, &gerror))
+		{
+			g_warning ("Error while parsing constraint expression [%s].%s<%s>: %s",
+			           cpg_object_get_id (object),
+			           cpg_property_get_name (property),
+			           cpg_expression_get_as_string (cons),
+			           gerror->message);
+
+			if (error)
+			{
+				cpg_compile_error_set (error,
+				                       gerror,
+				                       object,
+				                       property,
+				                       NULL,
+				                       cpg_expression_get_error_at (cons));
+			}
+
+			g_error_free (gerror);
+
+			ret = FALSE;
+			break;
+
 		}
 
 		if (expression_depends_on (expr, property))

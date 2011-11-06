@@ -153,6 +153,8 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <string> double
 %type <string> integer
 
+%type <string> constraint
+
 %type <list> attributes
 %type <list> attributes_strict
 %type <list> attributes_contents
@@ -970,12 +972,18 @@ multi_assign_identifier
 	| identifier_or_string		{ $$.name = $1; $$.count = NULL; $$.unexpanded = NULL; }
 	;
 
+constraint
+	:				{ $$ = NULL; }
+	| '<' value_as_string '>'	{ $$ = $2; }
+	;
+
 property
 	: attributes
 	  multi_assign_identifier
 	  assign_optional
 	  value_as_string
 	  property_flags
+	  constraint
 					{ cpg_parser_context_add_property (context,
 					                                   $2.name,
 					                                   $2.count,
@@ -984,7 +992,8 @@ property
 					                                   $5.add,
 					                                   $5.remove,
 					                                   $1,
-					                                   $3); errb }
+					                                   $3,
+					                                   $6); errb }
 	| attributes
 	  multi_assign_identifier
 	  property_flags_strict
@@ -996,7 +1005,8 @@ property
 					                                   $3.add,
 					                                   $3.remove,
 					                                   $1,
-					                                   FALSE); errb }
+					                                   FALSE,
+					                                   NULL); errb }
 	;
 
 property_flag_sign

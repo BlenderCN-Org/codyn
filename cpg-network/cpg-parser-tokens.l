@@ -468,6 +468,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 ":"				return ':';
 "="				return '=';
 "<"				return '<';
+">"				return '>';
 <onlyselector,INITIAL>","	return ',';
 <onlyselector,INITIAL>"."	return '.';
 <onlyselector,INITIAL>"|"	return '|';

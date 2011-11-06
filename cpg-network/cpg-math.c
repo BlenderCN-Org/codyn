@@ -333,6 +333,39 @@ op_csign (CpgStack *stack,
 }
 
 static void
+op_clip (CpgStack *stack,
+         gint      numargs)
+{
+	double max = cpg_stack_pop (stack);
+	double min = cpg_stack_pop (stack);
+	double val = cpg_stack_pop (stack);
+
+	cpg_stack_push (stack, val < min ? min : (val > max ? max : val));
+}
+
+static void
+op_cycle (CpgStack *stack,
+          gint      numargs)
+{
+	double max = cpg_stack_pop (stack);
+	double min = cpg_stack_pop (stack);
+	double val = cpg_stack_pop (stack);
+
+	if (val > max)
+	{
+		cpg_stack_push (stack, min + fmod (val - min, max - min));
+	}
+	else if (val < min)
+	{
+		cpg_stack_push (stack, max - fmod (min - val, max - min));
+	}
+	else
+	{
+		cpg_stack_push (stack, val);
+	}
+}
+
+static void
 op_noop (CpgStack *stack,
          gint      numargs)
 {
@@ -377,7 +410,9 @@ static FunctionEntry function_entries[] = {
 	{"lerp", op_lerp, 3, TRUE, FALSE},
 	{"sqsum", op_sqsum, -1, TRUE, TRUE},
 	{"sign", op_sign, 1, TRUE, FALSE},
-	{"csign", op_csign, 2, TRUE, FALSE}
+	{"csign", op_csign, 2, TRUE, FALSE},
+	{"clip", op_clip, 3, TRUE, FALSE},
+	{"cycle", op_cycle, 3, TRUE, FALSE}
 };
 
 /**

@@ -56,6 +56,8 @@ struct _CpgExpressionClass
 	GInitiallyUnownedClass parent_class;
 };
 
+typedef CPG_FORWARD_DECL (CpgProperty) CpgPropertyForward;
+
 GType          cpg_expression_get_type         (void) G_GNUC_CONST;
 
 CpgExpression *cpg_expression_new              (const gchar        *expression);
@@ -102,6 +104,11 @@ void           cpg_expression_set_once         (CpgExpression      *expression,
                                                 gboolean            instant);
 
 gint           cpg_expression_get_error_at     (CpgExpression      *expression);
+
+void           cpg_expression_set_this          (CpgExpression      *expression,
+                                                 CpgPropertyForward *property);
+
+CpgPropertyForward *cpg_expression_get_this        (CpgExpression      *expression);
 
 G_END_DECLS
 

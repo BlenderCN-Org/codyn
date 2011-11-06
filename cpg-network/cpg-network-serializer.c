@@ -349,6 +349,7 @@ properties_to_xml (CpgNetworkSerializer *serializer,
 	for (item = properties; item; item = g_slist_next (item))
 	{
 		CpgProperty *property = item->data;
+		CpgExpression *cons;
 
 		if (cpg_property_get_object (property) != object)
 		{
@@ -383,6 +384,15 @@ properties_to_xml (CpgNetworkSerializer *serializer,
 			                                 (xmlChar *)expr);
 
 			xmlAddChild (node, text);
+		}
+
+		cons = cpg_property_get_constraint (property);
+
+		if (cons)
+		{
+			xmlNewProp (node,
+			            (xmlChar *)"constraint",
+			            (xmlChar *)cpg_expression_get_as_string (cons));
 		}
 
 		xmlAddChild (parent, node);

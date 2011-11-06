@@ -29,6 +29,7 @@
 #include "cpg-function.h"
 #include "cpg-stack-private.h"
 #include "cpg-operators.h"
+#include "cpg-property.h"
 
 #include <cpg-network/instructions/cpg-instructions.h>
 
@@ -63,6 +64,7 @@ struct _CpgExpressionPrivate
 	CpgStack output;
 
 	GSList *dependencies;
+	CpgProperty *tis;
 
 	gdouble cached_output;
 	gint error_at;
@@ -215,6 +217,8 @@ cpg_expression_finalize (GObject *object)
 
 	cpg_stack_destroy (&(expression->priv->output));
 	g_free (expression->priv->expression);
+
+	cpg_expression_set_this (expression, NULL);
 
 	G_OBJECT_CLASS (cpg_expression_parent_class)->finalize (object);
 }
@@ -635,6 +639,24 @@ parse_dot_property (CpgExpression *expression,
 	return ret;
 }
 
+static CpgProperty *
+lookup_property (CpgExpression *expression,
+                 ParserContext *context,
+                 gchar const   *propname)
+{
+	CpgProperty *ret;
+
+	ret = cpg_compile_context_lookup_property (context->context,
+	                                           propname);
+
+	if (!ret && g_strcmp0 (propname, "this") == 0)
+	{
+		ret = cpg_expression_get_this (expression);
+	}
+
+	return ret;
+}
+
 static gboolean
 parse_function (CpgExpression *expression,
                 gchar const   *name,
@@ -820,8 +842,7 @@ parse_function (CpgExpression *expression,
 				g_free (id);
 			}
 
-			prop = cpg_compile_context_lookup_property (context->context,
-			                                            aname);
+			prop = lookup_property (expression, context, aname);
 
 			if (!prop)
 			{
@@ -1219,8 +1240,9 @@ parse_property (CpgExpression *expression,
                 gchar         *propname,
                 ParserContext *context)
 {
-	CpgProperty *property = cpg_compile_context_lookup_property (context->context,
-	                                                             propname);
+	CpgProperty *property;
+
+	property = lookup_property (expression, context, propname);
 
 	if (!property)
 	{
@@ -2058,3 +2080,29 @@ cpg_expression_set_has_cache (CpgExpression *expression,
 	set_has_cache (expression, cache);
 }
 
+void
+cpg_expression_set_this (CpgExpression *expression,
+                         CpgProperty   *property)
+{
+	g_return_if_fail (CPG_IS_EXPRESSION (expression));
+	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));
+
+	if (expression->priv->tis)
+	{
+		g_object_remove_weak_pointer (G_OBJECT (expression->priv->tis),
+		                              (gpointer *)&(expression->priv->tis));
+	}
+
+	expression->priv->tis = property;
+
+	g_object_add_weak_pointer (G_OBJECT (property),
+	                           (gpointer *)&(expression->priv->tis));
+}
+
+CpgProperty *
+cpg_expression_get_this (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+
+	return expression->priv->tis;
+}

@@ -1136,7 +1136,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgPropertyFlags   add_flags,
                                  CpgPropertyFlags   remove_flags,
                                  GSList            *attributes,
-                                 gboolean           assign_optional)
+                                 gboolean           assign_optional,
+                                 CpgEmbeddedString *constraint)
 {
 	Context *ctx;
 	GSList *item;
@@ -1246,7 +1247,17 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);
 
 			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (property),
-				                        annotation);
+			                                annotation);
+
+			if (constraint)
+			{
+				gchar const *cons;
+
+				embedded_string_expand (cons, constraint, context);
+
+				cpg_property_set_constraint (property,
+				                             cpg_expression_new (cons));
+			}
 
 			set_taggable (context, property, attributes);
 		}
@@ -1277,6 +1288,11 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 	if (unexpanded_name)
 	{
 		g_object_unref (unexpanded_name);
+	}
+
+	if (constraint)
+	{
+		g_object_unref (constraint);
 	}
 }
 
