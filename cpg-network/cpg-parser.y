@@ -826,7 +826,7 @@ function_argument_impl
 
 function_argument_list_impl_rev
 	: function_argument_impl	{ $$ = g_slist_prepend (NULL, $1); }
-	| function_argument_list_impl ',' function_argument_impl
+	| function_argument_list_impl_rev ',' function_argument_impl
 					{ $$ = g_slist_prepend ($1, $3); }
 	;
 
@@ -837,7 +837,7 @@ function_argument_list_impl
 
 function_argument_list_rev
 	: function_argument		{ $$ = g_slist_prepend (NULL, $1); }
-	| function_argument_list ',' function_argument
+	| function_argument_list_rev ',' function_argument
 					{ $$ = g_slist_prepend ($1, $3); }
 	;
 
