@@ -64,7 +64,6 @@ struct _CpgExpressionPrivate
 	CpgStack output;
 
 	GSList *dependencies;
-	CpgProperty *tis;
 
 	gdouble cached_output;
 	gint error_at;
@@ -217,8 +216,6 @@ cpg_expression_finalize (GObject *object)
 
 	cpg_stack_destroy (&(expression->priv->output));
 	g_free (expression->priv->expression);
-
-	cpg_expression_set_this (expression, NULL);
 
 	G_OBJECT_CLASS (cpg_expression_parent_class)->finalize (object);
 }
@@ -648,11 +645,6 @@ lookup_property (CpgExpression *expression,
 
 	ret = cpg_compile_context_lookup_property (context->context,
 	                                           propname);
-
-	if (!ret && g_strcmp0 (propname, "this") == 0)
-	{
-		ret = cpg_expression_get_this (expression);
-	}
 
 	return ret;
 }
@@ -2078,31 +2070,4 @@ cpg_expression_set_has_cache (CpgExpression *expression,
 	g_return_if_fail (CPG_IS_EXPRESSION (expression));
 
 	set_has_cache (expression, cache);
-}
-
-void
-cpg_expression_set_this (CpgExpression *expression,
-                         CpgProperty   *property)
-{
-	g_return_if_fail (CPG_IS_EXPRESSION (expression));
-	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));
-
-	if (expression->priv->tis)
-	{
-		g_object_remove_weak_pointer (G_OBJECT (expression->priv->tis),
-		                              (gpointer *)&(expression->priv->tis));
-	}
-
-	expression->priv->tis = property;
-
-	g_object_add_weak_pointer (G_OBJECT (property),
-	                           (gpointer *)&(expression->priv->tis));
-}
-
-CpgProperty *
-cpg_expression_get_this (CpgExpression *expression)
-{
-	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
-
-	return expression->priv->tis;
 }

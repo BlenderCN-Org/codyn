@@ -239,8 +239,6 @@ set_constraint (CpgProperty   *property,
 
 	if (property->priv->constraint)
 	{
-		cpg_expression_set_this (property->priv->constraint, NULL);
-
 		g_signal_handlers_disconnect_by_func (property->priv->constraint,
 		                                      on_constraint_changed,
 		                                      property);
@@ -252,7 +250,6 @@ set_constraint (CpgProperty   *property,
 	if (expression)
 	{
 		property->priv->constraint = g_object_ref_sink (expression);
-		cpg_expression_set_this (property->priv->constraint, property);
 
 		g_signal_connect_swapped (expression,
 		                          "notify::expression",
@@ -286,8 +283,6 @@ set_expression (CpgProperty *property,
 
 	if (property->priv->expression)
 	{
-		cpg_expression_set_this (property->priv->expression, NULL);
-
 		g_signal_handlers_disconnect_by_func (property->priv->expression,
 		                                      on_expression_changed,
 		                                      property);
@@ -299,7 +294,6 @@ set_expression (CpgProperty *property,
 	if (expression)
 	{
 		property->priv->expression = g_object_ref_sink (expression);
-		cpg_expression_set_this (property->priv->expression, property);
 
 		g_signal_connect_swapped (expression,
 		                          "notify::expression",

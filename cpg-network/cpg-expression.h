@@ -105,11 +105,6 @@ void           cpg_expression_set_once         (CpgExpression      *expression,
 
 gint           cpg_expression_get_error_at     (CpgExpression      *expression);
 
-void           cpg_expression_set_this          (CpgExpression      *expression,
-                                                 CpgPropertyForward *property);
-
-CpgPropertyForward *cpg_expression_get_this        (CpgExpression      *expression);
-
 G_END_DECLS
 
 #endif /* __CPG_EXPRESSION_H__ */

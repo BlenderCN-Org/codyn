@@ -1253,10 +1253,20 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			{
 				gchar const *cons;
 
+				cpg_embedded_context_save (context->priv->embedded);
+
+				cpg_embedded_context_add_expansion (context->priv->embedded,
+				                                    p->name);
+
+				cpg_embedded_context_add_expansion (context->priv->embedded,
+				                                    p->value);
+
 				embedded_string_expand (cons, constraint, context);
 
 				cpg_property_set_constraint (property,
 				                             cpg_expression_new (cons));
+
+				cpg_embedded_context_restore (context->priv->embedded);
 			}
 
 			set_taggable (context, property, attributes);

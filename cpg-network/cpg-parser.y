@@ -974,15 +974,23 @@ multi_assign_identifier
 
 constraint
 	:				{ $$ = NULL; }
-	| '<' value_as_string '>'	{ $$ = $2; }
-	| '<' value_as_string ',' value_as_string '>' { $$ = cpg_embedded_string_new ();
-	                                                cpg_embedded_string_add_text ($$, "clip(this, ");
+	| '(' value_as_string ')'	{ $$ = $2; }
+	| '(' value_as_string ',' value_as_string ')' { $$ = cpg_embedded_string_new ();
+	                                                cpg_embedded_string_add_text ($$, "clip(");
+	                                                cpg_embedded_string_push ($$, CPG_EMBEDDED_STRING_NODE_INDIRECTION, 1);
+	                                                cpg_embedded_string_add_text ($$, "0");
+	                                                cpg_embedded_string_pop ($$);
+	                                                cpg_embedded_string_add_text ($$, ", ");
 	                                                cpg_embedded_string_add_string ($$, $2);
 	                                                cpg_embedded_string_add_text ($$, ", ");
 	                                                cpg_embedded_string_add_string ($$, $4);
 	                                                cpg_embedded_string_add_text ($$, ")"); }
-	| '<' value_as_string ',' value_as_string '<' { $$ = cpg_embedded_string_new ();
-	                                                cpg_embedded_string_add_text ($$, "cycle(this, ");
+	| '(' value_as_string ':' value_as_string ')' { $$ = cpg_embedded_string_new ();
+	                                                cpg_embedded_string_add_text ($$, "cycle(");
+	                                                cpg_embedded_string_push ($$, CPG_EMBEDDED_STRING_NODE_INDIRECTION, 1);
+	                                                cpg_embedded_string_add_text ($$, "0");
+	                                                cpg_embedded_string_pop ($$);
+	                                                cpg_embedded_string_add_text ($$, ", ");
 	                                                cpg_embedded_string_add_string ($$, $2);
 	                                                cpg_embedded_string_add_text ($$, ", ");
 	                                                cpg_embedded_string_add_string ($$, $4);
