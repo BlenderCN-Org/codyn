@@ -62,8 +62,9 @@ struct _CpgPropertyPrivate
 	GHashTable *tags;
 
 	gdouble last_value;
-	gboolean modified : 1;
-	gboolean disposing : 1;
+	guint modified : 1;
+	guint disposing : 1;
+	guint in_constraint : 1;
 };
 
 static void cpg_usable_iface_init (gpointer iface);
@@ -683,7 +684,6 @@ cpg_property_set_value (CpgProperty  *property,
 {
 	/* Omit type check to increase speed */
 	cpg_expression_set_value (property->priv->expression, value);
-	cpg_property_apply_constraint (property);
 }
 
 void
@@ -714,7 +714,24 @@ cpg_property_get_value (CpgProperty *property)
 	/* Omit type check to increase speed */
 	if (property->priv->expression)
 	{
-		return cpg_expression_evaluate (property->priv->expression);
+		gdouble ret;
+
+		ret = cpg_expression_evaluate (property->priv->expression);
+
+		if (property->priv->constraint && !property->priv->in_constraint)
+		{
+			// Apply the constraint
+			property->priv->in_constraint = TRUE;
+
+			ret = cpg_expression_evaluate (property->priv->constraint);
+
+			// Don't cache it
+			cpg_expression_reset_cache (property->priv->constraint);
+
+			property->priv->in_constraint = FALSE;
+		}
+
+		return ret;
 	}
 	else
 	{
