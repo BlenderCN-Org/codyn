@@ -1,0 +1,7 @@
+functions
+{
+    Clip(min, max)(this) = "clip(this, min, max)"
+    Cycle(min, max)(this) = "cycle(this, min, max)"
+}
+
+# vi:ex:ts=4:et
