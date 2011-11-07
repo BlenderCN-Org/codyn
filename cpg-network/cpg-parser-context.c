@@ -3868,6 +3868,31 @@ cpg_parser_context_define (CpgParserContext  *context,
 		{
 			NameValuePair *p = pair->data;
 
+			if (optional)
+			{
+				gchar *d;
+				gboolean exists;
+
+				cpg_embedded_context_save (context->priv->embedded);
+
+				cpg_embedded_context_set_selection (context->priv->embedded,
+				                                    sel);
+
+				d = cpg_embedded_context_get_define (context->priv->embedded,
+				                                     cpg_expansion_get (p->name, 0));
+
+				cpg_embedded_context_restore (context->priv->embedded);
+
+				exists = (d && *d);
+				g_free (d);
+
+				if (exists)
+				{
+					name_value_pair_free (p);
+					continue;
+				}
+			}
+
 			cpg_selection_add_define (sel,
 			                          cpg_expansion_get (p->name, 0),
 			                          cpg_expansion_get (p->value, 0));
