@@ -82,6 +82,9 @@ CpgEmbeddedString *cpg_embedded_string_pop_brace        (CpgEmbeddedString      
 
 gint               cpg_embedded_string_brace_level      (CpgEmbeddedString         *s);
 
+CpgEmbeddedString *cpg_embedded_string_add_string       (CpgEmbeddedString         *s,
+                                                         CpgEmbeddedString         *other);
+
 CpgEmbeddedString *cpg_embedded_string_add_text         (CpgEmbeddedString         *s,
                                                          gchar const               *text);
 

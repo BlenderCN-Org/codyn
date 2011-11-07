@@ -94,6 +94,26 @@ node_new (CpgEmbeddedStringNodeType  type,
 	return ret;
 }
 
+static Node *
+node_copy (Node *other)
+{
+	Node *ret;
+	GSList *child;
+
+	ret = node_new (other->type, other->text, other->depth);
+
+	ret->position = other->position;
+
+	for (child = other->nodes; child; child = g_slist_next (child))
+	{
+		ret->nodes = g_slist_prepend (ret->nodes,
+		                              node_copy (child->data));
+	}
+
+	ret->nodes = g_slist_reverse (ret->nodes);
+
+	return ret;
+}
 static void
 node_free (Node *node)
 {
@@ -1750,3 +1770,33 @@ cpg_embedded_string_brace_level (CpgEmbeddedString *s)
 
 	return s->priv->braces;
 }
+
+CpgEmbeddedString *
+cpg_embedded_string_add_string (CpgEmbeddedString *s,
+                                CpgEmbeddedString *other)
+{
+	GSList *item;
+	GSList *copied = NULL;
+	Node *parent;
+
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (other), NULL);
+
+	for (item = other->priv->stack; item; item = g_slist_next (item))
+	{
+		Node *node;
+
+		node = node_copy (item->data);
+
+		copied = g_slist_prepend (copied, node_copy (item->data));
+	}
+
+	parent = s->priv->stack->data;
+
+	parent->nodes = g_slist_concat (g_slist_reverse (copied),
+	                                parent->nodes);
+
+	cpg_embedded_string_clear_cache (s);
+	return s;
+}
+

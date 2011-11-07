@@ -975,6 +975,18 @@ multi_assign_identifier
 constraint
 	:				{ $$ = NULL; }
 	| '<' value_as_string '>'	{ $$ = $2; }
+	| '<' value_as_string ',' value_as_string '>' { $$ = cpg_embedded_string_new ();
+	                                                cpg_embedded_string_add_text ($$, "clip(this, ");
+	                                                cpg_embedded_string_add_string ($$, $2);
+	                                                cpg_embedded_string_add_text ($$, ", ");
+	                                                cpg_embedded_string_add_string ($$, $4);
+	                                                cpg_embedded_string_add_text ($$, ")"); }
+	| '<' value_as_string ',' value_as_string '<' { $$ = cpg_embedded_string_new ();
+	                                                cpg_embedded_string_add_text ($$, "cycle(this, ");
+	                                                cpg_embedded_string_add_string ($$, $2);
+	                                                cpg_embedded_string_add_text ($$, ", ");
+	                                                cpg_embedded_string_add_string ($$, $4);
+	                                                cpg_embedded_string_add_text ($$, ")"); }
 	;
 
 property
