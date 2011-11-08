@@ -25,6 +25,8 @@
 #include <string.h>
 #include "cpg-group.h"
 #include "cpg-layoutable.h"
+#include "cpg-annotatable.h"
+#include "cpg-taggable.h"
 
 /**
  * SECTION:cpg-link
@@ -1075,6 +1077,20 @@ cpg_link_add_action (CpgLink       *link,
 	{
 		cpg_link_action_set_equation (orig,
 		                              cpg_link_action_get_equation (action));
+
+		// Copy the annotation
+		gchar *an = cpg_annotatable_get_annotation (CPG_ANNOTATABLE (action));
+
+		if (an && *an)
+		{
+			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (orig),
+			                                an);
+		}
+
+		g_free (an);
+
+		cpg_taggable_copy_to (CPG_TAGGABLE (action),
+		                      cpg_taggable_get_tag_table (CPG_TAGGABLE (orig)));
 
 		if (g_object_is_floating (action))
 		{
