@@ -1784,10 +1784,6 @@ cpg_embedded_string_add_string (CpgEmbeddedString *s,
 
 	for (item = other->priv->stack; item; item = g_slist_next (item))
 	{
-		Node *node;
-
-		node = node_copy (item->data);
-
 		copied = g_slist_prepend (copied, node_copy (item->data));
 	}
 
