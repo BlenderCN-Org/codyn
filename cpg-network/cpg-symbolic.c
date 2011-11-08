@@ -887,6 +887,70 @@ derive_sqrt (CpgExpressionTreeIter *f,
 }
 
 static GSList *
+derive_exp (CpgExpressionTreeIter *f,
+            CpgProperty           *x)
+{
+	GSList *gd;
+	GSList *ret;
+	GSList *fi;
+	CpgExpressionTreeIter *g;
+
+	g = cpg_expression_tree_iter_get_child (f, 0);
+
+	fi = cpg_expression_tree_iter_to_instructions (f);
+	gd = derive_iter (g, x);
+
+	ret = multiply_optimized (fi, gd);
+
+	free_instructions (fi);
+	free_instructions (gd);
+
+	return ret;
+}
+
+static GSList *
+derive_exp2 (CpgExpressionTreeIter *f,
+             CpgProperty           *x)
+{
+	GSList *gd;
+	GSList *ret;
+	GSList *gi;
+	GSList *p2;
+	GSList *po;
+	GSList *ppd;
+	CpgExpressionTreeIter *g;
+
+	// Power rule: (2^g)' = 2^x * g' ln (2)
+	g = cpg_expression_tree_iter_get_child (f, 0);
+
+	gi = cpg_expression_tree_iter_to_instructions (g);
+	gd = derive_iter (g, x);
+
+	p2 = g_slist_prepend (NULL,
+	                      cpg_instruction_number_new_from_string ("2"));
+
+	po = power_optimized (p2, gi);
+
+	p2 = g_slist_append (p2,
+	                     cpg_instruction_function_new (CPG_MATH_FUNCTION_TYPE_LN,
+	                                                   "ln",
+	                                                   1));
+
+	ppd = multiply_optimized (gd, p2);
+
+	ret = multiply_optimized (po, ppd);
+
+	free_instructions (gi);
+	free_instructions (gd);
+
+	free_instructions (po);
+	free_instructions (ppd);
+	free_instructions (p2);
+
+	return ret;
+}
+
+static GSList *
 derive_function (CpgExpressionTreeIter  *iter,
                  CpgInstructionFunction *instr,
                  CpgProperty            *x)
@@ -933,8 +997,10 @@ derive_function (CpgExpressionTreeIter  *iter,
 		case CPG_MATH_FUNCTION_TYPE_HYPOT:
 		break;
 		case CPG_MATH_FUNCTION_TYPE_EXP2:
+			return derive_exp2 (iter, x);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_EXP:
+			return derive_exp (iter, x);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_LOG10:
 		break;
