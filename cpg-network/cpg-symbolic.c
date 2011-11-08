@@ -583,9 +583,9 @@ derive_cos (CpgExpressionTreeIter *f,
 	                                                   1));
 
 	a = g_slist_concat (gi, a);
-	free_instructions (gi);
 
 	ret = multiply_optimized (a, gd);
+
 	free_instructions (a);
 	free_instructions (gd);
 
