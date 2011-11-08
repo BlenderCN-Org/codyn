@@ -1367,13 +1367,13 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 			action = cpg_link_action_new (extarget,
 			                              cpg_expression_new (exexpression));
 
-			cpg_link_add_action (CPG_LINK (cpg_selection_get_object (item->data)),
-			                     action);
-
 			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (action),
 			                                annotation);
 
 			set_taggable (context, action, attributes);
+
+			cpg_link_add_action (CPG_LINK (cpg_selection_get_object (item->data)),
+			                     action);
 
 			cpg_embedded_context_restore (context->priv->embedded);
 		}
