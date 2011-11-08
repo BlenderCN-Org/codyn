@@ -55,7 +55,7 @@ struct _CpgOperatorClass
 	/*< private >*/
 	GObjectClass parent_class;
 
-	CpgOperatorClassPrivate *priv;
+	gchar *name;
 
 	/*< public >*/
 	void             (*execute)     (CpgOperator     *op,
