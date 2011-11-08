@@ -15,6 +15,7 @@ COMMON_SOURCES = 		\
 	cpg-enum-types.c \
 	cpg-marshal.c \
 	cpg-expression.c \
+	cpg-expression-tree-iter.c \
 	cpg-function.c \
 	cpg-function-argument.c \
 	cpg-function-polynomial.c \
@@ -52,6 +53,7 @@ COMMON_SOURCES = 		\
 	cpg-property-interface.c \
 	cpg-selector.c \
 	cpg-stack.c \
+	cpg-symbolic.c \
 	cpg-tokenizer.c \
 	cpg-usable.c \
 	cpg-utils.c \
@@ -86,6 +88,7 @@ INST_H_FILES = \
 	cpg-compile-context.h \
 	cpg-compile-error.h \
 	cpg-expression.h \
+	cpg-expression-tree-iter.h \
 	cpg-function.h \
 	cpg-function-argument.h \
 	cpg-function-polynomial.h \
@@ -120,6 +123,7 @@ INST_H_FILES = \
 	cpg-property-interface.h \
 	cpg-selector.h \
 	cpg-stack.h \
+	cpg-symbolic.h \
 	cpg-usable.h \
 	cpg-utils.h \
 	cpg-layout.h \
