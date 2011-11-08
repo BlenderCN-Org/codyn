@@ -261,8 +261,8 @@ append_comma_children (GString             *ret,
 			g_string_append (ret, ", ");
 		}
 
-		g_string_append (ret, *children);
-		++children;
+		g_string_append (ret, *ptr);
+		++ptr;
 	}
 }
 
