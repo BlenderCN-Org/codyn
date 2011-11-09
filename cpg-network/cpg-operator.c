@@ -29,6 +29,7 @@
 struct _CpgOperatorPrivate
 {
 	GSList *expressions;
+	gint num_arguments;
 };
 
 struct _CpgOperatorClassPrivate
@@ -79,7 +80,7 @@ cpg_operator_reset_default (CpgOperator *op)
 }
 
 static gboolean
-cpg_operator_validate_num_arguments_default (gint num)
+cpg_operator_validate_num_arguments_default (gint numsym, gint num)
 {
 	return TRUE;
 }
@@ -109,10 +110,14 @@ cpg_operator_step_evaluate_default (CpgOperator     *op,
 }
 
 
-static void
-cpg_operator_initialize_default (CpgOperator  *op,
-                                 GSList const *expressions)
+static gboolean
+cpg_operator_initialize_default (CpgOperator   *op,
+                                 GSList const  *expressions,
+                                 gint           num_arguments,
+                                 GError       **error)
 {
+	op->priv->num_arguments = num_arguments;
+
 	while (expressions)
 	{
 		op->priv->expressions =
@@ -123,6 +128,7 @@ cpg_operator_initialize_default (CpgOperator  *op,
 	}
 
 	op->priv->expressions = g_slist_reverse (op->priv->expressions);
+	return TRUE;
 }
 
 static void
@@ -247,11 +253,12 @@ cpg_operator_get_name (CpgOperator *op)
  **/
 gboolean
 cpg_operator_validate_num_arguments (CpgOperatorClass *klass,
+                                     gint         numsym,
                                      gint         num)
 {
 	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), FALSE);
 
-	return klass->validate_num_arguments (num);
+	return klass->validate_num_arguments (numsym, num);
 }
 
 /**
@@ -330,13 +337,18 @@ cpg_operator_step_evaluate (CpgOperator     *op,
 	return CPG_OPERATOR_GET_CLASS (op)->step_evaluate (op, integrator, t, timestep);
 }
 
-void
-cpg_operator_initialize (CpgOperator  *op,
-                         GSList const *expressions)
+gboolean
+cpg_operator_initialize (CpgOperator   *op,
+                         GSList const  *expressions,
+                         gint           num_arguments,
+                         GError       **error)
 {
-	g_return_if_fail (CPG_IS_OPERATOR (op));
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), FALSE);
 
-	return CPG_OPERATOR_GET_CLASS (op)->initialize (op, expressions);
+	return CPG_OPERATOR_GET_CLASS (op)->initialize (op,
+	                                                expressions,
+	                                                num_arguments,
+	                                                error);
 }
 
 /**
@@ -356,7 +368,10 @@ cpg_operator_copy (CpgOperator *op)
 	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
 
 	ret = g_object_new (G_OBJECT_TYPE (op), NULL);
-	cpg_operator_initialize (ret, op->priv->expressions);
+
+	cpg_operator_initialize (ret, op->priv->expressions,
+	                         op->priv->num_arguments,
+	                         NULL);
 
 	return ret;
 }
@@ -381,4 +396,12 @@ cpg_operator_equal (CpgOperator *op,
 	}
 
 	return CPG_OPERATOR_GET_CLASS (op)->equal (op, other);
+}
+
+gint
+cpg_operator_get_num_arguments (CpgOperator *op)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), 0);
+
+	return op->priv->num_arguments;
 }

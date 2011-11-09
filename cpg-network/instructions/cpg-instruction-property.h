@@ -27,8 +27,9 @@ G_BEGIN_DECLS
 typedef enum
 {
 	CPG_INSTRUCTION_PROPERTY_BINDING_NONE = 0,
-	CPG_INSTRUCTION_PROPERTY_BINDING_FROM,
-	CPG_INSTRUCTION_PROPERTY_BINDING_TO,
+	CPG_INSTRUCTION_PROPERTY_BINDING_FROM = 1 << 0,
+	CPG_INSTRUCTION_PROPERTY_BINDING_TO = 1 << 1,
+	CPG_INSTRUCTION_PROPERTY_BINDING_DIFF = 1 << 2,
 } CpgInstructionPropertyBinding;
 
 typedef struct _CpgInstructionProperty		CpgInstructionProperty;
@@ -50,6 +51,8 @@ struct _CpgInstructionPropertyClass
 	/*< public >*/
 };
 
+typedef CPG_FORWARD_DECL(CpgExpression) CpgExpressionForward;
+
 GType cpg_instruction_property_get_type (void) G_GNUC_CONST;
 
 CpgInstruction *cpg_instruction_property_new (CpgProperty                   *property,
@@ -63,6 +66,8 @@ void cpg_instruction_property_set_binding (CpgInstructionProperty *instruction,
                                            CpgInstructionPropertyBinding binding);
 CpgInstructionPropertyBinding
 	cpg_instruction_property_get_binding (CpgInstructionProperty *instruction);
+
+CpgExpressionForward *cpg_instruction_property_get_diff (CpgInstructionProperty *instruction);
 
 G_END_DECLS
 

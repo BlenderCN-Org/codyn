@@ -61,12 +61,14 @@ struct _CpgOperatorClass
 	void             (*execute)     (CpgOperator     *op,
 	                                 CpgStack        *stack);
 
-	void             (*initialize) (CpgOperator *op,
-	                                GSList const *expressions);
+	gboolean         (*initialize) (CpgOperator   *op,
+	                                GSList const  *expressions,
+	                                gint           num_arguments,
+	                                GError       **error);
 
 	gchar           *(*get_name) ();
 
-	gboolean         (*validate_num_arguments) (gint         num);
+	gboolean         (*validate_num_arguments) (gint         symnum, gint num);
 
 	void             (*reset_cache) (CpgOperator     *op);
 
@@ -95,8 +97,10 @@ struct _CpgOperatorClass
 
 GType                cpg_operator_get_type                    (void) G_GNUC_CONST;
 
-void                 cpg_operator_initialize                  (CpgOperator     *op,
-                                                               GSList const    *expressions);
+gboolean             cpg_operator_initialize                  (CpgOperator     *op,
+                                                               GSList const    *expressions,
+                                                               gint             num_arguments,
+                                                               GError         **error);
 
 void                 cpg_operator_execute                     (CpgOperator     *op,
                                                                CpgStack        *stack);
@@ -107,6 +111,7 @@ void                 cpg_operator_reset_variadic              (CpgOperator     *
 gchar const         *cpg_operator_get_name                    (CpgOperator      *op);
 gchar const         *cpg_operator_get_class_name              (CpgOperatorClass *op);
 gboolean             cpg_operator_validate_num_arguments      (CpgOperatorClass *op,
+                                                               gint             numsym,
                                                                gint             num);
 
 GSList const        *cpg_operator_get_expressions             (CpgOperator     *op);
@@ -132,6 +137,8 @@ void                 cpg_operator_step_evaluate               (CpgOperator     *
 void                 cpg_operator_reset                       (CpgOperator     *op);
 
 CpgOperator         *cpg_operator_copy                        (CpgOperator     *op);
+
+gint                 cpg_operator_get_num_arguments           (CpgOperator     *op);
 
 G_END_DECLS
 

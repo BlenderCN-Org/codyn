@@ -66,7 +66,11 @@ cpg_instruction_custom_operator_execute (CpgInstruction *instruction,
 static gint
 cpg_instruction_custom_operator_get_stack_count (CpgInstruction *instruction)
 {
-	return 1;
+	CpgInstructionCustomOperator *self;
+
+	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
+
+	return -cpg_operator_get_num_arguments (self->priv->op) + 1;
 }
 
 static GSList *

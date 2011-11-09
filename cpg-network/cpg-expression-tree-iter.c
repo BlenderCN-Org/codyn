@@ -149,6 +149,12 @@ property_to_string (CpgInstructionProperty *inst,
 
 	prop = cpg_instruction_property_get_property (inst);
 	g_string_append (ret, cpg_property_get_name (prop));
+
+	if (cpg_instruction_property_get_binding (inst) &
+	    CPG_INSTRUCTION_PROPERTY_BINDING_DIFF)
+	{
+		g_string_append_c (ret, '\'');
+	}
 }
 
 static void
@@ -303,6 +309,17 @@ custom_function_to_string (CpgInstructionCustomFunction *inst,
 }
 
 static void
+custom_function_ref_to_string (CpgInstructionCustomFunctionRef *inst,
+                               gchar const * const             *children,
+                               GString                         *ret)
+{
+	CpgFunction *func;
+
+	func = cpg_instruction_custom_function_ref_get_function (inst);
+	g_string_append (ret, cpg_object_get_id (CPG_OBJECT (func)));
+}
+
+static void
 custom_operator_to_string (CpgInstructionCustomOperator *inst,
                            gchar const * const          *children,
                            GString                      *ret)
@@ -362,6 +379,10 @@ to_string_func (CpgInstruction *instruction)
 	else if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION (instruction))
 	{
 		return (InstructionToStringFunc)custom_function_to_string;
+	}
+	else if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (instruction))
+	{
+		return (InstructionToStringFunc)custom_function_ref_to_string;
 	}
 	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (instruction))
 	{

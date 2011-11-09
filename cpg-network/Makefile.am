@@ -50,6 +50,7 @@ COMMON_SOURCES = 		\
 	cpg-operators.c \
 	cpg-operator-delayed.c \
 	cpg-operator-diff.c \
+	cpg-operator-pdiff.c \
 	cpg-property.c \
 	cpg-property-interface.c \
 	cpg-selector.c \
@@ -120,6 +121,7 @@ INST_H_FILES = \
 	cpg-operators.h \
 	cpg-operator-delayed.h \
 	cpg-operator-diff.h \
+	cpg-operator-pdiff.c \
 	cpg-parser-context.h \
 	cpg-property.h \
 	cpg-property-interface.h \

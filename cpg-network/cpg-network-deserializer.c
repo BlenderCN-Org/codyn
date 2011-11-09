@@ -1058,7 +1058,8 @@ parse_function (CpgNetworkDeserializer *deserializer,
 
 	expression = g_strdup ((gchar const *)expressionNode->children->content);
 
-	CpgFunction *function = cpg_function_new ((gchar const *)name, expression);
+	CpgFunction *function = cpg_function_new ((gchar const *)name,
+	                                          cpg_expression_new (expression));
 	g_free (expression);
 	xmlFree (name);
 

@@ -1047,23 +1047,32 @@ cpg_function_init (CpgFunction *self)
  *
  **/
 CpgFunction *
-cpg_function_new (gchar const *name,
-                  gchar const *expression)
+cpg_function_new (gchar const   *name,
+                  CpgExpression *expr)
 {
 	CpgFunction *ret;
-	CpgExpression *expr = NULL;
 
 	g_return_val_if_fail (name != NULL, NULL);
+	g_return_val_if_fail (expr == NULL || CPG_IS_EXPRESSION (expr), NULL);
 
-	if (expression != NULL)
+	if (expr && g_object_is_floating (G_OBJECT (expr)))
 	{
-		expr = cpg_expression_new (expression);
+		g_object_ref_sink (expr);
+	}
+	else if (expr)
+	{
+		g_object_ref (expr);
 	}
 
 	ret = g_object_new (CPG_TYPE_FUNCTION,
 	                    "id", name,
 	                    "expression", expr,
 	                    NULL);
+
+	if (expr)
+	{
+		g_object_unref (expr);
+	}
 
 	return ret;
 }

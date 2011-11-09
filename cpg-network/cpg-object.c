@@ -946,12 +946,6 @@ cpg_object_compile_impl (CpgObject         *object,
 		                             context,
 		                             &gerror))
 		{
-			g_warning ("Error while parsing expression [%s].%s<%s>: %s",
-			           cpg_object_get_id (object),
-			           cpg_property_get_name (property),
-			           cpg_expression_get_as_string (expr),
-			           gerror->message);
-
 			if (error)
 			{
 				cpg_compile_error_set (error,
@@ -972,12 +966,6 @@ cpg_object_compile_impl (CpgObject         *object,
 
 		if (cons && !cpg_expression_compile (cons, context, &gerror))
 		{
-			g_warning ("Error while parsing constraint expression [%s].%s<%s>: %s",
-			           cpg_object_get_id (object),
-			           cpg_property_get_name (property),
-			           cpg_expression_get_as_string (cons),
-			           gerror->message);
-
 			if (error)
 			{
 				cpg_compile_error_set (error,

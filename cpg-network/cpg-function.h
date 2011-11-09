@@ -101,8 +101,8 @@ GQuark               cpg_function_error_quark                 (void);
 
 GType                cpg_function_get_type                    (void) G_GNUC_CONST;
 
-CpgFunction         *cpg_function_new                         (const gchar          *name,
-                                                               const gchar          *expression);
+CpgFunction         *cpg_function_new                         (const gchar   *name,
+                                                               CpgExpression *expression);
 
 void                 cpg_function_add_argument                (CpgFunction          *function,
                                                                CpgFunctionArgument  *argument);

@@ -1339,3 +1339,50 @@ _cpg_property_set_object (CpgProperty *property,
 
 	set_object (property, object);
 }
+
+static GSList *
+property_get_actions (CpgObject   *o,
+                      CpgProperty *property,
+                      GSList      *ret)
+{
+	GSList const *l;
+
+	if (!o)
+	{
+		return ret;
+	}
+
+	l = cpg_object_get_links (o);
+
+	while (l)
+	{
+		GSList const *actions;
+
+		actions = cpg_link_get_actions (l->data);
+
+		while (actions)
+		{
+			if (cpg_link_action_get_target_property (actions->data) == property)
+			{
+				ret = g_slist_prepend (ret, actions->data);
+			}
+
+			actions = g_slist_next (actions);
+		}
+		l = g_slist_next (l);
+	}
+
+	return property_get_actions (cpg_object_get_parent (o),
+	                             property,
+	                             ret);
+}
+
+GSList *
+cpg_property_get_actions (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	return g_slist_reverse (property_get_actions (cpg_property_get_object (property),
+	                                              property,
+	                                              NULL));
+}

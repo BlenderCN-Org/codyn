@@ -33,10 +33,6 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
                                                             gdouble  end,
                                                             GArray  *coefficients);
 
-static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
-                                                      CpgEmbeddedString *default_value,
-                                                      gboolean           is_explicit);
-
 %}
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
@@ -116,15 +112,13 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <list> polynomial_pieces
 %type <list> polynomial_pieces_rev
 
-%type <argument> function_argument
+%type <list> function_argument
 %type <list> function_argument_list
-%type <list> function_argument_list_rev
 %type <list> function_argument_list_or_empty
 
 %type <list> function_argument_implicit
-%type <argument> function_argument_impl
+%type <list> function_argument_impl
 %type <list> function_argument_list_impl
-%type <list> function_argument_list_impl_rev
 %type <list> function_argument_list_or_empty_impl
 
 %type <list> template_list_more
@@ -764,12 +758,12 @@ function_argument_implicit
 function_custom
 	: attributes
 	  identifier_or_string
-	  '('
+	  '('				{ cpg_parser_context_push_function (context, $2, $1); }
 	  function_argument_list_or_empty
 	  ')'
 	  function_argument_implicit
-	  '='				{ cpg_parser_context_push_scope (context, $1); }
-	  value_as_string		{ cpg_parser_context_add_function (context, $2, $9, g_slist_concat ($4, $6), $1); errb
+	  '='
+	  value_as_string		{ cpg_parser_context_set_function_expression (context, $9); errb
 	                                  cpg_parser_context_pop (context); errb }
 	;
 
@@ -819,35 +813,24 @@ double_list
 	;
 
 function_argument_impl
-	: identifier_or_string			{ $$ = create_function_argument ($1, NULL, FALSE); }
-	| T_KEY_FROM '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "from."), NULL, FALSE); }
-	| T_KEY_TO '.' identifier_or_string	{ $$ = create_function_argument (cpg_embedded_string_prepend_text ($3, "to."), NULL, FALSE); }
-	;
-
-function_argument_list_impl_rev
-	: function_argument_impl	{ $$ = g_slist_prepend (NULL, $1); }
-	| function_argument_list_impl_rev ',' function_argument_impl
-					{ $$ = g_slist_prepend ($1, $3); }
+	: identifier_or_string			{ cpg_parser_context_add_function_argument (context, $1, NULL, FALSE); }
+	| T_KEY_FROM '.' identifier_or_string	{ cpg_parser_context_add_function_argument (context, cpg_embedded_string_prepend_text ($3, "from."), NULL, FALSE); }
+	| T_KEY_TO '.' identifier_or_string	{ cpg_parser_context_add_function_argument (context, cpg_embedded_string_prepend_text ($3, "to."), NULL, FALSE); }
 	;
 
 function_argument_list_impl
-	: function_argument_list_impl_rev
-					{ $$ = g_slist_reverse ($1); }
-	;
-
-function_argument_list_rev
-	: function_argument		{ $$ = g_slist_prepend (NULL, $1); }
-	| function_argument_list_rev ',' function_argument
-					{ $$ = g_slist_prepend ($1, $3); }
+	: function_argument_impl
+	| function_argument_list_impl ',' function_argument_impl
 	;
 
 function_argument_list
-	: function_argument_list_rev	{ $$ = g_slist_reverse ($1); }
+	: function_argument
+	| function_argument_list ',' function_argument
 	;
 
 function_argument
-	: identifier_or_string '=' value_as_string	{ $$ = create_function_argument ($1, $3, TRUE); }
-	| identifier_or_string			        { $$ = create_function_argument ($1, NULL, TRUE); }
+	: identifier_or_string '=' value_as_string	{ cpg_parser_context_add_function_argument (context, $1, $3, TRUE); }
+	| identifier_or_string			        { cpg_parser_context_add_function_argument (context, $1, NULL, TRUE); }
 	;
 
 state_item
@@ -1673,14 +1656,4 @@ create_polynomial_piece (gdouble  start,
 	                                                             end,
 	                                                             coefs,
 	                                                             len));
-}
-
-static CpgFunctionArgument *
-create_function_argument (CpgEmbeddedString *name,
-                          CpgEmbeddedString *default_value,
-                          gboolean           is_explicit)
-{
-	return g_object_ref_sink (cpg_function_argument_new (cpg_embedded_string_expand (name, NULL, NULL),
-	                                                     default_value ? cpg_expression_new (cpg_embedded_string_expand (default_value, NULL, NULL)) : NULL,
-	                                                     is_explicit));
 }

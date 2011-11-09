@@ -3,6 +3,7 @@
 
 #include <cpg-network/instructions/cpg-instruction.h>
 #include <cpg-network/instructions/cpg-instruction-custom-function.h>
+#include <cpg-network/instructions/cpg-instruction-custom-function-ref.h>
 #include <cpg-network/instructions/cpg-instruction-custom-operator.h>
 #include <cpg-network/instructions/cpg-instruction-function.h>
 #include <cpg-network/instructions/cpg-instruction-number.h>

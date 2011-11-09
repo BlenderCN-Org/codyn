@@ -3,25 +3,61 @@
 #include "cpg-expression-tree-iter.h"
 #include "instructions/cpg-instructions.h"
 #include "cpg-expression-tree-iter.h"
+#include "cpg-integrator.h"
+#include "cpg-operator-diff.h"
+#include "cpg-operator-pdiff.h"
 
 #include <math.h>
 #include <glib/gprintf.h>
 
+typedef struct
+{
+	CpgProperty *x;
+	GHashTable *symbols;
+	CpgSymbolicDeriveFlags flags;
+	GError **error;
+	GHashTable *property_map;
+} DeriveContext;
+
 static GSList *derive_iter (CpgExpressionTreeIter *iter,
-                            CpgProperty           *x);
+                            DeriveContext         *ctx);
+
+GQuark
+cpg_symbolic_derive_error_quark ()
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+	{
+		quark = g_quark_from_static_string ("cpg_symbolic_derive_error");
+	}
+
+	return quark;
+}
+
 
 static gboolean
 instructions_is_number (GSList  *instructions,
                         gdouble *num)
 {
-	if (instructions->next || !CPG_IS_INSTRUCTION_NUMBER (instructions->data))
+	gdouble multiplier = 1;
+
+	if (CPG_IS_INSTRUCTION_NUMBER (instructions->data) &&
+	    instructions->next && !instructions->next->next &&
+	    CPG_IS_INSTRUCTION_OPERATOR (instructions->next->data) &&
+	    cpg_instruction_function_get_id (CPG_INSTRUCTION_FUNCTION (instructions->next->data)) ==
+	    CPG_MATH_OPERATOR_TYPE_UNARY_MINUS)
+	{
+		multiplier = -1;
+	}
+	else if (instructions->next || !CPG_IS_INSTRUCTION_NUMBER (instructions->data))
 	{
 		return FALSE;
 	}
 
 	if (num)
 	{
-		*num = cpg_instruction_number_get_value (instructions->data);
+		*num = multiplier * cpg_instruction_number_get_value (instructions->data);
 	}
 
 	return TRUE;
@@ -329,7 +365,7 @@ power_optimized (GSList *a,
 
 static GSList *
 derive_power (CpgExpressionTreeIter *iter,
-              CpgProperty           *x)
+              DeriveContext         *ctx)
 {
 	CpgExpressionTreeIter *fi;
 	CpgExpressionTreeIter *gi;
@@ -354,7 +390,15 @@ derive_power (CpgExpressionTreeIter *iter,
 	f = cpg_expression_tree_iter_to_instructions (fi);
 	g = cpg_expression_tree_iter_to_instructions (gi);
 
-	fd = derive_iter (fi, x);
+	fd = derive_iter (fi, ctx);
+
+	if (!fd)
+	{
+		free_instructions (f);
+		free_instructions (g);
+
+		return NULL;
+	}
 
 	if (instructions_is_natural_number (g, &numg))
 	{
@@ -373,11 +417,21 @@ derive_power (CpgExpressionTreeIter *iter,
 		free_instructions (n1);
 		free_instructions (nfn1);
 		free_instructions (fn1);
+		free_instructions (fd);
 
 		return ret;
 	}
 
-	gd = derive_iter (gi, x);
+	gd = derive_iter (gi, ctx);
+
+	if (!gd)
+	{
+		free_instructions (f);
+		free_instructions (g);
+		free_instructions (fd);
+
+		return NULL;
+	}
 
 	lnf = g_slist_prepend (NULL,
 	                       cpg_instruction_function_new (CPG_MATH_FUNCTION_TYPE_LN,
@@ -414,7 +468,7 @@ derive_power (CpgExpressionTreeIter *iter,
 
 static GSList *
 derive_division (CpgExpressionTreeIter *iter,
-                 CpgProperty           *x)
+                 DeriveContext         *ctx)
 {
 	CpgExpressionTreeIter *fi;
 	CpgExpressionTreeIter *gi;
@@ -434,8 +488,26 @@ derive_division (CpgExpressionTreeIter *iter,
 	f = cpg_expression_tree_iter_to_instructions (fi);
 	g = cpg_expression_tree_iter_to_instructions (gi);
 
-	fd = derive_iter (fi, x);
-	gd = derive_iter (gi, x);
+	fd = derive_iter (fi, ctx);
+
+	if (!fd)
+	{
+		free_instructions (f);
+		free_instructions (g);
+
+		return NULL;
+	}
+
+	gd = derive_iter (gi, ctx);
+
+	if (!gd)
+	{
+		free_instructions (f);
+		free_instructions (g);
+		free_instructions (fd);
+
+		return NULL;
+	}
 
 	a = multiply_optimized (fd, g);
 	b = multiply_optimized (f, gd);
@@ -462,7 +534,7 @@ derive_division (CpgExpressionTreeIter *iter,
 
 static GSList *
 derive_product (CpgExpressionTreeIter *iter,
-                CpgProperty           *x)
+                DeriveContext         *ctx)
 {
 	CpgExpressionTreeIter *fi;
 	CpgExpressionTreeIter *gi;
@@ -480,8 +552,26 @@ derive_product (CpgExpressionTreeIter *iter,
 	f = cpg_expression_tree_iter_to_instructions (fi);
 	g = cpg_expression_tree_iter_to_instructions (gi);
 
-	fd = derive_iter (fi, x);
-	gd = derive_iter (gi, x);
+	fd = derive_iter (fi, ctx);
+
+	if (!fd)
+	{
+		free_instructions (f);
+		free_instructions (g);
+
+		return NULL;
+	}
+
+	gd = derive_iter (gi, ctx);
+
+	if (!gd)
+	{
+		free_instructions (f);
+		free_instructions (g);
+		free_instructions (fd);
+
+		return NULL;
+	}
 
 	fdg = multiply_optimized (fd, g);
 	fgd = multiply_optimized (f, gd);
@@ -503,40 +593,61 @@ derive_product (CpgExpressionTreeIter *iter,
 static GSList *
 derive_operator (CpgExpressionTreeIter  *iter,
                  CpgInstructionFunction *instr,
-                 CpgProperty            *x)
+                 DeriveContext          *ctx)
 {
 	GSList *ret = NULL;
 
 	switch (cpg_instruction_function_get_id (instr))
 	{
 		case CPG_MATH_OPERATOR_TYPE_UNARY_MINUS:
-			ret = g_slist_prepend (ret, cpg_mini_object_copy (CPG_MINI_OBJECT (instr)));
-			ret = g_slist_concat (derive_iter (cpg_expression_tree_iter_get_child (iter, 0), x),
-			                      ret);
+		{
+			GSList *a;
+
+			a = derive_iter (cpg_expression_tree_iter_get_child (iter, 0), ctx);
+
+			if (a)
+			{
+				ret = g_slist_prepend (ret, cpg_mini_object_copy (CPG_MINI_OBJECT (instr)));
+				ret = g_slist_concat (a, ret);
+			}
+		}
 		break;
 		case CPG_MATH_OPERATOR_TYPE_MINUS:
 		case CPG_MATH_OPERATOR_TYPE_PLUS:
+		{
+			GSList *a = NULL;
+			GSList *b = NULL;
+
 			// Linear rule: (f - g)' = f' - g'
 			//         and: (f + g)' = f' + g'
-			ret = g_slist_prepend (ret, cpg_mini_object_copy (CPG_MINI_OBJECT (instr)));
 
-			ret = g_slist_concat (derive_iter (cpg_expression_tree_iter_get_child (iter, 1), x),
-			                      ret);
+			a = derive_iter (cpg_expression_tree_iter_get_child (iter, 0), ctx);
 
-			ret = g_slist_concat (derive_iter (cpg_expression_tree_iter_get_child (iter, 0), x),
-			                      ret);
+			if (a)
+			{
+				b = derive_iter (cpg_expression_tree_iter_get_child (iter, 1), ctx);
+			}
+
+			if (a && b)
+			{
+				ret = add_optimized (a, b);
+			}
+
+			free_instructions (a);
+			free_instructions (b);
+		}
 		break;
 		case CPG_MATH_OPERATOR_TYPE_MULTIPLY:
 			// Product rule: (fg)' = f'g + fg'
-			ret = derive_product (iter, x);
+			ret = derive_product (iter, ctx);
 		break;
 		case CPG_MATH_OPERATOR_TYPE_DIVIDE:
 			// Quotient rule: (f/g)' = (f'g - fg') / g^2
-			ret = derive_division (iter, x);
+			ret = derive_division (iter, ctx);
 		break;
 		case CPG_MATH_OPERATOR_TYPE_POWER:
 			// Power rule: (f^g)' = f^g * (f' (g / f) + g' ln (f))
-			ret = derive_power (iter, x);
+			ret = derive_power (iter, ctx);
 		break;
 		case CPG_MATH_OPERATOR_TYPE_NEGATE:
 		case CPG_MATH_OPERATOR_TYPE_MODULO:
@@ -548,7 +659,11 @@ derive_operator (CpgExpressionTreeIter  *iter,
 		case CPG_MATH_OPERATOR_TYPE_OR:
 		case CPG_MATH_OPERATOR_TYPE_AND:
 		case CPG_MATH_OPERATOR_TYPE_TERNARY:
-			// Can't derive this kind of stuff
+			g_set_error (ctx->error,
+			             CPG_SYMBOLIC_DERIVE_ERROR,
+			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             "Derivation of operator `%s' is not supported",
+			             cpg_instruction_function_get_name (instr));
 		break;
 	}
 
@@ -557,7 +672,7 @@ derive_operator (CpgExpressionTreeIter  *iter,
 
 static GSList *
 derive_cos (CpgExpressionTreeIter *f,
-            CpgProperty           *x)
+            DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -570,7 +685,13 @@ derive_cos (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+		return NULL;
+	}
 
 	a = g_slist_prepend (NULL,
 	                     cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_UNARY_MINUS,
@@ -592,9 +713,21 @@ derive_cos (CpgExpressionTreeIter *f,
 	return ret;
 }
 
+/*static void*/
+/*print_instructions (GSList const *inst)*/
+/*{*/
+/*	while (inst)*/
+/*	{*/
+/*		g_printf ("%s ", cpg_instruction_to_string (inst->data));*/
+/*		inst = g_slist_next (inst);*/
+/*	}*/
+
+/*	g_printf ("\n");*/
+/*}*/
+
 static GSList *
 derive_sin (CpgExpressionTreeIter *f,
-            CpgProperty           *x)
+            DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -607,7 +740,13 @@ derive_sin (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+		return NULL;
+	}
 
 	a = g_slist_prepend (NULL,
 	                     cpg_instruction_function_new (CPG_MATH_FUNCTION_TYPE_COS,
@@ -617,6 +756,7 @@ derive_sin (CpgExpressionTreeIter *f,
 	a = g_slist_concat (gi, a);
 
 	ret = multiply_optimized (a, gd);
+
 	free_instructions (a);
 	free_instructions (gd);
 
@@ -625,7 +765,7 @@ derive_sin (CpgExpressionTreeIter *f,
 
 static GSList *
 derive_tan (CpgExpressionTreeIter *f,
-            CpgProperty           *x)
+            DeriveContext      *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -638,7 +778,14 @@ derive_tan (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+
+		return NULL;
+	}
 
 	a = g_slist_prepend (a,
 	                     cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_PLUS,
@@ -672,7 +819,7 @@ derive_tan (CpgExpressionTreeIter *f,
 
 static GSList *
 derive_ln (CpgExpressionTreeIter *f,
-           CpgProperty           *x)
+           DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -683,7 +830,13 @@ derive_ln (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+		return NULL;
+	}
 
 	ret = divide_optimized (gd, gi);
 
@@ -695,7 +848,7 @@ derive_ln (CpgExpressionTreeIter *f,
 
 static GSList *
 derive_atan (CpgExpressionTreeIter *f,
-             CpgProperty           *x)
+             DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -709,7 +862,13 @@ derive_atan (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+		return NULL;
+	}
 
 	one = g_slist_prepend (NULL,
 	                       cpg_instruction_number_new_from_string ("1"));
@@ -738,7 +897,7 @@ derive_atan (CpgExpressionTreeIter *f,
 
 static GSList *
 derive_acos (CpgExpressionTreeIter *f,
-             CpgProperty           *x)
+             DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -753,7 +912,13 @@ derive_acos (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+		return NULL;
+	}
 
 	one = g_slist_prepend (NULL,
 	                       cpg_instruction_number_new_from_string ("1"));
@@ -792,7 +957,7 @@ derive_acos (CpgExpressionTreeIter *f,
 
 static GSList *
 derive_asin (CpgExpressionTreeIter *f,
-             CpgProperty           *x)
+             DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -807,7 +972,13 @@ derive_asin (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+		return NULL;
+	}
 
 	one = g_slist_prepend (NULL,
 	                       cpg_instruction_number_new_from_string ("1"));
@@ -841,7 +1012,7 @@ derive_asin (CpgExpressionTreeIter *f,
 
 static GSList *
 derive_sqrt (CpgExpressionTreeIter *f,
-             CpgProperty           *x)
+             DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -855,7 +1026,13 @@ derive_sqrt (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+		return NULL;
+	}
 
 	o5 = g_slist_prepend (NULL,
 	                      cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_UNARY_MINUS,
@@ -888,7 +1065,7 @@ derive_sqrt (CpgExpressionTreeIter *f,
 
 static GSList *
 derive_exp (CpgExpressionTreeIter *f,
-            CpgProperty           *x)
+            DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -898,7 +1075,13 @@ derive_exp (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	fi = cpg_expression_tree_iter_to_instructions (f);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (fi);
+		return NULL;
+	}
 
 	ret = multiply_optimized (fi, gd);
 
@@ -910,7 +1093,7 @@ derive_exp (CpgExpressionTreeIter *f,
 
 static GSList *
 derive_exp2 (CpgExpressionTreeIter *f,
-             CpgProperty           *x)
+             DeriveContext         *ctx)
 {
 	GSList *gd;
 	GSList *ret;
@@ -924,7 +1107,13 @@ derive_exp2 (CpgExpressionTreeIter *f,
 	g = cpg_expression_tree_iter_get_child (f, 0);
 
 	gi = cpg_expression_tree_iter_to_instructions (g);
-	gd = derive_iter (g, x);
+	gd = derive_iter (g, ctx);
+
+	if (!gd)
+	{
+		free_instructions (gi);
+		return NULL;
+	}
 
 	p2 = g_slist_prepend (NULL,
 	                      cpg_instruction_number_new_from_string ("2"));
@@ -953,126 +1142,279 @@ derive_exp2 (CpgExpressionTreeIter *f,
 static GSList *
 derive_function (CpgExpressionTreeIter  *iter,
                  CpgInstructionFunction *instr,
-                 CpgProperty            *x)
+                 DeriveContext       *ctx)
 {
 	switch (cpg_instruction_function_get_id (instr))
 	{
 		case CPG_MATH_FUNCTION_TYPE_COS:
 			// -sin(x) * x'
-			return derive_cos (iter, x);
+			return derive_cos (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_SIN:
 			// cos(x) * x'
-			return derive_sin (iter, x);
+			return derive_sin (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_TAN:
 			// (1 + tan^2(x)) * x'
-			return derive_tan (iter, x);
+			return derive_tan (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_ATAN:
 			// x' / (1 + x^2)
-			return derive_atan (iter, x);
+			return derive_atan (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_ACOS:
 			// x' / -sqrt(1 - x^2)
-			return derive_acos (iter, x);
+			return derive_acos (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_ASIN:
 			// x' / sqrt(1 - x^2)
-			return derive_asin (iter, x);
+			return derive_asin (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_LN:
 			// (1 / x) * x'
-			return derive_ln (iter, x);
+			return derive_ln (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_SQRT:
 			// 0.5 * x^(-0.5) * x'
-			return derive_sqrt (iter, x);
+			return derive_sqrt (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_POW:
-			return derive_power (iter, x);
+			return derive_power (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_SQSUM:
 		break;
 		case CPG_MATH_FUNCTION_TYPE_HYPOT:
 		break;
 		case CPG_MATH_FUNCTION_TYPE_EXP2:
-			return derive_exp2 (iter, x);
+			return derive_exp2 (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_EXP:
-			return derive_exp (iter, x);
+			return derive_exp (iter, ctx);
 		break;
 		case CPG_MATH_FUNCTION_TYPE_LOG10:
 		break;
 	}
 
-	// TODO: error out
+	g_set_error (ctx->error,
+	             CPG_SYMBOLIC_DERIVE_ERROR,
+	             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+	             "Derivation of function `%s' is not supported",
+	             cpg_instruction_function_get_name (instr));
+
 	return NULL;
 }
 
 static gboolean
-property_is_acted (CpgObject  *o,
-                   CpgProperty *prop)
+property_is_time (CpgProperty *prop)
 {
-	GSList const *actors;
+	return prop == NULL ||
+	       (g_strcmp0 (cpg_property_get_name (prop), "t") == 0 &&
+	        CPG_IS_INTEGRATOR (cpg_property_get_object (prop)));
+}
 
-	if (!o)
-	{
-		return FALSE;
-	}
+static GSList *
+derive_expression (CpgExpression *expression,
+                   DeriveContext *ctx)
+{
+	GSList *ret;
+	CpgExpressionTreeIter *iter;
 
-	actors = cpg_object_get_actors (o);
+	iter = cpg_expression_tree_iter_new (expression);
+	ret = derive_iter (iter, ctx);
 
-	while (actors)
-	{
-		if (actors->data == prop)
-		{
-			return TRUE;
-		}
-
-		actors = g_slist_next (actors);
-	}
-
-	return property_is_acted (cpg_object_get_parent (o), prop);
+	cpg_expression_tree_iter_free (iter);
+	return ret;
 }
 
 static GSList *
 derive_property (CpgExpressionTreeIter  *iter,
                  CpgInstructionProperty *instr,
-                 CpgProperty            *x)
+                 DeriveContext          *ctx)
 {
 	CpgProperty *prop;
+	CpgExpressionTreeIter *mapped;
 
 	prop = cpg_instruction_property_get_property (instr);
 
-	if (prop == x)
+	mapped = g_hash_table_lookup (ctx->property_map, prop);
+
+	if (mapped)
 	{
+		return derive_iter (mapped, ctx);
+	}
+
+	if (cpg_instruction_property_get_binding (instr) &
+	    CPG_INSTRUCTION_PROPERTY_BINDING_DIFF)
+	{
+		// Collect an expression that represents the differential
+		// equation on 'prop' and go deep
+		return derive_expression (cpg_instruction_property_get_diff (instr),
+		                          ctx);
+	}
+
+	if (g_hash_table_lookup (ctx->symbols, prop))
+	{
+		// This is for partial derivatives
+		if (prop == ctx->x)
+		{
+			// Partial derivative towards this property, is 1
+			return g_slist_prepend (NULL,
+			                        cpg_instruction_number_new_from_string ("1"));
+		}
+		else
+		{
+			// Regard it as a constant for partial derivative
+			return g_slist_prepend (NULL,
+			                        cpg_instruction_number_new_from_string ("0"));
+		}
+	}
+
+	if (!(ctx->flags & CPG_SYMBOLIC_DERIVE_PARTIAL) &&
+	    (ctx->x == prop || (!ctx->x && property_is_time (prop))))
+	{
+		// Fully deriving towards this
 		return g_slist_prepend (NULL,
 		                        cpg_instruction_number_new_from_string ("1"));
 	}
-	else if (property_is_acted (cpg_property_get_object (prop), prop))
+
+	if (cpg_property_get_integrated (prop) &&
+	    property_is_time (ctx->x))
 	{
-		// Regard it as a constant
+		// This is an integrated property derived towards t resulting
+		// in x'
 		return g_slist_prepend (NULL,
-		                        cpg_instruction_number_new_from_string ("0"));
+		                        cpg_instruction_property_new (prop,
+		                                                      CPG_INSTRUCTION_PROPERTY_BINDING_DIFF));
 	}
 	else
 	{
-		// Derive the property expression wrt x
-		GSList *ret;
-		CpgExpressionTreeIter *iter;
+		// Derive further into x (considering x a helper variable)
+		return derive_expression (cpg_property_get_expression (prop),
+		                          ctx);
+	}
+}
 
-		iter = cpg_expression_tree_iter_new (cpg_property_get_expression (prop));
-		ret = derive_iter (iter, x);
-		cpg_expression_tree_iter_free (iter);
+static GSList *
+derive_custom_function_real (CpgExpressionTreeIter *iter,
+                             CpgFunction           *func,
+                             DeriveContext         *ctx)
+{
+	GList const *args;
+	gint i = 0;
+	GSList *ret;
 
-		return ret;
+	// Map arguments of the function object to arguments in the iter
+	args = cpg_function_get_arguments (func);
+
+	while (args)
+	{
+		CpgFunctionArgument *arg = args->data;
+
+		g_hash_table_insert (ctx->property_map,
+		                     _cpg_function_argument_get_property (arg),
+		                     cpg_expression_tree_iter_get_child (iter, i));
+
+		args = g_list_next (args);
+		++i;
+	}
+
+	// Then, evaluate the function expression
+	ret = derive_expression (cpg_function_get_expression (func),
+	                         ctx);
+
+	// Remove again from the map
+	args = cpg_function_get_arguments (func);
+
+	while (args)
+	{
+		CpgFunctionArgument *arg = args->data;
+
+		g_hash_table_remove (ctx->property_map,
+		                     _cpg_function_argument_get_property (arg));
+
+		args = g_list_next (args);
+	}
+
+	return ret;
+}
+
+static GSList *
+derive_custom_function (CpgExpressionTreeIter        *iter,
+                        CpgInstructionCustomFunction *instr,
+                        DeriveContext                *ctx)
+{
+	return derive_custom_function_real (iter,
+	                                    cpg_instruction_custom_function_get_function (instr),
+	                                    ctx);
+}
+
+static GSList *
+derive_custom_function_ref (CpgExpressionTreeIter           *iter,
+                            CpgInstructionCustomFunctionRef *instr,
+                            DeriveContext                   *ctx)
+{
+	return derive_custom_function_real (iter,
+	                                    cpg_instruction_custom_function_ref_get_function (instr),
+	                                    ctx);
+}
+
+static GSList *
+derive_operator_diff (CpgExpressionTreeIter *iter,
+                      CpgOperatorDiff       *diff,
+                      DeriveContext         *ctx)
+{
+	// Recurse into diff expression
+	return derive_expression (cpg_operator_diff_get_derived (diff),
+	                          ctx);
+}
+
+static GSList *
+derive_operator_pdiff (CpgExpressionTreeIter *iter,
+                       CpgOperatorPDiff      *pdiff,
+                       DeriveContext         *ctx)
+{
+	// Recurse into pdiff function
+	return derive_custom_function_real (iter,
+	                                    cpg_operator_pdiff_get_function (pdiff),
+	                                    ctx);
+}
+
+static GSList *
+derive_custom_operator (CpgExpressionTreeIter        *iter,
+                        CpgInstructionCustomOperator *instr,
+                        DeriveContext                *ctx)
+{
+	CpgOperator *op;
+
+	op = cpg_instruction_custom_operator_get_operator (instr);
+
+	if (CPG_IS_OPERATOR_DIFF (op))
+	{
+		return derive_operator_diff (iter,
+		                             CPG_OPERATOR_DIFF (op),
+		                             ctx);
+	}
+	else if (CPG_IS_OPERATOR_PDIFF (op))
+	{
+		return derive_operator_pdiff (iter,
+		                              CPG_OPERATOR_PDIFF (op),
+		                              ctx);
+	}
+	else
+	{
+		g_set_error (ctx->error,
+		             CPG_SYMBOLIC_DERIVE_ERROR,
+		             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+		             "Derivation of the operator `%s' is not supported",
+		             cpg_operator_get_name (op));
+
+		return NULL;
 	}
 }
 
 static GSList *
 derive_iter (CpgExpressionTreeIter *iter,
-             CpgProperty           *x)
+             DeriveContext      *ctx)
 {
 	CpgInstruction *instr;
 	GSList *ret = NULL;
@@ -1089,56 +1431,59 @@ derive_iter (CpgExpressionTreeIter *iter,
 	{
 		ret = derive_operator (iter,
 		                       CPG_INSTRUCTION_FUNCTION (instr),
-		                       x);
+		                       ctx);
 	}
 	else if (CPG_IS_INSTRUCTION_FUNCTION (instr))
 	{
 		ret = derive_function (iter,
 		                       CPG_INSTRUCTION_FUNCTION (instr),
-		                       x);
+		                       ctx);
 	}
 	else if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION (instr))
 	{
-		// TODO
+		ret = derive_custom_function (iter,
+		                              CPG_INSTRUCTION_CUSTOM_FUNCTION (instr),
+		                              ctx);
+	}
+	else if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (instr))
+	{
+		ret = derive_custom_function_ref (iter,
+		                                  CPG_INSTRUCTION_CUSTOM_FUNCTION_REF (instr),
+		                                  ctx);
 	}
 	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (instr))
 	{
-		// TODO:
+		ret = derive_custom_operator (iter,
+		                              CPG_INSTRUCTION_CUSTOM_OPERATOR (instr),
+		                              ctx);
 	}
 	else if (CPG_IS_INSTRUCTION_PROPERTY (instr))
 	{
 		ret = derive_property (iter,
 		                       CPG_INSTRUCTION_PROPERTY (instr),
-		                       x);
+		                       ctx);
 	}
 
 	return ret;
 }
 
-/*static void*/
-/*print_instructions (GSList const *inst)*/
-/*{*/
-/*	while (inst)*/
-/*	{*/
-/*		g_printf ("%s ", cpg_instruction_to_string (inst->data));*/
-/*		inst = g_slist_next (inst);*/
-/*	}*/
-
-/*	g_printf ("\n");*/
-/*}*/
-
 CpgExpression *
-cpg_symbolic_derive (CpgExpression *expression,
-                     CpgProperty   *property,
-                     gint           order)
+cpg_symbolic_derive (CpgExpression          *expression,
+                     GSList                 *symbols,
+                     GHashTable             *property_map,
+                     CpgProperty            *property,
+                     gint                    order,
+                     CpgSymbolicDeriveFlags  flags,
+                     GError                 **error)
 {
 	CpgExpressionTreeIter *iter;
 	GSList *instructions = NULL;
 	gchar *es;
 	CpgExpression *ret;
+	DeriveContext ctx;
 
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+	g_return_val_if_fail (property == NULL || CPG_IS_PROPERTY (property), NULL);
 
 	if (order == 0)
 	{
@@ -1147,16 +1492,66 @@ cpg_symbolic_derive (CpgExpression *expression,
 
 	iter = cpg_expression_tree_iter_new (expression);
 
+	ctx.x = property;
+	ctx.flags = flags;
+	ctx.error = error;
+
+	ctx.symbols = g_hash_table_new (g_direct_hash,
+	                                g_direct_equal);
+
+	ctx.property_map = property_map;
+
+	if (!ctx.property_map)
+	{
+		ctx.property_map = g_hash_table_new (g_direct_hash,
+		                                     g_direct_equal);
+	}
+	else
+	{
+		g_hash_table_ref (ctx.property_map);
+	}
+
+	while (symbols)
+	{
+		g_hash_table_insert (ctx.symbols,
+		                     symbols->data,
+		                     GINT_TO_POINTER (1));
+
+		symbols = g_slist_next (symbols);
+	}
+
 	while (order > 0)
 	{
 		free_instructions (instructions);
 
-		instructions = derive_iter (iter, property);
+		instructions = derive_iter (iter, &ctx);
 		cpg_expression_tree_iter_free (iter);
+
+		if (!instructions)
+		{
+			break;
+		}
 
 		iter = cpg_expression_tree_iter_new_from_instructions (instructions);
 
 		--order;
+	}
+
+	g_hash_table_destroy (ctx.symbols);
+	g_hash_table_unref (ctx.property_map);
+
+	if (!instructions)
+	{
+		if (error && !*error)
+		{
+			g_set_error (error,
+			             CPG_SYMBOLIC_DERIVE_ERROR,
+			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             "Derivation of expression `%s' is not supported",
+			             cpg_expression_get_as_string (expression));
+		}
+
+		return NULL;
 	}
 
 	es = cpg_expression_tree_iter_to_string (iter);
@@ -1165,6 +1560,10 @@ cpg_symbolic_derive (CpgExpression *expression,
 
 	_cpg_expression_set_instructions_take (ret, instructions);
 	cpg_expression_tree_iter_free (iter);
+
+	g_message ("Derived: {%s} to {%s}",
+	           cpg_expression_get_as_string (expression),
+	           cpg_expression_get_as_string (ret));
 
 	return ret;
 }

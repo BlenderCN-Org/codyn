@@ -23,6 +23,7 @@
 #include "cpg-operators.h"
 #include "cpg-operator-delayed.h"
 #include "cpg-operator-diff.h"
+#include "cpg-operator-pdiff.h"
 
 static GSList *operator_registry = NULL;
 
@@ -37,6 +38,7 @@ ensure_defaults ()
 
 		cpg_operators_register (CPG_TYPE_OPERATOR_DELAYED);
 		cpg_operators_register (CPG_TYPE_OPERATOR_DIFF);
+		cpg_operators_register (CPG_TYPE_OPERATOR_PDIFF);
 	}
 }
 
@@ -174,8 +176,10 @@ cpg_operators_find (gchar const *name)
  *
  **/
 CpgOperator *
-cpg_operators_instantiate (gchar const     *name,
-                           GSList const    *expressions)
+cpg_operators_instantiate (gchar const   *name,
+                           GSList const  *expressions,
+                           gint           num_arguments,
+                           GError       **error)
 {
 	GType gtype;
 	CpgOperator *ret;
@@ -188,7 +192,12 @@ cpg_operators_instantiate (gchar const     *name,
 	}
 
 	ret = g_object_new (gtype, NULL);
-	cpg_operator_initialize (ret, expressions);
+
+	if (!cpg_operator_initialize (ret, expressions, num_arguments, error))
+	{
+		g_object_unref (ret);
+		ret = NULL;
+	}
 
 	return ret;
 }

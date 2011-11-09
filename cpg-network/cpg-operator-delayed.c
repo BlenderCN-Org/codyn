@@ -193,27 +193,32 @@ cpg_operator_delayed_reset (CpgOperator *op)
 	                      size);
 }
 
-static void
-cpg_operator_delayed_initialize (CpgOperator  *op,
-                                 GSList const *expressions)
+static gboolean
+cpg_operator_delayed_initialize (CpgOperator   *op,
+                                 GSList const  *expressions,
+                                 gint           num_arguments,
+                                 GError       **error)
 {
 	CpgOperatorDelayed *delayed;
 
-	CPG_OPERATOR_CLASS (cpg_operator_delayed_parent_class)->initialize (op, expressions);
+	if (!CPG_OPERATOR_CLASS (cpg_operator_delayed_parent_class)->initialize (op,
+	                                                                         expressions,
+	                                                                         num_arguments,
+	                                                                         error))
+	{
+		return FALSE;
+	}
 
 	delayed = CPG_OPERATOR_DELAYED (op);
 	delayed->priv->expression = g_object_ref (expressions->data);
 
 	if (expressions->next)
 	{
-		delayed->priv->delay_expression = g_object_ref (expressions->next->data);
-		delayed->priv->delay = cpg_expression_evaluate (delayed->priv->delay_expression);
-
-		if (expressions->next->next)
-		{
-			delayed->priv->initial_value = g_object_ref (expressions->next->next->data);
-		}
+		delayed->priv->initial_value = g_object_ref (expressions->next->next->data);
 	}
+
+	delayed->priv->delay = 0;
+	return TRUE;
 }
 
 static void
@@ -224,13 +229,16 @@ cpg_operator_delayed_execute (CpgOperator     *op,
 
 	d = (CpgOperatorDelayed *)op;
 
+	// TODO: calculate delay...
+
 	cpg_stack_push (stack, d->priv->value);
 }
 
 static gint
-cpg_operator_delayed_validate_num_arguments (gint num)
+cpg_operator_delayed_validate_num_arguments (gint numsym,
+                                             gint num)
 {
-	return num > 0 && num < 4;
+	return numsym > 0 && numsym < 3 && num < 2;
 }
 
 static HistoryItem *

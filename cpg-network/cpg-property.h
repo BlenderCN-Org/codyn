@@ -158,6 +158,8 @@ CpgProperty       *cpg_property_copy                    (CpgProperty        *pro
 void               _cpg_property_set_object             (CpgProperty                  *property,
                                                          CPG_FORWARD_DECL (CpgObject) *object);
 
+GSList            *cpg_property_get_actions             (CpgProperty *property);
+
 G_END_DECLS
 
 #endif /* __CPG_PROPERTY_H__ */

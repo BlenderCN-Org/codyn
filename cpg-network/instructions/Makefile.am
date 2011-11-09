@@ -9,6 +9,7 @@ noinst_LTLIBRARIES = libinstructions.la
 libinstructions_la_SOURCES = 			\
 	cpg-instruction.c			\
 	cpg-instruction-custom-function.c	\
+	cpg-instruction-custom-function-ref.c	\
 	cpg-instruction-custom-operator.c	\
 	cpg-instruction-function.c		\
 	cpg-instruction-number.c		\
@@ -21,6 +22,7 @@ libinstructions_headers =			\
 	cpg-instruction.h			\
 	cpg-instructions.h			\
 	cpg-instruction-custom-function.h	\
+	cpg-instruction-custom-function-ref.h	\
 	cpg-instruction-custom-operator.h	\
 	cpg-instruction-function.h		\
 	cpg-instruction-number.h		\

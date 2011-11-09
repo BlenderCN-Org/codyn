@@ -899,6 +899,7 @@ cpg_group_cpg_compile (CpgObject         *object,
 	CpgGroup *group = CPG_GROUP (object);
 	GSList *item;
 	gboolean ret;
+	GSList *others = NULL;
 
 	cpg_compile_context_save (context);
 
@@ -906,10 +907,30 @@ cpg_group_cpg_compile (CpgObject         *object,
 	prepend_functions (group, context);
 
 	cpg_compile_context_save (context);
-
 	cpg_compile_context_prepend_object (context, object);
 
 	item = group->priv->children;
+
+	while (item)
+	{
+		if (!CPG_IS_LINK (item->data))
+		{
+			others = g_slist_prepend (others,
+			                          item->data);
+		}
+		else if (!cpg_object_compile (item->data, context, error))
+		{
+			cpg_compile_context_restore (context);
+			cpg_compile_context_restore (context);
+
+			return FALSE;
+		}
+
+		item = g_slist_next (item);
+	}
+
+	others = g_slist_reverse (others);
+	item = others;
 
 	while (item)
 	{
@@ -923,6 +944,8 @@ cpg_group_cpg_compile (CpgObject         *object,
 
 		item = g_slist_next (item);
 	}
+
+	g_slist_free (others);
 
 	cpg_compile_context_restore (context);
 

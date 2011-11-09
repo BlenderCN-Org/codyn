@@ -84,32 +84,47 @@ derived_property (CpgExpression *expr)
 	return cpg_instruction_property_get_property (instr->data);
 }
 
-static void
-cpg_operator_diff_initialize (CpgOperator  *op,
-                              GSList const *expressions)
+static gboolean
+cpg_operator_diff_initialize (CpgOperator   *op,
+                              GSList const  *expressions,
+                              gint           num_arguments,
+                              GError       **error)
 {
 	CpgOperatorDiff *diff;
-	CpgProperty *prop;
+	CpgProperty *prop = NULL;
 
-	CPG_OPERATOR_CLASS (cpg_operator_diff_parent_class)->initialize (op, expressions);
+	if (!CPG_OPERATOR_CLASS (cpg_operator_diff_parent_class)->initialize (op,
+	                                                                      expressions,
+	                                                                      num_arguments,
+	                                                                      error))
+	{
+		return FALSE;
+	}
 
 	diff = CPG_OPERATOR_DIFF (op);
 	diff->priv->expression = g_object_ref (expressions->data);
 
-	prop = derived_property (expressions->next->data);
+	diff->priv->order = 1;
 
-	if (expressions->next->next)
+	if (expressions->next)
 	{
-		diff->priv->order = (gint)cpg_expression_evaluate (expressions->next->next->data);
-	}
-	else
-	{
-		diff->priv->order = 1;
+		prop = derived_property (expressions->next->data);
+
+		if (expressions->next->next)
+		{
+			diff->priv->order = rint (cpg_expression_evaluate (expressions->next->next->data));
+		}
 	}
 
 	diff->priv->derived = cpg_symbolic_derive (diff->priv->expression,
+	                                           NULL,
+	                                           NULL,
 	                                           prop,
-	                                           diff->priv->order);
+	                                           diff->priv->order,
+	                                           CPG_SYMBOLIC_DERIVE_NONE,
+	                                           error);
+
+	return diff->priv->derived != NULL;
 }
 
 static void
@@ -131,9 +146,9 @@ cpg_operator_diff_execute (CpgOperator *op,
 }
 
 static gint
-cpg_operator_diff_validate_num_arguments (gint num)
+cpg_operator_diff_validate_num_arguments (gint numsym, gint num)
 {
-	return num >= 2 && num <= 3;
+	return numsym >= 1 && numsym <= 3;
 }
 
 static void

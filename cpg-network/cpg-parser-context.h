@@ -211,6 +211,10 @@ void                   cpg_parser_context_push_templates       (CpgParserContext
 void                   cpg_parser_context_push_integrator      (CpgParserContext           *context,
                                                                 GSList                     *attributes);
 
+void                   cpg_parser_context_push_function        (CpgParserContext           *context,
+                                                                CpgEmbeddedString          *id,
+                                                                GSList                     *attributes);
+
 void                   cpg_parser_context_push_input_file      (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
                                                                 CpgEmbeddedString          *path,
@@ -226,6 +230,14 @@ void                   cpg_parser_context_set_proxy            (CpgParserContext
 GSList                *cpg_parser_context_pop                  (CpgParserContext           *context);
 GSList const          *cpg_parser_context_current_selections   (CpgParserContext           *context);
 GSList const          *cpg_parser_context_previous_selections  (CpgParserContext           *context);
+
+void                   cpg_parser_context_add_function_argument (CpgParserContext          *context,
+                                                                 CpgEmbeddedString         *id,
+                                                                 CpgEmbeddedString         *optional,
+                                                                 gboolean                   isexplicit);
+
+void                   cpg_parser_context_set_function_expression (CpgParserContext        *context,
+                                                                   CpgEmbeddedString       *expression);
 
 void                   cpg_parser_context_push_selector_identifier (CpgParserContext           *context,
                                                                     CpgEmbeddedString          *identifier);

@@ -188,6 +188,7 @@ tools/cpg-parser/Makefile
 tools/cpg-render/Makefile
 tools/cpg-context/Makefile
 tools/cpg-archive/Makefile
+tools/cpg-compile/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cpgcontext/Makefile

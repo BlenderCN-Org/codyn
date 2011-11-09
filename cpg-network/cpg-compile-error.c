@@ -321,7 +321,15 @@ cpg_compile_error_string (CpgCompileError *error)
 {
 	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
 
-	return cpg_compile_error_code_string (cpg_compile_error_get_code (error));
+	if (cpg_compile_error_get_error (error)->domain ==
+	    CPG_COMPILE_ERROR_TYPE)
+	{
+		return cpg_compile_error_code_string (cpg_compile_error_get_code (error));
+	}
+	else
+	{
+		return "Compile error";
+	}
 }
 
 /**
