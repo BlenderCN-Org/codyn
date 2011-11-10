@@ -1127,6 +1127,70 @@ generate_name_value_pairs (CpgParserContext  *context,
 	return g_slist_reverse (ret);
 }
 
+#define SELF_LINK_KEY "CpgSelfLinkParserKey"
+
+static gboolean
+add_property_diff (CpgParserContext *context,
+                   CpgObject        *obj,
+                   gchar const      *name,
+                   NameValuePair    *p,
+                   CpgPropertyFlags  add_flags,
+                   CpgPropertyFlags  remove_flags)
+{
+	gchar const *ex;
+	CpgProperty *prop;
+	CpgLink *link;
+	GError *error = NULL;
+
+	// Integrate 'name' on obj
+	prop = cpg_object_get_property (obj, name);
+	ex = cpg_expansion_get (p->value, 0);
+
+	if (!prop)
+	{
+		if (!cpg_object_add_property (obj,
+		                              cpg_property_new (name, "0", 0),
+		                              &error))
+		{
+			parser_failed_error (context, NULL, error);
+			return FALSE;
+		}
+
+		prop = cpg_object_get_property (obj, name);
+	}
+
+	cpg_property_set_flags (prop, (CPG_PROPERTY_FLAG_INTEGRATED | add_flags) & ~remove_flags);
+
+	// Find the self link generated
+	link = g_object_get_data (G_OBJECT (obj), SELF_LINK_KEY);
+
+	if (!link)
+	{
+		gchar *s;
+
+		s = g_strconcat (cpg_object_get_id (obj), "_integrate", NULL);
+		link = cpg_link_new (s, obj, obj);
+		g_free (s);
+
+		if (!cpg_group_add (CPG_GROUP (cpg_object_get_parent (obj)),
+		                    CPG_OBJECT (link),
+		                    &error))
+		{
+			g_object_unref (link);
+			parser_failed_error (context, NULL, error);
+			return FALSE;
+		}
+
+		g_object_set_data_full (G_OBJECT (obj),
+		                        SELF_LINK_KEY,
+		                        link,
+		                        (GDestroyNotify)g_object_unref);
+	}
+
+	cpg_link_add_action (link, cpg_link_action_new (name, cpg_expression_new (ex)));
+	return TRUE;
+}
+
 void
 cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
@@ -1194,6 +1258,23 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			gchar const *exname;
 
 			exname = cpg_expansion_get (p->name, 0);
+
+			if (g_str_has_suffix (exname, "'"))
+			{
+				gchar *nname;
+
+				nname = g_strndup (exname, strlen (exname) - 1);
+
+				// This is a differential equation now...
+				add_property_diff (context,
+				                   obj,
+				                   nname,
+				                   p,
+				                   add_flags,
+				                   remove_flags);
+
+				continue;
+			}
 
 			property = cpg_object_get_property (obj,
 			                                    cpg_expansion_get (p->name, 0));

@@ -1390,7 +1390,9 @@ layout_contents
 	;
 
 identifier
-	: T_IDENTIFIER			{ $$ = cpg_embedded_string_new_from_string ($1); }
+	: T_IDENTIFIER '\''		{ $$ = cpg_embedded_string_new_from_string ($1);
+	                                  cpg_embedded_string_add_text ($$, "'"); }
+	| T_IDENTIFIER			{ $$ = cpg_embedded_string_new_from_string ($1); }
 	;
 
 double
