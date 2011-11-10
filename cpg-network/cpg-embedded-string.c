@@ -1285,21 +1285,16 @@ ex_node_append_text (ExNode *parent,
                      gchar const *ptr,
                      gint        *last)
 {
-	if (buf->len != 0)
-	{
-		// Store text until here as a text node
-		gint end = ptr - text;
-		ExNode *n;
+	// Store text until here as a text node
+	gint end = ptr - text;
+	ExNode *n;
 
-		n = ex_node_new (parent, EX_NODE_TYPE_TEXT, buf->str, *last, end);
+	n = ex_node_new (parent, EX_NODE_TYPE_TEXT, buf->str, *last, end);
 
-		*last = end + 1;
+	*last = end + 1;
 
-		g_string_erase (buf, 0, -1);
-		return n;
-	}
-
-	return NULL;
+	g_string_erase (buf, 0, -1);
+	return n;
 }
 
 static ExNode *
