@@ -741,7 +741,7 @@ evaluate_node (CpgEmbeddedString   *em,
 					r = cpg_embedded_context_calculate (context, children->data, error);
 				}
 
-				istrue = r && (gint)g_ascii_strtoll (r, NULL, 10) == 1;
+				istrue = r && (gint)g_ascii_strtoll (r, NULL, 10) != 0;
 				g_free (r);
 
 				if (istrue && children->next)
