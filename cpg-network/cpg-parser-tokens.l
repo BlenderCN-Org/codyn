@@ -342,8 +342,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
-<inreduce,inmap>(\\["@$\\}|]|[^"@$\\|}])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@$}|");
+<inreduce,inmap>(\\["@$\\}|,]|[^"@$\\|},])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@$}|,");
 					return T_STRING;
 				}
 
