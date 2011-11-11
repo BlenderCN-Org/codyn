@@ -69,6 +69,7 @@ struct _CpgExpressionPrivate
 
 	gdouble cached_output;
 	gint error_at;
+	GSList *error_start;
 
 	guint cached : 1;
 	guint prevent_cache_reset : 1;
@@ -111,6 +112,22 @@ static void
 cpg_modifiable_iface_init (gpointer iface)
 {
 	/* Use default implementation */
+}
+
+static void
+push_error_start (CpgExpression *expression,
+                  ParserContext *ctx)
+{
+	expression->priv->error_start = g_slist_prepend (expression->priv->error_start,
+	                                                 GINT_TO_POINTER (*(ctx->buffer) - expression->priv->expression + 1));
+}
+
+static void
+pop_error_start (CpgExpression *expression,
+                  ParserContext *ctx)
+{
+	expression->priv->error_start = g_slist_delete_link (expression->priv->error_start,
+	                                                     expression->priv->error_start);
 }
 
 static void
@@ -960,6 +977,7 @@ parse_custom_operator (CpgExpression *expression,
 {
 	CpgOperatorClass *klass;
 	CpgOperator *op;
+	GSList *instrstart;
 
 	klass = cpg_operators_find_class (name);
 
@@ -975,11 +993,15 @@ parse_custom_operator (CpgExpression *expression,
 	gint numargs = 0;
 	gint num_arguments = 0;
 
+	gint error_start = cpg_expression_get_error_start (expression);
+
 	CpgToken *next = cpg_tokenizer_peek (*(context->buffer));
 	gboolean loopit = TRUE;
 
 	gchar const *expr_start = *(context->buffer);
 	gchar const *expr_end = expr_start;
+
+	instrstart = expression->priv->instructions;
 
 	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)
@@ -1133,6 +1155,9 @@ parse_custom_operator (CpgExpression *expression,
 
 	if (!cpg_operator_validate_num_arguments (klass, numargs, num_arguments))
 	{
+		expression->priv->error_start = g_slist_prepend (expression->priv->error_start,
+		                                                 GINT_TO_POINTER (error_start));
+
 		return parser_failed (context,
 		                      CPG_COMPILE_ERROR_MAXARG,
 		                      "Number of arguments (%d) for operator `%s' does not match",
@@ -1166,7 +1191,9 @@ parse_ternary_operator (CpgExpression     *expression,
                         ParserContext     *context)
 {
 	if (!parse_expression (expression, context, token->priority, token->left_assoc))
+	{
 		return FALSE;
+	}
 
 	// next token should be :
 	CpgToken *next = cpg_tokenizer_peek (*context->buffer);
@@ -1524,6 +1551,8 @@ parse_expression (CpgExpression   *expression,
 	gboolean ret = FALSE;
 	gint num = 0;
 
+	push_error_start (expression, context);
+
 	while ((token = cpg_tokenizer_peek (*context->buffer)))
 	{
 		ret = TRUE;
@@ -1553,6 +1582,7 @@ parse_expression (CpgExpression   *expression,
 				{
 					cpg_token_free (token);
 
+					pop_error_start (expression, context);
 					return TRUE;
 				}
 
@@ -1573,6 +1603,8 @@ parse_expression (CpgExpression   *expression,
 				{
 					// Do not handle the operator here yet
 					cpg_token_free (token);
+
+					pop_error_start (expression, context);
 					return TRUE;
 				}
 				else
@@ -1613,6 +1645,11 @@ parse_expression (CpgExpression   *expression,
 		if (ret == FALSE)
 		{
 			break;
+		}
+		else
+		{
+			pop_error_start (expression, context);
+			push_error_start (expression, context);
 		}
 	}
 
@@ -1764,6 +1801,7 @@ cpg_expression_compile (CpgExpression      *expression,
 	gboolean ret;
 
 	expression->priv->error_at = 0;
+	expression->priv->error_start = NULL;
 
 	if (empty_expression (expression))
 	{
@@ -2257,6 +2295,24 @@ cpg_expression_get_error_at (CpgExpression *expression)
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), 0);
 
 	return expression->priv->error_at;
+}
+
+/**
+ * cpg_expression_get_error_start:
+ * @expression: A #CpgExpression
+ *
+ * Get the character position in the expression at which an error started
+ * while compiling the expression
+ *
+ * Returns: the character position at which an error started
+ *
+ **/
+gint
+cpg_expression_get_error_start (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), 0);
+
+	return expression->priv->error_start ? GPOINTER_TO_INT (expression->priv->error_start->data) : expression->priv->error_at;
 }
 
 const GSList *

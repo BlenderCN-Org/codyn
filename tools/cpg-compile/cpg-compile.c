@@ -89,7 +89,7 @@ compile_network (gchar const *filename)
 
 		msg = cpg_compile_error_get_formatted_string (err);
 
-		g_printerr ("%sFailed to compile network `%s%s%s%s'\n\n%s%s%s\n",
+		g_printerr ("%sFailed to compile network:%s%s %s%s\n\n%s%s%s\n",
 		            color_red,
 		            color_off,
 		            color_bold,

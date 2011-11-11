@@ -41,8 +41,7 @@ struct _CpgCompileErrorPrivate
 	CpgObject *object;
 	CpgProperty *property;
 	CpgLinkAction *action;
-
-	gint pos;
+	CpgExpression *expression;
 };
 
 G_DEFINE_TYPE (CpgCompileError, cpg_compile_error, G_TYPE_OBJECT)
@@ -85,6 +84,12 @@ clear_objects (CpgCompileError *error)
 	{
 		g_object_unref (error->priv->action);
 		error->priv->action = NULL;
+	}
+
+	if (error->priv->expression)
+	{
+		g_object_unref (error->priv->expression);
+		error->priv->expression = NULL;
 	}
 }
 
@@ -152,12 +157,13 @@ cpg_compile_error_set (CpgCompileError *error,
                        CpgObject       *object,
                        CpgProperty     *property,
                        CpgLinkAction   *action,
-                       gint             pos)
+                       CpgExpression   *expression)
 {
 	g_return_if_fail (CPG_IS_COMPILE_ERROR (error));
 	g_return_if_fail (CPG_IS_OBJECT (object));
 	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));
 	g_return_if_fail (action == NULL || CPG_IS_LINK_ACTION (action));
+	g_return_if_fail (expression == NULL || CPG_IS_EXPRESSION (expression));
 
 	clear_objects (error);
 
@@ -174,14 +180,27 @@ cpg_compile_error_set (CpgCompileError *error,
 	if (property)
 	{
 		error->priv->property = g_object_ref (property);
+
+		if (!expression)
+		{
+			error->priv->expression = g_object_ref (cpg_property_get_expression (property));
+		}
 	}
 
 	if (action)
 	{
 		error->priv->action = g_object_ref (action);
+
+		if (!expression)
+		{
+			error->priv->expression = g_object_ref (cpg_link_action_get_equation (action));
+		}
 	}
 
-	error->priv->pos = pos;
+	if (expression)
+	{
+		error->priv->expression = g_object_ref (expression);
+	}
 }
 
 /**
@@ -216,23 +235,6 @@ cpg_compile_error_get_object (CpgCompileError *error)
 	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
 
 	return error->priv->object;
-}
-
-/**
- * cpg_compile_error_get_pos:
- * @error: A #CpgCompileError
- *
- * Get the character position of the compile error in the expression.
- *
- * Returns: The character position of the compile error in the expression
- *
- **/
-gint
-cpg_compile_error_get_pos (CpgCompileError *error)
-{
-	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), 0);
-
-	return error->priv->pos;
 }
 
 /**
@@ -374,6 +376,9 @@ cpg_compile_error_get_formatted_string (CpgCompileError *error)
 	gchar const *expr;
 	gchar *pad;
 	gchar *prefix;
+	gint start;
+	gint end;
+	gchar *strip = NULL;
 
 	g_return_val_if_fail (CPG_IS_COMPILE_ERROR (error), NULL);
 
@@ -397,34 +402,63 @@ cpg_compile_error_get_formatted_string (CpgCompileError *error)
 	{
 		g_string_append_c (ret, '.');
 		g_string_append (ret, cpg_property_get_name (error->priv->property));
-
-		expr = cpg_expression_get_as_string (cpg_property_get_expression (error->priv->property));
 	}
 	else if (error->priv->action != NULL)
 	{
 		g_string_append (ret, " < ");
 		g_string_append (ret, cpg_link_action_get_target (error->priv->action));
+	}
 
-		expr = cpg_expression_get_as_string (cpg_link_action_get_equation (error->priv->action));
+	if (error->priv->expression)
+	{
+		expr = cpg_expression_get_as_string (error->priv->expression);
+
+		start = cpg_expression_get_error_start (error->priv->expression);
+		end = cpg_expression_get_error_at (error->priv->expression);
 	}
 	else
 	{
-		expr = NULL;
+		expr = "";
+		start = 0;
+		end = 0;
 	}
 
-	prefix = g_strdup_printf ("[%d]:", cpg_compile_error_get_pos (error));
-	pad = g_strnfill (strlen (prefix) + cpg_compile_error_get_pos (error), ' ');
+	if (start != end)
+	{
+		prefix = g_strdup_printf ("[%d-%d]: ", start, end);
+	}
+	else
+	{
+		prefix = g_strdup_printf ("[%d]: ", start);
+	}
+
+	pad = g_strnfill (strlen (prefix) + start - 1, ' ');
+
+	if (end - start - 2 > 0)
+	{
+		gchar *tmp;
+		tmp = g_strnfill (end - start - 2, '-');
+
+		strip = g_strconcat (tmp, "^", NULL);
+		g_free (tmp);
+	}
+	else
+	{
+		strip = g_strdup ("");
+	}
 
 	g_string_append_printf (ret,
-	                        "': %s\n\n%s %s\n%s^ %s",
+	                        "' (%s):\n%s%s\n%s^%s %s",
 	                        cpg_compile_error_string (error),
 	                        prefix,
 	                        expr,
 	                        pad,
+	                        strip,
 	                        cpg_compile_error_get_message (error));
 
 	g_free (pad);
 	g_free (prefix);
+	g_free (strip);
 
 	return g_string_free (ret, FALSE);
 }

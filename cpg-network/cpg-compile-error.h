@@ -91,18 +91,18 @@ void             cpg_compile_error_set              (CpgCompileError *error,
                                                      CpgObject       *object,
                                                      CpgProperty     *property,
                                                      CpgLinkAction   *action,
-                                                     gint             pos);
+                                                     CpgExpression   *expression);
 
 GError           *cpg_compile_error_get_error       (CpgCompileError *error);
 CpgObject        *cpg_compile_error_get_object      (CpgCompileError *error);
 CpgProperty      *cpg_compile_error_get_property    (CpgCompileError *error);
 CpgLinkAction    *cpg_compile_error_get_link_action (CpgCompileError *error);
+CpgExpression    *cpg_compile_error_get_expression  (CpgCompileError *error);
 
 const gchar      *cpg_compile_error_string          (CpgCompileError *error);
 const gchar      *cpg_compile_error_code_string     (gint             code);
 gint              cpg_compile_error_get_code        (CpgCompileError *error);
 const gchar      *cpg_compile_error_get_message     (CpgCompileError *error);
-gint              cpg_compile_error_get_pos         (CpgCompileError *error);
 
 gchar *           cpg_compile_error_get_formatted_string (CpgCompileError *error);
 
