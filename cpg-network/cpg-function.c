@@ -192,7 +192,7 @@ cpg_function_compile_impl (CpgObject         *object,
 					                       object,
 					                       NULL,
 					                       NULL,
-					                       cpg_expression_get_error_at (self->priv->expression));
+					                       self->priv->expression);
 				}
 
 				ret = FALSE;
@@ -213,11 +213,6 @@ cpg_function_compile_impl (CpgObject         *object,
 	                             context,
 	                             &gerror))
 	{
-		g_warning ("Error while parsing function expression [%s]<%s>: %s",
-		           cpg_object_get_id (object),
-		           cpg_expression_get_as_string (self->priv->expression),
-		           gerror->message);
-
 		if (error)
 		{
 			cpg_compile_error_set (error,
@@ -225,7 +220,7 @@ cpg_function_compile_impl (CpgObject         *object,
 			                       object,
 			                       NULL,
 			                       NULL,
-			                       cpg_expression_get_error_at (self->priv->expression));
+			                       self->priv->expression);
 		}
 
 		g_error_free (gerror);

@@ -724,7 +724,7 @@ cpg_input_file_compile (CpgObject         *object,
 		                       object,
 		                       NULL,
 		                       NULL,
-		                       0);
+		                       NULL);
 
 		g_error_free (err);
 

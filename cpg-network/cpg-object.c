@@ -953,7 +953,7 @@ cpg_object_compile_impl (CpgObject         *object,
 				                       object,
 				                       property,
 				                       NULL,
-				                       cpg_expression_get_error_at (expr));
+				                       expr);
 			}
 
 			g_error_free (gerror);
@@ -973,7 +973,7 @@ cpg_object_compile_impl (CpgObject         *object,
 				                       object,
 				                       property,
 				                       NULL,
-				                       cpg_expression_get_error_at (cons));
+				                       cons);
 			}
 
 			g_error_free (gerror);
@@ -996,7 +996,7 @@ cpg_object_compile_impl (CpgObject         *object,
 				                       object,
 				                       property,
 				                       NULL,
-				                       0);
+				                       expr);
 
 				g_error_free (gerror);
 				ret = FALSE;

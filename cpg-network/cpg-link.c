@@ -700,7 +700,7 @@ cpg_link_compile_impl (CpgObject         *object,
 				                       object,
 				                       NULL,
 				                       action,
-				                       0);
+				                       NULL);
 
 				g_error_free (gerror);
 			}
@@ -723,7 +723,7 @@ cpg_link_compile_impl (CpgObject         *object,
 				                       object,
 				                       NULL,
 				                       action,
-				                       cpg_expression_get_error_at (expr));
+				                       expr);
 			}
 
 			g_error_free (gerror);
