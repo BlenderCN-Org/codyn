@@ -12,6 +12,7 @@ typedef struct _CpgExpressionTreeIter CpgExpressionTreeIter;
 CpgExpressionTreeIter *cpg_expression_tree_iter_new             (CpgExpression         *expression);
 CpgExpressionTreeIter *cpg_expression_tree_iter_new_from_instructions (GSList const *instructions);
 
+CpgExpressionTreeIter *cpg_expression_tree_iter_copy            (CpgExpressionTreeIter *iter);
 void                   cpg_expression_tree_iter_free            (CpgExpressionTreeIter *iter);
 
 CpgExpression         *cpg_expression_tree_iter_get_expression  (CpgExpressionTreeIter *iter);

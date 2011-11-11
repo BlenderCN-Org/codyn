@@ -599,3 +599,22 @@ cpg_expression_tree_iter_to_instructions (CpgExpressionTreeIter *iter)
 {
 	return iter_to_instructions (iter, NULL);
 }
+
+CpgExpressionTreeIter *
+cpg_expression_tree_iter_copy (CpgExpressionTreeIter *iter)
+{
+	CpgExpressionTreeIter *cp;
+	gint i;
+
+	cp = iter_new (iter->expression, iter->instruction);
+
+	cp->num_children = iter->num_children;
+	cp->children = g_new0 (CpgExpressionTreeIter *, cp->num_children + 1);
+
+	for (i = 0; i < cp->num_children; ++i)
+	{
+		cp->children[i] = cpg_expression_tree_iter_copy (iter->children[i]);
+	}
+
+	return cp;
+}
