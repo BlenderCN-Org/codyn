@@ -73,8 +73,6 @@ gboolean             cpg_function_argument_set_name           (CpgFunctionArgume
                                                                const gchar         *name);
 
 gboolean             cpg_function_argument_get_optional       (CpgFunctionArgument *argument);
-void                 cpg_function_argument_set_optional       (CpgFunctionArgument *argument,
-                                                               gboolean             optional);
 
 CpgExpression       *cpg_function_argument_get_default_value  (CpgFunctionArgument *argument);
 void                 cpg_function_argument_set_default_value  (CpgFunctionArgument *argument,
