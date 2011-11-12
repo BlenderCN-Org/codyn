@@ -23,7 +23,7 @@ GQuark            cpg_symbolic_derive_error_quark      (void);
 CpgExpression *cpg_symbolic_derive (CpgExpression           *expression,
                                     GSList                  *symbols,
                                     GHashTable              *property_map,
-                                    CpgProperty             *property,
+                                    GHashTable              *diff_map,
                                     gint                     order,
                                     CpgSymbolicDeriveFlags   flags,
                                     GError                 **error);
