@@ -67,6 +67,7 @@ struct _CpgFunctionPrivate
 {
 	CpgExpression *expression;
 	GList *arguments;
+	GHashTable *arguments_hash;
 
 	guint n_arguments;
 	guint n_optional;
@@ -103,6 +104,8 @@ cpg_function_finalize (GObject *object)
 
 	g_list_foreach (self->priv->arguments, (GFunc)g_object_unref, NULL);
 	g_list_free (self->priv->arguments);
+
+	g_hash_table_destroy (self->priv->arguments_hash);
 
 	G_OBJECT_CLASS (cpg_function_parent_class)->finalize (object);
 }
@@ -513,14 +516,6 @@ cpg_function_template_argument_added (CpgFunction         *source,
 	}
 }
 
-static gint
-find_argument (CpgFunctionArgument *a1,
-               CpgFunctionArgument *a2)
-{
-	return g_strcmp0 (cpg_function_argument_get_name (a1),
-	                  cpg_function_argument_get_name (a2));
-}
-
 static gboolean
 arguments_equal (CpgFunction         *a,
                  CpgFunction         *b,
@@ -590,22 +585,20 @@ cpg_function_template_argument_removed (CpgFunction         *source,
                                         CpgFunction         *target)
 {
 	CpgFunction *templ;
-	GList *item;
+	CpgFunctionArgument *item;
 
-	item = g_list_find_custom (target->priv->arguments,
-	                           arg,
-	                           (GCompareFunc)find_argument);
+	item = cpg_function_get_argument (target, cpg_function_argument_get_name (arg));
 
 	templ = last_template (target);
 
 	if (templ &&
 	    item &&
-	    arguments_equal (target, templ, item->data) &&
+	    arguments_equal (target, templ, item) &&
 	    cpg_expression_equal (target->priv->expression,
 	                          templ->priv->expression))
 	{
 		cpg_function_remove_argument (target,
-		                              item->data,
+		                              item,
 		                              NULL);
 	}
 }
@@ -899,6 +892,10 @@ cpg_function_argument_added_impl (CpgFunction         *function,
 		                                           n);
 	}
 
+	g_hash_table_insert (function->priv->arguments_hash,
+	                     g_strdup (cpg_function_argument_get_name (argument)),
+	                     argument);
+
 	++function->priv->n_arguments;
 
 	if (cpg_function_argument_get_optional (argument))
@@ -1028,6 +1025,11 @@ static void
 cpg_function_init (CpgFunction *self)
 {
 	self->priv = CPG_FUNCTION_GET_PRIVATE (self);
+
+	self->priv->arguments_hash = g_hash_table_new_full (g_str_hash,
+	                                                    g_str_equal,
+	                                                    (GDestroyNotify)g_free,
+	                                                    NULL);
 }
 
 /**
@@ -1098,16 +1100,16 @@ cpg_function_add_argument (CpgFunction         *function,
 	if (property == NULL)
 	{
 		/* Add the proxy property */
-		property = cpg_property_new (name, "0", CPG_PROPERTY_FLAG_NONE);
+		property = cpg_property_new (name,
+		                             cpg_expression_new0 (),
+		                             CPG_PROPERTY_FLAG_NONE);
 
 		if (!cpg_object_add_property (CPG_OBJECT (function), property, NULL))
 		{
 			return;
 		}
 	}
-	else if (g_list_find_custom (function->priv->arguments,
-	                             argument,
-	                             (GCompareFunc)find_argument) != NULL)
+	else if (cpg_function_get_argument (function, cpg_function_argument_get_name (argument)))
 	{
 		return;
 	}
@@ -1167,6 +1169,9 @@ cpg_function_remove_argument (CpgFunction          *function,
 
 		function->priv->arguments = g_list_delete_link (function->priv->arguments,
 		                                                item);
+
+		g_hash_table_remove (function->priv->arguments_hash,
+		                     cpg_function_argument_get_name (argument));
 
 		_cpg_function_argument_set_property (argument, NULL);
 
@@ -1357,4 +1362,13 @@ cpg_function_get_n_implicit (CpgFunction *function)
 	g_return_val_if_fail (CPG_IS_FUNCTION (function), 0);
 
 	return function->priv->n_implicit;
+}
+
+CpgFunctionArgument *
+cpg_function_get_argument (CpgFunction *function,
+                           gchar const *name)
+{
+	g_return_val_if_fail (CPG_IS_FUNCTION (function), NULL);
+
+	return g_hash_table_lookup (function->priv->arguments_hash, name);
 }
