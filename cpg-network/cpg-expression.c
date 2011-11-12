@@ -420,6 +420,18 @@ cpg_expression_new (const gchar *expression)
 	                     NULL);
 }
 
+CpgExpression *
+cpg_expression_new0 ()
+{
+	CpgExpression *ret;
+
+	ret = cpg_expression_new ("0");
+	ret->priv->instructions = g_slist_prepend (NULL,
+	                                           cpg_instruction_number_new_from_string ("0"));
+
+	return ret;
+}
+
 static void
 instructions_push (CpgExpression  *expression,
                    CpgInstruction *next)

@@ -61,6 +61,7 @@ typedef CPG_FORWARD_DECL (CpgProperty) CpgPropertyForward;
 GType          cpg_expression_get_type         (void) G_GNUC_CONST;
 
 CpgExpression *cpg_expression_new              (const gchar        *expression);
+CpgExpression *cpg_expression_new0             ();
 CpgExpression *cpg_expression_copy             (CpgExpression      *expression);
 
 const GSList  *cpg_expression_get_dependencies (CpgExpression      *expression);
