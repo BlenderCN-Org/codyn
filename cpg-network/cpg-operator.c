@@ -151,6 +151,22 @@ cpg_operator_equal_default (CpgOperator *op,
 	return FALSE;
 }
 
+
+static CpgOperator *
+cpg_operator_copy_default (CpgOperator *src)
+{
+	CpgOperator *ret;
+
+	ret = g_object_new (G_OBJECT_TYPE (src), NULL);
+
+	cpg_operator_initialize (ret,
+	                         src->priv->expressions,
+	                         src->priv->num_arguments,
+	                         NULL);
+
+	return ret;
+}
+
 static void
 cpg_operator_class_init (CpgOperatorClass *klass)
 {
@@ -169,6 +185,7 @@ cpg_operator_class_init (CpgOperatorClass *klass)
 	klass->get_name = cpg_operator_get_name_default;
 	klass->initialize = cpg_operator_initialize_default;
 	klass->equal = cpg_operator_equal_default;
+	klass->copy = cpg_operator_copy_default;
 
 	g_type_class_add_private (object_class, sizeof (CpgOperatorPrivate));
 }
@@ -363,17 +380,9 @@ cpg_operator_initialize (CpgOperator   *op,
 CpgOperator *
 cpg_operator_copy (CpgOperator *op)
 {
-	CpgOperator *ret;
-
 	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
 
-	ret = g_object_new (G_OBJECT_TYPE (op), NULL);
-
-	cpg_operator_initialize (ret, op->priv->expressions,
-	                         op->priv->num_arguments,
-	                         NULL);
-
-	return ret;
+	return CPG_OPERATOR_GET_CLASS (op)->copy (op);
 }
 
 void

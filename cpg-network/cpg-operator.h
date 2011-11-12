@@ -93,6 +93,7 @@ struct _CpgOperatorClass
 
 	gboolean         (*equal)           (CpgOperator *op,
 	                                     CpgOperator *other);
+	CpgOperator     *(*copy)             (CpgOperator *src);
 };
 
 GType                cpg_operator_get_type                    (void) G_GNUC_CONST;
