@@ -220,7 +220,7 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 
 %start choose_parser
 
-%expect 9
+%expect 10
 
 %%
 
@@ -230,7 +230,7 @@ choose_parser
 	| T_START_SELECTOR selector_parse T_EOF
 	| T_START_GROUP group_contents
 	| T_START_LINK link_contents
-	| T_START_STATE state_contents
+	| T_START_STATE object_contents
 	;
 
 document_contents
@@ -466,7 +466,7 @@ state
 	  identifier_or_string_or_nothing
 	  templated
 	  '{' 				{ cpg_parser_context_push_state (context, $3, $4, $1); errb }
-	  state_contents
+	  object_contents
 	  '}'				{ $$ = cpg_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_STATE
@@ -478,7 +478,7 @@ state
 	                                                                     CPG_SELECTOR_TYPE_GROUP,
 	                                                                     $4,
 	                                                                     $1); }
-	  state_contents
+	  object_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
@@ -712,7 +712,7 @@ object
 	                                                                  $3,
 	                                                                  $4,
 	                                                                  $1); }
-	  state_contents
+	  object_contents
 	  '}'
 	| attributes
 	  T_KEY_OBJECT
@@ -723,7 +723,7 @@ object
 	                                                                     CPG_SELECTOR_TYPE_OBJECT,
 	                                                                     $1,
 	                                                                     $4); }
-	  state_contents
+	  object_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
@@ -755,6 +755,13 @@ function_argument_implicit
 					{ $$ = $2; }
 	;
 
+function_helper
+	:
+	| '{'
+	  object_contents
+	  '}'
+	;
+
 function_custom
 	: attributes
 	  identifier_or_string
@@ -765,6 +772,7 @@ function_custom
 	  '='
 	  value_as_string		{ cpg_parser_context_set_function_expression (context, $9); errb
 	                                  cpg_parser_context_pop (context); errb }
+	  function_helper
 	;
 
 function_item
@@ -833,24 +841,24 @@ function_argument
 	| identifier_or_string			        { cpg_parser_context_add_function_argument (context, $1, NULL, TRUE); }
 	;
 
-state_item
+object_item
 	: property
 	| common_scopes
 	| layout
 	| attributes
 	  event_handler_code
 	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
-	  state_contents
+	  object_contents
 	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
-	  state_contents
+	  object_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
-state_contents
+object_contents
 	:
-	| state_contents state_item
+	| object_contents object_item
 	;
 
 group_item
