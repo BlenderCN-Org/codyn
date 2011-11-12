@@ -644,12 +644,12 @@ cpg_property_init (CpgProperty *self)
  **/
 CpgProperty *
 cpg_property_new (gchar const      *name,
-                  gchar const      *expression,
+                  CpgExpression    *expression,
                   CpgPropertyFlags  flags)
 {
 	return g_object_new (CPG_TYPE_PROPERTY,
 	                     "name", name,
-	                     "expression", cpg_expression_new (expression),
+	                     "expression", expression,
 	                     "flags", flags,
 	                     NULL);
 }
@@ -1308,7 +1308,7 @@ cpg_property_copy (CpgProperty *property)
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
 
 	ret = cpg_property_new (property->priv->name,
-	                        cpg_expression_get_as_string (property->priv->expression),
+	                        cpg_expression_copy (property->priv->expression),
 	                        property->priv->flags);
 
 	ret->priv->update = property->priv->update;

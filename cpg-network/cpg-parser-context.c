@@ -1149,7 +1149,9 @@ add_property_diff (CpgParserContext *context,
 	if (!prop)
 	{
 		if (!cpg_object_add_property (obj,
-		                              cpg_property_new (name, "0", 0),
+		                              cpg_property_new (name,
+		                                                cpg_expression_new0 (),
+		                                                0),
 		                              &error))
 		{
 			parser_failed_error (context, NULL, error);
@@ -1311,7 +1313,9 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			flags |= add_flags;
 
 			if (!cpg_object_add_property (obj,
-			                              cpg_property_new (exname, exexpression, flags),
+			                              cpg_property_new (exname,
+			                                                cpg_expression_new (exexpression),
+			                                                flags),
 			                              &error))
 			{
 				g_free (exexpression);

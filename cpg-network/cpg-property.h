@@ -96,7 +96,7 @@ CPG_FORWARD_DECL (CpgObject);
 GType cpg_property_get_type (void) G_GNUC_CONST;
 
 CpgProperty       *cpg_property_new                     (const gchar      *name,
-                                                         const gchar      *expression,
+                                                         CpgExpression    *expression,
                                                          CpgPropertyFlags  flags);
 
 const gchar       *cpg_property_get_name                (CpgProperty        *property);

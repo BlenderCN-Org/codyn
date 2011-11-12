@@ -371,7 +371,7 @@ set_column_names (CpgInputFile        *input,
 			if (!prop)
 			{
 				prop = cpg_property_new (name,
-				                         "0",
+				                         cpg_expression_new0 (),
 				                         CPG_PROPERTY_FLAG_NONE);
 
 				cpg_object_add_property (CPG_OBJECT (input),
