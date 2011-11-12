@@ -25,6 +25,7 @@
 
 #include <glib-object.h>
 #include <cpg-network/cpg-stack.h>
+#include <cpg-network/cpg-function.h>
 
 G_BEGIN_DECLS
 
@@ -42,6 +43,8 @@ typedef struct _CpgOperatorPrivate	CpgOperatorPrivate;
 typedef struct _CpgOperatorClassPrivate CpgOperatorClassPrivate;
 
 struct _CpgIntegrator;
+
+typedef CPG_FORWARD_DECL (CpgFunction) CpgFunctionForward;
 
 struct _CpgOperator
 {
@@ -68,7 +71,7 @@ struct _CpgOperatorClass
 
 	gchar           *(*get_name) ();
 
-	gboolean         (*validate_num_arguments) (gint         symnum, gint num);
+	gboolean         (*validate_num_arguments) (gint symnum, gint num);
 
 	void             (*reset_cache) (CpgOperator     *op);
 
@@ -93,6 +96,8 @@ struct _CpgOperatorClass
 
 	gboolean         (*equal)           (CpgOperator *op,
 	                                     CpgOperator *other);
+
+	CpgFunctionForward *(*get_function)  (CpgOperator *op);
 	CpgOperator     *(*copy)             (CpgOperator *src);
 };
 
@@ -140,6 +145,7 @@ void                 cpg_operator_reset                       (CpgOperator     *
 CpgOperator         *cpg_operator_copy                        (CpgOperator     *op);
 
 gint                 cpg_operator_get_num_arguments           (CpgOperator     *op);
+CpgFunction         *cpg_operator_get_function                (CpgOperator     *op);
 
 G_END_DECLS
 

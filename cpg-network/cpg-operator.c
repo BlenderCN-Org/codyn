@@ -151,6 +151,11 @@ cpg_operator_equal_default (CpgOperator *op,
 	return FALSE;
 }
 
+static CpgFunction *
+cpg_operator_get_function_default (CpgOperator *op)
+{
+	return NULL;
+}
 
 static CpgOperator *
 cpg_operator_copy_default (CpgOperator *src)
@@ -185,6 +190,7 @@ cpg_operator_class_init (CpgOperatorClass *klass)
 	klass->get_name = cpg_operator_get_name_default;
 	klass->initialize = cpg_operator_initialize_default;
 	klass->equal = cpg_operator_equal_default;
+	klass->get_function = cpg_operator_get_function_default;
 	klass->copy = cpg_operator_copy_default;
 
 	g_type_class_add_private (object_class, sizeof (CpgOperatorPrivate));
@@ -413,4 +419,12 @@ cpg_operator_get_num_arguments (CpgOperator *op)
 	g_return_val_if_fail (CPG_IS_OPERATOR (op), 0);
 
 	return op->priv->num_arguments;
+}
+
+CpgFunction *
+cpg_operator_get_function (CpgOperator *op)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+
+	return CPG_OPERATOR_GET_CLASS (op)->get_function (op);
 }
