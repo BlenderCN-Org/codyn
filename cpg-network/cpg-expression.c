@@ -2304,6 +2304,9 @@ cpg_expression_set_once (CpgExpression *expression,
 CpgExpression *
 cpg_expression_copy (CpgExpression *expression)
 {
+	CpgExpression *ret;
+	GSList *instr;
+
 	g_return_val_if_fail (expression == NULL || CPG_IS_EXPRESSION (expression), NULL);
 
 	if (expression == NULL)
@@ -2311,7 +2314,37 @@ cpg_expression_copy (CpgExpression *expression)
 		return NULL;
 	}
 
-	return cpg_expression_new (expression->priv->expression);
+	ret = cpg_expression_new (expression->priv->expression);
+
+	ret->priv->cached = expression->priv->cached;
+	ret->priv->prevent_cache_reset = expression->priv->prevent_cache_reset;
+	ret->priv->cached_output = expression->priv->cached_output;
+	ret->priv->modified = expression->priv->modified;
+	ret->priv->has_cache = expression->priv->has_cache;
+	ret->priv->once = expression->priv->once;
+
+	instr = expression->priv->instructions;
+
+	while (instr)
+	{
+		instructions_push (ret,
+		                   CPG_INSTRUCTION (cpg_mini_object_copy (CPG_MINI_OBJECT (instr->data))));
+		instr = g_slist_next (instr);
+	}
+
+	ret->priv->instructions =
+		g_slist_reverse (ret->priv->instructions);
+
+	ret->priv->variadic_instructions =
+		g_slist_reverse (ret->priv->variadic_instructions);
+
+	ret->priv->operator_instructions =
+		g_slist_reverse (ret->priv->operator_instructions);
+
+	ret->priv->property_instructions =
+		g_slist_reverse (ret->priv->property_instructions);
+
+	return ret;
 }
 
 /**
