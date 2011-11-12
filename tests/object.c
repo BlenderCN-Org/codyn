@@ -20,7 +20,9 @@ test_add_property ()
 	CpgObject *obj = cpg_object_new ("id");
 	CpgProperty *prop;
 
-	prop = cpg_property_new ("prop", "0", CPG_PROPERTY_FLAG_NONE);
+	prop = cpg_property_new ("prop",
+	                         cpg_expression_new ("0"),
+	                         CPG_PROPERTY_FLAG_NONE);
 	cpg_object_add_property (obj, prop, NULL);
 
 	g_assert (prop != NULL);
@@ -33,7 +35,9 @@ test_remove_property ()
 	CpgObject *obj = cpg_object_new ("id");
 	CpgProperty *prop;
 
-	prop = cpg_property_new ("prop", "0", CPG_PROPERTY_FLAG_NONE);
+	prop = cpg_property_new ("prop",
+	                         cpg_expression_new ("0"),
+	                         CPG_PROPERTY_FLAG_NONE);
 	cpg_object_add_property (obj, prop, NULL);
 	g_assert (cpg_object_remove_property (obj, "prop", NULL));
 
@@ -46,8 +50,17 @@ test_clear ()
 {
 	CpgObject *obj = cpg_object_new ("id");
 
-	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_NONE), NULL);
-	cpg_object_add_property (obj, cpg_property_new ("p2", "0", CPG_PROPERTY_FLAG_NONE), NULL);
+	cpg_object_add_property (obj,
+	                         cpg_property_new ("p1",
+	                                           cpg_expression_new ("0"),
+	                                           CPG_PROPERTY_FLAG_NONE),
+	                         NULL);
+
+	cpg_object_add_property (obj,
+	                         cpg_property_new ("p2",
+	                                           cpg_expression_new ("0"),
+	                                           CPG_PROPERTY_FLAG_NONE),
+	                         NULL);
 
 	cpg_object_clear (obj);
 
@@ -60,8 +73,17 @@ test_copy ()
 {
 	CpgObject *obj = cpg_object_new ("id");
 
-	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_INTEGRATED), NULL);
-	cpg_object_add_property (obj, cpg_property_new ("p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT), NULL);
+	cpg_object_add_property (obj,
+	                         cpg_property_new ("p1",
+	                                           cpg_expression_new ("0"),
+	                                           CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
+
+	cpg_object_add_property (obj,
+	                         cpg_property_new ("p2",
+	                                           cpg_expression_new ("1"),
+	                                           CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT),
+	                         NULL);
 
 	CpgObject *cp = cpg_object_copy (obj);
 	CpgProperty *p1 = cpg_object_get_property (cp, "p1");
@@ -85,8 +107,17 @@ test_apply_template ()
 	CpgObject *obj = cpg_object_new ("id");
 	GError *error = NULL;
 
-	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_INTEGRATED), NULL);
-	cpg_object_add_property (obj, cpg_property_new ("p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT), NULL);
+	cpg_object_add_property (obj,
+	                         cpg_property_new ("p1",
+	                                           cpg_expression_new ("0"),
+	                                           CPG_PROPERTY_FLAG_INTEGRATED),
+	                         NULL);
+
+	cpg_object_add_property (obj,
+	                         cpg_property_new ("p2",
+	                                           cpg_expression_new ("1"),
+	                                           CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT),
+	                         NULL);
 
 	CpgObject *cp = cpg_object_new ("id2");
 	cpg_object_apply_template (cp, obj, &error);
@@ -115,13 +146,13 @@ test_new_from_template ()
 
 	cpg_object_add_property (obj,
 	                         cpg_property_new ("p1",
-	                                           "0",
+	                                           cpg_expression_new ("0"),
 	                                           CPG_PROPERTY_FLAG_INTEGRATED),
 	                         NULL);
 
 	cpg_object_add_property (obj,
 	                         cpg_property_new ("p2",
-	                                           "1",
+	                                           cpg_expression_new ("1"),
 	                                           CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT),
 	                         NULL);
 

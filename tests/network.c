@@ -117,8 +117,12 @@ test_variadic ()
 
 	network = cpg_network_new ();
 
-	CpgProperty *prop = cpg_property_new ("x", "rand()", CPG_PROPERTY_FLAG_NONE);
-	CpgProperty *other = cpg_property_new ("y", "0", CPG_PROPERTY_FLAG_NONE);
+	CpgProperty *prop = cpg_property_new ("x",
+	                                      cpg_expression_new ("rand()"),
+	                                      CPG_PROPERTY_FLAG_NONE);
+	CpgProperty *other = cpg_property_new ("y",
+	                                       cpg_expression_new ("0"),
+	                                       CPG_PROPERTY_FLAG_NONE);
 
 	cpg_object_add_property (CPG_OBJECT (network), prop, NULL);
 	cpg_object_add_property (CPG_OBJECT (network), other, NULL);
