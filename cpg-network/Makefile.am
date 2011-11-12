@@ -121,7 +121,7 @@ INST_H_FILES = \
 	cpg-operators.h \
 	cpg-operator-delayed.h \
 	cpg-operator-diff.h \
-	cpg-operator-pdiff.c \
+	cpg-operator-pdiff.h \
 	cpg-parser-context.h \
 	cpg-property.h \
 	cpg-property-interface.h \

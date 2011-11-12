@@ -11,6 +11,7 @@ libinstructions_la_SOURCES = 			\
 	cpg-instruction-custom-function.c	\
 	cpg-instruction-custom-function-ref.c	\
 	cpg-instruction-custom-operator.c	\
+	cpg-instruction-custom-operator-ref.c	\
 	cpg-instruction-function.c		\
 	cpg-instruction-number.c		\
 	cpg-instruction-operator.c		\
@@ -24,6 +25,7 @@ libinstructions_headers =			\
 	cpg-instruction-custom-function.h	\
 	cpg-instruction-custom-function-ref.h	\
 	cpg-instruction-custom-operator.h	\
+	cpg-instruction-custom-operator-ref.h	\
 	cpg-instruction-function.h		\
 	cpg-instruction-number.h		\
 	cpg-instruction-operator.h		\

@@ -61,7 +61,6 @@ CpgOperatorPDiff   *cpg_operator_pdiff_new               (void);
 CpgExpression      *cpg_operator_pdiff_get_expression    (CpgOperatorPDiff *pdiff);
 CpgExpression      *cpg_operator_pdiff_get_derived       (CpgOperatorPDiff *pdiff);
 gint                cpg_operator_pdiff_get_order         (CpgOperatorPDiff *pdiff);
-CpgFunction        *cpg_operator_pdiff_get_function      (CpgOperatorPDiff *pdiff);
 
 G_END_DECLS
 

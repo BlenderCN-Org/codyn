@@ -1,5 +1,5 @@
 /*
- * cpg-operator-pdiff.c
+ * cpg-operator-diff.c
  * This file is part of cpg-network
  *
  * Copyright (C) 2011 - Jesse van den Kieboom
@@ -29,18 +29,17 @@
 #include "cpg-function.h"
 #include "cpg-expression-tree-iter.h"
 
-#include "instructions/cpg-instruction-property.h"
-#include "instructions/cpg-instruction-custom-function-ref.h"
+#include "instructions/cpg-instructions.h"
 
 #include <math.h>
 
 /**
- * SECTION:cpg-operator-pdiff
- * @short_description: Math operator for partial derivation of a function
+ * SECTION:cpg-operator-diff
+ * @short_description: Math operator for diff evaluation of an expression
  *
  * The #CpgOperatorPDiff is a special operator that can be used in
- * mathematical expressions ('pdiff'). It computes the partial derivative of
- * a defined function
+ * mathematical expressions ('delay'). When evaluated, it will return the
+ * diff value of its argument (which can be an arbitrary expression).
  *
  */
 
@@ -50,10 +49,9 @@ struct _CpgOperatorPDiffPrivate
 {
 	CpgExpression *expression;
 	CpgExpression *derived;
+	CpgFunction *function;
 
 	gint order;
-
-	CpgFunction *function;
 };
 
 G_DEFINE_TYPE (CpgOperatorPDiff,
@@ -74,12 +72,89 @@ cpg_operator_pdiff_get_name ()
 	return g_strdup ("pdiff");
 }
 
-static CpgProperty *
-derived_property (CpgExpression *expr,
-                  CpgFunction   *func)
+static CpgFunction *
+derived_function (CpgExpression *expr)
 {
 	GSList const *instr;
-	CpgProperty *prop;
+
+	instr = cpg_expression_get_instructions (expr);
+
+	if (instr->next)
+	{
+		return NULL;
+	}
+
+	if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (instr->data))
+	{
+		return cpg_instruction_custom_function_ref_get_function (instr->data);
+	}
+	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (instr->data))
+	{
+		CpgOperator *op;
+
+		op = cpg_instruction_custom_operator_ref_get_operator (instr->data);
+		return cpg_operator_get_function (op);
+	}
+
+	return NULL;
+}
+
+static GHashTable *
+get_property_map (GList const *args,
+                  GList const *nargs,
+                  gint         num,
+                  GHashTable  *ret)
+{
+	if (ret == NULL)
+	{
+		// Map properties of func to properties in nf
+		ret = g_hash_table_new_full (g_direct_hash,
+		                             g_direct_equal,
+		                             NULL,
+		                             (GDestroyNotify)cpg_expression_tree_iter_free);
+	}
+
+	while (args && nargs && num != 0)
+	{
+		CpgFunctionArgument *arg;
+		CpgFunctionArgument *argnf;
+		GSList *instr;
+
+		CpgProperty *p;
+		CpgProperty *pnf;
+
+		arg = args->data;
+		argnf = nargs->data;
+
+		args = g_list_next (args);
+		nargs = g_list_next (nargs);
+
+		p = _cpg_function_argument_get_property (arg);
+		pnf = _cpg_function_argument_get_property (argnf);
+
+		instr = g_slist_prepend (NULL,
+		                         cpg_instruction_property_new (pnf,
+		                                                       CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+
+		g_hash_table_insert (ret,
+		                     p,
+		                     cpg_expression_tree_iter_new_from_instructions (instr));
+
+		g_slist_foreach (instr, (GFunc)cpg_mini_object_free, NULL);
+		g_slist_free (instr);
+
+		--num;
+	}
+
+	return ret;
+}
+
+static CpgFunctionArgument *
+derived_arg (CpgFunction   *func,
+             CpgExpression *expr)
+{
+	GSList const *instr;
+	gchar const *pname;
 
 	instr = cpg_expression_get_instructions (expr);
 
@@ -88,135 +163,159 @@ derived_property (CpgExpression *expr,
 		return NULL;
 	}
 
-	prop = cpg_instruction_property_get_property (instr->data);
-
-	return cpg_object_get_property (CPG_OBJECT (func),
-	                                cpg_property_get_name (prop));
+	pname = cpg_property_get_name (cpg_instruction_property_get_property (instr->data));
+	return cpg_function_get_argument (func, pname);
 }
 
-static CpgFunction *
-derived_function (CpgExpression *expr)
+static CpgProperty *
+derived_property (CpgFunction   *func,
+                  CpgExpression *expr)
 {
-	GSList const *instr;
+	CpgFunctionArgument *arg;
 
-	instr = cpg_expression_get_instructions (expr);
+	arg = derived_arg (func, expr);
 
-	if (instr->next || !CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (instr->data))
+	if (!arg)
 	{
 		return NULL;
 	}
 
-	return cpg_instruction_custom_function_ref_get_function (instr->data);
+	return _cpg_function_argument_get_property (arg);
 }
 
-static GSList *
-get_function_symbols (CpgFunction *func)
+static gboolean
+validate_arguments (GSList const  *expressions,
+                    CpgFunction  **func,
+                    CpgProperty  **towards,
+                    GList        **syms,
+                    gint          *order,
+                    GError       **error)
 {
-	GSList *ret = NULL;
-	GList const *args;
+	CpgExpression *expr;
 
-	args = cpg_function_get_arguments (func);
+	expr = expressions->data;
 
-	while (args)
+	*func = derived_function (expressions->data);
+
+	if (!*func)
+	{
+		g_set_error (error,
+		             CPG_SYMBOLIC_DERIVE_ERROR,
+		             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+		             "Expected function reference but got `%s'. Use df_dt[] for deriving expressions",
+		             cpg_expression_get_as_string (expressions->data));
+
+		return FALSE;
+	}
+
+	*syms = NULL;
+	*order = 1;
+
+	expressions = expressions->next;
+
+	*towards = derived_property (*func, expressions->data);
+
+	if (!*towards)
+	{
+		g_set_error (error,
+		             CPG_SYMBOLIC_DERIVE_ERROR,
+		             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+		             "Expected partial function variable reference but got `%s'.",
+		             cpg_expression_get_as_string (expressions->data));
+
+		return FALSE;
+	}
+
+	expressions = expressions->next;
+
+	while (expressions)
 	{
 		CpgFunctionArgument *arg;
 
-		arg = args->data;
+		arg = derived_arg (*func, expressions->data);
 
-		if (cpg_function_argument_get_explicit (args->data))
+		if (!arg)
 		{
-			ret = g_slist_prepend (ret,
-			                       _cpg_function_argument_get_property (arg));
+			if (!expressions->next)
+			{
+				*order = cpg_expression_evaluate (expressions->data);
+			}
+			else
+			{
+				g_set_error (error,
+				             CPG_SYMBOLIC_DERIVE_ERROR,
+				             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+				             "Expected function variable but got `%s' for diff of `%s'",
+				             cpg_expression_get_as_string (expressions->data),
+				             cpg_expression_get_as_string (expr));
+
+				g_list_free (*syms);
+				return FALSE;
+			}
+		}
+		else
+		{
+			*syms = g_list_prepend (*syms, arg);
 		}
 
-		args = g_list_next (args);
+		expressions = g_slist_next (expressions);
+	}
+
+	if (!*syms)
+	{
+		// By default add all properties of the function as syms
+		GList const *args;
+
+		args = cpg_function_get_arguments (*func);
+
+		while (args)
+		{
+			*syms = g_list_prepend (*syms, args->data);
+			args = g_list_next (args);
+		}
+	}
+
+	*syms = g_list_reverse (*syms);
+
+	return TRUE;
+}
+
+static GSList *
+resolve_symprops (CpgFunction *f,
+                  GList const *symargs)
+{
+	GSList *ret = NULL;
+
+	while (symargs)
+	{
+		CpgFunctionArgument *arg;
+
+		arg = cpg_function_get_argument (f,
+		                                 cpg_function_argument_get_name (symargs->data));
+
+		ret = g_slist_prepend (ret, _cpg_function_argument_get_property (arg));
+
+		symargs = g_list_next (symargs);
 	}
 
 	return g_slist_reverse (ret);
 }
 
-static void
-generate_function (CpgOperatorPDiff *pdiff,
-                   CpgFunction      *func)
-{
-	pdiff->priv->function = CPG_FUNCTION (cpg_object_copy (CPG_OBJECT (func)));
-
-	cpg_function_set_expression (pdiff->priv->function,
-	                             cpg_expression_copy (pdiff->priv->derived));
-}
-
-static GHashTable *
-get_property_map (CpgFunction   *func,
-                  GSList const  *expressions,
-                  gint           num,
-                  GError       **error,
-                  gboolean      *ret)
-{
-	gint nfunc;
-	GHashTable *rett;
-	GList const *args;
-
-	if (num == 0)
-	{
-		*ret = TRUE;
-		return NULL;
-	}
-
-	nfunc = cpg_function_get_n_arguments (func) - cpg_function_get_n_implicit (func);
-
-	if (num != nfunc)
-	{
-		g_set_error (error,
-		             CPG_SYMBOLIC_DERIVE_ERROR,
-		             CPG_SYMBOLIC_DERIVE_ERROR_INVALID,
-		             "The number of mapped expressions (%d) should be equal to the number of function variables (%d)",
-		             num,
-		             nfunc);
-
-		*ret = FALSE;
-		return NULL;
-	}
-
-	rett = g_hash_table_new (g_direct_hash,
-	                         g_direct_equal);
-
-	args = cpg_function_get_arguments (func);
-
-	while (num > 0)
-	{
-		g_hash_table_insert (rett,
-		                     _cpg_function_argument_get_property (args->data),
-		                     cpg_expression_tree_iter_new (expressions->data));
-
-		args = g_list_next (args);
-		expressions = g_slist_next (expressions);
-
-		--num;
-	}
-
-	*ret = TRUE;
-	return rett;
-}
-
-static void
-destroy_iter (gpointer key, gpointer value)
-{
-	cpg_expression_tree_iter_free (value);
-}
-
 static gboolean
 cpg_operator_pdiff_initialize (CpgOperator   *op,
-                               GSList const  *expressions,
-                               gint           num_arguments,
-                               GError       **error)
+                              GSList const  *expressions,
+                              gint           num_arguments,
+                              GError       **error)
 {
-	CpgOperatorPDiff *pdiff;
-	CpgProperty *prop;
+	CpgOperatorPDiff *diff;
 	CpgFunction *func;
-	GSList *syms;
-	gint numsym;
+	GList *symargs;
 	GHashTable *property_map;
-	gboolean noerr;
+	GHashTable *diff_map;
+	CpgFunction *nf = NULL;
+	gchar *s;
+	CpgProperty *towards;
+	GSList *syms;
 
 	if (!CPG_OPERATOR_CLASS (cpg_operator_pdiff_parent_class)->initialize (op,
 	                                                                       expressions,
@@ -226,107 +325,81 @@ cpg_operator_pdiff_initialize (CpgOperator   *op,
 		return FALSE;
 	}
 
-	pdiff = CPG_OPERATOR_PDIFF (op);
+	diff = CPG_OPERATOR_PDIFF (op);
+	diff->priv->expression = g_object_ref_sink (expressions->data);
 
-	// The first expression must be a function ref and the second must be
-	// a property ref
-	func = derived_function (expressions->data);
-	numsym = g_slist_length ((GSList *)expressions);
+	diff->priv->order = 1;
 
-	pdiff->priv->order = 1;
-
-	if (!func)
-	{
-		g_set_error (error,
-		             CPG_SYMBOLIC_DERIVE_ERROR,
-		             CPG_SYMBOLIC_DERIVE_ERROR_INVALID,
-		             "The function `%s' could not be found",
-		             cpg_expression_get_as_string (expressions->data));
-
-		return FALSE;
-	}
-
-	if (numsym == 2)
-	{
-		prop = derived_property (expressions->next->data, func);
-	}
-	else
-	{
-		// Last can be number or property
-		CpgExpression *last;
-		CpgExpression *beforelast;
-
-		last = g_slist_last ((GSList *)expressions)->data;
-		beforelast = g_slist_nth_data ((GSList *)expressions, numsym - 2);
-
-		prop = derived_property (expressions->next->data, func);
-
-		if (!prop)
-		{
-			prop = derived_property (beforelast, func);
-			pdiff->priv->order = (gint)cpg_expression_evaluate (last);
-
-			--numsym;
-		}
-	}
-
-	if (!prop)
-	{
-		g_set_error (error,
-		             CPG_SYMBOLIC_DERIVE_ERROR,
-		             CPG_SYMBOLIC_DERIVE_ERROR_INVALID,
-		             "The property `%s' is not a variable of the function `%s'",
-		             cpg_expression_get_as_string (expressions->next->data),
-		             cpg_expression_get_as_string (expressions->data));
-
-		return FALSE;
-	}
-
-	// The remaining numsym expressions (after the first function) are mapped
-	// onto the explicit arguments of the function for derivation
-	property_map = get_property_map (func,
-	                                 expressions->next,
-	                                 numsym - 2,
-	                                 error,
-	                                 &noerr);
-
-	if (!noerr)
+	if (!validate_arguments (expressions,
+	                         &func,
+	                         &towards,
+	                         &symargs,
+	                         &diff->priv->order,
+	                         error))
 	{
 		return FALSE;
 	}
 
-	syms = get_function_symbols (func);
+	// Here we are going to generate a new function with represents
+	// the symbolic derivation
+	s = g_strconcat ("pd",
+	                 cpg_object_get_id (CPG_OBJECT (func)),
+	                 "dt",
+	                 NULL);
 
-	pdiff->priv->derived = cpg_symbolic_derive (cpg_function_get_expression (func),
-	                                            syms,
-	                                            property_map,
-	                                            prop,
-	                                            pdiff->priv->order,
-	                                            CPG_SYMBOLIC_DERIVE_PARTIAL,
-	                                            error);
+	nf = CPG_FUNCTION (cpg_object_copy (CPG_OBJECT (func)));
+	cpg_object_set_id (CPG_OBJECT (nf), s);
+	g_free (s);
+
+	cpg_function_set_expression (nf, cpg_expression_new0 ());
+
+	// Map original function properties to the new function arguments
+	property_map = get_property_map (cpg_function_get_arguments (func),
+	                                 cpg_function_get_arguments (nf),
+	                                 -1,
+	                                 NULL);
+
+	// We use the diff map in partial derivation to indicate towards
+	// which variable we differentiate
+	towards = _cpg_function_argument_get_property (cpg_function_get_argument (nf, cpg_property_get_name (towards)));
+
+	diff_map = g_hash_table_new (g_direct_hash, g_direct_equal);
+	g_hash_table_insert (diff_map, towards, NULL);
+
+	// newsymargs contains the CpgFunctionArgument of the new function
+	syms = resolve_symprops (nf, symargs);
+
+	diff->priv->derived = cpg_symbolic_derive (diff->priv->expression,
+	                                           syms,
+	                                           property_map,
+	                                           diff_map,
+	                                           diff->priv->order,
+	                                           CPG_SYMBOLIC_DERIVE_PARTIAL,
+	                                           error);
 
 	g_slist_free (syms);
 
+	cpg_function_set_expression (nf, diff->priv->derived);
+	diff->priv->function = nf;
+
 	if (property_map)
 	{
-		g_hash_table_foreach (property_map,
-		                      (GHFunc)destroy_iter,
-		                      NULL);
-
 		g_hash_table_destroy (property_map);
 	}
 
-	if (pdiff->priv->derived)
+	if (diff_map)
 	{
-		generate_function (pdiff, func);
+		g_hash_table_destroy (diff_map);
 	}
 
-	return pdiff->priv->derived != NULL;
+	g_list_free (symargs);
+
+	return diff->priv->derived != NULL;
 }
 
 static void
 cpg_operator_pdiff_execute (CpgOperator *op,
-                            CpgStack    *stack)
+                           CpgStack    *stack)
 {
 	CpgOperatorPDiff *d;
 
@@ -338,47 +411,43 @@ cpg_operator_pdiff_execute (CpgOperator *op,
 		                      cpg_operator_get_num_arguments (op),
 		                      stack);
 	}
+	else if (d->priv->derived)
+	{
+		cpg_stack_push (stack,
+		                cpg_expression_evaluate (d->priv->derived));
+	}
 	else
 	{
-		gint i;
-
-		// Keep the stack sane
-		for (i = 0; i < cpg_operator_get_num_arguments (op); ++i)
-		{
-			cpg_stack_pop (stack);
-		}
-
 		cpg_stack_push (stack, 0);
 	}
 }
 
 static gint
-cpg_operator_pdiff_validate_num_arguments (gint numsym,
-                                           gint num)
+cpg_operator_pdiff_validate_num_arguments (gint numsym, gint num)
 {
-	return numsym >= 2;
+	return numsym >= 1;
 }
 
 static void
 cpg_operator_pdiff_finalize (GObject *object)
 {
-	CpgOperatorPDiff *pdiff;
+	CpgOperatorPDiff *diff;
 
-	pdiff = CPG_OPERATOR_PDIFF (object);
+	diff = CPG_OPERATOR_PDIFF (object);
 
-	if (pdiff->priv->expression)
+	if (diff->priv->expression)
 	{
-		g_object_unref (pdiff->priv->expression);
+		g_object_unref (diff->priv->expression);
 	}
 
-	if (pdiff->priv->derived)
+	if (diff->priv->derived)
 	{
-		g_object_unref (pdiff->priv->derived);
+		g_object_unref (diff->priv->derived);
 	}
 
-	if (pdiff->priv->function)
+	if (diff->priv->function)
 	{
-		g_object_unref (pdiff->priv->function);
+		g_object_unref (diff->priv->function);
 	}
 
 	G_OBJECT_CLASS (cpg_operator_pdiff_parent_class)->finalize (object);
@@ -400,9 +469,9 @@ cpg_operator_pdiff_set_property (GObject      *object,
 
 static void
 cpg_operator_pdiff_get_property (GObject    *object,
-                                 guint       prop_id,
-                                 GValue     *value,
-                                 GParamSpec *pspec)
+                                   guint       prop_id,
+                                   GValue     *value,
+                                   GParamSpec *pspec)
 {
 	CpgOperatorPDiff *self = CPG_OPERATOR_PDIFF (object);
 
@@ -427,7 +496,7 @@ static gboolean
 cpg_operator_pdiff_equal (CpgOperator *op,
                             CpgOperator *other)
 {
-	CpgOperatorPDiff *pdiff;
+	CpgOperatorPDiff *diff;
 	CpgOperatorPDiff *odel;
 
 	if (!CPG_IS_OPERATOR_PDIFF (other))
@@ -435,15 +504,15 @@ cpg_operator_pdiff_equal (CpgOperator *op,
 		return FALSE;
 	}
 
-	pdiff = CPG_OPERATOR_PDIFF (op);
+	diff = CPG_OPERATOR_PDIFF (op);
 	odel = CPG_OPERATOR_PDIFF (other);
 
-	if (pdiff->priv->order != odel->priv->order)
+	if (diff->priv->order != odel->priv->order)
 	{
 		return FALSE;
 	}
 
-	if (!cpg_expression_equal (pdiff->priv->expression,
+	if (!cpg_expression_equal (diff->priv->expression,
 	                           odel->priv->expression))
 	{
 		return FALSE;
@@ -483,6 +552,47 @@ cpg_operator_pdiff_reset (CpgOperator *operator)
 	}
 }
 
+static CpgFunction *
+cpg_operator_pdiff_get_function (CpgOperator *op)
+{
+	return CPG_OPERATOR_PDIFF (op)->priv->function;
+}
+
+static CpgOperator *
+cpg_operator_pdiff_copy (CpgOperator *op)
+{
+	CpgOperatorPDiff *diff;
+	CpgOperatorPDiff *ret;
+
+	diff = CPG_OPERATOR_PDIFF (op);
+
+	ret = CPG_OPERATOR_PDIFF (g_object_new (CPG_TYPE_OPERATOR_PDIFF, NULL));
+
+	CPG_OPERATOR_CLASS (cpg_operator_pdiff_parent_class)->initialize (CPG_OPERATOR (ret),
+	                                                                 cpg_operator_get_expressions (op),
+	                                                                 cpg_operator_get_num_arguments (op),
+	                                                                 NULL);
+
+	if (diff->priv->expression)
+	{
+		ret->priv->expression = g_object_ref_sink (diff->priv->expression);
+	}
+
+	if (diff->priv->derived)
+	{
+		ret->priv->derived = g_object_ref_sink (diff->priv->derived);
+	}
+
+	if (diff->priv->function)
+	{
+		ret->priv->function = g_object_ref (CPG_OBJECT (diff->priv->function));
+	}
+
+	ret->priv->order = diff->priv->order;
+
+	return CPG_OPERATOR (ret);
+}
+
 static void
 cpg_operator_pdiff_class_init (CpgOperatorPDiffClass *klass)
 {
@@ -501,6 +611,8 @@ cpg_operator_pdiff_class_init (CpgOperatorPDiffClass *klass)
 	op_class->equal = cpg_operator_pdiff_equal;
 	op_class->reset_cache = cpg_operator_pdiff_reset_cache;
 	op_class->reset = cpg_operator_pdiff_reset;
+	op_class->get_function = cpg_operator_pdiff_get_function;
+	op_class->copy = cpg_operator_pdiff_copy;
 
 	g_type_class_add_private (object_class, sizeof(CpgOperatorPDiffPrivate));
 
@@ -545,24 +657,24 @@ cpg_operator_pdiff_new ()
 
 /**
  * cpg_operator_pdiff_get_expression:
- * @pdiff: A #CpgOperatorPDiff
+ * @diff: A #CpgOperatorPDiff
  *
- * Get the expression to be pdiff.
+ * Get the expression to be diff.
  *
  * Returns: (transfer none): A #CpgExpression
  *
  **/
 CpgExpression *
-cpg_operator_pdiff_get_expression (CpgOperatorPDiff *pdiff)
+cpg_operator_pdiff_get_expression (CpgOperatorPDiff *diff)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR_PDIFF (pdiff), NULL);
+	g_return_val_if_fail (CPG_IS_OPERATOR_PDIFF (diff), NULL);
 
-	return pdiff->priv->expression;
+	return diff->priv->expression;
 }
 
 /**
  * cpg_operator_pdiff_get_derived:
- * @pdiff: A #CpgOperatorPDiff
+ * @diff: A #CpgOperatorPDiff
  *
  * Get the derived expression.
  *
@@ -570,16 +682,16 @@ cpg_operator_pdiff_get_expression (CpgOperatorPDiff *pdiff)
  *
  **/
 CpgExpression *
-cpg_operator_pdiff_get_derived (CpgOperatorPDiff *pdiff)
+cpg_operator_pdiff_get_derived (CpgOperatorPDiff *diff)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR_PDIFF (pdiff), NULL);
+	g_return_val_if_fail (CPG_IS_OPERATOR_PDIFF (diff), NULL);
 
-	return pdiff->priv->derived;
+	return diff->priv->derived;
 }
 
 /**
  * cpg_operator_pdiff_get_order:
- * @pdiff: A #CpgOperatorPDiff
+ * @diff: A #CpgOperatorPDiff
  *
  * Get the order.
  *
@@ -587,17 +699,9 @@ cpg_operator_pdiff_get_derived (CpgOperatorPDiff *pdiff)
  *
  **/
 gint
-cpg_operator_pdiff_get_order (CpgOperatorPDiff *pdiff)
+cpg_operator_pdiff_get_order (CpgOperatorPDiff *diff)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR_PDIFF (pdiff), 0.0);
+	g_return_val_if_fail (CPG_IS_OPERATOR_PDIFF (diff), 0.0);
 
-	return pdiff->priv->order;
-}
-
-CpgFunction *
-cpg_operator_pdiff_get_function (CpgOperatorPDiff *pdiff)
-{
-	g_return_val_if_fail (CPG_IS_OPERATOR_PDIFF (pdiff), NULL);
-
-	return pdiff->priv->function;
+	return diff->priv->order;
 }
