@@ -12,6 +12,13 @@ struct _CpgExpressionTreeIter
 	gint num_children;
 };
 
+static gchar *
+iter_to_string (CpgExpressionTreeIter *iter,
+                gint                  *priority,
+                gint                  *leftassoc,
+                gint                  *comm,
+                gboolean               dbg);
+
 static CpgExpressionTreeIter *
 iter_new (CpgExpression  *expression,
           CpgInstruction *instruction)
@@ -172,12 +179,14 @@ cpg_expression_tree_iter_set_child (CpgExpressionTreeIter *iter,
 
 typedef void (*InstructionToStringFunc)(CpgInstruction      *instruction,
                                         gchar const * const *children,
-                                        GString             *ret);
+                                        GString             *ret,
+                                        gboolean             dbg);
 
 static void
 property_to_string (CpgInstructionProperty *inst,
                     gchar const * const    *children,
-                    GString                *ret)
+                    GString                *ret,
+                    gboolean                dbg)
 {
 	CpgProperty *prop;
 
@@ -185,7 +194,15 @@ property_to_string (CpgInstructionProperty *inst,
 	// TODO: resolve property in parent/child?
 
 	prop = cpg_instruction_property_get_property (inst);
-	g_string_append (ret, cpg_property_get_name (prop));
+
+	if (dbg)
+	{
+		g_string_append (ret, cpg_property_get_full_name (prop));
+	}
+	else
+	{
+		g_string_append (ret, cpg_property_get_name (prop));
+	}
 
 	if (cpg_instruction_property_get_binding (inst) &
 	    CPG_INSTRUCTION_PROPERTY_BINDING_DIFF)
@@ -196,8 +213,9 @@ property_to_string (CpgInstructionProperty *inst,
 
 static void
 constant_to_string (CpgInstructionConstant *inst,
-                   gchar const * const     *children,
-                    GString                *ret)
+                    gchar const * const    *children,
+                    GString                *ret,
+                    gboolean                dbg)
 {
 	g_string_append (ret, cpg_instruction_constant_get_symbol (inst));
 }
@@ -205,7 +223,8 @@ constant_to_string (CpgInstructionConstant *inst,
 static void
 number_to_string (CpgInstructionNumber *inst,
                   gchar const * const  *children,
-                  GString              *ret)
+                  GString              *ret,
+                  gboolean                         dbg)
 {
 	gchar *s;
 
@@ -230,7 +249,8 @@ bin_op (GString             *ret,
 static void
 operator_to_string (CpgInstructionFunction  *inst,
                     gchar const * const     *children,
-                    GString                 *ret)
+                    GString                 *ret,
+                    gboolean                         dbg)
 {
 	switch (cpg_instruction_function_get_id (inst))
 	{
@@ -312,7 +332,8 @@ append_comma_children (GString             *ret,
 static void
 function_to_string (CpgInstructionFunction *inst,
                     gchar const * const    *children,
-                    GString                *ret)
+                    GString                *ret,
+                    gboolean                dbg)
 {
 	gchar const *name;
 
@@ -330,7 +351,8 @@ function_to_string (CpgInstructionFunction *inst,
 static void
 custom_function_to_string (CpgInstructionCustomFunction *inst,
                            gchar const * const          *children,
-                           GString                      *ret)
+                           GString                      *ret,
+                           gboolean                      dbg)
 {
 	CpgFunction *func;
 
@@ -348,7 +370,8 @@ custom_function_to_string (CpgInstructionCustomFunction *inst,
 static void
 custom_function_ref_to_string (CpgInstructionCustomFunctionRef *inst,
                                gchar const * const             *children,
-                               GString                         *ret)
+                               GString                         *ret,
+                               gboolean                         dbg)
 {
 	CpgFunction *func;
 
@@ -357,15 +380,13 @@ custom_function_ref_to_string (CpgInstructionCustomFunctionRef *inst,
 }
 
 static void
-custom_operator_to_string (CpgInstructionCustomOperator *inst,
-                           gchar const * const          *children,
-                           GString                      *ret)
+custom_operator_to_string_real (CpgOperator         *op,
+                                gchar const * const *children,
+                                GString             *ret,
+                                gboolean             dbg)
 {
-	CpgOperator *op;
 	GSList const *expr;
 	GSList const *expressions;
-
-	op = cpg_instruction_custom_operator_get_operator (inst);
 
 	g_string_append (ret, cpg_operator_get_name (op));
 	g_string_append_c (ret, '[');
@@ -384,7 +405,7 @@ custom_operator_to_string (CpgInstructionCustomOperator *inst,
 
 		iter = cpg_expression_tree_iter_new (expr->data);
 
-		s = cpg_expression_tree_iter_to_string (iter);
+		s = iter_to_string (iter, NULL, NULL, NULL, dbg);
 		g_string_append (ret, s);
 		g_free (s);
 
@@ -392,6 +413,39 @@ custom_operator_to_string (CpgInstructionCustomOperator *inst,
 	}
 
 	g_string_append_c (ret, ']');
+
+	if (children)
+	{
+		g_string_append_c (ret, '(');
+
+		append_comma_children (ret, children);
+
+		g_string_append_c (ret, ')');
+	}
+}
+
+static void
+custom_operator_to_string (CpgInstructionCustomOperator *inst,
+                           gchar const * const          *children,
+                           GString                      *ret,
+                           gboolean                      dbg)
+{
+	custom_operator_to_string_real (cpg_instruction_custom_operator_get_operator (inst),
+	                                children,
+	                                ret,
+	                                dbg);
+}
+
+static void
+custom_operator_ref_to_string (CpgInstructionCustomOperatorRef *inst,
+                               gchar const * const             *children,
+                               GString                         *ret,
+                               gboolean                         dbg)
+{
+	custom_operator_to_string_real (cpg_instruction_custom_operator_ref_get_operator (inst),
+	                                children,
+	                                ret,
+	                                dbg);
 }
 
 static InstructionToStringFunc
@@ -424,6 +478,10 @@ to_string_func (CpgInstruction *instruction)
 	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (instruction))
 	{
 		return (InstructionToStringFunc)custom_operator_to_string;
+	}
+	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (instruction))
+	{
+		return (InstructionToStringFunc)custom_operator_ref_to_string;
 	}
 	else if (CPG_IS_INSTRUCTION_FUNCTION (instruction))
 	{
@@ -534,7 +592,8 @@ static gchar *
 iter_to_string (CpgExpressionTreeIter *iter,
                 gint                  *priority,
                 gint                  *leftassoc,
-                gint                  *comm)
+                gint                  *comm,
+                gboolean               dbg)
 {
 	GString *ret;
 	gchar **childs = NULL;
@@ -576,7 +635,8 @@ iter_to_string (CpgExpressionTreeIter *iter,
 		c = iter_to_string (iter->children[i],
 		                    &cprio,
 		                    &classoc,
-		                    &ccomm);
+		                    &ccomm,
+		                    dbg);
 
 		if (!needs_paren (iter,
 		                  iter->children[i],
@@ -601,7 +661,8 @@ iter_to_string (CpgExpressionTreeIter *iter,
 	{
 		func (iter->instruction,
 		      (gchar const * const *)childs,
-		      ret);
+		      ret,
+		      dbg);
 	}
 
 	g_strfreev (childs);
@@ -612,7 +673,13 @@ iter_to_string (CpgExpressionTreeIter *iter,
 gchar *
 cpg_expression_tree_iter_to_string (CpgExpressionTreeIter *iter)
 {
-	return iter_to_string (iter, NULL, NULL, NULL);
+	return iter_to_string (iter, NULL, NULL, NULL, FALSE);
+}
+
+gchar *
+cpg_expression_tree_iter_to_string_dbg (CpgExpressionTreeIter *iter)
+{
+	return iter_to_string (iter, NULL, NULL, NULL, TRUE);
 }
 
 static GSList *

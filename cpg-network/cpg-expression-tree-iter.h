@@ -34,8 +34,10 @@ void                   cpg_expression_tree_iter_set_child       (CpgExpressionTr
 gint                   cpg_expression_tree_iter_num_children    (CpgExpressionTreeIter *iter);
 
 gchar                 *cpg_expression_tree_iter_to_string       (CpgExpressionTreeIter *iter);
+gchar                 *cpg_expression_tree_iter_to_string_dbg   (CpgExpressionTreeIter *iter);
 
 GSList                *cpg_expression_tree_iter_to_instructions (CpgExpressionTreeIter *iter);
+
 
 G_END_DECLS
 
