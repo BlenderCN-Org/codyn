@@ -30,7 +30,9 @@
 #include "cpg-stack-private.h"
 #include "cpg-operators.h"
 #include "cpg-operator-pdiff.h"
+#include "cpg-operator-diff.h"
 #include "cpg-property.h"
+#include "cpg-expression-tree-iter.h"
 
 #include <cpg-network/instructions/cpg-instructions.h>
 
@@ -481,7 +483,8 @@ instructions_pop (CpgExpression *expression)
 			g_slist_remove (expression->priv->variadic_instructions,
 			                inst);
 	}
-	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (inst))
+	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (inst) ||
+	         CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst))
 	{
 		expression->priv->operator_instructions =
 			g_slist_remove (expression->priv->operator_instructions,
@@ -990,6 +993,7 @@ parse_custom_operator (CpgExpression *expression,
 	CpgOperatorClass *klass;
 	CpgOperator *op;
 	GSList *instrstart;
+	gboolean isref;
 
 	klass = cpg_operators_find_class (name);
 
@@ -1004,6 +1008,7 @@ parse_custom_operator (CpgExpression *expression,
 	// parse arguments
 	gint numargs = 0;
 	gint num_arguments = 0;
+	gboolean isdiff;
 
 	gint error_start = cpg_expression_get_error_start (expression);
 
@@ -1032,7 +1037,9 @@ parse_custom_operator (CpgExpression *expression,
 
 	cpg_compile_context_save (context->context);
 
-	if (CPG_IS_OPERATOR_PDIFF_CLASS (klass))
+	isdiff = CPG_IS_OPERATOR_PDIFF_CLASS (klass) || CPG_IS_OPERATOR_DIFF_CLASS (klass);
+
+	if (isdiff)
 	{
 		cpg_compile_context_set_function_ref_priority (context->context,
 		                                               TRUE);
@@ -1054,48 +1061,52 @@ parse_custom_operator (CpgExpression *expression,
 
 		GSList *newinst = NULL;
 
+		if (isdiff)
+		{
+			cpg_compile_context_set_function_ref_priority (context->context,
+			                                               FALSE);
+		}
+
 		while (expression->priv->instructions != start)
 		{
 			CpgInstruction *inst = instructions_pop (expression);
 
 			/* This is a bit of a hack, but we are going
 			   to add the function object as a final context.
-			   This is mostly for the pdiff operator to
+			   This is mostly for the diff type operators to
 			   compile properly... */
-			if (CPG_IS_OPERATOR_PDIFF_CLASS (klass) &&
-			    CPG_IS_INSTRUCTION_CUSTOM_FUNCTION (inst))
+			if (numargs == 1 &&
+			    isdiff &&
+			    (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (inst) ||
+			     CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst)))
 			{
 				CpgFunction *func = NULL;
 
-				if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION (inst))
-				{
-					CpgInstructionCustomFunction *f;
-
-					f = CPG_INSTRUCTION_CUSTOM_FUNCTION (inst);
-					func = cpg_instruction_custom_function_get_function (f);
-				}
-				else if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (inst))
+				if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (inst))
 				{
 					CpgInstructionCustomFunctionRef *f;
 
 					f = CPG_INSTRUCTION_CUSTOM_FUNCTION_REF (inst);
 					func = cpg_instruction_custom_function_ref_get_function (f);
 				}
+				else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst))
+				{
+					CpgInstructionCustomOperatorRef *f;
+					CpgOperator *op;
+
+					f = CPG_INSTRUCTION_CUSTOM_OPERATOR_REF (inst);
+					op = cpg_instruction_custom_operator_ref_get_operator (f);
+					func = cpg_operator_get_function (op);
+				}
 
 				if (func)
 				{
-					cpg_compile_context_prepend_object (context->context,
-					                                    CPG_OBJECT (func));
+					cpg_compile_context_append_object (context->context,
+					                                   CPG_OBJECT (func));
 				}
 			}
 
 			newinst = g_slist_prepend (newinst, inst);
-		}
-
-		if (CPG_IS_OPERATOR_PDIFF_CLASS (klass))
-		{
-			/* Only for the first argument */
-			cpg_compile_context_set_function_ref_priority (context->context, FALSE);
 		}
 
 		gchar *t = g_strndup (expr_start, expr_end - expr_start);
@@ -1152,6 +1163,8 @@ parse_custom_operator (CpgExpression *expression,
 
 	next = cpg_tokenizer_peek (*(context->buffer));
 
+	isref = TRUE;
+
 	if (next &&
 	    CPG_TOKEN_IS_OPERATOR (next) &&
 	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_START)
@@ -1159,13 +1172,15 @@ parse_custom_operator (CpgExpression *expression,
 		cpg_token_free (next);
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 
+		isref = FALSE;
+
 		if (!parse_function_arguments (expression, context, &num_arguments))
 		{
 			return FALSE;
 		}
 	}
 
-	if (!cpg_operator_validate_num_arguments (klass, numargs, num_arguments))
+	if (!cpg_operator_validate_num_arguments (klass, numargs, isref ? num_arguments : -1))
 	{
 		expression->priv->error_start = g_slist_prepend (expression->priv->error_start,
 		                                                 GINT_TO_POINTER (error_start));
@@ -1188,12 +1203,20 @@ parse_custom_operator (CpgExpression *expression,
 		return FALSE;
 	}
 
-	instruction = cpg_instruction_custom_operator_new (op);
+	if (isref)
+	{
+		instruction = cpg_instruction_custom_operator_ref_new (op);
+	}
+	else
+	{
+		instruction = cpg_instruction_custom_operator_new (op);
+	}
+
+	instructions_push (expression, instruction);
 
 	g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
 	g_slist_free (expressions);
 
-	instructions_push (expression, instruction);
 	return TRUE;
 }
 
