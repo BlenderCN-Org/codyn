@@ -118,6 +118,22 @@ cpg_expression_tree_iter_get_instruction (CpgExpressionTreeIter *iter)
 	return iter->instruction;
 }
 
+void
+cpg_expression_tree_iter_set_instruction (CpgExpressionTreeIter *iter,
+                                          CpgInstruction        *instr)
+{
+	if (iter->instruction)
+	{
+		cpg_mini_object_free (CPG_MINI_OBJECT (iter->instruction));
+		iter->instruction = NULL;
+	}
+
+	if (instr)
+	{
+		iter->instruction = CPG_INSTRUCTION (cpg_mini_object_copy (CPG_MINI_OBJECT (instr)));
+	}
+}
+
 gint
 cpg_expression_tree_iter_num_children (CpgExpressionTreeIter *iter)
 {
@@ -131,6 +147,27 @@ cpg_expression_tree_iter_get_child (CpgExpressionTreeIter *iter,
 	g_return_val_if_fail (nth >= 0 && nth < iter->num_children, NULL);
 
 	return iter->children[nth];
+}
+
+void
+cpg_expression_tree_iter_take_child (CpgExpressionTreeIter *iter,
+                                     gint                   nth,
+                                     CpgExpressionTreeIter *child)
+{
+	g_return_if_fail (nth >= 0 && nth < iter->num_children);
+
+	cpg_expression_tree_iter_free (iter->children[nth]);
+	iter->children[nth] = child;
+}
+
+void
+cpg_expression_tree_iter_set_child (CpgExpressionTreeIter *iter,
+                                    gint                   nth,
+                                    CpgExpressionTreeIter *child)
+{
+	cpg_expression_tree_iter_take_child (iter,
+	                                     nth,
+	                                     cpg_expression_tree_iter_copy (child));
 }
 
 typedef void (*InstructionToStringFunc)(CpgInstruction      *instruction,

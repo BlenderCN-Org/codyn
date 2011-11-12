@@ -17,9 +17,19 @@ void                   cpg_expression_tree_iter_free            (CpgExpressionTr
 
 CpgExpression         *cpg_expression_tree_iter_get_expression  (CpgExpressionTreeIter *iter);
 CpgInstruction        *cpg_expression_tree_iter_get_instruction (CpgExpressionTreeIter *iter);
+void                   cpg_expression_tree_iter_set_instruction (CpgExpressionTreeIter *iter,
+                                                                 CpgInstruction        *instr);
 
 CpgExpressionTreeIter *cpg_expression_tree_iter_get_child       (CpgExpressionTreeIter *iter,
                                                                  gint                   nth);
+
+void                   cpg_expression_tree_iter_take_child      (CpgExpressionTreeIter *iter,
+                                                                 gint                   nth,
+                                                                 CpgExpressionTreeIter *child);
+
+void                   cpg_expression_tree_iter_set_child       (CpgExpressionTreeIter *iter,
+                                                                 gint                   nth,
+                                                                 CpgExpressionTreeIter *child);
 
 gint                   cpg_expression_tree_iter_num_children    (CpgExpressionTreeIter *iter);
 
