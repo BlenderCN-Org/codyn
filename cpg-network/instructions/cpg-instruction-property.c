@@ -14,6 +14,7 @@ struct _CpgInstructionPropertyPrivate
 	CpgProperty *property;
 	CpgInstructionPropertyBinding binding;
 	CpgExpression *diffeq;
+	CpgProperty *diff_for;
 };
 
 G_DEFINE_TYPE (CpgInstructionProperty, cpg_instruction_property, CPG_TYPE_INSTRUCTION)
@@ -30,6 +31,11 @@ cpg_instruction_property_finalize (CpgMiniObject *object)
 	if (self->priv->diffeq)
 	{
 		g_object_unref (self->priv->diffeq);
+	}
+
+	if (self->priv->diff_for)
+	{
+		g_object_unref (self->priv->diff_for);
 	}
 
 	CPG_MINI_OBJECT_CLASS (cpg_instruction_property_parent_class)->finalize (object);
@@ -54,6 +60,11 @@ cpg_instruction_property_copy (CpgMiniObject const *object)
 	if (src->priv->diffeq)
 	{
 		self->priv->diffeq = cpg_expression_copy (src->priv->diffeq);
+	}
+
+	if (src->priv->diff_for)
+	{
+		self->priv->diff_for = g_object_ref (src->priv->diff_for);
 	}
 
 	return ret;
@@ -322,3 +333,28 @@ cpg_instruction_property_get_diff (CpgInstructionProperty *instruction)
 	return instruction->priv->diffeq;
 }
 
+void
+cpg_instruction_property_set_diff_for (CpgInstructionProperty *instruction,
+                                       CpgProperty            *property)
+{
+	g_return_if_fail (CPG_IS_INSTRUCTION_PROPERTY (instruction));
+
+	if (instruction->priv->diff_for)
+	{
+		g_object_unref (instruction->priv->diff_for);
+		instruction->priv->diff_for = NULL;
+	}
+
+	if (property != NULL)
+	{
+		instruction->priv->diff_for = g_object_ref (property);
+	}
+}
+
+CpgProperty *
+cpg_instruction_property_get_diff_for (CpgInstructionProperty *instruction)
+{
+	g_return_val_if_fail (CPG_IS_INSTRUCTION_PROPERTY (instruction), NULL);
+
+	return instruction->priv->diff_for;
+}

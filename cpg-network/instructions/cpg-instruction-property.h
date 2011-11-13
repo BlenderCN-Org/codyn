@@ -69,6 +69,11 @@ CpgInstructionPropertyBinding
 
 CpgExpressionForward *cpg_instruction_property_get_diff (CpgInstructionProperty *instruction);
 
+void cpg_instruction_property_set_diff_for (CpgInstructionProperty *instruction,
+                                            CpgProperty            *property);
+
+CpgProperty *cpg_instruction_property_get_diff_for (CpgInstructionProperty *instruction);
+
 G_END_DECLS
 
 #endif /* __CPG_INSTRUCTION_PROPERTY_H__ */
