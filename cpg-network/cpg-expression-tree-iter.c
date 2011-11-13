@@ -63,7 +63,10 @@ cpg_expression_tree_iter_free (CpgExpressionTreeIter *self)
 		self->num_children = 0;
 	}
 
-	cpg_mini_object_free (CPG_MINI_OBJECT (self->instruction));
+	if (self->instruction)
+	{
+		cpg_mini_object_free (CPG_MINI_OBJECT (self->instruction));
+	}
 
 	g_slice_free (CpgExpressionTreeIter, self);
 }
@@ -1208,8 +1211,11 @@ swap_collect (GSList *ret)
 		CollectItem *item = ret->data;
 		CollectItem *orig = cpitem->data;
 
-		orig->parent->children[orig->child_pos] = item->iter;
-		item->iter->parent = orig->parent;
+		if (orig->iter != item->iter)
+		{
+			orig->parent->children[orig->child_pos] = item->iter;
+			item->iter->parent = orig->parent;
+		}
 
 		ret = g_slist_next (ret);
 		cpitem = g_slist_next (cpitem);
@@ -1328,40 +1334,43 @@ canonical_minus (CpgExpressionTreeIter *iter)
 	iter->children[1] = mult;
 }
 
-void
-cpg_expression_tree_iter_canonicalize (CpgExpressionTreeIter *iter)
+static gint
+function_argument_index (CpgFunction *f,
+                         CpgProperty *p)
+{
+	GList const *args;
+	gint i = 0;
+
+	args = cpg_function_get_arguments (f);
+
+	while (args)
+	{
+		if (_cpg_function_argument_get_property (args->data) == p)
+		{
+			return i;
+		}
+
+		++i;
+		args = g_list_next (args);
+	}
+
+	return -1;
+}
+
+static gint
+iter_index_of (CpgExpressionTreeIter *iter)
 {
 	gint i;
 
-	// Canonicalize the children first
-	for (i = 0; i < iter->num_children; ++i)
+	for (i = 0; i < iter->parent->num_children; ++i)
 	{
-		cpg_expression_tree_iter_canonicalize (iter->children[i]);
-	}
-
-	if (instruction_is_minus (iter))
-	{
-		canonical_minus (iter);
-	}
-	else if (instruction_is_unary_minus (iter))
-	{
-		canonical_unary_minus (iter);
-	}
-
-	// Sort children when instruction is commutative
-	if (cpg_instruction_get_is_commutative (iter->instruction))
-	{
-		qsort (iter->children,
-		       iter->num_children,
-		       sizeof (CpgExpressionTreeIter *),
-		       (GCompareFunc)compare_iters);
-
-		// Implement basic swapping of some operators
-		if (CPG_IS_INSTRUCTION_OPERATOR (iter->instruction))
+		if (iter->parent->children[i] == iter)
 		{
-			swap_operator (iter);
+			return i;
 		}
 	}
+
+	return -1;
 }
 
 static void
@@ -1381,19 +1390,175 @@ replace_iter (CpgExpressionTreeIter *iter,
 		return;
 	}
 
-	for (i = 0; i < iter->parent->num_children; ++i)
+	i = iter_index_of (iter);
+
+	if (i == -1)
 	{
-		if (iter->parent->children[i] == iter)
+		return;
+	}
+
+	iter->parent->children[i] = other;
+
+	if (other != NULL)
+	{
+		other->parent = iter->parent;
+	}
+
+	iter->parent = NULL;
+}
+
+static void
+canonical_custom_function_real (CpgExpressionTreeIter *iter,
+                                CpgFunction           *f)
+{
+	CpgExpressionTreeIter *func;
+	GQueue q;
+	gint i;
+
+	func = cpg_expression_tree_iter_new (cpg_function_get_expression (f));
+	cpg_expression_tree_iter_canonicalize (func);
+
+	// Replace all property instructions with the nodes which are the
+	// current children of the iter
+	g_queue_init (&q);
+
+	g_queue_push_head (&q, func);
+
+	while (!g_queue_is_empty (&q))
+	{
+		CpgExpressionTreeIter *it;
+
+		it = g_queue_pop_head (&q);
+		it->expression = iter->expression;
+
+		if (CPG_IS_INSTRUCTION_PROPERTY (it->instruction))
 		{
-			iter->parent->children[i] = other;
+			CpgProperty *prop;
+			CpgInstructionProperty *pi;
 
-			if (other != NULL)
+			pi = CPG_INSTRUCTION_PROPERTY (it->instruction);
+			prop = cpg_instruction_property_get_property (pi);
+
+			if (cpg_property_get_object (prop) == CPG_OBJECT (f))
 			{
-				other->parent = iter->parent;
-				iter->parent = NULL;
-			}
+				// Find argument index
+				gint idx = function_argument_index (f, prop);
+				CpgExpressionTreeIter *cp;
 
-			break;
+				cp = cpg_expression_tree_iter_copy (iter->children[idx]);
+
+				if (it == func)
+				{
+					func = cp;
+				}
+
+				// Replace the iter with child arg
+				replace_iter (it, cp);
+				cpg_expression_tree_iter_free (it);
+			}
+		}
+		else
+		{
+			for (i = 0; i < it->num_children; ++i)
+			{
+				g_queue_push_head (&q, it->children[i]);
+			}
+		}
+	}
+
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		cpg_expression_tree_iter_free (iter->children[i]);
+	}
+
+	g_free (iter->children);
+
+	iter->num_children = func->num_children;
+	iter->children = g_new (CpgExpressionTreeIter *, func->num_children);
+
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		iter->children[i] = func->children[i];
+		func->children[i]->parent = iter;
+
+		func->children[i] = NULL;
+	}
+
+	cpg_mini_object_free (CPG_MINI_OBJECT (iter->instruction));
+	iter->instruction = func->instruction;
+	func->instruction = NULL;
+
+	cpg_expression_tree_iter_free (func);
+}
+
+static void
+canonical_custom_function (CpgExpressionTreeIter *iter)
+{
+	// Custom functions are flattened in canonical form
+	CpgInstructionCustomFunction *instr;
+
+	instr = CPG_INSTRUCTION_CUSTOM_FUNCTION (iter->instruction);
+	canonical_custom_function_real (iter, cpg_instruction_custom_function_get_function (instr));
+}
+
+static void
+canonical_custom_operator (CpgExpressionTreeIter *iter)
+{
+	// Custom operators that support funtions are flattened in canonical form
+	CpgInstructionCustomOperator *instr;
+	CpgOperator *op;
+	CpgFunction *f;
+
+	instr = CPG_INSTRUCTION_CUSTOM_OPERATOR (iter->instruction);
+	op = cpg_instruction_custom_operator_get_operator (instr);
+	f = cpg_operator_get_function (op);
+
+	if (f)
+	{
+		canonical_custom_function_real (iter, f);
+	}
+}
+
+void
+cpg_expression_tree_iter_canonicalize (CpgExpressionTreeIter *iter)
+{
+	gint i;
+
+	// Canonicalize the children first
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		cpg_expression_tree_iter_canonicalize (iter->children[i]);
+	}
+
+	if (instruction_is_minus (iter))
+	{
+		canonical_minus (iter);
+	}
+	else if (instruction_is_unary_minus (iter))
+	{
+		canonical_unary_minus (iter);
+	}
+	else if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION (iter->instruction))
+	{
+		canonical_custom_function (iter);
+	}
+	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (iter->instruction))
+	{
+		canonical_custom_operator (iter);
+	}
+
+	// Sort children when instruction is commutative
+	if (cpg_instruction_get_is_commutative (iter->instruction))
+	{
+		qsort (iter->children,
+		       iter->num_children,
+		       sizeof (CpgExpressionTreeIter *),
+		       (GCompareFunc)compare_iters);
+
+		// Implement basic swapping of some operators
+		if (CPG_IS_INSTRUCTION_OPERATOR (iter->instruction))
+		{
+			swap_operator (iter);
 		}
 	}
 }
