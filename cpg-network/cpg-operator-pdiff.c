@@ -270,7 +270,11 @@ validate_arguments (GSList const  *expressions,
 
 		while (args)
 		{
-			*syms = g_list_prepend (*syms, args->data);
+			if (cpg_function_argument_get_explicit (args->data))
+			{
+				*syms = g_list_prepend (*syms, args->data);
+			}
+
 			args = g_list_next (args);
 		}
 	}
