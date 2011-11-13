@@ -1853,14 +1853,11 @@ cpg_symbolic_derive (CpgExpression          *expression,
 		return NULL;
 	}
 
-	es = cpg_expression_tree_iter_to_string_dbg (iter);
+	es = cpg_expression_tree_iter_to_string (iter);
 
 	g_message ("Derived `%s' => `%s'",
 	           cpg_expression_get_as_string (expression),
 	           es);
-
-	g_free (es);
-	es = cpg_expression_tree_iter_to_string (iter);
 
 	ret = cpg_expression_new (es);
 	g_free (es);
@@ -1894,15 +1891,11 @@ cpg_symbolic_simplify (CpgExpression *expression)
 	iter = cpg_expression_tree_iter_simplify (iter);
 	instructions = cpg_expression_tree_iter_to_instructions (iter);
 
-	es = cpg_expression_tree_iter_to_string_dbg (iter);
+	es = cpg_expression_tree_iter_to_string (iter);
 
 	g_message ("Simplified `%s' => `%s'",
 	           cpg_expression_get_as_string (expression),
 	           es);
-
-	g_free (es);
-
-	es = cpg_expression_tree_iter_to_string (iter);
 
 	ret = cpg_expression_new (es);
 	g_free (es);
