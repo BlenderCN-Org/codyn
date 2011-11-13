@@ -38,6 +38,12 @@ gchar                 *cpg_expression_tree_iter_to_string_dbg   (CpgExpressionTr
 
 GSList                *cpg_expression_tree_iter_to_instructions (CpgExpressionTreeIter *iter);
 
+void                   cpg_expression_tree_iter_canonicalize    (CpgExpressionTreeIter *iter);
+
+CpgExpressionTreeIter *cpg_expression_tree_iter_simplify        (CpgExpressionTreeIter *iter) G_GNUC_WARN_UNUSED_RESULT;
+
+gboolean               cpg_expression_tree_iter_equal           (CpgExpressionTreeIter *iter,
+                                                                 CpgExpressionTreeIter *other);
 
 G_END_DECLS
 

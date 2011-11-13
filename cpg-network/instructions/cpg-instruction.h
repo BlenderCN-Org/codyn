@@ -43,6 +43,7 @@ struct _CpgInstructionClass
 	gint    (*get_stack_count)  (CpgInstruction *instruction);
 	GSList *(*get_dependencies) (CpgInstruction *instruction);
 
+	gboolean (*get_is_commutative) (CpgInstruction *instruction);
 	gboolean (*equal)           (CpgInstruction *i1,
 	                             CpgInstruction *i2);
 };
@@ -59,6 +60,8 @@ GSList *cpg_instruction_get_dependencies (CpgInstruction *instruction);
 
 gboolean cpg_instruction_equal           (CpgInstruction *i1,
                                           CpgInstruction *i2);
+
+gboolean cpg_instruction_get_is_commutative (CpgInstruction *instruction);
 
 G_END_DECLS
 

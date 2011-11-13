@@ -51,6 +51,7 @@ COMMON_SOURCES = 		\
 	cpg-operator-delayed.c \
 	cpg-operator-diff.c \
 	cpg-operator-pdiff.c \
+	cpg-operator-simplify.c \
 	cpg-property.c \
 	cpg-property-interface.c \
 	cpg-selector.c \
@@ -122,6 +123,7 @@ INST_H_FILES = \
 	cpg-operator-delayed.h \
 	cpg-operator-diff.h \
 	cpg-operator-pdiff.h \
+	cpg-operator-simplify.h \
 	cpg-parser-context.h \
 	cpg-property.h \
 	cpg-property-interface.h \
@@ -197,6 +199,8 @@ INSTRUCTIONSOURCES = \
 	instructions/cpg-instruction.c \
 	instructions/cpg-instruction-custom-function.c \
 	instructions/cpg-instruction-custom-operator.c \
+	instructions/cpg-instruction-custom-function-ref.c \
+	instructions/cpg-instruction-custom-operator-ref.c \
 	instructions/cpg-instruction-function.c \
 	instructions/cpg-instruction-number.c \
 	instructions/cpg-instruction-operator.c \

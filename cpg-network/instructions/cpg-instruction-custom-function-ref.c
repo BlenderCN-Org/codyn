@@ -48,10 +48,6 @@ static void
 cpg_instruction_custom_function_ref_execute (CpgInstruction *instruction,
                                              CpgStack       *stack)
 {
-	CpgInstructionCustomFunctionRef *self;
-
-	/* Direct cast to reduce overhead of GType cast */
-	self = (CpgInstructionCustomFunctionRef *)instruction;
 	cpg_stack_push (stack, 0);
 }
 

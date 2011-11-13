@@ -28,5 +28,7 @@ CpgExpression *cpg_symbolic_derive (CpgExpression           *expression,
                                     CpgSymbolicDeriveFlags   flags,
                                     GError                 **error);
 
+CpgExpression *cpg_symbolic_simplify (CpgExpression *expression);
+
 #endif /* __CPG_SYMBOLIC_H__ */
 

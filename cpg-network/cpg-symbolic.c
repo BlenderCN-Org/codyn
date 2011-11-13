@@ -35,7 +35,6 @@ cpg_symbolic_derive_error_quark ()
 	return quark;
 }
 
-
 static gboolean
 instructions_is_number (GSList  *instructions,
                         gdouble *num)
@@ -68,7 +67,6 @@ cmp_double (gdouble a, gdouble b)
 {
 	return fabs (a - b) < 10e-9;
 }
-
 
 static gboolean
 instructions_is_natural_number (GSList  *instructions,
@@ -543,11 +541,10 @@ derive_division (CpgExpressionTreeIter *iter,
 }
 
 static GSList *
-derive_product (CpgExpressionTreeIter *iter,
-                DeriveContext         *ctx)
+derive_product_real (CpgExpressionTreeIter *fi,
+                     CpgExpressionTreeIter *gi,
+                     DeriveContext         *ctx)
 {
-	CpgExpressionTreeIter *fi;
-	CpgExpressionTreeIter *gi;
 	GSList *fd;
 	GSList *gd;
 	GSList *f;
@@ -555,9 +552,6 @@ derive_product (CpgExpressionTreeIter *iter,
 	GSList *fdg;
 	GSList *fgd;
 	GSList *ret;
-
-	fi = cpg_expression_tree_iter_get_child (iter, 0);
-	gi = cpg_expression_tree_iter_get_child (iter, 1);
 
 	f = cpg_expression_tree_iter_to_instructions (fi);
 	g = cpg_expression_tree_iter_to_instructions (gi);
@@ -598,6 +592,19 @@ derive_product (CpgExpressionTreeIter *iter,
 	free_instructions (fgd);
 
 	return ret;
+}
+
+static GSList *
+derive_product (CpgExpressionTreeIter *iter,
+                DeriveContext         *ctx)
+{
+	CpgExpressionTreeIter *fi;
+	CpgExpressionTreeIter *gi;
+
+	fi = cpg_expression_tree_iter_get_child (iter, 0);
+	gi = cpg_expression_tree_iter_get_child (iter, 1);
+
+	return derive_product_real (fi, gi, ctx);
 }
 
 static GSList *
@@ -1158,7 +1165,6 @@ derive_sqsum (CpgExpressionTreeIter *f,
               DeriveContext         *ctx)
 {
 	GSList *ret = NULL;
-	GSList *last = NULL;
 	gint i;
 
 	for (i = 0; i < cpg_expression_tree_iter_num_children (f); ++i)
@@ -1167,7 +1173,7 @@ derive_sqsum (CpgExpressionTreeIter *f,
 		GSList *pow;
 
 		iter = cpg_expression_tree_iter_get_child (f, i);
-		pow = derive_power_real (iter, iter, ctx);
+		pow = derive_product_real (iter, iter, ctx);
 
 		if (!pow)
 		{
@@ -1175,20 +1181,17 @@ derive_sqsum (CpgExpressionTreeIter *f,
 			return NULL;
 		}
 
-		ret = g_slist_concat (pow, ret);
-
 		if (i != 0)
 		{
-			last = g_slist_append (last,
-			                      cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_PLUS,
-			                                                    "+",
-			                                                    2));
+			GSList *add;
 
-			last = g_slist_next (last);
+			add = add_optimized (ret, pow);
+			free_instructions (ret);
+			ret = add;
 		}
 		else
 		{
-			last = g_slist_last (ret);
+			ret = pow;
 		}
 	}
 
@@ -1324,6 +1327,36 @@ derive_function (CpgExpressionTreeIter  *iter,
 	return NULL;
 }
 
+#undef DEBUG_PRINTIT
+//#define DEBUG_PRINTIT
+
+#ifdef DEBUG_PRINTIT
+static void
+print_sym (gpointer key, gpointer value, gboolean *first)
+{
+	if (!*first)
+	{
+		g_printf (", ");
+	}
+	else
+	{
+		*first = FALSE;
+	}
+
+	g_printf ("`%s'", cpg_property_get_full_name (key));
+}
+
+static void
+print_syms (GHashTable *syms)
+{
+	gboolean first = TRUE;
+	g_printf ("    ");
+
+	g_hash_table_foreach (syms, (GHFunc)print_sym, &first);
+
+	g_printf ("\n");
+}
+
 static void
 printit (gpointer key, gpointer value)
 {
@@ -1337,6 +1370,7 @@ print_map (GHashTable *table)
 {
 	g_hash_table_foreach (table, (GHFunc)printit, NULL);
 }
+#endif
 
 static CpgExpressionTreeIter *
 map_iter (CpgExpressionTreeIter *iter,
@@ -1403,7 +1437,30 @@ derive_expression (CpgExpression *expression,
 	CpgExpressionTreeIter *iter;
 	CpgExpressionTreeIter *mapped;
 
-	g_printf ("Deriving (%d): %s\n", mapiter, cpg_expression_get_as_string (expression));
+	iter = cpg_expression_tree_iter_new (expression);
+
+	if (!iter)
+	{
+#ifdef DEBUG_PRINTIT
+		g_printf ("Deriving non compiled (to 0): %s", cpg_expression_get_as_string (expression));
+#endif
+
+		// This means that the expression was not actually compiled yet
+		// For now we are just going to assume that we are deriving that
+		// to 0
+		return g_slist_prepend (NULL,
+		                        cpg_instruction_number_new_from_string ("0"));
+	}
+
+	mapped = iter;
+
+	if (mapiter)
+	{
+		mapped = map_iter (iter, ctx);
+	}
+
+#ifdef DEBUG_PRINTIT
+	g_printf ("Deriving: %s\n", cpg_expression_tree_iter_to_string_dbg (iter));
 
 	g_printf ("  Properties:\n");
 	print_map (ctx->property_map);
@@ -1411,13 +1468,14 @@ derive_expression (CpgExpression *expression,
 	g_printf ("  Diff:\n");
 	print_map (ctx->diff_map);
 
-	iter = cpg_expression_tree_iter_new (expression);
-	mapped = iter;
+	g_printf ("  Symbols:\n");
+	print_syms (ctx->symbols);
 
-	if (mapiter)
+	if (mapped != iter)
 	{
-		mapped = map_iter (iter, ctx);
+		g_printf ("  Mapped: %s", cpg_expression_tree_iter_to_string_dbg (mapped));
 	}
+#endif
 
 	ret = derive_iter (mapped, ctx);
 
@@ -1435,7 +1493,7 @@ derive_property_real (CpgInstructionProperty *instr,
                       CpgProperty            *prop,
                       DeriveContext          *ctx)
 {
-	CpgExpressionTreeIter *mapped;
+	CpgExpressionTreeIter *mapped = NULL;
 	CpgInstructionPropertyBinding binding;
 
 	if (!prop && instr)
@@ -1452,10 +1510,8 @@ derive_property_real (CpgInstructionProperty *instr,
 		binding = CPG_INSTRUCTION_PROPERTY_BINDING_NONE;
 	}
 
-	mapped = ctx->diff_map ? g_hash_table_lookup (ctx->diff_map, prop) : NULL;
-
 	/* Check if the property has a diff mapped symbol */
-	if (mapped)
+	if (ctx->diff_map && g_hash_table_lookup_extended (ctx->diff_map, prop, NULL, (gpointer *)&mapped))
 	{
 		if (ctx->flags & CPG_SYMBOLIC_DERIVE_PARTIAL)
 		{
@@ -1797,11 +1853,14 @@ cpg_symbolic_derive (CpgExpression          *expression,
 		return NULL;
 	}
 
-	es = cpg_expression_tree_iter_to_string (iter);
+	es = cpg_expression_tree_iter_to_string_dbg (iter);
 
 	g_message ("Derived `%s' => `%s'",
 	           cpg_expression_get_as_string (expression),
 	           es);
+
+	g_free (es);
+	es = cpg_expression_tree_iter_to_string (iter);
 
 	ret = cpg_expression_new (es);
 	g_free (es);
@@ -1813,5 +1872,43 @@ cpg_symbolic_derive (CpgExpression          *expression,
 		cpg_expression_tree_iter_free (iter);
 	}
 
+	return ret;
+}
+
+CpgExpression *
+cpg_symbolic_simplify (CpgExpression *expression)
+{
+	CpgExpressionTreeIter *iter;
+	gchar *es;
+	GSList *instructions;
+	CpgExpression *ret;
+
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+
+	iter = cpg_expression_tree_iter_new (expression);
+
+	// Canonicalize
+	cpg_expression_tree_iter_canonicalize (iter);
+
+	// Simplify
+	iter = cpg_expression_tree_iter_simplify (iter);
+	instructions = cpg_expression_tree_iter_to_instructions (iter);
+
+	es = cpg_expression_tree_iter_to_string_dbg (iter);
+
+	g_message ("Simplified `%s' => `%s'",
+	           cpg_expression_get_as_string (expression),
+	           es);
+
+	g_free (es);
+
+	es = cpg_expression_tree_iter_to_string (iter);
+
+	ret = cpg_expression_new (es);
+	g_free (es);
+
+	cpg_expression_tree_iter_free (iter);
+
+	_cpg_expression_set_instructions_take (ret, instructions);
 	return ret;
 }

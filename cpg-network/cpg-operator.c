@@ -36,6 +36,19 @@ G_DEFINE_ABSTRACT_TYPE (CpgOperator,
                         cpg_operator,
                         G_TYPE_OBJECT);
 
+GQuark
+cpg_operator_error_quark ()
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+	{
+		quark = g_quark_from_static_string ("cpg_operator_error");
+	}
+
+	return quark;
+}
+
 /* Default implementation */
 static gchar *
 cpg_operator_get_name_default ()
@@ -53,25 +66,58 @@ cpg_operator_execute_default (CpgOperator     *op,
 static void
 cpg_operator_reset_cache_default (CpgOperator *op)
 {
+	CpgFunction *func;
+
 	g_slist_foreach (op->priv->expressions,
 	                 (GFunc)cpg_expression_reset_cache,
 	                 NULL);
+
+	func = cpg_operator_get_function (op);
+
+	if (func)
+	{
+		cpg_object_foreach_expression (CPG_OBJECT (func),
+		                               (CpgForeachExpressionFunc)cpg_expression_reset_cache,
+		                               NULL);
+	}
 }
 
 static void
 cpg_operator_reset_variadic_default (CpgOperator *op)
 {
+	CpgFunction *func;
+
 	g_slist_foreach (op->priv->expressions,
 	                 (GFunc)cpg_expression_reset_variadic,
 	                 NULL);
+
+	func = cpg_operator_get_function (op);
+
+	if (func)
+	{
+		cpg_object_foreach_expression (CPG_OBJECT (func),
+		                               (CpgForeachExpressionFunc)cpg_expression_reset_variadic,
+		                               NULL);
+	}
 }
 
 static void
 cpg_operator_reset_default (CpgOperator *op)
 {
+	CpgFunction *func;
+
 	g_slist_foreach (op->priv->expressions,
 	                 (GFunc)cpg_expression_reset,
 	                 NULL);
+
+	func = cpg_operator_get_function (op);
+
+	if (func)
+	{
+		cpg_object_foreach_expression (CPG_OBJECT (func),
+		                               (CpgForeachExpressionFunc)cpg_expression_reset,
+		                               NULL);
+	}
 }
 
 static gboolean

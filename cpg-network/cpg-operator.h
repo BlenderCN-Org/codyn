@@ -40,7 +40,16 @@ G_BEGIN_DECLS
 typedef struct _CpgOperator		CpgOperator;
 typedef struct _CpgOperatorClass	CpgOperatorClass;
 typedef struct _CpgOperatorPrivate	CpgOperatorPrivate;
-typedef struct _CpgOperatorClassPrivate CpgOperatorClassPrivate;
+
+#define CPG_OPERATOR_ERROR (cpg_operator_error_quark ())
+
+typedef enum
+{
+	CPG_OPERATOR_ERROR_UNSUPPORTED,
+	CPG_OPERATOR_ERROR_INVALID
+} CpgOperatorError;
+
+GQuark            cpg_operator_error_quark      (void);
 
 struct _CpgIntegrator;
 

@@ -21,12 +21,19 @@ cpg_instruction_get_dependencies_impl (CpgInstruction *instruction)
 	return NULL;
 }
 
+static gboolean
+cpg_instruction_get_is_commutative_impl (CpgInstruction *instruction)
+{
+	return FALSE;
+}
+
 static void
 cpg_instruction_class_init (CpgInstructionClass *klass)
 {
 	klass->to_string = cpg_instruction_to_string_impl;
 	klass->get_stack_count = cpg_instruction_get_stack_count_impl;
 	klass->get_dependencies = cpg_instruction_get_dependencies_impl;
+	klass->get_is_commutative = cpg_instruction_get_is_commutative_impl;
 }
 
 static void
@@ -103,4 +110,12 @@ cpg_instruction_equal (CpgInstruction *i1,
 	{
 		return FALSE;
 	}
+}
+
+gboolean
+cpg_instruction_get_is_commutative (CpgInstruction *instruction)
+{
+	g_return_val_if_fail (CPG_IS_INSTRUCTION (instruction), FALSE);
+
+	return CPG_INSTRUCTION_GET_CLASS (instruction)->get_is_commutative (instruction);
 }

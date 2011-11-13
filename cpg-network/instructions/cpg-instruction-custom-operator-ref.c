@@ -63,10 +63,6 @@ cpg_instruction_custom_operator_ref_execute (CpgInstruction *instruction,
 static gint
 cpg_instruction_custom_operator_ref_get_stack_count (CpgInstruction *instruction)
 {
-	CpgInstructionCustomOperatorRef *self;
-
-	self = CPG_INSTRUCTION_CUSTOM_OPERATOR_REF (instruction);
-
 	return 1;
 }
 
