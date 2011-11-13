@@ -992,7 +992,6 @@ parse_custom_operator (CpgExpression *expression,
 {
 	CpgOperatorClass *klass;
 	CpgOperator *op;
-	GSList *instrstart;
 	gboolean isref;
 
 	klass = cpg_operators_find_class (name);
@@ -1017,8 +1016,6 @@ parse_custom_operator (CpgExpression *expression,
 
 	gchar const *expr_start = *(context->buffer);
 	gchar const *expr_end = expr_start;
-
-	instrstart = expression->priv->instructions;
 
 	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)

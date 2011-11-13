@@ -260,9 +260,6 @@ resolve_symargs (CpgFunction *f,
 
 	while (symargs)
 	{
-		CpgFunctionArgument *arg;
-		arg = symargs->data;
-
 		ret = g_list_prepend (ret,
 		                      cpg_function_get_argument (f,
 		                                                 cpg_function_argument_get_name (symargs->data)));

@@ -32,11 +32,6 @@ struct _CpgOperatorPrivate
 	gint num_arguments;
 };
 
-struct _CpgOperatorClassPrivate
-{
-	gchar *name;
-};
-
 G_DEFINE_ABSTRACT_TYPE (CpgOperator,
                         cpg_operator,
                         G_TYPE_OBJECT);
