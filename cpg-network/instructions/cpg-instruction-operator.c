@@ -40,17 +40,7 @@ cpg_instruction_operator_get_is_commutative (CpgInstruction *instruction)
 
 	type = (CpgMathOperatorType)cpg_instruction_function_get_id (func);
 
-	switch (type)
-	{
-		case CPG_MATH_OPERATOR_TYPE_MULTIPLY:
-		case CPG_MATH_OPERATOR_TYPE_PLUS:
-		case CPG_MATH_OPERATOR_TYPE_EQUAL:
-		case CPG_MATH_OPERATOR_TYPE_OR:
-		case CPG_MATH_OPERATOR_TYPE_AND:
-			return TRUE;
-		default:
-			return FALSE;
-	}
+	return cpg_math_operator_is_commutative (type);
 }
 
 static void
