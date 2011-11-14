@@ -818,14 +818,11 @@ evaluate_node (CpgEmbeddedString   *em,
 	return r;
 }
 
-gchar const *
-cpg_embedded_string_expand (CpgEmbeddedString   *s,
-                            CpgEmbeddedContext  *ctx,
-                            GError             **error)
+static gchar const *
+embedded_string_expand (CpgEmbeddedString   *s,
+                        CpgEmbeddedContext  *ctx,
+                        GError             **error)
 {
-	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
-	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
-
 	if (s->priv->cached &&
 	    ctx == s->priv->cached_context &&
 	    (ctx == NULL ||
@@ -862,6 +859,17 @@ cpg_embedded_string_expand (CpgEmbeddedString   *s,
 	}
 
 	return s->priv->cached;
+}
+
+gchar const *
+cpg_embedded_string_expand (CpgEmbeddedString   *s,
+                            CpgEmbeddedContext  *ctx,
+                            GError             **error)
+{
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
+	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
+
+	return embedded_string_expand (s, ctx, error);
 }
 
 static GSList *
@@ -1026,8 +1034,6 @@ apply_reduce (CpgEmbeddedString *s,
 		parts = g_slist_next (parts);
 	}
 
-	cpg_embedded_context_restore (ctx);
-
 	return ret;
 }
 
@@ -1062,7 +1068,6 @@ apply_map (CpgEmbeddedString *s,
 	}
 
 	g_slist_free (parts);
-	cpg_embedded_context_restore (ctx);
 
 	return g_slist_reverse (ret);
 }
@@ -1124,7 +1129,7 @@ apply_filters_rev (CpgEmbeddedString *s,
 			g_slist_free (items);
 
 			items = g_slist_prepend (NULL,
-				                 cpg_expansion_new_one (val));
+			                         cpg_expansion_new_one (val));
 
 			g_free (val);
 		}
@@ -1644,7 +1649,7 @@ cpg_embedded_string_expand_multiple (CpgEmbeddedString   *s,
 	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
 	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
 
-	id = cpg_embedded_string_expand (s, ctx, error);
+	id = embedded_string_expand (s, ctx, error);
 
 	if (!id)
 	{
