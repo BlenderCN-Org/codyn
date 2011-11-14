@@ -1,0 +1,59 @@
+network
+{
+	g = "9.81"
+}
+
+group "pendulum"
+{
+	defines
+	{
+		# Define set of general coordinates q
+		qn = "x,phi"
+		q, q_count, qe = "q_{@qn}"
+		q = "{@qe||@0\,@1}"
+
+		# Define utilities for expansion
+		dq  = "{@q|@0'||@0\,@1}"
+		ddq = "{@dq|@0'||@0\,@1}"
+		qdq = "{@q,@dq||@0\,@1}"
+		vq = "m,l"
+
+		# Escaped versions
+		"{q,dq,ddq,qdq,vq}e" = "\\{@[@1]\\}"
+	}
+
+	functions
+	{
+		# Mass locations
+		Mx(@qe)(@vqe) = "q_x + l * sin(q_phi)"
+		My(@qe)(@vqe) = "-l * cos(q_phi)"
+
+		# Mass velocities
+		DMx(@qdqe)(@vqe) = "diff[Mx, @q](@q, @dq)"
+		DMy(@qdqe)(@vqe) = "diff[My, @q](@q, @dq)"
+
+		# Kinetic energy
+		T(@qdqe)(@vqe) = "0.5 * m * sqsum(DMx(@qdq), DMy(@qdq))"
+
+		# Potential energy
+		V(@qe)(@vqe) = "-m * l * g * cos(q_phi)"
+
+		# Partial of kinetic energy towards generalized coordinate velocities
+		"DTdd@qe"(@qdqe)(@vqe) = "simplify[pdiff[T, @1']](@qdq)"
+
+		# Partial of kinetic and potential energy towards generalized coordinates
+		"D{T,V}d@qe"(@qdqe)(@vqe) = "simplify[pdiff[@1, @2]](@qdq)"
+
+		# Total differential of kinetic energy towards time
+		"DdTdd@[qe]dt"(@qdqe)(@vqe) = "simplify[diff[dTdd@1]](@qdq)"
+
+		# Solve for accelerations
+		Accelerations(@qdqe, idx)(@vqe) = "linsolve[{@q|DdTdd@[0]dt||@0\,@1}]"
+	}
+
+	@qe'' = "Acceleration(@@1[!], )"
+
+	l = 1
+	m = 1
+}
+
