@@ -25,6 +25,7 @@
 #include "cpg-operator-diff.h"
 #include "cpg-operator-pdiff.h"
 #include "cpg-operator-simplify.h"
+#include "cpg-operator-df-dt.h"
 
 static GSList *operator_registry = NULL;
 
@@ -41,6 +42,7 @@ ensure_defaults ()
 		cpg_operators_register (CPG_TYPE_OPERATOR_DIFF);
 		cpg_operators_register (CPG_TYPE_OPERATOR_PDIFF);
 		cpg_operators_register (CPG_TYPE_OPERATOR_SIMPLIFY);
+		cpg_operators_register (CPG_TYPE_OPERATOR_DF_DT);
 	}
 }
 

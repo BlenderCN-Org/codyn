@@ -52,6 +52,7 @@ COMMON_SOURCES = 		\
 	cpg-operator-diff.c \
 	cpg-operator-pdiff.c \
 	cpg-operator-simplify.c \
+	cpg-operator-df-dt.c \
 	cpg-property.c \
 	cpg-property-interface.c \
 	cpg-selector.c \
@@ -124,6 +125,7 @@ INST_H_FILES = \
 	cpg-operator-diff.h \
 	cpg-operator-pdiff.h \
 	cpg-operator-simplify.h \
+	cpg-operator-df-dt.h \
 	cpg-parser-context.h \
 	cpg-property.h \
 	cpg-property-interface.h \

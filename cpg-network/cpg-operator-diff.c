@@ -133,8 +133,7 @@ get_property_map (GList const *args,
 		pnf = _cpg_function_argument_get_property (argnf);
 
 		instr = g_slist_prepend (NULL,
-		                         cpg_instruction_property_new (pnf,
-		                                                       CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+		                         cpg_instruction_property_new (pnf));
 
 		g_hash_table_insert (ret,
 		                     p,
@@ -231,7 +230,7 @@ validate_arguments (GSList const  *expressions,
 
 	if (!*syms)
 	{
-		// By default add all properties of the function as syms
+		// By default add all explicit properties of the function as syms
 		GList const *args;
 
 		args = cpg_function_get_arguments (*func);
@@ -280,13 +279,10 @@ cpg_operator_diff_initialize (CpgOperator   *op,
 	CpgFunction *func;
 	GList *symargs;
 	GHashTable *property_map;
-	GHashTable *diff_map;
 	CpgFunction *nf = NULL;
 	gchar *s;
 	GList *item;
-	GList *nargs = NULL;
 	gint i;
-	gint numargs;
 	GList *newsymargs;
 
 	if (!CPG_OPERATOR_CLASS (cpg_operator_diff_parent_class)->initialize (op,
@@ -322,8 +318,12 @@ cpg_operator_diff_initialize (CpgOperator   *op,
 	cpg_object_set_id (CPG_OBJECT (nf), s);
 	g_free (s);
 
+	// Resolve the symbols we are going to derive towards as function
+	// arguments in the new function
 	newsymargs = resolve_symargs (nf, symargs);
+	g_list_free (symargs);
 
+	// Start with an empty expression
 	cpg_function_set_expression (nf, cpg_expression_new0 ());
 
 	// Map original function properties to the new function arguments
@@ -333,85 +333,91 @@ cpg_operator_diff_initialize (CpgOperator   *op,
 	                                 NULL);
 
 	// Add additional arguments to this function for the time
-	// derivative of all the syms
-	numargs = 0;
-
+	// derivative of all the syms (which don't have derivatives present
+	// in the current arguments)
 	for (i = 0; i < diff->priv->order; ++i)
 	{
-		for (item = symargs; item; item = g_list_next (item))
+		for (item = newsymargs; item; item = g_list_next (item))
 		{
 			CpgFunctionArgument *sarg = item->data;
 			CpgFunctionArgument *darg;
 			gchar *d;
 			gchar *dsname;
+			CpgFunctionArgument *oarg;
+			CpgProperty *sprop;
 
-			d = g_strnfill (i + 1, 'd');
+			d = g_strnfill (i + 1, '\'');
 
-			dsname = g_strconcat (d,
-			                      cpg_function_argument_get_name (sarg),
+			dsname = g_strconcat (cpg_function_argument_get_name (sarg),
 			                      d,
-			                      "t",
 			                      NULL);
 
+			g_free (d);
+
+			// Test if it already exists
+			oarg = cpg_function_get_argument (nf, dsname);
+			sprop = _cpg_function_argument_get_property (sarg);
+
+			if (oarg)
+			{
+				CpgProperty *oprop;
+
+				oprop = _cpg_function_argument_get_property (oarg);
+
+				if (cpg_property_get_derivative (sprop) == oprop)
+				{
+					// Skip this because we already have
+					// a derivative for this
+					g_free (dsname);
+					continue;
+				}
+				else
+				{
+					// The property already exists, which
+					// is strange, error out...
+					g_list_free (newsymargs);
+					g_set_error (error,
+					             CPG_SYMBOLIC_DERIVE_ERROR,
+					             CPG_SYMBOLIC_DERIVE_ERROR_INVALID,
+					             "There is already an variable `%s' but it is not a derivative of `%s'",
+					             cpg_property_get_name (oprop),
+					             cpg_property_get_name (sprop));
+
+					goto cleanup;
+				}
+			}
+
 			darg = cpg_function_argument_new (dsname,
-			                                  cpg_expression_new ("0"),
+			                                  cpg_expression_new0 (),
 			                                  TRUE);
 
 			g_free (dsname);
-			g_free (d);
 
 			cpg_function_add_argument (nf, darg);
-
-			nargs = g_list_prepend (nargs, darg);
-
-			if (i == 0)
-			{
-				++numargs;
-			}
 		}
 	}
 
-	nargs = g_list_reverse (nargs);
-
-	// Map properties to its diffs, etc
-	diff_map = get_property_map (newsymargs,
-	                             nargs,
-	                             -1,
-	                             NULL);
-
-	for (i = 1; i < diff->priv->order; ++i)
-	{
-		get_property_map (g_list_nth (nargs, (i - 1) * numargs),
-		                  g_list_nth (nargs, i * numargs),
-		                  numargs,
-		                  diff_map);
-	}
-
-	g_list_free (nargs);
 	g_list_free (newsymargs);
 
 	diff->priv->derived = cpg_symbolic_derive (diff->priv->expression,
 	                                           NULL,
 	                                           property_map,
-	                                           diff_map,
+	                                           NULL,
 	                                           diff->priv->order,
 	                                           CPG_SYMBOLIC_DERIVE_NONE,
 	                                           error);
 
+	g_object_ref_sink (diff->priv->derived);
+
 	cpg_function_set_expression (nf, diff->priv->derived);
+
+cleanup:
 	diff->priv->function = nf;
 
 	if (property_map)
 	{
 		g_hash_table_destroy (property_map);
 	}
-
-	if (diff_map)
-	{
-		g_hash_table_destroy (diff_map);
-	}
-
-	g_list_free (symargs);
 
 	return diff->priv->derived != NULL;
 }

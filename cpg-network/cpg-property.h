@@ -160,6 +160,12 @@ void               _cpg_property_set_object             (CpgProperty            
 
 GSList            *cpg_property_get_actions             (CpgProperty *property);
 
+CpgProperty       *cpg_property_get_integral            (CpgProperty *property);
+CpgProperty       *cpg_property_get_derivative          (CpgProperty *property);
+
+void               cpg_property_set_derivative          (CpgProperty *property,
+                                                         CpgProperty *diffprop);
+
 G_END_DECLS
 
 #endif /* __CPG_PROPERTY_H__ */

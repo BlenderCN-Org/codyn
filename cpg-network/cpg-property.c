@@ -58,6 +58,9 @@ struct _CpgPropertyPrivate
 	gdouble update;
 	CpgObject *object;
 
+	CpgProperty *diff_of;
+	CpgProperty *diff_for;
+
 	gchar *annotation;
 	GHashTable *tags;
 
@@ -325,6 +328,52 @@ cpg_property_finalize (GObject *object)
 }
 
 static void
+set_diff_of (CpgProperty *property,
+             CpgProperty *diff_of)
+{
+	if (property == diff_of ||
+	    property->priv->diff_of == diff_of)
+	{
+		return;
+	}
+
+	if (property->priv->diff_of)
+	{
+		if (property->priv->diff_of->priv->diff_for == property)
+		{
+			g_object_remove_weak_pointer (G_OBJECT (property),
+			                              (gpointer *)(property->priv->diff_of->priv->diff_for));
+
+			property->priv->diff_of->priv->diff_for = NULL;
+		}
+
+		g_object_remove_weak_pointer (G_OBJECT (property->priv->diff_of),
+		                              (gpointer *)(property->priv->diff_of));
+
+		property->priv->diff_of = NULL;
+	}
+
+	if (diff_of)
+	{
+		property->priv->diff_of = diff_of;
+
+		g_object_add_weak_pointer (G_OBJECT (diff_of),
+		                           (gpointer *)(property->priv->diff_of));
+
+		if (diff_of->priv->diff_for)
+		{
+			g_object_remove_weak_pointer (G_OBJECT (diff_of->priv->diff_for),
+			                              (gpointer *)(diff_of->priv->diff_for));
+
+			diff_of->priv->diff_for = property;
+
+			g_object_add_weak_pointer (G_OBJECT (property),
+			                           (gpointer *)(diff_of->priv->diff_for));
+		}
+	}
+}
+
+static void
 cpg_property_dispose (GObject *object)
 {
 	CpgProperty *property = CPG_PROPERTY (object);
@@ -334,6 +383,7 @@ cpg_property_dispose (GObject *object)
 	set_expression (property, NULL);
 	set_constraint (property, NULL);
 	set_object (property, NULL);
+	set_diff_of (property, NULL);
 
 	G_OBJECT_CLASS (cpg_property_parent_class)->dispose (object);
 }
@@ -1385,4 +1435,30 @@ cpg_property_get_actions (CpgProperty *property)
 	return g_slist_reverse (property_get_actions (cpg_property_get_object (property),
 	                                              property,
 	                                              NULL));
+}
+
+void
+cpg_property_set_derivative (CpgProperty *property,
+                             CpgProperty *diffprop)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+	g_return_if_fail (diffprop == NULL || CPG_IS_PROPERTY (diffprop));
+
+	set_diff_of (property, diffprop);
+}
+
+CpgProperty *
+cpg_property_get_derivative (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	return property->priv->diff_of;
+}
+
+CpgProperty *
+cpg_property_get_integral (CpgProperty *property)
+{
+	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
+
+	return property->priv->diff_for;
 }

@@ -13,8 +13,6 @@ struct _CpgInstructionPropertyPrivate
 {
 	CpgProperty *property;
 	CpgInstructionPropertyBinding binding;
-	CpgExpression *diffeq;
-	CpgProperty *diff_for;
 };
 
 G_DEFINE_TYPE (CpgInstructionProperty, cpg_instruction_property, CPG_TYPE_INSTRUCTION)
@@ -27,16 +25,6 @@ cpg_instruction_property_finalize (CpgMiniObject *object)
 	self = CPG_INSTRUCTION_PROPERTY (object);
 
 	cpg_instruction_property_set_property (self, NULL);
-
-	if (self->priv->diffeq)
-	{
-		g_object_unref (self->priv->diffeq);
-	}
-
-	if (self->priv->diff_for)
-	{
-		g_object_unref (self->priv->diff_for);
-	}
 
 	CPG_MINI_OBJECT_CLASS (cpg_instruction_property_parent_class)->finalize (object);
 }
@@ -56,16 +44,6 @@ cpg_instruction_property_copy (CpgMiniObject const *object)
 
 	cpg_instruction_property_set_property (self, src->priv->property);
 	self->priv->binding = src->priv->binding;
-
-	if (src->priv->diffeq)
-	{
-		self->priv->diffeq = cpg_expression_copy (src->priv->diffeq);
-	}
-
-	if (src->priv->diff_for)
-	{
-		self->priv->diff_for = g_object_ref (src->priv->diff_for);
-	}
 
 	return ret;
 }
@@ -87,23 +65,12 @@ cpg_instruction_property_execute (CpgInstruction *instruction,
                                   CpgStack       *stack)
 {
 	CpgInstructionProperty *self;
-	CpgExpression *expr;
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CpgInstructionProperty *)instruction;
 
-	expr = cpg_instruction_property_get_diff (self);
-
-	if (expr)
-	{
-		cpg_stack_push (stack,
-		                cpg_expression_evaluate (expr));
-	}
-	else
-	{
-		cpg_stack_push (stack,
-		                cpg_property_get_value (self->priv->property));
-	}
+	cpg_stack_push (stack,
+	                cpg_property_get_value (self->priv->property));
 }
 
 static gint
@@ -155,7 +122,7 @@ cpg_instruction_property_init (CpgInstructionProperty *self)
 }
 
 /**
- * cpg_instruction_property_new:
+ * cpg_instruction_property_new_with_binding:
  * @property: (transfer none): A #CpgProperty
  * @binding: A #CpgInstructionPropertyBinding
  *
@@ -165,8 +132,8 @@ cpg_instruction_property_init (CpgInstructionProperty *self)
  *
  **/
 CpgInstruction *
-cpg_instruction_property_new (CpgProperty                   *property,
-                              CpgInstructionPropertyBinding  binding)
+cpg_instruction_property_new_with_binding (CpgProperty                   *property,
+                                           CpgInstructionPropertyBinding  binding)
 {
 	CpgMiniObject *ret;
 	CpgInstructionProperty *self;
@@ -178,6 +145,22 @@ cpg_instruction_property_new (CpgProperty                   *property,
 	self->priv->binding = binding;
 
 	return CPG_INSTRUCTION (ret);
+}
+
+/**
+ * cpg_instruction_property_new:
+ * @property: (transfer none): A #CpgProperty
+ *
+ * Create a new #CpgInstructionProperty.
+ *
+ * Returns: A #CpgInstruction
+ *
+ **/
+CpgInstruction *
+cpg_instruction_property_new (CpgProperty *property)
+{
+	return cpg_instruction_property_new_with_binding (property,
+	                                                  CPG_INSTRUCTION_PROPERTY_BINDING_NONE);
 }
 
 /**
@@ -241,120 +224,4 @@ cpg_instruction_property_get_binding (CpgInstructionProperty *instruction)
 	                      CPG_INSTRUCTION_PROPERTY_BINDING_NONE);
 
 	return instruction->priv->binding;
-}
-
-static CpgExpression *
-collect_diffeq (CpgProperty *prop)
-{
-	GSList *actors;
-	GSList *instructions = NULL;
-	GSList *item;
-	GSList *last = NULL;
-	gchar *s;
-	CpgExpression *ret;
-	CpgExpressionTreeIter *iter;
-
-	actors = cpg_property_get_actions (prop);
-
-	for (item = actors; item; item = g_slist_next (item))
-	{
-		CpgExpression *e;
-		GSList const *inst;
-		GSList *cp = NULL;
-
-		e = cpg_link_action_get_equation (item->data);
-
-		inst = cpg_expression_get_instructions (e);
-
-		while (inst)
-		{
-			cp = g_slist_prepend (cp,
-			                      cpg_mini_object_copy (CPG_MINI_OBJECT (inst->data)));
-
-			inst = g_slist_next (inst);
-		}
-
-		cp = g_slist_reverse (cp);
-
-		instructions = g_slist_concat (cp,
-		                               instructions);
-
-		if (item != actors)
-		{
-			last = g_slist_append (last,
-			                       cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_PLUS,
-			                                                     "+",
-			                                                     2));
-
-			last = last->next;
-		}
-		else
-		{
-			last = g_slist_last (instructions);
-		}
-	}
-
-	g_slist_free (actors);
-
-	if (instructions == NULL)
-	{
-		return NULL;
-	}
-
-	iter = cpg_expression_tree_iter_new_from_instructions (instructions);
-
-	s = cpg_expression_tree_iter_to_string (iter);
-	ret = cpg_expression_new (s);
-	_cpg_expression_set_instructions_take (ret,
-	                                       cpg_expression_tree_iter_to_instructions (iter));
-
-	g_slist_foreach (instructions, (GFunc)cpg_mini_object_free, NULL);
-	g_slist_free (instructions);
-	g_free (s);
-
-	return ret;
-}
-
-CpgExpression *
-cpg_instruction_property_get_diff (CpgInstructionProperty *instruction)
-{
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_PROPERTY (instruction), NULL);
-
-	if (!(instruction->priv->binding & CPG_INSTRUCTION_PROPERTY_BINDING_DIFF))
-	{
-		return NULL;
-	}
-
-	if (!instruction->priv->diffeq)
-	{
-		instruction->priv->diffeq = collect_diffeq (instruction->priv->property);
-	}
-
-	return instruction->priv->diffeq;
-}
-
-void
-cpg_instruction_property_set_diff_for (CpgInstructionProperty *instruction,
-                                       CpgProperty            *property)
-{
-	g_return_if_fail (CPG_IS_INSTRUCTION_PROPERTY (instruction));
-
-	if (instruction->priv->diff_for)
-	{
-		g_object_unref (instruction->priv->diff_for);
-		instruction->priv->diff_for = NULL;
-	}
-
-	if (property != NULL)
-	{
-		instruction->priv->diff_for = g_object_ref (property);
-	}
-}
-
-CpgProperty *
-cpg_instruction_property_get_diff_for (CpgInstructionProperty *instruction)
-{
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_PROPERTY (instruction), NULL);
-
-	return instruction->priv->diff_for;
 }

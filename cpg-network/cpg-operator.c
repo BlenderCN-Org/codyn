@@ -163,7 +163,7 @@ cpg_operator_initialize_default (CpgOperator   *op,
 	{
 		op->priv->expressions =
 			g_slist_prepend (op->priv->expressions,
-			                 g_object_ref (expressions->data));
+			                 g_object_ref_sink (expressions->data));
 
 		expressions = g_slist_next (expressions);
 	}
@@ -468,4 +468,13 @@ cpg_operator_get_function (CpgOperator *op)
 	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
 
 	return CPG_OPERATOR_GET_CLASS (op)->get_function (op);
+}
+
+void
+_cpg_operator_set_num_arguments (CpgOperator *op,
+                                 gint         num)
+{
+	g_return_if_fail (CPG_IS_OPERATOR (op));
+
+	op->priv->num_arguments = num;
 }

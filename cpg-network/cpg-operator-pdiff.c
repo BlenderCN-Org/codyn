@@ -133,8 +133,7 @@ get_property_map (GList const *args,
 		pnf = _cpg_function_argument_get_property (argnf);
 
 		instr = g_slist_prepend (NULL,
-		                         cpg_instruction_property_new (pnf,
-		                                                       CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+		                         cpg_instruction_property_new (pnf));
 
 		g_hash_table_insert (ret,
 		                     p,
@@ -380,6 +379,8 @@ cpg_operator_pdiff_initialize (CpgOperator   *op,
 	                                           diff->priv->order,
 	                                           CPG_SYMBOLIC_DERIVE_PARTIAL,
 	                                           error);
+
+	g_object_ref_sink (diff->priv->derived);
 
 	g_slist_free (syms);
 

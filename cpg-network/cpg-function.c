@@ -22,6 +22,7 @@
 
 #include "cpg-function.h"
 #include "cpg-compile-error.h"
+#include <string.h>
 
 /**
  * SECTION:cpg-function
@@ -860,6 +861,8 @@ static void
 cpg_function_argument_added_impl (CpgFunction         *function,
                                   CpgFunctionArgument *argument)
 {
+	gchar const *name;
+
 	if (!cpg_function_argument_get_explicit (argument))
 	{
 		/* Just append */
@@ -890,6 +893,25 @@ cpg_function_argument_added_impl (CpgFunction         *function,
 		function->priv->arguments = g_list_insert (function->priv->arguments,
 		                                           g_object_ref_sink (argument),
 		                                           n);
+	}
+
+	name = cpg_function_argument_get_name (argument);
+
+	if (g_str_has_suffix (name, "'"))
+	{
+		gchar *pname;
+		CpgFunctionArgument *parg;
+
+		pname = g_strndup (name, strlen (name) - 1);
+		parg = cpg_function_get_argument (function, pname);
+
+		if (parg)
+		{
+			cpg_property_set_derivative (_cpg_function_argument_get_property (parg),
+			                             _cpg_function_argument_get_property (argument));
+		}
+
+		g_free (pname);
 	}
 
 	g_hash_table_insert (function->priv->arguments_hash,
@@ -1109,12 +1131,14 @@ cpg_function_add_argument (CpgFunction         *function,
 			return;
 		}
 	}
-	else if (cpg_function_get_argument (function, cpg_function_argument_get_name (argument)))
+	else if (cpg_function_get_argument (function,
+	                                    cpg_function_argument_get_name (argument)))
 	{
 		return;
 	}
 
 	_cpg_function_argument_set_property (argument, property);
+
 	g_signal_emit (function, signals[ARGUMENT_ADDED], 0, argument);
 }
 
@@ -1134,6 +1158,8 @@ cpg_function_remove_argument (CpgFunction          *function,
                               CpgFunctionArgument  *argument,
                               GError              **error)
 {
+	gchar const *name;
+
 	g_return_val_if_fail (CPG_IS_FUNCTION (function), FALSE);
 	g_return_val_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument), FALSE);
 
@@ -1153,9 +1179,9 @@ cpg_function_remove_argument (CpgFunction          *function,
 		return FALSE;
 	}
 
-	if (cpg_object_remove_property (CPG_OBJECT (function),
-	                                cpg_function_argument_get_name (argument),
-	                                error))
+	name = cpg_function_argument_get_name (argument);
+
+	if (cpg_object_remove_property (CPG_OBJECT (function), name, error))
 	{
 		if (cpg_function_argument_get_optional (argument))
 		{
@@ -1188,6 +1214,23 @@ cpg_function_remove_argument (CpgFunction          *function,
 		g_signal_handlers_disconnect_by_func (argument,
 		                                      on_argument_optional_changed,
 		                                      function);
+
+		if (g_str_has_suffix (name, "'"))
+		{
+			gchar *pname;
+			CpgFunctionArgument *parg;
+
+			pname = g_strndup (name, strlen (name) - 1);
+			parg = cpg_function_get_argument (function, pname);
+
+			if (parg)
+			{
+				cpg_property_set_derivative (_cpg_function_argument_get_property (parg),
+				                             NULL);
+			}
+
+			g_free (pname);
+		}
 
 		cpg_object_taint (CPG_OBJECT (function));
 

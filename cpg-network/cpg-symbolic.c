@@ -6,6 +6,8 @@
 #include "cpg-integrator.h"
 #include "cpg-operator-diff.h"
 #include "cpg-operator-pdiff.h"
+#include "cpg-operator-df-dt.h"
+#include "cpg-link-action.h"
 
 #include <math.h>
 #include <glib/gprintf.h>
@@ -1368,6 +1370,11 @@ printit (gpointer key, gpointer value)
 static void
 print_map (GHashTable *table)
 {
+	if (!table)
+	{
+		return;
+	}
+
 	g_hash_table_foreach (table, (GHFunc)printit, NULL);
 }
 #endif
@@ -1424,6 +1431,32 @@ map_iter (CpgExpressionTreeIter *iter,
 			return ncp;
 		}
 	}
+	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (instr) &&
+	         cpg_expression_tree_iter_num_children (iter) == 0)
+	{
+		CpgInstructionCustomOperator *opi;
+		CpgOperator *op;
+
+		opi = CPG_INSTRUCTION_CUSTOM_OPERATOR (instr);
+		op = cpg_instruction_custom_operator_get_operator (opi);
+
+		if (CPG_IS_OPERATOR_DF_DT (op))
+		{
+			CpgExpressionTreeIter *it;
+			CpgExpressionTreeIter *mit;
+
+			// Go inside
+			it = cpg_expression_tree_iter_new (cpg_operator_df_dt_get_derived (CPG_OPERATOR_DF_DT (op)));
+			mit = map_iter (it, ctx);
+
+			if (mit != it)
+			{
+				cpg_expression_tree_iter_free (it);
+			}
+
+			return mit;
+		}
+	}
 
 	return iter;
 }
@@ -1473,7 +1506,7 @@ derive_expression (CpgExpression *expression,
 
 	if (mapped != iter)
 	{
-		g_printf ("  Mapped: %s", cpg_expression_tree_iter_to_string_dbg (mapped));
+		g_printf ("  Mapped: %s\n", cpg_expression_tree_iter_to_string_dbg (mapped));
 	}
 #endif
 
@@ -1489,29 +1522,76 @@ derive_expression (CpgExpression *expression,
 }
 
 static GSList *
+derive_integrated (CpgProperty   *prop,
+                   DeriveContext *ctx)
+{
+	GSList *actors;
+	GSList *instructions = NULL;
+	GSList *item;
+	GSList *last = NULL;
+
+	actors = cpg_property_get_actions (prop);
+
+	for (item = actors; item; item = g_slist_next (item))
+	{
+		CpgExpression *e;
+		GSList const *inst;
+		GSList *cp = NULL;
+
+		e = cpg_link_action_get_equation (item->data);
+
+		inst = cpg_expression_get_instructions (e);
+
+		while (inst)
+		{
+			cp = g_slist_prepend (cp,
+			                      cpg_mini_object_copy (CPG_MINI_OBJECT (inst->data)));
+
+			inst = g_slist_next (inst);
+		}
+
+		cp = g_slist_reverse (cp);
+
+		instructions = g_slist_concat (cp,
+		                               instructions);
+
+		if (item != actors)
+		{
+			last = g_slist_append (last,
+			                       cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_PLUS,
+			                                                     "+",
+			                                                     2));
+
+			last = last->next;
+		}
+		else
+		{
+			last = g_slist_last (instructions);
+		}
+	}
+
+	g_slist_free (actors);
+
+	return instructions;
+}
+
+static GSList *
 derive_property_real (CpgInstructionProperty *instr,
                       CpgProperty            *prop,
                       DeriveContext          *ctx)
 {
 	CpgExpressionTreeIter *mapped = NULL;
-	CpgInstructionPropertyBinding binding;
 
 	if (!prop && instr)
 	{
 		prop = cpg_instruction_property_get_property (instr);
 	}
 
-	if (instr)
-	{
-		binding = cpg_instruction_property_get_binding (instr);
-	}
-	else
-	{
-		binding = CPG_INSTRUCTION_PROPERTY_BINDING_NONE;
-	}
-
 	/* Check if the property has a diff mapped symbol */
-	if (ctx->diff_map && g_hash_table_lookup_extended (ctx->diff_map, prop, NULL, (gpointer *)&mapped))
+	if (ctx->diff_map && g_hash_table_lookup_extended (ctx->diff_map,
+	                                                   prop,
+	                                                   NULL,
+	                                                   (gpointer *)&mapped))
 	{
 		if (ctx->flags & CPG_SYMBOLIC_DERIVE_PARTIAL)
 		{
@@ -1532,22 +1612,14 @@ derive_property_real (CpgInstructionProperty *instr,
 		                        cpg_instruction_number_new_from_string ("0"));
 	}
 
-	if (instr && (binding & CPG_INSTRUCTION_PROPERTY_BINDING_DIFF))
+	if (cpg_property_get_derivative (prop))
 	{
-		// Collect an expression that represents the differential
-		// equation on 'prop' and go deep
-		return derive_expression (cpg_instruction_property_get_diff (instr),
-		                          ctx,
-		                          FALSE);
-	}
-
-	if (cpg_property_get_integrated (prop))
-	{
-		// This is an integrated property derived towards t resulting
-		// in x'
 		return g_slist_prepend (NULL,
-		                        cpg_instruction_property_new (prop,
-		                                                      CPG_INSTRUCTION_PROPERTY_BINDING_DIFF));
+		                        cpg_instruction_property_new (cpg_property_get_derivative (prop)));
+	}
+	else if (cpg_property_get_integrated (prop))
+	{
+		return derive_integrated (prop, ctx);
 	}
 	else
 	{
@@ -1572,33 +1644,60 @@ derive_custom_function_real (CpgExpressionTreeIter *iter,
                              DeriveContext         *ctx,
                              gboolean               mapargs)
 {
-	GList const *args;
 	gint i = 0;
 	GSList *ret;
 
 	// Map arguments of the function object to arguments in the iter
-	args = cpg_function_get_arguments (func);
-
-	while (mapargs && args)
+	if (mapargs)
 	{
-		CpgFunctionArgument *arg = args->data;
-		CpgExpressionTreeIter *cp;
+		GList const *args;
+		GSList *mapped = NULL;
+		args = cpg_function_get_arguments (func);
+		GSList *item;
 
-		args = g_list_next (args);
-
-		// Ignore implicit args
-		if (!cpg_function_argument_get_explicit (arg))
+		while (args)
 		{
-			continue;
+			CpgFunctionArgument *arg = args->data;
+			CpgExpressionTreeIter *cp;
+			CpgProperty *prop;
+
+			args = g_list_next (args);
+
+			prop = _cpg_function_argument_get_property (arg);
+
+			// Ignore implicit args
+			if (!cpg_function_argument_get_explicit (arg))
+			{
+				continue;
+			}
+
+			cp = cpg_expression_tree_iter_copy (cpg_expression_tree_iter_get_child (iter, i));
+
+			mapped = g_slist_prepend (mapped, prop);
+
+			g_hash_table_insert (ctx->property_map, prop, cp);
+
+			++i;
 		}
 
-		cp = cpg_expression_tree_iter_copy (cpg_expression_tree_iter_get_child (iter, i));
+		// Map also the iters now
+		for (item = mapped; item; item = g_slist_next (item))
+		{
+			CpgProperty *prop = item->data;
+			CpgExpressionTreeIter *cp;
+			CpgExpressionTreeIter *ncp;
 
-		g_hash_table_insert (ctx->property_map,
-		                     _cpg_function_argument_get_property (arg),
-		                     cp);
+			cp = g_hash_table_lookup (ctx->property_map, prop);
 
-		++i;
+			ncp = map_iter (cp, ctx);
+
+			if (ncp != cp)
+			{
+				g_hash_table_insert (ctx->property_map, prop, ncp);
+			}
+		}
+
+		g_slist_free (mapped);
 	}
 
 	// Then, evaluate the function expression
@@ -1607,19 +1706,24 @@ derive_custom_function_real (CpgExpressionTreeIter *iter,
 	                         TRUE);
 
 	// Remove again from the map
-	args = cpg_function_get_arguments (func);
-
-	while (mapargs && args)
+	if (mapargs)
 	{
-		CpgFunctionArgument *arg = args->data;
+		GList const *args;
 
-		if (cpg_function_argument_get_explicit (arg))
+		args = cpg_function_get_arguments (func);
+
+		while (args)
 		{
-			g_hash_table_remove (ctx->property_map,
-			                     _cpg_function_argument_get_property (arg));
-		}
+			CpgFunctionArgument *arg = args->data;
 
-		args = g_list_next (args);
+			if (cpg_function_argument_get_explicit (arg))
+			{
+				g_hash_table_remove (ctx->property_map,
+				                     _cpg_function_argument_get_property (arg));
+			}
+
+			args = g_list_next (args);
+		}
 	}
 
 	return ret;
@@ -1655,10 +1759,22 @@ derive_custom_operator_real (CpgExpressionTreeIter *iter,
 {
 	CpgFunction *f;
 
+	if (CPG_IS_OPERATOR_DF_DT (op))
+	{
+		// Go deep!
+		CpgOperatorDfDt *dfdt = CPG_OPERATOR_DF_DT (op);
+
+		return derive_expression (cpg_operator_df_dt_get_derived (dfdt),
+		                          ctx,
+		                          TRUE);
+	}
+
 	f = cpg_operator_get_function (op);
 
 	if (f)
 	{
+		g_message ("Deriving op: %s", cpg_expression_get_as_string (cpg_function_get_expression (f)));
+		
 		return derive_custom_function_real (iter, f, ctx, mapargs);
 	}
 	else

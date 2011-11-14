@@ -4,6 +4,7 @@
 #include <cpg-network/cpg-math.h>
 #include <math.h>
 #include "cpg-stack-private.h"
+#include "cpg-operator-df-dt.h"
 
 struct _CpgExpressionTreeIter
 {
@@ -228,9 +229,20 @@ property_to_string (CpgInstructionProperty *inst,
                     gboolean                dbg)
 {
 	CpgProperty *prop;
+	CpgInstructionPropertyBinding binding;
 
-	// TODO: resolve property in from/to of link?
+	binding = cpg_instruction_property_get_binding (inst);
+
 	// TODO: resolve property in parent/child?
+
+	if (binding & CPG_INSTRUCTION_PROPERTY_BINDING_FROM)
+	{
+		g_string_append (ret, "from.");
+	}
+	else if (binding & CPG_INSTRUCTION_PROPERTY_BINDING_TO)
+	{
+		g_string_append (ret, "to.");
+	}
 
 	prop = cpg_instruction_property_get_property (inst);
 
@@ -241,12 +253,6 @@ property_to_string (CpgInstructionProperty *inst,
 	else
 	{
 		g_string_append (ret, cpg_property_get_name (prop));
-	}
-
-	if (cpg_instruction_property_get_binding (inst) &
-	    CPG_INSTRUCTION_PROPERTY_BINDING_DIFF)
-	{
-		g_string_append_c (ret, '\'');
 	}
 }
 
@@ -1408,6 +1414,36 @@ replace_iter (CpgExpressionTreeIter *iter,
 }
 
 static void
+copy_iter_into (CpgExpressionTreeIter *cp,
+                CpgExpressionTreeIter *dest)
+{
+	gint i;
+
+	for (i = 0; i < dest->num_children; ++i)
+	{
+		cpg_expression_tree_iter_free (dest->children[i]);
+	}
+
+	g_free (dest->children);
+
+	dest->num_children = cp->num_children;
+	dest->children = g_new (CpgExpressionTreeIter *, cp->num_children);
+
+	for (i = 0; i < cp->num_children; ++i)
+	{
+		dest->children[i] = cp->children[i];
+
+		cp->children[i]->parent = dest;
+		cp->children[i] = NULL;
+	}
+
+	cpg_mini_object_free (CPG_MINI_OBJECT (dest->instruction));
+
+	dest->instruction = cp->instruction;
+	cp->instruction = NULL;
+}
+
+static void
 canonical_custom_function_real (CpgExpressionTreeIter *iter,
                                 CpgFunction           *f)
 {
@@ -1466,28 +1502,7 @@ canonical_custom_function_real (CpgExpressionTreeIter *iter,
 		}
 	}
 
-	for (i = 0; i < iter->num_children; ++i)
-	{
-		cpg_expression_tree_iter_free (iter->children[i]);
-	}
-
-	g_free (iter->children);
-
-	iter->num_children = func->num_children;
-	iter->children = g_new (CpgExpressionTreeIter *, func->num_children);
-
-	for (i = 0; i < iter->num_children; ++i)
-	{
-		iter->children[i] = func->children[i];
-		func->children[i]->parent = iter;
-
-		func->children[i] = NULL;
-	}
-
-	cpg_mini_object_free (CPG_MINI_OBJECT (iter->instruction));
-	iter->instruction = func->instruction;
-	func->instruction = NULL;
-
+	copy_iter_into (func, iter);
 	cpg_expression_tree_iter_free (func);
 }
 
@@ -1511,11 +1526,27 @@ canonical_custom_operator (CpgExpressionTreeIter *iter)
 
 	instr = CPG_INSTRUCTION_CUSTOM_OPERATOR (iter->instruction);
 	op = cpg_instruction_custom_operator_get_operator (instr);
-	f = cpg_operator_get_function (op);
 
-	if (f)
+	if (CPG_IS_OPERATOR_DF_DT (op))
 	{
-		canonical_custom_function_real (iter, f);
+		CpgExpressionTreeIter *cp;
+		CpgOperatorDfDt *dfdt = CPG_OPERATOR_DF_DT (op);
+
+		cp = cpg_expression_tree_iter_new (cpg_operator_df_dt_get_derived (dfdt));
+		cpg_expression_tree_iter_canonicalize (cp);
+
+		// Replace iter with cp
+		copy_iter_into (cp, iter);
+		cpg_expression_tree_iter_free (cp);
+	}
+	else
+	{
+		f = cpg_operator_get_function (op);
+
+		if (f)
+		{
+			canonical_custom_function_real (iter, f);
+		}
 	}
 }
 
@@ -1929,6 +1960,129 @@ simplify_preadd (CpgExpressionTreeIter *iter)
 	return ret;
 }
 
+static GSList *
+find_multiply_powers (CpgExpressionTreeIter *iter,
+                      GSList                *ret)
+{
+	if (instruction_is_multiply (iter))
+	{
+		// Go deep, left to right
+		gint i;
+
+		for (i = 0; i < iter->num_children; ++i)
+		{
+			ret = find_multiply_powers (iter->children[i], ret);
+		}
+	}
+	else
+	{
+		ret = g_slist_prepend (ret, iter);
+	}
+
+	return ret;
+}
+
+static CpgExpressionTreeIter *
+power_up (CpgExpressionTreeIter *root,
+          GSList                *from,
+          GSList                *to)
+{
+	CpgExpressionTreeIter *pow;
+	gchar *s;
+	gint num;
+
+	pow = iter_new (root->expression,
+	                cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_POWER,
+	                                              "**",
+	                                              2));
+
+	pow->num_children = 2;
+	pow->children = g_new0 (CpgExpressionTreeIter *, 2);
+
+	replace_iter (from->data, pow);
+
+	pow->children[0] = from->data;
+	pow->children[0]->parent = pow;
+
+	from = from->next;
+	num = 1;
+
+	while (from != to)
+	{
+		CpgExpressionTreeIter *it;
+
+		it = iter_new (root->expression,
+		               cpg_instruction_number_new_from_string ("1"));
+
+		replace_iter (from->data, it);
+		cpg_expression_tree_iter_free (from->data);
+
+		from = g_slist_next (from);
+
+		++num;
+	}
+
+	s = g_strdup_printf ("%d", num);
+
+	pow->children[1] = iter_new (root->expression,
+	                             cpg_instruction_number_new_from_string (s));
+
+	pow->children[1]->parent = pow;
+	g_free (s);
+
+	return root;
+}
+
+static CpgExpressionTreeIter *
+simplify_multiply_powers (CpgExpressionTreeIter *iter)
+{
+	GSList *ret;
+	GSList *start;
+	GSList *item;
+	gboolean didit = FALSE;
+
+	ret = find_multiply_powers (iter, NULL);
+
+	start = ret;
+	item = g_slist_next (start);
+
+	while (item)
+	{
+		gboolean eq;
+
+		eq = cpg_expression_tree_iter_equal (start->data, item->data);
+
+		if (start && start->next && start->next != item && !eq)
+		{
+			// We group from start until (but not including) item
+			iter = power_up (iter, start, item);
+			didit = TRUE;
+		}
+
+		if (!eq)
+		{
+			start = item;
+		}
+
+		item = g_slist_next (item);
+	}
+
+	if (start && start->next && cpg_expression_tree_iter_equal (start->data, start->next->data))
+	{
+		iter = power_up (iter, start, NULL);
+		didit = TRUE;
+	}
+
+	if (didit)
+	{
+		// Recurse
+		iter = cpg_expression_tree_iter_simplify (iter);
+	}
+
+	g_slist_free (ret);
+	return iter;
+}
+
 static CpgExpressionTreeIter *
 iter_simplify (CpgExpressionTreeIter *iter,
                gboolean               simplify_children)
@@ -1953,6 +2107,9 @@ iter_simplify (CpgExpressionTreeIter *iter,
 	{
 		// Try to premultiply
 		iter = simplify_premultiply (iter);
+
+		// Try to make powers
+		iter = simplify_multiply_powers (iter);
 	}
 	else if (instruction_is_plus (iter))
 	{

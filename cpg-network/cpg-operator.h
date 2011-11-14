@@ -154,6 +154,8 @@ void                 cpg_operator_reset                       (CpgOperator     *
 CpgOperator         *cpg_operator_copy                        (CpgOperator     *op);
 
 gint                 cpg_operator_get_num_arguments           (CpgOperator     *op);
+void                _cpg_operator_set_num_arguments           (CpgOperator     *op,
+                                                               gint             num);
 CpgFunction         *cpg_operator_get_function                (CpgOperator     *op);
 
 G_END_DECLS
