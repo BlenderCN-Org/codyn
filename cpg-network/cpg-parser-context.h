@@ -145,12 +145,6 @@ void                   cpg_parser_context_add_action           (CpgParserContext
                                                                 CpgEmbeddedString          *expression,
                                                                 GSList                     *attributes);
 
-void                   cpg_parser_context_add_function         (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *name,
-                                                                CpgEmbeddedString          *expression,
-                                                                GSList                     *arguments,
-                                                                GSList                     *attributes);
-
 void                   cpg_parser_context_add_polynomial       (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *name,
                                                                 GSList                     *pieces,
