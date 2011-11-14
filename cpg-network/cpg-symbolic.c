@@ -1773,8 +1773,6 @@ derive_custom_operator_real (CpgExpressionTreeIter *iter,
 
 	if (f)
 	{
-		g_message ("Deriving op: %s", cpg_expression_get_as_string (cpg_function_get_expression (f)));
-		
 		return derive_custom_function_real (iter, f, ctx, mapargs);
 	}
 	else
@@ -1970,11 +1968,6 @@ cpg_symbolic_derive (CpgExpression          *expression,
 	}
 
 	es = cpg_expression_tree_iter_to_string (iter);
-
-	g_message ("Derived `%s' => `%s'",
-	           cpg_expression_get_as_string (expression),
-	           es);
-
 	ret = cpg_expression_new (es);
 	g_free (es);
 
@@ -2008,11 +2001,6 @@ cpg_symbolic_simplify (CpgExpression *expression)
 	instructions = cpg_expression_tree_iter_to_instructions (iter);
 
 	es = cpg_expression_tree_iter_to_string (iter);
-
-	g_message ("Simplified `%s' => `%s'",
-	           cpg_expression_get_as_string (expression),
-	           es);
-
 	ret = cpg_expression_new (es);
 	g_free (es);
 
