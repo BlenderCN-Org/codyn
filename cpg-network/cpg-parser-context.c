@@ -5808,18 +5808,35 @@ cpg_parser_context_set_function_expression (CpgParserContext  *context,
 
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		gchar const *expr;
+		GSList *exprs;
 
 		cpg_embedded_context_save (context->priv->embedded);
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		embedded_string_expand (expr, expression, context);
+		embedded_string_expand_multiple (exprs, expression, context);
 
 		cpg_embedded_context_restore (context->priv->embedded);
 
+		if (exprs->next)
+		{
+			parser_failed (context,
+			               CPG_STATEMENT (expression),
+			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
+			               "Invalid expansion string for function expression of `%s' (expanded string can only contain one expression)",
+			               cpg_object_get_id (CPG_OBJECT (cpg_selection_get_defines (item->data))));
+
+			g_slist_foreach (exprs, (GFunc)g_object_unref, NULL);
+			g_slist_free (exprs);
+
+			break;
+		}
+
 		cpg_function_set_expression (CPG_FUNCTION (cpg_selection_get_object (item->data)),
-		                             cpg_expression_new (expr));
+		                             cpg_expression_new (cpg_expansion_get (exprs->data, 0)));
+
+		g_slist_foreach (exprs, (GFunc)g_object_unref, NULL);
+		g_slist_free (exprs);
 	}
 
 	g_object_unref (expression);
