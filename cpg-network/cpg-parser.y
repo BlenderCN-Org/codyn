@@ -137,6 +137,7 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %type <list> selector_pseudo_mixargs_args_rev
 
 %type <string> identifier_or_string
+%type <string> identifier_or_string_item
 %type <string> string
 %type <string> regex
 %type <string> equation
@@ -170,6 +171,8 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %type <list> link_connect
 %type <list> link_connect_fast
 %type <list> templated
+
+%type <num> repeated_prime
 
 %type <multiassign> multi_assign_identifier
 
@@ -944,10 +947,25 @@ link_contents
 	| link_contents link_item
 	;
 
-identifier_or_string
+identifier_or_string_item
 	: identifier
 	| string
 	| indirection
+	;
+
+identifier_or_string
+	: identifier_or_string_item repeated_prime
+	                                { $$ = $1;
+	                                  {
+	                                    int i;
+
+	                                    for (i = 0; i < $2; ++i)
+	                                    {
+	                                      cpg_embedded_string_add_text ($$, "'");
+	                                    }
+	                                  }
+	                                }
+	| identifier_or_string_item	{ $$ = $1; }
 	;
 
 assign_optional
@@ -1380,10 +1398,13 @@ layout_contents
 	| layout_contents layout_item_or_others
 	;
 
+repeated_prime
+	: '\''				{ $$ = 1; }
+	| repeated_prime '\''		{ $$ = $$ + 1; }
+	;
+
 identifier
-	: T_IDENTIFIER '\''		{ $$ = cpg_embedded_string_new_from_string ($1);
-	                                  cpg_embedded_string_add_text ($$, "'"); }
-	| T_IDENTIFIER			{ $$ = cpg_embedded_string_new_from_string ($1); }
+	: T_IDENTIFIER			{ $$ = cpg_embedded_string_new_from_string ($1); }
 	;
 
 double

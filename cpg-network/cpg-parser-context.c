@@ -1077,7 +1077,6 @@ generate_name_value_pairs (CpgParserContext  *context,
 
 		for (cnt_item = count_names; cnt_item; cnt_item = g_slist_next (cnt_item))
 		{
-
 			ret = g_slist_prepend (ret,
 			                       name_value_pair_new (cnt_item->data,
 			                                            ex));
@@ -1137,59 +1136,106 @@ add_property_diff (CpgParserContext *context,
                    CpgPropertyFlags  add_flags,
                    CpgPropertyFlags  remove_flags)
 {
-	gchar const *ex;
-	CpgProperty *prop;
-	CpgLink *link;
-	GError *error = NULL;
+	gint len;
+	gint num;
+	gchar *rname;
+	gint i;
 
-	// Integrate 'name' on obj
-	prop = cpg_object_get_property (obj, name);
-	ex = cpg_expansion_get (p->value, 0);
+	len = strlen (name);
+	num = len - 2;
 
-	if (!prop)
+	while (num >= 0 && name[num] == '\'')
 	{
-		if (!cpg_object_add_property (obj,
-		                              cpg_property_new (name,
-		                                                cpg_expression_new0 (),
-		                                                0),
-		                              &error))
-		{
-			parser_failed_error (context, NULL, error);
-			return FALSE;
-		}
-
-		prop = cpg_object_get_property (obj, name);
+		--num;
 	}
 
-	cpg_property_set_flags (prop, (CPG_PROPERTY_FLAG_INTEGRATED | add_flags) & ~remove_flags);
+	rname = g_strndup (name, num + 1);
+	num = len - num - 1;
 
-	// Find the self link generated
-	link = g_object_get_data (G_OBJECT (obj), SELF_LINK_KEY);
-
-	if (!link)
+	for (i = 0; i < num; ++i)
 	{
-		gchar *s;
+		gchar *dd;
+		gchar *fname;
+		gchar *dfname;
+		gchar const *ex;
+		CpgProperty *prop;
+		CpgLink *link;
+		GError *error = NULL;
 
-		s = g_strconcat (cpg_object_get_id (obj), "_integrate", NULL);
-		link = cpg_link_new (s, obj, obj);
-		g_free (s);
+		dd = g_strnfill (i + 1, 'd');
+		dfname = g_strconcat (dd, rname, NULL);
 
-		if (!cpg_group_add (CPG_GROUP (cpg_object_get_parent (obj)),
-		                    CPG_OBJECT (link),
-		                    &error))
+		dd[i] = '\0';
+		fname = g_strconcat (dd, rname, NULL);
+
+		g_free (dd);
+
+		// Integrate 'name' on obj
+		prop = cpg_object_get_property (obj, fname);
+		ex = cpg_expansion_get (p->value, 0);
+
+		if (!prop)
 		{
-			g_object_unref (link);
-			parser_failed_error (context, NULL, error);
-			return FALSE;
+			if (!cpg_object_add_property (obj,
+			                              cpg_property_new (fname,
+			                                                cpg_expression_new0 (),
+			                                                0),
+			                              &error))
+			{
+				parser_failed_error (context, NULL, error);
+				return FALSE;
+			}
+
+			prop = cpg_object_get_property (obj, fname);
 		}
 
-		g_object_set_data_full (G_OBJECT (obj),
-		                        SELF_LINK_KEY,
-		                        link,
-		                        (GDestroyNotify)g_object_unref);
+		cpg_property_set_flags (prop, (CPG_PROPERTY_FLAG_INTEGRATED | add_flags) & ~remove_flags);
+
+		// Find the self link generated
+		link = g_object_get_data (G_OBJECT (obj), SELF_LINK_KEY);
+
+		if (!link)
+		{
+			gchar *s;
+
+			s = g_strconcat (cpg_object_get_id (obj), "_integrate", NULL);
+			link = cpg_link_new (s, obj, obj);
+			g_free (s);
+
+			if (!cpg_group_add (CPG_GROUP (cpg_object_get_parent (obj)),
+				            CPG_OBJECT (link),
+				            &error))
+			{
+				g_object_unref (link);
+				parser_failed_error (context, NULL, error);
+				return FALSE;
+			}
+
+			g_object_set_data_full (G_OBJECT (obj),
+			                        SELF_LINK_KEY,
+			                        link,
+			                        (GDestroyNotify)g_object_unref);
+		}
+
+		if (i == num - 1)
+		{
+			cpg_link_add_action (link,
+			                     cpg_link_action_new (fname,
+			                                          cpg_expression_new (ex)));
+		}
+		else
+		{
+			cpg_link_add_action (link,
+			                     cpg_link_action_new (fname,
+			                                          cpg_expression_new (dfname)));
+		}
+
+		g_free (fname);
+		g_free (dfname);
 	}
 
-	cpg_link_add_action (link, cpg_link_action_new (name, cpg_expression_new (ex)));
+	g_free (rname);
+
 	return TRUE;
 }
 
@@ -1261,14 +1307,10 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 			if (g_str_has_suffix (exname, "'"))
 			{
-				gchar *nname;
-
-				nname = g_strndup (exname, strlen (exname) - 1);
-
 				// This is a differential equation now...
 				add_property_diff (context,
 				                   obj,
-				                   nname,
+				                   exname,
 				                   p,
 				                   add_flags,
 				                   remove_flags);
