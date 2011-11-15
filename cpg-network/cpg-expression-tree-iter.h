@@ -45,8 +45,9 @@ CpgExpressionTreeIter *cpg_expression_tree_iter_simplify        (CpgExpressionTr
 gboolean               cpg_expression_tree_iter_equal           (CpgExpressionTreeIter *iter,
                                                                  CpgExpressionTreeIter *other);
 
-CpgExpressionTreeIter *cpg_expression_tree_iter_solve_for       (CpgExpressionTreeIter *iter,
-                                                                 CpgProperty           *prop);
+CpgExpressionTreeIter *cpg_expression_tree_iter_solve_for       (CpgExpressionTreeIter  *iter,
+                                                                 CpgProperty            *prop,
+                                                                 GError                **error);
 
 G_END_DECLS
 

@@ -1001,7 +1001,6 @@ parse_custom_operator (CpgExpression *expression,
 	GSList *multiexpr = NULL;
 	gint num_arguments = 0;
 	gboolean isdiff;
-	gint error_start;
 	CpgToken *next;
 	gboolean loopit = TRUE;
 	gchar const *expr_start;
@@ -1026,8 +1025,6 @@ parse_custom_operator (CpgExpression *expression,
 	}
 
 	// parse arguments
-	error_start = cpg_expression_get_error_start (expression);
-
 	next = cpg_tokenizer_peek (*(context->buffer));
 
 	expr_start = *(context->buffer);

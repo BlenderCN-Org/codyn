@@ -10,15 +10,15 @@ typedef enum
 	CPG_SYMBOLIC_DERIVE_PARTIAL = 1 << 0
 } CpgSymbolicDeriveFlags;
 
-#define CPG_SYMBOLIC_DERIVE_ERROR (cpg_symbolic_derive_error_quark ())
+#define CPG_SYMBOLIC_ERROR (cpg_symbolic_error_quark ())
 
 typedef enum
 {
-	CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
-	CPG_SYMBOLIC_DERIVE_ERROR_INVALID
-} CpgSymbolicDeriveError;
+	CPG_SYMBOLIC_ERROR_UNSUPPORTED,
+	CPG_SYMBOLIC_ERROR_INVALID
+} CpgSymbolicError;
 
-GQuark            cpg_symbolic_derive_error_quark      (void);
+GQuark            cpg_symbolic_error_quark      (void);
 
 CpgExpression *cpg_symbolic_derive (CpgExpression           *expression,
                                     GSList                  *symbols,

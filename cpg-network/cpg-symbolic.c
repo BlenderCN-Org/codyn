@@ -23,13 +23,13 @@ static GSList *derive_iter (CpgExpressionTreeIter *iter,
                             DeriveContext         *ctx);
 
 GQuark
-cpg_symbolic_derive_error_quark ()
+cpg_symbolic_error_quark ()
 {
 	static GQuark quark = 0;
 
 	if (G_UNLIKELY (quark == 0))
 	{
-		quark = g_quark_from_static_string ("cpg_symbolic_derive_error");
+		quark = g_quark_from_static_string ("cpg_symbolic_error");
 	}
 
 	return quark;
@@ -677,8 +677,8 @@ derive_operator (CpgExpressionTreeIter  *iter,
 		case CPG_MATH_OPERATOR_TYPE_AND:
 		case CPG_MATH_OPERATOR_TYPE_TERNARY:
 			g_set_error (ctx->error,
-			             CPG_SYMBOLIC_DERIVE_ERROR,
-			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             CPG_SYMBOLIC_ERROR,
+			             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 			             "Derivation of operator `%s' is not supported",
 			             cpg_instruction_function_get_name (instr));
 		break;
@@ -1319,8 +1319,8 @@ derive_function (CpgExpressionTreeIter  *iter,
 	}
 
 	g_set_error (ctx->error,
-	             CPG_SYMBOLIC_DERIVE_ERROR,
-	             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+	             CPG_SYMBOLIC_ERROR,
+	             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 	             "Derivation of function `%s' is not supported",
 	             cpg_instruction_function_get_name (instr));
 
@@ -1777,8 +1777,8 @@ derive_custom_operator_real (CpgExpressionTreeIter *iter,
 	else
 	{
 		g_set_error (ctx->error,
-		             CPG_SYMBOLIC_DERIVE_ERROR,
-		             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+		             CPG_SYMBOLIC_ERROR,
+		             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 		             "Derivation of the operator `%s' is not supported",
 		             cpg_operator_get_name (op));
 
@@ -1957,8 +1957,8 @@ cpg_symbolic_derive (CpgExpression          *expression,
 		if (error && !*error)
 		{
 			g_set_error (error,
-			             CPG_SYMBOLIC_DERIVE_ERROR,
-			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             CPG_SYMBOLIC_ERROR,
+			             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 			             "Derivation of expression `%s' is not supported",
 			             cpg_expression_get_as_string (expression));
 		}

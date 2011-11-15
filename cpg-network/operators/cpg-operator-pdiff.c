@@ -201,8 +201,8 @@ validate_arguments (GSList const  *expressions,
 	if (!*func)
 	{
 		g_set_error (error,
-		             CPG_SYMBOLIC_DERIVE_ERROR,
-		             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+		             CPG_SYMBOLIC_ERROR,
+		             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 		             "Expected function reference but got `%s'. Use df_dt[] for deriving expressions",
 		             cpg_expression_get_as_string (expressions->data));
 
@@ -218,8 +218,8 @@ validate_arguments (GSList const  *expressions,
 	if (!*towards)
 	{
 		g_set_error (error,
-		             CPG_SYMBOLIC_DERIVE_ERROR,
-		             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+		             CPG_SYMBOLIC_ERROR,
+		             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 		             "Expected partial function variable reference but got `%s'.",
 		             cpg_expression_get_as_string (expressions->data));
 
@@ -240,8 +240,8 @@ validate_arguments (GSList const  *expressions,
 		if (!arg)
 		{
 			g_set_error (error,
-			             CPG_SYMBOLIC_DERIVE_ERROR,
-			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             CPG_SYMBOLIC_ERROR,
+			             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 			             "Expected function variable but got `%s' for pdiff of `%s'",
 			             cpg_expression_get_as_string (towardsexpr->data),
 			             cpg_expression_get_as_string (expr));

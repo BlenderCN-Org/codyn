@@ -21,7 +21,7 @@ cpg_debug_message (CpgDebugSection  section,
 		va_end (ap);
 
 		g_log ("Cpg",
-		       section,
+		       (GLogLevelFlags)section,
 		       "%s:%d (%s) %s",
 		       file,
 		       line,
@@ -41,7 +41,7 @@ cpg_debug (CpgDebugSection  section,
 	if (G_UNLIKELY (debug_level & section))
 	{
 		g_log ("Cpg",
-		       section,
+		       (GLogLevelFlags)section,
 		       "%s:%d (%s)",
 		       file,
 		       line,

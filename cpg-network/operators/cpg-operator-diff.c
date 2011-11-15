@@ -184,8 +184,8 @@ validate_arguments (GSList const  *expressions,
 	if (!*func)
 	{
 		g_set_error (error,
-		             CPG_SYMBOLIC_DERIVE_ERROR,
-		             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+		             CPG_SYMBOLIC_ERROR,
+		             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 		             "Expected function reference but got `%s'. Use df_dt[] for deriving expressions",
 		             cpg_expression_get_as_string (expressions->data));
 
@@ -210,8 +210,8 @@ validate_arguments (GSList const  *expressions,
 		if (!arg)
 		{
 			g_set_error (error,
-			             CPG_SYMBOLIC_DERIVE_ERROR,
-			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             CPG_SYMBOLIC_ERROR,
+			             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 			             "Expected function variable but got `%s' for diff of `%s'",
 			             cpg_expression_get_as_string (towards->data),
 			             cpg_expression_get_as_string (expr));
@@ -395,8 +395,8 @@ cpg_operator_diff_initialize (CpgOperator   *op,
 					// is strange, error out...
 					g_list_free (newsymargs);
 					g_set_error (error,
-					             CPG_SYMBOLIC_DERIVE_ERROR,
-					             CPG_SYMBOLIC_DERIVE_ERROR_INVALID,
+					             CPG_SYMBOLIC_ERROR,
+					             CPG_SYMBOLIC_ERROR_INVALID,
 					             "There is already an variable `%s' but it is not a derivative of `%s'",
 					             cpg_property_get_name (oprop),
 					             cpg_property_get_name (sprop));

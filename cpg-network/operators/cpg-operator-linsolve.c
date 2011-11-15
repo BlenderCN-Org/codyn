@@ -119,18 +119,15 @@ validate_arguments (GSList const  *expressions,
 
 	while (expressions)
 	{
-		CpgExpression *expr;
 		CpgFunction *func;
-
-		expr = expressions->data;
 
 		func = derived_function (expressions->data);
 
 		if (!func)
 		{
 			g_set_error (error,
-			             CPG_SYMBOLIC_DERIVE_ERROR,
-			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             CPG_SYMBOLIC_ERROR,
+			             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 			             "Expected function reference but got `%s'",
 			             cpg_expression_get_as_string (expressions->data));
 
@@ -157,8 +154,8 @@ validate_arguments (GSList const  *expressions,
 		if (!arg)
 		{
 			g_set_error (error,
-			             CPG_SYMBOLIC_DERIVE_ERROR,
-			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             CPG_SYMBOLIC_ERROR,
+			             CPG_SYMBOLIC_ERROR_UNSUPPORTED,
 			             "Expected function variable but got `%s' for linsolve of `%s'",
 			             cpg_expression_get_as_string (towards->data),
 			             cpg_expression_get_as_string (cpg_function_get_expression (ptr->data)));
@@ -282,9 +279,10 @@ get_function_iters (GSList *funcs)
 }
 
 static gboolean
-solve_system (GSList  *funcs,
-              GSList  *unknowns,
-              GError **error)
+solve_system (CpgOperatorLinsolve *self,
+              GSList              *funcs,
+              GSList              *unknowns,
+              GError             **error)
 {
 	GSList *iters;
 
@@ -350,16 +348,16 @@ cpg_operator_linsolve_initialize (CpgOperator   *op,
 		return FALSE;
 	}
 
-	return solve_system (funcs, unknowns, error);
+	return solve_system (linsolve, funcs, unknowns, error);
 }
 
 static void
 cpg_operator_linsolve_execute (CpgOperator *op,
                                CpgStack    *stack)
 {
-	CpgOperatorLinsolve *d;
+	//CpgOperatorLinsolve *d;
 
-	d = (CpgOperatorLinsolve *)op;
+	//d = (CpgOperatorLinsolve *)op;
 
 	// TODO
 
@@ -369,10 +367,6 @@ cpg_operator_linsolve_execute (CpgOperator *op,
 static void
 cpg_operator_linsolve_finalize (GObject *object)
 {
-	CpgOperatorLinsolve *linsolve;
-
-	linsolve = CPG_OPERATOR_LINSOLVE (object);
-
 	G_OBJECT_CLASS (cpg_operator_linsolve_parent_class)->finalize (object);
 }
 
@@ -380,16 +374,16 @@ static gboolean
 cpg_operator_linsolve_equal (CpgOperator *op,
                              CpgOperator *other)
 {
-	CpgOperatorLinsolve *linsolve;
-	CpgOperatorLinsolve *odel;
+	//CpgOperatorLinsolve *linsolve;
+	//CpgOperatorLinsolve *odel;
 
 	if (!CPG_IS_OPERATOR_LINSOLVE (other))
 	{
 		return FALSE;
 	}
 
-	linsolve = CPG_OPERATOR_LINSOLVE (op);
-	odel = CPG_OPERATOR_LINSOLVE (other);
+	//linsolve = CPG_OPERATOR_LINSOLVE (op);
+	//odel = CPG_OPERATOR_LINSOLVE (other);
 
 	// TODO
 
@@ -399,12 +393,12 @@ cpg_operator_linsolve_equal (CpgOperator *op,
 static void
 cpg_operator_linsolve_reset_cache (CpgOperator *operator)
 {
-	CpgOperatorLinsolve *self;
+	//CpgOperatorLinsolve *self;
 
 	CPG_OPERATOR_CLASS (cpg_operator_linsolve_parent_class)->reset_cache (operator);
 
 	/* Omit type check to be faster */
-	self = (CpgOperatorLinsolve *)operator;
+	//self = (CpgOperatorLinsolve *)operator;
 
 	// TODO
 }
@@ -412,11 +406,11 @@ cpg_operator_linsolve_reset_cache (CpgOperator *operator)
 static void
 cpg_operator_linsolve_reset (CpgOperator *operator)
 {
-	CpgOperatorLinsolve *self;
+	//CpgOperatorLinsolve *self;
 
 	CPG_OPERATOR_CLASS (cpg_operator_linsolve_parent_class)->reset (operator);
 
-	self = CPG_OPERATOR_LINSOLVE (operator);
+	//self = CPG_OPERATOR_LINSOLVE (operator);
 
 	// TODO
 }
@@ -433,10 +427,10 @@ cpg_operator_linsolve_get_function (CpgOperator *op,
 static CpgOperator *
 cpg_operator_linsolve_copy (CpgOperator *op)
 {
-	CpgOperatorLinsolve *linsolve;
+	//CpgOperatorLinsolve *linsolve;
 	CpgOperatorLinsolve *ret;
 
-	linsolve = CPG_OPERATOR_LINSOLVE (op);
+	//linsolve = CPG_OPERATOR_LINSOLVE (op);
 
 	ret = CPG_OPERATOR_LINSOLVE (g_object_new (CPG_TYPE_OPERATOR_LINSOLVE, NULL));
 
