@@ -10,6 +10,7 @@ AM_YFLAGS = -d
 
 COMMON_SOURCES = 		\
 	cpg-annotatable.c	\
+	cpg-debug.c \
 	cpg-compile-context.c \
 	cpg-compile-error.c \
 	cpg-enum-types.c \
@@ -83,6 +84,7 @@ NOINST_H_FILES = \
 
 INST_H_FILES = \
 	cpg-annotatable.h \
+	cpg-debug.h \
 	cpg-compile-context.h \
 	cpg-compile-error.h \
 	cpg-expression.h \

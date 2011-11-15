@@ -34,6 +34,7 @@
 #include "cpg-operators.h"
 #include "cpg-import.h"
 #include "cpg-parser-context.h"
+#include "cpg-debug.h"
 
 /**
  * SECTION:cpg-network
@@ -552,6 +553,7 @@ CpgNetwork *
 cpg_network_new ()
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
