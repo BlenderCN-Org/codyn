@@ -9,17 +9,20 @@ group "pendulum"
 	{
 		# Define set of general coordinates q
 		qn = "x,phi"
+
 		q, q_count, qe = "q_{@qn}"
+
 		q = "{@qe||@0\,@1}"
 
 		# Define utilities for expansion
 		dq  = "{@q|@0'||@0\,@1}"
 		ddq = "{@dq|@0'||@0\,@1}"
 		qdq = "{@q,@dq||@0\,@1}"
+		qdqddq = "{@q,@dq,@ddq||@0\,@1}"
 		vq = "m,l"
 
 		# Escaped versions
-		"{q,dq,ddq,qdq,vq}e" = "\\{@[@1]\\}"
+		_, _, "{q,dq,ddq,qdq,qdqddq,vq}e" = "{@[@1]}"
 	}
 
 	functions
@@ -29,8 +32,8 @@ group "pendulum"
 		My(@qe)(@vqe) = "-l * cos(q_phi)"
 
 		# Mass velocities
-		DMx(@qdqe)(@vqe) = "diff[Mx, @q](@q, @dq)"
-		DMy(@qdqe)(@vqe) = "diff[My, @q](@q, @dq)"
+		DMx(@qdqe)(@vqe) = "diff[Mx](@q, @dq)"
+		DMy(@qdqe)(@vqe) = "diff[My](@q, @dq)"
 
 		# Kinetic energy
 		T(@qdqe)(@vqe) = "0.5 * m * sqsum(DMx(@qdq), DMy(@qdq))"
@@ -45,15 +48,19 @@ group "pendulum"
 		"D{T,V}d@qe"(@qdqe)(@vqe) = "simplify[pdiff[@1, @2]](@qdq)"
 
 		# Total differential of kinetic energy towards time
-		"DdTdd@[qe]dt"(@qdqe)(@vqe) = "simplify[diff[dTdd@1]](@qdq)"
+		"DdTdd@[qe]dt"(@qdqddqe)(@vqe) = "simplify[diff[DTdd@1]](@qdqddq)"
 
 		# Solve for accelerations
-		Accelerations(@qdqe, idx)(@vqe) = "linsolve[{@q|DdTdd@[0]dt||@0\,@1}]"
+		Acceleration(@qdqe, idx)(@vqe) = "linsolve[{@q|DdTdd@[0]dt||@0\,@1};@ddq][idx](@qdq)"
 	}
 
-	@qe'' = "Acceleration(@@1[!], )"
+	state "s"
+	{
+		@qe' = "dq_@1"
+		@qe'' = "Acceleration(@qdq, @1[!])"
 
-	l = 1
-	m = 1
+		l = 1
+		m = 1
+	}
 }
 
