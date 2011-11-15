@@ -5018,10 +5018,22 @@ static gchar *
 defines_as_string (GHashTable *table)
 {
 	GString *ret;
+	GList *keys;
+	GList *item;
 
 	ret = g_string_new ("");
 
-	g_hash_table_foreach (table, (GHFunc)define_to_string, ret);
+	keys = g_hash_table_get_keys (table);
+	keys = g_list_sort (keys, (GCompareFunc)g_strcmp0);
+
+	for (item = keys; item; item = g_list_next (item))
+	{
+		define_to_string (item->data,
+		                  g_hash_table_lookup (table, item->data),
+		                  ret);
+	}
+
+	g_list_free (keys);
 	return g_string_free (ret, FALSE);
 }
 
