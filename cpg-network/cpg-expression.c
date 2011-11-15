@@ -29,12 +29,8 @@
 #include "cpg-function.h"
 #include "cpg-stack-private.h"
 #include "cpg-operators.h"
-#include "cpg-operator-pdiff.h"
-#include "cpg-operator-diff.h"
 #include "cpg-property.h"
 #include "cpg-expression-tree-iter.h"
-#include "cpg-operator-df-dt.h"
-#include "cpg-operator-linsolve.h"
 
 #include <cpg-network/instructions/cpg-instructions.h>
 

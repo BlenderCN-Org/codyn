@@ -23,7 +23,13 @@
 #ifndef __CPG_OPERATORS_H__
 #define __CPG_OPERATORS_H__
 
-#include <cpg-network/cpg-operator.h>
+#include <cpg-network/operators/cpg-operator.h>
+#include <cpg-network/operators/cpg-operator-diff.h>
+#include <cpg-network/operators/cpg-operator-pdiff.h>
+#include <cpg-network/operators/cpg-operator-df-dt.h>
+#include <cpg-network/operators/cpg-operator-simplify.h>
+#include <cpg-network/operators/cpg-operator-linsolve.h>
+#include <cpg-network/operators/cpg-operator-delayed.h>
 
 G_BEGIN_DECLS
 

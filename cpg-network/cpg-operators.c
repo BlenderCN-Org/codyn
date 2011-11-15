@@ -21,13 +21,7 @@
  */
 
 #include "cpg-operators.h"
-#include "cpg-operator-delayed.h"
-#include "cpg-operator-diff.h"
-#include "cpg-operator-pdiff.h"
-#include "cpg-operator-simplify.h"
-#include "cpg-operator-df-dt.h"
-#include "cpg-operator-linsolve.h"
-
+#
 static GSList *operator_registry = NULL;
 
 static void

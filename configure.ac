@@ -168,6 +168,7 @@ cpg-network.pc
 cpg-network-webots.pc
 cpg-network/Makefile
 cpg-network/instructions/Makefile
+cpg-network/operators/Makefile
 cpg-network-webots/Makefile
 data/Makefile
 data/cpg.xml

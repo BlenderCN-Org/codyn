@@ -4,7 +4,7 @@
 #include <cpg-network/cpg-math.h>
 #include <math.h>
 #include "cpg-stack-private.h"
-#include "cpg-operator-df-dt.h"
+#include "cpg-operators.h"
 
 struct _CpgExpressionTreeIter
 {

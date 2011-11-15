@@ -25,7 +25,7 @@
 #include "cpg-compile-error.h"
 #include "cpg-marshal.h"
 #include "cpg-input.h"
-#include "cpg-operator.h"
+#include "operators/cpg-operator.h"
 
 #include <math.h>
 

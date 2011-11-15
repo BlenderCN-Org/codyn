@@ -31,7 +31,7 @@
 #include "cpg-link.h"
 #include "cpg-integrator-euler.h"
 #include "cpg-network-deserializer.h"
-#include "cpg-operator-delayed.h"
+#include "cpg-operators.h"
 #include "cpg-import.h"
 #include "cpg-parser-context.h"
 

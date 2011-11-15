@@ -711,11 +711,6 @@ cpg_link_compile_impl (CpgObject         *object,
 
 		if (!cpg_expression_compile (expr, context, &gerror))
 		{
-			g_warning ("Error while parsing expression [%s]<%s>: %s",
-			           cpg_object_get_id (object),
-			           cpg_expression_get_as_string (expr),
-			           gerror->message);
-
 			if (error)
 			{
 				cpg_compile_error_set (error,

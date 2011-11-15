@@ -23,7 +23,7 @@
 #ifndef __CPG_OPERATOR_SIMPLIFY_H__
 #define __CPG_OPERATOR_SIMPLIFY_H__
 
-#include <cpg-network/cpg-operator.h>
+#include <cpg-network/operators/cpg-operator.h>
 #include <cpg-network/cpg-expression.h>
 
 G_BEGIN_DECLS

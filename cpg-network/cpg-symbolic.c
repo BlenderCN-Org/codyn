@@ -4,9 +4,7 @@
 #include "instructions/cpg-instructions.h"
 #include "cpg-expression-tree-iter.h"
 #include "cpg-integrator.h"
-#include "cpg-operator-diff.h"
-#include "cpg-operator-pdiff.h"
-#include "cpg-operator-df-dt.h"
+#include "cpg-operators.h"
 #include "cpg-link-action.h"
 
 #include <math.h>

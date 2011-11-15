@@ -1,4 +1,4 @@
-SUBDIRS = instructions
+SUBDIRS = instructions operators
 
 INCLUDES =				\
 	-I$(srcdir)			\
@@ -46,14 +46,7 @@ COMMON_SOURCES = 		\
 	cpg-embedded-string.c \
 	cpg-embedded-context.c \
 	cpg-object.c \
-	cpg-operator.c \
 	cpg-operators.c \
-	cpg-operator-delayed.c \
-	cpg-operator-diff.c \
-	cpg-operator-pdiff.c \
-	cpg-operator-simplify.c \
-	cpg-operator-df-dt.c \
-	cpg-operator-linsolve.c \
 	cpg-property.c \
 	cpg-property-interface.c \
 	cpg-selector.c \
@@ -120,14 +113,7 @@ INST_H_FILES = \
 	cpg-network-deserializer.h \
 	cpg-network-serializer.h \
 	cpg-object.h \
-	cpg-operator.h \
 	cpg-operators.h \
-	cpg-operator-delayed.h \
-	cpg-operator-diff.h \
-	cpg-operator-pdiff.h \
-	cpg-operator-simplify.h \
-	cpg-operator-df-dt.h \
-	cpg-operator-linsolve.h \
 	cpg-parser-context.h \
 	cpg-property.h \
 	cpg-property-interface.h \
@@ -167,7 +153,7 @@ cpg-marshal.c: cpg-marshal.list $(GLIB_GENMARSHAL)
 	$(GLIB_GENMARSHAL) $< --body --prefix=cpg_marshal >> $@
 
 libcpg_network_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CPG_NETWORK_CFLAGS)
-libcpg_network_2_0_la_LIBADD = instructions/libinstructions.la
+libcpg_network_2_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la
 
 libcpg_network_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) $(INTROSPECTION_LIBS) -lm
 libcpg_network_2_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
@@ -211,12 +197,30 @@ INSTRUCTIONSOURCES = \
 	instructions/cpg-instruction-property.c \
 	instructions/cpg-instruction-variadic-function.c
 
+OPERATORSOURCES = \
+	operators/cpg-operator.c \
+	operators/cpg-operator-delayed.c \
+	operators/cpg-operator-diff.c \
+	operators/cpg-operator-pdiff.c \
+	operators/cpg-operator-simplify.c \
+	operators/cpg-operator-df-dt.c \
+	operators/cpg-operator-linsolve.c
+
+OPERATORHEADERS = \
+	operators/cpg-operator.h \
+	operators/cpg-operator-delayed.h \
+	operators/cpg-operator-diff.h \
+	operators/cpg-operator-pdiff.h \
+	operators/cpg-operator-simplify.h \
+	operators/cpg-operator-df-dt.h \
+	operators/cpg-operator-linsolve.h
+
 Cpg-2.0.gir: libcpg-network-2.0.la
 INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --verbose
 Cpg_2_0_gir_NAMESPACE = Cpg
 Cpg_2_0_gir_VERSION = 2.0
 Cpg_2_0_gir_LIBS = libcpg-network-2.0.la instructions/libinstructions.la
-Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES)
+Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES)
 Cpg_2_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
 
 girdir = $(datadir)/gir-1.0
