@@ -182,6 +182,128 @@ validate_arguments (GSList const  *expressions,
 }
 
 static gboolean
+compare_function_args (CpgFunction *f1,
+                       CpgFunction *f2)
+{
+	GList const *a1;
+	GList const *a2;
+
+	a1 = cpg_function_get_arguments (f1);
+	a2 = cpg_function_get_arguments (f2);
+
+	while (a1 && a2)
+	{
+		CpgFunctionArgument *arg1 = a1->data;
+		CpgFunctionArgument *arg2 = a2->data;
+
+		if (g_strcmp0 (cpg_function_argument_get_name (arg1),
+		               cpg_function_argument_get_name (arg2)) != 0)
+		{
+			return FALSE;
+		}
+
+		if (cpg_function_argument_get_explicit (arg1) !=
+		    cpg_function_argument_get_explicit (arg2))
+		{
+			return FALSE;
+		}
+
+		a1 = g_list_next (a1);
+		a2 = g_list_next (a2);
+	}
+
+	return !(a1 || a2);
+}
+
+static gboolean
+validate_system (GSList  *funcs,
+                 GSList  *unknowns,
+                 GError **error)
+{
+	CpgFunction *f1 = funcs->data;
+	funcs = g_slist_next (funcs);
+
+	// Check if all the funcs have the same arguments
+	while (funcs)
+	{
+		CpgFunction *func = funcs->data;
+
+		if (!compare_function_args (f1, func))
+		{
+			g_set_error (error,
+			             CPG_NETWORK_LOAD_ERROR,
+			             CPG_NETWORK_LOAD_ERROR_OPERATOR,
+			             "System of functions provided to linsolve must have the same arguments (%s and %s differ)",
+			             cpg_object_get_id (CPG_OBJECT (f1)),
+			             cpg_object_get_id (CPG_OBJECT (func)));
+
+			return FALSE;
+		}
+
+		funcs = g_slist_next (funcs);
+	}
+
+	return TRUE;
+}
+
+/*static CpgExpressionTreeIter *
+solve_for_unknown (CpgFunction           *func,
+                   CpgExpressionTreeIter *iter,
+                   CpgFunctionArgument   *unknown)
+{
+	// Solve the treeiter in terms of the unknown
+	CpgFunctionArgument *arg;
+	CpgProperty *prop;
+
+	// Get the right property to solve the equation for
+	arg = cpg_function_get_argument (func, cpg_function_argument_get_name (unknown));
+	prop = _cpg_function_argument_get_property (arg);
+
+	return NULL;
+}*/
+
+static GSList *
+get_function_iters (GSList *funcs)
+{
+	GSList *iters = NULL;
+
+	while (funcs)
+	{
+		CpgExpressionTreeIter *iter;
+
+		iter = cpg_expression_tree_iter_new (cpg_function_get_expression (funcs->data));
+		cpg_expression_tree_iter_canonicalize (iter);
+
+		iters = g_slist_prepend (iters, iter);
+		funcs = g_slist_next (funcs);
+	}
+
+	return g_slist_reverse (iters);
+}
+
+static gboolean
+solve_system (GSList  *funcs,
+              GSList  *unknowns,
+              GError **error)
+{
+	GSList *iters;
+
+	if (!validate_system (funcs, unknowns, error))
+	{
+		return FALSE;
+	}
+
+	iters = get_function_iters (funcs);
+
+	// Solve and substitute
+
+	g_slist_foreach (iters, (GFunc)cpg_expression_tree_iter_free, NULL);
+	g_slist_free (iters);
+
+	return TRUE;
+}
+
+static gboolean
 cpg_operator_linsolve_initialize (CpgOperator   *op,
                                   GSList const **expressions,
                                   gint           num_expressions,
@@ -228,9 +350,7 @@ cpg_operator_linsolve_initialize (CpgOperator   *op,
 		return FALSE;
 	}
 
-	// TODO: solve the system of equations
-
-	return TRUE;
+	return solve_system (funcs, unknowns, error);
 }
 
 static void

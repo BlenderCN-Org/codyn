@@ -4,6 +4,7 @@
 #include <glib.h>
 #include <cpg-network/cpg-expression.h>
 #include <cpg-network/instructions/cpg-instruction.h>
+#include <cpg-network/cpg-property.h>
 
 G_BEGIN_DECLS
 
@@ -15,7 +16,6 @@ CpgExpressionTreeIter *cpg_expression_tree_iter_new_from_instructions (GSList co
 CpgExpressionTreeIter *cpg_expression_tree_iter_copy            (CpgExpressionTreeIter *iter);
 void                   cpg_expression_tree_iter_free            (CpgExpressionTreeIter *iter);
 
-CpgExpression         *cpg_expression_tree_iter_get_expression  (CpgExpressionTreeIter *iter);
 CpgInstruction        *cpg_expression_tree_iter_get_instruction (CpgExpressionTreeIter *iter);
 void                   cpg_expression_tree_iter_set_instruction (CpgExpressionTreeIter *iter,
                                                                  CpgInstruction        *instr);
@@ -44,6 +44,9 @@ CpgExpressionTreeIter *cpg_expression_tree_iter_simplify        (CpgExpressionTr
 
 gboolean               cpg_expression_tree_iter_equal           (CpgExpressionTreeIter *iter,
                                                                  CpgExpressionTreeIter *other);
+
+CpgExpressionTreeIter *cpg_expression_tree_iter_solve_for       (CpgExpressionTreeIter *iter,
+                                                                 CpgProperty           *prop);
 
 G_END_DECLS
 
