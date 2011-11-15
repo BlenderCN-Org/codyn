@@ -23,12 +23,18 @@
 #include "cpg-operator.h"
 #include "cpg-expression.h"
 #include "cpg-integrator.h"
+#include <math.h>
 
 #define CPG_OPERATOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OPERATOR, CpgOperatorPrivate))
 
 struct _CpgOperatorPrivate
 {
-	GSList *expressions;
+	GSList **expressions;
+	gint num_expressions;
+
+	GSList **indices;
+	gint num_indices;
+
 	gint num_arguments;
 };
 
@@ -64,66 +70,88 @@ cpg_operator_execute_default (CpgOperator     *op,
 }
 
 static void
+foreach_expression_impl (GSList      **multiexpr,
+                         gint          num,
+                         GFunc         callback,
+                         gpointer      userdata)
+{
+	gint i;
+
+	for (i = 0; i < num; ++i)
+	{
+		g_slist_foreach (multiexpr[i], callback, userdata);
+	}
+}
+
+typedef struct
+{
+	GFunc func;
+	gpointer data;
+} UData;
+
+static void
+foreach_function_expression_impl (CpgFunction *func,
+                                  UData       *data)
+{
+	cpg_object_foreach_expression (CPG_OBJECT (func),
+	                               (CpgForeachExpressionFunc)data->func,
+	                               data->data);
+}
+
+static void
+foreach_function_expression (CpgOperator *op,
+                             GFunc        func,
+                             gpointer     userdata)
+{
+	UData data = {func, userdata};
+
+	cpg_operator_foreach_function (op,
+	                               (CpgForeachFunctionFunc)foreach_function_expression_impl,
+	                               &data);
+}
+
+static void
+foreach_expression (CpgOperator *op,
+                    GFunc        callback,
+                    gpointer     userdata)
+{
+	foreach_expression_impl (op->priv->expressions,
+	                         op->priv->num_expressions,
+	                         callback,
+	                         userdata);
+
+	foreach_expression_impl (op->priv->indices,
+	                         op->priv->num_indices,
+	                         callback,
+	                         userdata);
+
+	foreach_function_expression (op,
+	                             callback,
+	                             userdata);
+}
+
+static void
 cpg_operator_reset_cache_default (CpgOperator *op)
 {
-	CpgFunction *func;
-
-	g_slist_foreach (op->priv->expressions,
-	                 (GFunc)cpg_expression_reset_cache,
-	                 NULL);
-
-	func = cpg_operator_get_function (op);
-
-	if (func)
-	{
-		cpg_object_foreach_expression (CPG_OBJECT (func),
-		                               (CpgForeachExpressionFunc)cpg_expression_reset_cache,
-		                               NULL);
-	}
+	foreach_expression (op,
+	                    (GFunc)cpg_expression_reset_cache,
+	                    NULL);
 }
 
 static void
 cpg_operator_reset_variadic_default (CpgOperator *op)
 {
-	CpgFunction *func;
-
-	g_slist_foreach (op->priv->expressions,
-	                 (GFunc)cpg_expression_reset_variadic,
-	                 NULL);
-
-	func = cpg_operator_get_function (op);
-
-	if (func)
-	{
-		cpg_object_foreach_expression (CPG_OBJECT (func),
-		                               (CpgForeachExpressionFunc)cpg_expression_reset_variadic,
-		                               NULL);
-	}
+	foreach_expression (op,
+	                    (GFunc)cpg_expression_reset_variadic,
+	                    NULL);
 }
 
 static void
 cpg_operator_reset_default (CpgOperator *op)
 {
-	CpgFunction *func;
-
-	g_slist_foreach (op->priv->expressions,
-	                 (GFunc)cpg_expression_reset,
-	                 NULL);
-
-	func = cpg_operator_get_function (op);
-
-	if (func)
-	{
-		cpg_object_foreach_expression (CPG_OBJECT (func),
-		                               (CpgForeachExpressionFunc)cpg_expression_reset,
-		                               NULL);
-	}
-}
-
-static gboolean
-cpg_operator_validate_num_arguments_default (gint numsym, gint num)
-{
-	return TRUE;
+	foreach_expression (op,
+	                    (GFunc)cpg_expression_reset,
+	                    NULL);
 }
 
 static void
@@ -150,25 +178,74 @@ cpg_operator_step_evaluate_default (CpgOperator     *op,
 {
 }
 
+static GSList **
+copy_2dim_slist (GSList const **lst,
+                 gint           num)
+{
+	GSList **rret;
+	gint i;
+
+	rret = g_new0 (GSList *, num);
+
+	for (i = 0; i < num; ++i)
+	{
+		GSList const *item = lst[i];
+		GSList *ret = NULL;
+
+		while (item)
+		{
+			if (g_object_is_floating (item->data))
+			{
+				g_object_ref_sink (item->data);
+			}
+			else
+			{
+				g_object_ref (item->data);
+			}
+
+			ret = g_slist_prepend (ret, item->data);
+			item = g_slist_next (item);
+		}
+
+		rret[i] = g_slist_reverse (ret);
+	}
+
+	return rret;
+}
+
+static void
+free_2dim_slist (GSList **lst,
+                 gint     num)
+{
+	gint i;
+
+	for (i = 0; i < num; ++i)
+	{
+		g_slist_foreach (lst[i], (GFunc)g_object_unref, NULL);
+	}
+
+	g_free (lst);
+}
 
 static gboolean
 cpg_operator_initialize_default (CpgOperator   *op,
-                                 GSList const  *expressions,
+                                 GSList const **expressions,
+                                 gint           num_expressions,
+                                 GSList const **indices,
+                                 gint           num_indices,
                                  gint           num_arguments,
                                  GError       **error)
 {
 	op->priv->num_arguments = num_arguments;
 
-	while (expressions)
-	{
-		op->priv->expressions =
-			g_slist_prepend (op->priv->expressions,
-			                 g_object_ref_sink (expressions->data));
+	op->priv->expressions = copy_2dim_slist (expressions,
+	                                         num_expressions);
+	op->priv->num_expressions = num_expressions;
 
-		expressions = g_slist_next (expressions);
-	}
+	op->priv->indices = copy_2dim_slist (indices,
+	                                     num_indices);
+	op->priv->num_indices = num_indices;
 
-	op->priv->expressions = g_slist_reverse (op->priv->expressions);
 	return TRUE;
 }
 
@@ -179,8 +256,11 @@ cpg_operator_finalize (GObject *object)
 
 	operator = CPG_OPERATOR (object);
 
-	g_slist_foreach (operator->priv->expressions, (GFunc)g_object_unref, NULL);
-	g_slist_free (operator->priv->expressions);
+	free_2dim_slist (operator->priv->expressions,
+	                 operator->priv->num_expressions);
+
+	free_2dim_slist (operator->priv->indices,
+	                 operator->priv->num_indices);
 
 	G_OBJECT_CLASS (cpg_operator_parent_class)->finalize (object);
 }
@@ -193,7 +273,9 @@ cpg_operator_equal_default (CpgOperator *op,
 }
 
 static CpgFunction *
-cpg_operator_get_function_default (CpgOperator *op)
+cpg_operator_get_function_default (CpgOperator *op,
+                                   gint        *idx,
+                                   gint         numidx)
 {
 	return NULL;
 }
@@ -206,11 +288,21 @@ cpg_operator_copy_default (CpgOperator *src)
 	ret = g_object_new (G_OBJECT_TYPE (src), NULL);
 
 	cpg_operator_initialize (ret,
-	                         src->priv->expressions,
+	                         (GSList const **)src->priv->expressions,
+	                         src->priv->num_expressions,
+	                         (GSList const **)src->priv->indices,
+	                         src->priv->num_indices,
 	                         src->priv->num_arguments,
 	                         NULL);
 
 	return ret;
+}
+
+static void
+cpg_operator_foreach_function_default (CpgOperator            *op,
+                                       CpgForeachFunctionFunc  func,
+                                       gpointer                userdata)
+{
 }
 
 static void
@@ -221,7 +313,6 @@ cpg_operator_class_init (CpgOperatorClass *klass)
 	object_class->finalize = cpg_operator_finalize;
 
 	klass->execute = cpg_operator_execute_default;
-	klass->validate_num_arguments = cpg_operator_validate_num_arguments_default;
 	klass->reset_cache = cpg_operator_reset_cache_default;
 	klass->reset = cpg_operator_reset_default;
 	klass->reset_variadic = cpg_operator_reset_variadic_default;
@@ -233,6 +324,7 @@ cpg_operator_class_init (CpgOperatorClass *klass)
 	klass->equal = cpg_operator_equal_default;
 	klass->get_function = cpg_operator_get_function_default;
 	klass->copy = cpg_operator_copy_default;
+	klass->foreach_function = cpg_operator_foreach_function_default;
 
 	g_type_class_add_private (object_class, sizeof (CpgOperatorPrivate));
 }
@@ -306,26 +398,6 @@ cpg_operator_get_name (CpgOperator *op)
 }
 
 /**
- * cpg_operator_validate_num_arguments:
- * @op: A #CpgOperator
- *
- * Get the number of arguments that the operators expects.
- *
- * Returns: the number of arguments or -1 if the operator accepts a variable
- *          number of arguments.
- *
- **/
-gboolean
-cpg_operator_validate_num_arguments (CpgOperatorClass *klass,
-                                     gint         numsym,
-                                     gint         num)
-{
-	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), FALSE);
-
-	return klass->validate_num_arguments (numsym, num);
-}
-
-/**
  * cpg_operator_reset_cache:
  * @op: A #CpgOperator
  * @data: A #CpgOperatorData
@@ -355,20 +427,74 @@ cpg_operator_reset_variadic (CpgOperator *op)
 	CPG_OPERATOR_GET_CLASS (op)->reset_variadic (op);
 }
 
+GSList const **
+cpg_operator_all_expressions (CpgOperator *op)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+
+	return (GSList const **)op->priv->expressions;
+}
+
+GSList const **
+cpg_operator_all_indices (CpgOperator *op)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+
+	return (GSList const **)op->priv->indices;
+}
+
 /**
  * cpg_operator_get_expressions:
  * @op: A #CpgOperator
+ * @idx: the index
  *
  * Get the expressions that the operator uses.
  *
  * Return value: (element-type CpgExpression) (transfer none): a list of #CpgExpression
  **/
 GSList const *
-cpg_operator_get_expressions (CpgOperator *op)
+cpg_operator_get_expressions (CpgOperator *op,
+                              gint         idx)
 {
 	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+	g_return_val_if_fail (idx >= 0 && idx < op->priv->num_expressions, NULL);
 
-	return op->priv->expressions;
+	return op->priv->expressions[idx];
+}
+
+gint
+cpg_operator_num_expressions (CpgOperator *op)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), 0);
+
+	return op->priv->num_expressions;
+}
+
+/**
+ * cpg_operator_get_expressions:
+ * @op: A #CpgOperator
+ * @idx: the index
+ *
+ * Get the expressions that the operator uses.
+ *
+ * Return value: (element-type CpgExpression) (transfer none): a list of #CpgExpression
+ **/
+GSList const *
+cpg_operator_get_indices (CpgOperator *op,
+                          gint         idx)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+	g_return_val_if_fail (idx >= 0 && idx < op->priv->num_indices, NULL);
+
+	return op->priv->indices[idx];
+}
+
+gint
+cpg_operator_num_indices (CpgOperator *op)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), 0);
+
+	return op->priv->num_indices;
 }
 
 void
@@ -403,7 +529,10 @@ cpg_operator_step_evaluate (CpgOperator     *op,
 
 gboolean
 cpg_operator_initialize (CpgOperator   *op,
-                         GSList const  *expressions,
+                         GSList const **expressions,
+                         gint           num_expressions,
+                         GSList const **indices,
+                         gint           num_indices,
                          gint           num_arguments,
                          GError       **error)
 {
@@ -411,6 +540,9 @@ cpg_operator_initialize (CpgOperator   *op,
 
 	return CPG_OPERATOR_GET_CLASS (op)->initialize (op,
 	                                                expressions,
+	                                                num_expressions,
+	                                                indices,
+	                                                num_indices,
 	                                                num_arguments,
 	                                                error);
 }
@@ -463,11 +595,13 @@ cpg_operator_get_num_arguments (CpgOperator *op)
 }
 
 CpgFunction *
-cpg_operator_get_function (CpgOperator *op)
+cpg_operator_get_function (CpgOperator *op,
+                           gint        *idx,
+                           gint         numidx)
 {
 	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
 
-	return CPG_OPERATOR_GET_CLASS (op)->get_function (op);
+	return CPG_OPERATOR_GET_CLASS (op)->get_function (op, idx, numidx);
 }
 
 void
@@ -477,4 +611,81 @@ _cpg_operator_set_num_arguments (CpgOperator *op,
 	g_return_if_fail (CPG_IS_OPERATOR (op));
 
 	op->priv->num_arguments = num;
+}
+
+void
+cpg_operator_foreach_function (CpgOperator            *op,
+                               CpgForeachFunctionFunc  func,
+                               gpointer                userdata)
+{
+	g_return_if_fail (CPG_IS_OPERATOR (op));
+
+	if (func == NULL)
+	{
+		return;
+	}
+
+	CPG_OPERATOR_GET_CLASS (op)->foreach_function (op, func, userdata);
+}
+
+CpgFunction *
+cpg_operator_get_primary_function (CpgOperator *op)
+{
+	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
+
+	if (op->priv->num_indices == 0)
+	{
+		gint idx = 0;
+
+		return cpg_operator_get_function (op, &idx, 1);
+	}
+	else
+	{
+		GArray *ret = g_array_new (FALSE, TRUE, sizeof (gint));
+		gint num = 0;
+		gint i;
+
+		// Try here to evaluate the indices
+		for (i = 0; i < op->priv->num_indices; ++i)
+		{
+			GSList const *idx = op->priv->indices[i];
+
+			while (idx)
+			{
+				if (!cpg_expression_get_instructions (idx->data))
+				{
+					g_array_free (ret, TRUE);
+					ret = NULL;
+					break;
+				}
+				else
+				{
+					gint val = rint (cpg_expression_evaluate (idx->data));
+
+					g_array_append_val (ret, val);
+					++num;
+				}
+
+				idx = g_slist_next (idx);
+			}
+
+			if (!ret)
+			{
+				break;
+			}
+		}
+
+		if (ret)
+		{
+			CpgFunction *func;
+
+			gint *ptr = (gint *)g_array_free (ret, FALSE);
+			func = cpg_operator_get_function (op, ptr, num);
+			g_free (ptr);
+
+			return func;
+		}
+	}
+
+	return NULL;
 }

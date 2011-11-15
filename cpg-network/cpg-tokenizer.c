@@ -72,7 +72,8 @@ static OperatorProperties operator_properties[] =
 
 	{10, 1},  // CPG_TOKEN_OPERATOR_TYPE_COMMA
 	{10, 1},  // CPG_TOKEN_OPERATOR_TYPE_DOT
-	{10, 1}  // CPG_TOKEN_OPERATOR_TYPE_PRIME
+	{10, 1},  // CPG_TOKEN_OPERATOR_TYPE_PRIME
+	{10, 1}  // CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON
 };
 
 static void
@@ -199,6 +200,8 @@ isoperator (gint c)
 		case '[':
 		case ']':
 		case '\'':
+		case ';':
+		case '^':
 			return TRUE;
 	}
 
@@ -300,6 +303,12 @@ cpg_tokenizer_parse_operator (gchar const **buffer)
 			break;
 			case ']':
 				type = CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END;
+			break;
+			case ';':
+				type = CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON;
+			break;
+			case '^':
+				type = CPG_TOKEN_OPERATOR_TYPE_POWER;
 			break;
 		}
 	}

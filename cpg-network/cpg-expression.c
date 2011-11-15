@@ -34,6 +34,7 @@
 #include "cpg-property.h"
 #include "cpg-expression-tree-iter.h"
 #include "cpg-operator-df-dt.h"
+#include "cpg-operator-linsolve.h"
 
 #include <cpg-network/instructions/cpg-instructions.h>
 
@@ -965,6 +966,33 @@ parse_function (CpgExpression *expression,
 	return TRUE;
 }
 
+static void
+free_expressions (GSList *lst)
+{
+	g_slist_foreach (lst, (GFunc)g_object_unref, NULL);
+	g_slist_free (lst);
+}
+
+static GSList **
+convert_2dim_slist (GSList const *lst,
+                    gint         *num)
+{
+	GSList **ret;
+	gint i;
+
+	*num = g_slist_length ((GSList *)lst);
+
+	ret = g_new0 (GSList *, *num);
+
+	for (i = 0; i < *num; ++i)
+	{
+		ret[i] = lst->data;
+		lst = g_slist_next (lst);
+	}
+
+	return ret;
+}
+
 static gboolean
 parse_custom_operator (CpgExpression *expression,
                        gchar const   *name,
@@ -973,6 +1001,23 @@ parse_custom_operator (CpgExpression *expression,
 	CpgOperatorClass *klass;
 	CpgOperator *op;
 	gboolean isref;
+	GSList *expressions = NULL;
+	GSList *multiexpr = NULL;
+	gint num_arguments = 0;
+	gboolean isdiff;
+	gint error_start;
+	CpgToken *next;
+	gboolean loopit = TRUE;
+	gchar const *expr_start;
+	gchar const *expr_end;
+	GSList *indices = NULL;
+	GSList **multiret;
+	CpgInstruction *instruction;
+	GSList **exprs;
+	gint num_exprs;
+	GSList **inds;
+	gint num_inds;
+	gboolean islinsolve;
 
 	klass = cpg_operators_find_class (name);
 
@@ -985,17 +1030,14 @@ parse_custom_operator (CpgExpression *expression,
 	}
 
 	// parse arguments
-	gint numargs = 0;
-	gint num_arguments = 0;
-	gboolean isdiff;
+	error_start = cpg_expression_get_error_start (expression);
 
-	gint error_start = cpg_expression_get_error_start (expression);
+	next = cpg_tokenizer_peek (*(context->buffer));
 
-	CpgToken *next = cpg_tokenizer_peek (*(context->buffer));
-	gboolean loopit = TRUE;
+	expr_start = *(context->buffer);
+	expr_end = expr_start;
 
-	gchar const *expr_start = *(context->buffer);
-	gchar const *expr_end = expr_start;
+	multiret = &multiexpr;
 
 	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)
@@ -1003,20 +1045,34 @@ parse_custom_operator (CpgExpression *expression,
 		cpg_token_free (next);
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 
-		loopit = FALSE;
+		next = cpg_tokenizer_peek (*(context->buffer));
+
+		if (!next || !CPG_TOKEN_IS_OPERATOR (next) ||
+		    CPG_TOKEN_OPERATOR (next)->type != CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+		{
+			loopit = FALSE;
+		}
+		else
+		{
+			cpg_token_free (cpg_tokenizer_next (context->buffer));
+			multiret = &indices;
+		}
+
+		cpg_token_free (next);
 	}
 	else
 	{
 		cpg_token_free (next);
 	}
 
-	GSList *expressions = NULL;
-
 	cpg_compile_context_save (context->context);
 
-	isdiff = CPG_IS_OPERATOR_PDIFF_CLASS (klass) || CPG_IS_OPERATOR_DIFF_CLASS (klass);
+	isdiff = CPG_IS_OPERATOR_PDIFF_CLASS (klass) ||
+	         CPG_IS_OPERATOR_DIFF_CLASS (klass);
 
-	if (isdiff)
+	islinsolve = CPG_IS_OPERATOR_LINSOLVE_CLASS (klass);
+
+	if ((isdiff || islinsolve) && multiret == &multiexpr)
 	{
 		cpg_compile_context_set_function_ref_priority (context->context,
 		                                               TRUE);
@@ -1036,12 +1092,9 @@ parse_custom_operator (CpgExpression *expression,
 		}
 
 		expr_end = *(context->buffer);
-
-		++numargs;
-
 		GSList *newinst = NULL;
 
-		if (isdiff)
+		if (isdiff && multiret == &multiexpr)
 		{
 			cpg_compile_context_set_function_ref_priority (context->context,
 			                                               FALSE);
@@ -1054,9 +1107,8 @@ parse_custom_operator (CpgExpression *expression,
 			/* This is a bit of a hack, but we are going
 			   to add the function object as a final context.
 			   This is mostly for the diff type operators to
-			   compile properly... */
-			if (numargs == 1 &&
-			    isdiff &&
+			   compile properly (resolve arguments)... */
+			if ((isdiff || islinsolve) && multiret == &multiexpr &&
 			    (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (inst) ||
 			     CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst)))
 			{
@@ -1076,7 +1128,8 @@ parse_custom_operator (CpgExpression *expression,
 
 					f = CPG_INSTRUCTION_CUSTOM_OPERATOR_REF (inst);
 					op = cpg_instruction_custom_operator_ref_get_operator (f);
-					func = cpg_operator_get_function (op);
+
+					func = cpg_operator_get_primary_function (op);
 				}
 
 				if (func)
@@ -1118,9 +1171,44 @@ parse_custom_operator (CpgExpression *expression,
 		{
 			cpg_token_free (next);
 			cpg_token_free (cpg_tokenizer_next (context->buffer));
-			break;
+
+			if (multiret == &multiexpr)
+			{
+				next = cpg_tokenizer_peek (*(context->buffer));
+
+				if (next && CPG_TOKEN_IS_OPERATOR (next) &&
+				    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START)
+				{
+					if (islinsolve)
+					{
+						cpg_compile_context_set_function_ref_priority (context->context,
+						                                               FALSE);
+					}
+
+					*multiret = g_slist_prepend (*multiret,
+					                             g_slist_reverse (expressions));
+
+					expressions = NULL;
+					multiexpr = g_slist_reverse (multiexpr);
+
+					multiret = &indices;
+
+					cpg_token_free (cpg_tokenizer_next (context->buffer));
+					cpg_token_free (next);
+				}
+				else
+				{
+					cpg_token_free (next);
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
 		}
-		else if (type != CPG_TOKEN_OPERATOR_TYPE_COMMA)
+		else if (type != CPG_TOKEN_OPERATOR_TYPE_COMMA &&
+		         type != CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON)
 		{
 			g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
 			g_slist_free (expressions);
@@ -1134,11 +1222,24 @@ parse_custom_operator (CpgExpression *expression,
 			return FALSE;
 		}
 
+		if (type == CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON)
+		{
+			*multiret = g_slist_prepend (*multiret,
+			                             g_slist_reverse (expressions));
+
+			expressions = NULL;
+		}
+
 		cpg_token_free (next);
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 
 		expr_start = *(context->buffer);
 	}
+
+	*multiret = g_slist_prepend (*multiret,
+	                             g_slist_reverse (expressions));
+
+	*multiret = g_slist_reverse (*multiret);
 
 	cpg_compile_context_restore (context->context);
 
@@ -1160,24 +1261,30 @@ parse_custom_operator (CpgExpression *expression,
 			return FALSE;
 		}
 	}
-
-	if (!cpg_operator_validate_num_arguments (klass, numargs, isref ? num_arguments : -1))
+	else
 	{
-		expression->priv->error_start = g_slist_prepend (expression->priv->error_start,
-		                                                 GINT_TO_POINTER (error_start));
-
-		return parser_failed (context,
-		                      CPG_COMPILE_ERROR_MAXARG,
-		                      "Number of arguments (%d) for operator `%s' does not match",
-		                      numargs,
-		                      name);
+		cpg_token_free (next);
 	}
 
-	CpgInstruction *instruction;
+	exprs = convert_2dim_slist (multiexpr, &num_exprs);
+	inds = convert_2dim_slist (indices, &num_inds);
 
-	expressions = g_slist_reverse (expressions);
+	op = cpg_operators_instantiate (name,
+	                                (GSList const **)exprs,
+	                                num_exprs,
+	                                (GSList const **)inds,
+	                                num_inds,
+	                                num_arguments,
+	                                context->error);
 
-	op = cpg_operators_instantiate (name, expressions, num_arguments, context->error);
+	g_slist_foreach (multiexpr, (GFunc)free_expressions, NULL);
+	g_slist_free (multiexpr);
+
+	g_slist_foreach (indices, (GFunc)free_expressions, NULL);
+	g_slist_free (indices);
+
+	g_free (exprs);
+	g_free (inds);
 
 	if (!op)
 	{
@@ -1188,7 +1295,7 @@ parse_custom_operator (CpgExpression *expression,
 	{
 		CpgFunction *func;
 
-		func = cpg_operator_get_function (op);
+		func = cpg_operator_get_primary_function (op);
 
 		// We need to add implicit arguments and optional arguments
 		// on the stack here
@@ -1291,9 +1398,6 @@ parse_custom_operator (CpgExpression *expression,
 	}
 
 	instructions_push (expression, instruction, context);
-
-	g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
-	g_slist_free (expressions);
 
 	return TRUE;
 }
@@ -1463,13 +1567,17 @@ parse_prime (CpgExpression *expression,
 
 	expr = cpg_expression_new0 ();
 	_cpg_expression_set_instructions_take (expr, instr);
+
 	exprs = g_slist_prepend (NULL, expr);
 
 	context->stack = g_slist_delete_link (context->stack,
 	                                      context->stack);
 
 	op = cpg_operators_instantiate ("df_dt",
-	                                exprs,
+	                                (GSList const **)&exprs,
+	                                1,
+	                                NULL,
+	                                0,
 	                                0,
 	                                context->error);
 
@@ -1801,7 +1909,8 @@ parse_expression (CpgExpression   *expression,
 				if (op->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_END ||
 				    op->type == CPG_TOKEN_OPERATOR_TYPE_COMMA ||
 				    op->type == CPG_TOKEN_OPERATOR_TYPE_TERNARY_FALSE ||
-				    op->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+				    op->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END ||
+				    op->type == CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON)
 				{
 					cpg_token_free (token);
 

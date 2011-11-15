@@ -28,6 +28,7 @@
 #include "cpg-symbolic.h"
 #include "cpg-function.h"
 #include "cpg-expression-tree-iter.h"
+#include "cpg-network.h"
 
 #include "instructions/cpg-instructions.h"
 
@@ -93,7 +94,7 @@ derived_function (CpgExpression *expr)
 		CpgOperator *op;
 
 		op = cpg_instruction_custom_operator_ref_get_operator (instr->data);
-		return cpg_operator_get_function (op);
+		return cpg_operator_get_primary_function (op);
 	}
 
 	return NULL;
@@ -184,6 +185,7 @@ derived_property (CpgFunction   *func,
 
 static gboolean
 validate_arguments (GSList const  *expressions,
+                    GSList const  *towardsexpr,
                     CpgFunction  **func,
                     CpgProperty  **towards,
                     GList        **syms,
@@ -211,7 +213,6 @@ validate_arguments (GSList const  *expressions,
 	*order = 1;
 
 	expressions = expressions->next;
-
 	*towards = derived_property (*func, expressions->data);
 
 	if (!*towards)
@@ -225,39 +226,35 @@ validate_arguments (GSList const  *expressions,
 		return FALSE;
 	}
 
-	expressions = expressions->next;
+	if (expressions->next)
+	{
+		*order = cpg_expression_evaluate (expressions->next->data);
+	}
 
-	while (expressions)
+	while (towardsexpr)
 	{
 		CpgFunctionArgument *arg;
 
-		arg = derived_arg (*func, expressions->data);
+		arg = derived_arg (*func, towardsexpr->data);
 
 		if (!arg)
 		{
-			if (!expressions->next)
-			{
-				*order = cpg_expression_evaluate (expressions->data);
-			}
-			else
-			{
-				g_set_error (error,
-				             CPG_SYMBOLIC_DERIVE_ERROR,
-				             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
-				             "Expected function variable but got `%s' for diff of `%s'",
-				             cpg_expression_get_as_string (expressions->data),
-				             cpg_expression_get_as_string (expr));
+			g_set_error (error,
+			             CPG_SYMBOLIC_DERIVE_ERROR,
+			             CPG_SYMBOLIC_DERIVE_ERROR_UNSUPPORTED,
+			             "Expected function variable but got `%s' for pdiff of `%s'",
+			             cpg_expression_get_as_string (towardsexpr->data),
+			             cpg_expression_get_as_string (expr));
 
-				g_list_free (*syms);
-				return FALSE;
-			}
+			g_list_free (*syms);
+			return FALSE;
 		}
 		else
 		{
 			*syms = g_list_prepend (*syms, arg);
 		}
 
-		expressions = g_slist_next (expressions);
+		towardsexpr = g_slist_next (towardsexpr);
 	}
 
 	if (!*syms)
@@ -306,9 +303,12 @@ resolve_symprops (CpgFunction *f,
 
 static gboolean
 cpg_operator_pdiff_initialize (CpgOperator   *op,
-                              GSList const  *expressions,
-                              gint           num_arguments,
-                              GError       **error)
+                               GSList const **expressions,
+                               gint           num_expressions,
+                               GSList const **indices,
+                               gint           num_indices,
+                               gint           num_arguments,
+                               GError       **error)
 {
 	CpgOperatorPDiff *diff;
 	CpgFunction *func;
@@ -322,18 +322,35 @@ cpg_operator_pdiff_initialize (CpgOperator   *op,
 
 	if (!CPG_OPERATOR_CLASS (cpg_operator_pdiff_parent_class)->initialize (op,
 	                                                                       expressions,
+	                                                                       num_expressions,
+	                                                                       indices,
+	                                                                       num_indices,
 	                                                                       num_arguments,
 	                                                                       error))
 	{
 		return FALSE;
 	}
 
+	if (num_expressions <= 0 ||
+	    num_expressions > 2 ||
+	    (expressions[0]->next && expressions[0]->next->next) ||
+	    (num_expressions > 1 && expressions[1]->next))
+	{
+		g_set_error (error,
+		             CPG_NETWORK_LOAD_ERROR,
+		             CPG_NETWORK_LOAD_ERROR_OPERATOR,
+		             "The operator `pdiff' expects arguments [Func, towards{,order}{;<vars>}] {optional} <list>");
+
+		return FALSE;
+	}
+
 	diff = CPG_OPERATOR_PDIFF (op);
-	diff->priv->expression = g_object_ref_sink (expressions->data);
+	diff->priv->expression = g_object_ref_sink (expressions[0]->data);
 
 	diff->priv->order = 1;
 
-	if (!validate_arguments (expressions,
+	if (!validate_arguments (expressions[0],
+	                         num_expressions > 1 ? expressions[1] : NULL,
 	                         &func,
 	                         &towards,
 	                         &symargs,
@@ -425,12 +442,6 @@ cpg_operator_pdiff_execute (CpgOperator *op,
 	{
 		cpg_stack_push (stack, 0);
 	}
-}
-
-static gint
-cpg_operator_pdiff_validate_num_arguments (gint numsym, gint num)
-{
-	return numsym >= 1;
 }
 
 static void
@@ -558,7 +569,9 @@ cpg_operator_pdiff_reset (CpgOperator *operator)
 }
 
 static CpgFunction *
-cpg_operator_pdiff_get_function (CpgOperator *op)
+cpg_operator_pdiff_get_function (CpgOperator *op,
+                                 gint        *idx,
+                                 gint         numidx)
 {
 	return CPG_OPERATOR_PDIFF (op)->priv->function;
 }
@@ -574,7 +587,10 @@ cpg_operator_pdiff_copy (CpgOperator *op)
 	ret = CPG_OPERATOR_PDIFF (g_object_new (CPG_TYPE_OPERATOR_PDIFF, NULL));
 
 	CPG_OPERATOR_CLASS (cpg_operator_pdiff_parent_class)->initialize (CPG_OPERATOR (ret),
-	                                                                 cpg_operator_get_expressions (op),
+	                                                                 cpg_operator_all_expressions (op),
+	                                                                 cpg_operator_num_expressions (op),
+	                                                                 cpg_operator_all_indices (op),
+	                                                                 cpg_operator_num_indices (op),
 	                                                                 cpg_operator_get_num_arguments (op),
 	                                                                 NULL);
 
@@ -612,7 +628,6 @@ cpg_operator_pdiff_class_init (CpgOperatorPDiffClass *klass)
 	op_class->get_name = cpg_operator_pdiff_get_name;
 	op_class->execute = cpg_operator_pdiff_execute;
 	op_class->initialize = cpg_operator_pdiff_initialize;
-	op_class->validate_num_arguments = cpg_operator_pdiff_validate_num_arguments;
 	op_class->equal = cpg_operator_pdiff_equal;
 	op_class->reset_cache = cpg_operator_pdiff_reset_cache;
 	op_class->reset = cpg_operator_pdiff_reset;

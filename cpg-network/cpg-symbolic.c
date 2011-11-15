@@ -1769,7 +1769,8 @@ derive_custom_operator_real (CpgExpressionTreeIter *iter,
 		                          TRUE);
 	}
 
-	f = cpg_operator_get_function (op);
+	// TODO
+	f = cpg_operator_get_primary_function (op);
 
 	if (f)
 	{

@@ -32,7 +32,10 @@ void                 cpg_operators_unregister                 (GType            
 GType                cpg_operators_find                       (gchar const     *name);
 CpgOperatorClass    *cpg_operators_find_class                 (gchar const     *name);
 CpgOperator         *cpg_operators_instantiate                (gchar const     *name,
-                                                               GSList const    *expressions,
+                                                               GSList const   **expressions,
+                                                               gint             num_expressions,
+                                                               GSList const   **indices,
+                                                               gint             num_indices,
                                                                gint             num_arguments,
                                                                GError         **error);
 GSList const        *cpg_operators_list                       ();

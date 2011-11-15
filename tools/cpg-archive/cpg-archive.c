@@ -227,8 +227,6 @@ parse_network (gchar const *args[], gint argc)
 	CpgNetwork *network;
 	gboolean ret;
 	GError *error = NULL;
-	CpgExpansion *expansion;
-	CpgEmbeddedContext *embedded;
 
 	remove_double_dash (args, &argc);
 
@@ -253,15 +251,6 @@ parse_network (gchar const *args[], gint argc)
 	                  "file-used",
 	                  G_CALLBACK (on_context_file_used),
 	                  &info);
-
-	/* We replace the filename here with the collapsed arguments */
-	args[0] = cpg_embedded_string_collapse (args + 1);
-
-	expansion = cpg_expansion_new (args);
-
-	embedded = cpg_parser_context_get_embedded (context);
-	cpg_embedded_context_add_expansion (embedded, expansion);
-	g_object_unref (expansion);
 
 	add_defines (context);
 

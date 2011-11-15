@@ -439,19 +439,11 @@ custom_function_ref_to_string (CpgInstructionCustomFunctionRef *inst,
 }
 
 static void
-custom_operator_to_string_real (CpgInstruction      *inst,
-                                CpgOperator         *op,
-                                gchar const * const *children,
-                                GString             *ret,
-                                gboolean             dbg)
+custom_operator_expressions_to_string (GSList const *expressions,
+                                       gboolean      dbg,
+                                       GString      *ret)
 {
 	GSList const *expr;
-	GSList const *expressions;
-
-	g_string_append (ret, cpg_operator_get_name (op));
-	g_string_append_c (ret, '[');
-
-	expressions = cpg_operator_get_expressions (op);
 
 	for (expr = expressions; expr; expr = g_slist_next (expr))
 	{
@@ -471,8 +463,57 @@ custom_operator_to_string_real (CpgInstruction      *inst,
 
 		cpg_expression_tree_iter_free (iter);
 	}
+}
+
+static void
+custom_operator_to_string_real (CpgInstruction      *inst,
+                                CpgOperator         *op,
+                                gchar const * const *children,
+                                GString             *ret,
+                                gboolean             dbg)
+{
+	gint i;
+	gint num;
+
+	g_string_append (ret, cpg_operator_get_name (op));
+	g_string_append_c (ret, '[');
+
+	num = cpg_operator_num_expressions (op);
+
+	for (i = 0; i < num; ++i)
+	{
+		if (i != 0)
+		{
+			g_string_append (ret, "; ");
+		}
+
+		custom_operator_expressions_to_string (cpg_operator_get_expressions (op, i),
+		                                       dbg,
+		                                       ret);
+	}
 
 	g_string_append_c (ret, ']');
+
+	num = cpg_operator_num_indices (op);
+
+	if (num > 0)
+	{
+		g_string_append_c (ret, '[');
+
+		for (i = 0; i < num; ++i)
+		{
+			if (i != 0)
+			{
+				g_string_append (ret, "; ");
+			}
+
+			custom_operator_expressions_to_string (cpg_operator_get_indices (op, i),
+			                                       dbg,
+			                                       ret);
+		}
+
+		g_string_append_c (ret, ']');
+	}
 
 	if (children)
 	{
@@ -1541,7 +1582,7 @@ canonical_custom_operator (CpgExpressionTreeIter *iter)
 	}
 	else
 	{
-		f = cpg_operator_get_function (op);
+		f = cpg_operator_get_primary_function (op);
 
 		if (f)
 		{

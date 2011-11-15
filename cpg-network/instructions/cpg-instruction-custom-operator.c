@@ -74,26 +74,49 @@ cpg_instruction_custom_operator_get_stack_count (CpgInstruction *instruction)
 }
 
 static GSList *
-cpg_instruction_custom_operator_get_dependencies (CpgInstruction *instruction)
+extract_dependencies (GSList const *expressions,
+                      GSList       *ret)
 {
-	CpgInstructionCustomOperator *self;
-
-	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
-
-	GSList const *expressions;
-	expressions = cpg_operator_get_expressions (self->priv->op);
-
-	GSList *dependencies = NULL;
-
 	while (expressions)
 	{
 		CpgExpression *expr = expressions->data;
-		GSList *ret;
+		GSList *cp;
 
-		ret = g_slist_copy ((GSList *)cpg_expression_get_dependencies (expr));
-		dependencies = g_slist_concat (dependencies, ret);
+		cp = g_slist_copy ((GSList *)cpg_expression_get_dependencies (expr));
+		ret = g_slist_concat (ret, cp);
 
 		expressions = g_slist_next (expressions);
+	}
+
+	return ret;
+}
+
+static GSList *
+cpg_instruction_custom_operator_get_dependencies (CpgInstruction *instruction)
+{
+	CpgInstructionCustomOperator *self;
+	gint i;
+	gint num;
+	GSList *dependencies = NULL;
+
+	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
+
+	num = cpg_operator_num_expressions (self->priv->op);
+
+	for (i = 0; i < num; ++i)
+	{
+		dependencies =
+			extract_dependencies (cpg_operator_get_expressions (self->priv->op, i),
+			                      dependencies);
+	}
+
+	num = cpg_operator_num_indices (self->priv->op);
+
+	for (i = 0; i < num; ++i)
+	{
+		dependencies =
+			extract_dependencies (cpg_operator_get_indices (self->priv->op, i),
+			                      dependencies);
 	}
 
 	return dependencies;

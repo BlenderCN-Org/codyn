@@ -55,6 +55,9 @@ struct _CpgIntegrator;
 
 typedef CPG_FORWARD_DECL (CpgFunction) CpgFunctionForward;
 
+typedef void (*CpgForeachFunctionFunc)(CpgFunctionForward *func,
+                                       gpointer            userdata);
+
 struct _CpgOperator
 {
 	GObject parent;
@@ -74,13 +77,14 @@ struct _CpgOperatorClass
 	                                 CpgStack        *stack);
 
 	gboolean         (*initialize) (CpgOperator   *op,
-	                                GSList const  *expressions,
+	                                GSList const **expressions,
+	                                gint           num_expressions,
+	                                GSList const **indices,
+	                                gint           num_indices,
 	                                gint           num_arguments,
 	                                GError       **error);
 
 	gchar           *(*get_name) ();
-
-	gboolean         (*validate_num_arguments) (gint symnum, gint num);
 
 	void             (*reset_cache) (CpgOperator     *op);
 
@@ -106,14 +110,24 @@ struct _CpgOperatorClass
 	gboolean         (*equal)           (CpgOperator *op,
 	                                     CpgOperator *other);
 
-	CpgFunctionForward *(*get_function)  (CpgOperator *op);
+	CpgFunctionForward *(*get_function)  (CpgOperator *op,
+	                                      gint        *idx,
+	                                      gint         numidx);
+
+	void             (*foreach_function) (CpgOperator            *op,
+	                                      CpgForeachFunctionFunc  func,
+	                                      gpointer                userdata);
+
 	CpgOperator     *(*copy)             (CpgOperator *src);
 };
 
 GType                cpg_operator_get_type                    (void) G_GNUC_CONST;
 
 gboolean             cpg_operator_initialize                  (CpgOperator     *op,
-                                                               GSList const    *expressions,
+                                                               GSList const   **expressions,
+                                                               gint             num_expressions,
+                                                               GSList const   **indices,
+                                                               gint             num_indices,
                                                                gint             num_arguments,
                                                                GError         **error);
 
@@ -125,11 +139,20 @@ void                 cpg_operator_reset_variadic              (CpgOperator     *
 
 gchar const         *cpg_operator_get_name                    (CpgOperator      *op);
 gchar const         *cpg_operator_get_class_name              (CpgOperatorClass *op);
-gboolean             cpg_operator_validate_num_arguments      (CpgOperatorClass *op,
-                                                               gint             numsym,
-                                                               gint             num);
 
-GSList const        *cpg_operator_get_expressions             (CpgOperator     *op);
+GSList const       **cpg_operator_all_expressions             (CpgOperator     *op);
+
+GSList const        *cpg_operator_get_expressions             (CpgOperator     *op,
+                                                               gint             idx);
+
+gint                 cpg_operator_num_expressions             (CpgOperator     *op);
+
+GSList const       **cpg_operator_all_indices                 (CpgOperator     *op);
+
+GSList const        *cpg_operator_get_indices                 (CpgOperator     *op,
+                                                               gint             idx);
+
+gint                 cpg_operator_num_indices                 (CpgOperator     *op);
 
 gboolean             cpg_operator_equal                       (CpgOperator     *op,
                                                                CpgOperator     *other);
@@ -156,7 +179,16 @@ CpgOperator         *cpg_operator_copy                        (CpgOperator     *
 gint                 cpg_operator_get_num_arguments           (CpgOperator     *op);
 void                _cpg_operator_set_num_arguments           (CpgOperator     *op,
                                                                gint             num);
-CpgFunction         *cpg_operator_get_function                (CpgOperator     *op);
+
+CpgFunction         *cpg_operator_get_primary_function        (CpgOperator     *op);
+
+CpgFunction         *cpg_operator_get_function                (CpgOperator     *op,
+                                                               gint            *idx,
+                                                               gint             numidx);
+
+void                 cpg_operator_foreach_function           (CpgOperator            *op,
+                                                              CpgForeachFunctionFunc  func,
+                                                              gpointer                userdata);
 
 G_END_DECLS
 

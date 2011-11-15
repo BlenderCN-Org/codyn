@@ -25,6 +25,7 @@
 #include "cpg-property.h"
 #include "cpg-usable.h"
 #include "cpg-integrator.h"
+#include "cpg-network.h"
 
 #include <math.h>
 #include <cpg-network/instructions/cpg-instructions.h>
@@ -195,7 +196,10 @@ cpg_operator_delayed_reset (CpgOperator *op)
 
 static gboolean
 cpg_operator_delayed_initialize (CpgOperator   *op,
-                                 GSList const  *expressions,
+                                 GSList const **expressions,
+                                 gint           num_expressions,
+                                 GSList const **indices,
+                                 gint           num_indices,
                                  gint           num_arguments,
                                  GError       **error)
 {
@@ -203,18 +207,37 @@ cpg_operator_delayed_initialize (CpgOperator   *op,
 
 	if (!CPG_OPERATOR_CLASS (cpg_operator_delayed_parent_class)->initialize (op,
 	                                                                         expressions,
+	                                                                         num_expressions,
+	                                                                         indices,
+	                                                                         num_indices,
 	                                                                         num_arguments,
 	                                                                         error))
 	{
 		return FALSE;
 	}
 
-	delayed = CPG_OPERATOR_DELAYED (op);
-	delayed->priv->expression = g_object_ref (expressions->data);
-
-	if (expressions->next)
+	if (num_expressions != 1 || expressions[0]->next)
 	{
-		delayed->priv->initial_value = g_object_ref (expressions->next->next->data);
+		g_set_error (error,
+		             CPG_NETWORK_LOAD_ERROR,
+		             CPG_NETWORK_LOAD_ERROR_OPERATOR,
+		             "The operator `delayed' expects one argument, but got %d (%d)",
+		             num_expressions, num_expressions ? g_slist_length ((GSList *)expressions[0]) : 0);
+
+		return FALSE;
+	}
+
+	delayed = CPG_OPERATOR_DELAYED (op);
+	delayed->priv->expression = g_object_ref_sink (expressions[0]->data);
+
+	if (expressions[0]->next)
+	{
+		delayed->priv->delay_expression = g_object_ref_sink (expressions[0]->next->data);
+
+		if (expressions[0]->next->next)
+		{
+			delayed->priv->initial_value = g_object_ref_sink (expressions[0]->next->next->data);
+		}
 	}
 
 	delayed->priv->delay = 0;
@@ -232,13 +255,6 @@ cpg_operator_delayed_execute (CpgOperator     *op,
 	// TODO: calculate delay...
 
 	cpg_stack_push (stack, d->priv->value);
-}
-
-static gint
-cpg_operator_delayed_validate_num_arguments (gint numsym,
-                                             gint num)
-{
-	return numsym > 0 && numsym < 3 && num < 2;
 }
 
 static HistoryItem *
@@ -677,7 +693,6 @@ cpg_operator_delayed_class_init (CpgOperatorDelayedClass *klass)
 	op_class->step_prepare = cpg_operator_delayed_step_prepare;
 	op_class->step_evaluate = cpg_operator_delayed_step_evaluate;
 	op_class->step = cpg_operator_delayed_step;
-	op_class->validate_num_arguments = cpg_operator_delayed_validate_num_arguments;
 	op_class->equal = cpg_operator_delayed_equal;
 
 	g_type_class_add_private (object_class, sizeof(CpgOperatorDelayedPrivate));

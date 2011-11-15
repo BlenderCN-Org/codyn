@@ -28,6 +28,7 @@
 #include "cpg-symbolic.h"
 #include "cpg-function.h"
 #include "cpg-expression-tree-iter.h"
+#include "cpg-network.h"
 
 #include "instructions/cpg-instructions.h"
 
@@ -90,7 +91,7 @@ derived_function (CpgExpression *expr)
 		CpgOperator *op;
 
 		op = cpg_instruction_custom_operator_ref_get_operator (instr->data);
-		return cpg_operator_get_function (op);
+		return cpg_operator_get_primary_function (op);
 	}
 
 	return NULL;
@@ -135,7 +136,10 @@ replace_args (CpgFunction   *func,
 
 static gboolean
 cpg_operator_simplify_initialize (CpgOperator   *op,
-                                  GSList const  *expressions,
+                                  GSList const **expressions,
+                                  gint           num_expressions,
+                                  GSList const **indices,
+                                  gint           num_indices,
                                   gint           num_arguments,
                                   GError       **error)
 {
@@ -146,16 +150,30 @@ cpg_operator_simplify_initialize (CpgOperator   *op,
 
 	if (!CPG_OPERATOR_CLASS (cpg_operator_simplify_parent_class)->initialize (op,
 	                                                                          expressions,
+	                                                                          num_expressions,
+	                                                                          indices,
+	                                                                          num_indices,
 	                                                                          num_arguments,
 	                                                                          error))
 	{
 		return FALSE;
 	}
 
-	simplify = CPG_OPERATOR_SIMPLIFY (op);
-	simplify->priv->expression = g_object_ref_sink (expressions->data);
+	if (num_expressions != 1 || expressions[0]->next)
+	{
+		g_set_error (error,
+		             CPG_NETWORK_LOAD_ERROR,
+		             CPG_NETWORK_LOAD_ERROR_OPERATOR,
+		             "The operator `simplify' expects one argument, but got %d (%d)",
+		             num_expressions, num_expressions ? g_slist_length ((GSList *)expressions[0]) : 0);
 
-	func = derived_function (expressions->data);
+		return FALSE;
+	}
+
+	simplify = CPG_OPERATOR_SIMPLIFY (op);
+	simplify->priv->expression = g_object_ref_sink (expressions[0]->data);
+
+	func = derived_function (expressions[0]->data);
 
 	if (!func)
 	{
@@ -163,7 +181,7 @@ cpg_operator_simplify_initialize (CpgOperator   *op,
 		             CPG_OPERATOR_ERROR,
 		             CPG_OPERATOR_ERROR_INVALID,
 		             "Expected function reference but got `%s'",
-		             cpg_expression_get_as_string (expressions->data));
+		             cpg_expression_get_as_string (expressions[0]->data));
 
 		return FALSE;
 	}
@@ -213,12 +231,6 @@ cpg_operator_simplify_execute (CpgOperator *op,
 	{
 		cpg_stack_push (stack, 0);
 	}
-}
-
-static gint
-cpg_operator_simplify_validate_num_arguments (gint numsym, gint num)
-{
-	return numsym == 1;
 }
 
 static void
@@ -338,7 +350,9 @@ cpg_operator_simplify_reset (CpgOperator *operator)
 }
 
 static CpgFunction *
-cpg_operator_simplify_get_function (CpgOperator *op)
+cpg_operator_simplify_get_function (CpgOperator *op,
+                                    gint        *idx,
+                                    gint         num)
 {
 	return CPG_OPERATOR_SIMPLIFY (op)->priv->function;
 }
@@ -354,7 +368,10 @@ cpg_operator_simplify_copy (CpgOperator *op)
 	ret = CPG_OPERATOR_SIMPLIFY (g_object_new (CPG_TYPE_OPERATOR_SIMPLIFY, NULL));
 
 	CPG_OPERATOR_CLASS (cpg_operator_simplify_parent_class)->initialize (CPG_OPERATOR (ret),
-	                                                                 cpg_operator_get_expressions (op),
+	                                                                 cpg_operator_all_expressions (op),
+	                                                                 cpg_operator_num_expressions (op),
+	                                                                 cpg_operator_all_indices (op),
+	                                                                 cpg_operator_num_indices (op),
 	                                                                 cpg_operator_get_num_arguments (op),
 	                                                                 NULL);
 
@@ -390,7 +407,6 @@ cpg_operator_simplify_class_init (CpgOperatorSimplifyClass *klass)
 	op_class->get_name = cpg_operator_simplify_get_name;
 	op_class->execute = cpg_operator_simplify_execute;
 	op_class->initialize = cpg_operator_simplify_initialize;
-	op_class->validate_num_arguments = cpg_operator_simplify_validate_num_arguments;
 	op_class->equal = cpg_operator_simplify_equal;
 	op_class->reset_cache = cpg_operator_simplify_reset_cache;
 	op_class->reset = cpg_operator_simplify_reset;

@@ -28,6 +28,7 @@
 #include "cpg-symbolic.h"
 #include "cpg-function.h"
 #include "cpg-expression-tree-iter.h"
+#include "cpg-network.h"
 
 #include "instructions/cpg-instructions.h"
 
@@ -73,28 +74,45 @@ cpg_operator_df_dt_get_name ()
 
 static gboolean
 cpg_operator_df_dt_initialize (CpgOperator   *op,
-                              GSList const  *expressions,
-                              gint           num_arguments,
-                              GError       **error)
+                               GSList const **expressions,
+                               gint           num_expressions,
+                               GSList const **indices,
+                               gint           num_indices,
+                               gint           num_arguments,
+                               GError       **error)
 {
 	CpgOperatorDfDt *df_dt;
 
 	if (!CPG_OPERATOR_CLASS (cpg_operator_df_dt_parent_class)->initialize (op,
-	                                                                      expressions,
-	                                                                      num_arguments,
-	                                                                      error))
+	                                                                       expressions,
+	                                                                       num_expressions,
+	                                                                       indices,
+	                                                                       num_indices,
+	                                                                       num_arguments,
+	                                                                       error))
 	{
 		return FALSE;
 	}
 
+	if (num_expressions != 1 || expressions[0]->next)
+	{
+		g_set_error (error,
+		             CPG_NETWORK_LOAD_ERROR,
+		             CPG_NETWORK_LOAD_ERROR_OPERATOR,
+		             "The operator `df_dt' expects one argument, but got %d (%d)",
+		             num_expressions, num_expressions ? g_slist_length ((GSList *)expressions[0]) : 0);
+
+		return FALSE;
+	}
+
 	df_dt = CPG_OPERATOR_DF_DT (op);
-	df_dt->priv->expression = g_object_ref_sink (expressions->data);
+	df_dt->priv->expression = g_object_ref_sink (expressions[0]->data);
 
 	df_dt->priv->order = 1;
 
-	if (expressions->next)
+	if (expressions[0]->next)
 	{
-		df_dt->priv->order = rint (cpg_expression_evaluate (expressions->next->data));
+		df_dt->priv->order = rint (cpg_expression_evaluate (expressions[0]->next->data));
 
 		if (df_dt->priv->order < 0)
 		{
@@ -132,12 +150,6 @@ cpg_operator_df_dt_execute (CpgOperator *op,
 	{
 		cpg_stack_push (stack, 0);
 	}
-}
-
-static gint
-cpg_operator_df_dt_validate_num_arguments (gint numsym, gint num)
-{
-	return (numsym == 1 || numsym == 2) && num == 0;
 }
 
 static void
@@ -270,7 +282,10 @@ cpg_operator_df_dt_copy (CpgOperator *op)
 	ret = CPG_OPERATOR_DF_DT (g_object_new (CPG_TYPE_OPERATOR_DF_DT, NULL));
 
 	CPG_OPERATOR_CLASS (cpg_operator_df_dt_parent_class)->initialize (CPG_OPERATOR (ret),
-	                                                                 cpg_operator_get_expressions (op),
+	                                                                 cpg_operator_all_expressions (op),
+	                                                                 cpg_operator_num_expressions (op),
+	                                                                 cpg_operator_all_indices (op),
+	                                                                 cpg_operator_num_indices (op),
 	                                                                 cpg_operator_get_num_arguments (op),
 	                                                                 NULL);
 
@@ -303,7 +318,6 @@ cpg_operator_df_dt_class_init (CpgOperatorDfDtClass *klass)
 	op_class->get_name = cpg_operator_df_dt_get_name;
 	op_class->execute = cpg_operator_df_dt_execute;
 	op_class->initialize = cpg_operator_df_dt_initialize;
-	op_class->validate_num_arguments = cpg_operator_df_dt_validate_num_arguments;
 	op_class->equal = cpg_operator_df_dt_equal;
 	op_class->reset_cache = cpg_operator_df_dt_reset_cache;
 	op_class->reset = cpg_operator_df_dt_reset;
