@@ -1424,6 +1424,12 @@ static GSList *expand_node (CpgEmbeddedString   *s,
                             ExNode              *node,
                             GError             **error);
 
+static gchar *
+expand_node_escape (CpgEmbeddedString   *s,
+                    CpgEmbeddedContext  *ctx,
+                    ExNode              *node,
+                    GError             **error);
+
 static GSList *
 annotate_first (GSList *items)
 {
@@ -1704,41 +1710,227 @@ escape_expand (gchar const *s)
 	return g_string_free (ret, FALSE);
 }
 
-gchar *
-cpg_embedded_string_collapse (gchar const * const *s)
+static gchar *
+expand_concat_escape (CpgEmbeddedString   *s,
+                      CpgEmbeddedContext  *ctx,
+                      ExNode              *node,
+                      GError             **error)
 {
+	ExNode *child;
 	GString *ret;
+
+	ret = g_string_new ("");
+	child = node->child;
+
+	while (child)
+	{
+		gchar *ex;
+
+		ex = expand_node_escape (s, ctx, child, error);
+		g_string_append (ret, ex);
+		g_free (ex);
+
+		child = child->next;
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
+static GSList *
+apply_filters_rev_escape (CpgEmbeddedString   *s,
+                          CpgEmbeddedContext  *ctx,
+                          GSList              *elements,
+                          gint                 pos,
+                          GSList             **text,
+                          GError             **error)
+{
+	GSList *ptr;
+
+	ptr = apply_filters_rev (s, ctx, elements, pos, error);
+
+	if (ptr != elements)
+	{
+		GSList *item;
+
+		// Remove all previous items
+		g_slist_foreach (*text, (GFunc)g_free, NULL);
+		g_slist_free (*text);
+		*text = NULL;
+
+		for (item = ptr; item; item = g_slist_next (item))
+		{
+			*text = g_slist_prepend (*text,
+			                          g_strdup (cpg_expansion_get (item->data, 0)));
+		}
+
+		*text = g_slist_reverse (*text);
+	}
+
+	return ptr;
+}
+
+static gchar *
+expand_elements_escape (CpgEmbeddedString   *s,
+                        CpgEmbeddedContext  *ctx,
+                        ExNode              *elements,
+                        GError             **error)
+{
+	ExNode *child;
+	GSList *ret = NULL;
+	gint idx = 0;
+	gint pos;
+	GSList *text = NULL;
+	GString *sret;
 	gboolean first;
 
-	g_return_val_if_fail (s != NULL, NULL);
+	child = elements->child;
+	pos = elements->begin;
 
-	ret = g_string_new ("{");
+	while (child)
+	{
+		GSList *items;
+		GSList *item;
+
+		ret = apply_filters_rev_escape (s, ctx, ret, pos, &text, error);
+
+		items = expand_node (s, ctx, child, error);
+
+		text = g_slist_prepend (text,
+		                        expand_node_escape (s,
+		                                            ctx,
+		                                            child,
+		                                            error));
+
+		// Append the items to the result
+		for (item = items; item; item = g_slist_next (item))
+		{
+			if (cpg_expansion_num (item->data) == 1)
+			{
+				// This means no additional expansions, just
+				// text. We are going to expand ranges on this
+				GSList *more = parse_expansion_range (cpg_expansion_get (item->data, 0));
+
+				ret = g_slist_concat (g_slist_reverse (more), ret);
+				g_object_unref (item->data);
+			}
+			else
+			{
+				ret = g_slist_prepend (ret, item->data);
+			}
+		}
+
+		pos = child->end;
+		child = child->next;
+
+		++idx;
+	}
+
+	// All items that are the result of a list, will have in their
+	// expansions an additional @1 which refers to that element
+	ret = apply_filters_rev_escape (s, ctx, ret, pos, &text, error);
+
+	g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+	g_slist_free (ret);
+
+	text = g_slist_reverse (text);
+
+	sret = g_string_new ("{");
 	first = TRUE;
 
-	while (*s)
+	while (text)
 	{
-		gchar *item;
-
-		item = escape_expand (*s);
-
 		if (!first)
 		{
-			g_string_append_c (ret, ',');
+			g_string_append_c (sret, ',');
 		}
 		else
 		{
 			first = FALSE;
 		}
 
-		g_string_append (ret, item);
-		g_free(item);
+		g_string_append (sret, text->data);
+		g_free (text->data);
 
-		++s;
+		text = g_slist_delete_link (text, text);
 	}
 
-	g_string_append_c (ret, '}');
+	g_string_append_c (sret, '}');
 
-	return g_string_free (ret, FALSE);
+	return g_string_free (sret, FALSE);
+}
+
+static gchar *
+expand_node_escape (CpgEmbeddedString   *s,
+                    CpgEmbeddedContext  *ctx,
+                    ExNode              *node,
+                    GError             **error)
+{
+	switch (node->type)
+	{
+		case EX_NODE_TYPE_TEXT:
+			return escape_expand (node->text);
+		break;
+		case EX_NODE_TYPE_CONCAT:
+			return expand_concat_escape (s, ctx, node, error);
+		break;
+		case EX_NODE_TYPE_ELEMENTS:
+			return expand_elements_escape (s, ctx, node, error);
+		break;
+	}
+
+	return NULL;
+}
+
+static gchar *
+expand_multiple_escape (CpgEmbeddedString   *s,
+                        CpgEmbeddedContext  *ctx,
+                        gchar const         *t,
+                        GError             **error)
+{
+	ExNode *root;
+	gchar *ret;
+
+	root = ex_node_expand (t);
+
+	if (!root)
+	{
+		return NULL;
+	}
+
+	ret = expand_node_escape (s, ctx, root, error);
+	ex_node_free (root);
+
+	return ret;
+}
+
+gchar *
+cpg_embedded_string_expand_escape (CpgEmbeddedString   *s,
+                                   CpgEmbeddedContext  *ctx,
+                                   GError             **error)
+{
+	gchar const *id;
+	gchar *ret;
+
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
+	g_return_val_if_fail (ctx == NULL || CPG_IS_EMBEDDED_CONTEXT (ctx), NULL);
+
+	id = embedded_string_expand (s, ctx, error);
+
+	if (!id)
+	{
+		return NULL;
+	}
+
+	if (!*id)
+	{
+		return g_strdup ("");
+	}
+	else
+	{
+		ret = expand_multiple_escape (s, ctx, id, error);
+	}
+
+	return ret;
 }
 
 CpgEmbeddedString *

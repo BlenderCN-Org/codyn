@@ -100,6 +100,10 @@ GSList            *cpg_embedded_string_expand_multiple  (CpgEmbeddedString      
                                                          CpgEmbeddedContext        *ctx,
                                                          GError                   **error);
 
+gchar             *cpg_embedded_string_expand_escape    (CpgEmbeddedString         *s,
+                                                         CpgEmbeddedContext        *ctx,
+                                                         GError                   **error);
+
 void               cpg_embedded_string_clear_cache      (CpgEmbeddedString         *s);
 
 gchar             *cpg_embedded_string_collapse         (gchar const * const       *s);

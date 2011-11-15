@@ -1100,12 +1100,30 @@ generate_name_value_pairs (CpgParserContext  *context,
 
 		for (unex_item = unex_names; unex_item; unex_item = g_slist_next (unex_item))
 		{
-			gchar const *expanded;
+			gchar *expanded;
 			CpgExpansion *ex;
+			GError *error = NULL;
 
-			embedded_string_expand_val (expanded, value, context, NULL);
+			cpg_embedded_context_save (context->priv->embedded);
+			cpg_embedded_context_add_expansion (context->priv->embedded,
+			                                    unex_item->data);
+
+			expanded = cpg_embedded_string_expand_escape (value,
+			                                              context->priv->embedded,
+			                                              &error);
+
+			cpg_embedded_context_restore (context->priv->embedded);
+
+			if (!expanded)
+			{
+				parser_failed_error (context,
+				                     CPG_STATEMENT (value),
+				                     error);
+				return NULL;
+			}
 
 			ex = cpg_expansion_new_one (expanded);
+			g_free (expanded);
 
 			ret = g_slist_prepend (ret,
 			                       name_value_pair_new (unex_item->data,
