@@ -2161,6 +2161,51 @@ simplify_multiply_powers (CpgExpressionTreeIter *iter)
 }
 
 static CpgExpressionTreeIter *
+simplify_predivide (CpgExpressionTreeIter *iter)
+{
+	gdouble num1;
+	gdouble num2;
+	gboolean isnum1;
+	gboolean isnum2;
+	CpgExpressionTreeIter *ret;
+
+	ret = simplify_function (iter);
+
+	if (ret != iter)
+	{
+		return ret;
+	}
+
+	isnum1 = instruction_is_number (iter->children[0], &num1);
+	isnum2 = instruction_is_number (iter->children[1], &num2);
+
+	if (isnum1 && cmp_double (num1, 0))
+	{
+		// Division of 0 by something is 0
+		ret = iter->children[0];
+		replace_iter (iter, ret);
+		cpg_expression_tree_iter_free (iter);
+	}
+	else if (isnum2 && cmp_double (num2, 1))
+	{
+		// Division of something by 1 is something
+		ret = iter->children[0];
+		replace_iter (iter, ret);
+		cpg_expression_tree_iter_free (iter);
+	}
+	else if (cpg_expression_tree_iter_equal (iter->children[0], iter->children[1]))
+	{
+		// Replace by '1'
+		ret = iter_new (cpg_instruction_number_new_from_string ("1"));
+
+		replace_iter (iter, ret);
+		cpg_expression_tree_iter_free (iter);
+	}
+
+	return ret;
+}
+
+static CpgExpressionTreeIter *
 iter_simplify (CpgExpressionTreeIter *iter,
                gboolean               simplify_children)
 {
@@ -2192,6 +2237,10 @@ iter_simplify (CpgExpressionTreeIter *iter,
 	{
 		// Try to preadd
 		iter = simplify_preadd (iter);
+	}
+	else if (instruction_is_divide (iter))
+	{
+		iter = simplify_predivide (iter);
 	}
 	else if (CPG_IS_INSTRUCTION_FUNCTION (iter->instruction))
 	{
