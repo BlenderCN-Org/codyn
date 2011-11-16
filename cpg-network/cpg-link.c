@@ -993,6 +993,7 @@ on_parent_changed (CpgLink *self)
 		                                      on_parent_child_removed,
 		                                      self);
 
+		cpg_link_attach (self, NULL, NULL);
 		self->priv->prev_parent = NULL;
 	}
 
