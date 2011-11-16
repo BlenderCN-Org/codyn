@@ -278,6 +278,14 @@ get_function_iters (GSList *funcs)
 	return g_slist_reverse (iters);
 }
 
+static CpgProperty *
+unknown_for_func (CpgFunction         *function,
+                  CpgFunctionArgument *arg)
+{
+	return _cpg_function_argument_get_property (cpg_function_get_argument (function,
+	                                                                       cpg_function_argument_get_name (arg)));
+}
+
 static gboolean
 solve_system (CpgOperatorLinsolve *self,
               GSList              *funcs,
@@ -285,6 +293,9 @@ solve_system (CpgOperatorLinsolve *self,
               GError             **error)
 {
 	GSList *iters;
+	GSList *iterit;
+	GSList *unkit;
+	GSList *funcit;
 
 	if (!validate_system (funcs, unknowns, error))
 	{
@@ -293,7 +304,34 @@ solve_system (CpgOperatorLinsolve *self,
 
 	iters = get_function_iters (funcs);
 
-	// Solve and substitute
+	// Iteratively solve the equations for the unknowns
+	unkit = unknowns;
+	iterit = iters;
+	funcit = funcs;
+
+	while (unkit && iterit && funcit)
+	{
+		CpgExpressionTreeIter *eq = iterit->data;
+		CpgExpressionTreeIter *solved;
+		CpgProperty *un;
+
+		un = unknown_for_func (funcit->data, unkit->data);
+
+		// Solve 'eq' for 'un'
+		solved = cpg_expression_tree_iter_solve_for (eq, un, error);
+
+		if (!solved)
+		{
+			g_slist_foreach (iters, (GFunc)cpg_expression_tree_iter_free, NULL);
+			g_slist_free (iters);
+
+			return FALSE;
+		}
+
+		unkit = g_slist_next (unkit);
+		iterit = g_slist_next (iterit);
+		funcit = g_slist_next (funcit);
+	}
 
 	g_slist_foreach (iters, (GFunc)cpg_expression_tree_iter_free, NULL);
 	g_slist_free (iters);
