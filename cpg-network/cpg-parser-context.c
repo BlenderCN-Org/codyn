@@ -3446,6 +3446,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 					                 NULL);
 
 					g_slist_free (ids);
+					g_object_unref (file);
 
 					goto cleanup;
 				}
@@ -3470,6 +3471,8 @@ cpg_parser_context_import (CpgParserContext  *context,
 						                 NULL);
 
 						g_slist_free (ids);
+						g_object_unref (file);
+
 						goto cleanup;
 					}
 
@@ -3500,6 +3503,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 				                 NULL);
 
 				g_slist_free (ids);
+				g_object_unref (file);
 
 				goto cleanup;
 			}
@@ -3520,6 +3524,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 				                 NULL);
 
 				g_slist_free (ids);
+				g_object_unref (file);
 
 				goto cleanup;
 			}
@@ -3531,6 +3536,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 
 			set_taggable (context, import, attributes);
 
+			g_object_unref (file);
 			g_object_unref (import);
 		}
 
