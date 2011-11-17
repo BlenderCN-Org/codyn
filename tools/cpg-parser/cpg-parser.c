@@ -153,7 +153,7 @@ parse_network (gchar const *args[], gint argc)
 	CpgParserContext *context;
 	GFile *file;
 	CpgNetwork *network;
-	gboolean ret;
+	gboolean ret = TRUE;
 	GError *error = NULL;
 	CpgExpansion *expansion;
 	CpgEmbeddedContext *embedded;
@@ -178,9 +178,6 @@ parse_network (gchar const *args[], gint argc)
 		}
 	}
 
-	network = cpg_network_new ();
-	context = cpg_parser_context_new (network);
-
 	GOutputStream *output_stream;
 	if (output_file && strcmp (output_file, "-") != 0)
 	{
@@ -194,12 +191,22 @@ parse_network (gchar const *args[], gint argc)
 		                                                 G_FILE_CREATE_NONE,
 		                                                 NULL,
 		                                                 NULL));
+
 		g_object_unref (outfile);
+
+		if (!output_stream)
+		{
+			g_printerr ("Could not open file: %s\n", output_file);
+			return 1;
+		}
 	}
 	else
 	{
 		output_stream = g_unix_output_stream_new (STDOUT_FILENO, TRUE);
 	}
+
+	network = cpg_network_new ();
+	context = cpg_parser_context_new (network);
 
 	if (list_files)
 	{
