@@ -57,9 +57,6 @@ struct _CpgOperatorSimplifyClass
 GType                cpg_operator_simplify_get_type          (void) G_GNUC_CONST;
 CpgOperatorSimplify *cpg_operator_simplify_new               (void);
 
-CpgExpression       *cpg_operator_simplify_get_expression    (CpgOperatorSimplify *simplify);
-CpgExpression       *cpg_operator_simplify_get_derived       (CpgOperatorSimplify *simplify);
-
 G_END_DECLS
 
 #endif /* __CPG_OPERATOR_SIMPLIFY_H__ */

@@ -341,14 +341,8 @@ set_diff_of (CpgProperty *property,
 	{
 		if (property->priv->diff_of->priv->diff_for == property)
 		{
-			g_object_remove_weak_pointer (G_OBJECT (property),
-			                              (gpointer *)(property->priv->diff_of->priv->diff_for));
-
 			property->priv->diff_of->priv->diff_for = NULL;
 		}
-
-		g_object_remove_weak_pointer (G_OBJECT (property->priv->diff_of),
-		                              (gpointer *)(property->priv->diff_of));
 
 		property->priv->diff_of = NULL;
 	}
@@ -356,20 +350,7 @@ set_diff_of (CpgProperty *property,
 	if (diff_of)
 	{
 		property->priv->diff_of = diff_of;
-
-		g_object_add_weak_pointer (G_OBJECT (diff_of),
-		                           (gpointer *)(property->priv->diff_of));
-
-		if (diff_of->priv->diff_for)
-		{
-			g_object_remove_weak_pointer (G_OBJECT (diff_of->priv->diff_for),
-			                              (gpointer *)(diff_of->priv->diff_for));
-
-			diff_of->priv->diff_for = property;
-
-			g_object_add_weak_pointer (G_OBJECT (property),
-			                           (gpointer *)(diff_of->priv->diff_for));
-		}
+		diff_of->priv->diff_for = property;
 	}
 }
 

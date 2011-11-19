@@ -1185,9 +1185,6 @@ parse_custom_operator (CpgExpression *expression,
 					multiexpr = g_slist_reverse (multiexpr);
 
 					multiret = &indices;
-
-					cpg_token_free (cpg_tokenizer_next (context->buffer));
-					cpg_token_free (next);
 				}
 				else
 				{
@@ -2336,9 +2333,8 @@ cpg_expression_evaluate (CpgExpression *expression)
 
 	if (cpg_stack_count (&(expression->priv->output)) != 1)
 	{
-		fprintf (stderr,
-		         "Invalid output stack after evaluating: %s!\n",
-		         expression->priv->expression);
+		g_warning ("Invalid output stack after evaluating: `%s'",
+		           expression->priv->expression);
 
 		return NAN;
 	}

@@ -58,10 +58,6 @@ struct _CpgOperatorPDiffClass
 GType               cpg_operator_pdiff_get_type          (void) G_GNUC_CONST;
 CpgOperatorPDiff   *cpg_operator_pdiff_new               (void);
 
-CpgExpression      *cpg_operator_pdiff_get_expression    (CpgOperatorPDiff *pdiff);
-CpgExpression      *cpg_operator_pdiff_get_derived       (CpgOperatorPDiff *pdiff);
-gint                cpg_operator_pdiff_get_order         (CpgOperatorPDiff *pdiff);
-
 G_END_DECLS
 
 #endif /* __CPG_OPERATOR_PDIFF_H__ */

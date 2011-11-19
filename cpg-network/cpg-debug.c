@@ -60,6 +60,16 @@ cpg_debug_init ()
 		{
 			debug_level |= CPG_DEBUG_LINSOLVE;
 		}
+
+		if (g_getenv ("CPG_DEBUG_DIFF") != NULL)
+		{
+			debug_level |= CPG_DEBUG_DIFF;
+		}
+
+		if (g_getenv ("CPG_DEBUG_SIMPLIFY") != NULL)
+		{
+			debug_level |= CPG_DEBUG_SIMPLIFY;
+		}
 	}
 }
 

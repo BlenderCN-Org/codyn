@@ -7,7 +7,8 @@
 typedef enum
 {
 	CPG_SYMBOLIC_DERIVE_NONE = 0,
-	CPG_SYMBOLIC_DERIVE_PARTIAL = 1 << 0
+	CPG_SYMBOLIC_DERIVE_PARTIAL = 1 << 0,
+	CPG_SYMBOLIC_DERIVE_SIMPLIFY = 1 << 1
 } CpgSymbolicDeriveFlags;
 
 #define CPG_SYMBOLIC_ERROR (cpg_symbolic_error_quark ())

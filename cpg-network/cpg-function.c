@@ -22,6 +22,7 @@
 
 #include "cpg-function.h"
 #include "cpg-compile-error.h"
+#include "cpg-expression-tree-iter.h"
 #include <string.h>
 
 /**
@@ -119,12 +120,24 @@ cpg_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 	switch (prop_id)
 	{
 		case PROP_EXPRESSION:
+		{
+			CpgExpression *expr;
+
 			if (self->priv->expression)
 			{
 				g_object_unref (self->priv->expression);
 			}
 
-			self->priv->expression = g_value_dup_object (value);
+			expr = g_value_get_object (value);
+
+			if (expr)
+			{
+				self->priv->expression = g_object_ref_sink (expr);
+			}
+			else
+			{
+				self->priv->expression = NULL;
+			}
 
 			if (self->priv->expression)
 			{
@@ -133,6 +146,7 @@ cpg_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 			}
 
 			cpg_object_taint (CPG_OBJECT (self));
+		}
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -230,6 +244,14 @@ cpg_function_compile_impl (CpgObject         *object,
 		g_error_free (gerror);
 		ret = FALSE;
 	}
+
+	CpgExpressionTreeIter *iter = cpg_expression_tree_iter_new (self->priv->expression);
+	iter = cpg_expression_tree_iter_simplify (iter);
+
+	g_message ( "Function(%s): {%s}",
+	                   cpg_object_get_id (CPG_OBJECT (self)),
+	                   cpg_expression_tree_iter_to_string (iter));
+
 
 	cpg_compile_context_restore (context);
 	return ret;
@@ -400,10 +422,10 @@ cpg_function_foreach_expression_impl (CpgObject                *object,
 		}
 	}
 
-	if (function->priv->expression)
+	/*if (function->priv->expression)
 	{
 		func (function->priv->expression, userdata);
-	}
+	}*/
 }
 
 static void

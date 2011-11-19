@@ -48,21 +48,12 @@
 
 struct _CpgOperatorSimplifyPrivate
 {
-	CpgExpression *expression;
-	CpgExpression *derived;
 	CpgFunction *function;
 };
 
 G_DEFINE_TYPE (CpgOperatorSimplify,
                cpg_operator_simplify,
                CPG_TYPE_OPERATOR)
-
-enum
-{
-	PROP_0,
-	PROP_EXPRESSION,
-	PROP_DERIVED
-};
 
 static gchar *
 cpg_operator_simplify_get_name ()
@@ -147,6 +138,7 @@ cpg_operator_simplify_initialize (CpgOperator   *op,
 	CpgFunction *func;
 	CpgFunction *nf = NULL;
 	gchar *s;
+	CpgExpression *derived;
 
 	if (!CPG_OPERATOR_CLASS (cpg_operator_simplify_parent_class)->initialize (op,
 	                                                                          expressions,
@@ -171,7 +163,6 @@ cpg_operator_simplify_initialize (CpgOperator   *op,
 	}
 
 	simplify = CPG_OPERATOR_SIMPLIFY (op);
-	simplify->priv->expression = g_object_ref_sink (expressions[0]->data);
 
 	func = derived_function (expressions[0]->data);
 
@@ -197,156 +188,21 @@ cpg_operator_simplify_initialize (CpgOperator   *op,
 
 	cpg_function_set_expression (nf, cpg_expression_new0 ());
 
-	simplify->priv->derived = cpg_symbolic_simplify (cpg_function_get_expression (func));
+	derived = cpg_symbolic_simplify (cpg_function_get_expression (func));
 
 	// Replace args
-	replace_args (func, nf, simplify->priv->derived);
+	replace_args (func, nf, derived);
 
-	cpg_function_set_expression (nf, simplify->priv->derived);
+	cpg_function_set_expression (nf, derived);
 	simplify->priv->function = nf;
-
-	return simplify->priv->derived != NULL;
-}
-
-static void
-cpg_operator_simplify_execute (CpgOperator *op,
-                               CpgStack    *stack)
-{
-	CpgOperatorSimplify *d;
-
-	d = (CpgOperatorSimplify *)op;
-
-	if (d->priv->function)
-	{
-		cpg_function_execute (d->priv->function,
-		                      cpg_operator_get_num_arguments (op),
-		                      stack);
-	}
-	else if (d->priv->derived)
-	{
-		cpg_stack_push (stack,
-		                cpg_expression_evaluate (d->priv->derived));
-	}
-	else
-	{
-		cpg_stack_push (stack, 0);
-	}
-}
-
-static void
-cpg_operator_simplify_finalize (GObject *object)
-{
-	CpgOperatorSimplify *simplify;
-
-	simplify = CPG_OPERATOR_SIMPLIFY (object);
-
-	if (simplify->priv->expression)
-	{
-		g_object_unref (simplify->priv->expression);
-	}
-
-	if (simplify->priv->derived)
-	{
-		g_object_unref (simplify->priv->derived);
-	}
-
-	if (simplify->priv->function)
-	{
-		g_object_unref (simplify->priv->function);
-	}
-
-	G_OBJECT_CLASS (cpg_operator_simplify_parent_class)->finalize (object);
-}
-
-static void
-cpg_operator_simplify_set_property (GObject      *object,
-                                   guint         prop_id,
-                                   const GValue *value,
-                                   GParamSpec   *pspec)
-{
-	switch (prop_id)
-	{
-		default:
-			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
-}
-
-static void
-cpg_operator_simplify_get_property (GObject    *object,
-                                   guint       prop_id,
-                                   GValue     *value,
-                                   GParamSpec *pspec)
-{
-	CpgOperatorSimplify *self = CPG_OPERATOR_SIMPLIFY (object);
-
-	switch (prop_id)
-	{
-		case PROP_EXPRESSION:
-			g_value_set_object (value, self->priv->expression);
-			break;
-		case PROP_DERIVED:
-			g_value_set_object (value, self->priv->derived);
-			break;
-		default:
-			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
-}
-
-static gboolean
-cpg_operator_simplify_equal (CpgOperator *op,
-                            CpgOperator *other)
-{
-	CpgOperatorSimplify *simplify;
-	CpgOperatorSimplify *odel;
-
-	if (!CPG_IS_OPERATOR_SIMPLIFY (other))
-	{
-		return FALSE;
-	}
-
-	simplify = CPG_OPERATOR_SIMPLIFY (op);
-	odel = CPG_OPERATOR_SIMPLIFY (other);
-
-	if (!cpg_expression_equal (simplify->priv->expression,
-	                           odel->priv->expression))
-	{
-		return FALSE;
-	}
 
 	return TRUE;
 }
 
 static void
-cpg_operator_simplify_reset_cache (CpgOperator *operator)
+cpg_operator_simplify_finalize (GObject *object)
 {
-	CpgOperatorSimplify *self;
-
-	CPG_OPERATOR_CLASS (cpg_operator_simplify_parent_class)->reset_cache (operator);
-
-	/* Omit type check to be faster */
-	self = (CpgOperatorSimplify *)operator;
-
-	if (self->priv->derived)
-	{
-		cpg_expression_reset_cache (self->priv->derived);
-	}
-}
-
-static void
-cpg_operator_simplify_reset (CpgOperator *operator)
-{
-	CpgOperatorSimplify *self;
-
-	CPG_OPERATOR_CLASS (cpg_operator_simplify_parent_class)->reset (operator);
-
-	self = CPG_OPERATOR_SIMPLIFY (operator);
-
-	if (self->priv->derived)
-	{
-		cpg_expression_reset (self->priv->derived);
-	}
+	G_OBJECT_CLASS (cpg_operator_simplify_parent_class)->finalize (object);
 }
 
 static CpgFunction *
@@ -355,6 +211,14 @@ cpg_operator_simplify_get_function (CpgOperator *op,
                                     gint         num)
 {
 	return CPG_OPERATOR_SIMPLIFY (op)->priv->function;
+}
+
+static void
+cpg_operator_simplify_foreach_function (CpgOperator            *op,
+                                        CpgForeachFunctionFunc  func,
+                                        gpointer                data)
+{
+	func (CPG_OPERATOR_SIMPLIFY (op)->priv->function, data);
 }
 
 static CpgOperator *
@@ -375,16 +239,6 @@ cpg_operator_simplify_copy (CpgOperator *op)
 	                                                                 cpg_operator_get_num_arguments (op),
 	                                                                 NULL);
 
-	if (simplify->priv->expression)
-	{
-		ret->priv->expression = g_object_ref_sink (simplify->priv->expression);
-	}
-
-	if (simplify->priv->derived)
-	{
-		ret->priv->derived = g_object_ref_sink (simplify->priv->derived);
-	}
-
 	if (simplify->priv->function)
 	{
 		ret->priv->function = g_object_ref (CPG_OBJECT (simplify->priv->function));
@@ -401,35 +255,13 @@ cpg_operator_simplify_class_init (CpgOperatorSimplifyClass *klass)
 
 	object_class->finalize = cpg_operator_simplify_finalize;
 
-	object_class->get_property = cpg_operator_simplify_get_property;
-	object_class->set_property = cpg_operator_simplify_set_property;
-
 	op_class->get_name = cpg_operator_simplify_get_name;
-	op_class->execute = cpg_operator_simplify_execute;
 	op_class->initialize = cpg_operator_simplify_initialize;
-	op_class->equal = cpg_operator_simplify_equal;
-	op_class->reset_cache = cpg_operator_simplify_reset_cache;
-	op_class->reset = cpg_operator_simplify_reset;
 	op_class->get_function = cpg_operator_simplify_get_function;
+	op_class->foreach_function = cpg_operator_simplify_foreach_function;
 	op_class->copy = cpg_operator_simplify_copy;
 
 	g_type_class_add_private (object_class, sizeof(CpgOperatorSimplifyPrivate));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_EXPRESSION,
-	                                 g_param_spec_object ("expression",
-	                                                      "Expression",
-	                                                      "Expression",
-	                                                      CPG_TYPE_EXPRESSION,
-	                                                      G_PARAM_READABLE));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_DERIVED,
-	                                 g_param_spec_object ("derived",
-	                                                      "Derived",
-	                                                      "Derived",
-	                                                      CPG_TYPE_EXPRESSION,
-	                                                      G_PARAM_READABLE));
 }
 
 static void
@@ -442,38 +274,4 @@ CpgOperatorSimplify *
 cpg_operator_simplify_new ()
 {
 	return g_object_new (CPG_TYPE_OPERATOR_SIMPLIFY, NULL);
-}
-
-/**
- * cpg_operator_simplify_get_expression:
- * @simplify: A #CpgOperatorSimplify
- *
- * Get the expression to be simplify.
- *
- * Returns: (transfer none): A #CpgExpression
- *
- **/
-CpgExpression *
-cpg_operator_simplify_get_expression (CpgOperatorSimplify *simplify)
-{
-	g_return_val_if_fail (CPG_IS_OPERATOR_SIMPLIFY (simplify), NULL);
-
-	return simplify->priv->expression;
-}
-
-/**
- * cpg_operator_simplify_get_derived:
- * @simplify: A #CpgOperatorSimplify
- *
- * Get the derived expression.
- *
- * Returns: (transfer none): A #CpgExpression
- *
- **/
-CpgExpression *
-cpg_operator_simplify_get_derived (CpgOperatorSimplify *simplify)
-{
-	g_return_val_if_fail (CPG_IS_OPERATOR_SIMPLIFY (simplify), NULL);
-
-	return simplify->priv->derived;
 }

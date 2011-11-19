@@ -977,6 +977,7 @@ cpg_network_new_from_stream (GInputStream  *stream,
                              GError       **error)
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), NULL);
 
@@ -1009,6 +1010,7 @@ cpg_network_new_from_file (GFile   *file,
                            GError **error)
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
@@ -1041,6 +1043,7 @@ cpg_network_new_from_path (gchar const  *path,
                            GError      **error)
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	g_return_val_if_fail (path != NULL, NULL);
 
@@ -1067,6 +1070,7 @@ cpg_network_new_from_string (gchar const  *s,
                              GError      **error)
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	g_return_val_if_fail (s != NULL, NULL);
 

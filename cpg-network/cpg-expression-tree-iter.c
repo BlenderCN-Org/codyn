@@ -16,17 +16,53 @@ struct _CpgExpressionTreeIter
 	CpgExpressionTreeIter **children;
 	gint num_children;
 	gint depth;
+
+	gchar *cached_to_string;
+	guint cache_is_dbg : 1;
 };
 
 static CpgExpressionTreeIter *iter_simplify (CpgExpressionTreeIter *iter,
                                              gboolean               simplify_children);
 
-static gchar *
+static gchar const *
 iter_to_string (CpgExpressionTreeIter *iter,
                 gint                  *priority,
                 gint                  *leftassoc,
                 gint                  *comm,
                 gboolean               dbg);
+
+static void
+invalidate_cache_up (CpgExpressionTreeIter *iter)
+{
+	if (!iter)
+	{
+		return;
+	}
+
+	invalidate_cache_up (iter->parent);
+
+	g_free (iter->cached_to_string);
+	iter->cached_to_string = NULL;
+}
+
+static void
+invalidate_cache_down (CpgExpressionTreeIter *iter)
+{
+	gint i;
+
+	if (!iter)
+	{
+		return;
+	}
+
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		invalidate_cache_down (iter->children[i]);
+	}
+
+	g_free (iter->cached_to_string);
+	iter->cached_to_string = NULL;
+}
 
 static CpgExpressionTreeIter *
 iter_new (CpgInstruction *instruction)
@@ -79,6 +115,9 @@ cpg_expression_tree_iter_free (CpgExpressionTreeIter *self)
 	{
 		cpg_mini_object_free (CPG_MINI_OBJECT (self->instruction));
 	}
+
+	g_free (self->cached_to_string);
+	self->cached_to_string = NULL;
 
 	g_slice_free (CpgExpressionTreeIter, self);
 }
@@ -170,6 +209,8 @@ cpg_expression_tree_iter_set_instruction (CpgExpressionTreeIter *iter,
 	{
 		iter->instruction = CPG_INSTRUCTION (cpg_mini_object_copy (CPG_MINI_OBJECT (instr)));
 	}
+
+	invalidate_cache_up (iter);
 }
 
 gint
@@ -207,9 +248,13 @@ cpg_expression_tree_iter_take_child (CpgExpressionTreeIter *iter,
 	g_return_if_fail (nth >= 0 && nth < iter->num_children);
 
 	cpg_expression_tree_iter_free (iter->children[nth]);
+
 	iter->children[nth] = child;
+	child->parent = iter;
 
 	update_depth (iter, child);
+
+	invalidate_cache_up (child);
 }
 
 void
@@ -453,7 +498,7 @@ custom_operator_expressions_to_string (GSList const *expressions,
 	for (expr = expressions; expr; expr = g_slist_next (expr))
 	{
 		CpgExpressionTreeIter *iter;
-		gchar *s;
+		gchar const *s;
 
 		if (expr != expressions)
 		{
@@ -464,7 +509,6 @@ custom_operator_expressions_to_string (GSList const *expressions,
 
 		s = iter_to_string (iter, NULL, NULL, NULL, dbg);
 		g_string_append (ret, s);
-		g_free (s);
 
 		cpg_expression_tree_iter_free (iter);
 	}
@@ -520,7 +564,7 @@ custom_operator_to_string_real (CpgInstruction      *inst,
 		g_string_append_c (ret, ']');
 	}
 
-	if (children)
+	if (children && *children)
 	{
 		g_string_append_c (ret, '(');
 
@@ -705,7 +749,7 @@ needs_paren (CpgExpressionTreeIter *parent,
 	return TRUE;
 }
 
-static gchar *
+static gchar const *
 iter_to_string (CpgExpressionTreeIter *iter,
                 gint                  *priority,
                 gint                  *leftassoc,
@@ -720,25 +764,28 @@ iter_to_string (CpgExpressionTreeIter *iter,
 	gint ilassoc;
 	gint icomm;
 
+	if (priority)
+	{
+		*priority = 0;
+	}
+
+	if (leftassoc)
+	{
+		*leftassoc = 1;
+	}
+
+	if (comm)
+	{
+		*comm = 0;
+	}
+
 	if (!iter)
 	{
-		if (priority)
-		{
-			*priority = 0;
-		}
-
-		if (leftassoc)
-		{
-			*leftassoc = 1;
-		}
-
-		if (comm)
-		{
-			*comm = 0;
-		}
-
 		return g_strdup ("(null)");
 	}
+
+	g_free (iter->cached_to_string);
+	iter->cached_to_string = NULL;
 
 	ret = g_string_new ("");
 
@@ -766,8 +813,7 @@ iter_to_string (CpgExpressionTreeIter *iter,
 		gint cprio;
 		gint classoc;
 		gint ccomm;
-
-		gchar *c;
+		gchar const *c;
 
 		c = iter_to_string (iter->children[i],
 		                    &cprio,
@@ -783,12 +829,11 @@ iter_to_string (CpgExpressionTreeIter *iter,
 		                  classoc,
 		                  ccomm))
 		{
-			childs[i] = c;
+			childs[i] = g_strdup (c);
 		}
 		else
 		{
 			childs[i] = g_strconcat ("(", c, ")", NULL);
-			g_free (c);
 		}
 	}
 
@@ -804,16 +849,19 @@ iter_to_string (CpgExpressionTreeIter *iter,
 
 	g_strfreev (childs);
 
-	return g_string_free (ret, FALSE);
+	iter->cached_to_string = g_string_free (ret, FALSE);
+	iter->cache_is_dbg = dbg;
+
+	return iter->cached_to_string;
 }
 
-gchar *
+gchar const *
 cpg_expression_tree_iter_to_string (CpgExpressionTreeIter *iter)
 {
 	return iter_to_string (iter, NULL, NULL, NULL, FALSE);
 }
 
-gchar *
+gchar const *
 cpg_expression_tree_iter_to_string_dbg (CpgExpressionTreeIter *iter)
 {
 	return iter_to_string (iter, NULL, NULL, NULL, TRUE);
@@ -865,6 +913,7 @@ cpg_expression_tree_iter_copy (CpgExpressionTreeIter *iter)
 	}
 
 	cp->depth = iter->depth;
+
 	return cp;
 
 }
@@ -1127,6 +1176,15 @@ instruction_is_multiply (CpgExpressionTreeIter *iter)
 }
 
 static gboolean
+instruction_is_power (CpgExpressionTreeIter *iter)
+{
+	CpgMathOperatorType type;
+
+	return instruction_is_operator (iter, &type) &&
+	       type == CPG_MATH_OPERATOR_TYPE_POWER;
+}
+
+static gboolean
 instruction_is_divide (CpgExpressionTreeIter *iter)
 {
 	CpgMathOperatorType type;
@@ -1139,6 +1197,11 @@ static gboolean
 instruction_is_plus (CpgExpressionTreeIter *iter)
 {
 	CpgMathOperatorType type;
+
+	if (!iter)
+	{
+		return FALSE;
+	}
 
 	return instruction_is_operator (iter, &type) &&
 	       type == CPG_MATH_OPERATOR_TYPE_PLUS;
@@ -1162,71 +1225,61 @@ instruction_is_unary_minus (CpgExpressionTreeIter *iter)
 	       type == CPG_MATH_OPERATOR_TYPE_UNARY_MINUS;
 }
 
-typedef struct
-{
-	CpgExpressionTreeIter *iter;
-	CpgExpressionTreeIter *parent;
-	gint child_pos;
-} CollectItem;
-
-static CollectItem *
-collect_item_new (CpgExpressionTreeIter *iter,
-                  gint                   child_pos)
-{
-	CollectItem *ret;
-
-	ret = g_slice_new (CollectItem);
-
-	ret->iter = iter;
-	ret->parent = iter->parent;
-	ret->child_pos = child_pos;
-
-	return ret;
-}
-
-static void
-collect_item_free (CollectItem *item)
-{
-	g_slice_free (CollectItem, item);
-}
-
 static GSList *
-collect_multiply (CpgExpressionTreeIter *iter,
-                  GSList                *ret)
+collect_multiply (CpgExpressionTreeIter  *iter,
+                  GSList                 *ret,
+                  CpgExpressionTreeIter **lastr)
 {
 	gint i;
+	CpgExpressionTreeIter *swapped = NULL;
 
 	for (i = 0; i < iter->num_children; ++i)
 	{
 		CpgExpressionTreeIter *c;
+		CpgExpressionTreeIter *lr;
 
 		c = iter->children[i];
 
 		if (instruction_is_multiply (c))
 		{
 			// Go deep
-			ret = collect_multiply (c, ret);
-		}
-		else if (instruction_is_divide (c))
-		{
-			CpgExpressionTreeIter *c1;
+			ret = collect_multiply (c, ret, &lr);
 
-			c1 = c->children[0];
+			if (i == 0)
+			{
+				// Swap
+				iter->children[0] = lr;
+				*lastr = lr->parent;
 
-			if (instruction_is_multiply (c1))
-			{
-				ret = collect_multiply (c1, ret);
-			}
-			else
-			{
-				ret = g_slist_prepend (ret,
-				                       collect_item_new (c1,
-				                                         0));
+				lr->parent->children[1] = NULL;
+				lr->parent = iter;
+
+				swapped = c;
 			}
 		}
 		else
 		{
-			ret = g_slist_prepend (ret, collect_item_new (c, i));
+			if (i == 1)
+			{
+				lr = c;
+			}
+
+			ret = g_slist_prepend (ret, c);
+		}
+
+		if (i == 1)
+		{
+			if (swapped)
+			{
+				(*lastr)->children[1] = lr;
+
+				lr->parent->children[1] = swapped;
+				swapped->parent = lr->parent;
+
+				lr->parent = *lastr;
+			}
+
+			*lastr = lr;
 		}
 	}
 
@@ -1252,7 +1305,7 @@ collect_plus (CpgExpressionTreeIter *iter,
 		}
 		else
 		{
-			ret = g_slist_prepend (ret, collect_item_new (c, i));
+			ret = g_slist_prepend (ret, c);
 		}
 	}
 
@@ -1260,10 +1313,37 @@ collect_plus (CpgExpressionTreeIter *iter,
 }
 
 static gint
-compare_collect_item (CollectItem *i1,
-                      CollectItem *i2)
+compare_collect_item (CpgExpressionTreeIter *i1,
+                      CpgExpressionTreeIter *i2)
 {
-	return compare_iters (&(i1->iter), &(i2->iter));
+	return compare_iters (&i1, &i2);
+}
+
+static gint
+iter_index_of (CpgExpressionTreeIter *parent,
+               CpgExpressionTreeIter *iter)
+{
+	gint i;
+
+	if (!parent)
+	{
+		if (!iter)
+		{
+			return -1;
+		}
+
+		parent = iter->parent;
+	}
+
+	for (i = 0; i < parent->num_children; ++i)
+	{
+		if (parent->children[i] == iter)
+		{
+			return i;
+		}
+	}
+
+	return -1;
 }
 
 static void
@@ -1272,40 +1352,60 @@ swap_collect (GSList *ret)
 	GSList *cp;
 	GSList *cpitem;
 
+	GSList *parents = NULL;
+	GSList *pitem;
+
+	GSList *indices = NULL;
+	GSList *iitem;
+
 	cp = g_slist_copy (ret);
 
-	// Sort and then insert
-	ret = g_slist_sort (ret, (GCompareFunc)compare_collect_item);
+	for (cpitem = cp; cpitem; cpitem = g_slist_next (cpitem))
+	{
+		CpgExpressionTreeIter *it = cpitem->data;
+		parents = g_slist_prepend (parents, it->parent);
+		indices = g_slist_prepend (indices, GINT_TO_POINTER (iter_index_of (NULL, it)));
+	}
+
+	parents = g_slist_reverse (parents);
+	indices = g_slist_reverse (indices);
+
+	// Sort
+	cp = g_slist_sort (cp, (GCompareFunc)compare_collect_item);
 
 	cpitem = cp;
+	pitem = parents;
+	iitem = indices;
 
-	while (ret)
+	while (cpitem)
 	{
-		CollectItem *item = ret->data;
-		CollectItem *orig = cpitem->data;
+		CpgExpressionTreeIter *parent = pitem->data;
+		gint idx = GPOINTER_TO_INT (iitem->data);
+		CpgExpressionTreeIter *sorted = cpitem->data;
 
-		if (orig->iter != item->iter)
-		{
-			orig->parent->children[orig->child_pos] = item->iter;
-			item->iter->parent = orig->parent;
-		}
+		parent->children[idx] = sorted;
+		sorted->parent = parent;
 
-		ret = g_slist_next (ret);
 		cpitem = g_slist_next (cpitem);
+		pitem = g_slist_next (pitem);
+		iitem = g_slist_next (iitem);
 	}
 
 	g_slist_free (cp);
+	g_slist_free (parents);
+	g_slist_free (indices);
 }
 
 static void
 swap_multiply (CpgExpressionTreeIter *iter)
 {
 	GSList *ret;
+	CpgExpressionTreeIter *lastr = NULL;
 
-	ret = g_slist_reverse (collect_multiply (iter, NULL));
+	ret = g_slist_reverse (collect_multiply (iter, NULL, &lastr));
+
 	swap_collect (ret);
 
-	g_slist_foreach (ret, (GFunc)collect_item_free, NULL);
 	g_slist_free (ret);
 }
 
@@ -1315,9 +1415,8 @@ swap_plus (CpgExpressionTreeIter *iter)
 	GSList *ret;
 
 	ret = g_slist_reverse (collect_plus (iter, NULL));
-	swap_collect (ret);
 
-	g_slist_foreach (ret, (GFunc)collect_item_free, NULL);
+	swap_collect (ret);
 	g_slist_free (ret);
 
 }
@@ -1427,33 +1526,6 @@ function_argument_index (CpgFunction *f,
 	return -1;
 }
 
-static gint
-iter_index_of (CpgExpressionTreeIter *parent,
-               CpgExpressionTreeIter *iter)
-{
-	gint i;
-
-	if (!parent)
-	{
-		if (!iter)
-		{
-			return -1;
-		}
-
-		parent = iter->parent;
-	}
-
-	for (i = 0; i < parent->num_children; ++i)
-	{
-		if (parent->children[i] == iter)
-		{
-			return i;
-		}
-	}
-
-	return -1;
-}
-
 static void
 replace_iter (CpgExpressionTreeIter *iter,
               CpgExpressionTreeIter *other)
@@ -1489,33 +1561,70 @@ replace_iter (CpgExpressionTreeIter *iter,
 }
 
 static void
-copy_iter_into (CpgExpressionTreeIter *cp,
-                CpgExpressionTreeIter *dest)
+replace_or_copy_iter_into (CpgExpressionTreeIter *cp,
+                           CpgExpressionTreeIter *dest,
+                           gboolean               make_copy)
 {
 	gint i;
+	CpgExpressionTreeIter **newchildren;
+
+	newchildren = g_new (CpgExpressionTreeIter *, cp->num_children);
+
+	for (i = 0; i < cp->num_children; ++i)
+	{
+		if (make_copy)
+		{
+			newchildren[i] = cpg_expression_tree_iter_copy (cp->children[i]);
+		}
+		else
+		{
+			newchildren[i] = cp->children[i];
+			cp->children[i] = NULL;
+		}
+
+		newchildren[i]->parent = dest;
+	}
 
 	for (i = 0; i < dest->num_children; ++i)
 	{
-		cpg_expression_tree_iter_free (dest->children[i]);
+		if (make_copy || dest->children[i] != cp)
+		{
+			cpg_expression_tree_iter_free (dest->children[i]);
+		}
 	}
 
 	g_free (dest->children);
 
 	dest->num_children = cp->num_children;
-	dest->children = g_new (CpgExpressionTreeIter *, cp->num_children);
-
-	for (i = 0; i < cp->num_children; ++i)
-	{
-		dest->children[i] = cp->children[i];
-
-		cp->children[i]->parent = dest;
-		cp->children[i] = NULL;
-	}
+	dest->children = newchildren;
 
 	cpg_mini_object_free (CPG_MINI_OBJECT (dest->instruction));
 
-	dest->instruction = cp->instruction;
-	cp->instruction = NULL;
+	if (make_copy)
+	{
+		dest->instruction = CPG_INSTRUCTION (cpg_mini_object_copy (CPG_MINI_OBJECT (cp->instruction)));
+	}
+	else
+	{
+		dest->instruction = cp->instruction;
+		cp->instruction = NULL;
+
+		cpg_expression_tree_iter_free (cp);
+	}
+}
+
+static void
+replace_iter_into (CpgExpressionTreeIter *cp,
+                   CpgExpressionTreeIter *dest)
+{
+	replace_or_copy_iter_into (cp, dest, FALSE);
+}
+
+static void
+copy_iter_into (CpgExpressionTreeIter *cp,
+                CpgExpressionTreeIter *dest)
+{
+	replace_or_copy_iter_into (cp, dest, TRUE);
 }
 
 static void
@@ -1576,8 +1685,7 @@ canonical_custom_function_real (CpgExpressionTreeIter *iter,
 		}
 	}
 
-	copy_iter_into (func, iter);
-	cpg_expression_tree_iter_free (func);
+	replace_iter_into (func, iter);
 }
 
 static void
@@ -1610,8 +1718,7 @@ canonical_custom_operator (CpgExpressionTreeIter *iter)
 		cpg_expression_tree_iter_canonicalize (cp);
 
 		// Replace iter with cp
-		copy_iter_into (cp, iter);
-		cpg_expression_tree_iter_free (cp);
+		replace_iter_into (cp, iter);
 	}
 	else
 	{
@@ -1624,15 +1731,15 @@ canonical_custom_operator (CpgExpressionTreeIter *iter)
 	}
 }
 
-void
-cpg_expression_tree_iter_canonicalize (CpgExpressionTreeIter *iter)
+static void
+tree_iter_canonicalize (CpgExpressionTreeIter *iter)
 {
 	gint i;
 
 	// Canonicalize the children first
 	for (i = 0; i < iter->num_children; ++i)
 	{
-		cpg_expression_tree_iter_canonicalize (iter->children[i]);
+		tree_iter_canonicalize (iter->children[i]);
 	}
 
 	if (instruction_is_minus (iter))
@@ -1666,6 +1773,15 @@ cpg_expression_tree_iter_canonicalize (CpgExpressionTreeIter *iter)
 			swap_operator (iter);
 		}
 	}
+}
+
+CpgExpressionTreeIter *
+cpg_expression_tree_iter_canonicalize (CpgExpressionTreeIter *iter)
+{
+	tree_iter_canonicalize (iter);
+	//invalidate_cache_down (iter);
+
+	return iter;
 }
 
 static CpgExpressionTreeIter *
@@ -1829,6 +1945,19 @@ simplify_function (CpgExpressionTreeIter *iter)
 	return retval;
 }
 
+/*static void
+print_tree (CpgExpressionTreeIter *iter, gint indent)
+{
+	gint i;
+
+	g_message ("%s%s (%p)", g_strnfill (indent, ' '), cpg_instruction_to_string (iter->instruction), iter);
+
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		print_tree (iter->children[i], indent + 2);
+	}
+}*/
+
 static CpgExpressionTreeIter *
 simplify_premultiply (CpgExpressionTreeIter *iter)
 {
@@ -1888,8 +2017,6 @@ simplify_premultiply (CpgExpressionTreeIter *iter)
 	left = find_premultiply (iter->children[0], NULL);
 	right = find_premultiply (iter->children[1], NULL);
 
-	ret = iter;
-
 	if (left && right && (!left->next || !right->next))
 	{
 		CpgExpressionTreeIter *liter;
@@ -1928,39 +2055,138 @@ simplify_premultiply (CpgExpressionTreeIter *iter)
 
 		// Remove the left hand side
 		brother = iter_brother (liter);
-
-		if (liter->parent == iter)
-		{
-			ret = brother;
-		}
-
-		replace_iter (liter->parent, brother);
-
-		cpg_expression_tree_iter_free (liter->parent);
-		g_slist_free (right);
+		replace_iter_into (brother, liter->parent);
 	}
 
+	g_slist_free (right);
 	g_slist_free (left);
+
 	return ret;
 }
 
 static CpgExpressionTreeIter *
-find_preadd (CpgExpressionTreeIter *iter)
+find_preadd (CpgExpressionTreeIter *iter,
+             gdouble               *num)
 {
 	CpgExpressionTreeIter *ret = NULL;
 
-	if (instruction_is_number (iter, NULL))
+	if (instruction_is_number (iter, num))
 	{
 		return iter;
 	}
 	else if (instruction_is_plus (iter))
 	{
-		ret = find_preadd (iter->children[0]);
+		ret = find_preadd (iter->children[0], num);
 
 		if (!ret)
 		{
-			ret = find_preadd (iter->children[1]);
+			ret = find_preadd (iter->children[1], num);
 		}
+	}
+
+	return ret;
+}
+
+static GSList *
+find_add (CpgExpressionTreeIter *iter,
+          GSList                *ret)
+{
+	if (instruction_is_plus (iter))
+	{
+		ret = find_add (iter->children[0], ret);
+		ret = find_add (iter->children[1], ret);
+	}
+	else
+	{
+		ret = g_slist_prepend (ret, iter);
+	}
+
+	return ret;
+}
+
+static void
+find_add_minone (CpgExpressionTreeIter  *iter,
+                 GSList                **added,
+                 GSList                **minone)
+{
+	if (instruction_is_plus (iter))
+	{
+		find_add_minone (iter->children[0], added, minone);
+		find_add_minone (iter->children[1], added, minone);
+
+		return;
+	}
+	else if (instruction_is_multiply (iter))
+	{
+		gdouble num;
+
+		if (instruction_is_number (iter->children[0], &num) &&
+		    cmp_double (num, -1))
+		{
+			*minone = g_slist_prepend (*minone, iter->children[1]);
+			return;
+		}
+		else if (instruction_is_number (iter->children[1], &num) &&
+		         cmp_double (num, -1))
+		{
+			*minone = g_slist_prepend (*minone, iter->children[0]);
+			return;
+		}
+	}
+
+	*added = g_slist_prepend (*added, iter);
+}
+
+static CpgExpressionTreeIter *
+simplify_plus_minone (CpgExpressionTreeIter *iter)
+{
+	GSList *added = NULL;
+	GSList *minone = NULL;
+	GSList *i1;
+	CpgExpressionTreeIter *ret = iter;
+	gboolean didit = FALSE;
+
+	find_add_minone (iter, &added, &minone);
+
+	if (minone && added)
+	{
+		for (i1 = minone; i1; i1 = g_slist_next (i1))
+		{
+			GSList *i2 = added;
+			CpgExpressionTreeIter *m = i1->data;
+
+			m = cpg_expression_tree_iter_canonicalize (m);
+
+			while (i2)
+			{
+				if (!i2->data || !cpg_expression_tree_iter_equal (m, i2->data))
+				{
+					i2 = g_slist_next (i2);
+					continue;
+				}
+
+				replace_iter (m->parent,
+				              iter_new (cpg_instruction_number_new_from_string ("0")));
+
+				replace_iter (i2->data,
+				              iter_new (cpg_instruction_number_new_from_string ("0")));
+
+				cpg_expression_tree_iter_free (m->parent);
+				cpg_expression_tree_iter_free (i2->data);
+
+				i2->data = NULL;
+				didit = TRUE;
+				break;
+			}
+		}
+	}
+
+	g_slist_free (minone);
+	g_slist_free (added);
+
+	if (didit)
+	{
+		ret = iter_simplify (ret, TRUE);
 	}
 
 	return ret;
@@ -1972,6 +2198,8 @@ simplify_preadd (CpgExpressionTreeIter *iter)
 	CpgExpressionTreeIter *ret;
 	CpgExpressionTreeIter *left;
 	CpgExpressionTreeIter *right;
+	gdouble rnum = 0;
+	gdouble lnum = 0;
 
 	ret = simplify_function (iter);
 
@@ -1980,8 +2208,8 @@ simplify_preadd (CpgExpressionTreeIter *iter)
 		return ret;
 	}
 
-	left = find_preadd (iter->children[0]);
-	right = find_preadd (iter->children[1]);
+	left = find_preadd (iter->children[0], &lnum);
+	right = find_preadd (iter->children[1], &rnum);
 
 	if (left && right)
 	{
@@ -2007,6 +2235,32 @@ simplify_preadd (CpgExpressionTreeIter *iter)
 
 		replace_iter (left->parent, brother);
 		cpg_expression_tree_iter_free (left->parent);
+
+		return ret;
+	}
+	else
+	{
+		gboolean l0 = left && cmp_double (lnum, 0);
+		gboolean r0 = right && cmp_double (rnum, 0);
+
+		if (l0 || r0)
+		{
+			CpgExpressionTreeIter *item;
+			CpgExpressionTreeIter *brother;
+
+			item = l0 ? left : right;
+			brother = iter_brother (item);
+
+			if (item->parent == iter)
+			{
+				ret = brother;
+			}
+
+			replace_iter (item->parent, brother);
+			cpg_expression_tree_iter_free (item->parent);
+
+			return ret;
+		}
 	}
 
 	// See if the left part and the right part are equal
@@ -2035,6 +2289,10 @@ simplify_preadd (CpgExpressionTreeIter *iter)
 		replace_iter (ret, nt);
 		cpg_expression_tree_iter_free (ret);
 		ret = nt;
+	}
+	else if (!instruction_is_plus (iter->parent))
+	{
+		ret = simplify_plus_minone (iter);
 	}
 
 	return ret;
@@ -2152,12 +2410,44 @@ simplify_multiply_powers (CpgExpressionTreeIter *iter)
 
 	if (didit)
 	{
-		// Recurse
-		iter = cpg_expression_tree_iter_simplify (iter);
+		cpg_expression_tree_iter_canonicalize (iter);
+		iter = iter_simplify (iter, TRUE);
 	}
 
 	g_slist_free (ret);
 	return iter;
+}
+
+static CpgExpressionTreeIter *
+find_multiply (CpgExpressionTreeIter *iter,
+               CpgExpressionTreeIter *cmp)
+{
+	if (instruction_is_multiply (iter))
+	{
+		CpgExpressionTreeIter *ret;
+
+		ret = find_multiply (iter->children[0], cmp);
+
+		if (!ret)
+		{
+			ret = find_multiply (iter->children[1], cmp);
+		}
+
+		return ret;
+	}
+	else if (instruction_is_power (iter))
+	{
+		if (cpg_expression_tree_iter_equal (iter->children[0], cmp))
+		{
+			return iter;
+		}
+	}
+	else if (cpg_expression_tree_iter_equal (iter, cmp))
+	{
+		return iter;
+	}
+
+	return NULL;
 }
 
 static CpgExpressionTreeIter *
@@ -2168,6 +2458,8 @@ simplify_predivide (CpgExpressionTreeIter *iter)
 	gboolean isnum1;
 	gboolean isnum2;
 	CpgExpressionTreeIter *ret;
+	CpgExpressionTreeIter *first;
+	CpgExpressionTreeIter *second;
 
 	ret = simplify_function (iter);
 
@@ -2176,27 +2468,168 @@ simplify_predivide (CpgExpressionTreeIter *iter)
 		return ret;
 	}
 
-	isnum1 = instruction_is_number (iter->children[0], &num1);
-	isnum2 = instruction_is_number (iter->children[1], &num2);
+	first = iter->children[0];
+	second = iter->children[1];
+
+	isnum1 = instruction_is_number (first, &num1);
+	isnum2 = instruction_is_number (second, &num2);
+
+	// Note, ret == iter at this point
 
 	if (isnum1 && cmp_double (num1, 0))
 	{
 		// Division of 0 by something is 0
-		ret = iter->children[0];
+		ret = first;
 		replace_iter (iter, ret);
 		cpg_expression_tree_iter_free (iter);
 	}
 	else if (isnum2 && cmp_double (num2, 1))
 	{
 		// Division of something by 1 is something
-		ret = iter->children[0];
+		ret = first;
 		replace_iter (iter, ret);
 		cpg_expression_tree_iter_free (iter);
 	}
-	else if (cpg_expression_tree_iter_equal (iter->children[0], iter->children[1]))
+	else
 	{
-		// Replace by '1'
+		// Try to find if the divisor can be found in a tree of + and *
+		GSList *added;
+		GSList *item;
+		GSList *preterms = NULL;
+		GSList *aitem;
+
+		// Find all the toplevel + terms
+		added = find_add (first, NULL);
+
+		// We can predivide if in all these terms, the multiplication
+		// tree contains our divisor term
+		for (aitem = added; aitem; aitem = g_slist_next (aitem))
+		{
+			CpgExpressionTreeIter *mult;
+
+			mult = find_multiply (aitem->data, second);
+
+			if (!mult)
+			{
+				g_slist_free (preterms);
+				preterms = NULL;
+				break;
+			}
+
+			preterms = g_slist_prepend (preterms, mult);
+		}
+
+		// Eliminate terms
+		item = preterms;
+		aitem = added;
+
+		while (item)
+		{
+			CpgExpressionTreeIter *multi = aitem->data;
+			CpgExpressionTreeIter *term = item->data;
+			gboolean iswhole = (multi == term);
+
+			if (instruction_is_power (term))
+			{
+				// Handle this
+				CpgExpressionTreeIter *it;
+
+				it = iter_new_sized (cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_PLUS,
+				                                                   "+",
+				                                                   2),
+				                     2);
+
+				it->children[0] = term->children[1];
+				it->children[0]->parent = it;
+
+				it->children[1] = iter_new (cpg_instruction_number_new_from_string ("-1"));
+				it->children[1]->parent = it;
+
+				it = iter_simplify (it, FALSE);
+
+				term->children[1] = it;
+				it->parent = term->children[1];
+
+				term = iter_simplify (term, FALSE);
+			}
+			else if (iswhole)
+			{
+				// Replace the whole term with 1
+				first = iter_new (cpg_instruction_number_new_from_string ("1"));
+
+				replace_iter (term, first);
+				cpg_expression_tree_iter_free (term);
+			}
+			else
+			{
+				// Eliminate the term
+				CpgExpressionTreeIter *brother;
+
+				brother = iter_brother (term);
+				replace_iter_into (brother, brother->parent);
+			}
+
+			item = g_slist_next (item);
+			aitem = g_slist_next (aitem);
+		}
+
+		if (preterms)
+		{
+			// Now replace the term
+			ret = first;
+
+			replace_iter (iter, ret);
+			cpg_expression_tree_iter_free (iter);
+		}
+
+		g_slist_free (added);
+		g_slist_free (preterms);
+	}
+
+	return ret;
+}
+
+static CpgExpressionTreeIter *
+simplify_power (CpgExpressionTreeIter *iter)
+{
+	gdouble num1;
+	gdouble num2;
+	gboolean isnum1;
+	gboolean isnum2;
+	CpgExpressionTreeIter *ret;
+	CpgExpressionTreeIter *first;
+	CpgExpressionTreeIter *second;
+
+	ret = simplify_function (iter);
+
+	if (ret != iter)
+	{
+		return ret;
+	}
+
+	first = iter->children[0];
+	second = iter->children[1];
+
+	isnum1 = instruction_is_number (first, &num1);
+	isnum2 = instruction_is_number (second, &num2);
+
+	if (isnum1 && cmp_double (num1, 0))
+	{
+		ret = iter_new (cpg_instruction_number_new_from_string ("0"));
+
+		replace_iter (iter, ret);
+		cpg_expression_tree_iter_free (iter);
+	}
+	else if (isnum2 && cmp_double (num2, 0))
+	{
 		ret = iter_new (cpg_instruction_number_new_from_string ("1"));
+
+		replace_iter (iter, ret);
+		cpg_expression_tree_iter_free (iter);
+	}
+	else if (isnum2 && cmp_double (num2, 1))
+	{
+		ret = iter->children[0];
 
 		replace_iter (iter, ret);
 		cpg_expression_tree_iter_free (iter);
@@ -2242,6 +2675,10 @@ iter_simplify (CpgExpressionTreeIter *iter,
 	{
 		iter = simplify_predivide (iter);
 	}
+	else if (instruction_is_power (iter))
+	{
+		iter = simplify_power (iter);
+	}
 	else if (CPG_IS_INSTRUCTION_FUNCTION (iter->instruction))
 	{
 		iter = simplify_function (iter);
@@ -2253,7 +2690,20 @@ iter_simplify (CpgExpressionTreeIter *iter,
 CpgExpressionTreeIter *
 cpg_expression_tree_iter_simplify (CpgExpressionTreeIter *iter)
 {
-	return iter_simplify (iter, TRUE);
+	iter = cpg_expression_tree_iter_canonicalize (iter);
+
+	cpg_debug_message (DEBUG_SIMPLIFY,
+	                   "Simplifying: {%s}",
+	                   cpg_expression_tree_iter_to_string_dbg (iter));
+
+	iter = iter_simplify (iter, TRUE);
+	invalidate_cache_down (iter);
+
+	cpg_debug_message (DEBUG_SIMPLIFY,
+	                   "Simplified:  {%s}",
+	                   cpg_expression_tree_iter_to_string_dbg (iter));
+
+	return iter;
 }
 
 gboolean
@@ -2301,7 +2751,7 @@ find_properties (CpgExpressionTreeIter *iter,
 
 		instr = CPG_INSTRUCTION_PROPERTY (iter->instruction);
 
-		if (cpg_instruction_property_get_property (instr) == prop)
+		if (!prop || cpg_instruction_property_get_property (instr) == prop)
 		{
 			ret = g_slist_prepend (ret, iter);
 		}
@@ -2339,7 +2789,7 @@ make_coefficient (CpgExpressionTreeIter  *root,
 		parent->children[!idx] = NULL;
 		brother->parent = NULL;
 
-		copy_iter_into (brother, parent);
+		replace_iter_into (brother, parent);
 	}
 
 	return root;
@@ -2384,7 +2834,7 @@ sum_terms (GSList *terms,
 			continue;
 		}
 
-		if (item->next)
+		if (item->next && (item->next != ignore || item->next->next))
 		{
 			CpgExpressionTreeIter *np;
 
@@ -2424,10 +2874,6 @@ solve_coefficient (CpgExpressionTreeIter  *root,
 
 	while (parent)
 	{
-		cpg_debug_message (DEBUG_LINSOLVE,
-		                   "Solving coefficient for: %s",
-		                   cpg_expression_tree_iter_to_string (parent));
-
 		if (instruction_is_plus (parent))
 		{
 			gboolean first = !terms;
@@ -2454,10 +2900,6 @@ solve_coefficient (CpgExpressionTreeIter  *root,
 					parent->children[i] = NULL;
 				}
 			}
-
-			cpg_debug_message (DEBUG_LINSOLVE,
-			                   "Added linear terms, new parent: %s",
-			                   cpg_expression_tree_iter_to_string (parent->parent));
 
 			tmp = parent;
 			parent = parent->parent;
@@ -2555,7 +2997,6 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 {
 	GSList *props;
 	GSList *item;
-	CpgExpressionTreeIter *ret;
 	CpgExpressionTreeIter *inv;
 	GError *err = NULL;
 	gboolean retval = TRUE;
@@ -2565,23 +3006,29 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 
 	g_return_val_if_fail (CPG_IS_PROPERTY (prop), NULL);
 
-	ret = cpg_expression_tree_iter_copy (iter);
-
 	// We are going to do a solve iter for prop assuming F(iter) = 0
-	props = find_properties (ret, prop, NULL);
+	props = find_properties (iter, prop, NULL);
+
+	cpg_debug_message (DEBUG_LINSOLVE, "Solving for {%s}: {%s}",
+	                   cpg_property_get_name (prop),
+	                   cpg_expression_tree_iter_to_string (iter));
 
 	if (!props)
 	{
 		g_set_error (error,
 		             CPG_SYMBOLIC_ERROR,
 		             CPG_SYMBOLIC_ERROR_INVALID,
-		             "Expression `%s' cannot be solved towards `%s'",
+		             "Expression {%s} cannot be solved towards {%s}",
 		             cpg_expression_tree_iter_to_string (iter),
 		             cpg_property_get_name (prop));
 
-		cpg_expression_tree_iter_free (ret);
+		cpg_expression_tree_iter_free (iter);
 		return NULL;
 	}
+
+	cpg_debug_message (DEBUG_LINSOLVE,
+	                   "Found: %d properties",
+	                   g_slist_length (props));
 
 	// Now factor out for each of the instances of prop
 	for (item = props; item; item = g_slist_next (item))
@@ -2591,7 +3038,7 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 
 		// Separate child (prop) from the expression, the result is
 		// a new expression without the coefficient on prop
-		ret = solve_coefficient (ret, child, &coef, &err);
+		iter = solve_coefficient (iter, child, &coef, &err);
 
 		if (err)
 		{
@@ -2600,11 +3047,9 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 			break;
 		}
 
-		//g_message ("%s", cpg_expression_tree_iter_to_string (ret));
-
-		cpg_debug_message (DEBUG_LINSOLVE, "Coefficient: `%s' (rest: `%s')",
+		cpg_debug_message (DEBUG_LINSOLVE, "Coefficient: {%s} (rest: {%s})",
 		                   cpg_expression_tree_iter_to_string (coef),
-		                   cpg_expression_tree_iter_to_string (ret));
+		                   cpg_expression_tree_iter_to_string (iter));
 
 		coefs = g_slist_prepend (coefs, coef);
 	}
@@ -2615,12 +3060,12 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 	{
 		g_slist_foreach (coefs, (GFunc)cpg_expression_tree_iter_free, NULL);
 		g_slist_free (coefs);
-		cpg_expression_tree_iter_free (ret);
+		cpg_expression_tree_iter_free (iter);
 
 		return NULL;
 	}
 
-	if (!ret)
+	if (!iter)
 	{
 		// This means that there were only coefficients, and that means
 		// no RHS, so return just 0
@@ -2630,19 +3075,11 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 		return iter_new (cpg_instruction_number_new_from_string ("0"));
 	}
 
-	// Now we have the expression 'ret' and a set of coefficients 'coefs'
-	// We need to add the coefs together, negate it and divide the 'ret'
+	// Now we have the expression 'iter' and a set of coefficients 'coefs'
+	// We need to add the coefs together, negate it and divide the 'iter'
 	// expression with it
 	summed = cpg_expression_tree_iter_simplify (sum_terms (coefs, NULL));
-	ret = cpg_expression_tree_iter_simplify (ret);
-
-	inv = iter_new_sized (cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_UNARY_MINUS,
-	                                                    "-",
-	                                                    1),
-	                      1);
-
-	inv->children[0] = ret;
-	inv->children[0]->parent = inv;
+	iter = cpg_expression_tree_iter_simplify (iter);
 
 	// Now divide inv by summed
 	div = iter_new_sized (cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_DIVIDE,
@@ -2650,11 +3087,96 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 	                                                    2),
 	                      2);
 
-	div->children[0] = inv;
+	div->children[0] = iter;
 	div->children[0]->parent = div;
 
 	div->children[1] = summed;
 	div->children[1]->parent = div;
 
-	return cpg_expression_tree_iter_simplify (div);
+	inv = iter_new_sized (cpg_instruction_operator_new (CPG_MATH_OPERATOR_TYPE_MULTIPLY,
+	                                                    "*",
+	                                                    2),
+	                      2);
+
+	inv->children[0] = iter_new (cpg_instruction_number_new_from_string ("-1"));
+	inv->children[0]->parent = inv;
+
+	inv->children[1] = div;
+	inv->children[1]->parent = inv;
+
+	inv = cpg_expression_tree_iter_simplify (inv);
+
+	cpg_debug_message (DEBUG_LINSOLVE, "Solved for {%s}: {%s}\n",
+	                   cpg_property_get_name (prop),
+	                   cpg_expression_tree_iter_to_string (inv));
+
+	invalidate_cache_down (inv);
+
+	return inv;
+}
+
+CpgExpressionTreeIter *
+cpg_expression_tree_iter_substitute (CpgExpressionTreeIter *iter,
+                                     CpgProperty           *property,
+                                     CpgExpressionTreeIter *subst)
+{
+	GSList *props;
+
+	cpg_debug_message (DEBUG_LINSOLVE, "Substitute {%s} in {%s} with {%s}",
+	                   cpg_property_get_name (property),
+	                   cpg_expression_tree_iter_to_string (iter),
+	                   cpg_expression_tree_iter_to_string (subst));
+
+	props = find_properties (iter, property, NULL);
+
+	while (props)
+	{
+		CpgExpressionTreeIter *it = props->data;
+
+		copy_iter_into (subst, it);
+		props = g_slist_delete_link (props, props);
+	}
+
+	invalidate_cache_down (iter);
+
+	return iter;
+}
+
+CpgExpressionTreeIter *
+cpg_expression_tree_iter_substitute_hash (CpgExpressionTreeIter *iter,
+                                          GHashTable            *table)
+{
+	GSList *props;
+
+	props = find_properties (iter, NULL, NULL);
+
+	while (props)
+	{
+		CpgExpressionTreeIter *it = props->data;
+		CpgProperty *p;
+		CpgExpressionTreeIter *sub;
+
+		p = cpg_instruction_property_get_property (CPG_INSTRUCTION_PROPERTY (it->instruction));
+
+		sub = g_hash_table_lookup (table, p);
+
+		if (sub)
+		{
+			copy_iter_into (sub, it);
+		}
+
+		props = g_slist_delete_link (props, props);
+	}
+
+	invalidate_cache_down (iter);
+
+	return iter;
+}
+
+CpgExpressionTreeIter *
+cpg_expression_tree_iter_new_from_instruction (CpgInstruction *instruction)
+{
+	g_return_val_if_fail (CPG_IS_INSTRUCTION (instruction), NULL);
+
+	return iter_new (instruction);
 }

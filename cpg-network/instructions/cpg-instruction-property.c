@@ -52,12 +52,16 @@ static gchar *
 cpg_instruction_property_to_string (CpgInstruction *instruction)
 {
 	CpgInstructionProperty *self;
+	gchar *s;
+	gchar *ret;
 
 	self = CPG_INSTRUCTION_PROPERTY (instruction);
+	s = cpg_property_get_full_name_for_display (self->priv->property);
 
-	return g_strdup_printf ("PRP (%s.%s)",
-	                        cpg_object_get_id (cpg_property_get_object (self->priv->property)),
-	                        cpg_property_get_name (self->priv->property));
+	ret = g_strdup_printf ("PRP (%s)", s);
+	g_free (s);
+
+	return ret;
 }
 
 static void
@@ -187,7 +191,7 @@ cpg_instruction_property_set_property (CpgInstructionProperty *instruction,
 
 	if (property)
 	{
-		instruction->priv->property = g_object_ref (property);
+		instruction->priv->property = g_object_ref_sink (property);
 		cpg_usable_use (CPG_USABLE (instruction->priv->property));
 	}
 }

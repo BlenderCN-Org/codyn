@@ -6,6 +6,7 @@
 #include "cpg-integrator.h"
 #include "cpg-operators.h"
 #include "cpg-link-action.h"
+#include "cpg-debug.h"
 
 #include <math.h>
 #include <glib/gprintf.h>
@@ -1663,12 +1664,6 @@ derive_custom_function_real (CpgExpressionTreeIter *iter,
 
 			prop = _cpg_function_argument_get_property (arg);
 
-			// Ignore implicit args
-			if (!cpg_function_argument_get_explicit (arg))
-			{
-				continue;
-			}
-
 			cp = cpg_expression_tree_iter_copy (cpg_expression_tree_iter_get_child (iter, i));
 
 			mapped = g_slist_prepend (mapped, prop);
@@ -1714,11 +1709,8 @@ derive_custom_function_real (CpgExpressionTreeIter *iter,
 		{
 			CpgFunctionArgument *arg = args->data;
 
-			if (cpg_function_argument_get_explicit (arg))
-			{
-				g_hash_table_remove (ctx->property_map,
-				                     _cpg_function_argument_get_property (arg));
-			}
+			g_hash_table_remove (ctx->property_map,
+			                     _cpg_function_argument_get_property (arg));
 
 			args = g_list_next (args);
 		}
@@ -1880,7 +1872,7 @@ cpg_symbolic_derive (CpgExpression          *expression,
 {
 	CpgExpressionTreeIter *iter;
 	GSList *instructions = NULL;
-	gchar *es;
+	gchar const *es;
 	CpgExpression *ret;
 	DeriveContext ctx;
 	CpgExpressionTreeIter *mapped;
@@ -1893,6 +1885,10 @@ cpg_symbolic_derive (CpgExpression          *expression,
 	}
 
 	iter = cpg_expression_tree_iter_new (expression);
+
+	cpg_debug_message (DEBUG_DIFF,
+	                   "Deriving: {%s}",
+	                   cpg_expression_tree_iter_to_string (iter));
 
 	ctx.flags = flags;
 	ctx.error = error;
@@ -1966,9 +1962,19 @@ cpg_symbolic_derive (CpgExpression          *expression,
 		return NULL;
 	}
 
+	if (flags & CPG_SYMBOLIC_DERIVE_SIMPLIFY)
+	{
+		cpg_expression_tree_iter_canonicalize (iter);
+		iter = cpg_expression_tree_iter_simplify (iter);
+	}
+
+	cpg_debug_message (DEBUG_DIFF,
+	                   "Derived: {%s}",
+	                   cpg_expression_tree_iter_to_string_dbg (iter));
+
 	es = cpg_expression_tree_iter_to_string (iter);
+
 	ret = cpg_expression_new (es);
-	g_free (es);
 
 	_cpg_expression_set_instructions_take (ret, instructions);
 
@@ -1984,7 +1990,7 @@ CpgExpression *
 cpg_symbolic_simplify (CpgExpression *expression)
 {
 	CpgExpressionTreeIter *iter;
-	gchar *es;
+	gchar const *es;
 	GSList *instructions;
 	CpgExpression *ret;
 
@@ -1992,16 +1998,12 @@ cpg_symbolic_simplify (CpgExpression *expression)
 
 	iter = cpg_expression_tree_iter_new (expression);
 
-	// Canonicalize
-	cpg_expression_tree_iter_canonicalize (iter);
-
 	// Simplify
 	iter = cpg_expression_tree_iter_simplify (iter);
 	instructions = cpg_expression_tree_iter_to_instructions (iter);
 
 	es = cpg_expression_tree_iter_to_string (iter);
 	ret = cpg_expression_new (es);
-	g_free (es);
 
 	cpg_expression_tree_iter_free (iter);
 

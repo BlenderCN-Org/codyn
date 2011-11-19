@@ -66,7 +66,29 @@ static void
 cpg_operator_execute_default (CpgOperator     *op,
                               CpgStack        *stack)
 {
-	cpg_stack_push (stack, 0);
+	CpgFunction *f;
+
+	f = cpg_operator_get_primary_function (op);
+
+	if (!f)
+	{
+		gint i;
+
+		g_warning ("Operator `%s' cannot be properly executed",
+		           cpg_operator_get_name (op));
+
+		// That's not good, but make sure the stack is ok
+		for (i = 0; i < op->priv->num_arguments; ++i)
+		{
+			cpg_stack_pop (stack);
+		}
+
+		cpg_stack_push (stack, 0);
+	}
+	else
+	{
+		cpg_function_execute (f, op->priv->num_arguments, stack);
+	}
 }
 
 static void
@@ -227,6 +249,12 @@ free_2dim_slist (GSList **lst,
 	g_free (lst);
 }
 
+static void
+disable_cache (CpgExpression *expr)
+{
+	cpg_expression_set_has_cache (expr, FALSE);
+}
+
 static gboolean
 cpg_operator_initialize_default (CpgOperator   *op,
                                  GSList const **expressions,
@@ -246,6 +274,12 @@ cpg_operator_initialize_default (CpgOperator   *op,
 	                                     num_indices);
 	op->priv->num_indices = num_indices;
 
+	// Set no-cache on indices
+	foreach_expression_impl (op->priv->indices,
+	                         op->priv->num_indices,
+	                         (GFunc)disable_cache,
+	                         NULL);
+
 	return TRUE;
 }
 
@@ -262,14 +296,73 @@ cpg_operator_finalize (GObject *object)
 	free_2dim_slist (operator->priv->indices,
 	                 operator->priv->num_indices);
 
+	cpg_operator_foreach_function (operator, (CpgForeachFunctionFunc)g_object_unref, NULL);
+
 	G_OBJECT_CLASS (cpg_operator_parent_class)->finalize (object);
+}
+
+static gboolean
+compare_expressions (GSList **e1,
+                     GSList **e2,
+                     gint     num)
+{
+	gint i;
+
+	for (i = 0; i < num; ++i)
+	{
+		GSList *ee1 = e1[i];
+		GSList *ee2 = e2[i];
+
+		while (ee1 && ee2)
+		{
+			if (!cpg_expression_equal (ee1->data, ee2->data))
+			{
+				return FALSE;
+			}
+
+			ee1 = g_slist_next (ee1);
+			ee2 = g_slist_next (ee2);
+		}
+
+		if (ee1 || ee2)
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 static gboolean
 cpg_operator_equal_default (CpgOperator *op,
                             CpgOperator *other)
 {
-	return FALSE;
+	if (G_OBJECT_TYPE (op) != G_OBJECT_TYPE (other))
+	{
+		return FALSE;
+	}
+
+	if (op->priv->num_arguments != other->priv->num_arguments)
+	{
+		return FALSE;
+	}
+
+	if (op->priv->num_expressions != other->priv->num_expressions)
+	{
+		return FALSE;
+	}
+
+	if (op->priv->num_indices != other->priv->num_indices)
+	{
+		return FALSE;
+	}
+
+	return compare_expressions (op->priv->expressions,
+	                            other->priv->expressions,
+	                            op->priv->num_expressions) &&
+	       compare_expressions (op->priv->indices,
+	                            other->priv->indices,
+	                            op->priv->num_indices);
 }
 
 static CpgFunction *

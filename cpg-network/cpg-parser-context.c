@@ -1643,8 +1643,8 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		CpgPropertyInterface *iface;
 		CpgGroup *parent;
 		gboolean ret = TRUE;
-		GSList *children;
-		GSList *child;
+		GSList *properties;
+		GSList *prop;
 
 		parent = CPG_GROUP (cpg_selection_get_object (item->data));
 
@@ -1655,9 +1655,9 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 		cpg_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		embedded_string_expand_multiple (children, child_name, context);
+		embedded_string_expand_multiple (properties, property_name, context);
 
-		for (child = children; child; child = g_slist_next (child))
+		for (prop = properties; prop; prop = g_slist_next (prop))
 		{
 			GSList *exps;
 			GSList *exp;
@@ -1665,38 +1665,38 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 			cpg_embedded_context_save (context->priv->embedded);
 
 			cpg_embedded_context_add_expansion (context->priv->embedded,
-			                                    child->data);
+			                                    prop->data);
 
 			embedded_string_expand_multiple (exps, name, context);
 
 			for (exp = exps; exp; exp = g_slist_next (exp))
 			{
-				GSList *properties;
-				GSList *prop;
+				GSList *children;
+				GSList *child;
 
 				cpg_embedded_context_save (context->priv->embedded);
 
 				cpg_embedded_context_add_expansion (context->priv->embedded,
 				                                    exp->data);
 
-				embedded_string_expand_multiple (properties, property_name, context);
+				embedded_string_expand_multiple (children, child_name, context);
 
-				for (prop = properties; prop; prop = g_slist_next (prop))
+				for (child = children; child; child = g_slist_next (child))
 				{
 					GError *error = NULL;
-					gchar const *name;
+					gchar const *nm;
 
-					name = cpg_expansion_get (exp->data, 0);
+					nm = cpg_expansion_get (exp->data, 0);
 
 					if (is_optional &&
 					    cpg_property_interface_implements (iface,
-					                                       name))
+					                                       nm))
 					{
 						continue;
 					}
 
 					if (!cpg_property_interface_add (iface,
-					                                 name,
+					                                 nm,
 					                                 cpg_expansion_get (child->data, 0),
 					                                 cpg_expansion_get (prop->data, 0),
 					                                 &error))
@@ -1708,12 +1708,13 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 						ret = FALSE;
 						break;
 					}
+
 				}
 
-				g_slist_foreach (properties, (GFunc)g_object_unref, NULL);
-				g_slist_free (properties);
-
 				cpg_embedded_context_restore (context->priv->embedded);
+
+				g_slist_foreach (children, (GFunc)g_object_unref, NULL);
+				g_slist_free (children);
 
 				if (!ret)
 				{
@@ -1734,8 +1735,8 @@ cpg_parser_context_add_interface (CpgParserContext  *context,
 
 		cpg_embedded_context_restore (context->priv->embedded);
 
-		g_slist_foreach (children, (GFunc)g_object_unref, NULL);
-		g_slist_free (children);
+		g_slist_foreach (properties, (GFunc)g_object_unref, NULL);
+		g_slist_free (properties);
 
 		if (!ret)
 		{

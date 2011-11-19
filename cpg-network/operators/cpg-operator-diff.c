@@ -48,8 +48,6 @@
 
 struct _CpgOperatorDiffPrivate
 {
-	CpgExpression *expression;
-	CpgExpression *derived;
 	CpgFunction *function;
 
 	gint order;
@@ -62,8 +60,6 @@ G_DEFINE_TYPE (CpgOperatorDiff,
 enum
 {
 	PROP_0,
-	PROP_EXPRESSION,
-	PROP_DERIVED,
 	PROP_ORDER
 };
 
@@ -119,7 +115,7 @@ get_property_map (GList const *args,
 	{
 		CpgFunctionArgument *arg;
 		CpgFunctionArgument *argnf;
-		GSList *instr;
+		CpgInstruction *instr;
 
 		CpgProperty *p;
 		CpgProperty *pnf;
@@ -133,15 +129,13 @@ get_property_map (GList const *args,
 		p = _cpg_function_argument_get_property (arg);
 		pnf = _cpg_function_argument_get_property (argnf);
 
-		instr = g_slist_prepend (NULL,
-		                         cpg_instruction_property_new (pnf));
+		instr = cpg_instruction_property_new (pnf);
 
 		g_hash_table_insert (ret,
 		                     p,
-		                     cpg_expression_tree_iter_new_from_instructions (instr));
+		                     cpg_expression_tree_iter_new_from_instruction (instr));
 
-		g_slist_foreach (instr, (GFunc)cpg_mini_object_free, NULL);
-		g_slist_free (instr);
+		cpg_mini_object_free (CPG_MINI_OBJECT (instr));
 
 		--num;
 	}
@@ -286,6 +280,7 @@ cpg_operator_diff_initialize (CpgOperator   *op,
 	GList *item;
 	gint i;
 	GList *newsymargs;
+	CpgExpression *derived = NULL;
 
 	if (!CPG_OPERATOR_CLASS (cpg_operator_diff_parent_class)->initialize (op,
 	                                                                      expressions,
@@ -311,8 +306,6 @@ cpg_operator_diff_initialize (CpgOperator   *op,
 	}
 
 	diff = CPG_OPERATOR_DIFF (op);
-	diff->priv->expression = g_object_ref_sink (expressions[0]->data);
-
 	diff->priv->order = 1;
 
 	if (!validate_arguments (expressions[0],
@@ -417,17 +410,16 @@ cpg_operator_diff_initialize (CpgOperator   *op,
 
 	g_list_free (newsymargs);
 
-	diff->priv->derived = cpg_symbolic_derive (diff->priv->expression,
-	                                           NULL,
-	                                           property_map,
-	                                           NULL,
-	                                           diff->priv->order,
-	                                           CPG_SYMBOLIC_DERIVE_NONE,
-	                                           error);
+	derived = cpg_symbolic_derive (expressions[0]->data,
+	                               NULL,
+	                               property_map,
+	                               NULL,
+	                               diff->priv->order,
+	                               CPG_SYMBOLIC_DERIVE_NONE |
+	                               CPG_SYMBOLIC_DERIVE_SIMPLIFY,
+	                               error);
 
-	g_object_ref_sink (diff->priv->derived);
-
-	cpg_function_set_expression (nf, diff->priv->derived);
+	cpg_function_set_expression (nf, derived);
 
 cleanup:
 	diff->priv->function = nf;
@@ -437,156 +429,13 @@ cleanup:
 		g_hash_table_destroy (property_map);
 	}
 
-	return diff->priv->derived != NULL;
-}
-
-static void
-cpg_operator_diff_execute (CpgOperator *op,
-                           CpgStack    *stack)
-{
-	CpgOperatorDiff *d;
-
-	d = (CpgOperatorDiff *)op;
-
-	if (d->priv->function)
-	{
-		cpg_function_execute (d->priv->function,
-		                      cpg_operator_get_num_arguments (op),
-		                      stack);
-	}
-	else if (d->priv->derived)
-	{
-		cpg_stack_push (stack,
-		                cpg_expression_evaluate (d->priv->derived));
-	}
-	else
-	{
-		cpg_stack_push (stack, 0);
-	}
+	return derived != NULL;
 }
 
 static void
 cpg_operator_diff_finalize (GObject *object)
 {
-	CpgOperatorDiff *diff;
-
-	diff = CPG_OPERATOR_DIFF (object);
-
-	if (diff->priv->expression)
-	{
-		g_object_unref (diff->priv->expression);
-	}
-
-	if (diff->priv->derived)
-	{
-		g_object_unref (diff->priv->derived);
-	}
-
-	if (diff->priv->function)
-	{
-		g_object_unref (diff->priv->function);
-	}
-
 	G_OBJECT_CLASS (cpg_operator_diff_parent_class)->finalize (object);
-}
-
-static void
-cpg_operator_diff_set_property (GObject      *object,
-                                   guint         prop_id,
-                                   const GValue *value,
-                                   GParamSpec   *pspec)
-{
-	switch (prop_id)
-	{
-		default:
-			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
-}
-
-static void
-cpg_operator_diff_get_property (GObject    *object,
-                                   guint       prop_id,
-                                   GValue     *value,
-                                   GParamSpec *pspec)
-{
-	CpgOperatorDiff *self = CPG_OPERATOR_DIFF (object);
-
-	switch (prop_id)
-	{
-		case PROP_EXPRESSION:
-			g_value_set_object (value, self->priv->expression);
-			break;
-		case PROP_DERIVED:
-			g_value_set_object (value, self->priv->derived);
-			break;
-		case PROP_ORDER:
-			g_value_set_int (value, self->priv->order);
-			break;
-		default:
-			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
-		break;
-	}
-}
-
-static gboolean
-cpg_operator_diff_equal (CpgOperator *op,
-                            CpgOperator *other)
-{
-	CpgOperatorDiff *diff;
-	CpgOperatorDiff *odel;
-
-	if (!CPG_IS_OPERATOR_DIFF (other))
-	{
-		return FALSE;
-	}
-
-	diff = CPG_OPERATOR_DIFF (op);
-	odel = CPG_OPERATOR_DIFF (other);
-
-	if (diff->priv->order != odel->priv->order)
-	{
-		return FALSE;
-	}
-
-	if (!cpg_expression_equal (diff->priv->expression,
-	                           odel->priv->expression))
-	{
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
-static void
-cpg_operator_diff_reset_cache (CpgOperator *operator)
-{
-	CpgOperatorDiff *self;
-
-	CPG_OPERATOR_CLASS (cpg_operator_diff_parent_class)->reset_cache (operator);
-
-	/* Omit type check to be faster */
-	self = (CpgOperatorDiff *)operator;
-
-	if (self->priv->derived)
-	{
-		cpg_expression_reset_cache (self->priv->derived);
-	}
-}
-
-static void
-cpg_operator_diff_reset (CpgOperator *operator)
-{
-	CpgOperatorDiff *self;
-
-	CPG_OPERATOR_CLASS (cpg_operator_diff_parent_class)->reset (operator);
-
-	self = CPG_OPERATOR_DIFF (operator);
-
-	if (self->priv->derived)
-	{
-		cpg_expression_reset (self->priv->derived);
-	}
 }
 
 static CpgFunction *
@@ -596,6 +445,15 @@ cpg_operator_diff_get_function (CpgOperator *op,
 {
 	return CPG_OPERATOR_DIFF (op)->priv->function;
 }
+
+static void
+cpg_operator_diff_foreach_function (CpgOperator            *op,
+                                    CpgForeachFunctionFunc  func,
+                                    gpointer                data)
+{
+	func (CPG_OPERATOR_DIFF (op)->priv->function, data);
+}
+
 
 static CpgOperator *
 cpg_operator_diff_copy (CpgOperator *op)
@@ -615,22 +473,10 @@ cpg_operator_diff_copy (CpgOperator *op)
 	                                                                 cpg_operator_get_num_arguments (op),
 	                                                                 NULL);
 
-	if (diff->priv->expression)
-	{
-		ret->priv->expression = g_object_ref_sink (diff->priv->expression);
-	}
-
-	if (diff->priv->derived)
-	{
-		ret->priv->derived = g_object_ref_sink (diff->priv->derived);
-	}
-
 	if (diff->priv->function)
 	{
 		ret->priv->function = g_object_ref (CPG_OBJECT (diff->priv->function));
 	}
-
-	ret->priv->order = diff->priv->order;
 
 	return CPG_OPERATOR (ret);
 }
@@ -643,45 +489,13 @@ cpg_operator_diff_class_init (CpgOperatorDiffClass *klass)
 
 	object_class->finalize = cpg_operator_diff_finalize;
 
-	object_class->get_property = cpg_operator_diff_get_property;
-	object_class->set_property = cpg_operator_diff_set_property;
-
 	op_class->get_name = cpg_operator_diff_get_name;
-	op_class->execute = cpg_operator_diff_execute;
 	op_class->initialize = cpg_operator_diff_initialize;
-	op_class->equal = cpg_operator_diff_equal;
-	op_class->reset_cache = cpg_operator_diff_reset_cache;
-	op_class->reset = cpg_operator_diff_reset;
 	op_class->get_function = cpg_operator_diff_get_function;
+	op_class->foreach_function = cpg_operator_diff_foreach_function;
 	op_class->copy = cpg_operator_diff_copy;
 
 	g_type_class_add_private (object_class, sizeof(CpgOperatorDiffPrivate));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_EXPRESSION,
-	                                 g_param_spec_object ("expression",
-	                                                      "Expression",
-	                                                      "Expression",
-	                                                      CPG_TYPE_EXPRESSION,
-	                                                      G_PARAM_READABLE));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_DERIVED,
-	                                 g_param_spec_object ("derived",
-	                                                      "Derived",
-	                                                      "Derived",
-	                                                      CPG_TYPE_EXPRESSION,
-	                                                      G_PARAM_READABLE));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_ORDER,
-	                                 g_param_spec_int ("order",
-	                                                   "Order",
-	                                                   "Order",
-	                                                    0,
-	                                                    G_MAXINT,
-	                                                    1,
-	                                                    G_PARAM_READABLE));
 }
 
 static void
@@ -694,55 +508,4 @@ CpgOperatorDiff *
 cpg_operator_diff_new ()
 {
 	return g_object_new (CPG_TYPE_OPERATOR_DIFF, NULL);
-}
-
-/**
- * cpg_operator_diff_get_expression:
- * @diff: A #CpgOperatorDiff
- *
- * Get the expression to be diff.
- *
- * Returns: (transfer none): A #CpgExpression
- *
- **/
-CpgExpression *
-cpg_operator_diff_get_expression (CpgOperatorDiff *diff)
-{
-	g_return_val_if_fail (CPG_IS_OPERATOR_DIFF (diff), NULL);
-
-	return diff->priv->expression;
-}
-
-/**
- * cpg_operator_diff_get_derived:
- * @diff: A #CpgOperatorDiff
- *
- * Get the derived expression.
- *
- * Returns: (transfer none): A #CpgExpression
- *
- **/
-CpgExpression *
-cpg_operator_diff_get_derived (CpgOperatorDiff *diff)
-{
-	g_return_val_if_fail (CPG_IS_OPERATOR_DIFF (diff), NULL);
-
-	return diff->priv->derived;
-}
-
-/**
- * cpg_operator_diff_get_order:
- * @diff: A #CpgOperatorDiff
- *
- * Get the order.
- *
- * Returns: The order
- *
- **/
-gint
-cpg_operator_diff_get_order (CpgOperatorDiff *diff)
-{
-	g_return_val_if_fail (CPG_IS_OPERATOR_DIFF (diff), 0.0);
-
-	return diff->priv->order;
 }
