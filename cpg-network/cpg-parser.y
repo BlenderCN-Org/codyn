@@ -3,7 +3,7 @@
 #include "cpg-parser-context.h"
 #include "cpg-parser.h"
 
-static void cpg_parser_error (YYLTYPE *locp, CpgParserContext *context, char *s);
+static void cpg_parser_error (YYLTYPE *locp, CpgParserContext *context, char const *s);
 int cpg_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 #define scanner (cpg_parser_context_get_scanner (context))
@@ -1654,7 +1654,7 @@ delete_context
 %%
 
 static void
-yyerror (YYLTYPE *locp, CpgParserContext *context, char *s)
+yyerror (YYLTYPE *locp, CpgParserContext *context, char const *s)
 {
 	cpg_parser_context_set_error (context, s);
 }
