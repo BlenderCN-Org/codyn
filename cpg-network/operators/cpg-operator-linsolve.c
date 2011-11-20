@@ -420,12 +420,8 @@ generate_functions (CpgOperatorLinsolve *self,
 
 		while (args)
 		{
-			CpgFunctionArgument *oarg;
 			CpgExpressionTreeIter *iter;
 			CpgProperty *pprop;
-
-			oarg = cpg_function_get_argument (functions->data,
-			                                  cpg_function_argument_get_name (args->data));
 
 			// Create property tree for this property
 			pprop = _cpg_function_argument_get_property (args->data);
