@@ -330,15 +330,34 @@ number_to_string (CpgInstructionNumber *inst,
 }
 
 static void
+bin_op_sp (GString             *ret,
+           gchar const * const *children,
+           gchar const         *op,
+           gboolean             sp)
+{
+	g_string_append (ret, children[0]);
+
+	if (sp)
+	{
+		g_string_append_c (ret, ' ');
+	}
+
+	g_string_append (ret, op);
+
+	if (sp)
+	{
+		g_string_append_c (ret, ' ');
+	}
+
+	g_string_append (ret, children[1]);
+}
+
+static void
 bin_op (GString             *ret,
         gchar const * const *children,
         gchar const         *op)
 {
-	g_string_append (ret, children[0]);
-	g_string_append_c (ret, ' ');
-	g_string_append (ret, op);
-	g_string_append_c (ret, ' ');
-	g_string_append (ret, children[1]);
+	return bin_op_sp (ret, children, op, TRUE);
 }
 
 static void
@@ -369,7 +388,7 @@ operator_to_string (CpgInstructionFunction  *inst,
 			bin_op (ret, children, "%");
 		break;
 		case CPG_MATH_OPERATOR_TYPE_POWER:
-			bin_op (ret, children, "**");
+			bin_op_sp (ret, children, "^", FALSE);
 		break;
 		case CPG_MATH_OPERATOR_TYPE_GREATER:
 			bin_op (ret, children, ">");
