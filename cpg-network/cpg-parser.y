@@ -166,6 +166,8 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %type <list> string_list
 %type <list> string_list_rev
 
+%type <object> define_value
+
 %type <list> state
 
 %type <list> link_connect
@@ -375,15 +377,20 @@ integrator
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
+define_value
+	: value_as_string
+	| selector_non_ambiguous
+	;
+
 define_item
-	: multi_assign_identifier '=' value_as_string
+	: multi_assign_identifier '=' define_value
 					{ cpg_parser_context_define (context,
 					                             $1.name,
 					                             $3,
 					                             FALSE,
 					                             $1.count,
 					                             $1.unexpanded); }
-	| multi_assign_identifier '?' '=' value_as_string
+	| multi_assign_identifier '?' '=' define_value
 					{ cpg_parser_context_define (context,
 					                             $1.name,
 					                             $4,
@@ -883,6 +890,8 @@ group_item
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  group_contents
 	  '}'				{ cpg_parser_context_pop (context); }
+	| function_custom
+	| function_polynomial
 	;
 
 group_contents

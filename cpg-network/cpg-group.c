@@ -902,6 +902,20 @@ cpg_group_cpg_compile (CpgObject         *object,
 	GSList *others = NULL;
 	GSList *othersl = NULL;
 
+	if (cpg_object_is_compiled (object))
+	{
+		return TRUE;
+	}
+
+	if (!context)
+	{
+		context = cpg_object_get_compile_context (object);
+	}
+	else
+	{
+		g_object_ref (context);
+	}
+
 	cpg_compile_context_save (context);
 
 	/* Prepend all the defined functions in the instances */
@@ -924,6 +938,8 @@ cpg_group_cpg_compile (CpgObject         *object,
 			cpg_compile_context_restore (context);
 			cpg_compile_context_restore (context);
 
+			g_object_unref (context);
+
 			return FALSE;
 		}
 
@@ -945,6 +961,8 @@ cpg_group_cpg_compile (CpgObject         *object,
 			cpg_compile_context_restore (context);
 			cpg_compile_context_restore (context);
 
+			g_object_unref (context);
+
 			return FALSE;
 		}
 
@@ -962,6 +980,8 @@ cpg_group_cpg_compile (CpgObject         *object,
 			cpg_compile_context_restore (context);
 			cpg_compile_context_restore (context);
 
+			g_object_unref (context);
+
 			return FALSE;
 		}
 
@@ -977,6 +997,7 @@ cpg_group_cpg_compile (CpgObject         *object,
 	                                                          error);
 
 	cpg_compile_context_restore (context);
+	g_object_unref (context);
 
 	return ret;
 }

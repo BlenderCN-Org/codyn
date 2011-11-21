@@ -31,6 +31,7 @@
 #include "cpg-operators.h"
 #include "cpg-property.h"
 #include "cpg-expression-tree-iter.h"
+#include "cpg-group.h"
 
 #include <cpg-network/instructions/cpg-instructions.h>
 
@@ -649,6 +650,48 @@ parse_context_property (CpgExpression *expression,
 	return FALSE;
 }
 
+static CpgFunction *
+parse_context_function (CpgExpression *expression,
+                        gchar const   *id,
+                        gchar const   *propid,
+                        ParserContext *context)
+{
+	GSList const *objs;
+
+	objs = cpg_compile_context_get_objects (context->context);
+
+	while (objs)
+	{
+		CpgObject *o = objs->data;
+		CpgObject *c;
+		CpgObject *f;
+
+		objs = g_slist_next (objs);
+
+		if (!CPG_IS_GROUP (o))
+		{
+			continue;
+		}
+
+		c = cpg_group_get_child (CPG_GROUP (o), id);
+
+		if (!c || !CPG_IS_GROUP (c))
+		{
+			continue;
+		}
+
+
+		f = cpg_group_get_child (CPG_GROUP (c), propid);
+
+		if (f && CPG_IS_FUNCTION (f))
+		{
+			return CPG_FUNCTION (f);
+		}
+	}
+
+	return NULL;
+}
+
 static gboolean
 parse_dot_property (CpgExpression *expression,
                     gchar const   *id,
@@ -787,27 +830,46 @@ parse_function_arguments (CpgExpression *expression,
 static gboolean
 parse_function (CpgExpression *expression,
                 gchar const   *name,
+                gchar const   *cname,
                 ParserContext *context)
 {
 	/* Try custom function first */
-	CpgFunction *function = cpg_compile_context_lookup_function (context->context,
-	                                                             name);
+	CpgFunction *function;
 	guint fid = 0;
 	gint arguments = 0;
 	gint n_optional = 0;
 	gint n_implicit = 0;
 
+	if (!cname)
+	{
+		function = cpg_compile_context_lookup_function (context->context, name);
+	}
+	else
+	{
+		function = parse_context_function (expression, name, cname, context);
+	}
+
 	/* Try builtin function */
 	if (function == NULL)
 	{
-		fid = cpg_math_function_lookup (name, &arguments);
+		if (cname == NULL)
+		{
+			fid = cpg_math_function_lookup (name, &arguments);
 
-		if (!fid)
+			if (!fid)
+			{
+				return parser_failed (context,
+				                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
+				                      "Function %s could not be found",
+				                      name);
+			}
+		}
+		else
 		{
 			return parser_failed (context,
 			                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
-			                      "Function %s could not be found",
-			                      name);
+			                      "Function %s.%s could not be found",
+			                      name, cname);
 		}
 	}
 	else
@@ -1779,6 +1841,49 @@ parse_number (CpgExpression   *expression,
 }
 
 static gboolean
+parse_dot_token (CpgExpression *expression,
+                 gchar const   *id,
+                 ParserContext *context)
+{
+	gboolean ret = TRUE;
+	CpgToken *next = cpg_tokenizer_next (context->buffer);
+	gchar *cname;
+
+	if (!CPG_TOKEN_IS_IDENTIFIER (next))
+	{
+		parser_failed (context,
+		               CPG_COMPILE_ERROR_INVALID_TOKEN,
+		               "Expected identifier for property");
+
+		cpg_token_free (next);
+		return FALSE;
+	}
+
+	cname = g_strdup (CPG_TOKEN_IDENTIFIER (next)->identifier);
+	next = cpg_tokenizer_peek (*(context->buffer));
+
+	if (CPG_TOKEN_IS_OPERATOR (next) &&
+	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_START)
+	{
+		cpg_token_free (cpg_tokenizer_next (context->buffer));
+		ret = parse_function (expression, id, cname, context);
+	}
+	else
+	{
+		// Resolve property
+		ret = parse_dot_property (expression,
+		                          id,
+		                          cname,
+		                          context);
+	}
+
+	cpg_token_free (next);
+	g_free (cname);
+
+	return ret;
+}
+
+static gboolean
 parse_identifier (CpgExpression      *expression,
                   CpgTokenIdentifier *token,
                   ParserContext      *context)
@@ -1796,7 +1901,7 @@ parse_identifier (CpgExpression      *expression,
 	{
 		// consume peeked group start
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
-		ret = parse_function (expression, id, context);
+		ret = parse_function (expression, id, NULL, context);
 	}
 	else if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 		CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START)
@@ -1809,22 +1914,8 @@ parse_identifier (CpgExpression      *expression,
 	{
 		// consume peeked dot
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
-		CpgToken *propname = cpg_tokenizer_next (context->buffer);
 
-		if (CPG_TOKEN_IS_IDENTIFIER (propname))
-		{
-			gchar const *propid = CPG_TOKEN_IDENTIFIER (propname)->identifier;
-
-			ret = parse_dot_property (expression, id, propid, context);
-		}
-		else
-		{
-			parser_failed (context,
-			               CPG_COMPILE_ERROR_INVALID_TOKEN,
-			               "Expected identifier for property");
-		}
-
-		cpg_token_free (propname);
+		ret = parse_dot_token (expression, id, context);
 	}
 	else
 	{

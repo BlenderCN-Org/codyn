@@ -180,12 +180,27 @@ cpg_function_compile_impl (CpgObject         *object,
 	gboolean ret = TRUE;
 	GList *item;
 
+	if (cpg_object_is_compiled (object))
+	{
+		return TRUE;
+	}
+
+	if (!context)
+	{
+		context = cpg_object_get_compile_context (object);
+	}
+	else
+	{
+		context = g_object_ref (context);
+	}
+
 	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->compile)
 	{
 		if (!CPG_OBJECT_CLASS (cpg_function_parent_class)->compile (object,
 		                                                            context,
 		                                                            error))
 		{
+			g_object_unref (context);
 			return FALSE;
 		}
 	}
@@ -224,6 +239,7 @@ cpg_function_compile_impl (CpgObject         *object,
 	if (!self->priv->expression || !ret)
 	{
 		cpg_compile_context_restore (context);
+		g_object_unref (context);
 		return ret;
 	}
 
@@ -245,15 +261,9 @@ cpg_function_compile_impl (CpgObject         *object,
 		ret = FALSE;
 	}
 
-	CpgExpressionTreeIter *iter = cpg_expression_tree_iter_new (self->priv->expression);
-	iter = cpg_expression_tree_iter_simplify (iter);
-
-	g_message ( "Function(%s): {%s}",
-	                   cpg_object_get_id (CPG_OBJECT (self)),
-	                   cpg_expression_tree_iter_to_string (iter));
-
-
 	cpg_compile_context_restore (context);
+	g_object_unref (context);
+
 	return ret;
 }
 

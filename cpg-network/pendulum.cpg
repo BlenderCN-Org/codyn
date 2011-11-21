@@ -1,0 +1,54 @@
+defines
+{
+	coordinates = "x,phi"
+}
+
+network
+{
+	g = "9.81"
+}
+
+group "s"
+{
+	functions
+	{
+		## Kinetic energy
+		T("dq_{@coordinates}")(m, l, dm_x, dm_y) = "0.5 * m * (dm_x**2 + dm_y**2)"
+
+		## Potential energy
+		V("q_{@coordinates}")(m, l) = "-m * g * l * cos(q_phi)"
+
+		## Differentiate kinetic energy with respect to generalized velocities
+		"dTddq_{@coordinates}"()(m, l) = "pdiff[T, dq_@1]"
+
+		## Differentiate with respect to time
+		"ddtdTddq_{@coordinates}"()(m, l) = "diff[dTddq_@1]"
+
+		## Partial derivatives of energy wrt generalized coordinates
+		"d{T,V}dq_{@coordinates}"()(m, l) = "pdiff[@1, q_@2]"
+
+		## Lagrangian
+		"L_{@coordinates}"()(m, l) = "ddtdTddq_@1 - dTdq_@1 + dVdq_@1"
+	}
+
+	## Generalized coordinates
+	"{q,dq}_{@coordinates}" = 0 | integrated
+
+	## Length
+	l = 1
+
+	## Mass
+	m = 1
+
+	## Mass positions
+	m_x = "q_x + l * sin(q_phi)"
+	m_y = "-l * cos(q_phi)"
+
+	## Mass velocities (time derivative)
+	"dm_{x,y}" = "diff[m_@1]"
+}
+
+link on "s"
+{
+	"q_{@coordinates}" <= "dq_@1"
+}

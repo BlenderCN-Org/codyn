@@ -27,6 +27,7 @@
 #include "cpg-layoutable.h"
 #include "cpg-annotatable.h"
 #include "cpg-taggable.h"
+#include "cpg-function.h"
 
 /**
  * SECTION:cpg-link
@@ -654,6 +655,32 @@ cpg_link_copy_impl (CpgObject *object,
 	copy_link_actions (CPG_LINK (object), CPG_LINK (source));
 }
 
+static void
+prepend_functions (CpgObject         *obj,
+                   CpgCompileContext *context)
+{
+	GSList const *item;
+
+	if (!obj || !CPG_IS_GROUP (obj))
+	{
+		return;
+	}
+
+	item = cpg_group_get_children (CPG_GROUP (obj));
+
+	while (item)
+	{
+		if (CPG_IS_FUNCTION (item->data))
+		{
+			cpg_compile_context_prepend_function (context,
+			                                      item->data);
+		}
+
+		item = g_slist_next (item);
+	}
+}
+
+
 static gboolean
 cpg_link_compile_impl (CpgObject         *object,
                        CpgCompileContext *context,
@@ -661,8 +688,25 @@ cpg_link_compile_impl (CpgObject         *object,
 {
 	CpgLink *link = CPG_LINK (object);
 
+	if (cpg_object_is_compiled (object))
+	{
+		return TRUE;
+	}
+
+	if (!context)
+	{
+		context = cpg_object_get_compile_context (object);
+	}
+	else
+	{
+		context = g_object_ref (context);
+	}
+
 	cpg_compile_context_save (context);
+
 	cpg_compile_context_prepend_object (context, link->priv->from);
+	prepend_functions (link->priv->from, context);
+
 	cpg_compile_context_prepend_object (context, object);
 
 	/* Chain up, compile object */
@@ -671,6 +715,7 @@ cpg_link_compile_impl (CpgObject         *object,
 		if (!CPG_OBJECT_CLASS (cpg_link_parent_class)->compile (object, context, error))
 		{
 			cpg_compile_context_restore (context);
+			g_object_unref (context);
 			return FALSE;
 		}
 	}
@@ -731,6 +776,7 @@ cpg_link_compile_impl (CpgObject         *object,
 	}
 
 	cpg_compile_context_restore (context);
+	g_object_unref (context);
 
 	return ret;
 }

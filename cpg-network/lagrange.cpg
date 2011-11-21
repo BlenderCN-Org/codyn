@@ -1,0 +1,63 @@
+# Some helper defines, assuming 'coordinates' exists as list of coordinates
+defines
+{
+	q = "@coordinates"
+
+	# Define utilities for expansion
+	dq  = "{@q|@0'||@0\,@1}"
+	ddq = "{@dq|@0'||@0\,@1}"
+	qdq = "{@q,@dq||@0\,@1}"
+	qdqddq = "{@q,@dq,@ddq||@0\,@1}"
+
+	# Escaped versions
+	_, _, "{q,dq,ddq,qdq,qdqddq}e" = "{@[@1]}"
+
+}
+
+# Define functions for describing mass position as function of generalized
+# coordinates
+group has-template("body")
+{
+	"D{X,Y}"(@qdqe) = "diff[@1](@qdq)"
+
+	## Kinetic energy
+	T(@qdqe) = "0.5 * m * sqsum(DX(@qdq), DY(@qdq))"
+
+	## Potential energy
+	V(@qdqe) = "-m * g * Y(@q)"
+
+	## Partial of kinetic energy towards @1'
+	"DTdd@qe"(@qdqe) = "pdiff[T, @1'](@qdq)"
+
+	## Partial of @1 towards @2
+	"D{T,V}d@qe"(@qdqe) = "pdiff[@1, @2](@qdq)"
+
+	# Total differential of T towards time
+	"DdTdd@[qe]dt"(@qdqddqe) = "diff[DTdd@1](@qdqddq)"
+
+	## Euler lagrange equation for @1
+	"EL@qe"(@qdqddqe) = "DdTdd@[1]dt(@qdqddq) - DTd@1(@qdq) + DVd@1(@qdq)"
+}
+
+defines
+{
+	_, _, bodies = has-template("body")
+}
+
+functions
+{
+	## Combined energy @1
+	"{T,V}"(@qdqe) = "{@bodies|@0.@@@0(@qdq)||@0 + @1}"
+
+	## Combined euler lagrange equation for @1
+	"EL@qe"(@qdqddqe) = "{@bodies|@0.@@@0(@qdqddq)||@0 + @1}"
+
+	## Accelerations of system
+	Acceleration(@qdqe, idx) = "linsolve[{@q|EL@0||@0\,@1};@ddq][idx](@qdq)"
+	"Acceleration@qe"(@qdqe) = "Acceleration(@qdq, @0[!])"
+}
+
+"@qe" = 0 | integrated
+"d@qe" = 0 | integrated
+
+@qe'' = "0"

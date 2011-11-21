@@ -803,6 +803,11 @@ iter_to_string (CpgExpressionTreeIter *iter,
 		return g_strdup ("(null)");
 	}
 
+	if (iter->cached_to_string && iter->cache_is_dbg == dbg)
+	{
+		return iter->cached_to_string;
+	}
+
 	g_free (iter->cached_to_string);
 	iter->cached_to_string = NULL;
 

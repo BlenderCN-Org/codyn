@@ -456,10 +456,6 @@ generate_functions (CpgOperatorLinsolve *self,
 		// Finally, set the expression instructions here
 		expr = cpg_function_get_expression (f);
 
-		g_message ("Solved: %s: {%s}",
-		           cpg_object_get_id (CPG_OBJECT (f)),
-		           cpg_expression_tree_iter_to_string (iters->data));
-
 		es = cpg_expression_tree_iter_to_string (iters->data);
 
 		cpg_expression_set_from_string (expr, es);

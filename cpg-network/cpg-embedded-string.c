@@ -1689,8 +1689,8 @@ cpg_embedded_string_clear_cache (CpgEmbeddedString *s)
 	s->priv->filters = NULL;
 }
 
-static gchar *
-escape_expand (gchar const *s)
+gchar *
+cpg_embedded_string_escape (gchar const *s)
 {
 	GString *ret;
 
@@ -1868,7 +1868,7 @@ expand_node_escape (CpgEmbeddedString   *s,
 	switch (node->type)
 	{
 		case EX_NODE_TYPE_TEXT:
-			return escape_expand (node->text);
+			return cpg_embedded_string_escape (node->text);
 		break;
 		case EX_NODE_TYPE_CONCAT:
 			return expand_concat_escape (s, ctx, node, error);

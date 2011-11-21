@@ -1,6 +1,6 @@
 network
 {
-	g = "9.81"
+	g = "-9.81"
 }
 
 integrator
@@ -8,70 +8,34 @@ integrator
 	method = "runge-kutta"
 }
 
-group "pendulum"
+include "physics.cpg"
+
+group "cart_pendulum"
 {
-	defines
+	# Generalized coordinates
+	q_x = 0
+	q_p = 0
+
+	group "cart" : body
 	{
-		# Define set of general coordinates q
-		qn = "x,phi"
-
-		q, q_count, qe = "q_{@qn}"
-
-		q = "{@qe||@0\,@1}"
-
-		# Define utilities for expansion
-		dq  = "{@q|@0'||@0\,@1}"
-		ddq = "{@dq|@0'||@0\,@1}"
-		qdq = "{@q,@dq||@0\,@1}"
-		qdqddq = "{@q,@dq,@ddq||@0\,@1}"
-		vq = "m,l"
-
-		# Escaped versions
-		_, _, "{q,dq,ddq,qdq,qdqddq,vq}e" = "{@[@1]}"
-	}
-
-	functions
-	{
-		# Mass locations
-		Mx(@qe)(@vqe) = "q_x + l * sin(q_phi)"
-		My(@qe)(@vqe) = "-l * cos(q_phi)"
-
-		# Mass velocities
-		DMx(@qdqe)(@vqe) = "diff[Mx](@q, @dq)"
-		DMy(@qdqe)(@vqe) = "diff[My](@q, @dq)"
-
-		# Kinetic energy
-		#T(@qdqe)(@vqe) = "0.5 * m * sqsum(DMx(@qdq), DMy(@qdq))"
-		T(@qdqe)(@vqe) = "0.5 * m * (q_x'^2 + 2 * q_x' * l * q_phi' * cos(q_phi) + l^2 * q_phi'^2)"
-
-		# Potential energy
-		V(@qdqe)(@vqe) = "-m * l * g * cos(q_phi)"
-
-		# Partial of kinetic energy towards generalized coordinate velocities
-		"DTdd@qe"(@qdqe)(@vqe) = "pdiff[T, @1'](@qdq)"
-
-		# Partial of kinetic and potential energy towards generalized coordinates
-		"D{T,V}d@qe"(@qdqe)(@vqe) = "pdiff[@1, @2](@qdq)"
-
-		# Total differential of kinetic energy towards time
-		"DdTdd@[qe]dt"(@qdqddqe)(@vqe) = "diff[DTdd@1](@qdqddq)"
-
-		# Setup euler lagrange equation
-		"EulerLagrange@qe"(@qdqddqe)(@vqe) = "DdTdd@[1]dt(@qdqddq) - DTd@1(@qdq) + DVd@1(@qdq)"
-
-		# Solve for accelerations
-		Acceleration(@qdqe, idx)(@vqe) = "linsolve[{@q|EulerLagrange@0||@0\,@1};@ddq][idx](@qdq)"
-	}
-
-	state "s"
-	{
-		@qe = "{0,0.1}"
-		@qe'' = "Acceleration(@q, {d@qe||@0\,@1}, @1[!])"
-
-		ddq_phi = "dq_phi'"
-
-		l = 1
 		m = 1
+
+		X(q_x, q_p) = "q_x"
+		Y(q_x, q_p) = "0"
+	}
+
+	group "pendulum" : body
+	{
+		l = 1
+
+		X(q_x, q_p) = "q_x + l * sin(q_p)"
+		Y(q_x, q_p) = "-l * cos(q_p)"
+	}
+
+	# Use lagrange to solve for the EOM
+	parse "lagrange.cpg"
+	{
+		coordinates = "q_x,q_p"
 	}
 }
 
