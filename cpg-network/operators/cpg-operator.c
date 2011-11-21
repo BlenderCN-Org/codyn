@@ -155,9 +155,14 @@ foreach_expression (CpgOperator *op,
 static void
 cpg_operator_reset_cache_default (CpgOperator *op)
 {
-	foreach_expression (op,
-	                    (GFunc)cpg_expression_reset_cache,
-	                    NULL);
+	foreach_expression_impl (op->priv->indices,
+	                         op->priv->num_indices,
+	                         (GFunc)cpg_expression_reset_cache,
+	                         NULL);
+
+	foreach_function_expression (op,
+	                             (GFunc)cpg_expression_reset_cache,
+	                             NULL);
 }
 
 static void
@@ -256,13 +261,13 @@ disable_cache (CpgExpression *expr)
 }
 
 static gboolean
-cpg_operator_initialize_default (CpgOperator   *op,
-                                 GSList const **expressions,
-                                 gint           num_expressions,
-                                 GSList const **indices,
-                                 gint           num_indices,
-                                 gint           num_arguments,
-                                 GError       **error)
+cpg_operator_initialize_default (CpgOperator      *op,
+                                 GSList const    **expressions,
+                                 gint              num_expressions,
+                                 GSList const    **indices,
+                                 gint              num_indices,
+                                 gint              num_arguments,
+                                 GError          **error)
 {
 	op->priv->num_arguments = num_arguments;
 
@@ -692,8 +697,6 @@ cpg_operator_get_function (CpgOperator *op,
                            gint        *idx,
                            gint         numidx)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
-
 	return CPG_OPERATOR_GET_CLASS (op)->get_function (op, idx, numidx);
 }
 
@@ -711,8 +714,6 @@ cpg_operator_foreach_function (CpgOperator            *op,
                                CpgForeachFunctionFunc  func,
                                gpointer                userdata)
 {
-	g_return_if_fail (CPG_IS_OPERATOR (op));
-
 	if (func == NULL)
 	{
 		return;
@@ -724,8 +725,6 @@ cpg_operator_foreach_function (CpgOperator            *op,
 CpgFunction *
 cpg_operator_get_primary_function (CpgOperator *op)
 {
-	g_return_val_if_fail (CPG_IS_OPERATOR (op), NULL);
-
 	if (op->priv->num_indices == 0)
 	{
 		gint idx = 0;

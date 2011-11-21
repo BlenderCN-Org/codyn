@@ -119,11 +119,13 @@ copy_expansions (GSList *list)
 }
 
 static void
-copy_entry (gchar const *key,
-            gchar const *value,
-            GHashTable  *table)
+copy_entry (gchar const  *key,
+            CpgExpansion *value,
+            GHashTable   *table)
 {
-	g_hash_table_insert (table, g_strdup (key), g_strdup (value));
+	g_hash_table_insert (table,
+	                     g_strdup (key),
+	                     value ? cpg_expansion_copy (value) : cpg_expansion_new_one (""));
 }
 
 static GHashTable *
@@ -134,7 +136,7 @@ copy_defines (GHashTable *table)
 	ret = g_hash_table_new_full (g_str_hash,
 	                             g_str_equal,
 	                             (GDestroyNotify)g_free,
-	                             (GDestroyNotify)g_free);
+	                             (GDestroyNotify)g_object_unref);
 
 	if (table)
 	{
@@ -267,13 +269,14 @@ cpg_selection_get_expansions (CpgSelection *selection)
 void
 cpg_selection_add_define (CpgSelection *selection,
                           gchar const  *key,
-                          gchar const  *value)
+                          CpgExpansion *value)
 {
 	g_return_if_fail (CPG_IS_SELECTION (selection));
+	g_return_if_fail (value == NULL || CPG_IS_EXPANSION (value));
 
 	g_hash_table_insert (selection->priv->defines,
 	                     g_strdup (key),
-	                     g_strdup (value));
+	                     value ? cpg_expansion_copy (value) : cpg_expansion_new_one (""));
 }
 
 /**
@@ -293,7 +296,7 @@ cpg_selection_get_defines (CpgSelection *selection)
 	return selection->priv->defines;
 }
 
-gchar const *
+CpgExpansion *
 cpg_selection_get_define (CpgSelection *selection,
                           gchar const  *key)
 {

@@ -121,12 +121,12 @@ cpg_operator_df_dt_initialize (CpgOperator   *op,
 	}
 
 	df_dt->priv->derived = cpg_symbolic_derive (df_dt->priv->expression,
-	                                           NULL,
-	                                           NULL,
-	                                           NULL,
-	                                           df_dt->priv->order,
-	                                           CPG_SYMBOLIC_DERIVE_NONE,
-	                                           error);
+	                                            NULL,
+	                                            NULL,
+	                                            NULL,
+	                                            df_dt->priv->order,
+	                                            CPG_SYMBOLIC_DERIVE_NONE,
+	                                            error);
 
 	g_object_ref_sink (df_dt->priv->derived);
 
@@ -245,7 +245,7 @@ cpg_operator_df_dt_reset_cache (CpgOperator *operator)
 {
 	CpgOperatorDfDt *self;
 
-	CPG_OPERATOR_CLASS (cpg_operator_df_dt_parent_class)->reset_cache (operator);
+	((CpgOperatorClass *)cpg_operator_df_dt_parent_class)->reset_cache (operator);
 
 	/* Omit type check to be faster */
 	self = (CpgOperatorDfDt *)operator;

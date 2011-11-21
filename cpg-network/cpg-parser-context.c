@@ -963,21 +963,150 @@ name_from_selection (CpgSelection *selection)
 	return NULL;
 }
 
+static GSList *
+generate_expand_multival (CpgParserContext *context,
+                          CpgSelection     *sel,
+                          GObject          *value)
+{
+	GSList *values = NULL;
+	GSList *sels;
+
+	if (CPG_IS_EMBEDDED_STRING (value))
+	{
+		embedded_string_expand_multiple_val (values,
+		                                     CPG_EMBEDDED_STRING (value),
+		                                     context,
+		                                     NULL);
+
+		return values;
+	}
+
+	sels = cpg_selector_select (CPG_SELECTOR (value),
+	                            cpg_selection_get_object (sel),
+	                            CPG_SELECTOR_TYPE_ANY,
+	                            context->priv->embedded);
+
+	while (sels)
+	{
+		GSList *exps;
+
+		exps = cpg_selection_get_expansions (sels->data);
+
+		if (exps)
+		{
+			values = g_slist_prepend (values,
+			                          cpg_expansion_copy (exps->data));
+		}
+		else
+		{
+			gchar const *nm;
+
+			nm = name_from_selection (sels->data);
+
+			if (nm)
+			{
+				values = g_slist_prepend (values,
+				                          cpg_expansion_newv (nm,
+				                                              nm,
+				                                              NULL));
+			}
+		}
+
+		g_object_unref (sels->data);
+		sels = g_slist_delete_link (sels, sels);
+	}
+
+	return g_slist_reverse (values);
+
+}
+
+static gchar *
+generate_unexpanded (CpgParserContext  *context,
+                     GObject           *value,
+                     GSList            *values)
+{
+	GString *sret;
+	GSList *item;
+
+	if (CPG_IS_EMBEDDED_STRING (value))
+	{
+		GError *error = NULL;
+		gchar *expanded;
+
+		expanded = cpg_embedded_string_expand_escape (CPG_EMBEDDED_STRING (value),
+		                                              context->priv->embedded,
+		                                              &error);
+
+		if (!expanded)
+		{
+			parser_failed_error (context,
+			                     CPG_STATEMENT (value),
+			                     error);
+		}
+
+		return expanded;
+	}
+
+	sret = g_string_new ("{");
+
+	for (item = values; item; item = g_slist_next (item))
+	{
+		gchar *escaped;
+
+		if (item != values)
+		{
+			g_string_append_c (sret, ',');
+		}
+
+		escaped = cpg_embedded_string_escape (cpg_expansion_get (item->data, 0));
+		g_string_append (sret, escaped);
+		g_free (escaped);
+	}
+
+	g_string_append_c (sret, '}');
+	return g_string_free (sret, FALSE);
+}
+
+static CpgExpansion *
+generate_unexpanded_expansion (gchar const *s,
+                               GSList      *values)
+{
+	GPtrArray *ptr;
+	gchar **p;
+	CpgExpansion *ret;
+
+	ptr = g_ptr_array_new ();
+	g_ptr_array_add (ptr, (gpointer)s);
+
+	while (values)
+	{
+		g_ptr_array_add (ptr, (gpointer)cpg_expansion_get (values->data, 0));
+		values = g_slist_next (values);
+	}
+
+	g_ptr_array_add (ptr, NULL);
+	p = (gchar **)g_ptr_array_free (ptr, FALSE);
+
+	ret = cpg_expansion_new ((gchar const * const *)p);
+
+	g_free (p);
+
+	return ret;
+}
 
 static GSList *
 generate_name_value_pairs (CpgParserContext  *context,
                            CpgSelection      *sel,
                            CpgEmbeddedString *name,
                            GObject           *value,
-                           CpgEmbeddedString *count_name,
-                           CpgEmbeddedString *unexpanded_name)
+                           CpgEmbeddedString *count_name)
 {
 	GSList *names;
 	GSList *nameit;
 	gint cnt = 0;
 	gint i;
 	GSList *ret = NULL;
-	GSList *selunexp = NULL;
+	gboolean nameismulti;
 
 	if (context->priv->in_event_handler)
 	{
@@ -990,12 +1119,15 @@ generate_name_value_pairs (CpgParserContext  *context,
 
 	embedded_string_expand_multiple_val (names, name, context, NULL);
 
+	nameismulti = names && cpg_expansion_num (names->data) > 1;
+
 	i = -1;
 
 	for (nameit = names; nameit; nameit = g_slist_next (nameit))
 	{
 		gchar const *exname;
 		GSList *values;
+		gboolean valueismulti;
 
 		if (!value)
 		{
@@ -1013,96 +1145,65 @@ generate_name_value_pairs (CpgParserContext  *context,
 		cpg_embedded_context_add_expansion (context->priv->embedded,
 		                                    nameit->data);
 
-		if (CPG_IS_EMBEDDED_STRING (value))
+		values = generate_expand_multival (context, sel, value);
+		valueismulti = values && cpg_expansion_num (values->data) > 1;
+
+		if (!valueismulti)
 		{
-			embedded_string_expand_multiple_val (values,
-			                                     CPG_EMBEDDED_STRING (value),
-			                                     context,
-			                                     NULL);
-		}
-		else
-		{
-			GSList *sels;
-			values = NULL;
-
-			sels = cpg_selector_select (CPG_SELECTOR (value),
-			                            cpg_selection_get_object (sel),
-			                            CPG_SELECTOR_TYPE_ANY,
-			                            context->priv->embedded);
-
-			g_slist_foreach (selunexp, (GFunc)g_object_unref, NULL);
-			g_slist_free (selunexp);
-			selunexp = NULL;
-
-			while (sels)
-			{
-				GSList *exps;
-
-				exps = cpg_selection_get_expansions (sels->data);
-
-				if (exps)
-				{
-					values = g_slist_prepend (values,
-					                          cpg_expansion_copy (exps->data));
-				}
-				else
-				{
-					gchar const *nm;
-
-					nm = name_from_selection (sels->data);
-
-					if (nm)
-					{
-						values = g_slist_prepend (values,
-						                          cpg_expansion_new_one (nm));
-					}
-				}
-
-				g_object_unref (sels->data);
-				sels = g_slist_delete_link (sels, sels);
-			}
-
-			values = g_slist_reverse (values);
-			selunexp = values;
-		}
-
-		if (g_slist_length (values) == g_slist_length (names))
-		{
-			ret = g_slist_prepend (ret,
-			                       name_value_pair_new (nameit->data,
-			                                            g_slist_nth_data (values, i)));
-
-			++cnt;
-		}
-		else if (values && !values->next)
-		{
+			// value is single
 			ret = g_slist_prepend (ret,
 			                       name_value_pair_new (nameit->data,
 			                                            values->data));
-
-			++cnt;
 		}
-		else if (names->next)
+		else if (nameismulti && valueismulti)
 		{
-			parser_failed (context,
-			               CPG_STATEMENT (name),
-			               CPG_NETWORK_LOAD_ERROR_SYNTAX,
-			               "Number of names (%d) does not match number of values (%d)",
-			               g_slist_length (names),
-			               g_slist_length (values));
+			// name and value are multi and need to be the same
+			// size
+			if (g_slist_length (values) == g_slist_length (names))
+			{
+				ret = g_slist_prepend (ret,
+				                       name_value_pair_new (nameit->data,
+				                                            g_slist_nth_data (values, i)));
 
-			break;
+				++cnt;
+			}
+			else
+			{
+				parser_failed (context,
+				               CPG_STATEMENT (name),
+				               CPG_NETWORK_LOAD_ERROR_SYNTAX,
+				               "Number of names (%d) does not match number of values (%d)",
+				               g_slist_length (names),
+				               g_slist_length (values));
+
+				break;
+			}
 		}
 		else
 		{
-			// Here we do the generator thingie of names
+			// name is single, but value is multi
 			GSList *item;
 			gint num = 0;
+			gchar *unex;
+			CpgExpansion *ex;
+
+			unex = generate_unexpanded (context,
+			                            value,
+			                            values);
+
+			ex = generate_unexpanded_expansion (unex,
+			                                    values);
+			g_free (unex);
+
+			ret = g_slist_prepend (ret,
+			                       name_value_pair_new (names->data,
+			                                            ex));
+
+			g_object_unref (ex);
 
 			for (item = values; item; item = g_slist_next (item))
 			{
 				gchar *name;
-				CpgExpansion *nex;
 				gchar *nums;
 
 				nums = g_strdup_printf ("%d", ++num);
@@ -1115,24 +1216,18 @@ generate_name_value_pairs (CpgParserContext  *context,
 					NULL
 				};
 
-				nex = cpg_expansion_new ((gchar const * const *)cc);
+				ex = cpg_expansion_new ((gchar const * const *)cc);
 
 				ret = g_slist_prepend (ret,
-				                       name_value_pair_new (nex,
+				                       name_value_pair_new (ex,
 				                                            item->data));
 
-				g_object_unref (nex);
+				g_object_unref (ex);
 				g_free (name);
 				g_free (nums);
 			}
 
 			cnt += num;
-		}
-
-		if (!selunexp)
-		{
-			g_slist_foreach (values, (GFunc)g_object_unref, NULL);
-			g_slist_free (values);
 		}
 
 		cpg_embedded_context_restore (context->priv->embedded);
@@ -1165,87 +1260,6 @@ generate_name_value_pairs (CpgParserContext  *context,
 
 		g_slist_foreach (count_names, (GFunc)g_object_unref, NULL);
 		g_slist_free (count_names);
-	}
-
-	if (unexpanded_name)
-	{
-		GSList *unex_names;
-		GSList *unex_item;
-
-		embedded_string_expand_multiple_val (unex_names,
-		                                     unexpanded_name,
-		                                     context,
-		                                     NULL);
-
-		for (unex_item = unex_names; unex_item; unex_item = g_slist_next (unex_item))
-		{
-			gchar *expanded;
-			CpgExpansion *ex;
-			GError *error = NULL;
-
-			if (CPG_IS_EMBEDDED_STRING (value))
-			{
-				cpg_embedded_context_save (context->priv->embedded);
-				cpg_embedded_context_add_expansion (context->priv->embedded,
-				                                    unex_item->data);
-
-				expanded = cpg_embedded_string_expand_escape (CPG_EMBEDDED_STRING (value),
-				                                              context->priv->embedded,
-				                                              &error);
-
-				cpg_embedded_context_restore (context->priv->embedded);
-			}
-			else
-			{
-				GString *sret;
-				GSList *item;
-
-				sret = g_string_new ("{");
-
-				for (item = selunexp; item; item = g_slist_next (item))
-				{
-					gchar *escaped;
-
-					if (item != selunexp)
-					{
-						g_string_append_c (sret, ',');
-					}
-
-					escaped = cpg_embedded_string_escape (cpg_expansion_get (item->data, 0));
-					g_string_append (sret, escaped);
-					g_free (escaped);
-				}
-
-				g_string_append_c (sret, '}');
-				expanded = g_string_free (sret, FALSE);
-			}
-
-			if (!expanded)
-			{
-				parser_failed_error (context,
-				                     CPG_STATEMENT (value),
-				                     error);
-				return NULL;
-			}
-
-			ex = cpg_expansion_new_one (expanded);
-			g_free (expanded);
-
-			ret = g_slist_prepend (ret,
-			                       name_value_pair_new (unex_item->data,
-			                                            ex));
-
-			g_object_unref (ex);
-		}
-
-		g_slist_foreach (unex_names, (GFunc)g_object_unref, NULL);
-		g_slist_free (unex_names);
-	}
-
-	if (selunexp)
-	{
-		g_slist_foreach (selunexp, (GFunc)g_object_unref, NULL);
-		g_slist_free (selunexp);
 	}
 
 	cpg_embedded_context_restore (context->priv->embedded);
@@ -1373,7 +1387,6 @@ void
 cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
                                  CpgEmbeddedString *count_name,
-                                 CpgEmbeddedString *unexpanded_name,
                                  CpgEmbeddedString *expression,
                                  CpgPropertyFlags   add_flags,
                                  CpgPropertyFlags   remove_flags,
@@ -1416,8 +1429,7 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 		                                   item->data,
 		                                   name,
 		                                   G_OBJECT (expression),
-		                                   count_name,
-		                                   unexpanded_name);
+		                                   count_name);
 
 		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
 
@@ -1550,11 +1562,6 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 	if (count_name)
 	{
 		g_object_unref (count_name);
-	}
-
-	if (unexpanded_name)
-	{
-		g_object_unref (unexpanded_name);
 	}
 
 	if (constraint)
@@ -4082,8 +4089,7 @@ cpg_parser_context_define (CpgParserContext  *context,
                            CpgEmbeddedString *name,
                            GObject           *value,
                            gboolean           optional,
-                           CpgEmbeddedString *count_name,
-                           CpgEmbeddedString *unexpanded_name)
+                           CpgEmbeddedString *count_name)
 {
 	GSList *ob;
 	Context *ctx;
@@ -4111,8 +4117,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 		                                   sel,
 		                                   name,
 		                                   value,
-		                                   count_name,
-		                                   unexpanded_name);
+		                                   count_name);
 
 		for (pair = pairs; pair; pair = g_slist_next (pair))
 		{
@@ -4120,7 +4125,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 
 			if (optional)
 			{
-				gchar *d;
+				CpgExpansion *d;
 				gboolean exists;
 
 				cpg_embedded_context_save (context->priv->embedded);
@@ -4133,8 +4138,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 
 				cpg_embedded_context_restore (context->priv->embedded);
 
-				exists = (d && *d);
-				g_free (d);
+				exists = (d && *(cpg_expansion_get (d, 0)));
 
 				if (exists)
 				{
@@ -4145,7 +4149,7 @@ cpg_parser_context_define (CpgParserContext  *context,
 
 			cpg_selection_add_define (sel,
 			                          cpg_expansion_get (p->name, 0),
-			                          cpg_expansion_get (p->value, 0));
+			                          p->value);
 
 			name_value_pair_free (p);
 		}
@@ -5029,48 +5033,18 @@ cpg_parser_context_debug_selector (CpgParserContext *context,
 	}
 }
 
-void
-cpg_parser_context_debug_string (CpgParserContext  *context,
-                                 CpgEmbeddedString *s)
-{
-	GSList *item;
-	Context *ctx;
-
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
-
-	if (context->priv->in_event_handler)
-	{
-		return;
-	}
-
-	ctx = CURRENT_CONTEXT (context);
-
-	for (item = ctx->objects; item; item = g_slist_next (item))
-	{
-		gchar const *ret;
-
-		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cpg_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
-
-		embedded_string_expand (ret, s, context);
-		g_printerr ("[debug] (%d): %s\n",
-		            CURRENT_INPUT (context)->lineno,
-		            ret);
-
-		cpg_embedded_context_restore (context->priv->embedded);
-	}
-}
-
 static gchar *
 expansion_as_string (CpgExpansion *expansion)
 {
 	GString *ret;
 	gint i;
 
-	ret = g_string_new ("{");
+	ret = g_string_new ("");
+
+	if (cpg_expansion_num (expansion) > 1)
+	{
+		g_string_append_c (ret, '{');
+	}
 
 	for (i = 0; i < cpg_expansion_num (expansion); ++i)
 	{
@@ -5083,7 +5057,10 @@ expansion_as_string (CpgExpansion *expansion)
 		g_string_append_printf (ret, ":%d", cpg_expansion_get_index (expansion, i));
 	}
 
-	g_string_append_c (ret, '}');
+	if (cpg_expansion_num (expansion) > 1)
+	{
+		g_string_append_c (ret, '}');
+	}
 
 	return g_string_free (ret, FALSE);
 }
@@ -5114,17 +5091,78 @@ expansions_as_string (GSList *expansions)
 	return g_string_free (ret, FALSE);
 }
 
-static void
-define_to_string (gchar const *key,
-                  gchar const *value,
-                  GString     *ret)
+void
+cpg_parser_context_debug_string (CpgParserContext  *context,
+                                 CpgEmbeddedString *s)
 {
+	GSList *item;
+	Context *ctx;
+
+	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CPG_IS_EMBEDDED_STRING (s));
+
+	if (context->priv->in_event_handler)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->objects; item; item = g_slist_next (item))
+	{
+		GSList *ret;
+		gboolean ismulti;
+
+		cpg_embedded_context_save_defines (context->priv->embedded, TRUE);
+
+		cpg_embedded_context_set_selection (context->priv->embedded,
+		                                    item->data);
+
+		embedded_string_expand_multiple (ret, s, context);
+
+		ismulti = ret && ret->next && cpg_expansion_num (ret->data) > 1;
+
+		if (!ismulti)
+		{
+			g_printerr ("[debug] (%d): %s\n",
+			            CURRENT_INPUT (context)->lineno,
+			            cpg_expansion_get (ret->data, 0));
+		}
+		else
+		{
+			gchar *ss;
+
+			ss = expansions_as_string (ret);
+
+			g_printerr ("[debug] (%d): %s\n",
+			            CURRENT_INPUT (context)->lineno,
+			            ss);
+
+			g_free (ss);
+		}
+	
+		cpg_embedded_context_restore (context->priv->embedded);
+		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+		g_slist_free (ret);
+	}
+}
+
+static void
+define_to_string (gchar const  *key,
+                  CpgExpansion *value,
+                  GString      *ret)
+{
+	gchar *s;
+
 	if (ret->len != 0)
 	{
 		g_string_append (ret, ", ");
 	}
 
-	g_string_append_printf (ret, "%s=%s", key, value);
+	s = expansion_as_string (value);
+
+	g_string_append_printf (ret, "%s=%s", key, s);
+	g_free (s);
 }
 
 static gchar *

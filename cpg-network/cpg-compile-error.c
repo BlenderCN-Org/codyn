@@ -160,28 +160,41 @@ cpg_compile_error_set (CpgCompileError *error,
                        CpgExpression   *expression)
 {
 	g_return_if_fail (CPG_IS_COMPILE_ERROR (error));
-	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (object == NULL || CPG_IS_OBJECT (object));
 	g_return_if_fail (property == NULL || CPG_IS_PROPERTY (property));
 	g_return_if_fail (action == NULL || CPG_IS_LINK_ACTION (action));
 	g_return_if_fail (expression == NULL || CPG_IS_EXPRESSION (expression));
 
-	clear_objects (error);
-
 	if (gerror)
 	{
+		if (error->priv->error)
+		{
+			g_error_free (error->priv->error);
+		}
+
 		error->priv->error = g_error_copy (gerror);
 	}
 
 	if (object)
 	{
+		if (error->priv->object)
+		{
+			g_object_unref (error->priv->object);
+		}
+
 		error->priv->object = g_object_ref (object);
 	}
 
 	if (property)
 	{
+		if (error->priv->property)
+		{
+			g_object_unref (error->priv->property);
+		}
+
 		error->priv->property = g_object_ref (property);
 
-		if (!expression)
+		if (!expression && !error->priv->expression)
 		{
 			error->priv->expression = g_object_ref (cpg_property_get_expression (property));
 		}
@@ -189,9 +202,14 @@ cpg_compile_error_set (CpgCompileError *error,
 
 	if (action)
 	{
+		if (error->priv->action)
+		{
+			g_object_unref (error->priv->action);
+		}
+
 		error->priv->action = g_object_ref (action);
 
-		if (!expression)
+		if (!expression && !error->priv->expression)
 		{
 			error->priv->expression = g_object_ref (cpg_link_action_get_equation (action));
 		}
@@ -199,6 +217,11 @@ cpg_compile_error_set (CpgCompileError *error,
 
 	if (expression)
 	{
+		if (error->priv->expression)
+		{
+			g_object_unref (error->priv->expression);
+		}
+
 		error->priv->expression = g_object_ref (expression);
 	}
 }

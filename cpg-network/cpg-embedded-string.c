@@ -47,6 +47,7 @@ struct _CpgEmbeddedStringPrivate
 
 	CpgEmbeddedContext *cached_context;
 	gulong cached_marker;
+	GRegex *indirection_regex;
 
 	gint braces;
 
@@ -136,6 +137,11 @@ cpg_embedded_string_finalize (GObject *object)
 		node_free (s->priv->stack->data);
 		s->priv->stack = g_slist_delete_link (s->priv->stack,
 		                                      s->priv->stack);
+	}
+
+	if (s->priv->indirection_regex)
+	{
+		g_regex_unref (s->priv->indirection_regex);
 	}
 
 	cpg_embedded_string_clear_cache (s);
@@ -422,34 +428,65 @@ cpg_embedded_string_pop (CpgEmbeddedString *s)
 	return s;
 }
 
-static gboolean
-count_chars (gchar const *s,
-             gchar        t,
-             gint        *num,
-             gboolean     retold)
+typedef enum
 {
-	gint cnt = 0;
+	INDIRECTION_NONE = 0,
+	INDIRECTION_EXISTS,
+	INDIRECTION_COUNT,
+	INDIRECTION_INDEX,
+	INDIRECTION_INCREMENT,
+	INDIRECTION_DECREMENT,
+	INDIRECTION_UNEXPAND
+} IndirectionFlags;
 
-	while (*s)
+static IndirectionFlags
+get_indirection_flags (gchar const *s)
+{
+	if (!s || !*s)
 	{
-		if (*s != t)
-		{
-			if (!retold && num > 0)
-			{
-				*num = cnt;
-				return TRUE;
-			}
-
-			return FALSE;
-		}
-
-		++cnt;
-		++s;
+		return INDIRECTION_NONE;
 	}
 
-	*num = cnt;
+	switch (*s)
+	{
+		case '?':
+			return INDIRECTION_EXISTS;
+		case '!':
+			return INDIRECTION_INDEX;
+		case '~':
+			return INDIRECTION_COUNT;
+		case '+':
+			return INDIRECTION_INCREMENT;
+		case '-':
+			return INDIRECTION_DECREMENT;
+		case ',':
+			return INDIRECTION_UNEXPAND;
+		default:
+			return INDIRECTION_NONE;
+	}
+}
 
-	return TRUE;
+static gchar *
+unexpanded_expansion (CpgExpansion *ex)
+{
+	gint i;
+	GString *ret = g_string_new ("");
+
+	for (i = 1; i < cpg_expansion_num (ex); ++i)
+	{
+		gchar *escaped;
+
+		if (i != 1)
+		{
+			g_string_append_c (ret, ',');
+		}
+
+		escaped = cpg_embedded_string_escape (cpg_expansion_get (ex, i));
+		g_string_append (ret, escaped);
+		g_free (escaped);
+	}
+
+	return g_string_free (ret, FALSE);
 }
 
 static gchar *
@@ -458,191 +495,119 @@ resolve_indirection (CpgEmbeddedString  *em,
                      Node               *node,
                      gchar const        *s)
 {
-	gboolean isnum = TRUE;
-	gboolean iscount = FALSE;
-	gboolean isindex = FALSE;
-	gboolean retold = TRUE;
-	gboolean isexists = FALSE;
+	IndirectionFlags flags;
+	CpgExpansion *ex;
+	GMatchInfo *info;
+	gint exidx;
+	gint inc = 0;
+	gint dec = 0;
+	gchar *name = NULL;
+	gchar *ret;
+	gchar *num;
 
-	gint isadd = 0;
-	gint issub = 0;
-
-	gchar const *ptr = s;
-
-	isnum = g_ascii_isdigit (*ptr);
-
-	while (*ptr)
+	if (em->priv->indirection_regex == NULL)
 	{
-		if (!g_ascii_isdigit (*ptr))
-		{
-			if (!*(ptr + 1))
-			{
-				if (*ptr == '?')
-				{
-					isexists = TRUE;
-				}
-				else if (isnum)
-				{
-					isindex = (*ptr == '!');
-				}
-				else
-				{
-					iscount = (*ptr == '~');
-				}
-			}
-
-			isnum = FALSE;
-
-			break;
-		}
-
-		++ptr;
+		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|(.*?)([?!~,]|[+]+|[-]+)?$",
+		                                           0, 0, NULL);
 	}
 
-	ptr = s;
-
-	if (g_ascii_isalpha (*ptr) || *ptr == '+' || *ptr == '-' || *ptr == '_')
+	if (!g_regex_match (em->priv->indirection_regex, s, 0, &info))
 	{
-		if (*ptr == '+' || *ptr == '-')
-		{
-			retold = FALSE;
-		}
-
-		while (*ptr)
-		{
-			if (*ptr == '+' || *ptr == '-')
-			{
-				if (count_chars (ptr, '+', &isadd, retold) ||
-				    count_chars (ptr, '-', &issub, retold))
-				{
-					break;
-				}
-			}
-
-			++ptr;
-		}
+		return g_strdup("");
 	}
 
-	if (isnum || iscount || isindex || isexists)
+	num = g_match_info_fetch (info, 1);
+
+	if (num && *num)
 	{
-		CpgExpansion *ex;
-		gchar const *ret = NULL;
+		// This is a numbered expansion
+		gchar *flag;
+
+		num = g_match_info_fetch (info, 1);
+		flag = g_match_info_fetch (info, 2);
+
+		flags = get_indirection_flags (flag);
 
 		ex = cpg_embedded_context_get_expansion (context,
 		                                         node->depth);
 
-		if (!ex)
-		{
-			if (iscount)
-			{
-				ret = "0";
-			}
-			else if (isindex)
-			{
-				ret = "0";
-			}
-			else if (isexists)
-			{
-				ret = "0";
-			}
-		}
-		else
-		{
-			if (isnum)
-			{
-				gint idx = (gint)g_ascii_strtoll (s, NULL, 10);
-				ret = cpg_expansion_get (ex, idx);
-			}
-			else if (iscount)
-			{
-				return g_strdup_printf ("%d", cpg_expansion_num (ex));
-			}
-			else if (isindex)
-			{
-				gint idx = (gint)g_ascii_strtoll (s, NULL, 10);
+		exidx = (gint)g_ascii_strtoll (num, NULL, 10);
 
-				return g_strdup_printf ("%d", cpg_expansion_get_index (ex, idx));
-			}
-			else if (isexists)
-			{
-				gint idx = (gint)g_ascii_strtoll (s, NULL, 10);
-
-				ret = cpg_expansion_get (ex, idx);
-
-				if (ret && *ret)
-				{
-					ret = "1";
-				}
-				else
-				{
-					ret = "0";
-				}
-			}
-		}
-
-		return g_strdup (ret ? ret : "");
+		g_free (flag);
 	}
 	else
 	{
-		gchar *def;
+		// This is a define
+		gchar *flag;
 
-		if (issub > 0 || isadd > 0)
+		name = g_match_info_fetch (info, 3);
+		flag = g_match_info_fetch (info, 4);
+
+		flags = get_indirection_flags (flag);
+
+		if (flags == INDIRECTION_INCREMENT)
 		{
-			gchar *lookup;
-			gint val;
-
-			if (retold)
-			{
-				lookup = g_strndup (s, strlen (s) - (issub + isadd));
-			}
-			else
-			{
-				lookup = g_strdup (s + issub + isadd);
-			}
-
-			/* Note either issub or isadd is 0 */
-			val = cpg_embedded_context_increment_define (context,
-			                                             lookup,
-			                                             -issub + isadd,
-			                                             retold);
-
-			def = g_strdup_printf ("%d", val);
-			g_free (lookup);
+			inc = g_ascii_strtoll (flag, NULL, 10);
 		}
-		else
+		else if (flags == INDIRECTION_DECREMENT)
 		{
-			gint size;
-
-			size = strlen (s);
-
-			if (size > 0 && s[size - 1] == '?')
-			{
-				gboolean exi;
-				gchar *realname;
-
-				realname = g_strndup (s, size - 1);
-
-				def = cpg_embedded_context_get_define (context, realname);
-				exi = def && *def;
-				g_free (def);
-
-				if (exi)
-				{
-					def = g_strdup ("1");
-				}
-				else
-				{
-					def = g_strdup ("0");
-				}
-			}
-			else
-			{
-				def = cpg_embedded_context_get_define (context, s);
-			}
+			dec = g_ascii_strtoll (flag, NULL, 10);
 		}
 
-		return def;
+		ex = cpg_embedded_context_get_define (context,
+		                                      name);
+
+		exidx = 0;
+
+		g_free (flag);
 	}
+
+	switch (flags)
+	{
+		case INDIRECTION_EXISTS:
+			if (ex && *(cpg_expansion_get (ex, exidx > 0 ? exidx : 0)))
+			{
+				ret = g_strdup ("1");
+			}
+			else
+			{
+				ret = g_strdup ("0");
+			}
+		break;
+		case INDIRECTION_COUNT:
+		{
+			gint idx = ex ? cpg_expansion_num (ex) : 0;
+			ret = g_strdup_printf ("%d", name ? (idx - 1) : idx);
+		}
+		break;
+		case INDIRECTION_INDEX:
+		{
+			gint idx = ex ? cpg_expansion_get_index (ex, exidx) : 0;
+			ret = g_strdup_printf ("%d", idx);
+		}
+		break;
+		case INDIRECTION_INCREMENT:
+		case INDIRECTION_DECREMENT: // fallthrough
+		{
+			gint idx = cpg_embedded_context_increment_define (context,
+			                                                  name,
+			                                                  -dec + inc);
+
+			ret = g_strdup_printf ("%d", idx);
+		}
+		break;
+		case INDIRECTION_UNEXPAND:
+			ret = unexpanded_expansion (ex);
+		break;
+		default:
+			ret = g_strdup (ex ? cpg_expansion_get (ex, exidx) : "");
+		break;
+	}
+
+	g_free (name);
+	g_free (num);
+
+	return ret;
 }
 
 static void

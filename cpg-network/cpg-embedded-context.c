@@ -79,13 +79,15 @@ typedef struct
 } CopyEntryInfo;
 
 static void
-copy_entry (gchar const *key,
-            gchar const *value,
+copy_entry (gchar const   *key,
+            CpgExpansion  *value,
             CopyEntryInfo *info)
 {
 	if (info->overwrite || !g_hash_table_lookup (info->table, key))
 	{
-		g_hash_table_insert (info->table, g_strdup (key), g_strdup (value));
+		g_hash_table_insert (info->table,
+		                     g_strdup (key),
+		                     cpg_expansion_copy (value));
 	}
 }
 
@@ -97,7 +99,7 @@ hash_table_copy (GHashTable *table)
 	ret = g_hash_table_new_full (g_str_hash,
 	                             g_str_equal,
 	                             (GDestroyNotify)g_free,
-	                             (GDestroyNotify)g_free);
+	                             (GDestroyNotify)g_object_unref);
 
 	if (table)
 	{
@@ -298,14 +300,14 @@ cpg_embedded_context_restore (CpgEmbeddedContext *context)
 gint
 cpg_embedded_context_increment_define (CpgEmbeddedContext *context,
                                        gchar const        *name,
-                                       gint                num,
-                                       gboolean            retold)
+                                       gint                num)
 {
 	Context *ctx;
 	gpointer key;
 	gpointer val;
 	gint ret;
 	gchar *incval;
+	CpgExpansion *ex;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), 0);
 	g_return_val_if_fail (name != NULL, 0);
@@ -314,7 +316,7 @@ cpg_embedded_context_increment_define (CpgEmbeddedContext *context,
 
 	if (g_hash_table_lookup_extended (ctx->defines, name, &key, &val))
 	{
-		ret = (gint)g_ascii_strtod (val, NULL);
+		ret = (gint)g_ascii_strtod (cpg_expansion_get (val, 0), NULL);
 	}
 	else
 	{
@@ -322,17 +324,14 @@ cpg_embedded_context_increment_define (CpgEmbeddedContext *context,
 	}
 
 	incval = g_strdup_printf ("%d", ret + num);
+	ex = cpg_expansion_new_one (incval);
 
 	cpg_embedded_context_add_define (context,
 	                                 name,
-	                                 incval);
+	                                 ex);
 
 	g_free (incval);
-
-	if (!retold)
-	{
-		ret += num;
-	}
+	g_object_unref (ex);
 
 	return ret;
 }
@@ -340,13 +339,14 @@ cpg_embedded_context_increment_define (CpgEmbeddedContext *context,
 void
 cpg_embedded_context_add_define (CpgEmbeddedContext *context,
                                  gchar const        *name,
-                                 gchar const        *value)
+                                 CpgExpansion       *value)
 {
 	Context *ctx;
 	GSList *item;
 
 	g_return_if_fail (CPG_IS_EMBEDDED_CONTEXT (context));
 	g_return_if_fail (name != NULL);
+	g_return_if_fail (value == NULL || CPG_IS_EXPANSION (value));
 
 	ctx = CURRENT_CONTEXT (context);
 
@@ -354,7 +354,7 @@ cpg_embedded_context_add_define (CpgEmbeddedContext *context,
 
 	g_hash_table_insert (ctx->defines,
 	                     g_strdup (name),
-	                     g_strdup (value ? value : ""));
+	                     value ? cpg_expansion_copy (value) : cpg_expansion_new_one (""));
 
 	for (item = context->priv->contexts->next; item; item = g_slist_next (item))
 	{
@@ -550,18 +550,18 @@ cpg_embedded_context_add_expansions (CpgEmbeddedContext *context,
 	ctx->marker = ++global_marker;
 }
 
-gchar *
+CpgExpansion *
 cpg_embedded_context_get_define (CpgEmbeddedContext *context,
                                  gchar const        *name)
 {
-	gchar const *ret;
+	CpgExpansion *ret;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
 	ret = g_hash_table_lookup (CURRENT_CONTEXT (context)->defines, name);
 
-	return g_strdup (ret ? ret : "");
+	return ret;
 }
 
 /**
@@ -591,7 +591,7 @@ cpg_embedded_context_calculate (CpgEmbeddedContext  *context,
 	CpgExpression *expr;
 	CpgCompileContext *ctx;
 	gchar *ret = NULL;
-	GError *err = NULL;
+	CpgCompileError *err;
 
 	g_return_val_if_fail (CPG_IS_EMBEDDED_CONTEXT (context), NULL);
 	g_return_val_if_fail (equation != NULL, NULL);
@@ -599,7 +599,9 @@ cpg_embedded_context_calculate (CpgEmbeddedContext  *context,
 	ctx = cpg_compile_context_new ();
 	expr = cpg_expression_new (equation);
 
-	if (cpg_expression_compile (expr, ctx, &err))
+	err = cpg_compile_error_new ();
+
+	if (cpg_expression_compile (expr, ctx, err))
 	{
 		gdouble val;
 		gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
@@ -609,17 +611,12 @@ cpg_embedded_context_calculate (CpgEmbeddedContext  *context,
 
 		ret = g_strdup (buf);
 	}
-	else
+	else if (error)
 	{
-		if (!error)
-		{
-			g_warning ("Could not compile expression `%s': %s",
-			           equation,
-			           err->message);
-		}
-
-		g_propagate_error (error, err);
+		*error = g_error_copy (cpg_compile_error_get_error (err));
 	}
+
+	g_object_unref (err);
 
 	g_object_unref (expr);
 	g_object_unref (ctx);

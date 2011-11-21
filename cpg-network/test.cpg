@@ -1,41 +1,12 @@
-network
+group "s"
 {
-	g = "-9.81"
+	q_p = 0.1
+	q_p' = "sin(t)"
+	l = 1
+
+	X(q_p) = "l * sin(q_p)"
+
+	DX(q_p, q_p') = "diff[X](q_p, q_p')"
+
+	dx = "DX(q_p, q_p')"
 }
-
-integrator
-{
-	method = "runge-kutta"
-}
-
-include "physics.cpg"
-
-group "cart_pendulum"
-{
-	# Generalized coordinates
-	q_x = 0
-	q_p = 0
-
-	group "cart" : body
-	{
-		m = 1
-
-		X(q_x, q_p) = "q_x"
-		Y(q_x, q_p) = "0"
-	}
-
-	group "pendulum" : body
-	{
-		l = 1
-
-		X(q_x, q_p) = "q_x + l * sin(q_p)"
-		Y(q_x, q_p) = "-l * cos(q_p)"
-	}
-
-	# Use lagrange to solve for the EOM
-	parse "lagrange.cpg"
-	{
-		coordinates = "q_x,q_p"
-	}
-}
-

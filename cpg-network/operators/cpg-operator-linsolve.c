@@ -294,10 +294,10 @@ iter_for_property (CpgProperty *prop)
 }
 
 static GSList *
-prepare_functions (GSList      *functions,
-                   GSList      *unknowns,
-                   GSList     **unknownprops,
-                   GSList     **fprops)
+prepare_functions (GSList  *functions,
+                   GSList  *unknowns,
+                   GSList **unknownprops,
+                   GSList **fprops)
 {
 	gboolean first = TRUE;
 	GSList *ret = NULL;
@@ -357,8 +357,8 @@ prepare_functions (GSList      *functions,
 		                                 property_from_iter (g_hash_table_lookup (propmap,
 		                                                                          _cpg_function_argument_get_property (unknowns->data))));
 
-
 		fiter = cpg_expression_tree_iter_new (cpg_function_get_expression (functions->data));
+
 		cpg_expression_tree_iter_canonicalize (fiter);
 		fiter = cpg_expression_tree_iter_simplify (fiter);
 
@@ -496,6 +496,11 @@ solve_system (CpgOperatorLinsolve *self,
 	                           unknowns,
 	                           &unknownprops,
 	                           &fprops);
+
+	if (!iters)
+	{
+		return FALSE;
+	}
 
 	// Iteratively solve the equations for the unknowns
 	iterit = iters;

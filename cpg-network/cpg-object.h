@@ -165,6 +165,9 @@ struct _CpgObjectClass
 	gboolean      (*equal)           (CpgObject    *first,
 	                                  CpgObject    *last);
 
+	CpgCompileContext *(*get_compile_context) (CpgObject         *object,
+	                                           CpgCompileContext *context);
+
 	/* signals */
 	void          (*compiled)         (CpgObject   *object);
 	void          (*resetted)         (CpgObject   *object);
@@ -275,6 +278,9 @@ void              cpg_object_remove_event_handler (CpgObject      *object,
                                                CpgParserCode *code);
 
 const GSList     *cpg_object_get_event_handlers (CpgObject      *object);
+
+CpgCompileContext *cpg_object_get_compile_context (CpgObject         *object,
+                                                   CpgCompileContext *context);
 
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,

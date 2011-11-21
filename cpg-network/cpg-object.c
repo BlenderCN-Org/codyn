@@ -86,9 +86,9 @@ struct _CpgObjectPrivate
 
 	GSList *event_handlers;
 
-	gboolean compiled : 1;
-	gboolean auto_imported : 1;
-	gboolean has_location : 1;
+	guint compiled : 1;
+	guint auto_imported : 1;
+	guint has_location : 1;
 };
 
 /* Properties */
@@ -916,6 +916,27 @@ expression_depends_on (CpgExpression *expression,
 	return ret;
 }
 
+static CpgCompileContext *
+cpg_object_get_compile_context_impl (CpgObject         *object,
+                                     CpgCompileContext *context)
+{
+	if (!context)
+	{
+		if (object->priv->parent)
+		{
+			context = cpg_object_get_compile_context (object->priv->parent,
+			                                          NULL);
+		}
+		else
+		{
+			context = cpg_compile_context_new ();
+		}
+	}
+
+	cpg_compile_context_prepend_object (context, object);
+	return context;
+}
+
 static gboolean
 cpg_object_compile_impl (CpgObject         *object,
                          CpgCompileContext *context,
@@ -932,31 +953,33 @@ cpg_object_compile_impl (CpgObject         *object,
 	gboolean ret = TRUE;
 
 	/* Prepend the object in the context */
-	cpg_compile_context_save (context);
-	cpg_compile_context_prepend_object (context, object);
+	if (context)
+	{
+		cpg_compile_context_save (context);
+		g_object_ref (context);
+	}
+
+	context = cpg_object_get_compile_context_impl (object, context);
 
 	while (properties)
 	{
 		CpgProperty *property = (CpgProperty *)properties->data;
 		CpgExpression *expr = cpg_property_get_expression (property);
-		GError *gerror = NULL;
 		CpgExpression *cons;
 
 		if (!cpg_expression_compile (expr,
 		                             context,
-		                             &gerror))
+		                             error))
 		{
 			if (error)
 			{
 				cpg_compile_error_set (error,
-				                       gerror,
+				                       NULL,
 				                       object,
 				                       property,
 				                       NULL,
-				                       expr);
+				                       NULL);
 			}
-
-			g_error_free (gerror);
 
 			ret = FALSE;
 			break;
@@ -964,19 +987,17 @@ cpg_object_compile_impl (CpgObject         *object,
 
 		cons = cpg_property_get_constraint (property);
 
-		if (cons && !cpg_expression_compile (cons, context, &gerror))
+		if (cons && !cpg_expression_compile (cons, context, error))
 		{
 			if (error)
 			{
 				cpg_compile_error_set (error,
-				                       gerror,
+				                       NULL,
 				                       object,
 				                       property,
 				                       NULL,
-				                       cons);
+				                       NULL);
 			}
-
-			g_error_free (gerror);
 
 			ret = FALSE;
 			break;
@@ -987,6 +1008,8 @@ cpg_object_compile_impl (CpgObject         *object,
 		{
 			if (error)
 			{
+				GError *gerror = NULL;
+
 				gerror = g_error_new (CPG_COMPILE_ERROR_TYPE,
 				                      CPG_COMPILE_ERROR_PROPERTY_RECURSE,
 				                      "Infinite recursion in property expression");
@@ -1019,6 +1042,8 @@ cpg_object_compile_impl (CpgObject         *object,
 	}
 
 	cpg_compile_context_restore (context);
+	g_object_unref (context);
+
 	return ret;
 }
 
@@ -1334,6 +1359,7 @@ cpg_object_class_init (CpgObjectClass *klass)
 	klass->foreach_expression = cpg_object_foreach_expression_impl;
 	klass->copy = cpg_object_copy_impl;
 	klass->compile = cpg_object_compile_impl;
+	klass->get_compile_context = cpg_object_get_compile_context_impl;
 	klass->apply_template = cpg_object_apply_template_impl;
 	klass->unapply_template = cpg_object_unapply_template_impl;
 	klass->equal = cpg_object_equal_impl;
@@ -1632,6 +1658,7 @@ cpg_object_init (CpgObject *self)
 	                                                   NULL);
 
 	self->priv->tags = cpg_taggable_create_table ();
+	self->priv->compiled = FALSE;
 }
 
 /**
@@ -2197,7 +2224,7 @@ cpg_object_is_compiled (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
 
-	return object->priv->compiled;
+	return object->priv->compiled ? TRUE : FALSE;
 }
 
 static gboolean
@@ -2713,4 +2740,14 @@ cpg_object_get_event_handlers (CpgObject *object)
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
 	return object->priv->event_handlers;
+}
+
+CpgCompileContext *
+cpg_object_get_compile_context (CpgObject         *object,
+                                CpgCompileContext *context)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
+
+	return CPG_OBJECT_GET_CLASS (object)->get_compile_context (object, context);
 }

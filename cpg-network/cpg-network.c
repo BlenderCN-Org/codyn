@@ -395,6 +395,33 @@ typedef struct
 	gboolean failed;
 } CompileInfo;
 
+static CpgCompileContext *
+cpg_network_get_compile_context_impl (CpgObject         *object,
+                                      CpgCompileContext *context)
+{
+	CpgNetwork *network = CPG_NETWORK (object);
+
+	/* Note: we repeat this logic here from cpg-object because we need
+	   to prepend the 'integrator' object before the real object... */
+	if (!context)
+	{
+		if (cpg_object_get_parent (object))
+		{
+			context = cpg_object_get_compile_context (cpg_object_get_parent (object),
+			                                          NULL);
+		}
+		else
+		{
+			context = cpg_compile_context_new ();
+		}
+	}
+
+	cpg_compile_context_prepend_object (context, CPG_OBJECT (network->priv->integrator));
+	CPG_OBJECT_CLASS (cpg_network_parent_class)->get_compile_context (object, context);
+
+	return context;
+}
+
 static gboolean
 cpg_network_compile_impl (CpgObject         *object,
                           CpgCompileContext *context,
@@ -403,16 +430,13 @@ cpg_network_compile_impl (CpgObject         *object,
 	CpgNetwork *network = CPG_NETWORK (object);
 	gboolean ret;
 
-	if (!context)
+	if (context)
 	{
-		context = cpg_compile_context_new ();
-	}
-	else
-	{
+		cpg_compile_context_save (context);
 		g_object_ref (context);
 	}
 
-	cpg_compile_context_prepend_object (context, CPG_OBJECT (network->priv->integrator));
+	context = cpg_network_get_compile_context_impl (object, context);
 
 	ret = CPG_OBJECT_CLASS (cpg_network_parent_class)->compile (object,
 	                                                            context,
@@ -457,6 +481,7 @@ cpg_network_class_init (CpgNetworkClass *klass)
 	object_class->set_property = cpg_network_set_property;
 
 	cpg_class->compile = cpg_network_compile_impl;
+	cpg_class->get_compile_context = cpg_network_get_compile_context_impl;
 	cpg_class->clear = cpg_network_clear_impl;
 
 	group_class->add = cpg_network_add_impl;

@@ -83,7 +83,7 @@ typedef struct
 	gchar const **buffer;
 	CpgCompileContext *context;
 
-	GError **error;
+	CpgCompileError *error;
 	GSList *stack;
 } ParserContext;
 
@@ -506,32 +506,35 @@ instructions_pop (CpgExpression *expression)
 }
 
 static gboolean
-parser_failed (ParserContext *context,
+parser_failed (CpgExpression *expression,
+               ParserContext *context,
                gint           code,
                gchar const   *format,
                ...)
 {
-	if (context->error != NULL)
+	if (context->error != NULL && cpg_compile_error_get_error (context->error) == NULL)
 	{
+		GError *err = NULL;
 		va_list ap;
 		va_start (ap, format);
 
 		gchar *message = g_strdup_vprintf (format, ap);
 		va_end (ap);
 
-		if (*context->error)
-		{
-			g_error_free (*context->error);
-			*context->error = NULL;
-		}
-
-		g_set_error (context->error,
+		g_set_error (&err,
 		             CPG_COMPILE_ERROR_TYPE,
 		             code,
 		             "%s",
 		             message);
 
 		g_free (message);
+
+		cpg_compile_error_set (context->error,
+		                       err,
+		                       NULL,
+		                       NULL,
+		                       NULL,
+		                       expression);
 	}
 
 	return FALSE;
@@ -644,6 +647,29 @@ parse_context_property (CpgExpression *expression,
 			}
 		}
 
+		if (CPG_IS_GROUP (o))
+		{
+			CpgObject *c;
+
+			c = cpg_group_get_child (CPG_GROUP (o), id);
+
+			if (c)
+			{
+				CpgProperty *prop;
+
+				prop = cpg_object_get_property (c, propid);
+
+				if (prop)
+				{
+					instructions_push (expression,
+					                   cpg_instruction_property_new (prop),
+					                   context);
+
+					return TRUE;
+				}
+			}
+		}
+
 		objs = g_slist_next (objs);
 	}
 
@@ -679,7 +705,6 @@ parse_context_function (CpgExpression *expression,
 		{
 			continue;
 		}
-
 
 		f = cpg_group_get_child (CPG_GROUP (c), propid);
 
@@ -730,7 +755,8 @@ parse_dot_property (CpgExpression *expression,
 
 	if (!ret)
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
 		               "Link property `%s.%s' could not be found",
 		               id, propid);
@@ -796,7 +822,8 @@ parse_function_arguments (CpgExpression *expression,
 
 		if (!next || !CPG_TOKEN_IS_OPERATOR (next))
 		{
-			return parser_failed (context,
+			return parser_failed (expression,
+			                      context,
 			                      CPG_COMPILE_ERROR_INVALID_TOKEN,
 			                      "Expected `operator', but got %s",
 			                      next ? next->text : "(nothing)");
@@ -812,7 +839,8 @@ parse_function_arguments (CpgExpression *expression,
 		}
 		else if (type != CPG_TOKEN_OPERATOR_TYPE_COMMA)
 		{
-			parser_failed (context,
+			parser_failed (expression,
+			               context,
 			               CPG_COMPILE_ERROR_INVALID_TOKEN,
 			               "Expected `,' but got %s",
 			               next->text);
@@ -822,6 +850,23 @@ parse_function_arguments (CpgExpression *expression,
 
 		cpg_token_free (next);
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
+	}
+
+	return TRUE;
+}
+
+static gboolean
+recurse_compile (CpgExpression *expression,
+                 ParserContext *context,
+                 CpgFunction   *f)
+{
+	// Recursively compile it here
+	if (!cpg_object_is_compiled (CPG_OBJECT (f)))
+	{
+		if (!cpg_object_compile (CPG_OBJECT (f), NULL, context->error))
+		{
+			return FALSE;
+		}
 	}
 
 	return TRUE;
@@ -839,6 +884,7 @@ parse_function (CpgExpression *expression,
 	gint arguments = 0;
 	gint n_optional = 0;
 	gint n_implicit = 0;
+	gboolean ret = TRUE;
 
 	if (!cname)
 	{
@@ -858,7 +904,8 @@ parse_function (CpgExpression *expression,
 
 			if (!fid)
 			{
-				return parser_failed (context,
+				return parser_failed (expression,
+				                      context,
 				                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
 				                      "Function %s could not be found",
 				                      name);
@@ -866,7 +913,8 @@ parse_function (CpgExpression *expression,
 		}
 		else
 		{
-			return parser_failed (context,
+			return parser_failed (expression,
+			                      context,
 			                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
 			                      "Function %s.%s could not be found",
 			                      name, cname);
@@ -890,7 +938,8 @@ parse_function (CpgExpression *expression,
 	if ((function != NULL && (numargs > (arguments - n_implicit) || numargs < (arguments - n_optional - n_implicit))) ||
 	    (function == NULL && arguments != -1 && numargs != arguments))
 	{
-		return parser_failed (context,
+		return parser_failed (expression,
+		                      context,
 		                      CPG_COMPILE_ERROR_MAXARG,
 		                      "Expected number of arguments (%d|%d) for function `%s' does not match (got %d)",
 		                      arguments - n_implicit - n_optional,
@@ -984,7 +1033,8 @@ parse_function (CpgExpression *expression,
 
 			if (!prop)
 			{
-				return parser_failed (context,
+				return parser_failed (expression,
+				                      context,
 				                      CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
 				                      "The implicit property `%s' for function `%s' is not found",
 				                      aname,
@@ -1018,10 +1068,12 @@ parse_function (CpgExpression *expression,
 	{
 		instruction = cpg_instruction_custom_function_new (function,
 		                                                   numargs);
+
+		ret = recurse_compile (expression, context, function);
 	}
 
 	instructions_push (expression, instruction, context);
-	return TRUE;
+	return ret;
 }
 
 static void
@@ -1075,12 +1127,14 @@ parse_custom_operator (CpgExpression *expression,
 	GSList **inds;
 	gint num_inds;
 	gboolean islinsolve;
+	GError *err = NULL;
 
 	klass = cpg_operators_find_class (name);
 
 	if (klass == NULL)
 	{
-		return parser_failed (context,
+		return parser_failed (expression,
+		                      context,
 		                      CPG_COMPILE_ERROR_OPERATOR_NOT_FOUND,
 		                      "Custom operator %s could not be found",
 		                      name);
@@ -1214,7 +1268,8 @@ parse_custom_operator (CpgExpression *expression,
 			g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
 			g_slist_free (expressions);
 
-			return parser_failed (context,
+			return parser_failed (expression,
+			                      context,
 			                      CPG_COMPILE_ERROR_INVALID_TOKEN,
 			                      "Expected `,' or `]', but got %s",
 			                      next ? next->text : "(nothing)");
@@ -1265,7 +1320,8 @@ parse_custom_operator (CpgExpression *expression,
 			g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
 			g_slist_free (expressions);
 
-			parser_failed (context,
+			parser_failed (expression,
+			               context,
 			               CPG_COMPILE_ERROR_INVALID_TOKEN,
 			               "Expected `,' but got %s",
 			               next->text);
@@ -1327,7 +1383,22 @@ parse_custom_operator (CpgExpression *expression,
 	                                (GSList const **)inds,
 	                                num_inds,
 	                                num_arguments,
-	                                context->error);
+	                                &err);
+
+	if (!op && context->error)
+	{
+		cpg_compile_error_set (context->error,
+		                       err,
+		                       NULL,
+		                       NULL,
+		                       NULL,
+		                       expression);
+	}
+
+	if (err)
+	{
+		g_error_free (err);
+	}
 
 	g_slist_foreach (multiexpr, (GFunc)free_expressions, NULL);
 	g_slist_free (multiexpr);
@@ -1398,7 +1469,8 @@ parse_custom_operator (CpgExpression *expression,
 
 					if (!prop)
 					{
-						return parser_failed (context,
+						return parser_failed (expression,
+						                      context,
 						                      CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
 						                      "The implicit property `%s' for function `%s' is not found",
 						                      aname,
@@ -1469,7 +1541,8 @@ parse_ternary_operator (CpgExpression     *expression,
 
 	if (!next)
 	{
-		return parser_failed (context,
+		return parser_failed (expression,
+		                      context,
 		                      CPG_COMPILE_ERROR_INVALID_TOKEN,
 		                      "Expected `:' but got (nothing)");
 	}
@@ -1479,7 +1552,8 @@ parse_ternary_operator (CpgExpression     *expression,
 
 	if (!istern)
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_INVALID_TOKEN,
 		               "Expected `:' but got `%s'",
 		               next->text);
@@ -1525,7 +1599,8 @@ parse_group (CpgExpression *expression,
 
 	if (!groupend)
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_INVALID_TOKEN,
 		               "Expected `)' but got %s",
 		               next ? next->text : "(nothing)");
@@ -1567,7 +1642,8 @@ parse_unary_operator (CpgExpression *expression,
 			inst = cpg_instruction_operator_new (cpg_math_operator_lookup (CPG_MATH_OPERATOR_TYPE_NEGATE), "!", 1);
 		break;
 		default:
-			parser_failed (context,
+			parser_failed (expression,
+			               context,
 			               CPG_COMPILE_ERROR_INVALID_TOKEN,
 			               "Expected unary operator (-, +, !) but got `%s'",
 			               op->parent.text);
@@ -1599,12 +1675,14 @@ parse_prime (CpgExpression *expression,
 	GSList *exprs;
 	CpgExpression *expr;
 	GSList *item;
+	GError *err = NULL;
 
 	instr = context->stack ? context->stack->data : NULL;
 
 	if (!instr)
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_INVALID_TOKEN,
 		               "The prime operator can only appear after an expression");
 
@@ -1631,7 +1709,22 @@ parse_prime (CpgExpression *expression,
 	                                NULL,
 	                                0,
 	                                0,
-	                                context->error);
+	                                &err);
+
+	if (!op && context->error)
+	{
+		cpg_compile_error_set (context->error,
+		                       err,
+		                       NULL,
+		                       NULL,
+		                       NULL,
+		                       expression);
+	}
+
+	if (err)
+	{
+		g_error_free (err);
+	}
 
 	g_slist_free (exprs);
 
@@ -1785,6 +1878,8 @@ parse_property (CpgExpression *expression,
 		instructions_push (expression,
 		                   cpg_instruction_custom_function_ref_new (f),
 		                   context);
+
+		ret = recurse_compile (expression, context, f);
 	}
 	else if (property)
 	{
@@ -1794,7 +1889,8 @@ parse_property (CpgExpression *expression,
 	}
 	else
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
 		               "Property `%s' not found",
 		               nname);
@@ -1851,7 +1947,8 @@ parse_dot_token (CpgExpression *expression,
 
 	if (!CPG_TOKEN_IS_IDENTIFIER (next))
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_INVALID_TOKEN,
 		               "Expected identifier for property");
 
@@ -1862,7 +1959,7 @@ parse_dot_token (CpgExpression *expression,
 	cname = g_strdup (CPG_TOKEN_IDENTIFIER (next)->identifier);
 	next = cpg_tokenizer_peek (*(context->buffer));
 
-	if (CPG_TOKEN_IS_OPERATOR (next) &&
+	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_START)
 	{
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
@@ -1924,18 +2021,13 @@ parse_identifier (CpgExpression      *expression,
 
 		if (!ret)
 		{
-			if (context->error && *(context->error))
-			{
-				g_error_free (*(context->error));
-				*(context->error) = NULL;
-			}
-
 			// try parsing constants
 			ret = parse_constant (expression, id, context);
 
 			if (!ret)
 			{
-				parser_failed (context,
+				parser_failed (expression,
+				               context,
 				               CPG_COMPILE_ERROR_INVALID_TOKEN,
 				               "Could not find property or constant `%s'",
 				               id);
@@ -2035,7 +2127,8 @@ parse_expression (CpgExpression   *expression,
 			}
 			break;
 			case CPG_TOKEN_TYPE_NONE:
-				parser_failed (context,
+				parser_failed (expression,
+				               context,
 				               CPG_COMPILE_ERROR_INVALID_TOKEN,
 				               "Uknown token");
 				ret = FALSE;
@@ -2066,9 +2159,10 @@ parse_expression (CpgExpression   *expression,
 		}
 	}
 
-	if (!ret && context->error && !*context->error)
+	if (!ret && context->error && !cpg_compile_error_get_error (context->error))
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_INVALID_TOKEN,
 		               "Expected expression but got (nothing)");
 	}
@@ -2182,9 +2276,9 @@ cpg_expression_reset_variadic (CpgExpression *expression)
  *
  **/
 gboolean
-cpg_expression_compile (CpgExpression      *expression,
-                        CpgCompileContext  *context,
-                        GError            **error)
+cpg_expression_compile (CpgExpression     *expression,
+                        CpgCompileContext *context,
+                        CpgCompileError   *error)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), FALSE);
@@ -2246,7 +2340,8 @@ cpg_expression_compile (CpgExpression      *expression,
 		{
 			instructions_free (expression);
 
-			return parser_failed (&ctx,
+			return parser_failed (expression,
+			                      &ctx,
 			                      CPG_COMPILE_ERROR_INVALID_STACK,
 			                      "Invalid stack produced. This usually indicates a problem in the parser");
 		}
@@ -2465,7 +2560,9 @@ cpg_expression_reset_cache (CpgExpression *expression)
 	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
 	{
 		CpgInstructionCustomOperator *op = item->data;
-		cpg_operator_reset_cache (cpg_instruction_custom_operator_get_operator (op));
+		CpgOperator *opp = cpg_instruction_custom_operator_get_operator (op);
+
+		cpg_operator_reset_cache (opp);
 	}
 }
 

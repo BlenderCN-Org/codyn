@@ -195,7 +195,5 @@ cpg_instruction_custom_operator_new (CpgOperator *operator)
 CpgOperator *
 cpg_instruction_custom_operator_get_operator (CpgInstructionCustomOperator *op)
 {
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (op), NULL);
-
 	return op->priv->op;
 }

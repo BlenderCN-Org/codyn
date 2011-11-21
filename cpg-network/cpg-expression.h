@@ -57,6 +57,7 @@ struct _CpgExpressionClass
 };
 
 typedef CPG_FORWARD_DECL (CpgProperty) CpgPropertyForward;
+typedef CPG_FORWARD_DECL (CpgCompileError) CpgCompileErrorForward;
 
 GType          cpg_expression_get_type         (void) G_GNUC_CONST;
 
@@ -70,7 +71,7 @@ const gchar   *cpg_expression_get_as_string    (CpgExpression      *expression);
 
 gboolean       cpg_expression_compile          (CpgExpression      *expression,
                                                 CpgCompileContext  *context,
-                                                GError            **error);
+                                                CpgCompileErrorForward    *error);
 
 gdouble        cpg_expression_evaluate         (CpgExpression      *expression);
 void           cpg_expression_set_value        (CpgExpression      *expression,

@@ -680,6 +680,36 @@ prepend_functions (CpgObject         *obj,
 	}
 }
 
+static CpgCompileContext *
+cpg_link_get_compile_context_impl (CpgObject         *object,
+                                   CpgCompileContext *context)
+{
+	CpgLink *link;
+
+	link = CPG_LINK (object);
+
+	/* Note: we repeat this logic here from cpg-object because we need
+	   to prepend the 'from' object before the real object... */
+	if (!context)
+	{
+		if (cpg_object_get_parent (object))
+		{
+			context = cpg_object_get_compile_context (cpg_object_get_parent (object),
+			                                          NULL);
+		}
+		else
+		{
+			context = cpg_compile_context_new ();
+		}
+	}
+
+	cpg_compile_context_prepend_object (context, link->priv->from);
+	prepend_functions (link->priv->from, context);
+
+	CPG_OBJECT_CLASS (cpg_link_parent_class)->get_compile_context (object, context);
+
+	return context;
+}
 
 static gboolean
 cpg_link_compile_impl (CpgObject         *object,
@@ -693,21 +723,13 @@ cpg_link_compile_impl (CpgObject         *object,
 		return TRUE;
 	}
 
-	if (!context)
+	if (context)
 	{
-		context = cpg_object_get_compile_context (object);
-	}
-	else
-	{
-		context = g_object_ref (context);
+		cpg_compile_context_save (context);
+		g_object_ref (context);
 	}
 
-	cpg_compile_context_save (context);
-
-	cpg_compile_context_prepend_object (context, link->priv->from);
-	prepend_functions (link->priv->from, context);
-
-	cpg_compile_context_prepend_object (context, object);
+	context = cpg_link_get_compile_context_impl (object, context);
 
 	/* Chain up, compile object */
 	if (CPG_OBJECT_CLASS (cpg_link_parent_class)->compile)
@@ -754,19 +776,17 @@ cpg_link_compile_impl (CpgObject         *object,
 			break;
 		}
 
-		if (!cpg_expression_compile (expr, context, &gerror))
+		if (!cpg_expression_compile (expr, context, error))
 		{
 			if (error)
 			{
 				cpg_compile_error_set (error,
-				                       gerror,
+				                       NULL,
 				                       object,
 				                       NULL,
 				                       action,
-				                       expr);
+				                       NULL);
 			}
-
-			g_error_free (gerror);
 
 			ret = FALSE;
 			break;
@@ -945,6 +965,7 @@ cpg_link_class_init (CpgLinkClass *klass)
 	cpgobject_class->foreach_expression = cpg_link_foreach_expression_impl;
 	cpgobject_class->copy = cpg_link_copy_impl;
 	cpgobject_class->compile = cpg_link_compile_impl;
+	cpgobject_class->get_compile_context = cpg_link_get_compile_context_impl;
 	cpgobject_class->equal = cpg_link_equal_impl;
 	cpgobject_class->apply_template = cpg_link_apply_template_impl;
 	cpgobject_class->unapply_template = cpg_link_unapply_template_impl;

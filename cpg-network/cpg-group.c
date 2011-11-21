@@ -891,6 +891,21 @@ prepend_functions (CpgGroup          *group,
 	}
 }
 
+static CpgCompileContext *
+cpg_group_cpg_get_compile_context (CpgObject         *object,
+                                   CpgCompileContext *context)
+{
+	CpgCompileContext *ret;
+	CpgGroup *group;
+
+	group = CPG_GROUP (object);
+
+	ret = CPG_OBJECT_CLASS (cpg_group_parent_class)->get_compile_context (object, context);
+
+	prepend_functions (group, ret);
+	return ret;
+}
+
 static gboolean
 cpg_group_cpg_compile (CpgObject         *object,
                        CpgCompileContext *context,
@@ -907,22 +922,14 @@ cpg_group_cpg_compile (CpgObject         *object,
 		return TRUE;
 	}
 
-	if (!context)
+	if (context)
 	{
-		context = cpg_object_get_compile_context (object);
-	}
-	else
-	{
+		cpg_compile_context_save (context);
 		g_object_ref (context);
 	}
 
-	cpg_compile_context_save (context);
-
 	/* Prepend all the defined functions in the instances */
-	prepend_functions (group, context);
-
-	cpg_compile_context_save (context);
-	cpg_compile_context_prepend_object (context, object);
+	context = cpg_group_cpg_get_compile_context (object, context);
 
 	item = group->priv->children;
 
@@ -936,8 +943,6 @@ cpg_group_cpg_compile (CpgObject         *object,
 		else if (!cpg_object_compile (item->data, context, error))
 		{
 			cpg_compile_context_restore (context);
-			cpg_compile_context_restore (context);
-
 			g_object_unref (context);
 
 			return FALSE;
@@ -959,8 +964,6 @@ cpg_group_cpg_compile (CpgObject         *object,
 		else if (!cpg_object_compile (item->data, context, error))
 		{
 			cpg_compile_context_restore (context);
-			cpg_compile_context_restore (context);
-
 			g_object_unref (context);
 
 			return FALSE;
@@ -978,8 +981,6 @@ cpg_group_cpg_compile (CpgObject         *object,
 		if (!cpg_object_compile (item->data, context, error))
 		{
 			cpg_compile_context_restore (context);
-			cpg_compile_context_restore (context);
-
 			g_object_unref (context);
 
 			return FALSE;
@@ -989,8 +990,6 @@ cpg_group_cpg_compile (CpgObject         *object,
 	}
 
 	g_slist_free (othersl);
-
-	cpg_compile_context_restore (context);
 
 	ret = CPG_OBJECT_CLASS (cpg_group_parent_class)->compile (object,
 	                                                          context,
@@ -1838,6 +1837,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 	cpg_class->get_property = cpg_group_cpg_get_property;
 
 	cpg_class->compile = cpg_group_cpg_compile;
+	cpg_class->get_compile_context = cpg_group_cpg_get_compile_context;
 	cpg_class->reset = cpg_group_cpg_reset;
 	cpg_class->foreach_expression = cpg_group_cpg_foreach_expression;
 	cpg_class->clear = cpg_group_cpg_clear;

@@ -219,7 +219,6 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 	{
 		CpgEmbeddedString *name;
 		CpgEmbeddedString *count;
-		CpgEmbeddedString *unexpanded;
 	} multiassign;
 }
 
@@ -378,8 +377,8 @@ integrator
 	;
 
 define_value
-	: value_as_string
-	| selector_non_ambiguous
+	: value_as_string		{ $$ = $1; }
+	| selector_non_ambiguous	{ $$ = $1; }
 	;
 
 define_item
@@ -388,15 +387,13 @@ define_item
 					                             $1.name,
 					                             $3,
 					                             FALSE,
-					                             $1.count,
-					                             $1.unexpanded); }
+					                             $1.count); }
 	| multi_assign_identifier '?' '=' define_value
 					{ cpg_parser_context_define (context,
 					                             $1.name,
 					                             $4,
 					                             TRUE,
-					                             $1.count,
-					                             $1.unexpanded); }
+					                             $1.count); }
 	| debug
 	| attributes_strict
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
@@ -983,11 +980,9 @@ assign_optional
 	;
 
 multi_assign_identifier
-	: identifier_or_string ',' identifier_or_string ',' identifier_or_string
-					{ $$.name = $1; $$.count = $3; $$.unexpanded = $5; }
-	| identifier_or_string ',' identifier_or_string
-					{ $$.name = $1; $$.count = $3; $$.unexpanded = NULL; }
-	| identifier_or_string		{ $$.name = $1; $$.count = NULL; $$.unexpanded = NULL; }
+	: identifier_or_string ',' identifier_or_string
+					{ $$.name = $1; $$.count = $3; }
+	| identifier_or_string		{ $$.name = $1; $$.count = NULL; }
 	;
 
 constraint
@@ -1025,7 +1020,6 @@ property
 					{ cpg_parser_context_add_property (context,
 					                                   $2.name,
 					                                   $2.count,
-					                                   $2.unexpanded,
 					                                   $4,
 					                                   $5.add,
 					                                   $5.remove,
@@ -1038,7 +1032,6 @@ property
 					{ cpg_parser_context_add_property (context,
 					                                   $2.name,
 					                                   $2.count,
-					                                   $2.unexpanded,
 					                                   NULL,
 					                                   $3.add,
 					                                   $3.remove,

@@ -84,6 +84,34 @@ cpg_expansion_init (CpgExpansion *self)
 }
 
 CpgExpansion *
+cpg_expansion_newv (gchar const *item,
+                    ...)
+{
+	GPtrArray *ptr;
+	va_list ap;
+	gchar **d;
+	CpgExpansion *ret;
+
+	ptr = g_ptr_array_new ();
+	g_ptr_array_add (ptr, (gpointer)item);
+
+	va_start (ap, item);
+
+	while ((item = va_arg (ap, gchar const *)))
+	{
+		g_ptr_array_add (ptr, (gpointer)item);
+	}
+
+	g_ptr_array_add (ptr, NULL);
+	d = (gchar **)g_ptr_array_free (ptr, FALSE);
+
+	ret = cpg_expansion_new ((gchar const * const *)d);
+	g_free (d);
+
+	return ret;
+}
+
+CpgExpansion *
 cpg_expansion_new_one (gchar const *item)
 {
 	gchar const *items[] = {

@@ -176,7 +176,6 @@ cpg_function_compile_impl (CpgObject         *object,
                            CpgCompileError   *error)
 {
 	CpgFunction *self = CPG_FUNCTION (object);
-	GError *gerror = NULL;
 	gboolean ret = TRUE;
 	GList *item;
 
@@ -185,14 +184,13 @@ cpg_function_compile_impl (CpgObject         *object,
 		return TRUE;
 	}
 
-	if (!context)
+	if (context)
 	{
-		context = cpg_object_get_compile_context (object);
+		cpg_compile_context_save (context);
+		g_object_ref (context);
 	}
-	else
-	{
-		context = g_object_ref (context);
-	}
+
+	context = cpg_object_get_compile_context (object, context);
 
 	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->compile)
 	{
@@ -205,9 +203,6 @@ cpg_function_compile_impl (CpgObject         *object,
 		}
 	}
 
-	cpg_compile_context_save (context);
-	cpg_compile_context_prepend_object (context, object);
-
 	for (item = self->priv->arguments; item; item = g_list_next (item))
 	{
 		CpgExpression *expr;
@@ -216,20 +211,19 @@ cpg_function_compile_impl (CpgObject         *object,
 
 		if (expr)
 		{
-			if (!cpg_expression_compile (expr, context, &gerror))
+			if (!cpg_expression_compile (expr, context, error))
 			{
 				if (error)
 				{
 					cpg_compile_error_set (error,
-					                       gerror,
+					                       NULL,
 					                       object,
 					                       NULL,
 					                       NULL,
-					                       self->priv->expression);
+					                       NULL);
 				}
 
 				ret = FALSE;
-				g_error_free (gerror);
 
 				break;
 			}
@@ -245,19 +239,18 @@ cpg_function_compile_impl (CpgObject         *object,
 
 	if (!cpg_expression_compile (self->priv->expression,
 	                             context,
-	                             &gerror))
+	                             error))
 	{
 		if (error)
 		{
 			cpg_compile_error_set (error,
-			                       gerror,
+			                       NULL,
 			                       object,
 			                       NULL,
 			                       NULL,
-			                       self->priv->expression);
+			                       NULL);
 		}
 
-		g_error_free (gerror);
 		ret = FALSE;
 	}
 
@@ -297,9 +290,12 @@ cpg_function_execute_impl (CpgFunction *function,
 	for (i = 0; i < nargs; ++i)
 	{
 		CpgFunctionArgument *argument = item->data;
+		gdouble val;
 		CpgProperty *property = _cpg_function_argument_get_property (argument);
 
-		cpg_property_set_value (property, cpg_stack_pop (stack));
+		val = cpg_stack_pop (stack);
+
+		cpg_property_set_value (property, val);
 		item = g_list_previous (item);
 	}
 
@@ -432,10 +428,10 @@ cpg_function_foreach_expression_impl (CpgObject                *object,
 		}
 	}
 
-	/*if (function->priv->expression)
+	if (function->priv->expression)
 	{
 		func (function->priv->expression, userdata);
-	}*/
+	}
 }
 
 static void
@@ -1309,15 +1305,9 @@ cpg_function_execute (CpgFunction *function,
                       guint        nargs,
                       CpgStack    *stack)
 {
-	g_return_if_fail (CPG_IS_FUNCTION (function));
-	g_return_if_fail (stack != NULL);
-
-	if (CPG_FUNCTION_GET_CLASS (function)->execute)
-	{
-		CPG_FUNCTION_GET_CLASS (function)->execute (function,
-		                                            nargs,
-		                                            stack);
-	}
+	CPG_FUNCTION_GET_CLASS (function)->execute (function,
+	                                            nargs,
+	                                            stack);
 }
 
 /**
