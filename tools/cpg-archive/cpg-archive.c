@@ -80,9 +80,8 @@ add_defines (CpgParserContext *context)
 		{
 			cpg_parser_context_define (context,
 			                           cpg_embedded_string_new_from_string (parts[0]),
-			                           cpg_embedded_string_new_from_string (parts[1]),
+			                           G_OBJECT (cpg_embedded_string_new_from_string (parts[1])),
 			                           FALSE,
-			                           NULL,
 			                           NULL);
 		}
 
