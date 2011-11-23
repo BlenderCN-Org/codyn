@@ -2720,6 +2720,9 @@ create_links_single (CpgParserContext          *context,
 		CpgSelection *tosel;
 		CpgExpansion *realid;
 		CpgSelection *obj;
+		CpgSelection *firstsel;
+		CpgSelection *secondsel;
+		gboolean argswitch;
 		gchar *newid;
 		gchar *uniq;
 
@@ -2730,6 +2733,21 @@ create_links_single (CpgParserContext          *context,
 
 		tosel = item->data;
 		item = g_slist_next (item);
+
+		if (bidi == NULL || idx % 2 == 1)
+		{
+			firstsel = fromsel;
+			secondsel = tosel;
+
+			argswitch = FALSE;
+		}
+		else
+		{
+			firstsel = tosel;
+			secondsel = fromsel;
+
+			argswitch = TRUE;
+		}
 
 		if (cpg_object_get_parent (cpg_selection_get_object (fromsel)) !=
 		    cpg_object_get_parent (cpg_selection_get_object (tosel)))
@@ -2764,17 +2782,8 @@ create_links_single (CpgParserContext          *context,
 
 		if (bidi != NULL)
 		{
-			gint widx;
+			gint widx = argswitch ? 1 : 0;
 			CpgEmbeddedString *s;
-
-			if (bidi == NULL || idx % 2 == 1)
-			{
-				widx = 0;
-			}
-			else
-			{
-				widx = 1;
-			}
 
 			s = CPG_EMBEDDED_STRING (cpg_attribute_get_argument (bidi, widx));
 
@@ -2801,12 +2810,12 @@ create_links_single (CpgParserContext          *context,
 		}
 
 		cpg_embedded_context_add_expansions (context->priv->embedded,
-		                                     cpg_selection_get_expansions (fromsel));
+		                                     cpg_selection_get_expansions (firstsel));
 
 		if (to || !onlyself)
 		{
 			cpg_embedded_context_add_expansions (context->priv->embedded,
-			                                     cpg_selection_get_expansions (tosel));
+			                                     cpg_selection_get_expansions (secondsel));
 		}
 
 		obj = parse_object_single_id (context,
