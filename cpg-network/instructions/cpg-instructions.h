@@ -9,7 +9,7 @@
 #include <cpg-network/instructions/cpg-instruction-function.h>
 #include <cpg-network/instructions/cpg-instruction-number.h>
 #include <cpg-network/instructions/cpg-instruction-operator.h>
-#include <cpg-network/instructions/cpg-instruction-variadic-function.h>
+#include <cpg-network/instructions/cpg-instruction-rand.h>
 #include <cpg-network/instructions/cpg-instruction-property.h>
 #include <cpg-network/instructions/cpg-instruction-constant.h>
 

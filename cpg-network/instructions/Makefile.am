@@ -16,7 +16,7 @@ libinstructions_la_SOURCES = 			\
 	cpg-instruction-number.c		\
 	cpg-instruction-operator.c		\
 	cpg-instruction-property.c		\
-	cpg-instruction-variadic-function.c	\
+	cpg-instruction-rand.c	\
 	cpg-instruction-constant.c
 
 libinstructions_headers =			\
@@ -30,7 +30,7 @@ libinstructions_headers =			\
 	cpg-instruction-number.h		\
 	cpg-instruction-operator.h		\
 	cpg-instruction-property.h		\
-	cpg-instruction-variadic-function.h	\
+	cpg-instruction-rand.h	\
 	cpg-instruction-constant.h
 
 libinstructions_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network/instructions

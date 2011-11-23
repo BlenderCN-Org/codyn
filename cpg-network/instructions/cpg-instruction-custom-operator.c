@@ -79,16 +79,21 @@ extract_dependencies (GSList const *expressions,
 {
 	while (expressions)
 	{
-		CpgExpression *expr = expressions->data;
-		GSList *cp;
-
-		cp = g_slist_copy ((GSList *)cpg_expression_get_dependencies (expr));
-		ret = g_slist_concat (ret, cp);
-
+		ret = g_slist_prepend (ret, expressions->data);
 		expressions = g_slist_next (expressions);
 	}
 
 	return ret;
+}
+
+static void
+extract_function_dependencies (CpgFunction  *f,
+                               GSList      **dependencies)
+{
+	CpgExpression *fe;
+
+	fe = cpg_function_get_expression (f);
+	*dependencies = g_slist_prepend (*dependencies, fe);
 }
 
 static GSList *
@@ -101,15 +106,6 @@ cpg_instruction_custom_operator_get_dependencies (CpgInstruction *instruction)
 
 	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
 
-	num = cpg_operator_num_expressions (self->priv->op);
-
-	for (i = 0; i < num; ++i)
-	{
-		dependencies =
-			extract_dependencies (cpg_operator_get_expressions (self->priv->op, i),
-			                      dependencies);
-	}
-
 	num = cpg_operator_num_indices (self->priv->op);
 
 	for (i = 0; i < num; ++i)
@@ -118,6 +114,10 @@ cpg_instruction_custom_operator_get_dependencies (CpgInstruction *instruction)
 			extract_dependencies (cpg_operator_get_indices (self->priv->op, i),
 			                      dependencies);
 	}
+
+	cpg_operator_foreach_function (self->priv->op,
+	                               (CpgForeachFunctionFunc)extract_function_dependencies,
+	                               &dependencies);
 
 	return dependencies;
 }

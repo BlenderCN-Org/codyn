@@ -254,6 +254,7 @@ set_constraint (CpgProperty   *property,
 	if (expression)
 	{
 		property->priv->constraint = g_object_ref_sink (expression);
+		cpg_expression_set_has_cache (property->priv->constraint, FALSE);
 
 		g_signal_connect_swapped (expression,
 		                          "notify::expression",
@@ -755,9 +756,6 @@ cpg_property_get_value (CpgProperty *property)
 			property->priv->in_constraint = TRUE;
 
 			ret = cpg_expression_evaluate (property->priv->constraint);
-
-			// Don't cache it
-			cpg_expression_reset_cache (property->priv->constraint);
 
 			property->priv->in_constraint = FALSE;
 		}

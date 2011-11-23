@@ -73,9 +73,6 @@ CpgExpression  *cpg_link_action_get_equation (CpgLinkAction *action);
 void            cpg_link_action_set_equation (CpgLinkAction *action,
                                               CpgExpression *equation);
 
-gboolean        cpg_link_action_depends      (CpgLinkAction *action,
-                                              CpgProperty   *property);
-
 gboolean        cpg_link_action_equal        (CpgLinkAction *action,
                                               CpgLinkAction *other);
 

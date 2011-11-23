@@ -23,7 +23,7 @@
 #ifndef __CPG_INTEGRATOR_RUNGE_KUTTA_H__
 #define __CPG_INTEGRATOR_RUNGE_KUTTA_H__
 
-#include <cpg-network/cpg-integrator.h>
+#include <cpg-network/integrators/cpg-integrator.h>
 
 G_BEGIN_DECLS
 

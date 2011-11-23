@@ -24,7 +24,7 @@
 #include "cpg-operator.h"
 #include "cpg-property.h"
 #include "cpg-usable.h"
-#include "cpg-integrator.h"
+#include "integrators/cpg-integrator.h"
 #include "cpg-symbolic.h"
 #include "cpg-function.h"
 #include "cpg-expression-tree-iter.h"

@@ -526,27 +526,6 @@ cpg_link_action_set_equation (CpgLinkAction *action,
 }
 
 /**
- * cpg_link_action_depends:
- * @action: A #CpgLinkAction
- * @property: A #CpgProperty
- *
- * Check whether the action depends on a certain property.
- *
- * Returns: %TRUE if the action depends on @property, %FALSE otherwise
- *
- **/
-gboolean
-cpg_link_action_depends (CpgLinkAction *action,
-                         CpgProperty   *property)
-{
-	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), FALSE);
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
-
-	return g_slist_find ((GSList *)cpg_expression_get_dependencies (action->priv->equation),
-	                     property) != NULL;
-}
-
-/**
  * cpg_link_action_copy:
  * @action: A #CpgLinkAction
  *

@@ -3,7 +3,6 @@
 #include "cpg-expression-tree-iter.h"
 #include "instructions/cpg-instructions.h"
 #include "cpg-expression-tree-iter.h"
-#include "cpg-integrator.h"
 #include "cpg-operators.h"
 #include "cpg-link-action.h"
 #include "cpg-debug.h"

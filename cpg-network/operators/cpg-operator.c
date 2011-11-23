@@ -22,7 +22,7 @@
 
 #include "cpg-operator.h"
 #include "cpg-expression.h"
-#include "cpg-integrator.h"
+#include "integrators/cpg-integrator.h"
 #include <math.h>
 
 #define CPG_OPERATOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OPERATOR, CpgOperatorPrivate))
@@ -163,14 +163,6 @@ cpg_operator_reset_cache_default (CpgOperator *op)
 	foreach_function_expression (op,
 	                             (GFunc)cpg_expression_reset_cache,
 	                             NULL);
-}
-
-static void
-cpg_operator_reset_variadic_default (CpgOperator *op)
-{
-	foreach_expression (op,
-	                    (GFunc)cpg_expression_reset_variadic,
-	                    NULL);
 }
 
 static void
@@ -413,7 +405,6 @@ cpg_operator_class_init (CpgOperatorClass *klass)
 	klass->execute = cpg_operator_execute_default;
 	klass->reset_cache = cpg_operator_reset_cache_default;
 	klass->reset = cpg_operator_reset_default;
-	klass->reset_variadic = cpg_operator_reset_variadic_default;
 	klass->step = cpg_operator_step_default;
 	klass->step_prepare = cpg_operator_step_prepare_default;
 	klass->step_evaluate = cpg_operator_step_evaluate_default;
@@ -508,21 +499,6 @@ cpg_operator_reset_cache (CpgOperator *op)
 {
 	/* Omit type check to increase speed */
 	CPG_OPERATOR_GET_CLASS (op)->reset_cache (op);
-}
-
-/**
- * cpg_operator_reset_variadic:
- * @op: A #CpgOperator
- * @data: A #CpgOperatorData
- *
- * Reset the variadic cache of the operator instance.
- *
- **/
-void
-cpg_operator_reset_variadic (CpgOperator *op)
-{
-	/* Omit type check to increase speed */
-	CPG_OPERATOR_GET_CLASS (op)->reset_variadic (op);
 }
 
 GSList const **

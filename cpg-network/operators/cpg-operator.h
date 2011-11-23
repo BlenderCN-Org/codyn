@@ -51,7 +51,7 @@ typedef enum
 
 GQuark            cpg_operator_error_quark      (void);
 
-struct _CpgIntegrator;
+typedef CPG_FORWARD_DECL (CpgIntegrator) CpgIntegratorForward;
 
 typedef CPG_FORWARD_DECL (CpgFunction) CpgFunctionForward;
 
@@ -88,22 +88,20 @@ struct _CpgOperatorClass
 
 	void             (*reset_cache) (CpgOperator     *op);
 
-	void             (*reset_variadic) (CpgOperator     *op);
-
 	void             (*reset)           (CpgOperator *op);
 
 	void             (*step)            (CpgOperator *op,
-	                                     struct _CpgIntegrator *integrator,
+	                                     CpgIntegratorForward *integrator,
 	                                     gdouble      t,
 	                                     gdouble      timestep);
 
 	void             (*step_prepare)    (CpgOperator *op,
-	                                     struct _CpgIntegrator *integrator,
+	                                     CpgIntegratorForward *integrator,
 	                                     gdouble      t,
 	                                     gdouble      timestep);
 
 	void             (*step_evaluate)   (CpgOperator *op,
-	                                     struct _CpgIntegrator *integrator,
+	                                     CpgIntegratorForward *integrator,
 	                                     gdouble      t,
 	                                     gdouble      timestep);
 
@@ -135,7 +133,6 @@ void                 cpg_operator_execute                     (CpgOperator     *
                                                                CpgStack        *stack);
 
 void                 cpg_operator_reset_cache                 (CpgOperator     *op);
-void                 cpg_operator_reset_variadic              (CpgOperator     *op);
 
 gchar const         *cpg_operator_get_name                    (CpgOperator      *op);
 gchar const         *cpg_operator_get_class_name              (CpgOperatorClass *op);
@@ -158,17 +155,17 @@ gboolean             cpg_operator_equal                       (CpgOperator     *
                                                                CpgOperator     *other);
 
 void                 cpg_operator_step                        (CpgOperator     *op,
-                                                               struct _CpgIntegrator *integrator,
+                                                               CpgIntegratorForward *integrator,
                                                                gdouble          t,
                                                                gdouble          timestep);
 
 void                 cpg_operator_step_prepare                (CpgOperator     *op,
-                                                               struct _CpgIntegrator *integrator,
+                                                               CpgIntegratorForward*integrator,
                                                                gdouble          t,
                                                                gdouble          timestep);
 
 void                 cpg_operator_step_evaluate               (CpgOperator     *op,
-                                                               struct _CpgIntegrator *integrator,
+                                                               CpgIntegratorForward *integrator,
                                                                gdouble          t,
                                                                gdouble          timestep);
 

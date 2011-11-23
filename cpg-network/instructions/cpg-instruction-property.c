@@ -86,7 +86,7 @@ cpg_instruction_property_get_stack_count (CpgInstruction *instruction)
 static GSList *
 cpg_instruction_property_get_dependencies (CpgInstruction *instruction)
 {
-	return g_slist_prepend (NULL, CPG_INSTRUCTION_PROPERTY (instruction)->priv->property);
+	return g_slist_prepend (NULL, cpg_property_get_expression (CPG_INSTRUCTION_PROPERTY (instruction)->priv->property));
 }
 
 static gboolean

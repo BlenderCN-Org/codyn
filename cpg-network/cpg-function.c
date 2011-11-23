@@ -23,6 +23,8 @@
 #include "cpg-function.h"
 #include "cpg-compile-error.h"
 #include "cpg-expression-tree-iter.h"
+#include "instructions/cpg-instruction-rand.h"
+
 #include <string.h>
 
 /**
@@ -265,6 +267,10 @@ cpg_function_evaluate_impl (CpgFunction *function)
 {
 	if (function->priv->expression)
 	{
+		g_slist_foreach ((GSList *)cpg_expression_get_rand_instructions (function->priv->expression),
+		                 (GFunc)cpg_instruction_rand_next,
+		                 NULL);
+
 		gdouble ret = cpg_expression_evaluate (function->priv->expression);
 		return ret;
 	}
@@ -297,31 +303,6 @@ cpg_function_execute_impl (CpgFunction *function,
 
 		cpg_property_set_value (property, val);
 		item = g_list_previous (item);
-	}
-
-	/* Set defaults for optional arguments */
-	item = from ? g_list_next (from) : function->priv->arguments;
-
-	while (item)
-	{
-		CpgFunctionArgument *argument = item->data;
-		CpgProperty *property = _cpg_function_argument_get_property (argument);
-
-		CpgExpression *def;
-
-		def = cpg_function_argument_get_default_value (argument);
-
-		if (def)
-		{
-			cpg_property_set_value (property,
-			                        cpg_expression_evaluate (def));
-		}
-		else
-		{
-			cpg_property_set_value (property, 0);
-		}
-
-		item = g_list_next (item);
 	}
 
 	/* Evaluate the expression */
@@ -1166,6 +1147,9 @@ cpg_function_add_argument (CpgFunction         *function,
 	}
 
 	_cpg_function_argument_set_property (argument, property);
+
+	cpg_expression_set_has_cache (cpg_property_get_expression (property),
+	                              FALSE);
 
 	g_signal_emit (function, signals[ARGUMENT_ADDED], 0, argument);
 }

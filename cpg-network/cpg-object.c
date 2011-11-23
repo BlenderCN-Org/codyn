@@ -864,58 +864,6 @@ cpg_object_apply_template_impl (CpgObject  *object,
 	return TRUE;
 }
 
-static gboolean
-expression_depends_on_real (CpgExpression *expression,
-                            CpgProperty   *property,
-                            GHashTable    *processed)
-{
-	GSList const *dependencies;
-
-	dependencies = cpg_expression_get_dependencies (expression);
-
-	while (dependencies)
-	{
-		if (dependencies->data == property)
-		{
-			return TRUE;
-		}
-
-		/* Don't scan again */
-		if (g_hash_table_lookup (processed, dependencies->data))
-		{
-			return FALSE;
-		}
-
-		g_hash_table_insert (processed, dependencies->data, GINT_TO_POINTER (TRUE));
-
-		if (expression_depends_on_real (cpg_property_get_expression (dependencies->data),
-		                                property,
-		                                processed))
-		{
-			return TRUE;
-		}
-
-		dependencies = g_slist_next (dependencies);
-	}
-
-	return FALSE;
-}
-
-static gboolean
-expression_depends_on (CpgExpression *expression,
-                       CpgProperty   *property)
-{
-	GHashTable *processed;
-	gboolean ret;
-
-	processed = g_hash_table_new (g_direct_hash, g_direct_equal);
-	ret = expression_depends_on_real (expression, property, processed);
-
-	g_hash_table_destroy (processed);
-
-	return ret;
-}
-
 static CpgCompileContext *
 cpg_object_get_compile_context_impl (CpgObject         *object,
                                      CpgCompileContext *context)
@@ -1004,7 +952,8 @@ cpg_object_compile_impl (CpgObject         *object,
 
 		}
 
-		if (expression_depends_on (expr, property))
+		if (cpg_expression_depends_on (expr,
+		                               cpg_property_get_expression (property)))
 		{
 			if (error)
 			{
@@ -1248,16 +1197,13 @@ compare_property_dependencies (CpgProperty *prop1,
 	CpgExpression *e1 = cpg_property_get_expression (prop1);
 	CpgExpression *e2 = cpg_property_get_expression (prop2);
 
-	GSList *d1 = (GSList *)cpg_expression_get_dependencies (e1);
-	GSList *d2 = (GSList *)cpg_expression_get_dependencies (e2);
-
-	if (g_slist_find (d1, prop2) != NULL)
-	{
-		return 1;
-	}
-	else if (g_slist_find (d2, prop1) != NULL)
+	if (cpg_expression_depends_on (e1, e2))
 	{
 		return -1;
+	}
+	else if (cpg_expression_depends_on (e2, e1))
+	{
+		return 1;
 	}
 	else
 	{
@@ -2222,8 +2168,7 @@ cpg_object_get_parent (CpgObject *object)
 gboolean
 cpg_object_is_compiled (CpgObject *object)
 {
-	g_return_val_if_fail (CPG_IS_OBJECT (object), FALSE);
-
+	/* Omit check to speed up */
 	return object->priv->compiled ? TRUE : FALSE;
 }
 

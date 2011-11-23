@@ -60,12 +60,12 @@ struct _CpgExpressionPrivate
 	gchar *expression;
 
 	GSList *instructions;
-	GSList *variadic_instructions;
-	GSList *operator_instructions;
+	GSList *rand_instructions;
 
 	CpgStack output;
 
-	GSList *dependencies;
+	GSList *depends_on;
+	GSList *depends_on_me;
 
 	gdouble cached_output;
 	gint error_at;
@@ -134,21 +134,36 @@ pop_error_start (CpgExpression *expression,
 static void
 instructions_free (CpgExpression *expression)
 {
-	g_slist_foreach (expression->priv->instructions,
-	                 (GFunc)cpg_mini_object_free,
-	                 NULL);
+	while (expression->priv->instructions)
+	{
+		GSList *deps;
+		GSList *dep;
 
-	g_slist_free (expression->priv->instructions);
-	expression->priv->instructions = NULL;
+		deps = cpg_instruction_get_dependencies (expression->priv->instructions->data);
 
-	g_slist_free (expression->priv->variadic_instructions);
-	expression->priv->variadic_instructions = NULL;
+		for (dep = deps; dep; dep = g_slist_next (dep))
+		{
+			CpgExpression *other = dep->data;
 
-	g_slist_free (expression->priv->operator_instructions);
-	expression->priv->operator_instructions = NULL;
+			other->priv->depends_on_me =
+				g_slist_remove (other->priv->depends_on_me,
+				                expression);
+		}
 
-	g_slist_free (expression->priv->dependencies);
-	expression->priv->dependencies = NULL;
+		g_slist_free (deps);
+
+		cpg_mini_object_free (expression->priv->instructions->data);
+
+		expression->priv->instructions =
+			g_slist_delete_link (expression->priv->instructions,
+			                     expression->priv->instructions);
+	}
+
+	g_slist_free (expression->priv->depends_on);
+	expression->priv->depends_on = NULL;
+
+	g_slist_free (expression->priv->rand_instructions);
+	expression->priv->rand_instructions = NULL;
 
 	expression->priv->cached = FALSE;
 
@@ -216,6 +231,17 @@ set_expression (CpgExpression *expression,
 }
 
 static void
+reset_depending_cache (CpgExpression *expression)
+{
+	GSList *item;
+
+	for (item = expression->priv->depends_on_me; item; item = g_slist_next (item))
+	{
+		cpg_expression_reset_cache (item->data);
+	}
+}
+
+static void
 set_value (CpgExpression *expression,
            gdouble        value)
 {
@@ -223,6 +249,12 @@ set_value (CpgExpression *expression,
 	expression->priv->prevent_cache_reset = TRUE;
 
 	expression->priv->cached_output = value;
+
+	if (expression->priv->has_cache)
+	{
+		// Reset the cache of any expression that depends on this expression
+		reset_depending_cache (expression);
+	}
 }
 
 static void
@@ -254,7 +286,7 @@ set_has_cache (CpgExpression *expression,
 	if (!cache)
 	{
 		expression->priv->cached = FALSE;
-		cpg_expression_reset_variadic (expression);
+		reset_depending_cache (expression);
 	}
 
 	g_object_notify (G_OBJECT (expression), "has-cache");
@@ -438,19 +470,6 @@ instructions_push (CpgExpression  *expression,
 	expression->priv->instructions = g_slist_prepend (expression->priv->instructions,
 	                                                  next);
 
-	if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (next))
-	{
-		expression->priv->variadic_instructions =
-			g_slist_prepend (expression->priv->variadic_instructions,
-			                 next);
-	}
-	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (next))
-	{
-		expression->priv->operator_instructions =
-			g_slist_prepend (expression->priv->operator_instructions,
-			                 next);
-	}
-
 	if (context)
 	{
 		gint cnt = cpg_instruction_get_stack_count (next);
@@ -486,21 +505,7 @@ instructions_pop (CpgExpression *expression)
 
 	expression->priv->instructions =
 		g_slist_delete_link (expression->priv->instructions,
-	                             expression->priv->instructions);
-
-	if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (inst))
-	{
-		expression->priv->variadic_instructions =
-			g_slist_remove (expression->priv->variadic_instructions,
-			                inst);
-	}
-	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (inst) ||
-	         CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst))
-	{
-		expression->priv->operator_instructions =
-			g_slist_remove (expression->priv->operator_instructions,
-			                inst);
-	}
+		                     expression->priv->instructions);
 
 	return inst;
 }
@@ -885,6 +890,7 @@ parse_function (CpgExpression *expression,
 	gint n_optional = 0;
 	gint n_implicit = 0;
 	gboolean ret = TRUE;
+	gboolean isrand = FALSE;
 
 	if (!cname)
 	{
@@ -900,15 +906,24 @@ parse_function (CpgExpression *expression,
 	{
 		if (cname == NULL)
 		{
-			fid = cpg_math_function_lookup (name, &arguments);
-
-			if (!fid)
+			// Special case 'rand' here
+			if (g_strcmp0 (name, "rand") == 0)
 			{
-				return parser_failed (expression,
-				                      context,
-				                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
-				                      "Function %s could not be found",
-				                      name);
+				isrand = TRUE;
+				arguments = -1;
+			}
+			else
+			{
+				fid = cpg_math_function_lookup (name, &arguments);
+
+				if (!fid)
+				{
+					return parser_failed (expression,
+					                      context,
+					                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
+					                      "Function %s could not be found",
+					                      name);
+				}
 			}
 		}
 		else
@@ -1051,17 +1066,15 @@ parse_function (CpgExpression *expression,
 
 	if (function == NULL)
 	{
-		if (cpg_math_function_is_constant (fid))
+		if (isrand)
+		{
+			instruction = cpg_instruction_rand_new (numargs);
+		}
+		else
 		{
 			instruction = cpg_instruction_function_new (fid,
 			                                            name,
 			                                            numargs);
-		}
-		else
-		{
-			instruction = cpg_instruction_variadic_function_new (fid,
-			                                                     name,
-			                                                     numargs);
 		}
 	}
 	else
@@ -2177,6 +2190,9 @@ validate_stack (CpgExpression *expression)
 	gint stack = 0;
 	gint maxstack = 1;
 
+	g_slist_free (expression->priv->depends_on);
+	expression->priv->depends_on = NULL;
+
 	// check for empty instruction set
 	if (!expression->priv->instructions)
 	{
@@ -2188,6 +2204,9 @@ validate_stack (CpgExpression *expression)
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{
 		CpgInstruction *inst = item->data;
+		GSList *deps;
+		GSList *dep;
+
 		stack += cpg_instruction_get_stack_count (inst);
 
 		if (stack <= 0)
@@ -2195,17 +2214,35 @@ validate_stack (CpgExpression *expression)
 			break;
 		}
 
-		expression->priv->dependencies =
-			g_slist_concat (expression->priv->dependencies,
-			                cpg_instruction_get_dependencies (inst));
+		deps = cpg_instruction_get_dependencies (inst);
+
+		for (dep = deps; dep; dep = g_slist_next (dep))
+		{
+			CpgExpression *other = dep->data;
+
+			expression->priv->depends_on =
+				g_slist_prepend (expression->priv->depends_on,
+				                 other);
+
+			other->priv->depends_on_me =
+				g_slist_prepend (other->priv->depends_on_me,
+				                 expression);
+		}
+
+		g_slist_free (deps);
+
+		if (CPG_IS_INSTRUCTION_RAND (inst))
+		{
+			expression->priv->rand_instructions =
+				g_slist_prepend (expression->priv->rand_instructions,
+				                 inst);
+		}
 
 		if (stack > maxstack)
 		{
 			maxstack = stack;
 		}
 	}
-
-	expression->priv->dependencies = g_slist_reverse (expression->priv->dependencies);
 
 	if (stack != 1)
 	{
@@ -2234,32 +2271,6 @@ empty_expression (CpgExpression *expression)
 	}
 
 	return TRUE;
-}
-
-/**
- * cpg_expression_reset_variadic:
- * @expression: A #CpgExpression
- *
- * Reset the cache of the variadic functions (such as rand()). You normally
- * do not need to call this function directly.
- *
- **/
-void
-cpg_expression_reset_variadic (CpgExpression *expression)
-{
-	/* Omit type check to increase speed */
-	GSList *item;
-
-	for (item = expression->priv->variadic_instructions; item; item = g_slist_next (item))
-	{
-		cpg_instruction_variadic_function_reset_cache (item->data);
-	}
-
-	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
-	{
-		CpgInstructionCustomOperator *op = item->data;
-		cpg_operator_reset_variadic (cpg_instruction_custom_operator_get_operator (op));
-	}
 }
 
 /**
@@ -2316,9 +2327,6 @@ cpg_expression_compile (CpgExpression     *expression,
 		}
 	}
 
-	g_slist_free (expression->priv->dependencies);
-	expression->priv->dependencies = NULL;
-
 	if (!ret)
 	{
 		instructions_free (expression);
@@ -2329,12 +2337,6 @@ cpg_expression_compile (CpgExpression     *expression,
 		// reverse instructions
 		expression->priv->instructions =
 			g_slist_reverse (expression->priv->instructions);
-
-		expression->priv->variadic_instructions =
-			g_slist_reverse (expression->priv->variadic_instructions);
-
-		expression->priv->operator_instructions =
-			g_slist_reverse (expression->priv->operator_instructions);
 
 		if (!validate_stack (expression))
 		{
@@ -2347,11 +2349,14 @@ cpg_expression_compile (CpgExpression     *expression,
 		}
 	}
 
-	expression->priv->cached = FALSE;
+	cpg_expression_reset_cache (expression);
 
 	if (expression->priv->modified)
 	{
 		expression->priv->modified = FALSE;
+
+		// This should also trigger recompilation of things
+		// that depend on this (like custom operators)
 		g_object_notify (G_OBJECT (expression), "modified");
 	}
 
@@ -2399,16 +2404,10 @@ _cpg_expression_set_instructions_take (CpgExpression *expression,
 
 	cpg_stack_destroy (&(expression->priv->output));
 
-	expression->priv->cached = FALSE;
+	cpg_expression_reset_cache (expression);
+	expression->priv->modified = FALSE;
 
-	if (expression->priv->modified)
-	{
-		expression->priv->modified = FALSE;
-		g_object_notify (G_OBJECT (expression), "modified");
-	}
-
-	g_slist_free (expression->priv->dependencies);
-	expression->priv->dependencies = NULL;
+	g_object_notify (G_OBJECT (expression), "modified");
 
 	expression->priv->instructions = instructions;
 
@@ -2418,32 +2417,6 @@ _cpg_expression_set_instructions_take (CpgExpression *expression,
 		                   cpg_instruction_number_new (0.0),
 		                   NULL);
 	}
-
-	GSList *item;
-
-	for (item = expression->priv->instructions; item; item = g_slist_next (item))
-	{
-		CpgInstruction *inst = item->data;
-
-		if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (inst))
-		{
-			expression->priv->variadic_instructions =
-				g_slist_prepend (expression->priv->variadic_instructions,
-				                 inst);
-		}
-		else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (inst))
-		{
-			expression->priv->operator_instructions =
-				g_slist_prepend (expression->priv->operator_instructions,
-				                 inst);
-		}
-	}
-
-	expression->priv->variadic_instructions =
-		g_slist_reverse (expression->priv->variadic_instructions);
-
-	expression->priv->operator_instructions =
-		g_slist_reverse (expression->priv->operator_instructions);
 
 	validate_stack (expression);
 }
@@ -2529,10 +2502,6 @@ cpg_expression_evaluate (CpgExpression *expression)
 	{
 		expression->priv->cached = TRUE;
 	}
-	else
-	{
-		cpg_expression_reset_variadic (expression);
-	}
 
 	expression->priv->cached_output = cpg_stack_pop (&(expression->priv->output));
 
@@ -2553,41 +2522,82 @@ cpg_expression_reset_cache (CpgExpression *expression)
 	if (!expression->priv->prevent_cache_reset)
 	{
 		expression->priv->cached = FALSE;
-	}
 
-	GSList *item;
-
-	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
-	{
-		CpgInstructionCustomOperator *op = item->data;
-		CpgOperator *opp = cpg_instruction_custom_operator_get_operator (op);
-
-		cpg_operator_reset_cache (opp);
+		reset_depending_cache (expression);
 	}
 }
 
+static gboolean
+expression_depends_on (CpgExpression *expression,
+                       CpgExpression *depends_on,
+                       gboolean       checkme)
+{
+	GSList *item;
+
+	if (checkme && expression == depends_on)
+	{
+		return TRUE;
+	}
+
+	for (item = expression->priv->depends_on; item; item = g_slist_next (item))
+	{
+		if (expression_depends_on (item->data, depends_on, TRUE))
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+gboolean
+cpg_expression_depends_on (CpgExpression *expression,
+                           CpgExpression *depends_on)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
+
+	return expression_depends_on (expression, depends_on, FALSE);
+}
+
 /**
- * cpg_expression_get_dependencies:
+ * cpg_expression_get_depends_on:
  * @expression: a #CpgExpression
  *
- * Get a list of #CpgProperty on which the expression depends. The list is owned
+ * Get a list of #CpgExpression on which the expression depends. The list is owned
  * by @expression and should not be freed or modified
  *
- * Returns: (element-type CpgProperty) (transfer container): a list of #CpgProperty
+ * Returns: (element-type CpgExpression) (transfer container): a list of #CpgExpression
  *
  **/
 const GSList *
-cpg_expression_get_dependencies (CpgExpression *expression)
+cpg_expression_get_depends_on (CpgExpression *expression)
 {
 	/* Omit type check to increase speed */
-	return expression->priv->dependencies;
+	return expression->priv->depends_on;
+}
+
+/**
+ * cpg_expression_get_depends_on_me:
+ * @expression: a #CpgExpression
+ *
+ * Get a list of #CpgExpression which depend on @expression. The list is owned
+ * by @expression and should not be freed or modified
+ *
+ * Returns: (element-type CpgExpression) (transfer container): a list of #CpgExpression
+ *
+ **/
+const GSList *
+cpg_expression_get_depends_on_me (CpgExpression *expression)
+{
+	/* Omit type check to increase speed */
+	return expression->priv->depends_on_me;
 }
 
 /**
  * cpg_expression_reset:
  * @expression: a #CpgExpression
  *
- * Resets all the expression flags (cache, instant)
+ * Resets the expression
  *
  **/
 void
@@ -2599,15 +2609,6 @@ cpg_expression_reset (CpgExpression *expression)
 	if (!expression->priv->once)
 	{
 		expression->priv->prevent_cache_reset = FALSE;
-	}
-
-	GSList *item;
-
-	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
-	{
-		CpgInstructionCustomOperator *op = item->data;
-
-		cpg_operator_reset (cpg_instruction_custom_operator_get_operator (op));
 	}
 
 	if (!expression->priv->modified)
@@ -2633,6 +2634,14 @@ cpg_expression_get_instructions (CpgExpression *expression)
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
 
 	return expression->priv->instructions;
+}
+
+const GSList *
+cpg_expression_get_rand_instructions (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+
+	return expression->priv->rand_instructions;
 }
 
 /**
@@ -2764,12 +2773,6 @@ cpg_expression_copy (CpgExpression *expression)
 	ret->priv->instructions =
 		g_slist_reverse (ret->priv->instructions);
 
-	ret->priv->variadic_instructions =
-		g_slist_reverse (ret->priv->variadic_instructions);
-
-	ret->priv->operator_instructions =
-		g_slist_reverse (ret->priv->operator_instructions);
-
 	return ret;
 }
 
@@ -2807,14 +2810,6 @@ cpg_expression_get_error_start (CpgExpression *expression)
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), 0);
 
 	return expression->priv->error_start ? GPOINTER_TO_INT (expression->priv->error_start->data) : expression->priv->error_at;
-}
-
-const GSList *
-cpg_expression_get_operators (CpgExpression *expression)
-{
-	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
-
-	return expression->priv->operator_instructions;
 }
 
 gboolean

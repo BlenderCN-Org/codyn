@@ -29,7 +29,7 @@
 #include "cpg-expression.h"
 #include "cpg-object.h"
 #include "cpg-link.h"
-#include "cpg-integrator-euler.h"
+#include "cpg-integrators.h"
 #include "cpg-network-deserializer.h"
 #include "cpg-operators.h"
 #include "cpg-import.h"

@@ -4,7 +4,7 @@
 #include <cpg-network/cpg-network.h>
 #include <cpg-network/cpg-expression.h>
 #include <cpg-network/cpg-object.h>
-#include <cpg-network/cpg-integrator-euler.h>
+#include <cpg-network/cpg-integrators.h>
 #include "utils.h"
 
 static void

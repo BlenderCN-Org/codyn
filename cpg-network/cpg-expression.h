@@ -65,7 +65,10 @@ CpgExpression *cpg_expression_new              (const gchar        *expression);
 CpgExpression *cpg_expression_new0             ();
 CpgExpression *cpg_expression_copy             (CpgExpression      *expression);
 
-const GSList  *cpg_expression_get_dependencies (CpgExpression      *expression);
+gboolean       cpg_expression_depends_on       (CpgExpression      *expression,
+                                                CpgExpression      *depends_on);
+const GSList  *cpg_expression_get_depends_on   (CpgExpression      *expression);
+const GSList  *cpg_expression_get_depends_on_me (CpgExpression      *expression);
 
 const gchar   *cpg_expression_get_as_string    (CpgExpression      *expression);
 
@@ -78,7 +81,6 @@ void           cpg_expression_set_value        (CpgExpression      *expression,
                                                 gdouble             value);
 
 void           cpg_expression_reset            (CpgExpression      *expression);
-void           cpg_expression_reset_variadic   (CpgExpression      *expression);
 
 gboolean       cpg_expression_equal            (CpgExpression      *expression,
                                                 CpgExpression      *other);
@@ -99,7 +101,7 @@ void           cpg_expression_set_instructions (CpgExpression      *expression,
 void          _cpg_expression_set_instructions_take (CpgExpression      *expression,
                                                      GSList             *instructions);
 
-const GSList  *cpg_expression_get_operators    (CpgExpression     *expression);
+const GSList  *cpg_expression_get_rand_instructions (CpgExpression      *expression);
 
 gboolean       cpg_expression_get_once         (CpgExpression      *expression);
 void           cpg_expression_set_once         (CpgExpression      *expression,

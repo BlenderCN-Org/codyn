@@ -24,7 +24,7 @@
 #define __CPG_INPUT_H__
 
 #include <cpg-network/cpg-object.h>
-#include <cpg-network/cpg-integrator.h>
+#include <cpg-network/integrators/cpg-integrator.h>
 
 G_BEGIN_DECLS
 

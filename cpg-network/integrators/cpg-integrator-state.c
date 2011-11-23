@@ -24,6 +24,7 @@
 #include "cpg-link.h"
 #include "cpg-input.h"
 #include "instructions/cpg-instruction-custom-operator.h"
+#include "instructions/cpg-instruction-rand.h"
 
 #define CPG_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INTEGRATOR_STATE, CpgIntegratorStatePrivate))
 
@@ -45,10 +46,13 @@ struct _CpgIntegratorStatePrivate
 	GSList *integrated_properties;
 	GSList *direct_properties;
 	GSList *all_properties;
+	GSList *rand_instructions;
+	GSList *rand_expressions;
 
 	GSList *integrated_link_actions;
 	GSList *direct_link_actions;
 	GSList *operators;
+	GSList *functions;
 
 	GSList *inputs;
 	GSList *expressions;
@@ -77,31 +81,29 @@ cpg_integrator_state_finalize (GObject *object)
 }
 
 static void
+clear_list (GSList **lst)
+{
+	g_slist_free (*lst);
+	*lst = NULL;
+}
+
+static void
 clear_lists (CpgIntegratorState *state)
 {
-	g_slist_free (state->priv->integrated_properties);
-	state->priv->integrated_properties = NULL;
+	clear_list (&(state->priv->integrated_properties));
+	clear_list (&(state->priv->direct_properties));
+	clear_list (&(state->priv->all_properties));
 
-	g_slist_free (state->priv->direct_properties);
-	state->priv->direct_properties = NULL;
+	clear_list (&(state->priv->integrated_link_actions));
+	clear_list (&(state->priv->direct_link_actions));
 
-	g_slist_free (state->priv->all_properties);
-	state->priv->all_properties = NULL;
+	clear_list (&(state->priv->inputs));
+	clear_list (&(state->priv->expressions));
+	clear_list (&(state->priv->operators));
 
-	g_slist_free (state->priv->integrated_link_actions);
-	state->priv->integrated_link_actions = NULL;
-
-	g_slist_free (state->priv->direct_link_actions);
-	state->priv->direct_link_actions = NULL;
-
-	g_slist_free (state->priv->inputs);
-	state->priv->inputs = NULL;
-
-	g_slist_free (state->priv->expressions);
-	state->priv->expressions = NULL;
-
-	g_slist_free (state->priv->operators);
-	state->priv->operators = NULL;
+	clear_list (&(state->priv->rand_expressions));
+	clear_list (&(state->priv->rand_instructions));
+	clear_list (&(state->priv->functions));
 }
 
 static void
@@ -345,8 +347,8 @@ collect_properties (CpgIntegratorState *state,
 }
 
 static void
-collect_states (CpgIntegratorState *state,
-                CpgObject          *object)
+collect (CpgIntegratorState *state,
+         CpgObject          *object)
 {
 	collect_properties (state, object);
 
@@ -365,16 +367,36 @@ collect_states (CpgIntegratorState *state,
 			                       object);
 	}
 
+	if (CPG_IS_FUNCTION (object))
+	{
+		state->priv->functions =
+			g_slist_prepend (state->priv->functions,
+			                 object);
+	}
+
 	if (CPG_IS_GROUP (object))
 	{
 		GSList const *children = cpg_group_get_children (CPG_GROUP (object));
 
 		while (children)
 		{
-			collect_states (state, children->data);
+			collect (state, children->data);
 			children = g_slist_next (children);
 		}
 	}
+}
+
+static gboolean
+action_depends_on (CpgLinkAction *action,
+                   CpgProperty   *prop)
+{
+	CpgExpression *a;
+	CpgExpression *p;
+
+	a = cpg_link_action_get_equation (action);
+	p = cpg_property_get_expression (prop);
+
+	return cpg_expression_depends_on (a, p);
 }
 
 static gint
@@ -384,11 +406,11 @@ link_action_compare (CpgLinkAction *a,
 	/* if a depends on b => 1
 	   if b depends on a => -1
 	   else 0 */
-	if (cpg_link_action_depends (a, cpg_link_action_get_target_property (b)))
+	if (action_depends_on (a, cpg_link_action_get_target_property (b)))
 	{
 		return 1;
 	}
-	else if (cpg_link_action_depends (b, cpg_link_action_get_target_property (a)))
+	else if (action_depends_on (b, cpg_link_action_get_target_property (a)))
 	{
 		return -1;
 	}
@@ -406,25 +428,47 @@ sort_link_actions (CpgIntegratorState *state)
 		              (GCompareFunc)link_action_compare);
 }
 
-static void
+/*static void
 collect_operators (CpgInstructionCustomOperator *instruction,
                    CpgIntegratorState           *state)
 {
 	state->priv->operators =
 		g_slist_prepend (state->priv->operators,
 		                 cpg_instruction_custom_operator_get_operator (instruction));
-}
+}*/
 
 static void
 collect_expressions (CpgExpression      *expression,
                      CpgIntegratorState *state)
 {
+	GSList const *instr;
+	gboolean hadrand = FALSE;
+
 	state->priv->expressions =
 		g_slist_prepend (state->priv->expressions, expression);
 
-	g_slist_foreach ((GSList *)cpg_expression_get_operators (expression),
+	instr = cpg_expression_get_rand_instructions (expression);
+
+	while (instr)
+	{
+		state->priv->rand_instructions =
+			g_slist_prepend (state->priv->rand_instructions,
+			                 instr->data);
+
+		if (!hadrand)
+		{
+			state->priv->rand_expressions =
+				g_slist_prepend (state->priv->rand_expressions,
+				                 expression);
+		}
+
+		hadrand = TRUE;
+		instr = g_slist_next (instr);
+	}
+
+	/* TODO g_slist_foreach ((GSList *)cpg_expression_get_operators (expression),
 	                 (GFunc)collect_operators,
-	                 state);
+	                 state);*/
 }
 
 /**
@@ -443,7 +487,7 @@ cpg_integrator_state_update (CpgIntegratorState *state)
 
 	clear_lists (state);
 
-	collect_states (state, CPG_OBJECT (state->priv->object));
+	collect (state, CPG_OBJECT (state->priv->object));
 
 	state->priv->all_properties =
 		g_slist_reverse (state->priv->all_properties);
@@ -467,6 +511,12 @@ cpg_integrator_state_update (CpgIntegratorState *state)
 	state->priv->expressions =
 		g_slist_reverse (state->priv->expressions);
 
+	state->priv->rand_expressions =
+		g_slist_reverse (state->priv->rand_expressions);
+
+	state->priv->rand_instructions =
+		g_slist_reverse (state->priv->rand_instructions);
+
 	g_signal_emit (state, signals[UPDATED], 0);
 }
 
@@ -482,7 +532,7 @@ cpg_integrator_state_update (CpgIntegratorState *state)
 const GSList *
 cpg_integrator_state_integrated_properties (CpgIntegratorState *state)
 {
-	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+	/* Omit check for speed up */
 	return state->priv->integrated_properties;
 }
 
@@ -498,7 +548,7 @@ cpg_integrator_state_integrated_properties (CpgIntegratorState *state)
 const GSList *
 cpg_integrator_state_direct_properties (CpgIntegratorState *state)
 {
-	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
+	/* Omit check for speed up */
 	return state->priv->direct_properties;
 }
 
@@ -594,13 +644,35 @@ cpg_integrator_state_expressions (CpgIntegratorState *state)
 CpgObject *
 cpg_integrator_state_get_object (CpgIntegratorState *state)
 {
-	g_return_val_if_fail (CPG_IS_INTEGRATOR_STATE (state), NULL);
-
+	/* Omit check to speed up */
 	return state->priv->object;
 }
 
 const GSList *
 cpg_integrator_state_operators (CpgIntegratorState *state)
 {
+	/* Omit check to speed up */
 	return state->priv->operators;
 }
+
+GSList const *
+cpg_integrator_state_rand_instructions (CpgIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->rand_instructions;
+}
+
+GSList const *
+cpg_integrator_state_rand_expressions (CpgIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->rand_expressions;
+}
+
+GSList const *
+cpg_integrator_state_functions (CpgIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->functions;
+}
+

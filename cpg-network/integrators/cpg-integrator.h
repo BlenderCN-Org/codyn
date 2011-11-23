@@ -25,7 +25,7 @@
 
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-utils.h>
-#include <cpg-network/cpg-integrator-state.h>
+#include <cpg-network/integrators/cpg-integrator-state.h>
 
 G_BEGIN_DECLS
 
@@ -72,10 +72,6 @@ struct _CpgIntegratorClass
 	                              gdouble        to);
 
 	gdouble      (*step)         (CpgIntegrator *integrator,
-	                              gdouble        t,
-	                              gdouble        timestep);
-
-	gboolean     (*step_prepare) (CpgIntegrator *integrator,
 	                              gdouble        t,
 	                              gdouble        timestep);
 

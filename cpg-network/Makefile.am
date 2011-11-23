@@ -1,4 +1,4 @@
-SUBDIRS = instructions operators
+SUBDIRS = instructions operators integrators
 
 INCLUDES =				\
 	-I$(srcdir)			\
@@ -24,12 +24,6 @@ COMMON_SOURCES = 		\
 	cpg-group.c \
 	cpg-input.c \
 	cpg-input-file.c \
-	cpg-integrator.c \
-	cpg-integrator-euler.c \
-	cpg-integrator-predict-correct.c \
-	cpg-integrator-runge-kutta.c \
-	cpg-integrator-state.c \
-	cpg-integrator-stub.c \
 	cpg-integrators.c \
 	cpg-import.c \
 	cpg-import-alias.c \
@@ -96,12 +90,6 @@ INST_H_FILES = \
 	cpg-group.h \
 	cpg-input.h \
 	cpg-input-file.h \
-	cpg-integrator-euler.h \
-	cpg-integrator.h \
-	cpg-integrator-predict-correct.h \
-	cpg-integrator-runge-kutta.h \
-	cpg-integrator-state.h \
-	cpg-integrator-stub.h \
 	cpg-integrators.h \
 	cpg-import.h \
 	cpg-import-alias.h \
@@ -155,7 +143,7 @@ cpg-marshal.c: cpg-marshal.list $(GLIB_GENMARSHAL)
 	$(GLIB_GENMARSHAL) $< --body --prefix=cpg_marshal >> $@
 
 libcpg_network_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CPG_NETWORK_CFLAGS)
-libcpg_network_2_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la
+libcpg_network_2_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la
 
 libcpg_network_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) $(INTROSPECTION_LIBS) -lm
 libcpg_network_2_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
@@ -185,7 +173,7 @@ INSTRUCTIONHEADERS = \
 	instructions/cpg-instruction-operator.h \
 	instructions/cpg-instruction-property.h \
 	instructions/cpg-instructions.h \
-	instructions/cpg-instruction-variadic-function.h
+	instructions/cpg-instruction-rand.h
 
 INSTRUCTIONSOURCES = \
 	instructions/cpg-instruction.c \
@@ -197,7 +185,7 @@ INSTRUCTIONSOURCES = \
 	instructions/cpg-instruction-number.c \
 	instructions/cpg-instruction-operator.c \
 	instructions/cpg-instruction-property.c \
-	instructions/cpg-instruction-variadic-function.c
+	instructions/cpg-instruction-rand.c
 
 OPERATORSOURCES = \
 	operators/cpg-operator.c \
@@ -217,12 +205,28 @@ OPERATORHEADERS = \
 	operators/cpg-operator-df-dt.h \
 	operators/cpg-operator-linsolve.h
 
+INTEGRATORSOURCES = 	\
+	integrators/cpg-integrator.c \
+	integrators/cpg-integrator-state.c \
+	integrators/cpg-integrator-euler.c \
+	integrators/cpg-integrator-runge-kutta.c \
+	integrators/cpg-integrator-predict-correct.c \
+	integrators/cpg-integrator-stub.c
+
+INTEGRATORHEADERS =			\
+	integrators/cpg-integrator.h \
+	integrators/cpg-integrator-state.h \
+	integrators/cpg-integrator-euler.h \
+	integrators/cpg-integrator-runge-kutta.h \
+	integrators/cpg-integrator-predict-correct.h \
+	integrators/cpg-integrator-stub.h
+
 Cpg-2.0.gir: libcpg-network-2.0.la
 INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --verbose
 Cpg_2_0_gir_NAMESPACE = Cpg
 Cpg_2_0_gir_VERSION = 2.0
-Cpg_2_0_gir_LIBS = libcpg-network-2.0.la instructions/libinstructions.la
-Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES)
+Cpg_2_0_gir_LIBS = libcpg-network-2.0.la instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la
+Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES)
 Cpg_2_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
 
 girdir = $(datadir)/gir-1.0
