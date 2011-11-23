@@ -2908,7 +2908,7 @@ create_links_single (CpgParserContext          *context,
 		cpg_embedded_context_add_expansions (context->priv->embedded,
 		                                     cpg_selection_get_expansions (fromsel));
 
-		if (to)
+		if (to || !onlyself)
 		{
 			cpg_embedded_context_add_expansions (context->priv->embedded,
 			                                     cpg_selection_get_expansions (tosel));
