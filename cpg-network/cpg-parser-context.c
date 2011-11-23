@@ -1148,6 +1148,12 @@ generate_name_value_pairs (CpgParserContext  *context,
 		values = generate_expand_multival (context, sel, value);
 		valueismulti = values && cpg_expansion_num (values->data) > 1;
 
+		if (!values)
+		{
+			cpg_embedded_context_restore (context->priv->embedded);
+			continue;
+		}
+
 		if (!valueismulti)
 		{
 			// value is single
