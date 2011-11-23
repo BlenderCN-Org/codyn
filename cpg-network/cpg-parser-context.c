@@ -5651,6 +5651,9 @@ apply_unapply_template (CpgParserContext *context,
 				cpg_embedded_context_save_defines (context->priv->embedded,
 				                                   FALSE);
 
+				cpg_embedded_context_add_selection (context->priv->embedded,
+				                                    temp->data);
+
 				targobjs = cpg_selector_select (targets,
 				                                cpg_selection_get_object (obj->data),
 				                                CPG_SELECTOR_TYPE_OBJECT,
