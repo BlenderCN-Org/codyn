@@ -177,6 +177,7 @@ data/library/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/webots/Makefile
+data/library/physics/Makefile
 docs/Makefile
 docs/reference/Makefile
 docs/man/Makefile
