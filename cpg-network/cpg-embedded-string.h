@@ -63,6 +63,16 @@ struct _CpgEmbeddedStringClass
 	GObjectClass parent_class;
 };
 
+typedef enum
+{
+	CPG_EMBEDDED_STRING_ERROR_BRACES,
+	CPG_EMBEDDED_STRING_ERROR_INVALID_EXPANSION
+} CpgEmbeddedStringError;
+
+#define CPG_EMBEDDED_STRING_ERROR (cpg_embedded_string_error_quark ())
+
+GQuark             cpg_embedded_string_error_quark      ();
+
 GType              cpg_embedded_string_get_type         (void) G_GNUC_CONST;
 
 CpgEmbeddedString *cpg_embedded_string_new              (void);

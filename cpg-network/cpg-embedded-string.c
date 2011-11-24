@@ -73,6 +73,19 @@ enum
 	PROP_COLUMN_END
 };
 
+GQuark
+cpg_embedded_string_error_quark ()
+{
+	static GQuark quark = 0;
+
+	if (G_UNLIKELY (quark == 0))
+	{
+		quark = g_quark_from_static_string ("cpg_embedded_string_error");
+	}
+
+	return quark;
+}
+
 static void
 cpg_statement_iface_init (gpointer iface)
 {
@@ -490,10 +503,11 @@ unexpanded_expansion (CpgExpansion *ex)
 }
 
 static gchar *
-resolve_indirection (CpgEmbeddedString  *em,
-                     CpgEmbeddedContext *context,
-                     Node               *node,
-                     gchar const        *s)
+resolve_indirection (CpgEmbeddedString   *em,
+                     CpgEmbeddedContext  *context,
+                     Node                *node,
+                     gchar const         *s,
+                     GError             **error)
 {
 	IndirectionFlags flags;
 	CpgExpansion *ex;
@@ -600,7 +614,27 @@ resolve_indirection (CpgEmbeddedString  *em,
 			ret = unexpanded_expansion (ex);
 		break;
 		default:
+		{
 			ret = g_strdup (ex ? cpg_expansion_get (ex, exidx) : "");
+
+			if (ret == NULL)
+			{
+				gchar *ss;
+				gchar *r;
+
+				ss = g_strnfill (node->depth + 1, '@');
+				r = g_strdup_printf ("%s[%s]", ss, s);
+
+				g_set_error (error,
+				             CPG_EMBEDDED_STRING_ERROR,
+				             CPG_EMBEDDED_STRING_ERROR_INVALID_EXPANSION,
+				             "The expansion `%s' does not exist",
+				             r);
+
+				g_free (ss);
+				g_free (r);
+			}
+		}
 		break;
 	}
 
@@ -742,7 +776,11 @@ evaluate_node (CpgEmbeddedString   *em,
 		case CPG_EMBEDDED_STRING_NODE_INDIRECTION:
 			if (context)
 			{
-				r = resolve_indirection (em, context, node, ret->str);
+				r = resolve_indirection (em,
+				                         context,
+				                         node,
+				                         ret->str,
+				                         error);
 			}
 			else
 			{
@@ -760,19 +798,22 @@ evaluate_node (CpgEmbeddedString   *em,
 		break;
 	}
 
-	if ((flags & UPDATE_FILTERS) && em->priv->filters)
+	if (r)
 	{
-		increase_filters (em, -ret->len);
-		increase_filters (em, strlen (r));
-	}
+		if ((flags & UPDATE_FILTERS) && em->priv->filters)
+		{
+			increase_filters (em, -ret->len);
+			increase_filters (em, strlen (r));
+		}
 
-	if (node->type == CPG_EMBEDDED_STRING_NODE_REDUCE ||
-	    node->type == CPG_EMBEDDED_STRING_NODE_MAP)
-	{
-		node->position = 0;
+		if (node->type == CPG_EMBEDDED_STRING_NODE_REDUCE ||
+		    node->type == CPG_EMBEDDED_STRING_NODE_MAP)
+		{
+			node->position = 0;
 
-		em->priv->filters = g_slist_prepend (em->priv->filters,
-		                                     node);
+			em->priv->filters = g_slist_prepend (em->priv->filters,
+			                                     node);
+		}
 	}
 
 	g_slist_foreach (children, (GFunc)g_free, NULL);
@@ -1268,7 +1309,8 @@ ex_node_append_text (ExNode *parent,
 }
 
 static ExNode *
-ex_node_expand (gchar const *text)
+ex_node_expand (gchar const  *text,
+                GError      **error)
 {
 	ExNode *root = ex_node_new_root ();
 	ExNode *current = root;
@@ -1376,6 +1418,11 @@ ex_node_expand (gchar const *text)
 
 	if (root != current)
 	{
+		g_set_error (error,
+		             CPG_EMBEDDED_STRING_ERROR,
+		             CPG_EMBEDDED_STRING_ERROR_BRACES,
+		             "Missing closing }");
+
 		ex_node_free (root);
 		return NULL;
 	}
@@ -1586,7 +1633,7 @@ expand_multiple (CpgEmbeddedString   *s,
 	ExNode *root;
 	GSList *ret;
 
-	root = ex_node_expand (t);
+	root = ex_node_expand (t, error);
 
 	if (!root)
 	{
@@ -1855,7 +1902,7 @@ expand_multiple_escape (CpgEmbeddedString   *s,
 	ExNode *root;
 	gchar *ret;
 
-	root = ex_node_expand (t);
+	root = ex_node_expand (t, error);
 
 	if (!root)
 	{
