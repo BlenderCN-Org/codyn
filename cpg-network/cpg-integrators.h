@@ -24,6 +24,7 @@
 #define __CPG_INTEGRATORS_H__
 
 #include <cpg-network/integrators/cpg-integrator-euler.h>
+#include <cpg-network/integrators/cpg-integrator-leap-frog.h>
 #include <cpg-network/integrators/cpg-integrator-predict-correct.h>
 #include <cpg-network/integrators/cpg-integrator-runge-kutta.h>
 #include <cpg-network/integrators/cpg-integrator-stub.h>

@@ -209,6 +209,7 @@ INTEGRATORSOURCES = 	\
 	integrators/cpg-integrator.c \
 	integrators/cpg-integrator-state.c \
 	integrators/cpg-integrator-euler.c \
+	integrators/cpg-integrator-leap-frog.c \
 	integrators/cpg-integrator-runge-kutta.c \
 	integrators/cpg-integrator-predict-correct.c \
 	integrators/cpg-integrator-stub.c
@@ -217,6 +218,7 @@ INTEGRATORHEADERS =			\
 	integrators/cpg-integrator.h \
 	integrators/cpg-integrator-state.h \
 	integrators/cpg-integrator-euler.h \
+	integrators/cpg-integrator-leap-frog.h \
 	integrators/cpg-integrator-runge-kutta.h \
 	integrators/cpg-integrator-predict-correct.h \
 	integrators/cpg-integrator-stub.h

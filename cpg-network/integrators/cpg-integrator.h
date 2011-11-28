@@ -106,6 +106,10 @@ void                 cpg_integrator_evaluate        (CpgIntegrator *integrator,
                                                      gdouble        t,
                                                      gdouble        timestep);
 
+void                 cpg_integrator_simulation_step_direct (CpgIntegrator *integrator);
+void                 cpg_integrator_simulation_step_integrate (CpgIntegrator *integrator,
+                                                               GSList const  *actions);
+
 void                 cpg_integrator_reset           (CpgIntegrator *integrator);
 
 const gchar         *cpg_integrator_get_name        (CpgIntegrator *integrator);

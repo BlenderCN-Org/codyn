@@ -249,16 +249,9 @@ next_random (CpgIntegrator *integrator)
 }
 
 static void
-prepare_next_step (CpgIntegrator *integrator,
-                   gdouble        t,
-                   gdouble        timestep)
+reset_function_cache (CpgIntegrator *integrator)
 {
 	GSList const *func;
-
-	cpg_property_set_value (integrator->priv->property_time, t);
-	cpg_property_set_value (integrator->priv->property_timestep, timestep);
-
-	next_random (integrator);
 
 	// call reset cache on all the functions
 	func = cpg_integrator_state_functions (integrator->priv->state);
@@ -268,6 +261,19 @@ prepare_next_step (CpgIntegrator *integrator,
 		cpg_expression_reset_cache (cpg_function_get_expression (func->data));
 		func = g_slist_next (func);
 	}
+}
+
+static void
+prepare_next_step (CpgIntegrator *integrator,
+                   gdouble        t,
+                   gdouble        timestep)
+{
+	cpg_property_set_value (integrator->priv->property_time, t);
+	cpg_property_set_value (integrator->priv->property_timestep, timestep);
+
+	next_random (integrator);
+
+	reset_function_cache (integrator);
 }
 
 static gdouble
@@ -474,8 +480,8 @@ cpg_integrator_init (CpgIntegrator *self)
 	cpg_object_add_property (CPG_OBJECT (self), self->priv->property_timestep, NULL);
 }
 
-static void
-simulation_step (CpgIntegrator *integrator)
+void
+cpg_integrator_simulation_step_direct (CpgIntegrator *integrator)
 {
 	/* First calculate all the direct properties */
 	GSList const *direct;
@@ -524,22 +530,20 @@ simulation_step (CpgIntegrator *integrator)
 
 		direct = g_slist_next (direct);
 	}
+}
 
-	GSList const *integrated;
-
-	integrated = cpg_integrator_state_integrated_properties (integrator->priv->state);
-
-	while (integrated)
+void
+cpg_integrator_simulation_step_integrate (CpgIntegrator *integrator,
+                                          GSList const  *actions)
+{
+	if (!actions)
 	{
-		cpg_property_set_update (integrated->data, 0);
-		integrated = g_slist_next (integrated);
+		actions = cpg_integrator_state_integrated_link_actions (integrator->priv->state);
 	}
 
-	integrated = cpg_integrator_state_integrated_link_actions (integrator->priv->state);
-
-	while (integrated)
+	while (actions)
 	{
-		CpgLinkAction *action = integrated->data;
+		CpgLinkAction *action = actions->data;
 
 		if (cpg_link_action_get_enabled (action))
 		{
@@ -555,8 +559,27 @@ simulation_step (CpgIntegrator *integrator)
 			}
 		}
 
+		actions = g_slist_next (actions);
+	}
+}
+
+static void
+simulation_step (CpgIntegrator *integrator)
+{
+	GSList const *integrated;
+
+	/* First calculate all the direct properties */
+	cpg_integrator_simulation_step_direct (integrator);
+
+	integrated = cpg_integrator_state_integrated_properties (integrator->priv->state);
+
+	while (integrated)
+	{
+		cpg_property_set_update (integrated->data, 0);
 		integrated = g_slist_next (integrated);
 	}
+
+	cpg_integrator_simulation_step_integrate (integrator, NULL);
 }
 
 /**

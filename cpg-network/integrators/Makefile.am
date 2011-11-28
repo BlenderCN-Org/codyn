@@ -11,6 +11,7 @@ libintegrators_la_SOURCES = 	\
 	cpg-integrator.c \
 	cpg-integrator-state.c \
 	cpg-integrator-euler.c \
+	cpg-integrator-leap-frog.c \
 	cpg-integrator-runge-kutta.c \
 	cpg-integrator-predict-correct.c \
 	cpg-integrator-stub.c
@@ -19,6 +20,7 @@ libintegrators_headers =			\
 	cpg-integrator.h \
 	cpg-integrator-state.h \
 	cpg-integrator-euler.h \
+	cpg-integrator-leap-frog.h \
 	cpg-integrator-runge-kutta.h \
 	cpg-integrator-predict-correct.h \
 	cpg-integrator-stub.h
