@@ -128,6 +128,8 @@ cpg_operator_df_dt_initialize (CpgOperator   *op,
 	                                            CPG_SYMBOLIC_DERIVE_NONE,
 	                                            error);
 
+	cpg_expression_set_has_cache (df_dt->priv->derived, FALSE);
+
 	g_object_ref_sink (df_dt->priv->derived);
 
 	return df_dt->priv->derived != NULL;
@@ -135,7 +137,7 @@ cpg_operator_df_dt_initialize (CpgOperator   *op,
 
 static void
 cpg_operator_df_dt_execute (CpgOperator *op,
-                           CpgStack    *stack)
+                            CpgStack    *stack)
 {
 	CpgOperatorDfDt *d;
 
