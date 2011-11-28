@@ -365,7 +365,7 @@ cpg_integrator_predict_correct_step_impl (CpgIntegrator *integrator,
 static gchar const *
 cpg_integrator_predict_correct_get_name_impl (CpgIntegrator *integrator)
 {
-	return "Prediction-correction";
+	return "Prediction Correction";
 }
 
 static void
