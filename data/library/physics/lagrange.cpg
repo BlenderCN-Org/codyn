@@ -29,8 +29,12 @@ group has-template("physics" . "body")
 	kinetic = "T(@qdq[,])"
 	potential = "V(@qdq[,])"
 	energy = "kinetic + potential"
+
 	position_x = "X(@q[,])"
 	position_y = "Y(@q[,])"
+
+	velocity_x = "DX(@qdq[,])"
+	velocity_y = "DY(@qdq[,])"
 }
 
 defines
@@ -54,27 +58,27 @@ functions
 	"DdTdd@[q]dt"(@qdqddq) = "diff[DTdd@1](@qdqddq[,])"
 
 	## Euler lagrange equation for @1
-	#"EL@q"(@qdqddq) = "DdTdd@1dt(@qdqddq[,]) - DTd@1(@qdq[,]) + DVd@1(@qdq[,])"
+	"EL@q"(@qdqddq) = "DdTdd@1dt(@qdqddq[,]) - DTd@1(@qdq[,]) + DVd@1(@qdq[,])"
 
 	## Accelerations of system
-	#Acceleration(@qdq, idx) = "linsolve[{@q|EL@0||@0\,@1};@ddq[,]][idx](@qdq[,])"
-	#"Acceleration@q"(@qdq) = "Acceleration(@qdq[,], @0[!])"
+	Acceleration(@qdq, idx) = "linsolve[{@q|EL@0||@0\,@1};@ddq[,]][idx](@qdq[,])"
+	"Acceleration@q"(@qdq) = "Acceleration(@qdq[,], @0[!])"
 }
 
 ## Total kinetic energy
-#kinetic = "T(@qdq[,])"
+kinetic = "T(@qdq[,])"
 
 ## Total potential energy
-#potential = "V(@qdq[,])"
+potential = "V(@qdq[,])"
 
 ## Total energy
-#energy = "kinetic + potential"
+energy = "kinetic + potential"
 
-#@q' = "d@0"
-#@q'' = "Acceleration@1(@qdq[,])"
+@q' = "d@0"
+@q'' = "Acceleration@1(@qdq[,])"
 
 ## External generalized forces
-#"f@q" ?= 0
+"f@q" ?= 0
 
 layout
 {
