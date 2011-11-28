@@ -448,6 +448,8 @@ on_template_property_added (CpgObject   *templ,
                             CpgProperty *prop,
                             CpgObject   *object)
 {
+	CpgProperty *df;
+
 	CpgProperty *orig =
 		cpg_object_get_property (object,
 		                         cpg_property_get_name (prop));
@@ -468,6 +470,26 @@ on_template_property_added (CpgObject   *templ,
 		{
 			return;
 		}
+	}
+
+	df = cpg_property_get_derivative (prop);
+
+	if (df)
+	{
+		cpg_property_set_derivative (cpg_object_get_property (object,
+		                                                      cpg_property_get_name (prop)),
+		                             cpg_object_get_property (object,
+		                                                      cpg_property_get_name (df)));
+	}
+
+	df = cpg_property_get_integral (prop);
+
+	if (df)
+	{
+		cpg_property_set_derivative (cpg_object_get_property (object,
+		                                                      cpg_property_get_name (df)),
+		                             cpg_object_get_property (object,
+		                                                      cpg_property_get_name (prop)));
 	}
 
 	g_signal_connect (prop,
@@ -713,6 +735,20 @@ cpg_object_copy_impl (CpgObject *object,
 		CpgProperty *prop = item->data;
 
 		add_property (object, cpg_property_copy (prop));
+	}
+
+	for (item = source->priv->properties; item; item = g_slist_next (item))
+	{
+		CpgProperty *prop = item->data;
+		CpgProperty *df;
+
+		df = cpg_property_get_derivative (prop);
+
+		if (df)
+		{
+			cpg_property_set_derivative (cpg_object_get_property (object, cpg_property_get_name (prop)),
+			                             cpg_object_get_property (object, cpg_property_get_name (df)));
+		}
 	}
 
 	object->priv->templates = g_slist_copy (source->priv->templates);

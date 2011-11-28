@@ -1290,6 +1290,7 @@ add_property_diff (CpgParserContext *context,
 	gint num;
 	gchar *rname;
 	gint i;
+	CpgProperty *prev = NULL;
 
 	len = strlen (name);
 	num = len - 2;
@@ -1340,6 +1341,13 @@ add_property_diff (CpgParserContext *context,
 		}
 
 		cpg_property_set_flags (prop, (CPG_PROPERTY_FLAG_INTEGRATED | add_flags) & ~remove_flags);
+
+		if (prev)
+		{
+			cpg_property_set_derivative (prev, prop);
+		}
+
+		prev = prop;
 
 		// Find the self link generated
 		link = g_object_get_data (G_OBJECT (obj), SELF_LINK_KEY);
