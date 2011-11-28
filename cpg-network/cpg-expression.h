@@ -67,7 +67,7 @@ CpgExpression *cpg_expression_copy             (CpgExpression      *expression);
 
 gboolean       cpg_expression_depends_on       (CpgExpression      *expression,
                                                 CpgExpression      *depends_on);
-const GSList  *cpg_expression_get_depends_on   (CpgExpression      *expression);
+const GSList  *cpg_expression_get_dependencies   (CpgExpression      *expression);
 const GSList  *cpg_expression_get_depends_on_me (CpgExpression      *expression);
 
 const gchar   *cpg_expression_get_as_string    (CpgExpression      *expression);

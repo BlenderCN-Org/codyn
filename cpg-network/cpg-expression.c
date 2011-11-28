@@ -2575,7 +2575,7 @@ cpg_expression_depends_on (CpgExpression *expression,
 }
 
 /**
- * cpg_expression_get_depends_on:
+ * cpg_expression_get_dependencies:
  * @expression: a #CpgExpression
  *
  * Get a list of #CpgExpression on which the expression depends. The list is owned
@@ -2585,7 +2585,7 @@ cpg_expression_depends_on (CpgExpression *expression,
  *
  **/
 const GSList *
-cpg_expression_get_depends_on (CpgExpression *expression)
+cpg_expression_get_dependencies (CpgExpression *expression)
 {
 	/* Omit type check to increase speed */
 	return expression->priv->depends_on;
