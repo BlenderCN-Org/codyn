@@ -19,7 +19,7 @@ make_coefficient (CpgExpressionTreeIter  *root,
 	if (root == child)
 	{
 		cpg_expression_tree_iter_free (child);
-		return iter_new (cpg_instruction_number_new_from_string ("1"));
+		return iter_new_numstr ("1");
 	}
 
 	parent = child->parent;
@@ -316,7 +316,7 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 		g_slist_foreach (coefs, (GFunc)cpg_expression_tree_iter_free, NULL);
 		g_slist_free (coefs);
 
-		return iter_new (cpg_instruction_number_new_from_string ("0"));
+		return iter_new_numstr ("0");
 	}
 
 	// Now we have the expression 'iter' and a set of coefficients 'coefs'
@@ -342,7 +342,7 @@ cpg_expression_tree_iter_solve_for (CpgExpressionTreeIter  *iter,
 	                                                    2),
 	                      2);
 
-	inv->children[0] = iter_new (cpg_instruction_number_new_from_string ("-1"));
+	inv->children[0] = iter_new_numstr ("-1");
 	inv->children[0]->parent = inv;
 
 	inv->children[1] = div;
