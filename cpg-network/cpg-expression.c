@@ -1673,6 +1673,21 @@ parse_unary_operator (CpgExpression *expression,
 
 	if (ret && inst)
 	{
+		if (op->type == CPG_TOKEN_OPERATOR_TYPE_MINUS &&
+		    CPG_IS_INSTRUCTION_NUMBER (expression->priv->instructions->data))
+		{
+			cpg_mini_object_free (CPG_MINI_OBJECT (inst));
+			inst = instructions_pop (expression);
+
+			cpg_instruction_number_set_value (CPG_INSTRUCTION_NUMBER (inst),
+			                                  cpg_instruction_number_get_value (CPG_INSTRUCTION_NUMBER (inst)) * -1);
+
+			g_slist_free (context->stack->data);
+
+			context->stack = g_slist_delete_link (context->stack,
+			                                      context->stack);
+		}
+
 		instructions_push (expression, inst, context);
 	}
 

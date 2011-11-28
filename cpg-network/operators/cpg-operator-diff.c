@@ -415,7 +415,6 @@ cpg_operator_diff_initialize (CpgOperator   *op,
 	                               property_map,
 	                               NULL,
 	                               diff->priv->order,
-	                               CPG_SYMBOLIC_DERIVE_NONE |
 	                               CPG_SYMBOLIC_DERIVE_SIMPLIFY,
 	                               error);
 

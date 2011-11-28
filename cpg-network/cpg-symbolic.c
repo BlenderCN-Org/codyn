@@ -1758,7 +1758,6 @@ derive_custom_operator_real (CpgExpressionTreeIter *iter,
 		                          TRUE);
 	}
 
-	// TODO
 	f = cpg_operator_get_primary_function (op);
 
 	if (f)
@@ -1963,19 +1962,21 @@ cpg_symbolic_derive (CpgExpression          *expression,
 
 	if (flags & CPG_SYMBOLIC_DERIVE_SIMPLIFY)
 	{
-		cpg_expression_tree_iter_canonicalize (iter);
-		iter = cpg_expression_tree_iter_simplify (iter);
+		mapped = cpg_expression_tree_iter_simplify (mapped);
+
+		free_instructions (instructions);
+		instructions = cpg_expression_tree_iter_to_instructions (mapped);
 	}
 
-	cpg_debug_message (DEBUG_DIFF,
-	                   "Derived: {%s}",
-	                   cpg_expression_tree_iter_to_string_dbg (iter));
-
 	es = cpg_expression_tree_iter_to_string (iter);
-
 	ret = cpg_expression_new (es);
 
 	_cpg_expression_set_instructions_take (ret, instructions);
+
+	cpg_debug_message (DEBUG_DIFF,
+	                   "Derived: {%s}",
+	                   cpg_expression_tree_iter_to_string (mapped));
+
 
 	if (mapped == iter)
 	{

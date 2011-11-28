@@ -1,4 +1,4 @@
-SUBDIRS = instructions operators integrators
+SUBDIRS = instructions operators integrators tree-algorithms
 
 INCLUDES =				\
 	-I$(srcdir)			\
@@ -143,7 +143,7 @@ cpg-marshal.c: cpg-marshal.list $(GLIB_GENMARSHAL)
 	$(GLIB_GENMARSHAL) $< --body --prefix=cpg_marshal >> $@
 
 libcpg_network_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CPG_NETWORK_CFLAGS)
-libcpg_network_2_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la
+libcpg_network_2_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
 
 libcpg_network_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CPG_NETWORK_LIBS) $(INTROSPECTION_LIBS) -lm
 libcpg_network_2_0_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network
@@ -221,12 +221,19 @@ INTEGRATORHEADERS =			\
 	integrators/cpg-integrator-predict-correct.h \
 	integrators/cpg-integrator-stub.h
 
+TREEALGORITHMSSOURCES = 	\
+	tree-algorithms/cpg-tree-algorithms-canonicalize.c \
+	tree-algorithms/cpg-tree-algorithms-linsolve.c \
+	tree-algorithms/cpg-tree-algorithms-simplify.c \
+	tree-algorithms/cpg-tree-algorithms-string.c \
+	tree-algorithms/cpg-tree-algorithms-substitute.c
+
 Cpg-2.0.gir: libcpg-network-2.0.la
 INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --verbose
 Cpg_2_0_gir_NAMESPACE = Cpg
 Cpg_2_0_gir_VERSION = 2.0
-Cpg_2_0_gir_LIBS = libcpg-network-2.0.la instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la
-Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES)
+Cpg_2_0_gir_LIBS = libcpg-network-2.0.la instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
+Cpg_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES) $(TREEALGORITHMSSOURCES)
 Cpg_2_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
 
 girdir = $(datadir)/gir-1.0

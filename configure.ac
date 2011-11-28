@@ -170,6 +170,7 @@ cpg-network/Makefile
 cpg-network/instructions/Makefile
 cpg-network/operators/Makefile
 cpg-network/integrators/Makefile
+cpg-network/tree-algorithms/Makefile
 cpg-network-webots/Makefile
 data/Makefile
 data/cpg.xml

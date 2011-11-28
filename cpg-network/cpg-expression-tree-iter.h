@@ -41,7 +41,7 @@ GSList                *cpg_expression_tree_iter_to_instructions (CpgExpressionTr
 
 CpgExpressionTreeIter *cpg_expression_tree_iter_canonicalize    (CpgExpressionTreeIter *iter);
 
-CpgExpressionTreeIter *cpg_expression_tree_iter_simplify        (CpgExpressionTreeIter *iter) G_GNUC_WARN_UNUSED_RESULT;
+CpgExpressionTreeIter *cpg_expression_tree_iter_simplify        (CpgExpressionTreeIter *iter);
 
 gboolean               cpg_expression_tree_iter_equal           (CpgExpressionTreeIter *iter,
                                                                  CpgExpressionTreeIter *other);
