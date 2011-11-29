@@ -595,16 +595,24 @@ simplify_divide (CpgExpressionTreeIter *iter)
 	CpgExpressionTreeIter *first;
 	CpgExpressionTreeIter *second;
 
+	first = iter->children[0];
+	second = iter->children[1];
+
+	isnum2 = iter_is_number (second, &num2);
+
+	if (isnum2 && cmp_double (num2, 0))
+	{
+		// Division by zero!
+		g_warning ("Simplification detected division by zero...");
+		return FALSE;
+	}
+
 	if (simplify_function (iter))
 	{
 		return TRUE;
 	}
 
-	first = iter->children[0];
-	second = iter->children[1];
-
 	isnum1 = iter_is_number (first, &num1);
-	isnum2 = iter_is_number (second, &num2);
 
 	if ((isnum1 && cmp_double (num1, 0)) ||
 	    (isnum2 && cmp_double (num2, 1)))
