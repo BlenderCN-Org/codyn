@@ -58,6 +58,12 @@ struct _CpgLinkActionClass
 	GInitiallyUnownedClass parent_class;
 };
 
+typedef enum
+{
+	CPG_LINK_ACTION_FLAG_NONE = 0,
+	CPG_LINK_ACTION_FLAG_DISABLED = 1 << 0
+} CpgLinkActionFlags;
+
 GType          cpg_link_action_get_type      (void) G_GNUC_CONST;
 
 CpgLinkAction *cpg_link_action_new           (const gchar   *target,
@@ -76,10 +82,10 @@ void            cpg_link_action_set_equation (CpgLinkAction *action,
 gboolean        cpg_link_action_equal        (CpgLinkAction *action,
                                               CpgLinkAction *other);
 
-void            cpg_link_action_set_enabled  (CpgLinkAction *action,
-                                              gboolean       enabled);
+void            cpg_link_action_set_flags    (CpgLinkAction *action,
+                                              CpgLinkActionFlags flags);
 
-gboolean        cpg_link_action_get_enabled  (CpgLinkAction *action);
+CpgLinkActionFlags cpg_link_action_get_flags    (CpgLinkAction *action);
 
 CpgProperty    *cpg_link_action_get_target_property  (CpgLinkAction *action);
 void            _cpg_link_action_set_target_property (CpgLinkAction *action,

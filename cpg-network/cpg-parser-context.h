@@ -34,6 +34,7 @@
 #include <cpg-network/cpg-selector.h>
 #include <cpg-network/cpg-layout.h>
 #include <cpg-network/cpg-attribute.h>
+#include <cpg-network/cpg-event.h>
 
 G_BEGIN_DECLS
 
@@ -77,6 +78,9 @@ struct _CpgParserContextClass
 GType                  cpg_parser_context_get_type             (void) G_GNUC_CONST;
 
 CpgParserContext      *cpg_parser_context_new                  (CpgNetwork                 *network);
+
+void                   cpg_parser_context_set_emit             (CpgParserContext           *context,
+                                                                gboolean                    emit);
 
 CpgEmbeddedContext    *cpg_parser_context_get_embedded         (CpgParserContext           *context);
 void                   cpg_parser_context_set_embedded         (CpgParserContext           *context,
@@ -142,6 +146,8 @@ void                   cpg_parser_context_add_property         (CpgParserContext
 void                   cpg_parser_context_add_action           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *target,
                                                                 CpgEmbeddedString          *expression,
+                                                                CpgLinkActionFlags          add_flags,
+                                                                CpgLinkActionFlags          remove_flags,
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_add_polynomial       (CpgParserContext           *context,
@@ -212,6 +218,19 @@ void                   cpg_parser_context_push_input_file      (CpgParserContext
                                                                 CpgEmbeddedString          *id,
                                                                 CpgEmbeddedString          *path,
                                                                 GSList                     *attributes);
+
+void                   cpg_parser_context_push_event           (CpgParserContext  *context,
+                                                                CpgEmbeddedString *condition,
+                                                                CpgEventDirection  direction);
+
+void                   cpg_parser_context_add_event_set_property (CpgParserContext  *context,
+                                                                  CpgSelector       *selector,
+                                                                  CpgEmbeddedString *value);
+
+void                   cpg_parser_context_add_event_set_flags    (CpgParserContext  *context,
+                                                                  CpgSelector       *selector,
+                                                                  CpgLinkActionFlags add_flags,
+                                                                  CpgLinkActionFlags remove_flags);
 
 void                   cpg_parser_context_set_input_file_setting (CpgParserContext         *context,
                                                                   CpgEmbeddedString        *name,
@@ -343,12 +362,6 @@ void                   cpg_parser_context_apply_template        (CpgParserContex
 void                   cpg_parser_context_unapply_template      (CpgParserContext  *context,
                                                                  CpgSelector       *templates,
                                                                  CpgSelector       *targets);
-
-void                   cpg_parser_context_set_event_handler     (CpgParserContext   *context,
-                                                                 CpgParserCodeEvent  event,
-                                                                 GSList             *attributes);
-
-void                   cpg_parser_context_unset_event_handler  (CpgParserContext  *context);
 
 void                   cpg_parser_context_remove_record         (CpgParserContext  *context,
                                                                  gint               len,

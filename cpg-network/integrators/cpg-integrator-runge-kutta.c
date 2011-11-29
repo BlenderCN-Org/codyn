@@ -179,11 +179,9 @@ cpg_integrator_runge_kutta_step_impl (CpgIntegrator *integrator,
 	store_coefficients (rk, integrated, 4, timestep);
 
 	/* Chain up to emit 'step' */
-	CPG_INTEGRATOR_CLASS (cpg_integrator_runge_kutta_parent_class)->step (integrator,
-	                                                                      t,
-	                                                                      timestep);
-
-	return timestep;
+	return CPG_INTEGRATOR_CLASS (cpg_integrator_runge_kutta_parent_class)->step (integrator,
+	                                                                             t,
+	                                                                             timestep);
 }
 
 static gchar const *

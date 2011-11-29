@@ -28,7 +28,7 @@
 #include <cpg-network/cpg-compile-context.h>
 #include <cpg-network/cpg-utils.h>
 #include <cpg-network/cpg-usable.h>
-#include <cpg-network/cpg-parser-code.h>
+#include <cpg-network/cpg-event.h>
 
 G_BEGIN_DECLS
 
@@ -271,16 +271,12 @@ gchar            *cpg_object_get_relative_id_for_display (CpgObject *object,
 
 const GSList     *cpg_object_get_links      (CpgObject *object);
 
-void              cpg_object_add_event_handler (CpgObject      *object,
-                                              CpgParserCode *code);
-
-void              cpg_object_remove_event_handler (CpgObject      *object,
-                                               CpgParserCode *code);
-
-const GSList     *cpg_object_get_event_handlers (CpgObject      *object);
-
 CpgCompileContext *cpg_object_get_compile_context (CpgObject         *object,
                                                    CpgCompileContext *context);
+
+void cpg_object_add_event (CpgObject *object, CpgEvent  *event);
+CpgEvent *cpg_object_get_last_event (CpgObject *object);
+GSList const *cpg_object_get_events (CpgObject *object);
 
 /* used for referencing links */
 void             _cpg_object_link           (CpgObject                  *object,

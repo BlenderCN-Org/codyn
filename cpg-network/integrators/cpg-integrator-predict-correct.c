@@ -352,14 +352,9 @@ cpg_integrator_predict_correct_step_impl (CpgIntegrator *integrator,
 	++pc->priv->step_index;
 
 	/* Chain up to emit 'step' */
-	if (CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->step)
-	{
-		CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->step (integrator,
-		                                                                          t,
-		                                                                          timestep);
-	}
-
-	return timestep;
+	return CPG_INTEGRATOR_CLASS (cpg_integrator_predict_correct_parent_class)->step (integrator,
+	                                                                                 t,
+	                                                                                 timestep);
 }
 
 static gchar const *

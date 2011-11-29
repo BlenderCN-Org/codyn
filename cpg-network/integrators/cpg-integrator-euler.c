@@ -76,11 +76,9 @@ cpg_integrator_euler_step_impl (CpgIntegrator *integrator,
 	}
 
 	/* Chain up to emit 'step' */
-	CPG_INTEGRATOR_CLASS (cpg_integrator_euler_parent_class)->step (integrator,
-	                                                                t,
-	                                                                timestep);
-
-	return timestep;
+	return CPG_INTEGRATOR_CLASS (cpg_integrator_euler_parent_class)->step (integrator,
+	                                                                       t,
+	                                                                       timestep);
 }
 
 static gchar const *

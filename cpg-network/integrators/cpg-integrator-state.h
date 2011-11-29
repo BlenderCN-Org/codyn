@@ -65,6 +65,7 @@ const GSList       *cpg_integrator_state_all_properties          (CpgIntegratorS
 const GSList       *cpg_integrator_state_integrated_link_actions (CpgIntegratorState *state);
 const GSList       *cpg_integrator_state_direct_link_actions     (CpgIntegratorState *state);
 const GSList       *cpg_integrator_state_inputs                  (CpgIntegratorState *state);
+const GSList       *cpg_integrator_state_events                  (CpgIntegratorState *state);
 
 GSList const       *cpg_integrator_state_rand_instructions       (CpgIntegratorState *state);
 GSList const       *cpg_integrator_state_rand_expressions        (CpgIntegratorState *state);

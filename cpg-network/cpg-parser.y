@@ -37,11 +37,13 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_BEFORE_APPLY T_KEY_AFTER_APPLY T_KEY_BEFORE_UNAPPLY T_KEY_AFTER_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END
+%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_DISABLED T_KEY_WHEN
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
 %type <num> relation_item
+
+%type <num> when_direction
 
 %token <numf> T_DOUBLE
 %token <numf> T_INTEGER
@@ -81,8 +83,6 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %type <list> selector_or_string_list
 %type <list> selector_or_string_list_rev
 
-%type <num> event_handler_code
-
 %type <string> identifier_or_string_or_nothing
 
 %token <num> T_INDIRECTION_BEGIN
@@ -103,6 +103,11 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %type <flags> property_flags_contents
 %type <num> property_flag
 %type <num> assign_optional
+
+%type <flags> action_flags
+%type <flags> action_flags_strict
+%type <flags> action_flags_contents
+%type <num> action_flag
 
 %type <selector> layout_relative
 %type <num> layout_item_separator
@@ -308,13 +313,6 @@ annotation
 	                                                                      cpg_parser_context_pop_string (context)); }
 	;
 
-event_handler_code
-	: T_KEY_BEFORE_APPLY		{ $$ = CPG_PARSER_CODE_EVENT_BEFORE_APPLY; }
-	| T_KEY_AFTER_APPLY		{ $$ = CPG_PARSER_CODE_EVENT_AFTER_APPLY; }
-	| T_KEY_BEFORE_UNAPPLY		{ $$ = CPG_PARSER_CODE_EVENT_BEFORE_UNAPPLY; }
-	| T_KEY_AFTER_UNAPPLY		{ $$ = CPG_PARSER_CODE_EVENT_AFTER_UNAPPLY; }
-	;
-
 action_apply
 	: T_KEY_APPLY selector T_KEY_TO selector
 					{ cpg_parser_context_apply_template (context,
@@ -373,6 +371,29 @@ integrator
 	  T_KEY_INTEGRATOR
 	  '{'				{ cpg_parser_context_push_integrator (context, $1); }
 	  integrator_contents
+	  '}'				{ cpg_parser_context_pop (context); }
+	;
+
+when_direction
+	:				{ $$ = CPG_EVENT_DIRECTION_POSITIVE; }
+	| '>'				{ $$ = CPG_EVENT_DIRECTION_POSITIVE; }
+	| '<'				{ $$ = CPG_EVENT_DIRECTION_NEGATIVE; }
+	;
+
+when_item
+	: selector '=' value_as_string	{ cpg_parser_context_add_event_set_property (context, $1, $3); }
+	| selector action_flags_strict	{ cpg_parser_context_add_event_set_flags (context, $1, $2.add, $2.remove); }
+	;
+
+when_contents
+	:
+	| when_contents when_item
+	;
+
+when
+	: T_KEY_WHEN when_direction value_as_string
+	  '{'				{ cpg_parser_context_push_event (context, $3, $2); }
+	  when_contents
 	  '}'				{ cpg_parser_context_pop (context); }
 	;
 
@@ -853,14 +874,10 @@ object_item
 	| common_scopes
 	| layout
 	| attributes
-	  event_handler_code
-	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
-	  object_contents
-	  '}'				{ cpg_parser_context_unset_event_handler (context); }
-	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  object_contents
 	  '}'				{ cpg_parser_context_pop (context); }
+	| when
 	;
 
 object_contents
@@ -875,11 +892,6 @@ group_item
 	| link
 	| interface
 	| group
-	| attributes
-	  event_handler_code
-	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
-	  group_contents
-	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| common_scopes
 	| layout
 	| functions
@@ -889,6 +901,7 @@ group_item
 	  '}'				{ cpg_parser_context_pop (context); }
 	| function_custom
 	| function_polynomial
+	| when
 	;
 
 group_contents
@@ -936,16 +949,12 @@ link_item
 	: action
 	| property
 	| common_scopes
-	| attributes
-	  event_handler_code
-	  '{'				{ cpg_parser_context_set_event_handler (context, $2, $1); }
-	  link_contents
-	  '}'				{ cpg_parser_context_unset_event_handler (context); }
 	| layout
 	| attributes
 	  '{'				{ cpg_parser_context_push_scope (context, $1); }
 	  link_contents
 	  '}'				{ cpg_parser_context_pop (context); }
+	| when
 	;
 
 link_contents
@@ -1068,12 +1077,37 @@ property_flag
 	| T_KEY_ONCE			{ $$ = CPG_PROPERTY_FLAG_ONCE; }
 	;
 
+action_flags_contents
+	: property_flag_sign action_flag	{ $$.add = 0; $$.remove = 0; ($1 ? (($$.add) = $2) : (($$.remove) = $2)); }
+	| action_flags_contents property_flag_sign action_flag
+					{ $2 ? (($$.add) |= $3) : (($$.remove) |= $3); }
+	;
+
+action_flags_strict
+	: '|' action_flags_contents	{ $$ = $2; }
+	;
+
+action_flags
+	: 				{ $$.add = 0; $$.remove = 0; }
+	| action_flags_strict
+	;
+
+action_flag
+	: T_KEY_DISABLED		{ $$ = CPG_LINK_ACTION_FLAG_DISABLED; }
+	;
+
 action
 	: attributes
 	  identifier_or_string
 	  '<' '='
 	  value_as_string
-					{ cpg_parser_context_add_action (context, $2, $5, $1); errb }
+	  action_flags
+					{ cpg_parser_context_add_action (context, $2, $5, $6.add, $6.remove, $1); errb }
+	| attributes
+	  identifier_or_string
+	  '<'
+	  action_flags_strict
+					{ cpg_parser_context_add_action (context, $2, NULL, $4.add, $4.remove, $1); errb }
 	;
 
 selector_item_non_ambiguous

@@ -56,6 +56,7 @@ struct _CpgIntegratorStatePrivate
 
 	GSList *inputs;
 	GSList *expressions;
+	GSList *events;
 };
 
 G_DEFINE_TYPE (CpgIntegratorState, cpg_integrator_state, G_TYPE_OBJECT)
@@ -104,6 +105,7 @@ clear_lists (CpgIntegratorState *state)
 	clear_list (&(state->priv->rand_expressions));
 	clear_list (&(state->priv->rand_instructions));
 	clear_list (&(state->priv->functions));
+	clear_list (&(state->priv->events));
 }
 
 static void
@@ -347,10 +349,25 @@ collect_properties (CpgIntegratorState *state,
 }
 
 static void
+collect_events (CpgIntegratorState *state,
+                CpgObject          *object)
+{
+	GSList const *events;
+
+	for (events = cpg_object_get_events (object); events; events = g_slist_next (events))
+	{
+		state->priv->events =
+			g_slist_prepend (state->priv->events,
+			                 events->data);
+	}
+}
+
+static void
 collect (CpgIntegratorState *state,
          CpgObject          *object)
 {
 	collect_properties (state, object);
+	collect_events (state, object);
 
 	if (CPG_IS_LINK (object))
 	{
@@ -500,6 +517,9 @@ cpg_integrator_state_update (CpgIntegratorState *state)
 
 	state->priv->inputs =
 		g_slist_reverse (state->priv->inputs);
+
+	state->priv->events =
+		g_slist_reverse (state->priv->events);
 
 	/* order the direct link actions based on their dependencies */
 	sort_link_actions (state);
@@ -674,5 +694,12 @@ cpg_integrator_state_functions (CpgIntegratorState *state)
 {
 	/* Omit check to speed up */
 	return state->priv->functions;
+}
+
+GSList const *
+cpg_integrator_state_events (CpgIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->events;
 }
 

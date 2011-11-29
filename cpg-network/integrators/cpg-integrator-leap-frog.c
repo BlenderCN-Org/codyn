@@ -143,11 +143,9 @@ cpg_integrator_leap_frog_step_impl (CpgIntegrator *integrator,
 	}
 
 	/* Chain up to emit 'step' */
-	CPG_INTEGRATOR_CLASS (cpg_integrator_leap_frog_parent_class)->step (integrator,
-	                                                                t,
-	                                                                timestep);
-
-	return timestep;
+	return CPG_INTEGRATOR_CLASS (cpg_integrator_leap_frog_parent_class)->step (integrator,
+	                                                                           t,
+	                                                                           timestep);
 }
 
 static void

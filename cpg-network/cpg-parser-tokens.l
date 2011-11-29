@@ -158,6 +158,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "in"				return T_KEY_IN;
 "out"				return T_KEY_OUT;
 "once"				return T_KEY_ONCE;
+"disabled"			return T_KEY_DISABLED;
 "network"			return T_KEY_NETWORK;
 "functions"			return T_KEY_FUNCTIONS;
 "interface"			return T_KEY_INTERFACE;
@@ -185,11 +186,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "debug-print"			return T_KEY_DEBUG_PRINT;
 "apply"				return T_KEY_APPLY;
 "unapply"			return T_KEY_UNAPPLY;
-"before-apply"			return T_KEY_BEFORE_APPLY;
-"after-apply"			return T_KEY_AFTER_APPLY;
-"before-unapply"		return T_KEY_BEFORE_UNAPPLY;
-"after-unapply"			return T_KEY_AFTER_UNAPPLY;
 "with"				return T_KEY_WITH;
+"when"				return T_KEY_WHEN;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;

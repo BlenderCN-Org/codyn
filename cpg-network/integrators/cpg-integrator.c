@@ -62,6 +62,32 @@ enum
 	NUM_SIGNALS
 };
 
+typedef struct
+{
+	CpgProperty *property;
+	gdouble      value;
+} SavedState;
+
+static SavedState *
+saved_state_new (CpgProperty *property)
+{
+	SavedState *ret;
+
+	ret = g_slice_new0 (SavedState);
+
+	ret->property = g_object_ref_sink (property);
+	ret->value = 0;
+
+	return ret;
+}
+
+static void
+saved_state_free (SavedState *self)
+{
+	g_object_unref (self->property);
+	g_slice_free (SavedState, self);
+}
+
 struct _CpgIntegratorPrivate
 {
 	CpgObject *object;
@@ -70,6 +96,7 @@ struct _CpgIntegratorPrivate
 	CpgProperty *property_timestep;
 
 	CpgIntegratorState *state;
+	GSList *saved_state;
 };
 
 static guint integrator_signals[NUM_SIGNALS] = {0,};
@@ -86,6 +113,9 @@ cpg_integrator_finalize (GObject *object)
 		g_object_remove_weak_pointer (G_OBJECT (self->priv->object),
 		                              (gpointer *)&(self->priv->object));
 	}
+
+	g_slist_foreach (self->priv->saved_state, (GFunc)saved_state_free, NULL);
+	g_slist_free (self->priv->saved_state);
 
 	G_OBJECT_CLASS (cpg_integrator_parent_class)->finalize (object);
 }
@@ -264,16 +294,106 @@ reset_function_cache (CpgIntegrator *integrator)
 }
 
 static void
+update_events (CpgIntegrator *integrator)
+{
+	GSList const *events;
+
+	// Here we are going to check our events
+	events = cpg_integrator_state_events (integrator->priv->state);
+
+	while (events)
+	{
+		cpg_event_update (events->data);
+		events = g_slist_next (events);
+	}
+}
+
+static void
 prepare_next_step (CpgIntegrator *integrator,
                    gdouble        t,
                    gdouble        timestep)
 {
+	GSList *item;
+
 	cpg_property_set_value (integrator->priv->property_time, t);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
 	next_random (integrator);
 
 	reset_function_cache (integrator);
+
+	for (item = integrator->priv->saved_state; item; item = g_slist_next (item))
+	{
+		SavedState *s = item->data;
+
+		s->value = cpg_property_get_value (s->property);
+	}
+
+	update_events (integrator);
+}
+
+static void
+restore_saved_state (CpgIntegrator *integrator)
+{
+	GSList *item;
+
+	for (item = integrator->priv->saved_state; item; item = g_slist_next (item))
+	{
+		SavedState *s = item->data;
+
+		cpg_property_set_value (s->property, s->value);
+	}
+}
+
+static gboolean
+handle_events (CpgIntegrator *integrator,
+               gdouble        t,
+               gdouble       *timestep)
+{
+	GSList const *events;
+
+	// Here we are going to check our events
+	events = cpg_integrator_state_events (integrator->priv->state);
+
+	while (events)
+	{
+		CpgEvent *ev = events->data;
+		gdouble dist;
+
+		if (cpg_event_happened (ev, &dist))
+		{
+			// Backup the simulation a bit
+			if (dist > 10e-9)
+			{
+				gdouble nts;
+
+				restore_saved_state (integrator);
+
+				*timestep = dist * *timestep;
+				nts = cpg_integrator_step (integrator, t, *timestep);
+
+				// Execute the event code
+				if (nts == *timestep)
+				{
+					cpg_event_execute (ev);
+				}
+				else
+				{
+					*timestep = nts;
+				}
+			}
+			else
+			{
+				cpg_event_execute (ev);
+			}
+
+			return TRUE;
+		}
+
+		events = g_slist_next (events);
+	}
+
+	return FALSE;
 }
 
 static gdouble
@@ -281,9 +401,19 @@ cpg_integrator_step_impl (CpgIntegrator *integrator,
                           gdouble        t,
                           gdouble        timestep)
 {
+	if (handle_events (integrator, t, &timestep))
+	{
+		return timestep;
+	}
+
 	prepare_next_step (integrator, t + timestep, timestep);
 
-	g_signal_emit (integrator, integrator_signals[STEP], 0, timestep, t + timestep);
+	g_signal_emit (integrator,
+	               integrator_signals[STEP],
+	               0,
+	               timestep,
+	               t + timestep);
+
 	return timestep;
 }
 
@@ -327,6 +457,29 @@ cpg_integrator_constructor (GType                  type,
 static void
 cpg_integrator_reset_impl (CpgIntegrator *integrator)
 {
+	GSList const *props;
+
+	g_slist_foreach (integrator->priv->saved_state, (GFunc)saved_state_free, NULL);
+	g_slist_free (integrator->priv->saved_state);
+
+	integrator->priv->saved_state = NULL;
+
+	if (!integrator->priv->state ||
+	    !cpg_integrator_state_events (integrator->priv->state))
+	{
+		return;
+	}
+
+	props = cpg_integrator_state_integrated_properties (integrator->priv->state);
+
+	while (props)
+	{
+		integrator->priv->saved_state =
+			g_slist_prepend (integrator->priv->saved_state,
+			                 saved_state_new (props->data));
+
+		props = g_slist_next (props);
+	}
 }
 
 static gboolean
@@ -492,7 +645,7 @@ cpg_integrator_simulation_step_direct (CpgIntegrator *integrator)
 	{
 		CpgLinkAction *action = direct->data;
 
-		if (cpg_link_action_get_enabled (action))
+		if (!(cpg_link_action_get_flags (action) & CPG_LINK_ACTION_FLAG_DISABLED))
 		{
 			CpgProperty *target = cpg_link_action_get_target_property (action);
 
@@ -511,7 +664,7 @@ cpg_integrator_simulation_step_direct (CpgIntegrator *integrator)
 	{
 		CpgLinkAction *action = direct->data;
 
-		if (cpg_link_action_get_enabled (action))
+		if (!(cpg_link_action_get_flags (action) & CPG_LINK_ACTION_FLAG_DISABLED))
 		{
 			CpgProperty *target = cpg_link_action_get_target_property (action);
 
@@ -545,7 +698,7 @@ cpg_integrator_simulation_step_integrate (CpgIntegrator *integrator,
 	{
 		CpgLinkAction *action = actions->data;
 
-		if (cpg_link_action_get_enabled (action))
+		if (!(cpg_link_action_get_flags (action) & CPG_LINK_ACTION_FLAG_DISABLED))
 		{
 			CpgProperty *target = cpg_link_action_get_target_property (action);
 

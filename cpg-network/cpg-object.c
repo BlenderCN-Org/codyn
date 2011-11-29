@@ -84,7 +84,8 @@ struct _CpgObjectPrivate
 	gchar *annotation;
 	GHashTable *tags;
 
-	GSList *event_handlers;
+	GSList *events;
+	CpgEvent *last_event;
 
 	guint compiled : 1;
 	guint auto_imported : 1;
@@ -251,8 +252,8 @@ cpg_object_finalize (GObject *object)
 	g_hash_table_destroy (obj->priv->property_hash);
 	g_hash_table_destroy (obj->priv->tags);
 
-	g_slist_foreach (obj->priv->event_handlers, (GFunc)g_object_unref, NULL);
-	g_slist_free (obj->priv->event_handlers);
+	g_slist_foreach (obj->priv->events, (GFunc)g_object_unref, NULL);
+	g_slist_free (obj->priv->events);
 
 	G_OBJECT_CLASS (cpg_object_parent_class)->finalize (object);
 }
@@ -1013,6 +1014,30 @@ cpg_object_compile_impl (CpgObject         *object,
 		}
 
 		properties = g_slist_next (properties);
+	}
+
+	if (ret)
+	{
+		GSList *event;
+
+		for (event = object->priv->events; event; event = g_slist_next (event))
+		{
+			if (!cpg_event_compile (event->data, context, error))
+			{
+				if (error)
+				{
+					cpg_compile_error_set (error,
+					                       NULL,
+					                       object,
+					                       NULL,
+					                       NULL,
+					                       NULL);
+				}
+
+				ret = FALSE;
+				break;
+			}
+		}
 	}
 
 	object->priv->compiled = ret;
@@ -2208,35 +2233,6 @@ cpg_object_is_compiled (CpgObject *object)
 	return object->priv->compiled ? TRUE : FALSE;
 }
 
-static gboolean
-run_template_parser_codes (CpgObject          *object,
-                           CpgObject          *templ,
-                           CpgParserCodeEvent  event,
-                           GError    **error)
-{
-	GSList *code;
-
-	code = templ->priv->event_handlers;
-
-	while (code)
-	{
-		if (cpg_parser_code_get_event (code->data) == event)
-		{
-			if (!cpg_parser_code_run (code->data,
-			                          object,
-			                          templ,
-			                          error))
-			{
-				return FALSE;
-			}
-		}
-
-		code = g_slist_next (code);
-	}
-
-	return TRUE;
-}
-
 /**
  * cpg_object_apply_template:
  * @object: A #CpgObject
@@ -2267,27 +2263,9 @@ cpg_object_apply_template (CpgObject  *object,
 		return TRUE;
 	}
 
-	ret = run_template_parser_codes (object,
-	                                 templ,
-	                                 CPG_PARSER_CODE_EVENT_BEFORE_APPLY,
-	                                 error);
-
-	if (!ret)
-	{
-		return ret;
-	}
-
 	ret = CPG_OBJECT_GET_CLASS (object)->apply_template (object,
 	                                                     templ,
 	                                                     error);
-
-	if (ret)
-	{
-		ret = run_template_parser_codes (object,
-		                                 templ,
-		                                 CPG_PARSER_CODE_EVENT_AFTER_APPLY,
-		                                 error);
-	}
 
 	return ret;
 }
@@ -2326,29 +2304,9 @@ cpg_object_unapply_template (CpgObject  *object,
 		return FALSE;
 	}
 
-	ret = run_template_parser_codes (object,
-	                                 templ,
-	                                 CPG_PARSER_CODE_EVENT_BEFORE_UNAPPLY,
-	                                 error);
-
-	if (!ret)
-	{
-		return ret;
-	}
-
 	ret = CPG_OBJECT_GET_CLASS (object)->unapply_template (object,
 	                                                       templ,
 	                                                       error);
-
-	if (!ret)
-	{
-		return ret;
-	}
-
-	ret = run_template_parser_codes (object,
-	                                 templ,
-	                                 CPG_PARSER_CODE_EVENT_AFTER_UNAPPLY,
-	                                 error);
 
 	return ret;
 }
@@ -2667,62 +2625,6 @@ cpg_object_get_relative_id_for_display (CpgObject *object,
 	return get_relative_id (object, parent, TRUE);
 }
 
-void
-cpg_object_add_event_handler (CpgObject      *object,
-                              CpgParserCode  *code)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (CPG_IS_PARSER_CODE (code));
-
-	if (g_slist_find (object->priv->event_handlers, code))
-	{
-		return;
-	}
-
-	object->priv->event_handlers =
-		g_slist_append (object->priv->event_handlers,
-		                g_object_ref (code));
-}
-
-void
-cpg_object_remove_event_handler (CpgObject     *object,
-                                 CpgParserCode *code)
-{
-	GSList *item;
-
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (CPG_IS_PARSER_CODE (code));
-
-	item = g_slist_find (object->priv->event_handlers, code);
-
-	if (item)
-	{
-		g_object_unref (item->data);
-
-		object->priv->event_handlers =
-			g_slist_delete_link (object->priv->event_handlers,
-			                     item);
-	}
-}
-
-/**
- * cpg_object_get_parser_codes:
- * @object: A #CpgObject
- *
- * Get the list of #CpgParserCode which are run when the object is applied
- * as a template.
- *
- * Returns: (element-type CpgParserCode): A #GSList
- *
- **/
-GSList const *
-cpg_object_get_event_handlers (CpgObject *object)
-{
-	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-
-	return object->priv->event_handlers;
-}
-
 CpgCompileContext *
 cpg_object_get_compile_context (CpgObject         *object,
                                 CpgCompileContext *context)
@@ -2731,4 +2633,31 @@ cpg_object_get_compile_context (CpgObject         *object,
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), NULL);
 
 	return CPG_OBJECT_GET_CLASS (object)->get_compile_context (object, context);
+}
+
+void
+cpg_object_add_event (CpgObject *object,
+                      CpgEvent  *event)
+{
+	g_return_if_fail (CPG_IS_OBJECT (object));
+	g_return_if_fail (CPG_IS_EVENT (event));
+
+	object->priv->events = g_slist_append (object->priv->events,
+	                                       g_object_ref_sink (event));
+
+	object->priv->last_event = event;
+}
+
+CpgEvent *
+cpg_object_get_last_event (CpgObject *object)
+{
+	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
+
+	return object->priv->last_event;
+}
+
+GSList const *
+cpg_object_get_events (CpgObject *object)
+{
+	return object->priv->events;
 }
