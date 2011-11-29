@@ -266,6 +266,25 @@ cpg_selection_get_object (CpgSelection *selection)
 	return selection->priv->object;
 }
 
+void
+cpg_selection_set_object (CpgSelection *selection,
+                          gpointer      object)
+{
+	g_return_if_fail (CPG_IS_SELECTION (selection));
+	g_return_if_fail (object == NULL || G_IS_OBJECT (object));
+
+	if (selection->priv->object)
+	{
+		g_object_unref (selection->priv->object);
+		selection->priv->object = NULL;
+	}
+
+	if (object)
+	{
+		selection->priv->object = g_object_ref (object);
+	}
+}
+
 /**
  * cpg_selection_get_expansions:
  * @selection: A #CpgSelection

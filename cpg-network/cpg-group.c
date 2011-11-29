@@ -73,6 +73,7 @@ struct _CpgGroupPrivate
 	/* Links */
 	GSList *links;
 	GSList *actors;
+	CpgLink *self_link;
 
 	guint proxy_signals[NUM_EXT_SIGNALS];
 };
@@ -590,10 +591,21 @@ cpg_group_dispose (GObject *object)
 
 	for (item = copy; item; item = g_slist_next (item))
 	{
-		link_destroyed (group, item->data, TRUE);
+		if (item->data != group->priv->self_link)
+		{
+			link_destroyed (group, item->data, TRUE);
+		}
 	}
 
 	g_slist_free (copy);
+	g_slist_free (group->priv->links);
+	group->priv->links = NULL;
+
+	if (group->priv->self_link)
+	{
+		g_object_unref (group->priv->self_link);
+		group->priv->self_link = NULL;
+	}
 
 	G_OBJECT_CLASS (cpg_group_parent_class)->dispose (object);
 }
@@ -1253,6 +1265,16 @@ cpg_group_cpg_unapply_template (CpgObject  *object,
 
 	disconnect_template (group, templ);
 
+	if (cpg_group_has_self_link (source))
+	{
+		if (!cpg_object_apply_template (CPG_OBJECT (cpg_group_get_self_link (group)),
+		                                CPG_OBJECT (cpg_group_get_self_link (source)),
+		                                error))
+		{
+			return FALSE;
+		}
+	}
+
 	/* Remove interface */
 	source_iface = cpg_group_get_property_interface (source);
 
@@ -1461,6 +1483,16 @@ cpg_group_cpg_apply_template (CpgObject  *object,
 		}
 	}
 
+	if (cpg_group_has_self_link (source))
+	{
+		if (!cpg_object_apply_template (CPG_OBJECT (cpg_group_get_self_link (group)),
+		                                CPG_OBJECT (cpg_group_get_self_link (source)),
+		                                error))
+		{
+			return FALSE;
+		}
+	}
+
 	g_strfreev (names);
 
 	g_signal_connect (source_iface,
@@ -1490,13 +1522,27 @@ static void
 cpg_group_cpg_copy (CpgObject *object,
                     CpgObject *source)
 {
+	CpgGroup *g = CPG_GROUP (object);
+
 	CPG_OBJECT_CLASS (cpg_group_parent_class)->copy (object, source);
 
 	/* Copy over children */
-	copy_children (CPG_GROUP (object), CPG_GROUP (source));
+	copy_children (g, CPG_GROUP (source));
 
 	/* Copy over interface */
-	copy_interface (CPG_GROUP (object), CPG_GROUP (source));
+	copy_interface (g, CPG_GROUP (source));
+
+	if (cpg_group_has_self_link (CPG_GROUP (source)))
+	{
+		CpgLink *sl;
+
+		sl = cpg_group_get_self_link (CPG_GROUP (source));
+		sl = CPG_LINK (cpg_object_copy (CPG_OBJECT (sl)));
+
+		g->priv->self_link = sl;
+		g->priv->links = g_slist_prepend (g->priv->links,
+		                                  sl);
+	}
 }
 
 static gchar *
@@ -2534,8 +2580,8 @@ _cpg_group_unlink (CpgGroup *group,
 }
 
 /**
- * cpg_object_get_actors:
- * @object: A #CpgObject
+ * cpg_group_get_actors:
+ * @group: A #CpgGroup
  *
  * Get the properties which are acted upon by links.
  *
@@ -2580,8 +2626,8 @@ cpg_group_get_actors (CpgGroup *group)
 }
 
 /**
- * cpg_object_get_links:
- * @object: A #CpgObject
+ * cpg_group_get_links:
+ * @group: A #CpgGroup
  *
  * Get a list of links that act on this object.
  *
@@ -2596,3 +2642,29 @@ cpg_group_get_links (CpgGroup *group)
 	return group->priv->links;
 }
 
+gboolean
+cpg_group_has_self_link (CpgGroup *group)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), FALSE);
+
+	return group->priv->self_link != NULL;
+}
+
+
+CpgLinkForward *
+cpg_group_get_self_link (CpgGroup *group)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+
+	if (!group->priv->self_link)
+	{
+		group->priv->self_link = cpg_link_new ("integrate",
+		                                       group,
+		                                       group);
+
+		group->priv->links = g_slist_prepend (group->priv->links,
+		                                      group->priv->self_link);
+	}
+
+	return group->priv->self_link;
+}

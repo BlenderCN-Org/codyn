@@ -63,6 +63,9 @@ CpgSelection *cpg_selection_new_defines    (gpointer      object,
                                             GHashTable   *defines,
                                             gboolean      copy_defines);
 
+void          cpg_selection_set_object     (CpgSelection *selection,
+                                            gpointer      object);
+
 CpgSelection *cpg_selection_copy           (CpgSelection *selection);
 CpgSelection *cpg_selection_copy_defines   (CpgSelection *selection,
                                             gboolean      copy_defines);

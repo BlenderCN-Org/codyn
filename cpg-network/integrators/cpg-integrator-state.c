@@ -380,6 +380,11 @@ collect (CpgIntegratorState *state,
 	if (CPG_IS_GROUP (object))
 	{
 		collect_actors (state, CPG_GROUP (object));
+
+		if (cpg_group_has_self_link (CPG_GROUP (object)))
+		{
+			collect_link (state, cpg_group_get_self_link (CPG_GROUP (object)));
+		}
 	}
 
 	if (CPG_IS_INPUT (object))
