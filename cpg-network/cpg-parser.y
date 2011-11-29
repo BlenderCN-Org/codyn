@@ -117,13 +117,15 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %type <list> polynomial_pieces
 %type <list> polynomial_pieces_rev
 
-%type <list> function_argument
+%type <argspec> function_argument
 %type <list> function_argument_list
+%type <list> function_argument_list_rev
 %type <list> function_argument_list_or_empty
 
 %type <list> function_argument_implicit
-%type <list> function_argument_impl
+%type <argspec> function_argument_impl
 %type <list> function_argument_list_impl
+%type <list> function_argument_list_impl_rev
 %type <list> function_argument_list_or_empty_impl
 
 %type <list> template_list_more
@@ -207,6 +209,7 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 	CpgSelector *selector;
 	CpgEmbeddedString *string;
 	CpgAttribute *attribute;
+	CpgFunctionArgumentSpec *argspec;
 
 	struct
 	{
@@ -568,7 +571,7 @@ group
 	                                                                     $3,
 	                                                                     CPG_SELECTOR_TYPE_GROUP,
 	                                                                     $4,
-	                                                                     $1); }
+	                                                                     $1); errb }
 	  group_contents
 	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
@@ -741,7 +744,7 @@ object
 	                                                                  $4,
 	                                                                  $1); }
 	  object_contents
-	  '}'
+	  '}'				{ cpg_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_OBJECT
 	  selector_non_ambiguous
@@ -774,7 +777,7 @@ function_argument_list_or_empty
 
 function_argument_list_or_empty_impl
 	:				{ $$ = NULL; }
-	| function_argument_list_impl	{$$ = $1; }
+	| function_argument_list_impl	{ $$ = $1; }
 	;
 
 function_argument_implicit
@@ -793,14 +796,18 @@ function_helper
 function_custom
 	: attributes
 	  identifier_or_string
-	  '('				{ cpg_parser_context_push_function (context, $2, $1); }
+	  '('
 	  function_argument_list_or_empty
 	  ')'
 	  function_argument_implicit
-	  '='
-	  value_as_string		{ cpg_parser_context_set_function_expression (context, $9); errb
-	                                  cpg_parser_context_pop (context); errb }
-	  function_helper
+	  assign_optional
+	  value_as_string		{ cpg_parser_context_push_function (context,
+	                                                                    $2,
+	                                                                    g_slist_concat ($4, $6),
+	                                                                    $8,
+	                                                                    $7,
+	                                                                    $1); errb }
+	  function_helper	        { cpg_parser_context_pop (context); errb }
 	;
 
 function_item
@@ -849,24 +856,36 @@ double_list
 	;
 
 function_argument_impl
-	: identifier_or_string			{ cpg_parser_context_add_function_argument (context, $1, NULL, FALSE); }
-	| T_KEY_FROM '.' identifier_or_string	{ cpg_parser_context_add_function_argument (context, cpg_embedded_string_prepend_text ($3, "from."), NULL, FALSE); }
-	| T_KEY_TO '.' identifier_or_string	{ cpg_parser_context_add_function_argument (context, cpg_embedded_string_prepend_text ($3, "to."), NULL, FALSE); }
+	: identifier_or_string			{ $$ = cpg_function_argument_spec_new ($1, NULL, FALSE); }
+	| T_KEY_FROM '.' identifier_or_string	{ $$ = cpg_function_argument_spec_new (cpg_embedded_string_prepend_text ($3, "from."), NULL, FALSE); }
+	| T_KEY_TO '.' identifier_or_string	{ $$ = cpg_function_argument_spec_new (cpg_embedded_string_prepend_text ($3, "to."), NULL, FALSE); }
+	;
+
+function_argument_list_impl_rev
+	: function_argument_impl		{ $$ = g_slist_prepend (NULL, $1); }
+	| function_argument_list_impl
+	  ','
+	  function_argument_impl		{ $$ = g_slist_prepend ($1, $3); }
 	;
 
 function_argument_list_impl
-	: function_argument_impl
-	| function_argument_list_impl ',' function_argument_impl
+	: function_argument_list_impl_rev	{ $$ = g_slist_reverse ($1); }
+	;
+
+function_argument_list_rev
+	: function_argument			{ $$ = g_slist_prepend (NULL, $1); }
+	| function_argument_list
+	  ','
+	  function_argument			{ $$ = g_slist_prepend ($1, $3); }
 	;
 
 function_argument_list
-	: function_argument
-	| function_argument_list ',' function_argument
+	: function_argument_list_rev	{ $$ = g_slist_reverse ($1); }
 	;
 
 function_argument
-	: identifier_or_string '=' value_as_string	{ cpg_parser_context_add_function_argument (context, $1, $3, TRUE); }
-	| identifier_or_string			        { cpg_parser_context_add_function_argument (context, $1, NULL, TRUE); }
+	: identifier_or_string '=' value_as_string	{ $$ = cpg_function_argument_spec_new ($1, $3, TRUE); }
+	| identifier_or_string			        { $$ = cpg_function_argument_spec_new ($1, NULL, TRUE); }
 	;
 
 object_item

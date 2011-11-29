@@ -51,6 +51,8 @@ typedef struct _CpgParserContextClass	CpgParserContextClass;
 typedef struct _CpgParserContextPrivate	CpgParserContextPrivate;
 typedef struct _CpgParserContextClassPrivate	CpgParserContextClassPrivate;
 
+typedef struct _CpgFunctionArgumentSpec CpgFunctionArgumentSpec;
+
 typedef enum
 {
 	CPG_PARSER_CONTEXT_SELECTOR_TYPE_OBJECT,
@@ -212,6 +214,9 @@ void                   cpg_parser_context_push_integrator      (CpgParserContext
 
 void                   cpg_parser_context_push_function        (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
+                                                                GSList                     *args,
+                                                                CpgEmbeddedString          *expression,
+                                                                gboolean                    optional,
                                                                 GSList                     *attributes);
 
 void                   cpg_parser_context_push_input_file      (CpgParserContext           *context,
@@ -242,14 +247,6 @@ void                   cpg_parser_context_set_proxy            (CpgParserContext
 GSList                *cpg_parser_context_pop                  (CpgParserContext           *context);
 GSList const          *cpg_parser_context_current_selections   (CpgParserContext           *context);
 GSList const          *cpg_parser_context_previous_selections  (CpgParserContext           *context);
-
-void                   cpg_parser_context_add_function_argument (CpgParserContext          *context,
-                                                                 CpgEmbeddedString         *id,
-                                                                 CpgEmbeddedString         *optional,
-                                                                 gboolean                   isexplicit);
-
-void                   cpg_parser_context_set_function_expression (CpgParserContext        *context,
-                                                                   CpgEmbeddedString       *expression);
 
 void                   cpg_parser_context_push_selector_identifier (CpgParserContext           *context,
                                                                     CpgEmbeddedString          *identifier);
@@ -371,6 +368,11 @@ gboolean               cpg_parser_context_get_first_eof         (CpgParserContex
 void                   cpg_parser_context_set_first_eof         (CpgParserContext  *context,
                                                                  gboolean           firsteof);
 
+CpgFunctionArgumentSpec *cpg_function_argument_spec_new        (CpgEmbeddedString *name,
+                                                                CpgEmbeddedString *optional,
+                                                                gboolean           isexplicit);
+
+void cpg_function_argument_spec_free (CpgFunctionArgumentSpec *spec);
 
 G_END_DECLS
 
