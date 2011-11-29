@@ -925,10 +925,6 @@ selector_type_from_gtype (GType gtype)
 	{
 		return CPG_SELECTOR_TYPE_LINK;
 	}
-	else if (gtype == CPG_TYPE_OBJECT)
-	{
-		return CPG_SELECTOR_TYPE_STATE;
-	}
 	else
 	{
 		return CPG_SELECTOR_TYPE_OBJECT;
@@ -1389,7 +1385,7 @@ add_property_diff (CpgParserContext *context,
 			gchar *s;
 
 			s = g_strconcat (cpg_object_get_id (obj), "_integrate", NULL);
-			link = cpg_link_new (s, obj, obj);
+			link = cpg_link_new (s, CPG_GROUP (obj), CPG_GROUP (obj));
 			g_free (s);
 
 			if (!cpg_group_add (CPG_GROUP (cpg_object_get_parent (obj)),
@@ -1493,7 +1489,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 			exname = cpg_expansion_get (p->name, 0);
 
-			if (g_str_has_suffix (exname, "'"))
+			if (g_str_has_suffix (exname, "'") &&
+			    CPG_IS_GROUP (obj))
 			{
 				// This is a differential equation now...
 				add_property_diff (context,
@@ -2255,7 +2252,7 @@ set_proxy (CpgParserContext *context,
 	while (objects)
 	{
 		CpgObject *obj;
-		CpgObject *parent;
+		CpgGroup *parent;
 
 		obj = cpg_selection_get_object (objects->data);
 		objects = g_slist_next (objects);
@@ -2272,7 +2269,7 @@ set_proxy (CpgParserContext *context,
 			continue;
 		}
 
-		cpg_group_set_proxy (CPG_GROUP (parent), obj);
+		cpg_group_set_proxy (parent, obj);
 	}
 }
 
@@ -3083,58 +3080,6 @@ create_links (CpgParserContext          *context,
 	g_slist_free (parents);
 
 	return ret;
-}
-
-void
-cpg_parser_context_push_object (CpgParserContext  *context,
-                                CpgEmbeddedString *id,
-                                GSList            *templates,
-                                GSList            *attributes)
-{
-	GSList *objects;
-
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-
-	if (context->priv->in_event_handler)
-	{
-		return;
-	}
-
-	objects = create_objects (context,
-	                          id,
-	                          templates,
-	                          CPG_TYPE_OBJECT,
-	                          attributes,
-	                          FALSE);
-
-	cpg_parser_context_push_objects (context, objects, attributes);
-	g_slist_free (objects);
-}
-
-void
-cpg_parser_context_push_state (CpgParserContext  *context,
-                               CpgEmbeddedString *id,
-                               GSList            *templates,
-                               GSList            *attributes)
-{
-	GSList *objects;
-
-	g_return_if_fail (CPG_IS_PARSER_CONTEXT (context));
-
-	if (context->priv->in_event_handler)
-	{
-		return;
-	}
-
-	objects = create_objects (context,
-	                          id,
-	                          templates,
-	                          CPG_TYPE_OBJECT,
-	                          attributes,
-	                          TRUE);
-
-	cpg_parser_context_push_objects (context, objects, attributes);
-	g_slist_free (objects);
 }
 
 void
@@ -5479,11 +5424,11 @@ cpg_parser_context_delete_selector (CpgParserContext *context,
 			}
 			else if (CPG_IS_OBJECT (obj))
 			{
-				CpgObject *parent;
+				CpgGroup *parent;
 
 				parent = cpg_object_get_parent (obj);
 
-				if (!cpg_group_remove (CPG_GROUP (parent), obj, &error))
+				if (!cpg_group_remove (parent, obj, &error))
 				{
 					parser_failed_error (context,
 					                     CPG_STATEMENT (selector),

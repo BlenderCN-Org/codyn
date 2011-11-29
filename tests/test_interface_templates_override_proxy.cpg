@@ -3,12 +3,12 @@ templates
     group "t1"
     {
         [proxy]
-        state "c1" { p1 = 0 }
+        group "c1" { p1 = 0 }
     }
 
     group "t2"
     {
-        state "c2" { p2 = 1 }
+        group "c2" { p2 = 1 }
 
         interface { p1 = p2 in c2 }
     }

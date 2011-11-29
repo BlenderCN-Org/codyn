@@ -121,7 +121,8 @@ INST_H_FILES = \
 	cpg-layoutable.h \
 	cpg-statement.h \
 	cpg-taggable.h \
-	cpg-event.h
+	cpg-event.h \
+	cpg-forward-decl.h
 
 lib_LTLIBRARIES = libcpg-network-2.0.la
 

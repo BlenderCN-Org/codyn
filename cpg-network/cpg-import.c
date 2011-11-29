@@ -47,7 +47,7 @@ struct _CpgImportPrivate
 {
 	GFile *file;
 	gboolean modified;
-	CpgObject *prev_parent;
+	CpgGroup *prev_parent;
 
 	GSList *imported_objects;
 	gboolean check_remove;
@@ -327,9 +327,9 @@ verify_remove_import (CpgGroup   *group,
 	{
 		if (CPG_IS_OBJECT (item->data))
 		{
-			CpgObject *parent = cpg_object_get_parent (item->data);
+			CpgGroup *parent = cpg_object_get_parent (item->data);
 
-			if (!cpg_group_verify_remove_child (CPG_GROUP (parent),
+			if (!cpg_group_verify_remove_child (parent,
 			                                    item->data,
 			                                    error))
 			{
@@ -364,10 +364,10 @@ import_removed (CpgImport *import)
 	{
 		if (CPG_IS_OBJECT (item->data))
 		{
-			CpgObject *parent = cpg_object_get_parent (item->data);
+			CpgGroup *parent = cpg_object_get_parent (item->data);
 
 			unregister_imported_object (import, item->data);
-			cpg_group_remove (CPG_GROUP (parent), item->data, NULL);
+			cpg_group_remove (parent, item->data, NULL);
 		}
 		else if (CPG_IS_PROPERTY (item->data))
 		{
@@ -385,7 +385,7 @@ import_removed (CpgImport *import)
 static void
 on_parent_changed (CpgImport *import)
 {
-	CpgObject *parent = cpg_object_get_parent (CPG_OBJECT (import));
+	CpgGroup *parent = cpg_object_get_parent (CPG_OBJECT (import));
 
 	if (import->priv->prev_parent != NULL)
 	{
@@ -592,7 +592,7 @@ static void
 register_imported_object (CpgImport *import,
                           CpgObject *object)
 {
-	CpgObject *parent = cpg_object_get_parent (object);
+	CpgGroup *parent = cpg_object_get_parent (object);
 
 	g_signal_connect (parent,
 	                  "verify-remove-child",
@@ -604,7 +604,7 @@ static void
 unregister_imported_object (CpgImport *import,
                             CpgObject *object)
 {
-	CpgObject *parent = cpg_object_get_parent (object);
+	CpgGroup *parent = cpg_object_get_parent (object);
 
 	g_signal_handlers_disconnect_by_func (parent,
 	                                      G_CALLBACK (deny_remove_imported_child),
@@ -671,7 +671,7 @@ object_in_templates (CpgNetwork *network,
 			return TRUE;
 		}
 
-		obj = cpg_object_get_parent (obj);
+		obj = CPG_OBJECT (cpg_object_get_parent (obj));
 	}
 
 	return FALSE;

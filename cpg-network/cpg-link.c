@@ -33,7 +33,7 @@
  * SECTION:cpg-link
  * @short_description: Information transfer link
  *
- * A #CpgLink is a connection between two #CpgObject. The link defines actions
+ * A #CpgLink is a connection between two #CpgGroup. The link defines actions
  * which consist of a target property in the object to which the link is
  * connected, and an expression by which this target property needs to be
  * updated.
@@ -59,13 +59,13 @@ enum
 struct _CpgLinkPrivate
 {
 	// from and to objects
-	CpgObject *from;
-	CpgObject *to;
+	CpgGroup *from;
+	CpgGroup *to;
 
 	// list of expressions to evaluate
 	GSList *actions;
 
-	CpgObject *prev_parent;
+	CpgGroup *prev_parent;
 
 	guint ext_signals[NUM_EXT_SIGNALS];
 };
@@ -153,7 +153,8 @@ update_action_property (CpgLink       *link,
 
 	if (link->priv->to)
 	{
-		prop = cpg_object_get_property (link->priv->to, target);
+		prop = cpg_object_get_property (CPG_OBJECT (link->priv->to),
+		                                target);
 	}
 
 	_cpg_link_action_set_target_property (action, prop);
@@ -183,12 +184,12 @@ on_property_added_removed (CpgLink *link)
 }
 
 static void
-set_to (CpgLink   *link,
-        CpgObject *target)
+set_to (CpgLink  *link,
+        CpgGroup *target)
 {
 	if (link->priv->to)
 	{
-		_cpg_object_unlink (link->priv->to, link);
+		_cpg_group_unlink (link->priv->to, link);
 
 		g_signal_handler_disconnect (link->priv->to,
 		                             link->priv->ext_signals[EXT_PROPERTY_ADDED]);
@@ -204,7 +205,7 @@ set_to (CpgLink   *link,
 	if (target)
 	{
 		link->priv->to = g_object_ref (target);
-		_cpg_object_link (target, link);
+		_cpg_group_link (target, link);
 
 		link->priv->ext_signals[EXT_PROPERTY_ADDED] =
 			g_signal_connect_swapped (link->priv->to,
@@ -225,8 +226,8 @@ set_to (CpgLink   *link,
 }
 
 static void
-set_from (CpgLink   *link,
-          CpgObject *target)
+set_from (CpgLink  *link,
+          CpgGroup *target)
 {
 	if (link->priv->from)
 	{
@@ -455,9 +456,9 @@ find_template_for_attachments (CpgLink *link)
 	return ret;
 }
 
-static CpgObject *
-find_in_parent (CpgLink   *link,
-                CpgObject *obj)
+static CpgGroup *
+find_in_parent (CpgLink  *link,
+                CpgGroup *obj)
 {
 	if (obj == NULL)
 	{
@@ -470,8 +471,19 @@ find_in_parent (CpgLink   *link,
 
 	if (parent)
 	{
-		return cpg_group_get_child (parent,
-		                            cpg_object_get_id (obj));
+		CpgObject *child;
+
+		child = cpg_group_get_child (parent,
+		                             cpg_object_get_id (CPG_OBJECT (obj)));
+
+		if (child && CPG_IS_GROUP (child))
+		{
+			return CPG_GROUP (child);
+		}
+		else
+		{
+			return NULL;
+		}
 	}
 	else
 	{
@@ -483,8 +495,8 @@ static void
 attach_from_template (CpgLink *link)
 {
 	CpgLink *ret = find_template_for_attachments (link);
-	CpgObject *from;
-	CpgObject *to;
+	CpgGroup *from;
+	CpgGroup *to;
 
 	if (ret == NULL)
 	{
@@ -553,11 +565,12 @@ disconnect_template (CpgLink   *link,
 }
 
 static void
-on_parent_child_removed (CpgObject *parent,
+on_parent_child_removed (CpgGroup  *parent,
                          CpgObject *child,
                          CpgLink   *self)
 {
-	if (child == self->priv->to || child == self->priv->from)
+	if (child == CPG_OBJECT (self->priv->to) ||
+	    child == CPG_OBJECT (self->priv->from))
 	{
 		cpg_link_attach (self, NULL, NULL);
 	}
@@ -656,17 +669,17 @@ cpg_link_copy_impl (CpgObject *object,
 }
 
 static void
-prepend_functions (CpgObject         *obj,
+prepend_functions (CpgGroup          *obj,
                    CpgCompileContext *context)
 {
 	GSList const *item;
 
-	if (!obj || !CPG_IS_GROUP (obj))
+	if (!obj)
 	{
 		return;
 	}
 
-	item = cpg_group_get_children (CPG_GROUP (obj));
+	item = cpg_group_get_children (obj);
 
 	while (item)
 	{
@@ -694,7 +707,7 @@ cpg_link_get_compile_context_impl (CpgObject         *object,
 	{
 		if (cpg_object_get_parent (object))
 		{
-			context = cpg_object_get_compile_context (cpg_object_get_parent (object),
+			context = cpg_object_get_compile_context (CPG_OBJECT (cpg_object_get_parent (object)),
 			                                          NULL);
 		}
 		else
@@ -703,7 +716,9 @@ cpg_link_get_compile_context_impl (CpgObject         *object,
 		}
 	}
 
-	cpg_compile_context_prepend_object (context, link->priv->from);
+	cpg_compile_context_prepend_object (context,
+	                                    CPG_OBJECT (link->priv->from));
+
 	prepend_functions (link->priv->from, context);
 
 	CPG_OBJECT_CLASS (cpg_link_parent_class)->get_compile_context (object, context);
@@ -822,15 +837,15 @@ cpg_link_equal_impl (CpgObject *first,
 	}
 
 	if (link1->priv->from &&
-	    g_strcmp0 (cpg_object_get_id (link1->priv->from),
-	               cpg_object_get_id (link2->priv->from)) != 0)
+	    g_strcmp0 (cpg_object_get_id (CPG_OBJECT (link1->priv->from)),
+	               cpg_object_get_id (CPG_OBJECT (link2->priv->from))) != 0)
 	{
 		return FALSE;
 	}
 
 	if (link1->priv->to &&
-	    g_strcmp0 (cpg_object_get_id (link1->priv->to),
-	               cpg_object_get_id (link2->priv->to)) != 0)
+	    g_strcmp0 (cpg_object_get_id (CPG_OBJECT (link1->priv->to)),
+	               cpg_object_get_id (CPG_OBJECT (link2->priv->to))) != 0)
 	{
 		return FALSE;
 	}
@@ -1093,9 +1108,9 @@ cpg_link_init (CpgLink *self)
  *
  **/
 CpgLink *
-cpg_link_new (gchar const  *id,
-              CpgObject    *from,
-              CpgObject    *to)
+cpg_link_new (gchar const *id,
+              CpgGroup    *from,
+              CpgGroup    *to)
 {
 	return g_object_new (CPG_TYPE_LINK,
 	                     "id", id,
@@ -1229,12 +1244,12 @@ cpg_link_remove_action (CpgLink       *link,
  * cpg_link_get_from:
  * @link: the #CpgLink
  *
- * Returns the from #CpgObject of the link
+ * Returns the from #CpgGroup of the link
  *
- * Returns: (transfer none): the from #CpgObject
+ * Returns: (transfer none): the from #CpgGroup
  *
  **/
-CpgObject *
+CpgGroup *
 cpg_link_get_from (CpgLink *link)
 {
 	g_return_val_if_fail (CPG_IS_LINK (link), NULL);
@@ -1246,12 +1261,12 @@ cpg_link_get_from (CpgLink *link)
  * cpg_link_get_to:
  * @link: the #CpgLink
  *
- * Returns the to #CpgObject of the link
+ * Returns the to #CpgGroup of the link
  *
- * Returns: (transfer none): the to #CpgObject
+ * Returns: (transfer none): the to #CpgGroup
  *
  **/
-CpgObject *
+CpgGroup *
 cpg_link_get_to (CpgLink *link)
 {
 	g_return_val_if_fail (CPG_IS_LINK (link), NULL);
@@ -1314,8 +1329,8 @@ cpg_link_get_action (CpgLink     *link,
 /**
  * cpg_link_attach:
  * @link: (allow-none): A #CpgLink
- * @from: (allow-none): A #CpgObject
- * @to: A #CpgObject
+ * @from: (allow-none): A #CpgGroup
+ * @to: A #CpgGroup
  *
  * Attach @link to the objects @from and @to. This is equivalent to:
  * <informalexample>
@@ -1327,8 +1342,8 @@ cpg_link_get_action (CpgLink     *link,
  **/
 void
 cpg_link_attach (CpgLink   *link,
-                 CpgObject *from,
-                 CpgObject *to)
+                 CpgGroup *from,
+                 CpgGroup *to)
 {
 	g_return_if_fail (CPG_IS_LINK (link));
 	g_return_if_fail ((from == NULL) == (to == NULL));

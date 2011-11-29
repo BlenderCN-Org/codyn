@@ -575,12 +575,16 @@ parse_link_property (CpgExpression  *expression,
 
 	if (strcmp (id, "from") == 0)
 	{
-		property = cpg_object_get_property (cpg_link_get_from (link), propname);
+		property = cpg_object_get_property (CPG_OBJECT (cpg_link_get_from (link)),
+		                                    propname);
+
 		binding = CPG_INSTRUCTION_PROPERTY_BINDING_FROM;
 	}
 	else if (strcmp (id, "to") == 0)
 	{
-		property = cpg_object_get_property (cpg_link_get_to (link), propname);
+		property = cpg_object_get_property (CPG_OBJECT (cpg_link_get_to (link)),
+		                                    propname);
+
 		binding = CPG_INSTRUCTION_PROPERTY_BINDING_TO;
 	}
 

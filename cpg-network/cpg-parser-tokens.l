@@ -151,7 +151,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 "include"			return T_KEY_INCLUDE;
 "parse"				return T_KEY_PARSE;
-"state"				return T_KEY_STATE;
 "object"			return T_KEY_OBJECT;
 "link"				return T_KEY_LINK;
 "integrated"			return T_KEY_INTEGRATED;
@@ -198,7 +197,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"first"		return T_KEY_FIRST;
 <INITIAL,onlyselector>"last"		return T_KEY_LAST;
 <INITIAL,onlyselector>"subset"		return T_KEY_SUBSET;
-<INITIAL,onlyselector>"states"		return T_KEY_STATES;
 <INITIAL,onlyselector>"links"		return T_KEY_LINKS;
 <INITIAL,onlyselector>"siblings"	return T_KEY_SIBLINGS;
 <INITIAL,onlyselector>"descendants"	return T_KEY_DESCENDANTS;

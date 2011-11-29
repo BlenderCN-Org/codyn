@@ -407,7 +407,7 @@ cpg_network_get_compile_context_impl (CpgObject         *object,
 	{
 		if (cpg_object_get_parent (object))
 		{
-			context = cpg_object_get_compile_context (cpg_object_get_parent (object),
+			context = cpg_object_get_compile_context (CPG_OBJECT (cpg_object_get_parent (object)),
 			                                          NULL);
 		}
 		else
@@ -543,7 +543,7 @@ cpg_network_init (CpgNetwork *network)
 
 	network->priv->template_group = cpg_group_new ("templates", NULL);
 	_cpg_object_set_parent (CPG_OBJECT (network->priv->template_group),
-	                        CPG_OBJECT (network));
+	                        CPG_GROUP (network));
 
 	g_signal_connect_swapped (network->priv->template_group,
 	                          "tainted",

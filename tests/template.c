@@ -9,16 +9,16 @@ static gchar simple_xml[] = ""
 "<cpg>\n"
 "  <network>\n"
 "    <templates>\n"
-"      <state id=\"template1\">\n"
+"      <group id=\"template1\">\n"
 "        <property name=\"x\">0</property>\n"
 "\n"
-"        <state id=\"nested1\">\n"
+"        <group id=\"nested1\">\n"
 "          <property name=\"y\">0</property>\n"
-"        </state>\n"
-"      </state>\n"
+"        </group>\n"
+"      </group>\n"
 "    </templates>\n"
 "\n"
-"    <state id=\"state1\" ref=\"template1\"/>\n"
+"    <group id=\"state1\" ref=\"template1\"/>\n"
 "  </network>\n"
 "</cpg>\n";
 
@@ -112,7 +112,9 @@ test_apply_group ()
 	                                           CPG_PROPERTY_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", state, state));
+	CpgObject *link = CPG_OBJECT (cpg_link_new ("link",
+	                                            CPG_GROUP (state),
+	                                            CPG_GROUP (state)));
 	cpg_link_add_action (CPG_LINK (link),
 	                     cpg_link_action_new ("x",
 	                                          cpg_expression_new ("1")));
@@ -140,8 +142,8 @@ test_apply_group ()
 	g_assert (link);
 
 	g_assert (cpg_link_get_action (CPG_LINK (link), "x"));
-	g_assert (cpg_link_get_from (CPG_LINK (link)) == state);
-	g_assert (cpg_link_get_to (CPG_LINK (link)) == state);
+	g_assert (cpg_link_get_from (CPG_LINK (link)) == CPG_GROUP (state));
+	g_assert (cpg_link_get_to (CPG_LINK (link)) == CPG_GROUP (state));
 }
 
 static void
@@ -152,15 +154,15 @@ test_apply_overload_state ()
 	"<cpg>\n"
 	"  <network>\n"
 	"    <templates>\n"
-	"      <state id=\"state\">\n"
+	"      <group id=\"state\">\n"
 	"        <property name=\"x\" integrated=\"yes\">0</property>\n"
 	"\n"
-	"      </state>\n"
+	"      </group>\n"
 	"    </templates>\n"
 	"\n"
-	"    <state id=\"state\" ref=\"state\">\n"
+	"    <group id=\"state\" ref=\"state\">\n"
 	"      <property name=\"x\" integrated=\"no\">1</property>\n"
-	"    </state>\n"
+	"    </group>\n"
 	"  </network>\n"
 	"</cpg>\n";
 
@@ -188,16 +190,16 @@ test_apply_overload_link ()
 	"<cpg>\n"
 	"  <network>\n"
 	"    <templates>\n"
-	"      <state id=\"state\">\n"
+	"      <group id=\"state\">\n"
 	"        <property name=\"x\" integrated=\"yes\">0</property>\n"
 	"\n"
-	"      </state>\n"
+	"      </group>\n"
 	"      <link id=\"link\">\n"
 	"        <action target=\"x\">1</action>\n"
 	"      </link>\n"
 	"    </templates>\n"
 	"\n"
-	"    <state id=\"state\" ref=\"state\"/>\n"
+	"    <group id=\"state\" ref=\"state\"/>\n"
 	"    <link id=\"link\" ref=\"link\" from=\"state\" to=\"state\">\n"
 	"      <action target=\"x\">2</action>"
 	"    </link>\n"
@@ -229,22 +231,22 @@ test_apply_overload_group ()
 	"<cpg>\n"
 	"  <network>\n"
 	"    <templates>\n"
-	"      <state id=\"group\">\n"
-	"        <state id=\"state\">\n"
+	"      <group id=\"group\">\n"
+	"        <group id=\"state\">\n"
 	"          <property name=\"x\" integrated=\"yes\">0</property>\n"
 	"\n"
-	"        </state>\n"
+	"        </group>\n"
 	"        <link id=\"link\">\n"
 	"          <action target=\"x\">1</action>\n"
 	"        </link>\n"
-	"      </state>\n"
+	"      </group>\n"
 	"    </templates>\n"
 	"\n"
-	"    <state id=\"state\" ref=\"group\">\n"
-	"      <state id=\"state\">\n"
+	"    <group id=\"state\" ref=\"group\">\n"
+	"      <group id=\"state\">\n"
 	"        <property name=\"x\">2</property>\n"
-	"      </state>\n"
-	"    </state>\n"
+	"      </group>\n"
+	"    </group>\n"
 	"  </network>\n"
 	"</cpg>\n";
 

@@ -37,6 +37,7 @@
 #include "cpg-layoutable.h"
 #include "cpg-selector.h"
 #include "cpg-taggable.h"
+#include "cpg-group.h"
 
 /**
  * SECTION:cpg-object
@@ -67,15 +68,11 @@ struct _CpgObjectPrivate
 	gint x;
 	gint y;
 
-	CpgObject *parent;
+	CpgGroup *parent;
 
 	/* Properties */
 	GSList *properties;
 	GHashTable *property_hash;
-
-	/* Links */
-	GSList *links;
-	GSList *actors;
 
 	/* Templates */
 	GSList *templates;
@@ -127,17 +124,17 @@ static void cpg_annotatable_iface_init (gpointer iface);
 static void cpg_layoutable_iface_init (gpointer iface);
 static void cpg_taggable_iface_init (gpointer iface);
 
-G_DEFINE_TYPE_WITH_CODE (CpgObject,
-                         cpg_object,
-                         G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (CPG_TYPE_USABLE,
-                                                cpg_usable_iface_init);
-                         G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
-                                                cpg_annotatable_iface_init);
-                         G_IMPLEMENT_INTERFACE (CPG_TYPE_LAYOUTABLE,
-                                                cpg_layoutable_iface_init);
-                         G_IMPLEMENT_INTERFACE (CPG_TYPE_TAGGABLE,
-                                                cpg_taggable_iface_init));
+G_DEFINE_ABSTRACT_TYPE_WITH_CODE (CpgObject,
+                                  cpg_object,
+                                  G_TYPE_OBJECT,
+                                  G_IMPLEMENT_INTERFACE (CPG_TYPE_USABLE,
+                                                         cpg_usable_iface_init);
+                                  G_IMPLEMENT_INTERFACE (CPG_TYPE_ANNOTATABLE,
+                                                         cpg_annotatable_iface_init);
+                                  G_IMPLEMENT_INTERFACE (CPG_TYPE_LAYOUTABLE,
+                                                         cpg_layoutable_iface_init);
+                                  G_IMPLEMENT_INTERFACE (CPG_TYPE_TAGGABLE,
+                                                         cpg_taggable_iface_init));
 
 static guint object_signals[NUM_SIGNALS] = {0,};
 
@@ -241,9 +238,6 @@ cpg_object_finalize (GObject *object)
 
 	g_slist_foreach (obj->priv->properties, (GFunc)free_property, object);
 	g_slist_free (obj->priv->properties);
-
-	g_slist_free (obj->priv->links);
-	g_slist_free (obj->priv->actors);
 
 	g_free (obj->priv->id);
 
@@ -362,24 +356,6 @@ set_property (GObject       *object,
 			                                   pspec);
 		break;
 	}
-}
-
-static void
-link_destroyed (CpgObject  *object,
-                CpgLink    *link,
-                gboolean    is_last_ref)
-{
-	if (!is_last_ref)
-	{
-		return;
-	}
-
-	/* Remove link, and toggle ref */
-	object->priv->links = g_slist_remove (object->priv->links, link);
-
-	g_object_remove_toggle_ref (G_OBJECT (link),
-	                            (GToggleNotify)link_destroyed,
-	                            object);
 }
 
 static void
@@ -599,16 +575,6 @@ cpg_object_dispose (GObject *object)
 
 	g_slist_free (obj->priv->templates_reverse_map);
 	obj->priv->templates_reverse_map = NULL;
-
-	/* Untoggle ref all links, because we need them destroyed! */
-	GSList *copy = g_slist_copy (obj->priv->links);
-
-	for (item = copy; item; item = g_slist_next (item))
-	{
-		link_destroyed (obj, item->data, TRUE);
-	}
-
-	g_slist_free (copy);
 
 	G_OBJECT_CLASS (cpg_object_parent_class)->dispose (object);
 }
@@ -909,7 +875,7 @@ cpg_object_get_compile_context_impl (CpgObject         *object,
 	{
 		if (object->priv->parent)
 		{
-			context = cpg_object_get_compile_context (object->priv->parent,
+			context = cpg_object_get_compile_context (CPG_OBJECT (object->priv->parent),
 			                                          NULL);
 		}
 		else
@@ -1295,9 +1261,6 @@ cpg_object_clear_impl (CpgObject *object)
 static void
 cpg_object_taint_impl (CpgObject *object)
 {
-	g_slist_free (object->priv->actors);
-	object->priv->actors = NULL;
-
 	object->priv->compiled = FALSE;
 
 	g_signal_emit (object, object_signals[TAINTED], 0);
@@ -1896,110 +1859,6 @@ cpg_object_get_properties (CpgObject *object)
 }
 
 /**
- * _cpg_object_link:
- * @object: the #CpgObject
- * @link: the #CpgLink which links to this object
- *
- * Adds @link as a link which targets the object.
- *
- **/
-void
-_cpg_object_link (CpgObject  *object,
-                  CpgLink    *link)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (CPG_IS_LINK (link));
-
-	object->priv->links = g_slist_append (object->priv->links, link);
-
-	g_slist_free (object->priv->actors);
-	object->priv->actors = NULL;
-
-	g_object_add_toggle_ref (G_OBJECT (link),
-	                         (GToggleNotify)link_destroyed,
-	                         object);
-}
-
-/**
- * _cpg_object_unlink:
- * @object: the #CpgObject
- * @link: the #CpgLink which unlinks from this object
- *
- * Removes @link as a link which targets the object.
- *
- **/
-void
-_cpg_object_unlink (CpgObject  *object,
-                    CpgLink    *link)
-{
-	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (CPG_IS_LINK (link));
-
-	GSList *item = g_slist_find (object->priv->links, link);
-
-	if (!item)
-	{
-		return;
-	}
-
-	object->priv->links = g_slist_remove_link (object->priv->links,
-	                                           item);
-
-	g_slist_free (object->priv->actors);
-	object->priv->actors = NULL;
-
-	g_object_remove_toggle_ref (G_OBJECT (link),
-	                            (GToggleNotify)link_destroyed,
-	                            object);
-}
-
-/**
- * cpg_object_get_actors:
- * @object: A #CpgObject
- *
- * Get the properties which are acted upon by links.
- *
- * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty.
- *
- **/
-const GSList *
-cpg_object_get_actors (CpgObject *object)
-{
-	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-
-	if (object->priv->actors != NULL)
-	{
-		return object->priv->actors;
-	}
-
-	GSList *ret = NULL;
-	GSList *item;
-
-	for (item = object->priv->links; item; item = g_slist_next (item))
-	{
-		GSList const *actions;
-
-		actions = cpg_link_get_actions (CPG_LINK (item->data));
-
-		while (actions)
-		{
-			CpgLinkAction *a = actions->data;
-			CpgProperty *target = cpg_link_action_get_target_property (a);
-
-			if (!g_slist_find (ret, target))
-			{
-				ret = g_slist_prepend (ret, target);
-			}
-
-			actions = g_slist_next (actions);
-		}
-	}
-
-	object->priv->actors = g_slist_reverse (ret);
-	return object->priv->actors;
-}
-
-/**
  * cpg_object_reset:
  * @object: the #CpgObject
  *
@@ -2051,23 +1910,6 @@ cpg_object_set_id (CpgObject    *object,
 
 	set_id (object, id);
 	g_object_notify (G_OBJECT (object), "id");
-}
-
-/**
- * cpg_object_get_links:
- * @object: A #CpgObject
- *
- * Get a list of links that act on this object.
- *
- * Returns: (element-type CpgLink): A list of #CpgLink
- *
- */
-GSList const *
-cpg_object_get_links (CpgObject *object)
-{
-	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-
-	return object->priv->links;
 }
 
 /**
@@ -2206,10 +2048,10 @@ cpg_object_get_template_applies_to (CpgObject *object)
  *
  * Get the parent of the object.
  *
- * Returns: (transfer none): A #CpgObject
+ * Returns: (transfer none): A #CpgGroup
  *
  **/
-CpgObject *
+CpgGroup *
 cpg_object_get_parent (CpgObject *object)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
@@ -2437,10 +2279,10 @@ cpg_object_set_auto_imported (CpgObject *object,
 
 void
 _cpg_object_set_parent (CpgObject *object,
-                        CpgObject *parent)
+                        CpgGroup  *parent)
 {
 	g_return_if_fail (CPG_IS_OBJECT (object));
-	g_return_if_fail (parent == NULL || CPG_IS_OBJECT (parent));
+	g_return_if_fail (parent == NULL || CPG_IS_GROUP (parent));
 
 	object->priv->parent = parent;
 
@@ -2462,7 +2304,7 @@ _cpg_object_set_parent (CpgObject *object,
 gchar *
 cpg_object_get_full_id (CpgObject *object)
 {
-	CpgObject *parent;
+	CpgGroup *parent;
 
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
@@ -2474,14 +2316,16 @@ cpg_object_get_full_id (CpgObject *object)
 		return cpg_selector_escape_identifier (object->priv->id);
 	}
 
-	while (parent->priv->parent)
+	while (CPG_OBJECT (parent)->priv->parent)
 	{
-		if ((CPG_IS_NETWORK (parent->priv->parent) && parent == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent->priv->parent)))))
+		CpgGroup *par = CPG_OBJECT (parent)->priv->parent;
+
+		if ((CPG_IS_NETWORK (par) && parent == cpg_network_get_template_group (CPG_NETWORK (par))))
 		{
 			break;
 		}
 
-		parent = parent->priv->parent;
+		parent = par;
 	}
 
 	return cpg_object_get_relative_id (object, parent);
@@ -2490,7 +2334,7 @@ cpg_object_get_full_id (CpgObject *object)
 gchar *
 cpg_object_get_full_id_for_display (CpgObject *object)
 {
-	CpgObject *parent;
+	CpgGroup *parent;
 
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
 
@@ -2502,14 +2346,16 @@ cpg_object_get_full_id_for_display (CpgObject *object)
 		return g_strdup (object->priv->id);
 	}
 
-	while (parent->priv->parent)
+	while (CPG_OBJECT (parent)->priv->parent)
 	{
-		if ((CPG_IS_NETWORK (parent->priv->parent) && parent == CPG_OBJECT (cpg_network_get_template_group (CPG_NETWORK (parent->priv->parent)))))
+		CpgGroup *par = CPG_OBJECT (parent)->priv->parent;
+
+		if ((CPG_IS_NETWORK (par) && parent == cpg_network_get_template_group (CPG_NETWORK (par))))
 		{
 			break;
 		}
 
-		parent = parent->priv->parent;
+		parent = par;
 	}
 
 	return cpg_object_get_relative_id_for_display (object, parent);
@@ -2543,13 +2389,13 @@ cpg_object_foreach_expression (CpgObject                *object,
 
 static gchar *
 get_relative_id (CpgObject *object,
-                 CpgObject *parent,
+                 CpgGroup  *parent,
                  gboolean   for_display)
 {
 	gchar *ret;
 	gchar *par = NULL;
 
-	if (object == parent)
+	if (object == CPG_OBJECT (parent))
 	{
 		return g_strdup ("");
 	}
@@ -2565,11 +2411,13 @@ get_relative_id (CpgObject *object,
 	{
 		if (for_display)
 		{
-			par = cpg_object_get_relative_id_for_display (object->priv->parent, parent);
+			par = cpg_object_get_relative_id_for_display (CPG_OBJECT (object->priv->parent),
+			                                              parent);
 		}
 		else
 		{
-			par = cpg_object_get_relative_id (object->priv->parent, parent);
+			par = cpg_object_get_relative_id (CPG_OBJECT (object->priv->parent),
+			                                  parent);
 		}
 	}
 
@@ -2607,20 +2455,20 @@ get_relative_id (CpgObject *object,
 
 gchar *
 cpg_object_get_relative_id (CpgObject *object,
-                            CpgObject *parent)
+                            CpgGroup  *parent)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (CPG_IS_GROUP (parent), NULL);
 
 	return get_relative_id (object, parent, FALSE);
 }
 
 gchar *
 cpg_object_get_relative_id_for_display (CpgObject *object,
-                                        CpgObject *parent)
+                                        CpgGroup  *parent)
 {
 	g_return_val_if_fail (CPG_IS_OBJECT (object), NULL);
-	g_return_val_if_fail (CPG_IS_OBJECT (parent), NULL);
+	g_return_val_if_fail (CPG_IS_GROUP (parent), NULL);
 
 	return get_relative_id (object, parent, TRUE);
 }

@@ -11,7 +11,6 @@ test_create ()
 
 	g_assert_cmpstr (cpg_object_get_id (obj), ==, "id");
 	g_assert (cpg_object_get_properties (obj) == NULL);
-	g_assert (cpg_object_get_actors (obj) == NULL);
 }
 
 static void
@@ -197,10 +196,10 @@ test_relative_id ()
 	g_assert (cpg_group_find_object (g1, "g2.o1"));
 
 	g_assert_cmpstr (cpg_object_get_relative_id (CPG_OBJECT (g2),
-	                                             CPG_OBJECT (g1)), ==, "g2");
+	                                             g1), ==, "g2");
 
 	g_assert_cmpstr (cpg_object_get_relative_id (obj,
-	                                             CPG_OBJECT (g1)), ==, "g2.o1");
+	                                             g1), ==, "g2.o1");
 
 	g_assert_cmpstr (cpg_object_get_full_id (CPG_OBJECT (g2)), ==, "g2");
 	g_assert_cmpstr (cpg_object_get_full_id (obj), ==, "g2.o1");

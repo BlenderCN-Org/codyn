@@ -184,16 +184,6 @@ void                   cpg_parser_context_push_objects         (CpgParserContext
                                                                 GSList                     *objects,
                                                                 GSList                     *attributes);
 
-void                   cpg_parser_context_push_object          (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *id,
-                                                                GSList                     *templates,
-                                                                GSList                     *attributes);
-
-void                   cpg_parser_context_push_state           (CpgParserContext           *context,
-                                                                CpgEmbeddedString          *id,
-                                                                GSList                     *templates,
-                                                                GSList                     *attributes);
-
 void                   cpg_parser_context_push_group           (CpgParserContext           *context,
                                                                 CpgEmbeddedString          *id,
                                                                 GSList                     *templates,

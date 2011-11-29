@@ -406,7 +406,7 @@ template_path (CpgNetwork *network,
                CpgObject *orig,
                CpgObject *template)
 {
-	CpgObject *parent = cpg_object_get_parent (orig);
+	CpgGroup *parent = cpg_object_get_parent (orig);
 	CpgObject *shared_root = template;
 
 	GString *ret = g_string_new ("");
@@ -418,7 +418,7 @@ template_path (CpgNetwork *network,
 
 	do
 	{
-		CpgObject *shared_parent = cpg_object_get_parent (shared_root);
+		CpgGroup *shared_parent = cpg_object_get_parent (shared_root);
 
 		if (shared_root == tg)
 		{
@@ -437,8 +437,8 @@ template_path (CpgNetwork *network,
 			first = FALSE;
 		}
 
-		shared_root = shared_parent;
-	} while (shared_root && parent != shared_root);
+		shared_root = CPG_OBJECT (shared_parent);
+	} while (shared_root && CPG_OBJECT (parent) != shared_root);
 
 	return g_string_free (ret, FALSE);
 }
@@ -632,8 +632,8 @@ link_to_xml (CpgNetworkSerializer *serializer,
              xmlNodePtr            parent,
              CpgLink              *link)
 {
-	CpgObject *from = cpg_link_get_from (link);
-	CpgObject *to = cpg_link_get_to (link);
+	CpgGroup *from = cpg_link_get_from (link);
+	CpgGroup *to = cpg_link_get_to (link);
 
 	xmlNodePtr node = object_to_xml (serializer,
 	                                 parent,
@@ -645,14 +645,14 @@ link_to_xml (CpgNetworkSerializer *serializer,
 	{
 		xmlNewProp (node,
 		            (xmlChar *)"from",
-		            (xmlChar *)cpg_object_get_id (from));
+		            (xmlChar *)cpg_object_get_id (CPG_OBJECT (from)));
 	}
 
 	if (to != NULL)
 	{
 		xmlNewProp (node,
 		            (xmlChar *)"to",
-		            (xmlChar *)cpg_object_get_id (to));
+		            (xmlChar *)cpg_object_get_id (CPG_OBJECT (to)));
 	}
 
 	// Link actions

@@ -1230,7 +1230,7 @@ find_interfaced (CpgObject    *object,
                  gchar const  *name,
                  gchar       **iname)
 {
-	CpgObject *parent;
+	CpgGroup *parent;
 	CpgPropertyInterface *iface;
 
 	parent = cpg_object_get_parent (object);
@@ -1240,7 +1240,7 @@ find_interfaced (CpgObject    *object,
 		return NULL;
 	}
 
-	iface = cpg_group_get_property_interface (CPG_GROUP (parent));
+	iface = cpg_group_get_property_interface (parent);
 
 	gchar **names = cpg_property_interface_get_names (iface);
 	gchar **ptr;
@@ -1262,11 +1262,11 @@ find_interfaced (CpgObject    *object,
 		}
 
 		CpgObject *ret;
-		ret = find_interfaced (parent, *ptr, iname);
+		ret = find_interfaced (CPG_OBJECT (parent), *ptr, iname);
 
 		if (!ret)
 		{
-			ret = parent;
+			ret = CPG_OBJECT (parent);
 
 			if (iname)
 			{
@@ -1370,7 +1370,7 @@ _cpg_property_set_object (CpgProperty *property,
 }
 
 static GSList *
-property_get_actions (CpgObject   *o,
+property_get_actions (CpgGroup    *o,
                       CpgProperty *property,
                       GSList      *ret)
 {
@@ -1381,7 +1381,7 @@ property_get_actions (CpgObject   *o,
 		return ret;
 	}
 
-	l = cpg_object_get_links (o);
+	l = cpg_group_get_links (o);
 
 	while (l)
 	{
@@ -1401,7 +1401,7 @@ property_get_actions (CpgObject   *o,
 		l = g_slist_next (l);
 	}
 
-	return property_get_actions (cpg_object_get_parent (o),
+	return property_get_actions (cpg_object_get_parent (CPG_OBJECT (o)),
 	                             property,
 	                             ret);
 }
@@ -1409,9 +1409,18 @@ property_get_actions (CpgObject   *o,
 GSList *
 cpg_property_get_actions (CpgProperty *property)
 {
+	CpgObject *obj;
+
 	g_return_val_if_fail (CPG_IS_PROPERTY (property), NULL);
 
-	return g_slist_reverse (property_get_actions (cpg_property_get_object (property),
+	obj = cpg_property_get_object (property);
+
+	if (!CPG_IS_GROUP (obj))
+	{
+		return NULL;
+	}
+
+	return g_slist_reverse (property_get_actions (CPG_GROUP (cpg_property_get_object (property)),
 	                                              property,
 	                                              NULL));
 }

@@ -309,9 +309,11 @@ collect_link (CpgIntegratorState *state,
 
 static void
 collect_actors (CpgIntegratorState *state,
-                CpgObject          *object)
+                CpgGroup           *object)
 {
-	GSList const *actors = cpg_object_get_actors (object);
+	GSList const *actors;
+
+	actors = cpg_group_get_actors (object);
 
 	while (actors)
 	{
@@ -375,7 +377,10 @@ collect (CpgIntegratorState *state,
 		return;
 	}
 
-	collect_actors (state, object);
+	if (CPG_IS_GROUP (object))
+	{
+		collect_actors (state, CPG_GROUP (object));
+	}
 
 	if (CPG_IS_INPUT (object))
 	{

@@ -27,6 +27,7 @@
 #include <glib-object.h>
 #include <cpg-network/cpg-compile-context.h>
 #include <cpg-network/cpg-utils.h>
+#include <cpg-network/cpg-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -55,9 +56,6 @@ struct _CpgExpressionClass
 	/*< private >*/
 	GInitiallyUnownedClass parent_class;
 };
-
-typedef CPG_FORWARD_DECL (CpgProperty) CpgPropertyForward;
-typedef CPG_FORWARD_DECL (CpgCompileError) CpgCompileErrorForward;
 
 GType          cpg_expression_get_type         (void) G_GNUC_CONST;
 

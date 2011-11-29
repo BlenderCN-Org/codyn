@@ -260,7 +260,7 @@ set_time_column (CpgInputFile *input,
 		return;
 	}
 
-	if (time_column == time_column && input->priv->time_column_set)
+	if (time_column == input->priv->time_column && input->priv->time_column_set)
 	{
 		return;
 	}

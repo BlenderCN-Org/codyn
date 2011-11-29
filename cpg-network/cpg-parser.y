@@ -37,7 +37,7 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_STATE T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_STATES T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_DISABLED T_KEY_WHEN
+%token T_KEY_LINK T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_GROUP T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_PROPERTY T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_LINKS T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_GROUPS T_KEY_IMPORTS T_KEY_PROPERTIES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_DISABLED T_KEY_WHEN
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -95,7 +95,6 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %token T_START_SELECTOR
 %token T_START_GROUP
 %token T_START_LINK
-%token T_START_STATE
 
 %type <num> property_flag_sign
 %type <flags> property_flags
@@ -175,8 +174,6 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 
 %type <object> define_value
 
-%type <list> state
-
 %type <list> link_connect
 %type <list> link_connect_fast
 %type <list> templated
@@ -219,8 +216,8 @@ static CpgFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 
 	struct
 	{
-		CpgPropertyFlags add;
-		CpgPropertyFlags remove;
+		gint add;
+		gint remove;
 	} flags;
 
 	struct
@@ -242,7 +239,6 @@ choose_parser
 	| T_START_SELECTOR selector_parse T_EOF
 	| T_START_GROUP group_contents
 	| T_START_LINK link_contents
-	| T_START_STATE object_contents
 	;
 
 document_contents
@@ -252,7 +248,6 @@ document_contents
 
 document_item
 	: network
-	| state
 	| group
 	| link
 	| object
@@ -447,8 +442,7 @@ templates
 	;
 
 template_item
-	: state
-	| link
+	: link
 	| object
 	| group
 	| import
@@ -489,28 +483,6 @@ templated
 identifier_or_string_or_nothing
 	:				{ $$ = NULL; }
 	| identifier_or_string		{ $$ = $1; }
-	;
-
-state
-	: attributes
-	  T_KEY_STATE
-	  identifier_or_string_or_nothing
-	  templated
-	  '{' 				{ cpg_parser_context_push_state (context, $3, $4, $1); errb }
-	  object_contents
-	  '}'				{ $$ = cpg_parser_context_pop (context); errb }
-	| attributes
-	  T_KEY_STATE
-	  selector_non_ambiguous
-	  templated
-	  '{'				{ cpg_parser_context_push_selection (context,
-	                                                                     $3,
-	                                                                     CPG_SELECTOR_TYPE_STATE |
-	                                                                     CPG_SELECTOR_TYPE_GROUP,
-	                                                                     $4,
-	                                                                     $1); }
-	  object_contents
-	  '}'				{ cpg_parser_context_pop (context); errb }
 	;
 
 input_file_setting
@@ -737,16 +709,6 @@ link
 object
 	: attributes
 	  T_KEY_OBJECT
-	  identifier_or_string
-	  templated
-	  '{'				{ cpg_parser_context_push_object (context,
-	                                                                  $3,
-	                                                                  $4,
-	                                                                  $1); }
-	  object_contents
-	  '}'				{ cpg_parser_context_pop (context); errb }
-	| attributes
-	  T_KEY_OBJECT
 	  selector_non_ambiguous
 	  templated
 	  '{'				{ cpg_parser_context_push_selection (context,
@@ -906,7 +868,6 @@ object_contents
 
 group_item
 	: property
-	| state
 	| object
 	| link
 	| interface
@@ -1211,7 +1172,6 @@ selector_pseudo_simple_key_real
 	| T_KEY_PARENT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_PARENT; }
 	| T_KEY_FIRST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_FIRST; }
 	| T_KEY_LAST				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_LAST; }
-	| T_KEY_STATES				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_STATES; }
 	| T_KEY_LINKS				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_LINKS; }
 	| T_KEY_TEMPLATES			{ $$ = CPG_SELECTOR_PSEUDO_TYPE_TEMPLATES; }
 	| T_KEY_COUNT				{ $$ = CPG_SELECTOR_PSEUDO_TYPE_COUNT; }

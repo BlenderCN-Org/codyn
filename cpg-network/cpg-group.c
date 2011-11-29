@@ -70,6 +70,10 @@ struct _CpgGroupPrivate
 
 	CpgPropertyInterface *property_interface;
 
+	/* Links */
+	GSList *links;
+	GSList *actors;
+
 	guint proxy_signals[NUM_EXT_SIGNALS];
 };
 
@@ -108,11 +112,33 @@ cpg_group_error_quark (void)
 }
 
 static void
+link_destroyed (CpgGroup  *group,
+                CpgLink   *link,
+                gboolean   is_last_ref)
+{
+	if (!is_last_ref)
+	{
+		return;
+	}
+
+	/* Remove link, and toggle ref */
+	group->priv->links = g_slist_remove (group->priv->links, link);
+
+	g_object_remove_toggle_ref (G_OBJECT (link),
+	                            (GToggleNotify)link_destroyed,
+	                            group);
+}
+
+
+static void
 cpg_group_finalize (GObject *object)
 {
 	CpgGroup *group = CPG_GROUP (object);
 
 	g_hash_table_destroy (group->priv->child_hash);
+
+	g_slist_free (group->priv->links);
+	g_slist_free (group->priv->actors);
 
 	G_OBJECT_CLASS (cpg_group_parent_class)->finalize (object);
 }
@@ -273,7 +299,8 @@ on_template_child_removed (CpgGroup  *templ,
 		properties = cpg_object_get_properties (obj);
 
 		if (cpg_object_get_applied_templates (obj) == NULL &&
-		    properties == NULL && cpg_object_get_links (obj) == NULL)
+		    properties == NULL &&
+		    (!CPG_IS_GROUP (obj) || cpg_group_get_links (CPG_GROUP (obj)) == NULL))
 		{
 			cpg_group_remove (templ, child, NULL);
 		}
@@ -517,6 +544,9 @@ static void
 cpg_group_dispose (GObject *object)
 {
 	CpgGroup *group = CPG_GROUP (object);
+	GSList *copy;
+	GSList *item;
+	GSList const *templates;
 
 	if (group->priv->children)
 	{
@@ -541,7 +571,7 @@ cpg_group_dispose (GObject *object)
 		g_object_unref (proxy);
 	}
 
-	GSList const *templates = cpg_object_get_applied_templates (CPG_OBJECT (object));
+	templates = cpg_object_get_applied_templates (CPG_OBJECT (object));
 
 	while (templates)
 	{
@@ -554,6 +584,16 @@ cpg_group_dispose (GObject *object)
 		g_object_unref (group->priv->property_interface);
 		group->priv->property_interface = NULL;
 	}
+
+	/* Untoggle ref all links, because we need them destroyed! */
+	copy = g_slist_copy (group->priv->links);
+
+	for (item = copy; item; item = g_slist_next (item))
+	{
+		link_destroyed (group, item->data, TRUE);
+	}
+
+	g_slist_free (copy);
 
 	G_OBJECT_CLASS (cpg_group_parent_class)->dispose (object);
 }
@@ -1056,8 +1096,8 @@ reconnect_children (CpgGroup   *group,
 			CpgLink *orig_link = CPG_LINK (child);
 			CpgLink *copied_link;
 
-			CpgObject *copied_from;
-			CpgObject *copied_to;
+			CpgGroup *copied_from;
+			CpgGroup *copied_to;
 
 			copied_link = g_hash_table_lookup (mapping,
 			                                   child);
@@ -1290,7 +1330,7 @@ cpg_group_cpg_unapply_template (CpgObject  *object,
 			/* Check if object is now empty */
 			if (!cpg_object_get_applied_templates (orig) &&
 			    !properties &&
-			    !cpg_object_get_links (orig))
+			    !cpg_group_get_links (CPG_GROUP (orig)))
 			{
 				/* Then also remove it because it was introduced
 				   by this template */
@@ -1624,7 +1664,7 @@ cpg_group_add_impl (CpgGroup   *group,
 
 	register_object (group, object);
 
-	_cpg_object_set_parent (object, CPG_OBJECT (group));
+	_cpg_object_set_parent (object, group);
 
 	cpg_object_taint (CPG_OBJECT (group));
 	g_signal_emit (group, group_signals[CHILD_ADDED], 0, object);
@@ -1638,7 +1678,7 @@ remove_object (CpgGroup  *group,
 {
 	unregister_object (group, object);
 
-	if (cpg_object_get_parent (object) == CPG_OBJECT (group))
+	if (cpg_object_get_parent (object) == group)
 	{
 		_cpg_object_set_parent (object, NULL);
 	}
@@ -1823,6 +1863,19 @@ cpg_group_verify_remove_child_impl (CpgGroup   *group,
 }
 
 static void
+cpg_group_cpg_taint (CpgObject *object)
+{
+	CpgGroup *group;
+
+	group = CPG_GROUP (object);
+
+	g_slist_free (group->priv->actors);
+	group->priv->actors = NULL;
+
+	CPG_OBJECT_CLASS (cpg_group_parent_class)->taint (object);
+}
+
+static void
 cpg_group_class_init (CpgGroupClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -1842,6 +1895,7 @@ cpg_group_class_init (CpgGroupClass *klass)
 	cpg_class->foreach_expression = cpg_group_cpg_foreach_expression;
 	cpg_class->clear = cpg_group_cpg_clear;
 	cpg_class->equal = cpg_group_cpg_equal;
+	cpg_class->taint = cpg_group_cpg_taint;
 
 	cpg_class->copy = cpg_group_cpg_copy;
 	cpg_class->apply_template = cpg_group_cpg_apply_template;
@@ -2420,4 +2474,125 @@ cpg_group_get_auto_templates_for_child (CpgGroup  *group,
 
 	return g_slist_reverse (ret);
 }
-	
+
+/**
+ * _cpg_object_link:
+ * @object: the #CpgObject
+ * @link: the #CpgLink which links to this object
+ *
+ * Adds @link as a link which targets the object.
+ *
+ **/
+void
+_cpg_group_link (CpgGroup *group,
+                 CpgLink  *link)
+{
+	g_return_if_fail (CPG_IS_GROUP (group));
+	g_return_if_fail (CPG_IS_LINK (link));
+
+	group->priv->links = g_slist_append (group->priv->links, link);
+
+	g_slist_free (group->priv->actors);
+	group->priv->actors = NULL;
+
+	g_object_add_toggle_ref (G_OBJECT (link),
+	                         (GToggleNotify)link_destroyed,
+	                         group);
+}
+
+/**
+ * _cpg_group_unlink:
+ * @group: the #CpgObject
+ * @link: the #CpgLink which unlinks from this group
+ *
+ * Removes @link as a link which targets the group.
+ *
+ **/
+void
+_cpg_group_unlink (CpgGroup *group,
+                   CpgLink  *link)
+{
+	g_return_if_fail (CPG_IS_GROUP (group));
+	g_return_if_fail (CPG_IS_LINK (link));
+
+	GSList *item = g_slist_find (group->priv->links, link);
+
+	if (!item)
+	{
+		return;
+	}
+
+	group->priv->links = g_slist_remove_link (group->priv->links,
+	                                           item);
+
+	g_slist_free (group->priv->actors);
+	group->priv->actors = NULL;
+
+	g_object_remove_toggle_ref (G_OBJECT (link),
+	                            (GToggleNotify)link_destroyed,
+	                            group);
+}
+
+/**
+ * cpg_object_get_actors:
+ * @object: A #CpgObject
+ *
+ * Get the properties which are acted upon by links.
+ *
+ * Returns: (element-type CpgProperty) (transfer none): A #GSList of #CpgProperty.
+ *
+ **/
+GSList const *
+cpg_group_get_actors (CpgGroup *group)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+
+	if (group->priv->actors != NULL)
+	{
+		return group->priv->actors;
+	}
+
+	GSList *ret = NULL;
+	GSList *item;
+
+	for (item = group->priv->links; item; item = g_slist_next (item))
+	{
+		GSList const *actions;
+
+		actions = cpg_link_get_actions (CPG_LINK (item->data));
+
+		while (actions)
+		{
+			CpgLinkAction *a = actions->data;
+			CpgProperty *target = cpg_link_action_get_target_property (a);
+
+			if (!g_slist_find (ret, target))
+			{
+				ret = g_slist_prepend (ret, target);
+			}
+
+			actions = g_slist_next (actions);
+		}
+	}
+
+	group->priv->actors = g_slist_reverse (ret);
+	return group->priv->actors;
+}
+
+/**
+ * cpg_object_get_links:
+ * @object: A #CpgObject
+ *
+ * Get a list of links that act on this object.
+ *
+ * Returns: (element-type CpgLink): A list of #CpgLink
+ *
+ */
+GSList const *
+cpg_group_get_links (CpgGroup *group)
+{
+	g_return_val_if_fail (CPG_IS_GROUP (group), NULL);
+
+	return group->priv->links;
+}
+
