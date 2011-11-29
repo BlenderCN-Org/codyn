@@ -1336,7 +1336,7 @@ has_all_templates (CpgObject *obj,
 
 		while (templ)
 		{
-			if (templ->data == t)
+			if (templ->data == t || has_all_templates (templ->data, templates))
 			{
 				found = TRUE;
 				break;
