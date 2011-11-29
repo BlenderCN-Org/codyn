@@ -18,13 +18,22 @@ group has-template("physics" . "body")
 	# of the generalized coordinates) with the lagrangian for this mass.
 
 	## Cartesian velocities (used for kinetics)
-	"D{X,Y}"(@qdq) = "diff[@1](@qdq[,])"
+	"D{X,Y}"(@qdq) ?= "diff[@1](@qdq[,])"
 
 	## Kinetic energy
-	T(@qdq) = "0.5 * m * sqsum(DX(@qdq[,]), DY(@qdq[,]))"
+	T(@qdq) ?= "0.5 * m * sqsum(DX(@qdq[,]), DY(@qdq[,]))"
 
 	## Potential energy
-	V(@qdq) = "-m * g * Y(@q[,])"
+	[if(self | has-template("physics" . "spring"))]
+	{
+		K(@qdq) ?= "k"
+		V(@qdq) ?= "-m * g * Y(@q[,]) + 0.5 * K(@qdq[,]) * SpringDeformation(@qdq[,])^2"
+	}
+
+	[if(self | is-empty(has-template("physics" . "spring")))]
+	{
+		V(@qdq) ?= "-m * g * Y(@q[,])"
+	}
 
 	kinetic = "T(@qdq[,])"
 	potential = "V(@qdq[,])"

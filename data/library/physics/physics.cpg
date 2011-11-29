@@ -17,5 +17,11 @@ templates
 			## Body mass
 			m = 1
 		}
+
+		group "spring"
+		{
+			## Spring constant
+			k = 1
+		}
 	}
 }
