@@ -218,8 +218,7 @@
             <keyword>debug-print</keyword>
             <keyword>apply</keyword>
             <keyword>unapply</keyword>
-            <keyword>when-applied</keyword>
-            <keyword>when-unapplied</keyword>
+            <keyword>when</keyword>
         </context>
 
         <context id="selector">
