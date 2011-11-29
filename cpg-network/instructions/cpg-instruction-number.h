@@ -40,6 +40,9 @@ struct _CpgInstructionNumberClass
 GType cpg_instruction_number_get_type (void) G_GNUC_CONST;
 
 CpgInstruction *cpg_instruction_number_new (gdouble value);
+CpgInstruction *cpg_instruction_number_new_from_string (gchar const *repr);
+
+gchar *cpg_instruction_number_get_representation (CpgInstructionNumber *number);
 
 gdouble cpg_instruction_number_get_value (CpgInstructionNumber *number);
 void    cpg_instruction_number_set_value (CpgInstructionNumber *number,
@@ -48,3 +51,4 @@ void    cpg_instruction_number_set_value (CpgInstructionNumber *number,
 G_END_DECLS
 
 #endif /* __CPG_INSTRUCTION_NUMBER_H__ */
+

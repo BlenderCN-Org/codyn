@@ -391,17 +391,6 @@ cpg_integrator_step_prepare_impl (CpgIntegrator *integrator,
 	cpg_property_set_value (integrator->priv->property_time, t);
 	cpg_property_set_value (integrator->priv->property_timestep, timestep);
 
-	/* Store last values in properties */
-	GSList const *props;
-
-	props = cpg_integrator_state_all_properties (integrator->priv->state);
-
-	while (props)
-	{
-		cpg_property_update_last_value (props->data);
-		props = g_slist_next (props);
-	}
-
 	/* Update inputs */
 	GSList const *inputs;
 

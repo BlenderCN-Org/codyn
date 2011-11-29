@@ -1127,6 +1127,70 @@ generate_name_value_pairs (CpgParserContext  *context,
 	return g_slist_reverse (ret);
 }
 
+#define SELF_LINK_KEY "CpgSelfLinkParserKey"
+
+static gboolean
+add_property_diff (CpgParserContext *context,
+                   CpgObject        *obj,
+                   gchar const      *name,
+                   NameValuePair    *p,
+                   CpgPropertyFlags  add_flags,
+                   CpgPropertyFlags  remove_flags)
+{
+	gchar const *ex;
+	CpgProperty *prop;
+	CpgLink *link;
+	GError *error = NULL;
+
+	// Integrate 'name' on obj
+	prop = cpg_object_get_property (obj, name);
+	ex = cpg_expansion_get (p->value, 0);
+
+	if (!prop)
+	{
+		if (!cpg_object_add_property (obj,
+		                              cpg_property_new (name, "0", 0),
+		                              &error))
+		{
+			parser_failed_error (context, NULL, error);
+			return FALSE;
+		}
+
+		prop = cpg_object_get_property (obj, name);
+	}
+
+	cpg_property_set_flags (prop, (CPG_PROPERTY_FLAG_INTEGRATED | add_flags) & ~remove_flags);
+
+	// Find the self link generated
+	link = g_object_get_data (G_OBJECT (obj), SELF_LINK_KEY);
+
+	if (!link)
+	{
+		gchar *s;
+
+		s = g_strconcat (cpg_object_get_id (obj), "_integrate", NULL);
+		link = cpg_link_new (s, obj, obj);
+		g_free (s);
+
+		if (!cpg_group_add (CPG_GROUP (cpg_object_get_parent (obj)),
+		                    CPG_OBJECT (link),
+		                    &error))
+		{
+			g_object_unref (link);
+			parser_failed_error (context, NULL, error);
+			return FALSE;
+		}
+
+		g_object_set_data_full (G_OBJECT (obj),
+		                        SELF_LINK_KEY,
+		                        link,
+		                        (GDestroyNotify)g_object_unref);
+	}
+
+	cpg_link_add_action (link, cpg_link_action_new (name, cpg_expression_new (ex)));
+	return TRUE;
+}
+
 void
 cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgEmbeddedString *name,
@@ -1136,7 +1200,8 @@ cpg_parser_context_add_property (CpgParserContext  *context,
                                  CpgPropertyFlags   add_flags,
                                  CpgPropertyFlags   remove_flags,
                                  GSList            *attributes,
-                                 gboolean           assign_optional)
+                                 gboolean           assign_optional,
+                                 CpgEmbeddedString *constraint)
 {
 	Context *ctx;
 	GSList *item;
@@ -1194,6 +1259,23 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 
 			exname = cpg_expansion_get (p->name, 0);
 
+			if (g_str_has_suffix (exname, "'"))
+			{
+				gchar *nname;
+
+				nname = g_strndup (exname, strlen (exname) - 1);
+
+				// This is a differential equation now...
+				add_property_diff (context,
+				                   obj,
+				                   nname,
+				                   p,
+				                   add_flags,
+				                   remove_flags);
+
+				continue;
+			}
+
 			property = cpg_object_get_property (obj,
 			                                    cpg_expansion_get (p->name, 0));
 
@@ -1246,7 +1328,27 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 			cpg_modifiable_set_modified (CPG_MODIFIABLE (property), FALSE);
 
 			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (property),
-				                        annotation);
+			                                annotation);
+
+			if (constraint)
+			{
+				gchar const *cons;
+
+				cpg_embedded_context_save (context->priv->embedded);
+
+				cpg_embedded_context_add_expansion (context->priv->embedded,
+				                                    p->name);
+
+				cpg_embedded_context_add_expansion (context->priv->embedded,
+				                                    p->value);
+
+				embedded_string_expand (cons, constraint, context);
+
+				cpg_property_set_constraint (property,
+				                             cpg_expression_new (cons));
+
+				cpg_embedded_context_restore (context->priv->embedded);
+			}
 
 			set_taggable (context, property, attributes);
 		}
@@ -1277,6 +1379,11 @@ cpg_parser_context_add_property (CpgParserContext  *context,
 	if (unexpanded_name)
 	{
 		g_object_unref (unexpanded_name);
+	}
+
+	if (constraint)
+	{
+		g_object_unref (constraint);
 	}
 }
 
@@ -1341,13 +1448,13 @@ cpg_parser_context_add_action (CpgParserContext  *context,
 			action = cpg_link_action_new (extarget,
 			                              cpg_expression_new (exexpression));
 
-			cpg_link_add_action (CPG_LINK (cpg_selection_get_object (item->data)),
-			                     action);
-
 			cpg_annotatable_set_annotation (CPG_ANNOTATABLE (action),
 			                                annotation);
 
 			set_taggable (context, action, attributes);
+
+			cpg_link_add_action (CPG_LINK (cpg_selection_get_object (item->data)),
+			                     action);
 
 			cpg_embedded_context_restore (context->priv->embedded);
 		}
@@ -2705,8 +2812,11 @@ create_links_single (CpgParserContext          *context,
 		cpg_embedded_context_add_expansions (context->priv->embedded,
 		                                     cpg_selection_get_expansions (firstsel));
 
-		cpg_embedded_context_add_expansions (context->priv->embedded,
-		                                     cpg_selection_get_expansions (secondsel));
+		if (to || !onlyself)
+		{
+			cpg_embedded_context_add_expansions (context->priv->embedded,
+			                                     cpg_selection_get_expansions (secondsel));
+		}
 
 		obj = parse_object_single_id (context,
 		                              realid,
@@ -3339,6 +3449,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 					                 NULL);
 
 					g_slist_free (ids);
+					g_object_unref (file);
 
 					goto cleanup;
 				}
@@ -3363,6 +3474,8 @@ cpg_parser_context_import (CpgParserContext  *context,
 						                 NULL);
 
 						g_slist_free (ids);
+						g_object_unref (file);
+
 						goto cleanup;
 					}
 
@@ -3393,6 +3506,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 				                 NULL);
 
 				g_slist_free (ids);
+				g_object_unref (file);
 
 				goto cleanup;
 			}
@@ -3413,6 +3527,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 				                 NULL);
 
 				g_slist_free (ids);
+				g_object_unref (file);
 
 				goto cleanup;
 			}
@@ -3424,6 +3539,7 @@ cpg_parser_context_import (CpgParserContext  *context,
 
 			set_taggable (context, import, attributes);
 
+			g_object_unref (file);
 			g_object_unref (import);
 		}
 
@@ -3841,6 +3957,31 @@ cpg_parser_context_define (CpgParserContext  *context,
 		for (pair = pairs; pair; pair = g_slist_next (pair))
 		{
 			NameValuePair *p = pair->data;
+
+			if (optional)
+			{
+				gchar *d;
+				gboolean exists;
+
+				cpg_embedded_context_save (context->priv->embedded);
+
+				cpg_embedded_context_set_selection (context->priv->embedded,
+				                                    sel);
+
+				d = cpg_embedded_context_get_define (context->priv->embedded,
+				                                     cpg_expansion_get (p->name, 0));
+
+				cpg_embedded_context_restore (context->priv->embedded);
+
+				exists = (d && *d);
+				g_free (d);
+
+				if (exists)
+				{
+					name_value_pair_free (p);
+					continue;
+				}
+			}
 
 			cpg_selection_add_define (sel,
 			                          cpg_expansion_get (p->name, 0),
@@ -5299,6 +5440,9 @@ apply_unapply_template (CpgParserContext *context,
 			{
 				cpg_embedded_context_save_defines (context->priv->embedded,
 				                                   FALSE);
+
+				cpg_embedded_context_add_selection (context->priv->embedded,
+				                                    temp->data);
 
 				targobjs = cpg_selector_select (targets,
 				                                cpg_selection_get_object (obj->data),

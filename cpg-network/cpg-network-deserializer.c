@@ -539,6 +539,17 @@ parse_properties (CpgNetworkDeserializer *deserializer,
 		                   CPG_NETWORK_XML_PROPERTY_FLAGS_ATTRIBUTE,
 		                   GINT_TO_POINTER (flags_attr));
 
+		xmlChar *cons;
+
+		cons = xmlGetProp (node, (xmlChar *)"constraint");
+
+		if (cons)
+		{
+			cpg_property_set_constraint (property,
+			                             cpg_expression_new ((gchar const *)cons));
+			xmlFree (cons);
+		}
+
 		xmlFree (name);
 	}
 

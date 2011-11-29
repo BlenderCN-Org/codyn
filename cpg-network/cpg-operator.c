@@ -25,7 +25,6 @@
 #include "cpg-integrator.h"
 
 #define CPG_OPERATOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_OPERATOR, CpgOperatorPrivate))
-#define CPG_OPERATOR_CLASS_GET_PRIVATE(klass)(G_TYPE_CLASS_GET_PRIVATE((klass), CPG_TYPE_OPERATOR, CpgOperatorClassPrivate))
 
 struct _CpgOperatorPrivate
 {
@@ -37,10 +36,9 @@ struct _CpgOperatorClassPrivate
 	gchar *name;
 };
 
-G_DEFINE_ABSTRACT_TYPE_WITH_CODE (CpgOperator,
-                                  cpg_operator,
-                                  G_TYPE_OBJECT,
-                                  g_type_add_class_private (g_define_type_id, sizeof (CpgOperatorClassPrivate)));
+G_DEFINE_ABSTRACT_TYPE (CpgOperator,
+                        cpg_operator,
+                        G_TYPE_OBJECT);
 
 /* Default implementation */
 static gchar *
@@ -166,8 +164,6 @@ cpg_operator_class_init (CpgOperatorClass *klass)
 	klass->initialize = cpg_operator_initialize_default;
 	klass->equal = cpg_operator_equal_default;
 
-	klass->priv =  CPG_OPERATOR_CLASS_GET_PRIVATE (klass);
-
 	g_type_class_add_private (object_class, sizeof (CpgOperatorPrivate));
 }
 
@@ -212,12 +208,12 @@ cpg_operator_get_class_name (CpgOperatorClass *klass)
 {
 	g_return_val_if_fail (CPG_IS_OPERATOR_CLASS (klass), NULL);
 
-	if (!klass->priv->name)
+	if (!klass->name)
 	{
-		klass->priv->name = klass->get_name ();
+		klass->name = klass->get_name ();
 	}
 
-	return klass->priv->name;
+	return klass->name;
 }
 
 /**

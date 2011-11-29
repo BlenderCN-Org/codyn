@@ -357,14 +357,6 @@ monitor_network (gchar const *filename)
 		g_slist_free (properties);
 	}
 
-	if (!monitors)
-	{
-		g_printerr ("There were no properties found to monitor\n");
-		g_object_unref (network);
-
-		return 1;
-	}
-
 	cpg_network_run (network, from, step, to);
 
 	GOutputStream *out;
@@ -484,14 +476,6 @@ main (int argc,
 	else
 	{
 		g_printerr ("Too many arguments. Please provide at most one network to monitor\n");
-		cleanup ();
-
-		return 1;
-	}
-
-	if (monitored->len == 0)
-	{
-		g_printerr ("Please specify state variables to monitor\n");
 		cleanup ();
 
 		return 1;

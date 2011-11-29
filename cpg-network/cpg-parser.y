@@ -153,6 +153,8 @@ static CpgFunctionArgument *create_function_argument (CpgEmbeddedString *name,
 %type <string> double
 %type <string> integer
 
+%type <string> constraint
+
 %type <list> attributes
 %type <list> attributes_strict
 %type <list> attributes_contents
@@ -824,7 +826,7 @@ function_argument_impl
 
 function_argument_list_impl_rev
 	: function_argument_impl	{ $$ = g_slist_prepend (NULL, $1); }
-	| function_argument_list_impl ',' function_argument_impl
+	| function_argument_list_impl_rev ',' function_argument_impl
 					{ $$ = g_slist_prepend ($1, $3); }
 	;
 
@@ -835,7 +837,7 @@ function_argument_list_impl
 
 function_argument_list_rev
 	: function_argument		{ $$ = g_slist_prepend (NULL, $1); }
-	| function_argument_list ',' function_argument
+	| function_argument_list_rev ',' function_argument
 					{ $$ = g_slist_prepend ($1, $3); }
 	;
 
@@ -970,12 +972,38 @@ multi_assign_identifier
 	| identifier_or_string		{ $$.name = $1; $$.count = NULL; $$.unexpanded = NULL; }
 	;
 
+constraint
+	:				{ $$ = NULL; }
+	| '(' value_as_string ')'	{ $$ = $2; }
+	| '(' value_as_string ',' value_as_string ')' { $$ = cpg_embedded_string_new ();
+	                                                cpg_embedded_string_add_text ($$, "clip(");
+	                                                cpg_embedded_string_push ($$, CPG_EMBEDDED_STRING_NODE_INDIRECTION, 1);
+	                                                cpg_embedded_string_add_text ($$, "0");
+	                                                cpg_embedded_string_pop ($$);
+	                                                cpg_embedded_string_add_text ($$, ", ");
+	                                                cpg_embedded_string_add_string ($$, $2);
+	                                                cpg_embedded_string_add_text ($$, ", ");
+	                                                cpg_embedded_string_add_string ($$, $4);
+	                                                cpg_embedded_string_add_text ($$, ")"); }
+	| '(' value_as_string ':' value_as_string ')' { $$ = cpg_embedded_string_new ();
+	                                                cpg_embedded_string_add_text ($$, "cycle(");
+	                                                cpg_embedded_string_push ($$, CPG_EMBEDDED_STRING_NODE_INDIRECTION, 1);
+	                                                cpg_embedded_string_add_text ($$, "0");
+	                                                cpg_embedded_string_pop ($$);
+	                                                cpg_embedded_string_add_text ($$, ", ");
+	                                                cpg_embedded_string_add_string ($$, $2);
+	                                                cpg_embedded_string_add_text ($$, ", ");
+	                                                cpg_embedded_string_add_string ($$, $4);
+	                                                cpg_embedded_string_add_text ($$, ")"); }
+	;
+
 property
 	: attributes
 	  multi_assign_identifier
 	  assign_optional
 	  value_as_string
 	  property_flags
+	  constraint
 					{ cpg_parser_context_add_property (context,
 					                                   $2.name,
 					                                   $2.count,
@@ -984,7 +1012,8 @@ property
 					                                   $5.add,
 					                                   $5.remove,
 					                                   $1,
-					                                   $3); errb }
+					                                   $3,
+					                                   $6); errb }
 	| attributes
 	  multi_assign_identifier
 	  property_flags_strict
@@ -996,7 +1025,8 @@ property
 					                                   $3.add,
 					                                   $3.remove,
 					                                   $1,
-					                                   FALSE); errb }
+					                                   FALSE,
+					                                   NULL); errb }
 	;
 
 property_flag_sign
@@ -1360,7 +1390,9 @@ layout_contents
 	;
 
 identifier
-	: T_IDENTIFIER			{ $$ = cpg_embedded_string_new_from_string ($1); }
+	: T_IDENTIFIER '\''		{ $$ = cpg_embedded_string_new_from_string ($1);
+	                                  cpg_embedded_string_add_text ($$, "'"); }
+	| T_IDENTIFIER			{ $$ = cpg_embedded_string_new_from_string ($1); }
 	;
 
 double

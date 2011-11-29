@@ -94,6 +94,26 @@ node_new (CpgEmbeddedStringNodeType  type,
 	return ret;
 }
 
+static Node *
+node_copy (Node *other)
+{
+	Node *ret;
+	GSList *child;
+
+	ret = node_new (other->type, other->text, other->depth);
+
+	ret->position = other->position;
+
+	for (child = other->nodes; child; child = g_slist_next (child))
+	{
+		ret->nodes = g_slist_prepend (ret->nodes,
+		                              node_copy (child->data));
+	}
+
+	ret->nodes = g_slist_reverse (ret->nodes);
+
+	return ret;
+}
 static void
 node_free (Node *node)
 {
@@ -721,7 +741,7 @@ evaluate_node (CpgEmbeddedString   *em,
 					r = cpg_embedded_context_calculate (context, children->data, error);
 				}
 
-				istrue = r && (gint)g_ascii_strtoll (r, NULL, 10) == 1;
+				istrue = r && (gint)g_ascii_strtoll (r, NULL, 10) != 0;
 				g_free (r);
 
 				if (istrue && children->next)
@@ -1265,21 +1285,16 @@ ex_node_append_text (ExNode *parent,
                      gchar const *ptr,
                      gint        *last)
 {
-	if (buf->len != 0)
-	{
-		// Store text until here as a text node
-		gint end = ptr - text;
-		ExNode *n;
+	// Store text until here as a text node
+	gint end = ptr - text;
+	ExNode *n;
 
-		n = ex_node_new (parent, EX_NODE_TYPE_TEXT, buf->str, *last, end);
+	n = ex_node_new (parent, EX_NODE_TYPE_TEXT, buf->str, *last, end);
 
-		*last = end + 1;
+	*last = end + 1;
 
-		g_string_erase (buf, 0, -1);
-		return n;
-	}
-
-	return NULL;
+	g_string_erase (buf, 0, -1);
+	return n;
 }
 
 static ExNode *
@@ -1750,3 +1765,29 @@ cpg_embedded_string_brace_level (CpgEmbeddedString *s)
 
 	return s->priv->braces;
 }
+
+CpgEmbeddedString *
+cpg_embedded_string_add_string (CpgEmbeddedString *s,
+                                CpgEmbeddedString *other)
+{
+	GSList *item;
+	GSList *copied = NULL;
+	Node *parent;
+
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (s), NULL);
+	g_return_val_if_fail (CPG_IS_EMBEDDED_STRING (other), NULL);
+
+	for (item = other->priv->stack; item; item = g_slist_next (item))
+	{
+		copied = g_slist_prepend (copied, node_copy (item->data));
+	}
+
+	parent = s->priv->stack->data;
+
+	parent->nodes = g_slist_concat (g_slist_reverse (copied),
+	                                parent->nodes);
+
+	cpg_embedded_string_clear_cache (s);
+	return s;
+}
+

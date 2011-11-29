@@ -120,16 +120,21 @@ void               cpg_property_remove_flags            (CpgProperty        *pro
 void               cpg_property_reset                   (CpgProperty        *property);
 
 gdouble            cpg_property_get_value               (CpgProperty        *property);
-gdouble            cpg_property_get_last_value          (CpgProperty        *property);
-void               cpg_property_update_last_value       (CpgProperty        *property);
 
 CpgExpression     *cpg_property_get_expression          (CpgProperty        *property);
 
 void               cpg_property_set_value               (CpgProperty        *property,
                                                          gdouble             value);
 
+void               cpg_property_apply_constraint        (CpgProperty        *property);
+
 void               cpg_property_set_expression          (CpgProperty        *property,
                                                          CpgExpression      *expression);
+
+void               cpg_property_set_constraint          (CpgProperty       *property,
+                                                         CpgExpression     *expression);
+
+CpgExpression     *cpg_property_get_constraint          (CpgProperty       *property);
 
 gboolean           cpg_property_equal                   (CpgProperty        *property,
                                                          CpgProperty        *other);

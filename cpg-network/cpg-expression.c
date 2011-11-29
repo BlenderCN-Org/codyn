@@ -29,6 +29,7 @@
 #include "cpg-function.h"
 #include "cpg-stack-private.h"
 #include "cpg-operators.h"
+#include "cpg-property.h"
 
 #include <cpg-network/instructions/cpg-instructions.h>
 
@@ -635,6 +636,19 @@ parse_dot_property (CpgExpression *expression,
 	return ret;
 }
 
+static CpgProperty *
+lookup_property (CpgExpression *expression,
+                 ParserContext *context,
+                 gchar const   *propname)
+{
+	CpgProperty *ret;
+
+	ret = cpg_compile_context_lookup_property (context->context,
+	                                           propname);
+
+	return ret;
+}
+
 static gboolean
 parse_function (CpgExpression *expression,
                 gchar const   *name,
@@ -820,8 +834,7 @@ parse_function (CpgExpression *expression,
 				g_free (id);
 			}
 
-			prop = cpg_compile_context_lookup_property (context->context,
-			                                            aname);
+			prop = lookup_property (expression, context, aname);
 
 			if (!prop)
 			{
@@ -1219,8 +1232,9 @@ parse_property (CpgExpression *expression,
                 gchar         *propname,
                 ParserContext *context)
 {
-	CpgProperty *property = cpg_compile_context_lookup_property (context->context,
-	                                                             propname);
+	CpgProperty *property;
+
+	property = lookup_property (expression, context, propname);
 
 	if (!property)
 	{
@@ -2057,4 +2071,3 @@ cpg_expression_set_has_cache (CpgExpression *expression,
 
 	set_has_cache (expression, cache);
 }
-

@@ -52,6 +52,7 @@ struct _CpgPropertyPrivate
 	gchar *name;
 
 	CpgExpression *expression;
+	CpgExpression *constraint;
 	CpgPropertyFlags flags;
 
 	gdouble update;
@@ -61,8 +62,9 @@ struct _CpgPropertyPrivate
 	GHashTable *tags;
 
 	gdouble last_value;
-	gboolean modified : 1;
-	gboolean disposing : 1;
+	guint modified : 1;
+	guint disposing : 1;
+	guint in_constraint : 1;
 };
 
 static void cpg_usable_iface_init (gpointer iface);
@@ -91,6 +93,7 @@ enum
 	PROP_OBJECT,
 	PROP_FLAGS,
 	PROP_EXPRESSION,
+	PROP_CONSTRAINT,
 	PROP_USE_COUNT,
 	PROP_MODIFIED,
 	PROP_ANNOTATION
@@ -211,6 +214,58 @@ on_expression_changed (CpgProperty *property)
 }
 
 static void
+on_constraint_changed (CpgProperty *property)
+{
+	cpg_modifiable_set_modified (CPG_MODIFIABLE (property), TRUE);
+
+	g_object_notify (G_OBJECT (property), "constraint");
+}
+
+static void
+set_constraint (CpgProperty   *property,
+                CpgExpression *expression)
+{
+	if (property->priv->constraint == expression ||
+	    (expression && property->priv->constraint &&
+	     cpg_expression_equal (property->priv->constraint,
+	                           expression)))
+	{
+		if (expression && g_object_is_floating (expression))
+		{
+			g_object_unref (expression);
+		}
+
+		return;
+	}
+
+	if (property->priv->constraint)
+	{
+		g_signal_handlers_disconnect_by_func (property->priv->constraint,
+		                                      on_constraint_changed,
+		                                      property);
+
+		g_object_unref (property->priv->constraint);
+		property->priv->constraint = NULL;
+	}
+
+	if (expression)
+	{
+		property->priv->constraint = g_object_ref_sink (expression);
+
+		g_signal_connect_swapped (expression,
+		                          "notify::expression",
+		                          G_CALLBACK (on_constraint_changed),
+		                          property);
+	}
+
+	if (!property->priv->disposing)
+	{
+		g_object_notify (G_OBJECT (property), "constraint");
+		cpg_modifiable_set_modified (CPG_MODIFIABLE (property), TRUE);
+	}
+}
+
+static void
 set_expression (CpgProperty *property,
                 CpgExpression *expression)
 {
@@ -277,6 +332,7 @@ cpg_property_dispose (GObject *object)
 	property->priv->disposing = TRUE;
 
 	set_expression (property, NULL);
+	set_constraint (property, NULL);
 	set_object (property, NULL);
 
 	G_OBJECT_CLASS (cpg_property_parent_class)->dispose (object);
@@ -358,6 +414,9 @@ cpg_property_set_property (GObject      *object,
 		case PROP_EXPRESSION:
 			set_expression (self, g_value_get_object (value));
 		break;
+		case PROP_CONSTRAINT:
+			set_constraint (self, g_value_get_object (value));
+		break;
 		case PROP_MODIFIED:
 			self->priv->modified = g_value_get_boolean (value);
 		break;
@@ -392,6 +451,9 @@ cpg_property_get_property (GObject    *object,
 		break;
 		case PROP_EXPRESSION:
 			g_value_set_object (value, self->priv->expression);
+		break;
+		case PROP_CONSTRAINT:
+			g_value_set_object (value, self->priv->constraint);
 		break;
 		case PROP_USE_COUNT:
 			g_value_set_uint (value, self->priv->use_count);
@@ -478,6 +540,21 @@ cpg_property_class_init (CpgPropertyClass *klass)
 	                                 g_param_spec_object ("expression",
 	                                                      "Expression",
 	                                                      "Expression",
+	                                                      CPG_TYPE_EXPRESSION,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
+
+	/**
+	 * CpgProperty:expression:
+	 *
+	 * The property expression
+	 *
+	 **/
+	g_object_class_install_property (object_class,
+	                                 PROP_CONSTRAINT,
+	                                 g_param_spec_object ("constraint",
+	                                                      "Constraint",
+	                                                      "Constraint",
 	                                                      CPG_TYPE_EXPRESSION,
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
@@ -609,6 +686,19 @@ cpg_property_set_value (CpgProperty  *property,
 	cpg_expression_set_value (property->priv->expression, value);
 }
 
+void
+cpg_property_apply_constraint (CpgProperty *property)
+{
+	/* Omit type check to increase speed */
+	if (!property->priv->constraint || !property->priv->expression)
+	{
+		return;
+	}
+
+	cpg_expression_set_value (property->priv->expression,
+	                          cpg_expression_evaluate (property->priv->constraint));
+}
+
 /**
  * cpg_property_get_value:
  * @property: the #CpgProperty
@@ -624,26 +714,29 @@ cpg_property_get_value (CpgProperty *property)
 	/* Omit type check to increase speed */
 	if (property->priv->expression)
 	{
-		return cpg_expression_evaluate (property->priv->expression);
+		gdouble ret;
+
+		ret = cpg_expression_evaluate (property->priv->expression);
+
+		if (property->priv->constraint && !property->priv->in_constraint)
+		{
+			// Apply the constraint
+			property->priv->in_constraint = TRUE;
+
+			ret = cpg_expression_evaluate (property->priv->constraint);
+
+			// Don't cache it
+			cpg_expression_reset_cache (property->priv->constraint);
+
+			property->priv->in_constraint = FALSE;
+		}
+
+		return ret;
 	}
 	else
 	{
 		return 0;
 	}
-}
-
-gdouble
-cpg_property_get_last_value (CpgProperty *property)
-{
-	/* Omit type check to increase speed */
-	return property->priv->last_value;
-}
-
-void
-cpg_property_update_last_value (CpgProperty *property)
-{
-	/* Omit type check to increase speed */
-	property->priv->last_value = cpg_property_get_value (property);
 }
 
 /**
@@ -679,6 +772,41 @@ cpg_property_set_expression (CpgProperty   *property,
 	g_return_if_fail (CPG_IS_EXPRESSION (expression));
 
 	set_expression (property, expression);
+}
+
+/**
+ * cpg_property_get_constraint:
+ * @property: a #CpgProperty
+ *
+ * Get the property value constraint expression
+ *
+ * Returns: (transfer none): a #CpgExpression. The expression is owned by the
+ *                          property and should not be freed
+ *
+ **/
+CpgExpression *
+cpg_property_get_constraint (CpgProperty *property)
+{
+	/* Omit type check to increase speed */
+	return property->priv->constraint;
+}
+
+/**
+ * cpg_property_set_constraint:
+ * @property: a #CpgProperty
+ * @expression: the constraint expression
+ *
+ * Set the property constraint from an expression.
+ *
+ **/
+void
+cpg_property_set_constraint (CpgProperty   *property,
+                             CpgExpression *expression)
+{
+	g_return_if_fail (CPG_IS_PROPERTY (property));
+	g_return_if_fail (expression == NULL || CPG_IS_EXPRESSION (expression));
+
+	set_constraint (property, expression);
 }
 
 /**
@@ -1193,6 +1321,11 @@ cpg_property_copy (CpgProperty *property)
 
 	cpg_taggable_copy_to (CPG_TAGGABLE (property),
 	                      ret->priv->tags);
+
+	if (property->priv->constraint)
+	{
+		set_constraint (ret, cpg_expression_copy (property->priv->constraint));
+	}
 
 	return ret;
 }

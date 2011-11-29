@@ -19,8 +19,14 @@
         <style id="selector"          _name="Selector"            map-to="def:identifier"/>
         <style id="define"            _name="Define"              map-to="def:constant"/>
         <style id="equation"          _name="Equation"            map-to="def:comment"/>
+        <style id="condition"         _name="Condition"           map-to="def:comment"/>
         <style id="indirection"       _name="Indirection"         map-to="def:constant"/>
         <style id="identifier"        _name="Identifier"          map-to="def:identifier"/>
+        <style id="expansion"         _name="Expansion"           map-to="def:comment"/>
+        <style id="paren"             _name="Paren"               map-to="def:operator"/>
+        <style id="range"             _name="Range"               map-to="def:keyword"/>
+        <style id="map"               _name="Map"                 map-to="def:function"/>
+        <style id="reduce"            _name="Reduce"              map-to="def:constant"/>
     </styles>
 
     <default-regex-options case-sensitive="false"/>
@@ -65,6 +71,18 @@
                 <context ref="paren-inside"/>
                 <context ref="identifier"/>
                 <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="condition" style-ref="condition" style-inside="true" end-at-line-end="true">
+            <start>[$][$][(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+                <context ref="identifier"/>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
             </include>
         </context>
 
@@ -73,6 +91,7 @@
             <end>[]]</end>
             <include>
                 <context ref="stuff_in_string"/>
+                <context ref="expansion" />
             </include>
         </context>
 
@@ -93,6 +112,28 @@
             <end>/</end>
             <include>
                 <context ref="stuff_in_string"/>
+            </include>
+        </context>
+
+        <context id="range">
+            <match>([^{,|]+:[^{,|]+)(?![},|])</match>
+            <include>
+              <context sub-pattern="1" style-ref="range"/>
+            </include>
+        </context>
+
+        <context id="map" style-ref="map" extend-parent="false">
+            <match>([|])[^|,}]+</match>
+            <include>
+                <context sub-pattern="1" style-ref="paren"/>
+            </include>
+        </context>
+
+        <context id="reduce" style-ref="reduce" extend-parent="false">
+            <start>[|][|]</start>
+            <end>[|,}]</end>
+            <include>
+                <context sub-pattern="0" where="start" style-ref="paren"/>
             </include>
         </context>
 
@@ -198,14 +239,21 @@
                 <context ref="defined" />
                 <context ref="equation" />
                 <context ref="indirection" />
+                <context ref="condition" />
             </include>
         </context>
 
-        <context id="expansion" style-ref="comment" style-inside="true">
+        <context id="expansion" style-ref="expansion" style-inside="true">
             <start>{</start>
             <end>}</end>
             <include>
+                <context sub-pattern="0" where="start" style-ref="paren"/>
+                <context sub-pattern="0" where="end" style-ref="paren"/>
+                <context ref="map" />
+                <context ref="reduce" />
+                <context ref="range" />
                 <context ref="stuff_in_string" />
+                <context ref="expansion" />
             </include>
         </context>
 

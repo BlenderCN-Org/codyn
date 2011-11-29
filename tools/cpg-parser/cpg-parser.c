@@ -34,6 +34,7 @@
 
 static gchar *output_file;
 static gboolean no_colors = FALSE;
+static gboolean list_files = FALSE;
 
 static gchar const *color_red = "\e[31m";
 static gchar const *color_green = "\e[32m";
@@ -58,6 +59,7 @@ add_define (gchar const  *option_name,
 
 static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
+	{"list-files", 'l', 0, G_OPTION_ARG_NONE, &list_files, "Print list of included files instead of XML", NULL},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
 	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
@@ -120,13 +122,38 @@ remove_double_dash (gchar const **args, gint *argc)
 	}
 }
 
+static void
+on_context_file_used (CpgParserContext *context,
+                      GFile            *file,
+                      gchar const      *filename,
+                      GOutputStream    *stream)
+{
+	GError *error;
+	gchar *path;
+	gchar *str;
+	gboolean ret;
+
+	path = g_file_get_path (file);
+	str = g_strdup_printf ("%s\n", path);
+	ret = g_output_stream_write_all (stream, str, strlen (str), NULL, NULL, &error);
+
+	if (!ret)
+	{
+		g_printerr ("Failed to write to output file: %s\n", error->message);
+		g_error_free (error);
+	}
+
+	g_free (str);
+	g_free (path);
+}
+
 static int
 parse_network (gchar const *args[], gint argc)
 {
 	CpgParserContext *context;
 	GFile *file;
 	CpgNetwork *network;
-	gboolean ret;
+	gboolean ret = TRUE;
 	GError *error = NULL;
 	CpgExpansion *expansion;
 	CpgEmbeddedContext *embedded;
@@ -151,8 +178,43 @@ parse_network (gchar const *args[], gint argc)
 		}
 	}
 
+	GOutputStream *output_stream;
+	if (output_file && strcmp (output_file, "-") != 0)
+	{
+		GFile *outfile;
+
+		outfile = g_file_new_for_commandline_arg (output_file);
+
+		output_stream = G_OUTPUT_STREAM (g_file_replace (outfile,
+		                                                 NULL,
+		                                                 FALSE,
+		                                                 G_FILE_CREATE_NONE,
+		                                                 NULL,
+		                                                 NULL));
+
+		g_object_unref (outfile);
+
+		if (!output_stream)
+		{
+			g_printerr ("Could not open file: %s\n", output_file);
+			return 1;
+		}
+	}
+	else
+	{
+		output_stream = g_unix_output_stream_new (STDOUT_FILENO, TRUE);
+	}
+
 	network = cpg_network_new ();
 	context = cpg_parser_context_new (network);
+
+	if (list_files)
+	{
+		g_signal_connect (context,
+		                  "file-used",
+		                  G_CALLBACK (on_context_file_used),
+		                  output_stream);
+	}
 
 	/* We replace the filename here with the collapsed arguments */
 	args[0] = cpg_embedded_string_collapse (args + 1);
@@ -189,40 +251,24 @@ parse_network (gchar const *args[], gint argc)
 
 	if (cpg_parser_context_parse (context, TRUE, &error))
 	{
-		CpgNetworkSerializer *serializer;
-
-		serializer = cpg_network_serializer_new (network, NULL);
-
-		if (output_file && strcmp (output_file, "-") != 0)
+		if (!list_files)
 		{
-			GFile *outfile;
+			CpgNetworkSerializer *serializer;
 
-			outfile = g_file_new_for_commandline_arg (output_file);
-
-			ret = cpg_network_serializer_serialize_file (serializer,
-			                                             outfile,
-			                                             &error);
-			g_object_unref (outfile);
-		}
-		else
-		{
-			GOutputStream *stream;
-
-			stream = g_unix_output_stream_new (STDOUT_FILENO, TRUE);
+			serializer = cpg_network_serializer_new (network, NULL);
 
 			ret = cpg_network_serializer_serialize (serializer,
-			                                        stream,
+			                                        output_stream,
 			                                        &error);
-			g_object_unref (stream);
-		}
 
-		if (!ret)
-		{
-			g_printerr ("Failed to write network: %s\n", error->message);
-			g_error_free (error);
-		}
+			if (!ret)
+			{
+				g_printerr ("Failed to write network: %s\n", error->message);
+				g_error_free (error);
+			}
 
-		g_object_unref (serializer);
+			g_object_unref (serializer);
+		}
 	}
 	else
 	{
@@ -255,6 +301,7 @@ parse_network (gchar const *args[], gint argc)
 		ret = FALSE;
 	}
 
+	g_object_unref (output_stream);
 	g_object_unref (network);
 	g_object_unref (context);
 

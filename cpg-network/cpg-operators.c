@@ -22,6 +22,7 @@
 
 #include "cpg-operators.h"
 #include "cpg-operator-delayed.h"
+#include "cpg-operator-diff.h"
 
 static GSList *operator_registry = NULL;
 
@@ -35,6 +36,7 @@ ensure_defaults ()
 		initing = TRUE;
 
 		cpg_operators_register (CPG_TYPE_OPERATOR_DELAYED);
+		cpg_operators_register (CPG_TYPE_OPERATOR_DIFF);
 	}
 }
 

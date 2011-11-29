@@ -5,6 +5,7 @@
 struct _CpgInstructionNumberPrivate
 {
 	gdouble value;
+	gchar *repr;
 };
 
 G_DEFINE_TYPE (CpgInstructionNumber, cpg_instruction_number, CPG_TYPE_INSTRUCTION)
@@ -12,6 +13,12 @@ G_DEFINE_TYPE (CpgInstructionNumber, cpg_instruction_number, CPG_TYPE_INSTRUCTIO
 static void
 cpg_instruction_number_finalize (CpgMiniObject *object)
 {
+	CpgInstructionNumber *self;
+
+	self = CPG_INSTRUCTION_NUMBER (object);
+
+	g_free (self->priv->repr);
+
 	CPG_MINI_OBJECT_CLASS (cpg_instruction_number_parent_class)->finalize (object);
 }
 
@@ -29,6 +36,8 @@ cpg_instruction_number_copy (CpgMiniObject const *object)
 	self = CPG_INSTRUCTION_NUMBER (ret);
 	self->priv->value = src->priv->value;
 
+	self->priv->repr = g_strdup (src->priv->repr);
+
 	return ret;
 }
 
@@ -38,6 +47,11 @@ cpg_instruction_number_to_string (CpgInstruction *instruction)
 	CpgInstructionNumber *self;
 
 	self = CPG_INSTRUCTION_NUMBER (instruction);
+
+	if (self->priv->repr)
+	{
+		return g_strdup (self->priv->repr);
+	}
 
 	return g_strdup_printf ("NUM (%.3f)", self->priv->value);
 }
@@ -102,8 +116,20 @@ cpg_instruction_number_new (gdouble value)
 	self = CPG_INSTRUCTION_NUMBER (ret);
 
 	self->priv->value = value;
+	self->priv->repr = NULL;
 
 	return CPG_INSTRUCTION (ret);
+}
+
+CpgInstruction *
+cpg_instruction_number_new_from_string (gchar const *s)
+{
+	CpgInstructionNumber *self;
+
+	self = CPG_INSTRUCTION_NUMBER (cpg_instruction_number_new (g_ascii_strtod (s, NULL)));
+	self->priv->repr = g_strdup (s);
+
+	return CPG_INSTRUCTION (self);
 }
 
 gdouble
@@ -121,4 +147,27 @@ cpg_instruction_number_set_value (CpgInstructionNumber *number,
 	g_return_if_fail (CPG_IS_INSTRUCTION_NUMBER (number));
 
 	number->priv->value = value;
+
+	if (number->priv->repr)
+	{
+		g_free (number->priv->repr);
+		number->priv->repr = NULL;
+	}
+}
+
+gchar *
+cpg_instruction_number_get_representation (CpgInstructionNumber *number)
+{
+	gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
+
+	g_return_val_if_fail (CPG_IS_INSTRUCTION_NUMBER (number), NULL);
+
+	if (number->priv->repr)
+	{
+		return g_strdup (number->priv->repr);
+	}
+
+	g_ascii_dtostr (buf, sizeof (buf), number->priv->value);
+
+	return g_strdup (buf);
 }

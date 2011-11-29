@@ -278,7 +278,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					yy_pop_state (yyscanner);
 					return T_INDIRECTION_END;
 				}
-<indirection_had_some>([@]+|[$][(]|.?)	{
+<indirection_had_some>([@]+|[$][(]|.?|$$\()	{
 					yy_pop_state (yyscanner);
 
 					advance_column (yyextra, -yyleng);
@@ -342,8 +342,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING;
 				}
 
-<inreduce,inmap>(\\["@$\\}|]|[^"@$\\|}])+ {
-					yylval->id = unquote_string (yytext, yyleng, "@$}|");
+<inreduce,inmap>(\\["@$\\}|,]|[^"@$\\|},])+ {
+					yylval->id = unquote_string (yytext, yyleng, "@$}|,");
 					return T_STRING;
 				}
 
@@ -468,6 +468,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 ":"				return ':';
 "="				return '=';
 "<"				return '<';
+">"				return '>';
 <onlyselector,INITIAL>","	return ',';
 <onlyselector,INITIAL>"."	return '.';
 <onlyselector,INITIAL>"|"	return '|';
@@ -476,6 +477,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "-"				return '-';
 "+"				return '+';
 "?"				return '?';
+"'"				return '\'';
 
 %%
 
