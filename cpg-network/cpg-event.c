@@ -37,8 +37,7 @@ typedef struct
 {
 	CpgLinkAction *action;
 
-	CpgLinkActionFlags add_flags;
-	CpgLinkActionFlags remove_flags;
+	CpgEventActionFlags flags;
 } SetFlags;
 
 static  SetProperty *
@@ -64,17 +63,15 @@ set_property_free (SetProperty *self)
 }
 
 static SetFlags *
-set_flags_new (CpgLinkAction *action,
-               CpgLinkActionFlags add_flags,
-               CpgLinkActionFlags remove_flags)
+set_flags_new (CpgLinkAction       *action,
+               CpgEventActionFlags  flags)
 {
 	SetFlags *ret;
 
 	ret = g_slice_new0 (SetFlags);
 
 	ret->action = g_object_ref_sink (action);
-	ret->add_flags = add_flags;
-	ret->remove_flags = remove_flags;
+	ret->flags = flags;
 
 	return ret;
 }
@@ -332,17 +329,16 @@ cpg_event_add_set_property (CpgEvent      *event,
 }
 
 void
-cpg_event_add_set_link_action_flags (CpgEvent           *event,
-                                     CpgLinkAction      *action,
-                                     CpgLinkActionFlags  add_flags,
-                                     CpgLinkActionFlags  remove_flags)
+cpg_event_add_set_link_action_flags (CpgEvent            *event,
+                                     CpgLinkAction       *action,
+                                     CpgEventActionFlags  flags)
 {
 	SetFlags *p;
 
 	g_return_if_fail (CPG_IS_EVENT (event));
 	g_return_if_fail (CPG_IS_LINK_ACTION (action));
 
-	p = set_flags_new (action, add_flags, remove_flags);
+	p = set_flags_new (action, flags);
 
 	event->priv->set_flags = g_slist_append (event->priv->set_flags,
 	                                         p);
@@ -358,8 +354,31 @@ execute_set_property (SetProperty *p)
 static void
 execute_set_flags (SetFlags *p)
 {
-	cpg_link_action_set_flags (p->action,
-	                           (cpg_link_action_get_flags (p->action) | p->add_flags) & ~p->remove_flags);
+	CpgLinkActionFlags flags;
+
+	flags = cpg_link_action_get_flags (p->action);
+
+	switch (p->flags)
+	{
+		case CPG_EVENT_ACTION_FLAGS_DISABLE:
+			flags |= CPG_LINK_ACTION_FLAG_DISABLED;
+		break;
+		case CPG_EVENT_ACTION_FLAGS_ENABLE:
+			flags &= ~CPG_LINK_ACTION_FLAG_DISABLED;
+		break;
+		case CPG_EVENT_ACTION_FLAGS_SWITCH:
+			if (flags & CPG_LINK_ACTION_FLAG_DISABLED)
+			{
+				flags &= ~CPG_LINK_ACTION_FLAG_DISABLED;
+			}
+			else
+			{
+				flags |= CPG_LINK_ACTION_FLAG_DISABLED;
+			}
+		break;
+	}
+
+	cpg_link_action_set_flags (p->action, flags);
 }
 
 void

@@ -6064,8 +6064,8 @@ cpg_parser_context_add_event_set_property (CpgParserContext  *context,
 void
 cpg_parser_context_add_event_set_flags (CpgParserContext  *context,
                                         CpgSelector       *selector,
-                                        CpgLinkActionFlags add_flags,
-                                        CpgLinkActionFlags remove_flags)
+                                        gboolean           enable,
+                                        gboolean           sw)
 {
 	Context *ctx;
 	GSList *item;
@@ -6105,8 +6105,7 @@ cpg_parser_context_add_event_set_flags (CpgParserContext  *context,
 		{
 			cpg_event_add_set_link_action_flags (ev,
 			                                     CPG_LINK_ACTION (cpg_selection_get_object (ret->data)),
-			                                     add_flags,
-			                                     remove_flags);
+			                                     sw ? CPG_EVENT_ACTION_FLAGS_SWITCH : (enable ? CPG_EVENT_ACTION_FLAGS_ENABLE : CPG_EVENT_ACTION_FLAGS_DISABLE));
 
 			g_object_unref (ret->data);
 			ret = g_slist_delete_link (ret, ret);

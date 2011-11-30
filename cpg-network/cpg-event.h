@@ -24,8 +24,15 @@ typedef struct _CpgEventPrivate	CpgEventPrivate;
 typedef enum
 {
 	CPG_EVENT_DIRECTION_POSITIVE = 1 << 0,
-	CPG_EVENT_DIRECTION_NEGATIVE = 2 << 0,
+	CPG_EVENT_DIRECTION_NEGATIVE = 1 << 1,
 } CpgEventDirection;
+
+typedef enum
+{
+	CPG_EVENT_ACTION_FLAGS_ENABLE = 0,
+	CPG_EVENT_ACTION_FLAGS_DISABLE,
+	CPG_EVENT_ACTION_FLAGS_SWITCH,
+} CpgEventActionFlags;
 
 struct _CpgEvent
 {
@@ -58,10 +65,9 @@ void               cpg_event_add_set_property          (CpgEvent           *even
                                                         CpgProperty        *property,
                                                         CpgExpression      *value);
 
-void               cpg_event_add_set_link_action_flags (CpgEvent           *event,
-                                                        CpgLinkAction      *action,
-                                                        CpgLinkActionFlags  add_flags,
-                                                        CpgLinkActionFlags  remove_flags);
+void               cpg_event_add_set_link_action_flags (CpgEvent            *event,
+                                                        CpgLinkAction       *action,
+                                                        CpgEventActionFlags  flags);
 
 void               cpg_event_execute                   (CpgEvent           *event);
 

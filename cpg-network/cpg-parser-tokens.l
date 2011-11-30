@@ -187,6 +187,9 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "unapply"			return T_KEY_UNAPPLY;
 "with"				return T_KEY_WITH;
 "when"				return T_KEY_WHEN;
+"enable"			return T_KEY_ENABLE;
+"disable"			return T_KEY_DISABLE;
+"switch"			return T_KEY_SWITCH;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;

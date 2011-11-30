@@ -224,8 +224,8 @@ void                   cpg_parser_context_add_event_set_property (CpgParserConte
 
 void                   cpg_parser_context_add_event_set_flags    (CpgParserContext  *context,
                                                                   CpgSelector       *selector,
-                                                                  CpgLinkActionFlags add_flags,
-                                                                  CpgLinkActionFlags remove_flags);
+                                                                  gboolean           enable,
+                                                                  gboolean           sw);
 
 void                   cpg_parser_context_set_input_file_setting (CpgParserContext         *context,
                                                                   CpgEmbeddedString        *name,
