@@ -1024,6 +1024,17 @@ cpg_group_cpg_compile (CpgObject         *object,
 		item = g_slist_next (item);
 	}
 
+	if (group->priv->self_link)
+	{
+		if (!cpg_object_compile (CPG_OBJECT (group->priv->self_link), context, error))
+		{
+			cpg_compile_context_restore (context);
+			g_object_unref (context);
+
+			return FALSE;
+		}
+	}
+
 	g_slist_free (others);
 	othersl = g_slist_reverse (othersl);
 	item = othersl;
