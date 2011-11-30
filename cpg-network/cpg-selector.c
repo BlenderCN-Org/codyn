@@ -124,8 +124,8 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"siblings",
 	"templates",
 	"count",
-	"from",
-	"to",
+	"source",
+	"sink",
 	"self",
 	"debug",
 	"name",
@@ -140,7 +140,9 @@ static gchar const *selector_pseudo_names[CPG_SELECTOR_PSEUDO_NUM] =
 	"has-flag",
 	"has-template",
 	"has-tag",
-	"reverse"
+	"reverse",
+	"source-name",
+	"sink-name"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1242,15 +1244,14 @@ count_selection (CpgEmbeddedContext *context,
 }
 
 static GSList *
-selector_pseudo_from_to (CpgSelector        *self,
-                         Selector           *selector,
-                         gchar const        *name,
-                         GSList             *ret,
-                         CpgSelection       *sel,
-                         CpgEmbeddedContext *context)
+selector_pseudo_from_to_name (CpgSelector        *self,
+                              Selector           *selector,
+                              gchar const        *name,
+                              GSList             *ret,
+                              CpgSelection       *sel,
+                              CpgEmbeddedContext *context)
 {
 	CpgObject *obj;
-	GSList *item;
 
 	if (!CPG_IS_LINK (cpg_selection_get_object (sel)))
 	{
@@ -1264,57 +1265,39 @@ selector_pseudo_from_to (CpgSelector        *self,
 		return ret;
 	}
 
-	cpg_embedded_context_save (context);
-
-	cpg_embedded_context_add_selection (context, sel);
-
-	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
-	{
-		CpgSelector *s = item->data;
-		GSList *sub;
-		GSList *subitem;
-
-		cpg_selector_set_self (s, self->priv->self);
-
-		sub = cpg_selector_select (s,
-		                           G_OBJECT (obj),
-		                           CPG_SELECTOR_TYPE_OBJECT,
-		                           context);
-
-		cpg_selector_set_self (s, NULL);
-
-		for (subitem = sub; subitem; subitem = g_slist_next (subitem))
-		{
-			CpgSelection *subsel = subitem->data;
-			CpgSelection *childsel;
-			GSList *expansions;
-
-			if (cpg_selection_get_object (subsel) != obj)
-			{
-				continue;
-			}
-
-			expansions = g_slist_copy (cpg_selection_get_expansions (sel));
-			expansions = g_slist_concat (g_slist_copy (cpg_selection_get_expansions (subsel)),
-			                             expansions);
-
-			childsel = cpg_selection_new_defines (cpg_selection_get_object (sel),
-			                                      expansions,
-			                                      cpg_selection_get_defines (sel),
-			                                      FALSE);
-
-			ret = g_slist_prepend (ret, childsel);
-
-			g_slist_free (expansions);
-		}
-
-		g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
-		g_slist_free (sub);
-	}
-
+	ret = g_slist_prepend (ret, make_child_selection (sel,
+	                                                  cpg_expansion_new_one (cpg_object_get_id (obj)),
+	                                                  cpg_selection_get_object (sel)));
 	g_object_unref (obj);
 
-	cpg_embedded_context_restore (context);
+	return ret;
+}
+
+static GSList *
+selector_pseudo_from_to (CpgSelector        *self,
+                         Selector           *selector,
+                         gchar const        *name,
+                         GSList             *ret,
+                         CpgSelection       *sel,
+                         CpgEmbeddedContext *context)
+{
+	CpgObject *obj;
+
+	if (!CPG_IS_LINK (cpg_selection_get_object (sel)))
+	{
+		return ret;
+	}
+
+	g_object_get (cpg_selection_get_object (sel), name, &obj, NULL);
+
+	if (!obj)
+	{
+		return ret;
+	}
+
+	ret = g_slist_prepend (ret, make_child_selection (sel, NULL, obj));
+	g_object_unref (obj);
+
 	return ret;
 }
 
@@ -2537,6 +2520,22 @@ selector_select_pseudo (CpgSelector        *self,
 				                               ret,
 				                               sel,
 				                               context);
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_SOURCE_NAME:
+				ret = selector_pseudo_from_to_name (self,
+				                                    selector,
+				                                    "from",
+				                                    ret,
+				                                    sel,
+				                                    context);
+			break;
+			case CPG_SELECTOR_PSEUDO_TYPE_SINK_NAME:
+				ret = selector_pseudo_from_to_name (self,
+				                                    selector,
+				                                    "to",
+				                                    ret,
+				                                    sel,
+				                                    context);
 			break;
 			case CPG_SELECTOR_PSEUDO_TYPE_IF:
 				ret = selector_pseudo_if (self,
