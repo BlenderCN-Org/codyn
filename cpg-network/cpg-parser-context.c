@@ -6098,7 +6098,7 @@ cpg_parser_context_add_event_set_flags (CpgParserContext  *context,
 
 		ret = cpg_selector_select (selector,
 		                           cpg_selection_get_object (item->data),
-		                           CPG_SELECTOR_TYPE_PROPERTY,
+		                           CPG_SELECTOR_TYPE_ACTION,
 		                           context->priv->embedded);
 
 		while (ret)
