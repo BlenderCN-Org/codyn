@@ -64,6 +64,31 @@ enum
 
 typedef struct
 {
+	CpgLinkAction *action;
+	CpgLinkActionFlags flags;
+} LinkActionFlags;
+
+static LinkActionFlags *
+link_action_flags_new (CpgLinkAction *action)
+{
+	LinkActionFlags *ret;
+
+	ret = g_slice_new0 (LinkActionFlags);
+	ret->action = g_object_ref_sink (action);
+	ret->flags = cpg_link_action_get_flags (action);
+
+	return ret;
+}
+
+static void
+link_action_flags_free (LinkActionFlags *self)
+{
+	g_object_unref (self->action);
+	g_slice_free (LinkActionFlags, self);
+}
+
+typedef struct
+{
 	CpgProperty *property;
 	gdouble      value;
 } SavedState;
@@ -97,6 +122,8 @@ struct _CpgIntegratorPrivate
 
 	CpgIntegratorState *state;
 	GSList *saved_state;
+
+	GSList *action_flags;
 };
 
 static guint integrator_signals[NUM_SIGNALS] = {0,};
@@ -116,6 +143,9 @@ cpg_integrator_finalize (GObject *object)
 
 	g_slist_foreach (self->priv->saved_state, (GFunc)saved_state_free, NULL);
 	g_slist_free (self->priv->saved_state);
+
+	g_slist_foreach (self->priv->action_flags, (GFunc)link_action_flags_free, NULL);
+	g_slist_free (self->priv->action_flags);
 
 	G_OBJECT_CLASS (cpg_integrator_parent_class)->finalize (object);
 }
@@ -224,6 +254,19 @@ cpg_integrator_get_property (GObject    *object,
 }
 
 static void
+restore_action_flags (CpgIntegrator *self)
+{
+	GSList *item;
+
+	for (item = self->priv->action_flags; item; item = g_slist_next (item))
+	{
+		LinkActionFlags *fl = item->data;
+
+		cpg_link_action_set_flags (fl->action, fl->flags);
+	}
+}
+
+static void
 cpg_integrator_run_impl (CpgIntegrator *integrator,
                          gdouble        from,
                          gdouble        timestep,
@@ -252,6 +295,8 @@ cpg_integrator_run_impl (CpgIntegrator *integrator,
 
 		from += realstep;
 	}
+
+	restore_action_flags (integrator);
 }
 
 static void
@@ -455,20 +500,43 @@ cpg_integrator_constructor (GType                  type,
 }
 
 static void
+store_action_flags (CpgIntegrator *self,
+                    GSList const  *actions)
+{
+	while (actions)
+	{
+		self->priv->action_flags =
+			g_slist_prepend (self->priv->action_flags,
+			                 link_action_flags_new (actions->data));
+
+		actions = g_slist_next (actions);
+	}
+}
+
+static void
 cpg_integrator_reset_impl (CpgIntegrator *integrator)
 {
 	GSList const *props;
 
 	g_slist_foreach (integrator->priv->saved_state, (GFunc)saved_state_free, NULL);
 	g_slist_free (integrator->priv->saved_state);
-
 	integrator->priv->saved_state = NULL;
+
+	g_slist_foreach (integrator->priv->action_flags, (GFunc)link_action_flags_free, NULL);
+	g_slist_free (integrator->priv->action_flags);
+	integrator->priv->action_flags = NULL;
 
 	if (!integrator->priv->state ||
 	    !cpg_integrator_state_events (integrator->priv->state))
 	{
 		return;
 	}
+
+	store_action_flags (integrator,
+	                    cpg_integrator_state_integrated_link_actions (integrator->priv->state));
+
+	store_action_flags (integrator,
+	                    cpg_integrator_state_direct_link_actions (integrator->priv->state));
 
 	props = cpg_integrator_state_integrated_properties (integrator->priv->state);
 
