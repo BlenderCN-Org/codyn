@@ -103,7 +103,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return cpg_parser_context_steal_start_token (yyextra);
 				}
 
-[ \t]				;
+[ \t;]				;
 \n.*				{
 					HANDLE_NEWLINE
 				}
@@ -219,6 +219,10 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"has-template"	return T_KEY_HAS_TEMPLATE;
 <INITIAL,onlyselector>"has-tag"		return T_KEY_HAS_TAG;
 <INITIAL,onlyselector>"reverse"		return T_KEY_REVERSE;
+<INITIAL,onlyselector>"source"		return T_KEY_SOURCE;
+<INITIAL,onlyselector>"sink"		return T_KEY_SINK;
+<INITIAL,onlyselector>"source-name"	return T_KEY_SOURCE_NAME;
+<INITIAL,onlyselector>"sink-name"	return T_KEY_SINK_NAME;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
