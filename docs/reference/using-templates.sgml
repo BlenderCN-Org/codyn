@@ -25,22 +25,22 @@ that object.
 </para>
 <para>
 To add a template programmatically to the network, you can use
-<link linkend="cpg-group-add">cpg_group_add</link> to the template group
-of the network (<link linkend="cpg-network-get-template-group">cpg_network_get_template_group</link>) which
+<link linkend="cdn-node-add">cdn_node_add</link> to the template group
+of the network (<link linkend="codyn-get-template-group">codyn_get_template_group</link>) which
 simply takes an object. Similarly you can remove a template from the network
-using <link linkend="cpg-group-remove">cpg_group_remove</link>.
+using <link linkend="cdn-node-remove">cdn_node_remove</link>.
 The XML specification also supports specifying templates similar to specifying
 normal states and links, but in a separate <emphasis>templates</emphasis>
-section (see <link linkend="xml-specification">CPG Network XML specification</link>).
+section (see <link linkend="xml-specification">CDN Network XML specification</link>).
 </para>
 <para>
 When you have some templates defined in your network, you can instantiate
 new objects from them by using 
-<link linkend="cpg-network-add-from-template">cpg_network_add_from_template</link>.
+<link linkend="codyn-add-from-template">codyn_add_from_template</link>.
 This adds a new object to the network based on the specified template and
 returns that object. You can than manipulate it as usual. Adding a link from
-a template is done using <link linkend="cpg-network-add-link-from-template">
-cpg_network_add_link_from_template</link>. Here you specify the 
+a template is done using <link linkend="codyn-add-link-from-template">
+codyn_add_link_from_template</link>. Here you specify the 
 <emphasis>from</emphasis> and <emphasis>to</emphasis> objects of the link.
 </para>
 </refsect1>

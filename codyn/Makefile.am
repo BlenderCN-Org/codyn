@@ -1,0 +1,254 @@
+SUBDIRS = instructions operators integrators tree-algorithms
+
+INCLUDES =				\
+	-I$(srcdir)			\
+	-I$(top_srcdir)			\
+	$(INTROSPECTION_CFLAGS)		\
+	-DDATADIR=\""$(datadir)"\"
+
+AM_YFLAGS = -d
+
+COMMON_SOURCES = 		\
+	cdn-annotatable.c	\
+	cdn-debug.c \
+	cdn-compile-context.c \
+	cdn-compile-error.c \
+	cdn-enum-types.c \
+	cdn-marshal.c \
+	cdn-expression.c \
+	cdn-expression-tree-iter.c \
+	cdn-function.c \
+	cdn-function-argument.c \
+	cdn-function-polynomial.c \
+	cdn-function-polynomial-piece.c \
+	cdn-node.c \
+	cdn-input.c \
+	cdn-input-file.c \
+	cdn-integrators.c \
+	cdn-import.c \
+	cdn-import-alias.c \
+	cdn-edge.c \
+	cdn-edge-action.c \
+	cdn-math.c \
+	cdn-mini-object.c \
+	cdn-modifiable.c \
+	cdn-monitor.c \
+	cdn-network.c \
+	cdn-network-deserializer.c \
+	cdn-network-serializer.c \
+	cdn-network-parser-utils.c \
+	cdn-parser-context.c \
+	cdn-embedded-string.c \
+	cdn-embedded-context.c \
+	cdn-object.c \
+	cdn-operators.c \
+	cdn-variable.c \
+	cdn-variable-interface.c \
+	cdn-selector.c \
+	cdn-stack.c \
+	cdn-symbolic.c \
+	cdn-tokenizer.c \
+	cdn-usable.c \
+	cdn-utils.c \
+	cdn-parser.y \
+	cdn-parser-tokens.l \
+	cdn-layout.c \
+	cdn-expansion.c \
+	cdn-selection.c \
+	cdn-attribute.c \
+	cdn-layoutable.c \
+	cdn-statement.c \
+	cdn-taggable.c \
+	cdn-event.c
+
+BUILT_SOURCES = \
+	cdn-enum-types.c \
+	cdn-enum-types.h \
+	cdn-marshal.c \
+	cdn-marshal.h \
+	cdn-parser.h \
+	cdn-parser-tokens.c
+
+NOINST_H_FILES = \
+	cdn-tokenizer.h \
+	cdn-network-xml.h \
+	cdn-stack-private.h \
+	cdn-network-parser-utils.h \
+	cdn-marshal.h
+
+INST_H_FILES = \
+	codyn.h \
+	cdn-annotatable.h \
+	cdn-debug.h \
+	cdn-compile-context.h \
+	cdn-compile-error.h \
+	cdn-expression.h \
+	cdn-expression-tree-iter.h \
+	cdn-function.h \
+	cdn-function-argument.h \
+	cdn-function-polynomial.h \
+	cdn-function-polynomial-piece.h \
+	cdn-node.h \
+	cdn-input.h \
+	cdn-input-file.h \
+	cdn-integrators.h \
+	cdn-import.h \
+	cdn-import-alias.h \
+	cdn-edge.h \
+	cdn-edge-action.h \
+	cdn-math.h \
+	cdn-mini-object.h \
+	cdn-modifiable.h \
+	cdn-monitor.h \
+	cdn-network.h \
+	cdn-network-deserializer.h \
+	cdn-network-serializer.h \
+	cdn-object.h \
+	cdn-operators.h \
+	cdn-parser-context.h \
+	cdn-variable.h \
+	cdn-variable-interface.h \
+	cdn-selector.h \
+	cdn-stack.h \
+	cdn-symbolic.h \
+	cdn-usable.h \
+	cdn-utils.h \
+	cdn-layout.h \
+	cdn-embedded-string.h \
+	cdn-embedded-context.h \
+	cdn-expansion.h \
+	cdn-selection.h \
+	cdn-attribute.h \
+	cdn-layoutable.h \
+	cdn-statement.h \
+	cdn-taggable.h \
+	cdn-event.h \
+	cdn-forward-decl.h
+
+lib_LTLIBRARIES = libcodyn-2.0.la
+
+libcodyn_headers = \
+	$(INST_H_FILES) \
+	cdn-enum-types.h
+
+cdn-enum-types.h: cdn-enum-types.h.template $(INST_H_FILES) $(GLIB_MKENUMS)
+	(cd $(srcdir) && $(GLIB_MKENUMS) --template cdn-enum-types.h.template $(INST_H_FILES)) > $@
+
+cdn-enum-types.c: cdn-enum-types.c.template cdn-enum-types.h $(INST_H_FILES) $(GLIB_MKENUMS)
+	(cd $(srcdir) && $(GLIB_MKENUMS) --template cdn-enum-types.c.template $(INST_H_FILES)) > $@
+
+cdn-marshal.h: cdn-marshal.list $(GLIB_GENMARSHAL)
+	$(AM_V_GEN) $(GLIB_GENMARSHAL) $< --header --prefix=cdn_marshal > $@
+
+cdn-marshal.c: cdn-marshal.list $(GLIB_GENMARSHAL)
+	$(AM_V_GEN) echo "#include \"cdn-marshal.h\"" > $@ && \
+	$(GLIB_GENMARSHAL) $< --body --prefix=cdn_marshal >> $@
+
+libcodyn_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CODYN_CFLAGS)
+libcodyn_2_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
+
+libcodyn_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CODYN_LIBS) $(INTROSPECTION_LIBS) -lm
+libcodyn_2_0_includedir = $(includedir)/codyn-$(CODYN_API_VERSION)/codyn
+
+libcodyn_2_0_la_SOURCES = $(COMMON_SOURCES)
+
+libcodyn_2_0_include_HEADERS = $(libcodyn_headers)
+
+CLEANFILES = $(BUILT_SOURCES) cdn-parser.c
+
+EXTRA_DIST = \
+	$(NOINST_H_FILES) \
+	cdn-enum-types.c.template \
+	cdn-enum-types.h.template \
+	cdn-marshal.list
+
+if HAVE_INTROSPECTION
+-include $(INTROSPECTION_MAKEFILE)
+INTROSPECTION_GIRS = Cdn-2.0.gir
+
+INSTRUCTIONHEADERS = \
+	instructions/cdn-instruction-custom-function.h \
+	instructions/cdn-instruction-custom-operator.h \
+	instructions/cdn-instruction-function.h \
+	instructions/cdn-instruction.h \
+	instructions/cdn-instruction-number.h \
+	instructions/cdn-instruction-operator.h \
+	instructions/cdn-instruction-variable.h \
+	instructions/cdn-instructions.h \
+	instructions/cdn-instruction-rand.h
+
+INSTRUCTIONSOURCES = \
+	instructions/cdn-instruction.c \
+	instructions/cdn-instruction-custom-function.c \
+	instructions/cdn-instruction-custom-operator.c \
+	instructions/cdn-instruction-custom-function-ref.c \
+	instructions/cdn-instruction-custom-operator-ref.c \
+	instructions/cdn-instruction-function.c \
+	instructions/cdn-instruction-number.c \
+	instructions/cdn-instruction-operator.c \
+	instructions/cdn-instruction-variable.c \
+	instructions/cdn-instruction-rand.c
+
+OPERATORSOURCES = \
+	operators/cdn-operator.c \
+	operators/cdn-operator-delayed.c \
+	operators/cdn-operator-diff.c \
+	operators/cdn-operator-pdiff.c \
+	operators/cdn-operator-simplify.c \
+	operators/cdn-operator-df-dt.c \
+	operators/cdn-operator-linsolve.c
+
+OPERATORHEADERS = \
+	operators/cdn-operator.h \
+	operators/cdn-operator-delayed.h \
+	operators/cdn-operator-diff.h \
+	operators/cdn-operator-pdiff.h \
+	operators/cdn-operator-simplify.h \
+	operators/cdn-operator-df-dt.h \
+	operators/cdn-operator-linsolve.h
+
+INTEGRATORSOURCES = 	\
+	integrators/cdn-integrator.c \
+	integrators/cdn-integrator-state.c \
+	integrators/cdn-integrator-euler.c \
+	integrators/cdn-integrator-leap-frog.c \
+	integrators/cdn-integrator-runge-kutta.c \
+	integrators/cdn-integrator-predict-correct.c \
+	integrators/cdn-integrator-stub.c
+
+INTEGRATORHEADERS =			\
+	integrators/cdn-integrator.h \
+	integrators/cdn-integrator-state.h \
+	integrators/cdn-integrator-euler.h \
+	integrators/cdn-integrator-leap-frog.h \
+	integrators/cdn-integrator-runge-kutta.h \
+	integrators/cdn-integrator-predict-correct.h \
+	integrators/cdn-integrator-stub.h
+
+TREEALGORITHMSSOURCES = 	\
+	tree-algorithms/cdn-tree-algorithms-canonicalize.c \
+	tree-algorithms/cdn-tree-algorithms-linsolve.c \
+	tree-algorithms/cdn-tree-algorithms-simplify.c \
+	tree-algorithms/cdn-tree-algorithms-string.c \
+	tree-algorithms/cdn-tree-algorithms-substitute.c
+
+Cdn-2.0.gir: libcodyn-2.0.la
+INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --verbose
+Cdn_2_0_gir_NAMESPACE = Cdn
+Cdn_2_0_gir_VERSION = 2.0
+Cdn_2_0_gir_LIBS = libcodyn-2.0.la instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
+Cdn_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES) $(TREEALGORITHMSSOURCES)
+Cdn_2_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
+
+girdir = $(datadir)/gir-1.0
+gir_DATA = $(INTROSPECTION_GIRS)
+
+typelibdir = $(libdir)/girepository-1.0
+typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
+
+CLEANFILES +=			\
+	$(gir_DATA)	\
+	$(typelib_DATA)
+endif
+
+-include $(top_srcdir)/git.mk

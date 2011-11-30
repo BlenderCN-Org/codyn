@@ -1,23 +1,23 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <cpg-network/cpg-network.h>
-#include <cpg-network/cpg-expression.h>
-#include <cpg-network/cpg-object.h>
+#include <codyn/codyn.h>
+#include <codyn/cdn-expression.h>
+#include <codyn/cdn-object.h>
 #include "utils.h"
 
-static CpgExpression *expression;
+static CdnExpression *expression;
 #define RAND(A, B)  ((A) + rand() * 1.0 / RAND_MAX * ((B) - (A)))
 
 static void
-expression_initialize_context (gchar const *exp, CpgObject *context)
+expression_initialize_context (gchar const *exp, CdnObject *context)
 {
-	expression = cpg_expression_new (exp);
+	expression = cdn_expression_new (exp);
 
-	CpgCompileContext *ctx = cpg_compile_context_new ();
-	cpg_compile_context_prepend_object (ctx, context);
+	CdnCompileContext *ctx = cdn_compile_context_new ();
+	cdn_compile_context_prepend_object (ctx, context);
 
-	gboolean ret = cpg_expression_compile (expression, ctx, NULL);
+	gboolean ret = cdn_expression_compile (expression, ctx, NULL);
 	g_object_unref (ctx);
 
 	if (!ret)
@@ -36,77 +36,77 @@ expression_initialize (gchar const *exp)
 static gdouble
 expression_eval ()
 {
-	return cpg_expression_evaluate (expression);
+	return cdn_expression_evaluate (expression);
 }
 
 static void
 test_operator_plus ()
 {
 	expression_initialize ("3 + 4");
-	cpg_assert_tol (expression_eval (), (3 + 4));
+	cdn_assert_tol (expression_eval (), (3 + 4));
 }
 
 static void
 test_operator_minus ()
 {
 	expression_initialize ("3 - 4");
-	cpg_assert_tol (expression_eval (), (3 - 4));
+	cdn_assert_tol (expression_eval (), (3 - 4));
 }
 
 static void
 test_operator_minus_unary ()
 {
 	expression_initialize ("3 + -4");
-	cpg_assert_tol (expression_eval (), (3 + -4));
+	cdn_assert_tol (expression_eval (), (3 + -4));
 }
 
 static void
 test_priority ()
 {
 	expression_initialize ("3 * 4 + 3");
-	cpg_assert_tol (expression_eval (), (3 * 4 + 3));
+	cdn_assert_tol (expression_eval (), (3 * 4 + 3));
 
 	expression_initialize ("3 + 4 * 2");
-	cpg_assert_tol (expression_eval (), (3 + 4 * 2));
+	cdn_assert_tol (expression_eval (), (3 + 4 * 2));
 }
 
 static void
 test_function_sin ()
 {
 	expression_initialize ("sin (pi)");
-	cpg_assert_tol (expression_eval (), sin (M_PI));
+	cdn_assert_tol (expression_eval (), sin (M_PI));
 }
 
 static void
 test_function_varargs ()
 {
 	expression_initialize ("max (0, 2 * pi)");
-	cpg_assert_tol (expression_eval (), 2 * M_PI);
+	cdn_assert_tol (expression_eval (), 2 * M_PI);
 }
 
 static void
 test_complex ()
 {
-	CpgObject *obj = cpg_object_new (NULL);
-	CpgProperty *prop;
+	CdnObject *obj = cdn_object_new (NULL);
+	CdnVariable *prop;
 
-	prop = cpg_property_new ("x", cpg_expression_new ("1"), 0);
-	cpg_object_add_property (obj, prop, NULL);
+	prop = cdn_variable_new ("x", cdn_expression_new ("1"), 0);
+	cdn_object_add_variable (obj, prop, NULL);
 
-	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
+	cdn_expression_compile (cdn_variable_get_expression (prop), NULL, NULL);
 
-	prop = cpg_property_new ("phase", cpg_expression_new ("2"), 0);
-	cpg_object_add_property (obj, prop, NULL);
-	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
+	prop = cdn_variable_new ("phase", cdn_expression_new ("2"), 0);
+	cdn_object_add_variable (obj, prop, NULL);
+	cdn_expression_compile (cdn_variable_get_expression (prop), NULL, NULL);
 
-	prop = cpg_property_new ("y", cpg_expression_new ("3"), 0);
-	cpg_object_add_property (obj, prop, NULL);
-	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
+	prop = cdn_variable_new ("y", cdn_expression_new ("3"), 0);
+	cdn_object_add_variable (obj, prop, NULL);
+	cdn_expression_compile (cdn_variable_get_expression (prop), NULL, NULL);
 
-	cpg_object_reset (obj);
+	cdn_object_reset (obj);
 
 	expression_initialize_context ("x * sin (phase) + 2 * y * PI", obj);
-	cpg_assert_tol (expression_eval (), 1 * sin (2) + 2 * 3 * M_PI);
+	cdn_assert_tol (expression_eval (), 1 * sin (2) + 2 * 3 * M_PI);
 
 	g_object_unref (obj);
 }
@@ -115,16 +115,16 @@ static void
 test_scientific_notation ()
 {
 	expression_initialize ("1e-2");
-	cpg_assert_tol (expression_eval (), 1e-2);
+	cdn_assert_tol (expression_eval (), 1e-2);
 
 	expression_initialize ("1e+20");
-	cpg_assert_tol (expression_eval (), 1e+20);
+	cdn_assert_tol (expression_eval (), 1e+20);
 
 	expression_initialize ("1.25e-5");
-	cpg_assert_tol (expression_eval (), 1.25e-5);
+	cdn_assert_tol (expression_eval (), 1.25e-5);
 
 	expression_initialize ("10.2523e+4");
-	cpg_assert_tol (expression_eval (), 10.2523e+4);
+	cdn_assert_tol (expression_eval (), 10.2523e+4);
 }
 
 static void
@@ -139,7 +139,7 @@ test_random ()
 
 	srand (1);
 	val = RAND (0, 1);
-	cpg_assert_tol (ret, val);
+	cdn_assert_tol (ret, val);
 
 	srand (4);
 	expression_initialize ("rand (-1, 1)");
@@ -147,24 +147,24 @@ test_random ()
 
 	srand (4);
 	val = RAND (-1, 1);
-	cpg_assert_tol (ret, val);
+	cdn_assert_tol (ret, val);
 }
 
 static void
 test_globals ()
 {
-	CpgNetwork *network = cpg_network_new ();
+	CdnNetwork *network = cdn_network_new ();
 
-	CpgProperty *x = cpg_property_new ("x", cpg_expression_new ("0"), FALSE);
-	cpg_object_add_property (CPG_OBJECT (network), x, NULL);
+	CdnVariable *x = cdn_variable_new ("x", cdn_expression_new ("0"), FALSE);
+	cdn_object_add_variable (CDN_OBJECT (network), x, NULL);
 
-	cpg_network_step (network, 0.001);
+	cdn_network_step (network, 0.001);
 
-	cpg_property_set_value (x, 1);
-	cpg_assert_tol (1, cpg_property_get_value (x));
+	cdn_variable_set_value (x, 1);
+	cdn_assert_tol (1, cdn_variable_get_value (x));
 
-	cpg_network_step (network, 0.001);
-	cpg_assert_tol (1, cpg_property_get_value (x));
+	cdn_network_step (network, 0.001);
+	cdn_assert_tol (1, cdn_variable_get_value (x));
 }
 
 int

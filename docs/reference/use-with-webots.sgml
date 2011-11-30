@@ -7,20 +7,20 @@
 <refnamediv>
 <refname>Use with Webots</refname>
 <refpurpose>
-How to use a CPG network to control a robot in Webots
+How to use a CDN network to control a robot in Webots
 </refpurpose>
 </refnamediv>
 
 <refsect1>
-<title>Using a CPG network with webots</title>
+<title>Using a CDN network with webots</title>
 <para>
-Using the CPG library to control a robot in webots can be done fairly easy
+Using the CDN library to control a robot in webots can be done fairly easy
 with the standard API. For instance, if you want to use position control, you
 can at each webots simulation step get the appropriate property from your
 network and set some servo devices' position to the value of that property.
 </para>
 <para>
-CPG network however has a small utility library that makes it even easier to
+CDN network however has a small utility library that makes it even easier to
 bind properties from the network directly to devices in your webots robot.
 You can use this functionality by specifying a special property in state
 containers indicating how the property should be bound to something in webots.
@@ -104,7 +104,7 @@ The following special property names for sensors can be used:
   <title>Example network file</title>
   <programlisting language="xml">
 <![CDATA[<?xml version="1.0" encoding="utf-8"?>
-<cpg>
+<cdn>
   <network>
 	<globals>
 	  <property name="frequency">1</property>
@@ -142,25 +142,25 @@ The following special property names for sensors can be used:
 	<link id="integrate_servo_2" ref="integration" from="servo_2" to="servo_2"/>
 	<link id="integrate_servo_3" ref="integration" from="servo_3" to="servo_3"/>
   </network>
-</cpg>]]>
+</cdn>]]>
   </programlisting>
 </example>
 <example>
   <title>Example controller</title>
   <programlisting language="C">
-<![CDATA[#include <cpg-network-webots/cpg-network-webots.h>
+<![CDATA[#include <codyn-webots/codyn-webots.h>
 #include <stdio.h>
 
 #define WEBOTS_STEP 5
 
-static CpgNetwork *
+static CdnNetwork *
 read_network(char const *filename)
 {
-	CpgNetwork *network;
-	CpgCompileError *error;
+	CdnNetwork *network;
+	CdnCompileError *error;
 	GError *load_error = NULL;
 	
-	network = cpg_network_new_from_file ("network.cpg", &load_error);
+	network = codyn_new_from_file ("network.cdn", &load_error);
 
 	if (network == NULL)
 	{
@@ -176,29 +176,29 @@ read_network(char const *filename)
 		return NULL;
 	}
 	
-	error = cpg_compile_error_new ();
+	error = cdn_compile_error_new ();
 
-	if (!cpg_network_compile (network, error))
+	if (!codyn_compile (network, error))
 	{
 		fprintf (stderr, 
 				 "Could not compile network: %s", 
-				 cpg_compile_error_string (error));
+				 cdn_compile_error_string (error));
 
-		cpg_ref_counted_unref (error);
+		cdn_ref_counted_unref (error);
 		return NULL;
 	}
 	
-	cpg_ref_counted_unref (error);
+	cdn_ref_counted_unref (error);
 	return network;
 }
 
 int main(int argc, char **argv)
 {
-	CpgNetwork *network;
-	CpgNetworkWebots *network_webots;
+	CdnNetwork *network;
+	CdnNetworkWebots *network_webots;
 	
 	g_type_init ();
-	network = read_network ("network.cpg");
+	network = read_network ("network.cdn");
 
 	if (network == NULL)
 	{
@@ -206,19 +206,19 @@ int main(int argc, char **argv)
 	}
 	
 	wb_robot_init ();
-	network_webots = cpg_network_webots_new (network);
+	network_webots = codyn_webots_new (network);
 	
 	while (wb_robot_step (WEBOTS_STEP) != -1)
 	{
 		int i;
 		
 		/* Update bindings */
-		cpg_network_webots_update (network_webots);
+		codyn_webots_update (network_webots);
 		
 		/* Run network simulation */
 		for (i = 0; i < WEBOTS_STEP; ++i)
 		{
-			cpg_network_step (network, 0.001);
+			codyn_step (network, 0.001);
 		}
 	}
 	
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
 <note>
 You can compile the example like: 
 
-<code>gcc -o controller controller.c -lController -L/usr/local/webots/lib -I/usr/local/webots/include/controller/c `pkg-config --cflags --libs cpg-network-webots-1.0`</code>
+<code>gcc -o controller controller.c -lController -L/usr/local/webots/lib -I/usr/local/webots/include/controller/c `pkg-config --cflags --libs codyn-webots-1.0`</code>
 </note>
 <note>
 The webots bindings can be used with webots 6.1 and higher

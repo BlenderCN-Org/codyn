@@ -9,7 +9,7 @@ AUTOMAKE_OPTIONS = 1.6
 # of using the various options.
 
 # The name of the module, e.g. 'glib'.
-DOC_MODULE=cpg-network2
+DOC_MODULE=codyn2
 
 # Uncomment for versioned docs and specify the version of the module, e.g. '2'.
 #DOC_MODULE_VERSION=2
@@ -22,7 +22,7 @@ DOC_MAIN_SGML_FILE=$(DOC_MODULE)-docs.sgml
 # gtk-doc will search all .c & .h files beneath here for inline comments
 # documenting the functions and macros.
 # e.g. DOC_SOURCE_DIR=../../../gtk
-DOC_SOURCE_DIR=../../cpg-network
+DOC_SOURCE_DIR=../../codyn
 
 # Extra options to pass to gtkdoc-scangobj. Not normally needed.
 SCANGOBJ_OPTIONS=
@@ -30,13 +30,13 @@ SCANGOBJ_OPTIONS=
 # Header files to ignore when scanning.
 # e.g. IGNORE_HFILES=gtkdebug.h gtkintl.h
 IGNORE_HFILES= \
-	cpg-tokenizer.h \
-	cpg-utils.h \
-	cpg-network-xml.h \
-	cpg-parser.h \
-	cpg-debug.h \
-	cpg-marshal.h \
-	cpg-network-parser-utils.h
+	cdn-tokenizer.h \
+	cdn-utils.h \
+	codyn-xml.h \
+	cdn-parser.h \
+	cdn-debug.h \
+	cdn-marshal.h \
+	codyn-parser-utils.h
 
 # Extra options to supply to gtkdoc-scan.
 # e.g. SCAN_OPTIONS=--deprecated-guards="GTK_DISABLE_DEPRECATED"
@@ -60,8 +60,8 @@ FIXXREF_OPTIONS=
 # Used for dependencies. The docs will be rebuilt if any of these change.
 # e.g. HFILE_GLOB=$(top_srcdir)/gtk/*.h
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
-HFILE_GLOB=$(top_srcdir)/cpg-network/*.h
-CFILE_GLOB=$(top_srcdir)/cpg-network/*.c
+HFILE_GLOB=$(top_srcdir)/codyn/*.h
+CFILE_GLOB=$(top_srcdir)/codyn/*.c
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png
@@ -87,15 +87,15 @@ expand_content_files=
 # e.g. GTKDOC_CFLAGS=-I$(top_srcdir) -I$(top_builddir) $(GTK_DEBUG_FLAGS)
 # e.g. GTKDOC_LIBS=$(top_builddir)/gtk/$(gtktargetlib)
 GTKDOC_CFLAGS= \
-	-I$(top_srcdir)/cpg-network	\
-	-I$(top_builddir)/cpg-network \
+	-I$(top_srcdir)/codyn	\
+	-I$(top_builddir)/codyn \
 	-I$(top_srcdir)		\
 	-I$(top_builddir)	\
-	$(CPG_NETWORK_CFLAGS)
+	$(CODYN_CFLAGS)
 
 GTKDOC_LIBS=	\
-	$(top_builddir)/cpg-network/libcpg-network-@CPG_NETWORK_API_VERSION@.la	\
-	$(CPG_NETWORK_LIBS)
+	$(top_builddir)/codyn/libcodyn-@CODYN_API_VERSION@.la	\
+	$(CODYN_LIBS)
 	
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
 include $(top_srcdir)/gtk-doc.make

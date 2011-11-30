@@ -1,6 +1,6 @@
-librarydir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/library/webots
+librarydir = $(pkgdatadir)-@CODYN_API_VERSION@/library/webots
 library_DATA = \
-	webots.cpg
+	webots.cdn
 
 EXTRA_DIST = \
 	$(library_DATA)

@@ -1,43 +1,43 @@
-#include <cpg-network/cpg-network.h>
-#include <cpg-network/cpg-expression.h>
-#include <cpg-network/cpg-object.h>
+#include <codyn/codyn.h>
+#include <codyn/cdn-expression.h>
+#include <codyn/cdn-object.h>
 
 #include "utils.h"
 
 static gchar simple_xml[] = ""
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cpg>\n"
+"<cdn>\n"
 "  <network>\n"
-"    <group id=\"s1\">\n"
-"      <property name=\"a\">1</property>\n"
-"    </group>\n"
-"    <group id=\"s2\">\n"
-"      <property name=\"b\">0</property>\n"
-"    </group>\n"
-"    <group id=\"s3\">\n"
-"      <property name=\"c\">0</property>\n"
-"    </group>\n"
-"    <link id=\"l1\" from=\"s1\" to=\"s2\">\n"
+"    <node id=\"s1\">\n"
+"      <variable name=\"a\">1</variable>\n"
+"    </node>\n"
+"    <node id=\"s2\">\n"
+"      <variable name=\"b\">0</variable>\n"
+"    </node>\n"
+"    <node id=\"s3\">\n"
+"      <variable name=\"c\">0</variable>\n"
+"    </node>\n"
+"    <edge id=\"l1\" from=\"s1\" to=\"s2\">\n"
 "      <action target=\"b\">a</action>\n"
-"    </link>\n"
-"    <link id=\"l2\" from=\"s2\" to=\"s3\">\n"
+"    </edge>\n"
+"    <edge id=\"l2\" from=\"s2\" to=\"s3\">\n"
 "      <action target=\"c\">b</action>\n"
-"    </link>\n"
+"    </edge>\n"
 "  </network>\n"
-"</cpg>\n";
+"</cdn>\n";
 
 static void
 test_direct ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 
-	network = cpg_network_new_from_string (simple_xml, NULL);
+	network = cdn_network_new_from_string (simple_xml, NULL);
 
-	CpgProperty *p1 = cpg_group_find_property (CPG_GROUP (network), "s2.b");
+	CdnVariable *p1 = cdn_node_find_variable (CDN_NODE (network), "s2.b");
 
-	cpg_network_step (network, 0.1);
+	cdn_network_step (network, 0.1);
 
-	cpg_assert_tol (cpg_property_get_value (p1), 1);
+	cdn_assert_tol (cdn_variable_get_value (p1), 1);
 
 	g_object_unref (network);
 }
@@ -45,15 +45,15 @@ test_direct ()
 static void
 test_dependencies ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 
-	network = cpg_network_new_from_string (simple_xml, NULL);
+	network = cdn_network_new_from_string (simple_xml, NULL);
 
-	CpgProperty *p1 = cpg_group_find_property (CPG_GROUP (network), "s3.c");
+	CdnVariable *p1 = cdn_node_find_variable (CDN_NODE (network), "s3.c");
 
-	cpg_network_step (network, 0.1);
+	cdn_network_step (network, 0.1);
 
-	cpg_assert_tol (cpg_property_get_value (p1), 1);
+	cdn_assert_tol (cdn_variable_get_value (p1), 1);
 
 	g_object_unref (network);
 }

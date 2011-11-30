@@ -1,4 +1,4 @@
-SUBDIRS = cpg-network data tests m4 win32 tools
+SUBDIRS = codyn data tests m4 win32 tools
 
 if ENABLE_DOC
 SUBDIRS += docs
@@ -7,30 +7,30 @@ endif
 ACLOCAL_AMFLAGS = -I m4
 
 if ENABLE_WEBOTS
-SUBDIRS += cpg-network-webots
+SUBDIRS += codyn-webots
 endif
 
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = \
-	cpg-network-@CPG_NETWORK_API_VERSION@.pc
+	codyn-@CODYN_API_VERSION@.pc
 
 if ENABLE_WEBOTS
-pkgconfig_DATA += cpg-network-webots-@CPG_NETWORK_API_VERSION@.pc
+pkgconfig_DATA += codyn-webots-@CODYN_API_VERSION@.pc
 endif
 
-cpg-network-@CPG_NETWORK_API_VERSION@.pc: cpg-network.pc
-	cp cpg-network.pc cpg-network-@CPG_NETWORK_API_VERSION@.pc
+codyn-@CODYN_API_VERSION@.pc: codyn.pc
+	cp codyn.pc codyn-@CODYN_API_VERSION@.pc
 
 if ENABLE_WEBOTS
-cpg-network-webots-@CPG_NETWORK_API_VERSION@.pc: cpg-network-webots.pc
-	cp cpg-network-webots.pc cpg-network-webots-@CPG_NETWORK_API_VERSION@.pc
+codyn-webots-@CODYN_API_VERSION@.pc: codyn-webots.pc
+	cp codyn-webots.pc codyn-webots-@CODYN_API_VERSION@.pc
 endif
 
 EXTRA_DIST = \
-	cpg-network.pc.in
+	codyn.pc.in
 
 if ENABLE_WEBOTS
-EXTRA_DIST += cpg-network-webots.pc.in
+EXTRA_DIST += codyn-webots.pc.in
 endif
 
 DISTCHECK_CONFIGURE_FLAGS = --enable-webots

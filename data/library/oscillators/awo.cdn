@@ -1,0 +1,154 @@
+## The AWO library contains an oscillator implementing a very simple, first
+## order arbitrary waveform dynamical system. The implementation is simply
+## a feedback/feedforward differential equation on a known function f(x) and
+## its known derivative df(x)/dt.
+##
+## Two extensions to the standard oscillator are also available as the
+## "<i>amplitude</i>" and "<i>offset</i>" templates. You can apply one of these
+## templates, or both, to add direct amplitude and offset control on the
+## oscillator.
+network
+{
+}
+
+templates
+{
+  node "functions"
+  {
+    functions
+    {
+      ## Function for gamma such that it takes <i>tau</i> seconds to
+      ## forget a perturbation of size (1 - <i>alpha</i>) * <i>perturb</i>
+      ##
+      ## This function can be used for gamma on the initial conditions of the
+      ## oscillator nodes so there is a known behavior of convergence from
+      ## initial conditions.
+      GammaForRelConv(tau, alpha, perturb) = "ln(alpha / perturb) / -tau"
+    }
+  }
+
+  ## Arbitrary Waveform Oscillator (AWO)
+  ##
+  ## This 'oscillator' implements a very simple feedforward/feedback dynamical
+  ## system on a known function f(x) and its known derivative df(x)/dt
+  ##
+  ## $\dot{\theta} = \omega
+  ## $\dot{r} = \gamma (f(\theta) - x) + \dot{f}(\theta) \dot{\theta}
+  ##
+  node "oscillator"
+  {
+    [proxy]
+    node "node"
+    {
+      ## r node variable of AWO oscillator
+      r = 0 | integrated
+
+      ## theta node variable of AWO oscillator
+      theta = 0 | integrated
+
+      ## The function to capture as a dynamical system
+      ## This variable should be implemented to produce f(theta)
+      f = 0
+
+      ## The derivative of the function to capture
+      ## This variable should be implemented to produce f'(theta)
+      df = 0
+
+      ## Time constant on attractor of r towards f
+      gamma = 1
+
+      ## Desired frequency
+      target_frequency = 1
+
+      ## Angular frequency
+      omega = "2 * pi * target_frequency"
+
+      ## Output variable
+      output = "r"
+    }
+
+    interface
+    {
+      f_scaled = f_scaled on integrate
+    }
+
+    ## Integration edge
+    edge "integrate" on nodes
+    {
+      ## Computation of function f augmented with amplitude and offset
+      f_scaled = "from.f"
+      f = "f_scaled"
+
+      ## Computation of function df augmented with amplitude
+      df = "from.df"
+
+      ## Implementation of dtheta (to be reused in action on theta and r)
+      dtheta = "omega"
+
+      feedback_term = "gamma * (f - r)"
+      feedforward_term = "df * dtheta"
+
+      ## Integrate theta
+      theta <= "dtheta"
+
+      ## Integrate r
+      r <= "feedback_term + feedforward_term"
+    }
+  }
+
+  ## Apply this template when you want direct control on the amplitude of the
+  ## AWO oscillator
+  node "amplitude"
+  {
+    before-apply
+    {
+      apply awo.oscillator
+    }
+
+    [proxy]
+    node "node"
+    {
+      ## The integrated amplitude of the oscillator
+      amplitude = target_amplitude | integrated
+
+      ## The target amplitude of the oscillator
+      target_amplitude = 1
+    }
+
+    edge "integrate"
+    {
+      gamma_amplitude = "gamma"
+
+      f_scaled = "amplitude * from.f"
+      df = "amplitude * from.df"
+
+      amplitude <= "gamma_amplitude * (target_amplitude - amplitude)"
+    }
+  }
+
+  ## Apply this template when you want direct control on the offset of the
+  ## AWO oscillator
+  node "offset"
+  {
+    before-apply
+    {
+      apply awo.oscillator
+    }
+
+    [proxy]
+    node "node"
+    {
+      ## The target offset of the oscillator
+      target_offset = 0
+    }
+
+    edge "integrate"
+    {
+      f = "f_scaled + target_offset"
+    }
+  }
+
+  include "layout/line.cdn"
+}
+
+# vi:ex:ts=2:et

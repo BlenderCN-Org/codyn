@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <refentry id="making-a-network">
 <refmeta>
-<refentrytitle>CPG Network basics</refentrytitle>
+<refentrytitle>CDN Network basics</refentrytitle>
 </refmeta>
 
 <refnamediv>
-<refname>CPG Network basics</refname>
+<refname>CDN Network basics</refname>
 <refpurpose>
 How to construct and use a network
 </refpurpose>
@@ -14,7 +14,7 @@ How to construct and use a network
 <refsect1>
 <title>Principles and Concepts</title>
 <para>
-The CPG network library is a general dynamical systems simulator. Although as
+The CDN network library is a general dynamical systems simulator. Although as
 the name suggests it focusses on implementing Central Pattern Generators, it
 can basicly be used to model any kind of dynamical system.
 </para>
@@ -59,14 +59,14 @@ respective values 0.1, 1 and 1 could be taken. Furthermore we mark
 <emphasis>x</emphasis> to be integrated.
 
 <programlisting language="C" linenumbering="numbered">
-<![CDATA[CpgNetwork *network = cpg_network_new ();
-CpgObject *object = CPG_OBJECT (cpg_state_new ("state"));
+<![CDATA[CdnNetwork *network = codyn_new ();
+CdnObject *object = CDN_OBJECT (cdn_state_new ("state"));
 
-cpg_object_add_property (object, "x", "0.1", TRUE);
-cpg_object_add_property (object, "g_x", "1", FALSE);
-cpg_object_add_property (object, "X", "1", FALSE);
+cdn_object_add_property (object, "x", "0.1", TRUE);
+cdn_object_add_property (object, "g_x", "1", FALSE);
+cdn_object_add_property (object, "X", "1", FALSE);
 
-cpg_network_add_object (network, object);]]>
+codyn_add_object (network, object);]]>
 </programlisting>
 </para>
 <para>
@@ -79,18 +79,18 @@ and transferring information as defined in the equation:
 
 <programlisting language="C" linenumbering="numbered">
 /* Continue with example above */
-CpgLink *link = cpg_link_new ("integration", object, object);
+CdnEdge *link = cdn_edge_new ("integration", object, object);
 
-cpg_link_add_action (link, 
-                     cpg_object_get_property (object, "x"),
+cdn_edge_add_action (link, 
+                     cdn_object_get_variable (object, "x"),
                      "g_x * (X * X - x * x) * x");
 
-cpg_network_add_object (network, CPG_OBJECT (link));
+codyn_add_object (network, CDN_OBJECT (link));
 </programlisting>
 </para>
 <para>
 Now the network is complete it can be simulated using 
-<link linkend="cpg-network-run">cpg_network_run</link>.
+<link linkend="codyn-run">codyn_run</link>.
 <note>
 Links are just another type of object, as such they can also have properties
 (although these can not be targed by links themselves). You can use these
@@ -103,21 +103,21 @@ some value and use it in several link actions in the same link.
 <title>Construction</title>
 <para>
 There are basicly two ways to create a new network. The first is simply by
-using <link linkend="cpg-network-new">cpg_network_new</link> to create an empty
+using <link linkend="codyn-new">codyn_new</link> to create an empty
 network. After the network is created, you can start building it by adding 
-states and links to the network using <link linkend="cpg-network-add-object">
-cpg_network_add_object</link> (as done above). Although you might be able to 
+states and links to the network using <link linkend="codyn-add-object">
+codyn_add_object</link> (as done above). Although you might be able to 
 construct fairly simple networks like this quite easily, at some point your 
 networks will become bigger and more complex. To this end, you can write the 
 network using
-the <link linkend="xml-specification">CPG Network XML specification</link>. 
+the <link linkend="xml-specification">CDN Network XML specification</link>. 
 Once written, you can construct a network from such a file using
-<link linkend="cpg-network-new-from-file">cpg_network_new_from_file</link>. To
+<link linkend="codyn-new-from-file">codyn_new_from_file</link>. To
 illustrate, the example system defined above can be written in XML format
 as follows:
 
 <programlisting language="xml" linenumbering="numbered">
-<![CDATA[<cpg>
+<![CDATA[<cdn>
   <network>
     <state id="state">
       <property name="x" integrated="yes">0.1</property>
@@ -128,7 +128,7 @@ as follows:
       <action target="x">g_x * (X * X - x * x) * x</action>
     </link>
   </network>
-</cpg>]]>
+</cdn>]]>
 </programlisting>
 </para>
 <para>
@@ -147,33 +147,33 @@ certain properties of those objects.
 </para>
 <para>
 To get a specific object from the network, you can use 
-<link linkend="cpg-network-get-object">cpg_network_get_object</link> using the
+<link linkend="codyn-get-object">codyn_get_object</link> using the
 objects unique id. To get a list of all the states in the network, use
-<link linkend="cpg-network-get-states">cpg_network_get_states</link> and for
-a list of links use <link linkend="cpg-network-get-links">cpg_network_get_links</link>.
+<link linkend="codyn-get-states">codyn_get_states</link> and for
+a list of links use <link linkend="codyn-get-links">codyn_get_links</link>.
 </para>
 <para>
 Each object in the network basicly consists of a set of properties which 
 contain mathematical expressions. To get a specific property from an object
-you can use <link linkend="cpg-object-get-property">cpg_object_get_property</link>.
+you can use <link linkend="cdn-object-get-property">cdn_object_get_variable</link>.
 Similar to getting all states from the network, you can use
-<link linkend="cpg-object-get-properties">cpg_object_get_properties</link> to
+<link linkend="cdn-object-get-properties">cdn_object_get_properties</link> to
 get a list of all properties on an object. The functions
-<link linkend="cpg-object-add-property">cpg_object_add_property</link> and
-<link linkend="cpg-object-remove-property">cpg_object_remove_property</link>
+<link linkend="cdn-object-add-property">cdn_object_add_property</link> and
+<link linkend="cdn-object-remove-property">cdn_object_remove_property</link>
 can be used to respectively add and remove properties from the object.
 </para>
 <para>
-To get the current value of a <link linkend="cpg-network-CpgProperty">CpgProperty</link>
-you can use <link linkend="cpg-property-get-value">cpg_property_get_value</link>.
+To get the current value of a <link linkend="codyn-CdnVariable">CdnVariable</link>
+you can use <link linkend="cdn-variable-get-value">cdn_variable_get_value</link>.
 Similarly, use 
-<link linkend="cpg-property-set-expression">cpg_property_set_value_expression</link>
+<link linkend="cdn-variable-set-expression">cdn_variable_set_value_expression</link>
 to set the value of a property to a mathematical expression.
 <note>
 Make sure that your network has been compiled 
-(<link linkend="cpg-network-compile">cpg_network_compile</link>) before
+(<link linkend="codyn-compile">codyn_compile</link>) before
 accessing the property value with 
-<link linkend="cpg-property-get-value">cpg_property_get_value</link>.
+<link linkend="cdn-variable-get-value">cdn_variable_get_value</link>.
 </note>
 </para>
 </refsect1>
@@ -232,11 +232,11 @@ operator many programming languages (<emphasis>t &lt; 2 ? 1 : 0</emphasis>).
 </para>
 <para>
 In network terminology, global variables are defined within a special
-<link linkend="CpgObject">CpgObject</link> which you can access
+<link linkend="CdnObject">CdnObject</link> which you can access
 as any other object in the network (thus using 
-<link linkend="cpg-object-add-property">cpg_object_add_property</link> to add
+<link linkend="cdn-object-add-property">cdn_object_add_property</link> to add
 new global properties). Use 
-<link linkend="cpg-network-get-globals">cpg_network_get_globals</link> to
+<link linkend="codyn-get-globals">codyn_get_globals</link> to
 get the networks' globals object.
 </para>
 </refsect1>

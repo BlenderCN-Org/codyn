@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cdn>
+  <network integrator="euler">
+    <node id="node" proxy="state_1">
+      <node id="state_1">
+        <property name="x" integrated="yes">0</property>
+      </node>
+      <edge id="state_to_state_1" from="state_1" to="state_1">
+        <action target="x">1</action>
+      </edge>
+    </node>
+    <edge id="state_1_to_node" from="node" to="node">
+      <action target="x">0</action>
+    </edge>
+  </network>
+</cdn>

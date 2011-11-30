@@ -1,3 +1,3 @@
-SUBDIRS = cpg-monitor cpg-parser cpg-render cpg-context cpg-archive cpg-compile plugins
+SUBDIRS = cdn-monitor cdn-parser cdn-render cdn-context cdn-archive cdn-compile plugins
 
 -include $(top_srcdir)/git.mk

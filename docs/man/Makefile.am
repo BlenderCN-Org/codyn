@@ -1,11 +1,11 @@
 man_MANS = \
-	cpg-monitor.1
+	cdn-monitor.1
 
 %.1: %.xml
 	@XSLTPROC@ -nonet http://docbook.sourceforge.net/release/xsl/current/manpages/docbook.xsl $<
 
 BUILT_EXTRA_DIST = $(man_MANS)
-EXTRA_DIST = cpg-monitor.xml
+EXTRA_DIST = cdn-monitor.xml
 
 CLEANFILES = $(man_MANS)
 

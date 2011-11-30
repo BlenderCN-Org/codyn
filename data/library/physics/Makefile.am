@@ -1,8 +1,8 @@
-librarydir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/library/physics
+librarydir = $(pkgdatadir)-@CODYN_API_VERSION@/library/physics
 library_DATA = \
-	physics.cpg \
-	lagrange.cpg \
-	slip.cpg
+	physics.cdn \
+	lagrange.cdn \
+	slip.cdn
 
 EXTRA_DIST = \
 	$(library_DATA)

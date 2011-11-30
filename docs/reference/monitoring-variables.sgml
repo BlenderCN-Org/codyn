@@ -7,7 +7,7 @@
 <refnamediv>
 <refname>Monitoring Variables</refname>
 <refpurpose>
-How to monitor variables using <link linkend="cpg-network-CpgMonitor">CpgMonitor</link>
+How to monitor variables using <link linkend="codyn-CdnMonitor">CdnMonitor</link>
 </refpurpose>
 </refnamediv>
 
@@ -23,16 +23,16 @@ is included in the library that makes it easier to manage and retrieve
 property values values while running the network.
 </para>
 <para>
-Using a <link linkend="cpg-network-CpgMonitor">CpgMonitor</link> is quite
+Using a <link linkend="codyn-CdnMonitor">CdnMonitor</link> is quite
 straightforward. You first construct a new 
-<link linkend="cpg-network-CpgMonitor">CpgMonitor</link> using
-<link linkend="cpg-monitor-new">cpg_monitor_new</link>, providing the network,
+<link linkend="codyn-CdnMonitor">CdnMonitor</link> using
+<link linkend="cdn-monitor-new">cdn_monitor_new</link>, providing the network,
 object and property to monitor during simulation. Once constructed, the 
 monitor will automatically collect property values at each simulation step.
 To retrieve the values of the property at any time, you can use
-<link linkend="cpg-monitor-get-data">cpg_monitor_get_data</link>. If you want
+<link linkend="cdn-monitor-get-data">cdn_monitor_get_data</link>. If you want
 to resample the data at specific times, you can use the convenience function
-<link linkend="cpg-monitor-get-data-resampled">cpg_monitor_get_data_resampled</link>.
+<link linkend="cdn-monitor-get-data-resampled">cdn_monitor_get_data_resampled</link>.
 </para>
 </refsect1>
 </refentry>

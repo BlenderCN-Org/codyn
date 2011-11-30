@@ -1,0 +1,715 @@
+/*
+ * cdn-integrator-state.c
+ * This file is part of codyn
+ *
+ * Copyright (C) 2011 - Jesse van den Kieboom
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Boston, MA  02110-1301  USA
+ */
+
+#include "cdn-integrator-state.h"
+#include "cdn-edge.h"
+#include "cdn-input.h"
+#include "instructions/cdn-instruction-custom-operator.h"
+#include "instructions/cdn-instruction-rand.h"
+
+#define CDN_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR_STATE, CdnIntegratorStatePrivate))
+
+/**
+ * SECTION:cdn-integrator-state
+ * @short_description: The integrator state
+ *
+ * The integrator state stores information on which properties need to be
+ * integrated and how, based on a root object. It automatically tracks changes
+ * in the root object and recalculates the properties that need to be
+ * integrated.
+ *
+ */
+
+struct _CdnIntegratorStatePrivate
+{
+	CdnObject *object;
+
+	GSList *integrated_properties;
+	GSList *direct_properties;
+	GSList *all_properties;
+	GSList *rand_instructions;
+	GSList *rand_expressions;
+
+	GSList *integrated_edge_actions;
+	GSList *direct_edge_actions;
+	GSList *operators;
+	GSList *functions;
+
+	GSList *inputs;
+	GSList *expressions;
+	GSList *events;
+};
+
+G_DEFINE_TYPE (CdnIntegratorState, cdn_integrator_state, G_TYPE_OBJECT)
+
+enum
+{
+	UPDATED,
+	NUM_SIGNALS
+};
+
+enum
+{
+	PROP_0,
+	PROP_OBJECT
+};
+
+static guint signals[NUM_SIGNALS] = {0,};
+
+static void
+cdn_integrator_state_finalize (GObject *object)
+{
+	G_OBJECT_CLASS (cdn_integrator_state_parent_class)->finalize (object);
+}
+
+static void
+clear_list (GSList **lst)
+{
+	g_slist_free (*lst);
+	*lst = NULL;
+}
+
+static void
+clear_lists (CdnIntegratorState *state)
+{
+	clear_list (&(state->priv->integrated_properties));
+	clear_list (&(state->priv->direct_properties));
+	clear_list (&(state->priv->all_properties));
+
+	clear_list (&(state->priv->integrated_edge_actions));
+	clear_list (&(state->priv->direct_edge_actions));
+
+	clear_list (&(state->priv->inputs));
+	clear_list (&(state->priv->expressions));
+	clear_list (&(state->priv->operators));
+
+	clear_list (&(state->priv->rand_expressions));
+	clear_list (&(state->priv->rand_instructions));
+	clear_list (&(state->priv->functions));
+	clear_list (&(state->priv->events));
+}
+
+static void
+on_object_compiled (CdnIntegratorState *state)
+{
+	cdn_integrator_state_update (state);
+}
+
+static void
+set_object (CdnIntegratorState *state,
+           CdnObject           *object)
+{
+	if (state->priv->object)
+	{
+		g_signal_handlers_disconnect_by_func (state->priv->object,
+		                                      on_object_compiled,
+		                                      state);
+
+		g_object_unref (state->priv->object);
+
+		state->priv->object = NULL;
+	}
+
+	if (object)
+	{
+		state->priv->object = g_object_ref (object);
+
+		if (cdn_object_is_compiled (CDN_OBJECT (object)))
+		{
+			cdn_integrator_state_update (state);
+		}
+
+		g_signal_connect_swapped (state->priv->object,
+		                          "compiled",
+		                          G_CALLBACK (on_object_compiled),
+		                          state);
+	}
+}
+
+static void
+cdn_integrator_state_dispose (GObject *object)
+{
+	CdnIntegratorState *state = CDN_INTEGRATOR_STATE (object);
+
+	set_object (state, NULL);
+
+	clear_lists (state);
+
+	G_OBJECT_CLASS (cdn_integrator_state_parent_class)->dispose (object);
+}
+
+static void
+cdn_integrator_state_set_property (GObject      *object,
+                                   guint         prop_id,
+                                   const GValue *value,
+                                   GParamSpec   *pspec)
+{
+	CdnIntegratorState *self = CDN_INTEGRATOR_STATE (object);
+
+	switch (prop_id)
+	{
+		case PROP_OBJECT:
+			set_object (self, g_value_get_object (value));
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cdn_integrator_state_get_property (GObject    *object,
+                                   guint       prop_id,
+                                   GValue     *value,
+                                   GParamSpec *pspec)
+{
+	CdnIntegratorState *self = CDN_INTEGRATOR_STATE (object);
+
+	switch (prop_id)
+	{
+		case PROP_OBJECT:
+			g_value_set_object (value, self->priv->object);
+		break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cdn_integrator_state_class_init (CdnIntegratorStateClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->finalize = cdn_integrator_state_finalize;
+	object_class->dispose = cdn_integrator_state_dispose;
+
+	object_class->get_property = cdn_integrator_state_get_property;
+	object_class->set_property = cdn_integrator_state_set_property;
+
+	g_type_class_add_private (object_class, sizeof (CdnIntegratorStatePrivate));
+
+	/**
+	 * CdnIntegratorState::updated:
+	 *
+	 * Emitted when an integrator step has been performed
+	 *
+	 **/
+	signals[UPDATED] =
+		g_signal_new ("updated",
+		              G_OBJECT_CLASS_TYPE (object_class),
+		              G_SIGNAL_RUN_LAST,
+		              0,
+		              NULL, NULL,
+		              g_cclosure_marshal_VOID__VOID,
+		              G_TYPE_NONE,
+		              0);
+
+	/**
+	 * CdnIntegratorState:object:
+	 *
+	 * The object which is integrated
+	 *
+	 **/
+	g_object_class_install_property (object_class,
+	                                 PROP_OBJECT,
+	                                 g_param_spec_object ("object",
+	                                                      "Object",
+	                                                      "Object",
+	                                                      CDN_TYPE_OBJECT,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+}
+
+static void
+cdn_integrator_state_init (CdnIntegratorState *self)
+{
+	self->priv = CDN_INTEGRATOR_STATE_GET_PRIVATE (self);
+}
+
+/**
+ * cdn_integrator_state_new:
+ * @object: A #CdnObject
+ *
+ * Create a new integrator state for the given object.
+ *
+ * Returns: A #CdnIntegratorState
+ *
+ **/
+CdnIntegratorState *
+cdn_integrator_state_new (CdnObject *object)
+{
+	g_return_val_if_fail (CDN_IS_OBJECT (object), NULL);
+
+	return g_object_new (CDN_TYPE_INTEGRATOR_STATE,
+	                     "object", object,
+	                     NULL);
+}
+
+static GSList *
+prepend_gslist_unique (GSList   *list,
+                       gpointer  data)
+{
+	if (!g_slist_find (list, data))
+	{
+		return g_slist_prepend (list, data);
+	}
+	else
+	{
+		return list;
+	}
+}
+
+static void
+collect_link (CdnIntegratorState *state,
+              CdnEdge            *link)
+{
+	GSList const *actions = cdn_edge_get_actions (link);
+
+	while (actions)
+	{
+		CdnEdgeAction *action = actions->data;
+
+		CdnVariable *target = cdn_edge_action_get_target_variable (action);
+
+		if (cdn_variable_get_integrated (target))
+		{
+			state->priv->integrated_edge_actions =
+				prepend_gslist_unique (state->priv->integrated_edge_actions,
+				                       action);
+		}
+		else
+		{
+			state->priv->direct_edge_actions =
+				prepend_gslist_unique (state->priv->direct_edge_actions,
+				                       action);
+		}
+
+		actions = g_slist_next (actions);
+	}
+}
+
+static void
+collect_actors (CdnIntegratorState *state,
+                CdnNode           *object)
+{
+	GSList const *actors;
+
+	actors = cdn_node_get_actors (object);
+
+	while (actors)
+	{
+		CdnVariable *property = actors->data;
+
+		if (cdn_variable_get_integrated (property))
+		{
+			state->priv->integrated_properties =
+				prepend_gslist_unique (state->priv->integrated_properties,
+				                       property);
+		}
+		else
+		{
+			state->priv->direct_properties =
+				prepend_gslist_unique (state->priv->direct_properties,
+				                       property);
+		}
+
+		actors = g_slist_next (actors);
+	}
+}
+
+static void
+collect_properties (CdnIntegratorState *state,
+                    CdnObject          *object)
+{
+	GSList const *props;
+
+	for (props = cdn_object_get_variables (object); props; props = g_slist_next (props))
+	{
+		state->priv->all_properties =
+			prepend_gslist_unique (state->priv->all_properties,
+			                       props->data);
+	}
+}
+
+static void
+collect_events (CdnIntegratorState *state,
+                CdnObject          *object)
+{
+	GSList const *events;
+
+	for (events = cdn_object_get_events (object); events; events = g_slist_next (events))
+	{
+		state->priv->events =
+			g_slist_prepend (state->priv->events,
+			                 events->data);
+	}
+}
+
+static void
+collect (CdnIntegratorState *state,
+         CdnObject          *object)
+{
+	collect_properties (state, object);
+	collect_events (state, object);
+
+	if (CDN_IS_EDGE (object))
+	{
+		collect_link (state, CDN_EDGE (object));
+		return;
+	}
+
+	if (CDN_IS_NODE (object))
+	{
+		collect_actors (state, CDN_NODE (object));
+
+		if (cdn_node_has_self_edge (CDN_NODE (object)))
+		{
+			collect_link (state, cdn_node_get_self_edge (CDN_NODE (object)));
+		}
+	}
+
+	if (CDN_IS_INPUT (object))
+	{
+		state->priv->inputs =
+			prepend_gslist_unique (state->priv->inputs,
+			                       object);
+	}
+
+	if (CDN_IS_FUNCTION (object))
+	{
+		state->priv->functions =
+			g_slist_prepend (state->priv->functions,
+			                 object);
+	}
+
+	if (CDN_IS_NODE (object))
+	{
+		GSList const *children = cdn_node_get_children (CDN_NODE (object));
+
+		while (children)
+		{
+			collect (state, children->data);
+			children = g_slist_next (children);
+		}
+	}
+}
+
+static gboolean
+action_depends_on (CdnEdgeAction *action,
+                   CdnVariable   *prop)
+{
+	CdnExpression *a;
+	CdnExpression *p;
+
+	a = cdn_edge_action_get_equation (action);
+	p = cdn_variable_get_expression (prop);
+
+	return cdn_expression_depends_on (a, p);
+}
+
+static gint
+edge_action_compare (CdnEdgeAction *a,
+                     CdnEdgeAction *b)
+{
+	/* if a depends on b => 1
+	   if b depends on a => -1
+	   else 0 */
+	if (action_depends_on (a, cdn_edge_action_get_target_variable (b)))
+	{
+		return 1;
+	}
+	else if (action_depends_on (b, cdn_edge_action_get_target_variable (a)))
+	{
+		return -1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+static void
+sort_edge_actions (CdnIntegratorState *state)
+{
+	state->priv->direct_edge_actions =
+		g_slist_sort (state->priv->direct_edge_actions,
+		              (GCompareFunc)edge_action_compare);
+}
+
+/*static void
+collect_operators (CdnInstructionCustomOperator *instruction,
+                   CdnIntegratorState           *state)
+{
+	state->priv->operators =
+		g_slist_prepend (state->priv->operators,
+		                 cdn_instruction_custom_operator_get_operator (instruction));
+}*/
+
+static void
+collect_expressions (CdnExpression      *expression,
+                     CdnIntegratorState *state)
+{
+	GSList const *instr;
+	gboolean hadrand = FALSE;
+
+	state->priv->expressions =
+		g_slist_prepend (state->priv->expressions, expression);
+
+	instr = cdn_expression_get_rand_instructions (expression);
+
+	while (instr)
+	{
+		state->priv->rand_instructions =
+			g_slist_prepend (state->priv->rand_instructions,
+			                 instr->data);
+
+		if (!hadrand)
+		{
+			state->priv->rand_expressions =
+				g_slist_prepend (state->priv->rand_expressions,
+				                 expression);
+		}
+
+		hadrand = TRUE;
+		instr = g_slist_next (instr);
+	}
+
+	/* TODO g_slist_foreach ((GSList *)cdn_expression_get_operators (expression),
+	                 (GFunc)collect_operators,
+	                 state);*/
+}
+
+/**
+ * cdn_integrator_state_update:
+ * @state: A #CdnIntegratorState
+ *
+ * Update the integrator state. This recursively goes through all the objects
+ * contained in the associated #CdnIntegratorState:object and collects the
+ * links and properties that need to be integrated.
+ *
+ **/
+void
+cdn_integrator_state_update (CdnIntegratorState *state)
+{
+	g_return_if_fail (CDN_IS_INTEGRATOR_STATE (state));
+
+	clear_lists (state);
+
+	collect (state, CDN_OBJECT (state->priv->object));
+
+	state->priv->all_properties =
+		g_slist_reverse (state->priv->all_properties);
+
+	state->priv->integrated_properties =
+		g_slist_reverse (state->priv->integrated_properties);
+
+	state->priv->direct_properties =
+		g_slist_reverse (state->priv->direct_properties);
+
+	state->priv->inputs =
+		g_slist_reverse (state->priv->inputs);
+
+	state->priv->events =
+		g_slist_reverse (state->priv->events);
+
+	/* order the direct link actions based on their dependencies */
+	sort_edge_actions (state);
+
+	cdn_object_foreach_expression (CDN_OBJECT (state->priv->object),
+	                               (CdnForeachExpressionFunc)collect_expressions,
+	                               state);
+
+	state->priv->expressions =
+		g_slist_reverse (state->priv->expressions);
+
+	state->priv->rand_expressions =
+		g_slist_reverse (state->priv->rand_expressions);
+
+	state->priv->rand_instructions =
+		g_slist_reverse (state->priv->rand_instructions);
+
+	g_signal_emit (state, signals[UPDATED], 0);
+}
+
+/**
+ * cdn_integrator_state_integrated_properties:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the integrated properties which are acted upon by links.
+ *
+ * Returns: (element-type CdnVariable) (transfer none): A #GSList of #CdnVariable
+ *
+ **/
+const GSList *
+cdn_integrator_state_integrated_properties (CdnIntegratorState *state)
+{
+	/* Omit check for speed up */
+	return state->priv->integrated_properties;
+}
+
+/**
+ * cdn_integrator_state_direct_properties:
+ * @state: A #CdnIntegratorState
+ *
+ * Get non-integrated properties which are acted upon by links.
+ *
+ * Returns: (element-type CdnVariable) (transfer none): A #GSList of #CdnVariable
+ *
+ **/
+const GSList *
+cdn_integrator_state_direct_properties (CdnIntegratorState *state)
+{
+	/* Omit check for speed up */
+	return state->priv->direct_properties;
+}
+
+/**
+ * cdn_integrator_state_integrated_edge_actions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the link actions that act on integrated properties.
+ *
+ * Returns: (element-type CdnEdgeAction) (transfer none): A #GSList of #CdnEdgeAction
+ *
+ **/
+const GSList *
+cdn_integrator_state_integrated_edge_actions (CdnIntegratorState *state)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->integrated_edge_actions;
+}
+
+/**
+ * cdn_integrator_state_direct_edge_actions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the link actions that act on non-integrated properties.
+ *
+ * Returns: (element-type CdnEdgeAction) (transfer none): A #GSList of #CdnEdgeAction
+ *
+ **/
+const GSList *
+cdn_integrator_state_direct_edge_actions (CdnIntegratorState *state)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->direct_edge_actions;
+}
+
+/**
+ * cdn_integrator_state_all_properties:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the link actions that act on non-integrated properties.
+ *
+ * Returns: (element-type CdnVariable) (transfer none): A #GSList of #CdnVariable
+ *
+ **/
+const GSList *
+cdn_integrator_state_all_properties (CdnIntegratorState *state)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->all_properties;
+}
+
+/**
+ * cdn_integrator_state_inputs:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the input states.
+ *
+ * Returns: (element-type CdnInput) (transfer none): A #GSList of #CdnInput
+ *
+ **/
+const GSList *
+cdn_integrator_state_inputs (CdnIntegratorState *state)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
+
+	return state->priv->inputs;
+}
+
+/**
+ * cdn_integrator_state_expressions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the expressions in the network.
+ *
+ * Returns: (element-type CdnExpression) (transfer none): A #GSList of #CdnExpression
+ *
+ **/
+const GSList *
+cdn_integrator_state_expressions (CdnIntegratorState *state)
+{
+	return state->priv->expressions;
+}
+
+/**
+ * cdn_integrator_state_get_object:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the object of the integrator state.
+ *
+ * Returns: (transfer none): A #CdnObject
+ *
+ **/
+CdnObject *
+cdn_integrator_state_get_object (CdnIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->object;
+}
+
+const GSList *
+cdn_integrator_state_operators (CdnIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->operators;
+}
+
+GSList const *
+cdn_integrator_state_rand_instructions (CdnIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->rand_instructions;
+}
+
+GSList const *
+cdn_integrator_state_rand_expressions (CdnIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->rand_expressions;
+}
+
+GSList const *
+cdn_integrator_state_functions (CdnIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->functions;
+}
+
+GSList const *
+cdn_integrator_state_events (CdnIntegratorState *state)
+{
+	/* Omit check to speed up */
+	return state->priv->events;
+}
+

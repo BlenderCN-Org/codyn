@@ -1,4 +1,4 @@
-AC_INIT(cpg-network, 2.5)
+AC_INIT(codyn, 2.5)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([-Wno-portability])
@@ -88,7 +88,7 @@ dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
 
-PKG_CHECK_MODULES(CPG_NETWORK, [
+PKG_CHECK_MODULES(CODYN, [
 	glib-2.0
 	gobject-2.0
 	libxml-2.0
@@ -96,44 +96,44 @@ PKG_CHECK_MODULES(CPG_NETWORK, [
 	gio-unix-2.0
 ])
 
-CPG_NETWORK_LIBS="${CPG_NETWORK_LIBS}"
+CODYN_LIBS="${CODYN_LIBS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
-	CPG_NETWORK_CFLAGS="$CPG_NETWORK_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"
+	CODYN_CFLAGS="$CODYN_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"
 fi
 
-AC_SUBST(CPG_NETWORK_LIBS)
-AC_SUBST(CPG_NETWORK_CFLAGS)
+AC_SUBST(CODYN_LIBS)
+AC_SUBST(CODYN_CFLAGS)
 
-CPG_NETWORK_API_VERSION=2.0
-AC_SUBST(CPG_NETWORK_API_VERSION)
-AC_DEFINE_UNQUOTED([API_VERSION], ["$CPG_NETWORK_API_VERSION"], [API version])
+CODYN_API_VERSION=2.0
+AC_SUBST(CODYN_API_VERSION)
+AC_DEFINE_UNQUOTED([API_VERSION], ["$CODYN_API_VERSION"], [API version])
 
 AC_CHECK_LIB([termcap],
              [tgetent],
-              [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -ltermcap"
-               CPG_CONTEXT_LIBS="$CPG_CONTEXT_LIBS -ltermcap"
-               CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -ltermcap"],
+              [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -ltermcap"
+               CDN_CONTEXT_LIBS="$CDN_CONTEXT_LIBS -ltermcap"
+               CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltermcap"],
              [AC_MSG_ERROR(could not find termcap library)])
 
 AC_CHECK_LIB([readline],
              [rl_redisplay],
-             [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -lreadline"],
+             [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -lreadline"],
              [AC_MSG_ERROR(Could not find readline library)])
 
 AC_CHECK_LIB([tar],
              [tar_open],
-              [CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -ltar"],
+              [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltar"],
              [AC_MSG_ERROR(could not find tar library)])
 
 AC_CHECK_LIB([bz2],
              [BZ2_bzCompressInit],
-              [CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -lbz2"],
+              [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -lbz2"],
              [AC_MSG_ERROR(could not find bz2 library)])
 
-AC_SUBST(CPG_PARSER_LIBS)
-AC_SUBST(CPG_CONTEXT_LIBS)
-AC_SUBST(CPG_ARCHIVE_LIBS)
+AC_SUBST(CDN_PARSER_LIBS)
+AC_SUBST(CDN_CONTEXT_LIBS)
+AC_SUBST(CDN_ARCHIVE_LIBS)
 
 
 dnl ================================================================
@@ -164,16 +164,16 @@ AM_CONDITIONAL(ENABLE_GEDIT3, test "x$GEDIT_MAJOR_VERSION" = "x3")
 
 AC_CONFIG_FILES([
 Makefile
-cpg-network.pc
-cpg-network-webots.pc
-cpg-network/Makefile
-cpg-network/instructions/Makefile
-cpg-network/operators/Makefile
-cpg-network/integrators/Makefile
-cpg-network/tree-algorithms/Makefile
-cpg-network-webots/Makefile
+codyn.pc
+codyn-webots.pc
+codyn/Makefile
+codyn/instructions/Makefile
+codyn/operators/Makefile
+codyn/integrators/Makefile
+codyn/tree-algorithms/Makefile
+codyn-webots/Makefile
 data/Makefile
-data/cpg.xml
+data/cdn.xml
 data/library/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
@@ -187,17 +187,17 @@ tests/Makefile
 win32/Makefile
 win32/make-zip
 tools/Makefile
-tools/cpg-monitor/Makefile
-tools/cpg-parser/Makefile
-tools/cpg-render/Makefile
-tools/cpg-context/Makefile
-tools/cpg-archive/Makefile
-tools/cpg-compile/Makefile
+tools/cdn-monitor/Makefile
+tools/cdn-parser/Makefile
+tools/cdn-render/Makefile
+tools/cdn-context/Makefile
+tools/cdn-archive/Makefile
+tools/cdn-compile/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
-tools/plugins/gedit/cpgcontext/Makefile
-tools/plugins/gedit/cpgcontext.plugin
-tools/plugins/gedit/cpgcontext.gedit-plugin
+tools/plugins/gedit/cdncontext/Makefile
+tools/plugins/gedit/cdncontext.plugin
+tools/plugins/gedit/cdncontext.gedit-plugin
 ])
 
 AC_OUTPUT

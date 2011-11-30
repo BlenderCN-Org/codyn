@@ -1,0 +1,98 @@
+# Some helper defines, assuming 'coordinates' exists as list of coordinates
+defines
+{
+    q = "{@coordinates}"
+
+    # Define utilities for expansion
+    dq  = "{@q|@0'}"
+    ddq = "{@dq|@0'}"
+    qdq = "{@q,@dq}"
+    qdqddq = "{@q,@dq,@ddq}"
+}
+
+# This will open any defined node which has the 'body' template from the
+# physics
+node has-template("physics" . "body")
+{
+    # Here we are going the extend the node that defines a mass (in terms
+    # of the generalized coordinates) with the lagrangian for this mass.
+
+    ## Cartesian velocities (used for kinetics)
+    "D{X,Y}"(@qdq) ?= "diff[@1](@qdq[,])"
+
+    ## Kinetic energy
+    T(@qdq) ?= "0.5 * m * sqsum(DX(@qdq[,]), DY(@qdq[,]))"
+
+    ## Potential energy
+    [if(self | has-template("physics" . "spring"))]
+    {
+        K(@qdq) ?= "k"
+        V(@qdq) ?= "-m * g * Y(@q[,]) + 0.5 * K(@qdq[,]) * SpringDeformation(@qdq[,])^2"
+    }
+
+    [if(self | is-empty(has-template("physics" . "spring")))]
+    {
+        V(@qdq) ?= "-m * g * Y(@q[,])"
+    }
+
+    kinetic = "T(@qdq[,])"
+    potential = "V(@qdq[,])"
+    energy = "kinetic + potential"
+
+    position_x = "X(@q[,])"
+    position_y = "Y(@q[,])"
+
+    velocity_x = "DX(@qdq[,])"
+    velocity_y = "DY(@qdq[,])"
+}
+
+defines
+{
+    # Define 'bodies' as the list of all nodes that have the 'body' template
+    bodies = has-template("physics" . "body")
+}
+
+functions
+{
+    ## Combined energy @1
+    "{T,V}"(@qdq) = "{@bodies|@0.@@@0(@qdq[,])||@0 + @1}"
+
+    ## Partial of kinetic energy towards @1'
+    "DTdd@q"(@qdq) = "pdiff[T, @1'](@qdq[,])"
+
+    ## Partial of @1 towards @2
+    "D{T,V}d@q"(@qdq) = "pdiff[@1, @2](@qdq[,])"
+
+    ## Total differential of T towards time
+    "DdTdd@[q]dt"(@qdqddq) = "diff[DTdd@1](@qdqddq[,])"
+
+    ## Euler lagrange equation for @1
+    "EL@q"(@qdqddq) = "DdTdd@1dt(@qdqddq[,]) - DTd@1(@qdq[,]) + DVd@1(@qdq[,])"
+
+    ## Accelerations of system
+    Acceleration(@qdq, idx) = "linsolve[{@q|EL@0||@0\,@1};@ddq[,]][idx](@qdq[,])"
+    "Acceleration@q"(@qdq) = "Acceleration(@qdq[,], @0[!])"
+}
+
+## Total kinetic energy
+kinetic = "T(@qdq[,])"
+
+## Total potential energy
+potential = "V(@qdq[,])"
+
+## Total energy
+energy = "kinetic + potential"
+
+@q' = "d@0"
+@q'' = "Acceleration@1(@qdq[,])"
+
+## External generalized forces
+"f@q" ?= 0
+
+layout
+{
+    functions | count at 0, $(@0[!] * 3)
+    nodes | count at 8, $(@0[!] * 3)
+}
+
+# vi:ex:ts=4:et

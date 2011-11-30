@@ -7,7 +7,7 @@
 <refnamediv>
 <refname>XML specification</refname>
 <refpurpose>
-Specification of the XML format used to describe a cpg network
+Specification of the XML format used to describe a cdn network
 </refpurpose>
 </refnamediv>
 
@@ -17,13 +17,13 @@ Specification of the XML format used to describe a cpg network
 A basic, empty XML file looks like this:
 <informalexample>
 <programlisting language="xml">
-<![CDATA[<cpg>
+<![CDATA[<cdn>
   <network>
   </network>
-</cpg>]]>
+</cdn>]]>
 </programlisting>
 </informalexample>
-Thus, the root element is <code>cpg</code> which contains the network root
+Thus, the root element is <code>cdn</code> which contains the network root
 element <code>network</code>. The network itself consists of four distinct
 sections:
 
@@ -46,13 +46,13 @@ of defining a global property <emphasis>x</emphasis>.
 
 <example>
 <programlisting language="xml" linenumbering="numbered">
-<![CDATA[<cpg>
+<![CDATA[<cdn>
   <network>
     <globals>
       <property name="x">2 * PI</property>
     </globals>
   </network>
-</cpg>]]>
+</cdn>]]>
 </programlisting>
 </example>
 
@@ -79,7 +79,7 @@ and integration link:
 <example>
 <title>Demonstration of templates</title>
 <programlisting language="xml">
-<![CDATA[<cpg>
+<![CDATA[<cdn>
   <network>
     <templates>
       <state id="oscillator">
@@ -104,7 +104,7 @@ and integration link:
     <link id="integrate1" ref="integrate" from="osc1" to="osc1"/>
     <link id="integrate2" ref="integrate" from="osc2" to="osc2"/>
   </network>
-</cpg>]]>
+</cdn>]]>
 </programlisting>
 </example>
 </para>
@@ -223,7 +223,7 @@ precisely described with the following DTD:
 </para>
 
 <programlisting>
-<![CDATA[<!ELEMENT cpg (network)>
+<![CDATA[<!ELEMENT cdn (network)>
 <!ELEMENT network (globals?, templates?, functions?, state*, link*, relay*)>
 <!ELEMENT globals (property*)>
 <!ELEMENT templates (state*, link*, relay*)>

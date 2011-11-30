@@ -1,7 +1,7 @@
-librarydir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/library/layout
+librarydir = $(pkgdatadir)-@CODYN_API_VERSION@/library/layout
 library_DATA = \
-	circular.cpg \
-	line.cpg
+	circular.cdn \
+	line.cdn
 
 EXTRA_DIST = \
 	$(library_DATA)

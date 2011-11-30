@@ -1,10 +1,10 @@
-librarydir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/library/oscillators
+librarydir = $(pkgdatadir)-@CODYN_API_VERSION@/library/oscillators
 library_DATA = \
-	hopf.cpg \
-	phase.cpg \
-	matsuoka.cpg \
-	awo.cpg \
-	all.cpg
+	hopf.cdn \
+	phase.cdn \
+	matsuoka.cdn \
+	awo.cdn \
+	all.cdn
 
 EXTRA_DIST = \
 	$(library_DATA)

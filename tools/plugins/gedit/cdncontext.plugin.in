@@ -1,0 +1,10 @@
+[Plugin]
+Loader=python
+Module=cdncontext
+IAge=@GEDIT_MAJOR_VERSION@
+Name=Cdn Context
+Description=Show cdn context while editing cdn network files
+Authors=Jesse van den Kieboom <jessevdk@gnome.org>
+Copyright=Copyright © 2011 Jesse van den Kieboom
+Website=http://www.gedit.org
+Version=@VERSION@

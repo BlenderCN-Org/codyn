@@ -1,31 +1,28 @@
 SUBDIRS = library
 
-dtddir = $(pkgdatadir)-@CPG_NETWORK_API_VERSION@/dtd
-dtd_DATA = cpg-network.dtd
-
 mimedir = $(datadir)/mime/packages
-mime_DATA = cpg.xml
+mime_DATA = cdn.xml
 
 lang3dir = $(datadir)/gtksourceview-3.0/language-specs
-lang3_DATA = cpg.lang
+lang3_DATA = cdn.lang
 
 lang2dir = $(datadir)/gtksourceview-2.0/language-specs
-lang2_DATA = cpg.lang
+lang2_DATA = cdn.lang
 
-latexdir = $(datadir)/texmf/tex/latex/cpg
-latex_DATA = cpg.sty
+latexdir = $(datadir)/texmf/tex/latex/cdn
+latex_DATA = cdn.sty
 
 emacsdir = $(datadir)/emacs/site-lisp
-emacs_DATA = cpg-mode.el
+emacs_DATA = cdn-mode.el
 
 EXTRA_DIST = \
 	$(dtd_DATA) \
-	cpg.xml.in \
-	cpg.lang \
-	cpg.sty \
-	cpg-mode.el
+	cdn.xml.in \
+	cdn.lang \
+	cdn.sty \
+	cdn-mode.el
 
-CLEANFILES = cpg.xml
+CLEANFILES = cdn.xml
 
 update_mime_database = update-mime-database $(datadir)/mime
 

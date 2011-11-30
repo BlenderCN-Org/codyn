@@ -1,24 +1,24 @@
-#include <cpg-network/cpg-network.h>
-#include <cpg-network/cpg-expression.h>
-#include <cpg-network/cpg-object.h>
+#include <codyn/codyn.h>
+#include <codyn/cdn-expression.h>
+#include <codyn/cdn-object.h>
 
 #include "utils.h"
 
 static void
 test_import ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 
-	network = test_load_network_from_path ("test_import.cpg",
-	                                       CPG_PATH_TEMPLATE_OBJECT, "imported.template1",
-	                                       CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.x",
-	                                       CPG_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
-	                                       CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
-	                                       CPG_PATH_OBJECT, "imported",
-	                                       CPG_PATH_OBJECT, "imported.state1",
-	                                       CPG_PATH_PROPERTY, "imported.state1.x",
-	                                       CPG_PATH_OBJECT, "imported.state1.nested1",
-	                                       CPG_PATH_PROPERTY, "imported.state1.nested1.y",
+	network = test_load_network_from_path ("test_import.cdn",
+	                                       CDN_PATH_TEMPLATE_OBJECT, "imported.template1",
+	                                       CDN_PATH_TEMPLATE_PROPERTY, "imported.template1.x",
+	                                       CDN_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
+	                                       CDN_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
+	                                       CDN_PATH_OBJECT, "imported",
+	                                       CDN_PATH_OBJECT, "imported.state1",
+	                                       CDN_PATH_PROPERTY, "imported.state1.x",
+	                                       CDN_PATH_OBJECT, "imported.state1.nested1",
+	                                       CDN_PATH_PROPERTY, "imported.state1.nested1.y",
 	                                       NULL);
 
 	g_object_unref (network);
@@ -27,13 +27,13 @@ test_import ()
 static void
 test_import_templates ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 
-	network = test_load_network_from_path ("test_import_templates.cpg",
-	                                       CPG_PATH_TEMPLATE_OBJECT, "imported.template1",
-	                                       CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.x",
-	                                       CPG_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
-	                                       CPG_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
+	network = test_load_network_from_path ("test_import_templates.cdn",
+	                                       CDN_PATH_TEMPLATE_OBJECT, "imported.template1",
+	                                       CDN_PATH_TEMPLATE_PROPERTY, "imported.template1.x",
+	                                       CDN_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
+	                                       CDN_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
 	                                       NULL);
 
 	g_object_unref (network);

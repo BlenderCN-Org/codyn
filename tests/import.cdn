@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<cdn>
+  <network>
+    <templates>
+      <node id="template1">
+        <property name="x">0</property>
+
+        <node id="nested1">
+          <property name="y">0</property>
+        </node>
+      </node>
+    </templates>
+
+    <node id="state1" ref="template1"/>
+  </network>
+</cdn>
+<!-- vi:ex:ts=2:et -->

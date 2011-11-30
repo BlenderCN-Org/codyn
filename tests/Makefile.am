@@ -4,10 +4,10 @@ INCLUDES =				\
 	-I$(top_builddir)/tests		\
 	-I$(top_srcdir)/tests		\
 	-I$(top_srcdir)				\
-	$(CPG_NETWORK_CFLAGS)
+	$(CODYN_CFLAGS)
 
 TEST_PROGS = expression network direct import template object group property operator integrator interface
-progs_ldadd = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la
+progs_ldadd = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la
 
 noinst_PROGRAMS = $(TEST_PROGS)
 
@@ -47,11 +47,11 @@ interface_LDADD = $(progs_ldadd)
 TESTS = $(TEST_PROGS)
 
 EXTRA_DIST = \
-	test_import.cpg \
-	test_import_templates.cpg \
-	import.cpg \
-	test_group_integrate_multiple_euler.cpg \
-	test_interface_templates.cpg \
-	test_interface_templates_override_proxy.cpg
+	test_import.cdn \
+	test_import_templates.cdn \
+	import.cdn \
+	test_group_integrate_multiple_euler.cdn \
+	test_interface_templates.cdn \
+	test_interface_templates_override_proxy.cdn
 
 -include $(top_srcdir)/git.mk

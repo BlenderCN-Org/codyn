@@ -1,0 +1,29 @@
+network
+{
+    ## Gravity constant
+    g ?= "9.81"
+}
+
+templates
+{
+    node "physics"
+    {
+        ## The body template represents a single mass in the system.
+        ## It needs to implement the functions X and Y (as functions of
+        ## the generalized coordinates) representing the mass
+        ## position
+        node "body"
+        {
+            ## Body mass
+            m = 1
+        }
+
+        node "spring"
+        {
+            ## Spring constant
+            k = 1
+        }
+    }
+}
+
+# vi:ex:ts=4:et

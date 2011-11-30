@@ -1,0 +1,51 @@
+templates
+{
+    node "oscillator"
+    {
+        [proxy]
+        node "node"
+        {
+            ## Desired amplitude
+            R = 1
+
+            ## Phase node variable
+            phase = "0" | integrated
+
+            ## Amplitude node variable
+            r = 0 | integrated
+
+            ## Amplitude squared
+            r2 = "r * r"
+
+            ## Angular frequency
+            w = "2 * pi"
+
+            ## Output variable (r * sin(phase))
+            output = "r * sin(p)"
+        }
+
+        edge "integrate" on "node"
+        {
+            ## Gain on amplitude convergence
+            g_r = 1
+
+            r <= "g_r * (R * R - r2) * r"
+            phase <= "w"
+        }
+    }
+
+    edge "coupling"
+    {
+        ## Desired phase bias between oscillators
+        phase_bias = 0
+
+        ## Gain on phase coupling convergence
+        weight = 1
+
+        phase <= "weight * sin(from.phase - to.phase - phase_bias)"
+    }
+
+    include "layout/line.cdn"
+}
+
+# vi:ex:ts=4:et

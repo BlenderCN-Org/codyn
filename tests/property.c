@@ -1,74 +1,76 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <cpg-network/cpg-network.h>
-#include <cpg-network/cpg-expression.h>
-#include <cpg-network/cpg-object.h>
+#include <codyn/codyn.h>
+#include <codyn/cdn-expression.h>
+#include <codyn/cdn-object.h>
 #include "utils.h"
 
 static void
 test_once ()
 {
-	CpgProperty *prop;
+	CdnVariable *prop;
 
-	prop = cpg_property_new ("x",
-	                         cpg_expression_new ("rand()"),
-	                         CPG_PROPERTY_FLAG_ONCE);
+	prop = cdn_variable_new ("x",
+	                         cdn_expression_new ("rand()"),
+	                         CDN_VARIABLE_FLAG_ONCE);
 
-	cpg_expression_compile (cpg_property_get_expression (prop), NULL, NULL);
+	cdn_expression_compile (cdn_variable_get_expression (prop), NULL, NULL);
 
-	gdouble v1 = cpg_property_get_value (prop);
-	gdouble v2 = cpg_property_get_value (prop);
+	gdouble v1 = cdn_variable_get_value (prop);
+	gdouble v2 = cdn_variable_get_value (prop);
 
-	cpg_assert_tol (v1, v2);
+	cdn_assert_tol (v1, v2);
 }
 
 static void
 test_once_reset_cache ()
 {
-	CpgProperty *prop;
-	CpgExpression *expr;
+	CdnVariable *prop;
+	CdnExpression *expr;
 
-	prop = cpg_property_new ("x",
-	                         cpg_expression_new ("rand()"),
-	                         CPG_PROPERTY_FLAG_ONCE);
+	prop = cdn_variable_new ("x",
+	                         cdn_expression_new ("rand()"),
+	                         CDN_VARIABLE_FLAG_ONCE);
 
-	expr = cpg_property_get_expression (prop);
+	expr = cdn_variable_get_expression (prop);
 
-	cpg_expression_compile (expr, NULL, NULL);
+	cdn_expression_compile (expr, NULL, NULL);
 
-	gdouble v1 = cpg_property_get_value (prop);
-	cpg_expression_reset_cache (expr);
+	gdouble v1 = cdn_variable_get_value (prop);
+	cdn_expression_reset_cache (expr);
 
-	gdouble v2 = cpg_property_get_value (prop);
-	cpg_assert_tol (v1, v2);
+	gdouble v2 = cdn_variable_get_value (prop);
+	cdn_assert_tol (v1, v2);
 }
 
 static void
-invalid_property_name (gchar const *name)
+invalid_variable_name (gchar const *name)
 {
-	CpgObject *obj;
+	CdnObject *obj;
 	GError *error = NULL;
 	gboolean ret;
 
-	obj = cpg_object_new ("s");
+	obj = cdn_object_new ("s");
 
-	ret = cpg_object_add_property (obj,
-	                               cpg_property_new (name,
-	                                                 cpg_expression_new ("0"),
-	                                                 CPG_PROPERTY_FLAG_NONE),
+	ret = cdn_object_add_variable (obj,
+	                               cdn_variable_new (name,
+	                                                 cdn_expression_new ("0"),
+	                                                 CDN_VARIABLE_FLAG_NONE),
 	                               &error);
 
 	g_assert (!ret);
-	g_assert_error (error, CPG_OBJECT_ERROR, CPG_OBJECT_ERROR_INVALID_PROPERTY_NAME);
+	g_assert_error (error,
+	                CDN_OBJECT_ERROR,
+	                CDN_OBJECT_ERROR_INVALID_VARIABLE_NAME);
 }
 
 static void
 test_invalid_name ()
 {
-	invalid_property_name (" prop");
-	invalid_property_name ("1prop");
-	invalid_property_name ("prop-e");
+	invalid_variable_name (" prop");
+	invalid_variable_name ("1prop");
+	invalid_variable_name ("prop-e");
 }
 
 int
@@ -80,9 +82,9 @@ main (int   argc,
 
 	g_type_init ();
 
-	g_test_add_func ("/property/once", test_once);
-	g_test_add_func ("/property/once_reset_cache", test_once_reset_cache);
-	g_test_add_func ("/property/invalid_name", test_invalid_name);
+	g_test_add_func ("/variable/once", test_once);
+	g_test_add_func ("/variable/once_reset_cache", test_once_reset_cache);
+	g_test_add_func ("/variable/invalid_name", test_invalid_name);
 
 	g_test_run ();
 

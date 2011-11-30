@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<language id="cdn" _name="Codyn" version="2.0" _section="Sources">
+    <metadata>
+      <property name="mimetypes">text/x-cdn</property>
+      <property name="globs">*.cdn</property>
+      <property name="line-comment-start">#</property>
+    </metadata>
+
+    <styles>
+        <style id="comment"           _name="Comment"             map-to="def:comment"/>
+        <style id="error"             _name="Error"               map-to="def:error"/>
+        <style id="string"            _name="String"              map-to="def:string"/>
+        <style id="keyword"           _name="Keyword"             map-to="def:keyword"/>
+        <style id="preprocessor"      _name="Preprocessor"        map-to="def:preprocessor"/>
+        <style id="specifiers"        _name="Specifiers"          map-to="def:keyword"/>
+        <style id="regex"             _name="Regex"               map-to="def:builtin"/>
+        <style id="operator"          _name="Operator"            map-to="def:operator"/>
+        <style id="selector"          _name="Selector"            map-to="def:identifier"/>
+        <style id="define"            _name="Define"              map-to="def:constant"/>
+        <style id="equation"          _name="Equation"            map-to="def:comment"/>
+        <style id="condition"         _name="Condition"           map-to="def:comment"/>
+        <style id="indirection"       _name="Indirection"         map-to="def:constant"/>
+        <style id="identifier"        _name="Identifier"          map-to="def:identifier"/>
+        <style id="expansion"         _name="Expansion"           map-to="def:comment"/>
+        <style id="paren"             _name="Paren"               map-to="def:operator"/>
+        <style id="range"             _name="Range"               map-to="def:keyword"/>
+        <style id="map"               _name="Map"                 map-to="def:function"/>
+        <style id="reduce"            _name="Reduce"              map-to="def:constant"/>
+    </styles>
+
+    <default-regex-options case-sensitive="false"/>
+
+    <definitions>
+
+        <define-regex id="identifier">[a-z_][a-z0-9_-]*</define-regex>
+        <define-regex id="string">"(\\["]|[^"])*"</define-regex>
+        <define-regex id="regex">/(\\/|[^/])*/</define-regex>
+        <define-regex id="define">@(\%{identifier}|@*([0-9]+))</define-regex>
+        <define-regex id="identifier_or_string">((\%{identifier})|(\%{string}))</define-regex>
+        <define-regex id="string_like">(\%{string}|-?\%{def:decimal}|-?\%{def:float}|\%{define})</define-regex>
+
+        <context id="identifier" style-ref="identifier">
+            <match>\%{identifier}</match>
+        </context>
+
+        <context id="string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+            <start>"</start>
+            <end>"</end>
+            <include>
+                <context id="escape-in-string">
+                    <match>\\["\\]</match>
+                </context>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="paren-inside">
+            <start>[(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+            </include>
+        </context>
+
+        <context id="equation" style-ref="equation" style-inside="true" end-at-line-end="true">
+            <start>[$][(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+                <context ref="identifier"/>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="condition" style-ref="condition" style-inside="true" end-at-line-end="true">
+            <start>[$][$][(]</start>
+            <end>[)]</end>
+            <include>
+                <context ref="paren-inside"/>
+                <context ref="identifier"/>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="indirection" style-ref="indirection" style-inside="true" end-at-line-end="true">
+            <start>@[[]</start>
+            <end>[]]</end>
+            <include>
+                <context ref="stuff_in_string"/>
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="specifiers" style-ref="specifiers">
+            <keyword>integrated</keyword>
+            <keyword>in</keyword>
+            <keyword>out</keyword>
+            <keyword>once</keyword>
+        </context>
+
+        <context id="preprocessor" style-ref="preprocessor">
+            <keyword>import</keyword>
+            <keyword>include</keyword>
+        </context>
+
+        <context id="regex" style-ref="regex">
+            <start>/</start>
+            <end>/</end>
+            <include>
+                <context ref="stuff_in_string"/>
+            </include>
+        </context>
+
+        <context id="range">
+            <match>([^{,|}]+:[^},|]+)(?&lt;![},|])</match>
+            <include>
+              <context sub-pattern="1" style-ref="range"/>
+            </include>
+        </context>
+
+        <context id="map" style-ref="map" extend-parent="false">
+            <match>([|])[^|,}]+</match>
+            <include>
+                <context sub-pattern="1" style-ref="paren"/>
+            </include>
+        </context>
+
+        <context id="reduce" style-ref="reduce" extend-parent="false">
+            <start>[|][|]</start>
+            <end>[|,}]</end>
+            <include>
+                <context sub-pattern="0" where="start" style-ref="paren"/>
+            </include>
+        </context>
+
+        <context id="attributes" style-ref="keyword">
+            <keyword>bidirectional</keyword>
+            <keyword>if</keyword>
+            <keyword>each</keyword>
+            <keyword>probability</keyword>
+            <keyword>no-self</keyword>
+            <keyword>proxy</keyword>
+            <keyword>tag</keyword>
+        </context>
+
+        <context id="selectors" style-ref="keyword">
+            <keyword>templates</keyword>
+            <keyword>root</keyword>
+            <keyword>templates-root</keyword>
+            <keyword>debug</keyword>
+            <keyword>children</keyword>
+            <keyword>parent</keyword>
+            <keyword>first</keyword>
+            <keyword>last</keyword>
+            <keyword>subset</keyword>
+            <keyword>edges</keyword>
+            <keyword>siblings</keyword>
+            <keyword>descendants</keyword>
+            <keyword>ancestors</keyword>
+            <keyword>unique</keyword>
+            <keyword>count</keyword>
+            <keyword>name</keyword>
+            <keyword>self</keyword>
+            <keyword>nodes</keyword>
+            <keyword>imports</keyword>
+            <keyword>objects</keyword>
+            <keyword>properties</keyword>
+            <keyword>actions</keyword>
+            <keyword>type</keyword>
+            <keyword>is-empty</keyword>
+            <keyword>remove</keyword>
+            <keyword>if</keyword>
+            <keyword>from-set</keyword>
+            <keyword>source</keyword>
+            <keyword>sink</keyword>
+			<keyword>source-name</keyword>
+			<keyword>sink-name</keyword>
+            <keyword>has-template</keyword>
+            <keyword>has-tag</keyword>
+            <keyword>has-flag</keyword>
+            <keyword>reverse</keyword>
+        </context>
+
+        <context id="keywords" style-ref="keyword">
+            <keyword>edge</keyword>
+            <keyword>node</keyword>
+            <keyword>network</keyword>
+            <keyword>functions</keyword>
+            <keyword>interface</keyword>
+            <keyword>from</keyword>
+            <keyword>to</keyword>
+            <keyword>polynomial</keyword>
+            <keyword>input</keyword>
+            <keyword>piece</keyword>
+            <keyword>defines</keyword>
+            <keyword>integrator</keyword>
+            <keyword>layout</keyword>
+            <keyword>left-of</keyword>
+            <keyword>right-of</keyword>
+            <keyword>above</keyword>
+            <keyword>below</keyword>
+            <keyword>at</keyword>
+            <keyword>on</keyword>
+            <keyword>all</keyword>
+            <keyword>as</keyword>
+            <keyword>of</keyword>
+            <keyword>delete</keyword>
+            <keyword>property</keyword>
+            <keyword>action</keyword>
+            <keyword>context</keyword>
+            <keyword>as</keyword>
+            <keyword>settings</keyword>
+            <keyword>parse</keyword>
+            <keyword>debug-print</keyword>
+            <keyword>apply</keyword>
+            <keyword>unapply</keyword>
+            <keyword>when</keyword>
+            <keyword>switch</keyword>
+            <keyword>enable</keyword>
+            <keyword>disable</keyword>
+        </context>
+
+        <context id="selector">
+            <match>([|.][a-z_-]+)(\(([^)]*)\))?</match>
+            <include>
+                <context sub-pattern="1" style-ref="selector"/>
+                <context sub-pattern="3" style-ref="string"/>
+            </include>
+        </context>
+
+        <context id="defined" style-ref="define">
+            <match>\%{define}</match>
+        </context>
+
+        <context id="stuff_in_string">
+            <include>
+                <context ref="defined" />
+                <context ref="equation" />
+                <context ref="indirection" />
+                <context ref="condition" />
+            </include>
+        </context>
+
+        <context id="expansion" style-ref="expansion" style-inside="true">
+            <start>{</start>
+            <end>}</end>
+            <include>
+                <context sub-pattern="0" where="start" style-ref="paren"/>
+                <context sub-pattern="0" where="end" style-ref="paren"/>
+                <context ref="map" />
+                <context ref="reduce" />
+                <context ref="range" />
+                <context ref="stuff_in_string" />
+                <context ref="expansion" />
+            </include>
+        </context>
+
+        <context id="cdn" class="no-spell-check">
+            <include>
+                <context ref="def:shebang"/>
+                <context ref="def:shell-like-comment"/>
+                <context ref="keywords"/>
+                <context ref="selectors"/>
+                <context ref="attributes"/>
+                <context ref="specifiers"/>
+                <context ref="preprocessor"/>
+                <context ref="regex"/>
+                <context ref="string"/>
+                <context ref="selector"/>
+                <context ref="def:decimal"/>
+                <context ref="def:float"/>
+                <context ref="indirection"/>
+                <context ref="equation"/>
+                <context ref="defined"/>
+                <context ref="identifier"/>
+            </include>
+        </context>
+    </definitions>
+</language>
+
+<!-- vi:ex:ts=4:et -->

@@ -1,0 +1,19 @@
+templates
+{
+    node "t1"
+    {
+        [proxy]
+        node "c1" { p1 = 0 }
+    }
+
+    node "t2"
+    {
+        node "c2" { p2 = 1 }
+
+        interface { p1 = p2 in c2 }
+    }
+}
+
+node "state" : "t1", "t2" {}
+
+# vi:ex:ts=4:et

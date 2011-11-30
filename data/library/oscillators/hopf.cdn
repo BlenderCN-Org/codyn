@@ -1,0 +1,65 @@
+templates
+{
+    # include "hopf_functions.cdn"
+
+    node "oscillator"
+    {
+        [proxy]
+        node "node"
+        {
+            ## x node variable of Hopf oscillator
+            x = 0 | integrated
+
+            ## y node variable of Hopf oscillator
+            y = 1 | integrated
+
+
+            ## Desired amplitude
+            ## Unused if you define mu directly.
+            target_amplitude = 1
+
+            ## Desired frequency
+            target_frequency = 1
+
+
+            ## Instantaneous amplitude
+            amplitude = "hypot(x, y)"
+
+
+            ## Desired mu
+            ## Controlls the Hopf bifurcation.
+            ## With positive mu, the dynamical system will oscillate with amplitude sqrt(mu). 
+            ## With negative mu, the system will have a stable fix point at (x, y) = (0, 0).
+            mu = "target_amplitude * target_amplitude"
+
+            ## Gain on amplitude
+            ## Unused if you define gamma_x and gamma_y directly.
+            gamma = 1
+
+            ## Gain on amplitude for x
+            gamma_x = "gamma"
+
+            ## Gain on amplitude for y
+            gamma_y = "gamma"
+
+
+            ## Angular frequency
+            omega = "2 * pi * target_frequency"
+
+            ## Amplitude squared
+            r2 = "amplitude * amplitude"
+
+
+            ## Output variable
+            output = "x"
+        }
+
+        edge "integrate" on "node"
+        {
+            x <= "gamma_x * (mu - r2) * x - omega * y"
+            y <= "gamma_y * (mu - r2) * y + omega * x"
+        }
+    }
+}
+
+# vi:ex:ts=4:et
