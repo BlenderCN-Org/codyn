@@ -221,6 +221,9 @@
             <keyword>apply</keyword>
             <keyword>unapply</keyword>
             <keyword>when</keyword>
+            <keyword>switch</keyword>
+            <keyword>enable</keyword>
+            <keyword>disable</keyword>
         </context>
 
         <context id="selector">
