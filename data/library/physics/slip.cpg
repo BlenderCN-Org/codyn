@@ -1,0 +1,134 @@
+include "physics.cpg"
+
+integrator
+{
+    ## Use runge-kutta 4th order integration
+    method = "runge-kutta"
+}
+
+## Basic SLIP (Spring Loaded Inverted Pendulum) model. Parameter values in this
+## file come from [1].
+group "slip"
+{
+    ## Leg length (rest position of the spring)
+    l = 1
+
+    ## Angle of attack
+    aoa = "(90 - 68) / 180 * pi"
+
+    ## Mass
+    m = 80
+
+    ## Spring stiffness
+    k = "20000"
+
+    ## State variable @1
+    "{x,y}"   = "{0,l}"   | integrated
+    "{dx,dy}" = "{5,0}" | integrated
+
+    ## Indicate second order system. Default differential equations are simply
+    ## 0. We will add separate equations for the different phases later so
+    ## we can enable/disable them. Note that this automatically sets up the
+    ## second order system as a set of first order differential equations by
+    ## introducing two new variables 'dx' and 'dy' (whith x' = dx and y' = dy)
+    "{x,y}''" = 0
+
+    ## Ground contact position. This gets updated when we switch from air phase
+    ## to ground phase
+    xc = 0
+
+    ## Variable which calculates the current leg length based on the state and
+    ## xc (the ground contact point).
+    leglength = "sqrt((x - xc)^2 + y^2)"
+
+    ## Spring force (proportional to the difference between the rest length
+    ## and the current length of the leg). This force is only meaningful in the
+    ## ground phase
+    fspring = "k * (l - leglength)"
+
+    ## The current angle of the leg, given the ground contact point xc
+    aol = "atan2(xc - x, y)"
+
+    ## Helper variable to indicate in which phase (air or ground) we currently
+    ## are. See the event handlers for more details
+    phase = 0
+
+    ## Kinetic energy of the mass and the spring
+    kinetic = "0.5 * m * sqsum(dx, dy)"
+
+    ll = "(l - leglength) * 1000"
+
+    ## Potential energy of the mass and the spring. Note that the potential
+    ## energy of the spring is only calculated when the leg is on the ground.
+    potential_spring = "(l - leglength > 0) * 0.5 * k * (l - leglength)^2"
+    potential = "m * g * y + potential_spring"
+
+    ## Total energy
+    energy = "kinetic + potential"
+}
+
+## Differential equations for the air phase. In the air, the motion of the SLIP
+## model is simply balistic (i.e. only gravity working on the mass)
+link "air" on "slip"
+{
+    ## y'' = g
+    dy <= "-g"
+}
+
+## Differential equations for the ground phase. On the ground, the motion of
+## the SLIP model is subject to gravitational and spring forces. Note that
+## the actions are initially disabled, assuming we start in the air phase.
+link "ground" on "slip"
+{
+    ## x'' = projected(FSpring, X) / m
+    dx <= "(-sin(aol) * fspring) / m" | disabled
+
+    ## y'' = projected(FSpring, Y) / m - g
+    dy <= "(cos(aol) * fspring) / m - g" | disabled
+}
+
+## Here we reopen the SLIP model group and add events which will switch the
+## dynamics between air and ground phase. We do this inside the SLIP model
+## group because we can access easily the variables defined in the model
+group "slip"
+{
+    ## Transition from air to ground. This happens when we are in the air
+    ## (phase 0) and when the end point of the leg (considering the desired
+    ## angle of attack, aoa) would go through the ground. Note that the event
+    ## is triggered when the event condition passes from positive to negative
+    ## (indicated by <)
+    when < "phase == 0 ? y - l * cos(aoa) : 0"
+    {
+        ## Calculate the position of the leg on impact and store this in xc
+        "xc" = "x + l * sin(aoa)"
+
+        ## Set the phase to the ground phase
+        "phase" = 1
+
+        ## Switch the dynamical equations (disabling air and enabling ground).
+        ## We use the 'switch' keyword with a selector to select all the
+        ## links which are children of the root model. For those links, we
+        ## again select the children (which are the link actions). These
+        ## actions are then enabled when they were previously disabled and
+        ## vice versa
+        switch root . links | children
+    }
+
+    ## Transition from ground to air. This happens when we are current on the
+    ## ground (phase 1) and when the calculated leglength becomes larger than
+    ## the zero leg length (i.e. the spring is fully extended)
+    when > "phase == 1 ? leglength - l : 0"
+    {
+        ## Set the phase to the air phase
+        "phase" = 0
+
+        ## Switch the dynamic equations (disabling ground and enabling air).
+        ## See above for a more detailed explanation.
+        switch root . links | children
+    }
+}
+
+# [1] Seyfarth, A. & Geyer, H. & Günther, M. & Blickhan, R. (2002).
+#     A movement criterion for running. Journal of Biomechanics,35, 649—655.
+
+# vi:ex:ts=4:et
