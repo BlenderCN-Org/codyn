@@ -269,11 +269,11 @@ cpg_event_happened (CpgEvent *event,
 		{
 			if (dist)
 			{
-				gdouble term = (event->priv->value - val);
+				gdouble term = event->priv->value - val;
 
 				if (term > 10e-9)
 				{
-					*dist = event->priv->value / term;
+					*dist = -event->priv->value / term;
 				}
 				else
 				{
