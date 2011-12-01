@@ -114,12 +114,12 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <annotation>\n.*		{
 					HANDLE_NEWLINE
 					yy_push_state (annotation_start, yyscanner);
-
-					yylval->id = g_strdup ("\n");
-					return T_STRING;
 				}
 <annotation_start>[\t ]*##[\t ]* {
 					yy_pop_state (yyscanner);
+
+					yylval->id = g_strdup ("\n");
+					return T_STRING;
 				}
 <annotation_start>.		{
 					yyless (0);
