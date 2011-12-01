@@ -125,7 +125,7 @@ INST_H_FILES = \
 	cdn-event.h \
 	cdn-forward-decl.h
 
-lib_LTLIBRARIES = libcodyn-2.0.la
+lib_LTLIBRARIES = libcodyn-3.0.la
 
 libcodyn_headers = \
 	$(INST_H_FILES) \
@@ -144,15 +144,15 @@ cdn-marshal.c: cdn-marshal.list $(GLIB_GENMARSHAL)
 	$(AM_V_GEN) echo "#include \"cdn-marshal.h\"" > $@ && \
 	$(GLIB_GENMARSHAL) $< --body --prefix=cdn_marshal >> $@
 
-libcodyn_2_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CODYN_CFLAGS)
-libcodyn_2_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
+libcodyn_3_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CODYN_CFLAGS)
+libcodyn_3_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
 
-libcodyn_2_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CODYN_LIBS) $(INTROSPECTION_LIBS) -lm
-libcodyn_2_0_includedir = $(includedir)/codyn-$(CODYN_API_VERSION)/codyn
+libcodyn_3_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CODYN_LIBS) $(INTROSPECTION_LIBS) -lm
+libcodyn_3_0_includedir = $(includedir)/codyn-$(CODYN_API_VERSION)/codyn
 
-libcodyn_2_0_la_SOURCES = $(COMMON_SOURCES)
+libcodyn_3_0_la_SOURCES = $(COMMON_SOURCES)
 
-libcodyn_2_0_include_HEADERS = $(libcodyn_headers)
+libcodyn_3_0_include_HEADERS = $(libcodyn_headers)
 
 CLEANFILES = $(BUILT_SOURCES) cdn-parser.c
 
@@ -164,7 +164,7 @@ EXTRA_DIST = \
 
 if HAVE_INTROSPECTION
 -include $(INTROSPECTION_MAKEFILE)
-INTROSPECTION_GIRS = Cdn-2.0.gir
+INTROSPECTION_GIRS = Cdn-3.0.gir
 
 INSTRUCTIONHEADERS = \
 	instructions/cdn-instruction-custom-function.h \
@@ -232,13 +232,13 @@ TREEALGORITHMSSOURCES = 	\
 	tree-algorithms/cdn-tree-algorithms-string.c \
 	tree-algorithms/cdn-tree-algorithms-substitute.c
 
-Cdn-2.0.gir: libcodyn-2.0.la
+Cdn-3.0.gir: libcodyn-3.0.la
 INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --verbose
-Cdn_2_0_gir_NAMESPACE = Cdn
-Cdn_2_0_gir_VERSION = 2.0
-Cdn_2_0_gir_LIBS = libcodyn-2.0.la instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
-Cdn_2_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES) $(TREEALGORITHMSSOURCES)
-Cdn_2_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
+Cdn_3_0_gir_NAMESPACE = Cdn
+Cdn_3_0_gir_VERSION = 3.0
+Cdn_3_0_gir_LIBS = libcodyn-3.0.la instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
+Cdn_3_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES) $(TREEALGORITHMSSOURCES)
+Cdn_3_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
 
 girdir = $(datadir)/gir-1.0
 gir_DATA = $(INTROSPECTION_GIRS)
