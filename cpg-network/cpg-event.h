@@ -58,7 +58,6 @@ gboolean           cpg_event_happened                  (CpgEvent           *even
 
 void               cpg_event_update                    (CpgEvent           *event);
 CpgExpression *    cpg_event_get_condition             (CpgEvent           *event);
-CpgExpression *    cpg_event_get_condition_dfdt        (CpgEvent           *event);
 CpgEventDirection  cpg_event_get_direction             (CpgEvent           *event);
 
 void               cpg_event_add_set_property          (CpgEvent           *event,

@@ -8,7 +8,6 @@
 struct _CpgEventPrivate
 {
 	CpgExpression *condition;
-	CpgExpression *condition_dfdt;
 	CpgEventDirection direction;
 	gdouble value;
 
@@ -101,11 +100,6 @@ cpg_event_finalize (GObject *object)
 	g_slist_foreach (self->priv->events,
 	                 (GFunc)g_object_unref,
 	                 NULL);
-
-	if (self->priv->condition_dfdt)
-	{
-		g_object_unref (self->priv->condition_dfdt);
-	}
 
 	g_object_unref (self->priv->condition);
 
@@ -243,12 +237,6 @@ cpg_event_get_condition (CpgEvent *event)
 	return event->priv->condition;
 }
 
-CpgExpression *
-cpg_event_get_condition_dfdt (CpgEvent *event)
-{
-	return event->priv->condition_dfdt;
-}
-
 CpgEventDirection
 cpg_event_get_direction (CpgEvent *event)
 {
@@ -273,7 +261,7 @@ cpg_event_happened (CpgEvent *event,
 
 				if (term > 10e-9)
 				{
-					*dist = -event->priv->value / term;
+					*dist = event->priv->value / term;
 				}
 				else
 				{
@@ -296,7 +284,7 @@ cpg_event_happened (CpgEvent *event,
 
 				if (term > 10e-9)
 				{
-					*dist = event->priv->value / term;
+					*dist = -event->priv->value / term;
 				}
 				else
 				{
@@ -407,26 +395,6 @@ cpg_event_compile (CpgEvent          *event,
 	if (!cpg_expression_compile (event->priv->condition, context, error))
 	{
 		return FALSE;
-	}
-
-	if (event->priv->condition_dfdt)
-	{
-		g_object_unref (event->priv->condition_dfdt);
-	}
-
-	// Try to take the time derivative of the condition
-	event->priv->condition_dfdt =
-		cpg_symbolic_derive (event->priv->condition,
-		                     NULL,
-		                     NULL,
-		                     NULL,
-		                     1,
-		                     CPG_SYMBOLIC_DERIVE_NONE,
-		                     NULL);
-
-	if (event->priv->condition_dfdt)
-	{
-		g_object_ref_sink (event->priv->condition_dfdt);
 	}
 
 	for (item = event->priv->set_properties; item; item = g_slist_next (item))
