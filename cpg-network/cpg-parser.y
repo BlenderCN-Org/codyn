@@ -383,6 +383,7 @@ when_item
 	| T_KEY_ENABLE selector		{ cpg_parser_context_add_event_set_flags (context, $2, TRUE, FALSE); }
 	| T_KEY_DISABLE	selector 	{ cpg_parser_context_add_event_set_flags (context, $2, FALSE, FALSE); }
 	| T_KEY_SWITCH	selector 	{ cpg_parser_context_add_event_set_flags (context, $2, TRUE, TRUE); }
+	| common_scopes
 	;
 
 when_contents
