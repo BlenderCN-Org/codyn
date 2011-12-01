@@ -1,7 +1,7 @@
 network
 {
 	## Gravity constant
-	g ?= "-9.81"
+	g ?= "9.81"
 }
 
 templates
