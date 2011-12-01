@@ -22,6 +22,10 @@
 
 #include "cpg-function.h"
 #include "cpg-compile-error.h"
+#include "cpg-expression-tree-iter.h"
+#include "instructions/cpg-instruction-rand.h"
+
+#include <string.h>
 
 /**
  * SECTION:cpg-function
@@ -67,6 +71,7 @@ struct _CpgFunctionPrivate
 {
 	CpgExpression *expression;
 	GList *arguments;
+	GHashTable *arguments_hash;
 
 	guint n_arguments;
 	guint n_optional;
@@ -104,6 +109,8 @@ cpg_function_finalize (GObject *object)
 	g_list_foreach (self->priv->arguments, (GFunc)g_object_unref, NULL);
 	g_list_free (self->priv->arguments);
 
+	g_hash_table_destroy (self->priv->arguments_hash);
+
 	G_OBJECT_CLASS (cpg_function_parent_class)->finalize (object);
 }
 
@@ -115,12 +122,24 @@ cpg_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 	switch (prop_id)
 	{
 		case PROP_EXPRESSION:
+		{
+			CpgExpression *expr;
+
 			if (self->priv->expression)
 			{
 				g_object_unref (self->priv->expression);
 			}
 
-			self->priv->expression = g_value_dup_object (value);
+			expr = g_value_get_object (value);
+
+			if (expr)
+			{
+				self->priv->expression = g_object_ref_sink (expr);
+			}
+			else
+			{
+				self->priv->expression = NULL;
+			}
 
 			if (self->priv->expression)
 			{
@@ -129,6 +148,7 @@ cpg_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 			}
 
 			cpg_object_taint (CPG_OBJECT (self));
+		}
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -158,9 +178,21 @@ cpg_function_compile_impl (CpgObject         *object,
                            CpgCompileError   *error)
 {
 	CpgFunction *self = CPG_FUNCTION (object);
-	GError *gerror = NULL;
 	gboolean ret = TRUE;
 	GList *item;
+
+	if (cpg_object_is_compiled (object))
+	{
+		return TRUE;
+	}
+
+	if (context)
+	{
+		cpg_compile_context_save (context);
+		g_object_ref (context);
+	}
+
+	context = cpg_object_get_compile_context (object, context);
 
 	if (CPG_OBJECT_CLASS (cpg_function_parent_class)->compile)
 	{
@@ -168,12 +200,10 @@ cpg_function_compile_impl (CpgObject         *object,
 		                                                            context,
 		                                                            error))
 		{
+			g_object_unref (context);
 			return FALSE;
 		}
 	}
-
-	cpg_compile_context_save (context);
-	cpg_compile_context_prepend_object (context, object);
 
 	for (item = self->priv->arguments; item; item = g_list_next (item))
 	{
@@ -183,20 +213,19 @@ cpg_function_compile_impl (CpgObject         *object,
 
 		if (expr)
 		{
-			if (!cpg_expression_compile (expr, context, &gerror))
+			if (!cpg_expression_compile (expr, context, error))
 			{
 				if (error)
 				{
 					cpg_compile_error_set (error,
-					                       gerror,
+					                       NULL,
 					                       object,
 					                       NULL,
 					                       NULL,
-					                       cpg_expression_get_error_at (self->priv->expression));
+					                       NULL);
 				}
 
 				ret = FALSE;
-				g_error_free (gerror);
 
 				break;
 			}
@@ -206,33 +235,30 @@ cpg_function_compile_impl (CpgObject         *object,
 	if (!self->priv->expression || !ret)
 	{
 		cpg_compile_context_restore (context);
+		g_object_unref (context);
 		return ret;
 	}
 
 	if (!cpg_expression_compile (self->priv->expression,
 	                             context,
-	                             &gerror))
+	                             error))
 	{
-		g_warning ("Error while parsing function expression [%s]<%s>: %s",
-		           cpg_object_get_id (object),
-		           cpg_expression_get_as_string (self->priv->expression),
-		           gerror->message);
-
 		if (error)
 		{
 			cpg_compile_error_set (error,
-			                       gerror,
+			                       NULL,
 			                       object,
 			                       NULL,
 			                       NULL,
-			                       cpg_expression_get_error_at (self->priv->expression));
+			                       NULL);
 		}
 
-		g_error_free (gerror);
 		ret = FALSE;
 	}
 
 	cpg_compile_context_restore (context);
+	g_object_unref (context);
+
 	return ret;
 }
 
@@ -241,6 +267,10 @@ cpg_function_evaluate_impl (CpgFunction *function)
 {
 	if (function->priv->expression)
 	{
+		g_slist_foreach ((GSList *)cpg_expression_get_rand_instructions (function->priv->expression),
+		                 (GFunc)cpg_instruction_rand_next,
+		                 NULL);
+
 		gdouble ret = cpg_expression_evaluate (function->priv->expression);
 		return ret;
 	}
@@ -266,35 +296,13 @@ cpg_function_execute_impl (CpgFunction *function,
 	for (i = 0; i < nargs; ++i)
 	{
 		CpgFunctionArgument *argument = item->data;
+		gdouble val;
 		CpgProperty *property = _cpg_function_argument_get_property (argument);
 
-		cpg_property_set_value (property, cpg_stack_pop (stack));
+		val = cpg_stack_pop (stack);
+
+		cpg_property_set_value (property, val);
 		item = g_list_previous (item);
-	}
-
-	/* Set defaults for optional arguments */
-	item = from ? g_list_next (from) : function->priv->arguments;
-
-	while (item)
-	{
-		CpgFunctionArgument *argument = item->data;
-		CpgProperty *property = _cpg_function_argument_get_property (argument);
-
-		CpgExpression *def;
-
-		def = cpg_function_argument_get_default_value (argument);
-
-		if (def)
-		{
-			cpg_property_set_value (property,
-			                        cpg_expression_evaluate (def));
-		}
-		else
-		{
-			cpg_property_set_value (property, 0);
-		}
-
-		item = g_list_next (item);
 	}
 
 	/* Evaluate the expression */
@@ -518,14 +526,6 @@ cpg_function_template_argument_added (CpgFunction         *source,
 	}
 }
 
-static gint
-find_argument (CpgFunctionArgument *a1,
-               CpgFunctionArgument *a2)
-{
-	return g_strcmp0 (cpg_function_argument_get_name (a1),
-	                  cpg_function_argument_get_name (a2));
-}
-
 static gboolean
 arguments_equal (CpgFunction         *a,
                  CpgFunction         *b,
@@ -595,22 +595,20 @@ cpg_function_template_argument_removed (CpgFunction         *source,
                                         CpgFunction         *target)
 {
 	CpgFunction *templ;
-	GList *item;
+	CpgFunctionArgument *item;
 
-	item = g_list_find_custom (target->priv->arguments,
-	                           arg,
-	                           (GCompareFunc)find_argument);
+	item = cpg_function_get_argument (target, cpg_function_argument_get_name (arg));
 
 	templ = last_template (target);
 
 	if (templ &&
 	    item &&
-	    arguments_equal (target, templ, item->data) &&
+	    arguments_equal (target, templ, item) &&
 	    cpg_expression_equal (target->priv->expression,
 	                          templ->priv->expression))
 	{
 		cpg_function_remove_argument (target,
-		                              item->data,
+		                              item,
 		                              NULL);
 	}
 }
@@ -872,6 +870,8 @@ static void
 cpg_function_argument_added_impl (CpgFunction         *function,
                                   CpgFunctionArgument *argument)
 {
+	gchar const *name;
+
 	if (!cpg_function_argument_get_explicit (argument))
 	{
 		/* Just append */
@@ -903,6 +903,29 @@ cpg_function_argument_added_impl (CpgFunction         *function,
 		                                           g_object_ref_sink (argument),
 		                                           n);
 	}
+
+	name = cpg_function_argument_get_name (argument);
+
+	if (g_str_has_suffix (name, "'"))
+	{
+		gchar *pname;
+		CpgFunctionArgument *parg;
+
+		pname = g_strndup (name, strlen (name) - 1);
+		parg = cpg_function_get_argument (function, pname);
+
+		if (parg)
+		{
+			cpg_property_set_derivative (_cpg_function_argument_get_property (parg),
+			                             _cpg_function_argument_get_property (argument));
+		}
+
+		g_free (pname);
+	}
+
+	g_hash_table_insert (function->priv->arguments_hash,
+	                     g_strdup (cpg_function_argument_get_name (argument)),
+	                     argument);
 
 	++function->priv->n_arguments;
 
@@ -1033,6 +1056,11 @@ static void
 cpg_function_init (CpgFunction *self)
 {
 	self->priv = CPG_FUNCTION_GET_PRIVATE (self);
+
+	self->priv->arguments_hash = g_hash_table_new_full (g_str_hash,
+	                                                    g_str_equal,
+	                                                    (GDestroyNotify)g_free,
+	                                                    NULL);
 }
 
 /**
@@ -1047,23 +1075,32 @@ cpg_function_init (CpgFunction *self)
  *
  **/
 CpgFunction *
-cpg_function_new (gchar const *name,
-                  gchar const *expression)
+cpg_function_new (gchar const   *name,
+                  CpgExpression *expr)
 {
 	CpgFunction *ret;
-	CpgExpression *expr = NULL;
 
 	g_return_val_if_fail (name != NULL, NULL);
+	g_return_val_if_fail (expr == NULL || CPG_IS_EXPRESSION (expr), NULL);
 
-	if (expression != NULL)
+	if (expr && g_object_is_floating (G_OBJECT (expr)))
 	{
-		expr = cpg_expression_new (expression);
+		g_object_ref_sink (expr);
+	}
+	else if (expr)
+	{
+		g_object_ref (expr);
 	}
 
 	ret = g_object_new (CPG_TYPE_FUNCTION,
 	                    "id", name,
 	                    "expression", expr,
 	                    NULL);
+
+	if (expr)
+	{
+		g_object_unref (expr);
+	}
 
 	return ret;
 }
@@ -1094,21 +1131,26 @@ cpg_function_add_argument (CpgFunction         *function,
 	if (property == NULL)
 	{
 		/* Add the proxy property */
-		property = cpg_property_new (name, "0", CPG_PROPERTY_FLAG_NONE);
+		property = cpg_property_new (name,
+		                             cpg_expression_new0 (),
+		                             CPG_PROPERTY_FLAG_NONE);
 
 		if (!cpg_object_add_property (CPG_OBJECT (function), property, NULL))
 		{
 			return;
 		}
 	}
-	else if (g_list_find_custom (function->priv->arguments,
-	                             argument,
-	                             (GCompareFunc)find_argument) != NULL)
+	else if (cpg_function_get_argument (function,
+	                                    cpg_function_argument_get_name (argument)))
 	{
 		return;
 	}
 
 	_cpg_function_argument_set_property (argument, property);
+
+	cpg_expression_set_has_cache (cpg_property_get_expression (property),
+	                              FALSE);
+
 	g_signal_emit (function, signals[ARGUMENT_ADDED], 0, argument);
 }
 
@@ -1128,6 +1170,8 @@ cpg_function_remove_argument (CpgFunction          *function,
                               CpgFunctionArgument  *argument,
                               GError              **error)
 {
+	gchar const *name;
+
 	g_return_val_if_fail (CPG_IS_FUNCTION (function), FALSE);
 	g_return_val_if_fail (CPG_IS_FUNCTION_ARGUMENT (argument), FALSE);
 
@@ -1147,9 +1191,9 @@ cpg_function_remove_argument (CpgFunction          *function,
 		return FALSE;
 	}
 
-	if (cpg_object_remove_property (CPG_OBJECT (function),
-	                                cpg_function_argument_get_name (argument),
-	                                error))
+	name = cpg_function_argument_get_name (argument);
+
+	if (cpg_object_remove_property (CPG_OBJECT (function), name, error))
 	{
 		if (cpg_function_argument_get_optional (argument))
 		{
@@ -1163,6 +1207,9 @@ cpg_function_remove_argument (CpgFunction          *function,
 
 		function->priv->arguments = g_list_delete_link (function->priv->arguments,
 		                                                item);
+
+		g_hash_table_remove (function->priv->arguments_hash,
+		                     cpg_function_argument_get_name (argument));
 
 		_cpg_function_argument_set_property (argument, NULL);
 
@@ -1179,6 +1226,23 @@ cpg_function_remove_argument (CpgFunction          *function,
 		g_signal_handlers_disconnect_by_func (argument,
 		                                      on_argument_optional_changed,
 		                                      function);
+
+		if (g_str_has_suffix (name, "'"))
+		{
+			gchar *pname;
+			CpgFunctionArgument *parg;
+
+			pname = g_strndup (name, strlen (name) - 1);
+			parg = cpg_function_get_argument (function, pname);
+
+			if (parg)
+			{
+				cpg_property_set_derivative (_cpg_function_argument_get_property (parg),
+				                             NULL);
+			}
+
+			g_free (pname);
+		}
 
 		cpg_object_taint (CPG_OBJECT (function));
 
@@ -1225,15 +1289,9 @@ cpg_function_execute (CpgFunction *function,
                       guint        nargs,
                       CpgStack    *stack)
 {
-	g_return_if_fail (CPG_IS_FUNCTION (function));
-	g_return_if_fail (stack != NULL);
-
-	if (CPG_FUNCTION_GET_CLASS (function)->execute)
-	{
-		CPG_FUNCTION_GET_CLASS (function)->execute (function,
-		                                            nargs,
-		                                            stack);
-	}
+	CPG_FUNCTION_GET_CLASS (function)->execute (function,
+	                                            nargs,
+	                                            stack);
 }
 
 /**
@@ -1353,4 +1411,13 @@ cpg_function_get_n_implicit (CpgFunction *function)
 	g_return_val_if_fail (CPG_IS_FUNCTION (function), 0);
 
 	return function->priv->n_implicit;
+}
+
+CpgFunctionArgument *
+cpg_function_get_argument (CpgFunction *function,
+                           gchar const *name)
+{
+	g_return_val_if_fail (CPG_IS_FUNCTION (function), NULL);
+
+	return g_hash_table_lookup (function->priv->arguments_hash, name);
 }

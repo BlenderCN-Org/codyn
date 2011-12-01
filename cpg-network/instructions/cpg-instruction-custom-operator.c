@@ -66,31 +66,58 @@ cpg_instruction_custom_operator_execute (CpgInstruction *instruction,
 static gint
 cpg_instruction_custom_operator_get_stack_count (CpgInstruction *instruction)
 {
-	return 1;
+	CpgInstructionCustomOperator *self;
+
+	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
+
+	return -cpg_operator_get_num_arguments (self->priv->op) + 1;
+}
+
+static GSList *
+extract_dependencies (GSList const *expressions,
+                      GSList       *ret)
+{
+	while (expressions)
+	{
+		ret = g_slist_prepend (ret, expressions->data);
+		expressions = g_slist_next (expressions);
+	}
+
+	return ret;
+}
+
+static void
+extract_function_dependencies (CpgFunction  *f,
+                               GSList      **dependencies)
+{
+	CpgExpression *fe;
+
+	fe = cpg_function_get_expression (f);
+	*dependencies = g_slist_prepend (*dependencies, fe);
 }
 
 static GSList *
 cpg_instruction_custom_operator_get_dependencies (CpgInstruction *instruction)
 {
 	CpgInstructionCustomOperator *self;
+	gint i;
+	gint num;
+	GSList *dependencies = NULL;
 
 	self = CPG_INSTRUCTION_CUSTOM_OPERATOR (instruction);
 
-	GSList const *expressions;
-	expressions = cpg_operator_get_expressions (self->priv->op);
+	num = cpg_operator_num_indices (self->priv->op);
 
-	GSList *dependencies = NULL;
-
-	while (expressions)
+	for (i = 0; i < num; ++i)
 	{
-		CpgExpression *expr = expressions->data;
-		GSList *ret;
-
-		ret = g_slist_copy ((GSList *)cpg_expression_get_dependencies (expr));
-		dependencies = g_slist_concat (dependencies, ret);
-
-		expressions = g_slist_next (expressions);
+		dependencies =
+			extract_dependencies (cpg_operator_get_indices (self->priv->op, i),
+			                      dependencies);
 	}
+
+	cpg_operator_foreach_function (self->priv->op,
+	                               (CpgForeachFunctionFunc)extract_function_dependencies,
+	                               &dependencies);
 
 	return dependencies;
 }
@@ -168,7 +195,5 @@ cpg_instruction_custom_operator_new (CpgOperator *operator)
 CpgOperator *
 cpg_instruction_custom_operator_get_operator (CpgInstructionCustomOperator *op)
 {
-	g_return_val_if_fail (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (op), NULL);
-
 	return op->priv->op;
 }

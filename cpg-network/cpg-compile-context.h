@@ -74,6 +74,16 @@ void cpg_compile_context_prepend_function (CpgCompileContext *context,
 void cpg_compile_context_append_function (CpgCompileContext *context,
                                           CPG_FORWARD_DECL (CpgFunction) *function);
 
+void cpg_compile_context_set_function_ref_priority (CpgCompileContext *context,
+                                                    gboolean           prio);
+
+gboolean cpg_compile_context_get_function_ref_priority (CpgCompileContext *context);
+
+void cpg_compile_context_set_function_arg_priority (CpgCompileContext *context,
+                                                    gboolean           prio);
+
+gboolean cpg_compile_context_get_function_arg_priority (CpgCompileContext *context);
+
 CPG_FORWARD_DECL (CpgProperty) *
 cpg_compile_context_lookup_property (CpgCompileContext *context,
                                      const gchar       *name);

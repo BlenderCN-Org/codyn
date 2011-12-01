@@ -1,6 +1,11 @@
 #include "cpg-instruction-property.h"
+#include "cpg-instruction-operator.h"
 
+#include <cpg-network/cpg-expression.h>
 #include <cpg-network/cpg-object.h>
+#include <cpg-network/cpg-link-action.h>
+#include <cpg-network/cpg-math.h>
+#include <cpg-network/cpg-expression-tree-iter.h>
 
 #define CPG_INSTRUCTION_PROPERTY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CPG_TYPE_INSTRUCTION_PROPERTY, CpgInstructionPropertyPrivate))
 
@@ -47,12 +52,16 @@ static gchar *
 cpg_instruction_property_to_string (CpgInstruction *instruction)
 {
 	CpgInstructionProperty *self;
+	gchar *s;
+	gchar *ret;
 
 	self = CPG_INSTRUCTION_PROPERTY (instruction);
+	s = cpg_property_get_full_name_for_display (self->priv->property);
 
-	return g_strdup_printf ("PRP (%s.%s)",
-	                        cpg_object_get_id (cpg_property_get_object (self->priv->property)),
-	                        cpg_property_get_name (self->priv->property));
+	ret = g_strdup_printf ("PRP (%s)", s);
+	g_free (s);
+
+	return ret;
 }
 
 static void
@@ -63,6 +72,7 @@ cpg_instruction_property_execute (CpgInstruction *instruction,
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CpgInstructionProperty *)instruction;
+
 	cpg_stack_push (stack,
 	                cpg_property_get_value (self->priv->property));
 }
@@ -76,7 +86,7 @@ cpg_instruction_property_get_stack_count (CpgInstruction *instruction)
 static GSList *
 cpg_instruction_property_get_dependencies (CpgInstruction *instruction)
 {
-	return g_slist_prepend (NULL, CPG_INSTRUCTION_PROPERTY (instruction)->priv->property);
+	return g_slist_prepend (NULL, cpg_property_get_expression (CPG_INSTRUCTION_PROPERTY (instruction)->priv->property));
 }
 
 static gboolean
@@ -116,7 +126,7 @@ cpg_instruction_property_init (CpgInstructionProperty *self)
 }
 
 /**
- * cpg_instruction_property_new:
+ * cpg_instruction_property_new_with_binding:
  * @property: (transfer none): A #CpgProperty
  * @binding: A #CpgInstructionPropertyBinding
  *
@@ -126,8 +136,8 @@ cpg_instruction_property_init (CpgInstructionProperty *self)
  *
  **/
 CpgInstruction *
-cpg_instruction_property_new (CpgProperty                   *property,
-                              CpgInstructionPropertyBinding  binding)
+cpg_instruction_property_new_with_binding (CpgProperty                   *property,
+                                           CpgInstructionPropertyBinding  binding)
 {
 	CpgMiniObject *ret;
 	CpgInstructionProperty *self;
@@ -139,6 +149,22 @@ cpg_instruction_property_new (CpgProperty                   *property,
 	self->priv->binding = binding;
 
 	return CPG_INSTRUCTION (ret);
+}
+
+/**
+ * cpg_instruction_property_new:
+ * @property: (transfer none): A #CpgProperty
+ *
+ * Create a new #CpgInstructionProperty.
+ *
+ * Returns: A #CpgInstruction
+ *
+ **/
+CpgInstruction *
+cpg_instruction_property_new (CpgProperty *property)
+{
+	return cpg_instruction_property_new_with_binding (property,
+	                                                  CPG_INSTRUCTION_PROPERTY_BINDING_NONE);
 }
 
 /**
@@ -165,7 +191,7 @@ cpg_instruction_property_set_property (CpgInstructionProperty *instruction,
 
 	if (property)
 	{
-		instruction->priv->property = g_object_ref (property);
+		instruction->priv->property = g_object_ref_sink (property);
 		cpg_usable_use (CPG_USABLE (instruction->priv->property));
 	}
 }
@@ -203,4 +229,3 @@ cpg_instruction_property_get_binding (CpgInstructionProperty *instruction)
 
 	return instruction->priv->binding;
 }
-

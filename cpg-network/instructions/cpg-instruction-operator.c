@@ -29,6 +29,20 @@ cpg_instruction_operator_execute (CpgInstruction *instruction,
 	                           stack);
 }
 
+static gboolean
+cpg_instruction_operator_get_is_commutative (CpgInstruction *instruction)
+{
+	CpgInstructionFunction *func;
+	CpgMathOperatorType type;
+
+	/* Direct cast to reduce overhead of GType cast */
+	func = (CpgInstructionFunction *)instruction;
+
+	type = (CpgMathOperatorType)cpg_instruction_function_get_id (func);
+
+	return cpg_math_operator_is_commutative (type);
+}
+
 static void
 cpg_instruction_operator_class_init (CpgInstructionOperatorClass *klass)
 {
@@ -36,6 +50,7 @@ cpg_instruction_operator_class_init (CpgInstructionOperatorClass *klass)
 
 	inst_class->to_string = cpg_instruction_operator_to_string;
 	inst_class->execute = cpg_instruction_operator_execute;
+	inst_class->get_is_commutative = cpg_instruction_operator_get_is_commutative;
 }
 
 static void

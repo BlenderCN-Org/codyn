@@ -23,7 +23,13 @@
 #ifndef __CPG_OPERATORS_H__
 #define __CPG_OPERATORS_H__
 
-#include <cpg-network/cpg-operator.h>
+#include <cpg-network/operators/cpg-operator.h>
+#include <cpg-network/operators/cpg-operator-diff.h>
+#include <cpg-network/operators/cpg-operator-pdiff.h>
+#include <cpg-network/operators/cpg-operator-df-dt.h>
+#include <cpg-network/operators/cpg-operator-simplify.h>
+#include <cpg-network/operators/cpg-operator-linsolve.h>
+#include <cpg-network/operators/cpg-operator-delayed.h>
 
 G_BEGIN_DECLS
 
@@ -32,7 +38,12 @@ void                 cpg_operators_unregister                 (GType            
 GType                cpg_operators_find                       (gchar const     *name);
 CpgOperatorClass    *cpg_operators_find_class                 (gchar const     *name);
 CpgOperator         *cpg_operators_instantiate                (gchar const     *name,
-                                                               GSList const    *expressions);
+                                                               GSList const   **expressions,
+                                                               gint             num_expressions,
+                                                               GSList const   **indices,
+                                                               gint             num_indices,
+                                                               gint             num_arguments,
+                                                               GError         **error);
 GSList const        *cpg_operators_list                       ();
 
 G_END_DECLS

@@ -9,24 +9,28 @@ noinst_LTLIBRARIES = libinstructions.la
 libinstructions_la_SOURCES = 			\
 	cpg-instruction.c			\
 	cpg-instruction-custom-function.c	\
+	cpg-instruction-custom-function-ref.c	\
 	cpg-instruction-custom-operator.c	\
+	cpg-instruction-custom-operator-ref.c	\
 	cpg-instruction-function.c		\
 	cpg-instruction-number.c		\
 	cpg-instruction-operator.c		\
 	cpg-instruction-property.c		\
-	cpg-instruction-variadic-function.c	\
+	cpg-instruction-rand.c	\
 	cpg-instruction-constant.c
 
 libinstructions_headers =			\
 	cpg-instruction.h			\
 	cpg-instructions.h			\
 	cpg-instruction-custom-function.h	\
+	cpg-instruction-custom-function-ref.h	\
 	cpg-instruction-custom-operator.h	\
+	cpg-instruction-custom-operator-ref.h	\
 	cpg-instruction-function.h		\
 	cpg-instruction-number.h		\
 	cpg-instruction-operator.h		\
 	cpg-instruction-property.h		\
-	cpg-instruction-variadic-function.h	\
+	cpg-instruction-rand.h	\
 	cpg-instruction-constant.h
 
 libinstructions_includedir = $(includedir)/cpg-network-$(CPG_NETWORK_API_VERSION)/cpg-network/instructions

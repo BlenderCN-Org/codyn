@@ -2,7 +2,7 @@
 #define __CPG_INSTRUCTION_CUSTOM_OPERATOR_H__
 
 #include <cpg-network/instructions/cpg-instruction.h>
-#include <cpg-network/cpg-operator.h>
+#include <cpg-network/operators/cpg-operator.h>
 
 G_BEGIN_DECLS
 

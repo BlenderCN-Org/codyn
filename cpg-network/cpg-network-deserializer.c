@@ -511,7 +511,7 @@ parse_properties (CpgNetworkDeserializer *deserializer,
 		flags |= add_flags;
 
 		property = cpg_property_new ((const gchar *)name,
-		                             (const gchar *)expression,
+		                             cpg_expression_new ((const gchar *)expression),
 		                             flags);
 
 		save_comment (node, G_OBJECT (property));
@@ -1058,7 +1058,8 @@ parse_function (CpgNetworkDeserializer *deserializer,
 
 	expression = g_strdup ((gchar const *)expressionNode->children->content);
 
-	CpgFunction *function = cpg_function_new ((gchar const *)name, expression);
+	CpgFunction *function = cpg_function_new ((gchar const *)name,
+	                                          cpg_expression_new (expression));
 	g_free (expression);
 	xmlFree (name);
 

@@ -61,15 +61,14 @@ CpgEmbeddedContext *cpg_embedded_context_copy_top       (CpgEmbeddedContext *con
 
 void                cpg_embedded_context_add_define         (CpgEmbeddedContext *context,
                                                              gchar const        *name,
-                                                             gchar const        *value);
+                                                             CpgExpansion       *expansion);
 
 void                cpg_embedded_context_add_defines        (CpgEmbeddedContext *context,
                                                              GHashTable         *defines);
 
 gint                cpg_embedded_context_increment_define  (CpgEmbeddedContext  *context,
                                                             gchar const         *name,
-                                                            gint                 num,
-                                                            gboolean             retold);
+                                                            gint                 num);
 
 void                cpg_embedded_context_save           (CpgEmbeddedContext *context);
 void                cpg_embedded_context_save_defines   (CpgEmbeddedContext *context,
@@ -93,7 +92,7 @@ void                cpg_embedded_context_set_expansions (CpgEmbeddedContext *con
 
 GSList             *cpg_embedded_context_get_expansions (CpgEmbeddedContext *context);
 
-gchar              *cpg_embedded_context_get_define     (CpgEmbeddedContext *context,
+CpgExpansion       *cpg_embedded_context_get_define     (CpgEmbeddedContext *context,
                                                          gchar const        *name);
 
 GHashTable         *cpg_embedded_context_get_defines    (CpgEmbeddedContext *context);

@@ -54,6 +54,8 @@ struct _CpgExpansionClass
 GType         cpg_expansion_get_type         (void) G_GNUC_CONST;
 
 CpgExpansion *cpg_expansion_new              (gchar const * const    *items);
+CpgExpansion *cpg_expansion_newv             (gchar const            *item,
+                                              ...);
 
 CpgExpansion *cpg_expansion_new_one          (gchar const            *item);
 

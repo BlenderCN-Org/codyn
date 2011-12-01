@@ -109,6 +109,8 @@ cpg_network_parser_utils_get_templates (CpgNetwork           *network,
 		{
 			g_slist_foreach (*templates, (GFunc)g_object_unref, NULL);
 			g_slist_free (*templates);
+
+			*templates = NULL;
 		}
 	}
 

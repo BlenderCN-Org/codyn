@@ -26,6 +26,7 @@
 #include "cpg-annotatable.h"
 #include "cpg-link.h"
 #include "cpg-taggable.h"
+#include "cpg-enum-types.h"
 
 /**
  * SECTION:cpg-link-action
@@ -48,6 +49,7 @@ struct _CpgLinkActionPrivate
 
 	gchar *annotation;
 	GHashTable *tags;
+	CpgLinkActionFlags flags;
 
 	guint modified : 1;
 	guint enabled : 1;
@@ -62,7 +64,7 @@ enum
 	PROP_EQUATION,
 	PROP_TARGET_PROPERTY,
 	PROP_MODIFIED,
-	PROP_ENABLED,
+	PROP_FLAGS,
 	PROP_LINK,
 	PROP_ANNOTATION,
 };
@@ -292,9 +294,9 @@ cpg_link_action_set_property (GObject      *object,
 		case PROP_MODIFIED:
 			self->priv->modified = g_value_get_boolean (value);
 		break;
-		case PROP_ENABLED:
-			cpg_link_action_set_enabled (self,
-			                             g_value_get_boolean (value));
+		case PROP_FLAGS:
+			cpg_link_action_set_flags (self,
+			                           g_value_get_flags (value));
 		break;
 		case PROP_ANNOTATION:
 			g_free (self->priv->annotation);
@@ -331,8 +333,8 @@ cpg_link_action_get_property (GObject    *object,
 		case PROP_MODIFIED:
 			g_value_set_boolean (value, self->priv->modified);
 		break;
-		case PROP_ENABLED:
-			g_value_set_boolean (value, self->priv->enabled);
+		case PROP_FLAGS:
+			g_value_set_flags (value, self->priv->flags);
 		break;
 		case PROP_ANNOTATION:
 			g_value_set_string (value, self->priv->annotation);
@@ -421,12 +423,13 @@ cpg_link_action_class_init (CpgLinkActionClass *klass)
 	g_type_class_add_private (object_class, sizeof(CpgLinkActionPrivate));
 
 	g_object_class_install_property (object_class,
-	                                 PROP_ENABLED,
-	                                 g_param_spec_boolean ("enabled",
-	                                                       "Enabled",
-	                                                       "Enabled",
-	                                                       TRUE,
-	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                 PROP_FLAGS,
+	                                 g_param_spec_flags ("flags",
+	                                                     "Flags",
+	                                                     "Flags",
+	                                                     CPG_TYPE_LINK_ACTION_FLAGS,
+	                                                     CPG_LINK_ACTION_FLAG_NONE,
+	                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -526,27 +529,6 @@ cpg_link_action_set_equation (CpgLinkAction *action,
 }
 
 /**
- * cpg_link_action_depends:
- * @action: A #CpgLinkAction
- * @property: A #CpgProperty
- *
- * Check whether the action depends on a certain property.
- *
- * Returns: %TRUE if the action depends on @property, %FALSE otherwise
- *
- **/
-gboolean
-cpg_link_action_depends (CpgLinkAction *action,
-                         CpgProperty   *property)
-{
-	g_return_val_if_fail (CPG_IS_LINK_ACTION (action), FALSE);
-	g_return_val_if_fail (CPG_IS_PROPERTY (property), FALSE);
-
-	return g_slist_find ((GSList *)cpg_expression_get_dependencies (action->priv->equation),
-	                     property) != NULL;
-}
-
-/**
  * cpg_link_action_copy:
  * @action: A #CpgLinkAction
  *
@@ -570,6 +552,8 @@ cpg_link_action_copy (CpgLinkAction *action)
 
 	cpg_taggable_copy_to (CPG_TAGGABLE (action),
 	                      action->priv->tags);
+
+	newaction->priv->flags = action->priv->flags;
 
 	return newaction;
 }
@@ -617,23 +601,23 @@ cpg_link_action_equal (CpgLinkAction *action,
 }
 
 void
-cpg_link_action_set_enabled (CpgLinkAction *action,
-                             gboolean       enabled)
+cpg_link_action_set_flags (CpgLinkAction      *action,
+                           CpgLinkActionFlags  flags)
 {
 	g_return_if_fail (CPG_IS_LINK_ACTION (action));
 
-	if (action->priv->enabled != enabled)
+	if (action->priv->flags != flags)
 	{
-		action->priv->enabled = enabled;
-		g_object_notify (G_OBJECT (action), "enabled");
+		action->priv->flags = flags;
+		g_object_notify (G_OBJECT (action), "flags");
 	}
 }
 
-gboolean
-cpg_link_action_get_enabled (CpgLinkAction *action)
+CpgLinkActionFlags
+cpg_link_action_get_flags (CpgLinkAction *action)
 {
 	/* Omit type check to increase speed */
-	return action->priv->enabled;
+	return action->priv->flags;
 }
 
 void

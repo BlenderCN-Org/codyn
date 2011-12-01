@@ -25,6 +25,7 @@
 
 #include <glib-object.h>
 #include <cpg-network/cpg-property.h>
+#include <cpg-network/cpg-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -54,8 +55,6 @@ typedef enum
 typedef struct _CpgPropertyInterface		CpgPropertyInterface;
 typedef struct _CpgPropertyInterfaceClass	CpgPropertyInterfaceClass;
 typedef struct _CpgPropertyInterfacePrivate	CpgPropertyInterfacePrivate;
-
-typedef CPG_FORWARD_DECL (CpgGroup) CpgGroupForward;
 
 struct _CpgPropertyInterface
 {

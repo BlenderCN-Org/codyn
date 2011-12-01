@@ -74,7 +74,11 @@ test_proxy ()
 {
 	CpgObject *proxy = cpg_object_new ("proxy");
 
-	cpg_object_add_property (proxy, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_NONE), NULL);
+	cpg_object_add_property (proxy,
+	                         cpg_property_new ("p1",
+	                                           cpg_expression_new ("0"),
+	                                           CPG_PROPERTY_FLAG_NONE),
+	                         NULL);
 
 	CpgGroup *group = cpg_group_new ("id", proxy);
 
@@ -92,7 +96,11 @@ test_copy ()
 {
 	CpgObject *proxy = cpg_object_new ("proxy");
 
-	cpg_object_add_property (proxy, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_NONE), NULL);
+	cpg_object_add_property (proxy,
+	                         cpg_property_new ("p1",
+	                                           cpg_expression_new ("0"),
+	                                           CPG_PROPERTY_FLAG_NONE),
+	                         NULL);
 
 	CpgGroup *group = cpg_group_new ("id", proxy);
 

@@ -33,6 +33,8 @@ struct _CpgSelectionPrivate
 	GSList   *expansions;
 	GHashTable *defines;
 
+	gboolean copy_defines_on_write;
+
 	GHashTable *tags;
 };
 
@@ -119,11 +121,13 @@ copy_expansions (GSList *list)
 }
 
 static void
-copy_entry (gchar const *key,
-            gchar const *value,
-            GHashTable  *table)
+copy_entry (gchar const  *key,
+            CpgExpansion *value,
+            GHashTable   *table)
 {
-	g_hash_table_insert (table, g_strdup (key), g_strdup (value));
+	g_hash_table_insert (table,
+	                     g_strdup (key),
+	                     value ? cpg_expansion_copy (value) : cpg_expansion_new_one (""));
 }
 
 static GHashTable *
@@ -134,7 +138,7 @@ copy_defines (GHashTable *table)
 	ret = g_hash_table_new_full (g_str_hash,
 	                             g_str_equal,
 	                             (GDestroyNotify)g_free,
-	                             (GDestroyNotify)g_free);
+	                             (GDestroyNotify)g_object_unref);
 
 	if (table)
 	{
@@ -156,7 +160,16 @@ cpg_selection_new (gpointer    object,
 
 	ret->priv->object = object ? g_object_ref (object) : NULL;
 	ret->priv->expansions = copy_expansions (expansions);
-	ret->priv->defines = copy_defines (defines);
+
+	if (defines)
+	{
+		ret->priv->defines = g_hash_table_ref (defines);
+		ret->priv->copy_defines_on_write = TRUE;
+	}
+	else
+	{
+		ret->priv->defines = copy_defines (NULL);
+	}
 
 	return ret;
 }
@@ -169,15 +182,12 @@ cpg_selection_new_defines (gpointer    object,
 {
 	CpgSelection *ret;
 
-	if (copy_defines)
-	{
-		return cpg_selection_new (object, expansions, defines);
-	}
-
 	ret = cpg_selection_new (object, expansions, NULL);
 	g_hash_table_destroy (ret->priv->defines);
 
 	ret->priv->defines = g_hash_table_ref (defines);
+	ret->priv->copy_defines_on_write = copy_defines;
+
 	return ret;
 }
 
@@ -222,12 +232,21 @@ CpgSelection *
 cpg_selection_copy_defines (CpgSelection *selection,
                             gboolean      copy_defines)
 {
+	CpgSelection *ret;
+
 	g_return_val_if_fail (CPG_IS_SELECTION (selection), NULL);
 
-	return cpg_selection_new_defines (selection->priv->object,
-	                                  selection->priv->expansions,
-	                                  selection->priv->defines,
-	                                  copy_defines);
+	ret = cpg_selection_new_defines (selection->priv->object,
+	                                 selection->priv->expansions,
+	                                 selection->priv->defines,
+	                                 copy_defines);
+
+	if (copy_defines)
+	{
+		selection->priv->copy_defines_on_write = TRUE;
+	}
+
+	return ret;
 }
 
 /**
@@ -247,6 +266,25 @@ cpg_selection_get_object (CpgSelection *selection)
 	return selection->priv->object;
 }
 
+void
+cpg_selection_set_object (CpgSelection *selection,
+                          gpointer      object)
+{
+	g_return_if_fail (CPG_IS_SELECTION (selection));
+	g_return_if_fail (object == NULL || G_IS_OBJECT (object));
+
+	if (selection->priv->object)
+	{
+		g_object_unref (selection->priv->object);
+		selection->priv->object = NULL;
+	}
+
+	if (object)
+	{
+		selection->priv->object = g_object_ref (object);
+	}
+}
+
 /**
  * cpg_selection_get_expansions:
  * @selection: A #CpgSelection
@@ -264,16 +302,36 @@ cpg_selection_get_expansions (CpgSelection *selection)
 	return selection->priv->expansions;
 }
 
+static void
+copy_defines_on_write (CpgSelection *selection)
+{
+	GHashTable *nd;
+
+	if (!selection->priv->copy_defines_on_write)
+	{
+		return;
+	}
+
+	nd = copy_defines (selection->priv->defines);
+	g_hash_table_unref (selection->priv->defines);
+	selection->priv->defines = nd;
+
+	selection->priv->copy_defines_on_write = FALSE;
+}
+
 void
 cpg_selection_add_define (CpgSelection *selection,
                           gchar const  *key,
-                          gchar const  *value)
+                          CpgExpansion *value)
 {
 	g_return_if_fail (CPG_IS_SELECTION (selection));
+	g_return_if_fail (value == NULL || CPG_IS_EXPANSION (value));
+
+	copy_defines_on_write (selection);
 
 	g_hash_table_insert (selection->priv->defines,
 	                     g_strdup (key),
-	                     g_strdup (value));
+	                     value ? cpg_expansion_copy (value) : cpg_expansion_new_one (""));
 }
 
 /**
@@ -293,7 +351,7 @@ cpg_selection_get_defines (CpgSelection *selection)
 	return selection->priv->defines;
 }
 
-gchar const *
+CpgExpansion *
 cpg_selection_get_define (CpgSelection *selection,
                           gchar const  *key)
 {

@@ -24,6 +24,7 @@
 #define __CPG_SELECTION_H__
 
 #include <glib-object.h>
+#include <cpg-network/cpg-expansion.h>
 
 G_BEGIN_DECLS
 
@@ -62,6 +63,9 @@ CpgSelection *cpg_selection_new_defines    (gpointer      object,
                                             GHashTable   *defines,
                                             gboolean      copy_defines);
 
+void          cpg_selection_set_object     (CpgSelection *selection,
+                                            gpointer      object);
+
 CpgSelection *cpg_selection_copy           (CpgSelection *selection);
 CpgSelection *cpg_selection_copy_defines   (CpgSelection *selection,
                                             gboolean      copy_defines);
@@ -69,14 +73,14 @@ CpgSelection *cpg_selection_copy_defines   (CpgSelection *selection,
 gpointer      cpg_selection_get_object     (CpgSelection *selection);
 GSList       *cpg_selection_get_expansions (CpgSelection *selection);
 
-gchar const  *cpg_selection_get_define     (CpgSelection *selection,
+CpgExpansion *cpg_selection_get_define     (CpgSelection *selection,
                                             gchar const  *key);
 
 GHashTable   *cpg_selection_get_defines    (CpgSelection *selection);
 
 void          cpg_selection_add_define     (CpgSelection *selection,
                                             gchar const  *key,
-                                            gchar const  *value);
+                                            CpgExpansion *value);
 
 G_END_DECLS
 

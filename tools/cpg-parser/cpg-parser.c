@@ -83,9 +83,8 @@ add_defines (CpgParserContext *context)
 		{
 			cpg_parser_context_define (context,
 			                           cpg_embedded_string_new_from_string (parts[0]),
-			                           cpg_embedded_string_new_from_string (parts[1]),
+			                           G_OBJECT (cpg_embedded_string_new_from_string (parts[1])),
 			                           FALSE,
-			                           NULL,
 			                           NULL);
 		}
 
@@ -155,9 +154,8 @@ parse_network (gchar const *args[], gint argc)
 	CpgNetwork *network;
 	gboolean ret = TRUE;
 	GError *error = NULL;
-	CpgExpansion *expansion;
-	CpgEmbeddedContext *embedded;
 	gboolean fromstdin;
+	GOutputStream *output_stream;
 
 	remove_double_dash (args, &argc);
 
@@ -178,7 +176,6 @@ parse_network (gchar const *args[], gint argc)
 		}
 	}
 
-	GOutputStream *output_stream;
 	if (output_file && strcmp (output_file, "-") != 0)
 	{
 		GFile *outfile;
@@ -215,17 +212,6 @@ parse_network (gchar const *args[], gint argc)
 		                  G_CALLBACK (on_context_file_used),
 		                  output_stream);
 	}
-
-	/* We replace the filename here with the collapsed arguments */
-	args[0] = cpg_embedded_string_collapse (args + 1);
-
-	expansion = cpg_expansion_new (args);
-
-	embedded = cpg_parser_context_get_embedded (context);
-	cpg_embedded_context_add_expansion (embedded, expansion);
-	g_object_unref (expansion);
-
-	add_defines (context);
 
 	if (!fromstdin)
 	{

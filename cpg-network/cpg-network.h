@@ -30,7 +30,7 @@
 #include <cpg-network/cpg-monitor.h>
 #include <cpg-network/cpg-compile-error.h>
 #include <cpg-network/cpg-function.h>
-#include <cpg-network/cpg-integrator.h>
+#include <cpg-network/integrators/cpg-integrator.h>
 #include <cpg-network/cpg-group.h>
 
 G_BEGIN_DECLS
@@ -76,7 +76,8 @@ typedef enum
 	CPG_NETWORK_LOAD_ERROR_FUNCTION,
 	CPG_NETWORK_LOAD_ERROR_IMPORT,
 	CPG_NETWORK_LOAD_ERROR_INPUT_FILE,
-	CPG_NETWORK_LOAD_ERROR_INTERFACE
+	CPG_NETWORK_LOAD_ERROR_INTERFACE,
+	CPG_NETWORK_LOAD_ERROR_OPERATOR
 } CpgNetworkLoadError;
 
 typedef enum

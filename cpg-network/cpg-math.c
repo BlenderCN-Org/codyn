@@ -34,8 +34,6 @@
  *
  */
 
-#define RAND(A, B)  ((A) + rand() * 1.0 / RAND_MAX * ((B) - (A)))
-
 typedef void (*FunctionClosure)(CpgStack *, gint numargs);
 
 static void
@@ -209,39 +207,6 @@ op_log10 (CpgStack *stack,
 }
 
 static void
-op_rand (CpgStack *stack,
-         gint      numargs)
-{
-	double value;
-
-	if (numargs == 0)
-	{
-		value = RAND (0, 1);
-	}
-	else if (numargs == 2)
-	{
-		double second = cpg_stack_pop (stack);
-		double first = cpg_stack_pop (stack);
-
-		value = RAND (first, second);
-	}
-	else
-	{
-		gint i;
-
-		for (i = 0; i < numargs - 1; ++i)
-		{
-			cpg_stack_pop (stack);
-		}
-
-		double first = cpg_stack_pop (stack);
-		value = RAND (0, first);
-	}
-
-	cpg_stack_push (stack, value);
-}
-
-static void
 op_hypot (CpgStack *stack,
           gint      numargs)
 {
@@ -376,43 +341,41 @@ typedef struct
 	gchar const *name;
 	FunctionClosure function;
 	gint arguments;
-	gboolean constant;
 	gboolean commutative;
 } FunctionEntry;
 
 static FunctionEntry function_entries[] = {
-	{NULL, op_noop, 0, TRUE, FALSE},
-	{"sin", op_sin, 1, TRUE, FALSE},
-	{"cos", op_cos, 1, TRUE, FALSE},
-	{"tan", op_tan, 1, TRUE, FALSE},
-	{"asin", op_asin, 1, TRUE, FALSE},
-	{"acos", op_acos, 1, TRUE, FALSE},
-	{"atan", op_atan, 1, TRUE, FALSE},
-	{"atan2", op_atan2, 2, TRUE, FALSE},
-	{"sqrt", op_sqrt, 1, TRUE, FALSE},
-	{"invsqrt", op_invsqrt, 1, TRUE, FALSE},
-	{"min", op_min, -1, TRUE, TRUE},
-	{"max", op_max, -1, TRUE, TRUE},
-	{"exp", op_exp, 1, TRUE, FALSE},
-	{"floor", op_floor, 1, TRUE, FALSE},
-	{"ceil", op_ceil, 1, TRUE, FALSE},
-	{"round", op_round, 1, TRUE, FALSE},
-	{"abs", op_abs, 1, TRUE, FALSE},
-	{"pow", op_pow, 2, TRUE, FALSE},
-	{"rand", op_rand, -1, FALSE, FALSE},
-	{"ln", op_ln, 1, TRUE, FALSE},
-	{"log10", op_log10, 1, TRUE, FALSE},
-	{"hypot", op_hypot, 2, TRUE, TRUE},
-	{"exp2", op_exp2, 1, TRUE, FALSE},
-	{"sinh", op_sinh, 1, TRUE, FALSE},
-	{"cosh", op_cosh, 1, TRUE, FALSE},
-	{"tanh", op_tanh, 1, TRUE, FALSE},
-	{"lerp", op_lerp, 3, TRUE, FALSE},
-	{"sqsum", op_sqsum, -1, TRUE, TRUE},
-	{"sign", op_sign, 1, TRUE, FALSE},
-	{"csign", op_csign, 2, TRUE, FALSE},
-	{"clip", op_clip, 3, TRUE, FALSE},
-	{"cycle", op_cycle, 3, TRUE, FALSE}
+	{NULL, op_noop, 0, FALSE},
+	{"sin", op_sin, 1, FALSE},
+	{"cos", op_cos, 1, FALSE},
+	{"tan", op_tan, 1, FALSE},
+	{"asin", op_asin, 1, FALSE},
+	{"acos", op_acos, 1, FALSE},
+	{"atan", op_atan, 1, FALSE},
+	{"atan2", op_atan2, 2, FALSE},
+	{"sqrt", op_sqrt, 1, FALSE},
+	{"invsqrt", op_invsqrt, 1, FALSE},
+	{"min", op_min, -1, TRUE},
+	{"max", op_max, -1, TRUE},
+	{"exp", op_exp, 1, FALSE},
+	{"floor", op_floor, 1, FALSE},
+	{"ceil", op_ceil, 1, FALSE},
+	{"round", op_round, 1, FALSE},
+	{"abs", op_abs, 1, FALSE},
+	{"pow", op_pow, 2, FALSE},
+	{"ln", op_ln, 1, FALSE},
+	{"log10", op_log10, 1, FALSE},
+	{"hypot", op_hypot, 2, TRUE},
+	{"exp2", op_exp2, 1, FALSE},
+	{"sinh", op_sinh, 1, FALSE},
+	{"cosh", op_cosh, 1, FALSE},
+	{"tanh", op_tanh, 1, FALSE},
+	{"lerp", op_lerp, 3, FALSE},
+	{"sqsum", op_sqsum, -1, TRUE},
+	{"sign", op_sign, 1, FALSE},
+	{"csign", op_csign, 2, FALSE},
+	{"clip", op_clip, 3, FALSE},
+	{"cycle", op_cycle, 3, FALSE}
 };
 
 /**
@@ -460,22 +423,6 @@ cpg_math_function_lookup (gchar const  *name,
 	}
 
 	return 0;
-}
-
-/**
- * cpg_math_function_is_constant:
- * @type: A #CpgMathFunctionType
- *
- * Get whether a math function is constant (i.e. if it is deterministic). An
- * example of a function that is not constant is 'rand'.
- *
- * Returns: %TRUE if the function is constant, %FALSE otherwise
- *
- **/
-gboolean
-cpg_math_function_is_constant (CpgMathFunctionType type)
-{
-	return function_entries[type].constant;
 }
 
 /**
@@ -696,28 +643,27 @@ typedef struct
 	gchar const *name;
 	FunctionClosure function;
 	gint arguments;
-	gboolean constant;
 	gboolean commutative;
 } OperatorEntry;
 
 static OperatorEntry operator_entries[] = {
-	{NULL, op_noop, 0, TRUE, FALSE},
-	{"--", op_unary_minus, 1, TRUE, FALSE},
-	{"-", op_minus, 2, TRUE, FALSE},
-	{"+", op_plus, 2, TRUE, TRUE},
-	{"*", op_multiply, 2, TRUE, TRUE},
-	{"/", op_divide, 2, TRUE, FALSE},
-	{"%", op_modulo, 2, TRUE, FALSE},
-	{"^", op_power, 2, TRUE, FALSE},
-	{">", op_greater, 2, TRUE, FALSE},
-	{"<", op_less, 2, TRUE, FALSE},
-	{">=", op_greater_or_equal, 2, TRUE, FALSE},
-	{"<=", op_less_or_equal, 2, TRUE, FALSE},
-	{"==", op_equal, 2, TRUE, TRUE},
-	{"||", op_or, 2, TRUE, TRUE},
-	{"&&", op_and, 2, TRUE, TRUE},
-	{"!", op_negate, 1, TRUE, FALSE},
-	{"?:", op_ternary, 3, TRUE, FALSE}
+	{NULL, op_noop, 0, FALSE},
+	{"--", op_unary_minus, 1, FALSE},
+	{"-", op_minus, 2, FALSE},
+	{"+", op_plus, 2, TRUE},
+	{"*", op_multiply, 2, TRUE},
+	{"/", op_divide, 2, FALSE},
+	{"%", op_modulo, 2, FALSE},
+	{"^", op_power, 2, FALSE},
+	{">", op_greater, 2, FALSE},
+	{"<", op_less, 2, FALSE},
+	{">=", op_greater_or_equal, 2, FALSE},
+	{"<=", op_less_or_equal, 2, FALSE},
+	{"==", op_equal, 2, TRUE},
+	{"||", op_or, 2, TRUE},
+	{"&&", op_and, 2, TRUE},
+	{"!", op_negate, 1, FALSE},
+	{"?:", op_ternary, 3, FALSE}
 };
 
 /**
@@ -749,21 +695,6 @@ cpg_math_operator_execute (CpgMathOperatorType  type,
                            CpgStack            *stack)
 {
 	operator_entries[type].function (stack, numargs);
-}
-
-/**
- * cpg_math_operator_is_constant:
- * @type: A #CpgMathOperatorType
- *
- * Get whether an operator is constant (i.e. if it is deterministic).
- *
- * Returns: %TRUE if the operator is constant, %FALSE otherwise
- *
- **/
-gboolean
-cpg_math_operator_is_constant (CpgMathOperatorType type)
-{
-	return operator_entries[type].constant;
 }
 
 /**

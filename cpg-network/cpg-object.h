@@ -28,7 +28,8 @@
 #include <cpg-network/cpg-compile-context.h>
 #include <cpg-network/cpg-utils.h>
 #include <cpg-network/cpg-usable.h>
-#include <cpg-network/cpg-parser-code.h>
+#include <cpg-network/cpg-event.h>
+#include <cpg-network/cpg-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -46,8 +47,6 @@ typedef struct _CpgObject			CpgObject;
 typedef struct _CpgObjectClass		CpgObjectClass;
 typedef struct _CpgObjectPrivate	CpgObjectPrivate;
 
-CPG_FORWARD_DECL (CpgLink);
-CPG_FORWARD_DECL (CpgCompileError);
 
 /**
  * CpgObjectError:
@@ -116,9 +115,9 @@ struct _CpgObjectClass
 	GObjectClass parent_class;
 
 	/*< public >*/
-	gboolean      (*compile)         (CpgObject                          *object,
-	                                  CpgCompileContext                  *context,
-	                                  CPG_FORWARD_DECL (CpgCompileError) *error);
+	gboolean      (*compile)         (CpgObject              *object,
+	                                  CpgCompileContext      *context,
+	                                  CpgCompileErrorForward *error);
 
 	void          (*reset)           (CpgObject *object);
 
@@ -164,6 +163,9 @@ struct _CpgObjectClass
 
 	gboolean      (*equal)           (CpgObject    *first,
 	                                  CpgObject    *last);
+
+	CpgCompileContext *(*get_compile_context) (CpgObject         *object,
+	                                           CpgCompileContext *context);
 
 	/* signals */
 	void          (*compiled)         (CpgObject   *object);
@@ -213,7 +215,7 @@ gboolean          cpg_object_verify_remove_property (CpgObject    *object,
                                                      GError      **error);
 
 GSList           *cpg_object_get_properties  (CpgObject   *object);
-CpgObject        *cpg_object_get_parent      (CpgObject   *object);
+CpgGroupForward  *cpg_object_get_parent      (CpgObject   *object);
 
 gboolean          cpg_object_get_auto_imported (CpgObject    *object);
 void              cpg_object_set_auto_imported (CpgObject    *object,
@@ -232,13 +234,12 @@ gboolean          cpg_object_is_compiled    (CpgObject   *object);
 
 gboolean          cpg_object_compile        (CpgObject                          *object,
                                              CpgCompileContext                  *context,
-                                             CPG_FORWARD_DECL (CpgCompileError) *error);
+                                             CpgCompileErrorForward *error);
 
 gboolean          cpg_object_equal          (CpgObject *first,
                                              CpgObject *second);
 
 void              cpg_object_clear          (CpgObject   *object);
-const GSList     *cpg_object_get_actors     (CpgObject   *object);
 
 const GSList     *cpg_object_get_applied_templates  (CpgObject   *object);
 const GSList     *cpg_object_get_template_applies_to  (CpgObject   *object);
@@ -261,30 +262,20 @@ gchar            *cpg_object_get_full_id             (CpgObject *object);
 gchar            *cpg_object_get_full_id_for_display (CpgObject *object);
 
 gchar            *cpg_object_get_relative_id (CpgObject *object,
-                                              CpgObject *parent);
+                                              CpgGroupForward *parent);
 
 gchar            *cpg_object_get_relative_id_for_display (CpgObject *object,
-                                                          CpgObject *parent);
+                                                          CpgGroupForward *parent);
 
-const GSList     *cpg_object_get_links      (CpgObject *object);
+CpgCompileContext *cpg_object_get_compile_context (CpgObject         *object,
+                                                   CpgCompileContext *context);
 
-void              cpg_object_add_event_handler (CpgObject      *object,
-                                              CpgParserCode *code);
-
-void              cpg_object_remove_event_handler (CpgObject      *object,
-                                               CpgParserCode *code);
-
-const GSList     *cpg_object_get_event_handlers (CpgObject      *object);
-
-/* used for referencing links */
-void             _cpg_object_link           (CpgObject                  *object,
-                                             CPG_FORWARD_DECL (CpgLink) *link);
-
-void             _cpg_object_unlink         (CpgObject                  *object,
-                                             CPG_FORWARD_DECL (CpgLink) *link);
+void cpg_object_add_event (CpgObject *object, CpgEvent  *event);
+CpgEvent *cpg_object_get_last_event (CpgObject *object);
+GSList const *cpg_object_get_events (CpgObject *object);
 
 void             _cpg_object_set_parent     (CpgObject *object,
-                                             CpgObject *parent);
+                                             CpgGroupForward *parent);
 
 G_END_DECLS
 

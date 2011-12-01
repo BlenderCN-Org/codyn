@@ -256,8 +256,8 @@ output_to_dot (CpgNetwork  *network,
 		for (item = links; item; item = g_slist_next (item))
 		{
 			CpgLink *link;
-			CpgObject *from;
-			CpgObject *to;
+			CpgGroup *from;
+			CpgGroup *to;
 
 			link = item->data;
 
@@ -267,8 +267,8 @@ output_to_dot (CpgNetwork  *network,
 			if (from && to)
 			{
 				write_stream_printf ("\t%s -> %s;\n",
-				                     cpg_object_get_id (from),
-				                     cpg_object_get_id (to));
+				                     cpg_object_get_id (CPG_OBJECT (from)),
+				                     cpg_object_get_id (CPG_OBJECT (to)));
 			}
 		}
 
@@ -395,8 +395,8 @@ calculate_link_info (GSList *links)
 	while (links)
 	{
 		CpgLink *link;
-		CpgObject *from;
-		CpgObject *to;
+		CpgGroup *from;
+		CpgGroup *to;
 		LinkInfo *other;
 		LinkInfo *info;
 
@@ -415,14 +415,14 @@ calculate_link_info (GSList *links)
 			continue;
 		}
 
-		ptr = g_strconcat (cpg_object_get_id (from),
+		ptr = g_strconcat (cpg_object_get_id (CPG_OBJECT (from)),
 		                   "##",
-		                   cpg_object_get_id (to),
+		                   cpg_object_get_id (CPG_OBJECT (to)),
 		                   NULL);
 
-		optr = g_strconcat (cpg_object_get_id (to),
+		optr = g_strconcat (cpg_object_get_id (CPG_OBJECT (to)),
 		                    "##",
-		                    cpg_object_get_id (from),
+		                    cpg_object_get_id (CPG_OBJECT (from)),
 		                    NULL);
 
 		other = g_hash_table_lookup (fromto,
@@ -663,16 +663,16 @@ output_to_tikz (CpgNetwork  *network,
 		    cpg_link_get_to (info->link))
 		{
 			write_stream_printf ("\t\\cpgbendandconnectself{%s}{%s}{%d}{%s}\n",
-			                     cpg_object_get_id (cpg_link_get_from (info->link)),
-			                     cpg_object_get_id (cpg_link_get_to (info->link)),
+			                     cpg_object_get_id (CPG_OBJECT (cpg_link_get_from (info->link))),
+			                     cpg_object_get_id (CPG_OBJECT (cpg_link_get_to (info->link))),
 			                     info->offset,
 			                     styles);
 		}
 		else
 		{
 			write_stream_printf ("\t\\cpgbendandconnect{%s}{%s}{%d}{\\Bending}{%s}\n",
-			                     cpg_object_get_id (cpg_link_get_from (info->link)),
-			                     cpg_object_get_id (cpg_link_get_to (info->link)),
+			                     cpg_object_get_id (CPG_OBJECT (cpg_link_get_from (info->link))),
+			                     cpg_object_get_id (CPG_OBJECT (cpg_link_get_to (info->link))),
 			                     info->offset,
 			                     styles);
 		}

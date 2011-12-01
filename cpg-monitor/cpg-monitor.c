@@ -136,7 +136,6 @@ write_monitors (CpgNetwork    *network,
 	gint num;
 	gint row;
 	GSList *item;
-	gdouble time = from;
 
 	if (include_header)
 	{
@@ -196,27 +195,17 @@ write_monitors (CpgNetwork    *network,
 	{
 		gchar value[G_ASCII_DTOSTR_BUF_SIZE];
 
-		g_ascii_dtostr (value,
-		                G_ASCII_DTOSTR_BUF_SIZE,
-		                time);
-
-		g_output_stream_write_all (stream,
-		                           value,
-		                           strlen (value),
-		                           NULL,
-		                           NULL,
-		                           NULL);
-
-		time += step;
-
 		for (i = 0; i < num; ++i)
 		{
-			g_output_stream_write_all (stream,
-			                           delimiter,
-			                           strlen (delimiter),
-			                           NULL,
-			                           NULL,
-			                           NULL);
+			if (i != 0)
+			{
+				g_output_stream_write_all (stream,
+				                           delimiter,
+				                           strlen (delimiter),
+				                           NULL,
+				                           NULL,
+				                           NULL);
+			}
 
 			g_ascii_dtostr (value,
 			                G_ASCII_DTOSTR_BUF_SIZE,
@@ -242,6 +231,7 @@ monitor_network (gchar const *filename)
 	CpgNetwork *network;
 	GError *error = NULL;
 	gint i;
+	CpgIntegrator *integrator;
 
 	network = cpg_network_new_from_file (filename, &error);
 
@@ -254,6 +244,12 @@ monitor_network (gchar const *filename)
 	}
 
 	GSList *mons = NULL;
+	integrator = cpg_network_get_integrator (network);
+
+	mons = g_slist_prepend (NULL,
+	                        cpg_monitor_new (network,
+	                                         CPG_OBJECT (integrator),
+	                                         cpg_integrator_get_property (integrator, "t")));
 
 	for (i = 0; i < monitors->len; ++i)
 	{

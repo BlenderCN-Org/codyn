@@ -93,7 +93,6 @@ typedef enum
  * @CPG_MATH_FUNCTION_TYPE_ROUND: round
  * @CPG_MATH_FUNCTION_TYPE_ABS: absolute
  * @CPG_MATH_FUNCTION_TYPE_POW: power
- * @CPG_MATH_FUNCTION_TYPE_RAND: random
  * @CPG_MATH_FUNCTION_TYPE_LN: natural logarithm
  * @CPG_MATH_FUNCTION_TYPE_LOG10: base 10 logarithm
  * @CPG_MATH_FUNCTION_TYPE_HYPOT: euclidean distance
@@ -132,7 +131,6 @@ typedef enum
 	CPG_MATH_FUNCTION_TYPE_ROUND,
 	CPG_MATH_FUNCTION_TYPE_ABS,
 	CPG_MATH_FUNCTION_TYPE_POW,
-	CPG_MATH_FUNCTION_TYPE_RAND,
 	CPG_MATH_FUNCTION_TYPE_LN,
 	CPG_MATH_FUNCTION_TYPE_LOG10,
 	CPG_MATH_FUNCTION_TYPE_HYPOT,
@@ -160,8 +158,6 @@ void                 cpg_math_function_execute     (CpgMathFunctionType  type,
 void                 cpg_math_operator_execute     (CpgMathOperatorType  type,
                                                     gint                 numargs,
                                                     CpgStack            *stack);
-gboolean             cpg_math_function_is_constant (CpgMathFunctionType  type);
-gboolean             cpg_math_operator_is_constant (CpgMathOperatorType  type);
 
 gboolean             cpg_math_function_is_variable (CpgMathFunctionType  type);
 gboolean             cpg_math_operator_is_variable (CpgMathOperatorType  type);

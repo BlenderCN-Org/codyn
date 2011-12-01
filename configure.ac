@@ -168,6 +168,9 @@ cpg-network.pc
 cpg-network-webots.pc
 cpg-network/Makefile
 cpg-network/instructions/Makefile
+cpg-network/operators/Makefile
+cpg-network/integrators/Makefile
+cpg-network/tree-algorithms/Makefile
 cpg-network-webots/Makefile
 data/Makefile
 data/cpg.xml
@@ -175,6 +178,7 @@ data/library/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/webots/Makefile
+data/library/physics/Makefile
 docs/Makefile
 docs/reference/Makefile
 docs/man/Makefile
@@ -188,6 +192,7 @@ tools/cpg-parser/Makefile
 tools/cpg-render/Makefile
 tools/cpg-context/Makefile
 tools/cpg-archive/Makefile
+tools/cpg-compile/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cpgcontext/Makefile

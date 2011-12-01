@@ -77,6 +77,22 @@ cpg_instruction_custom_function_equal (CpgInstruction *i1,
 	return f1->priv->function == f2->priv->function;
 }
 
+static GSList *
+cpg_instruction_custom_function_get_dependencies (CpgInstruction *inst)
+{
+	CpgInstructionCustomFunction *f = CPG_INSTRUCTION_CUSTOM_FUNCTION (inst);
+
+	if (!f->priv->function)
+	{
+		return NULL;
+	}
+	else
+	{
+		return g_slist_prepend (NULL,
+		                        cpg_function_get_expression (f->priv->function));
+	}
+}
+
 static void
 cpg_instruction_custom_function_class_init (CpgInstructionCustomFunctionClass *klass)
 {
@@ -90,6 +106,7 @@ cpg_instruction_custom_function_class_init (CpgInstructionCustomFunctionClass *k
 	inst_class->execute = cpg_instruction_custom_function_execute;
 	inst_class->get_stack_count = cpg_instruction_custom_function_get_stack_count;
 	inst_class->equal = cpg_instruction_custom_function_equal;
+	inst_class->get_dependencies = cpg_instruction_custom_function_get_dependencies;
 
 	g_type_class_add_private (object_class, sizeof(CpgInstructionCustomFunctionPrivate));
 }

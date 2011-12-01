@@ -8,11 +8,11 @@ static gchar simple_xml[] = ""
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 "<cpg>\n"
 "  <network>\n"
-"    <state id=\"state\">\n"
+"    <group id=\"state\">\n"
 "      <property name=\"x\" integrated=\"yes\" in=\"yes\" out=\"yes\" once=\"yes\">0</property>\n"
 "      <property name=\"y\">0</property>\n"
 "      <property name=\"z\" once=\"yes\">rand()</property>\n"
-"    </state>\n"
+"    </group>\n"
 "    <link id=\"link\" from=\"state\" to=\"state\">\n"
 "      <action target=\"x\">1</action>\n"
 "      <action target=\"y\">t</action>"
@@ -24,14 +24,14 @@ static gchar simple_group_xml[] = ""
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
 "<cpg>\n"
 "  <network>\n"
-"    <state id=\"group\">\n"
-"      <state id=\"state\">\n"
+"    <group id=\"group\">\n"
+"      <group id=\"state\">\n"
 "        <property name=\"x\" flags=\"integrated | in | out | once\">0</property>\n"
-"      </state>\n"
+"      </group>\n"
 "      <link id=\"link\" from=\"state\" to=\"state\">\n"
 "        <action target=\"x\">1</action>\n"
 "      </link>\n"
-"    </state>\n"
+"    </group>\n"
 "  </network>\n"
 "</cpg>\n";
 
@@ -117,15 +117,19 @@ test_variadic ()
 
 	network = cpg_network_new ();
 
-	CpgProperty *prop = cpg_property_new ("x", "rand()", CPG_PROPERTY_FLAG_NONE);
-	CpgProperty *other = cpg_property_new ("y", "0", CPG_PROPERTY_FLAG_NONE);
+	CpgProperty *prop = cpg_property_new ("x",
+	                                      cpg_expression_new ("rand()"),
+	                                      CPG_PROPERTY_FLAG_NONE);
+	CpgProperty *other = cpg_property_new ("y",
+	                                       cpg_expression_new ("0"),
+	                                       CPG_PROPERTY_FLAG_NONE);
 
 	cpg_object_add_property (CPG_OBJECT (network), prop, NULL);
 	cpg_object_add_property (CPG_OBJECT (network), other, NULL);
 
 	CpgLink *link = cpg_link_new ("link",
-	                              CPG_OBJECT (network),
-	                              CPG_OBJECT (network));
+	                              CPG_GROUP (network),
+	                              CPG_GROUP (network));
 
 	CpgLinkAction *action = cpg_link_action_new ("y", cpg_expression_new ("x"));
 	cpg_link_add_action (link, action);

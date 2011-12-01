@@ -51,6 +51,7 @@ expansion_free (Expansion *self)
 struct _CpgExpansionPrivate
 {
 	GPtrArray *expansions;
+	gboolean copy_on_write;
 };
 
 G_DEFINE_TYPE (CpgExpansion, cpg_expansion, G_TYPE_OBJECT)
@@ -62,7 +63,7 @@ cpg_expansion_finalize (GObject *object)
 
 	expansion = CPG_EXPANSION (object);
 
-	g_ptr_array_free (expansion->priv->expansions, TRUE);
+	g_ptr_array_unref (expansion->priv->expansions);
 
 	G_OBJECT_CLASS (cpg_expansion_parent_class)->finalize (object);
 }
@@ -83,15 +84,98 @@ cpg_expansion_init (CpgExpansion *self)
 	self->priv = CPG_EXPANSION_GET_PRIVATE (self);
 }
 
+static Expansion *
+expansion_copy (Expansion *ex)
+{
+	Expansion *ret;
+
+	ret = expansion_new (ex->text);
+	ret->idx = ex->idx;
+
+	return ret;
+}
+
+static Expansion *
+get_ex (CpgExpansion *id, gint idx)
+{
+	if (idx <= -(gint)id->priv->expansions->len || idx >= id->priv->expansions->len)
+	{
+		return NULL;
+	}
+
+	if (idx < 0)
+	{
+		idx = (gint)id->priv->expansions->len + idx;
+	}
+
+	return g_ptr_array_index (id->priv->expansions, idx);
+}
+
+static void
+copy_on_write (CpgExpansion *expansion)
+{
+	GPtrArray *ptr = g_ptr_array_new ();
+	gint i;
+
+	if (!expansion->priv->copy_on_write)
+	{
+		return;
+	}
+
+	ptr = g_ptr_array_sized_new (cpg_expansion_num (expansion));
+	g_ptr_array_set_free_func (ptr, (GDestroyNotify)expansion_free);
+
+	for (i = 0; i < cpg_expansion_num (expansion); ++i)
+	{
+		g_ptr_array_add (ptr,
+		                 expansion_copy (get_ex (expansion, i)));
+	}
+
+	g_ptr_array_unref (expansion->priv->expansions);
+
+	expansion->priv->expansions = ptr;
+	expansion->priv->copy_on_write = FALSE;
+}
+
+CpgExpansion *
+cpg_expansion_newv (gchar const *item,
+                    ...)
+{
+	GPtrArray *ptr;
+	va_list ap;
+	gchar **d;
+	CpgExpansion *ret;
+
+	ptr = g_ptr_array_new ();
+	g_ptr_array_add (ptr, (gpointer)item);
+
+	va_start (ap, item);
+
+	while ((item = va_arg (ap, gchar const *)))
+	{
+		g_ptr_array_add (ptr, (gpointer)item);
+	}
+
+	g_ptr_array_add (ptr, NULL);
+	d = (gchar **)g_ptr_array_free (ptr, FALSE);
+
+	ret = cpg_expansion_new ((gchar const * const *)d);
+	g_free (d);
+
+	return ret;
+}
+
 CpgExpansion *
 cpg_expansion_new_one (gchar const *item)
 {
-	gchar const *items[] = {
-		item,
-		NULL
-	};
+	CpgExpansion *ret;
 
-	return cpg_expansion_new (items);
+	ret = g_object_new (CPG_TYPE_EXPANSION, NULL);
+	ret->priv->expansions = g_ptr_array_sized_new (1);
+	g_ptr_array_set_free_func (ret->priv->expansions, (GDestroyNotify)expansion_free);
+
+	g_ptr_array_add (ret->priv->expansions, expansion_new (item));
+	return ret;
 }
 
 CpgExpansion *
@@ -126,22 +210,6 @@ cpg_expansion_num (CpgExpansion *id)
 	g_return_val_if_fail (CPG_IS_EXPANSION (id), 0);
 
 	return id->priv->expansions->len;
-}
-
-static Expansion *
-get_ex (CpgExpansion *id, gint idx)
-{
-	if (idx <= -(gint)id->priv->expansions->len || idx >= id->priv->expansions->len)
-	{
-		return NULL;
-	}
-
-	if (idx < 0)
-	{
-		idx = (gint)id->priv->expansions->len + idx;
-	}
-
-	return g_ptr_array_index (id->priv->expansions, idx);
 }
 
 gchar const *
@@ -179,6 +247,8 @@ cpg_expansion_set_index (CpgExpansion *id,
 
 	g_return_if_fail (CPG_IS_EXPANSION (id));
 
+	copy_on_write (id);
+
 	ex = get_ex (id, idx);
 
 	if (ex)
@@ -196,6 +266,8 @@ cpg_expansion_set (CpgExpansion *id,
 
 	g_return_if_fail (CPG_IS_EXPANSION (id));
 
+	copy_on_write (id);
+
 	ex = get_ex (id, idx);
 
 	if (ex)
@@ -203,17 +275,6 @@ cpg_expansion_set (CpgExpansion *id,
 		g_free (ex->text);
 		ex->text = g_strdup (val);
 	}
-}
-
-static Expansion *
-expansion_copy (Expansion *ex)
-{
-	Expansion *ret;
-
-	ret = expansion_new (ex->text);
-	ret->idx = ex->idx;
-
-	return ret;
 }
 
 /**
@@ -229,8 +290,6 @@ CpgExpansion *
 cpg_expansion_copy (CpgExpansion *id)
 {
 	CpgExpansion *ret;
-	GPtrArray *ptr;
-	gint i;
 
 	g_return_val_if_fail (id == NULL || CPG_IS_EXPANSION (id), NULL);
 
@@ -239,17 +298,10 @@ cpg_expansion_copy (CpgExpansion *id)
 		return NULL;
 	}
 
-	ptr = g_ptr_array_sized_new (cpg_expansion_num (id) + 1);
-	g_ptr_array_set_free_func (ptr, (GDestroyNotify)expansion_free);
-
-	for (i = 0; i < cpg_expansion_num (id); ++i)
-	{
-		g_ptr_array_add (ptr,
-		                 expansion_copy (get_ex (id, i)));
-	}
-
 	ret = g_object_new (CPG_TYPE_EXPANSION, NULL);
-	ret->priv->expansions = ptr;
+	ret->priv->expansions = g_ptr_array_ref (id->priv->expansions);
+
+	ret->priv->copy_on_write = TRUE;
 
 	return ret;
 }
@@ -261,6 +313,7 @@ cpg_expansion_add (CpgExpansion *id,
 	g_return_if_fail (CPG_IS_EXPANSION (id));
 	g_return_if_fail (item != NULL);
 
+	copy_on_write (id);
 	g_ptr_array_add (id->priv->expansions,
 	                 expansion_new (item));
 }
@@ -274,6 +327,8 @@ cpg_expansion_insert (CpgExpansion *id,
 	gint i;
 
 	g_return_if_fail (CPG_IS_EXPANSION (id));
+
+	copy_on_write (id);
 
 	g_ptr_array_add (id->priv->expansions,
 	                 expansion_new (NULL));
@@ -311,6 +366,8 @@ annotate_group (GSList *expansions,
 		Expansion *e;
 
 		ex = expansions->data;
+		copy_on_write (ex);
+
 		e = get_ex (ex, i);
 
 		if (e)
@@ -370,6 +427,8 @@ cpg_expansion_append (CpgExpansion *id,
 
 	g_return_if_fail (CPG_IS_EXPANSION (id));
 	g_return_if_fail (CPG_IS_EXPANSION (other));
+
+	copy_on_write (id);
 
 	for (i = idx; i < cpg_expansion_num (other); ++i)
 	{

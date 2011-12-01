@@ -116,7 +116,7 @@
         </context>
 
         <context id="range">
-            <match>([^{,|]+:[^{,|]+)(?![},|])</match>
+            <match>([^{,|}]+:[^},|]+)(?&lt;![},|])</match>
             <include>
               <context sub-pattern="1" style-ref="range"/>
             </include>
@@ -176,8 +176,10 @@
             <keyword>remove</keyword>
             <keyword>if</keyword>
             <keyword>from-set</keyword>
-            <keyword>from</keyword>
-            <keyword>to</keyword>
+            <keyword>source</keyword>
+            <keyword>sink</keyword>
+			<keyword>source-name</keyword>
+			<keyword>sink-name</keyword>
             <keyword>has-template</keyword>
             <keyword>has-tag</keyword>
             <keyword>has-flag</keyword>
@@ -218,8 +220,10 @@
             <keyword>debug-print</keyword>
             <keyword>apply</keyword>
             <keyword>unapply</keyword>
-            <keyword>when-applied</keyword>
-            <keyword>when-unapplied</keyword>
+            <keyword>when</keyword>
+            <keyword>switch</keyword>
+            <keyword>enable</keyword>
+            <keyword>disable</keyword>
         </context>
 
         <context id="selector">

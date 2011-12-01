@@ -44,6 +44,8 @@ typedef struct
 {
 	GSList *objects;
 	GSList *functions;
+	gboolean function_priority;
+	gboolean function_arg_priority;
 } Context;
 
 struct _CpgCompileContextPrivate
@@ -69,6 +71,8 @@ context_copy (Context *context)
 
 	ctx->objects = g_slist_copy (context->objects);
 	ctx->functions = g_slist_copy (context->functions);
+	ctx->function_priority = context->function_priority;
+	ctx->function_arg_priority = context->function_arg_priority;
 
 	return ctx;
 }
@@ -407,4 +411,74 @@ cpg_compile_context_lookup_function (CpgCompileContext *context,
 	}
 
 	return NULL;
+}
+
+void
+cpg_compile_context_set_function_ref_priority (CpgCompileContext *context,
+                                               gboolean           prio)
+{
+	Context *ctx;
+
+	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
+
+	if (context == NULL)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	ctx->function_priority = prio;
+}
+
+gboolean
+cpg_compile_context_get_function_ref_priority (CpgCompileContext *context)
+{
+	Context *ctx;
+
+	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), FALSE);
+
+	if (context == NULL)
+	{
+		return FALSE;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	return ctx->function_priority;
+}
+
+void
+cpg_compile_context_set_function_arg_priority (CpgCompileContext *context,
+                                               gboolean           prio)
+{
+	Context *ctx;
+
+	g_return_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context));
+
+	if (context == NULL)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	ctx->function_arg_priority = prio;
+}
+
+gboolean
+cpg_compile_context_get_function_arg_priority (CpgCompileContext *context)
+{
+	Context *ctx;
+
+	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), FALSE);
+
+	if (context == NULL)
+	{
+		return FALSE;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	return ctx->function_arg_priority;
 }

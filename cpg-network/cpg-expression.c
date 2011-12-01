@@ -30,6 +30,8 @@
 #include "cpg-stack-private.h"
 #include "cpg-operators.h"
 #include "cpg-property.h"
+#include "cpg-expression-tree-iter.h"
+#include "cpg-group.h"
 
 #include <cpg-network/instructions/cpg-instructions.h>
 
@@ -58,15 +60,16 @@ struct _CpgExpressionPrivate
 	gchar *expression;
 
 	GSList *instructions;
-	GSList *variadic_instructions;
-	GSList *operator_instructions;
+	GSList *rand_instructions;
 
 	CpgStack output;
 
-	GSList *dependencies;
+	GSList *depends_on;
+	GSList *depends_on_me;
 
 	gdouble cached_output;
 	gint error_at;
+	GSList *error_start;
 
 	guint cached : 1;
 	guint prevent_cache_reset : 1;
@@ -80,7 +83,8 @@ typedef struct
 	gchar const **buffer;
 	CpgCompileContext *context;
 
-	GError **error;
+	CpgCompileError *error;
+	GSList *stack;
 } ParserContext;
 
 static void cpg_modifiable_iface_init (gpointer iface);
@@ -112,23 +116,54 @@ cpg_modifiable_iface_init (gpointer iface)
 }
 
 static void
+push_error_start (CpgExpression *expression,
+                  ParserContext *ctx)
+{
+	expression->priv->error_start = g_slist_prepend (expression->priv->error_start,
+	                                                 GINT_TO_POINTER (*(ctx->buffer) - expression->priv->expression + 1));
+}
+
+static void
+pop_error_start (CpgExpression *expression,
+                  ParserContext *ctx)
+{
+	expression->priv->error_start = g_slist_delete_link (expression->priv->error_start,
+	                                                     expression->priv->error_start);
+}
+
+static void
 instructions_free (CpgExpression *expression)
 {
-	g_slist_foreach (expression->priv->instructions,
-	                 (GFunc)cpg_mini_object_free,
-	                 NULL);
+	while (expression->priv->instructions)
+	{
+		GSList *deps;
+		GSList *dep;
 
-	g_slist_free (expression->priv->instructions);
-	expression->priv->instructions = NULL;
+		deps = cpg_instruction_get_dependencies (expression->priv->instructions->data);
 
-	g_slist_free (expression->priv->variadic_instructions);
-	expression->priv->variadic_instructions = NULL;
+		for (dep = deps; dep; dep = g_slist_next (dep))
+		{
+			CpgExpression *other = dep->data;
 
-	g_slist_free (expression->priv->operator_instructions);
-	expression->priv->operator_instructions = NULL;
+			other->priv->depends_on_me =
+				g_slist_remove (other->priv->depends_on_me,
+				                expression);
+		}
 
-	g_slist_free (expression->priv->dependencies);
-	expression->priv->dependencies = NULL;
+		g_slist_free (deps);
+
+		cpg_mini_object_free (expression->priv->instructions->data);
+
+		expression->priv->instructions =
+			g_slist_delete_link (expression->priv->instructions,
+			                     expression->priv->instructions);
+	}
+
+	g_slist_free (expression->priv->depends_on);
+	expression->priv->depends_on = NULL;
+
+	g_slist_free (expression->priv->rand_instructions);
+	expression->priv->rand_instructions = NULL;
 
 	expression->priv->cached = FALSE;
 
@@ -196,6 +231,17 @@ set_expression (CpgExpression *expression,
 }
 
 static void
+reset_depending_cache (CpgExpression *expression)
+{
+	GSList *item;
+
+	for (item = expression->priv->depends_on_me; item; item = g_slist_next (item))
+	{
+		cpg_expression_reset_cache (item->data);
+	}
+}
+
+static void
 set_value (CpgExpression *expression,
            gdouble        value)
 {
@@ -203,6 +249,12 @@ set_value (CpgExpression *expression,
 	expression->priv->prevent_cache_reset = TRUE;
 
 	expression->priv->cached_output = value;
+
+	if (expression->priv->has_cache)
+	{
+		// Reset the cache of any expression that depends on this expression
+		reset_depending_cache (expression);
+	}
 }
 
 static void
@@ -234,7 +286,7 @@ set_has_cache (CpgExpression *expression,
 	if (!cache)
 	{
 		expression->priv->cached = FALSE;
-		cpg_expression_reset_variadic (expression);
+		reset_depending_cache (expression);
 	}
 
 	g_object_notify (G_OBJECT (expression), "has-cache");
@@ -398,24 +450,46 @@ cpg_expression_new (const gchar *expression)
 	                     NULL);
 }
 
+CpgExpression *
+cpg_expression_new0 ()
+{
+	CpgExpression *ret;
+
+	ret = cpg_expression_new ("0");
+	ret->priv->instructions = g_slist_prepend (NULL,
+	                                           cpg_instruction_number_new_from_string ("0"));
+
+	return ret;
+}
+
 static void
 instructions_push (CpgExpression  *expression,
-                   CpgInstruction *next)
+                   CpgInstruction *next,
+                   ParserContext  *context)
 {
 	expression->priv->instructions = g_slist_prepend (expression->priv->instructions,
 	                                                  next);
 
-	if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (next))
+	if (context)
 	{
-		expression->priv->variadic_instructions =
-			g_slist_prepend (expression->priv->variadic_instructions,
-			                 next);
-	}
-	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (next))
-	{
-		expression->priv->operator_instructions =
-			g_slist_prepend (expression->priv->operator_instructions,
-			                 next);
+		gint cnt = cpg_instruction_get_stack_count (next);
+		gint consume = -cnt + 1;
+		GSList *ret = NULL;
+
+		ret = g_slist_prepend (NULL, next);
+
+		while (consume > 0)
+		{
+			ret = g_slist_concat (context->stack->data, ret);
+
+			context->stack = g_slist_delete_link (context->stack,
+			                                      context->stack);
+
+			--consume;
+		}
+
+		context->stack = g_slist_prepend (context->stack,
+		                                  ret);
 	}
 }
 
@@ -431,51 +505,41 @@ instructions_pop (CpgExpression *expression)
 
 	expression->priv->instructions =
 		g_slist_delete_link (expression->priv->instructions,
-	                             expression->priv->instructions);
-
-	if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (inst))
-	{
-		expression->priv->variadic_instructions =
-			g_slist_remove (expression->priv->variadic_instructions,
-			                inst);
-	}
-	else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (inst))
-	{
-		expression->priv->operator_instructions =
-			g_slist_remove (expression->priv->operator_instructions,
-			                inst);
-	}
+		                     expression->priv->instructions);
 
 	return inst;
 }
 
 static gboolean
-parser_failed (ParserContext *context,
+parser_failed (CpgExpression *expression,
+               ParserContext *context,
                gint           code,
                gchar const   *format,
                ...)
 {
-	if (context->error != NULL)
+	if (context->error != NULL && cpg_compile_error_get_error (context->error) == NULL)
 	{
+		GError *err = NULL;
 		va_list ap;
 		va_start (ap, format);
 
 		gchar *message = g_strdup_vprintf (format, ap);
 		va_end (ap);
 
-		if (*context->error)
-		{
-			g_error_free (*context->error);
-			*context->error = NULL;
-		}
-
-		g_set_error (context->error,
+		g_set_error (&err,
 		             CPG_COMPILE_ERROR_TYPE,
 		             code,
 		             "%s",
 		             message);
 
 		g_free (message);
+
+		cpg_compile_error_set (context->error,
+		                       err,
+		                       NULL,
+		                       NULL,
+		                       NULL,
+		                       expression);
 	}
 
 	return FALSE;
@@ -503,19 +567,24 @@ static gboolean
 parse_link_property (CpgExpression  *expression,
                      gchar const    *id,
                      gchar const    *propname,
-                     CpgLink        *link)
+                     CpgLink        *link,
+                     ParserContext  *context)
 {
 	CpgProperty *property = NULL;
 	CpgInstructionPropertyBinding binding = 0;
 
 	if (strcmp (id, "from") == 0)
 	{
-		property = cpg_object_get_property (cpg_link_get_from (link), propname);
+		property = cpg_object_get_property (CPG_OBJECT (cpg_link_get_from (link)),
+		                                    propname);
+
 		binding = CPG_INSTRUCTION_PROPERTY_BINDING_FROM;
 	}
 	else if (strcmp (id, "to") == 0)
 	{
-		property = cpg_object_get_property (cpg_link_get_to (link), propname);
+		property = cpg_object_get_property (CPG_OBJECT (cpg_link_get_to (link)),
+		                                    propname);
+
 		binding = CPG_INSTRUCTION_PROPERTY_BINDING_TO;
 	}
 
@@ -525,7 +594,9 @@ parse_link_property (CpgExpression  *expression,
 	}
 
 	instructions_push (expression,
-	                   cpg_instruction_property_new (property, binding));
+	                   cpg_instruction_property_new_with_binding (property,
+	                                                              binding),
+	                   context);
 
 	return TRUE;
 }
@@ -546,8 +617,8 @@ parse_context_combined_property (CpgExpression *expression,
 	if (prop)
 	{
 		instructions_push (expression,
-		                   cpg_instruction_property_new (prop,
-		                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+		                   cpg_instruction_property_new (prop),
+		                   context);
 
 		return TRUE;
 	}
@@ -578,9 +649,33 @@ parse_context_property (CpgExpression *expression,
 			if (prop)
 			{
 				instructions_push (expression,
-				                   cpg_instruction_property_new (prop,
-				                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+				                   cpg_instruction_property_new (prop),
+				                   context);
+
 				return TRUE;
+			}
+		}
+
+		if (CPG_IS_GROUP (o))
+		{
+			CpgObject *c;
+
+			c = cpg_group_get_child (CPG_GROUP (o), id);
+
+			if (c)
+			{
+				CpgProperty *prop;
+
+				prop = cpg_object_get_property (c, propid);
+
+				if (prop)
+				{
+					instructions_push (expression,
+					                   cpg_instruction_property_new (prop),
+					                   context);
+
+					return TRUE;
+				}
 			}
 		}
 
@@ -588,6 +683,47 @@ parse_context_property (CpgExpression *expression,
 	}
 
 	return FALSE;
+}
+
+static CpgFunction *
+parse_context_function (CpgExpression *expression,
+                        gchar const   *id,
+                        gchar const   *propid,
+                        ParserContext *context)
+{
+	GSList const *objs;
+
+	objs = cpg_compile_context_get_objects (context->context);
+
+	while (objs)
+	{
+		CpgObject *o = objs->data;
+		CpgObject *c;
+		CpgObject *f;
+
+		objs = g_slist_next (objs);
+
+		if (!CPG_IS_GROUP (o))
+		{
+			continue;
+		}
+
+		c = cpg_group_get_child (CPG_GROUP (o), id);
+
+		if (!c || !CPG_IS_GROUP (c))
+		{
+			continue;
+		}
+
+		f = cpg_group_get_child (CPG_GROUP (c), propid);
+
+		if (f && CPG_IS_FUNCTION (f))
+		{
+			return CPG_FUNCTION (f);
+		}
+	}
+
+	return NULL;
 }
 
 static gboolean
@@ -606,7 +742,8 @@ parse_dot_property (CpgExpression *expression,
 		ret = parse_link_property (expression,
 		                           id,
 		                           propid,
-		                           link);
+		                           link,
+		                           context);
 	}
 
 	if (!ret)
@@ -627,7 +764,8 @@ parse_dot_property (CpgExpression *expression,
 
 	if (!ret)
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
 		               "Link property `%s.%s' could not be found",
 		               id, propid);
@@ -650,42 +788,18 @@ lookup_property (CpgExpression *expression,
 }
 
 static gboolean
-parse_function (CpgExpression *expression,
-                gchar const   *name,
-                ParserContext *context)
+parse_function_arguments (CpgExpression *expression,
+                          ParserContext *context,
+                          gint          *numargs)
 {
-	/* Try custom function first */
-	CpgFunction *function = cpg_compile_context_lookup_function (context->context,
-	                                                             name);
-	guint fid = 0;
-	gint arguments = 0;
-	gint n_optional = 0;
-	gint n_implicit = 0;
-
-	/* Try builtin function */
-	if (function == NULL)
-	{
-		fid = cpg_math_function_lookup (name, &arguments);
-
-		if (!fid)
-		{
-			return parser_failed (context,
-			                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
-			                      "Function %s could not be found",
-			                      name);
-		}
-	}
-	else
-	{
-		n_optional = (gint)cpg_function_get_n_optional (function);
-		n_implicit = (gint)cpg_function_get_n_implicit (function);
-		arguments = (gint)cpg_function_get_n_arguments (function);
-	}
-
 	// parse arguments
-	gint numargs = 0;
 	CpgToken *next = cpg_tokenizer_peek (*(context->buffer));
 	gboolean loopit = TRUE;
+
+	if (numargs)
+	{
+		*numargs = 0;
+	}
 
 	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_END)
@@ -707,14 +821,18 @@ parse_function (CpgExpression *expression,
 			return FALSE;
 		}
 
-		++numargs;
+		if (numargs)
+		{
+			++*numargs;
+		}
 
 		// see what's next
 		next = cpg_tokenizer_peek (*(context->buffer));
 
 		if (!next || !CPG_TOKEN_IS_OPERATOR (next))
 		{
-			return parser_failed (context,
+			return parser_failed (expression,
+			                      context,
 			                      CPG_COMPILE_ERROR_INVALID_TOKEN,
 			                      "Expected `operator', but got %s",
 			                      next ? next->text : "(nothing)");
@@ -730,7 +848,8 @@ parse_function (CpgExpression *expression,
 		}
 		else if (type != CPG_TOKEN_OPERATOR_TYPE_COMMA)
 		{
-			parser_failed (context,
+			parser_failed (expression,
+			               context,
 			               CPG_COMPILE_ERROR_INVALID_TOKEN,
 			               "Expected `,' but got %s",
 			               next->text);
@@ -742,10 +861,104 @@ parse_function (CpgExpression *expression,
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 	}
 
+	return TRUE;
+}
+
+static gboolean
+recurse_compile (CpgExpression *expression,
+                 ParserContext *context,
+                 CpgFunction   *f)
+{
+	// Recursively compile it here
+	if (!cpg_object_is_compiled (CPG_OBJECT (f)))
+	{
+		if (!cpg_object_compile (CPG_OBJECT (f), NULL, context->error))
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+static gboolean
+parse_function (CpgExpression *expression,
+                gchar const   *name,
+                gchar const   *cname,
+                ParserContext *context)
+{
+	/* Try custom function first */
+	CpgFunction *function;
+	guint fid = 0;
+	gint arguments = 0;
+	gint n_optional = 0;
+	gint n_implicit = 0;
+	gboolean ret = TRUE;
+	gboolean isrand = FALSE;
+
+	if (!cname)
+	{
+		function = cpg_compile_context_lookup_function (context->context, name);
+	}
+	else
+	{
+		function = parse_context_function (expression, name, cname, context);
+	}
+
+	/* Try builtin function */
+	if (function == NULL)
+	{
+		if (cname == NULL)
+		{
+			// Special case 'rand' here
+			if (g_strcmp0 (name, "rand") == 0)
+			{
+				isrand = TRUE;
+				arguments = -1;
+			}
+			else
+			{
+				fid = cpg_math_function_lookup (name, &arguments);
+
+				if (!fid)
+				{
+					return parser_failed (expression,
+					                      context,
+					                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
+					                      "Function %s could not be found",
+					                      name);
+				}
+			}
+		}
+		else
+		{
+			return parser_failed (expression,
+			                      context,
+			                      CPG_COMPILE_ERROR_FUNCTION_NOT_FOUND,
+			                      "Function %s.%s could not be found",
+			                      name, cname);
+		}
+	}
+	else
+	{
+		n_optional = (gint)cpg_function_get_n_optional (function);
+		n_implicit = (gint)cpg_function_get_n_implicit (function);
+		arguments = (gint)cpg_function_get_n_arguments (function);
+	}
+
+	// parse arguments
+	gint numargs = 0;
+
+	if (!parse_function_arguments (expression, context, &numargs))
+	{
+		return FALSE;
+	}
+
 	if ((function != NULL && (numargs > (arguments - n_implicit) || numargs < (arguments - n_optional - n_implicit))) ||
 	    (function == NULL && arguments != -1 && numargs != arguments))
 	{
-		return parser_failed (context,
+		return parser_failed (expression,
+		                      context,
 		                      CPG_COMPILE_ERROR_MAXARG,
 		                      "Expected number of arguments (%d|%d) for function `%s' does not match (got %d)",
 		                      arguments - n_implicit - n_optional,
@@ -795,7 +1008,8 @@ parse_function (CpgExpression *expression,
 				for (inst = expr->priv->instructions; inst; inst = g_slist_next (inst))
 				{
 					instructions_push (expression,
-					                   CPG_INSTRUCTION (cpg_mini_object_copy (inst->data)));
+					                   CPG_INSTRUCTION (cpg_mini_object_copy (inst->data)),
+					                   context);
 				}
 
 				start = g_list_next (start);
@@ -838,7 +1052,8 @@ parse_function (CpgExpression *expression,
 
 			if (!prop)
 			{
-				return parser_failed (context,
+				return parser_failed (expression,
+				                      context,
 				                      CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
 				                      "The implicit property `%s' for function `%s' is not found",
 				                      aname,
@@ -846,8 +1061,8 @@ parse_function (CpgExpression *expression,
 			}
 
 			instructions_push (expression,
-			                   cpg_instruction_property_new (prop,
-			                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
+			                   cpg_instruction_property_new (prop),
+			                   context);
 		}
 	}
 
@@ -855,27 +1070,54 @@ parse_function (CpgExpression *expression,
 
 	if (function == NULL)
 	{
-		if (cpg_math_function_is_constant (fid))
+		if (isrand)
+		{
+			instruction = cpg_instruction_rand_new (numargs);
+		}
+		else
 		{
 			instruction = cpg_instruction_function_new (fid,
 			                                            name,
 			                                            numargs);
-		}
-		else
-		{
-			instruction = cpg_instruction_variadic_function_new (fid,
-			                                                     name,
-			                                                     numargs);
 		}
 	}
 	else
 	{
 		instruction = cpg_instruction_custom_function_new (function,
 		                                                   numargs);
+
+		ret = recurse_compile (expression, context, function);
 	}
 
-	instructions_push (expression, instruction);
-	return TRUE;
+	instructions_push (expression, instruction, context);
+	return ret;
+}
+
+static void
+free_expressions (GSList *lst)
+{
+	g_slist_foreach (lst, (GFunc)g_object_unref, NULL);
+	g_slist_free (lst);
+}
+
+static GSList **
+convert_2dim_slist (GSList const *lst,
+                    gint         *num)
+{
+	GSList **ret;
+	gint i;
+
+	*num = g_slist_length ((GSList *)lst);
+
+	ret = g_new0 (GSList *, *num);
+
+	for (i = 0; i < *num; ++i)
+	{
+		ret[i] = lst->data;
+		lst = g_slist_next (lst);
+	}
+
+	return ret;
 }
 
 static gboolean
@@ -884,25 +1126,44 @@ parse_custom_operator (CpgExpression *expression,
                        ParserContext *context)
 {
 	CpgOperatorClass *klass;
+	CpgOperator *op;
+	gboolean isref;
+	GSList *expressions = NULL;
+	GSList *multiexpr = NULL;
+	gint num_arguments = 0;
+	gboolean isdiff;
+	CpgToken *next;
+	gboolean loopit = TRUE;
+	gchar const *expr_start;
+	gchar const *expr_end;
+	GSList *indices = NULL;
+	GSList **multiret;
+	CpgInstruction *instruction;
+	GSList **exprs;
+	gint num_exprs;
+	GSList **inds;
+	gint num_inds;
+	gboolean islinsolve;
+	GError *err = NULL;
 
 	klass = cpg_operators_find_class (name);
 
 	if (klass == NULL)
 	{
-		return parser_failed (context,
+		return parser_failed (expression,
+		                      context,
 		                      CPG_COMPILE_ERROR_OPERATOR_NOT_FOUND,
 		                      "Custom operator %s could not be found",
 		                      name);
 	}
 
 	// parse arguments
-	gint numargs = 0;
+	next = cpg_tokenizer_peek (*(context->buffer));
 
-	CpgToken *next = cpg_tokenizer_peek (*(context->buffer));
-	gboolean loopit = TRUE;
+	expr_start = *(context->buffer);
+	expr_end = expr_start;
 
-	gchar const *expr_start = *(context->buffer);
-	gchar const *expr_end = expr_start;
+	multiret = &multiexpr;
 
 	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)
@@ -910,14 +1171,41 @@ parse_custom_operator (CpgExpression *expression,
 		cpg_token_free (next);
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 
-		loopit = FALSE;
+		next = cpg_tokenizer_peek (*(context->buffer));
+
+		if (!next || !CPG_TOKEN_IS_OPERATOR (next) ||
+		    CPG_TOKEN_OPERATOR (next)->type != CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+		{
+			loopit = FALSE;
+		}
+		else
+		{
+			cpg_token_free (cpg_tokenizer_next (context->buffer));
+			multiret = &indices;
+		}
+
+		cpg_token_free (next);
 	}
 	else
 	{
 		cpg_token_free (next);
 	}
 
-	GSList *expressions = NULL;
+	cpg_compile_context_save (context->context);
+
+	isdiff = CPG_IS_OPERATOR_PDIFF_CLASS (klass) ||
+	         CPG_IS_OPERATOR_DIFF_CLASS (klass);
+
+	islinsolve = CPG_IS_OPERATOR_LINSOLVE_CLASS (klass);
+
+	if ((isdiff || islinsolve) && multiret == &multiexpr)
+	{
+		cpg_compile_context_set_function_ref_priority (context->context,
+		                                               TRUE);
+
+		cpg_compile_context_set_function_arg_priority (context->context,
+		                                               TRUE);
+	}
 
 	while (loopit)
 	{
@@ -930,14 +1218,53 @@ parse_custom_operator (CpgExpression *expression,
 		}
 
 		expr_end = *(context->buffer);
-
-		++numargs;
-
 		GSList *newinst = NULL;
+
+		if (isdiff && multiret == &multiexpr)
+		{
+			cpg_compile_context_set_function_ref_priority (context->context,
+			                                               FALSE);
+		}
 
 		while (expression->priv->instructions != start)
 		{
 			CpgInstruction *inst = instructions_pop (expression);
+
+			/* This is a bit of a hack, but we are going
+			   to add the function object as a final context.
+			   This is mostly for the diff type operators to
+			   compile properly (resolve arguments)... */
+			if ((isdiff || islinsolve) && multiret == &multiexpr &&
+			    (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (inst) ||
+			     CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst)))
+			{
+				CpgFunction *func = NULL;
+
+				if (CPG_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (inst))
+				{
+					CpgInstructionCustomFunctionRef *f;
+
+					f = CPG_INSTRUCTION_CUSTOM_FUNCTION_REF (inst);
+					func = cpg_instruction_custom_function_ref_get_function (f);
+				}
+				else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst))
+				{
+					CpgInstructionCustomOperatorRef *f;
+					CpgOperator *op;
+
+					f = CPG_INSTRUCTION_CUSTOM_OPERATOR_REF (inst);
+					op = cpg_instruction_custom_operator_ref_get_operator (f);
+
+					func = cpg_operator_get_primary_function (op);
+				}
+
+				if (func)
+				{
+					cpg_compile_context_append_object (context->context,
+					                                   CPG_OBJECT (func));
+				}
+			}
+
 			newinst = g_slist_prepend (newinst, inst);
 		}
 
@@ -947,6 +1274,7 @@ parse_custom_operator (CpgExpression *expression,
 		g_free (t);
 		_cpg_expression_set_instructions_take (sub, newinst);
 
+		g_object_ref_sink (sub);
 		expressions = g_slist_prepend (expressions, sub);
 
 		// see what's next
@@ -957,9 +1285,10 @@ parse_custom_operator (CpgExpression *expression,
 			g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
 			g_slist_free (expressions);
 
-			return parser_failed (context,
+			return parser_failed (expression,
+			                      context,
 			                      CPG_COMPILE_ERROR_INVALID_TOKEN,
-			                      "Expected `,' or `)', but got %s",
+			                      "Expected `,' or `]', but got %s",
 			                      next ? next->text : "(nothing)");
 		}
 
@@ -969,14 +1298,47 @@ parse_custom_operator (CpgExpression *expression,
 		{
 			cpg_token_free (next);
 			cpg_token_free (cpg_tokenizer_next (context->buffer));
-			break;
+
+			if (multiret == &multiexpr)
+			{
+				next = cpg_tokenizer_peek (*(context->buffer));
+
+				if (next && CPG_TOKEN_IS_OPERATOR (next) &&
+				    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START)
+				{
+					if (islinsolve)
+					{
+						cpg_compile_context_set_function_ref_priority (context->context,
+						                                               FALSE);
+					}
+
+					*multiret = g_slist_prepend (*multiret,
+					                             g_slist_reverse (expressions));
+
+					expressions = NULL;
+					multiexpr = g_slist_reverse (multiexpr);
+
+					multiret = &indices;
+				}
+				else
+				{
+					cpg_token_free (next);
+					break;
+				}
+			}
+			else
+			{
+				break;
+			}
 		}
-		else if (type != CPG_TOKEN_OPERATOR_TYPE_COMMA)
+		else if (type != CPG_TOKEN_OPERATOR_TYPE_COMMA &&
+		         type != CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON)
 		{
 			g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
 			g_slist_free (expressions);
 
-			parser_failed (context,
+			parser_failed (expression,
+			               context,
 			               CPG_COMPILE_ERROR_INVALID_TOKEN,
 			               "Expected `,' but got %s",
 			               next->text);
@@ -985,32 +1347,199 @@ parse_custom_operator (CpgExpression *expression,
 			return FALSE;
 		}
 
+		if (type == CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON)
+		{
+			*multiret = g_slist_prepend (*multiret,
+			                             g_slist_reverse (expressions));
+
+			expressions = NULL;
+		}
+
 		cpg_token_free (next);
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 
 		expr_start = *(context->buffer);
 	}
 
-	if (!cpg_operator_validate_num_arguments (klass, numargs))
+	*multiret = g_slist_prepend (*multiret,
+	                             g_slist_reverse (expressions));
+
+	*multiret = g_slist_reverse (*multiret);
+
+	cpg_compile_context_restore (context->context);
+
+	next = cpg_tokenizer_peek (*(context->buffer));
+
+	isref = TRUE;
+
+	if (next &&
+	    CPG_TOKEN_IS_OPERATOR (next) &&
+	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_START)
 	{
-		return parser_failed (context,
-		                      CPG_COMPILE_ERROR_MAXARG,
-		                      "Number of arguments (%d) for operator `%s' does not match",
-		                      numargs,
-		                      name);
+		cpg_token_free (next);
+		cpg_token_free (cpg_tokenizer_next (context->buffer));
+
+		isref = FALSE;
+
+		if (!parse_function_arguments (expression, context, &num_arguments))
+		{
+			return FALSE;
+		}
+	}
+	else
+	{
+		cpg_token_free (next);
 	}
 
-	CpgInstruction *instruction;
+	exprs = convert_2dim_slist (multiexpr, &num_exprs);
+	inds = convert_2dim_slist (indices, &num_inds);
 
-	expressions = g_slist_reverse (expressions);
+	op = cpg_operators_instantiate (name,
+	                                (GSList const **)exprs,
+	                                num_exprs,
+	                                (GSList const **)inds,
+	                                num_inds,
+	                                num_arguments,
+	                                &err);
 
-	instruction = cpg_instruction_custom_operator_new (
-		cpg_operators_instantiate (name, expressions));
+	if (!op && context->error)
+	{
+		cpg_compile_error_set (context->error,
+		                       err,
+		                       NULL,
+		                       NULL,
+		                       NULL,
+		                       expression);
+	}
 
-	g_slist_foreach (expressions, (GFunc)g_object_unref, NULL);
-	g_slist_free (expressions);
+	if (err)
+	{
+		g_error_free (err);
+	}
 
-	instructions_push (expression, instruction);
+	g_slist_foreach (multiexpr, (GFunc)free_expressions, NULL);
+	g_slist_free (multiexpr);
+
+	g_slist_foreach (indices, (GFunc)free_expressions, NULL);
+	g_slist_free (indices);
+
+	g_free (exprs);
+	g_free (inds);
+
+	if (!op)
+	{
+		return FALSE;
+	}
+
+	if (!isref)
+	{
+		CpgFunction *func;
+
+		func = cpg_operator_get_primary_function (op);
+
+		// We need to add implicit arguments and optional arguments
+		// on the stack here
+		if (func)
+		{
+			GList *start;
+			gint extra = 0;
+
+			start = (GList *)cpg_function_get_arguments (func);
+
+			start = g_list_nth ((GList *)start,
+			                   num_arguments);
+
+			while (start)
+			{
+				CpgFunctionArgument *a;
+				CpgExpression *expr;
+				GSList *inst;
+
+				a = start->data;
+				start = g_list_next (start);
+
+				if (!cpg_function_argument_get_explicit (a))
+				{
+					gchar const *aname;
+					CpgProperty *prop;
+					gchar const *ptr;
+
+					aname = cpg_function_argument_get_name (a);
+					++extra;
+
+					if ((ptr = strchr (aname, '.')) != NULL)
+					{
+						gchar *id;
+
+						id = g_strndup (aname, ptr - aname);
+
+						if (parse_dot_property (expression, id, ptr + 1, context))
+						{
+							g_free (id);
+							continue;
+						}
+
+						g_free (id);
+					}
+
+					prop = lookup_property (expression, context, aname);
+
+					if (!prop)
+					{
+						return parser_failed (expression,
+						                      context,
+						                      CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
+						                      "The implicit property `%s' for function `%s' is not found",
+						                      aname,
+						                      name);
+					}
+
+					instructions_push (expression,
+					                   cpg_instruction_property_new (prop),
+					                   context);
+				}
+				else if (cpg_function_argument_get_optional (a))
+				{
+					/* Inline the expression here */
+					expr = cpg_function_argument_get_default_value (a);
+					++extra;
+
+					/* TODO: actually, the context is really not
+					   correct here */
+					if (!cpg_expression_compile (expr,
+					                             context->context,
+					                             context->error))
+					{
+						return FALSE;
+					}
+
+					for (inst = expr->priv->instructions; inst; inst = g_slist_next (inst))
+					{
+						instructions_push (expression,
+						                   CPG_INSTRUCTION (cpg_mini_object_copy (inst->data)),
+						                   context);
+					}
+				}
+			}
+
+			_cpg_operator_set_num_arguments (op,
+			                                 cpg_operator_get_num_arguments (op) + extra);
+		}
+	}
+
+	if (isref)
+	{
+		instruction = cpg_instruction_custom_operator_ref_new (op);
+		g_object_unref (op);
+	}
+	else
+	{
+		instruction = cpg_instruction_custom_operator_new (op);
+		g_object_unref (op);
+	}
+
+	instructions_push (expression, instruction, context);
+
 	return TRUE;
 }
 
@@ -1020,14 +1549,17 @@ parse_ternary_operator (CpgExpression     *expression,
                         ParserContext     *context)
 {
 	if (!parse_expression (expression, context, token->priority, token->left_assoc))
+	{
 		return FALSE;
+	}
 
 	// next token should be :
 	CpgToken *next = cpg_tokenizer_peek (*context->buffer);
 
 	if (!next)
 	{
-		return parser_failed (context,
+		return parser_failed (expression,
+		                      context,
 		                      CPG_COMPILE_ERROR_INVALID_TOKEN,
 		                      "Expected `:' but got (nothing)");
 	}
@@ -1037,7 +1569,8 @@ parse_ternary_operator (CpgExpression     *expression,
 
 	if (!istern)
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_INVALID_TOKEN,
 		               "Expected `:' but got `%s'",
 		               next->text);
@@ -1062,7 +1595,8 @@ parse_ternary_operator (CpgExpression     *expression,
 	instructions_push (expression,
 	                   cpg_instruction_operator_new (cpg_math_operator_lookup (CPG_MATH_OPERATOR_TYPE_TERNARY),
 	                                                 "?:",
-	                                                 3));
+	                                                 3),
+	                   context);
 
 	return TRUE;
 }
@@ -1082,7 +1616,8 @@ parse_group (CpgExpression *expression,
 
 	if (!groupend)
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_INVALID_TOKEN,
 		               "Expected `)' but got %s",
 		               next ? next->text : "(nothing)");
@@ -1124,7 +1659,8 @@ parse_unary_operator (CpgExpression *expression,
 			inst = cpg_instruction_operator_new (cpg_math_operator_lookup (CPG_MATH_OPERATOR_TYPE_NEGATE), "!", 1);
 		break;
 		default:
-			parser_failed (context,
+			parser_failed (expression,
+			               context,
 			               CPG_COMPILE_ERROR_INVALID_TOKEN,
 			               "Expected unary operator (-, +, !) but got `%s'",
 			               op->parent.text);
@@ -1141,10 +1677,101 @@ parse_unary_operator (CpgExpression *expression,
 
 	if (ret && inst)
 	{
-		instructions_push (expression, inst);
+		if (op->type == CPG_TOKEN_OPERATOR_TYPE_MINUS &&
+		    CPG_IS_INSTRUCTION_NUMBER (expression->priv->instructions->data))
+		{
+			cpg_mini_object_free (CPG_MINI_OBJECT (inst));
+			inst = instructions_pop (expression);
+
+			cpg_instruction_number_set_value (CPG_INSTRUCTION_NUMBER (inst),
+			                                  cpg_instruction_number_get_value (CPG_INSTRUCTION_NUMBER (inst)) * -1);
+
+			g_slist_free (context->stack->data);
+
+			context->stack = g_slist_delete_link (context->stack,
+			                                      context->stack);
+		}
+
+		instructions_push (expression, inst, context);
 	}
 
 	return ret;
+}
+
+static gboolean
+parse_prime (CpgExpression *expression,
+             ParserContext *context)
+{
+	GSList *instr;
+	CpgOperator *op;
+	GSList *exprs;
+	CpgExpression *expr;
+	GSList *item;
+	GError *err = NULL;
+
+	instr = context->stack ? context->stack->data : NULL;
+
+	if (!instr)
+	{
+		parser_failed (expression,
+		               context,
+		               CPG_COMPILE_ERROR_INVALID_TOKEN,
+		               "The prime operator can only appear after an expression");
+
+		return FALSE;
+	}
+
+	for (item = instr; item; item = g_slist_next (item))
+	{
+		// Pop em
+		instructions_pop (expression);
+	}
+
+	expr = cpg_expression_new0 ();
+	_cpg_expression_set_instructions_take (expr, instr);
+
+	exprs = g_slist_prepend (NULL, expr);
+
+	context->stack = g_slist_delete_link (context->stack,
+	                                      context->stack);
+
+	op = cpg_operators_instantiate ("df_dt",
+	                                (GSList const **)&exprs,
+	                                1,
+	                                NULL,
+	                                0,
+	                                0,
+	                                &err);
+
+	if (!op && context->error)
+	{
+		cpg_compile_error_set (context->error,
+		                       err,
+		                       NULL,
+		                       NULL,
+		                       NULL,
+		                       expression);
+	}
+
+	if (err)
+	{
+		g_error_free (err);
+	}
+
+	g_slist_free (exprs);
+
+	if (!op)
+	{
+		return FALSE;
+	}
+
+	instructions_push (expression,
+	                   cpg_instruction_custom_operator_new (op),
+	                   context);
+
+	g_object_unref (op);
+
+	return TRUE;
 }
 
 static gboolean
@@ -1161,6 +1788,14 @@ parse_operator (CpgExpression *expression,
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
 
 		return parse_ternary_operator (expression, CPG_TOKEN_OPERATOR (token), context);
+	}
+	else if (op->type == CPG_TOKEN_OPERATOR_TYPE_PRIME)
+	{
+		// consume token
+		cpg_token_free (cpg_tokenizer_next (context->buffer));
+
+		// The prime makes a df_dt operator of the current stack
+		return parse_prime (expression, context);
 	}
 
 	CpgInstruction *inst = NULL;
@@ -1222,37 +1857,88 @@ parse_operator (CpgExpression *expression,
 		return FALSE;
 	}
 
-	instructions_push (expression, inst);
+	instructions_push (expression, inst, context);
 
 	return TRUE;
 }
 
 static gboolean
 parse_property (CpgExpression *expression,
-                gchar         *propname,
+                gchar const   *propname,
                 ParserContext *context)
 {
 	CpgProperty *property;
+	CpgFunction *f;
+	gboolean prio;
+	gboolean ret = TRUE;
 
-	property = lookup_property (expression, context, propname);
+	gchar *nname = g_strdup (propname);
 
-	if (!property)
+	if (cpg_compile_context_get_function_arg_priority (context->context))
 	{
-		return parser_failed (context,
-		                      CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
-		                      "Property `%s' not found",
-		                      propname);
+		while (TRUE)
+		{
+			CpgToken *next = cpg_tokenizer_peek (*context->buffer);
+
+			if (next &&
+			    CPG_TOKEN_IS_OPERATOR (next) &&
+			    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_PRIME)
+			{
+				gchar *tmp;
+				tmp = nname;
+
+				nname = g_strconcat (tmp, "'", NULL);
+				g_free (tmp);
+
+				cpg_token_free (next);
+				cpg_token_free (cpg_tokenizer_next (context->buffer));
+			}
+			else
+			{
+				cpg_token_free (next);
+				break;
+			}
+		}
 	}
 
-	instructions_push (expression,
-	                   cpg_instruction_property_new (property,
-	                                                 CPG_INSTRUCTION_PROPERTY_BINDING_NONE));
-	return TRUE;
+	property = lookup_property (expression, context, nname);
+	f = cpg_compile_context_lookup_function (context->context, nname);
+	prio = cpg_compile_context_get_function_ref_priority (context->context);
+
+	if (f && (prio || (!prio && !property)))
+	{
+		instructions_push (expression,
+		                   cpg_instruction_custom_function_ref_new (f),
+		                   context);
+
+		ret = recurse_compile (expression, context, f);
+	}
+	else if (property)
+	{
+		instructions_push (expression,
+		                   cpg_instruction_property_new (property),
+		                   context);
+	}
+	else
+	{
+		parser_failed (expression,
+		               context,
+		               CPG_COMPILE_ERROR_PROPERTY_NOT_FOUND,
+		               "Property `%s' not found",
+		               nname);
+
+		ret = FALSE;
+	}
+
+	g_free (nname);
+
+	return ret;
 }
 
 static gboolean
 parse_constant (CpgExpression  *expression,
-                gchar const    *name)
+                gchar const    *name,
+                ParserContext  *context)
 {
 	gboolean found = FALSE;
 
@@ -1263,17 +1949,67 @@ parse_constant (CpgExpression  *expression,
 		return FALSE;
 	}
 
-	instructions_push (expression, cpg_instruction_constant_new (name));
+	instructions_push (expression,
+	                   cpg_instruction_constant_new (name),
+	                   context);
+
 	return TRUE;
 }
 
 static gboolean
 parse_number (CpgExpression   *expression,
-              CpgTokenNumber  *token)
+              CpgTokenNumber  *token,
+               ParserContext  *context)
 {
-	instructions_push (expression, cpg_instruction_number_new (token->value));
+	instructions_push (expression,
+	                   cpg_instruction_number_new (token->value),
+	                   context);
 
 	return TRUE;
+}
+
+static gboolean
+parse_dot_token (CpgExpression *expression,
+                 gchar const   *id,
+                 ParserContext *context)
+{
+	gboolean ret = TRUE;
+	CpgToken *next = cpg_tokenizer_next (context->buffer);
+	gchar *cname;
+
+	if (!CPG_TOKEN_IS_IDENTIFIER (next))
+	{
+		parser_failed (expression,
+		               context,
+		               CPG_COMPILE_ERROR_INVALID_TOKEN,
+		               "Expected identifier for property");
+
+		cpg_token_free (next);
+		return FALSE;
+	}
+
+	cname = g_strdup (CPG_TOKEN_IDENTIFIER (next)->identifier);
+	next = cpg_tokenizer_peek (*(context->buffer));
+
+	if (next && CPG_TOKEN_IS_OPERATOR (next) &&
+	    CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_START)
+	{
+		cpg_token_free (cpg_tokenizer_next (context->buffer));
+		ret = parse_function (expression, id, cname, context);
+	}
+	else
+	{
+		// Resolve property
+		ret = parse_dot_property (expression,
+		                          id,
+		                          cname,
+		                          context);
+	}
+
+	cpg_token_free (next);
+	g_free (cname);
+
+	return ret;
 }
 
 static gboolean
@@ -1294,7 +2030,7 @@ parse_identifier (CpgExpression      *expression,
 	{
 		// consume peeked group start
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
-		ret = parse_function (expression, id, context);
+		ret = parse_function (expression, id, NULL, context);
 	}
 	else if (next && CPG_TOKEN_IS_OPERATOR (next) &&
 		CPG_TOKEN_OPERATOR (next)->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START)
@@ -1307,22 +2043,8 @@ parse_identifier (CpgExpression      *expression,
 	{
 		// consume peeked dot
 		cpg_token_free (cpg_tokenizer_next (context->buffer));
-		CpgToken *propname = cpg_tokenizer_next (context->buffer);
 
-		if (CPG_TOKEN_IS_IDENTIFIER (propname))
-		{
-			gchar const *propid = CPG_TOKEN_IDENTIFIER (propname)->identifier;
-
-			ret = parse_dot_property (expression, id, propid, context);
-		}
-		else
-		{
-			parser_failed (context,
-			               CPG_COMPILE_ERROR_INVALID_TOKEN,
-			               "Expected identifier for property");
-		}
-
-		cpg_token_free (propname);
+		ret = parse_dot_token (expression, id, context);
 	}
 	else
 	{
@@ -1331,18 +2053,13 @@ parse_identifier (CpgExpression      *expression,
 
 		if (!ret)
 		{
-			if (context->error && *(context->error))
-			{
-				g_error_free (*(context->error));
-				*(context->error) = NULL;
-			}
-
 			// try parsing constants
-			ret = parse_constant (expression, id);
+			ret = parse_constant (expression, id, context);
 
 			if (!ret)
 			{
-				parser_failed (context,
+				parser_failed (expression,
+				               context,
 				               CPG_COMPILE_ERROR_INVALID_TOKEN,
 				               "Could not find property or constant `%s'",
 				               id);
@@ -1365,6 +2082,8 @@ parse_expression (CpgExpression   *expression,
 	gboolean ret = FALSE;
 	gint num = 0;
 
+	push_error_start (expression, context);
+
 	while ((token = cpg_tokenizer_peek (*context->buffer)))
 	{
 		ret = TRUE;
@@ -1373,11 +2092,16 @@ parse_expression (CpgExpression   *expression,
 		{
 			case CPG_TOKEN_TYPE_NUMBER:
 				// simply push a number on the stack
-				ret = parse_number (expression, CPG_TOKEN_NUMBER (token));
+				ret = parse_number (expression,
+				                    CPG_TOKEN_NUMBER (token),
+				                    context);
 			break;
 			case CPG_TOKEN_TYPE_IDENTIFIER:
 			{
-				ret = parse_identifier (expression, CPG_TOKEN_IDENTIFIER (token), context);
+				ret = parse_identifier (expression,
+				                        CPG_TOKEN_IDENTIFIER (token),
+				                        context);
+
 				cpg_token_free (token);
 				token = NULL;
 			}
@@ -1390,10 +2114,12 @@ parse_expression (CpgExpression   *expression,
 				if (op->type == CPG_TOKEN_OPERATOR_TYPE_GROUP_END ||
 				    op->type == CPG_TOKEN_OPERATOR_TYPE_COMMA ||
 				    op->type == CPG_TOKEN_OPERATOR_TYPE_TERNARY_FALSE ||
-				    op->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+				    op->type == CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END ||
+				    op->type == CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON)
 				{
 					cpg_token_free (token);
 
+					pop_error_start (expression, context);
 					return TRUE;
 				}
 
@@ -1410,10 +2136,12 @@ parse_expression (CpgExpression   *expression,
 					}
 				}
 				else if (op->priority < priority ||
-						(op->priority == priority && left_assoc))
+					 (op->priority == priority && left_assoc))
 				{
 					// Do not handle the operator here yet
 					cpg_token_free (token);
+
+					pop_error_start (expression, context);
 					return TRUE;
 				}
 				else
@@ -1431,7 +2159,8 @@ parse_expression (CpgExpression   *expression,
 			}
 			break;
 			case CPG_TOKEN_TYPE_NONE:
-				parser_failed (context,
+				parser_failed (expression,
+				               context,
 				               CPG_COMPILE_ERROR_INVALID_TOKEN,
 				               "Uknown token");
 				ret = FALSE;
@@ -1455,11 +2184,17 @@ parse_expression (CpgExpression   *expression,
 		{
 			break;
 		}
+		else
+		{
+			pop_error_start (expression, context);
+			push_error_start (expression, context);
+		}
 	}
 
-	if (!ret && context->error && !*context->error)
+	if (!ret && context->error && !cpg_compile_error_get_error (context->error))
 	{
-		parser_failed (context,
+		parser_failed (expression,
+		               context,
 		               CPG_COMPILE_ERROR_INVALID_TOKEN,
 		               "Expected expression but got (nothing)");
 	}
@@ -1474,15 +2209,23 @@ validate_stack (CpgExpression *expression)
 	gint stack = 0;
 	gint maxstack = 1;
 
+	g_slist_free (expression->priv->depends_on);
+	expression->priv->depends_on = NULL;
+
 	// check for empty instruction set
 	if (!expression->priv->instructions)
 	{
-		instructions_push (expression, cpg_instruction_number_new (0.0));
+		instructions_push (expression,
+		                   cpg_instruction_number_new (0.0),
+		                   NULL);
 	}
 
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{
 		CpgInstruction *inst = item->data;
+		GSList *deps;
+		GSList *dep;
+
 		stack += cpg_instruction_get_stack_count (inst);
 
 		if (stack <= 0)
@@ -1490,17 +2233,35 @@ validate_stack (CpgExpression *expression)
 			break;
 		}
 
-		expression->priv->dependencies =
-			g_slist_concat (expression->priv->dependencies,
-			                cpg_instruction_get_dependencies (inst));
+		deps = cpg_instruction_get_dependencies (inst);
+
+		for (dep = deps; dep; dep = g_slist_next (dep))
+		{
+			CpgExpression *other = dep->data;
+
+			expression->priv->depends_on =
+				g_slist_prepend (expression->priv->depends_on,
+				                 other);
+
+			other->priv->depends_on_me =
+				g_slist_prepend (other->priv->depends_on_me,
+				                 expression);
+		}
+
+		g_slist_free (deps);
+
+		if (CPG_IS_INSTRUCTION_RAND (inst))
+		{
+			expression->priv->rand_instructions =
+				g_slist_prepend (expression->priv->rand_instructions,
+				                 inst);
+		}
 
 		if (stack > maxstack)
 		{
 			maxstack = stack;
 		}
 	}
-
-	expression->priv->dependencies = g_slist_reverse (expression->priv->dependencies);
 
 	if (stack != 1)
 	{
@@ -1532,32 +2293,6 @@ empty_expression (CpgExpression *expression)
 }
 
 /**
- * cpg_expression_reset_variadic:
- * @expression: A #CpgExpression
- *
- * Reset the cache of the variadic functions (such as rand()). You normally
- * do not need to call this function directly.
- *
- **/
-void
-cpg_expression_reset_variadic (CpgExpression *expression)
-{
-	/* Omit type check to increase speed */
-	GSList *item;
-
-	for (item = expression->priv->variadic_instructions; item; item = g_slist_next (item))
-	{
-		cpg_instruction_variadic_function_reset_cache (item->data);
-	}
-
-	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
-	{
-		CpgInstructionCustomOperator *op = item->data;
-		cpg_operator_reset_variadic (cpg_instruction_custom_operator_get_operator (op));
-	}
-}
-
-/**
  * cpg_expression_compile:
  * @expression: a #CpgExpression
  * @context: the evaluation context
@@ -1571,9 +2306,9 @@ cpg_expression_reset_variadic (CpgExpression *expression)
  *
  **/
 gboolean
-cpg_expression_compile (CpgExpression      *expression,
-                        CpgCompileContext  *context,
-                        GError            **error)
+cpg_expression_compile (CpgExpression     *expression,
+                        CpgCompileContext *context,
+                        CpgCompileError   *error)
 {
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (context == NULL || CPG_IS_COMPILE_CONTEXT (context), FALSE);
@@ -1592,10 +2327,13 @@ cpg_expression_compile (CpgExpression      *expression,
 	gboolean ret;
 
 	expression->priv->error_at = 0;
+	expression->priv->error_start = NULL;
 
 	if (empty_expression (expression))
 	{
-		instructions_push (expression, cpg_instruction_number_new (0.0));
+		instructions_push (expression,
+		                   cpg_instruction_number_new (0.0),
+		                   NULL);
 		ret = TRUE;
 	}
 	else
@@ -1608,9 +2346,6 @@ cpg_expression_compile (CpgExpression      *expression,
 		}
 	}
 
-	g_slist_free (expression->priv->dependencies);
-	expression->priv->dependencies = NULL;
-
 	if (!ret)
 	{
 		instructions_free (expression);
@@ -1622,27 +2357,25 @@ cpg_expression_compile (CpgExpression      *expression,
 		expression->priv->instructions =
 			g_slist_reverse (expression->priv->instructions);
 
-		expression->priv->variadic_instructions =
-			g_slist_reverse (expression->priv->variadic_instructions);
-
-		expression->priv->operator_instructions =
-			g_slist_reverse (expression->priv->operator_instructions);
-
 		if (!validate_stack (expression))
 		{
 			instructions_free (expression);
 
-			return parser_failed (&ctx,
+			return parser_failed (expression,
+			                      &ctx,
 			                      CPG_COMPILE_ERROR_INVALID_STACK,
 			                      "Invalid stack produced. This usually indicates a problem in the parser");
 		}
 	}
 
-	expression->priv->cached = FALSE;
+	cpg_expression_reset_cache (expression);
 
 	if (expression->priv->modified)
 	{
 		expression->priv->modified = FALSE;
+
+		// This should also trigger recompilation of things
+		// that depend on this (like custom operators)
 		g_object_notify (G_OBJECT (expression), "modified");
 	}
 
@@ -1690,49 +2423,19 @@ _cpg_expression_set_instructions_take (CpgExpression *expression,
 
 	cpg_stack_destroy (&(expression->priv->output));
 
-	expression->priv->cached = FALSE;
+	cpg_expression_reset_cache (expression);
+	expression->priv->modified = FALSE;
 
-	if (expression->priv->modified)
-	{
-		expression->priv->modified = FALSE;
-		g_object_notify (G_OBJECT (expression), "modified");
-	}
-
-	g_slist_free (expression->priv->dependencies);
-	expression->priv->dependencies = NULL;
+	g_object_notify (G_OBJECT (expression), "modified");
 
 	expression->priv->instructions = instructions;
 
 	if (!expression->priv->instructions)
 	{
-		instructions_push (expression, cpg_instruction_number_new (0.0));
+		instructions_push (expression,
+		                   cpg_instruction_number_new (0.0),
+		                   NULL);
 	}
-
-	GSList *item;
-
-	for (item = expression->priv->instructions; item; item = g_slist_next (item))
-	{
-		CpgInstruction *inst = item->data;
-
-		if (CPG_IS_INSTRUCTION_VARIADIC_FUNCTION (inst))
-		{
-			expression->priv->variadic_instructions =
-				g_slist_prepend (expression->priv->variadic_instructions,
-				                 inst);
-		}
-		else if (CPG_IS_INSTRUCTION_CUSTOM_OPERATOR (inst))
-		{
-			expression->priv->operator_instructions =
-				g_slist_prepend (expression->priv->operator_instructions,
-				                 inst);
-		}
-	}
-
-	expression->priv->variadic_instructions =
-		g_slist_reverse (expression->priv->variadic_instructions);
-
-	expression->priv->operator_instructions =
-		g_slist_reverse (expression->priv->operator_instructions);
 
 	validate_stack (expression);
 }
@@ -1808,9 +2511,8 @@ cpg_expression_evaluate (CpgExpression *expression)
 
 	if (cpg_stack_count (&(expression->priv->output)) != 1)
 	{
-		fprintf (stderr,
-		         "Invalid output stack after evaluating: %s!\n",
-		         expression->priv->expression);
+		g_warning ("Invalid output stack after evaluating: `%s'",
+		           expression->priv->expression);
 
 		return NAN;
 	}
@@ -1818,10 +2520,6 @@ cpg_expression_evaluate (CpgExpression *expression)
 	if (expression->priv->has_cache)
 	{
 		expression->priv->cached = TRUE;
-	}
-	else
-	{
-		cpg_expression_reset_variadic (expression);
 	}
 
 	expression->priv->cached_output = cpg_stack_pop (&(expression->priv->output));
@@ -1843,39 +2541,82 @@ cpg_expression_reset_cache (CpgExpression *expression)
 	if (!expression->priv->prevent_cache_reset)
 	{
 		expression->priv->cached = FALSE;
-	}
 
+		reset_depending_cache (expression);
+	}
+}
+
+static gboolean
+expression_depends_on (CpgExpression *expression,
+                       CpgExpression *depends_on,
+                       gboolean       checkme)
+{
 	GSList *item;
 
-	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
+	if (checkme && expression == depends_on)
 	{
-		CpgInstructionCustomOperator *op = item->data;
-		cpg_operator_reset_cache (cpg_instruction_custom_operator_get_operator (op));
+		return TRUE;
 	}
+
+	for (item = expression->priv->depends_on; item; item = g_slist_next (item))
+	{
+		if (expression_depends_on (item->data, depends_on, TRUE))
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+gboolean
+cpg_expression_depends_on (CpgExpression *expression,
+                           CpgExpression *depends_on)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), FALSE);
+
+	return expression_depends_on (expression, depends_on, FALSE);
 }
 
 /**
  * cpg_expression_get_dependencies:
  * @expression: a #CpgExpression
  *
- * Get a list of #CpgProperty on which the expression depends. The list is owned
+ * Get a list of #CpgExpression on which the expression depends. The list is owned
  * by @expression and should not be freed or modified
  *
- * Returns: (element-type CpgProperty) (transfer container): a list of #CpgProperty
+ * Returns: (element-type CpgExpression) (transfer container): a list of #CpgExpression
  *
  **/
 const GSList *
 cpg_expression_get_dependencies (CpgExpression *expression)
 {
 	/* Omit type check to increase speed */
-	return expression->priv->dependencies;
+	return expression->priv->depends_on;
+}
+
+/**
+ * cpg_expression_get_depends_on_me:
+ * @expression: a #CpgExpression
+ *
+ * Get a list of #CpgExpression which depend on @expression. The list is owned
+ * by @expression and should not be freed or modified
+ *
+ * Returns: (element-type CpgExpression) (transfer container): a list of #CpgExpression
+ *
+ **/
+const GSList *
+cpg_expression_get_depends_on_me (CpgExpression *expression)
+{
+	/* Omit type check to increase speed */
+	return expression->priv->depends_on_me;
 }
 
 /**
  * cpg_expression_reset:
  * @expression: a #CpgExpression
  *
- * Resets all the expression flags (cache, instant)
+ * Resets the expression
  *
  **/
 void
@@ -1887,15 +2628,6 @@ cpg_expression_reset (CpgExpression *expression)
 	if (!expression->priv->once)
 	{
 		expression->priv->prevent_cache_reset = FALSE;
-	}
-
-	GSList *item;
-
-	for (item = expression->priv->operator_instructions; item; item = g_slist_next (item))
-	{
-		CpgInstructionCustomOperator *op = item->data;
-
-		cpg_operator_reset (cpg_instruction_custom_operator_get_operator (op));
 	}
 
 	if (!expression->priv->modified)
@@ -1921,6 +2653,14 @@ cpg_expression_get_instructions (CpgExpression *expression)
 	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
 
 	return expression->priv->instructions;
+}
+
+const GSList *
+cpg_expression_get_rand_instructions (CpgExpression *expression)
+{
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+
+	return expression->priv->rand_instructions;
 }
 
 /**
@@ -2019,6 +2759,9 @@ cpg_expression_set_once (CpgExpression *expression,
 CpgExpression *
 cpg_expression_copy (CpgExpression *expression)
 {
+	CpgExpression *ret;
+	GSList *instr;
+
 	g_return_val_if_fail (expression == NULL || CPG_IS_EXPRESSION (expression), NULL);
 
 	if (expression == NULL)
@@ -2026,7 +2769,30 @@ cpg_expression_copy (CpgExpression *expression)
 		return NULL;
 	}
 
-	return cpg_expression_new (expression->priv->expression);
+	ret = cpg_expression_new (expression->priv->expression);
+
+	ret->priv->cached = expression->priv->cached;
+	ret->priv->prevent_cache_reset = expression->priv->prevent_cache_reset;
+	ret->priv->cached_output = expression->priv->cached_output;
+	ret->priv->modified = expression->priv->modified;
+	ret->priv->has_cache = expression->priv->has_cache;
+	ret->priv->once = expression->priv->once;
+
+	instr = expression->priv->instructions;
+
+	while (instr)
+	{
+		instructions_push (ret,
+		                   CPG_INSTRUCTION (cpg_mini_object_copy (CPG_MINI_OBJECT (instr->data))),
+		                   NULL);
+
+		instr = g_slist_next (instr);
+	}
+
+	ret->priv->instructions =
+		g_slist_reverse (ret->priv->instructions);
+
+	return ret;
 }
 
 /**
@@ -2047,12 +2813,22 @@ cpg_expression_get_error_at (CpgExpression *expression)
 	return expression->priv->error_at;
 }
 
-const GSList *
-cpg_expression_get_operators (CpgExpression *expression)
+/**
+ * cpg_expression_get_error_start:
+ * @expression: A #CpgExpression
+ *
+ * Get the character position in the expression at which an error started
+ * while compiling the expression
+ *
+ * Returns: the character position at which an error started
+ *
+ **/
+gint
+cpg_expression_get_error_start (CpgExpression *expression)
 {
-	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), NULL);
+	g_return_val_if_fail (CPG_IS_EXPRESSION (expression), 0);
 
-	return expression->priv->operator_instructions;
+	return expression->priv->error_start ? GPOINTER_TO_INT (expression->priv->error_start->data) : expression->priv->error_at;
 }
 
 gboolean

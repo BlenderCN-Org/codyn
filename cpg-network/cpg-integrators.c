@@ -43,6 +43,7 @@ ensure_defaults ()
 		initing = TRUE;
 
 		cpg_integrators_register (CPG_TYPE_INTEGRATOR_EULER);
+		cpg_integrators_register (CPG_TYPE_INTEGRATOR_LEAP_FROG);
 		cpg_integrators_register (CPG_TYPE_INTEGRATOR_PREDICT_CORRECT);
 		cpg_integrators_register (CPG_TYPE_INTEGRATOR_RUNGE_KUTTA);
 		cpg_integrators_register (CPG_TYPE_INTEGRATOR_STUB);

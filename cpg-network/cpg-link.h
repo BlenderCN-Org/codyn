@@ -23,7 +23,7 @@
 #ifndef __CPG_LINK_H__
 #define __CPG_LINK_H__
 
-#include <cpg-network/cpg-object.h>
+#include <cpg-network/cpg-group.h>
 #include <cpg-network/cpg-expression.h>
 #include <cpg-network/cpg-link-action.h>
 
@@ -61,11 +61,11 @@ struct _CpgLinkClass
 GType          cpg_link_get_type              (void) G_GNUC_CONST;
 
 CpgLink       *cpg_link_new                   (const gchar   *id,
-                                               CpgObject     *from,
-                                               CpgObject     *to);
+                                               CpgGroup     *from,
+                                               CpgGroup     *to);
 
-CpgObject     *cpg_link_get_from              (CpgLink       *link);
-CpgObject     *cpg_link_get_to                (CpgLink       *link);
+CpgGroup     *cpg_link_get_from              (CpgLink       *link);
+CpgGroup     *cpg_link_get_to                (CpgLink       *link);
 
 gboolean       cpg_link_add_action            (CpgLink       *link,
                                                CpgLinkAction *action);
@@ -77,8 +77,8 @@ const GSList  *cpg_link_get_actions           (CpgLink       *link);
 CpgLinkAction *cpg_link_get_action            (CpgLink       *link,
                                                const gchar   *target);
 void           cpg_link_attach                (CpgLink       *link,
-                                               CpgObject     *from,
-                                               CpgObject     *to);
+                                               CpgGroup     *from,
+                                               CpgGroup     *to);
 
 CpgLink       *cpg_link_get_action_template   (CpgLink       *link,
                                                CpgLinkAction *action,

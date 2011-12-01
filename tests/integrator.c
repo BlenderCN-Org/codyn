@@ -4,7 +4,7 @@
 #include <cpg-network/cpg-network.h>
 #include <cpg-network/cpg-expression.h>
 #include <cpg-network/cpg-object.h>
-#include <cpg-network/cpg-integrator-euler.h>
+#include <cpg-network/cpg-integrators.h>
 #include "utils.h"
 
 static void
@@ -15,7 +15,9 @@ test_switch ()
 	network = cpg_network_new ();
 
 	CpgObject *state = cpg_object_new ("state");
-	CpgProperty *property = cpg_property_new ("x", "sin(t)", 0);
+	CpgProperty *property = cpg_property_new ("x",
+	                                          cpg_expression_new ("sin(t)"),
+	                                          0);
 
 	cpg_object_add_property (state, property, NULL);
 	cpg_group_add (CPG_GROUP (network), state, NULL);

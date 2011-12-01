@@ -27,6 +27,7 @@
 #include <glib-object.h>
 #include <cpg-network/cpg-compile-context.h>
 #include <cpg-network/cpg-utils.h>
+#include <cpg-network/cpg-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -56,27 +57,28 @@ struct _CpgExpressionClass
 	GInitiallyUnownedClass parent_class;
 };
 
-typedef CPG_FORWARD_DECL (CpgProperty) CpgPropertyForward;
-
 GType          cpg_expression_get_type         (void) G_GNUC_CONST;
 
 CpgExpression *cpg_expression_new              (const gchar        *expression);
+CpgExpression *cpg_expression_new0             ();
 CpgExpression *cpg_expression_copy             (CpgExpression      *expression);
 
-const GSList  *cpg_expression_get_dependencies (CpgExpression      *expression);
+gboolean       cpg_expression_depends_on       (CpgExpression      *expression,
+                                                CpgExpression      *depends_on);
+const GSList  *cpg_expression_get_dependencies   (CpgExpression      *expression);
+const GSList  *cpg_expression_get_depends_on_me (CpgExpression      *expression);
 
 const gchar   *cpg_expression_get_as_string    (CpgExpression      *expression);
 
 gboolean       cpg_expression_compile          (CpgExpression      *expression,
                                                 CpgCompileContext  *context,
-                                                GError            **error);
+                                                CpgCompileErrorForward    *error);
 
 gdouble        cpg_expression_evaluate         (CpgExpression      *expression);
 void           cpg_expression_set_value        (CpgExpression      *expression,
                                                 gdouble             value);
 
 void           cpg_expression_reset            (CpgExpression      *expression);
-void           cpg_expression_reset_variadic   (CpgExpression      *expression);
 
 gboolean       cpg_expression_equal            (CpgExpression      *expression,
                                                 CpgExpression      *other);
@@ -97,13 +99,14 @@ void           cpg_expression_set_instructions (CpgExpression      *expression,
 void          _cpg_expression_set_instructions_take (CpgExpression      *expression,
                                                      GSList             *instructions);
 
-const GSList  *cpg_expression_get_operators    (CpgExpression     *expression);
+const GSList  *cpg_expression_get_rand_instructions (CpgExpression      *expression);
 
 gboolean       cpg_expression_get_once         (CpgExpression      *expression);
 void           cpg_expression_set_once         (CpgExpression      *expression,
                                                 gboolean            instant);
 
 gint           cpg_expression_get_error_at     (CpgExpression      *expression);
+gint           cpg_expression_get_error_start  (CpgExpression      *expression);
 
 G_END_DECLS
 

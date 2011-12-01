@@ -25,6 +25,7 @@
 
 #include <cpg-network/cpg-object.h>
 #include <cpg-network/cpg-property-interface.h>
+#include <cpg-network/cpg-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -146,6 +147,20 @@ CpgPropertyInterface *
 
 GSList       *cpg_group_get_auto_templates_for_child (CpgGroup  *group,
                                                       CpgObject *child);
+
+const GSList     *cpg_group_get_links      (CpgGroup *group);
+const GSList     *cpg_group_get_actors     (CpgGroup  *group);
+
+CpgLinkForward *cpg_group_get_self_link    (CpgGroup *group);
+gboolean cpg_group_has_self_link    (CpgGroup *group);
+
+/* used for referencing links */
+void             _cpg_group_link           (CpgGroup       *group,
+                                            CpgLinkForward *link);
+
+void             _cpg_group_unlink         (CpgGroup       *group,
+                                            CpgLinkForward *link);
+
 
 G_END_DECLS
 

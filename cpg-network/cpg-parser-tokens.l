@@ -103,7 +103,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return cpg_parser_context_steal_start_token (yyextra);
 				}
 
-[ \t]				;
+[ \t;]				;
 \n.*				{
 					HANDLE_NEWLINE
 				}
@@ -117,6 +117,9 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 				}
 <annotation_start>[\t ]*##[\t ]* {
 					yy_pop_state (yyscanner);
+
+					yylval->id = g_strdup ("\n");
+					return T_STRING;
 				}
 <annotation_start>.		{
 					yyless (0);
@@ -151,13 +154,13 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 
 "include"			return T_KEY_INCLUDE;
 "parse"				return T_KEY_PARSE;
-"state"				return T_KEY_STATE;
 "object"			return T_KEY_OBJECT;
 "link"				return T_KEY_LINK;
 "integrated"			return T_KEY_INTEGRATED;
 "in"				return T_KEY_IN;
 "out"				return T_KEY_OUT;
 "once"				return T_KEY_ONCE;
+"disabled"			return T_KEY_DISABLED;
 "network"			return T_KEY_NETWORK;
 "functions"			return T_KEY_FUNCTIONS;
 "interface"			return T_KEY_INTERFACE;
@@ -185,11 +188,11 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "debug-print"			return T_KEY_DEBUG_PRINT;
 "apply"				return T_KEY_APPLY;
 "unapply"			return T_KEY_UNAPPLY;
-"before-apply"			return T_KEY_BEFORE_APPLY;
-"after-apply"			return T_KEY_AFTER_APPLY;
-"before-unapply"		return T_KEY_BEFORE_UNAPPLY;
-"after-unapply"			return T_KEY_AFTER_UNAPPLY;
 "with"				return T_KEY_WITH;
+"when"				return T_KEY_WHEN;
+"enable"			return T_KEY_ENABLE;
+"disable"			return T_KEY_DISABLE;
+"switch"			return T_KEY_SWITCH;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;
@@ -200,7 +203,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"first"		return T_KEY_FIRST;
 <INITIAL,onlyselector>"last"		return T_KEY_LAST;
 <INITIAL,onlyselector>"subset"		return T_KEY_SUBSET;
-<INITIAL,onlyselector>"states"		return T_KEY_STATES;
 <INITIAL,onlyselector>"links"		return T_KEY_LINKS;
 <INITIAL,onlyselector>"siblings"	return T_KEY_SIBLINGS;
 <INITIAL,onlyselector>"descendants"	return T_KEY_DESCENDANTS;
@@ -223,6 +225,10 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 <INITIAL,onlyselector>"has-template"	return T_KEY_HAS_TEMPLATE;
 <INITIAL,onlyselector>"has-tag"		return T_KEY_HAS_TAG;
 <INITIAL,onlyselector>"reverse"		return T_KEY_REVERSE;
+<INITIAL,onlyselector>"source"		return T_KEY_SOURCE;
+<INITIAL,onlyselector>"sink"		return T_KEY_SINK;
+<INITIAL,onlyselector>"source-name"	return T_KEY_SOURCE_NAME;
+<INITIAL,onlyselector>"sink-name"	return T_KEY_SINK_NAME;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;

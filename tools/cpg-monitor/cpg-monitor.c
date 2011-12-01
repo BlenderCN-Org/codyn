@@ -138,7 +138,6 @@ write_monitors (CpgNetwork    *network,
 	gint row;
 	GSList *item_monitor;
 	GSList *item_name;
-	gdouble time = from;
 
 	if (include_header)
 	{
@@ -200,27 +199,17 @@ write_monitors (CpgNetwork    *network,
 	{
 		gchar value[G_ASCII_DTOSTR_BUF_SIZE];
 
-		g_ascii_dtostr (value,
-		                G_ASCII_DTOSTR_BUF_SIZE,
-		                time);
-
-		g_output_stream_write_all (stream,
-		                           value,
-		                           strlen (value),
-		                           NULL,
-		                           NULL,
-		                           NULL);
-
-		time += step;
-
 		for (i = 0; i < num; ++i)
 		{
-			g_output_stream_write_all (stream,
-			                           delimiter,
-			                           strlen (delimiter),
-			                           NULL,
-			                           NULL,
-			                           NULL);
+			if (i != 0)
+			{
+				g_output_stream_write_all (stream,
+				                           delimiter,
+				                           strlen (delimiter),
+				                           NULL,
+				                           NULL,
+				                           NULL);
+			}
 
 			g_ascii_dtostr (value,
 			                G_ASCII_DTOSTR_BUF_SIZE,
@@ -289,6 +278,7 @@ monitor_network (gchar const *filename)
 	gint i;
 	CpgCompileError *err;
 	gint ret;
+	CpgIntegrator *integrator;
 
 	if (g_strcmp0 (filename, "-") == 0)
 	{
@@ -336,6 +326,8 @@ monitor_network (gchar const *filename)
 	GSList *monitors = NULL;
 	GSList *names = NULL;
 
+	integrator = cpg_network_get_integrator (network);
+
 	for (i = monitored->len - 1; i >= 0; --i)
 	{
 		GSList *properties = find_matching_properties (network, monitored->pdata[i]);
@@ -356,6 +348,10 @@ monitor_network (gchar const *filename)
 
 		g_slist_free (properties);
 	}
+
+	monitors = g_slist_prepend (monitors,
+	                            cpg_monitor_new (network,
+	                                              cpg_object_get_property (CPG_OBJECT (integrator), "t")));
 
 	cpg_network_run (network, from, step, to);
 

@@ -86,6 +86,19 @@ cpg_instruction_function_equal (CpgInstruction *i1,
 	return f1->priv->id == f2->priv->id;
 }
 
+static gboolean
+cpg_instruction_function_get_is_commutative (CpgInstruction *instruction)
+{
+	CpgInstructionFunction *func;
+	CpgMathFunctionType type;
+
+	/* Direct cast to reduce overhead of GType cast */
+	func = (CpgInstructionFunction *)instruction;
+	type = (CpgMathFunctionType)cpg_instruction_function_get_id (func);
+
+	return cpg_math_function_is_commutative (type);
+}
+
 static void
 cpg_instruction_function_class_init (CpgInstructionFunctionClass *klass)
 {
@@ -99,6 +112,7 @@ cpg_instruction_function_class_init (CpgInstructionFunctionClass *klass)
 	inst_class->execute = cpg_instruction_function_execute;
 	inst_class->get_stack_count = cpg_instruction_function_get_stack_count;
 	inst_class->equal = cpg_instruction_function_equal;
+	inst_class->get_is_commutative = cpg_instruction_function_get_is_commutative;
 
 	g_type_class_add_private (object_class, sizeof(CpgInstructionFunctionPrivate));
 }

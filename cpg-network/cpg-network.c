@@ -29,11 +29,12 @@
 #include "cpg-expression.h"
 #include "cpg-object.h"
 #include "cpg-link.h"
-#include "cpg-integrator-euler.h"
+#include "cpg-integrators.h"
 #include "cpg-network-deserializer.h"
-#include "cpg-operator-delayed.h"
+#include "cpg-operators.h"
 #include "cpg-import.h"
 #include "cpg-parser-context.h"
+#include "cpg-debug.h"
 
 /**
  * SECTION:cpg-network
@@ -394,6 +395,33 @@ typedef struct
 	gboolean failed;
 } CompileInfo;
 
+static CpgCompileContext *
+cpg_network_get_compile_context_impl (CpgObject         *object,
+                                      CpgCompileContext *context)
+{
+	CpgNetwork *network = CPG_NETWORK (object);
+
+	/* Note: we repeat this logic here from cpg-object because we need
+	   to prepend the 'integrator' object before the real object... */
+	if (!context)
+	{
+		if (cpg_object_get_parent (object))
+		{
+			context = cpg_object_get_compile_context (CPG_OBJECT (cpg_object_get_parent (object)),
+			                                          NULL);
+		}
+		else
+		{
+			context = cpg_compile_context_new ();
+		}
+	}
+
+	cpg_compile_context_prepend_object (context, CPG_OBJECT (network->priv->integrator));
+	CPG_OBJECT_CLASS (cpg_network_parent_class)->get_compile_context (object, context);
+
+	return context;
+}
+
 static gboolean
 cpg_network_compile_impl (CpgObject         *object,
                           CpgCompileContext *context,
@@ -402,16 +430,13 @@ cpg_network_compile_impl (CpgObject         *object,
 	CpgNetwork *network = CPG_NETWORK (object);
 	gboolean ret;
 
-	if (!context)
+	if (context)
 	{
-		context = cpg_compile_context_new ();
-	}
-	else
-	{
+		cpg_compile_context_save (context);
 		g_object_ref (context);
 	}
 
-	cpg_compile_context_prepend_object (context, CPG_OBJECT (network->priv->integrator));
+	context = cpg_network_get_compile_context_impl (object, context);
 
 	ret = CPG_OBJECT_CLASS (cpg_network_parent_class)->compile (object,
 	                                                            context,
@@ -456,6 +481,7 @@ cpg_network_class_init (CpgNetworkClass *klass)
 	object_class->set_property = cpg_network_set_property;
 
 	cpg_class->compile = cpg_network_compile_impl;
+	cpg_class->get_compile_context = cpg_network_get_compile_context_impl;
 	cpg_class->clear = cpg_network_clear_impl;
 
 	group_class->add = cpg_network_add_impl;
@@ -517,7 +543,7 @@ cpg_network_init (CpgNetwork *network)
 
 	network->priv->template_group = cpg_group_new ("templates", NULL);
 	_cpg_object_set_parent (CPG_OBJECT (network->priv->template_group),
-	                        CPG_OBJECT (network));
+	                        CPG_GROUP (network));
 
 	g_signal_connect_swapped (network->priv->template_group,
 	                          "tainted",
@@ -552,6 +578,7 @@ CpgNetwork *
 cpg_network_new ()
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	return g_object_new (CPG_TYPE_NETWORK, "id", "(cpg)", NULL);
 }
@@ -975,6 +1002,7 @@ cpg_network_new_from_stream (GInputStream  *stream,
                              GError       **error)
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), NULL);
 
@@ -1007,6 +1035,7 @@ cpg_network_new_from_file (GFile   *file,
                            GError **error)
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
@@ -1039,6 +1068,7 @@ cpg_network_new_from_path (gchar const  *path,
                            GError      **error)
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	g_return_val_if_fail (path != NULL, NULL);
 
@@ -1065,6 +1095,7 @@ cpg_network_new_from_string (gchar const  *s,
                              GError      **error)
 {
 	g_type_init ();
+	cpg_debug_init ();
 
 	g_return_val_if_fail (s != NULL, NULL);
 

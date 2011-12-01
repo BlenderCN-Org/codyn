@@ -70,7 +70,10 @@ static OperatorProperties operator_properties[] =
 	{10, 1}, // CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START,
 	{10, 1}, // CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END,
 
-	{10, 1}  // CPG_TOKEN_OPERATOR_TYPE_COMMA
+	{10, 1},  // CPG_TOKEN_OPERATOR_TYPE_COMMA
+	{10, 1},  // CPG_TOKEN_OPERATOR_TYPE_DOT
+	{10, 1},  // CPG_TOKEN_OPERATOR_TYPE_PRIME
+	{10, 1}  // CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON
 };
 
 static void
@@ -143,7 +146,7 @@ cpg_tokenizer_validate_identifier (const gchar *identifier)
 
 	while (*identifier)
 	{
-		if (!(isalnum (*identifier) || *identifier == '_' || *identifier == '.'))
+		if (!(isalnum (*identifier) || *identifier == '_' || *identifier == '.' || *identifier == '\''))
 		{
 			return FALSE;
 		}
@@ -196,6 +199,9 @@ isoperator (gint c)
 		case ',':
 		case '[':
 		case ']':
+		case '\'':
+		case ';':
+		case '^':
 			return TRUE;
 	}
 
@@ -289,11 +295,20 @@ cpg_tokenizer_parse_operator (gchar const **buffer)
 			case '.':
 				type = CPG_TOKEN_OPERATOR_TYPE_DOT;
 			break;
+			case '\'':
+				type = CPG_TOKEN_OPERATOR_TYPE_PRIME;
+			break;
 			case '[':
 				type = CPG_TOKEN_OPERATOR_TYPE_OPERATOR_START;
 			break;
 			case ']':
 				type = CPG_TOKEN_OPERATOR_TYPE_OPERATOR_END;
+			break;
+			case ';':
+				type = CPG_TOKEN_OPERATOR_TYPE_SEMI_COLON;
+			break;
+			case '^':
+				type = CPG_TOKEN_OPERATOR_TYPE_POWER;
 			break;
 		}
 	}

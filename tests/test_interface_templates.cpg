@@ -2,37 +2,37 @@
 <cpg>
   <network>
     <templates>
-      <state id="t1">
+      <group id="t1">
         <interface>
           <property name="c1_p1" child="c1">p1</property>
           <property name="cc_p1" child="c1">p1</property>
         </interface>
-        <state id="c1">
+        <group id="c1">
           <property name="p1">0</property>
-        </state>
-      </state>
-      <state id="t2">
+        </group>
+      </group>
+      <group id="t2">
         <interface>
           <property name="c2_p2" child="c2">p2</property>
         </interface>
-        <state id="c2">
+        <group id="c2">
           <property name="p2">0</property>
-        </state>
-      </state>
-      <state id="t3">
+        </group>
+      </group>
+      <group id="t3">
         <interface>
           <property name="c1_p1" child="c3">p3</property>
           <property name="cc_p3" child="c3">p3</property>
         </interface>
-        <state id="c3">
+        <group id="c3">
           <property name="p3">0</property>
-        </state>
-      </state>
+        </group>
+      </group>
     </templates>
-    <state id="state" ref="t1, t2">
-    </state>
-    <state id="state_override_interface" ref="t1, t3">
-    </state>
+    <group id="state" ref="t1, t2">
+    </group>
+    <group id="state_override_interface" ref="t1, t3">
+    </group>
   </network>
 </cpg>
 <!-- vi:ex:ts=2:et -->

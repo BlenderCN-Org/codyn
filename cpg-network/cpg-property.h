@@ -96,7 +96,7 @@ CPG_FORWARD_DECL (CpgObject);
 GType cpg_property_get_type (void) G_GNUC_CONST;
 
 CpgProperty       *cpg_property_new                     (const gchar      *name,
-                                                         const gchar      *expression,
+                                                         CpgExpression    *expression,
                                                          CpgPropertyFlags  flags);
 
 const gchar       *cpg_property_get_name                (CpgProperty        *property);
@@ -157,6 +157,14 @@ CpgProperty       *cpg_property_copy                    (CpgProperty        *pro
 
 void               _cpg_property_set_object             (CpgProperty                  *property,
                                                          CPG_FORWARD_DECL (CpgObject) *object);
+
+GSList            *cpg_property_get_actions             (CpgProperty *property);
+
+CpgProperty       *cpg_property_get_integral            (CpgProperty *property);
+CpgProperty       *cpg_property_get_derivative          (CpgProperty *property);
+
+void               cpg_property_set_derivative          (CpgProperty *property,
+                                                         CpgProperty *diffprop);
 
 G_END_DECLS
 
