@@ -22,9 +22,11 @@ group "slip"
     ## Spring stiffness
     k = "20000"
 
-    ## State variable @1
-    "{x,y}"   = "{0,l}"   | integrated
-    "{dx,dy}" = "{5,0}" | integrated
+    ## Mass position @@1
+    "{x,y}" = "{0,l}" | integrated
+
+    ## Mass velocity @@1
+    "d{x,y}" = "{5,0}" | integrated
 
     ## Indicate second order system. Default differential equations are simply
     ## 0. We will add separate equations for the different phases later so
@@ -56,11 +58,11 @@ group "slip"
     ## Kinetic energy of the mass and the spring
     kinetic = "0.5 * m * sqsum(dx, dy)"
 
-    ll = "(l - leglength) * 1000"
-
-    ## Potential energy of the mass and the spring. Note that the potential
-    ## energy of the spring is only calculated when the leg is on the ground.
+    ## Potential energy of the spring. Note that there is only energy stored
+    ## in the spring when the leg is on the ground
     potential_spring = "(l - leglength > 0) * 0.5 * k * (l - leglength)^2"
+
+    ## Potential energy of the mass and the spring. 
     potential = "m * g * y + potential_spring"
 
     ## Total energy
@@ -87,9 +89,9 @@ link "ground" on "slip"
     dy <= "(cos(aol) * fspring) / m - g" | disabled
 }
 
-## Here we reopen the SLIP model group and add events which will switch the
-## dynamics between air and ground phase. We do this inside the SLIP model
-## group because we can access easily the variables defined in the model
+# Here we reopen the SLIP model group and add events which will switch the
+# dynamics between air and ground phase. We do this inside the SLIP model
+# group because we can access easily the variables defined in the model
 group "slip"
 {
     ## Transition from air to ground. This happens when we are in the air
