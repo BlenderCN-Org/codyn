@@ -2538,7 +2538,8 @@ void
 cdn_expression_reset_cache (CdnExpression *expression)
 {
 	/* Omit type check to increase speed */
-	if (!expression->priv->prevent_cache_reset)
+	if (!expression->priv->prevent_cache_reset &&
+	    expression->priv->cached)
 	{
 		expression->priv->cached = FALSE;
 
@@ -2623,18 +2624,12 @@ void
 cdn_expression_reset (CdnExpression *expression)
 {
 	/* Omit type check to increase speed */
-	expression->priv->cached = FALSE;
-
 	if (!expression->priv->once)
 	{
 		expression->priv->prevent_cache_reset = FALSE;
 	}
 
-	if (!expression->priv->modified)
-	{
-		expression->priv->modified = TRUE;
-		g_object_notify (G_OBJECT (expression), "modified");
-	}
+	cdn_expression_reset_cache (expression);
 }
 
 /**
