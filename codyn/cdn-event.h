@@ -25,6 +25,7 @@ typedef enum
 {
 	CDN_EVENT_DIRECTION_POSITIVE = 1 << 0,
 	CDN_EVENT_DIRECTION_NEGATIVE = 1 << 1,
+	CDN_EVENT_DIRECTION_ZERO = 1 << 2,
 } CdnEventDirection;
 
 struct _CdnEvent

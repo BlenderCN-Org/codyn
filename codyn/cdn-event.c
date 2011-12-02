@@ -3,6 +3,8 @@
 #include "cdn-compile-error.h"
 #include "cdn-phaseable.h"
 
+#include <math.h>
+
 #define CDN_EVENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EVENT, CdnEventPrivate))
 
 struct _CdnEventPrivate
@@ -287,6 +289,16 @@ cdn_event_happened (CdnEvent *event,
 {
 	gdouble val;
 
+	if ((event->priv->direction & CDN_EVENT_DIRECTION_ZERO))
+	{
+		val = cdn_expression_evaluate (event->priv->condition);
+
+		if (fabs (val) < 10e-14)
+		{
+			return TRUE;
+		}
+	}
+
 	if ((event->priv->direction & CDN_EVENT_DIRECTION_NEGATIVE) && event->priv->value > 0)
 	{
 		val = cdn_expression_evaluate (event->priv->condition);
@@ -378,7 +390,7 @@ cdn_event_compile (CdnEvent          *event,
 
 	g_return_val_if_fail (CDN_IS_EVENT (event), FALSE);
 	g_return_val_if_fail (CDN_IS_COMPILE_CONTEXT (context), FALSE);
-	g_return_val_if_fail (CDN_IS_COMPILE_ERROR (error), FALSE);
+	g_return_val_if_fail (error == NULL || CDN_IS_COMPILE_ERROR (error), FALSE);
 
 	if (!cdn_expression_compile (event->priv->condition, context, error))
 	{
@@ -413,6 +425,8 @@ cdn_event_set_goto_phase (CdnEvent           *event,
 
 	g_free (event->priv->goto_phase);
 	event->priv->goto_phase = g_strdup (phase);
+
+	g_object_notify (G_OBJECT (event), "goto-phase");
 }
 
 gchar const *

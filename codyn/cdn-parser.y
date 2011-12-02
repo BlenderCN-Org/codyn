@@ -371,6 +371,7 @@ integrator
 
 when_direction
 	:				{ $$ = CDN_EVENT_DIRECTION_NEGATIVE; }
+	| '='				{ $$ = CDN_EVENT_DIRECTION_ZERO; }
 	| '>'				{ $$ = CDN_EVENT_DIRECTION_POSITIVE; }
 	| '<'				{ $$ = CDN_EVENT_DIRECTION_NEGATIVE; }
 	| '<' '>'			{ $$ = CDN_EVENT_DIRECTION_POSITIVE |
