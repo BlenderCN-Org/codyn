@@ -66,6 +66,9 @@ node "slip"
     ## Total energy
     energy = "kinetic + potential"
 
+    ## Number of steps taken
+    steps = 0
+
     ## Transition from air to ground when the end point of the leg
     ## (considering the desired angle of attack, aoa) would go through the
     ## ground. Note that the event is triggered on a negative zero crossing
@@ -73,13 +76,13 @@ node "slip"
     {
         ## Calculate the position of the leg on impact and store this in xc
         "xc" = "x + l * sin(aoa)"
+        "steps" = "steps + 1"
     }
 
     ## Transition from ground to air when the calculated leglength becomes
     ## larger than the zero leg length (i.e. the spring is fully extended).
     ## Note that the event is triggered on a negative zero crossing
     phase "ground" to "air" when "l - leglength" {}
-
 }
 
 ## Differential equations for the air phase. In the air, the motion of the SLIP
