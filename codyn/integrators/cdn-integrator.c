@@ -795,8 +795,6 @@ cdn_integrator_run (CdnIntegrator *integrator,
 {
 	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
 
-	cdn_object_reset (integrator->priv->object);
-
 	if (!ensure_compiled (integrator))
 	{
 		return;
