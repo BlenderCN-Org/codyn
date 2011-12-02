@@ -2624,12 +2624,13 @@ void
 cdn_expression_reset (CdnExpression *expression)
 {
 	/* Omit type check to increase speed */
-	if (!expression->priv->once)
-	{
-		expression->priv->prevent_cache_reset = FALSE;
-	}
-
+	expression->priv->prevent_cache_reset = FALSE;
 	cdn_expression_reset_cache (expression);
+
+	if (expression->priv->once)
+	{
+		expression->priv->prevent_cache_reset = TRUE;
+	}
 }
 
 /**
