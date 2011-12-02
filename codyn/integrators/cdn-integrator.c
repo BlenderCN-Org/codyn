@@ -745,10 +745,6 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 		{
 			CdnExpression *expr = cdn_edge_action_get_equation (action);
 
-			g_message ("Eval: %s at %f",
-			           cdn_expression_get_as_string (expr),
-			           cdn_variable_get_value (integrator->priv->property_time));
-
 			cdn_variable_set_update (target,
 			                         cdn_variable_get_update (target) +
 			                         cdn_expression_evaluate (expr));
