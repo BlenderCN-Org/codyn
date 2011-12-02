@@ -6002,14 +6002,12 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		CdnExpression *expr;
 		CdnEvent *ev;
 		GSList *phases;
-		GSList *to_phases;
 
 		cdn_embedded_context_save (context->priv->embedded);
 		cdn_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
 		embedded_string_expand_multiple (phases, from_phase, context);
-		embedded_string_expand_multiple (to_phases, to_phase, context);
 		embedded_string_expand_multiple (conds, condition, context);
 
 		expr = cdn_expression_new (cdn_expansion_get (conds->data, 0));
@@ -6024,11 +6022,18 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 			phases = g_slist_delete_link (phases, phases);
 		}
 
-		cdn_event_set_goto_phase (ev,
-		                          cdn_expansion_get (to_phases->data, 0));
+		if (to_phase)
+		{
+			GSList *to_phases;
 
-		g_slist_foreach (to_phases, (GFunc)g_object_unref, NULL);
-		g_slist_free (to_phases);
+			embedded_string_expand_multiple (to_phases, to_phase, context);
+
+			cdn_event_set_goto_phase (ev,
+			                          cdn_expansion_get (to_phases->data, 0));
+
+			g_slist_foreach (to_phases, (GFunc)g_object_unref, NULL);
+			g_slist_free (to_phases);
+		}
 
 		cdn_object_add_event (cdn_selection_get_object (item->data),
 		                      ev);
