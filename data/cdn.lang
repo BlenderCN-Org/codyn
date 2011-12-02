@@ -220,6 +220,8 @@
             <keyword>unapply</keyword>
             <keyword>when</keyword>
             <keyword>phase</keyword>
+            <keyword>terminate</keyword>
+            <keyword>any</keyword>
         </context>
 
         <context id="selector">
