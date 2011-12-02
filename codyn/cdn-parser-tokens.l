@@ -191,7 +191,8 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "with"				return T_KEY_WITH;
 "when"				return T_KEY_WHEN;
 "phase"				return T_KEY_PHASE;
-"terminal"			return T_KEY_TERMINAL;
+"terminate"			return T_KEY_TERMINATE;
+"any"				return T_KEY_ANY;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;

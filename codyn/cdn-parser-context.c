@@ -6007,19 +6007,23 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		cdn_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
-		embedded_string_expand_multiple (phases, from_phase, context);
 		embedded_string_expand_multiple (conds, condition, context);
 
 		expr = cdn_expression_new (cdn_expansion_get (conds->data, 0));
 		ev = cdn_event_new (expr, direction);
 
-		while (phases)
+		if (from_phase)
 		{
-			cdn_phaseable_add_phase (CDN_PHASEABLE (ev),
-			                         cdn_expansion_get (phases->data, 0));
+			embedded_string_expand_multiple (phases, from_phase, context);
 
-			g_object_unref (phases->data);
-			phases = g_slist_delete_link (phases, phases);
+			while (phases)
+			{
+				cdn_phaseable_add_phase (CDN_PHASEABLE (ev),
+				                         cdn_expansion_get (phases->data, 0));
+
+				g_object_unref (phases->data);
+				phases = g_slist_delete_link (phases, phases);
+			}
 		}
 
 		if (to_phase)
