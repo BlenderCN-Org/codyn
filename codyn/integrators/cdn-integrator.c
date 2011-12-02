@@ -100,7 +100,9 @@ struct _CdnIntegratorPrivate
 	GSList *saved_state;
 
 	gchar *initial_phase;
-	gboolean event_handled;
+
+	guint event_handled : 1;
+	guint terminate : 1;
 };
 
 static guint integrator_signals[NUM_SIGNALS] = {0,};
@@ -249,6 +251,8 @@ cdn_integrator_run_impl (CdnIntegrator *integrator,
 		return;
 	}
 
+	integrator->priv->terminate = FALSE;
+
 	while (from < to)
 	{
 		if (to - from < timestep)
@@ -258,7 +262,7 @@ cdn_integrator_run_impl (CdnIntegrator *integrator,
 
 		gdouble realstep = step_func (integrator, from, timestep);
 
-		if (realstep <= 0)
+		if (realstep <= 0 || integrator->priv->terminate)
 		{
 			break;
 		}
@@ -358,6 +362,29 @@ restore_saved_state (CdnIntegrator *integrator)
 	}
 }
 
+static void
+execute_event (CdnIntegrator *integrator,
+               CdnEvent      *ev)
+{
+	gchar const *phase;
+
+	cdn_event_execute (ev);
+
+	phase = cdn_event_get_goto_phase (ev);
+
+	if (phase)
+	{
+		cdn_integrator_state_set_phase (integrator->priv->state,
+		                                phase);
+	}
+	else
+	{
+		integrator->priv->terminate = TRUE;
+	}
+
+	update_events (integrator);
+}
+
 static gboolean
 handle_events (CdnIntegrator *integrator,
                gdouble        t,
@@ -388,12 +415,7 @@ handle_events (CdnIntegrator *integrator,
 				// Execute the event code
 				if (!integrator->priv->event_handled)
 				{
-					cdn_event_execute (ev);
-
-					cdn_integrator_state_set_phase (integrator->priv->state,
-					                                cdn_event_get_goto_phase (ev));
-
-					update_events (integrator);
+					execute_event (integrator, ev);
 				}
 				else
 				{
@@ -402,12 +424,7 @@ handle_events (CdnIntegrator *integrator,
 			}
 			else
 			{
-				cdn_event_execute (ev);
-
-				cdn_integrator_state_set_phase (integrator->priv->state,
-				                                cdn_event_get_goto_phase (ev));
-
-				update_events (integrator);
+				execute_event (integrator, ev);
 			}
 
 			return TRUE;
@@ -487,6 +504,8 @@ cdn_integrator_reset_impl (CdnIntegrator *integrator)
 	g_slist_foreach (integrator->priv->saved_state, (GFunc)saved_state_free, NULL);
 	g_slist_free (integrator->priv->saved_state);
 	integrator->priv->saved_state = NULL;
+
+	integrator->priv->terminate = FALSE;
 
 	if (!integrator->priv->state)
 	{
