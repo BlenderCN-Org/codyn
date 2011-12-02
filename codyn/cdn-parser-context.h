@@ -148,9 +148,8 @@ void                   cdn_parser_context_add_variable         (CdnParserContext
 void                   cdn_parser_context_add_action           (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *target,
                                                                 CdnEmbeddedString          *expression,
-                                                                CdnEdgeActionFlags          add_flags,
-                                                                CdnEdgeActionFlags          remove_flags,
-                                                                GSList                     *attributes);
+                                                                GSList                     *attributes,
+                                                                CdnEmbeddedString          *phases);
 
 void                   cdn_parser_context_add_polynomial       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
@@ -193,7 +192,8 @@ void                   cdn_parser_context_push_edge            (CdnParserContext
                                                                 CdnEmbeddedString          *id,
                                                                 GSList                     *templates,
                                                                 GSList                     *attributes,
-                                                                GSList                     *fromto);
+                                                                GSList                     *fromto,
+                                                                CdnEmbeddedString          *phase);
 
 void                   cdn_parser_context_push_network         (CdnParserContext           *context,
                                                                 GSList                     *attributes);
@@ -215,17 +215,14 @@ void                   cdn_parser_context_push_input_file      (CdnParserContext
                                                                 GSList                     *attributes);
 
 void                   cdn_parser_context_push_event           (CdnParserContext  *context,
+                                                                CdnEmbeddedString *from_phase,
+                                                                CdnEmbeddedString *to_phase,
                                                                 CdnEmbeddedString *condition,
                                                                 CdnEventDirection  direction);
 
 void                   cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
                                                                   CdnSelector       *selector,
                                                                   CdnEmbeddedString *value);
-
-void                   cdn_parser_context_add_event_set_flags    (CdnParserContext  *context,
-                                                                  CdnSelector       *selector,
-                                                                  gboolean           enable,
-                                                                  gboolean           sw);
 
 void                   cdn_parser_context_set_input_file_setting (CdnParserContext         *context,
                                                                   CdnEmbeddedString        *name,

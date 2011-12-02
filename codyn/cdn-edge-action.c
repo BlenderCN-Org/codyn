@@ -27,6 +27,7 @@
 #include "cdn-edge.h"
 #include "cdn-taggable.h"
 #include "cdn-enum-types.h"
+#include "cdn-phaseable.h"
 
 /**
  * SECTION:cdn-edge-action
@@ -49,7 +50,7 @@ struct _CdnEdgeActionPrivate
 
 	gchar *annotation;
 	GHashTable *tags;
-	CdnEdgeActionFlags flags;
+	GHashTable *phases;
 
 	guint modified : 1;
 	guint enabled : 1;
@@ -64,7 +65,6 @@ enum
 	PROP_EQUATION,
 	PROP_TARGET_PROPERTY,
 	PROP_MODIFIED,
-	PROP_FLAGS,
 	PROP_LINK,
 	PROP_ANNOTATION,
 };
@@ -72,6 +72,7 @@ enum
 static void cdn_modifiable_iface_init (gpointer iface);
 static void cdn_annotatable_iface_init (gpointer iface);
 static void cdn_taggable_iface_init (gpointer iface);
+static void cdn_phaseable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CdnEdgeAction,
                          cdn_edge_action,
@@ -81,7 +82,47 @@ G_DEFINE_TYPE_WITH_CODE (CdnEdgeAction,
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_ANNOTATABLE,
                                                 cdn_annotatable_iface_init);
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_TAGGABLE,
-                                                cdn_taggable_iface_init));
+                                                cdn_taggable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CDN_TYPE_PHASEABLE,
+                                                cdn_phaseable_iface_init));
+
+static GHashTable *
+cdn_phaseable_get_phase_table_impl (CdnPhaseable *phaseable)
+{
+	return CDN_EDGE_ACTION (phaseable)->priv->phases;
+}
+
+static void
+cdn_phaseable_set_phase_table_impl (CdnPhaseable *phaseable,
+                                    GHashTable   *table)
+{
+	CdnEdgeAction *action;
+
+	action = CDN_EDGE_ACTION (phaseable);
+
+	if (action->priv->phases)
+	{
+		g_hash_table_unref (action->priv->phases);
+		action->priv->phases = NULL;
+	}
+
+	if (table)
+	{
+		action->priv->phases = table;
+		g_hash_table_ref (table);
+	}
+}
+
+static void
+cdn_phaseable_iface_init (gpointer iface)
+{
+	CdnPhaseableInterface *phaseable;
+
+	phaseable = iface;
+
+	phaseable->get_phase_table = cdn_phaseable_get_phase_table_impl;
+	phaseable->set_phase_table = cdn_phaseable_set_phase_table_impl;
+}
 
 static GHashTable *
 get_tag_table (CdnTaggable *taggable)
@@ -268,6 +309,11 @@ cdn_edge_action_finalize (GObject *object)
 	g_free (action->priv->annotation);
 	g_hash_table_destroy (action->priv->tags);
 
+	if (action->priv->phases)
+	{
+		g_hash_table_destroy (action->priv->phases);
+	}
+
 	G_OBJECT_CLASS (cdn_edge_action_parent_class)->finalize (object);
 }
 
@@ -293,10 +339,6 @@ cdn_edge_action_set_property (GObject      *object,
 		break;
 		case PROP_MODIFIED:
 			self->priv->modified = g_value_get_boolean (value);
-		break;
-		case PROP_FLAGS:
-			cdn_edge_action_set_flags (self,
-			                           g_value_get_flags (value));
 		break;
 		case PROP_ANNOTATION:
 			g_free (self->priv->annotation);
@@ -332,9 +374,6 @@ cdn_edge_action_get_property (GObject    *object,
 		break;
 		case PROP_MODIFIED:
 			g_value_set_boolean (value, self->priv->modified);
-		break;
-		case PROP_FLAGS:
-			g_value_set_flags (value, self->priv->flags);
 		break;
 		case PROP_ANNOTATION:
 			g_value_set_string (value, self->priv->annotation);
@@ -421,15 +460,6 @@ cdn_edge_action_class_init (CdnEdgeActionClass *klass)
 	                                  "annotation");
 
 	g_type_class_add_private (object_class, sizeof(CdnEdgeActionPrivate));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_FLAGS,
-	                                 g_param_spec_flags ("flags",
-	                                                     "Flags",
-	                                                     "Flags",
-	                                                     CDN_TYPE_EDGE_ACTION_FLAGS,
-	                                                     CDN_EDGE_ACTION_FLAG_NONE,
-	                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -553,7 +583,8 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 	cdn_taggable_copy_to (CDN_TAGGABLE (action),
 	                      action->priv->tags);
 
-	newaction->priv->flags = action->priv->flags;
+	cdn_phaseable_copy_to (CDN_PHASEABLE (action),
+	                       CDN_PHASEABLE (newaction));
 
 	return newaction;
 }
@@ -598,26 +629,6 @@ cdn_edge_action_equal (CdnEdgeAction *action,
 
 	return cdn_expression_equal (action->priv->equation,
 	                             other->priv->equation);
-}
-
-void
-cdn_edge_action_set_flags (CdnEdgeAction      *action,
-                           CdnEdgeActionFlags  flags)
-{
-	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
-
-	if (action->priv->flags != flags)
-	{
-		action->priv->flags = flags;
-		g_object_notify (G_OBJECT (action), "flags");
-	}
-}
-
-CdnEdgeActionFlags
-cdn_edge_action_get_flags (CdnEdgeAction *action)
-{
-	/* Omit type check to increase speed */
-	return action->priv->flags;
 }
 
 void

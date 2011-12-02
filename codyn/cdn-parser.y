@@ -37,7 +37,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_EDGE T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_VARIABLE T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_DISABLED T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_SOURCE_NAME T_KEY_SINK_NAME T_KEY_SWITCH T_KEY_ENABLE T_KEY_DISABLE
+%token T_KEY_EDGE T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_VARIABLE T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_DISABLED T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_SOURCE_NAME T_KEY_SINK_NAME T_KEY_PHASE T_KEY_SET_PHASE
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -103,11 +103,6 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %type <num> variable_flag
 %type <num> assign_optional
 
-%type <flags> action_flags
-%type <flags> action_flags_strict
-%type <flags> action_flags_contents
-%type <num> action_flag
-
 %type <selector> layout_relative
 %type <num> layout_item_separator
 
@@ -141,6 +136,8 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 %type <object> selector_pseudo_mixargs_arg
 %type <list> selector_pseudo_mixargs_args
 %type <list> selector_pseudo_mixargs_args_rev
+
+%type <string> phase
 
 %type <string> identifier_or_string
 %type <string> identifier_or_string_item
@@ -229,7 +226,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 
 %start choose_parser
 
-%expect 8
+%expect 9
 
 %%
 
@@ -373,16 +370,15 @@ integrator
 	;
 
 when_direction
-	:				{ $$ = CDN_EVENT_DIRECTION_POSITIVE; }
+	:				{ $$ = CDN_EVENT_DIRECTION_NEGATIVE; }
 	| '>'				{ $$ = CDN_EVENT_DIRECTION_POSITIVE; }
 	| '<'				{ $$ = CDN_EVENT_DIRECTION_NEGATIVE; }
+	| '<' '>'			{ $$ = CDN_EVENT_DIRECTION_POSITIVE |
+	                                       CDN_EVENT_DIRECTION_NEGATIVE; }
 	;
 
 when_item
 	: selector '=' value_as_string	{ cdn_parser_context_add_event_set_variable (context, $1, $3); }
-	| T_KEY_ENABLE selector		{ cdn_parser_context_add_event_set_flags (context, $2, TRUE, FALSE); }
-	| T_KEY_DISABLE	selector 	{ cdn_parser_context_add_event_set_flags (context, $2, FALSE, FALSE); }
-	| T_KEY_SWITCH	selector 	{ cdn_parser_context_add_event_set_flags (context, $2, TRUE, TRUE); }
 	| common_scopes
 	;
 
@@ -392,8 +388,14 @@ when_contents
 	;
 
 when
-	: T_KEY_WHEN when_direction value_as_string
-	  '{'				{ cdn_parser_context_push_event (context, $3, $2); }
+	: T_KEY_PHASE
+	  value_as_string
+	  T_KEY_TO
+	  value_as_string
+	  T_KEY_WHEN
+	  when_direction
+	  value_as_string
+	  '{'				{ cdn_parser_context_push_event (context, $2, $4, $7, $6); }
 	  when_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -674,26 +676,49 @@ edge_connect
 	| edge_connect_fast		{ $$ = $1; }
 	;
 
+phase
+	:				{ $$ = NULL; }
+	| T_KEY_PHASE value_as_string	{ $$ = $2; }
+	;
+
 edge
 	: attributes
 	  T_KEY_EDGE
 	  identifier_or_string
 	  edge_connect
+	  phase
 	  templated
-	  '{'	 			{ cdn_parser_context_push_edge (context, $3, $5, $1, $4); errb }
+	  '{'	 			{ cdn_parser_context_push_edge (context,
+	                                                                $3,
+	                                                                $6,
+	                                                                $1,
+	                                                                $4,
+	                                                                $5); errb }
 	  edge_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_EDGE
 	  edge_connect_fast
+	  phase
 	  templated
-	  '{'				{ cdn_parser_context_push_edge (context, NULL, $4, $1, $3); errb }
+	  '{'				{ cdn_parser_context_push_edge (context,
+	                                                                NULL,
+	                                                                $5,
+	                                                                $1,
+	                                                                $3,
+	                                                                $4); errb }
 	  edge_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
 	| attributes
 	  T_KEY_EDGE
+	  phase
 	  templated
-	  '{'				{ cdn_parser_context_push_edge (context, NULL, $3, $1, NULL); errb }
+	  '{'				{ cdn_parser_context_push_edge (context,
+	                                                                NULL,
+	                                                                $4,
+	                                                                $1,
+	                                                                NULL,
+	                                                                $3); errb }
 	  edge_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
 	| attributes
@@ -1060,37 +1085,13 @@ variable_flag
 	| T_KEY_ONCE			{ $$ = CDN_VARIABLE_FLAG_ONCE; }
 	;
 
-action_flags_contents
-	: variable_flag_sign action_flag	{ $$.add = 0; $$.remove = 0; ($1 ? (($$.add) = $2) : (($$.remove) = $2)); }
-	| action_flags_contents variable_flag_sign action_flag
-					{ $2 ? (($$.add) |= $3) : (($$.remove) |= $3); }
-	;
-
-action_flags_strict
-	: '|' action_flags_contents	{ $$ = $2; }
-	;
-
-action_flags
-	: 				{ $$.add = 0; $$.remove = 0; }
-	| action_flags_strict
-	;
-
-action_flag
-	: T_KEY_DISABLED		{ $$ = CDN_EDGE_ACTION_FLAG_DISABLED; }
-	;
-
 action
 	: attributes
 	  identifier_or_string
 	  '<' '='
 	  value_as_string
-	  action_flags
-					{ cdn_parser_context_add_action (context, $2, $5, $6.add, $6.remove, $1); errb }
-	| attributes
-	  identifier_or_string
-	  '<'
-	  action_flags_strict
-					{ cdn_parser_context_add_action (context, $2, NULL, $4.add, $4.remove, $1); errb }
+	  phase
+					{ cdn_parser_context_add_action (context, $2, $5, $1, $6); errb }
 	;
 
 selector_item_non_ambiguous

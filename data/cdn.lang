@@ -177,8 +177,8 @@
             <keyword>from-set</keyword>
             <keyword>source</keyword>
             <keyword>sink</keyword>
-			<keyword>source-name</keyword>
-			<keyword>sink-name</keyword>
+            <keyword>source-name</keyword>
+            <keyword>sink-name</keyword>
             <keyword>has-template</keyword>
             <keyword>has-tag</keyword>
             <keyword>has-flag</keyword>
@@ -219,9 +219,7 @@
             <keyword>apply</keyword>
             <keyword>unapply</keyword>
             <keyword>when</keyword>
-            <keyword>switch</keyword>
-            <keyword>enable</keyword>
-            <keyword>disable</keyword>
+            <keyword>phase</keyword>
         </context>
 
         <context id="selector">

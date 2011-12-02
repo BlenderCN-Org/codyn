@@ -13,6 +13,7 @@ COMMON_SOURCES = 		\
 	cdn-debug.c \
 	cdn-compile-context.c \
 	cdn-compile-error.c \
+	cdn-phaseable.c \
 	cdn-enum-types.c \
 	cdn-marshal.c \
 	cdn-expression.c \
@@ -81,6 +82,7 @@ INST_H_FILES = \
 	cdn-annotatable.h \
 	cdn-debug.h \
 	cdn-compile-context.h \
+	cdn-phaseable.h \
 	cdn-compile-error.h \
 	cdn-expression.h \
 	cdn-expression-tree-iter.h \

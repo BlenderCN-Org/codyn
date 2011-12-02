@@ -44,6 +44,9 @@ struct _CdnIntegratorLeapFrogPrivate
 
 	GSList *first_order_properties;
 	GSList *second_order_properties;
+
+	CdnIntegratorState *state;
+	guint state_phase_changed_id;
 };
 
 G_DEFINE_TYPE (CdnIntegratorLeapFrog, cdn_integrator_leap_frog, CDN_TYPE_INTEGRATOR)
@@ -74,6 +77,25 @@ cdn_integrator_leap_frog_finalize (GObject *object)
 	clear_lists (self);
 
 	G_OBJECT_CLASS (cdn_integrator_leap_frog_parent_class)->finalize (object);
+}
+
+static void
+cdn_integrator_leap_frog_dispose (GObject *object)
+{
+	CdnIntegratorLeapFrog *self;
+
+	self = CDN_INTEGRATOR_LEAP_FROG (object);
+
+	if (self->priv->state)
+	{
+		g_signal_handler_disconnect (self->priv->state,
+		                             self->priv->state_phase_changed_id);
+
+		g_object_unref (self->priv->state);
+		self->priv->state = NULL;
+	}
+
+	G_OBJECT_CLASS (cdn_integrator_leap_frog_parent_class)->dispose (object);
 }
 
 static gchar const *
@@ -155,7 +177,7 @@ find_integrated (CdnIntegratorLeapFrog *self)
 	GSList const *integrated;
 
 	state = cdn_integrator_get_state (CDN_INTEGRATOR (self));
-	integrated = cdn_integrator_state_integrated_edge_actions (state);
+	integrated = cdn_integrator_state_phase_integrated_edge_actions (state);
 
 	clear_lists (self);
 
@@ -210,12 +232,38 @@ find_integrated (CdnIntegratorLeapFrog *self)
 static void
 cdn_integrator_leap_frog_reset_impl (CdnIntegrator *integrator)
 {
+	CdnIntegratorLeapFrog *self;
+
 	if (CDN_INTEGRATOR_CLASS (cdn_integrator_leap_frog_parent_class)->reset)
 	{
 		CDN_INTEGRATOR_CLASS (cdn_integrator_leap_frog_parent_class)->reset (integrator);
 	}
 
-	find_integrated (CDN_INTEGRATOR_LEAP_FROG (integrator));
+	self = CDN_INTEGRATOR_LEAP_FROG (integrator);
+
+	if (self->priv->state)
+	{
+		g_signal_handler_disconnect (self->priv->state,
+		                             self->priv->state_phase_changed_id);
+
+		g_object_unref (self->priv->state);
+		self->priv->state = NULL;
+	}
+
+	self->priv->state = cdn_integrator_get_state (integrator);
+
+	if (self->priv->state)
+	{
+		g_object_ref (self->priv->state);
+
+		self->priv->state_phase_changed_id =
+			g_signal_connect_swapped (self->priv->state,
+			                          "notify::phase",
+			                          G_CALLBACK (find_integrated),
+			                          integrator);
+	}
+
+	find_integrated (self);
 }
 
 static void
@@ -225,6 +273,7 @@ cdn_integrator_leap_frog_class_init (CdnIntegratorLeapFrogClass *klass)
 	CdnIntegratorClass *integrator_class = CDN_INTEGRATOR_CLASS (klass);
 
 	object_class->finalize = cdn_integrator_leap_frog_finalize;
+	object_class->dispose = cdn_integrator_leap_frog_dispose;
 
 	integrator_class->step = cdn_integrator_leap_frog_step_impl;
 	integrator_class->get_name = cdn_integrator_leap_frog_get_name_impl;

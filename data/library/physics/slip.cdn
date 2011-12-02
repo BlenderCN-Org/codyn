@@ -4,6 +4,8 @@ integrator
 {
     ## Use runge-kutta 4th order integration
     method = "runge-kutta"
+
+    initial-phase = "air"
 }
 
 ## Basic SLIP (Spring Loaded Inverted Pendulum) model. Parameter values in this
@@ -51,10 +53,6 @@ node "slip"
     ## The current angle of the leg, given the ground contact point xc
     aol = "atan2(xc - x, y)"
 
-    ## Helper variable to indicate in which phase (air or ground) we currently
-    ## are. See the event handlers for more details
-    phase = 0
-
     ## Kinetic energy of the mass and the spring
     kinetic = "0.5 * m * sqsum(dx, dy)"
 
@@ -67,11 +65,26 @@ node "slip"
 
     ## Total energy
     energy = "kinetic + potential"
+
+    ## Transition from air to ground when the end point of the leg
+    ## (considering the desired angle of attack, aoa) would go through the
+    ## ground. Note that the event is triggered on a negative zero crossing
+    phase "air" to "ground" when "y - l * cos(aoa)"
+    {
+        ## Calculate the position of the leg on impact and store this in xc
+        "xc" = "x + l * sin(aoa)"
+    }
+
+    ## Transition from ground to air when the calculated leglength becomes
+    ## larger than the zero leg length (i.e. the spring is fully extended).
+    ## Note that the event is triggered on a negative zero crossing
+    phase "ground" to "air" when "l - leglength" {}
+
 }
 
 ## Differential equations for the air phase. In the air, the motion of the SLIP
 ## model is simply balistic (i.e. only gravity working on the mass)
-edge "air" on "slip"
+edge on "slip" phase "air"
 {
     ## y'' = g
     dy <= "-g"
@@ -80,54 +93,13 @@ edge "air" on "slip"
 ## Differential equations for the ground phase. On the ground, the motion of
 ## the SLIP model is subject to gravitational and spring forces. Note that
 ## the actions are initially disabled, assuming we start in the air phase.
-edge "ground" on "slip"
+edge on "slip" phase "ground"
 {
     ## x'' = projected(FSpring, X) / m
-    dx <= "(-sin(aol) * fspring) / m" | disabled
+    dx <= "(-sin(aol) * fspring) / m"
 
     ## y'' = projected(FSpring, Y) / m - g
-    dy <= "(cos(aol) * fspring) / m - g" | disabled
-}
-
-# Here we reopen the SLIP model node and add events which will switch the
-# dynamics between air and ground phase. We do this inside the SLIP model
-# node because we can access easily the variables defined in the model
-node "slip"
-{
-    ## Transition from air to ground. This happens when we are in the air
-    ## (phase 0) and when the end point of the leg (considering the desired
-    ## angle of attack, aoa) would go through the ground. Note that the event
-    ## is triggered when the event condition passes from positive to negative
-    ## (indicated by <)
-    when < "phase == 0 ? y - l * cos(aoa) : 0"
-    {
-        ## Calculate the position of the leg on impact and store this in xc
-        "xc" = "x + l * sin(aoa)"
-
-        ## Set the phase to the ground phase
-        "phase" = 1
-
-        ## Switch the dynamical equations (disabling air and enabling ground).
-        ## We use the 'switch' keyword with a selector to select all the
-        ## edges which are children of the root model. For those edges, we
-        ## again select the children (which are the edge actions). These
-        ## actions are then enabled when they were previously disabled and
-        ## vice versa
-        switch root . edges | children
-    }
-
-    ## Transition from ground to air. This happens when we are current on the
-    ## ground (phase 1) and when the calculated leglength becomes larger than
-    ## the zero leg length (i.e. the spring is fully extended)
-    when > "phase == 1 ? leglength - l : 0"
-    {
-        ## Set the phase to the air phase
-        "phase" = 0
-
-        ## Switch the dynamic equations (disabling ground and enabling air).
-        ## See above for a more detailed explanation.
-        switch root . edges | children
-    }
+    dy <= "(cos(aol) * fspring) / m - g"
 }
 
 # [1] Seyfarth, A. & Geyer, H. & Günther, M. & Blickhan, R. (2002).

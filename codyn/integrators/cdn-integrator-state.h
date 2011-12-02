@@ -64,8 +64,13 @@ const GSList       *cdn_integrator_state_direct_properties       (CdnIntegratorS
 const GSList       *cdn_integrator_state_all_properties          (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_integrated_edge_actions (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_direct_edge_actions     (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_phase_integrated_edge_actions (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_phase_direct_edge_actions     (CdnIntegratorState *state);
+
 const GSList       *cdn_integrator_state_inputs                  (CdnIntegratorState *state);
+
 const GSList       *cdn_integrator_state_events                  (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_phase_events            (CdnIntegratorState *state);
 
 GSList const       *cdn_integrator_state_rand_instructions       (CdnIntegratorState *state);
 GSList const       *cdn_integrator_state_rand_expressions        (CdnIntegratorState *state);
@@ -75,6 +80,11 @@ const GSList       *cdn_integrator_state_expressions             (CdnIntegratorS
 const GSList       *cdn_integrator_state_operators               (CdnIntegratorState *state);
 
 void                cdn_integrator_state_update                  (CdnIntegratorState *state);
+
+void                cdn_integrator_state_set_phase               (CdnIntegratorState *state,
+                                                                  gchar const        *phase);
+
+gchar const        *cdn_integrator_state_get_phase               (CdnIntegratorState *state);
 
 G_END_DECLS
 

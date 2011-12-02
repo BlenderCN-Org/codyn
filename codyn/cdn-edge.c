@@ -26,6 +26,7 @@
 #include "cdn-node.h"
 #include "cdn-layoutable.h"
 #include "cdn-annotatable.h"
+#include "cdn-phaseable.h"
 #include "cdn-taggable.h"
 #include "cdn-function.h"
 
@@ -64,6 +65,7 @@ struct _CdnEdgePrivate
 
 	// list of expressions to evaluate
 	GSList *actions;
+	GHashTable *phases;
 
 	CdnNode *prev_parent;
 
@@ -89,12 +91,15 @@ enum
 guint signals[NUM_SIGNALS] = {0,};
 
 static void cdn_layoutable_iface_init (gpointer iface);
+static void cdn_phaseable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CdnEdge,
                          cdn_edge,
                          CDN_TYPE_OBJECT,
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_LAYOUTABLE,
-                                                cdn_layoutable_iface_init))
+                                                cdn_layoutable_iface_init);
+                         G_IMPLEMENT_INTERFACE (CDN_TYPE_PHASEABLE,
+                                                cdn_phaseable_iface_init))
 
 static gboolean
 cdn_layoutable_supports_location_impl (CdnLayoutable *layoutable)
@@ -104,6 +109,44 @@ cdn_layoutable_supports_location_impl (CdnLayoutable *layoutable)
 	link = CDN_EDGE (layoutable);
 
 	return (link->priv->from == NULL || link->priv->to == NULL);
+}
+
+static GHashTable *
+cdn_phaseable_get_phase_table_impl (CdnPhaseable *phaseable)
+{
+	return CDN_EDGE (phaseable)->priv->phases;
+}
+
+static void
+cdn_phaseable_set_phase_table_impl (CdnPhaseable *phaseable,
+                                    GHashTable   *table)
+{
+	CdnEdge *edge;
+
+	edge = CDN_EDGE (phaseable);
+
+	if (edge->priv->phases)
+	{
+		g_hash_table_unref (edge->priv->phases);
+		edge->priv->phases = NULL;
+	}
+
+	if (table)
+	{
+		edge->priv->phases = table;
+		g_hash_table_ref (table);
+	}
+}
+
+static void
+cdn_phaseable_iface_init (gpointer iface)
+{
+	CdnPhaseableInterface *phaseable;
+
+	phaseable = iface;
+
+	phaseable->get_phase_table = cdn_phaseable_get_phase_table_impl;
+	phaseable->set_phase_table = cdn_phaseable_set_phase_table_impl;
 }
 
 static void
@@ -119,6 +162,16 @@ cdn_layoutable_iface_init (gpointer iface)
 static void
 cdn_edge_finalize (GObject *object)
 {
+	CdnEdge *edge;
+
+	edge = CDN_EDGE (object);
+
+	if (edge->priv->phases)
+	{
+		g_hash_table_destroy (edge->priv->phases);
+		edge->priv->phases = NULL;
+	}
+
 	G_OBJECT_CLASS (cdn_edge_parent_class)->finalize (object);
 }
 
@@ -666,6 +719,10 @@ cdn_edge_copy_impl (CdnObject *object,
 
 	/* Copy over link actions */
 	copy_edge_actions (CDN_EDGE (object), CDN_EDGE (source));
+
+	// Copy phases
+	cdn_phaseable_copy_to (CDN_PHASEABLE (source),
+	                       CDN_PHASEABLE (object));
 }
 
 static void
@@ -1404,4 +1461,3 @@ cdn_edge_get_action_template (CdnEdge       *link,
 
 	return NULL;
 }
-

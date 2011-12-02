@@ -1,7 +1,7 @@
 #include "cdn-event.h"
 #include "cdn-enum-types.h"
 #include "cdn-compile-error.h"
-#include "cdn-symbolic.h"
+#include "cdn-phaseable.h"
 
 #define CDN_EVENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EVENT, CdnEventPrivate))
 
@@ -15,15 +15,25 @@ struct _CdnEventPrivate
 	GSList *set_flags;
 
 	GSList *events;
+	GHashTable *phases;
+
+	gchar *goto_phase;
 };
 
-G_DEFINE_TYPE (CdnEvent, cdn_event, G_TYPE_INITIALLY_UNOWNED)
+static void cdn_phaseable_iface_init (gpointer iface);
+
+G_DEFINE_TYPE_WITH_CODE (CdnEvent,
+                         cdn_event,
+                         G_TYPE_INITIALLY_UNOWNED,
+                         G_IMPLEMENT_INTERFACE (CDN_TYPE_PHASEABLE,
+                                                cdn_phaseable_iface_init))
 
 enum
 {
 	PROP_0,
 	PROP_CONDITION,
-	PROP_DIRECTION
+	PROP_DIRECTION,
+	PROP_GOTO_PHASE
 };
 
 typedef struct
@@ -31,13 +41,6 @@ typedef struct
 	CdnVariable *property;
 	CdnExpression *value;
 } SetProperty;
-
-typedef struct
-{
-	CdnEdgeAction *action;
-
-	CdnEventActionFlags flags;
-} SetFlags;
 
 static  SetProperty *
 set_property_new (CdnVariable   *property,
@@ -61,25 +64,42 @@ set_property_free (SetProperty *self)
 	g_slice_free (SetProperty, self);
 }
 
-static SetFlags *
-set_flags_new (CdnEdgeAction       *action,
-               CdnEventActionFlags  flags)
+static GHashTable *
+cdn_phaseable_get_phase_table_impl (CdnPhaseable *phaseable)
 {
-	SetFlags *ret;
-
-	ret = g_slice_new0 (SetFlags);
-
-	ret->action = g_object_ref_sink (action);
-	ret->flags = flags;
-
-	return ret;
+	return CDN_EVENT (phaseable)->priv->phases;
 }
 
 static void
-set_flags_free (SetFlags *self)
+cdn_phaseable_set_phase_table_impl (CdnPhaseable *phaseable,
+                                    GHashTable   *table)
 {
-	g_object_unref (self->action);
-	g_slice_free (SetFlags, self);
+	CdnEvent *ev;
+
+	ev = CDN_EVENT (phaseable);
+
+	if (ev->priv->phases)
+	{
+		g_hash_table_unref (ev->priv->phases);
+		ev->priv->phases = NULL;
+	}
+
+	if (table)
+	{
+		ev->priv->phases = table;
+		g_hash_table_ref (table);
+	}
+}
+
+static void
+cdn_phaseable_iface_init (gpointer iface)
+{
+	CdnPhaseableInterface *phaseable;
+
+	phaseable = iface;
+
+	phaseable->get_phase_table = cdn_phaseable_get_phase_table_impl;
+	phaseable->set_phase_table = cdn_phaseable_set_phase_table_impl;
 }
 
 static void
@@ -89,13 +109,16 @@ cdn_event_finalize (GObject *object)
 
 	self = CDN_EVENT (object);
 
+	g_free (self->priv->goto_phase);
+
 	g_slist_foreach (self->priv->set_properties,
 	                 (GFunc)set_property_free,
 	                 NULL);
 
-	g_slist_foreach (self->priv->set_flags,
-	                 (GFunc)set_flags_free,
-	                 NULL);
+	if (self->priv->phases)
+	{
+		g_hash_table_destroy (self->priv->phases);
+	}
 
 	g_slist_foreach (self->priv->events,
 	                 (GFunc)g_object_unref,
@@ -143,6 +166,10 @@ cdn_event_set_property (GObject      *object,
 		case PROP_DIRECTION:
 			self->priv->direction = g_value_get_flags (value);
 			break;
+		case PROP_GOTO_PHASE:
+			g_free (self->priv->goto_phase);
+			self->priv->goto_phase = g_value_dup_string (value);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -164,6 +191,9 @@ cdn_event_get_property (GObject    *object,
 			break;
 		case PROP_DIRECTION:
 			g_value_set_flags (value, self->priv->direction);
+			break;
+		case PROP_GOTO_PHASE:
+			g_value_set_string (value, self->priv->goto_phase);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -200,6 +230,14 @@ cdn_event_class_init (CdnEventClass *klass)
 	                                                     CDN_TYPE_EVENT_DIRECTION,
 	                                                     CDN_EVENT_DIRECTION_POSITIVE,
 	                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_GOTO_PHASE,
+	                                 g_param_spec_string ("goto-phase",
+	                                                      "Goto Phase",
+	                                                      "Goto phase",
+	                                                      NULL,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -209,8 +247,8 @@ cdn_event_init (CdnEvent *self)
 }
 
 CdnEvent *
-cdn_event_new (CdnExpression *condition,
-               CdnEventDirection direction)
+cdn_event_new (CdnExpression     *condition,
+               CdnEventDirection  direction)
 {
 	g_return_val_if_fail (CDN_IS_EXPRESSION (condition), NULL);
 
@@ -316,22 +354,6 @@ cdn_event_add_set_variable (CdnEvent      *event,
 	                                              p);
 }
 
-void
-cdn_event_add_set_edge_action_flags (CdnEvent            *event,
-                                     CdnEdgeAction       *action,
-                                     CdnEventActionFlags  flags)
-{
-	SetFlags *p;
-
-	g_return_if_fail (CDN_IS_EVENT (event));
-	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
-
-	p = set_flags_new (action, flags);
-
-	event->priv->set_flags = g_slist_append (event->priv->set_flags,
-	                                         p);
-}
-
 static void
 execute_set_property (SetProperty *p)
 {
@@ -339,45 +361,11 @@ execute_set_property (SetProperty *p)
 	                        cdn_expression_evaluate (p->value));
 }
 
-static void
-execute_set_flags (SetFlags *p)
-{
-	CdnEdgeActionFlags flags;
-
-	flags = cdn_edge_action_get_flags (p->action);
-
-	switch (p->flags)
-	{
-		case CDN_EVENT_ACTION_FLAGS_DISABLE:
-			flags |= CDN_EDGE_ACTION_FLAG_DISABLED;
-		break;
-		case CDN_EVENT_ACTION_FLAGS_ENABLE:
-			flags &= ~CDN_EDGE_ACTION_FLAG_DISABLED;
-		break;
-		case CDN_EVENT_ACTION_FLAGS_SWITCH:
-			if (flags & CDN_EDGE_ACTION_FLAG_DISABLED)
-			{
-				flags &= ~CDN_EDGE_ACTION_FLAG_DISABLED;
-			}
-			else
-			{
-				flags |= CDN_EDGE_ACTION_FLAG_DISABLED;
-			}
-		break;
-	}
-
-	cdn_edge_action_set_flags (p->action, flags);
-}
-
 void
 cdn_event_execute (CdnEvent *event)
 {
 	g_slist_foreach (event->priv->set_properties,
 	                 (GFunc)execute_set_property,
-	                 NULL);
-
-	g_slist_foreach (event->priv->set_flags,
-	                 (GFunc)execute_set_flags,
 	                 NULL);
 }
 
@@ -415,4 +403,22 @@ cdn_event_compile (CdnEvent          *event,
 	}
 
 	return TRUE;
+}
+
+void
+cdn_event_set_goto_phase (CdnEvent           *event,
+                          gchar const        *phase)
+{
+	g_return_if_fail (CDN_IS_EVENT (event));
+
+	g_free (event->priv->goto_phase);
+	event->priv->goto_phase = g_strdup (phase);
+}
+
+gchar const *
+cdn_event_get_goto_phase (CdnEvent *event)
+{
+	g_return_val_if_fail (CDN_IS_EVENT (event), NULL);
+
+	return event->priv->goto_phase;
 }

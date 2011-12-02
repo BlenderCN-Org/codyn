@@ -142,8 +142,8 @@ cdn_monitor_grow (CdnMonitor *monitor)
 
 static void
 cdn_monitor_update (CdnMonitor    *monitor,
-                    gdouble        timestep,
                     gdouble        time,
+                    gdouble        timestep,
                     CdnIntegrator *integrator)
 {
 	if (monitor->priv->size == 0 ||

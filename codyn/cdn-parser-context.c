@@ -33,6 +33,7 @@
 #include "cdn-statement.h"
 #include "cdn-taggable.h"
 #include "cdn-marshal.h"
+#include "cdn-phaseable.h"
 
 #include <math.h>
 
@@ -1592,9 +1593,8 @@ void
 cdn_parser_context_add_action (CdnParserContext   *context,
                                CdnEmbeddedString  *target,
                                CdnEmbeddedString  *expression,
-                               CdnEdgeActionFlags  add_flags,
-                               CdnEdgeActionFlags  remove_flags,
-                               GSList             *attributes)
+                               GSList             *attributes,
+                               CdnEmbeddedString  *phase)
 {
 	Context *ctx;
 	GSList *item;
@@ -1659,13 +1659,26 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 				                     action);
 			}
 
-			cdn_edge_action_set_flags (action,
-			                           (cdn_edge_action_get_flags (action) | add_flags) & ~remove_flags);
-
 			cdn_annotatable_set_annotation (CDN_ANNOTATABLE (action),
 			                                annotation);
 
 			set_taggable (context, action, attributes);
+
+			if (phase)
+			{
+				GSList *phases;
+
+				embedded_string_expand_multiple (phases, phase, context);
+
+				while (phases)
+				{
+					cdn_phaseable_add_phase (CDN_PHASEABLE (action),
+					                         cdn_expansion_get (phases->data, 0));
+	
+					g_object_unref (phases->data);
+					phases = g_slist_delete_link (phases, phases);
+				}
+			}
 
 			cdn_embedded_context_restore (context->priv->embedded);
 		}
@@ -3138,7 +3151,8 @@ cdn_parser_context_push_edge (CdnParserContext          *context,
                               CdnEmbeddedString         *id,
                               GSList                    *templates,
                               GSList                    *attributes,
-                              GSList                    *fromto)
+                              GSList                    *fromto,
+                              CdnEmbeddedString         *phase)
 {
 	GSList *objects;
 
@@ -3196,6 +3210,34 @@ cdn_parser_context_push_edge (CdnParserContext          *context,
 		                        templates,
 		                        attributes,
 		                        fromto);
+	}
+
+	if (phase)
+	{
+		GSList *item;
+
+		for (item = objects; item; item = g_slist_next (item))
+		{
+			CdnSelection *sel = item->data;
+			GSList *phases;
+
+			cdn_embedded_context_save (context->priv->embedded);
+			cdn_embedded_context_set_selection (context->priv->embedded,
+			                                    sel);
+
+			embedded_string_expand_multiple (phases, phase, context);
+
+			while (phases)
+			{
+				cdn_phaseable_add_phase (CDN_PHASEABLE (cdn_selection_get_object (sel)),
+				                         cdn_expansion_get (phases->data, 0));
+
+				g_object_unref (phases->data);
+				phases = g_slist_delete_link (phases, phases);
+			}
+
+			cdn_embedded_context_restore (context->priv->embedded);
+		}
 	}
 
 	cdn_parser_context_push_objects (context, objects, attributes);
@@ -5936,6 +5978,8 @@ cdn_parser_context_set_first_eof (CdnParserContext *context,
 
 void
 cdn_parser_context_push_event (CdnParserContext  *context,
+                               CdnEmbeddedString *from_phase,
+                               CdnEmbeddedString *to_phase,
                                CdnEmbeddedString *condition,
                                CdnEventDirection  direction)
 {
@@ -5957,15 +6001,34 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		GSList *conds;
 		CdnExpression *expr;
 		CdnEvent *ev;
+		GSList *phases;
+		GSList *to_phases;
 
 		cdn_embedded_context_save (context->priv->embedded);
 		cdn_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
+		embedded_string_expand_multiple (phases, from_phase, context);
+		embedded_string_expand_multiple (to_phases, to_phase, context);
 		embedded_string_expand_multiple (conds, condition, context);
 
 		expr = cdn_expression_new (cdn_expansion_get (conds->data, 0));
 		ev = cdn_event_new (expr, direction);
+
+		while (phases)
+		{
+			cdn_phaseable_add_phase (CDN_PHASEABLE (ev),
+			                         cdn_expansion_get (phases->data, 0));
+
+			g_object_unref (phases->data);
+			phases = g_slist_delete_link (phases, phases);
+		}
+
+		cdn_event_set_goto_phase (ev,
+		                          cdn_expansion_get (to_phases->data, 0));
+
+		g_slist_foreach (to_phases, (GFunc)g_object_unref, NULL);
+		g_slist_free (to_phases);
 
 		cdn_object_add_event (cdn_selection_get_object (item->data),
 		                      ev);
@@ -6057,60 +6120,6 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 			ret = g_slist_delete_link (ret, ret);
 
 			++i;
-		}
-
-		cdn_embedded_context_restore (context->priv->embedded);
-	}
-}
-
-void
-cdn_parser_context_add_event_set_flags (CdnParserContext  *context,
-                                        CdnSelector       *selector,
-                                        gboolean           enable,
-                                        gboolean           sw)
-{
-	Context *ctx;
-	GSList *item;
-
-	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CDN_IS_SELECTOR (selector));
-
-	if (context->priv->in_event_handler)
-	{
-		return;
-	}
-
-	ctx = CURRENT_CONTEXT (context);
-
-	for (item = ctx->objects; item; item = g_slist_next (item))
-	{
-		GSList *ret;
-		CdnEvent *ev;
-
-		ev = cdn_object_get_last_event (CDN_OBJECT (cdn_selection_get_object (item->data)));
-
-		if (!ev)
-		{
-			continue;
-		}
-
-		cdn_embedded_context_save (context->priv->embedded);
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
-
-		ret = cdn_selector_select (selector,
-		                           cdn_selection_get_object (item->data),
-		                           CDN_SELECTOR_TYPE_ACTION,
-		                           context->priv->embedded);
-
-		while (ret)
-		{
-			cdn_event_add_set_edge_action_flags (ev,
-			                                     CDN_EDGE_ACTION (cdn_selection_get_object (ret->data)),
-			                                     sw ? CDN_EVENT_ACTION_FLAGS_SWITCH : (enable ? CDN_EVENT_ACTION_FLAGS_ENABLE : CDN_EVENT_ACTION_FLAGS_DISABLE));
-
-			g_object_unref (ret->data);
-			ret = g_slist_delete_link (ret, ret);
 		}
 
 		cdn_embedded_context_restore (context->priv->embedded);

@@ -58,12 +58,6 @@ struct _CdnEdgeActionClass
 	GInitiallyUnownedClass parent_class;
 };
 
-typedef enum
-{
-	CDN_EDGE_ACTION_FLAG_NONE = 0,
-	CDN_EDGE_ACTION_FLAG_DISABLED = 1 << 0
-} CdnEdgeActionFlags;
-
 GType          cdn_edge_action_get_type      (void) G_GNUC_CONST;
 
 CdnEdgeAction *cdn_edge_action_new           (const gchar   *target,
@@ -81,11 +75,6 @@ void            cdn_edge_action_set_equation (CdnEdgeAction *action,
 
 gboolean        cdn_edge_action_equal        (CdnEdgeAction *action,
                                               CdnEdgeAction *other);
-
-void            cdn_edge_action_set_flags    (CdnEdgeAction *action,
-                                              CdnEdgeActionFlags flags);
-
-CdnEdgeActionFlags cdn_edge_action_get_flags    (CdnEdgeAction *action);
 
 CdnVariable    *cdn_edge_action_get_target_variable  (CdnEdgeAction *action);
 void            _cdn_edge_action_set_target_variable (CdnEdgeAction *action,

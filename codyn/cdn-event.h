@@ -27,13 +27,6 @@ typedef enum
 	CDN_EVENT_DIRECTION_NEGATIVE = 1 << 1,
 } CdnEventDirection;
 
-typedef enum
-{
-	CDN_EVENT_ACTION_FLAGS_ENABLE = 0,
-	CDN_EVENT_ACTION_FLAGS_DISABLE,
-	CDN_EVENT_ACTION_FLAGS_SWITCH,
-} CdnEventActionFlags;
-
 struct _CdnEvent
 {
 	/*< private >*/
@@ -64,9 +57,10 @@ void               cdn_event_add_set_variable          (CdnEvent           *even
                                                         CdnVariable        *property,
                                                         CdnExpression      *value);
 
-void               cdn_event_add_set_edge_action_flags (CdnEvent            *event,
-                                                        CdnEdgeAction       *action,
-                                                        CdnEventActionFlags  flags);
+void               cdn_event_set_goto_phase             (CdnEvent           *event,
+                                                         gchar const        *phase);
+
+gchar const       *cdn_event_get_goto_phase             (CdnEvent           *event);
 
 void               cdn_event_execute                   (CdnEvent           *event);
 

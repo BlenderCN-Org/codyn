@@ -58,31 +58,32 @@ struct _CdnEdgeClass
 	void (*action_removed) (CdnEdge *link, CdnEdgeAction *action);
 };
 
-GType          cdn_edge_get_type              (void) G_GNUC_CONST;
+GType          cdn_edge_get_type            (void) G_GNUC_CONST;
 
-CdnEdge       *cdn_edge_new                   (const gchar   *id,
-                                               CdnNode     *from,
-                                               CdnNode     *to);
+CdnEdge       *cdn_edge_new                 (const gchar   *id,
+                                             CdnNode       *from,
+                                             CdnNode       *to);
 
-CdnNode     *cdn_edge_get_from              (CdnEdge       *link);
-CdnNode     *cdn_edge_get_to                (CdnEdge       *link);
+CdnNode       *cdn_edge_get_from            (CdnEdge       *link);
+CdnNode       *cdn_edge_get_to              (CdnEdge       *link);
 
-gboolean       cdn_edge_add_action            (CdnEdge       *link,
-                                               CdnEdgeAction *action);
+gboolean       cdn_edge_add_action          (CdnEdge       *link,
+                                             CdnEdgeAction *action);
 
-gboolean       cdn_edge_remove_action         (CdnEdge       *link,
-                                               CdnEdgeAction *action);
+gboolean       cdn_edge_remove_action       (CdnEdge       *link,
+                                             CdnEdgeAction *action);
 
-const GSList  *cdn_edge_get_actions           (CdnEdge       *link);
-CdnEdgeAction *cdn_edge_get_action            (CdnEdge       *link,
-                                               const gchar   *target);
-void           cdn_edge_attach                (CdnEdge       *link,
-                                               CdnNode     *from,
-                                               CdnNode     *to);
+const GSList  *cdn_edge_get_actions         (CdnEdge       *link);
+CdnEdgeAction *cdn_edge_get_action          (CdnEdge       *link,
+                                             const gchar   *target);
 
-CdnEdge       *cdn_edge_get_action_template   (CdnEdge       *link,
-                                               CdnEdgeAction *action,
-                                               gboolean       match_full);
+void           cdn_edge_attach              (CdnEdge       *link,
+                                             CdnNode       *from,
+                                             CdnNode       *to);
+
+CdnEdge       *cdn_edge_get_action_template (CdnEdge       *link,
+                                             CdnEdgeAction *action,
+                                             gboolean       match_full);
 
 G_END_DECLS
 

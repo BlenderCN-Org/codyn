@@ -50,7 +50,8 @@ enum
 
 	PROP_OBJECT,
 	PROP_TIME,
-	PROP_STATE
+	PROP_STATE,
+	PROP_INITIAL_PHASE
 };
 
 /* Signals */
@@ -61,31 +62,6 @@ enum
 	END,
 	NUM_SIGNALS
 };
-
-typedef struct
-{
-	CdnEdgeAction *action;
-	CdnEdgeActionFlags flags;
-} LinkActionFlags;
-
-static LinkActionFlags *
-edge_action_flags_new (CdnEdgeAction *action)
-{
-	LinkActionFlags *ret;
-
-	ret = g_slice_new0 (LinkActionFlags);
-	ret->action = g_object_ref_sink (action);
-	ret->flags = cdn_edge_action_get_flags (action);
-
-	return ret;
-}
-
-static void
-edge_action_flags_free (LinkActionFlags *self)
-{
-	g_object_unref (self->action);
-	g_slice_free (LinkActionFlags, self);
-}
 
 typedef struct
 {
@@ -123,7 +99,8 @@ struct _CdnIntegratorPrivate
 	CdnIntegratorState *state;
 	GSList *saved_state;
 
-	GSList *action_flags;
+	gchar *initial_phase;
+	gboolean event_handled;
 };
 
 static guint integrator_signals[NUM_SIGNALS] = {0,};
@@ -144,8 +121,7 @@ cdn_integrator_finalize (GObject *object)
 	g_slist_foreach (self->priv->saved_state, (GFunc)saved_state_free, NULL);
 	g_slist_free (self->priv->saved_state);
 
-	g_slist_foreach (self->priv->action_flags, (GFunc)edge_action_flags_free, NULL);
-	g_slist_free (self->priv->action_flags);
+	g_free (self->priv->initial_phase);
 
 	G_OBJECT_CLASS (cdn_integrator_parent_class)->finalize (object);
 }
@@ -222,6 +198,10 @@ cdn_integrator_set_property (GObject      *object,
 			g_object_add_weak_pointer (G_OBJECT (self->priv->object),
 			                           (gpointer *)&(self->priv->object));
 		break;
+		case PROP_INITIAL_PHASE:
+			g_free (self->priv->initial_phase);
+			self->priv->initial_phase = g_value_dup_string (value);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -247,22 +227,12 @@ cdn_integrator_get_property (GObject    *object,
 		case PROP_STATE:
 			g_value_set_object (value, self->priv->state);
 		break;
+		case PROP_INITIAL_PHASE:
+			g_value_set_string (value, self->priv->initial_phase);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
-	}
-}
-
-static void
-restore_action_flags (CdnIntegrator *self)
-{
-	GSList *item;
-
-	for (item = self->priv->action_flags; item; item = g_slist_next (item))
-	{
-		LinkActionFlags *fl = item->data;
-
-		cdn_edge_action_set_flags (fl->action, fl->flags);
 	}
 }
 
@@ -295,8 +265,6 @@ cdn_integrator_run_impl (CdnIntegrator *integrator,
 
 		from += realstep;
 	}
-
-	restore_action_flags (integrator);
 }
 
 static void
@@ -344,7 +312,7 @@ update_events (CdnIntegrator *integrator)
 	GSList const *events;
 
 	// Here we are going to check our events
-	events = cdn_integrator_state_events (integrator->priv->state);
+	events = cdn_integrator_state_phase_events (integrator->priv->state);
 
 	while (events)
 	{
@@ -398,7 +366,7 @@ handle_events (CdnIntegrator *integrator,
 	GSList const *events;
 
 	// Here we are going to check our events
-	events = cdn_integrator_state_events (integrator->priv->state);
+	events = cdn_integrator_state_phase_events (integrator->priv->state);
 
 	while (events)
 	{
@@ -408,7 +376,7 @@ handle_events (CdnIntegrator *integrator,
 		if (cdn_event_happened (ev, &dist))
 		{
 			// Backup the simulation a bit
-			if (dist > 10e-9)
+			if (dist > 10e-9 && *timestep > 10e-9)
 			{
 				gdouble nts;
 
@@ -418,9 +386,14 @@ handle_events (CdnIntegrator *integrator,
 				nts = cdn_integrator_step (integrator, t, *timestep);
 
 				// Execute the event code
-				if (nts == *timestep)
+				if (!integrator->priv->event_handled)
 				{
 					cdn_event_execute (ev);
+
+					cdn_integrator_state_set_phase (integrator->priv->state,
+					                                cdn_event_get_goto_phase (ev));
+
+					update_events (integrator);
 				}
 				else
 				{
@@ -430,6 +403,11 @@ handle_events (CdnIntegrator *integrator,
 			else
 			{
 				cdn_event_execute (ev);
+
+				cdn_integrator_state_set_phase (integrator->priv->state,
+				                                cdn_event_get_goto_phase (ev));
+
+				update_events (integrator);
 			}
 
 			return TRUE;
@@ -448,6 +426,7 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 {
 	if (handle_events (integrator, t, &timestep))
 	{
+		integrator->priv->event_handled = TRUE;
 		return timestep;
 	}
 
@@ -456,9 +435,10 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 	g_signal_emit (integrator,
 	               integrator_signals[STEP],
 	               0,
-	               timestep,
-	               t + timestep);
+	               t + timestep,
+	               timestep);
 
+	integrator->priv->event_handled = FALSE;
 	return timestep;
 }
 
@@ -500,20 +480,6 @@ cdn_integrator_constructor (GType                  type,
 }
 
 static void
-store_action_flags (CdnIntegrator *self,
-                    GSList const  *actions)
-{
-	while (actions)
-	{
-		self->priv->action_flags =
-			g_slist_prepend (self->priv->action_flags,
-			                 edge_action_flags_new (actions->data));
-
-		actions = g_slist_next (actions);
-	}
-}
-
-static void
 cdn_integrator_reset_impl (CdnIntegrator *integrator)
 {
 	GSList const *props;
@@ -522,21 +488,10 @@ cdn_integrator_reset_impl (CdnIntegrator *integrator)
 	g_slist_free (integrator->priv->saved_state);
 	integrator->priv->saved_state = NULL;
 
-	g_slist_foreach (integrator->priv->action_flags, (GFunc)edge_action_flags_free, NULL);
-	g_slist_free (integrator->priv->action_flags);
-	integrator->priv->action_flags = NULL;
-
-	if (!integrator->priv->state ||
-	    !cdn_integrator_state_events (integrator->priv->state))
+	if (!integrator->priv->state)
 	{
 		return;
 	}
-
-	store_action_flags (integrator,
-	                    cdn_integrator_state_integrated_edge_actions (integrator->priv->state));
-
-	store_action_flags (integrator,
-	                    cdn_integrator_state_direct_edge_actions (integrator->priv->state));
 
 	props = cdn_integrator_state_integrated_properties (integrator->priv->state);
 
@@ -683,6 +638,14 @@ cdn_integrator_class_init (CdnIntegratorClass *klass)
 	                                                      "State",
 	                                                      CDN_TYPE_INTEGRATOR_STATE,
 	                                                      G_PARAM_READABLE));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_INITIAL_PHASE,
+	                                 g_param_spec_string ("initial-phase",
+	                                                      "Initial Phase",
+	                                                      "Initial phase",
+	                                                      NULL,
+	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -707,46 +670,38 @@ cdn_integrator_simulation_step_direct (CdnIntegrator *integrator)
 	/* First calculate all the direct properties */
 	GSList const *direct;
 
-	direct = cdn_integrator_state_direct_edge_actions (integrator->priv->state);
+	direct = cdn_integrator_state_phase_direct_edge_actions (integrator->priv->state);
 
 	while (direct)
 	{
 		CdnEdgeAction *action = direct->data;
+		CdnVariable *target = cdn_edge_action_get_target_variable (action);
 
-		if (!(cdn_edge_action_get_flags (action) & CDN_EDGE_ACTION_FLAG_DISABLED))
+		if (target)
 		{
-			CdnVariable *target = cdn_edge_action_get_target_variable (action);
-
-			if (target)
-			{
-				cdn_variable_set_update (target, 0);
-			}
+			cdn_variable_set_update (target, 0);
 		}
 
 		direct = g_slist_next (direct);
 	}
 
-	direct = cdn_integrator_state_direct_edge_actions (integrator->priv->state);
+	direct = cdn_integrator_state_phase_direct_edge_actions (integrator->priv->state);
 
 	while (direct)
 	{
 		CdnEdgeAction *action = direct->data;
+		CdnVariable *target = cdn_edge_action_get_target_variable (action);
 
-		if (!(cdn_edge_action_get_flags (action) & CDN_EDGE_ACTION_FLAG_DISABLED))
+		if (target != NULL)
 		{
-			CdnVariable *target = cdn_edge_action_get_target_variable (action);
+			CdnExpression *expr = cdn_edge_action_get_equation (action);
 
-			if (target != NULL)
-			{
-				CdnExpression *expr = cdn_edge_action_get_equation (action);
+			cdn_variable_set_update (target,
+			                         cdn_variable_get_update (target) +
+			                         cdn_expression_evaluate (expr));
 
-				cdn_variable_set_update (target,
-				                         cdn_variable_get_update (target) +
-				                         cdn_expression_evaluate (expr));
-
-				cdn_variable_set_value (target,
-				                        cdn_variable_get_update (target));
-			}
+			cdn_variable_set_value (target,
+			                        cdn_variable_get_update (target));
 		}
 
 		direct = g_slist_next (direct);
@@ -759,25 +714,25 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 {
 	if (!actions)
 	{
-		actions = cdn_integrator_state_integrated_edge_actions (integrator->priv->state);
+		actions = cdn_integrator_state_phase_integrated_edge_actions (integrator->priv->state);
 	}
 
 	while (actions)
 	{
 		CdnEdgeAction *action = actions->data;
+		CdnVariable *target = cdn_edge_action_get_target_variable (action);
 
-		if (!(cdn_edge_action_get_flags (action) & CDN_EDGE_ACTION_FLAG_DISABLED))
+		if (target != NULL)
 		{
-			CdnVariable *target = cdn_edge_action_get_target_variable (action);
+			CdnExpression *expr = cdn_edge_action_get_equation (action);
 
-			if (target != NULL)
-			{
-				CdnExpression *expr = cdn_edge_action_get_equation (action);
+			g_message ("Eval: %s at %f",
+			           cdn_expression_get_as_string (expr),
+			           cdn_variable_get_value (integrator->priv->property_time));
 
-				cdn_variable_set_update (target,
-				                         cdn_variable_get_update (target) +
-				                         cdn_expression_evaluate (expr));
-			}
+			cdn_variable_set_update (target,
+			                         cdn_variable_get_update (target) +
+			                         cdn_expression_evaluate (expr));
 		}
 
 		actions = g_slist_next (actions);
@@ -830,6 +785,9 @@ cdn_integrator_run (CdnIntegrator *integrator,
 
 	// Generate set of next random values
 	prepare_next_step (integrator, from, timestep);
+
+	cdn_integrator_state_set_phase (integrator->priv->state,
+	                                integrator->priv->initial_phase);
 
 	if (CDN_INTEGRATOR_GET_CLASS (integrator)->run)
 	{
