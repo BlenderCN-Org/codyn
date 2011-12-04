@@ -1,29 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN" 
-               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd" [
-<!ENTITY specification SYSTEM "xml-specification.sgml">
-<!ENTITY makinganetwork SYSTEM "making-a-network.sgml">
-<!ENTITY monitoring SYSTEM "monitoring-variables.sgml">
-<!ENTITY templates SYSTEM "using-templates.sgml">
-<!ENTITY webots SYSTEM "use-with-webots.sgml">
-]>
+<!DOCTYPE book PUBLIC "-//OASIS//DTD DocBook XML V4.1.2//EN"
+               "http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd">
 <book id="index" xmlns:xi="http://www.w3.org/2003/XInclude">
   <bookinfo>
     <title>codyn Reference Manual</title>
   </bookinfo>
 
   <chapter>
-    <title>CDN Network</title>
-    &makinganetwork;
-    &monitoring;
-    &templates;
-    &webots;
-  </chapter>
-  <chapter>
-    <title>Network</title>
-    <xi:include href="xml/codyn.xml"/>
-    <xi:include href="xml/codyn-serializer.xml"/>
-    <xi:include href="xml/codyn-deserializer.xml"/>
+    <title>Codyn</title>
+    <xi:include href="xml/cdn-network.xml"/>
+    <xi:include href="xml/cdn-network-serializer.xml"/>
+    <xi:include href="xml/cdn-network-deserializer.xml"/>
     <xi:include href="xml/cdn-object.xml"/>
     <xi:include href="xml/cdn-variable.xml"/>
     <xi:include href="xml/cdn-edge.xml"/>
@@ -43,12 +30,12 @@
     <xi:include href="xml/cdn-annotatable.xml"/>
     <xi:include href="xml/cdn-layoutable.xml"/>
     <xi:include href="xml/cdn-layout.xml"/>
+    <xi:include href="xml/cdn-event.xml"/>
   </chapter>
   <chapter>
     <title>Math</title>
     <xi:include href="xml/cdn-math.xml"/>
     <xi:include href="xml/cdn-expression.xml"/>
-    <xi:include href="xml/cdn-instructions.xml"/>
     <xi:include href="xml/cdn-instruction.xml"/>
     <xi:include href="xml/cdn-instruction-constant.xml"/>
     <xi:include href="xml/cdn-instruction-function.xml"/>
@@ -56,10 +43,20 @@
     <xi:include href="xml/cdn-instruction-operator.xml"/>
     <xi:include href="xml/cdn-instruction-custom-operator.xml"/>
     <xi:include href="xml/cdn-instruction-number.xml"/>
-    <xi:include href="xml/cdn-instruction-property.xml"/>
-    <xi:include href="xml/cdn-instruction-variadic-function.xml"/>
+    <xi:include href="xml/cdn-instruction-variable.xml"/>
+    <xi:include href="xml/cdn-instruction-rand.xml"/>
+  </chapter>
+  <chapter>
+    <title>Symbolic Math</title>
+    <xi:include href="xml/cdn-expression-tree-iter.xml"/>
+    <xi:include href="xml/cdn-symbolic.xml"/>
     <xi:include href="xml/cdn-operator.xml"/>
     <xi:include href="xml/cdn-operator-delayed.xml"/>
+    <xi:include href="xml/cdn-operator-diff.xml"/>
+    <xi:include href="xml/cdn-operator-pdiff.xml"/>
+    <xi:include href="xml/cdn-operator-df-dt.xml"/>
+    <xi:include href="xml/cdn-operator-linsolve.xml"/>
+    <xi:include href="xml/cdn-operator-simplify.xml"/>
   </chapter>
   <chapter>
     <title>Integration</title>
@@ -69,10 +66,11 @@
     <xi:include href="xml/cdn-integrator-euler.xml"/>
     <xi:include href="xml/cdn-integrator-runge-kutta.xml"/>
     <xi:include href="xml/cdn-integrator-predict-correct.xml"/>
+    <xi:include href="xml/cdn-integrator-leap-frog.xml"/>
     <xi:include href="xml/cdn-integrator-stub.xml"/>
   </chapter>
   <chapter>
-    <title>CDN format</title>
+    <title>Modeling Language</title>
     <xi:include href="xml/cdn-embedded-string.xml"/>
     <xi:include href="xml/cdn-embedded-context.xml"/>
     <xi:include href="xml/cdn-parser-context.xml"/>
@@ -80,10 +78,6 @@
     <xi:include href="xml/cdn-selection.xml"/>
     <xi:include href="xml/cdn-attribute.xml"/>
     <xi:include href="xml/cdn-expansion.xml"/>
-  </chapter>
-  <chapter>
-    <title>XML format</title>
-    &specification;
   </chapter>
 </book>
 

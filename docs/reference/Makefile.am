@@ -9,7 +9,7 @@ AUTOMAKE_OPTIONS = 1.6
 # of using the various options.
 
 # The name of the module, e.g. 'glib'.
-DOC_MODULE=codyn2
+DOC_MODULE=codyn3
 
 # Uncomment for versioned docs and specify the version of the module, e.g. '2'.
 #DOC_MODULE_VERSION=2
@@ -32,7 +32,7 @@ SCANGOBJ_OPTIONS=
 IGNORE_HFILES= \
 	cdn-tokenizer.h \
 	cdn-utils.h \
-	codyn-xml.h \
+	cdn-network-xml.h \
 	cdn-parser.h \
 	cdn-debug.h \
 	cdn-marshal.h \
@@ -51,7 +51,7 @@ MKDB_OPTIONS=--sgml-mode --output-format=xml
 MKTMPL_OPTIONS=
 
 # Extra options to supply to gtkdoc-mkhtml
-MKHTML_OPTIONS=
+MKHTML_OPTIONS=--verbose
 
 # Extra options to supply to gtkdoc-fixref. Not normally needed.
 # e.g. FIXXREF_OPTIONS=--extra-dir=../gdk-pixbuf/html --extra-dir=../gdk/html
@@ -60,8 +60,13 @@ FIXXREF_OPTIONS=
 # Used for dependencies. The docs will be rebuilt if any of these change.
 # e.g. HFILE_GLOB=$(top_srcdir)/gtk/*.h
 # e.g. CFILE_GLOB=$(top_srcdir)/gtk/*.c
-HFILE_GLOB=$(top_srcdir)/codyn/*.h
-CFILE_GLOB=$(top_srcdir)/codyn/*.c
+HFILE_GLOB= \
+	$(top_srcdir)/codyn/*.h \
+	$(top_srcdir)/codyn/*/*.h
+
+CFILE_GLOB= \
+	$(top_srcdir)/codyn/*.c \
+	$(top_srcdir)/codyn/*/*.c
 
 # Images to copy into HTML directory.
 # e.g. HTML_IMAGES=$(top_srcdir)/gtk/stock-icons/stock_about_24.png
@@ -69,12 +74,7 @@ HTML_IMAGES=$(top_srcdir)/docs/images/exmath.png
 
 # Extra SGML files that are included by $(DOC_MAIN_SGML_FILE).
 # e.g. content_files=running.sgml building.sgml changes-2.0.sgml
-content_files= \
-	xml-specification.sgml \
-	making-a-network.sgml \
-	monitoring-variables.sgml \
-	using-templates.sgml \
-	use-with-webots.sgml
+content_files=
 
 # SGML files where gtk-doc abbrevations (#GtkWidget) are expanded
 # These files must be listed here *and* in content_files
