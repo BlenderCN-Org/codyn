@@ -23,7 +23,7 @@ cdn_instruction_number_finalize (CdnMiniObject *object)
 }
 
 static CdnMiniObject *
-cdn_instruction_number_copy (CdnMiniObject const *object)
+cdn_instruction_number_copy (CdnMiniObject *object)
 {
 	CdnMiniObject *ret;
 	CdnInstructionNumber *self;

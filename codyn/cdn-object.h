@@ -104,7 +104,6 @@ typedef void (*CdnForeachExpressionFunc) (CdnExpression *expression, gpointer us
  * @tainted: tainted signal default handler
  * @variable_added: variable added signal default handler
  * @variable_removed: variable added signal default handler
- * @variable_changed: variable added signal default handler
  *
  * The CdnObject class
  *
@@ -178,8 +177,6 @@ struct _CdnObjectClass
 	void          (*variable_added)   (CdnObject   *object,
 	                                   CdnVariable *variable);
 	void          (*variable_removed) (CdnObject   *object,
-	                                   CdnVariable *variable);
-	void          (*variable_changed) (CdnObject   *object,
 	                                   CdnVariable *variable);
 
 	void          (*template_applied) (CdnObject   *object,

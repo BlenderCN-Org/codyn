@@ -617,7 +617,7 @@ register_imported_property (CdnImport   *import,
 	CdnObject *parent = cdn_variable_get_object (property);
 
 	g_signal_connect (parent,
-	                  "verify-remove-property",
+	                  "verify-remove-variable",
 	                  G_CALLBACK (deny_remove_imported_property),
 	                  import);
 }

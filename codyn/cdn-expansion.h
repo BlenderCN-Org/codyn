@@ -24,42 +24,27 @@
 #define __CDN_EXPANSION_H__
 
 #include <glib-object.h>
+#include <codyn/cdn-mini-object.h>
 
 G_BEGIN_DECLS
 
 #define CDN_TYPE_EXPANSION		(cdn_expansion_get_type ())
-#define CDN_EXPANSION(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_EXPANSION, CdnExpansion))
-#define CDN_EXPANSION_CONST(obj)	(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_EXPANSION, CdnExpansion const))
-#define CDN_EXPANSION_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST ((klass), CDN_TYPE_EXPANSION, CdnExpansionClass))
-#define CDN_IS_EXPANSION(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CDN_TYPE_EXPANSION))
-#define CDN_IS_EXPANSION_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CDN_TYPE_EXPANSION))
-#define CDN_EXPANSION_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CDN_TYPE_EXPANSION, CdnExpansionClass))
 
 typedef struct _CdnExpansion		CdnExpansion;
-typedef struct _CdnExpansionClass	CdnExpansionClass;
-typedef struct _CdnExpansionPrivate	CdnExpansionPrivate;
-
-struct _CdnExpansion
-{
-	GObject parent;
-
-	CdnExpansionPrivate *priv;
-};
-
-struct _CdnExpansionClass
-{
-	GObjectClass parent_class;
-};
 
 GType         cdn_expansion_get_type         (void) G_GNUC_CONST;
 
 CdnExpansion *cdn_expansion_new              (gchar const * const    *items);
+CdnExpansion *cdn_expansion_new_sized        (gchar const * const    *items,
+                                              gint                    sized);
 CdnExpansion *cdn_expansion_newv             (gchar const            *item,
                                               ...);
 
 CdnExpansion *cdn_expansion_new_one          (gchar const            *item);
 
 CdnExpansion *cdn_expansion_copy             (CdnExpansion           *id);
+CdnExpansion *cdn_expansion_ref             (CdnExpansion           *id);
+void cdn_expansion_unref             (CdnExpansion           *id);
 
 gint          cdn_expansion_num              (CdnExpansion           *id);
 
@@ -85,6 +70,10 @@ void          cdn_expansion_set              (CdnExpansion           *id,
                                               gchar const            *val);
 
 void          cdn_expansion_append           (CdnExpansion           *id,
+                                              CdnExpansion           *other,
+                                              gint                    idx);
+
+void          cdn_expansion_prepend          (CdnExpansion           *id,
                                               CdnExpansion           *other,
                                               gint                    idx);
 

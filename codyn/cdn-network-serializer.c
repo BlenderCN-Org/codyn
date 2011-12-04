@@ -32,7 +32,7 @@
 #include <libxml/tree.h>
 
 /**
- * SECTION:codyn-serializer
+ * SECTION:cdn-network-serializer
  * @short_description: Network to XML serializer
  *
  * This can be used to serialize a #CdnNetwork to XML.

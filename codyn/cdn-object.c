@@ -109,11 +109,11 @@ enum
 	TAINTED,
 	COMPILED,
 	RESETTED,
-	PROPERTY_ADDED,
-	PROPERTY_REMOVED,
-	PROPERTY_CHANGED,
+	VARIABLE_ADDED,
+	VARIABLE_REMOVED,
+	VARIABLE_CHANGED,
 	COPIED,
-	VERIFY_REMOVE_PROPERTY,
+	VERIFY_REMOVE_VARIABLE,
 	TEMPLATE_APPLIED,
 	TEMPLATE_UNAPPLIED,
 	NUM_SIGNALS
@@ -619,27 +619,17 @@ check_modified_for_template (CdnObject   *object,
 }
 
 static void
-on_variable_changed (CdnObject   *object,
-                     GParamSpec  *spec,
-                     CdnVariable *property)
+on_variable_modified (CdnObject   *object,
+                      GParamSpec  *spec,
+                      CdnVariable *property)
 {
-	g_signal_emit (object, object_signals[PROPERTY_CHANGED], 0, property);
-
 	check_modified_for_template (object, property);
 
 	cdn_object_taint (object);
 }
 
-static void
-on_property_modified (CdnObject   *object,
-                      GParamSpec  *spec,
-                      CdnVariable *property)
-{
-	check_modified_for_template (object, property);
-}
-
 static gboolean
-on_property_invalidate_name (CdnVariable *property,
+on_variable_invalidate_name (CdnVariable *property,
                              gchar const *name,
                              CdnObject   *object)
 {
@@ -661,32 +651,22 @@ add_variable (CdnObject   *object,
 	                     g_strdup (cdn_variable_get_name (property)),
 	                     property);
 
-	_cdn_variable_set_object (property, object);
+	_cdn_variable_set_object (property, object, object->priv->use_count > 1);
 
 	cdn_usable_use (CDN_USABLE (property));
 	cdn_object_taint (object);
 
 	g_signal_connect_swapped (property,
-	                          "notify::expression",
-	                          G_CALLBACK (on_variable_changed),
-	                          object);
-
-	g_signal_connect_swapped (property,
-	                          "notify::flags",
-	                          G_CALLBACK (on_variable_changed),
-	                          object);
-
-	g_signal_connect_swapped (property,
 	                          "notify::modified",
-	                          G_CALLBACK (on_property_modified),
+	                          G_CALLBACK (on_variable_modified),
 	                          object);
 
 	g_signal_connect (property,
 	                  "invalidate-name",
-	                  G_CALLBACK (on_property_invalidate_name),
+	                  G_CALLBACK (on_variable_invalidate_name),
 	                  object);
 
-	g_signal_emit (object, object_signals[PROPERTY_ADDED], 0, property);
+	g_signal_emit (object, object_signals[VARIABLE_ADDED], 0, property);
 }
 
 static void
@@ -844,12 +824,12 @@ cdn_object_apply_template_impl (CdnObject  *object,
 	                      object);
 
 	g_signal_connect (templ,
-	                  "property-added",
+	                  "variable-added",
 	                  G_CALLBACK (on_template_variable_added),
 	                  object);
 
 	g_signal_connect (templ,
-	                  "property-removed",
+	                  "variable-removed",
 	                  G_CALLBACK (on_template_variable_removed),
 	                  object);
 
@@ -1057,25 +1037,21 @@ remove_variable (CdnObject   *object,
 	object->priv->variables = g_slist_remove (object->priv->variables,
 	                                           property);
 
-	_cdn_variable_set_object (property, NULL);
+	_cdn_variable_set_object (property, NULL, object->priv->use_count > 1);
 
 	g_hash_table_remove (object->priv->property_hash,
 	                     cdn_variable_get_name (property));
 
 	g_signal_handlers_disconnect_by_func (property,
-	                                      on_variable_changed,
+	                                      on_variable_invalidate_name,
 	                                      object);
 
 	g_signal_handlers_disconnect_by_func (property,
-	                                      on_property_invalidate_name,
-	                                      object);
-
-	g_signal_handlers_disconnect_by_func (property,
-	                                      on_property_modified,
+	                                      on_variable_modified,
 	                                      object);
 
 	g_signal_emit (object,
-	               object_signals[PROPERTY_REMOVED],
+	               object_signals[VARIABLE_REMOVED],
 	               0,
 	               property);
 
@@ -1261,9 +1237,11 @@ cdn_object_clear_impl (CdnObject *object)
 static void
 cdn_object_taint_impl (CdnObject *object)
 {
-	object->priv->compiled = FALSE;
-
-	g_signal_emit (object, object_signals[TAINTED], 0);
+	if (object->priv->compiled)
+	{
+		object->priv->compiled = FALSE;
+		g_signal_emit (object, object_signals[TAINTED], 0);
+	}
 }
 
 static gboolean
@@ -1496,8 +1474,8 @@ cdn_object_class_init (CdnObjectClass *klass)
 	 * Returns: %TRUE if the property can be removed, %FALSE otherwise
 	 *
 	 **/
-	object_signals[VERIFY_REMOVE_PROPERTY] =
-		g_signal_new ("verify-remove-property",
+	object_signals[VERIFY_REMOVE_VARIABLE] =
+		g_signal_new ("verify-remove-variable",
 		              G_TYPE_FROM_CLASS (klass),
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (CdnObjectClass, verify_remove_variable),
@@ -1517,8 +1495,8 @@ cdn_object_class_init (CdnObjectClass *klass)
 	 * Emitted when a property is added to the object
 	 *
 	 **/
-	object_signals[PROPERTY_ADDED] =
-		g_signal_new ("property-added",
+	object_signals[VARIABLE_ADDED] =
+		g_signal_new ("variable-added",
 		              G_OBJECT_CLASS_TYPE (object_class),
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (CdnObjectClass,
@@ -1538,33 +1516,12 @@ cdn_object_class_init (CdnObjectClass *klass)
 	 * Emitted when a property is removed from the object
 	 *
 	 **/
-	object_signals[PROPERTY_REMOVED] =
-		g_signal_new ("property-removed",
+	object_signals[VARIABLE_REMOVED] =
+		g_signal_new ("variable-removed",
 		              G_OBJECT_CLASS_TYPE (object_class),
 		              G_SIGNAL_RUN_LAST,
 		              G_STRUCT_OFFSET (CdnObjectClass,
 		                               variable_removed),
-		              NULL,
-		              NULL,
-		              g_cclosure_marshal_VOID__OBJECT,
-		              G_TYPE_NONE,
-		              1,
-		              CDN_TYPE_VARIABLE);
-
-	/**
-	 * CdnObject::property-changed:
-	 * @object: a #CdnObject
-	 * @property: the changed #CdnVariable
-	 *
-	 * Emitted when the expression of a property of the object has changed
-	 *
-	 **/
-	object_signals[PROPERTY_CHANGED] =
-		g_signal_new ("property-changed",
-		              G_OBJECT_CLASS_TYPE (object_class),
-		              G_SIGNAL_RUN_LAST,
-		              G_STRUCT_OFFSET (CdnObjectClass,
-		                               variable_changed),
 		              NULL,
 		              NULL,
 		              g_cclosure_marshal_VOID__OBJECT,
@@ -1825,7 +1782,7 @@ cdn_object_verify_remove_variable (CdnObject    *object,
 	gboolean ret = FALSE;
 
 	g_signal_emit (object,
-	               object_signals[VERIFY_REMOVE_PROPERTY],
+	               object_signals[VERIFY_REMOVE_VARIABLE],
 	               0,
 	               name,
 	               error,

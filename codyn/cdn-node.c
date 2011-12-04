@@ -813,13 +813,13 @@ set_proxy (CdnNode  *group,
 
 		group->priv->proxy_signals[EXT_PROPERTY_ADDED] =
 			g_signal_connect_after (group->priv->proxy,
-			                        "property-added",
+			                        "variable-added",
 			                        G_CALLBACK (on_proxy_variable_added),
 			                        group);
 
 		group->priv->proxy_signals[EXT_PROPERTY_REMOVED] =
 			g_signal_connect (group->priv->proxy,
-			                  "property-removed",
+			                  "variable-removed",
 			                  G_CALLBACK (on_proxy_variable_removed),
 			                  group);
 

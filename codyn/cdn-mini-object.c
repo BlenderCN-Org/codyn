@@ -42,7 +42,7 @@ static gchar *cdn_value_mini_object_lcopy (GValue const *value,
                                            GTypeCValue *collect_values,
                                            guint collect_flags);
 
-static CdnMiniObject *cdn_mini_object_copy_default (CdnMiniObject const *obj);
+static CdnMiniObject *cdn_mini_object_copy_default (CdnMiniObject *obj);
 static void cdn_mini_object_finalize (CdnMiniObject *obj);
 
 GType
@@ -109,7 +109,7 @@ cdn_mini_object_class_init (gpointer g_class, gpointer class_data)
 }
 
 static CdnMiniObject *
-cdn_mini_object_copy_default (CdnMiniObject const *obj)
+cdn_mini_object_copy_default (CdnMiniObject *obj)
 {
 	return cdn_mini_object_new (G_TYPE_FROM_INSTANCE (obj));
 }
@@ -117,6 +117,7 @@ cdn_mini_object_copy_default (CdnMiniObject const *obj)
 static void
 cdn_mini_object_finalize (CdnMiniObject * obj)
 {
+	g_type_free_instance ((GTypeInstance *)obj);
 }
 
 CdnMiniObject *
@@ -135,9 +136,14 @@ cdn_mini_object_new (GType type)
  *
  **/
 CdnMiniObject *
-cdn_mini_object_copy (CdnMiniObject const *obj)
+cdn_mini_object_copy (CdnMiniObject *obj)
 {
 	CdnMiniObjectClass *mo_class;
+
+	if (!obj)
+	{
+		return NULL;
+	}
 
 	mo_class = CDN_MINI_OBJECT_GET_CLASS (obj);
 
@@ -149,10 +155,13 @@ cdn_mini_object_free (CdnMiniObject *obj)
 {
 	CdnMiniObjectClass *mo_class;
 
+	if (!obj)
+	{
+		return;
+	}
+
 	mo_class = CDN_MINI_OBJECT_GET_CLASS (obj);
 	mo_class->finalize (obj);
-
-	g_type_free_instance ((GTypeInstance *)obj);
 }
 
 static void

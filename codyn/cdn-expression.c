@@ -218,7 +218,8 @@ normalize_expression (gchar const *expression)
 
 static void
 set_expression (CdnExpression *expression,
-                gchar const   *value)
+                gchar const   *value,
+                gboolean       notify)
 {
 	g_free (expression->priv->expression);
 
@@ -227,7 +228,10 @@ set_expression (CdnExpression *expression,
 
 	cdn_stack_destroy (&(expression->priv->output));
 
-	g_object_notify (G_OBJECT (expression), "expression");
+	if (notify)
+	{
+		g_object_notify (G_OBJECT (expression), "expression");
+	}
 }
 
 static void
@@ -303,7 +307,7 @@ cdn_expression_set_property (GObject      *object,
 	switch (prop_id)
 	{
 		case PROP_EXPRESSION:
-			set_expression (self, g_value_get_string (value));
+			set_expression (self, g_value_get_string (value), TRUE);
 		break;
 		case PROP_VALUE:
 			set_value (self, g_value_get_double (value));
@@ -366,7 +370,7 @@ cdn_expression_class_init (CdnExpressionClass *klass)
 	                                                      "Expression",
 	                                                      "Expression",
 	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_VALUE,
@@ -384,7 +388,7 @@ cdn_expression_class_init (CdnExpressionClass *klass)
 	                                                       "Has Cache",
 	                                                       "Has cache",
 	                                                       TRUE,
-	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                       G_PARAM_READWRITE));
 
 	g_object_class_override_property (object_class,
 	                                  PROP_MODIFIED,
@@ -395,6 +399,8 @@ static void
 cdn_expression_init (CdnExpression *self)
 {
 	self->priv = CDN_EXPRESSION_GET_PRIVATE (self);
+
+	self->priv->has_cache = TRUE;
 
 	cdn_stack_init (&(self->priv->output), 0);
 }
@@ -430,7 +436,7 @@ cdn_expression_set_from_string (CdnExpression *expression,
 {
 	g_return_if_fail (CDN_IS_EXPRESSION (expression));
 
-	set_expression (expression, value);
+	set_expression (expression, value, TRUE);
 }
 
 /**
@@ -445,9 +451,12 @@ cdn_expression_set_from_string (CdnExpression *expression,
 CdnExpression *
 cdn_expression_new (const gchar *expression)
 {
-	return g_object_new (CDN_TYPE_EXPRESSION,
-	                     "expression", expression,
-	                     NULL);
+	CdnExpression *ret;
+
+	ret = g_object_new (CDN_TYPE_EXPRESSION, NULL);
+	set_expression (ret, expression, FALSE);
+
+	return ret;
 }
 
 CdnExpression *

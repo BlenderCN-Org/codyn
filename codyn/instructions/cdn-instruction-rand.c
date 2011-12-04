@@ -20,7 +20,7 @@ cdn_instruction_rand_finalize (CdnMiniObject *object)
 }
 
 static CdnMiniObject *
-cdn_instruction_rand_copy (CdnMiniObject const *object)
+cdn_instruction_rand_copy (CdnMiniObject *object)
 {
 	CdnMiniObject *ret;
 	CdnInstructionRand *r;

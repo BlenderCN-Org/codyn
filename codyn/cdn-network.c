@@ -37,7 +37,7 @@
 #include "cdn-debug.h"
 
 /**
- * SECTION:codyn
+ * SECTION:cdn-network
  * @short_description: The main CDN network object
  *
  * The cdn network is the main component of the codyn library. The network

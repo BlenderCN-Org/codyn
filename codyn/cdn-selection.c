@@ -73,7 +73,7 @@ cdn_selection_finalize (GObject *object)
 		g_object_unref (selection->priv->object);
 	}
 
-	g_slist_foreach (selection->priv->expansions, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (selection->priv->expansions, (GFunc)cdn_expansion_unref, NULL);
 	g_slist_free (selection->priv->expansions);
 
 	if (selection->priv->defines)
@@ -138,7 +138,7 @@ copy_defines (GHashTable *table)
 	ret = g_hash_table_new_full (g_str_hash,
 	                             g_str_equal,
 	                             (GDestroyNotify)g_free,
-	                             (GDestroyNotify)g_object_unref);
+	                             (GDestroyNotify)cdn_expansion_unref);
 
 	if (table)
 	{
@@ -325,7 +325,7 @@ cdn_selection_add_define (CdnSelection *selection,
                           CdnExpansion *value)
 {
 	g_return_if_fail (CDN_IS_SELECTION (selection));
-	g_return_if_fail (value == NULL || CDN_IS_EXPANSION (value));
+	g_return_if_fail (value == NULL);
 
 	copy_defines_on_write (selection);
 

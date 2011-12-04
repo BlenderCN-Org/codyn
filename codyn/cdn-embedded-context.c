@@ -65,7 +65,7 @@ context_free (Context *self)
 
 	if (!self->copy_expansions_on_write)
 	{
-		g_slist_foreach (self->expansions, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (self->expansions, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (self->expansions);
 	}
 
@@ -99,7 +99,7 @@ hash_table_copy (GHashTable *table)
 	ret = g_hash_table_new_full (g_str_hash,
 	                             g_str_equal,
 	                             (GDestroyNotify)g_free,
-	                             (GDestroyNotify)g_object_unref);
+	                             (GDestroyNotify)cdn_expansion_unref);
 
 	if (table)
 	{
@@ -331,7 +331,7 @@ cdn_embedded_context_increment_define (CdnEmbeddedContext *context,
 	                                 ex);
 
 	g_free (incval);
-	g_object_unref (ex);
+	cdn_expansion_unref (ex);
 
 	return ret;
 }
@@ -346,7 +346,7 @@ cdn_embedded_context_add_define (CdnEmbeddedContext *context,
 
 	g_return_if_fail (CDN_IS_EMBEDDED_CONTEXT (context));
 	g_return_if_fail (name != NULL);
-	g_return_if_fail (value == NULL || CDN_IS_EXPANSION (value));
+	g_return_if_fail (value == NULL);
 
 	ctx = CURRENT_CONTEXT (context);
 
@@ -422,7 +422,7 @@ cdn_embedded_context_set_expansions (CdnEmbeddedContext *context,
 
 	if (!ctx->copy_expansions_on_write)
 	{
-		g_slist_foreach (ctx->expansions, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (ctx->expansions, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ctx->expansions);
 	}
 	else

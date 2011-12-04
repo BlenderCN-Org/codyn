@@ -1,6 +1,15 @@
 #include "cdn-instruction.h"
 
-G_DEFINE_TYPE (CdnInstruction, cdn_instruction, CDN_TYPE_MINI_OBJECT)
+/**
+ * SECTION:cdn-instruction
+ * @short_description: Mathematical instruction base class
+ *
+ * The #CdnInstruction class is an abstract base class for all mathematical
+ * instructions in Codyn.
+ *
+ **/
+
+G_DEFINE_ABSTRACT_TYPE (CdnInstruction, cdn_instruction, CDN_TYPE_MINI_OBJECT)
 
 static gchar *
 cdn_instruction_to_string_impl (CdnInstruction *instruction)
@@ -41,6 +50,17 @@ cdn_instruction_init (CdnInstruction *instruction)
 {
 }
 
+/**
+ * cdn_instruction_to_string:
+ * @instruction: A #CdnInstruction
+ *
+ * Get some sort of string representation of the instruction. Note that this
+ * is only useful for debugging since the string representation only shows
+ * what type of instruction this is.
+ *
+ * Returns: a string representation of the instruction
+ *
+ **/
 gchar *
 cdn_instruction_to_string (CdnInstruction *instruction)
 {
@@ -49,6 +69,14 @@ cdn_instruction_to_string (CdnInstruction *instruction)
 	return CDN_INSTRUCTION_GET_CLASS (instruction)->to_string (instruction);
 }
 
+/**
+ * cdn_instruction_execute:
+ * @instruction: A #CdnInstruction
+ * @stack: A #CdnStack
+ *
+ * Execute the instruction on the given stack.
+ *
+ **/
 void
 cdn_instruction_execute (CdnInstruction *instruction,
                          CdnStack       *stack)
@@ -57,6 +85,20 @@ cdn_instruction_execute (CdnInstruction *instruction,
 	CDN_INSTRUCTION_GET_CLASS (instruction)->execute (instruction, stack);
 }
 
+/**
+ * cdn_instruction_get_stack_count:
+ * @instruction: A #CdnInstruction
+ *
+ * Get by how many values the instruction will modify the stack when executed.
+ * Note that this can be a negative value if the instruction consumes more
+ * values than it pushes. It can generally be assumed that every instruction
+ * always pushes one value on the stack (i.e. the number of values it pops
+ * is -stack_count + 1)
+ *
+ * Returns: the number of values that the instruction will pop and push on the
+ *          stack
+ *
+ **/
 gint
 cdn_instruction_get_stack_count (CdnInstruction *instruction)
 {
@@ -75,7 +117,6 @@ cdn_instruction_get_stack_count (CdnInstruction *instruction)
  *          should be freed with g_slist_free when no longer used.
  *
  **/
-
 GSList *
 cdn_instruction_get_dependencies (CdnInstruction *instruction)
 {
@@ -83,6 +124,16 @@ cdn_instruction_get_dependencies (CdnInstruction *instruction)
 	return CDN_INSTRUCTION_GET_CLASS (instruction)->get_dependencies (instruction);
 }
 
+/**
+ * cdn_instruction_equal:
+ * @i1: A #CdnInstruction
+ * @i2: A #CdnInstruction
+ *
+ * Compares two instructions for equality.
+ *
+ * Returns: %TRUE if both instructions are equal, %FALSE otherwise
+ *
+ **/
 gboolean
 cdn_instruction_equal (CdnInstruction *i1,
                        CdnInstruction *i2)
@@ -112,6 +163,15 @@ cdn_instruction_equal (CdnInstruction *i1,
 	}
 }
 
+/**
+ * cdn_instruction_get_is_commutative:
+ * @instruction: A #CdnInstruction
+ *
+ * Get whether an instruction has commutative arguments or not.
+ *
+ * Returns: %TRUE if the instruction as commutative arguments, %FALSE otherwise
+ *
+ **/
 gboolean
 cdn_instruction_get_is_commutative (CdnInstruction *instruction)
 {

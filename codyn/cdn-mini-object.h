@@ -46,7 +46,7 @@ typedef struct _CdnMiniObjectClass	CdnMiniObjectClass;
  * Returns: (transfer full):
  *
  **/
-typedef CdnMiniObject *(*CdnMiniObjectCopyFunction)     (CdnMiniObject const *obj);
+typedef CdnMiniObject *(*CdnMiniObjectCopyFunction)     (CdnMiniObject *obj);
 typedef void           (*CdnMiniObjectFinalizeFunction) (CdnMiniObject *obj);
 
 struct _CdnMiniObject
@@ -67,7 +67,7 @@ struct _CdnMiniObjectClass
 GType cdn_mini_object_get_type (void) G_GNUC_CONST;
 
 CdnMiniObject *cdn_mini_object_new  (GType                type);
-CdnMiniObject *cdn_mini_object_copy (CdnMiniObject const *obj);
+CdnMiniObject *cdn_mini_object_copy (CdnMiniObject       *obj);
 void           cdn_mini_object_free (CdnMiniObject       *obj);
 
 /* GParamSpec */

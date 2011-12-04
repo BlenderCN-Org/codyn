@@ -24,7 +24,7 @@ cdn_instruction_function_finalize (CdnMiniObject *object)
 }
 
 static CdnMiniObject *
-cdn_instruction_function_copy (CdnMiniObject const *object)
+cdn_instruction_function_copy (CdnMiniObject *object)
 {
 	CdnMiniObject *ret;
 	CdnInstructionFunction *self;

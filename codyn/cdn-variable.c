@@ -181,7 +181,8 @@ cdn_taggable_iface_init (gpointer iface)
 
 static void
 set_object (CdnVariable *property,
-            CdnObject   *object)
+            CdnObject   *object,
+            gboolean     notify)
 {
 	if (property->priv->object == object)
 	{
@@ -202,29 +203,13 @@ set_object (CdnVariable *property,
 		                           (gpointer *)&property->priv->object);
 	}
 
-	if (!property->priv->disposing)
+	if (!property->priv->disposing && notify)
 	{
 		g_object_notify (G_OBJECT (property), "object");
 	}
 }
 
-static void
-on_expression_changed (CdnVariable *property)
-{
-	cdn_modifiable_set_modified (CDN_MODIFIABLE (property), TRUE);
-
-	g_object_notify (G_OBJECT (property), "expression");
-}
-
-static void
-on_constraint_changed (CdnVariable *property)
-{
-	cdn_modifiable_set_modified (CDN_MODIFIABLE (property), TRUE);
-
-	g_object_notify (G_OBJECT (property), "constraint");
-}
-
-static void
+static gboolean
 set_constraint (CdnVariable   *property,
                 CdnExpression *expression)
 {
@@ -238,15 +223,11 @@ set_constraint (CdnVariable   *property,
 			g_object_unref (expression);
 		}
 
-		return;
+		return FALSE;
 	}
 
 	if (property->priv->constraint)
 	{
-		g_signal_handlers_disconnect_by_func (property->priv->constraint,
-		                                      on_constraint_changed,
-		                                      property);
-
 		g_object_unref (property->priv->constraint);
 		property->priv->constraint = NULL;
 	}
@@ -255,23 +236,22 @@ set_constraint (CdnVariable   *property,
 	{
 		property->priv->constraint = g_object_ref_sink (expression);
 		cdn_expression_set_has_cache (property->priv->constraint, FALSE);
-
-		g_signal_connect_swapped (expression,
-		                          "notify::expression",
-		                          G_CALLBACK (on_constraint_changed),
-		                          property);
 	}
 
-	if (!property->priv->disposing)
+	if (!property->priv->disposing &&
+	    !property->priv->modified)
 	{
-		g_object_notify (G_OBJECT (property), "constraint");
-		cdn_modifiable_set_modified (CDN_MODIFIABLE (property), TRUE);
+		property->priv->modified = TRUE;
+		g_object_notify (G_OBJECT (property), "modified");
 	}
+
+	return TRUE;
 }
 
-static void
-set_expression (CdnVariable *property,
-                CdnExpression *expression)
+static gboolean
+set_expression (CdnVariable   *property,
+                CdnExpression *expression,
+                gboolean       notify)
 {
 	if (property->priv->expression == expression ||
 	    (expression && property->priv->expression &&
@@ -283,15 +263,11 @@ set_expression (CdnVariable *property,
 			g_object_unref (expression);
 		}
 
-		return;
+		return FALSE;
 	}
 
 	if (property->priv->expression)
 	{
-		g_signal_handlers_disconnect_by_func (property->priv->expression,
-		                                      on_expression_changed,
-		                                      property);
-
 		g_object_unref (property->priv->expression);
 		property->priv->expression = NULL;
 	}
@@ -299,18 +275,20 @@ set_expression (CdnVariable *property,
 	if (expression)
 	{
 		property->priv->expression = g_object_ref_sink (expression);
-
-		g_signal_connect_swapped (expression,
-		                          "notify::expression",
-		                          G_CALLBACK (on_expression_changed),
-		                          property);
 	}
 
-	if (!property->priv->disposing)
+	if (!property->priv->disposing &&
+	    !property->priv->modified)
 	{
-		g_object_notify (G_OBJECT (property), "expression");
-		cdn_modifiable_set_modified (CDN_MODIFIABLE (property), TRUE);
+		property->priv->modified = TRUE;
+
+		if (notify)
+		{
+			g_object_notify (G_OBJECT (property), "modified");
+		}
 	}
+
+	return TRUE;
 }
 
 static void
@@ -362,9 +340,9 @@ cdn_variable_dispose (GObject *object)
 
 	property->priv->disposing = TRUE;
 
-	set_expression (property, NULL);
+	set_expression (property, NULL, FALSE);
 	set_constraint (property, NULL);
-	set_object (property, NULL);
+	set_object (property, NULL, TRUE);
 	set_diff_of (property, NULL);
 
 	G_OBJECT_CLASS (cdn_variable_parent_class)->dispose (object);
@@ -372,7 +350,8 @@ cdn_variable_dispose (GObject *object)
 
 static void
 set_flags (CdnVariable      *property,
-           CdnVariableFlags  flags)
+           CdnVariableFlags  flags,
+           gboolean          notify)
 {
 	if (flags != property->priv->flags)
 	{
@@ -395,8 +374,20 @@ set_flags (CdnVariable      *property,
 			cdn_expression_reset_cache (property->priv->expression);
 		}
 
-		g_object_notify (G_OBJECT (property), "flags");
-		cdn_modifiable_set_modified (CDN_MODIFIABLE (property), TRUE);
+		if (notify)
+		{
+			g_object_notify (G_OBJECT (property), "flags");
+		}
+
+		if (!property->priv->modified)
+		{
+			property->priv->modified = TRUE;
+
+			if (notify)
+			{
+				g_object_notify (G_OBJECT (property), "modified");
+			}
+		}
 	}
 }
 
@@ -425,7 +416,7 @@ set_name (CdnVariable *property,
 }
 
 static void
-cdn_variable_set_variable (GObject      *object,
+cdn_variable_set_property (GObject      *object,
                            guint         prop_id,
                            const GValue *value,
                            GParamSpec   *pspec)
@@ -438,13 +429,13 @@ cdn_variable_set_variable (GObject      *object,
 			set_name (self, g_value_get_string (value));
 		break;
 		case PROP_OBJECT:
-			set_object (self, g_value_get_object (value));
+			set_object (self, g_value_get_object (value), TRUE);
 		break;
 		case PROP_FLAGS:
-			set_flags (self, g_value_get_flags (value));
+			set_flags (self, g_value_get_flags (value), TRUE);
 		break;
 		case PROP_EXPRESSION:
-			set_expression (self, g_value_get_object (value));
+			set_expression (self, g_value_get_object (value), TRUE);
 		break;
 		case PROP_CONSTRAINT:
 			set_constraint (self, g_value_get_object (value));
@@ -511,7 +502,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	object_class->dispose = cdn_variable_dispose;
 
 	object_class->get_property = cdn_variable_get_property;
-	object_class->set_property = cdn_variable_set_variable;
+	object_class->set_property = cdn_variable_set_property;
 
 	g_type_class_add_private (object_class, sizeof(CdnVariablePrivate));
 
@@ -527,8 +518,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	                                                      "Name",
 	                                                      "Name",
 	                                                      NULL,
-	                                                      G_PARAM_READWRITE |
-	                                                      G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE));
 
 	/**
 	 * CdnVariable:object:
@@ -542,8 +532,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	                                                      "Object",
 	                                                      "Object",
 	                                                      CDN_TYPE_OBJECT,
-	                                                      G_PARAM_READWRITE |
-	                                                      G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE));
 
 	/**
 	 * CdnVariable:flags:
@@ -558,8 +547,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	                                                     "Flags",
 	                                                     CDN_TYPE_VARIABLE_FLAGS,
 	                                                     CDN_VARIABLE_FLAG_NONE,
-	                                                     G_PARAM_READWRITE |
-	                                                     G_PARAM_CONSTRUCT));
+	                                                     G_PARAM_READWRITE));
 
 	/**
 	 * CdnVariable:expression:
@@ -573,8 +561,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	                                                      "Expression",
 	                                                      "Expression",
 	                                                      CDN_TYPE_EXPRESSION,
-	                                                      G_PARAM_READWRITE |
-	                                                      G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE));
 
 	/**
 	 * CdnVariable:expression:
@@ -588,8 +575,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	                                                      "Constraint",
 	                                                      "Constraint",
 	                                                      CDN_TYPE_EXPRESSION,
-	                                                      G_PARAM_READWRITE |
-	                                                      G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE));
 
 	g_object_class_override_property (object_class,
 	                                  PROP_USE_COUNT,
@@ -679,11 +665,16 @@ cdn_variable_new (gchar const      *name,
                   CdnExpression    *expression,
                   CdnVariableFlags  flags)
 {
-	return g_object_new (CDN_TYPE_VARIABLE,
-	                     "name", name,
-	                     "expression", expression,
-	                     "flags", flags,
-	                     NULL);
+	CdnVariable *ret = (CdnVariable *)g_object_new (CDN_TYPE_VARIABLE, NULL);
+
+	ret->priv->name = g_strdup (name);
+
+	set_expression (ret, expression, FALSE);
+	set_flags (ret, flags, FALSE);
+
+	ret->priv->modified = FALSE;
+
+	return ret;
 }
 
 /**
@@ -800,7 +791,10 @@ cdn_variable_set_expression (CdnVariable   *property,
 	g_return_if_fail (CDN_IS_VARIABLE (property));
 	g_return_if_fail (CDN_IS_EXPRESSION (expression));
 
-	set_expression (property, expression);
+	if (set_expression (property, expression, TRUE))
+	{
+		g_object_notify (G_OBJECT (property), "expression");
+	}
 }
 
 /**
@@ -835,7 +829,11 @@ cdn_variable_set_constraint (CdnVariable   *property,
 	g_return_if_fail (CDN_IS_VARIABLE (property));
 	g_return_if_fail (expression == NULL || CDN_IS_EXPRESSION (expression));
 
-	set_constraint (property, expression);
+	if (set_constraint (property, expression))
+	{
+		g_object_notify (G_OBJECT (property), "constraint");
+	}
+
 }
 
 /**
@@ -988,7 +986,7 @@ cdn_variable_set_flags (CdnVariable      *property,
 {
 	g_return_if_fail (CDN_IS_VARIABLE (property));
 
-	set_flags (property, flags);
+	set_flags (property, flags, TRUE);
 }
 
 /**
@@ -1005,7 +1003,7 @@ cdn_variable_add_flags (CdnVariable      *property,
 {
 	g_return_if_fail (CDN_IS_VARIABLE (property));
 
-	set_flags (property, property->priv->flags | flags);
+	set_flags (property, property->priv->flags | flags, TRUE);
 }
 
 /**
@@ -1022,7 +1020,7 @@ cdn_variable_remove_flags (CdnVariable      *property,
 {
 	g_return_if_fail (CDN_IS_VARIABLE (property));
 
-	set_flags (property, property->priv->flags & ~flags);
+	set_flags (property, property->priv->flags & ~flags, TRUE);
 }
 
 /**
@@ -1361,12 +1359,13 @@ cdn_variable_copy (CdnVariable *property)
 
 void
 _cdn_variable_set_object (CdnVariable *property,
-                          CdnObject   *object)
+                          CdnObject   *object,
+                          gboolean     notify)
 {
 	g_return_if_fail (CDN_IS_VARIABLE (property));
 	g_return_if_fail (object == NULL || CDN_IS_OBJECT (object));
 
-	set_object (property, object);
+	set_object (property, object, notify);
 }
 
 static GSList *

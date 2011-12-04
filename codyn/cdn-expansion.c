@@ -22,12 +22,26 @@
 
 #include "cdn-expansion.h"
 
-#define CDN_EXPANSION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EXPANSION, CdnExpansionPrivate))
+GType
+cdn_expansion_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnExpansion",
+		                                      (GBoxedCopyFunc)cdn_expansion_ref,
+		                                      (GBoxedFreeFunc)cdn_expansion_unref);
+	}
+
+	return gtype;
+}
 
 typedef struct
 {
 	gchar *text;
 	gint idx;
+	gint ref_count;
 } Expansion;
 
 static Expansion *
@@ -37,57 +51,102 @@ expansion_new (gchar const *text)
 
 	ret = g_slice_new0 (Expansion);
 	ret->text = g_strdup (text);
+	ret->ref_count = 1;
 
 	return ret;
 }
 
-static void
-expansion_free (Expansion *self)
+static Expansion *
+expansion_ref (Expansion *self)
 {
-	g_free (self->text);
-	g_slice_free (Expansion, self);
+	g_atomic_int_inc (&(self->ref_count));
+	return self;
 }
 
-struct _CdnExpansionPrivate
+static void
+expansion_unref (Expansion *self)
 {
-	GPtrArray *expansions;
-	gboolean copy_on_write;
+	if (g_atomic_int_dec_and_test (&(self->ref_count)))
+	{
+		g_free (self->text);
+		g_slice_free (Expansion, self);
+	}
+}
+
+struct _CdnExpansion
+{
+	union
+	{
+		GPtrArray *expansions;
+		Expansion *text;
+	};
+
+	gint ref_count;
+
+	guint copy_on_write : 1;
+	guint is_one : 1;
 };
 
-G_DEFINE_TYPE (CdnExpansion, cdn_expansion, G_TYPE_OBJECT)
-
-static void
-cdn_expansion_finalize (GObject *object)
+void
+cdn_expansion_unref (CdnExpansion *expansion)
 {
-	CdnExpansion *expansion;
+	if (!expansion || !g_atomic_int_dec_and_test (&(expansion->ref_count)))
+	{
+		return;
+	}
 
-	expansion = CDN_EXPANSION (object);
+	if (expansion->is_one)
+	{
+		expansion_unref (expansion->text);
+	}
+	else
+	{
+		g_ptr_array_unref (expansion->expansions);
+	}
 
-	g_ptr_array_unref (expansion->priv->expansions);
-
-	G_OBJECT_CLASS (cdn_expansion_parent_class)->finalize (object);
+	g_slice_free (CdnExpansion, expansion);
 }
 
-static void
-cdn_expansion_class_init (CdnExpansionClass *klass)
+CdnExpansion *
+cdn_expansion_ref (CdnExpansion *expansion)
 {
-	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	if (!expansion)
+	{
+		return expansion;
+	}
 
-	object_class->finalize = cdn_expansion_finalize;
-
-	g_type_class_add_private (object_class, sizeof (CdnExpansionPrivate));
+	g_atomic_int_inc (&(expansion->ref_count));
+	return expansion;
 }
 
-static void
-cdn_expansion_init (CdnExpansion *self)
+static CdnExpansion *
+cdn_expansion_create ()
 {
-	self->priv = CDN_EXPANSION_GET_PRIVATE (self);
+	CdnExpansion *self;
+
+	self = g_slice_new0 (CdnExpansion);
+	self->ref_count = 1;
+
+	return self;
 }
 
 static Expansion *
 expansion_copy (Expansion *ex)
 {
+	return expansion_ref (ex);
+}
+
+static Expansion *
+expansion_copy_on_write (Expansion *ex)
+{
 	Expansion *ret;
+
+	if (ex->ref_count == 1)
+	{
+		return ex;
+	}
+
+	expansion_unref (ex);
 
 	ret = expansion_new (ex->text);
 	ret->idx = ex->idx;
@@ -96,45 +155,122 @@ expansion_copy (Expansion *ex)
 }
 
 static Expansion *
-get_ex (CdnExpansion *id, gint idx)
+get_ex_real (CdnExpansion *id,
+             gint          idx,
+             gboolean      copy_on_write)
 {
-	if (idx <= -(gint)id->priv->expansions->len || idx >= id->priv->expansions->len)
+	gint num;
+
+	num = cdn_expansion_num (id);
+
+	if (idx <= -(gint)num || idx >= num)
 	{
 		return NULL;
 	}
 
 	if (idx < 0)
 	{
-		idx = (gint)id->priv->expansions->len + idx;
+		idx = (gint)num + idx;
 	}
 
-	return g_ptr_array_index (id->priv->expansions, idx);
+	if (id->is_one)
+	{
+		if (copy_on_write)
+		{
+			id->text = expansion_copy_on_write (id->text);
+		}
+
+		return id->text;
+	}
+	else
+	{
+		if (copy_on_write)
+		{
+			id->expansions->pdata[idx] = expansion_copy_on_write (g_ptr_array_index (id->expansions, idx));
+		}
+
+		return g_ptr_array_index (id->expansions, idx);
+	}
 }
 
-static void
-copy_on_write (CdnExpansion *expansion)
+static Expansion *
+get_ex (CdnExpansion *id,
+        gint          idx)
 {
-	GPtrArray *ptr = g_ptr_array_new ();
+	return get_ex_real (id, idx, FALSE);
+}
+
+static gboolean
+copy_on_write_sized (CdnExpansion *expansion,
+                     gboolean      make_multi,
+                     gint          num)
+{
+	GPtrArray *ptr;
 	gint i;
 
-	if (!expansion->priv->copy_on_write)
+	if (!expansion->copy_on_write)
 	{
-		return;
+		if ((make_multi || num > 0) && expansion->is_one)
+		{
+			ptr = g_ptr_array_sized_new (1 + num);
+			g_ptr_array_set_free_func (ptr, (GDestroyNotify)expansion_unref);
+
+			g_ptr_array_add (ptr, expansion_copy (expansion->text));
+			expansion_unref (expansion->text);
+
+			expansion->is_one = FALSE;
+			expansion->expansions = ptr;
+		}
+		else if (num > 0)
+		{
+			g_ptr_array_set_size (expansion->expansions,
+			                      expansion->expansions->len + num);
+		}
+
+		return FALSE;
 	}
 
-	ptr = g_ptr_array_sized_new (cdn_expansion_num (expansion));
-	g_ptr_array_set_free_func (ptr, (GDestroyNotify)expansion_free);
-
-	for (i = 0; i < cdn_expansion_num (expansion); ++i)
+	if (!expansion->is_one || make_multi)
 	{
-		g_ptr_array_add (ptr,
-		                 expansion_copy (get_ex (expansion, i)));
+		ptr = g_ptr_array_sized_new (cdn_expansion_num (expansion) + num);
+		g_ptr_array_set_free_func (ptr, (GDestroyNotify)expansion_unref);
+
+		for (i = 0; i < cdn_expansion_num (expansion); ++i)
+		{
+			g_ptr_array_add (ptr,
+			                 expansion_copy (get_ex (expansion, i)));
+		}
+
+		if (!expansion->is_one)
+		{
+			g_ptr_array_unref (expansion->expansions);
+		}
+		else
+		{
+			expansion_unref (expansion->text);
+		}
+
+		expansion->expansions = ptr;
+		expansion->is_one = FALSE;
+	}
+	else
+	{
+		if (expansion->text->ref_count > 1)
+		{
+			expansion_unref (expansion->text);
+			expansion->text = expansion_copy (expansion->text);
+		}
 	}
 
-	g_ptr_array_unref (expansion->priv->expansions);
+	expansion->copy_on_write = FALSE;
+	return TRUE;
+}
 
-	expansion->priv->expansions = ptr;
-	expansion->priv->copy_on_write = FALSE;
+static gboolean
+copy_on_write (CdnExpansion *expansion,
+               gboolean      make_multi)
+{
+	return copy_on_write_sized (expansion, make_multi, 0);
 }
 
 CdnExpansion *
@@ -170,46 +306,54 @@ cdn_expansion_new_one (gchar const *item)
 {
 	CdnExpansion *ret;
 
-	ret = g_object_new (CDN_TYPE_EXPANSION, NULL);
-	ret->priv->expansions = g_ptr_array_sized_new (1);
-	g_ptr_array_set_free_func (ret->priv->expansions, (GDestroyNotify)expansion_free);
+	ret = cdn_expansion_create ();
 
-	g_ptr_array_add (ret->priv->expansions, expansion_new (item));
+	ret->text = expansion_new (item);
+	ret->is_one = TRUE;
+
 	return ret;
 }
 
 CdnExpansion *
 cdn_expansion_new (gchar const * const *items)
 {
+	return cdn_expansion_new_sized (items, 2);
+}
+
+CdnExpansion *
+cdn_expansion_new_sized (gchar const * const *items,
+                         gint                 sized)
+{
 	CdnExpansion *ret;
 
-	ret = g_object_new (CDN_TYPE_EXPANSION, NULL);
+	ret = cdn_expansion_create ();
 
-	ret->priv->expansions =
-		g_ptr_array_new_with_free_func ((GDestroyNotify)expansion_free);
+	ret->expansions = g_ptr_array_sized_new (sized);
+
+	g_ptr_array_set_free_func (ret->expansions,
+	                           (GDestroyNotify)expansion_unref);
 
 	while (items && *items)
 	{
-		g_ptr_array_add (ret->priv->expansions,
+		g_ptr_array_add (ret->expansions,
 		                 expansion_new (*items));
 		++items;
 	}
 
-	if (ret->priv->expansions->len == 0)
+	if (ret->expansions->len == 0)
 	{
-		g_ptr_array_add (ret->priv->expansions,
+		g_ptr_array_add (ret->expansions,
 		                 expansion_new (""));
 	}
 
 	return ret;
+
 }
 
 gint
 cdn_expansion_num (CdnExpansion *id)
 {
-	g_return_val_if_fail (CDN_IS_EXPANSION (id), 0);
-
-	return id->priv->expansions->len;
+	return id->is_one ? 1 : id->expansions->len;
 }
 
 gchar const *
@@ -217,8 +361,6 @@ cdn_expansion_get (CdnExpansion *id,
                    gint          idx)
 {
 	Expansion *ex;
-
-	g_return_val_if_fail (CDN_IS_EXPANSION (id), NULL);
 
 	ex = get_ex (id, idx);
 
@@ -230,8 +372,6 @@ cdn_expansion_get_index (CdnExpansion *id,
                          gint          idx)
 {
 	Expansion *ex;
-
-	g_return_val_if_fail (CDN_IS_EXPANSION (id), 0);
 
 	ex = get_ex (id, idx);
 
@@ -245,14 +385,15 @@ cdn_expansion_set_index (CdnExpansion *id,
 {
 	Expansion *ex;
 
-	g_return_if_fail (CDN_IS_EXPANSION (id));
-
-	copy_on_write (id);
-
 	ex = get_ex (id, idx);
 
 	if (ex)
 	{
+		if (copy_on_write (id, FALSE))
+		{
+			ex = get_ex (id, idx);
+		}
+
 		ex->idx = val;
 	}
 }
@@ -264,14 +405,22 @@ cdn_expansion_set (CdnExpansion *id,
 {
 	Expansion *ex;
 
-	g_return_if_fail (CDN_IS_EXPANSION (id));
-
-	copy_on_write (id);
-
 	ex = get_ex (id, idx);
 
 	if (ex)
 	{
+		copy_on_write (id, FALSE);
+		ex = get_ex_real (id, idx, TRUE);
+
+		if (id->is_one)
+		{
+			ex = id->text;
+		}
+		else
+		{
+			ex = id->expansions->pdata[idx];
+		}
+
 		g_free (ex->text);
 		ex->text = g_strdup (val);
 	}
@@ -291,17 +440,24 @@ cdn_expansion_copy (CdnExpansion *id)
 {
 	CdnExpansion *ret;
 
-	g_return_val_if_fail (id == NULL || CDN_IS_EXPANSION (id), NULL);
-
 	if (id == NULL)
 	{
 		return NULL;
 	}
 
-	ret = g_object_new (CDN_TYPE_EXPANSION, NULL);
-	ret->priv->expansions = g_ptr_array_ref (id->priv->expansions);
+	ret = cdn_expansion_create ();
 
-	ret->priv->copy_on_write = TRUE;
+	if (id->is_one)
+	{
+		ret->is_one = TRUE;
+		ret->text = expansion_ref (id->text);
+	}
+	else
+	{
+		ret->expansions = g_ptr_array_ref (id->expansions);
+	}
+
+	ret->copy_on_write = TRUE;
 
 	return ret;
 }
@@ -310,11 +466,9 @@ void
 cdn_expansion_add (CdnExpansion *id,
                    gchar const  *item)
 {
-	g_return_if_fail (CDN_IS_EXPANSION (id));
-	g_return_if_fail (item != NULL);
+	copy_on_write (id, TRUE);
 
-	copy_on_write (id);
-	g_ptr_array_add (id->priv->expansions,
+	g_ptr_array_add (id->expansions,
 	                 expansion_new (item));
 }
 
@@ -326,27 +480,19 @@ cdn_expansion_insert (CdnExpansion *id,
 	gint n;
 	gint i;
 
-	g_return_if_fail (CDN_IS_EXPANSION (id));
+	copy_on_write (id, TRUE);
 
-	copy_on_write (id);
-
-	g_ptr_array_add (id->priv->expansions,
-	                 expansion_new (NULL));
+	g_ptr_array_add (id->expansions,
+	                 NULL);
 
 	n = cdn_expansion_num (id);
 
 	for (i = n - 1; i > idx; --i)
 	{
-		Expansion *e1 = get_ex (id, i);
-		Expansion *e2 = get_ex (id, i - 1);
-
-		g_free (e1->text);
-
-		e1->text = g_strdup (e2->text);
-		e1->idx = e2->idx;
+		id->expansions->pdata[i] = id->expansions->pdata[i - 1];
 	}
 
-	cdn_expansion_set (id, idx, item);
+	id->expansions->pdata[idx] = expansion_new (item);
 }
 
 static gboolean
@@ -366,9 +512,9 @@ annotate_group (GSList *expansions,
 		Expansion *e;
 
 		ex = expansions->data;
-		copy_on_write (ex);
+		copy_on_write (ex, FALSE);
 
-		e = get_ex (ex, i);
+		e = get_ex_real (ex, i, TRUE);
 
 		if (e)
 		{
@@ -424,13 +570,18 @@ cdn_expansion_append (CdnExpansion *id,
                       gint          idx)
 {
 	gint i;
+	gint onum;
 
-	g_return_if_fail (CDN_IS_EXPANSION (id));
-	g_return_if_fail (CDN_IS_EXPANSION (other));
+	onum = cdn_expansion_num (other);
 
-	copy_on_write (id);
+	if (onum <= idx)
+	{
+		return;
+	}
 
-	for (i = idx; i < cdn_expansion_num (other); ++i)
+	copy_on_write (id, TRUE);
+
+	for (i = idx; i < onum; ++i)
 	{
 		cdn_expansion_add (id,
 		                   cdn_expansion_get (other, i));
@@ -438,5 +589,37 @@ cdn_expansion_append (CdnExpansion *id,
 		cdn_expansion_set_index (id,
 		                         cdn_expansion_num (id) - 1,
 		                         cdn_expansion_get_index (other, i));
+	}
+}
+
+void
+cdn_expansion_prepend (CdnExpansion *id,
+                       CdnExpansion *other,
+                       gint          idx)
+{
+	gint i;
+	gint onum;
+
+	onum = cdn_expansion_num (other);
+
+	if (onum <= idx)
+	{
+		return;
+	}
+
+	if (!copy_on_write_sized (id, TRUE, onum - idx))
+	{
+		g_ptr_array_set_size (id->expansions,
+		                      id->expansions->len + (onum - idx));
+	}
+
+	for (i = idx; i < onum; ++i)
+	{
+		gint pidx = i - idx + 1;
+
+		id->expansions->pdata[pidx + (onum - idx)] = id->expansions->pdata[pidx];
+		id->expansions->pdata[pidx] = expansion_copy (get_ex (other, i));
+
+		++id->expansions->len;
 	}
 }

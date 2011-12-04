@@ -878,8 +878,22 @@ cdn_embedded_string_expand (CdnEmbeddedString   *s,
 	return embedded_string_expand (s, ctx, error);
 }
 
+static gchar *
+fast_itoa (gint   val,
+           gchar *ret)
+{
+	gint i = 30;
+
+	for (; val && i; --i, val /= 10)
+	{
+		ret[i] = "0123456789"[val % 10];
+	}
+
+	return ret + i + 1;
+}
+
 static GSList *
-parse_expansion_range (gchar const *s)
+parse_expansion_range_rev (gchar const *s)
 {
 	static GRegex *rangereg = NULL;
 	static GRegex *timesreg = NULL;
@@ -930,14 +944,15 @@ parse_expansion_range (gchar const *s)
 		{
 			while (cstart <= cend)
 			{
-				gchar *it;
+				gchar it[32] = {0,};
 
-				it = g_strdup_printf ("%d", cstart);
+				gchar const *pptr[] = {
+					fast_itoa (cstart, it),
+					NULL
+				};
 
 				ret = g_slist_prepend (ret,
-				                       cdn_expansion_new_one (it));
-
-				g_free (it);
+				                       cdn_expansion_new (pptr));
 
 				cstart += cstep;
 			}
@@ -958,8 +973,13 @@ parse_expansion_range (gchar const *s)
 
 		while (cstart > 0)
 		{
+			gchar const *pptr[] = {
+				rest,
+				NULL
+			};
+
 			ret = g_slist_prepend (ret,
-			                       cdn_expansion_new_one (rest));
+			                       cdn_expansion_new (pptr));
 			--cstart;
 		}
 
@@ -968,11 +988,22 @@ parse_expansion_range (gchar const *s)
 	}
 	else
 	{
+		gchar const *pptr[] = {
+			s,
+			NULL
+		};
+
 		ret = g_slist_prepend (ret,
-		                       cdn_expansion_new_one (s));
+		                       cdn_expansion_new (pptr));
 	}
 
-	return g_slist_reverse (ret);
+	return ret;
+}
+
+static GSList *
+parse_expansion_range (gchar const *s)
+{
+	return g_slist_reverse (parse_expansion_range (s));
 }
 
 static GSList *
@@ -1029,7 +1060,7 @@ apply_reduce (CdnEmbeddedString *s,
 		ex = cdn_expansion_new ((gchar const * const *)cc);
 
 		cdn_embedded_context_add_expansion (ctx, ex);
-		g_object_unref (ex);
+		cdn_expansion_unref (ex);
 
 		item = evaluate_node (s, filter, ctx, 0, error);
 		cdn_embedded_context_restore (ctx);
@@ -1068,7 +1099,7 @@ apply_map (CdnEmbeddedString *s,
 		ret = g_slist_prepend (ret, cdn_expansion_new_one (item));
 		g_free (item);
 
-		g_object_unref (part->data);
+		cdn_expansion_unref (part->data);
 
 		part = g_slist_next (part);
 	}
@@ -1120,7 +1151,7 @@ apply_filters_rev (CdnEmbeddedString *s,
 	cdn_embedded_context_save (ctx);
 	cdn_embedded_context_add_expansion (ctx, all);
 
-	g_object_unref (all);
+	cdn_expansion_unref (all);
 
 	for (fitem = filt; fitem; fitem = g_slist_next (fitem))
 	{
@@ -1131,7 +1162,7 @@ apply_filters_rev (CdnEmbeddedString *s,
 		{
 			val = apply_reduce (s, ctx, items, n, error);
 
-			g_slist_foreach (items, (GFunc)g_object_unref, NULL);
+			g_slist_foreach (items, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (items);
 
 			items = g_slist_prepend (NULL,
@@ -1300,6 +1331,24 @@ ex_node_append_text (ExNode *parent,
 	gint end = ptr - text;
 	ExNode *n;
 
+	if (parent->last_child && parent->last_child->type == EX_NODE_TYPE_TEXT)
+	{
+		ExNode *lc = parent->last_child;
+
+		// Concat directly here
+		if (buf->len)
+		{
+			gchar *cc = g_strconcat (lc->text, buf->str, NULL);
+
+			g_free (lc->text);
+			lc->text = cc;
+
+			lc->end = end;
+		}
+
+		return lc;
+	}
+
 	n = ex_node_new (parent, EX_NODE_TYPE_TEXT, buf->str, *last, end);
 
 	*last = end + 1;
@@ -1341,8 +1390,11 @@ ex_node_expand (gchar const  *text,
 			{
 				ExNode *elems;
 
-				// Append the text to the current concat node
-				ex_node_append_text (current, buf, text, ptr, &last);
+				// Append the prefix text to the current concat node
+				if (buf->len)
+				{
+					ex_node_append_text (current, buf, text, ptr, &last);
+				}
 
 				// Create a new elements node
 				elems = ex_node_new (current,
@@ -1493,10 +1545,10 @@ expand_elements (CdnEmbeddedString   *s,
 			{
 				// This means no additional expansions, just
 				// text. We are going to expand ranges on this
-				GSList *more = parse_expansion_range (cdn_expansion_get (item->data, 0));
+				GSList *more = parse_expansion_range_rev (cdn_expansion_get (item->data, 0));
 
-				ret = g_slist_concat (g_slist_reverse (more), ret);
-				g_object_unref (item->data);
+				ret = g_slist_concat (more, ret);
+				cdn_expansion_unref (item->data);
 			}
 			else
 			{
@@ -1513,6 +1565,7 @@ expand_elements (CdnEmbeddedString   *s,
 	// All items that are the result of a list, will have in their
 	// expansions an additional @1 which refers to that element
 	ret = apply_filters_rev (s, ctx, ret, pos, error);
+
 	ret = annotate_first (ret);
 
 	return g_slist_reverse (ret);
@@ -1525,15 +1578,106 @@ expansion_append (CdnExpansion *a,
 	// Merge @0 of a and b and append @1.. of b to a
 	CdnExpansion *ret;
 	gchar *cc;
+	gint numa;
+	gint numb;
 
-	cc = g_strconcat (cdn_expansion_get (a, 0), cdn_expansion_get (b, 0), NULL);
+	numa = cdn_expansion_num (a);
+	numb = cdn_expansion_num (b);
 
-	ret = cdn_expansion_new_one (cc);
+	if (numb == 1 && !*cdn_expansion_get (b, 0))
+	{
+		return cdn_expansion_copy (a);
+	}
+	else if (numa == 1 && !*cdn_expansion_get (a, 0))
+	{
+		return cdn_expansion_copy (b);
+	}
 
-	cdn_expansion_append (ret, a, 1);
-	cdn_expansion_append (ret, b, 1);
+	cc = g_strconcat (cdn_expansion_get (a, 0),
+	                  cdn_expansion_get (b, 0), NULL);
+
+	if (numa == 1 && numb == 1)
+	{
+		ret = cdn_expansion_new_one (cc);
+	}
+	else
+	{
+		gchar const *pptr[] = {
+			cc,
+			NULL
+		};
+
+		ret = cdn_expansion_new_sized (pptr, numa + numb - 1);
+
+		cdn_expansion_append (ret, a, 1);
+		cdn_expansion_append (ret, b, 1);
+	}
+
+	g_free (cc);
 
 	return ret;
+}
+
+static CdnExpansion *
+expansion_append2 (CdnExpansion *a,
+                   CdnExpansion *b)
+{
+	gchar *cc;
+
+	gint numa;
+	gint numb;
+
+	numa = cdn_expansion_num (a);
+	numb = cdn_expansion_num (b);
+
+	if (numb == 1 && !*cdn_expansion_get (b, 0))
+	{
+		cdn_expansion_unref (b);
+		return a;
+	}
+	else if (numa == 1 && !*cdn_expansion_get (a, 0))
+	{
+		cdn_expansion_unref (a);
+		return b;
+	}
+
+	// Can reuse both a and b
+	cc = g_strconcat (cdn_expansion_get (a, 0),
+	                  cdn_expansion_get (b, 0), NULL);
+
+	cdn_expansion_set (a, 0, cc);
+	g_free (cc);
+
+	cdn_expansion_append (a, b, 1);
+	cdn_expansion_unref (b);
+
+	return a;
+}
+
+static CdnExpansion *
+expansion_append1 (CdnExpansion *a,
+                   CdnExpansion *b)
+{
+	// Can reuse only b
+	gchar *cc;
+	gint numa;
+
+	numa = cdn_expansion_num (a);
+
+	if (numa == 1 && !*cdn_expansion_get (a, 0))
+	{
+		return b;
+	}
+
+	cc = g_strconcat (cdn_expansion_get (a, 0),
+	                  cdn_expansion_get (b, 0), NULL);
+
+	cdn_expansion_set (b, 0, cc);
+	g_free (cc);
+
+	cdn_expansion_prepend (b, a, 1);
+
+	return b;
 }
 
 static GSList *
@@ -1566,11 +1710,22 @@ expand_concat (CdnEmbeddedString   *s,
 				// Append the item onto the ritm
 				if (ritm)
 				{
-					et = expansion_append (ritm->data, item->data);
+					if (!ritm->next && !item->next)
+					{
+						et = expansion_append2 (ritm->data, item->data);
+					}
+					else if (!ritm->next)
+					{
+						et = expansion_append1 (ritm->data, item->data);
+					}
+					else
+					{
+						et = expansion_append (ritm->data, item->data);
+					}
 				}
 				else
 				{
-					et = cdn_expansion_copy (item->data);
+					et = item->data;
 				}
 
 				cdn_expansion_set_index (et, 0, i++);
@@ -1581,7 +1736,10 @@ expand_concat (CdnEmbeddedString   *s,
 
 			if (ritm)
 			{
-				g_object_unref (ritm->data);
+				if (!ex)
+				{
+					cdn_expansion_unref (ritm->data);
+				}
 			}
 			else
 			{
@@ -1589,7 +1747,6 @@ expand_concat (CdnEmbeddedString   *s,
 			}
 		}
 
-		g_slist_foreach (ex, (GFunc)g_object_unref, NULL);
 		g_slist_free (ex);
 
 		g_slist_free (ret);
@@ -1823,7 +1980,7 @@ expand_elements_escape (CdnEmbeddedString   *s,
 				GSList *more = parse_expansion_range (cdn_expansion_get (item->data, 0));
 
 				ret = g_slist_concat (g_slist_reverse (more), ret);
-				g_object_unref (item->data);
+				cdn_expansion_unref (item->data);
 			}
 			else
 			{
@@ -1841,7 +1998,7 @@ expand_elements_escape (CdnEmbeddedString   *s,
 	// expansions an additional @1 which refers to that element
 	ret = apply_filters_rev_escape (s, ctx, ret, pos, &text, error);
 
-	g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (ret, (GFunc)cdn_expansion_unref, NULL);
 	g_slist_free (ret);
 
 	text = g_slist_reverse (text);

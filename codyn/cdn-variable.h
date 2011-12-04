@@ -27,6 +27,7 @@
 #include <codyn/cdn-utils.h>
 #include <codyn/cdn-modifiable.h>
 #include <codyn/cdn-usable.h>
+#include <codyn/cdn-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -90,9 +91,6 @@ struct _CdnVariableClass
 	                            CdnVariableFlags  flags);
 };
 
-/* forward declaration */
-CDN_FORWARD_DECL (CdnObject);
-
 GType cdn_variable_get_type (void) G_GNUC_CONST;
 
 CdnVariable       *cdn_variable_new                     (const gchar      *name,
@@ -103,8 +101,7 @@ const gchar       *cdn_variable_get_name                (CdnVariable        *pro
 gboolean           cdn_variable_set_name                (CdnVariable        *property,
                                                          const gchar        *name);
 
-CDN_FORWARD_DECL (CdnObject) *
-                   cdn_variable_get_object              (CdnVariable        *property);
+CdnObjectForward *cdn_variable_get_object              (CdnVariable        *property);
 
 gboolean           cdn_variable_get_integrated          (CdnVariable        *property);
 void               cdn_variable_set_integrated          (CdnVariable        *property,
@@ -155,8 +152,9 @@ gchar             *cdn_variable_get_full_name_for_display (CdnVariable        *p
 
 CdnVariable       *cdn_variable_copy                    (CdnVariable        *property);
 
-void               _cdn_variable_set_object             (CdnVariable                  *property,
-                                                         CDN_FORWARD_DECL (CdnObject) *object);
+void               _cdn_variable_set_object             (CdnVariable      *property,
+                                                         CdnObjectForward *object,
+                                                         gboolean          notify);
 
 GSList            *cdn_variable_get_actions             (CdnVariable *property);
 

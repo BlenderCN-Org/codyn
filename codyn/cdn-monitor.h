@@ -26,6 +26,7 @@
 #include <glib-object.h>
 #include <codyn/cdn-object.h>
 #include <codyn/cdn-utils.h>
+#include <codyn/cdn-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -56,11 +57,10 @@ struct _CdnMonitorClass
 };
 
 /* forward declaration */
-CDN_FORWARD_DECL (CdnNetwork);
 
 GType          cdn_monitor_get_type           (void) G_GNUC_CONST;
 
-CdnMonitor    *cdn_monitor_new                (CDN_FORWARD_DECL (CdnNetwork) *network,
+CdnMonitor    *cdn_monitor_new                (CdnNetworkForward *network,
                                                CdnVariable        *property);
 
 const gdouble *cdn_monitor_get_sites          (CdnMonitor         *monitor,

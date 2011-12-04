@@ -18,7 +18,7 @@ cdn_instruction_custom_function_ref_finalize (CdnMiniObject *object)
 }
 
 static CdnMiniObject *
-cdn_instruction_custom_function_ref_copy (CdnMiniObject const *object)
+cdn_instruction_custom_function_ref_copy (CdnMiniObject *object)
 {
 	CdnMiniObject *ret;
 	CdnInstructionCustomFunctionRef *func;

@@ -30,7 +30,7 @@ cdn_instruction_variable_finalize (CdnMiniObject *object)
 }
 
 static CdnMiniObject *
-cdn_instruction_variable_copy (CdnMiniObject const *object)
+cdn_instruction_variable_copy (CdnMiniObject *object)
 {
 	CdnMiniObject *ret;
 	CdnInstructionVariable *self;

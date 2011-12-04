@@ -262,13 +262,13 @@ set_to (CdnEdge  *link,
 
 		link->priv->ext_signals[EXT_PROPERTY_ADDED] =
 			g_signal_connect_swapped (link->priv->to,
-			                          "property-added",
+			                          "variable-added",
 			                          G_CALLBACK (on_variable_added_removed),
 			                          link);
 
 		link->priv->ext_signals[EXT_PROPERTY_REMOVED] =
 			g_signal_connect_swapped (link->priv->to,
-			                          "property-removed",
+			                          "variable-removed",
 			                          G_CALLBACK (on_variable_added_removed),
 			                          link);
 	}

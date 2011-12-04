@@ -44,7 +44,7 @@
 #include "cdn-layoutable.h"
 
 /**
- * SECTION:codyn-deserializer
+ * SECTION:cdn-network-deserializer
  * @short_description: XML to Network deserializer
  *
  * Use this to deserialize an XML description of a network to a #CdnNetwork.

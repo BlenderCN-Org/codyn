@@ -25,6 +25,7 @@
 
 #include <glib-object.h>
 #include <codyn/cdn-utils.h>
+#include <codyn/cdn-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -39,10 +40,6 @@ G_BEGIN_DECLS
 typedef struct _CdnCompileContext		CdnCompileContext;
 typedef struct _CdnCompileContextClass		CdnCompileContextClass;
 typedef struct _CdnCompileContextPrivate	CdnCompileContextPrivate;
-
-CDN_FORWARD_DECL (CdnObject);
-CDN_FORWARD_DECL (CdnVariable);
-CDN_FORWARD_DECL (CdnFunction);
 
 struct _CdnCompileContext
 {
@@ -63,16 +60,16 @@ void cdn_compile_context_save (CdnCompileContext *context);
 void cdn_compile_context_restore (CdnCompileContext *context);
 
 void cdn_compile_context_prepend_object (CdnCompileContext *context,
-                                         CDN_FORWARD_DECL (CdnObject) *object);
+                                         CdnObjectForward *object);
 
 void cdn_compile_context_append_object (CdnCompileContext *context,
-                                        CDN_FORWARD_DECL (CdnObject) *object);
+                                        CdnObjectForward *object);
 
 void cdn_compile_context_prepend_function (CdnCompileContext *context,
-                                           CDN_FORWARD_DECL (CdnFunction) *function);
+                                           CdnFunctionForward *function);
 
 void cdn_compile_context_append_function (CdnCompileContext *context,
-                                          CDN_FORWARD_DECL (CdnFunction) *function);
+                                          CdnFunctionForward *function);
 
 void cdn_compile_context_set_function_ref_priority (CdnCompileContext *context,
                                                     gboolean           prio);
@@ -84,11 +81,11 @@ void cdn_compile_context_set_function_arg_priority (CdnCompileContext *context,
 
 gboolean cdn_compile_context_get_function_arg_priority (CdnCompileContext *context);
 
-CDN_FORWARD_DECL (CdnVariable) *
+CdnVariableForward *
 cdn_compile_context_lookup_variable (CdnCompileContext *context,
                                      const gchar       *name);
 
-CDN_FORWARD_DECL (CdnFunction) *
+CdnFunctionForward *
 cdn_compile_context_lookup_function (CdnCompileContext *context,
                                      const gchar       *name);
 

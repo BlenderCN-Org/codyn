@@ -32,6 +32,7 @@
 #include <codyn/cdn-function.h>
 #include <codyn/integrators/cdn-integrator.h>
 #include <codyn/cdn-node.h>
+#include <codyn/cdn-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -46,9 +47,6 @@ G_BEGIN_DECLS
 typedef struct _CdnNetwork        CdnNetwork;
 typedef struct _CdnNetworkClass   CdnNetworkClass;
 typedef struct _CdnNetworkPrivate CdnNetworkPrivate;
-
-/* Forward declaration */
-CDN_FORWARD_DECL (CdnImport);
 
 #define CDN_NETWORK_LOAD_ERROR (cdn_network_load_error_quark ())
 
@@ -192,15 +190,15 @@ void              cdn_network_step                   (CdnNetwork *network,
 
 CdnNode         *cdn_network_get_template_node     (CdnNetwork   *network);
 
-CDN_FORWARD_DECL (CdnImport) *cdn_network_get_import  (CdnNetwork   *network,
+CdnImportForward *cdn_network_get_import  (CdnNetwork   *network,
                                                        GFile        *file);
 
-CDN_FORWARD_DECL (CdnImport) *cdn_network_get_import_from_path  (CdnNetwork   *network,
+CdnImportForward *cdn_network_get_import_from_path  (CdnNetwork   *network,
                                                                  const gchar  *path);
 
 
 void              _cdn_network_register_import       (CdnNetwork        *network,
-                                                      CDN_FORWARD_DECL (CdnImport) *import);
+                                                      CdnImportForward *import);
 
 G_END_DECLS
 

@@ -27,6 +27,7 @@
 #include <codyn/cdn-variable.h>
 #include <codyn/cdn-expression.h>
 #include <codyn/cdn-modifiable.h>
+#include <codyn/cdn-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -37,8 +38,6 @@ G_BEGIN_DECLS
 #define CDN_IS_EDGE_ACTION(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CDN_TYPE_EDGE_ACTION))
 #define CDN_IS_EDGE_ACTION_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CDN_TYPE_EDGE_ACTION))
 #define CDN_EDGE_ACTION_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CDN_TYPE_EDGE_ACTION, CdnEdgeActionClass))
-
-CDN_FORWARD_DECL (CdnEdge);
 
 typedef struct _CdnEdgeAction		CdnEdgeAction;
 typedef struct _CdnEdgeActionClass	CdnEdgeActionClass;
@@ -80,10 +79,10 @@ CdnVariable    *cdn_edge_action_get_target_variable  (CdnEdgeAction *action);
 void            _cdn_edge_action_set_target_variable (CdnEdgeAction *action,
                                                       CdnVariable   *property);
 
-CDN_FORWARD_DECL (CdnEdge) *cdn_edge_action_get_edge (CdnEdgeAction *action);
+CdnEdgeForward *cdn_edge_action_get_edge (CdnEdgeAction *action);
 
 void            _cdn_edge_action_set_edge             (CdnEdgeAction              *action,
-                                                       CDN_FORWARD_DECL (CdnEdge) *link);
+                                                       CdnEdgeForward *link);
 
 G_END_DECLS
 
