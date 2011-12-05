@@ -1386,6 +1386,14 @@ ex_node_expand (gchar const  *text,
 					g_string_append_c (buf, '\\');
 				}
 			break;
+			case '\n':
+				while (*ptr && (g_ascii_isspace (*ptr)))
+				{
+					++ptr;
+				}
+
+				continue;
+			break;
 			case '{':
 			{
 				ExNode *elems;
