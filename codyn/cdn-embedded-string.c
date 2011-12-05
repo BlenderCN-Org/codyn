@@ -911,7 +911,7 @@ parse_expansion_range_rev (gchar const *s)
 
 	if (timesreg == NULL)
 	{
-		timesreg = g_regex_new ("\\s*([0-9]+)\\s*[*](.*)",
+		timesreg = g_regex_new ("^([0-9]+)[*]([^ ].*)$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
