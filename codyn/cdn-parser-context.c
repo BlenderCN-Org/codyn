@@ -1132,6 +1132,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 	gint i;
 	GSList *ret = NULL;
 	gboolean nameismulti;
+	GSList *valuesmulti = NULL;
 
 	if (context->priv->in_event_handler)
 	{
@@ -1153,6 +1154,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 		gchar const *exname;
 		GSList *values;
 		gboolean valueismulti;
+		gboolean hascontext = FALSE;
 
 		if (!value)
 		{
@@ -1166,17 +1168,26 @@ generate_name_value_pairs (CdnParserContext  *context,
 
 		exname = cdn_expansion_get (nameit->data, 0);
 
-		cdn_embedded_context_save (context->priv->embedded);
-		cdn_embedded_context_add_expansion (context->priv->embedded,
-		                                    nameit->data);
-
-		values = generate_expand_multival (context, sel, value);
-		valueismulti = values && cdn_expansion_num (values->data) > 1;
-
-		if (!values)
+		if (!valuesmulti)
 		{
-			cdn_embedded_context_restore (context->priv->embedded);
-			continue;
+			cdn_embedded_context_save (context->priv->embedded);
+			cdn_embedded_context_add_expansion (context->priv->embedded,
+			                                    nameit->data);
+
+			values = generate_expand_multival (context, sel, value);
+			valueismulti = values && cdn_expansion_num (values->data) > 1;
+			hascontext = TRUE;
+
+			if (!values)
+			{
+				cdn_embedded_context_restore (context->priv->embedded);
+				continue;
+			}
+		}
+		else
+		{
+			valueismulti = TRUE;
+			values = valuesmulti;
 		}
 
 		if (!valueismulti)
@@ -1190,11 +1201,16 @@ generate_name_value_pairs (CdnParserContext  *context,
 		{
 			// name and value are multi and need to be the same
 			// size
-			if (g_slist_length (values) == g_slist_length (names))
+			if (valuesmulti || g_slist_length (values) == g_slist_length (names))
 			{
+				if (!valuesmulti)
+				{
+					valuesmulti = values;
+				}
+
 				ret = g_slist_prepend (ret,
 				                       name_value_pair_new (nameit->data,
-				                                            g_slist_nth_data (values, i)));
+				                                            valuesmulti->data));
 
 				++cnt;
 			}
@@ -1261,7 +1277,23 @@ generate_name_value_pairs (CdnParserContext  *context,
 			cnt += num;
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		if (hascontext)
+		{
+			cdn_embedded_context_restore (context->priv->embedded);
+		}
+
+		if (valuesmulti)
+		{
+			cdn_expansion_unref (valuesmulti->data);
+
+			valuesmulti = g_slist_delete_link (valuesmulti,
+			                                   valuesmulti);
+		}
+		else
+		{
+			g_slist_foreach (values, (GFunc)cdn_expansion_unref, NULL);
+			g_slist_free (values);
+		}
 	}
 
 	if (count_name)
