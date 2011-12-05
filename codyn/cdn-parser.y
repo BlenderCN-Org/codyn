@@ -279,7 +279,7 @@ parse
 	: attributes
 	  T_KEY_PARSE
 	  value_as_string
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	  '{'				{ cdn_parser_context_push_define (context, $1); }
 	  define_contents
 	  '}'				{ cdn_parser_context_push_input_from_path (context, $3, $1); errb;
 	                                  cdn_parser_context_pop (context); }
@@ -436,7 +436,7 @@ define_item
 					                             $4,
 					                             TRUE,
 					                             $1.count); }
-	| debug
+	| common_scopes
 	| attributes_strict
 	  '{'				{ cdn_parser_context_push_scope (context, $1); }
 	  define_contents
