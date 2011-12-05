@@ -7,6 +7,7 @@ G_DEFINE_TYPE (CdnInstructionCustomFunctionRef, cdn_instruction_custom_function_
 struct _CdnInstructionCustomFunctionRefPrivate
 {
 	CdnFunction *function;
+	CdnStackManipulation smanip;
 };
 
 static void
@@ -48,13 +49,16 @@ static void
 cdn_instruction_custom_function_ref_execute (CdnInstruction *instruction,
                                              CdnStack       *stack)
 {
-	cdn_stack_push (stack, 0);
 }
 
-static gint
-cdn_instruction_custom_function_ref_get_stack_count (CdnInstruction *instruction)
+static CdnStackManipulation const *
+cdn_instruction_custom_function_ref_get_stack_manipulation (CdnInstruction *instruction)
 {
-	return 1;
+	CdnInstructionCustomFunctionRef *self;
+
+	self = (CdnInstructionCustomFunctionRef *)instruction;
+
+	return &self->priv->smanip;
 }
 
 static gboolean
@@ -78,7 +82,7 @@ cdn_instruction_custom_function_ref_class_init (CdnInstructionCustomFunctionRefC
 
 	inst_class->to_string = cdn_instruction_custom_function_ref_to_string;
 	inst_class->execute = cdn_instruction_custom_function_ref_execute;
-	inst_class->get_stack_count = cdn_instruction_custom_function_ref_get_stack_count;
+	inst_class->get_stack_manipulation = cdn_instruction_custom_function_ref_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_custom_function_ref_equal;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionCustomFunctionRefPrivate));
@@ -88,6 +92,9 @@ static void
 cdn_instruction_custom_function_ref_init (CdnInstructionCustomFunctionRef *self)
 {
 	self->priv = CDN_INSTRUCTION_CUSTOM_FUNCTION_REF_GET_PRIVATE (self);
+
+	self->priv->smanip.num_pop = 0;
+	self->priv->smanip.num_push = 0;
 }
 
 CdnInstruction *

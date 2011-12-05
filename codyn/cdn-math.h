@@ -28,54 +28,26 @@
 G_BEGIN_DECLS
 
 /**
- * CdnMathOperatorType:
- * @CDN_MATH_OPERATOR_TYPE_NONE: none
- * @CDN_MATH_OPERATOR_TYPE_UNARY_MINUS: unary minus
- * @CDN_MATH_OPERATOR_TYPE_MINUS: minus
- * @CDN_MATH_OPERATOR_TYPE_PLUS: plus
- * @CDN_MATH_OPERATOR_TYPE_MULTIPLY: multiply
- * @CDN_MATH_OPERATOR_TYPE_DIVIDE: divide
- * @CDN_MATH_OPERATOR_TYPE_MODULO: modulo
- * @CDN_MATH_OPERATOR_TYPE_POWER: power
- * @CDN_MATH_OPERATOR_TYPE_GREATER: greater
- * @CDN_MATH_OPERATOR_TYPE_LESS: less
- * @CDN_MATH_OPERATOR_TYPE_GREATER_OR_EQUAL: greater or equal
- * @CDN_MATH_OPERATOR_TYPE_LESS_OR_EQUAL: less or equal
- * @CDN_MATH_OPERATOR_TYPE_EQUAL: equal
- * @CDN_MATH_OPERATOR_TYPE_OR: or
- * @CDN_MATH_OPERATOR_TYPE_AND: and
- * @CDN_MATH_OPERATOR_TYPE_NEGATE: negate
- * @CDN_MATH_OPERATOR_TYPE_TERNARY: ternary
- * @CDN_MATH_OPERATOR_TYPE_NUM: number of operators
- *
- * Operator types.
- *
- */
-typedef enum
-{
-	CDN_MATH_OPERATOR_TYPE_NONE = 0,
-	CDN_MATH_OPERATOR_TYPE_UNARY_MINUS,
-	CDN_MATH_OPERATOR_TYPE_MINUS,
-	CDN_MATH_OPERATOR_TYPE_PLUS,
-	CDN_MATH_OPERATOR_TYPE_MULTIPLY,
-	CDN_MATH_OPERATOR_TYPE_DIVIDE,
-	CDN_MATH_OPERATOR_TYPE_MODULO,
-	CDN_MATH_OPERATOR_TYPE_POWER,
-	CDN_MATH_OPERATOR_TYPE_GREATER,
-	CDN_MATH_OPERATOR_TYPE_LESS,
-	CDN_MATH_OPERATOR_TYPE_GREATER_OR_EQUAL,
-	CDN_MATH_OPERATOR_TYPE_LESS_OR_EQUAL,
-	CDN_MATH_OPERATOR_TYPE_EQUAL,
-	CDN_MATH_OPERATOR_TYPE_OR,
-	CDN_MATH_OPERATOR_TYPE_AND,
-	CDN_MATH_OPERATOR_TYPE_NEGATE,
-	CDN_MATH_OPERATOR_TYPE_TERNARY,
-	CDN_MATH_OPERATOR_TYPE_NUM
-} CdnMathOperatorType;
-
-/**
  * CdnMathFunctionType:
  * @CDN_MATH_FUNCTION_TYPE_NONE: none
+ * @CDN_MATH_FUNCTION_TYPE_UNARY_MINUS: unary minus
+ * @CDN_MATH_FUNCTION_TYPE_MINUS: minus
+ * @CDN_MATH_FUNCTION_TYPE_PLUS: plus
+ * @CDN_MATH_FUNCTION_TYPE_MULTIPLY: multiply
+ * @CDN_MATH_FUNCTION_TYPE_EMULTIPLY: emultiply
+ * @CDN_MATH_FUNCTION_TYPE_DIVIDE: divide
+ * @CDN_MATH_FUNCTION_TYPE_EDIVIDE: edivide
+ * @CDN_MATH_FUNCTION_TYPE_MODULO: modulo
+ * @CDN_MATH_FUNCTION_TYPE_POWER: power
+ * @CDN_MATH_FUNCTION_TYPE_GREATER: greater
+ * @CDN_MATH_FUNCTION_TYPE_LESS: less
+ * @CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL: greater or equal
+ * @CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL: less or equal
+ * @CDN_MATH_FUNCTION_TYPE_EQUAL: equal
+ * @CDN_MATH_FUNCTION_TYPE_OR: or
+ * @CDN_MATH_FUNCTION_TYPE_AND: and
+ * @CDN_MATH_FUNCTION_TYPE_NEGATE: negate
+ * @CDN_MATH_FUNCTION_TYPE_TERNARY: ternary
  * @CDN_MATH_FUNCTION_TYPE_SIN: sine
  * @CDN_MATH_FUNCTION_TYPE_COS: cosine
  * @CDN_MATH_FUNCTION_TYPE_TAN: tangent
@@ -114,6 +86,24 @@ typedef enum
 typedef enum
 {
 	CDN_MATH_FUNCTION_TYPE_NONE = 0,
+	CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
+	CDN_MATH_FUNCTION_TYPE_MINUS,
+	CDN_MATH_FUNCTION_TYPE_PLUS,
+	CDN_MATH_FUNCTION_TYPE_MULTIPLY,
+	CDN_MATH_FUNCTION_TYPE_EMULTIPLY,
+	CDN_MATH_FUNCTION_TYPE_DIVIDE,
+	CDN_MATH_FUNCTION_TYPE_EDIVIDE,
+	CDN_MATH_FUNCTION_TYPE_MODULO,
+	CDN_MATH_FUNCTION_TYPE_POWER,
+	CDN_MATH_FUNCTION_TYPE_GREATER,
+	CDN_MATH_FUNCTION_TYPE_LESS,
+	CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL,
+	CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL,
+	CDN_MATH_FUNCTION_TYPE_EQUAL,
+	CDN_MATH_FUNCTION_TYPE_OR,
+	CDN_MATH_FUNCTION_TYPE_AND,
+	CDN_MATH_FUNCTION_TYPE_NEGATE,
+	CDN_MATH_FUNCTION_TYPE_TERNARY,
 	CDN_MATH_FUNCTION_TYPE_SIN,
 	CDN_MATH_FUNCTION_TYPE_COS,
 	CDN_MATH_FUNCTION_TYPE_TAN,
@@ -151,22 +141,23 @@ CdnMathFunctionType  cdn_math_function_lookup      (const gchar         *name,
                                                     gint                *arguments);
 gdouble              cdn_math_constant_lookup      (const gchar         *name,
                                                     gboolean            *found);
-CdnMathOperatorType  cdn_math_operator_lookup      (CdnMathOperatorType  type);
+
 void                 cdn_math_function_execute     (CdnMathFunctionType  type,
                                                     gint                 numargs,
-                                                    CdnStack            *stack);
-void                 cdn_math_operator_execute     (CdnMathOperatorType  type,
-                                                    gint                 numargs,
+                                                    gint                *argdim,
                                                     CdnStack            *stack);
 
 gboolean             cdn_math_function_is_variable (CdnMathFunctionType  type);
-gboolean             cdn_math_operator_is_variable (CdnMathOperatorType  type);
-
 gboolean             cdn_math_function_is_commutative (CdnMathFunctionType  type);
-gboolean             cdn_math_operator_is_commutative (CdnMathOperatorType  type);
 
-const gchar        *cdn_math_function_lookup_by_id (CdnMathFunctionType  type,
-                                                    gint                *arguments);
+const gchar         *cdn_math_function_lookup_by_id (CdnMathFunctionType  type,
+                                                     gint                *arguments);
+
+void                 cdn_math_function_get_stack_manipulation (CdnMathFunctionType   type,
+                                                               gint                  arguments,
+                                                               gint                 *argdim,
+                                                               gint                 *outarguments,
+                                                               gint                **outargdim);
 
 G_END_DECLS
 

@@ -6,6 +6,7 @@
 struct _CdnInstructionCustomOperatorRefPrivate
 {
 	CdnOperator *op;
+	CdnStackManipulation smanip;
 };
 
 G_DEFINE_TYPE (CdnInstructionCustomOperatorRef, cdn_instruction_custom_operator_ref, CDN_TYPE_INSTRUCTION)
@@ -56,14 +57,16 @@ static void
 cdn_instruction_custom_operator_ref_execute (CdnInstruction *instruction,
                                              CdnStack       *stack)
 {
-	// Make sure to not invalidate the stack
-	cdn_stack_push (stack, 0);
-}
 
-static gint
-cdn_instruction_custom_operator_ref_get_stack_count (CdnInstruction *instruction)
+
+static CdnStackManipulation const *
+cdn_instruction_custom_operator_ref_get_stack_manipulation (CdnInstruction *instruction)
 {
-	return 1;
+	CdnInstructionCustomOperatorRef *self;
+
+	self = (CdnInstructionCustomOperatorRef *)instruction;
+
+	return &self->priv->smanip;
 }
 
 static gboolean

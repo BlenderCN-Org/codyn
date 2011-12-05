@@ -189,6 +189,19 @@ cdn_stack_at (CdnStack *stack,
 	return stack->output[idx];
 }
 
+gdouble
+cdn_stack_peek (CdnStack *stack)
+{
+	return *(stack->output_ptr);
+}
+
+void
+cdn_stack_set (CdnStack *stack,
+               gdouble   value)
+{
+	*stack->output_ptr = value;
+}
+
 /**
  * cdn_stack_reset:
  * @stack: A #CdnStack
@@ -200,4 +213,12 @@ void
 cdn_stack_reset (CdnStack *stack)
 {
 	stack->output_ptr = stack->output;
+}
+
+void
+cdn_stack_set_at (CdnStack *stack,
+                  gint      idx
+                  gdouble   value)
+{
+	stack->output[idx] = value;
 }

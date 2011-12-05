@@ -9,6 +9,8 @@ struct _CdnInstructionRandPrivate
 {
 	glong random_value;
 	gint num_arguments;
+
+	CdnStackManipulation smanip;
 };
 
 G_DEFINE_TYPE (CdnInstructionRand, cdn_instruction_rand, CDN_TYPE_INSTRUCTION)
@@ -67,10 +69,14 @@ cdn_instruction_rand_execute (CdnInstruction *instruction,
 	cdn_stack_push (stack, from + self->priv->random_value * (to - from) / RAND_MAX);
 }
 
-static gint
-cdn_instruction_rand_get_stack_count (CdnInstruction *instruction)
+static CdnStackManipulation const *
+cdn_instruction_rand_get_stack_manipulation (CdnInstruction *instruction)
 {
-	return 1 - CDN_INSTRUCTION_RAND (instruction)->priv->num_arguments;
+	CdnInstructionRand *self;
+
+	self = (CdnInstructionRand *)instruction;
+
+	return &self->priv->smanip;
 }
 
 static void
@@ -84,7 +90,7 @@ cdn_instruction_rand_class_init (CdnInstructionRandClass *klass)
 
 	inst_class->to_string = cdn_instruction_rand_to_string;
 	inst_class->execute = cdn_instruction_rand_execute;
-	inst_class->get_stack_count = cdn_instruction_rand_get_stack_count;
+	inst_class->get_stack_manipulation = cdn_instruction_rand_get_stack_manipulation;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionRandPrivate));
 }
@@ -93,6 +99,10 @@ static void
 cdn_instruction_rand_init (CdnInstructionRand *self)
 {
 	self->priv = CDN_INSTRUCTION_RAND_GET_PRIVATE (self);
+
+	self->priv->smanip.num_pop = 0;
+	self->priv->smanip.num_push = 1;
+	self->priv->smanip.push_dims = NULL;
 }
 
 /**

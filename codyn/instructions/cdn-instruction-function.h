@@ -46,17 +46,11 @@ CdnInstruction *cdn_instruction_function_new (guint        id,
                                               const gchar *name,
                                               gint         arguments);
 
-void         cdn_instruction_function_set_id          (CdnInstructionFunction *func,
-                                                       guint                   id);
 guint        cdn_instruction_function_get_id          (CdnInstructionFunction *func);
 
 void         cdn_instruction_function_set_name        (CdnInstructionFunction *func,
                                                        gchar const            *name);
 gchar const *cdn_instruction_function_get_name        (CdnInstructionFunction *func);
-
-void         cdn_instruction_function_set_arguments   (CdnInstructionFunction *func,
-                                                       gint                    arguments);
-gint         cdn_instruction_function_get_arguments   (CdnInstructionFunction *func);
 
 G_END_DECLS
 

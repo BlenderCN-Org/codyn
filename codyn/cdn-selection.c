@@ -325,7 +325,6 @@ cdn_selection_add_define (CdnSelection *selection,
                           CdnExpansion *value)
 {
 	g_return_if_fail (CDN_IS_SELECTION (selection));
-	g_return_if_fail (value == NULL);
 
 	copy_defines_on_write (selection);
 

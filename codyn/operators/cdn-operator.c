@@ -111,92 +111,6 @@ typedef struct
 	gpointer data;
 } UData;
 
-static void
-foreach_function_expression_impl (CdnFunction *func,
-                                  UData       *data)
-{
-	cdn_object_foreach_expression (CDN_OBJECT (func),
-	                               (CdnForeachExpressionFunc)data->func,
-	                               data->data);
-}
-
-static void
-foreach_function_expression (CdnOperator *op,
-                             GFunc        func,
-                             gpointer     userdata)
-{
-	UData data = {func, userdata};
-
-	cdn_operator_foreach_function (op,
-	                               (CdnForeachFunctionFunc)foreach_function_expression_impl,
-	                               &data);
-}
-
-static void
-foreach_expression (CdnOperator *op,
-                    GFunc        callback,
-                    gpointer     userdata)
-{
-	foreach_expression_impl (op->priv->expressions,
-	                         op->priv->num_expressions,
-	                         callback,
-	                         userdata);
-
-	foreach_expression_impl (op->priv->indices,
-	                         op->priv->num_indices,
-	                         callback,
-	                         userdata);
-
-	foreach_function_expression (op,
-	                             callback,
-	                             userdata);
-}
-
-static void
-cdn_operator_reset_cache_default (CdnOperator *op)
-{
-	foreach_expression_impl (op->priv->indices,
-	                         op->priv->num_indices,
-	                         (GFunc)cdn_expression_reset_cache,
-	                         NULL);
-
-	foreach_function_expression (op,
-	                             (GFunc)cdn_expression_reset_cache,
-	                             NULL);
-}
-
-static void
-cdn_operator_reset_default (CdnOperator *op)
-{
-	foreach_expression (op,
-	                    (GFunc)cdn_expression_reset,
-	                    NULL);
-}
-
-static void
-cdn_operator_step_default (CdnOperator     *op,
-                           CdnIntegrator   *integrator,
-                           gdouble          t,
-                           gdouble          timestep)
-{
-}
-
-static void
-cdn_operator_step_prepare_default (CdnOperator     *op,
-                                  CdnIntegrator   *integrator,
-                                  gdouble          t,
-                                  gdouble          timestep)
-{
-}
-
-static void
-cdn_operator_step_evaluate_default (CdnOperator     *op,
-                                    CdnIntegrator   *integrator,
-                                    gdouble          t,
-                                    gdouble          timestep)
-{
-}
-
 static GSList **
 copy_2dim_slist (GSList const **lst,
                  gint           num)
@@ -403,11 +317,6 @@ cdn_operator_class_init (CdnOperatorClass *klass)
 	object_class->finalize = cdn_operator_finalize;
 
 	klass->execute = cdn_operator_execute_default;
-	klass->reset_cache = cdn_operator_reset_cache_default;
-	klass->reset = cdn_operator_reset_default;
-	klass->step = cdn_operator_step_default;
-	klass->step_prepare = cdn_operator_step_prepare_default;
-	klass->step_evaluate = cdn_operator_step_evaluate_default;
 	klass->get_name = cdn_operator_get_name_default;
 	klass->initialize = cdn_operator_initialize_default;
 	klass->equal = cdn_operator_equal_default;
@@ -486,21 +395,6 @@ cdn_operator_get_name (CdnOperator *op)
 	return cdn_operator_get_class_name (CDN_OPERATOR_GET_CLASS (op));
 }
 
-/**
- * cdn_operator_reset_cache:
- * @op: A #CdnOperator
- * @data: A #CdnOperatorData
- *
- * Reset the cache of the operator instance.
- *
- **/
-void
-cdn_operator_reset_cache (CdnOperator *op)
-{
-	/* Omit type check to increase speed */
-	CDN_OPERATOR_GET_CLASS (op)->reset_cache (op);
-}
-
 GSList const **
 cdn_operator_all_expressions (CdnOperator *op)
 {
@@ -571,36 +465,6 @@ cdn_operator_num_indices (CdnOperator *op)
 	return op->priv->num_indices;
 }
 
-void
-cdn_operator_step (CdnOperator     *op,
-                   CdnIntegrator   *integrator,
-                   gdouble          t,
-                   gdouble          timestep)
-{
-	/* Omit type check to increase speed */
-	return CDN_OPERATOR_GET_CLASS (op)->step (op, integrator, t, timestep);
-}
-
-void
-cdn_operator_step_prepare (CdnOperator     *op,
-                          CdnIntegrator   *integrator,
-                          gdouble          t,
-                          gdouble          timestep)
-{
-	/* Omit type check to increase speed */
-	return CDN_OPERATOR_GET_CLASS (op)->step_prepare (op, integrator, t, timestep);
-}
-
-void
-cdn_operator_step_evaluate (CdnOperator     *op,
-                            CdnIntegrator   *integrator,
-                            gdouble          t,
-                            gdouble          timestep)
-{
-	/* Omit type check to increase speed */
-	return CDN_OPERATOR_GET_CLASS (op)->step_evaluate (op, integrator, t, timestep);
-}
-
 gboolean
 cdn_operator_initialize (CdnOperator   *op,
                          GSList const **expressions,
@@ -636,14 +500,6 @@ cdn_operator_copy (CdnOperator *op)
 	g_return_val_if_fail (CDN_IS_OPERATOR (op), NULL);
 
 	return CDN_OPERATOR_GET_CLASS (op)->copy (op);
-}
-
-void
-cdn_operator_reset (CdnOperator *op)
-{
-	g_return_if_fail (CDN_IS_OPERATOR (op));
-
-	CDN_OPERATOR_GET_CLASS (op)->reset (op);
 }
 
 gboolean

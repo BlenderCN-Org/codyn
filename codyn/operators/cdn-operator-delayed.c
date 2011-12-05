@@ -85,7 +85,7 @@ enum
 	PROP_DELAY
 };
 
-static void
+/*static void
 history_remove_slice (HistoryList *history,
                       HistoryItem *start,
                       HistoryItem *end,
@@ -158,40 +158,12 @@ history_concat (HistoryList *l1,
 	l2->first = NULL;
 	l2->last = NULL;
 	l2->size = 0;
-}
+}*/
 
 static gchar *
 cdn_operator_delayed_get_name ()
 {
 	return g_strdup ("delayed");
-}
-
-static void
-cdn_operator_delayed_reset (CdnOperator *op)
-{
-	CdnOperatorDelayed *delayed;
-	HistoryItem *first;
-	HistoryItem *last;
-	guint size;
-
-	CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class)->reset (op);
-
-	delayed = CDN_OPERATOR_DELAYED (op);
-
-	first = delayed->priv->history.first;
-	last = delayed->priv->history.last;
-
-	size = delayed->priv->history.size;
-
-	history_remove_slice (&delayed->priv->history,
-	                      delayed->priv->history.first,
-	                      delayed->priv->history.last,
-	                      size);
-
-	history_append_slice (&delayed->priv->history_pool,
-	                      first,
-	                      last,
-	                      size);
 }
 
 static gboolean
@@ -257,7 +229,7 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 	cdn_stack_push (stack, d->priv->value);
 }
 
-static HistoryItem *
+/*static HistoryItem *
 pool_to_history (CdnOperatorDelayed  *operator,
                  gint                 num)
 {
@@ -270,7 +242,7 @@ pool_to_history (CdnOperatorDelayed  *operator,
 
 	ret = operator->priv->history_pool.first;
 
-	/* Remove from the pool */
+	// Remove from the pool
 	if (num >= operator->priv->history_pool.size)
 	{
 		gint i;
@@ -318,7 +290,7 @@ pool_to_history (CdnOperatorDelayed  *operator,
 	}
 	else
 	{
-		/* Remove first num from pool */
+		// Remove first num from pool
 		HistoryItem *ptr = ret;
 		gint i;
 
@@ -361,10 +333,10 @@ init_history (CdnOperatorDelayed *operator,
 		operator->priv->delay = cdn_expression_evaluate (operator->priv->delay_expression);
 	}
 
-	/* History is empty */
+	// History is empty
 	item = pool_to_history (operator, (guint)(ceil (operator->priv->delay / fabs (timestep))));
 
-	/* Initialize values */
+	// Initialize values
 	for (i = 0; i < operator->priv->history.size; ++i)
 	{
 		gint wri;
@@ -440,7 +412,7 @@ evaluate_at (CdnOperatorDelayed *operator,
 		return cdn_expression_evaluate (operator->priv->expression);
 	}
 
-	/* Calculate here where to read the delayed value from (at t) */
+	// Calculate here where to read the delayed value from (at t)
 	td = t - operator->priv->delay;
 
 	h = operator->priv->history.first;
@@ -467,7 +439,7 @@ evaluate_at (CdnOperatorDelayed *operator,
 	}
 	else
 	{
-		/* Interpolate value between h and h->next */
+		// Interpolate value between h and h->next
 		gdouble factor;
 
 		if (td == h->t)
@@ -481,73 +453,7 @@ evaluate_at (CdnOperatorDelayed *operator,
 
 		return h->v + factor * (h->next->v - h->v);
 	}
-}
-
-static void
-cdn_operator_delayed_step_evaluate (CdnOperator     *operator,
-                                    CdnIntegrator   *integrator,
-                                    gdouble          t,
-                                    gdouble          timestep)
-{
-	CdnOperatorDelayed *d;
-
-	d = (CdnOperatorDelayed *)operator;
-
-	d->priv->value = evaluate_at (d, t);
-}
-
-static void
-cdn_operator_delayed_step_prepare (CdnOperator     *operator,
-                                   CdnIntegrator   *integrator,
-                                   gdouble          t,
-                                   gdouble          timestep)
-{
-	CdnOperatorDelayed *d;
-	HistoryItem *item;
-
-	d = (CdnOperatorDelayed *)operator;
-
-	if (d->priv->history.first == NULL &&
-	    d->priv->delay_expression)
-	{
-		cdn_expression_reset_cache (d->priv->delay_expression);
-		d->priv->delay = cdn_expression_evaluate (d->priv->delay_expression);
-	}
-
-	if (d->priv->delay == 0)
-	{
-		d->priv->value = cdn_expression_evaluate (d->priv->expression);
-		return;
-	}
-
-	/* Initialize history here */
-	if (d->priv->history.first == NULL)
-	{
-		/* Initialize the history first */
-		init_history (d, integrator, t, timestep);
-	}
-
-	/* Move to pool everything from before td */
-	move_to_pool (d, t - d->priv->delay);
-
-	item = pool_to_history (d, 1);
-
-	item->t = t;
-	item->v = cdn_expression_evaluate (d->priv->expression);
-}
-
-static void
-cdn_operator_delayed_step (CdnOperator     *operator,
-                           CdnIntegrator   *integrator,
-                           gdouble          t,
-                           gdouble          timestep)
-{
-	CdnOperatorDelayed *d;
-
-	d = (CdnOperatorDelayed *)operator;
-
-	d->priv->value = evaluate_at (d, t);
-}
+}*/
 
 static void
 history_free (HistoryList *history)
@@ -689,10 +595,6 @@ cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 	op_class->get_name = cdn_operator_delayed_get_name;
 	op_class->execute = cdn_operator_delayed_execute;
 	op_class->initialize = cdn_operator_delayed_initialize;
-	op_class->reset = cdn_operator_delayed_reset;
-	op_class->step_prepare = cdn_operator_delayed_step_prepare;
-	op_class->step_evaluate = cdn_operator_delayed_step_evaluate;
-	op_class->step = cdn_operator_delayed_step;
 	op_class->equal = cdn_operator_delayed_equal;
 
 	g_type_class_add_private (object_class, sizeof(CdnOperatorDelayedPrivate));

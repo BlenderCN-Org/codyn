@@ -86,25 +86,6 @@ struct _CdnOperatorClass
 
 	gchar           *(*get_name) ();
 
-	void             (*reset_cache) (CdnOperator     *op);
-
-	void             (*reset)           (CdnOperator *op);
-
-	void             (*step)            (CdnOperator *op,
-	                                     CdnIntegratorForward *integrator,
-	                                     gdouble      t,
-	                                     gdouble      timestep);
-
-	void             (*step_prepare)    (CdnOperator *op,
-	                                     CdnIntegratorForward *integrator,
-	                                     gdouble      t,
-	                                     gdouble      timestep);
-
-	void             (*step_evaluate)   (CdnOperator *op,
-	                                     CdnIntegratorForward *integrator,
-	                                     gdouble      t,
-	                                     gdouble      timestep);
-
 	gboolean         (*equal)           (CdnOperator *op,
 	                                     CdnOperator *other);
 
@@ -132,8 +113,6 @@ gboolean             cdn_operator_initialize                  (CdnOperator     *
 void                 cdn_operator_execute                     (CdnOperator     *op,
                                                                CdnStack        *stack);
 
-void                 cdn_operator_reset_cache                 (CdnOperator     *op);
-
 gchar const         *cdn_operator_get_name                    (CdnOperator      *op);
 gchar const         *cdn_operator_get_class_name              (CdnOperatorClass *op);
 
@@ -153,23 +132,6 @@ gint                 cdn_operator_num_indices                 (CdnOperator     *
 
 gboolean             cdn_operator_equal                       (CdnOperator     *op,
                                                                CdnOperator     *other);
-
-void                 cdn_operator_step                        (CdnOperator     *op,
-                                                               CdnIntegratorForward *integrator,
-                                                               gdouble          t,
-                                                               gdouble          timestep);
-
-void                 cdn_operator_step_prepare                (CdnOperator     *op,
-                                                               CdnIntegratorForward*integrator,
-                                                               gdouble          t,
-                                                               gdouble          timestep);
-
-void                 cdn_operator_step_evaluate               (CdnOperator     *op,
-                                                               CdnIntegratorForward *integrator,
-                                                               gdouble          t,
-                                                               gdouble          timestep);
-
-void                 cdn_operator_reset                       (CdnOperator     *op);
 
 CdnOperator         *cdn_operator_copy                        (CdnOperator     *op);
 

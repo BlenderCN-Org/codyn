@@ -8,10 +8,9 @@
 #include <codyn/instructions/cdn-instruction-custom-operator-ref.h>
 #include <codyn/instructions/cdn-instruction-function.h>
 #include <codyn/instructions/cdn-instruction-number.h>
-#include <codyn/instructions/cdn-instruction-operator.h>
 #include <codyn/instructions/cdn-instruction-rand.h>
 #include <codyn/instructions/cdn-instruction-variable.h>
-#include <codyn/instructions/cdn-instruction-constant.h>
+#include <codyn/instructions/cdn-instruction-matrix.h>
 
 #endif /* __CDN_INSTRUCTIONS_H__ */
 

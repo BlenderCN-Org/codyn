@@ -7,7 +7,8 @@ struct _CdnInstructionFunctionPrivate
 {
 	guint id;
 	gchar *name;
-	gint arguments;
+
+	CdnStackManipulation smanip;
 };
 
 G_DEFINE_TYPE (CdnInstructionFunction, cdn_instruction_function, CDN_TYPE_INSTRUCTION)
@@ -20,7 +21,33 @@ cdn_instruction_function_finalize (CdnMiniObject *object)
 	function = CDN_INSTRUCTION_FUNCTION (object);
 	g_free (function->priv->name);
 
+	g_free (function->priv->smanip.pop_dims);
+	g_free (function->priv->smanip.push_dims);
+
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_function_parent_class)->finalize (object);
+}
+
+static void
+copy_smanip (CdnStackManipulation const *src,
+             CdnStackManipulation       *dest)
+{
+	gint i;
+
+	dest->num_pop = src->num_pop;
+	dest->num_push = src->num_push;
+
+	dest->pop_dims = g_new (gint, dest->num_pop * 2);
+	dest->push_dims = g_new (gint, dest->num_push * 2);
+
+	for (i = 0; i < dest->num_pop * 2; ++i)
+	{
+		dest->pop_dims[i] = src->pop_dims[i];
+	}
+
+	for (i = 0; i < dest->num_push * 2; ++i)
+	{
+		dest->push_dims[i] = src->push_dims[i];
+	}
 }
 
 static CdnMiniObject *
@@ -38,7 +65,8 @@ cdn_instruction_function_copy (CdnMiniObject *object)
 
 	self->priv->id = src->priv->id;
 	self->priv->name = g_strdup (src->priv->name);
-	self->priv->arguments = src->priv->arguments;
+
+	copy_smanip (&src->priv->smanip, &self->priv->smanip);
 
 	return ret;
 }
@@ -61,19 +89,20 @@ cdn_instruction_function_execute (CdnInstruction *instruction,
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CdnInstructionFunction *)instruction;
-	cdn_math_function_execute (self->priv->id, self->priv->arguments, stack);
+
+	cdn_math_function_execute (self->priv->id,
+	                           self->priv->smanip.num_pop,
+	                           self->priv->smanip.pop_dims,
+	                           stack);
 }
 
-static gint
-cdn_instruction_function_get_stack_count (CdnInstruction *instruction)
+static CdnStackManipulation const *
+cdn_instruction_function_get_stack_manipulation (CdnInstruction *instruction)
 {
 	CdnInstructionFunction *self;
-	gint fromstack;
 
 	self = CDN_INSTRUCTION_FUNCTION (instruction);
-	fromstack = self->priv->arguments;
-
-	return -fromstack + 1;
+	return &self->priv->smanip;
 }
 
 static gboolean
@@ -110,7 +139,7 @@ cdn_instruction_function_class_init (CdnInstructionFunctionClass *klass)
 
 	inst_class->to_string = cdn_instruction_function_to_string;
 	inst_class->execute = cdn_instruction_function_execute;
-	inst_class->get_stack_count = cdn_instruction_function_get_stack_count;
+	inst_class->get_stack_manipulation = cdn_instruction_function_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_function_equal;
 	inst_class->get_is_commutative = cdn_instruction_function_get_is_commutative;
 
@@ -126,28 +155,34 @@ cdn_instruction_function_init (CdnInstructionFunction *self)
 CdnInstruction *
 cdn_instruction_function_new (guint        id,
                               const gchar *name,
-                              gint         arguments)
+                              gint         arguments,
+                              gint        *argdim)
 {
 	CdnMiniObject *ret;
 	CdnInstructionFunction *func;
+	gint i;
 
 	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_FUNCTION);
 	func = CDN_INSTRUCTION_FUNCTION (ret);
 
 	func->priv->id = id;
 	func->priv->name = g_strdup (name);
-	func->priv->arguments = arguments;
+
+	func->priv->smanip.num_pop = arguments;
+	func->priv->smanip.pop_dims = g_new (gint, arguments * 2);
+
+	for (i = 0; i < arguments * 2; ++i)
+	{
+		func->priv->smanip.pop_dims[i] = argdim[i];
+	}
+
+	cdn_math_function_get_stack_manipulation (id,
+	                                          arguments,
+	                                          argdim,
+	                                          &func->priv->smanip.num_push,
+	                                          &func->priv->smanip.push_dims);
 
 	return CDN_INSTRUCTION (ret);
-}
-
-void
-cdn_instruction_function_set_id (CdnInstructionFunction *func,
-                                 guint                   id)
-{
-	g_return_if_fail (CDN_IS_INSTRUCTION_FUNCTION (func));
-
-	func->priv->id = id;
 }
 
 /**
@@ -167,15 +202,6 @@ cdn_instruction_function_set_name (CdnInstructionFunction *func,
 
 	g_free (func->priv->name);
 	func->priv->name = g_strdup (name);
-}
-
-void
-cdn_instruction_function_set_arguments (CdnInstructionFunction *func,
-                                        gint                    arguments)
-{
-	g_return_if_fail (CDN_IS_INSTRUCTION_FUNCTION (func));
-
-	func->priv->arguments = arguments;
 }
 
 guint
@@ -199,11 +225,4 @@ cdn_instruction_function_get_name (CdnInstructionFunction *func)
 {
 	/* Omit type check to increase speed */
 	return func->priv->name;
-}
-
-gint
-cdn_instruction_function_get_arguments (CdnInstructionFunction *func)
-{
-	/* Omit type check to increase speed */
-	return func->priv->arguments;
 }

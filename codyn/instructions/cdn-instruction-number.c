@@ -6,6 +6,8 @@ struct _CdnInstructionNumberPrivate
 {
 	gdouble value;
 	gchar *repr;
+
+	CdnStackManipulation smanip;
 };
 
 G_DEFINE_TYPE (CdnInstructionNumber, cdn_instruction_number, CDN_TYPE_INSTRUCTION)
@@ -35,7 +37,6 @@ cdn_instruction_number_copy (CdnMiniObject *object)
 
 	self = CDN_INSTRUCTION_NUMBER (ret);
 	self->priv->value = src->priv->value;
-
 	self->priv->repr = g_strdup (src->priv->repr);
 
 	return ret;
@@ -67,10 +68,10 @@ cdn_instruction_number_execute (CdnInstruction *instruction,
 	cdn_stack_push (stack, self->priv->value);
 }
 
-static gint
-cdn_instruction_number_get_stack_count (CdnInstruction *instruction)
+static CdnStackManipulation const *
+cdn_instruction_number_get_stack_manipulation (CdnInstruction *instruction)
 {
-	return 1;
+	return &instruction->priv->smanip;
 }
 
 static gboolean
@@ -94,7 +95,7 @@ cdn_instruction_number_class_init (CdnInstructionNumberClass *klass)
 
 	inst_class->to_string = cdn_instruction_number_to_string;
 	inst_class->execute = cdn_instruction_number_execute;
-	inst_class->get_stack_count = cdn_instruction_number_get_stack_count;
+	inst_class->get_stack_manipulation = cdn_instruction_number_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_number_equal;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionNumberPrivate));
@@ -104,6 +105,10 @@ static void
 cdn_instruction_number_init (CdnInstructionNumber *self)
 {
 	self->priv = CDN_INSTRUCTION_NUMBER_GET_PRIVATE (self);
+	self->priv->smanip.num_pop = 0;
+	self->priv->smanip.num_push = 1;
+
+	self->priv->smanip.push_dims = NULL;
 }
 
 CdnInstruction *

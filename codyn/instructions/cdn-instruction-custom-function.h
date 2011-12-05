@@ -45,13 +45,7 @@ GType cdn_instruction_custom_function_get_type (void) G_GNUC_CONST;
 CdnInstruction *cdn_instruction_custom_function_new (CdnFunction *function,
                                                      gint         arguments);
 
-void         cdn_instruction_custom_function_set_function (CdnInstructionCustomFunction *function,
-                                                           CdnFunction                  *func);
 CdnFunction *cdn_instruction_custom_function_get_function (CdnInstructionCustomFunction *function);
-
-void         cdn_instruction_custom_function_set_arguments (CdnInstructionCustomFunction *function,
-                                                            gint                          arguments);
-gint         cdn_instruction_custom_function_get_arguments (CdnInstructionCustomFunction *function);
 
 G_END_DECLS
 

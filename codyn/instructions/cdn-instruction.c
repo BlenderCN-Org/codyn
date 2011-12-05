@@ -17,8 +17,8 @@ cdn_instruction_to_string_impl (CdnInstruction *instruction)
 	return g_strdup_printf ("[%s]", g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
 }
 
-static gint
-cdn_instruction_get_stack_count_impl (CdnInstruction *instruction)
+static CdnStackManipulation const *
+cdn_instruction_get_stack_manipulation_impl (CdnInstruction *instruction)
 {
 	g_warning ("%s should implement get_stack_count!", g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
 	return 0;
@@ -40,7 +40,7 @@ static void
 cdn_instruction_class_init (CdnInstructionClass *klass)
 {
 	klass->to_string = cdn_instruction_to_string_impl;
-	klass->get_stack_count = cdn_instruction_get_stack_count_impl;
+	klass->get_stack_manipulation = cdn_instruction_get_stack_manipulation_impl;
 	klass->get_dependencies = cdn_instruction_get_dependencies_impl;
 	klass->get_is_commutative = cdn_instruction_get_is_commutative_impl;
 }
@@ -99,12 +99,12 @@ cdn_instruction_execute (CdnInstruction *instruction,
  *          stack
  *
  **/
-gint
-cdn_instruction_get_stack_count (CdnInstruction *instruction)
+CdnStackManipulation const *
+cdn_instruction_get_stack_manipulation (CdnInstruction *instruction)
 {
-	g_return_val_if_fail (CDN_IS_INSTRUCTION (instruction), 0);
+	g_return_val_if_fail (CDN_IS_INSTRUCTION (instruction), NULL);
 
-	return CDN_INSTRUCTION_GET_CLASS (instruction)->get_stack_count (instruction);
+	return CDN_INSTRUCTION_GET_CLASS (instruction)->get_stack_manipulation (instruction);
 }
 
 /**

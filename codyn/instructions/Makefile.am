@@ -14,10 +14,9 @@ libinstructions_la_SOURCES = 			\
 	cdn-instruction-custom-operator-ref.c	\
 	cdn-instruction-function.c		\
 	cdn-instruction-number.c		\
-	cdn-instruction-operator.c		\
+	cdn-instruction-matrix.c		\
 	cdn-instruction-variable.c		\
-	cdn-instruction-rand.c	\
-	cdn-instruction-constant.c
+	cdn-instruction-rand.c
 
 libinstructions_headers =			\
 	cdn-instruction.h			\
@@ -28,10 +27,9 @@ libinstructions_headers =			\
 	cdn-instruction-custom-operator-ref.h	\
 	cdn-instruction-function.h		\
 	cdn-instruction-number.h		\
-	cdn-instruction-operator.h		\
+	cdn-instruction-matrix.h		\
 	cdn-instruction-variable.h		\
-	cdn-instruction-rand.h	\
-	cdn-instruction-constant.h
+	cdn-instruction-rand.h
 
 libinstructions_includedir = $(includedir)/codyn-$(CODYN_API_VERSION)/codyn/instructions
 libinstructions_include_HEADERS = $(libinstructions_headers)

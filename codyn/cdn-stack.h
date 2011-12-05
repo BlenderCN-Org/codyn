@@ -41,10 +41,18 @@ void      cdn_stack_push    (CdnStack *stack,
                              gdouble   value);
 
 gdouble   cdn_stack_pop     (CdnStack *stack);
+gdouble   cdn_stack_peek    (CdnStack *stack);
+void      cdn_stack_set     (CdnStack *stack,
+                             gdouble   value);
+
 void      cdn_stack_reset   (CdnStack *stack);
 
 gdouble   cdn_stack_at      (CdnStack *stack,
                              gint      idx);
+
+void      cdn_stack_set_at  (CdnStack *stack,
+                             gint      idx
+                             gdouble   value);
 
 G_END_DECLS
 

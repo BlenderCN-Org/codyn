@@ -242,37 +242,6 @@ cdn_operator_df_dt_equal (CdnOperator *op,
 	return TRUE;
 }
 
-static void
-cdn_operator_df_dt_reset_cache (CdnOperator *operator)
-{
-	CdnOperatorDfDt *self;
-
-	((CdnOperatorClass *)cdn_operator_df_dt_parent_class)->reset_cache (operator);
-
-	/* Omit type check to be faster */
-	self = (CdnOperatorDfDt *)operator;
-
-	if (self->priv->derived)
-	{
-		cdn_expression_reset_cache (self->priv->derived);
-	}
-}
-
-static void
-cdn_operator_df_dt_reset (CdnOperator *operator)
-{
-	CdnOperatorDfDt *self;
-
-	CDN_OPERATOR_CLASS (cdn_operator_df_dt_parent_class)->reset (operator);
-
-	self = CDN_OPERATOR_DF_DT (operator);
-
-	if (self->priv->derived)
-	{
-		cdn_expression_reset (self->priv->derived);
-	}
-}
-
 static CdnOperator *
 cdn_operator_df_dt_copy (CdnOperator *op)
 {
@@ -321,8 +290,6 @@ cdn_operator_df_dt_class_init (CdnOperatorDfDtClass *klass)
 	op_class->execute = cdn_operator_df_dt_execute;
 	op_class->initialize = cdn_operator_df_dt_initialize;
 	op_class->equal = cdn_operator_df_dt_equal;
-	op_class->reset_cache = cdn_operator_df_dt_reset_cache;
-	op_class->reset = cdn_operator_df_dt_reset;
 	op_class->copy = cdn_operator_df_dt_copy;
 
 	g_type_class_add_private (object_class, sizeof(CdnOperatorDfDtPrivate));
