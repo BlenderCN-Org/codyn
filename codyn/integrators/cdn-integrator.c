@@ -290,6 +290,9 @@ next_random (CdnIntegrator *integrator)
 
 	while (rndexpr)
 	{
+		// We need to explicitly reset the cache of the expressions
+		// that have random numbers because the expression has no
+		// means of detecting that we changed the random number...
 		cdn_expression_reset_cache (rndexpr->data);
 		rndexpr = g_slist_next (rndexpr);
 	}

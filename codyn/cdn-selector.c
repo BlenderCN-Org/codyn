@@ -857,7 +857,7 @@ selector_select_identifier (CdnSelector        *self,
 		}
 	}
 
-	g_slist_foreach (exps, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (exps, (GFunc)cdn_expansion_unref, NULL);
 	g_slist_free (exps);
 
 	return g_slist_reverse (ret);
@@ -1380,7 +1380,7 @@ selector_pseudo_has_tag (CdnSelector        *self,
 			}
 		}
 
-		g_slist_foreach (ex, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (ex, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ex);
 
 		if (!valid)
@@ -2176,7 +2176,7 @@ selector_pseudo_has_flag (CdnSelector        *self,
 			}
 		}
 
-		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (ret, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ret);
 
 		if (!valid)

@@ -753,14 +753,6 @@ function_to_xml (CdnNetworkSerializer *serializer,
 
 		xmlAddChild (argn, text);
 
-		if (cdn_function_argument_get_optional (argument))
-		{
-			CdnExpression *expr;
-
-			expr = cdn_function_argument_get_default_value (argument);
-			xmlNewProp (argn, (xmlChar *)"default", (xmlChar *)cdn_expression_get_as_string (expr));
-		}
-
 		if (!cdn_function_argument_get_explicit (argument))
 		{
 			xmlNewProp (argn, (xmlChar *)"implicit", (xmlChar *)"yes");

@@ -990,10 +990,6 @@ cdn_object_compile_impl (CdnObject         *object,
 
 	if (ret)
 	{
-		cdn_object_foreach_expression (object,
-		                               (CdnForeachExpressionFunc)cdn_expression_reset_cache,
-		                               NULL);
-
 		g_signal_emit (object, object_signals[COMPILED], 0);
 	}
 

@@ -64,6 +64,7 @@ struct _CdnCompileErrorClass
  * @CDN_COMPILE_ERROR_MAXARG: maximum number of arguments exceeded
  * @CDN_COMPILE_ERROR_INVALID_STACK: invalid stack produced
  * @CDN_COMPILE_ERROR_VARIABLE_RECURSE: variable recurses on itself
+ * @CDN_COMPILE_ERROR_INVALID_ARGUMENTS: invalid arguments to function
  * @CDN_COMPILE_ERROR_NUM_ERRORS: num errors
  *
  * Enum used to indicate the type of compile error
@@ -78,6 +79,7 @@ typedef enum
 	CDN_COMPILE_ERROR_MAXARG,
 	CDN_COMPILE_ERROR_INVALID_STACK,
 	CDN_COMPILE_ERROR_VARIABLE_RECURSE,
+	CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 	CDN_COMPILE_ERROR_NUM_ERRORS
 } CdnCompileErrorCode;
 

@@ -33,9 +33,8 @@
  *
  * It is possible to define custom user functions in the network which can
  * then be used from any expression. This class provides the basic
- * user function functionality. User defined functions can have optional
- * arguments with default values and can reference global constants as well
- * as use other user defined functions in their expressions.
+ * user function functionality. User defined functions can reference global
+ * constants as well as use other user defined functions in their expressions.
  *
  * The #CdnFunction class can be subclassed to provide more specific types
  * of functions. One such example is the #CdnFunctionPolynomial class which
@@ -74,7 +73,6 @@ struct _CdnFunctionPrivate
 	GHashTable *arguments_hash;
 
 	guint n_arguments;
-	guint n_optional;
 	guint n_implicit;
 };
 
@@ -179,7 +177,6 @@ cdn_function_compile_impl (CdnObject         *object,
 {
 	CdnFunction *self = CDN_FUNCTION (object);
 	gboolean ret = TRUE;
-	GList *item;
 
 	if (cdn_object_is_compiled (object))
 	{
@@ -202,33 +199,6 @@ cdn_function_compile_impl (CdnObject         *object,
 		{
 			g_object_unref (context);
 			return FALSE;
-		}
-	}
-
-	for (item = self->priv->arguments; item; item = g_list_next (item))
-	{
-		CdnExpression *expr;
-
-		expr = cdn_function_argument_get_default_value (item->data);
-
-		if (expr)
-		{
-			if (!cdn_expression_compile (expr, context, error))
-			{
-				if (error)
-				{
-					cdn_compile_error_set (error,
-					                       NULL,
-					                       object,
-					                       NULL,
-					                       NULL,
-					                       NULL);
-				}
-
-				ret = FALSE;
-
-				break;
-			}
 		}
 	}
 
@@ -262,58 +232,122 @@ cdn_function_compile_impl (CdnObject         *object,
 	return ret;
 }
 
-static gdouble
-cdn_function_evaluate_impl (CdnFunction *function)
+static void
+set_variable_with_dim (CdnVariable *v,
+                       gint         numr,
+                       gint         numc)
+{
+	cdn_variable_set_values (v, NULL, numr, numc);
+}
+
+static void
+cdn_function_get_dimension_impl (CdnFunction *function,
+                                 gint         arguments,
+                                 gint        *argdim,
+                                 gint        *numr,
+                                 gint        *numc)
+{
+	gint i;
+	GList *args;
+
+	if (!function->priv->expression)
+	{
+		*numr = 1;
+		*numc = 1;
+
+		return;
+	}
+
+	// Compute the dimensions of the output of this function when used
+	// with provided arguments of a given dimension. The simplest way to
+	// do this is to set dummy values for the properties representing the
+	// variables with the corresponding dimensions
+
+	args = function->priv->arguments;
+
+	for (i = 0; i < arguments; ++i)
+	{
+		CdnVariable *v;
+
+		v = _cdn_function_argument_get_variable (args->data);
+
+		set_variable_with_dim (v,
+		                       argdim ? argdim[i * 2] : 1,
+		                       argdim ? argdim[i * 2 + 1] : 1);
+
+		args = g_list_next (args);
+	}
+}
+
+static void
+cdn_function_evaluate_impl (CdnFunction *function,
+                            CdnStack    *stack)
 {
 	if (function->priv->expression)
 	{
+		gint numr;
+		gint numc;
+		gint num;
+		gint i;
+
 		g_slist_foreach ((GSList *)cdn_expression_get_rand_instructions (function->priv->expression),
 		                 (GFunc)cdn_instruction_rand_next,
 		                 NULL);
 
-		gdouble ret = cdn_expression_evaluate (function->priv->expression);
-		return ret;
+		gdouble const *ret = cdn_expression_evaluate_values (function->priv->expression,
+		                                                     &numr,
+		                                                     &numc);
+
+		num = numr * numc;
+
+		for (i = 0; i < num; ++i)
+		{
+			cdn_stack_push (stack, ret[i]);
+		}
 	}
 	else
 	{
-		return 0;
+		cdn_stack_push (stack, 0);
 	}
 }
 
 static void
 cdn_function_execute_impl (CdnFunction *function,
-                           guint        nargs,
+                           gint         nargs,
+                           gint        *argdim,
                            CdnStack    *stack)
 {
 	GList *item;
 	guint i;
-	GList *from;
+	GList *from = NULL;
 
-	from = g_list_nth (function->priv->arguments, nargs - 1);
+	if (nargs < function->priv->n_arguments)
+	{
+		from = g_list_nth (function->priv->arguments, nargs - 1);
+	}
+
 	item = from;
 
 	/* Set provided arguments */
 	for (i = 0; i < nargs; ++i)
 	{
 		CdnFunctionArgument *argument = item->data;
-		gdouble val;
-		CdnVariable *property = _cdn_function_argument_get_variable (argument);
+		gint ptr = i * 2;
+		gint num;
+		CdnVariable *v = _cdn_function_argument_get_variable (argument);
 
-		val = cdn_stack_pop (stack);
+		num = argdim ? argdim[ptr] * argdim[ptr + 1] : 1;
 
-		cdn_variable_set_value (property, val);
+		cdn_variable_set_values (v,
+		                         cdn_stack_popn (stack, num),
+		                         argdim ? argdim[ptr] : 1,
+		                         argdim ? argdim[ptr + 1] : 1);
+
 		item = g_list_previous (item);
 	}
 
 	/* Evaluate the expression */
-	if (CDN_FUNCTION_GET_CLASS (function)->evaluate)
-	{
-		cdn_stack_push (stack, CDN_FUNCTION_GET_CLASS (function)->evaluate (function));
-	}
-	else
-	{
-		cdn_stack_push (stack, 0);
-	}
+	CDN_FUNCTION_GET_CLASS (function)->evaluate (function, stack);
 }
 
 static void
@@ -365,20 +399,6 @@ cdn_function_reset_impl (CdnObject *object)
 	{
 		cdn_expression_reset (function->priv->expression);
 	}
-
-	GList *item;
-
-	for (item = function->priv->arguments; item; item = g_list_next (item))
-	{
-		CdnExpression *def;
-
-		def = cdn_function_argument_get_default_value (item->data);
-
-		if (def != NULL)
-		{
-			cdn_expression_reset (def);
-		}
-	}
 }
 
 static void
@@ -387,7 +407,6 @@ cdn_function_foreach_expression_impl (CdnObject                *object,
                                       gpointer                  userdata)
 {
 	CdnFunction *function = CDN_FUNCTION (object);
-	GList *item;
 
 	/* Chain up */
 	if (CDN_OBJECT_CLASS (cdn_function_parent_class)->foreach_expression != NULL)
@@ -395,18 +414,6 @@ cdn_function_foreach_expression_impl (CdnObject                *object,
 		CDN_OBJECT_CLASS (cdn_function_parent_class)->foreach_expression (object,
 		                                                                  func,
 		                                                                  userdata);
-	}
-
-	for (item = function->priv->arguments; item; item = g_list_next (item))
-	{
-		CdnExpression *def;
-
-		def = cdn_function_argument_get_default_value (item->data);
-
-		if (def != NULL)
-		{
-			func (def, userdata);
-		}
 	}
 
 	if (function->priv->expression)
@@ -503,7 +510,6 @@ from_template (CdnFunction *target,
 	target->priv->arguments = NULL;
 
 	target->priv->n_arguments = 0;
-	target->priv->n_optional = 0;
 	target->priv->n_implicit = 0;
 
 	cdn_function_template_expression_changed (target, NULL, source);
@@ -569,21 +575,6 @@ arguments_equal (CdnFunction         *a,
 		{
 			return FALSE;
 		}
-
-		if (cdn_function_argument_get_optional (a1) !=
-		    cdn_function_argument_get_optional (a2))
-		{
-			return FALSE;
-		}
-
-		if (cdn_function_argument_get_optional (a1))
-		{
-			if (!cdn_expression_equal (cdn_function_argument_get_default_value (a1),
-			                           cdn_function_argument_get_default_value (a2)))
-			{
-				return FALSE;
-			}
-		}
 	}
 
 	return TRUE;
@@ -642,7 +633,6 @@ cdn_function_apply_template_impl (CdnObject  *object,
 		target->priv->arguments = NULL;
 
 		target->priv->n_arguments = 0;
-		target->priv->n_optional = 0;
 		target->priv->n_implicit = 0;
 	}
 
@@ -710,7 +700,6 @@ cdn_function_unapply_template_impl (CdnObject  *object,
 		target->priv->arguments = NULL;
 
 		target->priv->n_arguments = 0;
-		target->priv->n_optional = 0;
 		target->priv->n_implicit = 0;
 
 		waslast = TRUE;
@@ -816,57 +805,6 @@ on_argument_name_changed (CdnFunctionArgument *argument,
 }
 
 static void
-on_argument_optional_changed (CdnFunctionArgument *argument,
-                              GParamSpec          *spec,
-                              CdnFunction         *function)
-{
-	gboolean opt = cdn_function_argument_get_optional (argument);
-
-	GList *item;
-
-	/* Get the item which represents the first optional argument at the
-	   moment */
-	item = g_list_nth (function->priv->arguments,
-	                   function->priv->n_arguments - function->priv->n_optional - function->priv->n_implicit);
-
-	if (item == NULL || item->data != argument)
-	{
-		/* An argument other than the first optional one has changed
-		   it optionality */
-
-		/* First remove the argument from the list of arguments */
-		function->priv->arguments =
-			g_list_remove (function->priv->arguments,
-			               argument);
-
-		if (opt || item)
-		{
-			function->priv->arguments =
-				g_list_insert_before (function->priv->arguments,
-				                      item,
-				                      argument);
-		}
-		else
-		{
-			function->priv->arguments =
-				g_list_append (function->priv->arguments,
-				               argument);
-		}
-	}
-
-	if (opt)
-	{
-		++function->priv->n_optional;
-	}
-	else
-	{
-		--function->priv->n_optional;
-	}
-
-	g_signal_emit (function, signals[ARGUMENTS_REORDERED], 0);
-}
-
-static void
 cdn_function_argument_added_impl (CdnFunction         *function,
                                   CdnFunctionArgument *argument)
 {
@@ -878,25 +816,12 @@ cdn_function_argument_added_impl (CdnFunction         *function,
 		function->priv->arguments = g_list_append (function->priv->arguments,
 		                                           g_object_ref_sink (argument));
 	}
-	else if (cdn_function_argument_get_optional (argument))
+	else
 	{
 		/* Insert before first implicit */
 		gint n;
 
 		n = (gint)function->priv->n_arguments -
-		    (gint)function->priv->n_implicit;
-
-		function->priv->arguments = g_list_insert (function->priv->arguments,
-		                                           g_object_ref_sink (argument),
-		                                           n);
-	}
-	else
-	{
-		/* Insert before first optional */
-		gint n;
-
-		n = (gint)function->priv->n_arguments -
-		    (gint)function->priv->n_optional -
 		    (gint)function->priv->n_implicit;
 
 		function->priv->arguments = g_list_insert (function->priv->arguments,
@@ -929,11 +854,6 @@ cdn_function_argument_added_impl (CdnFunction         *function,
 
 	++function->priv->n_arguments;
 
-	if (cdn_function_argument_get_optional (argument))
-	{
-		++function->priv->n_optional;
-	}
-
 	if (!cdn_function_argument_get_explicit (argument))
 	{
 		++function->priv->n_implicit;
@@ -947,11 +867,6 @@ cdn_function_argument_added_impl (CdnFunction         *function,
 	g_signal_connect (argument,
 	                  "invalidate-name",
 	                  G_CALLBACK (on_argument_invalidate_name),
-	                  function);
-
-	g_signal_connect (argument,
-	                  "notify::optional",
-	                  G_CALLBACK (on_argument_optional_changed),
 	                  function);
 
 	cdn_object_taint (CDN_OBJECT (function));
@@ -979,6 +894,7 @@ cdn_function_class_init (CdnFunctionClass *klass)
 
 	klass->execute = cdn_function_execute_impl;
 	klass->evaluate = cdn_function_evaluate_impl;
+	klass->get_dimension = cdn_function_get_dimension_impl;
 	klass->argument_added = cdn_function_argument_added_impl;
 
 	g_object_class_install_property (object_class,
@@ -1195,11 +1111,6 @@ cdn_function_remove_argument (CdnFunction          *function,
 
 	if (cdn_object_remove_variable (CDN_OBJECT (function), name, error))
 	{
-		if (cdn_function_argument_get_optional (argument))
-		{
-			--function->priv->n_optional;
-		}
-
 		if (!cdn_function_argument_get_explicit (argument))
 		{
 			--function->priv->n_implicit;
@@ -1221,10 +1132,6 @@ cdn_function_remove_argument (CdnFunction          *function,
 
 		g_signal_handlers_disconnect_by_func (argument,
 		                                      on_argument_name_changed,
-		                                      function);
-
-		g_signal_handlers_disconnect_by_func (argument,
-		                                      on_argument_optional_changed,
 		                                      function);
 
 		if (g_str_has_suffix (name, "'"))
@@ -1286,11 +1193,13 @@ cdn_function_get_arguments (CdnFunction *function)
  **/
 void
 cdn_function_execute (CdnFunction *function,
-                      guint        nargs,
+                      gint         nargs,
+                      gint        *argdim,
                       CdnStack    *stack)
 {
 	CDN_FUNCTION_GET_CLASS (function)->execute (function,
 	                                            nargs,
+	                                            argdim,
 	                                            stack);
 }
 
@@ -1361,24 +1270,6 @@ cdn_function_clear_arguments (CdnFunction  *function,
 }
 
 /**
- * cdn_function_get_n_optional:
- * @function: A #CdnFunction
- *
- * Get the number of optional arguments. The optional arguments are always
- * at the end of the list of arguments of the function.
- *
- * Returns: the number of optional arguments
- *
- **/
-guint
-cdn_function_get_n_optional (CdnFunction *function)
-{
-	g_return_val_if_fail (CDN_IS_FUNCTION (function), 0);
-
-	return function->priv->n_optional;
-}
-
-/**
  * cdn_function_get_n_arguments:
  * @function: A #CdnFunction
  *
@@ -1420,4 +1311,18 @@ cdn_function_get_argument (CdnFunction *function,
 	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
 
 	return g_hash_table_lookup (function->priv->arguments_hash, name);
+}
+
+void
+cdn_function_get_dimension (CdnFunction *function,
+                            gint         arguments,
+                            gint        *argdim,
+                            gint        *numr,
+                            gint        *numc)
+{
+	CDN_FUNCTION_GET_CLASS (function)->get_dimension (function,
+	                                                  arguments,
+	                                                  argdim,
+	                                                  numr,
+	                                                  numc);
 }

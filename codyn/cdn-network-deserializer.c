@@ -977,26 +977,12 @@ parse_function_arguments (CdnNetworkDeserializer *deserializer,
 			continue;
 		}
 
-		xmlChar *def = xmlGetProp (node, (xmlChar *)"default");
-		CdnExpression *default_value = NULL;
-
 		xmlChar *impl = xmlGetProp (node, (xmlChar *)"implicit");
 		gboolean isexplicit = impl ? g_ascii_strcasecmp ((gchar const *)impl, "yes") != 0 : TRUE;
 		xmlFree (impl);
 
-		if (def)
-		{
-			if (isexplicit)
-			{
-				default_value = cdn_expression_new ((gchar const *)def);
-			}
-
-			xmlFree (def);
-		}
-
 		CdnFunctionArgument *argument =
 			cdn_function_argument_new (name,
-			                           default_value,
 			                           isexplicit);
 
 		save_comment (node, G_OBJECT (argument));

@@ -62,9 +62,11 @@ sum_terms (GSList *terms,
 		return terms->next->data;
 	}
 
-	root = iter_new_sized (cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_PLUS,
+	/* TODO: set the argdim */
+	root = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
 	                                                     "+",
-	                                                     2),
+	                                                     2,
+	                                                     NULL),
 	                       2);
 
 	cur = root;
@@ -82,9 +84,11 @@ sum_terms (GSList *terms,
 		{
 			CdnExpressionTreeIter *np;
 
-			np = iter_new_sized (cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_PLUS,
+			/* TODO: argdim */
+			np = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
 			                                                   "+",
-			                                                   2),
+			                                                   2,
+			                                                   NULL),
 			                     2);
 
 			cur->children[1] = np;
@@ -326,9 +330,11 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 	iter = cdn_expression_tree_iter_simplify (iter);
 
 	// Now divide inv by summed
-	div = iter_new_sized (cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_DIVIDE,
+	/* TODO: argdim */
+	div = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE,
 	                                                    "/",
-	                                                    2),
+	                                                    2,
+	                                                    NULL),
 	                      2);
 
 	div->children[0] = iter;
@@ -337,9 +343,11 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 	div->children[1] = summed;
 	div->children[1]->parent = div;
 
-	inv = iter_new_sized (cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_MULTIPLY,
+	/* TODO: argdim */
+	inv = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
 	                                                    "*",
-	                                                    2),
+	                                                    2,
+	                                                    NULL),
 	                      2);
 
 	inv->children[0] = iter_new_numstr ("-1");

@@ -174,7 +174,7 @@ INSTRUCTIONHEADERS = \
 	instructions/cdn-instruction-function.h \
 	instructions/cdn-instruction.h \
 	instructions/cdn-instruction-number.h \
-	instructions/cdn-instruction-operator.h \
+	instructions/cdn-instruction-matrix.h \
 	instructions/cdn-instruction-variable.h \
 	instructions/cdn-instructions.h \
 	instructions/cdn-instruction-rand.h
@@ -187,7 +187,7 @@ INSTRUCTIONSOURCES = \
 	instructions/cdn-instruction-custom-operator-ref.c \
 	instructions/cdn-instruction-function.c \
 	instructions/cdn-instruction-number.c \
-	instructions/cdn-instruction-operator.c \
+	instructions/cdn-instruction-matrix.c \
 	instructions/cdn-instruction-variable.c \
 	instructions/cdn-instruction-rand.c
 

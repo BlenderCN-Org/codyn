@@ -70,7 +70,8 @@ cdn_instruction_rand_execute (CdnInstruction *instruction,
 }
 
 static CdnStackManipulation const *
-cdn_instruction_rand_get_stack_manipulation (CdnInstruction *instruction)
+cdn_instruction_rand_get_stack_manipulation (CdnInstruction  *instruction,
+                                             GError         **error)
 {
 	CdnInstructionRand *self;
 

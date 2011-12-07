@@ -117,11 +117,19 @@ void               cdn_variable_remove_flags            (CdnVariable        *pro
 void               cdn_variable_reset                   (CdnVariable        *property);
 
 gdouble            cdn_variable_get_value               (CdnVariable        *property);
+gdouble const     *cdn_variable_get_values              (CdnVariable        *property,
+                                                         gint               *numr,
+                                                         gint               *numc);
 
 CdnExpression     *cdn_variable_get_expression          (CdnVariable        *property);
 
 void               cdn_variable_set_value               (CdnVariable        *property,
                                                          gdouble             value);
+
+void               cdn_variable_set_values              (CdnVariable        *property,
+                                                         gdouble            *values,
+                                                         gint                numr,
+                                                         gint                numc);
 
 void               cdn_variable_apply_constraint        (CdnVariable        *property);
 
@@ -163,6 +171,9 @@ CdnVariable       *cdn_variable_get_derivative          (CdnVariable *property);
 
 void               cdn_variable_set_derivative          (CdnVariable *property,
                                                          CdnVariable *diffprop);
+
+gboolean           cdn_variable_compile                 (CdnVariable              *property,
+                                                         CdnCompileErrorForward   *error);
 
 G_END_DECLS
 

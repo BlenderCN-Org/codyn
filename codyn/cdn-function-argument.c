@@ -44,7 +44,6 @@ enum
 struct _CdnFunctionArgumentPrivate
 {
 	gchar *name;
-	CdnExpression *def;
 	gboolean isexplicit;
 
 	CdnVariable *property;
@@ -56,8 +55,6 @@ enum
 {
 	PROP_0,
 	PROP_NAME,
-	PROP_OPTIONAL,
-	PROP_DEFAULT_VALUE,
 	PROP_EXPLICIT
 };
 
@@ -69,11 +66,6 @@ cdn_function_argument_finalize (GObject *object)
 	CdnFunctionArgument *argument = CDN_FUNCTION_ARGUMENT (object);
 
 	g_free (argument->priv->name);
-
-	if (argument->priv->def)
-	{
-		g_object_unref (argument->priv->def);
-	}
 
 	G_OBJECT_CLASS (cdn_function_argument_parent_class)->finalize (object);
 }
@@ -103,38 +95,6 @@ set_name (CdnFunctionArgument *argument,
 }
 
 static void
-set_default_value (CdnFunctionArgument *self,
-                   CdnExpression       *def)
-{
-	gboolean isoptional;
-
-	isoptional = self->priv->def != NULL;
-
-	if (self->priv->def == def)
-	{
-		return;
-	}
-
-	if (self->priv->def)
-	{
-		g_object_unref (self->priv->def);
-		self->priv->def = NULL;
-	}
-
-	if (def)
-	{
-		self->priv->def = g_object_ref_sink (def);
-	}
-
-	g_object_notify (G_OBJECT (self), "default-value");
-
-	if (isoptional != (self->priv->def != NULL))
-	{
-		g_object_notify (G_OBJECT (self), "optional");
-	}
-}
-
-static void
 cdn_function_argument_set_variable (GObject      *object,
                                     guint         prop_id,
                                     const GValue *value,
@@ -146,9 +106,6 @@ cdn_function_argument_set_variable (GObject      *object,
 	{
 		case PROP_NAME:
 			set_name (self, g_value_get_string (value));
-		break;
-		case PROP_DEFAULT_VALUE:
-			set_default_value (self, g_value_get_object (value));
 		break;
 		case PROP_EXPLICIT:
 			self->priv->isexplicit = g_value_get_boolean (value);
@@ -171,12 +128,6 @@ cdn_function_argument_get_variable (GObject    *object,
 	{
 		case PROP_NAME:
 			g_value_set_string (value, self->priv->name);
-		break;
-		case PROP_OPTIONAL:
-			g_value_set_boolean (value, self->priv->def != NULL);
-		break;
-		case PROP_DEFAULT_VALUE:
-			g_value_set_object (value, self->priv->def);
 		break;
 		case PROP_EXPLICIT:
 			g_value_set_boolean (value, self->priv->isexplicit);
@@ -237,34 +188,6 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
-	/**
-	 * CdnFunctionArgument:optional:
-	 *
-	 * Whether or not the function argument is optional
-	 *
-	 **/
-	g_object_class_install_property (object_class,
-	                                 PROP_OPTIONAL,
-	                                 g_param_spec_boolean ("optional",
-	                                                       "Optional",
-	                                                       "Optional",
-	                                                       FALSE,
-	                                                       G_PARAM_READABLE));
-
-	/**
-	 * CdnFunctionArgument:default:
-	 *
-	 * The default value of an optional function argument
-	 *
-	 **/
-	g_object_class_install_property (object_class,
-	                                 PROP_DEFAULT_VALUE,
-	                                 g_param_spec_object ("default-value",
-	                                                      "Default value",
-	                                                      "Default Value",
-	                                                      CDN_TYPE_EXPRESSION,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
-
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPLICIT,
 	                                 g_param_spec_boolean ("explicit",
@@ -283,8 +206,7 @@ cdn_function_argument_init (CdnFunctionArgument *self)
 /**
  * cdn_function_argument_new:
  * @name: The function argument name
- * @optional: Whether the function argument is optional
- * @def: The default value of an optional function argument
+ * @isexplicit:
  *
  * Create a new #CdnFunctionArgument. Note that #CdnFunctionArgument derives
  * from #GInitiallyUnowned. This means that initially, the newly created object
@@ -296,12 +218,10 @@ cdn_function_argument_init (CdnFunctionArgument *self)
  **/
 CdnFunctionArgument *
 cdn_function_argument_new (gchar const   *name,
-                           CdnExpression *def,
                            gboolean       isexplicit)
 {
 	return g_object_new (CDN_TYPE_FUNCTION_ARGUMENT,
 	                     "name", name,
-	                     "default-value", def,
 	                     "explicit", isexplicit,
 	                     NULL);
 }
@@ -324,7 +244,6 @@ cdn_function_argument_copy (CdnFunctionArgument *argument)
 	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), NULL);
 
 	return cdn_function_argument_new (argument->priv->name,
-	                                  cdn_expression_copy (argument->priv->def),
 	                                  argument->priv->isexplicit);
 }
 
@@ -364,60 +283,6 @@ cdn_function_argument_set_name (CdnFunctionArgument *argument,
 	g_return_val_if_fail (name != NULL, FALSE);
 
 	return set_name (argument, name);
-}
-
-/**
- * cdn_function_argument_get_optional:
- * @argument: A #CdnFunctionArgument
- *
- * Get whether the function argument is optional. If the argument is optional
- * its default value can be obtained with
- * #cdn_function_argument_get_default_value
- *
- * Returns: whether the argument is optional
- *
- **/
-gboolean
-cdn_function_argument_get_optional (CdnFunctionArgument *argument)
-{
-	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), FALSE);
-
-	return argument->priv->def != NULL;
-}
-
-/**
- * cdn_function_argument_get_default_value:
- * @argument: A #CdnFunctionArgument
- *
- * Get the function argument default value.
- *
- * Returns: (transfer none): the default value
- *
- **/
-CdnExpression *
-cdn_function_argument_get_default_value (CdnFunctionArgument *argument)
-{
-	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), 0);
-
-	return argument->priv->def;
-}
-
-/**
- * cdn_function_argument_set_default_value:
- * @argument: A #CdnFunctionArgument
- * @def: The default argument value
- *
- * Set the default argument value for an optional function argument.
- *
- **/
-void
-cdn_function_argument_set_default_value (CdnFunctionArgument *argument,
-                                         CdnExpression       *def)
-{
-	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
-	g_return_if_fail (def == NULL || CDN_IS_EXPRESSION (def));
-
-	set_default_value (argument, def);
 }
 
 /**

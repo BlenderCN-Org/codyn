@@ -48,6 +48,7 @@ G_BEGIN_DECLS
  * @CDN_MATH_FUNCTION_TYPE_AND: and
  * @CDN_MATH_FUNCTION_TYPE_NEGATE: negate
  * @CDN_MATH_FUNCTION_TYPE_TERNARY: ternary
+ * @CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS: num operators
  * @CDN_MATH_FUNCTION_TYPE_SIN: sine
  * @CDN_MATH_FUNCTION_TYPE_COS: cosine
  * @CDN_MATH_FUNCTION_TYPE_TAN: tangent
@@ -78,6 +79,8 @@ G_BEGIN_DECLS
  * @CDN_MATH_FUNCTION_TYPE_CSIGN: copy sign
  * @CDN_MATH_FUNCTION_TYPE_CLIP: clip
  * @CDN_MATH_FUNCTION_TYPE_CYCLE: cycle
+ * @CDN_MATH_FUNCTION_TYPE_INDEX: index
+ * @CDN_MATH_FUNCTION_TYPE_TRANSPOSE: transpose
  * @CDN_MATH_FUNCTION_TYPE_NUM: number of function types
  *
  * Function types.
@@ -92,7 +95,6 @@ typedef enum
 	CDN_MATH_FUNCTION_TYPE_MULTIPLY,
 	CDN_MATH_FUNCTION_TYPE_EMULTIPLY,
 	CDN_MATH_FUNCTION_TYPE_DIVIDE,
-	CDN_MATH_FUNCTION_TYPE_EDIVIDE,
 	CDN_MATH_FUNCTION_TYPE_MODULO,
 	CDN_MATH_FUNCTION_TYPE_POWER,
 	CDN_MATH_FUNCTION_TYPE_GREATER,
@@ -104,6 +106,7 @@ typedef enum
 	CDN_MATH_FUNCTION_TYPE_AND,
 	CDN_MATH_FUNCTION_TYPE_NEGATE,
 	CDN_MATH_FUNCTION_TYPE_TERNARY,
+	CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS,
 	CDN_MATH_FUNCTION_TYPE_SIN,
 	CDN_MATH_FUNCTION_TYPE_COS,
 	CDN_MATH_FUNCTION_TYPE_TAN,
@@ -134,6 +137,10 @@ typedef enum
 	CDN_MATH_FUNCTION_TYPE_CSIGN,
 	CDN_MATH_FUNCTION_TYPE_CLIP,
 	CDN_MATH_FUNCTION_TYPE_CYCLE,
+	CDN_MATH_FUNCTION_TYPE_INDEX,
+	CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
+	CDN_MATH_FUNCTION_TYPE_SUM,
+	CDN_MATH_FUNCTION_TYPE_PRODUCT,
 	CDN_MATH_FUNCTION_TYPE_NUM
 } CdnMathFunctionType;
 
@@ -153,11 +160,12 @@ gboolean             cdn_math_function_is_commutative (CdnMathFunctionType  type
 const gchar         *cdn_math_function_lookup_by_id (CdnMathFunctionType  type,
                                                      gint                *arguments);
 
-void                 cdn_math_function_get_stack_manipulation (CdnMathFunctionType   type,
+gboolean             cdn_math_function_get_stack_manipulation (CdnMathFunctionType   type,
                                                                gint                  arguments,
                                                                gint                 *argdim,
-                                                               gint                 *outarguments,
-                                                               gint                **outargdim);
+                                                               gint                 *outargdim,
+                                                               gint                 *extra_space,
+                                                               GError              **error);
 
 G_END_DECLS
 

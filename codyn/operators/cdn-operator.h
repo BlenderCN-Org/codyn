@@ -26,6 +26,7 @@
 #include <glib-object.h>
 #include <codyn/cdn-stack.h>
 #include <codyn/cdn-function.h>
+#include <codyn/cdn-forward-decl.h>
 
 G_BEGIN_DECLS
 
@@ -50,10 +51,6 @@ typedef enum
 } CdnOperatorError;
 
 GQuark            cdn_operator_error_quark      (void);
-
-typedef CDN_FORWARD_DECL (CdnIntegrator) CdnIntegratorForward;
-
-typedef CDN_FORWARD_DECL (CdnFunction) CdnFunctionForward;
 
 typedef void (*CdnForeachFunctionFunc)(CdnFunctionForward *func,
                                        gpointer            userdata);
@@ -82,9 +79,12 @@ struct _CdnOperatorClass
 	                                GSList const **indices,
 	                                gint           num_indices,
 	                                gint           num_arguments,
+	                                gint          *argdim,
 	                                GError       **error);
 
 	gchar           *(*get_name) ();
+
+	CdnStackManipulation const *(*get_stack_manipulation) (CdnOperator *op);
 
 	gboolean         (*equal)           (CdnOperator *op,
 	                                     CdnOperator *other);
@@ -108,6 +108,7 @@ gboolean             cdn_operator_initialize                  (CdnOperator     *
                                                                GSList const   **indices,
                                                                gint             num_indices,
                                                                gint             num_arguments,
+                                                               gint            *argdim,
                                                                GError         **error);
 
 void                 cdn_operator_execute                     (CdnOperator     *op,
@@ -136,8 +137,11 @@ gboolean             cdn_operator_equal                       (CdnOperator     *
 CdnOperator         *cdn_operator_copy                        (CdnOperator     *op);
 
 gint                 cdn_operator_get_num_arguments           (CdnOperator     *op);
+gint                *cdn_operator_get_arguments_dimension     (CdnOperator     *op);
+
 void                _cdn_operator_set_num_arguments           (CdnOperator     *op,
-                                                               gint             num);
+                                                               gint             num,
+                                                               gint            *argdim);
 
 CdnFunction         *cdn_operator_get_primary_function        (CdnOperator     *op);
 
@@ -148,6 +152,8 @@ CdnFunction         *cdn_operator_get_function                (CdnOperator     *
 void                 cdn_operator_foreach_function           (CdnOperator            *op,
                                                               CdnForeachFunctionFunc  func,
                                                               gpointer                userdata);
+
+CdnStackManipulation const *cdn_operator_get_stack_manipulation    (CdnOperator *op);
 
 G_END_DECLS
 

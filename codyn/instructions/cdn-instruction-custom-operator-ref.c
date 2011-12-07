@@ -57,10 +57,11 @@ static void
 cdn_instruction_custom_operator_ref_execute (CdnInstruction *instruction,
                                              CdnStack       *stack)
 {
-
+}
 
 static CdnStackManipulation const *
-cdn_instruction_custom_operator_ref_get_stack_manipulation (CdnInstruction *instruction)
+cdn_instruction_custom_operator_ref_get_stack_manipulation (CdnInstruction  *instruction,
+                                                            GError         **error)
 {
 	CdnInstructionCustomOperatorRef *self;
 
@@ -71,7 +72,7 @@ cdn_instruction_custom_operator_ref_get_stack_manipulation (CdnInstruction *inst
 
 static gboolean
 cdn_instruction_custom_operator_ref_equal (CdnInstruction *a,
-                                       CdnInstruction *b)
+                                           CdnInstruction *b)
 {
 	CdnInstructionCustomOperatorRef *ac;
 	CdnInstructionCustomOperatorRef *bc;
@@ -93,7 +94,7 @@ cdn_instruction_custom_operator_ref_class_init (CdnInstructionCustomOperatorRefC
 
 	inst_class->to_string = cdn_instruction_custom_operator_ref_to_string;
 	inst_class->execute = cdn_instruction_custom_operator_ref_execute;
-	inst_class->get_stack_count = cdn_instruction_custom_operator_ref_get_stack_count;
+	inst_class->get_stack_manipulation = cdn_instruction_custom_operator_ref_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_custom_operator_ref_equal;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionCustomOperatorRefPrivate));

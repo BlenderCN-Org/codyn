@@ -43,6 +43,8 @@ CdnInstruction *cdn_instruction_number_new (gdouble value);
 CdnInstruction *cdn_instruction_number_new_from_string (gchar const *repr);
 
 gchar *cdn_instruction_number_get_representation (CdnInstructionNumber *number);
+void cdn_instruction_number_set_representation (CdnInstructionNumber *number,
+                                                gchar const          *repr);
 
 gdouble cdn_instruction_number_get_value (CdnInstructionNumber *number);
 void    cdn_instruction_number_set_value (CdnInstructionNumber *number,

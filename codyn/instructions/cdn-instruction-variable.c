@@ -1,11 +1,11 @@
 #include "cdn-instruction-variable.h"
-#include "cdn-instruction-operator.h"
 
 #include <codyn/cdn-expression.h>
 #include <codyn/cdn-object.h>
 #include <codyn/cdn-edge-action.h>
 #include <codyn/cdn-math.h>
 #include <codyn/cdn-expression-tree-iter.h>
+#include <codyn/cdn-compile-error.h>
 
 #define CDN_INSTRUCTION_VARIABLE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION_VARIABLE, CdnInstructionVariablePrivate))
 
@@ -13,6 +13,8 @@ struct _CdnInstructionVariablePrivate
 {
 	CdnVariable *property;
 	CdnInstructionVariableBinding binding;
+	CdnStackManipulation smanip;
+	gint push_dims[2];
 };
 
 G_DEFINE_TYPE (CdnInstructionVariable, cdn_instruction_variable, CDN_TYPE_INSTRUCTION)
@@ -45,6 +47,9 @@ cdn_instruction_variable_copy (CdnMiniObject *object)
 	cdn_instruction_variable_set_variable (self, src->priv->property);
 	self->priv->binding = src->priv->binding;
 
+	self->priv->push_dims[0] = src->priv->push_dims[0];
+	self->priv->push_dims[1] = src->priv->push_dims[1];
+
 	return ret;
 }
 
@@ -68,19 +73,58 @@ static void
 cdn_instruction_variable_execute (CdnInstruction *instruction,
                                   CdnStack       *stack)
 {
+	gdouble const *values;
+	gint i;
+	gint numr;
+	gint numc;
+
 	CdnInstructionVariable *self;
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CdnInstructionVariable *)instruction;
 
-	cdn_stack_push (stack,
-	                cdn_variable_get_value (self->priv->property));
+	values = cdn_variable_get_values (self->priv->property, &numr, &numc);
+
+	for (i = 0; i < numr * numc; ++i)
+	{
+		cdn_stack_push (stack, values[i]);
+	}
 }
 
-static gint
-cdn_instruction_variable_get_stack_count (CdnInstruction *instruction)
+static CdnStackManipulation const *
+cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
+                                                 GError         **error)
 {
-	return 1;
+	CdnInstructionVariable *self;
+
+	self = (CdnInstructionVariable *)instruction;
+
+	if (self->priv->property)
+	{
+		CdnExpression *expr;
+
+		expr = cdn_variable_get_expression (self->priv->property);
+
+		if (!cdn_expression_get_dimension (expr,
+		                                   &(self->priv->push_dims[0]),
+		                                   &(self->priv->push_dims[1])))
+		{
+			gchar *name;
+
+			name = cdn_variable_get_full_name_for_display (self->priv->property);
+
+			g_set_error (error,
+			             CDN_COMPILE_ERROR_TYPE,
+			             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			             "Could not statically determine dimensionality of `%s'",
+			             name);
+
+			g_free (name);
+			return NULL;
+		}
+	}
+
+	return &self->priv->smanip;
 }
 
 static GSList *
@@ -112,7 +156,7 @@ cdn_instruction_variable_class_init (CdnInstructionVariableClass *klass)
 
 	inst_class->to_string = cdn_instruction_variable_to_string;
 	inst_class->execute = cdn_instruction_variable_execute;
-	inst_class->get_stack_count = cdn_instruction_variable_get_stack_count;
+	inst_class->get_stack_manipulation = cdn_instruction_variable_get_stack_manipulation;
 	inst_class->get_dependencies = cdn_instruction_variable_get_dependencies;
 	inst_class->equal = cdn_instruction_variable_equal;
 
@@ -123,6 +167,10 @@ static void
 cdn_instruction_variable_init (CdnInstructionVariable *self)
 {
 	self->priv = CDN_INSTRUCTION_VARIABLE_GET_PRIVATE (self);
+
+	self->priv->smanip.num_pop = 0;
+	self->priv->smanip.num_push = 1;
+	self->priv->smanip.push_dims = self->priv->push_dims;
 }
 
 /**

@@ -179,20 +179,17 @@ enum
 struct _CdnFunctionArgumentSpec
 {
 	CdnEmbeddedString *name;
-	CdnEmbeddedString *optional;
 	gboolean isexplicit;
 };
 
 CdnFunctionArgumentSpec *
 cdn_function_argument_spec_new (CdnEmbeddedString *name,
-                                CdnEmbeddedString *optional,
                                 gboolean           isexplicit)
 {
 	CdnFunctionArgumentSpec *ret;
 
 	ret = g_slice_new0 (CdnFunctionArgumentSpec);
 	ret->name = name;
-	ret->optional = optional;
 	ret->isexplicit = isexplicit;
 
 	return ret;
@@ -204,11 +201,6 @@ cdn_function_argument_spec_free (CdnFunctionArgumentSpec *self)
 	if (self->name)
 	{
 		g_object_unref (self->name);
-	}
-
-	if (self->optional)
-	{
-		g_object_unref (self->optional);
 	}
 
 	g_slice_free (CdnFunctionArgumentSpec, self);
@@ -347,7 +339,10 @@ cdn_parser_context_finalize (GObject *object)
 }
 
 static void
-cdn_parser_context_set_property (GObject *object, guint prop_id, const GValue *value, GParamSpec *pspec)
+cdn_parser_context_set_property (GObject      *object,
+                                 guint         prop_id,
+                                 const GValue *value,
+                                 GParamSpec   *pspec)
 {
 	CdnParserContext *self = CDN_PARSER_CONTEXT (object);
 
@@ -363,7 +358,10 @@ cdn_parser_context_set_property (GObject *object, guint prop_id, const GValue *v
 }
 
 static void
-cdn_parser_context_get_property (GObject *object, guint prop_id, GValue *value, GParamSpec *pspec)
+cdn_parser_context_get_property (GObject    *object,
+                                 guint       prop_id,
+                                 GValue     *value,
+                                 GParamSpec *pspec)
 {
 	CdnParserContext *self = CDN_PARSER_CONTEXT (object);
 
@@ -3600,36 +3598,12 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 				while (names)
 				{
 					CdnExpansion *exn;
-					GSList *opts = NULL;
-					CdnExpansion *opt = NULL;
 					CdnFunctionArgument *arg;
 
 					exn = names->data;
 
-					if (spec->optional)
-					{
-						cdn_embedded_context_save (context->priv->embedded);
-						cdn_embedded_context_add_expansion (context->priv->embedded,
-						                                    exn);
-
-						embedded_string_expand_multiple (opts,
-						                                 spec->optional,
-						                                 context);
-
-						if (numargs == g_slist_length (opts))
-						{
-							opt = g_slist_nth_data (opts, i);
-						}
-
-						cdn_embedded_context_restore (context->priv->embedded);
-					}
-
 					arg = cdn_function_argument_new (cdn_expansion_get (exn, 0),
-					                                 opt ? cdn_expression_new (cdn_expansion_get (opt, 0)) : NULL,
 					                                 spec->isexplicit);
-
-					g_slist_foreach (opts, (GFunc)cdn_expansion_unref, NULL);
-					g_slist_free (opts);
 
 					cdn_function_add_argument (func, arg);
 

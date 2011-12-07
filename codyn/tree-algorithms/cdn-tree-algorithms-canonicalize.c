@@ -8,17 +8,21 @@ static gboolean canonical_multiply (CdnExpressionTreeIter *iter,
 static CdnInstruction *
 create_multiply ()
 {
-	return cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_MULTIPLY,
+	/* TODO: pass correct argdim... */
+	return cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
 	                                     "*",
-	                                     2);
+	                                     2,
+	                                     NULL);
 }
 
 static CdnInstruction *
 create_plus ()
 {
-	return cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_PLUS,
+	/* TODO: pass correct argdim... */
+	return cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
 	                                     "+",
-	                                     2);
+	                                     2,
+	                                     NULL);
 }
 
 static gint
@@ -129,13 +133,11 @@ type_id (CdnInstruction *instr)
 {
 	TypeId order[] = {
 		{CDN_TYPE_INSTRUCTION_NUMBER, 0},
-		{CDN_TYPE_INSTRUCTION_CONSTANT, 0},
 		{CDN_TYPE_INSTRUCTION_VARIABLE, 1},
 		{CDN_TYPE_INSTRUCTION_CUSTOM_FUNCTION, 2},
 		{CDN_TYPE_INSTRUCTION_CUSTOM_FUNCTION_REF, 3},
 		{CDN_TYPE_INSTRUCTION_CUSTOM_OPERATOR, 4},
 		{CDN_TYPE_INSTRUCTION_CUSTOM_OPERATOR_REF, 4},
-		{CDN_TYPE_INSTRUCTION_OPERATOR, 5},
 		{CDN_TYPE_INSTRUCTION_FUNCTION, 6},
 		{G_TYPE_INVALID, -1}
 	};
@@ -176,8 +178,7 @@ compare_iters (CdnExpressionTreeIter const *iter1,
 
 	type = G_OBJECT_TYPE (iter1->instruction);
 
-	if (type == CDN_TYPE_INSTRUCTION_FUNCTION ||
-	    type == CDN_TYPE_INSTRUCTION_OPERATOR)
+	if (type == CDN_TYPE_INSTRUCTION_FUNCTION)
 	{
 		gint ret;
 
@@ -207,8 +208,7 @@ compare_iters (CdnExpressionTreeIter const *iter1,
 	{
 		return compare_property (iter1, iter2);
 	}
-	else if (type == CDN_TYPE_INSTRUCTION_NUMBER ||
-	         type == CDN_TYPE_INSTRUCTION_CONSTANT)
+	else if (type == CDN_TYPE_INSTRUCTION_NUMBER)
 	{
 		return compare_number (iter1, iter2);
 	}
@@ -235,12 +235,12 @@ collect_plus_terms (CdnExpressionTreeIter *iter,
 }
 
 static CdnExpressionTreeIter *
-terminal_part (CdnExpressionTreeIter *iter,
-               CdnMathOperatorType    type)
+terminal_part (CdnExpressionTreeIter   *iter,
+               CdnMathFunctionType  type)
 {
-	CdnMathOperatorType tp;
+	CdnMathFunctionType tp;
 
-	if (iter_is_operator (iter, &tp) && type == tp)
+	if (iter_is_function (iter, &tp) && type == tp)
 	{
 		return iter->children[0];
 	}
@@ -285,7 +285,7 @@ merge_commutative_operator_trees (CdnExpressionTreeIter *iter)
 	CdnExpressionTreeIter *root;
 	CdnExpressionTreeIter *left;
 	CdnExpressionTreeIter *right;
-	CdnMathOperatorType type;
+	CdnMathFunctionType type;
 	CdnInstructionFunction *instr;
 
 	instr = (CdnInstructionFunction *)iter->instruction;
@@ -303,14 +303,14 @@ merge_commutative_operator_trees (CdnExpressionTreeIter *iter)
 		{
 			if (compare_iters (left,
 			                   right,
-			                   type == CDN_MATH_OPERATOR_TYPE_PLUS) <= 0)
+			                   type == CDN_MATH_FUNCTION_TYPE_PLUS) <= 0)
 			{
 				return FALSE;
 			}
 		}
 		else if (compare_iters (left,
 		                        right->children[0],
-		                        type == CDN_MATH_OPERATOR_TYPE_PLUS) <= 0)
+		                        type == CDN_MATH_FUNCTION_TYPE_PLUS) <= 0)
 		{
 			return FALSE;
 		}
@@ -329,7 +329,7 @@ merge_commutative_operator_trees (CdnExpressionTreeIter *iter)
 
 		if (compare_iters (tleft,
 		                   tright,
-		                   type == CDN_MATH_OPERATOR_TYPE_PLUS) <= 0)
+		                   type == CDN_MATH_FUNCTION_TYPE_PLUS) <= 0)
 		{
 			if (!merge_trees_advance (&root,
 			                          &left,

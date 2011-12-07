@@ -18,10 +18,11 @@ cdn_instruction_to_string_impl (CdnInstruction *instruction)
 }
 
 static CdnStackManipulation const *
-cdn_instruction_get_stack_manipulation_impl (CdnInstruction *instruction)
+cdn_instruction_get_stack_manipulation_impl (CdnInstruction  *instruction,
+                                             GError         **error)
 {
-	g_warning ("%s should implement get_stack_count!", g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
-	return 0;
+	g_warning ("%s should implement get_stack_manipulation!", g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
+	return NULL;
 }
 
 static GSList *
@@ -100,11 +101,13 @@ cdn_instruction_execute (CdnInstruction *instruction,
  *
  **/
 CdnStackManipulation const *
-cdn_instruction_get_stack_manipulation (CdnInstruction *instruction)
+cdn_instruction_get_stack_manipulation (CdnInstruction  *instruction,
+                                        GError         **error)
 {
 	g_return_val_if_fail (CDN_IS_INSTRUCTION (instruction), NULL);
 
-	return CDN_INSTRUCTION_GET_CLASS (instruction)->get_stack_manipulation (instruction);
+	return CDN_INSTRUCTION_GET_CLASS (instruction)->get_stack_manipulation (instruction,
+	                                                                        error);
 }
 
 /**

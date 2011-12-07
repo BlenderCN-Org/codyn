@@ -269,6 +269,7 @@ cdn_operator_diff_initialize (CdnOperator   *op,
                               GSList const **indices,
                               gint           num_indices,
                               gint           num_arguments,
+                              gint          *argdim,
                               GError       **error)
 {
 	CdnOperatorDiff *diff;
@@ -288,6 +289,7 @@ cdn_operator_diff_initialize (CdnOperator   *op,
 	                                                                      indices,
 	                                                                      num_indices,
 	                                                                      num_arguments,
+	                                                                      argdim,
 	                                                                      error))
 	{
 		return FALSE;
@@ -399,7 +401,6 @@ cdn_operator_diff_initialize (CdnOperator   *op,
 			}
 
 			darg = cdn_function_argument_new (dsname,
-			                                  cdn_expression_new0 (),
 			                                  TRUE);
 
 			g_free (dsname);
@@ -470,6 +471,7 @@ cdn_operator_diff_copy (CdnOperator *op)
 	                                                                 cdn_operator_all_indices (op),
 	                                                                 cdn_operator_num_indices (op),
 	                                                                 cdn_operator_get_num_arguments (op),
+	                                                                 cdn_operator_get_arguments_dimension (op),
 	                                                                 NULL);
 
 	if (diff->priv->function)

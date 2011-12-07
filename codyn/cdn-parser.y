@@ -29,8 +29,8 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 		YYERROR;						\
 	}
 
-static CdnFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
-                                                            gdouble  end,
+static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
+                                                            gchar const *end,
                                                             GArray  *coefficients);
 
 %}
@@ -45,8 +45,8 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 
 %type <num> when_direction
 
-%token <numf> T_DOUBLE
-%token <numf> T_INTEGER
+%token <id> T_DOUBLE
+%token <id> T_INTEGER
 
 %token <id> T_IDENTIFIER
 %token <id> T_STRING
@@ -195,7 +195,6 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gdouble  start,
 {
 	gchar *id;
 	CdnVariable *variable;
-	gdouble numf;
 	gint num;
 	GSList *list;
 	GArray *array;
@@ -857,16 +856,16 @@ polynomial_piece
 	;
 
 double_list
-	: T_DOUBLE			{ append_array (NULL, gdouble, $1, $$ = arret); }
-	| T_INTEGER			{ append_array (NULL, gdouble, $1, $$ = arret); }
-	| double_list ',' T_DOUBLE	{ append_array ($1, gdouble, $3, $$ = arret); }
-	| double_list ',' T_INTEGER	{ append_array ($1, gdouble, $3, $$ = arret); }
+	: T_DOUBLE			{ append_array (NULL, gchar *, $1, $$ = arret); }
+	| T_INTEGER			{ append_array (NULL, gchar *, $1, $$ = arret); }
+	| double_list ',' T_DOUBLE	{ append_array ($1, gchar *, $3, $$ = arret); }
+	| double_list ',' T_INTEGER	{ append_array ($1, gchar *, $3, $$ = arret); }
 	;
 
 function_argument_impl
-	: identifier_or_string			{ $$ = cdn_function_argument_spec_new ($1, NULL, FALSE); }
-	| T_KEY_FROM '.' identifier_or_string	{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "from."), NULL, FALSE); }
-	| T_KEY_TO '.' identifier_or_string	{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "to."), NULL, FALSE); }
+	: identifier_or_string			{ $$ = cdn_function_argument_spec_new ($1, FALSE); }
+	| T_KEY_FROM '.' identifier_or_string	{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "from."), FALSE); }
+	| T_KEY_TO '.' identifier_or_string	{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "to."), FALSE); }
 	;
 
 function_argument_list_impl_rev
@@ -892,8 +891,7 @@ function_argument_list
 	;
 
 function_argument
-	: identifier_or_string '=' value_as_string	{ $$ = cdn_function_argument_spec_new ($1, $3, TRUE); }
-	| identifier_or_string			        { $$ = cdn_function_argument_spec_new ($1, NULL, TRUE); }
+	: identifier_or_string			        { $$ = cdn_function_argument_spec_new ($1, TRUE); }
 	;
 
 object_item
@@ -1447,11 +1445,11 @@ identifier
 	;
 
 double
-	: T_DOUBLE			{ $$ = cdn_embedded_string_new_from_double ($1); }
+	: T_DOUBLE			{ $$ = cdn_embedded_string_new_from_string ($1); }
 	;
 
 integer
-	: T_INTEGER			{ $$ = cdn_embedded_string_new_from_integer ($1); }
+	: T_INTEGER			{ $$ = cdn_embedded_string_new_from_string ($1); }
 	;
 
 value_as_string
@@ -1699,9 +1697,9 @@ yyerror (YYLTYPE *locp, CdnParserContext *context, char const *s)
 }
 
 static CdnFunctionPolynomialPiece *
-create_polynomial_piece (gdouble  start,
-                         gdouble  end,
-                         GArray  *coefficients)
+create_polynomial_piece (gchar const *start,
+                         gchar const *end,
+                         GArray      *coefficients)
 {
 	guint len;
 	gdouble *coefs = NULL;
@@ -1716,12 +1714,12 @@ create_polynomial_piece (gdouble  start,
 
 		for (i = 0; i < len; ++i)
 		{
-			coefs[i] = g_array_index (coefficients, gdouble, i);
+			coefs[i] = g_ascii_strtod (g_array_index (coefficients, gchar *, i), NULL);
 		}
 	}
 
-	return g_object_ref_sink (cdn_function_polynomial_piece_new (start,
-	                                                             end,
+	return g_object_ref_sink (cdn_function_polynomial_piece_new (g_ascii_strtod (start, NULL),
+	                                                             g_ascii_strtod (end, NULL),
 	                                                             coefs,
 	                                                             len));
 }

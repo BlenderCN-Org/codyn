@@ -44,9 +44,11 @@ GType cdn_instruction_function_get_type (void) G_GNUC_CONST;
 
 CdnInstruction *cdn_instruction_function_new (guint        id,
                                               const gchar *name,
-                                              gint         arguments);
+                                              gint         arguments,
+                                              gint        *argdim);
 
 guint        cdn_instruction_function_get_id          (CdnInstructionFunction *func);
+gint        *cdn_instruction_function_get_arguments_dimension  (CdnInstructionFunction *func);
 
 void         cdn_instruction_function_set_name        (CdnInstructionFunction *func,
                                                        gchar const            *name);

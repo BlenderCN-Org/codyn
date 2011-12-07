@@ -63,7 +63,6 @@ struct _CdnFunctionArgumentClass
 GType                cdn_function_argument_get_type           (void) G_GNUC_CONST;
 
 CdnFunctionArgument *cdn_function_argument_new                (const gchar         *name,
-                                                               CdnExpression       *expression,
                                                                gboolean             isexplicit);
 
 CdnFunctionArgument *cdn_function_argument_copy               (CdnFunctionArgument *argument);
@@ -71,12 +70,6 @@ CdnFunctionArgument *cdn_function_argument_copy               (CdnFunctionArgume
 const gchar         *cdn_function_argument_get_name           (CdnFunctionArgument *argument);
 gboolean             cdn_function_argument_set_name           (CdnFunctionArgument *argument,
                                                                const gchar         *name);
-
-gboolean             cdn_function_argument_get_optional       (CdnFunctionArgument *argument);
-
-CdnExpression       *cdn_function_argument_get_default_value  (CdnFunctionArgument *argument);
-void                 cdn_function_argument_set_default_value  (CdnFunctionArgument *argument,
-                                                               CdnExpression       *expression);
 
 gboolean             cdn_function_argument_get_explicit       (CdnFunctionArgument *argument);
 void                 cdn_function_argument_set_explicit       (CdnFunctionArgument *argument,

@@ -75,8 +75,18 @@ gboolean       cdn_expression_compile          (CdnExpression      *expression,
                                                 CdnCompileErrorForward    *error);
 
 gdouble        cdn_expression_evaluate         (CdnExpression      *expression);
+
+gdouble const *cdn_expression_evaluate_values  (CdnExpression      *expression,
+                                                gint               *numr,
+                                                gint               *numc);
+
 void           cdn_expression_set_value        (CdnExpression      *expression,
                                                 gdouble             value);
+
+void           cdn_expression_set_values       (CdnExpression      *expression,
+                                                gdouble            *values,
+                                                gint                numr,
+                                                gint                numc);
 
 void           cdn_expression_reset            (CdnExpression      *expression);
 
@@ -107,6 +117,10 @@ void           cdn_expression_set_once         (CdnExpression      *expression,
 
 gint           cdn_expression_get_error_at     (CdnExpression      *expression);
 gint           cdn_expression_get_error_start  (CdnExpression      *expression);
+
+gboolean       cdn_expression_get_dimension    (CdnExpression      *expression,
+                                                gint               *numr,
+                                                gint               *numc);
 
 G_END_DECLS
 

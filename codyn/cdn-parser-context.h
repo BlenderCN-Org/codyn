@@ -356,7 +356,6 @@ void                   cdn_parser_context_set_first_eof         (CdnParserContex
                                                                  gboolean           firsteof);
 
 CdnFunctionArgumentSpec *cdn_function_argument_spec_new        (CdnEmbeddedString *name,
-                                                                CdnEmbeddedString *optional,
                                                                 gboolean           isexplicit);
 
 void cdn_function_argument_spec_free (CdnFunctionArgumentSpec *spec);

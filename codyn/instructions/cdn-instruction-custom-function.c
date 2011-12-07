@@ -71,6 +71,7 @@ cdn_instruction_custom_function_execute (CdnInstruction *instruction,
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CdnInstructionCustomFunction *)instruction;
+
 	cdn_function_execute (self->priv->function,
 	                      self->priv->smanip.num_pop,
 	                      self->priv->smanip.pop_dims,
@@ -78,7 +79,8 @@ cdn_instruction_custom_function_execute (CdnInstruction *instruction,
 }
 
 static CdnStackManipulation const *
-cdn_instruction_custom_function_get_stack_manipulation (CdnInstruction *instruction)
+cdn_instruction_custom_function_get_stack_manipulation (CdnInstruction  *instruction,
+                                                        GError         **error)
 {
 	CdnInstructionCustomFunction *self;
 
@@ -136,7 +138,7 @@ cdn_instruction_custom_function_init (CdnInstructionCustomFunction *self)
 {
 	self->priv = CDN_INSTRUCTION_CUSTOM_FUNCTION_GET_PRIVATE (self);
 
-	self->priv->smanip.push_dims = &self->priv->push_manip;
+	self->priv->smanip.push_dims = self->priv->push_manip;
 	self->priv->smanip.num_push = 1;
 }
 
@@ -145,22 +147,22 @@ set_arguments (CdnInstructionCustomFunction *function,
                gint                          arguments,
                gint                         *argdim)
 {
-	g_return_if_fail (CDN_IS_INSTRUCTION_CUSTOM_FUNCTION (function));
+	gint i;
 
-	function->priv->arguments = arguments;
+	g_return_if_fail (CDN_IS_INSTRUCTION_CUSTOM_FUNCTION (function));
 
 	g_free (function->priv->smanip.pop_dims);
 	function->priv->smanip.pop_dims = g_new (gint, arguments * 2);
 
 	for (i = 0; i < arguments * 2; ++i)
 	{
-		function->priv->smanip.pop_dims = argdim[i];
+		function->priv->smanip.pop_dims[i] = argdim[i];
 	}
 
 	function->priv->smanip.num_pop = arguments;
 }
 
-void
+static void
 set_function (CdnInstructionCustomFunction *function,
               CdnFunction                  *func)
 {
@@ -192,11 +194,11 @@ cdn_instruction_custom_function_new (CdnFunction *function,
 	set_function (custom, function);
 	set_arguments (custom, arguments, argdim);
 
-	cdn_function_get_stack_manipulation (function,
-	                                     arguments,
-	                                     argdim,
-	                                     &(custom->priv->push_dims[0]),
-	                                     &(custom->priv->push_dims[1]));
+	cdn_function_get_dimension (function,
+	                            arguments,
+	                            argdim,
+	                            &(custom->priv->push_manip[0]),
+	                            &(custom->priv->push_manip[1]));
 
 	return CDN_INSTRUCTION (custom);
 }

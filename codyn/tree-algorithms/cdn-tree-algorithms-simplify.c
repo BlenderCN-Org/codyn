@@ -27,19 +27,9 @@ simplify_function (CdnExpressionTreeIter *iter)
 	f = (CdnInstructionFunction *)(iter->instruction);
 	id = cdn_instruction_function_get_id (f);
 
-	if (CDN_IS_INSTRUCTION_OPERATOR (f))
+	if (cdn_math_function_is_variable (id))
 	{
-		if (cdn_math_operator_is_variable (id))
-		{
-			return FALSE;
-		}
-	}
-	else
-	{
-		if (cdn_math_function_is_variable (id))
-		{
-			return FALSE;
-		}
+		return FALSE;
 	}
 
 	cdn_stack_init (&stack, iter->num_children + 1);
@@ -58,18 +48,10 @@ simplify_function (CdnExpressionTreeIter *iter)
 		cdn_stack_push (&stack, num);
 	}
 
-	if (CDN_IS_INSTRUCTION_OPERATOR (f))
-	{
-		cdn_math_operator_execute (id,
-		                           iter->num_children,
-		                           &stack);
-	}
-	else
-	{
-		cdn_math_function_execute (id,
-		                           iter->num_children,
-		                           &stack);
-	}
+	cdn_math_function_execute (id,
+	                           iter->num_children,
+	                           cdn_instruction_function_get_arguments_dimension (f),
+	                           &stack);
 
 	for (i = 0; i < iter->num_children; ++i)
 	{
@@ -124,9 +106,11 @@ iter_new_plus (CdnExpressionTreeIter *c1,
 		return c1;
 	}
 
-	ret = iter_new_sized (cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_PLUS,
+	/* TODO: argdim */
+	ret = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
 	                                                    "+",
-	                                                    2),
+	                                                    2,
+	                                                    NULL),
 	                      2);
 
 	iter_set_child (ret, c1, 0);
@@ -163,9 +147,11 @@ iter_new_multiply (CdnExpressionTreeIter *c1,
 		return c1;
 	}
 
-	ret = iter_new_sized (cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_MULTIPLY,
+	/* TODO: argdim */
+	ret = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
 	                                                    "*",
-	                                                    2),
+	                                                    2,
+	                                                    NULL),
 	                      2);
 
 	iter_set_child (ret, c1, 0);
@@ -228,9 +214,11 @@ multiply_make_powers (CdnExpressionTreeIter *iter)
 
 	plus = iter_new_plus (p1, p2);
 
-	power = iter_new_sized (cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_POWER,
+	/* TODO: argdim */
+	power = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
 	                                                      "^",
-	                                                      2),
+	                                                      2,
+	                                                      NULL),
 	                        2);
 
 	iter_set_child (power, t1, 0);

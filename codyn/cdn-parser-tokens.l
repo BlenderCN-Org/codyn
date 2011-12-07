@@ -246,12 +246,12 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 				}
 
 [-+]?[0-9]+((\.|eE[-+]?)[0-9]*) {
-					yylval->numf = g_ascii_strtod (yytext, NULL);
+					yylval->id = g_strdup (yytext);
 					return T_DOUBLE;
 				}
 
 [-+]?[0-9]+			{
-					yylval->numf = (gint)g_ascii_strtoll (yytext, NULL, 10);
+					yylval->id = g_strdup (yytext);
 					return T_INTEGER;
 				}
 

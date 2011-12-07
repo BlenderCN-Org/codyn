@@ -284,79 +284,62 @@ iter_brother (CdnExpressionTreeIter *iter)
 }
 
 gboolean
-iter_is_operator (CdnExpressionTreeIter const *iter,
-                  CdnMathOperatorType   *type)
-{
-	if (CDN_IS_INSTRUCTION_OPERATOR (iter->instruction))
-	{
-		if (type)
-		{
-			*type = cdn_instruction_function_get_id ((CdnInstructionFunction *)(iter->instruction));
-		}
-
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
-gboolean
 iter_is_multiply (CdnExpressionTreeIter const *iter)
 {
-	CdnMathOperatorType type;
+	CdnMathFunctionType type;
 
-	return iter_is_operator (iter, &type) &&
-	       type == CDN_MATH_OPERATOR_TYPE_MULTIPLY;
+	return iter_is_function (iter, &type) &&
+	       type == CDN_MATH_FUNCTION_TYPE_MULTIPLY;
 }
 
 gboolean
 iter_is_power (CdnExpressionTreeIter const *iter)
 {
-	CdnMathOperatorType type;
+	CdnMathFunctionType type;
 
-	return iter_is_operator (iter, &type) &&
-	       type == CDN_MATH_OPERATOR_TYPE_POWER;
+	return iter_is_function (iter, &type) &&
+	       type == CDN_MATH_FUNCTION_TYPE_POWER;
 }
 
 gboolean
 iter_is_divide (CdnExpressionTreeIter const *iter)
 {
-	CdnMathOperatorType type;
+	CdnMathFunctionType type;
 
-	return iter_is_operator (iter, &type) &&
-	       type == CDN_MATH_OPERATOR_TYPE_DIVIDE;
+	return iter_is_function (iter, &type) &&
+	       type == CDN_MATH_FUNCTION_TYPE_DIVIDE;
 }
 
 gboolean
 iter_is_plus (CdnExpressionTreeIter const *iter)
 {
-	CdnMathOperatorType type;
+	CdnMathFunctionType type;
 
 	if (!iter)
 	{
 		return FALSE;
 	}
 
-	return iter_is_operator (iter, &type) &&
-	       type == CDN_MATH_OPERATOR_TYPE_PLUS;
+	return iter_is_function (iter, &type) &&
+	       type == CDN_MATH_FUNCTION_TYPE_PLUS;
 }
 
 gboolean
 iter_is_minus (CdnExpressionTreeIter const *iter)
 {
-	CdnMathOperatorType type;
+	CdnMathFunctionType type;
 
-	return iter_is_operator (iter, &type) &&
-	       type == CDN_MATH_OPERATOR_TYPE_MINUS;
+	return iter_is_function (iter, &type) &&
+	       type == CDN_MATH_FUNCTION_TYPE_MINUS;
 }
 
 gboolean
 iter_is_unary_minus (CdnExpressionTreeIter const *iter)
 {
-	CdnMathOperatorType type;
+	CdnMathFunctionType type;
 
-	return iter_is_operator (iter, &type) &&
-	       type == CDN_MATH_OPERATOR_TYPE_UNARY_MINUS;
+	return iter_is_function (iter, &type) &&
+	       type == CDN_MATH_FUNCTION_TYPE_UNARY_MINUS;
 }
 
 gboolean
@@ -380,8 +363,7 @@ gboolean
 iter_is_function (CdnExpressionTreeIter const *iter,
                   CdnMathFunctionType         *type)
 {
-	if (!iter_is_operator (iter, NULL) &&
-	    CDN_IS_INSTRUCTION_FUNCTION (iter->instruction))
+	if (CDN_IS_INSTRUCTION_FUNCTION (iter->instruction))
 	{
 		if (type)
 		{

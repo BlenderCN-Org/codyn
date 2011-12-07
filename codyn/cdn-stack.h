@@ -29,6 +29,17 @@ G_BEGIN_DECLS
 
 typedef struct _CdnStack CdnStack;
 
+typedef struct
+{
+	gint num_pop;
+	gint *pop_dims;
+
+	gint num_push;
+	gint *push_dims;
+
+	gint extra_space;
+} CdnStackManipulation;
+
 CdnStack *cdn_stack_new     (guint     size);
 void      cdn_stack_init    (CdnStack *stack,
                              guint     size);
@@ -40,7 +51,13 @@ guint     cdn_stack_count   (CdnStack *stack);
 void      cdn_stack_push    (CdnStack *stack,
                              gdouble   value);
 
+void      cdn_stack_resize  (CdnStack *stack,
+                             guint     size);
+
 gdouble   cdn_stack_pop     (CdnStack *stack);
+gdouble  *cdn_stack_popn    (CdnStack *stack,
+                             gint      num);
+
 gdouble   cdn_stack_peek    (CdnStack *stack);
 void      cdn_stack_set     (CdnStack *stack,
                              gdouble   value);
@@ -49,9 +66,10 @@ void      cdn_stack_reset   (CdnStack *stack);
 
 gdouble   cdn_stack_at      (CdnStack *stack,
                              gint      idx);
+gdouble  *cdn_stack_ptr     (CdnStack *stack);
 
 void      cdn_stack_set_at  (CdnStack *stack,
-                             gint      idx
+                             gint      idx,
                              gdouble   value);
 
 G_END_DECLS

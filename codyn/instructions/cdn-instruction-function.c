@@ -9,6 +9,8 @@ struct _CdnInstructionFunctionPrivate
 	gchar *name;
 
 	CdnStackManipulation smanip;
+	gint push_dims[2];
+	GError *error;
 };
 
 G_DEFINE_TYPE (CdnInstructionFunction, cdn_instruction_function, CDN_TYPE_INSTRUCTION)
@@ -22,7 +24,6 @@ cdn_instruction_function_finalize (CdnMiniObject *object)
 	g_free (function->priv->name);
 
 	g_free (function->priv->smanip.pop_dims);
-	g_free (function->priv->smanip.push_dims);
 
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_function_parent_class)->finalize (object);
 }
@@ -97,11 +98,18 @@ cdn_instruction_function_execute (CdnInstruction *instruction,
 }
 
 static CdnStackManipulation const *
-cdn_instruction_function_get_stack_manipulation (CdnInstruction *instruction)
+cdn_instruction_function_get_stack_manipulation (CdnInstruction  *instruction,
+                                                 GError         **error)
 {
 	CdnInstructionFunction *self;
 
 	self = CDN_INSTRUCTION_FUNCTION (instruction);
+
+	if (self->priv->error && error)
+	{
+		*error = g_error_copy (self->priv->error);
+	}
+
 	return &self->priv->smanip;
 }
 
@@ -150,6 +158,8 @@ static void
 cdn_instruction_function_init (CdnInstructionFunction *self)
 {
 	self->priv = CDN_INSTRUCTION_FUNCTION_GET_PRIVATE (self);
+
+	self->priv->smanip.push_dims = self->priv->push_dims;
 }
 
 CdnInstruction *
@@ -176,11 +186,14 @@ cdn_instruction_function_new (guint        id,
 		func->priv->smanip.pop_dims[i] = argdim[i];
 	}
 
+	func->priv->smanip.num_push = 1;
+
 	cdn_math_function_get_stack_manipulation (id,
 	                                          arguments,
 	                                          argdim,
-	                                          &func->priv->smanip.num_push,
-	                                          &func->priv->smanip.push_dims);
+	                                          func->priv->push_dims,
+	                                          &func->priv->smanip.extra_space,
+	                                          &func->priv->error);
 
 	return CDN_INSTRUCTION (ret);
 }
@@ -225,4 +238,10 @@ cdn_instruction_function_get_name (CdnInstructionFunction *func)
 {
 	/* Omit type check to increase speed */
 	return func->priv->name;
+}
+
+gint *
+cdn_instruction_function_get_arguments_dimension (CdnInstructionFunction *func)
+{
+	return func->priv->smanip.pop_dims;
 }

@@ -362,7 +362,6 @@ set_flags (CdnVariable      *property,
 		{
 			if (!wasonce)
 			{
-				cdn_expression_reset_cache (property->priv->expression);
 				cdn_expression_set_once (property->priv->expression,
 				                         TRUE);
 			}
@@ -371,7 +370,6 @@ set_flags (CdnVariable      *property,
 		{
 			cdn_expression_set_once (property->priv->expression,
 			                         FALSE);
-			cdn_expression_reset_cache (property->priv->expression);
 		}
 
 		if (notify)
@@ -709,6 +707,27 @@ cdn_variable_set_value (CdnVariable  *property,
 	cdn_expression_set_value (property->priv->expression, value);
 }
 
+/**
+ * cdn_variable_set_value:
+ * @property: the #CdnVariable
+ * @value: the new value
+ *
+ * Change the value to a specific number.
+ *
+ **/
+void
+cdn_variable_set_values (CdnVariable  *property,
+                         gdouble      *values,
+                         gint          numr,
+                         gint          numc)
+{
+	/* Omit type check to increase speed */
+	cdn_expression_set_values (property->priv->expression,
+	                           values,
+	                           numr,
+	                           numc);
+}
+
 void
 cdn_variable_apply_constraint (CdnVariable *property)
 {
@@ -756,6 +775,26 @@ cdn_variable_get_value (CdnVariable *property)
 	else
 	{
 		return 0;
+	}
+}
+
+gdouble const *
+cdn_variable_get_values (CdnVariable *property,
+                         gint        *numr,
+                         gint        *numc)
+{
+	if (property->priv->expression)
+	{
+		// TODO: apply constraint
+		return cdn_expression_evaluate_values (property->priv->expression,
+		                                       numr,
+		                                       numc);
+	}
+	else
+	{
+		*numr = 0;
+		*numc = 0;
+		return NULL;
 	}
 }
 
@@ -1448,4 +1487,27 @@ cdn_variable_get_integral (CdnVariable *property)
 	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
 
 	return property->priv->diff_for;
+}
+
+gboolean
+cdn_variable_compile (CdnVariable       *property,
+                      CdnCompileError   *error)
+{
+	CdnCompileContext *context;
+	gboolean ret;
+
+	g_return_val_if_fail (CDN_IS_VARIABLE (property), FALSE);
+	g_return_val_if_fail (error == NULL || CDN_IS_COMPILE_ERROR (error), FALSE);
+
+	if (!cdn_modifiable_get_modified (CDN_MODIFIABLE (property->priv->expression)))
+	{
+		return TRUE;
+	}
+
+	context = cdn_object_get_compile_context (property->priv->object, NULL);
+
+	ret = cdn_expression_compile (property->priv->expression, context, error);
+
+	g_object_unref (context);
+	return ret;
 }

@@ -6,8 +6,7 @@ struct _CdnInstructionMatrixPrivate
 {
 	CdnStackManipulation smanip;
 
-	gint pop_manip[2];
-	gint push_manip[2];
+	gint push_dims[2];
 };
 
 G_DEFINE_TYPE (CdnInstructionMatrix, cdn_instruction_matrix, CDN_TYPE_INSTRUCTION)
@@ -18,6 +17,8 @@ cdn_instruction_matrix_copy (CdnMiniObject *object)
 	CdnMiniObject *ret;
 	CdnInstructionMatrix *self;
 	CdnInstructionMatrix const *src;
+	gint n;
+	gint i;
 
 	src = CDN_INSTRUCTION_MATRIX_CONST (object);
 
@@ -25,11 +26,19 @@ cdn_instruction_matrix_copy (CdnMiniObject *object)
 
 	self = CDN_INSTRUCTION_MATRIX (ret);
 
-	self->priv->push_manip[0] = src->priv->push_manip[0];
-	self->priv->push_manip[1] = src->priv->push_manip[1];
+	self->priv->push_dims[0] = src->priv->push_dims[0];
+	self->priv->push_dims[1] = src->priv->push_dims[1];
 
-	self->priv->pop_manip[0] = src->priv->pop_manip[0];
-	self->priv->pop_manip[1] = src->priv->pop_manip[1];
+	self->priv->smanip.num_pop = src->priv->smanip.num_pop;
+
+	n = src->priv->smanip.num_pop * 2;
+
+	self->priv->smanip.pop_dims = g_new (gint, n);
+
+	for (i = 0; i < n; ++i)
+	{
+		self->priv->smanip.pop_dims[i] = src->priv->smanip.pop_dims[i];
+	}
 
 	return ret;
 }
@@ -54,9 +63,30 @@ cdn_instruction_matrix_execute (CdnInstruction *instruction,
 }
 
 static CdnStackManipulation const *
-cdn_instruction_matrix_get_stack_manipulation (CdnInstruction *instruction)
+cdn_instruction_matrix_get_stack_manipulation (CdnInstruction  *instruction,
+                                               GError         **error)
 {
-	return &instruction->priv->smanip;
+	CdnInstructionMatrix *self;
+
+	self = CDN_INSTRUCTION_MATRIX (instruction);
+	return &self->priv->smanip;
+}
+
+static gboolean
+check_pop_dims (CdnInstructionMatrix *m1,
+                CdnInstructionMatrix *m2)
+{
+	gint i;
+
+	for (i = 0; i < m1->priv->smanip.num_pop * 2; ++i)
+	{
+		if (m1->priv->smanip.pop_dims[i] != m2->priv->smanip.pop_dims[i])
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 static gboolean
@@ -68,8 +98,20 @@ cdn_instruction_matrix_equal (CdnInstruction *i1,
 
 	return n1->priv->push_dims[0] == n2->priv->push_dims[0] &&
 	       n1->priv->push_dims[1] == n2->priv->push_dims[1] &&
-	       n1->priv->pop_dims[0] == n2->priv->pop_dims[0] &&
-	       n1->priv->pop_dims[1] == n2->priv->pop_dims[1];
+	       n1->priv->smanip.num_pop == n2->priv->smanip.num_pop &&
+	       check_pop_dims (n1, n2);
+}
+
+static void
+cdn_instruction_matrix_finalize (CdnMiniObject *object)
+{
+	CdnInstructionMatrix *self;
+
+	self = CDN_INSTRUCTION_MATRIX (object);
+
+	g_free (self->priv->smanip.pop_dims);
+
+	CDN_MINI_OBJECT_CLASS (cdn_instruction_matrix_parent_class)->finalize (object);
 }
 
 static void
@@ -77,6 +119,8 @@ cdn_instruction_matrix_class_init (CdnInstructionMatrixClass *klass)
 {
 	CdnMiniObjectClass *object_class = CDN_MINI_OBJECT_CLASS (klass);
 	CdnInstructionClass *inst_class = CDN_INSTRUCTION_CLASS (klass);
+
+	object_class->finalize = cdn_instruction_matrix_finalize;
 
 	object_class->copy = cdn_instruction_matrix_copy;
 
@@ -93,13 +137,15 @@ cdn_instruction_matrix_init (CdnInstructionMatrix *self)
 {
 	self->priv = CDN_INSTRUCTION_MATRIX_GET_PRIVATE (self);
 
-	self->priv->smanip.push_dims = &self->priv->push_manip;
-	self->priv->smaniip.pop_dims = &self->priv->pop_manip;
+	self->priv->smanip.push_dims = self->priv->push_dims;
+	self->priv->smanip.num_push = 1;
 }
 
 CdnInstruction *
-cdn_instruction_matrix_new (gint numr,
-                            gint numc)
+cdn_instruction_matrix_new (gint  numpop,
+                            gint *popdims,
+                            gint  numr,
+                            gint  numc)
 {
 	CdnMiniObject *ret;
 	CdnInstructionMatrix *self;
@@ -107,14 +153,11 @@ cdn_instruction_matrix_new (gint numr,
 	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_MATRIX);
 	self = CDN_INSTRUCTION_MATRIX (ret);
 
-	self->priv->smanip.num_pop = 1;
-	self->priv->smanip.num_push = 1;
+	self->priv->smanip.num_pop = numpop;
+	self->priv->smanip.pop_dims = popdims;
 
-	self->priv->pop_manip[0] = numr;
-	self->priv->pop_manip[1] = numc;
-
-	self->priv->push_manip[0] = numr;
-	self->priv->push_manip[1] = numc;
+	self->priv->push_dims[0] = numr;
+	self->priv->push_dims[1] = numc;
 
 	return CDN_INSTRUCTION (ret);
 }

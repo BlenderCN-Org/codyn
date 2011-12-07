@@ -33,15 +33,6 @@ struct _CdnInstruction
 	CdnInstructionPrivate *priv;
 };
 
-typedef struct
-{
-	gint num_pop;
-	gint *pop_dims;
-
-	gint num_push;
-	gint *push_dims;
-} CdnStackManipulation;
-
 struct _CdnInstructionClass
 {
 	CdnMiniObjectClass parent_class;
@@ -49,7 +40,7 @@ struct _CdnInstructionClass
 	gchar  *(*to_string)	    (CdnInstruction *instruction);
 	void    (*execute)          (CdnInstruction *instruction,
 	                             CdnStack       *stack);
-	CdnStackManipulation const *(*get_stack_manipulation) (CdnInstruction *instruction);
+	CdnStackManipulation const *(*get_stack_manipulation) (CdnInstruction *instruction, GError **error);
 	GSList *(*get_dependencies) (CdnInstruction *instruction);
 
 	gboolean (*get_is_commutative) (CdnInstruction *instruction);
@@ -64,7 +55,7 @@ gchar  *cdn_instruction_to_string        (CdnInstruction *instruction);
 void    cdn_instruction_execute          (CdnInstruction *instruction,
                                           CdnStack       *stack);
 
-CdnStackManipulation const *cdn_instruction_get_stack_manipulation  (CdnInstruction *instruction);
+CdnStackManipulation const *cdn_instruction_get_stack_manipulation  (CdnInstruction *instruction, GError **error);
 GSList *cdn_instruction_get_dependencies (CdnInstruction *instruction);
 
 gboolean cdn_instruction_equal           (CdnInstruction *i1,

@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include "cdn-compile-error.h"
 
 #include "cdn-math.h"
 
@@ -52,7 +53,7 @@ for (i = 0; i < num; ++i)							\
 	--start;								\
 }
 
-typedef void (*BinaryFunction)(gdouble a, gdouble b);
+typedef gdouble (*BinaryFunction)(gdouble a, gdouble b);
 
 static void
 foreach_element2 (CdnStack       *stack,
@@ -62,12 +63,13 @@ foreach_element2 (CdnStack       *stack,
 	gint num1;
 	gint num2;
 
-	num1 = argdim ? (argdim[0] * argdim[1]) : 1:
-	num2 = argdim ? (argdim[2] * argdim[3]) : 1;
+	num1 = argdim ? (argdim[2] * argdim[3]) : 1;
+	num2 = argdim ? (argdim[0] * argdim[1]) : 1;
 
 	if (num1 == 1 && num2 == 1)
 	{
 		gdouble second = cdn_stack_pop (stack);
+
 		cdn_stack_set (stack, op (cdn_stack_peek (stack), second));
 	}
 	else if (num1 == 1)
@@ -93,8 +95,8 @@ foreach_element2 (CdnStack       *stack,
 		gint start;
 		gint i;
 
-		second = cdn_stack_at (stack, start);
 		start = cdn_stack_count (stack) - 2 - num1;
+		second = cdn_stack_at (stack, start);
 
 		for (i = 0; i < num1; ++i)
 		{
@@ -237,17 +239,48 @@ max (gdouble a,
 	return a > b ? a : b;
 }
 
+static gdouble
+sum (gdouble a,
+     gdouble b)
+{
+	return a + b;
+}
+
+static gdouble
+product (gdouble a,
+         gdouble b)
+{
+	return a * b;
+}
+
 static void
 op_nested (CdnStack   *stack,
            gint        numargs,
+           gint       *argdim,
            gdouble   (*func)(gdouble, gdouble))
 {
-	gdouble value = cdn_stack_pop (stack);
+	gboolean first = TRUE;
+	gdouble value = 0;
 	gint i;
 
-	for (i = 0; i < numargs - 1; ++i)
+	for (i = 0; i < numargs; ++i)
 	{
-		value = func (value, cdn_stack_pop (stack));
+		gint n = argdim ? argdim[(numargs - 1 - i) * 2] * argdim[(numargs - i) * 2 - 1] : 1;
+
+		while (n > 0)
+		{
+			if (first)
+			{
+				value = cdn_stack_pop (stack);
+				first = FALSE;
+			}
+			else
+			{
+				value = func (value, cdn_stack_pop (stack));
+			}
+
+			--n;
+		}
 	}
 
 	cdn_stack_push (stack, value);
@@ -258,7 +291,7 @@ op_min (CdnStack *stack,
         gint      numargs,
         gint     *argdim)
 {
-	op_nested (stack, numargs, min);
+	op_nested (stack, numargs, argdim, min);
 }
 
 static void
@@ -266,7 +299,23 @@ op_max (CdnStack *stack,
         gint      numargs,
         gint     *argdim)
 {
-	op_nested (stack, numargs, max);
+	op_nested (stack, numargs, argdim, max);
+}
+
+static void
+op_sum (CdnStack *stack,
+        gint      numargs,
+        gint     *argdim)
+{
+	op_nested (stack, numargs, argdim, sum);
+}
+
+static void
+op_product (CdnStack *stack,
+            gint      numargs,
+            gint     *argdim)
+{
+	op_nested (stack, numargs, argdim, product);
 }
 
 static void
@@ -351,6 +400,8 @@ op_lerp (CdnStack *stack,
 	gdouble second = cdn_stack_pop (stack);
 	gdouble first = cdn_stack_pop (stack);
 
+	// TODO
+
 	cdn_stack_push (stack, first + (second - first) * third);
 }
 
@@ -361,6 +412,8 @@ op_sqsum (CdnStack *stack,
 {
 	gint i;
 	gdouble value = 0;
+
+	// TODO
 
 	for (i = 0; i < numargs; ++i)
 	{
@@ -402,6 +455,7 @@ op_clip (CdnStack *stack,
 	gdouble min = cdn_stack_pop (stack);
 	gdouble val = cdn_stack_pop (stack);
 
+	// TODO
 	cdn_stack_push (stack, val < min ? min : (val > max ? max : val));
 }
 
@@ -413,6 +467,8 @@ op_cycle (CdnStack *stack,
 	gdouble max = cdn_stack_pop (stack);
 	gdouble min = cdn_stack_pop (stack);
 	gdouble val = cdn_stack_pop (stack);
+
+	// TODO
 
 	if (val > max)
 	{
@@ -479,6 +535,63 @@ op_emultiply_impl (gdouble a, gdouble b)
 }
 
 static void
+matrix_multiply (CdnStack *stack,
+                 gint     *argdim)
+{
+	gint r;
+	gint c;
+	gint i;
+	gint n;
+
+	gint num1 = argdim[2] * argdim[3];
+	gint num2 = argdim[0] * argdim[1];
+	gint numend = argdim[0] * argdim[3];
+
+	n = cdn_stack_count (stack);
+	gint start1 = n - num2 - 1 - num1;
+
+	// Naive matrix multiplication. This could be improved
+	for (r = 0; r < argdim[2]; ++r)
+	{
+		gint start2 = n - num2 - 1;
+
+		for (c = 0; c < argdim[1]; ++c)
+		{
+			gdouble s = 0;
+
+			for (i = 0; i < argdim[3]; ++i)
+			{
+				s += cdn_stack_at (stack, start1 + i) *
+				     cdn_stack_at (stack, start2 + i * argdim[1]);
+			}
+
+			cdn_stack_push (stack, s);
+
+			++start2;
+		}
+
+		start1 += argdim[3];
+	}
+
+	n -= 1 + num1 + num2;
+	numend = cdn_stack_count (stack) - numend - 1;
+
+	// Then copy from the end of the stack to the start
+	for (i = 0; i < numend; ++i)
+	{
+		cdn_stack_set_at (stack, n, cdn_stack_at (stack, numend));
+
+		++n;
+		--numend;
+	}
+
+	if (num1 + num2 > numend)
+	{
+		cdn_stack_popn (stack, numend - num1 - num2);
+	}
+}
+
+static void
 op_multiply (CdnStack *stack,
              gint      numargs,
              gint     *argdim)
@@ -488,9 +601,9 @@ op_multiply (CdnStack *stack,
 		gdouble second = cdn_stack_pop (stack);
 		cdn_stack_set (stack, cdn_stack_peek (stack) * second);
 	}
-	else if (argdim[0] == argdim[2])
+	else if (argdim[3] == argdim[0])
 	{
-		
+		matrix_multiply (stack, argdim);
 	}
 	else
 	{
@@ -507,7 +620,7 @@ op_emultiply (CdnStack *stack,
 }
 
 static gdouble
-op_edivide_impl (gdouble a, gdouble b)
+op_divide_impl (gdouble a, gdouble b)
 {
 	return a / b;
 }
@@ -517,15 +630,7 @@ op_divide (CdnStack *stack,
            gint      numargs,
            gint     *argdim)
 {
-	foreach_element2 (stack, argdim, op_edivide_impl);
-}
-
-static void
-op_edivide (CdnStack *stack,
-            gint      numargs,
-            gint     *argdim)
-{
-	foreach_element2 (stack, argdim, op_edivide_impl);
+	foreach_element2 (stack, argdim, op_divide_impl);
 }
 
 static gdouble
@@ -676,11 +781,147 @@ op_ternary (CdnStack *stack,
             gint      numargs,
             gint     *argdim)
 {
-	gdouble falsepart = cdn_stack_pop (stack);
-	gdouble truepart = cdn_stack_pop (stack);
-	gdouble condition = cdn_stack_pop (stack);
+	if (!argdim || (argdim[2] == 1 && argdim[3] == 1))
+	{
+		gdouble falsepart;
+		gdouble truepart;
+		gdouble condition;
 
-	cdn_stack_push (stack, condition ? truepart : falsepart);
+		falsepart = cdn_stack_pop (stack);
+		truepart = cdn_stack_pop (stack);
+		condition = cdn_stack_pop (stack);
+
+		cdn_stack_push (stack, condition ? truepart : falsepart);
+	}
+	else
+	{
+		gint n = cdn_stack_count (stack);
+		gint nn = argdim[2] * argdim[3];
+
+		if (!op_equal_impl (cdn_stack_at (stack, n - 1 - nn * 2), 0))
+		{
+			gint i;
+
+			// pop off the false part
+			cdn_stack_popn (stack, nn);
+
+			n -= nn * 2;
+
+			// copy the true part
+			for (i = 0; i < nn; ++i)
+			{
+				cdn_stack_set_at (stack, n - 1 + i, cdn_stack_at (stack, n + i));
+			}
+
+			// Pop condition
+			cdn_stack_pop (stack);
+		}
+		else
+		{
+			gint i;
+
+			n -= nn;
+
+			// copy the false part
+			for (i = 0; i < nn; ++i)
+			{
+				cdn_stack_set_at (stack, n - nn - 1 + i, cdn_stack_at (stack, n + i));
+			}
+
+			cdn_stack_popn (stack, nn + 1);
+		}
+	}
+}
+
+static void
+op_index (CdnStack *stack,
+          gint      numargs,
+          gint     *argdim)
+{
+	// Sample from the output
+	gint num1 = argdim ? argdim[2] * argdim[3] : 1;
+	gint num2 = argdim ? argdim[0] * argdim[1] : 1;
+
+	gint n = cdn_stack_count (stack);
+	gint i;
+
+	gint start2 = n - num2;
+	gint start1 = start2 - num1;
+
+	for (i = 0; i < num2; ++i)
+	{
+		gint idx = (gint)rint (cdn_stack_at (stack, start2));
+
+		if (idx < num1)
+		{
+			cdn_stack_set_at (stack,
+			                  start2,
+			                  cdn_stack_at (stack, start1 + idx));
+		}
+		else
+		{
+			cdn_stack_set_at (stack,
+			                  start2,
+			                  0);
+		}
+
+		++start2;
+	}
+
+	// Copy back
+	start2 = n - num2;
+
+	for (i = 0; i < num2; ++i)
+	{
+		cdn_stack_set_at (stack,
+		                  start1,
+		                  cdn_stack_at (stack, start2));
+
+		++start1;
+		++start2;
+	}
+
+	cdn_stack_popn (stack, num1);
+}
+
+static void
+op_transpose (CdnStack *stack,
+              gint      numargs,
+              gint     *argdim)
+{
+	gint numr = argdim ? argdim[0] : 1;
+	gint numc = argdim ? argdim[1] : 1;
+
+	gint start;
+
+	gdouble *m = cdn_stack_ptr (stack) + cdn_stack_count (stack) - numr * numc;
+
+	for (start = 0; start < numr * numc; ++start)
+	{
+		gint next = start;
+		gint i = 0;
+		gdouble tmp;
+
+		do
+		{
+			++i;
+			next = (next % numr) * numc + next / numr;
+		} while (next > start);
+
+		if (next < start || i == 1)
+		{
+			continue;
+		}
+
+		tmp = m[next = start];
+
+		do
+		{
+			i = (next % numr) * numc + next / numr;
+			m[next] = (i == start) ? tmp : m[i];
+			next = i;
+		} while (next > start);
+	}
 }
 
 typedef struct
@@ -699,7 +940,6 @@ static FunctionEntry function_entries[] = {
 	{"*", op_multiply, 2, TRUE},
 	{".*", op_emultiply, 2, TRUE},
 	{"/", op_divide, 2, FALSE},
-	{"./", op_edivide, 2, FALSE},
 	{"%", op_modulo, 2, FALSE},
 	{"^", op_power, 2, FALSE},
 	{">", op_greater, 2, FALSE},
@@ -711,6 +951,7 @@ static FunctionEntry function_entries[] = {
 	{"&&", op_and, 2, TRUE},
 	{"!", op_negate, 1, FALSE},
 	{"?:", op_ternary, 3, FALSE},
+	{NULL, op_noop, 0, FALSE},
 	{"sin", op_sin, 1, FALSE},
 	{"cos", op_cos, 1, FALSE},
 	{"tan", op_tan, 1, FALSE},
@@ -740,7 +981,11 @@ static FunctionEntry function_entries[] = {
 	{"sign", op_sign, 1, FALSE},
 	{"csign", op_csign, 2, FALSE},
 	{"clip", op_clip, 3, FALSE},
-	{"cycle", op_cycle, 3, FALSE}
+	{"cycle", op_cycle, 3, FALSE},
+	{"index", op_index, 2, FALSE},
+	{"transpose", op_transpose, 1, FALSE},
+	{"sum", op_sum, -1, FALSE},
+	{"product", op_product, -1, FALSE}
 };
 
 /**
@@ -780,7 +1025,7 @@ cdn_math_function_lookup (gchar const  *name,
 
 	for (i = 1; i < CDN_MATH_FUNCTION_TYPE_NUM; ++i)
 	{
-		if (strcmp (function_entries[i].name, name) == 0)
+		if (g_strcmp0 (function_entries[i].name, name) == 0)
 		{
 			*arguments = function_entries[i].arguments;
 			return i;
@@ -901,4 +1146,218 @@ cdn_math_constant_lookup (gchar const  *name,
 	}
 
 	return 0.0;
+}
+
+gboolean
+cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
+                                          gint                   arguments,
+                                          gint                  *argdim,
+                                          gint                  *outargdim,
+                                          gint                  *extra_space,
+                                          GError               **error)
+{
+	*extra_space = 0;
+
+	if (!argdim)
+	{
+		outargdim[0] = 1;
+		outargdim[1] = 1;
+
+		return TRUE;
+	}
+
+	// Get the stack manipulation of a particular function given the
+	// particular arguments
+	switch (type)
+	{
+		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_NEGATE:
+		case CDN_MATH_FUNCTION_TYPE_SIN:
+		case CDN_MATH_FUNCTION_TYPE_COS:
+		case CDN_MATH_FUNCTION_TYPE_TAN:
+		case CDN_MATH_FUNCTION_TYPE_ASIN:
+		case CDN_MATH_FUNCTION_TYPE_ACOS:
+		case CDN_MATH_FUNCTION_TYPE_ATAN:
+		case CDN_MATH_FUNCTION_TYPE_SQRT:
+		case CDN_MATH_FUNCTION_TYPE_INVSQRT:
+		case CDN_MATH_FUNCTION_TYPE_EXP:
+		case CDN_MATH_FUNCTION_TYPE_FLOOR:
+		case CDN_MATH_FUNCTION_TYPE_CEIL:
+		case CDN_MATH_FUNCTION_TYPE_ROUND:
+		case CDN_MATH_FUNCTION_TYPE_ABS:
+		case CDN_MATH_FUNCTION_TYPE_LN:
+		case CDN_MATH_FUNCTION_TYPE_LOG10:
+		case CDN_MATH_FUNCTION_TYPE_EXP2:
+		case CDN_MATH_FUNCTION_TYPE_SINH:
+		case CDN_MATH_FUNCTION_TYPE_COSH:
+		case CDN_MATH_FUNCTION_TYPE_TANH:
+		case CDN_MATH_FUNCTION_TYPE_SIGN:
+		case CDN_MATH_FUNCTION_TYPE_CSIGN:
+			// Operators with one argument simply copy
+			outargdim[0] = argdim[0];
+			outargdim[1] = argdim[1];
+			return TRUE;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_PLUS:
+		case CDN_MATH_FUNCTION_TYPE_EMULTIPLY:
+		case CDN_MATH_FUNCTION_TYPE_DIVIDE:
+		case CDN_MATH_FUNCTION_TYPE_MODULO:
+		case CDN_MATH_FUNCTION_TYPE_POWER:
+		case CDN_MATH_FUNCTION_TYPE_GREATER:
+		case CDN_MATH_FUNCTION_TYPE_LESS:
+		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_OR:
+		case CDN_MATH_FUNCTION_TYPE_AND:
+		case CDN_MATH_FUNCTION_TYPE_POW:
+		case CDN_MATH_FUNCTION_TYPE_HYPOT:
+		case CDN_MATH_FUNCTION_TYPE_SQSUM:
+		case CDN_MATH_FUNCTION_TYPE_ATAN2:
+			if (argdim[0] == 1 && argdim[1] == 1)
+			{
+				// Take second arg size
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[3];
+				return TRUE;
+			}
+			else
+			{
+				// Take first arg size
+				outargdim[0] = argdim[0];
+				outargdim[1] = argdim[1];
+				return TRUE;
+			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
+			if (argdim[0] == 1 && argdim[1] == 1)
+			{
+				// element wise, take second dims
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[3];
+				return TRUE;
+			}
+			else if (argdim[2] == 1 && argdim[3] == 1)
+			{
+				// element wise, take first dims
+				outargdim[0] = argdim[0];
+				outargdim[1] = argdim[1];
+				return TRUE;
+			}
+			else if (argdim[3] == argdim[0])
+			{
+				// matrix multiplication
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[1];
+
+				*extra_space = outargdim[0] * outargdim[1];
+				return TRUE;
+			}
+			else if (argdim[0] * argdim[1] == argdim[2] * argdim[3])
+			{
+				// element wise, take first arg
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[3];
+				return TRUE;
+			}
+			else
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             "Cannot multiply matrices of size (%d, %d) and (%d, %d)",
+				             argdim[2], argdim[3], argdim[0], argdim[1]);
+
+				return FALSE;
+			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_TERNARY:
+			if (argdim[4] != 1 || argdim[5] != 1 ||
+			    argdim[0] != argdim[2] ||
+			    argdim[1] != argdim[3])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             "The `true' and `false' parts of the ternary operator must have the same dimensions (got (%d, %d) and (%d, %d))",
+				             argdim[2], argdim[3], argdim[0], argdim[1]);
+
+				return FALSE;
+			}
+			else
+			{
+				outargdim[0] = argdim[0];
+				outargdim[1] = argdim[1];
+				return TRUE;
+			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_MIN:
+		case CDN_MATH_FUNCTION_TYPE_MAX:
+		case CDN_MATH_FUNCTION_TYPE_SUM:
+		case CDN_MATH_FUNCTION_TYPE_PRODUCT:
+			outargdim[0] = 1;
+			outargdim[1] = 1;
+
+			return TRUE;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_LERP:
+			if (argdim[2] != argdim[4] ||
+			    argdim[3] != argdim[5])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             "Can only use `lerp' on arguments with the same dimensions (got (%d, %d) and (%d, %d))",
+				             argdim[4], argdim[5], argdim[2], argdim[3]);
+
+				return FALSE;
+			}
+			else if (argdim[0] == 1 && argdim[1] == 1)
+			{
+				outargdim[0] = argdim[0];
+				outargdim[1] = argdim[1];
+				return TRUE;
+			}
+			else if (argdim[2] == 1 && argdim[0] == 1)
+			{
+				outargdim[0] = argdim[1];
+				outargdim[1] = argdim[3];
+				return TRUE;
+			}
+			else if (argdim[3] == 1 && argdim[1] == 1)
+			{
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[0];
+				return TRUE;
+			}
+			else
+			{
+				return FALSE;
+			}
+		case CDN_MATH_FUNCTION_TYPE_CLIP:
+		case CDN_MATH_FUNCTION_TYPE_CYCLE:
+			if (argdim[0] == 1 && argdim[1] == 1 &&
+			    argdim[2] == 1 && argdim[3] == 1 &&
+			    argdim[4] == 1 && argdim[5])
+			{
+				outargdim[0] = 1;
+				outargdim[1] = 1;
+				return TRUE;
+			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_INDEX:
+			outargdim[0] = argdim[0];
+			outargdim[1] = argdim[1];
+			return TRUE;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_TRANSPOSE:
+			outargdim[0] = argdim[1];
+			outargdim[1] = argdim[0];
+		break;
+		default:
+			return FALSE;
+	}
+
+	return FALSE;
 }

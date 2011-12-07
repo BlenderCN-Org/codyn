@@ -75,6 +75,21 @@ cdn_stack_new (guint size)
 	return ret;
 }
 
+void
+cdn_stack_resize (CdnStack *stack,
+                  guint     size)
+{
+	if (size != stack->size)
+	{
+		stack->output = g_realloc (stack->output,
+		                           size);
+
+		stack->size = size;
+	}
+
+	cdn_stack_reset (stack);
+}
+
 /**
  * cdn_stack_destroy:
  * @stack: A #CdnStack
@@ -172,6 +187,14 @@ cdn_stack_pop (CdnStack *stack)
 	return *(--stack->output_ptr);
 }
 
+gdouble *
+cdn_stack_popn (CdnStack *stack,
+                gint      num)
+{
+	stack->output_ptr -= num;
+	return stack->output_ptr;
+}
+
 /**
  * cdn_stack_at:
  * @stack: A #CdnStack
@@ -217,8 +240,14 @@ cdn_stack_reset (CdnStack *stack)
 
 void
 cdn_stack_set_at (CdnStack *stack,
-                  gint      idx
+                  gint      idx,
                   gdouble   value)
 {
 	stack->output[idx] = value;
+}
+
+gdouble *
+cdn_stack_ptr (CdnStack *stack)
+{
+	return stack->output;
 }

@@ -173,6 +173,7 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
                                  GSList const **indices,
                                  gint           num_indices,
                                  gint           num_arguments,
+                                 gint          *argdim,
                                  GError       **error)
 {
 	CdnOperatorDelayed *delayed;
@@ -183,6 +184,7 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 	                                                                         indices,
 	                                                                         num_indices,
 	                                                                         num_arguments,
+	                                                                         argdim,
 	                                                                         error))
 	{
 		return FALSE;

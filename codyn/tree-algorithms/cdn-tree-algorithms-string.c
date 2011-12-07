@@ -48,15 +48,6 @@ property_to_string (CdnInstructionVariable *inst,
 }
 
 static void
-constant_to_string (CdnInstructionConstant *inst,
-                    gchar const * const    *children,
-                    GString                *ret,
-                    gboolean                dbg)
-{
-	g_string_append (ret, cdn_instruction_constant_get_symbol (inst));
-}
-
-static void
 number_to_string (CdnInstructionNumber *inst,
                   gchar const * const  *children,
                   GString              *ret,
@@ -105,58 +96,58 @@ static void
 operator_to_string (CdnInstructionFunction  *inst,
                     gchar const * const     *children,
                     GString                 *ret,
-                    gboolean                         dbg)
+                    gboolean                 dbg)
 {
 	switch (cdn_instruction_function_get_id (inst))
 	{
-		case CDN_MATH_OPERATOR_TYPE_UNARY_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
 			g_string_append_c (ret, '-');
 			g_string_append (ret, children[0]);
 		break;
-		case CDN_MATH_OPERATOR_TYPE_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_MINUS:
 			bin_op (ret, children, "-");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_PLUS:
+		case CDN_MATH_FUNCTION_TYPE_PLUS:
 			bin_op (ret, children, "+");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_MULTIPLY:
+		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
 			bin_op (ret, children, "*");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_DIVIDE:
+		case CDN_MATH_FUNCTION_TYPE_DIVIDE:
 			bin_op (ret, children, "/");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_MODULO:
+		case CDN_MATH_FUNCTION_TYPE_MODULO:
 			bin_op (ret, children, "%");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_POWER:
+		case CDN_MATH_FUNCTION_TYPE_POWER:
 			bin_op_sp (ret, children, "^", FALSE);
 		break;
-		case CDN_MATH_OPERATOR_TYPE_GREATER:
+		case CDN_MATH_FUNCTION_TYPE_GREATER:
 			bin_op (ret, children, ">");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_LESS:
+		case CDN_MATH_FUNCTION_TYPE_LESS:
 			bin_op (ret, children, "<");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_GREATER_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
 			bin_op (ret, children, ">=");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_LESS_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
 			bin_op (ret, children, "<=");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_EQUAL:
 			bin_op (ret, children, "==");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_OR:
+		case CDN_MATH_FUNCTION_TYPE_OR:
 			bin_op (ret, children, "||");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_AND:
+		case CDN_MATH_FUNCTION_TYPE_AND:
 			bin_op (ret, children, "&&");
 		break;
-		case CDN_MATH_OPERATOR_TYPE_NEGATE:
+		case CDN_MATH_FUNCTION_TYPE_NEGATE:
 			g_string_append_c (ret, '!');
 			g_string_append (ret, children[0]);
 		break;
-		case CDN_MATH_OPERATOR_TYPE_TERNARY:
+		case CDN_MATH_FUNCTION_TYPE_TERNARY:
 			g_string_append_printf (ret,
 			                        "%s ? %s : %s",
 			                        children[0],
@@ -207,6 +198,12 @@ function_to_string (CdnInstructionFunction *inst,
                     gboolean                dbg)
 {
 	gchar const *name;
+
+	if (cdn_instruction_function_get_id (inst) < CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS)
+	{
+		operator_to_string (inst, children, ret, dbg);
+		return;
+	}
 
 	name = cdn_instruction_function_get_name (inst);
 
@@ -367,17 +364,13 @@ to_string_func (CdnInstruction *instruction)
 	{
 		return (InstructionToStringFunc)property_to_string;
 	}
-	else if (CDN_IS_INSTRUCTION_CONSTANT (instruction))
-	{
-		return (InstructionToStringFunc)constant_to_string;
-	}
 	else if (CDN_IS_INSTRUCTION_NUMBER (instruction))
 	{
 		return (InstructionToStringFunc)number_to_string;
 	}
-	else if (CDN_IS_INSTRUCTION_OPERATOR (instruction))
+	else if (CDN_IS_INSTRUCTION_FUNCTION (instruction))
 	{
-		return (InstructionToStringFunc)operator_to_string;
+		return (InstructionToStringFunc)function_to_string;
 	}
 	else if (CDN_IS_INSTRUCTION_CUSTOM_FUNCTION (instruction))
 	{
@@ -395,12 +388,20 @@ to_string_func (CdnInstruction *instruction)
 	{
 		return (InstructionToStringFunc)custom_operator_ref_to_string;
 	}
-	else if (CDN_IS_INSTRUCTION_FUNCTION (instruction))
-	{
-		return (InstructionToStringFunc)function_to_string;
-	}
 
 	return NULL;
+}
+
+static gboolean
+instruction_is_operator (CdnInstruction *instruction)
+{
+	if (!CDN_IS_INSTRUCTION_FUNCTION (instruction))
+	{
+		return FALSE;
+	}
+
+	return cdn_instruction_function_get_id (CDN_INSTRUCTION_FUNCTION (instruction)) <
+	       CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS;
 }
 
 static void
@@ -415,7 +416,7 @@ instruction_priority (CdnInstruction *instr,
 	*priority = 1000;
 	*commutative = 0;
 
-	if (!CDN_IS_INSTRUCTION_OPERATOR (instr))
+	if (!instruction_is_operator (instr))
 	{
 		return;
 	}
@@ -424,45 +425,45 @@ instruction_priority (CdnInstruction *instr,
 
 	switch (id)
 	{
-		case CDN_MATH_OPERATOR_TYPE_UNARY_MINUS:
-		case CDN_MATH_OPERATOR_TYPE_NEGATE:
+		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_NEGATE:
 			*priority = 8;
 			*leftassoc = 0;
 		break;
-		case CDN_MATH_OPERATOR_TYPE_PLUS: // Smart fallthrough
+		case CDN_MATH_FUNCTION_TYPE_PLUS: // Smart fallthrough
 			*commutative = 1;
-		case CDN_MATH_OPERATOR_TYPE_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_MINUS:
 			*priority = 6;
 		break;
-		case CDN_MATH_OPERATOR_TYPE_MULTIPLY:
+		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
 			*commutative = 1;
-		case CDN_MATH_OPERATOR_TYPE_DIVIDE:
-		case CDN_MATH_OPERATOR_TYPE_MODULO:
+		case CDN_MATH_FUNCTION_TYPE_DIVIDE:
+		case CDN_MATH_FUNCTION_TYPE_MODULO:
 			*priority = 7;
 		break;
-		case CDN_MATH_OPERATOR_TYPE_POWER:
+		case CDN_MATH_FUNCTION_TYPE_POWER:
 			*priority = 9;
 			*leftassoc = 0;
 		break;
-		case CDN_MATH_OPERATOR_TYPE_GREATER:
-		case CDN_MATH_OPERATOR_TYPE_LESS:
-		case CDN_MATH_OPERATOR_TYPE_GREATER_OR_EQUAL:
-		case CDN_MATH_OPERATOR_TYPE_LESS_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_GREATER:
+		case CDN_MATH_FUNCTION_TYPE_LESS:
+		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
 			*priority = 5;
 		break;
-		case CDN_MATH_OPERATOR_TYPE_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_EQUAL:
 			*commutative = 1;
 			*priority = 4;
 		break;
-		case CDN_MATH_OPERATOR_TYPE_OR:
+		case CDN_MATH_FUNCTION_TYPE_OR:
 			*commutative = 1;
 			*priority = 2;
 		break;
-		case CDN_MATH_OPERATOR_TYPE_AND:
+		case CDN_MATH_FUNCTION_TYPE_AND:
 			*commutative = 1;
 			*priority = 3;
 		break;
-		case CDN_MATH_OPERATOR_TYPE_TERNARY:
+		case CDN_MATH_FUNCTION_TYPE_TERNARY:
 			*priority = 1;
 		break;
 	}
@@ -481,7 +482,7 @@ needs_paren (CdnExpressionTreeIter *parent,
 
 	instr = cdn_expression_tree_iter_get_instruction (parent);
 
-	if (!CDN_IS_INSTRUCTION_OPERATOR (instr))
+	if (!instruction_is_operator (instr))
 	{
 		return FALSE;
 	}
@@ -497,8 +498,8 @@ needs_paren (CdnExpressionTreeIter *parent,
 	}
 
 	if (cprio == pprio &&
-	    CDN_IS_INSTRUCTION_OPERATOR (parent->instruction) &&
-	    CDN_IS_INSTRUCTION_OPERATOR (child->instruction) &&
+	    instruction_is_operator (parent->instruction) &&
+	    instruction_is_operator (child->instruction) &&
 	    cdn_instruction_function_get_id ((CdnInstructionFunction *)(parent->instruction)) ==
 	    cdn_instruction_function_get_id ((CdnInstructionFunction *)(child->instruction)) &&
 	    commutative)

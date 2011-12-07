@@ -182,6 +182,7 @@ cdn_operators_instantiate (gchar const   *name,
                            GSList const **indices,
                            gint           num_indices,
                            gint           num_arguments,
+                           gint          *argdim,
                            GError       **error)
 {
 	GType gtype;
@@ -202,6 +203,7 @@ cdn_operators_instantiate (gchar const   *name,
 	                              indices,
 	                              num_indices,
 	                              num_arguments,
+	                              argdim,
 	                              error))
 	{
 		g_object_unref (ret);

@@ -82,10 +82,19 @@ struct _CdnFunctionClass
 	CdnObjectClass parent_class;
 
 	/*< public >*/
-	gdouble (*evaluate)           (CdnFunction         *function);
-	void    (*execute)            (CdnFunction         *function,
-	                               guint                nargs,
+	void    (*evaluate)           (CdnFunction         *function,
 	                               CdnStack            *stack);
+
+	void    (*execute)            (CdnFunction         *function,
+	                               gint                 nargs,
+	                               gint                *argdim,
+	                               CdnStack            *stack);
+
+	void    (*get_dimension)      (CdnFunction          *function,
+	                               gint                  arguments,
+	                               gint                 *argdim,
+	                               gint                 *numr,
+	                               gint                 *numc);
 
 	/* signals */
 	void   (*argument_added)      (CdnFunction         *function,
@@ -123,12 +132,20 @@ guint                cdn_function_get_n_arguments             (CdnFunction      
 guint                cdn_function_get_n_implicit              (CdnFunction          *function);
 
 void                 cdn_function_execute                     (CdnFunction          *function,
-                                                               guint                 nargs,
+                                                               gint                  nargs,
+                                                               gint                 *argdim,
                                                                CdnStack             *stack);
+
 void                 cdn_function_set_expression              (CdnFunction          *function,
                                                                CdnExpression        *expression);
 
 CdnExpression       *cdn_function_get_expression              (CdnFunction          *function);
+
+void                 cdn_function_get_dimension               (CdnFunction          *function,
+                                                               gint                  arguments,
+                                                               gint                 *argdim,
+                                                               gint                 *numr,
+                                                               gint                 *numc);
 
 G_END_DECLS
 

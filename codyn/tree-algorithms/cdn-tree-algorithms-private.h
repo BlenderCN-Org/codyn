@@ -55,9 +55,6 @@ void                    iter_copy_into            (CdnExpressionTreeIter *cp,
 
 CdnExpressionTreeIter * iter_brother              (CdnExpressionTreeIter *iter);
 
-gboolean                iter_is_operator          (CdnExpressionTreeIter const *iter,
-                                                   CdnMathOperatorType   *type);
-
 gboolean                iter_is_multiply          (CdnExpressionTreeIter const *iter);
 
 gboolean                iter_is_power             (CdnExpressionTreeIter const *iter);

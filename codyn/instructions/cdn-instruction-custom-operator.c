@@ -63,14 +63,15 @@ cdn_instruction_custom_operator_execute (CdnInstruction *instruction,
 	cdn_operator_execute (self->priv->op, stack);
 }
 
-static gint
-cdn_instruction_custom_operator_get_stack_count (CdnInstruction *instruction)
+static CdnStackManipulation const *
+cdn_instruction_custom_operator_get_stack_manipulation (CdnInstruction  *instruction,
+                                                        GError         **error)
 {
 	CdnInstructionCustomOperator *self;
 
 	self = CDN_INSTRUCTION_CUSTOM_OPERATOR (instruction);
 
-	return -cdn_operator_get_num_arguments (self->priv->op) + 1;
+	return cdn_operator_get_stack_manipulation (self->priv->op);
 }
 
 static GSList *
@@ -146,7 +147,7 @@ cdn_instruction_custom_operator_class_init (CdnInstructionCustomOperatorClass *k
 
 	inst_class->to_string = cdn_instruction_custom_operator_to_string;
 	inst_class->execute = cdn_instruction_custom_operator_execute;
-	inst_class->get_stack_count = cdn_instruction_custom_operator_get_stack_count;
+	inst_class->get_stack_manipulation = cdn_instruction_custom_operator_get_stack_manipulation;
 	inst_class->get_dependencies = cdn_instruction_custom_operator_get_dependencies;
 	inst_class->equal = cdn_instruction_custom_operator_equal;
 

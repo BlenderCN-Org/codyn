@@ -52,13 +52,14 @@ cdn_instruction_custom_function_ref_execute (CdnInstruction *instruction,
 }
 
 static CdnStackManipulation const *
-cdn_instruction_custom_function_ref_get_stack_manipulation (CdnInstruction *instruction)
+cdn_instruction_custom_function_ref_get_stack_manipulation (CdnInstruction  *instruction,
+                                                            GError         **error)
 {
 	CdnInstructionCustomFunctionRef *self;
 
 	self = (CdnInstructionCustomFunctionRef *)instruction;
 
-	return &self->priv->smanip;
+	return &(self->priv->smanip);
 }
 
 static gboolean

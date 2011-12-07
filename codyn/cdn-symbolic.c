@@ -43,9 +43,9 @@ instructions_is_number (GSList  *instructions,
 
 	if (CDN_IS_INSTRUCTION_NUMBER (instructions->data) &&
 	    instructions->next && !instructions->next->next &&
-	    CDN_IS_INSTRUCTION_OPERATOR (instructions->next->data) &&
+	    CDN_IS_INSTRUCTION_FUNCTION (instructions->next->data) &&
 	    cdn_instruction_function_get_id (CDN_INSTRUCTION_FUNCTION (instructions->next->data)) ==
-	    CDN_MATH_OPERATOR_TYPE_UNARY_MINUS)
+	    CDN_MATH_FUNCTION_TYPE_UNARY_MINUS)
 	{
 		multiplier = -1;
 	}
@@ -154,10 +154,12 @@ multiply_optimized (GSList *a,
 		}
 	}
 
+	/* TODO: argdim */
 	rret = g_slist_prepend (NULL,
-	                        cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_MULTIPLY,
+	                        cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
 	                                                      "*",
-	                                                      2));
+	                                                      2,
+	                                                      NULL));
 
 	rret = g_slist_concat (instructions_copy (b), rret);
 	rret = g_slist_concat (instructions_copy (a), rret);
@@ -198,10 +200,12 @@ divide_optimized (GSList *a,
 	{
 		GSList *ret;
 
+		/* TODO: argdim */
 		ret = g_slist_prepend (NULL,
-		                       cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_DIVIDE,
+		                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE,
 		                                                     "/",
-		                                                     2));
+		                                                     2,
+		                                                     NULL));
 
 		ret = g_slist_concat (instructions_copy (b), ret);
 		ret = g_slist_concat (instructions_copy (a), ret);
@@ -243,9 +247,10 @@ add_optimized (GSList *a,
 		GSList *ret;
 
 		ret = g_slist_prepend (NULL,
-		                       cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_PLUS,
+		                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
 		                                                     "+",
-		                                                     2));
+		                                                     2,
+		                                                     NULL));
 
 		ret = g_slist_concat (instructions_copy (b), ret);
 		ret = g_slist_concat (instructions_copy (a), ret);
@@ -279,9 +284,10 @@ subtract_optimized (GSList *a,
 		GSList *ret;
 
 		ret = g_slist_prepend (NULL,
-		                       cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_UNARY_MINUS,
+		                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
 		                                                     "-",
-		                                                     1));
+		                                                     1,
+		                                                     NULL));
 
 		ret = g_slist_concat (instructions_copy (b), ret);
 		return ret;
@@ -295,9 +301,10 @@ subtract_optimized (GSList *a,
 		GSList *ret;
 
 		ret = g_slist_prepend (NULL,
-		                       cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_MINUS,
+		                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS,
 		                                                     "-",
-		                                                     2));
+		                                                     2,
+		                                                     NULL));
 
 		ret = g_slist_concat (instructions_copy (b), ret);
 		ret = g_slist_concat (instructions_copy (a), ret);
@@ -350,9 +357,10 @@ power_optimized (GSList *a,
 		GSList *ret = NULL;
 
 		ret = g_slist_prepend (NULL,
-		                       cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_POWER,
-		                                                     "**",
-		                                                     2));
+		                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
+		                                                     "^",
+		                                                     2,
+		                                                     NULL));
 
 		ret = g_slist_concat (instructions_copy (b), ret);
 		ret = g_slist_concat (instructions_copy (a), ret);
@@ -430,7 +438,8 @@ derive_power_real (CdnExpressionTreeIter *fi,
 	lnf = g_slist_prepend (NULL,
 	                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LN,
 	                                                     "ln",
-	                                                     1));
+	                                                     1,
+	                                                     NULL));
 
 	lnf = g_slist_concat (instructions_copy (f), lnf);
 
@@ -616,7 +625,7 @@ derive_operator (CdnExpressionTreeIter  *iter,
 
 	switch (cdn_instruction_function_get_id (instr))
 	{
-		case CDN_MATH_OPERATOR_TYPE_UNARY_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
 		{
 			GSList *a;
 
@@ -629,8 +638,8 @@ derive_operator (CdnExpressionTreeIter  *iter,
 			}
 		}
 		break;
-		case CDN_MATH_OPERATOR_TYPE_MINUS:
-		case CDN_MATH_OPERATOR_TYPE_PLUS:
+		case CDN_MATH_FUNCTION_TYPE_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_PLUS:
 		{
 			GSList *a = NULL;
 			GSList *b = NULL;
@@ -654,28 +663,28 @@ derive_operator (CdnExpressionTreeIter  *iter,
 			free_instructions (b);
 		}
 		break;
-		case CDN_MATH_OPERATOR_TYPE_MULTIPLY:
+		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
 			// Product rule: (fg)' = f'g + fg'
 			ret = derive_product (iter, ctx);
 		break;
-		case CDN_MATH_OPERATOR_TYPE_DIVIDE:
+		case CDN_MATH_FUNCTION_TYPE_DIVIDE:
 			// Quotient rule: (f/g)' = (f'g - fg') / g^2
 			ret = derive_division (iter, ctx);
 		break;
-		case CDN_MATH_OPERATOR_TYPE_POWER:
+		case CDN_MATH_FUNCTION_TYPE_POWER:
 			// Power rule: (f^g)' = f^g * (f' (g / f) + g' ln (f))
 			ret = derive_power (iter, ctx);
 		break;
-		case CDN_MATH_OPERATOR_TYPE_NEGATE:
-		case CDN_MATH_OPERATOR_TYPE_MODULO:
-		case CDN_MATH_OPERATOR_TYPE_GREATER:
-		case CDN_MATH_OPERATOR_TYPE_LESS:
-		case CDN_MATH_OPERATOR_TYPE_GREATER_OR_EQUAL:
-		case CDN_MATH_OPERATOR_TYPE_LESS_OR_EQUAL:
-		case CDN_MATH_OPERATOR_TYPE_EQUAL:
-		case CDN_MATH_OPERATOR_TYPE_OR:
-		case CDN_MATH_OPERATOR_TYPE_AND:
-		case CDN_MATH_OPERATOR_TYPE_TERNARY:
+		case CDN_MATH_FUNCTION_TYPE_NEGATE:
+		case CDN_MATH_FUNCTION_TYPE_MODULO:
+		case CDN_MATH_FUNCTION_TYPE_GREATER:
+		case CDN_MATH_FUNCTION_TYPE_LESS:
+		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_OR:
+		case CDN_MATH_FUNCTION_TYPE_AND:
+		case CDN_MATH_FUNCTION_TYPE_TERNARY:
 			g_set_error (ctx->error,
 			             CDN_SYMBOLIC_ERROR,
 			             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
@@ -711,14 +720,16 @@ derive_cos (CdnExpressionTreeIter *f,
 	}
 
 	a = g_slist_prepend (NULL,
-	                     cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_UNARY_MINUS,
+	                     cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
 	                                                   "-",
-	                                                   1));
+	                                                   1,
+	                                                   NULL));
 
 	a = g_slist_prepend (a,
 	                     cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_SIN,
 	                                                   "sin",
-	                                                   1));
+	                                                   1,
+	                                                   NULL));
 
 	a = g_slist_concat (gi, a);
 
@@ -768,7 +779,8 @@ derive_sin (CdnExpressionTreeIter *f,
 	a = g_slist_prepend (NULL,
 	                     cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_COS,
 	                                                   "cos",
-	                                                   1));
+	                                                   1,
+	                                                   NULL));
 
 	a = g_slist_concat (gi, a);
 
@@ -805,14 +817,16 @@ derive_tan (CdnExpressionTreeIter *f,
 	}
 
 	a = g_slist_prepend (a,
-	                     cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_PLUS,
+	                     cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
 	                                                   "+",
-	                                                   2));
+	                                                   2,
+	                                                   NULL));
 
 	a = g_slist_prepend (a,
-	                     cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_POWER,
-	                                                   "**",
-	                                                   2));
+	                     cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
+	                                                   "^",
+	                                                   2,
+	                                                   NULL));
 
 	a = g_slist_prepend (a,
 	                     cdn_instruction_number_new_from_string ("2"));
@@ -820,7 +834,8 @@ derive_tan (CdnExpressionTreeIter *f,
 	a = g_slist_prepend (a,
 	                     cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TAN,
 	                                                   "tan",
-	                                                   1));
+	                                                   1,
+	                                                   NULL));
 
 	a = g_slist_concat (gi, a);
 
@@ -891,9 +906,10 @@ derive_atan (CdnExpressionTreeIter *f,
 	                       cdn_instruction_number_new_from_string ("1"));
 
 	g2 = g_slist_prepend (NULL,
-	                      cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_POWER,
-	                                                    "**",
-	                                                    2));
+	                      cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
+	                                                    "^",
+	                                                    2,
+	                                                    NULL));
 
 	g2 = g_slist_prepend (g2,
 	                      cdn_instruction_number_new_from_string ("2"));
@@ -941,9 +957,10 @@ derive_acos (CdnExpressionTreeIter *f,
 	                       cdn_instruction_number_new_from_string ("1"));
 
 	g2 = g_slist_prepend (NULL,
-	                      cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_POWER,
+	                      cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
 	                                                    "**",
-	                                                    2));
+	                                                    2,
+	                                                    NULL));
 
 	g2 = g_slist_prepend (g2,
 	                      cdn_instruction_number_new_from_string ("2"));
@@ -951,14 +968,16 @@ derive_acos (CdnExpressionTreeIter *f,
 	g2 = g_slist_concat (gi, g2);
 
 	sq = g_slist_prepend (NULL,
-	                      cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_UNARY_MINUS,
+	                      cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
 	                                                    "-",
-	                                                    1));
+	                                                    1,
+	                                                    NULL));
 
 	sq = g_slist_prepend (sq,
 	                      cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_SQRT,
 	                                                    "sqrt",
-	                                                    1));
+	                                                    1,
+	                                                    NULL));
 
 	sq = g_slist_concat (subtract_optimized(one, g2), sq);
 
@@ -1001,9 +1020,10 @@ derive_asin (CdnExpressionTreeIter *f,
 	                       cdn_instruction_number_new_from_string ("1"));
 
 	g2 = g_slist_prepend (NULL,
-	                      cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_POWER,
-	                                                    "**",
-	                                                    2));
+	                      cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
+	                                                    "^",
+	                                                    2,
+	                                                    NULL));
 
 	g2 = g_slist_prepend (g2,
 	                      cdn_instruction_number_new_from_string ("2"));
@@ -1013,7 +1033,8 @@ derive_asin (CdnExpressionTreeIter *f,
 	sq = g_slist_prepend (NULL,
 	                      cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_SQRT,
 	                                                    "sqrt",
-	                                                    1));
+	                                                    1,
+	                                                    NULL));
 
 	sq = g_slist_concat (subtract_optimized(one, g2), sq);
 
@@ -1049,9 +1070,10 @@ derive_sqrt_inside (CdnExpressionTreeIter *g,
 	}
 
 	o5 = g_slist_prepend (NULL,
-	                      cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_UNARY_MINUS,
+	                      cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
 	                                                    "-",
-	                                                    1));
+	                                                    1,
+	                                                    NULL));
 
 	o5 = g_slist_prepend (o5,
 	                      cdn_instruction_number_new_from_string ("0.5"));
@@ -1144,7 +1166,8 @@ derive_exp2 (CdnExpressionTreeIter *f,
 	p2 = g_slist_append (p2,
 	                     cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LN,
 	                                                   "ln",
-	                                                   1));
+	                                                   1,
+	                                                   NULL));
 
 	ppd = multiply_optimized (gd, p2);
 
@@ -1244,10 +1267,11 @@ derive_log10 (CdnExpressionTreeIter *f,
 	top = g_slist_prepend (NULL,
 	                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LOG10,
 	                                                     "log10",
-	                                                     1));
+	                                                     1,
+	                                                     NULL));
 
 	top = g_slist_prepend (top,
-	                       cdn_instruction_constant_new ("e"));
+	                       cdn_instruction_number_new (M_E));
 
 	div = divide_optimized (top, gi);
 	ret = multiply_optimized (div, gd);
@@ -1556,9 +1580,10 @@ derive_integrated (CdnVariable   *prop,
 		if (item != actors)
 		{
 			last = g_slist_append (last,
-			                       cdn_instruction_operator_new (CDN_MATH_OPERATOR_TYPE_PLUS,
+			                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
 			                                                     "+",
-			                                                     2));
+			                                                     2,
+			                                                     NULL));
 
 			last = last->next;
 		}
@@ -1813,7 +1838,8 @@ derive_iter (CdnExpressionTreeIter *iter,
 		ret = g_slist_prepend (NULL,
 		                       cdn_instruction_number_new_from_string ("0"));
 	}
-	else if (CDN_IS_INSTRUCTION_OPERATOR (instr))
+	else if (CDN_IS_INSTRUCTION_FUNCTION (instr) &&
+	         cdn_instruction_function_get_id (CDN_INSTRUCTION_FUNCTION (instr)) < CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS)
 	{
 		ret = derive_operator (iter,
 		                       CDN_INSTRUCTION_FUNCTION (instr),

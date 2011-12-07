@@ -62,28 +62,28 @@ tree_iter_new (CdnExpression *expression,
 	{
 		CdnExpressionTreeIter *iter;
 		CdnInstruction *inst;
-		gint cnt;
 		gint i;
+		CdnStackManipulation const *smanip;
 
 		inst = instructions->data;
 		iter = iter_new (inst);
 
-		cnt = -cdn_instruction_get_stack_count (inst) + 1;
+		smanip = cdn_instruction_get_stack_manipulation (inst, NULL);
 
-		if (cnt > 0)
+		if (smanip->num_pop > 0)
 		{
-			iter->children = g_new (CdnExpressionTreeIter *, cnt);
-			iter->num_children = cnt;
+			iter->children = g_new (CdnExpressionTreeIter *, smanip->num_pop);
+			iter->num_children = smanip->num_pop;
 		}
 
-		for (i = 0; i < cnt; ++i)
+		for (i = 0; i < smanip->num_pop; ++i)
 		{
 			CdnExpressionTreeIter *child;
 
 			child = g_queue_pop_head (&stack);
 
 			child->parent = iter;
-			iter->children[cnt - i - 1] = child;
+			iter->children[smanip->num_pop - i - 1] = child;
 		}
 
 		g_queue_push_head (&stack, iter);

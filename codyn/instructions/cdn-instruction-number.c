@@ -69,9 +69,13 @@ cdn_instruction_number_execute (CdnInstruction *instruction,
 }
 
 static CdnStackManipulation const *
-cdn_instruction_number_get_stack_manipulation (CdnInstruction *instruction)
+cdn_instruction_number_get_stack_manipulation (CdnInstruction  *instruction,
+                                               GError         **error)
 {
-	return &instruction->priv->smanip;
+	CdnInstructionNumber *self;
+
+	self = CDN_INSTRUCTION_NUMBER (instruction);
+	return &self->priv->smanip;
 }
 
 static gboolean
@@ -176,3 +180,14 @@ cdn_instruction_number_get_representation (CdnInstructionNumber *number)
 
 	return g_strdup (buf);
 }
+
+void
+cdn_instruction_number_set_representation (CdnInstructionNumber *number,
+                                           gchar const          *repr)
+{
+	g_return_if_fail (CDN_IS_INSTRUCTION_NUMBER (number));
+
+	g_free (number->priv->repr);
+	number->priv->repr = g_strdup (repr);
+}
+

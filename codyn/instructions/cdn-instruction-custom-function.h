@@ -43,7 +43,8 @@ struct _CdnInstructionCustomFunctionClass
 GType cdn_instruction_custom_function_get_type (void) G_GNUC_CONST;
 
 CdnInstruction *cdn_instruction_custom_function_new (CdnFunction *function,
-                                                     gint         arguments);
+                                                     gint         arguments,
+                                                     gint        *argdim);
 
 CdnFunction *cdn_instruction_custom_function_get_function (CdnInstructionCustomFunction *function);
 

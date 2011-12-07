@@ -154,8 +154,9 @@ evaluate_polynomial (CdnFunctionPolynomialPiece *polynomial,
 	return ret * norm[order];
 }
 
-static gdouble
-cdn_function_polynomial_evaluate_impl (CdnFunction *function)
+static void
+cdn_function_polynomial_evaluate_impl (CdnFunction *function,
+                                       CdnStack    *stack)
 {
 	CdnFunctionPolynomial *pol = CDN_FUNCTION_POLYNOMIAL (function);
 	GSList *item;
@@ -189,7 +190,7 @@ cdn_function_polynomial_evaluate_impl (CdnFunction *function)
 		}
 	}
 
-	return num != 0 ? ret / num : 0;
+	cdn_stack_push (stack, num != 0 ? ret / num : 0);
 }
 
 static void
@@ -234,6 +235,17 @@ cdn_function_polynomial_clear_impl (CdnObject *object)
 }
 
 static void
+cdn_function_polynomial_get_dimension_impl (CdnFunction *function,
+                                            gint         arguments,
+                                            gint        *argdim,
+                                            gint        *numr,
+                                            gint        *numc)
+{
+	*numr = 1;
+	*numc = 1;
+}
+
+static void
 cdn_function_polynomial_class_init (CdnFunctionPolynomialClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -241,6 +253,7 @@ cdn_function_polynomial_class_init (CdnFunctionPolynomialClass *klass)
 	CdnObjectClass *cdn_object_class = CDN_OBJECT_CLASS (klass);
 
 	function_class->evaluate = cdn_function_polynomial_evaluate_impl;
+	function_class->get_dimension = cdn_function_polynomial_get_dimension_impl;
 
 	cdn_object_class->copy = cdn_function_polynomial_copy_impl;
 	cdn_object_class->clear = cdn_function_polynomial_clear_impl;
@@ -301,11 +314,9 @@ cdn_function_polynomial_init (CdnFunctionPolynomial *self)
 
 	/* Add 't' argument */
 	cdn_function_add_argument (CDN_FUNCTION (self),
-	                           cdn_function_argument_new ("__t", NULL, TRUE));
+	                           cdn_function_argument_new ("__t", TRUE));
 
-	arg = cdn_function_argument_new ("__order", NULL, TRUE);
-	cdn_function_argument_set_default_value (arg,
-	                                         cdn_expression_new ("0"));
+	arg = cdn_function_argument_new ("__order", TRUE);
 
 	/* Add optional 'order' argument */
 	cdn_function_add_argument (CDN_FUNCTION (self),
