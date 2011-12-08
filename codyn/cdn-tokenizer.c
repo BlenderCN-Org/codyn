@@ -45,6 +45,7 @@ static OperatorProperties operator_properties[] =
 	{6, 1}, // CDN_TOKEN_OPERATOR_TYPE_PLUS,
 	{6, 1}, // CDN_TOKEN_OPERATOR_TYPE_MINUS,
 	{9, 0}, // CDN_TOKEN_OPERATOR_TYPE_POWER,
+	{8, 0}, // CDN_TOKEN_OPERATOR_TYPE_TILDE,
 
 	// logical operators
 	{0, 0}, // CDN_TOKEN_OPERATOR_TYPE_LOGICAL,

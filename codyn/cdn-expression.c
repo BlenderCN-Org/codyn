@@ -567,8 +567,11 @@ cdn_expression_new0 ()
 	CdnExpression *ret;
 
 	ret = cdn_expression_new ("0");
+
 	ret->priv->instructions = g_slist_prepend (NULL,
 	                                           cdn_instruction_number_new_from_string ("0"));
+
+	validate_stack (ret, NULL, FALSE);
 
 	return ret;
 }
@@ -1038,6 +1041,31 @@ get_argdim (CdnExpression *expression,
 	return ret;
 }
 
+static void
+swap_arguments (CdnExpression *expression,
+                ParserContext *context)
+{
+	// Swap the last two arguments on the stack
+	GSList *first = context->stack->data;
+	GSList *second = context->stack->next->data;
+	GSList *fi;
+	GSList *si;
+	GSList *tmp;
+
+	context->stack->data = second;
+	context->stack->next->data = first;
+
+	// Then also on the instruction set
+	fi = g_slist_nth (expression->priv->instructions, g_slist_length (first) - 1);
+	si = g_slist_nth (fi, g_slist_length (second));
+
+	tmp = fi->next;
+	fi->next = si->next;
+	si->next = expression->priv->instructions;
+
+	expression->priv->instructions = tmp;
+}
+
 static gboolean
 parse_function (CdnExpression *expression,
                 gchar const   *name,
@@ -1193,6 +1221,16 @@ parse_function (CdnExpression *expression,
 		{
 			gint *argdim;
 
+			if (fid == CDN_MATH_FUNCTION_TYPE_LINSOLVE)
+			{
+				// For linsolve, we swap the arguments A and B
+				// because that's the way the linsolve math
+				// function wants the arguments, but it's less
+				// intuitive to have the user specify them
+				// in that order
+				swap_arguments (expression, context);
+			}
+
 			argdim = get_argdim (expression, context, numargs);
 
 			instruction = cdn_instruction_function_new (fid,
@@ -1296,73 +1334,68 @@ parse_matrix (CdnExpression *expression,
 			                      "Cannot concatenate row vectors, use the `concat' function instead");
 		}
 
-		numccnt += argdim[0];
+		numccnt += argdim[1];
 		g_free (argdim);
 
 		// see what's next
 		next = cdn_tokenizer_peek (*(context->buffer));
 
-		if (!next || !CDN_TOKEN_IS_OPERATOR (next))
+		if (CDN_TOKEN_IS_OPERATOR (next))
 		{
-			parser_failed (expression,
-			               context,
-			               CDN_COMPILE_ERROR_INVALID_TOKEN,
-			               "Expected `,' or `;' or `]', but got %s",
-			               next ? next->text : "(nothing)");
+			CdnTokenOperatorType type = CDN_TOKEN_OPERATOR (next)->type;
 
-			cdn_token_free (next);
-			return FALSE;
-		}
-
-		CdnTokenOperatorType type = CDN_TOKEN_OPERATOR (next)->type;
-
-		if (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END ||
-		    type == CDN_TOKEN_OPERATOR_TYPE_SEMI_COLON)
-		{
-			++numr;
-
-			if (numr == 1)
+			if (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END ||
+			    type == CDN_TOKEN_OPERATOR_TYPE_SEMI_COLON)
 			{
-				numc = numccnt;
-			}
-			else if (numc != numccnt)
-			{
-				parser_failed (expression,
-				               context,
-				               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-				               "The number of columns in a matrix must be equal for all rows (expected %d but got %d columns)", numc, numccnt);
+				++numr;
+
+				if (numr == 1)
+				{
+					numc = numccnt;
+				}
+				else if (numc != numccnt)
+				{
+					parser_failed (expression,
+					               context,
+					               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+					               "The number of columns in a matrix must be equal for all rows (expected %d but got %d columns)", numc, numccnt);
+
+					cdn_token_free (next);
+					return FALSE;
+				}
+
+				numccnt = 0;
+
+				if (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+				{
+					loopit = FALSE;
+				}
 
 				cdn_token_free (next);
-				return FALSE;
+				cdn_token_free (cdn_tokenizer_next (context->buffer));
 			}
-
-			numccnt = 0;
-
-			if (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+			else if (type == CDN_TOKEN_OPERATOR_TYPE_COMMA)
 			{
-				loopit = FALSE;
+				cdn_token_free (next);
+				cdn_token_free (cdn_tokenizer_next (context->buffer));
+			}
+			else
+			{
+				// Free, but don't consume (i.e. implicit comma)
+				cdn_token_free (next);
 			}
 		}
-		else if (type != CDN_TOKEN_OPERATOR_TYPE_COMMA)
+		else
 		{
-			parser_failed (expression,
-			               context,
-			               CDN_COMPILE_ERROR_INVALID_TOKEN,
-			               "Expected `,' but got %s",
-			               next->text);
+			// Free, but don't consume (i.e. implicit comma)
 			cdn_token_free (next);
-			return FALSE;
 		}
-
-		cdn_token_free (next);
-		cdn_token_free (cdn_tokenizer_next (context->buffer));
 	}
 
 	popdims = get_argdim (expression, context, numpop);
 
 	// note that popdims memory is consumed by the matrix instruction
 	// and does not need to be freed
-	
 	instructions_push (expression,
 	                   cdn_instruction_matrix_new (numpop,
 	                                               popdims,
@@ -1375,33 +1408,158 @@ parse_matrix (CdnExpression *expression,
 
 static gboolean
 parse_indexing (CdnExpression *expression,
-                gchar const   *name,
                 ParserContext *context)
 {
 	gint *argdim;
+	gint numargs = 0;
+	CdnTokenOperatorType type;
 
-	if (!parse_variable (expression, name, context))
+	// Indexing is done using one or two arguments, which can be matrices
+	// themselves
+	CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
+
+	if (next && CDN_TOKEN_IS_OPERATOR (next) &&
+	    CDN_TOKEN_OPERATOR (next)->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
 	{
+		cdn_token_free (next);
+		cdn_token_free (cdn_tokenizer_next (context->buffer));
+	}
+	else
+	{
+		cdn_token_free (next);
+
+		if (!parse_expression (expression, context, -1, 0))
+		{
+			return FALSE;
+		}
+
+		++numargs;
+
+		next = cdn_tokenizer_peek (*(context->buffer));
+
+		if (CDN_TOKEN_IS_OPERATOR (next))
+		{
+			type = CDN_TOKEN_OPERATOR (next)->type;
+			cdn_token_free (next);
+
+			if (type != CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+			{
+				if (type == CDN_TOKEN_OPERATOR_TYPE_COMMA)
+				{
+					cdn_token_free (cdn_tokenizer_next (context->buffer));
+				}
+
+				if (!parse_expression (expression, context, -1, 0))
+				{
+					return FALSE;
+				}
+
+				++numargs;
+			}
+		}
+		else
+		{
+			cdn_token_free (next);
+
+			if (!parse_expression (expression, context, -1, 0))
+			{
+				return FALSE;
+			}
+
+			++numargs;
+		}
+	}
+
+	next = cdn_tokenizer_peek (*(context->buffer));
+	type = CDN_TOKEN_OPERATOR (next)->type;
+
+	if (type != CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "Expected `]' but got `%s'",
+		               next->text ? next->text : NULL);
+
 		return FALSE;
 	}
 
-	// Parse the indexing
-	if (!parse_matrix (expression, context))
+	argdim = get_argdim (expression, context, numargs + 1);
+
+	if (numargs == 2 && argdim[0] * argdim[1] != argdim[2] * argdim[3])
 	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "Two arguments of index operators must have the same dimensions, not (%d, %d) and (%d, %d)",
+		               argdim[0], argdim[1], argdim[2], argdim[3]);
+
+		g_free (argdim);
 		return FALSE;
 	}
-
-	argdim = get_argdim (expression, context, 2);
 
 	instructions_push (expression,
 	                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_INDEX,
 	                                                 "index",
-	                                                 2,
+	                                                 numargs + 1,
 	                                                 argdim),
 	                   context);
 
 	g_free (argdim);
 	return TRUE;
+}
+
+static gboolean
+parse_constant (CdnExpression  *expression,
+                gchar const    *name,
+                ParserContext  *context)
+{
+	gboolean found = FALSE;
+	gdouble val;
+	CdnInstruction *instr;
+
+	val = cdn_math_constant_lookup (name, &found);
+
+	if (!found)
+	{
+		return FALSE;
+	}
+
+	instr = cdn_instruction_number_new (val);
+	cdn_instruction_number_set_representation (CDN_INSTRUCTION_NUMBER (instr), name);
+
+	instructions_push (expression,
+	                   instr,
+	                   context);
+
+	return TRUE;
+}
+
+static gboolean
+parse_identifier_as_variable (CdnExpression *expression,
+                              gchar const   *id,
+                              ParserContext *context)
+{
+	gboolean ret;
+
+	ret = parse_variable (expression, id, context);
+
+	if (!ret)
+	{
+		// try parsing constants
+		ret = parse_constant (expression, id, context);
+
+		if (!ret)
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_TOKEN,
+			               "Could not find property or constant `%s'",
+			               id);
+		}
+	}
+
+	return ret;
 }
 
 static gboolean
@@ -1435,18 +1593,12 @@ parse_custom_operator (CdnExpression *expression,
 
 	if (klass == NULL)
 	{
-		CdnVariable *v = lookup_variable (expression, context, name);
-
-		if (v)
-		{
-			return parse_indexing (expression, name, context);
-		}
-
-		return parser_failed (expression,
-		                      context,
-		                      CDN_COMPILE_ERROR_OPERATOR_NOT_FOUND,
-		                      "Custom operator %s could not be found",
-		                      name);
+		return parse_identifier_as_variable (expression, name, context);
+	}
+	else
+	{
+		// Consume the bracket
+		cdn_token_free (cdn_tokenizer_next (context->buffer));
 	}
 
 	// parse arguments
@@ -1919,50 +2071,21 @@ parse_unary_operator (CdnExpression *expression,
 	CdnTokenOperator *op = CDN_TOKEN_OPERATOR (token);
 	gboolean ret = TRUE;
 	CdnInstruction *inst = NULL;
+	gint *argdim = NULL;
 
 	// handle group
-	if (op->type == CDN_TOKEN_OPERATOR_TYPE_NODE_START)
-	{
-		cdn_token_free (cdn_tokenizer_next (context->buffer));
-		return parse_group (expression, context);
-	}
-	else if (op->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_START)
-	{
-		cdn_token_free (cdn_tokenizer_next (context->buffer));
-		return parse_matrix (expression, context);
-	}
-
 	switch (op->type)
 	{
+		case CDN_TOKEN_OPERATOR_TYPE_NODE_START:
+			cdn_token_free (cdn_tokenizer_next (context->buffer));
+			return parse_group (expression, context);
+		case CDN_TOKEN_OPERATOR_TYPE_OPERATOR_START:
+			cdn_token_free (cdn_tokenizer_next (context->buffer));
+			return parse_matrix (expression, context);
 		case CDN_TOKEN_OPERATOR_TYPE_MINUS:
-		{
-			gint *argdim;
-
-			argdim = get_argdim (expression, context, 1);
-
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
-			                                     "-",
-			                                     1,
-			                                     argdim);
-
-			g_free (argdim);
-		}
-		break;
 		case CDN_TOKEN_OPERATOR_TYPE_PLUS:
-		break;
 		case CDN_TOKEN_OPERATOR_TYPE_NEGATE:
-		{
-			gint *argdim;
-
-			argdim = get_argdim (expression, context, 1);
-
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_NEGATE,
-			                                     "!",
-			                                     1,
-			                                     argdim);
-
-			g_free (argdim);
-		}
+		case CDN_TOKEN_OPERATOR_TYPE_TILDE:
 		break;
 		default:
 			parser_failed (expression,
@@ -1971,7 +2094,6 @@ parse_unary_operator (CdnExpression *expression,
 			               "Expected unary operator (-, +, !) but got `%s'",
 			               op->parent.text);
 			ret = FALSE;
-		break;
 	}
 
 	if (ret)
@@ -1981,24 +2103,71 @@ parse_unary_operator (CdnExpression *expression,
 		ret = parse_expression (expression, context, 1000, 1);
 	}
 
+	argdim = get_argdim (expression, context, 1);
+
+	switch (op->type)
+	{
+		case CDN_TOKEN_OPERATOR_TYPE_MINUS:
+		{
+			if (CDN_IS_INSTRUCTION_NUMBER (expression->priv->instructions->data))
+			{
+				inst = instructions_pop (expression);
+
+				cdn_instruction_number_set_value (CDN_INSTRUCTION_NUMBER (inst),
+				                                  cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (inst)) * -1);
+
+				g_slist_free (context->stack->data);
+
+				context->stack = g_slist_delete_link (context->stack,
+				                                      context->stack);
+			}
+			else
+			{
+				inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
+				                                     "-",
+				                                     1,
+				                                     argdim);
+			}
+		}
+		break;
+		case CDN_TOKEN_OPERATOR_TYPE_PLUS:
+		break;
+		case CDN_TOKEN_OPERATOR_TYPE_NEGATE:
+		{
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_NEGATE,
+			                                     "!",
+			                                     1,
+			                                     argdim);
+		}
+		break;
+		case CDN_TOKEN_OPERATOR_TYPE_TILDE:
+		{
+			if (!argdim || (argdim[0] * argdim[1]) != 3)
+			{
+				parser_failed (expression,
+				               context,
+				               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				               "Skew symmetric matrix operator (~) is only defined for vectors of size 3");
+
+				ret = FALSE;
+			}
+			else
+			{
+				inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
+				                                     "~",
+				                                     1,
+				                                     argdim);
+			}
+		}
+		break;
+		default:
+		break;
+	}
+
+	g_free (argdim);
+
 	if (ret && inst)
 	{
-		if (op->type == CDN_TOKEN_OPERATOR_TYPE_MINUS &&
-		    CDN_IS_INSTRUCTION_NUMBER (expression->priv->instructions->data))
-		{
-			/* Precompute unary minus of a number */
-			cdn_mini_object_free (CDN_MINI_OBJECT (inst));
-			inst = instructions_pop (expression);
-
-			cdn_instruction_number_set_value (CDN_INSTRUCTION_NUMBER (inst),
-			                                  cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (inst)) * -1);
-
-			g_slist_free (context->stack->data);
-
-			context->stack = g_slist_delete_link (context->stack,
-			                                      context->stack);
-		}
-
 		instructions_push (expression, inst, context);
 	}
 
@@ -2106,6 +2275,13 @@ parse_operator (CdnExpression *expression,
 		// The prime makes a df_dt operator of the current stack
 		return parse_prime (expression, context);
 	}
+	else if (op->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_START)
+	{
+		// consume token
+		cdn_token_free (cdn_tokenizer_next (context->buffer));
+
+		return parse_indexing (expression, context);
+	}
 
 	// consume token
 	cdn_token_free (cdn_tokenizer_next (context->buffer));
@@ -2138,9 +2314,8 @@ parse_operator (CdnExpression *expression,
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS, "-", 2, argdim);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_POWER:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER, "**", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER, "^", 2, argdim);
 		break;
-
 		// logical
 		case CDN_TOKEN_OPERATOR_TYPE_GREATER:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_GREATER, ">", 2, argdim);
@@ -2249,32 +2424,6 @@ parse_variable (CdnExpression *expression,
 }
 
 static gboolean
-parse_constant (CdnExpression  *expression,
-                gchar const    *name,
-                ParserContext  *context)
-{
-	gboolean found = FALSE;
-	gdouble val;
-	CdnInstruction *instr;
-
-	val = cdn_math_constant_lookup (name, &found);
-
-	if (!found)
-	{
-		return FALSE;
-	}
-
-	instr = cdn_instruction_number_new (val);
-	cdn_instruction_number_set_representation (CDN_INSTRUCTION_NUMBER (instr), name);
-
-	instructions_push (expression,
-	                   instr,
-	                   context);
-
-	return TRUE;
-}
-
-static gboolean
 parse_number (CdnExpression   *expression,
               CdnTokenNumber  *token,
               ParserContext  *context)
@@ -2359,7 +2508,6 @@ parse_identifier (CdnExpression      *expression,
 	else if (next && CDN_TOKEN_IS_OPERATOR (next) &&
 		CDN_TOKEN_OPERATOR (next)->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_START)
 	{
-		cdn_token_free (cdn_tokenizer_next (context->buffer));
 		ret = parse_custom_operator (expression, id, context);
 	}
 	else if (next && CDN_TOKEN_IS_OPERATOR (next) &&
@@ -2372,23 +2520,7 @@ parse_identifier (CdnExpression      *expression,
 	}
 	else
 	{
-		// try to parse property
-		ret = parse_variable (expression, id, context);
-
-		if (!ret)
-		{
-			// try parsing constants
-			ret = parse_constant (expression, id, context);
-
-			if (!ret)
-			{
-				parser_failed (expression,
-				               context,
-				               CDN_COMPILE_ERROR_INVALID_TOKEN,
-				               "Could not find property or constant `%s'",
-				               id);
-			}
-		}
+		ret = parse_identifier_as_variable (expression, id, context);
 	}
 
 	cdn_token_free (next);
@@ -3028,12 +3160,12 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 		return NULL;
 	}
 
+	set_cache_from_stack (expression);
+
 	if (expression->priv->has_cache)
 	{
 		expression->priv->cached = TRUE;
 	}
-
-	set_cache_from_stack (expression);
 
 	return values_from_cache (expression, numr, numc);
 }
@@ -3301,7 +3433,31 @@ cdn_expression_copy (CdnExpression *expression)
 
 	ret->priv->cached = expression->priv->cached;
 	ret->priv->prevent_cache_reset = expression->priv->prevent_cache_reset;
-	ret->priv->cached_output = expression->priv->cached_output;
+
+	ret->priv->cached_dims[0] = expression->priv->cached_dims[0];
+	ret->priv->cached_dims[1] = expression->priv->cached_dims[1];
+
+	ret->priv->retdims[0] = expression->priv->retdims[0];
+	ret->priv->retdims[1] = expression->priv->retdims[1];
+
+	if (ret->priv->cached_dims[0] == 1 && ret->priv->cached_dims[1] == 1)
+	{
+		ret->priv->cached_output = expression->priv->cached_output;
+	}
+	else
+	{
+		gint num = ret->priv->cached_dims[0] * ret->priv->cached_dims[1];
+		gint i;
+
+		ret->priv->cached_output_multi = g_new (gdouble, num);
+
+		for (i = 0; i < num; ++i)
+		{
+			ret->priv->cached_output_multi[i] =
+				expression->priv->cached_output_multi[i];
+		}
+	}
+
 	ret->priv->modified = expression->priv->modified;
 	ret->priv->has_cache = expression->priv->has_cache;
 	ret->priv->once = expression->priv->once;
@@ -3389,16 +3545,8 @@ cdn_expression_get_dimension (CdnExpression *expression,
 		return TRUE;
 	}
 
-	if (expression->priv->modified)
-	{
-		*numr = 0;
-		*numc = 0;
-
-		return FALSE;
-	}
-
 	*numr = expression->priv->retdims[0];
 	*numc = expression->priv->retdims[1];
 
-	return TRUE;
+	return !expression->priv->modified;
 }

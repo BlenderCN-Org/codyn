@@ -1,12 +1,5 @@
-group "s"
+node "s"
 {
-	q_p = 0.1
-	q_p' = "sin(t)"
-	l = 1
-
-	X(q_p) = "l * sin(q_p)"
-
-	DX(q_p, q_p') = "diff[X](q_p, q_p')"
-
-	dx = "DX(q_p, q_p')"
+	a = "transpose([2, 1, 2; 3, 4, 5])"
+	b = "a[0, 1]"
 }

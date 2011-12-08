@@ -81,9 +81,7 @@ cdn_stack_resize (CdnStack *stack,
 {
 	if (size != stack->size)
 	{
-		stack->output = g_realloc (stack->output,
-		                           size);
-
+		stack->output = g_renew (gdouble, stack->output, size);
 		stack->size = size;
 	}
 
@@ -250,4 +248,10 @@ gdouble *
 cdn_stack_ptr (CdnStack *stack)
 {
 	return stack->output;
+}
+
+gdouble *
+cdn_stack_output_ptr (CdnStack *stack)
+{
+	return stack->output_ptr;
 }

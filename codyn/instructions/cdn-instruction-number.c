@@ -65,6 +65,7 @@ cdn_instruction_number_execute (CdnInstruction *instruction,
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CdnInstructionNumber *)instruction;
+
 	cdn_stack_push (stack, self->priv->value);
 }
 

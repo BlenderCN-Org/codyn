@@ -44,7 +44,7 @@
             <match>\%{identifier}</match>
         </context>
 
-        <context id="string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+        <context id="string" style-ref="string" class="string" class-disabled="no-spell-check">
             <start>"</start>
             <end>"</end>
             <include>

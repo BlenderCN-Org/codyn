@@ -68,6 +68,8 @@ gdouble   cdn_stack_at      (CdnStack *stack,
                              gint      idx);
 gdouble  *cdn_stack_ptr     (CdnStack *stack);
 
+gdouble  *cdn_stack_output_ptr     (CdnStack *stack);
+
 void      cdn_stack_set_at  (CdnStack *stack,
                              gint      idx,
                              gdouble   value);

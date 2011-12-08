@@ -123,18 +123,28 @@ AC_CHECK_LIB([readline],
 
 AC_CHECK_LIB([tar],
              [tar_open],
-              [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltar"],
+             [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltar"],
              [AC_MSG_ERROR(could not find tar library)])
 
 AC_CHECK_LIB([bz2],
              [BZ2_bzCompressInit],
-              [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -lbz2"],
+             [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -lbz2"],
              [AC_MSG_ERROR(could not find bz2 library)])
+
+AC_CHECK_LIB([lapack_atlas],
+             [clapack_dgetri],
+             [LAPACK_LIBS="-llapack_atlas"],
+             [AC_MSG_ERROR(could not find lapack library)])
+
+AC_CHECK_LIB([blas],
+             [cblas_dgemm],
+             [BLAS_LIBS="-lblas"],
+             [AC_MSG_ERROR(could not find blas library)])
 
 AC_SUBST(CDN_PARSER_LIBS)
 AC_SUBST(CDN_CONTEXT_LIBS)
 AC_SUBST(CDN_ARCHIVE_LIBS)
-
+AC_SUBST(LAPACK_LIBS)
 
 dnl ================================================================
 dnl Check for gedit

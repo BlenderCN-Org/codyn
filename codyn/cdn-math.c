@@ -23,6 +23,9 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+#include <clapack.h>
+#include <cblas.h>
+
 #include "cdn-compile-error.h"
 
 #include "cdn-math.h"
@@ -538,56 +541,43 @@ static void
 matrix_multiply (CdnStack *stack,
                  gint     *argdim)
 {
-	gint r;
-	gint c;
 	gint i;
 	gint n;
+	gdouble *ptrA;
+	gdouble *ptrB;
+	gdouble *ptrC;
 
 	gint num1 = argdim[2] * argdim[3];
 	gint num2 = argdim[0] * argdim[1];
 	gint numend = argdim[0] * argdim[3];
 
 	n = cdn_stack_count (stack);
-	gint start1 = n - num2 - 1 - num1;
 
-	// Naive matrix multiplication. This could be improved
-	for (r = 0; r < argdim[2]; ++r)
-	{
-		gint start2 = n - num2 - 1;
+	ptrC = cdn_stack_ptr (stack) + n;
+	ptrB = ptrC - num2;
+	ptrA = ptrB - num1;
 
-		for (c = 0; c < argdim[1]; ++c)
-		{
-			gdouble s = 0;
+	cblas_dgemm (CblasRowMajor,
+	             CblasNoTrans,
+	             CblasNoTrans,
+	             argdim[2],
+	             argdim[1],
+	             argdim[3],
+	             1,
+	             ptrA,
+	             argdim[3],
+	             ptrB,
+	             argdim[0],
+	             0,
+	             ptrC,
+	             argdim[0]);
 
-			for (i = 0; i < argdim[3]; ++i)
-			{
-				s += cdn_stack_at (stack, start1 + i) *
-				     cdn_stack_at (stack, start2 + i * argdim[1]);
-			}
+	cdn_stack_popn (stack, num1 + num2);
 
-			cdn_stack_push (stack, s);
-
-			++start2;
-		}
-
-		start1 += argdim[3];
-	}
-
-	n -= 1 + num1 + num2;
-	numend = cdn_stack_count (stack) - numend - 1;
-
-	// Then copy from the end of the stack to the start
+	// Copy back from ptrC to ptrA
 	for (i = 0; i < numend; ++i)
 	{
-		cdn_stack_set_at (stack, n, cdn_stack_at (stack, numend));
-
-		++n;
-		--numend;
-	}
-
-	if (num1 + num2 > numend)
-	{
-		cdn_stack_popn (stack, numend - num1 - num2);
+		cdn_stack_push (stack, *(ptrC++));
 	}
 }
 
@@ -834,10 +824,75 @@ op_ternary (CdnStack *stack,
 }
 
 static void
+op_mindex (CdnStack *stack,
+           gint      numargs,
+           gint     *argdim)
+{
+	// Sample from the input
+	gint rows = argdim ? argdim[4] : 1;
+	gint cols = argdim ? argdim[5] : 1;
+
+	gint numinp = rows * cols;
+	gint numind = argdim ? argdim[0] * argdim[1] : 1;
+
+	gint n = cdn_stack_count (stack);
+	gint i;
+
+	gint startindc = n - numind;
+	gint startindr = startindc - numind;
+	gint startinp = startindr - numinp;
+
+	for (i = 0; i < numind; ++i)
+	{
+		gint row = (gint)rint (cdn_stack_at (stack, startindr));
+		gint col = (gint)rint (cdn_stack_at (stack, startindc));
+
+		gint idx = row * cols + col;
+
+		if (idx < numinp)
+		{
+			cdn_stack_set_at (stack,
+			                  startindc,
+			                  cdn_stack_at (stack, startinp + idx));
+		}
+		else
+		{
+			cdn_stack_set_at (stack,
+			                  startindc,
+			                  0);
+		}
+
+		++startindr;
+		++startindc;
+	}
+
+	// Copy back
+	startindc = n - numind;
+
+	for (i = 0; i < numind; ++i)
+	{
+		cdn_stack_set_at (stack,
+		                  startinp,
+		                  cdn_stack_at (stack, startindc));
+
+		++startinp;
+		++startindc;
+	}
+
+	cdn_stack_popn (stack, numinp + numind);
+}
+
+static void
 op_index (CdnStack *stack,
           gint      numargs,
           gint     *argdim)
 {
+	if (numargs == 3)
+	{
+		// row/column indexing
+		return op_mindex (stack, numargs, argdim);
+	}
+
 	// Sample from the output
 	gint num1 = argdim ? argdim[2] * argdim[3] : 1;
 	gint num2 = argdim ? argdim[0] * argdim[1] : 1;
@@ -924,6 +979,81 @@ op_transpose (CdnStack *stack,
 	}
 }
 
+static void
+op_tilde (CdnStack *stack,
+          gint      numargs,
+          gint     *argdim)
+{
+	gdouble z = cdn_stack_pop (stack);
+	gdouble y = cdn_stack_pop (stack);
+	gdouble x = cdn_stack_pop (stack);
+
+	// Create tilde matrix, skew symetric 3x3
+	cdn_stack_push (stack, 0);
+	cdn_stack_push (stack, -z);
+	cdn_stack_push (stack, y);
+	cdn_stack_push (stack, z);
+	cdn_stack_push (stack, 0);
+	cdn_stack_push (stack, -x);
+	cdn_stack_push (stack, -y);
+	cdn_stack_push (stack, x);
+	cdn_stack_push (stack, 0);
+}
+
+static void
+op_inverse (CdnStack *stack,
+            gint      numargs,
+            gint     *argdim)
+{
+	gint n = argdim ? argdim[0] : 1;
+	gdouble *ptr;
+	gint *ipiv;
+	gint nn = n * n;
+
+	ptr = cdn_stack_output_ptr (stack) - nn - n;
+
+	ipiv = (gint *)(ptr + nn);
+
+	clapack_dgetrf (CblasRowMajor,
+	                n,
+	                n,
+	                ptr,
+	                n,
+	                ipiv);
+
+	clapack_dgetri (CblasRowMajor,
+	                n,
+	                ptr,
+	                n,
+	                ipiv);
+}
+
+static void
+op_linsolve (CdnStack *stack,
+             gint      numargs,
+             gint     *argdim)
+{
+	gdouble *ptrA;
+	gdouble *ptrB;
+	gint *ptrIpv;
+	gint numa = argdim[0] * argdim[1];
+
+	ptrA = cdn_stack_output_ptr (stack) - numa;
+	ptrB = ptrA - argdim[2] * argdim[3];
+	ptrIpv = (gint *)cdn_stack_output_ptr (stack);
+
+	clapack_dgesv (CblasRowMajor,
+	               argdim[0],
+	               argdim[3],
+	               ptrA,
+	               argdim[1],
+	               ptrIpv,
+	               ptrB,
+	               argdim[2]);
+
+	cdn_stack_popn (stack, numa);
+}
+
 typedef struct
 {
 	gchar const *name;
@@ -951,6 +1081,7 @@ static FunctionEntry function_entries[] = {
 	{"&&", op_and, 2, TRUE},
 	{"!", op_negate, 1, FALSE},
 	{"?:", op_ternary, 3, FALSE},
+	{"~", op_tilde, 1, FALSE},
 	{NULL, op_noop, 0, FALSE},
 	{"sin", op_sin, 1, FALSE},
 	{"cos", op_cos, 1, FALSE},
@@ -982,8 +1113,10 @@ static FunctionEntry function_entries[] = {
 	{"csign", op_csign, 2, FALSE},
 	{"clip", op_clip, 3, FALSE},
 	{"cycle", op_cycle, 3, FALSE},
-	{"index", op_index, 2, FALSE},
+	{"index", op_index, -1, FALSE},
 	{"transpose", op_transpose, 1, FALSE},
+	{"inverse", op_inverse, 1, FALSE},
+	{"linsolve", op_linsolve, 2, FALSE},
 	{"sum", op_sum, -1, FALSE},
 	{"product", op_product, -1, FALSE}
 };
@@ -1347,13 +1480,68 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			}
 		break;
 		case CDN_MATH_FUNCTION_TYPE_INDEX:
-			outargdim[0] = argdim[0];
-			outargdim[1] = argdim[1];
+			if (arguments == 3)
+			{
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[3];
+			}
+			else
+			{
+				outargdim[0] = argdim[0];
+				outargdim[1] = argdim[1];
+			}
+
 			return TRUE;
 		break;
 		case CDN_MATH_FUNCTION_TYPE_TRANSPOSE:
 			outargdim[0] = argdim[1];
 			outargdim[1] = argdim[0];
+		break;
+		case CDN_MATH_FUNCTION_TYPE_INVERSE:
+			if (argdim[0] != argdim[1])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             "Cannot invert a non square matrix (%d, %d)",
+				             argdim[0], argdim[1]);
+
+				return FALSE;
+			}
+
+			outargdim[0] = argdim[0];
+			outargdim[1] = argdim[1];
+			*extra_space = argdim[0];
+		break;
+		case CDN_MATH_FUNCTION_TYPE_LINSOLVE:
+			// A x = B with A the second arg and B the first
+			if (argdim[0] != argdim[1])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             "Cannot solve a system which is not square (%d, %d)",
+				             argdim[0],
+				             argdim[1]);
+
+				return FALSE;
+			}
+
+			if (argdim[0] != argdim[2])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             "Invalid dimensions of B (in Ax = B), expected `%d' but got `%d'",
+				             argdim[0], argdim[2]);
+			}
+
+			outargdim[0] = argdim[2];
+			outargdim[1] = argdim[3];
+		break;
+		case CDN_MATH_FUNCTION_TYPE_TILDE:
+			outargdim[0] = 3;
+			outargdim[1] = 3;
 		break;
 		default:
 			return FALSE;
