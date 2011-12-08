@@ -131,20 +131,28 @@ AC_CHECK_LIB([bz2],
              [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -lbz2"],
              [AC_MSG_ERROR(could not find bz2 library)])
 
-AC_CHECK_LIB([lapack_atlas],
+AC_CHECK_LIB([clapack],
              [clapack_dgetri],
-             [LAPACK_LIBS="-llapack_atlas"],
-             [AC_MSG_ERROR(could not find lapack library)])
+             [LAPACK_LIBS="-lclapack"],
+             [AC_CHECK_FILE(["/usr/lib64/atlas/libclapack.so"],
+			                [LAPACK_LIBS="-lclapack"
+							 LAPACK_CFLAGS="-L/usr/lib64/atlas"],
+			                [AC_MSG_ERROR(could not find lapack library)])])
+
 
 AC_CHECK_LIB([blas],
              [cblas_dgemm],
              [BLAS_LIBS="-lblas"],
-             [AC_MSG_ERROR(could not find blas library)])
+			 [AC_CHECK_FILE(["/usr/lib64/atlas/libcblas.so"],
+			                [BLAS_LIBS="-lcblas"
+							 BLAS_CFLAGS="-I/usr/lib64/atlas"],
+                            [AC_MSG_ERROR(could not find blas library)])])
 
 AC_SUBST(CDN_PARSER_LIBS)
 AC_SUBST(CDN_CONTEXT_LIBS)
 AC_SUBST(CDN_ARCHIVE_LIBS)
 AC_SUBST(LAPACK_LIBS)
+AC_SUBST(LAPACK_CFLAGS)
 
 dnl ================================================================
 dnl Check for gedit
