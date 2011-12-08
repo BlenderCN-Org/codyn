@@ -110,7 +110,7 @@ cdn_instruction_function_get_stack_manipulation (CdnInstruction  *instruction,
 		*error = g_error_copy (self->priv->error);
 	}
 
-	return &self->priv->smanip;
+	return self->priv->error ? NULL : &self->priv->smanip;
 }
 
 static gboolean

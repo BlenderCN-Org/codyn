@@ -299,7 +299,6 @@ set_values (CdnExpression *expression,
 	cdn_expression_get_dimension (expression, &oldr, &oldc);
 
 	expression->priv->cached = TRUE;
-	expression->priv->prevent_cache_reset = TRUE;
 
 	cursize = expression->priv->cached_dims[0] * expression->priv->cached_dims[1];
 	newsize = numr * numc;
@@ -408,7 +407,9 @@ cdn_expression_set_property (GObject      *object,
 		case PROP_VALUE:
 		{
 			gdouble v = g_value_get_double (value);
+
 			set_values (self, &v, 1, 1);
+			self->priv->prevent_cache_reset = TRUE;
 		}
 		break;
 		case PROP_HAS_CACHE:
@@ -577,6 +578,55 @@ cdn_expression_new0 ()
 }
 
 static gboolean
+parser_failed_error (CdnExpression *expression,
+                     ParserContext *context,
+                     GError        *error)
+{
+	if (context->error != NULL && cdn_compile_error_get_error (context->error) == NULL)
+	{
+		cdn_compile_error_set (context->error,
+		                       error,
+		                       NULL,
+		                       NULL,
+		                       NULL,
+		                       expression);
+	}
+
+	return FALSE;
+}
+
+static gboolean
+parser_failed (CdnExpression *expression,
+               ParserContext *context,
+               gint           code,
+               gchar const   *format,
+               ...)
+{
+	if (context->error != NULL && cdn_compile_error_get_error (context->error) == NULL)
+	{
+		GError *err = NULL;
+		va_list ap;
+		va_start (ap, format);
+
+		gchar *message = g_strdup_vprintf (format, ap);
+		va_end (ap);
+
+		g_set_error (&err,
+		             CDN_COMPILE_ERROR_TYPE,
+		             code,
+		             "%s",
+		             message);
+
+		g_free (message);
+
+		parser_failed_error (expression, context, err);
+		g_error_free (err);
+	}
+
+	return FALSE;
+}
+
+static gboolean
 instructions_push (CdnExpression  *expression,
                    CdnInstruction *next,
                    ParserContext  *context)
@@ -589,6 +639,7 @@ instructions_push (CdnExpression  *expression,
 		CdnStackManipulation const *smanip;
 		GSList *ret = NULL;
 		gint consume;
+		GError *error = NULL;
 
 		if (CDN_IS_INSTRUCTION_VARIABLE (next))
 		{
@@ -610,7 +661,16 @@ instructions_push (CdnExpression  *expression,
 			}
 		}
 
-		smanip = cdn_instruction_get_stack_manipulation (next, NULL);
+		smanip = cdn_instruction_get_stack_manipulation (next, &error);
+
+		if (!smanip && error)
+		{
+			parser_failed_error (expression, context, error);
+			g_error_free (error);
+
+			return FALSE;
+		}
+
 		consume = smanip->num_pop;
 
 		ret = g_slist_prepend (NULL, next);
@@ -647,41 +707,6 @@ instructions_pop (CdnExpression *expression)
 		                     expression->priv->instructions);
 
 	return inst;
-}
-
-static gboolean
-parser_failed (CdnExpression *expression,
-               ParserContext *context,
-               gint           code,
-               gchar const   *format,
-               ...)
-{
-	if (context->error != NULL && cdn_compile_error_get_error (context->error) == NULL)
-	{
-		GError *err = NULL;
-		va_list ap;
-		va_start (ap, format);
-
-		gchar *message = g_strdup_vprintf (format, ap);
-		va_end (ap);
-
-		g_set_error (&err,
-		             CDN_COMPILE_ERROR_TYPE,
-		             code,
-		             "%s",
-		             message);
-
-		g_free (message);
-
-		cdn_compile_error_set (context->error,
-		                       err,
-		                       NULL,
-		                       NULL,
-		                       NULL,
-		                       expression);
-	}
-
-	return FALSE;
 }
 
 static CdnEdge *
@@ -2689,7 +2714,7 @@ calculate_stack_manipulation (CdnStackManipulation const *smanip,
 		ret += smanip->num_push;
 	}
 
-	ret -= *tmpspace;
+	ret -= *tmpspace - smanip->extra_space;
 	*tmpspace = smanip->extra_space;
 
 	return ret;
@@ -2796,6 +2821,8 @@ validate_stack (CdnExpression *expression,
 			maxstack = stack;
 		}
 	}
+
+	stack -= tmpspace;
 
 	if (dimonly &&
 	    numr == expression->priv->retdims[0] &&
@@ -3020,6 +3047,8 @@ cdn_expression_set_value (CdnExpression  *expression,
                           gdouble         value)
 {
 	set_values (expression, &value, 1, 1);
+	expression->priv->prevent_cache_reset = TRUE;
+
 }
 
 void
@@ -3029,6 +3058,7 @@ cdn_expression_set_values (CdnExpression *expression,
                            gint           numc)
 {
 	set_values (expression, values, numr, numc);
+	expression->priv->prevent_cache_reset = TRUE;
 }
 
 /**

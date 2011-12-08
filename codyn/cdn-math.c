@@ -542,18 +542,15 @@ matrix_multiply (CdnStack *stack,
                  gint     *argdim)
 {
 	gint i;
-	gint n;
 	gdouble *ptrA;
 	gdouble *ptrB;
 	gdouble *ptrC;
 
 	gint num1 = argdim[2] * argdim[3];
 	gint num2 = argdim[0] * argdim[1];
-	gint numend = argdim[0] * argdim[3];
+	gint numend = argdim[2] * argdim[1];
 
-	n = cdn_stack_count (stack);
-
-	ptrC = cdn_stack_ptr (stack) + n;
+	ptrC = cdn_stack_output_ptr (stack);
 	ptrB = ptrC - num2;
 	ptrA = ptrB - num1;
 
@@ -567,10 +564,10 @@ matrix_multiply (CdnStack *stack,
 	             ptrA,
 	             argdim[3],
 	             ptrB,
-	             argdim[0],
+	             argdim[1],
 	             0,
 	             ptrC,
-	             argdim[0]);
+	             argdim[1]);
 
 	cdn_stack_popn (stack, num1 + num2);
 
@@ -1010,9 +1007,9 @@ op_inverse (CdnStack *stack,
 	gint *ipiv;
 	gint nn = n * n;
 
-	ptr = cdn_stack_output_ptr (stack) - nn - n;
+	ptr = cdn_stack_output_ptr (stack) - nn;
 
-	ipiv = (gint *)(ptr + nn);
+	ipiv = (gint *)(cdn_stack_output_ptr (stack));
 
 	clapack_dgetrf (CblasRowMajor,
 	                n,
@@ -1049,9 +1046,36 @@ op_linsolve (CdnStack *stack,
 	               argdim[1],
 	               ptrIpv,
 	               ptrB,
-	               argdim[2]);
+	               argdim[0]);
 
 	cdn_stack_popn (stack, numa);
+}
+
+static void
+op_size (CdnStack *stack,
+         gint      numargs,
+         gint     *argdim)
+{
+	gint r = argdim ? argdim[0] : 1;
+	gint c = argdim ? argdim[1] : 1;
+
+	cdn_stack_popn (stack, r * c);
+
+	cdn_stack_push (stack, r);
+	cdn_stack_push (stack, c);
+}
+
+static void
+op_length (CdnStack *stack,
+         gint      numargs,
+         gint     *argdim)
+{
+	gint r = argdim ? argdim[0] : 1;
+	gint c = argdim ? argdim[1] : 1;
+	gint n = r * c;
+
+	cdn_stack_popn (stack, n);
+	cdn_stack_push (stack, n);
 }
 
 typedef struct
@@ -1118,7 +1142,9 @@ static FunctionEntry function_entries[] = {
 	{"inverse", op_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
 	{"sum", op_sum, -1, FALSE},
-	{"product", op_product, -1, FALSE}
+	{"product", op_product, -1, FALSE},
+	{"length", op_length, 1, FALSE},
+	{"size", op_size, 1, FALSE}
 };
 
 /**
@@ -1511,6 +1537,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 
 			outargdim[0] = argdim[0];
 			outargdim[1] = argdim[1];
+
 			*extra_space = argdim[0];
 		break;
 		case CDN_MATH_FUNCTION_TYPE_LINSOLVE:
@@ -1532,16 +1559,36 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
 				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-				             "Invalid dimensions of B (in Ax = B), expected `%d' but got `%d'",
+				             "Invalid dimensions of B (in Ax = B), expected `%d' rows but got `%d' rows",
 				             argdim[0], argdim[2]);
+
+				return FALSE;
 			}
 
 			outargdim[0] = argdim[2];
 			outargdim[1] = argdim[3];
 		break;
 		case CDN_MATH_FUNCTION_TYPE_TILDE:
+			if (argdim[0] * argdim[1] != 3)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             "The ~ operation is currently only defined for 1 by 3 vectors");
+
+				return FALSE;
+			}
+
 			outargdim[0] = 3;
 			outargdim[1] = 3;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_LENGTH:
+			outargdim[0] = 1;
+			outargdim[1] = 1;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_SIZE:
+			outargdim[0] = 1;
+			outargdim[1] = 2;
 		break;
 		default:
 			return FALSE;

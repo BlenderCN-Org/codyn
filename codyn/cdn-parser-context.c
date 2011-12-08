@@ -3588,12 +3588,9 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 			{
 				CdnFunctionArgumentSpec *spec = argit->data;
 				GSList *names;
-				gint numargs;
 				gint i = 0;
 
 				embedded_string_expand_multiple (names, spec->name, context);
-
-				numargs = g_slist_length (names);
 
 				while (names)
 				{
