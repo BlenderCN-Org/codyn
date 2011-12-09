@@ -29,6 +29,7 @@
 #include <gio/gunixinputstream.h>
 #include <termcap.h>
 #include <sys/time.h>
+#include <locale.h>
 
 static gboolean no_colors = FALSE;
 
@@ -156,6 +157,8 @@ main (int argc, char *argv[])
 	gchar const *file = NULL;
 
 	g_type_init ();
+
+	setlocale (LC_ALL, "");
 
 	determine_color_support ();
 

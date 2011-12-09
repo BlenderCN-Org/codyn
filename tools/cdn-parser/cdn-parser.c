@@ -31,6 +31,7 @@
 #include <termcap.h>
 #include <sys/time.h>
 #include "cdn-readline-stream.h"
+#include <locale.h>
 
 static gchar *output_file;
 static gboolean no_colors = FALSE;
@@ -308,6 +309,8 @@ main (int argc, char *argv[])
 	struct timeval tv;
 
 	g_type_init ();
+
+	setlocale (LC_ALL, "");
 
 	gettimeofday (&tv, NULL);
 	seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;

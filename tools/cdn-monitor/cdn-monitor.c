@@ -29,6 +29,7 @@
 #include <gio/gunixoutputstream.h>
 #include <sys/time.h>
 #include <math.h>
+#include <locale.h>
 
 static GPtrArray *monitored = 0;
 static GPtrArray *varied = 0;
@@ -799,6 +800,8 @@ main (int argc,
 	struct timeval tv;
 
 	g_type_init ();
+
+	setlocale (LC_ALL, "");
 
 	gettimeofday (&tv, NULL);
 	seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;

@@ -74,23 +74,32 @@ static OperatorProperties operator_properties[] =
 	{10, 1},  // CDN_TOKEN_OPERATOR_TYPE_COMMA
 	{10, 1},  // CDN_TOKEN_OPERATOR_TYPE_DOT
 	{10, 1},  // CDN_TOKEN_OPERATOR_TYPE_PRIME
-	{10, 1}  // CDN_TOKEN_OPERATOR_TYPE_SEMI_COLON
+	{10, 1},  // CDN_TOKEN_OPERATOR_TYPE_SEMI_COLON
+	{10, 1},  // CDN_TOKEN_OPERATOR_TYPE_TRANSPOSE
+	{10, 1}  // CDN_TOKEN_OPERATOR_TYPE_SQUARE
 };
+
+#define skip_while(buffer, code)					\
+{									\
+	gunichar c;							\
+									\
+	while ((c = g_utf8_get_char (buffer)) && (code))		\
+	{								\
+		buffer = g_utf8_next_char (buffer);			\
+	}								\
+}
 
 static void
 skip_whitespace (gchar const **buffer)
 {
-	while (g_ascii_isspace (**buffer))
-	{
-		++*buffer;
-	}
+	skip_while (*buffer, g_unichar_isspace (c));
 }
 
-static gint
+static gunichar
 buffer_peek (gchar const  *buffer,
              gint          at)
 {
-	return strlen (buffer) <= at ? '\0' : buffer[at];
+	return g_utf8_strlen (buffer, -1) <= at ? 0 : g_utf8_get_char (g_utf8_offset_to_pointer (buffer, at));
 }
 
 /* parse number value */
@@ -100,13 +109,11 @@ cdn_tokenizer_parse_number (gchar const **buffer)
 	// parse leading numbers
 	gchar const *start = *buffer;
 
-	while (g_ascii_isdigit (*(++*buffer)))
-	;
+	skip_while (*buffer, g_unichar_isdigit (c));
 
 	if (**buffer == '.')
 	{
-		while (g_ascii_isdigit (*(++*buffer)))
-		;
+		skip_while (*buffer, g_unichar_isdigit (c));
 	}
 
 	// Scientific notation
@@ -119,10 +126,9 @@ cdn_tokenizer_parse_number (gchar const **buffer)
 			++next;
 		}
 
-		if (*next && g_ascii_isdigit(*next))
+		if (*next && g_unichar_isdigit (g_utf8_get_char (next)))
 		{
-			while (g_ascii_isdigit(*++next))
-			;
+			skip_while (next, g_unichar_isdigit (c));
 
 			*buffer = next;
 		}
@@ -137,22 +143,33 @@ cdn_tokenizer_parse_number (gchar const **buffer)
 	return (CdnToken *)res;
 }
 
+static gboolean
+is_ident (gunichar c)
+{
+	return g_unichar_isalpha (c) ||
+	       c == '_' ||
+	       (c >= 0x2200 && c <= 0x22ff) ||
+	       (c >= 0x370 && c <= 0x3ff);
+}
+
 gboolean
 cdn_tokenizer_validate_identifier (const gchar *identifier)
 {
-	if (!identifier || !*identifier || (!isalpha (*identifier) && *identifier != '_'))
+	if (!identifier || !*identifier || !is_ident (g_utf8_get_char (identifier)))
 	{
 		return FALSE;
 	}
 
 	while (*identifier)
 	{
-		if (!(isalnum (*identifier) || *identifier == '_' || *identifier == '.' || *identifier == '\''))
+		gunichar c = g_utf8_get_char (identifier);
+
+		if (!(is_ident (c) || g_unichar_isdigit (c) || c == '.' || c == '\''))
 		{
 			return FALSE;
 		}
 
-		++identifier;
+		identifier = g_utf8_next_char (identifier);
 	}
 
 	return TRUE;
@@ -164,8 +181,7 @@ cdn_tokenizer_parse_identifier (gchar const **buffer)
 {
 	gchar const *start = *buffer;
 
-	while (isalnum (*(++*buffer)) || **buffer == '_')
-	;
+	skip_while (*buffer, is_ident (c) || g_unichar_isdigit (c));
 
 	CdnTokenIdentifier *res = g_slice_new (CdnTokenIdentifier);
 	res->parent.type = CDN_TOKEN_TYPE_IDENTIFIER;
@@ -177,7 +193,7 @@ cdn_tokenizer_parse_identifier (gchar const **buffer)
 
 /* check for operator */
 static gboolean
-isoperator (gint c)
+isoperator (gunichar c)
 {
 	switch (c)
 	{
@@ -203,6 +219,10 @@ isoperator (gint c)
 		case '\'':
 		case ';':
 		case '^':
+		case '~':
+		case 7488: /* ᵀ for transpose */
+		case 178: /* ² for square */
+		case 8729: /* ∙ for multiply */
 			return TRUE;
 	}
 
@@ -213,8 +233,9 @@ isoperator (gint c)
 static CdnToken *
 cdn_tokenizer_parse_operator (gchar const **buffer)
 {
-	gint c = **buffer;
-	gint n = buffer_peek (*buffer, 1);
+	gunichar c = g_utf8_get_char (*buffer);
+	gunichar n = buffer_peek (*buffer, 1);
+
 	CdnTokenOperatorType type = CDN_TOKEN_OPERATOR_TYPE_NONE;
 
 	gchar const *start = *buffer;
@@ -250,7 +271,7 @@ cdn_tokenizer_parse_operator (gchar const **buffer)
 	}
 	else
 	{
-		--*buffer;
+		*buffer = g_utf8_next_char (*buffer - 2);
 
 		switch (c)
 		{
@@ -311,6 +332,18 @@ cdn_tokenizer_parse_operator (gchar const **buffer)
 			case '^':
 				type = CDN_TOKEN_OPERATOR_TYPE_POWER;
 			break;
+			case '~':
+				type = CDN_TOKEN_OPERATOR_TYPE_TILDE;
+			break;
+			case 8729: /* ∙ for multiply */
+				type = CDN_TOKEN_OPERATOR_TYPE_MULTIPLY;
+			break;
+			case 7488: /* ᵀ for transpose */
+				type = CDN_TOKEN_OPERATOR_TYPE_TRANSPOSE;
+			break;
+			case 178: /* ² for square */
+				type = CDN_TOKEN_OPERATOR_TYPE_SQUARE;
+			break;
 		}
 	}
 
@@ -351,21 +384,22 @@ cdn_tokenizer_next (gchar const **buffer)
 	}
 
 	CdnToken *res = NULL;
+	gunichar c = g_utf8_get_char (*buffer);
 
 	// check for number
-	if (isdigit (**buffer) || (**buffer == '.' && isdigit (buffer_peek (*buffer, 1))))
+	if (g_unichar_isdigit (c) || (c == '.' && g_unichar_isdigit (buffer_peek (*buffer, 1))))
 	{
 		res = cdn_tokenizer_parse_number (buffer);
 	}
-	// check for identifier
-	else if (isalpha (**buffer) || **buffer == '_')
-	{
-		res = cdn_tokenizer_parse_identifier (buffer);
-	}
 	// check for operator
-	else if (isoperator (**buffer))
+	else if (isoperator (c))
 	{
 		res = cdn_tokenizer_parse_operator (buffer);
+	}
+	// check for identifier
+	else if (is_ident (c))
+	{
+		res = cdn_tokenizer_parse_identifier (buffer);
 	}
 
 	return res;

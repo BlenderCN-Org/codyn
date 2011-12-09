@@ -2209,6 +2209,7 @@ parse_prime (CdnExpression *expression,
 	CdnExpression *expr;
 	GSList *item;
 	GError *err = NULL;
+	gboolean ret;
 
 	instr = context->stack ? context->stack->data : NULL;
 
@@ -2267,13 +2268,92 @@ parse_prime (CdnExpression *expression,
 		return FALSE;
 	}
 
-	instructions_push (expression,
-	                   cdn_instruction_custom_operator_new (op),
-	                   context);
+	ret = instructions_push (expression,
+	                         cdn_instruction_custom_operator_new (op),
+	                         context);
 
 	g_object_unref (op);
 
-	return TRUE;
+	return ret;
+}
+
+static gboolean
+parse_transpose (CdnExpression *expression,
+                 ParserContext *context)
+{
+	GSList *instr;
+	gboolean ret;
+	gint *argdim;
+
+	instr = context->stack ? context->stack->data : NULL;
+
+	if (!instr)
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_TOKEN,
+		               "The transpose operator can only appear after an expression");
+
+		return FALSE;
+	}
+
+	argdim = get_argdim (expression, context, 1);
+
+	ret = instructions_push (expression,
+	                         cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
+	                                                       "transpose",
+	                                                       1,
+	                                                       argdim),
+	                         context);
+
+	g_free (argdim);
+	return ret;
+}
+
+static gboolean
+parse_square (CdnExpression *expression,
+              ParserContext *context)
+{
+	GSList *instr;
+	gboolean ret;
+	gint *argdim;
+
+	instr = context->stack ? context->stack->data : NULL;
+
+	if (!instr)
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_TOKEN,
+		               "The transpose operator can only appear after an expression");
+
+		return FALSE;
+	}
+
+	argdim = get_argdim (expression, context, 1);
+
+	ret = instructions_push (expression,
+	                         cdn_instruction_number_new_from_string ("2"),
+	                         context);
+
+	g_free (argdim);
+
+	if (!ret)
+	{
+		return FALSE;
+	}
+
+	argdim = get_argdim (expression, context, 2);
+
+	ret = instructions_push (expression,
+	                         cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
+	                                                       "^",
+	                                                       2,
+	                                                       argdim),
+	                         context);
+
+	g_free (argdim);
+	return ret;
 }
 
 static gboolean
@@ -2306,6 +2386,20 @@ parse_operator (CdnExpression *expression,
 		cdn_token_free (cdn_tokenizer_next (context->buffer));
 
 		return parse_indexing (expression, context);
+	}
+	else if (op->type == CDN_TOKEN_OPERATOR_TYPE_TRANSPOSE)
+	{
+		// consume token
+		cdn_token_free (cdn_tokenizer_next (context->buffer));
+
+		return parse_transpose (expression, context);
+	}
+	else if (op->type == CDN_TOKEN_OPERATOR_TYPE_SQUARE)
+	{
+		// consume token
+		cdn_token_free (cdn_tokenizer_next (context->buffer));
+
+		return parse_square (expression, context);
 	}
 
 	// consume token
@@ -2572,6 +2666,12 @@ parse_expression (CdnExpression   *expression,
 		switch (token->type)
 		{
 			case CDN_TOKEN_TYPE_NUMBER:
+				if (num != 0)
+				{
+					cdn_token_free (token);
+					return TRUE;
+				}
+
 				// simply push a number on the stack
 				ret = parse_number (expression,
 				                    CDN_TOKEN_NUMBER (token),
@@ -2579,6 +2679,12 @@ parse_expression (CdnExpression   *expression,
 			break;
 			case CDN_TOKEN_TYPE_IDENTIFIER:
 			{
+				if (num != 0)
+				{
+					cdn_token_free (token);
+					return TRUE;
+				}
+
 				ret = parse_identifier (expression,
 				                        CDN_TOKEN_IDENTIFIER (token),
 				                        context);
@@ -2772,6 +2878,24 @@ validate_stack (CdnExpression *expression,
 		}
 
 		stack += calculate_stack_manipulation (smanip, &tmpspace);
+
+		/*g_message ("%s", cdn_instruction_to_string (inst));
+
+		gint i;
+
+		for (i = 0; i < smanip->num_pop; ++i)
+		{
+			g_message ("  -(%d, %d)",
+			           smanip->pop_dims ? smanip->pop_dims[i * 2] : 1,
+			           smanip->pop_dims ? smanip->pop_dims[i * 2 + 1] : 1);
+		}
+
+		for (i = 0; i < smanip->num_push; ++i)
+		{
+			g_message ("  +(%d, %d)",
+			           smanip->push_dims ? smanip->push_dims[i * 2] : 1,
+			           smanip->push_dims ? smanip->push_dims[i * 2 + 1] : 1);
+		}*/
 
 		if (smanip->push_dims)
 		{

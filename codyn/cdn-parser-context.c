@@ -4094,6 +4094,7 @@ cdn_parser_context_read (CdnParserContext *context,
                          gsize             max_size)
 {
 	InputItem *item;
+	gssize ret;
 
 	g_return_val_if_fail (CDN_IS_PARSER_CONTEXT (context), EOF);
 	g_return_val_if_fail (buffer != NULL, EOF);
@@ -4110,11 +4111,13 @@ cdn_parser_context_read (CdnParserContext *context,
 		return 0;
 	}
 
-	return g_input_stream_read (item->stream,
-	                            buffer,
-	                            max_size,
-	                            NULL,
-	                            NULL);
+	ret = g_input_stream_read (item->stream,
+	                           buffer,
+	                           max_size,
+	                           NULL,
+	                           NULL);
+
+	return ret;
 }
 
 gboolean

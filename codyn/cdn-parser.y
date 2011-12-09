@@ -37,7 +37,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_EDGE T_KEY_NETWORK T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_VARIABLE T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_DISABLED T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_SOURCE_NAME T_KEY_SINK_NAME T_KEY_PHASE T_KEY_TERMINATE T_KEY_ANY
+%token T_KEY_EDGE T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_INPUT_FILE T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_VARIABLE T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_IS_EMPTY T_KEY_REMOVE T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_DISABLED T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_SOURCE_NAME T_KEY_SINK_NAME T_KEY_PHASE T_KEY_TERMINATE T_KEY_ANY
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -227,7 +227,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 
 %start choose_parser
 
-%expect 9
+%expect 13
 
 %%
 
@@ -245,19 +245,9 @@ document_contents
 	;
 
 document_item
-	: network
-	| node
-	| edge
-	| object
-	| input_file
-	| functions
-	| import
+	: node_item_general
 	| templates
-	| layout
 	| integrator
-	| delete
-	| delete_context
-	| common_scopes
 	| attributes
 	  '{'				{ cdn_parser_context_push_scope (context, $1); }
 	  document_contents
@@ -282,14 +272,6 @@ parse
 	  define_contents
 	  '}'				{ cdn_parser_context_push_input_from_path (context, $3, $1); errb;
 	                                  cdn_parser_context_pop (context); }
-	;
-
-network
-	: attributes
-	  T_KEY_NETWORK
-	  '{'				{ cdn_parser_context_push_network (context, $1); }
-	  network_contents
-	  '}'				{ cdn_parser_context_pop (context); }
 	;
 
 common_scopes
@@ -328,20 +310,6 @@ action_unapply
 actions
 	: action_apply
 	| action_unapply
-	;
-
-network_item
-	: variable
-	| common_scopes
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
-	  network_contents
-	  '}'				{ cdn_parser_context_pop (context); }
-	;
-
-network_contents
-	:
-	| network_contents network_item
 	;
 
 integrator_variable
@@ -817,27 +785,9 @@ function_custom
 	  function_helper	        { cdn_parser_context_pop (context); errb }
 	;
 
-function_item
+function
 	: function_custom
 	| function_polynomial
-	| common_scopes
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); errb }
-	  function_contents
-	  '}'				{ cdn_parser_context_pop (context); errb }
-	;
-
-function_contents
-	:
-	| function_contents function_item
-	;
-
-functions
-	: attributes
-	  T_KEY_FUNCTIONS
-	  '{'				{ cdn_parser_context_push_scope (context, $1); errb }
-	  function_contents
-	  '}'				{ cdn_parser_context_pop (context); errb}
 	;
 
 polynomial_pieces_rev
@@ -910,7 +860,7 @@ object_contents
 	| object_contents object_item
 	;
 
-node_item
+node_item_general
 	: variable
 	| object
 	| edge
@@ -918,14 +868,20 @@ node_item
 	| node
 	| common_scopes
 	| layout
-	| functions
+	| function
+	| input_file
+	| import
+	| delete
+	| delete_context
+	| when
+	;
+
+node_item
+	: node_item_general
 	| attributes
 	  '{'				{ cdn_parser_context_push_scope (context, $1); }
 	  node_contents
 	  '}'				{ cdn_parser_context_pop (context); }
-	| function_custom
-	| function_polynomial
-	| when
 	;
 
 node_contents

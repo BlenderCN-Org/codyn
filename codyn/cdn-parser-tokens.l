@@ -45,6 +45,7 @@ void cdn_parser_tokens_push_input (gpointer scanner);
 %}
 
 IDENTIFIER [a-z_][a-z0-9_-]*
+UniAnyChar [\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEF][\x80-\xBF][\x80-\xBF]
 
 %option yylineno
 %option noyywrap
@@ -161,7 +162,6 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 "out"				return T_KEY_OUT;
 "once"				return T_KEY_ONCE;
 "disabled"			return T_KEY_DISABLED;
-"network"			return T_KEY_NETWORK;
 "functions"			return T_KEY_FUNCTIONS;
 "interface"			return T_KEY_INTERFACE;
 "polynomial"			return T_KEY_POLYNOMIAL;
@@ -343,7 +343,7 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 					return T_STRING_MAP_END;
 				}
 
-<instring,incl>(\\["@$\\|{}]|[^"@$\\|{}])+ {
+<instring,incl>(\\["@$\\|{}]|{UniAnyChar}|[^"@$\\|{}])+ {
 					yylval->id = unquote_string (yytext, yyleng, "@\"$|{}");
 					return T_STRING;
 				}
@@ -488,29 +488,33 @@ IDENTIFIER [a-z_][a-z0-9_-]*
 %%
 
 static gchar *
-unquote_string (gchar const *s, gint len, gchar const *escape)
+unquote_string (gchar const *s,
+                gint         len,
+                gchar const *escape)
 {
-	gchar *ret;
-	gchar *ptr;
-
-	ret = g_strndup (s, len);
-	ptr = ret;
+	GString *ret = g_string_new ("");
 
 	while (*s && len > 0)
 	{
-		if (*s == '\\' && len > 1 && (strchr (escape, *(s + 1)) != NULL || *(s + 1) == '\\'))
+		gunichar c = g_utf8_get_char (s);
+		gchar *nptr = g_utf8_next_char (s);
+		gunichar n = g_utf8_get_char (nptr);
+
+		if (c == '\\' && len > 1 && (g_utf8_strchr (escape, -1, n) != NULL || n == '\\'))
 		{
-			++s;
+			nptr = g_utf8_next_char (nptr);
+			c = n;
+
 			--len;
 		}
 
-		*ptr++ = *s++;
+		g_string_append_unichar (ret, c);
+		s = nptr;
+
 		--len;
 	}
 
-	*ptr = '\0';
-
-	return ret;
+	return g_string_free (ret, FALSE);
 }
 
 void

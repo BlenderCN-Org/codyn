@@ -134,18 +134,20 @@ AC_CHECK_LIB([bz2],
 AC_CHECK_LIB([clapack],
              [clapack_dgetri],
              [LAPACK_LIBS="-lclapack"],
-             [AC_CHECK_FILE(["/usr/lib64/atlas/libclapack.so"],
-			                [LAPACK_LIBS="-lclapack"
-							 LAPACK_CFLAGS="-L/usr/lib64/atlas"],
-			                [AC_MSG_ERROR(could not find lapack library)])])
-
+             [AC_CHECK_LIB([lapack-3],
+                           [clapack_dgetri],
+                           [LAPACK_LIBS="-llapack-3"],
+                           [AC_CHECK_FILE(["/usr/lib64/atlas/libclapack.so"],
+                                          [LAPACK_LIBS="-lclapack"
+                                           LAPACK_CFLAGS="-L/usr/lib64/atlas"],
+                                           [AC_MSG_ERROR(could not find lapack library)])])])
 
 AC_CHECK_LIB([blas],
              [cblas_dgemm],
              [BLAS_LIBS="-lblas"],
-			 [AC_CHECK_FILE(["/usr/lib64/atlas/libcblas.so"],
-			                [BLAS_LIBS="-lcblas"
-							 BLAS_CFLAGS="-I/usr/lib64/atlas"],
+             [AC_CHECK_FILE(["/usr/lib64/atlas/libcblas.so"],
+                            [BLAS_LIBS="-lcblas"
+                             BLAS_CFLAGS="-I/usr/lib64/atlas"],
                             [AC_MSG_ERROR(could not find blas library)])])
 
 AC_SUBST(CDN_PARSER_LIBS)

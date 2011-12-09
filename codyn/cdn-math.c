@@ -1147,6 +1147,18 @@ static FunctionEntry function_entries[] = {
 	{"size", op_size, 1, FALSE}
 };
 
+typedef struct
+{
+	gchar const *name;
+	CdnMathFunctionType type;
+} FunctionEntryMap;
+
+static FunctionEntryMap function_entry_mapping[] = {
+	{"\xe2\x88\x9a", CDN_MATH_FUNCTION_TYPE_SQRT}, /* √ */
+	{"\xe2\x88\x91", CDN_MATH_FUNCTION_TYPE_SUM}, /* ∑ */
+	{"\xe2\x88\x8f", CDN_MATH_FUNCTION_TYPE_PRODUCT} /* ∏ */
+};
+
 /**
  * cdn_math_function_lookup_by_id:
  * @type: A #CdnMathFunctionType
@@ -1188,6 +1200,16 @@ cdn_math_function_lookup (gchar const  *name,
 		{
 			*arguments = function_entries[i].arguments;
 			return i;
+		}
+	}
+
+	for (i = 0; i < sizeof (function_entry_mapping) / sizeof (FunctionEntryMap); ++i)
+	{
+		FunctionEntryMap *m = &(function_entry_mapping[i]);
+		if (g_strcmp0 (m->name, name) == 0)
+		{
+			*arguments = function_entries[m->type].arguments;
+			return m->type;
 		}
 	}
 

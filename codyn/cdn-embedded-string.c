@@ -1003,7 +1003,7 @@ parse_expansion_range_rev (gchar const *s)
 static GSList *
 parse_expansion_range (gchar const *s)
 {
-	return g_slist_reverse (parse_expansion_range (s));
+	return g_slist_reverse (parse_expansion_range_rev (s));
 }
 
 static GSList *

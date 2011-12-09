@@ -38,7 +38,8 @@ class BaseViewActivatable:
         doc = self.view.get_buffer()
 
         self.handlers = [
-            doc.connect('notify::language', self.on_language_changed)
+            doc.connect('notify::language', self.on_language_changed),
+            doc.connect_after('insert-text', self.on_insert_text)
         ]
 
         self.error_tag = doc.create_tag('CdnParsed::error')
@@ -46,6 +47,55 @@ class BaseViewActivatable:
         self.error_tag.props.underline = utils.Underline.ERROR
 
         self.language_changed()
+
+    def special_char(self, c):
+        return c.isalnum() or c == '_'
+
+    def on_insert_text(self, doc, iter, text, length):
+        if not self.iscdn or length == 0:
+            return
+
+        start = iter.copy()
+        end = iter.copy()
+
+        while not end.is_end() and self.special_char(end.get_char()):
+            end.forward_char()
+
+        start.backward_char()
+
+        while not start.is_start() and self.special_char(start.get_char()):
+            start.backward_char()
+
+        if start.get_text(end) == '^2':
+            doc.begin_user_action()
+            doc.delete(start, end);
+            doc.insert(start, '²')
+            iter.assign(start)
+            doc.end_user_action()
+        elif start.get_char() == '\\':
+            start.forward_char()
+            t = start.get_text(end)
+
+            if t == 'sqrt':
+                repl = "√"
+            elif t == 'sum':
+                repl = "∑"
+            elif t == 'cdot':
+                repl = "∙"
+            elif t == 'prod':
+                repl = "∏"
+            elif t == 'transpose':
+                repl = "ᵀ"
+            else:
+                return
+
+            start.backward_char()
+
+            doc.begin_user_action()
+            doc.delete(start, end)
+            doc.insert(start, repl)
+            iter.assign(start)
+            doc.end_user_action()
 
     def on_query_tooltip(self, view, x, y, keyboard_mode, tooltip):
         if not self.last_error:
