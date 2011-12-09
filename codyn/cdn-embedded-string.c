@@ -1045,8 +1045,8 @@ apply_reduce (CdnEmbeddedString *s,
 
 	while (ret && parts)
 	{
-		CdnExpansion *ex;
 		gchar *item;
+		CdnExpansion *ex;
 
 		gchar const *cc[] = {
 			ret,

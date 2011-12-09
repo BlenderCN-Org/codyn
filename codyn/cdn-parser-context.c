@@ -1122,7 +1122,8 @@ generate_name_value_pairs (CdnParserContext  *context,
                            CdnSelection      *sel,
                            CdnEmbeddedString *name,
                            GObject           *value,
-                           CdnEmbeddedString *count_name)
+                           CdnEmbeddedString *count_name,
+                           gboolean           single_can_be_multi)
 {
 	GSList *names;
 	GSList *nameit;
@@ -1175,6 +1176,11 @@ generate_name_value_pairs (CdnParserContext  *context,
 			values = generate_expand_multival (context, sel, value);
 			valueismulti = values && cdn_expansion_num (values->data) > 1;
 			hascontext = TRUE;
+
+			if (!single_can_be_multi && !values->next)
+			{
+				valueismulti = FALSE;
+			}
 
 			if (!values)
 			{
@@ -1473,7 +1479,8 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 		                                   item->data,
 		                                   name,
 		                                   G_OBJECT (expression),
-		                                   count_name);
+		                                   count_name,
+		                                   FALSE);
 
 		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
 
@@ -4322,7 +4329,8 @@ cdn_parser_context_define (CdnParserContext  *context,
 		                                   sel,
 		                                   name,
 		                                   value,
-		                                   count_name);
+		                                   count_name,
+		                                   TRUE);
 
 		for (pair = pairs; pair; pair = g_slist_next (pair))
 		{

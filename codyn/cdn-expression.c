@@ -1495,11 +1495,13 @@ parse_indexing (CdnExpression *expression,
 		}
 	}
 
-	next = cdn_tokenizer_peek (*(context->buffer));
+	next = cdn_tokenizer_next (context->buffer);
 	type = CDN_TOKEN_OPERATOR (next)->type;
 
 	if (type != CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
 	{
+		cdn_token_free (next);
+
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
@@ -1519,6 +1521,7 @@ parse_indexing (CdnExpression *expression,
 		               "Two arguments of index operators must have the same dimensions, not (%d, %d) and (%d, %d)",
 		               argdim[0], argdim[1], argdim[2], argdim[3]);
 
+		cdn_token_free (next);
 		g_free (argdim);
 		return FALSE;
 	}
@@ -1531,6 +1534,9 @@ parse_indexing (CdnExpression *expression,
 	                   context);
 
 	g_free (argdim);
+
+	cdn_token_free (next);
+
 	return TRUE;
 }
 
@@ -2854,6 +2860,8 @@ validate_stack (CdnExpression *expression,
 
 	numr = expression->priv->retdims[0];
 	numc = expression->priv->retdims[1];
+
+	//g_message ("Validating stack for: %s", expression->priv->expression);
 
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{

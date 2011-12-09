@@ -44,8 +44,8 @@ void cdn_parser_tokens_push_input (gpointer scanner);
 
 %}
 
-IDENTIFIER [a-z_][a-z0-9_-]*
 UniAnyChar [\xC2-\xDF][\x80-\xBF]|\xE0[\xA0-\xBF][\x80-\xBF]|[\xE1-\xEF][\x80-\xBF][\x80-\xBF]
+IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 %option yylineno
 %option noyywrap

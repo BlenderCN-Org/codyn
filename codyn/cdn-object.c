@@ -1176,7 +1176,7 @@ cdn_object_add_variable_impl (CdnObject    *object,
 		g_set_error (error,
 		             CDN_OBJECT_ERROR,
 		             CDN_OBJECT_ERROR_INVALID_VARIABLE_NAME,
-		             "Invalid property name `%s.%s'",
+		             "Invalid variable name `%s.%s'",
 		             nm,
 		             cdn_variable_get_name (property));
 

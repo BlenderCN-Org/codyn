@@ -113,6 +113,7 @@ cdn_tokenizer_parse_number (gchar const **buffer)
 
 	if (**buffer == '.')
 	{
+		++*buffer;
 		skip_while (*buffer, g_unichar_isdigit (c));
 	}
 
@@ -146,10 +147,12 @@ cdn_tokenizer_parse_number (gchar const **buffer)
 static gboolean
 is_ident (gunichar c)
 {
-	return g_unichar_isalpha (c) ||
-	       c == '_' ||
-	       (c >= 0x2200 && c <= 0x22ff) ||
-	       (c >= 0x370 && c <= 0x3ff);
+	return (g_unichar_isalpha (c) ||
+	        c == '_' ||
+	        (c >= 0x2200 && c <= 0x22ff) ||
+	        (c >= 0x370 && c <= 0x3ff) ||
+	        (c >= 0x0300 && c <= 0x03ff)) &&
+	        c != 7488 && c != 178;
 }
 
 gboolean

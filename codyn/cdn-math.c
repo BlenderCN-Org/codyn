@@ -588,6 +588,11 @@ op_multiply (CdnStack *stack,
 		gdouble second = cdn_stack_pop (stack);
 		cdn_stack_set (stack, cdn_stack_peek (stack) * second);
 	}
+	else if ((argdim[0] == 1 && argdim[1] == 1) ||
+	         (argdim[2] == 1 && argdim[2] == 1))
+	{
+		foreach_element2 (stack, argdim, op_emultiply_impl);
+	}
 	else if (argdim[3] == argdim[0])
 	{
 		matrix_multiply (stack, argdim);

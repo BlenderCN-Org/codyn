@@ -76,26 +76,91 @@ class BaseViewActivatable:
             start.forward_char()
             t = start.get_text(end)
 
-            if t == 'sqrt':
-                repl = "√"
-            elif t == 'sum':
-                repl = "∑"
-            elif t == 'cdot':
-                repl = "∙"
-            elif t == 'prod':
-                repl = "∏"
-            elif t == 'transpose':
-                repl = "ᵀ"
-            else:
+            smap = {
+                'sqrt': '√',
+                'sum': '∑',
+                'cdot': '∙',
+                'prod': '∏',
+                'transpose': 'ᵀ',
+                'alpha': 'α',
+                'beta': 'β',
+                'gamma': 'γ',
+                'delta': 'δ',
+                'epsilon': 'ε',
+                'zeta': 'ζ',
+                'eta': 'η',
+                'theta': 'θ',
+                'iota': 'ι',
+                'kappa': 'κ',
+                'lamda': 'λ',
+                'mu': 'μ',
+                'nu': 'ν',
+                'xi': 'ξ',
+                'omicron': 'ο',
+                'pi': 'π',
+                'rho': 'ρ',
+                'fsigma': 'ς',
+                'sigma': 'σ',
+                'tau': 'τ',
+                'upsilon': 'υ',
+                'phi' :'φ',
+                'chi' :'χ',
+                'psi' :'ψ',
+                'omega' :'ω',
+                'Alpha': 'Α',
+                'Beta': 'Β',
+                'Gamma': 'Γ',
+                'Delta': 'Δ',
+                'Epsilon': 'Ε',
+                'Zeta': 'Ζ',
+                'Eta': 'Η',
+                'Theta': 'Θ',
+                'Iota': 'Ι',
+                'Kappa': 'Κ',
+                'Lamda': 'Λ',
+                'Mu': 'Μ',
+                'Nu': 'Ν',
+                'Xi': 'Ξ',
+                'Omicron': 'Ο',
+                'Pi': 'Π',
+                'Rho': 'Ρ',
+                'Sigma': 'Σ',
+                'Tau': 'Τ',
+                'Upsilon': 'Υ',
+                'Phi': 'Φ',
+                'Chi': 'Χ',
+                'Psi': 'Ψ',
+                'Omega': 'Ω'
+            }
+
+            if t in smap:
+                repl = smap[t]
+                start.backward_char()
+
+                doc.begin_user_action()
+                doc.delete(start, end)
+                doc.insert(start, repl)
+                iter.assign(start)
+                doc.end_user_action()
                 return
 
-            start.backward_char()
+            diacmap = {
+                'hat': '\xcc\x82',
+                'tilde': '\xcc\x83',
+                'bar': '\xcc\x84',
+                'dot': '\xcc\x87',
+                'ddot': '\xcc\x88',
+            }
 
-            doc.begin_user_action()
-            doc.delete(start, end)
-            doc.insert(start, repl)
-            iter.assign(start)
-            doc.end_user_action()
+            if t in diacmap:
+                start.backward_chars(2)
+                repl = start.get_char() + diacmap[t]
+
+                doc.begin_user_action()
+                doc.delete(start, end)
+                doc.insert(start, repl)
+                iter.assign(start)
+                doc.end_user_action()
 
     def on_query_tooltip(self, view, x, y, keyboard_mode, tooltip):
         if not self.last_error:

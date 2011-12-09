@@ -213,14 +213,14 @@ cdn_stack_at (CdnStack *stack,
 gdouble
 cdn_stack_peek (CdnStack *stack)
 {
-	return *(stack->output_ptr);
+	return *(stack->output_ptr - 1);
 }
 
 void
 cdn_stack_set (CdnStack *stack,
                gdouble   value)
 {
-	*stack->output_ptr = value;
+	*(stack->output_ptr - 1) = value;
 }
 
 /**

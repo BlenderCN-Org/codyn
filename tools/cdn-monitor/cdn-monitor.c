@@ -553,27 +553,39 @@ simulate_combinations (CdnNetwork    *network,
 		// Write the output
 		while (vars)
 		{
-			gchar value[G_ASCII_DTOSTR_BUF_SIZE];
+			gdouble const *values;
+			gint numr;
+			gint numc;
+			gint i;
 
-			g_output_stream_write_all (out,
-			                           delimiter,
-			                           strlen (delimiter),
-			                           NULL,
-			                           NULL,
-			                           NULL);
+			values = cdn_variable_get_values (vars->data,
+			                                  &numr,
+			                                  &numc);
 
-			g_ascii_dtostr (value,
-			                G_ASCII_DTOSTR_BUF_SIZE,
-			                cdn_variable_get_value (vars->data));
+			for (i = 0; i < numr * numc; ++i)
+			{
+				gchar value[G_ASCII_DTOSTR_BUF_SIZE];
+
+				g_output_stream_write_all (out,
+				                           delimiter,
+				                           strlen (delimiter),
+				                           NULL,
+				                           NULL,
+				                           NULL);
+
+				g_ascii_dtostr (value,
+				                G_ASCII_DTOSTR_BUF_SIZE,
+				                values[i]);
+
+				g_output_stream_write_all (out,
+				                           value,
+				                           strlen (value),
+				                           NULL,
+				                           NULL,
+				                           NULL);
+			}
 
 			vars = g_slist_next (vars);
-
-			g_output_stream_write_all (out,
-			                           value,
-			                           strlen (value),
-			                           NULL,
-			                           NULL,
-			                           NULL);
 		}
 
 		g_output_stream_write_all (out, "\n", 1, NULL, NULL, NULL);
