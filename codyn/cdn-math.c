@@ -1597,6 +1597,9 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 
 			outargdim[0] = argdim[2];
 			outargdim[1] = argdim[3];
+
+			// Need extra space to store the pivoting coefficients
+			*extra_space = argdim[0];
 		break;
 		case CDN_MATH_FUNCTION_TYPE_TILDE:
 			if (argdim[0] * argdim[1] != 3)
