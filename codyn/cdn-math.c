@@ -1039,9 +1039,12 @@ op_linsolve (CdnStack *stack,
 	gdouble *ptrB;
 	gint *ptrIpv;
 	gint numa = argdim[0] * argdim[1];
+	gint numb = argdim[2] * argdim[3];
 
 	ptrA = cdn_stack_output_ptr (stack) - numa;
-	ptrB = ptrA - argdim[2] * argdim[3];
+	ptrB = ptrA - numb;
+
+	// Use the extra space we allocated on the stack to write ipv
 	ptrIpv = (gint *)cdn_stack_output_ptr (stack);
 
 	clapack_dgesv (CblasRowMajor,
