@@ -2826,9 +2826,7 @@ calculate_stack_manipulation (CdnStackManipulation const *smanip,
 		ret += smanip->num_push;
 	}
 
-	ret -= *tmpspace - smanip->extra_space;
 	*tmpspace = smanip->extra_space;
-
 	return ret;
 }
 
@@ -2870,6 +2868,7 @@ validate_stack (CdnExpression *expression,
 		GSList *dep;
 		CdnStackManipulation const *smanip;
 		GError *error = NULL;
+		gint nst;
 
 		smanip = cdn_instruction_get_stack_manipulation (inst, &error);
 
@@ -2885,7 +2884,7 @@ validate_stack (CdnExpression *expression,
 			return FALSE;
 		}
 
-		stack += calculate_stack_manipulation (smanip, &tmpspace);
+		nst = calculate_stack_manipulation (smanip, &tmpspace);
 
 		/*g_message ("%s", cdn_instruction_to_string (inst));
 
@@ -2903,7 +2902,9 @@ validate_stack (CdnExpression *expression,
 			g_message ("  +(%d, %d)",
 			           smanip->push_dims ? smanip->push_dims[i * 2] : 1,
 			           smanip->push_dims ? smanip->push_dims[i * 2 + 1] : 1);
-		}*/
+		}
+
+		g_message ("Stack size is now: %d (+%d)", stack, tmpspace);*/
 
 		if (smanip->push_dims)
 		{
@@ -2916,7 +2917,7 @@ validate_stack (CdnExpression *expression,
 			expression->priv->retdims[1] = 1;
 		}
 
-		if (stack <= 0)
+		if (stack + nst <= 0)
 		{
 			return FALSE;
 		}
@@ -2948,13 +2949,13 @@ validate_stack (CdnExpression *expression,
 			}
 		}
 
-		if (stack > maxstack)
+		if (stack + MAX(tmpspace, nst) > maxstack)
 		{
-			maxstack = stack;
+			maxstack = stack + tmpspace;
 		}
-	}
 
-	stack -= tmpspace;
+		stack += nst;
+	}
 
 	if (dimonly &&
 	    numr == expression->priv->retdims[0] &&
