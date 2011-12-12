@@ -1,7 +1,7 @@
 #ifndef __CDN_EVENT_H__
 #define __CDN_EVENT_H__
 
-#include <glib-object.h>
+#include <codyn/cdn-node.h>
 #include <codyn/cdn-expression.h>
 #include <codyn/cdn-variable.h>
 #include <codyn/cdn-edge-action.h>
@@ -31,7 +31,7 @@ typedef enum
 struct _CdnEvent
 {
 	/*< private >*/
-	GInitiallyUnowned parent;
+	CdnNode parent;
 
 	CdnEventPrivate *priv;
 };
@@ -39,12 +39,13 @@ struct _CdnEvent
 struct _CdnEventClass
 {
 	/*< private >*/
-	GInitiallyUnownedClass parent_class;
+	CdnNodeClass parent_class;
 };
 
 GType              cdn_event_get_type                  (void) G_GNUC_CONST;
 
-CdnEvent          *cdn_event_new                       (CdnExpression      *condition,
+CdnEvent          *cdn_event_new                       (gchar const        *id,
+                                                        CdnExpression      *condition,
                                                         CdnEventDirection   direction);
 
 gboolean           cdn_event_happened                  (CdnEvent           *event,
@@ -64,10 +65,6 @@ void               cdn_event_set_goto_phase             (CdnEvent           *eve
 gchar const       *cdn_event_get_goto_phase             (CdnEvent           *event);
 
 void               cdn_event_execute                   (CdnEvent           *event);
-
-gboolean           cdn_event_compile                   (CdnEvent               *event,
-                                                        CdnCompileContext      *context,
-                                                        CdnCompileErrorForward *error);
 
 G_END_DECLS
 

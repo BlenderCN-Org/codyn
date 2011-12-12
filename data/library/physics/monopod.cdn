@@ -1,12 +1,18 @@
 g = 9.81
 
+integrator
+{
+    method = "runge-kutta"
+    initial-phase = "air"
+}
+
 node "monopod"
 {
     defines
     {
-        "q" = "{x,y,φ,α,l}"
-        "q̇" = "{ẋ,ẏ,φ̇,α̇,l̇}"
-        "q̈" = "{ẍ,ÿ,φ̈,α̈,l̈}"
+        q = "{x,y,φ,α,l}"
+        q̇ = "{ẋ,ẏ,φ̇,α̇,l̇}"
+        q̈ = "{ẍ,ÿ,φ̈,α̈,l̈}"
     }
 
     # Masses
@@ -39,8 +45,8 @@ node "monopod"
     # States
     @q = "{0,1.1 ∙ l0,0,0,l0}"
 
-    q = "[{@q||@0\,@1}]"
-    q̇ = "[{@q̇||@0\,@1}]"
+    q = "[{@q||@0;@1}]"
+    q̇ = "[{@q̇||@0;@1}]"
 
     # Note that we map q̇ on dq variables because the dq variables will be
     # introduced by the double integration (see end of file)
@@ -89,11 +95,8 @@ node "monopod"
     τα = "kα ∙ (α0 - α) - bα ∙ α̇"
     τl = "kl ∙ (l0 - l) - bl ∙ l̇"
 
-    # Finally, the accelerations solved from M, h and τ
-    accelerations = "linsolve(M, h + τ + Fc)"
-
     # Set acceleration variables
-    @q̈ = "accelerations[@0[!]]"
+    @q̈ = "0"
 
     # Double prime is a short hand for defining a second order system
     @q'' = "@q̈"
@@ -107,10 +110,49 @@ node "monopod"
     Jc = "[1, 0, Jc_tmp1, Jc_tmp1,  sθ;
            0, 1, Jc_tmp2, Jc_tmp2, -cθ]"
 
-    kground = "100"
+    JcT = "Jcᵀ"
+    Minv = "inverse(M)"
 
-    FF = "kground ∙ (y - rfoot - l ∙ cθ)"
-    Fc = "transpose(Jc) ∙ [0; FF]"
+    # Contact jacobian time derivative
+        J̇c_tmp1 = "l̇ ∙ cθ - l ∙ θ ∙ sθ"
+        J̇c_tmp2 = "l̇ ∙ sθ + l ∙ θ̇ ∙ cθ"
+
+    J̇c = "[0, 0, J̇c_tmp1, J̇c_tmp1, θ̇ ∙ cθ;
+           0, 0, J̇c_tmp2, J̇c_tmp2, θ̇ ∙ sθ]"
+
+    # Solve for the contact force
+    Fc = "linsolve(Jc ∙ Minv ∙ JcT, Jc ∙ Minv ∙ (h - τ) - J̇c ∙ q̇)"
+
+    phase "air" to "ground" when < "yend"
+    {
+    }
+
+    Ftsh = "0.01"
+
+    phase "ground" to "air" when < "Fc[1] - Ftsh"
+    {
+        "d@q" = ""
+    }
+}
+
+templates
+{
+    edge "eom"
+    {
+        @q̈ <= "accelerations[@0[!]]"
+    }
+}
+
+edge "ground" on "monopod" phase "ground" : "eom"
+{
+    # Accelerations
+    accelerations = "linsolve(M, h + τ + JcT ∙ Fc)"
+}
+
+edge "air" on "monopod" phase "air" : "eom"
+{
+    # Accelerations, there are no contact forces in the air
+    accelerations = "linsolve(M, h + τ)"
 }
 
 # vi:ex:ts=4:et

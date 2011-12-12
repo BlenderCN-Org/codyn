@@ -28,7 +28,6 @@
 #include <codyn/cdn-compile-context.h>
 #include <codyn/cdn-utils.h>
 #include <codyn/cdn-usable.h>
-#include <codyn/cdn-event.h>
 #include <codyn/cdn-forward-decl.h>
 
 G_BEGIN_DECLS
@@ -266,10 +265,6 @@ gchar            *cdn_object_get_relative_id_for_display (CdnObject *object,
 
 CdnCompileContext *cdn_object_get_compile_context (CdnObject         *object,
                                                    CdnCompileContext *context);
-
-void cdn_object_add_event (CdnObject *object, CdnEvent  *event);
-CdnEvent *cdn_object_get_last_event (CdnObject *object);
-GSList const *cdn_object_get_events (CdnObject *object);
 
 void             _cdn_object_set_parent     (CdnObject *object,
                                              CdnNodeForward *parent);

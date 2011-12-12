@@ -6032,6 +6032,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		CdnExpression *expr;
 		CdnEvent *ev;
 		GSList *phases;
+		GSList *from_phases = NULL;
 
 		cdn_embedded_context_save (context->priv->embedded);
 		cdn_embedded_context_set_selection (context->priv->embedded,
@@ -6048,6 +6049,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 
 			while (phases)
 			{
+				from_phases = 
 				cdn_phaseable_add_phase (CDN_PHASEABLE (ev),
 				                         cdn_expansion_get (phases->data, 0));
 
@@ -6068,9 +6070,6 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 			g_slist_foreach (to_phases, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (to_phases);
 		}
-
-		cdn_object_add_event (cdn_selection_get_object (item->data),
-		                      ev);
 
 		g_slist_foreach (conds, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (conds);

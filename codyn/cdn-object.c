@@ -81,9 +81,6 @@ struct _CdnObjectPrivate
 	gchar *annotation;
 	GHashTable *tags;
 
-	GSList *events;
-	CdnEvent *last_event;
-
 	guint compiled : 1;
 	guint auto_imported : 1;
 	guint has_location : 1;
@@ -245,9 +242,6 @@ cdn_object_finalize (GObject *object)
 
 	g_hash_table_destroy (obj->priv->property_hash);
 	g_hash_table_destroy (obj->priv->tags);
-
-	g_slist_foreach (obj->priv->events, (GFunc)g_object_unref, NULL);
-	g_slist_free (obj->priv->events);
 
 	G_OBJECT_CLASS (cdn_object_parent_class)->finalize (object);
 }
@@ -960,30 +954,6 @@ cdn_object_compile_impl (CdnObject         *object,
 		}
 
 		variables = g_slist_next (variables);
-	}
-
-	if (ret)
-	{
-		GSList *event;
-
-		for (event = object->priv->events; event; event = g_slist_next (event))
-		{
-			if (!cdn_event_compile (event->data, context, error))
-			{
-				if (error)
-				{
-					cdn_compile_error_set (error,
-					                       NULL,
-					                       object,
-					                       NULL,
-					                       NULL,
-					                       NULL);
-				}
-
-				ret = FALSE;
-				break;
-			}
-		}
 	}
 
 	object->priv->compiled = ret;
@@ -2434,31 +2404,4 @@ cdn_object_get_compile_context (CdnObject         *object,
 	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), NULL);
 
 	return CDN_OBJECT_GET_CLASS (object)->get_compile_context (object, context);
-}
-
-void
-cdn_object_add_event (CdnObject *object,
-                      CdnEvent  *event)
-{
-	g_return_if_fail (CDN_IS_OBJECT (object));
-	g_return_if_fail (CDN_IS_EVENT (event));
-
-	object->priv->events = g_slist_append (object->priv->events,
-	                                       g_object_ref_sink (event));
-
-	object->priv->last_event = event;
-}
-
-CdnEvent *
-cdn_object_get_last_event (CdnObject *object)
-{
-	g_return_val_if_fail (CDN_IS_OBJECT (object), NULL);
-
-	return object->priv->last_event;
-}
-
-GSList const *
-cdn_object_get_events (CdnObject *object)
-{
-	return object->priv->events;
 }

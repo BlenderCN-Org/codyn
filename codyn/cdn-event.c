@@ -26,7 +26,7 @@ static void cdn_phaseable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CdnEvent,
                          cdn_event,
-                         G_TYPE_INITIALLY_UNOWNED,
+                         CDN_TYPE_NODE,
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_PHASEABLE,
                                                 cdn_phaseable_iface_init))
 
@@ -203,16 +203,76 @@ cdn_event_get_property (GObject    *object,
 	}
 }
 
+static gboolean
+cdn_event_compile_impl (CdnObject         *object,
+                        CdnCompileContext *context,
+                        CdnCompileError   *error)
+{
+	GSList *item;
+	CdnEvent *event;
+
+	event = CDN_EVENT (object);
+
+	if (cdn_object_is_compiled (object))
+	{
+		return TRUE;
+	}
+
+	if (!CDN_OBJECT_CLASS (cdn_event_parent_class)->compile (object, context, error))
+	{
+		return FALSE;
+	}
+
+	if (context)
+	{
+		cdn_compile_context_save (context);
+		g_object_ref (context);
+	}
+
+	context = CDN_OBJECT_CLASS (cdn_event_parent_class)->get_compile_context (object, context);
+
+	if (!cdn_expression_compile (event->priv->condition, context, error))
+	{
+		cdn_compile_context_restore (context);
+		g_object_unref (context);
+		return FALSE;
+	}
+
+	cdn_compile_context_restore (context);
+	g_object_unref (context);
+
+	for (item = event->priv->set_properties; item; item = g_slist_next (item))
+	{
+		SetProperty *p = item->data;
+		CdnCompileContext *ctx;
+
+		ctx = cdn_object_get_compile_context (cdn_variable_get_object (p->property),
+		                                      NULL);
+
+		if (!cdn_expression_compile (p->value, ctx, error))
+		{
+			g_object_unref (ctx);
+			return FALSE;
+		}
+
+		g_object_unref (ctx);
+	}
+
+	return TRUE;
+}
+
 static void
 cdn_event_class_init (CdnEventClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	CdnObjectClass *cdn_object_class = CDN_OBJECT_CLASS (klass);
 
 	object_class->finalize = cdn_event_finalize;
 
 	object_class->get_property = cdn_event_get_property;
 	object_class->set_property = cdn_event_set_property;
 
+	cdn_object_class->compile = cdn_event_compile_impl;
 
 	g_type_class_add_private (object_class, sizeof(CdnEventPrivate));
 
@@ -249,12 +309,15 @@ cdn_event_init (CdnEvent *self)
 }
 
 CdnEvent *
-cdn_event_new (CdnExpression     *condition,
+cdn_event_new (gchar const       *id,
+               CdnExpression     *condition,
                CdnEventDirection  direction)
 {
 	g_return_val_if_fail (CDN_IS_EXPRESSION (condition), NULL);
 
 	return g_object_new (CDN_TYPE_EVENT,
+	                     "id",
+	                     id,
 	                     "condition",
 	                     condition,
 	                     "direction",
@@ -379,42 +442,6 @@ cdn_event_execute (CdnEvent *event)
 	g_slist_foreach (event->priv->set_properties,
 	                 (GFunc)execute_set_property,
 	                 NULL);
-}
-
-gboolean
-cdn_event_compile (CdnEvent          *event,
-                   CdnCompileContext *context,
-                   CdnCompileError   *error)
-{
-	GSList *item;
-
-	g_return_val_if_fail (CDN_IS_EVENT (event), FALSE);
-	g_return_val_if_fail (CDN_IS_COMPILE_CONTEXT (context), FALSE);
-	g_return_val_if_fail (error == NULL || CDN_IS_COMPILE_ERROR (error), FALSE);
-
-	if (!cdn_expression_compile (event->priv->condition, context, error))
-	{
-		return FALSE;
-	}
-
-	for (item = event->priv->set_properties; item; item = g_slist_next (item))
-	{
-		SetProperty *p = item->data;
-		CdnCompileContext *ctx;
-
-		ctx = cdn_object_get_compile_context (cdn_variable_get_object (p->property),
-		                                      NULL);
-
-		if (!cdn_expression_compile (p->value, ctx, error))
-		{
-			g_object_unref (ctx);
-			return FALSE;
-		}
-
-		g_object_unref (ctx);
-	}
-
-	return TRUE;
 }
 
 void
