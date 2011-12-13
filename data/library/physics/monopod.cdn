@@ -50,7 +50,7 @@ node "monopod"
 
     # Note that we map q̇ on dq variables because the dq variables will be
     # introduced by the double integration (see end of file)
-    @q̇ = "d{@q}"
+    @q̇ = "d@q"
 
     # Default generalized forces are 0
     "τ@q" = "{@q[~]*0}"
