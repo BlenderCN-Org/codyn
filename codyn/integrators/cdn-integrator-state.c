@@ -26,6 +26,7 @@
 #include "instructions/cdn-instruction-custom-operator.h"
 #include "instructions/cdn-instruction-rand.h"
 #include "cdn-phaseable.h"
+#include "cdn-event.h"
 
 #define CDN_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR_STATE, CdnIntegratorStatePrivate))
 
@@ -401,30 +402,22 @@ collect_properties (CdnIntegratorState *state,
 }
 
 static void
-collect_events (CdnIntegratorState *state,
-                CdnObject          *object)
-{
-	GSList const *events;
-
-	for (events = cdn_object_get_events (object); events; events = g_slist_next (events))
-	{
-		state->priv->events =
-			g_slist_prepend (state->priv->events,
-			                 events->data);
-	}
-}
-
-static void
 collect (CdnIntegratorState *state,
          CdnObject          *object)
 {
 	collect_properties (state, object);
-	collect_events (state, object);
 
 	if (CDN_IS_EDGE (object))
 	{
 		collect_link (state, CDN_EDGE (object));
 		return;
+	}
+
+	if (CDN_IS_EVENT (object))
+	{
+		state->priv->events =
+			g_slist_prepend (state->priv->events,
+			                 object);
 	}
 
 	if (CDN_IS_NODE (object))
