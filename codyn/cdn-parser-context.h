@@ -218,7 +218,9 @@ void                   cdn_parser_context_push_event           (CdnParserContext
                                                                 CdnEmbeddedString *from_phase,
                                                                 CdnEmbeddedString *to_phase,
                                                                 CdnEmbeddedString *condition,
-                                                                CdnEventDirection  direction);
+                                                                CdnEventDirection  direction,
+                                                                GSList            *templates,
+                                                                GSList            *attributes);
 
 void                   cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
                                                                   CdnSelector       *selector,

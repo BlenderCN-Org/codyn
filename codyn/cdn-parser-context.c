@@ -3192,7 +3192,6 @@ cdn_parser_context_push_input_file (CdnParserContext  *context,
 	g_slist_free (objects);
 }
 
-
 void
 cdn_parser_context_push_edge (CdnParserContext          *context,
                               CdnEmbeddedString         *id,
@@ -6006,15 +6005,55 @@ cdn_parser_context_set_first_eof (CdnParserContext *context,
 	inp->firsteof = firsteof;
 }
 
+static gchar *
+event_id (GSList *from_phases,
+          GSList *to_phases)
+{
+	GString *id;
+
+	id = g_string_new ("from_");
+
+	if (from_phases)
+	{
+		while (from_phases)
+		{
+			g_string_append (id, cdn_expansion_get (from_phases->data, 0));
+			g_string_append_c (id, '_');
+
+			from_phases = g_slist_next (from_phases);
+		}
+	}
+	else
+	{
+		g_string_append (id, "any_");
+	}
+
+	g_string_append (id, "to_");
+
+	if (to_phases)
+	{
+		g_string_append (id, cdn_expansion_get (to_phases->data, 0));
+	}
+	else
+	{
+		g_string_append (id, "terminal");
+	}
+
+	return g_string_free (id, FALSE);
+}
+
 void
 cdn_parser_context_push_event (CdnParserContext  *context,
                                CdnEmbeddedString *from_phase,
                                CdnEmbeddedString *to_phase,
                                CdnEmbeddedString *condition,
-                               CdnEventDirection  direction)
+                               CdnEventDirection  direction,
+                               GSList            *templates,
+                               GSList            *attributes)
 {
 	Context *ctx;
-	GSList *item;
+	GSList *parents;
+	GSList *ret = NULL;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (CDN_IS_EMBEDDED_STRING (condition));
@@ -6026,58 +6065,133 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 
 	ctx = CURRENT_CONTEXT (context);
 
-	for (item = ctx->objects; item; item = g_slist_next (item))
+	parents = each_selections (context,
+	                           CURRENT_CONTEXT (context)->objects,
+	                           attributes,
+	                           selector_type_from_gtype (CDN_TYPE_EVENT),
+	                           NULL,
+	                           NULL,
+	                           TRUE);
+
+	while (parents)
 	{
 		GSList *conds;
 		CdnExpression *expr;
 		CdnEvent *ev;
-		GSList *phases;
+		GSList *to_phases = NULL;
 		GSList *from_phases = NULL;
+		gchar *id;
+		CdnExpansion *ex;
+		CdnSelection *sel;
 
 		cdn_embedded_context_save (context->priv->embedded);
 		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
+		                                    parents->data);
 
 		embedded_string_expand_multiple (conds, condition, context);
 
+		if (conds->next)
+		{
+			parser_failed (context,
+			               CDN_STATEMENT (condition),
+			               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+			               "An event can only have one condition");
+
+			g_slist_foreach (conds, (GFunc)cdn_expansion_unref, NULL);
+			g_slist_free (conds);
+
+			cdn_embedded_context_restore (context->priv->embedded);
+			break;
+		}
+
 		expr = cdn_expression_new (cdn_expansion_get (conds->data, 0));
-		ev = cdn_event_new (expr, direction);
-
-		if (from_phase)
-		{
-			embedded_string_expand_multiple (phases, from_phase, context);
-
-			while (phases)
-			{
-				from_phases = 
-				cdn_phaseable_add_phase (CDN_PHASEABLE (ev),
-				                         cdn_expansion_get (phases->data, 0));
-
-				cdn_expansion_unref (phases->data);
-				phases = g_slist_delete_link (phases, phases);
-			}
-		}
-
-		if (to_phase)
-		{
-			GSList *to_phases;
-
-			embedded_string_expand_multiple (to_phases, to_phase, context);
-
-			cdn_event_set_goto_phase (ev,
-			                          cdn_expansion_get (to_phases->data, 0));
-
-			g_slist_foreach (to_phases, (GFunc)cdn_expansion_unref, NULL);
-			g_slist_free (to_phases);
-		}
 
 		g_slist_foreach (conds, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (conds);
 
+		if (from_phase)
+		{
+			embedded_string_expand_multiple (from_phases, from_phase, context);
+		}
+
+		if (to_phase)
+		{
+			embedded_string_expand_multiple (to_phases, to_phase, context);
+
+			if (to_phases->next)
+			{
+				parser_failed (context,
+				               CDN_STATEMENT (to_phase),
+				               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+				               "Cannot transfer to multiple phases after event");
+
+				g_slist_foreach (to_phases, (GFunc)cdn_expansion_unref, NULL);
+				g_slist_free (to_phases);
+
+				g_slist_foreach (from_phases, (GFunc)cdn_expansion_unref, NULL);
+				g_slist_free (from_phases);
+
+				g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+				g_slist_free (ret);
+
+				g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
+				g_slist_free (parents);
+
+				cdn_embedded_context_restore (context->priv->embedded);
+				break;
+			}
+		}
+
+		id = event_id (from_phases, to_phases);
+		ex = cdn_expansion_new_one (id);
+		g_free (id);
+
+		sel = parse_object_single_id (context,
+		                              ex,
+		                              templates,
+		                              parents->data,
+		                              CDN_TYPE_EVENT,
+		                              TRUE);
+
+		ret = g_slist_prepend (ret, sel);
+
+		cdn_expansion_unref (ex);
+
+		ev = cdn_selection_get_object (sel);
+
+		cdn_event_set_condition (ev, expr);
+		cdn_event_set_direction (ev, direction);
+
+		while (from_phases)
+		{
+			cdn_phaseable_add_phase (CDN_PHASEABLE (ev),
+			                         cdn_expansion_get (from_phases->data, 0));
+
+			cdn_expansion_unref (from_phases->data);
+			from_phases = g_slist_delete_link (from_phases,
+			                                   from_phases);
+		}
+
+		if (to_phases)
+		{
+			cdn_event_set_goto_phase (ev,
+			                          cdn_expansion_get (to_phases->data, 0));
+		}
+
+		g_slist_foreach (to_phases, (GFunc)cdn_expansion_unref, NULL);
+		g_slist_free (to_phases);
+
+		g_slist_foreach (from_phases, (GFunc)cdn_expansion_unref, NULL);
+		g_slist_free (from_phases);
+
 		cdn_embedded_context_restore (context->priv->embedded);
+
+		g_object_unref (parents->data);
+		parents = g_slist_delete_link (parents, parents);
 	}
 
-	push_scope (context, NULL, TRUE);
+	cdn_parser_context_push_objects (context, ret, attributes);
+	g_slist_free (ret);
 }
 
 void
@@ -6105,10 +6219,11 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 		gint i;
 		gint num;
 		CdnEvent *ev;
+		CdnObject *self;
 
-		ev = cdn_object_get_last_event (CDN_OBJECT (cdn_selection_get_object (item->data)));
+		ev = cdn_selection_get_object (item->data);
 
-		if (!ev)
+		if (!CDN_IS_EVENT (ev))
 		{
 			continue;
 		}
@@ -6117,8 +6232,10 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 		cdn_embedded_context_set_selection (context->priv->embedded,
 		                                    item->data);
 
+		self = cdn_selection_get_object (item->data);
+
 		ret = cdn_selector_select (selector,
-		                           cdn_selection_get_object (item->data),
+		                           G_OBJECT (cdn_object_get_parent (self)),
 		                           CDN_SELECTOR_TYPE_VARIABLE,
 		                           context->priv->embedded);
 

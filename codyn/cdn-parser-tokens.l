@@ -193,6 +193,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "phase"				return T_KEY_PHASE;
 "terminate"			return T_KEY_TERMINATE;
 "any"				return T_KEY_ANY;
+"set"				return T_KEY_SET;
 
 <INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;
