@@ -1,0 +1,283 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="744.09448819"
+   height="1052.3622047"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.47 r22583"
+   sodipodi:docname="monopod.svg">
+  <defs
+     id="defs4">
+    <linearGradient
+       inkscape:collect="always"
+       id="linearGradient5716">
+      <stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="0"
+         id="stop5718" />
+      <stop
+         style="stop-color:#000000;stop-opacity:0;"
+         offset="1"
+         id="stop5720" />
+    </linearGradient>
+    <marker
+       inkscape:stockid="Arrow1Lend"
+       orient="auto"
+       refY="0.0"
+       refX="0.0"
+       id="Arrow1Lend"
+       style="overflow:visible;">
+      <path
+         id="path5228"
+         d="M 0.0,0.0 L 5.0,-5.0 L -12.5,0.0 L 5.0,5.0 L 0.0,0.0 z "
+         style="fill-rule:evenodd;stroke:#000000;stroke-width:1.0pt;marker-start:none;"
+         transform="scale(0.8) rotate(180) translate(12.5,0)" />
+    </marker>
+    <linearGradient
+       id="linearGradient5040">
+      <stop
+         style="stop-color:#ffffff;stop-opacity:1;"
+         offset="0"
+         id="stop5042" />
+      <stop
+         style="stop-color:#d3d3d3;stop-opacity:1;"
+         offset="1"
+         id="stop5044" />
+    </linearGradient>
+    <inkscape:perspective
+       sodipodi:type="inkscape:persp3d"
+       inkscape:vp_x="0 : 526.18109 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_z="744.09448 : 526.18109 : 1"
+       inkscape:persp3d-origin="372.04724 : 350.78739 : 1"
+       id="perspective10" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5040"
+       id="linearGradient5046"
+       x1="223.18993"
+       y1="198.40413"
+       x2="223.18993"
+       y2="262.73572"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(20.645412,0,0,20.721778,-4214.9596,-5060.6217)" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5040"
+       id="linearGradient5698"
+       gradientUnits="userSpaceOnUse"
+       gradientTransform="matrix(20.530718,0,0,24.479403,-4242.4687,-5535.6962)"
+       x1="203"
+       y1="341.86218"
+       x2="245"
+       y2="341.86218" />
+    <linearGradient
+       inkscape:collect="always"
+       xlink:href="#linearGradient5716"
+       id="linearGradient5722"
+       x1="320.81082"
+       y1="190.09051"
+       x2="488.15897"
+       y2="190.09051"
+       gradientUnits="userSpaceOnUse" />
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="0.11821942"
+     inkscape:cx="290.91162"
+     inkscape:cy="388.14786"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1478"
+     inkscape:window-height="906"
+     inkscape:window-x="1880"
+     inkscape:window-y="101"
+     inkscape:window-maximized="0"
+     inkscape:snap-object-midpoints="true" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <rect
+       style="fill:url(#linearGradient5046);fill-opacity:1;stroke:#757575;stroke-width:20;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       id="codyn_base"
+       width="3730.0173"
+       height="914"
+       x="-1781.7505"
+       y="-1000.5289"
+       ry="183.1201"
+       rx="183.1201"
+       inkscape:label="#rect2816" />
+    <g
+       id="codyn_spring_back"
+       inkscape:label="#g5736"
+       transform="matrix(9.1560046,0,0,14.880478,-1973.573,-4157.2821)">
+      <desc
+         id="desc5768">parent: codyn_base</desc>
+      <path
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         d="m 189.45234,270.4547 68.7695,26.41373"
+         id="path5088"
+         sodipodi:nodetypes="cc" />
+      <path
+         sodipodi:nodetypes="cc"
+         id="path5092"
+         d="m 189.45234,323.34506 68.7695,26.41373"
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         d="m 189.45234,376.23542 68.7695,26.41372"
+         id="path5096"
+         sodipodi:nodetypes="cc" />
+      <path
+         sodipodi:nodetypes="cc"
+         id="path5100"
+         d="m 189.45234,429.12578 68.7695,26.41372"
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path
+         sodipodi:nodetypes="cc"
+         id="path5104"
+         d="m 223.83709,242.8781 34.38475,0"
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+    </g>
+    <path
+       style="fill:none;stroke:#000000;stroke-width:9.15600491px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       d="m 83.257982,-543.52902 0,-743.77248"
+       id="codyn_base_anchor"
+       inkscape:label="#path5220"
+       sodipodi:nodetypes="cc" />
+    <rect
+       ry="91.560051"
+       rx="91.560051"
+       y="-729.63055"
+       x="-54.202286"
+       height="3523.4592"
+       width="274.92044"
+       id="codyn_leg"
+       style="fill:url(#linearGradient5698);fill-opacity:1;stroke:#757575;stroke-width:20;stroke-linecap:round;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
+       inkscape:label="#rect5072">
+      <desc
+         id="desc5732">parent: codyn_base</desc>
+    </rect>
+    <g
+       id="codyn_spring_front"
+       inkscape:label="#g5743"
+       transform="matrix(9.1560046,0,0,14.880478,-1973.573,-4157.2821)">
+      <desc
+         id="desc5766">parent: codyn_leg</desc>
+      <path
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         d="m 223.83709,455.5395 34.38475,0"
+         id="path5102"
+         sodipodi:nodetypes="cc" />
+      <path
+         sodipodi:nodetypes="cc"
+         id="path5076"
+         d="m 258.22184,244.00952 -68.7695,26.41373"
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         d="m 258.22184,296.89988 -68.7695,26.41373"
+         id="path5090"
+         sodipodi:nodetypes="cc" />
+      <path
+         sodipodi:nodetypes="cc"
+         id="path5094"
+         d="m 258.22184,349.79024 -68.7695,26.41372"
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <path
+         style="fill:none;stroke:#ff0000;stroke-width:4.7917161;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+         d="m 258.22184,402.6806 -68.7695,26.41372"
+         id="path5098"
+         sodipodi:nodetypes="cc" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:110.57518768px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:cmcsc10;-inkscape-font-specification:cmcsc10"
+       x="-157.63002"
+       y="-1633.254"
+       id="codyn_base_transform"
+       inkscape:label="#text5212"><tspan
+         sodipodi:role="line"
+         id="tspan5214"
+         x="-157.63002"
+         y="-1633.254"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Ubuntu Mono;-inkscape-font-specification:Ubuntu Mono">[cos(φ), -sin(φ), x;</tspan><tspan
+         sodipodi:role="line"
+         x="-157.63002"
+         y="-1495.0352"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Ubuntu Mono;-inkscape-font-specification:Ubuntu Mono"
+         id="tspan5704"> sin(φ),  cos(φ), y;</tspan><tspan
+         sodipodi:role="line"
+         x="-157.63002"
+         y="-1356.8162"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Ubuntu Mono;-inkscape-font-specification:Ubuntu Mono"
+         id="tspan5728"> 0     ,  0     , 1]</tspan><tspan
+         sodipodi:role="line"
+         x="-157.63002"
+         y="-1218.5972"
+         id="tspan5218"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Ubuntu Mono;-inkscape-font-specification:Ubuntu Mono" /></text>
+    <path
+       inkscape:label="#path5220"
+       id="codyn_leg_anchor"
+       d="m 83.257982,-543.52902 794.072998,0"
+       style="fill:none;stroke:#000000;stroke-width:9.15600491px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;marker-end:url(#Arrow1Lend)"
+       sodipodi:nodetypes="cc" />
+    <text
+       inkscape:label="#text5212"
+       id="codyn_leg_transform"
+       y="-652.11377"
+       x="963.77246"
+       style="font-size:110.57518768px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:cmcsc10;-inkscape-font-specification:cmcsc10"
+       xml:space="preserve"><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;font-family:Ubuntu Mono;-inkscape-font-specification:Ubuntu Mono"
+         y="-652.11377"
+         x="963.77246"
+         id="tspan5708"
+         sodipodi:role="line">[cos(α), -l ∙ sin(α), x;</tspan><tspan
+         id="tspan5712"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;font-family:Ubuntu Mono;-inkscape-font-specification:Ubuntu Mono"
+         y="-513.89478"
+         x="963.77246"
+         sodipodi:role="line"> sin(α),  l ∙ cos(α), y;</tspan><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;font-family:Ubuntu Mono;-inkscape-font-specification:Ubuntu Mono"
+         y="-375.67581"
+         x="963.77246"
+         sodipodi:role="line"
+         id="tspan5730"> 0,       0,          1]</tspan><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#000000;fill-opacity:1;font-family:Ubuntu Mono;-inkscape-font-specification:Ubuntu Mono"
+         id="tspan5714"
+         y="-237.45682"
+         x="963.77246"
+         sodipodi:role="line" /></text>
+  </g>
+</svg>
