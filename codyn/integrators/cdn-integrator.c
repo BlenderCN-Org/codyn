@@ -25,6 +25,7 @@
 #include "cdn-compile-error.h"
 #include "cdn-marshal.h"
 #include "cdn-input.h"
+#include "cdn-event.h"
 #include "operators/cdn-operator.h"
 #include "instructions/cdn-instruction-rand.h"
 
