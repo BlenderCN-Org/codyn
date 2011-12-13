@@ -84,7 +84,7 @@ void           cdn_expression_set_value        (CdnExpression      *expression,
                                                 gdouble             value);
 
 void           cdn_expression_set_values       (CdnExpression      *expression,
-                                                gdouble            *values,
+                                                gdouble const      *values,
                                                 gint                numr,
                                                 gint                numc);
 

@@ -286,7 +286,7 @@ reset_depending_cache (CdnExpression *expression,
 
 static void
 set_values (CdnExpression *expression,
-            gdouble       *values,
+            gdouble const *values,
             gint           numr,
             gint           numc)
 {
@@ -3186,7 +3186,7 @@ cdn_expression_set_value (CdnExpression  *expression,
 
 void
 cdn_expression_set_values (CdnExpression *expression,
-                           gdouble       *values,
+                           gdouble const *values,
                            gint           numr,
                            gint           numc)
 {
