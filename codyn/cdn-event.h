@@ -55,6 +55,12 @@ void               cdn_event_update                    (CdnEvent           *even
 CdnExpression *    cdn_event_get_condition             (CdnEvent           *event);
 CdnEventDirection  cdn_event_get_direction             (CdnEvent           *event);
 
+void               cdn_event_set_condition             (CdnEvent           *event,
+                                                        CdnExpression      *condition);
+
+void               cdn_event_set_direction             (CdnEvent           *event,
+                                                        CdnEventDirection   direction);
+
 void               cdn_event_add_set_variable          (CdnEvent           *event,
                                                         CdnVariable        *property,
                                                         CdnExpression      *value);

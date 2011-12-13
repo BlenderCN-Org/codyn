@@ -249,6 +249,9 @@ cdn_event_compile_impl (CdnObject         *object,
 		ctx = cdn_object_get_compile_context (cdn_variable_get_object (p->property),
 		                                      NULL);
 
+		// Add the event object in the context as well
+		CDN_OBJECT_CLASS (cdn_event_parent_class)->get_compile_context (object, ctx);
+
 		if (!cdn_expression_compile (p->value, ctx, error))
 		{
 			g_object_unref (ctx);
@@ -346,6 +349,29 @@ cdn_event_get_direction (CdnEvent *event)
 	return event->priv->direction;
 }
 
+void
+cdn_event_set_condition (CdnEvent      *event,
+                         CdnExpression *condition)
+{
+	g_return_if_fail (CDN_IS_EVENT (event));
+	g_return_if_fail (condition == NULL || CDN_IS_EXPRESSION (condition));
+
+	set_condition (event, condition);
+}
+
+void
+cdn_event_set_direction (CdnEvent          *event,
+                         CdnEventDirection  direction)
+{
+	g_return_if_fail (CDN_IS_EVENT (event));
+
+	if (event->priv->direction != direction)
+	{
+		event->priv->direction = direction;
+		g_object_notify (G_OBJECT (event), "direction");
+	}
+}
+
 gboolean
 cdn_event_happened (CdnEvent *event,
                     gdouble  *dist)
@@ -362,7 +388,8 @@ cdn_event_happened (CdnEvent *event,
 		}
 	}
 
-	if ((event->priv->direction & CDN_EVENT_DIRECTION_NEGATIVE) && event->priv->value > 0)
+	if ((event->priv->direction & CDN_EVENT_DIRECTION_NEGATIVE) &&
+	    event->priv->value > 0)
 	{
 		val = cdn_expression_evaluate (event->priv->condition);
 
@@ -385,7 +412,8 @@ cdn_event_happened (CdnEvent *event,
 			return TRUE;
 		}
 	}
-	else if ((event->priv->direction & CDN_EVENT_DIRECTION_POSITIVE) && event->priv->value < 0)
+	else if ((event->priv->direction & CDN_EVENT_DIRECTION_POSITIVE) &&
+	         event->priv->value < 0)
 	{
 		val = cdn_expression_evaluate (event->priv->condition);
 
@@ -432,8 +460,13 @@ cdn_event_add_set_variable (CdnEvent      *event,
 static void
 execute_set_property (SetProperty *p)
 {
-	cdn_variable_set_value (p->property,
-	                        cdn_expression_evaluate (p->value));
+	gint numr;
+	gint numc;
+	gdouble const *values;
+
+	values = cdn_expression_evaluate_values (p->value, &numr, &numc);
+
+	cdn_variable_set_values (p->property, values, numr, numc);
 }
 
 void
