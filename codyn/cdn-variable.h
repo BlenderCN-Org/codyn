@@ -127,7 +127,7 @@ void               cdn_variable_set_value               (CdnVariable        *pro
                                                          gdouble             value);
 
 void               cdn_variable_set_values              (CdnVariable        *property,
-                                                         gdouble            *values,
+                                                         gdouble const      *values,
                                                          gint                numr,
                                                          gint                numc);
 

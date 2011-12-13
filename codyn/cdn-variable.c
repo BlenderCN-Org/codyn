@@ -716,10 +716,10 @@ cdn_variable_set_value (CdnVariable  *property,
  *
  **/
 void
-cdn_variable_set_values (CdnVariable  *property,
-                         gdouble      *values,
-                         gint          numr,
-                         gint          numc)
+cdn_variable_set_values (CdnVariable   *property,
+                         gdouble const *values,
+                         gint           numr,
+                         gint           numc)
 {
 	/* Omit type check to increase speed */
 	cdn_expression_set_values (property->priv->expression,
