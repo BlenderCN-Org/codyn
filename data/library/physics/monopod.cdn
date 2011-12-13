@@ -36,8 +36,8 @@ node "monopod"
     Jtot = "J2 + m2 ∙ l2² + J3 + m3 ∙ (l0 - l3)²"
 
     # Damping constants calculated from damping ratios
-    bα = "b̂α ∙ 2 ∙ √(kl ∙ mtot)"
-    bl = "b̂l ∙ 2 ∙ √(kα ∙ Jtot)"
+    bl = "b̂l ∙ 2 ∙ √(kl ∙ mtot)"
+    bα = "b̂α ∙ 2 ∙ √(kα ∙ Jtot)"
 
     l0 = 1
     α0 = 0
@@ -74,7 +74,7 @@ node "monopod"
         mtot = "m1 + m2 + m3"
 
         θ̇ = "α̇ + φ̇"
-        c3 = "-2 ∙ φ̇ ∙ (α̇ + l̇) ∙ m3 ∙ (l - l3) - c1 ∙ g ∙ sθ"
+        c3 = "2 ∙ φ̇ ∙ (α̇ + l̇) ∙ m3 ∙ (l - l3) + c1 ∙ g ∙ sθ"
     ##########################################################################
 
     # Mass matrix
@@ -85,11 +85,11 @@ node "monopod"
           m3s,  m3c,  0,       0,    m3]"
 
     # H matrix
-    h = "[θ̇ ∙ (-2 ∙ l̇ ∙ m3 ∙ cθ + θ̇ ∙ c1s);
-          -mtot ∙ g - 2 ∙ θ̇ ∙ m3 ∙ l̇ ∙ sθ - θ̇² ∙ c1c;
+    h = "[θ̇ ∙ (2 ∙ l̇ ∙ m3 ∙ cθ - θ̇ ∙ c1s);
+          mtot ∙ g + 2 ∙ θ̇ ∙ m3 ∙ l̇ ∙ sθ + (α̇ + φ̇)² ∙ c1c;
           c3;
           c3;
-          m3 ∙ (g ∙ cθ + θ̇² ∙ (l - l3))]"
+          -m3 ∙ (g ∙ cθ + (α̇ + φ̇)² ∙ (l - l3))]"
 
     # Passive forces on α and φ from the series elastic element
     τα = "kα ∙ (α0 - α) - bα ∙ α̇"
@@ -114,7 +114,7 @@ node "monopod"
     Minv = "inverse(M)"
 
     # Contact jacobian time derivative
-        J̇c_tmp1 = "l̇ ∙ cθ - l ∙ θ ∙ sθ"
+        J̇c_tmp1 = "l̇ ∙ cθ - l ∙ θ̇ ∙ sθ"
         J̇c_tmp2 = "l̇ ∙ sθ + l ∙ θ̇ ∙ cθ"
 
     J̇c = "[0, 0, J̇c_tmp1, J̇c_tmp1, θ̇ ∙ cθ;
@@ -123,15 +123,21 @@ node "monopod"
     # Solve for the contact force
     Fc = "linsolve(Jc ∙ Minv ∙ JcT, Jc ∙ Minv ∙ (h - τ) - J̇c ∙ q̇)"
 
+    "phase" = 0
+
     phase "air" to "ground" when < "yend"
     {
+        q̇_after = "-Minv ∙ (JcT ∙ inverse(Jc ∙ Minv ∙ JcT) ∙ (Jc ∙ q̇)) + q̇"
+
+        set "d@q" = "q̇_after[@0[!]]"
+        set "phase" = 1
     }
 
     Ftsh = "0.01"
 
     phase "ground" to "air" when < "Fc[1] - Ftsh"
     {
-        "d@q" = ""
+        set "phase" = 0
     }
 }
 
@@ -146,13 +152,13 @@ templates
 edge "ground" on "monopod" phase "ground" : "eom"
 {
     # Accelerations
-    accelerations = "linsolve(M, h + τ + JcT ∙ Fc)"
+    accelerations = "linsolve(M, -h + τ + JcT ∙ Fc)"
 }
 
 edge "air" on "monopod" phase "air" : "eom"
 {
     # Accelerations, there are no contact forces in the air
-    accelerations = "linsolve(M, h + τ)"
+    accelerations = "linsolve(M, -h + τ)"
 }
 
 # vi:ex:ts=4:et
