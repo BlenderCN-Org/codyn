@@ -438,6 +438,12 @@ cdn_compile_error_get_formatted_string (CdnCompileError *error)
 
 		start = cdn_expression_get_error_start (error->priv->expression);
 		end = cdn_expression_get_error_at (error->priv->expression);
+
+		start = g_utf8_pointer_to_offset (expr,
+		                                  expr + start);
+
+		end = g_utf8_pointer_to_offset (expr,
+		                                expr + end);
 	}
 	else
 	{
