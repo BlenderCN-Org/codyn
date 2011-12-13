@@ -2470,9 +2470,7 @@ parse_operator (CdnExpression *expression,
 	}
 
 	g_free (argdim);
-	instructions_push (expression, inst, context);
-
-	return TRUE;
+	return instructions_push (expression, inst, context);
 }
 
 static gboolean
