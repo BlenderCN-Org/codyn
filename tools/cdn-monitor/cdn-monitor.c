@@ -212,105 +212,78 @@ static GOptionEntry entries[] = {
 };
 
 static void
-write_monitors (CdnNetwork    *network,
-                GSList        *monitors,
-                GSList        *names,
-                GOutputStream *stream)
+write_headers (GOutputStream *stream,
+               GSList        *names)
 {
-	gint i;
-	gint num;
+	if (!include_header)
+	{
+		return;
+	}
+
+	g_output_stream_write_all (stream,
+	                           "# t",
+	                           3,
+	                           NULL,
+	                           NULL,
+	                           NULL);
+
+	while (names)
+	{
+		gchar const *name = names->data;
+
+		g_output_stream_write_all (stream,
+		                           delimiter,
+		                           strlen (delimiter),
+		                           NULL,
+		                           NULL,
+		                           NULL);
+
+		g_output_stream_write_all (stream,
+		                           name,
+		                           strlen (name),
+		                           NULL,
+		                           NULL,
+		                           NULL);
+
+		names = g_slist_next (names);
+	}
+
+	g_output_stream_write_all (stream,
+	                           "\n",
+	                           1,
+	                           NULL,
+	                           NULL,
+	                           NULL);
+}
+
+typedef struct
+{
+	CdnVariable *variable;
 	gint row;
-	GSList *item_monitor;
-	GSList *item_name;
+	gint col;
+} Monitor;
 
-	if (include_header)
-	{
-		gchar *header_start = g_strdup_printf ("#%1$st%1$s", delimiter);
+static Monitor *
+monitor_new (CdnVariable *variable,
+             gint         row,
+             gint         col)
+{
+	Monitor *ret;
 
-		g_output_stream_write_all (stream,
-		                           header_start,
-		                           strlen (header_start),
-		                           NULL,
-		                           NULL,
-		                           NULL);
+	ret = g_slice_new0 (Monitor);
 
-		item_monitor = monitors;
-		item_name = names;
+	ret->variable = g_object_ref (variable);
+	ret->row = row;
+	ret->col = col;
 
-		while (item_monitor)
-		{
-			gchar *name = item_name->data;
+	return ret;
+}
 
-			g_output_stream_write_all (stream,
-			                           delimiter,
-			                           strlen (delimiter),
-			                           NULL,
-			                           NULL,
-			                           NULL);
-
-			g_output_stream_write_all (stream,
-			                           name,
-			                           strlen (name),
-			                           NULL,
-			                           NULL,
-			                           NULL);
-
-			item_monitor = g_slist_next (item_monitor);
-			item_name = g_slist_next (item_name);
-		}
-
-		g_output_stream_write_all (stream,
-		                           "\n",
-		                           1,
-		                           NULL,
-		                           NULL,
-		                           NULL);
-
-		g_free (header_start);
-	}
-
-	num = g_slist_length (monitors);
-	gdouble const **data = g_new (gdouble const *, num);
-	guint size;
-
-	for (i = 0; i < num; ++i)
-	{
-		data[i] = cdn_monitor_get_data (monitors->data, &size);
-		monitors = monitors->next;
-	}
-
-	for (row = 0; row < size; ++row)
-	{
-		gchar value[G_ASCII_DTOSTR_BUF_SIZE];
-
-		for (i = 0; i < num; ++i)
-		{
-			if (i != 0)
-			{
-				g_output_stream_write_all (stream,
-				                           delimiter,
-				                           strlen (delimiter),
-				                           NULL,
-				                           NULL,
-				                           NULL);
-			}
-
-			g_ascii_dtostr (value,
-			                G_ASCII_DTOSTR_BUF_SIZE,
-			                data[i][row]);
-
-			g_output_stream_write_all (stream,
-			                           value,
-			                           strlen (value),
-			                           NULL,
-			                           NULL,
-			                           NULL);
-		}
-
-		g_output_stream_write_all (stream, "\n", 1, NULL, NULL, NULL);
-	}
-
-	g_free (data);
+static void
+monitor_free (Monitor *self)
+{
+	g_object_unref (self->variable);
+	g_slice_free (Monitor, self);
 }
 
 static GSList *
@@ -319,8 +292,58 @@ find_matching_variables (CdnNetwork  *network,
 {
 	GError *err = NULL;
 	CdnSelector *sel;
+	static GRegex *r = NULL;
+	GMatchInfo *info;
+	gint ncol = -1;
+	gint nrow = -1;
 
-	sel = cdn_selector_parse (CDN_OBJECT (network), expression, &err);
+	if (!r)
+	{
+		r = g_regex_new ("(.*?)\\[\\s*([0-9]+)(\\s*,\\s*([0-9]+))?\\s*\\]$",
+		                 0,
+		                 0,
+		                 NULL);
+	}
+
+	if (g_regex_match (r, expression, 0, &info))
+	{
+		gchar *ex;
+
+		ex = g_match_info_fetch (info, 1);
+		sel = cdn_selector_parse (CDN_OBJECT (network), ex, &err);
+		g_free (ex);
+
+		if (sel)
+		{
+			gchar *row;
+
+			row = g_match_info_fetch (info, 2);
+
+			if (row && *row)
+			{
+				gchar *col;
+
+				nrow = g_ascii_strtoll (row, NULL, 10);
+
+				col = g_match_info_fetch (info, 4);
+
+				if (col && *col)
+				{
+					ncol = g_ascii_strtoll (col, NULL, 10);
+				}
+
+				g_free (col);
+			}
+
+			g_free (row);
+		}
+
+		g_match_info_free (info);
+	}
+	else
+	{
+		sel = cdn_selector_parse (CDN_OBJECT (network), expression, &err);
+	}
 
 	if (err)
 	{
@@ -341,7 +364,8 @@ find_matching_variables (CdnNetwork  *network,
 	while (element)
 	{
 		CdnVariable *property = cdn_selection_get_object (element->data);
-		variables = g_slist_prepend (variables, property);
+		variables = g_slist_prepend (variables,
+		                             monitor_new (property, nrow, ncol));
 
 		g_object_unref (element->data);
 		element = g_slist_next (element);
@@ -357,8 +381,13 @@ find_matching_variables (CdnNetwork  *network,
 static GOutputStream *
 get_output_stream ()
 {
-	GOutputStream *out = NULL;
+	static GOutputStream *out = NULL;
 	GError *error = NULL;
+
+	if (out)
+	{
+		return out;
+	}
 
 	if (output_file != NULL && g_strcmp0 (output_file, "-") != 0)
 	{
@@ -404,6 +433,125 @@ get_output_stream ()
 	return out;
 }
 
+static void
+on_step (CdnIntegrator *integrator,
+         gdouble        time,
+         gdouble        timestep,
+         GSList        *monitors)
+{
+	// Record all monitors
+	GOutputStream *stream = get_output_stream ();
+	gboolean first = TRUE;
+
+	while (monitors)
+	{
+		Monitor *mon = monitors->data;
+		gint numr;
+		gint numc;
+		gdouble const *values;
+		gint num;
+
+		values = cdn_variable_get_values (mon->variable, &numr, &numc);
+		num = numr * numc;
+
+		if (!first)
+		{
+			g_output_stream_write_all (stream,
+			                           delimiter,
+			                           strlen (delimiter),
+			                           NULL,
+			                           NULL,
+			                           NULL);
+		}
+		else
+		{
+			first = FALSE;
+		}
+
+		if (mon->row >= 0)
+		{
+			gchar value[G_ASCII_DTOSTR_BUF_SIZE];
+			gint idx;
+
+			if (mon->col >= 0)
+			{
+				idx = mon->row * numc + mon->col;
+			}
+			else
+			{
+				idx = mon->row;
+			}
+
+			if (idx >= num)
+			{
+				strcpy (value, "NAN");
+			}
+			else
+			{
+				g_ascii_dtostr (value,
+				                G_ASCII_DTOSTR_BUF_SIZE,
+				                values[idx]);
+			}
+
+			g_output_stream_write_all (stream,
+			                           value,
+			                           strlen (value),
+			                           NULL,
+			                           NULL,
+			                           NULL);
+		}
+		else
+		{
+			gint i;
+
+			for (i = 0; i < num; ++i)
+			{
+				gchar value[G_ASCII_DTOSTR_BUF_SIZE];
+
+				g_ascii_dtostr (value,
+				                G_ASCII_DTOSTR_BUF_SIZE,
+				                values[i]);
+
+				if (i != 0)
+				{
+					g_output_stream_write_all (stream,
+					                           delimiter,
+					                           strlen (delimiter),
+					                           NULL,
+					                           NULL,
+					                           NULL);
+				}
+
+				g_output_stream_write_all (stream,
+				                           value,
+				                           strlen (value),
+				                           NULL,
+				                           NULL,
+				                           NULL);
+			}
+		}
+
+		monitors = g_slist_next (monitors);
+	}
+
+	g_output_stream_write_all (stream,
+	                           "\n",
+	                           1,
+	                           NULL,
+	                           NULL,
+	                           NULL);
+}
+
+static void
+on_begin (CdnIntegrator *integrator,
+          gdouble        from,
+          gdouble        step,
+          gdouble        to,
+          GSList        *monitors)
+{
+	on_step (integrator, from, step, monitors);
+}
+
 static gint
 run_simple_monitor (CdnNetwork *network)
 {
@@ -422,13 +570,46 @@ run_simple_monitor (CdnNetwork *network)
 
 		while (prop)
 		{
-			CdnMonitor *monitor;
+			Monitor *mon = prop->data;
+			CdnExpression *expr;
+			gint nrows;
+			gint ncols;
+			gchar *name;
 
-			monitor = cdn_monitor_new (network,
-			                           prop->data);
+			monitors = g_slist_prepend (monitors, mon);
 
-			monitors = g_slist_prepend (monitors, monitor);
-			names = g_slist_prepend (names, cdn_variable_get_full_name (prop->data));
+			expr = cdn_variable_get_expression (mon->variable);
+			cdn_expression_get_dimension (expr, &nrows, &ncols);
+			name = cdn_variable_get_full_name (mon->variable);
+
+			if (mon->row >= 0 || (nrows == 1 && ncols == 1))
+			{
+				names = g_slist_prepend (names, name);
+			}
+			else
+			{
+				gint r;
+
+				for (r = nrows - 1; r >= 0; --r)
+				{
+					gint c;
+
+					for (c = ncols - 1; c >= 0; --c)
+					{
+						gchar *s;
+
+						s = g_strdup_printf ("%s[%d, %d]",
+						                     name,
+						                     r,
+						                     c);
+
+						names = g_slist_prepend (names,
+						                         s);
+					}
+				}
+
+				g_free (name);
+			}
 
 			prop = g_slist_next (prop);
 		}
@@ -437,10 +618,18 @@ run_simple_monitor (CdnNetwork *network)
 	}
 
 	monitors = g_slist_prepend (monitors,
-	                            cdn_monitor_new (network,
-	                                              cdn_object_get_variable (CDN_OBJECT (integrator), "t")));
+	                            monitor_new (cdn_object_get_variable (CDN_OBJECT (integrator), "t"),
+	                                         -1, -1));
 
-	cdn_network_run (network, from, step, to);
+	g_signal_connect (integrator,
+	                  "begin",
+	                  G_CALLBACK (on_begin),
+	                  monitors);
+
+	g_signal_connect (integrator,
+	                  "step",
+	                  G_CALLBACK (on_step),
+	                  monitors);
 
 	GOutputStream *out;
 
@@ -448,7 +637,9 @@ run_simple_monitor (CdnNetwork *network)
 
 	if (out)
 	{
-		write_monitors (network, monitors, names, out);
+		write_headers (out, names);
+
+		cdn_network_run (network, from, step, to);
 
 		g_output_stream_flush (out, NULL, NULL);
 		g_output_stream_close (out, NULL, NULL);
@@ -460,8 +651,9 @@ run_simple_monitor (CdnNetwork *network)
 		ret = 1;
 	}
 
-	g_slist_foreach (monitors, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (monitors, (GFunc)monitor_free, NULL);
 	g_slist_free (monitors);
+
 	g_slist_foreach (names, (GFunc)g_free, NULL);
 	g_slist_free (names);
 
@@ -626,10 +818,11 @@ run_varied_monitor (CdnNetwork *network)
 	for (i = monitored->len - 1; i >= 0; --i)
 	{
 		GSList *variables = find_matching_variables (network, monitored->pdata[i]);
-		GSList *prop = variables;
 
-		while (prop)
+		while (variables)
 		{
+			Monitor *mon = variables->data;
+
 			if (include_header)
 			{
 				if (!first)
@@ -646,7 +839,7 @@ run_varied_monitor (CdnNetwork *network)
 					first = FALSE;
 				}
 
-				gchar *name = cdn_variable_get_full_name_for_display (prop->data);
+				gchar *name = cdn_variable_get_full_name_for_display (mon->variable);
 
 				g_output_stream_write_all (out,
 				                           name,
@@ -658,21 +851,24 @@ run_varied_monitor (CdnNetwork *network)
 				g_free (name);
 			}
 
-			vars = g_slist_prepend (vars, prop->data);
-			prop = g_slist_next (prop);
-		}
+			vars = g_slist_prepend (vars, mon->variable);
 
-		g_slist_free (variables);
+			monitor_free (mon);
+
+			variables = g_slist_delete_link (variables,
+			                                 variables);
+		}
 	}
 
 	for (i = varied->len - 1; i >= 0; --i)
 	{
 		Range *r = varied->pdata[i];
 		GSList *variables = find_matching_variables (network, r->selector);
-		GSList *prop = variables;
 
-		while (prop)
+		while (variables)
 		{
+			Monitor *mon = variables->data;
+
 			if (include_header)
 			{
 				if (!first)
@@ -689,7 +885,7 @@ run_varied_monitor (CdnNetwork *network)
 					first = FALSE;
 				}
 
-				gchar *name = cdn_variable_get_full_name_for_display (prop->data);
+				gchar *name = cdn_variable_get_full_name_for_display (mon->variable);
 
 				g_output_stream_write_all (out,
 				                           name,
@@ -702,10 +898,13 @@ run_varied_monitor (CdnNetwork *network)
 			}
 
 			ranges = g_slist_prepend (ranges,
-			                          variable_range_new (prop->data,
+			                          variable_range_new (mon->variable,
 			                                              r));
 
-			prop = g_slist_next (prop);
+			monitor_free (mon);
+
+			variables = g_slist_delete_link (variables,
+			                                 variables);
 		}
 
 		g_slist_free (variables);
