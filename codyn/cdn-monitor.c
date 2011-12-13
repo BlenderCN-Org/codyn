@@ -166,7 +166,7 @@ cdn_monitor_begin (CdnMonitor    *monitor,
 	/* Record first value */
 	reset_monitor (monitor);
 
-	cdn_monitor_update (monitor, step, from, integrator);
+	cdn_monitor_update (monitor, from, step, integrator);
 }
 
 static void
