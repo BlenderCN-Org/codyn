@@ -1,4 +1,5 @@
-g = 9.81
+#g = 9.81
+g = 1
 
 integrator
 {
@@ -18,6 +19,11 @@ node "monopod"
     # Masses
     "m{1:3}" = "{0.85,0.10,0.05}"
 
+    # Mass locations
+    m1T = "[x; y; φ]"
+    m2T = "[x + l2 ∙ sin(θ); y - l2 ∙ cos(θ); θ]"
+    m3T = "[x + (l - l3) ∙ sin(θ); y - (l - l3) ∙ cos(θ); θ]"
+
     # Inertia
     "J{1:3}" = "{0.4,0.002,0.002}"
 
@@ -25,7 +31,7 @@ node "monopod"
     "l{2,3}" = "{0.25,0.25}"
 
     # Foot position
-    rfoot = "0"
+    rfoot = "0.05"
 
     # Stiffness constants and damping ratios
     kα = 5
@@ -43,7 +49,8 @@ node "monopod"
     α0 = 0
 
     # States
-    @q = "{0,1.1 ∙ l0,0,0,l0}"
+    @q = "{0,1.1,0,0,l0}"
+    "d@q" = "{0,-2,0,0,0}"
 
     q = "[{@q||@0;@1}]"
     q̇ = "[{@q̇||@0;@1}]"
@@ -55,8 +62,6 @@ node "monopod"
     # Default generalized forces are 0
     "τ@q" = "{@q[~]*0}"
     τ = "[{@q|τ@0||@0;@1}]"
-
-    rf = 0.05
 
     # Auxilary and common terms
     ##########################################################################
@@ -101,7 +106,7 @@ node "monopod"
     # Double prime is a short hand for defining a second order system
     @q'' = "@q̈"
 
-    yend = "y - rfoot - l ∙ cθ"
+    rc = "[x + l ∙ sθ; y - rfoot - l ∙ cθ]"
 
     # Contact jacobian
         Jc_tmp1 = "rfoot + l ∙ cθ"
@@ -125,7 +130,7 @@ node "monopod"
 
     "phase" = 0
 
-    phase "air" to "ground" when < "yend"
+    phase "air" to "ground" when < "rc[1]"
     {
         q̇_after = "-Minv ∙ (JcT ∙ inverse(Jc ∙ Minv ∙ JcT) ∙ (Jc ∙ q̇)) + q̇"
 
@@ -133,7 +138,7 @@ node "monopod"
         set "phase" = 1
     }
 
-    Ftsh = "0.01"
+    Ftsh = "0.001"
 
     phase "ground" to "air" when < "Fc[1] - Ftsh"
     {
