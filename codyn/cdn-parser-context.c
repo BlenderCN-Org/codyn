@@ -6051,7 +6051,6 @@ cdn_parser_context_push_event (CdnParserContext  *context,
                                GSList            *templates,
                                GSList            *attributes)
 {
-	Context *ctx;
 	GSList *parents;
 	GSList *ret = NULL;
 
@@ -6062,8 +6061,6 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 	{
 		return;
 	}
-
-	ctx = CURRENT_CONTEXT (context);
 
 	parents = each_selections (context,
 	                           CURRENT_CONTEXT (context)->objects,
