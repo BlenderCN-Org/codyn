@@ -512,7 +512,7 @@ input_file
 	  value_as_string
 	  T_KEY_AS
 	  identifier_or_string
-	  '{'				{ cdn_parser_context_push_input_file (context, $5, $3, $1); }
+	  '{'				{ cdn_parser_context_push_input_file (context, $5, $3, $1); errb }
 	  input_file_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
