@@ -493,7 +493,8 @@ static void
 add_values (CdnInputFile  *input,
             gchar        **parts)
 {
-	gdouble *row = (gdouble *)g_slice_alloc0 (sizeof (gdouble) * input->priv->num_columns);
+	// note the num_columns + 1 because num_columns is without the time column
+	gdouble *row = (gdouble *)g_slice_alloc0 (sizeof (gdouble) * (input->priv->num_columns + 1));
 	guint ptr = 0;
 
 	while (parts && *parts)

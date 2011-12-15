@@ -32,6 +32,8 @@
 #include "cdn-variable.h"
 #include "cdn-expression-tree-iter.h"
 #include "cdn-node.h"
+#include "cdn-input.h"
+
 #include <execinfo.h>
 
 #include <codyn/instructions/cdn-instructions.h>
@@ -824,6 +826,14 @@ parse_context_property (CdnExpression *expression,
 			{
 				CdnVariable *prop;
 
+				if (CDN_IS_INPUT (c) && !cdn_object_is_compiled (c))
+				{
+					if (!cdn_object_compile (c, NULL, context->error))
+					{
+						return FALSE;
+					}
+				}
+
 				prop = cdn_object_get_variable (c, propid);
 
 				if (prop)
@@ -883,7 +893,7 @@ parse_context_function (CdnExpression *expression,
 }
 
 static gboolean
-parse_dot_property (CdnExpression *expression,
+parse_dot_variable (CdnExpression *expression,
                     gchar const   *id,
                     gchar const   *propid,
                     ParserContext *context)
@@ -1204,7 +1214,7 @@ parse_function (CdnExpression *expression,
 
 				id = g_strndup (aname, ptr - aname);
 
-				if (parse_dot_property (expression, id, ptr + 1, context))
+				if (parse_dot_variable (expression, id, ptr + 1, context))
 				{
 					g_free (id);
 					continue;
@@ -1950,7 +1960,7 @@ parse_custom_operator (CdnExpression *expression,
 
 						id = g_strndup (aname, ptr - aname);
 
-						if (parse_dot_property (expression, id, ptr + 1, context))
+						if (parse_dot_variable (expression, id, ptr + 1, context))
 						{
 							g_free (id);
 							continue;
@@ -2596,7 +2606,7 @@ parse_dot_token (CdnExpression *expression,
 	else
 	{
 		// Resolve property
-		ret = parse_dot_property (expression,
+		ret = parse_dot_variable (expression,
 		                          id,
 		                          cname,
 		                          context);
