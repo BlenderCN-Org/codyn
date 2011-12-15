@@ -335,6 +335,7 @@ prepare_next_step (CdnIntegrator *integrator,
                    gdouble        timestep)
 {
 	GSList *item;
+	GSList const *inputs;
 
 	cdn_variable_set_value (integrator->priv->property_time, t);
 	cdn_variable_set_value (integrator->priv->property_timestep, timestep);
@@ -343,10 +344,18 @@ prepare_next_step (CdnIntegrator *integrator,
 
 	reset_function_cache (integrator);
 
+	// Update inputs
+	inputs = cdn_integrator_state_inputs (integrator->priv->state);
+
+	while (inputs)
+	{
+		cdn_input_update (CDN_INPUT (inputs->data), integrator);
+		inputs = g_slist_next (inputs);
+	}
+
 	for (item = integrator->priv->saved_state; item; item = g_slist_next (item))
 	{
 		SavedState *s = item->data;
-
 		s->value = cdn_variable_get_value (s->property);
 	}
 
