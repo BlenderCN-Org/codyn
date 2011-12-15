@@ -28,6 +28,7 @@
 #include "cdn-utils.h"
 #include "cdn-selector.h"
 #include "cdn-layoutable.h"
+#include "cdn-input.h"
 
 /**
  * SECTION:cdn-node
@@ -987,7 +988,7 @@ cdn_node_cdn_compile (CdnObject         *object,
 
 	while (item)
 	{
-		if (!CDN_IS_FUNCTION (item->data))
+		if (!CDN_IS_FUNCTION (item->data) || !CDN_IS_INPUT (item->data))
 		{
 			others = g_slist_prepend (others,
 			                          item->data);
