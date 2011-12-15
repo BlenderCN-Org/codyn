@@ -50,7 +50,7 @@ node "monopod"
 
     # States
     @q = "{0,1.1,0,0,l0}"
-    "d@q" = "{0,-2,0,0,0}"
+    "d@q" = "{0,0,0,0,0}"
 
     q = "[{@q||@0;@1}]"
     q̇ = "[{@q̇||@0;@1}]"
@@ -96,9 +96,11 @@ node "monopod"
           c3;
           -m3 ∙ (g ∙ cθ + (α̇ + φ̇)² ∙ (l - l3))]"
 
+    input-file "actuation.txt" as "actuation" {}
+
     # Passive forces on α and φ from the series elastic element
-    τα = "kα ∙ (α0 - α) - bα ∙ α̇"
-    τl = "kl ∙ (l0 - l) - bl ∙ l̇"
+    τα = "kα ∙ (α0 + actuation.ua - α) + bα ∙ (actuation.uda - α̇)"
+    τl = "kl ∙ (l0 + actuation.ul - l) + bl ∙ (actuation.udl - l̇)"
 
     # Set acceleration variables
     @q̈ = "0"
@@ -128,7 +130,7 @@ node "monopod"
     # Solve for the contact force
     Fc = "linsolve(Jc ∙ Minv ∙ JcT, Jc ∙ Minv ∙ (h - τ) - J̇c ∙ q̇)"
 
-    "phase" = 0
+    "phase" = 2
 
     phase "air" to "ground" when < "rc[1]"
     {
@@ -142,7 +144,7 @@ node "monopod"
 
     phase "ground" to "air" when < "Fc[1] - Ftsh"
     {
-        set "phase" = 0
+        set "phase" = 2
     }
 }
 
