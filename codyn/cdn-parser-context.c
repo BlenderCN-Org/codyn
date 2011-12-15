@@ -3177,11 +3177,26 @@ cdn_parser_context_push_input_file (CdnParserContext  *context,
 		for (obj = objects; obj; obj = g_slist_next (obj))
 		{
 			CdnInputFile *f;
+			GFile *curfile;
+			GFile *file;
 
 			f = CDN_INPUT_FILE (cdn_selection_get_object (obj->data));
+			curfile = cdn_parser_context_get_file (context);
 
-			cdn_input_file_set_file_path (f,
-			                              cdn_expansion_get (ex, 0));
+			file = cdn_network_parser_utils_resolve_import (curfile,
+			                                                cdn_expansion_get (ex, 0));
+
+			if (!file)
+			{
+				parser_failed (context,
+				               CDN_STATEMENT (path),
+				               CDN_NETWORK_LOAD_ERROR_OBJECT,
+				               "Could not find input file `%s'",
+				               cdn_expansion_get (ex, 0));
+				return;
+			}
+
+			cdn_input_file_set_file (f, file);
 		}
 	}
 
