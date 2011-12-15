@@ -1118,16 +1118,16 @@ cdn_network_new_from_string (gchar const  *s,
  * Perform one step of simulation given the specified @timestep.
  *
  **/
-void
+gdouble
 cdn_network_step (CdnNetwork  *network,
                   gdouble      timestep)
 {
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (timestep > 0);
+	g_return_val_if_fail (CDN_IS_NETWORK (network), 0);
+	g_return_val_if_fail (timestep > 0, 0);
 
-	cdn_integrator_step (network->priv->integrator,
-	                     cdn_integrator_get_time (network->priv->integrator),
-	                     timestep);
+	return cdn_integrator_step (network->priv->integrator,
+	                            cdn_integrator_get_time (network->priv->integrator),
+	                            timestep);
 }
 
 /**

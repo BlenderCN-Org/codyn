@@ -185,7 +185,7 @@ void              cdn_network_run                    (CdnNetwork *network,
                                                       gdouble     from,
                                                       gdouble     timestep,
                                                       gdouble     to);
-void              cdn_network_step                   (CdnNetwork *network,
+gdouble           cdn_network_step                   (CdnNetwork *network,
                                                       gdouble     timestep);
 
 CdnNode         *cdn_network_get_template_node     (CdnNetwork   *network);
