@@ -3348,6 +3348,20 @@
        y1="-441.23294"
        x2="288.89954"
        y2="-436.83109" />
+    <inkscape:perspective
+       id="perspective3940"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
+    <inkscape:perspective
+       id="perspective3973"
+       inkscape:persp3d-origin="0.5 : 0.33333333 : 1"
+       inkscape:vp_z="1 : 0.5 : 1"
+       inkscape:vp_y="0 : 1000 : 0"
+       inkscape:vp_x="0 : 0.5 : 1"
+       sodipodi:type="inkscape:persp3d" />
   </defs>
   <sodipodi:namedview
      id="base"
@@ -3356,16 +3370,16 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.017364222"
-     inkscape:cx="17900.75"
-     inkscape:cy="-1138.1199"
+     inkscape:zoom="0.27782755"
+     inkscape:cx="2648.803"
+     inkscape:cy="4884.2555"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
      inkscape:window-width="1438"
      inkscape:window-height="840"
-     inkscape:window-x="1892"
-     inkscape:window-y="90"
+     inkscape:window-x="376"
+     inkscape:window-y="85"
      inkscape:window-maximized="0"
      inkscape:snap-object-midpoints="true"
      fit-margin-top="0"
@@ -3384,7 +3398,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -3415,6 +3429,30 @@
       <desc
          id="desc8180">transform: [1, 0, -x; 0, 1, 0]</desc>
     </path>
+  </g>
+  <g
+     inkscape:groupmode="layer"
+     id="layer2"
+     inkscape:label="Foreground"
+     style="display:inline">
+    <g
+       id="codyn_foreground"
+       inkscape:label="#g13737">
+      <desc
+         id="desc7287">static: 1</desc>
+      <rect
+         y="6104.0098"
+         x="0"
+         height="982.60449"
+         width="7086.6138"
+         id="rect2856"
+         style="opacity:0.60888887;fill:url(#linearGradient14876);fill-opacity:1;stroke:none" />
+      <path
+         style="fill:none;stroke:#432400;stroke-width:50;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dashoffset:0"
+         d="m 0,6104.0098 7086.6138,0 -7086.6138,0 z"
+         id="rect14923"
+         sodipodi:nodetypes="ccc" />
+    </g>
   </g>
   <g
      inkscape:label="Monopod"
@@ -5865,15 +5903,6 @@ transform: [1, 0, 0; 0, 1, -l - rfoot]</desc>
          id="path5462"
          sodipodi:nodetypes="cccc" />
     </g>
-    <path
-       style="fill:none;stroke:#be007b;stroke-width:60;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:none"
-       d="m -1203.4377,671.18228 0,-3483.14548"
-       id="codyn_fcy"
-       inkscape:label="#path5472">
-      <desc
-         id="desc4923">transform: [1, 0, rc[0]; 0, max(Ftsh, Fc[1]) * 0.5, 0]
-visible: phase</desc>
-    </path>
     <g
        inkscape:label="#g14737"
        id="codyn_fcy_anchor"
@@ -5890,19 +5919,6 @@ visible: phase</desc>
          sodipodi:nodetypes="cccc" />
     </g>
     <g
-       id="codyn_fcy_tip"
-       style="fill:#be007b;fill-opacity:1"
-       transform="translate(-943.99997,-126)"
-       inkscape:label="#g5971">
-      <desc
-         id="desc5987">transform: [1, 0, rc[0]; 0, 1, max(Ftsh, Fc[1]) * 0.5]
-visible: phase</desc>
-      <path
-         d="m -332.04496,-2696.4286 72.31899,-196.6658 72.31898,196.6658 c -42.6971,-31.419 -101.11413,-31.2379 -144.63797,0 z"
-         style="font-size:12px;fill:#be007b;fill-opacity:1;fill-rule:evenodd;stroke-width:0.625;stroke-linejoin:round"
-         id="path5979" />
-    </g>
-    <g
        transform="translate(-3002.3094,-1127.8756)"
        id="codyn_fcy_tip_anchor"
        inkscape:label="#g14737">
@@ -5917,15 +5933,6 @@ visible: phase</desc>
          style="fill-rule:evenodd;stroke:#000000;stroke-width:7.32480392pt;marker-start:none"
          inkscape:connector-curvature="0" />
     </g>
-    <path
-       inkscape:label="#path5472"
-       id="codyn_fcx"
-       d="m -2417.0104,833.60945 3483.1454,0"
-       style="fill:none;stroke:#be007b;stroke-width:60;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:none">
-      <desc
-         id="desc5991">transform: [max(Ftsh, Fc[0]) * 0.5, 0, rc[0]; 0, 1, 0]
-visible: phase</desc>
-    </path>
     <g
        transform="matrix(0,-1,-1,0,-4277.6992,2636.0769)"
        id="codyn_fcx_anchor"
@@ -5940,19 +5947,6 @@ visible: phase</desc>
          d="m 2496.1267,-1835.7978 91.56,0 -128.1841,-36.624 36.6241,36.624 z"
          style="fill-rule:evenodd;stroke:#000000;stroke-width:7.32480392pt;marker-start:none"
          inkscape:connector-curvature="0" />
-    </g>
-    <g
-       inkscape:label="#g5971"
-       transform="matrix(0,1,-1,0,-1630.4875,1082.9644)"
-       style="fill:#be007b;fill-opacity:1"
-       id="codyn_fcx_tip">
-      <desc
-         id="desc6001">transform: [1, 0, max(Ftsh, Fc[0]) * 0.5 + rc[0]; 0, 1, 0]
-visible: phase</desc>
-      <path
-         id="path6003"
-         style="font-size:12px;fill:#be007b;fill-opacity:1;fill-rule:evenodd;stroke-width:0.625;stroke-linejoin:round"
-         d="m -332.04496,-2696.4286 72.31899,-196.6658 72.31898,196.6658 c -42.6971,-31.419 -101.11413,-31.2379 -144.63797,0 z" />
     </g>
     <g
        inkscape:label="#g14737"
@@ -7613,40 +7607,84 @@ transform: [1, 0, 0; 0, 1, -l + l2 + l3]</desc>
            transform="matrix(0.685519,0,0,0.680487,164.6869,34.56369)" />
       </g>
     </g>
-  </g>
-  <g
-     inkscape:groupmode="layer"
-     id="layer2"
-     inkscape:label="Foreground"
-     style="display:inline">
-    <g
-       id="codyn_foreground"
-       inkscape:label="#g13737">
+    <path
+       style="fill:none;stroke:#be007b;stroke-width:60;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:none"
+       d="m -1203.4377,671.18228 0,-3483.14548"
+       id="codyn_fcy"
+       inkscape:label="#path5472">
       <desc
-         id="desc7287">static: 1</desc>
-      <rect
-         y="6104.0098"
-         x="0"
-         height="982.60449"
-         width="7086.6138"
-         id="rect2856"
-         style="opacity:0.60888887;fill:url(#linearGradient14876);fill-opacity:1;stroke:none" />
-      <text
-         xml:space="preserve"
-         style="font-size:237.62896729px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#ffffff;fill-opacity:1;stroke:none;font-family:cmcsc10;-inkscape-font-specification:cmcsc10"
-         x="6957.0972"
-         y="6875.2153"
-         id="text14919"><tspan
-           sodipodi:role="line"
-           id="tspan14921"
-           x="6957.0972"
-           y="6875.2153"
-           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:end;text-anchor:end;fill:#ffffff;fill-opacity:1;font-family:Ubuntu;-inkscape-font-specification:Ubuntu">Time: {{t}}</tspan></text>
+         id="desc4923">transform: [1, 0, rc[0]; 0, max(Ftsh, Fc[1]) * 0.5, 0]
+visible: phase == 1 &amp;&amp; Fc[1] &gt; Ftsh</desc>
+    </path>
+    <g
+       id="codyn_fcy_tip"
+       style="fill:#be007b;fill-opacity:1"
+       transform="translate(-943.99997,-126)"
+       inkscape:label="#g5971">
+      <desc
+         id="desc5987">transform: [1, 0, rc[0]; 0, 1, max(Ftsh, Fc[1]) * 0.5]
+visible: phase == 1 &amp;&amp; Fc[1] &gt; Ftsh</desc>
       <path
-         style="fill:none;stroke:#432400;stroke-width:50;stroke-linecap:round;stroke-linejoin:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dashoffset:0"
-         d="m 0,6104.0098 7086.6138,0 -7086.6138,0 z"
-         id="rect14923"
-         sodipodi:nodetypes="ccc" />
+         d="m -332.04496,-2696.4286 72.31899,-196.6658 72.31898,196.6658 c -42.6971,-31.419 -101.11413,-31.2379 -144.63797,0 z"
+         style="font-size:12px;fill:#be007b;fill-opacity:1;fill-rule:evenodd;stroke-width:0.625;stroke-linejoin:round"
+         id="path5979" />
     </g>
+    <path
+       inkscape:label="#path5472"
+       id="codyn_fcx"
+       d="m -2417.0104,833.60945 3483.1454,0"
+       style="fill:none;stroke:#be007b;stroke-width:60;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;marker-end:none">
+      <desc
+         id="desc5991">transform: [max(Ftsh, Fc[0]) * 0.5, 0, rc[0]; 0, 1, 0]
+visible: phase == 1 &amp;&amp; Fc[0] &gt; Ftsh</desc>
+    </path>
+    <g
+       inkscape:label="#g5971"
+       transform="matrix(0,1,-1,0,-1630.4875,1082.9644)"
+       style="fill:#be007b;fill-opacity:1"
+       id="codyn_fcx_tip">
+      <desc
+         id="desc6001">transform: [1, 0, max(Ftsh, Fc[0]) * 0.5 + rc[0]; 0, 1, 0]
+visible: phase == 1 &amp;&amp; Fc[0] &gt; Ftsh</desc>
+      <path
+         id="path6003"
+         style="font-size:12px;fill:#be007b;fill-opacity:1;fill-rule:evenodd;stroke-width:0.625;stroke-linejoin:round"
+         d="m -332.04496,-2696.4286 72.31899,-196.6658 72.31898,196.6658 c -42.6971,-31.419 -101.11413,-31.2379 -144.63797,0 z" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:237.62896729px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#ffffff;fill-opacity:1;stroke:none;display:inline;font-family:cmcsc10;-inkscape-font-specification:cmcsc10"
+       x="5238.4233"
+       y="2672.4871"
+       id="codyn_time"
+       inkscape:label="#text14919"><desc
+         id="desc3963">static: 1</desc><tspan
+         sodipodi:role="line"
+         id="tspan14921"
+         x="5238.4233"
+         y="2672.4871"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:end;text-anchor:end;fill:#ffffff;fill-opacity:1;font-family:Ubuntu;-inkscape-font-specification:Ubuntu">Time: {{<tspan
+   style="font-weight:bold"
+   id="tspan3928">t:0.00<tspan
+   style="font-weight:normal"
+   id="tspan3930">}}</tspan></tspan></tspan></text>
+    <text
+       inkscape:label="#text14919"
+       id="codyn_fcy_lbl"
+       y="-2816.5293"
+       x="-1110.839"
+       style="font-size:237.62896729px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;fill:#ffffff;fill-opacity:1;stroke:none;display:inline;font-family:cmcsc10;-inkscape-font-specification:cmcsc10"
+       xml:space="preserve"><desc
+         id="desc4001">transform: [1, 0, rc[0]; 0, 1, -0.01]
+visible: phase == 1 &amp;&amp; Fc[1] &gt; Ftsh</desc><tspan
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1;font-family:Ubuntu;-inkscape-font-specification:Ubuntu"
+         y="-2816.5293"
+         x="-1110.839"
+         id="tspan4003"
+         sodipodi:role="line">{{<tspan
+   id="tspan4005"
+   style="font-weight:bold;text-align:start;text-anchor:start">Fc[1]:0.00<tspan
+   id="tspan4007"
+   style="font-weight:normal;text-align:start;text-anchor:start">}}</tspan></tspan></tspan></text>
   </g>
 </svg>
