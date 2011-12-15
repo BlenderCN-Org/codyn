@@ -715,7 +715,7 @@ op_less_or_equal (CdnStack *stack,
 static gdouble
 op_equal_impl (gdouble a, gdouble b)
 {
-	return fabs (a - b) < 10e-12;
+	return fabs (a - b) < 10e-12 ? 1.0 : 0.0;
 }
 
 static void
@@ -1104,6 +1104,7 @@ static FunctionEntry function_entries[] = {
 	{"/", op_divide, 2, FALSE},
 	{"%", op_modulo, 2, FALSE},
 	{"^", op_power, 2, FALSE},
+	{"~", op_tilde, 1, FALSE},
 	{">", op_greater, 2, FALSE},
 	{"<", op_less, 2, FALSE},
 	{">=", op_greater_or_equal, 2, FALSE},
@@ -1113,7 +1114,6 @@ static FunctionEntry function_entries[] = {
 	{"&&", op_and, 2, TRUE},
 	{"!", op_negate, 1, FALSE},
 	{"?:", op_ternary, 3, FALSE},
-	{"~", op_tilde, 1, FALSE},
 	{NULL, op_noop, 0, FALSE},
 	{"sin", op_sin, 1, FALSE},
 	{"cos", op_cos, 1, FALSE},
