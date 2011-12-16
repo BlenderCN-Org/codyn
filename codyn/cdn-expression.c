@@ -331,9 +331,16 @@ set_values (CdnExpression *expression,
 			}
 		}
 
-		memcpy (expression->priv->cached_output_multi,
-		        values,
-		        sizeof (gdouble) * newsize);
+		if (values)
+		{
+			memcpy (expression->priv->cached_output_multi,
+			        values,
+			        sizeof (gdouble) * newsize);
+		}
+		else
+		{
+			memset (expression->priv->cached_output_multi, 0, sizeof (gdouble) * newsize);
+		}
 	}
 
 	expression->priv->cached_dims[0] = numr;
