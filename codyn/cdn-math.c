@@ -1616,7 +1616,8 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
 				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-				             "The ~ operation is currently only defined for 1 by 3 vectors");
+				             "The ~ operation is only defined for 1-by-3 vectors (got %d-by-%d)",
+				             argdim[0], argdim[1]);
 
 				return FALSE;
 			}
