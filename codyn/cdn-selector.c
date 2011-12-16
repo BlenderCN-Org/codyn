@@ -745,7 +745,7 @@ make_child_selection (CdnSelection *parent,
 		expansions = g_slist_prepend (expansions, expansion);
 	}
 
-	ret = cdn_selection_new_defines (obj,
+	ret = cdn_selection_new_defines (obj ? obj : cdn_selection_get_object (parent),
 	                                 expansions,
 	                                 cdn_selection_get_defines (parent),
 	                                 FALSE);
@@ -968,7 +968,7 @@ selector_select_regex_name (Selector           *selector,
 
 		childsel = make_child_selection_from_match (parent,
 		                                            info,
-		                                            cdn_selection_get_object (parent));
+		                                            NULL);
 
 		ret = g_slist_prepend (ret, childsel);
 		g_match_info_free (info);
@@ -1231,14 +1231,14 @@ count_selection (CdnEmbeddedContext *context,
 		                                 FALSE);
 
 		g_slist_free (expansions);
-		g_object_unref (expansion);
+		cdn_expansion_unref (expansion);
 
 		item->data = sel;
 	}
 
 	cdn_embedded_context_add_expansion (context, ex);
 
-	g_object_unref (ex);
+	cdn_expansion_unref (ex);
 
 	return g_slist_reverse (ret);
 }
@@ -1267,7 +1267,7 @@ selector_pseudo_from_to_name (CdnSelector        *self,
 
 	ret = g_slist_prepend (ret, make_child_selection (sel,
 	                                                  cdn_expansion_new_one (cdn_object_get_id (obj)),
-	                                                  cdn_selection_get_object (sel)));
+	                                                  NULL));
 	g_object_unref (obj);
 
 	return ret;
@@ -1582,6 +1582,73 @@ selector_pseudo_if (CdnSelector        *self,
 			                       cdn_selection_copy (sel));
 			break;
 		}
+	}
+
+	cdn_embedded_context_restore (context);
+	return ret;
+}
+
+static GSList *
+selector_pseudo_count (CdnSelector        *self,
+                       Selector           *selector,
+                       GSList             *ret,
+                       CdnSelection       *sel,
+                       CdnEmbeddedContext *context)
+{
+	gpointer obj;
+	GSList *item;
+
+	cdn_embedded_context_save (context);
+	cdn_embedded_context_add_selection (context, sel);
+
+	obj = cdn_selection_get_object (sel);
+
+	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	{
+		gint cnt = 0;
+		CdnExpansion *exp;
+		gchar *s;
+
+		if (CDN_IS_SELECTOR (item->data))
+		{
+			GSList *sub;
+
+			cdn_selector_set_self (item->data, self->priv->self);
+
+			sub = cdn_selector_select (item->data,
+			                           obj,
+			                           CDN_SELECTOR_TYPE_ANY,
+			                           context);
+
+			cdn_selector_set_self (item->data, NULL);
+
+			cnt = g_slist_length (sub);
+
+			g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
+			g_slist_free (sub);
+		}
+		else if (CDN_IS_EMBEDDED_STRING (item->data))
+		{
+			GSList *ex;
+
+			ex = cdn_embedded_string_expand_multiple (item->data, context, NULL);
+
+			cnt = g_slist_length (ex);
+
+			g_slist_foreach (ex, (GFunc)g_object_unref, NULL);
+			g_slist_free (ex);
+		}
+
+		s = g_strdup_printf ("%d", cnt);
+		exp = cdn_expansion_new_one (s);
+		g_free (s);
+
+		ret = g_slist_prepend (ret,
+		                       make_child_selection (sel,
+		                                             exp,
+		                                             NULL));
+
+		cdn_expansion_unref (exp);
 	}
 
 	cdn_embedded_context_restore (context);
@@ -2312,7 +2379,10 @@ selector_select_pseudo (CdnSelector        *self,
 				                                     TRUE));
 		break;
 		case CDN_SELECTOR_PSEUDO_TYPE_COUNT:
-			return count_selection (context, parent);
+			if (!selector->pseudo.arguments)
+			{
+				return count_selection (context, parent);
+			}
 		break;
 		case CDN_SELECTOR_PSEUDO_TYPE_NAME:
 			return annotate_names (parent);
@@ -2544,6 +2614,13 @@ selector_select_pseudo (CdnSelector        *self,
 				                          sel,
 				                          context,
 				                          TRUE);
+			break;
+			case CDN_SELECTOR_PSEUDO_TYPE_COUNT:
+				ret = selector_pseudo_count (self,
+				                             selector,
+				                             ret,
+				                             sel,
+				                             context);
 			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_REMOVE:
 				ret = selector_pseudo_if (self,

@@ -1150,7 +1150,6 @@ selector_pseudo_simple_key_real
 	| T_KEY_LAST				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_LAST; }
 	| T_KEY_EDGES				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_EDGES; }
 	| T_KEY_TEMPLATES			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_TEMPLATES; }
-	| T_KEY_COUNT				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_COUNT; }
 	| T_KEY_NAME				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_NAME; }
 	| T_KEY_SELF				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_SELF; }
 	| T_KEY_FROM_SET			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_FROM_SET; }
@@ -1246,7 +1245,8 @@ selector_pseudo_selector_args
 selector_pseudo_mixargs_key
 	: T_KEY_IF				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_IF; }
 	| T_KEY_REMOVE				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_REMOVE; }
-	| T_KEY_IS_EMPTY				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_IS_EMPTY; }
+	| T_KEY_IS_EMPTY			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_IS_EMPTY; }
+	| T_KEY_COUNT				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_COUNT; }
 	;
 
 selector_pseudo_mixargs_arg
