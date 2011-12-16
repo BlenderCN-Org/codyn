@@ -986,14 +986,17 @@ cdn_node_cdn_compile (CdnObject         *object,
 
 	item = group->priv->children;
 
+	// First compile inputs and filter out functions (they get compiled on
+	// the fly)
 	while (item)
 	{
-		if (!CDN_IS_FUNCTION (item->data) || !CDN_IS_INPUT (item->data))
+		if (!CDN_IS_INPUT (item->data) && !CDN_IS_FUNCTION (item->data))
 		{
 			others = g_slist_prepend (others,
 			                          item->data);
 		}
-		else if (!cdn_object_compile (item->data, context, error))
+		else if (CDN_IS_INPUT (item->data) &&
+		         !cdn_object_compile (item->data, context, error))
 		{
 			cdn_compile_context_restore (context);
 			g_object_unref (context);
