@@ -2230,7 +2230,7 @@ parse_unary_operator (CdnExpression *expression,
 			parser_failed (expression,
 			               context,
 			               CDN_COMPILE_ERROR_INVALID_TOKEN,
-			               "Expected unary operator (-, +, !) but got `%s'",
+			               "Expected unary operator (-, +, !, ~) but got `%s'",
 			               op->parent.text);
 			ret = FALSE;
 	}
@@ -2286,13 +2286,13 @@ parse_unary_operator (CdnExpression *expression,
 				parser_failed (expression,
 				               context,
 				               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-				               "Skew symmetric matrix operator (~) is only defined for vectors of size 3");
+				               "Skew symmetric matrix operator (~) is only defined for vectors 1-by-3 (got %d-by-%d)", argdim ? argdim[0] : 1, argdim ? argdim[1] : 1);
 
 				ret = FALSE;
 			}
 			else
 			{
-				inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
+				inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TILDE,
 				                                     "~",
 				                                     1,
 				                                     argdim);
