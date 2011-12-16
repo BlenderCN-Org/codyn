@@ -80,6 +80,13 @@ void                 _cdn_function_argument_set_variable      (CdnFunctionArgume
 
 CdnVariable         *_cdn_function_argument_get_variable      (CdnFunctionArgument *argument);
 
+void                  cdn_function_argument_get_dimension     (CdnFunctionArgument *argument,
+                                                               gint                *numr,
+                                                               gint                *numc);
+
+void                  cdn_function_argument_set_dimension     (CdnFunctionArgument *argument,
+                                                               gint                 numr,
+                                                               gint                 numc);
 G_END_DECLS
 
 #endif /* __CDN_FUNCTION_ARGUMENT_H__ */

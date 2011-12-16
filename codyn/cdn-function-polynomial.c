@@ -236,8 +236,6 @@ cdn_function_polynomial_clear_impl (CdnObject *object)
 
 static void
 cdn_function_polynomial_get_dimension_impl (CdnFunction *function,
-                                            gint         arguments,
-                                            gint        *argdim,
                                             gint        *numr,
                                             gint        *numc)
 {

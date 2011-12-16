@@ -86,6 +86,13 @@ cdn_instruction_custom_function_get_stack_manipulation (CdnInstruction  *instruc
 
 	self = CDN_INSTRUCTION_CUSTOM_FUNCTION (instruction);
 
+	if (self->priv->function)
+	{
+		cdn_function_get_dimension (self->priv->function,
+		                            &(self->priv->push_manip[0]),
+		                            &(self->priv->push_manip[1]));
+	}
+
 	return &self->priv->smanip;
 }
 
@@ -193,12 +200,6 @@ cdn_instruction_custom_function_new (CdnFunction *function,
 
 	set_function (custom, function);
 	set_arguments (custom, arguments, argdim);
-
-	cdn_function_get_dimension (function,
-	                            arguments,
-	                            argdim,
-	                            &(custom->priv->push_manip[0]),
-	                            &(custom->priv->push_manip[1]));
 
 	return CDN_INSTRUCTION (custom);
 }

@@ -91,10 +91,12 @@ struct _CdnFunctionClass
 	                               CdnStack            *stack);
 
 	void    (*get_dimension)      (CdnFunction          *function,
-	                               gint                  arguments,
-	                               gint                 *argdim,
 	                               gint                 *numr,
 	                               gint                 *numc);
+
+	CdnFunction *(*for_dimension) (CdnFunction          *function,
+	                               gint                  numargs,
+	                               gint                 *argdim);
 
 	/* signals */
 	void   (*argument_added)      (CdnFunction         *function,
@@ -142,10 +144,12 @@ void                 cdn_function_set_expression              (CdnFunction      
 CdnExpression       *cdn_function_get_expression              (CdnFunction          *function);
 
 void                 cdn_function_get_dimension               (CdnFunction          *function,
-                                                               gint                  arguments,
-                                                               gint                 *argdim,
                                                                gint                 *numr,
                                                                gint                 *numc);
+
+CdnFunction         *cdn_function_for_dimension               (CdnFunction          *function,
+                                                               gint                  numargs,
+                                                               gint                 *argdim);
 
 G_END_DECLS
 

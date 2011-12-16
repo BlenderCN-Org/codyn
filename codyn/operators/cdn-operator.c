@@ -346,8 +346,6 @@ cdn_operator_get_stack_manipulation_default (CdnOperator *op)
 	if (f)
 	{
 		cdn_function_get_dimension (f,
-		                            op->priv->smanip.num_pop,
-		                            op->priv->smanip.pop_dims,
 		                            &(op->priv->push_dims[0]),
 		                            &(op->priv->push_dims[1]));
 	}

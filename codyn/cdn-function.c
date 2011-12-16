@@ -69,11 +69,15 @@ enum
 struct _CdnFunctionPrivate
 {
 	CdnExpression *expression;
+	GSList *dimension_cache;
+
 	GList *arguments;
 	GHashTable *arguments_hash;
 
 	guint n_arguments;
 	guint n_implicit;
+
+	guint has_dimension : 1;
 };
 
 G_DEFINE_TYPE (CdnFunction, cdn_function, CDN_TYPE_OBJECT)
@@ -93,6 +97,16 @@ cdn_function_error_quark (void)
 	return quark;
 }
 
+static void
+on_dimension_cache_removed (CdnFunction *function,
+                            gpointer     where_the_object_was)
+{
+	g_object_unref (function);
+
+	function->priv->dimension_cache =
+		g_slist_remove (function->priv->dimension_cache,
+		                where_the_object_was);
+}
 
 static void
 cdn_function_finalize (GObject *object)
@@ -103,6 +117,8 @@ cdn_function_finalize (GObject *object)
 	{
 		g_object_unref (self->priv->expression);
 	}
+
+	g_slist_free (self->priv->dimension_cache);
 
 	g_list_foreach (self->priv->arguments, (GFunc)g_object_unref, NULL);
 	g_list_free (self->priv->arguments);
@@ -177,6 +193,7 @@ cdn_function_compile_impl (CdnObject         *object,
 {
 	CdnFunction *self = CDN_FUNCTION (object);
 	gboolean ret = TRUE;
+	GList *args;
 
 	if (cdn_object_is_compiled (object))
 	{
@@ -199,6 +216,27 @@ cdn_function_compile_impl (CdnObject         *object,
 		{
 			g_object_unref (context);
 			return FALSE;
+		}
+	}
+
+	// Reset dimensionality after compilation
+	for (args = self->priv->arguments; args; args = g_list_next (args))
+	{
+		CdnFunctionArgument *arg = args->data;
+
+		if (cdn_function_argument_get_explicit (arg))
+		{
+			CdnVariable *variable;
+			gint numr;
+			gint numc;
+
+			variable = _cdn_function_argument_get_variable (arg);
+			cdn_function_argument_get_dimension (arg, &numr, &numc);
+
+			cdn_variable_set_values (variable,
+			                         NULL,
+			                         numr,
+			                         numc);
 		}
 	}
 
@@ -233,23 +271,10 @@ cdn_function_compile_impl (CdnObject         *object,
 }
 
 static void
-set_variable_with_dim (CdnVariable *v,
-                       gint         numr,
-                       gint         numc)
-{
-	cdn_variable_set_values (v, NULL, numr, numc);
-}
-
-static void
 cdn_function_get_dimension_impl (CdnFunction *function,
-                                 gint         arguments,
-                                 gint        *argdim,
                                  gint        *numr,
                                  gint        *numc)
 {
-	gint i;
-	GList *args;
-
 	if (!function->priv->expression)
 	{
 		*numr = 1;
@@ -258,25 +283,9 @@ cdn_function_get_dimension_impl (CdnFunction *function,
 		return;
 	}
 
-	// Compute the dimensions of the output of this function when used
-	// with provided arguments of a given dimension. The simplest way to
-	// do this is to set dummy values for the properties representing the
-	// variables with the corresponding dimensions
-
-	args = function->priv->arguments;
-
-	for (i = 0; i < arguments; ++i)
-	{
-		CdnVariable *v;
-
-		v = _cdn_function_argument_get_variable (args->data);
-
-		set_variable_with_dim (v,
-		                       argdim ? argdim[i * 2] : 1,
-		                       argdim ? argdim[i * 2 + 1] : 1);
-
-		args = g_list_next (args);
-	}
+	cdn_expression_get_dimension (function->priv->expression,
+	                              numc,
+	                              numr);
 }
 
 static void
@@ -872,6 +881,95 @@ cdn_function_argument_added_impl (CdnFunction         *function,
 	cdn_object_taint (CDN_OBJECT (function));
 }
 
+static gboolean
+compare_dimensions (CdnFunction *function,
+                    gint        *argdim)
+{
+	gint i;
+	GList *arg = function->priv->arguments;
+
+	for (i = 0; i < function->priv->n_arguments; ++i)
+	{
+		CdnFunctionArgument *a = arg->data;
+		gint numr;
+		gint numc;
+
+		cdn_function_argument_get_dimension (a, &numr, &numc);
+
+		if (numr != argdim[i * 2] || numc != argdim[i * 2 + 1])
+		{
+			return FALSE;
+		}
+
+		arg = g_list_next (arg);
+	}
+
+	return TRUE;
+}
+
+static void
+set_argdim (CdnFunction *func,
+            gint        *argdim)
+{
+	gint i;
+	GList *arg = func->priv->arguments;
+
+	for (i = 0; i < func->priv->n_arguments; ++i)
+	{
+		CdnFunctionArgument *a = arg->data;
+
+		cdn_function_argument_set_dimension (a, argdim[i * 2], argdim[i * 2 + 1]);
+		arg = g_list_next (arg);
+	}
+}
+
+static CdnFunction *
+cdn_function_for_dimension_impl (CdnFunction *function,
+                                 gint         numargs,
+                                 gint        *argdim)
+{
+	if (!function->priv->has_dimension)
+	{
+		set_argdim (function, argdim);
+		function->priv->has_dimension = TRUE;
+
+		// Use this function
+		return g_object_ref (function);
+	}
+	else
+	{
+		GSList *c;
+		CdnFunction *other;
+
+		for (c = function->priv->dimension_cache; c; c = g_slist_next (c))
+		{
+			other = c->data;
+
+			if (compare_dimensions (other, argdim))
+			{
+				return g_object_ref (other);
+			}
+		}
+
+		// New cache!
+		other = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (function)));
+		other->priv->has_dimension = TRUE;
+
+		set_argdim (other, argdim);
+
+		function->priv->dimension_cache =
+			g_slist_prepend (function->priv->dimension_cache,
+			                 other);
+
+		g_object_weak_ref (G_OBJECT (other),
+		                   (GWeakNotify)on_dimension_cache_removed,
+		                   function);
+
+		g_object_ref (function);
+		return g_object_ref (other);
+	}
+}
+
 static void
 cdn_function_class_init (CdnFunctionClass *klass)
 {
@@ -896,6 +994,7 @@ cdn_function_class_init (CdnFunctionClass *klass)
 	klass->evaluate = cdn_function_evaluate_impl;
 	klass->get_dimension = cdn_function_get_dimension_impl;
 	klass->argument_added = cdn_function_argument_added_impl;
+	klass->for_dimension = cdn_function_for_dimension_impl;
 
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPRESSION,
@@ -1063,9 +1162,6 @@ cdn_function_add_argument (CdnFunction         *function,
 	}
 
 	_cdn_function_argument_set_variable (argument, property);
-
-	cdn_expression_set_has_cache (cdn_variable_get_expression (property),
-	                              FALSE);
 
 	g_signal_emit (function, signals[ARGUMENT_ADDED], 0, argument);
 }
@@ -1315,14 +1411,20 @@ cdn_function_get_argument (CdnFunction *function,
 
 void
 cdn_function_get_dimension (CdnFunction *function,
-                            gint         arguments,
-                            gint        *argdim,
                             gint        *numr,
                             gint        *numc)
 {
 	CDN_FUNCTION_GET_CLASS (function)->get_dimension (function,
-	                                                  arguments,
-	                                                  argdim,
 	                                                  numr,
 	                                                  numc);
+}
+
+CdnFunction *
+cdn_function_for_dimension (CdnFunction *function,
+                            gint         numargs,
+                            gint        *argdim)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
+
+	return CDN_FUNCTION_GET_CLASS (function)->for_dimension (function, numargs, argdim);
 }

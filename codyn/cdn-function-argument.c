@@ -45,6 +45,8 @@ struct _CdnFunctionArgumentPrivate
 {
 	gchar *name;
 	gboolean isexplicit;
+	gint numr;
+	gint numc;
 
 	CdnVariable *property;
 };
@@ -55,7 +57,9 @@ enum
 {
 	PROP_0,
 	PROP_NAME,
-	PROP_EXPLICIT
+	PROP_EXPLICIT,
+	PROP_NUMR,
+	PROP_NUMC
 };
 
 static guint signals[NUM_SIGNALS] = {0,};
@@ -95,7 +99,7 @@ set_name (CdnFunctionArgument *argument,
 }
 
 static void
-cdn_function_argument_set_variable (GObject      *object,
+cdn_function_argument_set_property (GObject      *object,
                                     guint         prop_id,
                                     const GValue *value,
                                     GParamSpec   *pspec)
@@ -106,9 +110,15 @@ cdn_function_argument_set_variable (GObject      *object,
 	{
 		case PROP_NAME:
 			set_name (self, g_value_get_string (value));
-		break;
+			break;
 		case PROP_EXPLICIT:
 			self->priv->isexplicit = g_value_get_boolean (value);
+			break;
+		case PROP_NUMR:
+			self->priv->numr = g_value_get_int (value);
+			break;
+		case PROP_NUMC:
+			self->priv->numc = g_value_get_int (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -117,7 +127,7 @@ cdn_function_argument_set_variable (GObject      *object,
 }
 
 static void
-cdn_function_argument_get_variable (GObject    *object,
+cdn_function_argument_get_property (GObject    *object,
                                     guint       prop_id,
                                     GValue     *value,
                                     GParamSpec *pspec)
@@ -132,6 +142,12 @@ cdn_function_argument_get_variable (GObject    *object,
 		case PROP_EXPLICIT:
 			g_value_set_boolean (value, self->priv->isexplicit);
 			break;
+		case PROP_NUMR:
+			g_value_set_int (value, self->priv->numr);
+			break;
+		case PROP_NUMC:
+			g_value_set_int (value, self->priv->numc);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -145,8 +161,8 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 
 	object_class->finalize = cdn_function_argument_finalize;
 
-	object_class->get_property = cdn_function_argument_get_variable;
-	object_class->set_property = cdn_function_argument_set_variable;
+	object_class->get_property = cdn_function_argument_get_property;
+	object_class->set_property = cdn_function_argument_set_property;
 
 	g_type_class_add_private (object_class, sizeof(CdnFunctionArgumentPrivate));
 
@@ -195,6 +211,26 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 	                                                       "Explicit",
 	                                                       TRUE,
 	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_NUMR,
+	                                 g_param_spec_int ("numr",
+	                                                   "Numr",
+	                                                   "Numr",
+	                                                   1,
+	                                                   G_MAXINT,
+	                                                   1,
+	                                                   G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_NUMC,
+	                                 g_param_spec_int ("numc",
+	                                                   "Numc",
+	                                                   "Numc",
+	                                                   1,
+	                                                   G_MAXINT,
+	                                                   1,
+	                                                   G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -323,6 +359,45 @@ cdn_function_argument_set_explicit (CdnFunctionArgument *argument,
 	}
 }
 
+static gchar *
+make_zeros (gint numr,
+            gint numc)
+{
+	if (numr == 1 && numc == 1)
+	{
+		return g_strdup ("0");
+	}
+
+	GString *ret = g_string_new ("");
+	gint r;
+
+	g_string_append_c (ret, '[');
+
+	for (r = 0; r < numr; ++r)
+	{
+		gint c;
+
+		if (r != 0)
+		{
+			g_string_append (ret, ";\n");
+		}
+
+		for (c = 0; c < numc; ++c)
+		{
+			if (c != 0)
+			{
+				g_string_append (ret, ", ");
+			}
+
+			g_string_append_c (ret, '0');
+		}
+	}
+
+	g_string_append_c (ret, ']');
+
+	return g_string_free (ret, FALSE);
+}
+
 void
 _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
                                      CdnVariable         *property)
@@ -331,6 +406,19 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 	g_return_if_fail (property == NULL || CDN_IS_VARIABLE (property));
 
 	argument->priv->property = property;
+
+	// Set the corresponding dimensions of the variable
+	if (argument->priv->isexplicit)
+	{
+		gchar *zeros;
+
+		zeros = make_zeros (argument->priv->numr, argument->priv->numc);
+
+		cdn_expression_set_from_string (cdn_variable_get_expression (property),
+		                                zeros);
+
+		g_free (zeros);
+	}
 }
 
 /**
@@ -348,4 +436,44 @@ _cdn_function_argument_get_variable (CdnFunctionArgument *argument)
 	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), NULL);
 
 	return argument->priv->property;
+}
+
+void
+cdn_function_argument_get_dimension (CdnFunctionArgument *argument,
+                                     gint                *numr,
+                                     gint                *numc)
+{
+	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
+
+	if (numr)
+	{
+		*numr = argument->priv->numr;
+	}
+
+	if (numc)
+	{
+		*numc = argument->priv->numc;
+	}
+}
+
+void
+cdn_function_argument_set_dimension (CdnFunctionArgument *argument,
+                                     gint                 numr,
+                                     gint                 numc)
+{
+	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
+
+	argument->priv->numr = numr;
+	argument->priv->numc = numc;
+
+	if (argument->priv->property && argument->priv->isexplicit)
+	{
+		gchar *zeros;
+
+		zeros = make_zeros (numr, numc);
+		cdn_expression_set_from_string (cdn_variable_get_expression (argument->priv->property),
+		                                zeros);
+
+		g_free (zeros);
+	}
 }

@@ -1289,12 +1289,20 @@ parse_function (CdnExpression *expression,
 
 		argdim = get_argdim (expression, context, numargs);
 
+		function = cdn_function_for_dimension (function,
+		                                       numargs,
+		                                       argdim);
+
 		instruction = cdn_instruction_custom_function_new (function,
 		                                                   numargs,
 		                                                   argdim);
 
 		g_free (argdim);
+
+		// Recursively compile the function here
 		ret = recurse_compile (expression, context, function);
+
+		g_object_unref (function);
 	}
 
 	instructions_push (expression, instruction, context);
