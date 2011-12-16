@@ -1322,120 +1322,203 @@ convert_2dim_slist (GSList const *lst,
 }
 
 static gboolean
-parse_matrix (CdnExpression *expression,
-              ParserContext *context)
+parse_matrix_row (CdnExpression *expression,
+                  ParserContext *context,
+                  gboolean      *isend,
+                  gint          *numr,
+                  gint          *numc,
+                  gint          *numpop)
 {
-	gint numr = 0;
-	gint numc = 0;
-	gint numccnt = 0;
-	gint numpop = 0;
-	gint *popdims;
+	*isend = FALSE;
 
 	CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
-	gboolean loopit = TRUE;
 
-	if (next && CDN_TOKEN_IS_OPERATOR (next) &&
-	    CDN_TOKEN_OPERATOR (next)->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
+	if (!next)
 	{
-		cdn_token_free (next);
-		cdn_token_free (cdn_tokenizer_next (context->buffer));
-
-		loopit = FALSE;
-	}
-	else
-	{
-		cdn_token_free (next);
+		return FALSE;
 	}
 
-	while (loopit)
+	*isend = CDN_TOKEN_IS_OPERATOR (next) &&
+	         CDN_TOKEN_OPERATOR (next)->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END;
+
+	cdn_token_free (next);
+
+	if (*isend)
+	{
+		return TRUE;
+	}
+
+	*numpop = 0;
+	*numr = 0;
+	*numc = 0;
+
+	while (TRUE)
 	{
 		gint *argdim;
+
+		if (*numr > 1 && *numpop > 1)
+		{
+			// Here we will need to concat the rows with a concat
+			// operation, so we will insert a matrix operation here
+			// if needed
+			gint *popdims;
+
+			popdims = get_argdim (expression, context, *numpop);
+
+			// Note that the popdims memory is consumed by the
+			// matrix instruction and does not need to be freed
+			instructions_push (expression,
+			                   cdn_instruction_matrix_new (*numpop,
+			                                               popdims,
+			                                               *numr,
+			                                               *numc),
+			                   context);
+
+			*numpop = 1;
+		}
 
 		if (!parse_expression (expression, context, -1, 0))
 		{
 			return FALSE;
 		}
 
-		++numpop;
-
 		argdim = get_argdim (expression, context, 1);
+		++*numpop;
 
-		// Only support adding rows or columns, not blocks
-		if (argdim[0] != 1)
+		// Check argument consistency
+		if (*numr != 0)
+		{
+			if (*numr != argdim[0])
+			{
+				parser_failed (expression,
+				               context,
+				               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				               "Cannot concatenate %d row%s with %d row%s",
+				               *numr, *numr > 1 ? "s" : "", argdim[0], argdim[0] > 1 ? "s" : "");
+
+				return FALSE;
+			}
+			else if (*numr != 1)
+			{
+				gint dims[4] = {*numr, *numc, argdim[0], argdim[1]};
+
+				// Here we have multiple rows concatenated with
+				// multiple rows. We are going to implement this
+				// using a hcat operator
+				instructions_push (expression,
+				                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_HCAT,
+				                                                 "hcat",
+				                                                 2,
+				                                                 dims),
+				                   context);
+
+				*numpop = 1;
+			}
+
+			*numc += argdim[1];
+		}
+		else
+		{
+			*numr = argdim[0];
+			*numc = argdim[1];
+		}
+
+		g_free (argdim);
+
+		CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
+
+		if (!next)
+		{
+			return FALSE;
+		}
+
+		CdnTokenOperatorType type = CDN_TOKEN_OPERATOR_TYPE_NONE;
+
+		if (CDN_TOKEN_IS_OPERATOR (next))
+		{
+			type = CDN_TOKEN_OPERATOR (next)->type;
+		}
+
+		cdn_token_free (next);
+
+		// Check end of the line
+		if (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END ||
+		    type == CDN_TOKEN_OPERATOR_TYPE_SEMI_COLON)
+		{
+			cdn_token_free (cdn_tokenizer_next (context->buffer));
+			*isend = (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END);
+
+			return TRUE;
+		}
+		else if (type == CDN_TOKEN_OPERATOR_TYPE_COMMA)
+		{
+			// Consume
+			cdn_token_free (cdn_tokenizer_next (context->buffer));
+		}
+	}
+}
+
+static gboolean
+parse_matrix (CdnExpression *expression,
+              ParserContext *context)
+{
+	gint tnumr = 0;
+	gint tnumc = 0;
+	gint tnumpop = 0;
+	gint *popdims;
+
+	while (TRUE)
+	{
+		gboolean isend = TRUE;
+		gint numr = 0;
+		gint numc = 0;
+		gint numpop = 0;
+
+		if (!parse_matrix_row (expression,
+		                       context,
+		                       &isend,
+		                       &numr,
+		                       &numc,
+		                       &numpop))
+		{
+			return FALSE;
+		}
+
+		if (tnumr == 0)
+		{
+			tnumr = numr;
+			tnumc = numc;
+			tnumpop = numpop;
+		}
+		else if (tnumc != numc)
 		{
 			return parser_failed (expression,
 			                      context,
 			                      CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-			                      "Cannot concatenate row vectors, use the `concat' function instead");
-		}
-
-		numccnt += argdim[1];
-		g_free (argdim);
-
-		// see what's next
-		next = cdn_tokenizer_peek (*(context->buffer));
-
-		if (CDN_TOKEN_IS_OPERATOR (next))
-		{
-			CdnTokenOperatorType type = CDN_TOKEN_OPERATOR (next)->type;
-
-			if (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END ||
-			    type == CDN_TOKEN_OPERATOR_TYPE_SEMI_COLON)
-			{
-				++numr;
-
-				if (numr == 1)
-				{
-					numc = numccnt;
-				}
-				else if (numc != numccnt)
-				{
-					parser_failed (expression,
-					               context,
-					               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-					               "The number of columns in a matrix must be equal for all rows (expected %d but got %d columns)", numc, numccnt);
-
-					cdn_token_free (next);
-					return FALSE;
-				}
-
-				numccnt = 0;
-
-				if (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
-				{
-					loopit = FALSE;
-				}
-
-				cdn_token_free (next);
-				cdn_token_free (cdn_tokenizer_next (context->buffer));
-			}
-			else if (type == CDN_TOKEN_OPERATOR_TYPE_COMMA)
-			{
-				cdn_token_free (next);
-				cdn_token_free (cdn_tokenizer_next (context->buffer));
-			}
-			else
-			{
-				// Free, but don't consume (i.e. implicit comma)
-				cdn_token_free (next);
-			}
+			                      "Cannot concatenate %d column%s with %d column%s",
+			                      tnumc, tnumc > 1 ? "s" : "", numc, numc > 1 ? "s" : "");
 		}
 		else
 		{
-			// Free, but don't consume (i.e. implicit comma)
-			cdn_token_free (next);
+			tnumpop += numpop;
+			tnumr += numr;
+		}
+
+		if (isend)
+		{
+			break;
 		}
 	}
 
-	popdims = get_argdim (expression, context, numpop);
+	popdims = get_argdim (expression, context, tnumpop);
 
 	// note that popdims memory is consumed by the matrix instruction
 	// and does not need to be freed
 	instructions_push (expression,
-	                   cdn_instruction_matrix_new (numpop,
+	                   cdn_instruction_matrix_new (tnumpop,
 	                                               popdims,
-	                                               numr,
-	                                               numc),
+	                                               tnumr,
+	                                               tnumc),
 	                   context);
 
 	return TRUE;

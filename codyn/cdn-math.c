@@ -1086,6 +1086,14 @@ op_length (CdnStack *stack,
 	cdn_stack_push (stack, n);
 }
 
+static void
+op_hcat (CdnStack *stack,
+         gint      numargs,
+         gint     *argdim)
+{
+	// TODO
+}
+
 typedef struct
 {
 	gchar const *name;
@@ -1152,7 +1160,8 @@ static FunctionEntry function_entries[] = {
 	{"sum", op_sum, -1, FALSE},
 	{"product", op_product, -1, FALSE},
 	{"length", op_length, 1, FALSE},
-	{"size", op_size, 1, FALSE}
+	{"size", op_size, 1, FALSE},
+	{"hcat", op_hcat, 2, FALSE}
 };
 
 typedef struct
@@ -1622,6 +1631,21 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_SIZE:
 			outargdim[0] = 1;
 			outargdim[1] = 2;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_HCAT:
+			if (argdim[0] != argdim[2])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             "Cannot concat %d rows with %d rows",
+				             argdim[0], argdim[1]);
+
+				return FALSE;
+			}
+
+			outargdim[0] = argdim[0];
+			outargdim[1] = argdim[1] + argdim[3];
 		break;
 		default:
 			return FALSE;
