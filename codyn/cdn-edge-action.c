@@ -45,6 +45,8 @@ struct _CdnEdgeActionPrivate
 	CdnExpression *equation;
 	CdnVariable *property;
 	CdnEdge *link;
+	gint numr;
+	gint numc;
 
 	guint equation_proxy_id;
 
@@ -468,6 +470,8 @@ cdn_edge_action_init (CdnEdgeAction *self)
 	self->priv = CDN_EDGE_ACTION_GET_PRIVATE (self);
 
 	self->priv->tags = cdn_taggable_create_table ();
+	self->priv->numr = -1;
+	self->priv->numc = -1;
 }
 
 /**
@@ -665,4 +669,33 @@ _cdn_edge_action_set_edge (CdnEdgeAction *action,
 	g_return_if_fail (link == NULL || CDN_IS_EDGE (link));
 
 	set_edge (action, link);
+}
+
+void
+cdn_edge_action_set_index (CdnEdgeAction *action,
+                           gint           numr,
+                           gint           numc)
+{
+	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
+
+	action->priv->numr = numr;
+	action->priv->numc = numc;
+}
+
+void
+cdn_edge_action_get_index (CdnEdgeAction *action,
+                           gint          *numr,
+                           gint          *numc)
+{
+	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
+
+	if (numr)
+	{
+		*numr = action->priv->numr;
+	}
+
+	if (numc)
+	{
+		*numc = action->priv->numc;
+	}
 }

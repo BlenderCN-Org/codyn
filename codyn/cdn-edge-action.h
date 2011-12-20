@@ -84,6 +84,14 @@ CdnEdgeForward *cdn_edge_action_get_edge (CdnEdgeAction *action);
 void            _cdn_edge_action_set_edge             (CdnEdgeAction              *action,
                                                        CdnEdgeForward *link);
 
+void            cdn_edge_action_set_index       (CdnEdgeAction *action,
+                                                 gint           numr,
+                                                 gint           numc);
+
+void            cdn_edge_action_get_index       (CdnEdgeAction *action,
+                                                 gint          *numr,
+                                                 gint          *numc);
+
 G_END_DECLS
 
 #endif /* __CDN_EDGE_ACTION_H__ */
