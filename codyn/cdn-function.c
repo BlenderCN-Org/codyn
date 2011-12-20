@@ -193,7 +193,6 @@ cdn_function_compile_impl (CdnObject         *object,
 {
 	CdnFunction *self = CDN_FUNCTION (object);
 	gboolean ret = TRUE;
-	GList *args;
 
 	if (cdn_object_is_compiled (object))
 	{
@@ -216,27 +215,6 @@ cdn_function_compile_impl (CdnObject         *object,
 		{
 			g_object_unref (context);
 			return FALSE;
-		}
-	}
-
-	// Reset dimensionality after compilation
-	for (args = self->priv->arguments; args; args = g_list_next (args))
-	{
-		CdnFunctionArgument *arg = args->data;
-
-		if (cdn_function_argument_get_explicit (arg))
-		{
-			CdnVariable *variable;
-			gint numr;
-			gint numc;
-
-			variable = _cdn_function_argument_get_variable (arg);
-			cdn_function_argument_get_dimension (arg, &numr, &numc);
-
-			cdn_variable_set_values (variable,
-			                         NULL,
-			                         numr,
-			                         numc);
 		}
 	}
 
@@ -888,7 +866,7 @@ compare_dimensions (CdnFunction *function,
 	gint i;
 	GList *arg = function->priv->arguments;
 
-	for (i = 0; i < function->priv->n_arguments; ++i)
+	for (i = function->priv->n_arguments - 1; i >= 0; --i)
 	{
 		CdnFunctionArgument *a = arg->data;
 		gint numr;
@@ -914,11 +892,14 @@ set_argdim (CdnFunction *func,
 	gint i;
 	GList *arg = func->priv->arguments;
 
-	for (i = 0; i < func->priv->n_arguments; ++i)
+	for (i = func->priv->n_arguments - 1; i >= 0; --i)
 	{
 		CdnFunctionArgument *a = arg->data;
 
-		cdn_function_argument_set_dimension (a, argdim[i * 2], argdim[i * 2 + 1]);
+		cdn_function_argument_set_dimension (a,
+		                                     argdim[i * 2],
+		                                     argdim[i * 2 + 1]);
+
 		arg = g_list_next (arg);
 	}
 }
@@ -934,6 +915,10 @@ cdn_function_for_dimension_impl (CdnFunction *function,
 		function->priv->has_dimension = TRUE;
 
 		// Use this function
+		return g_object_ref (function);
+	}
+	else if (compare_dimensions (function, argdim))
+	{
 		return g_object_ref (function);
 	}
 	else
