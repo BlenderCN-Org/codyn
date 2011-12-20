@@ -411,11 +411,13 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 	if (argument->priv->isexplicit)
 	{
 		gchar *zeros;
+		CdnExpression *expr;
 
-		zeros = make_zeros (argument->priv->numr, argument->priv->numc);
+		zeros = make_zeros (argument->priv->numr,
+		                    argument->priv->numc);
 
-		cdn_expression_set_from_string (cdn_variable_get_expression (property),
-		                                zeros);
+		expr = cdn_variable_get_expression (property);
+		cdn_expression_set_from_string (expr, zeros);
 
 		g_free (zeros);
 	}
