@@ -477,8 +477,7 @@ cdn_compile_error_get_formatted_string (CdnCompileError *error)
 	}
 
 	g_string_append_printf (ret,
-	                        "' (%s):\n%s%s\n%s^%s %s",
-	                        cdn_compile_error_string (error),
+	                        "':\n%s%s\n%s^%s %s",
 	                        prefix,
 	                        expr,
 	                        pad,
