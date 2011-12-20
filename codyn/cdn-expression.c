@@ -3909,14 +3909,28 @@ cdn_expression_get_dimension (CdnExpression *expression,
 {
 	if (expression->priv->cached)
 	{
-		*numr = expression->priv->cached_dims[0];
-		*numc = expression->priv->cached_dims[1];
+		if (numr)
+		{
+			*numr = expression->priv->cached_dims[0];
+		}
+
+		if (numc)
+		{
+			*numc = expression->priv->cached_dims[1];
+		}
 
 		return TRUE;
 	}
 
-	*numr = expression->priv->retdims[0];
-	*numc = expression->priv->retdims[1];
+	if (numr)
+	{
+		*numr = expression->priv->retdims[0];
+	}
+
+	if (numc)
+	{
+		*numc = expression->priv->retdims[1];
+	}
 
 	return !expression->priv->modified;
 }
