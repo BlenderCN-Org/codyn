@@ -516,12 +516,12 @@ resolve_indirection (CdnEmbeddedString   *em,
 	gint inc = 0;
 	gint dec = 0;
 	gchar *name = NULL;
-	gchar *ret;
+	gchar *ret = NULL;
 	gchar *num;
 
 	if (em->priv->indirection_regex == NULL)
 	{
-		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|(.*?)([?!~,]|[+]+|[-]+)?$",
+		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|(.*?)(([?!~,]|[+]+|[-]+)|([!](.*)))?$",
 		                                           0, 0, NULL);
 	}
 
@@ -552,28 +552,66 @@ resolve_indirection (CdnEmbeddedString   *em,
 	else
 	{
 		// This is a define
-		gchar *flag;
+		gchar *idx;
 
 		name = g_match_info_fetch (info, 3);
-		flag = g_match_info_fetch (info, 4);
+		idx = g_match_info_fetch (info, 7);
 
-		flags = get_indirection_flags (flag);
-
-		if (flags == INDIRECTION_INCREMENT)
+		if (idx && *idx)
 		{
-			inc = g_ascii_strtoll (flag, NULL, 10);
+			gint i = 0;
+
+			while (TRUE)
+			{
+				gchar *n;
+
+				n = g_strdup_printf ("%s%d", name, ++i);
+				ex = cdn_embedded_context_get_define (context,
+				                                      name);
+				g_free (n);
+
+				if (!ex)
+				{
+					break;
+				}
+
+				if (g_strcmp0 (cdn_expansion_get (ex, 0),
+				               idx) == 0)
+				{
+					// That's it...
+					ret = g_strdup_printf ("%d", i - 1);
+					break;
+				}
+			}
+
+			flags = INDIRECTION_NONE;
 		}
-		else if (flags == INDIRECTION_DECREMENT)
+		else
 		{
-			dec = g_ascii_strtoll (flag, NULL, 10);
+			gchar *flag;
+
+			flag = g_match_info_fetch (info, 4);
+
+			flags = get_indirection_flags (flag);
+
+			if (flags == INDIRECTION_INCREMENT)
+			{
+				inc = g_ascii_strtoll (flag, NULL, 10);
+			}
+			else if (flags == INDIRECTION_DECREMENT)
+			{
+				dec = g_ascii_strtoll (flag, NULL, 10);
+			}
+
+			ex = cdn_embedded_context_get_define (context,
+			                                      name);
+
+			exidx = 0;
+
+			g_free (flag);
 		}
 
-		ex = cdn_embedded_context_get_define (context,
-		                                      name);
-
-		exidx = 0;
-
-		g_free (flag);
+		g_free (idx);
 	}
 
 	switch (flags)
@@ -615,7 +653,10 @@ resolve_indirection (CdnEmbeddedString   *em,
 		break;
 		default:
 		{
-			ret = g_strdup (ex ? cdn_expansion_get (ex, exidx) : "");
+			if (!ret)
+			{
+				ret = g_strdup (ex ? cdn_expansion_get (ex, exidx) : "");
+			}
 
 			if (ret == NULL)
 			{
