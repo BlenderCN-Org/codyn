@@ -1,0 +1,31 @@
+# Get the 'parent' of the current node
+node self | parent . edges | has-template("dynamics") | if(source | @current) | sink | name
+{
+    defines
+    {
+        pindex = "@bodies[!@0]"
+    }
+
+    node parent
+    {
+        "fh_@[pindex]_@[leaf]" = "@0.pTᵀ * fh_@[prindex]_@[leaf]"
+
+        [self]
+        edge
+        {
+            "val_@[pindex]_@[leaf]" = "@0.qSᵀ * fh_@[pindex]_@[index]"
+
+            H[@leaf, @pindex] <= "val_@[pindex]_@[leaf]"
+            H[@pindex, @leaf] <= "val_@[pindex]_@[leaf]"
+        }
+    }
+
+    parse "crba.cdn"
+    {
+        prindex = @index
+        index = @pindex
+        current = @0
+    }
+}
+
+# vi:ex:ts=4:et
