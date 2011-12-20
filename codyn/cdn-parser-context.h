@@ -149,7 +149,9 @@ void                   cdn_parser_context_add_action           (CdnParserContext
                                                                 CdnEmbeddedString          *target,
                                                                 CdnEmbeddedString          *expression,
                                                                 GSList                     *attributes,
-                                                                CdnEmbeddedString          *phases);
+                                                                CdnEmbeddedString          *phases,
+                                                                CdnEmbeddedString          *numr,
+                                                                CdnEmbeddedString          *numc);
 
 void                   cdn_parser_context_add_polynomial       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
@@ -269,11 +271,13 @@ void                   cdn_parser_context_set_integrator       (CdnParserContext
 
 void                   cdn_parser_context_push_input_from_path (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *filename,
-                                                                GSList                     *attributes);
+                                                                GSList                     *attributes,
+                                                                gboolean                    only_in_context);
 
 void                   cdn_parser_context_push_input_from_string (CdnParserContext         *context,
                                                                   gchar const              *s,
-                                                                  GSList                   *attributes);
+                                                                  GSList                   *attributes,
+                                                                  gboolean                  only_in_context);
 
 void                   cdn_parser_context_push_input           (CdnParserContext           *context,
                                                                 GFile                      *file,

@@ -814,7 +814,7 @@ cdn_edge_compile_impl (CdnObject         *object,
 		}
 	}
 
-	/* Parse all link expressions */
+	/* Compile all actions */
 	GSList const *actions = cdn_edge_get_actions (link);
 	gboolean ret = TRUE;
 
@@ -823,8 +823,17 @@ cdn_edge_compile_impl (CdnObject         *object,
 		CdnEdgeAction *action = actions->data;
 		CdnExpression *expr = cdn_edge_action_get_equation (action);
 		GError *gerror = NULL;
+		gint numr;
+		gint numc;
+		gint enumr;
+		gint enumc;
+		gint anumr;
+		gint anumc;
+		CdnVariable *v;
 
-		if (cdn_edge_action_get_target_variable (action) == NULL)
+		v = cdn_edge_action_get_target_variable (action);
+
+		if (v == NULL)
 		{
 			if (error)
 			{
@@ -848,6 +857,13 @@ cdn_edge_compile_impl (CdnObject         *object,
 			break;
 		}
 
+		// Compile the target initial value
+		if (!cdn_variable_compile (v, error))
+		{
+			ret = FALSE;
+			break;
+		}
+
 		if (!cdn_expression_compile (expr, context, error))
 		{
 			if (error)
@@ -858,6 +874,113 @@ cdn_edge_compile_impl (CdnObject         *object,
 				                       NULL,
 				                       action,
 				                       NULL);
+			}
+
+			ret = FALSE;
+			break;
+		}
+
+		// Check if the dimensionality of the initial value and the
+		// value from the edge is the same
+		cdn_expression_get_dimension (expr, &enumr, &enumc);
+		cdn_expression_get_dimension (cdn_variable_get_expression (cdn_edge_action_get_target_variable (action)),
+		                              &numr,
+		                              &numc);
+
+		cdn_edge_action_get_index (action, &anumr, &anumc);
+
+		if (anumr == -1 && (numr != enumr || numc != enumc))
+		{
+			if (error)
+			{
+				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
+				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				                      "The dimensions of the edge action (%d-by-%d) and the initial value of `%s' (%d-by-%d) must be the same",
+				                      enumr,
+				                      enumc,
+				                      cdn_edge_action_get_target (action),
+				                      numr,
+				                      numc);
+
+				cdn_compile_error_set (error,
+				                       gerror,
+				                       object,
+				                       NULL,
+				                       action,
+				                       NULL);
+
+				g_error_free (gerror);
+			}
+
+			ret = FALSE;
+			break;
+		}
+		else if (anumr != -1 && (enumr != 1 || enumc != 1))
+		{
+			if (error)
+			{
+				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
+				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				                      "The dimensions of the edge action expression should be 1-by-1, but got %d-by-%d",
+				                      enumr,
+				                      enumc);
+
+				cdn_compile_error_set (error,
+				                       gerror,
+				                       object,
+				                       NULL,
+				                       action,
+				                       NULL);
+
+				g_error_free (gerror);
+			}
+
+			ret = FALSE;
+			break;
+		}
+		else if (anumr != -1 && anumc == -1 && anumr >= numr * numc)
+		{
+			if (error)
+			{
+				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
+				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				                      "The index of the edge action [%d] exceeds the size of the variable (%d)",
+				                      anumr,
+				                      enumr * enumc);
+
+				cdn_compile_error_set (error,
+				                       gerror,
+				                       object,
+				                       NULL,
+				                       action,
+				                       NULL);
+
+				g_error_free (gerror);
+			}
+
+			ret = FALSE;
+			break;
+		}
+		else if (anumr != -1 && anumc != -1 && (anumr >= numr || anumc >= numc))
+		{
+			if (error)
+			{
+				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
+				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				                      "The index of the edge action [%d, %d] exceeds the dimension of the variable %d-by-%d",
+				                      anumr,
+				                      anumc,
+				                      enumr,
+				                      enumc);
+
+				cdn_compile_error_set (error,
+				                       gerror,
+				                       object,
+				                       NULL,
+				                       action,
+				                       NULL);
+
+				g_error_free (gerror);
 			}
 
 			ret = FALSE;

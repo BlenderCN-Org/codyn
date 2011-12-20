@@ -75,6 +75,8 @@ struct _CdnIntegratorPredictCorrectPrivate
 
 	guint prediction_order;
 	guint correction_order;
+
+	gdouble *tmpd;
 };
 
 /* Properties */
@@ -123,27 +125,43 @@ history_get (CdnIntegratorPredictCorrect *pc,
 }
 
 static void
+history_update_states (CdnIntegratorPredictCorrect *pc,
+                       GSList const                *states,
+                       guint                       *i)
+{
+	while (states)
+	{
+		gint numr;
+		gint numc;
+		gint n;
+		gdouble const *vals;
+		gint j;
+
+		vals = cdn_variable_get_update (states->data,
+		                                &numr,
+		                                &numc);
+
+		n = numr * numc;
+
+		for (j = 0; j < n; ++j)
+		{
+			history_set (pc, (*i)++, 0, vals[j]);
+		}
+
+		states = g_slist_next (states);
+	}
+
+}
+
+static void
 history_update (CdnIntegratorPredictCorrect *pc,
                 GSList const                *integrated,
                 GSList const                *direct)
 {
 	guint i = 0;
 
-	while (integrated)
-	{
-		history_set (pc, i, 0, cdn_variable_get_update (integrated->data));
-
-		integrated = g_slist_next (integrated);
-		++i;
-	}
-
-	while (direct)
-	{
-		history_set (pc, i, 0, cdn_variable_get_update (direct->data));
-
-		direct = g_slist_next (direct);
-		++i;
-	}
+	history_update_states (pc, integrated, &i);
+	history_update_states (pc, direct, &i);
 }
 
 static void
@@ -192,19 +210,39 @@ prediction_step (CdnIntegratorPredictCorrect *pc,
 	while (integrated)
 	{
 		CdnVariable *prop = integrated->data;
-
 		guint coeff_index;
-		gdouble dprediction = 0;
+		gint numr;
+		gint numc;
+		gint i;
+		gint n;
 
-		for (coeff_index = 0; coeff_index < n_coeffs; ++coeff_index)
+		cdn_variable_get_update (prop, &numr, &numc);
+		n = numr * numc;
+
+		/* derivative prediction for t+1 */
+		for (i = 0; i < n; ++i)
 		{
-			dprediction += prediction_coeffs[coeff_row][coeff_index] * history_get (pc, state_index, coeff_index);
+			pc->priv->tmpd[i] = 0;
+
+			for (coeff_index = 0; coeff_index < n_coeffs; ++coeff_index)
+			{
+				pc->priv->tmpd[i] +=
+					prediction_coeffs[coeff_row][coeff_index] *
+					history_get (pc, state_index + i, coeff_index);
+			}
+
+			pc->priv->tmpd[i] =
+				pc->priv->current_value[state_index + i] +
+				timestep * pc->priv->tmpd[i];
 		}
 
-		cdn_variable_set_value (prop, pc->priv->current_value[state_index] + timestep * dprediction);
+		cdn_variable_set_values (prop,
+		                         pc->priv->tmpd,
+		                         numr,
+		                         numc);
 
 		integrated = g_slist_next (integrated);
-		++state_index;
+		state_index += n;
 	}
 }
 
@@ -226,29 +264,62 @@ correction_step (CdnIntegratorPredictCorrect *pc,
 	while (integrated)
 	{
 		CdnVariable *prop = integrated->data;
-
 		guint coeff_index;
+		gint numr;
+		gint numc;
+		gdouble const *vals;
+		gint i;
+		gint n;
+
+		vals = cdn_variable_get_update (prop, &numr, &numc);
+		n = numr * numc;
 
 		/* derivative prediction for t+1 */
-		gdouble dcorrected = correction_coeffs[coeff_row][0] * cdn_variable_get_update (prop);
-
-		for (coeff_index = 1; coeff_index < n_coeffs; ++coeff_index)
+		for (i = 0; i < n; ++i)
 		{
-			dcorrected += correction_coeffs[coeff_row][coeff_index] * history_get (pc, state_index, coeff_index - 1);
+			pc->priv->tmpd[i] = correction_coeffs[coeff_row][0] * vals[i];
+
+			for (coeff_index = 1; coeff_index < n_coeffs; ++coeff_index)
+			{
+				pc->priv->tmpd[i] += correction_coeffs[coeff_row][coeff_index] * history_get (pc, state_index + i, coeff_index - 1);
+			}
+
+			pc->priv->tmpd[i] = pc->priv->current_value[state_index + i] +
+			                         timestep * pc->priv->tmpd[i];
 		}
 
-		cdn_variable_set_value (prop, pc->priv->current_value[state_index] + timestep * dcorrected);
+		cdn_variable_set_values (prop,
+		                         pc->priv->tmpd,
+		                         numr,
+		                         numc);
 
 		integrated = g_slist_next (integrated);
-		++state_index;
+		state_index += n;
 	}
 
 	while (direct)
 	{
-		cdn_variable_set_value (direct->data, history_get (pc, state_index, 0));
+		CdnVariable *prop = direct->data;
+		gint numr;
+		gint numc;
+		gint i;
+		gint n;
+
+		cdn_variable_get_update (prop, &numr, &numc);
+		n = numr * numc;
+
+		for (i = 0; i < n; ++i)
+		{
+			pc->priv->tmpd[i] = history_get (pc, state_index + i, 0);
+		}
+
+		cdn_variable_set_values (prop,
+		                         pc->priv->tmpd,
+		                         numr,
+		                         numc);
 
 		direct = g_slist_next (direct);
-		++state_index;
+		state_index += n;
 	}
 }
 
@@ -266,12 +337,58 @@ cdn_integrator_predict_correct_finalize (GObject *object)
 		}
 	}
 
-	if (pc->priv->current_value)
-	{
-		g_free (pc->priv->current_value);
-	}
+	g_free (pc->priv->tmpd);
+	g_free (pc->priv->current_value);
 
 	G_OBJECT_CLASS (cdn_integrator_predict_correct_parent_class)->finalize (object);
+}
+
+static gint
+calculate_props_length (GSList const                *props,
+                        gint                        *longest)
+{
+	gint len = 0;
+
+	while (props)
+	{
+		CdnExpression *expr;
+
+		gint numr;
+		gint numc;
+		gint n;
+
+		expr = cdn_variable_get_expression (props->data);
+		cdn_expression_get_dimension (expr, &numr, &numc);
+
+		n = numr * numc;
+
+		len += n;
+
+		if (n > *longest)
+		{
+			*longest = n;
+		}
+
+		props = g_slist_next (props);
+	}
+
+	return len;
+}
+
+static gint
+calculate_length (CdnIntegratorPredictCorrect *pc,
+                  gint                        *longest)
+{
+	CdnIntegratorState *state;
+
+	state = cdn_integrator_get_state (CDN_INTEGRATOR (pc));
+
+	*longest = 0;
+
+	return calculate_props_length (cdn_integrator_state_integrated_properties (state),
+	                               longest) +
+	       calculate_props_length (cdn_integrator_state_direct_properties (state),
+	                               longest);
 }
 
 static void
@@ -284,30 +401,21 @@ cdn_integrator_predict_correct_reset_impl (CdnIntegrator *integrator)
 		CDN_INTEGRATOR_CLASS (cdn_integrator_predict_correct_parent_class)->reset (integrator);
 	}
 
-	CdnIntegratorState *state = cdn_integrator_get_state (integrator);
-	GSList const *integrated = cdn_integrator_state_integrated_properties (state);
-	GSList const *direct = cdn_integrator_state_direct_properties (state);
-
-	guint len = g_slist_length ((GSList *)integrated) +
-	            g_slist_length ((GSList *)direct);
-	guint i;
+	gint longest;
+	gint len = calculate_length (pc, &longest);
+	gint i;
 
 	for (i = 0; i < MAX_HISTORY_DEPTH; ++i)
 	{
-		if (pc->priv->state_history[i])
-		{
-			g_free (pc->priv->state_history[i]);
-		}
-
+		g_free (pc->priv->state_history[i]);
 		pc->priv->state_history[i] = g_new0 (gdouble, len);
 	}
 
-	if (pc->priv->current_value)
-	{
-		g_free (pc->priv->current_value);
-	}
-
+	g_free (pc->priv->current_value);
 	pc->priv->current_value = g_new0 (gdouble, len);
+
+	g_free (pc->priv->tmpd);
+	pc->priv->tmpd = g_new0 (gdouble, longest);
 
 	pc->priv->history_cursor = 0;
 	pc->priv->step_index = 0;

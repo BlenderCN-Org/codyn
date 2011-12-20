@@ -47,6 +47,20 @@ cdn_integrator_euler_finalize (GObject *object)
 	G_OBJECT_CLASS (cdn_integrator_euler_parent_class)->finalize (object);
 }
 
+static void
+integrate_values (gdouble *values,
+                  gdouble const *s,
+                  gint num,
+                  gdouble timestep)
+{
+	gint i;
+
+	for (i = 0; i < num; ++i)
+	{
+		values[i] = s[i] + values[i] * timestep;
+	}
+}
+
 static gdouble
 cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
                                 gdouble        t,
@@ -67,10 +81,18 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
 	while (integrated)
 	{
 		CdnVariable *property = integrated->data;
+		gint numr;
+		gint numc;
+		gdouble *update;
 
-		cdn_variable_set_value (property,
-		                        cdn_variable_get_value (property) +
-		                        cdn_variable_get_update (property) * timestep);
+		update = cdn_variable_get_update (property, &numr, &numc);
+
+		integrate_values (update,
+		                  cdn_variable_get_values (property, &numr, &numc),
+		                  numr * numc,
+		                  timestep);
+
+		cdn_variable_set_values (property, update, numr, numc);
 
 		integrated = g_slist_next (integrated);
 	}

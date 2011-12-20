@@ -165,6 +165,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <attribute> attribute_if
 %type <attribute> attribute_with
 %type <attribute> attribute_no_self
+%type <attribute> attribute_self
 %type <attribute> attribute_probability
 %type <attribute> attribute_tag
 
@@ -227,7 +228,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 
 %start choose_parser
 
-%expect 15
+%expect 17
 
 %%
 
@@ -268,9 +269,9 @@ parse
 	: attributes
 	  T_KEY_PARSE
 	  value_as_string
-	  '{'				{ cdn_parser_context_push_define (context, $1); }
+	  '{'				{ cdn_parser_context_push_scope (context, $1); }
 	  define_contents
-	  '}'				{ cdn_parser_context_push_input_from_path (context, $3, $1); errb;
+	  '}'				{ cdn_parser_context_push_input_from_path (context, $3, $1, TRUE); errb;
 	                                  cdn_parser_context_pop (context); }
 	;
 
@@ -597,6 +598,11 @@ string_list
 	: string_list_rev			{ $$ = g_slist_reverse ($1); }
 	;
 
+attribute_self
+	: T_KEY_SELF '(' ')' { $$ = cdn_attribute_new ("self"); }
+	| T_KEY_SELF { $$ = cdn_attribute_newv ("self", NULL); }
+	;
+
 attribute_no_self
 	: T_KEY_NO_SELF '(' ')' { $$ = cdn_attribute_new ("no-self"); }
 	| T_KEY_NO_SELF { $$ = cdn_attribute_newv ("no-self", NULL); }
@@ -619,6 +625,7 @@ attribute_contents
 	| attribute_if
 	| attribute_with
 	| attribute_no_self
+	| attribute_self
 	| attribute_probability
 	| attribute_tag
 	;
@@ -820,7 +827,7 @@ function_argument_impl
 
 function_argument_list_impl_rev
 	: function_argument_impl		{ $$ = g_slist_prepend (NULL, $1); }
-	| function_argument_list_impl
+	| function_argument_list_impl_rev
 	  ','
 	  function_argument_impl		{ $$ = g_slist_prepend ($1, $3); }
 	;
@@ -831,13 +838,13 @@ function_argument_list_impl
 
 function_argument_list_rev
 	: function_argument			{ $$ = g_slist_prepend (NULL, $1); }
-	| function_argument_list
+	| function_argument_list_rev
 	  ','
 	  function_argument			{ $$ = g_slist_prepend ($1, $3); }
 	;
 
 function_argument_list
-	: function_argument_list_rev	{ $$ = g_slist_reverse ($1); }
+	: function_argument_list_rev		{ $$ = g_slist_reverse ($1); }
 	;
 
 function_argument
@@ -1063,7 +1070,27 @@ action
 	  '<' '='
 	  value_as_string
 	  phase
-					{ cdn_parser_context_add_action (context, $2, $5, $1, $6); errb }
+					{ cdn_parser_context_add_action (context, $2, $5, $1, $6, NULL, NULL); errb }
+	| attributes
+	  identifier_or_string
+	  '['
+	   value_as_string
+	  ']'
+	  '<' '='
+	  value_as_string
+	  phase
+					{ cdn_parser_context_add_action (context, $2, $8, $1, $9, $4, NULL); errb }
+	| attributes
+	  identifier_or_string
+	  '['
+	   value_as_string
+	   ','
+	   value_as_string
+	  ']'
+	  '<' '='
+	  value_as_string
+	  phase
+					{ cdn_parser_context_add_action (context, $2, $10, $1, $11, $4, $6); errb }
 	;
 
 selector_item_non_ambiguous

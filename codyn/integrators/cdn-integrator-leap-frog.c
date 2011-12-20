@@ -104,6 +104,29 @@ cdn_integrator_leap_frog_get_name_impl (CdnIntegrator *integrator)
 	return "Leap Frog";
 }
 
+static void
+integrate_values (CdnVariable *variable,
+                  gdouble      timestep)
+{
+	gint numr;
+	gint numc;
+	gdouble *update;
+	gdouble const *s;
+	gint i;
+	gint num;
+
+	update = cdn_variable_get_update (variable, &numr, &numc);
+	s = cdn_variable_get_values (variable, &numr, &numc);
+	num = numr * numc;
+
+	for (i = 0; i < num; ++i)
+	{
+		update[i] = s[i] + update[i] * timestep;
+	}
+
+	cdn_variable_set_values (variable, update, numr, numc);
+}
+
 static gdouble
 cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
                                     gdouble        t,
@@ -127,7 +150,7 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 
 	while (integrated)
 	{
-		cdn_variable_set_update (integrated->data, 0);
+		cdn_variable_clear_update (integrated->data);
 		integrated = g_slist_next (integrated);
 	}
 
@@ -143,9 +166,7 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 		// Integrate v
 		for (item = self->priv->second_order_properties; item; item = g_slist_next (item))
 		{
-			cdn_variable_set_value (item->data,
-			                        cdn_variable_get_value (item->data) +
-			                        cdn_variable_get_update (item->data) * timestep);
+			integrate_values (item->data, timestep);
 		}
 	}
 
@@ -159,9 +180,7 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 	// Integrate x
 	for (item = self->priv->first_order_properties; item; item = g_slist_next (item))
 	{
-		cdn_variable_set_value (item->data,
-		                        cdn_variable_get_value (item->data) +
-		                        cdn_variable_get_update (item->data) * timestep);
+		integrate_values (item->data, timestep);
 	}
 
 	/* Chain up to emit 'step' */

@@ -1629,7 +1629,9 @@ cdn_parser_context_add_action (CdnParserContext   *context,
                                CdnEmbeddedString  *target,
                                CdnEmbeddedString  *expression,
                                GSList             *attributes,
-                               CdnEmbeddedString  *phase)
+                               CdnEmbeddedString  *phase,
+                               CdnEmbeddedString  *numr,
+                               CdnEmbeddedString  *numc)
 {
 	Context *ctx;
 	GSList *item;
@@ -1659,6 +1661,8 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 		GSList *exps;
 		GSList *iteme;
 		gchar const *annotation;
+		gint inumr = -1;
+		gint inumc = -1;
 
 		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
 
@@ -1668,6 +1672,20 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 		annotation = current_annotation (context);
 
 		embedded_string_expand_multiple (exps, target, context);
+
+		if (numr)
+		{
+			gchar const *snumr;
+			embedded_string_expand (snumr, numr, context);
+			inumr = g_ascii_strtoll (snumr, NULL, 10);
+		}
+
+		if (numc)
+		{
+			gchar const *snumc;
+			embedded_string_expand (snumc, numc, context);
+			inumc = g_ascii_strtoll (snumc, NULL, 10);
+		}
 
 		for (iteme = exps; iteme; iteme = g_slist_next (iteme))
 		{
@@ -1693,6 +1711,8 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 				cdn_edge_add_action (CDN_EDGE (cdn_selection_get_object (item->data)),
 				                     action);
 			}
+
+			cdn_edge_action_set_index (action, inumr, inumc);
 
 			if (annotation && *annotation)
 			{
@@ -4430,8 +4450,6 @@ cdn_parser_context_include (CdnParserContext  *context,
                             CdnEmbeddedString *filename,
                             GSList            *attributes)
 {
-	Context *ctx;
-
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
 
@@ -4440,20 +4458,17 @@ cdn_parser_context_include (CdnParserContext  *context,
 		return;
 	}
 
-	ctx = CURRENT_CONTEXT (context);
-
-	if (!ctx || !ctx->objects)
-	{
-		return;
-	}
-
-	cdn_parser_context_push_input_from_path (context, filename, attributes);
+	cdn_parser_context_push_input_from_path (context,
+	                                         filename,
+	                                         attributes,
+	                                         TRUE);
 }
 
 void
 cdn_parser_context_push_input_from_path (CdnParserContext  *context,
                                          CdnEmbeddedString *filename,
-                                         GSList            *attributes)
+                                         GSList            *attributes,
+                                         gboolean           only_in_context)
 {
 	GSList *items;
 	GSList *item;
@@ -4461,6 +4476,18 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
+
+	if (only_in_context)
+	{
+		Context *ctx;
+
+		ctx = CURRENT_CONTEXT (context);
+
+		if (!ctx || !ctx->objects)
+		{
+			return;
+		}
+	}
 
 	if (context->priv->in_event_handler)
 	{
@@ -4515,15 +4542,24 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 void
 cdn_parser_context_push_input_from_string (CdnParserContext *context,
                                            gchar const      *s,
-                                           GSList           *attributes)
+                                           GSList           *attributes,
+                                           gboolean          only_in_context)
 {
 	GInputStream *stream;
 	gchar *ret;
+	Context *ctx;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (s != NULL);
 
 	if (context->priv->in_event_handler)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	if (only_in_context && (!ctx || !ctx->objects))
 	{
 		return;
 	}

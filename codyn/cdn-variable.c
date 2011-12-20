@@ -55,7 +55,7 @@ struct _CdnVariablePrivate
 	CdnExpression *constraint;
 	CdnVariableFlags flags;
 
-	gdouble update;
+	gdouble *update;
 	CdnObject *object;
 
 	CdnVariable *diff_of;
@@ -300,6 +300,7 @@ cdn_variable_finalize (GObject *object)
 
 	g_free (property->priv->name);
 	g_free (property->priv->annotation);
+	g_free (property->priv->update);
 
 	g_hash_table_destroy (property->priv->tags);
 
@@ -1065,7 +1066,7 @@ cdn_variable_remove_flags (CdnVariable      *property,
 /**
  * cdn_variable_set_update:
  * @property: A #CdnVariable
- * @value: The update value
+ * @values: The update values
  * 
  * Set the update value of the property. The update value is used to store the
  * result of differential equations on the property/ You normally do not need
@@ -1073,11 +1074,51 @@ cdn_variable_remove_flags (CdnVariable      *property,
  *
  **/
 void
-cdn_variable_set_update (CdnVariable  *property,
-                         gdouble       value)
+cdn_variable_set_update (CdnVariable   *property,
+                         gdouble const *values)
 {
+	gint numr;
+	gint numc;
+
+	cdn_expression_get_dimension (property->priv->expression,
+	                              &numr,
+	                              &numc);
+
 	/* Omit type check to increase speed */
-	property->priv->update = value;
+	memcpy (property->priv->update, values, sizeof (gdouble) * numr * numc);
+}
+
+void
+cdn_variable_clear_update (CdnVariable *property)
+{
+	gint numr;
+	gint numc;
+
+	cdn_expression_get_dimension (property->priv->expression, &numr, &numc);
+	memset (property->priv->update, 0, sizeof (gdouble) * numr * numc);
+}
+
+void
+cdn_variable_set_update_value (CdnVariable *property,
+                               gdouble      value,
+                               gint         numr,
+                               gint         numc)
+{
+	if (numc < 0)
+	{
+		property->priv->update[numr] = value;
+	}
+	else
+	{
+		gint enumr;
+		gint enumc;
+
+		cdn_expression_get_dimension (property->priv->expression,
+		                              &enumr,
+		                              &enumc);
+
+		property->priv->update[numr * enumc + numc] = value;
+	}
 }
 
 /**
@@ -1091,10 +1132,13 @@ cdn_variable_set_update (CdnVariable  *property,
  * Returns: The update value
  *
  **/
-gdouble
-cdn_variable_get_update (CdnVariable *property)
+gdouble *
+cdn_variable_get_update (CdnVariable *property,
+                         gint        *numr,
+                         gint        *numc)
 {
 	/* Omit type check to increase speed */
+	cdn_expression_get_dimension (property->priv->expression, numr, numc);
 	return property->priv->update;
 }
 
@@ -1507,6 +1551,19 @@ cdn_variable_compile (CdnVariable       *property,
 	context = cdn_object_get_compile_context (property->priv->object, NULL);
 
 	ret = cdn_expression_compile (property->priv->expression, context, error);
+
+	if (ret)
+	{
+		gint numr;
+		gint numc;
+
+		cdn_expression_get_dimension (property->priv->expression,
+		                              &numr,
+		                              &numc);
+
+		g_free (property->priv->update);
+		property->priv->update = g_new0 (gdouble, numr * numc);
+	}
 
 	g_object_unref (context);
 	return ret;

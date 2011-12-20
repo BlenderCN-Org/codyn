@@ -696,6 +696,19 @@ cdn_integrator_init (CdnIntegrator *self)
 	cdn_object_add_variable (CDN_OBJECT (self), self->priv->property_timestep, NULL);
 }
 
+static void
+sum_values (gdouble *values,
+            gdouble const *s,
+            gint num)
+{
+	gint i;
+
+	for (i = 0; i < num; ++i)
+	{
+		values[i] += s[i];
+	}
+}
+
 void
 cdn_integrator_simulation_step_direct (CdnIntegrator *integrator)
 {
@@ -711,7 +724,7 @@ cdn_integrator_simulation_step_direct (CdnIntegrator *integrator)
 
 		if (target)
 		{
-			cdn_variable_set_update (target, 0);
+			cdn_variable_clear_update (target);
 		}
 
 		direct = g_slist_next (direct);
@@ -727,13 +740,33 @@ cdn_integrator_simulation_step_direct (CdnIntegrator *integrator)
 		if (target != NULL)
 		{
 			CdnExpression *expr = cdn_edge_action_get_equation (action);
+			gint numr;
+			gint numc;
+			gdouble *update;
+			gint enumr;
+			gint enumc;
 
-			cdn_variable_set_update (target,
-			                         cdn_variable_get_update (target) +
-			                         cdn_expression_evaluate (expr));
+			update = cdn_variable_get_update (target, &enumr, &enumc);
+			cdn_edge_action_get_index (action, &numr, &numc);
 
-			cdn_variable_set_value (target,
-			                        cdn_variable_get_update (target));
+			if (numr == -1 && numc == -1)
+			{
+				sum_values (update,
+				            cdn_expression_evaluate_values (expr, &numr, &numc),
+				            numr * numc);
+			}
+			else
+			{
+				gint idx = numc == -1 ? numr : numr * enumc + numc;
+
+				update[idx] += cdn_expression_evaluate (expr);
+			}
+
+			// Note: this is inefficient...
+			cdn_variable_set_values (target,
+			                         update,
+			                         enumr,
+			                         enumc);
 		}
 
 		direct = g_slist_next (direct);
@@ -757,10 +790,31 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 		if (target != NULL)
 		{
 			CdnExpression *expr = cdn_edge_action_get_equation (action);
+			gint numr;
+			gint numc;
+			gint enumr;
+			gint enumc;
+			gdouble *update;
 
-			cdn_variable_set_update (target,
-			                         cdn_variable_get_update (target) +
-			                         cdn_expression_evaluate (expr));
+			update = cdn_variable_get_update (target, &enumr, &enumc);
+			cdn_edge_action_get_index (action, &numr, &numc);
+
+			if (numr == -1 && numc == -1)
+			{
+				sum_values (update,
+				            cdn_expression_evaluate_values (expr, &numr, &numc),
+				            numr * numc);
+			}
+			else
+			{
+				gint idx = numc == -1 ? numr : numr * enumc + numc;
+
+				cdn_variable_set_update_value (target,
+				                               update[idx] +
+				                               cdn_expression_evaluate (expr),
+				                               numr,
+				                               numc);
+			}
 		}
 
 		actions = g_slist_next (actions);
@@ -779,7 +833,7 @@ simulation_step (CdnIntegrator *integrator)
 
 	while (integrated)
 	{
-		cdn_variable_set_update (integrated->data, 0);
+		cdn_variable_clear_update (integrated->data);
 		integrated = g_slist_next (integrated);
 	}
 

@@ -1094,6 +1094,15 @@ op_hcat (CdnStack *stack,
 	// TODO
 }
 
+static void
+op_zeros (CdnStack *stack,
+          gint      numargs,
+          gint     *argdim)
+{
+	// This will never be executed because it's compiled as a
+	// kind of macro
+}
+
 typedef struct
 {
 	gchar const *name;
@@ -1161,7 +1170,8 @@ static FunctionEntry function_entries[] = {
 	{"product", op_product, -1, FALSE},
 	{"length", op_length, 1, FALSE},
 	{"size", op_size, 1, FALSE},
-	{"hcat", op_hcat, 2, FALSE}
+	{"hcat", op_hcat, 2, FALSE},
+	{"zeros", op_zeros, 2, FALSE}
 };
 
 typedef struct
@@ -1420,6 +1430,17 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				outargdim[1] = argdim[3];
 				return TRUE;
 			}
+			else if (argdim[0] * argdim[1] != argdim[2] * argdim[3])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Cannot perform element wise operation on arguments of %d-by%d and %d-by-%d",
+				             argdim[2], argdim[3],
+				             argdim[0], argdim[1]);
+
+				return FALSE;
+			}
 			else
 			{
 				// Take first arg size
@@ -1463,7 +1484,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "Cannot multiply matrices of size (%d, %d) and (%d, %d)",
 				             argdim[2], argdim[3], argdim[0], argdim[1]);
 
@@ -1477,7 +1498,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "The `true' and `false' parts of the ternary operator must have the same dimensions (got (%d, %d) and (%d, %d))",
 				             argdim[2], argdim[3], argdim[0], argdim[1]);
 
@@ -1505,7 +1526,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "Can only use `lerp' on arguments with the same dimensions (got (%d, %d) and (%d, %d))",
 				             argdim[4], argdim[5], argdim[2], argdim[3]);
 
@@ -1567,7 +1588,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "Cannot invert a non square matrix (%d, %d)",
 				             argdim[0], argdim[1]);
 
@@ -1585,7 +1606,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "Cannot solve a system which is not square (%d, %d)",
 				             argdim[0],
 				             argdim[1]);
@@ -1597,7 +1618,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "Invalid dimensions of B (in Ax = B), expected `%d' rows but got `%d' rows",
 				             argdim[0], argdim[2]);
 
@@ -1615,7 +1636,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "The ~ operation is only defined for 1-by-3 vectors (got %d-by-%d)",
 				             argdim[0], argdim[1]);
 
@@ -1638,7 +1659,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				             "Cannot concat %d rows with %d rows",
 				             argdim[0], argdim[1]);
 

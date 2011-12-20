@@ -22,6 +22,7 @@
 
 #include "cdn-integrator-runge-kutta.h"
 #include "cdn-network.h"
+#include <string.h>
 
 #define CDN_INTEGRATOR_RUNGE_KUTTA_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR_RUNGE_KUTTA, CdnIntegratorRungeKuttaPrivate))
 
@@ -63,11 +64,39 @@ cdn_integrator_runge_kutta_finalize (GObject *object)
 	G_OBJECT_CLASS (cdn_integrator_runge_kutta_parent_class)->finalize (object);
 }
 
+static gint
+calculate_length (CdnIntegratorRungeKutta *rk)
+{
+	CdnIntegratorState *state = cdn_integrator_get_state (CDN_INTEGRATOR (rk));
+	GSList const *integrated;
+	gint len = 0;
+
+	integrated = cdn_integrator_state_integrated_properties (state);
+
+	while (integrated)
+	{
+		CdnExpression *expr;
+
+		gint numr;
+		gint numc;
+
+		expr = cdn_variable_get_expression (integrated->data);
+		cdn_expression_get_dimension (expr, &numr, &numc);
+
+		len += numr * numc;
+
+		integrated = g_slist_next (integrated);
+	}
+
+	return len;
+}
+
 static void
 initialize_coefficients (CdnIntegratorRungeKutta *rk)
 {
-	CdnIntegratorState *state = cdn_integrator_get_state (CDN_INTEGRATOR (rk));
-	guint len = g_slist_length ((GSList *)cdn_integrator_state_integrated_properties (state));
+	gint len;
+
+	len = calculate_length (rk);
 
 	if (len == rk->priv->num_coefficients)
 	{
@@ -102,34 +131,83 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 
 		if (order == 0)
 		{
-			rk->priv->coefficients[order][i] = cdn_variable_get_value (prop);
+			gdouble const *vals;
+			gint numr;
+			gint numc;
+			guint n;
+
+			vals = cdn_variable_get_values (prop, &numr, &numc);
+			n = numr * numc;
+
+			memcpy (rk->priv->coefficients[order] + 1,
+			        vals,
+			        sizeof (gdouble) * n);
+
+			i += n;
 		}
 		else
 		{
 			if (order == MAX_COEFFICIENTS)
 			{
 				/* Do the final update right away */
-				cdn_variable_set_value (prop, rk->priv->coefficients[0][i] + 1.0 / 6 * norm * (
-					rk->priv->coefficients[1][i] +
-					2 * rk->priv->coefficients[2][i] +
-					2 * rk->priv->coefficients[3][i] +
-					cdn_variable_get_update (prop)
-				));
+				gint numr;
+				gint numc;
+				gint j;
+				gint n;
+				gdouble *up;
+
+				up = cdn_variable_get_update (prop, &numr, &numc);
+				n = numr * numc;
+
+				for (j = 0; j < n; ++j)
+				{
+					gdouble v;
+					gint idx = i + j;
+
+					v = rk->priv->coefficients[1][idx] +
+					    2 * rk->priv->coefficients[2][idx] +
+					    2 * rk->priv->coefficients[3][idx] +
+					    up[j];
+
+					up[j] = rk->priv->coefficients[0][idx] +
+					         1.0 / 6.0 * norm * v;
+				}
+
+				cdn_variable_set_values (prop, up, numr, numc);
 			}
 			else
 			{
-				gdouble ret = cdn_variable_get_update (prop);
-				rk->priv->coefficients[order][i] = ret;
+				gdouble *ret;
+				gint numr;
+				gint numc;
+				guint n;
+				gint j;
 
-				/* Prepare for the next iteration */
-				cdn_variable_set_value (prop,
-				                        rk->priv->coefficients[0][i] +
-				                        norm * ret);
+				ret = cdn_variable_get_update (prop, &numr, &numc);
+
+				cdn_expression_get_dimension (cdn_variable_get_expression (prop),
+				                              &numr,
+				                              &numc);
+
+				n = numc * numr;
+
+				memcpy (rk->priv->coefficients[order] + i,
+				        ret,
+				        sizeof (gdouble) * n);
+
+				for (j = 0; j < n; ++j)
+				{
+					ret[j] = rk->priv->coefficients[0][i + j] +
+					          norm * ret[j];
+				}
+
+				cdn_variable_set_values (prop, ret, numr, numc);
+
+				i += n;
 			}
 		}
 
 		integrated = g_slist_next (integrated);
-		++i;
 	}
 }
 

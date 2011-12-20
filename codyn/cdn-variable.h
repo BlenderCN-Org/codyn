@@ -145,8 +145,18 @@ gboolean           cdn_variable_equal                   (CdnVariable        *pro
                                                          CdnVariable        *other);
 
 void               cdn_variable_set_update              (CdnVariable        *property,
-                                                          gdouble             value);
-gdouble            cdn_variable_get_update              (CdnVariable        *property);
+                                                         gdouble const      *values);
+
+void               cdn_variable_clear_update            (CdnVariable        *property);
+
+void               cdn_variable_set_update_value        (CdnVariable        *property,
+                                                         gdouble             value,
+                                                         gint                numr,
+                                                         gint                numc);
+
+gdouble           *cdn_variable_get_update              (CdnVariable        *property,
+                                                         gint               *numr,
+                                                         gint               *numc);
 
 gchar             *cdn_variable_flags_to_string         (CdnVariableFlags    add_flags,
                                                          CdnVariableFlags    remove_flags);
