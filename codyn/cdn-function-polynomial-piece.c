@@ -454,7 +454,7 @@ cdn_function_polynomial_piece_set_end (CdnFunctionPolynomialPiece *piece,
  * Get the polynomial coefficients. The order of the coefficients is from high
  * to low
  *
-* Returns: (array type=double length=num): the polynomial coefficients
+* Returns: (array length=num): the polynomial coefficients
  *
  **/
 const gdouble *
@@ -472,7 +472,7 @@ cdn_function_polynomial_piece_get_coefficients (CdnFunctionPolynomialPiece *piec
 /**
  * cdn_function_polynomial_piece_set_coefficients:
  * @piece: A #CdnFunctionPolynomialPiece
- * @coefficients: (array type=double length=num): The polynomial coefficients
+ * @coefficients: (array length=num): The polynomial coefficients
  * @num: The number of coefficients provided in @coefficients
  *
  * Set the coefficients of the polynomial. The order of the coefficients is
@@ -498,7 +498,7 @@ cdn_function_polynomial_piece_set_coefficients (CdnFunctionPolynomialPiece *piec
  * Get the polynomial normalization. The order of the normalization is from high
  * to low
  *
- * Returns: (array type=double length=num): the polynomial coefficients
+ * Returns: (array length=num): the polynomial coefficients
  *
  **/
 const gdouble *
