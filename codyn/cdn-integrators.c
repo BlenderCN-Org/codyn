@@ -46,7 +46,6 @@ ensure_defaults ()
 		cdn_integrators_register (CDN_TYPE_INTEGRATOR_LEAP_FROG);
 		cdn_integrators_register (CDN_TYPE_INTEGRATOR_PREDICT_CORRECT);
 		cdn_integrators_register (CDN_TYPE_INTEGRATOR_RUNGE_KUTTA);
-		cdn_integrators_register (CDN_TYPE_INTEGRATOR_STUB);
 
 		initing = FALSE;
 	}

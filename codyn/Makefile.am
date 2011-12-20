@@ -215,8 +215,7 @@ INTEGRATORSOURCES = 	\
 	integrators/cdn-integrator-euler.c \
 	integrators/cdn-integrator-leap-frog.c \
 	integrators/cdn-integrator-runge-kutta.c \
-	integrators/cdn-integrator-predict-correct.c \
-	integrators/cdn-integrator-stub.c
+	integrators/cdn-integrator-predict-correct.c
 
 INTEGRATORHEADERS =			\
 	integrators/cdn-integrator.h \
@@ -224,8 +223,7 @@ INTEGRATORHEADERS =			\
 	integrators/cdn-integrator-euler.h \
 	integrators/cdn-integrator-leap-frog.h \
 	integrators/cdn-integrator-runge-kutta.h \
-	integrators/cdn-integrator-predict-correct.h \
-	integrators/cdn-integrator-stub.h
+	integrators/cdn-integrator-predict-correct.h
 
 TREEALGORITHMSSOURCES = 	\
 	tree-algorithms/cdn-tree-algorithms-canonicalize.c \

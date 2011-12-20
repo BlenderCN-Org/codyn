@@ -13,8 +13,7 @@ libintegrators_la_SOURCES = 	\
 	cdn-integrator-euler.c \
 	cdn-integrator-leap-frog.c \
 	cdn-integrator-runge-kutta.c \
-	cdn-integrator-predict-correct.c \
-	cdn-integrator-stub.c
+	cdn-integrator-predict-correct.c
 
 libintegrators_headers =			\
 	cdn-integrator.h \
@@ -22,8 +21,7 @@ libintegrators_headers =			\
 	cdn-integrator-euler.h \
 	cdn-integrator-leap-frog.h \
 	cdn-integrator-runge-kutta.h \
-	cdn-integrator-predict-correct.h \
-	cdn-integrator-stub.h
+	cdn-integrator-predict-correct.h
 
 libintegrators_includedir = $(includedir)/codyn-$(CODYN_API_VERSION)/codyn/integrators
 libintegrators_include_HEADERS = $(libintegrators_headers)

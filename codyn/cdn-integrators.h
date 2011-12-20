@@ -27,7 +27,6 @@
 #include <codyn/integrators/cdn-integrator-leap-frog.h>
 #include <codyn/integrators/cdn-integrator-predict-correct.h>
 #include <codyn/integrators/cdn-integrator-runge-kutta.h>
-#include <codyn/integrators/cdn-integrator-stub.h>
 
 G_BEGIN_DECLS
 
