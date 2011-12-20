@@ -2876,6 +2876,9 @@ parse_expression (CdnExpression   *expression,
 				if (num != 0)
 				{
 					cdn_token_free (token);
+					pop_error_start (expression,
+					                 context);
+
 					return TRUE;
 				}
 
@@ -2889,6 +2892,9 @@ parse_expression (CdnExpression   *expression,
 				if (num != 0)
 				{
 					cdn_token_free (token);
+					pop_error_start (expression,
+					                 context);
+
 					return TRUE;
 				}
 
@@ -2978,11 +2984,6 @@ parse_expression (CdnExpression   *expression,
 		{
 			break;
 		}
-		else
-		{
-			pop_error_start (expression, context);
-			push_error_start (expression, context);
-		}
 	}
 
 	if (!ret && context->error && !cdn_compile_error_get_error (context->error))
@@ -2991,6 +2992,11 @@ parse_expression (CdnExpression   *expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_TOKEN,
 		               "Expected expression but got (nothing)");
+	}
+
+	if (ret)
+	{
+		pop_error_start (expression, context);
 	}
 
 	return ret;
