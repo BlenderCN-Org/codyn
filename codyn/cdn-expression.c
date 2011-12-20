@@ -1108,6 +1108,85 @@ swap_arguments (CdnExpression *expression,
 	expression->priv->instructions = tmp;
 }
 
+static CdnInstruction *
+zeros_macro (CdnExpression *expression,
+             ParserContext *context)
+{
+	GSList *second = NULL;
+	GSList *first = NULL;
+	gint numr;
+	gint numc;
+	gint i;
+	gint n;
+
+	if (context->stack)
+	{
+		second = context->stack->data;
+	}
+
+	if (context->stack->next)
+	{
+		first = context->stack->next->data;
+	}
+
+	if (!second || !first ||
+	    second->next || first->next ||
+	    !CDN_IS_INSTRUCTION_NUMBER (second->data) ||
+	    !CDN_IS_INSTRUCTION_NUMBER (first->data))
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The `zeros' function can only be called with 2 number arguments");
+
+		return NULL;
+	}
+
+	numr = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (first->data)));
+	numc = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (second->data)));
+
+	n = numr * numc;
+
+	instructions_pop (expression);
+	instructions_pop (expression);
+
+	g_slist_free (context->stack->next->data);
+	g_slist_free (context->stack->data);
+
+	context->stack = g_slist_delete_link (context->stack,
+	                                      context->stack);
+
+	context->stack = g_slist_delete_link (context->stack,
+	                                      context->stack);
+
+	// Add zeros and insert instruction for matrix
+	if (n != 1)
+	{
+		gint *dims;
+
+		dims = g_new0 (gint, n * 2);
+
+		for (i = 0; i < n; ++i)
+		{
+			dims[i * 2] = 1;
+			dims[i * 2 + 1] = 1;
+
+			instructions_push (expression,
+			                   cdn_instruction_number_new_from_string ("0"),
+			                   context);
+		}
+
+		return cdn_instruction_matrix_new (n,
+		                                   dims,
+		                                   numr,
+		                                   numc);
+	}
+	else
+	{
+		return cdn_instruction_number_new_from_string ("0");
+	}
+}
+
 static gboolean
 parse_function (CdnExpression *expression,
                 gchar const   *name,
@@ -1273,14 +1352,25 @@ parse_function (CdnExpression *expression,
 				swap_arguments (expression, context);
 			}
 
-			argdim = get_argdim (expression, context, numargs);
+			if (fid == CDN_MATH_FUNCTION_TYPE_ZEROS)
+			{
+				instruction = zeros_macro (expression,
+				                           context);
+			}
+			else
+			{
+				argdim = get_argdim (expression,
+				                     context,
+				                     numargs);
 
-			instruction = cdn_instruction_function_new (fid,
-			                                            name,
-			                                            numargs,
-			                                            argdim);
+				instruction =
+					cdn_instruction_function_new (fid,
+				                                            name,
+				                                            numargs,
+				                                            argdim);
 
-			g_free (argdim);
+				g_free (argdim);
+			}
 		}
 	}
 	else
@@ -1305,8 +1395,13 @@ parse_function (CdnExpression *expression,
 		g_object_unref (function);
 	}
 
-	instructions_push (expression, instruction, context);
-	return ret;
+	if (instruction)
+	{
+		instructions_push (expression, instruction, context);
+		return ret;
+	}
+
+	return FALSE;
 }
 
 static void
