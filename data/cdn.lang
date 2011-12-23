@@ -142,8 +142,11 @@
             <keyword>each</keyword>
             <keyword>probability</keyword>
             <keyword>no-self</keyword>
+            <keyword>self</keyword>
             <keyword>proxy</keyword>
             <keyword>tag</keyword>
+            <keyword>with</keyword>
+            <keyword>once</keyword>
         </context>
 
         <context id="selectors" style-ref="keyword">
@@ -167,17 +170,17 @@
             <keyword>nodes</keyword>
             <keyword>imports</keyword>
             <keyword>objects</keyword>
-            <keyword>properties</keyword>
+            <keyword>variables</keyword>
             <keyword>actions</keyword>
             <keyword>type</keyword>
             <keyword>is-empty</keyword>
             <keyword>remove</keyword>
             <keyword>if</keyword>
             <keyword>from-set</keyword>
-            <keyword>source</keyword>
-            <keyword>sink</keyword>
             <keyword>source-name</keyword>
             <keyword>sink-name</keyword>
+            <keyword>source</keyword>
+            <keyword>sink</keyword>
             <keyword>has-template</keyword>
             <keyword>has-tag</keyword>
             <keyword>has-flag</keyword>
@@ -208,7 +211,7 @@
             <keyword>as</keyword>
             <keyword>of</keyword>
             <keyword>delete</keyword>
-            <keyword>property</keyword>
+            <keyword>variable</keyword>
             <keyword>action</keyword>
             <keyword>context</keyword>
             <keyword>as</keyword>
