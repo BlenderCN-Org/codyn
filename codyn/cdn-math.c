@@ -1203,7 +1203,49 @@ op_hcat (CdnStack *stack,
          gint      numargs,
          gint     *argdim)
 {
-	// TODO
+	gint c1;
+	gint c2;
+	gint s1;
+	gint s2;
+	gint i;
+	gdouble *ptr1;
+	gdouble *ptr2;
+	gdouble *ptr;
+
+	// Horizontally cat two matrices together
+	if (!argdim || argdim[0] == 1)
+	{
+		return;
+	}
+
+	c1 = argdim[3];
+	c2 = argdim[1];
+
+	s1 = sizeof (gdouble) * c1;
+	s2 = sizeof (gdouble) * c2;
+
+	ptr = cdn_stack_output_ptr (stack);
+	ptr2 = ptr - argdim[0] * c2;
+	ptr1 = ptr2 - argdim[2] * c1;
+
+	for (i = 0; i < argdim[0]; ++i)
+	{
+		memcpy (ptr, ptr1, s1);
+
+		ptr1 += c1;
+		ptr += c1;
+
+		memcpy (ptr, ptr2, s2);
+
+		ptr2 += c2;
+		ptr += c2;
+	}
+
+	ptr = cdn_stack_output_ptr (stack);
+
+	memcpy (ptr - argdim[0] * c2 - argdim[2] * c1,
+	        ptr,
+	        sizeof (gdouble) * argdim[0] * (argdim[1] + argdim[3]));
 }
 
 static void
