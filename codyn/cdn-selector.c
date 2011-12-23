@@ -1307,6 +1307,11 @@ has_all_templates (CdnObject *obj,
 {
 	GSList *selitem;
 
+	if (!templates)
+	{
+		return FALSE;
+	}
+
 	for (selitem = templates; selitem; selitem = g_slist_next (selitem))
 	{
 		gpointer t;
