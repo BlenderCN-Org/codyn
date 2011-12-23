@@ -997,7 +997,8 @@ name_from_selection (CdnSelection *selection)
 static GSList *
 generate_expand_multival (CdnParserContext *context,
                           CdnSelection     *sel,
-                          GObject          *value)
+                          GObject          *value,
+                          gboolean         *ismulti)
 {
 	GSList *values = NULL;
 	GSList *sels;
@@ -1009,6 +1010,8 @@ generate_expand_multival (CdnParserContext *context,
 		                                     context,
 		                                     NULL);
 
+		*ismulti = values && cdn_expansion_num (values->data) > 1;
+
 		return values;
 	}
 
@@ -1016,6 +1019,14 @@ generate_expand_multival (CdnParserContext *context,
 	                            cdn_selection_get_object (sel),
 	                            CDN_SELECTOR_TYPE_ANY,
 	                            context->priv->embedded);
+
+	*ismulti = TRUE;
+
+	if (!sels)
+	{
+		values = g_slist_prepend (NULL,
+		                          cdn_expansion_new_one (""));
+	}
 
 	while (sels)
 	{
@@ -1160,7 +1171,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 	{
 		gchar const *exname;
 		GSList *values;
-		gboolean valueismulti;
+		gboolean valueismulti = FALSE;
 		gboolean hascontext = FALSE;
 
 		if (!value)
@@ -1181,8 +1192,10 @@ generate_name_value_pairs (CdnParserContext  *context,
 			cdn_embedded_context_add_expansion (context->priv->embedded,
 			                                    nameit->data);
 
-			values = generate_expand_multival (context, sel, value);
-			valueismulti = values && cdn_expansion_num (values->data) > 1;
+			values = generate_expand_multival (context,
+			                                   sel,
+			                                   value,
+			                                   &valueismulti);
 			hascontext = TRUE;
 
 			if (!single_can_be_multi && !values->next)
