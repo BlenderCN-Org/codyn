@@ -43,6 +43,9 @@ typedef struct _CdnExpression		CdnExpression;
 typedef struct _CdnExpressionClass	CdnExpressionClass;
 typedef struct _CdnExpressionPrivate	CdnExpressionPrivate;
 
+typedef void (*CdnExpressionCacheNotify) (CdnExpression *expression,
+                                          gpointer       userdata);
+
 struct _CdnExpression
 {
 	/*< private >*/
@@ -121,6 +124,11 @@ gint           cdn_expression_get_error_start  (CdnExpression      *expression);
 gboolean       cdn_expression_get_dimension    (CdnExpression      *expression,
                                                 gint               *numr,
                                                 gint               *numc);
+
+void           cdn_expression_set_cache_notify (CdnExpression            *expression,
+                                                CdnExpressionCacheNotify  notify,
+                                                gpointer                  userdata,
+                                                GDestroyNotify            destroy_notify);
 
 G_END_DECLS
 

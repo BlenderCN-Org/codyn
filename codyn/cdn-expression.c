@@ -83,6 +83,10 @@ struct _CdnExpressionPrivate
 	gint error_at;
 	GSList *error_start;
 
+	gpointer cache_userdata;
+	CdnExpressionCacheNotify cache_notify;
+	GDestroyNotify cache_destroy_notify;
+
 	guint cached : 1;
 	guint prevent_cache_reset : 1;
 	guint modified : 1;
@@ -284,6 +288,12 @@ reset_depending_cache (CdnExpression *expression,
 
 		reset_cache (dep, realchanged);
 	}
+
+	if (expression->priv->cache_notify)
+	{
+		expression->priv->cache_notify (expression,
+		                                expression->priv->cache_userdata);
+	}
 }
 
 static void
@@ -366,6 +376,11 @@ cdn_expression_finalize (GObject *object)
 
 	cdn_stack_destroy (&(expression->priv->output));
 	g_free (expression->priv->expression);
+
+	cdn_expression_set_cache_notify (expression,
+	                                 NULL,
+	                                 NULL,
+	                                 NULL);
 
 	G_OBJECT_CLASS (cdn_expression_parent_class)->finalize (object);
 }
@@ -4163,4 +4178,22 @@ cdn_expression_get_dimension (CdnExpression *expression,
 	}
 
 	return !expression->priv->modified;
+}
+
+void
+cdn_expression_set_cache_notify (CdnExpression            *expression,
+                                 CdnExpressionCacheNotify  notify,
+                                 gpointer                  userdata,
+                                 GDestroyNotify            destroy_notify)
+{
+	g_return_if_fail (CDN_IS_EXPRESSION (expression));
+
+	if (expression->priv->cache_destroy_notify)
+	{
+		expression->priv->cache_destroy_notify (expression->priv->cache_userdata);
+	}
+
+	expression->priv->cache_destroy_notify = destroy_notify;
+	expression->priv->cache_userdata = userdata;
+	expression->priv->cache_notify = notify;
 }
