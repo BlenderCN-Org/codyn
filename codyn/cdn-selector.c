@@ -910,7 +910,7 @@ make_child_selection_from_match (CdnSelection     *parent,
 
 	expansion = expansion_from_match (info);
 	ret = make_child_selection (parent, expansion, obj);
-	g_object_unref (expansion);
+	cdn_expansion_unref (expansion);
 
 	return ret;
 }
@@ -1180,8 +1180,8 @@ annotate_names (GSList *selection)
 		                                 FALSE);
 
 		g_slist_free (expansions);
-		g_object_unref (ex);
-		g_object_unref (expansion);
+		cdn_expansion_unref (ex);
+		cdn_expansion_unref (expansion);
 
 		ret = g_slist_prepend (ret, sel);
 
@@ -1845,7 +1845,7 @@ selector_pseudo_type (CdnEmbeddedContext *context,
 		                                                  FALSE));
 
 		g_slist_free (expansions);
-		g_object_unref (expansion);
+		cdn_expansion_unref (expansion);
 
 		selection = g_slist_next (selection);
 	}
