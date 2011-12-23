@@ -521,7 +521,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	if (em->priv->indirection_regex == NULL)
 	{
-		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|(.*?)(([?!~,]|[+]+|[-]+)|([!](.*)))?$",
+		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|(.*?)(([?!~,]|[+]+|[-]+)|([!](.+)))?$",
 		                                           0, 0, NULL);
 	}
 
@@ -567,7 +567,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 				n = g_strdup_printf ("%s%d", name, ++i);
 				ex = cdn_embedded_context_get_define (context,
-				                                      name);
+				                                      n);
 				g_free (n);
 
 				if (!ex)
