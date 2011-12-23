@@ -1442,6 +1442,128 @@ add_variable_diff (CdnParserContext *context,
 }
 
 void
+cdn_parser_context_set_variable (CdnParserContext  *context,
+                                 CdnSelector       *selector,
+                                 CdnEmbeddedString *expression,
+                                 CdnVariableFlags   add_flags,
+                                 CdnVariableFlags   remove_flags,
+                                 GSList            *attributes)
+{
+	Context *ctx;
+	GSList *item;
+	GSList *objects;
+	gboolean ret = TRUE;
+
+	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (selector != NULL);
+
+	if (context->priv->in_event_handler)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	objects = each_selections (context,
+	                           ctx->objects,
+	                           attributes,
+	                           CDN_SELECTOR_TYPE_ANY,
+	                           NULL,
+	                           NULL,
+	                           FALSE);
+
+	for (item = objects; item; item = g_slist_next (item))
+	{
+		GSList *vars;
+		GSList *exprcache = NULL;
+
+		cdn_embedded_context_save_defines (context->priv->embedded,
+		                                   TRUE);
+		cdn_embedded_context_set_selection (context->priv->embedded,
+		                                    item->data);
+
+		vars = cdn_selector_select (selector,
+		                            cdn_selection_get_object (item->data),
+		                            CDN_SELECTOR_TYPE_VARIABLE,
+		                            context->priv->embedded);
+
+		while (vars)
+		{
+			GSList *exprs;
+			CdnExpansion *ex;
+			CdnVariable *v;
+
+			v = cdn_selection_get_object (vars->data);
+
+			if (exprcache)
+			{
+				ex = exprcache->data;
+			}
+			else
+			{
+				cdn_embedded_context_save (context->priv->embedded);
+
+				cdn_embedded_context_add_selection (context->priv->embedded,
+				                                    vars->data);
+
+				embedded_string_expand_multiple (exprs,
+				                                 expression,
+				                                 context);
+
+				cdn_embedded_context_restore (context->priv->embedded);
+
+				if (exprs->next && g_slist_length (exprs) != g_slist_length (vars))
+				{
+					parser_failed (context,
+					               CDN_STATEMENT (expression),
+					               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+					               "Number of variables (got %d) must be equal to the number of expressions (got %d)",
+					               g_slist_length (vars),
+					               g_slist_length (exprs));
+
+					g_slist_foreach (exprs, (GFunc)cdn_expansion_unref, NULL);
+					g_slist_free (exprs);
+
+					ret = FALSE;
+					break;
+				}
+
+				ex = exprs->data;
+
+				if (exprs->next)
+				{
+					exprcache = exprs;
+				}
+				else
+				{
+					g_slist_free (exprs);
+				}
+			}
+
+			cdn_variable_set_expression (v,
+			                             cdn_expression_new (cdn_expansion_get (ex, 0)));
+
+			cdn_variable_add_flags (v, add_flags);
+			cdn_variable_remove_flags (v, remove_flags);
+
+			cdn_expansion_unref (ex);
+
+			exprcache = g_slist_delete_link (exprcache, exprcache);
+
+			g_object_unref (vars->data);
+			vars = g_slist_delete_link (vars, vars);
+		}
+
+		cdn_embedded_context_restore (context->priv->embedded);
+
+		if (!ret)
+		{
+			break;
+		}
+	}
+}
+
+void
 cdn_parser_context_add_variable (CdnParserContext  *context,
                                  CdnEmbeddedString *name,
                                  CdnEmbeddedString *count_name,

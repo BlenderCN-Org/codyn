@@ -145,6 +145,13 @@ void                   cdn_parser_context_add_variable         (CdnParserContext
                                                                 gboolean                    assign_optional,
                                                                 CdnEmbeddedString          *constraint);
 
+void                   cdn_parser_context_set_variable         (CdnParserContext           *context,
+                                                                CdnSelector                *selector,
+                                                                CdnEmbeddedString          *expression,
+                                                                CdnVariableFlags            add_flags,
+                                                                CdnVariableFlags            remove_flags,
+                                                                GSList                     *attributes);
+
 void                   cdn_parser_context_add_action           (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *target,
                                                                 CdnEmbeddedString          *expression,
