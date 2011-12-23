@@ -255,3 +255,14 @@ cdn_stack_output_ptr (CdnStack *stack)
 {
 	return stack->output_ptr;
 }
+
+void
+cdn_stack_set_output_ptr (CdnStack *stack,
+                          gdouble  *ptr)
+{
+	if (ptr >= stack->output &&
+	    ptr < stack->output + stack->size)
+	{
+		stack->output_ptr = ptr;
+	}
+}

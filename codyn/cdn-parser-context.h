@@ -149,9 +149,7 @@ void                   cdn_parser_context_add_action           (CdnParserContext
                                                                 CdnEmbeddedString          *target,
                                                                 CdnEmbeddedString          *expression,
                                                                 GSList                     *attributes,
-                                                                CdnEmbeddedString          *phases,
-                                                                CdnEmbeddedString          *numr,
-                                                                CdnEmbeddedString          *numc);
+                                                                CdnEmbeddedString          *phases);
 
 void                   cdn_parser_context_add_polynomial       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,

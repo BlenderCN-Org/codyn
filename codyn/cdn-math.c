@@ -403,8 +403,6 @@ op_lerp (CdnStack *stack,
 	gdouble second = cdn_stack_pop (stack);
 	gdouble first = cdn_stack_pop (stack);
 
-	// TODO
-
 	cdn_stack_push (stack, first + (second - first) * third);
 }
 
@@ -831,57 +829,117 @@ op_mindex (CdnStack *stack,
            gint     *argdim)
 {
 	// Sample from the input
-	gint rows = argdim ? argdim[4] : 1;
-	gint cols = argdim ? argdim[5] : 1;
+	gint rows;
+	gint cols;
+	gboolean a1 = FALSE;
+	gboolean a2 = FALSE;
+	gdouble *vptr;
+	gint vrows;
+	gint vcols;
+	gint nv;
+	gdouble *iptr1;
+	gdouble *iptr2;
+	gint n;
 
-	gint numinp = rows * cols;
-	gint numind = argdim ? argdim[0] * argdim[1] : 1;
-
-	gint n = cdn_stack_count (stack);
-	gint i;
-
-	gint startindc = n - numind;
-	gint startindr = startindc - numind;
-	gint startinp = startindr - numinp;
-
-	for (i = 0; i < numind; ++i)
+	if (!argdim)
 	{
-		gint row = (gint)rint (cdn_stack_at (stack, startindr));
-		gint col = (gint)rint (cdn_stack_at (stack, startindc));
+		rows = 1;
+		cols = 1;
 
-		gint idx = row * cols + col;
+		vrows = 1;
+		vcols = 1;
+		nv = 1;
+		n = 1;
 
-		if (idx < numinp)
-		{
-			cdn_stack_set_at (stack,
-			                  startindc,
-			                  cdn_stack_at (stack, startinp + idx));
-		}
-		else
-		{
-			cdn_stack_set_at (stack,
-			                  startindc,
-			                  0);
-		}
+		vptr = cdn_stack_output_ptr (stack) - 1;
+		iptr2 = vptr - 1;
+		iptr1 = iptr2 - 1;
+	}
+	else
+	{
+		a1 = (argdim[4] * argdim[5] == 1);
+		a2 = (argdim[2] * argdim[3] == 1);
 
-		++startindr;
-		++startindc;
+		rows = a1 ? argdim[2] : argdim[4];
+		cols = a1 ? argdim[3] : argdim[5];
+
+		vrows = argdim[0];
+		vcols = argdim[1];
+
+		vptr = cdn_stack_output_ptr (stack) - vrows * vcols;
+		iptr2 = vptr - argdim[2] * argdim[3];
+		iptr1 = iptr2 - argdim[0] * argdim[1];
+
+		n = rows * cols;
 	}
 
-	// Copy back
-	startindc = n - numind;
-
-	for (i = 0; i < numind; ++i)
+	if (a1 && !a2)
 	{
-		cdn_stack_set_at (stack,
-		                  startinp,
-		                  cdn_stack_at (stack, startindc));
+		gint r = (gint)rint (*iptr1) * vcols;
+		gint i;
 
-		++startinp;
-		++startindc;
+		for (i = 0; i < n; ++i)
+		{
+			gint c = (gint)rint (*iptr2++);
+			gint idx = r + c;
+
+			if (idx < 0 || idx >= nv)
+			{
+				*iptr1++ = 0;
+			}
+			else
+			{
+				*iptr1++ = vptr[idx];
+			}
+		}
+
+		cdn_stack_popn (stack, nv + 1);
 	}
+	else if (a2 && !a1)
+	{
+		gint c = (gint)rint (*iptr2);
+		gint i;
 
-	cdn_stack_popn (stack, numinp + numind);
+		for (i = 0; i < n; ++i)
+		{
+			gint r = (gint)rint (*iptr1);
+			gint idx = r * vcols + c;
+
+			if (idx < 0 || idx >= nv)
+			{
+				*iptr1++ = 0;
+			}
+			else
+			{
+				*iptr1++ = vptr[idx];
+			}
+		}
+
+		cdn_stack_popn (stack, nv + 1);
+	}
+	else
+	{
+		gint i;
+
+		for (i = 0; i < n; ++i)
+		{
+			gint c = (gint)rint (*iptr2++);
+			gint r = (gint)rint (*iptr1);
+
+			gint idx = r * vcols + c;
+
+			if (idx < 0 || idx >= nv)
+			{
+				*iptr1++ = 0;
+			}
+			else
+			{
+				*iptr1++ = vptr[idx];
+			}
+		}
+
+		cdn_stack_popn (stack, nv + n);
+	}
 }
 
 static void
@@ -889,6 +947,8 @@ op_index (CdnStack *stack,
           gint      numargs,
           gint     *argdim)
 {
+	gint i;
+
 	if (numargs == 3)
 	{
 		// row/column indexing
@@ -899,46 +959,84 @@ op_index (CdnStack *stack,
 	gint num1 = argdim ? argdim[2] * argdim[3] : 1;
 	gint num2 = argdim ? argdim[0] * argdim[1] : 1;
 
-	gint n = cdn_stack_count (stack);
-	gint i;
+	gdouble *vptr = cdn_stack_output_ptr (stack) - num2;
+	gdouble *iptr = vptr - num1;
 
-	gint start2 = n - num2;
-	gint start1 = start2 - num1;
-
-	for (i = 0; i < num2; ++i)
+	for (i = 0; i < num1; ++i)
 	{
-		gint idx = (gint)rint (cdn_stack_at (stack, start2));
+		gint idx = (gint)rint (*iptr);
 
-		if (idx < num1)
+		if (idx < num2)
 		{
-			cdn_stack_set_at (stack,
-			                  start2,
-			                  cdn_stack_at (stack, start1 + idx));
+			*iptr++ = vptr[idx];
 		}
 		else
 		{
-			cdn_stack_set_at (stack,
-			                  start2,
-			                  0);
+			*iptr++ = 0.0;
+		}
+	}
+
+	cdn_stack_popn (stack, num2);
+}
+
+static void
+op_lindex (CdnStack *stack,
+           gint      numargs,
+           gint     *argdim)
+{
+	gboolean a1 = (argdim[4] * argdim[5] == 1);
+	gboolean a2 = (argdim[2] * argdim[3] == 1);
+	gint n;
+	gdouble *ptr1;
+	gdouble *ptr2;
+	gint si;
+
+	n = a1 ? argdim[2] * argdim[3] : argdim[4] * argdim[5];
+
+	gint w = (gint)rint (cdn_stack_pop (stack));
+
+	ptr2 = cdn_stack_output_ptr (stack) - argdim[2] * argdim[3];
+	ptr1 = ptr2 - argdim[4] * argdim[5];
+
+	if (a1)
+	{
+		gint i;
+
+		si = (gint)rint (*ptr1) * w;
+
+		for (i = 0; i < n; ++i)
+		{
+			*ptr1++ = si + (gint)rint (*ptr2++);
 		}
 
-		++start2;
+		cdn_stack_pop (stack);
 	}
-
-	// Copy back
-	start2 = n - num2;
-
-	for (i = 0; i < num2; ++i)
+	else if (a2)
 	{
-		cdn_stack_set_at (stack,
-		                  start1,
-		                  cdn_stack_at (stack, start2));
+		gint i;
 
-		++start1;
-		++start2;
+		si = (gint)rint (*ptr2);
+
+		for (i = 0; i < n; ++i)
+		{
+			*ptr1 = si + ((gint)rint (*ptr1)) * w;
+			++ptr1;
+		}
+
+		cdn_stack_pop (stack);
 	}
+	else
+	{
+		gint i;
 
-	cdn_stack_popn (stack, num1);
+		for (i = 0; i < n; ++i)
+		{
+			*ptr1 = (gint)rint (*ptr2++) + ((gint)rint (*ptr1)) * w;
+			++ptr1;
+		}
+
+		cdn_stack_popn (stack, n / 2);
+	}
 }
 
 static void
@@ -1103,6 +1201,15 @@ op_zeros (CdnStack *stack,
 	// kind of macro
 }
 
+static void
+op_eye (CdnStack *stack,
+         gint      numargs,
+         gint     *argdim)
+{
+	// This will never be executed because it's compiled as a
+	// kind of macro
+}
+
 typedef struct
 {
 	gchar const *name;
@@ -1163,6 +1270,7 @@ static FunctionEntry function_entries[] = {
 	{"clip", op_clip, 3, FALSE},
 	{"cycle", op_cycle, 3, FALSE},
 	{"index", op_index, -1, FALSE},
+	{"lindex", op_lindex, -1, FALSE},
 	{"transpose", op_transpose, 1, FALSE},
 	{"inverse", op_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
@@ -1171,7 +1279,8 @@ static FunctionEntry function_entries[] = {
 	{"length", op_length, 1, FALSE},
 	{"size", op_size, 1, FALSE},
 	{"hcat", op_hcat, 2, FALSE},
-	{"zeros", op_zeros, 2, FALSE}
+	{"zeros", op_zeros, 2, FALSE},
+	{"eye", op_eye, 1, FALSE}
 };
 
 typedef struct
@@ -1534,8 +1643,8 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			}
 			else if (argdim[0] == 1 && argdim[1] == 1)
 			{
-				outargdim[0] = argdim[0];
-				outargdim[1] = argdim[1];
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[3];
 				return TRUE;
 			}
 			else if (argdim[2] == 1 && argdim[0] == 1)
@@ -1552,6 +1661,11 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			}
 			else
 			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Invalid dimensions of arguments for `lerp' (got (%d, %d) and (%d, %d) and (%d, %d))",
+				             argdim[4], argdim[5], argdim[2], argdim[3], argdim[0], argdim[1]);
 				return FALSE;
 			}
 		case CDN_MATH_FUNCTION_TYPE_CLIP:
@@ -1568,16 +1682,57 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_INDEX:
 			if (arguments == 3)
 			{
-				outargdim[0] = argdim[2];
-				outargdim[1] = argdim[3];
+				/* Non linear index */
+				gboolean a1;
+				gboolean a2;
+
+				a1 = (argdim[4] * argdim[5] == 1);
+				a2 = (argdim[2] * argdim[3] == 1);
+
+				if (!a1 && !a2 && (argdim[2] != argdim[4] || argdim[3] != argdim[5]))
+				{
+					g_set_error (error,
+					             CDN_COMPILE_ERROR_TYPE,
+					             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+					             "Dimensions of arguments for `index' operator must be the same (got (%d, %d) and (%d, %d))",
+					             argdim[4], argdim[5], argdim[2], argdim[3]);
+
+					return FALSE;
+				}
+
+				outargdim[0] = a1 ? argdim[2] : argdim[4];
+				outargdim[1] = a1 ? argdim[3] : argdim[5];
 			}
 			else
 			{
-				outargdim[0] = argdim[0];
-				outargdim[1] = argdim[1];
+				/* Linear index */
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[3];
 			}
 
 			return TRUE;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_LINDEX:
+		{
+			gboolean a1 = (argdim[4] * argdim[5] == 1);
+			gboolean a2 = (argdim[2] * argdim[3] == 1);
+
+			if (!a1 && !a2 && (argdim[2] != argdim[4] || argdim[3] != argdim[5]))
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Dimensions of `lindex' arguments must be the same (got (%d, %d) and (%d, %d))",
+				             argdim[4], argdim[5], argdim[2], argdim[3]);
+
+				return FALSE;
+			}
+
+			outargdim[0] = 1;
+			outargdim[1] = a1 ? argdim[2] * argdim[3] : argdim[4] * argdim[5];
+
+			return TRUE;
+		}
 		break;
 		case CDN_MATH_FUNCTION_TYPE_TRANSPOSE:
 			outargdim[0] = argdim[1];

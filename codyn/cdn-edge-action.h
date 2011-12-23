@@ -85,12 +85,13 @@ void            _cdn_edge_action_set_edge             (CdnEdgeAction            
                                                        CdnEdgeForward *link);
 
 void            cdn_edge_action_set_index       (CdnEdgeAction *action,
-                                                 gint           numr,
-                                                 gint           numc);
+                                                 CdnExpression *expression);
 
-void            cdn_edge_action_get_index       (CdnEdgeAction *action,
-                                                 gint          *numr,
-                                                 gint          *numc);
+CdnExpression   *cdn_edge_action_get_index      (CdnEdgeAction *action);
+
+
+gint const      *cdn_edge_action_get_indices     (CdnEdgeAction *action,
+                                                  gint          *num_indices);
 
 G_END_DECLS
 

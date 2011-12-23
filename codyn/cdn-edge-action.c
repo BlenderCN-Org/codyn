@@ -29,6 +29,8 @@
 #include "cdn-enum-types.h"
 #include "cdn-phaseable.h"
 
+#include <math.h>
+
 /**
  * SECTION:cdn-edge-action
  * @short_description: Link action equation
@@ -45,10 +47,12 @@ struct _CdnEdgeActionPrivate
 	CdnExpression *equation;
 	CdnVariable *property;
 	CdnEdge *link;
-	gint numr;
-	gint numc;
+	CdnExpression *index;
+	gint *indices;
+	gint num_indices;
 
 	guint equation_proxy_id;
+	guint index_proxy_id;
 
 	gchar *annotation;
 	GHashTable *tags;
@@ -69,6 +73,7 @@ enum
 	PROP_MODIFIED,
 	PROP_LINK,
 	PROP_ANNOTATION,
+	PROP_INDEX
 };
 
 static void cdn_modifiable_iface_init (gpointer iface);
@@ -289,6 +294,64 @@ set_equation (CdnEdgeAction *action,
 }
 
 static void
+on_index_changed (CdnEdgeAction *action)
+{
+	g_object_notify (G_OBJECT (action), "index");
+	cdn_modifiable_set_modified (CDN_MODIFIABLE (action), TRUE);
+}
+
+static void
+index_cache_notify (CdnExpression *expression,
+                    CdnEdgeAction *action)
+{
+	g_free (action->priv->indices);
+	action->priv->indices = NULL;
+}
+
+static void
+set_index (CdnEdgeAction *action,
+           CdnExpression *index)
+{
+	if (action->priv->index == index)
+	{
+		return;
+	}
+
+	if (action->priv->index)
+	{
+		cdn_expression_set_cache_notify (action->priv->index,
+		                                 NULL,
+		                                 NULL,
+		                                 NULL);
+
+		g_signal_handler_disconnect (action->priv->index,
+		                             action->priv->index_proxy_id);
+
+		g_object_unref (action->priv->index);
+		action->priv->index = NULL;
+	}
+
+	if (index)
+	{
+		action->priv->index = g_object_ref_sink (index);
+
+		action->priv->index_proxy_id =
+			g_signal_connect_swapped (action->priv->index,
+			                          "notify::expression",
+			                          G_CALLBACK (on_index_changed),
+			                          action);
+
+		cdn_expression_set_cache_notify (action->priv->index,
+		                                 (CdnExpressionCacheNotify)index_cache_notify,
+		                                 action,
+		                                 NULL);
+	}
+
+	g_object_notify (G_OBJECT (action), "index");
+	cdn_modifiable_set_modified (CDN_MODIFIABLE (action), TRUE);
+}
+
+static void
 cdn_edge_action_dispose (GObject *object)
 {
 	CdnEdgeAction *action = CDN_EDGE_ACTION (object);
@@ -299,6 +362,7 @@ cdn_edge_action_dispose (GObject *object)
 	set_target (action, NULL);
 	set_equation (action, NULL);
 	set_edge (action, NULL);
+	set_index (action, NULL);
 
 	G_OBJECT_CLASS (cdn_edge_action_parent_class)->dispose (object);
 }
@@ -346,6 +410,10 @@ cdn_edge_action_set_property (GObject      *object,
 			g_free (self->priv->annotation);
 			self->priv->annotation = g_value_dup_string (value);
 		break;
+		case PROP_INDEX:
+			set_index (self,
+			           CDN_EXPRESSION (g_value_get_object (value)));
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -380,6 +448,9 @@ cdn_edge_action_get_property (GObject    *object,
 		case PROP_ANNOTATION:
 			g_value_set_string (value, self->priv->annotation);
 		break;
+		case PROP_INDEX:
+			/* TODO */
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -462,6 +533,14 @@ cdn_edge_action_class_init (CdnEdgeActionClass *klass)
 	                                  "annotation");
 
 	g_type_class_add_private (object_class, sizeof(CdnEdgeActionPrivate));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_INDEX,
+	                                 g_param_spec_object ("index",
+	                                                      "Index",
+	                                                      "Index",
+	                                                      CDN_TYPE_EXPRESSION,
+	                                                      G_PARAM_READWRITE));
 }
 
 static void
@@ -470,8 +549,6 @@ cdn_edge_action_init (CdnEdgeAction *self)
 	self->priv = CDN_EDGE_ACTION_GET_PRIVATE (self);
 
 	self->priv->tags = cdn_taggable_create_table ();
-	self->priv->numr = -1;
-	self->priv->numc = -1;
 }
 
 /**
@@ -673,29 +750,69 @@ _cdn_edge_action_set_edge (CdnEdgeAction *action,
 
 void
 cdn_edge_action_set_index (CdnEdgeAction *action,
-                           gint           numr,
-                           gint           numc)
+                           CdnExpression *expression)
 {
 	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
 
-	action->priv->numr = numr;
-	action->priv->numc = numc;
+	set_index (action, expression);
 }
 
-void
-cdn_edge_action_get_index (CdnEdgeAction *action,
-                           gint          *numr,
-                           gint          *numc)
+static void
+get_indices (CdnEdgeAction *action)
 {
-	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
+	gint numr;
+	gint numc;
+	gdouble const *values;
+	gint i;
 
-	if (numr)
+	values = cdn_expression_evaluate_values (action->priv->index,
+	                                         &numr,
+	                                         &numc);
+
+	action->priv->num_indices = numr * numc;
+
+	g_free (action->priv->indices);
+	action->priv->indices = g_new (gint, action->priv->num_indices);
+
+	for (i = 0; i < action->priv->num_indices; ++i)
 	{
-		*numr = action->priv->numr;
+		action->priv->indices[i] = (gint)rint (values[i]);
+	}
+}
+
+gint const *
+cdn_edge_action_get_indices (CdnEdgeAction *action,
+                             gint          *num_indices)
+{
+	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), NULL);
+
+	if (!action->priv->index)
+	{
+		if (num_indices)
+		{
+			*num_indices = 0;
+		}
+
+		return NULL;
 	}
 
-	if (numc)
+	if (!action->priv->indices)
 	{
-		*numc = action->priv->numc;
+		get_indices (action);
 	}
+
+	if (num_indices)
+	{
+		*num_indices = action->priv->num_indices;
+	}
+
+	return action->priv->indices;
+}
+
+CdnExpression *
+cdn_edge_action_get_index (CdnEdgeAction *action)
+{
+	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), NULL);
+
+	return action->priv->index;
 }

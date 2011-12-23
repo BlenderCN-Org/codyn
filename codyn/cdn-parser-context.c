@@ -1629,9 +1629,7 @@ cdn_parser_context_add_action (CdnParserContext   *context,
                                CdnEmbeddedString  *target,
                                CdnEmbeddedString  *expression,
                                GSList             *attributes,
-                               CdnEmbeddedString  *phase,
-                               CdnEmbeddedString  *numr,
-                               CdnEmbeddedString  *numc)
+                               CdnEmbeddedString  *phase)
 {
 	Context *ctx;
 	GSList *item;
@@ -1661,8 +1659,6 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 		GSList *exps;
 		GSList *iteme;
 		gchar const *annotation;
-		gint inumr = -1;
-		gint inumc = -1;
 
 		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
 
@@ -1673,46 +1669,74 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 
 		embedded_string_expand_multiple (exps, target, context);
 
-		if (numr)
-		{
-			gchar const *snumr;
-			embedded_string_expand (snumr, numr, context);
-			inumr = g_ascii_strtoll (snumr, NULL, 10);
-		}
-
-		if (numc)
-		{
-			gchar const *snumc;
-			embedded_string_expand (snumc, numc, context);
-			inumc = g_ascii_strtoll (snumc, NULL, 10);
-		}
-
 		for (iteme = exps; iteme; iteme = g_slist_next (iteme))
 		{
 			gchar const *extarget;
 			gchar const *exexpression;
 			CdnEdgeAction *action;
+			CdnEdge *edge;
+			gchar *name;
+			CdnExpression *index = NULL;
+			gchar const *ptr;
 
 			cdn_embedded_context_save (context->priv->embedded);
 			cdn_embedded_context_add_expansion (context->priv->embedded,
 			                                    iteme->data);
 
 			extarget = cdn_expansion_get (iteme->data, 0);
-			embedded_string_expand (exexpression, expression, context);
 
-			action = cdn_edge_get_action (CDN_EDGE (cdn_selection_get_object (item->data)),
-			                              extarget);
+			edge = cdn_selection_get_object (item->data);
+			ptr = g_utf8_strchr (extarget, -1, '[');
+
+			if (ptr)
+			{
+				gchar *comp;
+				gchar *l;
+
+				name = g_strndup (extarget, ptr - extarget);
+
+				l = g_strndup (ptr + 1, strlen (ptr) - 2);
+
+				comp = g_strdup_printf ("lindex(%s, size(to.%s)[1])",
+				                        l,
+				                        name);
+
+				g_free (l);
+				index = cdn_expression_new (comp);
+				g_free (comp);
+			}
+			else
+			{
+				name = g_strdup (extarget);
+			}
+
+			action = cdn_edge_get_action_with_index (edge,
+			                                         name,
+			                                         index);
+
+			embedded_string_expand (exexpression, expression, context);
 
 			if (!action || expression)
 			{
-				action = cdn_edge_action_new (extarget,
+				CdnEdge *edge;
+
+				edge = CDN_EDGE (cdn_selection_get_object (item->data));
+
+				if (action)
+				{
+					cdn_edge_remove_action (edge, action);
+				}
+
+				action = cdn_edge_action_new (name,
 				                              cdn_expression_new (exexpression));
 
-				cdn_edge_add_action (CDN_EDGE (cdn_selection_get_object (item->data)),
+				cdn_edge_add_action (edge,
 				                     action);
 			}
 
-			cdn_edge_action_set_index (action, inumr, inumc);
+			g_free (name);
+
+			cdn_edge_action_set_index (action, index);
 
 			if (annotation && *annotation)
 			{

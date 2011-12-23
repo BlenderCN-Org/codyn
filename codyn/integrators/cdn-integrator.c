@@ -697,15 +697,20 @@ cdn_integrator_init (CdnIntegrator *self)
 }
 
 static void
-sum_values (gdouble *values,
+sum_values (gdouble       *values,
             gdouble const *s,
-            gint num)
+            gint const    *indices,
+            gint           num)
 {
 	gint i;
 
 	for (i = 0; i < num; ++i)
 	{
-		values[i] += s[i];
+		gint idx;
+
+		idx = indices ? indices[i] : i;
+
+		values[idx] += s[idx];
 	}
 }
 
@@ -740,27 +745,23 @@ cdn_integrator_simulation_step_direct (CdnIntegrator *integrator)
 		if (target != NULL)
 		{
 			CdnExpression *expr = cdn_edge_action_get_equation (action);
-			gint numr;
-			gint numc;
 			gdouble *update;
 			gint enumr;
 			gint enumc;
+			gint const *indices;
+			gint num_indices;
+			gdouble const *values;
+			gint numr;
+			gint numc;
 
 			update = cdn_variable_get_update (target, &enumr, &enumc);
-			cdn_edge_action_get_index (action, &numr, &numc);
+			indices = cdn_edge_action_get_indices (action, &num_indices);
+			values = cdn_expression_evaluate_values (expr, &numr, &numc);
 
-			if (numr == -1 && numc == -1)
-			{
-				sum_values (update,
-				            cdn_expression_evaluate_values (expr, &numr, &numc),
-				            numr * numc);
-			}
-			else
-			{
-				gint idx = numc == -1 ? numr : numr * enumc + numc;
-
-				update[idx] += cdn_expression_evaluate (expr);
-			}
+			sum_values (update,
+			            values,
+			            indices,
+			            indices ? num_indices : numr * numc);
 
 			// Note: this is inefficient...
 			cdn_variable_set_values (target,
@@ -795,26 +796,23 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 			gint enumr;
 			gint enumc;
 			gdouble *update;
+			gint const *indices;
+			gint num_indices;
+			gdouble const *values;
 
 			update = cdn_variable_get_update (target, &enumr, &enumc);
-			cdn_edge_action_get_index (action, &numr, &numc);
 
-			if (numr == -1 && numc == -1)
-			{
-				sum_values (update,
-				            cdn_expression_evaluate_values (expr, &numr, &numc),
-				            numr * numc);
-			}
-			else
-			{
-				gint idx = numc == -1 ? numr : numr * enumc + numc;
+			indices = cdn_edge_action_get_indices (action,
+			                                       &num_indices);
 
-				cdn_variable_set_update_value (target,
-				                               update[idx] +
-				                               cdn_expression_evaluate (expr),
-				                               numr,
-				                               numc);
-			}
+			values = cdn_expression_evaluate_values (expr,
+			                                         &numr,
+			                                         &numc);
+
+			sum_values (update,
+			            values,
+			            indices,
+			            indices ? num_indices : numr * numc);
 		}
 
 		actions = g_slist_next (actions);

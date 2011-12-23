@@ -827,9 +827,10 @@ cdn_edge_compile_impl (CdnObject         *object,
 		gint numc;
 		gint enumr;
 		gint enumc;
-		gint anumr;
-		gint anumc;
+		gint num_indices;
+		gint const *indices;
 		CdnVariable *v;
+		CdnExpression *index;
 
 		v = cdn_edge_action_get_target_variable (action);
 
@@ -839,7 +840,7 @@ cdn_edge_compile_impl (CdnObject         *object,
 			{
 				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
 				                      CDN_COMPILE_ERROR_VARIABLE_NOT_FOUND,
-				                      "The property `%s' for a link action of `%s' could not be found",
+				                      "The variable `%s' for an edge action of `%s' could not be found",
 				                      cdn_edge_action_get_target (action),
 				                      cdn_object_get_id (object));
 
@@ -880,6 +881,27 @@ cdn_edge_compile_impl (CdnObject         *object,
 			break;
 		}
 
+		index = cdn_edge_action_get_index (action);
+
+		if (index)
+		{
+			if (!cdn_expression_compile (index, context, error))
+			{
+				if (error)
+				{
+					cdn_compile_error_set (error,
+					                       NULL,
+					                       object,
+					                       NULL,
+					                       action,
+					                       NULL);
+				}
+
+				ret = FALSE;
+				break;
+			}
+		}
+
 		// Check if the dimensionality of the initial value and the
 		// value from the edge is the same
 		cdn_expression_get_dimension (expr, &enumr, &enumc);
@@ -887,9 +909,9 @@ cdn_edge_compile_impl (CdnObject         *object,
 		                              &numr,
 		                              &numc);
 
-		cdn_edge_action_get_index (action, &anumr, &anumc);
+		indices = cdn_edge_action_get_indices (action, &num_indices);
 
-		if (anumr == -1 && (numr != enumr || numc != enumc))
+		if (!indices && (numr != enumr || numc != enumc))
 		{
 			if (error)
 			{
@@ -901,77 +923,6 @@ cdn_edge_compile_impl (CdnObject         *object,
 				                      cdn_edge_action_get_target (action),
 				                      numr,
 				                      numc);
-
-				cdn_compile_error_set (error,
-				                       gerror,
-				                       object,
-				                       NULL,
-				                       action,
-				                       NULL);
-
-				g_error_free (gerror);
-			}
-
-			ret = FALSE;
-			break;
-		}
-		else if (anumr != -1 && (enumr != 1 || enumc != 1))
-		{
-			if (error)
-			{
-				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
-				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				                      "The dimensions of the edge action expression should be 1-by-1, but got %d-by-%d",
-				                      enumr,
-				                      enumc);
-
-				cdn_compile_error_set (error,
-				                       gerror,
-				                       object,
-				                       NULL,
-				                       action,
-				                       NULL);
-
-				g_error_free (gerror);
-			}
-
-			ret = FALSE;
-			break;
-		}
-		else if (anumr != -1 && anumc == -1 && anumr >= numr * numc)
-		{
-			if (error)
-			{
-				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
-				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				                      "The index of the edge action [%d] exceeds the size of the variable (%d)",
-				                      anumr,
-				                      enumr * enumc);
-
-				cdn_compile_error_set (error,
-				                       gerror,
-				                       object,
-				                       NULL,
-				                       action,
-				                       NULL);
-
-				g_error_free (gerror);
-			}
-
-			ret = FALSE;
-			break;
-		}
-		else if (anumr != -1 && anumc != -1 && (anumr >= numr || anumc >= numc))
-		{
-			if (error)
-			{
-				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
-				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				                      "The index of the edge action [%d, %d] exceeds the dimension of the variable %d-by-%d",
-				                      anumr,
-				                      anumc,
-				                      enumr,
-				                      enumc);
 
 				cdn_compile_error_set (error,
 				                       gerror,
@@ -1040,8 +991,13 @@ cdn_edge_equal_impl (CdnObject *first,
 	while (actions1)
 	{
 		CdnEdgeAction *ac1 = actions1->data;
-		CdnEdgeAction *ac2 = cdn_edge_get_action (link2,
-		                                          cdn_edge_action_get_target (ac1));
+		CdnExpression *index;
+
+		index = cdn_edge_action_get_index (ac1);
+
+		CdnEdgeAction *ac2 = cdn_edge_get_action_with_index (link2,
+		                                                     cdn_edge_action_get_target (ac1),
+		                                                     index);
 
 		if (!ac2 || !cdn_edge_action_equal (ac1, ac2))
 		{
@@ -1326,10 +1282,16 @@ cdn_edge_add_action (CdnEdge       *link,
 	g_return_val_if_fail (CDN_IS_EDGE (link), FALSE);
 	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), FALSE);
 
-	gchar const *target = cdn_edge_action_get_target (action);
+	gchar const *target;
 	CdnEdgeAction *orig;
+	CdnExpression *index;
 
-	orig = cdn_edge_get_action (link, target);
+	target = cdn_edge_action_get_target (action);
+	index = cdn_edge_action_get_index (action);
+
+	orig = cdn_edge_get_action_with_index (link,
+	                                       target,
+	                                       index);
 
 	if (orig != NULL)
 	{
@@ -1489,18 +1451,47 @@ cdn_edge_get_action (CdnEdge     *link,
 	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
 	g_return_val_if_fail (target != NULL, NULL);
 
+	return cdn_edge_get_action_with_index (link,
+	                                       target,
+	                                       NULL);
+}
+
+CdnEdgeAction *
+cdn_edge_get_action_with_index (CdnEdge       *link,
+                                gchar const   *target,
+                                CdnExpression *index)
+{
+	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (target != NULL, NULL);
+	g_return_val_if_fail (index == NULL || CDN_IS_EXPRESSION (index), NULL);
+
 	GSList *actions = link->priv->actions;
 
 	while (actions)
 	{
 		CdnEdgeAction *action = actions->data;
-
-		if (g_strcmp0 (cdn_edge_action_get_target (action), target) == 0)
-		{
-			return action;
-		}
+		CdnExpression *oidx;
 
 		actions = g_slist_next (actions);
+
+		oidx = cdn_edge_action_get_index (action);
+
+		if ((index != NULL) != (oidx != NULL))
+		{
+			continue;
+		}
+
+		if (g_strcmp0 (cdn_edge_action_get_target (action), target) != 0)
+		{
+			continue;
+		}
+
+		if (oidx && !cdn_expression_equal (oidx, index))
+		{
+			continue;
+		}
+
+		return action;
 	}
 
 	return NULL;

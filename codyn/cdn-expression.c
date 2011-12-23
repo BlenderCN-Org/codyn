@@ -1187,6 +1187,223 @@ zeros_macro (CdnExpression *expression,
 	}
 }
 
+static CdnInstruction *
+eye_macro (CdnExpression *expression,
+           ParserContext *context)
+{
+	GSList *first = NULL;
+	gint num;
+
+	if (context->stack)
+	{
+		first = context->stack->data;
+	}
+
+	if (!first ||
+	    first->next ||
+	    !CDN_IS_INSTRUCTION_NUMBER (first->data))
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The `eye' function can only be called with 1 number argument");
+
+		return NULL;
+	}
+
+	num = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (first->data)));
+
+	instructions_pop (expression);
+	g_slist_free (context->stack->data);
+
+	context->stack = g_slist_delete_link (context->stack,
+	                                      context->stack);
+
+	// Add identity matrix
+	if (num != 1)
+	{
+		gint r;
+		gint *dims;
+		gint i = 0;
+
+		dims = g_new0 (gint, num * num * 2);
+
+		for (r = 0; r < num; ++r)
+		{
+			gint c;
+
+			for (c = 0; c < num; ++c)
+			{
+				gchar const *s;
+
+				s = (c == r ? "1" : "0");
+
+				instructions_push (expression,
+				                   cdn_instruction_number_new_from_string (s),
+				                   context);
+
+				dims[i] = 1;
+				dims[i + 1] = 1;
+
+				i += 2;
+			}
+		}
+
+		return cdn_instruction_matrix_new (num * num,
+		                                   dims,
+		                                   num,
+		                                   num);
+	}
+	else
+	{
+		return cdn_instruction_number_new_from_string ("1");
+	}
+}
+
+static CdnInstruction *
+length_macro (CdnExpression *expression,
+              ParserContext *context)
+{
+	GSList *first = NULL;
+	gchar *s;
+	gint *argdim;
+	CdnInstruction *ret;
+
+	if (context->stack)
+	{
+		first = context->stack->data;
+	}
+
+	if (!first || first->next)
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The `length' function expects 1 argument");
+
+		return NULL;
+	}
+
+	argdim = get_argdim (expression, context, 1);
+
+	while (first)
+	{
+		instructions_pop (expression);
+		first = g_slist_delete_link (first, first);
+	}
+
+	context->stack = g_slist_delete_link (context->stack,
+	                                      context->stack);
+
+	s = g_strdup_printf ("%d", argdim[0] * argdim[1]);
+
+	g_free (argdim);
+
+	ret = cdn_instruction_number_new_from_string (s);
+	g_free (s);
+
+	return ret;
+}
+
+static CdnInstruction *
+size_macro (CdnExpression *expression,
+            ParserContext *context)
+{
+	GSList *first = NULL;
+	gchar *sr;
+	gchar *sc;
+	gint *argdim;
+	gint *dims;
+
+	if (context->stack)
+	{
+		first = context->stack->data;
+	}
+
+	if (!first || first->next)
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The `size' function expects 1 argument");
+
+		return NULL;
+	}
+
+	argdim = get_argdim (expression, context, 1);
+
+	while (first)
+	{
+		instructions_pop (expression);
+		first = g_slist_delete_link (first, first);
+	}
+
+	context->stack = g_slist_delete_link (context->stack,
+	                                      context->stack);
+
+	sr = g_strdup_printf ("%d", argdim[0]);
+	sc = g_strdup_printf ("%d", argdim[1]);
+
+	g_free (argdim);
+
+	instructions_push (expression,
+	                   cdn_instruction_number_new_from_string (sr),
+	                   context);
+
+	instructions_push (expression,
+	                   cdn_instruction_number_new_from_string (sc),
+	                   context);
+
+	g_free (sr);
+	g_free (sc);
+
+	dims = g_new (gint, 4);
+
+	dims[0] = 1;
+	dims[1] = 1;
+	dims[2] = 1;
+	dims[3] = 1;
+
+	return cdn_instruction_matrix_new (2,
+	                                   dims,
+	                                   1,
+	                                   2);
+}
+
+static void
+swap_arguments_index (CdnExpression *expression,
+                      ParserContext *context,
+                      gint           numargs)
+{
+	// Swap the last two arguments on the stack
+	GSList *first = context->stack->data;
+	GSList *second = context->stack->next->data;
+	GSList *third = numargs > 2 ? context->stack->next->next->data : NULL;
+	GSList *fi;
+	GSList *si;
+	GSList *tmp;
+
+	if (numargs == 2)
+	{
+		swap_arguments (expression, context);
+		return;
+	}
+
+	context->stack->data = third;
+	context->stack->next->data = first;
+	context->stack->next->next->data = second;
+
+	// Then also on the instruction set
+	fi = g_slist_nth (expression->priv->instructions, g_slist_length (first) + g_slist_length (second) - 1);
+	si = g_slist_nth (fi, g_slist_length (third));
+
+	tmp = fi->next;
+	fi->next = si->next;
+	si->next = expression->priv->instructions;
+
+	expression->priv->instructions = tmp;
+}
+
 static gboolean
 parse_function (CdnExpression *expression,
                 gchar const   *name,
@@ -1351,25 +1568,49 @@ parse_function (CdnExpression *expression,
 				// in that order
 				swap_arguments (expression, context);
 			}
-
-			if (fid == CDN_MATH_FUNCTION_TYPE_ZEROS)
+			else if (fid == CDN_MATH_FUNCTION_TYPE_INDEX)
 			{
-				instruction = zeros_macro (expression,
-				                           context);
+				// For index, we move the first argument to
+				// the last (i.e. the thing to index)
+				// because math wants it this way (it's)
+				// more efficient
+				swap_arguments_index (expression,
+				                      context,
+				                      numargs);
 			}
-			else
+
+			switch (fid)
 			{
-				argdim = get_argdim (expression,
-				                     context,
-				                     numargs);
+				case CDN_MATH_FUNCTION_TYPE_ZEROS:
+					instruction = zeros_macro (expression,
+					                           context);
+				break;
+				case CDN_MATH_FUNCTION_TYPE_EYE:
+					instruction = eye_macro (expression,
+					                         context);
+				break;
+				case CDN_MATH_FUNCTION_TYPE_LENGTH:
+					instruction = length_macro (expression,
+					                            context);
+				break;
+				case CDN_MATH_FUNCTION_TYPE_SIZE:
+					instruction = size_macro (expression,
+					                          context);
+				break;
+				break;
+				default:
+					argdim = get_argdim (expression,
+					                     context,
+					                     numargs);
 
-				instruction =
-					cdn_instruction_function_new (fid,
-				                                            name,
-				                                            numargs,
-				                                            argdim);
+					instruction =
+						cdn_instruction_function_new (fid,
+						                              name,
+						                              numargs,
+						                              argdim);
 
-				g_free (argdim);
+					g_free (argdim);
+				break;
 			}
 		}
 	}
@@ -1714,20 +1955,9 @@ parse_indexing (CdnExpression *expression,
 		return FALSE;
 	}
 
+	swap_arguments_index (expression, context, numargs + 1);
+
 	argdim = get_argdim (expression, context, numargs + 1);
-
-	if (numargs == 2 && argdim[0] * argdim[1] != argdim[2] * argdim[3])
-	{
-		parser_failed (expression,
-		               context,
-		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		               "Two arguments of index operators must have the same dimensions, not (%d, %d) and (%d, %d)",
-		               argdim[0], argdim[1], argdim[2], argdim[3]);
-
-		cdn_token_free (next);
-		g_free (argdim);
-		return FALSE;
-	}
 
 	instructions_push (expression,
 	                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_INDEX,
