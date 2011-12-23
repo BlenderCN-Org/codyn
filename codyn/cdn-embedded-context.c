@@ -33,6 +33,7 @@ typedef struct
 {
 	GHashTable *defines;
 	GSList *expansions;
+	CdnSelection *selection;
 
 	gulong marker;
 
@@ -69,12 +70,18 @@ context_free (Context *self)
 		g_slist_free (self->expansions);
 	}
 
+	if (self->selection)
+	{
+		g_object_unref (self->selection);
+	}
+
 	g_slice_free (Context, self);
 }
 
 typedef struct
 {
 	GHashTable *table;
+	CdnSelection *selection;
 	gboolean overwrite;
 } CopyEntryInfo;
 
@@ -85,9 +92,18 @@ copy_entry (gchar const   *key,
 {
 	if (info->overwrite || !g_hash_table_lookup (info->table, key))
 	{
-		g_hash_table_insert (info->table,
-		                     g_strdup (key),
-		                     cdn_expansion_copy (value));
+		if (info->selection)
+		{
+			cdn_selection_add_define (info->selection,
+			                          key,
+			                          value);
+		}
+		else
+		{
+			g_hash_table_insert (info->table,
+			                     g_strdup (key),
+			                     cdn_expansion_copy (value));
+		}
 	}
 }
 
@@ -103,7 +119,7 @@ hash_table_copy (GHashTable *table)
 
 	if (table)
 	{
-		CopyEntryInfo info = {ret, FALSE};
+		CopyEntryInfo info = {ret, NULL, FALSE};
 
 		g_hash_table_foreach (table, (GHFunc)copy_entry, &info);
 	}
@@ -172,6 +188,12 @@ context_copy (Context  *self,
 
 		ret->expansions = self->expansions;
 		ret->defines = self->defines ? g_hash_table_ref (self->defines) : NULL;
+
+		if (self->selection)
+		{
+			ret->selection = cdn_selection_copy_defines (self->selection,
+			                                             copy_defines);
+		}
 	}
 	else
 	{
@@ -350,11 +372,20 @@ cdn_embedded_context_add_define (CdnEmbeddedContext *context,
 
 	ctx = CURRENT_CONTEXT (context);
 
-	copy_defines_on_write (ctx);
+	if (ctx->selection)
+	{
+		cdn_selection_add_define (ctx->selection,
+		                          name,
+		                          value);
+	}
+	else
+	{
+		copy_defines_on_write (ctx);
 
-	g_hash_table_insert (ctx->defines,
-	                     g_strdup (name),
-	                     value ? cdn_expansion_copy (value) : cdn_expansion_new_one (""));
+		g_hash_table_insert (ctx->defines,
+		                     g_strdup (name),
+		                     value ? cdn_expansion_copy (value) : cdn_expansion_new_one (""));
+	}
 
 	for (item = context->priv->contexts->next; item; item = g_slist_next (item))
 	{
@@ -377,6 +408,8 @@ void
 cdn_embedded_context_set_selection (CdnEmbeddedContext *context,
                                     CdnSelection       *selection)
 {
+	Context *ctx;
+
 	g_return_if_fail (CDN_IS_EMBEDDED_CONTEXT (context));
 	g_return_if_fail (CDN_IS_SELECTION (selection));
 
@@ -384,8 +417,11 @@ cdn_embedded_context_set_selection (CdnEmbeddedContext *context,
 	                                     cdn_selection_get_expansions (selection));
 
 	cdn_embedded_context_set_defines (context,
-	                                  cdn_selection_get_defines (selection),
+	                                  NULL,
 	                                  TRUE);
+
+	ctx = CURRENT_CONTEXT (context);
+	ctx->selection = g_object_ref (selection);
 }
 
 void
@@ -398,6 +434,12 @@ cdn_embedded_context_set_defines (CdnEmbeddedContext *context,
 	g_return_if_fail (CDN_IS_EMBEDDED_CONTEXT (context));
 
 	ctx = CURRENT_CONTEXT (context);
+
+	if (ctx->selection)
+	{
+		g_object_unref (ctx->selection);
+		ctx->selection = NULL;
+	}
 
 	if (ctx->defines)
 	{
@@ -483,7 +525,8 @@ cdn_embedded_context_add_defines (CdnEmbeddedContext *context,
 	ctx = CURRENT_CONTEXT (context);
 	copy_defines_on_write (ctx);
 
-	info.table = ctx->defines;
+	info.selection = ctx->selection;
+	info.table = ctx->selection ? cdn_selection_get_defines (ctx->selection) : ctx->defines;
 	info.overwrite = TRUE;
 
 	g_hash_table_foreach (defines,
@@ -555,11 +598,21 @@ cdn_embedded_context_get_define (CdnEmbeddedContext *context,
                                  gchar const        *name)
 {
 	CdnExpansion *ret;
+	Context *ctx;
 
 	g_return_val_if_fail (CDN_IS_EMBEDDED_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	ret = g_hash_table_lookup (CURRENT_CONTEXT (context)->defines, name);
+	ctx = CURRENT_CONTEXT (context);
+
+	if (ctx->selection)
+	{
+		ret = cdn_selection_get_define (ctx->selection, name);
+	}
+	else
+	{
+		ret = g_hash_table_lookup (ctx->defines, name);
+	}
 
 	return ret;
 }
@@ -644,7 +697,46 @@ cdn_embedded_context_get_marker (CdnEmbeddedContext *context)
 GHashTable *
 cdn_embedded_context_get_defines (CdnEmbeddedContext *context)
 {
+	Context *ctx;
+
 	g_return_val_if_fail (CDN_IS_EMBEDDED_CONTEXT (context), NULL);
 
-	return CURRENT_CONTEXT (context)->defines;
+	ctx = CURRENT_CONTEXT (context);
+
+	if (ctx->selection)
+	{
+		return cdn_selection_get_defines (ctx->selection);
+	}
+	else
+	{
+		return ctx->defines;
+	}
+}
+
+void
+cdn_embedded_context_set_copy_defines_on_write (CdnEmbeddedContext *context)
+{
+	GHashTable *defs = NULL;
+	GSList *item;
+
+	g_return_if_fail (CDN_IS_EMBEDDED_CONTEXT (context));
+
+	item = context->priv->contexts;
+
+	while (TRUE)
+	{
+		Context *ctx = item->data;
+	
+		if (defs == NULL || ctx->defines == defs)
+		{
+			ctx->copy_defines_on_write = TRUE;
+			defs = ctx->defines;
+		}
+		else
+		{
+			break;
+		}
+
+		item = g_slist_next (item);
+	}
 }

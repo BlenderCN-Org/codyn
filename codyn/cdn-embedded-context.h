@@ -110,6 +110,8 @@ gchar              *cdn_embedded_context_calculate      (CdnEmbeddedContext  *co
 
 gulong              cdn_embedded_context_get_marker     (CdnEmbeddedContext *context);
 
+void                cdn_embedded_context_set_copy_defines_on_write (CdnEmbeddedContext *context);
+
 G_END_DECLS
 
 #endif /* __CDN_EMBEDDED_CONTEXT_H__ */

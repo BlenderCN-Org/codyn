@@ -218,6 +218,23 @@ cdn_selection_copy (CdnSelection *selection)
 	return ret;
 }
 
+static void
+copy_defines_on_write (CdnSelection *selection)
+{
+	GHashTable *nd;
+
+	if (!selection->priv->copy_defines_on_write)
+	{
+		return;
+	}
+
+	nd = copy_defines (selection->priv->defines);
+	g_hash_table_unref (selection->priv->defines);
+	selection->priv->defines = nd;
+
+	selection->priv->copy_defines_on_write = FALSE;
+}
+
 /**
  * cdn_selection_copy_defines:
  * @selection: A #CdnSelection
@@ -235,6 +252,11 @@ cdn_selection_copy_defines (CdnSelection *selection,
 	CdnSelection *ret;
 
 	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
+
+	if (!copy_defines)
+	{
+		copy_defines_on_write (selection);
+	}
 
 	ret = cdn_selection_new_defines (selection->priv->object,
 	                                 selection->priv->expansions,
@@ -300,23 +322,6 @@ cdn_selection_get_expansions (CdnSelection *selection)
 	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
 
 	return selection->priv->expansions;
-}
-
-static void
-copy_defines_on_write (CdnSelection *selection)
-{
-	GHashTable *nd;
-
-	if (!selection->priv->copy_defines_on_write)
-	{
-		return;
-	}
-
-	nd = copy_defines (selection->priv->defines);
-	g_hash_table_unref (selection->priv->defines);
-	selection->priv->defines = nd;
-
-	selection->priv->copy_defines_on_write = FALSE;
 }
 
 void

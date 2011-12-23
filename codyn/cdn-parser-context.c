@@ -2879,6 +2879,8 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 			                                                   cdn_embedded_context_get_defines (context->priv->embedded),
 			                                                   TRUE));
 
+			cdn_embedded_context_set_copy_defines_on_write (context->priv->embedded);
+
 			cdn_embedded_context_restore (context->priv->embedded);
 		}
 
