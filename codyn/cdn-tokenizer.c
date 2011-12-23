@@ -55,6 +55,7 @@ static OperatorProperties operator_properties[] =
 	{5, 1}, // CDN_TOKEN_OPERATOR_TYPE_GREATER_OR_EQUAL,
 	{5, 1}, // CDN_TOKEN_OPERATOR_TYPE_LESS_OR_EQUAL,
 	{4, 1}, // CDN_TOKEN_OPERATOR_TYPE_EQUAL,
+	{4, 1}, // CDN_TOKEN_OPERATOR_TYPE_NEQUAL,
 	{2, 1}, // CDN_TOKEN_OPERATOR_TYPE_OR,
 	{3, 1}, // CDN_TOKEN_OPERATOR_TYPE_AND,
 
@@ -271,6 +272,10 @@ cdn_tokenizer_parse_operator (gchar const **buffer)
 	else if (c == '&' && n == '&')
 	{
 		type = CDN_TOKEN_OPERATOR_TYPE_AND;
+	}
+	else if (c == '!' && n == '=')
+	{
+		type = CDN_TOKEN_OPERATOR_TYPE_NEQUAL;
 	}
 	else
 	{
