@@ -2905,6 +2905,9 @@ parse_operator (CdnExpression *expression,
 		case CDN_TOKEN_OPERATOR_TYPE_EQUAL:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_EQUAL, "==", 2, argdim);
 		break;
+		case CDN_TOKEN_OPERATOR_TYPE_NEQUAL:
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_NEQUAL, "!=", 2, argdim);
+		break;
 		case CDN_TOKEN_OPERATOR_TYPE_OR:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_OR, "||", 2, argdim);
 		break;

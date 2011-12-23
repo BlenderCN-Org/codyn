@@ -725,6 +725,20 @@ op_equal (CdnStack *stack,
 }
 
 static gdouble
+op_nequal_impl (gdouble a, gdouble b)
+{
+	return fabs (a - b) >= 10e-12 ? 1.0 : 0.0;
+}
+
+static void
+op_nequal (CdnStack *stack,
+          gint      numargs,
+          gint     *argdim)
+{
+	foreach_element2 (stack, argdim, op_nequal_impl);
+}
+
+static gdouble
 op_or_impl (gdouble a, gdouble b)
 {
 	return !op_equal_impl (a, 0) || !op_equal_impl (b, 0);
@@ -1234,6 +1248,7 @@ static FunctionEntry function_entries[] = {
 	{">=", op_greater_or_equal, 2, FALSE},
 	{"<=", op_less_or_equal, 2, FALSE},
 	{"==", op_equal, 2, TRUE},
+	{"!=", op_nequal, 2, TRUE},
 	{"||", op_or, 2, TRUE},
 	{"&&", op_and, 2, TRUE},
 	{"!", op_negate, 1, FALSE},
@@ -1526,6 +1541,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
 		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
 		case CDN_MATH_FUNCTION_TYPE_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_NEQUAL:
 		case CDN_MATH_FUNCTION_TYPE_OR:
 		case CDN_MATH_FUNCTION_TYPE_AND:
 		case CDN_MATH_FUNCTION_TYPE_POW:
