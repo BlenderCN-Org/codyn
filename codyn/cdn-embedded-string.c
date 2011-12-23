@@ -925,6 +925,11 @@ fast_itoa (gint   val,
 {
 	gint i = 30;
 
+	if (val == 0)
+	{
+		ret[i--] = '0';
+	}
+
 	for (; val && i; --i, val /= 10)
 	{
 		ret[i] = "0123456789"[val % 10];
