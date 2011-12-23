@@ -200,7 +200,7 @@ cdn_network_serializer_new (CdnNetwork *network,
 
 extern int xmlIndentTreeOutput;
 
-static void group_to_xml (CdnNetworkSerializer *serializer, xmlNodePtr root, CdnNode *group);
+static void node_to_xml (CdnNetworkSerializer *serializer, xmlNodePtr root, CdnNode *group);
 
 static gboolean
 property_matches_template (CdnVariable  *property,
@@ -581,14 +581,6 @@ object_to_xml (CdnNetworkSerializer *serializer,
 	return ptr;
 }
 
-static xmlNodePtr
-state_to_xml (CdnNetworkSerializer *serializer,
-              xmlNodePtr            parent,
-              CdnObject            *state)
-{
-	return object_to_xml (serializer, parent, state, "state", NULL);
-}
-
 static gboolean
 action_matches_template (CdnEdgeAction *action,
                          GSList const  *templates)
@@ -628,9 +620,10 @@ action_matches_template (CdnEdgeAction *action,
 }
 
 static xmlNodePtr
-link_to_xml (CdnNetworkSerializer *serializer,
+edge_to_xml (CdnNetworkSerializer *serializer,
              xmlNodePtr            parent,
-             CdnEdge              *link)
+             CdnEdge              *link,
+             gboolean              isself)
 {
 	CdnNode *from = cdn_edge_get_from (link);
 	CdnNode *to = cdn_edge_get_to (link);
@@ -638,21 +631,28 @@ link_to_xml (CdnNetworkSerializer *serializer,
 	xmlNodePtr node = object_to_xml (serializer,
 	                                 parent,
 	                                 CDN_OBJECT (link),
-	                                 "edge",
+	                                 isself ? "self-edge" : "edge",
 	                                 NULL);
 
-	if (from != NULL)
+	if (!isself)
 	{
-		xmlNewProp (node,
-		            (xmlChar *)"from",
-		            (xmlChar *)cdn_object_get_id (CDN_OBJECT (from)));
-	}
+		if (from != NULL)
+		{
+			xmlNewProp (node,
+				    (xmlChar const *)"from",
+				    (xmlChar const *)cdn_object_get_id (CDN_OBJECT (from)));
+		}
 
-	if (to != NULL)
+		if (to != NULL)
+		{
+			xmlNewProp (node,
+				    (xmlChar const *)"to",
+				    (xmlChar const *)cdn_object_get_id (CDN_OBJECT (to)));
+		}
+	}
+	else
 	{
-		xmlNewProp (node,
-		            (xmlChar *)"to",
-		            (xmlChar *)cdn_object_get_id (CDN_OBJECT (to)));
+		xmlUnsetProp (node, (xmlChar const *)"id");
 	}
 
 	// Link actions
@@ -662,6 +662,7 @@ link_to_xml (CdnNetworkSerializer *serializer,
 	for (item = cdn_edge_get_actions (link); item; item = g_slist_next (item))
 	{
 		CdnEdgeAction *action = item->data;
+		CdnExpression *index;
 
 		if (action_matches_template (action, templates))
 		{
@@ -683,9 +684,18 @@ link_to_xml (CdnNetworkSerializer *serializer,
 		if (expr && *expr)
 		{
 			xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
-		                                 (xmlChar *)expr);
+			                                 (xmlChar *)expr);
 
 			xmlAddChild (ac, text);
+		}
+
+		index = cdn_edge_action_get_index (action);
+
+		if (index)
+		{
+			xmlNewProp (ac,
+			            (xmlChar const *)"index",
+			            (xmlChar const *)cdn_expression_get_as_string (index));
 		}
 
 		xmlAddChild (node, ac);
@@ -896,7 +906,7 @@ import_to_xml (CdnNetworkSerializer *serializer,
 {
 	if (cdn_modifiable_get_modified (CDN_MODIFIABLE (import)))
 	{
-		group_to_xml (serializer, root, CDN_NODE (import));
+		node_to_xml (serializer, root, CDN_NODE (import));
 		return;
 	}
 
@@ -1066,11 +1076,11 @@ any_object_to_xml (CdnNetworkSerializer *serializer,
 	}
 	else if (CDN_IS_NODE (object))
 	{
-		group_to_xml (serializer, root, CDN_NODE (object));
+		node_to_xml (serializer, root, CDN_NODE (object));
 	}
 	else if (CDN_IS_EDGE (object))
 	{
-		link_to_xml (serializer, root, CDN_EDGE (object));
+		edge_to_xml (serializer, root, CDN_EDGE (object), FALSE);
 	}
 	else if (CDN_IS_INPUT_FILE (object))
 	{
@@ -1083,10 +1093,6 @@ any_object_to_xml (CdnNetworkSerializer *serializer,
 	else if (CDN_IS_FUNCTION (object))
 	{
 		function_to_xml (serializer, root, CDN_FUNCTION (object));
-	}
-	else
-	{
-		state_to_xml (serializer, root, object);
 	}
 }
 
@@ -1117,8 +1123,8 @@ check_proxy_template (CdnObject *object,
 }
 
 static void
-group_children_to_xml (CdnNetworkSerializer *serializer,
-                       xmlNodePtr            group_node,
+node_children_to_xml (CdnNetworkSerializer *serializer,
+                       xmlNodePtr           group_node,
                        CdnNode             *group)
 {
 	GSList const *children = cdn_node_get_children (group);
@@ -1138,6 +1144,14 @@ group_children_to_xml (CdnNetworkSerializer *serializer,
 		children = g_slist_next (children);
 	}
 
+	if (cdn_node_has_self_edge (group))
+	{
+		edge_to_xml (serializer,
+		             group_node,
+		             cdn_node_get_self_edge (group),
+		             TRUE);
+	}
+
 	GSList *item;
 	links = g_slist_reverse (links);
 
@@ -1150,7 +1164,7 @@ group_children_to_xml (CdnNetworkSerializer *serializer,
 }
 
 static gboolean
-group_interface_is_template (CdnNode    *group,
+node_interface_is_template (CdnNode    *group,
                              gchar const *name)
 {
 	CdnVariableInterface *iface;
@@ -1194,7 +1208,7 @@ group_interface_is_template (CdnNode    *group,
 }
 
 static gboolean
-group_interface_is_proxy (CdnNode    *group,
+node_interface_is_proxy (CdnNode    *group,
                           gchar const *name)
 {
 	CdnObject *proxy;
@@ -1231,12 +1245,12 @@ find_non_template_interfaces (CdnNode *group)
 
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
-		if (group_interface_is_template (group, *ptr))
+		if (node_interface_is_template (group, *ptr))
 		{
 			continue;
 		}
 
-		if (group_interface_is_proxy (group, *ptr))
+		if (node_interface_is_proxy (group, *ptr))
 		{
 			continue;
 		}
@@ -1251,7 +1265,7 @@ find_non_template_interfaces (CdnNode *group)
 }
 
 static void
-group_interface_to_xml (CdnNetworkSerializer *serializer,
+node_interface_to_xml (CdnNetworkSerializer *serializer,
                         xmlNodePtr            group_node,
                         CdnNode             *group)
 {
@@ -1295,7 +1309,7 @@ group_interface_to_xml (CdnNetworkSerializer *serializer,
 }
 
 static void
-group_to_xml (CdnNetworkSerializer *serializer,
+node_to_xml (CdnNetworkSerializer *serializer,
               xmlNodePtr            root,
               CdnNode             *group)
 {
@@ -1324,9 +1338,8 @@ group_to_xml (CdnNetworkSerializer *serializer,
 		group_node = root;
 	}
 
-	group_interface_to_xml (serializer, group_node, group);
-
-	group_children_to_xml (serializer, group_node, group);
+	node_interface_to_xml (serializer, group_node, group);
+	node_children_to_xml (serializer, group_node, group);
 }
 
 static void
@@ -1437,17 +1450,17 @@ cdn_network_serializer_serialize (CdnNetworkSerializer  *serializer,
 		templates = xmlNewDocNode (doc, NULL, (xmlChar *)"templates", NULL);
 		xmlAddChild (nnetwork, templates);
 
-		group_children_to_xml (serializer, templates, template_group);
+		node_children_to_xml (serializer, templates, template_group);
 	}
 
 	// Generate state and link nodes
 	if (serializer->priv->root)
 	{
-		group_to_xml (serializer, nnetwork, CDN_NODE (serializer->priv->root));
+		node_to_xml (serializer, nnetwork, CDN_NODE (serializer->priv->root));
 	}
 	else
 	{
-		group_to_xml (serializer, nnetwork, CDN_NODE (serializer->priv->network));
+		node_to_xml (serializer, nnetwork, CDN_NODE (serializer->priv->network));
 	}
 
 	write_extra_nodes (serializer);

@@ -768,14 +768,16 @@ static CdnObject *
 parse_object (CdnNetworkDeserializer *deserializer,
               GType                   gtype,
               xmlNodePtr              node,
-              gboolean               *new_object)
+              gboolean               *new_object,
+              gboolean                isselfedge)
 {
 	xmlChar *id = xmlGetProp (node, (xmlChar *)"id");
 	GError *error = NULL;
+	GSList *item;
 
 	*new_object = FALSE;
 
-	if (!id)
+	if (!id && !isselfedge)
 	{
 		parser_failed (deserializer,
 		               node,
@@ -793,42 +795,50 @@ parse_object (CdnNetworkDeserializer *deserializer,
 		return NULL;
 	}
 
-	/* Get the final type by inspecting the template types. This is only
-	   needed because groups can be defined in the XML using the <state>
-	   tag (which makes it easier for the user, but a bit more effort
-	   to parse :)) */
-	gtype = cdn_network_parser_utils_type_from_templates (gtype, templates);
-
-	GSList *item;
-
-	/* Check if the template types can actually be applied to the
-	   object type that we are constructing. Only template types
-	   which are superclasses of the new object type can be
-	   applied */
-	for (item = templates; item; item = g_slist_next (item))
+	if (!isselfedge)
 	{
-		GType template_type = G_TYPE_FROM_INSTANCE (item->data);
+		/* Get the final type by inspecting the template types. This is only
+		   needed because groups can be defined in the XML using the <state>
+		   tag (which makes it easier for the user, but a bit more effort
+		   to parse :)) */
+		gtype = cdn_network_parser_utils_type_from_templates (gtype, templates);
 
-		if (!g_type_is_a (gtype, template_type))
+		/* Check if the template types can actually be applied to the
+		   object type that we are constructing. Only template types
+		   which are superclasses of the new object type can be
+		   applied */
+		for (item = templates; item; item = g_slist_next (item))
 		{
-			parser_failed (deserializer,
-			               node,
-			               CDN_NETWORK_LOAD_ERROR_OBJECT,
-			               "Referenced template is of incorrect type %s (need %s)",
-			               g_type_name (template_type),
-			               g_type_name (gtype));
+			GType template_type = G_TYPE_FROM_INSTANCE (item->data);
 
-			g_slist_free (templates);
-			xmlFree (id);
+			if (!g_type_is_a (gtype, template_type))
+			{
+				parser_failed (deserializer,
+				               node,
+				               CDN_NETWORK_LOAD_ERROR_OBJECT,
+				               "Referenced template is of incorrect type %s (need %s)",
+				               g_type_name (template_type),
+				               g_type_name (gtype));
 
-			return NULL;
+				g_slist_free (templates);
+				xmlFree (id);
+
+				return NULL;
+			}
 		}
 	}
 
 	CdnNode *parent = deserializer->priv->parents->data;
 	CdnObject *child;
 
-	child = cdn_node_get_child (parent, (gchar const *)id);
+	if (isselfedge)
+	{
+		child = CDN_OBJECT (cdn_node_get_self_edge (parent));
+	}
+	else
+	{
+		child = cdn_node_get_child (parent, (gchar const *)id);
+	}
 
 	if (!child)
 	{
@@ -899,7 +909,11 @@ new_object (CdnNetworkDeserializer *deserializer,
 	CdnObject *object;
 	gboolean new_object;
 
-	object = parse_object (deserializer, gtype, node, &new_object);
+	object = parse_object (deserializer,
+	                       gtype,
+	                       node,
+	                       &new_object,
+	                       FALSE);
 
 	if (object)
 	{
@@ -1274,98 +1288,111 @@ parse_actions (CdnNetworkDeserializer *deserializer,
 }
 
 static gboolean
-parse_link (CdnNetworkDeserializer *deserializer,
-            xmlNodePtr              node)
+parse_edge (CdnNetworkDeserializer *deserializer,
+            xmlNodePtr              node,
+            gboolean                isself)
 {
 	CdnObject *object;
 	gboolean new_object;
 
-	object = parse_object (deserializer, CDN_TYPE_EDGE, node, &new_object);
+	object = parse_object (deserializer,
+	                       CDN_TYPE_EDGE,
+	                       node,
+	                       &new_object,
+	                       isself);
 
 	if (!object)
 	{
 		return FALSE;
 	}
 
-	/* Fill in from and to */
-	xmlChar *from = xmlGetProp (node, (xmlChar *)"from");
-
-	if (from)
+	if (!isself)
 	{
-		CdnObject *fromobj = cdn_node_get_child (CDN_NODE (deserializer->priv->parents->data),
-		                                          (gchar const *)from);
-		gboolean ret = TRUE;
+		/* Fill in from and to */
+		xmlChar *from = xmlGetProp (node, (xmlChar *)"from");
 
-		if (!fromobj)
+		if (from)
 		{
-			parser_failed (deserializer,
-			               node,
-			               CDN_NETWORK_LOAD_ERROR_EDGE,
-			               "The `from' object `%s' could not be found for link `%s'",
-			               from,
-			               cdn_object_get_id (object));
-			ret = FALSE;
-		}
-		else if (CDN_IS_EDGE (fromobj))
-		{
-			g_warning ("The `from` object can not be a link (%s)",
-			                 cdn_object_get_id (object));
-			ret = FALSE;
-		}
+			CdnObject *fromobj = cdn_node_get_child (CDN_NODE (deserializer->priv->parents->data),
+				                                  (gchar const *)from);
+			gboolean ret = TRUE;
 
-		xmlFree (from);
-
-		if (!ret)
-		{
-			if (new_object)
+			if (!fromobj)
 			{
-				g_object_unref (object);
+				parser_failed (deserializer,
+				               node,
+				               CDN_NETWORK_LOAD_ERROR_EDGE,
+				               "The `source' object `%s' could not be found for edge `%s'",
+				               from,
+				               cdn_object_get_id (object));
+
+				ret = FALSE;
+			}
+			else if (!CDN_IS_NODE (fromobj))
+			{
+				g_warning ("The `source` object `%s' can only be a node",
+				           from);
+
+				ret = FALSE;
 			}
 
-			return FALSE;
-		}
+			xmlFree (from);
 
-		g_object_set (object, "from", fromobj, NULL);
-	}
-
-	xmlChar *to = xmlGetProp (node, (xmlChar *)"to");
-
-	if (to)
-	{
-		CdnObject *toobj = cdn_node_get_child (CDN_NODE (deserializer->priv->parents->data),
-		                                       (gchar const *)to);
-		gboolean ret = TRUE;
-
-		if (!toobj)
-		{
-			parser_failed (deserializer,
-			               node,
-			               CDN_NETWORK_LOAD_ERROR_EDGE,
-			               "The `to' object `%s' could not be found for link `%s'",
-			               to,
-			               cdn_object_get_id (object));
-			ret = FALSE;
-		}
-		else if (CDN_IS_EDGE (toobj))
-		{
-			g_warning ("The `to' object can not be a link (%s)",
-			                 cdn_object_get_id (object));
-			ret = FALSE;
-		}
-
-		xmlFree (to);
-
-		if (!ret)
-		{
-			if (new_object)
+			if (!ret)
 			{
-				g_object_unref (object);
+				if (new_object)
+				{
+					g_object_unref (object);
+				}
+
+				return FALSE;
 			}
 
-			return FALSE;
+			g_object_set (object, "from", fromobj, NULL);
 		}
 
-		g_object_set (object, "to", toobj, NULL);
+		xmlChar *to = xmlGetProp (node, (xmlChar *)"to");
+
+		if (to)
+		{
+			CdnObject *toobj = cdn_node_get_child (CDN_NODE (deserializer->priv->parents->data),
+				                               (gchar const *)to);
+			gboolean ret = TRUE;
+
+			if (!toobj)
+			{
+				parser_failed (deserializer,
+				               node,
+				               CDN_NETWORK_LOAD_ERROR_EDGE,
+				               "The `sink' object `%s' could not be found for edge `%s'",
+				               to,
+				               cdn_object_get_id (object));
+				ret = FALSE;
+			}
+			else if (!CDN_IS_NODE (toobj))
+			{
+				parser_failed (deserializer,
+				               node,
+				               CDN_NETWORK_LOAD_ERROR_EDGE,
+				               "The `sink' object `%s' can only be a node",
+				               to);
+				ret = FALSE;
+			}
+
+			xmlFree (to);
+
+			if (!ret)
+			{
+				if (new_object)
+				{
+					g_object_unref (object);
+				}
+
+				return FALSE;
+			}
+
+			g_object_set (object, "to", toobj, NULL);
+		}
 	}
 
 	deserializer->priv->object = object;
@@ -1389,7 +1416,7 @@ parse_link (CdnNetworkDeserializer *deserializer,
 
 	gboolean ret = TRUE;
 
-	if (new_object)
+	if (new_object && !isself)
 	{
 		ret = cdn_node_add (CDN_NODE (deserializer->priv->parents->data),
 		                     object,
@@ -1476,7 +1503,7 @@ parse_interface (CdnNetworkDeserializer *deserializer,
 }
 
 static gboolean
-parse_group (CdnNetworkDeserializer *deserializer,
+parse_node (CdnNetworkDeserializer *deserializer,
              xmlNodePtr              node)
 {
 	CdnObject *object;
@@ -1870,11 +1897,15 @@ parse_network (CdnNetworkDeserializer *deserializer,
 
 		if (g_strcmp0 (nodename, "node") == 0)
 		{
-			ret = parse_group (deserializer, node);
+			ret = parse_node (deserializer, node);
 		}
 		else if (g_strcmp0 (nodename, "edge") == 0)
 		{
-			ret = parse_link (deserializer, node);
+			ret = parse_edge (deserializer, node, FALSE);
+		}
+		else if (g_strcmp0 (nodename, "self-edge") == 0)
+		{
+			ret = parse_edge (deserializer, node, TRUE);
 		}
 		else if (g_strcmp0 (nodename, "import") == 0)
 		{
