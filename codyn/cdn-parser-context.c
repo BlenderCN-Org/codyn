@@ -147,6 +147,7 @@ struct _CdnParserContextPrivate
 	CdnStatement *error_statement;
 
 	CdnLayout *layout;
+	GHashTable *files;
 
 	guint in_event_handler : 1;
 	guint error_occurred : 1;
@@ -335,6 +336,8 @@ cdn_parser_context_finalize (GObject *object)
 		g_object_unref (self->priv->annotation);
 	}
 
+	g_hash_table_destroy (self->priv->files);
+
 	G_OBJECT_CLASS (cdn_parser_context_parent_class)->finalize (object);
 }
 
@@ -464,6 +467,11 @@ cdn_parser_context_init (CdnParserContext *self)
 
 	self->priv->start_token = T_START_DOCUMENT;
 	self->priv->embedded = cdn_embedded_context_new ();
+
+	self->priv->files = g_hash_table_new_full (g_file_hash,
+	                                           (GEqualFunc)g_file_equal,
+	                                           (GDestroyNotify)g_object_unref,
+	                                           NULL);
 }
 
 CdnParserContext *
@@ -4442,6 +4450,7 @@ cdn_parser_context_push_input (CdnParserContext *context,
 {
 	InputItem *item;
 	GError *error = NULL;
+	gboolean isonce;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (file != NULL || stream != NULL);
@@ -4451,10 +4460,24 @@ cdn_parser_context_push_input (CdnParserContext *context,
 		return;
 	}
 
+	isonce = find_attribute (attributes, "once") != NULL;
+
+	if (file && isonce && g_hash_table_lookup (context->priv->files, file))
+	{
+		return;
+	}
+
 	item = input_item_new (file, stream, &error);
 
 	if (item)
 	{
+		if (file)
+		{
+			g_hash_table_insert (context->priv->files,
+			                     g_file_dup (file),
+			                     GINT_TO_POINTER (1));
+		}
+
 		context->priv->inputs = g_slist_prepend (context->priv->inputs,
 		                                         item);
 
@@ -4499,6 +4522,7 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 	GSList *items;
 	GSList *item;
 	InputItem *inp;
+	gboolean isonce;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
@@ -4523,6 +4547,8 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 	embedded_string_expand_multiple (items, filename, context);
 	inp = CURRENT_INPUT (context);
 
+	isonce = find_attribute (attributes, "once") != NULL;
+
 	for (item = items; item; item = g_slist_next (item))
 	{
 		gchar const *res;
@@ -4545,7 +4571,10 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 			break;
 		}
 
-		cdn_parser_context_push_input (context, file, NULL, attributes);
+		cdn_parser_context_push_input (context,
+		                               file,
+		                               NULL,
+		                               attributes);
 
 		if (!context->priv->error)
 		{
