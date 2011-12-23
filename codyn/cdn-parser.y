@@ -1041,6 +1041,17 @@ variable
 					                                   $1,
 					                                   FALSE,
 					                                   NULL); errb }
+	| attributes
+	  T_KEY_SET
+	  selector
+	  '='
+	  value_as_string
+	  variable_flags		{ cdn_parser_context_set_variable (context,
+	                                                                   $3,
+	                                                                   $5,
+	                                                                   $6.add,
+	                                                                   $6.remove,
+	                                                                   $1); errb }
 	;
 
 variable_flag_sign
