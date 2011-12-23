@@ -254,7 +254,8 @@ void                   cdn_parser_context_push_selector_pseudo (CdnParserContext
 
 CdnSelector           *cdn_parser_context_pop_selector         (CdnParserContext           *context);
 CdnSelector           *cdn_parser_context_peek_selector        (CdnParserContext           *context);
-void                   cdn_parser_context_push_selector        (CdnParserContext           *context);
+void                   cdn_parser_context_push_selector        (CdnParserContext           *context,
+                                                                gboolean                    with);
 
 gssize                 cdn_parser_context_read                 (CdnParserContext           *context,
                                                                 gchar                      *buffer,

@@ -4137,14 +4137,15 @@ ensure_selector (CdnParserContext *context)
 {
 	if (!context->priv->selectors)
 	{
-		cdn_parser_context_push_selector (context);
+		cdn_parser_context_push_selector (context, TRUE);
 	}
 
 	return context->priv->selectors->data;
 }
 
 void
-cdn_parser_context_push_selector (CdnParserContext *context)
+cdn_parser_context_push_selector (CdnParserContext *context,
+                                  gboolean          with)
 {
 	CdnSelector *selector;
 	Context *ctx;
@@ -4153,7 +4154,7 @@ cdn_parser_context_push_selector (CdnParserContext *context)
 
 	ctx = CURRENT_CONTEXT (context);
 
-	if (ctx && ctx->with)
+	if (ctx && ctx->with && with)
 	{
 		selector = cdn_selector_copy_with (ctx->with);
 	}
