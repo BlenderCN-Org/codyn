@@ -2677,6 +2677,9 @@ cdn_node_get_self_edge (CdnNode *group)
 		                                       group,
 		                                       group);
 
+		_cdn_object_set_parent (CDN_OBJECT (group->priv->self_link),
+		                        group);
+
 		group->priv->links = g_slist_prepend (group->priv->links,
 		                                      group->priv->self_link);
 	}
