@@ -23,7 +23,7 @@
 #ifndef __CDN_STACK_H__
 #define __CDN_STACK_H__
 
-#include <glib.h>
+#include <glib-object.h>
 
 G_BEGIN_DECLS
 
@@ -40,7 +40,12 @@ typedef struct
 	gint extra_space;
 } CdnStackManipulation;
 
+GType     cdn_stack_get_type ();
+GType     cdn_stack_manipulation_get_type ();
+
 CdnStack *cdn_stack_new     (guint     size);
+CdnStack *cdn_stack_copy    (CdnStack *stack);
+
 void      cdn_stack_init    (CdnStack *stack,
                              guint     size);
 

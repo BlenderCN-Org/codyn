@@ -9,6 +9,21 @@
 #include "cdn-symbolic.h"
 #include "tree-algorithms/cdn-tree-algorithms-private.h"
 
+GType
+cdn_expression_tree_iter_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnExpressionTreeIter",
+		                                      (GBoxedCopyFunc)cdn_expression_tree_iter_copy,
+		                                      (GBoxedFreeFunc)cdn_expression_tree_iter_free);
+	}
+
+	return gtype;
+}
+
 void
 cdn_expression_tree_iter_free (CdnExpressionTreeIter *self)
 {

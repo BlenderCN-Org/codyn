@@ -21,6 +21,76 @@
  */
 
 #include "cdn-stack-private.h"
+#include <string.h>
+
+GType
+cdn_stack_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStack",
+		                                      (GBoxedCopyFunc)cdn_stack_copy,
+		                                      (GBoxedFreeFunc)cdn_stack_free);
+	}
+
+	return gtype;
+}
+
+static CdnStackManipulation *
+cdn_stack_manipulation_copy (CdnStackManipulation *smanip)
+{
+	CdnStackManipulation *s;
+
+	s = g_slice_new0 (CdnStackManipulation);
+	s->num_pop = smanip->num_pop;
+	s->num_push = smanip->num_push;
+
+	if (smanip->pop_dims)
+	{
+		s->pop_dims = g_new (gint, smanip->num_pop);
+
+		memcpy (s->pop_dims,
+		        smanip->pop_dims,
+		        sizeof (gint) * smanip->num_pop);
+	}
+
+	if (smanip->push_dims)
+	{
+		s->push_dims = g_new (gint, smanip->num_push);
+
+		memcpy (s->push_dims,
+		        smanip->push_dims,
+		        sizeof (gint) * smanip->num_push);
+	}
+
+	return s;
+}
+
+static void
+cdn_stack_manipulation_free (CdnStackManipulation *smanip)
+{
+	g_free (smanip->pop_dims);
+	g_free (smanip->push_dims);
+
+	g_slice_free (CdnStackManipulation, smanip);
+}
+
+GType
+cdn_stack_manipulation_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStackManipulation",
+		                                      (GBoxedCopyFunc)cdn_stack_manipulation_copy,
+		                                      (GBoxedFreeFunc)cdn_stack_manipulation_free);
+	}
+
+	return gtype;
+}
 
 /**
  * SECTION:cdn-stack
@@ -71,6 +141,30 @@ cdn_stack_new (guint size)
 {
 	CdnStack *ret = g_slice_new (CdnStack);
 	cdn_stack_init (ret, size);
+
+	return ret;
+}
+
+/**
+ * cdn_stack_copy:
+ * @stack: A #CdnStack
+ *
+ * Create a copy of the stack.
+ *
+ * Returns: A #CdnStack
+ *
+ **/
+CdnStack *
+cdn_stack_copy (CdnStack *stack)
+{
+	CdnStack *ret = g_slice_new (CdnStack);
+	cdn_stack_init (ret, stack->size);
+
+	memcpy (ret->output,
+	        stack->output,
+	        sizeof (gdouble) * stack->size);
+
+	ret->output_ptr = ret->output + (stack->output_ptr - stack->output);
 
 	return ret;
 }

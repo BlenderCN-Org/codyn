@@ -1,7 +1,7 @@
 #ifndef __CDN_EXPRESSION_TREE_ITER_H__
 #define __CDN_EXPRESSION_TREE_ITER_H__
 
-#include <glib.h>
+#include <glib-object.h>
 #include <codyn/cdn-expression.h>
 #include <codyn/instructions/cdn-instruction.h>
 #include <codyn/cdn-variable.h>
@@ -9,6 +9,8 @@
 G_BEGIN_DECLS
 
 typedef struct _CdnExpressionTreeIter CdnExpressionTreeIter;
+
+GType cdn_expression_tree_iter_get_type ();
 
 CdnExpressionTreeIter *cdn_expression_tree_iter_new             (CdnExpression         *expression);
 CdnExpressionTreeIter *cdn_expression_tree_iter_new_from_instructions (GSList const *instructions);
