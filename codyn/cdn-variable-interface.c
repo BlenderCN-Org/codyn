@@ -71,7 +71,7 @@ property_free (Property *self)
 
 struct _CdnVariableInterfacePrivate
 {
-	CdnNode *group;
+	CdnNode *node;
 
 	GPtrArray *names;
 
@@ -83,7 +83,7 @@ G_DEFINE_TYPE (CdnVariableInterface, cdn_variable_interface, G_TYPE_OBJECT)
 enum
 {
 	PROP_0,
-	PROP_GROUP
+	PROP_NODE
 };
 
 enum
@@ -148,8 +148,8 @@ cdn_variable_interface_set_property (GObject      *object,
 
 	switch (prop_id)
 	{
-		case PROP_GROUP:
-			self->priv->group = g_value_get_object (value);
+		case PROP_NODE:
+			self->priv->node = g_value_get_object (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -167,8 +167,8 @@ cdn_variable_interface_get_property (GObject    *object,
 
 	switch (prop_id)
 	{
-		case PROP_GROUP:
-			g_value_set_object (value, self->priv->group);
+		case PROP_NODE:
+			g_value_set_object (value, self->priv->node);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -191,7 +191,7 @@ cdn_variable_interface_verify_remove_impl (CdnVariableInterface  *iface,
 	{
 		gchar *id;
 
-		id = cdn_object_get_full_id (CDN_OBJECT (iface->priv->group));
+		id = cdn_object_get_full_id (CDN_OBJECT (iface->priv->node));
 
 		g_set_error (error,
 		             CDN_VARIABLE_INTERFACE_ERROR,
@@ -219,7 +219,7 @@ cdn_variable_interface_verify_add_impl (CdnVariableInterface  *iface,
 	{
 		gchar *id;
 
-		id = cdn_object_get_full_id (CDN_OBJECT (iface->priv->group));
+		id = cdn_object_get_full_id (CDN_OBJECT (iface->priv->node));
 
 		g_set_error (error,
 		             CDN_OBJECT_ERROR,
@@ -237,7 +237,7 @@ cdn_variable_interface_verify_add_impl (CdnVariableInterface  *iface,
 	{
 		gchar *id;
 
-		id = cdn_object_get_full_id (CDN_OBJECT (iface->priv->group));
+		id = cdn_object_get_full_id (CDN_OBJECT (iface->priv->node));
 
 		g_set_error (error,
 		             CDN_VARIABLE_INTERFACE_ERROR,
@@ -333,10 +333,10 @@ cdn_variable_interface_class_init (CdnVariableInterfaceClass *klass)
 		              G_TYPE_POINTER);
 
 	g_object_class_install_property (object_class,
-	                                 PROP_GROUP,
-	                                 g_param_spec_object ("group",
-	                                                      "Group",
-	                                                      "Group",
+	                                 PROP_NODE,
+	                                 g_param_spec_object ("node",
+	                                                      "Node",
+	                                                      "Node",
 	                                                      CDN_TYPE_NODE,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
 }
@@ -399,7 +399,7 @@ cdn_variable_interface_lookup (CdnVariableInterface *iface,
 		return NULL;
 	}
 
-	child = cdn_node_get_child (iface->priv->group, prop->child_name);
+	child = cdn_node_get_child (iface->priv->node, prop->child_name);
 
 	if (!child)
 	{
@@ -551,7 +551,7 @@ cdn_variable_interface_get_node (CdnVariableInterface *iface)
 {
 	g_return_val_if_fail (CDN_IS_VARIABLE_INTERFACE (iface), NULL);
 
-	return iface->priv->group;
+	return iface->priv->node;
 }
 
 /**
