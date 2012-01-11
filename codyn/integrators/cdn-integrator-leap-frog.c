@@ -157,7 +157,6 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 	if (self->priv->second_order)
 	{
 		cdn_integrator_step_prepare (integrator, t - timestep / 2, timestep);
-		cdn_integrator_simulation_step_direct (integrator);
 
 		// Calculate v
 		cdn_integrator_simulation_step_integrate (integrator,
@@ -171,7 +170,6 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 	}
 
 	cdn_integrator_step_prepare (integrator, t, timestep);
-	cdn_integrator_simulation_step_direct (integrator);
 
 	// Calculate x
 	cdn_integrator_simulation_step_integrate (integrator,

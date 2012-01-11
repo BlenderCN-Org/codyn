@@ -73,24 +73,24 @@ struct _CdnNodeClass
 	CdnObjectClass parent_class;
 
 	/*< public >*/
-	gboolean      (*add)           (CdnNode   *group,
+	gboolean      (*add)           (CdnNode   *node,
 	                                CdnObject  *object,
 	                                GError    **error);
 
-	gboolean      (*remove)        (CdnNode   *group,
+	gboolean      (*remove)        (CdnNode   *node,
 	                                CdnObject  *object,
 	                                GError    **error);
 
-	gboolean      (*verify_remove_child) (CdnNode   *group,
+	gboolean      (*verify_remove_child) (CdnNode   *node,
 	                                      CdnObject  *object,
 	                                      GError    **error);
 
-	GSList const *(*get_children)  (CdnNode   *group);
+	GSList const *(*get_children)  (CdnNode   *node);
 
 	/* signals */
-	void          (*child_added)   (CdnNode   *group,
+	void          (*child_added)   (CdnNode   *node,
 	                                CdnObject  *object);
-	void          (*child_removed) (CdnNode   *group,
+	void          (*child_removed) (CdnNode   *node,
 	                                CdnObject  *object);
 };
 
@@ -103,62 +103,62 @@ GType         cdn_node_get_type      (void) G_GNUC_CONST;
 CdnNode     *cdn_node_new           (const gchar *id,
                                        CdnObject   *proxy);
 
-const GSList *cdn_node_get_children  (CdnNode    *group);
+const GSList *cdn_node_get_children  (CdnNode    *node);
 
-gboolean      cdn_node_add           (CdnNode    *group,
+gboolean      cdn_node_add           (CdnNode    *node,
                                        CdnObject   *object,
                                        GError     **error);
-gboolean      cdn_node_remove        (CdnNode    *group,
+gboolean      cdn_node_remove        (CdnNode    *node,
                                        CdnObject   *object,
                                        GError     **error);
 
-gboolean      cdn_node_set_proxy     (CdnNode    *group,
+gboolean      cdn_node_set_proxy     (CdnNode    *node,
                                        CdnObject   *proxy);
-CdnObject    *cdn_node_get_proxy     (CdnNode    *group);
+CdnObject    *cdn_node_get_proxy     (CdnNode    *node);
 
-gboolean      cdn_node_variable_is_proxy (CdnNode    *group,
+gboolean      cdn_node_variable_is_proxy (CdnNode    *node,
                                            const gchar *name);
 
-void          cdn_node_foreach       (CdnNode    *group,
+void          cdn_node_foreach       (CdnNode    *node,
                                        GFunc        func,
                                        gpointer     data);
 
-CdnObject    *cdn_node_get_child     (CdnNode    *group,
+CdnObject    *cdn_node_get_child     (CdnNode    *node,
                                        const gchar *name);
 
-CdnObject    *cdn_node_find_object   (CdnNode    *group,
+CdnObject    *cdn_node_find_object   (CdnNode    *node,
                                        const gchar *selector);
 
-GSList       *cdn_node_find_objects  (CdnNode    *group,
+GSList       *cdn_node_find_objects  (CdnNode    *node,
                                        const gchar *selector);
 
-CdnVariable  *cdn_node_find_variable (CdnNode    *group,
+CdnVariable  *cdn_node_find_variable (CdnNode    *node,
                                        const gchar *selector);
 
-GSList       *cdn_node_remove_variables (CdnNode    *group,
+GSList       *cdn_node_remove_variables (CdnNode    *node,
                                          const gchar *selector);
 
-gboolean      cdn_node_verify_remove_child (CdnNode   *group,
+gboolean      cdn_node_verify_remove_child (CdnNode   *node,
                                              CdnObject  *child,
                                              GError    **error);
 
 CdnVariableInterface *
-              cdn_node_get_variable_interface (CdnNode *group);
+              cdn_node_get_variable_interface (CdnNode *node);
 
-GSList       *cdn_node_get_auto_templates_for_child (CdnNode  *group,
+GSList       *cdn_node_get_auto_templates_for_child (CdnNode  *node,
                                                       CdnObject *child);
 
-const GSList     *cdn_node_get_edges      (CdnNode *group);
-const GSList     *cdn_node_get_actors     (CdnNode  *group);
+const GSList     *cdn_node_get_edges      (CdnNode *node);
+const GSList     *cdn_node_get_actors     (CdnNode  *node);
 
-CdnEdgeForward *cdn_node_get_self_edge    (CdnNode *group);
-gboolean cdn_node_has_self_edge    (CdnNode *group);
+CdnEdgeForward *cdn_node_get_self_edge    (CdnNode *node);
+gboolean cdn_node_has_self_edge    (CdnNode *node);
 
 /* used for referencing links */
-void             _cdn_node_link           (CdnNode       *group,
+void             _cdn_node_link           (CdnNode       *node,
                                             CdnEdgeForward *link);
 
-void             _cdn_node_unlink         (CdnNode       *group,
+void             _cdn_node_unlink         (CdnNode       *node,
                                             CdnEdgeForward *link);
 
 

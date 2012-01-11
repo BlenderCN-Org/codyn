@@ -284,6 +284,8 @@ set_from (CdnEdge  *link,
 {
 	if (link->priv->from)
 	{
+		_cdn_node_unlink (link->priv->from, link);
+
 		g_object_unref (link->priv->from);
 		link->priv->from = NULL;
 	}
@@ -291,6 +293,8 @@ set_from (CdnEdge  *link,
 	if (target)
 	{
 		link->priv->from = g_object_ref (target);
+
+		_cdn_node_link (target, link);
 	}
 
 	cdn_object_taint (CDN_OBJECT (link));

@@ -714,66 +714,6 @@ sum_values (gdouble       *values,
 	}
 }
 
-void
-cdn_integrator_simulation_step_direct (CdnIntegrator *integrator)
-{
-	/* First calculate all the direct properties */
-	GSList const *direct;
-
-	direct = cdn_integrator_state_phase_direct_edge_actions (integrator->priv->state);
-
-	while (direct)
-	{
-		CdnEdgeAction *action = direct->data;
-		CdnVariable *target = cdn_edge_action_get_target_variable (action);
-
-		if (target)
-		{
-			cdn_variable_clear_update (target);
-		}
-
-		direct = g_slist_next (direct);
-	}
-
-	direct = cdn_integrator_state_phase_direct_edge_actions (integrator->priv->state);
-
-	while (direct)
-	{
-		CdnEdgeAction *action = direct->data;
-		CdnVariable *target = cdn_edge_action_get_target_variable (action);
-
-		if (target != NULL)
-		{
-			CdnExpression *expr = cdn_edge_action_get_equation (action);
-			gdouble *update;
-			gint enumr;
-			gint enumc;
-			gint const *indices;
-			gint num_indices;
-			gdouble const *values;
-			gint numr;
-			gint numc;
-
-			update = cdn_variable_get_update (target, &enumr, &enumc);
-			indices = cdn_edge_action_get_indices (action, &num_indices);
-			values = cdn_expression_evaluate_values (expr, &numr, &numc);
-
-			sum_values (update,
-			            values,
-			            indices,
-			            indices ? num_indices : numr * numc);
-
-			// Note: this is inefficient...
-			cdn_variable_set_values (target,
-			                         update,
-			                         enumr,
-			                         enumc);
-		}
-
-		direct = g_slist_next (direct);
-	}
-}
-
 /**
  * cdn_integrator_simulation_step_integrate:
  * @integrator: A #CdnIntegrator
@@ -831,9 +771,6 @@ static void
 simulation_step (CdnIntegrator *integrator)
 {
 	GSList const *integrated;
-
-	/* First calculate all the direct properties */
-	cdn_integrator_simulation_step_direct (integrator);
 
 	integrated = cdn_integrator_state_integrated_properties (integrator->priv->state);
 

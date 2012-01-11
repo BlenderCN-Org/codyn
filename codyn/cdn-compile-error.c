@@ -295,6 +295,23 @@ cdn_compile_error_get_edge_action (CdnCompileError *error)
 }
 
 /**
+ * cdn_compile_error_get_expression:
+ * @error: A #CdnCompileError
+ *
+ * Get the expression which failed to compile.
+ *
+ * Returns: (transfer none): A #CdnExpression
+ *
+ **/
+CdnExpression *
+cdn_compile_error_get_expression (CdnCompileError *error)
+{
+	g_return_val_if_fail (CDN_IS_COMPILE_ERROR (error), NULL);
+
+	return error->priv->expression;
+}
+
+/**
  * cdn_compile_error_code_string:
  * @code: the error code
  *

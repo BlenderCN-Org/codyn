@@ -46,6 +46,9 @@ typedef struct _CdnExpressionPrivate	CdnExpressionPrivate;
 typedef void (*CdnExpressionCacheNotify) (CdnExpression *expression,
                                           gpointer       userdata);
 
+typedef void (*CdnExpressionEvaluateNotify) (CdnExpression *expression,
+                                             gpointer       userdata);
+
 struct _CdnExpression
 {
 	/*< private >*/
@@ -100,6 +103,7 @@ void           cdn_expression_set_from_string  (CdnExpression      *expression,
                                                 const gchar        *value);
 
 void           cdn_expression_reset_cache      (CdnExpression      *expression);
+void           cdn_expression_force_reset_cache (CdnExpression *expression);
 
 gboolean       cdn_expression_get_has_cache    (CdnExpression      *expression);
 void           cdn_expression_set_has_cache    (CdnExpression      *expression,
@@ -129,6 +133,11 @@ void           cdn_expression_set_cache_notify (CdnExpression            *expres
                                                 CdnExpressionCacheNotify  notify,
                                                 gpointer                  userdata,
                                                 GDestroyNotify            destroy_notify);
+
+void           cdn_expression_set_evaluate_notify (CdnExpression            *expression,
+                                                   CdnExpressionEvaluateNotify  notify,
+                                                   gpointer                  userdata,
+                                                   GDestroyNotify            destroy_notify);
 
 G_END_DECLS
 

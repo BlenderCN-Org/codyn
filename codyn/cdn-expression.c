@@ -87,6 +87,10 @@ struct _CdnExpressionPrivate
 	CdnExpressionCacheNotify cache_notify;
 	GDestroyNotify cache_destroy_notify;
 
+	gpointer evaluate_userdata;
+	CdnExpressionCacheNotify evaluate_notify;
+	GDestroyNotify evaluate_destroy_notify;
+
 	guint cached : 1;
 	guint prevent_cache_reset : 1;
 	guint modified : 1;
@@ -381,6 +385,11 @@ cdn_expression_finalize (GObject *object)
 	                                 NULL,
 	                                 NULL,
 	                                 NULL);
+
+	cdn_expression_set_evaluate_notify (expression,
+	                                    NULL,
+	                                    NULL,
+	                                    NULL);
 
 	G_OBJECT_CLASS (cdn_expression_parent_class)->finalize (object);
 }
@@ -3367,7 +3376,7 @@ validate_stack (CdnExpression *expression,
 			           smanip->push_dims ? smanip->push_dims[i * 2 + 1] : 1);
 		}
 
-		g_message ("Stack size is now: %d (+%d)", stack, tmpspace);*/
+		g_message ("Stack size is now: %d (+%d)", stack, tmpspace + nst);*/
 
 		if (smanip->push_dims)
 		{
@@ -3414,7 +3423,7 @@ validate_stack (CdnExpression *expression,
 
 		if (stack + MAX(tmpspace, nst) > maxstack)
 		{
-			maxstack = stack + tmpspace;
+			maxstack = stack + MAX(tmpspace, nst);
 		}
 
 		stack += nst;
@@ -3739,6 +3748,17 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 		return values_from_cache (expression, numr, numc);
 	}
 
+	if (expression->priv->evaluate_notify)
+	{
+		expression->priv->evaluate_notify (expression,
+		                                   expression->priv->evaluate_userdata);
+
+		if (expression->priv->cached)
+		{
+			return values_from_cache (expression, numr, numc);
+		}
+	}
+
 	GSList *item;
 	CdnStack *stack = &(expression->priv->output);
 
@@ -3829,6 +3849,19 @@ void
 cdn_expression_reset_cache (CdnExpression *expression)
 {
 	reset_cache (expression, FALSE);
+}
+
+void
+cdn_expression_force_reset_cache (CdnExpression *expression)
+{
+	gboolean prevent;
+
+	prevent = expression->priv->prevent_cache_reset;
+	expression->priv->prevent_cache_reset = FALSE;
+
+	reset_cache (expression, FALSE);
+
+	expression->priv->prevent_cache_reset = prevent;
 }
 
 static gboolean
@@ -4216,4 +4249,22 @@ cdn_expression_set_cache_notify (CdnExpression            *expression,
 	expression->priv->cache_destroy_notify = destroy_notify;
 	expression->priv->cache_userdata = userdata;
 	expression->priv->cache_notify = notify;
+}
+
+void
+cdn_expression_set_evaluate_notify (CdnExpression               *expression,
+                                    CdnExpressionEvaluateNotify  notify,
+                                    gpointer                     userdata,
+                                    GDestroyNotify               destroy_notify)
+{
+	g_return_if_fail (CDN_IS_EXPRESSION (expression));
+
+	if (expression->priv->evaluate_destroy_notify)
+	{
+		expression->priv->evaluate_destroy_notify (expression->priv->evaluate_userdata);
+	}
+
+	expression->priv->evaluate_destroy_notify = destroy_notify;
+	expression->priv->evaluate_userdata = userdata;
+	expression->priv->evaluate_notify = notify;
 }

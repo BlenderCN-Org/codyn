@@ -106,7 +106,6 @@ void                 cdn_integrator_evaluate        (CdnIntegrator *integrator,
                                                      gdouble        t,
                                                      gdouble        timestep);
 
-void                 cdn_integrator_simulation_step_direct (CdnIntegrator *integrator);
 void                 cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
                                                                GSList const  *actions);
 

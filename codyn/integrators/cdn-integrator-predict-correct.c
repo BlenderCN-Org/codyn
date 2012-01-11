@@ -155,19 +155,16 @@ history_update_states (CdnIntegratorPredictCorrect *pc,
 
 static void
 history_update (CdnIntegratorPredictCorrect *pc,
-                GSList const                *integrated,
-                GSList const                *direct)
+                GSList const                *integrated)
 {
 	guint i = 0;
 
 	history_update_states (pc, integrated, &i);
-	history_update_states (pc, direct, &i);
 }
 
 static void
 read_current_values (CdnIntegratorPredictCorrect *pc,
-                     GSList const                *integrated,
-                     GSList const                *direct)
+                     GSList const                *integrated)
 {
 	guint i = 0;
 
@@ -180,22 +177,11 @@ read_current_values (CdnIntegratorPredictCorrect *pc,
 		integrated = g_slist_next (integrated);
 		++i;
 	}
-
-	while (direct)
-	{
-		CdnVariable *prop = direct->data;
-
-		pc->priv->current_value[i] = cdn_variable_get_value (prop);
-
-		direct = g_slist_next (direct);
-		++i;
-	}
 }
 
 static void
 prediction_step (CdnIntegratorPredictCorrect *pc,
                  GSList const                *integrated,
-                 GSList const                *direct,
                  gdouble                      timestep)
 {
 	/* for the first timesteps we have to use lower orders, e.g. at
@@ -249,7 +235,6 @@ prediction_step (CdnIntegratorPredictCorrect *pc,
 static void
 correction_step (CdnIntegratorPredictCorrect *pc,
                  GSList const                *integrated,
-                 GSList const                *direct,
                  gdouble                      timestep)
 {
 	/* for the first timesteps we have to use lower orders, e.g. at
@@ -294,31 +279,6 @@ correction_step (CdnIntegratorPredictCorrect *pc,
 		                         numc);
 
 		integrated = g_slist_next (integrated);
-		state_index += n;
-	}
-
-	while (direct)
-	{
-		CdnVariable *prop = direct->data;
-		gint numr;
-		gint numc;
-		gint i;
-		gint n;
-
-		cdn_variable_get_update (prop, &numr, &numc);
-		n = numr * numc;
-
-		for (i = 0; i < n; ++i)
-		{
-			pc->priv->tmpd[i] = history_get (pc, state_index + i, 0);
-		}
-
-		cdn_variable_set_values (prop,
-		                         pc->priv->tmpd,
-		                         numr,
-		                         numc);
-
-		direct = g_slist_next (direct);
 		state_index += n;
 	}
 }
@@ -386,8 +346,6 @@ calculate_length (CdnIntegratorPredictCorrect *pc,
 	*longest = 0;
 
 	return calculate_props_length (cdn_integrator_state_integrated_properties (state),
-	                               longest) +
-	       calculate_props_length (cdn_integrator_state_direct_properties (state),
 	                               longest);
 }
 
@@ -435,25 +393,24 @@ cdn_integrator_predict_correct_step_impl (CdnIntegrator *integrator,
 	}
 
 	GSList const *integrated = cdn_integrator_state_integrated_properties (state);
-	GSList const *direct = cdn_integrator_state_direct_properties (state);
 
 	/* evaluate f(t) */
 	cdn_integrator_evaluate (integrator, t, timestep);
 
 	/* backup of current states */
-	read_current_values (pc, integrated, direct);
+	read_current_values (pc, integrated);
 
 	/* store f(t) */
-	history_update (pc, integrated, direct);
+	history_update (pc, integrated);
 
 	/* calculate prediction for t+1 */
-	prediction_step (pc, integrated, direct, timestep);
+	prediction_step (pc, integrated, timestep);
 
 	/* evaluate f(t+1) */
 	cdn_integrator_evaluate (integrator, t + timestep, timestep);
 
 	/* correct the prediction */
-	correction_step (pc, integrated, direct, timestep);
+	correction_step (pc, integrated, timestep);
 
 	history_move_cursor (pc);
 

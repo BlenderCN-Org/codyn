@@ -96,9 +96,9 @@ enum
 	NUM_SIGNALS
 };
 
-static guint group_signals[NUM_SIGNALS] = {0,};
+static guint node_signals[NUM_SIGNALS] = {0,};
 
-static void remove_object (CdnNode *group, CdnObject *object);
+static void remove_object (CdnNode *node, CdnObject *object);
 
 GQuark
 cdn_node_error_quark (void)
@@ -114,7 +114,7 @@ cdn_node_error_quark (void)
 }
 
 static void
-link_destroyed (CdnNode  *group,
+link_destroyed (CdnNode  *node,
                 CdnEdge   *link,
                 gboolean   is_last_ref)
 {
@@ -124,34 +124,34 @@ link_destroyed (CdnNode  *group,
 	}
 
 	/* Remove link, and toggle ref */
-	group->priv->links = g_slist_remove (group->priv->links, link);
+	node->priv->links = g_slist_remove (node->priv->links, link);
 
 	g_object_remove_toggle_ref (G_OBJECT (link),
 	                            (GToggleNotify)link_destroyed,
-	                            group);
+	                            node);
 }
 
 
 static void
 cdn_node_finalize (GObject *object)
 {
-	CdnNode *group = CDN_NODE (object);
+	CdnNode *node = CDN_NODE (object);
 
-	g_hash_table_destroy (group->priv->child_hash);
+	g_hash_table_destroy (node->priv->child_hash);
 
-	g_slist_free (group->priv->links);
-	g_slist_free (group->priv->actors);
+	g_slist_free (node->priv->links);
+	g_slist_free (node->priv->actors);
 
 	G_OBJECT_CLASS (cdn_node_parent_class)->finalize (object);
 }
 
 static CdnObject *
-get_child_from_template (CdnNode  *group,
+get_child_from_template (CdnNode  *node,
                          CdnObject *templ)
 {
 	GSList const *children;
 
-	children = group->priv->children;
+	children = node->priv->children;
 
 	while (children)
 	{
@@ -193,7 +193,7 @@ last_layoutable_template (CdnObject *child)
 }
 
 static gboolean
-should_propagate_layout (CdnNode  *group,
+should_propagate_layout (CdnNode  *node,
                          CdnObject *child,
                          CdnObject *templ)
 {
@@ -254,13 +254,13 @@ layout_from_template (CdnLayoutable *layoutable)
 static void
 on_template_child_added (CdnNode  *templ,
                          CdnObject *child,
-                         CdnNode  *group)
+                         CdnNode  *node)
 {
 	CdnObject *obj;
 	gboolean layout;
 
-	obj = cdn_node_get_child (group, cdn_object_get_id (child));
-	layout = should_propagate_layout (group, obj, child);
+	obj = cdn_node_get_child (node, cdn_object_get_id (child));
+	layout = should_propagate_layout (node, obj, child);
 
 	if (obj != NULL && G_TYPE_FROM_INSTANCE (child) == G_TYPE_FROM_INSTANCE (obj))
 	{
@@ -269,7 +269,7 @@ on_template_child_added (CdnNode  *templ,
 	else
 	{
 		obj = cdn_object_new_from_template (child, NULL);
-		cdn_node_add (group, obj, NULL);
+		cdn_node_add (node, obj, NULL);
 		g_object_unref (obj);
 	}
 
@@ -282,18 +282,18 @@ on_template_child_added (CdnNode  *templ,
 static void
 on_template_child_removed (CdnNode  *templ,
                            CdnObject *child,
-                           CdnNode  *group)
+                           CdnNode  *node)
 {
 	CdnObject *obj;
 
-	obj = get_child_from_template (group, child);
+	obj = get_child_from_template (node, child);
 
 	if (obj)
 	{
 		GSList *variables;
 		gboolean relayout;
 
-		relayout = should_propagate_layout (group, obj, child) &&
+		relayout = should_propagate_layout (node, obj, child) &&
 		           last_layoutable_template (obj) == CDN_LAYOUTABLE (child);
 
 		cdn_object_unapply_template (obj, child, NULL);
@@ -317,24 +317,24 @@ on_template_child_removed (CdnNode  *templ,
 }
 
 static gboolean
-interface_is_from_proxy (CdnNode    *group,
+interface_is_from_proxy (CdnNode    *node,
                          gchar const *name)
 {
 	gchar const *child_name;
 
-	if (!group->priv->proxy)
+	if (!node->priv->proxy)
 	{
 		return FALSE;
 	}
 
-	child_name = cdn_variable_interface_lookup_child_name (group->priv->variable_interface,
+	child_name = cdn_variable_interface_lookup_child_name (node->priv->variable_interface,
 	                                                       name);
 
-	return g_strcmp0 (cdn_object_get_id (group->priv->proxy), child_name) == 0;
+	return g_strcmp0 (cdn_object_get_id (node->priv->proxy), child_name) == 0;
 }
 
 static gboolean
-interface_should_override (CdnNode     *group,
+interface_should_override (CdnNode     *node,
                            CdnNode     *template,
                            gchar const  *name,
                            CdnNode    **last_templ)
@@ -352,12 +352,12 @@ interface_should_override (CdnNode     *group,
 	 *
 	 */
 
-	if (interface_is_from_proxy (group, name))
+	if (interface_is_from_proxy (node, name))
 	{
 		return FALSE;
 	}
 
-	templates = cdn_object_get_applied_templates (CDN_OBJECT (group));
+	templates = cdn_object_get_applied_templates (CDN_OBJECT (node));
 
 	while (templates)
 	{
@@ -396,7 +396,7 @@ interface_should_override (CdnNode     *group,
 }
 
 static gboolean
-add_template_interface (CdnNode     *group,
+add_template_interface (CdnNode     *node,
                         CdnNode     *source,
                         gchar const  *name,
                         gchar const  *child_name,
@@ -405,11 +405,11 @@ add_template_interface (CdnNode     *group,
 {
 	CdnVariableInterface *iface;
 
-	iface = cdn_node_get_variable_interface (group);
+	iface = cdn_node_get_variable_interface (node);
 
 	if (cdn_variable_interface_implements (iface, name))
 	{
-		if (interface_should_override (group, source, name, NULL))
+		if (interface_should_override (node, source, name, NULL))
 		{
 			if (!cdn_variable_interface_remove (iface, name, error))
 			{
@@ -442,7 +442,7 @@ add_template_interface (CdnNode     *group,
 }
 
 static void
-remove_template_interface (CdnNode    *group,
+remove_template_interface (CdnNode    *node,
                            CdnNode    *source,
                            gchar const *name,
                            gchar const *child_name,
@@ -453,13 +453,13 @@ remove_template_interface (CdnNode    *group,
 	CdnNode *last = NULL;
 
 	/* Check if this interface actually owns that property */
-	if (!interface_should_override (group, source, name, &last))
+	if (!interface_should_override (node, source, name, &last))
 	{
 		return;
 	}
 
 	/* Remove the mapping */
-	iface = cdn_node_get_variable_interface (group);
+	iface = cdn_node_get_variable_interface (node);
 
 	if (!cdn_variable_interface_remove (iface, name, &error))
 	{
@@ -479,7 +479,7 @@ remove_template_interface (CdnNode    *group,
 		child_name = cdn_variable_interface_lookup_child_name (iface, name);
 		property_name = cdn_variable_interface_lookup_variable_name (iface, name);
 
-		add_template_interface (group,
+		add_template_interface (node,
 		                        last,
 		                        name,
 		                        child_name,
@@ -493,9 +493,9 @@ on_template_interface_variable_added (CdnVariableInterface *templ_iface,
                                       gchar const          *name,
                                       gchar const          *child_name,
                                       gchar const          *property_name,
-                                      CdnNode             *group)
+                                      CdnNode             *node)
 {
-	add_template_interface (group,
+	add_template_interface (node,
 	                        cdn_variable_interface_get_node (templ_iface),
 	                        name,
 	                        child_name,
@@ -508,9 +508,9 @@ on_template_interface_variable_removed (CdnVariableInterface *templ_iface,
                                         gchar const          *name,
                                         gchar const          *child_name,
                                         gchar const          *property_name,
-                                        CdnNode             *group)
+                                        CdnNode             *node)
 {
-	remove_template_interface (group,
+	remove_template_interface (node,
 	                           cdn_variable_interface_get_node (templ_iface),
 	                           name,
 	                           child_name,
@@ -518,7 +518,7 @@ on_template_interface_variable_removed (CdnVariableInterface *templ_iface,
 }
 
 static void
-disconnect_template (CdnNode  *group,
+disconnect_template (CdnNode  *node,
                      CdnObject *templ)
 {
 	CdnVariableInterface *piface;
@@ -527,48 +527,48 @@ disconnect_template (CdnNode  *group,
 
 	g_signal_handlers_disconnect_by_func (piface,
 	                                      on_template_interface_variable_added,
-	                                      group);
+	                                      node);
 
 	g_signal_handlers_disconnect_by_func (piface,
 	                                      on_template_interface_variable_removed,
-	                                      group);
+	                                      node);
 
 	g_signal_handlers_disconnect_by_func (templ,
 	                                      on_template_child_added,
-	                                      group);
+	                                      node);
 
 	g_signal_handlers_disconnect_by_func (templ,
 	                                      on_template_child_removed,
-	                                      group);
+	                                      node);
 }
 
 static void
 cdn_node_dispose (GObject *object)
 {
-	CdnNode *group = CDN_NODE (object);
+	CdnNode *node = CDN_NODE (object);
 	GSList *copy;
 	GSList *item;
 	GSList const *templates;
 
-	if (group->priv->children)
+	if (node->priv->children)
 	{
-		GSList *children = group->priv->children;
+		GSList *children = node->priv->children;
 		GSList *item;
 
-		group->priv->children = NULL;
+		node->priv->children = NULL;
 
 		for (item = children; item; item = g_slist_next (item))
 		{
-			remove_object (group, item->data);
+			remove_object (node, item->data);
 		}
 
 		g_slist_free (children);
 	}
 
-	if (group->priv->proxy)
+	if (node->priv->proxy)
 	{
-		CdnObject *proxy = group->priv->proxy;
-		group->priv->proxy = NULL;
+		CdnObject *proxy = node->priv->proxy;
+		node->priv->proxy = NULL;
 
 		g_object_unref (proxy);
 	}
@@ -577,54 +577,54 @@ cdn_node_dispose (GObject *object)
 
 	while (templates)
 	{
-		disconnect_template (group, templates->data);
+		disconnect_template (node, templates->data);
 		templates = g_slist_next (templates);
 	}
 
-	if (group->priv->variable_interface)
+	if (node->priv->variable_interface)
 	{
-		g_object_unref (group->priv->variable_interface);
-		group->priv->variable_interface = NULL;
+		g_object_unref (node->priv->variable_interface);
+		node->priv->variable_interface = NULL;
 	}
 
 	/* Untoggle ref all links, because we need them destroyed! */
-	copy = g_slist_copy (group->priv->links);
+	copy = g_slist_copy (node->priv->links);
 
 	for (item = copy; item; item = g_slist_next (item))
 	{
-		if (item->data != group->priv->self_link)
+		if (item->data != node->priv->self_link)
 		{
-			link_destroyed (group, item->data, TRUE);
+			link_destroyed (node, item->data, TRUE);
 		}
 	}
 
 	g_slist_free (copy);
-	g_slist_free (group->priv->links);
-	group->priv->links = NULL;
+	g_slist_free (node->priv->links);
+	node->priv->links = NULL;
 
-	if (group->priv->self_link)
+	if (node->priv->self_link)
 	{
-		g_object_unref (group->priv->self_link);
-		group->priv->self_link = NULL;
+		g_object_unref (node->priv->self_link);
+		node->priv->self_link = NULL;
 	}
 
 	G_OBJECT_CLASS (cdn_node_parent_class)->dispose (object);
 }
 
 static void
-proxy_add_variable (CdnNode    *group,
+proxy_add_variable (CdnNode    *node,
                     gchar const *name,
                     gchar const *child_name)
 {
-	if (cdn_variable_interface_implements (group->priv->variable_interface,
+	if (cdn_variable_interface_implements (node->priv->variable_interface,
 	                                       name))
 	{
-		cdn_variable_interface_remove (group->priv->variable_interface,
+		cdn_variable_interface_remove (node->priv->variable_interface,
 		                               name,
 		                               NULL);
 	}
 
-	cdn_variable_interface_add (group->priv->variable_interface,
+	cdn_variable_interface_add (node->priv->variable_interface,
 	                            name,
 	                            child_name,
 	                            name,
@@ -632,13 +632,13 @@ proxy_add_variable (CdnNode    *group,
 }
 
 static void
-add_interface_after_proxy_remove (CdnNode    *group,
+add_interface_after_proxy_remove (CdnNode    *node,
                                   gchar const *name)
 {
 	GSList const *templates;
 	CdnNode *templ = NULL;
 
-	templates = cdn_object_get_applied_templates (CDN_OBJECT (group));
+	templates = cdn_object_get_applied_templates (CDN_OBJECT (node));
 
 	while (templates)
 	{
@@ -665,7 +665,7 @@ add_interface_after_proxy_remove (CdnNode    *group,
 
 		iface = cdn_node_get_variable_interface (templ);
 
-		add_template_interface (group,
+		add_template_interface (node,
 		                        templ,
 		                        name,
 		                        cdn_variable_interface_lookup_child_name (iface, name),
@@ -675,27 +675,27 @@ add_interface_after_proxy_remove (CdnNode    *group,
 }
 
 static void
-proxy_remove_variable (CdnNode    *group,
+proxy_remove_variable (CdnNode    *node,
                        gchar const *name)
 {
-	if (cdn_variable_interface_implements (group->priv->variable_interface,
+	if (cdn_variable_interface_implements (node->priv->variable_interface,
 	                                       name))
 	{
-		cdn_variable_interface_remove (group->priv->variable_interface,
+		cdn_variable_interface_remove (node->priv->variable_interface,
 		                               name,
 		                               NULL);
 
 		/* Then maybe generate property for interfaces */
-		add_interface_after_proxy_remove (group, name);
+		add_interface_after_proxy_remove (node, name);
 	}
 }
 
 static void
 on_proxy_variable_added (CdnObject   *proxy,
                          CdnVariable *property,
-                         CdnNode    *group)
+                         CdnNode    *node)
 {
-	proxy_add_variable (group,
+	proxy_add_variable (node,
 	                    cdn_variable_get_name (property),
 	                    cdn_object_get_id (proxy));
 }
@@ -703,9 +703,9 @@ on_proxy_variable_added (CdnObject   *proxy,
 static void
 on_proxy_variable_removed (CdnObject   *proxy,
                            CdnVariable *property,
-                           CdnNode    *group)
+                           CdnNode    *node)
 {
-	proxy_remove_variable (group,
+	proxy_remove_variable (node,
 	                       cdn_variable_get_name (property));
 }
 
@@ -714,9 +714,9 @@ on_proxy_interface_variable_added (CdnVariableInterface *iface,
                                    gchar const          *name,
                                    gchar const          *child_name,
                                    gchar const          *property_name,
-                                   CdnNode             *group)
+                                   CdnNode             *node)
 {
-	proxy_add_variable (group, name, child_name);
+	proxy_add_variable (node, name, child_name);
 }
 
 static void
@@ -724,51 +724,51 @@ on_proxy_interface_variable_removed (CdnVariableInterface *iface,
                                      gchar const          *name,
                                      gchar const          *child_name,
                                      gchar const          *property_name,
-                                     CdnNode             *group)
+                                     CdnNode             *node)
 {
-	proxy_remove_variable (group, name);
+	proxy_remove_variable (node, name);
 }
 
 static gboolean
-set_proxy (CdnNode  *group,
+set_proxy (CdnNode  *node,
            CdnObject *proxy)
 {
-	if (group->priv->proxy == proxy)
+	if (node->priv->proxy == proxy)
 	{
 		return TRUE;
 	}
 
-	if (group->priv->proxy)
+	if (node->priv->proxy)
 	{
-		g_signal_handler_disconnect (group->priv->proxy,
-		                             group->priv->proxy_signals[EXT_PROPERTY_ADDED]);
+		g_signal_handler_disconnect (node->priv->proxy,
+		                             node->priv->proxy_signals[EXT_PROPERTY_ADDED]);
 
-		g_signal_handler_disconnect (group->priv->proxy,
-		                             group->priv->proxy_signals[EXT_PROPERTY_REMOVED]);
+		g_signal_handler_disconnect (node->priv->proxy,
+		                             node->priv->proxy_signals[EXT_PROPERTY_REMOVED]);
 
-		if (CDN_IS_NODE (group->priv->proxy))
+		if (CDN_IS_NODE (node->priv->proxy))
 		{
 			CdnVariableInterface *iface;
 
-			iface = cdn_node_get_variable_interface (CDN_NODE (group->priv->proxy));
+			iface = cdn_node_get_variable_interface (CDN_NODE (node->priv->proxy));
 
 			g_signal_handler_disconnect (iface,
-			                             group->priv->proxy_signals[EXT_INTERFACE_PROPERTY_ADDED]);
+			                             node->priv->proxy_signals[EXT_INTERFACE_PROPERTY_ADDED]);
 
 			g_signal_handler_disconnect (iface,
-			                             group->priv->proxy_signals[EXT_INTERFACE_PROPERTY_REMOVED]);
+			                             node->priv->proxy_signals[EXT_INTERFACE_PROPERTY_REMOVED]);
 		}
 
-		GSList *variables = cdn_object_get_variables (group->priv->proxy);
+		GSList *variables = cdn_object_get_variables (node->priv->proxy);
 		GSList *item;
 
-		CdnObject *pr = group->priv->proxy;
-		group->priv->proxy = NULL;
+		CdnObject *pr = node->priv->proxy;
+		node->priv->proxy = NULL;
 
 		/* Remove automatically mapped variables from interface */
 		for (item = variables; item; item = g_slist_next (item))
 		{
-			proxy_remove_variable (group,
+			proxy_remove_variable (node,
 			                       cdn_variable_get_name (item->data));
 		}
 
@@ -786,7 +786,7 @@ set_proxy (CdnNode  *group,
 
 			for (ptr = names; ptr && *ptr; ++ptr)
 			{
-				proxy_remove_variable (group, *ptr);
+				proxy_remove_variable (node, *ptr);
 			}
 
 			g_strfreev (names);
@@ -797,68 +797,68 @@ set_proxy (CdnNode  *group,
 
 	if (proxy)
 	{
-		group->priv->proxy = g_object_ref (proxy);
-		cdn_node_add (group, proxy, NULL);
+		node->priv->proxy = g_object_ref (proxy);
+		cdn_node_add (node, proxy, NULL);
 
-		GSList *variables = cdn_object_get_variables (group->priv->proxy);
+		GSList *variables = cdn_object_get_variables (node->priv->proxy);
 		GSList *item;
 
 		for (item = variables; item; item = g_slist_next (item))
 		{
-			proxy_add_variable (group,
+			proxy_add_variable (node,
 			                    cdn_variable_get_name (item->data),
 			                    cdn_object_get_id (proxy));
 		}
 
 		g_slist_free (variables);
 
-		group->priv->proxy_signals[EXT_PROPERTY_ADDED] =
-			g_signal_connect_after (group->priv->proxy,
+		node->priv->proxy_signals[EXT_PROPERTY_ADDED] =
+			g_signal_connect_after (node->priv->proxy,
 			                        "variable-added",
 			                        G_CALLBACK (on_proxy_variable_added),
-			                        group);
+			                        node);
 
-		group->priv->proxy_signals[EXT_PROPERTY_REMOVED] =
-			g_signal_connect (group->priv->proxy,
+		node->priv->proxy_signals[EXT_PROPERTY_REMOVED] =
+			g_signal_connect (node->priv->proxy,
 			                  "variable-removed",
 			                  G_CALLBACK (on_proxy_variable_removed),
-			                  group);
+			                  node);
 
-		if (CDN_IS_NODE (group->priv->proxy))
+		if (CDN_IS_NODE (node->priv->proxy))
 		{
 			CdnVariableInterface *iface;
 			gchar **names;
 			gchar **ptr;
 
-			iface = cdn_node_get_variable_interface (CDN_NODE (group->priv->proxy));
+			iface = cdn_node_get_variable_interface (CDN_NODE (node->priv->proxy));
 			names = cdn_variable_interface_get_names (iface);
 
 			for (ptr = names; ptr && *ptr; ++ptr)
 			{
-				proxy_add_variable (group,
+				proxy_add_variable (node,
 				                    *ptr,
 				                    cdn_object_get_id (proxy));
 			}
 
 			g_strfreev (names);
 
-			group->priv->proxy_signals[EXT_INTERFACE_PROPERTY_ADDED] =
+			node->priv->proxy_signals[EXT_INTERFACE_PROPERTY_ADDED] =
 				g_signal_connect_after (iface,
 				                        "added",
 				                        G_CALLBACK (on_proxy_interface_variable_added),
-				                        group);
+				                        node);
 
-			group->priv->proxy_signals[EXT_INTERFACE_PROPERTY_REMOVED] =
+			node->priv->proxy_signals[EXT_INTERFACE_PROPERTY_REMOVED] =
 				g_signal_connect (iface,
 				                  "removed",
 				                  G_CALLBACK (on_proxy_interface_variable_removed),
-				                  group);
+				                  node);
 		}
 	}
 
-	g_object_notify (G_OBJECT (group), "proxy");
+	g_object_notify (G_OBJECT (node), "proxy");
 
-	cdn_object_taint (CDN_OBJECT (group));
+	cdn_object_taint (CDN_OBJECT (node));
 	return TRUE;
 }
 
@@ -905,14 +905,14 @@ cdn_node_cdn_get_property (CdnObject   *object,
                             gchar const *name)
 {
 	CdnVariable *prop;
-	CdnNode *group = CDN_NODE (object);
+	CdnNode *node = CDN_NODE (object);
 
 	prop = CDN_OBJECT_CLASS (cdn_node_parent_class)->get_variable (object,
 	                                                                name);
 
 	if (!prop)
 	{
-		prop = cdn_variable_interface_lookup (group->priv->variable_interface,
+		prop = cdn_variable_interface_lookup (node->priv->variable_interface,
 		                                      name);
 	}
 
@@ -920,17 +920,17 @@ cdn_node_cdn_get_property (CdnObject   *object,
 }
 
 static void
-prepend_functions (CdnNode          *group,
+prepend_functions (CdnNode          *node,
                    CdnCompileContext *context)
 {
 	GSList *item;
 
-	if (!group)
+	if (!node)
 	{
 		return;
 	}
 
-	item = group->priv->children;
+	item = node->priv->children;
 
 	while (item)
 	{
@@ -949,13 +949,13 @@ cdn_node_cdn_get_compile_context (CdnObject         *object,
                                    CdnCompileContext *context)
 {
 	CdnCompileContext *ret;
-	CdnNode *group;
+	CdnNode *node;
 
-	group = CDN_NODE (object);
+	node = CDN_NODE (object);
 
 	ret = CDN_OBJECT_CLASS (cdn_node_parent_class)->get_compile_context (object, context);
 
-	prepend_functions (group, ret);
+	prepend_functions (node, ret);
 	return ret;
 }
 
@@ -964,7 +964,7 @@ cdn_node_cdn_compile (CdnObject         *object,
                        CdnCompileContext *context,
                        CdnCompileError   *error)
 {
-	CdnNode *group = CDN_NODE (object);
+	CdnNode *node = CDN_NODE (object);
 	GSList *item;
 	gboolean ret;
 	GSList *others = NULL;
@@ -984,7 +984,7 @@ cdn_node_cdn_compile (CdnObject         *object,
 	/* Prepend all the defined functions in the instances */
 	context = cdn_node_cdn_get_compile_context (object, context);
 
-	item = group->priv->children;
+	item = node->priv->children;
 
 	// First compile inputs and filter out functions (they get compiled on
 	// the fly)
@@ -1028,9 +1028,9 @@ cdn_node_cdn_compile (CdnObject         *object,
 		item = g_slist_next (item);
 	}
 
-	if (group->priv->self_link)
+	if (node->priv->self_link)
 	{
-		if (!cdn_object_compile (CDN_OBJECT (group->priv->self_link), context, error))
+		if (!cdn_object_compile (CDN_OBJECT (node->priv->self_link), context, error))
 		{
 			cdn_compile_context_restore (context);
 			g_object_unref (context);
@@ -1071,14 +1071,14 @@ cdn_node_cdn_compile (CdnObject         *object,
 static void
 cdn_node_cdn_reset (CdnObject *object)
 {
-	CdnNode *group;
+	CdnNode *node;
 
 	CDN_OBJECT_CLASS (cdn_node_parent_class)->reset (object);
 
-	group = CDN_NODE (object);
+	node = CDN_NODE (object);
 
 	/* And then also the children! */
-	cdn_node_foreach (group,
+	cdn_node_foreach (node,
 	                   (GFunc)cdn_object_reset,
 	                   NULL);
 }
@@ -1088,24 +1088,24 @@ cdn_node_cdn_foreach_expression (CdnObject                *object,
                                   CdnForeachExpressionFunc  func,
                                   gpointer                  userdata)
 {
-	CdnNode *group;
+	CdnNode *node;
 	GSList *item;
 
-	group = CDN_NODE (object);
+	node = CDN_NODE (object);
 
 	CDN_OBJECT_CLASS (cdn_node_parent_class)->foreach_expression (object,
 	                                                               func,
 	                                                               userdata);
 
 	/* And then also the children! */
-	for (item = group->priv->children; item; item = g_slist_next (item))
+	for (item = node->priv->children; item; item = g_slist_next (item))
 	{
 		cdn_object_foreach_expression (item->data, func, userdata);
 	}
 }
 
 static void
-reconnect_children (CdnNode   *group,
+reconnect_children (CdnNode   *node,
                     CdnNode   *source,
                     GHashTable *mapping)
 {
@@ -1143,7 +1143,7 @@ reconnect_children (CdnNode   *group,
 }
 
 static void
-copy_children (CdnNode *group,
+copy_children (CdnNode *node,
                CdnNode *source)
 {
 	CdnObject *proxy = cdn_node_get_proxy (source);
@@ -1160,22 +1160,22 @@ copy_children (CdnNode *group,
 		/* Store map from the original to the copy */
 		g_hash_table_insert (hash_table, child, copied);
 
-		cdn_node_add (group, copied, NULL);
+		cdn_node_add (node, copied, NULL);
 
 		if (child == proxy)
 		{
-			group->priv->proxy = g_object_ref (copied);
+			node->priv->proxy = g_object_ref (copied);
 		}
 
 		children = g_slist_next (children);
 	}
 
-	reconnect_children (group, source, hash_table);
+	reconnect_children (node, source, hash_table);
 	g_hash_table_destroy (hash_table);
 }
 
 static void
-copy_interface (CdnNode *group,
+copy_interface (CdnNode *node,
                 CdnNode *source)
 {
 	CdnVariableInterface *iface;
@@ -1183,7 +1183,7 @@ copy_interface (CdnNode *group,
 	gchar **names;
 	gchar **ptr;
 
-	iface = cdn_node_get_variable_interface (group);
+	iface = cdn_node_get_variable_interface (node);
 	source_iface = cdn_node_get_variable_interface (source);
 
 	names = cdn_variable_interface_get_names (source_iface);
@@ -1214,18 +1214,18 @@ copy_interface (CdnNode *group,
 }
 
 static CdnObject *
-get_template_proxy (CdnNode *group)
+get_template_proxy (CdnNode *node)
 {
-	if (group->priv->proxy == NULL)
+	if (node->priv->proxy == NULL)
 	{
 		return NULL;
 	}
 
-	GSList *templates = g_slist_copy ((GSList *)cdn_object_get_applied_templates (CDN_OBJECT (group)));
+	GSList *templates = g_slist_copy ((GSList *)cdn_object_get_applied_templates (CDN_OBJECT (node)));
 	templates = g_slist_reverse (templates);
 
 	GSList *item;
-	GSList const *proxy_templates = cdn_object_get_applied_templates (group->priv->proxy);
+	GSList const *proxy_templates = cdn_object_get_applied_templates (node->priv->proxy);
 
 	for (item = templates; item; item = g_slist_next (item))
 	{
@@ -1258,15 +1258,15 @@ cdn_node_cdn_unapply_template (CdnObject  *object,
 	gchar **names;
 	gchar **ptr;
 	CdnVariableInterface *source_iface;
-	CdnNode *group;
+	CdnNode *node;
 	CdnNode *source;
 	gboolean hadproxy;
 	GSList const *children;
 
-	group = CDN_NODE (object);
+	node = CDN_NODE (object);
 	source = CDN_NODE (templ);
 
-	hadproxy = (get_template_proxy (group) == templ);
+	hadproxy = (get_template_proxy (node) == templ);
 
 	if (!CDN_OBJECT_CLASS (cdn_node_parent_class)->unapply_template (object, templ, error))
 	{
@@ -1278,11 +1278,11 @@ cdn_node_cdn_unapply_template (CdnObject  *object,
 		return TRUE;
 	}
 
-	disconnect_template (group, templ);
+	disconnect_template (node, templ);
 
 	if (cdn_node_has_self_edge (source))
 	{
-		if (!cdn_object_apply_template (CDN_OBJECT (cdn_node_get_self_edge (group)),
+		if (!cdn_object_apply_template (CDN_OBJECT (cdn_node_get_self_edge (node)),
 		                                CDN_OBJECT (cdn_node_get_self_edge (source)),
 		                                error))
 		{
@@ -1303,7 +1303,7 @@ cdn_node_cdn_unapply_template (CdnObject  *object,
 		child_name = cdn_variable_interface_lookup_child_name (source_iface, *ptr);
 		property_name = cdn_variable_interface_lookup_variable_name (source_iface, *ptr);
 
-		remove_template_interface (group, source, *ptr, child_name, property_name);
+		remove_template_interface (node, source, *ptr, child_name, property_name);
 	}
 
 	if (hadproxy)
@@ -1331,7 +1331,7 @@ cdn_node_cdn_unapply_template (CdnObject  *object,
 			templates = g_slist_next (templates);
 		}
 
-		set_proxy (group, proxy);
+		set_proxy (node, proxy);
 	}
 
 	/* Remove children */
@@ -1344,14 +1344,14 @@ cdn_node_cdn_unapply_template (CdnObject  *object,
 
 		child = children->data;
 
-		orig = cdn_node_get_child (group, cdn_object_get_id (child));
+		orig = cdn_node_get_child (node, cdn_object_get_id (child));
 
 		if (orig != NULL)
 		{
 			GSList *variables;
 			gboolean layout;
 
-			layout = should_propagate_layout (group,
+			layout = should_propagate_layout (node,
 			                                  orig,
 			                                  child) &&
 			         last_layoutable_template (orig) == CDN_LAYOUTABLE (child);
@@ -1371,7 +1371,7 @@ cdn_node_cdn_unapply_template (CdnObject  *object,
 			{
 				/* Then also remove it because it was introduced
 				   by this template */
-				if (!cdn_node_remove (group,
+				if (!cdn_node_remove (node,
 				                       orig,
 				                       error))
 				{
@@ -1401,7 +1401,7 @@ cdn_node_cdn_apply_template (CdnObject  *object,
                               GError    **error)
 {
 	CdnVariableInterface *source_iface;
-	CdnNode *group;
+	CdnNode *node;
 	CdnNode *source;
 	CdnObject *proxy;
 	GSList const *children;
@@ -1418,7 +1418,7 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 		return TRUE;
 	}
 
-	group = CDN_NODE (object);
+	node = CDN_NODE (object);
 	source = CDN_NODE (templ);
 
 	proxy = cdn_node_get_proxy (source);
@@ -1433,7 +1433,7 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 		/* Check to find existing one */
 		CdnObject *new_child;
 
-		new_child = cdn_node_get_child (group,
+		new_child = cdn_node_get_child (node,
 		                                 cdn_object_get_id (child));
 
 		if (!new_child)
@@ -1442,11 +1442,11 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 			                          "id", cdn_object_get_id (child),
 			                          NULL);
 
-			cdn_node_add (group, new_child, NULL);
+			cdn_node_add (node, new_child, NULL);
 			g_object_unref (new_child);
 		}
 
-		layout = should_propagate_layout (group, new_child, child);
+		layout = should_propagate_layout (node, new_child, child);
 
 		if (!cdn_object_apply_template (new_child,
 		                                child,
@@ -1458,10 +1458,10 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 
 		if (child == proxy)
 		{
-			if (group->priv->proxy == NULL ||
-			    get_template_proxy (group))
+			if (node->priv->proxy == NULL ||
+			    get_template_proxy (node))
 			{
-				set_proxy (group, new_child);
+				set_proxy (node, new_child);
 			}
 		}
 
@@ -1486,7 +1486,7 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 		child_name = cdn_variable_interface_lookup_child_name (source_iface, *ptr);
 		property_name = cdn_variable_interface_lookup_variable_name (source_iface, *ptr);
 
-		if (!add_template_interface (group,
+		if (!add_template_interface (node,
 		                             source,
 		                             *ptr,
 		                             child_name,
@@ -1500,7 +1500,7 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 
 	if (cdn_node_has_self_edge (source))
 	{
-		if (!cdn_object_apply_template (CDN_OBJECT (cdn_node_get_self_edge (group)),
+		if (!cdn_object_apply_template (CDN_OBJECT (cdn_node_get_self_edge (node)),
 		                                CDN_OBJECT (cdn_node_get_self_edge (source)),
 		                                error))
 		{
@@ -1513,22 +1513,22 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 	g_signal_connect (source_iface,
 	                  "added",
 	                  G_CALLBACK (on_template_interface_variable_added),
-	                  group);
+	                  node);
 
 	g_signal_connect (source_iface,
 	                  "removed",
 	                  G_CALLBACK (on_template_interface_variable_removed),
-	                  group);
+	                  node);
 
 	g_signal_connect (source,
 	                  "child-added",
 	                  G_CALLBACK (on_template_child_added),
-	                  group);
+	                  node);
 
 	g_signal_connect (source,
 	                  "child-removed",
 	                  G_CALLBACK (on_template_child_removed),
-	                  group);
+	                  node);
 
 	return TRUE;
 }
@@ -1561,7 +1561,7 @@ cdn_node_cdn_copy (CdnObject *object,
 }
 
 static gchar *
-unique_id (CdnNode  *group,
+unique_id (CdnNode  *node,
            CdnObject *object)
 {
 	gchar const *id = cdn_object_get_id (object);
@@ -1570,7 +1570,7 @@ unique_id (CdnNode  *group,
 
 	while (TRUE)
 	{
-		CdnObject *orig = g_hash_table_lookup (group->priv->child_hash,
+		CdnObject *orig = g_hash_table_lookup (node->priv->child_hash,
 		                                       newid);
 
 		if (orig == NULL || orig == object)
@@ -1592,14 +1592,14 @@ unique_id (CdnNode  *group,
 }
 
 static void
-register_id (CdnNode  *group,
+register_id (CdnNode  *node,
              CdnObject *object)
 {
-	gchar *newid = unique_id (group, object);
+	gchar *newid = unique_id (node, object);
 
 	if (newid == NULL)
 	{
-		g_hash_table_insert (group->priv->child_hash,
+		g_hash_table_insert (node->priv->child_hash,
 		                     g_strdup (cdn_object_get_id (object)),
 		                     object);
 	}
@@ -1633,65 +1633,65 @@ find_object (const gchar  *id,
 static void
 update_object_id (CdnObject  *object,
                   GParamSpec *spec,
-                  CdnNode   *group)
+                  CdnNode   *node)
 {
 	FindInfo info = {object, NULL};
 
-	g_hash_table_find (group->priv->child_hash,
+	g_hash_table_find (node->priv->child_hash,
 	                   (GHRFunc)find_object,
 	                   &info);
 
 	/* Remove old id */
 	if (info.id != NULL)
 	{
-		g_hash_table_remove (group->priv->child_hash,
+		g_hash_table_remove (node->priv->child_hash,
 		                     info.id);
 	}
 
-	register_id (group, object);
+	register_id (node, object);
 }
 
 static void
-unregister_object (CdnNode  *group,
+unregister_object (CdnNode  *node,
                    CdnObject *object)
 {
 	g_signal_handlers_disconnect_by_func (object,
 	                                      G_CALLBACK (cdn_object_taint),
-	                                      group);
+	                                      node);
 
 	g_signal_handlers_disconnect_by_func (object,
 	                                      G_CALLBACK (update_object_id),
-	                                      group);
+	                                      node);
 
-	g_hash_table_remove (group->priv->child_hash,
+	g_hash_table_remove (node->priv->child_hash,
 	                     cdn_object_get_id (object));
 }
 
 static void
-register_object (CdnNode  *group,
+register_object (CdnNode  *node,
                  CdnObject *object)
 {
 	g_signal_connect_swapped (object,
 	                          "tainted",
 	                          G_CALLBACK (cdn_object_taint),
-	                          group);
+	                          node);
 
 	g_signal_connect (object,
 	                  "notify::id",
 	                  G_CALLBACK (update_object_id),
-	                  group);
+	                  node);
 
-	register_id (group, object);
+	register_id (node, object);
 }
 
 static gboolean
-cdn_node_add_impl (CdnNode   *group,
+cdn_node_add_impl (CdnNode   *node,
                     CdnObject  *object,
                     GError    **error)
 {
 	CdnObject *other;
 
-	other = g_hash_table_lookup (group->priv->child_hash,
+	other = g_hash_table_lookup (node->priv->child_hash,
 	                             cdn_object_get_id (object));
 
 	if (other == object)
@@ -1699,17 +1699,17 @@ cdn_node_add_impl (CdnNode   *group,
 		g_set_error (error,
 		             CDN_NODE_ERROR,
 		             CDN_NODE_ERROR_CHILD_ALREADY_EXISTS,
-		             "The child `%s' already exists in the group `%s'",
+		             "The child `%s' already exists in the node `%s'",
 		             cdn_object_get_id (object),
-		             cdn_object_get_id (CDN_OBJECT (group)));
+		             cdn_object_get_id (CDN_OBJECT (node)));
 
 		return FALSE;
 	}
 
 	gboolean ret = FALSE;
 
-	g_signal_emit (group,
-	               group_signals[VERIFY_ADD_CHILD],
+	g_signal_emit (node,
+	               node_signals[VERIFY_ADD_CHILD],
 	               0,
 	               object,
 	               error,
@@ -1720,46 +1720,46 @@ cdn_node_add_impl (CdnNode   *group,
 		return FALSE;
 	}
 
-	group->priv->children = g_slist_append (group->priv->children,
+	node->priv->children = g_slist_append (node->priv->children,
 	                                        g_object_ref (object));
 
-	register_object (group, object);
+	register_object (node, object);
 
-	_cdn_object_set_parent (object, group);
+	_cdn_object_set_parent (object, node);
 
-	cdn_object_taint (CDN_OBJECT (group));
-	g_signal_emit (group, group_signals[CHILD_ADDED], 0, object);
+	cdn_object_taint (CDN_OBJECT (node));
+	g_signal_emit (node, node_signals[CHILD_ADDED], 0, object);
 
 	return TRUE;
 }
 
 static void
-remove_object (CdnNode  *group,
+remove_object (CdnNode  *node,
                CdnObject *object)
 {
-	unregister_object (group, object);
+	unregister_object (node, object);
 
-	if (cdn_object_get_parent (object) == group)
+	if (cdn_object_get_parent (object) == node)
 	{
 		_cdn_object_set_parent (object, NULL);
 	}
 
-	g_signal_emit (group, group_signals[CHILD_REMOVED], 0, object);
+	g_signal_emit (node, node_signals[CHILD_REMOVED], 0, object);
 	g_object_unref (object);
 }
 
 gboolean
-cdn_node_verify_remove_child (CdnNode   *group,
+cdn_node_verify_remove_child (CdnNode   *node,
                                CdnObject  *child,
                                GError    **error)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), FALSE);
+	g_return_val_if_fail (CDN_IS_NODE (node), FALSE);
 	g_return_val_if_fail (CDN_IS_OBJECT (child), FALSE);
 
 	gboolean ret = FALSE;
 
-	g_signal_emit (group,
-	               group_signals[VERIFY_REMOVE_CHILD],
+	g_signal_emit (node,
+	               node_signals[VERIFY_REMOVE_CHILD],
 	               0,
 	               child,
 	               error,
@@ -1769,11 +1769,11 @@ cdn_node_verify_remove_child (CdnNode   *group,
 }
 
 static gboolean
-verify_all (CdnNode   *group,
+verify_all (CdnNode   *node,
             CdnObject  *object,
             GError    **error)
 {
-	if (!cdn_node_verify_remove_child (group, object, error))
+	if (!cdn_node_verify_remove_child (node, object, error))
 	{
 		return FALSE;
 	}
@@ -1798,56 +1798,56 @@ verify_all (CdnNode   *group,
 }
 
 static gboolean
-cdn_node_remove_impl (CdnNode   *group,
+cdn_node_remove_impl (CdnNode   *node,
                        CdnObject  *object,
                        GError    **error)
 {
 	GSList *item;
 
-	item = g_slist_find (group->priv->children, object);
+	item = g_slist_find (node->priv->children, object);
 
 	if (!item)
 	{
 		g_set_error (error,
 		             CDN_NODE_ERROR,
 		             CDN_NODE_ERROR_CHILD_DOES_NOT_EXIST,
-		             "The child `%s' does not exist in the group `%s'",
+		             "The child `%s' does not exist in the node `%s'",
 		             cdn_object_get_id (object),
-		             cdn_object_get_id (CDN_OBJECT (group)));
+		             cdn_object_get_id (CDN_OBJECT (node)));
 
 		return FALSE;
 	}
 
-	if (!verify_all (group, object, error))
+	if (!verify_all (node, object, error))
 	{
 		return FALSE;
 	}
 
-	if (object == group->priv->proxy)
+	if (object == node->priv->proxy)
 	{
-		set_proxy (group, NULL);
+		set_proxy (node, NULL);
 	}
 
-	group->priv->children = g_slist_remove_link (group->priv->children,
+	node->priv->children = g_slist_remove_link (node->priv->children,
 	                                             item);
 
-	remove_object (group, object);
+	remove_object (node, object);
 	return TRUE;
 }
 
 static void
 cdn_node_cdn_clear (CdnObject *object)
 {
-	CdnNode *group = CDN_NODE (object);
+	CdnNode *node = CDN_NODE (object);
 
-	set_proxy (group, NULL);
+	set_proxy (node, NULL);
 
-	GSList *children = g_slist_copy (group->priv->children);
+	GSList *children = g_slist_copy (node->priv->children);
 	GSList *child;
 
 	for (child = children; child; child = g_slist_next (child))
 	{
-		cdn_node_remove (group, child->data, NULL);
+		cdn_node_remove (node, child->data, NULL);
 	}
 
 	g_slist_free (children);
@@ -1865,24 +1865,24 @@ cdn_node_cdn_equal (CdnObject *first,
 	}
 
 	/* Same proxies */
-	CdnNode *group1 = CDN_NODE (first);
-	CdnNode *group2 = CDN_NODE (second);
+	CdnNode *node1 = CDN_NODE (first);
+	CdnNode *node2 = CDN_NODE (second);
 
-	if ((group1->priv->proxy == NULL && group2->priv->proxy != NULL) ||
-	    (group2->priv->proxy == NULL && group1->priv->proxy != NULL))
+	if ((node1->priv->proxy == NULL && node2->priv->proxy != NULL) ||
+	    (node2->priv->proxy == NULL && node1->priv->proxy != NULL))
 	{
 		return FALSE;
 	}
 
-	if (group1->priv->proxy &&
-	    g_strcmp0 (cdn_object_get_id (group1->priv->proxy),
-	               cdn_object_get_id (group2->priv->proxy)) != 0)
+	if (node1->priv->proxy &&
+	    g_strcmp0 (cdn_object_get_id (node1->priv->proxy),
+	               cdn_object_get_id (node2->priv->proxy)) != 0)
 	{
 		return FALSE;
 	}
 
-	GSList const *children1 = cdn_node_get_children (group1);
-	GSList const *children2 = cdn_node_get_children (group2);
+	GSList const *children1 = cdn_node_get_children (node1);
+	GSList const *children2 = cdn_node_get_children (node2);
 
 	if (g_slist_length ((GSList *)children1) != g_slist_length ((GSList *)children2))
 	{
@@ -1892,7 +1892,7 @@ cdn_node_cdn_equal (CdnObject *first,
 	while (children1)
 	{
 		CdnObject *child1 = children1->data;
-		CdnObject *child2 = cdn_node_get_child (group2,
+		CdnObject *child2 = cdn_node_get_child (node2,
 		                                         cdn_object_get_id (child1));
 
 		if (!child2 || !cdn_object_equal (child1, child2))
@@ -1907,13 +1907,13 @@ cdn_node_cdn_equal (CdnObject *first,
 }
 
 static GSList const *
-cdn_node_get_children_impl (CdnNode *group)
+cdn_node_get_children_impl (CdnNode *node)
 {
-	return group->priv->children;
+	return node->priv->children;
 }
 
 static gboolean
-cdn_node_verify_remove_child_impl (CdnNode   *group,
+cdn_node_verify_remove_child_impl (CdnNode   *node,
                                     CdnObject  *object,
                                     GError    **error)
 {
@@ -1926,12 +1926,12 @@ cdn_node_verify_remove_child_impl (CdnNode   *group,
 static void
 cdn_node_cdn_taint (CdnObject *object)
 {
-	CdnNode *group;
+	CdnNode *node;
 
-	group = CDN_NODE (object);
+	node = CDN_NODE (object);
 
-	g_slist_free (group->priv->actors);
-	group->priv->actors = NULL;
+	g_slist_free (node->priv->actors);
+	node->priv->actors = NULL;
 
 	CDN_OBJECT_CLASS (cdn_node_parent_class)->taint (object);
 }
@@ -1972,7 +1972,7 @@ cdn_node_class_init (CdnNodeClass *klass)
 	/**
 	 * CdnNode:proxy:
 	 *
-	 * The group proxy object
+	 * The node proxy object
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -1988,10 +1988,10 @@ cdn_node_class_init (CdnNodeClass *klass)
 	 * @object: a #CdnObject
 	 * @action: the added #CdnObject
 	 *
-	 * Emitted when a child object is added to the group
+	 * Emitted when a child object is added to the node
 	 *
 	 **/
-	group_signals[CHILD_ADDED] =
+	node_signals[CHILD_ADDED] =
 		g_signal_new ("child-added",
 		              G_OBJECT_CLASS_TYPE (object_class),
 		              G_SIGNAL_RUN_LAST,
@@ -2009,10 +2009,10 @@ cdn_node_class_init (CdnNodeClass *klass)
 	 * @object: a #CdnObject
 	 * @action: the removed #CdnObject
 	 *
-	 * Emitted when a child object is removed from the group
+	 * Emitted when a child object is removed from the node
 	 *
 	 **/
-	group_signals[CHILD_REMOVED] =
+	node_signals[CHILD_REMOVED] =
 		g_signal_new ("child-removed",
 		              G_OBJECT_CLASS_TYPE (object_class),
 		              G_SIGNAL_RUN_LAST,
@@ -2034,7 +2034,7 @@ cdn_node_class_init (CdnNodeClass *klass)
 	 * Returns: %TRUE if the child can be removed, %FALSE otherwise
 	 *
 	 **/
-	group_signals[VERIFY_REMOVE_CHILD] =
+	node_signals[VERIFY_REMOVE_CHILD] =
 		g_signal_new ("verify-remove-child",
 		              G_TYPE_FROM_CLASS (klass),
 		              G_SIGNAL_RUN_LAST,
@@ -2058,7 +2058,7 @@ cdn_node_class_init (CdnNodeClass *klass)
 	 * Returns: %TRUE if the child can be added, %FALSE otherwise
 	 *
 	 **/
-	group_signals[VERIFY_ADD_CHILD] =
+	node_signals[VERIFY_ADD_CHILD] =
 		g_signal_new ("verify-add-child",
 		              G_TYPE_FROM_CLASS (klass),
 		              G_SIGNAL_RUN_LAST,
@@ -2084,17 +2084,17 @@ on_variable_interface_verify_remove (CdnVariableInterface  *iface,
                                      gchar const           *child_name,
                                      gchar const           *property_name,
                                      GError               **error,
-                                     CdnNode              *group)
+                                     CdnNode              *node)
 {
 	/* If it comes from a proxy, we deny */
-	if (interface_is_from_proxy (group, name))
+	if (interface_is_from_proxy (node, name))
 	{
 		g_set_error (error,
 		             CDN_NODE_ERROR,
 		             CDN_NODE_ERROR_INTERFACE_IS_PROXY,
 		             "The interface `%s' is automatically generated from the proxy `%s' and cannot be removed manually",
 		             name,
-		             cdn_object_get_id (group->priv->proxy));
+		             cdn_object_get_id (node->priv->proxy));
 
 		return FALSE;
 	}
@@ -2132,10 +2132,10 @@ cdn_node_init (CdnNode *self)
 
 /**
  * cdn_node_new:
- * @id: the group id
+ * @id: the node id
  * @proxy: A #CdnObject
  *
- * Create a new group.
+ * Create a new node.
  *
  * Returns: A #CdnNode
  *
@@ -2152,42 +2152,42 @@ cdn_node_new (gchar const *id,
 
 /**
  * cdn_node_get_children:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  *
- * Get a list of the children in @group.
+ * Get a list of the children in @node.
  *
  * Returns: (element-type CdnObject) (transfer none): A #GSList of #CdnObject
  *
  **/
 const GSList *
-cdn_node_get_children (CdnNode *group)
+cdn_node_get_children (CdnNode *node)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 
-	return CDN_NODE_GET_CLASS (group)->get_children (group);
+	return CDN_NODE_GET_CLASS (node)->get_children (node);
 }
 
 /**
  * cdn_node_add:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  * @object: A #CdnObject
  *
- * Add a child object to the group.
+ * Add a child object to the node.
  *
  * Returns: %TRUE if the child could be successfully added, %FALSE otherwise
  *
  **/
 gboolean
-cdn_node_add (CdnNode   *group,
+cdn_node_add (CdnNode   *node,
                CdnObject  *object,
                GError    **error)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), FALSE);
+	g_return_val_if_fail (CDN_IS_NODE (node), FALSE);
 	g_return_val_if_fail (CDN_IS_OBJECT (object), FALSE);
 
-	if (CDN_NODE_GET_CLASS (group)->add)
+	if (CDN_NODE_GET_CLASS (node)->add)
 	{
-		return CDN_NODE_GET_CLASS (group)->add (group, object, error);
+		return CDN_NODE_GET_CLASS (node)->add (node, object, error);
 	}
 	else
 	{
@@ -2197,26 +2197,26 @@ cdn_node_add (CdnNode   *group,
 
 /**
  * cdn_node_remove:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  * @object: A #CdnObject
  * @error: A #GError
  *
- * Remove a child object from the group.
+ * Remove a child object from the node.
  *
  * Returns: %TRUE if the child was successfully removed, %FALSE otherwise
  *
  **/
 gboolean
-cdn_node_remove (CdnNode   *group,
+cdn_node_remove (CdnNode   *node,
                   CdnObject  *object,
                   GError    **error)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), FALSE);
+	g_return_val_if_fail (CDN_IS_NODE (node), FALSE);
 	g_return_val_if_fail (CDN_IS_OBJECT (object), FALSE);
 
-	if (CDN_NODE_GET_CLASS (group)->remove)
+	if (CDN_NODE_GET_CLASS (node)->remove)
 	{
-		return CDN_NODE_GET_CLASS (group)->remove (group, object, error);
+		return CDN_NODE_GET_CLASS (node)->remove (node, object, error);
 	}
 	else
 	{
@@ -2226,106 +2226,106 @@ cdn_node_remove (CdnNode   *group,
 
 /**
  * cdn_node_set_proxy:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  * @proxy: A #CdnObject
  *
- * Set the proxy object of @group to @proxy.
+ * Set the proxy object of @node to @proxy.
  *
  * Returns: %TRUE if the proxy could be successfully changed, %FALSE otherwise
  *
  **/
 gboolean
-cdn_node_set_proxy (CdnNode  *group,
+cdn_node_set_proxy (CdnNode  *node,
                      CdnObject *proxy)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), FALSE);
+	g_return_val_if_fail (CDN_IS_NODE (node), FALSE);
 	g_return_val_if_fail (proxy == NULL || CDN_IS_OBJECT (proxy), FALSE);
 
-	return set_proxy (group, proxy);
+	return set_proxy (node, proxy);
 }
 
 /**
  * cdn_node_get_proxy:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  *
- * Get the proxy object of @group.
+ * Get the proxy object of @node.
  *
  * Returns: (transfer none): A #CdnObject
  *
  **/
 CdnObject *
-cdn_node_get_proxy (CdnNode *group)
+cdn_node_get_proxy (CdnNode *node)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 
-	return group->priv->proxy;
+	return node->priv->proxy;
 }
 
 /**
  * cdn_node_foreach:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  * @func: (scope call): A #GFunc
  * @data: User data
  *
- * Call @func for each child object in the group.
+ * Call @func for each child object in the node.
  *
  **/
 void
-cdn_node_foreach (CdnNode *group,
+cdn_node_foreach (CdnNode *node,
                    GFunc     func,
                    gpointer  data)
 {
-	g_return_if_fail (CDN_IS_NODE (group));
+	g_return_if_fail (CDN_IS_NODE (node));
 
-	g_slist_foreach ((GSList *)cdn_node_get_children (group), func, data);
+	g_slist_foreach ((GSList *)cdn_node_get_children (node), func, data);
 }
 
 /**
  * cdn_node_get_child:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  * @name: The child name
  *
- * Get a child from the group by name.
+ * Get a child from the node by name.
  *
  * Returns: (transfer none): A #CdnObject
  *
  **/
 CdnObject *
-cdn_node_get_child (CdnNode    *group,
+cdn_node_get_child (CdnNode    *node,
                      const gchar *name)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	return g_hash_table_lookup (group->priv->child_hash,
+	return g_hash_table_lookup (node->priv->child_hash,
 	                            name);
 }
 
 /**
  * cdn_node_find_objects:
- * @group: A #CdnNode
- * @path: The object path
+ * @node: A #CdnNode
+ * @selector: The selector
  *
- * Find objects by specifying a path. For example, if there is
- * another group "g" containing a state "s", you can use
- * cdn_node_find_object (group, "g.s") to get the object.
+ * Find objects by specifying a selector. For example, if there is
+ * another node "g" containing a state "s", you can use
+ * cdn_node_find_object (node, "g.s") to get the object.
  *
  * Returns: (transfer container) (element-type CdnObject): A #CdnObject
  *
  **/
 GSList *
-cdn_node_find_objects (CdnNode    *group,
-                        const gchar *selector)
+cdn_node_find_objects (CdnNode     *node,
+                       const gchar *selector)
 {
 	CdnSelector *sel;
 	GSList *all;
 	GSList *ret = NULL;
 	GError *error = NULL;
 
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	sel = cdn_selector_parse (CDN_OBJECT (group), selector, &error);
+	sel = cdn_selector_parse (CDN_OBJECT (node), selector, &error);
 
 	if (!sel)
 	{
@@ -2336,7 +2336,7 @@ cdn_node_find_objects (CdnNode    *group,
 	}
 
 	all = cdn_selector_select (sel,
-	                           G_OBJECT (group),
+	                           G_OBJECT (node),
 	                           CDN_SELECTOR_TYPE_OBJECT,
 	                           NULL);
 
@@ -2356,27 +2356,27 @@ cdn_node_find_objects (CdnNode    *group,
 
 /**
  * cdn_node_find_object:
- * @group: A #CdnNode
- * @path: The object path
+ * @node: A #CdnNode
+ * @selector: The selector
  *
- * Find object by specifying a path. For example, if there is
- * another group "g" containing a state "s", you can use
- * cdn_node_find_object (group, "g.s") to get the object.
+ * Find object by specifying a selector. For example, if there is
+ * another node "g" containing a node "s", you can use
+ * cdn_node_find_object (node, "g.s") to get the object.
  *
  * Returns: (transfer none): A #CdnObject
  *
  **/
 CdnObject *
-cdn_node_find_object (CdnNode    *group,
+cdn_node_find_object (CdnNode    *node,
                        const gchar *selector)
 {
 	GSList *all;
 	CdnObject *ret = NULL;
 
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	all = cdn_node_find_objects (group, selector);
+	all = cdn_node_find_objects (node, selector);
 
 	if (all)
 	{
@@ -2390,18 +2390,18 @@ cdn_node_find_object (CdnNode    *group,
 
 /**
  * cdn_node_remove_variables:
- * @group: A #CdnNode
- * @path: The object path
+ * @node: A #CdnNode
+ * @selector: The selector
  *
- * Find variables by specifying a path. For example, if there is
- * another group "g" containing a state "s" with property "x", you can use
- * cdn_node_remove_variables (group, "g.s.x") to get the property.
+ * Find variables by specifying a selector. For example, if there is
+ * another node "g" containing a node "s" with variable "x", you can use
+ * cdn_node_remove_variables (node, "g.s.x") to remove the variable.
  *
  * Returns: (transfer container) (element-type CdnVariable): A list of #CdnVariable
  *
  **/
 GSList *
-cdn_node_remove_variables (CdnNode    *group,
+cdn_node_remove_variables (CdnNode    *node,
                            gchar const *selector)
 {
 	CdnSelector *sel;
@@ -2409,10 +2409,10 @@ cdn_node_remove_variables (CdnNode    *group,
 	GSList *ret = NULL;
 	GError *error = NULL;
 
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	sel = cdn_selector_parse (CDN_OBJECT (group), selector, &error);
+	sel = cdn_selector_parse (CDN_OBJECT (node), selector, &error);
 
 	if (!sel)
 	{
@@ -2422,7 +2422,7 @@ cdn_node_remove_variables (CdnNode    *group,
 	}
 
 	all = cdn_selector_select (sel,
-	                           G_OBJECT (group),
+	                           G_OBJECT (node),
 	                           CDN_SELECTOR_TYPE_VARIABLE,
 	                           NULL);
 
@@ -2442,27 +2442,27 @@ cdn_node_remove_variables (CdnNode    *group,
 
 /**
  * cdn_node_find_variable:
- * @group: A #CdnNode
- * @path: The property path
+ * @node: A #CdnNode
+ * @selector: The selector
  *
- * Find a property by specifying an object path. For example, if there is
- * another group "g" containing a state "s" with a property "x", you can use
- * cdn_node_find_variable (group, "g.s.x") to get the property.
+ * Find a variable by specifying a selector. For example, if there is
+ * another node "g" containing a node "s" with a variable "x", you can use
+ * cdn_node_find_variable (node, "g.s.x") to get the variable.
  *
  * Returns: (transfer none): A #CdnVariable
  *
  **/
 CdnVariable *
-cdn_node_find_variable (CdnNode    *group,
+cdn_node_find_variable (CdnNode      *node,
                          gchar const *selector)
 {
 	GSList *all;
 	CdnVariable *ret = NULL;
 
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	all = cdn_node_remove_variables (group, selector);
+	all = cdn_node_remove_variables (node, selector);
 
 	if (all)
 	{
@@ -2476,43 +2476,43 @@ cdn_node_find_variable (CdnNode    *group,
 
 /**
  * cdn_node_get_variable_interface:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  *
- * Get the property interface of the group.
+ * Get the property interface of the node.
  *
  * Returns: (transfer none): A #CdnVariableInterface
  *
  **/
 CdnVariableInterface *
-cdn_node_get_variable_interface (CdnNode *group)
+cdn_node_get_variable_interface (CdnNode *node)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 
-	return group->priv->variable_interface;
+	return node->priv->variable_interface;
 }
 
 /**
  * cdn_node_get_auto_templates_for_child:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  * @child: A #CdnObject
  *
- * Get the templates that were automatically applied from the group to the
+ * Get the templates that were automatically applied from the node to the
  * child.
  *
- * Returns: (transfer container) (allow-none): A #GSList of #CdnObject
+ * Returns: (transfer container) (element-type CdnObject) (allow-none): A #GSList of #CdnObject
  *
  **/
 GSList *
-cdn_node_get_auto_templates_for_child (CdnNode  *group,
+cdn_node_get_auto_templates_for_child (CdnNode  *node,
                                         CdnObject *child)
 {
 	GSList const *templates;
 	GSList *ret = NULL;
 
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 	g_return_val_if_fail (CDN_IS_OBJECT (child), NULL);
 
-	templates = cdn_object_get_applied_templates (CDN_OBJECT (group));
+	templates = cdn_object_get_applied_templates (CDN_OBJECT (node));
 
 	while (templates)
 	{
@@ -2545,58 +2545,58 @@ cdn_node_get_auto_templates_for_child (CdnNode  *group,
  *
  **/
 void
-_cdn_node_link (CdnNode *group,
+_cdn_node_link (CdnNode *node,
                  CdnEdge  *link)
 {
-	g_return_if_fail (CDN_IS_NODE (group));
+	g_return_if_fail (CDN_IS_NODE (node));
 	g_return_if_fail (CDN_IS_EDGE (link));
 
-	group->priv->links = g_slist_append (group->priv->links, link);
+	node->priv->links = g_slist_append (node->priv->links, link);
 
-	g_slist_free (group->priv->actors);
-	group->priv->actors = NULL;
+	g_slist_free (node->priv->actors);
+	node->priv->actors = NULL;
 
 	g_object_add_toggle_ref (G_OBJECT (link),
 	                         (GToggleNotify)link_destroyed,
-	                         group);
+	                         node);
 }
 
 /**
  * _cdn_node_unlink:
- * @group: the #CdnObject
- * @link: the #CdnEdge which unlinks from this group
+ * @node: the #CdnObject
+ * @link: the #CdnEdge which unlinks from this node
  *
- * Removes @link as a link which targets the group.
+ * Removes @link as a link which targets the node.
  *
  **/
 void
-_cdn_node_unlink (CdnNode *group,
+_cdn_node_unlink (CdnNode *node,
                    CdnEdge  *link)
 {
-	g_return_if_fail (CDN_IS_NODE (group));
+	g_return_if_fail (CDN_IS_NODE (node));
 	g_return_if_fail (CDN_IS_EDGE (link));
 
-	GSList *item = g_slist_find (group->priv->links, link);
+	GSList *item = g_slist_find (node->priv->links, link);
 
 	if (!item)
 	{
 		return;
 	}
 
-	group->priv->links = g_slist_remove_link (group->priv->links,
+	node->priv->links = g_slist_remove_link (node->priv->links,
 	                                           item);
 
-	g_slist_free (group->priv->actors);
-	group->priv->actors = NULL;
+	g_slist_free (node->priv->actors);
+	node->priv->actors = NULL;
 
 	g_object_remove_toggle_ref (G_OBJECT (link),
 	                            (GToggleNotify)link_destroyed,
-	                            group);
+	                            node);
 }
 
 /**
  * cdn_node_get_actors:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  *
  * Get the variables which are acted upon by links.
  *
@@ -2604,19 +2604,19 @@ _cdn_node_unlink (CdnNode *group,
  *
  **/
 GSList const *
-cdn_node_get_actors (CdnNode *group)
+cdn_node_get_actors (CdnNode *node)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 
-	if (group->priv->actors != NULL)
+	if (node->priv->actors != NULL)
 	{
-		return group->priv->actors;
+		return node->priv->actors;
 	}
 
 	GSList *ret = NULL;
 	GSList *item;
 
-	for (item = group->priv->links; item; item = g_slist_next (item))
+	for (item = node->priv->links; item; item = g_slist_next (item))
 	{
 		GSList const *actions;
 
@@ -2636,13 +2636,13 @@ cdn_node_get_actors (CdnNode *group)
 		}
 	}
 
-	group->priv->actors = g_slist_reverse (ret);
-	return group->priv->actors;
+	node->priv->actors = g_slist_reverse (ret);
+	return node->priv->actors;
 }
 
 /**
  * cdn_node_get_edges:
- * @group: A #CdnNode
+ * @node: A #CdnNode
  *
  * Get a list of links that act on this object.
  *
@@ -2650,39 +2650,50 @@ cdn_node_get_actors (CdnNode *group)
  *
  */
 GSList const *
-cdn_node_get_edges (CdnNode *group)
+cdn_node_get_edges (CdnNode *node)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 
-	return group->priv->links;
+	return node->priv->links;
 }
 
 gboolean
-cdn_node_has_self_edge (CdnNode *group)
+cdn_node_has_self_edge (CdnNode *node)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), FALSE);
+	g_return_val_if_fail (CDN_IS_NODE (node), FALSE);
 
-	return group->priv->self_link != NULL;
+	return node->priv->self_link != NULL;
 }
 
 
-CdnEdgeForward *
-cdn_node_get_self_edge (CdnNode *group)
+/**
+ * cdn_node_get_self_edge:
+ * @node: A #CdnNode
+ *
+ * Get the self edge of this node. Note that the self edge will be automatically
+ * created if it does not exist yet. When this is undesired, use
+ * @cdn_node_has_self_edge first.
+ *
+ * Returns: (transfer none): A #CdnEdge
+ *
+ **/
+CdnEdge *
+cdn_node_get_self_edge (CdnNode *node)
 {
-	g_return_val_if_fail (CDN_IS_NODE (group), NULL);
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 
-	if (!group->priv->self_link)
+	if (!node->priv->self_link)
 	{
-		group->priv->self_link = cdn_edge_new ("integrate",
-		                                       group,
-		                                       group);
+		node->priv->self_link = cdn_edge_new ("integrate",
+		                                       node,
+		                                       node);
 
-		_cdn_object_set_parent (CDN_OBJECT (group->priv->self_link),
-		                        group);
+		_cdn_object_set_parent (CDN_OBJECT (node->priv->self_link),
+		                        node);
 
-		group->priv->links = g_slist_prepend (group->priv->links,
-		                                      group->priv->self_link);
+		node->priv->links = g_slist_prepend (node->priv->links,
+		                                      node->priv->self_link);
 	}
 
-	return group->priv->self_link;
+	return node->priv->self_link;
 }

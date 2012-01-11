@@ -66,6 +66,8 @@ struct _CdnIntegratorStatePrivate
 	GSList *phase_direct_edge_actions;
 	GSList *phase_integrated_edge_actions;
 
+	GHashTable *direct_variables_hash;
+
 	gchar *phase;
 };
 
@@ -85,6 +87,67 @@ enum
 };
 
 static guint signals[NUM_SIGNALS] = {0,};
+
+typedef struct
+{
+	CdnVariable *variable;
+	GSList      *actions;
+} DirectInfo;
+
+static void
+evaluate_notify (CdnExpression *expression,
+                 DirectInfo    *info);
+
+static void
+direct_info_destroy (DirectInfo *info)
+{
+	if (info->variable)
+	{
+		g_object_unref (info->variable);
+		info->variable = NULL;
+	}
+}
+
+static DirectInfo *
+direct_info_new (CdnVariable *variable)
+{
+	DirectInfo *info;
+	CdnExpression *expr;
+
+	info = g_slice_new (DirectInfo);
+
+	info->variable = g_object_ref (variable);
+	info->actions = NULL;
+
+	expr = cdn_variable_get_expression (variable);
+
+	cdn_expression_set_evaluate_notify (expr,
+	                                    (CdnExpressionEvaluateNotify)evaluate_notify,
+	                                    info,
+	                                    (GDestroyNotify)direct_info_destroy);
+
+	return info;
+}
+
+static void
+direct_info_free (DirectInfo *info)
+{
+	if (info->variable)
+	{
+		CdnExpression *expr;
+
+		expr = cdn_variable_get_expression (info->variable);
+
+		cdn_expression_set_evaluate_notify (expr,
+		                                    NULL,
+		                                    NULL,
+		                                    NULL);
+	}
+
+	g_slist_foreach (info->actions, (GFunc)g_object_unref, NULL);
+	g_slist_free (info->actions);
+	g_slice_free (DirectInfo, info);
+}
 
 static void
 cdn_integrator_state_finalize (GObject *object)
@@ -121,6 +184,9 @@ clear_lists (CdnIntegratorState *state)
 	clear_list (&(state->priv->functions));
 	clear_list (&(state->priv->events));
 	clear_list (&(state->priv->phase_events));
+
+	g_hash_table_ref (state->priv->direct_variables_hash);
+	g_hash_table_destroy (state->priv->direct_variables_hash);
 }
 
 static void
@@ -294,6 +360,12 @@ static void
 cdn_integrator_state_init (CdnIntegratorState *self)
 {
 	self->priv = CDN_INTEGRATOR_STATE_GET_PRIVATE (self);
+
+	self->priv->direct_variables_hash =
+		g_hash_table_new_full (g_direct_hash,
+		                       g_direct_equal,
+		                       NULL,
+		                       (GDestroyNotify)direct_info_free);
 }
 
 /**
@@ -330,6 +402,24 @@ prepend_gslist_unique (GSList   *list,
 }
 
 static void
+direct_cache_notify (CdnExpression *expression,
+                     CdnEdgeAction *action)
+{
+	CdnVariable *v;
+
+	v = cdn_edge_action_get_target_variable (action);
+
+	if (v)
+	{
+		CdnExpression *expr;
+
+		expr = cdn_variable_get_expression (v);
+
+		cdn_expression_force_reset_cache (expr);
+	}
+}
+
+static void
 collect_link (CdnIntegratorState *state,
               CdnEdge            *link)
 {
@@ -349,9 +439,34 @@ collect_link (CdnIntegratorState *state,
 		}
 		else
 		{
+			DirectInfo *info;
+			CdnExpression *expr;
+
 			state->priv->direct_edge_actions =
 				prepend_gslist_unique (state->priv->direct_edge_actions,
 				                       action);
+
+			info = g_hash_table_lookup (state->priv->direct_variables_hash,
+			                            target);
+
+			if (!info)
+			{
+				info = direct_info_new (target);
+
+				g_hash_table_insert (state->priv->direct_variables_hash,
+				                     target,
+				                     info);
+			}
+
+			info->actions = g_slist_prepend (info->actions,
+			                                 g_object_ref (action));
+
+			expr = cdn_edge_action_get_equation (action);
+
+			cdn_expression_set_cache_notify (expr,
+			                                 (CdnExpressionCacheNotify)direct_cache_notify,
+			                                 action,
+			                                 NULL);
 		}
 
 		actions = g_slist_next (actions);
@@ -600,6 +715,64 @@ update_phases (CdnIntegratorState *state)
 	clear_list (&(state->priv->phase_events));
 	state->priv->phase_events =
 		get_phase_events (state, state->priv->events);
+}
+
+static void
+sum_values (gdouble       *values,
+            gdouble const *s,
+            gint const    *indices,
+            gint           num)
+{
+	gint i;
+
+	for (i = 0; i < num; ++i)
+	{
+		gint idx;
+
+		idx = indices ? indices[i] : i;
+
+		values[idx] += s[i];
+	}
+}
+
+static void
+evaluate_notify (CdnExpression *expression,
+                 DirectInfo    *info)
+{
+	GSList *item;
+	gdouble *update;
+	gint enumr;
+	gint enumc;
+
+	// Update variable cache from the direct actions
+	cdn_variable_clear_update (info->variable);
+
+	update = cdn_variable_get_update (info->variable, &enumr, &enumc);
+
+	for (item = info->actions; item; item = g_slist_next (item))
+	{
+		CdnEdgeAction *action = item->data;
+		CdnExpression *expr = cdn_edge_action_get_equation (action);
+		gint const *indices;
+		gint num_indices;
+		gdouble const *values;
+		gint numr;
+		gint numc;
+
+		indices = cdn_edge_action_get_indices (action, &num_indices);
+
+		values = cdn_expression_evaluate_values (expr, &numr, &numc);
+
+		sum_values (update,
+		            values,
+		            indices,
+		            indices ? num_indices : numr * numc);
+	}
+
+	cdn_variable_set_values (info->variable,
+	                         update,
+	                         enumr,
+	                         enumc);
 }
 
 /**
