@@ -1,0 +1,38 @@
+[once] include "findbodies.cdn"
+
+# Define H for diagonal (i.e. bodies themselves)
+node @bodies
+{
+    IC = "spI"
+
+    "fh_@0[!]" = "IC ∙ motionSubspace"
+    "H_@0[!]" = "motionSubspaceᵀ ∙ fh_@@0[!]"
+}
+
+# Compute the mass matrix for each body, up to each of its
+# ancestors
+[each(@bodies)]
+{
+    # Open each of the dynamics edges
+    [with(edges | has-template("physics" . "dynamics"))]
+    {
+        edge if(source | @bodychain[@0])
+        {
+            "fh_@0[!]" <= "coordinateTransformᵀ ∙ fh_@@0[!]"
+        }
+
+        node if(source | @bodychain[@0]) | sink
+        {
+            "fh_@0[!]" = "zeros(6, 1)"
+            "H_@0[!]" = "motionSubspaceᵀ ∙ fh_@@0[!]"
+        }
+    }
+}
+
+# Add computation of IC in the dynamics edge
+edge has-template("physics" . "dynamics")
+{
+     IC <= "to.spI + transform ∙ IC ∙ transformᵀ"
+}
+
+# vi:ex:ts=4:et

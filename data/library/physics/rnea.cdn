@@ -1,0 +1,44 @@
+[once] include "findbodies.cdn"
+
+templates
+{
+    node "physics"
+    {
+        edge "dynamics"
+        {
+            force <= "transformᵀ ∙ force"
+        }
+    }
+}
+
+edge has-template("physics" . "joint")
+{
+    ## Recursive joint velocity (from parent to child)
+    velocity <= "to.transform ∙ velocity + jointVelocity"
+
+    ## Recursive joint acceleration (from parent to child)
+    acceleration <= "to.transform ∙ acceleration + Sp.CrossMotion(to.velocity) ∙ to.jointVelocity"
+}
+
+node "@bodies"
+{
+    # Force variable
+    force = "zeros(6, 1)"
+
+    # C matrix row
+    C = "motionSubspaceᵀ ∙ force"
+
+    [self]
+    edge
+    {
+        force <= "spI ∙ acceleration + Sp.CrossForce(velocity) ∙ spI ∙ velocity - fext"
+    }
+}
+
+# Add a dynamics link back up from the child to the parent
+[each(edges | has-template("physics" . "joint") | source-name | sink-name)]
+{
+    edge "dynamics_@0_to_@@0" from "@@0" to "@@@@0" : "physics" . "dynamics" {}
+}
+
+# vi:ex:ts=4:et

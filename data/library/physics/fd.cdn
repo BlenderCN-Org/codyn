@@ -1,0 +1,65 @@
+include "rnea.cdn"
+include "crba.cdn"
+
+[once] include "findbodies.cdn"
+
+node "fd"
+{
+    ## Generalized forces
+    τ = "zeros(@bodies[~], 1)"
+    C = "zeros(@bodies[~], 1)"
+
+    ## Mass matrix
+    H = "zeros(@bodies[~], @bodies[~])"
+
+    ## Generalized accelerations
+    q̈ = "linsolve(H, τ - C)"
+
+    ## Jacobian
+    J = "zeros(6, @bodies[~])"
+}
+
+node "@bodies"
+{
+    ## Jacobian selection matrix
+    JS = "[{@bodies|@bodychain[@@@@0_@0[!]?]||@0;@1}]"
+}
+
+# Fill in H for all relevant body relationships
+edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "fd"
+{
+    defines
+    {
+        j = "@@@@@0[!]"
+    }
+
+    [each(self | source . variables | /fh_([0-9]+)/)]
+    {
+        defines
+        {
+            i = "@@1"
+        }
+
+        "H[@i, @j]" <= "H_@i"
+
+        [if("$(@i != @j)")]
+        {
+            "H[@j, @i]" <= "H_@i"
+        }
+    }
+
+    # Fill column of the jacobian
+    "J[[{0:5||@0;@1}], @j]" <= "J[[@1], @j]"
+    "C[@j, 0]" <= "C"
+}
+
+# Integrate accelerations on bodies
+[each(@bodies)]
+{
+    edge "acceleration_@0" from "fd" to "@@@0"
+    {
+        dq <= "q̈[@@@@@0[!]]"
+    }
+}
+
+# vi:ex:ts=4:et

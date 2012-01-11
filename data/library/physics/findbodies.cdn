@@ -1,0 +1,14 @@
+defines
+{
+    # Find all the bodies here
+    bodies = has-template("physics" . "body") | name
+
+    [each(@bodies)]
+    {
+        "bodychain@0" = | @@1 | recurse(sinked-by | has-template("physics" . "joint") | source) | reverse
+        "bodychain@0idx" = "{@bodychain[@@0]|@bodies[!@0]}"
+        "bodychain@0_@bodychain[@[0]idx]" = "1"
+    }
+}
+
+# vi:ex:ts=4:et
