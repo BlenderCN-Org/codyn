@@ -304,16 +304,13 @@ cdn_function_execute_impl (CdnFunction *function,
                            gint        *argdim,
                            CdnStack    *stack)
 {
-	GList *item;
+	GList *item = NULL;
 	guint i;
-	GList *from = NULL;
 
-	if (nargs < function->priv->n_arguments)
+	if (nargs <= function->priv->n_arguments)
 	{
-		from = g_list_nth (function->priv->arguments, nargs - 1);
+		item = g_list_nth (function->priv->arguments, nargs - 1);
 	}
-
-	item = from;
 
 	/* Set provided arguments */
 	for (i = 0; i < nargs; ++i)
@@ -321,8 +318,9 @@ cdn_function_execute_impl (CdnFunction *function,
 		CdnFunctionArgument *argument = item->data;
 		gint ptr = i * 2;
 		gint num;
-		CdnVariable *v = _cdn_function_argument_get_variable (argument);
+		CdnVariable *v;
 
+		v = _cdn_function_argument_get_variable (argument);
 		num = argdim ? argdim[ptr] * argdim[ptr + 1] : 1;
 
 		cdn_variable_set_values (v,
