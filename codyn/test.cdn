@@ -1,104 +1,35 @@
-include "6d.cdn"
-include "geometry.cdn"
+[once] include "physics/physics.cdn"
+[once] include "physics/spatial.cdn"
 
-g = 9.81
-
-templates
+integrator
 {
-    node "body"
-    {
-        ## Mass of the body
-        m   = "0"
-
-        ## Center of Mass of the body: 1-by-3
-        com = "zeros(1, 3)"
-
-        ## Inertia matrix of the body: 3-by-3
-        I   = "zeros(3, 3)"
-
-        ## Generalized force on the DOF of this body
-        τ = "0"
-
-        ## External force on this body (1-by-3)
-        f = "zeros(6, 1)"
-
-        ## Coordinate transform from the parent frame to the child frame. The
-        ## product of this transform with the joint transform is the
-        ## total coordinate transformation from a parent frame to a child frame
-        pT  = "Translate([0, 0, 0])"
-
-        ## Spatial joint transformation (i.e. the transformation induced by the
-        ## DOF of the joint)
-        qT = "zeros(6, 1)"
-
-        ## Spatial motion subspace (the space in with the DOF operates)
-        qS = "zeros(6, 1)"
-
-        ## State variable of this body
-        q'' = "0"
-
-        ## Spatial inertia given mass, center of mass and inertia
-        spI = "Inertia(com, m, I)"
-
-        vJ = "qS ∙ dq"
-
-        cT = "qT ∙ pT"
-        cV = "zeros(6, 1)"
-
-        crossV = "Cross(cV)"
-
-        aVp = "zeros(6, 1)"
-        fVp = "zeros(6, 1)"
-
-        C = "qSᵀ ∙ fVp"
-        IC = "zeros(6, 6)"
-
-        [self]
-        edge
-        {
-            fVp <= "spI ∙ aVp + crossV ∙ spI ∙ cV - f"
-            IC <= "spI"
-        }
-    }
-
-    edge "joint"
-    {
-        cV = "to.cT ∙ from.cV + vJ"
-        aVp <= "to.cT ∙ from.aVp + to.crossV ∙ to.vJ"
-    }
-
-    edge "dynamics"
-    {
-        fVp <= "cT ∙ fVp"
-        IC <= "cT ∙ IC ∙ cTᵀ"
-    }
-
-    node "revolute" : "body"
-    {
-        qT = "RotateZ(q)"
-        qS = "[0; 0; 1; 0; 0; 0]"
-    }
+    method = "leap-frog"
 }
 
 node "system"
 {
-    node "b1" : "revolute"
+    node "b1" : "physics" . "revolute"
     {
         m   = "1"
         com = "[0, -1, 0]"
-        I   = "ISphere(m, 0.1)"
+        I   = "geometry.ISphere(m, 0.1)"
+
+        q = "0.1"
     }
 
-    node "b2" : "revolute"
+    node "b2" : "physics" . "revolute"
     {
         m   = "1"
         com = "[0, -1, 0]"
-        I   = "ISphere(m, 0.1)"
+        I   = "geometry.ISphere(m, 0.1)"
+        coordinateTransform = "Sp.Translate([0, -1, 0])"
+
+        q = "-0.1"
     }
 
-    edge from "b1" to "b2" : "joint" {}
+    edge from "b1" to "b2" : "physics" . "joint" {}
 
-    include "rnea.cdn"
+    include "physics/fd.cdn"
 }
 
 # vi:ex:ts=4:et
