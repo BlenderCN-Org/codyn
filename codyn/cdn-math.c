@@ -587,7 +587,7 @@ op_multiply (CdnStack *stack,
 		cdn_stack_set (stack, cdn_stack_peek (stack) * second);
 	}
 	else if ((argdim[0] == 1 && argdim[1] == 1) ||
-	         (argdim[2] == 1 && argdim[2] == 1))
+	         (argdim[2] == 1 && argdim[3] == 1))
 	{
 		foreach_element2 (stack, argdim, op_emultiply_impl);
 	}
