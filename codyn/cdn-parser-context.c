@@ -4658,7 +4658,6 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 	GSList *items;
 	GSList *item;
 	InputItem *inp;
-	gboolean isonce;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
@@ -4682,8 +4681,6 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 
 	embedded_string_expand_multiple (items, filename, context);
 	inp = CURRENT_INPUT (context);
-
-	isonce = find_attribute (attributes, "once") != NULL;
 
 	for (item = items; item; item = g_slist_next (item))
 	{
