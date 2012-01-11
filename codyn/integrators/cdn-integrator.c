@@ -774,6 +774,14 @@ cdn_integrator_simulation_step_direct (CdnIntegrator *integrator)
 	}
 }
 
+/**
+ * cdn_integrator_simulation_step_integrate:
+ * @integrator: A #CdnIntegrator
+ * @actions: (element-type CdnEdgeAction): A #GSList of #CdnEdgeAction
+ *
+ * Execute one integration step.
+ *
+ **/
 void
 cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
                                           GSList const  *actions)

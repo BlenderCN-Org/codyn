@@ -1144,7 +1144,8 @@ cdn_variable_get_update (CdnVariable *property,
 
 /**
  * cdn_variable_flags_to_string:
- * @flags: A #CdnVariableFlags
+ * @add_flags: Flags to add #CdnVariableFlags
+ * @remove_flags: Flags to remove
  *
  * Convert flags to a string representation.
  *
@@ -1488,6 +1489,15 @@ property_get_actions (CdnNode    *o,
 	                             ret);
 }
 
+/**
+ * cdn_variable_get_actions:
+ * @property: A #CdnVariable
+ *
+ * Get the actions acting on this variable.
+ *
+ * Returns: (element-type CdnEdgeAction) (transfer full): A #GSList of #CdnEdgeAction
+ *
+ **/
 GSList *
 cdn_variable_get_actions (CdnVariable *property)
 {
@@ -1517,6 +1527,15 @@ cdn_variable_set_derivative (CdnVariable *property,
 	set_diff_of (property, diffprop);
 }
 
+/**
+ * cdn_variable_get_derivative:
+ * @property: A #CdnVariable
+ *
+ * Get the variable representing the derivative of @property.
+ *
+ * Returns: (transfer none): A #CdnVariable
+ *
+ **/
 CdnVariable *
 cdn_variable_get_derivative (CdnVariable *property)
 {
@@ -1525,6 +1544,15 @@ cdn_variable_get_derivative (CdnVariable *property)
 	return property->priv->diff_of;
 }
 
+/**
+ * cdn_variable_get_integral:
+ * @property: A #CdnVariable
+ *
+ * Get the variable representing the integral of @property.
+ *
+ * Returns: (transfer none): A #CdnVariable
+ *
+ **/
 CdnVariable *
 cdn_variable_get_integral (CdnVariable *property)
 {

@@ -337,6 +337,15 @@ cdn_event_update (CdnEvent *event)
 	}
 }
 
+/**
+ * cdn_event_get_condition:
+ * @event: A #CdnEvent
+ *
+ * Get the event condition.
+ *
+ * Returns: (transfer none): A #CdnExpression
+ *
+ **/
 CdnExpression *
 cdn_event_get_condition (CdnEvent *event)
 {

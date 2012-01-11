@@ -56,19 +56,19 @@ struct _CdnLayoutableInterface
 
 GType    cdn_layoutable_get_type          (void) G_GNUC_CONST;
 
-void     cdn_layoutable_get_location      (CdnLayoutable *self,
+void     cdn_layoutable_get_location      (CdnLayoutable *layoutable,
                                            gint          *x,
                                            gint          *y);
 
-void     cdn_layoutable_set_location      (CdnLayoutable *self,
+void     cdn_layoutable_set_location      (CdnLayoutable *layoutable,
                                            gint           x,
                                            gint           y);
 
-gboolean cdn_layoutable_get_has_location  (CdnLayoutable *self);
-void     cdn_layoutable_set_has_location  (CdnLayoutable *self,
+gboolean cdn_layoutable_get_has_location  (CdnLayoutable *layoutable);
+void     cdn_layoutable_set_has_location  (CdnLayoutable *layoutable,
                                            gboolean       has_location);
 
-gboolean cdn_layoutable_supports_location (CdnLayoutable *self);
+gboolean cdn_layoutable_supports_location (CdnLayoutable *layoutable);
 
 G_END_DECLS
 

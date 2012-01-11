@@ -809,6 +809,16 @@ cdn_edge_action_get_indices (CdnEdgeAction *action,
 	return action->priv->indices;
 }
 
+/**
+ * cdn_edge_action_get_index:
+ * @action: A #CdnEdgeAction
+ *
+ * Get the index expression for the action (or %NULL if the action does not
+ * have an associated index).
+ *
+ * Returns: (transfer none): A #CdnExpression
+ *
+ **/
 CdnExpression *
 cdn_edge_action_get_index (CdnEdgeAction *action)
 {

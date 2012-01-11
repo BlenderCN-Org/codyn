@@ -95,7 +95,7 @@ struct _CdnVariableInterfaceClass
 GQuark                 cdn_variable_interface_error_quark (void);
 
 GType                  cdn_variable_interface_get_type    (void) G_GNUC_CONST;
-CdnVariableInterface  *cdn_variable_interface_new         (CdnNodeForward *group);
+CdnVariableInterface  *cdn_variable_interface_new         (CdnNodeForward *node);
 
 CdnNodeForward       *cdn_variable_interface_get_node  (CdnVariableInterface  *iface);
 
@@ -116,7 +116,7 @@ gchar const           *cdn_variable_interface_lookup_variable_name (CdnVariableI
 gboolean               cdn_variable_interface_add         (CdnVariableInterface  *iface,
                                                            gchar const           *name,
                                                            gchar const           *child_name,
-                                                           gchar const           *property_name,
+                                                           gchar const           *variable_name,
                                                            GError               **error);
 
 gboolean               cdn_variable_interface_remove      (CdnVariableInterface  *iface,

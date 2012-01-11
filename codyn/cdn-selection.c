@@ -148,6 +148,17 @@ copy_defines (GHashTable *table)
 	return ret;
 }
 
+/**
+ * cdn_selection_new:
+ * @object: The object
+ * @expansions: (element-type CdnExpansion): A #GSList of #CdnExpansion
+ * @defines: A #GHashTable
+ *
+ * Create a new selection.
+ *
+ * Returns: A #CdnSelection
+ *
+ **/
 CdnSelection *
 cdn_selection_new (gpointer    object,
                    GSList     *expansions,
@@ -174,6 +185,18 @@ cdn_selection_new (gpointer    object,
 	return ret;
 }
 
+/**
+ * cdn_selection_new_defines:
+ * @object: The selection object
+ * @expansions: (element-type CdnExpansion): A #GSList of #CdnExpansion
+ * @defines: A #GHashTable
+ * @copy_defines: Whether to copy defines
+ *
+ * Create a new selection.
+ *
+ * Returns: A #CdnSelection
+ *
+ **/
 CdnSelection *
 cdn_selection_new_defines (gpointer    object,
                            GSList     *expansions,

@@ -375,7 +375,7 @@ cdn_monitor_new (CdnNetwork  *network,
  * #cdn_monitor_get_data_resampled for retrieving a resampled version
  * of the monitor data
  *
- * Returns: (array type=double length=size): internal array of monitored values. The pointer should
+ * Returns: (array length=size): internal array of monitored values. The pointer should
  * not be freed
  *
  **/
@@ -412,7 +412,7 @@ cdn_monitor_get_data (CdnMonitor *monitor,
  * #cdn_monitor_get_data_resampled for retrieving a resampled version
  * of the monitor data
  *
- * Returns: (array type=double length=size): internal array of monitored sites. The pointer should
+ * Returns: (array length=size): internal array of monitored sites. The pointer should
  * not be freed
  *
  **/
@@ -472,7 +472,7 @@ bsearch_find (gdouble const  *list,
 /**
  * cdn_monitor_get_data_resampled:
  * @monitor: a #CdnMonitor
- * @sites: (array type=double length=size): the data sites at which to resample the data
+ * @sites: (array length=size): the data sites at which to resample the data
  * @size: the size of the data sites array
  * @ret: (out callee-allocates): the return location for the resampled data
  *

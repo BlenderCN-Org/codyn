@@ -452,6 +452,14 @@ cdn_embedded_context_set_defines (CdnEmbeddedContext *context,
 	ctx->marker = ++global_marker;
 }
 
+/**
+ * cdn_embedded_context_set_expansions:
+ * @context: A #CdnEmbeddedContext
+ * @expansions: (element-type CdnExpansion): A #GSList of #CdnExpansion
+ *
+ * Description.
+ *
+ **/
 void
 cdn_embedded_context_set_expansions (CdnEmbeddedContext *context,
                                      GSList             *expansions)
@@ -549,6 +557,14 @@ cdn_embedded_context_add_expansion (CdnEmbeddedContext *context,
 	g_slist_free (r);
 }
 
+/**
+ * cdn_embedded_context_add_expansions:
+ * @context: A #CdnEmbeddedContext
+ * @expansions: (element-type CdnExpansion): A #GSList of #CdnExpansion
+ *
+ * Add a list of expansions to the context.
+ *
+ **/
 void
 cdn_embedded_context_add_expansions (CdnEmbeddedContext *context,
                                      GSList             *expansions)
@@ -593,6 +609,16 @@ cdn_embedded_context_add_expansions (CdnEmbeddedContext *context,
 	ctx->marker = ++global_marker;
 }
 
+/**
+ * cdn_embedded_context_get_define:
+ * @context: A #CdnEmbeddedContext
+ * @name: The name of the define
+ *
+ * Get the expansion for a particular define name.
+ *
+ * Returns: (transfer none): A #CdnExpansion
+ *
+ **/
 CdnExpansion *
 cdn_embedded_context_get_define (CdnEmbeddedContext *context,
                                  gchar const        *name)

@@ -168,11 +168,18 @@ cdn_operators_find (gchar const *name)
 /**
  * cdn_operators_instantiate:
  * @name: The name of the operator
- * @expressions: (element-type CdnExpression): A #GSList of #CdnExpression
+ * @expressions: (array length=num_expressions): the expressions
+ * @num_expressions: the number of expressions
+ * @indices: (array length=num_indices): the indices
+ * @num_indices: the number of indices
+ * @num_arguments: the number of arguments
+ * @argdim: (array length=num_arguments): the argument dimensions
+ * @error: a #GError
  *
  * Instantiate an operator from a name.
  *
- * Returns: (transfer full) (allow-none): A #CdnOperator or %NULL if the operator with @name could not be found
+ * Returns: (transfer full) (allow-none): A #CdnOperator or %NULL if the
+ *          operator with @name could not be found
  *
  **/
 CdnOperator *

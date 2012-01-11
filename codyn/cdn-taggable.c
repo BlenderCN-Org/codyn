@@ -185,6 +185,15 @@ taggable_foreach (gchar const *key,
 	info->func (info->taggable, key, value, info->userdata);
 }
 
+/**
+ * cdn_taggable_foreach:
+ * @taggable: A #CdnTaggable
+ * @func: (scope call): A #CdnTaggableForeachFunc
+ * @userdata: The userdata for @func
+ *
+ * Call @func for each tag.
+ *
+ **/
 void
 cdn_taggable_foreach (CdnTaggable *taggable,
                       CdnTaggableForeachFunc  func,

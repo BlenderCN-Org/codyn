@@ -97,7 +97,7 @@ struct _CdnOperatorClass
 	                                      CdnForeachFunctionFunc  func,
 	                                      gpointer                userdata);
 
-	CdnOperator     *(*copy)             (CdnOperator *src);
+	CdnOperator     *(*copy)             (CdnOperator *op);
 };
 
 GType                cdn_operator_get_type                    (void) G_GNUC_CONST;

@@ -586,6 +586,14 @@ cdn_expression_new (const gchar *expression)
 	return ret;
 }
 
+/**
+ * cdn_expression_new0:
+ *
+ * Create a new expression representing the value 0.
+ *
+ * Returns: (transfer full): A #CdnExpression
+ *
+ **/
 CdnExpression *
 cdn_expression_new0 ()
 {
@@ -3933,7 +3941,16 @@ cdn_expression_get_instructions (CdnExpression *expression)
 	return expression->priv->instructions;
 }
 
-const GSList *
+/**
+ * cdn_expression_get_rand_instructions:
+ * @expression: A #CdnExpression
+ *
+ * Get the random instructions in this expression.
+ *
+ * Returns: (element-type CdnInstructionRand) (transfer none): A #GSList of #CdnInstructionRand
+ *
+ **/
+GSList const *
 cdn_expression_get_rand_instructions (CdnExpression *expression)
 {
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), NULL);

@@ -692,6 +692,17 @@ cdn_selector_append_partial (CdnSelector       *selector,
 	                                                        TRUE));
 }
 
+/**
+ * cdn_selector_append_pseudo:
+ * @selector: A #CdnSelector
+ * @type: A #CdnSelectorPseudoType
+ * @arguments: (element-type GObject): A #GSList of #GObject
+ *
+ * Append a pseudo selector.
+ *
+ * Returns: The identifier of the added pseudo selector
+ *
+ **/
 guint
 cdn_selector_append_pseudo (CdnSelector           *selector,
                             CdnSelectorPseudoType  type,
@@ -3162,6 +3173,14 @@ cdn_selector_escape_identifier (gchar const *name)
 	return g_string_free (ret, FALSE);
 }
 
+/**
+ * cdn_selector_set_from_set:
+ * @selector: A #CdnSelector
+ * @selections: (element-type CdnSelection): A #GSList of #CdnSelection
+ *
+ * Set the from set of the selector.
+ *
+ **/
 void
 cdn_selector_set_from_set (CdnSelector *selector,
                            GSList      *selections)

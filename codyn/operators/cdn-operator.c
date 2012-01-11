@@ -386,7 +386,6 @@ cdn_operator_init (CdnOperator *self)
 /**
  * cdn_operator_execute:
  * @op: A #CdnOperator
- * @data: A #CdnOperatorData
  * @stack: A #CdnStack
  *
  * Execute the operator. This function should always be overridden by
@@ -445,6 +444,15 @@ cdn_operator_get_name (CdnOperator *op)
 	return cdn_operator_get_class_name (CDN_OPERATOR_GET_CLASS (op));
 }
 
+/**
+ * cdn_operator_all_expressions:
+ * @op: A #CdnOperator
+ *
+ * Get the list of all expressions.
+ *
+ * Returns: A list of all expressions
+ *
+ **/
 GSList const **
 cdn_operator_all_expressions (CdnOperator *op)
 {
@@ -453,6 +461,15 @@ cdn_operator_all_expressions (CdnOperator *op)
 	return (GSList const **)op->priv->expressions;
 }
 
+/**
+ * cdn_operator_all_indices:
+ * @op: A #CdnOperator
+ *
+ * Get a list of al indices..
+ *
+ * Returns: A list of all indices
+ *
+ **/
 GSList const **
 cdn_operator_all_indices (CdnOperator *op)
 {
@@ -489,11 +506,11 @@ cdn_operator_num_expressions (CdnOperator *op)
 }
 
 /**
- * cdn_operator_get_expressions:
+ * cdn_operator_get_indices:
  * @op: A #CdnOperator
  * @idx: the index
  *
- * Get the expressions that the operator uses.
+ * Get the indices that the operator uses.
  *
  * Return value: (element-type CdnExpression) (transfer none): a list of #CdnExpression
  **/
@@ -515,6 +532,22 @@ cdn_operator_num_indices (CdnOperator *op)
 	return op->priv->num_indices;
 }
 
+/**
+ * cdn_operator_initialize:
+ * @op: A #CdnOperator
+ * @expressions: (array length=num_expressions): The expressions
+ * @num_expressions: The number of expressions
+ * @indices: (array length=num_indices): The indices
+ * @num_indices: The number of indices
+ * @num_arguments: The number of arguments
+ * @argdim: (array length=num_arguments): The argument dimensions
+ * @error: A #GError
+ *
+ * Initialize the operator.
+ *
+ * Returns: %TRUE if the operator was initialized, %FALSE otherwise
+ *
+ **/
 gboolean
 cdn_operator_initialize (CdnOperator   *op,
                          GSList const **expressions,
@@ -584,6 +617,17 @@ cdn_operator_get_arguments_dimension (CdnOperator *op)
 	return op->priv->smanip.pop_dims;
 }
 
+/**
+ * cdn_operator_get_function:
+ * @op: A #CdnOperator
+ * @idx: (array length=numidx): The indices
+ * @numidx: The number of indices
+ *
+ * Get the function for the corresponding index.
+ *
+ * Returns: (transfer none): A #CdnFunction
+ *
+ **/
 CdnFunction *
 cdn_operator_get_function (CdnOperator *op,
                            gint        *idx,
@@ -602,6 +646,15 @@ _cdn_operator_set_num_arguments (CdnOperator *op,
 	set_num_arguments (op, num, argdim);
 }
 
+/**
+ * cdn_operator_foreach_function:
+ * @op: A #CdnOperator
+ * @func: (scope call): A #CdnForeachFunctionFunc
+ * @userdata: The @func userdata
+ *
+ * Call @func for each function in the operator.
+ *
+ **/
 void
 cdn_operator_foreach_function (CdnOperator            *op,
                                CdnForeachFunctionFunc  func,
@@ -615,6 +668,15 @@ cdn_operator_foreach_function (CdnOperator            *op,
 	CDN_OPERATOR_GET_CLASS (op)->foreach_function (op, func, userdata);
 }
 
+/**
+ * cdn_operator_get_primary_function:
+ * @op: A #CdnOperator
+ *
+ * Get the primary function.
+ *
+ * Returns: (transfer none): A #CdnFunction
+ *
+ **/
 CdnFunction *
 cdn_operator_get_primary_function (CdnOperator *op)
 {

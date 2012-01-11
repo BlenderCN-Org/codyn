@@ -1385,6 +1385,16 @@ cdn_function_get_n_implicit (CdnFunction *function)
 	return function->priv->n_implicit;
 }
 
+/**
+ * cdn_function_get_argument:
+ * @function: A #CdnFunction
+ * @name: The argument name
+ *
+ * Get an argument by name.
+ *
+ * Returns: (transfer none): A #CdnFunctionArgument
+ *
+ **/
 CdnFunctionArgument *
 cdn_function_get_argument (CdnFunction *function,
                            gchar const *name)
@@ -1404,6 +1414,18 @@ cdn_function_get_dimension (CdnFunction *function,
 	                                                  numc);
 }
 
+/**
+ * cdn_function_for_dimension:
+ * @function: A #CdnFunction
+ * @numargs: The number of arguments
+ * @argdim: (array length=numargs): The argument dimensions
+ *
+ * Get the function prototype representing this function for the given
+ * arguments.
+ *
+ * Returns: (transfer full): A #CdnFunction
+ *
+ **/
 CdnFunction *
 cdn_function_for_dimension (CdnFunction *function,
                             gint         numargs,

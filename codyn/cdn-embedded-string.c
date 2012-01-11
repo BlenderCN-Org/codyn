@@ -2156,6 +2156,15 @@ cdn_embedded_string_expand_escape (CdnEmbeddedString   *s,
 	return ret;
 }
 
+/**
+ * cdn_embedded_string_push_brace:
+ * @s: A #CdnEmbeddedString
+ *
+ * Push a brace for an embedded string.
+ *
+ * Returns: (transfer none): A #CdnEmbeddedString
+ *
+ **/
 CdnEmbeddedString *
 cdn_embedded_string_push_brace (CdnEmbeddedString *s)
 {
@@ -2167,6 +2176,15 @@ cdn_embedded_string_push_brace (CdnEmbeddedString *s)
 	return s;
 }
 
+/**
+ * cdn_embedded_string_pop_brace:
+ * @s: A #CdnEmbeddedString
+ *
+ * Pop a brace for an embedded string.
+ *
+ * Returns: (transfer none): A #CdnEmbeddedString
+ *
+ **/
 CdnEmbeddedString *
 cdn_embedded_string_pop_brace (CdnEmbeddedString *s)
 {
@@ -2186,6 +2204,16 @@ cdn_embedded_string_brace_level (CdnEmbeddedString *s)
 	return s->priv->braces;
 }
 
+/**
+ * cdn_embedded_string_add_string:
+ * @s: A #CdnEmbeddedString
+ * @other: A #CdnEmbeddedString
+ *
+ * Add one embedded string to another.
+ *
+ * Returns: (transfer none): A #CdnEmbeddedString
+ *
+ **/
 CdnEmbeddedString *
 cdn_embedded_string_add_string (CdnEmbeddedString *s,
                                 CdnEmbeddedString *other)

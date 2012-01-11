@@ -1885,6 +1885,21 @@ derive_iter (CdnExpressionTreeIter *iter,
 	return ret;
 }
 
+/**
+ * cdn_symbolic_derive:
+ * @expression: The expression to derive
+ * @symbols: (element-type CdnVariable): A list of symbols to derive towards
+ * @property_map: A #GHashTable
+ * @diff_map: A #GHashTable
+ * @order: The order of the derivation
+ * @flags: A #CdnSymbolicDeriveFlags
+ * @error: A #GError
+ *
+ * Derive an expression symbolically.
+ *
+ * Returns: (transfer full): A #CdnExpression
+ *
+ **/
 CdnExpression *
 cdn_symbolic_derive (CdnExpression          *expression,
                      GSList                 *symbols,
@@ -2012,6 +2027,15 @@ cdn_symbolic_derive (CdnExpression          *expression,
 	return ret;
 }
 
+/**
+ * cdn_symbolic_simplify:
+ * @expression: A #CdnExpression
+ *
+ *  Symbolically simplify an expression.
+ *
+ * Returns: (transfer full): A #CdnExpression
+ *
+ **/
 CdnExpression *
 cdn_symbolic_simplify (CdnExpression *expression)
 {

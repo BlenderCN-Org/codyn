@@ -31,10 +31,10 @@
  *
  * The property interface is a mapping of property aliases to arbitrary
  * properties. Each #CdnNode has a property interface which manages which
- * properties of children of the group are exposed on the group itself.
+ * properties of children of the node are exposed on the node itself.
  *
  * This allows for controlled accessibility of certain properties of certain
- * children of a group, and ensures data integrity (in a sense).
+ * children of a node, and ensures data integrity (in a sense).
  *
  */
 
@@ -357,18 +357,18 @@ cdn_variable_interface_init (CdnVariableInterface *self)
 
 /**
  * cdn_variable_interface_new:
- * @object: A #CdnObject
+ * @node: A #CdnNode
  *
- * Create a new property interface mapping.
+ * Create a new variable interface mapping.
  *
  * Returns: A #CdnVariableInterface
  *
  **/
 CdnVariableInterface *
-cdn_variable_interface_new (CdnNode *group)
+cdn_variable_interface_new (CdnNode *node)
 {
 	return g_object_new (CDN_TYPE_VARIABLE_INTERFACE,
-	                     "group", group,
+	                     "node", node,
 	                     NULL);
 }
 
@@ -413,7 +413,7 @@ cdn_variable_interface_lookup (CdnVariableInterface *iface,
  * cdn_variable_interface_add:
  * @iface: A #CdnVariableInterface
  * @name: The mapping name
- * @property: A #CdnVariable
+ * @variable_name: A variable name
  * @error: A #GError
  *
  * Add a mapping to the interface.
@@ -425,7 +425,7 @@ gboolean
 cdn_variable_interface_add (CdnVariableInterface  *iface,
                             gchar const           *name,
                             gchar const           *child_name,
-                            gchar const           *property_name,
+                            gchar const           *variable_name,
                             GError               **error)
 {
 	gboolean ret = FALSE;
@@ -433,14 +433,14 @@ cdn_variable_interface_add (CdnVariableInterface  *iface,
 	g_return_val_if_fail (CDN_IS_VARIABLE_INTERFACE (iface), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
 	g_return_val_if_fail (child_name != NULL, FALSE);
-	g_return_val_if_fail (property_name != NULL, FALSE);
+	g_return_val_if_fail (variable_name != NULL, FALSE);
 
 	g_signal_emit (iface,
 	               signals[VERIFY_ADD],
 	               0,
 	               name,
 	               child_name,
-	               property_name,
+	               variable_name,
 	               error,
 	               &ret);
 
@@ -451,14 +451,14 @@ cdn_variable_interface_add (CdnVariableInterface  *iface,
 
 	g_hash_table_insert (iface->priv->properties,
 	                     g_strdup (name),
-	                     property_new (child_name, property_name));
+	                     property_new (child_name, variable_name));
 
 	g_ptr_array_remove_index (iface->priv->names, iface->priv->names->len - 1);
 
 	g_ptr_array_add (iface->priv->names, g_strdup (name));
 	g_ptr_array_add (iface->priv->names, NULL);
 
-	g_signal_emit (iface, signals[ADDED], 0, name, child_name, property_name);
+	g_signal_emit (iface, signals[ADDED], 0, name, child_name, variable_name);
 
 	return TRUE;
 }

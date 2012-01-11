@@ -32,21 +32,21 @@
 
 /**
  * SECTION:cdn-node
- * @short_description: Group object grouping many objects together
+ * @short_description: Group object nodeing many objects together
  *
  * The #CdnNode is a special #CdnObject that contains many objects as children.
  * This can be used make sub-networks that can be easily instantiated,
  * providing some common functionality.
  *
- * Each group can have a proxy object associated which serves as a bridge
- * between the outside and the inside of the group. In addition, each group
+ * Each node can have a proxy object associated which serves as a bridge
+ * between the outside and the inside of the node. In addition, each node
  * has an interface (#CdnVariableInterface) which allows the designer of the
- * group to expose a certain subset of its child variables on the group.
+ * node to expose a certain subset of its child variables on the node.
  *
  * <refsect2 id="CdnNode-COPY">
  * <title>CdnNode Copy Semantics</title>
- * When a group is copied with #cdn_object_copy, all the children are
- * recursively copied as well. If a group has a proxy, the new group will
+ * When a node is copied with #cdn_object_copy, all the children are
+ * recursively copied as well. If a node has a proxy, the new node will
  * have its proxy set to the new copy of the original proxy.
  * </refsect2>
  */

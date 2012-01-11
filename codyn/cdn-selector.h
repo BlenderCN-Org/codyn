@@ -118,7 +118,7 @@ GType         cdn_selector_get_type          (void) G_GNUC_CONST;
 
 CdnSelector  *cdn_selector_new               (CdnObject              *root);
 CdnSelector  *cdn_selector_parse             (CdnObject              *root,
-                                              gchar const            *ptr,
+                                              gchar const            *s,
                                               GError                **error);
 
 CdnSelector  *cdn_selector_copy_with         (CdnSelector            *selector);

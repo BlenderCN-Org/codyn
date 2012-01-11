@@ -99,18 +99,44 @@ cdn_expression_tree_iter_new (CdnExpression *expression)
 	return tree_iter_new (expression, NULL);
 }
 
+/**
+ * cdn_expression_tree_iter_new_from_instructions:
+ * @instructions: (element-type CdnInstruction): A #GSList
+ *
+ * Create a new tree iter from a list of instructions.
+ *
+ * Returns: A #CdnExpressionTreeIter
+ *
+ **/
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_new_from_instructions (GSList const *instructions)
 {
 	return tree_iter_new (NULL, instructions);
 }
 
+/**
+ * cdn_expression_tree_iter_get_instruction:
+ * @iter: A #CdnExpressionTreeIter
+ *
+ * Get the instruction for this tree iter.
+ *
+ * Returns: (transfer none): A #CdnInstruction
+ *
+ **/
 CdnInstruction *
 cdn_expression_tree_iter_get_instruction (CdnExpressionTreeIter *iter)
 {
 	return iter->instruction;
 }
 
+/**
+ * cdn_expression_tree_iter_set_instruction:
+ * @iter: A #CdnExpressionTreeIter
+ * @instr: A #CdnInstruction
+ *
+ * Set the instruction for this tree iter.
+ *
+ **/
 void
 cdn_expression_tree_iter_set_instruction (CdnExpressionTreeIter *iter,
                                           CdnInstruction        *instr)
@@ -135,6 +161,16 @@ cdn_expression_tree_iter_num_children (CdnExpressionTreeIter *iter)
 	return iter->num_children;
 }
 
+/**
+ * cdn_expression_tree_iter_get_child:
+ * @iter: A #CdnExpressionTreeIter
+ * @nth: The index of the child
+ *
+ * Get the nth child of this tree iter.
+ *
+ * Returns: (transfer none): A #CdnExpressionTreeIter
+ *
+ **/
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_get_child (CdnExpressionTreeIter *iter,
                                     gint nth)
@@ -144,6 +180,15 @@ cdn_expression_tree_iter_get_child (CdnExpressionTreeIter *iter,
 	return iter->children[nth];
 }
 
+/**
+ * cdn_expression_tree_iter_take_child:
+ * @iter: A #CdnExpressionTreeIter
+ * @nth: The index of the child
+ * @child: (transfer full): A #CdnExpressionTreeIter
+ *
+ * Set the child of the tree iter, without making a copy of @child.
+ *
+ **/
 void
 cdn_expression_tree_iter_take_child (CdnExpressionTreeIter *iter,
                                      gint                   nth,
@@ -159,6 +204,15 @@ cdn_expression_tree_iter_take_child (CdnExpressionTreeIter *iter,
 	iter_invalidate_cache_up (child);
 }
 
+/**
+ * cdn_expression_tree_iter_set_child:
+ * @iter: A #CdnExpressionTreeIter
+ * @nth: The index of the child
+ * @child: A #CdnExpressionTreeIter
+ *
+ * Set the child of the tree iter.
+ *
+ **/
 void
 cdn_expression_tree_iter_set_child (CdnExpressionTreeIter *iter,
                                     gint                   nth,
@@ -185,12 +239,30 @@ iter_to_instructions (CdnExpressionTreeIter *iter,
 	return ret;
 }
 
+/**
+ * cdn_expression_tree_iter_to_instructions:
+ * @iter: A #CdnExpressionTreeIter
+ *
+ * Get the instructions that this tree iter represents (including its children).
+ *
+ * Returns: (transfer full) (element-type CdnInstruction): A #GSList
+ *
+ **/
 GSList *
 cdn_expression_tree_iter_to_instructions (CdnExpressionTreeIter *iter)
 {
 	return iter_to_instructions (iter, NULL);
 }
 
+/**
+ * cdn_expression_tree_iter_copy:
+ * @iter: A #CdnExpressionTreeIter
+ *
+ * Create a copy of the tree iter.
+ *
+ * Returns: (transfer full): A #CdnExpressionTreeIter
+ *
+ **/
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_copy (CdnExpressionTreeIter *iter)
 {
@@ -224,6 +296,15 @@ cdn_expression_tree_iter_equal (CdnExpressionTreeIter *iter,
 	return TRUE;
 }
 
+/**
+ * cdn_expression_tree_iter_new_from_instruction:
+ * @instruction: A #CdnInstruction
+ *
+ * Create a new tree iter from an instruction.
+ *
+ * Returns: (transfer full): A #CdnExpressionTreeIter
+ *
+ **/
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_new_from_instruction (CdnInstruction *instruction)
 {

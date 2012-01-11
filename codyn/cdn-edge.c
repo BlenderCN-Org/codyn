@@ -1456,6 +1456,17 @@ cdn_edge_get_action (CdnEdge     *link,
 	                                       NULL);
 }
 
+/**
+ * cdn_edge_get_action_with_index:
+ * @link: A #CdnEdge
+ * @target: The action target
+ * @index: A #CdnExpression
+ *
+ * Get the action for a target with a specific index.
+ *
+ * Returns: (transfer none): A #CdnEdgeAction
+ *
+ **/
 CdnEdgeAction *
 cdn_edge_get_action_with_index (CdnEdge       *link,
                                 gchar const   *target,

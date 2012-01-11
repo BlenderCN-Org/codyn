@@ -162,8 +162,7 @@ cdn_instruction_custom_operator_init (CdnInstructionCustomOperator *self)
 
 /**
  * cdn_instruction_custom_operator_new:
- * @operator: A #CdnOperator
- * @expressions: (element-type CdnExpression) (transfer none): A #GSList of #CdnExpression
+ * @op: A #CdnOperator
  *
  * Create a new #CdnInstructionCustomOperator.
  *
@@ -171,15 +170,15 @@ cdn_instruction_custom_operator_init (CdnInstructionCustomOperator *self)
  *
  **/
 CdnInstruction *
-cdn_instruction_custom_operator_new (CdnOperator *operator)
+cdn_instruction_custom_operator_new (CdnOperator *op)
 {
 	CdnMiniObject *ret;
-	CdnInstructionCustomOperator *op;
+	CdnInstructionCustomOperator *oper;
 
 	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_CUSTOM_OPERATOR);
-	op = CDN_INSTRUCTION_CUSTOM_OPERATOR (ret);
+	oper = CDN_INSTRUCTION_CUSTOM_OPERATOR (ret);
 
-	op->priv->op = g_object_ref (operator);
+	oper->priv->op = g_object_ref (op);
 
 	return CDN_INSTRUCTION (ret);
 }

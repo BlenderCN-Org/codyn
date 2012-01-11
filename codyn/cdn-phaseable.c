@@ -150,7 +150,7 @@ cdn_phaseable_remove_phase (CdnPhaseable *phaseable,
 }
 
 /**
- * cdn_phaseable_get_tag_table:
+ * cdn_phaseable_get_phase_table:
  * @phaseable: A #CdnPhaseable
  *
  * Get the tag hash table.
@@ -224,6 +224,15 @@ phaseable_foreach (gchar const *key,
 	info->func (info->phaseable, key, info->userdata);
 }
 
+/**
+ * cdn_phaseable_foreach:
+ * @phaseable: A #CdnPhaseable
+ * @func: (scope call): A #CdnPhaseableForeachFunc
+ * @userdata: The user data for @func
+ *
+ * Calls @func for each phase.
+ *
+ **/
 void
 cdn_phaseable_foreach (CdnPhaseable            *phaseable,
                        CdnPhaseableForeachFunc  func,

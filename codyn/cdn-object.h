@@ -160,7 +160,7 @@ struct _CdnObjectClass
 	void          (*clear)           (CdnObject    *object);
 
 	gboolean      (*equal)           (CdnObject    *first,
-	                                  CdnObject    *last);
+	                                  CdnObject    *second);
 
 	CdnCompileContext *(*get_compile_context) (CdnObject         *object,
 	                                           CdnCompileContext *context);

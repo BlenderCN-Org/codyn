@@ -1575,7 +1575,7 @@ cdn_object_new (const gchar *id)
  *
  * Create a new #CdnObject based on the template @templ.
  *
- * Returns: A #CdnObject
+ * Returns: (transfer full): A #CdnObject
  *
  **/
 CdnObject *
@@ -1606,36 +1606,36 @@ cdn_object_new_from_template (CdnObject  *templ,
 /**
  * cdn_object_add_variable:
  * @object: the #CdnObject
- * @property: the #CdnVariable to add
+ * @variable: the #CdnVariable to add
  * @error: a #GError
  *
- * Add a new property to the object. Note that if a property with the same
- * name already exists, the property information is transfered to the existing
- * property instance. This means that the specified @property might not actually
+ * Add a new variable to the object. Note that if a variable with the same
+ * name already exists, the variable information is transfered to the existing
+ * variable instance. This means that the specified @variable might not actually
  * be added to the object. Also, since a #CdnVariable is a #GInitiallyUnowned,
- * @property will be destroyed after the call to #cdn_object_add_variable in
+ * @variable will be destroyed after the call to #cdn_object_add_variable in
  * the above described case, unless you explicitly sink the floating reference.
  *
- * In the case that you can not know whether a property is overriding an
- * existing property in @object, never use @property after a call to
- * #cdn_object_add_variable. Instead, retrieve the corresponding property
+ * In the case that you can not know whether a variable is overriding an
+ * existing variable in @object, never use @variable after a call to
+ * #cdn_object_add_variable. Instead, retrieve the corresponding variable
  * using #cdn_object_get_variable after the call to #cdn_object_add_variable.
  *
- * Returns: %TRUE if the property was added successfully, %FALSE otherwise
+ * Returns: %TRUE if the variable was added successfully, %FALSE otherwise
  **/
 gboolean
 cdn_object_add_variable (CdnObject    *object,
-                         CdnVariable  *property,
+                         CdnVariable  *variable,
                          GError       **error)
 {
 	g_return_val_if_fail (CDN_IS_OBJECT (object), FALSE);
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), FALSE);
-	g_return_val_if_fail (cdn_variable_get_object (property) == NULL, FALSE);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), FALSE);
+	g_return_val_if_fail (cdn_variable_get_object (variable) == NULL, FALSE);
 
 	if (CDN_OBJECT_GET_CLASS (object)->add_variable)
 	{
 		return CDN_OBJECT_GET_CLASS (object)->add_variable (object,
-		                                                    property,
+		                                                    variable,
 		                                                    error);
 	}
 	else
@@ -2079,12 +2079,12 @@ cdn_object_unapply_template (CdnObject  *object,
 /**
  * cdn_object_get_variable_template:
  * @object: A #CdnObject
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  * @match_full: How to match the property
  *
- * Get the template on which @property is defined, if any. If @match_full is
+ * Get the template on which @variable is defined, if any. If @match_full is
  * %TRUE, the template will only be possitively matched if both variables are
- * equal (i.e. if a property originated from a template, but was later modified,
+ * equal (i.e. if a variable originated from a template, but was later modified,
  * this function will not return the original template object).
  *
  * Returns: (transfer none): A #CdnObject
@@ -2092,17 +2092,17 @@ cdn_object_unapply_template (CdnObject  *object,
  **/
 CdnObject *
 cdn_object_get_variable_template (CdnObject   *object,
-                                  CdnVariable *property,
+                                  CdnVariable *variable,
                                   gboolean     match_full)
 {
 	g_return_val_if_fail (CDN_IS_OBJECT (object), NULL);
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
 	GSList *templates = g_slist_copy ((GSList *)cdn_object_get_applied_templates (object));
 	templates = g_slist_reverse (templates);
 	GSList *item;
 
-	gchar const *name = cdn_variable_get_name (property);
+	gchar const *name = cdn_variable_get_name (variable);
 
 	for (item = templates; item; item = g_slist_next (item))
 	{
@@ -2111,7 +2111,7 @@ cdn_object_get_variable_template (CdnObject   *object,
 
 		tprop = cdn_object_get_variable (templ, name);
 
-		if (tprop && (!match_full || cdn_variable_equal (property, tprop)))
+		if (tprop && (!match_full || cdn_variable_equal (variable, tprop)))
 		{
 			g_slist_free (templates);
 			return templ;
@@ -2396,6 +2396,16 @@ cdn_object_get_relative_id_for_display (CdnObject *object,
 	return get_relative_id (object, parent, TRUE);
 }
 
+/**
+ * cdn_object_get_compile_context:
+ * @object: A #CdnObject
+ * @context: A #CdnCompileContext
+ *
+ * Get the compile context for this object.
+ *
+ * Returns: (transfer full): A #CdnCompileContext
+ *
+ **/
 CdnCompileContext *
 cdn_object_get_compile_context (CdnObject         *object,
                                 CdnCompileContext *context)

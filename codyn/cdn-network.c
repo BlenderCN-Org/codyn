@@ -958,7 +958,7 @@ cdn_network_load_from_path (CdnNetwork   *network,
 /**
  * cdn_network_load_from_string:
  * @network: A #CdnNetwork
- * @xml: The network to load
+ * @s: The network to load
  * @error: A #GError
  * 
  * Load a network from text into an existing network instance.

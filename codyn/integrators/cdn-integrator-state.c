@@ -707,7 +707,16 @@ cdn_integrator_state_integrated_edge_actions (CdnIntegratorState *state)
 	return state->priv->integrated_edge_actions;
 }
 
-const GSList *
+/**
+ * cdn_integrator_state_phase_integrated_edge_actions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the integrated edge actions in the current phase.
+ *
+ * Returns: (element-type CdnEdgeAction) (transfer none): A #GSList
+ *
+ **/
+GSList const *
 cdn_integrator_state_phase_integrated_edge_actions (CdnIntegratorState *state)
 {
 	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
@@ -730,7 +739,17 @@ cdn_integrator_state_direct_edge_actions (CdnIntegratorState *state)
 	return state->priv->direct_edge_actions;
 }
 
-const GSList *
+/**
+ * cdn_integrator_state_phase_direct_edge_actions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the edge actions that act on non-integrated variables in the current
+ * phase.
+ *
+ * Returns: (element-type CdnEdgeAction) (transfer none): A #GSList
+ *
+ **/
+GSList const *
 cdn_integrator_state_phase_direct_edge_actions (CdnIntegratorState *state)
 {
 	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
@@ -801,13 +820,31 @@ cdn_integrator_state_get_object (CdnIntegratorState *state)
 	return state->priv->object;
 }
 
-const GSList *
+/**
+ * cdn_integrator_state_operators:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the list of operators.
+ *
+ * Returns: (element-type CdnOperator) (transfer none): A #GSList
+ *
+ **/
+GSList const *
 cdn_integrator_state_operators (CdnIntegratorState *state)
 {
 	/* Omit check to speed up */
 	return state->priv->operators;
 }
 
+/**
+ * cdn_integrator_state_rand_instructions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the list of rand instructions.
+ *
+ * Returns: (element-type CdnInstructionRand) (transfer none): A #GSList
+ *
+ **/
 GSList const *
 cdn_integrator_state_rand_instructions (CdnIntegratorState *state)
 {
@@ -815,6 +852,15 @@ cdn_integrator_state_rand_instructions (CdnIntegratorState *state)
 	return state->priv->rand_instructions;
 }
 
+/**
+ * cdn_integrator_state_rand_expressions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the list of rand expressions.
+ *
+ * Returns: (element-type CdnExpression) (transfer none): A #GSList
+ *
+ **/
 GSList const *
 cdn_integrator_state_rand_expressions (CdnIntegratorState *state)
 {
@@ -822,6 +868,15 @@ cdn_integrator_state_rand_expressions (CdnIntegratorState *state)
 	return state->priv->rand_expressions;
 }
 
+/**
+ * cdn_integrator_state_functions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the list of functions.
+ *
+ * Returns: (element-type CdnFunction) (transfer none): A #GSList
+ *
+ **/
 GSList const *
 cdn_integrator_state_functions (CdnIntegratorState *state)
 {
@@ -829,6 +884,15 @@ cdn_integrator_state_functions (CdnIntegratorState *state)
 	return state->priv->functions;
 }
 
+/**
+ * cdn_integrator_state_events:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the list of events.
+ *
+ * Returns: (element-type CdnEvent) (transfer none): A #GSList
+ *
+ **/
 GSList const *
 cdn_integrator_state_events (CdnIntegratorState *state)
 {
@@ -836,6 +900,15 @@ cdn_integrator_state_events (CdnIntegratorState *state)
 	return state->priv->events;
 }
 
+/**
+ * cdn_integrator_state_phase_events:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the list of events in the current phase.
+ *
+ * Returns: (element-type CdnEvent) (transfer none): A #GSList
+ *
+ **/
 GSList const *
 cdn_integrator_state_phase_events (CdnIntegratorState *state)
 {

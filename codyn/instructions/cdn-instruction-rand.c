@@ -108,10 +108,7 @@ cdn_instruction_rand_init (CdnInstructionRand *self)
 
 /**
  * cdn_instruction_rand_new:
- * @id: The function id
- * @name: (transfer none): The function name
  * @arguments: The number of arguments
- * @variable: Whether the function accepts a variable number of arguments
  *
  * Create a new #CdnInstructionRand.
  *
@@ -132,6 +129,13 @@ cdn_instruction_rand_new (gint arguments)
 	return CDN_INSTRUCTION (ret);
 }
 
+/**
+ * cdn_instruction_rand_next:
+ * @self: A #CdnInstructionRand
+ *
+ * Generate the next random value in the instruction.
+ *
+ **/
 void
 cdn_instruction_rand_next (CdnInstructionRand *self)
 {
