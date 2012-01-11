@@ -606,6 +606,8 @@ cdn_expansion_prepend (CdnExpansion *id,
 {
 	gint i;
 	gint onum;
+	gint num;
+	gint newsize;
 
 	onum = cdn_expansion_num (other);
 
@@ -614,19 +616,28 @@ cdn_expansion_prepend (CdnExpansion *id,
 		return;
 	}
 
-	if (!copy_on_write_sized (id, TRUE, onum - idx))
+	num = onum - idx;
+	newsize = id->expansions->len + num;
+
+	if (!copy_on_write_sized (id, TRUE, num))
 	{
 		g_ptr_array_set_size (id->expansions,
-		                      id->expansions->len + (onum - idx));
+		                      id->expansions->len + num);
+	}
+
+	// move data
+	for (i = 0; i < id->expansions->len - num; ++i)
+	{
+		id->expansions->pdata[newsize - i - 1] =
+			id->expansions->pdata[newsize - i - 1 - num];
 	}
 
 	for (i = idx; i < onum; ++i)
 	{
 		gint pidx = i - idx + 1;
 
-		id->expansions->pdata[pidx + (onum - idx)] = id->expansions->pdata[pidx];
 		id->expansions->pdata[pidx] = expansion_copy (get_ex (other, i));
-
-		++id->expansions->len;
 	}
+
+	id->expansions->len = newsize;
 }

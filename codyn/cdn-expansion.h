@@ -77,10 +77,6 @@ void          cdn_expansion_prepend          (CdnExpansion           *id,
                                               CdnExpansion           *other,
                                               gint                    idx);
 
-gchar        *cdn_expansions_expand          (GSList                 *expansions,
-                                              gchar const            *s,
-                                              GRegex                 *regex);
-
 void          cdn_expansions_annotate_indices (GSList                *expansions,
                                                gint                   start);
 
