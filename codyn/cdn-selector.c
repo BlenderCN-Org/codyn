@@ -142,7 +142,11 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"has-tag",
 	"reverse",
 	"source-name",
-	"sink-name"
+	"sink-name",
+	"recurse",
+	"sourced-by",
+	"sinked-by",
+	"pass"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1285,6 +1289,46 @@ selector_pseudo_from_to_name (CdnSelector        *self,
 }
 
 static GSList *
+selector_pseudo_from_to_by (CdnSelector        *self,
+                            Selector           *selector,
+                            gchar const        *name,
+                            GSList             *ret,
+                            CdnSelection       *sel,
+                            CdnEmbeddedContext *context)
+{
+	CdnNode *node;
+	GSList const *edges;
+
+	if (!CDN_IS_NODE (cdn_selection_get_object (sel)))
+	{
+		return ret;
+	}
+
+	node = cdn_selection_get_object (sel);
+	edges = cdn_node_get_edges (node);
+
+	while (edges)
+	{
+		CdnEdge *edge = edges->data;
+		CdnNode *obj;
+
+		g_object_get (edge, name, &obj, NULL);
+
+		if (obj == node)
+		{
+			ret = g_slist_prepend (ret, make_child_selection (sel,
+			                                                  NULL,
+			                                                  edge));
+		}
+
+		g_object_unref (obj);
+		edges = g_slist_next (edges);
+	}
+
+	return ret;
+}
+
+static GSList *
 selector_pseudo_from_to (CdnSelector        *self,
                          Selector           *selector,
                          gchar const        *name,
@@ -1597,6 +1641,76 @@ selector_pseudo_if (CdnSelector        *self,
 			ret = g_slist_prepend (ret,
 			                       cdn_selection_copy (sel));
 			break;
+		}
+	}
+
+	cdn_embedded_context_restore (context);
+	return ret;
+}
+
+static GSList *
+selector_pseudo_recurse (CdnSelector        *self,
+                         Selector           *selector,
+                         GSList             *ret,
+                         CdnSelection       *sel,
+                         CdnEmbeddedContext *context)
+{
+	GSList *item;
+
+	cdn_embedded_context_save (context);
+	cdn_embedded_context_add_selection (context, sel);
+
+	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
+	{
+		GQueue q;
+		GHashTable *had;
+
+		had = g_hash_table_new (g_direct_hash,
+		                        g_direct_equal);
+
+		g_queue_init (&q);
+		g_queue_push_head (&q, cdn_selection_copy (sel));
+
+		while (!g_queue_is_empty (&q))
+		{
+			CdnSelection *s;
+			GSList *sub;
+
+			s = g_queue_pop_head (&q);
+			ret = g_slist_prepend (ret, s);
+
+			g_hash_table_insert (had,
+			                     cdn_selection_get_object (s),
+			                     GINT_TO_POINTER (1));
+
+			cdn_selector_set_self (item->data, self->priv->self);
+
+			sub = cdn_selector_select (item->data,
+			                           cdn_selection_get_object (s),
+			                           CDN_SELECTOR_TYPE_ANY,
+			                           context);
+
+			cdn_selector_set_self (item->data, NULL);
+
+			while (sub)
+			{
+				CdnSelection *ss;
+				gpointer o;
+
+				ss = sub->data;
+				o = cdn_selection_get_object (ss);
+
+				if (!g_hash_table_lookup (had, o))
+				{
+					g_queue_push_tail (&q, ss);
+				}
+				else
+				{
+					g_object_unref (ss);
+				}
+
+				sub = g_slist_delete_link (sub, sub);
+			}
 		}
 	}
 
@@ -2337,6 +2451,58 @@ is_template (CdnSelector *selector,
 }
 
 static GSList *
+selector_pseudo_pass (CdnSelector        *self,
+                      Selector           *selector,
+                      CdnSelection       *selection,
+                      CdnEmbeddedContext *context,
+                      GSList             *ret)
+{
+	gpointer obj;
+	GSList *arg;
+	GSList *exps = NULL;
+	GSList *cmb;
+
+	obj = cdn_selection_get_object (selection);
+
+	if (!CDN_IS_VARIABLE (obj))
+	{
+		return ret;
+	}
+
+	for (arg = selector->pseudo.arguments; arg; arg = g_slist_next (arg))
+	{
+		CdnEmbeddedString *s;
+		GSList *items;
+
+		if (!CDN_IS_EMBEDDED_STRING (arg->data))
+		{
+			continue;
+		}
+
+		s = CDN_EMBEDDED_STRING (arg->data);
+		items = cdn_embedded_string_expand_multiple (s, context, NULL);
+
+		exps = g_slist_concat (exps,
+		                       items);
+	}
+
+	cmb = g_slist_concat (g_slist_copy (exps),
+	                      g_slist_copy (cdn_selection_get_expansions (selection)));
+
+	ret = g_slist_prepend (ret,
+	                       cdn_selection_new (cdn_selection_get_object (selection),
+	                                          cmb,
+	                                          cdn_selection_get_defines (selection)));
+
+	g_slist_foreach (exps, (GFunc)cdn_expansion_unref, NULL);
+	g_slist_free (exps);
+
+	g_slist_free (cmb);
+
+	return ret;
+}
+
+static GSList *
 selector_select_pseudo (CdnSelector        *self,
                         Selector           *selector,
                         GSList             *parent,
@@ -2623,6 +2789,22 @@ selector_select_pseudo (CdnSelector        *self,
 				                                    sel,
 				                                    context);
 			break;
+			case CDN_SELECTOR_PSEUDO_TYPE_SOURCED_BY:
+				ret = selector_pseudo_from_to_by (self,
+				                                  selector,
+				                                  "from",
+				                                  ret,
+				                                  sel,
+				                                  context);
+			break;
+			case CDN_SELECTOR_PSEUDO_TYPE_SINKED_BY:
+				ret = selector_pseudo_from_to_by (self,
+				                                  selector,
+				                                  "to",
+				                                  ret,
+				                                  sel,
+				                                  context);
+			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_IF:
 				ret = selector_pseudo_if (self,
 				                          selector,
@@ -2630,6 +2812,13 @@ selector_select_pseudo (CdnSelector        *self,
 				                          sel,
 				                          context,
 				                          TRUE);
+			break;
+			case CDN_SELECTOR_PSEUDO_TYPE_RECURSE:
+				ret = selector_pseudo_recurse (self,
+				                               selector,
+				                               ret,
+				                               sel,
+				                               context);
 			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_COUNT:
 				ret = selector_pseudo_count (self,
@@ -2673,6 +2862,13 @@ selector_select_pseudo (CdnSelector        *self,
 					ret = g_slist_prepend (ret,
 					                       cdn_selection_copy_defines (sel, FALSE));
 				}
+			break;
+			case CDN_SELECTOR_PSEUDO_TYPE_PASS:
+				ret = selector_pseudo_pass (self,
+				                            selector,
+				                            sel,
+				                            context,
+				                            ret);
 			break;
 			default:
 				g_assert_not_reached ();

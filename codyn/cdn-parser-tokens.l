@@ -230,6 +230,10 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"sink"		return T_KEY_SINK;
 <INITIAL,onlyselector>"source-name"	return T_KEY_SOURCE_NAME;
 <INITIAL,onlyselector>"sink-name"	return T_KEY_SINK_NAME;
+<INITIAL,onlyselector>"recurse"		return T_KEY_RECURSE;
+<INITIAL,onlyselector>"sourced-by"	return T_KEY_SOURCED_BY;
+<INITIAL,onlyselector>"sinked-by"	return T_KEY_SINKED_BY;
+<INITIAL,onlyselector>"pass"		return T_KEY_PASS;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
