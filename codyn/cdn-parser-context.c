@@ -2925,6 +2925,64 @@ gtype_from_selector_type (CdnSelectorType type)
 	}
 }
 
+static gchar *
+expansion_as_string (CdnExpansion *expansion)
+{
+	GString *ret;
+	gint i;
+
+	ret = g_string_new ("");
+
+	if (cdn_expansion_num (expansion) > 1)
+	{
+		g_string_append_c (ret, '{');
+	}
+
+	for (i = 0; i < cdn_expansion_num (expansion); ++i)
+	{
+		if (i != 0)
+		{
+			g_string_append_c (ret, ',');
+		}
+
+		g_string_append (ret, cdn_expansion_get (expansion, i));
+		g_string_append_printf (ret, ":%d", cdn_expansion_get_index (expansion, i));
+	}
+
+	if (cdn_expansion_num (expansion) > 1)
+	{
+		g_string_append_c (ret, '}');
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
+static gchar *
+expansions_as_string (GSList *expansions)
+{
+	GString *ret;
+
+	ret = g_string_new ("");
+
+	while (expansions)
+	{
+		gchar *s;
+
+		s = expansion_as_string (expansions->data);
+		g_string_append (ret, s);
+		g_free (s);
+
+		expansions = g_slist_next (expansions);
+
+		if (expansions)
+		{
+			g_string_append (ret, ", ");
+		}
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
 void
 cdn_parser_context_push_selection (CdnParserContext *context,
                                    CdnSelector      *selector,
@@ -5480,64 +5538,6 @@ cdn_parser_context_debug_selector (CdnParserContext *context,
 
 		cdn_embedded_context_restore (context->priv->embedded);
 	}
-}
-
-static gchar *
-expansion_as_string (CdnExpansion *expansion)
-{
-	GString *ret;
-	gint i;
-
-	ret = g_string_new ("");
-
-	if (cdn_expansion_num (expansion) > 1)
-	{
-		g_string_append_c (ret, '{');
-	}
-
-	for (i = 0; i < cdn_expansion_num (expansion); ++i)
-	{
-		if (i != 0)
-		{
-			g_string_append_c (ret, ',');
-		}
-
-		g_string_append (ret, cdn_expansion_get (expansion, i));
-		g_string_append_printf (ret, ":%d", cdn_expansion_get_index (expansion, i));
-	}
-
-	if (cdn_expansion_num (expansion) > 1)
-	{
-		g_string_append_c (ret, '}');
-	}
-
-	return g_string_free (ret, FALSE);
-}
-
-static gchar *
-expansions_as_string (GSList *expansions)
-{
-	GString *ret;
-
-	ret = g_string_new ("");
-
-	while (expansions)
-	{
-		gchar *s;
-
-		s = expansion_as_string (expansions->data);
-		g_string_append (ret, s);
-		g_free (s);
-
-		expansions = g_slist_next (expansions);
-
-		if (expansions)
-		{
-			g_string_append (ret, ", ");
-		}
-	}
-
-	return g_string_free (ret, FALSE);
 }
 
 void
