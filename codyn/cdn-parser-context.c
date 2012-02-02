@@ -3962,26 +3962,22 @@ cdn_parser_context_push_function (CdnParserContext  *context,
  *
  * Description.
  *
- * Returns: (transfer container) (element-type CdnObject): A #GSList
- *
  **/
-GSList *
+void
 cdn_parser_context_pop (CdnParserContext *context)
 {
 	Context *ctx;
-	GSList *ret = NULL;
-	GSList *item;
 
-	g_return_val_if_fail (CDN_IS_PARSER_CONTEXT (context), NULL);
+	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 
 	if (context->priv->in_event_handler)
 	{
-		return NULL;
+		return;
 	}
 
 	if (!context->priv->context_stack)
 	{
-		return NULL;
+		return;
 	}
 
 	ctx = CURRENT_CONTEXT (context);
@@ -3991,14 +3987,6 @@ cdn_parser_context_pop (CdnParserContext *context)
 		context->priv->is_template = NULL;
 	}
 
-	for (item = ctx->objects; item; item = g_slist_next (item))
-	{
-		ret = g_slist_prepend (ret,
-		                       cdn_selection_get_object (item->data));
-	}
-
-	ret = g_slist_reverse (ret);
-
 	context_free (ctx);
 
 	context->priv->context_stack =
@@ -4006,8 +3994,6 @@ cdn_parser_context_pop (CdnParserContext *context)
 		                     context->priv->context_stack);
 
 	g_signal_emit (context, signals[CONTEXT_POPPED], 0);
-
-	return ret;
 }
 
 void
@@ -4879,11 +4865,7 @@ cdn_parser_context_pop_input (CdnParserContext *context)
 			/* Pop all the scopes */
 			while (context->priv->context_stack)
 			{
-				GSList *ret;
-
-				ret = cdn_parser_context_pop (context);
-				g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
-				g_slist_free (ret);
+				cdn_parser_context_pop (context);
 			}
 		}
 

@@ -240,7 +240,7 @@ void                   cdn_parser_context_set_input_file_setting (CdnParserConte
 void                   cdn_parser_context_set_proxy            (CdnParserContext           *context,
                                                                 GSList                     *objects);
 
-GSList                *cdn_parser_context_pop                  (CdnParserContext           *context);
+void                   cdn_parser_context_pop                  (CdnParserContext           *context);
 GSList const          *cdn_parser_context_current_selections   (CdnParserContext           *context);
 GSList const          *cdn_parser_context_previous_selections  (CdnParserContext           *context);
 
