@@ -183,7 +183,7 @@ cdn_instruction_function_new (guint        id,
 
 	for (i = 0; i < arguments * 2; ++i)
 	{
-		func->priv->smanip.pop_dims[i] = argdim[i];
+		func->priv->smanip.pop_dims[i] = argdim ? argdim[i] : 1;
 	}
 
 	func->priv->smanip.num_push = 1;
