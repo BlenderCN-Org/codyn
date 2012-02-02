@@ -1009,8 +1009,12 @@ parse_expansion_range_rev (gchar const *s)
 		g_free (step);
 
 		g_match_info_free (info);
+		return ret;
 	}
-	else if (g_regex_match (timesreg, s, 0, &info))
+
+	g_match_info_free (info);
+
+	if (g_regex_match (timesreg, s, 0, &info))
 	{
 		gchar *start = g_match_info_fetch (info, 1);
 		gchar *rest = g_match_info_fetch (info, 2);
@@ -1031,17 +1035,20 @@ parse_expansion_range_rev (gchar const *s)
 
 		g_free (start);
 		g_free (rest);
-	}
-	else
-	{
-		gchar const *pptr[] = {
-			s,
-			NULL
-		};
 
-		ret = g_slist_prepend (ret,
-		                       cdn_expansion_new (pptr));
+		g_match_info_free (info);
+		return ret;
 	}
+
+	g_match_info_free (info);
+
+	gchar const *pptr[] = {
+		s,
+		NULL
+	};
+
+	ret = g_slist_prepend (ret,
+	                       cdn_expansion_new (pptr));
 
 	return ret;
 }
@@ -1530,10 +1537,14 @@ ex_node_expand (gchar const  *text,
 		             "Missing closing }");
 
 		ex_node_free (root);
+		g_string_free (buf, TRUE);
+
 		return NULL;
 	}
 
 	ex_node_append_text (current, buf, text, ptr, &last);
+	g_string_free (buf, TRUE);
+
 	return root;
 }
 
@@ -1586,28 +1597,29 @@ expand_elements (CdnEmbeddedString   *s,
 	while (child)
 	{
 		GSList *items;
-		GSList *item;
 
 		ret = apply_filters_rev (s, ctx, ret, pos, error);
 
 		items = expand_node (s, ctx, child, error);
 
 		// Append the items to the result
-		for (item = items; item; item = g_slist_next (item))
+		while (items)
 		{
-			if (cdn_expansion_num (item->data) == 1)
+			if (cdn_expansion_num (items->data) == 1)
 			{
 				// This means no additional expansions, just
 				// text. We are going to expand ranges on this
-				GSList *more = parse_expansion_range_rev (cdn_expansion_get (item->data, 0));
+				GSList *more = parse_expansion_range_rev (cdn_expansion_get (items->data, 0));
 
 				ret = g_slist_concat (more, ret);
-				cdn_expansion_unref (item->data);
+				cdn_expansion_unref (items->data);
 			}
 			else
 			{
-				ret = g_slist_prepend (ret, item->data);
+				ret = g_slist_prepend (ret, items->data);
 			}
+
+			items = g_slist_delete_link (items, items);
 		}
 
 		pos = child->end;

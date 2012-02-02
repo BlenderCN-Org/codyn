@@ -336,6 +336,11 @@ cdn_parser_context_finalize (GObject *object)
 		g_object_unref (self->priv->annotation);
 	}
 
+	if (self->priv->embedded)
+	{
+		g_object_unref (self->priv->embedded);
+	}
+
 	g_hash_table_destroy (self->priv->files);
 
 	G_OBJECT_CLASS (cdn_parser_context_parent_class)->finalize (object);
@@ -3386,6 +3391,11 @@ cdn_parser_context_push_node (CdnParserContext  *context,
 
 	cdn_parser_context_push_objects (context, objects, attributes);
 	g_slist_free (objects);
+
+	if (id != NULL)
+	{
+		g_object_unref (id);
+	}
 }
 
 void
@@ -3452,6 +3462,16 @@ cdn_parser_context_push_input_file (CdnParserContext  *context,
 
 	cdn_parser_context_push_objects (context, objects, attributes);
 	g_slist_free (objects);
+
+	if (id != NULL)
+	{
+		g_object_unref (id);
+	}
+
+	if (path != NULL)
+	{
+		g_object_unref (path);
+	}
 }
 
 void
@@ -3552,6 +3572,11 @@ cdn_parser_context_push_edge (CdnParserContext          *context,
 	g_slist_free (objects);
 
 	if (id != NULL)
+	{
+		g_object_unref (id);
+	}
+
+	if (phase != NULL)
 	{
 		g_object_unref (id);
 	}
@@ -3919,6 +3944,16 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 
 	g_slist_foreach (args, (GFunc)cdn_function_argument_spec_free, NULL);
 	g_slist_free (args);
+
+	if (id)
+	{
+		g_object_unref (id);
+	}
+
+	if (expression)
+	{
+		g_object_unref (expression);
+	}
 }
 
 /**
@@ -4844,7 +4879,11 @@ cdn_parser_context_pop_input (CdnParserContext *context)
 			/* Pop all the scopes */
 			while (context->priv->context_stack)
 			{
-				cdn_parser_context_pop (context);
+				GSList *ret;
+
+				ret = cdn_parser_context_pop (context);
+				g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+				g_slist_free (ret);
 			}
 		}
 

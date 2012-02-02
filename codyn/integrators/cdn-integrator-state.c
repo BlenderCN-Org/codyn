@@ -185,6 +185,7 @@ clear_lists (CdnIntegratorState *state)
 	clear_list (&(state->priv->events));
 	clear_list (&(state->priv->phase_events));
 
+	// Clear the table
 	g_hash_table_ref (state->priv->direct_variables_hash);
 	g_hash_table_destroy (state->priv->direct_variables_hash);
 }
@@ -196,8 +197,14 @@ on_object_compiled (CdnIntegratorState *state)
 }
 
 static void
+object_weak_notify (CdnIntegratorState *state)
+{
+	state->priv->object = NULL;
+}
+
+static void
 set_object (CdnIntegratorState *state,
-           CdnObject           *object)
+            CdnObject           *object)
 {
 	if (state->priv->object)
 	{
@@ -205,14 +212,20 @@ set_object (CdnIntegratorState *state,
 		                                      on_object_compiled,
 		                                      state);
 
-		g_object_unref (state->priv->object);
+		g_object_weak_unref (G_OBJECT (state->priv->object),
+		                     (GWeakNotify)object_weak_notify,
+		                     state);
 
 		state->priv->object = NULL;
 	}
 
 	if (object)
 	{
-		state->priv->object = g_object_ref (object);
+		state->priv->object = object;
+
+		g_object_weak_ref (G_OBJECT (object),
+		                   (GWeakNotify)object_weak_notify,
+		                   state);
 
 		if (cdn_object_is_compiled (CDN_OBJECT (object)))
 		{
@@ -235,6 +248,12 @@ cdn_integrator_state_dispose (GObject *object)
 	clear_lists (state);
 
 	g_free (state->priv->phase);
+
+	if (state->priv->direct_variables_hash)
+	{
+		g_hash_table_destroy (state->priv->direct_variables_hash);
+		state->priv->direct_variables_hash = NULL;
+	}
 
 	G_OBJECT_CLASS (cdn_integrator_state_parent_class)->dispose (object);
 }

@@ -74,8 +74,6 @@ struct _CdnNetworkPrivate
 
 	CdnNode *template_group;
 
-	GSList *operators;
-
 	GHashTable *imports;
 };
 
@@ -170,9 +168,6 @@ cdn_network_finalize (GObject *object)
 	cdn_object_clear (CDN_OBJECT (network));
 
 	g_object_unref (network->priv->template_group);
-
-	g_slist_foreach (network->priv->operators, (GFunc)g_object_unref, NULL);
-	g_slist_free (network->priv->operators);
 
 	g_hash_table_foreach (network->priv->imports,
 	                      (GHFunc)unregister_all_imports,
@@ -556,9 +551,6 @@ cdn_network_init (CdnNetwork *network)
 	CdnIntegratorEuler *integrator = cdn_integrator_euler_new ();
 	cdn_network_set_integrator (network, CDN_INTEGRATOR (integrator));
 	g_object_unref (integrator);
-
-	network->priv->operators = g_slist_prepend (network->priv->operators,
-	                                            cdn_operator_delayed_new ());
 
 	network->priv->imports = g_hash_table_new_full (g_file_hash,
 	                                                (GEqualFunc)g_file_equal,
