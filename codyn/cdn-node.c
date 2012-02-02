@@ -2389,20 +2389,20 @@ cdn_node_find_object (CdnNode    *node,
 }
 
 /**
- * cdn_node_remove_variables:
+ * cdn_node_find_variables:
  * @node: A #CdnNode
  * @selector: The selector
  *
  * Find variables by specifying a selector. For example, if there is
  * another node "g" containing a node "s" with variable "x", you can use
- * cdn_node_remove_variables (node, "g.s.x") to remove the variable.
+ * cdn_node_find_variables (node, "g.s.x") to remove the variable.
  *
  * Returns: (transfer container) (element-type CdnVariable): A list of #CdnVariable
  *
  **/
 GSList *
-cdn_node_remove_variables (CdnNode    *node,
-                           gchar const *selector)
+cdn_node_find_variables (CdnNode    *node,
+                         gchar const *selector)
 {
 	CdnSelector *sel;
 	GSList *all;
@@ -2462,7 +2462,7 @@ cdn_node_find_variable (CdnNode      *node,
 	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 	g_return_val_if_fail (selector != NULL, NULL);
 
-	all = cdn_node_remove_variables (node, selector);
+	all = cdn_node_find_variables (node, selector);
 
 	if (all)
 	{

@@ -135,8 +135,8 @@ GSList       *cdn_node_find_objects  (CdnNode    *node,
 CdnVariable  *cdn_node_find_variable (CdnNode    *node,
                                        const gchar *selector);
 
-GSList       *cdn_node_remove_variables (CdnNode    *node,
-                                         const gchar *selector);
+GSList       *cdn_node_find_variables (CdnNode    *node,
+                                       const gchar *selector);
 
 gboolean      cdn_node_verify_remove_child (CdnNode   *node,
                                              CdnObject  *child,
