@@ -9,19 +9,22 @@
  *
  **/
 
-G_DEFINE_ABSTRACT_TYPE (CdnInstruction, cdn_instruction, CDN_TYPE_MINI_OBJECT)
+G_DEFINE_TYPE (CdnInstruction, cdn_instruction, CDN_TYPE_MINI_OBJECT)
 
 static gchar *
 cdn_instruction_to_string_impl (CdnInstruction *instruction)
 {
-	return g_strdup_printf ("[%s]", g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
+	return g_strdup_printf ("[%s]",
+	                        g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
 }
 
 static CdnStackManipulation const *
 cdn_instruction_get_stack_manipulation_impl (CdnInstruction  *instruction,
                                              GError         **error)
 {
-	g_warning ("%s should implement get_stack_manipulation!", g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
+	g_warning ("%s should implement get_stack_manipulation!",
+	           g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
+
 	return NULL;
 }
 
