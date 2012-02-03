@@ -614,6 +614,7 @@ cdn_expression_new0 ()
 	                                           cdn_instruction_number_new_from_string ("0"));
 
 	validate_stack (ret, NULL, FALSE);
+	ret->priv->modified = FALSE;
 
 	return ret;
 }
