@@ -71,8 +71,10 @@ CdnExpression *cdn_expression_copy             (CdnExpression      *expression);
 
 gboolean       cdn_expression_depends_on       (CdnExpression      *expression,
                                                 CdnExpression      *depends_on);
+
 const GSList  *cdn_expression_get_dependencies   (CdnExpression      *expression);
 const GSList  *cdn_expression_get_depends_on_me (CdnExpression      *expression);
+GSList        *cdn_expression_get_variable_dependencies (CdnExpression *expression);
 
 const gchar   *cdn_expression_get_as_string    (CdnExpression      *expression);
 

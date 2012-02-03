@@ -3920,6 +3920,40 @@ cdn_expression_get_dependencies (CdnExpression *expression)
 }
 
 /**
+ * cdn_expression_get_variable_dependencies:
+ * @expression: A #CdnExpression
+ *
+ * Get a list of variables on which the expression depends directly.
+ *
+ * Returns: (element-type CdnVariable) (transfer container): a #GSList
+ *
+ **/
+GSList *
+cdn_expression_get_variable_dependencies (CdnExpression *expression)
+{
+	GSList *item;
+	GSList *ret = NULL;
+
+	/* Omit type check to increase speed */
+	for (item = expression->priv->instructions; item; item = g_slist_next (item))
+	{
+		CdnInstruction *instr = item->data;
+
+		if (CDN_IS_INSTRUCTION_VARIABLE (instr))
+		{
+			CdnVariable *v;
+
+			v = cdn_instruction_variable_get_variable (item->data);
+
+			ret = g_slist_prepend (ret, v);
+		}
+	}
+
+	return g_slist_reverse (ret);
+}
+
+
+/**
  * cdn_expression_get_depends_on_me:
  * @expression: a #CdnExpression
  *
