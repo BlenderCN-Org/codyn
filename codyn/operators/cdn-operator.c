@@ -450,7 +450,7 @@ cdn_operator_get_name (CdnOperator *op)
  *
  * Get the list of all expressions.
  *
- * Returns: A list of all expressions
+ * Returns: (transfer none): A list of all expressions
  *
  **/
 GSList const **
@@ -467,7 +467,7 @@ cdn_operator_all_expressions (CdnOperator *op)
  *
  * Get a list of al indices..
  *
- * Returns: A list of all indices
+ * Returns: (transfer none): A list of all indices
  *
  **/
 GSList const **

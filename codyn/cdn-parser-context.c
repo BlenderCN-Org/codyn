@@ -183,6 +183,16 @@ struct _CdnFunctionArgumentSpec
 	gboolean isexplicit;
 };
 
+/**
+ * cdn_function_argument_spec_new: (skip):
+ * @name: A #CdnEmbeddedString
+ * @isexplicit: whether the argument is explicit
+ *
+ * Create a new function argument specification.
+ *
+ * Returns: (transfer full): A #CdnFunctionArgumentSpec
+ *
+ **/
 CdnFunctionArgumentSpec *
 cdn_function_argument_spec_new (CdnEmbeddedString *name,
                                 gboolean           isexplicit)
