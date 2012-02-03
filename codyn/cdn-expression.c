@@ -3909,7 +3909,7 @@ cdn_expression_depends_on (CdnExpression *expression,
  * Get a list of #CdnExpression on which the expression depends. The list is owned
  * by @expression and should not be freed or modified
  *
- * Returns: (element-type CdnExpression) (transfer container): a list of #CdnExpression
+ * Returns: (element-type CdnExpression) (transfer none): a list of #CdnExpression
  *
  **/
 const GSList *
@@ -3960,7 +3960,7 @@ cdn_expression_get_variable_dependencies (CdnExpression *expression)
  * Get a list of #CdnExpression which depend on @expression. The list is owned
  * by @expression and should not be freed or modified
  *
- * Returns: (element-type CdnExpression) (transfer container): a list of #CdnExpression
+ * Returns: (element-type CdnExpression) (transfer none): a list of #CdnExpression
  *
  **/
 const GSList *
