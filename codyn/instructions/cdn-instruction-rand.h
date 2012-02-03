@@ -30,11 +30,12 @@ struct _CdnInstructionRandClass
 	CdnInstructionClass parent_class;
 };
 
-GType cdn_instruction_rand_get_type (void) G_GNUC_CONST;
+GType           cdn_instruction_rand_get_type (void) G_GNUC_CONST;
 
-CdnInstruction *cdn_instruction_rand_new (gint arguments);
+CdnInstruction *cdn_instruction_rand_new      (gint                numargs,
+                                               gint               *argdim);
 
-void cdn_instruction_rand_next (CdnInstructionRand *self);
+void            cdn_instruction_rand_next     (CdnInstructionRand *self);
 
 G_END_DECLS
 

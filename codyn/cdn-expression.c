@@ -1586,7 +1586,12 @@ parse_function (CdnExpression *expression,
 	{
 		if (isrand)
 		{
-			instruction = cdn_instruction_rand_new (numargs);
+			gint *argdim;
+
+			argdim = get_argdim (expression, context, numargs);
+
+			instruction = cdn_instruction_rand_new (numargs, argdim);
+			g_free (argdim);
 		}
 		else
 		{

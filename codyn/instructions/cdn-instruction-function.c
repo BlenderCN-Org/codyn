@@ -1,5 +1,6 @@
 #include "cdn-instruction-function.h"
 #include <codyn/cdn-math.h>
+#include <string.h>
 
 #define CDN_INSTRUCTION_FUNCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION_FUNCTION, CdnInstructionFunctionPrivate))
 
@@ -32,23 +33,14 @@ static void
 copy_smanip (CdnStackManipulation const *src,
              CdnStackManipulation       *dest)
 {
-	gint i;
-
 	dest->num_pop = src->num_pop;
 	dest->num_push = src->num_push;
 
+	g_free (dest->pop_dims);
 	dest->pop_dims = g_new (gint, dest->num_pop * 2);
-	dest->push_dims = g_new (gint, dest->num_push * 2);
 
-	for (i = 0; i < dest->num_pop * 2; ++i)
-	{
-		dest->pop_dims[i] = src->pop_dims[i];
-	}
-
-	for (i = 0; i < dest->num_push * 2; ++i)
-	{
-		dest->push_dims[i] = src->push_dims[i];
-	}
+	memcpy (dest->pop_dims, src->pop_dims, sizeof (gint) * src->num_pop * 2);
+	memcpy (dest->push_dims, src->push_dims, sizeof (gint) * src->num_pop * 2);
 }
 
 static CdnMiniObject *
