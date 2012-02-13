@@ -504,11 +504,7 @@ cdn_expansion_insert (CdnExpansion *id,
 	gint n;
 	gint i;
 
-	copy_on_write (id, TRUE);
-
-	g_ptr_array_add (id->expansions,
-	                 NULL);
-
+	copy_on_write_sized (id, TRUE, 1);
 	n = cdn_expansion_num (id);
 
 	for (i = n - 1; i > idx; --i)
@@ -595,6 +591,7 @@ cdn_expansion_append (CdnExpansion *id,
 {
 	gint i;
 	gint onum;
+	gint oldsize;
 
 	onum = cdn_expansion_num (other);
 
@@ -603,16 +600,16 @@ cdn_expansion_append (CdnExpansion *id,
 		return;
 	}
 
-	copy_on_write (id, TRUE);
+	oldsize = cdn_expansion_num (id);
+
+	copy_on_write_sized (id, TRUE, onum - idx);
 
 	for (i = idx; i < onum; ++i)
 	{
-		cdn_expansion_add (id,
-		                   cdn_expansion_get (other, i));
+		Expansion *ex;
 
-		cdn_expansion_set_index (id,
-		                         cdn_expansion_num (id) - 1,
-		                         cdn_expansion_get_index (other, i));
+		ex = expansion_copy (get_ex (other, i));
+		id->expansions->pdata[oldsize + i - idx] = ex;
 	}
 }
 
@@ -625,6 +622,7 @@ cdn_expansion_prepend (CdnExpansion *id,
 	gint onum;
 	gint num;
 	gint newsize;
+	gint oldsize;
 
 	onum = cdn_expansion_num (other);
 
@@ -634,15 +632,19 @@ cdn_expansion_prepend (CdnExpansion *id,
 	}
 
 	num = onum - idx;
-	newsize = cdn_expansion_num (id) + num;
+
+	oldsize = cdn_expansion_num (id);
+	newsize = oldsize + num;
 
 	copy_on_write_sized (id, TRUE, num);
 
 	// move data
-	for (i = 0; i < id->expansions->len - num; ++i)
+	for (i = 0; i < oldsize - 1; ++i)
 	{
-		id->expansions->pdata[newsize - i - 1] =
-			id->expansions->pdata[newsize - i - 1 - num];
+		gint end = newsize - i - 1;
+
+		id->expansions->pdata[end] =
+			id->expansions->pdata[end - num];
 	}
 
 	for (i = idx; i < onum; ++i)
@@ -651,6 +653,4 @@ cdn_expansion_prepend (CdnExpansion *id,
 
 		id->expansions->pdata[pidx] = expansion_copy (get_ex (other, i));
 	}
-
-	id->expansions->len = newsize;
 }
