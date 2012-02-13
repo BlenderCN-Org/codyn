@@ -1211,6 +1211,16 @@ generate_name_value_pairs (CdnParserContext  *context,
 			                                   sel,
 			                                   value,
 			                                   &valueismulti);
+
+			if (!values)
+			{
+				g_slist_foreach (names, (GFunc)cdn_expansion_unref, NULL);
+				g_slist_free (names);
+
+				cdn_embedded_context_restore (context->priv->embedded);
+				return NULL;
+			}
+
 			hascontext = TRUE;
 
 			if (!single_can_be_multi && !values->next)
