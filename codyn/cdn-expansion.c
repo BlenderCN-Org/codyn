@@ -212,10 +212,13 @@ copy_on_write_sized (CdnExpansion *expansion,
 	{
 		if ((make_multi || num > 0) && expansion->is_one)
 		{
-			ptr = g_ptr_array_sized_new (1 + num);
+			ptr = g_ptr_array_sized_new (num + 1);
+			g_ptr_array_set_size (ptr, num);
+
 			g_ptr_array_set_free_func (ptr, (GDestroyNotify)expansion_unref);
 
-			g_ptr_array_add (ptr, expansion_copy (expansion->text));
+			ptr->pdata[0] = expansion_copy (expansion->text);
+
 			expansion_unref (expansion->text);
 
 			expansion->is_one = FALSE;
@@ -232,7 +235,9 @@ copy_on_write_sized (CdnExpansion *expansion,
 
 	if (!expansion->is_one || make_multi)
 	{
-		ptr = g_ptr_array_sized_new (cdn_expansion_num (expansion) + num);
+		gint newsize = cdn_expansion_num (expansion) + num;
+
+		ptr = g_ptr_array_sized_new (newsize);
 		g_ptr_array_set_free_func (ptr, (GDestroyNotify)expansion_unref);
 
 		for (i = 0; i < cdn_expansion_num (expansion); ++i)
@@ -240,6 +245,8 @@ copy_on_write_sized (CdnExpansion *expansion,
 			g_ptr_array_add (ptr,
 			                 expansion_copy (get_ex (expansion, i)));
 		}
+
+		g_ptr_array_set_size (ptr, newsize);
 
 		if (!expansion->is_one)
 		{
@@ -617,13 +624,9 @@ cdn_expansion_prepend (CdnExpansion *id,
 	}
 
 	num = onum - idx;
-	newsize = id->expansions->len + num;
+	newsize = cdn_expansion_num (id) + num;
 
-	if (!copy_on_write_sized (id, TRUE, num))
-	{
-		g_ptr_array_set_size (id->expansions,
-		                      id->expansions->len + num);
-	}
+	copy_on_write_sized (id, TRUE, num);
 
 	// move data
 	for (i = 0; i < id->expansions->len - num; ++i)
