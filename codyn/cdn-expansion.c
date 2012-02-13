@@ -223,7 +223,7 @@ copy_on_write_sized (CdnExpansion *expansion,
 		if ((make_multi || num > 0) && expansion->is_one)
 		{
 			ptr = g_ptr_array_sized_new (num + 1);
-			g_ptr_array_set_size (ptr, num);
+			g_ptr_array_set_size (ptr, num + 1);
 
 			g_ptr_array_set_free_func (ptr, (GDestroyNotify)expansion_unref);
 
