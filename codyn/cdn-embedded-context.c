@@ -368,7 +368,7 @@ cdn_embedded_context_add_define (CdnEmbeddedContext *context,
 
 	g_return_if_fail (CDN_IS_EMBEDDED_CONTEXT (context));
 	g_return_if_fail (name != NULL);
-	g_return_if_fail (value == NULL);
+	g_return_if_fail (value != NULL);
 
 	ctx = CURRENT_CONTEXT (context);
 
