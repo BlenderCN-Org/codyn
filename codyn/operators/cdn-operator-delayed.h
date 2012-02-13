@@ -59,7 +59,6 @@ CdnOperatorDelayed *cdn_operator_delayed_new               (void);
 
 CdnExpression      *cdn_operator_delayed_get_expression    (CdnOperatorDelayed *delayed);
 CdnExpression      *cdn_operator_delayed_get_initial_value (CdnOperatorDelayed *delayed);
-gdouble             cdn_operator_delayed_get_delay         (CdnOperatorDelayed *delayed);
 
 G_END_DECLS
 

@@ -632,15 +632,6 @@ sort_edge_actions (CdnIntegratorState *state)
 		              (GCompareFunc)edge_action_compare);
 }
 
-/*static void
-collect_operators (CdnInstructionCustomOperator *instruction,
-                   CdnIntegratorState           *state)
-{
-	state->priv->operators =
-		g_slist_prepend (state->priv->operators,
-		                 cdn_instruction_custom_operator_get_operator (instruction));
-}*/
-
 static void
 collect_expressions (CdnExpression      *expression,
                      CdnIntegratorState *state)
@@ -651,28 +642,37 @@ collect_expressions (CdnExpression      *expression,
 	state->priv->expressions =
 		g_slist_prepend (state->priv->expressions, expression);
 
-	instr = cdn_expression_get_rand_instructions (expression);
+	instr = cdn_expression_get_instructions (expression);
 
 	while (instr)
 	{
-		state->priv->rand_instructions =
-			g_slist_prepend (state->priv->rand_instructions,
-			                 instr->data);
-
-		if (!hadrand)
+		if (CDN_IS_INSTRUCTION_RAND (instr->data))
 		{
-			state->priv->rand_expressions =
-				g_slist_prepend (state->priv->rand_expressions,
-				                 expression);
+			state->priv->rand_instructions =
+				g_slist_prepend (state->priv->rand_instructions,
+				                 instr->data);
+
+			if (!hadrand)
+			{
+				state->priv->rand_expressions =
+					g_slist_prepend (state->priv->rand_expressions,
+					                 expression);
+			}
+
+			hadrand = TRUE;
+		}
+		else if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR (instr->data))
+		{
+			CdnOperator *op;
+
+			op = cdn_instruction_custom_operator_get_operator (instr->data);
+
+			state->priv->operators =
+				g_slist_prepend (state->priv->operators, op);
 		}
 
-		hadrand = TRUE;
 		instr = g_slist_next (instr);
 	}
-
-	/* TODO g_slist_foreach ((GSList *)cdn_expression_get_operators (expression),
-	                 (GFunc)collect_operators,
-	                 state);*/
 }
 
 static GSList *
@@ -847,6 +847,9 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 
 	state->priv->rand_instructions =
 		g_slist_reverse (state->priv->rand_instructions);
+
+	state->priv->operators =
+		g_slist_reverse (state->priv->operators);
 
 	g_signal_emit (state, signals[UPDATED], 0);
 }

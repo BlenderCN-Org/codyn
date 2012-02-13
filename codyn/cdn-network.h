@@ -185,6 +185,12 @@ void              cdn_network_run                    (CdnNetwork *network,
                                                       gdouble     from,
                                                       gdouble     timestep,
                                                       gdouble     to);
+
+void              cdn_network_begin                  (CdnNetwork *network,
+                                                      gdouble     start);
+
+void              cdn_network_end                    (CdnNetwork *network);
+
 gdouble           cdn_network_step                   (CdnNetwork *network,
                                                       gdouble     timestep);
 

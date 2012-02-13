@@ -56,6 +56,14 @@ guint     cdn_stack_count   (CdnStack *stack);
 void      cdn_stack_push    (CdnStack *stack,
                              gdouble   value);
 
+void      cdn_stack_pushn   (CdnStack *stack,
+                             gdouble const *values,
+                             gint      num);
+
+void      cdn_stack_pushni  (CdnStack *stack,
+                             gdouble   value,
+                             gint      num);
+
 void      cdn_stack_resize  (CdnStack *stack,
                              guint     size);
 

@@ -354,6 +354,24 @@ cdn_operator_get_stack_manipulation_default (CdnOperator *op)
 }
 
 static void
+cdn_operator_reset_default (CdnOperator *op)
+{
+}
+
+static void
+cdn_operator_step_default (CdnOperator *op,
+                           gdouble      t,
+                           gdouble      timestep)
+{
+}
+
+static void
+cdn_operator_initialize_integrate_default (CdnOperator   *op,
+                                           CdnIntegrator *integrator)
+{
+}
+
+static void
 cdn_operator_class_init (CdnOperatorClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -368,6 +386,9 @@ cdn_operator_class_init (CdnOperatorClass *klass)
 	klass->copy = cdn_operator_copy_default;
 	klass->foreach_function = cdn_operator_foreach_function_default;
 	klass->get_stack_manipulation = cdn_operator_get_stack_manipulation_default;
+	klass->reset = cdn_operator_reset_default;
+	klass->step = cdn_operator_step_default;
+	klass->initialize_integrate = cdn_operator_initialize_integrate_default;
 
 	g_type_class_add_private (object_class, sizeof (CdnOperatorPrivate));
 }
@@ -741,4 +762,28 @@ CdnStackManipulation const *
 cdn_operator_get_stack_manipulation (CdnOperator *op)
 {
 	return CDN_OPERATOR_GET_CLASS (op)->get_stack_manipulation (op);
+}
+
+void
+cdn_operator_reset (CdnOperator *op)
+{
+	CDN_OPERATOR_GET_CLASS (op)->reset (op);
+}
+
+void
+cdn_operator_step (CdnOperator *op,
+                   gdouble      t,
+                   gdouble      timestep)
+{
+	CDN_OPERATOR_GET_CLASS (op)->step (op, t, timestep);
+}
+
+void
+cdn_operator_initialize_integrate (CdnOperator   *op,
+                                   CdnIntegrator *integrator)
+{
+	g_return_if_fail (CDN_IS_OPERATOR (op));
+	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+
+	CDN_OPERATOR_GET_CLASS (op)->initialize_integrate (op, integrator);
 }

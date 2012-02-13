@@ -1107,7 +1107,9 @@ cdn_network_new_from_string (gchar const  *s,
  * @network: a #CdnNetwork
  * @timestep: the integration timestep
  *
- * Perform one step of simulation given the specified @timestep.
+ * Perform one step of simulation given the specified @timestep. Note that you
+ * have to call #cdn_network_begin before doing the first step, and you should
+ * call #cdn_network_end after the last step.
  *
  **/
 gdouble
@@ -1140,13 +1142,38 @@ cdn_network_run (CdnNetwork  *network,
                  gdouble      to)
 {
 	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (from < to);
-	g_return_if_fail (timestep > 0);
 
 	cdn_integrator_run (network->priv->integrator,
 	                    from,
 	                    timestep,
 	                    to);
+}
+
+/**
+ * cdn_network_begin:
+ * @network: A #CdnNetwork
+ * @start: the simulation start time
+ *
+ * Initialize the network to be integrated. Note that you do not need to
+ * use this if you are using #cdn_network_run since it will call
+ * #cdn_network_begin (and #cdn_network_end) for you.
+ *
+ **/
+void
+cdn_network_begin (CdnNetwork  *network,
+                   gdouble      start)
+{
+	g_return_if_fail (CDN_IS_NETWORK (network));
+
+	cdn_integrator_begin (network->priv->integrator, start);
+}
+
+void
+cdn_network_end (CdnNetwork  *network)
+{
+	g_return_if_fail (CDN_IS_NETWORK (network));
+
+	cdn_integrator_end (network->priv->integrator);
 }
 
 /**

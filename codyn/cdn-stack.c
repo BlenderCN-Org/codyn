@@ -360,3 +360,24 @@ cdn_stack_set_output_ptr (CdnStack *stack,
 		stack->output_ptr = ptr;
 	}
 }
+
+void
+cdn_stack_pushn (CdnStack      *stack,
+                 gdouble const *values,
+                 gint           num)
+{
+	memcpy (stack->output_ptr, values, sizeof (gdouble) * num);
+	stack->output_ptr += num;
+}
+
+void
+cdn_stack_pushni (CdnStack *stack,
+                  gdouble   value,
+                  gint      num)
+{
+	while (num-- > 0)
+	{
+		*stack->output_ptr++ = value;
+	}
+}
+

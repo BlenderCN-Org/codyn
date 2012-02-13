@@ -116,6 +116,15 @@ cdn_instruction_custom_operator_get_dependencies (CdnInstruction *instruction)
 			                      dependencies);
 	}
 
+	num = cdn_operator_num_expressions (self->priv->op);
+
+	for (i = 0; i < num; ++i)
+	{
+		dependencies =
+			extract_dependencies (cdn_operator_get_expressions (self->priv->op, i),
+			                      dependencies);
+	}
+
 	cdn_operator_foreach_function (self->priv->op,
 	                               (CdnForeachFunctionFunc)extract_function_dependencies,
 	                               &dependencies);

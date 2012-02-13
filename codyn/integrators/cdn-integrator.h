@@ -89,6 +89,11 @@ CdnIntegratorState  *cdn_integrator_get_state       (CdnIntegrator *integrator);
 void                 cdn_integrator_set_state       (CdnIntegrator *integrator,
                                                      CdnIntegratorState *state);
 
+void                 cdn_integrator_begin           (CdnIntegrator *integrator,
+                                                     gdouble        start);
+
+void                 cdn_integrator_end             (CdnIntegrator *integrator);
+
 void                 cdn_integrator_run             (CdnIntegrator *integrator,
                                                      gdouble        from,
                                                      gdouble        timestep,

@@ -3980,6 +3980,8 @@ cdn_expression_get_depends_on_me (CdnExpression *expression)
 void
 cdn_expression_reset (CdnExpression *expression)
 {
+	GSList *item;
+
 	/* Omit type check to increase speed */
 	expression->priv->prevent_cache_reset = FALSE;
 
@@ -3993,6 +3995,25 @@ cdn_expression_reset (CdnExpression *expression)
 	if (expression->priv->once)
 	{
 		expression->priv->prevent_cache_reset = TRUE;
+	}
+
+	item = expression->priv->instructions;
+
+	while (item)
+	{
+		if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR (item->data))
+		{
+			CdnOperator *op;
+
+			op = cdn_instruction_custom_operator_get_operator (item->data);
+
+			if (op)
+			{
+				cdn_operator_reset (op);
+			}
+		}
+
+		item = g_slist_next (item);
 	}
 }
 

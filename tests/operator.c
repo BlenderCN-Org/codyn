@@ -4,7 +4,7 @@
 
 #include "utils.h"
 
-static gchar simple_xml[] = "node \"state\" { x = \"t\" last_x = \"delayed[x, 0.1]\" ddt = \"delayed[x, dt]\" }";
+static gchar simple_xml[] = "node \"state\" { x = \"t\" last_x = \"delayed[x](0.1)\" ddt = \"delayed[x](dt)\" }";
 
 static void
 test_delayed ()
@@ -27,13 +27,17 @@ test_delayed ()
 	gdouble pts[] = {0, 0, 0.1, 0.2, 0.3, 0.4};
 	gint i;
 
-	for (i = 0; i < 4; ++i)
+	cdn_network_begin (network, 0);
+
+	for (i = 0; i < sizeof (ts) / sizeof (gdouble) - 1; ++i)
 	{
 		cdn_assert_tol (cdn_variable_get_value (x), ts[i]);
 		cdn_assert_tol (cdn_variable_get_value (last_x), pts[i]);
 
 		cdn_network_step (network, 0.1);
 	}
+
+	cdn_network_end (network);
 
 	g_object_unref (network);
 }

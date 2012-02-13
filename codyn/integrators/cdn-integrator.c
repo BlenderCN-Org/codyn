@@ -336,6 +336,7 @@ prepare_next_step (CdnIntegrator *integrator,
 {
 	GSList *item;
 	GSList const *inputs;
+	GSList const *ops;
 
 	cdn_variable_set_value (integrator->priv->property_time, t);
 	cdn_variable_set_value (integrator->priv->property_timestep, timestep);
@@ -360,6 +361,15 @@ prepare_next_step (CdnIntegrator *integrator,
 	}
 
 	update_events (integrator);
+
+	// Update operators
+	ops = cdn_integrator_state_operators (integrator->priv->state);
+
+	while (ops)
+	{
+		cdn_operator_step (ops->data, t, timestep);
+		ops = g_slist_next (ops);
+	}
 }
 
 static void
@@ -512,7 +522,7 @@ cdn_integrator_constructor (GType                  type,
 static void
 cdn_integrator_reset_impl (CdnIntegrator *integrator)
 {
-	GSList const *props;
+	GSList const *items;
 
 	g_slist_foreach (integrator->priv->saved_state, (GFunc)saved_state_free, NULL);
 	g_slist_free (integrator->priv->saved_state);
@@ -525,15 +535,23 @@ cdn_integrator_reset_impl (CdnIntegrator *integrator)
 		return;
 	}
 
-	props = cdn_integrator_state_integrated_properties (integrator->priv->state);
+	items = cdn_integrator_state_integrated_properties (integrator->priv->state);
 
-	while (props)
+	while (items)
 	{
 		integrator->priv->saved_state =
 			g_slist_prepend (integrator->priv->saved_state,
-			                 saved_state_new (props->data));
+			                 saved_state_new (items->data));
 
-		props = g_slist_next (props);
+		items = g_slist_next (items);
+	}
+
+	items = cdn_integrator_state_operators (integrator->priv->state);
+
+	while (items)
+	{
+		cdn_operator_initialize_integrate (items->data, integrator);
+		items = g_slist_next (items);
 	}
 }
 
@@ -637,11 +655,9 @@ cdn_integrator_class_init (CdnIntegratorClass *klass)
 			              G_SIGNAL_RUN_LAST,
 			              0,
 			              NULL, NULL,
-			              cdn_marshal_VOID__DOUBLE_DOUBLE_DOUBLE,
+			              g_cclosure_marshal_VOID__DOUBLE,
 			              G_TYPE_NONE,
-			              3,
-			              G_TYPE_DOUBLE,
-			              G_TYPE_DOUBLE,
+			              1,
 			              G_TYPE_DOUBLE);
 
 	/**
@@ -783,6 +799,37 @@ simulation_step (CdnIntegrator *integrator)
 	cdn_integrator_simulation_step_integrate (integrator, NULL);
 }
 
+void
+cdn_integrator_begin (CdnIntegrator *integrator,
+                      gdouble        start)
+{
+	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+
+	if (!ensure_compiled (integrator))
+	{
+		return;
+	}
+
+	// Generate set of next random values
+	prepare_next_step (integrator, start, 0);
+
+	cdn_integrator_state_set_phase (integrator->priv->state,
+	                                integrator->priv->initial_phase);
+
+	g_signal_emit (integrator,
+	               integrator_signals[BEGIN],
+	               0,
+	               start);
+}
+
+void
+cdn_integrator_end (CdnIntegrator *integrator)
+{
+	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+
+	g_signal_emit (integrator, integrator_signals[END], 0);
+}
+
 /**
  * cdn_integrator_run:
  * @integrator: A #CdnIntegrator
@@ -801,33 +848,14 @@ cdn_integrator_run (CdnIntegrator *integrator,
 {
 	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
 
-	if (!ensure_compiled (integrator))
-	{
-		return;
-	}
+	cdn_integrator_begin (integrator, from);
 
-	// Generate set of next random values
-	prepare_next_step (integrator, from, timestep);
+	CDN_INTEGRATOR_GET_CLASS (integrator)->run (integrator,
+	                                            from,
+	                                            timestep,
+	                                            to);
 
-	cdn_integrator_state_set_phase (integrator->priv->state,
-	                                integrator->priv->initial_phase);
-
-	if (CDN_INTEGRATOR_GET_CLASS (integrator)->run)
-	{
-		g_signal_emit (integrator,
-		               integrator_signals[BEGIN],
-		               0,
-		               from,
-		               timestep,
-		               to);
-
-		CDN_INTEGRATOR_GET_CLASS (integrator)->run (integrator,
-		                                            from,
-		                                            timestep,
-		                                            to);
-
-		g_signal_emit (integrator, integrator_signals[END], 0);
-	}
+	cdn_integrator_end (integrator);
 }
 
 /**

@@ -28,6 +28,7 @@
 #include "cdn-network.h"
 
 #include <math.h>
+#include <string.h>
 #include <codyn/instructions/cdn-instructions.h>
 
 /**
@@ -50,7 +51,8 @@ struct _HistoryItem
 	HistoryItem *prev;
 
 	gdouble t;
-	gdouble v;
+
+	gdouble *v;
 };
 
 typedef struct
@@ -69,8 +71,15 @@ struct _CdnOperatorDelayedPrivate
 	CdnExpression *initial_value;
 	CdnExpression *delay_expression;
 
-	gdouble delay;
-	gdouble value;
+	gdouble last_t;
+	gboolean first_last_t;
+
+	CdnVariable *tvar;
+
+	CdnStackManipulation smanip;
+	gint push_dims[2];
+
+	gdouble eval_at_t;
 };
 
 G_DEFINE_TYPE (CdnOperatorDelayed,
@@ -81,11 +90,10 @@ enum
 {
 	PROP_0,
 	PROP_EXPRESSION,
-	PROP_INITIAL_VALUE,
-	PROP_DELAY
+	PROP_INITIAL_VALUE
 };
 
-/*static void
+static void
 history_remove_slice (HistoryList *history,
                       HistoryItem *start,
                       HistoryItem *end,
@@ -158,80 +166,50 @@ history_concat (HistoryList *l1,
 	l2->first = NULL;
 	l2->last = NULL;
 	l2->size = 0;
-}*/
-
-static gchar *
-cdn_operator_delayed_get_name ()
-{
-	return g_strdup ("delayed");
-}
-
-static gboolean
-cdn_operator_delayed_initialize (CdnOperator   *op,
-                                 GSList const **expressions,
-                                 gint           num_expressions,
-                                 GSList const **indices,
-                                 gint           num_indices,
-                                 gint           num_arguments,
-                                 gint          *argdim,
-                                 GError       **error)
-{
-	CdnOperatorDelayed *delayed;
-
-	if (!CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class)->initialize (op,
-	                                                                         expressions,
-	                                                                         num_expressions,
-	                                                                         indices,
-	                                                                         num_indices,
-	                                                                         num_arguments,
-	                                                                         argdim,
-	                                                                         error))
-	{
-		return FALSE;
-	}
-
-	if (num_expressions != 1 || expressions[0]->next)
-	{
-		g_set_error (error,
-		             CDN_NETWORK_LOAD_ERROR,
-		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
-		             "The operator `delayed' expects one argument, but got %d (%d)",
-		             num_expressions, num_expressions ? g_slist_length ((GSList *)expressions[0]) : 0);
-
-		return FALSE;
-	}
-
-	delayed = CDN_OPERATOR_DELAYED (op);
-	delayed->priv->expression = g_object_ref_sink (expressions[0]->data);
-
-	if (expressions[0]->next)
-	{
-		delayed->priv->delay_expression = g_object_ref_sink (expressions[0]->next->data);
-
-		if (expressions[0]->next->next)
-		{
-			delayed->priv->initial_value = g_object_ref_sink (expressions[0]->next->next->data);
-		}
-	}
-
-	delayed->priv->delay = 0;
-	return TRUE;
 }
 
 static void
-cdn_operator_delayed_execute (CdnOperator     *op,
-                              CdnStack        *stack)
+history_to_pool (CdnOperatorDelayed *operator,
+                 gdouble             fromt)
 {
-	CdnOperatorDelayed *d;
+	HistoryItem *item;
+	guint num = 0;
+	HistoryItem *first;
 
-	d = (CdnOperatorDelayed *)op;
+	item = operator->priv->history.first;
 
-	// TODO: calculate delay...
+	if (!item || item->t >= fromt)
+	{
+		return;
+	}
 
-	cdn_stack_push (stack, d->priv->value);
+	while (item->next && item->next->t < fromt)
+	{
+		item = item->next;
+		++num;
+	}
+
+	item = item->prev;
+
+	if (num == 0 || !item)
+	{
+		return;
+	}
+
+	first = operator->priv->history.first;
+
+	history_remove_slice (&operator->priv->history,
+	                      first,
+	                      item,
+	                      num);
+
+	history_append_slice (&operator->priv->history_pool,
+	                      first,
+	                      item,
+	                      num);
 }
 
-/*static HistoryItem *
+static HistoryItem *
 pool_to_history (CdnOperatorDelayed  *operator,
                  gint                 num)
 {
@@ -263,9 +241,6 @@ pool_to_history (CdnOperatorDelayed  *operator,
 			HistoryItem *h;
 
 			h = g_slice_new0 (HistoryItem);
-
-			h->t = 0;
-			h->v = 0;
 
 			if (slice_start == NULL)
 			{
@@ -320,109 +295,190 @@ pool_to_history (CdnOperatorDelayed  *operator,
 	return ret;
 }
 
-static void
-init_history (CdnOperatorDelayed *operator,
-              CdnIntegrator      *integrator,
-              gdouble             t,
-              gdouble             timestep)
+static gchar *
+cdn_operator_delayed_get_name ()
 {
-	HistoryItem *item;
-	gint i;
+	return g_strdup ("delayed");
+}
 
-	if (operator->priv->delay_expression)
+static gboolean
+cdn_operator_delayed_initialize (CdnOperator   *op,
+                                 GSList const **expressions,
+                                 gint           num_expressions,
+                                 GSList const **indices,
+                                 gint           num_indices,
+                                 gint           num_arguments,
+                                 gint          *argdim,
+                                 GError       **error)
+{
+	CdnOperatorDelayed *delayed;
+
+	if (!CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class)->initialize (op,
+	                                                                         expressions,
+	                                                                         num_expressions,
+	                                                                         indices,
+	                                                                         num_indices,
+	                                                                         num_arguments,
+	                                                                         argdim,
+	                                                                         error))
 	{
-		cdn_expression_reset_cache (operator->priv->delay_expression);
-		operator->priv->delay = cdn_expression_evaluate (operator->priv->delay_expression);
+		return FALSE;
 	}
 
-	// History is empty
-	item = pool_to_history (operator, (guint)(ceil (operator->priv->delay / fabs (timestep))));
-
-	// Initialize values
-	for (i = 0; i < operator->priv->history.size; ++i)
+	if (num_expressions != 1 || (num_expressions > 0 && g_slist_length ((GSList *)expressions[0]) > 2))
 	{
-		gint wri;
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
+		             "The operator `delayed' expects one or two expressions, but got %d",
+		             num_expressions ? g_slist_length ((GSList *)expressions[0]) : 0);
 
-		wri = operator->priv->history.size - i;
+		return FALSE;
+	}
 
-		item->t = t - timestep * wri;
+	if (num_arguments != 1)
+	{
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
+		             "The operator `delayed' expects exactly one argument (time delay), but got %d",
+		             num_arguments);
 
-		cdn_integrator_set_time (integrator, item->t);
+		return FALSE;
+	}
 
-		if (operator->priv->initial_value)
+	if (argdim && argdim[0] * argdim[1] != 1)
+	{
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
+		             "The operator `delayed' currently on supports 1-by-1 time delay (got %d-by-%d)",
+		             argdim[0],
+		             argdim[1]);
+
+		return FALSE;
+	}
+
+	delayed = CDN_OPERATOR_DELAYED (op);
+	delayed->priv->expression = g_object_ref_sink (expressions[0]->data);
+
+	cdn_expression_get_dimension (delayed->priv->expression,
+	                              &delayed->priv->push_dims[0],
+	                              &delayed->priv->push_dims[1]);
+
+	if (expressions[0]->next)
+	{
+		gint numr;
+		gint numc;
+
+		delayed->priv->initial_value = g_object_ref_sink (expressions[0]->next->data);
+
+		cdn_expression_get_dimension (delayed->priv->initial_value,
+		                              &numr,
+		                              &numc);
+
+		if (numr != delayed->priv->push_dims[0] ||
+		    numc != delayed->priv->push_dims[1])
 		{
-			cdn_expression_reset_cache (operator->priv->initial_value);
-			item->v = cdn_expression_evaluate (operator->priv->initial_value);
-		}
+			g_set_error (error,
+			             CDN_NETWORK_LOAD_ERROR,
+			             CDN_NETWORK_LOAD_ERROR_OPERATOR,
+			             "The dimensions of the expression (%d-by-%d) and the initial value (%d-by-%d) must be the same",
+			             delayed->priv->push_dims[0],
+			             delayed->priv->push_dims[1],
+			             numr,
+			             numc);
 
-		item = item->next;
+			return FALSE;
+		}
 	}
 
-	cdn_integrator_set_time (integrator, t);
+	return TRUE;
 }
 
 static void
-move_to_pool (CdnOperatorDelayed *operator,
-              gdouble             fromt)
+evaluate_on_stack (CdnOperatorDelayed *d,
+                   gdouble             t,
+                   CdnExpression      *expression,
+                   CdnStack           *stack)
 {
-	HistoryItem *item;
-	guint num = 0;
-	HistoryItem *first;
+	gdouble const *ret;
+	gint numr;
+	gint numc;
+	gdouble told;
 
-	item = operator->priv->history.first;
+	// temporarily set t
+	told = cdn_variable_get_value (d->priv->tvar);
+	cdn_variable_set_value (d->priv->tvar, t);
 
-	if (!item || item->t >= fromt)
+	if (t != d->priv->eval_at_t)
 	{
-		return;
+		cdn_expression_reset_cache (expression);
 	}
 
-	while (item->next && item->next->t < fromt)
-	{
-		item = item->next;
-		++num;
-	}
+	ret = cdn_expression_evaluate_values (expression, &numr, &numc);
 
-	item = item->prev;
+	d->priv->eval_at_t = t;
 
-	if (num == 0 || !item)
-	{
-		return;
-	}
+	cdn_stack_pushn (stack, ret, numr * numc);
 
-	first = operator->priv->history.first;
-
-	history_remove_slice (&operator->priv->history,
-	                      first,
-	                      item,
-	                      num);
-
-	history_append_slice (&operator->priv->history_pool,
-	                      first,
-	                      item,
-	                      num);
+	cdn_variable_set_value (d->priv->tvar, told);
 }
 
-static gdouble
-evaluate_at (CdnOperatorDelayed *operator,
-             gdouble             t)
+static void
+cdn_operator_delayed_execute (CdnOperator     *op,
+                              CdnStack        *stack)
 {
+	CdnOperatorDelayed *d;
 	gdouble td;
 	HistoryItem *h;
+	gdouble delay;
+	gdouble t;
 
-	if (operator->priv->delay == 0)
+	d = (CdnOperatorDelayed *)op;
+
+	delay = cdn_stack_pop (stack);
+
+	t = cdn_variable_get_value (d->priv->tvar);
+
+	if (fabs (delay) < 1e-13)
 	{
-		return cdn_expression_evaluate (operator->priv->expression);
+		evaluate_on_stack (d,
+		                   t,
+		                   d->priv->expression,
+		                   stack);
+
+		return;
 	}
 
-	// Calculate here where to read the delayed value from (at t)
-	td = t - operator->priv->delay;
+	td = t - delay;
 
-	h = operator->priv->history.first;
+	if (d->priv->first_last_t || t < d->priv->last_t)
+	{
+		d->priv->last_t = t;
+		d->priv->first_last_t = FALSE;
+	}
+
+	h = d->priv->history.first;
 
 	if (!h || h->t > td)
 	{
-		g_warning ("Needed history from the past, which I don't have...");
-		return 0;
+		if (d->priv->initial_value)
+		{
+			// Generate dynamically
+			evaluate_on_stack (d,
+			                   td,
+			                   d->priv->initial_value,
+			                   stack);
+		}
+		else
+		{
+			cdn_stack_pushni (stack,
+			                  0,
+			                  d->priv->push_dims[0] * d->priv->push_dims[1]);
+		}
+
+		return;
 	}
 
 	while (h->next && h->next->t < td)
@@ -432,19 +488,38 @@ evaluate_at (CdnOperatorDelayed *operator,
 
 	if (!h->next)
 	{
-		if (fabs (h->t - td) > 0.00000001)
+		if (fabs (h->t - td) > 1e-13)
 		{
-			g_warning ("Needed history in the future, which I don't have...");
-		}
+			if (d->priv->initial_value)
+			{
+				// Generate dynamically
+				evaluate_on_stack (d,
+				                   td,
+				                   d->priv->initial_value,
+				                   stack);
+			}
+			else
+			{
+				g_warning ("Needed history in the future, which I don't have...");
 
-		return h->v;
+				// Note that this will not really be the right results
+				// but at least it doesn't crash
+				evaluate_on_stack (d,
+				                   td,
+				                   d->priv->expression,
+				                   stack);
+			}
+
+			return;
+		}
 	}
 	else
 	{
 		// Interpolate value between h and h->next
 		gdouble factor;
+		gint i;
 
-		if (td == h->t)
+		if (fabs (td - h->t) < 1e-13)
 		{
 			factor = 0;
 		}
@@ -453,9 +528,12 @@ evaluate_at (CdnOperatorDelayed *operator,
 			factor = (td - h->t) / (h->next->t - h->t);
 		}
 
-		return h->v + factor * (h->next->v - h->v);
+		for (i = 0; i < d->priv->push_dims[0] * d->priv->push_dims[1]; ++i)
+		{
+			cdn_stack_push (stack, h->v[i] + factor * (h->next->v[i] - h->v[i]));
+		}
 	}
-}*/
+}
 
 static void
 history_free (HistoryList *history)
@@ -469,6 +547,7 @@ history_free (HistoryList *history)
 		HistoryItem *next;
 		next = item->next;
 
+		g_free (item->v);
 		g_slice_free (HistoryItem, item);
 		item = next;
 	}
@@ -487,11 +566,9 @@ cdn_operator_delayed_finalize (GObject *object)
 	history_free (&delayed->priv->history);
 	history_free (&delayed->priv->history_pool);
 
-	g_object_unref (delayed->priv->expression);
-
-	if (delayed->priv->delay_expression)
+	if (delayed->priv->expression)
 	{
-		g_object_unref (delayed->priv->delay_expression);
+		g_object_unref (delayed->priv->expression);
 	}
 
 	if (delayed->priv->initial_value)
@@ -532,9 +609,6 @@ cdn_operator_delayed_get_property (GObject    *object,
 		case PROP_INITIAL_VALUE:
 			g_value_set_object (value, self->priv->initial_value);
 			break;
-		case PROP_DELAY:
-			g_value_set_double (value, self->priv->delay);
-			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -555,11 +629,6 @@ cdn_operator_delayed_equal (CdnOperator *op,
 
 	delayed = CDN_OPERATOR_DELAYED (op);
 	odel = CDN_OPERATOR_DELAYED (other);
-
-	if (delayed->priv->delay != odel->priv->delay)
-	{
-		return FALSE;
-	}
 
 	if ((delayed->priv->initial_value != NULL) !=
 	    (odel->priv->initial_value != NULL))
@@ -584,6 +653,77 @@ cdn_operator_delayed_equal (CdnOperator *op,
 }
 
 static void
+cdn_operator_delayed_step (CdnOperator *op,
+                           gdouble      t,
+                           gdouble      timestep)
+{
+	CdnOperatorDelayed *d;
+	HistoryItem *current;
+	gdouble const *v;
+	gint nd;
+	gint numr;
+	gint numc;
+
+	// direct cast for efficiency
+	d = (CdnOperatorDelayed *)op;
+
+	// release ancient history
+	history_to_pool (d, d->priv->last_t);
+
+	// append current value to history
+	current = pool_to_history (d, 1);
+
+	current->t = t;
+
+	if (t != d->priv->eval_at_t)
+	{
+		cdn_expression_reset_cache (d->priv->expression);
+	}
+
+	v = cdn_expression_evaluate_values (d->priv->expression,
+	                                    &numr,
+	                                    &numc);
+
+	d->priv->eval_at_t = t;
+
+	nd = numr * numc;
+
+	if (current->v == NULL)
+	{
+		current->v = g_new (gdouble, nd);
+	}
+
+	memcpy (current->v, v, sizeof (gdouble) * nd);
+	d->priv->first_last_t = TRUE;
+}
+
+static void
+cdn_operator_delayed_initialize_integrate (CdnOperator   *op,
+                                           CdnIntegrator *integrator)
+{
+	CdnOperatorDelayed *d;
+
+	d = CDN_OPERATOR_DELAYED (op);
+	d->priv->tvar = cdn_object_get_variable (CDN_OBJECT (integrator), "t");
+}
+
+static CdnStackManipulation const *
+cdn_operator_delayed_get_stack_manipulation (CdnOperator *op)
+{
+	CdnStackManipulation const *par;
+	CdnOperatorDelayed *d;
+
+	d = (CdnOperatorDelayed *)op;
+
+	par = CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class)->get_stack_manipulation (op);
+
+	d->priv->smanip.pop_dims = par->pop_dims;
+	d->priv->smanip.num_pop = par->num_pop;
+
+	return &d->priv->smanip;
+}
+
+static void
 cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -598,6 +738,9 @@ cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 	op_class->execute = cdn_operator_delayed_execute;
 	op_class->initialize = cdn_operator_delayed_initialize;
 	op_class->equal = cdn_operator_delayed_equal;
+	op_class->step = cdn_operator_delayed_step;
+	op_class->initialize_integrate = cdn_operator_delayed_initialize_integrate;
+	op_class->get_stack_manipulation = cdn_operator_delayed_get_stack_manipulation;
 
 	g_type_class_add_private (object_class, sizeof(CdnOperatorDelayedPrivate));
 
@@ -616,22 +759,15 @@ cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 	                                                      "Initial value",
 	                                                      CDN_TYPE_EXPRESSION,
 	                                                      G_PARAM_READABLE));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_DELAY,
-	                                 g_param_spec_double ("delay",
-	                                                      "Delay",
-	                                                      "Delay",
-	                                                      0,
-	                                                      G_MAXDOUBLE,
-	                                                      0,
-	                                                      G_PARAM_READABLE));
 }
 
 static void
 cdn_operator_delayed_init (CdnOperatorDelayed *self)
 {
 	self->priv = CDN_OPERATOR_DELAYED_GET_PRIVATE (self);
+
+	self->priv->smanip.push_dims = self->priv->push_dims;
+	self->priv->smanip.num_push = 1;
 }
 
 CdnOperatorDelayed *
@@ -672,21 +808,4 @@ cdn_operator_delayed_get_initial_value (CdnOperatorDelayed *delayed)
 	g_return_val_if_fail (CDN_IS_OPERATOR_DELAYED (delayed), NULL);
 
 	return delayed->priv->initial_value;
-}
-
-/**
- * cdn_operator_delayed_get_delay:
- * @delayed: A #CdnOperatorDelayed
- *
- * Get the time delay in seconds.
- *
- * Returns: The time delay in seconds
- *
- **/
-gdouble
-cdn_operator_delayed_get_delay (CdnOperatorDelayed *delayed)
-{
-	g_return_val_if_fail (CDN_IS_OPERATOR_DELAYED (delayed), 0.0);
-
-	return delayed->priv->delay;
 }

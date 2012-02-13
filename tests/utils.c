@@ -96,6 +96,7 @@ test_load_network_from_path (gchar const *path,
                              ...)
 {
 	va_list ap;
+	CdnCompileError *err;
 
 	CdnNetwork *network;
 	GError *error = NULL;
@@ -117,7 +118,10 @@ test_load_network_from_path (gchar const *path,
 	g_assert_no_error (error);
 	g_assert (network != NULL);
 
-	g_assert (cdn_object_compile (CDN_OBJECT (network), NULL, NULL));
+	err = cdn_compile_error_new ();
+	cdn_object_compile (CDN_OBJECT (network), NULL, err);
+
+	g_assert_no_error (cdn_compile_error_get_error (err));
 
 	va_start (ap, path);
 	check_objects (network, ap);
@@ -134,13 +138,17 @@ test_load_network (gchar const *xml,
 
 	CdnNetwork *network;
 	GError *error = NULL;
+	CdnCompileError *err;
 
 	network = cdn_network_new_from_string (xml, &error);
 
 	g_assert_no_error (error);
 	g_assert (network != NULL);
 
-	g_assert (cdn_object_compile (CDN_OBJECT (network), NULL, NULL));
+	err = cdn_compile_error_new ();
+	cdn_object_compile (CDN_OBJECT (network), NULL, err);
+
+	g_assert_no_error (cdn_compile_error_get_error (err));
 
 	va_start (ap, xml);
 	check_objects (network, ap);

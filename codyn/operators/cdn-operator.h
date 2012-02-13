@@ -27,6 +27,7 @@
 #include <codyn/cdn-stack.h>
 #include <codyn/cdn-function.h>
 #include <codyn/cdn-forward-decl.h>
+#include <codyn/integrators/cdn-integrator.h>
 
 G_BEGIN_DECLS
 
@@ -98,6 +99,14 @@ struct _CdnOperatorClass
 	                                      gpointer                userdata);
 
 	CdnOperator     *(*copy)             (CdnOperator *op);
+
+	void             (*reset)            (CdnOperator *op);
+	void             (*step)             (CdnOperator *op,
+	                                      gdouble      t,
+	                                      gdouble      timestep);
+
+	void             (*initialize_integrate) (CdnOperator *op,
+	                                          CdnIntegrator *integrator);
 };
 
 GType                cdn_operator_get_type                    (void) G_GNUC_CONST;
@@ -135,7 +144,10 @@ gboolean             cdn_operator_equal                       (CdnOperator     *
                                                                CdnOperator     *other);
 
 CdnOperator         *cdn_operator_copy                        (CdnOperator     *op);
-
+void                 cdn_operator_reset                       (CdnOperator     *op);
+void                 cdn_operator_step                        (CdnOperator     *op,
+                                                               gdouble          t,
+                                                               gdouble          timestep);
 gint                 cdn_operator_get_num_arguments           (CdnOperator     *op);
 gint                *cdn_operator_get_arguments_dimension     (CdnOperator     *op);
 
@@ -153,7 +165,11 @@ void                 cdn_operator_foreach_function           (CdnOperator       
                                                               CdnForeachFunctionFunc  func,
                                                               gpointer                userdata);
 
+void                 cdn_operator_initialize_integrate       (CdnOperator       *op,
+                                                              CdnIntegrator     *integrator);
+
 CdnStackManipulation const *cdn_operator_get_stack_manipulation    (CdnOperator *op);
+
 
 G_END_DECLS
 
