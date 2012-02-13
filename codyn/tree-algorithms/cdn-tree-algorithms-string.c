@@ -26,13 +26,13 @@ property_to_string (CdnInstructionVariable *inst,
 
 	// TODO: resolve property in parent/child?
 
-	if (binding & CDN_INSTRUCTION_VARIABLE_BINDING_FROM)
+	if (binding & CDN_INSTRUCTION_VARIABLE_BINDING_INPUT)
 	{
-		g_string_append (ret, "from.");
+		g_string_append (ret, "in.");
 	}
-	else if (binding & CDN_INSTRUCTION_VARIABLE_BINDING_TO)
+	else if (binding & CDN_INSTRUCTION_VARIABLE_BINDING_OUTPUT)
 	{
-		g_string_append (ret, "to.");
+		g_string_append (ret, "out.");
 	}
 
 	prop = cdn_instruction_variable_get_variable (inst);

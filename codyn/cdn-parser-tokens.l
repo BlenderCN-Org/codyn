@@ -226,14 +226,13 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"has-template"	return T_KEY_HAS_TEMPLATE;
 <INITIAL,onlyselector>"has-tag"		return T_KEY_HAS_TAG;
 <INITIAL,onlyselector>"reverse"		return T_KEY_REVERSE;
-<INITIAL,onlyselector>"source"		return T_KEY_SOURCE;
-<INITIAL,onlyselector>"sink"		return T_KEY_SINK;
-<INITIAL,onlyselector>"source-name"	return T_KEY_SOURCE_NAME;
-<INITIAL,onlyselector>"sink-name"	return T_KEY_SINK_NAME;
+<INITIAL,onlyselector>"input"		return T_KEY_INPUTS;
+<INITIAL,onlyselector>"output"		return T_KEY_OUTPUTS;
+<INITIAL,onlyselector>"inputs"		return T_KEY_INPUTS;
+<INITIAL,onlyselector>"outputs"		return T_KEY_OUTPUTS;
+<INITIAL,onlyselector>"input-name"	return T_KEY_INPUT_NAME;
+<INITIAL,onlyselector>"output-name"	return T_KEY_OUTPUT_NAME;
 <INITIAL,onlyselector>"recurse"		return T_KEY_RECURSE;
-<INITIAL,onlyselector>"sourced-by"	return T_KEY_SOURCED_BY;
-<INITIAL,onlyselector>"sinked-by"	return T_KEY_SINKED_BY;
-<INITIAL,onlyselector>"pass"		return T_KEY_PASS;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;

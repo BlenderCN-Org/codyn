@@ -625,8 +625,8 @@ edge_to_xml (CdnNetworkSerializer *serializer,
              CdnEdge              *link,
              gboolean              isself)
 {
-	CdnNode *from = cdn_edge_get_from (link);
-	CdnNode *to = cdn_edge_get_to (link);
+	CdnNode *from = cdn_edge_get_input (link);
+	CdnNode *to = cdn_edge_get_output (link);
 
 	xmlNodePtr node = object_to_xml (serializer,
 	                                 parent,
@@ -639,14 +639,14 @@ edge_to_xml (CdnNetworkSerializer *serializer,
 		if (from != NULL)
 		{
 			xmlNewProp (node,
-				    (xmlChar const *)"from",
+				    (xmlChar const *)"input",
 				    (xmlChar const *)cdn_object_get_id (CDN_OBJECT (from)));
 		}
 
 		if (to != NULL)
 		{
 			xmlNewProp (node,
-				    (xmlChar const *)"to",
+				    (xmlChar const *)"output",
 				    (xmlChar const *)cdn_object_get_id (CDN_OBJECT (to)));
 		}
 	}

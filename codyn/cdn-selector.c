@@ -124,8 +124,12 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"siblings",
 	"templates",
 	"count",
-	"source",
-	"sink",
+	"input",
+	"output",
+	"inputs",
+	"outputs",
+	"input-name",
+	"output-name",
 	"self",
 	"debug",
 	"name",
@@ -141,12 +145,7 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"has-template",
 	"has-tag",
 	"reverse",
-	"source-name",
-	"sink-name",
-	"recurse",
-	"sourced-by",
-	"sinked-by",
-	"pass"
+	"recurse"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1259,12 +1258,12 @@ count_selection (CdnEmbeddedContext *context,
 }
 
 static GSList *
-selector_pseudo_from_to_name (CdnSelector        *self,
-                              Selector           *selector,
-                              gchar const        *name,
-                              GSList             *ret,
-                              CdnSelection       *sel,
-                              CdnEmbeddedContext *context)
+selector_pseudo_in_out_name (CdnSelector        *self,
+                             Selector           *selector,
+                             gchar const        *name,
+                             GSList             *ret,
+                             CdnSelection       *sel,
+                             CdnEmbeddedContext *context)
 {
 	CdnObject *obj;
 
@@ -1289,52 +1288,12 @@ selector_pseudo_from_to_name (CdnSelector        *self,
 }
 
 static GSList *
-selector_pseudo_from_to_by (CdnSelector        *self,
-                            Selector           *selector,
-                            gchar const        *name,
-                            GSList             *ret,
-                            CdnSelection       *sel,
-                            CdnEmbeddedContext *context)
-{
-	CdnNode *node;
-	GSList const *edges;
-
-	if (!CDN_IS_NODE (cdn_selection_get_object (sel)))
-	{
-		return ret;
-	}
-
-	node = cdn_selection_get_object (sel);
-	edges = cdn_node_get_edges (node);
-
-	while (edges)
-	{
-		CdnEdge *edge = edges->data;
-		CdnNode *obj;
-
-		g_object_get (edge, name, &obj, NULL);
-
-		if (obj == node)
-		{
-			ret = g_slist_prepend (ret, make_child_selection (sel,
-			                                                  NULL,
-			                                                  edge));
-		}
-
-		g_object_unref (obj);
-		edges = g_slist_next (edges);
-	}
-
-	return ret;
-}
-
-static GSList *
-selector_pseudo_from_to (CdnSelector        *self,
-                         Selector           *selector,
-                         gchar const        *name,
-                         GSList             *ret,
-                         CdnSelection       *sel,
-                         CdnEmbeddedContext *context)
+selector_pseudo_in_out (CdnSelector        *self,
+                        Selector           *selector,
+                        gchar const        *name,
+                        GSList             *ret,
+                        CdnSelection       *sel,
+                        CdnEmbeddedContext *context)
 {
 	CdnObject *obj;
 
@@ -1352,6 +1311,51 @@ selector_pseudo_from_to (CdnSelector        *self,
 
 	ret = g_slist_prepend (ret, make_child_selection (sel, NULL, obj));
 	g_object_unref (obj);
+
+	return ret;
+}
+
+static GSList *
+selector_pseudo_ins_outs (CdnSelector        *self,
+                          Selector           *selector,
+                          gchar const        *name,
+                          GSList             *ret,
+                          CdnSelection       *sel,
+                          CdnEmbeddedContext *context)
+{
+	CdnNode *obj;
+	GSList const *edges;
+
+	if (!CDN_IS_NODE (cdn_selection_get_object (sel)))
+	{
+		return ret;
+	}
+
+	obj = cdn_selection_get_object (sel);
+
+	edges = cdn_node_get_edges (obj);
+
+	while (edges)
+	{
+		CdnNode *o;
+
+		g_object_get (edges->data, name, &o, NULL);
+
+		if (o == obj)
+		{
+			ret = g_slist_prepend (ret,
+			                       make_child_selection (sel,
+			                                             NULL,
+			                                             o));
+		}
+
+		if (o != NULL)
+		{
+			g_object_unref (o);
+		}
+
+		edges = g_slist_next (edges);
+	}
 
 	return ret;
 }
@@ -2451,58 +2455,6 @@ is_template (CdnSelector *selector,
 }
 
 static GSList *
-selector_pseudo_pass (CdnSelector        *self,
-                      Selector           *selector,
-                      CdnSelection       *selection,
-                      CdnEmbeddedContext *context,
-                      GSList             *ret)
-{
-	gpointer obj;
-	GSList *arg;
-	GSList *exps = NULL;
-	GSList *cmb;
-
-	obj = cdn_selection_get_object (selection);
-
-	if (!CDN_IS_VARIABLE (obj))
-	{
-		return ret;
-	}
-
-	for (arg = selector->pseudo.arguments; arg; arg = g_slist_next (arg))
-	{
-		CdnEmbeddedString *s;
-		GSList *items;
-
-		if (!CDN_IS_EMBEDDED_STRING (arg->data))
-		{
-			continue;
-		}
-
-		s = CDN_EMBEDDED_STRING (arg->data);
-		items = cdn_embedded_string_expand_multiple (s, context, NULL);
-
-		exps = g_slist_concat (exps,
-		                       items);
-	}
-
-	cmb = g_slist_concat (g_slist_copy (exps),
-	                      g_slist_copy (cdn_selection_get_expansions (selection)));
-
-	ret = g_slist_prepend (ret,
-	                       cdn_selection_new (cdn_selection_get_object (selection),
-	                                          cmb,
-	                                          cdn_selection_get_defines (selection)));
-
-	g_slist_foreach (exps, (GFunc)cdn_expansion_unref, NULL);
-	g_slist_free (exps);
-
-	g_slist_free (cmb);
-
-	return ret;
-}
-
-static GSList *
 selector_select_pseudo (CdnSelector        *self,
                         Selector           *selector,
                         GSList             *parent,
@@ -2757,53 +2709,53 @@ selector_select_pseudo (CdnSelector        *self,
 				}
 			}
 			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_FROM:
-				ret = selector_pseudo_from_to (self,
-				                               selector,
-				                               "from",
-				                               ret,
-				                               sel,
-				                               context);
+			case CDN_SELECTOR_PSEUDO_TYPE_INPUT:
+				ret = selector_pseudo_in_out (self,
+				                              selector,
+				                              "input",
+				                              ret,
+				                              sel,
+				                              context);
 			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_TO:
-				ret = selector_pseudo_from_to (self,
-				                               selector,
-				                               "to",
-				                               ret,
-				                               sel,
-				                               context);
+			case CDN_SELECTOR_PSEUDO_TYPE_OUTPUT:
+				ret = selector_pseudo_in_out (self,
+				                              selector,
+				                              "output",
+				                              ret,
+				                              sel,
+				                              context);
 			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_SOURCE_NAME:
-				ret = selector_pseudo_from_to_name (self,
-				                                    selector,
-				                                    "from",
-				                                    ret,
-				                                    sel,
-				                                    context);
+			case CDN_SELECTOR_PSEUDO_TYPE_INPUTS:
+				ret = selector_pseudo_ins_outs (self,
+				                                selector,
+				                                "output",
+				                                ret,
+				                                sel,
+				                                context);
 			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_SINK_NAME:
-				ret = selector_pseudo_from_to_name (self,
-				                                    selector,
-				                                    "to",
-				                                    ret,
-				                                    sel,
-				                                    context);
+			case CDN_SELECTOR_PSEUDO_TYPE_OUTPUTS:
+				ret = selector_pseudo_ins_outs (self,
+				                                selector,
+				                                "input",
+				                                ret,
+				                                sel,
+				                                context);
 			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_SOURCED_BY:
-				ret = selector_pseudo_from_to_by (self,
-				                                  selector,
-				                                  "from",
-				                                  ret,
-				                                  sel,
-				                                  context);
+			case CDN_SELECTOR_PSEUDO_TYPE_INPUT_NAME:
+				ret = selector_pseudo_in_out_name (self,
+				                                   selector,
+				                                   "input",
+				                                   ret,
+				                                   sel,
+				                                   context);
 			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_SINKED_BY:
-				ret = selector_pseudo_from_to_by (self,
-				                                  selector,
-				                                  "to",
-				                                  ret,
-				                                  sel,
-				                                  context);
+			case CDN_SELECTOR_PSEUDO_TYPE_OUTPUT_NAME:
+				ret = selector_pseudo_in_out_name (self,
+				                                   selector,
+				                                   "output",
+				                                   ret,
+				                                   sel,
+				                                   context);
 			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_IF:
 				ret = selector_pseudo_if (self,
@@ -2862,13 +2814,6 @@ selector_select_pseudo (CdnSelector        *self,
 					ret = g_slist_prepend (ret,
 					                       cdn_selection_copy_defines (sel, FALSE));
 				}
-			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_PASS:
-				ret = selector_pseudo_pass (self,
-				                            selector,
-				                            sel,
-				                            context,
-				                            ret);
 			break;
 			default:
 				g_assert_not_reached ();

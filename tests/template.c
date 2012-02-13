@@ -142,8 +142,8 @@ test_apply_node ()
 	g_assert (edge);
 
 	g_assert (cdn_edge_get_action (CDN_EDGE (edge), "x"));
-	g_assert (cdn_edge_get_from (CDN_EDGE (edge)) == CDN_NODE (state));
-	g_assert (cdn_edge_get_to (CDN_EDGE (edge)) == CDN_NODE (state));
+	g_assert (cdn_edge_get_input (CDN_EDGE (edge)) == CDN_NODE (state));
+	g_assert (cdn_edge_get_output (CDN_EDGE (edge)) == CDN_NODE (state));
 }
 
 static void

@@ -779,19 +779,19 @@ parse_link_property (CdnExpression  *expression,
 	CdnVariable *property = NULL;
 	CdnInstructionVariableBinding binding = 0;
 
-	if (strcmp (id, "from") == 0)
+	if (strcmp (id, "in") == 0)
 	{
-		property = cdn_object_get_variable (CDN_OBJECT (cdn_edge_get_from (link)),
+		property = cdn_object_get_variable (CDN_OBJECT (cdn_edge_get_input (link)),
 		                                    propname);
 
-		binding = CDN_INSTRUCTION_VARIABLE_BINDING_FROM;
+		binding = CDN_INSTRUCTION_VARIABLE_BINDING_INPUT;
 	}
-	else if (strcmp (id, "to") == 0)
+	else if (strcmp (id, "out") == 0)
 	{
-		property = cdn_object_get_variable (CDN_OBJECT (cdn_edge_get_to (link)),
+		property = cdn_object_get_variable (CDN_OBJECT (cdn_edge_get_output (link)),
 		                                    propname);
 
-		binding = CDN_INSTRUCTION_VARIABLE_BINDING_TO;
+		binding = CDN_INSTRUCTION_VARIABLE_BINDING_OUTPUT;
 	}
 
 	if (!property)

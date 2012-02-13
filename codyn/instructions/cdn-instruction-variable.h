@@ -17,8 +17,8 @@ G_BEGIN_DECLS
 /**
  * CdnInstructionVariableBinding:
  * @CDN_INSTRUCTION_VARIABLE_BINDING_NONE: none
- * @CDN_INSTRUCTION_VARIABLE_BINDING_FROM: from
- * @CDN_INSTRUCTION_VARIABLE_BINDING_TO: to
+ * @CDN_INSTRUCTION_VARIABLE_BINDING_INPUT: input
+ * @CDN_INSTRUCTION_VARIABLE_BINDING_OUTPUT: output
  *
  * Enum used to indicate how the property in a #CdnInstructionVariable
  * was bound when the instruction was compiled.
@@ -27,8 +27,8 @@ G_BEGIN_DECLS
 typedef enum
 {
 	CDN_INSTRUCTION_VARIABLE_BINDING_NONE = 0,
-	CDN_INSTRUCTION_VARIABLE_BINDING_FROM = 1 << 0,
-	CDN_INSTRUCTION_VARIABLE_BINDING_TO = 1 << 1
+	CDN_INSTRUCTION_VARIABLE_BINDING_INPUT = 1 << 0,
+	CDN_INSTRUCTION_VARIABLE_BINDING_OUTPUT = 1 << 1
 } CdnInstructionVariableBinding;
 
 typedef struct _CdnInstructionVariable		CdnInstructionVariable;

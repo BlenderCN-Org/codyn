@@ -1130,10 +1130,10 @@ reconnect_children (CdnNode   *node,
 			                                   child);
 
 			copied_from = g_hash_table_lookup (mapping,
-			                                   cdn_edge_get_from (orig_link));
+			                                   cdn_edge_get_input (orig_link));
 
 			copied_to = g_hash_table_lookup (mapping,
-			                                 cdn_edge_get_to (orig_link));
+			                                 cdn_edge_get_output (orig_link));
 
 			cdn_edge_attach (copied_link, copied_from, copied_to);
 		}

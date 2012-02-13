@@ -261,8 +261,8 @@ output_to_dot (CdnNetwork  *network,
 
 			link = item->data;
 
-			from = cdn_edge_get_from (link);
-			to = cdn_edge_get_to (link);
+			from = cdn_edge_get_input (link);
+			to = cdn_edge_get_output (link);
 
 			if (from && to)
 			{
@@ -407,8 +407,8 @@ calculate_link_info (GSList *links)
 		link = links->data;
 		links = g_slist_next (links);
 
-		from = cdn_edge_get_from (link);
-		to = cdn_edge_get_to (link);
+		from = cdn_edge_get_input (link);
+		to = cdn_edge_get_output (link);
 
 		if (!from || !to)
 		{
@@ -659,20 +659,20 @@ output_to_tikz (CdnNetwork  *network,
 
 		styles = object_styles (CDN_OBJECT (info->link));
 
-		if (cdn_edge_get_from (info->link) ==
-		    cdn_edge_get_to (info->link))
+		if (cdn_edge_get_input (info->link) ==
+		    cdn_edge_get_output (info->link))
 		{
 			write_stream_printf ("\t\\cdnbendandconnectself{%s}{%s}{%d}{%s}\n",
-			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_from (info->link))),
-			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_to (info->link))),
+			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_input (info->link))),
+			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_output (info->link))),
 			                     info->offset,
 			                     styles);
 		}
 		else
 		{
 			write_stream_printf ("\t\\cdnbendandconnect{%s}{%s}{%d}{\\Bending}{%s}\n",
-			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_from (info->link))),
-			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_to (info->link))),
+			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_input (info->link))),
+			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_output (info->link))),
 			                     info->offset,
 			                     styles);
 		}

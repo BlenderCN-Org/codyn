@@ -1309,7 +1309,7 @@ parse_edge (CdnNetworkDeserializer *deserializer,
 	if (!isself)
 	{
 		/* Fill in from and to */
-		xmlChar *from = xmlGetProp (node, (xmlChar *)"from");
+		xmlChar *from = xmlGetProp (node, (xmlChar *)"input");
 
 		if (from)
 		{
@@ -1348,10 +1348,10 @@ parse_edge (CdnNetworkDeserializer *deserializer,
 				return FALSE;
 			}
 
-			g_object_set (object, "from", fromobj, NULL);
+			g_object_set (object, "input", fromobj, NULL);
 		}
 
-		xmlChar *to = xmlGetProp (node, (xmlChar *)"to");
+		xmlChar *to = xmlGetProp (node, (xmlChar *)"output");
 
 		if (to)
 		{
@@ -1391,7 +1391,7 @@ parse_edge (CdnNetworkDeserializer *deserializer,
 				return FALSE;
 			}
 
-			g_object_set (object, "to", toobj, NULL);
+			g_object_set (object, "output", toobj, NULL);
 		}
 	}
 

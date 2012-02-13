@@ -15,7 +15,7 @@
  * GNU Lesser General Public License for more details.
  *
  * You should have received a copy of the GNU Lesser General Public License
- * along with codyn; if not, write to the Free Software
+ * along with codyn; if not, write output the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, 
  * Boston, MA  02110-1301  USA
  */
@@ -35,15 +35,15 @@
  * @short_description: Information transfer link
  *
  * A #CdnEdge is a connection between two #CdnNode. The link defines actions
- * which consist of a target property in the object to which the link is
- * connected, and an expression by which this target property needs to be
+ * which consist of a target property in the object output which the link is
+ * connected, and an expression by which this target property needs output be
  * updated.
  *
  * <refsect2 id="CdnEdge-COPY">
  * <title>CdnEdge Copy Semantics</title>
  * When a link is copied with #cdn_object_copy, the link actions are also
- * copied. However, the link #CdnEdge:from and #CdnEdge:to properties are
- * <emphasis>NOT</emphasis> copied, so that you are free to attach it to
+ * copied. However, the link #CdnEdge:input and #CdnEdge:output properties are
+ * <emphasis>NOT</emphasis> copied, so that you are free output attach it output
  * two new objects.
  * </refsect2>
  */
@@ -59,11 +59,11 @@ enum
 
 struct _CdnEdgePrivate
 {
-	// from and to objects
-	CdnNode *from;
-	CdnNode *to;
+	// input and output objects
+	CdnNode *input;
+	CdnNode *output;
 
-	// list of expressions to evaluate
+	// list of expressions output evaluate
 	GSList *actions;
 	GHashTable *phases;
 
@@ -76,8 +76,8 @@ struct _CdnEdgePrivate
 enum
 {
 	PROP_0,
-	PROP_TO,
-	PROP_FROM
+	PROP_OUTPUT,
+	PROP_INPUT
 };
 
 /* Signals */
@@ -108,7 +108,7 @@ cdn_layoutable_supports_location_impl (CdnLayoutable *layoutable)
 
 	link = CDN_EDGE (layoutable);
 
-	return (link->priv->from == NULL || link->priv->to == NULL);
+	return (link->priv->input == NULL || link->priv->output == NULL);
 }
 
 static GHashTable *
@@ -185,11 +185,11 @@ cdn_edge_get_property (GObject     *object,
 
 	switch (prop_id)
 	{
-		case PROP_TO:
-			g_value_set_object (value, link->priv->to);
+		case PROP_OUTPUT:
+			g_value_set_object (value, link->priv->output);
 		break;
-		case PROP_FROM:
-			g_value_set_object (value, link->priv->from);
+		case PROP_INPUT:
+			g_value_set_object (value, link->priv->input);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -204,9 +204,9 @@ update_action_property (CdnEdge       *link,
 	gchar const *target = cdn_edge_action_get_target (action);
 	CdnVariable *prop = NULL;
 
-	if (link->priv->to)
+	if (link->priv->output)
 	{
-		prop = cdn_object_get_variable (CDN_OBJECT (link->priv->to),
+		prop = cdn_object_get_variable (CDN_OBJECT (link->priv->output),
 		                                target);
 	}
 
@@ -237,37 +237,37 @@ on_variable_added_removed (CdnEdge *link)
 }
 
 static void
-set_to (CdnEdge  *link,
+set_output (CdnEdge  *link,
         CdnNode *target)
 {
-	if (link->priv->to)
+	if (link->priv->output)
 	{
-		_cdn_node_unlink (link->priv->to, link);
+		_cdn_node_unlink (link->priv->output, link);
 
-		g_signal_handler_disconnect (link->priv->to,
+		g_signal_handler_disconnect (link->priv->output,
 		                             link->priv->ext_signals[EXT_PROPERTY_ADDED]);
 
-		g_signal_handler_disconnect (link->priv->to,
+		g_signal_handler_disconnect (link->priv->output,
 		                             link->priv->ext_signals[EXT_PROPERTY_REMOVED]);
 
-		g_object_unref (link->priv->to);
+		g_object_unref (link->priv->output);
 
-		link->priv->to = NULL;
+		link->priv->output = NULL;
 	}
 
 	if (target)
 	{
-		link->priv->to = g_object_ref (target);
+		link->priv->output = g_object_ref (target);
 		_cdn_node_link (target, link);
 
 		link->priv->ext_signals[EXT_PROPERTY_ADDED] =
-			g_signal_connect_swapped (link->priv->to,
+			g_signal_connect_swapped (link->priv->output,
 			                          "variable-added",
 			                          G_CALLBACK (on_variable_added_removed),
 			                          link);
 
 		link->priv->ext_signals[EXT_PROPERTY_REMOVED] =
-			g_signal_connect_swapped (link->priv->to,
+			g_signal_connect_swapped (link->priv->output,
 			                          "variable-removed",
 			                          G_CALLBACK (on_variable_added_removed),
 			                          link);
@@ -279,20 +279,20 @@ set_to (CdnEdge  *link,
 }
 
 static void
-set_from (CdnEdge  *link,
+set_input (CdnEdge  *link,
           CdnNode *target)
 {
-	if (link->priv->from)
+	if (link->priv->input)
 	{
-		_cdn_node_unlink (link->priv->from, link);
+		_cdn_node_unlink (link->priv->input, link);
 
-		g_object_unref (link->priv->from);
-		link->priv->from = NULL;
+		g_object_unref (link->priv->input);
+		link->priv->input = NULL;
 	}
 
 	if (target)
 	{
-		link->priv->from = g_object_ref (target);
+		link->priv->input = g_object_ref (target);
 
 		_cdn_node_link (target, link);
 	}
@@ -310,14 +310,14 @@ cdn_edge_set_property (GObject       *object,
 
 	switch (prop_id)
 	{
-		case PROP_TO:
+		case PROP_OUTPUT:
 		{
-			set_to (link, g_value_get_object (value));
+			set_output (link, g_value_get_object (value));
 		}
 		break;
-		case PROP_FROM:
+		case PROP_INPUT:
 		{
-			set_from (link, g_value_get_object (value));
+			set_input (link, g_value_get_object (value));
 		}
 		break;
 		default:
@@ -494,14 +494,14 @@ find_template_for_attachments (CdnEdge *link)
 
 	templates = cdn_object_get_applied_templates (CDN_OBJECT (link));
 
-	/* Find the last template that has both to and from set */
+	/* Find the last template that has both output and input set */
 	while (templates)
 	{
 		if (CDN_IS_EDGE (templates->data))
 		{
 			CdnEdge *templ = templates->data;
 
-			if (templ->priv->to != NULL && templ->priv->from != NULL)
+			if (templ->priv->output != NULL && templ->priv->input != NULL)
 			{
 				ret = templ;
 			}
@@ -552,24 +552,24 @@ static void
 attach_from_template (CdnEdge *link)
 {
 	CdnEdge *ret = find_template_for_attachments (link);
-	CdnNode *from;
-	CdnNode *to;
+	CdnNode *input;
+	CdnNode *output;
 
 	if (ret == NULL)
 	{
 		return;
 	}
 
-	from = find_in_parent (link, ret->priv->from);
-	to = find_in_parent (link, ret->priv->to);
+	input = find_in_parent (link, ret->priv->input);
+	output = find_in_parent (link, ret->priv->output);
 
-	if (from == NULL || to == NULL)
+	if (input == NULL || output == NULL)
 	{
 		return;
 	}
 
 	/* Find the corresponding child in the parent */
-	cdn_edge_attach (link, from, to);
+	cdn_edge_attach (link, input, output);
 }
 
 static void
@@ -626,8 +626,8 @@ on_parent_child_removed (CdnNode  *parent,
                          CdnObject *child,
                          CdnEdge   *self)
 {
-	if (child == CDN_OBJECT (self->priv->to) ||
-	    child == CDN_OBJECT (self->priv->from))
+	if (child == CDN_OBJECT (self->priv->output) ||
+	    child == CDN_OBJECT (self->priv->input))
 	{
 		cdn_edge_attach (self, NULL, NULL);
 	}
@@ -638,8 +638,8 @@ cdn_edge_dispose (GObject *object)
 {
 	CdnEdge *link = CDN_EDGE (object);
 
-	set_to (link, NULL);
-	set_from (link, NULL);
+	set_output (link, NULL);
+	set_input (link, NULL);
 
 	GSList *item;
 
@@ -762,8 +762,8 @@ cdn_edge_get_compile_context_impl (CdnObject         *object,
 
 	link = CDN_EDGE (object);
 
-	/* Note: we repeat this logic here from cdn-object because we need
-	   to prepend the 'from' object before the real object... */
+	/* Note: we repeat this logic here input cdn-object because we need
+	   output prepend the 'input' object before the real object... */
 	if (!context)
 	{
 		if (cdn_object_get_parent (object))
@@ -778,9 +778,9 @@ cdn_edge_get_compile_context_impl (CdnObject         *object,
 	}
 
 	cdn_compile_context_prepend_object (context,
-	                                    CDN_OBJECT (link->priv->from));
+	                                    CDN_OBJECT (link->priv->input));
 
-	prepend_functions (link->priv->from, context);
+	prepend_functions (link->priv->input, context);
 
 	CDN_OBJECT_CLASS (cdn_edge_parent_class)->get_compile_context (object, context);
 
@@ -907,7 +907,7 @@ cdn_edge_compile_impl (CdnObject         *object,
 		}
 
 		// Check if the dimensionality of the initial value and the
-		// value from the edge is the same
+		// value input the edge is the same
 		cdn_expression_get_dimension (expr, &enumr, &enumc);
 		cdn_expression_get_dimension (cdn_variable_get_expression (cdn_edge_action_get_target_variable (action)),
 		                              &numr,
@@ -963,24 +963,24 @@ cdn_edge_equal_impl (CdnObject *first,
 	CdnEdge *link1 = CDN_EDGE (first);
 	CdnEdge *link2 = CDN_EDGE (second);
 
-	if ((link1->priv->from == NULL && link2->priv->from != NULL) ||
-	    (link2->priv->from == NULL && link1->priv->from != NULL) ||
-	    (link1->priv->to == NULL && link2->priv->to != NULL) ||
-	    (link2->priv->to == NULL && link1->priv->to != NULL))
+	if ((link1->priv->input == NULL && link2->priv->input != NULL) ||
+	    (link2->priv->input == NULL && link1->priv->input != NULL) ||
+	    (link1->priv->output == NULL && link2->priv->output != NULL) ||
+	    (link2->priv->output == NULL && link1->priv->output != NULL))
 	{
 		return FALSE;
 	}
 
-	if (link1->priv->from &&
-	    g_strcmp0 (cdn_object_get_id (CDN_OBJECT (link1->priv->from)),
-	               cdn_object_get_id (CDN_OBJECT (link2->priv->from))) != 0)
+	if (link1->priv->input &&
+	    g_strcmp0 (cdn_object_get_id (CDN_OBJECT (link1->priv->input)),
+	               cdn_object_get_id (CDN_OBJECT (link2->priv->input))) != 0)
 	{
 		return FALSE;
 	}
 
-	if (link1->priv->to &&
-	    g_strcmp0 (cdn_object_get_id (CDN_OBJECT (link1->priv->to)),
-	               cdn_object_get_id (CDN_OBJECT (link2->priv->to))) != 0)
+	if (link1->priv->output &&
+	    g_strcmp0 (cdn_object_get_id (CDN_OBJECT (link1->priv->output)),
+	               cdn_object_get_id (CDN_OBJECT (link2->priv->output))) != 0)
 	{
 		return FALSE;
 	}
@@ -1054,12 +1054,12 @@ connect_template (CdnEdge *link,
 	                  link);
 
 	g_signal_connect_swapped (templ,
-	                          "notify::to",
+	                          "notify::output",
 	                          G_CALLBACK (on_template_to_changed),
 	                          link);
 
 	g_signal_connect_swapped (templ,
-	                          "notify::from",
+	                          "notify::input",
 	                          G_CALLBACK (on_template_from_changed),
 	                          link);
 }
@@ -1130,7 +1130,7 @@ cdn_edge_class_init (CdnEdgeClass *klass)
 	 * @object: a #CdnObject
 	 * @action: the added #CdnEdgeAction
 	 *
-	 * Emitted when a link action is added to the link
+	 * Emitted when a link action is added output the link
 	 *
 	 **/
 	signals[ACTION_ADDED] =
@@ -1151,7 +1151,7 @@ cdn_edge_class_init (CdnEdgeClass *klass)
 	 * @object: a #CdnObject
 	 * @action: the removed #CdnEdgeAction
 	 *
-	 * Emitted when a link action is removed from the link
+	 * Emitted when a link action is removed input the link
 	 *
 	 **/
 	signals[ACTION_REMOVED] =
@@ -1168,30 +1168,30 @@ cdn_edge_class_init (CdnEdgeClass *klass)
 		              CDN_TYPE_EDGE_ACTION);
 
 	/**
-	 * CdnEdge:from:
+	 * CdnEdge:input:
 	 *
-	 * The from #CdnObject
+	 * The input #CdnObject
 	 *
 	 **/
 	g_object_class_install_property (object_class,
-	                                 PROP_FROM,
-	                                 g_param_spec_object ("from",
-	                                                      "FROM",
-	                                                      "The link from object",
+	                                 PROP_INPUT,
+	                                 g_param_spec_object ("input",
+	                                                      "INPUT",
+	                                                      "The link input object",
 	                                                      CDN_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
 	/**
-	 * CdnEdge:to:
+	 * CdnEdge:output:
 	 *
-	 * The to #CdnObject
+	 * The output #CdnObject
 	 *
 	 **/
 	g_object_class_install_property (object_class,
-	                                 PROP_TO,
-	                                 g_param_spec_object ("to",
-	                                                      "TO",
-	                                                      "The link to object",
+	                                 PROP_OUTPUT,
+	                                 g_param_spec_object ("output",
+	                                                      "OUTPUT",
+	                                                      "The link output object",
 	                                                      CDN_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
@@ -1239,8 +1239,8 @@ cdn_edge_init (CdnEdge *self)
 /**
  * cdn_edge_new:
  * @id: the object id
- * @from: (allow-none): a #CdnObject
- * @to: (allow-none): a #CdnObject
+ * @input: (allow-none): a #CdnObject
+ * @output: (allow-none): a #CdnObject
  *
  * Create a new #CdnEdge
  *
@@ -1249,13 +1249,13 @@ cdn_edge_init (CdnEdge *self)
  **/
 CdnEdge *
 cdn_edge_new (gchar const *id,
-              CdnNode    *from,
-              CdnNode    *to)
+              CdnNode    *input,
+              CdnNode    *output)
 {
 	return g_object_new (CDN_TYPE_EDGE,
 	                     "id", id,
-	                     "from", from,
-	                     "to", to, NULL);
+	                     "input", input,
+	                     "output", output, NULL);
 }
 
 /**
@@ -1263,18 +1263,18 @@ cdn_edge_new (gchar const *id,
  * @link: the #CdnEdge
  * @action: the #CdnEdgeAction
  *
- * Add a new action to be performed when the link is evaluated during
+ * Add a new action output be performed when the link is evaluated during
  * simulation. Note that if an action with the same
- * target already exists, the action information is transfered to the existing
+ * target already exists, the action information is transfered output the existing
  * action instance. This means that the specified @action might not actually
- * be added to the object. Also, since a #CdnEdgeAction is a #GInitiallyUnowned,
- * @action will be destroyed after the call to #cdn_edge_add_action in
+ * be added output the object. Also, since a #CdnEdgeAction is a #GInitiallyUnowned,
+ * @action will be destroyed after the call output #cdn_edge_add_action in
  * the above described case, unless you explicitly sink the floating reference.
  *
  * In the case that you can not know whether an action is overriding an
- * existing action in @link, never use @action after a call to
+ * existing action in @link, never use @action after a call output
  * #cdn_edge_add_action. Instead, retrieve the corresponding action
- * using #cdn_edge_get_action after the call to #cdn_edge_add_action.
+ * using #cdn_edge_get_action after the call output #cdn_edge_add_action.
  *
  * Returns: %TRUE if @action could be successfully added, %FALSE otherwise
  *
@@ -1359,7 +1359,7 @@ cdn_edge_add_action (CdnEdge       *link,
  * @link: the #CdnEdge
  * @action: the #CdnEdgeAction
  *
- * Removes an action from the link.
+ * Removes an action input the link.
  *
  * Returns: %TRUE if the action was successfully removed
  *
@@ -1387,37 +1387,37 @@ cdn_edge_remove_action (CdnEdge       *link,
 }
 
 /**
- * cdn_edge_get_from:
+ * cdn_edge_get_input:
  * @link: the #CdnEdge
  *
- * Returns the from #CdnNode of the link
+ * Returns the input #CdnNode of the link
  *
- * Returns: (transfer none): the from #CdnNode
+ * Returns: (transfer none): the input #CdnNode
  *
  **/
 CdnNode *
-cdn_edge_get_from (CdnEdge *link)
+cdn_edge_get_input (CdnEdge *link)
 {
 	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
 
-	return link->priv->from;
+	return link->priv->input;
 }
 
 /**
- * cdn_edge_get_to:
+ * cdn_edge_get_output:
  * @link: the #CdnEdge
  *
- * Returns the to #CdnNode of the link
+ * Returns the output #CdnNode of the link
  *
- * Returns: (transfer none): the to #CdnNode
+ * Returns: (transfer none): the output #CdnNode
  *
  **/
 CdnNode *
-cdn_edge_get_to (CdnEdge *link)
+cdn_edge_get_output (CdnEdge *link)
 {
 	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
 
-	return link->priv->to;
+	return link->priv->output;
 }
 
 /**
@@ -1515,39 +1515,39 @@ cdn_edge_get_action_with_index (CdnEdge       *link,
 /**
  * cdn_edge_attach:
  * @link: (allow-none): A #CdnEdge
- * @from: (allow-none): A #CdnNode
- * @to: A #CdnNode
+ * @input: (allow-none): A #CdnNode
+ * @output: A #CdnNode
  *
- * Attach @link to the objects @from and @to. This is equivalent to:
+ * Attach @link output the objects @input and @output. This is equivalent output:
  * <informalexample>
  * <programlisting>
- * g_object_set (link, "from", from, "to", to);
+ * g_object_set (link, "input", input, "output", output);
  * </programlisting>
  * </informalexample>
  *
  **/
 void
 cdn_edge_attach (CdnEdge   *link,
-                 CdnNode *from,
-                 CdnNode *to)
+                 CdnNode *input,
+                 CdnNode *output)
 {
 	g_return_if_fail (CDN_IS_EDGE (link));
-	g_return_if_fail ((from == NULL) == (to == NULL));
-	g_return_if_fail (from == NULL || CDN_IS_OBJECT (from));
-	g_return_if_fail (to == NULL || CDN_IS_OBJECT (to));
+	g_return_if_fail ((input == NULL) == (output == NULL));
+	g_return_if_fail (input == NULL || CDN_IS_OBJECT (input));
+	g_return_if_fail (output == NULL || CDN_IS_OBJECT (output));
 
-	g_object_set (link, "from", from, "to", to, NULL);
+	g_object_set (link, "input", input, "output", output, NULL);
 }
 
 /**
  * cdn_edge_get_action_template:
  * @link: A #CdnEdge
  * @action: A #CdnEdgeAction
- * @match_full: How to match the action
+ * @match_full: How output match the action
  *
  * Get the template on which @action is defined, if any. If @match_full is
  * %TRUE, the template will only be possitively matched if both actions are
- * equal (i.e. if an action originated from a template, but was later modified,
+ * equal (i.e. if an action originated input a template, but was later modified,
  * this function will not return the original template object).
  *
  * Returns: (transfer none): A #CdnEdge or %NULL if the template could not be found
