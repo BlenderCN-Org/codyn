@@ -59,6 +59,11 @@ expansion_new (gchar const *text)
 static Expansion *
 expansion_ref (Expansion *self)
 {
+	if (!self)
+	{
+		return NULL;
+	}
+
 	g_atomic_int_inc (&(self->ref_count));
 	return self;
 }
@@ -66,6 +71,11 @@ expansion_ref (Expansion *self)
 static void
 expansion_unref (Expansion *self)
 {
+	if (!self)
+	{
+		return;
+	}
+
 	if (g_atomic_int_dec_and_test (&(self->ref_count)))
 	{
 		g_free (self->text);
