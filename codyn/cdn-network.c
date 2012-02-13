@@ -165,8 +165,6 @@ cdn_network_finalize (GObject *object)
 		g_object_unref (network->priv->file);
 	}
 
-	cdn_object_clear (CDN_OBJECT (network));
-
 	g_object_unref (network->priv->template_group);
 
 	g_hash_table_foreach (network->priv->imports,
@@ -301,6 +299,8 @@ cdn_network_dispose (GObject *object)
 		g_object_unref (network->priv->integrator_state);
 		network->priv->integrator_state = NULL;
 	}
+
+	cdn_object_clear (CDN_OBJECT (network));
 
 	G_OBJECT_CLASS (cdn_network_parent_class)->dispose (object);
 }
