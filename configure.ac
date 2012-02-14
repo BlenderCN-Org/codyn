@@ -11,11 +11,13 @@ AC_STDC_HEADERS
 AC_PROG_CC
 AM_PROG_CC_STDC
 AC_HEADER_STDC
-AM_PROG_LIBTOOL
 AM_PROG_LEX
 AC_PROG_YACC
 
 GTK_DOC_CHECK(1.9)
+
+LT_PREREQ([2.2.6])
+LT_INIT(disable-static)
 
 AM_MAINTAINER_MODE([enable])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
@@ -182,6 +184,12 @@ fi
 AM_CONDITIONAL(ENABLE_GEDIT, test "x$enable_gedit" = "xyes")
 AM_CONDITIONAL(ENABLE_GEDIT3, test "x$GEDIT_MAJOR_VERSION" = "x3")
 
+INPUT_METHOD_LIBTOOL_FLAGS="-module -avoid-version"
+INPUT_METHOD_LIBS_DIR="$libdir/codyn-$CODYN_API_VERSION/input-methods"
+
+AC_SUBST(INPUT_METHOD_LIBTOOL_FLAGS)
+AC_SUBST(INPUT_METHOD_LIBS_DIR)
+
 AC_CONFIG_FILES([
 Makefile
 codyn.pc
@@ -202,6 +210,8 @@ data/library/physics/Makefile
 docs/Makefile
 docs/reference/Makefile
 docs/man/Makefile
+input-methods/Makefile
+input-methods/file/Makefile
 m4/Makefile
 tests/Makefile
 win32/Makefile
