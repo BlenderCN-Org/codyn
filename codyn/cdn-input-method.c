@@ -159,7 +159,7 @@ canon_name (gchar const *s)
 	gboolean iscap = TRUE;
 	GString *ret;
 
-	ret = g_string_new_len ("", strlen (s));
+	ret = g_string_sized_new (strlen (s));
 
 	while (*s)
 	{
@@ -179,6 +179,7 @@ canon_name (gchar const *s)
 		else if (g_ascii_isupper (c) && !iscap)
 		{
 			g_string_append_c (ret, '_');
+			iscap = TRUE;
 		}
 
 		g_string_append_c (ret, c);
@@ -189,9 +190,8 @@ canon_name (gchar const *s)
 
 typedef GType (*TypeInitFunc) (void);
 
-static GType
-find_input_type (gchar const *name,
-                 GType        basetype)
+GType
+cdn_input_method_find (gchar const *name)
 {
 	gchar *comp;
 	gchar *cname;
@@ -201,7 +201,7 @@ find_input_type (gchar const *name,
 
 	cname = canon_name (name);
 
-	comp = g_strconcat ("cdn_input_", cname, "get_type", NULL);
+	comp = g_strconcat ("cdn_input_", cname, "_get_type", NULL);
 	g_free (cname);
 
 	mod = g_module_open (NULL, G_MODULE_BIND_LAZY);
@@ -222,12 +222,6 @@ find_input_type (gchar const *name,
 	g_module_close (mod);
 
 	return ret;
-}
-
-GType
-cdn_input_method_find (gchar const *name)
-{
-	return find_input_type (name, CDN_TYPE_INPUT);
 }
 
 static void
