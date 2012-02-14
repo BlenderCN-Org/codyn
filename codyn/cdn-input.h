@@ -23,6 +23,7 @@
 #ifndef __CDN_INPUT_H__
 #define __CDN_INPUT_H__
 
+#include <glib-object.h>
 #include <codyn/cdn-object.h>
 #include <codyn/integrators/cdn-integrator.h>
 
@@ -30,32 +31,16 @@ G_BEGIN_DECLS
 
 #define CDN_TYPE_INPUT			(cdn_input_get_type ())
 #define CDN_INPUT(obj)			(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_INPUT, CdnInput))
-#define CDN_INPUT_CONST(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_INPUT, CdnInput const))
-#define CDN_INPUT_CLASS(klass)		(G_TYPE_CHECK_CLASS_CAST ((klass), CDN_TYPE_INPUT, CdnInputClass))
 #define CDN_IS_INPUT(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CDN_TYPE_INPUT))
-#define CDN_IS_INPUT_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CDN_TYPE_INPUT))
-#define CDN_INPUT_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CDN_TYPE_INPUT, CdnInputClass))
+#define CDN_INPUT_GET_INTERFACE(obj)	(G_TYPE_INSTANCE_GET_INTERFACE ((obj), CDN_TYPE_INPUT, CdnInputInterface))
 
-typedef struct _CdnInput	CdnInput;
-typedef struct _CdnInputClass	CdnInputClass;
-typedef struct _CdnInputPrivate	CdnInputPrivate;
+typedef struct _CdnInput		CdnInput;
+typedef struct _CdnInputInterface	CdnInputInterface;
 
-struct _CdnInput
+struct _CdnInputInterface
 {
-	/*< private >*/
-	CdnObject parent;
-
-	CdnInputPrivate *priv;
-
-	/*< public >*/
-};
-
-struct _CdnInputClass
-{
-	/*< private >*/
-	CdnObjectClass parent_class;
-
-	/*< public >*/
+	GTypeInterface parent;
+	
 	void (*update) (CdnInput *input, CdnIntegrator *integrator);
 };
 

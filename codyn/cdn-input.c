@@ -22,34 +22,26 @@
 
 #include "cdn-input.h"
 
-#define CDN_INPUT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INPUT, CdnInputPrivate))
+G_DEFINE_INTERFACE (CdnInput, cdn_input, CDN_TYPE_OBJECT)
 
-struct _CdnInputPrivate
-{
-};
-
-G_DEFINE_ABSTRACT_TYPE (CdnInput, cdn_input, CDN_TYPE_OBJECT)
-
+/* Default implementation */
 static void
-cdn_input_finalize (GObject *object)
+cdn_input_update_default (CdnInput      *self,
+                          CdnIntegrator *integrator)
 {
-	G_OBJECT_CLASS (cdn_input_parent_class)->finalize (object);
 }
 
 static void
-cdn_input_class_init (CdnInputClass *klass)
+cdn_input_default_init (CdnInputInterface *iface)
 {
-	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+	static gboolean initialized = FALSE;
 
-	object_class->finalize = cdn_input_finalize;
+	iface->update = cdn_input_update_default;
 
-	/*g_type_class_add_private (object_class, sizeof(CdnInputPrivate));*/
-}
-
-static void
-cdn_input_init (CdnInput *self)
-{
-	/*self->priv = CDN_INPUT_GET_PRIVATE (self);*/
+	if (G_UNLIKELY (!initialized))
+	{
+		initialized = TRUE;
+	}
 }
 
 void
@@ -59,8 +51,5 @@ cdn_input_update (CdnInput      *input,
 	g_return_if_fail (CDN_IS_INPUT (input));
 	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
 
-	if (CDN_INPUT_GET_CLASS (input)->update)
-	{
-		CDN_INPUT_GET_CLASS (input)->update (input, integrator);
-	}
+	return CDN_INPUT_GET_INTERFACE (input)->update (input, integrator);
 }
