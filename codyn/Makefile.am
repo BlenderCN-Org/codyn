@@ -238,7 +238,7 @@ INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --verbose
 Cdn_3_0_gir_NAMESPACE = Cdn
 Cdn_3_0_gir_VERSION = 3.0
 Cdn_3_0_gir_LIBS = libcodyn-3.0.la instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
-Cdn_3_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES) $(TREEALGORITHMSSOURCES)
+Cdn_3_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES) $(TREEALGORITHMSSOURCES) cdn-enum-types.h cdn-enum-types.c
 Cdn_3_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
 
 girdir = $(datadir)/gir-1.0
