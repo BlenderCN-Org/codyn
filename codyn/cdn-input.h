@@ -26,6 +26,7 @@
 #include <glib-object.h>
 #include <codyn/cdn-object.h>
 #include <codyn/integrators/cdn-integrator.h>
+#include <gio/gio.h>
 
 G_BEGIN_DECLS
 
@@ -40,13 +41,59 @@ typedef struct _CdnInputInterface	CdnInputInterface;
 struct _CdnInputInterface
 {
 	GTypeInterface parent;
-	
-	void (*update) (CdnInput *input, CdnIntegrator *integrator);
+
+	gboolean (*initialize)   (CdnInput            *input,
+	                          GCancellable        *cancellable,
+	                          GError             **error);
+
+	void (*initialize_async) (CdnInput            *input,
+	                          GCancellable        *cancellable,
+	                          GAsyncReadyCallback  callback,
+	                          gpointer             user_data);
+
+	gboolean (*finalize)     (CdnInput            *input,
+	                          GCancellable        *cancellable,
+	                          GError             **error);
+
+	void (*finalize_async)   (CdnInput            *input,
+	                          GCancellable        *cancellable,
+	                          GAsyncReadyCallback  callback,
+	                          gpointer             user_data);
+
+	void (*update)           (CdnInput            *input,
+	                          CdnIntegrator       *integrator);
 };
 
-GType cdn_input_get_type (void) G_GNUC_CONST;
+GType    cdn_input_get_type          (void) G_GNUC_CONST;
 
-void cdn_input_update (CdnInput *input, CdnIntegrator *integrator);
+void     cdn_input_update            (CdnInput             *input,
+                                      CdnIntegrator        *integrator);
+
+gboolean cdn_input_initialize        (CdnInput             *input,
+                                      GCancellable         *cancellable,
+                                      GError              **error);
+
+void     cdn_input_initialize_async  (CdnInput             *input,
+                                      GCancellable         *cancellable,
+                                      GAsyncReadyCallback   callback,
+                                      gpointer              user_data);
+
+gboolean cdn_input_initialize_finish (CdnInput             *input,
+                                      GAsyncResult         *result,
+                                      GError              **error);
+
+gboolean cdn_input_finalize          (CdnInput             *input,
+                                      GCancellable         *cancellable,
+                                      GError              **error);
+
+void     cdn_input_finalize_async    (CdnInput             *input,
+                                      GCancellable         *cancellable,
+                                      GAsyncReadyCallback   callback,
+                                      gpointer              user_data);
+
+gboolean cdn_input_finalize_finish   (CdnInput             *input,
+                                      GAsyncResult         *result,
+                                      GError              **error);
 
 G_END_DECLS
 
