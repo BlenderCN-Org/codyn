@@ -166,7 +166,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "interface"			return T_KEY_INTERFACE;
 "polynomial"			return T_KEY_POLYNOMIAL;
 "import"			return T_KEY_IMPORT;
-"input-file"			return T_KEY_INPUT_FILE;
 "from"				return T_KEY_FROM;
 "to"				return T_KEY_TO;
 "piece"				return T_KEY_PIECE;

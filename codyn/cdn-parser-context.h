@@ -216,11 +216,6 @@ void                   cdn_parser_context_push_function        (CdnParserContext
                                                                 gboolean                    optional,
                                                                 GSList                     *attributes);
 
-void                   cdn_parser_context_push_input_file      (CdnParserContext           *context,
-                                                                CdnEmbeddedString          *id,
-                                                                CdnEmbeddedString          *path,
-                                                                GSList                     *attributes);
-
 void                   cdn_parser_context_push_event           (CdnParserContext  *context,
                                                                 CdnEmbeddedString *from_phase,
                                                                 CdnEmbeddedString *to_phase,
@@ -232,10 +227,6 @@ void                   cdn_parser_context_push_event           (CdnParserContext
 void                   cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
                                                                   CdnSelector       *selector,
                                                                   CdnEmbeddedString *value);
-
-void                   cdn_parser_context_set_input_file_setting (CdnParserContext         *context,
-                                                                  CdnEmbeddedString        *name,
-                                                                  CdnEmbeddedString        *value);
 
 void                   cdn_parser_context_set_proxy            (CdnParserContext           *context,
                                                                 GSList                     *objects);

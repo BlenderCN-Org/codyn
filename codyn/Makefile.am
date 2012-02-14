@@ -25,7 +25,6 @@ COMMON_SOURCES = 		\
 	cdn-function-polynomial-piece.c \
 	cdn-node.c \
 	cdn-input.c \
-	cdn-input-file.c \
 	cdn-integrators.c \
 	cdn-import.c \
 	cdn-import-alias.c \
@@ -94,7 +93,6 @@ INST_H_FILES = \
 	cdn-function-polynomial-piece.h \
 	cdn-node.h \
 	cdn-input.h \
-	cdn-input-file.h \
 	cdn-integrators.h \
 	cdn-import.h \
 	cdn-import-alias.h \

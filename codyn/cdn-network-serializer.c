@@ -25,7 +25,6 @@
 #include "cdn-function-polynomial.h"
 #include "cdn-network-xml.h"
 #include "cdn-import.h"
-#include "cdn-input-file.h"
 #include "cdn-annotatable.h"
 #include "cdn-layoutable.h"
 
@@ -962,103 +961,6 @@ import_to_xml (CdnNetworkSerializer *serializer,
 }
 
 static void
-input_file_to_xml (CdnNetworkSerializer *serializer,
-                   xmlNodePtr            parent,
-                   CdnInputFile         *input)
-{
-	xmlNodePtr node;
-	GSList *variables;
-	gchar **columns;
-	gchar **item;
-
-	variables = cdn_object_get_variables (CDN_OBJECT (input));
-
-	columns = cdn_input_file_get_columns (input);
-
-	for (item = columns; *item; ++item)
-	{
-		variables = g_slist_remove (variables,
-		                             cdn_object_get_variable (CDN_OBJECT (input), *item));
-	}
-
-	g_strfreev (columns);
-
-	node = object_to_xml (serializer,
-	                      parent,
-	                      CDN_OBJECT (input),
-	                      "input-file",
-	                      variables);
-
-	g_slist_free (variables);
-
-	/* File */
-	GFile *file;
-	file = cdn_input_file_get_file (input);
-
-	if (file)
-	{
-		GFile *network_file;
-		GFile *parent;
-
-		network_file = cdn_network_get_file (serializer->priv->network);
-		gchar *path = NULL;
-
-		if (network_file)
-		{
-			parent = g_file_get_parent (network_file);
-
-			path = g_file_get_relative_path (parent, file);
-
-			g_object_unref (parent);
-			g_object_unref (network_file);
-		}
-
-		if (!path)
-		{
-			path = g_file_get_path (file);
-		}
-
-		if (node->children)
-		{
-			xmlNewProp (node,
-			            (xmlChar *)"filename",
-			            (xmlChar *)path);
-		}
-		else
-		{
-			xmlNodePtr text;
-
-			text = xmlNewDocText (serializer->priv->doc,
-			                      (xmlChar *)path);
-
-			xmlAddChild (node, text);
-		}
-
-		g_free (path);
-		g_object_unref (file);
-	}
-
-	/* Repeat */
-	if (cdn_input_file_get_repeat (input))
-	{
-		xmlNewProp (node, (xmlChar *)"repeat", (xmlChar *)"yes");
-	}
-
-	/* Time column */
-	gint time_column;
-	gboolean isset;
-
-	time_column = cdn_input_file_get_time_column (input, &isset);
-
-	if (isset)
-	{
-		gchar *ptr = g_strdup_printf ("%d", time_column);
-		xmlNewProp (node, (xmlChar *)"time-column", (xmlChar *)ptr);
-		g_free (ptr);
-	}
-}
-
-static void
 any_object_to_xml (CdnNetworkSerializer *serializer,
                    xmlNodePtr            root,
                    CdnObject            *object)
@@ -1081,10 +983,6 @@ any_object_to_xml (CdnNetworkSerializer *serializer,
 	else if (CDN_IS_EDGE (object))
 	{
 		edge_to_xml (serializer, root, CDN_EDGE (object), FALSE);
-	}
-	else if (CDN_IS_INPUT_FILE (object))
-	{
-		input_file_to_xml (serializer, root, CDN_INPUT_FILE (object));
 	}
 	else if (CDN_IS_FUNCTION_POLYNOMIAL (object))
 	{

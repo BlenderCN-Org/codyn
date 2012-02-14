@@ -38,7 +38,6 @@
 #include "cdn-network-xml.h"
 #include "cdn-import.h"
 #include "cdn-import-alias.h"
-#include "cdn-input-file.h"
 #include "cdn-annotatable.h"
 #include "cdn-network-parser-utils.h"
 #include "cdn-layoutable.h"
@@ -1563,161 +1562,6 @@ parse_node (CdnNetworkDeserializer *deserializer,
 }
 
 static gboolean
-parse_input_file (CdnNetworkDeserializer *deserializer,
-                  xmlNodePtr              node)
-{
-	CdnObject *object;
-
-	object = new_object (deserializer, CDN_TYPE_INPUT_FILE, node);
-
-	if (!object)
-	{
-		return FALSE;
-	}
-
-	xmlChar *prop;
-	gchar *filename = NULL;
-
-	prop = xmlGetProp (node, (xmlChar *)"filename");
-
-	if (prop)
-	{
-		filename = g_strdup ((gchar const *)prop);
-		xmlFree (prop);
-	}
-
-	if (!filename)
-	{
-		xmlNodePtr child = node->children;
-
-		while (child)
-		{
-			if (child->type == XML_TEXT_NODE)
-			{
-				filename = g_strdup ((gchar const *)child->content);
-				break;
-			}
-
-			child = child->next;
-		}
-	}
-
-	GFile *file = NULL;
-
-	if (filename)
-	{
-		if (!g_path_is_absolute (filename))
-		{
-			GFile *parent = NULL;
-
-			if (deserializer->priv->file)
-			{
-				parent = g_file_get_parent (deserializer->priv->file);
-			}
-			else
-			{
-				GFile *f;
-
-				f = cdn_network_get_file (deserializer->priv->network);
-
-				if (f)
-				{
-					parent = g_file_get_parent (f);
-					g_object_unref (f);
-				}
-			}
-
-			if (!parent)
-			{
-				parser_failed (deserializer,
-					       node,
-					       CDN_NETWORK_LOAD_ERROR_INPUT_FILE,
-					       "Input file node `%s' cannot find file `%s'",
-					       cdn_object_get_id (object),
-					       filename);
-
-				g_object_unref (object);
-				g_free (filename);
-
-				return FALSE;
-			}
-
-			/* Relative to file being imported */
-			file = g_file_get_child (parent, filename);
-			g_object_unref (parent);
-		}
-		else
-		{
-			file = g_file_new_for_path (filename);
-		}
-
-		g_free (filename);
-	}
-
-	if (file && !g_file_query_exists (file, NULL))
-	{
-		gchar *path;
-
-		path = g_file_get_path (file);
-		g_object_unref (file);
-
-		parser_failed (deserializer,
-		               node,
-		               CDN_NETWORK_LOAD_ERROR_INPUT_FILE,
-		               "Input file node `%s' cannot find file `%s'",
-		               cdn_object_get_id (object),
-		               path);
-
-		g_free (path);
-		g_object_unref (object);
-		return FALSE;
-	}
-
-	cdn_input_file_set_file (CDN_INPUT_FILE (object), file);
-
-	if (file)
-	{
-		g_object_unref (file);
-	}
-
-	gchar const *tc = (gchar const *)xmlGetProp (node, (xmlChar *)"time-column");
-
-	if (tc)
-	{
-		gint column = atoi (tc);
-
-		if (column >= 0)
-		{
-			cdn_input_file_set_time_column (CDN_INPUT_FILE (object),
-			                                column);
-		}
-		else
-		{
-			parser_failed (deserializer,
-			               node,
-			               CDN_NETWORK_LOAD_ERROR_INPUT_FILE,
-			               "Input file node `%s' invalid column: %d",
-			               cdn_object_get_id (object),
-			               column);
-
-			g_object_unref (object);
-			return FALSE;
-		}
-	}
-
-	gchar const *repeat = (gchar const *)xmlGetProp (node, (xmlChar *)"repeat");
-
-	if (repeat)
-	{
-		gboolean r = g_ascii_strcasecmp (repeat, "yes");
-
-		cdn_input_file_set_repeat (CDN_INPUT_FILE (object), r);
-	}
-
-	return TRUE;
-}
-
-static gboolean
 parse_import (CdnNetworkDeserializer *deserializer,
               xmlNodePtr              node)
 {
@@ -1919,10 +1763,6 @@ parse_network (CdnNetworkDeserializer *deserializer,
 		{
 			ret = parse_polynomial (deserializer, node);
 		}
-		else if (g_strcmp0 (nodename, "input-file") == 0)
-		{
-			ret = parse_input_file (deserializer, node);
-		}
 		else if (atroot)
 		{
 			if (g_strcmp0 (nodename, "globals") == 0)
@@ -2002,7 +1842,7 @@ parse_all (CdnNetworkDeserializer *deserializer,
 
 	ret = xml_xpath (deserializer,
 	                 root,
-	                 "state | group | link | templates | function | globals | polynomial | import | input-file",
+	                 "state | group | link | templates | function | globals | polynomial | import",
 	                 XML_ELEMENT_NODE,
 	                 (XPathResultFunc)parse_network,
 	                 NULL);
