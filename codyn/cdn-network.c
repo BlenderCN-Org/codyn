@@ -569,8 +569,7 @@ cdn_network_init (CdnNetwork *network)
 CdnNetwork *
 cdn_network_new ()
 {
-	g_type_init ();
-	cdn_debug_init ();
+	cdn_init ();
 
 	return g_object_new (CDN_TYPE_NETWORK, "id", "(cdn)", NULL);
 }
@@ -993,8 +992,7 @@ CdnNetwork *
 cdn_network_new_from_stream (GInputStream  *stream,
                              GError       **error)
 {
-	g_type_init ();
-	cdn_debug_init ();
+	cdn_init ();
 
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), NULL);
 
@@ -1026,8 +1024,7 @@ CdnNetwork *
 cdn_network_new_from_file (GFile   *file,
                            GError **error)
 {
-	g_type_init ();
-	cdn_debug_init ();
+	cdn_init ();
 
 	g_return_val_if_fail (G_IS_FILE (file), NULL);
 
@@ -1059,8 +1056,7 @@ CdnNetwork *
 cdn_network_new_from_path (gchar const  *path,
                            GError      **error)
 {
-	g_type_init ();
-	cdn_debug_init ();
+	cdn_init ();
 
 	g_return_val_if_fail (path != NULL, NULL);
 
@@ -1086,8 +1082,7 @@ CdnNetwork *
 cdn_network_new_from_string (gchar const  *s,
                              GError      **error)
 {
-	g_type_init ();
-	cdn_debug_init ();
+	cdn_init ();
 
 	g_return_val_if_fail (s != NULL, NULL);
 
@@ -1493,3 +1488,25 @@ cdn_network_get_import_from_path  (CdnNetwork   *network,
 
 	return ret;
 }
+
+static void
+cdn_init_real ()
+{
+	cdn_debug_init ();
+}
+
+void
+cdn_init ()
+{
+	static gboolean inited = FALSE;
+
+	g_type_init ();
+	g_thread_init (NULL);
+
+	if (G_UNLIKELY (!inited))
+	{
+		inited = TRUE;
+		cdn_init_real ();
+	}
+}
+

@@ -120,6 +120,8 @@ struct _CdnNetworkClass
 
 GType             cdn_network_get_type              (void) G_GNUC_CONST;
 
+void              cdn_init                          (void);
+
 GQuark            cdn_network_load_error_quark      (void);
 GQuark            cdn_network_error_quark           (void);
 
