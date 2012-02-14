@@ -27,8 +27,10 @@
 #include "cdn-import.h"
 #include "cdn-annotatable.h"
 #include "cdn-layoutable.h"
+#include "cdn-input.h"
 
 #include <libxml/tree.h>
+#include <string.h>
 
 /**
  * SECTION:cdn-network-serializer
@@ -960,6 +962,175 @@ import_to_xml (CdnNetworkSerializer *serializer,
 	xmlAddChild (root, node);
 }
 
+static gchar *
+input_name (CdnInput *input)
+{
+	GType tp;
+	gchar const *name;
+	gchar const *prefix = "CdnInput";
+	gboolean iscaps = TRUE;
+	GString *ret;
+
+	tp = G_TYPE_FROM_INSTANCE (input);
+
+	name = g_type_name (tp);
+
+	if (g_str_has_prefix (name, prefix))
+	{
+		name += strlen (prefix);
+	}
+
+	ret = g_string_sized_new (strlen (name));
+
+	while (*name)
+	{
+		gchar c = *name;
+		++name;
+
+		if (!iscaps && g_ascii_isupper (c))
+		{
+			g_string_append_c (ret, '_');
+			iscaps = TRUE;
+		}
+		else if (g_ascii_islower (c))
+		{
+			iscaps = FALSE;
+		}
+
+		g_string_append_c (ret, g_ascii_tolower (c));
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
+static void
+input_settings_to_xml_class (CdnNetworkSerializer *serializer,
+                             xmlNodePtr            node,
+                             CdnInput             *input,
+                             GObjectClass         *klass)
+{
+	GParamSpec **specs;
+	guint num;
+	guint i;
+
+	specs = g_object_class_list_properties (klass, &num);
+
+	for (i = 0; i < num; ++i)
+	{
+		// Check default value
+		GValue v = {0,};
+		GType ctype;
+
+		ctype = specs[i]->owner_type;
+
+		if (ctype == G_TYPE_INVALID ||
+		    ctype == CDN_TYPE_OBJECT ||
+		    ctype == CDN_TYPE_FUNCTION ||
+		    ctype == CDN_TYPE_EDGE ||
+		    ctype == CDN_TYPE_NODE)
+		{
+			continue;
+		}
+
+		g_value_init (&v, specs[i]->value_type);
+		g_object_get_property (G_OBJECT (input), specs[i]->name, &v);
+
+		if (!g_param_value_defaults (specs[i], &v))
+		{
+			GValue s = {0,};
+
+			g_value_init (&s, G_TYPE_STRING);
+
+			if (g_value_transform (&v, &s))
+			{
+				xmlNodePtr setting;
+				xmlNodePtr text;
+
+				setting = xmlNewDocNode (serializer->priv->doc,
+				                         NULL,
+				                         (xmlChar *)"setting",
+				                         NULL);
+
+				xmlNewProp (setting,
+				            (xmlChar *)"name",
+				            (xmlChar *)specs[i]->name);
+
+				text = xmlNewDocText (serializer->priv->doc,
+				                      (xmlChar *)g_value_get_string (&s));
+
+				xmlAddChild (setting, text);
+				xmlAddChild (node, setting);
+			}
+
+			g_value_unset (&s);
+		}
+
+		g_value_unset (&v);
+	}
+}
+
+static void
+input_settings_to_xml (CdnNetworkSerializer *serializer,
+                       xmlNodePtr            node,
+                       CdnInput             *input)
+{
+	xmlNodePtr settings;
+
+	settings = xmlNewDocNode (serializer->priv->doc,
+	                          NULL,
+	                          (xmlChar *)"settings",
+	                          NULL);
+
+	input_settings_to_xml_class (serializer,
+	                             settings,
+	                             input,
+	                             G_OBJECT_GET_CLASS (input));
+
+	if (settings->children)
+	{
+		xmlAddChild (node, settings);
+	}
+	else
+	{
+		xmlFreeNode (settings);
+	}
+}
+
+static void
+input_to_xml (CdnNetworkSerializer *serializer,
+              xmlNodePtr            root,
+              CdnInput             *input)
+{
+	GType tp;
+	gchar *tname;
+	xmlNodePtr node;
+
+	tp = G_TYPE_FROM_INSTANCE (input);
+
+	tname = input_name (input);
+
+	node = xmlNewDocNode (serializer->priv->doc,
+	                      NULL,
+	                      (xmlChar *)"input",
+	                      NULL);
+
+	xmlNewProp (node,
+	            (xmlChar *)"id",
+	            (xmlChar *)cdn_object_get_id (CDN_OBJECT (input)));
+
+	xmlNewProp (node,
+	            (xmlChar *)"type",
+	            (xmlChar *)tname);
+
+	input_settings_to_xml (serializer,
+	                       node,
+	                       input);
+
+	xmlAddChild (root, node);
+
+	g_free (tname);
+}
+
 static void
 any_object_to_xml (CdnNetworkSerializer *serializer,
                    xmlNodePtr            root,
@@ -972,7 +1143,11 @@ any_object_to_xml (CdnNetworkSerializer *serializer,
 		return;
 	}
 
-	if (CDN_IS_IMPORT (object))
+	if (CDN_IS_INPUT (object))
+	{
+		input_to_xml (serializer, root, CDN_INPUT (object));
+	}
+	else if (CDN_IS_IMPORT (object))
 	{
 		import_to_xml (serializer, root, CDN_IMPORT (object));
 	}
