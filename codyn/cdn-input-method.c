@@ -212,7 +212,8 @@ cdn_input_method_find (gchar const *name)
 	{
 		ret = type_init_func ();
 
-		if (!g_type_is_a (ret, CDN_TYPE_INPUT))
+		if (ret == CDN_TYPE_INPUT ||
+		    !g_type_is_a (ret, CDN_TYPE_INPUT))
 		{
 			ret = G_TYPE_INVALID;
 		}
