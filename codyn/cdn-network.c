@@ -1126,50 +1126,72 @@ cdn_network_step (CdnNetwork  *network,
  * @from: the simulation start time
  * @timestep: the integration time step to simulate with
  * @to: the simulation end time
+ * @error: a #GError
  *
  * Perform a period of simulation. The period is determined by from, timestep
  * and to as described above.
  *
+ * Returns: %TRUE if the network has been successfully integrated, %FALSE otherwise.
+ *
  **/
-void
+gboolean
 cdn_network_run (CdnNetwork  *network,
                  gdouble      from,
                  gdouble      timestep,
-                 gdouble      to)
+                 gdouble      to,
+                 GError     **error)
 {
-	g_return_if_fail (CDN_IS_NETWORK (network));
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 
-	cdn_integrator_run (network->priv->integrator,
-	                    from,
-	                    timestep,
-	                    to);
+	return cdn_integrator_run (network->priv->integrator,
+	                           from,
+	                           timestep,
+	                           to,
+	                           error);
 }
 
 /**
  * cdn_network_begin:
  * @network: A #CdnNetwork
  * @start: the simulation start time
+ * @error: a #GError
  *
  * Initialize the network to be integrated. Note that you do not need to
  * use this if you are using #cdn_network_run since it will call
  * #cdn_network_begin (and #cdn_network_end) for you.
  *
+ * Returns: %TRUE if the network is ready to be integrated, %FALSE otherwise.
+ *
  **/
-void
+gboolean
 cdn_network_begin (CdnNetwork  *network,
-                   gdouble      start)
+                   gdouble      start,
+                   GError     **error)
 {
-	g_return_if_fail (CDN_IS_NETWORK (network));
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 
-	cdn_integrator_begin (network->priv->integrator, start);
+	return cdn_integrator_begin (network->priv->integrator, start, error);
 }
 
-void
-cdn_network_end (CdnNetwork  *network)
+/**
+ * cdn_network_end:
+ * @network: a #CdnNetwork
+ * @error: a #GError
+ * 
+ * Finalize the network after integration. Note that you do not need to use
+ * this if you are using #cdn_network_run since it will call
+ * #cdn_network_end for you.
+ *
+ * Returns: %TRUE if the network has been finalized successfully, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_network_end (CdnNetwork  *network,
+                 GError     **error)
 {
-	g_return_if_fail (CDN_IS_NETWORK (network));
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 
-	cdn_integrator_end (network->priv->integrator);
+	return cdn_integrator_end (network->priv->integrator, error);
 }
 
 /**

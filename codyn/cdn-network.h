@@ -183,15 +183,18 @@ void              cdn_network_merge_from_string      (CdnNetwork     *network,
                                                       GError        **error);
 
 /* simulation functions */
-void              cdn_network_run                    (CdnNetwork *network,
-                                                      gdouble     from,
-                                                      gdouble     timestep,
-                                                      gdouble     to);
+gboolean          cdn_network_run                    (CdnNetwork  *network,
+                                                      gdouble      from,
+                                                      gdouble      timestep,
+                                                      gdouble      to,
+                                                      GError     **error);
 
-void              cdn_network_begin                  (CdnNetwork *network,
-                                                      gdouble     start);
+gboolean          cdn_network_begin                  (CdnNetwork  *network,
+                                                      gdouble      start,
+                                                      GError     **error);
 
-void              cdn_network_end                    (CdnNetwork *network);
+gboolean          cdn_network_end                    (CdnNetwork  *network,
+                                                      GError     **error);
 
 gdouble           cdn_network_step                   (CdnNetwork *network,
                                                       gdouble     timestep);

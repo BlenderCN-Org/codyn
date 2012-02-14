@@ -556,7 +556,8 @@ cdn_integrator_reset_impl (CdnIntegrator *integrator)
 }
 
 static gboolean
-ensure_compiled (CdnIntegrator *integrator)
+ensure_compiled (CdnIntegrator  *integrator,
+                 GError        **err)
 {
 	CdnObject *object = cdn_integrator_state_get_object (integrator->priv->state);
 
@@ -564,6 +565,12 @@ ensure_compiled (CdnIntegrator *integrator)
 	{
 		CdnCompileError *error = cdn_compile_error_new ();
 		gboolean ret = cdn_object_compile (object, NULL, error);
+
+		if (!ret && err)
+		{
+			*err = g_error_copy (cdn_compile_error_get_error (error));
+		}
+
 		g_object_unref (error);
 
 		return ret;
@@ -799,15 +806,107 @@ simulation_step (CdnIntegrator *integrator)
 	cdn_integrator_simulation_step_integrate (integrator, NULL);
 }
 
-void
-cdn_integrator_begin (CdnIntegrator *integrator,
-                      gdouble        start)
-{
-	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+typedef gboolean (*InputFinishFunc) (CdnInput *input, GAsyncResult *result, GError **error);
 
-	if (!ensure_compiled (integrator))
+typedef struct
+{
+	GMainLoop *loop;
+	guint cnt;
+	GError *error;
+	InputFinishFunc ffunc;
+} InputInfo;
+
+static void
+input_inifini_ready (CdnInput     *input,
+                     GAsyncResult *result,
+                     InputInfo    *info)
+{
+	GError *error = NULL;
+
+	if (!info->ffunc (input, result, &error))
 	{
-		return;
+		if (info->error == NULL)
+		{
+			g_propagate_error (&info->error, error);
+		}
+		else
+		{
+			g_error_free (error);
+		}
+	}
+
+	if (--info->cnt == 0)
+	{
+		g_main_loop_quit (info->loop);
+	}
+}
+
+static gboolean
+inifini_inputs (CdnIntegrator    *integrator,
+                InputFinishFunc   callback,
+                GError          **error)
+{
+	GSList const *inputs;
+	GMainContext *ctx;
+	InputInfo info = {0,};
+	gboolean ret;
+
+	inputs = cdn_integrator_state_inputs (integrator->priv->state);
+
+	if (!inputs)
+	{
+		return TRUE;
+	}
+
+	ctx = g_main_context_new ();
+	g_main_context_push_thread_default (ctx);
+
+	info.loop = g_main_loop_new (ctx, FALSE);
+	info.ffunc = callback;
+
+	while (inputs)
+	{
+		++info.cnt;
+
+		cdn_input_initialize_async (inputs->data,
+		                            NULL,
+		                            (GAsyncReadyCallback)input_inifini_ready,
+		                            &info);
+
+		inputs = g_slist_next (inputs);
+	}
+
+	g_main_loop_run (info.loop);
+	g_main_loop_unref (info.loop);
+
+	ret = info.error == NULL;
+
+	g_propagate_error (error, info.error);
+
+	g_main_context_pop_thread_default (ctx);
+	g_main_context_unref (ctx);
+
+	return ret;
+}
+
+gboolean
+cdn_integrator_begin (CdnIntegrator  *integrator,
+                      gdouble         start,
+                      GError        **error)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), FALSE);
+
+	if (!ensure_compiled (integrator, error))
+	{
+		return FALSE;
+	}
+
+	// Initialize inputs
+	if (!inifini_inputs (integrator,
+	                     cdn_input_initialize_finish,
+	                     error))
+	{
+		return FALSE;
 	}
 
 	// Generate set of next random values
@@ -820,14 +919,26 @@ cdn_integrator_begin (CdnIntegrator *integrator,
 	               integrator_signals[BEGIN],
 	               0,
 	               start);
+
+	return TRUE;
 }
 
-void
-cdn_integrator_end (CdnIntegrator *integrator)
+gboolean
+cdn_integrator_end (CdnIntegrator  *integrator,
+                    GError        **error)
 {
-	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+	gboolean ret;
+
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), FALSE);
+
+	// Finalize inputs
+	ret = inifini_inputs (integrator,
+	                      cdn_input_finalize_finish,
+	                      error);
 
 	g_signal_emit (integrator, integrator_signals[END], 0);
+
+	return ret;
 }
 
 /**
@@ -836,26 +947,36 @@ cdn_integrator_end (CdnIntegrator *integrator)
  * @from: The time at which to start integrating
  * @timestep: The timestep to use for integration
  * @to: The time until which to run the integration
+ * @error: a #GError
  *
  * Integrate the object for a certain period of time.
  *
  **/
-void
-cdn_integrator_run (CdnIntegrator *integrator,
-                    gdouble        from,
-                    gdouble        timestep,
-                    gdouble        to)
+gboolean
+cdn_integrator_run (CdnIntegrator  *integrator,
+                    gdouble         from,
+                    gdouble         timestep,
+                    gdouble         to,
+                    GError        **error)
 {
-	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), FALSE);
 
-	cdn_integrator_begin (integrator, from);
+	if (!cdn_integrator_begin (integrator, from, error))
+	{
+		return FALSE;
+	}
 
 	CDN_INTEGRATOR_GET_CLASS (integrator)->run (integrator,
 	                                            from,
 	                                            timestep,
 	                                            to);
 
-	cdn_integrator_end (integrator);
+	if (!cdn_integrator_end (integrator, error))
+	{
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 /**
@@ -928,7 +1049,7 @@ cdn_integrator_step_prepare (CdnIntegrator *integrator,
                              gdouble        timestep)
 {
 	/* Omit type check makes it faster */
-	if (!ensure_compiled (integrator))
+	if (!ensure_compiled (integrator, NULL))
 	{
 		return FALSE;
 	}

@@ -89,15 +89,18 @@ CdnIntegratorState  *cdn_integrator_get_state       (CdnIntegrator *integrator);
 void                 cdn_integrator_set_state       (CdnIntegrator *integrator,
                                                      CdnIntegratorState *state);
 
-void                 cdn_integrator_begin           (CdnIntegrator *integrator,
-                                                     gdouble        start);
+gboolean             cdn_integrator_begin           (CdnIntegrator  *integrator,
+                                                     gdouble         start,
+                                                     GError        **error);
 
-void                 cdn_integrator_end             (CdnIntegrator *integrator);
+gboolean             cdn_integrator_end             (CdnIntegrator  *integrator,
+                                                     GError        **error);
 
-void                 cdn_integrator_run             (CdnIntegrator *integrator,
-                                                     gdouble        from,
-                                                     gdouble        timestep,
-                                                     gdouble        to);
+gboolean             cdn_integrator_run             (CdnIntegrator  *integrator,
+                                                     gdouble         from,
+                                                     gdouble         timestep,
+                                                     gdouble         to,
+                                                     GError        **error);
 
 gdouble              cdn_integrator_step            (CdnIntegrator *integrator,
                                                      gdouble        t,
