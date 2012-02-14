@@ -4,7 +4,8 @@ INCLUDES =				\
 	-I$(srcdir)			\
 	-I$(top_srcdir)			\
 	$(INTROSPECTION_CFLAGS)		\
-	-DDATADIR=\""$(datadir)"\"
+	-DDATADIR=\""$(datadir)"\"	\
+	-DLIBDIR=\""$(libdir)"\"
 
 AM_YFLAGS = -d
 
@@ -60,7 +61,8 @@ COMMON_SOURCES = 		\
 	cdn-layoutable.c \
 	cdn-statement.c \
 	cdn-taggable.c \
-	cdn-event.c
+	cdn-event.c \
+	cdn-input-method.c
 
 BUILT_SOURCES = \
 	cdn-enum-types.c \
@@ -125,7 +127,8 @@ INST_H_FILES = \
 	cdn-statement.h \
 	cdn-taggable.h \
 	cdn-event.h \
-	cdn-forward-decl.h
+	cdn-forward-decl.h \
+	cdn-input-method.h
 
 lib_LTLIBRARIES = libcodyn-3.0.la
 
