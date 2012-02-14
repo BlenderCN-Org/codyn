@@ -1,5 +1,6 @@
 #include "cdn-input-method.h"
 #include "cdn-input.h"
+#include <string.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -152,47 +153,73 @@ cdn_input_method_new (gchar const *path)
 	                     NULL);
 }
 
+static gchar *
+canon_name (gchar const *s)
+{
+	gboolean iscap = TRUE;
+	GString *ret;
+
+	ret = g_string_new_len ("", strlen (s));
+
+	while (*s)
+	{
+		gchar c = *s;
+		++s;
+
+		if (!g_ascii_isalnum (c))
+		{
+			iscap = FALSE;
+			g_string_append_c (ret, '_');
+			continue;
+		}
+		else if (g_ascii_islower (c))
+		{
+			iscap = FALSE;
+		}
+		else if (g_ascii_isupper (c) && !iscap)
+		{
+			g_string_append_c (ret, '_');
+		}
+
+		g_string_append_c (ret, c);
+	}
+
+	return g_string_free (ret, FALSE);
+}
+
+typedef GType (*TypeInitFunc) (void);
+
 static GType
 find_input_type (gchar const *name,
                  GType        basetype)
 {
-	GType *children;
-	guint num;
-	GType ret;
 	gchar *comp;
-	gint i;
+	gchar *cname;
+	GModule *mod;
+	GType ret;
+	TypeInitFunc type_init_func;
 
-	children = g_type_children (basetype, &num);
+	cname = canon_name (name);
 
-	comp = g_strconcat ("cdninput", name, NULL);
+	comp = g_strconcat ("cdn_input_", cname, "get_type", NULL);
+	g_free (cname);
+
+	mod = g_module_open (NULL, G_MODULE_BIND_LAZY);
+
 	ret = G_TYPE_INVALID;
 
-	for (i = 0; i < num; ++i)
+	if (g_module_symbol (mod, comp, (gpointer *)&type_init_func))
 	{
-		gchar *low;
+		ret = type_init_func ();
 
-		low = g_ascii_strdown (g_type_name (children[i]), -1);
-
-		if (g_strcmp0 (low, comp) == 0)
+		if (!g_type_is_a (ret, CDN_TYPE_INPUT))
 		{
-			ret = children[i];
-		}
-
-		g_free (low);
-
-		if (ret == G_TYPE_INVALID)
-		{
-			ret = find_input_type (name, children[i]);
-		}
-
-		if (ret != G_TYPE_INVALID)
-		{
-			break;
+			ret = G_TYPE_INVALID;
 		}
 	}
 
 	g_free (comp);
-	g_free (children);
+	g_module_close (mod);
 
 	return ret;
 }
