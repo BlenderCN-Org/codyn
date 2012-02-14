@@ -33,6 +33,7 @@
 #include "cdn-taggable.h"
 #include "cdn-marshal.h"
 #include "cdn-phaseable.h"
+#include "cdn-input-method.h"
 
 #include <math.h>
 
@@ -1154,7 +1155,7 @@ static GSList *
 generate_name_value_pairs (CdnParserContext  *context,
                            CdnSelection      *sel,
                            CdnEmbeddedString *name,
-                           GObject           *value,
+                           gpointer           value,
                            CdnEmbeddedString *count_name,
                            gboolean           single_can_be_multi)
 {
@@ -5153,13 +5154,88 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 	}
 }
 
+static gboolean
+set_gobject_property (CdnParserContext  *context,
+                      GObject           *obj,
+                      CdnEmbeddedString *nameemb,
+                      CdnEmbeddedString *valueemb,
+                      CdnExpansion      *name,
+                      CdnExpansion      *value)
+{
+	/* General purpose */
+	GObjectClass *klass;
+	GParamSpec *spec;
+	gchar const *exname;
+	gchar const *exval;
+	GValue v = {0,};
+	GValue dest = {0,};
+
+	klass = G_OBJECT_GET_CLASS (obj);
+
+	exname = cdn_expansion_get (name, 0);
+	exval = cdn_expansion_get (value, 0);
+
+	spec = g_object_class_find_property (klass, exname);
+
+	if (spec == NULL)
+	{
+		parser_failed (context,
+		               CDN_STATEMENT (nameemb),
+		               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+		               "Invalid property `%s' for `%s'",
+		               exname,
+		               g_type_name (G_TYPE_FROM_INSTANCE (obj)));
+
+		return FALSE;
+	}
+
+	if (!g_value_type_transformable (G_TYPE_STRING, spec->value_type))
+	{
+		parser_failed (context,
+		               CDN_STATEMENT (valueemb),
+		               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+		               "Could not convert `%s' to `%s'",
+		               exval,
+		               g_type_name (spec->value_type));
+
+		return FALSE;
+	}
+
+	g_value_init (&v, G_TYPE_STRING);
+	g_value_set_string (&v, exval);
+
+	g_value_init (&dest, spec->value_type);
+
+	if (!g_value_transform (&v, &dest))
+	{
+		g_value_unset (&v);
+		g_value_unset (&dest);
+
+		parser_failed (context,
+		               CDN_STATEMENT (valueemb),
+		               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+		               "Could not convert `%s' to `%s'",
+		               exval,
+		               g_type_name (spec->value_type));
+
+		return FALSE;
+	}
+
+	g_object_set_property (obj, exname, &dest);
+
+	g_value_unset (&v);
+	g_value_unset (&dest);
+
+	return TRUE;
+}
+
 void
 cdn_parser_context_add_integrator_variable (CdnParserContext  *context,
                                             CdnEmbeddedString *name,
                                             CdnEmbeddedString *value)
 {
-	gchar const *exname;
-	gchar const *exval;
+	GSList *item;
+	Context *ctx;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
@@ -5170,103 +5246,82 @@ cdn_parser_context_add_integrator_variable (CdnParserContext  *context,
 		return;
 	}
 
-	embedded_string_expand (exname, name, context);
-	embedded_string_expand (exval, value, context);
+	ctx = CURRENT_CONTEXT (context);
 
-	if (g_strcmp0 (exname, "method") == 0)
+	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		GType type;
-		CdnIntegrator *it;
+		GSList *pairs;
 
-		type = cdn_integrators_find (exval);
+		pairs = generate_name_value_pairs (context,
+		                                   item->data,
+		                                   name,
+		                                   value,
+		                                   NULL,
+		                                   TRUE);
 
-		if (type == G_TYPE_INVALID)
+		while (pairs)
 		{
-			parser_failed (context,
-			               CDN_STATEMENT (name),
-			               CDN_NETWORK_LOAD_ERROR_SYNTAX,
-			               "Could not find integrator `%s'",
-			               exval);
+			gchar const *exname;
+			gchar const *exval;
+			NameValuePair *pair = pairs->data;
 
-			g_object_unref (name);
-			g_object_unref (value);
+			exname = cdn_expansion_get (pair->name, 0);
+			exval = cdn_expansion_get (pair->value, 0);
 
-			return;
+			if (g_strcmp0 (exname, "method") == 0)
+			{
+				GType type;
+				CdnIntegrator *it;
+
+				type = cdn_integrators_find (exval);
+
+				if (type == G_TYPE_INVALID)
+				{
+					parser_failed (context,
+					               CDN_STATEMENT (name),
+					               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+					               "Could not find integrator `%s'",
+					               exval);
+
+					g_object_unref (name);
+					g_object_unref (value);
+
+					g_slist_foreach (pairs,
+					                 (GFunc)name_value_pair_free,
+					                 NULL);
+
+					g_slist_free (pairs);
+
+					return;
+				}
+
+				it = g_object_new (type, NULL);
+				cdn_network_set_integrator (context->priv->network, it);
+
+				g_object_unref (it);
+			}
+			else
+			{
+				if (!set_gobject_property (context,
+				                           cdn_selection_get_object (item->data),
+				                           name,
+				                           value,
+				                           pair->name,
+				                           pair->value))
+				{
+					g_slist_foreach (pairs,
+					                 (GFunc)name_value_pair_free,
+					                 NULL);
+
+					g_slist_free (pairs);
+
+					return;
+				}
+			}
+
+			name_value_pair_free (pairs->data);
+			pairs = g_slist_delete_link (pairs, pairs);
 		}
-
-		it = g_object_new (type, NULL);
-		cdn_network_set_integrator (context->priv->network, it);
-
-		g_object_unref (it);
-	}
-	else
-	{
-		/* General purpose */
-		GObjectClass *klass;
-		CdnIntegrator *it;
-		GParamSpec *spec;
-		GValue v = {0,};
-		GValue dest = {0,};
-
-		it = cdn_network_get_integrator (context->priv->network);
-		klass = G_OBJECT_GET_CLASS (it);
-
-		spec = g_object_class_find_property (klass, exname);
-
-		if (spec == NULL)
-		{
-			parser_failed (context,
-			               CDN_STATEMENT (name),
-			               CDN_NETWORK_LOAD_ERROR_SYNTAX,
-			               "Invalid integrator property `%s' for `%s'",
-			               exname,
-			               cdn_integrator_get_name (it));
-
-			g_object_unref (name);
-			g_object_unref (value);
-
-			return;
-		}
-
-		if (!g_value_type_transformable (G_TYPE_STRING, spec->value_type))
-		{
-			parser_failed (context,
-			               CDN_STATEMENT (value),
-			               CDN_NETWORK_LOAD_ERROR_SYNTAX,
-			               "Could not convert `%s' to `%s'",
-			               exval,
-			               g_type_name (spec->value_type));
-
-			g_object_unref (name);
-			g_object_unref (value);
-
-			return;
-		}
-
-		g_value_init (&v, G_TYPE_STRING);
-		g_value_set_string (&v, exval);
-
-		g_value_init (&dest, spec->value_type);
-
-		if (!g_value_transform (&v, &dest))
-		{
-			g_value_unset (&v);
-
-			parser_failed (context,
-			               CDN_STATEMENT (value),
-			               CDN_NETWORK_LOAD_ERROR_SYNTAX,
-			               "Could not convert `%s' to `%s'",
-			               exval,
-			               g_type_name (spec->value_type));
-
-			g_object_unref (name);
-			g_object_unref (value);
-
-			return;
-		}
-
-		g_object_set_property (G_OBJECT (it), exname, &v);
-		g_value_unset (&v);
 	}
 
 	g_object_unref (name);
@@ -6326,4 +6381,140 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 
 		cdn_embedded_context_restore (context->priv->embedded);
 	}
+}
+
+void
+cdn_parser_context_push_input_type (CdnParserContext  *context,
+                                    CdnEmbeddedString *id,
+                                    CdnEmbeddedString *type,
+                                    GSList            *attributes)
+{
+	Context *ctx;
+	GSList *item;
+	GSList *ret = NULL;
+
+	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CDN_IS_EMBEDDED_STRING (id));
+	g_return_if_fail (CDN_IS_EMBEDDED_STRING (type));
+
+	if (context->priv->in_event_handler)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->objects; item; item = g_slist_next (item))
+	{
+		CdnSelection *sel;
+		GSList *pairs;
+
+		sel = item->data;
+
+		pairs = generate_name_value_pairs (context,
+		                                   sel,
+		                                   id,
+		                                   type,
+		                                   NULL,
+		                                   TRUE);
+
+		while (pairs)
+		{
+			NameValuePair *pair = pairs->data;
+			GType tp;
+
+			tp = cdn_input_method_find (cdn_expansion_get (pair->value, 0));
+
+			if (tp == G_TYPE_INVALID)
+			{
+				parser_failed (context,
+				               CDN_STATEMENT (type),
+				               CDN_NETWORK_LOAD_ERROR_INPUT,
+				               "Could not find input type `%s'",
+				               cdn_expansion_get (pair->value, 0));
+
+				g_slist_foreach (pairs, (GFunc)name_value_pair_free, NULL);
+				g_slist_free (pairs);
+				return;
+			}
+
+			ret = g_slist_prepend (ret,
+			                       parse_object_single_id (context,
+			                                               pair->name,
+			                                               NULL,
+			                                               sel,
+			                                               tp,
+			                                               TRUE));
+
+			name_value_pair_free (pair);
+			pairs = g_slist_delete_link (pairs, pairs);
+		}
+	}
+
+	cdn_parser_context_push_objects (context,
+	                                 g_slist_reverse (ret),
+	                                 attributes);
+	g_slist_free (ret);
+
+	g_object_unref (id);
+	g_object_unref (type);
+}
+
+void
+cdn_parser_context_set_input_setting (CdnParserContext  *context,
+                                      CdnEmbeddedString *name,
+                                      CdnEmbeddedString *value)
+{
+	Context *ctx;
+	GSList *obj;
+
+	if (context->priv->in_event_handler)
+	{
+		return;
+	}
+
+	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (CDN_IS_EMBEDDED_STRING (name));
+	g_return_if_fail (CDN_IS_EMBEDDED_STRING (value));
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (obj = ctx->objects; obj; obj = g_slist_next (obj))
+	{
+		GSList *pairs;
+		CdnSelection *sel;
+
+		sel = obj->data;
+
+		pairs = generate_name_value_pairs (context,
+		                                   sel,
+		                                   name,
+		                                   value,
+		                                   NULL,
+		                                   TRUE);
+
+		while (pairs)
+		{
+			NameValuePair *pair = pairs->data;
+
+			if (!set_gobject_property (context,
+			                           cdn_selection_get_object (sel),
+			                           name,
+			                           value,
+			                           pair->name,
+			                           pair->value))
+			{
+				g_slist_foreach (pairs, (GFunc)name_value_pair_free, NULL);
+				g_slist_free (pairs);
+
+				return;
+			}
+
+			name_value_pair_free (pair);
+			pairs = g_slist_delete_link (pairs, pairs);
+		}
+	}
+
+	g_object_unref (name);
+	g_object_unref (value);
 }

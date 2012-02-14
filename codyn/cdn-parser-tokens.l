@@ -161,7 +161,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "in"				return T_KEY_IN;
 "out"				return T_KEY_OUT;
 "once"				return T_KEY_ONCE;
-"disabled"			return T_KEY_DISABLED;
 "functions"			return T_KEY_FUNCTIONS;
 "interface"			return T_KEY_INTERFACE;
 "polynomial"			return T_KEY_POLYNOMIAL;
@@ -225,8 +224,8 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"has-template"	return T_KEY_HAS_TEMPLATE;
 <INITIAL,onlyselector>"has-tag"		return T_KEY_HAS_TAG;
 <INITIAL,onlyselector>"reverse"		return T_KEY_REVERSE;
-<INITIAL,onlyselector>"input"		return T_KEY_INPUTS;
-<INITIAL,onlyselector>"output"		return T_KEY_OUTPUTS;
+<INITIAL,onlyselector>"input"		return T_KEY_INPUT;
+<INITIAL,onlyselector>"output"		return T_KEY_OUTPUT;
 <INITIAL,onlyselector>"inputs"		return T_KEY_INPUTS;
 <INITIAL,onlyselector>"outputs"		return T_KEY_OUTPUTS;
 <INITIAL,onlyselector>"input-name"	return T_KEY_INPUT_NAME;

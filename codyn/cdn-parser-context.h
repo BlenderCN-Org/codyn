@@ -224,6 +224,15 @@ void                   cdn_parser_context_push_event           (CdnParserContext
                                                                 GSList            *templates,
                                                                 GSList            *attributes);
 
+void                   cdn_parser_context_push_input_type      (CdnParserContext  *context,
+                                                                CdnEmbeddedString *id,
+                                                                CdnEmbeddedString *type,
+                                                                GSList            *attributes);
+
+void                   cdn_parser_context_set_input_setting    (CdnParserContext  *context,
+                                                                CdnEmbeddedString *name,
+                                                                CdnEmbeddedString *value);
+
 void                   cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
                                                                   CdnSelector       *selector,
                                                                   CdnEmbeddedString *value);
