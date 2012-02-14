@@ -616,6 +616,13 @@ cdn_variable_class_init (CdnVariableClass *klass)
 		              1,
 		              CDN_TYPE_EXPRESSION);
 
+	/**
+	 * CdnVariable::flags-changed:
+	 * @flags: a #CdnVariableFlags
+	 *
+	 * The ::flags-changed signal is emitted whenever the variable flags
+	 * have changed.
+	 */
 	signals[FLAGS_CHANGED] =
 		g_signal_new ("flags-changed",
 		              G_OBJECT_CLASS_TYPE (object_class),
