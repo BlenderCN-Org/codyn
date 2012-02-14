@@ -56,17 +56,17 @@ cdn_debug_init ()
 	{
 		inited = TRUE;
 
-		if (g_getenv ("CDN_DEBUG_LINSOLVE") != NULL)
+		if (g_getenv ("CODYN_DEBUG_LINSOLVE") != NULL)
 		{
 			debug_level |= CDN_DEBUG_LINSOLVE;
 		}
 
-		if (g_getenv ("CDN_DEBUG_DIFF") != NULL)
+		if (g_getenv ("CODYN_DEBUG_DIFF") != NULL)
 		{
 			debug_level |= CDN_DEBUG_DIFF;
 		}
 
-		if (g_getenv ("CDN_DEBUG_SIMPLIFY") != NULL)
+		if (g_getenv ("CODYN_DEBUG_SIMPLIFY") != NULL)
 		{
 			debug_level |= CDN_DEBUG_SIMPLIFY;
 		}

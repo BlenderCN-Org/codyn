@@ -38,7 +38,7 @@
 #define CDN_IMPORT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_IMPORT, CdnImportPrivate))
 
 #define IMPORT_DIR "codyn-" API_VERSION
-#define IMPORT_ENV "CDN_NETWORK_IMPORT_PATH"
+#define IMPORT_ENV "CODYN_IMPORT_PATH"
 
 static gchar **import_search_path = NULL;
 
