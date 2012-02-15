@@ -129,7 +129,6 @@ CdnFunctionArgument *cdn_function_get_argument                (CdnFunction      
                                                                gchar const          *name);
 
 const GList         *cdn_function_get_arguments               (CdnFunction          *function);
-guint                cdn_function_get_n_optional              (CdnFunction          *function);
 guint                cdn_function_get_n_arguments             (CdnFunction          *function);
 guint                cdn_function_get_n_implicit              (CdnFunction          *function);
 
