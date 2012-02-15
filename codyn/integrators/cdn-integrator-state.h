@@ -67,7 +67,7 @@ const GSList       *cdn_integrator_state_direct_edge_actions     (CdnIntegratorS
 const GSList       *cdn_integrator_state_phase_integrated_edge_actions (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_phase_direct_edge_actions     (CdnIntegratorState *state);
 
-const GSList       *cdn_integrator_state_inputs                  (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_io                      (CdnIntegratorState *state);
 
 const GSList       *cdn_integrator_state_events                  (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_phase_events            (CdnIntegratorState *state);

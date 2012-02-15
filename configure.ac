@@ -184,11 +184,11 @@ fi
 AM_CONDITIONAL(ENABLE_GEDIT, test "x$enable_gedit" = "xyes")
 AM_CONDITIONAL(ENABLE_GEDIT3, test "x$GEDIT_MAJOR_VERSION" = "x3")
 
-INPUT_METHOD_LIBTOOL_FLAGS="-module -avoid-version"
-INPUT_METHOD_LIBS_DIR="$libdir/codyn-$CODYN_API_VERSION/input-methods"
+IO_LIBTOOL_FLAGS="-module -avoid-version"
+IO_LIBS_DIR="$libdir/codyn-$CODYN_API_VERSION/io"
 
-AC_SUBST(INPUT_METHOD_LIBTOOL_FLAGS)
-AC_SUBST(INPUT_METHOD_LIBS_DIR)
+AC_SUBST(IO_LIBTOOL_FLAGS)
+AC_SUBST(IO_LIBS_DIR)
 
 AC_CONFIG_FILES([
 Makefile
@@ -210,8 +210,8 @@ data/library/physics/Makefile
 docs/Makefile
 docs/reference/Makefile
 docs/man/Makefile
-input-methods/Makefile
-input-methods/file/Makefile
+io/Makefile
+io/file/Makefile
 m4/Makefile
 tests/Makefile
 win32/Makefile

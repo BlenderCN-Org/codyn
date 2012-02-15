@@ -70,6 +70,8 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <num> selector_pseudo_strargs_key
 %type <num> selector_pseudo_strargs_key_real
 
+%type <num> io_mode
+
 %type <list> selector_pseudo_strargs_args
 %type <list> selector_pseudo_strargs_args_rev
 %type <list> selector_pseudo_selector_args
@@ -837,7 +839,7 @@ node_item_general
 	| edge
 	| interface
 	| node
-	| input
+	| io
 	| common_scopes
 	| layout
 	| function
@@ -848,46 +850,52 @@ node_item_general
 	| templates
 	;
 
-input_setting
+io_setting
 	: value_as_string '=' value_as_string
-		{ cdn_parser_context_set_input_setting (context, $1, $3); errb }
+		{ cdn_parser_context_set_io_setting (context, $1, $3); errb }
 	;
 
-input_settings_contents
+io_settings_contents
 	:
-	| input_settings_contents input_setting
+	| io_settings_contents io_setting
 	;
 
-input_settings
+io_settings
 	: T_KEY_SETTINGS
 	  '{'
-	  input_settings_contents
+	  io_settings_contents
 	  '}'
 	;
 
-input_item
-	: input_settings
+io_item
+	: io_settings
 	| variable
 	| common_scopes
 	| attributes
 	 '{'			{ cdn_parser_context_push_scope (context, $1); }
-	 input_contents
+	 io_contents
 	 '}'			{ cdn_parser_context_pop (context); }
 	;
 
-input_contents
+io_contents
 	:
-	| input_contents input_item
+	| io_contents io_item
 	;
 
-input
+io_mode
+	: T_KEY_INPUT		{ $$ = CDN_IO_MODE_INPUT; }
+	| T_KEY_OUTPUT		{ $$ = CDN_IO_MODE_OUTPUT; }
+	| T_KEY_IO		{ $$ = CDN_IO_MODE_INPUT_OUTPUT; }
+	;
+
+io
 	: attributes
-	  T_KEY_INPUT
+	  io_mode
 	  identifier_or_string
 	  T_KEY_TYPE
 	  value_as_string
-	  '{'			{ cdn_parser_context_push_input_type (context, $3, $5, $1); errb }
-	  input_contents
+	  '{'			{ cdn_parser_context_push_io_type (context, $2, $3, $5, $1); errb }
+	  io_contents
 	  '}'			{ cdn_parser_context_pop (context); }
 	;
 

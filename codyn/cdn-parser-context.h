@@ -35,6 +35,7 @@
 #include <codyn/cdn-layout.h>
 #include <codyn/cdn-attribute.h>
 #include <codyn/cdn-event.h>
+#include <codyn/cdn-io.h>
 
 G_BEGIN_DECLS
 
@@ -224,12 +225,13 @@ void                   cdn_parser_context_push_event           (CdnParserContext
                                                                 GSList            *templates,
                                                                 GSList            *attributes);
 
-void                   cdn_parser_context_push_input_type      (CdnParserContext  *context,
+void                   cdn_parser_context_push_io_type         (CdnParserContext  *context,
+                                                                CdnIoMode          mode,
                                                                 CdnEmbeddedString *id,
                                                                 CdnEmbeddedString *type,
                                                                 GSList            *attributes);
 
-void                   cdn_parser_context_set_input_setting    (CdnParserContext  *context,
+void                   cdn_parser_context_set_io_setting       (CdnParserContext  *context,
                                                                 CdnEmbeddedString *name,
                                                                 CdnEmbeddedString *value);
 

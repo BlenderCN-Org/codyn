@@ -1,7 +1,7 @@
 #ifndef __CDN_INPUT_FILE_H__
 #define __CDN_INPUT_FILE_H__
 
-#include <codyn/cdn-input.h>
+#include <codyn/cdn-io.h>
 #include <codyn/cdn-function.h>
 
 G_BEGIN_DECLS
@@ -33,8 +33,7 @@ struct _CdnInputFileClass
 };
 
 GType cdn_input_file_get_type (void) G_GNUC_CONST;
-
-void cdn_input_method_register_types (GTypeModule *module);
+void  cdn_input_file_register (GTypeModule *type_module);
 
 G_END_DECLS
 

@@ -24,7 +24,7 @@
 #include "cdn-edge.h"
 #include "cdn-compile-error.h"
 #include "cdn-marshal.h"
-#include "cdn-input.h"
+#include "cdn-io.h"
 #include "cdn-event.h"
 #include "operators/cdn-operator.h"
 #include "instructions/cdn-instruction-rand.h"
@@ -335,7 +335,7 @@ prepare_next_step (CdnIntegrator *integrator,
                    gdouble        timestep)
 {
 	GSList *item;
-	GSList const *inputs;
+	GSList const *io;
 	GSList const *ops;
 
 	cdn_variable_set_value (integrator->priv->property_time, t);
@@ -345,13 +345,13 @@ prepare_next_step (CdnIntegrator *integrator,
 
 	reset_function_cache (integrator);
 
-	// Update inputs
-	inputs = cdn_integrator_state_inputs (integrator->priv->state);
+	// Update io
+	io = cdn_integrator_state_io (integrator->priv->state);
 
-	while (inputs)
+	while (io)
 	{
-		cdn_input_update (CDN_INPUT (inputs->data), integrator);
-		inputs = g_slist_next (inputs);
+		cdn_io_update (CDN_IO (io->data), integrator);
+		io = g_slist_next (io);
 	}
 
 	for (item = integrator->priv->saved_state; item; item = g_slist_next (item))
@@ -806,24 +806,24 @@ simulation_step (CdnIntegrator *integrator)
 	cdn_integrator_simulation_step_integrate (integrator, NULL);
 }
 
-typedef gboolean (*InputFinishFunc) (CdnInput *input, GAsyncResult *result, GError **error);
+typedef gboolean (*IoFinishFunc) (CdnIo *io, GAsyncResult *result, GError **error);
 
 typedef struct
 {
 	GMainLoop *loop;
 	guint cnt;
 	GError *error;
-	InputFinishFunc ffunc;
-} InputInfo;
+	IoFinishFunc ffunc;
+} IoInfo;
 
 static void
-input_inifini_ready (CdnInput     *input,
-                     GAsyncResult *result,
-                     InputInfo    *info)
+io_inifini_ready (CdnIo     *io,
+                  GAsyncResult *result,
+                  IoInfo    *info)
 {
 	GError *error = NULL;
 
-	if (!info->ffunc (input, result, &error))
+	if (!info->ffunc (io, result, &error))
 	{
 		if (info->error == NULL)
 		{
@@ -842,18 +842,18 @@ input_inifini_ready (CdnInput     *input,
 }
 
 static gboolean
-inifini_inputs (CdnIntegrator    *integrator,
-                InputFinishFunc   callback,
-                GError          **error)
+inifini_io (CdnIntegrator    *integrator,
+            IoFinishFunc   callback,
+            GError          **error)
 {
-	GSList const *inputs;
+	GSList const *io;
 	GMainContext *ctx;
-	InputInfo info = {0,};
+	IoInfo info = {0,};
 	gboolean ret;
 
-	inputs = cdn_integrator_state_inputs (integrator->priv->state);
+	io = cdn_integrator_state_io (integrator->priv->state);
 
-	if (!inputs)
+	if (!io)
 	{
 		return TRUE;
 	}
@@ -864,16 +864,16 @@ inifini_inputs (CdnIntegrator    *integrator,
 	info.loop = g_main_loop_new (ctx, FALSE);
 	info.ffunc = callback;
 
-	while (inputs)
+	while (io)
 	{
 		++info.cnt;
 
-		cdn_input_initialize_async (inputs->data,
-		                            NULL,
-		                            (GAsyncReadyCallback)input_inifini_ready,
-		                            &info);
+		cdn_io_initialize_async (io->data,
+		                         NULL,
+		                         (GAsyncReadyCallback)io_inifini_ready,
+		                         &info);
 
-		inputs = g_slist_next (inputs);
+		io = g_slist_next (io);
 	}
 
 	g_main_loop_run (info.loop);
@@ -901,10 +901,10 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 		return FALSE;
 	}
 
-	// Initialize inputs
-	if (!inifini_inputs (integrator,
-	                     cdn_input_initialize_finish,
-	                     error))
+	// Initialize io
+	if (!inifini_io (integrator,
+	                 cdn_io_initialize_finish,
+	                 error))
 	{
 		return FALSE;
 	}
@@ -931,10 +931,10 @@ cdn_integrator_end (CdnIntegrator  *integrator,
 
 	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), FALSE);
 
-	// Finalize inputs
-	ret = inifini_inputs (integrator,
-	                      cdn_input_finalize_finish,
-	                      error);
+	// Finalize io
+	ret = inifini_io (integrator,
+	                  cdn_io_finalize_finish,
+	                  error);
 
 	g_signal_emit (integrator, integrator_signals[END], 0);
 

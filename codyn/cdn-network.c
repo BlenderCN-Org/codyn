@@ -35,7 +35,7 @@
 #include "cdn-import.h"
 #include "cdn-parser-context.h"
 #include "cdn-debug.h"
-#include "cdn-input-method.h"
+#include "cdn-io-method.h"
 
 /**
  * SECTION:cdn-network
@@ -1517,7 +1517,7 @@ cdn_init_real ()
 {
 	cdn_debug_init ();
 
-	cdn_input_method_initialize ();
+	cdn_io_method_initialize ();
 }
 
 void

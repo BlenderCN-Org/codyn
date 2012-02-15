@@ -28,7 +28,7 @@
 #include "cdn-utils.h"
 #include "cdn-selector.h"
 #include "cdn-layoutable.h"
-#include "cdn-input.h"
+#include "cdn-io.h"
 
 /**
  * SECTION:cdn-node
@@ -990,12 +990,12 @@ cdn_node_cdn_compile (CdnObject         *object,
 	// the fly)
 	while (item)
 	{
-		if (!CDN_IS_INPUT (item->data) && !CDN_IS_FUNCTION (item->data))
+		if (!CDN_IS_IO (item->data) && !CDN_IS_FUNCTION (item->data))
 		{
 			others = g_slist_prepend (others,
 			                          item->data);
 		}
-		else if (CDN_IS_INPUT (item->data) &&
+		else if (CDN_IS_IO (item->data) &&
 		         !cdn_object_compile (item->data, context, error))
 		{
 			cdn_compile_context_restore (context);

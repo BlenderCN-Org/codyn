@@ -33,7 +33,7 @@
 #include "cdn-taggable.h"
 #include "cdn-marshal.h"
 #include "cdn-phaseable.h"
-#include "cdn-input-method.h"
+#include "cdn-io-method.h"
 
 #include <math.h>
 
@@ -6384,10 +6384,11 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 }
 
 void
-cdn_parser_context_push_input_type (CdnParserContext  *context,
-                                    CdnEmbeddedString *id,
-                                    CdnEmbeddedString *type,
-                                    GSList            *attributes)
+cdn_parser_context_push_io_type (CdnParserContext  *context,
+                                 CdnIoMode          mode,
+                                 CdnEmbeddedString *id,
+                                 CdnEmbeddedString *type,
+                                 GSList            *attributes)
 {
 	Context *ctx;
 	GSList *item;
@@ -6423,14 +6424,15 @@ cdn_parser_context_push_input_type (CdnParserContext  *context,
 			NameValuePair *pair = pairs->data;
 			GType tp;
 
-			tp = cdn_input_method_find (cdn_expansion_get (pair->value, 0));
+			tp = cdn_io_method_find (cdn_expansion_get (pair->value, 0),
+			                         mode);
 
 			if (tp == G_TYPE_INVALID)
 			{
 				parser_failed (context,
 				               CDN_STATEMENT (type),
 				               CDN_NETWORK_LOAD_ERROR_INPUT,
-				               "Could not find input type `%s'",
+				               "Could not find io type `%s'",
 				               cdn_expansion_get (pair->value, 0));
 
 				g_slist_foreach (pairs, (GFunc)name_value_pair_free, NULL);
@@ -6461,9 +6463,9 @@ cdn_parser_context_push_input_type (CdnParserContext  *context,
 }
 
 void
-cdn_parser_context_set_input_setting (CdnParserContext  *context,
-                                      CdnEmbeddedString *name,
-                                      CdnEmbeddedString *value)
+cdn_parser_context_set_io_setting (CdnParserContext  *context,
+                                   CdnEmbeddedString *name,
+                                   CdnEmbeddedString *value)
 {
 	Context *ctx;
 	GSList *obj;

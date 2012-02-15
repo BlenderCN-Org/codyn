@@ -32,7 +32,7 @@
 #include "cdn-variable.h"
 #include "cdn-expression-tree-iter.h"
 #include "cdn-node.h"
-#include "cdn-input.h"
+#include "cdn-io.h"
 
 #include <execinfo.h>
 
@@ -866,7 +866,7 @@ parse_context_property (CdnExpression *expression,
 			{
 				CdnVariable *prop;
 
-				if (CDN_IS_INPUT (c) && !cdn_object_is_compiled (c))
+				if (CDN_IS_IO (c) && !cdn_object_is_compiled (c))
 				{
 					if (!cdn_object_compile (c, NULL, context->error))
 					{

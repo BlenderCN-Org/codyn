@@ -22,7 +22,7 @@
 
 #include "cdn-integrator-state.h"
 #include "cdn-edge.h"
-#include "cdn-input.h"
+#include "cdn-io.h"
 #include "instructions/cdn-instruction-custom-operator.h"
 #include "instructions/cdn-instruction-rand.h"
 #include "cdn-phaseable.h"
@@ -58,7 +58,7 @@ struct _CdnIntegratorStatePrivate
 	GSList *operators;
 	GSList *functions;
 
-	GSList *inputs;
+	GSList *io;
 	GSList *expressions;
 	GSList *events;
 	GSList *phase_events;
@@ -175,7 +175,7 @@ clear_lists (CdnIntegratorState *state)
 	clear_list (&(state->priv->phase_integrated_edge_actions));
 	clear_list (&(state->priv->phase_direct_edge_actions));
 
-	clear_list (&(state->priv->inputs));
+	clear_list (&(state->priv->io));
 	clear_list (&(state->priv->expressions));
 	clear_list (&(state->priv->operators));
 
@@ -564,10 +564,10 @@ collect (CdnIntegratorState *state,
 		}
 	}
 
-	if (CDN_IS_INPUT (object))
+	if (CDN_IS_IO (object))
 	{
-		state->priv->inputs =
-			prepend_gslist_unique (state->priv->inputs,
+		state->priv->io =
+			prepend_gslist_unique (state->priv->io,
 			                       object);
 	}
 
@@ -824,8 +824,8 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 	state->priv->direct_properties =
 		g_slist_reverse (state->priv->direct_properties);
 
-	state->priv->inputs =
-		g_slist_reverse (state->priv->inputs);
+	state->priv->io =
+		g_slist_reverse (state->priv->io);
 
 	state->priv->events =
 		g_slist_reverse (state->priv->events);
@@ -968,20 +968,20 @@ cdn_integrator_state_all_properties (CdnIntegratorState *state)
 }
 
 /**
- * cdn_integrator_state_inputs:
+ * cdn_integrator_state_io:
  * @state: A #CdnIntegratorState
  *
- * Get the input states.
+ * Get the io states.
  *
- * Returns: (element-type CdnInput) (transfer none): A #GSList of #CdnInput
+ * Returns: (element-type CdnIo) (transfer none): A #GSList of #CdnIo
  *
  **/
 const GSList *
-cdn_integrator_state_inputs (CdnIntegratorState *state)
+cdn_integrator_state_io (CdnIntegratorState *state)
 {
 	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
 
-	return state->priv->inputs;
+	return state->priv->io;
 }
 
 /**

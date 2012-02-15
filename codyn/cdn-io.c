@@ -1,5 +1,5 @@
 /*
- * cdn-input.c
+ * cdn-io.c
  * This file is part of codyn
  *
  * Copyright (C) 2011 - Jesse van den Kieboom
@@ -20,19 +20,20 @@
  * Boston, MA  02110-1301  USA
  */
 
-#include "cdn-input.h"
+#include "cdn-io.h"
+#include "cdn-enum-types.h"
 
-G_DEFINE_INTERFACE (CdnInput, cdn_input, CDN_TYPE_OBJECT)
+G_DEFINE_INTERFACE (CdnIo, cdn_io, CDN_TYPE_OBJECT)
 
 static void
 initialize_async_thread (GSimpleAsyncResult *res,
                          GObject            *object,
                          GCancellable       *cancellable)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 	GError *error = NULL;
 
-	iface = CDN_INPUT_GET_INTERFACE (object);
+	iface = CDN_IO_GET_INTERFACE (object);
 
 	if (iface->initialize == NULL)
 	{
@@ -46,7 +47,7 @@ initialize_async_thread (GSimpleAsyncResult *res,
 		return;
 	}
 
-	if (!iface->initialize (CDN_INPUT (object), cancellable, &error))
+	if (!iface->initialize (CDN_IO (object), cancellable, &error))
 	{
 		g_simple_async_result_set_from_error (res, error);
 		g_error_free (error);
@@ -58,20 +59,20 @@ initialize_async_thread (GSimpleAsyncResult *res,
 }
 
 static void
-initialize_async_real (CdnInput            *input,
+initialize_async_real (CdnIo               *io,
                        GCancellable        *cancellable,
                        GAsyncReadyCallback  callback,
                        gpointer             user_data)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 	GSimpleAsyncResult *res;
 
-	iface = CDN_INPUT_GET_INTERFACE (input);
+	iface = CDN_IO_GET_INTERFACE (io);
 
-	res = g_simple_async_result_new (G_OBJECT (input),
+	res = g_simple_async_result_new (G_OBJECT (io),
 	                                 callback,
 	                                 user_data,
-	                                 cdn_input_initialize_async);
+	                                 cdn_io_initialize_async);
 
 	g_simple_async_result_run_in_thread (res,
 	                                     initialize_async_thread,
@@ -86,10 +87,10 @@ finalize_async_thread (GSimpleAsyncResult *res,
                        GObject            *object,
                        GCancellable       *cancellable)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 	GError *error = NULL;
 
-	iface = CDN_INPUT_GET_INTERFACE (object);
+	iface = CDN_IO_GET_INTERFACE (object);
 
 	if (iface->finalize == NULL)
 	{
@@ -103,7 +104,7 @@ finalize_async_thread (GSimpleAsyncResult *res,
 		return;
 	}
 
-	if (!iface->finalize (CDN_INPUT (object), cancellable, &error))
+	if (!iface->finalize (CDN_IO (object), cancellable, &error))
 	{
 		g_simple_async_result_set_from_error (res, error);
 		g_error_free (error);
@@ -115,20 +116,20 @@ finalize_async_thread (GSimpleAsyncResult *res,
 }
 
 static void
-finalize_async_real (CdnInput            *input,
+finalize_async_real (CdnIo               *io,
                      GCancellable        *cancellable,
                      GAsyncReadyCallback  callback,
                      gpointer             user_data)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 	GSimpleAsyncResult *res;
 
-	iface = CDN_INPUT_GET_INTERFACE (input);
+	iface = CDN_IO_GET_INTERFACE (io);
 
-	res = g_simple_async_result_new (G_OBJECT (input),
+	res = g_simple_async_result_new (G_OBJECT (io),
 	                                 callback,
 	                                 user_data,
-	                                 cdn_input_finalize_async);
+	                                 cdn_io_finalize_async);
 
 	g_simple_async_result_run_in_thread (res,
 	                                     finalize_async_thread,
@@ -139,7 +140,7 @@ finalize_async_real (CdnInput            *input,
 }
 
 static void
-cdn_input_default_init (CdnInputInterface *iface)
+cdn_io_default_init (CdnIoInterface *iface)
 {
 	static gboolean initialized = FALSE;
 
@@ -149,24 +150,34 @@ cdn_input_default_init (CdnInputInterface *iface)
 	if (G_UNLIKELY (!initialized))
 	{
 		initialized = TRUE;
+
+		g_object_interface_install_property (iface,
+		                                     g_param_spec_flags ("mode",
+		                                                         "Mode",
+		                                                         "Mode",
+		                                                         CDN_TYPE_IO_MODE,
+		                                                         CDN_IO_MODE_INPUT,
+		                                                         G_PARAM_READWRITE |
+		                                                         G_PARAM_CONSTRUCT_ONLY |
+		                                                         G_PARAM_STATIC_STRINGS));
 	}
 }
 
 gboolean
-cdn_input_initialize (CdnInput      *input,
-                      GCancellable  *cancellable,
-                      GError       **error)
+cdn_io_initialize (CdnIo         *io,
+                   GCancellable  *cancellable,
+                   GError       **error)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 
-	g_return_val_if_fail (CDN_IS_INPUT (input), FALSE);
+	g_return_val_if_fail (CDN_IS_IO (io), FALSE);
 
 	if (g_cancellable_set_error_if_cancelled (cancellable, error))
 	{
 		return FALSE;
 	}
 
-	iface = CDN_INPUT_GET_INTERFACE (input);
+	iface = CDN_IO_GET_INTERFACE (io);
 
 	if (iface->initialize == NULL)
 	{
@@ -178,36 +189,36 @@ cdn_input_initialize (CdnInput      *input,
 		return FALSE;
 	}
 
-	return iface->initialize (input, cancellable, error);
+	return iface->initialize (io, cancellable, error);
 }
 
 void
-cdn_input_initialize_async (CdnInput            *input,
+cdn_io_initialize_async (CdnIo            *io,
                             GCancellable        *cancellable,
                             GAsyncReadyCallback  callback,
                             gpointer             user_data)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 
-	g_return_if_fail (CDN_IS_INPUT (input));
+	g_return_if_fail (CDN_IS_IO (io));
 	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
 	g_return_if_fail (callback != NULL);
 
-	iface = CDN_INPUT_GET_INTERFACE (input);
+	iface = CDN_IO_GET_INTERFACE (io);
 
-	iface->initialize_async (input, cancellable, callback, user_data);
+	iface->initialize_async (io, cancellable, callback, user_data);
 }
 
 gboolean
-cdn_input_initialize_finish (CdnInput      *input,
+cdn_io_initialize_finish (CdnIo      *io,
                              GAsyncResult  *result,
                              GError       **error)
 {
-	g_return_val_if_fail (CDN_IS_INPUT (input), FALSE);
+	g_return_val_if_fail (CDN_IS_IO (io), FALSE);
 	g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
 	g_return_val_if_fail (g_simple_async_result_is_valid (result,
-	                                                      G_OBJECT (input),
-	                                                      cdn_input_finalize_async),
+	                                                      G_OBJECT (io),
+	                                                      cdn_io_finalize_async),
 	                      FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
@@ -220,20 +231,20 @@ cdn_input_initialize_finish (CdnInput      *input,
 }
 
 gboolean
-cdn_input_finalize (CdnInput      *input,
+cdn_io_finalize (CdnIo      *io,
                     GCancellable  *cancellable,
                     GError       **error)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 
-	g_return_val_if_fail (CDN_IS_INPUT (input), FALSE);
+	g_return_val_if_fail (CDN_IS_IO (io), FALSE);
 
 	if (g_cancellable_set_error_if_cancelled (cancellable, error))
 	{
 		return FALSE;
 	}
 
-	iface = CDN_INPUT_GET_INTERFACE (input);
+	iface = CDN_IO_GET_INTERFACE (io);
 
 	if (iface->finalize == NULL)
 	{
@@ -245,36 +256,36 @@ cdn_input_finalize (CdnInput      *input,
 		return FALSE;
 	}
 
-	return iface->finalize (input, cancellable, error);
+	return iface->finalize (io, cancellable, error);
 }
 
 void
-cdn_input_finalize_async (CdnInput            *input,
+cdn_io_finalize_async (CdnIo            *io,
                           GCancellable        *cancellable,
                           GAsyncReadyCallback  callback,
                           gpointer             user_data)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 
-	g_return_if_fail (CDN_IS_INPUT (input));
+	g_return_if_fail (CDN_IS_IO (io));
 	g_return_if_fail (cancellable == NULL || G_IS_CANCELLABLE (cancellable));
 	g_return_if_fail (callback != NULL);
 
-	iface = CDN_INPUT_GET_INTERFACE (input);
+	iface = CDN_IO_GET_INTERFACE (io);
 
-	iface->finalize_async (input, cancellable, callback, user_data);
+	iface->finalize_async (io, cancellable, callback, user_data);
 }
 
 gboolean
-cdn_input_finalize_finish (CdnInput      *input,
+cdn_io_finalize_finish (CdnIo      *io,
                            GAsyncResult  *result,
                            GError       **error)
 {
-	g_return_val_if_fail (CDN_IS_INPUT (input), FALSE);
+	g_return_val_if_fail (CDN_IS_IO (io), FALSE);
 	g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
 	g_return_val_if_fail (g_simple_async_result_is_valid (result,
-	                                                      G_OBJECT (input),
-	                                                      cdn_input_finalize_async),
+	                                                      G_OBJECT (io),
+	                                                      cdn_io_finalize_async),
 	                      FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
@@ -287,18 +298,18 @@ cdn_input_finalize_finish (CdnInput      *input,
 }
 
 void
-cdn_input_update (CdnInput      *input,
+cdn_io_update (CdnIo      *io,
                   CdnIntegrator *integrator)
 {
-	CdnInputInterface *iface;
+	CdnIoInterface *iface;
 
-	g_return_if_fail (CDN_IS_INPUT (input));
+	g_return_if_fail (CDN_IS_IO (io));
 	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
 
-	iface = CDN_INPUT_GET_INTERFACE (input);
+	iface = CDN_IO_GET_INTERFACE (io);
 
 	if (iface->update)
 	{
-		iface->update (input, integrator);
+		iface->update (io, integrator);
 	}
 }

@@ -1,4 +1,4 @@
-SUBDIRS = codyn data tests m4 win32 tools
+SUBDIRS = codyn data tests m4 win32 tools io
 
 if ENABLE_DOC
 SUBDIRS += docs

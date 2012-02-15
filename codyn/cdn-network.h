@@ -59,6 +59,7 @@ typedef struct _CdnNetworkPrivate CdnNetworkPrivate;
  * @CDN_NETWORK_LOAD_ERROR_EDGE: error occurred in loading a edge
  * @CDN_NETWORK_LOAD_ERROR_FUNCTION: error occurred in loading a function
  * @CDN_NETWORK_LOAD_ERROR_IMPORT: error occurred in an import
+ * @CDN_NETWORK_LOAD_ERROR_IO: error occurred in io
  * @CDN_NETWORK_LOAD_ERROR_INTERFACE: error occurred in an interface
  *
  * Network load error types.
@@ -73,7 +74,7 @@ typedef enum
 	CDN_NETWORK_LOAD_ERROR_EDGE,
 	CDN_NETWORK_LOAD_ERROR_FUNCTION,
 	CDN_NETWORK_LOAD_ERROR_IMPORT,
-	CDN_NETWORK_LOAD_ERROR_INPUT,
+	CDN_NETWORK_LOAD_ERROR_IO,
 	CDN_NETWORK_LOAD_ERROR_INTERFACE,
 	CDN_NETWORK_LOAD_ERROR_OPERATOR
 } CdnNetworkLoadError;

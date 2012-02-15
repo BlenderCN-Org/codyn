@@ -27,7 +27,7 @@
 #include "cdn-import.h"
 #include "cdn-annotatable.h"
 #include "cdn-layoutable.h"
-#include "cdn-input.h"
+#include "cdn-io.h"
 
 #include <libxml/tree.h>
 #include <string.h>
@@ -640,7 +640,7 @@ edge_to_xml (CdnNetworkSerializer *serializer,
 		if (from != NULL)
 		{
 			xmlNewProp (node,
-				    (xmlChar const *)"input",
+				    (xmlChar const *)"io",
 				    (xmlChar const *)cdn_object_get_id (CDN_OBJECT (from)));
 		}
 
@@ -963,15 +963,15 @@ import_to_xml (CdnNetworkSerializer *serializer,
 }
 
 static gchar *
-input_name (CdnInput *input)
+io_name (CdnIo *io)
 {
 	GType tp;
 	gchar const *name;
-	gchar const *prefix = "CdnInput";
+	gchar const *prefix = "CdnIo";
 	gboolean iscaps = TRUE;
 	GString *ret;
 
-	tp = G_TYPE_FROM_INSTANCE (input);
+	tp = G_TYPE_FROM_INSTANCE (io);
 
 	name = g_type_name (tp);
 
@@ -1004,10 +1004,10 @@ input_name (CdnInput *input)
 }
 
 static void
-input_settings_to_xml_class (CdnNetworkSerializer *serializer,
-                             xmlNodePtr            node,
-                             CdnInput             *input,
-                             GObjectClass         *klass)
+io_settings_to_xml_class (CdnNetworkSerializer *serializer,
+                          xmlNodePtr            node,
+                          CdnIo                *io,
+                          GObjectClass         *klass)
 {
 	GParamSpec **specs;
 	guint num;
@@ -1033,7 +1033,7 @@ input_settings_to_xml_class (CdnNetworkSerializer *serializer,
 		}
 
 		g_value_init (&v, specs[i]->value_type);
-		g_object_get_property (G_OBJECT (input), specs[i]->name, &v);
+		g_object_get_property (G_OBJECT (io), specs[i]->name, &v);
 
 		if (!g_param_value_defaults (specs[i], &v))
 		{
@@ -1070,9 +1070,9 @@ input_settings_to_xml_class (CdnNetworkSerializer *serializer,
 }
 
 static void
-input_settings_to_xml (CdnNetworkSerializer *serializer,
+io_settings_to_xml (CdnNetworkSerializer *serializer,
                        xmlNodePtr            node,
-                       CdnInput             *input)
+                       CdnIo             *io)
 {
 	xmlNodePtr settings;
 
@@ -1081,10 +1081,10 @@ input_settings_to_xml (CdnNetworkSerializer *serializer,
 	                          (xmlChar *)"settings",
 	                          NULL);
 
-	input_settings_to_xml_class (serializer,
+	io_settings_to_xml_class (serializer,
 	                             settings,
-	                             input,
-	                             G_OBJECT_GET_CLASS (input));
+	                             io,
+	                             G_OBJECT_GET_CLASS (io));
 
 	if (settings->children)
 	{
@@ -1097,34 +1097,34 @@ input_settings_to_xml (CdnNetworkSerializer *serializer,
 }
 
 static void
-input_to_xml (CdnNetworkSerializer *serializer,
+io_to_xml (CdnNetworkSerializer *serializer,
               xmlNodePtr            root,
-              CdnInput             *input)
+              CdnIo             *io)
 {
 	GType tp;
 	gchar *tname;
 	xmlNodePtr node;
 
-	tp = G_TYPE_FROM_INSTANCE (input);
+	tp = G_TYPE_FROM_INSTANCE (io);
 
-	tname = input_name (input);
+	tname = io_name (io);
 
 	node = xmlNewDocNode (serializer->priv->doc,
 	                      NULL,
-	                      (xmlChar *)"input",
+	                      (xmlChar *)"io",
 	                      NULL);
 
 	xmlNewProp (node,
 	            (xmlChar *)"id",
-	            (xmlChar *)cdn_object_get_id (CDN_OBJECT (input)));
+	            (xmlChar *)cdn_object_get_id (CDN_OBJECT (io)));
 
 	xmlNewProp (node,
 	            (xmlChar *)"type",
 	            (xmlChar *)tname);
 
-	input_settings_to_xml (serializer,
+	io_settings_to_xml (serializer,
 	                       node,
-	                       input);
+	                       io);
 
 	xmlAddChild (root, node);
 
@@ -1143,9 +1143,9 @@ any_object_to_xml (CdnNetworkSerializer *serializer,
 		return;
 	}
 
-	if (CDN_IS_INPUT (object))
+	if (CDN_IS_IO (object))
 	{
-		input_to_xml (serializer, root, CDN_INPUT (object));
+		io_to_xml (serializer, root, CDN_IO (object));
 	}
 	else if (CDN_IS_IMPORT (object))
 	{

@@ -1,4 +1,4 @@
-plugindir = $(INPUT_METHOD_LIBS_DIR)
+plugindir = $(IO_LIBS_DIR)
 
 INCLUDES =                              \
 	-I$(srcdir)                     \
@@ -8,13 +8,15 @@ INCLUDES =                              \
 
 plugin_LTLIBRARIES = libfile.la
 
-NOINST_H_FILES = \
+NOINST_H_FILES = 			\
+	cdn-io-file.h			\
 	cdn-input-file.h
 
-libfile_la_SOURCES = \
+libfile_la_SOURCES = 			\
+	cdn-io-file.c			\
 	cdn-input-file.c
 
-libfile_la_LDFLAGS = $(INPUT_METHOD_LIBTOOL_FLAGS)
+libfile_la_LDFLAGS = $(IO_LIBTOOL_FLAGS)
 libfile_la_LIBADD = $(CODYN_LIBS) -lm
 libfile_la_CFLAGS = $(CODYN_CFLAGS)
 

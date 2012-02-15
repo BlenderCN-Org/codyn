@@ -24,7 +24,7 @@ COMMON_SOURCES = 		\
 	cdn-function-polynomial.c \
 	cdn-function-polynomial-piece.c \
 	cdn-node.c \
-	cdn-input.c \
+	cdn-io.c \
 	cdn-integrators.c \
 	cdn-import.c \
 	cdn-import-alias.c \
@@ -61,7 +61,7 @@ COMMON_SOURCES = 		\
 	cdn-statement.c \
 	cdn-taggable.c \
 	cdn-event.c \
-	cdn-input-method.c
+	cdn-io-method.c
 
 BUILT_SOURCES = \
 	cdn-enum-types.c \
@@ -92,7 +92,7 @@ INST_H_FILES = \
 	cdn-function-polynomial.h \
 	cdn-function-polynomial-piece.h \
 	cdn-node.h \
-	cdn-input.h \
+	cdn-io.h \
 	cdn-integrators.h \
 	cdn-import.h \
 	cdn-import-alias.h \
@@ -126,7 +126,7 @@ INST_H_FILES = \
 	cdn-taggable.h \
 	cdn-event.h \
 	cdn-forward-decl.h \
-	cdn-input-method.h
+	cdn-io-method.h
 
 lib_LTLIBRARIES = libcodyn-3.0.la
 
