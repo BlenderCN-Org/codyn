@@ -181,7 +181,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "on"				return T_KEY_ON;
 "all"				return T_KEY_ALL;
 "action"			return T_KEY_ACTION;
-"variable"			return T_KEY_VARIABLE;
 "delete"			return T_KEY_DELETE;
 "debug-print"			return T_KEY_DEBUG_PRINT;
 "apply"				return T_KEY_APPLY;
