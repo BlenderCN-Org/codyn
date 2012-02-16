@@ -1102,6 +1102,7 @@ cdn_variable_clear_update (CdnVariable *property)
 	gint numc;
 
 	cdn_expression_get_dimension (property->priv->expression, &numr, &numc);
+
 	memset (property->priv->update, 0, sizeof (gdouble) * numr * numc);
 }
 
@@ -1429,7 +1430,23 @@ cdn_variable_copy (CdnVariable *property)
 	                        cdn_expression_copy (property->priv->expression),
 	                        property->priv->flags);
 
-	ret->priv->update = property->priv->update;
+	if (property->priv->update)
+	{
+		gint numr;
+		gint numc;
+
+		if (cdn_expression_get_dimension (property->priv->expression,
+		                                  &numr,
+		                                  &numc))
+		{
+			gint num = numr * numc;
+
+			ret->priv->update = g_new0 (gdouble, num);
+			memcpy (ret->priv->update,
+			        property->priv->update,
+			        sizeof (gdouble) * num);
+		}
+	}
 
 	cdn_modifiable_set_modified (CDN_MODIFIABLE (ret),
 	                             property->priv->modified);
@@ -1572,20 +1589,27 @@ gboolean
 cdn_variable_compile (CdnVariable       *property,
                       CdnCompileError   *error)
 {
-	CdnCompileContext *context;
 	gboolean ret;
 
 	g_return_val_if_fail (CDN_IS_VARIABLE (property), FALSE);
 	g_return_val_if_fail (error == NULL || CDN_IS_COMPILE_ERROR (error), FALSE);
 
-	if (!cdn_modifiable_get_modified (CDN_MODIFIABLE (property->priv->expression)))
+	if (cdn_modifiable_get_modified (CDN_MODIFIABLE (property->priv->expression)))
+	{
+		CdnCompileContext *context;
+
+		context = cdn_object_get_compile_context (property->priv->object, NULL);
+		ret = cdn_expression_compile (property->priv->expression, context, error);
+		g_object_unref (context);
+	}
+	else if (property->priv->update)
 	{
 		return TRUE;
 	}
-
-	context = cdn_object_get_compile_context (property->priv->object, NULL);
-
-	ret = cdn_expression_compile (property->priv->expression, context, error);
+	else
+	{
+		ret = TRUE;
+	}
 
 	if (ret)
 	{
@@ -1600,6 +1624,5 @@ cdn_variable_compile (CdnVariable       *property,
 		property->priv->update = g_new0 (gdouble, numr * numc);
 	}
 
-	g_object_unref (context);
 	return ret;
 }
