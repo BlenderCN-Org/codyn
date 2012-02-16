@@ -173,7 +173,7 @@ test_reset ()
 	CdnVariable *prop = cdn_node_find_variable (CDN_NODE (network),
 	                                             "state.x");
 
-	cdn_network_run (network, 0, 0.1, 1);
+	cdn_network_run (network, 0, 0.1, 1, NULL);
 	cdn_assert_tol (cdn_variable_get_value (prop), 1.1);
 
 	cdn_object_reset (CDN_OBJECT (network));
@@ -191,10 +191,10 @@ test_recompile ()
 	                                             "state.x");
 	CdnExpression *expr = cdn_variable_get_expression (prop);
 
-	cdn_network_run (network, 0, 0.1, 1);
+	cdn_network_run (network, 0, 0.1, 1, NULL);
 	cdn_expression_set_from_string (expr, "5");
 
-	cdn_network_run (network, 0, 0.1, 1);
+	cdn_network_run (network, 0, 0.1, 1, NULL);
 
 	cdn_assert_tol (cdn_variable_get_value (prop), 6.1);
 }
@@ -210,7 +210,7 @@ test_once ()
 	                                             "state.z");
 
 	monitor = cdn_monitor_new (network, prop);
-	cdn_network_run (network, 0, 0.1, 0.3);
+	cdn_network_run (network, 0, 0.1, 0.3, NULL);
 
 	guint size;
 	const gdouble *data = cdn_monitor_get_data (monitor, &size);
@@ -272,7 +272,7 @@ test_node_reset ()
 	CdnVariable *prop = cdn_node_find_variable (CDN_NODE (network),
 	                                             "node.state.x");
 
-	cdn_network_run (network, 0, 0.1, 1);
+	cdn_network_run (network, 0, 0.1, 1, NULL);
 	cdn_object_reset (CDN_OBJECT (network));
 
 	cdn_assert_tol (cdn_variable_get_value (prop), 0);

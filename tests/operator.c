@@ -27,7 +27,7 @@ test_delayed ()
 	gdouble pts[] = {0, 0, 0.1, 0.2, 0.3, 0.4};
 	gint i;
 
-	cdn_network_begin (network, 0);
+	cdn_network_begin (network, 0, NULL);
 
 	for (i = 0; i < sizeof (ts) / sizeof (gdouble) - 1; ++i)
 	{
@@ -37,7 +37,7 @@ test_delayed ()
 		cdn_network_step (network, 0.1);
 	}
 
-	cdn_network_end (network);
+	cdn_network_end (network, NULL);
 
 	g_object_unref (network);
 }

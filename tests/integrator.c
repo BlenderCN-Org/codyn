@@ -22,13 +22,13 @@ test_switch ()
 	cdn_object_add_variable (state, variable, NULL);
 	cdn_node_add (CDN_NODE (network), state, NULL);
 
-	cdn_network_run (network, 0, 0.01, 1);
+	cdn_network_run (network, 0, 0.01, 1, NULL);
 	gdouble val = cdn_variable_get_value (variable);
 
 	cdn_network_set_integrator (network,
 	                            CDN_INTEGRATOR (cdn_integrator_euler_new ()));
 
-	cdn_network_run (network, 0, 0.01, 1);
+	cdn_network_run (network, 0, 0.01, 1, NULL);
 
 	cdn_assert_tol (cdn_variable_get_value (variable), val);
 
