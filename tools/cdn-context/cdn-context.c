@@ -21,13 +21,13 @@
 
 #include <codyn/cdn-parser-context.h>
 #include <codyn/cdn-statement.h>
+#include <codyn/cdn-io.h>
 #include <gio/gio.h>
 #include <glib/gprintf.h>
 #include <string.h>
 #include <unistd.h>
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
-#include <codyn/cdn-input-file.h>
 #include <termcap.h>
 
 static gchar *output_file;
@@ -531,6 +531,10 @@ write_cdn_selection (CdnSelection      *selection,
 		{
 			typename = "network";
 		}
+		else if (CDN_IS_IO (obj))
+		{
+			typename = "io";
+		}
 		else if (CDN_IS_IMPORT (obj))
 		{
 			typename = "import";
@@ -546,10 +550,6 @@ write_cdn_selection (CdnSelection      *selection,
 		else if (CDN_IS_EDGE (obj))
 		{
 			typename = "link";
-		}
-		else if (CDN_IS_INPUT_FILE (obj))
-		{
-			typename = "input-file";
 		}
 		else
 		{
