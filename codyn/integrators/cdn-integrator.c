@@ -861,7 +861,6 @@ inifini_io (CdnIntegrator  *integrator,
             GError        **error)
 {
 	GSList const *io;
-	GMainContext *ctx;
 	IoInfo info = {0,};
 	gboolean ret;
 
@@ -872,10 +871,7 @@ inifini_io (CdnIntegrator  *integrator,
 		return TRUE;
 	}
 
-	ctx = g_main_context_new ();
-	g_main_context_push_thread_default (ctx);
-
-	info.loop = g_main_loop_new (ctx, FALSE);
+	info.loop = g_main_loop_new (NULL, FALSE);
 	info.ffunc = callback;
 
 	while (io)
@@ -895,10 +891,6 @@ inifini_io (CdnIntegrator  *integrator,
 
 	ret = info.error == NULL;
 
-	g_propagate_error (error, info.error);
-
-	g_main_context_pop_thread_default (ctx);
-	g_main_context_unref (ctx);
 	if (info.error)
 	{
 		g_propagate_error (error, info.error);
