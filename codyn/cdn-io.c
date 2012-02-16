@@ -64,10 +64,7 @@ initialize_async_real (CdnIo               *io,
                        GAsyncReadyCallback  callback,
                        gpointer             user_data)
 {
-	CdnIoInterface *iface;
 	GSimpleAsyncResult *res;
-
-	iface = CDN_IO_GET_INTERFACE (io);
 
 	res = g_simple_async_result_new (G_OBJECT (io),
 	                                 callback,
@@ -121,10 +118,7 @@ finalize_async_real (CdnIo               *io,
                      GAsyncReadyCallback  callback,
                      gpointer             user_data)
 {
-	CdnIoInterface *iface;
 	GSimpleAsyncResult *res;
-
-	iface = CDN_IO_GET_INTERFACE (io);
 
 	res = g_simple_async_result_new (G_OBJECT (io),
 	                                 callback,

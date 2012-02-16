@@ -1117,13 +1117,10 @@ io_to_xml (CdnNetworkSerializer *serializer,
            xmlNodePtr            root,
            CdnIo                *io)
 {
-	GType tp;
 	gchar *tname;
 	xmlNodePtr node;
 	gchar const *nname;
 	CdnIoMode mode;
-
-	tp = G_TYPE_FROM_INSTANCE (io);
 
 	tname = io_name (io);
 
