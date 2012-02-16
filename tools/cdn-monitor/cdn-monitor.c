@@ -221,8 +221,8 @@ write_headers (GOutputStream *stream,
 	}
 
 	g_output_stream_write_all (stream,
-	                           "# t",
-	                           3,
+	                           "time",
+	                           4,
 	                           NULL,
 	                           NULL,
 	                           NULL);
@@ -637,14 +637,25 @@ run_simple_monitor (CdnNetwork *network)
 
 	if (out)
 	{
+		GError *err = NULL;
+
 		write_headers (out, names);
 
-		cdn_network_run (network, from, step, to);
+		if (!cdn_network_run (network, from, step, to, &err))
+		{
+			g_printerr ("Failed to run network: %s\n",
+			            err->message);
+
+			g_error_free (err);
+			ret = 1;
+		}
+		else
+		{
+			ret = 0;
+		}
 
 		g_output_stream_flush (out, NULL, NULL);
 		g_output_stream_close (out, NULL, NULL);
-
-		ret = 0;
 	}
 	else
 	{
@@ -702,6 +713,7 @@ simulate_combinations (CdnNetwork    *network,
 	{
 		cdn_object_reset (CDN_OBJECT (network));
 		gboolean first = TRUE;
+		GError *err = NULL;
 
 		// Set all the current values
 		while (all_ranges)
@@ -740,7 +752,14 @@ simulate_combinations (CdnNetwork    *network,
 		}
 
 		// Simulate the network here
-		cdn_network_run (network, from, step, to);
+		if (!cdn_network_run (network, from, step, to, &err))
+		{
+			g_printerr ("Failed to run network: %s\n",
+			            err->message);
+
+			g_error_free (err);
+			return;
+		}
 
 		// Write the output
 		while (vars)
