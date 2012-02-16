@@ -123,10 +123,26 @@ AC_CHECK_LIB([readline],
              [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -lreadline"],
              [AC_MSG_ERROR(Could not find readline library)])
 
-AC_CHECK_LIB([tar],
-             [tar_open],
-             [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltar"],
-             [AC_MSG_ERROR(could not find tar library)])
+AC_ARG_ENABLE([tar],
+              AS_HELP_STRING([--enable-tar=[auto/yes/no]],[Enable tar support (default: auto)]),
+              [enable_tar=$enableval],
+              [enable_tar=auto])
+
+if test "x$enable_tar" != "xno"; then
+	AC_CHECK_LIB([tar],
+	             [tar_open],
+	             [have_tar=yes
+	              CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltar"],
+	             [have_tar=no])
+else
+	have_tar=no
+fi
+
+if test "x$enable_tar" = "xyes" && test "x$have_tar" = "xno"; then
+	AC_MSG_ERROR(could not find tar library)
+fi
+
+AM_CONDITIONAL(ENABLE_ARCHIVE, test "x$have_tar" = "xyes")
 
 AC_CHECK_LIB([bz2],
              [BZ2_bzCompressInit],
@@ -243,5 +259,6 @@ Configuration:
 	GObject Introspection:	$enable_introspection
 	Documentation enabled:  $enable_doc
 	gedit plugin:           $enable_gedit
+	cdn-archive:            $have_tar
 "
 
