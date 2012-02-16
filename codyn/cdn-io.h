@@ -102,6 +102,8 @@ gboolean cdn_io_finalize_finish   (CdnIo                *io,
                                    GAsyncResult         *result,
                                    GError              **error);
 
+CdnIoMode cdn_io_get_mode         (CdnIo                *io);
+
 G_END_DECLS
 
 #endif /* __CDN_IO_H__ */

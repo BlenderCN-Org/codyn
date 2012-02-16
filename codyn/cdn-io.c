@@ -313,3 +313,16 @@ cdn_io_update (CdnIo      *io,
 		iface->update (io, integrator);
 	}
 }
+
+CdnIoMode
+cdn_io_get_mode (CdnIo *io)
+{
+	CdnIoMode mode;
+
+	g_return_val_if_fail (CDN_IS_IO (io), CDN_IO_MODE_INPUT);
+
+	mode = CDN_IO_MODE_INPUT;
+
+	g_object_get (io, "mode", &mode, NULL);
+	return mode;
+}
