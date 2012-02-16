@@ -3099,8 +3099,6 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 			g_slist_foreach (temps, (GFunc)g_object_unref, NULL);
 			g_slist_free (temps);
 
-			cdn_embedded_context_restore (context->priv->embedded);
-
 			objs = g_slist_prepend (objs,
 			                        cdn_selection_new_defines (cdn_selection_get_object (it->data),
 			                                                   cdn_embedded_context_get_expansions (context->priv->embedded),
@@ -3108,6 +3106,7 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 			                                                   TRUE));
 
 			cdn_embedded_context_set_copy_defines_on_write (context->priv->embedded);
+			cdn_embedded_context_restore (context->priv->embedded);
 		}
 
 		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
