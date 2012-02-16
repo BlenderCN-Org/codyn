@@ -309,7 +309,15 @@ reset_function_cache (CdnIntegrator *integrator)
 
 	while (func)
 	{
-		cdn_expression_reset_cache (cdn_function_get_expression (func->data));
+		CdnExpression *expr;
+
+		expr = cdn_function_get_expression (func->data);
+
+		if (expr)
+		{
+			cdn_expression_reset_cache (expr);
+		}
+
 		func = g_slist_next (func);
 	}
 }
