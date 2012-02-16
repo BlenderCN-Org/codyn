@@ -116,6 +116,8 @@ write_header (CdnOutputFile  *output,
 		g_string_append (s, cdn_variable_get_name (v));
 	}
 
+	g_string_append_c (s, '\n');
+
 	ret = g_output_stream_write_all (output->priv->stream,
 	                                 s->str,
 	                                 s->len,
