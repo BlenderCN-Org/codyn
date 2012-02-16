@@ -215,8 +215,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"objects"		return T_KEY_OBJECTS;
 <INITIAL,onlyselector>"variables"	return T_KEY_VARIABLES;
 <INITIAL,onlyselector>"actions"		return T_KEY_ACTION;
-<INITIAL,onlyselector>"is-empty"	return T_KEY_IS_EMPTY;
-<INITIAL,onlyselector>"remove"		return T_KEY_REMOVE;
+<INITIAL,onlyselector>"not"		return T_KEY_NOT;
 <INITIAL,onlyselector>"if"		return T_KEY_IF;
 <INITIAL,onlyselector>"from-set"	return T_KEY_FROM_SET;
 <INITIAL,onlyselector>"type"		return T_KEY_TYPE;

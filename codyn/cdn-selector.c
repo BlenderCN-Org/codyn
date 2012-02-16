@@ -137,8 +137,7 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"ancestors",
 	"unique",
 	"if",
-	"is-empty",
-	"remove",
+	"not",
 	"from-set",
 	"type",
 	"has-flag",
@@ -1552,33 +1551,13 @@ selector_pseudo_has_template (CdnSelector        *self,
 	return ret;
 }
 
-static gboolean
-test_string_empty (gchar const *s)
-{
-	gdouble num;
-	gchar *endptr;
-
-	num = g_ascii_strtod (s, &endptr);
-
-	if (!*endptr)
-	{
-		/* number == 0 */
-		return num == 0;
-	}
-	else
-	{
-		/* Empty string */
-		return !*s;
-	}
-}
-
 static GSList *
 selector_pseudo_if (CdnSelector        *self,
                     Selector           *selector,
                     GSList             *ret,
                     CdnSelection       *sel,
                     CdnEmbeddedContext *context,
-                    gboolean            condition)
+                    gboolean            notempty)
 {
 	gpointer obj;
 	GSList *item;
@@ -1592,58 +1571,41 @@ selector_pseudo_if (CdnSelector        *self,
 	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
 	{
 		GSList *sub = NULL;
-		gboolean r = FALSE;
+		gboolean breakit = FALSE;
 
-		if (CDN_IS_SELECTOR (item->data))
+		cdn_selector_set_self (item->data, self->priv->self);
+
+		sub = cdn_selector_select (item->data,
+		                           obj,
+		                           CDN_SELECTOR_TYPE_ANY,
+		                           context);
+
+		cdn_selector_set_self (item->data, NULL);
+
+		if (notempty && sub)
 		{
-			cdn_selector_set_self (item->data, self->priv->self);
+			CdnSelection *newsel;
 
-			sub = cdn_selector_select (item->data,
-			                           obj,
-			                           CDN_SELECTOR_TYPE_ANY,
-			                           context);
+			newsel = cdn_selection_copy (sub->data);
+			cdn_selection_set_object (newsel,
+			                          cdn_selection_get_object (sel));
 
-			cdn_selector_set_self (item->data, NULL);
-
-			r = (sub != NULL);
+			ret = g_slist_prepend (ret, newsel);
+			breakit = TRUE;
 		}
-		else if (CDN_IS_EMBEDDED_STRING (item->data))
+		else if (!notempty && !sub)
 		{
-			gchar const *ex;
+			ret = g_slist_prepend (ret,
+			                       cdn_selection_copy (sel));
 
-			ex = cdn_embedded_string_expand (item->data, context, NULL);
-
-			r = !test_string_empty (ex);
-		}
-
-		if (!condition && sub != NULL)
-		{
-			/* Remove if in selection */
-			GSList *subitem;
-			gboolean found = FALSE;
-
-			for (subitem = sub; subitem; subitem = g_slist_next (subitem))
-			{
-				if (cdn_selection_get_object (subitem->data) == obj)
-				{
-					found = TRUE;
-					break;
-				}
-			}
-
-			if (!found)
-			{
-				r = TRUE;
-			}
+			breakit = TRUE;
 		}
 
 		g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
 		g_slist_free (sub);
 
-		if (condition == r)
+		if (breakit)
 		{
-			ret = g_slist_prepend (ret,
-			                       cdn_selection_copy (sel));
 			break;
 		}
 	}
@@ -1787,83 +1749,6 @@ selector_pseudo_count (CdnSelector        *self,
 
 	cdn_embedded_context_restore (context);
 	return ret;
-}
-
-static GSList *
-selector_pseudo_isempty (CdnSelector        *self,
-                         Selector           *selector,
-                         GSList             *parent,
-                         CdnEmbeddedContext *context)
-{
-	GSList *item;
-	GSList *seli;
-	gboolean isempty = TRUE;
-
-	for (seli = parent; seli; seli = g_slist_next (seli))
-	{
-		CdnSelection *sel;
-
-		sel = seli->data;
-
-		cdn_embedded_context_save (context);
-
-		cdn_embedded_context_add_selection (context, sel);
-
-		for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
-		{
-			gboolean r = FALSE;
-
-			if (CDN_IS_SELECTOR (item->data))
-			{
-				GSList *sub;
-
-				cdn_selector_set_self (item->data, self->priv->self);
-
-				sub = cdn_selector_select (item->data,
-				                           cdn_selection_get_object (sel),
-				                           CDN_SELECTOR_TYPE_ANY,
-				                           context);
-
-				cdn_selector_set_self (item->data, NULL);
-
-				r = (sub == NULL);
-
-				g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
-				g_slist_free (sub);
-			}
-			else if (CDN_IS_EMBEDDED_STRING (item->data))
-			{
-				gchar const *ex;
-
-				ex = cdn_embedded_string_expand (item->data, context, NULL);
-
-				r = test_string_empty (ex);
-			}
-
-			if (!r)
-			{
-				isempty = FALSE;
-				break;
-			}
-		}
-
-		cdn_embedded_context_restore (context);
-
-		if (!isempty)
-		{
-			break;
-		}
-	}
-
-	if (isempty)
-	{
-		return g_slist_prepend (NULL,
-		                        cdn_selection_copy (self->priv->self));
-	}
-	else
-	{
-		return NULL;
-	}
 }
 
 static gchar const *
@@ -2544,12 +2429,6 @@ selector_select_pseudo (CdnSelector        *self,
 		case CDN_SELECTOR_PSEUDO_TYPE_UNIQUE:
 			return unique_selections (parent);
 		break;
-		case CDN_SELECTOR_PSEUDO_TYPE_IS_EMPTY:
-			return selector_pseudo_isempty (self,
-			                                selector,
-			                                parent,
-			                                context);
-		break;
 		case CDN_SELECTOR_PSEUDO_TYPE_FROM_SET:
 			return copy_selections (self->priv->from_set);
 		break;
@@ -2765,6 +2644,14 @@ selector_select_pseudo (CdnSelector        *self,
 				                          context,
 				                          TRUE);
 			break;
+			case CDN_SELECTOR_PSEUDO_TYPE_NOT:
+				ret = selector_pseudo_if (self,
+				                          selector,
+				                          ret,
+				                          sel,
+				                          context,
+				                          FALSE);
+			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_RECURSE:
 				ret = selector_pseudo_recurse (self,
 				                               selector,
@@ -2778,14 +2665,6 @@ selector_select_pseudo (CdnSelector        *self,
 				                             ret,
 				                             sel,
 				                             context);
-			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_REMOVE:
-				ret = selector_pseudo_if (self,
-				                          selector,
-				                          ret,
-				                          sel,
-				                          context,
-				                          FALSE);
 			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_HAS_FLAG:
 				ret = selector_pseudo_has_flag (self,
