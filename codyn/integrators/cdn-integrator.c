@@ -814,6 +814,11 @@ simulation_step (CdnIntegrator *integrator)
 	cdn_integrator_simulation_step_integrate (integrator, NULL);
 }
 
+typedef void (*IoStartFunc) (CdnIo *io,
+                             GCancellable *cancellable,
+                             GAsyncReadyCallback callback,
+                             gpointer userdata);
+
 typedef gboolean (*IoFinishFunc) (CdnIo *io, GAsyncResult *result, GError **error);
 
 typedef struct
@@ -825,9 +830,9 @@ typedef struct
 } IoInfo;
 
 static void
-io_inifini_ready (CdnIo     *io,
+io_inifini_ready (CdnIo        *io,
                   GAsyncResult *result,
-                  IoInfo    *info)
+                  IoInfo       *info)
 {
 	GError *error = NULL;
 
@@ -850,9 +855,10 @@ io_inifini_ready (CdnIo     *io,
 }
 
 static gboolean
-inifini_io (CdnIntegrator    *integrator,
-            IoFinishFunc   callback,
-            GError          **error)
+inifini_io (CdnIntegrator  *integrator,
+            IoStartFunc     startfunc,
+            IoFinishFunc    callback,
+            GError        **error)
 {
 	GSList const *io;
 	GMainContext *ctx;
@@ -876,10 +882,10 @@ inifini_io (CdnIntegrator    *integrator,
 	{
 		++info.cnt;
 
-		cdn_io_initialize_async (io->data,
-		                         NULL,
-		                         (GAsyncReadyCallback)io_inifini_ready,
-		                         &info);
+		startfunc (io->data,
+		           NULL,
+		           (GAsyncReadyCallback)io_inifini_ready,
+		           &info);
 
 		io = g_slist_next (io);
 	}
@@ -893,6 +899,10 @@ inifini_io (CdnIntegrator    *integrator,
 
 	g_main_context_pop_thread_default (ctx);
 	g_main_context_unref (ctx);
+	if (info.error)
+	{
+		g_propagate_error (error, info.error);
+	}
 
 	return ret;
 }
@@ -911,6 +921,7 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 
 	// Initialize io
 	if (!inifini_io (integrator,
+	                 cdn_io_initialize_async,
 	                 cdn_io_initialize_finish,
 	                 error))
 	{
@@ -941,6 +952,7 @@ cdn_integrator_end (CdnIntegrator  *integrator,
 
 	// Finalize io
 	ret = inifini_io (integrator,
+	                  cdn_io_finalize_async,
 	                  cdn_io_finalize_finish,
 	                  error);
 
