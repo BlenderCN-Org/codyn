@@ -10,11 +10,13 @@ plugin_LTLIBRARIES = libfile.la
 
 NOINST_H_FILES = 			\
 	cdn-io-file.h			\
-	cdn-input-file.h
+	cdn-input-file.h		\
+	cdn-output-file.h
 
 libfile_la_SOURCES = 			\
 	cdn-io-file.c			\
-	cdn-input-file.c
+	cdn-input-file.c		\
+	cdn-output-file.c
 
 libfile_la_LDFLAGS = $(IO_LIBTOOL_FLAGS)
 libfile_la_LIBADD = $(CODYN_LIBS) -lm
