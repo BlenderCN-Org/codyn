@@ -218,7 +218,7 @@ cdn_io_initialize_finish (CdnIo      *io,
 	g_return_val_if_fail (G_IS_ASYNC_RESULT (result), FALSE);
 	g_return_val_if_fail (g_simple_async_result_is_valid (result,
 	                                                      G_OBJECT (io),
-	                                                      cdn_io_finalize_async),
+	                                                      cdn_io_initialize_async),
 	                      FALSE);
 
 	if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
