@@ -4,6 +4,7 @@
 #include <codyn/cdn-network.h>
 
 #include <math.h>
+#include <string.h>
 
 #define CDN_INPUT_FILE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INPUT_FILE, CdnInputFilePrivate))
 
@@ -33,11 +34,14 @@ struct _CdnInputFilePrivate
 	GPtrArray *columns;
 	guint num_columns;
 
+	CdnIoMode mode;
+
 	guint temporal : 1;
 	guint time_column_set : 1;
 	guint repeat : 1;
 	guint dt_set : 1;
 	guint interpolate : 1;
+	guint has_header : 1;
 };
 
 static gboolean read_file (CdnInputFile  *input,
@@ -57,7 +61,8 @@ enum
 	PROP_REPEAT,
 	PROP_TIME_COLUMN,
 	PROP_DT,
-	PROP_INTERPOLATE
+	PROP_INTERPOLATE,
+	PROP_MODE
 };
 
 static void
@@ -192,11 +197,16 @@ evaluate_at (CdnInputFile *file,
 			}
 			else
 			{
-				pidx = 0;
+				pidx = file->priv->ptr;
 
-				while (pidx < file->priv->num && time_at (file, pidx) < time)
+				while (pidx < file->priv->num - 1 && time_at (file, pidx + 1) < time)
 				{
 					++pidx;
+				}
+
+				while (pidx > 0 && time_at (file, pidx) > time)
+				{
+					--pidx;
 				}
 
 				if (pidx == file->priv->num - 1)
@@ -278,7 +288,27 @@ cdn_input_file_initialize_impl (CdnIo        *input,
                                 GCancellable  *cancellable,
                                 GError       **error)
 {
-	return read_file (CDN_INPUT_FILE (input), error);
+	CdnInputFile *f;
+
+	f = CDN_INPUT_FILE (input);
+
+	if (f->priv->file == NULL)
+	{
+		gchar *id;
+
+		id = cdn_object_get_full_id_for_display (CDN_OBJECT (f));
+
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_IO,
+		             "No path was set for input file `%s'",
+		             id);
+
+		g_free (id);
+		return FALSE;
+	}
+
+	return read_file (f, error);
 }
 
 static gboolean
@@ -323,33 +353,105 @@ name_is_time (gchar const *name)
 	return g_strcmp0 (name, "time") == 0 || g_strcmp0 (name, "t") == 0;
 }
 
-static void
-add_values (CdnInputFile  *input,
-            gchar        **parts)
+static gboolean
+is_separator (gunichar c)
 {
-	gdouble *row = (gdouble *)g_slice_alloc0 (sizeof (gdouble) * (input->priv->num_columns));
-	guint ptr = 0;
-	gboolean estimatedt;
+	return g_unichar_isspace (c) || c == ';' || c == ',';
+}
 
-	estimatedt = input->priv->temporal &&
-	             !input->priv->dt_set;
+static gboolean
+next_value (CdnInputFile  *input,
+            gchar const  **line,
+            gdouble       *v,
+            GError       **error)
+{
+	gunichar c;
+	gchar *ret;
+	gchar *valid;
+	gchar const *ptr;
+	gdouble val;
 
-	while (parts && *parts)
+	// Skip separators
+	while ((c = g_utf8_get_char (*line)))
 	{
-		gdouble v;
-
-		if (!**parts)
-		{
-			++parts;
-			continue;
-		}
-
-		if (ptr > input->priv->num_columns)
+		if (!is_separator (c))
 		{
 			break;
 		}
 
-		v = g_strtod (*parts, NULL);
+		*line = g_utf8_next_char (*line);
+	}
+
+	if (!c)
+	{
+		return FALSE;
+	}
+
+	ptr = *line;
+
+	while ((c = g_utf8_get_char (ptr)))
+	{
+		if (is_separator (c))
+		{
+			break;
+		}
+
+		ptr = g_utf8_next_char (ptr);
+	}
+
+	ret = g_strndup (*line, ptr - *line);
+	val = g_ascii_strtod (ret, &valid);
+
+	if (v)
+	{
+		*v = val;
+	}
+
+	if (valid - ret != ptr - *line)
+	{
+		gchar *id;
+
+		id = cdn_object_get_full_id_for_display (CDN_OBJECT (input));
+
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_IO,
+		             "Invalid number for input file `%s': `%s'",
+		             id,
+		             ret);
+
+		g_free (id);
+		valid = NULL;
+	}
+
+	g_free (ret);
+	*line = ptr;
+
+	return valid != NULL;
+}
+
+static gboolean
+add_values (CdnInputFile  *input,
+            gchar const   *line,
+            GError       **error)
+{
+	gdouble *row;
+	guint ptr = 0;
+	gboolean estimatedt;
+	gdouble v;
+	GError *err = NULL;
+
+	row = (gdouble *)g_slice_alloc0 (sizeof (gdouble) *
+	                                 input->priv->num_columns);
+
+	estimatedt = input->priv->temporal && !input->priv->dt_set;
+
+	while (next_value (input, &line, &v, &err))
+	{
+		if (ptr > input->priv->num_columns)
+		{
+			break;
+		}
 
 		if (estimatedt && ptr == input->priv->time_column)
 		{
@@ -374,7 +476,12 @@ add_values (CdnInputFile  *input,
 		}
 
 		row[ptr++] = v;
-		++parts;
+	}
+
+	if (err)
+	{
+		g_propagate_error (error, err);
+		return FALSE;
 	}
 
 	if (input->priv->size == input->priv->num)
@@ -384,6 +491,7 @@ add_values (CdnInputFile  *input,
 	}
 
 	input->priv->values[input->priv->num++] = row;
+	return TRUE;
 }
 
 static CdnVariable *
@@ -413,6 +521,17 @@ create_column (CdnInputFile  *input,
 	                             v,
 	                             error))
 	{
+		g_ptr_array_add (input->priv->created_columns,
+		                 v);
+
+		if (input->priv->temporal &&
+		    !input->priv->time_column_set &&
+		    name_is_time (colname))
+		{
+			input->priv->time_column =
+				input->priv->created_columns->len - 1;
+		}
+
 		return v;
 	}
 	else
@@ -429,11 +548,11 @@ create_columns (CdnInputFile  *input,
 	GString *ret;
 	gunichar c;
 
+	ret = g_string_sized_new (strlen (line));
+
 	while ((c = g_utf8_get_char (line)))
 	{
-		if (g_unichar_isspace (c) ||
-		    c == ';' ||
-		    c == ',')
+		if (is_separator (c))
 		{
 			if (ret->len != 0)
 			{
@@ -445,17 +564,6 @@ create_columns (CdnInputFile  *input,
 				{
 					g_string_free (ret, TRUE);
 					return FALSE;
-				}
-
-				g_ptr_array_add (input->priv->created_columns,
-				                 v);
-
-				if (input->priv->temporal &&
-				    !input->priv->time_column_set &&
-				    name_is_time (ret->str))
-				{
-					input->priv->time_column =
-						input->priv->created_columns->len - 1;
 				}
 
 				g_string_erase (ret, 0, -1);
@@ -473,6 +581,15 @@ create_columns (CdnInputFile  *input,
 		line = g_utf8_next_char (line);
 	}
 
+	if (ret->len != 0)
+	{
+		if (!create_column (input, ret->str, error))
+		{
+			g_string_free (ret, TRUE);
+			return FALSE;
+		}
+	}
+
 	g_string_free (ret, TRUE);
 	return TRUE;
 }
@@ -482,14 +599,18 @@ clear_columns (CdnInputFile *input)
 {
 	gint i;
 
-	for (i = 0; i < input->priv->created_columns->len; ++i)
+	if (input->priv->created_columns)
 	{
-		cdn_object_remove_variable (CDN_OBJECT (input),
-		                            g_ptr_array_index (input->priv->created_columns, i),
-		                            NULL);
+		for (i = 0; i < input->priv->created_columns->len; ++i)
+		{
+			cdn_object_remove_variable (CDN_OBJECT (input),
+			                            g_ptr_array_index (input->priv->created_columns, i),
+			                            NULL);
+		}
+
+		g_ptr_array_free (input->priv->created_columns, TRUE);
 	}
 
-	g_ptr_array_free (input->priv->created_columns, TRUE);
 	input->priv->created_columns = g_ptr_array_sized_new (10);
 
 	if (!input->priv->time_column_set)
@@ -512,8 +633,7 @@ extract_num_columns (gchar const *line)
 
 	while ((c = g_utf8_get_char (line)))
 	{
-		if (g_unichar_isspace (c) ||
-		    c == ';' || c == ',')
+		if (is_separator (c))
 		{
 			if (nospace)
 			{
@@ -565,6 +685,8 @@ extract_columns (CdnInputFile  *input,
 	stream = g_data_input_stream_new (base);
 	g_object_unref (base);
 
+	input->priv->has_header = FALSE;
+
 	while (TRUE)
 	{
 		gchar *line;
@@ -597,6 +719,7 @@ extract_columns (CdnInputFile  *input,
 		{
 			ret = create_columns (input, line, error);
 			input->priv->num_columns = input->priv->created_columns->len;
+			input->priv->has_header = TRUE;
 		}
 		else
 		{
@@ -619,7 +742,11 @@ prepare_temporal_columns (CdnInputFile  *input,
 {
 	GSList *vars;
 
-	g_ptr_array_free (input->priv->columns, TRUE);
+	if (input->priv->columns)
+	{
+		g_ptr_array_free (input->priv->columns, TRUE);
+	}
+
 	input->priv->columns = g_ptr_array_sized_new (10);
 
 	// We only care about columns in temporal mode
@@ -668,6 +795,9 @@ read_file (CdnInputFile  *input,
 {
 	GDataInputStream *stream;
 	GInputStream *base;
+	gboolean ret = TRUE;
+	GError *err = NULL;
+	gboolean first;
 
 	clear (input, FALSE);
 
@@ -688,6 +818,8 @@ read_file (CdnInputFile  *input,
 	stream = g_data_input_stream_new (base);
 	g_object_unref (base);
 
+	first = TRUE;
+
 	while (TRUE)
 	{
 		gchar *line;
@@ -696,26 +828,38 @@ read_file (CdnInputFile  *input,
 		line = g_data_input_stream_read_line (stream,
 		                                      &length,
 		                                      NULL,
-		                                      error);
+		                                      &err);
 
 		if (line == NULL)
 		{
+			ret = err == NULL;
+
+			if (err)
+			{
+				g_propagate_error (error, err);
+			}
+
 			break;
 		}
 
 		g_strstrip (line);
-		gchar **parts = g_strsplit_set (line, "\t ;,", -1);
 
-		if (parts && *parts && !g_unichar_isalpha (**parts))
+		if (*line && (!first || !input->priv->has_header))
 		{
-			add_values (input, parts);
+			if (!add_values (input, line, error))
+			{
+				g_free (line);
+				ret = FALSE;
+				break;
+			}
 		}
 
-		g_strfreev (parts);
+		first = FALSE;
+		g_free (line);
 	}
 
 	g_object_unref (stream);
-	return *error == NULL;
+	return ret;
 }
 
 static CdnObject *
@@ -761,8 +905,12 @@ resolve_path (CdnInputFile *input,
 		if (pf)
 		{
 			GFile *f;
+			GFile *par;
 
-			f = g_file_resolve_relative_path (pf, path);
+			par = g_file_get_parent (pf);
+			f = g_file_resolve_relative_path (par, path);
+
+			g_object_unref (par);
 			g_object_unref (pf);
 
 			return f;
@@ -963,6 +1111,9 @@ cdn_input_file_set_property (GObject      *object,
 		case PROP_INTERPOLATE:
 			self->priv->interpolate = g_value_get_boolean (value);
 			break;
+		case PROP_MODE:
+			self->priv->mode = g_value_get_flags (value);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -996,6 +1147,9 @@ cdn_input_file_get_property (GObject    *object,
 			break;
 		case PROP_INTERPOLATE:
 			g_value_set_boolean (value, self->priv->interpolate);
+			break;
+		case PROP_MODE:
+			g_value_set_flags (value, self->priv->mode);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1201,7 +1355,13 @@ cdn_input_file_class_init (CdnInputFileClass *klass)
 	                                                       "Interpolate",
 	                                                       "Interpolate",
 	                                                       TRUE,
-	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS));
+	                                                       G_PARAM_READWRITE |
+	                                                       G_PARAM_CONSTRUCT |
+	                                                       G_PARAM_STATIC_STRINGS));
+
+	g_object_class_override_property (object_class,
+	                                  PROP_MODE,
+	                                  "mode");
 }
 
 static void
