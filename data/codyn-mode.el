@@ -24,18 +24,17 @@
         (align-regexp start end "\\(\s-*\\)\\(=\\||\\|<=\\)" 1 1 t)
       (align-regexp start end "\\(\s-*\\)|" 1 1 t))))
 
-(defun codyn-context-check-error (codyn-file)
+(defun codyn-context-check-error ()
   "Check the parsed codyn-context JSON for error"
   (let ((data (cdr (assoc 'data codyn-context)))
         (status (string= "ok" (cdr (assoc 'status codyn-context))))
         start end)
     (if status
         (progn
-          (with-current-buffer (get-file-buffer codyn-file)
-            (codyn-context-clear nil nil))
-          (codyn-context-show codyn-file))
-      (with-current-buffer (get-file-buffer codyn-file)
-        (if (equal (file-truename codyn-file) (file-truename (cdr (assoc 'filename data))))
+          (codyn-context-clear nil nil)
+          (codyn-context-show))
+      (progn
+        (if (equal buffer-file-truename (abbreviate-file-name (file-truename (cdr (assoc 'filename data)))))
             (save-excursion
               (goto-char (point-min))
               (forward-line (- (cdr (assoc 'line_start data)) 1))
@@ -49,21 +48,19 @@
               (overlay-put codyn-context-overlay 'help-echo (cdr (assoc 'message data)))))
         (message (cdr (assoc 'message data)))))))
 
-(defun codyn-context-parse (proc event)
+(defun codyn-context-parse (proc event buf)
   "Parses the JSON from cdn-context"
-  (if (or (string= event "finished\n")
-          (string= event "exited abnormally with code 1\n"))
+  (with-current-buffer buf
+    (if (or (string= event "finished\n")
+            (string= event "exited abnormally with code 1\n"))
+        (progn
+          (setq codyn-context (json-read-from-string
+                               (with-current-buffer (process-buffer proc) (buffer-string))))
+          (kill-buffer (process-buffer proc))
+          (codyn-context-check-error))
       (progn
-        (setq codyn-context (json-read-from-string
-                           (with-current-buffer (process-buffer proc) (buffer-string))))
-        (kill-buffer (process-buffer proc))
-        (codyn-context-check-error (nth 1 (process-command proc)))
-        ;; (with-current-buffer (get-file-buffer (nth 1 (process-command proc)))
-        ;;   (setq codyn-context-updating nil))
-        )
-    (with-current-buffer (get-file-buffer (nth 1 (process-command proc)))
-      (setq codyn-context-do-show nil)
-      (message (concat "cdn-context failed: " (substring event 0 -1))))))
+        (setq codyn-context-do-show nil)
+        (message (concat "cdn-context failed: " (substring event 0 -1)))))))
 
 (defun codyn-context-print-defines (selections)
   (insert (propertize "\nDefines\n\n" 'face '(:inherit font-lock-type-face :weight bold)))
@@ -130,19 +127,17 @@
     (insert (propertize (capitalize name) 'keymap map 'mouse-face 'highlight 'help-echo msg)))
   (set (make-local-variable (intern (concat name "-button"))) (make-overlay (- (point) (length name)) (point))))
 
-(defun codyn-context-show (codyn-file)
-  ;; (if (and (eq major-mode 'codyn-mode) codyn-context-do-show)
+(defun codyn-context-show ()
   (if codyn-context-do-show
-      (let ((buffer (get-file-buffer codyn-file))
-            (data (elt (cdr (assoc 'data codyn-context)) 0))
+      (let ((data (elt (cdr (assoc 'data codyn-context)) 0))
             selections (i-selection 0) title)
-        (if (equal (file-truename codyn-file) (file-truename (cdr (assoc 'filename data))))
+        (if (equal buffer-file-truename (abbreviate-file-name (file-truename (cdr (assoc 'filename data)))))
             (save-selected-window
               (switch-to-buffer-other-window "Codyn context")
               (local-set-key "q" (lambda () (interactive) (kill-buffer-and-window)))
               (erase-buffer)
               (setq buffer-invisibility-spec ())
-              (setq title (concat "Codyn context for " (file-name-nondirectory codyn-file)))
+              (setq title (concat "Codyn context for " (file-name-nondirectory buffer-file-name)))
               (insert (propertize (concat title "\n" (make-string (length title) ?-) "\n") 'face font-lock-comment-face))
               (setq selections (cdr (assoc 'selections data)))
               (codyn-context-print-defines selections)
@@ -164,17 +159,21 @@
   (setq codyn-context-do-show nil))
 
 
-(defun codyn-context-update ()
+(defun codyn-context-update (buf)
   "Runs codyn-context, parse JSON, check error"
-  ;; (if (and (eq major-mode 'codyn-mode) (not codyn-context-updating))
-  (if (and (eq major-mode 'codyn-mode) (file-readable-p buffer-file-name))
-      (let (json-buf proc)
-        ;; (setq codyn-context-updating t)
-        (setq json-buf (generate-new-buffer (concat (buffer-name) " codyn-context")))
-        (setq proc (start-process "codyn-context" json-buf "cdn-context" (file-name-nondirectory (buffer-file-name))
-                                  "-l" (number-to-string (line-number-at-pos))
-                                  "-c" (number-to-string (+ (current-column) 1))))
-        (set-process-sentinel proc 'codyn-context-parse))))
+  (with-current-buffer buf
+    (if (file-readable-p buffer-file-name)
+        (let (json-buf proc)
+          (setq json-buf (generate-new-buffer (concat (buffer-name) " codyn-context")))
+          (setq proc (start-process "codyn-context" json-buf "cdn-context" (file-name-nondirectory (buffer-file-name))
+                                    "-l" (number-to-string (line-number-at-pos))
+                                    "-c" (number-to-string (+ (current-column) 1))))
+          (set-process-sentinel proc `(lambda (p e) (codyn-context-parse p e ,buf)))))))
+
+(defun codyn-context-update-for-hook ()
+  "Calls codyn-context-update with the current buffer as argument"
+  (if (eq major-mode 'codyn-mode)
+      (codyn-context-update (current-buffer))))
 
 (defun codyn-context-check ()
   "Check the CODYN file syntax"
@@ -184,7 +183,7 @@
         (setq codyn-context-do-show (called-interactively-p))
         (if (buffer-modified-p)
             (save-buffer) ; will trigger codyn-context-update
-          (codyn-context-update)))))
+          (codyn-context-update (current-buffer))))))
 
 (defun codyn-context-clear (start stop)
   "Clears the codyn-context error face"
@@ -270,11 +269,10 @@
   (setq comment-start "#")
   (set (make-local-variable 'codyn-context) nil)
   (set (make-local-variable 'codyn-context-do-show) nil)
-  ;; (set (make-local-variable 'codyn-context-updating) nil)
   (make-local-variable 'before-change-functions)
   (add-to-list 'before-change-functions 'codyn-context-clear)
-  (add-hook 'after-save-hook 'codyn-context-update)
+  (add-hook 'after-save-hook 'codyn-context-update-for-hook)
   (run-hooks 'codyn-mode-hook)
-  (codyn-context-update))
+  (codyn-context-update (current-buffer)))
 
 (provide 'codyn-mode)
