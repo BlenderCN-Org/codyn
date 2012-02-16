@@ -20,6 +20,7 @@ typedef enum
 
 CdnNetwork *test_load_network (gchar const *network, ...) G_GNUC_NULL_TERMINATED;
 CdnNetwork *test_load_network_from_path (gchar const *path, ...) G_GNUC_NULL_TERMINATED;
+CdnNetwork *test_load_network_from_path_with_objects (gchar const *path, ...) G_GNUC_NULL_TERMINATED;
 
 CdnEdgeAction *find_action (CdnNode *parent, gchar const *path);
 

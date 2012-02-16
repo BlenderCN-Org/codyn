@@ -6,7 +6,7 @@ INCLUDES =				\
 	-I$(top_srcdir)				\
 	$(CODYN_CFLAGS)
 
-TEST_PROGS = expression network direct import template object group property operator integrator interface
+TEST_PROGS = expression network direct import template object group property operator integrator interface file
 progs_ldadd = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la
 
 noinst_PROGRAMS = $(TEST_PROGS)
@@ -44,6 +44,9 @@ integrator_LDADD = $(progs_ldadd)
 interface_SOURCES = interface.c utils.h utils.c
 interface_LDADD = $(progs_ldadd)
 
+file_SOURCES = file.c utils.h utils.c
+file_LDADD = $(progs_ldadd)
+
 TESTS = $(TEST_PROGS)
 
 EXTRA_DIST = \
@@ -52,6 +55,8 @@ EXTRA_DIST = \
 	import.cdn \
 	test_group_integrate_multiple_euler.cdn \
 	test_interface_templates.cdn \
-	test_interface_templates_override_proxy.cdn
+	test_interface_templates_override_proxy.cdn \
+	test_input.txt \
+	test_file.cdn
 
 -include $(top_srcdir)/git.mk

@@ -41,10 +41,15 @@ find_action (CdnNode    *parent,
 		                    _msg);\
 		g_free (_msg);\
 	}\
+	else\
+	{\
+		retobj = G_OBJECT (ret);\
+	}\
 }
 
 static void
 check_objects (CdnNetwork *network,
+               gboolean    get_objects,
                va_list     ap)
 {
 	CdnPath type;
@@ -52,6 +57,7 @@ check_objects (CdnNetwork *network,
 	while ((type = va_arg (ap, CdnPath)) != CDN_PATH_NONE)
 	{
 		gchar const *path = va_arg (ap, gchar const *);
+		GObject *retobj = NULL;
 
 		switch (type)
 		{
@@ -88,14 +94,24 @@ check_objects (CdnNetwork *network,
 			default:
 			break;
 		}
+
+		if (get_objects)
+		{
+			GObject **retval = va_arg (ap, GObject **);
+
+			if (retval)
+			{
+				*retval = retobj;
+			}
+		}
 	}
 }
 
-CdnNetwork *
-test_load_network_from_path (gchar const *path,
-                             ...)
+static CdnNetwork *
+load_network_from_path (gchar const *path,
+                        gboolean     get_objects,
+                        va_list      ap)
 {
-	va_list ap;
 	CdnCompileError *err;
 
 	CdnNetwork *network;
@@ -123,11 +139,43 @@ test_load_network_from_path (gchar const *path,
 
 	g_assert_no_error (cdn_compile_error_get_error (err));
 
-	va_start (ap, path);
-	check_objects (network, ap);
-	va_end (ap);
+	check_objects (network, get_objects, ap);
 
 	return network;
+}
+
+CdnNetwork *
+test_load_network_from_path (gchar const *path,
+                             ...)
+{
+	va_list ap;
+	CdnNetwork *ret;
+
+	va_start (ap, path);
+
+	ret = load_network_from_path (path,
+	                              FALSE,
+	                              ap);
+
+	va_end (ap);
+	return ret;
+}
+
+CdnNetwork *
+test_load_network_from_path_with_objects (gchar const *path,
+                                          ...)
+{
+	va_list ap;
+	CdnNetwork *ret;
+
+	va_start (ap, path);
+
+	ret = load_network_from_path (path,
+	                              TRUE,
+	                              ap);
+
+	va_end (ap);
+	return ret;
 }
 
 CdnNetwork *
@@ -151,7 +199,7 @@ test_load_network (gchar const *xml,
 	g_assert_no_error (cdn_compile_error_get_error (err));
 
 	va_start (ap, xml);
-	check_objects (network, ap);
+	check_objects (network, FALSE, ap);
 	va_end (ap);
 
 	return network;
