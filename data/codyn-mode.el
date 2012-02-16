@@ -34,19 +34,21 @@
           (codyn-context-clear nil nil)
           (if do-show
               (codyn-context-show context)))
-      (progn
-        (if (equal buffer-file-truename (abbreviate-file-name (file-truename (cdr (assoc 'filename data)))))
-            (save-excursion
-              (goto-char (point-min))
-              (forward-line (- (cdr (assoc 'line_start data)) 1))
-              (forward-char (- (cdr (assoc 'column_start data)) 1))
-              (setq start (point))
-              (goto-char (point-min))
-              (forward-line (- (cdr (assoc 'line_end data)) 1))
-              (forward-char (cdr (assoc 'column_end data)))
-              (setq end (point))
-              (move-overlay codyn-context-overlay start end)
-              (overlay-put codyn-context-overlay 'help-echo (cdr (assoc 'message data)))))
+      (let ((file-with-error (abbreviate-file-name (file-truename (cdr (assoc 'filename data))))))
+        (save-current-buffer 
+          (if (not (equal buffer-file-truename file-with-error))
+              (find-file-other-window file-with-error))
+          (save-excursion
+            (goto-char (point-min))
+            (forward-line (- (cdr (assoc 'line_start data)) 1))
+            (forward-char (- (cdr (assoc 'column_start data)) 1))
+            (setq start (point))
+            (goto-char (point-min))
+            (forward-line (- (cdr (assoc 'line_end data)) 1))
+            (forward-char (cdr (assoc 'column_end data)))
+            (setq end (point))
+            (move-overlay codyn-context-overlay start end)
+            (overlay-put codyn-context-overlay 'help-echo (cdr (assoc 'message data)))))
         (message (cdr (assoc 'message data)))))))
 
 (defun codyn-context-parse (proc event buf do-show)
@@ -129,6 +131,7 @@
 
 (defun codyn-context-show (context)
   (let ((data (elt (cdr (assoc 'data context)) 0))
+        (buf (current-buffer))
         selections (i-selection 0) title)
     (if (equal buffer-file-truename (abbreviate-file-name (file-truename (cdr (assoc 'filename data)))))
         (save-selected-window
@@ -136,7 +139,7 @@
           (local-set-key "q" (lambda () (interactive) (kill-buffer-and-window)))
           (erase-buffer)
           (setq buffer-invisibility-spec ())
-          (setq title (concat "Codyn context for " (file-name-nondirectory buffer-file-name)))
+          (setq title (concat "Codyn context for " (file-name-nondirectory (buffer-name buf))))
           (insert (propertize (concat title "\n" (make-string (length title) ?-) "\n") 'face font-lock-comment-face))
           (setq selections (cdr (assoc 'selections data)))
           (codyn-context-print-defines selections)
@@ -174,7 +177,7 @@
       (codyn-context-update (current-buffer) nil)))
 
 (defun codyn-context-check ()
-  "Check the CODYN file syntax"
+  "Check the Codyn file syntax"
   (interactive)
   (if (eq major-mode 'codyn-mode)
       (progn
