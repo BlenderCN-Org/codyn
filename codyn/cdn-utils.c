@@ -21,6 +21,8 @@
  */
 
 #include "cdn-utils.h"
+#include "cdn-network.h"
+#include <string.h>
 
 gboolean
 cdn_signal_accumulator_false_handled (GSignalInvocationHint *ihint,
@@ -37,4 +39,65 @@ cdn_signal_accumulator_false_handled (GSignalInvocationHint *ihint,
 	continue_emission = signal_handled;
 
 	return continue_emission;
+}
+
+gboolean
+cdn_string_to_value (gchar const  *s,
+                     GType         type,
+                     GValue       *value,
+                     GError      **error)
+{
+	GValue sv = {0,};
+
+	g_return_val_if_fail (value != NULL, FALSE);
+
+	g_value_init (value, type);
+
+	if (type == G_TYPE_BOOLEAN)
+	{
+		gint len = strlen (s);
+
+		// Custom transform from string to boolean
+		g_value_set_boolean (value,
+		                     g_ascii_strcasecmp (s, "true") == 0 ||
+		                     g_ascii_strcasecmp (s, "yes") == 0 ||
+		                     (len == 1 && *s == '1'));
+
+		return TRUE;
+	}
+
+	if (!g_value_type_transformable (G_TYPE_STRING, type))
+	{
+		g_value_unset (value);
+
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_SYNTAX,
+		             "String value `%s' cannot be converted to `%s'",
+		             s,
+		             g_type_name (type));
+
+		return FALSE;
+	}
+
+	g_value_init (&sv, G_TYPE_STRING);
+	g_value_set_string (&sv, s);
+
+	if (!g_value_transform (&sv, value))
+	{
+		g_value_unset (&sv);
+		g_value_unset (value);
+
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_SYNTAX,
+		             "Could not convert `%s' to `%s'",
+		             s,
+		             g_type_name (type));
+
+		return FALSE;
+	}
+
+	g_value_unset (&sv);
+	return TRUE;
 }

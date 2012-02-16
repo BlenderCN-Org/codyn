@@ -34,5 +34,9 @@ gboolean cdn_signal_accumulator_false_handled (GSignalInvocationHint *ihint,
                                                const GValue          *handler_return,
                                                gpointer               dummy);
 
+gboolean cdn_string_to_value                  (gchar const           *s,
+                                               GType                  type,
+                                               GValue                *value,
+                                               GError               **error);
 
 #endif /* __CDN_UTILS_H__ */

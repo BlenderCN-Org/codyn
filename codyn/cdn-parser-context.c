@@ -5167,8 +5167,8 @@ set_gobject_property (CdnParserContext  *context,
 	GParamSpec *spec;
 	gchar const *exname;
 	gchar const *exval;
-	GValue v = {0,};
 	GValue dest = {0,};
+	GError *error = NULL;
 
 	klass = G_OBJECT_GET_CLASS (obj);
 
@@ -5189,41 +5189,19 @@ set_gobject_property (CdnParserContext  *context,
 		return FALSE;
 	}
 
-	if (!g_value_type_transformable (G_TYPE_STRING, spec->value_type))
+	if (!cdn_string_to_value (exval,
+	                          spec->value_type,
+	                          &dest,
+	                          &error))
 	{
-		parser_failed (context,
-		               CDN_STATEMENT (valueemb),
-		               CDN_NETWORK_LOAD_ERROR_SYNTAX,
-		               "Could not convert `%s' to `%s'",
-		               exval,
-		               g_type_name (spec->value_type));
-
-		return FALSE;
-	}
-
-	g_value_init (&v, G_TYPE_STRING);
-	g_value_set_string (&v, exval);
-
-	g_value_init (&dest, spec->value_type);
-
-	if (!g_value_transform (&v, &dest))
-	{
-		g_value_unset (&v);
-		g_value_unset (&dest);
-
-		parser_failed (context,
-		               CDN_STATEMENT (valueemb),
-		               CDN_NETWORK_LOAD_ERROR_SYNTAX,
-		               "Could not convert `%s' to `%s'",
-		               exval,
-		               g_type_name (spec->value_type));
+		parser_failed_error (context,
+		                     CDN_STATEMENT (valueemb),
+		                     error);
 
 		return FALSE;
 	}
 
 	g_object_set_property (obj, exname, &dest);
-
-	g_value_unset (&v);
 	g_value_unset (&dest);
 
 	return TRUE;
@@ -6431,7 +6409,7 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 			{
 				parser_failed (context,
 				               CDN_STATEMENT (type),
-				               CDN_NETWORK_LOAD_ERROR_INPUT,
+				               CDN_NETWORK_LOAD_ERROR_IO,
 				               "Could not find io type `%s'",
 				               cdn_expansion_get (pair->value, 0));
 
