@@ -24,16 +24,16 @@
         (align-regexp start end "\\(\s-*\\)\\(=\\||\\|<=\\)" 1 1 t)
       (align-regexp start end "\\(\s-*\\)|" 1 1 t))))
 
-(defun codyn-context-check-error (do-show)
-  "Check the parsed codyn-context JSON for error"
-  (let ((data (cdr (assoc 'data codyn-context)))
-        (status (string= "ok" (cdr (assoc 'status codyn-context))))
+(defun codyn-context-check-error (context do-show)
+  "Check the context JSON for error"
+  (let ((data (cdr (assoc 'data context)))
+        (status (string= "ok" (cdr (assoc 'status context))))
         start end)
     (if status
         (progn
           (codyn-context-clear nil nil)
           (if do-show
-              (codyn-context-show)))
+              (codyn-context-show context)))
       (progn
         (if (equal buffer-file-truename (abbreviate-file-name (file-truename (cdr (assoc 'filename data)))))
             (save-excursion
@@ -55,10 +55,10 @@
     (if (or (string= event "finished\n")
             (string= event "exited abnormally with code 1\n"))
         (progn
-          (setq codyn-context (json-read-from-string
-                               (with-current-buffer (process-buffer proc) (buffer-string))))
-          (kill-buffer (process-buffer proc))
-          (codyn-context-check-error do-show))
+          (let ((context (json-read-from-string (with-current-buffer (process-buffer proc)
+                                                  (buffer-string)))))
+            (codyn-context-check-error context do-show))
+          (kill-buffer (process-buffer proc)))
       (progn
         (message (concat "cdn-context failed: " (substring event 0 -1)))))))
 
@@ -127,8 +127,8 @@
     (insert (propertize (capitalize name) 'keymap map 'mouse-face 'highlight 'help-echo msg)))
   (set (make-local-variable (intern (concat name "-button"))) (make-overlay (- (point) (length name)) (point))))
 
-(defun codyn-context-show ()
-  (let ((data (elt (cdr (assoc 'data codyn-context)) 0))
+(defun codyn-context-show (context)
+  (let ((data (elt (cdr (assoc 'data context)) 0))
         selections (i-selection 0) title)
     (if (equal buffer-file-truename (abbreviate-file-name (file-truename (cdr (assoc 'filename data)))))
         (save-selected-window
@@ -183,7 +183,7 @@
           (codyn-context-update (current-buffer) (called-interactively-p))))))
 
 (defun codyn-context-clear (start stop)
-  "Clears the codyn-context error face"
+  "Clears the context error face"
   (if (and (stringp (this-command-keys)) (eq major-mode 'codyn-mode))
       (delete-overlay codyn-context-overlay)))
 
@@ -264,7 +264,6 @@
   (setq major-mode 'codyn-mode)
   (setq mode-name "Codyn")
   (setq comment-start "#")
-  (set (make-local-variable 'codyn-context) nil)
   (make-local-variable 'before-change-functions)
   (add-to-list 'before-change-functions 'codyn-context-clear)
   (add-hook 'after-save-hook 'codyn-context-update-for-hook)
