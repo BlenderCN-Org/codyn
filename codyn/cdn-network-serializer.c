@@ -640,7 +640,7 @@ edge_to_xml (CdnNetworkSerializer *serializer,
 		if (from != NULL)
 		{
 			xmlNewProp (node,
-				    (xmlChar const *)"io",
+				    (xmlChar const *)"input",
 				    (xmlChar const *)cdn_object_get_id (CDN_OBJECT (from)));
 		}
 
@@ -967,7 +967,9 @@ io_name (CdnIo *io)
 {
 	GType tp;
 	gchar const *name;
-	gchar const *prefix = "CdnIo";
+	gchar const *prefixio = "CdnIo";
+	gchar const *prefixinp = "CdnInput";
+	gchar const *prefixout = "CdnOutput";
 	gboolean iscaps = TRUE;
 	GString *ret;
 
@@ -975,9 +977,17 @@ io_name (CdnIo *io)
 
 	name = g_type_name (tp);
 
-	if (g_str_has_prefix (name, prefix))
+	if (g_str_has_prefix (name, prefixio))
 	{
-		name += strlen (prefix);
+		name += strlen (prefixio);
+	}
+	else if (g_str_has_prefix (name, prefixinp))
+	{
+		name += strlen (prefixinp);
+	}
+	else if (g_str_has_prefix (name, prefixout))
+	{
+		name += strlen (prefixout);
 	}
 
 	ret = g_string_sized_new (strlen (name));
@@ -1028,6 +1038,12 @@ io_settings_to_xml_class (CdnNetworkSerializer *serializer,
 		    ctype == CDN_TYPE_FUNCTION ||
 		    ctype == CDN_TYPE_EDGE ||
 		    ctype == CDN_TYPE_NODE)
+		{
+			continue;
+		}
+
+		// Skip mode
+		if (g_strcmp0 (specs[i]->name, "mode") == 0)
 		{
 			continue;
 		}
@@ -1098,20 +1114,37 @@ io_settings_to_xml (CdnNetworkSerializer *serializer,
 
 static void
 io_to_xml (CdnNetworkSerializer *serializer,
-              xmlNodePtr            root,
-              CdnIo             *io)
+           xmlNodePtr            root,
+           CdnIo                *io)
 {
 	GType tp;
 	gchar *tname;
 	xmlNodePtr node;
+	gchar const *nname;
+	CdnIoMode mode;
 
 	tp = G_TYPE_FROM_INSTANCE (io);
 
 	tname = io_name (io);
 
+	mode = cdn_io_get_mode (io);
+
+	if (mode == CDN_IO_MODE_INPUT_OUTPUT)
+	{
+		nname = "io";
+	}
+	else if (mode & CDN_IO_MODE_OUTPUT)
+	{
+		nname = "output";
+	}
+	else
+	{
+		nname = "input";
+	}
+
 	node = xmlNewDocNode (serializer->priv->doc,
 	                      NULL,
-	                      (xmlChar *)"io",
+	                      (xmlChar *)nname,
 	                      NULL);
 
 	xmlNewProp (node,
