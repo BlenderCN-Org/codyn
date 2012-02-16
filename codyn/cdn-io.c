@@ -158,7 +158,7 @@ cdn_io_default_init (CdnIoInterface *iface)
 		                                                         CDN_TYPE_IO_MODE,
 		                                                         CDN_IO_MODE_INPUT,
 		                                                         G_PARAM_READWRITE |
-		                                                         G_PARAM_CONSTRUCT_ONLY |
+		                                                         G_PARAM_CONSTRUCT |
 		                                                         G_PARAM_STATIC_STRINGS));
 	}
 }
@@ -302,9 +302,6 @@ cdn_io_update (CdnIo      *io,
                   CdnIntegrator *integrator)
 {
 	CdnIoInterface *iface;
-
-	g_return_if_fail (CDN_IS_IO (io));
-	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
 
 	iface = CDN_IO_GET_INTERFACE (io);
 
