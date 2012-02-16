@@ -6401,6 +6401,7 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 		{
 			NameValuePair *pair = pairs->data;
 			GType tp;
+			CdnSelection *newsel;
 
 			tp = cdn_io_method_find (cdn_expansion_get (pair->value, 0),
 			                         mode);
@@ -6415,16 +6416,35 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 
 				g_slist_foreach (pairs, (GFunc)name_value_pair_free, NULL);
 				g_slist_free (pairs);
+
+				g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+				g_slist_free (ret);
 				return;
 			}
 
-			ret = g_slist_prepend (ret,
-			                       parse_object_single_id (context,
-			                                               pair->name,
-			                                               NULL,
-			                                               sel,
-			                                               tp,
-			                                               TRUE));
+			newsel = parse_object_single_id (context,
+			                                 pair->name,
+			                                 NULL,
+			                                 sel,
+			                                 tp,
+			                                 TRUE);
+
+			if (!newsel)
+			{
+				g_slist_foreach (pairs, (GFunc)name_value_pair_free, NULL);
+				g_slist_free (pairs);
+
+				g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+				g_slist_free (ret);
+				return;
+			}
+
+			g_object_set (cdn_selection_get_object (newsel),
+			              "mode",
+			              mode,
+			              NULL);
+
+			ret = g_slist_prepend (ret, newsel);
 
 			name_value_pair_free (pair);
 			pairs = g_slist_delete_link (pairs, pairs);
