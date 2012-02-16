@@ -196,18 +196,17 @@
 (add-to-list 'auto-mode-alist '("\\.cdn\\'" . codyn-mode))
 
 
-
-
-
+;; (concat "\\_<" (regexp-opt '("integrated" "in" "out" "once")) "\\_>")
+;; (concat "\\_<" (regexp-opt '("include" "parse" "object" "edge" "disabled" "functions" "interface" "polynomial" "import" "from" "to" "piece" "defines" "integrator" "node" "layout" "at" "above" "below" "left-of" "right-of" "of" "on" "all" "action" "delete" "debug-print" "apply" "unapply" "with" "when" "phase" "terminate" "any" "set" "templates" "templates-root" "root" "debug" "children" "parent" "first" "last" "subset" "edges" "siblings" "descendants" "ancestors" "unique" "count" "name" "self" "nodes" "imports" "objects" "variables" "actions" "if" "not" "from-set" "type" "has-flag" "has-template" "has-tag" "reverse" "input" "output" "inputs" "outputs" "input-name" "output-name" "recurse" "context" "as" "define")) "\\_>")
+;; (concat "\\_<" (regexp-opt '("proxy" "bidirectional" "each" "settings" "no-self" "probability" "tag")) "\\_>")
 
 (defvar codyn-font-lock-keywords
   (list
-   '("\\(\\(\\w\\|_\\)+\\)}?[ \t]*\\(\\?=\\|<=\\|=\\)" 1 font-lock-variable-name-face)
+   '("\\(\\(\\w\\|_\\)+\\)[ \t]*\\(([^(]*)[ \t]*\\)?\\(\\?=\\|<=\\|=\\)" 1 font-lock-variable-name-face)
    '("@\\([0-9]+\\|[a-zA-Z_]\\(\\w\\|_\\)*\\)?\\(\\[[^[]*\\(\\[[^[]*\\]\\)?[^[]*\\]\\)*" . font-lock-constant-face)
-   '((concat "\\_<" (regexp-opt '("integrated" "in" "out" "once")) "\\_>")  . font-lock-type-face)
-   '((concat "\\_<" (regexp-opt '("include" "parse" "object" "edge" "disabled" "functions" "interface" "polynomial" "import" "from" "to" "piece" "defines" "integrator" "node" "layout" "at" "above" "below" "left-of" "right-of" "of" "on" "all" "action" "variable" "delete" "debug-print" "apply" "unapply" "with" "when" "phase" "terminate" "any" "set" "templates" "templates-root" "root" "debug" "children" "parent" "first" "last" "subset" "edges" "siblings" "descendants" "ancestors" "unique" "count" "name" "self" "nodes" "imports" "objects" "variables" "actions" "is-empty" "remove" "if" "from-set" "type" "has-flag" "has-template" "has-tag" "reverse" "input" "output" "inputs" "outputs" "input-name" "output-name" "recurse" "context" "as")) "\\_>") . font-lock-keyword-face)
-   '((concat "\\_<" (regexp-opt '("proxy" "bidirectional" "each" "settings" "no-self" "probability" "tag")) "\\_>") . font-lock-type-face)
-   )
+   '("\\_<\\(?:in\\(?:tegrated\\)?\\|o\\(?:nce\\|ut\\)\\)\\_>"  . font-lock-type-face)
+   '("\\_<\\(?:a\\(?:bove\\|ctions?\\|ll\\|n\\(?:cestors\\|y\\)\\|pply\\|[st]\\)\\|below\\|c\\(?:hildren\\|o\\(?:\\(?:ntex\\|un\\)t\\)\\)\\|d\\(?:e\\(?:bug\\(?:-print\\)?\\|fines?\\|lete\\|scendants\\)\\|isabled\\)\\|edges?\\|f\\(?:irst\\|rom\\(?:-set\\)?\\|unctions\\)\\|has-\\(?:flag\\|t\\(?:ag\\|emplate\\)\\)\\|i\\(?:f\\|mports?\\|n\\(?:clude\\|put\\(?:-name\\|s\\)?\\|te\\(?:grator\\|rface\\)\\)\\)\\|l\\(?:a\\(?:\\(?:s\\|you\\)t\\)\\|eft-of\\)\\|n\\(?:ame\\|o\\(?:des?\\|t\\)\\)\\|o\\(?:bjects?\\|utput\\(?:-name\\|s\\)?\\|[fn]\\)\\|p\\(?:ar\\(?:ent\\|se\\)\\|hase\\|iece\\|olynomial\\)\\|r\\(?:e\\(?:\\(?:cu\\|ve\\)rse\\)\\|ight-of\\|oot\\)\\|s\\(?:e\\(?:lf\\|t\\)\\|iblings\\|ubset\\)\\|t\\(?:e\\(?:mplates\\(?:-root\\)?\\|rminate\\)\\|o\\|ype\\)\\|un\\(?:apply\\|ique\\)\\|variables\\|w\\(?:hen\\|ith\\)\\)\\_>" . font-lock-keyword-face)
+   '("\\_<\\(?:bidirectional\\|each\\|no-self\\|pro\\(?:\\(?:babilit\\|x\\)y\\)\\|settings\\|tag\\)\\_>" . font-lock-type-face))
   "Highlighting for codyn mode")
 
 (defun previous-non-empty-line ()
