@@ -479,6 +479,8 @@ write_cdn_expansion (CdnExpansion      *expansion,
 {
 	gint i;
 
+	write_stream (out, "[");
+
 	for (i = 0; i < cdn_expansion_num (expansion); ++i)
 	{
 		gchar *value_esc;
@@ -497,6 +499,8 @@ write_cdn_expansion (CdnExpansion      *expansion,
 
 		g_free (value_esc);
 	}
+
+	write_stream (out, "]");
 }
 
 typedef struct
