@@ -611,7 +611,6 @@ write_cdn_selection (CdnSelection      *selection,
 	{
 		write_stream (out, "                ");
 		write_cdn_expansion (expansions->data, out);
-		write_stream (out, "]");
 
 		if (expansions->next)
 		{
