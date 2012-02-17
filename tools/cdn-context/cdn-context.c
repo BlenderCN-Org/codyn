@@ -575,21 +575,17 @@ write_cdn_selection (CdnSelection      *selection,
 		}
 		else if (CDN_IS_NODE (obj))
 		{
-			typename = "group";
+			typename = "node";
 		}
 		else if (CDN_IS_EDGE (obj))
 		{
-			typename = "link";
-		}
-		else
-		{
-			typename = "state";
+			typename = "edge";
 		}
 	}
 	else if (CDN_IS_VARIABLE (obj))
 	{
 		name = cdn_variable_get_name (obj);
-		typename = "property";
+		typename = "variable";
 	}
 	else if (CDN_IS_EDGE_ACTION (obj))
 	{
