@@ -21,8 +21,10 @@
         (forward-list)
         (setq end (point))))
     (if prefix
-        (align-regexp start end "\\(\s-*\\)\\(=\\||\\|<=\\)" 1 1 t)
-      (align-regexp start end "\\(\s-*\\)|" 1 1 t))))
+        (progn
+          (align-regexp start end "\\([ \t]+\\([<?]?\\)\\)\\(=\\||\\)" -1 1 t)
+          (align-regexp start end "\\([ \t]+\\)\\(at\\|,\\)[ \t]" -1 1 t))
+      (align-regexp start end ".*=.*\\([ \t]+\\)|" -1 1 t))))
 
 (defun codyn-context-check-error (context do-show)
   "Check the context JSON for error"
