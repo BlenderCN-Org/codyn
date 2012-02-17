@@ -529,7 +529,7 @@ foreach_define (gchar const        *name,
 
 	write_cdn_expansion (value, info->out);
 
-	write_stream (info->out, "]");
+	write_stream (info->out, "]}");
 
 	g_free (name_esc);
 }
