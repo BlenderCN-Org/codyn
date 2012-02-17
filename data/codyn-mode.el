@@ -64,9 +64,14 @@
       (progn
         (message (concat "cdn-context failed: " (substring event 0 -1)))))))
 
+(defun codyn-define-less-than (def1 def2)
+  "Compares to define assocs and returns true if def1 comes before def2"
+  (string< (cdr (assoc 'key def1)) (cdr (assoc 'key def2))))
+
 (defun codyn-context-print-defines (selections)
   (insert (propertize "\nDefines\n\n" 'face '(:inherit font-lock-type-face :weight bold)))
   (let ((defines (cdr (assoc 'defines (elt (cdr (assoc 'in (elt selections 0))) 0)))))
+    (setq defines (sort (mapcar #'(lambda(x)x) defines) 'codyn-define-less-than)) ; converts define array to list
     (mapc (lambda (define)
             (insert (concat "\t"
                             (propertize (cdr (assoc 'key define)) 'face font-lock-variable-name-face)
