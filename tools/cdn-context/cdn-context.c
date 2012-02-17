@@ -528,12 +528,12 @@ foreach_define (gchar const        *name,
 	}
 
 	write_stream_format (info->out,
-	                     "                {\"key\": \"%s\", \"value\": [",
+	                     "                {\"key\": \"%s\", \"value\": ",
 	                     name_esc);
 
 	write_cdn_expansion (value, info->out);
 
-	write_stream (info->out, "]}");
+	write_stream (info->out, "}");
 
 	g_free (name_esc);
 }
