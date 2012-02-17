@@ -72,7 +72,7 @@
                             (propertize (cdr (assoc 'key define)) 'face font-lock-variable-name-face)
                             (make-string (max 1 (- 15 (length (cdr (assoc 'key define))))) ? )
                             " = "
-                            (propertize (cdr (assoc 'value define)) 'face font-lock-string-face)
+                            (propertize (cdr (assoc 'value (elt (cdr (assoc 'value define)) 0))) 'face font-lock-string-face)
                             "\n")))
               defines)))
 
@@ -115,7 +115,6 @@
                   expansions))
           elems)
     (insert (propertize output 'invisible group))))
-
 
 (defun codyn-context-button (name other1 other2 hide-list msg)
   (let ((map (make-sparse-keymap)))
