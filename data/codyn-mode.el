@@ -76,16 +76,16 @@
                             "\n")))
               defines)))
 
-(defun codyn-context-print-group (selection group)
+(defun codyn-context-print-node (selection node)
   (let (elems (i-elem 0) i-level epxansions prefix i-expansion (output ""))
-    (setq elems (cdr (assoc group selection)))
+    (setq elems (cdr (assoc node selection)))
     (setq i-elem 0)
     (mapc (lambda (elem)
             (setq i-elem (+ i-elem 1))
             (setq expansions (cdr (assoc 'expansions elem)))
             (setq output (concat output
                                  "\n"
-                                 (propertize (concat (capitalize (symbol-name group))
+                                 (propertize (concat (capitalize (symbol-name node))
                                                      " "
                                                      (number-to-string i-elem)
                                                      ": ")
@@ -114,7 +114,7 @@
                     (setq output (concat output "\n")))
                   expansions))
           elems)
-    (insert (propertize output 'invisible group))))
+    (insert (propertize output 'invisible node))))
 
 (defun codyn-context-button (name other1 other2 hide-list msg)
   (let ((map (make-sparse-keymap)))
@@ -153,8 +153,8 @@
           (mapc (lambda (selection)
                   (setq i-selection (+ i-selection 1))
                   (insert (propertize (concat "\nSelection " (number-to-string i-selection) "\n") 'face '(:inherit font-lock-type-face :weight bold)))
-                  (codyn-context-print-group selection 'in)
-                  (codyn-context-print-group selection 'out))
+                  (codyn-context-print-node selection 'in)
+                  (codyn-context-print-node selection 'out))
                 selections)
           (goto-char (point-min))))))
 
