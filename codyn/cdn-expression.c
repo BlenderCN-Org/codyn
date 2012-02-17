@@ -3006,12 +3006,6 @@ parse_variable (CdnExpression *expression,
 	}
 	else
 	{
-		parser_failed (expression,
-		               context,
-		               CDN_COMPILE_ERROR_VARIABLE_NOT_FOUND,
-		               "Property `%s' not found",
-		               nname);
-
 		ret = FALSE;
 	}
 
