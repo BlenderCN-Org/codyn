@@ -1467,6 +1467,7 @@ typedef struct
 static CdnConstantEntry constant_entries[] = {
 	{"pi", NULL, M_PI},
 	{"PI", NULL, M_PI},
+	{"\xcf\x80", NULL, M_PI},
 	{"e", NULL, M_E},
 	{"E", NULL, M_E},
 	{"NAN", NULL, 0},
