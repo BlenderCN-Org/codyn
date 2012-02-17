@@ -345,15 +345,18 @@ set_values (CdnExpression *expression,
 			}
 		}
 
-		if (values)
+		if (expression->priv->cached_output_multi != values)
 		{
-			memcpy (expression->priv->cached_output_multi,
-			        values,
-			        sizeof (gdouble) * newsize);
-		}
-		else
-		{
-			memset (expression->priv->cached_output_multi, 0, sizeof (gdouble) * newsize);
+			if (values)
+			{
+				memcpy (expression->priv->cached_output_multi,
+				        values,
+				        sizeof (gdouble) * newsize);
+			}
+			else
+			{
+				memset (expression->priv->cached_output_multi, 0, sizeof (gdouble) * newsize);
+			}
 		}
 	}
 
@@ -4323,3 +4326,54 @@ cdn_expression_set_evaluate_notify (CdnExpression               *expression,
 	expression->priv->evaluate_userdata = userdata;
 	expression->priv->evaluate_notify = notify;
 }
+
+gdouble *
+cdn_expression_get_cache (CdnExpression *expression,
+                          gint          *numr,
+                          gint          *numc)
+{
+	if ((expression->priv->retdims[0] > 1 ||
+	     expression->priv->retdims[1] > 1))
+	{
+		if ((expression->priv->cached_dims[0] <= 1 &&
+		     expression->priv->cached_dims[1] <= 1) ||
+		    !expression->priv->cached_output_multi)
+		{
+			expression->priv->cached_output_multi =
+				g_new0 (gdouble,
+				        expression->priv->retdims[0] *
+				        expression->priv->retdims[1]);
+
+			expression->priv->cached_dims[0] =
+				expression->priv->retdims[0];
+
+			expression->priv->cached_dims[1] =
+				expression->priv->retdims[1];
+		}
+
+		if (numr)
+		{
+			*numr = expression->priv->cached_dims[0];
+		}
+
+		if (numc)
+		{
+			*numc = expression->priv->cached_dims[1];
+		}
+
+		return expression->priv->cached_output_multi;
+	}
+
+	if (numr)
+	{
+		*numr = 0;
+	}
+
+	if (numc)
+	{
+		*numc = 0;
+	}
+
+	return NULL;
+}
+

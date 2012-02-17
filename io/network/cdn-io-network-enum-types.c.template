@@ -1,0 +1,111 @@
+/*** BEGIN file-header ***/
+#include "cdn-io-network-enum-types.h"
+
+/*** END file-header ***/
+
+/*** BEGIN file-production ***/
+/* enumerations from "@filename@" */
+#include "@filename@"
+
+static void
+g_enum_class_init (GEnumClass *class,
+		   gpointer    class_data)
+{
+  g_return_if_fail (G_IS_ENUM_CLASS (class));
+
+  class->minimum = 0;
+  class->maximum = 0;
+  class->n_values = 0;
+  class->values = class_data;
+
+  if (class->values)
+    {
+      GEnumValue *values;
+
+      class->minimum = class->values->value;
+      class->maximum = class->values->value;
+      for (values = class->values; values->value_name; values++)
+	{
+	  class->minimum = MIN (class->minimum, values->value);
+	  class->maximum = MAX (class->maximum, values->value);
+	  class->n_values++;
+	}
+    }
+}
+
+/*static void
+g_flags_class_init (GFlagsClass *class,
+		    gpointer	 class_data)
+{
+  g_return_if_fail (G_IS_FLAGS_CLASS (class));
+
+  class->mask = 0;
+  class->n_values = 0;
+  class->values = class_data;
+
+  if (class->values)
+    {
+      GFlagsValue *values;
+
+      for (values = class->values; values->value_name; values++)
+	{
+	  class->mask |= values->value;
+	  class->n_values++;
+	}
+    }
+}*/
+
+/*** END file-production ***/
+
+/*** BEGIN value-header ***/
+static GType the_@enum_name@_type = 0;
+
+GType
+@enum_name@_get_type (void)
+{
+	return the_@enum_name@_type;
+}
+
+void
+@enum_name@_register (GTypeModule *type_module)
+{
+	if (the_@enum_name@_type == 0)
+	{
+		GTypeInfo type_info = {
+			sizeof (G@Type@Class), /* class_size */
+			NULL,                /* base_init */
+			NULL,                /* base_finalize */
+			(GClassInitFunc) g_@type@_class_init,
+			NULL,                /* class_finalize */
+			NULL,                /* class_data */
+			0,                   /* instance_size */
+			0,                   /* n_preallocs */
+			NULL,                /* instance_init */
+			NULL,		 /* value_table */
+		};
+
+		static const G@Type@Value values[] = {
+/*** END value-header ***/
+
+/*** BEGIN value-production ***/
+			{ @VALUENAME@,
+			  "@VALUENAME@",
+			  "@valuenick@" },
+/*** END value-production ***/
+
+/*** BEGIN value-tail ***/
+			{ 0, NULL, NULL }
+		};
+
+		type_info.class_data = values;
+
+		the_@enum_name@_type =
+			g_type_module_register_type (type_module,
+			                             G_TYPE_@TYPE@,
+			                             g_intern_static_string ("@EnumName@"),
+			                             &type_info,
+			                             0);
+	}
+}
+
+/*** END value-tail ***/

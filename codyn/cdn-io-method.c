@@ -229,7 +229,7 @@ find_type_init_func (gchar const *name,
 
 	mod = g_module_open (NULL, G_MODULE_BIND_LAZY);
 
-	if (mode & CDN_IO_MODE_INPUT_OUTPUT)
+	if (mode == CDN_IO_MODE_INPUT_OUTPUT)
 	{
 		gchar *comp;
 
@@ -237,15 +237,7 @@ find_type_init_func (gchar const *name,
 		g_module_symbol (mod, comp, (gpointer *)&ret);
 		g_free (comp);
 	}
-
-	if (ret == 0 && mode == CDN_IO_MODE_INPUT_OUTPUT)
-	{
-		g_free (cname);
-		g_module_close (mod);
-		return 0;
-	}
-
-	if (mode & CDN_IO_MODE_INPUT)
+	else if (mode & CDN_IO_MODE_INPUT)
 	{
 		gchar *comp;
 

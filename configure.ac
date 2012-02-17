@@ -228,6 +228,7 @@ docs/reference/Makefile
 docs/man/Makefile
 io/Makefile
 io/file/Makefile
+io/network/Makefile
 m4/Makefile
 tests/Makefile
 win32/Makefile

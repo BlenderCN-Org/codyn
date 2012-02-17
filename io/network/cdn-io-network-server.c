@@ -1,0 +1,306 @@
+#include "cdn-io-network-server.h"
+#include <gio/gio.h>
+#include <codyn/cdn-io.h>
+#include <codyn/cdn-network.h>
+#include "cdn-client.h"
+#include <gio/gunixsocketaddress.h>
+#include "cdn-network-thread.h"
+
+#define CDN_IO_NETWORK_SERVER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_IO_NETWORK_SERVER, CdnIoNetworkServerPrivate))
+
+struct _CdnIoNetworkServerPrivate
+{
+	GSocket *socket;
+	GSList *clients;
+};
+
+static void cdn_io_iface_init (gpointer iface);
+
+G_DEFINE_DYNAMIC_TYPE_EXTENDED (CdnIoNetworkServer,
+                                cdn_io_network_server,
+                                CDN_TYPE_IO_NETWORK_CLIENT,
+                                0,
+                                G_IMPLEMENT_INTERFACE (CDN_TYPE_IO,
+                                                       cdn_io_iface_init))
+
+static void
+on_client_closed (CdnIoNetworkServer *server,
+                  CdnClient          *client)
+{
+	g_signal_handlers_disconnect_by_func (client,
+	                                      on_client_closed,
+	                                      server);
+
+	server->priv->clients = g_slist_remove (server->priv->clients,
+	                                        client);
+
+	g_object_unref (client);
+}
+
+static gboolean
+on_accept (GSocket            *socket,
+           GIOCondition        condition,
+           CdnIoNetworkServer *server)
+{
+	GSocket *cs;
+	CdnIoMode mode;
+	gdouble throttle;
+
+	if (!(condition & G_IO_IN))
+	{
+		return FALSE;
+	}
+
+	g_object_get (server, "io-mode", &mode, "throttle", &throttle, NULL);
+
+	while ((cs = g_socket_accept (socket, NULL, NULL)))
+	{
+		CdnClient *client;
+
+		client = cdn_client_new (CDN_NODE (server),
+		                         cs,
+		                         NULL,
+		                         mode,
+		                         throttle);
+
+		g_object_unref (cs);
+
+		server->priv->clients = g_slist_prepend (server->priv->clients,
+		                                         client);
+
+		g_signal_connect (client,
+		                  "closed",
+		                  G_CALLBACK (on_client_closed),
+		                  server);
+	}
+
+	return TRUE;
+}
+
+static gboolean
+cdn_io_initialize_impl (CdnIo         *io,
+                        GCancellable  *cancellable,
+                        GError       **error)
+{
+	// Create a new socket to start listening on
+	CdnIoNetworkServer *server = CDN_IO_NETWORK_SERVER (io);
+	GSocket *sock;
+	GSocketAddress *sockaddr = NULL;
+
+	gchar *host;
+	guint port;
+	CdnNetworkProtocol protocol;
+
+	g_object_get (server,
+	              "host", &host,
+	              "port", &port,
+	              "protocol", &protocol, NULL);
+
+	if (host == NULL &&
+	    protocol == CDN_NETWORK_PROTOCOL_UNIX)
+	{
+		gchar *id;
+
+		id = cdn_object_get_full_id_for_display (CDN_OBJECT (server));
+
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_IO,
+		             "Please specify a unix path in the `host' setting of `%s'",
+		             id);
+
+		g_free (id);
+		return FALSE;
+	}
+
+	if (protocol == CDN_NETWORK_PROTOCOL_UNIX)
+	{
+		sock = g_socket_new (G_SOCKET_FAMILY_UNIX,
+		                     G_SOCKET_TYPE_STREAM,
+		                     0,
+		                     error);
+	}
+	else if (protocol == CDN_NETWORK_PROTOCOL_TCP)
+	{
+		sock = g_socket_new (G_SOCKET_FAMILY_IPV4,
+		                     G_SOCKET_TYPE_STREAM,
+		                     0,
+		                     error);
+	}
+	else
+	{
+		sock = g_socket_new (G_SOCKET_FAMILY_IPV4,
+		                     G_SOCKET_TYPE_DATAGRAM,
+		                     0,
+		                     error);
+	}
+
+	if (sock == NULL)
+	{
+		g_free (host);
+		return FALSE;
+	}
+
+	if (protocol == CDN_NETWORK_PROTOCOL_UNIX)
+	{
+		sockaddr = g_unix_socket_address_new (host);
+	}
+	else if (host != NULL)
+	{
+		GInetAddress *addr;
+
+		addr = g_inet_address_new_from_string (host);
+
+		if (addr)
+		{
+			sockaddr = g_inet_socket_address_new (addr, port);
+			g_object_unref (addr);
+		}
+	}
+	else
+	{
+		GInetAddress *addr;
+
+		addr = g_inet_address_new_any (G_SOCKET_FAMILY_IPV4);
+
+		if (addr)
+		{
+			sockaddr = g_inet_socket_address_new (addr, port);
+
+			g_object_unref (addr);
+		}
+	}
+
+	g_free (host);
+
+	if (sockaddr == NULL)
+	{
+		gchar *id;
+
+		id = cdn_object_get_full_id_for_display (CDN_OBJECT (server));
+
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_IO,
+		             "Invalid host specification for network server `%s'",
+		             id);
+
+		g_free (id);
+
+		g_object_unref (sock);
+
+		return FALSE;
+	}
+
+	if (!g_socket_bind (sock, sockaddr, TRUE, error))
+	{
+		g_object_unref (sockaddr);
+		g_object_unref (sock);
+		return FALSE;
+	}
+
+	g_object_unref (sockaddr);
+
+	if (!g_socket_listen (sock, error))
+	{
+		g_object_unref (sock);
+		return FALSE;
+	}
+
+	g_socket_set_blocking (sock, FALSE);
+
+	server->priv->socket = sock;
+
+	// Add socket to network thread
+	cdn_network_thread_register (cdn_network_thread_get_default (),
+	                             sock,
+	                             (GSocketSourceFunc)on_accept,
+	                             server,
+	                             NULL);
+
+	return TRUE;
+}
+
+static void
+remove_client (CdnClient *client,
+               CdnIoNetworkServer *server)
+{
+	g_signal_handlers_disconnect_by_func (client,
+	                                      G_CALLBACK (on_client_closed),
+	                                      server);
+
+	cdn_client_close (client);
+	g_object_unref (client);
+}
+
+static void
+do_finalize (CdnIoNetworkServer *server)
+{
+	g_slist_foreach (server->priv->clients, (GFunc)remove_client, server);
+	g_slist_free (server->priv->clients);
+
+	server->priv->clients = NULL;
+
+	if (server->priv->socket)
+	{
+		cdn_network_thread_unregister (cdn_network_thread_get_default (),
+		                               server->priv->socket);
+
+		g_object_unref (server->priv->socket);
+		server->priv->socket = NULL;
+	}
+}
+
+static gboolean
+cdn_io_finalize_impl (CdnIo         *io,
+                      GCancellable  *cancellable,
+                      GError       **error)
+{
+	do_finalize (CDN_IO_NETWORK_SERVER (io));
+	return TRUE;
+}
+
+static void
+cdn_io_iface_init (gpointer iface)
+{
+	CdnIoInterface *i = iface;
+
+	i->initialize = cdn_io_initialize_impl;
+	i->finalize = cdn_io_finalize_impl;
+}
+
+static void
+cdn_io_network_server_finalize (GObject *object)
+{
+	do_finalize (CDN_IO_NETWORK_SERVER (object));
+
+	G_OBJECT_CLASS (cdn_io_network_server_parent_class)->finalize (object);
+}
+
+static void
+cdn_io_network_server_class_init (CdnIoNetworkServerClass *klass)
+{
+	GObjectClass *object_class = G_OBJECT_CLASS (klass);
+
+	object_class->finalize = cdn_io_network_server_finalize;
+
+	g_type_class_add_private (object_class, sizeof (CdnIoNetworkServerPrivate));
+}
+
+static void
+cdn_io_network_server_class_finalize (CdnIoNetworkServerClass *klass)
+{
+
+}
+
+static void
+cdn_io_network_server_init (CdnIoNetworkServer *self)
+{
+	self->priv = CDN_IO_NETWORK_SERVER_GET_PRIVATE (self);
+}
+
+void
+cdn_io_network_server_register (GTypeModule *type_module)
+{
+	cdn_io_network_server_register_type (type_module);
+}

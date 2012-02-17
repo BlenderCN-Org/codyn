@@ -96,6 +96,10 @@ void           cdn_expression_set_values       (CdnExpression      *expression,
                                                 gint                numr,
                                                 gint                numc);
 
+gdouble       *cdn_expression_get_cache        (CdnExpression      *expression,
+                                                gint               *numr,
+                                                gint               *numc);
+
 void           cdn_expression_reset            (CdnExpression      *expression);
 
 gboolean       cdn_expression_equal            (CdnExpression      *expression,
