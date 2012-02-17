@@ -473,6 +473,32 @@ info_free (Info *info)
 #define write_stream(stream, s) write_stream_format (stream, "%s", s)
 #define write_stream_nl(stream, s) write_stream_format (stream, "%s\n", s)
 
+static void
+write_cdn_expansion (CdnExpansion      *expansion,
+                     GDataOutputStream *out)
+{
+	gint i;
+
+	for (i = 0; i < cdn_expansion_num (expansion); ++i)
+	{
+		gchar *value_esc;
+
+		if (i != 0)
+		{
+			write_stream (out, ", ");
+		}
+
+		value_esc = g_strescape (cdn_expansion_get (expansion, i), NULL);
+
+		write_stream_format (out,
+		                     "{\"value\": \"%s\", \"index\": %d}",
+		                     value_esc,
+		                     cdn_expansion_get_index (expansion, i));
+
+		g_free (value_esc);
+	}
+}
+
 typedef struct
 {
 	gboolean first;
@@ -480,15 +506,13 @@ typedef struct
 } ForeachInfo;
 
 static void
-foreach_define (gchar const *name,
-                gchar const *value,
-                ForeachInfo *info)
+foreach_define (gchar const        *name,
+                CdnExpansion       *value,
+                ForeachInfo        *info)
 {
 	gchar *name_esc;
-	gchar *value_esc;
 
 	name_esc = g_strescape (name, NULL);
-	value_esc = g_strescape (value, NULL);
 
 	if (!info->first)
 	{
@@ -500,12 +524,14 @@ foreach_define (gchar const *name,
 	}
 
 	write_stream_format (info->out,
-	                     "                {\"key\": \"%s\", \"value\": \"%s\"}",
-	                     name_esc,
-	                     value_esc);
+	                     "                {\"key\": \"%s\", \"value\": [",
+	                     name_esc);
+
+	write_cdn_expansion (value, info->out);
+
+	write_stream (info->out, "]");
 
 	g_free (name_esc);
-	g_free (value_esc);
 }
 
 static void
@@ -583,32 +609,8 @@ write_cdn_selection (CdnSelection      *selection,
 
 	while (expansions)
 	{
-		CdnExpansion *exp;
-		gint i;
-
-		exp = expansions->data;
-
-		write_stream (out, "                [");
-
-		for (i = 0; i < cdn_expansion_num (exp); ++i)
-		{
-			gchar *value_esc;
-
-			if (i != 0)
-			{
-				write_stream (out, ", ");
-			}
-
-			value_esc = g_strescape (cdn_expansion_get (exp, i), NULL);
-
-			write_stream_format (out,
-			                     "{\"value\": \"%s\", \"index\": %d}",
-			                     value_esc,
-			                     cdn_expansion_get_index (exp, i));
-
-			g_free (value_esc);
-		}
-
+		write_stream (out, "                ");
+		write_cdn_expansion (expansions->data, out);
 		write_stream (out, "]");
 
 		if (expansions->next)
