@@ -20,12 +20,13 @@ NOINST_H_FILES = 			\
 	cdn-io-network-enum-types.h
 
 libnetwork_la_SOURCES =			\
+	cdn-io-network-enum-types.c	\
 	cdn-client.c			\
 	cdn-io-network-client.c		\
 	cdn-io-network-server.c		\
 	cdn-network-thread.c		\
-	cdn-io-network-enum-types.c	\
-	cdn-io-network.c
+	cdn-io-network.c		\
+	$(NOINST_H_FILES)
 
 libnetwork_la_LDFLAGS = $(IO_LIBTOOL_FLAGS)
 libnetwork_la_LIBADD = $(CODYN_LIBS) -lm
