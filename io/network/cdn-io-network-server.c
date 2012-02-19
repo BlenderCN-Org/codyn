@@ -12,6 +12,7 @@ struct _CdnIoNetworkServerPrivate
 {
 	GSocket *socket;
 	GSList *clients;
+	GMutex *client_mutex;
 };
 
 static void cdn_io_iface_init (gpointer iface);
@@ -27,14 +28,22 @@ static void
 on_client_closed (CdnIoNetworkServer *server,
                   CdnClient          *client)
 {
-	g_signal_handlers_disconnect_by_func (client,
-	                                      on_client_closed,
-	                                      server);
+	GSList *item;
 
-	server->priv->clients = g_slist_remove (server->priv->clients,
-	                                        client);
+	g_mutex_lock (server->priv->client_mutex);
 
-	g_object_unref (client);
+	item = g_slist_find (server->priv->clients, client);
+
+	if (item)
+	{
+		g_object_unref (client);
+
+		server->priv->clients =
+			g_slist_delete_link (server->priv->clients,
+			                     item);
+	}
+
+	g_mutex_unlock (server->priv->client_mutex);
 }
 
 static gboolean
@@ -51,7 +60,7 @@ on_accept (GSocket            *socket,
 		return FALSE;
 	}
 
-	g_object_get (server, "io-mode", &mode, "throttle", &throttle, NULL);
+	g_object_get (server, "mode", &mode, "throttle", &throttle, NULL);
 
 	while ((cs = g_socket_accept (socket, NULL, NULL)))
 	{
@@ -65,6 +74,8 @@ on_accept (GSocket            *socket,
 
 		g_object_unref (cs);
 
+		g_mutex_lock (server->priv->client_mutex);
+
 		server->priv->clients = g_slist_prepend (server->priv->clients,
 		                                         client);
 
@@ -72,6 +83,10 @@ on_accept (GSocket            *socket,
 		                  "closed",
 		                  G_CALLBACK (on_client_closed),
 		                  server);
+
+		cdn_client_initialize (client);
+
+		g_mutex_unlock (server->priv->client_mutex);
 	}
 
 	return TRUE;
@@ -222,7 +237,7 @@ cdn_io_initialize_impl (CdnIo         *io,
 }
 
 static void
-remove_client (CdnClient *client,
+remove_client (CdnClient          *client,
                CdnIoNetworkServer *server)
 {
 	g_signal_handlers_disconnect_by_func (client,
@@ -236,10 +251,13 @@ remove_client (CdnClient *client,
 static void
 do_finalize (CdnIoNetworkServer *server)
 {
+	g_mutex_lock (server->priv->client_mutex);
+
 	g_slist_foreach (server->priv->clients, (GFunc)remove_client, server);
 	g_slist_free (server->priv->clients);
-
 	server->priv->clients = NULL;
+
+	g_mutex_unlock (server->priv->client_mutex);
 
 	if (server->priv->socket)
 	{
@@ -261,18 +279,45 @@ cdn_io_finalize_impl (CdnIo         *io,
 }
 
 static void
+cdn_io_update_impl (CdnIo         *io,
+                    CdnIntegrator *integrator)
+{
+	CdnIoNetworkServer *server;
+	GSList *clients;
+
+	server = (CdnIoNetworkServer *)io;
+
+	g_mutex_lock (server->priv->client_mutex);
+	clients = g_slist_copy (server->priv->clients);
+	g_mutex_unlock (server->priv->client_mutex);
+
+	while (clients)
+	{
+		cdn_client_update (clients->data);
+		clients = g_slist_delete_link (clients, clients);
+	}
+}
+
+static void
 cdn_io_iface_init (gpointer iface)
 {
 	CdnIoInterface *i = iface;
 
 	i->initialize = cdn_io_initialize_impl;
 	i->finalize = cdn_io_finalize_impl;
+	i->update = cdn_io_update_impl;
 }
 
 static void
 cdn_io_network_server_finalize (GObject *object)
 {
-	do_finalize (CDN_IO_NETWORK_SERVER (object));
+	CdnIoNetworkServer *server;
+
+	server = CDN_IO_NETWORK_SERVER (object);
+
+	do_finalize (server);
+
+	g_mutex_free (server->priv->client_mutex);
 
 	G_OBJECT_CLASS (cdn_io_network_server_parent_class)->finalize (object);
 }
@@ -297,6 +342,8 @@ static void
 cdn_io_network_server_init (CdnIoNetworkServer *self)
 {
 	self->priv = CDN_IO_NETWORK_SERVER_GET_PRIVATE (self);
+
+	self->priv->client_mutex = g_mutex_new ();
 }
 
 void
