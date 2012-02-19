@@ -312,26 +312,36 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
                                  GError       **error)
 {
 	CdnOperatorDelayed *delayed;
+	CdnOperatorClass *cls;
+	guint llen = 0;
 
-	if (!CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class)->initialize (op,
-	                                                                         expressions,
-	                                                                         num_expressions,
-	                                                                         indices,
-	                                                                         num_indices,
-	                                                                         num_arguments,
-	                                                                         argdim,
-	                                                                         error))
+	cls = CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class);
+
+	if (!cls->initialize (op,
+	                      expressions,
+	                      num_expressions,
+	                      indices,
+	                      num_indices,
+	                      num_arguments,
+	                      argdim,
+	                      error))
 	{
 		return FALSE;
 	}
 
-	if (num_expressions != 1 || (num_expressions > 0 && g_slist_length ((GSList *)expressions[0]) > 2))
+	if (num_expressions > 0)
+	{
+		llen = g_slist_length ((GSList *)expressions[0]);
+	}
+
+	if (num_expressions != 1 || llen > 2)
 	{
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
-		             "The operator `delayed' expects one or two expressions, but got %d",
-		             num_expressions ? g_slist_length ((GSList *)expressions[0]) : 0);
+		             "The operator `delayed' expects one or two "
+		             "expressions, but got %d",
+		             llen);
 
 		return FALSE;
 	}
@@ -341,7 +351,8 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
-		             "The operator `delayed' expects exactly one argument (time delay), but got %d",
+		             "The operator `delayed' expects exactly one "
+		             "argument (time delay), but got %d",
 		             num_arguments);
 
 		return FALSE;
@@ -352,7 +363,8 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
-		             "The operator `delayed' currently on supports 1-by-1 time delay (got %d-by-%d)",
+		             "The operator `delayed' currently on supports "
+		             "1-by-1 time delay (got %d-by-%d)",
 		             argdim[0],
 		             argdim[1]);
 
@@ -371,7 +383,8 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 		gint numr;
 		gint numc;
 
-		delayed->priv->initial_value = g_object_ref_sink (expressions[0]->next->data);
+		delayed->priv->initial_value =
+			g_object_ref_sink (expressions[0]->next->data);
 
 		cdn_expression_get_dimension (delayed->priv->initial_value,
 		                              &numr,
@@ -383,7 +396,9 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 			g_set_error (error,
 			             CDN_NETWORK_LOAD_ERROR,
 			             CDN_NETWORK_LOAD_ERROR_OPERATOR,
-			             "The dimensions of the expression (%d-by-%d) and the initial value (%d-by-%d) must be the same",
+			             "The dimensions of the expression "
+			             "(%d-by-%d) and the initial value "
+			             "(%d-by-%d) must be the same",
 			             delayed->priv->push_dims[0],
 			             delayed->priv->push_dims[1],
 			             numr,
@@ -475,7 +490,8 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 		{
 			cdn_stack_pushni (stack,
 			                  0,
-			                  d->priv->push_dims[0] * d->priv->push_dims[1]);
+			                  d->priv->push_dims[0] *
+			                  d->priv->push_dims[1]);
 		}
 
 		return;
@@ -500,10 +516,11 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 			}
 			else
 			{
-				g_warning ("Needed history in the future, which I don't have...");
+				g_warning ("Needed history in the future, "
+				           "which I don't have...");
 
-				// Note that this will not really be the right results
-				// but at least it doesn't crash
+				// Note that this will not really be the right
+				// results but at least it doesn't crash
 				evaluate_on_stack (d,
 				                   td,
 				                   d->priv->expression,
@@ -528,9 +545,12 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 			factor = (td - h->t) / (h->next->t - h->t);
 		}
 
-		for (i = 0; i < d->priv->push_dims[0] * d->priv->push_dims[1]; ++i)
+		for (i = 0; i < d->priv->push_dims[0] *
+		                d->priv->push_dims[1]; ++i)
 		{
-			cdn_stack_push (stack, h->v[i] + factor * (h->next->v[i] - h->v[i]));
+			cdn_stack_push (stack,
+			                h->v[i] +
+			                factor * (h->next->v[i] - h->v[i]));
 		}
 	}
 }
@@ -712,10 +732,12 @@ cdn_operator_delayed_get_stack_manipulation (CdnOperator *op)
 {
 	CdnStackManipulation const *par;
 	CdnOperatorDelayed *d;
+	CdnOperatorClass *cls;
 
 	d = (CdnOperatorDelayed *)op;
+	cls = CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class);
 
-	par = CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class)->get_stack_manipulation (op);
+	par = cls->get_stack_manipulation (op);
 
 	d->priv->smanip.pop_dims = par->pop_dims;
 	d->priv->smanip.num_pop = par->num_pop;
