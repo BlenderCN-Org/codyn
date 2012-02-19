@@ -65,6 +65,27 @@ cdn_string_to_value (gchar const  *s,
 
 		return TRUE;
 	}
+	else if (type == G_TYPE_DOUBLE)
+	{
+		gdouble ret;
+		gchar *r;
+
+		ret = g_ascii_strtod (s, &r);
+
+		if (!r || *r)
+		{
+			g_set_error (error,
+			             CDN_NETWORK_LOAD_ERROR,
+			             CDN_NETWORK_LOAD_ERROR_SYNTAX,
+			             "Failed to convert `%s' to double",
+			             s);
+
+			return FALSE;
+		}
+
+		g_value_set_double (value, ret);
+		return TRUE;
+	}
 
 	if (!g_value_type_transformable (G_TYPE_STRING, type))
 	{
