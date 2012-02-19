@@ -106,8 +106,12 @@ struct _CdnClientPrivate
 	GTimer *throttle_timer;
 	GString *outbuf;
 	GOutputStream *boutbuf;
+
 	gint *input_map;
 	gint num_input_map;
+
+	gint *output_map;
+	gint num_output_map;
 
 	CdnCompileContext *cctx;
 
@@ -185,6 +189,7 @@ cdn_client_finalize (GObject *object)
 	}
 
 	g_free (self->priv->input_map);
+	g_free (self->priv->output_map);
 
 	G_OBJECT_CLASS (cdn_client_parent_class)->finalize (object);
 }
@@ -869,14 +874,15 @@ ascii_read_value_matrix (CdnClient  *client,
 }
 
 static gint
-lookup_index_map (CdnClient *client,
+lookup_index_map (gint      *map,
+                  gint       num_map,
                   gint       idx)
 {
-	if (client->priv->input_map)
+	if (map)
 	{
-		if (idx < client->priv->num_input_map)
+		if (idx < num_map)
 		{
-			return client->priv->input_map[idx];
+			return map[idx];
 		}
 		else
 		{
@@ -932,7 +938,9 @@ process_set_ascii (CdnClient *client,
 		{
 			ret = TRUE;
 
-			idx = lookup_index_map (client, idx);
+			idx = lookup_index_map (client->priv->input_map,
+			                        client->priv->num_input_map,
+			                        idx);
 
 			// This is an index
 			if (idx < client->priv->in_variables->len)
@@ -1451,6 +1459,8 @@ recv_datagram (CdnClient *client)
 			cdn_network_thread_unregister (cdn_network_thread_get_default (),
 			                               client->priv->socket);
 
+			g_signal_emit (client, signals[CLOSED], 0);
+
 			return FALSE;
 		}
 	}
@@ -1689,7 +1699,7 @@ send_out_limit_ascii (CdnClient *client,
 	gchar numbuf[G_ASCII_DTOSTR_BUF_SIZE];
 	guint lastlen = 0;
 
-	g_string_append (client->priv->outbuf, "s");
+	g_string_append (client->priv->outbuf, "s ");
 
 	for (i = 0; i < client->priv->out_variables->len; ++i)
 	{
@@ -1697,6 +1707,16 @@ send_out_limit_ascii (CdnClient *client,
 		gdouble const *vals;
 		gint numr;
 		gint numc;
+		gint mapped;
+
+		mapped = lookup_index_map (client->priv->output_map,
+		                           client->priv->num_output_map,
+		                           i);
+
+		if (mapped == -1)
+		{
+			continue;
+		}
 
 		if (limit > 0 && client->priv->outbuf->len >= limit)
 		{
@@ -1707,12 +1727,16 @@ send_out_limit_ascii (CdnClient *client,
 			                  NULL,
 			                  NULL);
 
-			g_string_erase (client->priv->outbuf, 1, lastlen - 1);
+			g_string_erase (client->priv->outbuf, 2, lastlen - 1);
 
 			if (client->priv->outbuf->len > limit)
 			{
-				g_string_truncate (client->priv->outbuf, 1);
+				g_string_truncate (client->priv->outbuf, 2);
 			}
+		}
+		else if (lastlen > 2)
+		{
+			client->priv->outbuf->str[lastlen - 1] = ' ';
 		}
 
 		lastlen = client->priv->outbuf->len;
@@ -1720,7 +1744,7 @@ send_out_limit_ascii (CdnClient *client,
 		v = g_ptr_array_index (client->priv->out_variables, i);
 
 		g_string_append_printf (client->priv->outbuf,
-		                        " %u ", i);
+		                        "%u ", i);
 
 		vals = cdn_variable_get_values (v, &numr, &numc);
 
@@ -1766,6 +1790,14 @@ send_out_limit_ascii (CdnClient *client,
 
 			g_string_append_c (client->priv->outbuf, ']');
 		}
+
+		g_string_append_c (client->priv->outbuf, '\n');
+	}
+
+	if (client->priv->outbuf->len == 2)
+	{
+		g_string_truncate (client->priv->outbuf, 0);
+		return;
 	}
 
 	if (limit > 0 && client->priv->outbuf->len >= limit)
@@ -1777,12 +1809,16 @@ send_out_limit_ascii (CdnClient *client,
 		                  NULL,
 		                  NULL);
 
-		g_string_erase (client->priv->outbuf, 1, lastlen - 1);
+		g_string_erase (client->priv->outbuf, 2, lastlen - 1);
 
 		if (client->priv->outbuf->len > limit)
 		{
 			g_string_truncate (client->priv->outbuf, 0);
 		}
+	}
+	else if (lastlen > 2)
+	{
+		client->priv->outbuf->str[lastlen - 1] = ' ';
 	}
 
 	if (client->priv->outbuf->len > 0)
@@ -2029,7 +2065,7 @@ send_header_ascii (CdnClient *client,
 {
 	gint i;
 
-	g_string_append (client->priv->outbuf, "i");
+	g_string_append_c (client->priv->outbuf, head);
 
 	for (i = 0; i < vars->len; ++i)
 	{
@@ -2040,6 +2076,8 @@ send_header_ascii (CdnClient *client,
 		g_string_append_c (client->priv->outbuf, ' ');
 		g_string_append (client->priv->outbuf, cdn_variable_get_name (v));
 	}
+
+	g_string_append_c (client->priv->outbuf, '\n');
 
 	g_socket_send_to (client->priv->socket,
 	                  client->priv->address,
@@ -2074,13 +2112,13 @@ send_output_header (CdnClient *client)
 	if (client->priv->binary_mode)
 	{
 		send_header_binary (client,
-		                    client->priv->in_variables,
+		                    client->priv->out_variables,
 		                    'o');
 	}
 	else
 	{
 		send_header_ascii (client,
-		                   client->priv->in_variables,
+		                   client->priv->out_variables,
 		                   'o');
 	}
 }
@@ -2122,39 +2160,59 @@ find_in_array (gchar const *name,
 }
 
 static void
-update_header (CdnClient     *client,
-               MessageHeader *message)
+update_header_real (CdnClient      *client,
+                    MessageHeader  *message,
+                    GPtrArray      *vars,
+                    gint          **map,
+                    gint           *num_map)
 {
 	GSList *item;
 	gint i = 0;
 
-	// header negotation, setup input index map for output header
-	if (message->direction != HEADER_DIRECTION_OUT)
-	{
-		return;
-	}
+	g_free (*map);
 
-	g_free (client->priv->input_map);
-	client->priv->input_map = NULL;
-	client->priv->num_input_map = 0;
+	*map = NULL;
+	*num_map = 0;
 
 	if (!message->variables)
 	{
 		return;
 	}
 
-	client->priv->num_input_map = g_slist_length (message->variables);
-	client->priv->input_map = g_new0 (gint, client->priv->num_input_map);
+	*num_map = g_slist_length (message->variables);
+	*map = g_new0 (gint, *num_map);
 
 	for (item = message->variables; item; item = g_slist_next (item))
 	{
 		HeaderVariable *v = item->data;
 		gint idx;
 
-		idx = find_in_array (v->name, client->priv->in_variables);
+		idx = find_in_array (v->name, vars);
 
-		client->priv->input_map[i] = idx;
+		*map[i] = idx;
 		++i;
+	}
+}
+
+static void
+update_header (CdnClient     *client,
+               MessageHeader *header)
+{
+	if (header->direction == HEADER_DIRECTION_IN)
+	{
+		update_header_real (client,
+		                    header,
+		                    client->priv->out_variables,
+		                    &client->priv->output_map,
+		                    &client->priv->num_output_map);
+	}
+	else
+	{
+		update_header_real (client,
+		                    header,
+		                    client->priv->in_variables,
+		                    &client->priv->input_map,
+		                    &client->priv->num_input_map);
 	}
 }
 
