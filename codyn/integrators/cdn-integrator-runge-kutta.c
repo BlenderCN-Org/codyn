@@ -227,7 +227,10 @@ cdn_integrator_runge_kutta_step_impl (CdnIntegrator *integrator,
                                       gdouble        t,
                                       gdouble        timestep)
 {
-	CdnIntegratorRungeKutta *rk = CDN_INTEGRATOR_RUNGE_KUTTA (integrator);
+	CdnIntegratorRungeKutta *rk;
+	CdnIntegratorClass *cls;
+
+	rk = CDN_INTEGRATOR_RUNGE_KUTTA (integrator);
 
 	if (!cdn_integrator_step_prepare (integrator, t, timestep))
 	{
@@ -256,10 +259,10 @@ cdn_integrator_runge_kutta_step_impl (CdnIntegrator *integrator,
 	/* This last call will also transfer the new state */
 	store_coefficients (rk, integrated, 4, timestep);
 
+	cls = CDN_INTEGRATOR_CLASS (cdn_integrator_runge_kutta_parent_class);
+
 	/* Chain up to emit 'step' */
-	return CDN_INTEGRATOR_CLASS (cdn_integrator_runge_kutta_parent_class)->step (integrator,
-	                                                                             t,
-	                                                                             timestep);
+	return cls->step (integrator, t, timestep);
 }
 
 static gchar const *

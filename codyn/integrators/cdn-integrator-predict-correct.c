@@ -384,8 +384,12 @@ cdn_integrator_predict_correct_step_impl (CdnIntegrator *integrator,
                                           gdouble        t,
                                           gdouble        timestep)
 {
-	CdnIntegratorPredictCorrect *pc = CDN_INTEGRATOR_PREDICT_CORRECT (integrator);
-	CdnIntegratorState *state = cdn_integrator_get_state (integrator);
+	CdnIntegratorPredictCorrect *pc;
+	CdnIntegratorState *state;
+	CdnIntegratorClass *cls;
+
+	pc = CDN_INTEGRATOR_PREDICT_CORRECT (integrator);
+	state = cdn_integrator_get_state (integrator);
 
 	if (!cdn_integrator_step_prepare (integrator, t, timestep))
 	{
@@ -416,10 +420,10 @@ cdn_integrator_predict_correct_step_impl (CdnIntegrator *integrator,
 
 	++pc->priv->step_index;
 
+	cls = CDN_INTEGRATOR_CLASS (cdn_integrator_predict_correct_parent_class);
+
 	/* Chain up to emit 'step' */
-	return CDN_INTEGRATOR_CLASS (cdn_integrator_predict_correct_parent_class)->step (integrator,
-	                                                                                 t,
-	                                                                                 timestep);
+	return cls->step (integrator, t, timestep);
 }
 
 static gchar const *

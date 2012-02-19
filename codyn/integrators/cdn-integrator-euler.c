@@ -66,6 +66,8 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
                                 gdouble        t,
                                 gdouble        timestep)
 {
+	CdnIntegratorClass *cls;
+
 	if (!cdn_integrator_step_prepare (integrator, t, timestep))
 	{
 		return 0;
@@ -97,10 +99,10 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
 		integrated = g_slist_next (integrated);
 	}
 
+	cls = CDN_INTEGRATOR_CLASS (cdn_integrator_euler_parent_class);
+
 	/* Chain up to emit 'step' */
-	return CDN_INTEGRATOR_CLASS (cdn_integrator_euler_parent_class)->step (integrator,
-	                                                                       t,
-	                                                                       timestep);
+	return cls->step (integrator, t, timestep);
 }
 
 static gchar const *

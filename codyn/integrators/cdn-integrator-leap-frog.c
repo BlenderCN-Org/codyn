@@ -136,6 +136,7 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 	CdnIntegratorLeapFrog *self;
 	CdnIntegratorState *state;
 	GSList *item;
+	CdnIntegratorClass *cls;
 
 	if (!cdn_integrator_step_prepare (integrator, t, timestep))
 	{
@@ -182,9 +183,9 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 	}
 
 	/* Chain up to emit 'step' */
-	return CDN_INTEGRATOR_CLASS (cdn_integrator_leap_frog_parent_class)->step (integrator,
-	                                                                           t,
-	                                                                           timestep);
+	cls = CDN_INTEGRATOR_CLASS (cdn_integrator_leap_frog_parent_class);
+
+	return cls->step (integrator, t, timestep);
 }
 
 static void
@@ -242,8 +243,11 @@ find_integrated (CdnIntegratorLeapFrog *self)
 		integrated = g_slist_next (integrated);
 	}
 
-	self->priv->second_order_properties = g_slist_reverse (self->priv->second_order_properties);
-	self->priv->first_order_properties = g_slist_reverse (self->priv->first_order_properties);
+	self->priv->second_order_properties =
+		g_slist_reverse (self->priv->second_order_properties);
+
+	self->priv->first_order_properties =
+		g_slist_reverse (self->priv->first_order_properties);
 }
 
 static void
