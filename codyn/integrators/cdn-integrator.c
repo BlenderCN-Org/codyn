@@ -52,7 +52,8 @@ enum
 	PROP_OBJECT,
 	PROP_TIME,
 	PROP_STATE,
-	PROP_INITIAL_PHASE
+	PROP_INITIAL_PHASE,
+	PROP_REAL_TIME
 };
 
 /* Signals */
@@ -63,6 +64,29 @@ enum
 	END,
 	NUM_SIGNALS
 };
+
+struct _CdnIntegratorPrivate
+{
+	CdnObject *object;
+
+	CdnVariable *property_time;
+	CdnVariable *property_timestep;
+
+	CdnIntegratorState *state;
+	GSList *saved_state;
+
+	gchar *initial_phase;
+	GTimer *step_timer;
+	gdouble real_time;
+	gdouble rt_correction;
+
+	guint event_handled : 1;
+	guint terminate : 1;
+};
+
+static guint integrator_signals[NUM_SIGNALS] = {0,};
+
+G_DEFINE_TYPE (CdnIntegrator, cdn_integrator, CDN_TYPE_OBJECT)
 
 typedef struct
 {
@@ -90,26 +114,6 @@ saved_state_free (SavedState *self)
 	g_slice_free (SavedState, self);
 }
 
-struct _CdnIntegratorPrivate
-{
-	CdnObject *object;
-
-	CdnVariable *property_time;
-	CdnVariable *property_timestep;
-
-	CdnIntegratorState *state;
-	GSList *saved_state;
-
-	gchar *initial_phase;
-
-	guint event_handled : 1;
-	guint terminate : 1;
-};
-
-static guint integrator_signals[NUM_SIGNALS] = {0,};
-
-G_DEFINE_TYPE (CdnIntegrator, cdn_integrator, CDN_TYPE_OBJECT)
-
 static void
 cdn_integrator_finalize (GObject *object)
 {
@@ -125,6 +129,8 @@ cdn_integrator_finalize (GObject *object)
 	g_slist_free (self->priv->saved_state);
 
 	g_free (self->priv->initial_phase);
+
+	g_timer_destroy (self->priv->step_timer);
 
 	G_OBJECT_CLASS (cdn_integrator_parent_class)->finalize (object);
 }
@@ -205,6 +211,9 @@ cdn_integrator_set_property (GObject      *object,
 			g_free (self->priv->initial_phase);
 			self->priv->initial_phase = g_value_dup_string (value);
 		break;
+		case PROP_REAL_TIME:
+			self->priv->real_time = g_value_get_double (value);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -233,6 +242,9 @@ cdn_integrator_get_property (GObject    *object,
 		case PROP_INITIAL_PHASE:
 			g_value_set_string (value, self->priv->initial_phase);
 		break;
+		case PROP_REAL_TIME:
+			g_value_set_double (value, self->priv->real_time);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -472,6 +484,8 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
                           gdouble        t,
                           gdouble        timestep)
 {
+	gdouble elapsed;
+
 	if (handle_events (integrator, t, &timestep))
 	{
 		integrator->priv->event_handled = TRUE;
@@ -485,6 +499,27 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 	               0,
 	               t + timestep,
 	               timestep);
+
+	elapsed = g_timer_elapsed (integrator->priv->step_timer, NULL);
+
+	if (integrator->priv->real_time > 0 &&
+	    timestep > elapsed * integrator->priv->real_time)
+	{
+		gdouble s = (timestep - elapsed) / integrator->priv->real_time +
+		            integrator->priv->rt_correction;
+		gulong ms = (gulong)(G_USEC_PER_SEC * s);
+		gdouble slept;
+
+		if (s > 0)
+		{
+			g_usleep (ms);
+		}
+
+		slept = g_timer_elapsed (integrator->priv->step_timer, NULL);
+		integrator->priv->rt_correction = s - slept;
+	}
+
+	g_timer_reset (integrator->priv->step_timer);
 
 	integrator->priv->event_handled = FALSE;
 	return timestep;
@@ -709,6 +744,16 @@ cdn_integrator_class_init (CdnIntegratorClass *klass)
 	                                                      "Initial phase",
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_REAL_TIME,
+	                                 g_param_spec_double ("real-time",
+	                                                      "Real Time",
+	                                                      "Real time",
+	                                                      0,
+	                                                      G_MAXDOUBLE,
+	                                                      0,
+	                                                      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS | G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -719,12 +764,16 @@ cdn_integrator_init (CdnIntegrator *self)
 	self->priv->property_time = cdn_variable_new ("t",
 	                                              cdn_expression_new0(),
 	                                              CDN_VARIABLE_FLAG_INOUT);
+
 	cdn_object_add_variable (CDN_OBJECT (self), self->priv->property_time, NULL);
 
 	self->priv->property_timestep = cdn_variable_new ("dt",
 	                                                  cdn_expression_new0(),
 	                                                  CDN_VARIABLE_FLAG_INOUT);
+
 	cdn_object_add_variable (CDN_OBJECT (self), self->priv->property_timestep, NULL);
+
+	self->priv->step_timer = g_timer_new ();
 }
 
 static void
@@ -925,6 +974,8 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 
 	cdn_integrator_state_set_phase (integrator->priv->state,
 	                                integrator->priv->initial_phase);
+
+	g_timer_reset (integrator->priv->step_timer);
 
 	g_signal_emit (integrator,
 	               integrator_signals[BEGIN],
@@ -1161,4 +1212,45 @@ cdn_integrator_set_state (CdnIntegrator      *integrator,
 	g_return_if_fail (CDN_IS_INTEGRATOR_STATE (state));
 
 	set_state (integrator, state);
+}
+
+/**
+ * cdn_integrator_set_real_time:
+ * @integrator: a #CdnIntegrator.
+ * @real_time: real time value.
+ *
+ * Set how many times real time the integrator is trying to integrate the
+ * network. Set @real_time to 0 to integrate the network as fast as possible.
+ * Otherwise, the integrator will integrate at @real_time real time, using
+ * sleep to pause the integration if needed. Note that this can only make your
+ * network integrate slower, not faster.
+ *
+ **/
+void
+cdn_integrator_set_real_time (CdnIntegrator *integrator,
+                              gdouble        real_time)
+{
+	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+	g_return_if_fail (real_time >= 0);
+
+	integrator->priv->real_time = real_time;
+}
+
+/**
+ * cdn_integrator_get_real_time:
+ * @integrator: a #CdnIntegrator.
+ *
+ * Get how many times real time the integrator is trying to integrate the
+ * network. The special value 0 means that the integrator will integrate as
+ * fast as possible.
+ *
+ * Returns: the real-time.
+ *
+ **/
+gdouble
+cdn_integrator_get_real_time (CdnIntegrator *integrator)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), 0);
+
+	return integrator->priv->real_time;
 }

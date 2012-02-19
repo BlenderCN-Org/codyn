@@ -125,7 +125,12 @@ gdouble              cdn_integrator_get_time        (CdnIntegrator *integrator);
 void                 cdn_integrator_set_time        (CdnIntegrator *integrator,
                                                      gdouble        t);
 
-CdnObject           *cdn_integrator_get_object        (CdnIntegrator *integrator);
+CdnObject           *cdn_integrator_get_object      (CdnIntegrator *integrator);
+
+void                 cdn_integrator_set_real_time   (CdnIntegrator *integrator,
+                                                     gdouble        real_time);
+
+gdouble              cdn_integrator_get_real_time   (CdnIntegrator *integrator);
 
 G_END_DECLS
 
