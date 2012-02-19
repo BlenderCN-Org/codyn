@@ -468,9 +468,9 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 
 	td = t - delay;
 
-	if (d->priv->first_last_t || t < d->priv->last_t)
+	if (d->priv->first_last_t || td < d->priv->last_t)
 	{
-		d->priv->last_t = t;
+		d->priv->last_t = td;
 		d->priv->first_last_t = FALSE;
 	}
 
