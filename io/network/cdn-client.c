@@ -1034,11 +1034,6 @@ process_set_ascii (CdnClient *client,
 
 		g_free (expression);
 		g_free (selector);
-
-		if (v)
-		{
-			g_object_unref (v);
-		}
 	}
 
 	return ret;
