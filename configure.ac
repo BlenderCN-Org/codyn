@@ -98,6 +98,12 @@ PKG_CHECK_MODULES(CODYN, [
 	gio-unix-2.0
 ])
 
+PKG_CHECK_MODULES(GLIB26, [
+	glib-2.0 >= 2.26
+],[have_networking=yes], [have_networking=no])
+
+AM_CONDITIONAL(ENABLE_NETWORKING, test "x$have_networking" = "xyes")
+
 CODYN_LIBS="${CODYN_LIBS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
@@ -261,5 +267,6 @@ Configuration:
 	Documentation enabled:  $enable_doc
 	gedit plugin:           $enable_gedit
 	cdn-archive:            $have_tar
+	network support:        $have_networking
 "
 
