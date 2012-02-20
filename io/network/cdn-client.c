@@ -572,7 +572,7 @@ ascii_read_selector (CdnClient  *client,
 	{
 		inesc = TRUE;
 		ptr = g_utf8_next_char (ptr);
-		*start = client->priv->bytes - ptr;
+		*start = ptr - client->priv->bytes;
 	}
 
 	while (*start < client->priv->offset)
@@ -628,7 +628,7 @@ ascii_read_value_expression (CdnClient  *client,
 
 	ret = g_string_sized_new (128);
 	ptr = g_utf8_next_char (client->priv->bytes + *start);
-	*start = client->priv->bytes - ptr;
+	*start = ptr - client->priv->bytes;
 
 	while (*start < client->priv->offset)
 	{
@@ -656,7 +656,7 @@ ascii_read_value_expression (CdnClient  *client,
 		}
 	}
 
-	if (endedesc)
+	if (!endedesc)
 	{
 		g_string_free (ret, TRUE);
 		return FALSE;
@@ -669,7 +669,8 @@ ascii_read_value_expression (CdnClient  *client,
 static gboolean
 ascii_read_value (CdnClient  *client,
                   gssize     *start,
-                  gdouble    *value)
+                  gdouble    *value,
+                  gboolean   (*sep_func)(gunichar))
 {
 	gboolean hasdot = FALSE;
 	gboolean hase = FALSE;
@@ -680,6 +681,11 @@ ascii_read_value (CdnClient  *client,
 	if (*start >= client->priv->offset)
 	{
 		return FALSE;
+	}
+
+	if (!sep_func)
+	{
+		sep_func = is_space;
 	}
 
 	ptr = client->priv->bytes + *start;
@@ -714,7 +720,7 @@ ascii_read_value (CdnClient  *client,
 	{
 		c = g_utf8_get_char (client->priv->bytes + *start);
 
-		if (!c || is_space (c) || c == '\n')
+		if (!c || sep_func (c) || c == '\n')
 		{
 			break;
 		}
@@ -783,6 +789,12 @@ is_row_sep (gunichar c)
 }
 
 static gboolean
+is_row_value_end (gunichar c)
+{
+	return is_row_sep (c) || c == ';' || c == ']';
+}
+
+static gboolean
 ascii_read_value_row (CdnClient *client,
                       gssize    *start,
                       GArray    *value,
@@ -790,16 +802,15 @@ ascii_read_value_row (CdnClient *client,
                       gint      *numc)
 {
 	gint n = 0;
+	gboolean skipped;
+	gboolean first = TRUE;
 
 	while (*start < client->priv->offset)
 	{
 		gunichar c;
 		gdouble v;
 
-		if (!ascii_skip_while (client, start, is_row_sep))
-		{
-			return FALSE;
-		}
+		skipped = ascii_skip_while (client, start, is_row_sep);
 
 		c = g_utf8_get_char (client->priv->bytes + *start);
 
@@ -819,7 +830,14 @@ ascii_read_value_row (CdnClient *client,
 			}
 		}
 
-		if (!ascii_read_value (client, start, &v))
+		if (!skipped && !first)
+		{
+			return FALSE;
+		}
+
+		first = FALSE;
+
+		if (!ascii_read_value (client, start, &v, is_row_value_end))
 		{
 			return FALSE;
 		}
@@ -851,7 +869,7 @@ ascii_read_value_matrix (CdnClient  *client,
 	ret = g_array_sized_new (FALSE, TRUE, sizeof (gdouble), 20);
 
 	ptr = g_utf8_next_char (client->priv->bytes + *start);
-	*start = client->priv->bytes - ptr;
+	*start = ptr - client->priv->bytes;
 
 	*numr = 0;
 	*numc = 0;
@@ -871,7 +889,7 @@ ascii_read_value_matrix (CdnClient  *client,
 		if (c == ';' || c == ']')
 		{
 			ptr = g_utf8_next_char (client->priv->bytes + *start);
-			*start = client->priv->bytes - ptr;
+			*start = ptr - client->priv->bytes;
 
 			if (c == ']')
 			{
@@ -941,7 +959,6 @@ process_set_ascii (CdnClient *client,
 
 		if (!ascii_skip_spaces (client, &s) && !simple_mode)
 		{
-			g_warning ("Failed to skip");
 			ret = FALSE;
 			break;
 		}
@@ -998,6 +1015,13 @@ process_set_ascii (CdnClient *client,
 			{
 				ret = FALSE;
 			}
+
+			if (!ascii_skip_spaces (client, &s) && !simple_mode)
+			{
+				g_warning ("Failed to skip");
+				ret = FALSE;
+				break;
+			}
 		}
 
 		if (!ret)
@@ -1009,7 +1033,7 @@ process_set_ascii (CdnClient *client,
 		// Read the value
 		if (!ascii_read_value_expression (client, &s, &expression) &&
 		    !ascii_read_value_matrix (client, &s, &value, &numr, &numc) &&
-		    !ascii_read_value (client, &s, &singleval))
+		    !ascii_read_value (client, &s, &singleval, 0))
 		{
 			g_free (selector);
 			break;
