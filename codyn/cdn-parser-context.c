@@ -2292,7 +2292,19 @@ parse_object_single_id (CdnParserContext *context,
                         GSList           *temps,
                         CdnSelection     *parent,
                         GType             gtype,
-                        gboolean          allow_create)
+                        gboolean          allow_create,
+                        gchar const      *firstprop,
+                        ...) G_GNUC_NULL_TERMINATED;
+
+static CdnSelection *
+parse_object_single_id (CdnParserContext *context,
+                        CdnExpansion     *id,
+                        GSList           *temps,
+                        CdnSelection     *parent,
+                        GType             gtype,
+                        gboolean          allow_create,
+                        gchar const      *firstprop,
+                        ...)
 {
 	GSList *templates;
 	CdnSelection *sel = NULL;
@@ -2324,7 +2336,7 @@ parse_object_single_id (CdnParserContext *context,
 	if (id)
 	{
 		child = cdn_node_get_child (parent_group,
-		                             cdn_expansion_get (id, 0));
+		                            cdn_expansion_get (id, 0));
 	}
 	else
 	{
@@ -2333,6 +2345,8 @@ parse_object_single_id (CdnParserContext *context,
 
 	if (!child)
 	{
+		va_list ap;
+
 		if (!allow_create)
 		{
 			sel = NULL;
@@ -2340,7 +2354,9 @@ parse_object_single_id (CdnParserContext *context,
 		}
 
 		/* Just construct a new object with the right type */
-		child = g_object_new (gtype, "id", cdn_expansion_get (id, 0), NULL);
+		va_start (ap, firstprop);
+		child = CDN_OBJECT (g_object_new_valist (gtype, firstprop, ap));
+		va_end (ap);
 
 		if (!cdn_node_add (parent_group,
 		                    child,
@@ -2421,7 +2437,10 @@ parse_object_single (CdnParserContext  *context,
 		                              templates,
 		                              parent,
 		                              gtype,
-		                              allow_create);
+		                              allow_create,
+		                              "id",
+		                              NULL,
+		                              NULL);
 
 		if (sel)
 		{
@@ -2445,7 +2464,10 @@ parse_object_single (CdnParserContext  *context,
 		                              templates,
 		                              parent,
 		                              gtype,
-		                              allow_create);
+		                              allow_create,
+		                              "id",
+		                              cdn_expansion_get (ids->data, 0),
+		                              NULL);
 
 		cdn_embedded_context_restore (context->priv->embedded);
 
@@ -3279,7 +3301,10 @@ create_edges_single (CdnParserContext          *context,
 		                              templates,
 		                              parent,
 		                              CDN_TYPE_EDGE,
-		                              TRUE);
+		                              TRUE,
+		                              "id",
+		                              cdn_expansion_get (realid, 0),
+		                              NULL);
 
 		cdn_embedded_context_restore (context->priv->embedded);
 
@@ -6230,7 +6255,10 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		                              templates,
 		                              parents->data,
 		                              CDN_TYPE_EVENT,
-		                              TRUE);
+		                              TRUE,
+		                              "id",
+		                              cdn_expansion_get (ex, 0),
+		                              NULL);
 
 		ret = g_slist_prepend (ret, sel);
 
@@ -6426,7 +6454,12 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 			                                 NULL,
 			                                 sel,
 			                                 tp,
-			                                 TRUE);
+			                                 TRUE,
+			                                 "id",
+			                                 cdn_expansion_get (pair->name, 0),
+			                                 "mode",
+			                                 mode,
+			                                 NULL);
 
 			if (!newsel)
 			{
@@ -6437,11 +6470,6 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 				g_slist_free (ret);
 				return;
 			}
-
-			g_object_set (cdn_selection_get_object (newsel),
-			              "mode",
-			              mode,
-			              NULL);
 
 			ret = g_slist_prepend (ret, newsel);
 
