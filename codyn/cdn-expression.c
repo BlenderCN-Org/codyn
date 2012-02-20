@@ -4377,3 +4377,19 @@ cdn_expression_get_cache (CdnExpression *expression,
 	return NULL;
 }
 
+/**
+ * cdn_expression_get_stack_size:
+ * @expression: a #CdnExpression.
+ *
+ * Get the size of the stack needed to evaluate the expression.
+ *
+ * Returns: the required stack size to evaluate @expression.
+ *
+ **/
+guint
+cdn_expression_get_stack_size (CdnExpression *expression)
+{
+	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), 0);
+
+	return cdn_stack_size (&expression->priv->output);
+}

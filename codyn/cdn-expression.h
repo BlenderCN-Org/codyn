@@ -145,6 +145,8 @@ void           cdn_expression_set_evaluate_notify (CdnExpression            *exp
                                                    gpointer                  userdata,
                                                    GDestroyNotify            destroy_notify);
 
+guint          cdn_expression_get_stack_size   (CdnExpression       *expression);
+
 G_END_DECLS
 
 #endif /* __CDN_EXPRESSION_H__ */
