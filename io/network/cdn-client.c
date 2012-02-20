@@ -1963,6 +1963,17 @@ send_header (CdnClient *client,
 }
 
 static void
+send_binary_header (CdnClient *client)
+{
+	g_socket_send_to (client->priv->socket,
+	                  client->priv->address,
+	                  "b\n",
+	                  2,
+	                  NULL,
+	                  NULL);
+}
+
+static void
 send_input_header (CdnClient *client)
 {
 	send_header (client,
@@ -1988,6 +1999,7 @@ cdn_client_initialize (CdnClient *client)
 
 	send_input_header (client);
 	send_output_header (client);
+	send_binary_header (client);
 }
 
 static gint
