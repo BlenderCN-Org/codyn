@@ -180,6 +180,34 @@ AC_SUBST(CDN_ARCHIVE_LIBS)
 AC_SUBST(LAPACK_LIBS)
 AC_SUBST(LAPACK_CFLAGS)
 
+dnl Check for wii
+AC_ARG_ENABLE([wii],
+              AS_HELP_STRING([--enable-wii=auto/yes/no],[Enable wii support (default: auto)]),
+              [enable_wii=$enableval],
+              [enable_wii=auto])
+
+if test "x$enable_wii" != "xno"; then
+	PKG_CHECK_MODULES(CDN_IO_WII, [
+		bluez,
+		cwiid
+	], [have_wii=yes], [have_wii=no])
+
+	if test "x$have_wii" = "xyes"; then
+		enable_wii="yes"
+	else
+		if test "x$enable_wii" = "xyes"; then
+			AC_MSG_ERROR([Could not find required libraries (cwiid) for wii support])
+		fi
+
+		enable_wii="no"
+	fi
+fi
+
+AC_SUBST(CDN_IO_WII_LIBS)
+AC_SUBST(CDN_IO_WII_CFLAGS)
+
+AM_CONDITIONAL(ENABLE_WII, test "x$enable_wii" = "xyes")
+
 dnl ================================================================
 dnl Check for gedit
 dnl ================================================================
@@ -235,6 +263,7 @@ docs/man/Makefile
 io/Makefile
 io/file/Makefile
 io/network/Makefile
+io/wii/Makefile
 m4/Makefile
 tests/Makefile
 win32/Makefile
@@ -268,5 +297,6 @@ Configuration:
 	gedit plugin:           $enable_gedit
 	cdn-archive:            $have_tar
 	network support:        $have_networking
+	wii support:            $enable_wii
 "
 
