@@ -86,6 +86,45 @@ cdn_string_to_value (gchar const  *s,
 		g_value_set_double (value, ret);
 		return TRUE;
 	}
+	else if (type == G_TYPE_INT || type == G_TYPE_UINT ||
+	         type == G_TYPE_INT64 || type == G_TYPE_UINT64)
+	{
+		gint64 ret;
+		gchar *r;
+
+		ret = g_ascii_strtoll (s, &r, 10);
+
+		if (!r || *r)
+		{
+			g_set_error (error,
+			             CDN_NETWORK_LOAD_ERROR,
+			             CDN_NETWORK_LOAD_ERROR_SYNTAX,
+			             "Failed to convert `%s' to integer",
+			             s);
+
+			return FALSE;
+		}
+
+		g_value_init (&sv, G_TYPE_INT64);
+		g_value_set_int64 (&sv, ret);
+
+		if (!g_value_transform (&sv, value))
+		{
+			g_value_unset (&sv);
+			g_value_unset (value);
+
+			g_set_error (error,
+			             CDN_NETWORK_LOAD_ERROR,
+			             CDN_NETWORK_LOAD_ERROR_SYNTAX,
+			             "Failed to convert `%s' to integer",
+			             s);
+
+			return FALSE;
+		}
+
+		g_value_unset (&sv);
+		return TRUE;
+	}
 
 	if (!g_value_type_transformable (G_TYPE_STRING, type))
 	{
