@@ -13,6 +13,9 @@ struct _CdnIoNetworkServerPrivate
 	GSocket *socket;
 	GSList *clients;
 	GMutex *client_mutex;
+	gint wait;
+	GCond *wait_condition;
+	gint num_wait;
 };
 
 static void cdn_io_iface_init (gpointer iface);
@@ -23,6 +26,12 @@ G_DEFINE_DYNAMIC_TYPE_EXTENDED (CdnIoNetworkServer,
                                 0,
                                 G_IMPLEMENT_INTERFACE (CDN_TYPE_IO,
                                                        cdn_io_iface_init))
+
+enum
+{
+	PROP_0,
+	PROP_WAIT
+};
 
 static void
 on_client_closed (CdnIoNetworkServer *server,
@@ -85,6 +94,16 @@ on_accept (GSocket            *socket,
 		                  server);
 
 		cdn_client_initialize (client);
+
+		if (server->priv->num_wait > 0)
+		{
+			--server->priv->num_wait;
+
+			if (server->priv->num_wait == 0)
+			{
+				g_cond_signal (server->priv->wait_condition);
+			}
+		}
 
 		g_mutex_unlock (server->priv->client_mutex);
 	}
@@ -226,12 +245,28 @@ cdn_io_initialize_impl (CdnIo         *io,
 
 	server->priv->socket = sock;
 
+	g_mutex_lock (server->priv->client_mutex);
+
 	// Add socket to network thread
 	cdn_network_thread_register (cdn_network_thread_get_default (),
 	                             sock,
 	                             (GSocketSourceFunc)on_accept,
 	                             server,
 	                             NULL);
+
+	if (server->priv->wait > 0)
+	{
+		server->priv->num_wait = server->priv->wait;
+
+		g_cond_wait (server->priv->wait_condition,
+		             server->priv->client_mutex);
+	}
+	else
+	{
+		server->priv->num_wait = 0;
+	}
+
+	g_mutex_unlock (server->priv->client_mutex);
 
 	return TRUE;
 }
@@ -256,6 +291,8 @@ do_finalize (CdnIoNetworkServer *server)
 	g_slist_foreach (server->priv->clients, (GFunc)remove_client, server);
 	g_slist_free (server->priv->clients);
 	server->priv->clients = NULL;
+
+	server->priv->num_wait = 0;
 
 	g_mutex_unlock (server->priv->client_mutex);
 
@@ -305,6 +342,7 @@ cdn_io_iface_init (gpointer iface)
 
 	i->initialize = cdn_io_initialize_impl;
 	i->finalize = cdn_io_finalize_impl;
+
 	i->update = cdn_io_update_impl;
 }
 
@@ -318,8 +356,47 @@ cdn_io_network_server_finalize (GObject *object)
 	do_finalize (server);
 
 	g_mutex_free (server->priv->client_mutex);
+	g_cond_free (server->priv->wait_condition);
 
 	G_OBJECT_CLASS (cdn_io_network_server_parent_class)->finalize (object);
+}
+
+static void
+cdn_io_network_server_set_property (GObject      *object,
+                                    guint         prop_id,
+                                    const GValue *value,
+                                    GParamSpec   *pspec)
+{
+	CdnIoNetworkServer *self = CDN_IO_NETWORK_SERVER (object);
+
+	switch (prop_id)
+	{
+		case PROP_WAIT:
+			self->priv->wait = g_value_get_int (value);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cdn_io_network_server_get_property (GObject    *object,
+                                    guint       prop_id,
+                                    GValue     *value,
+                                    GParamSpec *pspec)
+{
+	CdnIoNetworkServer *self = CDN_IO_NETWORK_SERVER (object);
+
+	switch (prop_id)
+	{
+		case PROP_WAIT:
+			g_value_set_int (value, self->priv->wait);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
 }
 
 static void
@@ -329,7 +406,22 @@ cdn_io_network_server_class_init (CdnIoNetworkServerClass *klass)
 
 	object_class->finalize = cdn_io_network_server_finalize;
 
+	object_class->get_property = cdn_io_network_server_get_property;
+	object_class->set_property = cdn_io_network_server_set_property;
+
 	g_type_class_add_private (object_class, sizeof (CdnIoNetworkServerPrivate));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_WAIT,
+	                                 g_param_spec_int ("wait",
+	                                                   "Wait",
+	                                                   "Wait",
+	                                                   0,
+	                                                   G_MAXINT,
+	                                                   0,
+	                                                   G_PARAM_READWRITE |
+	                                                   G_PARAM_STATIC_STRINGS |
+	                                                   G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -344,6 +436,7 @@ cdn_io_network_server_init (CdnIoNetworkServer *self)
 	self->priv = CDN_IO_NETWORK_SERVER_GET_PRIVATE (self);
 
 	self->priv->client_mutex = g_mutex_new ();
+	self->priv->wait_condition = g_cond_new ();
 }
 
 void
