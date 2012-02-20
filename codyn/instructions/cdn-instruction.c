@@ -22,9 +22,6 @@ static CdnStackManipulation const *
 cdn_instruction_get_stack_manipulation_impl (CdnInstruction  *instruction,
                                              GError         **error)
 {
-	g_warning ("%s should implement get_stack_manipulation!",
-	           g_type_name (G_TYPE_FROM_INSTANCE (instruction)));
-
 	return NULL;
 }
 
