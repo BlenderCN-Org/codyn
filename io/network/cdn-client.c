@@ -22,7 +22,8 @@ typedef enum
 typedef enum
 {
 	MESSAGE_TYPE_SET,
-	MESSAGE_TYPE_HEADER
+	MESSAGE_TYPE_HEADER,
+	MESSAGE_TYPE_BINARY_MODE
 } MessageType;
 
 typedef struct
@@ -379,14 +380,29 @@ message_header_free (MessageHeader *message)
 static void
 message_free (Message *message)
 {
-	if (message->type == MESSAGE_TYPE_HEADER)
+	switch (message->type)
 	{
-		message_header_free ((MessageHeader *)message);
+		case MESSAGE_TYPE_HEADER:
+			message_header_free ((MessageHeader *)message);
+		break;
+		case MESSAGE_TYPE_SET:
+			message_set_free ((MessageSet *)message);
+		break;
+		default:
+			g_slice_free (Message, message);
+		break;
 	}
-	else
-	{
-		message_set_free ((MessageSet *)message);
-	}
+}
+
+static Message *
+message_new (MessageType type)
+{
+	Message *ret;
+
+	ret = g_slice_new0 (Message);
+
+	ret->type = type;
+	return ret;
 }
 
 static Message *
@@ -874,9 +890,9 @@ ascii_read_value_matrix (CdnClient  *client,
 }
 
 static gint
-lookup_index_map (gint      *map,
-                  gint       num_map,
-                  gint       idx)
+lookup_index_map (gint *map,
+                  gint  num_map,
+                  gint  idx)
 {
 	if (map)
 	{
@@ -894,15 +910,17 @@ lookup_index_map (gint      *map,
 		return idx;
 	}
 }
+
 static gboolean
 process_set_ascii (CdnClient *client,
-                   gssize    *start)
+                   gssize    *start,
+                   gboolean   simple_mode)
 {
 	gboolean ret = TRUE;
+	gint idx = 0;
 
 	while (*start < client->priv->offset)
 	{
-		gint idx;
 		CdnVariable *v = NULL;
 		gchar *selector = NULL;
 		gchar *ident = NULL;
@@ -934,32 +952,51 @@ process_set_ascii (CdnClient *client,
 			break;
 		}
 
-		if (ascii_read_index (client, &s, &idx))
+		if (simple_mode)
 		{
-			ret = TRUE;
+			gint midx;
 
-			idx = lookup_index_map (client->priv->input_map,
+			midx = lookup_index_map (client->priv->input_map,
 			                        client->priv->num_input_map,
 			                        idx);
 
-			// This is an index
-			if (idx < client->priv->in_variables->len)
+			if (midx < client->priv->in_variables->len)
 			{
 				v = g_ptr_array_index (client->priv->in_variables,
-				                       idx);
+				                       midx);
 			}
-		}
-		else if (ascii_read_identifier (client, &s, &ident))
-		{
-			// This is a simple child
-			v = g_hash_table_lookup (client->priv->in_variables_map,
-			                         ident);
 
-			g_free (ident);
+			++idx;
 		}
-		else if (!ascii_read_selector (client, &s, &selector))
+		else
 		{
-			ret = FALSE;
+			if (ascii_read_index (client, &s, &idx))
+			{
+				ret = TRUE;
+
+				idx = lookup_index_map (client->priv->input_map,
+					                client->priv->num_input_map,
+					                idx);
+
+				// This is an index
+				if (idx < client->priv->in_variables->len)
+				{
+					v = g_ptr_array_index (client->priv->in_variables,
+					                       idx);
+				}
+			}
+			else if (ascii_read_identifier (client, &s, &ident))
+			{
+				// This is a simple child
+				v = g_hash_table_lookup (client->priv->in_variables_map,
+				                         ident);
+
+				g_free (ident);
+			}
+			else if (!ascii_read_selector (client, &s, &selector))
+			{
+				ret = FALSE;
+			}
 		}
 
 		if (!ret)
@@ -1088,124 +1125,9 @@ process_set_binary (CdnClient *client,
 }
 
 static gboolean
-process_set (CdnClient *client,
-             gssize    *start)
-{
-	if (!client->priv->binary_mode)
-	{
-		return process_set_ascii (client, start);
-	}
-	else
-	{
-		return process_set_binary (client, start);
-	}
-
-	return FALSE;
-}
-
-static gboolean
-process_header_binary (CdnClient       *client,
-                       gssize          *start,
-                       HeaderDirection  direction)
-{
-	// Read number of headers
-	GInputStream *inp;
-	GDataInputStream *stream;
-	guint32 i;
-	GError *err = NULL;
-	gboolean ret = TRUE;
-	MessageHeader *msg = NULL;
-
-	inp = g_memory_input_stream_new_from_data (client->priv->bytes + *start,
-	                                           client->priv->offset - *start,
-	                                           NULL);
-
-	stream = g_data_input_stream_new (inp);
-
-	guint32 numvar = g_data_input_stream_read_uint32 (stream, NULL, &err);
-
-	if (err)
-	{
-		ret = FALSE;
-		goto cleanup;
-	}
-
-	msg = (MessageHeader *)message_header_new (direction);
-
-	for (i = 0; i < numvar; ++i)
-	{
-		guint32 numr;
-		guint32 numc;
-		gsize len;
-		gchar *name;
-
-		numr = g_data_input_stream_read_uint32 (stream, NULL, &err);
-
-		if (err)
-		{
-			ret = FALSE;
-			goto cleanup;
-		}
-
-		numc = g_data_input_stream_read_uint32 (stream, NULL, &err);
-
-		if (err)
-		{
-			ret = FALSE;
-			goto cleanup;
-		}
-
-		// Read name
-		name = g_data_input_stream_read_upto (stream,
-		                                      "\0",
-		                                      1,
-		                                      &len,
-		                                      NULL,
-		                                      &err);
-
-		if (err)
-		{
-			ret = FALSE;
-			goto cleanup;
-		}
-
-		if (g_data_input_stream_read_byte (stream, NULL, NULL) != '\0')
-		{
-			ret = FALSE;
-			goto cleanup;
-		}
-
-		msg->variables =
-			g_slist_prepend (msg->variables,
-			                 header_variable_new (name, numr, numc));
-	}
-
-	msg->variables = g_slist_reverse (msg->variables);
-	push_message (client, (Message *)msg);
-
-	*start += g_seekable_tell (G_SEEKABLE (inp));
-
-cleanup:
-	g_object_unref (stream);
-	g_object_unref (inp);
-
-	if (err)
-	{
-		g_error_free (err);
-	}
-
-	if (msg)
-	{
-		message_header_free (msg);
-	}
-
-	return ret;
-}
-
-static gboolean
-process_header_ascii (CdnClient       *client,
-                      gssize          *start,
-                      HeaderDirection  direction)
+process_header (CdnClient       *client,
+                gssize          *start,
+                HeaderDirection  direction)
 {
 	gboolean ret = TRUE;
 	MessageHeader *message;
@@ -1297,14 +1219,7 @@ process_input_header (CdnClient *client,
 {
 	// Input negotation The other end of the connection is indicating
 	// which variables it will be sending
-	if (client->priv->binary_mode)
-	{
-		return process_header_binary (client, start, HEADER_DIRECTION_IN);
-	}
-	else
-	{
-		return process_header_ascii (client, start, HEADER_DIRECTION_IN);
-	}
+	return process_header (client, start, HEADER_DIRECTION_IN);
 }
 
 static gboolean
@@ -1312,15 +1227,16 @@ process_output_header (CdnClient *client,
                        gssize    *start)
 {
 	// Input negotation The other end of the connection is indicating
-	// which variables it will be sending
-	if (client->priv->binary_mode)
-	{
-		return process_header_binary (client, start, HEADER_DIRECTION_OUT);
-	}
-	else
-	{
-		return process_header_ascii (client, start, HEADER_DIRECTION_OUT);
-	}
+	// which variables it will be receiving
+	return process_header (client, start, HEADER_DIRECTION_OUT);
+}
+
+static gboolean
+process_binary_mode (CdnClient *client,
+                     gssize    *start)
+{
+	push_message (client, message_new (MESSAGE_TYPE_BINARY_MODE));
+	return TRUE;
 }
 
 static void
@@ -1350,19 +1266,24 @@ process_messages (CdnClient *client)
 
 		switch (*(client->priv->bytes + start))
 		{
-			case 's':
-				ret = process_set (client, &s);
-			break;
 			case 'i':
 				ret = process_input_header (client, &s);
 			break;
 			case 'o':
 				ret = process_output_header (client, &s);
 			break;
+			case 'x':
+				ret = process_set_binary (client, &s);
+			break;
+			case 's':
+				ret = process_set_ascii (client, &s, FALSE);
+			break;
+			case 'b':
+				ret = process_binary_mode (client, &s);
+			break;
 			default:
-				// discard
-				client->priv->offset = 0;
-				ret = TRUE;
+				--s;
+				ret = process_set_ascii (client, &s, TRUE);
 			break;
 		}
 
@@ -1388,8 +1309,10 @@ recv_stream (CdnClient *client)
 		GError *err = NULL;
 
 		numrecv = g_socket_receive (client->priv->socket,
-		                            client->priv->bytes + client->priv->offset,
-		                            client->priv->num_bytes - client->priv->offset,
+		                            client->priv->bytes +
+		                            client->priv->offset,
+		                            client->priv->num_bytes -
+		                            client->priv->offset,
 		                            NULL,
 		                            &err);
 
@@ -1417,11 +1340,14 @@ recv_stream (CdnClient *client)
 		}
 		else
 		{
+			CdnNetworkThread *t;
+
 			// Some kind of error...
 			g_error_free (err);
 
-			cdn_network_thread_unregister (cdn_network_thread_get_default (),
-			                               client->priv->socket);
+			t = cdn_network_thread_get_default ();
+
+			cdn_network_thread_unregister (t, client->priv->socket);
 
 			g_signal_emit (client, signals[CLOSED], 0);
 			return FALSE;
@@ -1559,19 +1485,7 @@ cdn_client_constructed (GObject *object)
 		g_socket_get_socket_type (client->priv->socket) ==
 		G_SOCKET_TYPE_DATAGRAM;
 
-	if (client->priv->binary_mode)
-	{
-		gchar *buffer = g_new0 (gchar, 1024);
-
-		client->priv->boutbuf = g_memory_output_stream_new (buffer,
-		                                                    1024,
-		                                                    g_realloc,
-		                                                    g_free);
-	}
-	else
-	{
-		client->priv->outbuf = g_string_sized_new (1024);
-	}
+	client->priv->outbuf = g_string_sized_new (1024);
 
 	cdn_network_thread_register (cdn_network_thread_get_default (),
 	                             client->priv->socket,
@@ -1698,8 +1612,13 @@ send_out_limit_ascii (CdnClient *client,
 	gint i;
 	gchar numbuf[G_ASCII_DTOSTR_BUF_SIZE];
 	guint lastlen = 0;
+	guint soff = 0;
 
-	g_string_append (client->priv->outbuf, "s ");
+	if (client->priv->output_map)
+	{
+		g_string_append (client->priv->outbuf, "s ");
+		soff = 2;
+	}
 
 	for (i = 0; i < client->priv->out_variables->len; ++i)
 	{
@@ -1727,14 +1646,14 @@ send_out_limit_ascii (CdnClient *client,
 			                  NULL,
 			                  NULL);
 
-			g_string_erase (client->priv->outbuf, 2, lastlen - 1);
+			g_string_erase (client->priv->outbuf, soff, lastlen - 1);
 
 			if (client->priv->outbuf->len > limit)
 			{
-				g_string_truncate (client->priv->outbuf, 2);
+				g_string_truncate (client->priv->outbuf, soff);
 			}
 		}
-		else if (lastlen > 2)
+		else if (lastlen > soff)
 		{
 			client->priv->outbuf->str[lastlen - 1] = ' ';
 		}
@@ -1743,8 +1662,12 @@ send_out_limit_ascii (CdnClient *client,
 
 		v = g_ptr_array_index (client->priv->out_variables, i);
 
-		g_string_append_printf (client->priv->outbuf,
-		                        "%u ", i);
+
+		if (client->priv->output_map)
+		{
+			g_string_append_printf (client->priv->outbuf,
+			                        "%u ", i);
+		}
 
 		vals = cdn_variable_get_values (v, &numr, &numc);
 
@@ -1794,7 +1717,7 @@ send_out_limit_ascii (CdnClient *client,
 		g_string_append_c (client->priv->outbuf, '\n');
 	}
 
-	if (client->priv->outbuf->len == 2)
+	if (client->priv->outbuf->len == soff)
 	{
 		g_string_truncate (client->priv->outbuf, 0);
 		return;
@@ -1809,19 +1732,19 @@ send_out_limit_ascii (CdnClient *client,
 		                  NULL,
 		                  NULL);
 
-		g_string_erase (client->priv->outbuf, 2, lastlen - 1);
+		g_string_erase (client->priv->outbuf, soff, lastlen - 1);
 
 		if (client->priv->outbuf->len > limit)
 		{
-			g_string_truncate (client->priv->outbuf, 0);
+			g_string_truncate (client->priv->outbuf, soff);
 		}
 	}
-	else if (lastlen > 2)
+	else if (lastlen > 0)
 	{
 		client->priv->outbuf->str[lastlen - 1] = ' ';
 	}
 
-	if (client->priv->outbuf->len > 0)
+	if (client->priv->outbuf->len > soff)
 	{
 		g_socket_send_to (client->priv->socket,
 		                  client->priv->address,
@@ -1829,9 +1752,9 @@ send_out_limit_ascii (CdnClient *client,
 		                  client->priv->outbuf->len,
 		                  NULL,
 		                  NULL);
-
-		g_string_truncate (client->priv->outbuf, 0);
 	}
+
+	g_string_truncate (client->priv->outbuf, 0);
 }
 
 static gint
@@ -1901,7 +1824,7 @@ send_out_limit_binary (CdnClient *client,
 			continue;
 		}
 
-		g_data_output_stream_put_byte (s, 's', NULL, NULL);
+		g_data_output_stream_put_byte (s, 'x', NULL, NULL);
 
 		// number of output
 		g_data_output_stream_put_uint32 (s, end - start, NULL, NULL);
@@ -1978,7 +1901,8 @@ send_out (CdnClient *client)
 
 	if (client->priv->throttle > 0 &&
 	    client->priv->throttle_timer &&
-	    g_timer_elapsed (client->priv->throttle_timer, NULL) < client->priv->throttle)
+	    g_timer_elapsed (client->priv->throttle_timer, NULL) <
+	    client->priv->throttle)
 	{
 		return;
 	}
@@ -1997,71 +1921,16 @@ send_out (CdnClient *client)
 	{
 		client->priv->throttle_timer = g_timer_new ();
 	}
-}
-
-static void
-send_header_binary (CdnClient *client,
-                    GPtrArray *vars,
-                    gchar      head)
-{
-	GDataOutputStream *s;
-	guint i;
-
-	s = g_data_output_stream_new (G_OUTPUT_STREAM (client->priv->boutbuf));
-
-	g_data_output_stream_put_byte (s, head, NULL, NULL);
-
-	// number of output
-	g_data_output_stream_put_uint32 (s, vars->len, NULL, NULL);
-
-	for (i = 0; i < vars->len; ++i)
+	else if (client->priv->throttle_timer)
 	{
-		CdnVariable *v = g_ptr_array_index (vars, i);
-		CdnExpression *e;
-		gint numr;
-		gint numc;
-
-		e = cdn_variable_get_expression (v);
-		cdn_expression_get_dimension (e, &numr, &numc);
-
-		g_data_output_stream_put_uint32 (s,
-		                                 numr,
-		                                 NULL,
-		                                 NULL);
-
-		g_data_output_stream_put_uint32 (s,
-		                                 numc,
-		                                 NULL,
-		                                 NULL);
-
-		g_data_output_stream_put_string (s,
-		                                 cdn_variable_get_name (v),
-		                                 NULL,
-		                                 NULL);
-
-		g_data_output_stream_put_byte (s, '\0', NULL, NULL);
+		g_timer_reset (client->priv->throttle_timer);
 	}
-
-	g_socket_send_to (client->priv->socket,
-	                  client->priv->address,
-	                  g_memory_output_stream_get_data (G_MEMORY_OUTPUT_STREAM (client->priv->boutbuf)),
-	                  g_memory_output_stream_get_data_size (G_MEMORY_OUTPUT_STREAM (client->priv->boutbuf)),
-	                  NULL,
-	                  NULL);
-
-	g_seekable_seek (G_SEEKABLE (client->priv->boutbuf),
-	                 0,
-	                 G_SEEK_SET,
-	                 NULL,
-	                 NULL);
-
-	g_object_unref (s);
 }
 
 static void
-send_header_ascii (CdnClient *client,
-                   GPtrArray *vars,
-                   gchar      head)
+send_header (CdnClient *client,
+             GPtrArray *vars,
+             gchar      head)
 {
 	gint i;
 
@@ -2092,35 +1961,17 @@ send_header_ascii (CdnClient *client,
 static void
 send_input_header (CdnClient *client)
 {
-	if (client->priv->binary_mode)
-	{
-		send_header_binary (client,
-		                    client->priv->in_variables,
-		                    'i');
-	}
-	else
-	{
-		send_header_ascii (client,
-		                   client->priv->in_variables,
-		                   'i');
-	}
+	send_header (client,
+	             client->priv->in_variables,
+	             'i');
 }
 
 static void
 send_output_header (CdnClient *client)
 {
-	if (client->priv->binary_mode)
-	{
-		send_header_binary (client,
-		                    client->priv->out_variables,
-		                    'o');
-	}
-	else
-	{
-		send_header_ascii (client,
-		                   client->priv->out_variables,
-		                   'o');
-	}
+	send_header (client,
+	             client->priv->out_variables,
+	             'o');
 }
 
 void
@@ -2131,15 +1982,8 @@ cdn_client_initialize (CdnClient *client)
 		return;
 	}
 
-	if (client->priv->io_mode & CDN_IO_MODE_INPUT)
-	{
-		send_input_header (client);
-	}
-
-	if (client->priv->io_mode & CDN_IO_MODE_OUTPUT)
-	{
-		send_output_header (client);
-	}
+	send_input_header (client);
+	send_output_header (client);
 }
 
 static gint
@@ -2150,7 +1994,11 @@ find_in_array (gchar const *name,
 
 	for (i = 0; i < vars->len; ++i)
 	{
-		if (g_strcmp0 (name, cdn_variable_get_name (g_ptr_array_index (vars, i))) == 0)
+		gchar const *nm;
+
+		nm = cdn_variable_get_name (g_ptr_array_index (vars, i));
+
+		if (g_strcmp0 (name, nm) == 0)
 		{
 			return i;
 		}
@@ -2308,6 +2156,26 @@ update_set (CdnClient  *client,
 	}
 }
 
+static void
+update_binary_mode (CdnClient *client)
+{
+	gchar *buffer;
+
+	if (client->priv->binary_mode)
+	{
+		return;
+	}
+
+	buffer = g_new0 (gchar, 1024);
+
+	client->priv->boutbuf = g_memory_output_stream_new (buffer,
+	                                                    1024,
+	                                                    g_realloc,
+	                                                    g_free);
+
+	client->priv->binary_mode = TRUE;
+}
+
 void
 cdn_client_update (CdnClient *client)
 {
@@ -2326,6 +2194,9 @@ cdn_client_update (CdnClient *client)
 			break;
 			case MESSAGE_TYPE_SET:
 				update_set (client, (MessageSet *)msg);
+			break;
+			case MESSAGE_TYPE_BINARY_MODE:
+				update_binary_mode (client);
 			break;
 		}
 

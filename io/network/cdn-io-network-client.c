@@ -14,8 +14,6 @@ struct _CdnIoNetworkClientPrivate
 	guint port;
 	CdnNetworkProtocol protocol;
 	CdnClient *client;
-
-	guint binary_mode : 1;
 };
 
 static void cdn_io_iface_init (gpointer iface);
@@ -32,7 +30,6 @@ enum
 	PROP_0,
 	PROP_THROTTLE,
 	PROP_MODE,
-	PROP_BINARY_MODE,
 	PROP_HOST,
 	PROP_PORT,
 	PROP_PROTOCOL
@@ -234,9 +231,6 @@ cdn_io_network_client_set_property (GObject      *object,
 		case PROP_MODE:
 			self->priv->mode = g_value_get_flags (value);
 			break;
-		case PROP_BINARY_MODE:
-			self->priv->binary_mode = g_value_get_boolean (value);
-			break;
 		case PROP_HOST:
 			g_free (self->priv->host);
 			self->priv->host = g_value_dup_string (value);
@@ -268,9 +262,6 @@ cdn_io_network_client_get_property (GObject    *object,
 			break;
 		case PROP_MODE:
 			g_value_set_flags (value, self->priv->mode);
-			break;
-		case PROP_BINARY_MODE:
-			g_value_set_boolean (value, self->priv->binary_mode);
 			break;
 		case PROP_HOST:
 			g_value_set_string (value, self->priv->host);
@@ -310,16 +301,6 @@ cdn_io_network_client_class_init (CdnIoNetworkClientClass *klass)
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT |
 	                                                      G_PARAM_STATIC_STRINGS));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_BINARY_MODE,
-	                                 g_param_spec_boolean ("binary-mode",
-	                                                       "Binary Mode",
-	                                                       "Binary mode",
-	                                                       FALSE,
-	                                                       G_PARAM_READWRITE |
-	                                                       G_PARAM_CONSTRUCT |
-	                                                       G_PARAM_STATIC_STRINGS));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_HOST,
