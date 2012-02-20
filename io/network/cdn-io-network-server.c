@@ -34,8 +34,8 @@ enum
 };
 
 static void
-on_client_closed (CdnIoNetworkServer *server,
-                  CdnClient          *client)
+on_client_closed (CdnClient          *client,
+                  CdnIoNetworkServer *server)
 {
 	GSList *item;
 
@@ -290,6 +290,7 @@ do_finalize (CdnIoNetworkServer *server)
 
 	g_slist_foreach (server->priv->clients, (GFunc)remove_client, server);
 	g_slist_free (server->priv->clients);
+
 	server->priv->clients = NULL;
 
 	server->priv->num_wait = 0;

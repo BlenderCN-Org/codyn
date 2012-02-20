@@ -1304,27 +1304,34 @@ process_messages (CdnClient *client)
 static gboolean
 recv_stream (CdnClient *client)
 {
+	gboolean hadit = FALSE;
+
 	while (TRUE)
 	{
 		gssize numrecv = 0;
 		GError *err = NULL;
 
-		numrecv = g_socket_receive (client->priv->socket,
-		                            client->priv->bytes +
-		                            client->priv->offset,
-		                            client->priv->num_bytes -
-		                            client->priv->offset,
-		                            NULL,
-		                            &err);
+		numrecv = g_socket_receive_with_blocking (client->priv->socket,
+		                                          client->priv->bytes +
+		                                          client->priv->offset,
+		                                          client->priv->num_bytes -
+		                                          client->priv->offset,
+		                                          FALSE,
+		                                          NULL,
+		                                          &err);
 
 		if (numrecv == -1 && g_error_matches (err,
 		                                      G_IO_ERROR,
 		                                      G_IO_ERROR_WOULD_BLOCK))
 		{
-			g_error_free (err);
+			if (err)
+			{
+				g_error_free (err);
+			}
+
 			break;
 		}
-		else if (numrecv >= 0)
+		else if (numrecv > 0)
 		{
 			client->priv->offset += numrecv;
 
@@ -1339,20 +1346,16 @@ recv_stream (CdnClient *client)
 					         client->priv->num_bytes);
 			}
 		}
-		else
+		else if (!hadit)
 		{
-			CdnNetworkThread *t;
-
-			// Some kind of error...
-			g_error_free (err);
-
-			t = cdn_network_thread_get_default ();
-
-			cdn_network_thread_unregister (t, client->priv->socket);
-
-			g_signal_emit (client, signals[CLOSED], 0);
 			return FALSE;
 		}
+		else
+		{
+			break;
+		}
+
+		hadit = TRUE;
 	}
 
 	return TRUE;
@@ -1381,15 +1384,12 @@ recv_datagram (CdnClient *client)
 		}
 		else
 		{
-			g_error_free (err);
-
-			cdn_network_thread_unregister (cdn_network_thread_get_default (),
-			                               client->priv->socket);
-
-			g_signal_emit (client, signals[CLOSED], 0);
-
 			return FALSE;
 		}
+	}
+	else if (numrecv == 0)
+	{
+		return FALSE;
 	}
 	else
 	{
@@ -1404,28 +1404,36 @@ io_in (GSocket      *socket,
        GIOCondition  condition,
        CdnClient    *client)
 {
+	gboolean ret = TRUE;
+
 	// This runs in a separate thread
 	if (condition & G_IO_IN)
 	{
+		gboolean ret;
+
 		if (!client->priv->isdatagram)
 		{
-			if (!recv_stream (client))
-			{
-				return FALSE;
-			}
+			ret = recv_stream (client);
 		}
 		else
 		{
-			if (!recv_datagram (client))
-			{
-				return FALSE;
-			}
+			ret = recv_datagram (client);
 		}
 
 		process_messages (client);
+
+		if (!ret)
+		{
+			CdnNetworkThread *t;
+
+			t = cdn_network_thread_get_default ();
+
+			cdn_network_thread_unregister (t, client->priv->socket);
+			g_socket_close (client->priv->socket, NULL);
+		}
 	}
 
-	return TRUE;
+	return ret;
 }
 
 static void
@@ -2209,6 +2217,15 @@ cdn_client_update (CdnClient *client)
 	}
 
 	g_mutex_unlock (client->priv->message_mutex);
+
+	if (g_socket_is_closed (client->priv->socket))
+	{
+		CdnNetworkThread *t = cdn_network_thread_get_default ();
+
+		cdn_network_thread_unregister (t, client->priv->socket);
+		g_signal_emit (client, signals[CLOSED], 0);
+		return;
+	}
 
 	send_out (client);
 }
