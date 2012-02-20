@@ -511,6 +511,7 @@ ascii_read_identifier (CdnClient  *client,
 {
 	GString *ret;
 	gchar *ptr;
+	gunichar c;
 
 	if (*start >= client->priv->offset)
 	{
@@ -522,8 +523,6 @@ ascii_read_identifier (CdnClient  *client,
 
 	while (*start < client->priv->offset)
 	{
-		gunichar c;
-
 		c = g_utf8_get_char (ptr);
 
 		if (!(g_unichar_isalnum (c) || c == '_'))
@@ -537,7 +536,9 @@ ascii_read_identifier (CdnClient  *client,
 		*start = ptr - client->priv->bytes;
 	}
 
-	if (!is_space (g_utf8_get_char (ptr)))
+	c = g_utf8_get_char (ptr);
+
+	if (!is_space (c) && c != '\n')
 	{
 		g_string_free (ret, TRUE);
 		return FALSE;
@@ -545,7 +546,6 @@ ascii_read_identifier (CdnClient  *client,
 	else
 	{
 		*ident = g_string_free (ret, FALSE);
-
 		return TRUE;
 	}
 }
@@ -581,7 +581,7 @@ ascii_read_selector (CdnClient  *client,
 
 		c = g_utf8_get_char (ptr);
 
-		if (!c || (!inesc && is_space (c)))
+		if (!c || (!inesc && (is_space (c) || c == '\n')))
 		{
 			break;
 		}
@@ -714,7 +714,7 @@ ascii_read_value (CdnClient  *client,
 	{
 		c = g_utf8_get_char (client->priv->bytes + *start);
 
-		if (!c || is_space (c))
+		if (!c || is_space (c) || c == '\n')
 		{
 			break;
 		}
@@ -758,7 +758,8 @@ ascii_read_value (CdnClient  *client,
 			return FALSE;
 		}
 
-		*start = g_utf8_next_char (client->priv->bytes + *start) - client->priv->bytes;
+		*start = g_utf8_next_char (client->priv->bytes + *start) -
+		         client->priv->bytes;
 	}
 
 	if ((!hase || aftere) && ptr != client->priv->bytes + *start)
@@ -767,8 +768,7 @@ ascii_read_value (CdnClient  *client,
 		gchar *end;
 
 		*value = g_ascii_strtod (cp, &end);
-
-		return (end == client->priv->bytes + *start);
+		return !*end;
 	}
 	else
 	{
@@ -933,22 +933,23 @@ process_set_ascii (CdnClient *client,
 
 		s = *start;
 
-		if (client->priv->bytes[*start] == '\n')
+		if (client->priv->bytes[s] == '\n')
 		{
 			++*start;
 			break;
 		}
 
-		if (!ascii_skip_spaces (client, &s))
+		if (!ascii_skip_spaces (client, &s) && !simple_mode)
 		{
+			g_warning ("Failed to skip");
 			ret = FALSE;
 			break;
 		}
 
 		// Allow trailing whitespace
-		if (client->priv->bytes[*start] == '\n')
+		if (client->priv->bytes[s] == '\n')
 		{
-			++*start;
+			*start = s + 1;
 			break;
 		}
 
@@ -957,8 +958,8 @@ process_set_ascii (CdnClient *client,
 			gint midx;
 
 			midx = lookup_index_map (client->priv->input_map,
-			                        client->priv->num_input_map,
-			                        idx);
+			                         client->priv->num_input_map,
+			                         idx);
 
 			if (midx < client->priv->in_variables->len)
 			{
@@ -975,8 +976,8 @@ process_set_ascii (CdnClient *client,
 				ret = TRUE;
 
 				idx = lookup_index_map (client->priv->input_map,
-					                client->priv->num_input_map,
-					                idx);
+				                        client->priv->num_input_map,
+				                        idx);
 
 				// This is an index
 				if (idx < client->priv->in_variables->len)
