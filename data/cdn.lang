@@ -177,10 +177,10 @@
             <keyword>remove</keyword>
             <keyword>if</keyword>
             <keyword>from-set</keyword>
-            <keyword>source-name</keyword>
-            <keyword>sink-name</keyword>
-            <keyword>source</keyword>
-            <keyword>sink</keyword>
+            <keyword>input</keyword>
+            <keyword>output</keyword>
+			<keyword>inputs</keyword>
+			<keyword>outputs</keyword>
             <keyword>has-template</keyword>
             <keyword>has-tag</keyword>
             <keyword>has-flag</keyword>
@@ -227,6 +227,9 @@
             <keyword>phase</keyword>
             <keyword>terminate</keyword>
             <keyword>any</keyword>
+			<keyword>input</keyword>
+			<keyword>output</keyword>
+			<keyword>io</keyword>
         </context>
 
         <context id="selector">
