@@ -420,7 +420,7 @@ execute_event (CdnIntegrator *integrator,
 		cdn_integrator_state_set_phase (integrator->priv->state,
 		                                phase);
 	}
-	else
+	else if (cdn_event_get_terminal (ev))
 	{
 		integrator->priv->terminate = TRUE;
 	}

@@ -221,7 +221,8 @@ void                   cdn_parser_context_push_event           (CdnParserContext
                                                                 CdnEmbeddedString *from_phase,
                                                                 CdnEmbeddedString *to_phase,
                                                                 CdnEmbeddedString *condition,
-                                                                CdnEventDirection  direction,
+                                                                gboolean           terminal,
+                                                                CdnEmbeddedString *approximation,
                                                                 GSList            *templates,
                                                                 GSList            *attributes);
 

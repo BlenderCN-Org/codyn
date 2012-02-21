@@ -6113,8 +6113,9 @@ cdn_parser_context_set_first_eof (CdnParserContext *context,
 }
 
 static gchar *
-event_id (GSList *from_phases,
-          GSList *to_phases)
+event_id (GSList   *from_phases,
+          GSList   *to_phases,
+          gboolean  terminal)
 {
 	GString *id;
 
@@ -6141,9 +6142,13 @@ event_id (GSList *from_phases,
 	{
 		g_string_append (id, cdn_expansion_get (to_phases->data, 0));
 	}
-	else
+	else if (terminal)
 	{
 		g_string_append (id, "terminal");
+	}
+	else
+	{
+		g_string_append (id, "any");
 	}
 
 	return g_string_free (id, FALSE);
@@ -6154,7 +6159,8 @@ cdn_parser_context_push_event (CdnParserContext  *context,
                                CdnEmbeddedString *from_phase,
                                CdnEmbeddedString *to_phase,
                                CdnEmbeddedString *condition,
-                               CdnEventDirection  direction,
+                               gboolean           terminal,
+                               CdnEmbeddedString *approximation,
                                GSList            *templates,
                                GSList            *attributes)
 {
@@ -6246,7 +6252,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 			}
 		}
 
-		id = event_id (from_phases, to_phases);
+		id = event_id (from_phases, to_phases, terminal);
 		ex = cdn_expansion_new_one (id);
 		g_free (id);
 
@@ -6267,7 +6273,31 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		ev = cdn_selection_get_object (sel);
 
 		cdn_event_set_condition (ev, expr);
-		cdn_event_set_direction (ev, direction);
+
+		if (approximation)
+		{
+			GSList *approx;
+
+			embedded_string_expand_multiple (approx,
+			                                 approximation,
+			                                 context);
+
+			if (approx)
+			{
+				gdouble val;
+
+				val = g_ascii_strtod (cdn_expansion_get (approx->data, 0),
+				                      NULL);
+
+				cdn_event_set_approximation (ev, val);
+			}
+
+			g_slist_foreach (approx,
+			                 (GFunc)cdn_expansion_unref,
+			                 NULL);
+
+			g_slist_free (approx);
+		}
 
 		while (from_phases)
 		{
@@ -6283,6 +6313,11 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		{
 			cdn_event_set_goto_phase (ev,
 			                          cdn_expansion_get (to_phases->data, 0));
+		}
+
+		if (terminal)
+		{
+			cdn_event_set_terminal (ev, TRUE);
 		}
 
 		g_slist_foreach (to_phases, (GFunc)cdn_expansion_unref, NULL);

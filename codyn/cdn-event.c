@@ -2,6 +2,8 @@
 #include "cdn-enum-types.h"
 #include "cdn-compile-error.h"
 #include "cdn-phaseable.h"
+#include "cdn-math.h"
+#include "instructions/cdn-instruction-function.h"
 
 #include <math.h>
 
@@ -10,7 +12,7 @@
 struct _CdnEventPrivate
 {
 	CdnExpression *condition;
-	CdnEventDirection direction;
+	gdouble approximation;
 	gdouble value;
 
 	GSList *set_properties;
@@ -20,6 +22,9 @@ struct _CdnEventPrivate
 	GHashTable *phases;
 
 	gchar *goto_phase;
+	CdnMathFunctionType comparison;
+
+	guint terminal : 1;
 };
 
 static void cdn_phaseable_iface_init (gpointer iface);
@@ -34,8 +39,9 @@ enum
 {
 	PROP_0,
 	PROP_CONDITION,
-	PROP_DIRECTION,
-	PROP_GOTO_PHASE
+	PROP_APPROXIMATION,
+	PROP_GOTO_PHASE,
+	PROP_TERMINAL
 };
 
 typedef struct
@@ -165,12 +171,15 @@ cdn_event_set_property (GObject      *object,
 		case PROP_CONDITION:
 			set_condition (self, g_value_get_object (value));
 			break;
-		case PROP_DIRECTION:
-			self->priv->direction = g_value_get_flags (value);
+		case PROP_APPROXIMATION:
+			self->priv->approximation = g_value_get_double (value);
 			break;
 		case PROP_GOTO_PHASE:
 			g_free (self->priv->goto_phase);
 			self->priv->goto_phase = g_value_dup_string (value);
+			break;
+		case PROP_TERMINAL:
+			self->priv->terminal = g_value_get_boolean (value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -191,16 +200,104 @@ cdn_event_get_property (GObject    *object,
 		case PROP_CONDITION:
 			g_value_set_object (value, self->priv->condition);
 			break;
-		case PROP_DIRECTION:
-			g_value_set_flags (value, self->priv->direction);
+		case PROP_APPROXIMATION:
+			g_value_set_double (value, self->priv->approximation);
 			break;
 		case PROP_GOTO_PHASE:
 			g_value_set_string (value, self->priv->goto_phase);
+			break;
+		case PROP_TERMINAL:
+			g_value_set_boolean (value, self->priv->terminal);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
 	}
+}
+
+static gboolean
+extract_condition_parts_error (CdnEvent        *event,
+                               CdnCompileError *error)
+{
+	GError *err;
+
+	err = g_error_new_literal (CDN_COMPILE_ERROR_TYPE,
+	                           CDN_COMPILE_ERROR_INVALID_STACK,
+	                           "The provided condition does not have a logical comparison");
+
+	cdn_compile_error_set (error,
+	                       err,
+	                       CDN_OBJECT (event),
+	                       NULL,
+	                       NULL,
+	                       event->priv->condition);
+
+	g_error_free (err);
+	return FALSE;
+}
+
+static gboolean
+extract_condition_parts (CdnEvent        *event,
+                         CdnCompileError *error)
+{
+	GSList const *instructions;
+	GSList *last;
+	CdnInstructionFunction *instr;
+	GSList *ret;
+	CdnMathFunctionType id;
+	CdnStackManipulation const *smanip;
+
+	instructions = cdn_expression_get_instructions (event->priv->condition);
+
+	last = g_slist_last ((GSList *)instructions);
+
+	if (!last)
+	{
+		return extract_condition_parts_error (event, error);
+	}
+
+	instr = last->data;
+
+	if (!CDN_IS_INSTRUCTION_FUNCTION (instr))
+	{
+		return extract_condition_parts_error (event, error);
+	}
+
+	id = cdn_instruction_function_get_id (instr);
+
+	switch (id)
+	{
+		case CDN_MATH_FUNCTION_TYPE_LESS:
+		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_GREATER:
+		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_EQUAL:
+		break;
+		default:
+			return extract_condition_parts_error (event, error);
+		break;
+	}
+
+	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (instr),
+	                                                 NULL);
+
+	while (instructions && instructions->next)
+	{
+		ret = g_slist_prepend (ret,
+		                       cdn_mini_object_copy (instructions->data));
+	}
+
+	ret = g_slist_prepend (ret,
+	                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS,
+	                                                     "-",
+	                                                     2,
+	                                                     smanip->pop_dims));
+
+	_cdn_expression_set_instructions_take (event->priv->condition,
+	                                       g_slist_reverse (ret));
+
+	event->priv->comparison = id;
+	return TRUE;
 }
 
 static gboolean
@@ -241,6 +338,11 @@ cdn_event_compile_impl (CdnObject         *object,
 	cdn_compile_context_restore (context);
 	g_object_unref (context);
 
+	if (!extract_condition_parts (event, error))
+	{
+		return FALSE;
+	}
+
 	for (item = event->priv->set_properties; item; item = g_slist_next (item))
 	{
 		SetProperty *p = item->data;
@@ -260,6 +362,8 @@ cdn_event_compile_impl (CdnObject         *object,
 
 		g_object_unref (ctx);
 	}
+
+	
 
 	return TRUE;
 }
@@ -285,16 +389,19 @@ cdn_event_class_init (CdnEventClass *klass)
 	                                                      "Condition",
 	                                                      "Condition",
 	                                                      CDN_TYPE_EXPRESSION,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
-	                                 PROP_DIRECTION,
-	                                 g_param_spec_flags ("direction",
-	                                                     "Direction",
-	                                                     "Direction",
-	                                                     CDN_TYPE_EVENT_DIRECTION,
-	                                                     CDN_EVENT_DIRECTION_POSITIVE,
-	                                                     G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                 PROP_APPROXIMATION,
+	                                 g_param_spec_double ("approximation",
+	                                                      "Approximation",
+	                                                      "Approximation",
+	                                                      0,
+	                                                      G_MAXDOUBLE,
+	                                                      G_MAXDOUBLE,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_GOTO_PHASE,
@@ -302,7 +409,16 @@ cdn_event_class_init (CdnEventClass *klass)
 	                                                      "Goto Phase",
 	                                                      "Goto phase",
 	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_TERMINAL,
+	                                 g_param_spec_boolean ("terminal",
+	                                                       "Terminal",
+	                                                       "Terminal",
+	                                                       FALSE,
+	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -312,9 +428,9 @@ cdn_event_init (CdnEvent *self)
 }
 
 CdnEvent *
-cdn_event_new (gchar const       *id,
-               CdnExpression     *condition,
-               CdnEventDirection  direction)
+cdn_event_new (gchar const   *id,
+               CdnExpression *condition,
+               gdouble        approximation)
 {
 	g_return_val_if_fail (CDN_IS_EXPRESSION (condition), NULL);
 
@@ -323,8 +439,8 @@ cdn_event_new (gchar const       *id,
 	                     id,
 	                     "condition",
 	                     condition,
-	                     "direction",
-	                     direction,
+	                     "approximation",
+	                     approximation,
 	                     NULL);
 }
 
@@ -334,6 +450,12 @@ cdn_event_update (CdnEvent *event)
 	if (event->priv->condition)
 	{
 		event->priv->value = cdn_expression_evaluate (event->priv->condition);
+
+		if (event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS ||
+		    event->priv->comparison == CDN_MATH_FUNCTION_TYPE_GREATER)
+		{
+			event->priv->value = -event->priv->value;
+		}
 	}
 }
 
@@ -352,10 +474,10 @@ cdn_event_get_condition (CdnEvent *event)
 	return event->priv->condition;
 }
 
-CdnEventDirection
-cdn_event_get_direction (CdnEvent *event)
+gdouble
+cdn_event_get_approximation (CdnEvent *event)
 {
-	return event->priv->direction;
+	return event->priv->approximation;
 }
 
 void
@@ -369,15 +491,15 @@ cdn_event_set_condition (CdnEvent      *event,
 }
 
 void
-cdn_event_set_direction (CdnEvent          *event,
-                         CdnEventDirection  direction)
+cdn_event_set_approximation (CdnEvent *event,
+                             gdouble   approximation)
 {
 	g_return_if_fail (CDN_IS_EVENT (event));
 
-	if (event->priv->direction != direction)
+	if (event->priv->approximation != approximation)
 	{
-		event->priv->direction = direction;
-		g_object_notify (G_OBJECT (event), "direction");
+		event->priv->approximation = approximation;
+		g_object_notify (G_OBJECT (event), "approximation");
 	}
 }
 
@@ -387,66 +509,67 @@ cdn_event_happened (CdnEvent *event,
 {
 	gdouble val;
 
-	if ((event->priv->direction & CDN_EVENT_DIRECTION_ZERO))
-	{
-		val = cdn_expression_evaluate (event->priv->condition);
+	val = cdn_expression_evaluate (event->priv->condition);
 
-		if (fabs (val) < 10e-14)
-		{
-			return TRUE;
-		}
+	if (event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS ||
+	    event->priv->comparison == CDN_MATH_FUNCTION_TYPE_GREATER)
+	{
+		val = -val;
 	}
 
-	if ((event->priv->direction & CDN_EVENT_DIRECTION_NEGATIVE) &&
-	    event->priv->value > 0)
+	switch (event->priv->comparison)
 	{
-		val = cdn_expression_evaluate (event->priv->condition);
-
-		if (val < 0)
-		{
-			if (dist)
+		case CDN_MATH_FUNCTION_TYPE_LESS:
+		case CDN_MATH_FUNCTION_TYPE_GREATER:
+			// From negative to positive
+			if (event->priv->value >= 0 || val <= 0)
 			{
-				gdouble term = event->priv->value - val;
-
-				if (term > 10e-9)
-				{
-					*dist = event->priv->value / term;
-				}
-				else
+				return FALSE;
+			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+			// From negative to positive
+			if (event->priv->value >= 0 || val < 0)
+			{
+				return FALSE;
+			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_EQUAL:
+			if (fabs (event->priv->value) > event->priv->approximation &&
+			    fabs (val) <= event->priv->approximation)
+			{
+				if (dist)
 				{
 					*dist = 0;
 				}
+
+				return TRUE;
 			}
-
-			return TRUE;
-		}
-	}
-	else if ((event->priv->direction & CDN_EVENT_DIRECTION_POSITIVE) &&
-	         event->priv->value < 0)
-	{
-		val = cdn_expression_evaluate (event->priv->condition);
-
-		if (val > 0)
-		{
-			if (dist)
+			else
 			{
-				gdouble term = val - event->priv->value;
-
-				if (term > 10e-9)
-				{
-					*dist = -event->priv->value / term;
-				}
-				else
-				{
-					*dist = 0;
-				}
+				return FALSE;
 			}
+		break;
+		default:
+		break;
+	}
 
-			return TRUE;
+	if (dist)
+	{
+		gdouble df = val - event->priv->value;
+
+		if (df <= event->priv->approximation)
+		{
+			*dist = 0;
+		}
+		else
+		{
+			*dist = -event->priv->value / df;
 		}
 	}
 
-	return FALSE;
+	return TRUE;
 }
 
 void
@@ -504,4 +627,24 @@ cdn_event_get_goto_phase (CdnEvent *event)
 	g_return_val_if_fail (CDN_IS_EVENT (event), NULL);
 
 	return event->priv->goto_phase;
+}
+
+void
+cdn_event_set_terminal (CdnEvent *event,
+                        gboolean  terminal)
+{
+	g_return_if_fail (CDN_IS_EVENT (event));
+
+	if (event->priv->terminal != terminal)
+	{
+		event->priv->terminal = terminal;
+
+		g_object_notify (G_OBJECT (event), "terminal");
+	}
+}
+
+gboolean
+cdn_event_get_terminal (CdnEvent *event)
+{
+	return event->priv->terminal;
 }

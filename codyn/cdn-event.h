@@ -21,13 +21,6 @@ typedef struct _CdnEvent	CdnEvent;
 typedef struct _CdnEventClass	CdnEventClass;
 typedef struct _CdnEventPrivate	CdnEventPrivate;
 
-typedef enum
-{
-	CDN_EVENT_DIRECTION_POSITIVE = 1 << 0,
-	CDN_EVENT_DIRECTION_NEGATIVE = 1 << 1,
-	CDN_EVENT_DIRECTION_ZERO = 1 << 2,
-} CdnEventDirection;
-
 struct _CdnEvent
 {
 	/*< private >*/
@@ -42,35 +35,40 @@ struct _CdnEventClass
 	CdnNodeClass parent_class;
 };
 
-GType              cdn_event_get_type                  (void) G_GNUC_CONST;
+GType            cdn_event_get_type          (void) G_GNUC_CONST;
 
-CdnEvent          *cdn_event_new                       (gchar const        *id,
-                                                        CdnExpression      *condition,
-                                                        CdnEventDirection   direction);
+CdnEvent        *cdn_event_new               (gchar const   *id,
+                                              CdnExpression *condition,
+                                              gdouble        approximation);
 
-gboolean           cdn_event_happened                  (CdnEvent           *event,
-                                                        gdouble            *dist);
+gboolean         cdn_event_happened          (CdnEvent      *event,
+                                              gdouble       *dist);
 
-void               cdn_event_update                    (CdnEvent           *event);
-CdnExpression *    cdn_event_get_condition             (CdnEvent           *event);
-CdnEventDirection  cdn_event_get_direction             (CdnEvent           *event);
+void             cdn_event_update            (CdnEvent      *event);
+CdnExpression *  cdn_event_get_condition     (CdnEvent      *event);
+gdouble          cdn_event_get_approximation (CdnEvent      *event);
 
-void               cdn_event_set_condition             (CdnEvent           *event,
-                                                        CdnExpression      *condition);
+void             cdn_event_set_condition     (CdnEvent      *event,
+                                              CdnExpression *condition);
 
-void               cdn_event_set_direction             (CdnEvent           *event,
-                                                        CdnEventDirection   direction);
+void             cdn_event_set_approximation (CdnEvent      *event,
+                                              gdouble        approximation);
 
-void               cdn_event_add_set_variable          (CdnEvent           *event,
-                                                        CdnVariable        *property,
-                                                        CdnExpression      *value);
+void             cdn_event_add_set_variable  (CdnEvent      *event,
+                                              CdnVariable   *property,
+                                              CdnExpression *value);
 
-void               cdn_event_set_goto_phase             (CdnEvent           *event,
-                                                         gchar const        *phase);
+void             cdn_event_set_goto_phase    (CdnEvent      *event,
+                                              gchar const   *phase);
 
-gchar const       *cdn_event_get_goto_phase             (CdnEvent           *event);
+gchar const     *cdn_event_get_goto_phase    (CdnEvent      *event);
 
-void               cdn_event_execute                   (CdnEvent           *event);
+void             cdn_event_set_terminal      (CdnEvent      *event,
+                                              gboolean       terminal);
+
+gboolean         cdn_event_get_terminal      (CdnEvent      *event);
+
+void             cdn_event_execute           (CdnEvent      *event);
 
 G_END_DECLS
 
