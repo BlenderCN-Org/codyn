@@ -39,6 +39,9 @@ struct _CdnIoWiiManagerPrivate
 
 	GSList *wiimotes;
 	gdouble throttle;
+	GTimer *throttle_timer;
+
+	guint find_id;
 };
 
 static CdnIoWiiManager *instance = 0;
@@ -62,6 +65,9 @@ enum
 	PROP_0,
 	PROP_THROTTLE
 };
+
+static WiiMote *find_by_id (CdnIoWiiManager *manager,
+                            guint            id);
 
 static Binding *
 binding_new (CdnObject *object)
@@ -146,6 +152,8 @@ cdn_io_wii_manager_finalize (GObject *object)
 	{
 		g_object_unref (manager->priv->connection);
 	}
+
+	g_timer_destroy (manager->priv->throttle_timer);
 
 	g_mutex_free (manager->priv->request_mutex);
 
@@ -268,7 +276,8 @@ cdn_io_wii_manager_class_init (CdnIoWiiManagerClass *klass)
 	                                                      0,
 	                                                      G_MAXDOUBLE,
 	                                                      0.1,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 }
 
 static gboolean
@@ -298,13 +307,20 @@ add_wiimote (CdnIoWiiManager *manager,
 		}
 	}
 
-	mote = wii_mote_new (addr,
-	                     name);
+	mote = wii_mote_new (addr, name);
 
 	manager->priv->wiimotes = g_slist_append (manager->priv->wiimotes,
 	                                          mote);
 
 	g_signal_emit (manager, signals[ADDED], 0, addr);
+
+	if (find_by_id (manager, manager->priv->find_id) &&
+	    manager->priv->loop)
+	{
+		g_main_loop_quit (manager->priv->loop);
+		g_main_loop_unref (manager->priv->loop);
+		manager->priv->loop = NULL;
+	}
 }
 
 static void
@@ -337,32 +353,30 @@ on_adapter_signal (GDBusProxy         *proxy,
 		GVariantIter *iter;
 		gchar *key;
 		GVariant *value;
-		gboolean breakit = FALSE;
 
 		g_variant_get (parameters, "(sa{sv})", &addr, &iter);
 
 		while (g_variant_iter_loop (iter, "{sv}", &key, &value))
 		{
-			if (g_strcmp0 (key, "Name") == 0 &&
-			    is_wii_mote (g_variant_get_string (value, NULL)))
-			{
-				breakit = TRUE;
+			gchar const *val;
 
-				add_wiimote (manager, addr, key);
+			if (g_strcmp0 (key, "Name") != 0)
+			{
+				continue;
 			}
 
-			g_free (key);
-			g_variant_unref (value);
+			val = g_variant_get_string (value, NULL);
 
-			if (breakit)
+			if (is_wii_mote (val))
 			{
+				add_wiimote (manager, addr, val);
 				break;
 			}
 		}
 
 		g_free (addr);
 	}
-	else if (g_strcmp0 (signal_name, "RemoteDeviceDisappeared") == 0)
+	else if (g_strcmp0 (signal_name, "DeviceDisappeared") == 0)
 	{
 		GSList *item;
 		gchar *addr;
@@ -387,45 +401,6 @@ on_adapter_signal (GDBusProxy         *proxy,
 }
 
 static void
-on_adapter_property (GDBusProxy         *proxy,
-                     GVariant           *changed_properties,
-                     GStrv              *invalidated_properties,
-                     CdnIoWiiManager *manager)
-{
-	GVariantIter iter;
-	gchar *name;
-
-	if (!manager->priv->loop)
-	{
-		return;
-	}
-
-	g_variant_iter_init (&iter, changed_properties);
-
-	while (g_variant_iter_loop (&iter, "s", &name))
-	{
-		if (g_strcmp0 (name, "Discovering") == 0)
-		{
-			GVariant *v;
-
-			v = g_dbus_proxy_get_cached_property (proxy, name);
-
-			if (!g_variant_get_boolean (v))
-			{
-				g_main_loop_quit (manager->priv->loop);
-			}
-
-			g_variant_unref (v);
-
-			g_free (name);
-			break;
-		}
-
-		g_free (name);
-	}
-}
-
-static void
 discovery_finished (GDBusProxy      *proxy,
                     GAsyncResult    *res,
                     CdnIoWiiManager *manager)
@@ -437,7 +412,6 @@ discovery_finished (GDBusProxy      *proxy,
 
 	if (error)
 	{
-		g_warning ("%s", error->message);
 		g_error_free (error);
 	}
 
@@ -508,11 +482,6 @@ adapter_finished (GObject            *source,
 		                  G_CALLBACK (on_adapter_signal),
 		                  manager);
 
-		g_signal_connect (proxy,
-		                  "g-properties-changed",
-		                  G_CALLBACK (on_adapter_property),
-		                  manager);
-
 		discover_devices (manager);
 	}
 }
@@ -570,17 +539,14 @@ on_manager_signal (GDBusProxy         *proxy,
                    GVariant           *parameters,
                    CdnIoWiiManager *manager)
 {
-	gchar *objpath;
-
-	if (g_strcmp0 (signal_name, "DefaultAdapterChanged") != 0)
+	if (g_strcmp0 (signal_name, "DefaultAdapterChanged") == 0)
 	{
-		return;
+		gchar *objpath;
+		g_variant_get (parameters, "(s)", &objpath);
+		get_adapter (manager, objpath);
+
+		g_free (objpath);
 	}
-
-	g_variant_get (parameters, "(s)", &objpath);
-	get_adapter (manager, objpath);
-
-	g_free (objpath);
 }
 
 static void
@@ -665,11 +631,12 @@ cdn_io_wii_manager_init (CdnIoWiiManager *self)
 	self->priv->cancellable = g_cancellable_new ();
 	self->priv->request_mutex = g_mutex_new ();
 
+	self->priv->throttle_timer = g_timer_new ();
+
 	g_bus_get (G_BUS_TYPE_SYSTEM,
 	           self->priv->cancellable,
 	           (GAsyncReadyCallback)bus_connected,
 	           self);
-
 }
 
 CdnIoWiiManager *
@@ -773,11 +740,11 @@ bind_remote (CdnIoWiiManager *manager,
 
 gboolean
 cdn_io_wii_manager_bind_remote (CdnIoWiiManager *manager,
-                                   guint               deviceid,
-                                   CdnObject          *object)
+                                guint            deviceid,
+                                CdnObject       *object)
 {
 	WiiMote *mote;
-	bdaddr_t *addr;
+	bdaddr_t addr;
 
 	g_return_val_if_fail (CDN_IS_INPUT_WII_MANAGER (manager), FALSE);
 
@@ -787,13 +754,18 @@ cdn_io_wii_manager_bind_remote (CdnIoWiiManager *manager,
 	if (!mote)
 	{
 		/* Start a discovery now and block */
+		manager->priv->find_id = deviceid;
+
 		manager->priv->loop = g_main_loop_new (NULL, FALSE);
 		discover_devices (manager);
 
 		g_main_loop_run (manager->priv->loop);
-		g_object_unref (manager->priv->loop);
 
-		manager->priv->loop = NULL;
+		if (manager->priv->loop)
+		{
+			g_main_loop_unref (manager->priv->loop);
+			manager->priv->loop = NULL;
+		}
 
 		mote = find_by_id (manager, deviceid);
 	}
@@ -816,13 +788,23 @@ cdn_io_wii_manager_bind_remote (CdnIoWiiManager *manager,
 	}
 
 	/* Try to connect */
-	addr = strtoba (mote->addr);
-	mote->remote = cwiid_open (addr, CWIID_FLAG_NONBLOCK | CWIID_FLAG_CONTINUOUS);
-	g_free (addr);
+	str2ba (mote->addr, &addr);
+
+	mote->remote = cwiid_open (&addr,
+	                           CWIID_FLAG_NONBLOCK |
+	                           CWIID_FLAG_MESG_IFC);
+
 	mote->tryconnect = TRUE;
 
 	if (mote->remote)
 	{
+		cwiid_command (mote->remote,
+		               CWIID_CMD_RPT_MODE,
+		               CWIID_RPT_STATUS |
+		               CWIID_RPT_BTN |
+		               CWIID_RPT_ACC |
+		               CWIID_RPT_IR);
+
 		bind_remote (manager, mote, object);
 	}
 
@@ -899,47 +881,47 @@ process_button_message (CdnIoWiiManager    *manager,
 {
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_1,
-	                   msg->buttons & CWIID_BTN_1);
+	                   (msg->buttons & CWIID_BTN_1) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_2,
-	                   msg->buttons & CWIID_BTN_2);
+	                   (msg->buttons & CWIID_BTN_2) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_A,
-	                   msg->buttons & CWIID_BTN_A);
+	                   (msg->buttons & CWIID_BTN_A) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_B,
-	                   msg->buttons & CWIID_BTN_B);
+	                   (msg->buttons & CWIID_BTN_B) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_DOWN,
-	                   msg->buttons & CWIID_BTN_DOWN);
+	                   (msg->buttons & CWIID_BTN_DOWN) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_UP,
-	                   msg->buttons & CWIID_BTN_UP);
+	                   (msg->buttons & CWIID_BTN_UP) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_LEFT,
-	                   msg->buttons & CWIID_BTN_RIGHT);
+	                   (msg->buttons & CWIID_BTN_RIGHT) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_RIGHT,
-	                   msg->buttons & CWIID_BTN_RIGHT);
+	                   (msg->buttons & CWIID_BTN_RIGHT) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_HOME,
-	                   msg->buttons & CWIID_BTN_HOME);
+	                   (msg->buttons & CWIID_BTN_HOME) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_PLUS,
-	                   msg->buttons & CWIID_BTN_PLUS);
+	                   (msg->buttons & CWIID_BTN_PLUS) ? 1 : 0);
 
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BUTTON_MIN,
-	                   msg->buttons & CWIID_BTN_MINUS);
+	                   (msg->buttons & CWIID_BTN_MINUS) ? 1 : 0);
 }
 
 static void
@@ -1020,14 +1002,14 @@ process_status_message (CdnIoWiiManager       *manager,
 {
 	set_binding_value (binding,
 	                   CDN_IO_WII_VARIABLE_BATTERY,
-	                   status->battery / (gdouble)CWIID_ACC_MAX);
+	                   status->battery / (gdouble)CWIID_BATTERY_MAX);
 }
 
 static void
-process_messages (CdnIoWiiManager *manager,
-                  WiiMote            *mote,
-                  union cwiid_mesg  **messages,
-                  gint                num)
+process_messages (CdnIoWiiManager  *manager,
+                  WiiMote          *mote,
+                  union cwiid_mesg *messages,
+                  gint              num)
 {
 	gint i;
 	GSList *item;
@@ -1047,7 +1029,7 @@ process_messages (CdnIoWiiManager *manager,
 		{
 			union cwiid_mesg *msg;
 
-			msg = messages[i];
+			msg = &(messages[i]);
 
 			switch (msg->type)
 			{
@@ -1088,26 +1070,39 @@ set_led_rumble (CdnIoWiiManager *manager,
 	{
 		Binding *binding;
 		gdouble val;
+		CdnVariable *v;
 
 		binding = item->data;
 
-		if (binding->variables[CDN_IO_WII_VARIABLE_LED])
+		v = binding->variables[CDN_IO_WII_VARIABLE_LED];
+
+		if (v)
 		{
-			val = cdn_variable_get_value (binding->variables[CDN_IO_WII_VARIABLE_LED]);
-			cwiid_set_led (mote->remote, (uint8_t)MIN (MAX (val, 0), 255));
+			guint8 rval;
+
+			val = cdn_variable_get_value (v);
+			rval = (uint8_t)MIN (MAX (val, 0), 255);
+
+			cwiid_set_led (mote->remote, rval);
 		}
 
-		if (binding->variables[CDN_IO_WII_VARIABLE_RUMBLE])
+		v = binding->variables[CDN_IO_WII_VARIABLE_RUMBLE];
+
+		if (v)
 		{
-			val = cdn_variable_get_value (binding->variables[CDN_IO_WII_VARIABLE_RUMBLE]);
-			cwiid_set_rumble (mote->remote, (uint8_t)MIN (MAX (val * 255, 0), 255));
+			guint8 rval;
+
+			val = cdn_variable_get_value (v);
+			rval = (uint8_t)MIN (MAX (val * 255, 0), 255);
+
+			cwiid_set_rumble (mote->remote, rval);
 		}
 	}
 }
 
 void
 cdn_io_wii_manager_update (CdnIoWiiManager *manager,
-                              CdnIntegrator      *integrator)
+                           CdnIntegrator   *integrator)
 {
 	GSList *item;
 	struct timespec timestamp;
@@ -1131,19 +1126,17 @@ cdn_io_wii_manager_update (CdnIoWiiManager *manager,
 			continue;
 		}
 
-		if (cwiid_get_mesg (mote->remote, &num, &messages, &timestamp) == 0)
+		while (cwiid_get_mesg (mote->remote, &num, &messages, &timestamp) == 0)
 		{
-			if (num > 0)
-			{
-				process_messages (manager, mote, &messages, num);
-			}
+			process_messages (manager, mote, messages, num);
 		}
 
 		/* Throttle setting led/rumbling */
-		if (cdn_integrator_get_time (integrator) - manager->priv->last_update >=
+		if (g_timer_elapsed (manager->priv->throttle_timer, NULL) >=
 		    manager->priv->throttle)
 		{
 			set_led_rumble (manager, mote);
+			g_timer_reset (manager->priv->throttle_timer);
 		}
 	}
 

@@ -189,7 +189,7 @@ cdn_io_wii_constructed (GObject *object)
 		              mode,
 		              i,
 		              info,
-		              i == CDN_IO_WII_VARIABLE_LED ? "id" : NULL);
+		              i == CDN_IO_WII_VARIABLE_LED ? "id + 1" : NULL);
 	}
 }
 
