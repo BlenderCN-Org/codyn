@@ -238,7 +238,7 @@ iter_replace_or_copy_into (CdnExpressionTreeIter *cp,
 	dest->num_children = cp->num_children;
 	dest->children = newchildren;
 
-	cdn_mini_object_free (CDN_MINI_OBJECT (dest->instruction));
+	cdn_mini_object_unref (CDN_MINI_OBJECT (dest->instruction));
 
 	if (make_copy)
 	{

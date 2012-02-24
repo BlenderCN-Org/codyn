@@ -420,24 +420,29 @@ evaluate_on_stack (CdnOperatorDelayed *d,
 	gdouble const *ret;
 	gint numr;
 	gint numc;
-	gdouble told;
+	gdouble told = 0;
 
 	// temporarily set t
-	told = cdn_variable_get_value (d->priv->tvar);
-	cdn_variable_set_value (d->priv->tvar, t);
-
-	if (t != d->priv->eval_at_t)
+	if (d->priv->tvar)
 	{
-		cdn_expression_reset_cache (expression);
+		told = cdn_variable_get_value (d->priv->tvar);
+		cdn_variable_set_value (d->priv->tvar, t);
+
+		if (t != d->priv->eval_at_t)
+		{
+			cdn_expression_reset_cache (expression);
+		}
 	}
 
 	ret = cdn_expression_evaluate_values (expression, &numr, &numc);
 
-	d->priv->eval_at_t = t;
-
 	cdn_stack_pushn (stack, ret, numr * numc);
 
-	cdn_variable_set_value (d->priv->tvar, told);
+	if (d->priv->tvar)
+	{
+		d->priv->eval_at_t = t;
+		cdn_variable_set_value (d->priv->tvar, told);
+	}
 }
 
 static void
@@ -454,9 +459,16 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 
 	delay = cdn_stack_pop (stack);
 
-	t = cdn_variable_get_value (d->priv->tvar);
+	if (d->priv->tvar)
+	{
+		t = cdn_variable_get_value (d->priv->tvar);
+	}
+	else
+	{
+		t = 0;
+	}
 
-	if (fabs (delay) < 1e-13)
+	if (fabs (delay) < 1e-13 || !d->priv->tvar)
 	{
 		evaluate_on_stack (d,
 		                   t,

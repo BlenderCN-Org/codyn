@@ -44,6 +44,7 @@ static gchar *cdn_value_mini_object_lcopy (GValue const *value,
 
 static CdnMiniObject *cdn_mini_object_copy_default (CdnMiniObject *obj);
 static void cdn_mini_object_finalize (CdnMiniObject *obj);
+static void cdn_mini_object_init (CdnMiniObject *obj);
 
 GType
 cdn_mini_object_get_type (void)
@@ -76,7 +77,7 @@ cdn_mini_object_get_type (void)
 			NULL,
 			sizeof (CdnMiniObject),
 			0,
-			NULL,
+			(GInstanceInitFunc)cdn_mini_object_init,
 			&value_table
 		};
 
@@ -108,6 +109,12 @@ cdn_mini_object_class_init (gpointer g_class, gpointer class_data)
 	mo_class->finalize = cdn_mini_object_finalize;
 }
 
+static void
+cdn_mini_object_init (CdnMiniObject *obj)
+{
+	obj->ref_count = 1;
+}
+
 static CdnMiniObject *
 cdn_mini_object_copy_default (CdnMiniObject *obj)
 {
@@ -135,8 +142,8 @@ cdn_mini_object_new (GType type)
  * Returns: (transfer full): A #CdnMiniObject
  *
  **/
-CdnMiniObject *
-cdn_mini_object_copy (CdnMiniObject *obj)
+gpointer
+cdn_mini_object_copy (gpointer obj)
 {
 	CdnMiniObjectClass *mo_class;
 
@@ -145,14 +152,52 @@ cdn_mini_object_copy (CdnMiniObject *obj)
 		return NULL;
 	}
 
+	g_return_val_if_fail (CDN_IS_MINI_OBJECT (obj), NULL);
+
 	mo_class = CDN_MINI_OBJECT_GET_CLASS (obj);
 
-	return mo_class->copy(obj);
+	return mo_class->copy (obj);
 }
 
-void
-cdn_mini_object_free (CdnMiniObject *obj)
+/**
+ * cdn_mini_object_ref:
+ * @obj: a #CdnMiniObject.
+ *
+ * Increase the ref count on the mini object.
+ *
+ * Returns: (transfer full): @obj
+ *
+ **/
+gpointer
+cdn_mini_object_ref (gpointer obj)
 {
+	CdnMiniObject *mobj;
+
+	if (!obj)
+	{
+		return NULL;
+	}
+
+	g_return_val_if_fail (CDN_IS_MINI_OBJECT (obj), NULL);
+
+	mobj = obj;
+
+	g_atomic_int_inc (&mobj->ref_count);
+	return obj;
+}
+
+/**
+ * cdn_mini_object_unref:
+ * @obj: a #CdnMiniObject.
+ *
+ * Decrease the ref count of the mini object. If the ref count drops to 0, the
+ * mini object will be finalized.
+ *
+ **/
+void
+cdn_mini_object_unref (gpointer obj)
+{
+	CdnMiniObject *mobj;
 	CdnMiniObjectClass *mo_class;
 
 	if (!obj)
@@ -160,8 +205,15 @@ cdn_mini_object_free (CdnMiniObject *obj)
 		return;
 	}
 
-	mo_class = CDN_MINI_OBJECT_GET_CLASS (obj);
-	mo_class->finalize (obj);
+	g_return_if_fail (CDN_IS_MINI_OBJECT (obj));
+
+	mobj = obj;
+
+	if (g_atomic_int_dec_and_test (&mobj->ref_count))
+	{
+		mo_class = CDN_MINI_OBJECT_GET_CLASS (obj);
+		mo_class->finalize (obj);
+	}
 }
 
 static void
@@ -175,7 +227,7 @@ cdn_value_mini_object_free (GValue *value)
 {
 	if (value->data[0].v_pointer)
 	{
-		cdn_mini_object_free (CDN_MINI_OBJECT_CAST (value->data[0].v_pointer));
+		cdn_mini_object_unref (value->data[0].v_pointer);
 	}
 }
 
@@ -186,7 +238,7 @@ cdn_value_mini_object_copy (GValue const *src,
 	if (src->data[0].v_pointer)
 	{
 		dest->data[0].v_pointer =
-			cdn_mini_object_copy (CDN_MINI_OBJECT_CAST (src->data[0].v_pointer));
+			cdn_mini_object_ref (src->data[0].v_pointer);
 	}
 	else
 	{
@@ -209,7 +261,7 @@ cdn_value_mini_object_collect (GValue      *value,
 	if (collect_values[0].v_pointer)
 	{
 		value->data[0].v_pointer =
-			cdn_mini_object_copy (collect_values[0].v_pointer);
+			cdn_mini_object_ref (collect_values[0].v_pointer);
 	}
 	else
 	{
@@ -243,7 +295,7 @@ cdn_value_mini_object_lcopy (GValue const *value,
 	}
 	else
 	{
-		*mini_object_p = cdn_mini_object_copy (value->data[0].v_pointer);
+		*mini_object_p = cdn_mini_object_ref (value->data[0].v_pointer);
 	}
 
 	return NULL;
@@ -258,7 +310,7 @@ cdn_value_set_mini_object (GValue        *value,
 
 	if (value->data[0].v_pointer)
 	{
-		cdn_mini_object_free (value->data[0].v_pointer);
+		cdn_mini_object_unref (value->data[0].v_pointer);
 	}
 
 	if (mini_object == NULL)
@@ -267,7 +319,7 @@ cdn_value_set_mini_object (GValue        *value,
 	}
 	else
 	{
-		value->data[0].v_pointer = cdn_mini_object_copy (mini_object);
+		value->data[0].v_pointer = cdn_mini_object_ref (mini_object);
 	}
 }
 
@@ -280,7 +332,7 @@ cdn_value_take_mini_object (GValue        *value,
 
 	if (value->data[0].v_pointer)
 	{
-		cdn_mini_object_free (value->data[0].v_pointer);
+		cdn_mini_object_unref (value->data[0].v_pointer);
 	}
 
 	if (mini_object == NULL)
@@ -325,7 +377,7 @@ cdn_value_dup_mini_object (GValue const *value)
 {
 	g_return_val_if_fail (CDN_VALUE_HOLDS_MINI_OBJECT (value), NULL);
 
-	return cdn_mini_object_copy (value->data[0].v_pointer);
+	return cdn_mini_object_ref (value->data[0].v_pointer);
 }
 
 static void
@@ -347,7 +399,7 @@ param_mini_object_validate (GParamSpec * pspec, GValue * value)
 
 	if (mini_object && !g_value_type_compatible (G_OBJECT_TYPE (mini_object), pspec->value_type))
 	{
-		cdn_mini_object_free (mini_object);
+		cdn_mini_object_unref (mini_object);
 		value->data[0].v_pointer = NULL;
 		changed = TRUE;
 	}

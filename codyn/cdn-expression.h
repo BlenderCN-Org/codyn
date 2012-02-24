@@ -120,7 +120,7 @@ const GSList  *cdn_expression_get_instructions (CdnExpression      *expression);
 void           cdn_expression_set_instructions (CdnExpression      *expression,
                                                 const GSList       *instructions);
 
-void          _cdn_expression_set_instructions_take (CdnExpression      *expression,
+void           cdn_expression_set_instructions_take (CdnExpression      *expression,
                                                      GSList             *instructions);
 
 const GSList  *cdn_expression_get_rand_instructions (CdnExpression      *expression);

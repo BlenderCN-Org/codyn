@@ -128,7 +128,7 @@ get_property_map (GList const *args,
 		                     p,
 		                     cdn_expression_tree_iter_new_from_instructions (instr));
 
-		g_slist_foreach (instr, (GFunc)cdn_mini_object_free, NULL);
+		g_slist_foreach (instr, (GFunc)cdn_mini_object_unref, NULL);
 		g_slist_free (instr);
 
 		--num;

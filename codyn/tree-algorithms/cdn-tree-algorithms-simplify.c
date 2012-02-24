@@ -62,7 +62,7 @@ simplify_function (CdnExpressionTreeIter *iter)
 	iter->children = NULL;
 	iter->num_children = 0;
 
-	cdn_mini_object_free (CDN_MINI_OBJECT (iter->instruction));
+	cdn_mini_object_unref (CDN_MINI_OBJECT (iter->instruction));
 	iter->instruction = cdn_instruction_number_new (cdn_stack_pop (&stack));
 
 	cdn_stack_destroy (&stack);

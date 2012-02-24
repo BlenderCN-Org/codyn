@@ -289,7 +289,7 @@ iter_for_property (CdnVariable *prop)
 	instr = cdn_instruction_variable_new (prop);
 	ret = cdn_expression_tree_iter_new_from_instruction (instr);
 
-	cdn_mini_object_free (CDN_MINI_OBJECT (instr));
+	cdn_mini_object_unref (instr);
 	return ret;
 }
 
@@ -400,6 +400,7 @@ generate_functions (CdnOperatorLinsolve *self,
 		GHashTable *propmap;
 		GSList *fpropit;
 		gchar const *es;
+		GSList *newinstr;
 
 		s = g_strconcat ("ls_",
 		                 cdn_variable_get_name (unkptr->data),
@@ -460,8 +461,12 @@ generate_functions (CdnOperatorLinsolve *self,
 
 		cdn_expression_set_from_string (expr, es);
 
-		_cdn_expression_set_instructions_take (expr,
-		                                       cdn_expression_tree_iter_to_instructions (iters->data));
+		newinstr = cdn_expression_tree_iter_to_instructions (iters->data);
+
+		cdn_expression_set_instructions_take (expr, newinstr);
+
+		g_slist_foreach (newinstr, (GFunc)cdn_mini_object_unref, NULL);
+		g_slist_free (newinstr);
 
 		g_ptr_array_add (ptr, f);
 

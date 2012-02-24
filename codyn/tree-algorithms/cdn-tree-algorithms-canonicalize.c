@@ -473,7 +473,7 @@ canonical_unary_minus (CdnExpressionTreeIter *iter)
 	CdnExpressionTreeIter *child;
 
 	// -(term) => -1 * term
-	cdn_mini_object_free (CDN_MINI_OBJECT (iter->instruction));
+	cdn_mini_object_unref (CDN_MINI_OBJECT (iter->instruction));
 	iter->instruction = create_multiply ();
 
 	child = iter->children[0];
@@ -503,7 +503,7 @@ canonical_minus (CdnExpressionTreeIter *iter)
 
 	iter_set_child (mult, one, 0);
 
-	cdn_mini_object_free (CDN_MINI_OBJECT (iter->instruction));
+	cdn_mini_object_unref (CDN_MINI_OBJECT (iter->instruction));
 	iter->instruction = create_plus ();
 
 	iter_set_child (mult, iter->children[1], 1);

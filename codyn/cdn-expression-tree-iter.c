@@ -49,7 +49,7 @@ cdn_expression_tree_iter_free (CdnExpressionTreeIter *self)
 
 	if (self->instruction)
 	{
-		cdn_mini_object_free (CDN_MINI_OBJECT (self->instruction));
+		cdn_mini_object_unref (CDN_MINI_OBJECT (self->instruction));
 	}
 
 	g_free (self->cached_to_string);
@@ -158,22 +158,37 @@ cdn_expression_tree_iter_set_instruction (CdnExpressionTreeIter *iter,
 {
 	if (iter->instruction)
 	{
-		cdn_mini_object_free (CDN_MINI_OBJECT (iter->instruction));
+		cdn_mini_object_unref (iter->instruction);
 		iter->instruction = NULL;
 	}
 
 	if (instr)
 	{
-		iter->instruction = CDN_INSTRUCTION (cdn_mini_object_copy (CDN_MINI_OBJECT (instr)));
+		iter->instruction = cdn_mini_object_ref (instr);
 	}
 
 	iter_invalidate_cache_up (iter);
 }
 
 gint
-cdn_expression_tree_iter_num_children (CdnExpressionTreeIter *iter)
+cdn_expression_tree_iter_get_num_children (CdnExpressionTreeIter *iter)
 {
 	return iter->num_children;
+}
+
+void
+cdn_expression_tree_iter_set_num_children (CdnExpressionTreeIter *iter,
+                                           gint                   num)
+{
+	g_free (iter->children);
+	iter->children = NULL;
+
+	iter->num_children = num;
+
+	if (num > 0)
+	{
+		iter->children = g_new0 (CdnExpressionTreeIter *, num);
+	}
 }
 
 /**
@@ -244,7 +259,7 @@ iter_to_instructions (CdnExpressionTreeIter *iter,
 {
 	gint i;
 
-	ret = g_slist_prepend (ret, cdn_mini_object_copy (CDN_MINI_OBJECT (iter->instruction)));
+	ret = g_slist_prepend (ret, cdn_mini_object_ref (iter->instruction));
 
 	for (i = iter->num_children - 1; i >= 0; --i)
 	{
@@ -329,4 +344,34 @@ cdn_expression_tree_iter_new_from_instruction (CdnInstruction *instruction)
 	g_return_val_if_fail (CDN_IS_INSTRUCTION (instruction), NULL);
 
 	return iter_new (instruction);
+}
+
+/**
+ * cdn_expression_tree_iter_to_expression:
+ * @iter: a #CdnExpressionTreeIter.
+ *
+ * Create an expression from a tree iter.
+ *
+ * Returns: (transfer full): a #CdnExpression.
+ *
+ **/
+CdnExpression *
+cdn_expression_tree_iter_to_expression (CdnExpressionTreeIter *iter)
+{
+	gchar const *s;
+	CdnExpression *ret;
+	GSList *newinstr;
+
+	g_return_val_if_fail (iter != NULL, NULL);
+
+	s = cdn_expression_tree_iter_to_string (iter);
+	ret = cdn_expression_new (s);
+
+	newinstr = cdn_expression_tree_iter_to_instructions (iter);
+	cdn_expression_set_instructions_take (ret, newinstr);
+
+	g_slist_foreach (newinstr, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (newinstr);
+
+	return ret;
 }

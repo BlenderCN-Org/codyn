@@ -19,6 +19,9 @@ CdnExpressionTreeIter *cdn_expression_tree_iter_new_from_instruction (CdnInstruc
 CdnExpressionTreeIter *cdn_expression_tree_iter_copy            (CdnExpressionTreeIter *iter);
 void                   cdn_expression_tree_iter_free            (CdnExpressionTreeIter *iter);
 
+void                   cdn_expression_tree_iter_set_num_children (CdnExpressionTreeIter *iter,
+                                                                  gint                   i);
+
 CdnInstruction        *cdn_expression_tree_iter_get_instruction (CdnExpressionTreeIter *iter);
 void                   cdn_expression_tree_iter_set_instruction (CdnExpressionTreeIter *iter,
                                                                  CdnInstruction        *instr);
@@ -34,7 +37,7 @@ void                   cdn_expression_tree_iter_set_child       (CdnExpressionTr
                                                                  gint                   nth,
                                                                  CdnExpressionTreeIter *child);
 
-gint                   cdn_expression_tree_iter_num_children    (CdnExpressionTreeIter *iter);
+gint                   cdn_expression_tree_iter_get_num_children    (CdnExpressionTreeIter *iter);
 
 gchar const           *cdn_expression_tree_iter_to_string       (CdnExpressionTreeIter *iter);
 gchar const           *cdn_expression_tree_iter_to_string_dbg   (CdnExpressionTreeIter *iter);
@@ -59,6 +62,8 @@ CdnExpressionTreeIter *cdn_expression_tree_iter_substitute      (CdnExpressionTr
 
 CdnExpressionTreeIter *cdn_expression_tree_iter_substitute_hash (CdnExpressionTreeIter *iter,
                                                                  GHashTable            *table);
+
+CdnExpression         *cdn_expression_tree_iter_to_expression   (CdnExpressionTreeIter *iter);
 
 G_END_DECLS
 

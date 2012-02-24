@@ -143,7 +143,7 @@ get_property_map (GList const *args,
 		                     p,
 		                     cdn_expression_tree_iter_new_from_instruction (instr));
 
-		cdn_mini_object_free (CDN_MINI_OBJECT (instr));
+		cdn_mini_object_unref (instr);
 
 		--num;
 	}

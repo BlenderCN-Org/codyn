@@ -183,7 +183,7 @@ instructions_free (CdnExpression *expression)
 
 		g_slist_free (deps);
 
-		cdn_mini_object_free (expression->priv->instructions->data);
+		cdn_mini_object_unref (expression->priv->instructions->data);
 
 		expression->priv->instructions =
 			g_slist_delete_link (expression->priv->instructions,
@@ -2221,7 +2221,10 @@ parse_custom_operator (CdnExpression *expression,
 		CdnExpression *sub = cdn_expression_new (t);
 
 		g_free (t);
-		_cdn_expression_set_instructions_take (sub, newinst);
+		cdn_expression_set_instructions_take (sub, newinst);
+
+		g_slist_foreach (newinst, (GFunc)cdn_mini_object_unref, NULL);
+		g_slist_free (newinst);
 
 		g_object_ref_sink (sub);
 		expressions = g_slist_prepend (expressions, sub);
@@ -2710,7 +2713,10 @@ parse_prime (CdnExpression *expression,
 	}
 
 	expr = cdn_expression_new0 ();
-	_cdn_expression_set_instructions_take (expr, instr);
+	cdn_expression_set_instructions_take (expr, instr);
+
+	g_slist_foreach (instr, (GFunc)cdn_mini_object_unref, instr);
+	g_slist_free (instr);
 
 	exprs = g_slist_prepend (NULL, expr);
 
@@ -3595,12 +3601,27 @@ cdn_expression_set_instructions (CdnExpression *expression,
 
 	copy = g_slist_reverse (copy);
 
-	_cdn_expression_set_instructions_take (expression, copy);
+	cdn_expression_set_instructions_take (expression, copy);
+
+	g_slist_foreach (copy, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (copy);
 }
 
+/**
+ * cdn_expression_set_instructions_take:
+ * @expression: a #CdnExpression.
+ * @instructions: a #GSList.
+ *
+ * Set the instructions used to evaluate the expression. You should never have
+ * to use this function. It's main purpose is for optimization of expressions
+ * in cdnrawc. This method differs from set_instructions in that it simply
+ * refs the instructions whereas #cdn_expression_set_instructions copies
+ * the instructions.
+ *
+ **/
 void
-_cdn_expression_set_instructions_take (CdnExpression *expression,
-                                       GSList        *instructions)
+cdn_expression_set_instructions_take (CdnExpression *expression,
+                                      GSList        *instructions)
 {
 	gint oldr = 0;
 	gint oldc = 0;
@@ -3618,7 +3639,8 @@ _cdn_expression_set_instructions_take (CdnExpression *expression,
 	instructions_free (expression);
 	cdn_stack_destroy (&(expression->priv->output));
 
-	expression->priv->instructions = instructions;
+	expression->priv->instructions = g_slist_copy (instructions);
+	g_slist_foreach (expression->priv->instructions, (GFunc)cdn_mini_object_ref, NULL);
 
 	// Validate the stack here
 	validate_stack (expression, NULL, FALSE);
@@ -4195,7 +4217,7 @@ cdn_expression_copy (CdnExpression *expression)
 	while (instr)
 	{
 		instructions_push (ret,
-		                   CDN_INSTRUCTION (cdn_mini_object_copy (CDN_MINI_OBJECT (instr->data))),
+		                   cdn_mini_object_copy (instr->data),
 		                   NULL);
 
 		instr = g_slist_next (instr);

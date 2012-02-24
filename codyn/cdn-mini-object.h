@@ -53,6 +53,8 @@ struct _CdnMiniObject
 {
 	/*< private >*/
 	GTypeInstance parent;
+
+	gint ref_count;
 };
 
 struct _CdnMiniObjectClass
@@ -66,9 +68,11 @@ struct _CdnMiniObjectClass
 
 GType cdn_mini_object_get_type (void) G_GNUC_CONST;
 
-CdnMiniObject *cdn_mini_object_new  (GType                type);
-CdnMiniObject *cdn_mini_object_copy (CdnMiniObject       *obj);
-void           cdn_mini_object_free (CdnMiniObject       *obj);
+CdnMiniObject *cdn_mini_object_new   (GType    type);
+gpointer       cdn_mini_object_copy  (gpointer obj);
+
+gpointer       cdn_mini_object_ref   (gpointer obj);
+void           cdn_mini_object_unref (gpointer obj);
 
 /* GParamSpec */
 

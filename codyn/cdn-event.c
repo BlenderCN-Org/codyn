@@ -293,8 +293,10 @@ extract_condition_parts (CdnEvent        *event,
 	                                                     2,
 	                                                     smanip->pop_dims));
 
-	_cdn_expression_set_instructions_take (event->priv->condition,
-	                                       g_slist_reverse (ret));
+	ret = g_slist_reverse (ret);
+	cdn_expression_set_instructions_take (event->priv->condition, ret);
+	g_slist_foreach (ret, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (ret);
 
 	event->priv->comparison = id;
 	return TRUE;

@@ -95,7 +95,7 @@ instructions_is_natural_number (GSList  *instructions,
 static void
 free_instructions (GSList *l)
 {
-	g_slist_foreach (l, (GFunc)cdn_mini_object_free, NULL);
+	g_slist_foreach (l, (GFunc)cdn_mini_object_unref, NULL);
 	g_slist_free (l);
 }
 
@@ -1190,7 +1190,7 @@ derive_sqsum (CdnExpressionTreeIter *f,
 	GSList *ret = NULL;
 	gint i;
 
-	for (i = 0; i < cdn_expression_tree_iter_num_children (f); ++i)
+	for (i = 0; i < cdn_expression_tree_iter_get_num_children (f); ++i)
 	{
 		CdnExpressionTreeIter *iter;
 		GSList *pow;
@@ -1409,7 +1409,7 @@ map_iter (CdnExpressionTreeIter *iter,
 	gint i;
 	CdnInstruction *instr;
 
-	n = cdn_expression_tree_iter_num_children (iter);
+	n = cdn_expression_tree_iter_get_num_children (iter);
 
 	for (i = 0; i < n; ++i)
 	{
@@ -1454,7 +1454,7 @@ map_iter (CdnExpressionTreeIter *iter,
 		}
 	}
 	else if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR (instr) &&
-	         cdn_expression_tree_iter_num_children (iter) == 0)
+	         cdn_expression_tree_iter_get_num_children (iter) == 0)
 	{
 		CdnInstructionCustomOperator *opi;
 		CdnOperator *op;
@@ -2012,7 +2012,9 @@ cdn_symbolic_derive (CdnExpression          *expression,
 	es = cdn_expression_tree_iter_to_string (iter);
 	ret = cdn_expression_new (es);
 
-	_cdn_expression_set_instructions_take (ret, instructions);
+	cdn_expression_set_instructions_take (ret, instructions);
+	g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (instructions);
 
 	cdn_debug_message (DEBUG_DIFF,
 	                   "Derived: {%s}",
@@ -2056,6 +2058,10 @@ cdn_symbolic_simplify (CdnExpression *expression)
 
 	cdn_expression_tree_iter_free (iter);
 
-	_cdn_expression_set_instructions_take (ret, instructions);
+	cdn_expression_set_instructions_take (ret, instructions);
+
+	g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (instructions);
+
 	return ret;
 }
