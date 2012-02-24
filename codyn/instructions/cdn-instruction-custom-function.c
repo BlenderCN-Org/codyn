@@ -98,12 +98,21 @@ cdn_instruction_custom_function_get_stack_manipulation (CdnInstruction  *instruc
 
 static gboolean
 cdn_instruction_custom_function_equal (CdnInstruction *i1,
-                                       CdnInstruction *i2)
+                                       CdnInstruction *i2,
+                                       gboolean        asstring)
 {
 	CdnInstructionCustomFunction *f1 = CDN_INSTRUCTION_CUSTOM_FUNCTION (i1);
 	CdnInstructionCustomFunction *f2 = CDN_INSTRUCTION_CUSTOM_FUNCTION (i2);
 
-	return f1->priv->function == f2->priv->function;
+	if (asstring)
+	{
+		return g_strcmp0 (cdn_object_get_id (CDN_OBJECT (f1->priv->function)),
+		                  cdn_object_get_id (CDN_OBJECT (f2->priv->function))) == 0;
+	}
+	else
+	{
+		return f1->priv->function == f2->priv->function;
+	}
 }
 
 static GSList *

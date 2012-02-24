@@ -1239,7 +1239,7 @@ cdn_object_equal_impl (CdnObject *first,
 			CdnVariable *prop2 = cdn_object_get_variable (second,
 			                                              cdn_variable_get_name (prop1));
 
-			if (!prop2 || !cdn_variable_equal (prop1, prop2))
+			if (!prop2 || !cdn_variable_equal (prop1, prop2, TRUE))
 			{
 				ret = FALSE;
 				break;
@@ -2111,7 +2111,7 @@ cdn_object_get_variable_template (CdnObject   *object,
 
 		tprop = cdn_object_get_variable (templ, name);
 
-		if (tprop && (!match_full || cdn_variable_equal (variable, tprop)))
+		if (tprop && (!match_full || cdn_variable_equal (variable, tprop, TRUE)))
 		{
 			g_slist_free (templates);
 			return templ;

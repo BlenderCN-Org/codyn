@@ -91,7 +91,8 @@ check_pop_dims (CdnInstructionMatrix *m1,
 
 static gboolean
 cdn_instruction_matrix_equal (CdnInstruction *i1,
-                              CdnInstruction *i2)
+                              CdnInstruction *i2,
+                              gboolean        asstring)
 {
 	CdnInstructionMatrix *n1 = CDN_INSTRUCTION_MATRIX (i1);
 	CdnInstructionMatrix *n2 = CDN_INSTRUCTION_MATRIX (i2);

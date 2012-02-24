@@ -637,7 +637,8 @@ cdn_operator_delayed_get_property (GObject    *object,
 
 static gboolean
 cdn_operator_delayed_equal (CdnOperator *op,
-                            CdnOperator *other)
+                            CdnOperator *other,
+                            gboolean     asstring)
 {
 	CdnOperatorDelayed *delayed;
 	CdnOperatorDelayed *odel;
@@ -657,14 +658,16 @@ cdn_operator_delayed_equal (CdnOperator *op,
 	}
 
 	if (!cdn_expression_equal (delayed->priv->expression,
-	                           odel->priv->expression))
+	                           odel->priv->expression,
+	                           asstring))
 	{
 		return FALSE;
 	}
 
 	if (delayed->priv->initial_value &&
 	    !cdn_expression_equal (delayed->priv->expression,
-	                           odel->priv->expression))
+	                           odel->priv->expression,
+	                           asstring))
 	{
 		return FALSE;
 	}

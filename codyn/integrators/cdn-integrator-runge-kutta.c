@@ -71,7 +71,7 @@ calculate_length (CdnIntegratorRungeKutta *rk)
 	GSList const *integrated;
 	gint len = 0;
 
-	integrated = cdn_integrator_state_integrated_properties (state);
+	integrated = cdn_integrator_state_integrated_variables (state);
 
 	while (integrated)
 	{
@@ -238,7 +238,7 @@ cdn_integrator_runge_kutta_step_impl (CdnIntegrator *integrator,
 	}
 
 	CdnIntegratorState *state = cdn_integrator_get_state (integrator);
-	GSList const *integrated = cdn_integrator_state_integrated_properties (state);
+	GSList const *integrated = cdn_integrator_state_integrated_variables (state);
 
 	/* K_1 = f(t_n, y_n) */
 	store_coefficients (rk, integrated, 0, 0);

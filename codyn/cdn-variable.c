@@ -216,7 +216,8 @@ set_constraint (CdnVariable   *property,
 	if (property->priv->constraint == expression ||
 	    (expression && property->priv->constraint &&
 	     cdn_expression_equal (property->priv->constraint,
-	                           expression)))
+	                           expression,
+	                           TRUE)))
 	{
 		if (expression && g_object_is_floating (expression))
 		{
@@ -256,7 +257,8 @@ set_expression (CdnVariable   *property,
 	if (property->priv->expression == expression ||
 	    (expression && property->priv->expression &&
 	     cdn_expression_equal (property->priv->expression,
-	                           expression)))
+	                           expression,
+	                           TRUE)))
 	{
 		if (expression && g_object_is_floating (expression))
 		{
@@ -992,14 +994,16 @@ cdn_variable_reset (CdnVariable *property)
  **/
 gboolean
 cdn_variable_equal (CdnVariable *property,
-                    CdnVariable *other)
+                    CdnVariable *other,
+                    gboolean     asstring)
 {
 	g_return_val_if_fail (CDN_IS_VARIABLE (property), FALSE);
 	g_return_val_if_fail (CDN_IS_VARIABLE (other), FALSE);
 
 	return property->priv->flags == other->priv->flags &&
 	       cdn_expression_equal (cdn_variable_get_expression (property),
-	                             cdn_variable_get_expression (other));
+	                             cdn_variable_get_expression (other),
+	                             asstring);
 }
 
 /**

@@ -1501,7 +1501,7 @@ cdn_edge_get_action_with_index (CdnEdge       *link,
 			continue;
 		}
 
-		if (oidx && !cdn_expression_equal (oidx, index))
+		if (oidx && !cdn_expression_equal (oidx, index, TRUE))
 		{
 			continue;
 		}

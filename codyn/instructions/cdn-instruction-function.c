@@ -107,7 +107,8 @@ cdn_instruction_function_get_stack_manipulation (CdnInstruction  *instruction,
 
 static gboolean
 cdn_instruction_function_equal (CdnInstruction *i1,
-                                CdnInstruction *i2)
+                                CdnInstruction *i2,
+                                gboolean        asstring)
 {
 	CdnInstructionFunction *f1 = CDN_INSTRUCTION_FUNCTION (i1);
 	CdnInstructionFunction *f2 = CDN_INSTRUCTION_FUNCTION (i2);

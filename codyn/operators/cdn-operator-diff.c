@@ -70,9 +70,12 @@ cdn_operator_diff_get_name ()
 }
 
 static CdnFunction *
-derived_function (CdnExpression *expr)
+derived_function (CdnExpression *expr,
+                  gint           numargs,
+                  gint          *argdim)
 {
 	GSList const *instr;
+	CdnFunction *func = NULL;
 
 	instr = cdn_expression_get_instructions (expr);
 
@@ -83,17 +86,22 @@ derived_function (CdnExpression *expr)
 
 	if (CDN_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (instr->data))
 	{
-		return cdn_instruction_custom_function_ref_get_function (instr->data);
+		func = cdn_instruction_custom_function_ref_get_function (instr->data);
 	}
 	else if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (instr->data))
 	{
 		CdnOperator *op;
 
 		op = cdn_instruction_custom_operator_ref_get_operator (instr->data);
-		return cdn_operator_get_primary_function (op);
+		func = cdn_operator_get_primary_function (op);
 	}
 
-	return NULL;
+	if (func)
+	{
+		func = cdn_function_for_dimension (func, numargs, argdim);
+	}
+
+	return func;
 }
 
 static GHashTable *
@@ -165,6 +173,8 @@ static gboolean
 validate_arguments (GSList const  *expressions,
                     GSList const  *towards,
                     CdnFunction  **func,
+                    gint           numargs,
+                    gint          *argdim,
                     GList        **syms,
                     gint          *order,
                     GError       **error)
@@ -173,7 +183,7 @@ validate_arguments (GSList const  *expressions,
 
 	expr = expressions->data;
 
-	*func = derived_function (expressions->data);
+	*func = derived_function (expressions->data, numargs, argdim);
 
 	if (!*func)
 	{
@@ -313,6 +323,8 @@ cdn_operator_diff_initialize (CdnOperator   *op,
 	if (!validate_arguments (expressions[0],
 	                         num_expressions > 1 ? expressions[1] : NULL,
 	                         &func,
+	                         num_arguments,
+	                         argdim,
 	                         &symargs,
 	                         &diff->priv->order,
 	                         error))

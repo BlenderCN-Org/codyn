@@ -147,7 +147,7 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 	state = cdn_integrator_get_state (integrator);
 
 	// Reset accumulated state
-	integrated = cdn_integrator_state_integrated_properties (state);
+	integrated = cdn_integrator_state_integrated_variables (state);
 
 	while (integrated)
 	{
@@ -223,7 +223,7 @@ find_integrated (CdnIntegratorLeapFrog *self)
 	self->priv->second_order = g_slist_reverse (self->priv->second_order);
 	self->priv->first_order = g_slist_reverse (self->priv->first_order);
 
-	integrated = cdn_integrator_state_integrated_properties (state);
+	integrated = cdn_integrator_state_integrated_variables (state);
 
 	while (integrated)
 	{

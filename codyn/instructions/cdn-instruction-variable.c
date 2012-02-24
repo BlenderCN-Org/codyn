@@ -135,14 +135,22 @@ cdn_instruction_variable_get_dependencies (CdnInstruction *instruction)
 
 static gboolean
 cdn_instruction_variable_equal (CdnInstruction *i1,
-                                CdnInstruction *i2)
+                                CdnInstruction *i2,
+                                gboolean        asstring)
 {
 	CdnInstructionVariable *p1 = CDN_INSTRUCTION_VARIABLE (i1);
 	CdnInstructionVariable *p2 = CDN_INSTRUCTION_VARIABLE (i2);
 
-	return g_strcmp0 (cdn_variable_get_name (p1->priv->property),
-	                  cdn_variable_get_name (p2->priv->property)) == 0 &&
-	       p1->priv->binding == p2->priv->binding;
+	if (asstring)
+	{
+		return g_strcmp0 (cdn_variable_get_name (p1->priv->property),
+		                  cdn_variable_get_name (p2->priv->property)) == 0 &&
+		       p1->priv->binding == p2->priv->binding;
+	}
+	else
+	{
+		return p1->priv->property == p2->priv->property;
+	}
 }
 
 static void

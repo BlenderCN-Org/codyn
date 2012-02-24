@@ -73,6 +73,7 @@ struct _CdnFunctionPrivate
 
 	GList *arguments;
 	GHashTable *arguments_hash;
+	GSList *helper_vars;
 
 	guint n_arguments;
 	guint n_implicit;
@@ -124,6 +125,10 @@ cdn_function_finalize (GObject *object)
 	g_list_free (self->priv->arguments);
 
 	g_hash_table_destroy (self->priv->arguments_hash);
+
+	g_slist_foreach (self->priv->helper_vars, (GFunc)g_object_unref, NULL);
+	g_slist_free (self->priv->helper_vars);
+	self->priv->helper_vars = NULL;
 
 	G_OBJECT_CLASS (cdn_function_parent_class)->finalize (object);
 }
@@ -186,6 +191,32 @@ cdn_function_get_property (GObject *object, guint prop_id, GValue *value, GParam
 	}
 }
 
+static void
+extract_helper_vars (CdnFunction *f)
+{
+	GSList *vars;
+
+	vars = cdn_object_get_variables (CDN_OBJECT (f));
+
+	while (vars)
+	{
+		gchar const *name;
+
+		name = cdn_variable_get_name (vars->data);
+
+		if (g_hash_table_lookup (f->priv->arguments_hash, name) == NULL)
+		{
+			f->priv->helper_vars = g_slist_prepend (f->priv->helper_vars,
+			                                        g_object_ref (vars->data));
+		}
+
+		g_object_unref (vars->data);
+		vars = g_slist_delete_link (vars, vars);
+	}
+
+	f->priv->helper_vars = g_slist_reverse (f->priv->helper_vars);
+}
+
 static gboolean
 cdn_function_compile_impl (CdnObject         *object,
                            CdnCompileContext *context,
@@ -198,6 +229,10 @@ cdn_function_compile_impl (CdnObject         *object,
 	{
 		return TRUE;
 	}
+
+	g_slist_foreach (self->priv->helper_vars, (GFunc)g_object_unref, NULL);
+	g_slist_free (self->priv->helper_vars);
+	self->priv->helper_vars = NULL;
 
 	if (context)
 	{
@@ -245,6 +280,8 @@ cdn_function_compile_impl (CdnObject         *object,
 	cdn_compile_context_restore (context);
 	g_object_unref (context);
 
+	extract_helper_vars (self);
+
 	return ret;
 }
 
@@ -276,10 +313,23 @@ cdn_function_evaluate_impl (CdnFunction *function,
 		gint numc;
 		gint num;
 		gint i;
+		GSList *item;
 
 		g_slist_foreach ((GSList *)cdn_expression_get_rand_instructions (function->priv->expression),
 		                 (GFunc)cdn_instruction_rand_next,
 		                 NULL);
+
+		for (item = function->priv->helper_vars; item; item = g_slist_next (item))
+		{
+			CdnVariable *v = item->data;
+			CdnExpression *e;
+
+			e = cdn_variable_get_expression (v);
+
+			g_slist_foreach ((GSList *)cdn_expression_get_rand_instructions (e),
+			                 (GFunc)cdn_instruction_rand_next,
+			                 NULL);
+		}
 
 		gdouble const *ret = cdn_expression_evaluate_values (function->priv->expression,
 		                                                     &numr,
@@ -581,7 +631,8 @@ cdn_function_template_argument_removed (CdnFunction         *source,
 	    item &&
 	    arguments_equal (target, templ, item) &&
 	    cdn_expression_equal (target->priv->expression,
-	                          templ->priv->expression))
+	                          templ->priv->expression,
+	                          TRUE))
 	{
 		cdn_function_remove_argument (target,
 		                              item,
@@ -751,7 +802,9 @@ cdn_function_equal_impl (CdnObject *a,
 		return FALSE;
 	}
 
-	return cdn_expression_equal (fa->priv->expression, fb->priv->expression);
+	return cdn_expression_equal (fa->priv->expression,
+	                             fb->priv->expression,
+	                             TRUE);
 }
 
 static gboolean

@@ -196,7 +196,7 @@ multiply_make_powers (CdnExpressionTreeIter *iter)
 	t2 = multiply_make_powers_terms (t2,
 	                                 &p2);
 
-	if (!cdn_expression_tree_iter_equal (t1, t2))
+	if (!cdn_expression_tree_iter_equal (t1, t2, FALSE))
 	{
 		return FALSE;
 	}
@@ -460,7 +460,7 @@ simplify_factorize (CdnExpressionTreeIter *iter)
 		cmp1 = lism ? left->children[0] : left;
 		cmp2 = rism ? right->children[0] : right;
 
-		if (!cdn_expression_tree_iter_equal (cmp1, cmp2))
+		if (!cdn_expression_tree_iter_equal (cmp1, cmp2, FALSE))
 		{
 			break;
 		}

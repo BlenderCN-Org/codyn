@@ -193,6 +193,14 @@ cdn_instruction_rand_get_stack_manipulation (CdnInstruction  *instruction,
 	return &self->priv->smanip;
 }
 
+static gboolean
+cdn_instruction_rand_equal (CdnInstruction *i1,
+                            CdnInstruction *i2,
+                            gboolean        asstring)
+{
+	return TRUE;
+}
+
 static void
 cdn_instruction_rand_class_init (CdnInstructionRandClass *klass)
 {
@@ -205,6 +213,7 @@ cdn_instruction_rand_class_init (CdnInstructionRandClass *klass)
 	inst_class->to_string = cdn_instruction_rand_to_string;
 	inst_class->execute = cdn_instruction_rand_execute;
 	inst_class->get_stack_manipulation = cdn_instruction_rand_get_stack_manipulation;
+	inst_class->equal = cdn_instruction_rand_equal;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionRandPrivate));
 }

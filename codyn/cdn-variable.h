@@ -142,7 +142,8 @@ void               cdn_variable_set_constraint          (CdnVariable       *prop
 CdnExpression     *cdn_variable_get_constraint          (CdnVariable       *property);
 
 gboolean           cdn_variable_equal                   (CdnVariable        *property,
-                                                         CdnVariable        *other);
+                                                         CdnVariable        *other,
+                                                         gboolean            asstring);
 
 void               cdn_variable_set_update              (CdnVariable        *property,
                                                          gdouble const      *values);

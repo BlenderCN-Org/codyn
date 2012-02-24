@@ -217,7 +217,8 @@ cdn_operator_df_dt_get_property (GObject    *object,
 
 static gboolean
 cdn_operator_df_dt_equal (CdnOperator *op,
-                            CdnOperator *other)
+                          CdnOperator *other,
+                          gboolean     asstring)
 {
 	CdnOperatorDfDt *df_dt;
 	CdnOperatorDfDt *odel;
@@ -236,7 +237,8 @@ cdn_operator_df_dt_equal (CdnOperator *op,
 	}
 
 	if (!cdn_expression_equal (df_dt->priv->expression,
-	                           odel->priv->expression))
+	                           odel->priv->expression,
+	                           asstring))
 	{
 		return FALSE;
 	}

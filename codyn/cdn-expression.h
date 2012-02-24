@@ -103,7 +103,8 @@ gdouble       *cdn_expression_get_cache        (CdnExpression      *expression,
 void           cdn_expression_reset            (CdnExpression      *expression);
 
 gboolean       cdn_expression_equal            (CdnExpression      *expression,
-                                                CdnExpression      *other);
+                                                CdnExpression      *other,
+                                                gboolean            asstring);
 
 void           cdn_expression_set_from_string  (CdnExpression      *expression,
                                                 const gchar        *value);

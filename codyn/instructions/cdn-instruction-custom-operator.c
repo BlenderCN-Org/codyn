@@ -134,7 +134,8 @@ cdn_instruction_custom_operator_get_dependencies (CdnInstruction *instruction)
 
 static gboolean
 cdn_instruction_custom_operator_equal (CdnInstruction *a,
-                                       CdnInstruction *b)
+                                       CdnInstruction *b,
+                                       gboolean        asstring)
 {
 	CdnInstructionCustomOperator *ac;
 	CdnInstructionCustomOperator *bc;
@@ -142,7 +143,9 @@ cdn_instruction_custom_operator_equal (CdnInstruction *a,
 	ac = CDN_INSTRUCTION_CUSTOM_OPERATOR (a);
 	bc = CDN_INSTRUCTION_CUSTOM_OPERATOR (b);
 
-	return cdn_operator_equal (ac->priv->op, bc->priv->op);
+	return cdn_operator_equal (ac->priv->op,
+	                           bc->priv->op,
+	                           asstring);
 }
 
 static void

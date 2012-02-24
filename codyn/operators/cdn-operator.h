@@ -88,7 +88,8 @@ struct _CdnOperatorClass
 	CdnStackManipulation const *(*get_stack_manipulation) (CdnOperator *op);
 
 	gboolean         (*equal)           (CdnOperator *op,
-	                                     CdnOperator *other);
+	                                     CdnOperator *other,
+	                                     gboolean     asstring);
 
 	CdnFunctionForward *(*get_function)  (CdnOperator *op,
 	                                      gint        *idx,
@@ -141,7 +142,8 @@ GSList const        *cdn_operator_get_indices                 (CdnOperator     *
 gint                 cdn_operator_num_indices                 (CdnOperator     *op);
 
 gboolean             cdn_operator_equal                       (CdnOperator     *op,
-                                                               CdnOperator     *other);
+                                                               CdnOperator     *other,
+                                                               gboolean         asstring);
 
 CdnOperator         *cdn_operator_copy                        (CdnOperator     *op);
 void                 cdn_operator_reset                       (CdnOperator     *op);

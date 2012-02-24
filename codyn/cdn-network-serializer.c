@@ -216,7 +216,7 @@ property_matches_template (CdnVariable  *property,
 
 		if (tprop)
 		{
-			return cdn_variable_equal (property, tprop);
+			return cdn_variable_equal (property, tprop, TRUE);
 		}
 
 		templates = g_slist_next (templates);
@@ -610,7 +610,7 @@ action_matches_template (CdnEdgeAction *action,
 
 			if (g_strcmp0 (p1, p2) == 0)
 			{
-				return cdn_expression_equal (e1, e2);
+				return cdn_expression_equal (e1, e2, TRUE);
 			}
 
 			actions = g_slist_next (actions);

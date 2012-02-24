@@ -131,6 +131,7 @@ cdn_instruction_get_dependencies (CdnInstruction *instruction)
  * cdn_instruction_equal:
  * @i1: A #CdnInstruction
  * @i2: A #CdnInstruction
+ * @asstring: as string
  *
  * Compares two instructions for equality.
  *
@@ -139,7 +140,8 @@ cdn_instruction_get_dependencies (CdnInstruction *instruction)
  **/
 gboolean
 cdn_instruction_equal (CdnInstruction *i1,
-                       CdnInstruction *i2)
+                       CdnInstruction *i2,
+                       gboolean        asstring)
 {
 	if (i1 == NULL && i2 == NULL)
 	{
@@ -158,7 +160,7 @@ cdn_instruction_equal (CdnInstruction *i1,
 
 	if (CDN_INSTRUCTION_GET_CLASS (i1)->equal)
 	{
-		return CDN_INSTRUCTION_GET_CLASS (i1)->equal (i1, i2);
+		return CDN_INSTRUCTION_GET_CLASS (i1)->equal (i1, i2, asstring);
 	}
 	else
 	{

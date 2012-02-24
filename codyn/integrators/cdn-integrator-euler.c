@@ -78,7 +78,7 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
 	/* Update values are now contained in state, update the values in the
 	   states */
 	CdnIntegratorState *state = cdn_integrator_get_state (integrator);
-	GSList const *integrated = cdn_integrator_state_integrated_properties (state);
+	GSList const *integrated = cdn_integrator_state_integrated_variables (state);
 
 	while (integrated)
 	{

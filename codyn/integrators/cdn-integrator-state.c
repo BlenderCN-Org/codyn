@@ -36,9 +36,9 @@ static void update_phases (CdnIntegratorState *state);
  * SECTION:cdn-integrator-state
  * @short_description: The integrator state
  *
- * The integrator state stores information on which properties need to be
+ * The integrator state stores information on which variables need to be
  * integrated and how, based on a root object. It automatically tracks changes
- * in the root object and recalculates the properties that need to be
+ * in the root object and recalculates the variables that need to be
  * integrated.
  *
  */
@@ -47,9 +47,9 @@ struct _CdnIntegratorStatePrivate
 {
 	CdnObject *object;
 
-	GSList *integrated_properties;
-	GSList *direct_properties;
-	GSList *all_properties;
+	GSList *integrated_variables;
+	GSList *direct_variables;
+	GSList *all_variables;
 	GSList *rand_instructions;
 	GSList *rand_expressions;
 
@@ -165,9 +165,9 @@ clear_list (GSList **lst)
 static void
 clear_lists (CdnIntegratorState *state)
 {
-	clear_list (&(state->priv->integrated_properties));
-	clear_list (&(state->priv->direct_properties));
-	clear_list (&(state->priv->all_properties));
+	clear_list (&(state->priv->integrated_variables));
+	clear_list (&(state->priv->direct_variables));
+	clear_list (&(state->priv->all_variables));
 
 	clear_list (&(state->priv->integrated_edge_actions));
 	clear_list (&(state->priv->direct_edge_actions));
@@ -502,19 +502,19 @@ collect_actors (CdnIntegratorState *state,
 
 	while (actors)
 	{
-		CdnVariable *property = actors->data;
+		CdnVariable *variable = actors->data;
 
-		if (cdn_variable_get_integrated (property))
+		if (cdn_variable_get_integrated (variable))
 		{
-			state->priv->integrated_properties =
-				prepend_gslist_unique (state->priv->integrated_properties,
-				                       property);
+			state->priv->integrated_variables =
+				prepend_gslist_unique (state->priv->integrated_variables,
+				                       variable);
 		}
 		else
 		{
-			state->priv->direct_properties =
-				prepend_gslist_unique (state->priv->direct_properties,
-				                       property);
+			state->priv->direct_variables =
+				prepend_gslist_unique (state->priv->direct_variables,
+				                       variable);
 		}
 
 		actors = g_slist_next (actors);
@@ -522,15 +522,15 @@ collect_actors (CdnIntegratorState *state,
 }
 
 static void
-collect_properties (CdnIntegratorState *state,
-                    CdnObject          *object)
+collect_variables (CdnIntegratorState *state,
+                   CdnObject          *object)
 {
 	GSList const *props;
 
 	for (props = cdn_object_get_variables (object); props; props = g_slist_next (props))
 	{
-		state->priv->all_properties =
-			prepend_gslist_unique (state->priv->all_properties,
+		state->priv->all_variables =
+			prepend_gslist_unique (state->priv->all_variables,
 			                       props->data);
 	}
 }
@@ -539,7 +539,7 @@ static void
 collect (CdnIntegratorState *state,
          CdnObject          *object)
 {
-	collect_properties (state, object);
+	collect_variables (state, object);
 
 	if (CDN_IS_EDGE (object))
 	{
@@ -800,7 +800,7 @@ evaluate_notify (CdnExpression *expression,
  *
  * Update the integrator state. This recursively goes through all the objects
  * contained in the associated #CdnIntegratorState:object and collects the
- * links and properties that need to be integrated.
+ * links and variables that need to be integrated.
  *
  **/
 void
@@ -815,14 +815,14 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 
 	collect (state, CDN_OBJECT (state->priv->object));
 
-	state->priv->all_properties =
-		g_slist_reverse (state->priv->all_properties);
+	state->priv->all_variables =
+		g_slist_reverse (state->priv->all_variables);
 
-	state->priv->integrated_properties =
-		g_slist_reverse (state->priv->integrated_properties);
+	state->priv->integrated_variables =
+		g_slist_reverse (state->priv->integrated_variables);
 
-	state->priv->direct_properties =
-		g_slist_reverse (state->priv->direct_properties);
+	state->priv->direct_variables =
+		g_slist_reverse (state->priv->direct_variables);
 
 	state->priv->io =
 		g_slist_reverse (state->priv->io);
@@ -855,42 +855,42 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 }
 
 /**
- * cdn_integrator_state_integrated_properties:
+ * cdn_integrator_state_integrated_variables:
  * @state: A #CdnIntegratorState
  *
- * Get the integrated properties which are acted upon by links.
+ * Get the integrated variables which are acted upon by links.
  *
  * Returns: (element-type CdnVariable) (transfer none): A #GSList of #CdnVariable
  *
  **/
 const GSList *
-cdn_integrator_state_integrated_properties (CdnIntegratorState *state)
+cdn_integrator_state_integrated_variables (CdnIntegratorState *state)
 {
 	/* Omit check for speed up */
-	return state->priv->integrated_properties;
+	return state->priv->integrated_variables;
 }
 
 /**
- * cdn_integrator_state_direct_properties:
+ * cdn_integrator_state_direct_variables:
  * @state: A #CdnIntegratorState
  *
- * Get non-integrated properties which are acted upon by links.
+ * Get non-integrated variables which are acted upon by links.
  *
  * Returns: (element-type CdnVariable) (transfer none): A #GSList of #CdnVariable
  *
  **/
 const GSList *
-cdn_integrator_state_direct_properties (CdnIntegratorState *state)
+cdn_integrator_state_direct_variables (CdnIntegratorState *state)
 {
 	/* Omit check for speed up */
-	return state->priv->direct_properties;
+	return state->priv->direct_variables;
 }
 
 /**
  * cdn_integrator_state_integrated_edge_actions:
  * @state: A #CdnIntegratorState
  *
- * Get the link actions that act on integrated properties.
+ * Get the link actions that act on integrated variables.
  *
  * Returns: (element-type CdnEdgeAction) (transfer none): A #GSList of #CdnEdgeAction
  *
@@ -922,7 +922,7 @@ cdn_integrator_state_phase_integrated_edge_actions (CdnIntegratorState *state)
  * cdn_integrator_state_direct_edge_actions:
  * @state: A #CdnIntegratorState
  *
- * Get the link actions that act on non-integrated properties.
+ * Get the link actions that act on non-integrated variables.
  *
  * Returns: (element-type CdnEdgeAction) (transfer none): A #GSList of #CdnEdgeAction
  *
@@ -952,19 +952,19 @@ cdn_integrator_state_phase_direct_edge_actions (CdnIntegratorState *state)
 }
 
 /**
- * cdn_integrator_state_all_properties:
+ * cdn_integrator_state_all_variables:
  * @state: A #CdnIntegratorState
  *
- * Get the link actions that act on non-integrated properties.
+ * Get the link actions that act on non-integrated variables.
  *
  * Returns: (element-type CdnVariable) (transfer none): A #GSList of #CdnVariable
  *
  **/
 const GSList *
-cdn_integrator_state_all_properties (CdnIntegratorState *state)
+cdn_integrator_state_all_variables (CdnIntegratorState *state)
 {
 	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
-	return state->priv->all_properties;
+	return state->priv->all_variables;
 }
 
 /**

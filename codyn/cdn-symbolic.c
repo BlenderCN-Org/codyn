@@ -2018,7 +2018,6 @@ cdn_symbolic_derive (CdnExpression          *expression,
 	                   "Derived: {%s}",
 	                   cdn_expression_tree_iter_to_string (mapped));
 
-
 	if (mapped == iter)
 	{
 		cdn_expression_tree_iter_free (iter);

@@ -59,9 +59,9 @@ GType               cdn_integrator_state_get_type                (void) G_GNUC_C
 CdnIntegratorState *cdn_integrator_state_new                     (CdnObject *object);
 CdnObject          *cdn_integrator_state_get_object              (CdnIntegratorState *state);
 
-const GSList       *cdn_integrator_state_integrated_properties   (CdnIntegratorState *state);
-const GSList       *cdn_integrator_state_direct_properties       (CdnIntegratorState *state);
-const GSList       *cdn_integrator_state_all_properties          (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_integrated_variables    (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_direct_variables        (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_all_variables           (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_integrated_edge_actions (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_direct_edge_actions     (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_phase_integrated_edge_actions (CdnIntegratorState *state);

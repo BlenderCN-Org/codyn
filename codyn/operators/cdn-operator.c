@@ -239,9 +239,10 @@ cdn_operator_finalize (GObject *object)
 }
 
 static gboolean
-compare_expressions (GSList **e1,
-                     GSList **e2,
-                     gint     num)
+compare_expressions (GSList   **e1,
+                     GSList   **e2,
+                     gint       num,
+                     gboolean   asstring)
 {
 	gint i;
 
@@ -252,7 +253,7 @@ compare_expressions (GSList **e1,
 
 		while (ee1 && ee2)
 		{
-			if (!cdn_expression_equal (ee1->data, ee2->data))
+			if (!cdn_expression_equal (ee1->data, ee2->data, asstring))
 			{
 				return FALSE;
 			}
@@ -272,7 +273,8 @@ compare_expressions (GSList **e1,
 
 static gboolean
 cdn_operator_equal_default (CdnOperator *op,
-                            CdnOperator *other)
+                            CdnOperator *other,
+                            gboolean     asstring)
 {
 	if (G_OBJECT_TYPE (op) != G_OBJECT_TYPE (other))
 	{
@@ -296,10 +298,12 @@ cdn_operator_equal_default (CdnOperator *op,
 
 	return compare_expressions (op->priv->expressions,
 	                            other->priv->expressions,
-	                            op->priv->num_expressions) &&
+	                            op->priv->num_expressions,
+	                            asstring) &&
 	       compare_expressions (op->priv->indices,
 	                            other->priv->indices,
-	                            op->priv->num_indices);
+	                            op->priv->num_indices,
+	                            asstring);
 }
 
 static CdnFunction *
@@ -610,7 +614,8 @@ cdn_operator_copy (CdnOperator *op)
 
 gboolean
 cdn_operator_equal (CdnOperator *op,
-                    CdnOperator *other)
+                    CdnOperator *other,
+                    gboolean     asstring)
 {
 	g_return_val_if_fail (CDN_IS_OPERATOR (op), FALSE);
 
@@ -619,7 +624,7 @@ cdn_operator_equal (CdnOperator *op,
 		return FALSE;
 	}
 
-	return CDN_OPERATOR_GET_CLASS (op)->equal (op, other);
+	return CDN_OPERATOR_GET_CLASS (op)->equal (op, other, asstring);
 }
 
 gint

@@ -578,7 +578,7 @@ cdn_integrator_reset_impl (CdnIntegrator *integrator)
 		return;
 	}
 
-	items = cdn_integrator_state_integrated_properties (integrator->priv->state);
+	items = cdn_integrator_state_integrated_variables (integrator->priv->state);
 
 	while (items)
 	{
@@ -852,7 +852,7 @@ simulation_step (CdnIntegrator *integrator)
 {
 	GSList const *integrated;
 
-	integrated = cdn_integrator_state_integrated_properties (integrator->priv->state);
+	integrated = cdn_integrator_state_integrated_variables (integrator->priv->state);
 
 	while (integrated)
 	{

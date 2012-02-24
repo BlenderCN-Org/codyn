@@ -3621,7 +3621,7 @@ _cdn_expression_set_instructions_take (CdnExpression *expression,
 	expression->priv->instructions = instructions;
 
 	// Validate the stack here
-	validate_stack (expression, NULL, TRUE);
+	validate_stack (expression, NULL, FALSE);
 
 	// We are going to reset the expression completely here
 	expression->priv->prevent_cache_reset = FALSE;
@@ -4053,6 +4053,7 @@ cdn_expression_get_rand_instructions (CdnExpression *expression)
  * cdn_expression_equal:
  * @expression: a #CdnExpression
  * @other: a #CdnExpression
+ * @asstring: whether the expression is equal in string representation
  *
  * Get whether two expressions are equal. If the expressions are compiled, they
  * are evaluated for equality by means of their instructions. Otherwise the
@@ -4063,7 +4064,8 @@ cdn_expression_get_rand_instructions (CdnExpression *expression)
  **/
 gboolean
 cdn_expression_equal (CdnExpression *expression,
-                      CdnExpression *other)
+                      CdnExpression *other,
+                      gboolean       asstring)
 {
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (CDN_IS_EXPRESSION (other), FALSE);
@@ -4086,7 +4088,7 @@ cdn_expression_equal (CdnExpression *expression,
 
 	while (e1)
 	{
-		if (!cdn_instruction_equal (e1->data, e2->data))
+		if (!cdn_instruction_equal (e1->data, e2->data, asstring))
 		{
 			return FALSE;
 		}

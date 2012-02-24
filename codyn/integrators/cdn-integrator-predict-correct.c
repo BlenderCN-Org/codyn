@@ -304,8 +304,8 @@ cdn_integrator_predict_correct_finalize (GObject *object)
 }
 
 static gint
-calculate_props_length (GSList const                *props,
-                        gint                        *longest)
+calculate_props_length (GSList const *props,
+                        gint         *longest)
 {
 	gint len = 0;
 
@@ -345,7 +345,7 @@ calculate_length (CdnIntegratorPredictCorrect *pc,
 
 	*longest = 0;
 
-	return calculate_props_length (cdn_integrator_state_integrated_properties (state),
+	return calculate_props_length (cdn_integrator_state_integrated_variables (state),
 	                               longest);
 }
 
@@ -396,7 +396,7 @@ cdn_integrator_predict_correct_step_impl (CdnIntegrator *integrator,
 		return 0;
 	}
 
-	GSList const *integrated = cdn_integrator_state_integrated_properties (state);
+	GSList const *integrated = cdn_integrator_state_integrated_variables (state);
 
 	/* evaluate f(t) */
 	cdn_integrator_evaluate (integrator, t, timestep);

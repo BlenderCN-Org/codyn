@@ -46,7 +46,8 @@ CdnExpressionTreeIter *cdn_expression_tree_iter_canonicalize    (CdnExpressionTr
 CdnExpressionTreeIter *cdn_expression_tree_iter_simplify        (CdnExpressionTreeIter *iter);
 
 gboolean               cdn_expression_tree_iter_equal           (CdnExpressionTreeIter *iter,
-                                                                 CdnExpressionTreeIter *other);
+                                                                 CdnExpressionTreeIter *other,
+                                                                 gboolean               asstring);
 
 CdnExpressionTreeIter *cdn_expression_tree_iter_solve_for       (CdnExpressionTreeIter  *iter,
                                                                  CdnVariable            *prop,

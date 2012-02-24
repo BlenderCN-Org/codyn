@@ -286,11 +286,12 @@ cdn_expression_tree_iter_copy (CdnExpressionTreeIter *iter)
 
 gboolean
 cdn_expression_tree_iter_equal (CdnExpressionTreeIter *iter,
-                                CdnExpressionTreeIter *other)
+                                CdnExpressionTreeIter *other,
+                                gboolean               asstring)
 {
 	gint i;
 
-	if (!cdn_instruction_equal (iter->instruction, other->instruction))
+	if (!cdn_instruction_equal (iter->instruction, other->instruction, asstring))
 	{
 		return FALSE;
 	}
@@ -302,7 +303,9 @@ cdn_expression_tree_iter_equal (CdnExpressionTreeIter *iter,
 
 	for (i = 0; i < iter->num_children; ++i)
 	{
-		if (!cdn_expression_tree_iter_equal (iter->children[i], other->children[i]))
+		if (!cdn_expression_tree_iter_equal (iter->children[i],
+		                                     other->children[i],
+		                                     asstring))
 		{
 			return FALSE;
 		}

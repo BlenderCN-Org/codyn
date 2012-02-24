@@ -64,12 +64,21 @@ cdn_instruction_custom_function_ref_get_stack_manipulation (CdnInstruction  *ins
 
 static gboolean
 cdn_instruction_custom_function_ref_equal (CdnInstruction *i1,
-                                       CdnInstruction *i2)
+                                           CdnInstruction *i2,
+                                           gboolean        asstring)
 {
 	CdnInstructionCustomFunctionRef *f1 = CDN_INSTRUCTION_CUSTOM_FUNCTION_REF (i1);
 	CdnInstructionCustomFunctionRef *f2 = CDN_INSTRUCTION_CUSTOM_FUNCTION_REF (i2);
 
-	return f1->priv->function == f2->priv->function;
+	if (asstring)
+	{
+		return g_strcmp0 (cdn_object_get_id (CDN_OBJECT (f1->priv->function)),
+		                  cdn_object_get_id (CDN_OBJECT (f2->priv->function))) == 0;
+	}
+	else
+	{
+		return f1->priv->function == f2->priv->function;
+	}
 }
 
 static void

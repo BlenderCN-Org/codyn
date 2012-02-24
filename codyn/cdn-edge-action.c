@@ -709,7 +709,8 @@ cdn_edge_action_equal (CdnEdgeAction *action,
 	}
 
 	return cdn_expression_equal (action->priv->equation,
-	                             other->priv->equation);
+	                             other->priv->equation,
+	                             TRUE);
 }
 
 void

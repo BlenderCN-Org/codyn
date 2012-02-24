@@ -418,6 +418,7 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 
 		expr = cdn_variable_get_expression (property);
 		cdn_expression_set_from_string (expr, zeros);
+		cdn_expression_compile (expr, NULL, NULL);
 
 		g_free (zeros);
 	}
@@ -471,10 +472,15 @@ cdn_function_argument_set_dimension (CdnFunctionArgument *argument,
 	if (argument->priv->property && argument->priv->isexplicit)
 	{
 		gchar *zeros;
+		CdnExpression *expr;
 
 		zeros = make_zeros (numr, numc);
-		cdn_expression_set_from_string (cdn_variable_get_expression (argument->priv->property),
-		                                zeros);
+
+		expr = cdn_variable_get_expression (argument->priv->property);
+
+		cdn_expression_set_from_string (expr, zeros);
+
+		cdn_expression_compile (expr, NULL, NULL);
 
 		g_free (zeros);
 	}

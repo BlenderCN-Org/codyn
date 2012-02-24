@@ -45,7 +45,8 @@ struct _CdnInstructionClass
 
 	gboolean (*get_is_commutative) (CdnInstruction *instruction);
 	gboolean (*equal)           (CdnInstruction *i1,
-	                             CdnInstruction *i2);
+	                             CdnInstruction *i2,
+	                             gboolean        asstring);
 };
 
 GType cdn_instruction_get_type (void) G_GNUC_CONST;
@@ -59,7 +60,8 @@ CdnStackManipulation const *cdn_instruction_get_stack_manipulation  (CdnInstruct
 GSList *cdn_instruction_get_dependencies (CdnInstruction *instruction);
 
 gboolean cdn_instruction_equal           (CdnInstruction *i1,
-                                          CdnInstruction *i2);
+                                          CdnInstruction *i2,
+                                          gboolean        asstring);
 
 gboolean cdn_instruction_get_is_commutative (CdnInstruction *instruction);
 

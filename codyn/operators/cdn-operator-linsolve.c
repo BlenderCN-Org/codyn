@@ -654,7 +654,8 @@ cdn_operator_linsolve_finalize (GObject *object)
 
 static gboolean
 cdn_operator_linsolve_equal (CdnOperator *op,
-                             CdnOperator *other)
+                             CdnOperator *other,
+                             gboolean     asstring)
 {
 	CdnOperatorLinsolve *linsolve;
 	CdnOperatorLinsolve *odel;
