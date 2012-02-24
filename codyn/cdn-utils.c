@@ -195,7 +195,7 @@ string_to_enum (gchar const  *s,
                 GError      **error)
 {
 	GEnumClass *cls;
-	GEnumValue *v;
+	GEnumValue *v = NULL;
 	gchar *r;
 	guint64 idx;
 
@@ -246,7 +246,7 @@ string_to_flags (gchar const  *s,
                  GError      **error)
 {
 	GFlagsClass *cls;
-	GFlagsValue *v;
+	GFlagsValue *v = NULL;
 	gchar *r;
 	guint64 idx;
 
@@ -257,7 +257,7 @@ string_to_flags (gchar const  *s,
 	if (r && !*r)
 	{
 		g_value_init (value, gtype);
-		g_value_set_flags (value, v->value);
+		g_value_set_flags (value, idx);
 
 		g_type_class_unref (cls);
 		return TRUE;

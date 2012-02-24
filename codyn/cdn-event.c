@@ -243,7 +243,7 @@ extract_condition_parts (CdnEvent        *event,
 	GSList const *instructions;
 	GSList *last;
 	CdnInstructionFunction *instr;
-	GSList *ret;
+	GSList *ret = NULL;
 	CdnMathFunctionType id;
 	CdnStackManipulation const *smanip;
 
