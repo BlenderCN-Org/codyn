@@ -782,14 +782,14 @@ parse_link_property (CdnExpression  *expression,
 	CdnVariable *property = NULL;
 	CdnInstructionVariableBinding binding = 0;
 
-	if (strcmp (id, "in") == 0)
+	if (strcmp (id, "input") == 0)
 	{
 		property = cdn_object_get_variable (CDN_OBJECT (cdn_edge_get_input (link)),
 		                                    propname);
 
 		binding = CDN_INSTRUCTION_VARIABLE_BINDING_INPUT;
 	}
-	else if (strcmp (id, "out") == 0)
+	else if (strcmp (id, "output") == 0)
 	{
 		property = cdn_object_get_variable (CDN_OBJECT (cdn_edge_get_output (link)),
 		                                    propname);
