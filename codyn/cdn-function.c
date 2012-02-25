@@ -299,8 +299,8 @@ cdn_function_get_dimension_impl (CdnFunction *function,
 	}
 
 	cdn_expression_get_dimension (function->priv->expression,
-	                              numc,
-	                              numr);
+	                              numr,
+	                              numc);
 }
 
 static void
