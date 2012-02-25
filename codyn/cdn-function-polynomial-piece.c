@@ -42,8 +42,6 @@ struct _CdnFunctionPolynomialPiecePrivate
 
 	gdouble *coefficients;
 	guint num_coefficients;
-
-	gdouble *normalization;
 };
 
 G_DEFINE_TYPE (CdnFunctionPolynomialPiece, cdn_function_polynomial_piece, G_TYPE_INITIALLY_UNOWNED)
@@ -53,8 +51,7 @@ enum
 	PROP_0,
 	PROP_BEGIN,
 	PROP_END,
-	PROP_COEFFICIENTS,
-	PROP_NORMALIZATION
+	PROP_COEFFICIENTS
 };
 
 static GValueArray *
@@ -81,27 +78,6 @@ create_coefficients_value (gdouble *coefficients,
 }
 
 static void
-renormalize_piece (CdnFunctionPolynomialPiece *piece)
-{
-	guint i;
-	gdouble norm = piece->priv->end - piece->priv->begin;
-	gdouble nsum = 1;
-
-	norm = norm == 0 ? 1 : 1 / norm;
-
-	g_free (piece->priv->normalization);
-	piece->priv->normalization = g_new (gdouble, piece->priv->num_coefficients);
-
-	for (i = 0; i < piece->priv->num_coefficients; ++i)
-	{
-		piece->priv->normalization[i] = nsum;
-		nsum *= norm;
-	}
-
-	g_object_notify (G_OBJECT (piece), "normalization");
-}
-
-static void
 set_coefficients (CdnFunctionPolynomialPiece *piece,
                   gdouble                    *coefficients,
                   guint                       num)
@@ -112,7 +88,6 @@ set_coefficients (CdnFunctionPolynomialPiece *piece,
 	memcpy (piece->priv->coefficients, coefficients, sizeof (gdouble) * num);
 
 	piece->priv->num_coefficients = num;
-	renormalize_piece (piece);
 
 	g_object_notify (G_OBJECT (piece), "coefficients");
 }
@@ -153,8 +128,6 @@ set_range (CdnFunctionPolynomialPiece *piece,
 	piece->priv->begin = begin;
 	piece->priv->end = end;
 
-	renormalize_piece (piece);
-
 	if (begin_changed)
 	{
 		g_object_notify (G_OBJECT (piece), "begin");
@@ -172,7 +145,6 @@ cdn_function_polynomial_piece_finalize (GObject *object)
 	CdnFunctionPolynomialPiece *piece = CDN_FUNCTION_POLYNOMIAL_PIECE (object);
 
 	g_free (piece->priv->coefficients);
-	g_free (piece->priv->normalization);
 
 	G_OBJECT_CLASS (cdn_function_polynomial_piece_parent_class)->finalize (object);
 }
@@ -223,11 +195,6 @@ cdn_function_polynomial_piece_get_property (GObject    *object,
 			                    create_coefficients_value (self->priv->coefficients,
 			                                               self->priv->num_coefficients));
 		break;
-		case PROP_NORMALIZATION:
-			g_value_take_boxed (value,
-			                    create_coefficients_value (self->priv->normalization,
-			                                               self->priv->num_coefficients));
-		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -261,7 +228,8 @@ cdn_function_polynomial_piece_class_init (CdnFunctionPolynomialPieceClass *klass
 	                                                      -G_MAXDOUBLE,
 	                                                      G_MAXDOUBLE,
 	                                                      0,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 
 	/**
 	 * CdnFunctionPolynomialPiece:end:
@@ -277,7 +245,8 @@ cdn_function_polynomial_piece_class_init (CdnFunctionPolynomialPieceClass *klass
 	                                                      -G_MAXDOUBLE,
 	                                                      G_MAXDOUBLE,
 	                                                      0,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 
 	/**
 	 * CdnFunctionPolynomialPiece:coefficients:
@@ -297,27 +266,8 @@ cdn_function_polynomial_piece_class_init (CdnFunctionPolynomialPieceClass *klass
 	                                                                                G_MAXDOUBLE,
 	                                                                                0,
 	                                                                                0),
-	                                                           G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
-
-	/**
-	 * CdnFunctionPolynomialPiece:begin:
-	 *
-	 * The normalization of the piece
-	 *
-	 **/
-	g_object_class_install_property (object_class,
-	                                 PROP_NORMALIZATION,
-	                                 g_param_spec_value_array ("normalization",
-	                                                           "Normalization",
-	                                                           "Normalization",
-	                                                           g_param_spec_double ("coefficient",
-	                                                                                "Coefficient",
-	                                                                                "Coefficient",
-	                                                                                -G_MAXDOUBLE,
-	                                                                                G_MAXDOUBLE,
-	                                                                                0,
-	                                                                                0),
-	                                                           G_PARAM_READABLE));
+	                                                           G_PARAM_READWRITE |
+	                                                           G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -491,24 +441,88 @@ cdn_function_polynomial_piece_set_coefficients (CdnFunctionPolynomialPiece *piec
 }
 
 /**
- * cdn_function_polynomial_piece_get_normalization:
- * @piece: A #CdnFunctionPolynomialPiece
- * @num: (out caller-allocates): Return value for the number of coefficients
+ * cdn_function_polynomial_piece_evaluate:
+ * @piece: a #CdnFunctionPolynomialPiece.
+ * @t: at which point to evaluate the piece.
  *
- * Get the polynomial normalization. The order of the normalization is from high
- * to low
+ * Evaluate the piece at @t.
  *
- * Returns: (array length=num): the polynomial coefficients
+ * Returns: the value of the polynomial.
  *
  **/
-const gdouble *
-cdn_function_polynomial_piece_get_normalization (CdnFunctionPolynomialPiece *piece,
-                                                 guint                      *num)
+gdouble
+cdn_function_polynomial_piece_evaluate (CdnFunctionPolynomialPiece *piece,
+                                        gdouble                     t)
 {
-	if (num)
+	gdouble ret = 0;
+	gdouble power = 1;
+	gint i;
+
+	for (i = (gint)piece->priv->num_coefficients - 1; i >= 0; --i)
 	{
-		*num = piece->priv->num_coefficients;
+		ret += piece->priv->coefficients[i] * power;
+		power *= t;
 	}
 
-	return piece->priv->normalization;
+	return ret;
+}
+
+static void
+derive_coefficients (gdouble *coefficients,
+                     gint     num_coefs)
+{
+	gint i;
+	gint mult;
+
+	mult = num_coefs - 1;
+
+	for (i = 0; i < num_coefs - 1; ++i)
+	{
+		coefficients[i] *= mult--;
+	}
+}
+
+CdnFunctionPolynomialPiece *
+cdn_function_polynomial_piece_get_derivative (CdnFunctionPolynomialPiece *piece,
+                                              gint                        order)
+{
+	gdouble *ret;
+	CdnFunctionPolynomialPiece *retp;
+	gint i;
+
+	g_return_val_if_fail (piece != NULL, NULL);
+
+	if (order == 0)
+	{
+		return cdn_function_polynomial_piece_copy (piece);
+	}
+
+	if (order > piece->priv->num_coefficients)
+	{
+		return cdn_function_polynomial_piece_new (piece->priv->begin,
+		                                          piece->priv->end,
+		                                          NULL,
+		                                          0);
+	}
+
+	ret = g_new0 (gdouble, piece->priv->num_coefficients - 1);
+
+	memcpy (ret,
+	        piece->priv->coefficients,
+	        sizeof (gdouble) * (piece->priv->num_coefficients - 1));
+
+	for (i = 0; i < order; ++i)
+	{
+		derive_coefficients (ret,
+		                     piece->priv->num_coefficients - i);
+	}
+
+	retp = cdn_function_polynomial_piece_new (piece->priv->begin,
+	                                          piece->priv->end,
+	                                          ret,
+	                                          piece->priv->num_coefficients - order);
+
+	g_free (ret);
+
+	return retp;
 }

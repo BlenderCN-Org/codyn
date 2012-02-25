@@ -224,6 +224,7 @@ cdn_function_compile_impl (CdnObject         *object,
 {
 	CdnFunction *self = CDN_FUNCTION (object);
 	gboolean ret = TRUE;
+	GList *item;
 
 	if (cdn_object_is_compiled (object))
 	{
@@ -275,6 +276,37 @@ cdn_function_compile_impl (CdnObject         *object,
 		}
 
 		ret = FALSE;
+	}
+
+	// Compile defaults
+	for (item = self->priv->arguments; item; item = g_list_next (item))
+	{
+		CdnExpression *def;
+
+		if (!ret)
+		{
+			continue;
+		}
+
+		def = cdn_function_argument_get_default_value (item->data);
+
+		if (def)
+		{
+			if (!cdn_expression_compile (def, context, error))
+			{
+				if (error)
+				{
+					cdn_compile_error_set (error,
+					                       NULL,
+					                       object,
+					                       NULL,
+					                       NULL,
+					                       NULL);
+				}
+
+				ret = FALSE;
+			}
+		}
 	}
 
 	cdn_compile_context_restore (context);
@@ -1013,6 +1045,14 @@ cdn_function_for_dimension_impl (CdnFunction *function,
 	}
 }
 
+static CdnFunction *
+cdn_function_get_derivative_impl (CdnFunction *function,
+                                  gint         order,
+                                  GList       *towards)
+{
+	return NULL;
+}
+
 static void
 cdn_function_class_init (CdnFunctionClass *klass)
 {
@@ -1038,6 +1078,7 @@ cdn_function_class_init (CdnFunctionClass *klass)
 	klass->get_dimension = cdn_function_get_dimension_impl;
 	klass->argument_added = cdn_function_argument_added_impl;
 	klass->for_dimension = cdn_function_for_dimension_impl;
+	klass->get_derivative = cdn_function_get_derivative_impl;
 
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPRESSION,
@@ -1528,4 +1569,29 @@ cdn_function_for_dimension (CdnFunction *function,
 	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
 
 	return CDN_FUNCTION_GET_CLASS (function)->for_dimension (function, numargs, argdim);
+}
+
+/**
+ * cdn_function_get_derivative:
+ * @function: a #CdnFunction.
+ * @order: the order of the derivative
+ * @towards: the variables towards which to derive
+ *
+ * Get the derivative of a function.Note that this does not need to be
+ * implemented. It's main use is for custom subclasses of #CdnFunction to be
+ * able to provide a derivative.
+ *
+ * Returns: (transfer full): a #CdnFunction.
+ *
+ **/
+CdnFunction *
+cdn_function_get_derivative (CdnFunction *function,
+                             gint         order,
+                             GList       *towards)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
+
+	return CDN_FUNCTION_GET_CLASS (function)->get_derivative (function,
+	                                                          order,
+	                                                          towards);
 }

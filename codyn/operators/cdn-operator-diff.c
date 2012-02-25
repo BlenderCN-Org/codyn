@@ -338,6 +338,21 @@ cdn_operator_diff_initialize (CdnOperator   *op,
 	                 "dt",
 	                 NULL);
 
+	nf = cdn_function_get_derivative (func,
+	                                  diff->priv->order,
+	                                  symargs);
+
+	if (nf)
+	{
+		// Function provided a derivative itself
+		cdn_object_set_id (CDN_OBJECT (nf), s);
+
+		diff->priv->function = nf;
+		g_list_free (symargs);
+
+		return TRUE;
+	}
+
 	nf = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (func)));
 	cdn_object_set_id (CDN_OBJECT (nf), s);
 	g_free (s);

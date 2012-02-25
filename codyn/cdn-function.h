@@ -98,6 +98,10 @@ struct _CdnFunctionClass
 	                               gint                  numargs,
 	                               gint                 *argdim);
 
+	CdnFunction *(*get_derivative) (CdnFunction         *function,
+	                                gint                 order,
+	                                GList               *towards);
+
 	/* signals */
 	void   (*argument_added)      (CdnFunction         *function,
 	                               CdnFunctionArgument *argument);
@@ -150,6 +154,10 @@ void                 cdn_function_get_dimension               (CdnFunction      
 CdnFunction         *cdn_function_for_dimension               (CdnFunction          *function,
                                                                gint                  numargs,
                                                                gint                 *argdim);
+
+CdnFunction         *cdn_function_get_derivative              (CdnFunction          *function,
+                                                               gint                  order,
+                                                               GList                *towards);
 
 G_END_DECLS
 

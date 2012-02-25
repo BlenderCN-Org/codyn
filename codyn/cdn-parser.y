@@ -152,6 +152,8 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <string> value_as_string
 %type <string> double
 %type <string> integer
+%type <string> number
+%type <id> number_value
 
 %type <string> constraint
 
@@ -805,16 +807,19 @@ polynomial_pieces
 	: polynomial_pieces_rev		{ $$ = g_slist_reverse ($1); }
 	;
 
+number_value
+	: T_DOUBLE
+	| T_INTEGER
+	;
+
 polynomial_piece
-	: T_KEY_PIECE T_KEY_FROM T_DOUBLE T_KEY_TO T_DOUBLE '=' double_list
+	: T_KEY_PIECE T_KEY_FROM number_value T_KEY_TO number_value '=' double_list
 					{ $$ = create_polynomial_piece ($3, $5, $7); }
 	;
 
 double_list
-	: T_DOUBLE			{ append_array (NULL, gchar *, $1, $$ = arret); }
-	| T_INTEGER			{ append_array (NULL, gchar *, $1, $$ = arret); }
-	| double_list ',' T_DOUBLE	{ append_array ($1, gchar *, $3, $$ = arret); }
-	| double_list ',' T_INTEGER	{ append_array ($1, gchar *, $3, $$ = arret); }
+	: number_value			{ append_array (NULL, gchar *, $1, $$ = arret); }
+	| double_list ',' number_value	{ append_array ($1, gchar *, $3, $$ = arret); }
 	;
 
 function_argument_impl
@@ -1506,14 +1511,18 @@ integer
 	: T_INTEGER			{ $$ = cdn_embedded_string_new_from_string ($1); }
 	;
 
+number
+	: double
+	| integer
+	;
+
 value_as_string
 	: string
 	| equation
 	| condition
 	| indirection
 	| identifier
-	| integer
-	| double
+	| number
 	;
 
 string_item

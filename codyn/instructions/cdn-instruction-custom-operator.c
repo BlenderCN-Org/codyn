@@ -94,7 +94,11 @@ extract_function_dependencies (CdnFunction  *f,
 	CdnExpression *fe;
 
 	fe = cdn_function_get_expression (f);
-	*dependencies = g_slist_prepend (*dependencies, fe);
+
+	if (fe)
+	{
+		*dependencies = g_slist_prepend (*dependencies, fe);
+	}
 }
 
 static GSList *

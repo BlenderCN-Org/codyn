@@ -62,23 +62,30 @@ CdnFunctionPolynomialPiece *
 CdnFunctionPolynomialPiece *
                cdn_function_polynomial_piece_copy             (CdnFunctionPolynomialPiece *piece);
 
-gdouble        cdn_function_polynomial_piece_get_begin        (CdnFunctionPolynomialPiece *piece);
-gdouble        cdn_function_polynomial_piece_get_end          (CdnFunctionPolynomialPiece *piece);
+gdouble        cdn_function_polynomial_piece_get_begin         (CdnFunctionPolynomialPiece *piece);
+gdouble        cdn_function_polynomial_piece_get_end           (CdnFunctionPolynomialPiece *piece);
 
-void           cdn_function_polynomial_piece_set_begin        (CdnFunctionPolynomialPiece *piece,
-                                                               gdouble                     begin);
-void           cdn_function_polynomial_piece_set_end          (CdnFunctionPolynomialPiece *piece,
-                                                               gdouble                     end);
+void           cdn_function_polynomial_piece_set_begin         (CdnFunctionPolynomialPiece *piece,
+                                                                gdouble                     begin);
+void           cdn_function_polynomial_piece_set_end           (CdnFunctionPolynomialPiece *piece,
+                                                                gdouble                     end);
 
-const gdouble *cdn_function_polynomial_piece_get_coefficients (CdnFunctionPolynomialPiece *piece,
-                                                               guint                      *num);
+const gdouble *cdn_function_polynomial_piece_get_coefficients  (CdnFunctionPolynomialPiece *piece,
+                                                                guint                      *num);
 
-void           cdn_function_polynomial_piece_set_coefficients (CdnFunctionPolynomialPiece *piece,
-                                                               gdouble                    *coefficients,
-                                                               guint                       num);
+void           cdn_function_polynomial_piece_set_coefficients  (CdnFunctionPolynomialPiece *piece,
+                                                                gdouble                    *coefficients,
+                                                                guint                       num);
 
 const gdouble *cdn_function_polynomial_piece_get_normalization (CdnFunctionPolynomialPiece *piece,
                                                                 guint                      *num);
+
+gdouble        cdn_function_polynomial_piece_evaluate          (CdnFunctionPolynomialPiece *piece,
+                                                                gdouble                     t);
+
+CdnFunctionPolynomialPiece *
+               cdn_function_polynomial_piece_get_derivative    (CdnFunctionPolynomialPiece *piece,
+                                                                gint                        order);
 
 G_END_DECLS
 

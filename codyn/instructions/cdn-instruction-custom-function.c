@@ -126,8 +126,16 @@ cdn_instruction_custom_function_get_dependencies (CdnInstruction *inst)
 	}
 	else
 	{
-		return g_slist_prepend (NULL,
-		                        cdn_function_get_expression (f->priv->function));
+		CdnExpression *expr;
+
+		expr = cdn_function_get_expression (f->priv->function);
+
+		if (expr)
+		{
+			return g_slist_prepend (NULL, expr);
+		}
+
+		return NULL;
 	}
 }
 

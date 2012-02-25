@@ -2144,6 +2144,7 @@ parse_custom_operator (CdnExpression *expression,
 	gboolean islinsolve;
 	GError *err = NULL;
 	gint *argdim;
+	gint newnum;
 
 	klass = cdn_operators_find_class (name);
 
@@ -2439,6 +2440,8 @@ parse_custom_operator (CdnExpression *expression,
 		return FALSE;
 	}
 
+	newnum = num_arguments;
+
 	if (!isref)
 	{
 		CdnFunction *func;
@@ -2459,11 +2462,59 @@ parse_custom_operator (CdnExpression *expression,
 			while (start)
 			{
 				CdnFunctionArgument *a;
+				CdnExpression *defval;
+				gboolean isexplicit;
 
 				a = start->data;
 				start = g_list_next (start);
 
-				if (!cdn_function_argument_get_explicit (a))
+				isexplicit = cdn_function_argument_get_explicit (a);
+
+				if (isexplicit && (defval = cdn_function_argument_get_default_value (a)))
+				{
+					GSList const *instrs;
+
+					// Compile the default value if needed
+					instrs = cdn_expression_get_instructions (defval);
+
+					if (!instrs)
+					{
+						CdnCompileContext *ctx;
+						gboolean ret;
+
+						ctx = cdn_object_get_compile_context (CDN_OBJECT (func),
+						                                      NULL);
+
+						ret = cdn_expression_compile (defval,
+						                              ctx,
+						                              context->error);
+
+						g_object_unref (ctx);
+
+						if (!ret)
+						{
+							return FALSE;
+						}
+
+						instrs = cdn_expression_get_instructions (defval);
+					}
+
+					while (instrs)
+					{
+						++newnum;
+
+						if (!instructions_push (expression,
+						                        cdn_mini_object_copy (instrs->data),
+						                        context))
+						{
+							return FALSE;
+						}
+
+						instrs = g_slist_next (instrs);
+					}
+
+				}
+				else if (!isexplicit)
 				{
 					gchar const *aname;
 					CdnVariable *prop;
@@ -2505,9 +2556,20 @@ parse_custom_operator (CdnExpression *expression,
 					{
 						return FALSE;
 					}
+
+					++newnum;
 				}
 			}
 		}
+	}
+
+	if (newnum > num_arguments)
+	{
+		gint *argdim;
+
+		argdim = get_argdim (expression, context, newnum);
+		_cdn_operator_set_num_arguments (op, newnum, argdim);
+		g_free (argdim);
 	}
 
 	if (isref)
