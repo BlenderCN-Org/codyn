@@ -98,7 +98,7 @@ foreach_element2 (CdnStack       *stack,
 		gint start;
 		gint i;
 
-		start = cdn_stack_count (stack) - 2 - num1;
+		start = cdn_stack_count (stack) - 1 - num1;
 		second = cdn_stack_at (stack, start);
 
 		for (i = 0; i < num1; ++i)
