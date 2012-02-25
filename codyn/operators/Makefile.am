@@ -13,7 +13,7 @@ liboperators_la_SOURCES = 	\
 	cdn-operator-diff.c \
 	cdn-operator-pdiff.c \
 	cdn-operator-simplify.c \
-	cdn-operator-df-dt.c \
+	cdn-operator-dt.c \
 	cdn-operator-linsolve.c
 
 liboperators_headers =			\
@@ -22,7 +22,7 @@ liboperators_headers =			\
 	cdn-operator-diff.h \
 	cdn-operator-pdiff.h \
 	cdn-operator-simplify.h \
-	cdn-operator-df-dt.h \
+	cdn-operator-dt.h \
 	cdn-operator-linsolve.h
 
 liboperators_includedir = $(includedir)/codyn-$(CODYN_API_VERSION)/codyn/operators

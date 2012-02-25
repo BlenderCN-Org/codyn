@@ -198,7 +198,7 @@ OPERATORSOURCES = \
 	operators/cdn-operator-diff.c \
 	operators/cdn-operator-pdiff.c \
 	operators/cdn-operator-simplify.c \
-	operators/cdn-operator-df-dt.c \
+	operators/cdn-operator-dt.c \
 	operators/cdn-operator-linsolve.c
 
 OPERATORHEADERS = \
@@ -207,7 +207,7 @@ OPERATORHEADERS = \
 	operators/cdn-operator-diff.h \
 	operators/cdn-operator-pdiff.h \
 	operators/cdn-operator-simplify.h \
-	operators/cdn-operator-df-dt.h \
+	operators/cdn-operator-dt.h \
 	operators/cdn-operator-linsolve.h
 
 INTEGRATORSOURCES = 	\

@@ -26,7 +26,7 @@
 #include <codyn/operators/cdn-operator.h>
 #include <codyn/operators/cdn-operator-diff.h>
 #include <codyn/operators/cdn-operator-pdiff.h>
-#include <codyn/operators/cdn-operator-df-dt.h>
+#include <codyn/operators/cdn-operator-dt.h>
 #include <codyn/operators/cdn-operator-simplify.h>
 #include <codyn/operators/cdn-operator-linsolve.h>
 #include <codyn/operators/cdn-operator-delayed.h>

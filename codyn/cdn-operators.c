@@ -37,7 +37,7 @@ ensure_defaults ()
 		cdn_operators_register (CDN_TYPE_OPERATOR_DIFF);
 		cdn_operators_register (CDN_TYPE_OPERATOR_PDIFF);
 		cdn_operators_register (CDN_TYPE_OPERATOR_SIMPLIFY);
-		cdn_operators_register (CDN_TYPE_OPERATOR_DF_DT);
+		cdn_operators_register (CDN_TYPE_OPERATOR_DT);
 		cdn_operators_register (CDN_TYPE_OPERATOR_LINSOLVE);
 	}
 }

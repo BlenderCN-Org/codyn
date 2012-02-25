@@ -621,12 +621,12 @@ canonical_custom_operator (CdnExpressionTreeIter *iter)
 	instr = (CdnInstructionCustomOperator *)(iter->instruction);
 	op = cdn_instruction_custom_operator_get_operator (instr);
 
-	if (CDN_IS_OPERATOR_DF_DT (op))
+	if (CDN_IS_OPERATOR_DT (op))
 	{
 		CdnExpressionTreeIter *cp;
-		CdnOperatorDfDt *dfdt = CDN_OPERATOR_DF_DT (op);
+		CdnOperatorDt *dfdt = CDN_OPERATOR_DT (op);
 
-		cp = cdn_expression_tree_iter_new (cdn_operator_df_dt_get_derived (dfdt));
+		cp = cdn_expression_tree_iter_new (cdn_operator_dt_get_derived (dfdt));
 		cdn_expression_tree_iter_canonicalize (cp);
 
 		// Replace iter with cp

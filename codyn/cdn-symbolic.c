@@ -1462,13 +1462,13 @@ map_iter (CdnExpressionTreeIter *iter,
 		opi = CDN_INSTRUCTION_CUSTOM_OPERATOR (instr);
 		op = cdn_instruction_custom_operator_get_operator (opi);
 
-		if (CDN_IS_OPERATOR_DF_DT (op))
+		if (CDN_IS_OPERATOR_DT (op))
 		{
 			CdnExpressionTreeIter *it;
 			CdnExpressionTreeIter *mit;
 
 			// Go inside
-			it = cdn_expression_tree_iter_new (cdn_operator_df_dt_get_derived (CDN_OPERATOR_DF_DT (op)));
+			it = cdn_expression_tree_iter_new (cdn_operator_dt_get_derived (CDN_OPERATOR_DT (op)));
 			mit = map_iter (it, ctx);
 
 			if (mit != it)
@@ -1773,12 +1773,12 @@ derive_custom_operator_real (CdnExpressionTreeIter *iter,
 {
 	CdnFunction *f;
 
-	if (CDN_IS_OPERATOR_DF_DT (op))
+	if (CDN_IS_OPERATOR_DT (op))
 	{
 		// Go deep!
-		CdnOperatorDfDt *dfdt = CDN_OPERATOR_DF_DT (op);
+		CdnOperatorDt *dfdt = CDN_OPERATOR_DT (op);
 
-		return derive_expression (cdn_operator_df_dt_get_derived (dfdt),
+		return derive_expression (cdn_operator_dt_get_derived (dfdt),
 		                          ctx,
 		                          TRUE);
 	}
