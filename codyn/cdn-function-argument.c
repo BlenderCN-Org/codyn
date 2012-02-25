@@ -23,6 +23,8 @@
 #include "cdn-function-argument.h"
 #include "cdn-marshal.h"
 
+#include <string.h>
+
 /**
  * SECTION:cdn-function-argument
  * @short_description: An argument to a custom defined function
@@ -44,11 +46,13 @@ enum
 struct _CdnFunctionArgumentPrivate
 {
 	gchar *name;
+
 	gboolean isexplicit;
 	gint numr;
 	gint numc;
 
-	CdnVariable *property;
+	CdnExpression *default_value;
+	CdnVariable *variable;
 };
 
 G_DEFINE_TYPE (CdnFunctionArgument, cdn_function_argument, G_TYPE_INITIALLY_UNOWNED)
@@ -59,7 +63,9 @@ enum
 	PROP_NAME,
 	PROP_EXPLICIT,
 	PROP_NUMR,
-	PROP_NUMC
+	PROP_NUMC,
+	PROP_OPTIONAL,
+	PROP_DEFAULT_VALUE
 };
 
 static guint signals[NUM_SIGNALS] = {0,};
@@ -70,6 +76,11 @@ cdn_function_argument_finalize (GObject *object)
 	CdnFunctionArgument *argument = CDN_FUNCTION_ARGUMENT (object);
 
 	g_free (argument->priv->name);
+
+	if (argument->priv->default_value)
+	{
+		g_object_unref (argument->priv->default_value);
+	}
 
 	G_OBJECT_CLASS (cdn_function_argument_parent_class)->finalize (object);
 }
@@ -99,6 +110,27 @@ set_name (CdnFunctionArgument *argument,
 }
 
 static void
+set_default_value (CdnFunctionArgument *argument,
+                   CdnExpression       *expression)
+{
+	if (argument->priv->default_value == expression)
+	{
+		return;
+	}
+
+	if (argument->priv->default_value)
+	{
+		g_object_unref (argument->priv->default_value);
+		argument->priv->default_value = NULL;
+	}
+
+	if (expression)
+	{
+		argument->priv->default_value = g_object_ref (expression);
+	}
+}
+
+static void
 cdn_function_argument_set_property (GObject      *object,
                                     guint         prop_id,
                                     const GValue *value,
@@ -119,6 +151,9 @@ cdn_function_argument_set_property (GObject      *object,
 			break;
 		case PROP_NUMC:
 			self->priv->numc = g_value_get_int (value);
+			break;
+		case PROP_DEFAULT_VALUE:
+			set_default_value (self, g_value_get_object (value));
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -147,6 +182,13 @@ cdn_function_argument_get_property (GObject    *object,
 			break;
 		case PROP_NUMC:
 			g_value_set_int (value, self->priv->numc);
+			break;
+		case PROP_OPTIONAL:
+			g_value_set_boolean (value,
+			                     cdn_function_argument_get_optional (self));
+			break;
+		case PROP_DEFAULT_VALUE:
+			g_value_set_object (value, self->priv->default_value);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -202,7 +244,8 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 	                                                      "Name",
 	                                                      "Name",
 	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_EXPLICIT,
@@ -210,7 +253,8 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 	                                                       "Explicit",
 	                                                       "Explicit",
 	                                                       TRUE,
-	                                                       G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                       G_PARAM_READWRITE |
+	                                                       G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_NUMR,
@@ -220,7 +264,8 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 	                                                   1,
 	                                                   G_MAXINT,
 	                                                   1,
-	                                                   G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                   G_PARAM_READWRITE |
+	                                                   G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_NUMC,
@@ -230,7 +275,26 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 	                                                   1,
 	                                                   G_MAXINT,
 	                                                   1,
-	                                                   G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+	                                                   G_PARAM_READWRITE |
+	                                                   G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_OPTIONAL,
+	                                 g_param_spec_boolean ("optional",
+	                                                       "Optional",
+	                                                       "Optional",
+	                                                       FALSE,
+	                                                       G_PARAM_READABLE));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_DEFAULT_VALUE,
+	                                 g_param_spec_object ("default-value",
+	                                                      "Default Value",
+	                                                      "Default value",
+	                                                      CDN_TYPE_EXPRESSION,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT |
+	                                                      G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -254,12 +318,28 @@ cdn_function_argument_init (CdnFunctionArgument *self)
  **/
 CdnFunctionArgument *
 cdn_function_argument_new (gchar const   *name,
-                           gboolean       isexplicit)
+                           gboolean       isexplicit,
+                           CdnExpression *default_value)
 {
-	return g_object_new (CDN_TYPE_FUNCTION_ARGUMENT,
-	                     "name", name,
-	                     "explicit", isexplicit,
+	CdnFunctionArgument *ret;
+
+	if (default_value)
+	{
+		g_object_ref_sink (default_value);
+	}
+
+	ret = g_object_new (CDN_TYPE_FUNCTION_ARGUMENT,
+	                    "name", name,
+	                    "explicit", isexplicit,
+	                    "default-value", default_value,
 	                     NULL);
+
+	if (default_value)
+	{
+		g_object_unref (default_value);
+	}
+
+	return ret;
 }
 
 /**
@@ -280,7 +360,8 @@ cdn_function_argument_copy (CdnFunctionArgument *argument)
 	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), NULL);
 
 	return cdn_function_argument_new (argument->priv->name,
-	                                  argument->priv->isexplicit);
+	                                  argument->priv->isexplicit,
+	                                  cdn_expression_copy (argument->priv->default_value));
 }
 
 /**
@@ -400,12 +481,12 @@ make_zeros (gint numr,
 
 void
 _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
-                                     CdnVariable         *property)
+                                     CdnVariable         *variable)
 {
 	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
-	g_return_if_fail (property == NULL || CDN_IS_VARIABLE (property));
+	g_return_if_fail (variable == NULL || CDN_IS_VARIABLE (variable));
 
-	argument->priv->property = property;
+	argument->priv->variable = variable;
 
 	// Set the corresponding dimensions of the variable
 	if (argument->priv->isexplicit)
@@ -416,7 +497,7 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 		zeros = make_zeros (argument->priv->numr,
 		                    argument->priv->numc);
 
-		expr = cdn_variable_get_expression (property);
+		expr = cdn_variable_get_expression (variable);
 		cdn_expression_set_from_string (expr, zeros);
 		cdn_expression_compile (expr, NULL, NULL);
 
@@ -428,7 +509,7 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
  * _cdn_function_argument_get_variable:
  * @argument: A #CdnFunctionArgument
  *
- * Get the function argument property.
+ * Get the function argument variable.
  *
  * Returns: (transfer none): A #CdnVariable
  *
@@ -438,9 +519,18 @@ _cdn_function_argument_get_variable (CdnFunctionArgument *argument)
 {
 	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), NULL);
 
-	return argument->priv->property;
+	return argument->priv->variable;
 }
 
+/**
+ * cdn_function_argument_get_dimension:
+ * @argument: a #CdnFunctionArgument.
+ * @numr: (out) (allow-none): the number of rows.
+ * @numc: (out) (allow-none): the number of columns.
+ *
+ * Get the dimension of the function argument.
+ *
+ **/
 void
 cdn_function_argument_get_dimension (CdnFunctionArgument *argument,
                                      gint                *numr,
@@ -459,6 +549,16 @@ cdn_function_argument_get_dimension (CdnFunctionArgument *argument,
 	}
 }
 
+/**
+ * cdn_function_argument_set_dimension:
+ * @argument: a #CdnFunctionArgument.
+ * @numr: the number of rows.
+ * @numc: the number of columns.
+ *
+ * Set the expected dimension of the function argument when the function is
+ * called.
+ *
+ **/
 void
 cdn_function_argument_set_dimension (CdnFunctionArgument *argument,
                                      gint                 numr,
@@ -469,14 +569,14 @@ cdn_function_argument_set_dimension (CdnFunctionArgument *argument,
 	argument->priv->numr = numr;
 	argument->priv->numc = numc;
 
-	if (argument->priv->property && argument->priv->isexplicit)
+	if (argument->priv->variable && argument->priv->isexplicit)
 	{
 		gchar *zeros;
 		CdnExpression *expr;
 
 		zeros = make_zeros (numr, numc);
 
-		expr = cdn_variable_get_expression (argument->priv->property);
+		expr = cdn_variable_get_expression (argument->priv->variable);
 
 		cdn_expression_set_from_string (expr, zeros);
 
@@ -485,3 +585,59 @@ cdn_function_argument_set_dimension (CdnFunctionArgument *argument,
 		g_free (zeros);
 	}
 }
+
+/**
+ * cdn_function_argument_get_optional:
+ * @argument: a #CdnFunctionArgument.
+ *
+ * Get whether the function argument is optional (i.e. has a default value).
+ *
+ * Returns: %TRUE if the function argument is optional, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_function_argument_get_optional (CdnFunctionArgument *argument)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), FALSE);
+
+	return argument->priv->default_value != NULL;
+}
+
+/**
+ * cdn_function_argument_get_default_value:
+ * @argument: a #CdnFunctionArgument.
+ *
+ * Get the default value of the function argument. If the function argument is
+ * not optional, the default value will return %NULL.
+ *
+ * Returns: (transfer none) (allow-none): The default value or %NULL.
+ *
+ **/
+CdnExpression *
+cdn_function_argument_get_default_value (CdnFunctionArgument *argument)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), NULL);
+
+	return argument->priv->default_value;
+}
+
+/**
+ * cdn_function_argument_set_default_value:
+ * @argument: a #CdnFunctionArgument.
+ * @value: The default value (or %NULL).
+ *
+ * Set a default value for the function argument. The default value can be
+ * unset by supplying %NULL for @value.
+ *
+ **/
+void
+cdn_function_argument_set_default_value (CdnFunctionArgument *argument,
+                                         CdnExpression       *value)
+{
+	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
+
+	set_default_value (argument, value);
+
+	g_object_notify (G_OBJECT (argument), "default-value");
+}
+

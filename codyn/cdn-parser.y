@@ -818,9 +818,32 @@ double_list
 	;
 
 function_argument_impl
-	: identifier_or_string			{ $$ = cdn_function_argument_spec_new ($1, FALSE); }
-	| T_KEY_FROM '.' identifier_or_string	{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "from."), FALSE); }
-	| T_KEY_TO '.' identifier_or_string	{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "to."), FALSE); }
+	: identifier_or_string			{ $$ = cdn_function_argument_spec_new ($1,
+	                                                                               FALSE,
+	                                                                               NULL); }
+
+	| identifier_or_string '=' value_as_string
+						{ $$ = cdn_function_argument_spec_new ($1,
+						                                       FALSE,
+						                                       $3); }
+
+	| T_KEY_INPUT '.' identifier_or_string	{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "input."),
+	                                                                               FALSE,
+	                                                                               NULL); }
+
+	| T_KEY_INPUT '.' identifier_or_string '=' value_as_string
+						{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "input."),
+	                                                                               FALSE,
+	                                                                               $5); }
+
+	| T_KEY_OUTPUT '.' identifier_or_string	{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "output."),
+	                                                                               FALSE,
+	                                                                               NULL); }
+
+	| T_KEY_OUTPUT '.' identifier_or_string '=' value_as_string
+						{ $$ = cdn_function_argument_spec_new (cdn_embedded_string_prepend_text ($3, "output."),
+	                                                                               FALSE,
+	                                                                               $5); }
 	;
 
 function_argument_list_impl_rev
@@ -846,7 +869,14 @@ function_argument_list
 	;
 
 function_argument
-	: identifier_or_string			        { $$ = cdn_function_argument_spec_new ($1, TRUE); }
+	: identifier_or_string			{ $$ = cdn_function_argument_spec_new ($1,
+	                                                                               TRUE,
+	                                                                               NULL); }
+
+	| identifier_or_string '=' value_as_string
+						{ $$ = cdn_function_argument_spec_new ($1,
+						                                       TRUE,
+						                                       $3); }
 	;
 
 object_item

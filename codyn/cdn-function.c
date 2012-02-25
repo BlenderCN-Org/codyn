@@ -369,14 +369,21 @@ cdn_function_execute_impl (CdnFunction *function,
 		gint ptr = i * 2;
 		gint num;
 		CdnVariable *v;
+		gint numr;
+		gint numc;
+		gdouble *vals;
 
 		v = _cdn_function_argument_get_variable (argument);
-		num = argdim ? argdim[ptr] * argdim[ptr + 1] : 1;
+		numr = argdim ? argdim[ptr] : 1;
+		numc = argdim ? argdim[ptr + 1] : 1;
+
+		num = numr * numc;
+		vals = cdn_stack_popn (stack, num);
 
 		cdn_variable_set_values (v,
-		                         cdn_stack_popn (stack, num),
-		                         argdim ? argdim[ptr] : 1,
-		                         argdim ? argdim[ptr + 1] : 1);
+		                         vals,
+		                         numr,
+		                         numc);
 
 		item = g_list_previous (item);
 	}
@@ -1434,6 +1441,42 @@ cdn_function_get_n_implicit (CdnFunction *function)
 	g_return_val_if_fail (CDN_IS_FUNCTION (function), 0);
 
 	return function->priv->n_implicit;
+}
+
+/**
+ * cdn_function_get_n_optional:
+ * @function: a #CdnFunction.
+ *
+ * Get the number of optional arguments.
+ *
+ * Returns: the number of optional arguments.
+ *
+ **/
+guint
+cdn_function_get_n_optional (CdnFunction *function)
+{
+	GList *item;
+	guint ret = 0;
+
+	g_return_val_if_fail (CDN_IS_FUNCTION (function), 0);
+
+	for (item = function->priv->arguments; item; item = g_list_next (item))
+	{
+		CdnFunctionArgument *arg;
+
+		arg = item->data;
+
+		if (cdn_function_argument_get_default_value (arg))
+		{
+			++ret;
+		}
+		else
+		{
+			ret = 0;
+		}
+	}
+
+	return ret;
 }
 
 /**

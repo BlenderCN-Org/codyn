@@ -752,6 +752,7 @@ function_to_xml (CdnNetworkSerializer *serializer,
 	for (argitem = args; argitem; argitem = g_list_next (argitem))
 	{
 		CdnFunctionArgument *argument = argitem->data;
+		CdnExpression *defval;
 
 		restore_comment (serializer, funcn, G_OBJECT (argument));
 
@@ -759,6 +760,7 @@ function_to_xml (CdnNetworkSerializer *serializer,
 		                                 NULL,
 		                                 (xmlChar *)"argument",
 		                                 NULL);
+
 		xmlNodePtr text = xmlNewDocText (serializer->priv->doc,
 		                                 (xmlChar *)cdn_function_argument_get_name (argument));
 
@@ -767,6 +769,15 @@ function_to_xml (CdnNetworkSerializer *serializer,
 		if (!cdn_function_argument_get_explicit (argument))
 		{
 			xmlNewProp (argn, (xmlChar *)"implicit", (xmlChar *)"yes");
+		}
+
+		defval = cdn_function_argument_get_default_value (argument);
+
+		if (defval)
+		{
+			xmlNewProp (argn,
+			            (xmlChar *)"default-value",
+			            (xmlChar *)cdn_expression_get_as_string (defval));
 		}
 
 		xmlAddChild (funcn, argn);

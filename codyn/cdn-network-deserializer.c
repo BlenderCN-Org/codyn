@@ -973,10 +973,12 @@ parse_function_arguments (CdnNetworkDeserializer *deserializer,
                           CdnFunction            *function)
 {
 	GList *item;
+	gboolean isoptional = FALSE;
 
 	for (item = nodes; item; item = g_list_next (item))
 	{
 		xmlNode *node = (xmlNode *)item->data;
+		CdnExpression *defexpr = NULL;
 
 		if (!(node->children && node->children->type == XML_TEXT_NODE))
 		{
@@ -994,9 +996,27 @@ parse_function_arguments (CdnNetworkDeserializer *deserializer,
 		gboolean isexplicit = impl ? g_ascii_strcasecmp ((gchar const *)impl, "yes") != 0 : TRUE;
 		xmlFree (impl);
 
+		xmlChar *defval = xmlGetProp (node, (xmlChar *)"default-value");
+
+		if (defval)
+		{
+			defexpr = cdn_expression_new ((gchar const *)defval);
+			xmlFree (defval);
+		}
+		else if (isoptional && isexplicit)
+		{
+			return parser_failed (deserializer,
+			                      node,
+			                      CDN_NETWORK_LOAD_ERROR_VARIABLE,
+			                      "The non-optional argument `%s' of `%s' appears after optional arguments",
+			                      name,
+			                      cdn_object_get_id (deserializer->priv->object));
+		}
+
 		CdnFunctionArgument *argument =
 			cdn_function_argument_new (name,
-			                           isexplicit);
+			                           isexplicit,
+			                           defexpr);
 
 		save_comment (node, G_OBJECT (argument));
 

@@ -1451,8 +1451,10 @@ parse_function (CdnExpression *expression,
 	guint fid = 0;
 	gint arguments = 0;
 	gint n_implicit = 0;
+	gint n_optional = 0;
 	gboolean ret = TRUE;
 	gboolean isrand = FALSE;
+	CdnInstruction *instruction = NULL;
 
 	if (!cname)
 	{
@@ -1501,6 +1503,7 @@ parse_function (CdnExpression *expression,
 	{
 		n_implicit = (gint)cdn_function_get_n_implicit (function);
 		arguments = (gint)cdn_function_get_n_arguments (function);
+		n_optional = (gint)cdn_function_get_n_optional (function);
 	}
 
 	// parse arguments
@@ -1511,7 +1514,7 @@ parse_function (CdnExpression *expression,
 		return FALSE;
 	}
 
-	if ((function != NULL && (numargs > (arguments - n_implicit) || numargs < (arguments - n_implicit))) ||
+	if ((function != NULL && (numargs > (arguments - n_implicit) || numargs < (arguments - n_implicit - n_optional))) ||
 	    (function == NULL && arguments != -1 && numargs != arguments))
 	{
 		return parser_failed (expression,
@@ -1523,17 +1526,63 @@ parse_function (CdnExpression *expression,
 		                      numargs);
 	}
 
-	/* Now lookup implicit arguments */
 	if (function)
 	{
 		GList const *ar;
 		GList *start;
+		CdnExpression *defval;
 
 		ar = cdn_function_get_arguments (function);
 
+		/* Set optional arguments */
+		start = g_list_nth ((GList *)ar, numargs);
+
+		while (start &&
+		       cdn_function_argument_get_explicit (start->data) &&
+		       (defval = cdn_function_argument_get_default_value (start->data)))
+		{
+			GSList const *instrs;
+
+			// Compile the default value if needed
+			instrs = cdn_expression_get_instructions (defval);
+
+			if (!instrs)
+			{
+				CdnCompileContext *ctx;
+
+				ctx = cdn_object_get_compile_context (CDN_OBJECT (function),
+				                                      NULL);
+
+				ret = cdn_expression_compile (defval,
+				                              ctx,
+				                              context->error);
+
+				g_object_unref (ctx);
+
+				if (!ret)
+				{
+					break;
+				}
+
+				instrs = cdn_expression_get_instructions (defval);
+			}
+
+			while (instrs)
+			{
+				instructions_push (expression,
+				                   cdn_mini_object_copy (instrs->data),
+				                   context);
+
+				instrs = g_slist_next (instrs);
+			}
+
+			start = g_list_next (start);
+		}
+
+		/* Now lookup implicit arguments */
 		start = g_list_nth ((GList *)ar, arguments - n_implicit);
 
-		while (start)
+		while (ret && start)
 		{
 			CdnFunctionArgument *a;
 			gchar const *aname;
@@ -1578,14 +1627,13 @@ parse_function (CdnExpression *expression,
 			                        cdn_instruction_variable_new (prop),
 			                        context))
 			{
-				return FALSE;
+				ret = FALSE;
+				break;
 			}
 		}
 	}
 
-	CdnInstruction *instruction;
-
-	if (function == NULL)
+	if (function == NULL && ret)
 	{
 		if (isrand)
 		{
@@ -1655,18 +1703,21 @@ parse_function (CdnExpression *expression,
 			}
 		}
 	}
-	else
+	else if (ret)
 	{
 		gint *argdim;
+		gint realnum;
 
-		argdim = get_argdim (expression, context, numargs);
+		realnum = arguments - n_implicit;
+
+		argdim = get_argdim (expression, context, realnum);
 
 		function = cdn_function_for_dimension (function,
-		                                       numargs,
+		                                       realnum,
 		                                       argdim);
 
 		instruction = cdn_instruction_custom_function_new (function,
-		                                                   numargs,
+		                                                   realnum,
 		                                                   argdim);
 
 		g_free (argdim);

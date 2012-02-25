@@ -1375,7 +1375,7 @@ cdn_input_file_init (CdnInputFile *self)
 	self->priv = CDN_INPUT_FILE_GET_PRIVATE (self);
 
 	cdn_function_add_argument (CDN_FUNCTION (self),
-	                           cdn_function_argument_new ("t", FALSE));
+	                           cdn_function_argument_new ("t", FALSE, NULL));
 }
 
 void

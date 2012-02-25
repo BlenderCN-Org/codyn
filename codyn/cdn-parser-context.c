@@ -181,6 +181,7 @@ struct _CdnFunctionArgumentSpec
 {
 	CdnEmbeddedString *name;
 	gboolean isexplicit;
+	CdnEmbeddedString *default_value;
 };
 
 /**
@@ -195,13 +196,15 @@ struct _CdnFunctionArgumentSpec
  **/
 CdnFunctionArgumentSpec *
 cdn_function_argument_spec_new (CdnEmbeddedString *name,
-                                gboolean           isexplicit)
+                                gboolean           isexplicit,
+                                CdnEmbeddedString *default_value)
 {
 	CdnFunctionArgumentSpec *ret;
 
 	ret = g_slice_new0 (CdnFunctionArgumentSpec);
 	ret->name = name;
 	ret->isexplicit = isexplicit;
+	ret->default_value = default_value;
 
 	return ret;
 }
@@ -212,6 +215,11 @@ cdn_function_argument_spec_free (CdnFunctionArgumentSpec *self)
 	if (self->name)
 	{
 		g_object_unref (self->name);
+	}
+
+	if (self->default_value)
+	{
+		g_object_unref (self->default_value);
 	}
 
 	g_slice_free (CdnFunctionArgumentSpec, self);
@@ -1173,8 +1181,12 @@ generate_name_value_pairs (CdnParserContext  *context,
 	}
 
 	cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-	cdn_embedded_context_set_selection (context->priv->embedded,
-	                                    sel);
+
+	if (sel)
+	{
+		cdn_embedded_context_set_selection (context->priv->embedded,
+		                                    sel);
+	}
 
 	embedded_string_expand_multiple_val (names, name, context, NULL);
 
@@ -3779,6 +3791,7 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 			CdnExpansion *expr;
 			CdnNode *grp;
 			GSList *argit;
+			gboolean isoptional = FALSE;
 
 			grp = CDN_NODE (cdn_selection_get_object (sel));
 
@@ -3848,27 +3861,58 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 			for (argit = args; argit; argit = g_slist_next (argit))
 			{
 				CdnFunctionArgumentSpec *spec = argit->data;
-				GSList *names;
+				GSList *pairs;
 				gint i = 0;
 
-				embedded_string_expand_multiple (names, spec->name, context);
-
-				while (names)
+				if (isoptional && !spec->default_value && spec->isexplicit)
 				{
-					CdnExpansion *exn;
+					parser_failed (context,
+					               CDN_STATEMENT (id),
+					               CDN_NETWORK_LOAD_ERROR_FUNCTION,
+					               "The function `%s' must declare all optional arguments after non-optional arguments",
+					               cdn_expansion_get (ex, 0));
+
+					cdn_embedded_context_restore (context->priv->embedded);
+					ret = FALSE;
+					break;
+				}
+
+				if (spec->default_value)
+				{
+					isoptional = TRUE;
+				}
+
+				pairs = generate_name_value_pairs (context,
+				                                   NULL,
+				                                   spec->name,
+				                                   spec->default_value,
+				                                   NULL,
+				                                   FALSE);
+
+				while (pairs)
+				{
+					NameValuePair *pair;
 					CdnFunctionArgument *arg;
+					CdnExpression *default_value = NULL;
 
-					exn = names->data;
+					pair = pairs->data;
 
-					arg = cdn_function_argument_new (cdn_expansion_get (exn, 0),
-					                                 spec->isexplicit);
+					if (pair->value)
+					{
+						default_value =
+							cdn_expression_new (cdn_expansion_get (pair->value, 0));
+					}
+
+					arg = cdn_function_argument_new (cdn_expansion_get (pair->name, 0),
+					                                 spec->isexplicit,
+					                                 default_value);
 
 					cdn_function_add_argument (func, arg);
 
-					cdn_expansion_unref (names->data);
+					name_value_pair_free (pair);
 
-					names = g_slist_delete_link (names,
-					                             names);
+					pairs = g_slist_delete_link (pairs,
+					                             pairs);
 
 					++i;
 				}

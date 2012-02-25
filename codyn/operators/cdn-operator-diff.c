@@ -250,7 +250,6 @@ validate_arguments (GSList const  *expressions,
 	}
 
 	*syms = g_list_reverse (*syms);
-
 	return TRUE;
 }
 
@@ -413,7 +412,8 @@ cdn_operator_diff_initialize (CdnOperator   *op,
 			}
 
 			darg = cdn_function_argument_new (dsname,
-			                                  TRUE);
+			                                  TRUE,
+			                                  cdn_expression_new0 ());
 
 			g_free (dsname);
 

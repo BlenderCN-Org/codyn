@@ -40,13 +40,15 @@ struct _CdnInstructionCustomFunctionClass
 	CdnInstructionClass parent_class;
 };
 
-GType cdn_instruction_custom_function_get_type (void) G_GNUC_CONST;
+GType           cdn_instruction_custom_function_get_type     (void) G_GNUC_CONST;
 
-CdnInstruction *cdn_instruction_custom_function_new (CdnFunction *function,
-                                                     gint         arguments,
-                                                     gint        *argdim);
+CdnInstruction *cdn_instruction_custom_function_new          (CdnFunction                  *function,
+                                                              gint                          arguments,
+                                                              gint                         *argdim);
 
-CdnFunction *cdn_instruction_custom_function_get_function (CdnInstructionCustomFunction *function);
+CdnFunction    *cdn_instruction_custom_function_get_function (CdnInstructionCustomFunction *function);
+void            cdn_instruction_custom_function_set_function (CdnInstructionCustomFunction *function,
+                                                              CdnFunction                  *f);
 
 G_END_DECLS
 

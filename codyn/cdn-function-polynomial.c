@@ -306,22 +306,13 @@ cdn_function_polynomial_class_init (CdnFunctionPolynomialClass *klass)
 static void
 cdn_function_polynomial_init (CdnFunctionPolynomial *self)
 {
-	CdnFunctionArgument *arg;
-
 	self->priv = CDN_FUNCTION_POLYNOMIAL_GET_PRIVATE (self);
 
 	/* Add 't' argument */
 	cdn_function_add_argument (CDN_FUNCTION (self),
-	                           cdn_function_argument_new ("__t", TRUE));
+	                           cdn_function_argument_new ("x", TRUE, NULL));
 
-	arg = cdn_function_argument_new ("__order", TRUE);
-
-	/* Add optional 'order' argument */
-	cdn_function_add_argument (CDN_FUNCTION (self),
-	                           arg);
-
-	self->priv->t = cdn_object_get_variable (CDN_OBJECT (self), "__t");
-	self->priv->order = cdn_object_get_variable (CDN_OBJECT (self), "__order");
+	self->priv->t = cdn_object_get_variable (CDN_OBJECT (self), "x");
 }
 
 /**

@@ -131,6 +131,7 @@ CdnFunctionArgument *cdn_function_get_argument                (CdnFunction      
 const GList         *cdn_function_get_arguments               (CdnFunction          *function);
 guint                cdn_function_get_n_arguments             (CdnFunction          *function);
 guint                cdn_function_get_n_implicit              (CdnFunction          *function);
+guint                cdn_function_get_n_optional              (CdnFunction          *function);
 
 void                 cdn_function_execute                     (CdnFunction          *function,
                                                                gint                  nargs,

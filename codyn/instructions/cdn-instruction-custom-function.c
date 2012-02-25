@@ -229,3 +229,12 @@ cdn_instruction_custom_function_get_function (CdnInstructionCustomFunction *func
 
 	return function->priv->function;
 }
+
+void
+cdn_instruction_custom_function_set_function (CdnInstructionCustomFunction *function,
+                                              CdnFunction                  *f)
+{
+	g_return_if_fail (CDN_IS_INSTRUCTION_CUSTOM_FUNCTION (function));
+
+	set_function (function, f);
+}
