@@ -3470,6 +3470,37 @@ validate_stack (CdnExpression *expression,
 		GError *error = NULL;
 		gint nst;
 
+		// Don't allow references to be on the instruction set
+		if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst) ||
+		    CDN_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (inst))
+		{
+			gint start;
+			gint end;
+
+			cdn_instruction_get_location (inst, &start, &end);
+
+			expression->priv->error_start =
+				g_slist_prepend (expression->priv->error_start,
+				                 GINT_TO_POINTER (start));
+
+			expression->priv->error_at = end;
+
+			error = g_error_new (CDN_COMPILE_ERROR_TYPE,
+			                     CDN_COMPILE_ERROR_INVALID_STACK,
+			                     "Expression contains references instead of function calls");
+
+			cdn_compile_error_set (context->error,
+			                       error,
+			                       NULL,
+			                       NULL,
+			                       NULL,
+			                       expression);
+
+			g_error_free (error);
+
+			return FALSE;
+		}
+
 		smanip = cdn_instruction_get_stack_manipulation (inst, &error);
 
 		if (!smanip && context)
