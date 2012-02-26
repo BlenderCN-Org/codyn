@@ -126,14 +126,15 @@ replace_args (CdnFunction   *func,
 }
 
 static gboolean
-cdn_operator_simplify_initialize (CdnOperator   *op,
-                                  GSList const **expressions,
-                                  gint           num_expressions,
-                                  GSList const **indices,
-                                  gint           num_indices,
-                                  gint           num_arguments,
-                                  gint          *argdim,
-                                  GError       **error)
+cdn_operator_simplify_initialize (CdnOperator        *op,
+                                  GSList const      **expressions,
+                                  gint                num_expressions,
+                                  GSList const      **indices,
+                                  gint                num_indices,
+                                  gint                num_arguments,
+                                  gint               *argdim,
+                                  CdnCompileContext  *context,
+                                  GError            **error)
 {
 	CdnOperatorSimplify *simplify;
 	CdnFunction *func;
@@ -148,6 +149,7 @@ cdn_operator_simplify_initialize (CdnOperator   *op,
 	                                                                          num_indices,
 	                                                                          num_arguments,
 	                                                                          argdim,
+	                                                                          context,
 	                                                                          error))
 	{
 		return FALSE;
@@ -240,6 +242,7 @@ cdn_operator_simplify_copy (CdnOperator *op)
 	                                                                 cdn_operator_num_indices (op),
 	                                                                 cdn_operator_get_num_arguments (op),
 	                                                                 cdn_operator_get_arguments_dimension (op),
+	                                                                 NULL,
 	                                                                 NULL);
 
 	if (simplify->priv->function)

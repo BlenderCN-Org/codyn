@@ -272,15 +272,57 @@ cdn_compile_context_append_function (CdnCompileContext *context,
 		                function);
 }
 
+static CdnVariable *
+lookup_variable (CdnCompileContext *context,
+                 gchar const       *name,
+                 gboolean           getlast)
+{
+	GSList *item;
+	Context *ctx;
+	CdnVariable *variable = NULL;
+
+	if (!context)
+	{
+		return NULL;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	for (item = ctx->objects; item; item = g_slist_next (item))
+	{
+		CdnVariable *v;
+
+		if (!item->data || !CDN_IS_OBJECT (item->data))
+		{
+			continue;
+		}
+
+		v = cdn_object_get_variable (CDN_OBJECT (item->data),
+		                             name);
+
+		if (v)
+		{
+			variable = v;
+		}
+
+		if (variable && !getlast)
+		{
+			break;
+		}
+	}
+
+	return variable;
+}
+
 /**
  * cdn_compile_context_lookup_variable:
  * @context: A #CdnCompileContext
- * @name: The property name
+ * @name: The variable name
  *
- * Lookup a property in the list of context objects.
+ * Lookup a variable in the list of context objects.
  *
  * Returns: (type CdnVariable) (transfer none): A #CdnVariable or %NULL if
-                                                the property could not be found
+                                                the variable could not be found
  *
  **/
 CdnVariable *
@@ -290,33 +332,30 @@ cdn_compile_context_lookup_variable (CdnCompileContext *context,
 	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	if (!context)
-	{
-		return NULL;
-	}
+	return lookup_variable (context, name, FALSE);
+}
 
-	GSList *item;
-	Context *ctx = CURRENT_CONTEXT (context);
+/**
+ * cdn_compile_context_lookup_variable_last:
+ * @context: A #CdnCompileContext
+ * @name: The property name
+ *
+ * Lookup a variable in the list of context objects. This method differs from
+ * @cdn_compile_context_lookup_variable in that it will return the last
+ * known variable named @name.
+ *
+ * Returns: (type CdnVariable) (transfer none): A #CdnVariable or %NULL if
+                                                the variable could not be found
+ *
+ **/
+CdnVariable *
+cdn_compile_context_lookup_variable_last (CdnCompileContext *context,
+                                          const gchar       *name)
+{
+	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), NULL);
+	g_return_val_if_fail (name != NULL, NULL);
 
-	for (item = ctx->objects; item; item = g_slist_next (item))
-	{
-		CdnVariable *property;
-
-		if (!item->data || !CDN_IS_OBJECT (item->data))
-		{
-			continue;
-		}
-
-		property = cdn_object_get_variable (CDN_OBJECT (item->data),
-		                                    name);
-
-		if (property)
-		{
-			return property;
-		}
-	}
-
-	return NULL;
+	return lookup_variable (context, name, TRUE);
 }
 
 /**

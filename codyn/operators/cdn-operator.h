@@ -28,6 +28,7 @@
 #include <codyn/cdn-function.h>
 #include <codyn/cdn-forward-decl.h>
 #include <codyn/integrators/cdn-integrator.h>
+#include <codyn/cdn-compile-context.h>
 
 G_BEGIN_DECLS
 
@@ -81,6 +82,7 @@ struct _CdnOperatorClass
 	                                gint           num_indices,
 	                                gint           num_arguments,
 	                                gint          *argdim,
+	                                CdnCompileContext *context,
 	                                GError       **error);
 
 	gchar           *(*get_name) ();
@@ -119,6 +121,7 @@ gboolean             cdn_operator_initialize                  (CdnOperator     *
                                                                gint             num_indices,
                                                                gint             num_arguments,
                                                                gint            *argdim,
+                                                               CdnCompileContext *context,
                                                                GError         **error);
 
 void                 cdn_operator_execute                     (CdnOperator     *op,

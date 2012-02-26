@@ -85,6 +85,10 @@ CdnVariableForward *
 cdn_compile_context_lookup_variable (CdnCompileContext *context,
                                      const gchar       *name);
 
+CdnVariableForward *
+cdn_compile_context_lookup_variable_last (CdnCompileContext *context,
+                                          const gchar       *name);
+
 CdnFunctionForward *
 cdn_compile_context_lookup_function (CdnCompileContext *context,
                                      const gchar       *name);

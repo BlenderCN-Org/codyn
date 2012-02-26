@@ -2407,6 +2407,7 @@ parse_custom_operator (CdnExpression *expression,
 	                                num_inds,
 	                                num_arguments,
 	                                argdim,
+	                                context->context,
 	                                &err);
 
 	g_free (argdim);
@@ -2836,13 +2837,14 @@ parse_prime (CdnExpression *expression,
 	context->stack = g_slist_delete_link (context->stack,
 	                                      context->stack);
 
-	op = cdn_operators_instantiate ("df_dt",
+	op = cdn_operators_instantiate ("dt",
 	                                (GSList const **)&exprs,
 	                                1,
 	                                NULL,
 	                                0,
 	                                0,
 	                                NULL,
+	                                context->context,
 	                                &err);
 
 	if (!op && context->error)

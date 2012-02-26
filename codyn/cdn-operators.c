@@ -174,6 +174,7 @@ cdn_operators_find (gchar const *name)
  * @num_indices: the number of indices
  * @num_arguments: the number of arguments
  * @argdim: (array length=num_arguments): the argument dimensions
+ * @context: the compile context
  * @error: a #GError
  *
  * Instantiate an operator from a name.
@@ -190,6 +191,7 @@ cdn_operators_instantiate (gchar const   *name,
                            gint           num_indices,
                            gint           num_arguments,
                            gint          *argdim,
+                           CdnCompileContext *context,
                            GError       **error)
 {
 	GType gtype;
@@ -211,6 +213,7 @@ cdn_operators_instantiate (gchar const   *name,
 	                              num_indices,
 	                              num_arguments,
 	                              argdim,
+	                              context,
 	                              error))
 	{
 		g_object_unref (ret);

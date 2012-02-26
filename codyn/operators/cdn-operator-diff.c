@@ -272,14 +272,15 @@ resolve_symargs (CdnFunction *f,
 }
 
 static gboolean
-cdn_operator_diff_initialize (CdnOperator   *op,
-                              GSList const **expressions,
-                              gint           num_expressions,
-                              GSList const **indices,
-                              gint           num_indices,
-                              gint           num_arguments,
-                              gint          *argdim,
-                              GError       **error)
+cdn_operator_diff_initialize (CdnOperator        *op,
+                              GSList const      **expressions,
+                              gint                num_expressions,
+                              GSList const      **indices,
+                              gint                num_indices,
+                              gint                num_arguments,
+                              gint               *argdim,
+                              CdnCompileContext  *context,
+                              GError            **error)
 {
 	CdnOperatorDiff *diff;
 	CdnFunction *func;
@@ -299,6 +300,7 @@ cdn_operator_diff_initialize (CdnOperator   *op,
 	                                                                      num_indices,
 	                                                                      num_arguments,
 	                                                                      argdim,
+	                                                                      context,
 	                                                                      error))
 	{
 		return FALSE;
@@ -384,6 +386,7 @@ cdn_operator_diff_initialize (CdnOperator   *op,
 			gchar *dsname;
 			CdnFunctionArgument *oarg;
 			CdnVariable *sprop;
+			CdnExpression *dfexpr;
 
 			d = g_strnfill (i + 1, '\'');
 
@@ -426,9 +429,12 @@ cdn_operator_diff_initialize (CdnOperator   *op,
 				}
 			}
 
+			dfexpr = cdn_expression_new ("1");
+			cdn_expression_compile (dfexpr, NULL, NULL);
+
 			darg = cdn_function_argument_new (dsname,
 			                                  TRUE,
-			                                  cdn_expression_new0 ());
+			                                  dfexpr);
 
 			g_free (dsname);
 
@@ -481,7 +487,6 @@ cdn_operator_diff_foreach_function (CdnOperator            *op,
 	func (CDN_OPERATOR_DIFF (op)->priv->function, data);
 }
 
-
 static CdnOperator *
 cdn_operator_diff_copy (CdnOperator *op)
 {
@@ -499,6 +504,7 @@ cdn_operator_diff_copy (CdnOperator *op)
 	                                                                 cdn_operator_num_indices (op),
 	                                                                 cdn_operator_get_num_arguments (op),
 	                                                                 cdn_operator_get_arguments_dimension (op),
+	                                                                 NULL,
 	                                                                 NULL);
 
 	if (diff->priv->function)

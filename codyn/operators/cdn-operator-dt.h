@@ -56,9 +56,6 @@ struct _CdnOperatorDtClass
 
 GType          cdn_operator_dt_get_type       (void) G_GNUC_CONST;
 CdnOperatorDt *cdn_operator_dt_new            (void);
-
-CdnExpression *cdn_operator_dt_get_expression (CdnOperatorDt *dt);
-CdnExpression *cdn_operator_dt_get_derived    (CdnOperatorDt *dt);
 gint           cdn_operator_dt_get_order      (CdnOperatorDt *dt);
 
 G_END_DECLS

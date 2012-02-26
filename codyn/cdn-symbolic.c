@@ -1453,32 +1453,6 @@ map_iter (CdnExpressionTreeIter *iter,
 			return ncp;
 		}
 	}
-	else if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR (instr) &&
-	         cdn_expression_tree_iter_get_num_children (iter) == 0)
-	{
-		CdnInstructionCustomOperator *opi;
-		CdnOperator *op;
-
-		opi = CDN_INSTRUCTION_CUSTOM_OPERATOR (instr);
-		op = cdn_instruction_custom_operator_get_operator (opi);
-
-		if (CDN_IS_OPERATOR_DT (op))
-		{
-			CdnExpressionTreeIter *it;
-			CdnExpressionTreeIter *mit;
-
-			// Go inside
-			it = cdn_expression_tree_iter_new (cdn_operator_dt_get_derived (CDN_OPERATOR_DT (op)));
-			mit = map_iter (it, ctx);
-
-			if (mit != it)
-			{
-				cdn_expression_tree_iter_free (it);
-			}
-
-			return mit;
-		}
-	}
 
 	return iter;
 }
@@ -1631,8 +1605,16 @@ derive_property_real (CdnInstructionVariable *instr,
 	/* Check if the property is a derived symbol (we don't go deep, but we are not differentiating towards it) */
 	if (g_hash_table_lookup (ctx->symbols, prop))
 	{
-		return g_slist_prepend (NULL,
-		                        cdn_instruction_number_new_from_string ("0"));
+		if (ctx->flags & CDN_SYMBOLIC_DERIVE_PARTIAL)
+		{
+			return g_slist_prepend (NULL,
+			                        cdn_instruction_number_new_from_string ("0"));
+		}
+		else
+		{
+			return g_slist_prepend (NULL,
+			                        cdn_instruction_number_new_from_string ("1"));
+		}
 	}
 
 	if (cdn_variable_get_derivative (prop))
@@ -1662,13 +1644,94 @@ derive_property (CdnExpressionTreeIter  *iter,
 }
 
 static GSList *
+derive_custom_function_intern (CdnExpressionTreeIter *iter,
+                               CdnFunction           *func,
+                               DeriveContext         *ctx)
+{
+	gint i;
+	gint num;
+	CdnFunction *df;
+	GSList *ret = NULL;
+	GSList *derived = NULL;
+	gint *argdim;
+
+	// Try to derive func towards all of its arguments
+	df = cdn_function_get_derivative (func, 1, NULL);
+
+	if (!df)
+	{
+		return NULL;
+	}
+
+	num = cdn_expression_tree_iter_get_num_children (iter);
+
+	argdim = g_new0 (gint, num * 4);
+
+	// Now, df will have new arguments for the derivatives which
+	// we will compute here now and add on the stack in addition
+	// to the arguments already there
+	for (i = 0; i < num; ++i)
+	{
+		CdnExpressionTreeIter *child;
+		GSList *instrs;
+		CdnInstruction *instr;
+		CdnStackManipulation const *smanip;
+
+		child = cdn_expression_tree_iter_get_child (iter, i);
+		instr = cdn_expression_tree_iter_get_instruction (child);
+
+		instrs = cdn_expression_tree_iter_to_instructions (child);
+		smanip = cdn_instruction_get_stack_manipulation (instr, NULL);
+
+		argdim[i * 2] = smanip->push_dims ? smanip->push_dims[0] : 1;
+		argdim[i * 2 + 1] = smanip->push_dims ? smanip->push_dims[1] : 1;
+
+		while (instrs)
+		{
+			ret = g_slist_prepend (ret,
+			                       cdn_mini_object_copy (instrs->data));
+
+			instrs = g_slist_delete_link (instrs, instrs);
+		}
+
+		// Derive it here
+		derived = g_slist_concat (derived, derive_iter (child, ctx));
+
+		// Compute argdim (note, potentially slow...)
+		smanip = cdn_instruction_get_stack_manipulation (g_slist_last (derived)->data,
+		                                                 NULL);
+
+		argdim[(i + num) * 2] = smanip->push_dims ? smanip->push_dims[0] : 1;
+		argdim[(i + num) * 2 + 1] = smanip->push_dims ? smanip->push_dims[1] : 1;
+	}
+
+	ret = g_slist_concat (g_slist_reverse (ret),
+	                      derived);
+
+	// Finally, add a new custom function instruction
+	ret = g_slist_append (ret,
+	                      cdn_instruction_custom_function_new (df,
+	                                                           num * 2,
+	                                                           argdim));
+
+	return ret;
+}
+
+static GSList *
 derive_custom_function_real (CdnExpressionTreeIter *iter,
                              CdnFunction           *func,
                              DeriveContext         *ctx,
                              gboolean               mapargs)
 {
 	gint i = 0;
-	GSList *ret;
+	GSList *ret = NULL;
+
+	ret = derive_custom_function_intern (iter, func, ctx);
+
+	if (ret)
+	{
+		return ret;
+	}
 
 	// Map arguments of the function object to arguments in the iter
 	if (mapargs)
@@ -1772,16 +1835,6 @@ derive_custom_operator_real (CdnExpressionTreeIter *iter,
                              gboolean               mapargs)
 {
 	CdnFunction *f;
-
-	if (CDN_IS_OPERATOR_DT (op))
-	{
-		// Go deep!
-		CdnOperatorDt *dfdt = CDN_OPERATOR_DT (op);
-
-		return derive_expression (cdn_operator_dt_get_derived (dfdt),
-		                          ctx,
-		                          TRUE);
-	}
 
 	f = cdn_operator_get_primary_function (op);
 

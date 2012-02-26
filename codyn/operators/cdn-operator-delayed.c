@@ -309,6 +309,7 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
                                  gint           num_indices,
                                  gint           num_arguments,
                                  gint          *argdim,
+                                 CdnCompileContext *context,
                                  GError       **error)
 {
 	CdnOperatorDelayed *delayed;
@@ -324,6 +325,7 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 	                      num_indices,
 	                      num_arguments,
 	                      argdim,
+	                      context,
 	                      error))
 	{
 		return FALSE;

@@ -199,6 +199,7 @@ cdn_operator_initialize_default (CdnOperator      *op,
                                  gint              num_indices,
                                  gint              num_arguments,
                                  gint             *argdim,
+                                 CdnCompileContext *context,
                                  GError          **error)
 {
 	op->priv->expressions = copy_2dim_slist (expressions,
@@ -328,6 +329,7 @@ cdn_operator_copy_default (CdnOperator *src)
 	                         src->priv->num_indices,
 	                         src->priv->smanip.num_pop,
 	                         src->priv->smanip.pop_dims,
+	                         NULL,
 	                         NULL);
 
 	return ret;
@@ -566,6 +568,7 @@ cdn_operator_num_indices (CdnOperator *op)
  * @num_indices: The number of indices
  * @num_arguments: The number of arguments
  * @argdim: (array length=num_arguments): The argument dimensions
+ * @context: a #CdnCompileContext
  * @error: A #GError
  *
  * Initialize the operator.
@@ -574,14 +577,15 @@ cdn_operator_num_indices (CdnOperator *op)
  *
  **/
 gboolean
-cdn_operator_initialize (CdnOperator   *op,
-                         GSList const **expressions,
-                         gint           num_expressions,
-                         GSList const **indices,
-                         gint           num_indices,
-                         gint           num_arguments,
-                         gint          *argdim,
-                         GError       **error)
+cdn_operator_initialize (CdnOperator        *op,
+                         GSList const      **expressions,
+                         gint                num_expressions,
+                         GSList const      **indices,
+                         gint                num_indices,
+                         gint                num_arguments,
+                         gint               *argdim,
+                         CdnCompileContext  *context,
+                         GError            **error)
 {
 	g_return_val_if_fail (CDN_IS_OPERATOR (op), FALSE);
 
@@ -592,6 +596,7 @@ cdn_operator_initialize (CdnOperator   *op,
 	                                                num_indices,
 	                                                num_arguments,
 	                                                argdim,
+	                                                context,
 	                                                error);
 }
 

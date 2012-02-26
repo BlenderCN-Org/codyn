@@ -599,14 +599,18 @@ canonical_custom_function_real (CdnExpressionTreeIter *iter,
 static gboolean
 canonical_custom_function (CdnExpressionTreeIter *iter)
 {
-	// Custom functions are flattened in canonical form
+	// Custom functions are flattened in canonical form, if possible
 	CdnInstructionCustomFunction *instr;
 	CdnFunction *func;
 
 	instr = (CdnInstructionCustomFunction *)(iter->instruction);
 	func = cdn_instruction_custom_function_get_function (instr);
 
-	canonical_custom_function_real (iter, func);
+	if (cdn_function_get_expression (func))
+	{
+		canonical_custom_function_real (iter, func);
+	}
+
 	return TRUE;
 }
 
@@ -621,25 +625,11 @@ canonical_custom_operator (CdnExpressionTreeIter *iter)
 	instr = (CdnInstructionCustomOperator *)(iter->instruction);
 	op = cdn_instruction_custom_operator_get_operator (instr);
 
-	if (CDN_IS_OPERATOR_DT (op))
+	f = cdn_operator_get_primary_function (op);
+
+	if (f)
 	{
-		CdnExpressionTreeIter *cp;
-		CdnOperatorDt *dfdt = CDN_OPERATOR_DT (op);
-
-		cp = cdn_expression_tree_iter_new (cdn_operator_dt_get_derived (dfdt));
-		cdn_expression_tree_iter_canonicalize (cp);
-
-		// Replace iter with cp
-		iter_replace_into (cp, iter);
-	}
-	else
-	{
-		f = cdn_operator_get_primary_function (op);
-
-		if (f)
-		{
-			canonical_custom_function_real (iter, f);
-		}
+		canonical_custom_function_real (iter, f);
 	}
 
 	return TRUE;

@@ -48,8 +48,7 @@
 
 struct _CdnOperatorDtPrivate
 {
-	CdnExpression *expression;
-	CdnExpression *derived;
+	CdnFunction *function;
 
 	gint order;
 };
@@ -62,7 +61,6 @@ enum
 {
 	PROP_0,
 	PROP_EXPRESSION,
-	PROP_DERIVED,
 	PROP_ORDER
 };
 
@@ -73,16 +71,20 @@ cdn_operator_dt_get_name ()
 }
 
 static gboolean
-cdn_operator_dt_initialize (CdnOperator   *op,
-                            GSList const **expressions,
-                            gint           num_expressions,
-                            GSList const **indices,
-                            gint           num_indices,
-                            gint           num_arguments,
-                            gint          *argdim,
-                            GError       **error)
+cdn_operator_dt_initialize (CdnOperator        *op,
+                            GSList const      **expressions,
+                            gint                num_expressions,
+                            GSList const      **indices,
+                            gint                num_indices,
+                            gint                num_arguments,
+                            gint               *argdim,
+                            CdnCompileContext  *context,
+                            GError            **error)
 {
 	CdnOperatorDt *dt;
+	GSList *syms = NULL;
+	CdnVariable *v;
+	CdnExpression *derived;
 
 	if (!CDN_OPERATOR_CLASS (cdn_operator_dt_parent_class)->initialize (op,
 	                                                                    expressions,
@@ -91,6 +93,7 @@ cdn_operator_dt_initialize (CdnOperator   *op,
 	                                                                    num_indices,
 	                                                                    num_arguments,
 	                                                                    argdim,
+	                                                                    context,
 	                                                                    error))
 	{
 		return FALSE;
@@ -108,8 +111,6 @@ cdn_operator_dt_initialize (CdnOperator   *op,
 	}
 
 	dt = CDN_OPERATOR_DT (op);
-	dt->priv->expression = g_object_ref_sink (expressions[0]->data);
-
 	dt->priv->order = 1;
 
 	if (expressions[0]->next)
@@ -122,38 +123,32 @@ cdn_operator_dt_initialize (CdnOperator   *op,
 		}
 	}
 
-	dt->priv->derived = cdn_symbolic_derive (dt->priv->expression,
-	                                         NULL,
-	                                         NULL,
-	                                         NULL,
-	                                         dt->priv->order,
-	                                         CDN_SYMBOLIC_DERIVE_NONE,
-	                                         error);
+	v = cdn_compile_context_lookup_variable_last (context, "t");
 
-	cdn_expression_set_has_cache (dt->priv->derived, FALSE);
-
-	g_object_ref_sink (dt->priv->derived);
-
-	return dt->priv->derived != NULL;
-}
-
-static void
-cdn_operator_dt_execute (CdnOperator *op,
-                            CdnStack    *stack)
-{
-	CdnOperatorDt *d;
-
-	d = (CdnOperatorDt *)op;
-
-	if (d->priv->derived)
+	if (v)
 	{
-		cdn_stack_push (stack,
-		                cdn_expression_evaluate (d->priv->derived));
+		syms = g_slist_prepend (NULL, v);
 	}
-	else
+
+	derived = cdn_symbolic_derive (expressions[0]->data,
+	                               syms,
+	                               NULL,
+	                               NULL,
+	                               dt->priv->order,
+	                               CDN_SYMBOLIC_DERIVE_NONE,
+	                               error);
+
+	g_slist_free (syms);
+
+	if (!derived)
 	{
-		cdn_stack_push (stack, 0);
+		return FALSE;
 	}
+
+	dt->priv->function = cdn_function_new ("dt",
+	                                       derived);
+
+	return TRUE;
 }
 
 static void
@@ -163,14 +158,9 @@ cdn_operator_dt_finalize (GObject *object)
 
 	dt = CDN_OPERATOR_DT (object);
 
-	if (dt->priv->expression)
+	if (dt->priv->function)
 	{
-		g_object_unref (dt->priv->expression);
-	}
-
-	if (dt->priv->derived)
-	{
-		g_object_unref (dt->priv->derived);
+		g_object_unref (dt->priv->function);
 	}
 
 	G_OBJECT_CLASS (cdn_operator_dt_parent_class)->finalize (object);
@@ -200,12 +190,6 @@ cdn_operator_dt_get_property (GObject    *object,
 
 	switch (prop_id)
 	{
-		case PROP_EXPRESSION:
-			g_value_set_object (value, self->priv->expression);
-			break;
-		case PROP_DERIVED:
-			g_value_set_object (value, self->priv->derived);
-			break;
 		case PROP_ORDER:
 			g_value_set_int (value, self->priv->order);
 			break;
@@ -236,14 +220,9 @@ cdn_operator_dt_equal (CdnOperator *op,
 		return FALSE;
 	}
 
-	if (!cdn_expression_equal (dt->priv->expression,
-	                           odel->priv->expression,
-	                           asstring))
-	{
-		return FALSE;
-	}
-
-	return TRUE;
+	return CDN_OPERATOR_CLASS (cdn_operator_dt_parent_class)->equal (op,
+	                                                                 other,
+	                                                                 asstring);
 }
 
 static CdnOperator *
@@ -263,21 +242,33 @@ cdn_operator_dt_copy (CdnOperator *op)
 	                                                               cdn_operator_num_indices (op),
 	                                                               cdn_operator_get_num_arguments (op),
 	                                                               cdn_operator_get_arguments_dimension (op),
+	                                                               NULL,
 	                                                               NULL);
 
-	if (dt->priv->expression)
+	if (dt->priv->function)
 	{
-		ret->priv->expression = g_object_ref_sink (dt->priv->expression);
-	}
-
-	if (dt->priv->derived)
-	{
-		ret->priv->derived = g_object_ref_sink (dt->priv->derived);
+		ret->priv->function = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (dt->priv->function)));
 	}
 
 	ret->priv->order = dt->priv->order;
 
 	return CDN_OPERATOR (ret);
+}
+
+static CdnFunction *
+cdn_operator_dt_get_function (CdnOperator *op,
+                              gint        *idx,
+                              gint         numidx)
+{
+	return CDN_OPERATOR_DT (op)->priv->function;
+}
+
+static void
+cdn_operator_dt_foreach_function (CdnOperator            *op,
+                                  CdnForeachFunctionFunc  func,
+                                  gpointer                data)
+{
+	func (CDN_OPERATOR_DT (op)->priv->function, data);
 }
 
 static void
@@ -292,28 +283,13 @@ cdn_operator_dt_class_init (CdnOperatorDtClass *klass)
 	object_class->set_property = cdn_operator_dt_set_property;
 
 	op_class->get_name = cdn_operator_dt_get_name;
-	op_class->execute = cdn_operator_dt_execute;
 	op_class->initialize = cdn_operator_dt_initialize;
 	op_class->equal = cdn_operator_dt_equal;
 	op_class->copy = cdn_operator_dt_copy;
+	op_class->foreach_function = cdn_operator_dt_foreach_function;
+	op_class->get_function = cdn_operator_dt_get_function;
 
 	g_type_class_add_private (object_class, sizeof(CdnOperatorDtPrivate));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_EXPRESSION,
-	                                 g_param_spec_object ("expression",
-	                                                      "Expression",
-	                                                      "Expression",
-	                                                      CDN_TYPE_EXPRESSION,
-	                                                      G_PARAM_READABLE));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_DERIVED,
-	                                 g_param_spec_object ("derived",
-	                                                      "Derived",
-	                                                      "Derived",
-	                                                      CDN_TYPE_EXPRESSION,
-	                                                      G_PARAM_READABLE));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_ORDER,
@@ -336,40 +312,6 @@ CdnOperatorDt *
 cdn_operator_dt_new ()
 {
 	return g_object_new (CDN_TYPE_OPERATOR_DT, NULL);
-}
-
-/**
- * cdn_operator_dt_get_expression:
- * @dt: A #CdnOperatorDt
- *
- * Get the expression to be dt.
- *
- * Returns: (transfer none): A #CdnExpression
- *
- **/
-CdnExpression *
-cdn_operator_dt_get_expression (CdnOperatorDt *dt)
-{
-	g_return_val_if_fail (CDN_IS_OPERATOR_DT (dt), NULL);
-
-	return dt->priv->expression;
-}
-
-/**
- * cdn_operator_dt_get_derived:
- * @dt: A #CdnOperatorDt
- *
- * Get the derived expression.
- *
- * Returns: (transfer none): A #CdnExpression
- *
- **/
-CdnExpression *
-cdn_operator_dt_get_derived (CdnOperatorDt *dt)
-{
-	g_return_val_if_fail (CDN_IS_OPERATOR_DT (dt), NULL);
-
-	return dt->priv->derived;
 }
 
 /**

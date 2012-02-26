@@ -30,6 +30,7 @@
 #include <codyn/operators/cdn-operator-simplify.h>
 #include <codyn/operators/cdn-operator-linsolve.h>
 #include <codyn/operators/cdn-operator-delayed.h>
+#include <codyn/cdn-compile-context.h>
 
 G_BEGIN_DECLS
 
@@ -44,6 +45,7 @@ CdnOperator         *cdn_operators_instantiate                (gchar const     *
                                                                gint             num_indices,
                                                                gint             num_arguments,
                                                                gint            *argdim,
+                                                               CdnCompileContext *context,
                                                                GError         **error);
 GSList const        *cdn_operators_list                       ();
 
