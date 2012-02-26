@@ -154,15 +154,6 @@ cdn_operator_dt_initialize (CdnOperator        *op,
 static void
 cdn_operator_dt_finalize (GObject *object)
 {
-	CdnOperatorDt *dt;
-
-	dt = CDN_OPERATOR_DT (object);
-
-	if (dt->priv->function)
-	{
-		g_object_unref (dt->priv->function);
-	}
-
 	G_OBJECT_CLASS (cdn_operator_dt_parent_class)->finalize (object);
 }
 
@@ -260,7 +251,10 @@ cdn_operator_dt_get_function (CdnOperator *op,
                               gint        *idx,
                               gint         numidx)
 {
-	return CDN_OPERATOR_DT (op)->priv->function;
+	CdnOperatorDt *dt;
+
+	dt = (CdnOperatorDt *)op;
+	return dt->priv->function;
 }
 
 static void
@@ -268,7 +262,14 @@ cdn_operator_dt_foreach_function (CdnOperator            *op,
                                   CdnForeachFunctionFunc  func,
                                   gpointer                data)
 {
-	func (CDN_OPERATOR_DT (op)->priv->function, data);
+	CdnOperatorDt *dt;
+
+	dt = (CdnOperatorDt *)op;
+
+	if (dt->priv->function)
+	{
+		func (dt->priv->function, data);
+	}
 }
 
 static void

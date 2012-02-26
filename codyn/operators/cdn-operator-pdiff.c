@@ -420,7 +420,10 @@ cdn_operator_pdiff_get_function (CdnOperator *op,
                                  gint        *idx,
                                  gint         numidx)
 {
-	return CDN_OPERATOR_PDIFF (op)->priv->function;
+	CdnOperatorPDiff *pdiff;
+
+	pdiff = (CdnOperatorPDiff *)op;
+	return pdiff->priv->function;
 }
 
 static void
@@ -428,7 +431,14 @@ cdn_operator_pdiff_foreach_function (CdnOperator *op,
                                      CdnForeachFunctionFunc func,
                                      gpointer userdata)
 {
-	func (CDN_OPERATOR_PDIFF (op)->priv->function, userdata);
+	CdnOperatorPDiff *pdiff;
+
+	pdiff = (CdnOperatorPDiff *)op;
+
+	if (pdiff->priv->function)
+	{
+		func (pdiff->priv->function, userdata);
+	}
 }
 
 static CdnOperator *
