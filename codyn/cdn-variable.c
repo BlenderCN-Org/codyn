@@ -738,19 +738,6 @@ cdn_variable_set_values (CdnVariable   *variable,
 	                           numc);
 }
 
-void
-cdn_variable_apply_constraint (CdnVariable *variable)
-{
-	/* Omit type check to increase speed */
-	if (!variable->priv->constraint || !variable->priv->expression)
-	{
-		return;
-	}
-
-	cdn_expression_set_value (variable->priv->expression,
-	                          cdn_expression_evaluate (variable->priv->constraint));
-}
-
 /**
  * cdn_variable_get_value:
  * @variable: the #CdnVariable
@@ -768,8 +755,6 @@ cdn_variable_get_value (CdnVariable *variable)
 	{
 		gdouble ret;
 
-		ret = cdn_expression_evaluate (variable->priv->expression);
-
 		if (variable->priv->constraint && !variable->priv->in_constraint)
 		{
 			// Apply the constraint
@@ -778,6 +763,10 @@ cdn_variable_get_value (CdnVariable *variable)
 			ret = cdn_expression_evaluate (variable->priv->constraint);
 
 			variable->priv->in_constraint = FALSE;
+		}
+		else
+		{
+			ret = cdn_expression_evaluate (variable->priv->expression);
 		}
 
 		return ret;
@@ -793,19 +782,41 @@ cdn_variable_get_values (CdnVariable *variable,
                          gint        *numr,
                          gint        *numc)
 {
+	gdouble const *ret = NULL;
+
 	if (variable->priv->expression)
 	{
-		// TODO: apply constraint
-		return cdn_expression_evaluate_values (variable->priv->expression,
-		                                       numr,
-		                                       numc);
+		if (variable->priv->constraint && !variable->priv->in_constraint)
+		{
+			variable->priv->in_constraint = TRUE;
+
+			ret = cdn_expression_evaluate_values (variable->priv->constraint,
+			                                      numr,
+			                                      numc);
+
+			variable->priv->in_constraint = FALSE;
+		}
+		else
+		{
+			ret = cdn_expression_evaluate_values (variable->priv->expression,
+			                                      numr,
+			                                      numc);
+		}
 	}
 	else
 	{
-		*numr = 0;
-		*numc = 0;
-		return NULL;
+		if (numr)
+		{
+			*numr = 0;
+		}
+
+		if (numc)
+		{
+			*numc = 0;
+		}
 	}
+
+	return ret;
 }
 
 /**

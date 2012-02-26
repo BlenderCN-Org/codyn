@@ -131,8 +131,6 @@ void               cdn_variable_set_values              (CdnVariable        *pro
                                                          gint                numr,
                                                          gint                numc);
 
-void               cdn_variable_apply_constraint        (CdnVariable        *property);
-
 void               cdn_variable_set_expression          (CdnVariable        *property,
                                                          CdnExpression      *expression);
 
