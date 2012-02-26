@@ -583,15 +583,31 @@ cdn_object_foreach_expression_impl (CdnObject                *object,
 
 	for (item = object->priv->variables; item; item = g_slist_next (item))
 	{
-		CdnExpression *cons;
+		CdnExpression *expr;
 
-		func (cdn_variable_get_expression (item->data), userdata);
+		expr = cdn_variable_get_expression (item->data);
 
-		cons = cdn_variable_get_constraint (item->data);
-
-		if (cons)
+		if (expr)
 		{
-			func (cons, userdata);
+			func (expr, userdata);
+		}
+		else
+		{
+			gchar *vname;
+
+			vname = cdn_variable_get_full_name_for_display (item->data);
+
+			g_warning ("Variable without expression: %s",
+			           vname);
+
+			g_free (vname);
+		}
+
+		expr = cdn_variable_get_constraint (item->data);
+
+		if (expr)
+		{
+			func (expr, userdata);
 		}
 	}
 }
@@ -1131,6 +1147,7 @@ cdn_object_add_variable_impl (CdnObject    *object,
 
 		if (g_object_is_floating (G_OBJECT (property)))
 		{
+			g_object_ref_sink (property);
 			g_object_unref (property);
 		}
 
