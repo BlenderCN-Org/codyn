@@ -67,6 +67,8 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
                                 gdouble        timestep)
 {
 	CdnIntegratorClass *cls;
+	GSList const *integrated;
+	CdnIntegratorState *state;
 
 	if (!cdn_integrator_step_prepare (integrator, t, timestep))
 	{
@@ -77,24 +79,39 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
 
 	/* Update values are now contained in state, update the values in the
 	   states */
-	CdnIntegratorState *state = cdn_integrator_get_state (integrator);
-	GSList const *integrated = cdn_integrator_state_integrated_variables (state);
+	state = cdn_integrator_get_state (integrator);
+	integrated = cdn_integrator_state_integrated_variables (state);
 
 	while (integrated)
 	{
-		CdnVariable *property = integrated->data;
+		CdnVariable *variable;
 		gint numr;
 		gint numc;
 		gdouble *update;
 
-		update = cdn_variable_get_update (property, &numr, &numc);
+		variable = integrated->data;
+		update = cdn_variable_get_update (variable, &numr, &numc);
 
 		integrate_values (update,
-		                  cdn_variable_get_values (property, &numr, &numc),
+		                  cdn_variable_get_values (variable, &numr, &numc),
 		                  numr * numc,
 		                  timestep);
 
-		cdn_variable_set_values (property, update, numr, numc);
+		integrated = g_slist_next (integrated);
+	}
+
+	integrated = cdn_integrator_state_integrated_variables (state);
+
+	while (integrated)
+	{
+		CdnVariable *variable;
+		gdouble *update;
+		gint numr;
+		gint numc;
+
+		variable = integrated->data;
+		update = cdn_variable_get_update (integrated->data, &numr, &numc);
+		cdn_variable_set_values (variable, update, numr, numc);
 
 		integrated = g_slist_next (integrated);
 	}

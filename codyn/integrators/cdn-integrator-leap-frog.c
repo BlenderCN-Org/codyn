@@ -42,8 +42,8 @@ struct _CdnIntegratorLeapFrogPrivate
 	GSList *first_order;
 	GSList *second_order;
 
-	GSList *first_order_properties;
-	GSList *second_order_properties;
+	GSList *first_order_variables;
+	GSList *second_order_variables;
 
 	CdnIntegratorState *state;
 	guint state_phase_changed_id;
@@ -60,11 +60,11 @@ clear_lists (CdnIntegratorLeapFrog *self)
 	g_slist_free (self->priv->second_order);
 	self->priv->second_order = NULL;
 
-	g_slist_free (self->priv->first_order_properties);
-	self->priv->first_order_properties = NULL;
+	g_slist_free (self->priv->first_order_variables);
+	self->priv->first_order_variables = NULL;
 
-	g_slist_free (self->priv->second_order_properties);
-	self->priv->second_order_properties = NULL;
+	g_slist_free (self->priv->second_order_variables);
+	self->priv->second_order_variables = NULL;
 }
 
 static void
@@ -123,8 +123,17 @@ integrate_values (CdnVariable *variable,
 	{
 		update[i] = s[i] + update[i] * timestep;
 	}
+}
 
-	cdn_variable_set_values (variable, update, numr, numc);
+static void
+update_values (CdnVariable *variable)
+{
+	gint numr;
+	gint numc;
+	gdouble *values;
+
+	values = cdn_variable_get_update (variable, &numr, &numc);
+	cdn_variable_set_values (variable, values, numr, numc);
 }
 
 static gdouble
@@ -164,9 +173,14 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 		                                          self->priv->second_order);
 
 		// Integrate v
-		for (item = self->priv->second_order_properties; item; item = g_slist_next (item))
+		for (item = self->priv->second_order_variables; item; item = g_slist_next (item))
 		{
 			integrate_values (item->data, timestep);
+		}
+
+		for (item = self->priv->second_order_variables; item; item = g_slist_next (item))
+		{
+			update_values (item->data);
 		}
 	}
 
@@ -177,9 +191,14 @@ cdn_integrator_leap_frog_step_impl (CdnIntegrator *integrator,
 	                                          self->priv->first_order);
 
 	// Integrate x
-	for (item = self->priv->first_order_properties; item; item = g_slist_next (item))
+	for (item = self->priv->first_order_variables; item; item = g_slist_next (item))
 	{
 		integrate_values (item->data, timestep);
+	}
+
+	for (item = self->priv->first_order_variables; item; item = g_slist_next (item))
+	{
+		update_values (item->data);
 	}
 
 	/* Chain up to emit 'step' */
@@ -229,25 +248,25 @@ find_integrated (CdnIntegratorLeapFrog *self)
 	{
 		if (cdn_variable_get_integral (integrated->data))
 		{
-			self->priv->second_order_properties =
-				g_slist_prepend (self->priv->second_order_properties,
+			self->priv->second_order_variables =
+				g_slist_prepend (self->priv->second_order_variables,
 				                 integrated->data);
 		}
 		else
 		{
-			self->priv->first_order_properties =
-				g_slist_prepend (self->priv->first_order_properties,
+			self->priv->first_order_variables =
+				g_slist_prepend (self->priv->first_order_variables,
 				                 integrated->data);
 		}
 
 		integrated = g_slist_next (integrated);
 	}
 
-	self->priv->second_order_properties =
-		g_slist_reverse (self->priv->second_order_properties);
+	self->priv->second_order_variables =
+		g_slist_reverse (self->priv->second_order_variables);
 
-	self->priv->first_order_properties =
-		g_slist_reverse (self->priv->first_order_properties);
+	self->priv->first_order_variables =
+		g_slist_reverse (self->priv->first_order_variables);
 }
 
 static void
