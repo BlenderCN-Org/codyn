@@ -3584,18 +3584,21 @@ validate_stack (CdnExpression *expression,
 
 			expression->priv->error_at = end;
 
-			error = g_error_new (CDN_COMPILE_ERROR_TYPE,
-			                     CDN_COMPILE_ERROR_INVALID_STACK,
-			                     "Expression contains references instead of function calls");
+			if (context)
+			{
+				error = g_error_new (CDN_COMPILE_ERROR_TYPE,
+				                     CDN_COMPILE_ERROR_INVALID_STACK,
+				                     "Expression contains references instead of function calls");
 
-			cdn_compile_error_set (context->error,
-			                       error,
-			                       NULL,
-			                       NULL,
-			                       NULL,
-			                       expression);
+				cdn_compile_error_set (context->error,
+				                       error,
+				                       NULL,
+				                       NULL,
+				                       NULL,
+				                       expression);
 
-			g_error_free (error);
+				g_error_free (error);
+			}
 
 			return FALSE;
 		}
