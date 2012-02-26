@@ -1396,12 +1396,13 @@ generate_name_value_pairs (CdnParserContext  *context,
 }
 
 static gboolean
-add_variable_diff (CdnParserContext *context,
-                   CdnNode         *obj,
-                   gchar const      *name,
-                   NameValuePair    *p,
-                   CdnVariableFlags  add_flags,
-                   CdnVariableFlags  remove_flags)
+add_variable_diff (CdnParserContext  *context,
+                   CdnNode           *obj,
+                   gchar const       *name,
+                   NameValuePair     *p,
+                   CdnVariableFlags   add_flags,
+                   CdnVariableFlags   remove_flags,
+                   CdnEmbeddedString *constraint)
 {
 	gint len;
 	gint num;
@@ -1480,6 +1481,31 @@ add_variable_diff (CdnParserContext *context,
 			cdn_edge_add_action (link,
 			                     cdn_edge_action_new (fname,
 			                                          cdn_expression_new (dfname)));
+		}
+
+		if (constraint)
+		{
+			gchar const *cons;
+			CdnExpansion *ex;
+
+			ex = cdn_expansion_new_one (cdn_variable_get_name (prop));
+
+			cdn_embedded_context_save (context->priv->embedded);
+
+			cdn_embedded_context_add_expansion (context->priv->embedded,
+			                                    ex);
+
+			cdn_embedded_context_add_expansion (context->priv->embedded,
+			                                    p->value);
+
+			embedded_string_expand_val (cons, constraint, context, FALSE);
+
+			cdn_variable_set_constraint (prop,
+			                             cdn_expression_new (cons));
+
+			cdn_embedded_context_restore (context->priv->embedded);
+
+			cdn_expansion_unref (ex);
 		}
 
 		g_free (fname);
@@ -1687,7 +1713,13 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 				                   exname,
 				                   p,
 				                   add_flags,
-				                   remove_flags);
+				                   remove_flags,
+				                   constraint);
+
+				if (context->priv->error)
+				{
+					break;
+				}
 
 				continue;
 			}
