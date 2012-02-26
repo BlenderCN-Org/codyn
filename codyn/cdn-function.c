@@ -210,7 +210,6 @@ extract_helper_vars (CdnFunction *f)
 			                                        g_object_ref (vars->data));
 		}
 
-		g_object_unref (vars->data);
 		vars = g_slist_delete_link (vars, vars);
 	}
 
@@ -1246,7 +1245,6 @@ cdn_function_add_argument (CdnFunction         *function,
 	}
 
 	_cdn_function_argument_set_variable (argument, property);
-
 	g_signal_emit (function, signals[ARGUMENT_ADDED], 0, argument);
 }
 
