@@ -679,6 +679,10 @@ instructions_push (CdnExpression  *expression,
 	expression->priv->instructions = g_slist_prepend (expression->priv->instructions,
 	                                                  next);
 
+	cdn_instruction_set_location (next,
+	                              cdn_expression_get_error_start (expression),
+	                              *(context->buffer) - expression->priv->expression + 1);
+
 	if (context)
 	{
 		CdnStackManipulation const *smanip;

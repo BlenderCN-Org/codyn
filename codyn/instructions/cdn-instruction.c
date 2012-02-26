@@ -9,6 +9,14 @@
  *
  **/
 
+#define CDN_INSTRUCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION, CdnInstructionPrivate))
+
+struct _CdnInstructionPrivate
+{
+	gint start;
+	gint end;
+};
+
 G_DEFINE_TYPE (CdnInstruction, cdn_instruction, CDN_TYPE_MINI_OBJECT)
 
 static gchar *
@@ -37,18 +45,42 @@ cdn_instruction_get_is_commutative_impl (CdnInstruction *instruction)
 	return FALSE;
 }
 
+static CdnMiniObject *
+cdn_instruction_copy_impl (CdnMiniObject *object)
+{
+	CdnInstruction *inst;
+	CdnInstruction *cp;
+
+	cp = (CdnInstruction *)CDN_MINI_OBJECT_CLASS (cdn_instruction_parent_class)->copy (object);
+	inst = (CdnInstruction *)cp;
+
+	cp->priv->start = inst->priv->start;
+	cp->priv->end = inst->priv->end;
+
+	return (CdnMiniObject *)cp;
+}
+
 static void
 cdn_instruction_class_init (CdnInstructionClass *klass)
 {
+	CdnMiniObjectClass *mini_object_class;
+
+	mini_object_class = CDN_MINI_OBJECT_CLASS (klass);
+
 	klass->to_string = cdn_instruction_to_string_impl;
 	klass->get_stack_manipulation = cdn_instruction_get_stack_manipulation_impl;
 	klass->get_dependencies = cdn_instruction_get_dependencies_impl;
 	klass->get_is_commutative = cdn_instruction_get_is_commutative_impl;
+
+	mini_object_class->copy = cdn_instruction_copy_impl;
+
+	g_type_class_add_private (mini_object_class, sizeof (CdnInstructionPrivate));
 }
 
 static void
 cdn_instruction_init (CdnInstruction *instruction)
 {
+	instruction->priv = CDN_INSTRUCTION_GET_PRIVATE (instruction);
 }
 
 /**
@@ -184,3 +216,33 @@ cdn_instruction_get_is_commutative (CdnInstruction *instruction)
 
 	return CDN_INSTRUCTION_GET_CLASS (instruction)->get_is_commutative (instruction);
 }
+
+void
+cdn_instruction_set_location (CdnInstruction *instruction,
+                              gint            start,
+                              gint            end)
+{
+	g_return_if_fail (CDN_IS_INSTRUCTION (instruction));
+
+	instruction->priv->start = start;
+	instruction->priv->end = end;
+}
+
+void
+cdn_instruction_get_location (CdnInstruction *instruction,
+                              gint           *start,
+                              gint           *end)
+{
+	g_return_if_fail (CDN_IS_INSTRUCTION (instruction));
+
+	if (start)
+	{
+		*start = instruction->priv->start;
+	}
+
+	if (end)
+	{
+		*end = instruction->priv->end;
+	}
+}
+

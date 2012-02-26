@@ -49,21 +49,32 @@ struct _CdnInstructionClass
 	                             gboolean        asstring);
 };
 
-GType cdn_instruction_get_type (void) G_GNUC_CONST;
+GType     cdn_instruction_get_type               (void) G_GNUC_CONST;
 
-gchar  *cdn_instruction_to_string        (CdnInstruction *instruction);
+gchar    *cdn_instruction_to_string              (CdnInstruction *instruction);
 
-void    cdn_instruction_execute          (CdnInstruction *instruction,
-                                          CdnStack       *stack);
+void      cdn_instruction_execute                (CdnInstruction *instruction,
+                                                  CdnStack       *stack);
 
-CdnStackManipulation const *cdn_instruction_get_stack_manipulation  (CdnInstruction *instruction, GError **error);
-GSList *cdn_instruction_get_dependencies (CdnInstruction *instruction);
+GSList   *cdn_instruction_get_dependencies       (CdnInstruction *instruction);
 
-gboolean cdn_instruction_equal           (CdnInstruction *i1,
-                                          CdnInstruction *i2,
-                                          gboolean        asstring);
+gboolean  cdn_instruction_equal                  (CdnInstruction *i1,
+                                                  CdnInstruction *i2,
+                                                  gboolean        asstring);
 
-gboolean cdn_instruction_get_is_commutative (CdnInstruction *instruction);
+gboolean  cdn_instruction_get_is_commutative     (CdnInstruction *instruction);
+
+CdnStackManipulation const *
+          cdn_instruction_get_stack_manipulation (CdnInstruction *instruction,
+                                                  GError **error);
+
+void      cdn_instruction_set_location           (CdnInstruction *instruction,
+                                                  gint            start,
+                                                  gint            end);
+
+void      cdn_instruction_get_location           (CdnInstruction *instruction,
+                                                  gint           *start,
+                                                  gint           *end);
 
 G_END_DECLS
 
