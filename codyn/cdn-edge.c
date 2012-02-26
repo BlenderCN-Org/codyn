@@ -242,7 +242,10 @@ set_output (CdnEdge  *link,
 {
 	if (link->priv->output)
 	{
-		_cdn_node_unlink (link->priv->output, link);
+		if (link->priv->input != link->priv->output)
+		{
+			_cdn_node_unlink (link->priv->output, link);
+		}
 
 		g_signal_handler_disconnect (link->priv->output,
 		                             link->priv->ext_signals[EXT_PROPERTY_ADDED]);
@@ -258,7 +261,11 @@ set_output (CdnEdge  *link,
 	if (target)
 	{
 		link->priv->output = g_object_ref (target);
-		_cdn_node_link (target, link);
+
+		if (link->priv->input != link->priv->output)
+		{
+			_cdn_node_link (target, link);
+		}
 
 		link->priv->ext_signals[EXT_PROPERTY_ADDED] =
 			g_signal_connect_swapped (link->priv->output,
@@ -284,7 +291,10 @@ set_input (CdnEdge  *link,
 {
 	if (link->priv->input)
 	{
-		_cdn_node_unlink (link->priv->input, link);
+		if (link->priv->input != link->priv->output)
+		{
+			_cdn_node_unlink (link->priv->input, link);
+		}
 
 		g_object_unref (link->priv->input);
 		link->priv->input = NULL;
@@ -294,7 +304,10 @@ set_input (CdnEdge  *link,
 	{
 		link->priv->input = g_object_ref (target);
 
-		_cdn_node_link (target, link);
+		if (link->priv->input != link->priv->output)
+		{
+			_cdn_node_link (target, link);
+		}
 	}
 
 	cdn_object_taint (CDN_OBJECT (link));

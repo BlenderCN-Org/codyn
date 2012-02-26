@@ -71,10 +71,9 @@ struct _CdnNodePrivate
 
 	CdnVariableInterface *variable_interface;
 
-	/* Links */
-	GSList *links;
+	GSList *edges;
 	GSList *actors;
-	CdnEdge *self_link;
+	CdnEdge *self_edge;
 
 	guint proxy_signals[NUM_EXT_SIGNALS];
 };
@@ -114,8 +113,8 @@ cdn_node_error_quark (void)
 }
 
 static void
-link_destroyed (CdnNode  *node,
-                CdnEdge   *link,
+edge_destroyed (CdnNode  *node,
+                CdnEdge   *edge,
                 gboolean   is_last_ref)
 {
 	if (!is_last_ref)
@@ -123,11 +122,11 @@ link_destroyed (CdnNode  *node,
 		return;
 	}
 
-	/* Remove link, and toggle ref */
-	node->priv->links = g_slist_remove (node->priv->links, link);
+	/* Remove edge, and toggle ref */
+	node->priv->edges = g_slist_remove (node->priv->edges, edge);
 
-	g_object_remove_toggle_ref (G_OBJECT (link),
-	                            (GToggleNotify)link_destroyed,
+	g_object_remove_toggle_ref (G_OBJECT (edge),
+	                            (GToggleNotify)edge_destroyed,
 	                            node);
 }
 
@@ -139,7 +138,7 @@ cdn_node_finalize (GObject *object)
 
 	g_hash_table_destroy (node->priv->child_hash);
 
-	g_slist_free (node->priv->links);
+	g_slist_free (node->priv->edges);
 	g_slist_free (node->priv->actors);
 
 	G_OBJECT_CLASS (cdn_node_parent_class)->finalize (object);
@@ -587,25 +586,25 @@ cdn_node_dispose (GObject *object)
 		node->priv->variable_interface = NULL;
 	}
 
-	/* Untoggle ref all links, because we need them destroyed! */
-	copy = g_slist_copy (node->priv->links);
+	/* Untoggle ref all edges, because we need them destroyed! */
+	copy = g_slist_copy (node->priv->edges);
 
 	for (item = copy; item; item = g_slist_next (item))
 	{
-		if (item->data != node->priv->self_link)
+		if (item->data != node->priv->self_edge)
 		{
-			link_destroyed (node, item->data, TRUE);
+			edge_destroyed (node, item->data, TRUE);
 		}
 	}
 
 	g_slist_free (copy);
-	g_slist_free (node->priv->links);
-	node->priv->links = NULL;
+	g_slist_free (node->priv->edges);
+	node->priv->edges = NULL;
 
-	if (node->priv->self_link)
+	if (node->priv->self_edge)
 	{
-		g_object_unref (node->priv->self_link);
-		node->priv->self_link = NULL;
+		g_object_unref (node->priv->self_edge);
+		node->priv->self_edge = NULL;
 	}
 
 	G_OBJECT_CLASS (cdn_node_parent_class)->dispose (object);
@@ -1028,9 +1027,9 @@ cdn_node_cdn_compile (CdnObject         *object,
 		item = g_slist_next (item);
 	}
 
-	if (node->priv->self_link)
+	if (node->priv->self_edge)
 	{
-		if (!cdn_object_compile (CDN_OBJECT (node->priv->self_link), context, error))
+		if (!cdn_object_compile (CDN_OBJECT (node->priv->self_edge), context, error))
 		{
 			cdn_compile_context_restore (context);
 			g_object_unref (context);
@@ -1113,29 +1112,29 @@ reconnect_children (CdnNode   *node,
 
 	children = cdn_node_get_children (source);
 
-	/* Reconnect all the links */
+	/* Reconnect all the edges */
 	while (children)
 	{
 		CdnObject *child = children->data;
 
 		if (CDN_IS_EDGE (child))
 		{
-			CdnEdge *orig_link = CDN_EDGE (child);
-			CdnEdge *copied_link;
+			CdnEdge *orig_edge = CDN_EDGE (child);
+			CdnEdge *copied_edge;
 
 			CdnNode *copied_from;
 			CdnNode *copied_to;
 
-			copied_link = g_hash_table_lookup (mapping,
+			copied_edge = g_hash_table_lookup (mapping,
 			                                   child);
 
 			copied_from = g_hash_table_lookup (mapping,
-			                                   cdn_edge_get_input (orig_link));
+			                                   cdn_edge_get_input (orig_edge));
 
 			copied_to = g_hash_table_lookup (mapping,
-			                                 cdn_edge_get_output (orig_link));
+			                                 cdn_edge_get_output (orig_edge));
 
-			cdn_edge_attach (copied_link, copied_from, copied_to);
+			cdn_edge_attach (copied_edge, copied_from, copied_to);
 		}
 
 		children = g_slist_next (children);
@@ -1554,8 +1553,8 @@ cdn_node_cdn_copy (CdnObject *object,
 		sl = cdn_node_get_self_edge (CDN_NODE (source));
 		sl = CDN_EDGE (cdn_object_copy (CDN_OBJECT (sl)));
 
-		g->priv->self_link = sl;
-		g->priv->links = g_slist_prepend (g->priv->links,
+		g->priv->self_edge = sl;
+		g->priv->edges = g_slist_prepend (g->priv->edges,
 		                                  sl);
 	}
 }
@@ -1829,7 +1828,7 @@ cdn_node_remove_impl (CdnNode   *node,
 	}
 
 	node->priv->children = g_slist_remove_link (node->priv->children,
-	                                             item);
+	                                            item);
 
 	remove_object (node, object);
 	return TRUE;
@@ -2539,58 +2538,58 @@ cdn_node_get_auto_templates_for_child (CdnNode  *node,
 /**
  * _cdn_object_link:
  * @object: the #CdnObject
- * @link: the #CdnEdge which links to this object
+ * @edge: the #CdnEdge which edges to this object
  *
- * Adds @link as a link which targets the object.
+ * Adds @edge as a edge which targets the object.
  *
  **/
 void
 _cdn_node_link (CdnNode *node,
-                 CdnEdge  *link)
+                CdnEdge  *edge)
 {
 	g_return_if_fail (CDN_IS_NODE (node));
-	g_return_if_fail (CDN_IS_EDGE (link));
+	g_return_if_fail (CDN_IS_EDGE (edge));
 
-	node->priv->links = g_slist_append (node->priv->links, link);
+	node->priv->edges = g_slist_append (node->priv->edges, edge);
 
 	g_slist_free (node->priv->actors);
 	node->priv->actors = NULL;
 
-	g_object_add_toggle_ref (G_OBJECT (link),
-	                         (GToggleNotify)link_destroyed,
+	g_object_add_toggle_ref (G_OBJECT (edge),
+	                         (GToggleNotify)edge_destroyed,
 	                         node);
 }
 
 /**
  * _cdn_node_unlink:
  * @node: the #CdnObject
- * @link: the #CdnEdge which unlinks from this node
+ * @edge: the #CdnEdge which unedges from this node
  *
- * Removes @link as a link which targets the node.
+ * Removes @edge as a edge which targets the node.
  *
  **/
 void
 _cdn_node_unlink (CdnNode *node,
-                   CdnEdge  *link)
+                  CdnEdge  *edge)
 {
 	g_return_if_fail (CDN_IS_NODE (node));
-	g_return_if_fail (CDN_IS_EDGE (link));
+	g_return_if_fail (CDN_IS_EDGE (edge));
 
-	GSList *item = g_slist_find (node->priv->links, link);
+	GSList *item = g_slist_find (node->priv->edges, edge);
 
 	if (!item)
 	{
 		return;
 	}
 
-	node->priv->links = g_slist_remove_link (node->priv->links,
+	node->priv->edges = g_slist_remove_link (node->priv->edges,
 	                                           item);
 
 	g_slist_free (node->priv->actors);
 	node->priv->actors = NULL;
 
-	g_object_remove_toggle_ref (G_OBJECT (link),
-	                            (GToggleNotify)link_destroyed,
+	g_object_remove_toggle_ref (G_OBJECT (edge),
+	                            (GToggleNotify)edge_destroyed,
 	                            node);
 }
 
@@ -2598,7 +2597,7 @@ _cdn_node_unlink (CdnNode *node,
  * cdn_node_get_actors:
  * @node: A #CdnNode
  *
- * Get the variables which are acted upon by links.
+ * Get the variables which are acted upon by edges.
  *
  * Returns: (element-type CdnVariable) (transfer none): A #GSList of #CdnVariable.
  *
@@ -2616,7 +2615,7 @@ cdn_node_get_actors (CdnNode *node)
 	GSList *ret = NULL;
 	GSList *item;
 
-	for (item = node->priv->links; item; item = g_slist_next (item))
+	for (item = node->priv->edges; item; item = g_slist_next (item))
 	{
 		GSList const *actions;
 
@@ -2644,7 +2643,7 @@ cdn_node_get_actors (CdnNode *node)
  * cdn_node_get_edges:
  * @node: A #CdnNode
  *
- * Get a list of links that act on this object.
+ * Get a list of edges that act on this object.
  *
  * Returns: (element-type CdnEdge): A list of #CdnEdge
  *
@@ -2654,7 +2653,7 @@ cdn_node_get_edges (CdnNode *node)
 {
 	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 
-	return node->priv->links;
+	return node->priv->edges;
 }
 
 gboolean
@@ -2662,7 +2661,7 @@ cdn_node_has_self_edge (CdnNode *node)
 {
 	g_return_val_if_fail (CDN_IS_NODE (node), FALSE);
 
-	return node->priv->self_link != NULL;
+	return node->priv->self_edge != NULL;
 }
 
 
@@ -2682,18 +2681,15 @@ cdn_node_get_self_edge (CdnNode *node)
 {
 	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
 
-	if (!node->priv->self_link)
+	if (!node->priv->self_edge)
 	{
-		node->priv->self_link = cdn_edge_new ("integrate",
+		node->priv->self_edge = cdn_edge_new ("integrate",
 		                                       node,
 		                                       node);
 
-		_cdn_object_set_parent (CDN_OBJECT (node->priv->self_link),
+		_cdn_object_set_parent (CDN_OBJECT (node->priv->self_edge),
 		                        node);
-
-		node->priv->links = g_slist_prepend (node->priv->links,
-		                                      node->priv->self_link);
 	}
 
-	return node->priv->self_link;
+	return node->priv->self_edge;
 }
