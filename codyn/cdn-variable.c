@@ -134,11 +134,11 @@ cdn_variable_unuse (CdnUsable *usable)
 static gchar *
 cdn_variable_annotatable_get_title (CdnAnnotatable *annotatable)
 {
-	CdnVariable *property;
+	CdnVariable *variable;
 
-	property = CDN_VARIABLE (annotatable);
+	variable = CDN_VARIABLE (annotatable);
 
-	return cdn_variable_get_full_name_for_display (property);
+	return cdn_variable_get_full_name_for_display (variable);
 }
 
 static void
@@ -180,42 +180,42 @@ cdn_taggable_iface_init (gpointer iface)
 }
 
 static void
-set_object (CdnVariable *property,
+set_object (CdnVariable *variable,
             CdnObject   *object,
             gboolean     notify)
 {
-	if (property->priv->object == object)
+	if (variable->priv->object == object)
 	{
 		return;
 	}
 
-	if (property->priv->object)
+	if (variable->priv->object)
 	{
-		g_object_remove_weak_pointer (G_OBJECT (property->priv->object),
-		                              (gpointer *)&property->priv->object);
+		g_object_remove_weak_pointer (G_OBJECT (variable->priv->object),
+		                              (gpointer *)&variable->priv->object);
 	}
 
-	property->priv->object = object;
+	variable->priv->object = object;
 
-	if (property->priv->object)
+	if (variable->priv->object)
 	{
-		g_object_add_weak_pointer (G_OBJECT (property->priv->object),
-		                           (gpointer *)&property->priv->object);
+		g_object_add_weak_pointer (G_OBJECT (variable->priv->object),
+		                           (gpointer *)&variable->priv->object);
 	}
 
-	if (!property->priv->disposing && notify)
+	if (!variable->priv->disposing && notify)
 	{
-		g_object_notify (G_OBJECT (property), "object");
+		g_object_notify (G_OBJECT (variable), "object");
 	}
 }
 
 static gboolean
-set_constraint (CdnVariable   *property,
+set_constraint (CdnVariable   *variable,
                 CdnExpression *expression)
 {
-	if (property->priv->constraint == expression ||
-	    (expression && property->priv->constraint &&
-	     cdn_expression_equal (property->priv->constraint,
+	if (variable->priv->constraint == expression ||
+	    (expression && variable->priv->constraint &&
+	     cdn_expression_equal (variable->priv->constraint,
 	                           expression,
 	                           TRUE)))
 	{
@@ -227,36 +227,36 @@ set_constraint (CdnVariable   *property,
 		return FALSE;
 	}
 
-	if (property->priv->constraint)
+	if (variable->priv->constraint)
 	{
-		g_object_unref (property->priv->constraint);
-		property->priv->constraint = NULL;
+		g_object_unref (variable->priv->constraint);
+		variable->priv->constraint = NULL;
 	}
 
 	if (expression)
 	{
-		property->priv->constraint = g_object_ref_sink (expression);
-		cdn_expression_set_has_cache (property->priv->constraint, FALSE);
+		variable->priv->constraint = g_object_ref_sink (expression);
+		cdn_expression_set_has_cache (variable->priv->constraint, FALSE);
 	}
 
-	if (!property->priv->disposing &&
-	    !property->priv->modified)
+	if (!variable->priv->disposing &&
+	    !variable->priv->modified)
 	{
-		property->priv->modified = TRUE;
-		g_object_notify (G_OBJECT (property), "modified");
+		variable->priv->modified = TRUE;
+		g_object_notify (G_OBJECT (variable), "modified");
 	}
 
 	return TRUE;
 }
 
 static gboolean
-set_expression (CdnVariable   *property,
+set_expression (CdnVariable   *variable,
                 CdnExpression *expression,
                 gboolean       notify)
 {
-	if (property->priv->expression == expression ||
-	    (expression && property->priv->expression &&
-	     cdn_expression_equal (property->priv->expression,
+	if (variable->priv->expression == expression ||
+	    (expression && variable->priv->expression &&
+	     cdn_expression_equal (variable->priv->expression,
 	                           expression,
 	                           TRUE)))
 	{
@@ -268,25 +268,25 @@ set_expression (CdnVariable   *property,
 		return FALSE;
 	}
 
-	if (property->priv->expression)
+	if (variable->priv->expression)
 	{
-		g_object_unref (property->priv->expression);
-		property->priv->expression = NULL;
+		g_object_unref (variable->priv->expression);
+		variable->priv->expression = NULL;
 	}
 
 	if (expression)
 	{
-		property->priv->expression = g_object_ref_sink (expression);
+		variable->priv->expression = g_object_ref_sink (expression);
 	}
 
-	if (!property->priv->disposing &&
-	    !property->priv->modified)
+	if (!variable->priv->disposing &&
+	    !variable->priv->modified)
 	{
-		property->priv->modified = TRUE;
+		variable->priv->modified = TRUE;
 
 		if (notify)
 		{
-			g_object_notify (G_OBJECT (property), "modified");
+			g_object_notify (G_OBJECT (variable), "modified");
 		}
 	}
 
@@ -296,121 +296,121 @@ set_expression (CdnVariable   *property,
 static void
 cdn_variable_finalize (GObject *object)
 {
-	CdnVariable *property;
+	CdnVariable *variable;
 
-	property = CDN_VARIABLE (object);
+	variable = CDN_VARIABLE (object);
 
-	g_free (property->priv->name);
-	g_free (property->priv->annotation);
-	g_free (property->priv->update);
+	g_free (variable->priv->name);
+	g_free (variable->priv->annotation);
+	g_free (variable->priv->update);
 
-	g_hash_table_destroy (property->priv->tags);
+	g_hash_table_destroy (variable->priv->tags);
 
 	G_OBJECT_CLASS (cdn_variable_parent_class)->finalize (object);
 }
 
 static void
-set_diff_of (CdnVariable *property,
+set_diff_of (CdnVariable *variable,
              CdnVariable *diff_of)
 {
-	if (property == diff_of ||
-	    property->priv->diff_of == diff_of)
+	if (variable == diff_of ||
+	    variable->priv->diff_of == diff_of)
 	{
 		return;
 	}
 
-	if (property->priv->diff_of)
+	if (variable->priv->diff_of)
 	{
-		if (property->priv->diff_of->priv->diff_for == property)
+		if (variable->priv->diff_of->priv->diff_for == variable)
 		{
-			property->priv->diff_of->priv->diff_for = NULL;
+			variable->priv->diff_of->priv->diff_for = NULL;
 		}
 
-		property->priv->diff_of = NULL;
+		variable->priv->diff_of = NULL;
 	}
 
 	if (diff_of)
 	{
-		property->priv->diff_of = diff_of;
-		diff_of->priv->diff_for = property;
+		variable->priv->diff_of = diff_of;
+		diff_of->priv->diff_for = variable;
 	}
 }
 
 static void
 cdn_variable_dispose (GObject *object)
 {
-	CdnVariable *property = CDN_VARIABLE (object);
+	CdnVariable *variable = CDN_VARIABLE (object);
 
-	property->priv->disposing = TRUE;
+	variable->priv->disposing = TRUE;
 
-	set_expression (property, NULL, FALSE);
-	set_constraint (property, NULL);
-	set_object (property, NULL, TRUE);
-	set_diff_of (property, NULL);
+	set_expression (variable, NULL, FALSE);
+	set_constraint (variable, NULL);
+	set_object (variable, NULL, TRUE);
+	set_diff_of (variable, NULL);
 
 	G_OBJECT_CLASS (cdn_variable_parent_class)->dispose (object);
 }
 
 static void
-set_flags (CdnVariable      *property,
+set_flags (CdnVariable      *variable,
            CdnVariableFlags  flags,
            gboolean          notify)
 {
-	if (flags != property->priv->flags)
+	if (flags != variable->priv->flags)
 	{
-		gboolean wasonce = property->priv->flags & CDN_VARIABLE_FLAG_ONCE;
-		property->priv->flags = flags;
+		gboolean wasonce = variable->priv->flags & CDN_VARIABLE_FLAG_ONCE;
+		variable->priv->flags = flags;
 
 		if (flags & CDN_VARIABLE_FLAG_ONCE)
 		{
 			if (!wasonce)
 			{
-				cdn_expression_set_once (property->priv->expression,
+				cdn_expression_set_once (variable->priv->expression,
 				                         TRUE);
 			}
 		}
 		else if (wasonce)
 		{
-			cdn_expression_set_once (property->priv->expression,
+			cdn_expression_set_once (variable->priv->expression,
 			                         FALSE);
 		}
 
 		if (notify)
 		{
-			g_object_notify (G_OBJECT (property), "flags");
+			g_object_notify (G_OBJECT (variable), "flags");
 		}
 
-		if (!property->priv->modified)
+		if (!variable->priv->modified)
 		{
-			property->priv->modified = TRUE;
+			variable->priv->modified = TRUE;
 
 			if (notify)
 			{
-				g_object_notify (G_OBJECT (property), "modified");
+				g_object_notify (G_OBJECT (variable), "modified");
 			}
 		}
 	}
 }
 
 static gboolean
-set_name (CdnVariable *property,
+set_name (CdnVariable *variable,
           gchar const *name)
 {
-	if (g_strcmp0 (property->priv->name, name) == 0)
+	if (g_strcmp0 (variable->priv->name, name) == 0)
 	{
 		return TRUE;
 	}
 
 	gboolean invalid = FALSE;
 
-	g_signal_emit (property, signals[INVALIDATE_NAME], 0, name, &invalid);
+	g_signal_emit (variable, signals[INVALIDATE_NAME], 0, name, &invalid);
 
 	if (!invalid)
 	{
-		g_free (property->priv->name);
-		property->priv->name = g_strdup (name);
+		g_free (variable->priv->name);
+		variable->priv->name = g_strdup (name);
 
-		g_object_notify (G_OBJECT (property), "name");
+		g_object_notify (G_OBJECT (variable), "name");
 	}
 
 	return !invalid;
@@ -510,7 +510,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	/**
 	 * CdnVariable:name:
 	 *
-	 * The property name
+	 * The variable name
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -524,7 +524,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	/**
 	 * CdnVariable:object:
 	 *
-	 * The object on which the property is defined
+	 * The object on which the variable is defined
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -538,7 +538,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	/**
 	 * CdnVariable:flags:
 	 *
-	 * The property flags
+	 * The variable flags
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -553,7 +553,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	/**
 	 * CdnVariable:expression:
 	 *
-	 * The property expression
+	 * The variable expression
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -567,7 +567,7 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	/**
 	 * CdnVariable:expression:
 	 *
-	 * The property expression
+	 * The variable expression
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -584,11 +584,11 @@ cdn_variable_class_init (CdnVariableClass *klass)
 
 	/**
 	 * CdnVariable::invalidate-name:
-	 * @property: a #CdnVariable
-	 * @name: the new property name
+	 * @variable: a #CdnVariable
+	 * @name: the new variable name
 	 *
 	 * This signal is emitted to validate (or rather, invalidate) a new
-	 * name for a property. When a signal handler returns %TRUE,
+	 * name for a variable. When a signal handler returns %TRUE,
 	 * the new name is rejected.
 	 *
 	 * Returns: %TRUE if the new name should be rejected, %FALSE otherwise
@@ -657,11 +657,11 @@ cdn_variable_init (CdnVariable *self)
 
 /**
  * cdn_variable_new:
- * @name: the property name
+ * @name: the variable name
  * @expression: the value expression
- * @flags: the property flags
+ * @flags: the variable flags
  *
- * Create a new property object. Property objects are assigned to #CdnObject
+ * Create a new variable object. Property objects are assigned to #CdnObject
  * objects and are of little use on their own. The provided expression will
  * not be parsed initially.
  *
@@ -687,97 +687,97 @@ cdn_variable_new (gchar const      *name,
 
 /**
  * cdn_variable_get_object:
- * @property: the #CdnVariable
+ * @variable: the #CdnVariable
  *
- * Get the object associated with the property
+ * Get the object associated with the variable
  *
- * Returns: (type CdnObject) (transfer none): the object associated with the property
+ * Returns: (type CdnObject) (transfer none): the object associated with the variable
  **/
 CdnObject *
-cdn_variable_get_object (CdnVariable *property)
+cdn_variable_get_object (CdnVariable *variable)
 {
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	return property->priv->object;
+	return variable->priv->object;
 }
 
 /**
  * cdn_variable_set_value:
- * @property: the #CdnVariable
+ * @variable: the #CdnVariable
  * @value: the new value
  *
  * Change the value to a specific number.
  *
  **/
 void
-cdn_variable_set_value (CdnVariable  *property,
+cdn_variable_set_value (CdnVariable  *variable,
                         gdouble       value)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_set_value (property->priv->expression, value);
+	cdn_expression_set_value (variable->priv->expression, value);
 }
 
 /**
  * cdn_variable_set_value:
- * @property: the #CdnVariable
+ * @variable: the #CdnVariable
  * @value: the new value
  *
  * Change the value to a specific number.
  *
  **/
 void
-cdn_variable_set_values (CdnVariable   *property,
+cdn_variable_set_values (CdnVariable   *variable,
                          gdouble const *values,
                          gint           numr,
                          gint           numc)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_set_values (property->priv->expression,
+	cdn_expression_set_values (variable->priv->expression,
 	                           values,
 	                           numr,
 	                           numc);
 }
 
 void
-cdn_variable_apply_constraint (CdnVariable *property)
+cdn_variable_apply_constraint (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
-	if (!property->priv->constraint || !property->priv->expression)
+	if (!variable->priv->constraint || !variable->priv->expression)
 	{
 		return;
 	}
 
-	cdn_expression_set_value (property->priv->expression,
-	                          cdn_expression_evaluate (property->priv->constraint));
+	cdn_expression_set_value (variable->priv->expression,
+	                          cdn_expression_evaluate (variable->priv->constraint));
 }
 
 /**
  * cdn_variable_get_value:
- * @property: the #CdnVariable
+ * @variable: the #CdnVariable
  *
- * Get the numerical value of the current value of the property
+ * Get the numerical value of the current value of the variable
  *
- * Return value: the numerical value of the property's current value
+ * Return value: the numerical value of the variable's current value
  *
  **/
 gdouble
-cdn_variable_get_value (CdnVariable *property)
+cdn_variable_get_value (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
-	if (property->priv->expression)
+	if (variable->priv->expression)
 	{
 		gdouble ret;
 
-		ret = cdn_expression_evaluate (property->priv->expression);
+		ret = cdn_expression_evaluate (variable->priv->expression);
 
-		if (property->priv->constraint && !property->priv->in_constraint)
+		if (variable->priv->constraint && !variable->priv->in_constraint)
 		{
 			// Apply the constraint
-			property->priv->in_constraint = TRUE;
+			variable->priv->in_constraint = TRUE;
 
-			ret = cdn_expression_evaluate (property->priv->constraint);
+			ret = cdn_expression_evaluate (variable->priv->constraint);
 
-			property->priv->in_constraint = FALSE;
+			variable->priv->in_constraint = FALSE;
 		}
 
 		return ret;
@@ -789,14 +789,14 @@ cdn_variable_get_value (CdnVariable *property)
 }
 
 gdouble const *
-cdn_variable_get_values (CdnVariable *property,
+cdn_variable_get_values (CdnVariable *variable,
                          gint        *numr,
                          gint        *numc)
 {
-	if (property->priv->expression)
+	if (variable->priv->expression)
 	{
 		// TODO: apply constraint
-		return cdn_expression_evaluate_values (property->priv->expression,
+		return cdn_expression_evaluate_values (variable->priv->expression,
 		                                       numr,
 		                                       numc);
 	}
@@ -810,181 +810,181 @@ cdn_variable_get_values (CdnVariable *property,
 
 /**
  * cdn_variable_get_expression:
- * @property: a #CdnVariable
+ * @variable: a #CdnVariable
  *
- * Get the property value expression
+ * Get the variable value expression
  *
  * Returns: (transfer none): a #CdnExpression. The expression is owned by the
- *                          property and should not be freed
+ *                          variable and should not be freed
  *
  **/
 CdnExpression *
-cdn_variable_get_expression (CdnVariable *property)
+cdn_variable_get_expression (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
-	return property->priv->expression;
+	return variable->priv->expression;
 }
 
 /**
  * cdn_variable_set_expression:
- * @property: a #CdnVariable
+ * @variable: a #CdnVariable
  * @expression: the expression
  *
- * Set the property value from an expression.
+ * Set the variable value from an expression.
  *
  **/
 void
-cdn_variable_set_expression (CdnVariable   *property,
+cdn_variable_set_expression (CdnVariable   *variable,
                              CdnExpression *expression)
 {
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 	g_return_if_fail (CDN_IS_EXPRESSION (expression));
 
-	if (set_expression (property, expression, TRUE))
+	if (set_expression (variable, expression, TRUE))
 	{
-		g_object_notify (G_OBJECT (property), "expression");
+		g_object_notify (G_OBJECT (variable), "expression");
 	}
 }
 
 /**
  * cdn_variable_get_constraint:
- * @property: a #CdnVariable
+ * @variable: a #CdnVariable
  *
- * Get the property value constraint expression
+ * Get the variable value constraint expression
  *
  * Returns: (transfer none): a #CdnExpression. The expression is owned by the
- *                          property and should not be freed
+ *                          variable and should not be freed
  *
  **/
 CdnExpression *
-cdn_variable_get_constraint (CdnVariable *property)
+cdn_variable_get_constraint (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
-	return property->priv->constraint;
+	return variable->priv->constraint;
 }
 
 /**
  * cdn_variable_set_constraint:
- * @property: a #CdnVariable
+ * @variable: a #CdnVariable
  * @expression: the constraint expression
  *
- * Set the property constraint from an expression.
+ * Set the variable constraint from an expression.
  *
  **/
 void
-cdn_variable_set_constraint (CdnVariable   *property,
+cdn_variable_set_constraint (CdnVariable   *variable,
                              CdnExpression *expression)
 {
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 	g_return_if_fail (expression == NULL || CDN_IS_EXPRESSION (expression));
 
-	if (set_constraint (property, expression))
+	if (set_constraint (variable, expression))
 	{
-		g_object_notify (G_OBJECT (property), "constraint");
+		g_object_notify (G_OBJECT (variable), "constraint");
 	}
 
 }
 
 /**
  * cdn_variable_get_name:
- * @property: a #CdnVariable
+ * @variable: a #CdnVariable
  *
- * Get the property name
+ * Get the variable name
  *
- * Returns: (transfer none): the property name
+ * Returns: (transfer none): the variable name
  *
  **/
 gchar const *
-cdn_variable_get_name (CdnVariable *property)
+cdn_variable_get_name (CdnVariable *variable)
 {
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	return property->priv->name;
+	return variable->priv->name;
 }
 
 /**
  * cdn_variable_set_name:
- * @property: A #CdnVariable
- * @name: The new property name
+ * @variable: A #CdnVariable
+ * @name: The new variable name
  *
- * Set a new name for a property.
+ * Set a new name for a variable.
  *
  * Returns: %TRUE if the name could be successfully changed, %FALSE otherwise
  *
  **/
 gboolean
-cdn_variable_set_name (CdnVariable *property,
+cdn_variable_set_name (CdnVariable *variable,
                        gchar const *name)
 {
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), FALSE);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), FALSE);
 	g_return_val_if_fail (name != NULL, FALSE);
 
-	return set_name (property, name);
+	return set_name (variable, name);
 }
 
 /**
  * cdn_variable_get_integrated:
- * @property: a #CdnVariable
+ * @variable: a #CdnVariable
  *
- * Get whether the property should be integrated during evaluation or not. This
+ * Get whether the variable should be integrated during evaluation or not. This
  * is a convenience function that simply checks if the
  * CDN_VARIABLE_FLAG_INTEGRATED flag is set.
  *
- * Returns: %TRUE if the property will be integrated, %FALSE otherwise
+ * Returns: %TRUE if the variable will be integrated, %FALSE otherwise
  *
  **/
 gboolean
-cdn_variable_get_integrated (CdnVariable *property)
+cdn_variable_get_integrated (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
-	return property->priv->flags & CDN_VARIABLE_FLAG_INTEGRATED;
+	return variable->priv->flags & CDN_VARIABLE_FLAG_INTEGRATED;
 }
 
 /**
  * cdn_variable_set_integrated:
- * @property: a #CdnVariable
- * @integrated: integrate the property
+ * @variable: a #CdnVariable
+ * @integrated: integrate the variable
  *
- * Set whether the property should be integrated during evaluation or not. This
+ * Set whether the variable should be integrated during evaluation or not. This
  * is a convenience function that simply sets or unsets the
  * CDN_VARIABLE_FLAG_INTEGRATED flag.
  *
  **/
 void
-cdn_variable_set_integrated (CdnVariable  *property,
+cdn_variable_set_integrated (CdnVariable  *variable,
                              gboolean      integrated)
 {
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 
 	if (integrated)
 	{
-		cdn_variable_add_flags (property, CDN_VARIABLE_FLAG_INTEGRATED);
+		cdn_variable_add_flags (variable, CDN_VARIABLE_FLAG_INTEGRATED);
 	}
 	else
 	{
-		cdn_variable_remove_flags (property, CDN_VARIABLE_FLAG_INTEGRATED);
+		cdn_variable_remove_flags (variable, CDN_VARIABLE_FLAG_INTEGRATED);
 	}
 }
 
 /**
  * cdn_variable_reset:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  *
- * Reset the property. This will reset the value of the property to the
+ * Reset the variable. This will reset the value of the variable to the
  * stored string representation.
  *
  **/
 void
-cdn_variable_reset (CdnVariable *property)
+cdn_variable_reset (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_set_once (property->priv->expression,
-	                         (property->priv->flags & CDN_VARIABLE_FLAG_ONCE) != 0);
+	cdn_expression_set_once (variable->priv->expression,
+	                         (variable->priv->flags & CDN_VARIABLE_FLAG_ONCE) != 0);
 }
 
 /**
  * cdn_variable_equal:
- * @property: a #CdnVariable
+ * @variable: a #CdnVariable
  * @other: a #CdnVariable
  *
  * Compare two properties for equal values/expressions
@@ -993,165 +993,165 @@ cdn_variable_reset (CdnVariable *property)
  *
  **/
 gboolean
-cdn_variable_equal (CdnVariable *property,
+cdn_variable_equal (CdnVariable *variable,
                     CdnVariable *other,
                     gboolean     asstring)
 {
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), FALSE);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), FALSE);
 	g_return_val_if_fail (CDN_IS_VARIABLE (other), FALSE);
 
-	return property->priv->flags == other->priv->flags &&
-	       cdn_expression_equal (cdn_variable_get_expression (property),
+	return variable->priv->flags == other->priv->flags &&
+	       cdn_expression_equal (cdn_variable_get_expression (variable),
 	                             cdn_variable_get_expression (other),
 	                             asstring);
 }
 
 /**
  * cdn_variable_get_flags:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  * 
- * The property flags. The flags contains information on the type of property (
+ * The variable flags. The flags contains information on the type of variable (
  * such as in, or out).
  *
  * Returns: A #CdnVariableFlags
  *
  **/
 CdnVariableFlags
-cdn_variable_get_flags (CdnVariable *property)
+cdn_variable_get_flags (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
-	return property->priv->flags;
+	return variable->priv->flags;
 }
 
 /**
  * cdn_variable_set_flags:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  * @flags: A #CdnVariableFlags
  * 
- * Set the property flags.
+ * Set the variable flags.
  *
  **/
 void
-cdn_variable_set_flags (CdnVariable      *property,
+cdn_variable_set_flags (CdnVariable      *variable,
                         CdnVariableFlags  flags)
 {
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 
-	set_flags (property, flags, TRUE);
+	set_flags (variable, flags, TRUE);
 }
 
 /**
  * cdn_variable_add_flags:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  * @flags: A #CdnVariableFlags
  * 
- * Add a flags flag to the property flagss.
+ * Add a flags flag to the variable flagss.
  *
  **/
 void
-cdn_variable_add_flags (CdnVariable      *property,
+cdn_variable_add_flags (CdnVariable      *variable,
                         CdnVariableFlags  flags)
 {
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 
-	set_flags (property, property->priv->flags | flags, TRUE);
+	set_flags (variable, variable->priv->flags | flags, TRUE);
 }
 
 /**
  * cdn_variable_remove_flags:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  * @flags: A #CdnVariableFlags
  * 
- * Remove a flags flag from the property flagss.
+ * Remove a flags flag from the variable flagss.
  *
  **/
 void
-cdn_variable_remove_flags (CdnVariable      *property,
+cdn_variable_remove_flags (CdnVariable      *variable,
                            CdnVariableFlags  flags)
 {
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 
-	set_flags (property, property->priv->flags & ~flags, TRUE);
+	set_flags (variable, variable->priv->flags & ~flags, TRUE);
 }
 
 /**
  * cdn_variable_set_update:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  * @values: The update values
  * 
- * Set the update value of the property. The update value is used to store the
- * result of differential equations on the property/ You normally do not need
+ * Set the update value of the variable. The update value is used to store the
+ * result of differential equations on the variable/ You normally do not need
  * to use this function.
  *
  **/
 void
-cdn_variable_set_update (CdnVariable   *property,
+cdn_variable_set_update (CdnVariable   *variable,
                          gdouble const *values)
 {
 	gint numr;
 	gint numc;
 
-	cdn_expression_get_dimension (property->priv->expression,
+	cdn_expression_get_dimension (variable->priv->expression,
 	                              &numr,
 	                              &numc);
 
 	/* Omit type check to increase speed */
-	memcpy (property->priv->update, values, sizeof (gdouble) * numr * numc);
+	memcpy (variable->priv->update, values, sizeof (gdouble) * numr * numc);
 }
 
 void
-cdn_variable_clear_update (CdnVariable *property)
+cdn_variable_clear_update (CdnVariable *variable)
 {
 	gint numr;
 	gint numc;
 
-	cdn_expression_get_dimension (property->priv->expression, &numr, &numc);
+	cdn_expression_get_dimension (variable->priv->expression, &numr, &numc);
 
-	memset (property->priv->update, 0, sizeof (gdouble) * numr * numc);
+	memset (variable->priv->update, 0, sizeof (gdouble) * numr * numc);
 }
 
 void
-cdn_variable_set_update_value (CdnVariable *property,
+cdn_variable_set_update_value (CdnVariable *variable,
                                gdouble      value,
                                gint         numr,
                                gint         numc)
 {
 	if (numc < 0)
 	{
-		property->priv->update[numr] = value;
+		variable->priv->update[numr] = value;
 	}
 	else
 	{
 		gint enumr;
 		gint enumc;
 
-		cdn_expression_get_dimension (property->priv->expression,
+		cdn_expression_get_dimension (variable->priv->expression,
 		                              &enumr,
 		                              &enumc);
 
-		property->priv->update[numr * enumc + numc] = value;
+		variable->priv->update[numr * enumc + numc] = value;
 	}
 }
 
 /**
  * cdn_variable_get_update:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  * 
- * Get the update value of a property. The update value is used to store the
- * result of differential equations on the property. You normally do not need
+ * Get the update value of a variable. The update value is used to store the
+ * result of differential equations on the variable. You normally do not need
  * to use this function.
  *
  * Returns: The update value
  *
  **/
 gdouble *
-cdn_variable_get_update (CdnVariable *property,
+cdn_variable_get_update (CdnVariable *variable,
                          gint        *numr,
                          gint        *numc)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_get_dimension (property->priv->expression, numr, numc);
-	return property->priv->update;
+	cdn_expression_get_dimension (variable->priv->expression, numr, numc);
+	return variable->priv->update;
 }
 
 /**
@@ -1229,7 +1229,7 @@ cdn_variable_flags_to_string (CdnVariableFlags add_flags,
  * cdn_variable_flags_from_string:
  * @flags: The flags to parse
  *
- * Parse a string into a set of property flags. The flags can be specified
+ * Parse a string into a set of variable flags. The flags can be specified
  * by their nicks (none, in, out, once, integrated) and separated by any
  * combination of spaces, comma's and/or pipes.
  *
@@ -1290,28 +1290,28 @@ cdn_variable_flags_from_string (gchar const      *flags,
 
 /**
  * cdn_variable_get_full_name:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  *
- * Get the full name of the property. This is the name that can be used in the
- * outer most parent to refer to this property (i.e.
- * <code>cdn_node_find_variable (top_parent, cdn_variable_get_full_name (deep_property)) == deep_property</code>)
+ * Get the full name of the variable. This is the name that can be used in the
+ * outer most parent to refer to this variable (i.e.
+ * <code>cdn_node_find_variable (top_parent, cdn_variable_get_full_name (deep_variable)) == deep_variable</code>)
  *
- * Returns: The full name of the property. This is a newly allocated string that
+ * Returns: The full name of the variable. This is a newly allocated string that
  *          should be freed with g_free.
  *
  **/
 gchar *
-cdn_variable_get_full_name (CdnVariable *property)
+cdn_variable_get_full_name (CdnVariable *variable)
 {
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	if (!property->priv->object)
+	if (!variable->priv->object)
 	{
-		return cdn_selector_escape_identifier (property->priv->name);
+		return cdn_selector_escape_identifier (variable->priv->name);
 	}
 
-	gchar *objid = cdn_object_get_full_id (property->priv->object);
-	gchar *esc = cdn_selector_escape_identifier (property->priv->name);
+	gchar *objid = cdn_object_get_full_id (variable->priv->object);
+	gchar *esc = cdn_selector_escape_identifier (variable->priv->name);
 	gchar *ret = g_strconcat (objid, ".", esc, NULL);
 	g_free (objid);
 	g_free (esc);
@@ -1377,22 +1377,22 @@ find_interfaced (CdnObject    *object,
 }
 
 gchar *
-cdn_variable_get_full_name_for_display (CdnVariable *property)
+cdn_variable_get_full_name_for_display (CdnVariable *variable)
 {
 	CdnObject *group;
 
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	if (!property->priv->object)
+	if (!variable->priv->object)
 	{
-		return g_strdup (property->priv->name);
+		return g_strdup (variable->priv->name);
 	}
 
 	/* Find out if there is somewhere an interface to us */
 	gchar *propid;
 
-	group = find_interfaced (property->priv->object,
-	                         property->priv->name,
+	group = find_interfaced (variable->priv->object,
+	                         variable->priv->name,
 	                         &propid);
 
 	gchar *objid;
@@ -1403,8 +1403,8 @@ cdn_variable_get_full_name_for_display (CdnVariable *property)
 	}
 	else
 	{
-		objid = cdn_object_get_full_id_for_display (property->priv->object);
-		propid = g_strdup (property->priv->name);
+		objid = cdn_object_get_full_id_for_display (variable->priv->object);
+		propid = g_strdup (variable->priv->name);
 	}
 
 	gchar *ret = g_strconcat (objid, ".", propid, NULL);
@@ -1416,30 +1416,30 @@ cdn_variable_get_full_name_for_display (CdnVariable *property)
 
 /**
  * cdn_variable_copy:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  *
- * Make a copy of @property.
+ * Make a copy of @variable.
  *
  * Returns: (transfer full): A #CdnVariable
  *
  **/
 CdnVariable *
-cdn_variable_copy (CdnVariable *property)
+cdn_variable_copy (CdnVariable *variable)
 {
 	CdnVariable *ret;
 
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	ret = cdn_variable_new (property->priv->name,
-	                        cdn_expression_copy (property->priv->expression),
-	                        property->priv->flags);
+	ret = cdn_variable_new (variable->priv->name,
+	                        cdn_expression_copy (variable->priv->expression),
+	                        variable->priv->flags);
 
-	if (property->priv->update)
+	if (variable->priv->update)
 	{
 		gint numr;
 		gint numc;
 
-		if (cdn_expression_get_dimension (property->priv->expression,
+		if (cdn_expression_get_dimension (variable->priv->expression,
 		                                  &numr,
 		                                  &numc))
 		{
@@ -1447,42 +1447,42 @@ cdn_variable_copy (CdnVariable *property)
 
 			ret->priv->update = g_new0 (gdouble, num);
 			memcpy (ret->priv->update,
-			        property->priv->update,
+			        variable->priv->update,
 			        sizeof (gdouble) * num);
 		}
 	}
 
 	cdn_modifiable_set_modified (CDN_MODIFIABLE (ret),
-	                             property->priv->modified);
+	                             variable->priv->modified);
 
 	cdn_annotatable_set_annotation (CDN_ANNOTATABLE (ret),
-	                                property->priv->annotation);
+	                                variable->priv->annotation);
 
-	cdn_taggable_copy_to (CDN_TAGGABLE (property),
+	cdn_taggable_copy_to (CDN_TAGGABLE (variable),
 	                      ret->priv->tags);
 
-	if (property->priv->constraint)
+	if (variable->priv->constraint)
 	{
-		set_constraint (ret, cdn_expression_copy (property->priv->constraint));
+		set_constraint (ret, cdn_expression_copy (variable->priv->constraint));
 	}
 
 	return ret;
 }
 
 void
-_cdn_variable_set_object (CdnVariable *property,
+_cdn_variable_set_object (CdnVariable *variable,
                           CdnObject   *object,
                           gboolean     notify)
 {
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 	g_return_if_fail (object == NULL || CDN_IS_OBJECT (object));
 
-	set_object (property, object, notify);
+	set_object (variable, object, notify);
 }
 
 static GSList *
-property_get_actions (CdnNode    *o,
-                      CdnVariable *property,
+variable_get_actions (CdnNode    *o,
+                      CdnVariable *variable,
                       GSList      *ret)
 {
 	GSList const *l;
@@ -1502,24 +1502,25 @@ property_get_actions (CdnNode    *o,
 
 		while (actions)
 		{
-			if (cdn_edge_action_get_target_variable (actions->data) == property)
+			if (cdn_edge_action_get_target_variable (actions->data) == variable)
 			{
 				ret = g_slist_prepend (ret, actions->data);
 			}
 
 			actions = g_slist_next (actions);
 		}
+
 		l = g_slist_next (l);
 	}
 
-	return property_get_actions (cdn_object_get_parent (CDN_OBJECT (o)),
-	                             property,
+	return variable_get_actions (cdn_object_get_parent (CDN_OBJECT (o)),
+	                             variable,
 	                             ret);
 }
 
 /**
  * cdn_variable_get_actions:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  *
  * Get the actions acting on this variable.
  *
@@ -1527,86 +1528,86 @@ property_get_actions (CdnNode    *o,
  *
  **/
 GSList *
-cdn_variable_get_actions (CdnVariable *property)
+cdn_variable_get_actions (CdnVariable *variable)
 {
 	CdnObject *obj;
 
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	obj = cdn_variable_get_object (property);
+	obj = cdn_variable_get_object (variable);
 
 	if (!CDN_IS_NODE (obj))
 	{
 		return NULL;
 	}
 
-	return g_slist_reverse (property_get_actions (CDN_NODE (cdn_variable_get_object (property)),
-	                                              property,
+	return g_slist_reverse (variable_get_actions (CDN_NODE (cdn_variable_get_object (variable)),
+	                                              variable,
 	                                              NULL));
 }
 
 void
-cdn_variable_set_derivative (CdnVariable *property,
+cdn_variable_set_derivative (CdnVariable *variable,
                              CdnVariable *diffprop)
 {
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 	g_return_if_fail (diffprop == NULL || CDN_IS_VARIABLE (diffprop));
 
-	set_diff_of (property, diffprop);
+	set_diff_of (variable, diffprop);
 }
 
 /**
  * cdn_variable_get_derivative:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  *
- * Get the variable representing the derivative of @property.
+ * Get the variable representing the derivative of @variable.
  *
  * Returns: (transfer none): A #CdnVariable
  *
  **/
 CdnVariable *
-cdn_variable_get_derivative (CdnVariable *property)
+cdn_variable_get_derivative (CdnVariable *variable)
 {
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	return property->priv->diff_of;
+	return variable->priv->diff_of;
 }
 
 /**
  * cdn_variable_get_integral:
- * @property: A #CdnVariable
+ * @variable: A #CdnVariable
  *
- * Get the variable representing the integral of @property.
+ * Get the variable representing the integral of @variable.
  *
  * Returns: (transfer none): A #CdnVariable
  *
  **/
 CdnVariable *
-cdn_variable_get_integral (CdnVariable *property)
+cdn_variable_get_integral (CdnVariable *variable)
 {
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), NULL);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	return property->priv->diff_for;
+	return variable->priv->diff_for;
 }
 
 gboolean
-cdn_variable_compile (CdnVariable       *property,
+cdn_variable_compile (CdnVariable       *variable,
                       CdnCompileError   *error)
 {
 	gboolean ret;
 
-	g_return_val_if_fail (CDN_IS_VARIABLE (property), FALSE);
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), FALSE);
 	g_return_val_if_fail (error == NULL || CDN_IS_COMPILE_ERROR (error), FALSE);
 
-	if (cdn_modifiable_get_modified (CDN_MODIFIABLE (property->priv->expression)))
+	if (cdn_modifiable_get_modified (CDN_MODIFIABLE (variable->priv->expression)))
 	{
 		CdnCompileContext *context;
 
-		context = cdn_object_get_compile_context (property->priv->object, NULL);
-		ret = cdn_expression_compile (property->priv->expression, context, error);
+		context = cdn_object_get_compile_context (variable->priv->object, NULL);
+		ret = cdn_expression_compile (variable->priv->expression, context, error);
 		g_object_unref (context);
 	}
-	else if (property->priv->update)
+	else if (variable->priv->update)
 	{
 		return TRUE;
 	}
@@ -1620,12 +1621,12 @@ cdn_variable_compile (CdnVariable       *property,
 		gint numr;
 		gint numc;
 
-		cdn_expression_get_dimension (property->priv->expression,
+		cdn_expression_get_dimension (variable->priv->expression,
 		                              &numr,
 		                              &numc);
 
-		g_free (property->priv->update);
-		property->priv->update = g_new0 (gdouble, numr * numc);
+		g_free (variable->priv->update);
+		variable->priv->update = g_new0 (gdouble, numr * numc);
 	}
 
 	return ret;
