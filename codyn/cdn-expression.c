@@ -3076,6 +3076,58 @@ parse_operator (CdnExpression *expression,
 }
 
 static gboolean
+parse_variable_dot (CdnExpression *expression,
+                    gchar const   *origname,
+                    gchar const   *propname,
+                    ParserContext *context)
+{
+	CdnOperator *op;
+	CdnExpression *expr;
+	GSList *instrs;
+	CdnVariable *variable;
+
+	variable = lookup_variable (expression, context, propname);
+
+	if (!variable)
+	{
+		return FALSE;
+	}
+
+	expr = cdn_expression_new (origname);
+	instrs = g_slist_prepend (NULL, cdn_instruction_variable_new (variable));
+	cdn_expression_set_instructions_take (expr, instrs);
+	g_slist_foreach (instrs, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (instrs);
+
+	instrs = g_slist_prepend (NULL, expr);
+
+	op = cdn_operators_instantiate ("dt",
+	                                (GSList const **)&instrs,
+	                                1,
+	                                NULL,
+	                                0,
+	                                0,
+	                                NULL,
+	                                context->context,
+	                                NULL);
+
+	g_slist_free (instrs);
+	g_object_unref (expr);
+
+	if (!op)
+	{
+		return FALSE;
+	}
+
+	instructions_push (expression,
+	                   cdn_instruction_custom_operator_new (op),
+	                   context);
+
+	g_object_unref (op);
+	return TRUE;
+}
+
+static gboolean
 parse_variable (CdnExpression *expression,
                 gchar const   *propname,
                 ParserContext *context)
@@ -3134,7 +3186,54 @@ parse_variable (CdnExpression *expression,
 	}
 	else
 	{
-		ret = FALSE;
+		gunichar a;
+		gunichar b;
+		gchar *origname;
+
+		origname = g_strdup (nname);
+
+		if (!g_unichar_decompose (g_utf8_get_char (nname), &a, &b) &&
+		    b == 775)
+		{
+			GString *dc;
+
+			dc = g_string_sized_new (strlen (nname));
+			g_string_append_unichar (dc, a);
+			g_string_append (dc, g_utf8_next_char (nname));
+
+			g_free (nname);
+			nname = g_string_free (dc, FALSE);
+		}
+		else if (g_utf8_get_char (g_utf8_next_char (nname)) == 775)
+		{
+			GString *dc;
+
+			dc = g_string_sized_new (strlen (nname));
+			g_string_append_unichar (dc, g_utf8_get_char (nname));
+			g_string_append (dc, g_utf8_next_char (g_utf8_next_char (nname)));
+
+			g_free (nname);
+			nname = g_string_free (dc, FALSE);
+		}
+		else
+		{
+			g_free (nname);
+			nname = NULL;
+		}
+
+		if (nname)
+		{
+			ret = parse_variable_dot (expression,
+			                          origname,
+			                          nname,
+			                          context);
+		}
+		else
+		{
+			ret = FALSE;
+		}
+
+		g_free (origname);
 	}
 
 	g_free (nname);
