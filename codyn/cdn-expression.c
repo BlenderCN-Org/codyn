@@ -2114,7 +2114,7 @@ parse_identifier_as_variable (CdnExpression *expression,
 			parser_failed (expression,
 			               context,
 			               CDN_COMPILE_ERROR_INVALID_TOKEN,
-			               "Could not find property or constant `%s'",
+			               "Could not find variable or constant `%s'",
 			               id);
 		}
 	}
