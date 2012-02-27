@@ -27,6 +27,7 @@
 #include <codyn/cdn-variable.h>
 #include <codyn/cdn-expression.h>
 #include <codyn/cdn-modifiable.h>
+#include <codyn/cdn-compile-context.h>
 #include <codyn/cdn-forward-decl.h>
 
 G_BEGIN_DECLS
@@ -92,6 +93,10 @@ CdnExpression   *cdn_edge_action_get_index      (CdnEdgeAction *action);
 
 gint const      *cdn_edge_action_get_indices     (CdnEdgeAction *action,
                                                   gint          *num_indices);
+
+gboolean         cdn_edge_action_compile         (CdnEdgeAction   *action,
+                                                  CdnCompileContext *context,
+                                                  CdnCompileErrorForward *error);
 
 G_END_DECLS
 

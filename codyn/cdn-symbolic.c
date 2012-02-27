@@ -6,6 +6,7 @@
 #include "cdn-operators.h"
 #include "cdn-edge-action.h"
 #include "cdn-debug.h"
+#include "cdn-compile-error.h"
 
 #include <math.h>
 #include <glib/gprintf.h>
@@ -1525,7 +1526,10 @@ derive_integrated (CdnVariable   *prop,
 	GSList *instructions = NULL;
 	GSList *item;
 	GSList *last = NULL;
+	CdnCompileError *err;
+	gboolean ret = TRUE;
 
+	err = cdn_compile_error_new ();
 	actors = cdn_variable_get_actions (prop);
 
 	for (item = actors; item; item = g_slist_next (item))
@@ -1534,9 +1538,25 @@ derive_integrated (CdnVariable   *prop,
 		GSList const *inst;
 		GSList *cp = NULL;
 
-		e = cdn_edge_action_get_equation (item->data);
+		if (!cdn_edge_action_compile (item->data, NULL, err))
+		{
+			if (ctx->error)
+			{
+				*ctx->error = g_error_copy (cdn_compile_error_get_error (err));
+			}
 
+			ret = FALSE;
+			break;
+		}
+
+		e = cdn_edge_action_get_equation (item->data);
 		inst = cdn_expression_get_instructions (e);
+
+		if (!inst)
+		{
+			ret = FALSE;
+			break;
+		}
 
 		while (inst)
 		{
@@ -1567,7 +1587,16 @@ derive_integrated (CdnVariable   *prop,
 		}
 	}
 
+	g_object_unref (err);
 	g_slist_free (actors);
+
+	if (!ret)
+	{
+		g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+		g_slist_free (instructions);
+
+		return NULL;
+	}
 
 	return instructions;
 }

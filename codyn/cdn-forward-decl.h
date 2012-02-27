@@ -5,6 +5,7 @@
 
 typedef CDN_FORWARD_DECL (CdnEdge) CdnEdgeForward;
 typedef CDN_FORWARD_DECL (CdnCompileError) CdnCompileErrorForward;
+typedef CDN_FORWARD_DECL (CdnCompileContext) CdnCompileContextForward;
 typedef CDN_FORWARD_DECL (CdnNode) CdnNodeForward;
 typedef CDN_FORWARD_DECL (CdnVariable) CdnVariableForward;
 typedef CDN_FORWARD_DECL (CdnObject) CdnObjectForward;

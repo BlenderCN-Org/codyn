@@ -28,6 +28,7 @@
 #include "cdn-taggable.h"
 #include "cdn-enum-types.h"
 #include "cdn-phaseable.h"
+#include "cdn-compile-error.h"
 
 #include <math.h>
 
@@ -826,4 +827,147 @@ cdn_edge_action_get_index (CdnEdgeAction *action)
 	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), NULL);
 
 	return action->priv->index;
+}
+
+gboolean
+cdn_edge_action_compile (CdnEdgeAction     *action,
+                         CdnCompileContext *context,
+                         CdnCompileError   *error)
+{
+	CdnVariable *v;
+
+	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), FALSE);
+	g_return_val_if_fail (error == NULL || CDN_IS_COMPILE_ERROR (error), FALSE);
+
+	v = cdn_edge_action_get_target_variable (action);
+
+	if (v == NULL)
+	{
+		if (error)
+		{
+			GError *gerror;
+
+			gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
+			                      CDN_COMPILE_ERROR_VARIABLE_NOT_FOUND,
+			                      "The variable `%s' for an edge action of `%s' could not be found",
+			                      cdn_edge_action_get_target (action),
+			                      cdn_object_get_id (CDN_OBJECT (action->priv->link)));
+
+			cdn_compile_error_set (error,
+			                       gerror,
+			                       CDN_OBJECT (action->priv->link),
+			                       NULL,
+			                       action,
+			                       NULL);
+
+			g_error_free (gerror);
+		}
+
+		return FALSE;
+	}
+
+	// Compile the target initial value
+	if (!cdn_variable_compile (v, error))
+	{
+		return FALSE;
+	}
+
+	if (cdn_modifiable_get_modified (CDN_MODIFIABLE (action->priv->equation)))
+	{
+		gboolean ret;
+		gint enumr;
+		gint enumc;
+		gint numr;
+		gint numc;
+
+		if (context == NULL)
+		{
+			context = cdn_object_get_compile_context (CDN_OBJECT (action->priv->link),
+			                                          NULL);
+		}
+		else
+		{
+			g_object_ref (context);
+		}
+
+		ret = cdn_expression_compile (action->priv->equation, context, error);
+
+		if (!ret && error)
+		{
+			cdn_compile_error_set (error,
+			                       NULL,
+			                       CDN_OBJECT (action->priv->link),
+			                       NULL,
+			                       action,
+			                       NULL);
+		}
+
+		if (!ret)
+		{
+			g_object_unref (context);
+			return ret;
+		}
+
+		if (action->priv->index)
+		{
+			if (!cdn_expression_compile (action->priv->index,
+			                             context,
+			                             error))
+			{
+				if (error)
+				{
+					cdn_compile_error_set (error,
+					                       NULL,
+					                       CDN_OBJECT (action->priv->link),
+					                       NULL,
+					                       action,
+					                       NULL);
+				}
+
+				g_object_unref (context);
+				return FALSE;
+			}
+		}
+
+		cdn_expression_get_dimension (action->priv->equation,
+		                              &enumr,
+		                              &enumc);
+
+		cdn_expression_get_dimension (cdn_variable_get_expression (action->priv->property),
+		                              &numr,
+		                              &numc);
+
+		if (!action->priv->indices && (numr != enumr || numc != enumc))
+		{
+			if (error)
+			{
+				GError *gerror;
+
+				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
+				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				                      "The dimensions of the edge action (%d-by-%d) and the initial value of `%s' (%d-by-%d) must be the same",
+				                      enumr,
+				                      enumc,
+				                      cdn_variable_get_name (action->priv->property),
+				                      numr,
+				                      numc);
+
+				cdn_compile_error_set (error,
+				                       gerror,
+				                       CDN_OBJECT (action->priv->link),
+				                       NULL,
+				                       action,
+				                       NULL);
+
+				g_error_free (gerror);
+			}
+
+			g_object_unref (context);
+			return FALSE;
+		}
+
+		g_object_unref (context);
+	}
+
+	return TRUE;
 }
