@@ -1691,7 +1691,8 @@ decompose_dot (gchar const *name,
 		}
 
 		*order = last - ptr;
-		return g_strndup (name, ptr - name);
+
+		return g_strndup (name, ptr - name + 1);
 	}
 
 	return NULL;
