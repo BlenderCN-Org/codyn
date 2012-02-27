@@ -2982,7 +2982,7 @@ parse_operator (CdnExpression *expression,
 		// consume token
 		cdn_token_free (cdn_tokenizer_next (context->buffer));
 
-		// The prime makes a df_dt operator of the current stack
+		// The prime makes a dt operator of the current stack
 		return parse_prime (expression, context);
 	}
 	else if (op->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_START)
@@ -3079,12 +3079,15 @@ static gboolean
 parse_variable_dot (CdnExpression *expression,
                     gchar const   *origname,
                     gchar const   *propname,
+                    gint           order,
                     ParserContext *context)
 {
 	CdnOperator *op;
 	CdnExpression *expr;
 	GSList *instrs;
 	CdnVariable *variable;
+	gchar *orders;
+	GError *err = NULL;
 
 	variable = lookup_variable (expression, context, propname);
 
@@ -3101,6 +3104,11 @@ parse_variable_dot (CdnExpression *expression,
 
 	instrs = g_slist_prepend (NULL, expr);
 
+	orders = g_strdup_printf ("%d", order);
+	expr = cdn_expression_new (orders);
+	cdn_expression_compile (expr, NULL, NULL);
+	instrs = g_slist_append (instrs, expr);
+
 	op = cdn_operators_instantiate ("dt",
 	                                (GSList const **)&instrs,
 	                                1,
@@ -3109,13 +3117,14 @@ parse_variable_dot (CdnExpression *expression,
 	                                0,
 	                                NULL,
 	                                context->context,
-	                                NULL);
+	                                &err);
 
 	g_slist_free (instrs);
-	g_object_unref (expr);
 
 	if (!op)
 	{
+		g_message ("%s", err->message);
+		g_error_free (err);
 		return FALSE;
 	}
 
@@ -3188,12 +3197,16 @@ parse_variable (CdnExpression *expression,
 	{
 		gunichar a;
 		gunichar b;
+		gunichar next;
 		gchar *origname;
+		gint order = 1;
 
 		origname = g_strdup (nname);
 
+		next = g_utf8_get_char (g_utf8_next_char (nname));
+
 		if (!g_unichar_decompose (g_utf8_get_char (nname), &a, &b) &&
-		    b == 775)
+		    (b == 775 || b == 776))
 		{
 			GString *dc;
 
@@ -3203,8 +3216,17 @@ parse_variable (CdnExpression *expression,
 
 			g_free (nname);
 			nname = g_string_free (dc, FALSE);
+
+			if (b == 775)
+			{
+				order = 1;
+			}
+			else
+			{
+				order = 2;
+			}
 		}
-		else if (g_utf8_get_char (g_utf8_next_char (nname)) == 775)
+		else if (next == 775 || next == 776)
 		{
 			GString *dc;
 
@@ -3214,6 +3236,15 @@ parse_variable (CdnExpression *expression,
 
 			g_free (nname);
 			nname = g_string_free (dc, FALSE);
+
+			if (next == 775)
+			{
+				order = 1;
+			}
+			else
+			{
+				order = 2;
+			}
 		}
 		else
 		{
@@ -3226,6 +3257,7 @@ parse_variable (CdnExpression *expression,
 			ret = parse_variable_dot (expression,
 			                          origname,
 			                          nname,
+			                          order,
 			                          context);
 		}
 		else
