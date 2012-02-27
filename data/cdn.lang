@@ -178,8 +178,8 @@
             <keyword>from-set</keyword>
             <keyword>input</keyword>
             <keyword>output</keyword>
-			<keyword>inputs</keyword>
-			<keyword>outputs</keyword>
+            <keyword>inputs</keyword>
+            <keyword>outputs</keyword>
             <keyword>has-template</keyword>
             <keyword>has-tag</keyword>
             <keyword>has-flag</keyword>
@@ -226,9 +226,9 @@
             <keyword>phase</keyword>
             <keyword>terminate</keyword>
             <keyword>any</keyword>
-			<keyword>input</keyword>
-			<keyword>output</keyword>
-			<keyword>io</keyword>
+            <keyword>input</keyword>
+            <keyword>output</keyword>
+            <keyword>io</keyword>
             <keyword>import</keyword>
         </context>
 
