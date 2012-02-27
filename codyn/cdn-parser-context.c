@@ -1629,11 +1629,13 @@ static gchar *
 decompose_dot (gchar const *name,
                gint        *order)
 {
-	gunichar a;
-	gunichar b;
 	gunichar next;
 
 	next = g_utf8_get_char (g_utf8_next_char (name));
+
+#if GLIB_MINOR_VERSION >= 30
+	gunichar a;
+	gunichar b;
 
 	if (g_unichar_decompose (g_utf8_get_char (name), &a, &b) &&
 	    (b == 775 || b == 776))
@@ -1655,7 +1657,9 @@ decompose_dot (gchar const *name,
 
 		return g_string_free (dc, FALSE);
 	}
-	else if (next == 775 || next == 776)
+	else
+#endif
+	if (next == 775 || next == 776)
 	{
 		GString *dc;
 

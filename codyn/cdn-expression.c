@@ -3096,7 +3096,7 @@ parse_variable_dot (CdnExpression *expression,
 		return FALSE;
 	}
 
-	expr = cdn_expression_new (origname);
+	expr = cdn_expression_new (propname);
 	instrs = g_slist_prepend (NULL, cdn_instruction_variable_new (variable));
 	cdn_expression_set_instructions_take (expr, instrs);
 	g_slist_foreach (instrs, (GFunc)cdn_mini_object_unref, NULL);
@@ -3195,8 +3195,6 @@ parse_variable (CdnExpression *expression,
 	}
 	else
 	{
-		gunichar a;
-		gunichar b;
 		gunichar next;
 		gchar *origname;
 		gint order = 1;
@@ -3204,6 +3202,10 @@ parse_variable (CdnExpression *expression,
 		origname = g_strdup (nname);
 
 		next = g_utf8_get_char (g_utf8_next_char (nname));
+
+#if GLIB_MINOR_VERSION >= 30
+		gunichar a;
+		gunichar b;
 
 		if (!g_unichar_decompose (g_utf8_get_char (nname), &a, &b) &&
 		    (b == 775 || b == 776))
@@ -3226,7 +3228,9 @@ parse_variable (CdnExpression *expression,
 				order = 2;
 			}
 		}
-		else if (next == 775 || next == 776)
+		else
+#endif
+		if (next == 775 || next == 776)
 		{
 			GString *dc;
 
