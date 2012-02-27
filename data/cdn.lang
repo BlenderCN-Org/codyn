@@ -102,7 +102,6 @@
         </context>
 
         <context id="preprocessor" style-ref="preprocessor">
-            <keyword>import</keyword>
             <keyword>include</keyword>
         </context>
 
@@ -230,6 +229,7 @@
 			<keyword>input</keyword>
 			<keyword>output</keyword>
 			<keyword>io</keyword>
+            <keyword>import</keyword>
         </context>
 
         <context id="selector">
