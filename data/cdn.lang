@@ -32,7 +32,7 @@
     <default-regex-options case-sensitive="false"/>
 
     <definitions>
-        <define-regex id="identifier">[\p{L}_][\p{L}0-9_-]*</define-regex>
+        <define-regex id="identifier">[\p{L}_][\p{L}\p{M}0-9_-]*</define-regex>
         <define-regex id="string">"(\\["]|[^"])*"</define-regex>
         <define-regex id="regex">/(\\/|[^/])*/</define-regex>
         <define-regex id="define">@(\%{identifier}|@*([0-9]+))</define-regex>
