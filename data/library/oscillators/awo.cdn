@@ -23,20 +23,20 @@ templates
     ## Time constant on attractor of r towards f. Use
     ## functions.GammaForRelConf to compute a γ value corresponding to a
     ## certain speed of convergence
-    γ = 1
+    γ = "1"
 
     ## Angular frequency
-    omega = "2 ∙ π"
+    ω = "2 ∙ π"
 
     ## The function to capture as a dynamical system. Note that this function
     ## should be differentiable.
-    f(θ) = 0
+    g(θ) = "1"
 
     ## Feedback term of dynamical system (see ṙ)
-    feedback = "γ ∙ (f(θ) - r)"
+    feedback = "γ ∙ (g(θ) - r)"
 
     ## Feedforward term of dynamical system (see ṙ)
-    feedforward = "dt[f(θ)](θ, θ̇)"
+    feedforward = "ġ(θ)"
 
     ## Amplitude state
     ṙ = "feedback + feedforward"
@@ -47,13 +47,13 @@ templates
     ## Output variable
     "output" = "r"
 
-    ## Function for gamma such that it takes <i>tau</i> seconds to
-    ## forget a perturbation of size (1 - <i>alpha</i>) * <i>perturb</i>
+    ## Function for γ such that it takes <i>τ</i> seconds to
+    ## forget a perturbation of size (1 - <i>α</i>) * <i>δ</i>
     ##
-    ## This function can be used for gamma on the initial conditions of the
+    ## This function can be used for γ on the initial conditions of the
     ## oscillator nodes so there is a known behavior of convergence from
     ## initial conditions.
-    GammaForRelConv(tau, alpha, perturb) = "ln(alpha / perturb) / -tau"
+    γForRelConv(τ, α, δ) = "ln(α / δ) / -τ"
   }
 }
 
