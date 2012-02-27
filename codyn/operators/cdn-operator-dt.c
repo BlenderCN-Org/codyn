@@ -99,7 +99,7 @@ cdn_operator_dt_initialize (CdnOperator        *op,
 		return FALSE;
 	}
 
-	if (num_expressions != 1 || expressions[0]->next)
+	if (num_expressions != 1 || (expressions[0]->next && expressions[0]->next->next))
 	{
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
