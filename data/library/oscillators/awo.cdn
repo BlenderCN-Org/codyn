@@ -30,19 +30,19 @@ templates
 
     ## The function to capture as a dynamical system. Note that this function
     ## should be differentiable.
-    g(θ) = "1"
+    g(φ) = "1"
 
     ## Feedback term of dynamical system (see ṙ)
-    feedback = "γ ∙ (g(θ) - r)"
+    feedback = "γ ∙ (g(φ) - r)"
 
     ## Feedforward term of dynamical system (see ṙ)
-    feedforward = "ġ(θ)"
+    feedforward = "ġ(φ)"
 
     ## Amplitude state
     ṙ = "feedback + feedforward"
 
     ## Phase state
-    θ̇ = "ω"
+    φ̇ = "ω"
 
     ## Output variable
     "output" = "r"
