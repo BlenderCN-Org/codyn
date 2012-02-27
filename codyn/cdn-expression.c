@@ -676,6 +676,11 @@ instructions_push (CdnExpression  *expression,
                    CdnInstruction *next,
                    ParserContext  *context)
 {
+	if (!next)
+	{
+		return FALSE;
+	}
+
 	expression->priv->instructions = g_slist_prepend (expression->priv->instructions,
 	                                                  next);
 
@@ -1444,6 +1449,156 @@ swap_arguments_index (CdnExpression *expression,
 	expression->priv->instructions = tmp;
 }
 
+static GSList *
+pop_stack (CdnExpression *expression,
+           ParserContext *context)
+{
+	GSList *instrs;
+	GSList *tmp;
+	GSList *nth;
+	guint len;
+
+	instrs = g_slist_last (context->stack)->data;
+
+	// Pop these instructions
+	len = g_slist_length (instrs);
+
+	nth = g_slist_nth (expression->priv->instructions,
+	                   g_slist_length (instrs) - 1);
+
+	tmp = expression->priv->instructions;
+	expression->priv->instructions = nth->next;
+
+	nth->next = NULL;
+	g_slist_free (tmp);
+
+	context->stack = g_slist_delete_link (context->stack,
+	                                      context->stack);
+
+	return instrs;
+}
+
+static gboolean
+wrap_dotted (CdnExpression  *expression,
+             ParserContext  *context,
+             gchar const    *dotname,
+             gint            order)
+{
+	CdnOperator *op;
+	CdnExpression *expr;
+	GSList *instrs;
+	gchar *orders;
+	GError *err = NULL;
+	gboolean ret;
+
+	// Create new expression from stack
+	if (!context->stack->data)
+	{
+		return FALSE;
+	}
+
+	instrs = pop_stack (expression, context);
+
+	expr = cdn_expression_new (dotname);
+
+	cdn_expression_set_instructions_take (expr, instrs);
+	g_slist_foreach (instrs, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (instrs);
+
+	instrs = g_slist_prepend (NULL, expr);
+
+	orders = g_strdup_printf ("%d", order);
+	expr = cdn_expression_new (orders);
+	cdn_expression_compile (expr, NULL, NULL);
+	instrs = g_slist_append (instrs, expr);
+
+	op = cdn_operators_instantiate ("dt",
+	                                (GSList const **)&instrs,
+	                                1,
+	                                NULL,
+	                                0,
+	                                0,
+	                                NULL,
+	                                context->context,
+	                                &err);
+
+	g_slist_free (instrs);
+
+	if (!op)
+	{
+		parser_failed_error (expression,
+		                     context,
+		                     err);
+
+		return FALSE;
+	}
+
+	ret = instructions_push (expression,
+	                         cdn_instruction_custom_operator_new (op),
+	                         context);
+
+	g_object_unref (op);
+
+	return ret;
+}
+
+static gchar *
+decompose_dot (gchar const *name,
+               gint        *order)
+{
+	gunichar next;
+
+	next = g_utf8_get_char (g_utf8_next_char (name));
+
+#if GLIB_MINOR_VERSION >= 30
+	gunichar a;
+	gunichar b;
+
+	if (g_unichar_decompose (g_utf8_get_char (name), &a, &b) &&
+	    (b == 775 || b == 776))
+	{
+		GString *dc;
+
+		dc = g_string_sized_new (strlen (name));
+		g_string_append_unichar (dc, a);
+		g_string_append (dc, g_utf8_next_char (name));
+
+		if (b == 775)
+		{
+			*order = 1;
+		}
+		else
+		{
+			*order = 2;
+		}
+
+		return g_string_free (dc, FALSE);
+	}
+	else
+#endif
+	if (next == 775 || next == 776)
+	{
+		GString *dc;
+
+		dc = g_string_sized_new (strlen (name));
+		g_string_append_unichar (dc, g_utf8_get_char (name));
+		g_string_append (dc, g_utf8_next_char (g_utf8_next_char (name)));
+
+		if (next == 775)
+		{
+			*order = 1;
+		}
+		else
+		{
+			*order = 2;
+		}
+
+		return g_string_free (dc, FALSE);
+	}
+
+	return NULL;
+}
+
 static gboolean
 parse_function (CdnExpression *expression,
                 gchar const   *name,
@@ -1459,14 +1614,29 @@ parse_function (CdnExpression *expression,
 	gboolean ret = TRUE;
 	gboolean isrand = FALSE;
 	CdnInstruction *instruction = NULL;
+	gchar *dotname = NULL;
+	gint order = 1;
+	gboolean dotted = FALSE;
 
 	if (!cname)
 	{
-		function = cdn_compile_context_lookup_function (context->context, name);
+		function = cdn_compile_context_lookup_function (context->context,
+		                                                name);
+
+		if (!function)
+		{
+			dotname = decompose_dot (name, &order);
+		}
+
 	}
 	else
 	{
 		function = parse_context_function (expression, name, cname, context);
+
+		if (!function)
+		{
+			dotname = decompose_dot (cname, &order);
+		}
 	}
 
 	/* Try builtin function */
@@ -1484,7 +1654,23 @@ parse_function (CdnExpression *expression,
 			{
 				fid = cdn_math_function_lookup (name, &arguments);
 
-				if (!fid)
+				if (!fid && dotname)
+				{
+					dotted = TRUE;
+
+					function = cdn_compile_context_lookup_function (context->context,
+					                                                dotname);
+				}
+
+				if (!function && !fid)
+				{
+					dotted = TRUE;
+
+					fid = cdn_math_function_lookup (dotname,
+					                                &arguments);
+				}
+
+				if (!function && !fid)
 				{
 					return parser_failed (expression,
 					                      context,
@@ -1496,14 +1682,27 @@ parse_function (CdnExpression *expression,
 		}
 		else
 		{
-			return parser_failed (expression,
-			                      context,
-			                      CDN_COMPILE_ERROR_FUNCTION_NOT_FOUND,
-			                      "Function %s.%s could not be found",
-			                      name, cname);
+			if (dotname)
+			{
+				dotted = TRUE;
+				function = parse_context_function (expression,
+				                                   name,
+				                                   dotname,
+				                                   context);
+			}
+
+			if (!function)
+			{
+				return parser_failed (expression,
+				                      context,
+				                      CDN_COMPILE_ERROR_FUNCTION_NOT_FOUND,
+				                      "Function %s.%s could not be found",
+				                      name, cname);
+			}
 		}
 	}
-	else
+
+	if (function)
 	{
 		n_implicit = (gint)cdn_function_get_n_implicit (function);
 		arguments = (gint)cdn_function_get_n_arguments (function);
@@ -1735,9 +1934,28 @@ parse_function (CdnExpression *expression,
 	if (instruction)
 	{
 		instructions_push (expression, instruction, context);
+
+		if (dotted)
+		{
+			gchar *text;
+			gchar const *ptr;
+
+			ptr = *context->buffer - cdn_expression_get_error_start (expression);
+
+			text = g_strndup (ptr, *context->buffer - ptr);
+
+			ret = wrap_dotted (expression,
+			                   context,
+			                   text,
+			                   order);
+
+			g_free (text);
+		}
+
 		return ret;
 	}
 
+	g_free (dotname);
 	return FALSE;
 }
 
@@ -3076,67 +3294,6 @@ parse_operator (CdnExpression *expression,
 }
 
 static gboolean
-parse_variable_dot (CdnExpression *expression,
-                    gchar const   *origname,
-                    gchar const   *propname,
-                    gint           order,
-                    ParserContext *context)
-{
-	CdnOperator *op;
-	CdnExpression *expr;
-	GSList *instrs;
-	CdnVariable *variable;
-	gchar *orders;
-	GError *err = NULL;
-
-	variable = lookup_variable (expression, context, propname);
-
-	if (!variable)
-	{
-		return FALSE;
-	}
-
-	expr = cdn_expression_new (propname);
-	instrs = g_slist_prepend (NULL, cdn_instruction_variable_new (variable));
-	cdn_expression_set_instructions_take (expr, instrs);
-	g_slist_foreach (instrs, (GFunc)cdn_mini_object_unref, NULL);
-	g_slist_free (instrs);
-
-	instrs = g_slist_prepend (NULL, expr);
-
-	orders = g_strdup_printf ("%d", order);
-	expr = cdn_expression_new (orders);
-	cdn_expression_compile (expr, NULL, NULL);
-	instrs = g_slist_append (instrs, expr);
-
-	op = cdn_operators_instantiate ("dt",
-	                                (GSList const **)&instrs,
-	                                1,
-	                                NULL,
-	                                0,
-	                                0,
-	                                NULL,
-	                                context->context,
-	                                &err);
-
-	g_slist_free (instrs);
-
-	if (!op)
-	{
-		g_message ("%s", err->message);
-		g_error_free (err);
-		return FALSE;
-	}
-
-	instructions_push (expression,
-	                   cdn_instruction_custom_operator_new (op),
-	                   context);
-
-	g_object_unref (op);
-	return TRUE;
-}
-
-static gboolean
 parse_variable (CdnExpression *expression,
                 gchar const   *propname,
                 ParserContext *context)
@@ -3145,6 +3302,9 @@ parse_variable (CdnExpression *expression,
 	CdnFunction *f;
 	gboolean prio;
 	gboolean ret = TRUE;
+	gchar *dotname;
+	gint order = 1;
+	gboolean dotted = FALSE;
 
 	gchar *nname = g_strdup (propname);
 
@@ -3179,99 +3339,44 @@ parse_variable (CdnExpression *expression,
 	f = cdn_compile_context_lookup_function (context->context, nname);
 	prio = cdn_compile_context_get_function_ref_priority (context->context);
 
+	dotname = decompose_dot (nname, &order);
+
+	if (dotname && !property && (!f || !prio))
+	{
+		dotted = TRUE;
+
+		property = lookup_variable (expression,
+		                            context,
+		                            dotname);
+	}
+
 	if (f && (prio || (!prio && !property)))
 	{
-		instructions_push (expression,
-		                   cdn_instruction_custom_function_ref_new (f),
-		                   context);
-
 		ret = recurse_compile (expression, context, f);
+
+		if (ret)
+		{
+			instructions_push (expression,
+			                   cdn_instruction_custom_function_ref_new (f),
+			                   context);
+		}
 	}
 	else if (property)
 	{
-		ret = instructions_push (expression,
-		                         cdn_instruction_variable_new (property),
-		                         context);
-	}
-	else
-	{
-		gunichar next;
-		gchar *origname;
-		gint order = 1;
+		instructions_push (expression,
+		                   cdn_instruction_variable_new (property),
+		                   context);
 
-		origname = g_strdup (nname);
-
-		next = g_utf8_get_char (g_utf8_next_char (nname));
-
-#if GLIB_MINOR_VERSION >= 30
-		gunichar a;
-		gunichar b;
-
-		if (!g_unichar_decompose (g_utf8_get_char (nname), &a, &b) &&
-		    (b == 775 || b == 776))
+		if (dotted)
 		{
-			GString *dc;
-
-			dc = g_string_sized_new (strlen (nname));
-			g_string_append_unichar (dc, a);
-			g_string_append (dc, g_utf8_next_char (nname));
-
-			g_free (nname);
-			nname = g_string_free (dc, FALSE);
-
-			if (b == 775)
-			{
-				order = 1;
-			}
-			else
-			{
-				order = 2;
-			}
+			ret = wrap_dotted (expression,
+			                   context,
+			                   dotname,
+			                   order);
 		}
-		else
-#endif
-		if (next == 775 || next == 776)
-		{
-			GString *dc;
-
-			dc = g_string_sized_new (strlen (nname));
-			g_string_append_unichar (dc, g_utf8_get_char (nname));
-			g_string_append (dc, g_utf8_next_char (g_utf8_next_char (nname)));
-
-			g_free (nname);
-			nname = g_string_free (dc, FALSE);
-
-			if (next == 775)
-			{
-				order = 1;
-			}
-			else
-			{
-				order = 2;
-			}
-		}
-		else
-		{
-			g_free (nname);
-			nname = NULL;
-		}
-
-		if (nname)
-		{
-			ret = parse_variable_dot (expression,
-			                          origname,
-			                          nname,
-			                          order,
-			                          context);
-		}
-		else
-		{
-			ret = FALSE;
-		}
-
-		g_free (origname);
 	}
 
+	g_free (dotname);
 	g_free (nname);
 
 	return ret;
@@ -3650,6 +3755,8 @@ validate_stack (CdnExpression *expression,
 			                       NULL,
 			                       expression);
 
+			g_error_free (error);
+
 			return FALSE;
 		}
 
@@ -3726,13 +3833,14 @@ validate_stack (CdnExpression *expression,
 		stack += nst;
 	}
 
+	cdn_stack_resize (&(expression->priv->output), maxstack);
+	cdn_stack_reset (&(expression->priv->output));
+
 	if (dimonly &&
 	    numr == expression->priv->retdims[0] &&
 	    numc == expression->priv->retdims[1])
 	{
 		// Do nothing
-		cdn_stack_reset (&(expression->priv->output));
-
 		return TRUE;
 	}
 
@@ -3740,8 +3848,6 @@ validate_stack (CdnExpression *expression,
 	{
 		return FALSE;
 	}
-
-	cdn_stack_resize (&(expression->priv->output), maxstack);
 
 	return TRUE;
 }
@@ -4477,6 +4583,9 @@ cdn_expression_copy (CdnExpression *expression)
 
 	ret->priv->retdims[0] = expression->priv->retdims[0];
 	ret->priv->retdims[1] = expression->priv->retdims[1];
+
+	cdn_stack_resize (&ret->priv->output, expression->priv->output.size);
+	cdn_stack_reset (&ret->priv->output);
 
 	if (ret->priv->cached_dims[0] == 1 && ret->priv->cached_dims[1] == 1)
 	{
