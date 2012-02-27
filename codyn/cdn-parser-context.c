@@ -1399,29 +1399,17 @@ static gboolean
 add_variable_diff (CdnParserContext  *context,
                    CdnNode           *obj,
                    gchar const       *name,
+                   gchar const       *dotname,
+                   gint               order,
                    NameValuePair     *p,
                    CdnVariableFlags   add_flags,
                    CdnVariableFlags   remove_flags,
                    CdnEmbeddedString *constraint)
 {
-	gint len;
-	gint num;
-	gchar *rname;
 	gint i;
 	CdnVariable *prev = NULL;
 
-	len = strlen (name);
-	num = len - 2;
-
-	while (num >= 0 && name[num] == '\'')
-	{
-		--num;
-	}
-
-	rname = g_strndup (name, num + 1);
-	num = len - num - 1;
-
-	for (i = 0; i < num; ++i)
+	for (i = 0; i < order; ++i)
 	{
 		gchar *dd;
 		gchar *fname;
@@ -1432,10 +1420,10 @@ add_variable_diff (CdnParserContext  *context,
 		GError *error = NULL;
 
 		dd = g_strnfill (i + 1, 'd');
-		dfname = g_strconcat (dd, rname, NULL);
+		dfname = g_strconcat (dd, dotname, NULL);
 
 		dd[i] = '\0';
-		fname = g_strconcat (dd, rname, NULL);
+		fname = g_strconcat (dd, dotname, NULL);
 
 		g_free (dd);
 
@@ -1470,7 +1458,7 @@ add_variable_diff (CdnParserContext  *context,
 		// Find the self link generated
 		link = cdn_node_get_self_edge (obj);
 
-		if (i == num - 1)
+		if (i == order - 1)
 		{
 			cdn_edge_add_action (link,
 			                     cdn_edge_action_new (fname,
@@ -1511,8 +1499,6 @@ add_variable_diff (CdnParserContext  *context,
 		g_free (fname);
 		g_free (dfname);
 	}
-
-	g_free (rname);
 
 	return TRUE;
 }
@@ -1639,6 +1625,74 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 	}
 }
 
+static gchar *
+decompose_dot (gchar const *name,
+               gint        *order)
+{
+	gunichar a;
+	gunichar b;
+	gunichar next;
+
+	next = g_utf8_get_char (g_utf8_next_char (name));
+
+	if (g_unichar_decompose (g_utf8_get_char (name), &a, &b) &&
+	    (b == 775 || b == 776))
+	{
+		GString *dc;
+
+		dc = g_string_sized_new (strlen (name));
+		g_string_append_unichar (dc, a);
+		g_string_append (dc, g_utf8_next_char (name));
+
+		if (b == 775)
+		{
+			*order = 1;
+		}
+		else
+		{
+			*order = 2;
+		}
+
+		return g_string_free (dc, FALSE);
+	}
+	else if (next == 775 || next == 776)
+	{
+		GString *dc;
+
+		dc = g_string_sized_new (strlen (name));
+		g_string_append_unichar (dc, g_utf8_get_char (name));
+		g_string_append (dc, g_utf8_next_char (g_utf8_next_char (name)));
+
+		if (next == 775)
+		{
+			*order = 1;
+		}
+		else
+		{
+			*order = 2;
+		}
+
+		return g_string_free (dc, FALSE);
+	}
+	else if (g_str_has_suffix (name, "'"))
+	{
+		gchar const *ptr;
+		gchar const *last;
+
+		ptr = last = name + strlen (name) - 1;
+
+		while (ptr > name && g_utf8_get_char (ptr) == '\'')
+		{
+			ptr = g_utf8_prev_char (ptr);
+		}
+
+		*order = last - ptr;
+		return g_strndup (name, ptr - name);
+	}
+
+	return NULL;
+}
+
 void
 cdn_parser_context_add_variable (CdnParserContext  *context,
                                  CdnEmbeddedString *name,
@@ -1701,20 +1755,25 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			NameValuePair *p = pair->data;
 			gchar *exexpression = NULL;
 			gchar const *exname;
+			gint order;
+			gchar *dotname;
 
 			exname = cdn_expansion_get (p->name, 0);
 
-			if (g_str_has_suffix (exname, "'") &&
-			    CDN_IS_NODE (obj))
+			if (CDN_IS_NODE (obj) && (dotname = decompose_dot (exname, &order)))
 			{
 				// This is a differential equation now...
 				add_variable_diff (context,
 				                   CDN_NODE (obj),
 				                   exname,
+				                   dotname,
+				                   order,
 				                   p,
 				                   add_flags,
 				                   remove_flags,
 				                   constraint);
+
+				g_free (dotname);
 
 				if (context->priv->error)
 				{
