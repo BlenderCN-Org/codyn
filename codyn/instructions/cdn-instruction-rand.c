@@ -198,7 +198,14 @@ cdn_instruction_rand_equal (CdnInstruction *i1,
                             CdnInstruction *i2,
                             gboolean        asstring)
 {
-	return TRUE;
+	if (asstring)
+	{
+		return TRUE;
+	}
+	else
+	{
+		return i1 == i2;
+	}
 }
 
 static void
