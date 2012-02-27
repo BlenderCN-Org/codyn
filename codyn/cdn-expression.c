@@ -3363,17 +3363,21 @@ parse_variable (CdnExpression *expression,
 	}
 	else if (property)
 	{
-		instructions_push (expression,
-		                   cdn_instruction_variable_new (property),
-		                   context);
+		ret = instructions_push (expression,
+		                         cdn_instruction_variable_new (property),
+		                         context);
 
-		if (dotted)
+		if (ret && dotted)
 		{
 			ret = wrap_dotted (expression,
 			                   context,
 			                   dotname,
 			                   order);
 		}
+	}
+	else
+	{
+		ret = FALSE;
 	}
 
 	g_free (dotname);
