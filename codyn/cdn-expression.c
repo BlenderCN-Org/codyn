@@ -2914,8 +2914,6 @@ parse_unary_operator (CdnExpression *expression,
 	CdnInstruction *inst = NULL;
 	gint *argdim = NULL;
 
-	g_message ("%s", token->text);
-
 	// handle group
 	switch (op->type)
 	{
