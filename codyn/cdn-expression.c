@@ -1909,18 +1909,15 @@ parse_function (CdnExpression *expression,
 	else if (ret)
 	{
 		gint *argdim;
-		gint realnum;
 
-		realnum = arguments - n_implicit;
-
-		argdim = get_argdim (expression, context, realnum);
+		argdim = get_argdim (expression, context, arguments);
 
 		function = cdn_function_for_dimension (function,
-		                                       realnum,
+		                                       arguments,
 		                                       argdim);
 
 		instruction = cdn_instruction_custom_function_new (function,
-		                                                   realnum,
+		                                                   arguments,
 		                                                   argdim);
 
 		g_free (argdim);
@@ -2916,6 +2913,8 @@ parse_unary_operator (CdnExpression *expression,
 	gboolean ret = TRUE;
 	CdnInstruction *inst = NULL;
 	gint *argdim = NULL;
+
+	g_message ("%s", token->text);
 
 	// handle group
 	switch (op->type)
