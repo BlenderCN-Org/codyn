@@ -450,8 +450,8 @@ cdn_edge_action_get_property (GObject    *object,
 			g_value_set_string (value, self->priv->annotation);
 		break;
 		case PROP_INDEX:
-			/* TODO */
-			break;
+			g_value_set_object (value, self->priv->index);
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -937,7 +937,7 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 		                              &numr,
 		                              &numc);
 
-		if (!action->priv->indices && (numr != enumr || numc != enumc))
+		if (!action->priv->index && (numr != enumr || numc != enumc))
 		{
 			if (error)
 			{
