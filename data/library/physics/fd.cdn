@@ -13,7 +13,7 @@ node "fd"
     H = "zeros(@bodies[~], @bodies[~])"
 
     ## Generalized accelerations
-    q̈ = "linsolve(H, τ - C)"
+    ddq = "linsolve(H, τ - C)"
 
     ## Jacobian
     J = "zeros(6, @bodies[~])"
@@ -58,7 +58,7 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "fd"
 {
     edge "acceleration_@0" from "fd" to "@@@0"
     {
-        dq <= "q̈[@@@@@0[!]]"
+        dq <= "ddq[@@@@@0[!]]"
     }
 }
 
