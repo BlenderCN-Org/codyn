@@ -67,7 +67,7 @@ node "physics"
 
     edge "joint"
     {
-        baseTransform <= "to.transform ∙ baseTransform"
+        baseTransform <= "output.transform ∙ baseTransform"
     }
 
     node "revolute" : "body"

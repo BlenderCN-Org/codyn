@@ -10,7 +10,7 @@ templates
             RDot(xdot, ydot)(theta) = "x_dot * cos(theta) + y_dot * sin(theta)"
             ThetaDot(xdot, ydot)(r, theta) = "r == 0 ? 0 : (ydot * cos(theta) - xdot * sin(theta)) / r"
 
-            PhaseCoupling(weight, bias)(from.r, from.theta, to.theta) = "weight * from.r * sin(from.theta - to.theta - bias)"
+            PhaseCoupling(weight, bias)(input.r, input.theta, output.theta) = "weight * input.r * sin(input.theta - output.theta - bias)"
         }
     }
 
@@ -189,8 +189,8 @@ templates
         ## Value added by the coupling to the instantaneous angular frequency
         omega_increment = "PhaseCoupling(weight, phase_bias)"
 
-        x <= "-to.y * omega_increment"
-        y <= "to.x * omega_increment"
+        x <= "-output.y * omega_increment"
+        y <= "output.x * omega_increment"
     }
 
     layout

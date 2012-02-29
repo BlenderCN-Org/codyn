@@ -42,7 +42,7 @@ templates
         ## Gain on phase coupling convergence
         weight = 1
 
-        phase <= "weight * sin(from.phase - to.phase - phase_bias)"
+        phase <= "weight * sin(input.phase - output.phase - phase_bias)"
     }
 
     include "layout/line.cdn"

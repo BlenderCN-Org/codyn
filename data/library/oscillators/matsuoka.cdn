@@ -51,17 +51,17 @@ templates
         edge "neuron_dynamics" on "node"
         {
             ## X dynamics targeting c, with adaptation through v
-            x <= "1 / tau * (c - to.x - b * to.v)"
+            x <= "1 / tau * (c - output.x - b * output.v)"
             
             ## Adaptation dynamics
-            v <= "1 / Tau * (to.y - to.v)"
+            v <= "1 / Tau * (output.y - output.v)"
         }
     }
 
     ## Inhibition between neurons
     edge "inhibition"
     {
-        x <= "-1 / tau * a * from.y"
+        x <= "-1 / tau * a * input.y"
     }
 
     ## Basic Matsuoka oscillator made of 2 neurons

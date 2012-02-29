@@ -32,7 +32,7 @@ node @bodies
 # Add computation of IC in the dynamics edge
 edge has-template("physics" . "dynamics")
 {
-     IC <= "to.spI + transform ∙ IC ∙ transformᵀ"
+     IC <= "output.spI + transform ∙ IC ∙ transformᵀ"
 }
 
 # vi:ex:ts=4:et

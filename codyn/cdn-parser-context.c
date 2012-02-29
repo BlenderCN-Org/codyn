@@ -1973,7 +1973,7 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 
 				l = g_strndup (ptr + 1, strlen (ptr) - 2);
 
-				comp = g_strdup_printf ("lindex(%s, size(to.%s)[1])",
+				comp = g_strdup_printf ("lindex(%s, size(output.%s)[1])",
 				                        l,
 				                        name);
 

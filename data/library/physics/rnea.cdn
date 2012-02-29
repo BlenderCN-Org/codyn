@@ -14,10 +14,10 @@ templates
 edge has-template("physics" . "joint")
 {
     ## Recursive joint velocity (from parent to child)
-    velocity <= "to.transform ∙ velocity + jointVelocity"
+    velocity <= "output.transform ∙ velocity + jointVelocity"
 
     ## Recursive joint acceleration (from parent to child)
-    acceleration <= "to.transform ∙ acceleration + Sp.CrossMotion(to.velocity) ∙ to.jointVelocity"
+    acceleration <= "output.transform ∙ acceleration + Sp.CrossMotion(output.velocity) ∙ output.jointVelocity"
 }
 
 node "@bodies"
