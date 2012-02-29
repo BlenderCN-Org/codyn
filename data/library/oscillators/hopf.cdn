@@ -1,64 +1,51 @@
 templates
 {
-    # include "hopf_functions.cdn"
-
     node "oscillator"
     {
-        [proxy]
-        node "node"
-        {
-            ## x node variable of Hopf oscillator
-            x = 0 | integrated
+        ## x state of Hopf oscillator
+        ẋ = "gamma_x * (mu - r2) * x - omega * y"
 
-            ## y node variable of Hopf oscillator
-            y = 1 | integrated
+        ## y state of Hopf oscillator
+        ẏ = "gamma_y * (mu - r2) * y + omega * x"
 
+        # Initial values outside of fixed point
+        x = 0
+        y = 1
 
-            ## Desired amplitude
-            ## Unused if you define mu directly.
-            target_amplitude = 1
+        ## Desired amplitude
+        ## Unused if you define mu directly.
+        target_amplitude = 1
 
-            ## Desired frequency
-            target_frequency = 1
+        ## Desired frequency
+        target_frequency = 1
 
+        ## Instantaneous amplitude
+        r = "hypot(x, y)"
 
-            ## Instantaneous amplitude
-            amplitude = "hypot(x, y)"
+        ## Desired mu
+        ## Controlls the Hopf bifurcation.
+        ## With positive mu, the dynamical system will oscillate with amplitude sqrt(mu). 
+        ## With negative mu, the system will have a stable fix point at (x, y) = (0, 0).
+        μ = "target_amplitude ∙ target_amplitude"
 
+        ## Gain on amplitude
+        ## Unused if you define gamma_x and gamma_y directly.
+        γ = 1
 
-            ## Desired mu
-            ## Controlls the Hopf bifurcation.
-            ## With positive mu, the dynamical system will oscillate with amplitude sqrt(mu). 
-            ## With negative mu, the system will have a stable fix point at (x, y) = (0, 0).
-            mu = "target_amplitude * target_amplitude"
+        ## Gain on amplitude for x
+        γ_x = "γ"
 
-            ## Gain on amplitude
-            ## Unused if you define gamma_x and gamma_y directly.
-            gamma = 1
+        ## Gain on amplitude for y
+        γ_y = "γ"
 
-            ## Gain on amplitude for x
-            gamma_x = "gamma"
+        ## Angular frequency
+        ω = "2 ∙ π ∙ target_frequency"
 
-            ## Gain on amplitude for y
-            gamma_y = "gamma"
+        ## Amplitude squared
+        r2 = "x² + y²"
 
-
-            ## Angular frequency
-            omega = "2 * pi * target_frequency"
-
-            ## Amplitude squared
-            r2 = "amplitude * amplitude"
-
-
-            ## Output variable
-            output = "x"
-        }
-
-        edge "integrate" on "node"
-        {
-            x <= "gamma_x * (mu - r2) * x - omega * y"
-            y <= "gamma_y * (mu - r2) * y + omega * x"
-        }
+        ## Output variable
+        "output" = "x"
     }
 }
 

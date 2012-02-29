@@ -26,10 +26,10 @@ templates
     g(φ) = "1"
 
     ## Feedback term of dynamical system (see ṙ)
-    feedback = "γ ∙ (R ∙ g(φ) - r)"
+    feedback = "γ ∙ (target_amplitude ∙ g(φ) - r)"
 
     ## Feedforward term of dynamical system (see ṙ)
-    feedforward = "R ∙ ġ(φ)"
+    feedforward = "target_amplitude ∙ ġ(φ)"
 
     [self] edge
     {

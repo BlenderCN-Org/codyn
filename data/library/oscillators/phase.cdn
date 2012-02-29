@@ -3,15 +3,20 @@ templates
     node "oscillator"
     {
         ## Desired amplitude
-        R = 1
+        target_amplitude = 1
+
+        ## Desired frequency
+        target_frequency = 1
 
         ## Time constant on attractor of r towards f. Use
         ## functions.GammaForRelConf to compute a γ value corresponding to a
         ## certain speed of convergence
         γ = 1
 
+        γ_r = "γ"
+
         ## Angular frequency
-        ω = "2 ∙ π"
+        ω = "2 ∙ π ∙ target_frequency"
 
         ## Phase node variable
         φ̇ = "ω"
@@ -20,7 +25,7 @@ templates
         r2 = "r²"
 
         ## Amplitude node variable
-        ṙ = "γ ∙ (R ∙ R - r2)"
+        ṙ = "γ_r ∙ (R ∙ R - r2)"
 
         ## Output variable (r * sin(phase))
         "output" = "r * sin(p)"
