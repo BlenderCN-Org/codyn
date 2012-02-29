@@ -1456,13 +1456,10 @@ pop_stack (CdnExpression *expression,
 	GSList *instrs;
 	GSList *tmp;
 	GSList *nth;
-	guint len;
 
 	instrs = g_slist_last (context->stack)->data;
 
 	// Pop these instructions
-	len = g_slist_length (instrs);
-
 	nth = g_slist_nth (expression->priv->instructions,
 	                   g_slist_length (instrs) - 1);
 
