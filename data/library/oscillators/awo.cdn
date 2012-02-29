@@ -1,3 +1,5 @@
+import "phase.cdn" as "phase"
+
 ## The AWO library contains an oscillator implementing a very simple, first
 ## order arbitrary waveform dynamical system. The implementation is simply
 ## a feedback/feedforward differential equation on a known function f(x) and
@@ -17,42 +19,27 @@ templates
   ## $\dot{\theta} = \omega
   ## $\dot{r} = \gamma (f(\theta) - x) + \dot{f}(\theta) \dot{\theta}
   ##
-  node "oscillator"
+  node "oscillator" : "phase" . "oscillator"
   {
-    
-    ## Time constant on attractor of r towards f. Use
-    ## functions.GammaForRelConf to compute a γ value corresponding to a
-    ## certain speed of convergence
-    γ = "1"
-
-    ## Angular frequency
-    ω = "2 ∙ π"
-
     ## The function to capture as a dynamical system. Note that this function
     ## should be differentiable.
     g(φ) = "1"
 
     ## Feedback term of dynamical system (see ṙ)
-    feedback = "γ ∙ (g(φ) - r)"
+    feedback = "γ ∙ (R ∙ g(φ) - r)"
 
     ## Feedforward term of dynamical system (see ṙ)
-    feedforward = "ġ(φ)"
+    feedforward = "R ∙ ġ(φ)"
 
-    ## Amplitude state
-    ṙ = "feedback + feedforward"
-
-    ## Phase state
-    φ̇ = "ω"
+    [self] edge
+    {
+      ## Amplitude state
+      r <= "feedback + feedforward"
+    }
 
     ## Output variable
     "output" = "r"
 
-    ## Function for γ such that it takes <i>τ</i> seconds to
-    ## forget a perturbation of size (1 - <i>α</i>) * <i>δ</i>
-    ##
-    ## This function can be used for γ on the initial conditions of the
-    ## oscillator nodes so there is a known behavior of convergence from
-    ## initial conditions.
     γForRelConv(τ, α, δ) = "ln(α / δ) / -τ"
   }
 }
