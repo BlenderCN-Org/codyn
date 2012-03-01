@@ -1470,12 +1470,12 @@ static CdnConstantEntry constant_entries[] = {
 	{"\xcf\x80", NULL, M_PI},
 	{"e", NULL, M_E},
 	{"E", NULL, M_E},
-	{"NAN", NULL, 0},
-	{"nan", NULL, 0},
-	{"NaN", NULL, 0},
-	{"Inf", NULL, 0},
-	{"INF", NULL, 0},
-	{"inf", NULL, 0}
+	{"NAN", NULL, NAN},
+	{"nan", NULL, NAN},
+	{"NaN", NULL, NAN},
+	{"Inf", NULL, INFINITY},
+	{"INF", NULL, INFINITY},
+	{"inf", NULL, INFINITY}
 };
 
 /**
