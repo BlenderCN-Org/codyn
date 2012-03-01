@@ -381,3 +381,56 @@ cdn_stack_pushni (CdnStack *stack,
 	}
 }
 
+/**
+ * cdn_stack_manipulation_get_pop_dimension:
+ * @smanip: a #CdnStackManipulation.
+ * @n: the popped argument index.
+ * @numr: (out): return value for the number of rows.
+ * @numc: (out): return value for the number of columns.
+ *
+ * Get the dimension of a particular popped argument.
+ *
+ **/
+void
+cdn_stack_manipulation_get_pop_dimension (CdnStackManipulation const *smanip,
+                                          gint                        n,
+                                          gint                       *numr,
+                                          gint                       *numc)
+{
+	if (numr)
+	{
+		*numr = smanip ? smanip->pop_dims[n * 2] : 0;
+	}
+
+	if (numc)
+	{
+		*numc = smanip ? smanip->pop_dims[n * 2 + 1] : 0;
+	}
+}
+
+/**
+ * cdn_stack_manipulation_get_pop_dimension:
+ * @smanip: a #CdnStackManipulation.
+ * @n: the popped argument index.
+ * @numr: (out): return value for the number of rows.
+ * @numc: (out): return value for the number of columns.
+ *
+ * Get the dimension of a particular pushed argument.
+ *
+ **/
+void
+cdn_stack_manipulation_get_push_dimension (CdnStackManipulation const *smanip,
+                                           gint                        n,
+                                           gint                       *numr,
+                                           gint                       *numc)
+{
+	if (numr)
+	{
+		*numr = smanip ? smanip->push_dims[n * 2] : 0;
+	}
+
+	if (numc)
+	{
+		*numc = smanip ? smanip->push_dims[n * 2 + 1] : 0;
+	}
+}

@@ -89,6 +89,16 @@ void      cdn_stack_set_at  (CdnStack *stack,
                              gint      idx,
                              gdouble   value);
 
+void      cdn_stack_manipulation_get_pop_dimension (CdnStackManipulation const *smanip,
+                                                    gint                        n,
+                                                    gint                       *numr,
+                                                    gint                       *numc);
+
+void      cdn_stack_manipulation_get_push_dimension (CdnStackManipulation const *smanip,
+                                                     gint                        n,
+                                                     gint                       *numr,
+                                                     gint                       *numc);
+
 G_END_DECLS
 
 #endif /* __CDN_STACK_H__ */
