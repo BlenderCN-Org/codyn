@@ -8,11 +8,13 @@ typedef enum
 	CDN_DEBUG_LINSOLVE = 1 << (G_LOG_LEVEL_USER_SHIFT + 0),
 	CDN_DEBUG_DIFF = 1 << (G_LOG_LEVEL_USER_SHIFT + 1),
 	CDN_DEBUG_SIMPLIFY = 1 << (G_LOG_LEVEL_USER_SHIFT + 2),
+	CDN_DEBUG_IO = 1 << (G_LOG_LEVEL_USER_SHIFT + 3),
 } CdnDebugSection;
 
 #define DEBUG_LINSOLVE      CDN_DEBUG_LINSOLVE, __FILE__, __LINE__, G_STRFUNC
 #define DEBUG_DIFF          CDN_DEBUG_DIFF, __FILE__, __LINE__, G_STRFUNC
 #define DEBUG_SIMPLIFY      CDN_DEBUG_SIMPLIFY, __FILE__, __LINE__, G_STRFUNC
+#define DEBUG_IO            CDN_DEBUG_IO, __FILE__, __LINE__, G_STRFUNC
 
 void cdn_debug_init (void);
 

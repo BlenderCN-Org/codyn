@@ -49,6 +49,18 @@ cdn_debug (CdnDebugSection  section,
 	}
 }
 
+static void
+cdn_debug_log_handler (gchar const    *log_domain,
+                       GLogLevelFlags  log_level,
+                       gchar const    *message,
+                       gpointer        userdata)
+{
+	g_printerr ("[%s(%p)]: %s\n",
+	            log_domain,
+	            g_thread_self (),
+	            message);
+}
+
 void
 cdn_debug_init ()
 {
@@ -70,6 +82,18 @@ cdn_debug_init ()
 		{
 			debug_level |= CDN_DEBUG_SIMPLIFY;
 		}
+
+		if (g_getenv ("CODYN_DEBUG_IO") != NULL)
+		{
+			debug_level |= CDN_DEBUG_IO;
+		}
+
+		g_log_set_handler ("Cdn",
+		                   CDN_DEBUG_DIFF |
+		                   CDN_DEBUG_LINSOLVE |
+		                   CDN_DEBUG_IO,
+		                   cdn_debug_log_handler,
+		                   NULL);
 	}
 }
 
