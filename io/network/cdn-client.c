@@ -4,6 +4,7 @@
 #include <codyn/cdn-math.h>
 #include <codyn/cdn-io.h>
 #include <string.h>
+#include <codyn/cdn-debug.h>
 
 #define CDN_CLIENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_CLIENT, CdnClientPrivate))
 
@@ -1092,6 +1093,7 @@ process_set_binary (CdnClient *client,
 		guint16 idx;
 		CdnExpression *e;
 		gdouble *ptr;
+		gboolean iscache;
 		gint numr;
 		gint numc;
 		gint j;
@@ -1112,8 +1114,9 @@ process_set_binary (CdnClient *client,
 
 		v = g_ptr_array_index (client->priv->in_variables, idx);
 		e = cdn_variable_get_expression (v);
-		ptr = cdn_expression_get_cache (e, &numr, &numc);
 
+		cdn_expression_get_dimension (e, &numr, &numc);
+		ptr = g_new (gdouble, numr * numc);
 		num = numr * numc;
 
 		for (j = 0; j < num; ++j)
@@ -1130,10 +1133,22 @@ process_set_binary (CdnClient *client,
 
 			if (err)
 			{
+				if (!iscache)
+				{
+					g_free (ptr);
+				}
+
 				g_error_free (err);
 				return FALSE;
 			}
 		}
+
+		cdn_expression_set_values (e,
+		                           ptr,
+		                           numr,
+		                           numc);
+
+		g_free (ptr);
 	}
 
 	*start += g_seekable_tell (G_SEEKABLE (inp));
@@ -1255,8 +1270,16 @@ static gboolean
 process_binary_mode (CdnClient *client,
                      gssize    *start)
 {
-	push_message (client, message_new (MESSAGE_TYPE_BINARY_MODE));
-	return TRUE;
+	if (client->priv->bytes[*start] == '\n')
+	{
+		++*start;
+		push_message (client, message_new (MESSAGE_TYPE_BINARY_MODE));
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
 }
 
 static void
@@ -1318,6 +1341,8 @@ process_messages (CdnClient *client)
 			break;
 		}
 	}
+
+	client->priv->offset = 0;
 }
 
 static gboolean
@@ -1364,6 +1389,8 @@ recv_stream (CdnClient *client)
 					         client->priv->bytes,
 					         client->priv->num_bytes);
 			}
+
+			break;
 		}
 		else if (!hadit)
 		{
@@ -1833,6 +1860,9 @@ send_out_limit_binary (CdnClient *client,
 	GMemoryOutputStream *mems;
 
 	s = g_data_output_stream_new (G_OUTPUT_STREAM (client->priv->boutbuf));
+	g_filter_output_stream_set_close_base_stream (G_FILTER_OUTPUT_STREAM (s),
+	                                              FALSE);
+
 	vars = client->priv->out_variables;
 
 	mems = G_MEMORY_OUTPUT_STREAM (client->priv->boutbuf);
@@ -1882,8 +1912,12 @@ send_out_limit_binary (CdnClient *client,
 				val.dval = values[j];
 
 				g_data_output_stream_put_uint64 (s, val.val, NULL, NULL);
+				g_output_stream_flush (G_OUTPUT_STREAM (s), NULL, NULL);
+
 			}
 		}
+
+		g_output_stream_flush (G_OUTPUT_STREAM (s), NULL, NULL);
 
 		g_socket_send_to (client->priv->socket,
 		                  client->priv->address,
@@ -1967,11 +2001,22 @@ send_header (CdnClient *client,
 	for (i = 0; i < vars->len; ++i)
 	{
 		CdnVariable *v;
+		gint numr;
+		gint numc;
 
 		v = g_ptr_array_index (vars, i);
 
 		g_string_append_c (client->priv->outbuf, ' ');
-		g_string_append (client->priv->outbuf, cdn_variable_get_name (v));
+
+		cdn_expression_get_dimension (cdn_variable_get_expression (v),
+		                              &numr,
+		                              &numc);
+
+		g_string_append_printf (client->priv->outbuf,
+		                        "%d %d %s",
+		                        numr,
+		                        numc,
+		                        cdn_variable_get_name (v));
 	}
 
 	g_string_append_c (client->priv->outbuf, '\n');
