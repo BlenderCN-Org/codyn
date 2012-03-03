@@ -1093,7 +1093,6 @@ process_set_binary (CdnClient *client,
 		guint16 idx;
 		CdnExpression *e;
 		gdouble *ptr;
-		gboolean iscache;
 		gint numr;
 		gint numc;
 		gint j;
@@ -1133,10 +1132,7 @@ process_set_binary (CdnClient *client,
 
 			if (err)
 			{
-				if (!iscache)
-				{
-					g_free (ptr);
-				}
+				g_free (ptr);
 
 				g_error_free (err);
 				return FALSE;
