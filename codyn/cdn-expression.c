@@ -3668,6 +3668,8 @@ calculate_stack_manipulation (CdnStackManipulation const *smanip,
 	return ret;
 }
 
+//#define PRINT_STACK
+
 static gboolean
 validate_stack (CdnExpression *expression,
                 ParserContext *context,
@@ -3697,7 +3699,9 @@ validate_stack (CdnExpression *expression,
 	numr = expression->priv->retdims[0];
 	numc = expression->priv->retdims[1];
 
-	//g_message ("Validating stack for: %s", expression->priv->expression);
+#ifdef PRINT_STACK
+	g_message ("\n\nValidating stack for: %s", expression->priv->expression);
+#endif
 
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{
@@ -3760,7 +3764,8 @@ validate_stack (CdnExpression *expression,
 
 		nst = calculate_stack_manipulation (smanip, &tmpspace);
 
-		/*g_message ("%s", cdn_instruction_to_string (inst));
+#ifdef PRINT_STACK
+		g_message ("%s", cdn_instruction_to_string (inst));
 
 		gint i;
 
@@ -3778,7 +3783,8 @@ validate_stack (CdnExpression *expression,
 			           smanip->push_dims ? smanip->push_dims[i * 2 + 1] : 1);
 		}
 
-		g_message ("Stack size is now: %d (+%d)", stack, tmpspace + nst);*/
+		g_message ("Stack size is now: %d (+%d)", stack, tmpspace + nst);
+#endif
 
 		if (smanip->push_dims)
 		{
