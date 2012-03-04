@@ -123,6 +123,7 @@ gdouble const     *cdn_variable_get_values              (CdnVariable        *var
 
 gdouble const     *cdn_variable_get_values_flat         (CdnVariable        *variable,
                                                          gint               *num);
+
 void               cdn_variable_get_dimension           (CdnVariable        *variable,
                                                          gint               *numr,
                                                          gint               *numc);

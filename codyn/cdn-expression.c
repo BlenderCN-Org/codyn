@@ -4149,7 +4149,7 @@ set_cache_from_stack (CdnExpression *expression)
 }
 
 /**
- * cdn_expression_evaluate_values:
+ * cdn_expression_evaluate_values: (skip)
  * @expression: a #CdnExpression
  *
  * Returns: the result of evaluating the expression
@@ -4237,6 +4237,36 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	}
 
 	return values_from_cache (expression, numr, numc);
+}
+
+/**
+ * cdn_expression_evaluate_values_flat:
+ * @expression: a #CdnExpression.
+ * @num: (out caller-allocates): return value of the number of values.
+ *
+ * Get the values of the expression as a flat array. This is only really
+ * useful for bindings because #cdn_expression_evaluate_values is difficult
+ * to bind with gobject introspection.
+ *
+ * Returns: (array length=num) the expression values.
+ *
+ **/
+gdouble const *
+cdn_expression_evaluate_values_flat (CdnExpression *expression,
+                                     gint          *num)
+{
+	gint numr;
+	gint numc;
+	gdouble const *ret;
+
+	ret = cdn_expression_evaluate_values (expression, &numr, &numc);
+
+	if (num)
+	{
+		*num = numr * numc;
+	}
+
+	return ret;
 }
 
 static void

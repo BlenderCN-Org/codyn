@@ -833,13 +833,13 @@ cdn_variable_get_values (CdnVariable *variable,
 /**
  * cdn_variable_get_values_flat:
  * @variable: a #CdnVariable.
- * @num: return value for the number of elements in the return value.
+ * @num: (out caller-allocates): return value for the number of elements in the return value.
  *
  * Get the value of a variable as a flat array. This is mostly useful for
  * bindings because it's difficult to bind #cdn_variable_get_values with
  * gobject introspection.
  *
- * Returns: the variable value.
+ * Returns: (array length=num): the variable value.
  *
  **/
 gdouble const *

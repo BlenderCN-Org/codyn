@@ -88,6 +88,9 @@ gdouble const *cdn_expression_evaluate_values  (CdnExpression      *expression,
                                                 gint               *numr,
                                                 gint               *numc);
 
+gdouble const *cdn_expression_evaluate_values_flat (CdnExpression      *expression,
+                                                    gint               *num);
+
 void           cdn_expression_set_value        (CdnExpression      *expression,
                                                 gdouble             value);
 
