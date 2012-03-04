@@ -82,12 +82,12 @@ struct _CdnVariableClass
 	/*< public >*/
 
 	/* signals */
-	gboolean (*invalidate_name) (CdnVariable *property,
+	gboolean (*invalidate_name) (CdnVariable *variable,
 	                             const gchar *name);
 
-	void (*expression_changed) (CdnVariable      *property,
+	void (*expression_changed) (CdnVariable      *variable,
 	                            CdnExpression    *expression);
-	void (*flags_changed)      (CdnVariable      *property,
+	void (*flags_changed)      (CdnVariable      *variable,
 	                            CdnVariableFlags  flags);
 };
 
@@ -97,65 +97,69 @@ CdnVariable       *cdn_variable_new                     (const gchar      *name,
                                                          CdnExpression    *expression,
                                                          CdnVariableFlags  flags);
 
-const gchar       *cdn_variable_get_name                (CdnVariable        *property);
-gboolean           cdn_variable_set_name                (CdnVariable        *property,
+const gchar       *cdn_variable_get_name                (CdnVariable        *variable);
+gboolean           cdn_variable_set_name                (CdnVariable        *variable,
                                                          const gchar        *name);
 
-CdnObjectForward *cdn_variable_get_object              (CdnVariable        *property);
+CdnObjectForward *cdn_variable_get_object              (CdnVariable        *variable);
 
-gboolean           cdn_variable_get_integrated          (CdnVariable        *property);
-void               cdn_variable_set_integrated          (CdnVariable        *property,
+gboolean           cdn_variable_get_integrated          (CdnVariable        *variable);
+void               cdn_variable_set_integrated          (CdnVariable        *variable,
                                                          gboolean            integrated);
 
-CdnVariableFlags   cdn_variable_get_flags               (CdnVariable        *property);
-void               cdn_variable_set_flags               (CdnVariable        *property,
+CdnVariableFlags   cdn_variable_get_flags               (CdnVariable        *variable);
+void               cdn_variable_set_flags               (CdnVariable        *variable,
                                                          CdnVariableFlags    flags);
-void               cdn_variable_add_flags               (CdnVariable        *property,
+void               cdn_variable_add_flags               (CdnVariable        *variable,
                                                          CdnVariableFlags    flags);
-void               cdn_variable_remove_flags            (CdnVariable        *property,
+void               cdn_variable_remove_flags            (CdnVariable        *variable,
                                                          CdnVariableFlags    flags);
-void               cdn_variable_reset                   (CdnVariable        *property);
+void               cdn_variable_reset                   (CdnVariable        *variable);
 
-gdouble            cdn_variable_get_value               (CdnVariable        *property);
-gdouble const     *cdn_variable_get_values              (CdnVariable        *property,
+gdouble            cdn_variable_get_value               (CdnVariable        *variable);
+gdouble const     *cdn_variable_get_values              (CdnVariable        *variable,
                                                          gint               *numr,
                                                          gint               *numc);
 
-CdnExpression     *cdn_variable_get_expression          (CdnVariable        *property);
 gdouble const     *cdn_variable_get_values_flat         (CdnVariable        *variable,
                                                          gint               *num);
+void               cdn_variable_get_dimension           (CdnVariable        *variable,
+                                                         gint               *numr,
+                                                         gint               *numc);
 
-void               cdn_variable_set_value               (CdnVariable        *property,
+CdnExpression     *cdn_variable_get_expression          (CdnVariable        *variable);
+
+void               cdn_variable_set_value               (CdnVariable        *variable,
                                                          gdouble             value);
 
-void               cdn_variable_set_values              (CdnVariable        *property,
+void               cdn_variable_set_values              (CdnVariable        *variable,
                                                          gdouble const      *values,
                                                          gint                numr,
                                                          gint                numc);
 
-void               cdn_variable_set_expression          (CdnVariable        *property,
+void               cdn_variable_set_expression          (CdnVariable        *variable,
                                                          CdnExpression      *expression);
 
-void               cdn_variable_set_constraint          (CdnVariable       *property,
+void               cdn_variable_set_constraint          (CdnVariable       *variable,
                                                          CdnExpression     *expression);
 
-CdnExpression     *cdn_variable_get_constraint          (CdnVariable       *property);
+CdnExpression     *cdn_variable_get_constraint          (CdnVariable       *variable);
 
-gboolean           cdn_variable_equal                   (CdnVariable        *property,
+gboolean           cdn_variable_equal                   (CdnVariable        *variable,
                                                          CdnVariable        *other,
                                                          gboolean            asstring);
 
-void               cdn_variable_set_update              (CdnVariable        *property,
+void               cdn_variable_set_update              (CdnVariable        *variable,
                                                          gdouble const      *values);
 
-void               cdn_variable_clear_update            (CdnVariable        *property);
+void               cdn_variable_clear_update            (CdnVariable        *variable);
 
-void               cdn_variable_set_update_value        (CdnVariable        *property,
+void               cdn_variable_set_update_value        (CdnVariable        *variable,
                                                          gdouble             value,
                                                          gint                numr,
                                                          gint                numc);
 
-gdouble           *cdn_variable_get_update              (CdnVariable        *property,
+gdouble           *cdn_variable_get_update              (CdnVariable        *variable,
                                                          gint               *numr,
                                                          gint               *numc);
 
@@ -166,24 +170,24 @@ void               cdn_variable_flags_from_string       (const gchar        *fla
                                                          CdnVariableFlags   *add_flags,
                                                          CdnVariableFlags   *remove_flags);
 
-gchar             *cdn_variable_get_full_name             (CdnVariable        *property);
-gchar             *cdn_variable_get_full_name_for_display (CdnVariable        *property);
+gchar             *cdn_variable_get_full_name             (CdnVariable        *variable);
+gchar             *cdn_variable_get_full_name_for_display (CdnVariable        *variable);
 
-CdnVariable       *cdn_variable_copy                    (CdnVariable        *property);
+CdnVariable       *cdn_variable_copy                    (CdnVariable        *variable);
 
-void               _cdn_variable_set_object             (CdnVariable      *property,
+void               _cdn_variable_set_object             (CdnVariable      *variable,
                                                          CdnObjectForward *object,
                                                          gboolean          notify);
 
-GSList            *cdn_variable_get_actions             (CdnVariable *property);
+GSList            *cdn_variable_get_actions             (CdnVariable *variable);
 
-CdnVariable       *cdn_variable_get_integral            (CdnVariable *property);
-CdnVariable       *cdn_variable_get_derivative          (CdnVariable *property);
+CdnVariable       *cdn_variable_get_integral            (CdnVariable *variable);
+CdnVariable       *cdn_variable_get_derivative          (CdnVariable *variable);
 
-void               cdn_variable_set_derivative          (CdnVariable *property,
+void               cdn_variable_set_derivative          (CdnVariable *variable,
                                                          CdnVariable *diffprop);
 
-gboolean           cdn_variable_compile                 (CdnVariable              *property,
+gboolean           cdn_variable_compile                 (CdnVariable              *variable,
                                                          CdnCompileErrorForward   *error);
 
 G_END_DECLS
