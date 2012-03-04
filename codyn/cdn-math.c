@@ -883,10 +883,12 @@ op_mindex (CdnStack *stack,
 		vcols = argdim[1];
 
 		vptr = cdn_stack_output_ptr (stack) - vrows * vcols;
+
 		iptr2 = vptr - argdim[2] * argdim[3];
-		iptr1 = iptr2 - argdim[0] * argdim[1];
+		iptr1 = iptr2 - argdim[4] * argdim[5];
 
 		n = rows * cols;
+		nv = vrows * vcols;
 	}
 
 	if (a1 && !a2)
