@@ -21,13 +21,14 @@ templates
             ## Generalized force on the DOF of this body
             τ = "0"
 
-            ## Coordinate transform from the parent frame to the child frame. The
-            ## product of this transform with the joint transform is the
-            ## total coordinate transformation from a parent frame to a child frame
+            ## Coordinate transform from the parent frame to the child
+            ## frame. The product of this transform with the joint transform
+            ## is the total coordinate transformation from a parent frame to a
+            ## child frame
             coordinateTransform = "eye(6)"
 
-            ## Spatial joint transformation (i.e. the transformation induced by the
-            ## DOF of the joint)
+            ## Spatial joint transformation (i.e. the transformation induced
+            ## by the DOF of the joint)
             jointTransform = "eye(6)"
 
             ## The total transform from parent frame to body frame
@@ -37,8 +38,8 @@ templates
             fext = "zeros(6, 1)"
 
             ## Spatial motion subspace. This 6d vector is multiplied with the
-            ## joint velocity to result in the velocity across the joint (i.e. a
-            ## map from the joint coordinate velocity q̇ to the body velocity)
+            ## joint velocity to result in the velocity across the joint (i.e.
+            ## a map from the joint coordinate velocity q̇ to the body velocity)
             ## [θx; θy; θz; x; y; z]
             motionSubspace = "zeros(6, 1)"
 

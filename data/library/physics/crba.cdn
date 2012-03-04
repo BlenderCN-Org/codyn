@@ -3,28 +3,33 @@
 # Define H for diagonal (i.e. bodies themselves)
 node @bodies
 {
-    IC = "spI"
+    IC = "zeros(6, 6)"
 
     "fh_@0[!]" = "IC ∙ motionSubspace"
     "H_@0[!]" = "motionSubspaceᵀ ∙ fh_@@0[!]"
+
+    [self]
+    edge
+    {
+        IC <= "spI"
+    }
 }
 
 # Compute the mass matrix for each body, up to each of its
 # ancestors
 [each(@bodies)]
 {
-    # Open each of the dynamics edges
-    [with(edges | has-template("physics" . "dynamics"))]
+    [with("@0" | recurse(outputs | has-template(physics.dynamics) | output) | outputs | has-template(physics.dynamics))]
     {
-        edge if(source | @bodychain[@0])
+        edge | edges
         {
-            "fh_@0[!]" <= "coordinateTransformᵀ ∙ fh_@@0[!]"
+            "fh_@@0[!]" <= "transformᵀ ∙ fh_@@@0[!]"
         }
 
-        node if(source | @bodychain[@0]) | sink
+        node | output
         {
-            "fh_@0[!]" = "zeros(6, 1)"
-            "H_@0[!]" = "motionSubspaceᵀ ∙ fh_@@0[!]"
+            "fh_@@0[!]" = "zeros(6, 1)"
+            "H_@@0[!]" = "motionSubspaceᵀ ∙ fh_@@@0[!]"
         }
     }
 }
@@ -32,7 +37,7 @@ node @bodies
 # Add computation of IC in the dynamics edge
 edge has-template("physics" . "dynamics")
 {
-     IC <= "output.spI + transform ∙ IC ∙ transformᵀ"
+     IC <= "transformᵀ ∙ IC ∙ transform"
 }
 
 # vi:ex:ts=4:et

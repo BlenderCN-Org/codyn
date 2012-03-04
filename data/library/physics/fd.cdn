@@ -7,6 +7,8 @@ node "fd"
 {
     ## Generalized forces
     τ = "zeros(@bodies[~], 1)"
+
+    ## C matrix
     C = "zeros(@bodies[~], 1)"
 
     ## Mass matrix
@@ -33,7 +35,7 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "fd"
         j = "@@@@@0[!]"
     }
 
-    [each(self | source . variables | /fh_([0-9]+)/)]
+    [each(self | input . variables | /fh_([0-9]+)/)]
     {
         defines
         {
@@ -49,7 +51,7 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "fd"
     }
 
     # Fill column of the jacobian
-    "J[[{0:5||@0;@1}], @j]" <= "J[[@1], @j]"
+    "J[[{0:5||@0;@1}], @j]" <= "J"
     "C[@j, 0]" <= "C"
 }
 

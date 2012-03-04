@@ -14,7 +14,7 @@ templates
 edge has-template("physics" . "joint")
 {
     ## Recursive joint velocity (from parent to child)
-    velocity <= "output.transform ∙ velocity + jointVelocity"
+    velocity <= "output.transform ∙ velocity + output.jointVelocity"
 
     ## Recursive joint acceleration (from parent to child)
     acceleration <= "output.transform ∙ acceleration + Sp.CrossMotion(output.velocity) ∙ output.jointVelocity"
@@ -36,9 +36,9 @@ node "@bodies"
 }
 
 # Add a dynamics link back up from the child to the parent
-[each(edges | has-template("physics" . "joint") | source-name | sink-name)]
+[each(edges | has-template("physics" . "joint") | output-name | input-name)]
 {
-    edge "dynamics_@0_to_@@0" from "@@0" to "@@@@0" : "physics" . "dynamics" {}
+    edge "dynamics_@@0_to_@0" from "@@@0" to "@@@0" : "physics" . "dynamics" {}
 }
 
 # vi:ex:ts=4:et
