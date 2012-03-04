@@ -777,6 +777,17 @@ cdn_variable_get_value (CdnVariable *variable)
 	}
 }
 
+/**
+ * cdn_variable_get_values: (skip)
+ * @variable: a #CdnVariable.
+ * @numr: return value for the number of rows.
+ * @numc: return value for the number of columns.
+ *
+ * Get the value of the variable.
+ *
+ * Returns: the value of the variable.
+ *
+ **/
 gdouble const *
 cdn_variable_get_values (CdnVariable *variable,
                          gint        *numr,
@@ -817,6 +828,74 @@ cdn_variable_get_values (CdnVariable *variable,
 	}
 
 	return ret;
+}
+
+/**
+ * cdn_variable_get_values_flat:
+ * @variable: a #CdnVariable.
+ * @num: return value for the number of elements in the return value.
+ *
+ * Get the value of a variable as a flat array. This is mostly useful for
+ * bindings because it's difficult to bind #cdn_variable_get_values with
+ * gobject introspection.
+ *
+ * Returns: the variable value.
+ *
+ **/
+gdouble const *
+cdn_variable_get_values_flat (CdnVariable *variable,
+                              gint        *num)
+{
+	gint numr;
+	gint numc;
+	gdouble const *ret;
+
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
+
+	ret = cdn_variable_get_values (variable, &numr, &numc);
+
+	if (num)
+	{
+		*num = numr * numc;
+	}
+
+	return ret;
+}
+
+/**
+ * cdn_variable_get_dimension:
+ * @variable: a #CdnVariable.
+ * @numr: (out): the number of rows.
+ * @numc: (out): the number of columns.
+ *
+ * Get the dimension of the variable value.
+ *
+ **/
+void
+cdn_variable_get_dimension (CdnVariable *variable,
+                            gint        *numr,
+                            gint        *numc)
+{
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
+
+	if (variable->priv->expression)
+	{
+		cdn_expression_get_dimension (variable->priv->expression,
+		                              numr,
+		                              numc);
+	}
+	else
+	{
+		if (numr)
+		{
+			*numr = 0;
+		}
+
+		if (numc)
+		{
+			*numc = 0;
+		}
+	}
 }
 
 /**

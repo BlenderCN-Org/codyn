@@ -122,6 +122,8 @@ gdouble const     *cdn_variable_get_values              (CdnVariable        *pro
                                                          gint               *numc);
 
 CdnExpression     *cdn_variable_get_expression          (CdnVariable        *property);
+gdouble const     *cdn_variable_get_values_flat         (CdnVariable        *variable,
+                                                         gint               *num);
 
 void               cdn_variable_set_value               (CdnVariable        *property,
                                                          gdouble             value);
