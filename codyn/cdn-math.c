@@ -98,16 +98,18 @@ foreach_element2 (CdnStack       *stack,
 		gint start;
 		gint i;
 
-		start = cdn_stack_count (stack) - 1 - num1;
-		second = cdn_stack_at (stack, start);
+		second = cdn_stack_pop (stack);
+		start = cdn_stack_count (stack) - num1;
 
 		for (i = 0; i < num1; ++i)
 		{
-			cdn_stack_set_at (stack, start, op (cdn_stack_at (stack, start), second));
+			cdn_stack_set_at (stack,
+			                  start,
+			                  op (cdn_stack_at (stack,
+			                                    start),
+			                      second));
 			++start;
 		}
-
-		cdn_stack_pop (stack);
 	}
 	else
 	{
