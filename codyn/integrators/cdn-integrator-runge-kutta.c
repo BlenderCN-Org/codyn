@@ -124,6 +124,9 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
                     gdouble                  norm)
 {
 	guint i = 0;
+	guint n;
+	gint numr;
+	gint numc;
 
 	while (integrated)
 	{
@@ -132,28 +135,20 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 		if (order == 0)
 		{
 			gdouble const *vals;
-			gint numr;
-			gint numc;
-			guint n;
 
 			vals = cdn_variable_get_values (prop, &numr, &numc);
 			n = numr * numc;
 
-			memcpy (rk->priv->coefficients[order] + 1,
+			memcpy (rk->priv->coefficients[0] + i,
 			        vals,
 			        sizeof (gdouble) * n);
-
-			i += n;
 		}
 		else
 		{
 			if (order == MAX_COEFFICIENTS)
 			{
 				/* Do the final update right away */
-				gint numr;
-				gint numc;
 				gint j;
-				gint n;
 				gdouble *up;
 
 				up = cdn_variable_get_update (prop, &numr, &numc);
@@ -178,9 +173,6 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 			else
 			{
 				gdouble *ret;
-				gint numr;
-				gint numc;
-				guint n;
 				gint j;
 
 				ret = cdn_variable_get_update (prop, &numr, &numc);
@@ -202,10 +194,10 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 				}
 
 				cdn_variable_set_values (prop, ret, numr, numc);
-
-				i += n;
 			}
 		}
+
+		i += n;
 
 		integrated = g_slist_next (integrated);
 	}
