@@ -165,6 +165,14 @@ EXTRA_DIST = \
 	cdn-enum-types.h.template \
 	cdn-marshal.list
 
+if ENABLE_PYTHON
+overridesdir = $(pyoverridesdir)
+overrides_PYTHON =                      \
+        Cdn.py
+endif
+
+EXTRA_DIST += Cdn.py
+
 if HAVE_INTROSPECTION
 -include $(INTROSPECTION_MAKEFILE)
 INTROSPECTION_GIRS = Cdn-3.0.gir

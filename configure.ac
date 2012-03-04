@@ -30,6 +30,8 @@ PKG_PROG_PKG_CONFIG
 AC_PATH_PROG(GLIB_GENMARSHAL, glib-genmarshal)
 AC_PATH_PROG(GLIB_MKENUMS, glib-mkenums)
 
+AM_PATH_PYTHON
+
 AC_ARG_ENABLE([webots],
 	AS_HELP_STRING([--enable-webots],[Enable building webots bindings (default: disabled)]),
 	[enable_webots=$enableval],
@@ -239,6 +241,31 @@ IO_LIBS_DIR="$libdir/codyn-$CODYN_API_VERSION/io"
 
 AC_SUBST(IO_LIBTOOL_FLAGS)
 AC_SUBST(IO_LIBS_DIR)
+
+dnl ===========================================================================
+dnl Check for python
+dnl ===========================================================================
+PYGOBJECT_REQUIRED=3.0.0
+
+AC_ARG_ENABLE([python],
+              AS_HELP_STRING([--enable-python[=@<:@no/auto/yes@:>@]],[Build with python support]),
+              [enable_python=$enableval],
+              [enable_python="auto"])
+
+if test "x$enable_python" = "xauto"; then
+        PKG_CHECK_EXISTS([pygobject-3.0 >= $PYGOBJECT_REQUIRED],
+                         [enable_python=yes],[enable_python=no])
+fi
+
+if test "x$enable_python" = "xyes"; then
+        PKG_CHECK_MODULES(PYTHON, [pygobject-3.0 >= $PYGOBJECT_REQUIRED])
+
+        pyoverridesdir=`$PYTHON -c "from distutils.sysconfig import get_python_lib; import os; print(os.path.join(get_python_lib(True, False, '$prefix'), 'gi', 'overrides'))"`
+
+        AC_SUBST(pyoverridesdir)
+fi
+
+AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
 
 AC_CONFIG_FILES([
 Makefile
