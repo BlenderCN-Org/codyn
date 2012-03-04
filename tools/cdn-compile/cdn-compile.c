@@ -40,10 +40,166 @@ static gchar const *color_blue = "\e[34m";
 static gchar const *color_bold = "\e[1m";
 static gchar const *color_off = "\e[0m";
 
+static GPtrArray *display;
+
+static gboolean
+parse_display (gchar const  *option_name,
+               gchar const  *value,
+               gpointer      data,
+               GError      **error)
+{
+	g_ptr_array_add (display, g_strdup (value));
+	return TRUE;
+}
+
 static GOptionEntry entries[] = {
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
+	{"display", 'd', 0, G_OPTION_ARG_CALLBACK, parse_display, "Display variable values (e.g. /state_.*/.\"{x,y}\")", "SEL"},
 	{NULL}
 };
+
+static void
+display_variable (CdnVariable *v)
+{
+	gchar *name;
+	gint numr;
+	gint numc;
+	gint r;
+	gint c;
+	gint i;
+	gdouble const *values;
+	gchar *fill;
+
+	name = cdn_variable_get_full_name_for_display (v);
+	g_printf ("%s: ", name);
+	fill = g_strnfill (strlen (name) + 3, ' ');
+
+	g_free (name);
+
+	values = cdn_variable_get_values (v, &numr, &numc);
+
+	if (numr == 1 && numc == 1)
+	{
+		g_free (fill);
+		g_printf ("%.5f\n", values[0]);
+		return;
+	}
+
+	i = 0;
+
+	g_printf ("[");
+
+	for (r = 0; r < numr; ++r)
+	{
+		if (r != 0)
+		{
+			g_printf ("%s", fill);
+		}
+
+		for (c = 0; c < numc; ++c)
+		{
+			gchar *sv;
+
+			if (c != 0)
+			{
+				g_printf (", ");
+			}
+
+			sv = g_strdup_printf ("%.5f", values[i]);
+
+			if (sv[0] != '-')
+			{
+				g_printf (" ");
+			}
+
+			g_printf ("%s", sv);
+			++i;
+		}
+
+		if (r != numr - 1)
+		{
+			g_printf ("\n");
+		}
+	}
+
+	g_printf ("]\n");
+	g_free (fill);
+}
+
+static gint
+display_value (CdnNetwork  *network,
+               gchar const *expr)
+{
+	CdnSelector *sel;
+	GError *err = NULL;
+	CdnEmbeddedContext *context;
+	GSList *selection;
+
+	sel = cdn_selector_parse (CDN_OBJECT (network), expr, &err);
+
+	if (!sel)
+	{
+		g_printerr ("Failed to parse selector `%s': %s\n",
+		            expr,
+		            err->message);
+
+		g_error_free (err);
+		return 1;
+	}
+
+	context = cdn_embedded_context_new ();
+
+	selection = cdn_selector_select (sel,
+	                                 G_OBJECT (network),
+	                                 CDN_SELECTOR_TYPE_VARIABLE,
+	                                 context);
+
+	while (selection)
+	{
+		CdnSelection *s = selection->data;
+		CdnVariable *v;
+
+		v = cdn_selection_get_object (s);
+
+		display_variable (v);
+
+		if (selection->next)
+		{
+			g_printf ("\n");
+		}
+
+		g_object_unref (s);
+		selection = g_slist_delete_link (selection, selection);
+	}
+
+	g_object_unref (sel);
+	return 0;
+}
+
+static gint
+display_values (CdnNetwork *network)
+{
+	gint i;
+
+	for (i = 0; i < display->len; ++i)
+	{
+		gint ret;
+
+		ret = display_value (network, display->pdata[i]);
+
+		if (ret != 0)
+		{
+			return ret;
+		}
+
+		if (i != display->len - 1)
+		{
+			g_printf ("\n");
+		}
+	}
+
+	return 0;
+}
 
 static int
 compile_network (gchar const *filename)
@@ -108,6 +264,8 @@ compile_network (gchar const *filename)
 		return 1;
 	}
 
+	display_values (network);
+
 	g_object_unref (err);
 	g_object_unref (network);
 
@@ -163,6 +321,8 @@ main (int argc, char *argv[])
 	determine_color_support ();
 
 	ctx = g_option_context_new ("NETWORK [--] [PARAMETER...] - compile cdn network");
+
+	display = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free);
 
 	g_option_context_set_summary (ctx,
 	                              "Use a dash '-' for the network name to read from standard input.\n"
