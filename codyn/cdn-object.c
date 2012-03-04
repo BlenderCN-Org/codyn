@@ -1855,8 +1855,8 @@ cdn_object_set_id (CdnObject    *object,
 /**
  * cdn_object_compile:
  * @object: A #CdnObject
- * @context: A #CdnCompileContext
- * @error: (type CdnCompileError): A #CdnCompileError
+ * @context: (allow-none): A #CdnCompileContext
+ * @error: (allow-none) (type CdnCompileError): A #CdnCompileError
  *
  * Compile the object.
  *
