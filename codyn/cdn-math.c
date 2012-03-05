@@ -1185,9 +1185,9 @@ slinsolve_factorize (gdouble *A,
 	// First perform LTDL factorization of A exploiting sparsity
 	for (k = n - 1; k >= 0; --k)
 	{
-		gint i = (gint)(L[k] + 0.5);
+		gint i = (gint)L[k];
 
-		while (i != 0)
+		while (i >= 0)
 		{
 			gint nr;
 			gint nir;
@@ -1204,14 +1204,14 @@ slinsolve_factorize (gdouble *A,
 			j = i;
 			nir = i * n;
 
-			while (j != 0)
+			while (j >= 0)
 			{
-				A[nir + j] += a * A[nr + j];
-				j = (gint)(L[j] + 0.5);
+				A[nir + j] -= a * A[nr + j];
+				j = (gint)L[j];
 			}
 
 			A[idx1] = a;
-			i = (gint)(L[i] + 0.5);
+			i = (gint)L[i];
 		}
 	}
 }
@@ -1225,24 +1225,43 @@ slinsolve_backsubs (gdouble *ptrA,
                     gint     idx)
 {
 	gint i;
+	gint diagidx;
 
-	// Back substitute solving for L^-1 B
-	for (i = 0; i < n; ++i)
+	diagidx = 0;
+
+	// First solve for b = L^-T b
+	for (i = n - 1; i >= 0; --i)
 	{
-		gint j;
 		gint iidx;
+		gint j;
 
-		j = (gint)(ptrL[i] + 0.5);
+		j = (gint)ptrL[i];
 		iidx = i * n;
 
-		while (j != 0)
+		while (j >= 0)
 		{
-			ptrB[idx] -= ptrA[iidx + j] * ptrB[idx + j * numc];
-			j = (gint)(ptrL[j] + 0.5);
+			ptrB[j] -= ptrA[iidx + j] * ptrB[i];
+			j = (gint)ptrL[j];
 		}
+	}
 
-		ptrB[idx] /= ptrA[iidx + i];
-		idx += numc;
+	// Then finally solve for L^-1 b
+	for (i = 0; i < n; ++i)
+	{
+		gint iidx;
+		gint j;
+
+		j = (gint)ptrL[i];
+		iidx = i * n;
+
+		ptrB[i] /= ptrA[diagidx];
+		diagidx += n + 1;
+
+		while (j >= 0)
+		{
+			ptrB[i] -= ptrA[iidx + j] * ptrB[j];
+			j = (gint)ptrL[j];
+		}
 	}
 }
 static void
