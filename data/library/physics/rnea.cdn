@@ -17,7 +17,9 @@ edge has-template("physics" . "joint")
     velocity <= "output.transform ∙ velocity + output.jointVelocity"
 
     ## Recursive joint acceleration (from parent to child)
-    acceleration <= "output.transform ∙ acceleration + Sp.CrossMotion(output.velocity) ∙ output.jointVelocity"
+    acceleration <= "output.transform ∙ acceleration +
+                     output.motionSubspace ∙ output.ddq_inverse +
+                     Sp.CrossMotion(output.velocity) ∙ output.jointVelocity"
 }
 
 node "@bodies"
@@ -32,8 +34,6 @@ node "@bodies"
     edge
     {
         force <= "spI ∙ acceleration + Sp.CrossForce(velocity) ∙ spI ∙ velocity - fext"
-
-        acceleration <= "motionSubspace ∙ ddq_inverse"
     }
 }
 

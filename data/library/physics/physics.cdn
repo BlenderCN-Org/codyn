@@ -54,7 +54,7 @@ templates
 
             ## Body acceleration due to gravitational and coriolos effects,
             ## defaults to gravity
-            acceleration = "transform ∙ [0; 0; 0; gᵀ]"
+            acceleration = "transform ∙ [0; 0; 0; gᵀ] + motionSubspace ∙ ddq_inverse"
 
             ## Transform from the base to the joint
             baseTransform = "transform"

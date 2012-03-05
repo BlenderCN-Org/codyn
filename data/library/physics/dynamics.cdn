@@ -15,10 +15,13 @@ node "dynamics"
     H = "zeros(@bodies[~], @bodies[~])"
 
     ## Generalized accelerations
-    ddq = "linsolve(H, τ - C)"
+    ddq = "slinsolve(H, τ - C, parents)"
 
     ## Jacobian
     J = "zeros(6, @bodies[~])"
+
+    ## Parent indices
+    parents = "[{@parents||@0;@1}]"
 }
 
 node "@bodies"
@@ -44,7 +47,7 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 
         "H[@i, @j]" <= "H_@i"
 
-        [if("$(@i != @j)")]
+        [ifstr("$$(@i != @j,1,)")]
         {
             "H[@j, @i]" <= "H_@i"
         }
@@ -65,7 +68,7 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 
     edge "force_@0" from "@@0" to "dynamics"
     {
-        "τ[@@@@0[!]]" <= "τ"
+        "τ[@@@@0[!], 0]" <= "τ"
     }
 }
 
