@@ -3198,7 +3198,7 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 			cdn_embedded_context_save_defines (context->priv->embedded,
 			                                   TRUE);
 
-			cdn_embedded_context_set_selection (context->priv->embedded,
+			cdn_embedded_context_add_selection (context->priv->embedded,
 			                                    it->data);
 
 			temps = get_templates (context,
