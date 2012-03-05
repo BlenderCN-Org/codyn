@@ -245,7 +245,8 @@ AC_SUBST(IO_LIBS_DIR)
 dnl ===========================================================================
 dnl Check for python
 dnl ===========================================================================
-PYGOBJECT_REQUIRED=3.0.0
+PYGOBJECT3_REQUIRED=3.0.0
+PYGOBJECT2_REQUIRED=2.0.0
 
 AC_ARG_ENABLE([python],
               AS_HELP_STRING([--enable-python[=@<:@no/auto/yes@:>@]],[Build with python support]),
@@ -253,16 +254,26 @@ AC_ARG_ENABLE([python],
               [enable_python="auto"])
 
 if test "x$enable_python" = "xauto"; then
-        PKG_CHECK_EXISTS([pygobject-3.0 >= $PYGOBJECT_REQUIRED],
-                         [enable_python=yes],[enable_python=no])
+	PKG_CHECK_EXISTS([pygobject-3.0 >= $PYGOBJECT3_REQUIRED],
+	                 [enable_python=yes],
+	                 [PKG_CHECK_EXISTS([pygobject-2.0 >= $PYGOBJECT2_REQUIRED],
+	                                   [enable_python=yes],
+	                                   [enable_python=no])])
 fi
 
 if test "x$enable_python" = "xyes"; then
-        PKG_CHECK_MODULES(PYTHON, [pygobject-3.0 >= $PYGOBJECT_REQUIRED])
+	PKG_CHECK_EXISTS([pygobject-3.0 >= $PYGOBJECT3_REQUIRED],
+	                 [PYGOBJECT_REQUIRED=$PYGOBJECT3_REQUIRED
+	                  PYGOBJECT_PKG=pygobject-3.0],
+	                 [PYGOBJECT_REQUIRED=$PYGOBJECT2_REQUIRED
+	                  PYGOBJECT_PKG=pygobject-2.0])
 
-        pyoverridesdir=`$PYTHON -c "from distutils.sysconfig import get_python_lib; import os; print(os.path.join(get_python_lib(True, False, '$prefix'), 'gi', 'overrides'))"`
+	PKG_CHECK_MODULES(PYTHON,
+	                  [$PYGOBJECT_PKG >= $PYGOBJECT_REQUIRED])
 
-        AC_SUBST(pyoverridesdir)
+	pyoverridesdir=`$PYTHON -c "from distutils.sysconfig import get_python_lib; import os; print(os.path.join(get_python_lib(True, False, '$prefix'), 'gi', 'overrides'))"`
+
+	AC_SUBST(pyoverridesdir)
 fi
 
 AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
@@ -325,5 +336,6 @@ Configuration:
 	cdn-archive:            $have_tar
 	network support:        $have_networking
 	wii support:            $enable_wii
+	python support:         $enable_python
 "
 
