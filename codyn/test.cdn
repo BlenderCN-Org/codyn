@@ -31,7 +31,7 @@ node "system"
 
     edge from "b1" to "b2" : physics.joint {}
 
-    include "physics/fd.cdn"
+    include "physics/dynamics.cdn"
 }
 
 # vi:ex:ts=4:et

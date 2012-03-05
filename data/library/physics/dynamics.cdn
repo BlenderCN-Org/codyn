@@ -3,7 +3,7 @@ include "crba.cdn"
 
 [once] include "findbodies.cdn"
 
-node "fd"
+node "dynamics"
 {
     ## Generalized forces
     τ = "zeros(@bodies[~], 1)"
@@ -28,7 +28,7 @@ node "@bodies"
 }
 
 # Fill in H for all relevant body relationships
-edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "fd"
+edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dynamics"
 {
     defines
     {
@@ -58,9 +58,14 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "fd"
 # Integrate accelerations on bodies
 [each(@bodies)]
 {
-    edge "acceleration_@0" from "fd" to "@@@0"
+    edge "acceleration_@0" from "dynamics" to "@@@0"
     {
-        dq <= "ddq[@@@@@0[!]]"
+        ddq <= "ddq[@@@@@0[!]]"
+    }
+
+    edge "force_@0" from "@@0" to "dynamics"
+    {
+        "τ[@@@@0[!]]" <= "τ"
     }
 }
 
