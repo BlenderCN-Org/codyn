@@ -37,7 +37,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_EDGE T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_INPUT T_KEY_OUTPUT T_KEY_INPUTS T_KEY_OUTPUTS T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_NOT T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_INPUT_NAME T_KEY_OUTPUT_NAME T_KEY_PHASE T_KEY_EVENT T_KEY_TERMINATE T_KEY_ANY T_KEY_SET T_KEY_RECURSE T_KEY_IO T_KEY_WITHIN
+%token T_KEY_EDGE T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_INPUT T_KEY_OUTPUT T_KEY_INPUTS T_KEY_OUTPUTS T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_NOT T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_INPUT_NAME T_KEY_OUTPUT_NAME T_KEY_PHASE T_KEY_EVENT T_KEY_TERMINATE T_KEY_ANY T_KEY_SET T_KEY_RECURSE T_KEY_IO T_KEY_WITHIN T_KEY_IFSTR T_KEY_NOTSTR T_KEY_APPEND_CONTEXT
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -165,6 +165,9 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <attribute> attribute_each
 %type <attribute> attribute_bidirectional
 %type <attribute> attribute_if
+%type <attribute> attribute_not
+%type <attribute> attribute_ifstr
+%type <attribute> attribute_notstr
 %type <attribute> attribute_with
 %type <attribute> attribute_no_self
 %type <attribute> attribute_self
@@ -574,8 +577,35 @@ attribute_if
 	: T_KEY_IF '(' ')'		{ $$ = cdn_attribute_new ("if"); }
 	| T_KEY_IF
 	  '('
-	  selector_or_string_list
+	  selector_pseudo_selector_args
 	  ')'				{ $$ = cdn_attribute_new ("if");
+					  cdn_attribute_set_arguments ($$, $3); }
+	;
+
+attribute_not
+	: T_KEY_NOT '(' ')'		{ $$ = cdn_attribute_new ("not"); }
+	| T_KEY_NOT
+	  '('
+	  selector_pseudo_selector_args
+	  ')'				{ $$ = cdn_attribute_new ("not");
+					  cdn_attribute_set_arguments ($$, $3); }
+	;
+
+attribute_ifstr
+	: T_KEY_IFSTR '(' ')'		{ $$ = cdn_attribute_new ("ifstr"); }
+	| T_KEY_IFSTR
+	  '('
+	  string_list
+	  ')'				{ $$ = cdn_attribute_new ("ifstr");
+					  cdn_attribute_set_arguments ($$, $3); }
+	;
+
+attribute_notstr
+	: T_KEY_NOTSTR '(' ')'		{ $$ = cdn_attribute_new ("notstr"); }
+	| T_KEY_NOTSTR
+	  '('
+	  string_list
+	  ')'				{ $$ = cdn_attribute_new ("notstr");
 					  cdn_attribute_set_arguments ($$, $3); }
 	;
 
@@ -622,6 +652,9 @@ attribute_contents
 	| attribute_each
 	| attribute_bidirectional
 	| attribute_if
+	| attribute_not
+	| attribute_ifstr
+	| attribute_notstr
 	| attribute_with
 	| attribute_no_self
 	| attribute_self
@@ -1287,6 +1320,8 @@ selector_pseudo_selector_key_real
 	| T_KEY_RECURSE				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_RECURSE; }
 	| T_KEY_IF				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_IF; }
 	| T_KEY_NOT				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_NOT; }
+	| T_KEY_IFSTR				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_IFSTR; }
+	| T_KEY_NOTSTR				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_NOTSTR; }
 	;
 
 selector_pseudo_selector_key
@@ -1322,6 +1357,7 @@ selector_pseudo_strargs_key_real
 	| T_KEY_SUBSET				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_SUBSET; }
 	| T_KEY_DEBUG				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_DEBUG; }
 	| T_KEY_HAS_TAG				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_HAS_TAG; }
+	| T_KEY_APPEND_CONTEXT			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_APPEND_CONTEXT; }
 	;
 
 selector_pseudo_strargs_key

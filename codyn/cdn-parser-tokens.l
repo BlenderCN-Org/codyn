@@ -219,6 +219,8 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"actions"		return T_KEY_ACTION;
 <INITIAL,onlyselector>"not"		return T_KEY_NOT;
 <INITIAL,onlyselector>"if"		return T_KEY_IF;
+<INITIAL,onlyselector>"ifstr"		return T_KEY_IFSTR;
+<INITIAL,onlyselector>"notstr"		return T_KEY_NOTSTR;
 <INITIAL,onlyselector>"from-set"	return T_KEY_FROM_SET;
 <INITIAL,onlyselector>"type"		return T_KEY_TYPE;
 <INITIAL,onlyselector>"has-flag"	return T_KEY_HAS_FLAG;
@@ -232,6 +234,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"input-name"	return T_KEY_INPUT_NAME;
 <INITIAL,onlyselector>"output-name"	return T_KEY_OUTPUT_NAME;
 <INITIAL,onlyselector>"recurse"		return T_KEY_RECURSE;
+<INITIAL,onlyselector>"append-context"	return T_KEY_APPEND_CONTEXT;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;

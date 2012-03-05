@@ -881,9 +881,11 @@ each_selections (CdnParserContext *context,
 	gint i;
 	GSList *ret = NULL;
 	CdnAttribute *attrif;
+	CdnAttribute *attrifstr;
 	CdnAttribute *attreach;
 
 	attrif = find_attribute (attributes, "if");
+	attrifstr = find_attribute (attributes, "ifstr");
 	attreach = find_attribute (attributes, "each");
 
 	if (selected)
@@ -896,7 +898,7 @@ each_selections (CdnParserContext *context,
 		*couldselect = FALSE;
 	}
 
-	if (!attrif && !attreach)
+	if (!attrif && !attrifstr && !attreach)
 	{
 		return copy_selections (selections, copy_defines);
 	}
@@ -925,6 +927,25 @@ each_selections (CdnParserContext *context,
 		for (i = 0; i < cdn_attribute_num_arguments (attrif); ++i)
 		{
 			gpointer obj = cdn_attribute_get_argument (attrif, i);
+
+			ret = each_selections_attr (context,
+			                            selections,
+			                            attributes,
+			                            type,
+			                            selected,
+			                            couldselect,
+			                            copy_defines,
+			                            obj,
+			                            TRUE,
+			                            ret);
+		}
+	}
+
+	if (attrifstr)
+	{
+		for (i = 0; i < cdn_attribute_num_arguments (attrifstr); ++i)
+		{
+			gpointer obj = cdn_attribute_get_argument (attrifstr, i);
 
 			ret = each_selections_attr (context,
 			                            selections,
