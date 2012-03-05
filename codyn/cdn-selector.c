@@ -1345,7 +1345,7 @@ selector_pseudo_ins_outs (CdnSelector        *self,
 			ret = g_slist_prepend (ret,
 			                       make_child_selection (sel,
 			                                             NULL,
-			                                             o));
+			                                             edges->data));
 		}
 
 		if (o != NULL)
