@@ -893,12 +893,12 @@ op_mindex (CdnStack *stack,
 
 	if (a1 && !a2)
 	{
-		gint r = (gint)rint (*iptr1) * vcols;
+		gint r = (gint)(*iptr1 + 0.5) * vcols;
 		gint i;
 
 		for (i = 0; i < n; ++i)
 		{
-			gint c = (gint)rint (*iptr2++);
+			gint c = (gint)(*iptr2++ + 0.5);
 			gint idx = r + c;
 
 			if (idx < 0 || idx >= nv)
@@ -915,12 +915,12 @@ op_mindex (CdnStack *stack,
 	}
 	else if (a2 && !a1)
 	{
-		gint c = (gint)rint (*iptr2);
+		gint c = (gint)(*iptr2 + 0.5);
 		gint i;
 
 		for (i = 0; i < n; ++i)
 		{
-			gint r = (gint)rint (*iptr1);
+			gint r = (gint)(*iptr1 + 0.5);
 			gint idx = r * vcols + c;
 
 			if (idx < 0 || idx >= nv)
@@ -941,8 +941,8 @@ op_mindex (CdnStack *stack,
 
 		for (i = 0; i < n; ++i)
 		{
-			gint c = (gint)rint (*iptr2++);
-			gint r = (gint)rint (*iptr1);
+			gint c = (gint)(*iptr2++ + 0.5);
+			gint r = (gint)(*iptr1 + 0.5);
 
 			gint idx = r * vcols + c;
 
@@ -982,7 +982,7 @@ op_index (CdnStack *stack,
 
 	for (i = 0; i < num1; ++i)
 	{
-		gint idx = (gint)rint (*iptr);
+		gint idx = (gint)(*iptr + 0.5);
 
 		if (idx < num2)
 		{
@@ -1011,7 +1011,7 @@ op_lindex (CdnStack *stack,
 
 	n = a1 ? argdim[2] * argdim[3] : argdim[4] * argdim[5];
 
-	gint w = (gint)rint (cdn_stack_pop (stack));
+	gint w = (gint)(cdn_stack_pop (stack) + 0.5);
 
 	ptr2 = cdn_stack_output_ptr (stack) - argdim[2] * argdim[3];
 	ptr1 = ptr2 - argdim[4] * argdim[5];
@@ -1020,11 +1020,11 @@ op_lindex (CdnStack *stack,
 	{
 		gint i;
 
-		si = (gint)rint (*ptr1) * w;
+		si = (gint)(*ptr1 + 0.5) * w;
 
 		for (i = 0; i < n; ++i)
 		{
-			*ptr1++ = si + (gint)rint (*ptr2++);
+			*ptr1++ = si + (gint)(*ptr2++ + 0.5);
 		}
 
 		cdn_stack_pop (stack);
@@ -1033,11 +1033,11 @@ op_lindex (CdnStack *stack,
 	{
 		gint i;
 
-		si = (gint)rint (*ptr2);
+		si = (gint)(*ptr2 + 0.5);
 
 		for (i = 0; i < n; ++i)
 		{
-			*ptr1 = si + ((gint)rint (*ptr1)) * w;
+			*ptr1 = si + ((gint)(*ptr1 + 0.5)) * w;
 			++ptr1;
 		}
 
@@ -1049,7 +1049,7 @@ op_lindex (CdnStack *stack,
 
 		for (i = 0; i < n; ++i)
 		{
-			*ptr1 = (gint)rint (*ptr2++) + ((gint)rint (*ptr1)) * w;
+			*ptr1 = (gint)(*ptr2++ + 0.5) + ((gint)(*ptr1 + 0.5)) * w;
 			++ptr1;
 		}
 
@@ -1173,6 +1173,117 @@ op_linsolve (CdnStack *stack,
 	               argdim[0]);
 
 	cdn_stack_popn (stack, numa);
+}
+
+static void
+slinsolve_factorize (gdouble *A,
+                     gdouble *L,
+                     gint     n)
+{
+	gint k;
+
+	// First perform LTDL factorization of A exploiting sparsity
+	for (k = n - 1; k >= 0; --k)
+	{
+		gint i = (gint)(L[k] + 0.5);
+
+		while (i != 0)
+		{
+			gint nr;
+			gint nir;
+			gint idx1;
+			gint idx2;
+			gint j;
+			gdouble a;
+
+			nr = k * n;
+			idx1 = nr + i;
+			idx2 = nr + k;
+
+			a = A[idx1] / A[idx2];
+			j = i;
+			nir = i * n;
+
+			while (j != 0)
+			{
+				A[nir + j] += a * A[nr + j];
+				j = (gint)(L[j] + 0.5);
+			}
+
+			A[idx1] = a;
+			i = (gint)(L[i] + 0.5);
+		}
+	}
+}
+
+static void
+slinsolve_backsubs (gdouble *ptrA,
+                    gdouble *ptrB,
+                    gdouble *ptrL,
+                    gint     n,
+                    gint     numc,
+                    gint     idx)
+{
+	gint i;
+
+	// Back substitute solving for L^-1 B
+	for (i = 0; i < n; ++i)
+	{
+		gint j;
+		gint iidx;
+
+		j = (gint)(ptrL[i] + 0.5);
+		iidx = i * n;
+
+		while (j != 0)
+		{
+			ptrB[idx] -= ptrA[iidx + j] * ptrB[idx + j * numc];
+			j = (gint)(ptrL[j] + 0.5);
+		}
+
+		ptrB[idx] /= ptrA[iidx + i];
+		idx += numc;
+	}
+}
+static void
+op_slinsolve (CdnStack *stack,
+              gint      numargs,
+              gint     *argdim)
+{
+	gdouble *ptrA;
+	gdouble *ptrB;
+	gdouble *ptrL;
+	gint numa;
+	gint numl;
+	gint numb;
+	gint i;
+	gint n;
+
+	numa = argdim[0] * argdim[1];
+	numl = argdim[2] * argdim[3];
+	numb = argdim[4] * argdim[5];
+
+	ptrA = cdn_stack_output_ptr (stack) - numa;
+	ptrL = ptrA - numl;
+	ptrB = ptrL - numb;
+
+	n = argdim[0];
+
+	// Factorized A in place using LTDL factorization
+	slinsolve_factorize (ptrA, ptrL, n);
+
+	for (i = 0; i < argdim[5]; ++i)
+	{
+		slinsolve_backsubs (ptrA,
+		                    ptrB,
+		                    ptrL,
+		                    n,
+		                    argdim[5],
+		                    i);
+	}
+
+	// Finally pop lambda and A
+	cdn_stack_popn (stack, numa + numl);
 }
 
 static void
@@ -1335,6 +1446,7 @@ static FunctionEntry function_entries[] = {
 	{"transpose", op_transpose, 1, FALSE},
 	{"inverse", op_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
+	{"slinsolve", op_slinsolve, 3, FALSE},
 	{"sum", op_sum, -1, FALSE},
 	{"product", op_product, -1, FALSE},
 	{"length", op_length, 1, FALSE},
@@ -1848,6 +1960,57 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 
 			// Need extra space to store the pivoting coefficients
 			*extra_space = argdim[0];
+		break;
+		case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
+			// A x = B, λ
+			// with order of arguments: B, λ, A
+			if (argdim[0] != argdim[1])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Cannot solve a system which is not square (%d, %d)",
+				             argdim[0],
+				             argdim[1]);
+
+				return FALSE;
+			}
+
+			if (argdim[0] != argdim[4])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Invalid dimensions of B (in A(λ, λ)x = B(λ)), expected `%d' rows but got `%d' rows",
+				             argdim[0], argdim[2]);
+
+				return FALSE;
+			}
+
+			if (argdim[0] != argdim[2])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Invalid dimensions of λ (in A(λ, λ)x = B(λ)), expected `%d' rows but got `%d' rows",
+				             argdim[0], argdim[4]);
+
+				return FALSE;
+			}
+
+			if (argdim[5] != 1)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "The number of columns of λ must 1 (got `%d')",
+				             argdim[5]);
+
+				return FALSE;
+			}
+
+			outargdim[0] = argdim[2];
+			outargdim[1] = argdim[3];
 		break;
 		case CDN_MATH_FUNCTION_TYPE_TILDE:
 			if (argdim[0] * argdim[1] != 3)

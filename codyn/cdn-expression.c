@@ -1857,7 +1857,8 @@ parse_function (CdnExpression *expression,
 				// in that order
 				swap_arguments (expression, context);
 			}
-			else if (fid == CDN_MATH_FUNCTION_TYPE_INDEX)
+			else if (fid == CDN_MATH_FUNCTION_TYPE_INDEX ||
+			         fid == CDN_MATH_FUNCTION_TYPE_SLINSOLVE)
 			{
 				// For index, we move the first argument to
 				// the last (i.e. the thing to index)
