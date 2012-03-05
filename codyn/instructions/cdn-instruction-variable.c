@@ -74,7 +74,6 @@ cdn_instruction_variable_execute (CdnInstruction *instruction,
                                   CdnStack       *stack)
 {
 	gdouble const *values;
-	gint i;
 	gint numr;
 	gint numc;
 
@@ -84,11 +83,7 @@ cdn_instruction_variable_execute (CdnInstruction *instruction,
 	self = (CdnInstructionVariable *)instruction;
 
 	values = cdn_variable_get_values (self->priv->property, &numr, &numc);
-
-	for (i = 0; i < numr * numc; ++i)
-	{
-		cdn_stack_push (stack, values[i]);
-	}
+	cdn_stack_pushn (stack, values, numr * numc);
 }
 
 static CdnStackManipulation const *
