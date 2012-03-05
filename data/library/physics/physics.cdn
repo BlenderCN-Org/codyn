@@ -62,8 +62,14 @@ templates
             ## Jacobian column for this body
             J = "Sp.Inverse(baseTransform) ∙ motionSubspace"
 
-            ## State variable of this body
-            q'' = "0"
+            ## States
+            q̈ = "ddq"
+
+            ## Variable for storing derived accelerations
+            ddq = 0
+
+            ## Variable for storing inverse known accelerations
+            ddq_inverse = 0
         }
 
         edge "joint"

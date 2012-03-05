@@ -32,6 +32,8 @@ node "@bodies"
     edge
     {
         force <= "spI ∙ acceleration + Sp.CrossForce(velocity) ∙ spI ∙ velocity - fext"
+
+        acceleration <= "motionSubspace ∙ ddq_inverse"
     }
 }
 
