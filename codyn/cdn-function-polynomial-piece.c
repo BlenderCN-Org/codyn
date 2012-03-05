@@ -482,6 +482,17 @@ derive_coefficients (gdouble *coefficients,
 	}
 }
 
+/**
+ * cdn_function_polynomial_piece_get_derivative:
+ * @piece: a #CdnFunctionPolynomialPiece
+ * @order: the order of derivation
+ *
+ * Get a new polynomial piece representing the @order derivative of the original
+ * piece.
+ *
+ * Returns: (transfer full): a #CdnFunctionPolynomialPiece
+ *
+ **/
 CdnFunctionPolynomialPiece *
 cdn_function_polynomial_piece_get_derivative (CdnFunctionPolynomialPiece *piece,
                                               gint                        order)
