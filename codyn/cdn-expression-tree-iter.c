@@ -6,7 +6,6 @@
 #include "cdn-stack-private.h"
 #include "cdn-operators.h"
 #include "cdn-debug.h"
-#include "cdn-symbolic.h"
 #include "tree-algorithms/cdn-tree-algorithms-private.h"
 
 GType

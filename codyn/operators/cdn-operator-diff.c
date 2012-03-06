@@ -25,7 +25,6 @@
 #include "cdn-variable.h"
 #include "cdn-usable.h"
 #include "integrators/cdn-integrator.h"
-#include "cdn-symbolic.h"
 #include "cdn-function.h"
 #include "cdn-expression-tree-iter.h"
 #include "cdn-network.h"
@@ -188,8 +187,8 @@ validate_arguments (GSList const  *expressions,
 	if (!*func)
 	{
 		g_set_error (error,
-		             CDN_SYMBOLIC_ERROR,
-		             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
 		             "Expected function reference but got `%s'. Use df_dt[] for deriving expressions",
 		             cdn_expression_get_as_string (expressions->data));
 
@@ -214,8 +213,8 @@ validate_arguments (GSList const  *expressions,
 		if (!arg)
 		{
 			g_set_error (error,
-			             CDN_SYMBOLIC_ERROR,
-			             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
+			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
 			             "Expected function variable but got `%s' for diff of `%s'",
 			             cdn_expression_get_as_string (towards->data),
 			             cdn_expression_get_as_string (expr));
@@ -291,7 +290,9 @@ cdn_operator_diff_initialize (CdnOperator        *op,
 	GList *item;
 	gint i;
 	GList *newsymargs;
-	CdnExpression *derived = NULL;
+	CdnExpressionTreeIter *derived = NULL;
+	CdnExpressionTreeIter *iter = NULL;
+	CdnExpression *expr;
 
 	if (!CDN_OPERATOR_CLASS (cdn_operator_diff_parent_class)->initialize (op,
 	                                                                      expressions,
@@ -419,8 +420,8 @@ cdn_operator_diff_initialize (CdnOperator        *op,
 					// is strange, error out...
 					g_list_free (newsymargs);
 					g_set_error (error,
-					             CDN_SYMBOLIC_ERROR,
-					             CDN_SYMBOLIC_ERROR_INVALID,
+					             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+					             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_INVALID,
 					             "There is already an variable `%s' but it is not a derivative of `%s'",
 					             cdn_variable_get_name (oprop),
 					             cdn_variable_get_name (sprop));
@@ -444,15 +445,21 @@ cdn_operator_diff_initialize (CdnOperator        *op,
 
 	g_list_free (newsymargs);
 
-	derived = cdn_symbolic_derive (expressions[0]->data,
-	                               NULL,
-	                               property_map,
-	                               NULL,
-	                               diff->priv->order,
-	                               CDN_SYMBOLIC_DERIVE_SIMPLIFY,
-	                               error);
+	iter = cdn_expression_tree_iter_new (expressions[0]->data);
 
-	cdn_function_set_expression (nf, derived);
+	derived = cdn_expression_tree_iter_derive (expressions[0]->data,
+	                                           NULL,
+	                                           property_map,
+	                                           NULL,
+	                                           diff->priv->order,
+	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY,
+	                                           error);
+
+	cdn_expression_tree_iter_free (iter);
+	expr = cdn_expression_tree_iter_to_expression (derived);
+	cdn_expression_tree_iter_free (derived);
+
+	cdn_function_set_expression (nf, expr);
 
 cleanup:
 	diff->priv->function = nf;

@@ -25,7 +25,6 @@
 #include "cdn-variable.h"
 #include "cdn-usable.h"
 #include "integrators/cdn-integrator.h"
-#include "cdn-symbolic.h"
 #include "cdn-function.h"
 #include "cdn-expression-tree-iter.h"
 #include "cdn-network.h"
@@ -140,7 +139,9 @@ cdn_operator_simplify_initialize (CdnOperator        *op,
 	CdnFunction *func;
 	CdnFunction *nf = NULL;
 	gchar *s;
-	CdnExpression *derived;
+	CdnExpressionTreeIter *simplified;
+	CdnExpressionTreeIter *iter;
+	CdnExpression *expr;
 
 	if (!CDN_OPERATOR_CLASS (cdn_operator_simplify_parent_class)->initialize (op,
 	                                                                          expressions,
@@ -192,12 +193,18 @@ cdn_operator_simplify_initialize (CdnOperator        *op,
 
 	cdn_function_set_expression (nf, cdn_expression_new0 ());
 
-	derived = cdn_symbolic_simplify (cdn_function_get_expression (func));
+	iter = cdn_expression_tree_iter_new (cdn_function_get_expression (func));
+
+	simplified = cdn_expression_tree_iter_simplify (iter);
+	cdn_expression_tree_iter_free (iter);
+
+	expr = cdn_expression_tree_iter_to_expression (simplified);
+	cdn_expression_tree_iter_free (simplified);
 
 	// Replace args
-	replace_args (func, nf, derived);
+	replace_args (func, nf, expr);
 
-	cdn_function_set_expression (nf, derived);
+	cdn_function_set_expression (nf, expr);
 	simplify->priv->function = nf;
 
 	return TRUE;

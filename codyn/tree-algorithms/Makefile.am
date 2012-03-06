@@ -12,6 +12,7 @@ libtreealgorithms_la_SOURCES = 	\
 	cdn-tree-algorithms-linsolve.c \
 	cdn-tree-algorithms-private.c \
 	cdn-tree-algorithms-simplify.c \
+	cdn-tree-algorithms-derive.c \
 	cdn-tree-algorithms-string.c \
 	cdn-tree-algorithms-substitute.c
 

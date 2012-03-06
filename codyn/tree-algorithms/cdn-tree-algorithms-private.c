@@ -3,7 +3,13 @@
 CdnExpressionTreeIter *
 iter_new_numstr (gchar const *num)
 {
-	return iter_new (cdn_instruction_number_new_from_string (num));
+	return iter_new_take (cdn_instruction_number_new_from_string (num));
+}
+
+CdnExpressionTreeIter *
+iter_new_num (gdouble value)
+{
+	return iter_new_take (cdn_instruction_number_new (value));
 }
 
 CdnExpressionTreeIter *
@@ -66,23 +72,36 @@ iter_invalidate_cache_down (CdnExpressionTreeIter *iter)
 }
 
 CdnExpressionTreeIter *
-iter_new (CdnInstruction *instruction)
+iter_new_take (CdnInstruction *instruction)
 {
 	CdnExpressionTreeIter *ret;
 
 	ret = g_slice_new0 (CdnExpressionTreeIter);
 
-	ret->instruction = CDN_INSTRUCTION (cdn_mini_object_copy (CDN_MINI_OBJECT (instruction)));
-
+	ret->instruction = instruction;
 	return ret;
 }
 
 CdnExpressionTreeIter *
-iter_new_sized (CdnInstruction *instruction, gint num)
+iter_new (CdnInstruction *instruction)
+{
+	return iter_new_take (cdn_mini_object_copy (instruction));
+}
+
+CdnExpressionTreeIter *
+iter_new_sized (CdnInstruction *instruction,
+                gint num)
+{
+	return iter_new_sized_take (cdn_mini_object_copy (instruction), num);
+}
+
+CdnExpressionTreeIter *
+iter_new_sized_take (CdnInstruction *instruction,
+                     gint num)
 {
 	CdnExpressionTreeIter *ret;
 
-	ret = iter_new (instruction);
+	ret = iter_new_take (instruction);
 	ret->num_children = num;
 
 	ret->children = g_new0 (CdnExpressionTreeIter *, num);
@@ -359,6 +378,37 @@ iter_is_number (CdnExpressionTreeIter const *iter,
 	return FALSE;
 }
 
+static gboolean
+cmp_double (gdouble a,
+            gdouble b)
+{
+	return fabs (a - b) <= 10e-13;
+}
+
+gboolean
+iter_is_natural_number (CdnExpressionTreeIter const *iter,
+                        gint                        *num)
+{
+	gdouble numf;
+
+	if (!iter_is_number (iter, &numf) || numf < 0)
+	{
+		return FALSE;
+	}
+
+	if (cmp_double (rint (numf), numf))
+	{
+		if (num)
+		{
+			*num = rint (numf);
+		}
+
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 gboolean
 iter_is_function (CdnExpressionTreeIter const *iter,
                   CdnMathFunctionType         *type)
@@ -374,4 +424,58 @@ iter_is_function (CdnExpressionTreeIter const *iter,
 	}
 
 	return FALSE;
+}
+
+CdnExpressionTreeIter *
+iter_new_bfunc (CdnMathFunctionType    type,
+                CdnExpressionTreeIter *a,
+                CdnExpressionTreeIter *b,
+                gboolean               take_a,
+                gboolean               take_b)
+{
+	gint argdim[4];
+	CdnStackManipulation const *smanipa;
+	CdnStackManipulation const *smanipb;
+	CdnExpressionTreeIter *ret;
+
+	smanipa = cdn_instruction_get_stack_manipulation (a->instruction, NULL);
+	smanipb = cdn_instruction_get_stack_manipulation (b->instruction, NULL);
+
+	argdim[0] = smanipa->push_dims ? smanipa->push_dims[0] : 1;
+	argdim[1] = smanipa->push_dims ? smanipa->push_dims[1] : 1;
+
+	argdim[2] = smanipb->push_dims ? smanipb->push_dims[0] : 1;
+	argdim[3] = smanipb->push_dims ? smanipb->push_dims[1] : 1;
+
+	ret = iter_new_sized_take (cdn_instruction_function_new (type,
+	                                                         NULL,
+	                                                         2,
+	                                                         argdim),
+	                           2);
+
+	ret->children[0] = take_a ? a : iter_copy (a);
+	ret->children[1] = take_b ? b : iter_copy (b);
+
+	return ret;
+}
+
+CdnExpressionTreeIter *
+iter_new_ufunc (CdnMathFunctionType    type,
+                CdnExpressionTreeIter *a,
+                gboolean               take_a)
+{
+	CdnStackManipulation const *smanipa;
+	CdnExpressionTreeIter *ret;
+
+	smanipa = cdn_instruction_get_stack_manipulation (a->instruction,
+	                                                  NULL);
+
+	ret = iter_new_sized_take (cdn_instruction_function_new (type,
+	                                                         NULL,
+	                                                         1,
+	                                                         smanipa->push_dims),
+	                           1);
+
+	ret->children[0] = take_a ? a : iter_copy (a);
+	return ret;
 }

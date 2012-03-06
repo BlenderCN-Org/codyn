@@ -357,6 +357,50 @@ custom_operator_ref_to_string (CdnInstructionCustomOperatorRef *inst,
 	                                dbg);
 }
 
+static void
+matrix_to_string (CdnInstructionMatrix *inst,
+                  gchar const * const  *children,
+                  GString              *ret,
+                  gboolean              dbg)
+{
+	CdnStackManipulation const *smanip;
+	gint numr;
+	gint numc;
+	gint r;
+	gint i = 0;
+
+	g_string_append_c (ret, '[');
+
+	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (inst), NULL);
+
+	numr = smanip->push_dims ? smanip->push_dims[0] : 1;
+	numc = smanip->push_dims ? smanip->push_dims[1] : 1;
+
+	for (r = 0; r < numr; ++r)
+	{
+		gint c;
+
+		if (r != 0)
+		{
+			g_string_append (ret, "; ");
+		}
+
+		for (c = 0; c < numc; ++c)
+		{
+			if (c != 0)
+			{
+				g_string_append (ret, ", ");
+			}
+
+			g_string_append (ret, children[i]);
+
+			++i;
+		}
+	}
+
+	g_string_append_c (ret, ']');
+}
+
 static InstructionToStringFunc
 to_string_func (CdnInstruction *instruction)
 {
@@ -387,6 +431,10 @@ to_string_func (CdnInstruction *instruction)
 	else if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (instruction))
 	{
 		return (InstructionToStringFunc)custom_operator_ref_to_string;
+	}
+	else if (CDN_IS_INSTRUCTION_MATRIX (instruction))
+	{
+		return (InstructionToStringFunc)matrix_to_string;
 	}
 
 	return NULL;

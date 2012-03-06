@@ -25,7 +25,6 @@
 #include "cdn-variable.h"
 #include "cdn-usable.h"
 #include "integrators/cdn-integrator.h"
-#include "cdn-symbolic.h"
 #include "cdn-function.h"
 #include "cdn-expression-tree-iter.h"
 #include "cdn-network.h"
@@ -189,8 +188,8 @@ validate_arguments (GSList const  *expressions,
 	if (!*func)
 	{
 		g_set_error (error,
-		             CDN_SYMBOLIC_ERROR,
-		             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
 		             "Expected function reference but got `%s'. Use df_dt[] for deriving expressions",
 		             cdn_expression_get_as_string (expressions->data));
 
@@ -206,8 +205,8 @@ validate_arguments (GSList const  *expressions,
 	if (!*towards)
 	{
 		g_set_error (error,
-		             CDN_SYMBOLIC_ERROR,
-		             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
 		             "Expected partial function variable reference but got `%s'.",
 		             cdn_expression_get_as_string (expressions->data));
 
@@ -228,8 +227,8 @@ validate_arguments (GSList const  *expressions,
 		if (!arg)
 		{
 			g_set_error (error,
-			             CDN_SYMBOLIC_ERROR,
-			             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
+			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
 			             "Expected function variable but got `%s' for pdiff of `%s'",
 			             cdn_expression_get_as_string (towardsexpr->data),
 			             cdn_expression_get_as_string (expr));
@@ -310,7 +309,9 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 	CdnVariable *towards;
 	GSList *syms;
 	gint order;
-	CdnExpression *derived;
+	CdnExpressionTreeIter *derived;
+	CdnExpressionTreeIter *iter;
+	CdnExpression *expr;
 
 	if (!CDN_OPERATOR_CLASS (cdn_operator_pdiff_parent_class)->initialize (op,
 	                                                                       expressions,
@@ -327,8 +328,8 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 
 	if (num_expressions <= 0 ||
 	    num_expressions > 2 ||
-	    (expressions[0]->next && expressions[0]->next->next) ||
-	    (num_expressions > 1 && expressions[1]->next))
+	    !expressions[0]->next ||
+	    (expressions[0]->next->next && expressions[0]->next->next->next))
 	{
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
@@ -380,18 +381,24 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 	// newsymargs contains the CdnFunctionArgument of the new function
 	syms = resolve_symprops (nf, symargs);
 
-	derived = cdn_symbolic_derive (expressions[0]->data,
-	                               syms,
-	                               property_map,
-	                               diff_map,
-	                               order,
-	                               CDN_SYMBOLIC_DERIVE_PARTIAL |
-	                               CDN_SYMBOLIC_DERIVE_SIMPLIFY,
-	                               error);
+	iter = cdn_expression_tree_iter_new (expressions[0]->data);
+
+	derived = cdn_expression_tree_iter_derive (iter,
+	                                           syms,
+	                                           property_map,
+	                                           diff_map,
+	                                           order,
+	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL |
+	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY,
+	                                           error);
 
 	g_slist_free (syms);
 
-	cdn_function_set_expression (nf, derived);
+	cdn_expression_tree_iter_free (iter);
+	expr = cdn_expression_tree_iter_to_expression (derived);
+	cdn_expression_tree_iter_free (derived);
+
+	cdn_function_set_expression (nf, expr);
 	diff->priv->function = nf;
 
 	if (property_map)

@@ -8,6 +8,22 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+	CDN_EXPRESSION_TREE_ITER_DERIVE_NONE = 0,
+	CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL = 1 << 0,
+	CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY = 1 << 1
+} CdnExpressionTreeIterDeriveFlags;
+
+#define CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR (cdn_expression_tree_iter_derive_error_quark ())
+
+typedef enum
+{
+	CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
+	CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_INVALID
+} CdnExpressionTreeIterDeriveError;
+
+
 typedef struct _CdnExpressionTreeIter CdnExpressionTreeIter;
 
 GType cdn_expression_tree_iter_get_type ();
@@ -64,6 +80,16 @@ CdnExpressionTreeIter *cdn_expression_tree_iter_substitute_hash (CdnExpressionTr
                                                                  GHashTable            *table);
 
 CdnExpression         *cdn_expression_tree_iter_to_expression   (CdnExpressionTreeIter *iter);
+
+GQuark                 cdn_expression_tree_iter_derive_error_quark (void);
+
+CdnExpressionTreeIter *cdn_expression_tree_iter_derive             (CdnExpressionTreeIter             *iter,
+                                                                    GSList                            *symbols,
+                                                                    GHashTable                        *property_map,
+                                                                    GHashTable                        *diff_map,
+                                                                    gint                               order,
+                                                                    CdnExpressionTreeIterDeriveFlags   flags,
+                                                                    GError                           **error);
 
 G_END_DECLS
 

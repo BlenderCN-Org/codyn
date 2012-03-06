@@ -22,66 +22,84 @@ struct _CdnExpressionTreeIter
 	guint cache_is_dbg : 1;
 };
 
-CdnExpressionTreeIter * iter_copy                 (CdnExpressionTreeIter *iter);
-CdnExpressionTreeIter * iter_new                  (CdnInstruction        *instruction);
-CdnExpressionTreeIter * iter_new_numstr           (gchar const           *num);
+CdnExpressionTreeIter * iter_copy                  (CdnExpressionTreeIter       *iter);
+CdnExpressionTreeIter * iter_new                   (CdnInstruction              *instruction);
+CdnExpressionTreeIter * iter_new_take              (CdnInstruction              *instruction);
+CdnExpressionTreeIter * iter_new_numstr            (gchar const                 *num);
+CdnExpressionTreeIter * iter_new_num               (gdouble                      value);
 
-CdnExpressionTreeIter * iter_new_sized            (CdnInstruction        *instruction,
-                                                   gint                   num);
+CdnExpressionTreeIter * iter_new_sized             (CdnInstruction              *instruction,
+                                                    gint                         num);
 
-GSList *                iter_remove_variables      (CdnExpressionTreeIter *iter,
-                                                   CdnVariable           *prop,
-                                                   GSList                *ret);
+CdnExpressionTreeIter * iter_new_sized_take        (CdnInstruction              *instruction,
+                                                    gint                         num);
 
-gint                    iter_index_of             (CdnExpressionTreeIter *parent,
-                                                   CdnExpressionTreeIter *iter);
+GSList *                iter_remove_variables      (CdnExpressionTreeIter       *iter,
+                                                    CdnVariable                 *prop,
+                                                    GSList                      *ret);
 
-void                    iter_replace              (CdnExpressionTreeIter *iter,
-                                                   CdnExpressionTreeIter *other);
+gint                    iter_index_of              (CdnExpressionTreeIter       *parent,
+                                                    CdnExpressionTreeIter       *iter);
 
-void                    iter_set_child            (CdnExpressionTreeIter *parent,
-                                                   CdnExpressionTreeIter *child,
-                                                   gint                   idx);
+void                    iter_replace               (CdnExpressionTreeIter       *iter,
+                                                    CdnExpressionTreeIter       *other);
 
-void                    iter_replace_or_copy_into (CdnExpressionTreeIter *cp,
-                                                   CdnExpressionTreeIter *dest,
-                                                   gboolean               make_copy);
+void                    iter_set_child             (CdnExpressionTreeIter       *parent,
+                                                    CdnExpressionTreeIter       *child,
+                                                    gint                         idx);
 
-void                    iter_replace_into         (CdnExpressionTreeIter *cp,
-                                                   CdnExpressionTreeIter *dest);
+void                    iter_replace_or_copy_into  (CdnExpressionTreeIter       *cp,
+                                                    CdnExpressionTreeIter       *dest,
+                                                    gboolean                     make_copy);
 
-void                    iter_copy_into            (CdnExpressionTreeIter *cp,
-                                                   CdnExpressionTreeIter *dest);
+void                    iter_replace_into          (CdnExpressionTreeIter       *cp,
+                                                    CdnExpressionTreeIter       *dest);
 
-CdnExpressionTreeIter * iter_brother              (CdnExpressionTreeIter *iter);
+void                    iter_copy_into             (CdnExpressionTreeIter       *cp,
+                                                    CdnExpressionTreeIter       *dest);
 
-gboolean                iter_is_multiply          (CdnExpressionTreeIter const *iter);
+CdnExpressionTreeIter * iter_brother               (CdnExpressionTreeIter       *iter);
 
-gboolean                iter_is_power             (CdnExpressionTreeIter const *iter);
+gboolean                iter_is_multiply           (CdnExpressionTreeIter const *iter);
 
-gboolean                iter_is_plus              (CdnExpressionTreeIter const *iter);
+gboolean                iter_is_power              (CdnExpressionTreeIter const *iter);
 
-gboolean                iter_is_minus             (CdnExpressionTreeIter const *iter);
+gboolean                iter_is_plus               (CdnExpressionTreeIter const *iter);
 
-gboolean                iter_is_divide            (CdnExpressionTreeIter const *iter);
+gboolean                iter_is_minus              (CdnExpressionTreeIter const *iter);
 
-gboolean                iter_is_unary_minus       (CdnExpressionTreeIter const *iter);
+gboolean                iter_is_divide             (CdnExpressionTreeIter const *iter);
 
-gboolean                iter_is_number            (CdnExpressionTreeIter const *iter,
-                                                   gdouble               *num);
+gboolean                iter_is_unary_minus        (CdnExpressionTreeIter const *iter);
 
-gboolean                iter_is_function          (CdnExpressionTreeIter const *iter,
-                                                   CdnMathFunctionType   *type);
+gboolean                iter_is_number             (CdnExpressionTreeIter const *iter,
+                                                    gdouble                     *num);
 
-void                    iter_invalidate_cache_up  (CdnExpressionTreeIter *iter);
+gboolean                iter_is_natural_number     (CdnExpressionTreeIter const *iter,
+                                                    gint                        *num);
 
-void                    iter_invalidate_cache_down (CdnExpressionTreeIter *iter);
+gboolean                iter_is_function           (CdnExpressionTreeIter const *iter,
+                                                    CdnMathFunctionType         *type);
 
-void                    iter_canonical_resort      (CdnExpressionTreeIter *iter);
+void                    iter_invalidate_cache_up   (CdnExpressionTreeIter       *iter);
 
-gboolean                iter_canonicalize          (CdnExpressionTreeIter *iter,
-                                                    gboolean                 canonicalize_children,
-                                                    gboolean               dodefactor);
+void                    iter_invalidate_cache_down (CdnExpressionTreeIter       *iter);
+
+void                    iter_canonical_resort      (CdnExpressionTreeIter       *iter);
+
+gboolean                iter_canonicalize          (CdnExpressionTreeIter       *iter,
+                                                    gboolean                     canonicalize_children,
+                                                    gboolean                     dodefactor);
+
+CdnExpressionTreeIter   *iter_new_bfunc            (CdnMathFunctionType          type,
+                                                    CdnExpressionTreeIter       *a,
+                                                    CdnExpressionTreeIter       *b,
+                                                    gboolean                     take_a,
+                                                    gboolean                     take_b);
+
+CdnExpressionTreeIter   *iter_new_ufunc            (CdnMathFunctionType          type,
+                                                    CdnExpressionTreeIter       *a,
+                                                    gboolean                     take_a);
 
 G_END_DECLS
 

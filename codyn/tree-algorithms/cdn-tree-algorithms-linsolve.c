@@ -1,8 +1,8 @@
 #include "codyn/cdn-expression-tree-iter.h"
 #include "cdn-tree-algorithms-private.h"
 #include "codyn/instructions/cdn-instruction-number.h"
-#include <codyn/cdn-symbolic.h>
 #include <codyn/cdn-debug.h>
+#include <codyn/cdn-network.h>
 
 static CdnExpressionTreeIter *
 make_coefficient (CdnExpressionTreeIter  *root,
@@ -171,8 +171,8 @@ solve_coefficient (CdnExpressionTreeIter  *root,
 			if (!ismult && (!isdiv || idx == 1))
 			{
 				g_set_error (error,
-				             CDN_SYMBOLIC_ERROR,
-				             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
+				             CDN_NETWORK_LOAD_ERROR,
+				             CDN_NETWORK_LOAD_ERROR_OPERATOR,
 				             "Expression `%s' for linear solve is not linear in `%s'",
 				             cdn_expression_tree_iter_to_string (root),
 				             cdn_expression_tree_iter_to_string (child));
@@ -264,8 +264,8 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 	if (!props)
 	{
 		g_set_error (error,
-		             CDN_SYMBOLIC_ERROR,
-		             CDN_SYMBOLIC_ERROR_INVALID,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
 		             "Expression {%s} cannot be solved towards {%s}",
 		             cdn_expression_tree_iter_to_string (iter),
 		             cdn_variable_get_name (prop));

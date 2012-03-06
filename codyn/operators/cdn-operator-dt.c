@@ -25,7 +25,6 @@
 #include "cdn-variable.h"
 #include "cdn-usable.h"
 #include "integrators/cdn-integrator.h"
-#include "cdn-symbolic.h"
 #include "cdn-function.h"
 #include "cdn-expression-tree-iter.h"
 #include "cdn-network.h"
@@ -84,7 +83,9 @@ cdn_operator_dt_initialize (CdnOperator        *op,
 	CdnOperatorDt *dt;
 	GSList *syms = NULL;
 	CdnVariable *v;
-	CdnExpression *derived;
+	CdnExpression *expr;
+	CdnExpressionTreeIter *iter;
+	CdnExpressionTreeIter *derived;
 
 	if (!CDN_OPERATOR_CLASS (cdn_operator_dt_parent_class)->initialize (op,
 	                                                                    expressions,
@@ -130,14 +131,17 @@ cdn_operator_dt_initialize (CdnOperator        *op,
 		syms = g_slist_prepend (NULL, v);
 	}
 
-	derived = cdn_symbolic_derive (expressions[0]->data,
-	                               syms,
-	                               NULL,
-	                               NULL,
-	                               dt->priv->order,
-	                               CDN_SYMBOLIC_DERIVE_NONE,
-	                               error);
+	iter = cdn_expression_tree_iter_new (expressions[0]->data);
 
+	derived = cdn_expression_tree_iter_derive (iter,
+	                                           syms,
+	                                           NULL,
+	                                           NULL,
+	                                           dt->priv->order,
+	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_NONE,
+	                                           error);
+
+	cdn_expression_tree_iter_free (iter);
 	g_slist_free (syms);
 
 	if (!derived)
@@ -145,8 +149,10 @@ cdn_operator_dt_initialize (CdnOperator        *op,
 		return FALSE;
 	}
 
-	dt->priv->function = cdn_function_new ("dt",
-	                                       derived);
+	expr = cdn_expression_tree_iter_to_expression (derived);
+	cdn_expression_tree_iter_free (derived);
+
+	dt->priv->function = cdn_function_new ("dt", expr);
 
 	return TRUE;
 }

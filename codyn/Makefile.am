@@ -47,7 +47,6 @@ COMMON_SOURCES = 		\
 	cdn-variable-interface.c \
 	cdn-selector.c \
 	cdn-stack.c \
-	cdn-symbolic.c \
 	cdn-tokenizer.c \
 	cdn-usable.c \
 	cdn-utils.c \
@@ -112,7 +111,6 @@ INST_H_FILES = \
 	cdn-variable-interface.h \
 	cdn-selector.h \
 	cdn-stack.h \
-	cdn-symbolic.h \
 	cdn-usable.h \
 	cdn-utils.h \
 	cdn-layout.h \
@@ -238,6 +236,7 @@ TREEALGORITHMSSOURCES = 	\
 	tree-algorithms/cdn-tree-algorithms-canonicalize.c \
 	tree-algorithms/cdn-tree-algorithms-linsolve.c \
 	tree-algorithms/cdn-tree-algorithms-simplify.c \
+	tree-algorithms/cdn-tree-algorithms-derive.c \
 	tree-algorithms/cdn-tree-algorithms-string.c \
 	tree-algorithms/cdn-tree-algorithms-substitute.c
 

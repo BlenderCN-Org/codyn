@@ -171,6 +171,12 @@ cdn_instruction_function_new (guint        id,
 	func->priv->id = id;
 	func->priv->name = g_strdup (name);
 
+	if (!func->priv->name)
+	{
+		func->priv->name = g_strdup (cdn_math_function_lookup_by_id (id,
+		                                                             NULL));
+	}
+
 	func->priv->smanip.num_pop = arguments;
 	func->priv->smanip.pop_dims = g_new (gint, arguments * 2);
 

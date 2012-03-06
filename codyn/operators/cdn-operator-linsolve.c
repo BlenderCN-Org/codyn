@@ -25,7 +25,6 @@
 #include "cdn-variable.h"
 #include "cdn-usable.h"
 #include "integrators/cdn-integrator.h"
-#include "cdn-symbolic.h"
 #include "cdn-function.h"
 #include "cdn-expression-tree-iter.h"
 #include "cdn-network.h"
@@ -128,8 +127,8 @@ validate_arguments (GSList const  *expressions,
 		if (!func)
 		{
 			g_set_error (error,
-			             CDN_SYMBOLIC_ERROR,
-			             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
+			             CDN_NETWORK_LOAD_ERROR,
+			             CDN_NETWORK_LOAD_ERROR_OPERATOR,
 			             "Expected function reference but got `%s'",
 			             cdn_expression_get_as_string (expressions->data));
 
@@ -156,8 +155,8 @@ validate_arguments (GSList const  *expressions,
 		if (!arg)
 		{
 			g_set_error (error,
-			             CDN_SYMBOLIC_ERROR,
-			             CDN_SYMBOLIC_ERROR_UNSUPPORTED,
+			             CDN_NETWORK_LOAD_ERROR,
+			             CDN_NETWORK_LOAD_ERROR_OPERATOR,
 			             "Expected function variable but got `%s' for linsolve of `%s'",
 			             cdn_expression_get_as_string (towards->data),
 			             cdn_expression_get_as_string (cdn_function_get_expression (ptr->data)));
