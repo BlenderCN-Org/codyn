@@ -1400,6 +1400,56 @@ op_eye (CdnStack *stack,
 	// kind of macro
 }
 
+static void
+op_block (CdnStack *stack,
+          gint      numargs,
+          gint     *argdim)
+{
+	gdouble *ptr;
+	gint r;
+	gint c;
+	gint numr;
+	gint numc;
+	gdouble *ptrA;
+	gdouble *ptrR;
+	gdouble *ptrC;
+	gint i;
+	gint n;
+
+	ptr = cdn_stack_output_ptr (stack);
+
+	numr = argdim[3];
+	numc = argdim[1];
+
+	ptrC = ptr - numc;
+	ptrR = ptrC - numr;
+	ptrA = ptrR - argdim[4] * argdim[5];
+
+	i = 0;
+	n = numr * numc;
+
+	for (r = 0; r < numr; ++r)
+	{
+		gint ridx = (gint)ptrR[r] * argdim[5];
+
+		for (c = 0; c < numc; ++c)
+		{
+			gint cidx = (gint)ptrC[c];
+
+			ptr[i] = ptrA[ridx + cidx];
+		}
+	}
+
+	// Now copy back. Need a loop like this to not override ptr memory
+	// before it's copied to ptrA
+	for (i = 0; i < n; ++i)
+	{
+		ptrA[i] = ptr[i];
+	}
+
+	cdn_stack_set_output_ptr (stack, ptrA + n);
+}
+
 typedef struct
 {
 	gchar const *name;
@@ -1472,7 +1522,8 @@ static FunctionEntry function_entries[] = {
 	{"size", op_size, 1, FALSE},
 	{"hcat", op_hcat, 2, FALSE},
 	{"zeros", op_zeros, 2, FALSE},
-	{"eye", op_eye, 1, FALSE}
+	{"eye", op_eye, 1, FALSE},
+	{"block", op_block, 3, FALSE}
 };
 
 typedef struct
@@ -1502,7 +1553,11 @@ gchar const *
 cdn_math_function_lookup_by_id (CdnMathFunctionType  type,
                                 gint                *arguments)
 {
-	*arguments = function_entries[type].arguments;
+	if (arguments)
+	{
+		*arguments = function_entries[type].arguments;
+	}
+
 	return function_entries[type].name;
 }
 
@@ -1522,7 +1577,7 @@ cdn_math_function_lookup (gchar const  *name,
 {
 	guint i;
 
-	for (i = 1; i < CDN_MATH_FUNCTION_TYPE_NUM; ++i)
+	for (i = CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS + 1; i < CDN_MATH_FUNCTION_TYPE_NUM; ++i)
 	{
 		if (g_strcmp0 (function_entries[i].name, name) == 0)
 		{
@@ -2070,6 +2125,25 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			outargdim[1] = argdim[1] + argdim[3];
 
 			*extra_space = argdim[0] * (argdim[1] + argdim[3]);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_BLOCK:
+			if (argdim[0] != 1 || argdim[2] != 1 ||
+			    argdim[1] != argdim[3])
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "The row and column indices for the block function must be 1-by-N but got %d-by-%d rows and %d-by-%d columns",
+				             argdim[2], argdim[3],
+				             argdim[0], argdim[1]);
+
+				return FALSE;
+			}
+
+			outargdim[0] = argdim[3];
+			outargdim[1] = argdim[1];
+
+			*extra_space = argdim[3] * argdim[1];
 		break;
 		default:
 			return FALSE;
