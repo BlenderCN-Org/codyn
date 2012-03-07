@@ -103,53 +103,6 @@ derived_function (CdnExpression *expr,
 	return func;
 }
 
-static GHashTable *
-get_property_map (GList const *args,
-                  GList const *nargs,
-                  gint         num,
-                  GHashTable  *ret)
-{
-	if (ret == NULL)
-	{
-		// Map properties of func to properties in nf
-		ret = g_hash_table_new_full (g_direct_hash,
-		                             g_direct_equal,
-		                             NULL,
-		                             (GDestroyNotify)cdn_expression_tree_iter_free);
-	}
-
-	while (args && nargs && num != 0)
-	{
-		CdnFunctionArgument *arg;
-		CdnFunctionArgument *argnf;
-		CdnInstruction *instr;
-
-		CdnVariable *p;
-		CdnVariable *pnf;
-
-		arg = args->data;
-		argnf = nargs->data;
-
-		args = g_list_next (args);
-		nargs = g_list_next (nargs);
-
-		p = _cdn_function_argument_get_variable (arg);
-		pnf = _cdn_function_argument_get_variable (argnf);
-
-		instr = cdn_instruction_variable_new (pnf);
-
-		g_hash_table_insert (ret,
-		                     p,
-		                     cdn_expression_tree_iter_new_from_instruction (instr));
-
-		cdn_mini_object_unref (instr);
-
-		--num;
-	}
-
-	return ret;
-}
-
 static CdnFunctionArgument *
 derived_arg (CdnFunction   *func,
              CdnExpression *expr)
@@ -174,7 +127,7 @@ validate_arguments (GSList const  *expressions,
                     CdnFunction  **func,
                     gint           numargs,
                     gint          *argdim,
-                    GList        **syms,
+                    GSList       **syms,
                     gint          *order,
                     GError       **error)
 {
@@ -219,12 +172,12 @@ validate_arguments (GSList const  *expressions,
 			             cdn_expression_get_as_string (towards->data),
 			             cdn_expression_get_as_string (expr));
 
-			g_list_free (*syms);
+			g_slist_free (*syms);
 			return FALSE;
 		}
 		else
 		{
-			*syms = g_list_prepend (*syms, arg);
+			*syms = g_slist_prepend (*syms, arg);
 		}
 
 		towards = g_slist_next (towards);
@@ -241,33 +194,15 @@ validate_arguments (GSList const  *expressions,
 		{
 			if (cdn_function_argument_get_explicit (args->data))
 			{
-				*syms = g_list_prepend (*syms, args->data);
+				*syms = g_slist_prepend (*syms, args->data);
 			}
 
 			args = g_list_next (args);
 		}
 	}
 
-	*syms = g_list_reverse (*syms);
+	*syms = g_slist_reverse (*syms);
 	return TRUE;
-}
-
-static GList *
-resolve_symargs (CdnFunction *f,
-                 GList const *symargs)
-{
-	GList *ret = NULL;
-
-	while (symargs)
-	{
-		ret = g_list_prepend (ret,
-		                      cdn_function_get_argument (f,
-		                                                 cdn_function_argument_get_name (symargs->data)));
-
-		symargs = g_list_next (symargs);
-	}
-
-	return g_list_reverse (ret);
 }
 
 static gboolean
@@ -283,16 +218,8 @@ cdn_operator_diff_initialize (CdnOperator        *op,
 {
 	CdnOperatorDiff *diff;
 	CdnFunction *func;
-	GList *symargs;
-	GHashTable *property_map;
 	CdnFunction *nf = NULL;
-	gchar *s;
-	GList *item;
-	gint i;
-	GList *newsymargs;
-	CdnExpressionTreeIter *derived = NULL;
-	CdnExpressionTreeIter *iter = NULL;
-	CdnExpression *expr;
+	GSList *towards;
 
 	if (!CDN_OPERATOR_CLASS (cdn_operator_diff_parent_class)->initialize (op,
 	                                                                      expressions,
@@ -327,149 +254,23 @@ cdn_operator_diff_initialize (CdnOperator        *op,
 	                         &func,
 	                         num_arguments,
 	                         argdim,
-	                         &symargs,
+	                         &towards,
 	                         &diff->priv->order,
 	                         error))
 	{
 		return FALSE;
 	}
 
-	// Here we are going to generate a new function with represents
-	// the symbolic derivation
-	s = g_strconcat ("d",
-	                 cdn_object_get_id (CDN_OBJECT (func)),
-	                 "dt",
-	                 NULL);
-
 	nf = cdn_function_get_derivative (func,
+	                                  towards,
 	                                  diff->priv->order,
-	                                  symargs);
+	                                  CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY,
+	                                  error);
 
-	if (nf)
-	{
-		// Function provided a derivative itself
-		cdn_object_set_id (CDN_OBJECT (nf), s);
+	g_slist_free (towards);
 
-		diff->priv->function = nf;
-		g_list_free (symargs);
-
-		return TRUE;
-	}
-
-	nf = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (func)));
-	cdn_object_set_id (CDN_OBJECT (nf), s);
-	g_free (s);
-
-	// Resolve the symbols we are going to derive towards as function
-	// arguments in the new function
-	newsymargs = resolve_symargs (nf, symargs);
-	g_list_free (symargs);
-
-	// Start with an empty expression
-	cdn_function_set_expression (nf, cdn_expression_new0 ());
-
-	// Map original function properties to the new function arguments
-	property_map = get_property_map (cdn_function_get_arguments (func),
-	                                 cdn_function_get_arguments (nf),
-	                                 -1,
-	                                 NULL);
-
-	// Add additional arguments to this function for the time
-	// derivative of all the syms (which don't have derivatives present
-	// in the current arguments)
-	for (i = 0; i < diff->priv->order; ++i)
-	{
-		for (item = newsymargs; item; item = g_list_next (item))
-		{
-			CdnFunctionArgument *sarg = item->data;
-			CdnFunctionArgument *darg;
-			gchar *d;
-			gchar *dsname;
-			CdnFunctionArgument *oarg;
-			CdnVariable *sprop;
-			CdnExpression *dfexpr;
-
-			d = g_strnfill (i + 1, '\'');
-
-			dsname = g_strconcat (cdn_function_argument_get_name (sarg),
-			                      d,
-			                      NULL);
-
-			g_free (d);
-
-			// Test if it already exists
-			oarg = cdn_function_get_argument (nf, dsname);
-			sprop = _cdn_function_argument_get_variable (sarg);
-
-			if (oarg)
-			{
-				CdnVariable *oprop;
-
-				oprop = _cdn_function_argument_get_variable (oarg);
-
-				if (cdn_variable_get_derivative (sprop) == oprop)
-				{
-					// Skip this because we already have
-					// a derivative for this
-					g_free (dsname);
-					continue;
-				}
-				else
-				{
-					// The property already exists, which
-					// is strange, error out...
-					g_list_free (newsymargs);
-					g_set_error (error,
-					             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
-					             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_INVALID,
-					             "There is already an variable `%s' but it is not a derivative of `%s'",
-					             cdn_variable_get_name (oprop),
-					             cdn_variable_get_name (sprop));
-
-					goto cleanup;
-				}
-			}
-
-			dfexpr = cdn_expression_new ("1");
-			cdn_expression_compile (dfexpr, NULL, NULL);
-
-			darg = cdn_function_argument_new (dsname,
-			                                  TRUE,
-			                                  dfexpr);
-
-			g_free (dsname);
-
-			cdn_function_add_argument (nf, darg);
-		}
-	}
-
-	g_list_free (newsymargs);
-
-	iter = cdn_expression_tree_iter_new (expressions[0]->data);
-
-	derived = cdn_expression_tree_iter_derive (expressions[0]->data,
-	                                           NULL,
-	                                           property_map,
-	                                           NULL,
-	                                           diff->priv->order,
-	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY,
-	                                           error);
-
-	cdn_expression_tree_iter_free (iter);
-	expr = cdn_expression_tree_iter_to_expression (derived);
-	cdn_expression_tree_iter_free (derived);
-
-	cdn_function_set_expression (nf, expr);
-
-cleanup:
 	diff->priv->function = nf;
-
-	if (property_map)
-	{
-		g_hash_table_destroy (property_map);
-	}
-
-	return derived != NULL;
+	return diff->priv->function != NULL;
 }
 
 static void

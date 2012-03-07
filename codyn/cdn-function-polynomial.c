@@ -202,9 +202,11 @@ cdn_function_polynomial_get_dimension_impl (CdnFunction *function,
 }
 
 static CdnFunction *
-cdn_function_polynomial_get_derivative_impl (CdnFunction *function,
-                                             gint         order,
-                                             GList       *towards)
+cdn_function_polynomial_get_derivative_impl (CdnFunction                       *function,
+                                             GSList                            *towards,
+                                             gint                               order,
+                                             CdnExpressionTreeIterDeriveFlags   flags,
+                                             GError                           **error)
 {
 	CdnFunctionPolynomial *self;
 	CdnFunctionPolynomial *ret;
@@ -220,6 +222,17 @@ cdn_function_polynomial_get_derivative_impl (CdnFunction *function,
 	self = CDN_FUNCTION_POLYNOMIAL (function);
 
 	ret = cdn_function_polynomial_new (cdn_object_get_id (CDN_OBJECT (function)));
+
+	if (flags & CDN_EXPRESSION_TREE_ITER_DERIVE_TIME)
+	{
+		CdnFunctionPolynomialPiece *piece;
+		gdouble coefs[] = {0};
+
+		piece = cdn_function_polynomial_piece_new (0, 1, coefs, 1);
+		cdn_function_polynomial_add (ret, piece);
+
+		return CDN_FUNCTION (ret);
+	}
 
 	// Add dx arguments
 	dx = g_string_new ("dx");

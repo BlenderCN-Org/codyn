@@ -24,6 +24,7 @@
 #include "cdn-compile-error.h"
 #include "cdn-expression-tree-iter.h"
 #include "instructions/cdn-instruction-rand.h"
+#include "instructions/cdn-instruction-variable.h"
 
 #include <string.h>
 
@@ -1044,12 +1045,338 @@ cdn_function_for_dimension_impl (CdnFunction *function,
 	}
 }
 
-static CdnFunction *
-cdn_function_get_derivative_impl (CdnFunction *function,
-                                  gint         order,
-                                  GList       *towards)
+static void
+substitute_references (CdnVariable *v,
+                       GHashTable  *mapping)
 {
-	return NULL;
+	CdnExpression *expr;
+	GSList const *instr;
+
+	expr = cdn_variable_get_expression (v);
+
+	if (!expr)
+	{
+		return;
+	}
+
+	instr = cdn_expression_get_instructions (expr);
+
+	while (instr)
+	{
+		CdnInstruction *i = instr->data;
+
+		if (CDN_IS_INSTRUCTION_VARIABLE (i))
+		{
+			CdnInstructionVariable *vv;
+			CdnVariable *var;
+			CdnExpressionTreeIter *mapped;
+
+			vv = CDN_INSTRUCTION_VARIABLE (i);
+			var = cdn_instruction_variable_get_variable (vv);
+
+			mapped = g_hash_table_lookup (mapping, var);
+
+			if (mapped)
+			{
+				CdnInstruction *other;
+				CdnVariable *otherv;
+
+				other = cdn_expression_tree_iter_get_instruction (mapped);
+				otherv = cdn_instruction_variable_get_variable (CDN_INSTRUCTION_VARIABLE (other));
+
+				cdn_instruction_variable_set_variable (vv,
+				                                       otherv);
+			}
+		}
+
+		instr = g_slist_next (instr);
+	}
+}
+
+static GHashTable *
+variables_map (CdnFunction *function,
+               CdnFunction *newfunc)
+{
+	GHashTable *mapping;
+	GSList *vars1;
+	GSList *vars2;
+	GSList *va2;
+
+	mapping = g_hash_table_new_full (g_direct_hash,
+	                                 g_direct_equal,
+	                                 (GDestroyNotify)g_object_unref,
+	                                 (GDestroyNotify)cdn_expression_tree_iter_free);
+
+	vars1 = cdn_object_get_variables (CDN_OBJECT (function));
+	va2 = cdn_object_get_variables (CDN_OBJECT (newfunc));
+	vars2 = va2;
+
+	while (vars1 && vars2)
+	{
+		CdnVariable *v1;
+		CdnVariable *v2;
+		CdnInstruction *instr;
+
+		v1 = vars1->data;
+		v2 = vars2->data;
+
+		instr = cdn_instruction_variable_new (v2);
+
+		g_hash_table_insert (mapping,
+		                     v1,
+		                     cdn_expression_tree_iter_new_from_instruction (instr));
+
+		cdn_mini_object_unref (instr);
+
+		vars1 = g_slist_delete_link (vars1, vars1);
+		vars2 = g_slist_next (vars2);
+	}
+
+	g_slist_free (vars1);
+
+	while (va2)
+	{
+		substitute_references (va2->data, mapping);
+		va2 = g_slist_delete_link (va2, va2);
+	}
+
+	return mapping;
+}
+
+static GHashTable *
+create_towards_map (CdnFunction                       *function,
+                    CdnFunction                       *newfunc,
+                    GSList                            *towards,
+                    CdnExpressionTreeIterDeriveFlags   flags,
+                    GError                           **error)
+{
+	GHashTable *ret;
+	gboolean ispart;
+
+	ispart = (flags & (CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL |
+	                   CDN_EXPRESSION_TREE_ITER_DERIVE_TIME)) != 0;
+
+	ret = g_hash_table_new_full (g_direct_hash,
+	                             g_direct_equal,
+	                             (GDestroyNotify)g_object_unref,
+	                             (GDestroyNotify)cdn_expression_tree_iter_free);
+
+	while (towards)
+	{
+		CdnFunctionArgument *arg;
+		CdnVariable *v;
+
+		arg = towards->data;
+		v = _cdn_function_argument_get_variable (arg);
+
+		if (!v)
+		{
+			g_warning ("Could not get variable from arg: %s",
+			           cdn_function_argument_get_name (arg));
+		}
+		else if (cdn_variable_get_object (v) != CDN_OBJECT (function))
+		{
+			g_warning ("Arg %s not from func %s",
+			           cdn_variable_get_full_name (v),
+			           cdn_object_get_full_id_for_display (CDN_OBJECT (function)));
+		}
+
+		if (v && cdn_variable_get_object (v) == CDN_OBJECT (function))
+		{
+			CdnVariable *diff;
+			CdnInstruction *instr;
+			CdnExpressionTreeIter *iter;
+
+			v = cdn_object_get_variable (CDN_OBJECT (newfunc),
+			                             cdn_variable_get_name (v));
+
+			if (ispart)
+			{
+				g_hash_table_insert (ret, v, NULL);
+			}
+
+			diff = cdn_variable_get_derivative (v);
+
+			if (!diff)
+			{
+				gchar *argname;
+				CdnFunctionArgument *narg;
+				CdnExpression *defval;
+
+				argname = g_strconcat (cdn_function_argument_get_name (arg),
+				                       "'",
+				                       NULL);
+
+				defval = cdn_expression_new ("1");
+				cdn_expression_compile (defval, NULL, NULL);
+
+				// Generate a new argument for it with a
+				// default value of 1
+				narg = cdn_function_argument_new (argname,
+				                                  TRUE,
+				                                  defval);
+
+				cdn_function_add_argument (newfunc, narg);
+				diff = _cdn_function_argument_get_variable (narg);
+
+				g_free (argname);
+			}
+
+			instr = cdn_instruction_variable_new (diff);
+			iter = cdn_expression_tree_iter_new_from_instruction (instr);
+			cdn_mini_object_unref (instr);
+
+			// Map to the derivative
+			g_hash_table_insert (ret,
+			                     g_object_ref (v),
+			                     iter);
+		}
+
+		towards = g_slist_next (towards);
+	}
+
+	return ret;
+}
+
+static GSList *
+create_symbols (CdnFunction *function)
+{
+	GList const *arguments;
+	GSList *ret = NULL;
+
+	arguments = function->priv->arguments;
+
+	while (arguments)
+	{
+		CdnFunctionArgument *arg = arguments->data;
+
+		if (cdn_function_argument_get_explicit (arg))
+		{
+			ret = g_slist_prepend (ret,
+			                       g_object_ref (_cdn_function_argument_get_variable (arg)));
+		}
+
+		arguments = g_list_next (arguments);
+	}
+
+	return g_slist_reverse (ret);
+}
+
+static CdnFunction *
+cdn_function_get_derivative_impl (CdnFunction                       *function,
+                                  GSList                            *towards,
+                                  gint                               order,
+                                  CdnExpressionTreeIterDeriveFlags   flags,
+                                  GError                           **error)
+{
+	CdnFunction *ret;
+	gchar *name;
+	GHashTable *towardsmap;
+	CdnExpression *expr;
+	GSList *symbols;
+	CdnExpressionTreeIter *iter;
+	CdnExpressionTreeIter *derived;
+	GSList *instructions;
+	GHashTable *mapping;
+
+	name = g_strconcat ("d", cdn_object_get_id (CDN_OBJECT (function)), NULL);
+	ret = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (function)));
+	cdn_object_set_id (CDN_OBJECT (ret), name);
+	g_free (name);
+
+	expr = cdn_function_get_expression (ret);
+
+	if (!expr)
+	{
+		gchar *id;
+
+		id = cdn_object_get_full_id_for_display (CDN_OBJECT (function));
+
+		g_set_error (error,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_FUNCTION,
+		             "The function `%s' does not have a valid expression",
+		             id);
+
+		g_free (id);
+		g_object_unref (ret);
+
+		return NULL;
+	}
+
+	// This creates a mapping from 'towards' variables to their derivatives.
+	// Note that in the case of a partial derivative, no new arguments are
+	// mapped as derivation of a partial derivative variable is simply 1
+	towardsmap = create_towards_map (function,
+	                                 ret,
+	                                 towards,
+	                                 flags,
+	                                 error);
+
+	if (!towardsmap)
+	{
+		g_object_unref (ret);
+		return NULL;
+	}
+
+	iter = cdn_expression_tree_iter_new (expr);
+
+	if (!iter)
+	{
+		gchar *id;
+
+		id = cdn_object_get_full_id_for_display (CDN_OBJECT (function));
+
+		g_set_error (error,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_FUNCTION,
+		             "The function `%s' does not have valid instructions",
+		             id);
+
+		g_hash_table_destroy (towardsmap);
+
+		g_free (id);
+		g_object_unref (ret);
+
+		return NULL;
+	}
+
+	// Substitute original variables with new variables
+	mapping = variables_map (function, ret);
+	iter = cdn_expression_tree_iter_substitute_hash (iter, mapping);
+	g_hash_table_destroy (mapping);
+
+	symbols = create_symbols (ret);
+
+	derived = cdn_expression_tree_iter_derive (iter,
+	                                           symbols,
+	                                           towardsmap,
+	                                           order,
+	                                           flags,
+	                                           error);
+
+	cdn_expression_tree_iter_free (iter);
+
+	g_hash_table_destroy (towardsmap);
+
+	g_slist_foreach (symbols, (GFunc)g_object_unref, NULL);
+	g_slist_free (symbols);
+
+	if (!derived)
+	{
+		g_object_unref (ret);
+		return NULL;
+	}
+
+	instructions = cdn_expression_tree_iter_to_instructions (derived);
+	cdn_expression_set_instructions_take (expr, instructions);
+
+	g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (instructions);
+
+	cdn_expression_tree_iter_free (derived);
+
+	return ret;
 }
 
 static void
@@ -1572,24 +1899,29 @@ cdn_function_for_dimension (CdnFunction *function,
 /**
  * cdn_function_get_derivative:
  * @function: a #CdnFunction.
- * @order: the order of the derivative
  * @towards: the variables towards which to derive
+ * @order: the order of the derivative
+ * @flags: derivation flags
  *
- * Get the derivative of a function.Note that this does not need to be
- * implemented. It's main use is for custom subclasses of #CdnFunction to be
- * able to provide a derivative.
+ * Get the derivative of a function. If successfull, a new function will be
+ * returned. In the case of a full derivative, new function arguments for
+ * each of the variables being derived towards will have been added.
  *
  * Returns: (transfer full): a #CdnFunction.
  *
  **/
 CdnFunction *
-cdn_function_get_derivative (CdnFunction *function,
-                             gint         order,
-                             GList       *towards)
+cdn_function_get_derivative (CdnFunction                       *function,
+                             GSList                            *towards,
+                             gint                               order,
+                             CdnExpressionTreeIterDeriveFlags   flags,
+                             GError                           **error)
 {
 	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
 
 	return CDN_FUNCTION_GET_CLASS (function)->get_derivative (function,
+	                                                          towards,
 	                                                          order,
-	                                                          towards);
+	                                                          flags,
+	                                                          error);
 }

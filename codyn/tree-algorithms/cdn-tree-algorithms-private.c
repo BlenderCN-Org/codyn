@@ -437,15 +437,16 @@ iter_new_bfunc (CdnMathFunctionType    type,
 	CdnStackManipulation const *smanipa;
 	CdnStackManipulation const *smanipb;
 	CdnExpressionTreeIter *ret;
+	GError *err = NULL;
 
-	smanipa = cdn_instruction_get_stack_manipulation (a->instruction, NULL);
+	smanipa = cdn_instruction_get_stack_manipulation (a->instruction, &err);
 	smanipb = cdn_instruction_get_stack_manipulation (b->instruction, NULL);
 
-	argdim[0] = smanipa->push_dims ? smanipa->push_dims[0] : 1;
-	argdim[1] = smanipa->push_dims ? smanipa->push_dims[1] : 1;
+	argdim[2] = smanipa->push_dims ? smanipa->push_dims[0] : 1;
+	argdim[3] = smanipa->push_dims ? smanipa->push_dims[1] : 1;
 
-	argdim[2] = smanipb->push_dims ? smanipb->push_dims[0] : 1;
-	argdim[3] = smanipb->push_dims ? smanipb->push_dims[1] : 1;
+	argdim[0] = smanipb->push_dims ? smanipb->push_dims[0] : 1;
+	argdim[1] = smanipb->push_dims ? smanipb->push_dims[1] : 1;
 
 	ret = iter_new_sized_take (cdn_instruction_function_new (type,
 	                                                         NULL,

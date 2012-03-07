@@ -14,11 +14,11 @@
 
 typedef struct
 {
-	GHashTable *symbols;
 	CdnExpressionTreeIterDeriveFlags flags;
 	GError **error;
-	GHashTable *property_map;
-	GHashTable *diff_map;
+
+	GHashTable *symbols;
+	GHashTable *towards;
 } DeriveContext;
 
 static CdnExpressionTreeIter *derive_iter (CdnExpressionTreeIter *iter,
@@ -473,6 +473,56 @@ derive_product (CdnExpressionTreeIter *iter,
 }
 
 static CdnExpressionTreeIter *
+derive_unary_minus (CdnExpressionTreeIter *iter,
+                    DeriveContext         *ctx)
+{
+	CdnExpressionTreeIter *a;
+	gdouble num;
+
+	a = derive_iter (cdn_expression_tree_iter_get_child (iter, 0),
+	                 ctx);
+
+	if (!a)
+	{
+		return NULL;
+	}
+
+	if (iter_is_number (a, &num))
+	{
+		return iter_new_num (-num);
+	}
+	else
+	{
+		return iter_new_ufunc (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
+		                       a,
+		                       TRUE);
+	}
+}
+
+static CdnExpressionTreeIter *
+derive_tilde (CdnExpressionTreeIter *iter,
+              DeriveContext         *ctx)
+{
+	CdnExpressionTreeIter *cp;
+	CdnExpressionTreeIter *derived;
+
+	derived = derive_iter (iter->children[0], ctx);
+
+	if (!derived)
+	{
+		return NULL;
+	}
+
+	cp = iter_copy (iter);
+
+	cdn_expression_tree_iter_free (cp->children[0]);
+	cp->children[0] = derived;
+	derived->parent = cp;
+
+	return cp;
+}
+
+static CdnExpressionTreeIter *
 derive_operator (CdnExpressionTreeIter  *iter,
                  CdnInstructionFunction *instr,
                  DeriveContext          *ctx)
@@ -482,19 +532,7 @@ derive_operator (CdnExpressionTreeIter  *iter,
 	switch (cdn_instruction_function_get_id (instr))
 	{
 		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
-		{
-			CdnExpressionTreeIter *a;
-
-			a = derive_iter (cdn_expression_tree_iter_get_child (iter, 0),
-			                 ctx);
-
-			if (a)
-			{
-				ret = iter_new_ufunc (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
-				                      a,
-				                      TRUE);
-			}
-		}
+			ret = derive_unary_minus (iter, ctx);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_MINUS:
 		case CDN_MATH_FUNCTION_TYPE_PLUS:
@@ -538,16 +576,10 @@ derive_operator (CdnExpressionTreeIter  *iter,
 			// Power rule: (f^g)' = f^g * (f' (g / f) + g' ln (f))
 			ret = derive_power (iter, ctx);
 		break;
-		case CDN_MATH_FUNCTION_TYPE_NEGATE:
-		case CDN_MATH_FUNCTION_TYPE_MODULO:
-		case CDN_MATH_FUNCTION_TYPE_GREATER:
-		case CDN_MATH_FUNCTION_TYPE_LESS:
-		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
-		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
-		case CDN_MATH_FUNCTION_TYPE_EQUAL:
-		case CDN_MATH_FUNCTION_TYPE_OR:
-		case CDN_MATH_FUNCTION_TYPE_AND:
-		case CDN_MATH_FUNCTION_TYPE_TERNARY:
+		case CDN_MATH_FUNCTION_TYPE_TILDE:
+			ret = derive_tilde (iter, ctx);
+		break;
+		default:
 			g_set_error (ctx->error,
 			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
 			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
@@ -922,6 +954,30 @@ derive_log10 (CdnExpressionTreeIter *f,
 }
 
 static CdnExpressionTreeIter *
+derive_index (CdnExpressionTreeIter *iter,
+              DeriveContext         *ctx)
+{
+	CdnExpressionTreeIter *cp;
+	CdnExpressionTreeIter *derived;
+	gint idx = iter->num_children - 1;
+
+	derived = derive_iter (iter->children[idx], ctx);
+
+	if (!derived)
+	{
+		return NULL;
+	}
+
+	cp = iter_copy (iter);
+
+	cdn_expression_tree_iter_free (cp->children[idx]);
+	cp->children[idx] = derived;
+	derived->parent = cp;
+
+	return cp;
+}
+
+static CdnExpressionTreeIter *
 derive_function (CdnExpressionTreeIter  *iter,
                  CdnInstructionFunction *instr,
                  DeriveContext          *ctx)
@@ -979,9 +1035,11 @@ derive_function (CdnExpressionTreeIter  *iter,
 			return derive_log10 (iter, ctx);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_INDEX:
-			return iter_copy (iter);
+			return derive_index (iter, ctx);
 		break;
 	}
+
+	g_message ("WAAAAAA");
 
 	g_set_error (ctx->error,
 	             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
@@ -992,168 +1050,26 @@ derive_function (CdnExpressionTreeIter  *iter,
 	return NULL;
 }
 
-#undef DEBUG_PRINTIT
-//#define DEBUG_PRINTIT
-
-#ifdef DEBUG_PRINTIT
-static void
-print_sym (gpointer key, gpointer value, gboolean *first)
-{
-	if (!*first)
-	{
-		g_printf (", ");
-	}
-	else
-	{
-		*first = FALSE;
-	}
-
-	g_printf ("`%s'", cdn_variable_get_full_name (key));
-}
-
-static void
-print_syms (GHashTable *syms)
-{
-	gboolean first = TRUE;
-	g_printf ("    ");
-
-	g_hash_table_foreach (syms, (GHFunc)print_sym, &first);
-
-	g_printf ("\n");
-}
-
-static void
-printit (gpointer key, gpointer value)
-{
-	g_printf ("    `%s' -> `%s'\n",
-	          cdn_variable_get_full_name (key),
-	          value ? cdn_expression_tree_iter_to_string_dbg (value) : NULL);
-}
-
-static void
-print_map (GHashTable *table)
-{
-	if (!table)
-	{
-		return;
-	}
-
-	g_hash_table_foreach (table, (GHFunc)printit, NULL);
-}
-#endif
-
-static CdnExpressionTreeIter *
-map_iter (CdnExpressionTreeIter *iter,
-          DeriveContext         *ctx)
-{
-	gint n;
-	gint i;
-	CdnInstruction *instr;
-
-	n = cdn_expression_tree_iter_get_num_children (iter);
-
-	for (i = 0; i < n; ++i)
-	{
-		CdnExpressionTreeIter *mapped;
-		CdnExpressionTreeIter *child;
-
-		child = cdn_expression_tree_iter_get_child (iter, i);
-
-		mapped = map_iter (child, ctx);
-
-		if (mapped != child)
-		{
-			cdn_expression_tree_iter_take_child (iter, i, mapped);
-		}
-	}
-
-	instr = cdn_expression_tree_iter_get_instruction (iter);
-
-	if (CDN_IS_INSTRUCTION_VARIABLE (instr))
-	{
-		CdnVariable *prop;
-		CdnExpressionTreeIter *mapped;
-
-		prop = cdn_instruction_variable_get_variable (CDN_INSTRUCTION_VARIABLE (instr));
-		mapped = g_hash_table_lookup (ctx->property_map, prop);
-
-		if (mapped)
-		{
-			CdnExpressionTreeIter *cp;
-			CdnExpressionTreeIter *ncp;
-
-			cp = cdn_expression_tree_iter_copy (mapped);
-
-			ncp = map_iter (cp, ctx);
-
-			if (ncp != cp)
-			{
-				cdn_expression_tree_iter_free (cp);
-			}
-
-			return ncp;
-		}
-	}
-
-	return iter;
-}
-
 static CdnExpressionTreeIter *
 derive_expression (CdnExpression *expression,
-                   DeriveContext *ctx,
-                   gboolean       mapiter)
+                   DeriveContext *ctx)
 {
 	CdnExpressionTreeIter *ret;
 	CdnExpressionTreeIter *iter;
-	CdnExpressionTreeIter *mapped;
 
 	iter = cdn_expression_tree_iter_new (expression);
 
 	if (!iter)
 	{
-#ifdef DEBUG_PRINTIT
-		g_printf ("Deriving non compiled (to 0): %s", cdn_expression_get_as_string (expression));
-#endif
-
 		// This means that the expression was not actually compiled yet
 		// For now we are just going to assume that we are deriving that
 		// to 0
 		return iter_new_numstr ("0");
 	}
 
-	mapped = iter;
-
-	if (mapiter)
-	{
-		mapped = map_iter (iter, ctx);
-	}
-
-#ifdef DEBUG_PRINTIT
-	g_printf ("Deriving: %s\n", cdn_expression_tree_iter_to_string_dbg (iter));
-
-	g_printf ("  Properties:\n");
-	print_map (ctx->property_map);
-
-	g_printf ("  Diff:\n");
-	print_map (ctx->diff_map);
-
-	g_printf ("  Symbols:\n");
-	print_syms (ctx->symbols);
-
-	if (mapped != iter)
-	{
-		g_printf ("  Mapped: %s\n", cdn_expression_tree_iter_to_string_dbg (mapped));
-	}
-#endif
-
-	ret = derive_iter (mapped, ctx);
-
-	if (mapped != iter)
-	{
-		cdn_expression_tree_iter_free (mapped);
-	}
-
+	ret = derive_iter (iter, ctx);
 	cdn_expression_tree_iter_free (iter);
+
 	return ret;
 }
 
@@ -1212,76 +1128,165 @@ derive_integrated (CdnVariable   *prop,
 }
 
 static CdnExpressionTreeIter *
-derive_property_real (CdnInstructionVariable *instr,
-                      CdnVariable            *prop,
+derive_variable_real (CdnInstructionVariable *instr,
+                      CdnVariable            *variable,
                       DeriveContext          *ctx)
 {
-	CdnExpressionTreeIter *mapped = NULL;
+	CdnExpressionTreeIter *derivative = NULL;
 
-	if (!prop && instr)
+	if (!variable && instr)
 	{
-		prop = cdn_instruction_variable_get_variable (instr);
+		variable = cdn_instruction_variable_get_variable (instr);
 	}
 
-	/* Check if the property has a diff mapped symbol */
-	if (ctx->diff_map && g_hash_table_lookup_extended (ctx->diff_map,
-	                                                   prop,
-	                                                   NULL,
-	                                                   (gpointer *)&mapped))
+	if (g_hash_table_lookup_extended (ctx->towards,
+	                                  variable,
+	                                  NULL,
+	                                  (gpointer *)&derivative))
 	{
+		// We are deriving towards this variable
+		// 1) Partial: the partial derivative of the variable being
+		//             derived towards is 1
+		// 2) Full: the derivative of the variable being derived towards
+		//          is simply the variable representing its derivative
 		if (ctx->flags & CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL)
 		{
-			// Partial derivative towards this property, is 1
+			// Partial derivative towards this variable is 1
 			return iter_new_numstr ("1");
 		}
 		else
 		{
-			return iter_copy (mapped);
+			return iter_copy (derivative);
 		}
 	}
 
-	/* Check if the property is a derived symbol (we don't go deep, but we are not differentiating towards it) */
-	if (g_hash_table_lookup (ctx->symbols, prop))
+	// Otherwise, if it's still a symbol, then its derivative is 0
+	if (g_hash_table_lookup_extended (ctx->symbols, variable, NULL, NULL))
 	{
-		if (ctx->flags & CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL)
+		return iter_new_numstr ("0");
+	}
+
+	if (ctx->flags & CDN_EXPRESSION_TREE_ITER_DERIVE_TIME)
+	{
+		// Check if there is a time derivative for this variable...
+		CdnVariable *dv;
+
+		dv = cdn_variable_get_derivative (variable);
+
+		if (dv)
 		{
-			return iter_new_numstr ("0");
+			return iter_new_take (cdn_instruction_variable_new (dv));
 		}
-		else
+		else if (cdn_variable_get_integrated (variable))
 		{
-			return iter_new_numstr ("1");
+			return derive_integrated (variable, ctx);
 		}
 	}
 
-	if (cdn_variable_get_derivative (prop))
-	{
-		return iter_new_take (cdn_instruction_variable_new (cdn_variable_get_derivative (prop)));
-	}
-	else if (cdn_variable_get_integrated (prop))
-	{
-		return derive_integrated (prop, ctx);
-	}
-	else
-	{
-		// Derive further into x (considering x a helper variable)
-		return derive_expression (cdn_variable_get_expression (prop),
-		                          ctx,
-		                          FALSE);
-	}
+	// Otherwise expand on the variable
+	return derive_expression (cdn_variable_get_expression (variable),
+	                          ctx);
 }
 
 static CdnExpressionTreeIter *
-derive_property (CdnExpressionTreeIter  *iter,
+derive_variable (CdnExpressionTreeIter  *iter,
                  CdnInstructionVariable *instr,
                  DeriveContext          *ctx)
 {
-	return derive_property_real (instr, NULL, ctx);
+	return derive_variable_real (instr, NULL, ctx);
+}
+
+static gboolean
+iter_contains_variable (CdnExpressionTreeIter *iter,
+                        GHashTable            *symbols)
+{
+	gint i;
+
+	if (CDN_IS_INSTRUCTION_VARIABLE (iter->instruction))
+	{
+		CdnInstructionVariable *vinstr;
+		CdnVariable *v;
+
+		vinstr = CDN_INSTRUCTION_VARIABLE (iter->instruction);
+		v = cdn_instruction_variable_get_variable (vinstr);
+
+		if (g_hash_table_lookup_extended (symbols, v, NULL, NULL))
+		{
+			return TRUE;
+		}
+	}
+
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		if (iter_contains_variable (iter->children[i], symbols))
+		{
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+static GSList *
+collect_towards (CdnExpressionTreeIter  *iter,
+                 CdnFunction            *func,
+                 gboolean              **towardsmap,
+                 gint                   *newgen,
+                 DeriveContext          *ctx)
+{
+	GSList *ret = NULL;
+	gint i;
+	GList const *args;
+
+	args = cdn_function_get_arguments (func);
+
+	if (towardsmap)
+	{
+		*towardsmap = g_new0 (gboolean, iter->num_children);
+	}
+
+	if (newgen)
+	{
+		*newgen = 0;
+	}
+
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		CdnFunctionArgument *arg;
+		CdnVariable *v;
+
+		arg = args->data;
+		args = g_list_next (args);
+
+		if (!iter_contains_variable (iter->children[i], ctx->towards))
+		{
+			continue;
+		}
+
+		if (towardsmap)
+		{
+			(*towardsmap)[i] = TRUE;
+		}
+
+		v = _cdn_function_argument_get_variable (arg);
+
+		if (newgen && !cdn_variable_get_derivative (v))
+		{
+			++*newgen;
+		}
+
+		// Need to derive towards this
+		ret = g_slist_prepend (ret, arg);
+	}
+
+	return g_slist_reverse (ret);
 }
 
 static CdnExpressionTreeIter *
-derive_custom_function_intern (CdnExpressionTreeIter *iter,
-                               CdnFunction           *func,
-                               DeriveContext         *ctx)
+derive_custom_function_real (CdnExpressionTreeIter *iter,
+                             CdnFunction           *func,
+                             DeriveContext         *ctx,
+                             gboolean               isref)
 {
 	gint i;
 	gint num;
@@ -1289,31 +1294,81 @@ derive_custom_function_intern (CdnExpressionTreeIter *iter,
 	CdnExpressionTreeIter *ret = NULL;
 	gint *argdim;
 	CdnExpressionTreeIter **children;
+	GSList *towards;
+	CdnExpressionTreeIterDeriveFlags flags;
+	gint newidx;
+	gboolean *towardsmap;
+	gint newgen;
+	gint idx;
+	gint newstart;
 
-	// Try to derive func towards all of its arguments
-	df = cdn_function_get_derivative (func, 1, NULL);
+	// Construct list of variables towards which to derive. We are going
+	// to be relatively smart here and only derive towards those arguments
+	// containing currently derived symbols
+	towards = collect_towards (iter, func, &towardsmap, &newgen, ctx);
+
+	if (!towards)
+	{
+		g_free (towardsmap);
+		return iter_new_numstr ("0");
+	}
+
+	flags = ctx->flags;
+
+	if (!isref)
+	{
+		flags &= ~CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL;
+	}
+
+	// Try to derive func towards all of its arguments.
+	df = cdn_function_get_derivative (func,
+	                                  towards,
+	                                  1,
+	                                  flags,
+	                                  ctx->error);
 
 	if (!df)
 	{
+		gchar *id;
+
+		g_slist_free (towards);
+		g_free (towardsmap);
+
+		id = cdn_object_get_full_id_for_display (CDN_OBJECT (func));
+
+		if (ctx->error && !*ctx->error)
+		{
+			g_set_error (ctx->error,
+			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
+			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_FUNCTION,
+			             "The derivative of the function `%s' (type `%s') is not implemented",
+			             id,
+			             g_type_name (G_TYPE_FROM_INSTANCE (func)));
+		}
+
+		g_free (id);
 		return NULL;
 	}
 
 	num = cdn_expression_tree_iter_get_num_children (iter);
-	argdim = g_new0 (gint, num * 4);
+	argdim = g_new0 (gint, (num + newgen) * 2);
 
-	children = g_new0 (CdnExpressionTreeIter *, num * 2);
+	children = g_new0 (CdnExpressionTreeIter *, num + newgen);
+
+	idx = (num + newgen) * 2 - 1;
+	newidx = newgen * 2 - 1;
+	newstart = num;
 
 	// Now, df will have new arguments for the derivatives which
-	// we will compute here now and add on the stack in addition
-	// to the arguments already there
+	// we will compute here now
 	for (i = 0; i < num; ++i)
 	{
 		CdnExpressionTreeIter *child;
 		CdnExpressionTreeIter *derived;
 		CdnInstruction *instr;
 		CdnStackManipulation const *smanip;
-		gint didx;
 
+		// First simply copy the child
 		child = cdn_expression_tree_iter_get_child (iter, i);
 		instr = cdn_expression_tree_iter_get_instruction (child);
 
@@ -1321,118 +1376,56 @@ derive_custom_function_intern (CdnExpressionTreeIter *iter,
 
 		smanip = cdn_instruction_get_stack_manipulation (instr, NULL);
 
-		argdim[i * 2] = smanip->push_dims ? smanip->push_dims[0] : 1;
-		argdim[i * 2 + 1] = smanip->push_dims ? smanip->push_dims[1] : 1;
+		argdim[idx--] = smanip->push_dims ? smanip->push_dims[0] : 1;
+		argdim[idx--] = smanip->push_dims ? smanip->push_dims[1] : 1;
 
-		// Derive it here
-		derived = derive_iter (child, ctx);
-		instr = cdn_expression_tree_iter_get_instruction (derived);
-		smanip = cdn_instruction_get_stack_manipulation (instr, NULL);
+		// Then see if we need to derive this
+		if (towardsmap[i])
+		{
+			CdnVariable *tow;
 
-		didx = (i + num) * 2;
-		children[didx] = derived;
+			tow = _cdn_function_argument_get_variable (towards->data);
+			towards = g_slist_delete_link (towards, towards);
 
-		argdim[didx] = smanip->push_dims ? smanip->push_dims[0] : 1;
-		argdim[didx + 1] = smanip->push_dims ? smanip->push_dims[1] : 1;
+			if (!cdn_variable_get_derivative (tow))
+			{
+				// Derive it here
+				derived = derive_iter (child, ctx);
+
+				if (!derived)
+				{
+					// Oops
+					g_free (argdim);
+					g_free (towardsmap);
+					g_free (children);
+					g_slist_free (towards);
+
+					g_object_unref (df);
+
+					return NULL;
+				}
+
+				instr = cdn_expression_tree_iter_get_instruction (derived);
+				smanip = cdn_instruction_get_stack_manipulation (instr, NULL);
+
+				children[newstart++] = derived;
+
+				argdim[newidx--] = smanip->push_dims ? smanip->push_dims[0] : 1;
+				argdim[newidx--] = smanip->push_dims ? smanip->push_dims[1] : 1;
+			}
+		}
 	}
 
 	ret = iter_new_take (cdn_instruction_custom_function_new (df,
-	                                                          num * 2,
+	                                                          num + newgen,
 	                                                          argdim));
 
 	ret->children = children;
-	ret->num_children = num;
+	ret->num_children = num + newgen;
 
 	g_free (argdim);
-
-	return ret;
-}
-
-static CdnExpressionTreeIter *
-derive_custom_function_real (CdnExpressionTreeIter *iter,
-                             CdnFunction           *func,
-                             DeriveContext         *ctx,
-                             gboolean               mapargs)
-{
-	gint i = 0;
-	CdnExpressionTreeIter *ret = NULL;
-
-	ret = derive_custom_function_intern (iter, func, ctx);
-
-	if (ret)
-	{
-		return ret;
-	}
-
-	// Map arguments of the function object to arguments in the iter
-	if (mapargs)
-	{
-		GList const *args;
-		GSList *mapped = NULL;
-		args = cdn_function_get_arguments (func);
-		GSList *item;
-
-		while (args)
-		{
-			CdnFunctionArgument *arg = args->data;
-			CdnExpressionTreeIter *cp;
-			CdnVariable *prop;
-
-			args = g_list_next (args);
-
-			prop = _cdn_function_argument_get_variable (arg);
-
-			cp = cdn_expression_tree_iter_copy (cdn_expression_tree_iter_get_child (iter, i));
-
-			mapped = g_slist_prepend (mapped, prop);
-
-			g_hash_table_insert (ctx->property_map, prop, cp);
-
-			++i;
-		}
-
-		// Map also the iters now
-		for (item = mapped; item; item = g_slist_next (item))
-		{
-			CdnVariable *prop = item->data;
-			CdnExpressionTreeIter *cp;
-			CdnExpressionTreeIter *ncp;
-
-			cp = g_hash_table_lookup (ctx->property_map, prop);
-
-			ncp = map_iter (cp, ctx);
-
-			if (ncp != cp)
-			{
-				g_hash_table_insert (ctx->property_map, prop, ncp);
-			}
-		}
-
-		g_slist_free (mapped);
-	}
-
-	// Then, evaluate the function expression
-	ret = derive_expression (cdn_function_get_expression (func),
-	                         ctx,
-	                         TRUE);
-
-	// Remove again from the map
-	if (mapargs)
-	{
-		GList const *args;
-
-		args = cdn_function_get_arguments (func);
-
-		while (args)
-		{
-			CdnFunctionArgument *arg = args->data;
-
-			g_hash_table_remove (ctx->property_map,
-			                     _cdn_function_argument_get_variable (arg));
-
-			args = g_list_next (args);
-		}
-	}
+	g_free (towardsmap);
+	g_slist_free (towards);
 
 	return ret;
 }
@@ -1445,7 +1438,7 @@ derive_custom_function (CdnExpressionTreeIter        *iter,
 	return derive_custom_function_real (iter,
 	                                    cdn_instruction_custom_function_get_function (instr),
 	                                    ctx,
-	                                    TRUE);
+	                                    FALSE);
 }
 
 static CdnExpressionTreeIter *
@@ -1456,14 +1449,14 @@ derive_custom_function_ref (CdnExpressionTreeIter           *iter,
 	return derive_custom_function_real (iter,
 	                                    cdn_instruction_custom_function_ref_get_function (instr),
 	                                    ctx,
-	                                    FALSE);
+	                                    TRUE);
 }
 
 static CdnExpressionTreeIter *
 derive_custom_operator_real (CdnExpressionTreeIter *iter,
                              CdnOperator           *op,
                              DeriveContext         *ctx,
-                             gboolean               mapargs)
+                             gboolean               isref)
 {
 	CdnFunction *f;
 
@@ -1471,7 +1464,7 @@ derive_custom_operator_real (CdnExpressionTreeIter *iter,
 
 	if (f)
 	{
-		return derive_custom_function_real (iter, f, ctx, mapargs);
+		return derive_custom_function_real (iter, f, ctx, isref);
 	}
 	else
 	{
@@ -1493,7 +1486,7 @@ derive_custom_operator (CdnExpressionTreeIter        *iter,
 	CdnOperator *op;
 
 	op = cdn_instruction_custom_operator_get_operator (instr);
-	return derive_custom_operator_real (iter, op, ctx, TRUE);
+	return derive_custom_operator_real (iter, op, ctx, FALSE);
 }
 
 static CdnExpressionTreeIter *
@@ -1504,7 +1497,7 @@ derive_custom_operator_ref (CdnExpressionTreeIter           *iter,
 	CdnOperator *op;
 
 	op = cdn_instruction_custom_operator_ref_get_operator (instr);
-	return derive_custom_operator_real (iter, op, ctx, FALSE);
+	return derive_custom_operator_real (iter, op, ctx, TRUE);
 }
 
 static CdnExpressionTreeIter *
@@ -1590,7 +1583,7 @@ derive_iter (CdnExpressionTreeIter *iter,
 	}
 	else if (CDN_IS_INSTRUCTION_VARIABLE (instr))
 	{
-		ret = derive_property (iter,
+		ret = derive_variable (iter,
 		                       CDN_INSTRUCTION_VARIABLE (instr),
 		                       ctx);
 	}
@@ -1612,15 +1605,102 @@ derive_iter (CdnExpressionTreeIter *iter,
 	return ret;
 }
 
+static GHashTable *
+variables_to_hash_set (GSList *variables)
+{
+	GHashTable *ret;
+
+	ret = g_hash_table_new_full (g_direct_hash,
+	                             g_direct_equal,
+	                             (GDestroyNotify)g_object_unref,
+	                             NULL);
+
+	while (variables)
+	{
+		g_hash_table_insert (ret,
+		                     g_object_ref (variables->data),
+		                     GINT_TO_POINTER (1));
+
+		variables = g_slist_next (variables);
+	}
+
+	return ret;
+}
+
+#define DEBUG_PRINTIT
+
+#ifdef DEBUG_PRINTIT
+static void
+print_syms (GSList *syms)
+{
+	GString *s;
+
+	s = g_string_new ("Symbols: ");
+
+	while (syms)
+	{
+		gchar *nm;
+
+		nm = cdn_variable_get_full_name (syms->data);
+		g_string_append (s, nm);
+		g_free (nm);
+
+		if (syms->next)
+		{
+			g_string_append (s, ", ");
+		}
+
+		syms = g_slist_next (syms);
+	}
+
+	cdn_debug_message (DEBUG_DIFF,
+	                   "%s",
+	                   s->str);
+
+	g_string_free (s, TRUE);
+}
+
+static void
+foreach_towards (CdnVariable *key,
+                 CdnExpressionTreeIter *value,
+                 GString *s)
+{
+	gchar *nm;
+
+	nm = cdn_variable_get_full_name (key);
+	g_string_append (s, nm);
+	g_string_append (s, ", ");
+	g_free (nm);
+}
+
+static void
+print_towards (GHashTable *towards)
+{
+	GString *s;
+
+	s = g_string_new ("Towards: ");
+	g_hash_table_foreach (towards, (GHFunc)foreach_towards, s);
+
+	cdn_debug_message (DEBUG_DIFF,
+	                   "%s",
+	                   s->str);
+
+	g_string_free (s, TRUE);
+}
+#endif
+
 /**
  * cdn_expression_tree_iter_derive:
- * @iter: The expression to derive
- * @symbols: (element-type CdnVariable): A list of symbols to derive towards
- * @property_map: A #GHashTable
- * @diff_map: A #GHashTable
- * @order: The order of the derivation
- * @flags: A #CdnExpressionTreeIterDeriveFlags
- * @error: A #GError
+ * @iter: the expression to derive
+ * @symbols: (element-type CdnVariable): a list of symbols considered to be
+ *                                       derivable (e.g. all arguments to a
+ *                                       function).
+ * @towards: (element-type CdnVariable CdnExpressionTreeIter):
+ *                                       a hash of symbols to derive (mapping
+ *                                       to its derivative if any)
+ * @order: the order of the derivation
+ * @flags: a #CdnExpressionTreeIterDeriveFlags
+ * @error: a #GError
  *
  * Derive an expression symbolically.
  *
@@ -1630,14 +1710,13 @@ derive_iter (CdnExpressionTreeIter *iter,
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_derive (CdnExpressionTreeIter             *iter,
                                  GSList                            *symbols,
-                                 GHashTable                        *property_map,
-                                 GHashTable                        *diff_map,
+                                 GHashTable                        *towards,
                                  gint                               order,
                                  CdnExpressionTreeIterDeriveFlags   flags,
                                  GError                           **error)
 {
 	DeriveContext ctx;
-	CdnExpressionTreeIter *mapped;
+	CdnExpressionTreeIter *derived = NULL;
 
 	if (iter == NULL)
 	{
@@ -1651,42 +1730,46 @@ cdn_expression_tree_iter_derive (CdnExpressionTreeIter             *iter,
 
 	cdn_debug_message (DEBUG_DIFF,
 	                   "Deriving: {%s}",
-	                   cdn_expression_tree_iter_to_string (iter));
+	                   cdn_expression_tree_iter_to_string_dbg (iter));
+
+#ifdef DEBUG_PRINTIT
+	if (cdn_debug_is_enabled (CDN_DEBUG_DIFF))
+	{
+		print_syms (symbols);
+		print_towards (towards);
+	}
+#endif
 
 	ctx.flags = flags;
 	ctx.error = error;
-	ctx.symbols = g_hash_table_new (g_direct_hash, g_direct_equal);
-	ctx.property_map = property_map;
 
-	if (!ctx.property_map)
+	ctx.symbols = variables_to_hash_set (symbols);
+	ctx.towards = towards;
+
+	if (!towards)
 	{
-		ctx.property_map = g_hash_table_new_full (g_direct_hash,
-		                                          g_direct_equal,
-		                                          NULL,
-		                                          (GDestroyNotify)cdn_expression_tree_iter_free);
+		ctx.towards = g_hash_table_new (g_direct_hash,
+		                                g_direct_equal);
 	}
 	else
 	{
-		g_hash_table_ref (ctx.property_map);
+		g_hash_table_ref (ctx.towards);
 	}
 
-	ctx.diff_map = diff_map;
-
-	while (symbols)
-	{
-		g_hash_table_insert (ctx.symbols, symbols->data, GINT_TO_POINTER (1));
-		symbols = g_slist_next (symbols);
-	}
-
-	mapped = map_iter (iter, &ctx);
+	derived = iter;
 
 	while (order > 0)
 	{
-		CdnExpressionTreeIter *derived;
+		CdnExpressionTreeIter *tmp;
 
-		derived = derive_iter (mapped, &ctx);
-		cdn_expression_tree_iter_free (mapped);
-		mapped = NULL;
+		tmp = derive_iter (derived, &ctx);
+
+		if (derived != iter)
+		{
+			cdn_expression_tree_iter_free (derived);
+		}
+
+		derived = tmp;
 
 		if (!derived)
 		{
@@ -1694,21 +1777,12 @@ cdn_expression_tree_iter_derive (CdnExpressionTreeIter             *iter,
 		}
 
 		--order;
-
-		if (order == 0)
-		{
-			mapped = derived;
-			break;
-		}
-
-		mapped = map_iter (derived, &ctx);
-		cdn_expression_tree_iter_free (derived);
 	}
 
 	g_hash_table_destroy (ctx.symbols);
-	g_hash_table_unref (ctx.property_map);
+	g_hash_table_unref (ctx.towards);
 
-	if (!mapped)
+	if (!derived)
 	{
 		if (error && !*error)
 		{
@@ -1724,12 +1798,12 @@ cdn_expression_tree_iter_derive (CdnExpressionTreeIter             *iter,
 
 	if (flags & CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY)
 	{
-		mapped = cdn_expression_tree_iter_simplify (mapped);
+		//derived = cdn_expression_tree_iter_simplify (derived);
 	}
 
 	cdn_debug_message (DEBUG_DIFF,
 	                   "Derived: {%s}",
-	                   cdn_expression_tree_iter_to_string (mapped));
+	                   cdn_expression_tree_iter_to_string_dbg (derived));
 
-	return mapped;
+	return derived;
 }

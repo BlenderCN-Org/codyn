@@ -87,55 +87,6 @@ derived_function (CdnExpression *expr)
 	return NULL;
 }
 
-static GHashTable *
-get_property_map (GList const *args,
-                  GList const *nargs,
-                  gint         num,
-                  GHashTable  *ret)
-{
-	if (ret == NULL)
-	{
-		// Map properties of func to properties in nf
-		ret = g_hash_table_new_full (g_direct_hash,
-		                             g_direct_equal,
-		                             NULL,
-		                             (GDestroyNotify)cdn_expression_tree_iter_free);
-	}
-
-	while (args && nargs && num != 0)
-	{
-		CdnFunctionArgument *arg;
-		CdnFunctionArgument *argnf;
-		GSList *instr;
-
-		CdnVariable *p;
-		CdnVariable *pnf;
-
-		arg = args->data;
-		argnf = nargs->data;
-
-		args = g_list_next (args);
-		nargs = g_list_next (nargs);
-
-		p = _cdn_function_argument_get_variable (arg);
-		pnf = _cdn_function_argument_get_variable (argnf);
-
-		instr = g_slist_prepend (NULL,
-		                         cdn_instruction_variable_new (pnf));
-
-		g_hash_table_insert (ret,
-		                     p,
-		                     cdn_expression_tree_iter_new_from_instructions (instr));
-
-		g_slist_foreach (instr, (GFunc)cdn_mini_object_unref, NULL);
-		g_slist_free (instr);
-
-		--num;
-	}
-
-	return ret;
-}
-
 static CdnFunctionArgument *
 derived_arg (CdnFunction   *func,
              CdnExpression *expr)
@@ -154,28 +105,11 @@ derived_arg (CdnFunction   *func,
 	return cdn_function_get_argument (func, pname);
 }
 
-static CdnVariable *
-derived_property (CdnFunction   *func,
-                  CdnExpression *expr)
-{
-	CdnFunctionArgument *arg;
-
-	arg = derived_arg (func, expr);
-
-	if (!arg)
-	{
-		return NULL;
-	}
-
-	return _cdn_function_argument_get_variable (arg);
-}
-
 static gboolean
 validate_arguments (GSList const  *expressions,
                     GSList const  *towardsexpr,
                     CdnFunction  **func,
-                    CdnVariable  **towards,
-                    GList        **syms,
+                    GSList       **towards,
                     gint          *order,
                     GError       **error)
 {
@@ -196,27 +130,7 @@ validate_arguments (GSList const  *expressions,
 		return FALSE;
 	}
 
-	*syms = NULL;
-	*order = 1;
-
-	expressions = expressions->next;
-	*towards = derived_property (*func, expressions->data);
-
-	if (!*towards)
-	{
-		g_set_error (error,
-		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
-		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
-		             "Expected partial function variable reference but got `%s'.",
-		             cdn_expression_get_as_string (expressions->data));
-
-		return FALSE;
-	}
-
-	if (expressions->next)
-	{
-		*order = cdn_expression_evaluate (expressions->next->data);
-	}
+	*towards = NULL;
 
 	while (towardsexpr)
 	{
@@ -229,63 +143,24 @@ validate_arguments (GSList const  *expressions,
 			g_set_error (error,
 			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
 			             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
-			             "Expected function variable but got `%s' for pdiff of `%s'",
-			             cdn_expression_get_as_string (towardsexpr->data),
-			             cdn_expression_get_as_string (expr));
+			             "Expected partial function variable reference but got `%s'.",
+			             cdn_expression_get_as_string (towardsexpr->data));
 
-			g_list_free (*syms);
 			return FALSE;
 		}
-		else
-		{
-			*syms = g_list_prepend (*syms, arg);
-		}
 
+		*towards = g_slist_prepend (*towards, arg);
 		towardsexpr = g_slist_next (towardsexpr);
 	}
 
-	if (!*syms)
+	*towards = g_slist_reverse (*towards);
+
+	if (expressions->next)
 	{
-		// By default add all properties of the function as syms
-		GList const *args;
-
-		args = cdn_function_get_arguments (*func);
-
-		while (args)
-		{
-			if (cdn_function_argument_get_explicit (args->data))
-			{
-				*syms = g_list_prepend (*syms, args->data);
-			}
-
-			args = g_list_next (args);
-		}
+		*order = cdn_expression_evaluate (expressions->next->data);
 	}
-
-	*syms = g_list_reverse (*syms);
 
 	return TRUE;
-}
-
-static GSList *
-resolve_symprops (CdnFunction *f,
-                  GList const *symargs)
-{
-	GSList *ret = NULL;
-
-	while (symargs)
-	{
-		CdnFunctionArgument *arg;
-
-		arg = cdn_function_get_argument (f,
-		                                 cdn_function_argument_get_name (symargs->data));
-
-		ret = g_slist_prepend (ret, _cdn_function_argument_get_variable (arg));
-
-		symargs = g_list_next (symargs);
-	}
-
-	return g_slist_reverse (ret);
 }
 
 static gboolean
@@ -301,17 +176,9 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 {
 	CdnOperatorPDiff *diff;
 	CdnFunction *func;
-	GList *symargs;
-	GHashTable *property_map;
-	GHashTable *diff_map;
 	CdnFunction *nf = NULL;
-	gchar *s;
-	CdnVariable *towards;
-	GSList *syms;
+	GSList *towards;
 	gint order;
-	CdnExpressionTreeIter *derived;
-	CdnExpressionTreeIter *iter;
-	CdnExpression *expr;
 
 	if (!CDN_OPERATOR_CLASS (cdn_operator_pdiff_parent_class)->initialize (op,
 	                                                                       expressions,
@@ -326,94 +193,43 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 		return FALSE;
 	}
 
-	if (num_expressions <= 0 ||
-	    num_expressions > 2 ||
-	    !expressions[0]->next ||
-	    (expressions[0]->next->next && expressions[0]->next->next->next))
+	if (num_expressions != 2 ||
+	    (expressions[0]->next && expressions[0]->next->next) ||
+	    expressions[1]->next)
 	{
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
-		             "The operator `pdiff' expects arguments [Func, towards{,order}{;<vars>}] {optional} <list>");
+		             "The operator `pdiff' expects arguments [Func{, order};variable] {optional} <list>");
 
 		return FALSE;
 	}
 
 	diff = CDN_OPERATOR_PDIFF (op);
 
+	order = 1;
+
 	if (!validate_arguments (expressions[0],
 	                         num_expressions > 1 ? expressions[1] : NULL,
 	                         &func,
 	                         &towards,
-	                         &symargs,
 	                         &order,
 	                         error))
 	{
 		return FALSE;
 	}
 
-	// Here we are going to generate a new function with represents
-	// the symbolic derivation
-	s = g_strconcat ("pd",
-	                 cdn_object_get_id (CDN_OBJECT (func)),
-	                 "dt",
-	                 NULL);
+	nf = cdn_function_get_derivative (func,
+	                                  towards,
+	                                  order,
+	                                  CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL |
+	                                  CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY,
+	                                  error);
 
-	nf = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (func)));
-	cdn_object_set_id (CDN_OBJECT (nf), s);
-	g_free (s);
-
-	cdn_function_set_expression (nf, cdn_expression_new0 ());
-
-	// Map original function properties to the new function arguments
-	property_map = get_property_map (cdn_function_get_arguments (func),
-	                                 cdn_function_get_arguments (nf),
-	                                 -1,
-	                                 NULL);
-
-	// We use the diff map in partial derivation to indicate towards
-	// which variable we differentiate
-	towards = _cdn_function_argument_get_variable (cdn_function_get_argument (nf, cdn_variable_get_name (towards)));
-
-	diff_map = g_hash_table_new (g_direct_hash, g_direct_equal);
-	g_hash_table_insert (diff_map, towards, NULL);
-
-	// newsymargs contains the CdnFunctionArgument of the new function
-	syms = resolve_symprops (nf, symargs);
-
-	iter = cdn_expression_tree_iter_new (expressions[0]->data);
-
-	derived = cdn_expression_tree_iter_derive (iter,
-	                                           syms,
-	                                           property_map,
-	                                           diff_map,
-	                                           order,
-	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL |
-	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY,
-	                                           error);
-
-	g_slist_free (syms);
-
-	cdn_expression_tree_iter_free (iter);
-	expr = cdn_expression_tree_iter_to_expression (derived);
-	cdn_expression_tree_iter_free (derived);
-
-	cdn_function_set_expression (nf, expr);
 	diff->priv->function = nf;
 
-	if (property_map)
-	{
-		g_hash_table_destroy (property_map);
-	}
-
-	if (diff_map)
-	{
-		g_hash_table_destroy (diff_map);
-	}
-
-	g_list_free (symargs);
-
-	return derived != NULL;
+	g_slist_free (towards);
+	return diff->priv->function != NULL;
 }
 
 static void

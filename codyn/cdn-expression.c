@@ -3762,6 +3762,14 @@ validate_stack (CdnExpression *expression,
 
 			return FALSE;
 		}
+		else if (!smanip)
+		{
+			g_warning ("%s", error->message);
+		}
+
+#ifdef PRINT_STACK
+		g_message ("%s", cdn_instruction_to_string (inst));
+#endif
 
 		nst = calculate_stack_manipulation (smanip, &tmpspace);
 

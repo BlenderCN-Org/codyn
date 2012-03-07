@@ -97,3 +97,8 @@ cdn_debug_init ()
 	}
 }
 
+gboolean
+cdn_debug_is_enabled (CdnDebugSection section)
+{
+	return (debug_level & section) != 0;
+}

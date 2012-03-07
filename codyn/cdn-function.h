@@ -28,6 +28,7 @@
 #include <codyn/cdn-utils.h>
 #include <codyn/cdn-function-argument.h>
 #include <codyn/cdn-expression.h>
+#include <codyn/cdn-expression-tree-iter.h>
 
 #include <stdarg.h>
 
@@ -98,9 +99,11 @@ struct _CdnFunctionClass
 	                               gint                  numargs,
 	                               gint                 *argdim);
 
-	CdnFunction *(*get_derivative) (CdnFunction         *function,
-	                                gint                 order,
-	                                GList               *towards);
+	CdnFunction *(*get_derivative) (CdnFunction                       *function,
+	                                GSList                            *towards,
+	                                gint                               order,
+	                                CdnExpressionTreeIterDeriveFlags   flags,
+	                                GError                           **error);
 
 	/* signals */
 	void   (*argument_added)      (CdnFunction         *function,
@@ -155,9 +158,11 @@ CdnFunction         *cdn_function_for_dimension               (CdnFunction      
                                                                gint                  numargs,
                                                                gint                 *argdim);
 
-CdnFunction         *cdn_function_get_derivative              (CdnFunction          *function,
-                                                               gint                  order,
-                                                               GList                *towards);
+CdnFunction         *cdn_function_get_derivative              (CdnFunction                       *function,
+                                                               GSList                            *towards,
+                                                               gint                               order,
+                                                               CdnExpressionTreeIterDeriveFlags   flags,
+                                                               GError                           **error);
 
 G_END_DECLS
 

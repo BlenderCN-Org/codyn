@@ -29,5 +29,7 @@ void cdn_debug_message (CdnDebugSection section,
                         gchar const    *function,
                         gchar const    *format, ...) G_GNUC_PRINTF (5, 6);
 
+gboolean cdn_debug_is_enabled (CdnDebugSection section);
+
 #endif /* __CDN_DEBUG_H__ */
 

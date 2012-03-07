@@ -136,9 +136,8 @@ cdn_operator_dt_initialize (CdnOperator        *op,
 	derived = cdn_expression_tree_iter_derive (iter,
 	                                           syms,
 	                                           NULL,
-	                                           NULL,
 	                                           dt->priv->order,
-	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_NONE,
+	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_TIME,
 	                                           error);
 
 	cdn_expression_tree_iter_free (iter);

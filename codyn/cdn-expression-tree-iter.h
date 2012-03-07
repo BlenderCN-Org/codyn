@@ -12,7 +12,8 @@ typedef enum
 {
 	CDN_EXPRESSION_TREE_ITER_DERIVE_NONE = 0,
 	CDN_EXPRESSION_TREE_ITER_DERIVE_PARTIAL = 1 << 0,
-	CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY = 1 << 1
+	CDN_EXPRESSION_TREE_ITER_DERIVE_TIME = 1 << 1,
+	CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY = 1 << 2
 } CdnExpressionTreeIterDeriveFlags;
 
 #define CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR (cdn_expression_tree_iter_derive_error_quark ())
@@ -20,7 +21,8 @@ typedef enum
 typedef enum
 {
 	CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
-	CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_INVALID
+	CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_INVALID,
+	CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_FUNCTION
 } CdnExpressionTreeIterDeriveError;
 
 
@@ -85,8 +87,7 @@ GQuark                 cdn_expression_tree_iter_derive_error_quark (void);
 
 CdnExpressionTreeIter *cdn_expression_tree_iter_derive             (CdnExpressionTreeIter             *iter,
                                                                     GSList                            *symbols,
-                                                                    GHashTable                        *property_map,
-                                                                    GHashTable                        *diff_map,
+                                                                    GHashTable                        *towards,
                                                                     gint                               order,
                                                                     CdnExpressionTreeIterDeriveFlags   flags,
                                                                     GError                           **error);

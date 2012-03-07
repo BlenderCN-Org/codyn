@@ -28,11 +28,11 @@ property_to_string (CdnInstructionVariable *inst,
 
 	if (binding & CDN_INSTRUCTION_VARIABLE_BINDING_INPUT)
 	{
-		g_string_append (ret, "in.");
+		g_string_append (ret, "input.");
 	}
 	else if (binding & CDN_INSTRUCTION_VARIABLE_BINDING_OUTPUT)
 	{
-		g_string_append (ret, "out.");
+		g_string_append (ret, "output.");
 	}
 
 	prop = cdn_instruction_variable_get_variable (inst);
@@ -102,6 +102,10 @@ operator_to_string (CdnInstructionFunction  *inst,
 	{
 		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
 			g_string_append_c (ret, '-');
+			g_string_append (ret, children[0]);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_TILDE:
+			g_string_append_c (ret, '~');
 			g_string_append (ret, children[0]);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_MINUS:
@@ -192,16 +196,45 @@ append_comma_children (CdnInstruction      *instr,
 }
 
 static void
+index_to_string (CdnInstructionFunction *inst,
+                 gchar const * const    *children,
+                 GString                *ret,
+                 gboolean                dbg)
+{
+	if (!children[2])
+	{
+		g_string_append_printf (ret, "%s%s", children[1], children[0]);
+	}
+	else
+	{
+		g_string_append_printf (ret,
+		                        "%s[%s, %s]",
+		                        children[2],
+		                        children[0],
+		                        children[1]);
+	}
+}
+
+static void
 function_to_string (CdnInstructionFunction *inst,
                     gchar const * const    *children,
                     GString                *ret,
                     gboolean                dbg)
 {
 	gchar const *name;
+	gint id;
 
-	if (cdn_instruction_function_get_id (inst) < CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS)
+	id = cdn_instruction_function_get_id (inst);
+
+	if (id < CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS)
 	{
 		operator_to_string (inst, children, ret, dbg);
+		return;
+	}
+
+	if (id == CDN_MATH_FUNCTION_TYPE_INDEX)
+	{
+		index_to_string (inst, children, ret, dbg);
 		return;
 	}
 
