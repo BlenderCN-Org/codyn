@@ -130,7 +130,9 @@ class BaseViewActivatable:
                 'Phi': 'Φ',
                 'Chi': 'Χ',
                 'Psi': 'Ψ',
-                'Omega': 'Ω'
+                'Omega': 'Ω',
+                'partial': '∂',
+                'inf': '∞'
             }
 
             if t in smap:
