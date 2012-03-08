@@ -421,7 +421,14 @@ matrix_to_string (CdnInstructionMatrix *inst,
 				g_string_append (ret, ", ");
 			}
 
-			g_string_append (ret, children[i]);
+			if (!children[i])
+			{
+				g_string_append (ret, "(null)");
+			}
+			else
+			{
+				g_string_append (ret, children[i]);
+			}
 
 			++i;
 		}
