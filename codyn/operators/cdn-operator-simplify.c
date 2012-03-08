@@ -61,9 +61,12 @@ cdn_operator_simplify_get_name ()
 }
 
 static CdnFunction *
-derived_function (CdnExpression *expr)
+derived_function (CdnExpression *expr,
+                  gint           num_arguments,
+                  gint          *argdim)
 {
 	GSList const *instr;
+	CdnFunction *ret = NULL;
 
 	instr = cdn_expression_get_instructions (expr);
 
@@ -74,17 +77,24 @@ derived_function (CdnExpression *expr)
 
 	if (CDN_IS_INSTRUCTION_CUSTOM_FUNCTION_REF (instr->data))
 	{
-		return cdn_instruction_custom_function_ref_get_function (instr->data);
+		ret = cdn_instruction_custom_function_ref_get_function (instr->data);
 	}
 	else if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (instr->data))
 	{
 		CdnOperator *op;
 
 		op = cdn_instruction_custom_operator_ref_get_operator (instr->data);
-		return cdn_operator_get_primary_function (op);
+		ret = cdn_operator_get_primary_function (op);
 	}
 
-	return NULL;
+	if (ret)
+	{
+		ret = cdn_function_for_dimension (ret,
+		                                  num_arguments,
+		                                  argdim);
+	}
+
+	return ret;
 }
 
 static void
@@ -169,7 +179,9 @@ cdn_operator_simplify_initialize (CdnOperator        *op,
 
 	simplify = CDN_OPERATOR_SIMPLIFY (op);
 
-	func = derived_function (expressions[0]->data);
+	func = derived_function (expressions[0]->data,
+	                         num_arguments,
+	                         argdim);
 
 	if (!func)
 	{
@@ -242,14 +254,14 @@ cdn_operator_simplify_copy (CdnOperator *op)
 	ret = CDN_OPERATOR_SIMPLIFY (g_object_new (CDN_TYPE_OPERATOR_SIMPLIFY, NULL));
 
 	CDN_OPERATOR_CLASS (cdn_operator_simplify_parent_class)->initialize (CDN_OPERATOR (ret),
-	                                                                 cdn_operator_all_expressions (op),
-	                                                                 cdn_operator_num_expressions (op),
-	                                                                 cdn_operator_all_indices (op),
-	                                                                 cdn_operator_num_indices (op),
-	                                                                 cdn_operator_get_num_arguments (op),
-	                                                                 cdn_operator_get_arguments_dimension (op),
-	                                                                 NULL,
-	                                                                 NULL);
+	                                                                     cdn_operator_all_expressions (op),
+	                                                                     cdn_operator_num_expressions (op),
+	                                                                     cdn_operator_all_indices (op),
+	                                                                     cdn_operator_num_indices (op),
+	                                                                     cdn_operator_get_num_arguments (op),
+	                                                                     cdn_operator_get_arguments_dimension (op),
+	                                                                     NULL,
+	                                                                     NULL);
 
 	if (simplify->priv->function)
 	{
