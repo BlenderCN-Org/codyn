@@ -1513,7 +1513,8 @@ typedef struct
 static FunctionEntryMap function_entry_mapping[] = {
 	{"\xe2\x88\x9a", CDN_MATH_FUNCTION_TYPE_SQRT}, /* √ */
 	{"\xe2\x88\x91", CDN_MATH_FUNCTION_TYPE_SUM}, /* ∑ */
-	{"\xe2\x88\x8f", CDN_MATH_FUNCTION_TYPE_PRODUCT} /* ∏ */
+	{"\xe2\x88\x8f", CDN_MATH_FUNCTION_TYPE_PRODUCT}, /* ∏ */
+	{"\xc3\xb7", CDN_MATH_FUNCTION_TYPE_DIVIDE} /* ÷ */
 };
 
 /**
@@ -1674,7 +1675,8 @@ static CdnConstantEntry constant_entries[] = {
 	{"NaN", NULL, NAN},
 	{"Inf", NULL, INFINITY},
 	{"INF", NULL, INFINITY},
-	{"inf", NULL, INFINITY}
+	{"inf", NULL, INFINITY},
+	{"\xe2\x88\x9e", NULL, INFINITY} /* ∞ */
 };
 
 /**
