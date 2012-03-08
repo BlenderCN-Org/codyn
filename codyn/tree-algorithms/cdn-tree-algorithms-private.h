@@ -81,6 +81,8 @@ gboolean                iter_is_natural_number     (CdnExpressionTreeIter const 
 gboolean                iter_is_function           (CdnExpressionTreeIter const *iter,
                                                     CdnMathFunctionType         *type);
 
+gboolean                iter_is_matrix             (CdnExpressionTreeIter const *iter);
+
 void                    iter_invalidate_cache_up   (CdnExpressionTreeIter       *iter);
 
 void                    iter_invalidate_cache_down (CdnExpressionTreeIter       *iter);

@@ -2924,7 +2924,6 @@ parse_unary_operator (CdnExpression *expression,
 		case CDN_TOKEN_OPERATOR_TYPE_MINUS:
 		case CDN_TOKEN_OPERATOR_TYPE_PLUS:
 		case CDN_TOKEN_OPERATOR_TYPE_NEGATE:
-		case CDN_TOKEN_OPERATOR_TYPE_TILDE:
 		break;
 		default:
 			parser_failed (expression,
@@ -2939,7 +2938,7 @@ parse_unary_operator (CdnExpression *expression,
 	{
 		// consume token
 		cdn_token_free (cdn_tokenizer_next (context->buffer));
-		ret = parse_expression (expression, context, 1000, 1);
+		ret = parse_expression (expression, context, 8, 1);
 	}
 
 	argdim = get_argdim (expression, context, 1);
@@ -2977,26 +2976,6 @@ parse_unary_operator (CdnExpression *expression,
 			                                     "!",
 			                                     1,
 			                                     argdim);
-		}
-		break;
-		case CDN_TOKEN_OPERATOR_TYPE_TILDE:
-		{
-			if (!argdim || (argdim[0] * argdim[1]) != 3)
-			{
-				parser_failed (expression,
-				               context,
-				               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-				               "Skew symmetric matrix operator (~) is only defined for vectors 1-by-3 (got %d-by-%d)", argdim ? argdim[0] : 1, argdim ? argdim[1] : 1);
-
-				ret = FALSE;
-			}
-			else
-			{
-				inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TILDE,
-				                                     "~",
-				                                     1,
-				                                     argdim);
-			}
 		}
 		break;
 		default:

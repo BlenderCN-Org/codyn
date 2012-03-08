@@ -1,4 +1,5 @@
 #include "cdn-instruction-matrix.h"
+#include <string.h>
 
 #define CDN_INSTRUCTION_MATRIX_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION_MATRIX, CdnInstructionMatrixPrivate))
 
@@ -155,6 +156,13 @@ cdn_instruction_matrix_new (gint  numpop,
 	self = CDN_INSTRUCTION_MATRIX (ret);
 
 	self->priv->smanip.num_pop = numpop;
+
+	if (!popdims)
+	{
+		popdims = g_new0 (gint, numpop * 2);
+		memset (popdims, 0, sizeof (gint) * numpop * 2);
+	}
+
 	self->priv->smanip.pop_dims = popdims;
 
 	self->priv->push_dims[0] = numr;

@@ -196,7 +196,6 @@ cdn_operator_simplify_initialize (CdnOperator        *op,
 	iter = cdn_expression_tree_iter_new (cdn_function_get_expression (func));
 
 	simplified = cdn_expression_tree_iter_simplify (iter);
-	cdn_expression_tree_iter_free (iter);
 
 	expr = cdn_expression_tree_iter_to_expression (simplified);
 	cdn_expression_tree_iter_free (simplified);

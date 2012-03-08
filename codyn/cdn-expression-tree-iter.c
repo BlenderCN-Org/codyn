@@ -379,3 +379,102 @@ cdn_expression_tree_iter_to_expression (CdnExpressionTreeIter *iter)
 
 	return ret;
 }
+
+static gint
+calculate_stack_manipulation (CdnStackManipulation const *smanip,
+                              gint                       *tmpspace)
+{
+	gint ret = 0;
+	gint i;
+
+	if (smanip->pop_dims)
+	{
+		for (i = 0; i < smanip->num_pop; ++i)
+		{
+			ret -= smanip->pop_dims[i * 2] * smanip->pop_dims[i * 2 + 1];
+		}
+	}
+	else
+	{
+		ret -= smanip->num_pop;
+	}
+
+	if (smanip->push_dims)
+	{
+		for (i = 0; i < smanip->num_push; ++i)
+		{
+			ret += smanip->push_dims[i * 2] * smanip->push_dims[i * 2 + 1];
+		}
+	}
+	else
+	{
+		ret += smanip->num_push;
+	}
+
+	*tmpspace = smanip->extra_space;
+	return ret;
+}
+
+/**
+ * cdn_expression_tree_iter_initialize_stack:
+ * @iter: a #CdnExpressionTreeIter
+ * @stack: a #CdnStack
+ *
+ * Initialize the provided @stack to contain enough space to evaluate @iter.
+ *
+ **/
+void
+cdn_expression_tree_iter_initialize_stack (CdnExpressionTreeIter *iter,
+                                           CdnStack              *retstack)
+{
+	gint i;
+	gint stack = 0;
+	gint maxstack = 1;
+	gint tmpspace = 0;
+	GSList *instructions = NULL;
+	GQueue queue = {0,};
+
+	g_queue_init (&queue);
+	g_queue_push_head (&queue, iter);
+
+	while ((iter = g_queue_pop_head (&queue)))
+	{
+		instructions = g_slist_prepend (instructions,
+		                                iter->instruction);
+
+		// Compute stack from right to left
+		for (i = iter->num_children - 1; i >= 0; --i)
+		{
+			g_queue_push_head (&queue, iter->children[i]);
+		}
+	}
+
+	while (instructions)
+	{
+		CdnInstruction *inst = instructions->data;
+		CdnStackManipulation const *smanip;
+		gint nst;
+
+		instructions = g_slist_delete_link (instructions, instructions);
+		smanip = cdn_instruction_get_stack_manipulation (inst, NULL);
+
+		if (!smanip)
+		{
+			break;
+		}
+
+		nst = calculate_stack_manipulation (smanip, &tmpspace);
+
+		if (stack + MAX(tmpspace, nst) > maxstack)
+		{
+			maxstack = stack + MAX(tmpspace, nst);
+		}
+
+		stack += nst;
+	}
+
+	cdn_stack_init (retstack, maxstack);
+
+	g_slist_free (instructions);
+	g_queue_clear (&queue);
+}

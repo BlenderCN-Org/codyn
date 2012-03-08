@@ -397,14 +397,29 @@ cdn_stack_manipulation_get_pop_dimension (CdnStackManipulation const *smanip,
                                           gint                       *numr,
                                           gint                       *numc)
 {
-	if (numr)
+	if (!smanip || !smanip->pop_dims)
 	{
-		*numr = smanip ? smanip->pop_dims[n * 2] : 0;
-	}
+		if (numr)
+		{
+			*numr = 1;
+		}
 
-	if (numc)
+		if (numc)
+		{
+			*numc = 1;
+		}
+	}
+	else
 	{
-		*numc = smanip ? smanip->pop_dims[n * 2 + 1] : 0;
+		if (numr)
+		{
+			*numr = smanip->pop_dims[n * 2];
+		}
+
+		if (numc)
+		{
+			*numc = smanip->pop_dims[n * 2 + 1];
+		}
 	}
 }
 
@@ -424,13 +439,28 @@ cdn_stack_manipulation_get_push_dimension (CdnStackManipulation const *smanip,
                                            gint                       *numr,
                                            gint                       *numc)
 {
-	if (numr)
+	if (!smanip || !smanip->push_dims)
 	{
-		*numr = smanip ? smanip->push_dims[n * 2] : 0;
-	}
+		if (numr)
+		{
+			*numr = 1;
+		}
 
-	if (numc)
+		if (numc)
+		{
+			*numc = 1;
+		}
+	}
+	else
 	{
-		*numc = smanip ? smanip->push_dims[n * 2 + 1] : 0;
+		if (numr)
+		{
+			*numr = smanip->push_dims[n * 2];
+		}
+
+		if (numc)
+		{
+			*numc = smanip->push_dims[n * 2 + 1];
+		}
 	}
 }

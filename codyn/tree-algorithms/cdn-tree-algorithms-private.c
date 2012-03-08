@@ -312,6 +312,12 @@ iter_is_multiply (CdnExpressionTreeIter const *iter)
 }
 
 gboolean
+iter_is_matrix (CdnExpressionTreeIter const *iter)
+{
+	return CDN_IS_INSTRUCTION_MATRIX (iter->instruction);
+}
+
+gboolean
 iter_is_power (CdnExpressionTreeIter const *iter)
 {
 	CdnMathFunctionType type;
@@ -454,8 +460,8 @@ iter_new_bfunc (CdnMathFunctionType    type,
 	                                                         argdim),
 	                           2);
 
-	ret->children[0] = take_a ? a : iter_copy (a);
-	ret->children[1] = take_b ? b : iter_copy (b);
+	iter_set_child (ret, take_a ? a : iter_copy (a), 0);
+	iter_set_child (ret, take_b ? b : iter_copy (b), 1);
 
 	return ret;
 }
@@ -478,5 +484,7 @@ iter_new_ufunc (CdnMathFunctionType    type,
 	                           1);
 
 	ret->children[0] = take_a ? a : iter_copy (a);
+	ret->children[0]->parent = ret;
+
 	return ret;
 }

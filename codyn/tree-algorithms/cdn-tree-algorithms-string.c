@@ -104,10 +104,6 @@ operator_to_string (CdnInstructionFunction  *inst,
 			g_string_append_c (ret, '-');
 			g_string_append (ret, children[0]);
 		break;
-		case CDN_MATH_FUNCTION_TYPE_TILDE:
-			g_string_append_c (ret, '~');
-			g_string_append (ret, children[0]);
-		break;
 		case CDN_MATH_FUNCTION_TYPE_MINUS:
 			bin_op (ret, children, "-");
 		break;
@@ -203,7 +199,7 @@ index_to_string (CdnInstructionFunction *inst,
 {
 	if (!children[2])
 	{
-		g_string_append_printf (ret, "%s%s", children[1], children[0]);
+		g_string_append_printf (ret, "%s[%s]", children[1], children[0]);
 	}
 	else
 	{

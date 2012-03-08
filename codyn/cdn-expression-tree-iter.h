@@ -5,6 +5,7 @@
 #include <codyn/cdn-expression.h>
 #include <codyn/instructions/cdn-instruction.h>
 #include <codyn/cdn-variable.h>
+#include <codyn/cdn-stack.h>
 
 G_BEGIN_DECLS
 
@@ -91,6 +92,9 @@ CdnExpressionTreeIter *cdn_expression_tree_iter_derive             (CdnExpressio
                                                                     gint                               order,
                                                                     CdnExpressionTreeIterDeriveFlags   flags,
                                                                     GError                           **error);
+
+void                   cdn_expression_tree_iter_initialize_stack (CdnExpressionTreeIter *iter,
+                                                                  CdnStack              *stack);
 
 G_END_DECLS
 

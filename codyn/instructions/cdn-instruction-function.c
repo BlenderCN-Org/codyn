@@ -126,7 +126,9 @@ cdn_instruction_function_get_is_commutative (CdnInstruction *instruction)
 	func = (CdnInstructionFunction *)instruction;
 	type = (CdnMathFunctionType)cdn_instruction_function_get_id (func);
 
-	return cdn_math_function_is_commutative (type);
+	return cdn_math_function_is_commutative (type,
+	                                         func->priv->smanip.num_pop,
+	                                         func->priv->smanip.pop_dims);
 }
 
 static void

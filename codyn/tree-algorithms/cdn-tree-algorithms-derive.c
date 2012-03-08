@@ -500,29 +500,6 @@ derive_unary_minus (CdnExpressionTreeIter *iter,
 }
 
 static CdnExpressionTreeIter *
-derive_tilde (CdnExpressionTreeIter *iter,
-              DeriveContext         *ctx)
-{
-	CdnExpressionTreeIter *cp;
-	CdnExpressionTreeIter *derived;
-
-	derived = derive_iter (iter->children[0], ctx);
-
-	if (!derived)
-	{
-		return NULL;
-	}
-
-	cp = iter_copy (iter);
-
-	cdn_expression_tree_iter_free (cp->children[0]);
-	cp->children[0] = derived;
-	derived->parent = cp;
-
-	return cp;
-}
-
-static CdnExpressionTreeIter *
 derive_operator (CdnExpressionTreeIter  *iter,
                  CdnInstructionFunction *instr,
                  DeriveContext          *ctx)
@@ -575,9 +552,6 @@ derive_operator (CdnExpressionTreeIter  *iter,
 		case CDN_MATH_FUNCTION_TYPE_POWER:
 			// Power rule: (f^g)' = f^g * (f' (g / f) + g' ln (f))
 			ret = derive_power (iter, ctx);
-		break;
-		case CDN_MATH_FUNCTION_TYPE_TILDE:
-			ret = derive_tilde (iter, ctx);
 		break;
 		default:
 			g_set_error (ctx->error,
@@ -1798,7 +1772,7 @@ cdn_expression_tree_iter_derive (CdnExpressionTreeIter             *iter,
 
 	if (flags & CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY)
 	{
-		//derived = cdn_expression_tree_iter_simplify (derived);
+		derived = cdn_expression_tree_iter_simplify (derived);
 	}
 
 	cdn_debug_message (DEBUG_DIFF,

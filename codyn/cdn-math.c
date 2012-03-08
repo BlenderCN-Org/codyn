@@ -1098,27 +1098,6 @@ op_transpose (CdnStack *stack,
 }
 
 static void
-op_tilde (CdnStack *stack,
-          gint      numargs,
-          gint     *argdim)
-{
-	gdouble z = cdn_stack_pop (stack);
-	gdouble y = cdn_stack_pop (stack);
-	gdouble x = cdn_stack_pop (stack);
-
-	// Create tilde matrix, skew symetric 3x3
-	cdn_stack_push (stack, 0);
-	cdn_stack_push (stack, -z);
-	cdn_stack_push (stack, y);
-	cdn_stack_push (stack, z);
-	cdn_stack_push (stack, 0);
-	cdn_stack_push (stack, -x);
-	cdn_stack_push (stack, -y);
-	cdn_stack_push (stack, x);
-	cdn_stack_push (stack, 0);
-}
-
-static void
 op_inverse (CdnStack *stack,
             gint      numargs,
             gint     *argdim)
@@ -1468,7 +1447,6 @@ static FunctionEntry function_entries[] = {
 	{"/", op_divide, 2, FALSE},
 	{"%", op_modulo, 2, FALSE},
 	{"^", op_power, 2, FALSE},
-	{"~", op_tilde, 1, FALSE},
 	{">", op_greater, 2, FALSE},
 	{"<", op_less, 2, FALSE},
 	{">=", op_greater_or_equal, 2, FALSE},
@@ -1625,9 +1603,40 @@ cdn_math_function_is_variable (CdnMathFunctionType type)
  *
  **/
 gboolean
-cdn_math_function_is_commutative (CdnMathFunctionType type)
+cdn_math_function_is_commutative (CdnMathFunctionType  type,
+                                  gint                 numargs,
+                                  gint                *argdim)
 {
-	return function_entries[type].commutative;
+	if (!function_entries[type].commutative)
+	{
+		return FALSE;
+	}
+
+	switch (type)
+	{
+		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
+			// Only element wise multiply is commutative
+			if (!argdim)
+			{
+				return TRUE;
+			}
+
+			if (argdim[0] * argdim[1] == 1 ||
+			    argdim[2] * argdim[3] == 1)
+			{
+				return TRUE;
+			}
+
+			if (argdim[3] != argdim[1])
+			{
+				return TRUE;
+			}
+
+			return FALSE;
+		break;
+		default:
+			return TRUE;
+	}
 }
 
 /**
@@ -2085,21 +2094,6 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 
 			outargdim[0] = argdim[2];
 			outargdim[1] = argdim[3];
-		break;
-		case CDN_MATH_FUNCTION_TYPE_TILDE:
-			if (argdim[0] * argdim[1] != 3)
-			{
-				g_set_error (error,
-				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "The ~ operation is only defined for 1-by-3 vectors (got %d-by-%d)",
-				             argdim[0], argdim[1]);
-
-				return FALSE;
-			}
-
-			outargdim[0] = 3;
-			outargdim[1] = 3;
 		break;
 		case CDN_MATH_FUNCTION_TYPE_LENGTH:
 			outargdim[0] = 1;
