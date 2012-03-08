@@ -3882,6 +3882,7 @@ cdn_expression_compile (CdnExpression     *expression,
 {
 	gint oldr;
 	gint oldc;
+	gboolean wasmod;
 
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), FALSE);
@@ -3944,13 +3945,18 @@ cdn_expression_compile (CdnExpression     *expression,
 		}
 	}
 
+	wasmod = expression->priv->modified;
+
+	if (wasmod)
+	{
+		expression->priv->modified = FALSE;
+	}
+
 	reset_cache (expression, oldr != expression->priv->retdims[0] ||
 	                         oldc != expression->priv->retdims[1]);
 
-	if (expression->priv->modified)
+	if (wasmod)
 	{
-		expression->priv->modified = FALSE;
-
 		// This should also trigger recompilation of things
 		// that depend on this (like custom operators)
 		g_object_notify (G_OBJECT (expression), "modified");
