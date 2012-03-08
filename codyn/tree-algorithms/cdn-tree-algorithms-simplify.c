@@ -625,11 +625,11 @@ simplify_inline_matrix_multiply (CdnExpressionTreeIter *iter)
 	smanipa = cdn_instruction_get_stack_manipulation (iter->children[0]->instruction,
 	                                                  NULL);
 
-	cdn_stack_manipulation_get_push_dimension (smanipa, 0, &num1r, &num1c);
-	cdn_stack_manipulation_get_push_dimension (smanipb, 0, &num2r, &num2c);
-
 	smanipb = cdn_instruction_get_stack_manipulation (iter->children[1]->instruction,
 	                                                  NULL);
+
+	cdn_stack_manipulation_get_push_dimension (smanipa, 0, &num1r, &num1c);
+	cdn_stack_manipulation_get_push_dimension (smanipb, 0, &num2r, &num2c);
 
 	num = num1r * num2c;
 
