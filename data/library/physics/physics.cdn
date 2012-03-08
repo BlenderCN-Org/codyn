@@ -18,8 +18,64 @@ templates
             ## Inertia matrix of the body: 3-by-3
             I   = "zeros(3, 3)"
 
+            ## Generalized coordinates (i.e. DOFs of joint)
+            q̈ = "ddq"
+
+            ## Variable for storing derived accelerations
+            ddq = 0
+
             ## Generalized force on the DOF of this body
             τ = "0"
+
+            ## Joint model parameters. These parameters need to be specified
+            ## for each joint type.
+            node "joint"
+            {
+                ## Spatial joint transformation (i.e. the transformation induced
+                ## by the DOF of the joint)
+                JointTransform(q) = "eye(6)"
+
+                ## Velocity across the joint relative to the parent frame
+                LocalJointVelocity(q, q̇) = "zeros(6, 1)"
+
+                ## Velocity across the joint (derived from joint transform and
+                ## the local joint velocity)
+                JointVelocity(q, q̇) = "JointTransform(q) ∙ LocalJointVelocity(q, q̇)"
+
+                ## The joint motion subspace. This is a matrix specifying the
+                ## motion subspace of the joint, which the partial derivative
+                ## of the joint velocity towards the generalized velocities
+                ##
+                ## S = ∂v_j / ∂q̇
+                MotionSubspace(q, q̇) = "∂[JointVelocity; q'](q, q')"
+
+                ## The constraint force subspace. This only need to be defined
+                ## when using kinematic loops or when calculating joint
+                ## constraint forces. The constraint force subspace is the
+                ## dual of the motion subspace S. It spans the 6 - N degrees
+                ## of freedom that are subject to constraints
+                ## Tᵀ ∙ v_j = 0
+                ConstraintForceSubspace(q, q̇) = "eye(6)"
+
+                ## Joint bias velocity product term. This term is non zero
+                ## when the motion subspace is not a constant (i.e. depends on
+                ## q).
+                ##
+                ## c_j = ∂S / ∂q ∙ q̇ᵀ ∙ q̇
+                cJ(q, q̇) = "∂[MotionSubspace; q](q, q̇) ∙ q̇ᵀ ∙ q̇"
+            }
+
+            ## Helper variable to calculate the joint transform
+            jointTransform = "joint.JointTransform(q)"
+
+            ## Helper variable to calculate the joint velocity
+            jointVelocity = "joint.JointVelocity(q, q̇)"
+
+            ## Helper variable to calculate the joint motion subspace
+            motionSubspace = "joint.MotionSubspace(q, q̇)"
+
+            ## Helper variable to calculate the velocity product term
+            cJ = "joint.cJ(q, q̇)"
 
             ## Coordinate transform from the parent frame to the child
             ## frame. The product of this transform with the joint transform
@@ -27,27 +83,14 @@ templates
             ## child frame
             coordinateTransform = "eye(6)"
 
-            ## Spatial joint transformation (i.e. the transformation induced
-            ## by the DOF of the joint)
-            jointTransform = "eye(6)"
-
             ## The total transform from parent frame to body frame
             transform = "jointTransform ∙ coordinateTransform"
 
             ## External force on this body (6-by-1)
             fext = "zeros(6, 1)"
 
-            ## Spatial motion subspace. This 6d vector is multiplied with the
-            ## joint velocity to result in the velocity across the joint (i.e.
-            ## a map from the joint coordinate velocity q̇ to the body velocity)
-            ## [θx; θy; θz; x; y; z]
-            motionSubspace = "zeros(6, 1)"
-
             ## Spatial inertia given mass, center of mass and inertia
             spI = "Sp.Inertia(com, m, I)"
-
-            ## Velocity across the joint
-            jointVelocity = "motionSubspace ∙ dq"
 
             ## Body velocity, defaults to joint velocity
             velocity = "jointVelocity"
@@ -61,15 +104,6 @@ templates
 
             ## Jacobian column for this body
             J = "Sp.Inverse(baseTransform) ∙ motionSubspace"
-
-            ## States
-            q̈ = "ddq"
-
-            ## Variable for storing derived accelerations
-            ddq = 0
-
-            ## Variable for storing inverse known accelerations
-            ddq_inverse = 0
         }
 
         edge "joint"
@@ -77,16 +111,168 @@ templates
             baseTransform <= "output.transform ∙ baseTransform"
         }
 
+        ## A revolute joint. This type of joint has one degree of freedom
+        ## which rotates the body around an axis.
         node "revolute" : "body"
         {
-            jointTransform = "Sp.RotateZ(q)"
-            motionSubspace = "[0; 0; 1; 0; 0; 0]"
+            node "joint"
+            {
+                ## The joint axis (defaults to Z axis)
+                axis = "[0; 0; 1]"
+
+                JointTransform(q) = "Sp.Rotate(q ∙ axis)"
+                LocalJointVelocity(q, q̇) = "[axis ∙ q̇; 0; 0; 0]"
+
+                # NOTE! this is only well defined for joint axis aligned with
+                # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
+                # if another axis is used then the constraint force subspace
+                # needs to be adapted accordingly. The formulation below is
+                # simply a combinatory trick to get the right values in the
+                # constraint matrix.
+                ConstraintForceSubspace(q, q̇) = "[1 - axis[0], 0,           0, 0, 0;
+                                                  axis[0],     axis[2],     0, 0, 0;
+                                                  0,           1 - axis[2], 0, 0, 0;
+                                                  0,           0,           1, 0, 0;
+                                                  0,           0,           0, 1, 0;
+                                                  0,           0,           0, 0, 1]"
+            }
         }
 
+        ## A prismatic joint. This type of joint has one degree of freedom
+        ## which translates the body on an axis.
         node "prismatic" : "body"
         {
-            jointTransform = "Sp.Translate([0, 0, q])"
-            motionSubspace = "[0; 0; 0; 0; 0; 1]"
+            node "joint"
+            {
+                axis = "[0; 0; 1]"
+
+                JointTransform(q) = "Sp.Translate(axis ∙ q)"
+                LocalJointVelocity(q, q̇) = "[0; 0; 0; axis ∙ q̇]"
+
+                # NOTE! this is only well defined for joint axis aligned with
+                # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
+                # if another axis is used then the constraint force subspace
+                # needs to be adapted accordingly. The formulation below is
+                # simply a combinatory trick to get the right values in the
+                # constraint matrix.
+                ConstraintForceSubspace(q, q̇) = "[1, 0, 0, 0,           0;
+                                                  0, 1, 0, 0,           0;
+                                                  0, 0, 1, 0,           0;
+                                                  0, 0, 0, 1 - axis[0], 0;
+                                                  0, 0, 0, axis[0],     axis[2];
+                                                  0, 0, 0, 0,           1 - axis[2]]"
+            }
+        }
+
+        ## A helical joint. This type of joint has one degree of freedom around
+        ## which the body screws. The amount of screw is determined by the
+        ## h parameter.
+        node "helical" : "body"
+        {
+            node "joint"
+            {
+                axis = "[0; 0; 1]"
+
+                JointTransform(q) = "Sp.Rotate(axis ∙ q) ∙ Sp.Translate(axis ∙ q ∙ h)"
+                LocalJointVelocity(q, q̇) = "[axis ∙ q̇;
+                                             axis ∙ q̇ ∙ h]"
+
+                # NOTE! this is only well defined for joint axis aligned with
+                # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
+                # if another axis is used then the constraint force subspace
+                # needs to be adapted accordingly. The formulation below is
+                # simply a combinatory trick to get the right values in the
+                # constraint matrix.
+                ConstraintForceSubspace(q, q̇) = "[1 - axis[0], 0,           -h ∙ axis[0],  0,            0;
+                                                  axis[0],     axis[2],      0,           -h ∙ axis[1],  0;
+                                                  0,           1 - axis[2],  0,            0,           -h ∙ axis[2];
+                                                  0,           0,            1,            0,            0;
+                                                  0,           0,            0,            1,            0;
+                                                  0,           0,            0,            0,            1]"
+            }
+
+            ## Pitch of the helical joint. Note that when the pitch is 0, the
+            ## helical joint becomes a simple revolute joint
+            h = "0"
+        }
+
+        ## A cylindrical joint. This type of joint is simply a combination of
+        ## both a revolute and a prismatic joint. It has two degrees of freedom
+        ## (one rotational and one translational).
+        node "cylindrical" : "body"
+        {
+            node "joint"
+            {
+                axis = "[0; 0; 1]"
+
+                JointTransform(q) = "Sp.Rotate(axis ∙ q[0]) ∙ Sp.Translate(axis ∙ q[1])"
+                LocalJointVelocity(q, q̇) = "[axis[0] ∙ q̇[0], 0;
+                                             axis[1] ∙ q̇[0], 0;
+                                             axis[2] ∙ q̇[0], 0;
+                                             0,              axis[0] ∙ q̇[1];
+                                             0,              axis[1] ∙ q̇[1];
+                                             0,              axis[2] ∙ q̇[1]]"
+
+                # NOTE! this is only well defined for joint axis aligned with
+                # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
+                # if another axis is used then the constraint force subspace
+                # needs to be adapted accordingly. The formulation below is
+                # simply a combinatory trick to get the right values in the
+                # constraint matrix.
+                ConstraintForceSubspace(q, q̇) = "[1 - axis[0], 0,            0, 0;
+                                                  axis[0],     axis[2],      0, 0;
+                                                  0,           1 - axis[2],  0, 0;
+                                                  0,           0,            1 - axis[0], 0;
+                                                  0,           0,            axis[0],     axis[2];
+                                                  0,           0,            0,           1 - axis[2]]"
+            }
+
+            q = "[0; 0]"
+        }
+
+        ## A spherical joint. This type of joint is simply three rotational
+        ## joints stacked together. It has three degrees of rotational freedom.
+        node "spherical" : "body"
+        {
+            node "joint"
+            {
+                # NOTE! This introduces singularies because of the used Euler
+                # angles. A better representation would be quaternions, but
+                # they are slightly more complicated to implement. TODO
+                JointTransform(q) = "Sp.Rotate([0,    0,    q[2]]) ∙
+                                     Sp.Rotate([0,    q[1], 0]) ∙
+                                     Sp.Rotate([q[0], 0,    0])"
+
+                LocalJointVelocity(q, q̇) = "[q̇; 0; 0; 0]"
+
+                ConstraintForceSubspace(q, q̇) = "[0, 0, 0;
+                                                  0, 0, 0;
+                                                  0, 0, 0;
+                                                  1, 0, 0;
+                                                  0, 1, 0;
+                                                  0, 0, 1]"
+            }
+
+            q = "[0; 0]"
+        }
+
+        ## A 6 DOF. This type of joint has no constraints and can be used
+        ## to implement floating base models.
+        node "float" : "body"
+        {
+            node "joint"
+            {
+                Rotation(q) = "Sp.Rotate([0,    0,    q[2]]) ∙
+                               Sp.Rotate([0,    q[1], 0]) ∙
+                               Sp.Rotate([q[0], 0,    0])"
+
+                JointTransform(q) = "Rotation(q[0, 1, 2]) ∙ (Sp.Inverse(Rotation(q)) ∙ q[3, 4, 5])"
+                LocalJointVelocity(q, q̇) = "q̇"
+
+                ConstraintForceSubspace(q, q̇) = "[]"
+            }
+
+            q = "zeros(6, 1)"
         }
     }
 }
