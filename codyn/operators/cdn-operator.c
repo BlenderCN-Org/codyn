@@ -452,6 +452,26 @@ cdn_operator_get_class_name (CdnOperatorClass *klass)
 	return klass->name;
 }
 
+gboolean
+cdn_operator_responds_to (CdnOperatorClass *klass,
+                          gchar const      *name)
+{
+	g_return_val_if_fail (CDN_IS_OPERATOR_CLASS (klass), FALSE);
+
+	if (g_strcmp0 (cdn_operator_get_class_name (klass),
+	               name) == 0)
+	{
+		return TRUE;
+	}
+
+	if (klass->responds_to)
+	{
+		return klass->responds_to (name);
+	}
+
+	return FALSE;
+}
+
 /**
  * cdn_operator_get_name:
  * @op: A #CdnOperator

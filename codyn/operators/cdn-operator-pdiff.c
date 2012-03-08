@@ -60,6 +60,12 @@ cdn_operator_pdiff_get_name ()
 	return g_strdup ("pdiff");
 }
 
+static gboolean
+cdn_operator_pdiff_responds_to (gchar const *name)
+{
+	return g_strcmp0 (name, "\xe2\x88\x82") == 0;
+}
+
 static CdnFunction *
 derived_function (CdnExpression *expr)
 {
@@ -305,6 +311,7 @@ cdn_operator_pdiff_class_init (CdnOperatorPDiffClass *klass)
 	op_class->get_function = cdn_operator_pdiff_get_function;
 	op_class->foreach_function = cdn_operator_pdiff_foreach_function;
 	op_class->copy = cdn_operator_pdiff_copy;
+	op_class->responds_to = cdn_operator_pdiff_responds_to;
 
 	g_type_class_add_private (object_class, sizeof(CdnOperatorPDiffPrivate));
 }

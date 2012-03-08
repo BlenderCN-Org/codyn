@@ -128,7 +128,7 @@ cdn_operators_find_class (gchar const *name)
 
 		klass = ops->data;
 
-		if (g_strcmp0 (name, cdn_operator_get_class_name (klass)) == 0)
+		if (cdn_operator_responds_to (klass, name))
 		{
 			return klass;
 		}

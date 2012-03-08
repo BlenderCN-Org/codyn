@@ -86,6 +86,7 @@ struct _CdnOperatorClass
 	                                GError       **error);
 
 	gchar           *(*get_name) ();
+	gboolean         (*responds_to) (gchar const *name);
 
 	CdnStackManipulation const *(*get_stack_manipulation) (CdnOperator *op);
 
@@ -129,6 +130,8 @@ void                 cdn_operator_execute                     (CdnOperator     *
 
 gchar const         *cdn_operator_get_name                    (CdnOperator      *op);
 gchar const         *cdn_operator_get_class_name              (CdnOperatorClass *op);
+gboolean             cdn_operator_responds_to                 (CdnOperatorClass *klass,
+                                                               gchar const      *name);
 
 GSList const       **cdn_operator_all_expressions             (CdnOperator     *op);
 
