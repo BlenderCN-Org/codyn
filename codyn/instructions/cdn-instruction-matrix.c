@@ -159,8 +159,14 @@ cdn_instruction_matrix_new (gint  numpop,
 
 	if (!popdims)
 	{
+		gint i;
+
 		popdims = g_new0 (gint, numpop * 2);
-		memset (popdims, 0, sizeof (gint) * numpop * 2);
+
+		for (i = 0; i < numpop * 2; ++i)
+		{
+			popdims[i] = 1;
+		}
 	}
 
 	self->priv->smanip.pop_dims = popdims;
