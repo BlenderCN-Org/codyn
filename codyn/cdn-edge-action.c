@@ -668,6 +668,12 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 	cdn_phaseable_copy_to (CDN_PHASEABLE (action),
 	                       CDN_PHASEABLE (newaction));
 
+	if (action->priv->index)
+	{
+		set_index (newaction,
+		           cdn_expression_copy (action->priv->index));
+	}
+
 	return newaction;
 }
 
