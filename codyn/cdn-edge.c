@@ -466,7 +466,10 @@ on_template_action_added (CdnEdge       *templ,
 			orig = cdn_edge_get_action (link,
 			                            cdn_edge_action_get_target (action));
 
-			cdn_modifiable_set_modified (CDN_MODIFIABLE (orig), FALSE);
+			if (orig)
+			{
+				cdn_modifiable_set_modified (CDN_MODIFIABLE (orig), FALSE);
+			}
 		}
 		else
 		{
