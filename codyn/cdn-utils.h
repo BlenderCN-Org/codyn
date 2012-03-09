@@ -39,4 +39,7 @@ gboolean cdn_string_to_value                  (gchar const           *s,
                                                GValue                *value,
                                                GError               **error);
 
+
+gchar *cdn_decompose_dot (gchar const *name, gint        *order);
+
 #endif /* __CDN_UTILS_H__ */

@@ -881,11 +881,71 @@ on_argument_name_changed (CdnFunctionArgument *argument,
 	}
 }
 
+static gchar *
+compose_dot (gchar const *name,
+             gint         order)
+{
+	GString *ret;
+
+	if (order == 0)
+	{
+		return g_strdup (name);
+	}
+
+	ret = g_string_new ("");
+
+	g_string_append_unichar (ret, g_utf8_get_char (name));
+	g_string_append_unichar (ret, order == 2 ? 776 : 775);
+	g_string_append (ret, g_utf8_next_char (name));
+
+	return g_string_free (ret, FALSE);
+}
+
+static CdnFunctionArgument *
+find_integral_of (CdnFunction *function,
+                  gchar const *name)
+{
+	gint order;
+	gchar *nname;
+	gchar *cname;
+	CdnFunctionArgument *parg;
+
+	nname = cdn_decompose_dot (name, &order);
+
+	if (!nname || order == 0)
+	{
+		return NULL;
+	}
+
+	--order;
+	cname = compose_dot (nname, order);
+
+	parg = cdn_function_get_argument (function, cname);
+
+	if (!parg && order > 0)
+	{
+		gchar *f;
+
+		f = g_strnfill (order, '\'');
+		g_free (cname);
+
+		cname = g_strconcat (nname, f, NULL);
+		g_free (f);
+
+		parg = cdn_function_get_argument (function, cname);
+	}
+
+	g_free (cname);
+	g_free (nname);
+
+	return parg;
+}
+
 static void
 cdn_function_argument_added_impl (CdnFunction         *function,
                                   CdnFunctionArgument *argument)
 {
-	gchar const *name;
+	CdnFunctionArgument *parg;
 
 	if (!cdn_function_argument_get_explicit (argument))
 	{
@@ -906,23 +966,13 @@ cdn_function_argument_added_impl (CdnFunction         *function,
 		                                           n);
 	}
 
-	name = cdn_function_argument_get_name (argument);
+	parg = find_integral_of (function,
+	                         cdn_function_argument_get_name (argument));
 
-	if (g_str_has_suffix (name, "'"))
+	if (parg)
 	{
-		gchar *pname;
-		CdnFunctionArgument *parg;
-
-		pname = g_strndup (name, strlen (name) - 1);
-		parg = cdn_function_get_argument (function, pname);
-
-		if (parg)
-		{
-			cdn_variable_set_derivative (_cdn_function_argument_get_variable (parg),
-			                             _cdn_function_argument_get_variable (argument));
-		}
-
-		g_free (pname);
+		cdn_variable_set_derivative (_cdn_function_argument_get_variable (parg),
+		                             _cdn_function_argument_get_variable (argument));
 	}
 
 	g_hash_table_insert (function->priv->arguments_hash,
@@ -1123,7 +1173,7 @@ variables_map (CdnFunction *function,
 		instr = cdn_instruction_variable_new (v2);
 
 		g_hash_table_insert (mapping,
-		                     v1,
+		                     g_object_ref (v1),
 		                     cdn_expression_tree_iter_new_from_instruction (instr));
 
 		cdn_mini_object_unref (instr);
@@ -1192,7 +1242,7 @@ create_towards_map (CdnFunction                       *function,
 
 			if (ispart)
 			{
-				g_hash_table_insert (ret, v, NULL);
+				g_hash_table_insert (ret, g_object_ref (v), NULL);
 			}
 
 			diff = cdn_variable_get_derivative (v);
@@ -1616,6 +1666,8 @@ cdn_function_remove_argument (CdnFunction          *function,
 
 	if (cdn_object_remove_variable (CDN_OBJECT (function), name, error))
 	{
+		CdnFunctionArgument *parg;
+
 		if (!cdn_function_argument_get_explicit (argument))
 		{
 			--function->priv->n_implicit;
@@ -1639,21 +1691,12 @@ cdn_function_remove_argument (CdnFunction          *function,
 		                                      on_argument_name_changed,
 		                                      function);
 
-		if (g_str_has_suffix (name, "'"))
+		parg = find_integral_of (function, name);
+
+		if (parg)
 		{
-			gchar *pname;
-			CdnFunctionArgument *parg;
-
-			pname = g_strndup (name, strlen (name) - 1);
-			parg = cdn_function_get_argument (function, pname);
-
-			if (parg)
-			{
-				cdn_variable_set_derivative (_cdn_function_argument_get_variable (parg),
-				                             NULL);
-			}
-
-			g_free (pname);
+			cdn_variable_set_derivative (_cdn_function_argument_get_variable (parg),
+			                             NULL);
 		}
 
 		cdn_object_taint (CDN_OBJECT (function));

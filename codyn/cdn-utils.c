@@ -393,3 +393,87 @@ cdn_string_to_value (gchar const  *s,
 
 	return FALSE;
 }
+
+gchar *
+cdn_decompose_dot (gchar const *name,
+                   gint        *order)
+{
+	gunichar next;
+	gchar const *last;
+	gchar *ret;
+
+	next = g_utf8_get_char (g_utf8_next_char (name));
+
+#if GLIB_MINOR_VERSION >= 30
+	gunichar a;
+	gunichar b;
+
+	if (g_unichar_decompose (g_utf8_get_char (name), &a, &b) &&
+	    (b == 775 || b == 776))
+	{
+		GString *dc;
+
+		dc = g_string_sized_new (strlen (name));
+		g_string_append_unichar (dc, a);
+		g_string_append (dc, g_utf8_next_char (name));
+
+		if (b == 775)
+		{
+			*order = 1;
+		}
+		else
+		{
+			*order = 2;
+		}
+
+		ret = g_string_free (dc, FALSE);
+	}
+	else
+#endif
+	if (next == 775 || next == 776)
+	{
+		GString *dc;
+
+		dc = g_string_sized_new (strlen (name));
+		g_string_append_unichar (dc, g_utf8_get_char (name));
+		g_string_append (dc, g_utf8_next_char (g_utf8_next_char (name)));
+
+		if (next == 775)
+		{
+			*order = 1;
+		}
+		else
+		{
+			*order = 2;
+		}
+
+		ret = g_string_free (dc, FALSE);
+	}
+	else if (!g_str_has_suffix (name, "'"))
+	{
+		return NULL;
+	}
+	else
+	{
+		ret = g_strdup (name);
+	}
+
+	last = ret + strlen (ret);
+
+	while (last > name)
+	{
+		last = g_utf8_prev_char (last);
+		next = g_utf8_get_char (last);
+
+		if (next != '\'')
+		{
+			gchar *tmp;
+
+			tmp = g_strndup (ret, last - ret + 1);
+			g_free (ret);
+			return tmp;
+		}
+	}
+
+	return ret;
+}

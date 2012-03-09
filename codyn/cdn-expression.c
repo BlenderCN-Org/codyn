@@ -1539,63 +1539,6 @@ wrap_dotted (CdnExpression  *expression,
 	return ret;
 }
 
-static gchar *
-decompose_dot (gchar const *name,
-               gint        *order)
-{
-	gunichar next;
-
-	next = g_utf8_get_char (g_utf8_next_char (name));
-
-#if GLIB_MINOR_VERSION >= 30
-	gunichar a;
-	gunichar b;
-
-	if (g_unichar_decompose (g_utf8_get_char (name), &a, &b) &&
-	    (b == 775 || b == 776))
-	{
-		GString *dc;
-
-		dc = g_string_sized_new (strlen (name));
-		g_string_append_unichar (dc, a);
-		g_string_append (dc, g_utf8_next_char (name));
-
-		if (b == 775)
-		{
-			*order = 1;
-		}
-		else
-		{
-			*order = 2;
-		}
-
-		return g_string_free (dc, FALSE);
-	}
-	else
-#endif
-	if (next == 775 || next == 776)
-	{
-		GString *dc;
-
-		dc = g_string_sized_new (strlen (name));
-		g_string_append_unichar (dc, g_utf8_get_char (name));
-		g_string_append (dc, g_utf8_next_char (g_utf8_next_char (name)));
-
-		if (next == 775)
-		{
-			*order = 1;
-		}
-		else
-		{
-			*order = 2;
-		}
-
-		return g_string_free (dc, FALSE);
-	}
-
-	return NULL;
-}
-
 static gboolean
 parse_function (CdnExpression *expression,
                 gchar const   *name,
@@ -1622,7 +1565,7 @@ parse_function (CdnExpression *expression,
 
 		if (!function)
 		{
-			dotname = decompose_dot (name, &order);
+			dotname = cdn_decompose_dot (name, &order);
 		}
 
 	}
@@ -1632,7 +1575,7 @@ parse_function (CdnExpression *expression,
 
 		if (!function)
 		{
-			dotname = decompose_dot (cname, &order);
+			dotname = cdn_decompose_dot (cname, &order);
 		}
 	}
 
@@ -3313,7 +3256,7 @@ parse_variable (CdnExpression *expression,
 	f = cdn_compile_context_lookup_function (context->context, nname);
 	prio = cdn_compile_context_get_function_ref_priority (context->context);
 
-	dotname = decompose_dot (nname, &order);
+	dotname = cdn_decompose_dot (nname, &order);
 
 	if (dotname && !property && (!f || !prio))
 	{
