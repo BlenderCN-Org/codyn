@@ -1992,13 +1992,21 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 
 				name = g_strndup (extarget, ptr - extarget);
 
-				l = g_strndup (ptr + 1, strlen (ptr) - 2);
+				if (*(ptr + 1) == '[')
+				{
+					l = g_strndup (ptr + 1, strlen (ptr) - 2);
 
-				comp = g_strdup_printf ("lindex(%s, size(output.%s)[1])",
-				                        l,
-				                        name);
+					comp = g_strdup_printf ("lindex(%s, size(output.%s)[1])",
+					                        l,
+					                        name);
 
-				g_free (l);
+					g_free (l);
+				}
+				else
+				{
+					comp = g_strdup (ptr);
+				}
+
 				index = cdn_expression_new (comp);
 				g_free (comp);
 			}
