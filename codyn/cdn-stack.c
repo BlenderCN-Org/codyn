@@ -424,7 +424,7 @@ cdn_stack_manipulation_get_pop_dimension (CdnStackManipulation const *smanip,
 }
 
 /**
- * cdn_stack_manipulation_get_pop_dimension:
+ * cdn_stack_manipulation_get_push_dimension:
  * @smanip: a #CdnStackManipulation.
  * @n: the popped argument index.
  * @numr: (out): return value for the number of rows.
