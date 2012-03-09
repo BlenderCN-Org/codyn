@@ -22,10 +22,10 @@ templates
             q̈ = "ddq"
 
             ## Variable for storing derived accelerations
-            ddq = 0
+            ddq = "zeros(length(q), 1)"
 
             ## Generalized force on the DOF of this body
-            τ = "0"
+            τ = "zeros(length(q), 1)"
 
             ## Joint model parameters. These parameters need to be specified
             ## for each joint type.
@@ -47,7 +47,7 @@ templates
                 ## of the joint velocity towards the generalized velocities
                 ##
                 ## S = ∂v_j / ∂q̇
-                MotionSubspace(q, q̇) = "∂[JointVelocity; q'](q, q')"
+                MotionSubspace(q, q̇) = "∂[JointVelocity; q̇](q, q̇)"
 
                 ## The constraint force subspace. This only need to be defined
                 ## when using kinematic loops or when calculating joint
@@ -69,13 +69,13 @@ templates
             jointTransform = "joint.JointTransform(q)"
 
             ## Helper variable to calculate the joint velocity
-            jointVelocity = "joint.JointVelocity(q, q̇)"
+            jointVelocity = "joint.JointVelocity(q, dq)"
 
             ## Helper variable to calculate the joint motion subspace
-            motionSubspace = "joint.MotionSubspace(q, q̇)"
+            motionSubspace = "joint.MotionSubspace(q, dq)"
 
             ## Helper variable to calculate the velocity product term
-            cJ = "joint.cJ(q, q̇)"
+            cJ = "joint.cJ(q, dq)"
 
             ## Coordinate transform from the parent frame to the child
             ## frame. The product of this transform with the joint transform
@@ -97,7 +97,7 @@ templates
 
             ## Body acceleration due to gravitational and coriolos effects,
             ## defaults to gravity
-            acceleration = "transform ∙ [0; 0; 0; gᵀ] + motionSubspace ∙ ddq_inverse"
+            acceleration = "transform ∙ [0; 0; 0; gᵀ]"
 
             ## Transform from the base to the joint
             baseTransform = "transform"
@@ -227,7 +227,7 @@ templates
                                                   0,           0,            0,           1 - axis[2]]"
             }
 
-            q = "[0; 0]"
+            "{q,dq,ddq}" = "zeros(2, 1)"
         }
 
         ## A spherical joint. This type of joint is simply three rotational
@@ -236,12 +236,13 @@ templates
         {
             node "joint"
             {
-                # NOTE! This introduces singularies because of the used Euler
-                # angles. A better representation would be quaternions, but
-                # they are slightly more complicated to implement. TODO
-                JointTransform(q) = "Sp.Rotate([0,    0,    q[2]]) ∙
-                                     Sp.Rotate([0,    q[1], 0]) ∙
-                                     Sp.Rotate([q[0], 0,    0])"
+                QuatRotation(q) = "2 ∙ [
+                    q[0]² + q[1]² - 0.5, q[1] ∙ q[2] + q[0] ∙ q[3], q[0] ∙ q[3] - q[0] ∙ q[2];
+                    q[1] ∙ q[2] - q[0] ∙ q[3], q[0]² + q[2]² - 0.5, q[2] ∙ q[3] + q[0] ∙ q[1];
+                    q[0] ∙ q[3] + q[0] ∙ q[2], q[2] ∙ q[3] - q[0] ∙ q[1], q[0]² + q[3]² - 0.5
+                ]"
+
+                JointTransform(q) = "Sp.Rotate(QuatRotation(q))"
 
                 LocalJointVelocity(q, q̇) = "[q̇; 0; 0; 0]"
 
@@ -253,26 +254,45 @@ templates
                                                   0, 0, 1]"
             }
 
-            q = "[0; 0]"
+            q = "zeros(4, 1)"
+            "{dq,ddq}" = "zeros(3, 1)"
+
+            delete self | inputs | if(input | self) | if(output | self) . q
+
+            q̇ = "0.5 ∙ [-q[1], -q[2], -q[3];
+                         q[0], -q[3],  q[2];
+                         q[3],  q[0], -q[1];
+                        -q[2],  q[1],  q[0]] ∙ dq"
         }
 
         ## A 6 DOF. This type of joint has no constraints and can be used
         ## to implement floating base models.
-        node "float" : "body"
+        node "float" : "spherical"
         {
             node "joint"
             {
-                Rotation(q) = "Sp.Rotate([0,    0,    q[2]]) ∙
-                               Sp.Rotate([0,    q[1], 0]) ∙
-                               Sp.Rotate([q[0], 0,    0])"
+                JointTransform(q) = "Sp.Translate(q[[4; 5; 6]]) ∙
+                                     Sp.Rotate(QuatRotation(q[[0; 1; 2; 3]]))"
 
-                JointTransform(q) = "Rotation(q[0, 1, 2]) ∙ (Sp.Inverse(Rotation(q)) ∙ q[3, 4, 5])"
                 LocalJointVelocity(q, q̇) = "q̇"
-
                 ConstraintForceSubspace(q, q̇) = "[]"
             }
 
-            q = "zeros(6, 1)"
+            q = "zeros(7, 1)"
+            "{dq,ddq}" = "zeros(6, 1)"
+
+            delete self | inputs | if(input | self) | if(output | self) . q
+
+            [self]
+            edge
+            {
+                "q[0; 1; 2; 3]" <= "0.5 ∙ [-q[1], -q[2], -q[3];
+                             q[0], -q[3],  q[2];
+                             q[3],  q[0], -q[1];
+                            -q[2],  q[1],  q[0]] ∙ dq[[0; 1; 2]]"
+
+                "q[4; 5; 6]" <= "dq[[3; 4; 5]]"
+            }
         }
     }
 }
