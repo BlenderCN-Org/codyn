@@ -179,10 +179,24 @@ simplify_index (CdnExpressionTreeIter *iter)
 
 	if (num == 1)
 	{
-		ret = iter_copy (last->children[compute_index (valuesa,
-		                                               valuesb,
-		                                               0,
-		                                               numcc)]);
+		gint idx;
+
+		idx = compute_index (valuesa,
+		                     valuesb,
+		                     0,
+		                     numcc);
+
+		if (idx < last->num_children)
+		{
+			ret = iter_copy (last->children[idx]);
+		}
+		else
+		{
+			g_free (valuesa);
+			g_free (valuesb);
+
+			return FALSE;
+		}
 	}
 	else
 	{
@@ -199,6 +213,17 @@ simplify_index (CdnExpressionTreeIter *iter)
 			CdnExpressionTreeIter *piter;
 
 			idx = compute_index (valuesa, valuesb, i, numcc);
+
+			if (idx >= last->num_children)
+			{
+				cdn_expression_tree_iter_free (ret);
+
+				g_free (valuesa);
+				g_free (valuesb);
+				g_free (popdims);
+				return FALSE;
+			}
+
 			piter = last->children[idx];
 
 			iter_set_child (ret, iter_copy (piter), i);
