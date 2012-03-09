@@ -1013,8 +1013,6 @@ derive_function (CdnExpressionTreeIter  *iter,
 		break;
 	}
 
-	g_message ("WAAAAAA");
-
 	g_set_error (ctx->error,
 	             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
 	             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
@@ -1359,6 +1357,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 			CdnVariable *tow;
 
 			tow = _cdn_function_argument_get_variable (towards->data);
+
 			towards = g_slist_delete_link (towards, towards);
 
 			if (!cdn_variable_get_derivative (tow))
@@ -1652,7 +1651,13 @@ print_towards (GHashTable *towards)
 {
 	GString *s;
 
+	if (!towards)
+	{
+		return;
+	}
+
 	s = g_string_new ("Towards: ");
+
 	g_hash_table_foreach (towards, (GHFunc)foreach_towards, s);
 
 	cdn_debug_message (DEBUG_DIFF,
