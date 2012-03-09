@@ -233,6 +233,12 @@ function_to_string (CdnInstructionFunction *inst,
 		index_to_string (inst, children, ret, dbg);
 		return;
 	}
+	else if (id == CDN_MATH_FUNCTION_TYPE_TRANSPOSE)
+	{
+		g_string_append (ret, *children);
+		g_string_append (ret, "\xe1\xb5\x80");
+		return;
+	}
 
 	name = cdn_instruction_function_get_name (inst);
 
@@ -395,43 +401,41 @@ matrix_to_string (CdnInstructionMatrix *inst,
 	CdnStackManipulation const *smanip;
 	gint numr;
 	gint numc;
-	gint r;
 	gint i = 0;
+	gint accumnumc = 0;
 
 	g_string_append_c (ret, '[');
 
 	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (inst), NULL);
+	cdn_stack_manipulation_get_push_dimension (smanip, 0, &numr, &numc);
 
-	numr = smanip->push_dims ? smanip->push_dims[0] : 1;
-	numc = smanip->push_dims ? smanip->push_dims[1] : 1;
-
-	for (r = 0; r < numr; ++r)
+	while (*children)
 	{
-		gint c;
+		gint cnumr;
+		gint cnumc;
 
-		if (r != 0)
+		cdn_stack_manipulation_get_pop_dimension (smanip, i, &cnumr, &cnumc);
+
+		g_string_append (ret, *children);
+		accumnumc += cnumc;
+
+		++i;
+		++children;
+
+		if (accumnumc == numc)
 		{
-			g_string_append (ret, "; ");
+			if (*children)
+			{
+				g_string_append (ret, "; ");
+			}
+
+			accumnumc = 0;
+		}
+		else if (*children)
+		{
+			g_string_append (ret, ", ");
 		}
 
-		for (c = 0; c < numc; ++c)
-		{
-			if (c != 0)
-			{
-				g_string_append (ret, ", ");
-			}
-
-			if (!children[i])
-			{
-				g_string_append (ret, "(null)");
-			}
-			else
-			{
-				g_string_append (ret, children[i]);
-			}
-
-			++i;
-		}
 	}
 
 	g_string_append_c (ret, ']');
