@@ -674,7 +674,7 @@ simplify_inline_matrix_multiply (CdnExpressionTreeIter *iter)
 		{
 			gint j;
 			CdnExpressionTreeIter *root = NULL;
-			CdnExpressionTreeIter *plus;
+			CdnExpressionTreeIter *plus = NULL;
 
 			if (num1c == 1)
 			{
