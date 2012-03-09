@@ -350,6 +350,14 @@ cdn_expression_tree_iter_new_from_instruction (CdnInstruction *instruction)
 	return iter_new (instruction);
 }
 
+CdnExpressionTreeIter *
+cdn_expression_tree_iter_new_from_instruction_take (CdnInstruction *instruction)
+{
+	g_return_val_if_fail (CDN_IS_INSTRUCTION (instruction), NULL);
+
+	return iter_new_take (instruction);
+}
+
 /**
  * cdn_expression_tree_iter_to_expression:
  * @iter: a #CdnExpressionTreeIter.

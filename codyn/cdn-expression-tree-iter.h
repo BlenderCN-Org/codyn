@@ -34,6 +34,7 @@ GType cdn_expression_tree_iter_get_type ();
 CdnExpressionTreeIter *cdn_expression_tree_iter_new             (CdnExpression         *expression);
 CdnExpressionTreeIter *cdn_expression_tree_iter_new_from_instructions (GSList const *instructions);
 CdnExpressionTreeIter *cdn_expression_tree_iter_new_from_instruction (CdnInstruction *instruction);
+CdnExpressionTreeIter *cdn_expression_tree_iter_new_from_instruction_take (CdnInstruction *instruction);
 
 CdnExpressionTreeIter *cdn_expression_tree_iter_copy            (CdnExpressionTreeIter *iter);
 void                   cdn_expression_tree_iter_free            (CdnExpressionTreeIter *iter);
