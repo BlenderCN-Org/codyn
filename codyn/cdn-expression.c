@@ -1457,7 +1457,7 @@ pop_stack (CdnExpression *expression,
 	GSList *tmp;
 	GSList *nth;
 
-	instrs = g_slist_last (context->stack)->data;
+	instrs = context->stack->data;
 
 	// Pop these instructions
 	nth = g_slist_nth (expression->priv->instructions,
