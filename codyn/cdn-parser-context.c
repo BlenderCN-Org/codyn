@@ -4858,6 +4858,66 @@ cdn_parser_context_include (CdnParserContext  *context,
 }
 
 void
+cdn_parser_context_link_library (CdnParserContext  *context,
+                                 CdnEmbeddedString *filename)
+{
+	GSList *objs;
+	Context *ctx;
+
+	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (filename != NULL);
+
+	if (context->priv->in_event_handler)
+	{
+		return;
+	}
+
+	ctx = context->priv->context_stack->next->data;
+
+	for (objs = ctx->objects; objs; objs = g_slist_next (objs))
+	{
+		CdnSelection *sel;
+		GSList *libs;
+
+		sel = objs->data;
+
+		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
+
+		cdn_embedded_context_set_selection (context->priv->embedded,
+		                                    sel);
+
+		embedded_string_expand_multiple (libs, filename, context);
+
+		cdn_embedded_context_restore (context->priv->embedded);
+
+		while (libs)
+		{
+			CdnExpansion *ex;
+			GError *error = NULL;
+
+			ex = libs->data;
+
+			if (!cdn_network_link_library (context->priv->network,
+			                               cdn_expansion_get (ex, 0),
+			                               &error))
+			{
+				parser_failed_error (context,
+				                     CDN_STATEMENT (filename),
+				                     error);
+
+				g_slist_foreach (libs, (GFunc)cdn_expansion_unref, NULL);
+				g_slist_free (libs);
+
+				return;
+			}
+
+			cdn_expansion_unref (ex);
+			libs = g_slist_delete_link (libs, libs);
+		}
+	}
+}
+
+void
 cdn_parser_context_push_input_from_path (CdnParserContext  *context,
                                          CdnEmbeddedString *filename,
                                          GSList            *attributes,

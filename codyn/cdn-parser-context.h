@@ -297,6 +297,9 @@ void                   cdn_parser_context_include              (CdnParserContext
                                                                 CdnEmbeddedString          *filename,
                                                                 GSList                     *attributes);
 
+void                   cdn_parser_context_link_library         (CdnParserContext           *context,
+                                                                CdnEmbeddedString          *filename);
+
 void                   cdn_parser_context_pop_input            (CdnParserContext           *context);
 
 gint                   cdn_parser_context_steal_start_token    (CdnParserContext           *context);

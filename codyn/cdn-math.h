@@ -168,6 +168,17 @@ typedef enum
 	CDN_MATH_FUNCTION_TYPE_NUM
 } CdnMathFunctionType;
 
+typedef void (*CdnMathFunctionEvaluateFunc)(CdnStack *stack,
+                                            gint      numargs,
+                                            gint     *argdim,
+                                            gpointer  userdata);
+
+typedef gboolean (*CdnMathStackManipulationFunc)(gint     arguments,
+                                                 gint    *argdim,
+                                                 gint    *outargdim,
+                                                 gint    *extraspace,
+                                                 GError **error);
+
 CdnMathFunctionType  cdn_math_function_lookup                 (const gchar          *name,
                                                                gint                 *arguments);
 gdouble              cdn_math_constant_lookup                 (const gchar          *name,
@@ -192,6 +203,13 @@ gboolean             cdn_math_function_get_stack_manipulation (CdnMathFunctionTy
                                                                gint                 *outargdim,
                                                                gint                 *extra_space,
                                                                GError              **error);
+
+guint                cdn_math_register_builtin_function       (gchar const                   *name,
+                                                               gint                           numargs,
+                                                               CdnMathFunctionEvaluateFunc    evaluate,
+                                                               CdnMathStackManipulationFunc   smanipcb,
+                                                               gpointer                       userdata,
+                                                               GDestroyNotify                 destroy_notify);
 
 G_END_DECLS
 

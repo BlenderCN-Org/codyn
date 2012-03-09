@@ -76,6 +76,7 @@ struct _CdnNetworkPrivate
 	CdnNode *template_group;
 
 	GHashTable *imports;
+	GSList *linked_libraries;
 };
 
 enum
@@ -299,6 +300,15 @@ cdn_network_dispose (GObject *object)
 	{
 		g_object_unref (network->priv->integrator_state);
 		network->priv->integrator_state = NULL;
+	}
+
+	while (network->priv->linked_libraries)
+	{
+		g_module_close (network->priv->linked_libraries->data);
+
+		network->priv->linked_libraries =
+			g_slist_delete_link (network->priv->linked_libraries,
+			                     network->priv->linked_libraries);
 	}
 
 	cdn_object_clear (CDN_OBJECT (network));
@@ -1535,3 +1545,41 @@ cdn_init ()
 	}
 }
 
+
+typedef void (*CdnLinkedLibraryInit) (CdnNetwork *network);
+
+gboolean
+cdn_network_link_library (CdnNetwork   *network,
+                          gchar const  *path,
+                          GError      **error)
+{
+	GModule *mod;
+	CdnLinkedLibraryInit ptr;
+
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (path != NULL, FALSE);
+
+	mod = g_module_open (path, G_MODULE_BIND_LAZY);
+
+	if (!mod)
+	{
+		g_set_error (error,
+		             CDN_NETWORK_LOAD_ERROR,
+		             CDN_NETWORK_LOAD_ERROR_LINK_LIBRARY,
+		             "Failed to link library `%s'",
+		             path);
+
+		return FALSE;
+	}
+
+	if (g_module_symbol (mod, "cdn_linked_library_init", (gpointer *)&ptr))
+	{
+		ptr (network);
+	}
+
+	network->priv->linked_libraries =
+		g_slist_prepend (network->priv->linked_libraries,
+		                 mod);
+
+	return TRUE;
+}

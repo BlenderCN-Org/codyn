@@ -38,10 +38,6 @@
  *
  */
 
-typedef void (*FunctionClosure)(CdnStack *stack,
-                                gint      numargs,
-                                gint     *argdim);
-
 #define foreach_element(op)							\
 gint i;										\
 gint num;									\
@@ -129,7 +125,8 @@ foreach_element2 (CdnStack       *stack,
 static void
 op_sin (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	foreach_element (sin);
 }
@@ -137,7 +134,8 @@ op_sin (CdnStack *stack,
 static void
 op_cos (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	foreach_element (cos);
 }
@@ -145,7 +143,8 @@ op_cos (CdnStack *stack,
 static void
 op_tan (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	foreach_element (tan);
 }
@@ -153,7 +152,8 @@ op_tan (CdnStack *stack,
 static void
 op_sqrt (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (sqrt);
 }
@@ -161,7 +161,8 @@ op_sqrt (CdnStack *stack,
 static void
 op_invsqrt (CdnStack *stack,
             gint      numargs,
-            gint     *argdim)
+            gint     *argdim,
+            gpointer  userdata)
 {
 	foreach_element (1.0 / sqrt);
 }
@@ -169,7 +170,8 @@ op_invsqrt (CdnStack *stack,
 static void
 op_asin (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (asin);
 }
@@ -177,7 +179,8 @@ op_asin (CdnStack *stack,
 static void
 op_acos (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (acos);
 }
@@ -185,7 +188,8 @@ op_acos (CdnStack *stack,
 static void
 op_atan (CdnStack  *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (atan);
 }
@@ -193,7 +197,8 @@ op_atan (CdnStack  *stack,
 static void
 op_atan2 (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, atan2);
 }
@@ -201,7 +206,8 @@ op_atan2 (CdnStack *stack,
 static void
 op_floor (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element (floor);
 }
@@ -209,7 +215,8 @@ op_floor (CdnStack *stack,
 static void
 op_ceil (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (ceil);
 }
@@ -217,7 +224,8 @@ op_ceil (CdnStack *stack,
 static void
 op_round (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element (round);
 }
@@ -225,7 +233,8 @@ op_round (CdnStack *stack,
 static void
 op_abs (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	foreach_element (fabs);
 }
@@ -294,7 +303,8 @@ op_nested (CdnStack   *stack,
 static void
 op_min (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	op_nested (stack, numargs, argdim, min);
 }
@@ -302,7 +312,8 @@ op_min (CdnStack *stack,
 static void
 op_max (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	op_nested (stack, numargs, argdim, max);
 }
@@ -310,7 +321,8 @@ op_max (CdnStack *stack,
 static void
 op_sum (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	op_nested (stack, numargs, argdim, sum);
 }
@@ -318,7 +330,8 @@ op_sum (CdnStack *stack,
 static void
 op_product (CdnStack *stack,
             gint      numargs,
-            gint     *argdim)
+            gint     *argdim,
+            gpointer  userdata)
 {
 	op_nested (stack, numargs, argdim, product);
 }
@@ -326,7 +339,8 @@ op_product (CdnStack *stack,
 static void
 op_exp (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	foreach_element (exp);
 }
@@ -334,7 +348,8 @@ op_exp (CdnStack *stack,
 static void
 op_pow (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, pow);
 }
@@ -342,7 +357,8 @@ op_pow (CdnStack *stack,
 static void
 op_ln (CdnStack *stack,
        gint      numargs,
-       gint     *argdim)
+       gint     *argdim,
+       gpointer  userdata)
 {
 	foreach_element (log);
 }
@@ -351,7 +367,8 @@ op_ln (CdnStack *stack,
 static void
 op_log10 (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element (log10);
 }
@@ -359,7 +376,8 @@ op_log10 (CdnStack *stack,
 static void
 op_hypot (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, hypot);
 }
@@ -367,7 +385,8 @@ op_hypot (CdnStack *stack,
 static void
 op_exp2 (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (exp2);
 }
@@ -375,7 +394,8 @@ op_exp2 (CdnStack *stack,
 static void
 op_sinh (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (sinh);
 }
@@ -383,7 +403,8 @@ op_sinh (CdnStack *stack,
 static void
 op_cosh (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (cosh);
 }
@@ -391,7 +412,8 @@ op_cosh (CdnStack *stack,
 static void
 op_tanh (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (tanh);
 }
@@ -399,7 +421,8 @@ op_tanh (CdnStack *stack,
 static void
 op_lerp (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	gdouble third = cdn_stack_pop (stack);
 	gdouble second = cdn_stack_pop (stack);
@@ -411,7 +434,8 @@ op_lerp (CdnStack *stack,
 static void
 op_sqsum (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	gint i;
 	gdouble value = 0;
@@ -436,7 +460,8 @@ sign_value (gdouble value)
 static void
 op_sign (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element (sign_value);
 }
@@ -444,7 +469,8 @@ op_sign (CdnStack *stack,
 static void
 op_csign (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, copysign);
 }
@@ -452,7 +478,8 @@ op_csign (CdnStack *stack,
 static void
 op_clip (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	gdouble max = cdn_stack_pop (stack);
 	gdouble min = cdn_stack_pop (stack);
@@ -465,7 +492,8 @@ op_clip (CdnStack *stack,
 static void
 op_cycle (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	gdouble max = cdn_stack_pop (stack);
 	gdouble min = cdn_stack_pop (stack);
@@ -490,7 +518,8 @@ op_cycle (CdnStack *stack,
 static void
 op_noop (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 }
 
@@ -498,7 +527,8 @@ op_noop (CdnStack *stack,
 static void
 op_unary_minus (CdnStack *stack,
                 gint      numargs,
-                gint     *argdim)
+                gint     *argdim,
+                gpointer  userdata)
 {
 	foreach_element (-1 * );
 }
@@ -512,7 +542,8 @@ op_minus_impl (gdouble a, gdouble b)
 static void
 op_minus (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_minus_impl);
 }
@@ -526,7 +557,8 @@ op_plus_impl (gdouble a, gdouble b)
 static void
 op_plus (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_plus_impl);
 }
@@ -581,7 +613,8 @@ matrix_multiply (CdnStack *stack,
 static void
 op_multiply (CdnStack *stack,
              gint      numargs,
-             gint     *argdim)
+             gint     *argdim,
+             gpointer  userdata)
 {
 	if (!argdim || (argdim[0] == 1 && argdim[1] == 1 && argdim[2] == 1 && argdim[3] == 1))
 	{
@@ -606,7 +639,8 @@ op_multiply (CdnStack *stack,
 static void
 op_emultiply (CdnStack *stack,
               gint      numargs,
-              gint     *argdim)
+              gint     *argdim,
+              gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_emultiply_impl);
 }
@@ -620,7 +654,8 @@ op_divide_impl (gdouble a, gdouble b)
 static void
 op_divide (CdnStack *stack,
            gint      numargs,
-           gint     *argdim)
+           gint     *argdim,
+           gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_divide_impl);
 }
@@ -637,7 +672,8 @@ my_fmod (gdouble x,
 static void
 op_modulo (CdnStack *stack,
            gint      numargs,
-           gint     *argdim)
+           gint     *argdim,
+           gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, my_fmod);
 }
@@ -651,7 +687,8 @@ op_power_impl (gdouble a, gdouble b)
 static void
 op_power (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_power_impl);
 }
@@ -665,7 +702,8 @@ op_greater_impl (gdouble a, gdouble b)
 static void
 op_greater (CdnStack *stack,
             gint      numargs,
-            gint     *argdim)
+            gint     *argdim,
+            gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_greater_impl);
 }
@@ -679,7 +717,8 @@ op_less_impl (gdouble a, gdouble b)
 static void
 op_less (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_less_impl);
 }
@@ -693,7 +732,8 @@ op_greater_or_equal_impl (gdouble a, gdouble b)
 static void
 op_greater_or_equal (CdnStack *stack,
                      gint      numargs,
-                     gint     *argdim)
+                     gint     *argdim,
+                     gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_greater_or_equal_impl);
 }
@@ -707,7 +747,8 @@ op_less_or_equal_impl (gdouble a, gdouble b)
 static void
 op_less_or_equal (CdnStack *stack,
                   gint      numargs,
-                  gint     *argdim)
+                  gint     *argdim,
+                  gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_less_or_equal_impl);
 }
@@ -721,7 +762,8 @@ op_equal_impl (gdouble a, gdouble b)
 static void
 op_equal (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_equal_impl);
 }
@@ -735,7 +777,8 @@ op_nequal_impl (gdouble a, gdouble b)
 static void
 op_nequal (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_nequal_impl);
 }
@@ -749,7 +792,8 @@ op_or_impl (gdouble a, gdouble b)
 static void
 op_or (CdnStack *stack,
        gint      numargs,
-       gint     *argdim)
+       gint     *argdim,
+       gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_or_impl);
 }
@@ -763,7 +807,8 @@ op_and_impl (gdouble a, gdouble b)
 static void
 op_and (CdnStack *stack,
         gint      numargs,
-        gint     *argdim)
+        gint     *argdim,
+        gpointer  userdata)
 {
 	foreach_element2 (stack, argdim, op_and_impl);
 }
@@ -777,7 +822,8 @@ op_negate_impl (gdouble a)
 static void
 op_negate (CdnStack *stack,
            gint      numargs,
-           gint     *argdim)
+           gint     *argdim,
+           gpointer  userdata)
 {
 	foreach_element (op_negate_impl);
 }
@@ -785,7 +831,8 @@ op_negate (CdnStack *stack,
 static void
 op_ternary (CdnStack *stack,
             gint      numargs,
-            gint     *argdim)
+            gint     *argdim,
+            gpointer  userdata)
 {
 	if (!argdim || (argdim[2] == 1 && argdim[3] == 1))
 	{
@@ -963,7 +1010,8 @@ op_mindex (CdnStack *stack,
 static void
 op_index (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	gint i;
 
@@ -1000,7 +1048,8 @@ op_index (CdnStack *stack,
 static void
 op_lindex (CdnStack *stack,
            gint      numargs,
-           gint     *argdim)
+           gint     *argdim,
+           gpointer  userdata)
 {
 	gboolean a1 = (argdim[4] * argdim[5] == 1);
 	gboolean a2 = (argdim[2] * argdim[3] == 1);
@@ -1060,7 +1109,8 @@ op_lindex (CdnStack *stack,
 static void
 op_transpose (CdnStack *stack,
               gint      numargs,
-              gint     *argdim)
+              gint     *argdim,
+              gpointer  userdata)
 {
 	gint numr = argdim ? argdim[0] : 1;
 	gint numc = argdim ? argdim[1] : 1;
@@ -1100,7 +1150,8 @@ op_transpose (CdnStack *stack,
 static void
 op_inverse (CdnStack *stack,
             gint      numargs,
-            gint     *argdim)
+            gint     *argdim,
+            gpointer  userdata)
 {
 	gint n = argdim ? argdim[0] : 1;
 	gdouble *ptr;
@@ -1128,7 +1179,8 @@ op_inverse (CdnStack *stack,
 static void
 op_linsolve (CdnStack *stack,
              gint      numargs,
-             gint     *argdim)
+             gint     *argdim,
+             gpointer  userdata)
 {
 	gdouble *ptrA;
 	gdouble *ptrB;
@@ -1246,7 +1298,8 @@ slinsolve_backsubs (gdouble *ptrA,
 static void
 op_slinsolve (CdnStack *stack,
               gint      numargs,
-              gint     *argdim)
+              gint     *argdim,
+              gpointer  userdata)
 {
 	gdouble *ptrA;
 	gdouble *ptrB;
@@ -1287,7 +1340,8 @@ op_slinsolve (CdnStack *stack,
 static void
 op_size (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	gint r = argdim ? argdim[0] : 1;
 	gint c = argdim ? argdim[1] : 1;
@@ -1301,7 +1355,8 @@ op_size (CdnStack *stack,
 static void
 op_length (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	gint r = argdim ? argdim[0] : 1;
 	gint c = argdim ? argdim[1] : 1;
@@ -1314,7 +1369,8 @@ op_length (CdnStack *stack,
 static void
 op_hcat (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	gint c1;
 	gint c2;
@@ -1364,7 +1420,8 @@ op_hcat (CdnStack *stack,
 static void
 op_zeros (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	// This will never be executed because it's compiled as a
 	// kind of macro
@@ -1373,7 +1430,8 @@ op_zeros (CdnStack *stack,
 static void
 op_eye (CdnStack *stack,
          gint      numargs,
-         gint     *argdim)
+         gint     *argdim,
+         gpointer  userdata)
 {
 	// This will never be executed because it's compiled as a
 	// kind of macro
@@ -1382,7 +1440,8 @@ op_eye (CdnStack *stack,
 static void
 op_block (CdnStack *stack,
           gint      numargs,
-          gint     *argdim)
+          gint     *argdim,
+          gpointer  userdata)
 {
 	gdouble *ptr;
 	gint r;
@@ -1431,8 +1490,8 @@ op_block (CdnStack *stack,
 
 typedef struct
 {
-	gchar const *name;
-	FunctionClosure function;
+	gchar *name;
+	CdnMathFunctionEvaluateFunc function;
 	gint arguments;
 	gboolean commutative;
 } FunctionEntry;
@@ -1489,7 +1548,7 @@ static FunctionEntry function_entries[] = {
 	{"clip", op_clip, 3, FALSE},
 	{"cycle", op_cycle, 3, FALSE},
 	{"index", op_index, -1, FALSE},
-	{"lindex", op_lindex, -1, FALSE},
+	{"lindex", op_lindex, 3, FALSE},
 	{"transpose", op_transpose, 1, FALSE},
 	{"inverse", op_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
@@ -1506,6 +1565,16 @@ static FunctionEntry function_entries[] = {
 
 typedef struct
 {
+	FunctionEntry entry;
+	gpointer userdata;
+	CdnMathStackManipulationFunc smanipfunc;
+	GDestroyNotify destroy_notify;
+} FunctionEntryExt;
+
+static GPtrArray *external_function_entries = NULL;
+
+typedef struct
+{
 	gchar const *name;
 	CdnMathFunctionType type;
 } FunctionEntryMap;
@@ -1516,6 +1585,82 @@ static FunctionEntryMap function_entry_mapping[] = {
 	{"\xe2\x88\x8f", CDN_MATH_FUNCTION_TYPE_PRODUCT}, /* ∏ */
 	{"\xc3\xb7", CDN_MATH_FUNCTION_TYPE_DIVIDE} /* ÷ */
 };
+
+static void
+function_entry_ext_free (FunctionEntryExt *entry)
+{
+	g_free (entry->entry.name);
+
+	if (entry->destroy_notify)
+	{
+		entry->destroy_notify (entry->userdata);
+	}
+
+	g_slice_free (FunctionEntryExt, entry);
+}
+
+/**
+ * cdn_math_register_builtin_function:
+ * @name: the name of the builtin function
+ * @numargs: the number of arguments of the builtin function
+ * @evaluate: (scope notified): a #CdnMathFunctionEvaluateFunc
+ * @smanipcb: (scope notified): a #CdnMathStackManipulationFunc
+ * @userdata: userdata provided to the evaluate func
+ * @destroy_notify: a #GDestroyNotify
+ *
+ * Register a new builtin math function. After registration, any expression
+ * can use the new builtin function.
+ *
+ * Returns: the id of the newly registered function
+ *
+ **/
+guint
+cdn_math_register_builtin_function (gchar const                   *name,
+                                    gint                           numargs,
+                                    CdnMathFunctionEvaluateFunc    evaluate,
+                                    CdnMathStackManipulationFunc   smanipcb,
+                                    gpointer                       userdata,
+                                    GDestroyNotify                 destroy_notify)
+{
+	FunctionEntryExt *entry;
+
+	entry = g_slice_new0 (FunctionEntryExt);
+
+	entry->entry.name = g_strdup (name);
+	entry->entry.arguments = numargs;
+	entry->entry.function = evaluate;
+
+	entry->userdata = userdata;
+	entry->smanipfunc = smanipcb;
+	entry->destroy_notify = destroy_notify;
+
+	if (!external_function_entries)
+	{
+		external_function_entries =
+			g_ptr_array_new_with_free_func ((GDestroyNotify)function_entry_ext_free);
+	}
+
+	g_ptr_array_add (external_function_entries, entry);
+
+	return CDN_MATH_FUNCTION_TYPE_NUM + external_function_entries->len - 1;
+}
+
+static FunctionEntry *
+lookup_function_entry (CdnMathFunctionType type)
+{
+	if (type >= CDN_MATH_FUNCTION_TYPE_NUM)
+	{
+		guint idx;
+
+		idx = type - CDN_MATH_FUNCTION_TYPE_NUM;
+
+		return external_function_entries->pdata[idx];
+	}
+	else
+	{
+		return &function_entries[type];
+	}
+}
 
 /**
  * cdn_math_function_lookup_by_id:
@@ -1532,12 +1677,16 @@ gchar const *
 cdn_math_function_lookup_by_id (CdnMathFunctionType  type,
                                 gint                *arguments)
 {
+	FunctionEntry *entry;
+
+	entry = lookup_function_entry (type);
+
 	if (arguments)
 	{
-		*arguments = function_entries[type].arguments;
+		*arguments = entry->arguments;
 	}
 
-	return function_entries[type].name;
+	return entry->name;
 }
 
 /**
@@ -1556,11 +1705,35 @@ cdn_math_function_lookup (gchar const  *name,
 {
 	guint i;
 
+	if (external_function_entries)
+	{
+		for (i = 0; i < external_function_entries->len; ++i)
+		{
+			FunctionEntryExt *entry;
+
+			entry = external_function_entries->pdata[i];
+
+			if (g_strcmp0 (entry->entry.name, name) == 0)
+			{
+				if (arguments)
+				{
+					*arguments = entry->entry.arguments;
+				}
+
+				return CDN_MATH_FUNCTION_TYPE_NUM + i;
+			}
+		}
+	}
+
 	for (i = CDN_MATH_FUNCTION_TYPE_NUM_OPERATORS + 1; i < CDN_MATH_FUNCTION_TYPE_NUM; ++i)
 	{
 		if (g_strcmp0 (function_entries[i].name, name) == 0)
 		{
-			*arguments = function_entries[i].arguments;
+			if (arguments)
+			{
+				*arguments = function_entries[i].arguments;
+			}
+
 			return i;
 		}
 	}
@@ -1568,9 +1741,14 @@ cdn_math_function_lookup (gchar const  *name,
 	for (i = 0; i < sizeof (function_entry_mapping) / sizeof (FunctionEntryMap); ++i)
 	{
 		FunctionEntryMap *m = &(function_entry_mapping[i]);
+
 		if (g_strcmp0 (m->name, name) == 0)
 		{
-			*arguments = function_entries[m->type].arguments;
+			if (arguments)
+			{
+				*arguments = function_entries[m->type].arguments;
+			}
+
 			return m->type;
 		}
 	}
@@ -1591,7 +1769,11 @@ cdn_math_function_lookup (gchar const  *name,
 gboolean
 cdn_math_function_is_variable (CdnMathFunctionType type)
 {
-	return function_entries[type].arguments == -1;
+	FunctionEntry *entry;
+
+	entry = lookup_function_entry (type);
+
+	return entry->arguments == -1;
 }
 
 /**
@@ -1608,7 +1790,11 @@ cdn_math_function_is_commutative (CdnMathFunctionType  type,
                                   gint                 numargs,
                                   gint                *argdim)
 {
-	if (!function_entries[type].commutative)
+	FunctionEntry *entry;
+
+	entry = lookup_function_entry (type);
+
+	if (!entry->commutative)
 	{
 		return FALSE;
 	}
@@ -1654,7 +1840,25 @@ cdn_math_function_execute (CdnMathFunctionType  type,
                            gint                *argdim,
                            CdnStack            *stack)
 {
-	function_entries[type].function (stack, numargs, argdim);
+	FunctionEntry *entry;
+	gpointer userdata;
+
+	if (type >= CDN_MATH_FUNCTION_TYPE_NUM)
+	{
+		guint idx;
+
+		idx = type - CDN_MATH_FUNCTION_TYPE_NUM;
+
+		entry = external_function_entries->pdata[idx];
+		userdata = ((FunctionEntryExt *)entry)->userdata;
+	}
+	else
+	{
+		entry = &function_entries[type];
+		userdata = NULL;
+	}
+
+	entry->function (stack, numargs, argdim, userdata);
 }
 
 typedef struct
@@ -1733,6 +1937,21 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
                                           GError               **error)
 {
 	*extra_space = 0;
+
+	if (type >= CDN_MATH_FUNCTION_TYPE_NUM)
+	{
+		guint idx;
+		FunctionEntryExt *entry;
+
+		idx = type - CDN_MATH_FUNCTION_TYPE_NUM;
+		entry = external_function_entries->pdata[idx];
+
+		return entry->smanipfunc (arguments,
+		                          argdim,
+		                          outargdim,
+		                          extra_space,
+		                          error);
+	}
 
 	if (!argdim)
 	{

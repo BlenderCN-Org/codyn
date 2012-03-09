@@ -76,7 +76,8 @@ typedef enum
 	CDN_NETWORK_LOAD_ERROR_IMPORT,
 	CDN_NETWORK_LOAD_ERROR_IO,
 	CDN_NETWORK_LOAD_ERROR_INTERFACE,
-	CDN_NETWORK_LOAD_ERROR_OPERATOR
+	CDN_NETWORK_LOAD_ERROR_OPERATOR,
+	CDN_NETWORK_LOAD_ERROR_LINK_LIBRARY
 } CdnNetworkLoadError;
 
 typedef enum
@@ -208,6 +209,9 @@ CdnImportForward *cdn_network_get_import  (CdnNetwork   *network,
 CdnImportForward *cdn_network_get_import_from_path  (CdnNetwork   *network,
                                                                  const gchar  *path);
 
+gboolean              cdn_network_link_library          (CdnNetwork  *network,
+                                                     gchar const *path,
+                                                     GError **error);
 
 void              _cdn_network_register_import       (CdnNetwork        *network,
                                                       CdnImportForward *import);
