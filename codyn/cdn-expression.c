@@ -3269,14 +3269,9 @@ parse_variable (CdnExpression *expression,
 
 	if (f && (prio || (!prio && !property)))
 	{
-		ret = recurse_compile (expression, context, f);
-
-		if (ret)
-		{
-			instructions_push (expression,
-			                   cdn_instruction_custom_function_ref_new (f),
-			                   context);
-		}
+		instructions_push (expression,
+		                   cdn_instruction_custom_function_ref_new (f),
+		                   context);
 	}
 	else if (property)
 	{
