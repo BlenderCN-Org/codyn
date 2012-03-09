@@ -130,10 +130,6 @@ validate_arguments (GSList const  *expressions,
                     gint          *order,
                     GError       **error)
 {
-	CdnExpression *expr;
-
-	expr = expressions->data;
-
 	*func = derived_function (expressions->data, numargs, argdim);
 
 	if (!*func)
