@@ -199,12 +199,12 @@ index_to_string (CdnInstructionFunction *inst,
 {
 	if (!children[2])
 	{
-		g_string_append_printf (ret, "%s[%s]", children[1], children[0]);
+		g_string_append_printf (ret, "(%s)[%s]", children[1], children[0]);
 	}
 	else
 	{
 		g_string_append_printf (ret,
-		                        "%s[%s, %s]",
+		                        "(%s)[%s, %s]",
 		                        children[2],
 		                        children[0],
 		                        children[1]);
@@ -515,6 +515,7 @@ instruction_priority (CdnInstruction *instr,
 	{
 		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
 		case CDN_MATH_FUNCTION_TYPE_NEGATE:
+		case CDN_MATH_FUNCTION_TYPE_INDEX:
 			*priority = 8;
 			*leftassoc = 0;
 		break;
