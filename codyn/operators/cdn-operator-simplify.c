@@ -194,6 +194,27 @@ cdn_operator_simplify_initialize (CdnOperator        *op,
 		return FALSE;
 	}
 
+	if (!cdn_object_is_compiled (CDN_OBJECT (func)))
+	{
+		CdnCompileError *err;
+
+		err = cdn_compile_error_new ();
+
+		if (!cdn_object_compile (CDN_OBJECT (func), NULL, err))
+		{
+			if (error)
+			{
+				*error = g_error_copy (cdn_compile_error_get_error (err));
+			}
+
+			g_object_unref (err);
+
+			return FALSE;
+		}
+
+		g_object_unref (err);
+	}
+
 	// Here we are going to generate a new function with represents
 	s = g_strconcat (cdn_object_get_id (CDN_OBJECT (func)),
 	                 "_simplified",
