@@ -110,6 +110,107 @@ compute_index (gdouble const *valuesa,
 }
 
 static gboolean
+simplify_inline_matrix (CdnExpressionTreeIter *iter)
+{
+	gint i;
+	CdnMathFunctionType fid;
+	gboolean waschanged = FALSE;
+	CdnExpressionTreeIter *mat = NULL;
+
+	if (!iter_is_function (iter, &fid) ||
+	    iter->num_children == 0 ||
+	    iter->num_children > 2)
+	{
+		return FALSE;
+	}
+
+	// Inline children
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		waschanged = simplify_inline_matrix (iter->children[i]);
+
+		if (iter_is_matrix (iter->children[i]))
+		{
+			mat = iter->children[i];
+		}
+	}
+
+	if (mat == NULL)
+	{
+		return waschanged;
+	}
+
+	if (iter->num_children == 1)
+	{
+		// Apply unary operation to each matrix element
+		for (i = 0; i < mat->num_children; ++i)
+		{
+			CdnExpressionTreeIter *cp;
+
+			cp = iter_new_ufunc (fid, mat->children[i], TRUE);
+
+			if (iter_canonicalize (cp, FALSE, FALSE))
+			{
+				iter_simplify (cp, FALSE);
+			}
+
+			iter_set_child (mat, cp, i);
+		}
+
+		iter_replace_into (mat, iter);
+	}
+	else
+	{
+		// Binary operation, inline into the matrix (which is either
+		// on the left or on the right)
+		gboolean takea = FALSE;
+		gboolean takeb = FALSE;
+		CdnExpressionTreeIter *left = NULL;
+		CdnExpressionTreeIter *right = NULL;
+
+		if (iter->children[0] == mat)
+		{
+			right = iter->children[1];
+			takea = TRUE;
+		}
+		else
+		{
+			left = iter->children[0];
+			takeb = TRUE;
+		}
+
+		for (i = 0; i < mat->num_children; ++i)
+		{
+			CdnExpressionTreeIter *cp;
+
+			if (takea)
+			{
+				left = mat->children[i];
+			}
+			else
+			{
+				right = mat->children[i];
+			}
+
+			cp = iter_new_bfunc (fid,
+			                     left,
+			                     right,
+			                     takea,
+			                     takeb);
+
+			iter_canonicalize (cp, FALSE, FALSE);
+			iter_simplify (cp, FALSE);
+
+			iter_set_child (mat, cp, i);
+		}
+
+		iter_replace_into (mat, iter);
+	}
+
+	return TRUE;
+}
+
+static gboolean
 simplify_index (CdnExpressionTreeIter *iter)
 {
 	CdnExpressionTreeIter *last;
@@ -125,20 +226,6 @@ simplify_index (CdnExpressionTreeIter *iter)
 	CdnStackManipulation const *smanip;
 
 	last = iter->children[iter->num_children - 1];
-
-	if (!CDN_IS_INSTRUCTION_MATRIX (last->instruction))
-	{
-		smanip = cdn_instruction_get_stack_manipulation (last->instruction,
-		                                                 NULL);
-
-		if (!smanip->push_dims || (smanip->push_dims[0] == 1 && smanip->push_dims[1] == 1))
-		{
-			iter_replace_into (last, iter);
-			return TRUE;
-		}
-
-		return FALSE;
-	}
 
 	// Check if first (and second) arg are numeric
 	isnuma = iter_is_number_matrix (iter->children[0],
@@ -164,6 +251,29 @@ simplify_index (CdnExpressionTreeIter *iter)
 		{
 			g_free (valuesa);
 			return FALSE;
+		}
+	}
+
+	// Both index arguments are numerical. See if we need to inline the
+	// indexed matrix
+	if (!iter_is_matrix (last))
+	{
+		gboolean waschanged;
+
+		smanip = cdn_instruction_get_stack_manipulation (last->instruction,
+		                                                 NULL);
+
+		if (!smanip->push_dims || (smanip->push_dims[0] == 1 && smanip->push_dims[1] == 1))
+		{
+			iter_replace_into (last, iter);
+			return TRUE;
+		}
+
+		waschanged = simplify_inline_matrix (last);
+
+		if (!iter_is_matrix (last))
+		{
+			return waschanged;
 		}
 	}
 
@@ -848,6 +958,9 @@ simplify_multiply (CdnExpressionTreeIter *iter)
 
 			cdn_stack_pushn (&stack, num1, num1r * num1c);
 			cdn_stack_pushn (&stack, num2, num2r * num2c);
+
+			argdim[0] = num2r;
+			argdim[1] = num2c;
 
 			cdn_math_function_execute (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
 			                           2,
