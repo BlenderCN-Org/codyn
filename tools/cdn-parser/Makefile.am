@@ -9,13 +9,7 @@ INCLUDES =			\
 bin_PROGRAMS = cdn-parser
 
 cdn_parser_SOURCES = \
-	cdn-parser.c \
-	cdn-readline-stream.c
-
-NOINST_H_FILES = \
-	cdn-readline-stream.h
-
-EXTRA_DIST = $(NOINST_H_FILES)
+	cdn-parser.c
 
 cdn_parser_LDADD = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la -lm $(CODYN_LIBS) $(CDN_PARSER_LIBS)
 

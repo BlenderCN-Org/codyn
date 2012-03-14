@@ -28,9 +28,16 @@
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
 #include <codyn/cdn-network-serializer.h>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef ENABLE_TERMCAP
 #include <termcap.h>
+#endif
+
 #include <sys/time.h>
-#include "cdn-readline-stream.h"
 #include <locale.h>
 
 static gchar *output_file;
@@ -194,14 +201,7 @@ parse_network (gchar const *args[], gint argc)
 	{
 		GInputStream *stream;
 
-		if (isatty (STDIN_FILENO))
-		{
-			stream = cdn_readline_stream_new ("* ");
-		}
-		else
-		{
-			stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
-		}
+		stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
 
 		cdn_parser_context_push_input (context, NULL, stream, NULL);
 		g_object_unref (stream);
@@ -270,7 +270,6 @@ static void
 determine_color_support ()
 {
 	gchar const *term;
-	gchar term_buffer[2048];
 
 	term = g_getenv ("TERM");
 
@@ -278,6 +277,10 @@ determine_color_support ()
 	{
 		term = "xterm";
 	}
+
+#ifdef ENABLE_TERMCAP
+{
+	gchar term_buffer[2048];
 
 	if (tgetent (term_buffer, term) == 1)
 	{
@@ -287,6 +290,10 @@ determine_color_support ()
 	{
 		no_colors = TRUE;
 	}
+}
+#else
+	no_colors = TRUE;
+#endif
 }
 
 static void

@@ -26,7 +26,15 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/time.h>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef ENABLE_TERMCAP
 #include <termcap.h>
+#endif
+
 #include <libtar.h>
 #include <bzlib.h>
 #include <fcntl.h>
@@ -382,7 +390,6 @@ static void
 determine_color_support ()
 {
 	gchar const *term;
-	gchar term_buffer[2048];
 
 	term = g_getenv ("TERM");
 
@@ -390,6 +397,10 @@ determine_color_support ()
 	{
 		term = "xterm";
 	}
+
+#ifdef ENABLE_TERMCAP
+{
+	gchar term_buffer[2048];
 
 	if (tgetent (term_buffer, term) == 1)
 	{
@@ -399,6 +410,11 @@ determine_color_support ()
 	{
 		no_colors = TRUE;
 	}
+}
+#else
+	no_colors = TRUE;
+#endif
+
 }
 
 static void

@@ -123,13 +123,9 @@ AC_CHECK_LIB([termcap],
              [tgetent],
               [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -ltermcap"
                CDN_CONTEXT_LIBS="$CDN_CONTEXT_LIBS -ltermcap"
-               CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltermcap"],
-             [AC_MSG_ERROR(could not find termcap library)])
-
-AC_CHECK_LIB([readline],
-             [rl_redisplay],
-             [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -lreadline"],
-             [AC_MSG_ERROR(Could not find readline library)])
+               CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltermcap"
+               AC_DEFINE_UNQUOTED([ENABLE_TERMCAP], [1], [Termcap support])],
+             [])
 
 AC_ARG_ENABLE([tar],
               AS_HELP_STRING([--enable-tar=[auto/yes/no]],[Enable tar support (default: auto)]),
@@ -150,12 +146,14 @@ if test "x$enable_tar" = "xyes" && test "x$have_tar" = "xno"; then
 	AC_MSG_ERROR(could not find tar library)
 fi
 
-AM_CONDITIONAL(ENABLE_ARCHIVE, test "x$have_tar" = "xyes")
+if test "x$have_tar" = "xyes"; then
+	AC_CHECK_LIB([bz2],
+	             [BZ2_bzCompressInit],
+	             [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -lbz2"],
+	             [have_tar=no])
+fi
 
-AC_CHECK_LIB([bz2],
-             [BZ2_bzCompressInit],
-             [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -lbz2"],
-             [AC_MSG_ERROR(could not find bz2 library)])
+AM_CONDITIONAL(ENABLE_ARCHIVE, test "x$have_tar" = "xyes")
 
 AC_CHECK_LIB([clapack],
              [clapack_dgetri],

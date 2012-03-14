@@ -28,7 +28,14 @@
 #include <unistd.h>
 #include <gio/gunixoutputstream.h>
 #include <gio/gunixinputstream.h>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef ENABLE_TERMCAP
 #include <termcap.h>
+#endif
 
 static gchar *output_file;
 static gboolean no_colors = FALSE;
@@ -944,7 +951,6 @@ static void
 determine_color_support ()
 {
 	gchar const *term;
-	gchar term_buffer[2048];
 
 	term = g_getenv ("TERM");
 
@@ -952,6 +958,10 @@ determine_color_support ()
 	{
 		term = "xterm";
 	}
+
+#ifdef ENABLE_TERMCAP
+{
+	gchar term_buffer[2048];
 
 	if (tgetent (term_buffer, term) == 1)
 	{
@@ -961,6 +971,11 @@ determine_color_support ()
 	{
 		no_colors = TRUE;
 	}
+}
+#else
+	no_colors = TRUE;
+#endif
+
 }
 
 static void
