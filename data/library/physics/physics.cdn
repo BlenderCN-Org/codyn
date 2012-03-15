@@ -130,11 +130,11 @@ templates
                 # simply a combinatory trick to get the right values in the
                 # constraint matrix.
                 ConstraintForceSubspace(q, dq) = "[1 - axis[0], 0,           0, 0, 0;
-                                                  axis[0],     axis[2],     0, 0, 0;
-                                                  0,           1 - axis[2], 0, 0, 0;
-                                                  0,           0,           1, 0, 0;
-                                                  0,           0,           0, 1, 0;
-                                                  0,           0,           0, 0, 1]"
+                                                   axis[0],     axis[2],     0, 0, 0;
+                                                   0,           1 - axis[2], 0, 0, 0;
+                                                   0,           0,           1, 0, 0;
+                                                   0,           0,           0, 1, 0;
+                                                   0,           0,           0, 0, 1]"
             }
         }
 
@@ -156,11 +156,11 @@ templates
                 # simply a combinatory trick to get the right values in the
                 # constraint matrix.
                 ConstraintForceSubspace(q, dq) = "[1, 0, 0, 0,           0;
-                                                  0, 1, 0, 0,           0;
-                                                  0, 0, 1, 0,           0;
-                                                  0, 0, 0, 1 - axis[0], 0;
-                                                  0, 0, 0, axis[0],     axis[2];
-                                                  0, 0, 0, 0,           1 - axis[2]]"
+                                                   0, 1, 0, 0,           0;
+                                                   0, 0, 1, 0,           0;
+                                                   0, 0, 0, 1 - axis[0], 0;
+                                                   0, 0, 0, axis[0],     axis[2];
+                                                   0, 0, 0, 0,           1 - axis[2]]"
             }
         }
 
@@ -175,7 +175,7 @@ templates
 
                 JointTransform(q) = "Sp.Rotate(axis ∙ q) ∙ Sp.Translate(axis ∙ q ∙ h)"
                 LocalJointVelocity(q, dq) = "[axis ∙ dq;
-                                             axis ∙ dq ∙ h]"
+                                              axis ∙ dq ∙ h]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -207,11 +207,11 @@ templates
 
                 JointTransform(q) = "Sp.Rotate(axis ∙ q[0]) ∙ Sp.Translate(axis ∙ q[1])"
                 LocalJointVelocity(q, dq) = "[axis[0] ∙ dq[0], 0;
-                                             axis[1] ∙ dq[0], 0;
-                                             axis[2] ∙ dq[0], 0;
-                                             0,              axis[0] ∙ dq[1];
-                                             0,              axis[1] ∙ dq[1];
-                                             0,              axis[2] ∙ dq[1]]"
+                                              axis[1] ∙ dq[0], 0;
+                                              axis[2] ∙ dq[0], 0;
+                                              0,               axis[0] ∙ dq[1];
+                                              0,               axis[1] ∙ dq[1];
+                                              0,               axis[2] ∙ dq[1]]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -220,11 +220,11 @@ templates
                 # simply a combinatory trick to get the right values in the
                 # constraint matrix.
                 ConstraintForceSubspace(q, dq) = "[1 - axis[0], 0,            0, 0;
-                                                  axis[0],     axis[2],      0, 0;
-                                                  0,           1 - axis[2],  0, 0;
-                                                  0,           0,            1 - axis[0], 0;
-                                                  0,           0,            axis[0],     axis[2];
-                                                  0,           0,            0,           1 - axis[2]]"
+                                                   axis[0],     axis[2],      0, 0;
+                                                   0,           1 - axis[2],  0, 0;
+                                                   0,           0,            1 - axis[0], 0;
+                                                   0,           0,            axis[0],     axis[2];
+                                                   0,           0,            0,           1 - axis[2]]"
             }
 
             "{q,dq,ddq}" = "zeros(2, 1)"
@@ -244,14 +244,19 @@ templates
 
                 JointTransform(q) = "Sp.Rotate(QuatRotation(q))"
 
-                LocalJointVelocity(q, dq) = "[dq; 0; 0; 0]"
+                # Note that here the joint velocity is directly specified and
+                # not the local joint velocity for the simple reason that
+                # the the velocity variables are the cartesian angular
+                # velocities in the successor frame, such that the joint
+                # velocity simply becomes 'dq'.
+                JointVelocity(q, dq) = "[dq; 0; 0; 0]"
 
                 ConstraintForceSubspace(q, dq) = "[0, 0, 0;
-                                                  0, 0, 0;
-                                                  0, 0, 0;
-                                                  1, 0, 0;
-                                                  0, 1, 0;
-                                                  0, 0, 1]"
+                                                   0, 0, 0;
+                                                   0, 0, 0;
+                                                   1, 0, 0;
+                                                   0, 1, 0;
+                                                   0, 0, 1]"
             }
 
             q = "zeros(4, 1)"
@@ -274,7 +279,7 @@ templates
                 JointTransform(q) = "Sp.Translate(q[[4; 5; 6]]) ∙
                                      Sp.Rotate(QuatRotation(q[[0; 1; 2; 3]]))"
 
-                LocalJointVelocity(q, dq) = "dq"
+                JointVelocity(q, dq) = "dq"
                 ConstraintForceSubspace(q, dq) = "[]"
             }
 
@@ -287,9 +292,9 @@ templates
             edge
             {
                 "q[0; 1; 2; 3]" <= "0.5 ∙ [-q[1], -q[2], -q[3];
-                             q[0], -q[3],  q[2];
-                             q[3],  q[0], -q[1];
-                            -q[2],  q[1],  q[0]] ∙ dq[[0; 1; 2]]"
+                                            q[0], -q[3],  q[2];
+                                            q[3],  q[0], -q[1];
+                                           -q[2],  q[1],  q[0]] ∙ dq[[0; 1; 2]]"
 
                 "q[4; 5; 6]" <= "dq[[3; 4; 5]]"
             }
