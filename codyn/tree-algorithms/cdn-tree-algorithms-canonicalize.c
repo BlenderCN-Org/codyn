@@ -557,7 +557,8 @@ canonical_custom_function_real (CdnExpressionTreeIter *iter,
 	gint i;
 
 	func = cdn_expression_tree_iter_new (cdn_function_get_expression (f));
-	cdn_expression_tree_iter_canonicalize (func);
+
+	cdn_expression_tree_iter_simplify (func);
 
 	// Replace all property instructions with the nodes which are the
 	// current children of the iter
