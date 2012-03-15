@@ -9,6 +9,7 @@ static gboolean iter_simplify (CdnExpressionTreeIter *iter,
 static gboolean simplify_power (CdnExpressionTreeIter *iter);
 static gboolean simplify_plus (CdnExpressionTreeIter *iter);
 static gboolean simplify_multiply (CdnExpressionTreeIter *iter);
+static gboolean simplify_inline_matrix (CdnExpressionTreeIter *iter);
 
 static gboolean
 cmp_double (gdouble a, gdouble b)
@@ -110,6 +111,233 @@ compute_index (gdouble const *valuesa,
 }
 
 static gboolean
+iter_is_matrix_multiply (CdnExpressionTreeIter *iter)
+{
+	CdnStackManipulation const *smanipa;
+	CdnStackManipulation const *smanipb;
+
+	if (!iter_is_multiply (iter))
+	{
+		return FALSE;
+	}
+
+	smanipa = cdn_instruction_get_stack_manipulation (iter->children[0]->instruction,
+	                                                  NULL);
+
+	smanipb = cdn_instruction_get_stack_manipulation (iter->children[1]->instruction,
+	                                                  NULL);
+
+	return smanipa->push_dims && smanipb->push_dims &&
+	       smanipa->push_dims[1] != 1 &&
+	       smanipb->push_dims[0] != 1 &&
+	       smanipa->push_dims[1] == smanipb->push_dims[0];
+}
+
+static gboolean
+is_single_item_matrix (CdnExpressionTreeIter *iter)
+{
+	gint i;
+
+	// Assumes iter is a matrix
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		CdnExpressionTreeIter *child;
+		CdnStackManipulation const *smanip;
+
+		child = iter->children[i];
+
+		smanip = cdn_instruction_get_stack_manipulation (child->instruction,
+		                                                 NULL);
+
+		if (smanip->push_dims && (smanip->push_dims[0] != 1 || smanip->push_dims[1] != 1))
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+static gboolean
+simplify_inline_matrix_multiply (CdnExpressionTreeIter *iter)
+{
+	CdnStackManipulation const *smanipa;
+	CdnStackManipulation const *smanipb;
+	gint num1r;
+	gint num1c;
+	gint num2r;
+	gint num2c;
+	gint num;
+	gint r;
+	gint idx;
+	CdnExpressionTreeIter *ret;
+	gboolean waschanged = FALSE;
+
+	if (!iter_is_matrix_multiply (iter))
+	{
+		return FALSE;
+	}
+
+	if (!iter_is_matrix (iter->children[0]))
+	{
+		if (simplify_inline_matrix (iter->children[0]))
+		{
+			waschanged = TRUE;
+		}
+
+		if (!iter_is_matrix (iter->children[0]))
+		{
+			return waschanged;
+		}
+	}
+
+	if (!iter_is_matrix (iter->children[1]))
+	{
+		if (simplify_inline_matrix (iter->children[1]))
+		{
+			waschanged = TRUE;
+		}
+
+		if (!iter_is_matrix (iter->children[1]))
+		{
+			return waschanged;
+		}
+	}
+
+	if (!is_single_item_matrix (iter->children[0]) ||
+	    !is_single_item_matrix (iter->children[1]))
+	{
+		return waschanged;
+	}
+
+	// For now, we are simply going to try to inline the matrix
+	// multiplication (using naive multiplication) and check if the
+	// result is reasonably simplified
+	smanipa = cdn_instruction_get_stack_manipulation (iter->children[0]->instruction,
+	                                                  NULL);
+
+	smanipb = cdn_instruction_get_stack_manipulation (iter->children[1]->instruction,
+	                                                  NULL);
+
+	cdn_stack_manipulation_get_push_dimension (smanipa, 0, &num1r, &num1c);
+	cdn_stack_manipulation_get_push_dimension (smanipb, 0, &num2r, &num2c);
+
+	num = num1r * num2c;
+
+	ret = iter_new_sized_take (cdn_instruction_matrix_new (num,
+	                                                       NULL,
+	                                                       num1r,
+	                                                       num2c),
+	                           num);
+
+	idx = 0;
+
+	for (r = 0; r < num1r; ++r)
+	{
+		gint c;
+
+		for (c = 0; c < num2c; ++c)
+		{
+			gint j;
+			CdnExpressionTreeIter *root = NULL;
+			CdnExpressionTreeIter *plus = NULL;
+
+			if (num1c == 1)
+			{
+				CdnExpressionTreeIter *prod;
+
+				prod = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
+				                       iter->children[0]->children[idx],
+				                       iter->children[1]->children[idx],
+				                       TRUE,
+				                       TRUE);
+
+				iter_set_child (ret, prod, idx);
+
+				++idx;
+				continue;
+			}
+
+			for (j = 0; j < num1c; ++j)
+			{
+				CdnExpressionTreeIter *prod;
+
+				prod = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
+				                       iter->children[0]->children[r * num1c + j],
+				                       iter->children[1]->children[j * num2c + c],
+				                       FALSE,
+				                       FALSE);
+
+				if (iter_canonicalize (prod, FALSE, FALSE))
+				{
+					iter_simplify (prod, FALSE);
+				}
+				else
+				{
+					simplify_multiply (prod);
+				}
+
+				if (j == num1c - 1)
+				{
+					iter_set_child (plus, prod, 1);
+				}
+				else
+				{
+					CdnExpressionTreeIter *np;
+
+					np = iter_new_sized_take (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
+					                                                        NULL,
+					                                                        2,
+					                                                        NULL),
+					                          2);
+
+					iter_set_child (np, prod, 0);
+
+					if (root == NULL)
+					{
+						root = np;
+						plus = root;
+					}
+					else
+					{
+						iter_set_child (plus, np, 1);
+						plus = np;
+					}
+				}
+			}
+
+			if (iter_canonicalize (root, TRUE, TRUE))
+			{
+				iter_simplify (root, TRUE);
+			}
+			else
+			{
+				simplify_plus (root);
+			}
+
+			iter_set_child (ret, root, idx);
+			++idx;
+		}
+	}
+
+	iter_replace_into (ret, iter);
+	return TRUE;
+}
+
+static gboolean
+variable_has_actors (CdnVariable *v)
+{
+	GSList *actions;
+	gboolean ret;
+
+	actions = cdn_variable_get_actions (v);
+	ret = actions != NULL;
+	g_slist_free (actions);
+
+	return ret;
+}
+
+static gboolean
 simplify_inline_matrix (CdnExpressionTreeIter *iter)
 {
 	gint i;
@@ -117,11 +345,88 @@ simplify_inline_matrix (CdnExpressionTreeIter *iter)
 	gboolean waschanged = FALSE;
 	CdnExpressionTreeIter *mat = NULL;
 
+	if (CDN_IS_INSTRUCTION_VARIABLE (iter->instruction))
+	{
+		// Check if we can inline the variable
+		CdnVariable *v;
+		CdnVariableFlags flags;
+		CdnExpressionTreeIter *expanded;
+
+		v = cdn_instruction_variable_get_variable (CDN_INSTRUCTION_VARIABLE (iter->instruction));
+		flags = cdn_variable_get_flags (v);
+
+		if ((flags & (CDN_VARIABLE_FLAG_INTEGRATED | CDN_VARIABLE_FLAG_IN)) ||
+		    variable_has_actors (v))
+		{
+			return FALSE;
+		}
+
+		expanded = cdn_expression_tree_iter_new (cdn_variable_get_expression (v));
+		iter_replace_into (expanded, iter);
+
+		return TRUE;
+	}
+
 	if (!iter_is_function (iter, &fid) ||
 	    iter->num_children == 0 ||
 	    iter->num_children > 2)
 	{
 		return FALSE;
+	}
+
+	switch (fid)
+	{
+		case CDN_MATH_FUNCTION_TYPE_UNARY_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_NEGATE:
+		case CDN_MATH_FUNCTION_TYPE_SIN:
+		case CDN_MATH_FUNCTION_TYPE_COS:
+		case CDN_MATH_FUNCTION_TYPE_TAN:
+		case CDN_MATH_FUNCTION_TYPE_ASIN:
+		case CDN_MATH_FUNCTION_TYPE_ACOS:
+		case CDN_MATH_FUNCTION_TYPE_ATAN:
+		case CDN_MATH_FUNCTION_TYPE_SQRT:
+		case CDN_MATH_FUNCTION_TYPE_INVSQRT:
+		case CDN_MATH_FUNCTION_TYPE_EXP:
+		case CDN_MATH_FUNCTION_TYPE_FLOOR:
+		case CDN_MATH_FUNCTION_TYPE_CEIL:
+		case CDN_MATH_FUNCTION_TYPE_ROUND:
+		case CDN_MATH_FUNCTION_TYPE_ABS:
+		case CDN_MATH_FUNCTION_TYPE_LN:
+		case CDN_MATH_FUNCTION_TYPE_LOG10:
+		case CDN_MATH_FUNCTION_TYPE_EXP2:
+		case CDN_MATH_FUNCTION_TYPE_SINH:
+		case CDN_MATH_FUNCTION_TYPE_COSH:
+		case CDN_MATH_FUNCTION_TYPE_TANH:
+		case CDN_MATH_FUNCTION_TYPE_SIGN:
+		case CDN_MATH_FUNCTION_TYPE_CSIGN:
+		case CDN_MATH_FUNCTION_TYPE_MINUS:
+		case CDN_MATH_FUNCTION_TYPE_PLUS:
+		case CDN_MATH_FUNCTION_TYPE_EMULTIPLY:
+		case CDN_MATH_FUNCTION_TYPE_DIVIDE:
+		case CDN_MATH_FUNCTION_TYPE_MODULO:
+		case CDN_MATH_FUNCTION_TYPE_POWER:
+		case CDN_MATH_FUNCTION_TYPE_GREATER:
+		case CDN_MATH_FUNCTION_TYPE_LESS:
+		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_NEQUAL:
+		case CDN_MATH_FUNCTION_TYPE_OR:
+		case CDN_MATH_FUNCTION_TYPE_AND:
+		case CDN_MATH_FUNCTION_TYPE_POW:
+		case CDN_MATH_FUNCTION_TYPE_HYPOT:
+		case CDN_MATH_FUNCTION_TYPE_SQSUM:
+		case CDN_MATH_FUNCTION_TYPE_ATAN2:
+		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
+		break;
+		default:
+			return FALSE;
+	}
+
+	if (fid == CDN_MATH_FUNCTION_TYPE_MULTIPLY &&
+	    iter_is_matrix_multiply (iter))
+	{
+		return simplify_inline_matrix_multiply (iter);
 	}
 
 	// Inline children
@@ -224,8 +529,16 @@ simplify_index (CdnExpressionTreeIter *iter)
 	gdouble *valuesb = NULL;
 	CdnExpressionTreeIter *ret;
 	CdnStackManipulation const *smanip;
+	gboolean waschanged;
 
 	last = iter->children[iter->num_children - 1];
+
+	waschanged = simplify_inline_matrix (last);
+
+	if (!iter_is_matrix (last))
+	{
+		return waschanged;
+	}
 
 	// Check if first (and second) arg are numeric
 	isnuma = iter_is_number_matrix (iter->children[0],
@@ -235,7 +548,7 @@ simplify_index (CdnExpressionTreeIter *iter)
 
 	if (!isnuma)
 	{
-		return FALSE;
+		return waschanged;
 	}
 
 	if (iter->num_children == 3)
@@ -250,29 +563,6 @@ simplify_index (CdnExpressionTreeIter *iter)
 		                            &numbc))
 		{
 			g_free (valuesa);
-			return FALSE;
-		}
-	}
-
-	// Both index arguments are numerical. See if we need to inline the
-	// indexed matrix
-	if (!iter_is_matrix (last))
-	{
-		gboolean waschanged;
-
-		smanip = cdn_instruction_get_stack_manipulation (last->instruction,
-		                                                 NULL);
-
-		if (!smanip->push_dims || (smanip->push_dims[0] == 1 && smanip->push_dims[1] == 1))
-		{
-			iter_replace_into (last, iter);
-			return TRUE;
-		}
-
-		waschanged = simplify_inline_matrix (last);
-
-		if (!iter_is_matrix (last))
-		{
 			return waschanged;
 		}
 	}
@@ -359,29 +649,6 @@ simplify_index (CdnExpressionTreeIter *iter)
 }
 
 static gboolean
-iter_is_matrix_multiply (CdnExpressionTreeIter *iter)
-{
-	CdnStackManipulation const *smanipa;
-	CdnStackManipulation const *smanipb;
-
-	if (!iter_is_multiply (iter))
-	{
-		return FALSE;
-	}
-
-	smanipa = cdn_instruction_get_stack_manipulation (iter->children[0]->instruction,
-	                                                  NULL);
-
-	smanipb = cdn_instruction_get_stack_manipulation (iter->children[1]->instruction,
-	                                                  NULL);
-
-	return smanipa->push_dims && smanipb->push_dims &&
-	       smanipa->push_dims[1] != 1 &&
-	       smanipb->push_dims[0] != 1 &&
-	       smanipa->push_dims[1] == smanipb->push_dims[0];
-}
-
-static gboolean
 simplify_element_wise (CdnExpressionTreeIter *iter)
 {
 	CdnExpressionTreeIter *ret;
@@ -437,37 +704,17 @@ simplify_element_wise (CdnExpressionTreeIter *iter)
 }
 
 static gboolean
-is_single_item_matrix (CdnExpressionTreeIter *iter)
-{
-	gint i;
-
-	// Assumes iter is a matrix
-	for (i = 0; i < iter->num_children; ++i)
-	{
-		CdnExpressionTreeIter *child;
-		CdnStackManipulation const *smanip;
-
-		child = iter->children[i];
-
-		smanip = cdn_instruction_get_stack_manipulation (child->instruction,
-		                                                 NULL);
-
-		if (smanip->push_dims && (smanip->push_dims[0] != 1 || smanip->push_dims[1] != 1))
-		{
-			return FALSE;
-		}
-	}
-
-	return TRUE;
-}
-
-static gboolean
 simplify_function (CdnExpressionTreeIter *iter)
 {
 	CdnInstructionFunction *f;
 	gint id;
 	gint i;
 	CdnStack stack;
+	gint numr;
+	gint numc;
+	CdnStackManipulation const *smanip;
+	gint num;
+	gint *argdim;
 
 	f = (CdnInstructionFunction *)(iter->instruction);
 	id = cdn_instruction_function_get_id (f);
@@ -500,8 +747,6 @@ simplify_function (CdnExpressionTreeIter *iter)
 	for (i = 0; i < iter->num_children; ++i)
 	{
 		gdouble *values;
-		gint numr;
-		gint numc;
 
 		if (!iter_is_number_matrix (iter->children[i],
 		                            &values,
@@ -515,6 +760,13 @@ simplify_function (CdnExpressionTreeIter *iter)
 		cdn_stack_pushn (&stack, values, numr * numc);
 		g_free (values);
 	}
+
+	smanip = cdn_instruction_get_stack_manipulation (iter->instruction, NULL);
+	cdn_stack_manipulation_get_push_dimension (smanip, 0, &numr, &numc);
+
+	num = numr * numc;
+
+	argdim = cdn_instruction_function_get_arguments_dimension (f);
 
 	cdn_math_function_execute (id,
 	                           iter->num_children,
@@ -531,7 +783,28 @@ simplify_function (CdnExpressionTreeIter *iter)
 	iter->num_children = 0;
 
 	cdn_mini_object_unref (CDN_MINI_OBJECT (iter->instruction));
-	iter->instruction = cdn_instruction_number_new (cdn_stack_pop (&stack));
+
+	if (num > 1)
+	{
+		iter->instruction = cdn_instruction_matrix_new (num,
+		                                                NULL,
+		                                                numr,
+		                                                numc);
+
+		iter->children = g_new0 (CdnExpressionTreeIter *, num);
+
+		for (i = num - 1; i >= 0; --i)
+		{
+			iter->children[i] = iter_new_take (cdn_instruction_number_new (cdn_stack_pop (&stack)));
+			iter->children[i]->parent = iter;
+		}
+
+		iter->num_children = num;
+	}
+	else
+	{
+		iter->instruction = cdn_instruction_number_new (cdn_stack_pop (&stack));
+	}
 
 	cdn_stack_destroy (&stack);
 
@@ -728,143 +1001,6 @@ is_eye (gdouble const *values,
 		}
 	}
 
-	return TRUE;
-}
-
-static gboolean
-simplify_inline_matrix_multiply (CdnExpressionTreeIter *iter)
-{
-	CdnStackManipulation const *smanipa;
-	CdnStackManipulation const *smanipb;
-	gint num1r;
-	gint num1c;
-	gint num2r;
-	gint num2c;
-	gint num;
-	gint r;
-	gint idx;
-	CdnExpressionTreeIter *ret;
-
-	if (!iter_is_matrix_multiply (iter) ||
-	    !iter_is_matrix (iter->children[0]) ||
-	    !iter_is_matrix (iter->children[1]) ||
-	    !is_single_item_matrix (iter->children[0]) ||
-	    !is_single_item_matrix (iter->children[1]))
-	{
-		return FALSE;
-	}
-
-	// For now, we are simply going to try to inline the matrix
-	// multiplication (using naive multiplication) and check if the
-	// result is reasonably simplified
-	smanipa = cdn_instruction_get_stack_manipulation (iter->children[0]->instruction,
-	                                                  NULL);
-
-	smanipb = cdn_instruction_get_stack_manipulation (iter->children[1]->instruction,
-	                                                  NULL);
-
-	cdn_stack_manipulation_get_push_dimension (smanipa, 0, &num1r, &num1c);
-	cdn_stack_manipulation_get_push_dimension (smanipb, 0, &num2r, &num2c);
-
-	num = num1r * num2c;
-
-	ret = iter_new_sized_take (cdn_instruction_matrix_new (num,
-	                                                       NULL,
-	                                                       num1r,
-	                                                       num2c),
-	                           num);
-
-	idx = 0;
-
-	for (r = 0; r < num1r; ++r)
-	{
-		gint c;
-
-		for (c = 0; c < num2c; ++c)
-		{
-			gint j;
-			CdnExpressionTreeIter *root = NULL;
-			CdnExpressionTreeIter *plus = NULL;
-
-			if (num1c == 1)
-			{
-				CdnExpressionTreeIter *prod;
-
-				prod = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
-				                       iter->children[0]->children[idx],
-				                       iter->children[1]->children[idx],
-				                       TRUE,
-				                       TRUE);
-
-				iter_set_child (ret, prod, idx);
-
-				++idx;
-				continue;
-			}
-
-			for (j = 0; j < num1c; ++j)
-			{
-				CdnExpressionTreeIter *prod;
-
-				prod = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
-				                       iter->children[0]->children[r * num1c + j],
-				                       iter->children[1]->children[j * num2c + c],
-				                       FALSE,
-				                       FALSE);
-
-				if (iter_canonicalize (prod, FALSE, FALSE))
-				{
-					iter_simplify (prod, FALSE);
-				}
-				else
-				{
-					simplify_multiply (prod);
-				}
-
-				if (j == num1c - 1)
-				{
-					iter_set_child (plus, prod, 1);
-				}
-				else
-				{
-					CdnExpressionTreeIter *np;
-
-					np = iter_new_sized_take (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
-					                                                        NULL,
-					                                                        2,
-					                                                        NULL),
-					                          2);
-
-					iter_set_child (np, prod, 0);
-
-					if (root == NULL)
-					{
-						root = np;
-						plus = root;
-					}
-					else
-					{
-						iter_set_child (plus, np, 1);
-						plus = np;
-					}
-				}
-			}
-
-			if (iter_canonicalize (root, TRUE, TRUE))
-			{
-				iter_simplify (root, TRUE);
-			}
-			else
-			{
-				simplify_plus (root);
-			}
-
-			iter_set_child (ret, root, idx);
-			++idx;
-		}
-	}
-
-	iter_replace_into (ret, iter);
 	return TRUE;
 }
 
@@ -1182,6 +1318,7 @@ simplify_factorize (CdnExpressionTreeIter *iter)
 	// and they have common heads (handling numbers correctly)
 	// Compare head to head, ignoring the first number if there is one
 	if (left->num_children &&
+	    iter_is_multiply (left->children[0]) &&
 	    iter_is_number (left->children[0], NULL))
 	{
 		lnum = left->children[0];
@@ -1189,6 +1326,7 @@ simplify_factorize (CdnExpressionTreeIter *iter)
 	}
 
 	if (right->num_children &&
+	    iter_is_multiply (right->children[0]) &&
 	    iter_is_number (right->children[0], NULL))
 	{
 		rnum = right->children[0];
@@ -1405,6 +1543,123 @@ simplify_power (CdnExpressionTreeIter *iter)
 }
 
 static gboolean
+simplify_matrix (CdnExpressionTreeIter *iter)
+{
+	CdnExpressionTreeIter **children = NULL;
+	CdnStackManipulation const *smanip;
+	gint numr;
+	gint numc;
+	gint num;
+	gint childptr = 0;
+	gint *popdims = NULL;
+	gint i;
+
+	smanip = cdn_instruction_get_stack_manipulation (iter->instruction,
+	                                                 NULL);
+
+	cdn_stack_manipulation_get_push_dimension (smanip, 0, &numr, &numc);
+
+	num = numr * numc;
+
+	if (smanip->num_pop == num)
+	{
+		return FALSE;
+	}
+
+	// Expand concatenated matrix elements into single elements if possible
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		CdnExpressionTreeIter *child;
+		gint j;
+
+		child = iter->children[i];
+
+		if (!iter_is_matrix (child))
+		{
+			if (children)
+			{
+				children[childptr] = child;
+				iter->children[i] = NULL;
+
+				smanip = cdn_instruction_get_stack_manipulation (children[childptr]->instruction,
+				                                                 NULL);
+
+				cdn_stack_manipulation_get_push_dimension (smanip,
+				                                           0,
+				                                           popdims + childptr * 2,
+				                                           popdims + childptr * 2 + 1);
+
+				++childptr;
+			}
+
+			continue;
+		}
+
+		if (!children)
+		{
+			children = g_new (CdnExpressionTreeIter *, num);
+			popdims = g_new0 (gint, num * 2);
+
+			while (childptr < i)
+			{
+				children[childptr] = iter->children[childptr];
+				iter->children[childptr] = NULL;
+
+				smanip = cdn_instruction_get_stack_manipulation (children[childptr]->instruction,
+				                                                 NULL);
+
+				cdn_stack_manipulation_get_push_dimension (smanip,
+				                                           0,
+				                                           popdims + childptr * 2,
+				                                           popdims + childptr * 2 + 1);
+
+				++childptr;
+			}
+		}
+
+		// Append expansion
+		for (j = 0; j < child->num_children; ++j)
+		{
+			children[childptr] = child->children[j];
+			child->children[j] = NULL;
+
+			children[childptr]->parent = iter;
+
+			smanip = cdn_instruction_get_stack_manipulation (children[childptr]->instruction,
+			                                                 NULL);
+
+			cdn_stack_manipulation_get_push_dimension (smanip,
+			                                           0,
+			                                           popdims + childptr * 2,
+			                                           popdims + childptr * 2 + 1);
+
+			++childptr;
+		}
+
+		iter_set_child (iter, NULL, i);
+	}
+
+	if (!children)
+	{
+		return FALSE;
+	}
+
+	cdn_mini_object_unref (iter->instruction);
+
+	iter->instruction = cdn_instruction_matrix_new (childptr,
+	                                                popdims,
+	                                                numr,
+	                                                numc);
+
+	g_free (iter->children);
+
+	iter->children = children;
+	iter->num_children = childptr;
+
+	return TRUE;
+}
+
+static gboolean
 iter_simplify (CdnExpressionTreeIter *iter,
                gboolean              simplify_children)
 {
@@ -1465,6 +1720,13 @@ iter_simplify (CdnExpressionTreeIter *iter,
 	else if (iter_is_power (iter))
 	{
 		if (simplify_power (iter))
+		{
+			ret = TRUE;
+		}
+	}
+	else if (iter_is_matrix (iter))
+	{
+		if (simplify_matrix (iter))
 		{
 			ret = TRUE;
 		}
