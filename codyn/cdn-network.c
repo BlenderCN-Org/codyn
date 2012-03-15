@@ -26,6 +26,7 @@
 #include <math.h>
 
 #include "cdn-network.h"
+#include "cdn-network-xml.h"
 #include "cdn-expression.h"
 #include "cdn-object.h"
 #include "cdn-edge.h"
