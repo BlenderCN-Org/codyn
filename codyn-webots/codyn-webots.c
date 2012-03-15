@@ -431,7 +431,7 @@ property_access_type (CdnVariable *property)
 static gchar const *
 webots_template_name (CdnObject *obj)
 {
-	CdnObject *parent;
+	CdnNode *parent;
 
 	if (!obj)
 	{
@@ -445,7 +445,7 @@ webots_template_name (CdnObject *obj)
 		return NULL;
 	}
 
-	if (g_strcmp0 (cdn_object_get_id (parent), "webots") != 0)
+	if (g_strcmp0 (cdn_object_get_id (CDN_OBJECT (parent)), "webots") != 0)
 	{
 		return NULL;
 	}
