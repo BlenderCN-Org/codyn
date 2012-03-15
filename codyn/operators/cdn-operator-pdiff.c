@@ -566,8 +566,11 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 		g_set_error (error,
 		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
 		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
-		             "Cannot take the partial derivative of a matrix function `%s' (%d-by-%d)",
+		             "Cannot take the partial derivative of a matrix function `%s' (%d-by-%d) towards a vector `%s' (%d-by-%d)",
 		             cdn_object_get_id (CDN_OBJECT (func)),
+		             fnumr,
+		             fnumc,
+		             cdn_function_argument_get_name (arg),
 		             numr,
 		             numc);
 	}
