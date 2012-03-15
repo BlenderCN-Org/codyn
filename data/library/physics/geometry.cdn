@@ -24,7 +24,7 @@ node "Geometry"
         0,               0, 1 / 12 ∙ m ∙ l²
     ]"
 
-    Rotate(θx, θy, θz) = "RotateX(θx) ∙ RotateY(θy) ∙ RotateZ(θz)"
+    Rotate(θ) = "RotateX(θ[0]) ∙ RotateY(θ[1]) ∙ RotateZ(θ[2])"
 
     RotateX(θ) = "[1,  0,       0;
                    0,  cos(θ), sin(θ);
@@ -39,7 +39,7 @@ node "Geometry"
                     0,      0,      1]"
 
     RotationFromAxisAngle(u, θ) = "[
-        1 - mc + u[0]² ∙ mc), u[0] ∙ u[1] ∙ mc -uzs, u[0] ∙ u[2] ∙ mc + uys;
+        1 - mc + u[0]² ∙ mc, u[0] ∙ u[1] ∙ mc -uzs, u[0] ∙ u[2] ∙ mc + uys;
         u[1] ∙ u[0] ∙ mc + uzs, -mc + 1 + u[1]² ∙ mc, u[1] ∙ u[2] ∙ mc - uxs;
         u[2] ∙ u[0] ∙ mc - yus, u[2] ∙ u[1] ∙ mc + uxs, 1 - mc + u[2]² ∙ mc
     ]"
