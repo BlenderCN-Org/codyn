@@ -5,7 +5,7 @@ library_DATA = \
 	spatial.cdn \
 	rnea.cdn \
 	crba.cdn \
-	fd.cdn \
+	dynamics.cdn \
 	findbodies.cdn \
 	geometry.cdn \
 	slip.cdn
