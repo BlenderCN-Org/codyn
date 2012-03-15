@@ -167,30 +167,75 @@ fi
 
 AM_CONDITIONAL(ENABLE_ARCHIVE, test "x$have_tar" = "xyes")
 
-AC_CHECK_LIB([clapack],
-             [clapack_dgetri],
-             [LAPACK_LIBS="-lclapack"],
-             [AC_CHECK_LIB([lapack-3],
-                           [clapack_dgetri],
-                           [LAPACK_LIBS="-llapack-3"],
-                           [AC_CHECK_FILE(["/usr/lib64/atlas/libclapack.so"],
-                                          [LAPACK_LIBS="-lclapack"
-                                           LAPACK_CFLAGS="-L/usr/lib64/atlas"],
-                                           [AC_MSG_ERROR(could not find lapack library)])])])
+AC_ARG_ENABLE([lapack],
+	AS_HELP_STRING([--disable-lapack],[Enable lapack support (default: enabled)]),
+	[enable_lapack=$enableval],
+	[enable_lapack=auto])
 
-AC_CHECK_LIB([blas],
-             [cblas_dgemm],
-             [BLAS_LIBS="-lblas"],
-             [AC_CHECK_FILE(["/usr/lib64/atlas/libcblas.so"],
-                            [BLAS_LIBS="-lcblas"
-                             BLAS_CFLAGS="-I/usr/lib64/atlas"],
-                            [AC_MSG_ERROR(could not find blas library)])])
+if test "x$enable_lapack" != "xno"; then
+	AC_CHECK_LIB([clapack],
+	             [clapack_dgetri],
+	             [LAPACK_LIBS="-lclapack"
+	              have_lapack=yes],
+	             [AC_CHECK_LIB([lapack-3],
+	                           [clapack_dgetri],
+	                           [LAPACK_LIBS="-llapack-3"
+	                            have_lapack=yes],
+	                           [AC_CHECK_FILE(["/usr/lib64/atlas/libclapack.so"],
+	                                          [LAPACK_LIBS="-lclapack"
+	                                           LAPACK_CFLAGS="-L/usr/lib64/atlas"
+	                                           have_lapack=yes],
+	                                           [AC_MSG_WARN(could not find lapack library)
+	                                            have_lapack=no])])])
+else
+	have_lapack=no
+fi
+
+if test "x$enable_lapack" = "xyes" && test "x$have_lapack" = "xno"; then
+	AC_MSG_ERROR(failed to locate lapack library)
+fi
+
+if test "$have_lapack" = "yes"; then
+	AC_DEFINE_UNQUOTED([HAVE_LAPACK], [1], [Have lapack support])
+fi
+
+AC_ARG_ENABLE([blas],
+	AS_HELP_STRING([--disable-blas],[Enable blas support (default: enabled)]),
+	[enable_blas=$enableval],
+	[enable_blas=auto])
+
+if test "x$enable_blas" != "xno"; then
+	AC_CHECK_LIB([blas],
+	             [cblas_dgemm],
+	             [BLAS_LIBS="-lblas"
+	              have_blas=yes],
+	             [AC_CHECK_FILE(["/usr/lib64/atlas/libcblas.so"],
+	                            [BLAS_LIBS="-lcblas"
+	                             BLAS_CFLAGS="-I/usr/lib64/atlas"
+	                             have_blas="yes"],
+	                            [AC_MSG_WARN(could not find blas library)
+	                             have_blas="no"])])
+else
+	have_blas=no
+fi
+
+if test "x$enable_blas" = "xyes" && test "x$have_blas" = "xno"; then
+	AC_MSG_ERROR(failed to locate blas library)
+fi
+
+if test "$have_blas" = "yes"; then
+	AC_DEFINE_UNQUOTED([HAVE_BLAS], [1], [Have blas support])
+fi
 
 AC_SUBST(CDN_PARSER_LIBS)
 AC_SUBST(CDN_CONTEXT_LIBS)
 AC_SUBST(CDN_ARCHIVE_LIBS)
+
 AC_SUBST(LAPACK_LIBS)
 AC_SUBST(LAPACK_CFLAGS)
+
+AC_SUBST(BLAS_LIBS)
+AC_SUBST(BLAS_CFLAGS)
 
 dnl Check for wii
 AC_ARG_ENABLE([wii],
@@ -347,5 +392,7 @@ Configuration:
 	network support:        $have_networking
 	wii support:            $enable_wii
 	python support:         $enable_python
+	blas:                   $have_blas
+	lapack:                 $have_lapack
 "
 

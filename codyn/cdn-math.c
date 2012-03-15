@@ -20,11 +20,21 @@
  * Boston, MA  02110-1301  USA
  */
 
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
+
+#ifdef HAVE_LAPACK
 #include <clapack.h>
+#endif
+
+#ifdef HAVE_BLAS
 #include <cblas.h>
+#endif
 
 #include "cdn-compile-error.h"
 
@@ -586,6 +596,7 @@ matrix_multiply (CdnStack *stack,
 	ptrB = ptrC - num2;
 	ptrA = ptrB - num1;
 
+#ifdef HAVE_BLAS
 	cblas_dgemm (CblasRowMajor,
 	             CblasNoTrans,
 	             CblasNoTrans,
@@ -600,7 +611,36 @@ matrix_multiply (CdnStack *stack,
 	             0,
 	             ptrC,
 	             argdim[1]);
+#else
+{
+	gint r;
+	gint idx = 0;
+	gint ar = 0;
 
+	// Naive implementation
+	for (r = 0; r < argdim[1]; ++r)
+	{
+		gint c;
+
+		for (c = 0; c < argdim[3]; ++c)
+		{
+			gdouble s = 0;
+			gint bc = 0;
+
+			for (i = 0; i < argdim[0]; ++i)
+			{
+				s += ptrA[ar + i] * ptrB[c + bc];
+				bc += argdim[1];
+			}
+
+			ptrC[idx] = s;
+			++idx;
+		}
+
+		ar += argdim[0];
+	}
+}
+#endif
 	cdn_stack_popn (stack, num1 + num2);
 
 	// Copy back from ptrC to ptrA
@@ -1153,6 +1193,7 @@ op_transpose (CdnStack *stack,
 	}
 }
 
+#ifdef HAVE_LAPACK
 static void
 op_inverse (CdnStack *stack,
             gint      numargs,
@@ -1211,6 +1252,7 @@ op_linsolve (CdnStack *stack,
 
 	cdn_stack_popn (stack, numa);
 }
+#endif
 
 static void
 slinsolve_factorize (gdouble *A,
@@ -1556,8 +1598,14 @@ static FunctionEntry function_entries[] = {
 	{"index", op_index, -1, FALSE},
 	{"lindex", op_lindex, 3, FALSE},
 	{"transpose", op_transpose, 1, FALSE},
+#ifdef HAVE_LAPACK
 	{"inverse", op_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
+#else
+	{"inverse", op_noop, 1, FALSE},
+	{"linsolve", op_noop, 2, FALSE},
+
+#endif
 	{"slinsolve", op_slinsolve, 3, FALSE},
 	{"sum", op_sum, -1, FALSE},
 	{"product", op_product, -1, FALSE},
@@ -1687,6 +1735,11 @@ cdn_math_function_lookup_by_id (CdnMathFunctionType  type,
 
 	entry = lookup_function_entry (type);
 
+	if (!entry || entry->function == op_noop)
+	{
+		return NULL;
+	}
+
 	if (arguments)
 	{
 		*arguments = entry->arguments;
@@ -1740,6 +1793,11 @@ cdn_math_function_lookup (gchar const  *name,
 				*arguments = function_entries[i].arguments;
 			}
 
+			if (function_entries[i].function == op_noop)
+			{
+				return 0;
+			}
+
 			return i;
 		}
 	}
@@ -1753,6 +1811,11 @@ cdn_math_function_lookup (gchar const  *name,
 			if (arguments)
 			{
 				*arguments = function_entries[m->type].arguments;
+			}
+
+			if (function_entries[m->type].function == op_noop)
+			{
+				return 0;
 			}
 
 			return m->type;
