@@ -462,6 +462,7 @@ cdn_expression_tree_iter_initialize_stack (CdnExpressionTreeIter *iter,
 		CdnInstruction *inst = instructions->data;
 		CdnStackManipulation const *smanip;
 		gint nst;
+		gint nmst;
 
 		instructions = g_slist_delete_link (instructions, instructions);
 		smanip = cdn_instruction_get_stack_manipulation (inst, NULL);
@@ -473,9 +474,11 @@ cdn_expression_tree_iter_initialize_stack (CdnExpressionTreeIter *iter,
 
 		nst = calculate_stack_manipulation (smanip, &tmpspace);
 
-		if (stack + MAX(tmpspace, nst) > maxstack)
+		nmst = stack + MAX(tmpspace, nst);
+
+		if (nmst > maxstack)
 		{
-			maxstack = stack + MAX(tmpspace, nst);
+			maxstack = nmst;
 		}
 
 		stack += nst;
