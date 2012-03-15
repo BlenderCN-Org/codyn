@@ -7,6 +7,12 @@
 
 #define CDN_INSTRUCTION_RAND_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION_RAND, CdnInstructionRandPrivate))
 
+#ifdef MINGW
+#define RANDOM rand
+#else
+#define RANDOM random
+#endif
+
 struct _CdnInstructionRandPrivate
 {
 	glong *random_value;
@@ -320,6 +326,6 @@ cdn_instruction_rand_next (CdnInstructionRand *self)
 	/* Omit type check to increase speed */
 	for (i = 0; i < self->priv->num_random_value; ++i)
 	{
-		self->priv->random_value[i] = random();
+		self->priv->random_value[i] = RANDOM ();
 	}
 }

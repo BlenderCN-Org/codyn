@@ -36,8 +36,13 @@
 #include "cdn-io-method.h"
 
 #include <math.h>
-
 #include <string.h>
+
+#ifdef MINGW
+#define RANDOM rand
+#else
+#define RANDOM random
+#endif
 
 #define CDN_PARSER_CONTEXT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_PARSER_CONTEXT, CdnParserContextPrivate))
 
@@ -2805,7 +2810,7 @@ edge_pairs_sparse (CdnParserContext *context,
 
 		if (onlyself)
 		{
-			if (probability >= 1 || random () <= p)
+			if (probability >= 1 || RANDOM () <= p)
 			{
 				ret = g_slist_prepend (ret,
 				                       cdn_selection_copy (fromobj->data));
@@ -2834,7 +2839,7 @@ edge_pairs_sparse (CdnParserContext *context,
 
 		while (toobj)
 		{
-			if ((probability < 1 && random () > p) || (noself &&
+			if ((probability < 1 && RANDOM () > p) || (noself &&
 			                      cdn_selection_get_object (toobj->data) ==
 			                      cdn_selection_get_object (fromobj->data)))
 			{
@@ -2968,7 +2973,7 @@ edge_pairs (CdnParserContext *context,
 
 		for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
 		{
-			if ((iffprob < 1 && random () > p) || (noself &&
+			if ((iffprob < 1 && RANDOM () > p) || (noself &&
 			    cdn_selection_get_object (toobj->data) ==
 			    cdn_selection_get_object (fromobj->data)))
 			{
