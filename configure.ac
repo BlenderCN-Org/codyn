@@ -74,7 +74,7 @@ AC_SUBST(WEBOTS_CFLAGS)
 AC_SUBST(WEBOTS_LIBS)
 
 AC_ARG_ENABLE([doc],
-	AS_HELP_STRING([--disable-doc],[Enable building webots bindings (default: enabled)]),
+	AS_HELP_STRING([--disable-doc],[Enable building docs (default: enabled)]),
 	[enable_doc=$enableval],
 	[enable_doc=yes])
 
