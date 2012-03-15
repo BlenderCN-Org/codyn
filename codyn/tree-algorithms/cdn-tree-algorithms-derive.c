@@ -1273,6 +1273,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 	gint newgen;
 	gint idx;
 	gint newstart;
+	CdnFunction *nf;
 
 	// Construct list of variables towards which to derive. We are going
 	// to be relatively smart here and only derive towards those arguments
@@ -1389,9 +1390,14 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 		}
 	}
 
-	ret = iter_new_take (cdn_instruction_custom_function_new (df,
+	nf = cdn_function_for_dimension (df, num + newgen, argdim);
+	g_object_unref (df);
+
+	ret = iter_new_take (cdn_instruction_custom_function_new (nf,
 	                                                          num + newgen,
 	                                                          argdim));
+
+	g_object_unref (nf);
 
 	ret->children = children;
 	ret->num_children = num + newgen;
