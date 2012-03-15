@@ -25,8 +25,15 @@
 #include <glib/gprintf.h>
 #include <string.h>
 #include <unistd.h>
-#include <gio/gunixoutputstream.h>
+#include <codyn/cdn-cfile-stream.h>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef ENABLE_GIO_UNIX
 #include <gio/gunixinputstream.h>
+#endif
 
 static gchar *output_file = NULL;
 static gchar *select_root = NULL;
@@ -51,11 +58,21 @@ parse_network (gchar const *filename, GError **error)
 	CdnNetwork *network;
 	gboolean fromstdin;
 
+#ifdef ENABLE_GIO_UNIX
 	fromstdin = (filename == NULL || g_strcmp0 (filename, "-") == 0);
+#else
+	fromstdin = FALSE;
+#endif
 
 	if (!fromstdin)
 	{
 		GFile *file;
+
+		if (!filename)
+		{
+			g_printerr ("Please provide an input file\n");
+			return NULL;
+		}
 
 		file = g_file_new_for_commandline_arg (filename);
 
@@ -70,6 +87,7 @@ parse_network (gchar const *filename, GError **error)
 		network = cdn_network_new_from_file (file, error);
 		g_object_unref (file);
 	}
+#ifdef ENABLE_GIO_UNIX
 	else
 	{
 		GInputStream *stream;
@@ -81,6 +99,7 @@ parse_network (gchar const *filename, GError **error)
 
 		g_object_unref (stream);
 	}
+#endif
 
 	return network;
 }
@@ -97,7 +116,7 @@ create_output_stream (GFile        *input_file,
 	if ((output_file == NULL && input_file == NULL) ||
 	     g_strcmp0 (output_file, "-") == 0)
 	{
-		ret = g_unix_output_stream_new (STDOUT_FILENO, TRUE);
+		ret = cdn_cfile_stream_new (stdout);
 
 		if (name)
 		{

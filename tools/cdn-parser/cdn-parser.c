@@ -25,12 +25,16 @@
 #include <glib/gprintf.h>
 #include <string.h>
 #include <unistd.h>
-#include <gio/gunixoutputstream.h>
-#include <gio/gunixinputstream.h>
+
+#include <codyn/cdn-cfile-stream.h>
 #include <codyn/cdn-network-serializer.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
+
+#ifdef ENABLE_GIO_UNIX
+#include <gio/gunixinputstream.h>
 #endif
 
 #ifdef ENABLE_TERMCAP
@@ -138,12 +142,22 @@ parse_network (gchar const *args[], gint argc)
 
 	remove_double_dash (args, &argc);
 
+#ifdef ENABLE_GIO_UNIX
 	fromstdin = (argc > 0 && g_strcmp0 (args[0], "-") == 0);
+#else
+	fromstdin = FALSE;
+#endif
 
 	file = NULL;
 
 	if (!fromstdin)
 	{
+		if (argc == 0)
+		{
+			g_printerr ("Please provide an input file\n");
+			return 1;
+		}
+
 		file = g_file_new_for_commandline_arg (args[0]);
 
 		if (!g_file_query_exists (file, NULL))
@@ -178,7 +192,7 @@ parse_network (gchar const *args[], gint argc)
 	}
 	else
 	{
-		output_stream = g_unix_output_stream_new (STDOUT_FILENO, TRUE);
+		output_stream = cdn_cfile_stream_new (stdout);
 	}
 
 	network = cdn_network_new ();
@@ -192,11 +206,14 @@ parse_network (gchar const *args[], gint argc)
 		                  output_stream);
 	}
 
+#ifdef ENABLE_GIO_UNIX
 	if (!fromstdin)
+#endif
 	{
 		cdn_parser_context_push_input (context, file, NULL, NULL);
 		g_object_unref (file);
 	}
+#ifdef ENABLE_GIO_UNIX
 	else
 	{
 		GInputStream *stream;
@@ -206,6 +223,7 @@ parse_network (gchar const *args[], gint argc)
 		cdn_parser_context_push_input (context, NULL, stream, NULL);
 		g_object_unref (stream);
 	}
+#endif
 
 	if (cdn_parser_context_parse (context, TRUE, &error))
 	{

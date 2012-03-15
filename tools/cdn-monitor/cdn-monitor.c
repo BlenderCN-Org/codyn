@@ -25,11 +25,18 @@
 #include <glib/gprintf.h>
 #include <string.h>
 #include <unistd.h>
-#include <gio/gunixinputstream.h>
-#include <gio/gunixoutputstream.h>
 #include <sys/time.h>
 #include <math.h>
 #include <locale.h>
+#include <codyn/cdn-cfile-stream.h>
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef ENABLE_GIO_UNIX
+#include <gio/gunixinputstream.h>
+#endif
 
 static GPtrArray *monitored = 0;
 static GPtrArray *varied = 0;
@@ -426,8 +433,7 @@ get_output_stream ()
 	}
 	else
 	{
-		out = g_unix_output_stream_new (STDOUT_FILENO,
-		                                TRUE);
+		out = cdn_cfile_stream_new (stdout);
 	}
 
 	return out;
@@ -953,6 +959,7 @@ monitor_network (gchar const *filename)
 	CdnCompileError *err;
 	gint ret;
 
+#ifdef ENABLE_GIO_UNIX
 	if (g_strcmp0 (filename, "-") == 0)
 	{
 		GInputStream *stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
@@ -960,6 +967,7 @@ monitor_network (gchar const *filename)
 		g_object_unref (stream);
 	}
 	else
+#endif
 	{
 		GFile *file = g_file_new_for_commandline_arg (filename);
 		network = cdn_network_new_from_file (file, &error);

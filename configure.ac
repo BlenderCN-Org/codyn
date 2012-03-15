@@ -103,8 +103,13 @@ PKG_CHECK_MODULES(CODYN, [
 	gobject-2.0
 	libxml-2.0
 	gio-2.0
-	gio-unix-2.0
 ])
+
+PKG_CHECK_MODULES(GIO_UNIX, [
+	gio-unix-2.0
+], [AC_DEFINE_UNQUOTED([ENABLE_GIO_UNIX], [1], [Enable gio unix support])
+    have_gio_unix=yes],
+   [have_gio_unix=no])
 
 PKG_CHECK_MODULES(GLIB26, [
 	glib-2.0 >= 2.26
@@ -112,7 +117,8 @@ PKG_CHECK_MODULES(GLIB26, [
 
 AM_CONDITIONAL(ENABLE_NETWORKING, test "x$have_networking" = "xyes")
 
-CODYN_LIBS="${CODYN_LIBS}"
+CODYN_LIBS="${CODYN_LIBS} ${GIO_UNIX_LIBS}"
+CODYN_CFLAGS="${CODYN_CFLAGS} ${GIO_UNIX_CFLAGS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
 	CODYN_CFLAGS="$CODYN_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"

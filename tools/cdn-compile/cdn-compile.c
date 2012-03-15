@@ -25,11 +25,13 @@
 #include <glib/gprintf.h>
 #include <string.h>
 #include <unistd.h>
-#include <gio/gunixoutputstream.h>
-#include <gio/gunixinputstream.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
+
+#ifdef ENABLE_GIO_UNIX
+#include <gio/gunixinputstream.h>
 #endif
 
 #ifdef ENABLE_TERMCAP
@@ -216,6 +218,7 @@ compile_network (gchar const *filename)
 	GError *error = NULL;
 	CdnCompileError *err;
 
+#ifdef ENABLE_GIO_UNIX
 	if (g_strcmp0 (filename, "-") == 0)
 	{
 		GInputStream *stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
@@ -223,6 +226,7 @@ compile_network (gchar const *filename)
 		g_object_unref (stream);
 	}
 	else
+#endif
 	{
 		GFile *file = g_file_new_for_commandline_arg (filename);
 		network = cdn_network_new_from_file (file, &error);
