@@ -34,8 +34,6 @@
 #include "cdn-node.h"
 #include "cdn-io.h"
 
-#include <execinfo.h>
-
 #include <codyn/instructions/cdn-instructions.h>
 
 #include <string.h>
