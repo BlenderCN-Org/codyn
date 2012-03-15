@@ -37,6 +37,7 @@ COMMON_SOURCES = 		\
 	cdn-network.c \
 	cdn-network-deserializer.c \
 	cdn-network-serializer.c \
+	cdn-network-xml.c \
 	cdn-network-parser-utils.c \
 	cdn-parser-context.c \
 	cdn-embedded-string.c \

@@ -1526,8 +1526,8 @@ static void
 cdn_init_real ()
 {
 	cdn_debug_init ();
-
 	cdn_io_method_initialize ();
+	cdn_network_xml_init ();
 }
 
 void

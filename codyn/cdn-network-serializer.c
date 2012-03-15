@@ -1536,7 +1536,6 @@ cdn_network_serializer_serialize (CdnNetworkSerializer  *serializer,
 
 	xmlAddChild (root, nnetwork);
 
-
 	serializer->priv->doc = doc;
 
 	write_config (serializer, nnetwork);
