@@ -378,7 +378,6 @@ defactorize (CdnExpressionTreeIter *iter)
 	GSList *l1;
 	GSList *l2;
 	CdnExpressionTreeIter *plus;
-	gboolean firsttime = TRUE;
 
 	i1 = iter_is_plus (iter->children[0]);
 	i2 = iter_is_plus (iter->children[1]);
@@ -416,33 +415,17 @@ defactorize (CdnExpressionTreeIter *iter)
 			// Make sure the new 'mult' is properly canonicalized
 			canonical_multiply (mult, TRUE);
 
-			if (firsttime && !plus)
+			if (!plus)
 			{
 				plus = mult;
-				iter_set_child (plus, mult, 1);
 			}
-			else if (firsttime && plus)
+			else
 			{
 				plus = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_PLUS,
 				                       mult,
 				                       plus,
 				                       TRUE,
 				                       TRUE);
-
-				canonical_plus (plus);
-				firsttime = FALSE;
-			}
-			else
-			{
-				CdnExpressionTreeIter *np;
-
-				np = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_PLUS,
-				                     mult,
-				                     plus,
-				                     TRUE,
-				                     TRUE);
-
-				plus = np;
 
 				canonical_plus (plus);
 			}
