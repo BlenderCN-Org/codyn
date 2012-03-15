@@ -1117,6 +1117,12 @@ op_transpose (CdnStack *stack,
 
 	gint start;
 
+	if (numr == 1 || numc == 1)
+	{
+		// noop
+		return;
+	}
+
 	gdouble *m = cdn_stack_ptr (stack) + cdn_stack_count (stack) - numr * numc;
 
 	for (start = 0; start < numr * numc; ++start)
