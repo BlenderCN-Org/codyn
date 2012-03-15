@@ -41,6 +41,8 @@ copy_smanip (CdnStackManipulation const *src,
 
 	memcpy (dest->pop_dims, src->pop_dims, sizeof (gint) * src->num_pop * 2);
 	memcpy (dest->push_dims, src->push_dims, sizeof (gint) * src->num_pop * 2);
+
+	dest->extra_space = src->extra_space;
 }
 
 static CdnMiniObject *
