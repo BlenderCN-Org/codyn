@@ -35,12 +35,10 @@ AM_PATH_PYTHON
 AC_ARG_ENABLE([webots],
 	AS_HELP_STRING([--enable-webots],[Enable building webots bindings (default: disabled)]),
 	[enable_webots=$enableval],
-	[enable_webots=no])
-	
-AM_CONDITIONAL([ENABLE_WEBOTS],[test "x$enable_webots" = "xyes"])
+	[enable_webots=auto])
 
 # look for webots
-if test "x$enable_webots" = "xyes"; then
+if test "x$enable_webots" != "xno"; then
 	AC_MSG_CHECKING(for webots)
 	dirs="$WEBOTS_HOME_PATH $WEBOTS_HOME /usr/local/webots"
 
@@ -57,12 +55,20 @@ if test "x$enable_webots" = "xyes"; then
 	done
 
 	if test "$WEBOTS_CFLAGS" = none; then
-		AC_MSG_ERROR(could not locate webots)
+		if test "x$enable_webots" = "xauto"; then
+			AC_MSG_WARN(disabling webots support)
+		else
+			AC_MSG_ERROR(could not locate webots)
+		fi
+	else
+		enable_webots=yes
 	fi
 else
 	WEBOTS_CFLAGS=
 	WEBOTS_LIBS=
 fi
+
+AM_CONDITIONAL([ENABLE_WEBOTS],[test "x$enable_webots" = "xyes"])
 
 AC_SUBST(WEBOTS_CFLAGS)
 AC_SUBST(WEBOTS_LIBS)
