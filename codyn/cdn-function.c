@@ -1608,7 +1608,7 @@ cdn_function_add_argument (CdnFunction         *function,
 		/* Add the proxy property */
 		property = cdn_variable_new (name,
 		                             cdn_expression_new0 (),
-		                             CDN_VARIABLE_FLAG_NONE);
+		                             CDN_VARIABLE_FLAG_IN);
 
 		if (!cdn_object_add_variable (CDN_OBJECT (function), property, NULL))
 		{
