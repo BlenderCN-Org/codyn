@@ -60,7 +60,8 @@ COMMON_SOURCES = 		\
 	cdn-statement.c \
 	cdn-taggable.c \
 	cdn-event.c \
-	cdn-io-method.c
+	cdn-io-method.c \
+	cdn-cfile-stream.c
 
 BUILT_SOURCES = \
 	cdn-enum-types.c \
@@ -124,7 +125,8 @@ INST_H_FILES = \
 	cdn-taggable.h \
 	cdn-event.h \
 	cdn-forward-decl.h \
-	cdn-io-method.h
+	cdn-io-method.h \
+	cdn-cfile-stream.h
 
 lib_LTLIBRARIES = libcodyn-3.0.la
 
