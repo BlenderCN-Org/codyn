@@ -3,7 +3,15 @@
 #include <codyn/cdn-io.h>
 #include <codyn/cdn-network.h>
 #include "cdn-client.h"
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#ifdef ENABLE_GIO_UNIX
 #include <gio/gunixsocketaddress.h>
+#endif
+
 #include "cdn-network-thread.h"
 
 #define CDN_IO_NETWORK_SERVER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_IO_NETWORK_SERVER, CdnIoNetworkServerPrivate))
@@ -130,6 +138,7 @@ cdn_io_initialize_impl (CdnIo         *io,
 	              "port", &port,
 	              "protocol", &protocol, NULL);
 
+#ifdef ENABLE_GIO_UNIX
 	if (host == NULL &&
 	    protocol == CDN_NETWORK_PROTOCOL_UNIX)
 	{
@@ -146,7 +155,9 @@ cdn_io_initialize_impl (CdnIo         *io,
 		g_free (id);
 		return FALSE;
 	}
+#endif
 
+#ifdef ENABLE_GIO_UNIX
 	if (protocol == CDN_NETWORK_PROTOCOL_UNIX)
 	{
 		sock = g_socket_new (G_SOCKET_FAMILY_UNIX,
@@ -154,7 +165,9 @@ cdn_io_initialize_impl (CdnIo         *io,
 		                     0,
 		                     error);
 	}
-	else if (protocol == CDN_NETWORK_PROTOCOL_TCP)
+	else
+#endif
+	if (protocol == CDN_NETWORK_PROTOCOL_TCP)
 	{
 		sock = g_socket_new (G_SOCKET_FAMILY_IPV4,
 		                     G_SOCKET_TYPE_STREAM,
@@ -175,11 +188,14 @@ cdn_io_initialize_impl (CdnIo         *io,
 		return FALSE;
 	}
 
+#ifdef ENABLE_GIO_UNIX
 	if (protocol == CDN_NETWORK_PROTOCOL_UNIX)
 	{
 		sockaddr = g_unix_socket_address_new (host);
 	}
-	else if (host != NULL)
+	else
+#endif
+	if (host != NULL)
 	{
 		GInetAddress *addr;
 

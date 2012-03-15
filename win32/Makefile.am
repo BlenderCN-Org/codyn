@@ -3,7 +3,7 @@ EXTRA_DIST = \
 	make-zip.in \
 	README
 
-CLEANFILES = make-zip *.zip
-
+CLEANFILES = *.zip
+DISTCLEANFILES = make-zip
 
 -include $(top_srcdir)/git.mk

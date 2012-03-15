@@ -1,7 +1,11 @@
 #include "cdn-io-network-client.h"
 #include "cdn-client.h"
 #include <codyn/cdn-network.h>
+
+#ifdef ENABLE_GIO_UNIX
 #include <gio/gunixsocketaddress.h>
+#endif
+
 #include "cdn-io-network-enum-types.h"
 
 #define CDN_IO_NETWORK_CLIENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_IO_NETWORK_CLIENT, CdnIoNetworkClientPrivate))
@@ -48,6 +52,7 @@ cdn_io_initialize_impl (CdnIo         *io,
 	GSocketAddress *sockaddr;
 	GError *lasterr = NULL;
 
+#ifdef ENABLE_GIO_UNIX
 	if (client->priv->host == NULL &&
 	    client->priv->protocol == CDN_NETWORK_PROTOCOL_UNIX)
 	{
@@ -72,7 +77,9 @@ cdn_io_initialize_impl (CdnIo         *io,
 		                     0,
 		                     error);
 	}
-	else if (client->priv->protocol == CDN_NETWORK_PROTOCOL_TCP)
+	else
+#endif
+	if (client->priv->protocol == CDN_NETWORK_PROTOCOL_TCP)
 	{
 		sock = g_socket_new (G_SOCKET_FAMILY_IPV4,
 		                     G_SOCKET_TYPE_STREAM,
@@ -92,12 +99,15 @@ cdn_io_initialize_impl (CdnIo         *io,
 		return FALSE;
 	}
 
+#ifdef ENABLE_GIO_UNIX
 	if (client->priv->protocol == CDN_NETWORK_PROTOCOL_UNIX)
 	{
 		conn = G_SOCKET_CONNECTABLE (
 			g_unix_socket_address_new (client->priv->host));
 	}
-	else if (client->priv->host != NULL)
+	else
+#endif
+	if (client->priv->host != NULL)
 	{
 		conn = G_SOCKET_CONNECTABLE (
 			g_network_address_new (client->priv->host,
