@@ -54,12 +54,14 @@ if test "x$enable_webots" != "xno"; then
 		fi
 	done
 
-	if test "$WEBOTS_CFLAGS" = none; then
+	if test "x$WEBOTS_CFLAGS" = "x"; then
 		if test "x$enable_webots" = "xauto"; then
 			AC_MSG_WARN(disabling webots support)
 		else
 			AC_MSG_ERROR(could not locate webots)
 		fi
+
+		enable_webots=no
 	else
 		enable_webots=yes
 	fi
