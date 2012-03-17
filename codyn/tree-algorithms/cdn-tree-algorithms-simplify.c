@@ -714,7 +714,6 @@ simplify_function (CdnExpressionTreeIter *iter)
 	gint numc;
 	CdnStackManipulation const *smanip;
 	gint num;
-	gint *argdim;
 
 	f = (CdnInstructionFunction *)(iter->instruction);
 	id = cdn_instruction_function_get_id (f);
@@ -765,8 +764,6 @@ simplify_function (CdnExpressionTreeIter *iter)
 	cdn_stack_manipulation_get_push_dimension (smanip, 0, &numr, &numc);
 
 	num = numr * numc;
-
-	argdim = cdn_instruction_function_get_arguments_dimension (f);
 
 	cdn_math_function_execute (id,
 	                           iter->num_children,
