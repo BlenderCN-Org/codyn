@@ -265,6 +265,11 @@ set_expression (CdnVariable   *variable,
 			g_object_unref (expression);
 		}
 
+		if (notify)
+		{
+			g_object_notify (G_OBJECT (variable), "modified");
+		}
+
 		return FALSE;
 	}
 
@@ -279,8 +284,7 @@ set_expression (CdnVariable   *variable,
 		variable->priv->expression = g_object_ref_sink (expression);
 	}
 
-	if (!variable->priv->disposing &&
-	    !variable->priv->modified)
+	if (!variable->priv->disposing)
 	{
 		variable->priv->modified = TRUE;
 
@@ -380,14 +384,11 @@ set_flags (CdnVariable      *variable,
 			g_object_notify (G_OBJECT (variable), "flags");
 		}
 
-		if (!variable->priv->modified)
-		{
-			variable->priv->modified = TRUE;
+		variable->priv->modified = TRUE;
 
-			if (notify)
-			{
-				g_object_notify (G_OBJECT (variable), "modified");
-			}
+		if (notify)
+		{
+			g_object_notify (G_OBJECT (variable), "modified");
 		}
 	}
 }

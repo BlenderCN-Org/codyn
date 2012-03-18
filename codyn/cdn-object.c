@@ -353,12 +353,31 @@ set_property (GObject       *object,
 }
 
 static void
-on_template_property_expression_changed (CdnVariable *prop,
+check_modified_for_template (CdnObject   *object,
+                             CdnVariable *property)
+{
+	CdnObject *templ;
+
+	templ = cdn_object_get_variable_template (object,
+	                                          property,
+	                                          TRUE);
+
+	if (templ != NULL)
+	{
+		cdn_modifiable_set_modified (CDN_MODIFIABLE (property), FALSE);
+	}
+}
+
+static void
+on_template_variable_expression_changed (CdnVariable *prop,
                                          GParamSpec  *spec,
                                          CdnObject   *object)
 {
-	CdnVariable *orig = cdn_object_get_variable (object,
-	                                             cdn_variable_get_name (prop));
+	CdnVariable *orig;
+	CdnExpression *cp;
+
+	orig = cdn_object_get_variable (object,
+	                                cdn_variable_get_name (prop));
 
 	if (!orig)
 	{
@@ -377,14 +396,15 @@ on_template_property_expression_changed (CdnVariable *prop,
 		return;
 	}
 
-	cdn_variable_set_expression (orig,
-	                             cdn_expression_copy (cdn_variable_get_expression (prop)));
+	cp = cdn_expression_copy (cdn_variable_get_expression (prop));
+
+	cdn_variable_set_expression (orig, cp);
 
 	cdn_modifiable_set_modified (CDN_MODIFIABLE (orig), FALSE);
 }
 
 static void
-on_template_property_flags_changed (CdnVariable *prop,
+on_template_variable_flags_changed (CdnVariable *prop,
                                     GParamSpec  *spec,
                                     CdnObject   *object)
 {
@@ -420,10 +440,10 @@ on_template_variable_added (CdnObject   *templ,
                             CdnObject   *object)
 {
 	CdnVariable *df;
+	CdnVariable *orig;
 
-	CdnVariable *orig =
-		cdn_object_get_variable (object,
-		                         cdn_variable_get_name (prop));
+	orig = cdn_object_get_variable (object,
+	                                cdn_variable_get_name (prop));
 
 	if (orig == NULL ||
 	    cdn_object_get_variable_template (object, orig, TRUE))
@@ -447,30 +467,42 @@ on_template_variable_added (CdnObject   *templ,
 
 	if (df)
 	{
-		cdn_variable_set_derivative (cdn_object_get_variable (object,
-		                                                      cdn_variable_get_name (prop)),
-		                             cdn_object_get_variable (object,
-		                                                      cdn_variable_get_name (df)));
+		CdnVariable *v;
+		CdnVariable *dv;
+
+		v = cdn_object_get_variable (object,
+		                             cdn_variable_get_name (prop));
+
+		dv = cdn_object_get_variable (object,
+		                              cdn_variable_get_name (df));
+
+		cdn_variable_set_derivative (v, dv);
 	}
 
 	df = cdn_variable_get_integral (prop);
 
 	if (df)
 	{
-		cdn_variable_set_derivative (cdn_object_get_variable (object,
-		                                                      cdn_variable_get_name (df)),
-		                             cdn_object_get_variable (object,
-		                                                      cdn_variable_get_name (prop)));
+		CdnVariable *dv;
+		CdnVariable *v;
+
+		dv = cdn_object_get_variable (object,
+		                              cdn_variable_get_name (df));
+
+		v = cdn_object_get_variable (object,
+		                             cdn_variable_get_name (prop));
+
+		cdn_variable_set_derivative (dv, v);
 	}
 
 	g_signal_connect (prop,
 	                  "notify::expression",
-	                  G_CALLBACK (on_template_property_expression_changed),
+	                  G_CALLBACK (on_template_variable_expression_changed),
 	                  object);
 
 	g_signal_connect (prop,
 	                  "notify::flags",
-	                  G_CALLBACK (on_template_property_flags_changed),
+	                  G_CALLBACK (on_template_variable_flags_changed),
 	                  object);
 }
 
@@ -480,11 +512,11 @@ disconnect_template_property (CdnObject   *object,
                               CdnVariable *prop)
 {
 	g_signal_handlers_disconnect_by_func (prop,
-	                                      on_template_property_expression_changed,
+	                                      on_template_variable_expression_changed,
 	                                      object);
 
 	g_signal_handlers_disconnect_by_func (prop,
-	                                      on_template_property_flags_changed,
+	                                      on_template_variable_flags_changed,
 	                                      object);
 }
 
@@ -609,22 +641,6 @@ cdn_object_foreach_expression_impl (CdnObject                *object,
 		{
 			func (expr, userdata);
 		}
-	}
-}
-
-static void
-check_modified_for_template (CdnObject   *object,
-                             CdnVariable *property)
-{
-	CdnObject *templ;
-
-	templ = cdn_object_get_variable_template (object,
-	                                          property,
-	                                          TRUE);
-
-	if (templ != NULL)
-	{
-		cdn_modifiable_set_modified (CDN_MODIFIABLE (property), FALSE);
 	}
 }
 
