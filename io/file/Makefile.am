@@ -25,4 +25,9 @@ libfile_la_CFLAGS = $(CODYN_CFLAGS)
 install-data-hook:
 	rm -f $(DESTDIR)$(plugindir)/$(plugin_LTLIBRARIES)
 
+uninstall-hook:
+	rm -f $(DESTDIR)$(plugindir)/$(plugin_LTLIBRARIES:.la=.so)
+
+EXTRA_DIST = $(NOINST_H_FILES)
+
 -include $(top_srcdir)/git.mk

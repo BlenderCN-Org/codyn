@@ -27,4 +27,9 @@ libwii_la_CFLAGS = $(CODYN_CFLAGS) $(CDN_IO_WII_CFLAGS)
 install-data-hook:
 	rm -f $(DESTDIR)$(plugindir)/$(plugin_LTLIBRARIES)
 
+uninstall-hook:
+	rm -f $(DESTDIR)$(plugindir)/$(plugin_LTLIBRARIES:.la=.so)
+
+EXTRA_DIST = $(NOINST_H_FILES)
+
 -include $(top_srcdir)/git.mk

@@ -41,9 +41,13 @@ cdn-io-network-enum-types.c: cdn-io-network-enum-types.c.template cdn-io-network
 install-data-hook:
 	rm -f $(DESTDIR)$(plugindir)/$(plugin_LTLIBRARIES)
 
+uninstall-hook:
+	rm -f $(DESTDIR)$(plugindir)/$(plugin_LTLIBRARIES:.la=.so)
+
 EXTRA_DIST =					\
 	cdn-io-network-enum-types.c.template	\
-	cdn-io-network-enum-types.h.template
+	cdn-io-network-enum-types.h.template	\
+	$(NOINST_H_FILES)
 
 CLEANFILES =					\
 	cdn-io-network-enum-types.c		\
