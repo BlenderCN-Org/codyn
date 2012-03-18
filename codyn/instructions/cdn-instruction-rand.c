@@ -308,6 +308,7 @@ cdn_instruction_rand_new (gint  numargs,
 
 	rnd->priv->random_value = g_new0 (glong, rnd->priv->num_random_value);
 
+	cdn_instruction_rand_next (rnd);
 	return CDN_INSTRUCTION (ret);
 }
 
