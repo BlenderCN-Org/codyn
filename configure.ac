@@ -272,14 +272,30 @@ dnl Check for gedit
 dnl ================================================================
 
 AC_ARG_ENABLE([gedit],
-              AS_HELP_STRING([--enable-gedit=[2/3/no]],[Enable installation of gedit plugin (default: 2)]),
+              AS_HELP_STRING([--enable-gedit=[2/3/no/auto]],[Enable installation of gedit plugin (default: auto)]),
               [enable_gedit=$enableval],
-              [enable_gedit=2])
+              [enable_gedit=auto])
 
 if test "x$enable_gedit" != "xno"; then
-	GEDIT_MAJOR_VERSION="$enable_gedit"
-	enable_gedit="yes"
+	if test "x$enable_gedit" = "xauto"; then
+		PKG_CHECK_MODULES([GEDIT],
+		                  [gedit >= 3.0],
+		                  [GEDIT_MAJOR_VERSION=3],
+		                  [PKG_CHECK_MODULES([GEDIT],
+		                                     [gedit >= 2.0],
+		                                     [GEDIT_MAJOR_VERSION=2],
+		                                     [enable_gedit=no])])
 
+		if test "x$enable_gedit" != "xno"; then
+			enable_gedit="yes"
+		fi
+	else
+		GEDIT_MAJOR_VERSION="$enable_gedit"
+		enable_gedit="yes"
+	fi
+fi
+
+if test "x$enable_gedit" = "xyes"; then
 	if test "x$GEDIT_MAJOR_VERSION" = "x2"; then
 		GEDIT_PLUGIN_DIR="$libdir/gedit-2.0/plugins"
 	else
@@ -389,7 +405,7 @@ Configuration:
 	Webots support enabled:	$enable_webots
 	GObject Introspection:	$enable_introspection
 	Documentation enabled:  $enable_doc
-	gedit plugin:           $enable_gedit
+	gedit plugin:           $enable_gedit ($GEDIT_MAJOR_VERSION)
 	cdn-archive:            $have_tar
 	network support:        $have_networking
 	wii support:            $enable_wii
