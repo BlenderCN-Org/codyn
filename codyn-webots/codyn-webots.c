@@ -406,10 +406,6 @@ bindings_free (CdnNetworkWebots *webots)
 static void
 cdn_network_webots_finalize (GObject *object)
 {
-	CdnNetworkWebots *self;
-
-	self = CDN_NETWORK_WEBOTS (object);
-
 	G_OBJECT_CLASS (cdn_network_webots_parent_class)->finalize (object);
 }
 
