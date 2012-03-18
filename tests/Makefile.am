@@ -6,7 +6,10 @@ INCLUDES =				\
 	-I$(top_srcdir)				\
 	$(CODYN_CFLAGS)
 
-TEST_PROGS = expression network direct import template object node variable operator integrator interface file
+TEST_PROGS = expression network direct import template object node variable operator integrator interface
+
+#TEST_PROGS += file
+
 progs_ldadd = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la
 
 noinst_PROGRAMS = $(TEST_PROGS)
@@ -44,8 +47,8 @@ integrator_LDADD = $(progs_ldadd)
 interface_SOURCES = interface.c utils.h utils.c
 interface_LDADD = $(progs_ldadd)
 
-file_SOURCES = file.c utils.h utils.c
-file_LDADD = $(progs_ldadd)
+#file_SOURCES = file.c utils.h utils.c
+#file_LDADD = $(progs_ldadd)
 
 TESTS = $(TEST_PROGS)
 
