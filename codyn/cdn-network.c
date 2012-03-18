@@ -1446,6 +1446,9 @@ on_import_parent_changed (CdnImport  *import,
 {
 	if (cdn_object_get_parent (CDN_OBJECT (import)) == NULL)
 	{
+		g_hash_table_remove (network->priv->imports,
+		                     cdn_import_get_file (import));
+
 		unregister_import (network, import);
 	}
 }
