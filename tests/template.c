@@ -5,22 +5,20 @@
 #include "utils.h"
 
 static gchar simple_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cdn>\n"
-"  <network>\n"
-"    <templates>\n"
-"      <node id=\"template1\">\n"
-"        <variable name=\"x\">0</variable>\n"
-"\n"
-"        <node id=\"nested1\">\n"
-"          <variable name=\"y\">0</variable>\n"
-"        </node>\n"
-"      </node>\n"
-"    </templates>\n"
-"\n"
-"    <node id=\"state1\" ref=\"template1\"/>\n"
-"  </network>\n"
-"</cdn>\n";
+"templates\n"
+"{\n"
+"  node \"template1\"\n"
+"  {\n"
+"    x = 0\n"
+"    node \"nested1\"\n"
+"    {\n"
+"      y = 0\n"
+"    }\n"
+"  }\n"
+"}\n"
+"node \"state1\" : \"template1\"\n"
+"{\n"
+"}";
 
 static void
 test_load ()
@@ -44,7 +42,7 @@ test_load ()
 static void
 test_apply_state ()
 {
-	CdnObject *state = cdn_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 	GError *error = NULL;
 
 	cdn_object_add_variable (state,
@@ -104,7 +102,7 @@ static void
 test_apply_node ()
 {
 	CdnNode *grp = cdn_node_new ("node", NULL);
-	CdnObject *state = cdn_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 
 	cdn_object_add_variable (state,
 	                         cdn_variable_new ("x",
@@ -150,21 +148,17 @@ static void
 test_apply_overload_state ()
 {
 	static gchar xml[] = ""
-	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	"<cdn>\n"
-	"  <network>\n"
-	"    <templates>\n"
-	"      <node id=\"state\">\n"
-	"        <variable name=\"x\" integrated=\"yes\">0</variable>\n"
-	"\n"
-	"      </node>\n"
-	"    </templates>\n"
-	"\n"
-	"    <node id=\"state\" ref=\"state\">\n"
-	"      <variable name=\"x\" integrated=\"no\">1</variable>\n"
-	"    </node>\n"
-	"  </network>\n"
-	"</cdn>\n";
+	"templates\n"
+	"{\n"
+	"  node \"state\"\n"
+	"  {\n"
+	"    x = 0 | integrated"
+	"  }\n"
+	"}\n"
+	"node \"state\" : \"state\"\n"
+	"{\n"
+	"  x = 1 | -integrated"
+	"}";
 
 	CdnNetwork *network = cdn_network_new_from_string (xml, NULL);
 	g_assert (network);
@@ -186,25 +180,12 @@ static void
 test_apply_overload_edge ()
 {
 	static gchar xml[] = ""
-	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	"<cdn>\n"
-	"  <network>\n"
-	"    <templates>\n"
-	"      <node id=\"state\">\n"
-	"        <variable name=\"x\" integrated=\"yes\">0</variable>\n"
-	"\n"
-	"      </node>\n"
-	"      <edge id=\"edge\">\n"
-	"        <action target=\"x\">1</action>\n"
-	"      </edge>\n"
-	"    </templates>\n"
-	"\n"
-	"    <node id=\"state\" ref=\"state\"/>\n"
-	"    <edge id=\"edge\" ref=\"edge\" from=\"state\" to=\"state\">\n"
-	"      <action target=\"x\">2</action>"
-	"    </edge>\n"
-	"  </network>\n"
-	"</cdn>\n";
+	"templates {"
+	"  node \"state\" { x = 0 | integrated }"
+	"  edge \"edge\" { x = 1 }"
+	"}"
+	"node \"state\" : \"state\" {}"
+	"edge \"edge\" from \"state\" to \"state\" : \"edge\" { x <= 2 }";
 
 	CdnNetwork *network = cdn_network_new_from_string (xml, NULL);
 	g_assert (CDN_IS_NETWORK (network));
@@ -227,33 +208,20 @@ static void
 test_apply_overload_node ()
 {
 	static gchar xml[] = ""
-	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	"<cdn>\n"
-	"  <network>\n"
-	"    <templates>\n"
-	"      <node id=\"node\">\n"
-	"        <node id=\"state\">\n"
-	"          <variable name=\"x\" integrated=\"yes\">0</variable>\n"
-	"\n"
-	"        </node>\n"
-	"        <edge id=\"edge\">\n"
-	"          <action target=\"x\">1</action>\n"
-	"        </edge>\n"
-	"      </node>\n"
-	"    </templates>\n"
-	"\n"
-	"    <node id=\"state\" ref=\"node\">\n"
-	"      <node id=\"state\">\n"
-	"        <variable name=\"x\">2</variable>\n"
-	"      </node>\n"
-	"    </node>\n"
-	"  </network>\n"
-	"</cdn>\n";
+	"templates {"
+	"  node \"node\" {"
+	"    node \"state\" { x = 0 | integrated }"
+	"    edge \"edge\" { x <= 1 }"
+	"  }"
+	"}"
+	"node \"node\" : \"node\" {"
+	"  node \"state\" { x = 2 }"
+	"}";
 
 	CdnNetwork *network = cdn_network_new_from_string (xml, NULL);
 	g_assert (CDN_IS_NETWORK (network));
 
-	CdnObject *obj = cdn_node_get_child (CDN_NODE (network), "state");
+	CdnObject *obj = cdn_node_get_child (CDN_NODE (network), "node");
 	g_assert (CDN_IS_NODE (obj));
 
 	CdnNode *grp = CDN_NODE (obj);
@@ -270,7 +238,7 @@ test_apply_overload_node ()
 static void
 test_track_modified_state ()
 {
-	CdnObject *state = cdn_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 	GError *error = NULL;
 
 	cdn_object_add_variable (state,
@@ -280,6 +248,7 @@ test_track_modified_state ()
 	                         NULL);
 
 	CdnObject *instance = cdn_object_new_from_template (state, &error);
+	cdn_object_set_id (instance, "instance");
 	g_assert_no_error (error);
 
 	CdnVariable *prop = cdn_object_get_variable (instance, "x");
@@ -352,7 +321,7 @@ test_track_modified_edge ()
 static void
 test_unapply_state ()
 {
-	CdnObject *state = cdn_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 	GError *error = NULL;
 
 	cdn_object_add_variable (state,
@@ -375,7 +344,7 @@ test_unapply_state ()
 static void
 test_unapply_modified_state ()
 {
-	CdnObject *state = cdn_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 	GError *error = NULL;
 
 	cdn_object_add_variable (state,
@@ -442,8 +411,8 @@ test_unapply_modified_edge ()
 static void
 test_apply_multiple_state ()
 {
-	CdnObject *t1 = cdn_object_new ("s1");
-	CdnObject *t2 = cdn_object_new ("s2");
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
 	GError *error = NULL;
 
 	cdn_object_add_variable (t1,
@@ -458,7 +427,7 @@ test_apply_multiple_state ()
 	                                           0),
 	                         NULL);
 
-	CdnObject *o = cdn_object_new ("o1");
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
 
 	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);
@@ -476,8 +445,8 @@ test_apply_multiple_state ()
 static void
 test_apply_multiple_state_override ()
 {
-	CdnObject *t1 = cdn_object_new ("s1");
-	CdnObject *t2 = cdn_object_new ("s2");
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
 	GError *error = NULL;
 
 	cdn_object_add_variable (t1,
@@ -492,7 +461,7 @@ test_apply_multiple_state_override ()
 	                                           0),
 	                         NULL);
 
-	CdnObject *o = cdn_object_new ("o1");
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
 
 	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);
@@ -510,8 +479,8 @@ test_apply_multiple_state_override ()
 static void
 test_unapply_multiple_state_override ()
 {
-	CdnObject *t1 = cdn_object_new ("s1");
-	CdnObject *t2 = cdn_object_new ("s2");
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
 	GError *error = NULL;
 
 	cdn_object_add_variable (t1,
@@ -526,7 +495,7 @@ test_unapply_multiple_state_override ()
 	                                           0),
 	                         NULL);
 
-	CdnObject *o = cdn_object_new ("o1");
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
 
 	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);

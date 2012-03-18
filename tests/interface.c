@@ -5,19 +5,17 @@
 #include "utils.h"
 
 static gchar simple_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cdn>\n"
-"  <network>\n"
-"    <node id=\"state\">\n"
-"      <interface>\n"
-"        <variable name=\"c1_x\" child=\"c1\">x</variable>\n"
-"      </interface>\n"
-"      <node id=\"c1\">\n"
-"        <variable name=\"x\">1</variable>\n"
-"      </node>\n"
-"    </node>\n"
-"  </network>\n"
-"</cdn>\n";
+"node \"state\"\n"
+"{\n"
+"  interface\n"
+"  {\n"
+"    c1_x = x in c1\n"
+"  }\n"
+"  node \"c1\"\n"
+"  {\n"
+"    x = 1\n"
+"  }\n"
+"}\n";
 
 static void
 test_load ()

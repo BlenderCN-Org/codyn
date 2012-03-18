@@ -35,7 +35,7 @@ test_import_templates ()
 	                                       CDN_PATH_TEMPLATE_OBJECT, "imported.template1.nested1",
 	                                       CDN_PATH_TEMPLATE_PROPERTY, "imported.template1.nested1.y",
 	                                       NULL);
-
+	g_assert (network);
 	g_object_unref (network);
 }
 

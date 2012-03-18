@@ -5,26 +5,11 @@
 #include "utils.h"
 
 static gchar simple_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cdn>\n"
-"  <network>\n"
-"    <node id=\"s1\">\n"
-"      <variable name=\"a\">1</variable>\n"
-"    </node>\n"
-"    <node id=\"s2\">\n"
-"      <variable name=\"b\">0</variable>\n"
-"    </node>\n"
-"    <node id=\"s3\">\n"
-"      <variable name=\"c\">0</variable>\n"
-"    </node>\n"
-"    <edge id=\"l1\" from=\"s1\" to=\"s2\">\n"
-"      <action target=\"b\">a</action>\n"
-"    </edge>\n"
-"    <edge id=\"l2\" from=\"s2\" to=\"s3\">\n"
-"      <action target=\"c\">b</action>\n"
-"    </edge>\n"
-"  </network>\n"
-"</cdn>\n";
+"node \"s1\" { a = 1 }"
+"node \"s2\" { b = 0 }"
+"node \"s3\" { c = 0 }"
+"edge \"l1\" from \"s1\" to \"s2\" { b <= a }"
+"edge \"l2\" from \"s2\" to \"s3\" { c <= b }";
 
 static void
 test_direct ()

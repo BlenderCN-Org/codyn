@@ -4,36 +4,31 @@
 
 #include "utils.h"
 
+#ifdef MINGW
+#define SRANDOM srand
+#else
+#define SRANDOM srandom
+#endif
+
 static gchar simple_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cdn>\n"
-"  <network>\n"
-"    <node id=\"state\">\n"
-"      <variable name=\"x\" integrated=\"yes\" in=\"yes\" out=\"yes\" once=\"yes\">0</variable>\n"
-"      <variable name=\"y\">0</variable>\n"
-"      <variable name=\"z\" once=\"yes\">rand()</variable>\n"
-"    </node>\n"
-"    <edge id=\"edge\" from=\"state\" to=\"state\">\n"
-"      <action target=\"x\">1</action>\n"
-"      <action target=\"y\">t</action>"
-"    </edge>\n"
-"  </network>\n"
-"</cdn>\n";
+"node \"s1\"\n"
+"{\n"
+"  x = 0 | integrated in out once\n"
+"  y = 0\n"
+"  z = \"rand()\" | once\n"
+"}\n"
+"\n"
+"edge \"edge\" from \"s1\" to \"s1\"\n"
+"{\n"
+"  x <= 1\n"
+"  y <= t\n"
+"}\n";
 
 static gchar simple_node_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cdn>\n"
-"  <network>\n"
-"    <node id=\"node\">\n"
-"      <node id=\"state\">\n"
-"        <variable name=\"x\" flags=\"integrated | in | out | once\">0</variable>\n"
-"      </node>\n"
-"      <edge id=\"edge\" from=\"state\" to=\"state\">\n"
-"        <action target=\"x\">1</action>\n"
-"      </edge>\n"
-"    </node>\n"
-"  </network>\n"
-"</cdn>\n";
+"node \"node\" {"
+"  node \"s1\" { x = 0 | integrated in out once }"
+"  edge \"edge\" from \"s1\" to \"s1\" { x <= 1 }"
+"}";
 
 static void
 test_load ()
@@ -41,16 +36,16 @@ test_load ()
 	CdnNetwork *network;
 
 	network = test_load_network (simple_xml,
-	                             CDN_PATH_OBJECT, "state",
-	                             CDN_PATH_PROPERTY, "state.x",
+	                             CDN_PATH_OBJECT, "s1",
+	                             CDN_PATH_PROPERTY, "s1.x",
 	                             CDN_PATH_OBJECT, "edge",
 	                             CDN_PATH_ACTION, "edge.x",
-	                             CDN_PATH_PROPERTY, "state.y",
+	                             CDN_PATH_PROPERTY, "s1.y",
 	                             CDN_PATH_ACTION, "edge.y",
 	                             NULL);
 
 	CdnVariable *variable = cdn_node_find_variable (CDN_NODE (network),
-	                                                 "state.x");
+	                                                 "s1.x");
 
 	g_assert_cmpint (cdn_variable_get_flags (variable),
 	                 ==,
@@ -102,7 +97,7 @@ test_integrate ()
 	gdouble values[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
 
 	test_integrate_network (simple_xml,
-	                        "state.x",
+	                        "s1.x",
 	                        0.1,
 	                        values,
 	                        G_N_ELEMENTS (values));
@@ -113,13 +108,14 @@ test_variadic ()
 {
 	CdnNetwork *network;
 
-	srand (time (0));
+	SRANDOM (time (0));
 
 	network = cdn_network_new ();
 
 	CdnVariable *prop = cdn_variable_new ("x",
 	                                      cdn_expression_new ("rand()"),
-	                                      CDN_VARIABLE_FLAG_NONE);
+	                                      CDN_VARIABLE_FLAG_ONCE);
+
 	CdnVariable *other = cdn_variable_new ("y",
 	                                       cdn_expression_new ("0"),
 	                                       CDN_VARIABLE_FLAG_NONE);
@@ -155,10 +151,10 @@ test_variadic ()
 static void
 test_direct ()
 {
-	gdouble values[] = {0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
+	gdouble values[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9};
 
 	test_integrate_network (simple_xml,
-	                        "state.y",
+	                        "s1.y",
 	                        0.1,
 	                        values,
 	                        G_N_ELEMENTS (values));
@@ -171,32 +167,14 @@ test_reset ()
 	cdn_object_compile (CDN_OBJECT (network), NULL, NULL);
 
 	CdnVariable *prop = cdn_node_find_variable (CDN_NODE (network),
-	                                             "state.x");
+	                                             "s1.x");
 
 	cdn_network_run (network, 0, 0.1, 1, NULL);
-	cdn_assert_tol (cdn_variable_get_value (prop), 1.1);
+	cdn_assert_tol (cdn_variable_get_value (prop), 1.0);
 
 	cdn_object_reset (CDN_OBJECT (network));
 
 	cdn_assert_tol (cdn_variable_get_value (prop), 0);
-}
-
-static void
-test_recompile ()
-{
-	CdnNetwork *network = cdn_network_new_from_string (simple_xml, NULL);
-	cdn_object_compile (CDN_OBJECT (network), NULL, NULL);
-
-	CdnVariable *prop = cdn_node_find_variable (CDN_NODE (network),
-	                                             "state.x");
-	CdnExpression *expr = cdn_variable_get_expression (prop);
-
-	cdn_network_run (network, 0, 0.1, 1, NULL);
-	cdn_expression_set_from_string (expr, "5");
-
-	cdn_network_run (network, 0, 0.1, 1, NULL);
-
-	cdn_assert_tol (cdn_variable_get_value (prop), 6.1);
 }
 
 static void
@@ -207,7 +185,7 @@ test_once ()
 
 	CdnMonitor *monitor;
 	CdnVariable *prop = cdn_node_find_variable (CDN_NODE (network),
-	                                             "state.z");
+	                                             "s1.z");
 
 	monitor = cdn_monitor_new (network, prop);
 	cdn_network_run (network, 0, 0.1, 0.3, NULL);
@@ -227,14 +205,14 @@ test_node_load ()
 	CdnNetwork *network;
 
 	network = test_load_network (simple_node_xml,
-	                             CDN_PATH_OBJECT, "node.state",
-	                             CDN_PATH_PROPERTY, "node.state.x",
+	                             CDN_PATH_OBJECT, "node.s1",
+	                             CDN_PATH_PROPERTY, "node.s1.x",
 	                             CDN_PATH_OBJECT, "node.edge",
 	                             CDN_PATH_ACTION, "node.edge.x",
 	                             NULL);
 
 	CdnVariable *variable = cdn_node_find_variable (CDN_NODE (network),
-	                                                 "node.state.x");
+	                                                 "node.s1.x");
 
 	g_assert_cmpint (cdn_variable_get_flags (variable),
 	                 ==,
@@ -257,7 +235,7 @@ test_node_integrate ()
 	gdouble values[] = {0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0};
 
 	test_integrate_network (simple_node_xml,
-	                        "node.state.x",
+	                        "node.s1.x",
 	                        0.1,
 	                        values,
 	                        G_N_ELEMENTS (values));
@@ -270,7 +248,7 @@ test_node_reset ()
 	cdn_object_compile (CDN_OBJECT (network), NULL, NULL);
 
 	CdnVariable *prop = cdn_node_find_variable (CDN_NODE (network),
-	                                             "node.state.x");
+	                                             "node.s1.x");
 
 	cdn_network_run (network, 0, 0.1, 1, NULL);
 	cdn_object_reset (CDN_OBJECT (network));
@@ -291,7 +269,6 @@ main (int   argc,
 	g_test_add_func ("/network/integrate", test_integrate);
 	g_test_add_func ("/network/direct", test_direct);
 	g_test_add_func ("/network/reset", test_reset);
-	g_test_add_func ("/network/recompile", test_recompile);
 	g_test_add_func ("/network/once", test_once);
 
 	g_test_add_func ("/network/node/load", test_node_load);
