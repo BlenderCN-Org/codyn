@@ -1,0 +1,108 @@
+diff -urN a/debian/libcodyn3-io-network.dirs b/debian/libcodyn3-io-network.dirs
+--- a/debian/libcodyn3-io-network.dirs	2012-03-19 16:32:03.253726444 +0100
++++ b/debian/libcodyn3-io-network.dirs	1970-01-01 01:00:00.000000000 +0100
+@@ -1 +0,0 @@
+-usr/lib
+diff -urN a/debian/libcodyn3-io-network.install b/debian/libcodyn3-io-network.install
+--- a/debian/libcodyn3-io-network.install	2012-03-19 16:32:03.253726444 +0100
++++ b/debian/libcodyn3-io-network.install	1970-01-01 01:00:00.000000000 +0100
+@@ -1 +0,0 @@
+-usr/lib/codyn-3.0/io/libnetwork.so
+diff -urN a/debian/libcodyn3-io-wii.dirs b/debian/libcodyn3-io-wii.dirs
+--- a/debian/libcodyn3-io-wii.dirs	2012-03-19 16:32:03.253726444 +0100
++++ b/debian/libcodyn3-io-wii.dirs	1970-01-01 01:00:00.000000000 +0100
+@@ -1 +0,0 @@
+-usr/lib
+diff -urN a/debian/libcodyn3-io-wii.install b/debian/libcodyn3-io-wii.install
+--- a/debian/libcodyn3-io-wii.install	2012-03-19 16:32:03.253726444 +0100
++++ b/debian/libcodyn3-io-wii.install	1970-01-01 01:00:00.000000000 +0100
+@@ -1 +0,0 @@
+-usr/lib/codyn-3.0/io/libwii.so
+diff -urN a/debian/gir1.2-codyn3.dirs b/debian/gir1.2-codyn3.dirs
+--- a/debian/gir1.2-codyn3.dirs	2012-03-19 16:32:03.253726444 +0100
++++ b/debian/gir1.2-codyn3.dirs	1970-01-01 01:00:00.000000000 +0100
+@@ -1,2 +0,0 @@
+-usr/lib
+-usr/share
+diff -urN a/debian/gir1.2-codyn3.install b/debian/gir1.2-odyn3.install
+--- a/debian/gir1.2-codyn3.install	2012-03-19 16:32:03.253726444 +0100
++++ b/debian/gir1.2-codyn3.install	1970-01-01 01:00:00.000000000 +0100
+@@ -1,3 +0,0 @@
+-usr/share/gir-1.0/Cdn-3.0.gir
+-usr/lib/girepository-1.0/Cdn-3.0.typelib
+-usr/lib/python*/*-packages/gi/overrides/Cdn.py
+diff -urN a/debian/control b/debian/control
+--- a/debian/control	2012-03-20 14:40:09.055601505 +0100
++++ b/debian/control	2012-03-20 14:40:28.683725812 +0100
+@@ -14,11 +14,7 @@
+                libtar-dev,
+                libbz2-dev,
+                libblas-dev,
+-               libatlas-base-dev,
+-               libcwiid-dev,
+-               gobject-introspection,
+-               libgirepository1.0-dev,
+-               python-gobject-dev
++               libatlas-base-dev
+ Standards-Version: 3.9.1
+ Section: libs
+ Homepage: http://www.codyn.net
+@@ -47,8 +43,7 @@
+          libtar,
+          libbz2-1.0,
+          libatlas3gf-base,
+-         libblas3gf,
+-         gir1.2-codyn3
++         libblas3gf
+ Description: Software framework for simulation coupled dynamical systems
+  The codyn library provides a software framework to model and simulate
+  coupled dynamical systems.
+@@ -61,39 +56,3 @@
+          libcodyn3
+ Description: Tools for the codyn library
+  This package provides useful tools to work with the codyn library.
+-
+-Package: libcodyn3-io-wii
+-Section: libs
+-Architecture: any
+-Depends: ${shlibs:Depends},
+-         ${misc:Depends},
+-         libcodyn3,
+-         libcwiid1
+-Description: Wii support for codyn
+- This package provide wii io support for codyn.
+-
+-Package: libcodyn3-io-network
+-Section: libs
+-Architecture: any
+-Depends: ${shlibs:Depends},
+-         ${misc:Depends},
+-         libcodyn3
+-Description: Networking support for codyn
+- This package provide network io support for codyn.
+-
+-Package: libcodyn3-io
+-Section: libs
+-Architecture: any
+-Depends: ${misc:Depends},
+-         libcodyn3-io-wii,
+-         libcodyn3-io-network
+-Description: Meta package for codyn3 io support
+- This package provides various io support for codyn.
+-
+-Package: gir1.2-codyn3
+-Section: libs
+-Architecture: any
+-Depends: ${gir:Depends},
+-         ${misc:Depends}
+-Description: Software framework for simulation coupled dynamical systems
+-  This package provides gobject introspection files for codyn.
+diff -urN a/debian/rules b/debian/rules
+--- a/debian/rules	2012-03-19 16:32:03.253726444 +0100
++++ b/debian/rules	2012-03-19 16:43:55.813725776 +0100
+@@ -3,4 +3,4 @@
+ include /usr/share/cdbs/1/rules/debhelper.mk
+ include /usr/share/cdbs/1/class/autotools.mk
+ 
+-DEB_CONFIGURE_EXTRA_FLAGS := --enable-gtk-doc --enable-silent-rules --enable-gedit=3
++DEB_CONFIGURE_EXTRA_FLAGS := --enable-gtk-doc --enable-silent-rules --enable-gedit=2

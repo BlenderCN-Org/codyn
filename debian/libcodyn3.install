@@ -1,0 +1,4 @@
+usr/lib/libcodyn-3*.so.*
+usr/lib/codyn-3.0/io/libfile.so
+usr/share/codyn-3.0
+usr/share/mime

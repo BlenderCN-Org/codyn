@@ -1,6 +1,6 @@
-Source: cpg-network
+Source: codyn
 Priority: extra
-Maintainer: Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>
+Maintainer: Jesse van den Kieboom <jesse@codyn.net>
 Build-Depends: debhelper (>= 7),
                autotools-dev,
                cdbs,
@@ -8,73 +8,92 @@ Build-Depends: debhelper (>= 7),
                libglib2.0-dev,
                libxml2-dev,
                gtk-doc-tools,
-               webots (>= 6.1.0),
-               libreadline6-dev,
                libncurses5-dev,
                bison,
                flex,
-               gobject-introspection (>= 0.6.10),
-               libgirepository1.0-dev (>= 0.6.10),
                libtar-dev,
-               libbz2-dev
-Standards-Version: 3.8.0
+               libbz2-dev,
+               libblas-dev,
+               libatlas-base-dev,
+               libcwiid-dev,
+               gobject-introspection,
+               libgirepository1.0-dev,
+               python-gobject-dev
+Standards-Version: 3.9.1
 Section: libs
-Homepage: http://birg2.epfl.ch
+Homepage: http://www.codyn.net
 
-Package: cpg-network2-dev
+Package: libcodyn3-dev
 Section: libdevel
 Architecture: any
-Depends: cpg-network2 (= ${binary:Version}),
+Depends: ${misc:Depends},
+         libcodyn3 (= ${binary:Version}),
          libglib2.0-dev,
          libxml2-dev,
          gtk-doc-tools,
          libncurses5-dev,
-         libreadline6-dev,
-         libtar-dev,
-         libbz2-dev
 Suggests: libglib2.0-doc
-Description: Development files for CPG network library
- CPG network library
+Description: Development files for the codyn library
+ This package provides the development files for the codyn library.
 
-Package: cpg-network2
+Package: libcodyn3
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
          libglib2.0-0,
          libxml2,
-         libreadline6,
          libncurses5,
          libtar,
-         libbz2-1.0
-Description: CPG network library
- CPG network library
+         libbz2-1.0,
+         libatlas3gf-base,
+         libblas3gf,
+         gir1.2-codyn3
+Description: Software framework for simulation coupled dynamical systems
+ The codyn library provides a software framework to model and simulate
+ coupled dynamical systems.
 
-Package: cpg-network2-tools
-Section: main
+Package: codyn3-tools
+Section: utils
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-         cpg-network2
-Conflicts: cpg-network1
-Description: CPG network library tools
- CPG network library tools
+         libcodyn3
+Description: Tools for the codyn library
+ This package provides useful tools to work with the codyn library.
 
-Package: cpg-network-webots2-dev
-Section: libdevel
-Architecture: any
-Depends: cpg-network-webots2 (= ${binary:Version}),
-         cpg-network2-dev,
-         webots (>= 6.1.0)
-Description: Development files for CPG network library - webots bindings
- CPG network library webots bindings
-
-Package: cpg-network-webots2
+Package: libcodyn3-io-wii
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends},
          ${misc:Depends},
-         cpg-network2,
-         webots (>= 6.1.0)
-Description: CPG network library - webots bindings
- CPG network library webots bindings
+         libcodyn3,
+         libcwiid1
+Description: Wii support for codyn
+ This package provide wii io support for codyn.
+
+Package: libcodyn3-io-network
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         libcodyn3
+Description: Networking support for codyn
+ This package provide network io support for codyn.
+
+Package: libcodyn3-io
+Section: libs
+Architecture: any
+Depends: ${misc:Depends},
+         libcodyn3-io-wii,
+         libcodyn3-io-network
+Description: Meta package for codyn3 io support
+ This package provides various io support for codyn.
+
+Package: gir1.2-codyn3
+Section: libs
+Architecture: any
+Depends: ${gir:Depends},
+         ${misc:Depends}
+Description: Software framework for simulation coupled dynamical systems
+  This package provides gobject introspection files for codyn.
