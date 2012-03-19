@@ -179,8 +179,11 @@ if test "x$enable_lapack" != "xno"; then
 	             [clapack_dgetri],
 	             [LAPACK_LIBS="-llapack_atlas"
 	              have_lapack=yes],
-	             [AC_MSG_WARN(could not find lapack library)
-	              have_lapack=no])
+	             [AC_CHECK_FILE(["/usr/lib64/atlas/libclapack.so"],
+	                            [LAPACK_LIBS="-lclapack -L/usr/lib64/atlas"
+	                             have_lapack="yes"],
+	                            [AC_MSG_WARN(could not find lapack library)
+	                             have_lapack=no])])
 else
 	have_lapack=no
 fi
@@ -204,8 +207,7 @@ if test "x$enable_blas" != "xno"; then
 	             [BLAS_LIBS="-lblas"
 	              have_blas=yes],
 	             [AC_CHECK_FILE(["/usr/lib64/atlas/libcblas.so"],
-	                            [BLAS_LIBS="-lcblas"
-	                             BLAS_CFLAGS="-I/usr/lib64/atlas"
+	                            [BLAS_LIBS="-lcblas -L/usr/lib64/atlas"
 	                             have_blas="yes"],
 	                            [AC_MSG_WARN(could not find blas library)
 	                             have_blas="no"])])
