@@ -87,7 +87,7 @@ fi
 AM_CONDITIONAL([ENABLE_DOC],[test "x$enable_doc" = "xyes"])
 
 # Introspection
-GOBJECT_INTROSPECTION_CHECK([0.6.10])
+GOBJECT_INTROSPECTION_CHECK([0.10.7])
 
 if test "$found_introspection" = "yes"; then
 	enable_introspection=yes
