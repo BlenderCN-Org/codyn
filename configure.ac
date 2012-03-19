@@ -240,7 +240,8 @@ AC_ARG_ENABLE([wii],
 if test "x$enable_wii" != "xno"; then
 	PKG_CHECK_MODULES(CDN_IO_WII, [
 		bluez,
-		cwiid
+		cwiid,
+		glib-2.0 >= 2.26
 	], [have_wii=yes], [have_wii=no])
 
 	if test "x$have_wii" = "xyes"; then
