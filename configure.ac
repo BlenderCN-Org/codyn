@@ -175,20 +175,12 @@ AC_ARG_ENABLE([lapack],
 	[enable_lapack=auto])
 
 if test "x$enable_lapack" != "xno"; then
-	AC_CHECK_LIB([clapack],
+	AC_CHECK_LIB([lapack],
 	             [clapack_dgetri],
-	             [LAPACK_LIBS="-lclapack"
+	             [LAPACK_LIBS="-llapack"
 	              have_lapack=yes],
-	             [AC_CHECK_LIB([lapack-3],
-	                           [clapack_dgetri],
-	                           [LAPACK_LIBS="-llapack-3"
-	                            have_lapack=yes],
-	                           [AC_CHECK_FILE(["/usr/lib64/atlas/libclapack.so"],
-	                                          [LAPACK_LIBS="-lclapack"
-	                                           LAPACK_CFLAGS="-L/usr/lib64/atlas"
-	                                           have_lapack=yes],
-	                                           [AC_MSG_WARN(could not find lapack library)
-	                                            have_lapack=no])])])
+	             [AC_MSG_WARN(could not find lapack library)
+	              have_lapack=no])
 else
 	have_lapack=no
 fi
