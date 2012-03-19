@@ -175,9 +175,9 @@ AC_ARG_ENABLE([lapack],
 	[enable_lapack=auto])
 
 if test "x$enable_lapack" != "xno"; then
-	AC_CHECK_LIB([lapack],
+	AC_CHECK_LIB([lapack_atlas],
 	             [clapack_dgetri],
-	             [LAPACK_LIBS="-llapack"
+	             [LAPACK_LIBS="-llapack_atlas"
 	              have_lapack=yes],
 	             [AC_MSG_WARN(could not find lapack library)
 	              have_lapack=no])
