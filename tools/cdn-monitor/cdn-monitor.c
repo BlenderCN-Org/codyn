@@ -551,11 +551,9 @@ on_step (CdnIntegrator *integrator,
 static void
 on_begin (CdnIntegrator *integrator,
           gdouble        from,
-          gdouble        step,
-          gdouble        to,
           GSList        *monitors)
 {
-	on_step (integrator, from, step, monitors);
+	on_step (integrator, from, 0, monitors);
 }
 
 static gint
