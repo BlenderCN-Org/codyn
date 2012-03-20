@@ -48,49 +48,6 @@ $2=`(test "x$prefix" = xNONE && prefix="$ac_default_prefix"
      done
      echo "[$]_lcl_receval")`])
 
-AC_ARG_ENABLE([webots],
-	AS_HELP_STRING([--enable-webots],[Enable building webots bindings (default: disabled)]),
-	[enable_webots=$enableval],
-	[enable_webots=auto])
-
-# look for webots
-if test "x$enable_webots" != "xno"; then
-	AC_MSG_CHECKING(for webots)
-	dirs="$WEBOTS_HOME_PATH $WEBOTS_HOME /usr/local/webots"
-
-	for i in $dirs;
-	do
-		if test -r $i/include/controller/c/webots/robot.h;
-		then
-			AC_MSG_RESULT($i)
-			WEBOTS_CFLAGS="-I$i/include/controller/c"
-			WEBOTS_LIBS="-L$i/lib -lController"
-			
-			break;
-		fi
-	done
-
-	if test "x$WEBOTS_CFLAGS" = "x"; then
-		if test "x$enable_webots" = "xauto"; then
-			AC_MSG_WARN(disabling webots support)
-		else
-			AC_MSG_ERROR(could not locate webots)
-		fi
-
-		enable_webots=no
-	else
-		enable_webots=yes
-	fi
-else
-	WEBOTS_CFLAGS=
-	WEBOTS_LIBS=
-fi
-
-AM_CONDITIONAL([ENABLE_WEBOTS],[test "x$enable_webots" = "xyes"])
-
-AC_SUBST(WEBOTS_CFLAGS)
-AC_SUBST(WEBOTS_LIBS)
-
 AC_ARG_ENABLE([doc],
 	AS_HELP_STRING([--disable-doc],[Enable building docs (default: enabled)]),
 	[enable_doc=$enableval],
@@ -468,19 +425,16 @@ AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
 AC_CONFIG_FILES([
 Makefile
 codyn.pc
-codyn-webots.pc
 codyn/Makefile
 codyn/instructions/Makefile
 codyn/operators/Makefile
 codyn/integrators/Makefile
 codyn/tree-algorithms/Makefile
-codyn-webots/Makefile
 data/Makefile
 data/cdn.xml
 data/library/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
-data/library/webots/Makefile
 data/library/physics/Makefile
 docs/Makefile
 docs/reference/Makefile
@@ -516,7 +470,6 @@ Configuration:
 	Prefix:                 ${prefix}
 	Source code location:	${srcdir}
 	Compiler:		${CC}
-	Webots support enabled:	$enable_webots
 	GObject Introspection:	$enable_introspection
 	Documentation enabled:  $enable_doc
 	gedit plugin:           $enable_gedit ($GEDIT_MAJOR_VERSION)

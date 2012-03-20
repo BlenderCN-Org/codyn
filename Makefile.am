@@ -6,34 +6,15 @@ endif
 
 ACLOCAL_AMFLAGS = -I m4
 
-if ENABLE_WEBOTS
-SUBDIRS += codyn-webots
-endif
-
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = \
 	codyn-@CODYN_API_VERSION@.pc
 
-if ENABLE_WEBOTS
-pkgconfig_DATA += codyn-webots-@CODYN_API_VERSION@.pc
-endif
-
 codyn-@CODYN_API_VERSION@.pc: codyn.pc
 	cp codyn.pc codyn-@CODYN_API_VERSION@.pc
 
-if ENABLE_WEBOTS
-codyn-webots-@CODYN_API_VERSION@.pc: codyn-webots.pc
-	cp codyn-webots.pc codyn-webots-@CODYN_API_VERSION@.pc
-endif
-
 EXTRA_DIST = \
 	codyn.pc.in
-
-if ENABLE_WEBOTS
-EXTRA_DIST += codyn-webots.pc.in
-endif
-
-DISTCHECK_CONFIGURE_FLAGS = --enable-webots
 
 if ENABLE_DOC
 DISTCHECK_CONFIGURE_FLAGS += --enable-gtk-doc
