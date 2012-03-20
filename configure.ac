@@ -201,8 +201,23 @@ if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 	             [])
 
 	LDFLAGS="$OLDLDFLAGS"
+fi
 
-	dnl Check to see if we need to pull clapack.h from include/atlas
+dnl
+dnl Check for lapack_atlas, last resort
+dnl
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
+	AC_CHECK_LIB([lapack_atlas],
+	             [clapack_dgetri],
+	             [LAPACK_LIBS="-llapack_atlas"
+	              have_lapack=yes],
+	             [])
+fi
+
+dnl
+dnl Check to see if we need to pull clapack.h from include/atlas
+dnl
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xyes"; then
 	AC_CHECK_HEADER([clapack.h],
 	                [],
 	                [OLDCFLAGS="$CFLAGS"
@@ -211,18 +226,6 @@ if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 	                                 [LAPACK_CFLAGS="-I$includedir/atlas"],
 	                                 [])
 	                 CFLAGS="$OLDCFLAGS"])
-fi
-
-dnl
-dnl Check for lapack_atlas, last resort
-dnl
-
-if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
-	AC_CHECK_LIB([lapack_atlas],
-	             [clapack_dgetri],
-	             [LAPACK_LIBS="-llapack_atlas"
-	              have_lapack=yes],
-	             [])
 fi
 
 if test "x$enable_lapack" = "xyes" && test "x$have_lapack" = "xno"; then
@@ -264,6 +267,20 @@ if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
 	             [])
 
 	LDFLAGS="$OLDLDFLAGS"
+fi
+
+dnl
+dnl Check to see if we need to pull cblas.h from include/atlas
+dnl
+if test "x$enable_blas" != "xno" && test "x$have_blas" = "xyes"; then
+	AC_CHECK_HEADER([cblas.h],
+	                [],
+	                [OLDCFLAGS="$CFLAGS"
+	                 CFLAGS="$CFLAGS -I$includedir/atlas"
+	                 AC_CHECK_HEADER([cblas.h],
+	                                 [BLAS_CFLAGS="-I$includedir/atlas"],
+	                                 [])
+	                 CFLAGS="$OLDCFLAGS"])
 fi
 
 if test "x$enable_blas" = "xyes" && test "x$have_blas" = "xno"; then
