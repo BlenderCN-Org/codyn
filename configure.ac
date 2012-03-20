@@ -32,6 +32,22 @@ AC_PATH_PROG(GLIB_MKENUMS, glib-mkenums)
 
 AM_PATH_PYTHON
 
+dnl adl_RECURSIVE_EVAL(VALUE, RESULT)
+dnl =================================
+dnl Interpolate the VALUE in loop until it doesn't change,
+dnl and set the result to $RESULT.
+dnl WARNING: It's easy to get an infinite loop with some unsane input.
+AC_DEFUN([adl_RECURSIVE_EVAL],
+[_lcl_receval="$1"
+$2=`(test "x$prefix" = xNONE && prefix="$ac_default_prefix"
+     test "x$exec_prefix" = xNONE && exec_prefix="${prefix}"
+     _lcl_receval_old=''
+     while test "[$]_lcl_receval_old" != "[$]_lcl_receval"; do
+       _lcl_receval_old="[$]_lcl_receval"
+       eval _lcl_receval="\"[$]_lcl_receval\""
+     done
+     echo "[$]_lcl_receval")`])
+
 AC_ARG_ENABLE([webots],
 	AS_HELP_STRING([--enable-webots],[Enable building webots bindings (default: disabled)]),
 	[enable_webots=$enableval],
@@ -169,6 +185,9 @@ fi
 
 AM_CONDITIONAL(ENABLE_ARCHIVE, test "x$have_tar" = "xyes")
 
+adl_RECURSIVE_EVAL($libdir, EXPANDED_LIBDIR)
+adl_RECURSIVE_EVAL($includedir, EXPANDED_INCLUDEDIR)
+
 AC_ARG_ENABLE([lapack],
 	AS_HELP_STRING([--disable-lapack],[Enable lapack support (default: enabled)]),
 	[enable_lapack=$enableval],
@@ -191,16 +210,22 @@ dnl
 dnl Check for lapack in separate atlas/ dirs (both lib and include)
 dnl
 if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
-	OLDLDFLAGS="$LDFLAGS"
-	LDFLAGS="$LDFLAGS -L$libdir/atlas"
+	for dir in "$EXPANDED_LIBDIR" "/usr/lib" "/usr/local/lib"; do
+		OLDLDFLAGS="$LDFLAGS"
+		LDFLAGS="$LDFLAGS -L$dir/atlas"
 
-	AC_CHECK_LIB([lapack],
-	             [clapack_dgetri],
-	             [LAPACK_LIBS="-L$libdir/atlas -llapack"
-	              have_lapack=yes],
-	             [])
+		AC_CHECK_LIB([lapack],
+		             [clapack_dgetri],
+		             [LAPACK_LIBS="-L$dir/atlas -llapack"
+		              have_lapack=yes],
+		             [])
 
-	LDFLAGS="$OLDLDFLAGS"
+		LDFLAGS="$OLDLDFLAGS"
+
+		if test "x$have_lapack" = "xyes"; then
+			break;
+		fi
+	done
 fi
 
 dnl
@@ -220,12 +245,23 @@ dnl
 if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xyes"; then
 	AC_CHECK_HEADER([clapack.h],
 	                [],
-	                [OLDCFLAGS="$CFLAGS"
-	                 CFLAGS="$CFLAGS -I$includedir/atlas"
+	                [for dir in "$EXPANDED_INCLUDEDIR" "/usr/include" "/usr/local/include"; do
+	                 OLDCFLAGS="$CFLAGS"
+	                 OLDCPPFLAGS="$CPPFLAGS"
+	                 CFLAGS="$CFLAGS -I$dir/atlas"
+	                 CPPFLAGS="$CPPFLAGS -I$dir/atlas"
+	                 AS_UNSET([ac_cv_header_clapack_h])
 	                 AC_CHECK_HEADER([clapack.h],
-	                                 [LAPACK_CFLAGS="-I$includedir/atlas"],
-	                                 [])
-	                 CFLAGS="$OLDCFLAGS"])
+	                                 [LAPACK_CFLAGS="-I$dir/atlas"
+	                                  have_lapack=yes],
+	                                 [have_lapack=no])
+	                 CFLAGS="$OLDCFLAGS"
+	                 CPPFLAGS="$OLDCPPFLAGS"
+
+	                 if test "x$have_lapack" = "xyes"; then
+	                     break;
+	                 fi
+	                 done])
 fi
 
 if test "x$enable_lapack" = "xyes" && test "x$have_lapack" = "xno"; then
@@ -258,11 +294,11 @@ dnl Check for blas in separate blas
 dnl
 if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
 	OLDLDFLAGS="$LDFLAGS"
-	LDFLAGS="$LDFLAGS -L$libdir/libblas"
+	LDFLAGS="$LDFLAGS -L$EXPANDED_LIBDIR/libblas"
 
 	AC_CHECK_LIB([blas],
 	             [cblas_dgemm],
-	             [BLAS_LIBS="-L$libdir/libblas -lblas"
+	             [BLAS_LIBS="-L$EXPANDED_LIBDIR/libblas -lblas"
 	              have_blas=yes],
 	             [])
 
@@ -275,12 +311,23 @@ dnl
 if test "x$enable_blas" != "xno" && test "x$have_blas" = "xyes"; then
 	AC_CHECK_HEADER([cblas.h],
 	                [],
-	                [OLDCFLAGS="$CFLAGS"
-	                 CFLAGS="$CFLAGS -I$includedir/atlas"
+	                [for dir in "$EXPANDED_INCLUDEDIR" "/usr/include" "/usr/local/include"; do
+	                 OLDCFLAGS="$CFLAGS"
+	                 OLDCPPFLAGS="$CPPFLAGS"
+	                 CFLAGS="$CFLAGS -I$dir/atlas"
+	                 CPPFLAGS="$CPPFLAGS -I$dir/atlas"
+	                 AS_UNSET([ac_cv_header_cblas_h])
 	                 AC_CHECK_HEADER([cblas.h],
-	                                 [BLAS_CFLAGS="-I$includedir/atlas"],
-	                                 [])
-	                 CFLAGS="$OLDCFLAGS"])
+	                                 [BLAS_CFLAGS="-I$dir/atlas"
+	                                  have_blas=yes],
+	                                 [have_blas=no])
+	                 CFLAGS="$OLDCFLAGS"
+	                 CPPFLAGS="$OLDCPPFLAGS"
+
+	                 if test "x$have_blas" = "xyes"; then
+	                     break;
+	                 fi
+	                 done])
 fi
 
 if test "x$enable_blas" = "xyes" && test "x$have_blas" = "xno"; then
