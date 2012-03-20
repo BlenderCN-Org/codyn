@@ -174,22 +174,61 @@ AC_ARG_ENABLE([lapack],
 	[enable_lapack=$enableval],
 	[enable_lapack=auto])
 
-if test "x$enable_lapack" != "xno"; then
+have_lapack=no
+
+dnl
+dnl Check for lapack
+dnl
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
+	AC_CHECK_LIB([lapack],
+	             [clapack_dgetri],
+	             [LAPACK_LIBS="-llapack"
+	              have_lapack=yes],
+	             [])
+fi
+
+dnl
+dnl Check for lapack in separate atlas/ dirs (both lib and include)
+dnl
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
+	OLDLDFLAGS="$LDFLAGS"
+	LDFLAGS="$LDFLAGS -L$libdir/atlas"
+
+	AC_CHECK_LIB([lapack],
+	             [clapack_dgetri],
+	             [LAPACK_LIBS="-L$libdir/atlas -llapack"
+	              have_lapack=yes],
+	             [])
+
+	LDFLAGS="$OLDLDFLAGS"
+
+	dnl Check to see if we need to pull clapack.h from include/atlas
+	AC_CHECK_HEADER([clapack.h],
+	                [],
+	                [OLDCFLAGS="$CFLAGS"
+	                 CFLAGS="$CFLAGS -I$includedir/atlas"
+	                 AC_CHECK_HEADER([clapack.h],
+	                                 [LAPACK_CFLAGS="-I$includedir/atlas"],
+	                                 [])
+	                 CFLAGS="$OLDCFLAGS"])
+fi
+
+dnl
+dnl Check for lapack_atlas, last resort
+dnl
+
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 	AC_CHECK_LIB([lapack_atlas],
 	             [clapack_dgetri],
 	             [LAPACK_LIBS="-llapack_atlas"
 	              have_lapack=yes],
-	             [AC_CHECK_FILE(["/usr/lib64/atlas/libclapack.so"],
-	                            [LAPACK_LIBS="-lclapack -L/usr/lib64/atlas"
-	                             have_lapack="yes"],
-	                            [AC_MSG_WARN(could not find lapack library)
-	                             have_lapack=no])])
-else
-	have_lapack=no
+	             [])
 fi
 
 if test "x$enable_lapack" = "xyes" && test "x$have_lapack" = "xno"; then
 	AC_MSG_ERROR(failed to locate lapack library)
+elif test "x$enable_lapack" = "xauto" && test "x$have_lapack" = "xno"; then
+	AC_MSG_WARN(could not find lapack library)
 fi
 
 if test "$have_lapack" = "yes"; then
@@ -201,22 +240,38 @@ AC_ARG_ENABLE([blas],
 	[enable_blas=$enableval],
 	[enable_blas=auto])
 
-if test "x$enable_blas" != "xno"; then
+have_blas=no
+
+if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
 	AC_CHECK_LIB([blas],
 	             [cblas_dgemm],
 	             [BLAS_LIBS="-lblas"
 	              have_blas=yes],
-	             [AC_CHECK_FILE(["/usr/lib64/atlas/libcblas.so"],
-	                            [BLAS_LIBS="-lcblas -L/usr/lib64/atlas"
-	                             have_blas="yes"],
-	                            [AC_MSG_WARN(could not find blas library)
-	                             have_blas="no"])])
-else
-	have_blas=no
+	             [])
+fi
+
+dnl
+dnl Check for blas in separate blas
+dnl
+if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
+	OLDLDFLAGS="$LDFLAGS"
+	LDFLAGS="$LDFLAGS -L$libdir/libblas"
+
+	AC_CHECK_LIB([blas],
+	             [cblas_dgemm],
+	             [BLAS_LIBS="-L$libdir/libblas -lblas"
+	              have_blas=yes],
+	             [])
+
+	LDFLAGS="$OLDLDFLAGS"
 fi
 
 if test "x$enable_blas" = "xyes" && test "x$have_blas" = "xno"; then
 	AC_MSG_ERROR(failed to locate blas library)
+fi
+
+if test "x$enable_blas" = "xauto" && test "x$have_blas" = "xno"; then
+	AC_MSG_WARN(failed to locate blas library)
 fi
 
 if test "$have_blas" = "yes"; then
