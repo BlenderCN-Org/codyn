@@ -16,6 +16,8 @@ codyn-@CODYN_API_VERSION@.pc: codyn.pc
 EXTRA_DIST = \
 	codyn.pc.in
 
+DISTCHECK_CONFIGURE_FLAGS =
+
 if ENABLE_DOC
 DISTCHECK_CONFIGURE_FLAGS += --enable-gtk-doc
 endif
