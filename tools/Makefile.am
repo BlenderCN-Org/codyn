@@ -1,3 +1,7 @@
-SUBDIRS = cpg-monitor cpg-parser cpg-render cpg-context cpg-archive plugins
+SUBDIRS = cdn-monitor cdn-parser cdn-render cdn-context cdn-compile plugins
+
+if ENABLE_ARCHIVE
+SUBDIRS += cdn-archive
+endif
 
 -include $(top_srcdir)/git.mk

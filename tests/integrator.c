@@ -1,34 +1,36 @@
 #include <stdlib.h>
 #include <math.h>
 
-#include <cpg-network/cpg-network.h>
-#include <cpg-network/cpg-expression.h>
-#include <cpg-network/cpg-object.h>
-#include <cpg-network/cpg-integrator-euler.h>
+#include <codyn/codyn.h>
+#include <codyn/cdn-expression.h>
+#include <codyn/cdn-object.h>
+#include <codyn/cdn-integrators.h>
 #include "utils.h"
 
 static void
 test_switch ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 
-	network = cpg_network_new ();
+	network = cdn_network_new ();
 
-	CpgObject *state = cpg_object_new ("state");
-	CpgProperty *property = cpg_property_new ("x", "sin(t)", 0);
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
+	CdnVariable *variable = cdn_variable_new ("x",
+	                                          cdn_expression_new ("sin(t)"),
+	                                          0);
 
-	cpg_object_add_property (state, property, NULL);
-	cpg_group_add (CPG_GROUP (network), state, NULL);
+	cdn_object_add_variable (state, variable, NULL);
+	cdn_node_add (CDN_NODE (network), state, NULL);
 
-	cpg_network_run (network, 0, 0.01, 1);
-	gdouble val = cpg_property_get_value (property);
+	cdn_network_run (network, 0, 0.01, 1, NULL);
+	gdouble val = cdn_variable_get_value (variable);
 
-	cpg_network_set_integrator (network,
-	                            CPG_INTEGRATOR (cpg_integrator_euler_new ()));
+	cdn_network_set_integrator (network,
+	                            CDN_INTEGRATOR (cdn_integrator_euler_new ()));
 
-	cpg_network_run (network, 0, 0.01, 1);
+	cdn_network_run (network, 0, 0.01, 1, NULL);
 
-	cpg_assert_tol (cpg_property_get_value (property), val);
+	cdn_assert_tol (cdn_variable_get_value (variable), val);
 
 	g_object_unref (network);
 }

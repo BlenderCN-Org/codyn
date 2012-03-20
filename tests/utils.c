@@ -1,7 +1,7 @@
 #include "utils.h"
 
-CpgLinkAction *
-find_action (CpgGroup    *parent,
+CdnEdgeAction *
+find_action (CdnNode    *parent,
              gchar const *path)
 {
 	gchar *copy = g_strdup (path);
@@ -14,17 +14,17 @@ find_action (CpgGroup    *parent,
 	}
 
 	*ptr = '\0';
-	CpgObject *object;
+	CdnObject *object;
 
-	object = cpg_group_find_object (CPG_GROUP (parent), copy);
+	object = cdn_node_find_object (CDN_NODE (parent), copy);
 
-	if (!object || !CPG_IS_LINK (object))
+	if (!object || !CDN_IS_EDGE (object))
 	{
 		g_free (copy);
 		return NULL;
 	}
 
-	CpgLinkAction *ret = cpg_link_get_action (CPG_LINK (object), ptr + 1);
+	CdnEdgeAction *ret = cdn_edge_get_action (CDN_EDGE (object), ptr + 1);
 	g_free (copy);
 
 	return ret;
@@ -41,46 +41,52 @@ find_action (CpgGroup    *parent,
 		                    _msg);\
 		g_free (_msg);\
 	}\
+	else\
+	{\
+		retobj = G_OBJECT (ret);\
+	}\
 }
 
 static void
-check_objects (CpgNetwork *network,
+check_objects (CdnNetwork *network,
+               gboolean    get_objects,
                va_list     ap)
 {
-	CpgPath type;
+	CdnPath type;
 
-	while ((type = va_arg (ap, CpgPath)) != CPG_PATH_NONE)
+	while ((type = va_arg (ap, CdnPath)) != CDN_PATH_NONE)
 	{
 		gchar const *path = va_arg (ap, gchar const *);
+		GObject *retobj = NULL;
 
 		switch (type)
 		{
-			case CPG_PATH_OBJECT:
-				assert_find (cpg_group_find_object (CPG_GROUP (network),
+			case CDN_PATH_OBJECT:
+				assert_find (cdn_node_find_object (CDN_NODE (network),
 				                                    path),
 				             "Object `%s' cannot be found",
 				             path);
 			break;
-			case CPG_PATH_TEMPLATE_OBJECT:
-				assert_find (cpg_group_find_object (cpg_network_get_template_group (network),
+			case CDN_PATH_TEMPLATE_OBJECT:
+				assert_find (cdn_node_find_object (cdn_network_get_template_node (network),
 				                                    path),
 				             "Template object `%s' cannot be found",
 				             path);
 			break;
-			case CPG_PATH_TEMPLATE_PROPERTY:
-				assert_find (cpg_group_find_property (cpg_network_get_template_group (network),
-				                                    path),
+			case CDN_PATH_TEMPLATE_PROPERTY:
+				assert_find (cdn_node_find_variable (cdn_network_get_template_node (network),
+				                                     path),
 				             "Template property `%s' cannot be found",
 				             path);
 			break;
-			case CPG_PATH_PROPERTY:
-				assert_find (cpg_group_find_property (CPG_GROUP (network),
-				                                      path),
+			case CDN_PATH_PROPERTY:
+				assert_find (cdn_node_find_variable (CDN_NODE (network),
+				                                     path),
 				             "Property `%s' cannot be found",
 				             path);
 			break;
-			case CPG_PATH_ACTION:
-				assert_find (find_action (CPG_GROUP (network),
+			case CDN_PATH_ACTION:
+				assert_find (find_action (CDN_NODE (network),
 				                          path),
 				             "Action `%s' cannot be found",
 				             path);
@@ -88,16 +94,27 @@ check_objects (CpgNetwork *network,
 			default:
 			break;
 		}
+
+		if (get_objects)
+		{
+			GObject **retval = va_arg (ap, GObject **);
+
+			if (retval)
+			{
+				*retval = retobj;
+			}
+		}
 	}
 }
 
-CpgNetwork *
-test_load_network_from_path (gchar const *path,
-                             ...)
+static CdnNetwork *
+load_network_from_path (gchar const *path,
+                        gboolean     get_objects,
+                        va_list      ap)
 {
-	va_list ap;
+	CdnCompileError *err;
 
-	CpgNetwork *network;
+	CdnNetwork *network;
 	GError *error = NULL;
 	gchar *p;
 
@@ -110,40 +127,79 @@ test_load_network_from_path (gchar const *path,
 		p = g_strdup (path);
 	}
 
-	network = cpg_network_new_from_path (p, &error);
+	network = cdn_network_new_from_path (p, &error);
 
 	g_free (p);
 
 	g_assert_no_error (error);
 	g_assert (network != NULL);
 
-	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
+	err = cdn_compile_error_new ();
+	cdn_object_compile (CDN_OBJECT (network), NULL, err);
 
-	va_start (ap, path);
-	check_objects (network, ap);
-	va_end (ap);
+	g_assert_no_error (cdn_compile_error_get_error (err));
+
+	check_objects (network, get_objects, ap);
 
 	return network;
 }
 
-CpgNetwork *
+CdnNetwork *
+test_load_network_from_path (gchar const *path,
+                             ...)
+{
+	va_list ap;
+	CdnNetwork *ret;
+
+	va_start (ap, path);
+
+	ret = load_network_from_path (path,
+	                              FALSE,
+	                              ap);
+
+	va_end (ap);
+	return ret;
+}
+
+CdnNetwork *
+test_load_network_from_path_with_objects (gchar const *path,
+                                          ...)
+{
+	va_list ap;
+	CdnNetwork *ret;
+
+	va_start (ap, path);
+
+	ret = load_network_from_path (path,
+	                              TRUE,
+	                              ap);
+
+	va_end (ap);
+	return ret;
+}
+
+CdnNetwork *
 test_load_network (gchar const *xml,
                    ...)
 {
 	va_list ap;
 
-	CpgNetwork *network;
+	CdnNetwork *network;
 	GError *error = NULL;
+	CdnCompileError *err;
 
-	network = cpg_network_new_from_string (xml, &error);
+	network = cdn_network_new_from_string (xml, &error);
 
 	g_assert_no_error (error);
 	g_assert (network != NULL);
 
-	g_assert (cpg_object_compile (CPG_OBJECT (network), NULL, NULL));
+	err = cdn_compile_error_new ();
+	cdn_object_compile (CDN_OBJECT (network), NULL, err);
+
+	g_assert_no_error (cdn_compile_error_get_error (err));
 
 	va_start (ap, xml);
-	check_objects (network, ap);
+	check_objects (network, FALSE, ap);
 	va_end (ap);
 
 	return network;

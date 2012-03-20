@@ -1,0 +1,56 @@
+templates
+{
+    node "oscillator"
+    {
+        ## Desired amplitude
+        target_amplitude = 1
+
+        ## Desired frequency
+        target_frequency = 1
+
+        ## Time constant on attractor of r towards f. Use
+        ## functions.GammaForRelConf to compute a γ value corresponding to a
+        ## certain speed of convergence
+        γ = 1
+
+        γ_r = "γ"
+
+        ## Angular frequency
+        ω = "2 ∙ π ∙ target_frequency"
+
+        ## Phase node variable
+        φ̇ = "ω"
+
+        ## Amplitude squared
+        r2 = "r²"
+
+        ## Amplitude node variable
+        ṙ = "γ_r ∙ (R ∙ R - r2)"
+
+        ## Output variable (r * sin(phase))
+        "output" = "r * sin(p)"
+
+        ## Function for γ such that it takes <i>τ</i> seconds to
+        ## forget a perturbation of size (1 - <i>α</i>) * <i>δ</i>
+        ##
+        ## This function can be used for γ on the initial conditions of the
+        ## oscillator nodes so there is a known behavior of convergence from
+        ## initial conditions.
+        γForRelConv(τ, α, δ) = "√(ln(α / δ) / -τ)"
+    }
+
+    edge "coupling"
+    {
+        ## Desired phase bias between oscillators
+        bias = 0
+
+        ## Gain on phase coupling convergence
+        weight = 1
+
+        φ <= "weight * sin(input.φ - output.φ - bias)"
+    }
+
+    include "layout/line.cdn"
+}
+
+# vi:ex:ts=4:et

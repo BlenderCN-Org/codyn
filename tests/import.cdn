@@ -1,0 +1,18 @@
+templates
+{
+  node "template1"
+  {
+    x = 0
+
+    node "nested1"
+    {
+      y = 0
+    }
+  }
+}
+
+node "state1" : "template1"
+{
+}
+
+# vi:ex:ts=2:et

@@ -1,0 +1,54 @@
+node "Geometry"
+{
+    IBox(m, w, h, d) = "[
+        1 / 12 ∙ m ∙ (h² + d²), 0,                      0;
+        0,                      1 / 12 ∙ m ∙ (w² + d²), 0;
+        0,                      0,                      1 / 12 ∙ m ∙ (w² + h²)
+    ]"
+
+    IDiag(c) = "[c, 0, 0;
+                 0, c, 0;
+                 0, 0, c]"
+
+    ISphere(m, r) = "IDiag(2 / 5 ∙ m ∙ r²)"
+
+    ICylinder(m, r, h) = "[
+        1 / 12 ∙ m ∙ (3 ∙ r² + h²), 0,                          0;
+        0,                          1 / 12 ∙ m ∙ (3 ∙ r² + h²), 0;
+        0,                          0,                          0.5 ∙ m ∙ r²
+    ]"
+
+    IRod(m, l) = "[
+        1 / 12 ∙ m ∙ l², 0, 0;
+        0,               0, 0;
+        0,               0, 1 / 12 ∙ m ∙ l²
+    ]"
+
+    Rotate(θ) = "RotateX(θ[0]) ∙ RotateY(θ[1]) ∙ RotateZ(θ[2])"
+
+    RotateX(θ) = "[1,  0,       0;
+                   0,  cos(θ), sin(θ);
+                   0, -sin(θ), cos(θ)]"
+
+    RotateY(θ) = "[cos(θ), 0, -sin(θ);
+                   0,      1,  0;
+                   sin(θ), 0,  cos(θ)]"
+
+    RotateZ(θ) = "[ cos(θ), sin(θ), 0;
+                   -sin(θ), cos(θ), 0;
+                    0,      0,      1]"
+
+    RotationFromAxisAngle(u, θ) = "[
+        1 - mc + u[0]² ∙ mc, u[0] ∙ u[1] ∙ mc -uzs, u[0] ∙ u[2] ∙ mc + uys;
+        u[1] ∙ u[0] ∙ mc + uzs, -mc + 1 + u[1]² ∙ mc, u[1] ∙ u[2] ∙ mc - uxs;
+        u[2] ∙ u[0] ∙ mc - yus, u[2] ∙ u[1] ∙ mc + uxs, 1 - mc + u[2]² ∙ mc
+    ]"
+    {
+        mc = "1 - cos(θ)"
+        uxs = "u[2] ∙ sin(θ)"
+        uys = "u[1] ∙ sin(θ)"
+        uzs = "u[2] ∙ sin(θ)"
+    }
+}
+
+# vi:ex:ts=4:et

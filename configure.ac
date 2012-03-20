@@ -1,7 +1,7 @@
-AC_INIT(cpg-network, 2.5)
+AC_INIT(codyn, 3.0)
 
 AC_PREREQ(2.62)
-AM_INIT_AUTOMAKE([-Wno-portability])
+AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
 
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_MACRO_DIR([m4])
@@ -11,9 +11,11 @@ AC_STDC_HEADERS
 AC_PROG_CC
 AM_PROG_CC_STDC
 AC_HEADER_STDC
-AM_PROG_LIBTOOL
 AM_PROG_LEX
 AC_PROG_YACC
+
+LT_PREREQ([2.2.6])
+LT_INIT(disable-static)
 
 GTK_DOC_CHECK(1.9)
 
@@ -28,43 +30,26 @@ PKG_PROG_PKG_CONFIG
 AC_PATH_PROG(GLIB_GENMARSHAL, glib-genmarshal)
 AC_PATH_PROG(GLIB_MKENUMS, glib-mkenums)
 
-AC_ARG_ENABLE([webots],
-	AS_HELP_STRING([--enable-webots],[Enable building webots bindings (default: disabled)]),
-	[enable_webots=$enableval],
-	[enable_webots=no])
-	
-AM_CONDITIONAL([ENABLE_WEBOTS],[test "x$enable_webots" = "xyes"])
+AM_PATH_PYTHON
 
-# look for webots
-if test "x$enable_webots" = "xyes"; then
-	AC_MSG_CHECKING(for webots)
-	dirs="$WEBOTS_HOME_PATH $WEBOTS_HOME /usr/local/webots"
-
-	for i in $dirs;
-	do
-		if test -r $i/include/controller/c/webots/robot.h;
-		then
-			AC_MSG_RESULT($i)
-			WEBOTS_CFLAGS="-I$i/include/controller/c"
-			WEBOTS_LIBS="-L$i/lib -lController"
-			
-			break;
-		fi
-	done
-
-	if test "$WEBOTS_CFLAGS" = none; then
-		AC_MSG_ERROR(could not locate webots)
-	fi
-else
-	WEBOTS_CFLAGS=
-	WEBOTS_LIBS=
-fi
-
-AC_SUBST(WEBOTS_CFLAGS)
-AC_SUBST(WEBOTS_LIBS)
+dnl adl_RECURSIVE_EVAL(VALUE, RESULT)
+dnl =================================
+dnl Interpolate the VALUE in loop until it doesn't change,
+dnl and set the result to $RESULT.
+dnl WARNING: It's easy to get an infinite loop with some unsane input.
+AC_DEFUN([adl_RECURSIVE_EVAL],
+[_lcl_receval="$1"
+$2=`(test "x$prefix" = xNONE && prefix="$ac_default_prefix"
+     test "x$exec_prefix" = xNONE && exec_prefix="${prefix}"
+     _lcl_receval_old=''
+     while test "[$]_lcl_receval_old" != "[$]_lcl_receval"; do
+       _lcl_receval_old="[$]_lcl_receval"
+       eval _lcl_receval="\"[$]_lcl_receval\""
+     done
+     echo "[$]_lcl_receval")`])
 
 AC_ARG_ENABLE([doc],
-	AS_HELP_STRING([--disable-doc],[Enable building webots bindings (default: enabled)]),
+	AS_HELP_STRING([--disable-doc],[Enable building docs (default: enabled)]),
 	[enable_doc=$enableval],
 	[enable_doc=yes])
 
@@ -75,7 +60,7 @@ fi
 AM_CONDITIONAL([ENABLE_DOC],[test "x$enable_doc" = "xyes"])
 
 # Introspection
-GOBJECT_INTROSPECTION_CHECK([0.6.10])
+GOBJECT_INTROSPECTION_CHECK([0.10.7])
 
 if test "$found_introspection" = "yes"; then
 	enable_introspection=yes
@@ -88,67 +73,300 @@ dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
 
-PKG_CHECK_MODULES(CPG_NETWORK, [
+PKG_CHECK_MODULES(CODYN, [
 	glib-2.0
 	gobject-2.0
 	libxml-2.0
 	gio-2.0
-	gio-unix-2.0
 ])
 
-CPG_NETWORK_LIBS="${CPG_NETWORK_LIBS}"
+PKG_CHECK_MODULES(GIO_UNIX, [
+	gio-unix-2.0
+], [AC_DEFINE_UNQUOTED([ENABLE_GIO_UNIX], [1], [Enable gio unix support])
+    have_gio_unix=yes],
+   [have_gio_unix=no])
+
+PKG_CHECK_MODULES(GLIB26, [
+	glib-2.0 >= 2.26
+],[have_networking=yes], [have_networking=no])
+
+AM_CONDITIONAL(ENABLE_NETWORKING, test "x$have_networking" = "xyes")
+
+CODYN_LIBS="${CODYN_LIBS} ${GIO_UNIX_LIBS}"
+CODYN_CFLAGS="${CODYN_CFLAGS} ${GIO_UNIX_CFLAGS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
-	CPG_NETWORK_CFLAGS="$CPG_NETWORK_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"
+	CODYN_CFLAGS="$CODYN_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"
 fi
 
-AC_SUBST(CPG_NETWORK_LIBS)
-AC_SUBST(CPG_NETWORK_CFLAGS)
+AC_SUBST(CODYN_LIBS)
+AC_SUBST(CODYN_CFLAGS)
 
-CPG_NETWORK_API_VERSION=2.0
-AC_SUBST(CPG_NETWORK_API_VERSION)
-AC_DEFINE_UNQUOTED([API_VERSION], ["$CPG_NETWORK_API_VERSION"], [API version])
+CODYN_API_VERSION=3.0
+AC_SUBST(CODYN_API_VERSION)
+AC_DEFINE_UNQUOTED([API_VERSION], ["$CODYN_API_VERSION"], [API version])
 
 AC_CHECK_LIB([termcap],
              [tgetent],
-              [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -ltermcap"
-               CPG_CONTEXT_LIBS="$CPG_CONTEXT_LIBS -ltermcap"
-               CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -ltermcap"],
-             [AC_MSG_ERROR(could not find termcap library)])
+              [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -ltermcap"
+               CDN_CONTEXT_LIBS="$CDN_CONTEXT_LIBS -ltermcap"
+               CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltermcap"
+               AC_DEFINE_UNQUOTED([ENABLE_TERMCAP], [1], [Termcap support])],
+             [])
 
-AC_CHECK_LIB([readline],
-             [rl_redisplay],
-             [CPG_PARSER_LIBS="$CPG_PARSER_LIBS -lreadline"],
-             [AC_MSG_ERROR(Could not find readline library)])
+AC_ARG_ENABLE([tar],
+              AS_HELP_STRING([--enable-tar=[auto/yes/no]],[Enable tar support (default: auto)]),
+              [enable_tar=$enableval],
+              [enable_tar=auto])
 
-AC_CHECK_LIB([tar],
-             [tar_open],
-              [CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -ltar"],
-             [AC_MSG_ERROR(could not find tar library)])
+if test "x$enable_tar" != "xno"; then
+	AC_CHECK_LIB([tar],
+	             [tar_open],
+	             [have_tar=yes
+	              CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltar"],
+	             [have_tar=no])
+else
+	have_tar=no
+fi
 
-AC_CHECK_LIB([bz2],
-             [BZ2_bzCompressInit],
-              [CPG_ARCHIVE_LIBS="$CPG_ARCHIVE_LIBS -lbz2"],
-             [AC_MSG_ERROR(could not find bz2 library)])
+if test "x$enable_tar" = "xyes" && test "x$have_tar" = "xno"; then
+	AC_MSG_ERROR(could not find tar library)
+fi
 
-AC_SUBST(CPG_PARSER_LIBS)
-AC_SUBST(CPG_CONTEXT_LIBS)
-AC_SUBST(CPG_ARCHIVE_LIBS)
+if test "x$have_tar" = "xyes"; then
+	AC_CHECK_LIB([bz2],
+	             [BZ2_bzCompressInit],
+	             [CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -lbz2"],
+	             [have_tar=no])
+fi
 
+AM_CONDITIONAL(ENABLE_ARCHIVE, test "x$have_tar" = "xyes")
+
+adl_RECURSIVE_EVAL($libdir, EXPANDED_LIBDIR)
+adl_RECURSIVE_EVAL($includedir, EXPANDED_INCLUDEDIR)
+
+AC_ARG_ENABLE([lapack],
+	AS_HELP_STRING([--disable-lapack],[Enable lapack support (default: enabled)]),
+	[enable_lapack=$enableval],
+	[enable_lapack=auto])
+
+have_lapack=no
+
+dnl
+dnl Check for lapack
+dnl
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
+	AC_CHECK_LIB([lapack],
+	             [clapack_dgetri],
+	             [LAPACK_LIBS="-llapack"
+	              have_lapack=yes],
+	             [])
+fi
+
+dnl
+dnl Check for lapack in separate atlas/ dirs (both lib and include)
+dnl
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
+	for dir in "$EXPANDED_LIBDIR" "/usr/lib" "/usr/local/lib"; do
+		OLDLDFLAGS="$LDFLAGS"
+		LDFLAGS="$LDFLAGS -L$dir/atlas"
+
+		AC_CHECK_LIB([lapack],
+		             [clapack_dgetri],
+		             [LAPACK_LIBS="-L$dir/atlas -llapack"
+		              have_lapack=yes],
+		             [])
+
+		LDFLAGS="$OLDLDFLAGS"
+
+		if test "x$have_lapack" = "xyes"; then
+			break;
+		fi
+	done
+fi
+
+dnl
+dnl Check for lapack_atlas, last resort
+dnl
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
+	AC_CHECK_LIB([lapack_atlas],
+	             [clapack_dgetri],
+	             [LAPACK_LIBS="-llapack_atlas"
+	              have_lapack=yes],
+	             [])
+fi
+
+dnl
+dnl Check to see if we need to pull clapack.h from include/atlas
+dnl
+if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xyes"; then
+	AC_CHECK_HEADER([clapack.h],
+	                [],
+	                [for dir in "$EXPANDED_INCLUDEDIR" "/usr/include" "/usr/local/include"; do
+	                 OLDCFLAGS="$CFLAGS"
+	                 OLDCPPFLAGS="$CPPFLAGS"
+	                 CFLAGS="$CFLAGS -I$dir/atlas"
+	                 CPPFLAGS="$CPPFLAGS -I$dir/atlas"
+	                 AS_UNSET([ac_cv_header_clapack_h])
+	                 AC_CHECK_HEADER([clapack.h],
+	                                 [LAPACK_CFLAGS="-I$dir/atlas"
+	                                  have_lapack=yes],
+	                                 [have_lapack=no])
+	                 CFLAGS="$OLDCFLAGS"
+	                 CPPFLAGS="$OLDCPPFLAGS"
+
+	                 if test "x$have_lapack" = "xyes"; then
+	                     break;
+	                 fi
+	                 done])
+fi
+
+if test "x$enable_lapack" = "xyes" && test "x$have_lapack" = "xno"; then
+	AC_MSG_ERROR(failed to locate lapack library)
+elif test "x$enable_lapack" = "xauto" && test "x$have_lapack" = "xno"; then
+	AC_MSG_WARN(could not find lapack library)
+fi
+
+if test "$have_lapack" = "yes"; then
+	AC_DEFINE_UNQUOTED([HAVE_LAPACK], [1], [Have lapack support])
+fi
+
+AC_ARG_ENABLE([blas],
+	AS_HELP_STRING([--disable-blas],[Enable blas support (default: enabled)]),
+	[enable_blas=$enableval],
+	[enable_blas=auto])
+
+have_blas=no
+
+if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
+	AC_CHECK_LIB([blas],
+	             [cblas_dgemm],
+	             [BLAS_LIBS="-lblas"
+	              have_blas=yes],
+	             [])
+fi
+
+dnl
+dnl Check for blas in separate blas
+dnl
+if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
+	OLDLDFLAGS="$LDFLAGS"
+	LDFLAGS="$LDFLAGS -L$EXPANDED_LIBDIR/libblas"
+
+	AC_CHECK_LIB([blas],
+	             [cblas_dgemm],
+	             [BLAS_LIBS="-L$EXPANDED_LIBDIR/libblas -lblas"
+	              have_blas=yes],
+	             [])
+
+	LDFLAGS="$OLDLDFLAGS"
+fi
+
+dnl
+dnl Check to see if we need to pull cblas.h from include/atlas
+dnl
+if test "x$enable_blas" != "xno" && test "x$have_blas" = "xyes"; then
+	AC_CHECK_HEADER([cblas.h],
+	                [],
+	                [for dir in "$EXPANDED_INCLUDEDIR" "/usr/include" "/usr/local/include"; do
+	                 OLDCFLAGS="$CFLAGS"
+	                 OLDCPPFLAGS="$CPPFLAGS"
+	                 CFLAGS="$CFLAGS -I$dir/atlas"
+	                 CPPFLAGS="$CPPFLAGS -I$dir/atlas"
+	                 AS_UNSET([ac_cv_header_cblas_h])
+	                 AC_CHECK_HEADER([cblas.h],
+	                                 [BLAS_CFLAGS="-I$dir/atlas"
+	                                  have_blas=yes],
+	                                 [have_blas=no])
+	                 CFLAGS="$OLDCFLAGS"
+	                 CPPFLAGS="$OLDCPPFLAGS"
+
+	                 if test "x$have_blas" = "xyes"; then
+	                     break;
+	                 fi
+	                 done])
+fi
+
+if test "x$enable_blas" = "xyes" && test "x$have_blas" = "xno"; then
+	AC_MSG_ERROR(failed to locate blas library)
+fi
+
+if test "x$enable_blas" = "xauto" && test "x$have_blas" = "xno"; then
+	AC_MSG_WARN(failed to locate blas library)
+fi
+
+if test "$have_blas" = "yes"; then
+	AC_DEFINE_UNQUOTED([HAVE_BLAS], [1], [Have blas support])
+fi
+
+AC_SUBST(CDN_PARSER_LIBS)
+AC_SUBST(CDN_CONTEXT_LIBS)
+AC_SUBST(CDN_ARCHIVE_LIBS)
+
+AC_SUBST(LAPACK_LIBS)
+AC_SUBST(LAPACK_CFLAGS)
+
+AC_SUBST(BLAS_LIBS)
+AC_SUBST(BLAS_CFLAGS)
+
+dnl Check for wii
+AC_ARG_ENABLE([wii],
+              AS_HELP_STRING([--enable-wii=auto/yes/no],[Enable wii support (default: auto)]),
+              [enable_wii=$enableval],
+              [enable_wii=auto])
+
+if test "x$enable_wii" != "xno"; then
+	PKG_CHECK_MODULES(CDN_IO_WII, [
+		bluez,
+		cwiid,
+		glib-2.0 >= 2.26
+	], [have_wii=yes], [have_wii=no])
+
+	if test "x$have_wii" = "xyes"; then
+		enable_wii="yes"
+	else
+		if test "x$enable_wii" = "xyes"; then
+			AC_MSG_ERROR([Could not find required libraries (cwiid) for wii support])
+		fi
+
+		enable_wii="no"
+	fi
+fi
+
+AC_SUBST(CDN_IO_WII_LIBS)
+AC_SUBST(CDN_IO_WII_CFLAGS)
+
+AM_CONDITIONAL(ENABLE_WII, test "x$enable_wii" = "xyes")
 
 dnl ================================================================
 dnl Check for gedit
 dnl ================================================================
 
 AC_ARG_ENABLE([gedit],
-              AS_HELP_STRING([--enable-gedit=[2/3/no]],[Enable installation of gedit plugin (default: 2)]),
+              AS_HELP_STRING([--enable-gedit=[2/3/no/auto]],[Enable installation of gedit plugin (default: auto)]),
               [enable_gedit=$enableval],
-              [enable_gedit=2])
+              [enable_gedit=auto])
 
 if test "x$enable_gedit" != "xno"; then
-	GEDIT_MAJOR_VERSION="$enable_gedit"
-	enable_gedit="yes"
+	if test "x$enable_gedit" = "xauto"; then
+		PKG_CHECK_MODULES([GEDIT],
+		                  [gedit >= 3.0],
+		                  [GEDIT_MAJOR_VERSION=3],
+		                  [PKG_CHECK_MODULES([GEDIT],
+		                                     [gedit >= 2.0],
+		                                     [GEDIT_MAJOR_VERSION=2],
+		                                     [enable_gedit=no])])
 
+		if test "x$enable_gedit" != "xno"; then
+			enable_gedit="yes"
+		fi
+	else
+		GEDIT_MAJOR_VERSION="$enable_gedit"
+		enable_gedit="yes"
+	fi
+fi
+
+if test "x$enable_gedit" = "xyes"; then
 	if test "x$GEDIT_MAJOR_VERSION" = "x2"; then
 		GEDIT_PLUGIN_DIR="$libdir/gedit-2.0/plugins"
 	else
@@ -162,37 +380,85 @@ fi
 AM_CONDITIONAL(ENABLE_GEDIT, test "x$enable_gedit" = "xyes")
 AM_CONDITIONAL(ENABLE_GEDIT3, test "x$GEDIT_MAJOR_VERSION" = "x3")
 
+IO_LIBTOOL_FLAGS="-module -avoid-version"
+IO_LIBS_DIR="$libdir/codyn-$CODYN_API_VERSION/io"
+
+AC_SUBST(IO_LIBTOOL_FLAGS)
+AC_SUBST(IO_LIBS_DIR)
+
+dnl ===========================================================================
+dnl Check for python
+dnl ===========================================================================
+PYGOBJECT3_REQUIRED=3.0.0
+PYGOBJECT2_REQUIRED=2.0.0
+
+AC_ARG_ENABLE([python],
+              AS_HELP_STRING([--enable-python[=@<:@no/auto/yes@:>@]],[Build with python support]),
+              [enable_python=$enableval],
+              [enable_python="auto"])
+
+if test "x$enable_python" = "xauto"; then
+	PKG_CHECK_EXISTS([pygobject-3.0 >= $PYGOBJECT3_REQUIRED],
+	                 [enable_python=yes],
+	                 [PKG_CHECK_EXISTS([pygobject-2.0 >= $PYGOBJECT2_REQUIRED],
+	                                   [enable_python=yes],
+	                                   [enable_python=no])])
+fi
+
+if test "x$enable_python" = "xyes"; then
+	PKG_CHECK_EXISTS([pygobject-3.0 >= $PYGOBJECT3_REQUIRED],
+	                 [PYGOBJECT_REQUIRED=$PYGOBJECT3_REQUIRED
+	                  PYGOBJECT_PKG=pygobject-3.0],
+	                 [PYGOBJECT_REQUIRED=$PYGOBJECT2_REQUIRED
+	                  PYGOBJECT_PKG=pygobject-2.0])
+
+	PKG_CHECK_MODULES(PYTHON,
+	                  [$PYGOBJECT_PKG >= $PYGOBJECT_REQUIRED])
+
+	pyoverridesdir=`$PYTHON -c "from distutils.sysconfig import get_python_lib; import os; print(os.path.join(get_python_lib(True, False, '$prefix'), 'gi', 'overrides'))"`
+
+	AC_SUBST(pyoverridesdir)
+fi
+
+AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
+
 AC_CONFIG_FILES([
 Makefile
-cpg-network.pc
-cpg-network-webots.pc
-cpg-network/Makefile
-cpg-network/instructions/Makefile
-cpg-network-webots/Makefile
+codyn.pc
+codyn/Makefile
+codyn/instructions/Makefile
+codyn/operators/Makefile
+codyn/integrators/Makefile
+codyn/tree-algorithms/Makefile
 data/Makefile
-data/cpg.xml
+data/cdn.xml
 data/library/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
-data/library/webots/Makefile
+data/library/physics/Makefile
 docs/Makefile
 docs/reference/Makefile
 docs/man/Makefile
+io/Makefile
+io/file/Makefile
+io/network/Makefile
+io/wii/Makefile
 m4/Makefile
 tests/Makefile
 win32/Makefile
 win32/make-zip
 tools/Makefile
-tools/cpg-monitor/Makefile
-tools/cpg-parser/Makefile
-tools/cpg-render/Makefile
-tools/cpg-context/Makefile
-tools/cpg-archive/Makefile
+tools/cdn-monitor/Makefile
+tools/cdn-parser/Makefile
+tools/cdn-render/Makefile
+tools/cdn-context/Makefile
+tools/cdn-archive/Makefile
+tools/cdn-compile/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
-tools/plugins/gedit/cpgcontext/Makefile
-tools/plugins/gedit/cpgcontext.plugin
-tools/plugins/gedit/cpgcontext.gedit-plugin
+tools/plugins/gedit/cdncontext/Makefile
+tools/plugins/gedit/cdncontext.plugin
+tools/plugins/gedit/cdncontext.gedit-plugin
 ])
 
 AC_OUTPUT
@@ -204,9 +470,14 @@ Configuration:
 	Prefix:                 ${prefix}
 	Source code location:	${srcdir}
 	Compiler:		${CC}
-	Webots support enabled:	$enable_webots
 	GObject Introspection:	$enable_introspection
 	Documentation enabled:  $enable_doc
-	gedit plugin:           $enable_gedit
+	gedit plugin:           $enable_gedit ($GEDIT_MAJOR_VERSION)
+	cdn-archive:            $have_tar
+	network support:        $have_networking
+	wii support:            $enable_wii
+	python support:         $enable_python
+	blas:                   $have_blas
+	lapack:                 $have_lapack
 "
 

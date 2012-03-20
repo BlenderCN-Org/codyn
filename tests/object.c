@@ -1,178 +1,208 @@
-#include <cpg-network/cpg-network.h>
-#include <cpg-network/cpg-expression.h>
-#include <cpg-network/cpg-object.h>
+#include <codyn/codyn.h>
+#include <codyn/cdn-expression.h>
+#include <codyn/cdn-object.h>
 
 #include "utils.h"
 
 static void
 test_create ()
 {
-	CpgObject *obj = cpg_object_new ("id");
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
 
-	g_assert_cmpstr (cpg_object_get_id (obj), ==, "id");
-	g_assert (cpg_object_get_properties (obj) == NULL);
-	g_assert (cpg_object_get_actors (obj) == NULL);
+	g_assert_cmpstr (cdn_object_get_id (obj), ==, "id");
+	g_assert (cdn_object_get_variables (obj) == NULL);
 }
 
 static void
-test_add_property ()
+test_add_variable ()
 {
-	CpgObject *obj = cpg_object_new ("id");
-	CpgProperty *prop;
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnVariable *prop;
 
-	prop = cpg_property_new ("prop", "0", CPG_PROPERTY_FLAG_NONE);
-	cpg_object_add_property (obj, prop, NULL);
+	prop = cdn_variable_new ("prop",
+	                         cdn_expression_new ("0"),
+	                         CDN_VARIABLE_FLAG_NONE);
+	cdn_object_add_variable (obj, prop, NULL);
 
 	g_assert (prop != NULL);
-	g_assert (cpg_object_get_property (obj, "prop") != NULL);
+	g_assert (cdn_object_get_variable (obj, "prop") != NULL);
 }
 
 static void
-test_remove_property ()
+test_remove_variable ()
 {
-	CpgObject *obj = cpg_object_new ("id");
-	CpgProperty *prop;
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnVariable *prop;
 
-	prop = cpg_property_new ("prop", "0", CPG_PROPERTY_FLAG_NONE);
-	cpg_object_add_property (obj, prop, NULL);
-	g_assert (cpg_object_remove_property (obj, "prop", NULL));
+	prop = cdn_variable_new ("prop",
+	                         cdn_expression_new ("0"),
+	                         CDN_VARIABLE_FLAG_NONE);
+	cdn_object_add_variable (obj, prop, NULL);
+	g_assert (cdn_object_remove_variable (obj, "prop", NULL));
 
-	prop = cpg_object_get_property (obj, "prop");
+	prop = cdn_object_get_variable (obj, "prop");
 	g_assert (prop == NULL);
 }
 
 static void
 test_clear ()
 {
-	CpgObject *obj = cpg_object_new ("id");
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
 
-	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_NONE), NULL);
-	cpg_object_add_property (obj, cpg_property_new ("p2", "0", CPG_PROPERTY_FLAG_NONE), NULL);
+	cdn_object_add_variable (obj,
+	                         cdn_variable_new ("p1",
+	                                           cdn_expression_new ("0"),
+	                                           CDN_VARIABLE_FLAG_NONE),
+	                         NULL);
 
-	cpg_object_clear (obj);
+	cdn_object_add_variable (obj,
+	                         cdn_variable_new ("p2",
+	                                           cdn_expression_new ("0"),
+	                                           CDN_VARIABLE_FLAG_NONE),
+	                         NULL);
 
-	g_assert (cpg_object_get_property (obj, "p1") == NULL);
-	g_assert (cpg_object_get_property (obj, "p2") == NULL);
+	cdn_object_clear (obj);
+
+	g_assert (cdn_object_get_variable (obj, "p1") == NULL);
+	g_assert (cdn_object_get_variable (obj, "p2") == NULL);
 }
 
 static void
 test_copy ()
 {
-	CpgObject *obj = cpg_object_new ("id");
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
 
-	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_INTEGRATED), NULL);
-	cpg_object_add_property (obj, cpg_property_new ("p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT), NULL);
+	cdn_object_add_variable (obj,
+	                         cdn_variable_new ("p1",
+	                                           cdn_expression_new ("0"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
+	                         NULL);
 
-	CpgObject *cp = cpg_object_copy (obj);
-	CpgProperty *p1 = cpg_object_get_property (cp, "p1");
+	cdn_object_add_variable (obj,
+	                         cdn_variable_new ("p2",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT),
+	                         NULL);
+
+	CdnObject *cp = cdn_object_copy (obj);
+	CdnVariable *p1 = cdn_object_get_variable (cp, "p1");
 
 	g_assert (p1);
 
-	CpgProperty *p2 = cpg_object_get_property (cp, "p2");
+	CdnVariable *p2 = cdn_object_get_variable (cp, "p2");
 
 	g_assert (p2);
 
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (p1)), ==, "0");
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (p2)), ==, "1");
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (p1)), ==, "0");
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (p2)), ==, "1");
 
-	g_assert_cmpuint (cpg_property_get_flags (p1), ==, CPG_PROPERTY_FLAG_INTEGRATED);
-	g_assert_cmpuint (cpg_property_get_flags (p2), ==, CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT);
+	g_assert_cmpuint (cdn_variable_get_flags (p1), ==, CDN_VARIABLE_FLAG_INTEGRATED);
+	g_assert_cmpuint (cdn_variable_get_flags (p2), ==, CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT);
 }
 
 static void
 test_apply_template ()
 {
-	CpgObject *obj = cpg_object_new ("id");
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (obj, cpg_property_new ("p1", "0", CPG_PROPERTY_FLAG_INTEGRATED), NULL);
-	cpg_object_add_property (obj, cpg_property_new ("p2", "1", CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT), NULL);
+	cdn_object_add_variable (obj,
+	                         cdn_variable_new ("p1",
+	                                           cdn_expression_new ("0"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
+	                         NULL);
 
-	CpgObject *cp = cpg_object_new ("id2");
-	cpg_object_apply_template (cp, obj, &error);
+	cdn_object_add_variable (obj,
+	                         cdn_variable_new ("p2",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT),
+	                         NULL);
+
+	CdnObject *cp = CDN_OBJECT (cdn_node_new ("id2", NULL));
+	cdn_object_apply_template (cp, obj, &error);
 	g_assert_no_error (error);
 
-	CpgProperty *p1 = cpg_object_get_property (cp, "p1");
+	CdnVariable *p1 = cdn_object_get_variable (cp, "p1");
 
 	g_assert (p1);
 
-	CpgProperty *p2 = cpg_object_get_property (cp, "p2");
+	CdnVariable *p2 = cdn_object_get_variable (cp, "p2");
 
 	g_assert (p2);
 
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (p1)), ==, "0");
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (p2)), ==, "1");
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (p1)), ==, "0");
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (p2)), ==, "1");
 
-	g_assert_cmpuint (cpg_property_get_flags (p1), ==, CPG_PROPERTY_FLAG_INTEGRATED);
-	g_assert_cmpuint (cpg_property_get_flags (p2), ==, CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT);
+	g_assert_cmpuint (cdn_variable_get_flags (p1), ==, CDN_VARIABLE_FLAG_INTEGRATED);
+	g_assert_cmpuint (cdn_variable_get_flags (p2), ==, CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT);
 }
 
 static void
 test_new_from_template ()
 {
-	CpgObject *obj = cpg_object_new ("id");
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (obj,
-	                         cpg_property_new ("p1",
-	                                           "0",
-	                                           CPG_PROPERTY_FLAG_INTEGRATED),
+	cdn_object_add_variable (obj,
+	                         cdn_variable_new ("p1",
+	                                           cdn_expression_new ("0"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
 	                         NULL);
 
-	cpg_object_add_property (obj,
-	                         cpg_property_new ("p2",
-	                                           "1",
-	                                           CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT),
+	cdn_object_add_variable (obj,
+	                         cdn_variable_new ("p2",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT),
 	                         NULL);
 
-	CpgObject *cp = cpg_object_new_from_template (obj, &error);
+	CdnObject *cp = cdn_object_new_from_template (obj, &error);
 	g_assert_no_error (error);
 
-	cpg_object_apply_template (cp, obj, &error);
+	cdn_object_apply_template (cp, obj, &error);
 	g_assert_no_error (error);
 
-	CpgProperty *p1 = cpg_object_get_property (cp, "p1");
+	CdnVariable *p1 = cdn_object_get_variable (cp, "p1");
 
 	g_assert (p1);
 
-	CpgProperty *p2 = cpg_object_get_property (cp, "p2");
+	CdnVariable *p2 = cdn_object_get_variable (cp, "p2");
 
 	g_assert (p2);
 
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (p1)), ==, "0");
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (p2)), ==, "1");
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (p1)), ==, "0");
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (p2)), ==, "1");
 
-	g_assert_cmpuint (cpg_property_get_flags (p1), ==, CPG_PROPERTY_FLAG_INTEGRATED);
-	g_assert_cmpuint (cpg_property_get_flags (p2), ==, CPG_PROPERTY_FLAG_IN | CPG_PROPERTY_FLAG_OUT);
+	g_assert_cmpuint (cdn_variable_get_flags (p1), ==, CDN_VARIABLE_FLAG_INTEGRATED);
+	g_assert_cmpuint (cdn_variable_get_flags (p2), ==, CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT);
 }
 
 static void
 test_relative_id ()
 {
-	CpgGroup *g1;
-	CpgGroup *g2;
-	CpgObject *obj;
+	CdnNode *g1;
+	CdnNode *g2;
+	CdnObject *obj;
 
-	g1 = cpg_group_new ("g1", NULL);
-	g2 = cpg_group_new ("g2", NULL);
+	g1 = cdn_node_new ("g1", NULL);
+	g2 = cdn_node_new ("g2", NULL);
 
-	obj = cpg_object_new ("o1");
+	obj = CDN_OBJECT (cdn_node_new ("o1", NULL));
 
-	cpg_group_add (g1, CPG_OBJECT (g2), NULL);
-	cpg_group_add (g2, obj, NULL);
+	cdn_node_add (g1, CDN_OBJECT (g2), NULL);
+	cdn_node_add (g2, obj, NULL);
 
-	g_assert (cpg_group_find_object (g1, "g2"));
-	g_assert (cpg_group_find_object (g2, "o1"));
-	g_assert (cpg_group_find_object (g1, "g2.o1"));
+	g_assert (cdn_node_find_object (g1, "g2"));
+	g_assert (cdn_node_find_object (g2, "o1"));
+	g_assert (cdn_node_find_object (g1, "g2.o1"));
 
-	g_assert_cmpstr (cpg_object_get_relative_id (CPG_OBJECT (g2),
-	                                             CPG_OBJECT (g1)), ==, "g2");
+	g_assert_cmpstr (cdn_object_get_relative_id (CDN_OBJECT (g2),
+	                                             g1), ==, "g2");
 
-	g_assert_cmpstr (cpg_object_get_relative_id (obj,
-	                                             CPG_OBJECT (g1)), ==, "g2.o1");
+	g_assert_cmpstr (cdn_object_get_relative_id (obj,
+	                                             g1), ==, "g2.o1");
 
-	g_assert_cmpstr (cpg_object_get_full_id (CPG_OBJECT (g2)), ==, "g2");
-	g_assert_cmpstr (cpg_object_get_full_id (obj), ==, "g2.o1");
+	g_assert_cmpstr (cdn_object_get_full_id (CDN_OBJECT (g2)), ==, "g2");
+	g_assert_cmpstr (cdn_object_get_full_id (obj), ==, "g2.o1");
 
 	g_object_unref (g1);
 	g_object_unref (g2);
@@ -189,8 +219,8 @@ main (int   argc,
 	g_type_init ();
 
 	g_test_add_func ("/object/create", test_create);
-	g_test_add_func ("/object/add_property", test_add_property);
-	g_test_add_func ("/object/remove_property", test_remove_property);
+	g_test_add_func ("/object/add_variable", test_add_variable);
+	g_test_add_func ("/object/remove_variable", test_remove_variable);
 	g_test_add_func ("/object/clear", test_clear);
 	g_test_add_func ("/object/copy", test_copy);
 	g_test_add_func ("/object/apply_template", test_apply_template);

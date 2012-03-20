@@ -1,41 +1,39 @@
-#include <cpg-network/cpg-network.h>
-#include <cpg-network/cpg-expression.h>
-#include <cpg-network/cpg-object.h>
+#include <codyn/codyn.h>
+#include <codyn/cdn-expression.h>
+#include <codyn/cdn-object.h>
 
 #include "utils.h"
 
 static gchar simple_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cpg>\n"
-"  <network>\n"
-"    <templates>\n"
-"      <state id=\"template1\">\n"
-"        <property name=\"x\">0</property>\n"
-"\n"
-"        <state id=\"nested1\">\n"
-"          <property name=\"y\">0</property>\n"
-"        </state>\n"
-"      </state>\n"
-"    </templates>\n"
-"\n"
-"    <state id=\"state1\" ref=\"template1\"/>\n"
-"  </network>\n"
-"</cpg>\n";
+"templates\n"
+"{\n"
+"  node \"template1\"\n"
+"  {\n"
+"    x = 0\n"
+"    node \"nested1\"\n"
+"    {\n"
+"      y = 0\n"
+"    }\n"
+"  }\n"
+"}\n"
+"node \"state1\" : \"template1\"\n"
+"{\n"
+"}";
 
 static void
 test_load ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 
 	network = test_load_network (simple_xml,
-	                             CPG_PATH_TEMPLATE_OBJECT, "template1",
-	                             CPG_PATH_TEMPLATE_PROPERTY, "template1.x",
-	                             CPG_PATH_TEMPLATE_OBJECT, "template1.nested1",
-	                             CPG_PATH_TEMPLATE_PROPERTY, "template1.nested1.y",
-	                             CPG_PATH_OBJECT, "state1",
-	                             CPG_PATH_PROPERTY, "state1.x",
-	                             CPG_PATH_OBJECT, "state1.nested1",
-	                             CPG_PATH_PROPERTY, "state1.nested1.y",
+	                             CDN_PATH_TEMPLATE_OBJECT, "template1",
+	                             CDN_PATH_TEMPLATE_PROPERTY, "template1.x",
+	                             CDN_PATH_TEMPLATE_OBJECT, "template1.nested1",
+	                             CDN_PATH_TEMPLATE_PROPERTY, "template1.nested1.y",
+	                             CDN_PATH_OBJECT, "state1",
+	                             CDN_PATH_PROPERTY, "state1.x",
+	                             CDN_PATH_OBJECT, "state1.nested1",
+	                             CDN_PATH_PROPERTY, "state1.nested1.y",
 	                             NULL);
 
 	g_object_unref (network);
@@ -44,295 +42,278 @@ test_load ()
 static void
 test_apply_state ()
 {
-	CpgObject *state = cpg_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	cdn_object_add_variable (state,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *instance = cpg_object_new_from_template (state, &error);
+	CdnObject *instance = cdn_object_new_from_template (state, &error);
 	g_assert_no_error (error);
 
-	CpgProperty *prop = cpg_object_get_property (instance, "x");
+	CdnVariable *prop = cdn_object_get_variable (instance, "x");
 
 	g_assert (prop);
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (prop)), ==,
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (prop)), ==,
 	                 "1");
 
-	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_INTEGRATED);
+	g_assert_cmpint (cdn_variable_get_flags (prop), ==, CDN_VARIABLE_FLAG_INTEGRATED);
 }
 
 static void
-test_apply_link ()
+test_apply_edge ()
 {
-	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", NULL, NULL));
+	CdnObject *edge = CDN_OBJECT (cdn_edge_new ("edge", NULL, NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (link,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	cdn_object_add_variable (edge,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
 	                         NULL);
 
-	cpg_link_add_action (CPG_LINK (link),
-	                     cpg_link_action_new ("x", cpg_expression_new ("2")));
+	cdn_edge_add_action (CDN_EDGE (edge),
+	                     cdn_edge_action_new ("x", cdn_expression_new ("2")));
 
-	CpgObject *instance = cpg_object_new_from_template (link, &error);
+	CdnObject *instance = cdn_object_new_from_template (edge, &error);
 	g_assert_no_error (error);
 
-	g_assert (CPG_IS_LINK (instance));
+	g_assert (CDN_IS_EDGE (instance));
 
-	CpgProperty *prop = cpg_object_get_property (instance, "x");
+	CdnVariable *prop = cdn_object_get_variable (instance, "x");
 
 	g_assert (prop);
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (prop)), ==,
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (prop)), ==,
 	                 "1");
 
-	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_INTEGRATED);
+	g_assert_cmpint (cdn_variable_get_flags (prop), ==, CDN_VARIABLE_FLAG_INTEGRATED);
 
-	CpgLinkAction *action = cpg_link_get_action (CPG_LINK (link), "x");
+	CdnEdgeAction *action = cdn_edge_get_action (CDN_EDGE (edge), "x");
 
 	g_assert (action);
-	g_assert_cmpstr (cpg_link_action_get_target (action), ==, "x");
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_link_action_get_equation (action)), ==, "2");
+	g_assert_cmpstr (cdn_edge_action_get_target (action), ==, "x");
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_edge_action_get_equation (action)), ==, "2");
 }
 
 static void
-test_apply_group ()
+test_apply_node ()
 {
-	CpgGroup *grp = cpg_group_new ("group", NULL);
-	CpgObject *state = cpg_object_new ("state");
+	CdnNode *grp = cdn_node_new ("node", NULL);
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 
-	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "0", CPG_PROPERTY_FLAG_INTEGRATED),
+	cdn_object_add_variable (state,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("0"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", state, state));
-	cpg_link_add_action (CPG_LINK (link),
-	                     cpg_link_action_new ("x",
-	                                          cpg_expression_new ("1")));
+	CdnObject *edge = CDN_OBJECT (cdn_edge_new ("edge",
+	                                            CDN_NODE (state),
+	                                            CDN_NODE (state)));
+	cdn_edge_add_action (CDN_EDGE (edge),
+	                     cdn_edge_action_new ("x",
+	                                          cdn_expression_new ("1")));
 
-	cpg_group_add (grp, state, NULL);
-	cpg_group_add (grp, link, NULL);
+	cdn_node_add (grp, state, NULL);
+	cdn_node_add (grp, edge, NULL);
 
-	cpg_group_set_proxy (grp, state);
+	cdn_node_set_proxy (grp, state);
 
-	CpgObject *instance = cpg_object_copy (CPG_OBJECT (grp));
+	CdnObject *instance = cdn_object_copy (CDN_OBJECT (grp));
 
-	g_assert (CPG_IS_GROUP (instance));
+	g_assert (CDN_IS_NODE (instance));
 
-	grp = CPG_GROUP (instance);
+	grp = CDN_NODE (instance);
 
-	state = cpg_group_get_child (grp, "state");
+	state = cdn_node_get_child (grp, "state");
 
 	g_assert (state);
-	g_assert (state == cpg_group_get_proxy (grp));
+	g_assert (state == cdn_node_get_proxy (grp));
 
-	g_assert (cpg_object_get_property (state, "x"));
+	g_assert (cdn_object_get_variable (state, "x"));
 
-	link = cpg_group_get_child (grp, "link");
+	edge = cdn_node_get_child (grp, "edge");
 
-	g_assert (link);
+	g_assert (edge);
 
-	g_assert (cpg_link_get_action (CPG_LINK (link), "x"));
-	g_assert (cpg_link_get_from (CPG_LINK (link)) == state);
-	g_assert (cpg_link_get_to (CPG_LINK (link)) == state);
+	g_assert (cdn_edge_get_action (CDN_EDGE (edge), "x"));
+	g_assert (cdn_edge_get_input (CDN_EDGE (edge)) == CDN_NODE (state));
+	g_assert (cdn_edge_get_output (CDN_EDGE (edge)) == CDN_NODE (state));
 }
 
 static void
 test_apply_overload_state ()
 {
 	static gchar xml[] = ""
-	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	"<cpg>\n"
-	"  <network>\n"
-	"    <templates>\n"
-	"      <state id=\"state\">\n"
-	"        <property name=\"x\" integrated=\"yes\">0</property>\n"
-	"\n"
-	"      </state>\n"
-	"    </templates>\n"
-	"\n"
-	"    <state id=\"state\" ref=\"state\">\n"
-	"      <property name=\"x\" integrated=\"no\">1</property>\n"
-	"    </state>\n"
-	"  </network>\n"
-	"</cpg>\n";
+	"templates\n"
+	"{\n"
+	"  node \"state\"\n"
+	"  {\n"
+	"    x = 0 | integrated"
+	"  }\n"
+	"}\n"
+	"node \"state\" : \"state\"\n"
+	"{\n"
+	"  x = 1 | -integrated"
+	"}";
 
-	CpgNetwork *network = cpg_network_new_from_string (xml, NULL);
+	CdnNetwork *network = cdn_network_new_from_string (xml, NULL);
 	g_assert (network);
 
-	CpgObject *obj = cpg_group_get_child (CPG_GROUP (network), "state");
+	CdnObject *obj = cdn_node_get_child (CDN_NODE (network), "state");
 	g_assert (obj);
 
-	CpgProperty *prop = cpg_object_get_property (obj, "x");
+	CdnVariable *prop = cdn_object_get_variable (obj, "x");
 	g_assert (prop);
 
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (prop)),
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (prop)),
 	                 ==,
 	                 "1");
 
-	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_NONE);
+	g_assert_cmpint (cdn_variable_get_flags (prop), ==, CDN_VARIABLE_FLAG_NONE);
 }
 
 static void
-test_apply_overload_link ()
+test_apply_overload_edge ()
 {
 	static gchar xml[] = ""
-	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	"<cpg>\n"
-	"  <network>\n"
-	"    <templates>\n"
-	"      <state id=\"state\">\n"
-	"        <property name=\"x\" integrated=\"yes\">0</property>\n"
-	"\n"
-	"      </state>\n"
-	"      <link id=\"link\">\n"
-	"        <action target=\"x\">1</action>\n"
-	"      </link>\n"
-	"    </templates>\n"
-	"\n"
-	"    <state id=\"state\" ref=\"state\"/>\n"
-	"    <link id=\"link\" ref=\"link\" from=\"state\" to=\"state\">\n"
-	"      <action target=\"x\">2</action>"
-	"    </link>\n"
-	"  </network>\n"
-	"</cpg>\n";
+	"templates {"
+	"  node \"state\" { x = 0 | integrated }"
+	"  edge \"edge\" { x = 1 }"
+	"}"
+	"node \"state\" : \"state\" {}"
+	"edge \"edge\" from \"state\" to \"state\" : \"edge\" { x <= 2 }";
 
-	CpgNetwork *network = cpg_network_new_from_string (xml, NULL);
-	g_assert (CPG_IS_NETWORK (network));
+	CdnNetwork *network = cdn_network_new_from_string (xml, NULL);
+	g_assert (CDN_IS_NETWORK (network));
 
-	CpgObject *obj = cpg_group_get_child (CPG_GROUP (network), "link");
-	g_assert (CPG_IS_OBJECT (obj));
+	CdnObject *obj = cdn_node_get_child (CDN_NODE (network), "edge");
+	g_assert (CDN_IS_OBJECT (obj));
 
-	CpgLinkAction *action = cpg_link_get_action (CPG_LINK (obj), "x");
-	g_assert (CPG_IS_LINK_ACTION (action));
+	CdnEdgeAction *action = cdn_edge_get_action (CDN_EDGE (obj), "x");
+	g_assert (CDN_IS_EDGE_ACTION (action));
 
-	CpgProperty *target = cpg_link_action_get_target_property (action);
-	g_assert (CPG_IS_PROPERTY (target));
+	CdnVariable *target = cdn_edge_action_get_target_variable (action);
+	g_assert (CDN_IS_VARIABLE (target));
 
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_link_action_get_equation (action)),
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_edge_action_get_equation (action)),
 	                 ==,
 	                 "2");
 }
 
 static void
-test_apply_overload_group ()
+test_apply_overload_node ()
 {
 	static gchar xml[] = ""
-	"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-	"<cpg>\n"
-	"  <network>\n"
-	"    <templates>\n"
-	"      <state id=\"group\">\n"
-	"        <state id=\"state\">\n"
-	"          <property name=\"x\" integrated=\"yes\">0</property>\n"
-	"\n"
-	"        </state>\n"
-	"        <link id=\"link\">\n"
-	"          <action target=\"x\">1</action>\n"
-	"        </link>\n"
-	"      </state>\n"
-	"    </templates>\n"
-	"\n"
-	"    <state id=\"state\" ref=\"group\">\n"
-	"      <state id=\"state\">\n"
-	"        <property name=\"x\">2</property>\n"
-	"      </state>\n"
-	"    </state>\n"
-	"  </network>\n"
-	"</cpg>\n";
+	"templates {"
+	"  node \"node\" {"
+	"    node \"state\" { x = 0 | integrated }"
+	"    edge \"edge\" { x <= 1 }"
+	"  }"
+	"}"
+	"node \"node\" : \"node\" {"
+	"  node \"state\" { x = 2 }"
+	"}";
 
-	CpgNetwork *network = cpg_network_new_from_string (xml, NULL);
-	g_assert (CPG_IS_NETWORK (network));
+	CdnNetwork *network = cdn_network_new_from_string (xml, NULL);
+	g_assert (CDN_IS_NETWORK (network));
 
-	CpgObject *obj = cpg_group_get_child (CPG_GROUP (network), "state");
-	g_assert (CPG_IS_GROUP (obj));
+	CdnObject *obj = cdn_node_get_child (CDN_NODE (network), "node");
+	g_assert (CDN_IS_NODE (obj));
 
-	CpgGroup *grp = CPG_GROUP (obj);
-	CpgObject *state = cpg_group_get_child (grp, "state");
+	CdnNode *grp = CDN_NODE (obj);
+	CdnObject *state = cdn_node_get_child (grp, "state");
 
-	CpgProperty *prop = cpg_object_get_property (state, "x");
-	g_assert (CPG_IS_PROPERTY (prop));
+	CdnVariable *prop = cdn_object_get_variable (state, "x");
+	g_assert (CDN_IS_VARIABLE (prop));
 
-	CpgExpression *expr = cpg_property_get_expression (prop);
-	g_assert_cmpstr (cpg_expression_get_as_string (expr), ==, "2");
-	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_INTEGRATED);
+	CdnExpression *expr = cdn_variable_get_expression (prop);
+	g_assert_cmpstr (cdn_expression_get_as_string (expr), ==, "2");
+	g_assert_cmpint (cdn_variable_get_flags (prop), ==, CDN_VARIABLE_FLAG_INTEGRATED);
 }
 
 static void
 test_track_modified_state ()
 {
-	CpgObject *state = cpg_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	cdn_object_add_variable (state,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *instance = cpg_object_new_from_template (state, &error);
+	CdnObject *instance = cdn_object_new_from_template (state, &error);
+	cdn_object_set_id (instance, "instance");
 	g_assert_no_error (error);
 
-	CpgProperty *prop = cpg_object_get_property (instance, "x");
+	CdnVariable *prop = cdn_object_get_variable (instance, "x");
 	g_assert (prop);
 
-	CpgProperty *orig = cpg_object_get_property (state, "x");
-	cpg_property_set_expression (orig, cpg_expression_new ("5"));
+	CdnVariable *orig = cdn_object_get_variable (state, "x");
+	cdn_variable_set_expression (orig, cdn_expression_new ("5"));
 
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (prop)), ==,
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (prop)), ==,
 	                 "5");
 
-	cpg_property_set_expression (prop, cpg_expression_new ("2"));
-	cpg_property_set_expression (orig, cpg_expression_new ("3"));
+	cdn_variable_set_expression (prop, cdn_expression_new ("2"));
+	cdn_variable_set_expression (orig, cdn_expression_new ("3"));
 
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (prop)), ==,
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (prop)), ==,
 	                 "2");
 
-	cpg_property_set_expression (prop, cpg_expression_new ("3"));
-	cpg_property_set_expression (orig, cpg_expression_new ("5"));
+	cdn_variable_set_expression (prop, cdn_expression_new ("3"));
+	cdn_variable_set_expression (orig, cdn_expression_new ("5"));
 
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_property_get_expression (prop)), ==,
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (prop)), ==,
 	                 "5");
 
-	cpg_property_set_flags (orig, CPG_PROPERTY_FLAG_IN);
-	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_IN);
+	cdn_variable_set_flags (orig, CDN_VARIABLE_FLAG_IN);
+	g_assert_cmpint (cdn_variable_get_flags (prop), ==, CDN_VARIABLE_FLAG_IN);
 
-	cpg_property_set_flags (prop, CPG_PROPERTY_FLAG_OUT);
-	cpg_property_set_flags (orig, CPG_PROPERTY_FLAG_INTEGRATED);
+	cdn_variable_set_flags (prop, CDN_VARIABLE_FLAG_OUT);
+	cdn_variable_set_flags (orig, CDN_VARIABLE_FLAG_INTEGRATED);
 
-	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_OUT);
+	g_assert_cmpint (cdn_variable_get_flags (prop), ==, CDN_VARIABLE_FLAG_OUT);
 
-	cpg_property_set_flags (prop, CPG_PROPERTY_FLAG_INTEGRATED);
-	cpg_property_set_flags (orig, CPG_PROPERTY_FLAG_NONE);
+	cdn_variable_set_flags (prop, CDN_VARIABLE_FLAG_INTEGRATED);
+	cdn_variable_set_flags (orig, CDN_VARIABLE_FLAG_NONE);
 
-	g_assert_cmpint (cpg_property_get_flags (prop), ==, CPG_PROPERTY_FLAG_NONE);
+	g_assert_cmpint (cdn_variable_get_flags (prop), ==, CDN_VARIABLE_FLAG_NONE);
 }
 
 static void
-test_track_modified_link ()
+test_track_modified_edge ()
 {
-	CpgObject *link = CPG_OBJECT (cpg_link_new ("link", NULL, NULL));
+	CdnObject *edge = CDN_OBJECT (cdn_edge_new ("edge", NULL, NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (link,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	cdn_object_add_variable (edge,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
 	                         NULL);
 
-	cpg_link_add_action (CPG_LINK (link),
-	                     cpg_link_action_new ("x", cpg_expression_new ("2")));
+	cdn_edge_add_action (CDN_EDGE (edge),
+	                     cdn_edge_action_new ("x", cdn_expression_new ("2")));
 
-	CpgObject *instance = cpg_object_new_from_template (link, &error);
+	CdnObject *instance = cdn_object_new_from_template (edge, &error);
 	g_assert_no_error (error);
 
-	g_assert (CPG_IS_LINK (instance));
+	g_assert (CDN_IS_EDGE (instance));
 
-	CpgLinkAction *orig = cpg_link_get_action (CPG_LINK (link), "x");
-	CpgLinkAction *action = cpg_link_get_action (CPG_LINK (instance), "x");
+	CdnEdgeAction *orig = cdn_edge_get_action (CDN_EDGE (edge), "x");
+	CdnEdgeAction *action = cdn_edge_get_action (CDN_EDGE (instance), "x");
 
-	g_assert (CPG_IS_LINK_ACTION (orig));
-	g_assert (CPG_IS_LINK_ACTION (action));
+	g_assert (CDN_IS_EDGE_ACTION (orig));
+	g_assert (CDN_IS_EDGE_ACTION (action));
 
-	cpg_link_action_set_equation (orig, cpg_expression_new ("5"));
-	g_assert_cmpstr (cpg_expression_get_as_string (cpg_link_action_get_equation (action)),
+	cdn_edge_action_set_equation (orig, cdn_expression_new ("5"));
+	g_assert_cmpstr (cdn_expression_get_as_string (cdn_edge_action_get_equation (action)),
 	                 ==,
 	                 "5");
 }
@@ -340,245 +321,276 @@ test_track_modified_link ()
 static void
 test_unapply_state ()
 {
-	CpgObject *state = cpg_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	cdn_object_add_variable (state,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *instance = cpg_object_new_from_template (state, &error);
+	CdnObject *instance = cdn_object_new_from_template (state, &error);
 	g_assert_no_error (error);
 
-	cpg_object_unapply_template (instance, state, &error);
+	cdn_object_unapply_template (instance, state, &error);
 
 	g_assert_no_error (error);
 
-	CpgProperty *prop = cpg_object_get_property (instance, "x");
+	CdnVariable *prop = cdn_object_get_variable (instance, "x");
 	g_assert (prop == NULL);
 }
 
 static void
 test_unapply_modified_state ()
 {
-	CpgObject *state = cpg_object_new ("state");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (state,
-	                         cpg_property_new ("x", "1", CPG_PROPERTY_FLAG_INTEGRATED),
+	cdn_object_add_variable (state,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           CDN_VARIABLE_FLAG_INTEGRATED),
 	                         NULL);
 
-	CpgObject *instance = cpg_object_new_from_template (state, &error);
+	CdnObject *instance = cdn_object_new_from_template (state, &error);
 	g_assert_no_error (error);
 
-	CpgProperty *orig = cpg_object_get_property (instance, "x");
-	cpg_property_set_expression (orig, cpg_expression_new ("5"));
+	CdnVariable *orig = cdn_object_get_variable (instance, "x");
+	cdn_variable_set_expression (orig, cdn_expression_new ("5"));
 
-	cpg_object_unapply_template (instance, state, &error);
+	cdn_object_unapply_template (instance, state, &error);
 
 	g_assert_no_error (error);
 
-	CpgProperty *prop = cpg_object_get_property (instance, "x");
-	g_assert (CPG_IS_PROPERTY (prop));
+	CdnVariable *prop = cdn_object_get_variable (instance, "x");
+	g_assert (CDN_IS_VARIABLE (prop));
 }
 
 static void
-test_unapply_link ()
+test_unapply_edge ()
 {
-	CpgLink *link = cpg_link_new ("link", NULL, NULL);
+	CdnEdge *edge = cdn_edge_new ("edge", NULL, NULL);
 	GError *error = NULL;
 
-	cpg_link_add_action (link, cpg_link_action_new ("x", cpg_expression_new ("1")));
+	cdn_edge_add_action (edge, cdn_edge_action_new ("x", cdn_expression_new ("1")));
 
-	CpgLink *instance = CPG_LINK (cpg_object_new_from_template (CPG_OBJECT (link), &error));
+	CdnEdge *instance = CDN_EDGE (cdn_object_new_from_template (CDN_OBJECT (edge), &error));
 	g_assert_no_error (error);
 
-	cpg_object_unapply_template (CPG_OBJECT (instance), CPG_OBJECT (link), &error);
+	cdn_object_unapply_template (CDN_OBJECT (instance), CDN_OBJECT (edge), &error);
 
 	g_assert_no_error (error);
 
-	CpgLinkAction *action = cpg_link_get_action (instance, "x");
+	CdnEdgeAction *action = cdn_edge_get_action (instance, "x");
 	g_assert (action == NULL);
 }
 
 static void
-test_unapply_modified_link ()
+test_unapply_modified_edge ()
 {
-	CpgLink *link = cpg_link_new ("link", NULL, NULL);
+	CdnEdge *edge = cdn_edge_new ("edge", NULL, NULL);
 	GError *error = NULL;
 
-	cpg_link_add_action (link, cpg_link_action_new ("x", cpg_expression_new ("1")));
+	cdn_edge_add_action (edge, cdn_edge_action_new ("x", cdn_expression_new ("1")));
 
-	CpgLink *instance = CPG_LINK (cpg_object_new_from_template (CPG_OBJECT (link), &error));
+	CdnEdge *instance = CDN_EDGE (cdn_object_new_from_template (CDN_OBJECT (edge), &error));
 	g_assert_no_error (error);
 
-	CpgLinkAction *action = cpg_link_get_action (instance, "x");
-	cpg_link_action_set_equation (action, cpg_expression_new ("2"));
+	CdnEdgeAction *action = cdn_edge_get_action (instance, "x");
+	cdn_edge_action_set_equation (action, cdn_expression_new ("2"));
 
-	cpg_object_unapply_template (CPG_OBJECT (instance), CPG_OBJECT (link), &error);
+	cdn_object_unapply_template (CDN_OBJECT (instance), CDN_OBJECT (edge), &error);
 
 	g_assert_no_error (error);
 
-	action = cpg_link_get_action (instance, "x");
+	action = cdn_edge_get_action (instance, "x");
 	g_assert (action != NULL);
 }
 
 static void
 test_apply_multiple_state ()
 {
-	CpgObject *t1 = cpg_object_new ("s1");
-	CpgObject *t2 = cpg_object_new ("s2");
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
-	cpg_object_add_property (t2, cpg_property_new ("y", "2", 0), NULL);
+	cdn_object_add_variable (t1,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           0),
+	                         NULL);
 
-	CpgObject *o = cpg_object_new ("o1");
+	cdn_object_add_variable (t2,
+	                         cdn_variable_new ("y",
+	                                           cdn_expression_new ("2"),
+	                                           0),
+	                         NULL);
 
-	cpg_object_apply_template (o, t1, &error);
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
+
+	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);
 
-	cpg_object_apply_template (o, t2, &error);
+	cdn_object_apply_template (o, t2, &error);
 	g_assert_no_error (error);
 
-	CpgProperty *p1 = cpg_object_get_property (o, "x");
-	CpgProperty *p2 = cpg_object_get_property (o, "y");
+	CdnVariable *p1 = cdn_object_get_variable (o, "x");
+	CdnVariable *p2 = cdn_object_get_variable (o, "y");
 
-	g_assert (CPG_IS_PROPERTY (p1));
-	g_assert (CPG_IS_PROPERTY (p2));
+	g_assert (CDN_IS_VARIABLE (p1));
+	g_assert (CDN_IS_VARIABLE (p2));
 }
 
 static void
 test_apply_multiple_state_override ()
 {
-	CpgObject *t1 = cpg_object_new ("s1");
-	CpgObject *t2 = cpg_object_new ("s2");
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
-	cpg_object_add_property (t2, cpg_property_new ("x", "2", 0), NULL);
+	cdn_object_add_variable (t1,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           0),
+	                         NULL);
 
-	CpgObject *o = cpg_object_new ("o1");
+	cdn_object_add_variable (t2,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("2"),
+	                                           0),
+	                         NULL);
 
-	cpg_object_apply_template (o, t1, &error);
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
+
+	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);
 
-	cpg_object_apply_template (o, t2, &error);
+	cdn_object_apply_template (o, t2, &error);
 	g_assert_no_error (error);
 
-	CpgProperty *p1 = cpg_object_get_property (o, "x");
-	g_assert (CPG_IS_PROPERTY (p1));
+	CdnVariable *p1 = cdn_object_get_variable (o, "x");
+	g_assert (CDN_IS_VARIABLE (p1));
 
-	CpgExpression *e = cpg_property_get_expression (p1);
-	g_assert_cmpstr (cpg_expression_get_as_string (e), ==, "2");
+	CdnExpression *e = cdn_variable_get_expression (p1);
+	g_assert_cmpstr (cdn_expression_get_as_string (e), ==, "2");
 }
 
 static void
 test_unapply_multiple_state_override ()
 {
-	CpgObject *t1 = cpg_object_new ("s1");
-	CpgObject *t2 = cpg_object_new ("s2");
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
 	GError *error = NULL;
 
-	cpg_object_add_property (t1, cpg_property_new ("x", "1", 0), NULL);
-	cpg_object_add_property (t2, cpg_property_new ("x", "2", 0), NULL);
+	cdn_object_add_variable (t1,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("1"),
+	                                           0),
+	                         NULL);
 
-	CpgObject *o = cpg_object_new ("o1");
+	cdn_object_add_variable (t2,
+	                         cdn_variable_new ("x",
+	                                           cdn_expression_new ("2"),
+	                                           0),
+	                         NULL);
 
-	cpg_object_apply_template (o, t1, &error);
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
+
+	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);
 
-	cpg_object_apply_template (o, t2, &error);
+	cdn_object_apply_template (o, t2, &error);
 	g_assert_no_error (error);
 
-	cpg_object_unapply_template (o, t1, &error);
+	cdn_object_unapply_template (o, t1, &error);
 	g_assert_no_error (error);
 
-	CpgProperty *p1 = cpg_object_get_property (o, "x");
-	g_assert (CPG_IS_PROPERTY (p1));
+	CdnVariable *p1 = cdn_object_get_variable (o, "x");
+	g_assert (CDN_IS_VARIABLE (p1));
 
-	CpgExpression *e = cpg_property_get_expression (p1);
-	g_assert_cmpstr (cpg_expression_get_as_string (e), ==, "2");
+	CdnExpression *e = cdn_variable_get_expression (p1);
+	g_assert_cmpstr (cdn_expression_get_as_string (e), ==, "2");
 }
 
 static void
-test_apply_multiple_link ()
+test_apply_multiple_edge ()
 {
-	CpgLink *t1 = cpg_link_new ("l1", NULL, NULL);
-	CpgLink *t2 = cpg_link_new ("l2", NULL, NULL);
+	CdnEdge *t1 = cdn_edge_new ("l1", NULL, NULL);
+	CdnEdge *t2 = cdn_edge_new ("l2", NULL, NULL);
 	GError *error = NULL;
 
-	cpg_link_add_action (t1, cpg_link_action_new ("x", cpg_expression_new ("1")));
-	cpg_link_add_action (t2, cpg_link_action_new ("y", cpg_expression_new ("2")));
+	cdn_edge_add_action (t1, cdn_edge_action_new ("x", cdn_expression_new ("1")));
+	cdn_edge_add_action (t2, cdn_edge_action_new ("y", cdn_expression_new ("2")));
 
-	CpgLink *l = cpg_link_new ("o1", NULL, NULL);
+	CdnEdge *l = cdn_edge_new ("o1", NULL, NULL);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1), &error);
+	cdn_object_apply_template (CDN_OBJECT (l), CDN_OBJECT (t1), &error);
 	g_assert_no_error (error);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2), &error);
+	cdn_object_apply_template (CDN_OBJECT (l), CDN_OBJECT (t2), &error);
 	g_assert_no_error (error);
 
-	CpgLinkAction *a1 = cpg_link_get_action (l, "x");
-	CpgLinkAction *a2 = cpg_link_get_action (l, "y");
+	CdnEdgeAction *a1 = cdn_edge_get_action (l, "x");
+	CdnEdgeAction *a2 = cdn_edge_get_action (l, "y");
 
-	g_assert (CPG_IS_LINK_ACTION (a1));
-	g_assert (CPG_IS_LINK_ACTION (a2));
+	g_assert (CDN_IS_EDGE_ACTION (a1));
+	g_assert (CDN_IS_EDGE_ACTION (a2));
 }
 
 static void
-test_apply_multiple_link_override ()
+test_apply_multiple_edge_override ()
 {
-	CpgLink *t1 = cpg_link_new ("l1", NULL, NULL);
-	CpgLink *t2 = cpg_link_new ("l2", NULL, NULL);
+	CdnEdge *t1 = cdn_edge_new ("l1", NULL, NULL);
+	CdnEdge *t2 = cdn_edge_new ("l2", NULL, NULL);
 	GError *error = NULL;
 
-	cpg_link_add_action (t1, cpg_link_action_new ("x", cpg_expression_new ("1")));
-	cpg_link_add_action (t2, cpg_link_action_new ("x", cpg_expression_new ("2")));
+	cdn_edge_add_action (t1, cdn_edge_action_new ("x", cdn_expression_new ("1")));
+	cdn_edge_add_action (t2, cdn_edge_action_new ("x", cdn_expression_new ("2")));
 
-	CpgLink *l = cpg_link_new ("o1", NULL, NULL);
+	CdnEdge *l = cdn_edge_new ("o1", NULL, NULL);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1), &error);
+	cdn_object_apply_template (CDN_OBJECT (l), CDN_OBJECT (t1), &error);
 	g_assert_no_error (error);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2), &error);
+	cdn_object_apply_template (CDN_OBJECT (l), CDN_OBJECT (t2), &error);
 	g_assert_no_error (error);
 
-	CpgLinkAction *a1 = cpg_link_get_action (l, "x");
-	g_assert (CPG_IS_LINK_ACTION (a1));
+	CdnEdgeAction *a1 = cdn_edge_get_action (l, "x");
+	g_assert (CDN_IS_EDGE_ACTION (a1));
 
-	CpgExpression *e = cpg_link_action_get_equation (a1);
+	CdnExpression *e = cdn_edge_action_get_equation (a1);
 
-	g_assert_cmpstr (cpg_expression_get_as_string (e), ==, "2");
+	g_assert_cmpstr (cdn_expression_get_as_string (e), ==, "2");
 }
 
 static void
-test_unapply_multiple_link_override ()
+test_unapply_multiple_edge_override ()
 {
-	CpgLink *t1 = cpg_link_new ("l1", NULL, NULL);
-	CpgLink *t2 = cpg_link_new ("l2", NULL, NULL);
+	CdnEdge *t1 = cdn_edge_new ("l1", NULL, NULL);
+	CdnEdge *t2 = cdn_edge_new ("l2", NULL, NULL);
 	GError *error = NULL;
 
-	cpg_link_add_action (t1, cpg_link_action_new ("x", cpg_expression_new ("1")));
-	cpg_link_add_action (t2, cpg_link_action_new ("x", cpg_expression_new ("2")));
+	cdn_edge_add_action (t1, cdn_edge_action_new ("x", cdn_expression_new ("1")));
+	cdn_edge_add_action (t2, cdn_edge_action_new ("x", cdn_expression_new ("2")));
 
-	CpgLink *l = cpg_link_new ("o1", NULL, NULL);
+	CdnEdge *l = cdn_edge_new ("o1", NULL, NULL);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t1), &error);
+	cdn_object_apply_template (CDN_OBJECT (l), CDN_OBJECT (t1), &error);
 	g_assert_no_error (error);
 
-	cpg_object_apply_template (CPG_OBJECT (l), CPG_OBJECT (t2), &error);
+	cdn_object_apply_template (CDN_OBJECT (l), CDN_OBJECT (t2), &error);
 	g_assert_no_error (error);
 
-	cpg_object_unapply_template (CPG_OBJECT (l), CPG_OBJECT (t1), &error);
+	cdn_object_unapply_template (CDN_OBJECT (l), CDN_OBJECT (t1), &error);
 	g_assert_no_error (error);
 
-	CpgLinkAction *a1 = cpg_link_get_action (l, "x");
-	g_assert (CPG_IS_LINK_ACTION (a1));
+	CdnEdgeAction *a1 = cdn_edge_get_action (l, "x");
+	g_assert (CDN_IS_EDGE_ACTION (a1));
 
-	CpgExpression *e = cpg_link_action_get_equation (a1);
+	CdnExpression *e = cdn_edge_action_get_equation (a1);
 
-	g_assert_cmpstr (cpg_expression_get_as_string (e), ==, "2");
+	g_assert_cmpstr (cdn_expression_get_as_string (e), ==, "2");
 }
 
 int
@@ -592,29 +604,29 @@ main (int   argc,
 
 	g_test_add_func ("/template/load", test_load);
 	g_test_add_func ("/template/apply_state", test_apply_state);
-	g_test_add_func ("/template/apply_link", test_apply_link);
-	g_test_add_func ("/template/apply_group", test_apply_group);
+	g_test_add_func ("/template/apply_edge", test_apply_edge);
+	g_test_add_func ("/template/apply_node", test_apply_node);
 	g_test_add_func ("/template/apply_overload_state", test_apply_overload_state);
-	g_test_add_func ("/template/apply_overload_link", test_apply_overload_link);
-	g_test_add_func ("/template/apply_overload_group", test_apply_overload_group);
+	g_test_add_func ("/template/apply_overload_edge", test_apply_overload_edge);
+	g_test_add_func ("/template/apply_overload_node", test_apply_overload_node);
 
 	g_test_add_func ("/template/track_modified_state", test_track_modified_state);
-	g_test_add_func ("/template/track_modified_link", test_track_modified_link);
-	/* g_test_add_func ("/templates/track_modified_group", test_track_modified_group); */
+	g_test_add_func ("/template/track_modified_edge", test_track_modified_edge);
+	/* g_test_add_func ("/templates/track_modified_node", test_track_modified_node); */
 
 	g_test_add_func ("/templates/unapply_state", test_unapply_state);
 	g_test_add_func ("/templates/unapply_modified_state", test_unapply_modified_state);
 
-	g_test_add_func ("/templates/unapply_link", test_unapply_link);
-	g_test_add_func ("/templates/unapply_modified_link", test_unapply_modified_link);
+	g_test_add_func ("/templates/unapply_edge", test_unapply_edge);
+	g_test_add_func ("/templates/unapply_modified_edge", test_unapply_modified_edge);
 
 	g_test_add_func ("/templates/apply_multiple_state", test_apply_multiple_state);
 	g_test_add_func ("/templates/apply_multiple_state_override", test_apply_multiple_state_override);
 	g_test_add_func ("/templates/unapply_multiple_state_override", test_unapply_multiple_state_override);
 
-	g_test_add_func ("/templates/apply_multiple_link", test_apply_multiple_link);
-	g_test_add_func ("/templates/apply_multiple_link_override", test_apply_multiple_link_override);
-	g_test_add_func ("/templates/unapply_multiple_link_override", test_unapply_multiple_link_override);
+	g_test_add_func ("/templates/apply_multiple_edge", test_apply_multiple_edge);
+	g_test_add_func ("/templates/apply_multiple_edge_override", test_apply_multiple_edge_override);
+	g_test_add_func ("/templates/unapply_multiple_edge_override", test_unapply_multiple_edge_override);
 
 	g_test_run ();
 

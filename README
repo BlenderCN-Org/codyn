@@ -1,4 +1,4 @@
-libcpg-network is a library to construct and evaluate dynamical systems. It
+libcodyn is a library to construct and evaluate dynamical systems. It
 approaches a dynamical system in an object oriented way where states are kept
 within state container objects, and information is transfered from one state
 container to another using a transfer function.

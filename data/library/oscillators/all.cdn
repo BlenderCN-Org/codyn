@@ -1,0 +1,18 @@
+templates
+{
+    ## Hopf oscillator
+    import "hopf.cdn" as "hopf"
+
+    ## Phase oscillator
+    import "phase.cdn" as "phase"
+
+    ## Matsuoka oscillator
+    import "matsuoka.cdn" as "matsuoka"
+
+    ## AWO oscillator
+    import "awo.cdn" as "awo"
+
+    include "layout/line.cdn"
+}
+
+# vi:ex:ts=4:et

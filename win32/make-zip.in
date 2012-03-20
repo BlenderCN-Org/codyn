@@ -11,8 +11,8 @@ mkdir "$DEST"
 
 (cd ../ && ./mingw-configure --prefix="$DEST" && make && make install) || exit 1
 
-ZIP="$(pwd)/cpg-network-@VERSION@.zip"
-DEVZIP="$(pwd)/cpg-network-dev-@VERSION@.zip"
+ZIP="$(pwd)/codyn-@VERSION@.zip"
+DEVZIP="$(pwd)/codyn-dev-@VERSION@.zip"
 
 curdir="$(pwd)"
 cd "$DEST"
@@ -21,7 +21,7 @@ rm -f "$ZIP"
 rm -f "$DEVZIP"
 
 zip -r "$DEVZIP" include/* lib/*
-zip -r "$ZIP" bin/* share/cpg-network-@CPG_NETWORK_API_VERSION@ share/mime/packages/cpg.xml
+zip -r "$ZIP" bin/* share/codyn-@CODYN_API_VERSION@ share/mime/packages/cdn.xml
 
 cd "$curdir"
 rm -rf "$DEST"

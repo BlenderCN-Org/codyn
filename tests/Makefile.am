@@ -4,10 +4,13 @@ INCLUDES =				\
 	-I$(top_builddir)/tests		\
 	-I$(top_srcdir)/tests		\
 	-I$(top_srcdir)				\
-	$(CPG_NETWORK_CFLAGS)
+	$(CODYN_CFLAGS)
 
-TEST_PROGS = expression network direct import template object group property operator integrator interface
-progs_ldadd = $(top_builddir)/cpg-network/libcpg-network-$(CPG_NETWORK_API_VERSION).la
+TEST_PROGS = expression network direct import template object node variable operator integrator interface
+
+#TEST_PROGS += file
+
+progs_ldadd = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la
 
 noinst_PROGRAMS = $(TEST_PROGS)
 
@@ -29,11 +32,11 @@ template_LDADD = $(progs_ldadd)
 object_SOURCES = object.c utils.h utils.c
 object_LDADD = $(progs_ldadd)
 
-group_SOURCES = group.c utils.h utils.c
-group_LDADD = $(progs_ldadd)
+node_SOURCES = node.c utils.h utils.c
+node_LDADD = $(progs_ldadd)
 
-property_SOURCES = property.c utils.h utils.c
-property_LDADD = $(progs_ldadd)
+variable_SOURCES = variable.c utils.h utils.c
+variable_LDADD = $(progs_ldadd)
 
 operator_SOURCES = operator.c utils.h utils.c
 operator_LDADD = $(progs_ldadd)
@@ -44,14 +47,19 @@ integrator_LDADD = $(progs_ldadd)
 interface_SOURCES = interface.c utils.h utils.c
 interface_LDADD = $(progs_ldadd)
 
+#file_SOURCES = file.c utils.h utils.c
+#file_LDADD = $(progs_ldadd)
+
 TESTS = $(TEST_PROGS)
 
 EXTRA_DIST = \
-	test_import.cpg \
-	test_import_templates.cpg \
-	import.cpg \
-	test_group_integrate_multiple_euler.cpg \
-	test_interface_templates.cpg \
-	test_interface_templates_override_proxy.cpg
+	test_import.cdn \
+	test_import_templates.cdn \
+	import.cdn \
+	test_node_integrate_multiple_euler.cdn \
+	test_interface_templates.cdn \
+	test_interface_templates_override_proxy.cdn \
+	test_input.txt \
+	test_file.cdn
 
 -include $(top_srcdir)/git.mk

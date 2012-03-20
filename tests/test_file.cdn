@@ -1,0 +1,16 @@
+input "i" type "file"
+{
+	settings
+	{
+		path = "test_input.txt"
+	}
+}
+
+input "nointerp" type "file"
+{
+	settings
+	{
+		path = "test_input.txt"
+		interpolate = "false"
+	}
+}

@@ -1,0 +1,47 @@
+import "phase.cdn" as "phase"
+
+## The AWO library contains an oscillator implementing a very simple, first
+## order arbitrary waveform dynamical system. The implementation is simply
+## a feedback/feedforward differential equation on a known function f(x) and
+## its known derivative df(x)/dt.
+##
+## Two extensions to the standard oscillator are also available as the
+## "<i>amplitude</i>" and "<i>offset</i>" templates. You can apply one of these
+## templates, or both, to add direct amplitude and offset control on the
+## oscillator.
+templates
+{
+  ## Arbitrary Waveform Oscillator (AWO)
+  ##
+  ## This 'oscillator' implements a very simple feedforward/feedback dynamical
+  ## system on a known function f(x) and its known derivative df(x)/dt
+  ##
+  ## $\dot{\theta} = \omega
+  ## $\dot{r} = \gamma (f(\theta) - x) + \dot{f}(\theta) \dot{\theta}
+  ##
+  node "oscillator" : "phase" . "oscillator"
+  {
+    ## The function to capture as a dynamical system. Note that this function
+    ## should be differentiable.
+    g(φ) = "1"
+
+    ## Feedback term of dynamical system (see ṙ)
+    feedback = "γ ∙ (target_amplitude ∙ g(φ) - r)"
+
+    ## Feedforward term of dynamical system (see ṙ)
+    feedforward = "target_amplitude ∙ ġ(φ)"
+
+    [self] edge
+    {
+      ## Amplitude state
+      r <= "feedback + feedforward"
+    }
+
+    ## Output variable
+    "output" = "r"
+
+    γForRelConv(τ, α, δ) = "ln(α / δ) / -τ"
+  }
+}
+
+# vi:ex:ts=2:et

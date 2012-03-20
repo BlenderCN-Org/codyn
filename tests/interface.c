@@ -1,39 +1,37 @@
-#include <cpg-network/cpg-network.h>
-#include <cpg-network/cpg-expression.h>
-#include <cpg-network/cpg-object.h>
+#include <codyn/codyn.h>
+#include <codyn/cdn-expression.h>
+#include <codyn/cdn-object.h>
 
 #include "utils.h"
 
 static gchar simple_xml[] = ""
-"<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-"<cpg>\n"
-"  <network>\n"
-"    <group id=\"state\">\n"
-"      <interface>\n"
-"        <property name=\"c1_x\" child=\"c1\">x</property>\n"
-"      </interface>\n"
-"      <state id=\"c1\">\n"
-"        <property name=\"x\">1</property>\n"
-"      </state>\n"
-"    </group>\n"
-"  </network>\n"
-"</cpg>\n";
+"node \"state\"\n"
+"{\n"
+"  interface\n"
+"  {\n"
+"    c1_x = x in c1\n"
+"  }\n"
+"  node \"c1\"\n"
+"  {\n"
+"    x = 1\n"
+"  }\n"
+"}\n";
 
 static void
 test_load ()
 {
-	CpgNetwork *network;
-	CpgProperty *property;
+	CdnNetwork *network;
+	CdnVariable *variable;
 
 	network = test_load_network (simple_xml,
-	                             CPG_PATH_OBJECT, "state.c1",
-	                             CPG_PATH_PROPERTY, "state.c1.x",
-	                             CPG_PATH_PROPERTY, "state.c1_x",
+	                             CDN_PATH_OBJECT, "state.c1",
+	                             CDN_PATH_PROPERTY, "state.c1.x",
+	                             CDN_PATH_PROPERTY, "state.c1_x",
 	                             NULL);
 
-	property = cpg_group_find_property (CPG_GROUP (network), "state.c1_x");
+	variable = cdn_node_find_variable (CDN_NODE (network), "state.c1_x");
 
-	cpg_assert_tol (cpg_property_get_value (property), 1);
+	cdn_assert_tol (cdn_variable_get_value (variable), 1);
 
 	g_object_unref (network);
 }
@@ -41,15 +39,15 @@ test_load ()
 static void
 test_templates ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 
-	network = test_load_network_from_path ("test_interface_templates.cpg",
-	                                       CPG_PATH_OBJECT, "state.c1",
-	                                       CPG_PATH_OBJECT, "state.c2",
-	                                       CPG_PATH_PROPERTY, "state.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state.c2.p2",
-	                                       CPG_PATH_PROPERTY, "state.c1_p1",
-	                                       CPG_PATH_PROPERTY, "state.c2_p2",
+	network = test_load_network_from_path ("test_interface_templates.cdn",
+	                                       CDN_PATH_OBJECT, "state.c1",
+	                                       CDN_PATH_OBJECT, "state.c2",
+	                                       CDN_PATH_PROPERTY, "state.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state.c2.p2",
+	                                       CDN_PATH_PROPERTY, "state.c1_p1",
+	                                       CDN_PATH_PROPERTY, "state.c2_p2",
 	                                       NULL);
 
 	g_object_unref (network);
@@ -58,28 +56,28 @@ test_templates ()
 static void
 test_templates_overrides ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 
-	network = test_load_network_from_path ("test_interface_templates.cpg",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c1",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c3.p3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1_p1",
+	network = test_load_network_from_path ("test_interface_templates.cdn",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c1",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c3.p3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1_p1",
 	                                       NULL);
 
-	CpgGroup *group;
-	CpgProperty *prop;
+	CdnNode *node;
+	CdnVariable *prop;
 
-	group = CPG_GROUP (cpg_group_get_child (CPG_GROUP (network), "state_override_interface"));
+	node = CDN_NODE (cdn_node_get_child (CDN_NODE (network), "state_override_interface"));
 
-	g_assert (group);
+	g_assert (node);
 
-	prop = cpg_object_get_property (CPG_OBJECT (group), "c1_p1");
+	prop = cdn_object_get_variable (CDN_OBJECT (node), "c1_p1");
 
 	g_assert (prop);
 
-	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p3");
+	g_assert_cmpstr (cdn_variable_get_name (prop), ==, "p3");
 
 	g_object_unref (network);
 }
@@ -87,36 +85,36 @@ test_templates_overrides ()
 static void
 test_templates_overrides_remove_uninherited ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 	GError *error = NULL;
 
-	network = test_load_network_from_path ("test_interface_templates.cpg",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c1",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c3.p3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1_p1",
+	network = test_load_network_from_path ("test_interface_templates.cdn",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c1",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c3.p3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1_p1",
 	                                       NULL);
 
-	CpgGroup *group;
-	CpgProperty *prop;
+	CdnNode *node;
+	CdnVariable *prop;
 
-	group = CPG_GROUP (cpg_group_get_child (CPG_GROUP (network), "state_override_interface"));
+	node = CDN_NODE (cdn_node_get_child (CDN_NODE (network), "state_override_interface"));
 
-	g_assert (group);
+	g_assert (node);
 
-	cpg_object_unapply_template (CPG_OBJECT (group),
-	                             cpg_group_get_child (cpg_network_get_template_group (network),
+	cdn_object_unapply_template (CDN_OBJECT (node),
+	                             cdn_node_get_child (cdn_network_get_template_node (network),
 	                                                  "t1"),
 	                             &error);
 
 	g_assert_no_error (error);
 
-	prop = cpg_object_get_property (CPG_OBJECT (group), "c1_p1");
+	prop = cdn_object_get_variable (CDN_OBJECT (node), "c1_p1");
 
 	g_assert (prop);
 
-	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p3");
+	g_assert_cmpstr (cdn_variable_get_name (prop), ==, "p3");
 
 	g_object_unref (network);
 }
@@ -124,36 +122,36 @@ test_templates_overrides_remove_uninherited ()
 static void
 test_templates_overrides_remove_inherited ()
 {
-	CpgNetwork *network;
+	CdnNetwork *network;
 	GError *error = NULL;
 
-	network = test_load_network_from_path ("test_interface_templates.cpg",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c1",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c3.p3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1_p1",
+	network = test_load_network_from_path ("test_interface_templates.cdn",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c1",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c3.p3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1_p1",
 	                                       NULL);
 
-	CpgGroup *group;
-	CpgProperty *prop;
+	CdnNode *node;
+	CdnVariable *prop;
 
-	group = CPG_GROUP (cpg_group_get_child (CPG_GROUP (network), "state_override_interface"));
+	node = CDN_NODE (cdn_node_get_child (CDN_NODE (network), "state_override_interface"));
 
-	g_assert (group);
+	g_assert (node);
 
-	cpg_object_unapply_template (CPG_OBJECT (group),
-	                             cpg_group_get_child (cpg_network_get_template_group (network),
+	cdn_object_unapply_template (CDN_OBJECT (node),
+	                             cdn_node_get_child (cdn_network_get_template_node (network),
 	                                                  "t3"),
 	                             &error);
 
 	g_assert_no_error (error);
 
-	prop = cpg_object_get_property (CPG_OBJECT (group), "c1_p1");
+	prop = cdn_object_get_variable (CDN_OBJECT (node), "c1_p1");
 
 	g_assert (prop);
 
-	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p1");
+	g_assert_cmpstr (cdn_variable_get_name (prop), ==, "p1");
 
 	g_object_unref (network);
 }
@@ -161,39 +159,39 @@ test_templates_overrides_remove_inherited ()
 static void
 test_templates_overrides_add_inherited ()
 {
-	CpgNetwork *network;
-	CpgProperty *prop;
+	CdnNetwork *network;
+	CdnVariable *prop;
 
-	network = test_load_network_from_path ("test_interface_templates.cpg",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c1",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c3.p3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1_p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.cc_p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.cc_p3",
+	network = test_load_network_from_path ("test_interface_templates.cdn",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c1",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c3.p3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1_p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.cc_p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.cc_p3",
 	                                       NULL);
 
-	CpgGroup *group;
-	CpgPropertyInterface *iface;
-	CpgGroup *state;
+	CdnNode *node;
+	CdnVariableInterface *iface;
+	CdnNode *state;
 
-	group = CPG_GROUP (cpg_group_get_child (cpg_network_get_template_group (network), "t1"));
-	state = CPG_GROUP (cpg_group_get_child (CPG_GROUP (network), "state_override_interface"));
+	node = CDN_NODE (cdn_node_get_child (cdn_network_get_template_node (network), "t1"));
+	state = CDN_NODE (cdn_node_get_child (CDN_NODE (network), "state_override_interface"));
 
-	iface = cpg_group_get_property_interface (group);
+	iface = cdn_node_get_variable_interface (node);
 
-	prop = cpg_object_get_property (CPG_OBJECT (state), "cc_p3");
-
-	g_assert (prop);
-	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p3");
-
-	cpg_property_interface_add (iface, "cc_p3", "c1", "p1", NULL);
-
-	prop = cpg_object_get_property (CPG_OBJECT (state), "cc_p3");
+	prop = cdn_object_get_variable (CDN_OBJECT (state), "cc_p3");
 
 	g_assert (prop);
-	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p3");
+	g_assert_cmpstr (cdn_variable_get_name (prop), ==, "p3");
+
+	cdn_variable_interface_add (iface, "cc_p3", "c1", "p1", NULL);
+
+	prop = cdn_object_get_variable (CDN_OBJECT (state), "cc_p3");
+
+	g_assert (prop);
+	g_assert_cmpstr (cdn_variable_get_name (prop), ==, "p3");
 
 	g_object_unref (network);
 }
@@ -201,39 +199,39 @@ test_templates_overrides_add_inherited ()
 static void
 test_templates_overrides_add_uninherited ()
 {
-	CpgNetwork *network;
-	CpgProperty *prop;
+	CdnNetwork *network;
+	CdnVariable *prop;
 
-	network = test_load_network_from_path ("test_interface_templates.cpg",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c1",
-	                                       CPG_PATH_OBJECT, "state_override_interface.c3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c3.p3",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.c1_p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.cc_p1",
-	                                       CPG_PATH_PROPERTY, "state_override_interface.cc_p3",
+	network = test_load_network_from_path ("test_interface_templates.cdn",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c1",
+	                                       CDN_PATH_OBJECT, "state_override_interface.c3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c3.p3",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.c1_p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.cc_p1",
+	                                       CDN_PATH_PROPERTY, "state_override_interface.cc_p3",
 	                                       NULL);
 
-	CpgGroup *group;
-	CpgPropertyInterface *iface;
-	CpgGroup *state;
+	CdnNode *node;
+	CdnVariableInterface *iface;
+	CdnNode *state;
 
-	group = CPG_GROUP (cpg_group_get_child (cpg_network_get_template_group (network), "t3"));
-	state = CPG_GROUP (cpg_group_get_child (CPG_GROUP (network), "state_override_interface"));
+	node = CDN_NODE (cdn_node_get_child (cdn_network_get_template_node (network), "t3"));
+	state = CDN_NODE (cdn_node_get_child (CDN_NODE (network), "state_override_interface"));
 
-	iface = cpg_group_get_property_interface (group);
+	iface = cdn_node_get_variable_interface (node);
 
-	prop = cpg_object_get_property (CPG_OBJECT (state), "cc_p1");
-
-	g_assert (prop);
-	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p1");
-
-	cpg_property_interface_add (iface, "cc_p1", "c3", "p3", NULL);
-
-	prop = cpg_object_get_property (CPG_OBJECT (state), "cc_p1");
+	prop = cdn_object_get_variable (CDN_OBJECT (state), "cc_p1");
 
 	g_assert (prop);
-	g_assert_cmpstr (cpg_property_get_name (prop), ==, "p3");
+	g_assert_cmpstr (cdn_variable_get_name (prop), ==, "p1");
+
+	cdn_variable_interface_add (iface, "cc_p1", "c3", "p3", NULL);
+
+	prop = cdn_object_get_variable (CDN_OBJECT (state), "cc_p1");
+
+	g_assert (prop);
+	g_assert_cmpstr (cdn_variable_get_name (prop), ==, "p3");
 
 	g_object_unref (network);
 }
@@ -241,24 +239,24 @@ test_templates_overrides_add_uninherited ()
 static void
 test_templates_overrides_proxy ()
 {
-	CpgNetwork *network;
-	CpgProperty *p1;
-	CpgProperty *p2;
+	CdnNetwork *network;
+	CdnVariable *p1;
+	CdnVariable *p2;
 
-	network = test_load_network_from_path ("test_interface_templates_override_proxy.cpg",
-	                                       CPG_PATH_OBJECT, "state.c1",
-	                                       CPG_PATH_OBJECT, "state.c2",
-	                                       CPG_PATH_PROPERTY, "state.p1",
-	                                       CPG_PATH_PROPERTY, "state.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state.c2.p2",
+	network = test_load_network_from_path ("test_interface_templates_override_proxy.cdn",
+	                                       CDN_PATH_OBJECT, "state.c1",
+	                                       CDN_PATH_OBJECT, "state.c2",
+	                                       CDN_PATH_PROPERTY, "state.p1",
+	                                       CDN_PATH_PROPERTY, "state.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state.c2.p2",
 	                                       NULL);
 
-	p1 = cpg_group_find_property (CPG_GROUP (network), "state.p1");
+	p1 = cdn_node_find_variable (CDN_NODE (network), "state.p1");
 
 	g_assert (p1);
 
 	/* The prop should be from c1 because it comes from the proxy */
-	p2 = cpg_group_find_property (CPG_GROUP (network), "state.c1.p1");
+	p2 = cdn_node_find_variable (CDN_NODE (network), "state.c1.p1");
 
 	g_assert (p2);
 	g_assert (p1 == p2);
@@ -269,41 +267,41 @@ test_templates_overrides_proxy ()
 static void
 test_templates_overrides_proxy_unapply ()
 {
-	CpgNetwork *network;
-	CpgGroup *templates;
-	CpgObject *temp;
+	CdnNetwork *network;
+	CdnNode *templates;
+	CdnObject *temp;
 	GError *error = NULL;
-	CpgObject *object;
-	CpgProperty *property;
+	CdnObject *object;
+	CdnVariable *variable;
 
-	network = test_load_network_from_path ("test_interface_templates_override_proxy.cpg",
-	                                       CPG_PATH_OBJECT, "state.c1",
-	                                       CPG_PATH_OBJECT, "state.c2",
-	                                       CPG_PATH_PROPERTY, "state.p1",
-	                                       CPG_PATH_PROPERTY, "state.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state.c2.p2",
+	network = test_load_network_from_path ("test_interface_templates_override_proxy.cdn",
+	                                       CDN_PATH_OBJECT, "state.c1",
+	                                       CDN_PATH_OBJECT, "state.c2",
+	                                       CDN_PATH_PROPERTY, "state.p1",
+	                                       CDN_PATH_PROPERTY, "state.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state.c2.p2",
 	                                       NULL);
 
-	templates = cpg_network_get_template_group (network);
-	temp = cpg_group_find_object (templates, "t2");
+	templates = cdn_network_get_template_node (network);
+	temp = cdn_node_find_object (templates, "t2");
 
 	g_assert (temp);
 
-	object = cpg_group_find_object (CPG_GROUP (network), "state");
+	object = cdn_node_find_object (CDN_NODE (network), "state");
 	g_assert (object);
 
-	property = cpg_group_find_property (CPG_GROUP (network), "state.p1");
-	g_assert (property);
-	g_assert_cmpstr (cpg_property_get_name (property), ==, "p1");
+	variable = cdn_node_find_variable (CDN_NODE (network), "state.p1");
+	g_assert (variable);
+	g_assert_cmpstr (cdn_variable_get_name (variable), ==, "p1");
 
-	cpg_object_unapply_template (object, temp, &error);
+	cdn_object_unapply_template (object, temp, &error);
 	g_assert_no_error (error);
 
 	/* Interface from proxy should still be there */
-	property = cpg_group_find_property (CPG_GROUP (network), "state.p1");
-	g_assert (property);
+	variable = cdn_node_find_variable (CDN_NODE (network), "state.p1");
+	g_assert (variable);
 
-	g_assert_cmpstr (cpg_property_get_name (property), ==, "p1");
+	g_assert_cmpstr (cdn_variable_get_name (variable), ==, "p1");
 
 	g_object_unref (network);
 }
@@ -311,37 +309,37 @@ test_templates_overrides_proxy_unapply ()
 static void
 test_templates_overrides_proxy_unapply_re_add ()
 {
-	CpgNetwork *network;
-	CpgGroup *templates;
-	CpgObject *temp;
+	CdnNetwork *network;
+	CdnNode *templates;
+	CdnObject *temp;
 	GError *error = NULL;
-	CpgObject *object;
-	CpgProperty *property;
+	CdnObject *object;
+	CdnVariable *variable;
 
-	network = test_load_network_from_path ("test_interface_templates_override_proxy.cpg",
-	                                       CPG_PATH_OBJECT, "state.c1",
-	                                       CPG_PATH_OBJECT, "state.c2",
-	                                       CPG_PATH_PROPERTY, "state.p1",
-	                                       CPG_PATH_PROPERTY, "state.c1.p1",
-	                                       CPG_PATH_PROPERTY, "state.c2.p2",
+	network = test_load_network_from_path ("test_interface_templates_override_proxy.cdn",
+	                                       CDN_PATH_OBJECT, "state.c1",
+	                                       CDN_PATH_OBJECT, "state.c2",
+	                                       CDN_PATH_PROPERTY, "state.p1",
+	                                       CDN_PATH_PROPERTY, "state.c1.p1",
+	                                       CDN_PATH_PROPERTY, "state.c2.p2",
 	                                       NULL);
 
-	templates = cpg_network_get_template_group (network);
-	temp = cpg_group_find_object (templates, "t1");
+	templates = cdn_network_get_template_node (network);
+	temp = cdn_node_find_object (templates, "t1");
 
 	g_assert (temp);
 
-	object = cpg_group_find_object (CPG_GROUP (network), "state");
+	object = cdn_node_find_object (CDN_NODE (network), "state");
 	g_assert (object);
 
-	cpg_object_unapply_template (object, temp, &error);
+	cdn_object_unapply_template (object, temp, &error);
 	g_assert_no_error (error);
 
 	/* Interface should now come from t2 */
-	property = cpg_group_find_property (CPG_GROUP (network), "state.p1");
-	g_assert (property);
+	variable = cdn_node_find_variable (CDN_NODE (network), "state.p1");
+	g_assert (variable);
 
-	g_assert_cmpstr (cpg_property_get_name (property), ==, "p2");
+	g_assert_cmpstr (cdn_variable_get_name (variable), ==, "p2");
 
 	g_object_unref (network);
 }

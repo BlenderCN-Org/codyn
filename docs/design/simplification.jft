@@ -1,0 +1,122 @@
+% {{title:Canonicalization and Simplification}}
+This document describes the design of the canonicalization and simplification
+process for mathematical expressions in Codyn.
+
+% Representation and terminology and notation
+Mathematical expressions are represented as trees. Each node of the tree has
+N child nodes (the arguments to the operation). Terminal nodes (which have no
+children) in Codyn are: '''Number''' and '''Property'''. In addition to
+terminal nodes, there are unary, binary and ternary builtin operators and
+functions. Finally, there are a few functions which have an arbitrary number of
+children (such as min, max or sqsum). Mathematical trees will be represented in
+this document as: op(arg1)(arg2).
+
+% Canonicalization
+Canonicalization is the process of writing a mathematical expression in it's
+'''canonical''' or '''normal''' form. This transformation is such that two
+mathematical expressions which are symbolically equivalent will be equivalent
+when compared instruction by instruction. As an example, $a * b$ and $b * a$
+are equivalent, but when compared instruction by instruction, would not be
+considered to be equal. Note that either form could be considered to be
+the canonical form (as per definition).
+
+%% Custom functions and custom operators
+Custom functions and operators (when possible) are expanded in the canonical
+form of a mathematical expression.
+
+%% Minus and unary operators
+The minus and unary minus operators are rewritten in canonical form as plus and
+multiply operators. As an example, the expression $a - b$ in canonical form is
+$a + -1 * b$. Although this might seem cumbersome, it will make the rules for
+simplification of expressions easier since we need to consider less operators.
+
+%% Factorized expressions
+Factorized expressions are fully expanded in canonical form. For example, the
+expression $a * (b + c)$ in its canonical form is $a * b + a * c$.
+
+%% Commutativity
+The operators $+$ and $*$ are commutative, meaning that
+$a \mbox{~op~} b = b \mbox{~op~} a$. In canonical form, we reorganize trees of
+commutative operators such that they are equivalent. In Codyn, a canonical tree
+is a right hand side, unbalanced tree. To illustrate what this means, take the
+following expression: $(d * c) * (b * a)$. This expression is represented in a
+tree structure as: $* (* (d)(c)) (* ((b)(a))$. In canonical form however, this
+tree looks like: $*(a)(*(b)(*(c)(d)))$. As can be seen in the example, the terms
+of the tree are sorted (see section {{ref:sec:Sorting Rules}}). The reorganization
+allows the later simplification process to assume that for every commutative
+tree (plus and multiply), the left hand side is a term and the right hand side
+is either the continuation of the tree, or a term (which is the end of the
+tree).
+
+%% Sorting Rules
+The sorting rules for commutative operator terms are as follows:
+
+	1) Numbers (by value)
+	2) Constants (by value)
+	3) Properties (by name)
+	4) Operators (by id)
+	5) Functions (by id) (cos and sin last)
+
+Note that by sorting, some rules for simplification are also more efficient
+(like premultiplying numbers, since they always appear in order).
+
+% Simplification
+The simplification process works on an expression in canonical form. This
+sections lists the different simplification rules and their application.
+Simplification is implemented in a bottom-up (or inner-first) manner.
+
+%% Static values
+Static values are precomputed during simplification. This means that any
+function or operator which has only numerical arguments, is precomputed.
+
+%% Multiplication
+There are two simple rules that eliminate a multiplication operation:
+
+	1) $0 * a$ = 0
+	2) $1 * a$ = a
+
+%% Addition
+There is one simple rule that eliminates an addition operation:
+	1) $0 + a$ = a
+
+%% Division
+There are two simple rules that eliminate a division operation:
+
+	1) $0 / a$ = 0
+	2) $a / 1$ = 1
+
+%% Pythagorean trigonometric identity
+There is an important identity which can greatly simplify equations, in
+particular in classical mechanics.
+
+	1) $cos(a)^2 + sin(a)^2 = 1$
+
+%% Factorization
+Factorization is an important simplification rule that can greatly simplify
+complex expressions. Factorization is also used to eliminate
+expressions such as $a - a = a + -1 * a = a * (1 + -1) = 0 * a = 0$ and
+$a^n * a^{-n} = a^{n + -n} = a^0 = 1$.
+
+%% Simplification process
+	1) Canonical form: The first step of simplification is to ensure the
+	   expression is in the canonical form. Further simplification rules
+	   are based on the assumption that the expression is in canonical form
+	   as described in section {{ref:sec:Canonicalization}}.
+	2) The '''Static Value''', '''Addition''', '''Multiplication''' and
+	   '''Division''' rules are applied bottom-up. Note that these
+	   simplifications use '''Number''' terminals and that '''Number'''
+	   terminals are always appear at the LHS of an operator, due to
+	   the canonical form. Using this assumption, and by applying the
+	   rules bottom up, we end up with a simplified canonical form where
+	   operations on '''Number''' terminals are precomputed.
+	3) N * cos(p) * cos(p) and N * sin(p) * sin(p) terms are identified in
+	   each of the terms in the addition tree. Note that due to the
+	   canonical form, cos and sin terms are always sorted at the end of
+	   the tree. When found, these terms are rewritten as N (using the
+	   pythagorean trigonometric identity).
+	4) The 4th step involves factorization of common terms. Common terms
+	   can be found in any subtree of the multiplication tree (term of the
+	   addition tree). When found, subtrees are factored out and the
+	   remaining term is again subject to value simplifications (step 2)
+	5) The last step factors out multiplication terms to powers
+

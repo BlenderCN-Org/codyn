@@ -1,0 +1,466 @@
+/*
+ * cdn-stack.c
+ * This file is part of codyn
+ *
+ * Copyright (C) 2011 - Jesse van den Kieboom
+ *
+ * codyn is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * codyn is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with codyn; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, 
+ * Boston, MA  02110-1301  USA
+ */
+
+#include "cdn-stack-private.h"
+#include <string.h>
+
+GType
+cdn_stack_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStack",
+		                                      (GBoxedCopyFunc)cdn_stack_copy,
+		                                      (GBoxedFreeFunc)cdn_stack_free);
+	}
+
+	return gtype;
+}
+
+static CdnStackManipulation *
+cdn_stack_manipulation_copy (CdnStackManipulation *smanip)
+{
+	CdnStackManipulation *s;
+
+	s = g_slice_new0 (CdnStackManipulation);
+	s->num_pop = smanip->num_pop;
+	s->num_push = smanip->num_push;
+
+	if (smanip->pop_dims)
+	{
+		s->pop_dims = g_new (gint, smanip->num_pop);
+
+		memcpy (s->pop_dims,
+		        smanip->pop_dims,
+		        sizeof (gint) * smanip->num_pop);
+	}
+
+	if (smanip->push_dims)
+	{
+		s->push_dims = g_new (gint, smanip->num_push);
+
+		memcpy (s->push_dims,
+		        smanip->push_dims,
+		        sizeof (gint) * smanip->num_push);
+	}
+
+	return s;
+}
+
+static void
+cdn_stack_manipulation_free (CdnStackManipulation *smanip)
+{
+	g_free (smanip->pop_dims);
+	g_free (smanip->push_dims);
+
+	g_slice_free (CdnStackManipulation, smanip);
+}
+
+GType
+cdn_stack_manipulation_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStackManipulation",
+		                                      (GBoxedCopyFunc)cdn_stack_manipulation_copy,
+		                                      (GBoxedFreeFunc)cdn_stack_manipulation_free);
+	}
+
+	return gtype;
+}
+
+/**
+ * SECTION:cdn-stack
+ * @short_description: Simple stack
+ *
+ * Very simple/efficient stack implementation for double numbers.
+ *
+ */
+
+/**
+ * cdn_stack_init:
+ * @stack: A #CdnStack
+ * @size: the stack size
+ *
+ * Initialize the stack to a certain size (useful when a stack is allocated
+ * statically).
+ *
+ **/
+void
+cdn_stack_init (CdnStack  *stack,
+                guint      size)
+{
+	stack->size = size;
+
+	if (size)
+	{
+		stack->output = g_new (gdouble, size);
+	}
+	else
+	{
+		stack->output = NULL;
+	}
+
+	stack->output_ptr = stack->output;
+}
+
+/**
+ * cdn_stack_new:
+ * @size: the stack size
+ *
+ * Create a new stack with the given size.
+ *
+ * Returns: A #CdnStack
+ *
+ **/
+CdnStack *
+cdn_stack_new (guint size)
+{
+	CdnStack *ret = g_slice_new (CdnStack);
+	cdn_stack_init (ret, size);
+
+	return ret;
+}
+
+/**
+ * cdn_stack_copy:
+ * @stack: A #CdnStack
+ *
+ * Create a copy of the stack.
+ *
+ * Returns: A #CdnStack
+ *
+ **/
+CdnStack *
+cdn_stack_copy (CdnStack *stack)
+{
+	CdnStack *ret = g_slice_new (CdnStack);
+	cdn_stack_init (ret, stack->size);
+
+	memcpy (ret->output,
+	        stack->output,
+	        sizeof (gdouble) * stack->size);
+
+	ret->output_ptr = ret->output + (stack->output_ptr - stack->output);
+
+	return ret;
+}
+
+void
+cdn_stack_resize (CdnStack *stack,
+                  guint     size)
+{
+	if (size != stack->size)
+	{
+		stack->output = g_renew (gdouble, stack->output, size);
+		stack->size = size;
+	}
+
+	cdn_stack_reset (stack);
+}
+
+/**
+ * cdn_stack_destroy:
+ * @stack: A #CdnStack
+ *
+ * Destroy the stack. This resizes the stack to 0. To free the whole stack, use
+ * @cdn_stack_free.
+ *
+ **/
+void
+cdn_stack_destroy (CdnStack *stack)
+{
+	g_free (stack->output);
+
+	stack->output = NULL;
+	stack->output_ptr = NULL;
+	stack->size = 0;
+}
+
+/**
+ * cdn_stack_free:
+ * @stack: A #CdnStack
+ *
+ * Free the stack.
+ *
+ **/
+void
+cdn_stack_free (CdnStack *stack)
+{
+	cdn_stack_destroy (stack);
+	g_slice_free (CdnStack, stack);
+}
+
+/**
+ * cdn_stack_size:
+ * @stack: A #CdnStack
+ *
+ * Get the size of the stack. This is the maximum number of items that the
+ * stack can hold. Use #cdn_stack_count to get the number of items currently
+ * on the stack
+ *
+ * Returns: the stack size
+ *
+ **/
+guint
+cdn_stack_size (CdnStack *stack)
+{
+	return stack->size;
+}
+
+/**
+ * cdn_stack_count:
+ * @stack: A #CdnStack
+ *
+ * Count the number of items on the stack.
+ *
+ * Returns: the number of items on the stack
+ *
+ **/
+guint
+cdn_stack_count (CdnStack *stack)
+{
+	return stack->output_ptr >= stack->output ? stack->output_ptr - stack->output : 0;
+}
+
+/**
+ * cdn_stack_push:
+ * @stack: A #CdnStack
+ * @value: the value
+ *
+ * Push a value on the stack. The stack will not be automatically resized, thus
+ * be sure to know that you are not exceeding the stack size.
+ *
+ **/
+void
+cdn_stack_push (CdnStack  *stack,
+                gdouble    value)
+{
+	*(stack->output_ptr++) = value;
+}
+
+/**
+ * cdn_stack_pop:
+ * @stack: A #CdnStack
+ *
+ * Pop a value of the stack. Note: this function does not check whether there
+ * are still values on the stack, be sure to either know, or check the stack
+ * yourself.
+ *
+ * Returns: the last value on the stack
+ *
+ **/
+gdouble
+cdn_stack_pop (CdnStack *stack)
+{
+	return *(--stack->output_ptr);
+}
+
+gdouble *
+cdn_stack_popn (CdnStack *stack,
+                gint      num)
+{
+	stack->output_ptr -= num;
+	return stack->output_ptr;
+}
+
+/**
+ * cdn_stack_at:
+ * @stack: A #CdnStack
+ * @idx: The index
+ *
+ * Get a value from the stack at the specified index @idx.
+ *
+ * Returns: The stack value at index @idx
+ *
+ **/
+gdouble
+cdn_stack_at (CdnStack *stack,
+              gint      idx)
+{
+	return stack->output[idx];
+}
+
+gdouble
+cdn_stack_peek (CdnStack *stack)
+{
+	return *(stack->output_ptr - 1);
+}
+
+void
+cdn_stack_set (CdnStack *stack,
+               gdouble   value)
+{
+	*(stack->output_ptr - 1) = value;
+}
+
+/**
+ * cdn_stack_reset:
+ * @stack: A #CdnStack
+ *
+ * Reset the stack.
+ *
+ **/
+void
+cdn_stack_reset (CdnStack *stack)
+{
+	stack->output_ptr = stack->output;
+}
+
+void
+cdn_stack_set_at (CdnStack *stack,
+                  gint      idx,
+                  gdouble   value)
+{
+	stack->output[idx] = value;
+}
+
+gdouble *
+cdn_stack_ptr (CdnStack *stack)
+{
+	return stack->output;
+}
+
+gdouble *
+cdn_stack_output_ptr (CdnStack *stack)
+{
+	return stack->output_ptr;
+}
+
+void
+cdn_stack_set_output_ptr (CdnStack *stack,
+                          gdouble  *ptr)
+{
+	if (ptr >= stack->output &&
+	    ptr < stack->output + stack->size)
+	{
+		stack->output_ptr = ptr;
+	}
+}
+
+void
+cdn_stack_pushn (CdnStack      *stack,
+                 gdouble const *values,
+                 gint           num)
+{
+	memcpy (stack->output_ptr, values, sizeof (gdouble) * num);
+	stack->output_ptr += num;
+}
+
+void
+cdn_stack_pushni (CdnStack *stack,
+                  gdouble   value,
+                  gint      num)
+{
+	while (num-- > 0)
+	{
+		*stack->output_ptr++ = value;
+	}
+}
+
+/**
+ * cdn_stack_manipulation_get_pop_dimension:
+ * @smanip: a #CdnStackManipulation.
+ * @n: the popped argument index.
+ * @numr: (out): return value for the number of rows.
+ * @numc: (out): return value for the number of columns.
+ *
+ * Get the dimension of a particular popped argument.
+ *
+ **/
+void
+cdn_stack_manipulation_get_pop_dimension (CdnStackManipulation const *smanip,
+                                          gint                        n,
+                                          gint                       *numr,
+                                          gint                       *numc)
+{
+	if (!smanip || !smanip->pop_dims)
+	{
+		if (numr)
+		{
+			*numr = 1;
+		}
+
+		if (numc)
+		{
+			*numc = 1;
+		}
+	}
+	else
+	{
+		if (numr)
+		{
+			*numr = smanip->pop_dims[n * 2];
+		}
+
+		if (numc)
+		{
+			*numc = smanip->pop_dims[n * 2 + 1];
+		}
+	}
+}
+
+/**
+ * cdn_stack_manipulation_get_push_dimension:
+ * @smanip: a #CdnStackManipulation.
+ * @n: the popped argument index.
+ * @numr: (out): return value for the number of rows.
+ * @numc: (out): return value for the number of columns.
+ *
+ * Get the dimension of a particular pushed argument.
+ *
+ **/
+void
+cdn_stack_manipulation_get_push_dimension (CdnStackManipulation const *smanip,
+                                           gint                        n,
+                                           gint                       *numr,
+                                           gint                       *numc)
+{
+	if (!smanip || !smanip->push_dims)
+	{
+		if (numr)
+		{
+			*numr = 1;
+		}
+
+		if (numc)
+		{
+			*numc = 1;
+		}
+	}
+	else
+	{
+		if (numr)
+		{
+			*numr = smanip->push_dims[n * 2];
+		}
+
+		if (numc)
+		{
+			*numc = smanip->push_dims[n * 2 + 1];
+		}
+	}
+}

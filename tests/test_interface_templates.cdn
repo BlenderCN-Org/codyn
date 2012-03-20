@@ -1,0 +1,53 @@
+templates
+{
+  node "t1"
+  {
+    interface
+    {
+      c1_p1 = p1 in c1
+      cc_p1 = p1 in c1
+    }
+
+    node "c1"
+    {
+      p1 = 0
+    }
+  }
+
+  node "t2"
+  {
+    interface
+    {
+      c2_p2 = p2 in c2
+    }
+
+    node "c2"
+    {
+      p2 = 0
+    }
+  }
+
+  node "t3"
+  {
+    interface
+    {
+      c1_p1 = p3 in c3
+      cc_p3 = p3 in c3
+    }
+
+    node "c3"
+    {
+      p3 = 0
+    }
+  }
+}
+
+node "state" : "t1", "t2"
+{
+}
+
+node "state_override_interface" : "t1", "t3"
+{
+}
+
+# vi:ex:ts=2:et
