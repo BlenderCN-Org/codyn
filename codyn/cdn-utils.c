@@ -312,8 +312,12 @@ string_to_char (gchar const  *s,
 	}
 
 	g_value_init (value, G_TYPE_CHAR);
-	g_value_set_char (value, *s);
 
+#if GLIB_CHECK_VERSION(2, 31, 0)
+	g_value_set_schar (value, *s);
+#else
+	g_value_set_char (value, *s);
+#endif
 	return type_transform (value, gtype, error);
 }
 
