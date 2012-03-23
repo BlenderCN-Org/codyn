@@ -35,8 +35,8 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 {
     defines
     {
-        jc = "{@bodysidx[@@@@0]:+$(@bodydof[@@@@0[!]] - 1)||@0\,@1}"
-        jr = "{@bodysidx[@@@@0]:+$(@bodydof[@@@@0[!]] - 1)||@0;@1}"
+        jc = "{@bodysidx[@@@@0]:+$(@bodydof[@@@@@0[!]] - 1)||@0\,@1}"
+        jr = "{@bodysidx[@@@@0]:+$(@bodydof[@@@@@0[!]] - 1)||@0;@1}"
         jcm = "[@jc[1]]"
         jrm = "[@jr[1]]"
     }
