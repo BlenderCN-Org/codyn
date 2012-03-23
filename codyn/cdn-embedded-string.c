@@ -502,6 +502,26 @@ unexpanded_expansion (CdnExpansion *ex)
 	return g_string_free (ret, FALSE);
 }
 
+static gint
+num_incdec (gchar const *s)
+{
+	gint n = 0;
+
+	while (s[n] == '+' || s[n] == '-')
+	{
+		++n;
+	}
+
+	if (!s[n])
+	{
+		return n;
+	}
+	else
+	{
+		return n * g_ascii_strtoll (s + n, NULL, 10);
+	}
+}
+
 static gchar *
 resolve_indirection (CdnEmbeddedString   *em,
                      CdnEmbeddedContext  *context,
@@ -521,7 +541,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	if (em->priv->indirection_regex == NULL)
 	{
-		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|(.*?)(([?!~,]|[+]+|[-]+)|([!](.+)))?$",
+		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|(.*?)(([?!~,]|[+]+[0-9]*|[-]+[0-9]*)|([!](.+)))?$",
 		                                           0, 0, NULL);
 	}
 
@@ -596,11 +616,11 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 			if (flags == INDIRECTION_INCREMENT)
 			{
-				inc = g_ascii_strtoll (flag, NULL, 10);
+				inc = num_incdec (flag);
 			}
 			else if (flags == INDIRECTION_DECREMENT)
 			{
-				dec = g_ascii_strtoll (flag, NULL, 10);
+				dec = num_incdec (flag);
 			}
 
 			ex = cdn_embedded_context_get_define (context,
@@ -949,7 +969,7 @@ parse_expansion_range_rev (gchar const *s)
 
 	if (rangereg == NULL)
 	{
-		rangereg = g_regex_new ("\\s*([0-9]+):([0-9]+)(:([0-9]+))?\\s*$",
+		rangereg = g_regex_new ("\\s*([0-9]+):([+-]?[0-9]+)(:([+-]?[0-9]+))?\\s*$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -968,6 +988,9 @@ parse_expansion_range_rev (gchar const *s)
 		gchar *start = g_match_info_fetch (info, 1);
 		gchar *step = g_match_info_fetch (info, 2);
 		gchar *end = g_match_info_fetch (info, 4);
+		gint cstart;
+		gint cend;
+		gint cstep = 1;
 
 		if (!end || !*end)
 		{
@@ -977,13 +1000,33 @@ parse_expansion_range_rev (gchar const *s)
 			step = NULL;
 		}
 
-		gint cstart = (gint)g_ascii_strtoll (start, NULL, 10);
-		gint cend = (gint)g_ascii_strtoll (end, NULL, 10);
-		gint cstep = 1;
+		cstart = (gint)g_ascii_strtoll (start, NULL, 10);
+
+		if (*end == '+' || *end == '-')
+		{
+			cend = (gint)g_ascii_strtoll (end + 1,
+			                              NULL,
+			                              10) + cstart;
+		}
+		else
+		{
+			cend = (gint)g_ascii_strtoll (end, NULL, 10);
+		}
 
 		if (step)
 		{
-			cstep = (gint)g_ascii_strtoll (step, NULL, 10);
+			if (*step == '+' || *step == '-')
+			{
+				cstep = (gint)g_ascii_strtoll (step + 1,
+				                               NULL,
+				                               10) + cstart;
+			}
+			else
+			{
+				cstep = (gint)g_ascii_strtoll (step + 1,
+				                               NULL,
+				                               10);
+			}
 		}
 
 		if (cend - (cstart + cstep) < cend - cstart)

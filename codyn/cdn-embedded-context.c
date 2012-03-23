@@ -324,9 +324,7 @@ cdn_embedded_context_increment_define (CdnEmbeddedContext *context,
                                        gchar const        *name,
                                        gint                num)
 {
-	Context *ctx;
-	gpointer key;
-	gpointer val;
+	CdnExpansion *val;
 	gint ret;
 	gchar *incval;
 	CdnExpansion *ex;
@@ -334,9 +332,9 @@ cdn_embedded_context_increment_define (CdnEmbeddedContext *context,
 	g_return_val_if_fail (CDN_IS_EMBEDDED_CONTEXT (context), 0);
 	g_return_val_if_fail (name != NULL, 0);
 
-	ctx = CURRENT_CONTEXT (context);
+	val = cdn_embedded_context_get_define (context, name);
 
-	if (g_hash_table_lookup_extended (ctx->defines, name, &key, &val))
+	if (val)
 	{
 		ret = (gint)g_ascii_strtod (cdn_expansion_get (val, 0), NULL);
 	}
