@@ -56,7 +56,10 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 
         [ifstr("$$(@1 != @@@0[!],1,)")]
         {
-            "H[@jrm, @icm]" <= "H_@@@1"
+            [ifstr("$$(!@only_lower_H[?],1,)")]
+            {
+                "H[@jrm, @icm]" <= "H_@@@@1"
+            }
         }
     }
 
