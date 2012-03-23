@@ -1,13 +1,24 @@
 [once] include "spatial.cdn"
 [once] include "geometry.cdn"
 
-g = "[0, 9.81, 0]"
+g = "[0, 0, 9.81]"
 
 templates
 {
     node "physics"
     {
-        node "body"
+        node "dof{1:6}"
+        {
+            null = "zeros(@@1, 1)"
+
+            ## Generalized coordinates/velocities/accelerations (i.e. DOFs of joint)
+            "{q,dq,ddq}" = "null"
+
+            ## Generalized coordinate accelerations differential equation
+            q̈ = "ddq"
+        }
+
+        node "body" : "dof1"
         {
             ## Mass of the body
             m   = "0"
@@ -18,14 +29,8 @@ templates
             ## Inertia matrix of the body: 3-by-3
             I   = "zeros(3, 3)"
 
-            ## Generalized coordinates (i.e. DOFs of joint)
-            q̈ = "ddq"
-
-            ## Variable for storing derived accelerations
-            ddq = "zeros(length(q), 1)"
-
             ## Generalized force on the DOF of this body
-            τ = "zeros(length(q), 1)"
+            τ = "null"
 
             ## Joint model parameters. These parameters need to be specified
             ## for each joint type.
@@ -199,7 +204,7 @@ templates
         ## A cylindrical joint. This type of joint is simply a combination of
         ## both a revolute and a prismatic joint. It has two degrees of freedom
         ## (one rotational and one translational).
-        node "cylindrical" : "body"
+        node "cylindrical" : "body", "dof2"
         {
             node "joint"
             {
@@ -226,13 +231,11 @@ templates
                                                    0,           0,            axis[0],     axis[2];
                                                    0,           0,            0,           1 - axis[2]]"
             }
-
-            "{q,dq,ddq}" = "zeros(2, 1)"
         }
 
         ## A spherical joint. This type of joint is simply three rotational
         ## joints stacked together. It has three degrees of rotational freedom.
-        node "spherical" : "body"
+        node "spherical" : "body", "dof3"
         {
             node "joint"
             {
@@ -260,7 +263,6 @@ templates
             }
 
             q = "zeros(4, 1)"
-            "{dq,ddq}" = "zeros(3, 1)"
 
             delete self | inputs | if(input | self) | if(output | self) . q
 
@@ -272,10 +274,16 @@ templates
 
         ## A 6 DOF. This type of joint has no constraints and can be used
         ## to implement floating base models.
-        node "float" : "spherical"
+        node "float" : "dof6"
         {
             node "joint"
             {
+                QuatRotation(q) = "2 ∙ [
+                    q[0]² + q[1]² - 0.5, q[1] ∙ q[2] + q[0] ∙ q[3], q[0] ∙ q[3] - q[0] ∙ q[2];
+                    q[1] ∙ q[2] - q[0] ∙ q[3], q[0]² + q[2]² - 0.5, q[2] ∙ q[3] + q[0] ∙ q[1];
+                    q[0] ∙ q[3] + q[0] ∙ q[2], q[2] ∙ q[3] - q[0] ∙ q[1], q[0]² + q[3]² - 0.5
+                ]"
+
                 JointTransform(q) = "Sp.Translate(q[[4; 5; 6]]) ∙
                                      Sp.Rotate(QuatRotation(q[[0; 1; 2; 3]]))"
 
@@ -284,7 +292,6 @@ templates
             }
 
             q = "zeros(7, 1)"
-            "{dq,ddq}" = "zeros(6, 1)"
 
             delete self | inputs | if(input | self) | if(output | self) . q
 

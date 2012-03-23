@@ -18,7 +18,6 @@ edge has-template("physics" . "joint")
 
     ## Recursive joint acceleration (from parent to child)
     acceleration <= "output.transform ∙ acceleration +
-                     output.motionSubspace ∙ output.ddq_inverse +
                      Sp.CrossMotion(output.velocity) ∙ output.jointVelocity"
 }
 

@@ -2,14 +2,23 @@ defines
 {
     # Find all the bodies here
     bodies = has-template("physics" . "body") | name
+    numdof = "0"
 
     [each(@bodies)]
     {
+        "bodydof@0" = | @@1 | applied-templates | recurse(applied-templates) | /dof([1-6])/ | first | append-context("@1")
+        "bodydof@0[!]" = "@[bodydof@@[0]1]"
+
+        "bodysidx@0" = "@cnt[+$(@numdof + @[bodydof@@0[!]])]"
+        "bodysidx@0[!]" = "@bodysidx[@@0]"
+
+        "numdof" = "$(@numdof + @[bodydof@@0[!]])"
+
         "bodychain@0" = | @@1 | recurse(inputs | has-template("physics" . "joint") | input) | reverse
         "bodychain@0idx" = "{@bodychain[@@0]|@bodies[!@0]}"
         "bodychain@0_@bodychain[@[0]idx]" = "1"
 
-        "parentidx@0" = | @@1 | if(inputs | has-template("physics" . "joint") | input | name | append-context("@bodies[!@0]"), append-context("-1"))
+        "parentidx@0" = | @@1 | if(inputs | has-template("physics" . "joint") | input | name | append-context("{@bodydof[@@@@0[!]]*@bodies[!@0]||@0\,@1}"), append-context("{@bodydof[@@@0[!]]*-1||@0\,@1}"))
     }
 
     parents = "{@bodies|@parentidx[@[1]1]}"

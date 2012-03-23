@@ -6,6 +6,12 @@ node "Geometry"
         0,                      0,                      1 / 12 ∙ m ∙ (w² + h²)
     ]"
 
+    ISym(ixx, ixy, ixz, iyy, iyz, izz) = "[
+        ixx, ixy, ixz;
+        ixy, iyy, iyz;
+        iyz, iyz, izz
+    ]"
+
     IDiag(c) = "[c, 0, 0;
                  0, c, 0;
                  0, 0, c]"

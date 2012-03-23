@@ -6,19 +6,19 @@ include "crba.cdn"
 node "dynamics"
 {
     ## Generalized forces
-    τ = "zeros(@bodies[~], 1)"
+    τ = "zeros(@numdof, 1)"
 
     ## C matrix
-    C = "zeros(@bodies[~], 1)"
+    C = "zeros(@numdof, 1)"
 
     ## Mass matrix
-    H = "zeros(@bodies[~], @bodies[~])"
+    H = "zeros(@numdof, @numdof)"
 
     ## Generalized accelerations
     ddq = "slinsolve(H, τ - C, parents)"
 
     ## Jacobian
-    J = "zeros(6, @bodies[~])"
+    J = "zeros(6, @numdof)"
 
     ## Parent indices
     parents = "[{@parents||@0;@1}]"
@@ -35,40 +35,55 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 {
     defines
     {
-        j = "@@@@@0[!]"
+        jc = "{@bodysidx[@@@@0]:+$(@bodydof[@@@@0[!]] - 1)||@0\,@1}"
+        jr = "{@bodysidx[@@@@0]:+$(@bodydof[@@@@0[!]] - 1)||@0;@1}"
+        jcm = "[@jc[1]]"
+        jrm = "[@jr[1]]"
     }
 
     [each(self | input . variables | /fh_([0-9]+)/)]
     {
         defines
         {
-            i = "@@1"
+            ir = "{@bodysidx[@@1]:+$(@bodydof[@@1] - 1)||@0;@1}"
+            ic = "{@bodysidx[@@1]:+$(@bodydof[@@1] - 1)||@0\,@1}"
+            irm = "[@ir[1]]"
+            icm = "[@ic[1]]"
         }
 
-        "H[@i, @j]" <= "H_@i"
+        # Select block in H to write H_@i into
+        "H[@irm, @jcm]" <= "H_@@1"
 
-        [ifstr("$$(@i != @j,1,)")]
+        [ifstr("$$(@1 != @@@0[!],1,)")]
         {
-            "H[@j, @i]" <= "H_@i"
+            "H[@jrm, @icm]" <= "H_@@@1"
         }
     }
 
     # Fill column of the jacobian
-    "J[[{0:5||@0;@1}], @j]" <= "J"
-    "C[@j, 0]" <= "C"
+    "J[[{0:5||@0;@1}], @jcm]" <= "J"
+
+    # Fill C
+    "C@jrm" <= "C"
 }
 
 # Integrate accelerations on bodies
 [each(@bodies)]
 {
+    defines
+    {
+        j = "{@bodysidx[@@0]:+$(@bodydof[@@0[!]] - 1)||@0;@1}"
+        j = "[@j[1]]"
+    }
+
     edge "acceleration_@0" from "dynamics" to "@@@0"
     {
-        ddq <= "ddq[@@@@@0[!]]"
+        ddq <= "ddq[@j]"
     }
 
     edge "force_@0" from "@@0" to "dynamics"
     {
-        "τ[@@@@0[!], 0]" <= "τ"
+        "τ[@j, 0]" <= "τ"
     }
 }
 

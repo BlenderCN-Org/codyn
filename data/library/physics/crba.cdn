@@ -19,17 +19,23 @@ node @bodies
 # ancestors
 [each(@bodies)]
 {
+    # Select all the dynamics (up) edges in the chain from the current body
+    # to the root
     [with("@0" | recurse(outputs | has-template(physics.dynamics) | output) | outputs | has-template(physics.dynamics))]
     {
+        # Initialize variables in the output of the dynamics node for the
+        # effects of the current node on each output node in the up chain
+        node | output
+        {
+            "fh_@@0[!]" = "zeros(6, @bodydof[@@@0[!]])"
+            "H_@@0[!]" = "motionSubspaceᵀ ∙ fh_@@@0[!]"
+        }
+
+        # In all those dynamic edges, add a calculation for fh_@@0 (i.e. this)
+        # is then recursively calculated from bottom to top
         edge | edges
         {
             "fh_@@0[!]" <= "transformᵀ ∙ fh_@@@0[!]"
-        }
-
-        node | output
-        {
-            "fh_@@0[!]" = "zeros(6, 1)"
-            "H_@@0[!]" = "motionSubspaceᵀ ∙ fh_@@@0[!]"
         }
     }
 }
