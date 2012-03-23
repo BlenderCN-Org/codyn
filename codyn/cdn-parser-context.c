@@ -734,26 +734,6 @@ copy_selections (GSList   *selections,
 	return g_slist_reverse (ret);
 }
 
-static gboolean
-test_string_empty (gchar const *s)
-{
-	gdouble num;
-	gchar *endptr;
-
-	num = g_ascii_strtod (s, &endptr);
-
-	if (!*endptr)
-	{
-		/* number == 0 */
-		return num == 0;
-	}
-	else
-	{
-		/* Empty string */
-		return !*s;
-	}
-}
-
 static GSList *
 each_selections_attr (CdnParserContext *context,
                       GSList           *selections,
@@ -787,7 +767,7 @@ each_selections_attr (CdnParserContext *context,
 				CdnSelection *sel;
 				GSList *expansions;
 
-				if (isempty && test_string_empty (cdn_expansion_get (expp->data, 0)))
+				if (isempty && !*cdn_expansion_get (expp->data, 0))
 				{
 					continue;
 				}
