@@ -130,6 +130,8 @@ templates
                 JointTransform(q) = "Sp.Rotate(q ∙ axis)"
                 LocalJointVelocity(q, dq) = "[axis ∙ dq; 0; 0; 0]"
 
+                MotionSubspace(q, dq) = "[axis; 0; 0; 0]"
+
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
                 # if another axis is used then the constraint force subspace
@@ -155,6 +157,7 @@ templates
 
                 JointTransform(q) = "Sp.Translate(axis ∙ q)"
                 LocalJointVelocity(q, dq) = "[0; 0; 0; axis ∙ dq]"
+                MotionSubspace(q, dq) = "[0; 0; 0; axis]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -183,6 +186,8 @@ templates
                 JointTransform(q) = "Sp.Rotate(axis ∙ q) ∙ Sp.Translate(axis ∙ q ∙ h)"
                 LocalJointVelocity(q, dq) = "[axis ∙ dq;
                                               axis ∙ dq ∙ h]"
+
+                MotionSubspace(q, dq) = "[axis; axis ∙ h]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -220,6 +225,13 @@ templates
                                               0,               axis[1] ∙ dq[1];
                                               0,               axis[2] ∙ dq[1]]"
 
+                MotionSubspace(q, dq) = "[axis[0], 0;
+                                          axis[1], 0;
+                                          axis[2], 0;
+                                          0, axis[0];
+                                          0, axis[1];
+                                          0, axis[2]]"
+
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
                 # if another axis is used then the constraint force subspace
@@ -256,6 +268,13 @@ templates
                 # velocity simply becomes 'dq'.
                 JointVelocity(q, dq) = "[dq; 0; 0; 0]"
 
+                MotionSubspace(q, dq) = "[1, 0, 0;
+                                          0, 1, 0;
+                                          0, 0, 1;
+                                          0, 0, 0;
+                                          0, 0, 0;
+                                          0, 0, 0]"
+
                 ConstraintForceSubspace(q, dq) = "[0, 0, 0;
                                                    0, 0, 0;
                                                    0, 0, 0;
@@ -276,7 +295,7 @@ templates
 
         ## A 6 DOF. This type of joint has no constraints and can be used
         ## to implement floating base models.
-        node "float" : "dof6"
+        node "float" : "body", "dof6"
         {
             node "joint"
             {
@@ -290,7 +309,10 @@ templates
                                      Sp.Rotate(QuatRotation(q[[0; 1; 2; 3]]))"
 
                 JointVelocity(q, dq) = "dq"
+                MotionSubspace(q, dq) = "eye(6)"
+
                 ConstraintForceSubspace(q, dq) = "[]"
+                cJ(q, dq) = "0"
             }
 
             q = "zeros(7, 1)"
