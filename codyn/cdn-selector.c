@@ -1554,7 +1554,7 @@ selector_pseudo_has_template (CdnSelector        *self,
 	CdnObject *obj;
 	CdnNode *template_group;
 	GSList *item;
-	gboolean valid = TRUE;
+	gboolean valid = FALSE;
 
 	obj = cdn_selection_get_object (sel);
 
@@ -1600,9 +1600,9 @@ selector_pseudo_has_template (CdnSelector        *self,
 			                           CDN_SELECTOR_TYPE_OBJECT,
 			                           context);
 
-			if (!has_all_templates (obj, sub))
+			if (has_all_templates (obj, sub))
 			{
-				valid = FALSE;
+				valid = TRUE;
 			}
 
 			g_slist_foreach (sub, (GFunc)g_object_unref, NULL);
@@ -1610,7 +1610,7 @@ selector_pseudo_has_template (CdnSelector        *self,
 
 			children = g_slist_next (children);
 
-			if (!valid)
+			if (valid)
 			{
 				break;
 			}
@@ -1618,7 +1618,7 @@ selector_pseudo_has_template (CdnSelector        *self,
 
 		cdn_selector_set_self (s, NULL);
 
-		if (!valid)
+		if (valid)
 		{
 			break;
 		}
