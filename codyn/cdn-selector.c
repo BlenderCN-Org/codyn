@@ -1810,13 +1810,15 @@ selector_pseudo_recurse (CdnSelector        *self,
 
 				if (!g_hash_table_lookup (had, o))
 				{
-					g_queue_push_tail (&q, ss);
-				}
-				else
-				{
-					g_object_unref (ss);
+					CdnSelection *cp;
+
+					cp = cdn_selection_copy (s);
+					cdn_selection_set_object (cp, o);
+
+					g_queue_push_tail (&q, cp);
 				}
 
+				g_object_unref (ss);
 				sub = g_slist_delete_link (sub, sub);
 			}
 		}
