@@ -138,6 +138,8 @@
         <context id="attributes" style-ref="keyword">
             <keyword>bidirectional</keyword>
             <keyword>if</keyword>
+            <keyword>ifstr</keyword>
+            <keyword>notstr</keyword>
             <keyword>each</keyword>
             <keyword>probability</keyword>
             <keyword>no-self</keyword>
@@ -149,44 +151,46 @@
         </context>
 
         <context id="selectors" style-ref="keyword">
-            <keyword>templates</keyword>
             <keyword>root</keyword>
             <keyword>templates-root</keyword>
-            <keyword>debug</keyword>
             <keyword>children</keyword>
             <keyword>parent</keyword>
             <keyword>first</keyword>
             <keyword>last</keyword>
             <keyword>subset</keyword>
             <keyword>edges</keyword>
-            <keyword>siblings</keyword>
-            <keyword>descendants</keyword>
-            <keyword>ancestors</keyword>
-            <keyword>unique</keyword>
-            <keyword>count</keyword>
-            <keyword>name</keyword>
-            <keyword>self</keyword>
             <keyword>nodes</keyword>
             <keyword>imports</keyword>
-            <keyword>objects</keyword>
             <keyword>variables</keyword>
             <keyword>actions</keyword>
-            <keyword>type</keyword>
-            <keyword>is-empty</keyword>
-            <keyword>remove</keyword>
-            <keyword>if</keyword>
-            <keyword>from-set</keyword>
+            <keyword>functions</keyword>
+            <keyword>objects</keyword>
+            <keyword>siblings</keyword>
+            <keyword>templates</keyword>
+            <keyword>count</keyword>
             <keyword>input</keyword>
             <keyword>output</keyword>
             <keyword>inputs</keyword>
             <keyword>outputs</keyword>
+            <keyword>input-name</keyword>
+            <keyword>output-name</keyword>
+            <keyword>self</keyword>
+            <keyword>debug</keyword>
+            <keyword>name</keyword>
+            <keyword>unique</keyword>
+            <keyword>if</keyword>
+            <keyword>not</keyword>
+            <keyword>ifstr</keyword>
+            <keyword>notstr</keyword>
+            <keyword>from-set</keyword>
+            <keyword>type</keyword>
+            <keyword>has-flag</keyword>
             <keyword>has-template</keyword>
             <keyword>has-tag</keyword>
-            <keyword>has-flag</keyword>
             <keyword>reverse</keyword>
             <keyword>recurse</keyword>
-            <keyword>sourced-by</keyword>
-            <keyword>sinked-by</keyword>
+            <keyword>append-context</keyword>
+            <keyword>applied-templates</keyword>
         </context>
 
         <context id="keywords" style-ref="keyword">

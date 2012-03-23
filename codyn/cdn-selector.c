@@ -113,7 +113,6 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"first",
 	"last",
 	"subset",
-	"states",
 	"edges",
 	"nodes",
 	"imports",
@@ -133,8 +132,6 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"self",
 	"debug",
 	"name",
-	"descendants",
-	"ancestors",
 	"unique",
 	"if",
 	"not",
@@ -147,7 +144,8 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"has-tag",
 	"reverse",
 	"recurse",
-	"append-context"
+	"append-context",
+	"applied-templates"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -1515,6 +1513,38 @@ selector_pseudo_has_tag (CdnSelector        *self,
 }
 
 static GSList *
+selector_pseudo_applied_templates (CdnSelector        *self,
+                                   Selector           *selector,
+                                   CdnSelection       *sel,
+                                   CdnEmbeddedContext *context,
+                                   GSList             *ret)
+{
+	gpointer obj;
+	GSList const *templs;
+
+	obj = cdn_selection_get_object (sel);
+
+	if (!CDN_IS_OBJECT (obj))
+	{
+		return NULL;
+	}
+
+	templs = cdn_object_get_applied_templates (CDN_OBJECT (obj));
+
+	while (templs)
+	{
+		ret = g_slist_prepend (ret,
+		                       make_child_selection (sel,
+		                                             NULL,
+		                                             templs->data));
+
+		templs = g_slist_next (templs);
+	}
+
+	return ret;
+}
+
+static GSList *
 selector_pseudo_has_template (CdnSelector        *self,
                               Selector           *selector,
                               CdnSelection       *sel,
@@ -2232,67 +2262,6 @@ children_reverse (CdnSelection *selection,
 }
 
 static GSList *
-descendants_reverse (CdnSelection *selection)
-{
-	GSList *ret = NULL;
-	GQueue *queue;
-
-	queue = g_queue_new ();
-	g_queue_push_head (queue, selection);
-
-	while (!g_queue_is_empty (queue))
-	{
-		CdnSelection *sel;
-		GSList *children;
-		GSList *item;
-		gpointer obj;
-
-		sel = g_queue_pop_head (queue);
-
-		if (sel != selection)
-		{
-			ret = g_slist_prepend (ret, sel);
-		}
-
-		obj = cdn_selection_get_object (sel);
-		children = g_slist_reverse (children_reverse (sel, obj));
-
-		for (item = children; item; item = g_slist_next (item))
-		{
-			g_queue_push_tail (queue, item->data);
-		}
-
-		g_slist_free (children);
-	}
-
-	return ret;
-}
-
-static GSList *
-ancestors_reverse (CdnSelection *selection)
-{
-	GSList *ret = NULL;
-	gpointer obj;
-
-	obj = cdn_selection_get_object (selection);
-
-	while (TRUE)
-	{
-		obj = pseudo_parent (obj);
-
-		if (!obj)
-		{
-			break;
-		}
-
-		ret = g_slist_prepend (ret,
-		                       make_child_selection (selection, NULL, obj));
-	}
-
-	return ret;
-}
-
-static GSList *
 unique_selections (GSList *parent)
 {
 	GSList *ret = NULL;
@@ -2476,10 +2445,6 @@ selector_select_pseudo (CdnSelector        *self,
 		case CDN_SELECTOR_PSEUDO_TYPE_REVERSE:
 			return copy_selections_reverse (parent);
 		break;
-		case CDN_SELECTOR_PSEUDO_TYPE_STATES:
-			return g_slist_reverse (filter_list_reverse (parent,
-				                                     CDN_TYPE_OBJECT,
-				                                     FALSE));
 		case CDN_SELECTOR_PSEUDO_TYPE_EDGES:
 			return g_slist_reverse (filter_list_reverse (parent,
 				                                     CDN_TYPE_EDGE,
@@ -2632,18 +2597,6 @@ selector_select_pseudo (CdnSelector        *self,
 			{
 				ret = g_slist_concat (children_reverse (sel,
 				                                        obj),
-				                      ret);
-			}
-			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_DESCENDANTS:
-			{
-				ret = g_slist_concat (descendants_reverse (sel),
-				                      ret);
-			}
-			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_ANCESTORS:
-			{
-				ret = g_slist_concat (ancestors_reverse (sel),
 				                      ret);
 			}
 			break;
@@ -2827,6 +2780,13 @@ selector_select_pseudo (CdnSelector        *self,
 					ret = g_slist_prepend (ret,
 					                       cdn_selection_copy_defines (sel, FALSE));
 				}
+			break;
+			case CDN_SELECTOR_PSEUDO_TYPE_APPLIED_TEMPLATES:
+				ret = selector_pseudo_applied_templates (self,
+				                                         selector,
+				                                         sel,
+				                                         context,
+				                                         ret);
 			break;
 			default:
 				g_assert_not_reached ();
