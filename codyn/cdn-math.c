@@ -1093,21 +1093,33 @@ op_lindex (CdnStack *stack,
 {
 	gboolean a1 = (argdim[4] * argdim[5] == 1);
 	gboolean a2 = (argdim[2] * argdim[3] == 1);
-	gint n;
 	gdouble *ptr1;
 	gdouble *ptr2;
 	gint si;
-
-	n = a1 ? argdim[2] * argdim[3] : argdim[4] * argdim[5];
 
 	gint w = (gint)(cdn_stack_pop (stack) + 0.5);
 
 	ptr2 = cdn_stack_output_ptr (stack) - argdim[2] * argdim[3];
 	ptr1 = ptr2 - argdim[4] * argdim[5];
 
-	if (a1)
+	if (argdim[2] == argdim[4] && argdim[3] == argdim[5])
+	{
+		// row/col matrices
+		gint i;
+		gint n = argdim[2] * argdim[3];
+
+		for (i = 0; i < n; ++i)
+		{
+			*ptr1 = (gint)(*ptr2++ + 0.5) + ((gint)(*ptr1 + 0.5)) * w;
+			++ptr1;
+		}
+
+		cdn_stack_popn (stack, n);
+	}
+	else if (a1)
 	{
 		gint i;
+		gint n = argdim[2] * argdim[3];
 
 		si = (gint)(*ptr1 + 0.5) * w;
 
@@ -1121,6 +1133,7 @@ op_lindex (CdnStack *stack,
 	else if (a2)
 	{
 		gint i;
+		gint n = argdim[4] * argdim[5];
 
 		si = (gint)(*ptr2 + 0.5);
 
@@ -1134,15 +1147,35 @@ op_lindex (CdnStack *stack,
 	}
 	else
 	{
+		gint nr = argdim[4] * argdim[5];
+		gint nc = argdim[2] * argdim[3];
+		gint r;
 		gint i;
+		gdouble *outptr = cdn_stack_output_ptr (stack);
 
-		for (i = 0; i < n; ++i)
+		// single row and single column combined
+		for (r = 0; r < nr; ++r)
 		{
-			*ptr1 = (gint)(*ptr2++ + 0.5) + ((gint)(*ptr1 + 0.5)) * w;
-			++ptr1;
+			gint c;
+			gint si;
+
+			si = (gint)(ptr1[r] + 0.5) * w;
+
+			for (c = 0; c < nc; ++c)
+			{
+				*outptr++ = si + (gint)(ptr2[c] + 0.5);
+			}
 		}
 
-		cdn_stack_popn (stack, n / 2);
+		outptr = cdn_stack_output_ptr (stack);
+
+		// copy back
+		for (i = 0; i < nr * nc; ++i)
+		{
+			*ptr1++ = *outptr++;
+		}
+
+		cdn_stack_set_output_ptr (stack, ptr1);
 	}
 }
 
@@ -2265,19 +2298,49 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			gboolean a1 = (argdim[4] * argdim[5] == 1);
 			gboolean a2 = (argdim[2] * argdim[3] == 1);
 
-			if (!a1 && !a2 && (argdim[2] != argdim[4] || argdim[3] != argdim[5]))
+			/* acceptable lindex modes:
+			 * ========================
+			 * indices in matrix form:
+			 *   dim(a) == dim(b) ()
+			 *
+			 * indices in row/column form
+			 *   size(a, 0) == size(b, 1) &&
+			 *   size(a, 1) == 1 &&
+			 *   size(b, 0) == 1
+			 *
+			 * single index with vector
+			 *   size(a) == [1, 1] ||
+			 *   size(b) == [1, 1]
+			 */
+
+			if (a1 || a2)
+			{
+				outargdim[0] = a1 ? argdim[2] : argdim[4];
+				outargdim[1] = a1 ? argdim[3] : argdim[5];
+			}
+			else if (argdim[2] == argdim[4] && argdim[3] == argdim[5])
+			{
+				outargdim[0] = argdim[2];
+				outargdim[1] = argdim[3];
+			}
+			else if (argdim[2] == 1 && argdim[5] == 1 && argdim[3] == argdim[4])
+			{
+				outargdim[0] = argdim[4];
+				outargdim[1] = argdim[3];
+
+				*extra_space = argdim[3] + argdim[4];
+			}
+			else
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
 				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Dimensions of `lindex' arguments must be the same (got (%d, %d) and (%d, %d))",
-				             argdim[4], argdim[5], argdim[2], argdim[3]);
+				             "Dimensions of `lindex' arguments are inconsistent (got (%d, %d) and (%d, %d))",
+				             argdim[4], argdim[5],
+				             argdim[2], argdim[3]);
 
 				return FALSE;
 			}
-
-			outargdim[0] = 1;
-			outargdim[1] = a1 ? argdim[2] * argdim[3] : argdim[4] * argdim[5];
 
 			return TRUE;
 		}
