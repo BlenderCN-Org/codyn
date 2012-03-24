@@ -167,9 +167,11 @@ dnl
 dnl Check for lapack in separate atlas/ dirs (both lib and include)
 dnl
 if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
-	for dir in "$EXPANDED_LIBDIR" "/usr/lib" "/usr/local/lib"; do
+	for dir in "$EXPANDED_LIBDIR" "/usr/lib64" "/usr/lib" "/usr/local/lib"; do
 		OLDLDFLAGS="$LDFLAGS"
 		LDFLAGS="$LDFLAGS -L$dir/atlas"
+
+		AS_UNSET([ac_cv_lib_lapack_clapack_dgetri])
 
 		AC_CHECK_LIB([lapack],
 		             [clapack_dgetri],
@@ -253,6 +255,8 @@ if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
 	OLDLDFLAGS="$LDFLAGS"
 	LDFLAGS="$LDFLAGS -L$EXPANDED_LIBDIR/libblas"
 
+	AS_UNSET([ac_cv_lib_blas_cblas_dgemm])
+
 	AC_CHECK_LIB([blas],
 	             [cblas_dgemm],
 	             [BLAS_LIBS="-L$EXPANDED_LIBDIR/libblas -lblas"
@@ -260,6 +264,30 @@ if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
 	             [])
 
 	LDFLAGS="$OLDLDFLAGS"
+fi
+
+dnl
+dnl Check for cblas in separate atlas/ dirs
+dnl
+if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
+	for dir in "$EXPANDED_LIBDIR" "/usr/lib64" "/usr/lib" "/usr/local/lib"; do
+		OLDLDFLAGS="$LDFLAGS"
+		LDFLAGS="$LDFLAGS -L$dir/atlas"
+
+		AS_UNSET([ac_cv_lib_cblas_cblas_dgemm])
+
+		AC_CHECK_LIB([cblas],
+		             [cblas_dgemm],
+		             [BLAS_LIBS="-L$dir/atlas -lcblas"
+		              have_blas=yes],
+		             [])
+
+		LDFLAGS="$OLDLDFLAGS"
+
+		if test "x$have_blas" = "xyes"; then
+			break;
+		fi
+	done
 fi
 
 dnl
