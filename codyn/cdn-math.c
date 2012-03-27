@@ -250,29 +250,47 @@ op_abs (CdnStack *stack,
 }
 
 static gdouble
-min (gdouble a,
-     gdouble b)
+min (gdouble  a,
+     gdouble  b,
+     gboolean initial)
 {
-	return a < b ? a : b;
+	if (initial)
+	{
+		return b;
+	}
+	else
+	{
+		return a < b ? a : b;
+	}
 }
 
 static gdouble
-max (gdouble a,
-     gdouble b)
+max (gdouble  a,
+     gdouble  b,
+     gboolean initial)
 {
-	return a > b ? a : b;
+	if (initial)
+	{
+		return b;
+	}
+	else
+	{
+		return a > b ? a : b;
+	}
 }
 
 static gdouble
-sum (gdouble a,
-     gdouble b)
+sum (gdouble  a,
+     gdouble  b,
+     gboolean initial)
 {
 	return a + b;
 }
 
 static gdouble
-product (gdouble a,
-         gdouble b)
+product (gdouble  a,
+         gdouble  b,
+         gboolean initial)
 {
 	return a * b;
 }
@@ -281,27 +299,23 @@ static void
 op_nested (CdnStack   *stack,
            gint        numargs,
            gint       *argdim,
-           gdouble   (*func)(gdouble, gdouble))
+           gdouble     initial,
+           gdouble   (*func)(gdouble, gdouble, gboolean))
 {
 	gboolean first = TRUE;
-	gdouble value = 0;
+	gdouble value;
 	gint i;
+
+	value = initial;
 
 	for (i = 0; i < numargs; ++i)
 	{
-		gint n = argdim ? argdim[(numargs - 1 - i) * 2] * argdim[(numargs - i) * 2 - 1] : 1;
+		gint n = argdim ? argdim[i * 2] * argdim[i * 2 + 1] : 1;
 
 		while (n > 0)
 		{
-			if (first)
-			{
-				value = cdn_stack_pop (stack);
-				first = FALSE;
-			}
-			else
-			{
-				value = func (value, cdn_stack_pop (stack));
-			}
+			value = func (value, cdn_stack_pop (stack), first);
+			first = FALSE;
 
 			--n;
 		}
@@ -316,7 +330,7 @@ op_min (CdnStack *stack,
         gint     *argdim,
         gpointer  userdata)
 {
-	op_nested (stack, numargs, argdim, min);
+	op_nested (stack, numargs, argdim, 0, min);
 }
 
 static void
@@ -325,7 +339,7 @@ op_max (CdnStack *stack,
         gint     *argdim,
         gpointer  userdata)
 {
-	op_nested (stack, numargs, argdim, max);
+	op_nested (stack, numargs, argdim, 0, max);
 }
 
 static void
@@ -334,7 +348,7 @@ op_sum (CdnStack *stack,
         gint     *argdim,
         gpointer  userdata)
 {
-	op_nested (stack, numargs, argdim, sum);
+	op_nested (stack, numargs, argdim, 0, sum);
 }
 
 static void
@@ -343,7 +357,60 @@ op_product (CdnStack *stack,
             gint     *argdim,
             gpointer  userdata)
 {
-	op_nested (stack, numargs, argdim, product);
+	op_nested (stack, numargs, argdim, 1, product);
+}
+
+static gdouble
+sqsum_impl (gdouble  a,
+            gdouble  b,
+            gboolean initial)
+{
+	return a + b * b;
+}
+
+static void
+op_sqsum (CdnStack *stack,
+          gint      numargs,
+          gint     *argdim,
+          gpointer  userdata)
+{
+	op_nested (stack, numargs, argdim, 0, sqsum_impl);
+}
+
+static gdouble
+hypot_impl (gdouble  a,
+            gdouble  b,
+            gboolean initial)
+{
+	return a + b * b;
+}
+
+static void
+op_hypot (CdnStack *stack,
+          gint      numargs,
+          gint     *argdim,
+          gpointer  userdata)
+{
+	if (numargs == 2 && (!argdim || (argdim[0] == 1 && argdim[1] == 1 && argdim[2] == 1 && argdim[3] == 1)))
+	{
+		gdouble a;
+		gdouble b;
+
+		b = cdn_stack_pop (stack);
+		a = cdn_stack_pop (stack);
+
+		cdn_stack_push (stack, hypot (a, b));
+	}
+	else if (numargs == 1 && (!argdim || (argdim[0] == 1 && argdim[1] == 1)))
+	{
+		// NOOP
+		return;
+	}
+	else
+	{
+		op_nested (stack, numargs, argdim, 0, hypot_impl);
+		cdn_stack_push (stack, sqrt (cdn_stack_pop (stack)));
+	}
 }
 
 static void
@@ -381,15 +448,6 @@ op_log10 (CdnStack *stack,
           gpointer  userdata)
 {
 	foreach_element (log10);
-}
-
-static void
-op_hypot (CdnStack *stack,
-          gint      numargs,
-          gint     *argdim,
-          gpointer  userdata)
-{
-	foreach_element2 (stack, argdim, hypot);
 }
 
 static void
@@ -439,26 +497,6 @@ op_lerp (CdnStack *stack,
 	gdouble first = cdn_stack_pop (stack);
 
 	cdn_stack_push (stack, first + (second - first) * third);
-}
-
-static void
-op_sqsum (CdnStack *stack,
-          gint      numargs,
-          gint     *argdim,
-          gpointer  userdata)
-{
-	gint i;
-	gdouble value = 0;
-
-	// TODO
-
-	for (i = 0; i < numargs; ++i)
-	{
-		gdouble v = cdn_stack_pop (stack);
-		value += v * v;
-	}
-
-	cdn_stack_push (stack, value);
 }
 
 static gdouble
@@ -1617,7 +1655,7 @@ static FunctionEntry function_entries[] = {
 	{"pow", op_pow, 2, FALSE},
 	{"ln", op_ln, 1, FALSE},
 	{"log10", op_log10, 1, FALSE},
-	{"hypot", op_hypot, 2, TRUE},
+	{"hypot", op_hypot, -1, TRUE},
 	{"exp2", op_exp2, 1, FALSE},
 	{"sinh", op_sinh, 1, FALSE},
 	{"cosh", op_cosh, 1, FALSE},
@@ -2110,8 +2148,6 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_OR:
 		case CDN_MATH_FUNCTION_TYPE_AND:
 		case CDN_MATH_FUNCTION_TYPE_POW:
-		case CDN_MATH_FUNCTION_TYPE_HYPOT:
-		case CDN_MATH_FUNCTION_TYPE_SQSUM:
 		case CDN_MATH_FUNCTION_TYPE_ATAN2:
 			if (argdim[0] == 1 && argdim[1] == 1)
 			{
@@ -2205,6 +2241,8 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_MAX:
 		case CDN_MATH_FUNCTION_TYPE_SUM:
 		case CDN_MATH_FUNCTION_TYPE_PRODUCT:
+		case CDN_MATH_FUNCTION_TYPE_HYPOT:
+		case CDN_MATH_FUNCTION_TYPE_SQSUM:
 			outargdim[0] = 1;
 			outargdim[1] = 1;
 
