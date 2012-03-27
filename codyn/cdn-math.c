@@ -2366,7 +2366,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				outargdim[0] = argdim[4];
 				outargdim[1] = argdim[3];
 
-				*extra_space = argdim[3] + argdim[4];
+				*extra_space = argdim[3] * argdim[4];
 			}
 			else
 			{
