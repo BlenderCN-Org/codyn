@@ -99,6 +99,12 @@ void           cdn_expression_set_values       (CdnExpression      *expression,
                                                 gint                numr,
                                                 gint                numc);
 
+void           cdn_expression_set_values_flat  (CdnExpression      *expression,
+                                                gdouble const      *values,
+                                                gint                numvals,
+                                                gint                numr,
+                                                gint                numc);
+
 gdouble       *cdn_expression_get_cache        (CdnExpression      *expression,
                                                 gint               *numr,
                                                 gint               *numc);

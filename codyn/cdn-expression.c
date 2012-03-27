@@ -4009,6 +4009,16 @@ cdn_expression_set_value (CdnExpression  *expression,
 
 }
 
+/**
+ * cdn_expression_set_values: (skip):
+ * @expression: A #CdnExpression
+ * @values: the new values
+ * @numr: the number of rows
+ * @numc: the number of columns
+ *
+ * Set expression value.
+ *
+ **/
 void
 cdn_expression_set_values (CdnExpression *expression,
                            gdouble const *values,
@@ -4017,6 +4027,29 @@ cdn_expression_set_values (CdnExpression *expression,
 {
 	set_values (expression, values, numr, numc);
 	expression->priv->prevent_cache_reset = TRUE;
+}
+
+/**
+ * cdn_expression_set_values_flat:
+ * @expression: A #CdnExpression
+ * @values: (array length=numvals): the new values
+ * @numvals: the number of values
+ * @numr: the number of rows
+ * @numc: the number of columns
+ *
+ * Set expression value.
+ *
+ **/
+void
+cdn_expression_set_values_flat (CdnExpression *expression,
+                                gdouble const *values,
+                                gint           numvals,
+                                gint           numr,
+                                gint           numc)
+{
+	g_return_if_fail (numr * numc == numvals);
+
+	cdn_expression_set_values (expression, values, numr, numc);
 }
 
 /**

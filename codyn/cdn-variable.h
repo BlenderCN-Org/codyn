@@ -138,6 +138,12 @@ void               cdn_variable_set_values              (CdnVariable        *var
                                                          gint                numr,
                                                          gint                numc);
 
+void               cdn_variable_set_values_flat         (CdnVariable        *variable,
+                                                         gdouble const      *values,
+                                                         gint                numvals,
+                                                         gint                numr,
+                                                         gint                numc);
+
 void               cdn_variable_set_expression          (CdnVariable        *variable,
                                                          CdnExpression      *expression);
 

@@ -719,9 +719,11 @@ cdn_variable_set_value (CdnVariable  *variable,
 }
 
 /**
- * cdn_variable_set_value:
+ * cdn_variable_set_values: (skip):
  * @variable: the #CdnVariable
- * @value: the new value
+ * @values: the new value
+ * @numr: the number of rows
+ * @numc: the number of columns
  *
  * Change the value to a specific number.
  *
@@ -732,6 +734,33 @@ cdn_variable_set_values (CdnVariable   *variable,
                          gint           numr,
                          gint           numc)
 {
+	/* Omit type check to increase speed */
+	cdn_expression_set_values (variable->priv->expression,
+	                           values,
+	                           numr,
+	                           numc);
+}
+
+/**
+ * cdn_variable_set_values_flat:
+ * @variable: the #CdnVariable
+ * @values: (array length=numvals): the new value
+ * @numvals: the length of @values
+ * @numr: the number of rows
+ * @numc: the number of colums
+ *
+ * Change variable value.
+ *
+ **/
+void
+cdn_variable_set_values_flat (CdnVariable   *variable,
+                              gdouble const *values,
+                              gint           numvals,
+                              gint           numr,
+                              gint           numc)
+{
+	g_return_if_fail (numr * numc == numvals);
+
 	/* Omit type check to increase speed */
 	cdn_expression_set_values (variable->priv->expression,
 	                           values,
