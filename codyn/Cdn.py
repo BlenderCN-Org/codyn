@@ -37,6 +37,9 @@ class Variable(Cdn.Variable):
 
         return flat_to_matrix(ret, dims)
 
+    def set_values(self, vals, numr, numc):
+        self.set_values_flat(vals, numr, numc)
+
 Variable = override(Variable)
 __all__.append('Variable')
 
@@ -46,6 +49,9 @@ class Expression(Cdn.Expression):
         dims = self.get_dimension()
 
         return flat_to_matrix(ret, dims)
+
+    def set_values(self, vals, numr, numc):
+        self.set_values_flat(vals, numr, numc)
 
 Expression = override(Expression)
 __all__.append('Expression')
