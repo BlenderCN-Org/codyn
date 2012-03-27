@@ -26,7 +26,7 @@ def flat_to_matrix(ret, dims):
         start = i * dims[1]
         end = start + dims[1]
 
-        rret.append(ret[start:end])
+        rret.extend(ret[start:end])
 
     return rret
 
