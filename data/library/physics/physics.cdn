@@ -23,13 +23,13 @@ templates
         node "body" : "dof1"
         {
             ## Mass of the body
-            m   = "0"
+            m   = "1"
 
             ## Center of Mass of the body: 1-by-3
             com = "zeros(1, 3)"
 
             ## Inertia matrix of the body: 3-by-3
-            I   = "zeros(3, 3)"
+            I   = "Geometry.ISphere(m, 0.1)"
 
             ## Generalized force on the DOF of this body
             τ = "null"
@@ -75,11 +75,18 @@ templates
             ## Helper variable to calculate the joint transform
             jointTransform = "joint.JointTransform(q)"
 
+            ## 4x4 homogeneous joint transform
+            jointTransform4x4 = "Sp.Transform4x4(jointTransform)"
+
             ## Helper variable to calculate the joint velocity
             jointVelocity = "joint.JointVelocity(q, dq)"
 
             ## Helper variable to calculate the joint motion subspace
             motionSubspace = "joint.MotionSubspace(q, dq)"
+
+            motionSubspaceT = "motionSubspaceᵀ"
+
+            transformT = "transformᵀ"
 
             ## Helper variable to calculate the velocity product term
             cJ = "joint.cJ(q, dq)"
@@ -90,8 +97,14 @@ templates
             ## child frame
             coordinateTransform = "eye(6)"
 
+            ## 4x4 homogeneous coordinate transform
+            coordinateTransform4x4 = "Sp.Transform4x4(coordinateTransform)"
+
             ## The total transform from parent frame to body frame
             transform = "jointTransform ∙ coordinateTransform"
+
+            ## 4x4 homogeneous transform
+            transform4x4 = "Sp.Transform4x4(transform)"
 
             ## External force on this body (6-by-1)
             fext = "zeros(6, 1)"
@@ -108,6 +121,15 @@ templates
 
             ## Transform from the base to the joint
             baseTransform = "transform"
+
+            ## 4x4 homogeneous base transform
+            baseTransform4x4 = "Sp.Transform4x4(baseTransform)"
+
+            ## Transform from the joint to the base
+            toBaseTransform = "Sp.Inverse(baseTransform)"
+
+            ## 4x4 homogeneous to base transform
+            toBaseTransform4x4 = "Sp.Transform4x4(toBaseTransform)"
 
             ## Jacobian column for this body
             J = "Sp.Inverse(baseTransform) ∙ motionSubspace"
@@ -127,7 +149,6 @@ templates
                 ## The joint axis (defaults to Z axis)
                 axis = "[0; 0; 1]"
 
-                JointTransform(q) = "Sp.Rotate(q ∙ axis)"
                 LocalJointVelocity(q, dq) = "[axis ∙ dq; 0; 0; 0]"
 
                 MotionSubspace(q, dq) = "[axis; 0; 0; 0]"
@@ -144,6 +165,17 @@ templates
                                                    0,           0,           1, 0, 0;
                                                    0,           0,           0, 1, 0;
                                                    0,           0,           0, 0, 1]"
+            }
+        }
+
+        node "revolute{X,Y,Z}" : "body"
+        {
+            node "joint"
+            {
+                axis = "[$(@@@1[!] == 0); $(@@@1[!] == 1); $(@@@1[!] == 2)]"
+
+                JointTransform(q) = "Sp.Rotate@@@1(q)"
+                MotionSubspace(q, dq) = "[axis; 0; 0; 0]"
             }
         }
 
@@ -283,7 +315,8 @@ templates
                                                    0, 0, 1]"
             }
 
-            q = "zeros(4, 1)"
+            # Use a constraint to normalize q
+            q = "[1; 0; 0; 0]" # ("q / hypot(q)")
 
             delete self | inputs | if(input | self) | if(output | self) . q
 
@@ -315,7 +348,8 @@ templates
                 cJ(q, dq) = "0"
             }
 
-            q = "zeros(7, 1)"
+            # Use a constraint to normalize the first 4 q's
+            q = "[1; zeros(6, 1)]" # ("[q[0; 1; 2; 3] / hypot(q[0; 1; 2; 3]); q[4; 5; 7]]")
 
             delete self | inputs | if(input | self) | if(output | self) . q
 

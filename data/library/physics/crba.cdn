@@ -6,7 +6,7 @@ node @bodies
     IC = "zeros(6, 6)"
 
     "fh_@0[!]" = "IC ∙ motionSubspace"
-    "H_@0[!]" = "motionSubspaceᵀ ∙ fh_@@0[!]"
+    "H_@0[!]" = "motionSubspaceT ∙ fh_@@0[!]"
 
     [self]
     edge
@@ -28,14 +28,14 @@ node @bodies
         node | output
         {
             "fh_@@0[!]" = "zeros(6, @bodydof[@@@0[!]])"
-            "H_@@0[!]" = "motionSubspaceᵀ ∙ fh_@@@0[!]"
+            "H_@@0[!]" = "motionSubspaceT ∙ fh_@@@0[!]"
         }
 
         # In all those dynamic edges, add a calculation for fh_@@0 (i.e. this)
         # is then recursively calculated from bottom to top
         edge | edges
         {
-            "fh_@@0[!]" <= "transformᵀ ∙ fh_@@@0[!]"
+            "fh_@@0[!]" <= "transformT ∙ fh_@@@0[!]"
         }
     }
 }
@@ -43,7 +43,7 @@ node @bodies
 # Add computation of IC in the dynamics edge
 edge has-template("physics" . "dynamics")
 {
-     IC <= "transformᵀ ∙ IC ∙ transform"
+     IC <= "transformT ∙ IC ∙ transform"
 }
 
 # vi:ex:ts=4:et

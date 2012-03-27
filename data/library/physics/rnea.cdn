@@ -6,7 +6,7 @@ templates
     {
         edge "dynamics"
         {
-            force <= "transformᵀ ∙ force"
+            force <= "transformT ∙ force"
         }
     }
 }
@@ -27,7 +27,7 @@ node "@bodies"
     force = "zeros(6, 1)"
 
     # C matrix row
-    C = "motionSubspaceᵀ ∙ force"
+    C = "motionSubspaceT ∙ force"
 
     [self]
     edge

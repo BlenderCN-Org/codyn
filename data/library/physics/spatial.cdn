@@ -98,6 +98,15 @@ node "Sp"
     ## the upper 3x3 block of the transform.
     Rotatation3(sp) = "block(sp, [1 2 3], [1 2 3])"
 
+    ## Obtain a 4x4 homogeneous transformation matrix from a spatial
+    ## transformation
+    Transform4x4(sp) = "[
+        sp[0, 0], sp[0, 1], sp[0, 2], sp[4, 2];
+        sp[1, 0], sp[1, 1], sp[1, 2], sp[5, 0];
+        sp[2, 0], sp[2, 1], sp[2, 2], sp[3, 1];
+        0, 0, 0, 1
+    ]"
+
     ## Create a spatial transform containing the rotation part of the provided
     ## spatial transform
     RotationPart(v) = "[
