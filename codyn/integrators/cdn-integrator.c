@@ -172,7 +172,10 @@ set_state (CdnIntegrator      *integrator,
 
 	g_object_notify (G_OBJECT (integrator), "state");
 
-	cdn_integrator_reset (integrator);
+	if (state)
+	{
+		cdn_integrator_reset (integrator);
+	}
 }
 
 static void
