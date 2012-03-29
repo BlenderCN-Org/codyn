@@ -2341,14 +2341,14 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			 * indices in matrix form:
 			 *   dim(a) == dim(b) ()
 			 *
-			 * indices in row/column form
-			 *   size(a, 0) == size(b, 1) &&
-			 *   size(a, 1) == 1 &&
-			 *   size(b, 0) == 1
-			 *
 			 * single index with vector
 			 *   size(a) == [1, 1] ||
 			 *   size(b) == [1, 1]
+			 *
+			 * indices in row/column form
+			 *   size(a, 1) == 1 &&
+			 *   size(b, 0) == 1
+			 *
 			 */
 
 			if (a1 || a2)
@@ -2361,7 +2361,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				outargdim[0] = argdim[2];
 				outargdim[1] = argdim[3];
 			}
-			else if (argdim[2] == 1 && argdim[5] == 1 && argdim[3] == argdim[4])
+			else if (argdim[2] == 1 && argdim[5] == 1)
 			{
 				outargdim[0] = argdim[4];
 				outargdim[1] = argdim[3];
