@@ -1090,6 +1090,10 @@ cdn_function_for_dimension_impl (CdnFunction *function,
 		                   (GWeakNotify)on_dimension_cache_removed,
 		                   function);
 
+		cdn_object_taint (CDN_OBJECT (other));
+		cdn_modifiable_set_modified (CDN_MODIFIABLE (other->priv->expression),
+		                             TRUE);
+
 		g_object_ref (function);
 		return g_object_ref (other);
 	}
