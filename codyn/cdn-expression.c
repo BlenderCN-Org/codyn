@@ -450,7 +450,7 @@ cdn_expression_set_property (GObject      *object,
 			set_has_cache (self, g_value_get_boolean (value));
 		break;
 		case PROP_MODIFIED:
-			self->priv->modified = self->priv->modified;
+			self->priv->modified = g_value_get_boolean (value);
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
