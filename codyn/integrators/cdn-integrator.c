@@ -793,7 +793,7 @@ sum_values (gdouble       *values,
 
 		idx = indices ? indices[i] : i;
 
-		values[idx] += s[idx];
+		values[idx] += s[i];
 	}
 }
 
@@ -816,12 +816,15 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 
 	while (actions)
 	{
-		CdnEdgeAction *action = actions->data;
-		CdnVariable *target = cdn_edge_action_get_target_variable (action);
+		CdnEdgeAction *action;
+		CdnVariable *target;
+
+		action = actions->data;
+		target = cdn_edge_action_get_target_variable (action);
 
 		if (target != NULL)
 		{
-			CdnExpression *expr = cdn_edge_action_get_equation (action);
+			CdnExpression *expr;
 			gint numr;
 			gint numc;
 			gint enumr;
@@ -830,6 +833,8 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 			gint const *indices;
 			gint num_indices;
 			gdouble const *values;
+
+			expr = cdn_edge_action_get_equation (action);
 
 			update = cdn_variable_get_update (target, &enumr, &enumc);
 
