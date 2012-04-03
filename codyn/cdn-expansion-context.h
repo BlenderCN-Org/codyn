@@ -53,6 +53,7 @@ void                 cdn_expansion_context_add_defines      (CdnExpansionContext
 
 gint                 cdn_expansion_context_increment_define (CdnExpansionContext  *context,
                                                              gchar const          *name,
+                                                             gint                  exidx,
                                                              gint                  num);
 
 void                 cdn_expansion_context_add_expansion    (CdnExpansionContext  *context,

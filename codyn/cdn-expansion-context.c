@@ -118,12 +118,12 @@ cdn_expansion_context_unref (CdnExpansionContext *self)
 gint
 cdn_expansion_context_increment_define (CdnExpansionContext *context,
                                         gchar const         *name,
+                                        gint                 exidx,
                                         gint                 num)
 {
 	CdnExpansion *val;
 	gint ret;
 	gchar *incval;
-	CdnExpansion *ex;
 
 	g_return_val_if_fail (context != NULL, 0);
 	g_return_val_if_fail (name != NULL, 0);
@@ -132,7 +132,7 @@ cdn_expansion_context_increment_define (CdnExpansionContext *context,
 
 	if (val)
 	{
-		ret = (gint)g_ascii_strtod (cdn_expansion_get (val, 0), NULL);
+		ret = (gint)g_ascii_strtod (cdn_expansion_get (val, exidx), NULL);
 	}
 	else
 	{
@@ -140,12 +140,8 @@ cdn_expansion_context_increment_define (CdnExpansionContext *context,
 	}
 
 	incval = g_strdup_printf ("%d", ret + num);
-	ex = cdn_expansion_new_one (incval);
-
-	cdn_expansion_context_add_define (context, name, ex);
-
+	cdn_expansion_set (val, exidx, incval);
 	g_free (incval);
-	cdn_expansion_unref (ex);
 
 	++context->marker;
 	return ret;

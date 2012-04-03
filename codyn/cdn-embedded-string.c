@@ -574,14 +574,17 @@ resolve_indirection (CdnEmbeddedString   *em,
 		// This is a define
 		gchar *findidx;
 		gchar *idx;
+		gchar *flag;
 
 		name = g_match_info_fetch (info, 3);
 		idx = g_match_info_fetch (info, 5);
 		findidx = g_match_info_fetch (info, 9);
+		flag = g_match_info_fetch (info, 7);
+		flags = get_indirection_flags (flag);
 
 		ex = cdn_expansion_context_get_define (context, name);
+
 		exidx = 0;
-		flags = INDIRECTION_NONE;
 
 		if (findidx && *findidx && ex)
 		{
@@ -589,22 +592,22 @@ resolve_indirection (CdnEmbeddedString   *em,
 			{
 				gint i;
 
-				for (i = 0; i < cdn_expansion_num (ex); ++i)
+				for (i = 1; i < cdn_expansion_num (ex); ++i)
 				{
 					if (g_strcmp0 (cdn_expansion_get (ex, i),
 					               findidx) == 0)
 					{
 						// That's it...
-						ret = g_strdup_printf ("%d", i);
+						ret = g_strdup_printf ("%d", i - 1);
 						break;
 					}
 				}
 			}
+
+			flags = INDIRECTION_NONE;
 		}
 		else
 		{
-			gchar *flag;
-
 			if (idx && *idx && !ex)
 			{
 				gchar *pname;
@@ -622,9 +625,6 @@ resolve_indirection (CdnEmbeddedString   *em,
 				exidx = (gint)g_ascii_strtoll (idx, NULL, 10) + 1;
 			}
 
-			flag = g_match_info_fetch (info, 5);
-			flags = get_indirection_flags (flag);
-
 			if (flags == INDIRECTION_INCREMENT)
 			{
 				inc = num_incdec (flag);
@@ -634,11 +634,11 @@ resolve_indirection (CdnEmbeddedString   *em,
 				dec = num_incdec (flag);
 			}
 
-			g_free (flag);
 		}
 
 		g_free (idx);
 		g_free (findidx);
+		g_free (flag);
 	}
 
 	switch (flags)
@@ -670,6 +670,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 		{
 			gint idx = cdn_expansion_context_increment_define (context,
 			                                                   name,
+			                                                   exidx,
 			                                                   -dec + inc);
 
 			ret = g_strdup_printf ("%d", idx);
