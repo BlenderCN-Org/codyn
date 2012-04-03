@@ -24,7 +24,7 @@
 #define __CDN_EMBEDDED_STRING_H__
 
 #include <glib-object.h>
-#include <codyn/cdn-embedded-context.h>
+#include <codyn/cdn-expansion-context.h>
 #include <codyn/cdn-expansion.h>
 
 G_BEGIN_DECLS
@@ -103,17 +103,17 @@ CdnEmbeddedString *cdn_embedded_string_prepend_text     (CdnEmbeddedString      
 
 
 gchar const       *cdn_embedded_string_expand           (CdnEmbeddedString         *s,
-                                                         CdnEmbeddedContext        *ctx,
+                                                         CdnExpansionContext       *ctx,
                                                          GError                   **error);
 
 GSList            *cdn_embedded_string_expand_multiple  (CdnEmbeddedString         *s,
-                                                         CdnEmbeddedContext        *ctx,
+                                                         CdnExpansionContext       *ctx,
                                                          GError                   **error);
 
 gchar             *cdn_embedded_string_escape           (gchar const               *item);
 
 gchar             *cdn_embedded_string_expand_escape    (CdnEmbeddedString         *s,
-                                                         CdnEmbeddedContext        *ctx,
+                                                         CdnExpansionContext       *ctx,
                                                          GError                   **error);
 
 void               cdn_embedded_string_clear_cache      (CdnEmbeddedString         *s);

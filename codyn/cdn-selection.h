@@ -24,7 +24,7 @@
 #define __CDN_SELECTION_H__
 
 #include <glib-object.h>
-#include <codyn/cdn-expansion.h>
+#include <codyn/cdn-expansion-context.h>
 
 G_BEGIN_DECLS
 
@@ -52,35 +52,18 @@ struct _CdnSelectionClass
 	GObjectClass parent_class;
 };
 
-GType         cdn_selection_get_type       (void) G_GNUC_CONST;
+GType                cdn_selection_get_type    (void) G_GNUC_CONST;
 
-CdnSelection *cdn_selection_new            (gpointer      object,
-                                            GSList       *expansions,
-                                            GHashTable   *defines);
+CdnSelection        *cdn_selection_new         (gpointer             object,
+                                                CdnExpansionContext *context);
 
-CdnSelection *cdn_selection_new_defines    (gpointer      object,
-                                            GSList       *expansions,
-                                            GHashTable   *defines,
-                                            gboolean      copy_defines);
+void                 cdn_selection_set_object  (CdnSelection *selection,
+                                                gpointer      object);
 
-void          cdn_selection_set_object     (CdnSelection *selection,
-                                            gpointer      object);
+CdnSelection        *cdn_selection_copy        (CdnSelection *selection);
 
-CdnSelection *cdn_selection_copy           (CdnSelection *selection);
-CdnSelection *cdn_selection_copy_defines   (CdnSelection *selection,
-                                            gboolean      copy_defines);
-
-gpointer      cdn_selection_get_object     (CdnSelection *selection);
-GSList       *cdn_selection_get_expansions (CdnSelection *selection);
-
-CdnExpansion *cdn_selection_get_define     (CdnSelection *selection,
-                                            gchar const  *key);
-
-GHashTable   *cdn_selection_get_defines    (CdnSelection *selection);
-
-void          cdn_selection_add_define     (CdnSelection *selection,
-                                            gchar const  *key,
-                                            CdnExpansion *value);
+gpointer             cdn_selection_get_object  (CdnSelection *selection);
+CdnExpansionContext *cdn_selection_get_context (CdnSelection *selection);
 
 G_END_DECLS
 

@@ -144,10 +144,10 @@ guint         cdn_selector_append_regex      (CdnSelector            *selector,
 guint         cdn_selector_append_regex_partial (CdnSelector            *selector,
                                                  CdnEmbeddedString      *regex);
 
-GSList       *cdn_selector_select            (CdnSelector            *selector,
-                                              GObject                *parent,
-                                              CdnSelectorType         type,
-                                              CdnEmbeddedContext     *context);
+GSList       *cdn_selector_select            (CdnSelector              *selector,
+                                              GObject                  *parent,
+                                              CdnSelectorType           type,
+                                              CdnExpansionContext      *context);
 
 void          cdn_selector_set_partial       (CdnSelector          *selector,
                                               gboolean              partial);

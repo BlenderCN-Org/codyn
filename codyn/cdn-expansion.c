@@ -21,6 +21,7 @@
  */
 
 #include "cdn-expansion.h"
+#include <glib/gprintf.h>
 
 GType
 cdn_expansion_get_type ()
@@ -653,4 +654,31 @@ cdn_expansion_prepend (CdnExpansion *id,
 
 		id->expansions->pdata[pidx] = expansion_copy (get_ex (other, i));
 	}
+}
+
+void
+cdn_expansion_debug_print (CdnExpansion *expansion,
+                           FILE         *file)
+{
+	gint i;
+
+	g_return_if_fail (expansion != NULL);
+	g_return_if_fail (file != NULL);
+
+	g_fprintf (file, "[");
+
+	for (i = 0; i < cdn_expansion_num (expansion); ++i)
+	{
+		if (i != 0)
+		{
+			g_fprintf (file, ", ");
+		}
+
+		g_fprintf (file,
+		           "%s:%d",
+		           cdn_expansion_get (expansion, i),
+		           cdn_expansion_get_index (expansion, i));
+	}
+
+	g_fprintf (file, "]");
 }

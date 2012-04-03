@@ -45,7 +45,7 @@ struct _CdnEmbeddedStringPrivate
 
 	GSList *filters;
 
-	CdnEmbeddedContext *cached_context;
+	CdnExpansionContext *cached_context;
 	gulong cached_marker;
 	GRegex *indirection_regex;
 
@@ -524,7 +524,7 @@ num_incdec (gchar const *s)
 
 static gchar *
 resolve_indirection (CdnEmbeddedString   *em,
-                     CdnEmbeddedContext  *context,
+                     CdnExpansionContext  *context,
                      Node                *node,
                      gchar const         *s,
                      GError             **error)
@@ -562,8 +562,8 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 		flags = get_indirection_flags (flag);
 
-		ex = cdn_embedded_context_get_expansion (context,
-		                                         node->depth);
+		ex = cdn_expansion_context_get_expansion (context,
+		                                          node->depth);
 
 		exidx = (gint)g_ascii_strtoll (num, NULL, 10);
 
@@ -586,8 +586,8 @@ resolve_indirection (CdnEmbeddedString   *em,
 				gchar *n;
 
 				n = g_strdup_printf ("%s%d", name, ++i);
-				ex = cdn_embedded_context_get_define (context,
-				                                      n);
+				ex = cdn_expansion_context_get_define (context,
+				                                       n);
 				g_free (n);
 
 				if (!ex)
@@ -623,8 +623,8 @@ resolve_indirection (CdnEmbeddedString   *em,
 				dec = num_incdec (flag);
 			}
 
-			ex = cdn_embedded_context_get_define (context,
-			                                      name);
+			ex = cdn_expansion_context_get_define (context,
+			                                       name);
 
 			exidx = 0;
 
@@ -661,9 +661,9 @@ resolve_indirection (CdnEmbeddedString   *em,
 		case INDIRECTION_INCREMENT:
 		case INDIRECTION_DECREMENT: // fallthrough
 		{
-			gint idx = cdn_embedded_context_increment_define (context,
-			                                                  name,
-			                                                  -dec + inc);
+			gint idx = cdn_expansion_context_increment_define (context,
+			                                                   name,
+			                                                   -dec + inc);
 
 			ret = g_strdup_printf ("%d", idx);
 		}
@@ -730,7 +730,7 @@ typedef enum
 static gchar *
 evaluate_node (CdnEmbeddedString   *em,
                Node                *node,
-               CdnEmbeddedContext  *context,
+               CdnExpansionContext  *context,
                EvaluateFlags        flags,
                GError             **error)
 {
@@ -798,7 +798,9 @@ evaluate_node (CdnEmbeddedString   *em,
 
 				if (children)
 				{
-					r = cdn_embedded_context_calculate (context, children->data, error);
+					r = cdn_expansion_context_calculate (context,
+					                                     children->data,
+					                                     error);
 				}
 
 				istrue = r && (gint)g_ascii_strtoll (r, NULL, 10) != 0;
@@ -826,7 +828,7 @@ evaluate_node (CdnEmbeddedString   *em,
 		case CDN_EMBEDDED_STRING_NODE_EQUATION:
 			if (context)
 			{
-				r = cdn_embedded_context_calculate (context, ret->str, error);
+				r = cdn_expansion_context_calculate (context, ret->str, error);
 			}
 			else
 			{
@@ -886,14 +888,14 @@ evaluate_node (CdnEmbeddedString   *em,
 }
 
 static gchar const *
-embedded_string_expand (CdnEmbeddedString   *s,
-                        CdnEmbeddedContext  *ctx,
-                        GError             **error)
+embedded_string_expand (CdnEmbeddedString    *s,
+                        CdnExpansionContext  *ctx,
+                        GError              **error)
 {
 	if (s->priv->cached &&
 	    ctx == s->priv->cached_context &&
 	    (ctx == NULL ||
-	     cdn_embedded_context_get_marker (ctx) == s->priv->cached_marker))
+	     cdn_expansion_context_get_marker (ctx) == s->priv->cached_marker))
 	{
 		return s->priv->cached;
 	}
@@ -922,19 +924,19 @@ embedded_string_expand (CdnEmbeddedString   *s,
 
 	if (ctx)
 	{
-		s->priv->cached_marker = cdn_embedded_context_get_marker (ctx);
+		s->priv->cached_marker = cdn_expansion_context_get_marker (ctx);
 	}
 
 	return s->priv->cached;
 }
 
 gchar const *
-cdn_embedded_string_expand (CdnEmbeddedString   *s,
-                            CdnEmbeddedContext  *ctx,
-                            GError             **error)
+cdn_embedded_string_expand (CdnEmbeddedString    *s,
+                            CdnExpansionContext  *ctx,
+                            GError              **error)
 {
 	g_return_val_if_fail (CDN_IS_EMBEDDED_STRING (s), NULL);
-	g_return_val_if_fail (ctx == NULL || CDN_IS_EMBEDDED_CONTEXT (ctx), NULL);
+	g_return_val_if_fail (ctx != NULL, NULL);
 
 	return embedded_string_expand (s, ctx, error);
 }
@@ -1124,7 +1126,7 @@ find_filter (CdnEmbeddedString *s,
 
 static gchar *
 apply_reduce (CdnEmbeddedString *s,
-              CdnEmbeddedContext *ctx,
+              CdnExpansionContext *ctx,
               GSList *parts,
               Node   *filter,
               GError  **error)
@@ -1143,6 +1145,7 @@ apply_reduce (CdnEmbeddedString *s,
 	{
 		gchar *item;
 		CdnExpansion *ex;
+		CdnExpansionContext *exctx;
 
 		gchar const *cc[] = {
 			ret,
@@ -1151,15 +1154,14 @@ apply_reduce (CdnEmbeddedString *s,
 		};
 
 		// Make a context
-		cdn_embedded_context_save (ctx);
+		exctx = cdn_expansion_context_new (ctx);
 
 		ex = cdn_expansion_new ((gchar const * const *)cc);
-
-		cdn_embedded_context_add_expansion (ctx, ex);
+		cdn_expansion_context_add_expansion (ctx, ex);
 		cdn_expansion_unref (ex);
 
-		item = evaluate_node (s, filter, ctx, 0, error);
-		cdn_embedded_context_restore (ctx);
+		item = evaluate_node (s, filter, exctx, 0, error);
+		cdn_expansion_context_unref (exctx);
 
 		g_free (ret);
 		ret = item;
@@ -1172,7 +1174,7 @@ apply_reduce (CdnEmbeddedString *s,
 
 static GSList *
 apply_map (CdnEmbeddedString *s,
-           CdnEmbeddedContext *ctx,
+           CdnExpansionContext *ctx,
            GSList *parts,
            Node   *filter,
            GError  **error)
@@ -1183,14 +1185,15 @@ apply_map (CdnEmbeddedString *s,
 	while (part)
 	{
 		gchar *item;
+		CdnExpansionContext *newctx;
 
 		// Make a context
-		cdn_embedded_context_save (ctx);
-		cdn_embedded_context_add_expansion (ctx, part->data);
+		newctx = cdn_expansion_context_new (ctx);
+		cdn_expansion_context_add_expansion (newctx, part->data);
 
-		item = evaluate_node (s, filter, ctx, 0, error);
+		item = evaluate_node (s, filter, newctx, 0, error);
 
-		cdn_embedded_context_restore (ctx);
+		cdn_expansion_context_unref (newctx);
 
 		ret = g_slist_prepend (ret, cdn_expansion_new_one (item));
 		g_free (item);
@@ -1207,7 +1210,7 @@ apply_map (CdnEmbeddedString *s,
 
 static GSList *
 apply_filters_rev (CdnEmbeddedString *s,
-                   CdnEmbeddedContext *ctx,
+                   CdnExpansionContext *ctx,
                    GSList *items,
                    gint position,
                    GError **error)
@@ -1219,6 +1222,7 @@ apply_filters_rev (CdnEmbeddedString *s,
 	gchar **ptrs;
 	GSList *part;
 	GSList *fitem;
+	CdnExpansionContext *newctx;
 
 	filt = find_filter (s, position);
 
@@ -1244,8 +1248,8 @@ apply_filters_rev (CdnEmbeddedString *s,
 	all = cdn_expansion_new ((gchar const * const *)ptrs);
 	g_strfreev (ptrs);
 
-	cdn_embedded_context_save (ctx);
-	cdn_embedded_context_add_expansion (ctx, all);
+	newctx = cdn_expansion_context_new (ctx);
+	cdn_expansion_context_add_expansion (newctx, all);
 
 	cdn_expansion_unref (all);
 
@@ -1256,7 +1260,7 @@ apply_filters_rev (CdnEmbeddedString *s,
 		/* First filter here what we have until now */
 		if (n->type == CDN_EMBEDDED_STRING_NODE_REDUCE)
 		{
-			val = apply_reduce (s, ctx, items, n, error);
+			val = apply_reduce (s, newctx, items, n, error);
 
 			g_slist_foreach (items, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (items);
@@ -1272,7 +1276,7 @@ apply_filters_rev (CdnEmbeddedString *s,
 		}
 	}
 
-	cdn_embedded_context_restore (ctx);
+	cdn_expansion_context_unref (newctx);
 
 	return g_slist_reverse (items);
 }
@@ -1592,13 +1596,13 @@ ex_node_expand (gchar const  *text,
 }
 
 static GSList *expand_node (CdnEmbeddedString   *s,
-                            CdnEmbeddedContext  *ctx,
+                            CdnExpansionContext  *ctx,
                             ExNode              *node,
                             GError             **error);
 
 static gchar *
 expand_node_escape (CdnEmbeddedString   *s,
-                    CdnEmbeddedContext  *ctx,
+                    CdnExpansionContext  *ctx,
                     ExNode              *node,
                     GError             **error);
 
@@ -1625,7 +1629,7 @@ annotate_first (GSList *items)
 
 static GSList *
 expand_elements (CdnEmbeddedString   *s,
-                 CdnEmbeddedContext  *ctx,
+                 CdnExpansionContext  *ctx,
                  ExNode              *elements,
                  GError             **error)
 {
@@ -1791,7 +1795,7 @@ expansion_append1 (CdnExpansion *a,
 
 static GSList *
 expand_concat (CdnEmbeddedString   *s,
-               CdnEmbeddedContext  *ctx,
+               CdnExpansionContext  *ctx,
                ExNode              *node,
                GError             **error)
 {
@@ -1869,7 +1873,7 @@ expand_concat (CdnEmbeddedString   *s,
 
 static GSList *
 expand_node (CdnEmbeddedString   *s,
-             CdnEmbeddedContext  *ctx,
+             CdnExpansionContext  *ctx,
              ExNode              *node,
              GError             **error)
 {
@@ -1892,7 +1896,7 @@ expand_node (CdnEmbeddedString   *s,
 
 static GSList *
 expand_multiple (CdnEmbeddedString   *s,
-                 CdnEmbeddedContext  *ctx,
+                 CdnExpansionContext  *ctx,
                  gchar const         *t,
                  GError             **error)
 {
@@ -1915,7 +1919,7 @@ expand_multiple (CdnEmbeddedString   *s,
 /**
  * cdn_embedded_string_expand_multiple:
  * @s: A #CdnEmbeddedString
- * @ctx: A #CdnEmbeddedContext
+ * @ctx: A #CdnExpansionContext
  *
  * Expand string with braces syntax.
  *
@@ -1924,14 +1928,14 @@ expand_multiple (CdnEmbeddedString   *s,
  **/
 GSList *
 cdn_embedded_string_expand_multiple (CdnEmbeddedString   *s,
-                                     CdnEmbeddedContext  *ctx,
+                                     CdnExpansionContext  *ctx,
                                      GError             **error)
 {
 	gchar const *id;
 	GSList *ret;
 
 	g_return_val_if_fail (CDN_IS_EMBEDDED_STRING (s), NULL);
-	g_return_val_if_fail (ctx == NULL || CDN_IS_EMBEDDED_CONTEXT (ctx), NULL);
+	g_return_val_if_fail (ctx != NULL, NULL);
 
 	id = embedded_string_expand (s, ctx, error);
 
@@ -1990,7 +1994,7 @@ cdn_embedded_string_escape (gchar const *s)
 
 static gchar *
 expand_concat_escape (CdnEmbeddedString   *s,
-                      CdnEmbeddedContext  *ctx,
+                      CdnExpansionContext  *ctx,
                       ExNode              *node,
                       GError             **error)
 {
@@ -2016,7 +2020,7 @@ expand_concat_escape (CdnEmbeddedString   *s,
 
 static GSList *
 apply_filters_rev_escape (CdnEmbeddedString   *s,
-                          CdnEmbeddedContext  *ctx,
+                          CdnExpansionContext  *ctx,
                           GSList              *elements,
                           gint                 pos,
                           GSList             **text,
@@ -2049,7 +2053,7 @@ apply_filters_rev_escape (CdnEmbeddedString   *s,
 
 static gchar *
 expand_elements_escape (CdnEmbeddedString   *s,
-                        CdnEmbeddedContext  *ctx,
+                        CdnExpansionContext  *ctx,
                         ExNode              *elements,
                         GError             **error)
 {
@@ -2139,7 +2143,7 @@ expand_elements_escape (CdnEmbeddedString   *s,
 
 static gchar *
 expand_node_escape (CdnEmbeddedString   *s,
-                    CdnEmbeddedContext  *ctx,
+                    CdnExpansionContext  *ctx,
                     ExNode              *node,
                     GError             **error)
 {
@@ -2161,7 +2165,7 @@ expand_node_escape (CdnEmbeddedString   *s,
 
 static gchar *
 expand_multiple_escape (CdnEmbeddedString   *s,
-                        CdnEmbeddedContext  *ctx,
+                        CdnExpansionContext  *ctx,
                         gchar const         *t,
                         GError             **error)
 {
@@ -2183,14 +2187,14 @@ expand_multiple_escape (CdnEmbeddedString   *s,
 
 gchar *
 cdn_embedded_string_expand_escape (CdnEmbeddedString   *s,
-                                   CdnEmbeddedContext  *ctx,
+                                   CdnExpansionContext  *ctx,
                                    GError             **error)
 {
 	gchar const *id;
 	gchar *ret;
 
 	g_return_val_if_fail (CDN_IS_EMBEDDED_STRING (s), NULL);
-	g_return_val_if_fail (ctx == NULL || CDN_IS_EMBEDDED_CONTEXT (ctx), NULL);
+	g_return_val_if_fail (ctx != NULL, NULL);
 
 	id = embedded_string_expand (s, ctx, error);
 

@@ -360,11 +360,10 @@ find_matching_variables (CdnNetwork  *network,
 		return NULL;
 	}
 
-	CdnEmbeddedContext *context = cdn_embedded_context_new ();
 	GSList *selection = cdn_selector_select (sel,
 	                                         G_OBJECT (network),
 	                                         CDN_SELECTOR_TYPE_VARIABLE,
-	                                         context);
+	                                         NULL);
 	GSList *element = selection;
 	GSList *variables = NULL;
 
@@ -379,7 +378,6 @@ find_matching_variables (CdnNetwork  *network,
 	}
 
 	g_slist_free (selection);
-	g_object_unref (context);
 	g_object_unref (sel);
 
 	return variables;

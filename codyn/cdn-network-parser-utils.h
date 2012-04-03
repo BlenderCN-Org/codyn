@@ -28,10 +28,10 @@
 #include <codyn/cdn-selector.h>
 
 gboolean     cdn_network_parser_utils_get_templates        (CdnNetwork           *network,
-                                                            CdnNode             *parent,
+                                                            CdnNode              *parent,
                                                             gboolean              for_template,
                                                             GSList               *selectors,
-                                                            CdnEmbeddedContext   *context,
+                                                            CdnExpansionContext  *context,
                                                             gchar               **missing,
                                                             GSList              **templates);
 

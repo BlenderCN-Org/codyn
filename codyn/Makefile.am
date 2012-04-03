@@ -41,7 +41,7 @@ COMMON_SOURCES = 		\
 	cdn-network-parser-utils.c \
 	cdn-parser-context.c \
 	cdn-embedded-string.c \
-	cdn-embedded-context.c \
+	cdn-expansion-context.c \
 	cdn-object.c \
 	cdn-operators.c \
 	cdn-variable.c \
@@ -117,7 +117,7 @@ INST_H_FILES = \
 	cdn-utils.h \
 	cdn-layout.h \
 	cdn-embedded-string.h \
-	cdn-embedded-context.h \
+	cdn-expansion-context.h \
 	cdn-expansion.h \
 	cdn-selection.h \
 	cdn-attribute.h \

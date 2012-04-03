@@ -85,10 +85,6 @@ CdnParserContext      *cdn_parser_context_new                  (CdnNetwork      
 void                   cdn_parser_context_set_emit             (CdnParserContext           *context,
                                                                 gboolean                    emit);
 
-CdnEmbeddedContext    *cdn_parser_context_get_embedded         (CdnParserContext           *context);
-void                   cdn_parser_context_set_embedded         (CdnParserContext           *context,
-                                                                CdnEmbeddedContext         *embedded);
-
 GFile                 *cdn_parser_context_get_file             (CdnParserContext           *context);
 
 void                   cdn_parser_context_set_line             (CdnParserContext           *context,

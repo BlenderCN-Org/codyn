@@ -25,7 +25,7 @@
 #include "cdn-integrators.h"
 #include "cdn-parser.h"
 #include "cdn-annotatable.h"
-#include "cdn-embedded-context.h"
+#include "cdn-expansion-context.h"
 #include "cdn-selection.h"
 #include "cdn-expansion.h"
 #include "cdn-layoutable.h"
@@ -50,7 +50,7 @@
 do										\
 {										\
 	GError *__err = NULL;							\
-	ret = cdn_embedded_string_expand (s, parser->priv->embedded, &__err);	\
+	ret = cdn_embedded_string_expand (s, expansion_context_peek (parser), &__err);	\
 										\
 	if (!ret)								\
 	{									\
@@ -64,7 +64,7 @@ while (0);
 do										\
 {										\
 	GError *__err = NULL;							\
-	ret = cdn_embedded_string_expand (s, parser->priv->embedded, &__err);	\
+	ret = cdn_embedded_string_expand (s, expansion_context_peek (parser), &__err);	\
 										\
 	if (!ret)								\
 	{									\
@@ -78,7 +78,7 @@ while (0);
 do										\
 {										\
 	GError *__err = NULL;							\
-	ret = cdn_embedded_string_expand_multiple (s, parser->priv->embedded, &__err);	\
+	ret = cdn_embedded_string_expand_multiple (s, expansion_context_peek (parser), &__err);	\
 										\
 	if (!ret && __err)							\
 	{									\
@@ -92,7 +92,7 @@ while (0);
 do										\
 {										\
 	GError *__err = NULL;							\
-	ret = cdn_embedded_string_expand_multiple (s, parser->priv->embedded, &__err);	\
+	ret = cdn_embedded_string_expand_multiple (s, expansion_context_peek (parser), &__err);	\
 										\
 	if (!ret && __err)							\
 	{									\
@@ -143,7 +143,7 @@ struct _CdnParserContextPrivate
 	GSList *selectors;
 
 	Context *is_template;
-	CdnEmbeddedContext *embedded;
+	GSList *context;
 
 	GSList *strings;
 	GSList *equations;
@@ -359,9 +359,13 @@ cdn_parser_context_finalize (GObject *object)
 		g_object_unref (self->priv->annotation);
 	}
 
-	if (self->priv->embedded)
+	while (self->priv->context)
 	{
-		g_object_unref (self->priv->embedded);
+		cdn_expansion_context_unref (self->priv->context->data);
+
+		self->priv->context =
+			g_slist_delete_link (self->priv->context,
+			                     self->priv->context);
 	}
 
 	g_hash_table_destroy (self->priv->files);
@@ -494,12 +498,14 @@ cdn_parser_context_init (CdnParserContext *self)
 	self->priv = CDN_PARSER_CONTEXT_GET_PRIVATE (self);
 
 	self->priv->start_token = T_START_DOCUMENT;
-	self->priv->embedded = cdn_embedded_context_new ();
 
 	self->priv->files = g_hash_table_new_full (g_file_hash,
 	                                           (GEqualFunc)g_file_equal,
 	                                           (GDestroyNotify)g_object_unref,
 	                                           NULL);
+
+	self->priv->context = g_slist_prepend (NULL,
+	                                       cdn_expansion_context_new (NULL));
 }
 
 CdnParserContext *
@@ -613,7 +619,7 @@ current_annotation (CdnParserContext *context)
 	}
 
 	return cdn_embedded_string_expand (context->priv->annotation,
-	                                   context->priv->embedded,
+	                                   context->priv->context->data,
 	                                   NULL);
 }
 
@@ -700,7 +706,7 @@ set_taggable (CdnParserContext *context,
 			}
 
 			ex = cdn_embedded_string_expand_multiple (o,
-			                                          context->priv->embedded,
+			                                          context->priv->context->data,
 			                                          NULL);
 
 			for (item = ex; item; item = g_slist_next (item))
@@ -720,18 +726,87 @@ set_taggable (CdnParserContext *context,
 
 static GSList *
 copy_selections (GSList   *selections,
-                 gboolean  copy_defines)
+                 gboolean  newctx)
 {
 	GSList *ret = NULL;
 
 	while (selections)
 	{
-		ret = g_slist_prepend (ret, cdn_selection_copy_defines (selections->data,
-		                                                        copy_defines));
+		if (newctx)
+		{
+			ret = g_slist_prepend (ret,
+			                       cdn_selection_copy (selections->data));
+		}
+		else
+		{
+			CdnExpansionContext *ctx;
+			gpointer obj;
+
+			ctx = cdn_selection_get_context (selections->data);
+			obj = cdn_selection_get_object (selections->data);
+
+			ret = g_slist_prepend (ret,
+			                       cdn_selection_new (obj,
+			                                          ctx));
+		}
+
 		selections = g_slist_next (selections);
 	}
 
 	return g_slist_reverse (ret);
+}
+
+static CdnExpansionContext *
+expansion_context_peek (CdnParserContext *context)
+{
+	if (context->priv->context)
+	{
+		return context->priv->context->data;
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+static CdnExpansionContext *
+expansion_context_push (CdnParserContext    *context,
+                        CdnExpansionContext *ctx)
+{
+	CdnExpansionContext *ret;
+
+	ret = cdn_expansion_context_new (ctx);
+
+	context->priv->context = g_slist_prepend (context->priv->context, ret);
+	return ret;
+}
+
+static CdnExpansionContext *
+expansion_context_push_base (CdnParserContext *context)
+{
+	return expansion_context_push (context,
+	                               expansion_context_peek (context));
+}
+
+static CdnExpansionContext *
+expansion_context_push_selection (CdnParserContext *context,
+                                  CdnSelection     *selection)
+{
+	return expansion_context_push (context,
+	                               selection ? cdn_selection_get_context (selection) : NULL);
+}
+
+static void
+expansion_context_pop (CdnParserContext *context)
+{
+	if (context->priv->context)
+	{
+		cdn_expansion_context_unref (context->priv->context->data);
+
+		context->priv->context =
+			g_slist_delete_link (context->priv->context,
+			                     context->priv->context);
+	}
 }
 
 static GSList *
@@ -741,10 +816,10 @@ each_selections_attr (CdnParserContext *context,
                       CdnSelectorType   type,
                       gboolean         *selected,
                       gboolean         *couldselect,
-                      gboolean          copy_defines,
                       gpointer          obj,
                       gboolean          isempty,
-                      GSList           *ret)
+                      GSList           *ret,
+                      gboolean          newctx)
 {
 	if (CDN_IS_EMBEDDED_STRING (obj))
 	{
@@ -756,37 +831,48 @@ each_selections_attr (CdnParserContext *context,
 			GSList *exps;
 			GSList *expp;
 
-			cdn_embedded_context_save (context->priv->embedded);
-			cdn_embedded_context_set_selection (context->priv->embedded,
-			                                    item->data);
+			expansion_context_push_selection (context, item->data);
 
-			embedded_string_expand_multiple_val (exps, obj, context, NULL);
+			embedded_string_expand_multiple_val (exps,
+			                                     obj,
+			                                     context,
+			                                     NULL);
 
 			for (expp = exps; expp; expp = g_slist_next (expp))
 			{
 				CdnSelection *sel;
-				GSList *expansions;
+				CdnExpansionContext *pctx;
 
 				if (isempty && !*cdn_expansion_get (expp->data, 0))
 				{
 					continue;
 				}
 
-				expansions = g_slist_copy (cdn_selection_get_expansions (item->data));
-				expansions = g_slist_prepend (expansions,
-				                              expp->data);
+				pctx = cdn_expansion_context_new (expansion_context_peek (context));
 
-				sel = cdn_selection_new_defines (cdn_selection_get_object (item->data),
-				                                 expansions,
-				                                 cdn_selection_get_defines (item->data),
-				                                 copy_defines);
+				if (!newctx)
+				{
+					CdnExpansionContext *ctx;
+
+					ctx = cdn_selection_get_context (item->data);
+
+					/* Here make newctx take defines of
+					   the defines of the selection */
+					cdn_expansion_context_shared_defines (pctx,
+					                                      ctx);
+				}
+
+				cdn_expansion_context_add_expansion (pctx,
+				                                     expp->data);
+
+				sel = cdn_selection_new (cdn_selection_get_object (item->data),
+				                         pctx);
 
 				ret = g_slist_prepend (ret, sel);
-
-				g_slist_free (expansions);
+				cdn_expansion_context_unref (pctx);
 			}
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 
 			g_slist_foreach (exps, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (exps);
@@ -805,15 +891,12 @@ each_selections_attr (CdnParserContext *context,
 		{
 			GSList *sels;
 
-			cdn_embedded_context_save (context->priv->embedded);
-
-			cdn_embedded_context_set_selection (context->priv->embedded,
-			                                    item->data);
+			expansion_context_push_selection (context, item->data);
 
 			sels = cdn_selector_select (obj,
 			                            cdn_selection_get_object (item->data),
 			                            type,
-			                            context->priv->embedded);
+			                            expansion_context_peek (context));
 
 			if (selected && sels != NULL)
 			{
@@ -822,18 +905,19 @@ each_selections_attr (CdnParserContext *context,
 
 			while (sels)
 			{
-				cdn_embedded_context_save (context->priv->embedded);
+				CdnExpansionContext *ctx;
 
-				cdn_embedded_context_add_expansions (context->priv->embedded,
-				                                     cdn_selection_get_expansions (sels->data));
+				ctx = cdn_selection_get_context (sels->data);
+
+				if (!newctx)
+				{
+					cdn_expansion_context_shared_defines (ctx,
+					                                      cdn_selection_get_context (item->data));
+				}
 
 				ret = g_slist_prepend (ret,
-				                       cdn_selection_new_defines (cdn_selection_get_object (item->data),
-				                                                  cdn_embedded_context_get_expansions (context->priv->embedded),
-				                                                  cdn_embedded_context_get_defines (context->priv->embedded),
-				                                                  copy_defines));
-
-				cdn_embedded_context_restore (context->priv->embedded);
+				                       cdn_selection_new (cdn_selection_get_object (item->data),
+				                                          ctx));
 
 				if (isempty)
 				{
@@ -847,7 +931,7 @@ each_selections_attr (CdnParserContext *context,
 				sels = g_slist_delete_link (sels, sels);
 			}
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 		}
 	}
 
@@ -861,7 +945,7 @@ each_selections (CdnParserContext *context,
                  CdnSelectorType   type,
                  gboolean         *selected,
                  gboolean         *couldselect,
-                 gboolean          copy_defines)
+                 gboolean          newctx)
 {
 	gint i;
 	GSList *ret = NULL;
@@ -885,7 +969,7 @@ each_selections (CdnParserContext *context,
 
 	if (!attrif && !attrifstr && !attreach)
 	{
-		return copy_selections (selections, copy_defines);
+		return copy_selections (selections, newctx);
 	}
 
 	if (attreach)
@@ -900,10 +984,10 @@ each_selections (CdnParserContext *context,
 			                            type,
 			                            selected,
 			                            couldselect,
-			                            copy_defines,
 			                            obj,
 			                            FALSE,
-			                            ret);
+			                            ret,
+			                            newctx);
 		}
 	}
 
@@ -919,10 +1003,10 @@ each_selections (CdnParserContext *context,
 			                            type,
 			                            selected,
 			                            couldselect,
-			                            copy_defines,
 			                            obj,
 			                            TRUE,
-			                            ret);
+			                            ret,
+			                            newctx);
 		}
 	}
 
@@ -938,10 +1022,10 @@ each_selections (CdnParserContext *context,
 			                            type,
 			                            selected,
 			                            couldselect,
-			                            copy_defines,
 			                            obj,
 			                            TRUE,
-			                            ret);
+			                            ret,
+			                            newctx);
 		}
 	}
 
@@ -1047,7 +1131,7 @@ generate_expand_multival (CdnParserContext *context,
 	sels = cdn_selector_select (CDN_SELECTOR (value),
 	                            cdn_selection_get_object (sel),
 	                            CDN_SELECTOR_TYPE_ANY,
-	                            context->priv->embedded);
+	                            expansion_context_peek (context));
 
 	*ismulti = TRUE;
 
@@ -1059,14 +1143,15 @@ generate_expand_multival (CdnParserContext *context,
 
 	while (sels)
 	{
-		GSList *exps;
+		CdnExpansionContext *ctx;
+		CdnExpansion *ex;
 
-		exps = cdn_selection_get_expansions (sels->data);
+		ctx = cdn_selection_get_context (sels->data);
+		ex = cdn_expansion_context_get_expansion (ctx, 0);
 
-		if (exps)
+		if (ex)
 		{
-			values = g_slist_prepend (values,
-			                          cdn_expansion_copy (exps->data));
+			values = g_slist_prepend (values, ex);
 		}
 		else
 		{
@@ -1105,7 +1190,7 @@ generate_unexpanded (CdnParserContext  *context,
 		gchar *expanded;
 
 		expanded = cdn_embedded_string_expand_escape (CDN_EMBEDDED_STRING (value),
-		                                              context->priv->embedded,
+		                                              expansion_context_peek (context),
 		                                              &error);
 
 		if (!expanded)
@@ -1186,13 +1271,8 @@ generate_name_value_pairs (CdnParserContext  *context,
 		return NULL;
 	}
 
-	cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-	if (sel)
-	{
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    sel);
-	}
+	expansion_context_push (context,
+	                        cdn_selection_get_context (sel));
 
 	embedded_string_expand_multiple_val (names, name, context, NULL);
 
@@ -1210,7 +1290,8 @@ generate_name_value_pairs (CdnParserContext  *context,
 		if (!value)
 		{
 			ret = g_slist_prepend (ret,
-			                       name_value_pair_new (nameit->data, NULL));
+			                       name_value_pair_new (nameit->data,
+			                                            NULL));
 
 			continue;
 		}
@@ -1221,9 +1302,14 @@ generate_name_value_pairs (CdnParserContext  *context,
 
 		if (!valuesmulti)
 		{
-			cdn_embedded_context_save (context->priv->embedded);
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    nameit->data);
+			CdnExpansionContext *pctx;
+
+			pctx = expansion_context_push_base (context);
+			cdn_expansion_context_shared_defines (pctx,
+			                                      cdn_selection_get_context (sel));
+
+			cdn_expansion_context_add_expansion (pctx,
+			                                     nameit->data);
 
 			values = generate_expand_multival (context,
 			                                   sel,
@@ -1235,7 +1321,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 				g_slist_foreach (names, (GFunc)cdn_expansion_unref, NULL);
 				g_slist_free (names);
 
-				cdn_embedded_context_restore (context->priv->embedded);
+				expansion_context_pop (context);
 				return NULL;
 			}
 
@@ -1248,7 +1334,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 
 			if (!values)
 			{
-				cdn_embedded_context_restore (context->priv->embedded);
+				expansion_context_pop (context);
 				continue;
 			}
 		}
@@ -1347,7 +1433,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 
 		if (hascontext)
 		{
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 		}
 
 		if (valuesmulti)
@@ -1393,7 +1479,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 		g_slist_free (count_names);
 	}
 
-	cdn_embedded_context_restore (context->priv->embedded);
+	expansion_context_pop (context);
 
 	g_slist_foreach (names, (GFunc)cdn_expansion_unref, NULL);
 	g_slist_free (names);
@@ -1481,23 +1567,21 @@ add_variable_diff (CdnParserContext  *context,
 		{
 			gchar const *cons;
 			CdnExpansion *ex;
+			CdnExpansionContext *pctx;
 
 			ex = cdn_expansion_new_one (cdn_variable_get_name (prop));
 
-			cdn_embedded_context_save (context->priv->embedded);
+			pctx = expansion_context_push_base (context);
 
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    ex);
-
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    p->value);
+			cdn_expansion_context_add_expansion (pctx, ex);
+			cdn_expansion_context_add_expansion (pctx, p->value);
 
 			embedded_string_expand_val (cons, constraint, context, FALSE);
 
 			cdn_variable_set_constraint (prop,
 			                             cdn_expression_new (cons));
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 
 			cdn_expansion_unref (ex);
 		}
@@ -1545,15 +1629,12 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 		GSList *vars;
 		GSList *exprcache = NULL;
 
-		cdn_embedded_context_save_defines (context->priv->embedded,
-		                                   TRUE);
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
+		expansion_context_push_selection (context, item->data);
 
 		vars = cdn_selector_select (selector,
 		                            cdn_selection_get_object (item->data),
 		                            CDN_SELECTOR_TYPE_VARIABLE,
-		                            context->priv->embedded);
+		                            expansion_context_peek (context));
 
 		while (vars)
 		{
@@ -1569,16 +1650,14 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 			}
 			else
 			{
-				cdn_embedded_context_save (context->priv->embedded);
-
-				cdn_embedded_context_add_selection (context->priv->embedded,
-				                                    vars->data);
+				expansion_context_push_selection (context,
+				                                  vars->data);
 
 				embedded_string_expand_multiple (exprs,
 				                                 expression,
 				                                 context);
 
-				cdn_embedded_context_restore (context->priv->embedded);
+				expansion_context_pop (context);
 
 				if (exprs->next && g_slist_length (exprs) != g_slist_length (vars))
 				{
@@ -1622,7 +1701,7 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 			vars = g_slist_delete_link (vars, vars);
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		if (!ret)
 		{
@@ -1753,10 +1832,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 		                                   count_name,
 		                                   FALSE);
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
+		expansion_context_push_selection (context, item->data);
 
 		for (pair = pairs; pair; pair = g_slist_next (pair))
 		{
@@ -1768,6 +1844,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			gchar const *exname;
 			gint order;
 			gchar *dotname;
+			CdnExpansionContext *pctx;
 
 			exname = cdn_expansion_get (p->name, 0);
 
@@ -1846,13 +1923,10 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 
 			property = cdn_object_get_variable (obj, exname);
 
-			cdn_embedded_context_save (context->priv->embedded);
+			pctx = expansion_context_push_base (context);
 
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    p->name);
-
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    p->value);
+			cdn_expansion_context_add_expansion (pctx, p->name);
+			cdn_expansion_context_add_expansion (pctx, p->value);
 
 			annotation = current_annotation (context);
 
@@ -1872,7 +1946,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 				                             cdn_expression_new (cons));
 			}
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 
 			set_taggable (context, property, attributes);
 		}
@@ -1880,7 +1954,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 		g_slist_foreach (pairs, (GFunc)name_value_pair_free, NULL);
 		g_slist_free (pairs);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 	}
 
 	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
@@ -1942,10 +2016,7 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 		GSList *iteme;
 		gchar const *annotation;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
+		expansion_context_push_selection (context, item->data);
 
 		annotation = current_annotation (context);
 
@@ -1960,10 +2031,10 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 			gchar *name;
 			CdnExpression *index = NULL;
 			gchar const *ptr;
+			CdnExpansionContext *pctx;
 
-			cdn_embedded_context_save (context->priv->embedded);
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    iteme->data);
+			pctx = expansion_context_push_base (context);
+			cdn_expansion_context_add_expansion (pctx, iteme->data);
 
 			extarget = cdn_expansion_get (iteme->data, 0);
 
@@ -2052,10 +2123,10 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 				}
 			}
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		g_slist_foreach (exps, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (exps);
@@ -2107,9 +2178,7 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 
 		parent = cdn_selection_get_object (item->data);
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-		cdn_embedded_context_set_selection (context->priv->embedded, item->data);
-
+		expansion_context_push_selection (context, item->data);
 		annotation = current_annotation (context);
 
 		embedded_string_expand (exname, name, context);
@@ -2131,7 +2200,7 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 
 		set_taggable (context, function, attributes);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 	}
 
 	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
@@ -2185,10 +2254,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 
 		iface = cdn_node_get_variable_interface (parent);
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
+		expansion_context_push_selection (context, item->data);
 
 		embedded_string_expand_multiple (properties, property_name, context);
 
@@ -2196,11 +2262,11 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 		{
 			GSList *exps;
 			GSList *exp;
+			CdnExpansionContext *pctx;
 
-			cdn_embedded_context_save (context->priv->embedded);
+			pctx = expansion_context_push_base (context);
 
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    prop->data);
+			cdn_expansion_context_add_expansion (pctx, prop->data);
 
 			embedded_string_expand_multiple (exps, name, context);
 
@@ -2209,10 +2275,8 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 				GSList *children;
 				GSList *child;
 
-				cdn_embedded_context_save (context->priv->embedded);
-
-				cdn_embedded_context_add_expansion (context->priv->embedded,
-				                                    exp->data);
+				cdn_expansion_context_add_expansion (expansion_context_push_base (context),
+				                                     exp->data);
 
 				embedded_string_expand_multiple (children, child_name, context);
 
@@ -2246,7 +2310,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 
 				}
 
-				cdn_embedded_context_restore (context->priv->embedded);
+				expansion_context_pop (context);
 
 				g_slist_foreach (children, (GFunc)cdn_expansion_unref, NULL);
 				g_slist_free (children);
@@ -2260,7 +2324,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 			g_slist_foreach (exps, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (exps);
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 
 			if (!ret)
 			{
@@ -2268,7 +2332,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 			}
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		g_slist_foreach (properties, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (properties);
@@ -2358,7 +2422,7 @@ get_templates (CdnParserContext  *context,
 	                                             parent_group,
 	                                             context->priv->is_template ? TRUE : FALSE,
 	                                             templates,
-	                                             context->priv->embedded,
+	                                             expansion_context_peek (context),
 	                                             &missing,
 	                                             &ret))
 	{
@@ -2525,8 +2589,7 @@ parse_object_single_id (CdnParserContext *context,
 	}
 
 	sel = cdn_selection_new (child,
-	                         cdn_embedded_context_get_expansions (context->priv->embedded),
-	                         cdn_embedded_context_get_defines (context->priv->embedded));
+	                         expansion_context_peek (context));
 
 cleanup:
 	g_slist_foreach (templates, (GFunc)g_object_unref, NULL);
@@ -2575,11 +2638,12 @@ parse_object_single (CdnParserContext  *context,
 	while (ids)
 	{
 		CdnSelection *sel;
+		CdnExpansionContext *pctx;
 
-		cdn_embedded_context_save (context->priv->embedded);
+		pctx = expansion_context_push_base (context);
 
-		cdn_embedded_context_add_expansion (context->priv->embedded,
-		                                    ids->data);
+		cdn_expansion_context_add_expansion (pctx,
+		                                     ids->data);
 
 		sel = parse_object_single_id (context,
 		                              ids->data,
@@ -2591,7 +2655,7 @@ parse_object_single (CdnParserContext  *context,
 		                              cdn_expansion_get (ids->data, 0),
 		                              NULL);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		if (!sel)
 		{
@@ -2696,10 +2760,8 @@ parse_objects (CdnParserContext  *context,
 
 		theid = id;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    parent->data);
+		expansion_context_push_selection (context,
+		                                  parent->data);
 
 		if (!selected && theid == NULL)
 		{
@@ -2740,7 +2802,7 @@ parse_objects (CdnParserContext  *context,
 		g_slist_foreach (ids, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ids);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		if (theid != NULL)
 		{
@@ -2867,6 +2929,7 @@ edge_pairs (CdnParserContext *context,
 	CdnAttribute *iff;
 	gdouble iffprob = 2.0; /* Something bigger than 1 */
 	long int p = 1;
+	CdnExpansionContext *pctx;
 
 	bidi = find_attribute (attributes, "bidirectional");
 	iff = find_attribute (attributes, "probability");
@@ -2895,21 +2958,21 @@ edge_pairs (CdnParserContext *context,
 		}
 	}
 
-	cdn_embedded_context_save (context->priv->embedded);
+	pctx = expansion_context_push_base (context);
 
 	if (!autoid)
 	{
-		cdn_embedded_context_add_expansion (context->priv->embedded, id);
+		cdn_expansion_context_add_expansion (pctx, id);
 	}
 
 	fromobjs = cdn_selector_select (from,
 	                                cdn_selection_get_object (parent),
 	                                CDN_SELECTOR_TYPE_NODE,
-	                                context->priv->embedded);
+	                                expansion_context_peek (context));
 
 	if (!fromobjs)
 	{
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		return NULL;
 	}
@@ -2926,7 +2989,7 @@ edge_pairs (CdnParserContext *context,
 		g_slist_foreach (fromobjs, (GFunc)g_object_unref, NULL);
 		g_slist_free (fromobjs);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		return ret;
 	}
@@ -2936,10 +2999,7 @@ edge_pairs (CdnParserContext *context,
 		GSList *toobjs = NULL;
 		GSList *toobj;
 
-		cdn_embedded_context_save (context->priv->embedded);
-
-		cdn_embedded_context_add_expansions (context->priv->embedded,
-		                                      cdn_selection_get_expansions (fromobj->data));
+		expansion_context_push_selection (context, fromobj->data);
 
 		cdn_selector_set_from_set (to, fromobjs);
 
@@ -2947,9 +3007,9 @@ edge_pairs (CdnParserContext *context,
 		toobjs = cdn_selector_select (to,
 		                              cdn_selection_get_object (parent),
 		                              CDN_SELECTOR_TYPE_NODE,
-		                              context->priv->embedded);
+		                              expansion_context_peek (context));
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
 		{
@@ -2983,7 +3043,7 @@ edge_pairs (CdnParserContext *context,
 	g_slist_foreach (fromobjs, (GFunc)g_object_unref, NULL);
 	g_slist_free (fromobjs);
 
-	cdn_embedded_context_restore (context->priv->embedded);
+	expansion_context_pop (context);
 
 	return g_slist_reverse (ret);
 }
@@ -3002,11 +3062,8 @@ store_annotation_objects (CdnParserContext *context,
 		CdnObject *obj;
 		gchar const *annotation;
 
-		cdn_embedded_context_save_defines (context->priv->embedded,
-		                                   FALSE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    objects->data);
+		expansion_context_push_selection (context,
+		                                  objects->data);
 
 		obj = cdn_selection_get_object (objects->data);
 
@@ -3019,7 +3076,7 @@ store_annotation_objects (CdnParserContext *context,
 			                                annotation);
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		objects = g_slist_next (objects);
 	}
@@ -3192,14 +3249,12 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 
 		sel = item->data;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    sel);
+		expansion_context_push_selection (context, sel);
 
 		ret = cdn_selector_select (selector,
 		                           cdn_selection_get_object (sel),
 		                           type,
-		                           context->priv->embedded);
+		                           expansion_context_peek (context));
 
 		for (it = ret; it; it = g_slist_next (it))
 		{
@@ -3209,11 +3264,8 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 
 			obj = cdn_selection_get_object (it->data);
 
-			cdn_embedded_context_save_defines (context->priv->embedded,
-			                                   TRUE);
-
-			cdn_embedded_context_add_selection (context->priv->embedded,
-			                                    it->data);
+			expansion_context_push_selection (context,
+			                                  it->data);
 
 			temps = get_templates (context,
 			                       obj,
@@ -3244,19 +3296,16 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 			g_slist_free (temps);
 
 			objs = g_slist_prepend (objs,
-			                        cdn_selection_new_defines (cdn_selection_get_object (it->data),
-			                                                   cdn_embedded_context_get_expansions (context->priv->embedded),
-			                                                   cdn_embedded_context_get_defines (context->priv->embedded),
-			                                                   TRUE));
+			                        cdn_selection_new (cdn_selection_get_object (it->data),
+			                                           expansion_context_peek (context)));
 
-			cdn_embedded_context_set_copy_defines_on_write (context->priv->embedded);
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 		}
 
 		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
 		g_slist_free (ret);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 	}
 
 	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
@@ -3278,6 +3327,18 @@ create_objects (CdnParserContext  *context,
                 gboolean           allow_create)
 {
 	return parse_objects (context, id, templates, type, attributes, allow_create);
+}
+
+static void
+add_expansions (CdnExpansionContext *ctx,
+                CdnSelection        *sel)
+{
+	GSList *exps;
+
+	exps = cdn_expansion_context_get_expansions (cdn_selection_get_context (sel));
+
+	cdn_expansion_context_add_expansions (ctx, exps);
+	g_slist_free (exps);
 }
 
 static GSList *
@@ -3378,7 +3439,7 @@ create_edges_single (CdnParserContext          *context,
 		cdn_expansion_set (realid, 0, uniq);
 		g_free (uniq);
 
-		cdn_embedded_context_save (context->priv->embedded);
+		expansion_context_push_base (context);
 
 		if (bidi != NULL)
 		{
@@ -3397,25 +3458,24 @@ create_edges_single (CdnParserContext          *context,
 				expansion = cdn_expansion_new_one (ex);
 				cdn_expansion_set_index (expansion, 0, widx);
 
-				cdn_embedded_context_add_expansion (context->priv->embedded,
-				                                    expansion);
+				cdn_expansion_context_add_expansion (expansion_context_peek (context),
+				                                     expansion);
+
 				cdn_expansion_unref (expansion);
 			}
 		}
 
 		if (!autoid)
 		{
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    realid);
+			cdn_expansion_context_add_expansion (expansion_context_peek (context),
+			                                     realid);
 		}
 
-		cdn_embedded_context_add_expansions (context->priv->embedded,
-		                                     cdn_selection_get_expansions (firstsel));
+		add_expansions (expansion_context_peek (context), firstsel);
 
 		if (to || !onlyself)
 		{
-			cdn_embedded_context_add_expansions (context->priv->embedded,
-			                                     cdn_selection_get_expansions (secondsel));
+			add_expansions (expansion_context_peek (context), secondsel);
 		}
 
 		obj = parse_object_single_id (context,
@@ -3428,8 +3488,7 @@ create_edges_single (CdnParserContext          *context,
 		                              cdn_expansion_get (realid, 0),
 		                              NULL);
 
-		cdn_embedded_context_restore (context->priv->embedded);
-
+		expansion_context_pop (context);
 		cdn_expansion_unref (realid);
 
 		if (!obj)
@@ -3500,10 +3559,8 @@ create_edges (CdnParserContext          *context,
 		GSList *it;
 
 		/* Expand the id with the parent expansions */
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
+		expansion_context_push_selection (context,
+		                                  item->data);
 
 		embedded_string_expand_multiple_val (ids, id, context, NULL);
 
@@ -3521,7 +3578,7 @@ create_edges (CdnParserContext          *context,
 			                                           onlyself));
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		g_slist_foreach (ids, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ids);
@@ -3639,9 +3696,8 @@ cdn_parser_context_push_edge (CdnParserContext          *context,
 			CdnSelection *sel = item->data;
 			GSList *phases;
 
-			cdn_embedded_context_save (context->priv->embedded);
-			cdn_embedded_context_set_selection (context->priv->embedded,
-			                                    sel);
+			expansion_context_push_selection (context,
+			                                  sel);
 
 			embedded_string_expand_multiple (phases, phase, context);
 
@@ -3654,7 +3710,7 @@ cdn_parser_context_push_edge (CdnParserContext          *context,
 				phases = g_slist_delete_link (phases, phases);
 			}
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 		}
 	}
 
@@ -3685,9 +3741,7 @@ selections_from_attributes_obj (CdnParserContext *context,
 	{
 		CdnSelection *sel;
 
-		sel = cdn_selection_new (obj,
-		                         cdn_embedded_context_get_expansions (context->priv->embedded),
-		                         cdn_embedded_context_get_defines (context->priv->embedded));
+		sel = cdn_selection_new (obj, expansion_context_peek (context));
 
 		ret = g_slist_prepend (NULL, sel);
 
@@ -3706,15 +3760,8 @@ selections_from_attributes_obj (CdnParserContext *context,
 	{
 		CdnSelection *sel;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
-
 		sel = cdn_selection_new (obj,
-		                         cdn_embedded_context_get_expansions (context->priv->embedded),
-		                         cdn_embedded_context_get_defines (context->priv->embedded));
-
-		cdn_embedded_context_restore (context->priv->embedded);
+		                         cdn_selection_get_context (item->data));
 
 		ret = g_slist_prepend (ret, sel);
 	}
@@ -3728,7 +3775,7 @@ selections_from_attributes_obj (CdnParserContext *context,
 static void
 push_scope (CdnParserContext *context,
             GSList           *attributes,
-            gboolean          copy_defines)
+            gboolean          newctx)
 {
 	GSList *objects;
 
@@ -3745,7 +3792,7 @@ push_scope (CdnParserContext *context,
 	                           CDN_SELECTOR_TYPE_ANY,
 	                           NULL,
 	                           NULL,
-	                           copy_defines);
+	                           newctx);
 
 	clear_annotation (context);
 
@@ -3882,11 +3929,7 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 		gint numfunc;
 		gint fi = 0;
 
-		cdn_embedded_context_save (context->priv->embedded);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    sel);
-
+		expansion_context_push_selection (context, sel);
 		embedded_string_expand_multiple (ids, id, context);
 
 		numfunc = g_slist_length (ids);
@@ -3942,9 +3985,9 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 				}
 			}
 
-			cdn_embedded_context_save (context->priv->embedded);
-			cdn_embedded_context_add_expansion (context->priv->embedded,
-			                                    ex);
+			expansion_context_push_base (context);
+			cdn_expansion_context_add_expansion (expansion_context_peek (context),
+			                                     ex);
 
 			embedded_string_expand_multiple (exprs, expression, context);
 
@@ -3982,7 +4025,7 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 					               "The function `%s' must declare all optional arguments after non-optional arguments",
 					               cdn_expansion_get (ex, 0));
 
-					cdn_embedded_context_restore (context->priv->embedded);
+					expansion_context_pop (context);
 					ret = FALSE;
 					break;
 				}
@@ -4029,10 +4072,9 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 			}
 
 			funcsel = cdn_selection_new (func,
-			                             cdn_embedded_context_get_expansions (context->priv->embedded),
-			                             cdn_embedded_context_get_defines (context->priv->embedded));
+			                             expansion_context_peek (context));
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 
 			funcs = g_slist_prepend (funcs, funcsel);
 
@@ -4042,7 +4084,7 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 		g_slist_foreach (ids, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ids);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		if (!ret)
 		{
@@ -4153,10 +4195,8 @@ cdn_parser_context_import (CdnParserContext  *context,
 		GSList *idi;
 		gchar const *annotation;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
+		expansion_context_push_selection (context,
+		                                  item->data);
 
 		annotation = current_annotation (context);
 
@@ -4171,17 +4211,18 @@ cdn_parser_context_import (CdnParserContext  *context,
 			GFile *curfile;
 			CdnNode *parent_group;
 			gchar const *exid;
+			CdnExpansionContext *pctx;
 
 			exid = cdn_expansion_get (idi->data, 0);
 
-			cdn_embedded_context_save (context->priv->embedded);
+			pctx = expansion_context_push_base (context);
 
-			cdn_embedded_context_add_expansion (context->priv->embedded,
+			cdn_expansion_context_add_expansion (pctx,
 			                                     idi->data);
 
 			embedded_string_expand (expath, path, context);
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 
 			curfile = cdn_parser_context_get_file (context);
 
@@ -4221,7 +4262,7 @@ cdn_parser_context_import (CdnParserContext  *context,
 					               "There is already an object with the id `%s'",
 					               exid);
 
-					cdn_embedded_context_restore (context->priv->embedded);
+					expansion_context_pop (context);
 
 					g_slist_foreach (ids,
 					                 (GFunc)cdn_expansion_unref,
@@ -4246,7 +4287,7 @@ cdn_parser_context_import (CdnParserContext  *context,
 					                    &error))
 					{
 						parser_failed_error (context, NULL, error);
-						cdn_embedded_context_restore (context->priv->embedded);
+						expansion_context_pop (context);
 
 						g_slist_foreach (ids,
 						                 (GFunc)cdn_expansion_unref,
@@ -4281,7 +4322,7 @@ cdn_parser_context_import (CdnParserContext  *context,
 				               "There is already an object with the id `%s'",
 				               exid);
 
-				cdn_embedded_context_restore (context->priv->embedded);
+				expansion_context_pop (context);
 
 				g_slist_foreach (ids,
 				                 (GFunc)cdn_expansion_unref,
@@ -4302,7 +4343,7 @@ cdn_parser_context_import (CdnParserContext  *context,
 			if (!import)
 			{
 				parser_failed_error (context, NULL, error);
-				cdn_embedded_context_restore (context->priv->embedded);
+				expansion_context_pop (context);
 
 				g_slist_foreach (ids,
 				                 (GFunc)cdn_expansion_unref,
@@ -4333,7 +4374,7 @@ cdn_parser_context_import (CdnParserContext  *context,
 
 		ids = NULL;
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 	}
 
 cleanup:
@@ -4740,21 +4781,17 @@ cdn_parser_context_define (CdnParserContext  *context,
 		for (pair = pairs; pair; pair = g_slist_next (pair))
 		{
 			NameValuePair *p = pair->data;
+			CdnExpansionContext *ctx;
+
+			ctx = cdn_selection_get_context (sel);
 
 			if (optional)
 			{
 				CdnExpansion *d;
 				gboolean exists;
 
-				cdn_embedded_context_save (context->priv->embedded);
-
-				cdn_embedded_context_set_selection (context->priv->embedded,
-				                                    sel);
-
-				d = cdn_embedded_context_get_define (context->priv->embedded,
-				                                     cdn_expansion_get (p->name, 0));
-
-				cdn_embedded_context_restore (context->priv->embedded);
+				d = cdn_expansion_context_get_define (ctx,
+				                                      cdn_expansion_get (p->name, 0));
 
 				exists = (d && *(cdn_expansion_get (d, 0)));
 
@@ -4765,9 +4802,9 @@ cdn_parser_context_define (CdnParserContext  *context,
 				}
 			}
 
-			cdn_selection_add_define (sel,
-			                          cdn_expansion_get (p->name, 0),
-			                          p->value);
+			cdn_expansion_context_add_define (ctx,
+			                                  cdn_expansion_get (p->name, 0),
+			                                  p->value);
 
 			name_value_pair_free (p);
 		}
@@ -4874,14 +4911,9 @@ cdn_parser_context_link_library (CdnParserContext  *context,
 
 		sel = objs->data;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    sel);
-
+		expansion_context_push_selection (context, sel);
 		embedded_string_expand_multiple (libs, filename, context);
-
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		while (libs)
 		{
@@ -5184,17 +5216,14 @@ cdn_parser_context_add_layout (CdnParserContext *context,
 
 		sel = objs->data;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    sel);
+		expansion_context_push_selection (context, sel);
 
 		if (left != NULL)
 		{
 			leftobjs = cdn_selector_select (left,
 			                                G_OBJECT (cdn_selection_get_object (sel)),
 			                                CDN_SELECTOR_TYPE_NODE,
-			                                context->priv->embedded);
+			                                expansion_context_peek (context));
 		}
 		else
 		{
@@ -5203,7 +5232,7 @@ cdn_parser_context_add_layout (CdnParserContext *context,
 
 		if (!leftobjs)
 		{
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 			return;
 		}
 
@@ -5211,18 +5240,17 @@ cdn_parser_context_add_layout (CdnParserContext *context,
 		{
 			CdnSelection *leftsel = leftobj->data;
 			GSList *rightobjs;
+			CdnExpansionContext *pctx;
 
-			cdn_embedded_context_save (context->priv->embedded);
-
-			cdn_embedded_context_add_expansions (context->priv->embedded,
-			                                      cdn_selection_get_expansions (leftsel));
+			pctx = expansion_context_push_base (context);
+			add_expansions (pctx, leftsel);
 
 			rightobjs = cdn_selector_select (right,
 			                                 G_OBJECT (cdn_selection_get_object (sel)),
 			                                 CDN_SELECTOR_TYPE_NODE,
-			                                 context->priv->embedded);
+			                                 expansion_context_peek (context));
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 
 			if (!rightobjs)
 			{
@@ -5247,7 +5275,7 @@ cdn_parser_context_add_layout (CdnParserContext *context,
 		g_slist_foreach (leftobjs, (GFunc)g_object_unref, NULL);
 		g_slist_free (leftobjs);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 	}
 }
 
@@ -5283,20 +5311,19 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 
 		sel = cobjs->data;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, FALSE);
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    sel);
+		expansion_context_push_selection (context, sel);
 
 		if (selector != NULL)
 		{
 			objs = cdn_selector_select (selector,
 			                            cdn_selection_get_object (sel),
 			                            CDN_SELECTOR_TYPE_OBJECT,
-			                            context->priv->embedded);
+			                            expansion_context_peek (context));
 		}
 		else
 		{
-			objs = g_slist_prepend (NULL, cdn_selection_copy_defines (sel, FALSE));
+			objs = g_slist_prepend (NULL,
+			                        cdn_selection_copy (sel));
 		}
 
 		for (obj = objs; obj; obj = g_slist_next (obj))
@@ -5314,10 +5341,10 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 				continue;
 			}
 
-			cdn_embedded_context_save (context->priv->embedded);
+			expansion_context_push_base (context);
 
-			cdn_embedded_context_add_expansions (context->priv->embedded,
-			                                     cdn_selection_get_expansions (obj->data));
+			add_expansions (expansion_context_peek (context),
+			                obj->data);
 
 			embedded_string_expand (exx, x, context);
 			embedded_string_expand (exy, y, context);
@@ -5347,7 +5374,7 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 				ofobjs = cdn_selector_select (of,
 				                              cdn_selection_get_object (sel),
 				                              CDN_SELECTOR_TYPE_OBJECT,
-				                              context->priv->embedded);
+				                              expansion_context_peek (context));
 
 				for (ofobj = ofobjs; ofobj; ofobj = g_slist_next (ofobj))
 				{
@@ -5385,10 +5412,10 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 			                             xx,
 			                             yy);
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 	}
 }
 
@@ -5666,39 +5693,6 @@ cdn_parser_context_pop_equation_depth (CdnParserContext *context)
 	return FALSE;
 }
 
-/**
- * cdn_parser_context_get_embedded:
- * @context: A #CdnParserContext
- *
- * Get the embedded context.
- *
- * Returns: (transfer none): A #CdnEmbeddedContext
- *
- **/
-CdnEmbeddedContext *
-cdn_parser_context_get_embedded (CdnParserContext *context)
-{
-	g_return_val_if_fail (CDN_IS_PARSER_CONTEXT (context), NULL);
-
-	return context->priv->embedded;
-}
-
-void
-cdn_parser_context_set_embedded (CdnParserContext   *context,
-                                 CdnEmbeddedContext *embedded)
-{
-	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CDN_IS_EMBEDDED_CONTEXT (embedded));
-
-	if (context->priv->embedded)
-	{
-		g_object_unref (context->priv->embedded);
-	}
-
-	context->priv->embedded =
-		cdn_embedded_context_copy_top (embedded);
-}
-
 static void
 debug_selector (CdnParserContext *context,
                 CdnSelection     *selection,
@@ -5759,19 +5753,16 @@ cdn_parser_context_debug_selector (CdnParserContext *context,
 
 	for (item = ctx->objects; item; item = g_slist_next (item))
 	{
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
+		expansion_context_push_selection (context, item->data);
 
 		debug_selector (context,
 		                item->data,
 		                cdn_selector_select (selector,
 		                                     cdn_selection_get_object (item->data),
 		                                     CDN_SELECTOR_TYPE_ANY,
-		                                     context->priv->embedded));
+		                                     expansion_context_peek (context)));
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 	}
 }
 
@@ -5797,11 +5788,7 @@ cdn_parser_context_debug_string (CdnParserContext  *context,
 		GSList *ret;
 		gboolean ismulti;
 
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
-
+		expansion_context_push_selection (context, item->data);
 		embedded_string_expand_multiple (ret, s, context);
 
 		ismulti = ret && ret->next && cdn_expansion_num (ret->data) > 1;
@@ -5825,57 +5812,20 @@ cdn_parser_context_debug_string (CdnParserContext  *context,
 			g_free (ss);
 		}
 	
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 		g_slist_foreach (ret, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ret);
 	}
-}
-
-static void
-define_to_string (gchar const  *key,
-                  CdnExpansion *value,
-                  GString      *ret)
-{
-	gchar *s;
-
-	if (ret->len != 0)
-	{
-		g_string_append (ret, ", ");
-	}
-
-	s = expansion_as_string (value);
-
-	g_string_append_printf (ret, "%s=%s", key, s);
-	g_free (s);
-}
-
-static gchar *
-defines_as_string (GHashTable *table)
-{
-	GString *ret;
-	GList *keys;
-	GList *item;
-
-	ret = g_string_new ("");
-
-	keys = g_hash_table_get_keys (table);
-	keys = g_list_sort (keys, (GCompareFunc)g_strcmp0);
-
-	for (item = keys; item; item = g_list_next (item))
-	{
-		define_to_string (item->data,
-		                  g_hash_table_lookup (table, item->data),
-		                  ret);
-	}
-
-	g_list_free (keys);
-	return g_string_free (ret, FALSE);
 }
 
 void
 cdn_parser_context_debug_context (CdnParserContext *context)
 {
 	GSList *item;
+	GFile *f;
+	gchar *name;
+	gint lineno;
+	InputItem *input;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 
@@ -5883,6 +5833,13 @@ cdn_parser_context_debug_context (CdnParserContext *context)
 	{
 		return;
 	}
+
+	f = cdn_parser_context_get_file (context);
+	name = g_file_get_basename (f);
+	g_object_unref (f);
+
+	input = CURRENT_INPUT (context);
+	lineno = input ? input->lineno : 0;
 
 	for (item = CURRENT_CONTEXT (context)->objects; item; item = g_slist_next (item))
 	{
@@ -5892,17 +5849,17 @@ cdn_parser_context_debug_context (CdnParserContext *context)
 		sel = item->data;
 
 		s = cdn_object_get_full_id (cdn_selection_get_object (sel));
-		g_printerr ("[debug] Selection: %s\n", s);
+		g_printerr ("[debug(%s:%d)] Selection: %s\n",
+		            name,
+		            lineno,
+		            s);
 		g_free (s);
 
-		s = expansions_as_string (cdn_selection_get_expansions (sel));
-		g_printerr ("[debug] Expansions: [%s]\n", s);
-		g_free (s);
-
-		s = defines_as_string (cdn_selection_get_defines (sel));
-		g_printerr ("[debug] Defines: [%s]\n\n", s);
-		g_free (s);
+		cdn_expansion_context_debug_print (cdn_selection_get_context (sel),
+		                                   stderr);
 	}
+
+	g_free (name);
 }
 
 void
@@ -5926,14 +5883,12 @@ cdn_parser_context_delete_selector (CdnParserContext *context,
 
 	for (oo = ctx->objects; oo; oo = g_slist_next (oo))
 	{
-		cdn_embedded_context_save_defines (context->priv->embedded, TRUE);
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    oo->data);
+		expansion_context_push_selection (context, oo->data);
 
 		ret = cdn_selector_select (selector,
 		                           cdn_selection_get_object (oo->data),
 		                           CDN_SELECTOR_TYPE_ANY,
-		                           context->priv->embedded);
+		                           expansion_context_peek (context));
 
 		for (item = ret; item; item = g_slist_next (item))
 		{
@@ -5981,7 +5936,7 @@ cdn_parser_context_delete_selector (CdnParserContext *context,
 			}
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
 		g_slist_free (ret);
@@ -6145,21 +6100,17 @@ apply_unapply_template (CdnParserContext *context,
 		GSList *temps;
 		GSList *temp;
 
-		cdn_embedded_context_save_defines (context->priv->embedded,
-		                                   FALSE);
-
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    obj->data);
+		expansion_context_push_selection (context, obj->data);
 
 		/* Select templates now */
 		temps = cdn_selector_select (templates,
 		                             G_OBJECT (template_group),
 		                             CDN_SELECTOR_TYPE_TEMPLATE,
-		                             context->priv->embedded);
+		                             expansion_context_peek (context));
 
 		if (!temps)
 		{
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 			continue;
 		}
 
@@ -6179,18 +6130,14 @@ apply_unapply_template (CdnParserContext *context,
 			}
 			else
 			{
-				cdn_embedded_context_save_defines (context->priv->embedded,
-				                                   FALSE);
-
-				cdn_embedded_context_add_selection (context->priv->embedded,
-				                                    temp->data);
+				expansion_context_push_selection (context, temp->data);
 
 				targobjs = cdn_selector_select (targets,
 				                                cdn_selection_get_object (obj->data),
 				                                CDN_SELECTOR_TYPE_OBJECT,
-				                                context->priv->embedded);
+				                                expansion_context_peek (context));
 
-				cdn_embedded_context_restore (context->priv->embedded);
+				expansion_context_pop (context);
 				freetargs = TRUE;
 			}
 
@@ -6408,10 +6355,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		CdnExpansion *ex;
 		CdnSelection *sel;
 
-		cdn_embedded_context_save (context->priv->embedded);
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    parents->data);
-
+		expansion_context_push_selection (context, parents->data);
 		embedded_string_expand_multiple (conds, condition, context);
 
 		if (conds->next)
@@ -6424,7 +6368,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 			g_slist_foreach (conds, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (conds);
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 			break;
 		}
 
@@ -6461,7 +6405,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 				g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
 				g_slist_free (parents);
 
-				cdn_embedded_context_restore (context->priv->embedded);
+				expansion_context_pop (context);
 				break;
 			}
 		}
@@ -6540,7 +6484,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 		g_slist_foreach (from_phases, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (from_phases);
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 
 		g_object_unref (parents->data);
 		parents = g_slist_delete_link (parents, parents);
@@ -6584,16 +6528,13 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 			continue;
 		}
 
-		cdn_embedded_context_save (context->priv->embedded);
-		cdn_embedded_context_set_selection (context->priv->embedded,
-		                                    item->data);
-
+		expansion_context_push_selection (context, item->data);
 		self = cdn_selection_get_object (item->data);
 
 		ret = cdn_selector_select (selector,
 		                           G_OBJECT (cdn_object_get_parent (self)),
 		                           CDN_SELECTOR_TYPE_VARIABLE,
-		                           context->priv->embedded);
+		                           expansion_context_peek (context));
 
 		i = 0;
 		num = g_slist_length (ret);
@@ -6603,10 +6544,7 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 			GSList *vals = NULL;
 			CdnExpansion *val;
 
-			cdn_embedded_context_save (context->priv->embedded);
-			cdn_embedded_context_add_selection (context->priv->embedded,
-			                                    ret->data);
-
+			expansion_context_push_selection (context, ret->data);
 			embedded_string_expand_multiple (vals, value, context);
 
 			if (g_slist_length (vals) == num)
@@ -6625,7 +6563,7 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 			g_slist_foreach (vals, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (vals);
 
-			cdn_embedded_context_restore (context->priv->embedded);
+			expansion_context_pop (context);
 
 			g_object_unref (ret->data);
 			ret = g_slist_delete_link (ret, ret);
@@ -6633,7 +6571,7 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 			++i;
 		}
 
-		cdn_embedded_context_restore (context->priv->embedded);
+		expansion_context_pop (context);
 	}
 }
 
