@@ -621,7 +621,6 @@ static void
 matrix_multiply (CdnStack *stack,
                  gint     *argdim)
 {
-	gint i;
 	gdouble *ptrA;
 	gdouble *ptrB;
 	gdouble *ptrC;
@@ -679,13 +678,11 @@ matrix_multiply (CdnStack *stack,
 	}
 }
 #endif
-	cdn_stack_popn (stack, num1 + num2);
 
-	// Copy back from ptrC to ptrA
-	for (i = 0; i < numend; ++i)
-	{
-		cdn_stack_push (stack, *(ptrC++));
-	}
+	memmove (ptrA, ptrC, sizeof (gdouble) * numend);
+
+	cdn_stack_set_output_ptr (stack,
+	                          ptrA + numend);
 }
 
 static void
@@ -1188,7 +1185,7 @@ op_lindex (CdnStack *stack,
 		gint nr = argdim[4] * argdim[5];
 		gint nc = argdim[2] * argdim[3];
 		gint r;
-		gint i;
+		gint n;
 		gdouble *outptr = cdn_stack_output_ptr (stack);
 
 		// single row and single column combined
@@ -1207,13 +1204,11 @@ op_lindex (CdnStack *stack,
 
 		outptr = cdn_stack_output_ptr (stack);
 
-		// copy back
-		for (i = 0; i < nr * nc; ++i)
-		{
-			*ptr1++ = *outptr++;
-		}
+		n = nr * nc;
 
-		cdn_stack_set_output_ptr (stack, ptr1);
+		// copy back
+		memmove (ptr1, outptr, sizeof (gdouble) * n);
+		cdn_stack_set_output_ptr (stack, ptr1 + n);
 	}
 }
 
@@ -1597,13 +1592,7 @@ op_block (CdnStack *stack,
 		}
 	}
 
-	// Now copy back. Need a loop like this to not override ptr memory
-	// before it's copied to ptrA
-	for (i = 0; i < n; ++i)
-	{
-		ptrA[i] = ptr[i];
-	}
-
+	memmove (ptrA, ptr, sizeof (gdouble) * n);
 	cdn_stack_set_output_ptr (stack, ptrA + n);
 }
 
