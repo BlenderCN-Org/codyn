@@ -63,8 +63,10 @@ parse_display (gchar const  *option_name,
 }
 
 static GOptionEntry entries[] = {
-	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
-	{"display", 'd', 0, G_OPTION_ARG_CALLBACK, parse_display, "Display variable values (e.g. /state_.*/.\"{x,y}\")", "SEL"},
+	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors,
+	 "Do not use colors in the output", NULL},
+	{"display", 'd', 0, G_OPTION_ARG_CALLBACK, parse_display,
+	 "Display variable values (e.g. /state_.*/.\"{x,y}\")", "SEL"},
 	{NULL}
 };
 
@@ -142,7 +144,6 @@ display_value (CdnNetwork  *network,
 {
 	CdnSelector *sel;
 	GError *err = NULL;
-	CdnEmbeddedContext *context;
 	GSList *selection;
 
 	sel = cdn_selector_parse (CDN_OBJECT (network), expr, &err);
@@ -157,12 +158,10 @@ display_value (CdnNetwork  *network,
 		return 1;
 	}
 
-	context = cdn_embedded_context_new ();
-
 	selection = cdn_selector_select (sel,
 	                                 G_OBJECT (network),
 	                                 CDN_SELECTOR_TYPE_VARIABLE,
-	                                 context);
+	                                 NULL);
 
 	while (selection)
 	{

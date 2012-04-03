@@ -50,28 +50,18 @@ static gchar const *color_blue = "\e[34m";
 static gchar const *color_bold = "\e[1m";
 static gchar const *color_off = "\e[0m";
 
-static GSList *defines = NULL;
-
 static gint context_line = -1;
 static gint context_column = -1;
 
-static gboolean
-add_define (gchar const  *option_name,
-            gchar const  *value,
-            gpointer      data,
-            GError      **error)
-{
-	defines = g_slist_prepend (defines, g_strdup (value));
-
-	return TRUE;
-}
-
 static GOptionEntry entries[] = {
-	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
-	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
-	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
-	{"line", 'l', 0, G_OPTION_ARG_INT, &context_line, "Only report contexts on a particular line", "LINE"},
-	{"column", 'c', 0, G_OPTION_ARG_INT, &context_column, "Only report contexts on a particular column (requires --line/-l)", "COL"},
+	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file,
+	 "Output file (defaults to standard output)", "FILE"},
+	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors,
+	 "Do not use colors in the output", NULL},
+	{"line", 'l', 0, G_OPTION_ARG_INT, &context_line,
+	 "Only report contexts on a particular line", "LINE"},
+	{"column", 'c', 0, G_OPTION_ARG_INT, &context_column,
+	 "Only report contexts on a particular column (requires --line/-l)", "COL"},
 	{NULL}
 };
 
@@ -137,7 +127,7 @@ context_new (CdnParserContext *context)
 	while (selections)
 	{
 		s->in = g_slist_prepend (s->in,
-		                         cdn_selection_copy_defines (selections->data, FALSE));
+		                         cdn_selection_copy (selections->data));
 
 		selections = g_slist_next (selections);
 	}
@@ -149,7 +139,7 @@ context_new (CdnParserContext *context)
 	while (selections)
 	{
 		s->out = g_slist_prepend (s->out,
-		                          cdn_selection_copy_defines (selections->data, FALSE));
+		                          cdn_selection_copy (selections->data));
 
 		selections = g_slist_next (selections);
 	}
@@ -186,35 +176,6 @@ context_free (Context *context)
 	g_slist_free (context->selections);
 
 	g_slice_free (Context, context);
-}
-
-static void
-add_defines (CdnParserContext *context)
-{
-	GSList *defs;
-	GSList *item;
-
-	defs = g_slist_reverse (defines);
-
-	for (item = defs; item; item = g_slist_next (item))
-	{
-		gchar *s = item->data;
-		gchar **parts = g_strsplit (s, "=", 2);
-
-		if (parts && parts[0] && parts[1])
-		{
-			cdn_parser_context_define (context,
-			                           cdn_embedded_string_new_from_string (parts[0]),
-			                           G_OBJECT (cdn_embedded_string_new_from_string (parts[1])),
-			                           FALSE,
-			                           NULL);
-		}
-
-		g_strfreev (parts);
-		g_free (s);
-	}
-
-	g_slist_free (defs);
 }
 
 static void
@@ -350,7 +311,9 @@ copy_selector_selections (GSList const  *selections,
 
 	while (selections)
 	{
-		*ret = g_slist_prepend (*ret, cdn_selection_copy_defines (selections->data, FALSE));
+		*ret = g_slist_prepend (*ret,
+		                        cdn_selection_copy (selections->data));
+
 		selections = g_slist_next (selections);
 	}
 
@@ -378,12 +341,16 @@ on_selector_select (CdnSelector *selector,
 
 			if (!annot->context)
 			{
+				GFile *f;
+
+				f = cdn_parser_context_get_file (info->parser);
+
 				annot->context = g_slice_new0 (Context);
 				annot->context->line_start = annot->line_start;
 				annot->context->column_start = annot->cstart;
 				annot->context->line_end = annot->line_end;
 				annot->context->column_end = annot->cend;
-				annot->context->file = cdn_parser_context_get_file (info->parser);
+				annot->context->file = f;
 
 				info->contexts =
 					g_slist_prepend (info->contexts,
@@ -555,8 +522,9 @@ write_cdn_selection (CdnSelection      *selection,
 	gpointer obj;
 	gchar const *name = "";
 	gchar const *typename = "";
-	GSList const *expansions;
+	GSList *expansions;
 	gchar *name_esc;
+	CdnExpansionContext *ctx;
 	ForeachInfo info = {0,};
 
 	obj = cdn_selection_get_object (selection);
@@ -615,7 +583,8 @@ write_cdn_selection (CdnSelection      *selection,
 
 	g_free (name_esc);
 
-	expansions = cdn_selection_get_expansions (selection);
+	ctx = cdn_selection_get_context (selection);
+	expansions = cdn_expansion_context_get_expansions (ctx);
 
 	while (expansions)
 	{
@@ -631,19 +600,19 @@ write_cdn_selection (CdnSelection      *selection,
 			write_stream_nl (out, "");
 		}
 
-		expansions = g_slist_next (expansions);
+		expansions = g_slist_delete_link (expansions,
+		                                  expansions);
 	}
 
 	write_stream_nl (out, "              ],");
-
 	write_stream_nl (out, "              \"defines\": [");
 
 	info.out = out;
 	info.first = TRUE;
 
-	g_hash_table_foreach (cdn_selection_get_defines (selection),
-	                      (GHFunc)foreach_define,
-	                      &info);
+	cdn_expansion_context_foreach_define (ctx,
+	                                      (GHFunc)foreach_define,
+	                                      &info);
 
 	write_stream_nl (out, "\n              ]");
 
@@ -765,8 +734,6 @@ parse_network (gchar const *args[], gint argc)
 	CdnNetwork *network;
 	gboolean ret = TRUE;
 	GError *error = NULL;
-	CdnExpansion *expansion;
-	CdnEmbeddedContext *embedded;
 	gboolean fromstdin;
 	Info info = {0,};
 	GOutputStream *stream;
@@ -802,13 +769,6 @@ parse_network (gchar const *args[], gint argc)
 
 	network = cdn_network_new ();
 	context = cdn_parser_context_new (network);
-	expansion = cdn_expansion_new (args);
-
-	embedded = cdn_parser_context_get_embedded (context);
-	cdn_embedded_context_add_expansion (embedded, expansion);
-	g_object_unref (expansion);
-
-	add_defines (context);
 
 #ifdef ENABLE_GIO_UNIX
 	if (!fromstdin)

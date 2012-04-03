@@ -74,6 +74,11 @@ gchar               *cdn_expansion_context_calculate        (CdnExpansionContext
                                                              GError              **error);
 
 gulong               cdn_expansion_context_get_marker       (CdnExpansionContext *context);
+
+void                 cdn_expansion_context_foreach_define   (CdnExpansionContext *context,
+                                                             GHFunc               hfunc,
+                                                             gpointer             userdata);
+
 G_END_DECLS
 
 #endif /* __CDN_EXPANSION_CONTEXT_H__ */

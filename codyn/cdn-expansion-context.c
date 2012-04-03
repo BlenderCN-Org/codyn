@@ -495,3 +495,28 @@ cdn_expansion_context_shared_defines (CdnExpansionContext *context,
 
 	context->defines = g_hash_table_ref (ensure_defines (from));
 }
+
+void
+cdn_expansion_context_foreach_define (CdnExpansionContext *context,
+                                      GHFunc               hfunc,
+                                      gpointer             userdata)
+{
+	g_return_if_fail (context != NULL);
+
+	if (hfunc == NULL)
+	{
+		return;
+	}
+
+	while (context)
+	{
+		if (context->defines)
+		{
+			g_hash_table_foreach (context->defines,
+			                      hfunc,
+			                      userdata);
+		}
+
+		context = context->parent;
+	}
+}
