@@ -541,7 +541,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	if (em->priv->indirection_regex == NULL)
 	{
-		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|(.*?)(([?!~,]|[+]+[0-9]*|[-]+[0-9]*)|([!](.+)))?$",
+		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|((.+?)([0-9]*))(([?!~]|[+]+[0-9]*|[-]+[0-9]*)|([!](.+)))?$",
 		                                           0, 0, NULL);
 	}
 
@@ -572,46 +572,57 @@ resolve_indirection (CdnEmbeddedString   *em,
 	else
 	{
 		// This is a define
+		gchar *findidx;
 		gchar *idx;
 
 		name = g_match_info_fetch (info, 3);
-		idx = g_match_info_fetch (info, 7);
+		idx = g_match_info_fetch (info, 5);
+		findidx = g_match_info_fetch (info, 9);
 
-		if (idx && *idx)
+		ex = cdn_expansion_context_get_define (context, name);
+		exidx = 0;
+		flags = INDIRECTION_NONE;
+
+		if (findidx && *findidx && ex)
 		{
-			gint i = 0;
-
-			while (TRUE)
+			if (ex)
 			{
-				gchar *n;
+				gint i;
 
-				n = g_strdup_printf ("%s%d", name, ++i);
-				ex = cdn_expansion_context_get_define (context,
-				                                       n);
-				g_free (n);
-
-				if (!ex)
+				for (i = 0; i < cdn_expansion_num (ex); ++i)
 				{
-					break;
-				}
-
-				if (g_strcmp0 (cdn_expansion_get (ex, 0),
-				               idx) == 0)
-				{
-					// That's it...
-					ret = g_strdup_printf ("%d", i - 1);
-					break;
+					if (g_strcmp0 (cdn_expansion_get (ex, i),
+					               findidx) == 0)
+					{
+						// That's it...
+						ret = g_strdup_printf ("%d", i);
+						break;
+					}
 				}
 			}
-
-			flags = INDIRECTION_NONE;
 		}
 		else
 		{
 			gchar *flag;
 
-			flag = g_match_info_fetch (info, 4);
+			if (idx && *idx && !ex)
+			{
+				gchar *pname;
 
+				pname = g_match_info_fetch (info, 4);
+
+				ex = cdn_expansion_context_get_define (context,
+				                                       pname);
+
+				g_free (pname);
+			}
+
+			if (idx && *idx)
+			{
+				exidx = (gint)g_ascii_strtoll (idx, NULL, 10) + 1;
+			}
+
+			flag = g_match_info_fetch (info, 5);
 			flags = get_indirection_flags (flag);
 
 			if (flags == INDIRECTION_INCREMENT)
@@ -623,15 +634,11 @@ resolve_indirection (CdnEmbeddedString   *em,
 				dec = num_incdec (flag);
 			}
 
-			ex = cdn_expansion_context_get_define (context,
-			                                       name);
-
-			exidx = 0;
-
 			g_free (flag);
 		}
 
 		g_free (idx);
+		g_free (findidx);
 	}
 
 	switch (flags)

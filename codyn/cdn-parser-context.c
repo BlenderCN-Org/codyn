@@ -1256,7 +1256,7 @@ generate_name_value_pairs (CdnParserContext  *context,
                            CdnEmbeddedString *name,
                            gpointer           value,
                            CdnEmbeddedString *count_name,
-                           gboolean           single_can_be_multi)
+                           gboolean           single_unexpanded)
 {
 	GSList *names;
 	GSList *nameit;
@@ -1327,7 +1327,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 
 			hascontext = TRUE;
 
-			if (!single_can_be_multi && !values->next)
+			if (!single_unexpanded && !values->next)
 			{
 				valueismulti = FALSE;
 			}
@@ -1394,6 +1394,7 @@ generate_name_value_pairs (CdnParserContext  *context,
 
 			ex = generate_unexpanded_expansion (unex,
 			                                    values);
+
 			g_free (unex);
 
 			ret = g_slist_prepend (ret,
@@ -1402,33 +1403,40 @@ generate_name_value_pairs (CdnParserContext  *context,
 
 			cdn_expansion_unref (ex);
 
-			for (item = values; item; item = g_slist_next (item))
+			if (!single_unexpanded)
 			{
-				gchar *name;
-				gchar *nums;
+				for (item = values; item; item = g_slist_next (item))
+				{
+					gchar *name;
+					gchar *nums;
 
-				nums = g_strdup_printf ("%d", ++num);
-				name = g_strconcat (exname, nums, NULL);
+					nums = g_strdup_printf ("%d", ++num);
+					name = g_strconcat (exname, nums, NULL);
 
-				gchar const *cc[] = {
-					name,
-					exname,
-					nums,
-					NULL
-				};
+					gchar const *cc[] = {
+						name,
+						exname,
+						nums,
+						NULL
+					};
 
-				ex = cdn_expansion_new ((gchar const * const *)cc);
+					ex = cdn_expansion_new ((gchar const * const *)cc);
 
-				ret = g_slist_prepend (ret,
-				                       name_value_pair_new (ex,
-				                                            item->data));
+					ret = g_slist_prepend (ret,
+					                       name_value_pair_new (ex,
+					                                            item->data));
 
-				cdn_expansion_unref (ex);
-				g_free (name);
-				g_free (nums);
+					cdn_expansion_unref (ex);
+					g_free (name);
+					g_free (nums);
+				}
+
+				cnt += num;
 			}
-
-			cnt += num;
+			else
+			{
+				++cnt;
+			}
 		}
 
 		if (hascontext)
@@ -5500,7 +5508,7 @@ cdn_parser_context_add_integrator_variable (CdnParserContext  *context,
 		                                   name,
 		                                   value,
 		                                   NULL,
-		                                   TRUE);
+		                                   FALSE);
 
 		while (pairs)
 		{
@@ -6609,7 +6617,7 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 		                                   id,
 		                                   type,
 		                                   NULL,
-		                                   TRUE);
+		                                   FALSE);
 
 		while (pairs)
 		{
@@ -6705,7 +6713,7 @@ cdn_parser_context_set_io_setting (CdnParserContext  *context,
 		                                   name,
 		                                   value,
 		                                   NULL,
-		                                   TRUE);
+		                                   FALSE);
 
 		while (pairs)
 		{

@@ -397,10 +397,14 @@ cdn_expansion_context_debug_print (CdnExpansionContext  *context,
 
 		while (keys)
 		{
-			if (!g_hash_table_lookup_extended (seen,
-			                                   keys->data,
-			                                   NULL,
-			                                   NULL))
+			CdnExpansion *ex;
+
+			ex = g_hash_table_lookup (ctx->defines, keys->data);
+
+			if (ex && !g_hash_table_lookup_extended (seen,
+			                                         keys->data,
+			                                         NULL,
+			                                         NULL))
 			{
 				g_hash_table_insert (seen, keys->data, NULL);
 
@@ -487,6 +491,11 @@ cdn_expansion_context_shared_defines (CdnExpansionContext *context,
 {
 	g_return_if_fail (context != NULL);
 	g_return_if_fail (from != NULL);
+
+	if (context == from)
+	{
+		return;
+	}
 
 	if (context->defines)
 	{
