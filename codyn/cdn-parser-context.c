@@ -316,7 +316,7 @@ context_new (GSList      *objects,
 static void
 context_free (Context *context)
 {
-	g_slist_foreach (context->objects, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (context->objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (context->objects);
 
 	if (context->with)
@@ -921,13 +921,13 @@ each_selections_attr (CdnParserContext *context,
 
 				if (isempty)
 				{
-					g_slist_foreach (sels, (GFunc)g_object_unref, NULL);
+					g_slist_foreach (sels, (GFunc)cdn_selection_unref, NULL);
 					g_slist_free (sels);
 
 					break;
 				}
 
-				g_object_unref (sels->data);
+				cdn_selection_unref (sels->data);
 				sels = g_slist_delete_link (sels, sels);
 			}
 
@@ -1115,6 +1115,7 @@ generate_expand_multival (CdnParserContext *context,
 {
 	GSList *values = NULL;
 	GSList *sels;
+	CdnExpansion *origex;
 
 	if (CDN_IS_EMBEDDED_STRING (value))
 	{
@@ -1127,6 +1128,9 @@ generate_expand_multival (CdnParserContext *context,
 
 		return values;
 	}
+
+	origex = cdn_expansion_context_get_expansion (expansion_context_peek (context),
+	                                              0);
 
 	sels = cdn_selector_select (CDN_SELECTOR (value),
 	                            cdn_selection_get_object (sel),
@@ -1149,9 +1153,10 @@ generate_expand_multival (CdnParserContext *context,
 		ctx = cdn_selection_get_context (sels->data);
 		ex = cdn_expansion_context_get_expansion (ctx, 0);
 
-		if (ex)
+		if (ex && ex != origex)
 		{
-			values = g_slist_prepend (values, ex);
+			values = g_slist_prepend (values,
+			                          cdn_expansion_ref (ex));
 		}
 		else
 		{
@@ -1162,13 +1167,11 @@ generate_expand_multival (CdnParserContext *context,
 			if (nm)
 			{
 				values = g_slist_prepend (values,
-				                          cdn_expansion_newv (nm,
-				                                              nm,
-				                                              NULL));
+				                          cdn_expansion_new_one (nm));
 			}
 		}
 
-		g_object_unref (sels->data);
+		cdn_selection_unref (sels->data);
 		sels = g_slist_delete_link (sels, sels);
 	}
 
@@ -1271,8 +1274,15 @@ generate_name_value_pairs (CdnParserContext  *context,
 		return NULL;
 	}
 
-	expansion_context_push (context,
-	                        cdn_selection_get_context (sel));
+	if (sel)
+	{
+		expansion_context_push (context,
+		                        cdn_selection_get_context (sel));
+	}
+	else
+	{
+		expansion_context_push_base (context);
+	}
 
 	embedded_string_expand_multiple_val (names, name, context, NULL);
 
@@ -1705,7 +1715,7 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 
 			exprcache = g_slist_delete_link (exprcache, exprcache);
 
-			g_object_unref (vars->data);
+			cdn_selection_unref (vars->data);
 			vars = g_slist_delete_link (vars, vars);
 		}
 
@@ -1965,7 +1975,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 		expansion_context_pop (context);
 	}
 
-	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
 
 	clear_annotation (context);
@@ -2140,7 +2150,7 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 		g_slist_free (exps);
 	}
 
-	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
 
 	g_object_unref (target);
@@ -2211,7 +2221,7 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 		expansion_context_pop (context);
 	}
 
-	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
 
 	clear_annotation (context);
@@ -2351,7 +2361,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 		}
 	}
 
-	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
 
 	g_object_unref (name);
@@ -2440,7 +2450,7 @@ get_templates (CdnParserContext  *context,
 		               "Could not find template `%s'",
 		               missing);
 
-		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
 		g_slist_free (ret);
 
 		g_free (missing);
@@ -2471,7 +2481,7 @@ get_templates (CdnParserContext  *context,
 			               g_type_name (template_type),
 			               g_type_name (gtype));
 
-			g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+			g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
 			g_slist_free (ret);
 			return NULL;
 		}
@@ -2600,7 +2610,7 @@ parse_object_single_id (CdnParserContext *context,
 	                         expansion_context_peek (context));
 
 cleanup:
-	g_slist_foreach (templates, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (templates, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (templates);
 
 	if (child)
@@ -2828,7 +2838,7 @@ parse_objects (CdnParserContext  *context,
 		ret = g_slist_concat (ret, objs);
 	}
 
-	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (parents, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (parents);
 
 	return ret;
@@ -2987,6 +2997,13 @@ edge_pairs (CdnParserContext *context,
 
 	if (!to)
 	{
+		// Truncate from obj
+		for (fromobj = fromobjs; fromobj; fromobj = g_slist_next (fromobj))
+		{
+			cdn_expansion_context_truncate (cdn_selection_get_context (fromobj->data),
+			                                expansion_context_peek (context));
+		}
+
 		ret = edge_pairs_sparse (context,
 		                         iffprob,
 		                         bidi != NULL,
@@ -2994,7 +3011,7 @@ edge_pairs (CdnParserContext *context,
 		                         onlyself,
 		                         fromobjs);
 
-		g_slist_foreach (fromobjs, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (fromobjs, (GFunc)cdn_selection_unref, NULL);
 		g_slist_free (fromobjs);
 
 		expansion_context_pop (context);
@@ -3008,7 +3025,6 @@ edge_pairs (CdnParserContext *context,
 		GSList *toobj;
 
 		expansion_context_push_selection (context, fromobj->data);
-
 		cdn_selector_set_from_set (to, fromobjs);
 
 		/* Select TO states */
@@ -3016,8 +3032,6 @@ edge_pairs (CdnParserContext *context,
 		                              cdn_selection_get_object (parent),
 		                              CDN_SELECTOR_TYPE_NODE,
 		                              expansion_context_peek (context));
-
-		expansion_context_pop (context);
 
 		for (toobj = toobjs; toobj; toobj = g_slist_next (toobj))
 		{
@@ -3027,6 +3041,9 @@ edge_pairs (CdnParserContext *context,
 			{
 				continue;
 			}
+
+			cdn_expansion_context_truncate (cdn_selection_get_context (toobj->data),
+			                                expansion_context_peek (context));
 
 			ret = g_slist_prepend (ret,
 			                       cdn_selection_copy (fromobj->data));
@@ -3044,11 +3061,17 @@ edge_pairs (CdnParserContext *context,
 			}
 		}
 
-		g_slist_foreach (toobjs, (GFunc)g_object_unref, NULL);
+		expansion_context_pop (context);
+
+		/* Truncate from selection now */
+		cdn_expansion_context_truncate (cdn_selection_get_context (fromobj->data),
+		                                expansion_context_peek (context));
+
+		g_slist_foreach (toobjs, (GFunc)cdn_selection_unref, NULL);
 		g_slist_free (toobjs);
 	}
 
-	g_slist_foreach (fromobjs, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (fromobjs, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (fromobjs);
 
 	expansion_context_pop (context);
@@ -3300,7 +3323,7 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 				}
 			}
 
-			g_slist_foreach (temps, (GFunc)g_object_unref, NULL);
+			g_slist_foreach (temps, (GFunc)cdn_selection_unref, NULL);
 			g_slist_free (temps);
 
 			objs = g_slist_prepend (objs,
@@ -3310,13 +3333,13 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 			expansion_context_pop (context);
 		}
 
-		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
 		g_slist_free (ret);
 
 		expansion_context_pop (context);
 	}
 
-	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (parents, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (parents);
 
 	objs = g_slist_reverse (objs);
@@ -3335,18 +3358,6 @@ create_objects (CdnParserContext  *context,
                 gboolean           allow_create)
 {
 	return parse_objects (context, id, templates, type, attributes, allow_create);
-}
-
-static void
-add_expansions (CdnExpansionContext *ctx,
-                CdnSelection        *sel)
-{
-	GSList *exps;
-
-	exps = cdn_expansion_context_get_expansions (cdn_selection_get_context (sel));
-
-	cdn_expansion_context_add_expansions (ctx, exps);
-	g_slist_free (exps);
 }
 
 static GSList *
@@ -3479,11 +3490,13 @@ create_edges_single (CdnParserContext          *context,
 			                                     realid);
 		}
 
-		add_expansions (expansion_context_peek (context), firstsel);
+		cdn_expansion_context_merge (expansion_context_peek (context),
+		                             cdn_selection_get_context (firstsel));
 
 		if (to || !onlyself)
 		{
-			add_expansions (expansion_context_peek (context), secondsel);
+			cdn_expansion_context_merge (expansion_context_peek (context),
+			                             cdn_selection_get_context (secondsel));
 		}
 
 		obj = parse_object_single_id (context,
@@ -3513,7 +3526,7 @@ create_edges_single (CdnParserContext          *context,
 		                 cdn_selection_get_object (tosel));
 	}
 
-	g_slist_foreach (pairs, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (pairs, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (pairs);
 
 	return g_slist_reverse (ret);
@@ -3592,7 +3605,7 @@ create_edges (CdnParserContext          *context,
 		g_slist_free (ids);
 	}
 
-	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (parents, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (parents);
 
 	return ret;
@@ -3774,7 +3787,7 @@ selections_from_attributes_obj (CdnParserContext *context,
 		ret = g_slist_prepend (ret, sel);
 	}
 
-	g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (parents, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (parents);
 
 	return g_slist_reverse (ret);
@@ -4108,7 +4121,7 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 	}
 	else
 	{
-		g_slist_foreach (funcs, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (funcs, (GFunc)cdn_selection_unref, NULL);
 	}
 
 	g_slist_free (objects);
@@ -4386,7 +4399,7 @@ cdn_parser_context_import (CdnParserContext  *context,
 	}
 
 cleanup:
-	g_slist_foreach (objects, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
 
 	clear_annotation (context);
@@ -5251,7 +5264,9 @@ cdn_parser_context_add_layout (CdnParserContext *context,
 			CdnExpansionContext *pctx;
 
 			pctx = expansion_context_push_base (context);
-			add_expansions (pctx, leftsel);
+
+			cdn_expansion_context_merge (pctx,
+			                             cdn_selection_get_context (leftsel));
 
 			rightobjs = cdn_selector_select (right,
 			                                 G_OBJECT (cdn_selection_get_object (sel)),
@@ -5276,11 +5291,11 @@ cdn_parser_context_add_layout (CdnParserContext *context,
 				                relation);
 			}
 
-			g_slist_foreach (rightobjs, (GFunc)g_object_unref, NULL);
+			g_slist_foreach (rightobjs, (GFunc)cdn_selection_unref, NULL);
 			g_slist_free (rightobjs);
 		}
 
-		g_slist_foreach (leftobjs, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (leftobjs, (GFunc)cdn_selection_unref, NULL);
 		g_slist_free (leftobjs);
 
 		expansion_context_pop (context);
@@ -5351,8 +5366,8 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 
 			expansion_context_push_base (context);
 
-			add_expansions (expansion_context_peek (context),
-			                obj->data);
+			cdn_expansion_context_merge (expansion_context_peek (context),
+			                             cdn_selection_get_context (obj->data));
 
 			embedded_string_expand (exx, x, context);
 			embedded_string_expand (exy, y, context);
@@ -5738,7 +5753,7 @@ debug_selector (CdnParserContext *context,
 
 	g_free (fullid);
 
-	g_slist_foreach (orig, (GFunc)g_object_unref, NULL);
+	g_slist_foreach (orig, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (orig);
 }
 
@@ -5946,7 +5961,7 @@ cdn_parser_context_delete_selector (CdnParserContext *context,
 
 		expansion_context_pop (context);
 
-		g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
 		g_slist_free (ret);
 	}
 }
@@ -6181,7 +6196,7 @@ apply_unapply_template (CdnParserContext *context,
 
 			if (freetargs)
 			{
-				g_slist_foreach (targobjs, (GFunc)g_object_unref, NULL);
+				g_slist_foreach (targobjs, (GFunc)cdn_selection_unref, NULL);
 			}
 
 			g_slist_free (targobjs);
@@ -6192,7 +6207,7 @@ apply_unapply_template (CdnParserContext *context,
 			}
 		}
 
-		g_slist_foreach (temps, (GFunc)g_object_unref, NULL);
+		g_slist_foreach (temps, (GFunc)cdn_selection_unref, NULL);
 		g_slist_free (temps);
 
 		if (!ret)
@@ -6407,10 +6422,10 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 				g_slist_foreach (from_phases, (GFunc)cdn_expansion_unref, NULL);
 				g_slist_free (from_phases);
 
-				g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+				g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
 				g_slist_free (ret);
 
-				g_slist_foreach (parents, (GFunc)g_object_unref, NULL);
+				g_slist_foreach (parents, (GFunc)cdn_selection_unref, NULL);
 				g_slist_free (parents);
 
 				expansion_context_pop (context);
@@ -6494,7 +6509,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 
 		expansion_context_pop (context);
 
-		g_object_unref (parents->data);
+		cdn_selection_unref (parents->data);
 		parents = g_slist_delete_link (parents, parents);
 	}
 
@@ -6573,7 +6588,7 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 
 			expansion_context_pop (context);
 
-			g_object_unref (ret->data);
+			cdn_selection_unref (ret->data);
 			ret = g_slist_delete_link (ret, ret);
 
 			++i;
@@ -6639,7 +6654,7 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 				g_slist_foreach (pairs, (GFunc)name_value_pair_free, NULL);
 				g_slist_free (pairs);
 
-				g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+				g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
 				g_slist_free (ret);
 				return;
 			}
@@ -6661,7 +6676,7 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 				g_slist_foreach (pairs, (GFunc)name_value_pair_free, NULL);
 				g_slist_free (pairs);
 
-				g_slist_foreach (ret, (GFunc)g_object_unref, NULL);
+				g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
 				g_slist_free (ret);
 				return;
 			}

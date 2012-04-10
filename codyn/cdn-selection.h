@@ -29,33 +29,17 @@
 G_BEGIN_DECLS
 
 #define CDN_TYPE_SELECTION		(cdn_selection_get_type ())
-#define CDN_SELECTION(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_SELECTION, CdnSelection))
-#define CDN_SELECTION_CONST(obj)	(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_SELECTION, CdnSelection const))
-#define CDN_SELECTION_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST ((klass), CDN_TYPE_SELECTION, CdnSelectionClass))
-#define CDN_IS_SELECTION(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CDN_TYPE_SELECTION))
-#define CDN_IS_SELECTION_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CDN_TYPE_SELECTION))
-#define CDN_SELECTION_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CDN_TYPE_SELECTION, CdnSelectionClass))
+#define CDN_SELECTION(x)		((CdnSelection *)(x))
 
 typedef struct _CdnSelection		CdnSelection;
-typedef struct _CdnSelectionClass	CdnSelectionClass;
-typedef struct _CdnSelectionPrivate	CdnSelectionPrivate;
-
-struct _CdnSelection
-{
-	GObject parent;
-
-	CdnSelectionPrivate *priv;
-};
-
-struct _CdnSelectionClass
-{
-	GObjectClass parent_class;
-};
 
 GType                cdn_selection_get_type    (void) G_GNUC_CONST;
 
 CdnSelection        *cdn_selection_new         (gpointer             object,
                                                 CdnExpansionContext *context);
+
+CdnSelection        *cdn_selection_ref         (CdnSelection *selection);
+void                 cdn_selection_unref       (CdnSelection *selection);
 
 void                 cdn_selection_set_object  (CdnSelection *selection,
                                                 gpointer      object);
@@ -64,6 +48,13 @@ CdnSelection        *cdn_selection_copy        (CdnSelection *selection);
 
 gpointer             cdn_selection_get_object  (CdnSelection *selection);
 CdnExpansionContext *cdn_selection_get_context (CdnSelection *selection);
+void                 cdn_selection_set_context (CdnSelection *selection,
+                                                CdnExpansionContext *context);
+
+gchar const        *_cdn_selection_get_override_name (CdnSelection *selection);
+
+void                _cdn_selection_set_override_name (CdnSelection *selection,
+                                                      gchar const  *name);
 
 G_END_DECLS
 

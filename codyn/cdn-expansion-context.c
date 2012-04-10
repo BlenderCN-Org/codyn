@@ -115,38 +115,6 @@ cdn_expansion_context_unref (CdnExpansionContext *self)
 	g_slice_free (CdnExpansionContext, self);
 }
 
-gint
-cdn_expansion_context_increment_define (CdnExpansionContext *context,
-                                        gchar const         *name,
-                                        gint                 exidx,
-                                        gint                 num)
-{
-	CdnExpansion *val;
-	gint ret;
-	gchar *incval;
-
-	g_return_val_if_fail (context != NULL, 0);
-	g_return_val_if_fail (name != NULL, 0);
-
-	val = cdn_expansion_context_get_define (context, name);
-
-	if (val)
-	{
-		ret = (gint)g_ascii_strtod (cdn_expansion_get (val, exidx), NULL);
-	}
-	else
-	{
-		ret = 0;
-	}
-
-	incval = g_strdup_printf ("%d", ret + num);
-	cdn_expansion_set (val, exidx, incval);
-	g_free (incval);
-
-	++context->marker;
-	return ret;
-}
-
 static GHashTable *
 ensure_defines (CdnExpansionContext *context)
 {
@@ -159,6 +127,93 @@ ensure_defines (CdnExpansionContext *context)
 	}
 
 	return context->defines;
+}
+
+static CdnExpansion *
+context_get_define (CdnExpansionContext *context,
+                    gchar const         *name,
+                    gboolean            *mine)
+{
+	CdnExpansionContext *current;
+
+	current = context;
+
+	if (mine)
+	{
+		*mine = FALSE;
+	}
+
+	while (current)
+	{
+		CdnExpansion *ret;
+
+		if (current->defines)
+		{
+			ret = g_hash_table_lookup (current->defines, name);
+
+			if (ret)
+			{
+				if (mine && current == context)
+				{
+					*mine = TRUE;
+				}
+
+				return ret;
+			}
+		}
+
+		current = current->parent;
+	}
+
+	g_hash_table_insert (ensure_defines (context),
+	                     g_strdup (name),
+	                     NULL);
+
+	return NULL;
+}
+
+gint
+cdn_expansion_context_increment_define (CdnExpansionContext *context,
+                                        gchar const         *name,
+                                        gint                 exidx,
+                                        gint                 num)
+{
+	CdnExpansion *val;
+	gint ret;
+	gchar *incval;
+	gboolean mine;
+
+	g_return_val_if_fail (context != NULL, 0);
+	g_return_val_if_fail (name != NULL, 0);
+
+	val = context_get_define (context, name, &mine);
+
+	if (val)
+	{
+		ret = (gint)g_ascii_strtod (cdn_expansion_get (val, exidx), NULL);
+	}
+	else
+	{
+		ret = 0;
+	}
+
+	incval = g_strdup_printf ("%d", ret + num);
+
+	if (val && mine)
+	{
+		cdn_expansion_set (val, exidx, incval);
+	}
+	else
+	{
+		val = cdn_expansion_new_one (incval);
+		cdn_expansion_context_add_define (context, name, val);
+		cdn_expansion_unref (val);
+	}
+
+	g_free (incval);
+
+	++context->marker;
+	return ret;
 }
 
 void
@@ -202,6 +257,24 @@ cdn_expansion_context_add_expansion (CdnExpansionContext *context,
 	++context->marker;
 }
 
+void
+cdn_expansion_context_remove_expansion (CdnExpansionContext *context,
+                                        CdnExpansion        *expansion)
+{
+	g_return_if_fail (context != NULL);
+	g_return_if_fail (expansion != NULL);
+
+	if (!context->expansions)
+	{
+		return;
+	}
+
+	if (g_ptr_array_remove (context->expansions, expansion))
+	{
+		++context->marker;
+	}
+}
+
 /**
  * cdn_expansion_context_add_expansions:
  * @context: A #CdnExpansionContext
@@ -235,6 +308,7 @@ cdn_expansion_context_add_expansions (CdnExpansionContext *context,
 
 	++context->marker;
 }
+
 /**
  * cdn_expansion_context_get_define:
  * @context: A #CdnExpansionContext
@@ -249,35 +323,10 @@ CdnExpansion *
 cdn_expansion_context_get_define (CdnExpansionContext *context,
                                   gchar const         *name)
 {
-	CdnExpansionContext *current;
-
 	g_return_val_if_fail (context != NULL, NULL);
 	g_return_val_if_fail (name != NULL, NULL);
 
-	current = context;
-
-	while (current)
-	{
-		CdnExpansion *ret;
-
-		if (current->defines)
-		{
-			ret = g_hash_table_lookup (current->defines, name);
-
-			if (ret)
-			{
-				return ret;
-			}
-		}
-
-		current = current->parent;
-	}
-
-	g_hash_table_insert (ensure_defines (context),
-	                     g_strdup (name),
-	                     NULL);
-
-	return NULL;
+	return context_get_define (context, name, NULL);
 }
 
 /**
@@ -372,6 +421,7 @@ cdn_expansion_context_debug_print (CdnExpansionContext  *context,
 	CdnExpansionContext *ctx;
 	GHashTable *seen;
 	GSList *defines = NULL;
+	gint i;
 
 	g_return_if_fail (context != NULL);
 	g_return_if_fail (file != NULL);
@@ -418,20 +468,50 @@ cdn_expansion_context_debug_print (CdnExpansionContext  *context,
 	if (!defines)
 	{
 		g_fprintf (file, "}\n");
-		return;
 	}
-
-	while (defines)
+	else
 	{
-		g_fprintf (file, "\n  %s: ", (gchar const *)defines->data);
+		while (defines)
+		{
+			g_fprintf (file, "\n  %s: ", (gchar const *)defines->data);
 
-		cdn_expansion_debug_print (cdn_expansion_context_get_define (context, defines->data),
-		                           file);
+			cdn_expansion_debug_print (cdn_expansion_context_get_define (context, defines->data),
+			                           file);
 
-		defines = g_slist_delete_link (defines, defines);
+			defines = g_slist_delete_link (defines, defines);
+		}
+
+		g_fprintf (file, "\n}\n");
 	}
 
-	g_fprintf (file, "\n}\n");
+	g_fprintf (file, "[debug] Expansions: [");
+	i = 0;
+
+	for (ctx = context; ctx; ctx = ctx->parent)
+	{
+		gint l;
+
+		if (!ctx->expansions)
+		{
+			continue;
+		}
+
+		for (l = 0; l < ctx->expansions->len; ++l)
+		{
+			if (i == 0)
+			{
+				g_fprintf (file, "\n");
+			}
+
+			g_fprintf (file, "  %d: ", i + 1);
+			cdn_expansion_debug_print (ctx->expansions->pdata[ctx->expansions->len - l - 1], file);
+			g_fprintf (file, "\n");
+
+			++i;
+		}
+	}
+
+	g_fprintf (file, "]\n");
 }
 
 gulong
@@ -474,7 +554,7 @@ cdn_expansion_context_get_expansions (CdnExpansionContext *context)
 		for (i = 0; i < ctx->expansions->len; ++i)
 		{
 			ret = g_slist_prepend (ret,
-			                       ctx->expansions->pdata[i]);
+			                       ctx->expansions->pdata[ctx->expansions->len - i - 1]);
 		}
 	}
 
@@ -499,6 +579,7 @@ cdn_expansion_context_shared_defines (CdnExpansionContext *context,
 	}
 
 	context->defines = g_hash_table_ref (ensure_defines (from));
+	++context->marker;
 }
 
 void
@@ -525,3 +606,223 @@ cdn_expansion_context_foreach_define (CdnExpansionContext *context,
 		context = context->parent;
 	}
 }
+
+CdnExpansionContext *
+cdn_expansion_context_get_parent (CdnExpansionContext *context)
+{
+	g_return_val_if_fail (context != NULL, NULL);
+
+	return context->parent;
+}
+
+/**
+ * cdn_expansion_context_get_local_expansions:
+ * @context: a #CdnExpansionContext.
+ *
+ * Get the expansions defined in this context but not those in the parent context.
+ *
+ * Returns: (element-type CdnExpansion) (transfer container): a #GSList of #CdnExpansion
+ *
+ **/
+GSList *
+cdn_expansion_context_get_local_expansions (CdnExpansionContext *context)
+{
+	GSList *ret = NULL;
+	gint i;
+
+	g_return_val_if_fail (context, NULL);
+
+	if (!context->expansions)
+	{
+		return NULL;
+	}
+
+	for (i = 0; i < context->expansions->len; ++i)
+	{
+		ret = g_slist_prepend (ret,
+		                       context->expansions->pdata[i]);
+	}
+
+	return ret;
+}
+
+static void
+copy_define (gchar const  *name,
+             CdnExpansion *value,
+             GHashTable   *dest)
+{
+	if (value)
+	{
+		g_hash_table_insert (dest,
+		                     g_strdup (name),
+		                     value ? cdn_expansion_copy (value) : NULL);
+	}
+}
+
+void
+cdn_expansion_context_add_defines (CdnExpansionContext *context,
+                                   GHashTable          *defines)
+{
+	g_return_if_fail (context != NULL);
+
+	if (!defines || g_hash_table_size (defines) == 0)
+	{
+		return;
+	}
+
+	g_hash_table_foreach (defines,
+	                      (GHFunc)copy_define,
+	                      ensure_defines (context));
+
+	++context->marker;
+}
+
+/**
+ * cdn_expansion_context_get_local_defines:
+ * @context: a #CdnExpansionContext.
+ *
+ * Get the defines of this context, but not those in the parent context.
+ *
+ * Returns: (transfer none) (allow-none): a #GHashTable or %NULL.
+ *
+ **/
+GHashTable *
+cdn_expansion_context_get_local_defines (CdnExpansionContext *context)
+{
+	g_return_val_if_fail (context, NULL);
+
+	return context->defines;
+}
+
+static void
+do_merge (CdnExpansionContext *context,
+          GSList              *start)
+{
+	while (start)
+	{
+		CdnExpansionContext *ex = start->data;
+		GSList *exps;
+		GHashTable *defines;
+
+		exps = cdn_expansion_context_get_local_expansions (ex);
+
+		if (exps)
+		{
+			cdn_expansion_context_add_expansions (context, exps);
+		}
+
+		defines = cdn_expansion_context_get_local_defines (ex);
+
+		if (defines)
+		{
+			cdn_expansion_context_add_defines (context, defines);
+		}
+
+		g_slist_free (exps);
+		start = g_slist_delete_link (start, start);
+	}
+
+	++context->marker;
+}
+
+void
+cdn_expansion_context_merge (CdnExpansionContext *context,
+                             CdnExpansionContext *other)
+{
+	CdnExpansionContext *c1;
+	CdnExpansionContext *c2;
+	GSList *p1 = NULL;
+	GSList *p2 = NULL;
+	GSList *start;
+
+	g_return_if_fail (context != NULL);
+
+	if (other == NULL)
+	{
+		return;
+	}
+
+	c1 = context;
+	c2 = other;
+
+	start = NULL;
+
+	while (c1 || c2)
+	{
+		if (c1 == c2)
+		{
+			start = p2;
+			break;
+		}
+
+		if (c1)
+		{
+			p1 = g_slist_prepend (p1, c1);
+			c1 = cdn_expansion_context_get_parent (c1);
+		}
+
+		if (c2)
+		{
+			p2 = g_slist_prepend (p2, c2);
+			c2 = cdn_expansion_context_get_parent (c2);
+		}
+	}
+
+	if (!start)
+	{
+		start = p2;
+
+		while (p1 && p2 && p1->data == p2->data)
+		{
+			p1 = g_slist_delete_link (p1, p1);
+			p2 = g_slist_delete_link (p2, p2);
+
+			start = p2;
+		}
+	}
+
+	// This release start also
+	do_merge (context, start);
+
+	g_slist_free (p1);
+}
+
+void
+cdn_expansion_context_truncate (CdnExpansionContext *context,
+                                CdnExpansionContext *parent)
+{
+	CdnExpansionContext *ctx;
+
+	g_return_if_fail (context != NULL);
+
+	ctx = context;
+
+	if (!parent)
+	{
+		return;
+	}
+
+	while (parent && !parent->defines && !parent->expansions)
+	{
+		parent = parent->parent;
+	}
+
+	while (context && context->parent != parent)
+	{
+		context = context->parent;
+	}
+
+	if (context && context->parent)
+	{
+		cdn_expansion_context_unref (context->parent);
+		context->parent = NULL;
+	}
+
+	while (ctx)
+	{
+		++ctx->marker;
+
+		ctx = ctx->parent;
+	}
+}
+

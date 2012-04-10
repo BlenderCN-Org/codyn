@@ -142,12 +142,33 @@ get_tag_table (CdnTaggable *taggable)
 }
 
 static void
+set_tag_table (CdnTaggable *taggable,
+               GHashTable  *table)
+{
+	CdnObject *self;
+
+	self = CDN_OBJECT (taggable);
+
+	if (self->priv->tags)
+	{
+		g_hash_table_unref (self->priv->tags);
+		self->priv->tags = NULL;
+	}
+
+	if (table)
+	{
+		self->priv->tags = g_hash_table_ref (table);
+	}
+}
+
+static void
 cdn_taggable_iface_init (gpointer iface)
 {
 	/* Use default implementation */
 	CdnTaggableInterface *taggable = iface;
 
 	taggable->get_tag_table = get_tag_table;
+	taggable->set_tag_table = set_tag_table;
 }
 
 GQuark
@@ -241,7 +262,11 @@ cdn_object_finalize (GObject *object)
 	g_free (obj->priv->annotation);
 
 	g_hash_table_destroy (obj->priv->property_hash);
-	g_hash_table_destroy (obj->priv->tags);
+
+	if (obj->priv->tags)
+	{
+		g_hash_table_unref (obj->priv->tags);
+	}
 
 	G_OBJECT_CLASS (cdn_object_parent_class)->finalize (object);
 }
@@ -750,7 +775,7 @@ cdn_object_copy_impl (CdnObject *object,
 	}
 
 	cdn_taggable_copy_to (CDN_TAGGABLE (source),
-	                      object->priv->tags);
+	                      CDN_TAGGABLE (object));
 
 	g_free (annotation);
 }
@@ -1583,7 +1608,6 @@ cdn_object_init (CdnObject *self)
 	                                                   (GDestroyNotify)g_free,
 	                                                   NULL);
 
-	self->priv->tags = cdn_taggable_create_table ();
 	self->priv->compiled = FALSE;
 }
 

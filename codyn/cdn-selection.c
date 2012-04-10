@@ -22,78 +22,44 @@
 
 #include "cdn-selection.h"
 #include "cdn-expansion.h"
-#include "cdn-taggable.h"
 
-#define CDN_SELECTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_SELECTION, CdnSelectionPrivate))
-
-struct _CdnSelectionPrivate
+struct _CdnSelection
 {
 	gpointer  object;
 	CdnExpansionContext *context;
-	GHashTable *tags;
+	guint ref_count;
+	gchar *override_name;
 };
 
-static void cdn_taggable_iface_init (gpointer iface);
+G_DEFINE_BOXED_TYPE (CdnSelection,
+                     cdn_selection,
+                     cdn_selection_ref,
+                     cdn_selection_unref)
 
-G_DEFINE_TYPE_WITH_CODE (CdnSelection,
-                         cdn_selection,
-                         G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (CDN_TYPE_TAGGABLE,
-                                                cdn_taggable_iface_init))
-
-static GHashTable *
-get_tag_table (CdnTaggable *taggable)
+void
+cdn_selection_unref (CdnSelection *selection)
 {
-	return CDN_SELECTION (taggable)->priv->tags;
-}
-
-static void
-cdn_taggable_iface_init (gpointer iface)
-{
-	/* Use default implementation */
-	CdnTaggableInterface *taggable = iface;
-
-	taggable->get_tag_table = get_tag_table;
-}
-
-static void
-cdn_selection_finalize (GObject *object)
-{
-	CdnSelection *selection;
-
-	selection = CDN_SELECTION (object);
-
-	if (selection->priv->object)
+	if (!g_atomic_int_dec_and_test ((gint *)&selection->ref_count))
 	{
-		g_object_unref (selection->priv->object);
+		return;
 	}
 
-	if (selection->priv->context)
+	if (selection->object)
 	{
-		cdn_expansion_context_unref (selection->priv->context);
+		g_object_unref (selection->object);
 	}
 
-	g_hash_table_destroy (selection->priv->tags);
-
-	G_OBJECT_CLASS (cdn_selection_parent_class)->finalize (object);
+	if (selection->context)
+	{
+		cdn_expansion_context_unref (selection->context);
+	}
 }
 
-static void
-cdn_selection_class_init (CdnSelectionClass *klass)
+CdnSelection *
+cdn_selection_ref (CdnSelection *selection)
 {
-	GObjectClass *object_class = G_OBJECT_CLASS (klass);
-
-	object_class->finalize = cdn_selection_finalize;
-
-	g_type_class_add_private (object_class, sizeof (CdnSelectionPrivate));
-}
-
-static void
-cdn_selection_init (CdnSelection *self)
-{
-	self->priv = CDN_SELECTION_GET_PRIVATE (self);
-
-	self->priv->tags = cdn_taggable_create_table ();
+	g_atomic_int_inc ((gint *)&selection->ref_count);
+	return selection;
 }
 
 /**
@@ -112,10 +78,11 @@ cdn_selection_new (gpointer             object,
 {
 	CdnSelection *ret;
 
-	ret = g_object_new (CDN_TYPE_SELECTION, NULL);
+	ret = g_slice_new0 (CdnSelection);
+	ret->ref_count = 1;
 
-	ret->priv->object = object ? g_object_ref (object) : NULL;
-	ret->priv->context = cdn_expansion_context_ref (context);
+	ret->object = object ? g_object_ref (object) : NULL;
+	ret->context = cdn_expansion_context_ref (context);
 
 	return ret;
 }
@@ -132,17 +99,13 @@ cdn_selection_new (gpointer             object,
 CdnSelection *
 cdn_selection_copy (CdnSelection *selection)
 {
-	CdnSelection *ret;
+	if (selection == NULL)
+	{
+		return NULL;
+	}
 
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
-
-	ret = cdn_selection_new (selection->priv->object,
-	                         cdn_expansion_context_new_unreffed (selection->priv->context));
-
-	cdn_taggable_copy_to (CDN_TAGGABLE (selection),
-	                      ret->priv->tags);
-
-	return ret;
+	return cdn_selection_new (selection->object,
+	                          cdn_expansion_context_new_unreffed (selection->context));
 }
 
 /**
@@ -157,27 +120,27 @@ cdn_selection_copy (CdnSelection *selection)
 gpointer
 cdn_selection_get_object (CdnSelection *selection)
 {
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
+	g_return_val_if_fail (selection != NULL, NULL);
 
-	return selection->priv->object;
+	return selection->object;
 }
 
 void
 cdn_selection_set_object (CdnSelection *selection,
                           gpointer      object)
 {
-	g_return_if_fail (CDN_IS_SELECTION (selection));
+	g_return_if_fail (selection != NULL);
 	g_return_if_fail (object == NULL || G_IS_OBJECT (object));
 
-	if (selection->priv->object)
+	if (selection->object)
 	{
-		g_object_unref (selection->priv->object);
-		selection->priv->object = NULL;
+		g_object_unref (selection->object);
+		selection->object = NULL;
 	}
 
 	if (object)
 	{
-		selection->priv->object = g_object_ref (object);
+		selection->object = g_object_ref (object);
 	}
 }
 
@@ -193,7 +156,43 @@ cdn_selection_set_object (CdnSelection *selection,
 CdnExpansionContext *
 cdn_selection_get_context (CdnSelection *selection)
 {
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
+	g_return_val_if_fail (selection != NULL, NULL);
 
-	return selection->priv->context;
+	return selection->context;
 }
+
+/**
+ * cdn_selection_set_context:
+ * @selection: (transfer none): a #CdnSelection.
+ *
+ * Set the selection context.
+ *
+ **/
+void
+cdn_selection_set_context (CdnSelection        *selection,
+                           CdnExpansionContext *context)
+{
+	g_return_if_fail (selection != NULL);
+
+	cdn_expansion_context_unref (selection->context);
+	selection->context = cdn_expansion_context_ref (context);
+}
+
+gchar const *
+_cdn_selection_get_override_name (CdnSelection *selection)
+{
+	g_return_val_if_fail (selection != NULL, NULL);
+
+	return selection->override_name;
+}
+
+void
+_cdn_selection_set_override_name (CdnSelection *selection,
+                                  gchar const  *name)
+{
+	g_return_if_fail (selection != NULL);
+
+	g_free (selection->override_name);
+	selection->override_name = g_strdup (name);
+}
+

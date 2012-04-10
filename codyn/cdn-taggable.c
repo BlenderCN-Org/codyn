@@ -41,11 +41,19 @@ cdn_taggable_get_tag_table_default (CdnTaggable *taggable)
 }
 
 static void
+cdn_taggable_set_tag_table_default (CdnTaggable *taggable,
+                                    GHashTable  *table)
+{
+	g_assert ("Must implement set_tag_table...");
+}
+
+static void
 cdn_taggable_default_init (CdnTaggableInterface *iface)
 {
 	static gboolean initialized = FALSE;
 
 	iface->get_tag_table = cdn_taggable_get_tag_table_default;
+	iface->set_tag_table = cdn_taggable_set_tag_table_default;
 
 	if (!initialized)
 	{
@@ -62,6 +70,43 @@ cdn_taggable_has_tag (CdnTaggable *taggable,
 	return cdn_taggable_try_get_tag (taggable, tag, NULL);
 }
 
+static GHashTable *
+create_table ()
+{
+	return g_hash_table_new_full (g_str_hash,
+	                              g_str_equal,
+	                              (GDestroyNotify)g_free,
+	                              (GDestroyNotify)g_free);
+}
+
+static void
+set_tag_table (CdnTaggable *taggable,
+               GHashTable  *table)
+{
+	CDN_TAGGABLE_GET_INTERFACE (taggable)->set_tag_table (taggable,
+	                                                      table);
+}
+
+static GHashTable *
+ensure_tag_table (CdnTaggable *taggable)
+{
+	GHashTable *ret;
+
+	ret = cdn_taggable_get_tag_table (taggable);
+
+	if (!ret)
+	{
+		ret = create_table ();
+		set_tag_table (taggable, ret);
+	}
+	else
+	{
+		g_hash_table_ref (ret);
+	}
+
+	return ret;
+}
+
 void
 cdn_taggable_add_tag (CdnTaggable *taggable,
                       gchar const *tag,
@@ -71,9 +116,10 @@ cdn_taggable_add_tag (CdnTaggable *taggable,
 
 	g_return_if_fail (CDN_TAGGABLE (taggable));
 
-	table = cdn_taggable_get_tag_table (taggable);
+	table = ensure_tag_table (taggable);
 
 	g_hash_table_insert (table, g_strdup (tag), g_strdup (value));
+	g_hash_table_unref (table);
 }
 
 void
@@ -86,24 +132,10 @@ cdn_taggable_remove_tag (CdnTaggable *taggable,
 
 	table = cdn_taggable_get_tag_table (taggable);
 
-	g_hash_table_remove (table, tag);
-}
-
-/**
- * cdn_taggable_create_table:
- *
- * Create a hash table suitable to store tags using #CdnTaggable.
- *
- * Returns: (transfer full): A #GHashTable
- *
- **/
-GHashTable *
-cdn_taggable_create_table ()
-{
-	return g_hash_table_new_full (g_str_hash,
-	                              g_str_equal,
-	                              (GDestroyNotify)g_free,
-	                              (GDestroyNotify)g_free);
+	if (table)
+	{
+		g_hash_table_remove (table, tag);
+	}
 }
 
 gchar const *
@@ -116,6 +148,11 @@ cdn_taggable_get_tag (CdnTaggable  *taggable,
 	g_return_val_if_fail (CDN_IS_TAGGABLE (taggable), NULL);
 
 	table = cdn_taggable_get_tag_table (taggable);
+
+	if (!table)
+	{
+		return NULL;
+	}
 
 	return g_hash_table_lookup (table, tag);
 }
@@ -131,6 +168,11 @@ cdn_taggable_try_get_tag  (CdnTaggable  *taggable,
 
 	table = cdn_taggable_get_tag_table (taggable);
 
+	if (!table)
+	{
+		return FALSE;
+	}
+
 	return g_hash_table_lookup_extended (table, tag, NULL, (gpointer *)value);
 }
 
@@ -140,7 +182,7 @@ cdn_taggable_try_get_tag  (CdnTaggable  *taggable,
  *
  * Get the tag hash table.
  *
- * Returns: (transfer none): A #GHashTable
+ * Returns: (transfer none) (allow-none): A #GHashTable
  *
  **/
 GHashTable *
@@ -161,13 +203,24 @@ copy_tag (gchar const  *key,
 
 void
 cdn_taggable_copy_to (CdnTaggable *taggable,
-                      GHashTable  *tags)
+                      CdnTaggable *target)
 {
+	GHashTable *table;
+
 	g_return_if_fail (CDN_IS_TAGGABLE (taggable));
+
+	if (!cdn_taggable_get_tag_table (taggable))
+	{
+		return;
+	}
+
+	table = ensure_tag_table (target);
 
 	g_hash_table_foreach (cdn_taggable_get_tag_table (taggable),
 	                      (GHFunc)copy_tag,
-	                      tags);
+	                      table);
+
+	g_hash_table_unref (table);
 }
 
 typedef struct
@@ -200,15 +253,23 @@ cdn_taggable_foreach (CdnTaggable *taggable,
                       gpointer                userdata)
 {
 	ForeachInfo info;
+	GHashTable *table;
 
 	g_return_if_fail (CDN_IS_TAGGABLE (taggable));
 	g_return_if_fail (func != NULL);
+
+	table = cdn_taggable_get_tag_table (taggable);
+
+	if (!table)
+	{
+		return;
+	}
 
 	info.taggable = taggable;
 	info.func = func;
 	info.userdata = userdata;
 
-	g_hash_table_foreach (cdn_taggable_get_tag_table (taggable),
+	g_hash_table_foreach (table,
 	                      (GHFunc)taggable_foreach,
 	                      &info);
 }

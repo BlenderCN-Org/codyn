@@ -2344,7 +2344,7 @@ cdn_node_find_objects (CdnNode     *node,
 		ret = g_slist_prepend (ret,
 		                       cdn_selection_get_object (all->data));
 
-		g_object_unref (all->data);
+		cdn_selection_unref (all->data);
 		all = g_slist_delete_link (all, all);
 	}
 
@@ -2430,7 +2430,7 @@ cdn_node_find_variables (CdnNode    *node,
 		ret = g_slist_prepend (ret,
 		                       cdn_selection_get_object (all->data));
 
-		g_object_unref (all->data);
+		cdn_selection_unref (all->data);
 		all = g_slist_delete_link (all, all);
 	}
 

@@ -41,6 +41,8 @@ struct _CdnTaggableInterface
 	GTypeInterface parent;
 
 	GHashTable *(*get_tag_table) (CdnTaggable *taggable);
+	void (*set_tag_table) (CdnTaggable *taggable,
+	                       GHashTable  *table);
 };
 
 typedef void (*CdnTaggableForeachFunc) (CdnTaggable *taggable,
@@ -69,9 +71,8 @@ gboolean     cdn_taggable_try_get_tag   (CdnTaggable  *taggable,
 
 GHashTable  *cdn_taggable_get_tag_table (CdnTaggable  *taggable);
 
-GHashTable  *cdn_taggable_create_table  (void);
 void         cdn_taggable_copy_to       (CdnTaggable  *taggable,
-                                         GHashTable   *tags);
+                                         CdnTaggable  *other);
 
 void         cdn_taggable_foreach       (CdnTaggable            *taggable,
                                          CdnTaggableForeachFunc  func,

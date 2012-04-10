@@ -139,12 +139,33 @@ get_tag_table (CdnTaggable *taggable)
 }
 
 static void
+set_tag_table (CdnTaggable *taggable,
+               GHashTable  *table)
+{
+	CdnEdgeAction *self;
+
+	self = CDN_EDGE_ACTION (taggable);
+
+	if (self->priv->tags)
+	{
+		g_hash_table_unref (self->priv->tags);
+		self->priv->tags = NULL;
+	}
+
+	if (table)
+	{
+		self->priv->tags = g_hash_table_ref (table);
+	}
+}
+
+static void
 cdn_taggable_iface_init (gpointer iface)
 {
 	/* Use default implementation */
 	CdnTaggableInterface *taggable = iface;
 
 	taggable->get_tag_table = get_tag_table;
+	taggable->set_tag_table = set_tag_table;
 }
 
 static void
@@ -374,7 +395,11 @@ cdn_edge_action_finalize (GObject *object)
 	CdnEdgeAction *action = CDN_EDGE_ACTION (object);
 
 	g_free (action->priv->annotation);
-	g_hash_table_destroy (action->priv->tags);
+
+	if (action->priv->tags)
+	{
+		g_hash_table_unref (action->priv->tags);
+	}
 
 	if (action->priv->phases)
 	{
@@ -548,8 +573,6 @@ static void
 cdn_edge_action_init (CdnEdgeAction *self)
 {
 	self->priv = CDN_EDGE_ACTION_GET_PRIVATE (self);
-
-	self->priv->tags = cdn_taggable_create_table ();
 }
 
 /**
@@ -663,7 +686,7 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 	                                action->priv->annotation);
 
 	cdn_taggable_copy_to (CDN_TAGGABLE (action),
-	                      action->priv->tags);
+	                      CDN_TAGGABLE (newaction));
 
 	cdn_phaseable_copy_to (CDN_PHASEABLE (action),
 	                       CDN_PHASEABLE (newaction));

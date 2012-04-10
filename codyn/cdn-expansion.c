@@ -23,20 +23,10 @@
 #include "cdn-expansion.h"
 #include <glib/gprintf.h>
 
-GType
-cdn_expansion_get_type ()
-{
-	static GType gtype = 0;
-
-	if (G_UNLIKELY (gtype == 0))
-	{
-		gtype = g_boxed_type_register_static ("CdnExpansion",
-		                                      (GBoxedCopyFunc)cdn_expansion_ref,
-		                                      (GBoxedFreeFunc)cdn_expansion_unref);
-	}
-
-	return gtype;
-}
+G_DEFINE_BOXED_TYPE (CdnExpansion,
+                     cdn_expansion,
+                     cdn_expansion_ref,
+                     cdn_expansion_unref)
 
 typedef struct
 {

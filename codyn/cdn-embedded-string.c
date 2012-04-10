@@ -736,6 +736,21 @@ typedef enum
 } EvaluateFlags;
 
 static gchar *
+concat_2 (gchar const *a, gchar const *b)
+{
+	if (!a || !*a)
+	{
+		return g_strdup (b);
+	}
+	else if (!b || !*b)
+	{
+		return g_strdup (a);
+	}
+
+	return g_strconcat (a, b, NULL);
+}
+
+static gchar *
 evaluate_node (CdnEmbeddedString   *em,
                Node                *node,
                CdnExpansionContext  *context,
@@ -797,7 +812,7 @@ evaluate_node (CdnEmbeddedString   *em,
 	switch (node->type)
 	{
 		case CDN_EMBEDDED_STRING_NODE_TEXT:
-			r = g_strconcat (node->text, ret->str, NULL);
+			r = concat_2 (node->text, ret->str);
 		break;
 		case CDN_EMBEDDED_STRING_NODE_CONDITION:
 			if (context)
@@ -900,13 +915,14 @@ embedded_string_expand (CdnEmbeddedString    *s,
                         CdnExpansionContext  *ctx,
                         GError              **error)
 {
-	if (s->priv->cached &&
+	// TODO make caching work!
+	/*if (s->priv->cached &&
 	    ctx == s->priv->cached_context &&
 	    (ctx == NULL ||
 	     cdn_expansion_context_get_marker (ctx) == s->priv->cached_marker))
 	{
 		return s->priv->cached;
-	}
+	}*/
 
 	cdn_embedded_string_clear_cache (s);
 
@@ -944,7 +960,6 @@ cdn_embedded_string_expand (CdnEmbeddedString    *s,
                             GError              **error)
 {
 	g_return_val_if_fail (CDN_IS_EMBEDDED_STRING (s), NULL);
-	g_return_val_if_fail (ctx != NULL, NULL);
 
 	return embedded_string_expand (s, ctx, error);
 }
@@ -1140,6 +1155,7 @@ apply_reduce (CdnEmbeddedString *s,
               GError  **error)
 {
 	gchar *ret;
+	CdnExpansionContext *exctx;
 
 	if (!parts)
 	{
@@ -1149,11 +1165,12 @@ apply_reduce (CdnEmbeddedString *s,
 	ret = g_strdup (cdn_expansion_get (parts->data, 0));
 	parts = g_slist_next (parts);
 
+	exctx = cdn_expansion_context_new (ctx);
+
 	while (ret && parts)
 	{
 		gchar *item;
 		CdnExpansion *ex;
-		CdnExpansionContext *exctx;
 
 		gchar const *cc[] = {
 			ret,
@@ -1162,20 +1179,22 @@ apply_reduce (CdnEmbeddedString *s,
 		};
 
 		// Make a context
-		exctx = cdn_expansion_context_new (ctx);
-
 		ex = cdn_expansion_new ((gchar const * const *)cc);
+
 		cdn_expansion_context_add_expansion (ctx, ex);
-		cdn_expansion_unref (ex);
 
 		item = evaluate_node (s, filter, exctx, 0, error);
-		cdn_expansion_context_unref (exctx);
+
+		cdn_expansion_context_remove_expansion (ctx, ex);
+		cdn_expansion_unref (ex);
 
 		g_free (ret);
 		ret = item;
 
 		parts = g_slist_next (parts);
 	}
+
+	cdn_expansion_context_unref (exctx);
 
 	return ret;
 }
@@ -1189,19 +1208,20 @@ apply_map (CdnEmbeddedString *s,
 {
 	GSList *ret = NULL;
 	GSList *part = parts;
+	CdnExpansionContext *newctx;
+
+	newctx = cdn_expansion_context_new (ctx);
 
 	while (part)
 	{
 		gchar *item;
-		CdnExpansionContext *newctx;
 
 		// Make a context
-		newctx = cdn_expansion_context_new (ctx);
 		cdn_expansion_context_add_expansion (newctx, part->data);
 
 		item = evaluate_node (s, filter, newctx, 0, error);
 
-		cdn_expansion_context_unref (newctx);
+		cdn_expansion_context_remove_expansion (newctx, part->data);
 
 		ret = g_slist_prepend (ret, cdn_expansion_new_one (item));
 		g_free (item);
@@ -1210,6 +1230,8 @@ apply_map (CdnEmbeddedString *s,
 
 		part = g_slist_next (part);
 	}
+
+	cdn_expansion_context_unref (newctx);
 
 	g_slist_free (parts);
 
@@ -1293,7 +1315,8 @@ typedef enum
 {
 	EX_NODE_TYPE_CONCAT,
 	EX_NODE_TYPE_ELEMENTS,
-	EX_NODE_TYPE_TEXT
+	EX_NODE_TYPE_TEXT,
+	EX_NODE_TYPE_UNEXPAND
 } ExNodeType;
 
 typedef struct _ExNode ExNode;
@@ -1446,7 +1469,7 @@ ex_node_append_text (ExNode *parent,
 		// Concat directly here
 		if (buf->len)
 		{
-			gchar *cc = g_strconcat (lc->text, buf->str, NULL);
+			gchar *cc = concat_2 (lc->text, buf->str);
 
 			g_free (lc->text);
 			lc->text = cc;
@@ -1502,6 +1525,16 @@ ex_node_expand (gchar const  *text,
 
 				continue;
 			break;
+			case '@':
+				if (*(ptr + 1) == '{')
+				{
+					current = ex_node_new (current,
+					                       EX_NODE_TYPE_UNEXPAND,
+					                       NULL,
+					                       ptr - text,
+					                       0);
+				}
+			break;
 			case '{':
 			{
 				ExNode *elems;
@@ -1534,6 +1567,8 @@ ex_node_expand (gchar const  *text,
 				// is the parent of the CONCAT node
 				if (current->parent)
 				{
+					ExNode *par;
+
 					ex_node_append_text (current, buf, text, ptr, &last);
 					current->end = ptr - text;
 
@@ -1543,7 +1578,19 @@ ex_node_expand (gchar const  *text,
 
 					// We go two levels because the first
 					// parent is the elements node
-					current = current->parent->parent;
+					par = current->parent->parent;
+
+					// Check if we need to also bubble up
+					// unexpansion nodes
+					if (par->type == EX_NODE_TYPE_UNEXPAND)
+					{
+						par->end = current->end;
+						current = par->parent;
+					}
+					else
+					{
+						current = par;
+					}
 				}
 				else
 				{
@@ -1714,8 +1761,8 @@ expansion_append (CdnExpansion *a,
 		return cdn_expansion_copy (b);
 	}
 
-	cc = g_strconcat (cdn_expansion_get (a, 0),
-	                  cdn_expansion_get (b, 0), NULL);
+	cc = concat_2 (cdn_expansion_get (a, 0),
+	               cdn_expansion_get (b, 0));
 
 	if (numa == 1 && numb == 1)
 	{
@@ -1763,8 +1810,8 @@ expansion_append2 (CdnExpansion *a,
 	}
 
 	// Can reuse both a and b
-	cc = g_strconcat (cdn_expansion_get (a, 0),
-	                  cdn_expansion_get (b, 0), NULL);
+	cc = concat_2 (cdn_expansion_get (a, 0),
+	               cdn_expansion_get (b, 0));
 
 	cdn_expansion_set (a, 0, cc);
 	g_free (cc);
@@ -1790,8 +1837,8 @@ expansion_append1 (CdnExpansion *a,
 		return b;
 	}
 
-	cc = g_strconcat (cdn_expansion_get (a, 0),
-	                  cdn_expansion_get (b, 0), NULL);
+	cc = concat_2 (cdn_expansion_get (a, 0),
+	               cdn_expansion_get (b, 0));
 
 	cdn_expansion_set (b, 0, cc);
 	g_free (cc);
@@ -1880,10 +1927,54 @@ expand_concat (CdnEmbeddedString   *s,
 }
 
 static GSList *
-expand_node (CdnEmbeddedString   *s,
+unexpand_elements (CdnEmbeddedString    *s,
+                   CdnExpansionContext  *ctx,
+                   ExNode               *node,
+                   GError              **error)
+{
+	GSList *ret;
+	GString *rs;
+	gchar *res;
+
+	ret = expand_node (s, ctx, node->child, error);
+
+	if (!ret)
+	{
+		return NULL;
+	}
+
+	rs = NULL;
+
+	while (ret)
+	{
+		CdnExpansion *ex = ret->data;
+
+		if (!rs)
+		{
+			rs = g_string_new (cdn_expansion_get (ex, 0));
+		}
+		else
+		{
+			g_string_append_c (rs, ',');
+			g_string_append (rs, cdn_expansion_get (ex, 0));
+		}
+
+		cdn_expansion_unref (ex);
+		ret = g_slist_delete_link (ret, ret);
+	}
+
+	res = g_string_free (rs, FALSE);
+	ret = g_slist_prepend (NULL, cdn_expansion_new_one (res));
+	g_free (res);
+
+	return ret;
+}
+
+static GSList *
+expand_node (CdnEmbeddedString    *s,
              CdnExpansionContext  *ctx,
-             ExNode              *node,
-             GError             **error)
+             ExNode               *node,
+             GError              **error)
 {
 	switch (node->type)
 	{
@@ -1896,6 +1987,9 @@ expand_node (CdnEmbeddedString   *s,
 		break;
 		case EX_NODE_TYPE_ELEMENTS:
 			return expand_elements (s, ctx, node, error);
+		break;
+		case EX_NODE_TYPE_UNEXPAND:
+			return unexpand_elements (s, ctx, node, error);
 		break;
 	}
 
@@ -1952,9 +2046,9 @@ cdn_embedded_string_expand_multiple (CdnEmbeddedString   *s,
 		return NULL;
 	}
 
-	if (!*id)
+	if (!g_utf8_strchr (id, -1, '{'))
 	{
-		CdnExpansion *ex = cdn_expansion_new_one ("");
+		CdnExpansion *ex = cdn_expansion_new_one (id);
 		ret = g_slist_prepend (NULL, ex);
 	}
 	else
@@ -2150,6 +2244,28 @@ expand_elements_escape (CdnEmbeddedString   *s,
 }
 
 static gchar *
+expand_unexpand_escape (CdnEmbeddedString    *s,
+                        CdnExpansionContext  *ctx,
+                        ExNode               *node,
+                        GError              **error)
+{
+	gchar *child;
+	gchar *ret;
+
+	child = expand_node_escape (s, ctx, node->child, error);
+
+	if (!child)
+	{
+		return NULL;
+	}
+
+	ret = concat_2 ("@", child);
+	g_free (child);
+
+	return ret;
+}
+
+static gchar *
 expand_node_escape (CdnEmbeddedString   *s,
                     CdnExpansionContext  *ctx,
                     ExNode              *node,
@@ -2165,6 +2281,9 @@ expand_node_escape (CdnEmbeddedString   *s,
 		break;
 		case EX_NODE_TYPE_ELEMENTS:
 			return expand_elements_escape (s, ctx, node, error);
+		break;
+		case EX_NODE_TYPE_UNEXPAND:
+			return expand_unexpand_escape (s, ctx, node, error);
 		break;
 	}
 

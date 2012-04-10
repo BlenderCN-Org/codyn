@@ -1218,7 +1218,7 @@ cdn_edge_add_action (CdnEdge       *link,
 		g_free (an);
 
 		cdn_taggable_copy_to (CDN_TAGGABLE (action),
-		                      cdn_taggable_get_tag_table (CDN_TAGGABLE (orig)));
+		                      CDN_TAGGABLE (orig));
 
 		if (g_object_is_floating (action))
 		{

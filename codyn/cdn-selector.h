@@ -149,6 +149,10 @@ GSList       *cdn_selector_select            (CdnSelector              *selector
                                               CdnSelectorType           type,
                                               CdnExpansionContext      *context);
 
+GSList       *cdn_selector_select_set        (CdnSelector              *selector,
+                                              GSList                   *parents,
+                                              CdnSelectorType           type);
+
 void          cdn_selector_set_partial       (CdnSelector          *selector,
                                               gboolean              partial);
 

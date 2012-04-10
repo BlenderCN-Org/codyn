@@ -62,7 +62,14 @@ void                 cdn_expansion_context_add_expansion    (CdnExpansionContext
 void                 cdn_expansion_context_add_expansions   (CdnExpansionContext  *context,
                                                              GSList const         *expansions);
 
+void                 cdn_expansion_context_remove_expansion (CdnExpansionContext *context,
+                                                             CdnExpansion        *expansion);
+
 GSList              *cdn_expansion_context_get_expansions   (CdnExpansionContext  *context);
+
+GSList              *cdn_expansion_context_get_local_expansions (CdnExpansionContext  *context);
+
+GHashTable          *cdn_expansion_context_get_local_defines (CdnExpansionContext  *context);
 
 CdnExpansion        *cdn_expansion_context_get_define       (CdnExpansionContext  *context,
                                                              gchar const          *name);
@@ -80,6 +87,15 @@ void                 cdn_expansion_context_foreach_define   (CdnExpansionContext
                                                              GHFunc               hfunc,
                                                              gpointer             userdata);
 
+CdnExpansionContext *cdn_expansion_context_get_parent       (CdnExpansionContext *context);
+
+void                 cdn_expansion_context_merge            (CdnExpansionContext *context,
+                                                             CdnExpansionContext *other);
+
+void                 cdn_expansion_context_truncate         (CdnExpansionContext *context,
+                                                             CdnExpansionContext *parent);
+
 G_END_DECLS
+
 
 #endif /* __CDN_EXPANSION_CONTEXT_H__ */
