@@ -1,27 +1,34 @@
 defines
 {
-    # Find all the bodies here
-    bodies = has-template("physics" . "body") | name
-    numdof = "0"
+    # Find all nodes with the physics.body template applied
+    bodies = has-template("physics" . "body")
 
-    [each(@bodies)]
-    {
-        "bodydof@0" = | @@1 | applied-templates | recurse(applied-templates) | /dof([1-6])/ | first | append-context("@1")
-        "bodydof@0[!]" = "@[bodydof@@[0]1]"
+    # Calculate a list of dof for each body
+    bodydof = | @bodies
+              | if (applied-templates | recurse(applied-templates) | /dof([1-6])/ | last)
+              | append-context("@1")
 
-        "bodysidx@0" = "@cnt[+$(@numdof + @[bodydof@@0[!]])]"
-        "bodysidx@0[!]" = "@bodysidx[@@0]"
+    # Calculate a cumulative sum of the dofs (gives index for each body when
+    # dofs are collapsed)
+    bodydofidx = "{@bodydof|@cnt[+@0]}"
 
-        "numdof" = "$(@numdof + @[bodydof@@0[!]])"
+    # The total dofs in the system
+    numdof = "@{@bodydof||$(@0 + @1)}"
 
-        "bodychain@0" = | @@1 | recurse(inputs | has-template("physics" . "joint") | input) | reverse
-        "bodychain@0idx" = "{@bodychain[@@0]|@bodies[!@0]}"
-        "bodychain@0_@bodychain[@[0]idx]" = "1"
+    # List of comma separated indices for each body the chain of body indices
+    # up to the root
+    bodychain = | @bodies
+                | if(recurse(inputs | has-template(physics.joint) | input) |
+                     name |
+                     append-context("@bodies[!@0]") |
+                     reduce(last, "@0,@@@0"))
 
-        "parentidx@0" = | @@1 | if(inputs | has-template("physics" . "joint") | input | name | append-context("{@bodydof[@@@@0[!]]*@bodies[!@0]||@0\,@1}"), append-context("{@bodydof[@@@0[!]]*-1||@0\,@1}"))
-    }
+    # Construct list of parent indices for each body
+    parents = | @bodies | if (inputs | has-template(physics.joint) | input | name | append-context("@bodies[!@0]"),
+                              append-context("-1"))
 
-    parents = "{@bodies|@parentidx[@[1]1]}"
+    # Construct list of parent indices for each dof
+    parentsdof = "{@bodies|@bodydof[@0[!]]*@parents[@0[!]]}"
 }
 
 # vi:ex:ts=4:et

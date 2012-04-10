@@ -18,16 +18,16 @@ node "dynamics"
     ddq = "slinsolve(H, τ - C, parents)"
 
     ## Jacobian
-    J = "zeros(6, @numdof)"
+    #J = "zeros(6, @numdof)"
 
     ## Parent indices
-    parents = "[{@parents||@0;@1}]"
+    parents = "[{@parentsdof||@0;@1}]"
 }
 
 node "@bodies"
 {
-    ## Jacobian selection matrix
-    JS = "[{@bodies|@bodychain[@@@@0_@0[!]?]||@0;@1}]"
+    # Jacobian selection matrix
+    #JS = "[{@bodies|@bodychain[@0[!]]||@0;@1}]"
 }
 
 # Fill in H for all relevant body relationships
@@ -35,39 +35,35 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 {
     defines
     {
-        jc = "{@bodysidx[@@@@0]:+$(@bodydof[@@@@@0[!]] - 1)||@0\,@1}"
-        jr = "{@bodysidx[@@@@0]:+$(@bodydof[@@@@@0[!]] - 1)||@0;@1}"
-        jcm = "[@jc[1]]"
-        jrm = "[@jr[1]]"
+        jc = "@{@bodydofidx[@@@@@0[!]]:+$(@bodydof[@@@@@0[!]] - 1)||@0\,@1}"
+        jr = "@{@jc||@0;@1}"
     }
 
     [each(self | input . variables | /fh_([0-9]+)/)]
     {
         defines
         {
-            ir = "{@bodysidx[@@1]:+$(@bodydof[@@1] - 1)||@0;@1}"
-            ic = "{@bodysidx[@@1]:+$(@bodydof[@@1] - 1)||@0\,@1}"
-            irm = "[@ir[1]]"
-            icm = "[@ic[1]]"
+            ic = "@{@bodydofidx[@@1]:+$(@bodydof[@@1] - 1)||@0\,@1}"
+            ir = "@{@ic||@0;@1}"
         }
 
         # Select block in H to write H_@i into
-        "H[@irm, @jcm]" <= "H_@@1"
+        "H[[@ir], [@jc]]" <= "H_@@1"
 
         [ifstr("$$(@1 != @@@0[!],1,)")]
         {
             [ifstr("$$(!@only_lower_H[?],1,)")]
             {
-                "H[@jrm, @icm]" <= "H_@@@@1"
+                "H[[@jr], [@ic]]" <= "H_@@@@1"
             }
         }
     }
 
     # Fill column of the jacobian
-    "J[[{0:5||@0;@1}], @jcm]" <= "J"
+    #"J[[{0:5||@0;@1}], @jc]" <= "J"
 
     # Fill C
-    "C@jrm" <= "C"
+    "C[@jr]" <= "C"
 }
 
 # Integrate accelerations on bodies
@@ -75,18 +71,17 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 {
     defines
     {
-        j = "{@bodysidx[@@0]:+$(@bodydof[@@0[!]] - 1)||@0;@1}"
-        j = "[@j[1]]"
+        j = "@{@bodydofidx[@@0[!]]:+$(@bodydof[@@0[!]] - 1)||@0;@1}"
     }
 
     edge "acceleration_@0" from "dynamics" to "@@@0"
     {
-        ddq <= "ddq[@j]"
+        ddq <= "ddq[[@j]]"
     }
 
     edge "force_@0" from "@@0" to "dynamics"
     {
-        "τ[@j, 0]" <= "τ"
+        "τ[[@j], 0]" <= "τ"
     }
 }
 
