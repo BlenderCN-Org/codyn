@@ -144,7 +144,8 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"reverse",
 	"recurse",
 	"append-context",
-	"applied-templates"
+	"applied-templates",
+	"reduce"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -2348,6 +2349,246 @@ is_template (CdnSelector *selector,
 	return FALSE;
 }
 
+static void
+reduce_merge (CdnExpansionContext *context,
+              GSList              *ctx)
+{
+	while (ctx)
+	{
+		GSList *exps;
+		GHashTable *defines;
+
+		exps = cdn_expansion_context_get_local_expansions (ctx->data);
+
+		if (exps)
+		{
+			cdn_expansion_context_add_expansions (context, exps);
+		}
+
+		defines = cdn_expansion_context_get_local_defines (ctx->data);
+
+		if (defines)
+		{
+			cdn_expansion_context_add_defines (context, defines);
+		}
+
+		g_slist_free (exps);
+		ctx = g_slist_delete_link (ctx, ctx);
+	}
+}
+
+static CdnExpansionContext *
+reduce_shared_context (CdnSelection         *a,
+                       CdnSelection         *b,
+                       CdnExpansionContext **shared)
+{
+	CdnExpansionContext *ret = NULL;
+	CdnExpansionContext *c1;
+	CdnExpansionContext *c2;
+	GSList *p1 = NULL;
+	GSList *p2 = NULL;
+
+	c1 = cdn_selection_get_context (a);
+	c2 = cdn_selection_get_context (b);
+
+	if (shared)
+	{
+		*shared = NULL;
+	}
+
+	while (c1 || c2)
+	{
+		if (c1 == c2)
+		{
+			// Take this context, then append the others into it
+			ret = cdn_expansion_context_new (c1);
+
+			if (shared)
+			{
+				*shared = c1;
+			}
+
+			break;
+		}
+
+		if (c1)
+		{
+			p1 = g_slist_prepend (p1, c1);
+			c1 = cdn_expansion_context_get_parent (c1);
+		}
+
+		if (c2)
+		{
+			p2 = g_slist_prepend (p2, c2);
+			c2 = cdn_expansion_context_get_parent (c2);
+		}
+	}
+
+	if (!ret)
+	{
+		CdnExpansionContext *last = NULL;
+
+		while (p1 && p2 && p1->data == p2->data)
+		{
+			last = p1->data;
+
+			p1 = g_slist_delete_link (p1, p1);
+			p2 = g_slist_delete_link (p2, p2);
+		}
+
+		if (shared)
+		{
+			*shared = last;
+		}
+
+		ret = cdn_expansion_context_new (last);
+	}
+
+	// Note that reduce_merge also frees p2
+	reduce_merge (ret, p2);
+
+	// Note that reduce_merge also frees p1
+	reduce_merge (ret, p1);
+
+	return ret;
+}
+
+static GSList *
+selector_pseudo_reduce (CdnSelector  *self,
+                        Selector     *selector,
+                        GSList       *parent)
+{
+	CdnSelector *sel;
+	CdnEmbeddedString *ctx = NULL;
+	CdnSelection *first;
+
+	if (!parent)
+	{
+		return NULL;
+	}
+
+	if (!parent->next)
+	{
+		return g_slist_prepend (NULL,
+		                        cdn_selection_copy (parent->data));
+	}
+
+	sel = selector->pseudo.arguments->data;
+
+	if (selector->pseudo.arguments->next)
+	{
+		ctx = selector->pseudo.arguments->next->data;
+	}
+
+	first = cdn_selection_copy (parent->data);
+	parent = parent->next;
+
+	while (first && parent)
+	{
+		GSList *sub = NULL;
+		GSList *pair;
+
+		cdn_selector_set_self (sel, self->priv->self);
+
+		pair = g_slist_prepend (g_slist_prepend (NULL, parent->data),
+		                        first);
+
+		sub = cdn_selector_select_set (sel,
+		                               pair,
+		                               CDN_SELECTOR_TYPE_ANY);
+
+		if (ctx && sub)
+		{
+			CdnExpansionContext *pctx;
+			gchar const *retex;
+			CdnExpansionContext *sctx;
+			CdnExpansionContext *shared;
+			CdnExpansionContext *origctx;
+			GSList *exs = NULL;
+
+			// Generate a new context
+			pctx = reduce_shared_context (first,
+			                              parent->data,
+			                              &shared);
+
+			retex = cdn_embedded_string_expand (ctx,
+			                                    pctx,
+			                                    NULL);
+
+			sctx = cdn_expansion_context_new (shared);
+
+			// Add expansion structure
+			origctx = cdn_selection_get_context (first);
+
+			while (origctx != shared)
+			{
+				GSList *otex;
+
+				otex = cdn_expansion_context_get_local_expansions (origctx);
+
+				while (otex)
+				{
+					CdnExpansion *cp;
+					gint i;
+
+					cp = cdn_expansion_copy (otex->data);
+
+					for (i = 0; i < cdn_expansion_num (cp); ++i)
+					{
+						cdn_expansion_set (cp,
+						                   i,
+						                   retex);
+					}
+
+					exs = g_slist_prepend (exs, cp);
+					otex = g_slist_delete_link (otex, otex);
+				}
+
+				origctx = cdn_expansion_context_get_parent (origctx);
+			}
+
+			cdn_expansion_context_add_expansions (sctx, exs);
+			cdn_selection_set_context (sub->data, sctx);
+
+			g_slist_foreach (exs, (GFunc)cdn_expansion_unref, NULL);
+			g_slist_free (exs);
+
+			cdn_expansion_context_unref (pctx);
+		}
+
+		g_slist_free (pair);
+		cdn_selector_set_self (sel, NULL);
+
+		cdn_selection_unref (first);
+		first = NULL;
+
+		while (sub)
+		{
+			if (!first)
+			{
+				first = sub->data;
+			}
+			else
+			{
+				cdn_selection_unref (sub->data);
+			}
+
+			sub = g_slist_delete_link (sub, sub);
+		}
+
+		parent = g_slist_next (parent);
+	}
+
+	if (first)
+	{
+		return g_slist_prepend (NULL, first);
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
 static GSList *
 selector_select_pseudo (CdnSelector *self,
                         Selector    *selector,
@@ -2476,6 +2717,10 @@ selector_select_pseudo (CdnSelector *self,
 			}
 		}
 		break;
+		case CDN_SELECTOR_PSEUDO_TYPE_REDUCE:
+			return selector_pseudo_reduce (self,
+			                               selector,
+			                               parent);
 		default:
 		break;
 	}

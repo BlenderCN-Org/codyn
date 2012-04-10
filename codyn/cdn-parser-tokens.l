@@ -235,6 +235,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"output-name"		return T_KEY_OUTPUT_NAME;
 <INITIAL,onlyselector>"recurse"			return T_KEY_RECURSE;
 <INITIAL,onlyselector>"append-context"		return T_KEY_APPEND_CONTEXT;
+<INITIAL,onlyselector>"reduce"			return T_KEY_REDUCE;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
@@ -473,6 +474,11 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 					}
 				}
 
+<*>"@{"				{
+					yylval->id = g_strdup ("@");
+					yyless (1);
+					return T_STRING;
+				}
 <*>"{"				return '{';
 <*>"}"				return '}';
 <onlyselector,INITIAL>"("	return '(';
