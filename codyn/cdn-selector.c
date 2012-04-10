@@ -2086,6 +2086,8 @@ debug_selections (CdnSelector *self,
 			g_free (id);
 		}
 
+		g_printerr ("\n");
+
 		cdn_expansion_context_debug_print (cdn_selection_get_context (sel),
 		                                   stderr);
 
