@@ -1,7 +1,8 @@
 [once] include "spatial.cdn"
 [once] include "geometry.cdn"
+[once] include "transform.cdn"
 
-g = "[0, 0, 9.81]"
+g = "[0; 0; 9.81]"
 
 templates
 {
@@ -75,17 +76,16 @@ templates
             ## Helper variable to calculate the joint transform
             jointTransform = "joint.JointTransform(q)"
 
-            ## 4x4 homogeneous joint transform
-            jointTransform4x4 = "Sp.Transform4x4(jointTransform)"
-
             ## Helper variable to calculate the joint velocity
             jointVelocity = "joint.JointVelocity(q, dq)"
 
             ## Helper variable to calculate the joint motion subspace
             motionSubspace = "joint.MotionSubspace(q, dq)"
 
+            ## Transposed motion subspace
             motionSubspaceT = "motionSubspaceᵀ"
 
+            ## Transposed transformation
             transformT = "transformᵀ"
 
             ## Helper variable to calculate the velocity product term
@@ -97,14 +97,8 @@ templates
             ## child frame
             coordinateTransform = "eye(6)"
 
-            ## 4x4 homogeneous coordinate transform
-            coordinateTransform4x4 = "Sp.Transform4x4(coordinateTransform)"
-
             ## The total transform from parent frame to body frame
             transform = "jointTransform ∙ coordinateTransform"
-
-            ## 4x4 homogeneous transform
-            transform4x4 = "Sp.Transform4x4(transform)"
 
             ## External force on this body (6-by-1)
             fext = "zeros(6, 1)"
@@ -117,22 +111,34 @@ templates
 
             ## Body acceleration due to gravitational and coriolos effects,
             ## defaults to gravity
-            acceleration = "transform ∙ [0; 0; 0; gᵀ]"
+            acceleration = "transform ∙ [0; 0; 0; g] + cJ"
 
             ## Transform from the base to the joint
             baseTransform = "transform"
 
-            ## 4x4 homogeneous base transform
-            baseTransform4x4 = "Sp.Transform4x4(baseTransform)"
+            # World transformation
+            worldMatrix = "TransformInv(baseTransform)"
+            worldOrientation = "worldMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
+            worldLocation = "worldMatrix[[3; 7; 11]]"
 
-            ## Transform from the joint to the base
-            toBaseTransform = "Sp.Inverse(baseTransform)"
-
-            ## 4x4 homogeneous to base transform
-            toBaseTransform4x4 = "Sp.Transform4x4(toBaseTransform)"
+            # Local total transformation
+            localMatrix = "TransformInv(transform)"
+            localOrientation = "localMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
+            localLocation = "localMatrix[[3; 7; 11]]"
 
             ## Jacobian column for this body
             J = "Sp.Inverse(baseTransform) ∙ motionSubspace"
+
+            # Computation of the inverse transformation matrix from child to
+            # parent coordinates. This is useful for rendering for example.
+            # Note that it computes [Eᵀ, Eᵀ ∙ -r; 0, 0, 0, 1], with E the
+            # rotation part of the spatial matrix and r the translation part
+            TransformInv(tr) = "[
+                tr[0, 0], tr[1, 0], tr[2, 0], -(tr[0, 2] ∙ tr[3, 1] + tr[1, 2] ∙ tr[4, 1] + tr[2, 2] ∙ tr[5, 1]);
+                tr[0, 1], tr[1, 1], tr[2, 1], -(tr[0, 0] ∙ tr[3, 2] + tr[1, 0] ∙ tr[4, 2] + tr[2, 0] ∙ tr[5, 2]);
+                tr[0, 2], tr[1, 2], tr[2, 2], -(tr[0, 1] ∙ tr[3, 0] + tr[1, 1] ∙ tr[4, 0] + tr[2, 1] ∙ tr[5, 0]);
+                0,        0,        0,        1
+            ]"
         }
 
         edge "joint"
@@ -142,15 +148,14 @@ templates
 
         ## A revolute joint. This type of joint has one degree of freedom
         ## which rotates the body around an axis.
-        node "revolute" : "body"
+        node "revolute{X,Y,Z}" : "body"
         {
             node "joint"
             {
-                ## The joint axis (defaults to Z axis)
-                axis = "[0; 0; 1]"
+                axis = "[$(@@@1[!] == 0); $(@@@1[!] == 1); $(@@@1[!] == 2)]"
 
+                JointTransform(q) = "Sp.Rotate@@@1(q)"
                 LocalJointVelocity(q, dq) = "[axis ∙ dq; 0; 0; 0]"
-
                 MotionSubspace(q, dq) = "[axis; 0; 0; 0]"
 
                 # NOTE! this is only well defined for joint axis aligned with
@@ -168,24 +173,13 @@ templates
             }
         }
 
-        node "revolute{X,Y,Z}" : "body"
+        ## A prismatic joint. This type of joint has one degree of freedom
+        ## which translates the body on an axis.
+        node "prismatic{X,Y,Z}" : "body"
         {
             node "joint"
             {
                 axis = "[$(@@@1[!] == 0); $(@@@1[!] == 1); $(@@@1[!] == 2)]"
-
-                JointTransform(q) = "Sp.Rotate@@@1(q)"
-                MotionSubspace(q, dq) = "[axis; 0; 0; 0]"
-            }
-        }
-
-        ## A prismatic joint. This type of joint has one degree of freedom
-        ## which translates the body on an axis.
-        node "prismatic" : "body"
-        {
-            node "joint"
-            {
-                axis = "[0; 0; 1]"
 
                 JointTransform(q) = "Sp.Translate(axis ∙ q)"
                 LocalJointVelocity(q, dq) = "[0; 0; 0; axis ∙ dq]"
@@ -209,13 +203,18 @@ templates
         ## A helical joint. This type of joint has one degree of freedom around
         ## which the body screws. The amount of screw is determined by the
         ## h parameter.
-        node "helical" : "body"
+        node "helical{X,Y,Z}" : "body"
         {
             node "joint"
             {
-                axis = "[0; 0; 1]"
+                axis = "[$(@@@1[!] == 0); $(@@@1[!] == 1); $(@@@1[!] == 2)]"
 
-                JointTransform(q) = "Sp.Rotate(axis ∙ q) ∙ Sp.Translate(axis ∙ q ∙ h)"
+                ## Pitch of the helical joint. Note that when the pitch is 0, the
+                ## helical joint becomes a simple revolute joint
+                h = 0
+
+                JointTransform(q) = "Sp.Rotate@@@1(q) ∙ Sp.Translate(axis ∙ q ∙ h)"
+
                 LocalJointVelocity(q, dq) = "[axis ∙ dq;
                                               axis ∙ dq ∙ h]"
 
@@ -234,10 +233,6 @@ templates
                                                   0,           0,            0,            1,            0;
                                                   0,           0,            0,            0,            1]"
             }
-
-            ## Pitch of the helical joint. Note that when the pitch is 0, the
-            ## helical joint becomes a simple revolute joint
-            h = "0"
         }
 
         ## A cylindrical joint. This type of joint is simply a combination of
@@ -249,7 +244,9 @@ templates
             {
                 axis = "[0; 0; 1]"
 
-                JointTransform(q) = "Sp.Rotate(axis ∙ q[0]) ∙ Sp.Translate(axis ∙ q[1])"
+                JointTransform(q) = "Sp.Rotate(axis ∙ q[0]) ∙
+                                     Sp.Translate(axis ∙ q[1])"
+
                 LocalJointVelocity(q, dq) = "[axis[0] ∙ dq[0], 0;
                                               axis[1] ∙ dq[0], 0;
                                               axis[2] ∙ dq[0], 0;
@@ -285,13 +282,7 @@ templates
         {
             node "joint"
             {
-                QuatRotation(q) = "2 ∙ [
-                    q[0]² + q[1]² - 0.5, q[1] ∙ q[2] + q[0] ∙ q[3], q[0] ∙ q[3] - q[0] ∙ q[2];
-                    q[1] ∙ q[2] - q[0] ∙ q[3], q[0]² + q[2]² - 0.5, q[2] ∙ q[3] + q[0] ∙ q[1];
-                    q[0] ∙ q[3] + q[0] ∙ q[2], q[2] ∙ q[3] - q[0] ∙ q[1], q[0]² + q[3]² - 0.5
-                ]"
-
-                JointTransform(q) = "Sp.Rotate(QuatRotation(q))"
+                JointTransform(q) = "Sp.Quaternion(q)"
 
                 # Note that here the joint velocity is directly specified and
                 # not the local joint velocity for the simple reason that
@@ -316,7 +307,7 @@ templates
             }
 
             # Use a constraint to normalize q
-            q = "[1; 0; 0; 0]" # ("q / hypot(q)")
+            q = "[1; 0; 0; 0]" ("q / hypot(q)")
 
             delete self | inputs | if(input | self) | if(output | self) . q
 
@@ -332,14 +323,8 @@ templates
         {
             node "joint"
             {
-                QuatRotation(q) = "2 ∙ [
-                    q[0]² + q[1]² - 0.5, q[1] ∙ q[2] + q[0] ∙ q[3], q[0] ∙ q[3] - q[0] ∙ q[2];
-                    q[1] ∙ q[2] - q[0] ∙ q[3], q[0]² + q[2]² - 0.5, q[2] ∙ q[3] + q[0] ∙ q[1];
-                    q[0] ∙ q[3] + q[0] ∙ q[2], q[2] ∙ q[3] - q[0] ∙ q[1], q[0]² + q[3]² - 0.5
-                ]"
-
                 JointTransform(q) = "Sp.Translate(q[[4; 5; 6]]) ∙
-                                     Sp.Rotate(QuatRotation(q[[0; 1; 2; 3]]))"
+                                     Sp.Quaternion(q[[0; 1; 2; 3]])"
 
                 JointVelocity(q, dq) = "dq"
                 MotionSubspace(q, dq) = "eye(6)"
@@ -349,7 +334,7 @@ templates
             }
 
             # Use a constraint to normalize the first 4 q's
-            q = "[1; zeros(6, 1)]" # ("[q[0; 1; 2; 3] / hypot(q[0; 1; 2; 3]); q[4; 5; 7]]")
+            q = "[1; zeros(6, 1)]" #("[q[[0; 1; 2; 3]] / hypot(q[[0; 1; 2; 3]]); q[[4; 5; 6]]]")
 
             delete self | inputs | if(input | self) | if(output | self) . q
 
