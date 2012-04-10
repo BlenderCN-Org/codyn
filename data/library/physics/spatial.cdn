@@ -22,7 +22,7 @@ node "Sp"
          0,    0,     1,    0, 0, 0;
          0,    v[2], -v[1], 1, 0, 0;
         -v[2], 0,     v[0], 0, 1, 0;
-         v[1], v[0],  0,    0, 0, 1
+         v[1], -v[0],  0,    0, 0, 1
     ]"
 
     ## Create a spatial transform from a rotation of θ on the X axis
@@ -77,6 +77,12 @@ node "Sp"
         0,       0,       0,       R[2, 0], R[2, 1], R[2, 2]
     ]"
 
+    Quaternion(q) = "Sp.Rotate(2 ∙ [
+        0.5 - q[2]^2 - q[3]^2,	   q[1] ∙ q[2] + q[3] ∙ q[0], q[1] ∙ q[3] - q[2] ∙ q[0];
+        q[1] ∙ q[2] - q[3] ∙ q[0], 0.5 - q[1]^2 - q[3]^2,	  q[2] ∙ q[3] + q[1] ∙ q[0];
+        q[1] ∙ q[3] + q[2] ∙ q[0], q[2] ∙ q[3] - q[1] ∙ q[0], 0.5 - q[1]^2 - q[2]^2
+    ])"
+
     ## Create a spatial transform from a 3d rotation and translation
     Transform(R, p) = "[
          R[0, 0], R[0, 1],  R[0, 2], 0,       0,       0;
@@ -84,26 +90,30 @@ node "Sp"
          R[2, 0], R[2, 1],  R[2, 2], 0,       0,       0;
          0,       p[2],    -p[1],    R[0, 0], R[0, 1], R[0, 2];
         -p[2],    0,        p[0],    R[1, 0], R[1, 1], R[1, 2];
-         p[1],    p[0],     0,       R[2, 0], R[2, 1], R[2, 2]
+         p[1],   -p[0],     0,       R[2, 0], R[2, 1], R[2, 2]
     ]"
 
     ## Obtain a 3d position from a spatial transform.
     Translation3(sp) = "[
-        sp[4, 2];
-        sp[5, 0];
-        sp[3, 1]
+        sp[5, 1];
+        sp[3, 2];
+        sp[4, 0]
     ]"
 
     ## Obtain a 3d rotation from a spatial transform. Note that this is simply
     ## the upper 3x3 block of the transform.
-    Rotatation3(sp) = "block(sp, [1 2 3], [1 2 3])"
+    Rotation3(sp) = "[
+        sp[0, 0], sp[0, 1], sp[0, 2];
+        sp[1, 0], sp[1, 1], sp[1, 2];
+        sp[2, 0], sp[2, 1], sp[2, 2]
+    ]"
 
     ## Obtain a 4x4 homogeneous transformation matrix from a spatial
     ## transformation
     Transform4x4(sp) = "[
-        sp[0, 0], sp[0, 1], sp[0, 2], sp[4, 2];
-        sp[1, 0], sp[1, 1], sp[1, 2], sp[5, 0];
-        sp[2, 0], sp[2, 1], sp[2, 2], sp[3, 1];
+        sp[0, 0], sp[0, 1], sp[0, 2], sp[5, 1];
+        sp[1, 0], sp[1, 1], sp[1, 2], sp[3, 2];
+        sp[2, 0], sp[2, 1], sp[2, 2], sp[4, 0];
         0, 0, 0, 1
     ]"
 
@@ -115,7 +125,7 @@ node "Sp"
         v[2, 0], v[2, 1], v[2, 2], 0,       0,       0;
         0,       0,       0,       v[3, 3], v[3, 4], v[3, 5];
         0,       0,       0,       v[4, 3], v[4, 4], v[4, 5];
-        0,       0,       0,       v[5, 3], v[5, 4], v[5, 5];
+        0,       0,       0,       v[5, 3], v[5, 4], v[5, 5]
     ]"
 
     ## Create a spatial transform containing the translation part of the provided
