@@ -1789,6 +1789,8 @@ selector_pseudo_recurse (CdnSelector  *self,
 
 			cdn_selector_set_self (item->data, NULL);
 
+			sub = g_slist_reverse (sub);
+
 			while (sub)
 			{
 				CdnSelection *ss;
@@ -1804,7 +1806,7 @@ selector_pseudo_recurse (CdnSelector  *self,
 					cp = cdn_selection_copy (s);
 					cdn_selection_set_object (cp, o);
 
-					g_queue_push_tail (&q, cp);
+					g_queue_push_head (&q, cp);
 				}
 
 				cdn_selection_unref (ss);
