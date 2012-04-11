@@ -381,7 +381,7 @@ if test "x$enable_gedit" != "xno"; then
 		                  [gedit >= 3.0],
 		                  [GEDIT_MAJOR_VERSION=3],
 		                  [PKG_CHECK_MODULES([GEDIT],
-		                                     [gedit >= 2.0],
+		                                     [gedit-2.20 >= 2.0],
 		                                     [GEDIT_MAJOR_VERSION=2],
 		                                     [enable_gedit=no])])
 
