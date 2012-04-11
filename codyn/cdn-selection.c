@@ -31,10 +31,25 @@ struct _CdnSelection
 	gchar *override_name;
 };
 
-G_DEFINE_BOXED_TYPE (CdnSelection,
-                     cdn_selection,
-                     cdn_selection_ref,
-                     cdn_selection_unref)
+GType
+cdn_selection_get_type (void)
+{
+	static volatile gsize g_define_type_id__volatile = 0;
+
+	if (g_once_init_enter (&g_define_type_id__volatile))
+	{
+		GType g_define_type_id;
+
+		g_define_type_id =
+			g_boxed_type_register_static (g_intern_static_string ("CdnSelection"),
+			                              (GBoxedCopyFunc)cdn_selection_ref,
+			                              (GBoxedFreeFunc)cdn_selection_unref);
+
+		g_once_init_leave (&g_define_type_id__volatile, g_define_type_id);
+	}
+
+	return g_define_type_id__volatile;
+}
 
 void
 cdn_selection_unref (CdnSelection *selection)
