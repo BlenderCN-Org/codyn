@@ -966,7 +966,7 @@ regex_create (Selector             *selector,
 	}
 
 	ret = g_regex_new (r,
-	                   G_REGEX_CASELESS | (selector->regex.partial ? 0 : G_REGEX_ANCHORED),
+	                   (selector->regex.partial ? 0 : G_REGEX_ANCHORED),
 	                   G_REGEX_MATCH_NOTEMPTY | (selector->regex.partial ? 0 : G_REGEX_MATCH_ANCHORED),
 	                   error);
 
