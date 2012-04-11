@@ -77,9 +77,6 @@ void           cdn_function_polynomial_piece_set_coefficients  (CdnFunctionPolyn
                                                                 gdouble                    *coefficients,
                                                                 guint                       num);
 
-const gdouble *cdn_function_polynomial_piece_get_normalization (CdnFunctionPolynomialPiece *piece,
-                                                                guint                      *num);
-
 gdouble        cdn_function_polynomial_piece_evaluate          (CdnFunctionPolynomialPiece *piece,
                                                                 gdouble                     t);
 
