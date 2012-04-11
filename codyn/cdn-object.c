@@ -121,7 +121,7 @@ static void cdn_annotatable_iface_init (gpointer iface);
 static void cdn_layoutable_iface_init (gpointer iface);
 static void cdn_taggable_iface_init (gpointer iface);
 
-G_DEFINE_ABSTRACT_TYPE_WITH_CODE (CdnObject,
+G_DEFINE_TYPE_WITH_CODE (CdnObject,
                                   cdn_object,
                                   G_TYPE_OBJECT,
                                   G_IMPLEMENT_INTERFACE (CDN_TYPE_USABLE,
