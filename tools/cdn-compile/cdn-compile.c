@@ -177,7 +177,7 @@ display_value (CdnNetwork  *network,
 			g_printf ("\n");
 		}
 
-		g_object_unref (s);
+		cdn_selection_unref (s);
 		selection = g_slist_delete_link (selection, selection);
 	}
 

@@ -369,11 +369,14 @@ find_matching_variables (CdnNetwork  *network,
 
 	while (element)
 	{
-		CdnVariable *property = cdn_selection_get_object (element->data);
-		variables = g_slist_prepend (variables,
-		                             monitor_new (property, nrow, ncol));
+		CdnVariable *var;
 
-		g_object_unref (element->data);
+		var = cdn_selection_get_object (element->data);
+
+		variables = g_slist_prepend (variables,
+		                             monitor_new (var, nrow, ncol));
+
+		cdn_selection_unref (element->data);
 		element = g_slist_next (element);
 	}
 
