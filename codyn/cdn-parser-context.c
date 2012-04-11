@@ -5277,7 +5277,6 @@ cdn_parser_context_add_layout (CdnParserContext *context,
 
 			if (!rightobjs)
 			{
-
 				continue;
 			}
 
@@ -5331,6 +5330,7 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 	for (cobjs = ctx->objects; cobjs; cobjs = g_slist_next (cobjs))
 	{
 		CdnSelection *sel;
+		CdnExpansionContext *sharedctx;
 
 		sel = cobjs->data;
 
@@ -5349,6 +5349,8 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 			                        cdn_selection_copy (sel));
 		}
 
+		sharedctx = expansion_context_push_base (context);
+
 		for (obj = objs; obj; obj = g_slist_next (obj))
 		{
 			gchar const *exx;
@@ -5357,6 +5359,7 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 			gint yy;
 			gdouble dx;
 			gdouble dy;
+			CdnExpansionContext *pctx;
 
 			if (!CDN_IS_LAYOUTABLE (cdn_selection_get_object (obj->data)) ||
 			    !cdn_layoutable_supports_location (CDN_LAYOUTABLE (cdn_selection_get_object (obj->data))))
@@ -5364,9 +5367,10 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 				continue;
 			}
 
-			expansion_context_push_base (context);
+			pctx = expansion_context_push_base (context);
+			cdn_expansion_context_shared_defines (pctx, sharedctx);
 
-			cdn_expansion_context_merge (expansion_context_peek (context),
+			cdn_expansion_context_merge (pctx,
 			                             cdn_selection_get_context (obj->data));
 
 			embedded_string_expand (exx, x, context);
@@ -5438,6 +5442,7 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 			expansion_context_pop (context);
 		}
 
+		expansion_context_pop (context);
 		expansion_context_pop (context);
 	}
 }
