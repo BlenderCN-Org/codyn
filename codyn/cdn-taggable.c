@@ -193,6 +193,16 @@ cdn_taggable_get_tag_table (CdnTaggable *taggable)
 	return CDN_TAGGABLE_GET_INTERFACE (taggable)->get_tag_table (taggable);
 }
 
+void
+cdn_taggable_set_tag_table (CdnTaggable *taggable,
+                            GHashTable  *table)
+{
+	g_return_if_fail (CDN_IS_TAGGABLE (taggable));
+
+	return CDN_TAGGABLE_GET_INTERFACE (taggable)->set_tag_table (taggable,
+	                                                             table);
+}
+
 static void
 copy_tag (gchar const  *key,
           gchar const  *value,

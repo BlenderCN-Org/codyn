@@ -71,6 +71,9 @@ gboolean     cdn_taggable_try_get_tag   (CdnTaggable  *taggable,
 
 GHashTable  *cdn_taggable_get_tag_table (CdnTaggable  *taggable);
 
+void         cdn_taggable_set_tag_table (CdnTaggable  *taggable,
+                                         GHashTable   *table);
+
 void         cdn_taggable_copy_to       (CdnTaggable  *taggable,
                                          CdnTaggable  *other);
 
