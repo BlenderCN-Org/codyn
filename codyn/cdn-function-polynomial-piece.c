@@ -537,3 +537,38 @@ cdn_function_polynomial_piece_get_derivative (CdnFunctionPolynomialPiece *piece,
 
 	return retp;
 }
+
+gboolean
+cdn_function_polynomial_piece_equal (CdnFunctionPolynomialPiece *a,
+                                     CdnFunctionPolynomialPiece *b)
+{
+	guint i;
+
+	g_return_val_if_fail (CDN_IS_FUNCTION_POLYNOMIAL_PIECE (a), FALSE);
+	g_return_val_if_fail (CDN_IS_FUNCTION_POLYNOMIAL_PIECE (b), FALSE);
+
+	if (a->priv->begin != b->priv->begin)
+	{
+		return FALSE;
+	}
+
+	if (a->priv->end != b->priv->end)
+	{
+		return FALSE;
+	}
+
+	if (a->priv->num_coefficients != b->priv->num_coefficients)
+	{
+		return FALSE;
+	}
+
+	for (i = 0; i < a->priv->num_coefficients; ++i)
+	{
+		if (a->priv->coefficients[i] != b->priv->coefficients[i])
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}

@@ -62,6 +62,9 @@ CdnFunctionPolynomialPiece *
 CdnFunctionPolynomialPiece *
                cdn_function_polynomial_piece_copy             (CdnFunctionPolynomialPiece *piece);
 
+gboolean       cdn_function_polynomial_piece_equal            (CdnFunctionPolynomialPiece *a,
+                                                               CdnFunctionPolynomialPiece *b);
+
 gdouble        cdn_function_polynomial_piece_get_begin         (CdnFunctionPolynomialPiece *piece);
 gdouble        cdn_function_polynomial_piece_get_end           (CdnFunctionPolynomialPiece *piece);
 
