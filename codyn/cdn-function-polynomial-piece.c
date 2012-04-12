@@ -55,8 +55,8 @@ enum
 };
 
 static GValueArray *
-create_coefficients_value (gdouble *coefficients,
-                           guint    num_coefficients)
+create_coefficients_value (gdouble const *coefficients,
+                           guint          num_coefficients)
 {
 	GValueArray *ret;
 	guint i;
@@ -79,7 +79,7 @@ create_coefficients_value (gdouble *coefficients,
 
 static void
 set_coefficients (CdnFunctionPolynomialPiece *piece,
-                  gdouble                    *coefficients,
+                  gdouble const              *coefficients,
                   guint                       num)
 {
 	g_free (piece->priv->coefficients);
@@ -290,10 +290,10 @@ cdn_function_polynomial_piece_init (CdnFunctionPolynomialPiece *self)
  *
  **/
 CdnFunctionPolynomialPiece *
-cdn_function_polynomial_piece_new (gdouble  begin,
-                                   gdouble  end,
-                                   gdouble *coefficients,
-                                   guint    num_coefficients)
+cdn_function_polynomial_piece_new (gdouble        begin,
+                                   gdouble        end,
+                                   gdouble const *coefficients,
+                                   guint          num_coefficients)
 {
 	GValueArray *coefs;
 	CdnFunctionPolynomialPiece *ret;

@@ -56,7 +56,7 @@ GType cdn_function_polynomial_piece_get_type (void) G_GNUC_CONST;
 CdnFunctionPolynomialPiece *
                cdn_function_polynomial_piece_new              (gdouble                     begin,
                                                                gdouble                     end,
-                                                               gdouble                    *coefficients,
+                                                               gdouble const              *coefficients,
                                                                guint                       num_coefficients);
 
 CdnFunctionPolynomialPiece *
