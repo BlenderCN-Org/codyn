@@ -48,8 +48,6 @@ struct _CdnFunctionPolynomialPrivate
 	GSList *pieces;
 
 	CdnVariable *x;
-	CdnVariable *order;
-
 	GSList *dx;
 };
 
