@@ -121,6 +121,7 @@ cdn_function_polynomial_evaluate_impl (CdnFunction *function,
 		CdnVariable *v;
 
 		v = _cdn_function_argument_get_variable (arg);
+
 		mult *= cdn_variable_get_value (v);
 	}
 
@@ -131,7 +132,7 @@ cdn_function_polynomial_evaluate_impl (CdnFunction *function,
 		gdouble begin = cdn_function_polynomial_piece_get_begin (piece);
 		gdouble end = cdn_function_polynomial_piece_get_end (piece);
 
-		if (val >= begin && val < end)
+		if ((val >= begin || item == pol->priv->pieces) && (val < end || !item->next))
 		{
 			ret += cdn_function_polynomial_piece_evaluate (piece,
 			                                               val - begin);
