@@ -189,6 +189,60 @@ struct _CdnFunctionArgumentSpec
 	CdnEmbeddedString *default_value;
 };
 
+struct _CdnFunctionPolynomialPieceSpec
+{
+	CdnEmbeddedString *from;
+	CdnEmbeddedString *to;
+
+	GSList *coefficients;
+};
+
+/**
+ * cdn_function_polynomial_piece_spec_new: (skip):
+ * @from: A #CdnEmbeddedString
+ * @to: A #CdnEmbeddedString
+ * @coefficients: (element-type CdnEmbeddedString): A #GSList of #CdnEmbeddedString
+ *
+ * Create a new function polynomial piece specification.
+ *
+ * Returns: (transfer full): A #CdnFunctionPolynomialPieceSpec
+ *
+ **/
+CdnFunctionPolynomialPieceSpec *
+cdn_function_polynomial_piece_spec_new (CdnEmbeddedString *from,
+                                        CdnEmbeddedString *to,
+                                        GSList            *coefficients)
+{
+	CdnFunctionPolynomialPieceSpec *ret;
+
+	ret = g_slice_new0 (CdnFunctionPolynomialPieceSpec);
+
+	ret->from = from;
+	ret->to = to;
+	ret->coefficients = coefficients;
+
+	return ret;
+}
+
+void
+cdn_function_polynomial_piece_spec_free (CdnFunctionPolynomialPieceSpec *spec)
+{
+	if (spec->from)
+	{
+		g_object_unref (spec->from);
+	}
+
+	if (spec->to)
+	{
+		g_object_unref (spec->to);
+	}
+
+	g_slist_foreach (spec->coefficients, (GFunc)g_object_unref, NULL);
+	g_slist_free (spec->coefficients);
+
+	g_slice_free (CdnFunctionPolynomialPieceSpec, spec);
+}
+
 /**
  * cdn_function_argument_spec_new: (skip):
  * @name: A #CdnEmbeddedString
@@ -2204,7 +2258,52 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 
 		while (pieces)
 		{
-			cdn_function_polynomial_add (function, pieces->data);
+			CdnFunctionPolynomialPieceSpec *spec;
+			gchar const *exfrom;
+			gchar const *exto;
+			gdouble from;
+			gdouble to;
+			GArray *coefs;
+			GSList *coef;
+			CdnFunctionPolynomialPiece *piece;
+			CdnExpansionContext *pctx;
+
+			spec = pieces->data;
+
+			pctx = expansion_context_peek (context);
+
+			embedded_string_expand (exfrom, spec->from, context);
+			embedded_string_expand (exto, spec->to, context);
+
+			from = g_ascii_strtod (exfrom, NULL);
+			to = g_ascii_strtod (exto, NULL);
+
+			coefs = g_array_new (FALSE, FALSE, sizeof (gdouble));
+
+			for (coef = spec->coefficients; coef; coef = g_slist_next (coef))
+			{
+				CdnEmbeddedString *c;
+				gchar const *excoef;
+				gdouble cval;
+
+				c = coef->data;
+				embedded_string_expand (excoef, c, context);
+
+				cval = g_ascii_strtod (excoef, NULL);
+
+				g_array_append_val (coefs, cval);
+			}
+
+			piece = cdn_function_polynomial_piece_new (from,
+			                                           to,
+			                                           (gdouble *)coefs->data,
+			                                           coefs->len);
+
+			g_array_free (coefs, TRUE);
+
+			cdn_function_polynomial_add (function, piece);
+			cdn_function_polynomial_piece_spec_free (spec);
+
 			pieces = g_slist_next (pieces);
 		}
 

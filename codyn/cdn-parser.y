@@ -29,10 +29,6 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 		YYERROR;						\
 	}
 
-static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
-                                                            gchar const *end,
-                                                            GArray  *coefficients);
-
 %}
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
@@ -106,8 +102,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <selector> layout_relative
 %type <num> layout_item_separator
 
-%type <array> double_list
-%type <piece> polynomial_piece
+%type <piecespec> polynomial_piece
 %type <list> polynomial_pieces
 %type <list> polynomial_pieces_rev
 
@@ -153,7 +148,6 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <string> double
 %type <string> integer
 %type <string> number
-%type <id> number_value
 
 %type <string> constraint
 
@@ -209,7 +203,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 	gint num;
 	GSList *list;
 	GArray *array;
-	CdnFunctionPolynomialPiece *piece;
+	CdnFunctionPolynomialPieceSpec *piecespec;
 	CdnFunctionArgument *argument;
 	gpointer object;
 	CdnSelector *selector;
@@ -848,19 +842,17 @@ polynomial_pieces
 	: polynomial_pieces_rev		{ $$ = g_slist_reverse ($1); }
 	;
 
-number_value
-	: T_DOUBLE
-	| T_INTEGER
-	;
-
 polynomial_piece
-	: T_KEY_PIECE T_KEY_FROM number_value T_KEY_TO number_value '=' double_list
-					{ $$ = create_polynomial_piece ($3, $5, $7); }
-	;
-
-double_list
-	: number_value			{ append_array (NULL, gchar *, $1, $$ = arret); }
-	| double_list ',' number_value	{ append_array ($1, gchar *, $3, $$ = arret); }
+	: T_KEY_PIECE
+	  T_KEY_FROM
+	  value_as_string
+	  T_KEY_TO
+	  value_as_string
+	  '='
+	  string_list
+					{ $$ = cdn_function_polynomial_piece_spec_new ($3,
+					                                               $5,
+					                                               $7); }
 	;
 
 function_argument_impl
@@ -1817,32 +1809,4 @@ static void
 yyerror (YYLTYPE *locp, CdnParserContext *context, char const *s)
 {
 	cdn_parser_context_set_error (context, s);
-}
-
-static CdnFunctionPolynomialPiece *
-create_polynomial_piece (gchar const *start,
-                         gchar const *end,
-                         GArray      *coefficients)
-{
-	guint len;
-	gdouble *coefs = NULL;
-
-	len = (guint)(coefficients ? coefficients->len : 0);
-
-	if (coefficients && len > 0)
-	{
-		guint i;
-
-		coefs = g_new (gdouble, len);
-
-		for (i = 0; i < len; ++i)
-		{
-			coefs[i] = g_ascii_strtod (g_array_index (coefficients, gchar *, i), NULL);
-		}
-	}
-
-	return g_object_ref_sink (cdn_function_polynomial_piece_new (g_ascii_strtod (start, NULL),
-	                                                             g_ascii_strtod (end, NULL),
-	                                                             coefs,
-	                                                             len));
 }

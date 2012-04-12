@@ -53,6 +53,7 @@ typedef struct _CdnParserContextPrivate	CdnParserContextPrivate;
 typedef struct _CdnParserContextClassPrivate	CdnParserContextClassPrivate;
 
 typedef struct _CdnFunctionArgumentSpec CdnFunctionArgumentSpec;
+typedef struct _CdnFunctionPolynomialPieceSpec CdnFunctionPolynomialPieceSpec;
 
 typedef enum
 {
@@ -374,6 +375,13 @@ CdnFunctionArgumentSpec *cdn_function_argument_spec_new        (CdnEmbeddedStrin
                                                                 CdnEmbeddedString *default_value);
 
 void cdn_function_argument_spec_free (CdnFunctionArgumentSpec *spec);
+
+CdnFunctionPolynomialPieceSpec *
+                         cdn_function_polynomial_piece_spec_new (CdnEmbeddedString *from,
+                                                                 CdnEmbeddedString *to,
+                                                                 GSList            *coefficients);
+
+void cdn_function_polynomial_piece_spec_free (CdnFunctionPolynomialPieceSpec *spec);
 
 G_END_DECLS
 
