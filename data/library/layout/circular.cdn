@@ -6,14 +6,14 @@ layout
         per_type ?= 0
     }
 
-    [if(@per_type)]
+    [ifstr($$(@per_type,1,))]
     {
-        type at $(0.5 * @minimum_distance / sin(pi / @1) * (@0[?] + 1)): $(@[@0+] / @1 * 2 * pi)
+        type at $(0.5 * @minimum_distance / sin(pi / @1) * (@0[!] + 1)): $(@[@0+] / @1 * 2 * pi)
     }
 
-    [if($(@per_type ? 0 : 1))]
+    [ifstr($$(@per_type,,1))]
     {
-        count at $(0.5 * @minimum_distance / sin(pi / @0)): $(@0[?] / @0 * 2 * pi)
+        /.*/ | count at $(0.5 * @minimum_distance / sin(pi / @0)): $(@@0[!] / @0 * 2 * pi)
     }
 }
 
