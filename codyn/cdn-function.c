@@ -745,7 +745,6 @@ cdn_function_apply_template_impl (CdnObject  *object,
 	return TRUE;
 }
 
-
 static gboolean
 cdn_function_unapply_template_impl (CdnObject  *object,
                                     CdnObject  *templ,

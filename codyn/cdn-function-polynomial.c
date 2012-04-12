@@ -212,6 +212,7 @@ cdn_function_polynomial_get_derivative_impl (CdnFunction                       *
 	GSList *item;
 	gint i;
 	GString *dx;
+	gchar *newid;
 
 	if (order == 0)
 	{
@@ -220,18 +221,9 @@ cdn_function_polynomial_get_derivative_impl (CdnFunction                       *
 
 	self = CDN_FUNCTION_POLYNOMIAL (function);
 
-	ret = cdn_function_polynomial_new (cdn_object_get_id (CDN_OBJECT (function)));
-
-	if (flags & CDN_EXPRESSION_TREE_ITER_DERIVE_TIME)
-	{
-		CdnFunctionPolynomialPiece *piece;
-		gdouble coefs[] = {0};
-
-		piece = cdn_function_polynomial_piece_new (0, 1, coefs, 1);
-		cdn_function_polynomial_add (ret, piece);
-
-		return CDN_FUNCTION (ret);
-	}
+	newid = g_strconcat ("d", cdn_object_get_id (CDN_OBJECT (function)), NULL);
+	ret = cdn_function_polynomial_new (newid);
+	g_free (newid);
 
 	// Add dx arguments
 	dx = g_string_new ("dx");

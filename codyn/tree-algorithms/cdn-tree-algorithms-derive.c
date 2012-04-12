@@ -1230,7 +1230,8 @@ collect_towards (CdnExpressionTreeIter  *iter,
 		arg = args->data;
 		args = g_list_next (args);
 
-		if (!iter_contains_variable (iter->children[i], ctx->towards))
+		if ((ctx->flags & CDN_EXPRESSION_TREE_ITER_DERIVE_TIME) == 0 &&
+		    !iter_contains_variable (iter->children[i], ctx->towards))
 		{
 			continue;
 		}

@@ -81,7 +81,7 @@ cdn_operator_dt_initialize (CdnOperator        *op,
                             GError            **error)
 {
 	CdnOperatorDt *dt;
-	GSList *syms = NULL;
+	GHashTable *syms;
 	CdnVariable *v;
 	CdnExpression *expr;
 	CdnExpressionTreeIter *iter;
@@ -126,22 +126,33 @@ cdn_operator_dt_initialize (CdnOperator        *op,
 
 	v = cdn_compile_context_lookup_variable_last (context, "t");
 
+	syms = g_hash_table_new_full (g_direct_hash,
+	                              g_direct_equal,
+	                              (GDestroyNotify)g_object_unref,
+	                              (GDestroyNotify)cdn_expression_tree_iter_free);
+
 	if (v)
 	{
-		syms = g_slist_prepend (NULL, v);
+		CdnExpressionTreeIter *in;
+		CdnInstruction *instr;
+
+		instr = cdn_instruction_number_new_from_string ("1");
+		in = cdn_expression_tree_iter_new_from_instruction_take (instr);
+
+		g_hash_table_insert (syms, g_object_ref (v), in);
 	}
 
 	iter = cdn_expression_tree_iter_new (expressions[0]->data);
 
 	derived = cdn_expression_tree_iter_derive (iter,
-	                                           syms,
 	                                           NULL,
+	                                           syms,
 	                                           dt->priv->order,
 	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_TIME,
 	                                           error);
 
 	cdn_expression_tree_iter_free (iter);
-	g_slist_free (syms);
+	g_hash_table_unref (syms);
 
 	if (!derived)
 	{
