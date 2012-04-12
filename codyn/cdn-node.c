@@ -1281,9 +1281,9 @@ cdn_node_cdn_unapply_template (CdnObject  *object,
 
 	if (cdn_node_has_self_edge (source))
 	{
-		if (!cdn_object_apply_template (CDN_OBJECT (cdn_node_get_self_edge (node)),
-		                                CDN_OBJECT (cdn_node_get_self_edge (source)),
-		                                error))
+		if (!cdn_object_unapply_template (CDN_OBJECT (cdn_node_get_self_edge (node)),
+		                                  CDN_OBJECT (cdn_node_get_self_edge (source)),
+		                                  error))
 		{
 			return FALSE;
 		}
