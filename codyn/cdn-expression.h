@@ -67,6 +67,9 @@ GType          cdn_expression_get_type         (void) G_GNUC_CONST;
 
 CdnExpression *cdn_expression_new              (const gchar        *expression);
 CdnExpression *cdn_expression_new0             ();
+
+CdnExpression *cdn_expression_new_number       (gdouble             number);
+
 CdnExpression *cdn_expression_copy             (CdnExpression      *expression);
 
 gboolean       cdn_expression_depends_on       (CdnExpression      *expression,

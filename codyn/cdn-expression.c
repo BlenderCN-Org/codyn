@@ -620,6 +620,33 @@ cdn_expression_new0 ()
 	return ret;
 }
 
+/**
+ * cdn_expression_new_number:
+ * @number: a number
+ *
+ * Create a new expression representing the number.
+ *
+ * Returns: (transfer full): A #CdnExpression
+ *
+ **/
+CdnExpression *
+cdn_expression_new_number (gdouble number)
+{
+	CdnExpression *ret;
+	gchar buf[G_ASCII_DTOSTR_BUF_SIZE];
+
+	g_ascii_dtostr (buf, G_ASCII_DTOSTR_BUF_SIZE, number);
+	ret = cdn_expression_new (buf);
+
+	ret->priv->instructions = g_slist_prepend (NULL,
+	                                           cdn_instruction_number_new_from_string (buf));
+
+	validate_stack (ret, NULL, FALSE);
+	ret->priv->modified = FALSE;
+
+	return ret;
+}
+
 static gboolean
 parser_failed_error (CdnExpression *expression,
                      ParserContext *context,
