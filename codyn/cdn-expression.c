@@ -4507,6 +4507,16 @@ cdn_expression_equal (CdnExpression *expression,
                       CdnExpression *other,
                       gboolean       asstring)
 {
+	if ((expression == NULL) != (other == NULL))
+	{
+		return FALSE;
+	}
+
+	if (expression == NULL && other == NULL)
+	{
+		return TRUE;
+	}
+
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (CDN_IS_EXPRESSION (other), FALSE);
 
