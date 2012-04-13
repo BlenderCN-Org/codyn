@@ -2281,11 +2281,8 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 			GArray *coefs;
 			GSList *coef;
 			CdnFunctionPolynomialPiece *piece;
-			CdnExpansionContext *pctx;
 
 			spec = piecesi->data;
-
-			pctx = expansion_context_peek (context);
 
 			embedded_string_expand (exfrom, spec->from, context);
 			embedded_string_expand (exto, spec->to, context);
