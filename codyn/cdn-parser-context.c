@@ -1917,6 +1917,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			gint order;
 			gchar *dotname;
 			CdnExpansionContext *pctx;
+			CdnVariable *nv;
 
 			exname = cdn_expansion_get (p->name, 0);
 
@@ -1979,16 +1980,29 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			flags &= ~remove_flags;
 			flags |= add_flags;
 
+			nv = cdn_variable_new (exname,
+			                       cdn_expression_new (exexpression),
+			                       flags);
+
+			if (property)
+			{
+				cdn_variable_set_constraint (nv,
+				                             cdn_expression_copy (cdn_variable_get_constraint (property)));
+			}
+
 			if (!cdn_object_add_variable (obj,
-			                              cdn_variable_new (exname,
-			                                                cdn_expression_new (exexpression),
-			                                                flags),
+			                              nv,
 			                              &error))
 			{
 				g_free (exexpression);
 
 				parser_failed_error (context, NULL, error);
 				break;
+			}
+
+			if (property)
+			{
+				
 			}
 
 			g_free (exexpression);
@@ -2222,6 +2236,7 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 	Context *ctx;
 	GSList *item;
 	GSList *objects;
+	GSList *piecesi;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (name != NULL);
@@ -2256,7 +2271,7 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 		embedded_string_expand (exname, name, context);
 		function = cdn_function_polynomial_new (exname);
 
-		while (pieces)
+		for (piecesi = pieces; piecesi; piecesi = g_slist_next (piecesi))
 		{
 			CdnFunctionPolynomialPieceSpec *spec;
 			gchar const *exfrom;
@@ -2268,7 +2283,7 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 			CdnFunctionPolynomialPiece *piece;
 			CdnExpansionContext *pctx;
 
-			spec = pieces->data;
+			spec = piecesi->data;
 
 			pctx = expansion_context_peek (context);
 
@@ -2302,9 +2317,6 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 			g_array_free (coefs, TRUE);
 
 			cdn_function_polynomial_add (function, piece);
-			cdn_function_polynomial_piece_spec_free (spec);
-
-			pieces = g_slist_next (pieces);
 		}
 
 		cdn_node_add (parent, CDN_OBJECT (function), NULL);
@@ -2322,6 +2334,9 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 
 	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
+
+	g_slist_foreach (pieces, (GFunc)cdn_function_polynomial_piece_spec_free, NULL);
+	g_slist_free (pieces);
 
 	clear_annotation (context);
 	g_object_unref (name);
