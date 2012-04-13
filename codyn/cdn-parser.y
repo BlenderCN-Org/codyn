@@ -622,7 +622,7 @@ attribute_once
 
 string_list_rev
 	: value_as_string			{ $$ = g_slist_prepend (NULL, $1); }
-	| string_list ',' value_as_string	{ $$ = g_slist_prepend ($1, $3); }
+	| string_list_rev ',' value_as_string	{ $$ = g_slist_prepend ($1, $3); }
 	;
 
 string_list
