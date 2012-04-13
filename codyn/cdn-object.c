@@ -1187,7 +1187,7 @@ cdn_object_add_variable_impl (CdnObject    *object,
 		                        cdn_variable_get_flags (property));
 
 		cdn_variable_set_constraint (existing,
-		                             cdn_variable_get_constraint (property));
+		                             cdn_expression_copy (cdn_variable_get_constraint (property)));
 
 		if (g_object_is_floating (G_OBJECT (property)))
 		{
