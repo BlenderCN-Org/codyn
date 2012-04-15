@@ -663,6 +663,7 @@ matrix_multiply (CdnStack *stack,
 		{
 			gdouble s = 0;
 			gint bc = 0;
+			gint i;
 
 			for (i = 0; i < argdim[0]; ++i)
 			{
