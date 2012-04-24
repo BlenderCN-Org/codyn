@@ -4220,11 +4220,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	}
 
 	set_cache_from_stack (expression);
-
-	if (expression->priv->has_cache)
-	{
-		expression->priv->cached = TRUE;
-	}
+	expression->priv->cached = expression->priv->has_cache;
 
 	return values_from_cache (expression, numr, numc);
 }
