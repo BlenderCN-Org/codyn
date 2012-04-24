@@ -2146,12 +2146,12 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				outargdim[1] = argdim[3];
 				return TRUE;
 			}
-			else if (argdim[0] * argdim[1] != argdim[2] * argdim[3])
+			else if (!(argdim[2] == 1 && argdim[3] == 1) && argdim[0] * argdim[1] != argdim[2] * argdim[3])
 			{
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
 				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Cannot perform element wise operation on arguments of %d-by%d and %d-by-%d",
+				             "Cannot perform element wise operation on arguments of %d-by-%d and %d-by-%d",
 				             argdim[2], argdim[3],
 				             argdim[0], argdim[1]);
 
