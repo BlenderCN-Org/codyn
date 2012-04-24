@@ -1,0 +1,19 @@
+#!/bin/bash
+
+binary=$(which "$1")
+
+sudo opcontrol --deinit
+sudo sh -c 'echo 0 > /proc/sys/kernel/nmi_watchdog'
+
+sudo opcontrol --init
+sudo opcontrol --setup --no-vmlinux --event=CPU_CLK_UNHALTED:10000:0:1:1
+sudo opcontrol --start
+
+# Run to-be-profiled here
+"$@" >/dev/null
+
+sudo opcontrol --dump
+sudo opcontrol --shutdown
+
+echo "opreport -l image:\"$binary\" -cl --threshold 1"
+opreport -l image:"$binary" -cl --threshold 1 | less
