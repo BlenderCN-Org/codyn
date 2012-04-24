@@ -115,30 +115,6 @@ cdn_instruction_custom_function_equal (CdnInstruction *i1,
 	}
 }
 
-static GSList *
-cdn_instruction_custom_function_get_dependencies (CdnInstruction *inst)
-{
-	CdnInstructionCustomFunction *f = CDN_INSTRUCTION_CUSTOM_FUNCTION (inst);
-
-	if (!f->priv->function)
-	{
-		return NULL;
-	}
-	else
-	{
-		CdnExpression *expr;
-
-		expr = cdn_function_get_expression (f->priv->function);
-
-		if (expr)
-		{
-			return g_slist_prepend (NULL, expr);
-		}
-
-		return NULL;
-	}
-}
-
 static void
 cdn_instruction_custom_function_class_init (CdnInstructionCustomFunctionClass *klass)
 {
@@ -152,7 +128,6 @@ cdn_instruction_custom_function_class_init (CdnInstructionCustomFunctionClass *k
 	inst_class->execute = cdn_instruction_custom_function_execute;
 	inst_class->get_stack_manipulation = cdn_instruction_custom_function_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_custom_function_equal;
-	inst_class->get_dependencies = cdn_instruction_custom_function_get_dependencies;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionCustomFunctionPrivate));
 }
