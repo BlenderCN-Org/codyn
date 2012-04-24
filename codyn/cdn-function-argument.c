@@ -498,8 +498,10 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 		                    argument->priv->numc);
 
 		expr = cdn_variable_get_expression (variable);
+
 		cdn_expression_set_from_string (expr, zeros);
 		cdn_expression_compile (expr, NULL, NULL);
+		cdn_expression_set_has_cache (expr, FALSE);
 
 		g_free (zeros);
 	}
