@@ -1,0 +1,44 @@
+include "physics/physics.cdn"
+include "pendulum_config.cdn"
+
+integrator
+{
+    method = "runge-kutta"
+}
+
+defines
+{
+    m = "{@m,$(@n - @m[~])*@m[-1]}"
+    l = "{@l,$(@n - @l[~])*@l[-1]}"
+}
+
+node "system"
+{
+    node "p{0:$(@n - 1)}" : physics.revoluteY
+    {
+        m = "@m[@@1]"
+        com = "[0; 0; -$(@l[@@1] / 2)]"
+        coordinateTransform = "Sp.Translate([0, 0, $(@@1 == 0 ? 0 : -@l[$(@@1 - 1)])])"
+
+        q = "0"
+
+        points = "[transformations.worldLocationᵀ;
+                   (transformations.worldMatrix ∙ [com; 1])[[0, 1, 2]]];"
+    }
+
+    edge from "p{0:$(@num - 2)}" to "p$(@1 + 1)" : physics.joint {}
+
+    #include "physics/inverse_dynamics.cdn"
+    include "physics/dynamics.cdn"
+}
+
+node | system . p0
+{
+    q_ref = "0.2 * sin(2 * pi * t)"
+
+    k = 1000
+
+    τ = "k ∙ (q_ref - q)"
+}
+
+# vi:ts=4:et
