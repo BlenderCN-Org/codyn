@@ -541,7 +541,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	if (em->priv->indirection_regex == NULL)
 	{
-		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|((.+?)([0-9]*))(([?!~]|[+]+[0-9]*|[-]+[0-9]*)|([!](.+)))?$",
+		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|((.+?)(-?[0-9]*))(([?!~]|[+]+[0-9]*|[-]+[0-9]*)|([!](.+)))?$",
 		                                           0, 0, NULL);
 	}
 
@@ -622,7 +622,12 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 			if (idx && *idx)
 			{
-				exidx = (gint)g_ascii_strtoll (idx, NULL, 10) + 1;
+				exidx = (gint)g_ascii_strtoll (idx, NULL, 10);
+
+				if (exidx >= 0)
+				{
+					++exidx;
+				}
 			}
 
 			if (flags == INDIRECTION_INCREMENT)
@@ -644,6 +649,11 @@ resolve_indirection (CdnEmbeddedString   *em,
 	switch (flags)
 	{
 		case INDIRECTION_EXISTS:
+			if (ex && exidx < 0)
+			{
+				exidx = cdn_expansion_num (ex) - (-exidx % cdn_expansion_num (ex));
+			}
+			
 			if (ex && *(cdn_expansion_get (ex, exidx > 0 ? exidx : 0)))
 			{
 				ret = g_strdup ("1");
@@ -661,6 +671,11 @@ resolve_indirection (CdnEmbeddedString   *em,
 		break;
 		case INDIRECTION_INDEX:
 		{
+			if (ex && exidx < 0)
+			{
+				exidx = cdn_expansion_num (ex) - (-exidx % cdn_expansion_num (ex));
+			}
+
 			gint idx = ex ? cdn_expansion_get_index (ex, exidx) : 0;
 			ret = g_strdup_printf ("%d", idx);
 		}
@@ -1098,6 +1113,7 @@ parse_expansion_range_rev (gchar const *s)
 
 			ret = g_slist_prepend (ret,
 			                       cdn_expansion_new (pptr));
+
 			--cstart;
 		}
 
