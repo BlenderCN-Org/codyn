@@ -3,6 +3,13 @@ include "crba.cdn"
 
 [once] include "findbodies.cdn"
 
+## The dynamics node is used to accumulate the various quantities of the
+## general rigid body dynamics equation: H ∙ q̈ + C = τ. The elements of H, C and
+## are derived from coupling between the various bodies in the system, and then
+## transmitted to the dynamics node so that the system can be solved for the
+## accelerations (q̈) using a linear system solver. The resulting accelerations
+## are then transmitted back to each individual body so that they can be
+## integrated.
 node "dynamics"
 {
     ## Generalized forces
@@ -20,7 +27,8 @@ node "dynamics"
     ## Jacobian
     #J = "zeros(6, @numdof)"
 
-    ## Parent indices
+    ## Parent indices. This is used only for solving the linear system by
+    ## exploiting the branch induced sparsity (slinsolve).
     parents = "[{@parentsdof||@0;@1}]"
 }
 
@@ -30,11 +38,12 @@ node "@bodies"
     #JS = "[{@bodies|@bodychain[@0[!]]||@0;@1}]"
 }
 
-# Fill in H for all relevant body relationships
+# Fill in H and C for all relevant body relationships
 edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dynamics"
 {
     defines
     {
+        # Compute the indices of this bodies' DOF (in column and row)
         jc = "@{@bodydofidx[@@@@@0[!]]:+$(@bodydof[@@@@@0[!]] - 1)||@0\,@1}"
         jr = "@{@jc||@0;@1}"
     }
@@ -43,13 +52,17 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
     {
         defines
         {
+            # Compute the indices of this childs' DOF (in column and row)
             ic = "@{@bodydofidx[@@1]:+$(@bodydof[@@1] - 1)||@0\,@1}"
             ir = "@{@ic||@0;@1}"
         }
 
-        # Select block in H to write H_@i into
+        ## Write H from the body into the appropriate part of the dynamics H
+        ## matrix
         "H[[@ir], [@jc]]" <= "H_@@1"
 
+        # Check if we also want to fill in the upper triangle (or lower?) of
+        # the H matrix (normally not needed since the H matrix is symmetric)
         [ifstr("$$(@1 != @@@0[!],1,)")]
         {
             [ifstr("$$(!@only_lower_H[?],1,)")]
@@ -62,7 +75,8 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
     # Fill column of the jacobian
     #"J[[{0:5||@0;@1}], @jc]" <= "J"
 
-    # Fill C
+    ## Write C from the body into the appropriate part of the dynamics C
+    ## vector
     "C[@jr]" <= "C"
 }
 
@@ -76,11 +90,13 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 
     edge "acceleration_@0" from "dynamics" to "@@@0"
     {
+        ## Transmit calculated acceleration from dynamics to body
         ddq <= "ddq[[@j]]"
     }
 
     edge "force_@0" from "@@0" to "dynamics"
     {
+        ## Compute generalized force vector element
         "τ[[@j], 0]" <= "τ"
     }
 }

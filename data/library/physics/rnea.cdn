@@ -1,45 +1,66 @@
 [once] include "findbodies.cdn"
 
+# This file implements the Recursive Newton Euler algorithm for forward
+# dynamics (i.e. with generalized accelerations set to 0),
+# computing accelerations, velocities, forces (in joint space) and the C matrix.
+#
+# I.e. it computes C in the dynamics formulation: H ∙ q̈ + C = τ
 templates
 {
     node "physics"
     {
+        ## The dynamics edge is used to transmit forces from children to
+        ## parents.
         edge "dynamics"
         {
-            force <= "transformT ∙ force"
+            ## Transmit force from the child to the parent frame
+            forceChild <= "transformT ∙ force"
+        }
+
+        node "rnea"
+        {
+            ## Force transmitted from the child to the parent, see 'force'. This
+            ## force is accumulated from all cild bodies joint on this body. See
+            ## the physiscs.dynamics template
+            forceChild = "zeros(6, 1)"
+
+            ## External spatial force acting on the body. This force is a 6-by-1
+            ## vector containing torques and forces, acting on the local body
+            ## coordinates.
+            forceExternal = "zeros(6, 1)"
+
+            ## Force transmitted over the joint. This force is composed of the force
+            ## coming from the acceleration and velocity acting on the spatial inertia,
+            ## forces transmitted over the joint from the child, and finally external
+            ## forces introduced on the body
+            force = "spI ∙ acceleration + Sp.CrossForce(velocity) ∙ spI ∙ velocity + forceChild - forceExternal"
+
+            ## C matrix row of this body. The C matrix row of this body is the force
+            ## transmitted on the joint
+            C = "motionSubspaceT ∙ force"
         }
     }
 }
 
-edge has-template("physics" . "joint")
+edge has-template(physics.joint)
 {
     ## Recursive joint velocity (from parent to child)
     velocity <= "output.transform ∙ velocity + output.jointVelocity"
+
+    # TODO: add cJ in accel calc, add inverse dynamics case dqq not 0
 
     ## Recursive joint acceleration (from parent to child)
     acceleration <= "output.transform ∙ acceleration +
                      Sp.CrossMotion(output.velocity) ∙ output.jointVelocity"
 }
 
-node "@bodies"
-{
-    # Force variable
-    force = "zeros(6, 1)"
-
-    # C matrix row
-    C = "motionSubspaceT ∙ force"
-
-    [self]
-    edge
-    {
-        force <= "spI ∙ acceleration + Sp.CrossForce(velocity) ∙ spI ∙ velocity - fext"
-    }
-}
+node "@bodies" : physics.rnea {}
 
 # Add a dynamics link back up from the child to the parent
-[each(edges | has-template("physics" . "joint") | output-name | input-name)]
+[each(edges | has-template(physics.joint) | output-name | input-name)]
 {
-    edge "dynamics_@@0_to_@0" from "@@@0" to "@@@0" : "physics" . "dynamics" {}
+    ## Edge transmitting forces from child to parent
+    edge "dynamics_@@0_to_@0" from "@@@0" to "@@@0" : physics.dynamics {}
 }
 
 # vi:ex:ts=4:et

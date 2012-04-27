@@ -88,22 +88,23 @@ templates
             ## Transposed transformation
             transformT = "transformᵀ"
 
-            ## Helper variable to calculate the velocity product term
+            ## Helper variable to calculate the velocity product term. See
+            ## joint.cJ
             cJ = "joint.cJ(q, dq)"
 
-            ## Coordinate transform from the parent frame to the child
-            ## frame. The product of this transform with the joint transform
-            ## is the total coordinate transformation from a parent frame to a
-            ## child frame
+            ## Coordinate transform from the parent frame to the body
+            ## frame (i.e. the transformation from the origin of the joint of
+            ## the parent to the origin of the joint of the body frame)
             coordinateTransform = "eye(6)"
 
-            ## The total transform from parent frame to body frame
+            ## The total transform from parent frame to body frame, including
+            ## both the transform of the coordinate system and the transform
+            ## that the joint induces (i.e. through it's generalized
+            ## coordinates)
             transform = "jointTransform ∙ coordinateTransform"
 
-            ## External force on this body (6-by-1)
-            fext = "zeros(6, 1)"
-
-            ## Spatial inertia given mass, center of mass and inertia
+            ## Spatial inertia calculated from the mass (m),
+            ## center of mass (com) and inertia (I)
             spI = "Sp.Inertia(com, m, I)"
 
             ## Body velocity, defaults to joint velocity
@@ -116,29 +117,32 @@ templates
             ## Transform from the base to the joint
             baseTransform = "transform"
 
-            # World transformation
-            worldMatrix = "TransformInv(baseTransform)"
-            worldOrientation = "worldMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
-            worldLocation = "worldMatrix[[3; 7; 11]]"
+            node "transformations"
+            {
+                # World transformation
+                worldMatrix = "TransformInv(baseTransform)"
+                worldOrientation = "worldMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
+                worldLocation = "worldMatrix[[3; 7; 11]]"
 
-            # Local total transformation
-            localMatrix = "TransformInv(transform)"
-            localOrientation = "localMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
-            localLocation = "localMatrix[[3; 7; 11]]"
+                # Local total transformation
+                localMatrix = "TransformInv(transform)"
+                localOrientation = "localMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
+                localLocation = "localMatrix[[3; 7; 11]]"
+
+                # Computation of the inverse transformation matrix from child to
+                # parent coordinates. This is useful for rendering for example.
+                # Note that it computes [Eᵀ, Eᵀ ∙ -r; 0, 0, 0, 1], with E the
+                # rotation part of the spatial matrix and r the translation part
+                TransformInv(tr) = "[
+                    tr[0, 0], tr[1, 0], tr[2, 0], -(tr[0, 2] ∙ tr[3, 1] + tr[1, 2] ∙ tr[4, 1] + tr[2, 2] ∙ tr[5, 1]);
+                    tr[0, 1], tr[1, 1], tr[2, 1], -(tr[0, 0] ∙ tr[3, 2] + tr[1, 0] ∙ tr[4, 2] + tr[2, 0] ∙ tr[5, 2]);
+                    tr[0, 2], tr[1, 2], tr[2, 2], -(tr[0, 1] ∙ tr[3, 0] + tr[1, 1] ∙ tr[4, 0] + tr[2, 1] ∙ tr[5, 0]);
+                    0,        0,        0,        1
+                ]"
+            }
 
             ## Jacobian column for this body
             J = "Sp.Inverse(baseTransform) ∙ motionSubspace"
-
-            # Computation of the inverse transformation matrix from child to
-            # parent coordinates. This is useful for rendering for example.
-            # Note that it computes [Eᵀ, Eᵀ ∙ -r; 0, 0, 0, 1], with E the
-            # rotation part of the spatial matrix and r the translation part
-            TransformInv(tr) = "[
-                tr[0, 0], tr[1, 0], tr[2, 0], -(tr[0, 2] ∙ tr[3, 1] + tr[1, 2] ∙ tr[4, 1] + tr[2, 2] ∙ tr[5, 1]);
-                tr[0, 1], tr[1, 1], tr[2, 1], -(tr[0, 0] ∙ tr[3, 2] + tr[1, 0] ∙ tr[4, 2] + tr[2, 0] ∙ tr[5, 2]);
-                tr[0, 2], tr[1, 2], tr[2, 2], -(tr[0, 1] ∙ tr[3, 0] + tr[1, 1] ∙ tr[4, 0] + tr[2, 1] ∙ tr[5, 0]);
-                0,        0,        0,        1
-            ]"
         }
 
         edge "joint"
