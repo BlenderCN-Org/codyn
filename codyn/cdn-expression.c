@@ -2909,6 +2909,11 @@ parse_unary_operator (CdnExpression *expression,
 		ret = parse_expression (expression, context, 8, 1);
 	}
 
+	if (!ret)
+	{
+		return ret;
+	}
+
 	argdim = get_argdim (expression, context, 1);
 
 	switch (op->type)
