@@ -28,6 +28,7 @@
 #include "cdn-event.h"
 #include "operators/cdn-operator.h"
 #include "instructions/cdn-instruction-rand.h"
+#include "cdn-debug.h"
 
 #include <math.h>
 
@@ -502,6 +503,8 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 	               0,
 	               t + timestep,
 	               timestep);
+
+	cdn_debug_message (DEBUG_INTEGRATOR, "Step");
 
 	elapsed = g_timer_elapsed (integrator->priv->step_timer, NULL);
 
@@ -990,6 +993,8 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 	               0,
 	               start);
 
+	cdn_debug_message (DEBUG_INTEGRATOR, "Begin");
+
 	return TRUE;
 }
 
@@ -1009,6 +1014,7 @@ cdn_integrator_end (CdnIntegrator  *integrator,
 
 	g_signal_emit (integrator, integrator_signals[END], 0);
 
+	cdn_debug_message (DEBUG_INTEGRATOR, "End");
 	return ret;
 }
 

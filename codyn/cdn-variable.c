@@ -34,6 +34,7 @@
 #include "cdn-selector.h"
 #include "cdn-taggable.h"
 #include "cdn-node.h"
+#include "cdn-debug.h"
 
 #define CDN_VARIABLE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_VARIABLE, CdnVariablePrivate))
 
@@ -862,6 +863,16 @@ cdn_variable_get_values (CdnVariable *variable,
 		}
 		else
 		{
+			if (cdn_debug_is_enabled (CDN_DEBUG_MATH) &&
+			    !cdn_expression_is_cached (variable->priv->expression))
+			{
+				gchar *s;
+
+				s = cdn_variable_get_full_name_for_display (variable);
+				cdn_debug_message (DEBUG_MATH, "Evaluate v: %s", s);
+				g_free (s);
+			}
+
 			ret = cdn_expression_evaluate_values (variable->priv->expression,
 			                                      numr,
 			                                      numc);

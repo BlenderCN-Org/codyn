@@ -108,6 +108,8 @@ void           cdn_expression_set_values_flat  (CdnExpression      *expression,
                                                 gint                numr,
                                                 gint                numc);
 
+gboolean       cdn_expression_is_cached        (CdnExpression      *expression);
+
 gdouble       *cdn_expression_get_cache        (CdnExpression      *expression,
                                                 gint               *numr,
                                                 gint               *numc);

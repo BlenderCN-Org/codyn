@@ -33,6 +33,7 @@
 #include "cdn-expression-tree-iter.h"
 #include "cdn-node.h"
 #include "cdn-io.h"
+#include "cdn-debug.h"
 
 #include <codyn/instructions/cdn-instructions.h>
 
@@ -4208,6 +4209,19 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 		return NULL;
 	}
 
+	if (cdn_debug_is_enabled (CDN_DEBUG_MATH))
+	{
+		CdnExpressionTreeIter *iter;
+
+		iter = cdn_expression_tree_iter_new (expression);
+
+		cdn_debug_message (DEBUG_MATH,
+		                   "Evaluating: %s",
+		                   cdn_expression_tree_iter_to_string (iter));
+
+		cdn_expression_tree_iter_free (iter);
+	}
+
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{
 		cdn_instruction_execute (item->data, stack);
@@ -4848,4 +4862,10 @@ cdn_expression_get_stack_size (CdnExpression *expression)
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), 0);
 
 	return cdn_stack_size (&expression->priv->output);
+}
+
+gboolean
+cdn_expression_is_cached (CdnExpression *expression)
+{
+	return expression->priv->cached;
 }

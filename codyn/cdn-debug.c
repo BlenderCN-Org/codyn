@@ -49,14 +49,37 @@ cdn_debug (CdnDebugSection  section,
 	}
 }
 
+static gchar const *
+level_to_string (gint log_level)
+{
+	switch (log_level)
+	{
+		case CDN_DEBUG_LINSOLVE:
+			return "linsolve";
+		case CDN_DEBUG_DIFF:
+			return "diff";
+		case CDN_DEBUG_SIMPLIFY:
+			return "simplify";
+		case CDN_DEBUG_IO:
+			return "io";
+		case CDN_DEBUG_MATH:
+			return "math";
+		case CDN_DEBUG_INTEGRATOR:
+			return "integrator";
+		default:
+			return "none";
+	}
+}
+
 static void
 cdn_debug_log_handler (gchar const    *log_domain,
                        GLogLevelFlags  log_level,
                        gchar const    *message,
                        gpointer        userdata)
 {
-	g_printerr ("[%s(%p)]: %s\n",
+	g_printerr ("[%s:%s(%p)]: %s\n",
 	            log_domain,
+	            level_to_string (log_level),
 	            g_thread_self (),
 	            message);
 }
@@ -68,30 +91,43 @@ cdn_debug_init ()
 	{
 		inited = TRUE;
 
-		if (g_getenv ("CODYN_DEBUG_LINSOLVE") != NULL)
+		if (g_getenv ("CDN_DEBUG_LINSOLVE") != NULL)
 		{
 			debug_level |= CDN_DEBUG_LINSOLVE;
 		}
 
-		if (g_getenv ("CODYN_DEBUG_DIFF") != NULL)
+		if (g_getenv ("CDN_DEBUG_DIFF") != NULL)
 		{
 			debug_level |= CDN_DEBUG_DIFF;
 		}
 
-		if (g_getenv ("CODYN_DEBUG_SIMPLIFY") != NULL)
+		if (g_getenv ("CDN_DEBUG_SIMPLIFY") != NULL)
 		{
 			debug_level |= CDN_DEBUG_SIMPLIFY;
 		}
 
-		if (g_getenv ("CODYN_DEBUG_IO") != NULL)
+		if (g_getenv ("CDN_DEBUG_IO") != NULL)
 		{
 			debug_level |= CDN_DEBUG_IO;
+		}
+
+		if (g_getenv ("CDN_DEBUG_MATH") != NULL)
+		{
+			debug_level |= CDN_DEBUG_MATH;
+		}
+
+		if (g_getenv ("CDN_DEBUG_INTEGRATOR") != NULL)
+		{
+			debug_level |= CDN_DEBUG_INTEGRATOR;
 		}
 
 		g_log_set_handler ("Cdn",
 		                   CDN_DEBUG_DIFF |
 		                   CDN_DEBUG_LINSOLVE |
-		                   CDN_DEBUG_IO,
+		                   CDN_DEBUG_IO |
+		                   CDN_DEBUG_DIFF |
+		                   CDN_DEBUG_MATH |
+		                   CDN_DEBUG_INTEGRATOR,
 		                   cdn_debug_log_handler,
 		                   NULL);
 	}
