@@ -38,14 +38,22 @@
 #include <gio/gunixinputstream.h>
 #endif
 
-static GPtrArray *monitored = 0;
-static GPtrArray *varied = 0;
+typedef struct
+{
+	GPtrArray *monitored;
+	GSList *monitors;
+	GSList *names;
+	gchar *output_file;
+	GOutputStream *stream;
+} Monitored;
+
+static GPtrArray *monitored = NULL;
+static GPtrArray *varied = NULL;
 static gboolean include_header = FALSE;
 static gchar *delimiter = NULL;
 static gdouble from = 0;
 static gdouble step = 0.001;
 static gdouble to = 1;
-static gchar *output_file = NULL;
 static gint64 seed = 0;
 
 #define CDN_MONITOR_ERROR (cdn_monitor_error_quark())
@@ -61,13 +69,124 @@ typedef enum
 	CDN_MONITOR_ERROR_RANGE
 } CdnMonitorError;
 
+typedef struct
+{
+	CdnVariable *variable;
+	gint row;
+	gint col;
+} Monitor;
+
+static Monitor *
+monitor_new (CdnVariable *variable,
+             gint         row,
+             gint         col)
+{
+	Monitor *ret;
+
+	ret = g_slice_new0 (Monitor);
+
+	ret->variable = g_object_ref (variable);
+	ret->row = row;
+	ret->col = col;
+
+	return ret;
+}
+
+static void
+monitor_free (Monitor *self)
+{
+	g_object_unref (self->variable);
+	g_slice_free (Monitor, self);
+}
+
+static Monitored *
+monitored_new ()
+{
+	Monitored *ret = g_slice_new0 (Monitored);
+
+	ret->monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free);
+	return ret;
+}
+
+static void
+monitored_free (Monitored *monitored)
+{
+	if (!monitored)
+	{
+		return;
+	}
+
+	if (monitored->monitored)
+	{
+		g_ptr_array_free (monitored->monitored, TRUE);
+	}
+
+	if (monitored->stream)
+	{
+		g_output_stream_flush (monitored->stream, NULL, NULL);
+		g_output_stream_close (monitored->stream, NULL, NULL);
+	}
+
+	g_slist_foreach (monitored->monitors, (GFunc)monitor_free, NULL);
+	g_slist_free (monitored->monitors);
+
+	g_slist_foreach (monitored->names, (GFunc)g_free, NULL);
+	g_slist_free (monitored->names);
+
+	g_free (monitored->output_file);
+	g_slice_free (Monitored, monitored);
+}
+
 static gboolean
 parse_monitored (gchar const  *option_name,
                  gchar const  *value,
                  gpointer      data,
                  GError      **error)
 {
-	g_ptr_array_add (monitored, g_strdup (value));
+	Monitored *mon;
+
+	if (monitored->len == 0)
+	{
+		mon = monitored_new ();
+		g_ptr_array_add (monitored, mon);
+	}
+	else
+	{
+		mon = monitored->pdata[monitored->len - 1];
+
+		if (!mon)
+		{
+			mon = monitored_new ();
+			monitored->pdata[monitored->len - 1] = mon;
+		}
+	}
+
+	g_ptr_array_add (mon->monitored, g_strdup (value));
+	return TRUE;
+}
+
+static gboolean
+parse_output_file (gchar const  *option_name,
+                   gchar const  *value,
+                   gpointer      data,
+                   GError      **error)
+{
+	Monitored *mon;
+
+	if (monitored->len == 0)
+	{
+		mon = monitored_new ();
+		g_ptr_array_add (monitored, mon);
+	}
+	else
+	{
+		mon = monitored->pdata[monitored->len - 1];
+	}
+
+	g_free (mon->output_file);
+	mon->output_file = g_strdup (value);
+
+	g_ptr_array_add (monitored, NULL);
 	return TRUE;
 }
 
@@ -208,20 +327,29 @@ parse_time (gchar const  *option_name,
 }
 
 static GOptionEntry entries[] = {
-	{"monitor", 'm', 0, G_OPTION_ARG_CALLBACK, parse_monitored, "Selector for variables to monitor (e.g. /state_.*/.\"{x,y}\")", "SEL"},
-	{"include-header", 'i', 0, G_OPTION_ARG_NONE, &include_header, "Include header in output", NULL},
-	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter, "Column delimiter (defaults to tab)", "DELIM"},
-	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time, "Time range (from:to or from:step:to, defaults to 0:0.01:1)", "RANGE"},
-	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
-	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
-	{"vary", 'v', 0, G_OPTION_ARG_CALLBACK, parse_varied, "Run integration multiple times, varying this range (e.g. /state_.*/.\"{x,y}\"(0:0.1:10))", "RANGE"},
+	{"monitor", 'm', 0, G_OPTION_ARG_CALLBACK, parse_monitored,
+	 "Selector for variables to monitor (e.g. /state_.*/.\"{x,y}\")", "SEL"},
+	{"include-header", 'i', 0, G_OPTION_ARG_NONE, &include_header,
+	 "Include header in output", NULL},
+	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter,
+	 "Column delimiter (defaults to tab)", "DELIM"},
+	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time,
+	 "Time range (from:to or from:step:to, defaults to 0:0.01:1)", "RANGE"},
+	{"output", 'o', 0, G_OPTION_ARG_CALLBACK, parse_output_file,
+	 "Output file (defaults to standard output)", "FILE"},
+	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed,
+	 "Random numbers seed (defaults to current time)", "SEED"},
+	{"vary", 'v', 0, G_OPTION_ARG_CALLBACK, parse_varied,
+	 "Run integration multiple times, varying this range (e.g. /state_.*/.\"{x,y}\"(0:0.1:10))", "RANGE"},
 	{NULL}
 };
 
 static void
-write_headers (GOutputStream *stream,
-               GSList        *names)
+write_headers (Monitored *monmon)
 {
+	GOutputStream *stream = monmon->stream;
+	GSList *names = monmon->names;
+
 	if (!include_header)
 	{
 		return;
@@ -261,36 +389,6 @@ write_headers (GOutputStream *stream,
 	                           NULL,
 	                           NULL,
 	                           NULL);
-}
-
-typedef struct
-{
-	CdnVariable *variable;
-	gint row;
-	gint col;
-} Monitor;
-
-static Monitor *
-monitor_new (CdnVariable *variable,
-             gint         row,
-             gint         col)
-{
-	Monitor *ret;
-
-	ret = g_slice_new0 (Monitor);
-
-	ret->variable = g_object_ref (variable);
-	ret->row = row;
-	ret->col = col;
-
-	return ret;
-}
-
-static void
-monitor_free (Monitor *self)
-{
-	g_object_unref (self->variable);
-	g_slice_free (Monitor, self);
 }
 
 static GSList *
@@ -386,45 +484,44 @@ find_matching_variables (CdnNetwork  *network,
 	return variables;
 }
 
-static GOutputStream *
-get_output_stream ()
+static void
+resolve_output_stream (Monitored *monmon)
 {
-	static GOutputStream *out = NULL;
 	GError *error = NULL;
 
-	if (out)
+	if (monmon->stream)
 	{
-		return out;
+		return;
 	}
 
-	if (output_file != NULL && g_strcmp0 (output_file, "-") != 0)
+	if (monmon->output_file != NULL && g_strcmp0 (monmon->output_file, "-") != 0)
 	{
 		GFile *output;
 
-		output = g_file_new_for_path (output_file);
+		output = g_file_new_for_path (monmon->output_file);
 
-		out = G_OUTPUT_STREAM (g_file_create (output,
-		                                      G_FILE_CREATE_REPLACE_DESTINATION,
-		                                      NULL,
-		                                      &error));
+		monmon->stream = G_OUTPUT_STREAM (g_file_create (output,
+		                                                 G_FILE_CREATE_REPLACE_DESTINATION,
+		                                                 NULL,
+		                                                 &error));
 
-		if (!out && error->code == G_IO_ERROR_EXISTS)
+		if (!monmon->stream && error->code == G_IO_ERROR_EXISTS)
 		{
 			g_error_free (error);
 			error = NULL;
 
-			out = G_OUTPUT_STREAM (g_file_replace (output,
-			                                       NULL,
-			                                       FALSE,
-			                                       G_FILE_CREATE_NONE,
-			                                       NULL,
-			                                       &error));
+			monmon->stream = G_OUTPUT_STREAM (g_file_replace (output,
+			                                                  NULL,
+			                                                  FALSE,
+			                                                  G_FILE_CREATE_NONE,
+			                                                  NULL,
+			                                                  &error));
 		}
 
-		if (!out)
+		if (!monmon->stream)
 		{
 			g_printerr ("Could not create output file `%s': %s\n",
-			            output_file,
+			            monmon->output_file,
 			            error->message);
 
 			g_error_free (error);
@@ -434,21 +531,23 @@ get_output_stream ()
 	}
 	else
 	{
-		out = cdn_cfile_stream_new (stdout);
+		monmon->stream = cdn_cfile_stream_new (stdout);
 	}
-
-	return out;
 }
 
 static void
-on_step (CdnIntegrator *integrator,
-         gdouble        time,
-         gdouble        timestep,
-         GSList        *monitors)
+record_monitors (Monitored *monitored)
 {
 	// Record all monitors
-	GOutputStream *stream = get_output_stream ();
 	gboolean first = TRUE;
+	GSList *monitors;
+
+	if (!monitored)
+	{
+		return;
+	}
+
+	monitors = monitored->monitors;
 
 	while (monitors)
 	{
@@ -463,7 +562,7 @@ on_step (CdnIntegrator *integrator,
 
 		if (!first)
 		{
-			g_output_stream_write_all (stream,
+			g_output_stream_write_all (monitored->stream,
 			                           delimiter,
 			                           strlen (delimiter),
 			                           NULL,
@@ -500,7 +599,7 @@ on_step (CdnIntegrator *integrator,
 				                values[idx]);
 			}
 
-			g_output_stream_write_all (stream,
+			g_output_stream_write_all (monitored->stream,
 			                           value,
 			                           strlen (value),
 			                           NULL,
@@ -521,7 +620,7 @@ on_step (CdnIntegrator *integrator,
 
 				if (i != 0)
 				{
-					g_output_stream_write_all (stream,
+					g_output_stream_write_all (monitored->stream,
 					                           delimiter,
 					                           strlen (delimiter),
 					                           NULL,
@@ -529,7 +628,7 @@ on_step (CdnIntegrator *integrator,
 					                           NULL);
 				}
 
-				g_output_stream_write_all (stream,
+				g_output_stream_write_all (monitored->stream,
 				                           value,
 				                           strlen (value),
 				                           NULL,
@@ -541,7 +640,7 @@ on_step (CdnIntegrator *integrator,
 		monitors = g_slist_next (monitors);
 	}
 
-	g_output_stream_write_all (stream,
+	g_output_stream_write_all (monitored->stream,
 	                           "\n",
 	                           1,
 	                           NULL,
@@ -550,28 +649,47 @@ on_step (CdnIntegrator *integrator,
 }
 
 static void
-on_begin (CdnIntegrator *integrator,
-          gdouble        from,
-          GSList        *monitors)
+on_step (CdnIntegrator *integrator,
+         gdouble        time,
+         gdouble        timestep)
 {
-	on_step (integrator, from, 0, monitors);
+	gint i;
+
+	for (i = 0; i < monitored->len; ++i)
+	{
+		record_monitors (monitored->pdata[i]);
+	}
 }
 
-static gint
-run_simple_monitor (CdnNetwork *network)
+static void
+on_begin (CdnIntegrator *integrator,
+          gdouble        from)
 {
-	GSList *monitors = NULL;
-	GSList *names = NULL;
-	CdnIntegrator *integrator;
-	gint i;
-	gint ret;
+	on_step (integrator, from, 0);
+}
 
-	integrator = cdn_network_get_integrator (network);
+static gboolean
+resolve_monitors (CdnNetwork *network,
+                  Monitored *monmon)
+{
+	gint i;
+	GPtrArray *monitored;
+	CdnIntegrator *integrator;
+
+	if (!monmon)
+	{
+		return TRUE;
+	}
+
+	monitored = monmon->monitored;
 
 	for (i = monitored->len - 1; i >= 0; --i)
 	{
-		GSList *variables = find_matching_variables (network, monitored->pdata[i]);
-		GSList *prop = variables;
+		GSList *variables;
+		GSList *prop;
+
+		variables = find_matching_variables (network, monitored->pdata[i]);
+		prop = variables;
 
 		while (prop)
 		{
@@ -581,7 +699,8 @@ run_simple_monitor (CdnNetwork *network)
 			gint ncols;
 			gchar *name;
 
-			monitors = g_slist_prepend (monitors, mon);
+			monmon->monitors = g_slist_prepend (monmon->monitors,
+			mon);
 
 			expr = cdn_variable_get_expression (mon->variable);
 			cdn_expression_get_dimension (expr, &nrows, &ncols);
@@ -589,7 +708,8 @@ run_simple_monitor (CdnNetwork *network)
 
 			if (mon->row >= 0 || (nrows == 1 && ncols == 1))
 			{
-				names = g_slist_prepend (names, name);
+				monmon->names = g_slist_prepend (monmon->names,
+				name);
 			}
 			else
 			{
@@ -603,13 +723,14 @@ run_simple_monitor (CdnNetwork *network)
 					{
 						gchar *s;
 
-						s = g_strdup_printf ("%s[%d, %d]",
+						s = g_strdup_printf ("%s[%d,%d]",
 						                     name,
 						                     r,
 						                     c);
 
-						names = g_slist_prepend (names,
-						                         s);
+						monmon->names =
+							g_slist_prepend (monmon->names,
+							                 s);
 					}
 				}
 
@@ -622,56 +743,77 @@ run_simple_monitor (CdnNetwork *network)
 		g_slist_free (variables);
 	}
 
-	monitors = g_slist_prepend (monitors,
-	                            monitor_new (cdn_object_get_variable (CDN_OBJECT (integrator), "t"),
-	                                         -1, -1));
+	integrator = cdn_network_get_integrator (network);
+
+	monmon->monitors = g_slist_prepend (monmon->monitors,
+	                                    monitor_new (cdn_object_get_variable (CDN_OBJECT (integrator), "t"),
+	                                                 -1, -1));
+
+	resolve_output_stream (monmon);
+
+	if (monmon->stream)
+	{
+		write_headers (monmon);
+		return TRUE;
+	}
+	else
+	{
+		return FALSE;
+	}
+}
+
+static gboolean
+resolve_all_monitors (CdnNetwork *network)
+{
+	gint i;
+
+	for (i = monitored->len - 1; i >= 0; --i)
+	{
+		if (!resolve_monitors (network, monitored->pdata[i]))
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
+}
+
+static gint
+run_simple_monitor (CdnNetwork *network)
+{
+	CdnIntegrator *integrator;
+	gint ret;
+	GError *err = NULL;
+
+	if (!resolve_all_monitors (network))
+	{
+		return 1;
+	}
+
+	integrator = cdn_network_get_integrator (network);
 
 	g_signal_connect (integrator,
 	                  "begin",
 	                  G_CALLBACK (on_begin),
-	                  monitors);
+	                  NULL);
 
 	g_signal_connect (integrator,
 	                  "step",
 	                  G_CALLBACK (on_step),
-	                  monitors);
+	                  NULL);
 
-	GOutputStream *out;
-
-	out = get_output_stream ();
-
-	if (out)
+	if (!cdn_network_run (network, from, step, to, &err))
 	{
-		GError *err = NULL;
+		g_printerr ("Failed to run network: %s\n",
+		            err->message);
 
-		write_headers (out, names);
-
-		if (!cdn_network_run (network, from, step, to, &err))
-		{
-			g_printerr ("Failed to run network: %s\n",
-			            err->message);
-
-			g_error_free (err);
-			ret = 1;
-		}
-		else
-		{
-			ret = 0;
-		}
-
-		g_output_stream_flush (out, NULL, NULL);
-		g_output_stream_close (out, NULL, NULL);
+		g_error_free (err);
+		ret = 1;
 	}
 	else
 	{
-		ret = 1;
+		ret = 0;
 	}
-
-	g_slist_foreach (monitors, (GFunc)monitor_free, NULL);
-	g_slist_free (monitors);
-
-	g_slist_foreach (names, (GFunc)g_free, NULL);
-	g_slist_free (names);
 
 	return ret;
 }
@@ -831,17 +973,25 @@ run_varied_monitor (CdnNetwork *network)
 	GSList *ranges = NULL;
 	gint i;
 	gboolean first = TRUE;
+	GPtrArray *monmon;
+	GOutputStream *out;
 
-	GOutputStream *out = get_output_stream ();
+	if (!resolve_all_monitors (network))
+	{
+		return 1;
+	}
+
+	monmon = ((Monitored *)monitored->pdata[0])->monitored;
+	out = ((Monitored *)monitored->pdata[0])->stream;
 
 	if (!out)
 	{
 		return 1;
 	}
 
-	for (i = monitored->len - 1; i >= 0; --i)
+	for (i = monmon->len - 1; i >= 0; --i)
 	{
-		GSList *variables = find_matching_variables (network, monitored->pdata[i]);
+		GSList *variables = find_matching_variables (network, monmon->pdata[i]);
 
 		while (variables)
 		{
@@ -1022,7 +1172,6 @@ cleanup ()
 {
 	g_ptr_array_free (monitored, TRUE);
 	g_free (delimiter);
-	g_free (output_file);
 	g_ptr_array_free (varied, TRUE);
 }
 
@@ -1043,7 +1192,7 @@ main (int argc,
 	gettimeofday (&tv, NULL);
 	seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
-	monitored = g_ptr_array_new ();
+	monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)monitored_free);
 	varied = g_ptr_array_new_with_free_func ((GDestroyNotify)range_free);
 
 	delimiter = g_strdup ("\t");
