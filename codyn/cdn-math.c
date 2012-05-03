@@ -423,6 +423,15 @@ op_exp (CdnStack *stack,
 }
 
 static void
+op_erf (CdnStack *stack,
+        gint      numargs,
+        gint     *argdim,
+        gpointer  userdata)
+{
+	foreach_element (erf);
+}
+
+static void
 op_pow (CdnStack *stack,
         gint      numargs,
         gint     *argdim,
@@ -1638,6 +1647,7 @@ static FunctionEntry function_entries[] = {
 	{"min", op_min, -1, TRUE},
 	{"max", op_max, -1, TRUE},
 	{"exp", op_exp, 1, FALSE},
+	{"erf", op_erf, 1, FALSE},
 	{"floor", op_floor, 1, FALSE},
 	{"ceil", op_ceil, 1, FALSE},
 	{"round", op_round, 1, FALSE},
@@ -2106,6 +2116,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_SQRT:
 		case CDN_MATH_FUNCTION_TYPE_INVSQRT:
 		case CDN_MATH_FUNCTION_TYPE_EXP:
+		case CDN_MATH_FUNCTION_TYPE_ERF:
 		case CDN_MATH_FUNCTION_TYPE_FLOOR:
 		case CDN_MATH_FUNCTION_TYPE_CEIL:
 		case CDN_MATH_FUNCTION_TYPE_ROUND:
