@@ -1179,6 +1179,44 @@ swap_arguments (CdnExpression *expression,
 	expression->priv->instructions = tmp;
 }
 
+static GSList *
+make_zeros (gint numr,
+            gint numc)
+{
+	gint n = numr * numc;
+	GSList *ret = NULL;
+
+	if (n != 1)
+	{
+		gint *dims;
+		gint i;
+
+		dims = g_new0 (gint, n * 2);
+
+		for (i = 0; i < n; ++i)
+		{
+			dims[i * 2] = 1;
+			dims[i * 2 + 1] = 1;
+
+			ret = g_slist_prepend (ret,
+			                       cdn_instruction_number_new_from_string ("0"));
+		}
+
+		ret = g_slist_prepend (ret,
+		                       cdn_instruction_matrix_new (n,
+		                                                   dims,
+		                                                   numr,
+		                                                   numc));
+	}
+	else
+	{
+		ret = g_slist_prepend (ret,
+		                       cdn_instruction_number_new_from_string ("0"));
+	}
+
+	return g_slist_reverse (ret);
+}
+
 static CdnInstruction *
 zeros_macro (CdnExpression *expression,
              ParserContext *context)
@@ -1187,8 +1225,7 @@ zeros_macro (CdnExpression *expression,
 	GSList *first = NULL;
 	gint numr;
 	gint numc;
-	gint i;
-	gint n;
+	GSList *ptr;
 
 	if (context->stack)
 	{
@@ -1216,8 +1253,6 @@ zeros_macro (CdnExpression *expression,
 	numr = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (first->data)));
 	numc = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (second->data)));
 
-	n = numr * numc;
-
 	instructions_pop (expression);
 	instructions_pop (expression);
 
@@ -1230,32 +1265,30 @@ zeros_macro (CdnExpression *expression,
 	context->stack = g_slist_delete_link (context->stack,
 	                                      context->stack);
 
-	// Add zeros and insert instruction for matrix
-	if (n != 1)
+	ptr = make_zeros (numr, numc);
+
+	while (ptr)
 	{
-		gint *dims;
-
-		dims = g_new0 (gint, n * 2);
-
-		for (i = 0; i < n; ++i)
+		if (ptr->next)
 		{
-			dims[i * 2] = 1;
-			dims[i * 2 + 1] = 1;
-
 			instructions_push (expression,
-			                   cdn_instruction_number_new_from_string ("0"),
+			                   ptr->data,
 			                   context);
-		}
 
-		return cdn_instruction_matrix_new (n,
-		                                   dims,
-		                                   numr,
-		                                   numc);
+			ptr = g_slist_delete_link (ptr, ptr);
+		}
+		else
+		{
+			CdnInstruction *ret;
+
+			ret = ptr->data;
+			ptr = g_slist_delete_link (ptr, ptr);
+
+			return ret;
+		}
 	}
-	else
-	{
-		return cdn_instruction_number_new_from_string ("0");
-	}
+
+	return NULL;
 }
 
 static CdnInstruction *
@@ -1563,6 +1596,76 @@ wrap_dotted (CdnExpression  *expression,
 	g_object_unref (op);
 
 	return ret;
+}
+
+static void
+replace_arg_with_zeros (CdnExpression *expression,
+                        ParserContext *context,
+                        gint           i,
+                        gint           numr,
+                        gint           numc)
+{
+	GSList *instrptr;
+	GSList *stackptr;
+	gint num;
+
+	instrptr = NULL;
+	stackptr = context->stack;
+
+	while (i > 0)
+	{
+		if (!instrptr)
+		{
+			instrptr = g_slist_nth (expression->priv->instructions,
+			                        g_slist_length (stackptr->data) - 1);
+		}
+		else
+		{
+			instrptr = g_slist_nth (instrptr,
+			                        g_slist_length (stackptr->data));
+		}
+
+		stackptr = g_slist_next (stackptr);
+		--i;
+	}
+
+	num = g_slist_length (stackptr->data);
+
+	g_slist_free (stackptr->data);
+	stackptr->data = make_zeros (numr, numc);
+
+	for (i = 0; i < num; ++i)
+	{
+		expression->priv->instructions =
+			g_slist_delete_link (expression->priv->instructions,
+			                     instrptr ? instrptr->next : expression->priv->instructions);
+	}
+
+	stackptr = stackptr->data;
+
+	while (stackptr)
+	{
+		GSList *next;
+
+		if (instrptr)
+		{
+			next = instrptr->next;
+
+			instrptr->next = g_slist_prepend (NULL, stackptr->data);
+			instrptr->next->next = next;
+			instrptr = next;
+		}
+		else
+		{
+			next = expression->priv->instructions;
+			expression->priv->instructions = g_slist_prepend (NULL, stackptr->data);
+			expression->priv->instructions->next = next;
+		}
+
+		instrptr = next;
+
+		stackptr = g_slist_next (stackptr);
+	}
 }
 
 static gboolean
@@ -1887,12 +1990,32 @@ parse_function (CdnExpression *expression,
 		                                                   arguments,
 		                                                   argdim);
 
-		g_free (argdim);
-
 		// Recursively compile the function here
 		ret = recurse_compile (expression, context, function);
 
+		if (ret)
+		{
+			GList const *arg;
+			gint i = arguments - 1;
+
+			// Replace unused function arguments with 0, haha!
+			for (arg = cdn_function_get_arguments (function); arg; arg = g_list_next (arg))
+			{
+				if (cdn_function_argument_get_unused (arg->data))
+				{
+					replace_arg_with_zeros (expression,
+					                        context,
+					                        i,
+					                        argdim ? argdim[i * 2] : 1,
+					                        argdim ? argdim[i * 2 + 1] : 1);
+				}
+
+				--i;
+			}
+		}
+
 		g_object_unref (function);
+		g_free (argdim);
 	}
 
 	if (instruction)
@@ -2640,6 +2763,8 @@ parse_custom_operator (CdnExpression *expression,
 		{
 			GList *start;
 			gint extra = 0;
+			gint *argdim;
+			gint i;
 
 			start = (GList *)cdn_function_get_arguments (func);
 
@@ -2747,16 +2872,34 @@ parse_custom_operator (CdnExpression *expression,
 					++newnum;
 				}
 			}
+
+			argdim = get_argdim (expression, context, newnum);
+
+			if (newnum > num_arguments)
+			{
+				_cdn_operator_set_num_arguments (op, newnum, argdim);
+			}
+
+			start = (GList *)cdn_function_get_arguments (func);
+			i = newnum - 1;
+
+			while (start)
+			{
+				if (cdn_function_argument_get_unused (start->data))
+				{
+					replace_arg_with_zeros (expression,
+					                        context,
+					                        i,
+					                        argdim ? argdim[i * 2] : 1,
+					                        argdim ? argdim[i * 2 + 1] : 1);
+				}
+
+				--i;
+				start = g_list_next (start);
+			}
+
+			g_free (argdim);
 		}
-	}
-
-	if (newnum > num_arguments)
-	{
-		gint *argdim;
-
-		argdim = get_argdim (expression, context, newnum);
-		_cdn_operator_set_num_arguments (op, newnum, argdim);
-		g_free (argdim);
 	}
 
 	if (isref)

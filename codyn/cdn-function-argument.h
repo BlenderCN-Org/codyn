@@ -95,6 +95,11 @@ void                  cdn_function_argument_get_dimension     (CdnFunctionArgume
 void                  cdn_function_argument_set_dimension     (CdnFunctionArgument *argument,
                                                                gint                 numr,
                                                                gint                 numc);
+
+gboolean              cdn_function_argument_get_unused        (CdnFunctionArgument *argument);
+void                  cdn_function_argument_set_unused        (CdnFunctionArgument *argument,
+                                                               gboolean             unused);
+
 G_END_DECLS
 
 #endif /* __CDN_FUNCTION_ARGUMENT_H__ */

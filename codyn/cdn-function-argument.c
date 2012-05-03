@@ -47,12 +47,14 @@ struct _CdnFunctionArgumentPrivate
 {
 	gchar *name;
 
-	gboolean isexplicit;
 	gint numr;
 	gint numc;
 
 	CdnExpression *default_value;
 	CdnVariable *variable;
+
+	guint isexplicit : 1;
+	guint unused : 1;
 };
 
 G_DEFINE_TYPE (CdnFunctionArgument, cdn_function_argument, G_TYPE_INITIALLY_UNOWNED)
@@ -643,3 +645,19 @@ cdn_function_argument_set_default_value (CdnFunctionArgument *argument,
 	g_object_notify (G_OBJECT (argument), "default-value");
 }
 
+gboolean
+cdn_function_argument_get_unused (CdnFunctionArgument *argument)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), FALSE);
+
+	return argument->priv->unused;
+}
+
+void
+cdn_function_argument_set_unused (CdnFunctionArgument *argument,
+                                  gboolean             unused)
+{
+	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
+
+	argument->priv->unused = unused;
+}

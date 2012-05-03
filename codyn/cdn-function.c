@@ -218,6 +218,64 @@ extract_helper_vars (CdnFunction *f)
 }
 
 static gboolean
+argument_is_unused (CdnFunction         *f,
+                    CdnFunctionArgument *argument)
+{
+	CdnVariable *v;
+	GSList const *dep;
+	CdnExpression *ex;
+
+	v = _cdn_function_argument_get_variable (argument);
+
+	if (!v)
+	{
+		return FALSE;
+	}
+
+	ex = cdn_variable_get_expression (v);
+
+	for (dep = cdn_expression_get_depends_on_me (ex); dep; dep = g_slist_next (dep))
+	{
+		CdnExpression *d;
+		GSList const *h;
+
+		d = dep->data;
+
+		if (d == f->priv->expression)
+		{
+			return FALSE;
+		}
+
+		for (h = f->priv->helper_vars; h; h = g_slist_next (h))
+		{
+			if (cdn_variable_get_expression (h->data) == d)
+			{
+				return FALSE;
+			}
+		}
+	}
+
+	return TRUE;
+}
+
+static void
+mark_unused_arguments (CdnFunction *f)
+{
+	GList *arg;
+
+	if (!f->priv->expression)
+	{
+		return;
+	}
+
+	for (arg = f->priv->arguments; arg; arg = g_list_next (arg))
+	{
+		cdn_function_argument_set_unused (arg->data,
+		                                  argument_is_unused (f, arg->data));
+	}
+}
+
+static gboolean
 cdn_function_compile_impl (CdnObject         *object,
                            CdnCompileContext *context,
                            CdnCompileError   *error)
@@ -313,6 +371,7 @@ cdn_function_compile_impl (CdnObject         *object,
 	g_object_unref (context);
 
 	extract_helper_vars (self);
+	mark_unused_arguments (self);
 
 	return ret;
 }
