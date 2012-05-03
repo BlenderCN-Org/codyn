@@ -1,7 +1,50 @@
-function plotcdn(output)
-	global animation_state
+function plotcdn(dirname)
+	global animation_state multiplier
 
-	data = load(output);
+	if nargin < 1
+		dirname = '.';
+	end
+
+	data = scan_log(fullfile(dirname, 'kinematics.txt'));
+
+	figure(1)
+	h1 = subplot(4, 1, 1);
+	plot(data.time, data.alldata(:, 2:end));
+	title('Joint Angles/Velocities');
+	names = fieldnames(data);
+	l = legend(names{2:end - 1});
+	set(l, 'Interpreter', 'none');
+
+	data = scan_log(fullfile(dirname, 'torques.txt'));
+	h2 = subplot(4, 1, 4);
+	plot(data.time, data.alldata(:, 2:end));
+	title('Joint Torques');
+	names = fieldnames(data);
+	l = legend(names{2:end - 1});
+	set(l, 'Interpreter', 'none');
+
+	data = scan_log(fullfile(dirname, 'learning.txt'));
+	h3 = subplot(4, 1, 2);
+	plot(data.time, data.alldata(:, 2:end));
+	title('Learning');
+	names = fieldnames(data);
+	l = legend(names{2:end - 1});
+	set(l, 'Interpreter', 'none');
+
+	h4 = subplot(4, 1, 3);
+
+	toterr = sum(abs(data.alldata(:, 3:2:end)), 2);
+	toterr = filter(zeros(1, 100) + 0.01 , 1, toterr);
+	plot(data.time, toterr);
+	title('Learning error');
+	legend('Average error');
+
+	linkaxes([h1, h2, h3, h4], 'x');
+	realign(4, 1);
+
+	figure(3)
+	visual = fullfile(dirname, 'visual.txt');
+	data = dlmread(visual, '', 1, 0);
 
 	t = data(:, 1);
 
@@ -39,23 +82,25 @@ function plotcdn(output)
 	animation_state = 0;
 
 	i = 1;
+	h = gca;
+	multiplier = 1;
 
 	while 1
 		if i >= size(x, 1)
 			i = 1;
 		end
 
-		plot3(x(i, :), y(i, :), z(i, :), '-o');
-		view(0, 0);
+		plot3(h, x(i, :), y(i, :), z(i, :), '-o');
+		view(h, 0, 0);
 
-		xlim(dd(1, :));
-		ylim(dd(2, :));
-		zlim(dd(3, :));
+		xlim(h, dd(1, :));
+		ylim(h, dd(2, :));
+		zlim(h, dd(3, :));
 
-		title(['t = ', sprintf('%.02f', nt(i))]);
+		title(h, ['t = ', sprintf('%.02f', nt(i))]);
 		drawnow;
 
-		pause(dt);
+		pause(dt / multiplier);
 
 		if animation_state == 1
 			break
@@ -75,7 +120,7 @@ function plotcdn(output)
 end
 
 function animation_key(f, ev)
-	global animation_state
+	global animation_state multiplier
 
 	if strcmp(ev.Key, 'escape')
 		animation_state = 1;
@@ -87,5 +132,9 @@ function animation_key(f, ev)
 		end
 	elseif strcmp(ev.Key, 'r')
 		animation_state = 3;
+	elseif strcmp(ev.Key, 'rightarrow')
+		multiplier = multiplier * 1.5;
+	elseif strcmp(ev.Key, 'leftarrow')
+		multiplier = multiplier / 1.5;
 	end
 end
