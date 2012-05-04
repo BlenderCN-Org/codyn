@@ -591,15 +591,14 @@ solve_system (CdnOperatorLinsolve *self,
 }
 
 static gboolean
-cdn_operator_linsolve_initialize (CdnOperator        *op,
-                                  GSList const      **expressions,
-                                  gint                num_expressions,
-                                  GSList const      **indices,
-                                  gint                num_indices,
-                                  gint                num_arguments,
-                                  gint               *argdim,
-                                  CdnCompileContext  *context,
-                                  GError            **error)
+cdn_operator_linsolve_initialize (CdnOperator         *op,
+                                  GSList const       **expressions,
+                                  gint                 num_expressions,
+                                  GSList const       **indices,
+                                  gint                 num_indices,
+                                  CdnStackArgs const  *argdim,
+                                  CdnCompileContext   *context,
+                                  GError             **error)
 {
 	CdnOperatorLinsolve *linsolve;
 	GSList *funcs;
@@ -610,7 +609,6 @@ cdn_operator_linsolve_initialize (CdnOperator        *op,
 	                                                                          num_expressions,
 	                                                                          indices,
 	                                                                          num_indices,
-	                                                                          num_arguments,
 	                                                                          argdim,
 	                                                                          context,
 	                                                                          error))
@@ -725,7 +723,6 @@ cdn_operator_linsolve_copy (CdnOperator *op)
 	                                                                     cdn_operator_num_expressions (op),
 	                                                                     cdn_operator_all_indices (op),
 	                                                                     cdn_operator_num_indices (op),
-	                                                                     cdn_operator_get_num_arguments (op),
 	                                                                     cdn_operator_get_arguments_dimension (op),
 	                                                                     NULL,
 	                                                                     NULL);

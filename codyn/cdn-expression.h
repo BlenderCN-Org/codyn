@@ -28,6 +28,7 @@
 #include <codyn/cdn-compile-context.h>
 #include <codyn/cdn-utils.h>
 #include <codyn/cdn-forward-decl.h>
+#include <codyn/cdn-stack.h>
 
 G_BEGIN_DECLS
 
@@ -88,8 +89,7 @@ gboolean       cdn_expression_compile          (CdnExpression      *expression,
 gdouble        cdn_expression_evaluate         (CdnExpression      *expression);
 
 gdouble const *cdn_expression_evaluate_values  (CdnExpression      *expression,
-                                                gint               *numr,
-                                                gint               *numc);
+                                                CdnDimension       *dim);
 
 gdouble const *cdn_expression_evaluate_values_flat (CdnExpression      *expression,
                                                     gint               *num);
@@ -99,20 +99,17 @@ void           cdn_expression_set_value        (CdnExpression      *expression,
 
 void           cdn_expression_set_values       (CdnExpression      *expression,
                                                 gdouble const      *values,
-                                                gint                numr,
-                                                gint                numc);
+                                                CdnDimension const *dim);
 
 void           cdn_expression_set_values_flat  (CdnExpression      *expression,
                                                 gdouble const      *values,
                                                 gint                numvals,
-                                                gint                numr,
-                                                gint                numc);
+                                                CdnDimension const *dim);
 
 gboolean       cdn_expression_is_cached        (CdnExpression      *expression);
 
 gdouble       *cdn_expression_get_cache        (CdnExpression      *expression,
-                                                gint               *numr,
-                                                gint               *numc);
+                                                CdnDimension       *dim);
 
 void           cdn_expression_reset            (CdnExpression      *expression);
 
@@ -147,8 +144,7 @@ gint           cdn_expression_get_error_at     (CdnExpression      *expression);
 gint           cdn_expression_get_error_start  (CdnExpression      *expression);
 
 gboolean       cdn_expression_get_dimension    (CdnExpression      *expression,
-                                                gint               *numr,
-                                                gint               *numc);
+                                                CdnDimension       *dimension);
 
 void           cdn_expression_set_cache_notify (CdnExpression            *expression,
                                                 CdnExpressionCacheNotify  notify,

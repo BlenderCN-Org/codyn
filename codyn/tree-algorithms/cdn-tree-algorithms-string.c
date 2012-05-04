@@ -399,30 +399,28 @@ matrix_to_string (CdnInstructionMatrix *inst,
                   gboolean              dbg)
 {
 	CdnStackManipulation const *smanip;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gint i = 0;
 	gint accumnumc = 0;
 
 	g_string_append_c (ret, '[');
 
 	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (inst), NULL);
-	cdn_stack_manipulation_get_push_dimension (smanip, 0, &numr, &numc);
+	dim = smanip->push.dimension;
 
 	while (*children)
 	{
-		gint cnumr;
-		gint cnumc;
+		CdnDimension cdim;
 
-		cdn_stack_manipulation_get_pop_dimension (smanip, i, &cnumr, &cnumc);
+		cdim = smanip->pop.args[i].dimension;
 
 		g_string_append (ret, *children);
-		accumnumc += cnumc;
+		accumnumc += cdim.columns;
 
 		++i;
 		++children;
 
-		if (accumnumc == numc)
+		if (accumnumc == dim.columns)
 		{
 			if (*children)
 			{

@@ -746,23 +746,20 @@ cdn_variable_set_value (CdnVariable  *variable,
  * cdn_variable_set_values: (skip):
  * @variable: the #CdnVariable
  * @values: the new value
- * @numr: the number of rows
- * @numc: the number of columns
+ * @dim: the dimension
  *
  * Change the value to a specific number.
  *
  **/
 void
-cdn_variable_set_values (CdnVariable   *variable,
-                         gdouble const *values,
-                         gint           numr,
-                         gint           numc)
+cdn_variable_set_values (CdnVariable        *variable,
+                         gdouble const      *values,
+                         CdnDimension const *dim)
 {
 	/* Omit type check to increase speed */
 	cdn_expression_set_values (variable->priv->expression,
 	                           values,
-	                           numr,
-	                           numc);
+	                           dim);
 }
 
 /**
@@ -770,26 +767,23 @@ cdn_variable_set_values (CdnVariable   *variable,
  * @variable: the #CdnVariable
  * @values: (array length=numvals): the new value
  * @numvals: the length of @values
- * @numr: the number of rows
- * @numc: the number of colums
+ * @dim: the dimension
  *
  * Change variable value.
  *
  **/
 void
-cdn_variable_set_values_flat (CdnVariable   *variable,
-                              gdouble const *values,
-                              gint           numvals,
-                              gint           numr,
-                              gint           numc)
+cdn_variable_set_values_flat (CdnVariable        *variable,
+                              gdouble const      *values,
+                              gint                numvals,
+                              CdnDimension const *dim)
 {
-	g_return_if_fail (numr * numc == numvals);
+	g_return_if_fail (cdn_dimension_size (dim) == numvals);
 
 	/* Omit type check to increase speed */
 	cdn_expression_set_values (variable->priv->expression,
 	                           values,
-	                           numr,
-	                           numc);
+	                           dim);
 }
 
 /**
@@ -834,8 +828,7 @@ cdn_variable_get_value (CdnVariable *variable)
 /**
  * cdn_variable_get_values: (skip)
  * @variable: a #CdnVariable.
- * @numr: return value for the number of rows.
- * @numc: return value for the number of columns.
+ * @dim: (out): return value for the dimension
  *
  * Get the value of the variable.
  *
@@ -843,9 +836,8 @@ cdn_variable_get_value (CdnVariable *variable)
  *
  **/
 gdouble const *
-cdn_variable_get_values (CdnVariable *variable,
-                         gint        *numr,
-                         gint        *numc)
+cdn_variable_get_values (CdnVariable  *variable,
+                         CdnDimension *dim)
 {
 	gdouble const *ret = NULL;
 
@@ -856,8 +848,7 @@ cdn_variable_get_values (CdnVariable *variable,
 			variable->priv->in_constraint = TRUE;
 
 			ret = cdn_expression_evaluate_values (variable->priv->constraint,
-			                                      numr,
-			                                      numc);
+			                                      dim);
 
 			variable->priv->in_constraint = FALSE;
 		}
@@ -874,20 +865,15 @@ cdn_variable_get_values (CdnVariable *variable,
 			}
 
 			ret = cdn_expression_evaluate_values (variable->priv->expression,
-			                                      numr,
-			                                      numc);
+			                                      dim);
 		}
 	}
 	else
 	{
-		if (numr)
+		if (dim)
 		{
-			*numr = 0;
-		}
-
-		if (numc)
-		{
-			*numc = 0;
+			dim->rows = 0;
+			dim->columns = 0;
 		}
 	}
 
@@ -910,17 +896,16 @@ gdouble const *
 cdn_variable_get_values_flat (CdnVariable *variable,
                               gint        *num)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gdouble const *ret;
 
 	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
 
-	ret = cdn_variable_get_values (variable, &numr, &numc);
+	ret = cdn_variable_get_values (variable, &dim);
 
 	if (num)
 	{
-		*num = numr * numc;
+		*num = cdn_dimension_size (&dim);
 	}
 
 	return ret;
@@ -929,35 +914,28 @@ cdn_variable_get_values_flat (CdnVariable *variable,
 /**
  * cdn_variable_get_dimension:
  * @variable: a #CdnVariable.
- * @numr: (out): the number of rows.
- * @numc: (out): the number of columns.
+ * @dim: (out): the number of dimensions.
  *
  * Get the dimension of the variable value.
  *
  **/
 void
-cdn_variable_get_dimension (CdnVariable *variable,
-                            gint        *numr,
-                            gint        *numc)
+cdn_variable_get_dimension (CdnVariable  *variable,
+                            CdnDimension *dim)
 {
 	g_return_if_fail (CDN_IS_VARIABLE (variable));
 
 	if (variable->priv->expression)
 	{
 		cdn_expression_get_dimension (variable->priv->expression,
-		                              numr,
-		                              numc);
+		                              dim);
 	}
 	else
 	{
-		if (numr)
+		if (dim)
 		{
-			*numr = 0;
-		}
-
-		if (numc)
-		{
-			*numc = 0;
+			dim->rows = 0;
+			dim->columns = 0;
 		}
 	}
 }
@@ -1242,55 +1220,54 @@ void
 cdn_variable_set_update (CdnVariable   *variable,
                          gdouble const *values)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 
 	cdn_expression_get_dimension (variable->priv->expression,
-	                              &numr,
-	                              &numc);
+	                              &dim);
 
 	/* Omit type check to increase speed */
-	memcpy (variable->priv->update, values, sizeof (gdouble) * numr * numc);
+	memcpy (variable->priv->update,
+	        values,
+	        sizeof (gdouble) * cdn_dimension_size (&dim));
 }
 
 void
 cdn_variable_clear_update (CdnVariable *variable)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 
-	cdn_expression_get_dimension (variable->priv->expression, &numr, &numc);
+	cdn_expression_get_dimension (variable->priv->expression, &dim);
 
-	memset (variable->priv->update, 0, sizeof (gdouble) * numr * numc);
+	memset (variable->priv->update,
+	        0,
+	        sizeof (gdouble) * cdn_dimension_size (&dim));
 }
 
 void
-cdn_variable_set_update_value (CdnVariable *variable,
-                               gdouble      value,
-                               gint         numr,
-                               gint         numc)
+cdn_variable_set_update_value (CdnVariable        *variable,
+                               gdouble             value,
+                               CdnDimension const *dim)
 {
-	if (numc < 0)
+	if (dim->columns < 0)
 	{
-		variable->priv->update[numr] = value;
+		variable->priv->update[dim->rows] = value;
 	}
 	else
 	{
-		gint enumr;
-		gint enumc;
+		CdnDimension edim;
 
 		cdn_expression_get_dimension (variable->priv->expression,
-		                              &enumr,
-		                              &enumc);
+		                              &edim);
 
-		variable->priv->update[numr * enumc + numc] = value;
+		variable->priv->update[dim->rows * edim.columns + dim->columns] = value;
 	}
 }
 
 /**
  * cdn_variable_get_update:
  * @variable: A #CdnVariable
- * 
+ * @dim: (out): return value for the dimension
+ *
  * Get the update value of a variable. The update value is used to store the
  * result of differential equations on the variable. You normally do not need
  * to use this function.
@@ -1299,12 +1276,11 @@ cdn_variable_set_update_value (CdnVariable *variable,
  *
  **/
 gdouble *
-cdn_variable_get_update (CdnVariable *variable,
-                         gint        *numr,
-                         gint        *numc)
+cdn_variable_get_update (CdnVariable  *variable,
+                         CdnDimension *dim)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_get_dimension (variable->priv->expression, numr, numc);
+	cdn_expression_get_dimension (variable->priv->expression, dim);
 	return variable->priv->update;
 }
 
@@ -1590,16 +1566,15 @@ cdn_variable_copy (CdnVariable *variable)
 
 	if (variable->priv->update)
 	{
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
 		if (cdn_expression_get_dimension (variable->priv->expression,
-		                                  &numr,
-		                                  &numc))
+		                                  &dim))
 		{
-			gint num = numr * numc;
+			gint num = cdn_dimension_size (&dim);
 
 			ret->priv->update = g_new0 (gdouble, num);
+
 			memcpy (ret->priv->update,
 			        variable->priv->update,
 			        sizeof (gdouble) * num);
@@ -1772,15 +1747,13 @@ cdn_variable_compile (CdnVariable       *variable,
 
 	if (ret)
 	{
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
 		cdn_expression_get_dimension (variable->priv->expression,
-		                              &numr,
-		                              &numc);
+		                              &dim);
 
 		g_free (variable->priv->update);
-		variable->priv->update = g_new0 (gdouble, numr * numc);
+		variable->priv->update = g_new0 (gdouble, cdn_dimension_size (&dim));
 	}
 
 	return ret;

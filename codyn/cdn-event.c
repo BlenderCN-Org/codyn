@@ -292,8 +292,7 @@ extract_condition_parts (CdnEvent        *event,
 	ret = g_slist_prepend (ret,
 	                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS,
 	                                                     "-",
-	                                                     2,
-	                                                     smanip->pop_dims));
+	                                                     &smanip->pop));
 
 	ret = g_slist_reverse (ret);
 	cdn_expression_set_instructions_take (event->priv->condition, ret);
@@ -597,13 +596,11 @@ static void
 execute_set_property (CdnEvent    *event,
                       SetProperty *p)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gdouble const *values;
 
-	values = cdn_expression_evaluate_values (p->value, &numr, &numc);
-
-	cdn_variable_set_values (p->property, values, numr, numc);
+	values = cdn_expression_evaluate_values (p->value, &dim);
+	cdn_variable_set_values (p->property, values, &dim);
 }
 
 void

@@ -80,8 +80,7 @@ struct _CdnOperatorClass
 	                                gint           num_expressions,
 	                                GSList const **indices,
 	                                gint           num_indices,
-	                                gint           num_arguments,
-	                                gint          *argdim,
+	                                CdnStackArgs const *argdim,
 	                                CdnCompileContext *context,
 	                                GError       **error);
 
@@ -120,8 +119,7 @@ gboolean             cdn_operator_initialize                  (CdnOperator     *
                                                                gint             num_expressions,
                                                                GSList const   **indices,
                                                                gint             num_indices,
-                                                               gint             num_arguments,
-                                                               gint            *argdim,
+                                                               CdnStackArgs const *argdim,
                                                                CdnCompileContext *context,
                                                                GError         **error);
 
@@ -156,12 +154,10 @@ void                 cdn_operator_reset                       (CdnOperator     *
 void                 cdn_operator_step                        (CdnOperator     *op,
                                                                gdouble          t,
                                                                gdouble          timestep);
-gint                 cdn_operator_get_num_arguments           (CdnOperator     *op);
-gint                *cdn_operator_get_arguments_dimension     (CdnOperator     *op);
+CdnStackArgs const  *cdn_operator_get_arguments_dimension     (CdnOperator     *op);
 
-void                _cdn_operator_set_num_arguments           (CdnOperator     *op,
-                                                               gint             num,
-                                                               gint            *argdim);
+void                _cdn_operator_set_arguments_dimension     (CdnOperator     *op,
+                                                               CdnStackArgs const *argdim);
 
 CdnFunction         *cdn_operator_get_primary_function        (CdnOperator     *op);
 

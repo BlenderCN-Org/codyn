@@ -66,7 +66,7 @@ struct _CdnExpressionPrivate
 	GSList *rand_instructions;
 
 	CdnStack output;
-	gint retdims[2];
+	CdnStackArg retdim;
 
 	GSList *depends_on;
 	GSList *depends_on_me;
@@ -77,7 +77,7 @@ struct _CdnExpressionPrivate
 		gdouble *cached_output_multi;
 	};
 
-	gint cached_dims[2];
+	CdnDimension cached_dim;
 
 	gint error_at;
 	GSList *error_start;
@@ -279,14 +279,15 @@ reset_depending_cache (CdnExpression *expression,
 		// expression
 		if (dimschanged && !dep->priv->prevent_cache_reset)
 		{
-			gint oldr = dep->priv->retdims[0];
-			gint oldc = dep->priv->retdims[1];
+			CdnDimension olddim;
+
+			olddim = dep->priv->retdim.dimension;
 
 			// We need to revalidate our stack here
 			validate_stack (dep, NULL, TRUE);
 
-			realchanged = (dep->priv->retdims[0] != oldr ||
-			               dep->priv->retdims[1] != oldc);
+			realchanged = !cdn_dimension_equal (&olddim,
+			                                    &dep->priv->retdim.dimension);
 		}
 
 		reset_cache (dep, realchanged);
@@ -300,23 +301,21 @@ reset_depending_cache (CdnExpression *expression,
 }
 
 static void
-set_values (CdnExpression *expression,
-            gdouble const *values,
-            gint           numr,
-            gint           numc)
+set_values (CdnExpression       *expression,
+            gdouble       const *values,
+            CdnDimension  const *dimension)
 {
 	gint cursize;
 	gint newsize;
-	gint oldr = 0;
-	gint oldc = 0;
+	CdnDimension olddim;
 	gboolean dimschanged;
 
-	cdn_expression_get_dimension (expression, &oldr, &oldc);
+	cdn_expression_get_dimension (expression, &olddim);
 
 	expression->priv->cached = TRUE;
 
-	cursize = expression->priv->cached_dims[0] * expression->priv->cached_dims[1];
-	newsize = numr * numc;
+	cursize = cdn_dimension_size (&expression->priv->cached_dim);
+	newsize = cdn_dimension_size (dimension);
 
 	if (newsize == 1)
 	{
@@ -359,10 +358,9 @@ set_values (CdnExpression *expression,
 		}
 	}
 
-	expression->priv->cached_dims[0] = numr;
-	expression->priv->cached_dims[1] = numc;
+	expression->priv->cached_dim = *dimension;
 
-	dimschanged = (numr != oldr || numc != oldc);
+	dimschanged = !cdn_dimension_equal (&olddim, dimension);
 
 	if (expression->priv->has_cache || dimschanged)
 	{
@@ -412,10 +410,8 @@ set_has_cache (CdnExpression *expression,
 		gboolean dimschanged;
 
 		dimschanged = expression->priv->cached &&
-		              (expression->priv->cached_dims[0] !=
-		               expression->priv->retdims[0] ||
-		               expression->priv->cached_dims[1] !=
-		               expression->priv->retdims[1]);
+		              !cdn_dimension_equal (&expression->priv->cached_dim,
+		                                    &expression->priv->retdim.dimension);
 
 		expression->priv->cached = FALSE;
 
@@ -443,7 +439,7 @@ cdn_expression_set_property (GObject      *object,
 		{
 			gdouble v = g_value_get_double (value);
 
-			set_values (self, &v, 1, 1);
+			set_values (self, &v, cdn_dimension_onep);
 			self->priv->prevent_cache_reset = TRUE;
 		}
 		break;
@@ -538,9 +534,6 @@ cdn_expression_init (CdnExpression *self)
 	self->priv->has_cache = TRUE;
 
 	cdn_stack_init (&(self->priv->output), 0);
-
-	self->priv->cached_dims[0] = 0;
-	self->priv->cached_dims[1] = 0;
 }
 
 /**
@@ -751,7 +744,7 @@ instructions_push (CdnExpression  *expression,
 			return FALSE;
 		}
 
-		consume = smanip->num_pop;
+		consume = smanip->pop.num;
 
 		ret = g_slist_prepend (NULL, next);
 
@@ -1125,18 +1118,18 @@ recurse_compile (CdnExpression *expression,
 	return TRUE;
 }
 
-static gint *
+static void
 get_argdim (CdnExpression *expression,
             ParserContext *context,
-            gint           numargs)
+            gint           numargs,
+            CdnStackArgs  *args)
 {
-	gint *ret = NULL;
 	GSList *stack;
 	gint i;
 
 	stack = context->stack;
 
-	ret = g_new (gint, numargs * 2);
+	cdn_stack_args_init (args, numargs);
 
 	for (i = 0; i < numargs; ++i)
 	{
@@ -1145,13 +1138,10 @@ get_argdim (CdnExpression *expression,
 
 		manip = cdn_instruction_get_stack_manipulation (instr, NULL);
 
-		ret[i * 2] = manip->push_dims ? manip->push_dims[0] : 1;
-		ret[i * 2 + 1] = manip->push_dims ? manip->push_dims[1] : 1;
+		cdn_stack_arg_copy (&args->args[i], &manip->push);
 
 		stack = g_slist_next (stack);
 	}
-
-	return ret;
 }
 
 static void
@@ -1180,33 +1170,33 @@ swap_arguments (CdnExpression *expression,
 }
 
 static GSList *
-make_zeros (gint numr,
-            gint numc)
+make_zeros (CdnDimension const *dimension)
 {
-	gint n = numr * numc;
+	gint n;
 	GSList *ret = NULL;
+
+	n = cdn_dimension_size (dimension);
 
 	if (n != 1)
 	{
-		gint *dims;
+		CdnStackArgs args;
 		gint i;
 
-		dims = g_new0 (gint, n * 2);
+		cdn_stack_args_init (&args, n);
 
 		for (i = 0; i < n; ++i)
 		{
-			dims[i * 2] = 1;
-			dims[i * 2 + 1] = 1;
+			args.args[i].rows = 1;
+			args.args[i].columns = 1;
+
+			cdn_stack_arg_set_sparsity_one (&args.args[i], 0);
 
 			ret = g_slist_prepend (ret,
 			                       cdn_instruction_number_new_from_string ("0"));
 		}
 
 		ret = g_slist_prepend (ret,
-		                       cdn_instruction_matrix_new (n,
-		                                                   dims,
-		                                                   numr,
-		                                                   numc));
+		                       cdn_instruction_matrix_new (&args, dimension));
 	}
 	else
 	{
@@ -1223,8 +1213,7 @@ zeros_macro (CdnExpression *expression,
 {
 	GSList *second = NULL;
 	GSList *first = NULL;
-	gint numr;
-	gint numc;
+	CdnDimension dimension;
 	GSList *ptr;
 
 	if (context->stack)
@@ -1250,8 +1239,8 @@ zeros_macro (CdnExpression *expression,
 		return NULL;
 	}
 
-	numr = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (first->data)));
-	numc = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (second->data)));
+	dimension.rows = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (first->data)));
+	dimension.columns = (gint)rint (cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (second->data)));
 
 	instructions_pop (expression);
 	instructions_pop (expression);
@@ -1265,7 +1254,7 @@ zeros_macro (CdnExpression *expression,
 	context->stack = g_slist_delete_link (context->stack,
 	                                      context->stack);
 
-	ptr = make_zeros (numr, numc);
+	ptr = make_zeros (&dimension);
 
 	while (ptr)
 	{
@@ -1327,10 +1316,14 @@ eye_macro (CdnExpression *expression,
 	if (num != 1)
 	{
 		gint r;
-		gint *dims;
 		gint i = 0;
+		CdnStackArgs args;
+		CdnDimension dim;
 
-		dims = g_new0 (gint, num * num * 2);
+		cdn_stack_args_init (&args, num * num);
+
+		dim.rows = num;
+		dim.columns = num;
 
 		for (r = 0; r < num; ++r)
 		{
@@ -1346,17 +1339,19 @@ eye_macro (CdnExpression *expression,
 				                   cdn_instruction_number_new_from_string (s),
 				                   context);
 
-				dims[i] = 1;
-				dims[i + 1] = 1;
+				args.args[i].dimension = cdn_dimension_one;
 
-				i += 2;
+				if (c != r)
+				{
+					cdn_stack_arg_set_sparsity_one (&args.args[i], 0);
+				}
+
+				++i;
 			}
 		}
 
-		return cdn_instruction_matrix_new (num * num,
-		                                   dims,
-		                                   num,
-		                                   num);
+		return cdn_instruction_matrix_new (&args,
+		                                   &dim);
 	}
 	else
 	{
@@ -1370,7 +1365,7 @@ length_macro (CdnExpression *expression,
 {
 	GSList *first = NULL;
 	gchar *s;
-	gint *argdim;
+	CdnStackArgs args;
 	CdnInstruction *ret;
 
 	if (context->stack)
@@ -1388,7 +1383,7 @@ length_macro (CdnExpression *expression,
 		return NULL;
 	}
 
-	argdim = get_argdim (expression, context, 1);
+	get_argdim (expression, context, 1, &args);
 
 	while (first)
 	{
@@ -1399,10 +1394,9 @@ length_macro (CdnExpression *expression,
 	context->stack = g_slist_delete_link (context->stack,
 	                                      context->stack);
 
-	s = g_strdup_printf ("%d", argdim[0] * argdim[1]);
+	s = g_strdup_printf ("%d", cdn_dimension_size (&args.args[0].dimension));
 
-	g_free (argdim);
-
+	cdn_stack_args_destroy (&args);
 	ret = cdn_instruction_number_new_from_string (s);
 	g_free (s);
 
@@ -1416,8 +1410,9 @@ size_macro (CdnExpression *expression,
 	GSList *first = NULL;
 	gchar *sr;
 	gchar *sc;
-	gint *argdim;
-	gint *dims;
+	CdnStackArgs args;
+	CdnStackArg nargs[2];
+	CdnDimension dim;
 
 	if (context->stack)
 	{
@@ -1434,7 +1429,7 @@ size_macro (CdnExpression *expression,
 		return NULL;
 	}
 
-	argdim = get_argdim (expression, context, 1);
+	get_argdim (expression, context, 1, &args);
 
 	while (first)
 	{
@@ -1445,10 +1440,8 @@ size_macro (CdnExpression *expression,
 	context->stack = g_slist_delete_link (context->stack,
 	                                      context->stack);
 
-	sr = g_strdup_printf ("%d", argdim[0]);
-	sc = g_strdup_printf ("%d", argdim[1]);
-
-	g_free (argdim);
+	sr = g_strdup_printf ("%d", args.args[0].rows);
+	sc = g_strdup_printf ("%d", args.args[0].columns);
 
 	instructions_push (expression,
 	                   cdn_instruction_number_new_from_string (sr),
@@ -1461,17 +1454,18 @@ size_macro (CdnExpression *expression,
 	g_free (sr);
 	g_free (sc);
 
-	dims = g_new (gint, 4);
+	cdn_stack_args_destroy (&args);
 
-	dims[0] = 1;
-	dims[1] = 1;
-	dims[2] = 1;
-	dims[3] = 1;
+	args.num = 2;
+	args.args = nargs;
 
-	return cdn_instruction_matrix_new (2,
-	                                   dims,
-	                                   1,
-	                                   2);
+	args.args[0].dimension = cdn_dimension_one;
+	args.args[1].dimension = cdn_dimension_one;
+
+	dim.rows = 1;
+	dim.columns = 2;
+
+	return cdn_instruction_matrix_new (&args, &dim);
 }
 
 static void
@@ -1546,6 +1540,7 @@ wrap_dotted (CdnExpression  *expression,
 	gchar *orders;
 	GError *err = NULL;
 	gboolean ret;
+	CdnStackArgs nargs = {0,};
 
 	// Create new expression from stack
 	if (!context->stack->data)
@@ -1573,8 +1568,7 @@ wrap_dotted (CdnExpression  *expression,
 	                                1,
 	                                NULL,
 	                                0,
-	                                0,
-	                                NULL,
+	                                &nargs,
 	                                context->context,
 	                                &err);
 
@@ -1599,11 +1593,10 @@ wrap_dotted (CdnExpression  *expression,
 }
 
 static void
-replace_arg_with_zeros (CdnExpression *expression,
-                        ParserContext *context,
-                        gint           i,
-                        gint           numr,
-                        gint           numc)
+replace_arg_with_zeros (CdnExpression      *expression,
+                        ParserContext      *context,
+                        gint                i,
+                        CdnDimension const *dimension)
 {
 	GSList *instrptr;
 	GSList *stackptr;
@@ -1632,7 +1625,7 @@ replace_arg_with_zeros (CdnExpression *expression,
 	num = g_slist_length (stackptr->data);
 
 	g_slist_free (stackptr->data);
-	stackptr->data = make_zeros (numr, numc);
+	stackptr->data = make_zeros (dimension);
 
 	for (i = 0; i < num; ++i)
 	{
@@ -1909,16 +1902,16 @@ parse_function (CdnExpression *expression,
 	{
 		if (isrand)
 		{
-			gint *argdim;
+			CdnStackArgs args;
 
-			argdim = get_argdim (expression, context, numargs);
+			get_argdim (expression, context, numargs, &args);
 
-			instruction = cdn_instruction_rand_new (numargs, argdim);
-			g_free (argdim);
+			instruction = cdn_instruction_rand_new (&args);
+			cdn_stack_args_destroy (&args);
 		}
 		else
 		{
-			gint *argdim;
+			CdnStackArgs args;
 
 			if (fid == CDN_MATH_FUNCTION_TYPE_LINSOLVE)
 			{
@@ -1961,34 +1954,32 @@ parse_function (CdnExpression *expression,
 				break;
 				break;
 				default:
-					argdim = get_argdim (expression,
-					                     context,
-					                     numargs);
+					get_argdim (expression,
+					            context,
+					            numargs,
+					            &args);
 
 					instruction =
 						cdn_instruction_function_new (fid,
 						                              name,
-						                              numargs,
-						                              argdim);
+						                              &args);
 
-					g_free (argdim);
+					cdn_stack_args_destroy (&args);
 				break;
 			}
 		}
 	}
 	else if (ret)
 	{
-		gint *argdim;
+		CdnStackArgs args;
 
-		argdim = get_argdim (expression, context, arguments);
+		get_argdim (expression, context, arguments, &args);
 
 		function = cdn_function_for_dimension (function,
-		                                       arguments,
-		                                       argdim);
+		                                       &args);
 
 		instruction = cdn_instruction_custom_function_new (function,
-		                                                   arguments,
-		                                                   argdim);
+		                                                   &args);
 
 		// Recursively compile the function here
 		ret = recurse_compile (expression, context, function);
@@ -2006,8 +1997,7 @@ parse_function (CdnExpression *expression,
 					replace_arg_with_zeros (expression,
 					                        context,
 					                        i,
-					                        argdim ? argdim[i * 2] : 1,
-					                        argdim ? argdim[i * 2 + 1] : 1);
+					                        &args.args[i].dimension);
 				}
 
 				--i;
@@ -2015,7 +2005,7 @@ parse_function (CdnExpression *expression,
 		}
 
 		g_object_unref (function);
-		g_free (argdim);
+		cdn_stack_args_destroy (&args);
 	}
 
 	if (instruction)
@@ -2077,8 +2067,7 @@ static gboolean
 parse_matrix_row (CdnExpression *expression,
                   ParserContext *context,
                   gboolean      *isend,
-                  gint          *numr,
-                  gint          *numc,
+                  CdnDimension  *dimension,
                   gint          *numpop)
 {
 	*isend = FALSE;
@@ -2101,32 +2090,27 @@ parse_matrix_row (CdnExpression *expression,
 	}
 
 	*numpop = 0;
-	*numr = 0;
-	*numc = 0;
+	dimension->rows = 0;
+	dimension->columns = 0;
 
 	while (TRUE)
 	{
-		gint *argdim;
+		CdnStackArgs args;
 
-		if (*numr > 1 && *numpop > 1)
+		if (dimension->rows > 1 && *numpop > 1)
 		{
 			// Here we will need to concat the rows with a concat
 			// operation, so we will insert a matrix operation here
 			// if needed
-			gint *popdims;
+			get_argdim (expression, context, *numpop, &args);
 
-			popdims = get_argdim (expression, context, *numpop);
-
-			// Note that the popdims memory is consumed by the
-			// matrix instruction and does not need to be freed
 			instructions_push (expression,
-			                   cdn_instruction_matrix_new (*numpop,
-			                                               popdims,
-			                                               *numr,
-			                                               *numc),
+			                   cdn_instruction_matrix_new (&args,
+			                                               dimension),
 			                   context);
 
 			*numpop = 1;
+			cdn_stack_args_destroy (&args);
 		}
 
 		if (!parse_expression (expression, context, -1, 0))
@@ -2134,25 +2118,36 @@ parse_matrix_row (CdnExpression *expression,
 			return FALSE;
 		}
 
-		argdim = get_argdim (expression, context, 1);
+		get_argdim (expression, context, 1, &args);
 		++*numpop;
 
 		// Check argument consistency
-		if (*numr != 0)
+		if (dimension->rows != 0)
 		{
-			if (*numr != argdim[0])
+			if (dimension->rows != args.args[0].rows)
 			{
 				parser_failed (expression,
 				               context,
 				               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 				               "Cannot concatenate %d row%s with %d row%s",
-				               *numr, *numr > 1 ? "s" : "", argdim[0], argdim[0] > 1 ? "s" : "");
+				               dimension->rows,
+				               dimension->rows > 1 ? "s" : "",
+				               args.args[0].rows,
+				               args.args[0].rows > 1 ? "s" : "");
 
+				cdn_stack_args_destroy (&args);
 				return FALSE;
 			}
-			else if (*numr != 1)
+			else if (dimension->rows != 1)
 			{
-				gint dims[4] = {*numr, *numc, argdim[0], argdim[1]};
+				CdnStackArgs nargs;
+				CdnStackArg ar[2];
+
+				nargs.args = ar;
+				nargs.num = 2;
+
+				ar[0].dimension = *dimension;
+				ar[1].dimension = args.args[0].dimension;
 
 				// Here we have multiple rows concatenated with
 				// multiple rows. We are going to implement this
@@ -2160,22 +2155,20 @@ parse_matrix_row (CdnExpression *expression,
 				instructions_push (expression,
 				                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_HCAT,
 				                                                 "hcat",
-				                                                 2,
-				                                                 dims),
+				                                                 &nargs),
 				                   context);
 
 				*numpop = 1;
 			}
 
-			*numc += argdim[1];
+			dimension->columns += args.args[0].columns;
 		}
 		else
 		{
-			*numr = argdim[0];
-			*numc = argdim[1];
+			*dimension = args.args[0].dimension;
 		}
 
-		g_free (argdim);
+		cdn_stack_args_destroy (&args);
 
 		CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
 
@@ -2214,46 +2207,47 @@ static gboolean
 parse_matrix (CdnExpression *expression,
               ParserContext *context)
 {
-	gint tnumr = 0;
-	gint tnumc = 0;
+	CdnDimension tdim = CDN_DIMENSION (0, 0);
 	gint tnumpop = 0;
-	gint *popdims;
+	CdnStackArgs args;
 
 	while (TRUE)
 	{
 		gboolean isend = TRUE;
-		gint numr = 0;
-		gint numc = 0;
+		CdnDimension dimension = CDN_DIMENSION (0, 0);
 		gint numpop = 0;
 
 		if (!parse_matrix_row (expression,
 		                       context,
 		                       &isend,
-		                       &numr,
-		                       &numc,
+		                       &dimension,
 		                       &numpop))
 		{
 			return FALSE;
 		}
 
-		if (tnumr == 0)
+		if (tdim.rows == 0)
 		{
-			tnumr = numr;
-			tnumc = numc;
+			tdim.rows = dimension.rows;
+			tdim.columns = dimension.columns;
+
 			tnumpop = numpop;
 		}
-		else if (tnumc != numc)
+		else if (tdim.columns != dimension.columns)
 		{
 			return parser_failed (expression,
 			                      context,
 			                      CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 			                      "Cannot concatenate %d column%s with %d column%s",
-			                      tnumc, tnumc > 1 ? "s" : "", numc, numc > 1 ? "s" : "");
+			                      tdim.columns,
+			                      tdim.columns > 1 ? "s" : "",
+			                      dimension.columns,
+			                      dimension.columns > 1 ? "s" : "");
 		}
 		else
 		{
 			tnumpop += numpop;
-			tnumr += numr;
+			tdim.rows += dimension.rows;
 		}
 
 		if (isend)
@@ -2262,16 +2256,16 @@ parse_matrix (CdnExpression *expression,
 		}
 	}
 
-	popdims = get_argdim (expression, context, tnumpop);
+	get_argdim (expression, context, tnumpop, &args);
 
 	// note that popdims memory is consumed by the matrix instruction
 	// and does not need to be freed
 	instructions_push (expression,
-	                   cdn_instruction_matrix_new (tnumpop,
-	                                               popdims,
-	                                               tnumr,
-	                                               tnumc),
+	                   cdn_instruction_matrix_new (&args,
+	                                               &tdim),
 	                   context);
+
+	cdn_stack_args_destroy (&args);
 
 	return TRUE;
 }
@@ -2280,7 +2274,7 @@ static gboolean
 parse_indexing (CdnExpression *expression,
                 ParserContext *context)
 {
-	gint *argdim;
+	CdnStackArgs args;
 	gint numargs = 0;
 	CdnTokenOperatorType type;
 
@@ -2358,16 +2352,15 @@ parse_indexing (CdnExpression *expression,
 
 	swap_arguments_index (expression, context, numargs + 1);
 
-	argdim = get_argdim (expression, context, numargs + 1);
+	get_argdim (expression, context, numargs + 1, &args);
 
 	instructions_push (expression,
 	                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_INDEX,
 	                                                 "index",
-	                                                 numargs + 1,
-	                                                 argdim),
+	                                                 &args),
 	                   context);
 
-	g_free (argdim);
+	cdn_stack_args_destroy (&args);
 
 	cdn_token_free (next);
 
@@ -2452,7 +2445,7 @@ parse_custom_operator (CdnExpression *expression,
 	gint num_inds;
 	gboolean islinsolve;
 	GError *err = NULL;
-	gint *argdim;
+	CdnStackArgs args;
 	gint newnum;
 
 	klass = cdn_operators_find_class (name);
@@ -2707,19 +2700,18 @@ parse_custom_operator (CdnExpression *expression,
 	exprs = convert_2dim_slist (multiexpr, &num_exprs);
 	inds = convert_2dim_slist (indices, &num_inds);
 
-	argdim = get_argdim (expression, context, num_arguments);
+	get_argdim (expression, context, num_arguments, &args);
 
 	op = cdn_operators_instantiate (name,
 	                                (GSList const **)exprs,
 	                                num_exprs,
 	                                (GSList const **)inds,
 	                                num_inds,
-	                                num_arguments,
-	                                argdim,
+	                                &args,
 	                                context->context,
 	                                &err);
 
-	g_free (argdim);
+	cdn_stack_args_destroy (&args);
 
 	if (!op && context->error)
 	{
@@ -2763,7 +2755,7 @@ parse_custom_operator (CdnExpression *expression,
 		{
 			GList *start;
 			gint extra = 0;
-			gint *argdim;
+			CdnStackArgs args;
 			gint i;
 
 			start = (GList *)cdn_function_get_arguments (func);
@@ -2873,11 +2865,11 @@ parse_custom_operator (CdnExpression *expression,
 				}
 			}
 
-			argdim = get_argdim (expression, context, newnum);
+			get_argdim (expression, context, newnum, &args);
 
 			if (newnum > num_arguments)
 			{
-				_cdn_operator_set_num_arguments (op, newnum, argdim);
+				_cdn_operator_set_arguments_dimension (op, &args);
 			}
 
 			start = (GList *)cdn_function_get_arguments (func);
@@ -2890,15 +2882,14 @@ parse_custom_operator (CdnExpression *expression,
 					replace_arg_with_zeros (expression,
 					                        context,
 					                        i,
-					                        argdim ? argdim[i * 2] : 1,
-					                        argdim ? argdim[i * 2 + 1] : 1);
+					                        &args.args[i].dimension);
 				}
 
 				--i;
 				start = g_list_next (start);
 			}
 
-			g_free (argdim);
+			cdn_stack_args_destroy (&args);
 		}
 	}
 
@@ -2923,7 +2914,7 @@ parse_ternary_operator (CdnExpression     *expression,
                         CdnTokenOperator  *token,
                         ParserContext     *context)
 {
-	gint *argdim;
+	CdnStackArgs args;
 
 	if (!parse_expression (expression, context, token->priority, token->left_assoc))
 	{
@@ -2969,16 +2960,15 @@ parse_ternary_operator (CdnExpression     *expression,
 		return FALSE;
 	}
 
-	argdim = get_argdim (expression, context, 3);
+	get_argdim (expression, context, 3, &args);
 
 	instructions_push (expression,
 	                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TERNARY,
 	                                                 "?:",
-	                                                 3,
-	                                                 argdim),
+	                                                 &args),
 	                   context);
 
-	g_free (argdim);
+	cdn_stack_args_destroy (&args);
 
 	return TRUE;
 }
@@ -3022,7 +3012,7 @@ parse_unary_operator (CdnExpression *expression,
 	CdnTokenOperator *op = CDN_TOKEN_OPERATOR (token);
 	gboolean ret = TRUE;
 	CdnInstruction *inst = NULL;
-	gint *argdim = NULL;
+	CdnStackArgs args = {0,};
 
 	// handle group
 	switch (op->type)
@@ -3058,7 +3048,7 @@ parse_unary_operator (CdnExpression *expression,
 		return ret;
 	}
 
-	argdim = get_argdim (expression, context, 1);
+	get_argdim (expression, context, 1, &args);
 
 	switch (op->type)
 	{
@@ -3079,9 +3069,8 @@ parse_unary_operator (CdnExpression *expression,
 			else
 			{
 				inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_UNARY_MINUS,
-				                                     "-",
-				                                     1,
-				                                     argdim);
+				                                     NULL,
+				                                     &args);
 			}
 		}
 		break;
@@ -3090,16 +3079,15 @@ parse_unary_operator (CdnExpression *expression,
 		case CDN_TOKEN_OPERATOR_TYPE_NEGATE:
 		{
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_NEGATE,
-			                                     "!",
-			                                     1,
-			                                     argdim);
+			                                     NULL,
+			                                     &args);
 		}
 		break;
 		default:
 		break;
 	}
 
-	g_free (argdim);
+	cdn_stack_args_destroy (&args);
 
 	if (ret && inst)
 	{
@@ -3120,6 +3108,7 @@ parse_prime (CdnExpression *expression,
 	GSList *item;
 	GError *err = NULL;
 	gboolean ret;
+	CdnStackArgs nargs = {0,};
 
 	instr = context->stack ? context->stack->data : NULL;
 
@@ -3155,8 +3144,7 @@ parse_prime (CdnExpression *expression,
 	                                1,
 	                                NULL,
 	                                0,
-	                                0,
-	                                NULL,
+	                                &nargs,
 	                                context->context,
 	                                &err);
 
@@ -3197,7 +3185,7 @@ parse_transpose (CdnExpression *expression,
 {
 	GSList *instr;
 	gboolean ret;
-	gint *argdim;
+	CdnStackArgs args;
 
 	instr = context->stack ? context->stack->data : NULL;
 
@@ -3211,16 +3199,15 @@ parse_transpose (CdnExpression *expression,
 		return FALSE;
 	}
 
-	argdim = get_argdim (expression, context, 1);
+	get_argdim (expression, context, 1, &args);
 
 	ret = instructions_push (expression,
 	                         cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
 	                                                       "transpose",
-	                                                       1,
-	                                                       argdim),
+	                                                       &args),
 	                         context);
 
-	g_free (argdim);
+	cdn_stack_args_destroy (&args);
 	return ret;
 }
 
@@ -3230,7 +3217,7 @@ parse_square (CdnExpression *expression,
 {
 	GSList *instr;
 	gboolean ret;
-	gint *argdim;
+	CdnStackArgs args;
 
 	instr = context->stack ? context->stack->data : NULL;
 
@@ -3244,29 +3231,24 @@ parse_square (CdnExpression *expression,
 		return FALSE;
 	}
 
-	argdim = get_argdim (expression, context, 1);
-
 	ret = instructions_push (expression,
 	                         cdn_instruction_number_new_from_string ("2"),
 	                         context);
-
-	g_free (argdim);
 
 	if (!ret)
 	{
 		return FALSE;
 	}
 
-	argdim = get_argdim (expression, context, 2);
+	get_argdim (expression, context, 2, &args);
 
 	ret = instructions_push (expression,
 	                         cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER,
 	                                                       "^",
-	                                                       2,
-	                                                       argdim),
+	                                                       &args),
 	                         context);
 
-	g_free (argdim);
+	cdn_stack_args_destroy (&args);
 	return ret;
 }
 
@@ -3276,7 +3258,7 @@ parse_operator (CdnExpression *expression,
                 ParserContext *context)
 {
 	CdnTokenOperator *op = CDN_TOKEN_OPERATOR (token);
-	gint *argdim;
+	CdnStackArgs args;
 
 	// handle ternary
 	if (op->type == CDN_TOKEN_OPERATOR_TYPE_TERNARY_TRUE)
@@ -3326,61 +3308,61 @@ parse_operator (CdnExpression *expression,
 
 	CdnInstruction *inst = NULL;
 
-	argdim = get_argdim (expression, context, 2);
+	get_argdim (expression, context, 2, &args);
 
 	switch (op->type)
 	{
 		// arithmetic
 		case CDN_TOKEN_OPERATOR_TYPE_MULTIPLY:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY, "*", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY, "*", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_DIVIDE:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE, "/", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE, "/", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_MODULO:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MODULO, "%", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MODULO, "%", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_PLUS:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS, "+", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS, "+", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_MINUS:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS, "-", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS, "-", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_POWER:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER, "^", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_POWER, "^", &args);
 		break;
 		// logical
 		case CDN_TOKEN_OPERATOR_TYPE_GREATER:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_GREATER, ">", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_GREATER, ">", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_LESS:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LESS, "<", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LESS, "<", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_GREATER_OR_EQUAL:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL, ">=", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL, ">=", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_LESS_OR_EQUAL:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL, "<=", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL, "<=", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_EQUAL:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_EQUAL, "==", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_EQUAL, "==", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_NEQUAL:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_NEQUAL, "!=", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_NEQUAL, "!=", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_OR:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_OR, "||", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_OR, "||", &args);
 		break;
 		case CDN_TOKEN_OPERATOR_TYPE_AND:
-			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_AND, "&&", 2, argdim);
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_AND, "&&", &args);
 		break;
 		default:
-			g_free (argdim);
+			cdn_stack_args_destroy (&args);
 			return FALSE;
 		break;
 	}
 
-	g_free (argdim);
+	cdn_stack_args_destroy (&args);
 	return instructions_push (expression, inst, context);
 }
 
@@ -3732,29 +3714,12 @@ calculate_stack_manipulation (CdnStackManipulation const *smanip,
 	gint ret = 0;
 	gint i;
 
-	if (smanip->pop_dims)
+	for (i = 0; i < smanip->pop.num; ++i)
 	{
-		for (i = 0; i < smanip->num_pop; ++i)
-		{
-			ret -= smanip->pop_dims[i * 2] * smanip->pop_dims[i * 2 + 1];
-		}
-	}
-	else
-	{
-		ret -= smanip->num_pop;
+		ret -= cdn_dimension_size (&smanip->pop.args[i].dimension);
 	}
 
-	if (smanip->push_dims)
-	{
-		for (i = 0; i < smanip->num_push; ++i)
-		{
-			ret += smanip->push_dims[i * 2] * smanip->push_dims[i * 2 + 1];
-		}
-	}
-	else
-	{
-		ret += smanip->num_push;
-	}
+	ret += cdn_dimension_size (&smanip->push.dimension);
 
 	*tmpspace = smanip->extra_space;
 	return ret;
@@ -3770,8 +3735,7 @@ validate_stack (CdnExpression *expression,
 	GSList *item;
 	gint stack = 0;
 	gint maxstack = 1;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gint tmpspace = 0;
 
 	if (!dimonly)
@@ -3788,8 +3752,7 @@ validate_stack (CdnExpression *expression,
 		}
 	}
 
-	numr = expression->priv->retdims[0];
-	numc = expression->priv->retdims[1];
+	dim = expression->priv->retdim.dimension;
 
 #ifdef PRINT_STACK
 	g_message ("\n\nValidating stack for: %s", expression->priv->expression);
@@ -3886,16 +3849,7 @@ validate_stack (CdnExpression *expression,
 		g_message ("Stack size is now: %d (+%d)", stack, tmpspace + nst);
 #endif
 
-		if (smanip->push_dims)
-		{
-			expression->priv->retdims[0] = smanip->push_dims[0];
-			expression->priv->retdims[1] = smanip->push_dims[1];
-		}
-		else
-		{
-			expression->priv->retdims[0] = 1;
-			expression->priv->retdims[1] = 1;
-		}
+		cdn_stack_arg_copy (&expression->priv->retdim, &smanip->push);
 
 		if (stack + nst <= 0)
 		{
@@ -3941,14 +3895,13 @@ validate_stack (CdnExpression *expression,
 	cdn_stack_reset (&(expression->priv->output));
 
 	if (dimonly &&
-	    numr == expression->priv->retdims[0] &&
-	    numc == expression->priv->retdims[1])
+	    cdn_dimension_equal (&dim, &expression->priv->retdim.dimension))
 	{
 		// Do nothing
 		return TRUE;
 	}
 
-	if (stack != expression->priv->retdims[0] * expression->priv->retdims[1])
+	if (stack != cdn_dimension_size (&expression->priv->retdim.dimension))
 	{
 		return FALSE;
 	}
@@ -3992,8 +3945,7 @@ cdn_expression_compile (CdnExpression     *expression,
                         CdnCompileContext *context,
                         CdnCompileError   *error)
 {
-	gint oldr;
-	gint oldc;
+	CdnDimension olddim;
 	gboolean wasmod;
 
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
@@ -4004,7 +3956,7 @@ cdn_expression_compile (CdnExpression     *expression,
 		return TRUE;
 	}
 
-	cdn_expression_get_dimension (expression, &oldr, &oldc);
+	cdn_expression_get_dimension (expression, &olddim);
 
 	gchar *buffer = expression->priv->expression;
 
@@ -4064,8 +4016,7 @@ cdn_expression_compile (CdnExpression     *expression,
 		expression->priv->modified = FALSE;
 	}
 
-	reset_cache (expression, oldr != expression->priv->retdims[0] ||
-	                         oldc != expression->priv->retdims[1]);
+	reset_cache (expression, !cdn_dimension_equal (&olddim, &expression->priv->retdim.dimension));
 
 	if (wasmod)
 	{
@@ -4127,8 +4078,7 @@ void
 cdn_expression_set_instructions_take (CdnExpression *expression,
                                       GSList        *instructions)
 {
-	gint oldr = 0;
-	gint oldc = 0;
+	CdnDimension olddim;
 	gboolean dimschanged;
 
 	g_return_if_fail (CDN_IS_EXPRESSION (expression));
@@ -4138,7 +4088,7 @@ cdn_expression_set_instructions_take (CdnExpression *expression,
 		return;
 	}
 
-	cdn_expression_get_dimension (expression, &oldr, &oldc);
+	cdn_expression_get_dimension (expression, &olddim);
 
 	instructions_free (expression);
 	cdn_stack_destroy (&(expression->priv->output));
@@ -4152,8 +4102,7 @@ cdn_expression_set_instructions_take (CdnExpression *expression,
 	// We are going to reset the expression completely here
 	expression->priv->prevent_cache_reset = FALSE;
 
-	dimschanged = (oldr != expression->priv->retdims[0] ||
-	               oldc != expression->priv->retdims[1]);
+	dimschanged = !cdn_dimension_equal (&olddim, &expression->priv->retdim.dimension);
 
 	reset_cache (expression, dimschanged);
 
@@ -4180,7 +4129,7 @@ void
 cdn_expression_set_value (CdnExpression  *expression,
                           gdouble         value)
 {
-	set_values (expression, &value, 1, 1);
+	set_values (expression, &value, cdn_dimension_onep);
 	expression->priv->prevent_cache_reset = TRUE;
 
 }
@@ -4189,19 +4138,17 @@ cdn_expression_set_value (CdnExpression  *expression,
  * cdn_expression_set_values: (skip):
  * @expression: A #CdnExpression
  * @values: the new values
- * @numr: the number of rows
- * @numc: the number of columns
+ * @dim: the dimension
  *
  * Set expression value.
  *
  **/
 void
-cdn_expression_set_values (CdnExpression *expression,
-                           gdouble const *values,
-                           gint           numr,
-                           gint           numc)
+cdn_expression_set_values (CdnExpression      *expression,
+                           gdouble const      *values,
+                           CdnDimension const *dim)
 {
-	set_values (expression, values, numr, numc);
+	set_values (expression, values, dim);
 	expression->priv->prevent_cache_reset = TRUE;
 }
 
@@ -4210,22 +4157,20 @@ cdn_expression_set_values (CdnExpression *expression,
  * @expression: A #CdnExpression
  * @values: (array length=numvals): the new values
  * @numvals: the number of values
- * @numr: the number of rows
- * @numc: the number of columns
+ * @dim: the dimension
  *
  * Set expression value.
  *
  **/
 void
-cdn_expression_set_values_flat (CdnExpression *expression,
-                                gdouble const *values,
-                                gint           numvals,
-                                gint           numr,
-                                gint           numc)
+cdn_expression_set_values_flat (CdnExpression      *expression,
+                                gdouble const      *values,
+                                gint                numvals,
+                                CdnDimension const *dim)
 {
-	g_return_if_fail (numr * numc == numvals);
+	g_return_if_fail (cdn_dimension_size (dim) == numvals);
 
-	cdn_expression_set_values (expression, values, numr, numc);
+	cdn_expression_set_values (expression, values, dim);
 }
 
 /**
@@ -4246,7 +4191,6 @@ cdn_expression_evaluate (CdnExpression *expression)
 	gdouble const *ret;
 
 	ret = cdn_expression_evaluate_values (expression,
-	                                      NULL,
 	                                      NULL);
 
 	return ret ? *ret : 0.0;
@@ -4254,21 +4198,14 @@ cdn_expression_evaluate (CdnExpression *expression)
 
 static gdouble const *
 values_from_cache (CdnExpression *expression,
-                   gint          *numr,
-                   gint          *numc)
+                   CdnDimension  *dimension)
 {
-	if (numr)
+	if (dimension)
 	{
-		*numr = expression->priv->cached_dims[0];
+		*dimension = expression->priv->cached_dim;
 	}
 
-	if (numc)
-	{
-		*numc = expression->priv->cached_dims[1];
-	}
-
-	if (expression->priv->cached_dims[0] == 1 &&
-	    expression->priv->cached_dims[1] == 1)
+	if (cdn_dimension_is_one (&expression->priv->cached_dim))
 	{
 		return &(expression->priv->cached_output);
 	}
@@ -4283,8 +4220,7 @@ set_cache_from_stack (CdnExpression *expression)
 {
 	set_values (expression,
 	            cdn_stack_ptr (&(expression->priv->output)),
-	            expression->priv->retdims[0],
-	            expression->priv->retdims[1]);
+	            &expression->priv->retdim.dimension);
 }
 
 /**
@@ -4296,8 +4232,7 @@ set_cache_from_stack (CdnExpression *expression)
  **/
 gdouble const *
 cdn_expression_evaluate_values (CdnExpression *expression,
-                                gint          *numr,
-                                gint          *numc)
+                                CdnDimension  *dimension)
 {
 	/* Omit type check to increase speed */
 	if (!expression)
@@ -4307,7 +4242,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 	if (expression->priv->cached)
 	{
-		return values_from_cache (expression, numr, numc);
+		return values_from_cache (expression, dimension);
 	}
 
 	if (expression->priv->evaluate_notify)
@@ -4317,7 +4252,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 		if (expression->priv->cached)
 		{
-			return values_from_cache (expression, numr, numc);
+			return values_from_cache (expression, dimension);
 		}
 	}
 
@@ -4326,14 +4261,10 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 	cdn_stack_reset (stack);
 
-	if (numr)
+	if (dimension)
 	{
-		*numr = 0;
-	}
-
-	if (numc)
-	{
-		*numc = 0;
+		dimension->rows = 0;
+		dimension->columns = 0;
 	}
 
 	if (expression->priv->output.size == 0)
@@ -4371,11 +4302,11 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	}
 
 	if (cdn_stack_count (&(expression->priv->output)) !=
-	    expression->priv->retdims[0] * expression->priv->retdims[1])
+	    cdn_dimension_size (&expression->priv->retdim.dimension))
 	{
 		g_warning ("Invalid output stack after evaluating: `%s' (expected %d but got %d)",
 		           expression->priv->expression,
-		           expression->priv->retdims[0] * expression->priv->retdims[1],
+		           cdn_dimension_size (&expression->priv->retdim.dimension),
 		           cdn_stack_count (&(expression->priv->output)));
 
 		return NULL;
@@ -4384,7 +4315,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	set_cache_from_stack (expression);
 	expression->priv->cached = expression->priv->has_cache;
 
-	return values_from_cache (expression, numr, numc);
+	return values_from_cache (expression, dimension);
 }
 
 /**
@@ -4403,15 +4334,14 @@ gdouble const *
 cdn_expression_evaluate_values_flat (CdnExpression *expression,
                                      gint          *num)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dimension;
 	gdouble const *ret;
 
-	ret = cdn_expression_evaluate_values (expression, &numr, &numc);
+	ret = cdn_expression_evaluate_values (expression, &dimension);
 
 	if (num)
 	{
-		*num = numr * numc;
+		*num = cdn_dimension_size (&dimension);
 	}
 
 	return ret;
@@ -4581,11 +4511,10 @@ cdn_expression_reset (CdnExpression *expression)
 	expression->priv->prevent_cache_reset = FALSE;
 
 	// Reset the cache to go back to original settings
-	reset_cache (expression, expression->priv->cached &&
-	                         (expression->priv->retdims[0] !=
-	                          expression->priv->cached_dims[0] ||
-	                          expression->priv->retdims[1] !=
-	                          expression->priv->cached_dims[1]));
+	reset_cache (expression,
+	             expression->priv->cached &&
+	             !cdn_dimension_equal (&expression->priv->retdim.dimension,
+	                                   &expression->priv->cached_dim));
 
 	if (expression->priv->once)
 	{
@@ -4770,24 +4699,23 @@ cdn_expression_copy (CdnExpression *expression)
 	ret->priv->cached = expression->priv->cached;
 	ret->priv->prevent_cache_reset = expression->priv->prevent_cache_reset;
 
-	ret->priv->cached_dims[0] = expression->priv->cached_dims[0];
-	ret->priv->cached_dims[1] = expression->priv->cached_dims[1];
+	ret->priv->cached_dim = expression->priv->cached_dim;
 
-	ret->priv->retdims[0] = expression->priv->retdims[0];
-	ret->priv->retdims[1] = expression->priv->retdims[1];
+	cdn_stack_arg_copy (&ret->priv->retdim, &expression->priv->retdim);
 
 	cdn_stack_resize (&ret->priv->output, expression->priv->output.size);
 	cdn_stack_reset (&ret->priv->output);
 
-	if (ret->priv->cached_dims[0] == 1 && ret->priv->cached_dims[1] == 1)
+	if (cdn_dimension_is_one (&ret->priv->cached_dim))
 	{
 		ret->priv->cached_output = expression->priv->cached_output;
 	}
 	else
 	{
-		gint num = ret->priv->cached_dims[0] * ret->priv->cached_dims[1];
+		gint num;
 		gint i;
 
+		num = cdn_dimension_size (&ret->priv->cached_dim);
 		ret->priv->cached_output_multi = g_new (gdouble, num);
 
 		for (i = 0; i < num; ++i)
@@ -4873,34 +4801,15 @@ cdn_expression_set_has_cache (CdnExpression *expression,
 
 gboolean
 cdn_expression_get_dimension (CdnExpression *expression,
-                              gint          *numr,
-                              gint          *numc)
+                              CdnDimension  *dimension)
 {
 	if (expression->priv->cached)
 	{
-		if (numr)
-		{
-			*numr = expression->priv->cached_dims[0];
-		}
-
-		if (numc)
-		{
-			*numc = expression->priv->cached_dims[1];
-		}
-
+		*dimension = expression->priv->cached_dim;
 		return TRUE;
 	}
 
-	if (numr)
-	{
-		*numr = expression->priv->retdims[0];
-	}
-
-	if (numc)
-	{
-		*numc = expression->priv->retdims[1];
-	}
-
+	*dimension = expression->priv->retdim.dimension;
 	return !expression->priv->modified;
 }
 
@@ -4942,49 +4851,34 @@ cdn_expression_set_evaluate_notify (CdnExpression               *expression,
 
 gdouble *
 cdn_expression_get_cache (CdnExpression *expression,
-                          gint          *numr,
-                          gint          *numc)
+                          CdnDimension  *dimension)
 {
-	if ((expression->priv->retdims[0] > 1 ||
-	     expression->priv->retdims[1] > 1))
+	if ((expression->priv->retdim.rows > 1 ||
+	     expression->priv->retdim.columns > 1))
 	{
-		if ((expression->priv->cached_dims[0] <= 1 &&
-		     expression->priv->cached_dims[1] <= 1) ||
+		if ((expression->priv->cached_dim.rows <= 1 &&
+		     expression->priv->cached_dim.columns <= 1) ||
 		    !expression->priv->cached_output_multi)
 		{
 			expression->priv->cached_output_multi =
 				g_new0 (gdouble,
-				        expression->priv->retdims[0] *
-				        expression->priv->retdims[1]);
+				        cdn_dimension_size (&expression->priv->retdim.dimension));
 
-			expression->priv->cached_dims[0] =
-				expression->priv->retdims[0];
-
-			expression->priv->cached_dims[1] =
-				expression->priv->retdims[1];
+			expression->priv->cached_dim = expression->priv->retdim.dimension;
 		}
 
-		if (numr)
+		if (dimension)
 		{
-			*numr = expression->priv->cached_dims[0];
-		}
-
-		if (numc)
-		{
-			*numc = expression->priv->cached_dims[1];
+			*dimension = expression->priv->cached_dim;
 		}
 
 		return expression->priv->cached_output_multi;
 	}
 
-	if (numr)
+	if (dimension)
 	{
-		*numr = 0;
-	}
-
-	if (numc)
-	{
-		*numc = 0;
+		dimension->rows = 0;
+		dimension->columns = 0;
 	}
 
 	return NULL;

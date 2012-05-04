@@ -77,7 +77,6 @@ struct _CdnOperatorDelayedPrivate
 	CdnVariable *tvar;
 
 	CdnStackManipulation smanip;
-	gint push_dims[2];
 
 	gdouble eval_at_t;
 };
@@ -307,8 +306,7 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
                                  gint           num_expressions,
                                  GSList const **indices,
                                  gint           num_indices,
-                                 gint           num_arguments,
-                                 gint          *argdim,
+                                 CdnStackArgs const *argdim,
                                  CdnCompileContext *context,
                                  GError       **error)
 {
@@ -323,7 +321,6 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 	                      num_expressions,
 	                      indices,
 	                      num_indices,
-	                      num_arguments,
 	                      argdim,
 	                      context,
 	                      error))
@@ -348,27 +345,27 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 		return FALSE;
 	}
 
-	if (num_arguments != 1)
+	if (argdim->num != 1)
 	{
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
 		             "The operator `delayed' expects exactly one "
 		             "argument (time delay), but got %d",
-		             num_arguments);
+		             argdim->num);
 
 		return FALSE;
 	}
 
-	if (argdim && argdim[0] * argdim[1] != 1)
+	if (cdn_stack_arg_size (&argdim->args[0]) != 1)
 	{
 		g_set_error (error,
 		             CDN_NETWORK_LOAD_ERROR,
 		             CDN_NETWORK_LOAD_ERROR_OPERATOR,
 		             "The operator `delayed' currently on supports "
 		             "1-by-1 time delay (got %d-by-%d)",
-		             argdim[0],
-		             argdim[1]);
+		             argdim->args[0].rows,
+		             argdim->args[1].columns);
 
 		return FALSE;
 	}
@@ -377,23 +374,18 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 	delayed->priv->expression = g_object_ref_sink (expressions[0]->data);
 
 	cdn_expression_get_dimension (delayed->priv->expression,
-	                              &delayed->priv->push_dims[0],
-	                              &delayed->priv->push_dims[1]);
+	                              &delayed->priv->smanip.push.dimension);
 
 	if (expressions[0]->next)
 	{
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
 		delayed->priv->initial_value =
 			g_object_ref_sink (expressions[0]->next->data);
 
-		cdn_expression_get_dimension (delayed->priv->initial_value,
-		                              &numr,
-		                              &numc);
+		cdn_expression_get_dimension (delayed->priv->initial_value, &dim);
 
-		if (numr != delayed->priv->push_dims[0] ||
-		    numc != delayed->priv->push_dims[1])
+		if (!cdn_dimension_equal (&dim, &delayed->priv->smanip.push.dimension))
 		{
 			g_set_error (error,
 			             CDN_NETWORK_LOAD_ERROR,
@@ -401,10 +393,10 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 			             "The dimensions of the expression "
 			             "(%d-by-%d) and the initial value "
 			             "(%d-by-%d) must be the same",
-			             delayed->priv->push_dims[0],
-			             delayed->priv->push_dims[1],
-			             numr,
-			             numc);
+			             delayed->priv->smanip.push.rows,
+			             delayed->priv->smanip.push.columns,
+			             dim.rows,
+			             dim.columns);
 
 			return FALSE;
 		}
@@ -420,8 +412,7 @@ evaluate_on_stack (CdnOperatorDelayed *d,
                    CdnStack           *stack)
 {
 	gdouble const *ret;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gdouble told = 0;
 
 	// temporarily set t
@@ -436,9 +427,9 @@ evaluate_on_stack (CdnOperatorDelayed *d,
 		}
 	}
 
-	ret = cdn_expression_evaluate_values (expression, &numr, &numc);
+	ret = cdn_expression_evaluate_values (expression, &dim);
 
-	cdn_stack_pushn (stack, ret, numr * numc);
+	cdn_stack_pushn (stack, ret, cdn_dimension_size (&dim));
 
 	if (d->priv->tvar)
 	{
@@ -504,8 +495,7 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 		{
 			cdn_stack_pushni (stack,
 			                  0,
-			                  d->priv->push_dims[0] *
-			                  d->priv->push_dims[1]);
+			                  cdn_stack_arg_size (&d->priv->smanip.push));
 		}
 
 		return;
@@ -549,6 +539,7 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 		// Interpolate value between h and h->next
 		gdouble factor;
 		gint i;
+		gint n;
 
 		if (fabs (td - h->t) < 1e-13)
 		{
@@ -559,8 +550,9 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 			factor = (td - h->t) / (h->next->t - h->t);
 		}
 
-		for (i = 0; i < d->priv->push_dims[0] *
-		                d->priv->push_dims[1]; ++i)
+		n = cdn_stack_arg_size (&d->priv->smanip.push);
+
+		for (i = 0; i < n; ++i)
 		{
 			cdn_stack_push (stack,
 			                h->v[i] +
@@ -698,8 +690,7 @@ cdn_operator_delayed_step (CdnOperator *op,
 	HistoryItem *current;
 	gdouble const *v;
 	gint nd;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 
 	// direct cast for efficiency
 	d = (CdnOperatorDelayed *)op;
@@ -718,12 +709,11 @@ cdn_operator_delayed_step (CdnOperator *op,
 	}
 
 	v = cdn_expression_evaluate_values (d->priv->expression,
-	                                    &numr,
-	                                    &numc);
+	                                    &dim);
 
 	d->priv->eval_at_t = t;
 
-	nd = numr * numc;
+	nd = cdn_dimension_size (&dim);
 
 	if (current->v == NULL)
 	{
@@ -756,8 +746,7 @@ cdn_operator_delayed_get_stack_manipulation (CdnOperator *op)
 
 	par = cls->get_stack_manipulation (op);
 
-	d->priv->smanip.pop_dims = par->pop_dims;
-	d->priv->smanip.num_pop = par->num_pop;
+	d->priv->smanip.pop = par->pop;
 
 	return &d->priv->smanip;
 }
@@ -804,9 +793,6 @@ static void
 cdn_operator_delayed_init (CdnOperatorDelayed *self)
 {
 	self->priv = CDN_OPERATOR_DELAYED_GET_PRIVATE (self);
-
-	self->priv->smanip.push_dims = self->priv->push_dims;
-	self->priv->smanip.num_push = 1;
 }
 
 CdnOperatorDelayed *

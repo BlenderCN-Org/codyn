@@ -85,16 +85,15 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
 	while (integrated)
 	{
 		CdnVariable *variable;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gdouble *update;
 
 		variable = integrated->data;
-		update = cdn_variable_get_update (variable, &numr, &numc);
+		update = cdn_variable_get_update (variable, &dim);
 
 		integrate_values (update,
-		                  cdn_variable_get_values (variable, &numr, &numc),
-		                  numr * numc,
+		                  cdn_variable_get_values (variable, &dim),
+		                  cdn_dimension_size (&dim),
 		                  timestep);
 
 		integrated = g_slist_next (integrated);
@@ -106,12 +105,11 @@ cdn_integrator_euler_step_impl (CdnIntegrator *integrator,
 	{
 		CdnVariable *variable;
 		gdouble *update;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
 		variable = integrated->data;
-		update = cdn_variable_get_update (integrated->data, &numr, &numc);
-		cdn_variable_set_values (variable, update, numr, numc);
+		update = cdn_variable_get_update (integrated->data, &dim);
+		cdn_variable_set_values (variable, update, &dim);
 
 		integrated = g_slist_next (integrated);
 	}

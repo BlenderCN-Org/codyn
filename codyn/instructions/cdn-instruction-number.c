@@ -1,4 +1,5 @@
 #include "cdn-instruction-number.h"
+#include <math.h>
 
 #define CDN_INSTRUCTION_NUMBER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION_NUMBER, CdnInstructionNumberPrivate))
 
@@ -36,8 +37,11 @@ cdn_instruction_number_copy (CdnMiniObject *object)
 	ret = CDN_MINI_OBJECT_CLASS (cdn_instruction_number_parent_class)->copy (object);
 
 	self = CDN_INSTRUCTION_NUMBER (ret);
+
 	self->priv->value = src->priv->value;
 	self->priv->repr = g_strdup (src->priv->repr);
+
+	cdn_stack_manipulation_copy (&self->priv->smanip, &src->priv->smanip);
 
 	return ret;
 }
@@ -111,10 +115,9 @@ static void
 cdn_instruction_number_init (CdnInstructionNumber *self)
 {
 	self->priv = CDN_INSTRUCTION_NUMBER_GET_PRIVATE (self);
-	self->priv->smanip.num_pop = 0;
-	self->priv->smanip.num_push = 1;
 
-	self->priv->smanip.push_dims = NULL;
+	self->priv->smanip.push.rows = 1;
+	self->priv->smanip.push.columns = 1;
 }
 
 CdnInstruction *
@@ -128,6 +131,13 @@ cdn_instruction_number_new (gdouble value)
 
 	self->priv->value = value;
 	self->priv->repr = NULL;
+
+	if (fabs (self->priv->value) <= 1e-14)
+	{
+		guint sidx = 0;
+
+		cdn_stack_arg_set_sparsity (&self->priv->smanip.push, &sidx, 1);
+	}
 
 	return CDN_INSTRUCTION (ret);
 }
@@ -163,6 +173,16 @@ cdn_instruction_number_set_value (CdnInstructionNumber *number,
 	{
 		g_free (number->priv->repr);
 		number->priv->repr = NULL;
+	}
+
+	if (fabs (number->priv->value) <= 1e-14)
+	{
+		guint sidx = 0;
+		cdn_stack_arg_set_sparsity (&number->priv->smanip.push, &sidx, 1);
+	}
+	else
+	{
+		cdn_stack_arg_set_sparsity (&number->priv->smanip.push, NULL, 0);
 	}
 }
 

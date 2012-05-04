@@ -77,13 +77,12 @@ calculate_length (CdnIntegratorRungeKutta *rk)
 	{
 		CdnExpression *expr;
 
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
 		expr = cdn_variable_get_expression (integrated->data);
-		cdn_expression_get_dimension (expr, &numr, &numc);
+		cdn_expression_get_dimension (expr, &dim);
 
-		len += numr * numc;
+		len += cdn_dimension_size (&dim);
 
 		integrated = g_slist_next (integrated);
 	}
@@ -125,8 +124,7 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 {
 	guint i = 0;
 	guint n;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 
 	while (integrated)
 	{
@@ -136,8 +134,8 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 		{
 			gdouble const *vals;
 
-			vals = cdn_variable_get_values (prop, &numr, &numc);
-			n = numr * numc;
+			vals = cdn_variable_get_values (prop, &dim);
+			n = cdn_dimension_size (&dim);
 
 			memcpy (rk->priv->coefficients[0] + i,
 			        vals,
@@ -151,8 +149,8 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 				gint j;
 				gdouble *up;
 
-				up = cdn_variable_get_update (prop, &numr, &numc);
-				n = numr * numc;
+				up = cdn_variable_get_update (prop, &dim);
+				n = cdn_dimension_size (&dim);
 
 				for (j = 0; j < n; ++j)
 				{
@@ -168,20 +166,19 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 					         1.0 / 6.0 * norm * v;
 				}
 
-				cdn_variable_set_values (prop, up, numr, numc);
+				cdn_variable_set_values (prop, up, &dim);
 			}
 			else
 			{
 				gdouble *ret;
 				gint j;
 
-				ret = cdn_variable_get_update (prop, &numr, &numc);
+				ret = cdn_variable_get_update (prop, &dim);
 
 				cdn_expression_get_dimension (cdn_variable_get_expression (prop),
-				                              &numr,
-				                              &numc);
+				                              &dim);
 
-				n = numc * numr;
+				n = cdn_dimension_size (&dim);
 
 				memcpy (rk->priv->coefficients[order] + i,
 				        ret,
@@ -193,7 +190,7 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 					          norm * ret[j];
 				}
 
-				cdn_variable_set_values (prop, ret, numr, numc);
+				cdn_variable_set_values (prop, ret, &dim);
 			}
 		}
 

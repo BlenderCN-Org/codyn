@@ -191,15 +191,6 @@ cdn_function_polynomial_clear_impl (CdnObject *object)
 	cdn_function_polynomial_clear_pieces (CDN_FUNCTION_POLYNOMIAL (object));
 }
 
-static void
-cdn_function_polynomial_get_dimension_impl (CdnFunction *function,
-                                            gint        *numr,
-                                            gint        *numc)
-{
-	*numr = 1;
-	*numc = 1;
-}
-
 static CdnFunction *
 cdn_function_polynomial_get_derivative_impl (CdnFunction                       *function,
                                              GSList                            *towards,
@@ -505,7 +496,6 @@ cdn_function_polynomial_class_init (CdnFunctionPolynomialClass *klass)
 	CdnObjectClass *cdn_object_class = CDN_OBJECT_CLASS (klass);
 
 	function_class->evaluate = cdn_function_polynomial_evaluate_impl;
-	function_class->get_dimension = cdn_function_polynomial_get_dimension_impl;
 	function_class->get_derivative = cdn_function_polynomial_get_derivative_impl;
 
 	cdn_object_class->copy = cdn_function_polynomial_copy_impl;

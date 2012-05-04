@@ -272,17 +272,16 @@ header_variable_free (HeaderVariable *v)
 }
 
 static HeaderVariable *
-header_variable_new (gchar *name,
-                     gint   numr,
-                     gint   numc)
+header_variable_new (gchar              *name,
+                     CdnDimension const *dim)
 {
 	HeaderVariable *ret;
 
 	ret = g_slice_new (HeaderVariable);
 
 	ret->name = name;
-	ret->numr = numr;
-	ret->numc = numc;
+	ret->numr = dim->rows;
+	ret->numc = dim->columns;
 
 	return ret;
 }
@@ -1093,8 +1092,7 @@ process_set_binary (CdnClient *client,
 		guint16 idx;
 		CdnExpression *e;
 		gdouble *ptr;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gint j;
 		gint num;
 
@@ -1114,9 +1112,9 @@ process_set_binary (CdnClient *client,
 		v = g_ptr_array_index (client->priv->in_variables, idx);
 		e = cdn_variable_get_expression (v);
 
-		cdn_expression_get_dimension (e, &numr, &numc);
-		ptr = g_new (gdouble, numr * numc);
-		num = numr * numc;
+		cdn_expression_get_dimension (e, &dim);
+		num = cdn_dimension_size (&dim);
+		ptr = g_new (gdouble, num);
 
 		for (j = 0; j < num; ++j)
 		{
@@ -1141,8 +1139,7 @@ process_set_binary (CdnClient *client,
 
 		cdn_expression_set_values (e,
 		                           ptr,
-		                           numr,
-		                           numc);
+		                           &dim);
 
 		g_free (ptr);
 	}
@@ -1167,8 +1164,7 @@ process_header (CdnClient       *client,
 
 	while (*start < client->priv->offset)
 	{
-		gint numr = 1;
-		gint numc = 1;
+		CdnDimension dim = CDN_DIMENSION (1, 1);
 		gchar *ident;
 		gssize s;
 
@@ -1193,7 +1189,7 @@ process_header (CdnClient       *client,
 			break;
 		}
 
-		if (!ascii_read_index (client, &s, &numr))
+		if (!ascii_read_index (client, &s, &dim.rows))
 		{
 			ret = FALSE;
 			break;
@@ -1205,7 +1201,7 @@ process_header (CdnClient       *client,
 			break;
 		}
 
-		if (!ascii_read_index (client, &s, &numc))
+		if (!ascii_read_index (client, &s, &dim.columns))
 		{
 			ret = FALSE;
 			break;
@@ -1225,8 +1221,7 @@ process_header (CdnClient       *client,
 
 		message->variables = g_slist_prepend (message->variables,
 		                                      header_variable_new (ident,
-		                                                           numr,
-		                                                           numc));
+		                                                           &dim));
 
 		*start = s;
 	}
@@ -1675,8 +1670,7 @@ send_out_limit_ascii (CdnClient *client,
 	{
 		CdnVariable *v;
 		gdouble const *vals;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gint mapped;
 
 		mapped = lookup_index_map (client->priv->output_map,
@@ -1720,9 +1714,9 @@ send_out_limit_ascii (CdnClient *client,
 			                        "%u ", i);
 		}
 
-		vals = cdn_variable_get_values (v, &numr, &numc);
+		vals = cdn_variable_get_values (v, &dim);
 
-		if (numr == 1 && numc == 1)
+		if (cdn_dimension_is_one (&dim))
 		{
 			g_ascii_dtostr (numbuf,
 			                G_ASCII_DTOSTR_BUF_SIZE,
@@ -1738,14 +1732,14 @@ send_out_limit_ascii (CdnClient *client,
 
 			g_string_append_c (client->priv->outbuf, '[');
 
-			for (r = 0; r < numr; ++r)
+			for (r = 0; r < dim.rows; ++r)
 			{
 				if (r != 0)
 				{
 					g_string_append (client->priv->outbuf, "; ");
 				}
 
-				for (c = 0; c < numc; ++c)
+				for (c = 0; c < dim.columns; ++c)
 				{
 					if (c != 0)
 					{
@@ -1824,14 +1818,13 @@ calculate_next_limit (CdnClient *client,
 	while (start < vars->len)
 	{
 		gint s;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
 		CdnVariable *v = g_ptr_array_index (vars, start);
 
-		cdn_variable_get_values (v, &numr, &numc);
+		cdn_variable_get_values (v, &dim);
 
-		s = sizeof (guint16) + numr * numc * sizeof (guint64);
+		s = sizeof (guint16) + cdn_dimension_size (&dim) * sizeof (guint64);
 
 		if (len + s > limit)
 		{
@@ -1887,13 +1880,12 @@ send_out_limit_binary (CdnClient *client,
 		{
 			CdnVariable *v = g_ptr_array_index (vars, i);
 			gdouble const *values;
-			gint numr;
-			gint numc;
+			CdnDimension dim;
 			gint num;
 			gint j;
 
-			values = cdn_variable_get_values (v, &numr, &numc);
-			num = numr * numc;
+			values = cdn_variable_get_values (v, &dim);
+			num = cdn_dimension_size (&dim);
 
 			g_data_output_stream_put_uint16 (s, i, NULL, NULL);
 
@@ -1997,21 +1989,19 @@ send_header (CdnClient *client,
 	for (i = 0; i < vars->len; ++i)
 	{
 		CdnVariable *v;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
 		v = g_ptr_array_index (vars, i);
 
 		g_string_append_c (client->priv->outbuf, ' ');
 
 		cdn_expression_get_dimension (cdn_variable_get_expression (v),
-		                              &numr,
-		                              &numc);
+		                              &dim);
 
 		g_string_append_printf (client->priv->outbuf,
 		                        "%d %d %s",
-		                        numr,
-		                        numc,
+		                        dim.rows,
+		                        dim.columns,
 		                        cdn_variable_get_name (v));
 	}
 
@@ -2176,10 +2166,8 @@ update_set (CdnClient  *client,
 	CdnVariable *v = NULL;
 	CdnExpression *e = NULL;
 	gdouble const *value = NULL;
-	gint numr = 0;
-	gint numc = 0;
-	gint onumr;
-	gint onumc;
+	CdnDimension dim = CDN_DIMENSION (0, 0);
+	CdnDimension odim;
 
 	switch (message->variable_type)
 	{
@@ -2201,8 +2189,8 @@ update_set (CdnClient  *client,
 	{
 		case VALUE_TYPE_VALUE:
 			value = message->value.value;
-			numr = message->value.numr;
-			numc = message->value.numc;
+			dim.rows = message->value.numr;
+			dim.columns = message->value.numc;
 		break;
 		case VALUE_TYPE_EXPRESSION:
 		{
@@ -2212,23 +2200,20 @@ update_set (CdnClient  *client,
 			if (e)
 			{
 				value = cdn_expression_evaluate_values (e,
-				                                        &numr,
-				                                        &numc);
+				                                        &dim);
 			}
 		}
 		break;
 	}
 
 	cdn_expression_get_dimension (cdn_variable_get_expression (v),
-	                              &onumr,
-	                              &onumc);
+	                              &odim);
 
-	if (value && numr == onumr && numc == onumc)
+	if (value && cdn_dimension_equal (&dim, &odim))
 	{
 		cdn_variable_set_values (v,
 		                         value,
-		                         numr,
-		                         numc);
+		                         &dim);
 	}
 
 	if (e)

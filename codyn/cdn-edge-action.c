@@ -791,16 +791,14 @@ cdn_edge_action_set_index (CdnEdgeAction *action,
 static void
 get_indices (CdnEdgeAction *action)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gdouble const *values;
 	gint i;
 
 	values = cdn_expression_evaluate_values (action->priv->index,
-	                                         &numr,
-	                                         &numc);
+	                                         &dim);
 
-	action->priv->num_indices = numr * numc;
+	action->priv->num_indices = cdn_dimension_size (&dim);
 
 	g_free (action->priv->indices);
 	action->priv->indices = g_new (gint, action->priv->num_indices);
@@ -904,10 +902,8 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 	if (cdn_modifiable_get_modified (CDN_MODIFIABLE (action->priv->equation)))
 	{
 		gboolean ret;
-		gint enumr;
-		gint enumc;
-		gint numr;
-		gint numc;
+		CdnDimension edim;
+		CdnDimension dim;
 
 		if (context == NULL)
 		{
@@ -959,14 +955,12 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 		}
 
 		cdn_expression_get_dimension (action->priv->equation,
-		                              &enumr,
-		                              &enumc);
+		                              &edim);
 
 		cdn_expression_get_dimension (cdn_variable_get_expression (action->priv->property),
-		                              &numr,
-		                              &numc);
+		                              &dim);
 
-		if (!action->priv->index && (numr != enumr || numc != enumc))
+		if (!action->priv->index && (dim.rows != edim.rows || dim.columns != edim.columns))
 		{
 			if (error)
 			{
@@ -975,11 +969,11 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
 				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				                      "The dimensions of the edge action (%d-by-%d) and the initial value of `%s' (%d-by-%d) must be the same",
-				                      enumr,
-				                      enumc,
+				                      edim.rows,
+				                      edim.columns,
 				                      cdn_variable_get_name (action->priv->property),
-				                      numr,
-				                      numc);
+				                      dim.rows,
+				                      dim.columns);
 
 				cdn_compile_error_set (error,
 				                       gerror,

@@ -31,14 +31,54 @@ typedef struct _CdnStack CdnStack;
 
 typedef struct
 {
-	gint num_pop;
-	gint *pop_dims;
+	union
+	{
+		gint32 dims[2];
 
-	gint num_push;
-	gint *push_dims;
+		struct
+		{
+			gint32 rows;
+			gint32 columns;
+		};
+	};
+} CdnDimension;
+
+typedef struct
+{
+	union
+	{
+		CdnDimension dimension;
+
+		struct
+		{
+			gint32 rows;
+			gint32 columns;
+		};
+	};
+
+	guint *sparsity;
+	guint num_sparse;
+} CdnStackArg;
+
+typedef struct
+{
+	gint num;
+	CdnStackArg *args;
+} CdnStackArgs;
+
+typedef struct
+{
+	CdnStackArgs pop;
+	CdnStackArg push;
 
 	gint extra_space;
 } CdnStackManipulation;
+
+#define CDN_DIMENSION(r, c) {.rows = r, .columns = (c)}
+#define CDN_STACK_ARG(r, c) {.dimension = CDN_DIMENSION (r, c), .sparsity = NULL, .num_sparse = 0}
+
+extern CdnDimension cdn_dimension_one;
+extern CdnDimension *cdn_dimension_onep;
 
 GType     cdn_stack_get_type ();
 GType     cdn_stack_manipulation_get_type ();
@@ -89,15 +129,42 @@ void      cdn_stack_set_at  (CdnStack *stack,
                              gint      idx,
                              gdouble   value);
 
-void      cdn_stack_manipulation_get_pop_dimension (CdnStackManipulation const *smanip,
-                                                    gint                        n,
-                                                    gint                       *numr,
-                                                    gint                       *numc);
+CdnStackArg const *
+          cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip,
+                                          gint                        n);
 
-void      cdn_stack_manipulation_get_push_dimension (CdnStackManipulation const *smanip,
-                                                     gint                        n,
-                                                     gint                       *numr,
-                                                     gint                       *numc);
+CdnStackArg const *
+          cdn_stack_manipulation_get_push (CdnStackManipulation const *smanip);
+
+void      cdn_stack_arg_copy           (CdnStackArg       *ret,
+                                        CdnStackArg const *src);
+
+guint     cdn_stack_arg_size              (CdnStackArg const *arg);
+
+void      cdn_stack_arg_set_sparsity (CdnStackArg *arg,
+                                      guint       *sparsity,
+                                      guint        num_sparse);
+
+void      cdn_stack_arg_set_sparsity_one (CdnStackArg *arg,
+                                          guint        sparsity);
+
+void      cdn_stack_manipulation_destroy (CdnStackManipulation *smanip);
+
+void      cdn_stack_manipulation_copy    (CdnStackManipulation       *dest,
+                                          CdnStackManipulation const *src);
+
+void      cdn_stack_args_init (CdnStackArgs *args, gint num);
+
+void      cdn_stack_args_copy (CdnStackArgs       *dest,
+                               CdnStackArgs const *src);
+
+void      cdn_stack_args_destroy (CdnStackArgs       *args);
+
+gboolean  cdn_dimension_is_one (CdnDimension const *dim);
+gint      cdn_dimension_size   (CdnDimension const *dim);
+
+gboolean  cdn_dimension_equal (CdnDimension const *dim,
+                               CdnDimension const *other);
 
 G_END_DECLS
 

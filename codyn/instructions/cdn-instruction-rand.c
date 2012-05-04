@@ -19,7 +19,6 @@ struct _CdnInstructionRandPrivate
 	guint num_random_value;
 
 	CdnStackManipulation smanip;
-	gint push_dims[2];
 };
 
 G_DEFINE_TYPE (CdnInstructionRand, cdn_instruction_rand, CDN_TYPE_INSTRUCTION)
@@ -34,20 +33,6 @@ cdn_instruction_rand_finalize (CdnMiniObject *object)
 	g_free (self->priv->random_value);
 
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_rand_parent_class)->finalize (object);
-}
-
-static void
-copy_smanip (CdnStackManipulation const *src,
-             CdnStackManipulation       *dest)
-{
-	dest->num_pop = src->num_pop;
-	dest->num_push = src->num_push;
-
-	g_free (dest->pop_dims);
-	dest->pop_dims = g_new (gint, dest->num_pop * 2);
-
-	memcpy (dest->pop_dims, src->pop_dims, sizeof (gint) * src->num_pop * 2);
-	memcpy (dest->push_dims, src->push_dims, sizeof (gint) * src->num_push * 2);
 }
 
 static CdnMiniObject *
@@ -69,7 +54,7 @@ cdn_instruction_rand_copy (CdnMiniObject *object)
 	        r->priv->random_value,
 	        sizeof (glong) * r->priv->num_random_value);
 
-	copy_smanip (&r->priv->smanip, &rret->priv->smanip);
+	cdn_stack_manipulation_copy (&rret->priv->smanip, &r->priv->smanip);
 
 	return ret;
 }
@@ -95,11 +80,11 @@ cdn_instruction_rand_execute (CdnInstruction *instruction,
 
 	ptr = cdn_stack_output_ptr (stack) - self->priv->num_random_value;
 
-	if (self->priv->smanip.num_pop == 0)
+	if (self->priv->smanip.pop.num == 0)
 	{
 		cdn_stack_push (stack, (gdouble)self->priv->random_value[0] / RAND_MAX);
 	}
-	else if (self->priv->smanip.num_pop == 1)
+	else if (self->priv->smanip.pop.num == 1)
 	{
 		for (i = 0; i < self->priv->num_random_value; ++i)
 		{
@@ -107,13 +92,10 @@ cdn_instruction_rand_execute (CdnInstruction *instruction,
 			++ptr;
 		}
 	}
-	else if (self->priv->smanip.num_pop == 2)
+	else if (self->priv->smanip.pop.num == 2)
 	{
-		gint nd1 = self->priv->smanip.pop_dims[2] *
-		           self->priv->smanip.pop_dims[3];
-
-		gint nd2 = self->priv->smanip.pop_dims[0] *
-		           self->priv->smanip.pop_dims[1];
+		gint nd1 = cdn_stack_arg_size (&self->priv->smanip.pop.args[1]);
+		gint nd2 = cdn_stack_arg_size (&self->priv->smanip.pop.args[0]);
 
 		if (nd2 != 1 && nd1 == 1)
 		{
@@ -164,7 +146,7 @@ cdn_instruction_rand_get_stack_manipulation (CdnInstruction  *instruction,
 	gint nd1 = 1;
 	gint nd2 = 1;
 
-	if (self->priv->smanip.num_pop > 2)
+	if (self->priv->smanip.pop.num > 2)
 	{
 		g_set_error (error,
 		             CDN_COMPILE_ERROR_TYPE,
@@ -174,16 +156,14 @@ cdn_instruction_rand_get_stack_manipulation (CdnInstruction  *instruction,
 		return NULL;
 	}
 
-	if (self->priv->smanip.num_pop > 0)
+	if (self->priv->smanip.pop.num > 0)
 	{
-		nd1 = self->priv->smanip.pop_dims[0] *
-		      self->priv->smanip.pop_dims[1];
+		nd1 = cdn_stack_arg_size (&self->priv->smanip.pop.args[0]);
 	}
 
-	if (self->priv->smanip.num_pop > 1)
+	if (self->priv->smanip.pop.num > 1)
 	{
-		nd2 = self->priv->smanip.pop_dims[2] *
-		      self->priv->smanip.pop_dims[3];
+		nd2 = cdn_stack_arg_size (&self->priv->smanip.pop.args[1]);
 	}
 
 	if (nd1 != 1 && nd2 != 1 && nd1 != nd2)
@@ -236,12 +216,8 @@ cdn_instruction_rand_init (CdnInstructionRand *self)
 {
 	self->priv = CDN_INSTRUCTION_RAND_GET_PRIVATE (self);
 
-	self->priv->smanip.num_pop = 0;
-	self->priv->smanip.num_push = 1;
-
-	self->priv->smanip.push_dims = self->priv->push_dims;
-	self->priv->push_dims[0] = 1;
-	self->priv->push_dims[1] = 1;
+	self->priv->smanip.push.rows = 1;
+	self->priv->smanip.push.columns = 1;
 }
 
 /**
@@ -255,8 +231,7 @@ cdn_instruction_rand_init (CdnInstructionRand *self)
  *
  **/
 CdnInstruction *
-cdn_instruction_rand_new (gint  numargs,
-                          gint *argdim)
+cdn_instruction_rand_new (CdnStackArgs const *argdim)
 {
 	CdnMiniObject *ret;
 	CdnInstructionRand *rnd;
@@ -264,41 +239,31 @@ cdn_instruction_rand_new (gint  numargs,
 	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_RAND);
 	rnd = CDN_INSTRUCTION_RAND (ret);
 
-	rnd->priv->smanip.num_pop = numargs;
+	cdn_stack_args_copy (&rnd->priv->smanip.pop, argdim);
 
-	if (numargs > 0)
+	if (argdim->num > 0)
 	{
 		gint nd1 = 1;
 		gint nd2 = 1;
-		gint i;
 
-		rnd->priv->smanip.pop_dims = g_new (gint, numargs * 2);
+		nd1 = cdn_stack_arg_size (&rnd->priv->smanip.pop.args[0]);
 
-		for (i = 0; i < numargs * 2; ++i)
+		if (argdim->num > 1)
 		{
-			rnd->priv->smanip.pop_dims[i] = argdim ? argdim[i] : 1;
-		}
-
-		nd1 = rnd->priv->smanip.pop_dims[0] *
-		      rnd->priv->smanip.pop_dims[1];
-
-		if (numargs > 1)
-		{
-			nd2 = rnd->priv->smanip.pop_dims[2] *
-			      rnd->priv->smanip.pop_dims[3];
+			nd2 = cdn_stack_arg_size (&rnd->priv->smanip.pop.args[1]);
 		}
 
 		rnd->priv->num_random_value = nd1 == 1 ? nd2 : nd1;
 
 		if (nd1 != 1)
 		{
-			rnd->priv->push_dims[0] = rnd->priv->smanip.pop_dims[0];
-			rnd->priv->push_dims[1] = rnd->priv->smanip.pop_dims[1];
+			rnd->priv->smanip.push.rows = rnd->priv->smanip.pop.args[0].rows;
+			rnd->priv->smanip.push.columns = rnd->priv->smanip.pop.args[0].columns;
 		}
 		else if (nd2 != 1)
 		{
-			rnd->priv->push_dims[0] = rnd->priv->smanip.pop_dims[2];
-			rnd->priv->push_dims[1] = rnd->priv->smanip.pop_dims[3];
+			rnd->priv->smanip.push.rows = rnd->priv->smanip.pop.args[1].rows;
+			rnd->priv->smanip.push.columns = rnd->priv->smanip.pop.args[1].columns;
 		}
 	}
 	else

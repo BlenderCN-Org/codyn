@@ -118,15 +118,13 @@ void               cdn_variable_reset                   (CdnVariable        *var
 
 gdouble            cdn_variable_get_value               (CdnVariable        *variable);
 gdouble const     *cdn_variable_get_values              (CdnVariable        *variable,
-                                                         gint               *numr,
-                                                         gint               *numc);
+                                                         CdnDimension       *dim);
 
 gdouble const     *cdn_variable_get_values_flat         (CdnVariable        *variable,
                                                          gint               *num);
 
 void               cdn_variable_get_dimension           (CdnVariable        *variable,
-                                                         gint               *numr,
-                                                         gint               *numc);
+                                                         CdnDimension       *dim);
 
 CdnExpression     *cdn_variable_get_expression          (CdnVariable        *variable);
 
@@ -135,14 +133,12 @@ void               cdn_variable_set_value               (CdnVariable        *var
 
 void               cdn_variable_set_values              (CdnVariable        *variable,
                                                          gdouble const      *values,
-                                                         gint                numr,
-                                                         gint                numc);
+                                                         CdnDimension const *dim);
 
 void               cdn_variable_set_values_flat         (CdnVariable        *variable,
                                                          gdouble const      *values,
                                                          gint                numvals,
-                                                         gint                numr,
-                                                         gint                numc);
+                                                         CdnDimension const *dim);
 
 void               cdn_variable_set_expression          (CdnVariable        *variable,
                                                          CdnExpression      *expression);
@@ -163,12 +159,10 @@ void               cdn_variable_clear_update            (CdnVariable        *var
 
 void               cdn_variable_set_update_value        (CdnVariable        *variable,
                                                          gdouble             value,
-                                                         gint                numr,
-                                                         gint                numc);
+                                                         CdnDimension const *dim);
 
 gdouble           *cdn_variable_get_update              (CdnVariable        *variable,
-                                                         gint               *numr,
-                                                         gint               *numc);
+                                                         CdnDimension       *dim);
 
 gchar             *cdn_variable_flags_to_string         (CdnVariableFlags    add_flags,
                                                          CdnVariableFlags    remove_flags);

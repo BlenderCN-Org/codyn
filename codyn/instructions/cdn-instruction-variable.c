@@ -14,7 +14,6 @@ struct _CdnInstructionVariablePrivate
 	CdnVariable *property;
 	CdnInstructionVariableBinding binding;
 	CdnStackManipulation smanip;
-	gint push_dims[2];
 };
 
 G_DEFINE_TYPE (CdnInstructionVariable, cdn_instruction_variable, CDN_TYPE_INSTRUCTION)
@@ -47,8 +46,7 @@ cdn_instruction_variable_copy (CdnMiniObject *object)
 	cdn_instruction_variable_set_variable (self, src->priv->property);
 	self->priv->binding = src->priv->binding;
 
-	self->priv->push_dims[0] = src->priv->push_dims[0];
-	self->priv->push_dims[1] = src->priv->push_dims[1];
+	cdn_stack_manipulation_copy (&self->priv->smanip, &src->priv->smanip);
 
 	return ret;
 }
@@ -74,16 +72,15 @@ cdn_instruction_variable_execute (CdnInstruction *instruction,
                                   CdnStack       *stack)
 {
 	gdouble const *values;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 
 	CdnInstructionVariable *self;
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CdnInstructionVariable *)instruction;
 
-	values = cdn_variable_get_values (self->priv->property, &numr, &numc);
-	cdn_stack_pushn (stack, values, numr * numc);
+	values = cdn_variable_get_values (self->priv->property, &dim);
+	cdn_stack_pushn (stack, values, cdn_dimension_size (&dim));
 }
 
 static CdnStackManipulation const *
@@ -101,8 +98,7 @@ cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
 		expr = cdn_variable_get_expression (self->priv->property);
 
 		if (!cdn_expression_get_dimension (expr,
-		                                   &(self->priv->push_dims[0]),
-		                                   &(self->priv->push_dims[1])))
+		                                   &self->priv->smanip.push.dimension))
 		{
 			gchar *name;
 
@@ -170,10 +166,6 @@ static void
 cdn_instruction_variable_init (CdnInstructionVariable *self)
 {
 	self->priv = CDN_INSTRUCTION_VARIABLE_GET_PRIVATE (self);
-
-	self->priv->smanip.num_pop = 0;
-	self->priv->smanip.num_push = 1;
-	self->priv->smanip.push_dims = self->priv->push_dims;
 }
 
 /**

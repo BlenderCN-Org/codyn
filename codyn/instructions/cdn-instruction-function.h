@@ -42,16 +42,15 @@ struct _CdnInstructionFunctionClass
 
 GType cdn_instruction_function_get_type (void) G_GNUC_CONST;
 
-CdnInstruction *cdn_instruction_function_new (guint        id,
-                                              const gchar *name,
-                                              gint         arguments,
-                                              gint        *argdim);
+CdnInstruction *cdn_instruction_function_new (guint               id,
+                                              const gchar        *name,
+                                              CdnStackArgs const *args);
 
 guint        cdn_instruction_function_get_id          (CdnInstructionFunction *func);
-gint        *cdn_instruction_function_get_arguments_dimension  (CdnInstructionFunction *func);
 
 void         cdn_instruction_function_set_name        (CdnInstructionFunction *func,
                                                        gchar const            *name);
+
 gchar const *cdn_instruction_function_get_name        (CdnInstructionFunction *func);
 
 G_END_DECLS

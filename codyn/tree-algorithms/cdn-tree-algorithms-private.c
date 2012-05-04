@@ -432,6 +432,22 @@ iter_is_function (CdnExpressionTreeIter const *iter,
 	return FALSE;
 }
 
+static void
+set_args_from_iters (CdnStackArgs          *args,
+                     CdnExpressionTreeIter *iter1,
+                     CdnExpressionTreeIter *iter2)
+{
+	CdnStackManipulation const *smanip1;
+	CdnStackManipulation const *smanip2;
+
+	smanip1 = cdn_instruction_get_stack_manipulation (iter1->instruction, NULL);
+	smanip2 = cdn_instruction_get_stack_manipulation (iter2->instruction, NULL);
+
+	// Note: reverse order of argdim
+	args->args[0] = smanip2->push;
+	args->args[1] = smanip1->push;
+}
+
 CdnExpressionTreeIter *
 iter_new_bfunc (CdnMathFunctionType    type,
                 CdnExpressionTreeIter *a,
@@ -439,25 +455,18 @@ iter_new_bfunc (CdnMathFunctionType    type,
                 gboolean               take_a,
                 gboolean               take_b)
 {
-	gint argdim[4];
-	CdnStackManipulation const *smanipa;
-	CdnStackManipulation const *smanipb;
 	CdnExpressionTreeIter *ret;
-	GError *err = NULL;
+	CdnStackArgs args;
+	CdnStackArg nargs[2];
 
-	smanipa = cdn_instruction_get_stack_manipulation (a->instruction, &err);
-	smanipb = cdn_instruction_get_stack_manipulation (b->instruction, NULL);
+	args.num = 2;
+	args.args = nargs;
 
-	argdim[2] = smanipa->push_dims ? smanipa->push_dims[0] : 1;
-	argdim[3] = smanipa->push_dims ? smanipa->push_dims[1] : 1;
-
-	argdim[0] = smanipb->push_dims ? smanipb->push_dims[0] : 1;
-	argdim[1] = smanipb->push_dims ? smanipb->push_dims[1] : 1;
+	set_args_from_iters (&args, a, b);
 
 	ret = iter_new_sized_take (cdn_instruction_function_new (type,
 	                                                         NULL,
-	                                                         2,
-	                                                         argdim),
+	                                                         &args),
 	                           2);
 
 	iter_set_child (ret, take_a ? a : iter_copy (a), 0);
@@ -473,18 +482,69 @@ iter_new_ufunc (CdnMathFunctionType    type,
 {
 	CdnStackManipulation const *smanipa;
 	CdnExpressionTreeIter *ret;
+	CdnStackArgs args;
+	CdnStackArg nargs;
+
+	args.num = 1;
+	args.args = &nargs;
 
 	smanipa = cdn_instruction_get_stack_manipulation (a->instruction,
 	                                                  NULL);
 
+	args.args[0] = smanipa->push;
+
 	ret = iter_new_sized_take (cdn_instruction_function_new (type,
 	                                                         NULL,
-	                                                         1,
-	                                                         smanipa->push_dims),
+	                                                         &args),
 	                           1);
 
 	ret->children[0] = take_a ? a : iter_copy (a);
 	ret->children[0]->parent = ret;
 
 	return ret;
+}
+
+void
+iter_get_stack_args (CdnExpressionTreeIter *iter,
+                     CdnStackArgs          *args)
+{
+	gint i;
+
+	cdn_stack_args_init (args, iter->num_children);
+
+	for (i = 0; i < iter->num_children; ++i)
+	{
+		CdnStackManipulation const *smanip;
+
+		smanip = cdn_instruction_get_stack_manipulation (iter->instruction, NULL);
+
+		cdn_stack_arg_copy (&args->args[iter->num_children - i - 1],
+		                    &smanip->push);
+	}
+}
+
+void
+iter_fill_bfunc (CdnExpressionTreeIter *iter,
+                 CdnMathFunctionType    type)
+{
+	CdnStackArgs args;
+	CdnStackArg nargs[2];
+
+	if (iter->instruction != NULL || iter->num_children != 2)
+	{
+		return;
+	}
+
+	// First determine both children
+	iter_fill_bfunc (iter->children[0], type);
+	iter_fill_bfunc (iter->children[1], type);
+
+	args.num = 2;
+	args.args = nargs;
+
+	set_args_from_iters (&args, iter->children[0], iter->children[1]);
+
+	iter->instruction = cdn_instruction_function_new (type,
+	                                                  NULL,
+	                                                  &args);
 }

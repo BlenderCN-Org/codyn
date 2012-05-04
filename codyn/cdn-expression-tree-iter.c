@@ -84,20 +84,20 @@ tree_iter_new (CdnExpression *expression,
 
 		smanip = cdn_instruction_get_stack_manipulation (inst, NULL);
 
-		if (smanip->num_pop > 0)
+		if (smanip->pop.num > 0)
 		{
-			iter->children = g_new (CdnExpressionTreeIter *, smanip->num_pop);
-			iter->num_children = smanip->num_pop;
+			iter->children = g_new (CdnExpressionTreeIter *, smanip->pop.num);
+			iter->num_children = smanip->pop.num;
 		}
 
-		for (i = 0; i < smanip->num_pop; ++i)
+		for (i = 0; i < smanip->pop.num; ++i)
 		{
 			CdnExpressionTreeIter *child;
 
 			child = g_queue_pop_head (&stack);
 
 			child->parent = iter;
-			iter->children[smanip->num_pop - i - 1] = child;
+			iter->children[smanip->pop.num - i - 1] = child;
 		}
 
 		g_queue_push_head (&stack, iter);
@@ -395,29 +395,12 @@ calculate_stack_manipulation (CdnStackManipulation const *smanip,
 	gint ret = 0;
 	gint i;
 
-	if (smanip->pop_dims)
+	for (i = 0; i < smanip->pop.num; ++i)
 	{
-		for (i = 0; i < smanip->num_pop; ++i)
-		{
-			ret -= smanip->pop_dims[i * 2] * smanip->pop_dims[i * 2 + 1];
-		}
-	}
-	else
-	{
-		ret -= smanip->num_pop;
+		ret -= cdn_dimension_size (&smanip->pop.args[i].dimension);
 	}
 
-	if (smanip->push_dims)
-	{
-		for (i = 0; i < smanip->num_push; ++i)
-		{
-			ret += smanip->push_dims[i * 2] * smanip->push_dims[i * 2 + 1];
-		}
-	}
-	else
-	{
-		ret += smanip->num_push;
-	}
+	ret += cdn_dimension_size (&smanip->push.dimension);
 
 	*tmpspace = smanip->extra_space;
 	return ret;

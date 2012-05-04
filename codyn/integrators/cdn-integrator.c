@@ -828,10 +828,8 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 		if (target != NULL)
 		{
 			CdnExpression *expr;
-			gint numr;
-			gint numc;
-			gint enumr;
-			gint enumc;
+			CdnDimension dim;
+			CdnDimension edim;
 			gdouble *update;
 			gint const *indices;
 			gint num_indices;
@@ -839,19 +837,18 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 
 			expr = cdn_edge_action_get_equation (action);
 
-			update = cdn_variable_get_update (target, &enumr, &enumc);
+			update = cdn_variable_get_update (target, &edim);
 
 			indices = cdn_edge_action_get_indices (action,
 			                                       &num_indices);
 
 			values = cdn_expression_evaluate_values (expr,
-			                                         &numr,
-			                                         &numc);
+			                                         &dim);
 
 			sum_values (update,
 			            values,
 			            indices,
-			            indices ? num_indices : numr * numc);
+			            indices ? num_indices : cdn_dimension_size (&dim));
 		}
 
 		actions = g_slist_next (actions);

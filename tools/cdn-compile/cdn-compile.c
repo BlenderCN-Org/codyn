@@ -74,8 +74,7 @@ static void
 display_variable (CdnVariable *v)
 {
 	gchar *name;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gint r;
 	gint c;
 	gint i;
@@ -88,9 +87,9 @@ display_variable (CdnVariable *v)
 
 	g_free (name);
 
-	values = cdn_variable_get_values (v, &numr, &numc);
+	values = cdn_variable_get_values (v, &dim);
 
-	if (numr == 1 && numc == 1)
+	if (cdn_dimension_is_one (&dim))
 	{
 		g_free (fill);
 		g_printf ("%.5f\n", values[0]);
@@ -101,14 +100,14 @@ display_variable (CdnVariable *v)
 
 	g_printf ("[");
 
-	for (r = 0; r < numr; ++r)
+	for (r = 0; r < dim.rows; ++r)
 	{
 		if (r != 0)
 		{
 			g_printf ("%s", fill);
 		}
 
-		for (c = 0; c < numc; ++c)
+		for (c = 0; c < dim.columns; ++c)
 		{
 			gchar *sv;
 
@@ -128,7 +127,7 @@ display_variable (CdnVariable *v)
 			++i;
 		}
 
-		if (r != numr - 1)
+		if (r != dim.rows - 1)
 		{
 			g_printf ("\n");
 		}

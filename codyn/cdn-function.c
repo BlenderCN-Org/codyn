@@ -79,6 +79,8 @@ struct _CdnFunctionPrivate
 	guint n_arguments;
 	guint n_implicit;
 
+	CdnStackManipulation smanip;
+
 	guint has_dimension : 1;
 };
 
@@ -130,6 +132,8 @@ cdn_function_finalize (GObject *object)
 	g_slist_foreach (self->priv->helper_vars, (GFunc)g_object_unref, NULL);
 	g_slist_free (self->priv->helper_vars);
 	self->priv->helper_vars = NULL;
+
+	cdn_stack_manipulation_destroy (&self->priv->smanip);
 
 	G_OBJECT_CLASS (cdn_function_parent_class)->finalize (object);
 }
@@ -275,6 +279,18 @@ mark_unused_arguments (CdnFunction *f)
 	}
 }
 
+static void
+update_stack_manipulation (CdnFunction *f)
+{
+	if (!f->priv->expression)
+	{
+		return;
+	}
+
+	cdn_expression_get_dimension (f->priv->expression,
+	                              &f->priv->smanip.push.dimension);
+}
+
 static gboolean
 cdn_function_compile_impl (CdnObject         *object,
                            CdnCompileContext *context,
@@ -372,26 +388,15 @@ cdn_function_compile_impl (CdnObject         *object,
 
 	extract_helper_vars (self);
 	mark_unused_arguments (self);
+	update_stack_manipulation (self);
 
 	return ret;
 }
 
-static void
-cdn_function_get_dimension_impl (CdnFunction *function,
-                                 gint        *numr,
-                                 gint        *numc)
+static CdnStackManipulation const *
+cdn_function_get_stack_manipulation_impl (CdnFunction *function)
 {
-	if (!function->priv->expression)
-	{
-		*numr = 1;
-		*numc = 1;
-
-		return;
-	}
-
-	cdn_expression_get_dimension (function->priv->expression,
-	                              numr,
-	                              numc);
+	return &function->priv->smanip;
 }
 
 static void
@@ -400,8 +405,7 @@ cdn_function_evaluate_impl (CdnFunction *function,
 {
 	if (function->priv->expression)
 	{
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gint num;
 		gint i;
 		GSList *item;
@@ -424,10 +428,9 @@ cdn_function_evaluate_impl (CdnFunction *function,
 		}
 
 		gdouble const *ret = cdn_expression_evaluate_values (function->priv->expression,
-		                                                     &numr,
-		                                                     &numc);
+		                                                     &dim);
 
-		num = numr * numc;
+		num = cdn_dimension_size (&dim);
 
 		for (i = 0; i < num; ++i)
 		{
@@ -442,40 +445,37 @@ cdn_function_evaluate_impl (CdnFunction *function,
 
 static void
 cdn_function_execute_impl (CdnFunction *function,
-                           gint         nargs,
-                           gint        *argdim,
                            CdnStack    *stack)
 {
 	GList *item = NULL;
 	guint i;
+	gint numpop;
 
-	if (nargs <= function->priv->n_arguments)
+	numpop = function->priv->smanip.pop.num;
+
+	if (numpop <= function->priv->n_arguments)
 	{
-		item = g_list_nth (function->priv->arguments, nargs - 1);
+		item = g_list_nth (function->priv->arguments, numpop - 1);
 	}
 
 	/* Set provided arguments */
-	for (i = 0; i < nargs; ++i)
+	for (i = 0; i < numpop; ++i)
 	{
-		CdnFunctionArgument *argument = item->data;
-		gint ptr = i * 2;
-		gint num;
+		CdnFunctionArgument *argument;
 		CdnVariable *v;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gdouble *vals;
 
-		v = _cdn_function_argument_get_variable (argument);
-		numr = argdim ? argdim[ptr] : 1;
-		numc = argdim ? argdim[ptr + 1] : 1;
+		argument = item->data;
 
-		num = numr * numc;
-		vals = cdn_stack_popn (stack, num);
+		v = _cdn_function_argument_get_variable (argument);
+
+		dim = function->priv->smanip.pop.args[i].dimension;
+		vals = cdn_stack_popn (stack, cdn_dimension_size (&dim));
 
 		cdn_variable_set_values (v,
 		                         vals,
-		                         numr,
-		                         numc);
+		                         &dim);
 
 		item = g_list_previous (item);
 	}
@@ -516,6 +516,9 @@ cdn_function_copy_impl (CdnObject *object,
 
 		cdn_function_add_argument (target, argument);
 	}
+
+	cdn_stack_manipulation_copy (&target->priv->smanip,
+	                             &source_function->priv->smanip);
 }
 
 static void
@@ -1059,21 +1062,26 @@ cdn_function_argument_added_impl (CdnFunction         *function,
 }
 
 static gboolean
-compare_dimensions (CdnFunction *function,
-                    gint        *argdim)
+compare_dimensions (CdnFunction        *function,
+                    CdnStackArgs const *argdim)
 {
 	gint i;
 	GList *arg = function->priv->arguments;
 
+	if (argdim->num != function->priv->n_arguments)
+	{
+		return FALSE;
+	}
+
 	for (i = function->priv->n_arguments - 1; i >= 0; --i)
 	{
 		CdnFunctionArgument *a = arg->data;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
-		cdn_function_argument_get_dimension (a, &numr, &numc);
+		cdn_function_argument_get_dimension (a, &dim);
 
-		if (numr != argdim[i * 2] || numc != argdim[i * 2 + 1])
+		if (dim.rows != argdim->args[i].rows ||
+		    dim.columns != argdim->args[i].columns)
 		{
 			return FALSE;
 		}
@@ -1085,28 +1093,28 @@ compare_dimensions (CdnFunction *function,
 }
 
 static void
-set_argdim (CdnFunction *func,
-            gint        *argdim)
+set_argdim (CdnFunction        *func,
+            CdnStackArgs const *argdim)
 {
 	gint i;
 	GList *arg = func->priv->arguments;
+
+	cdn_stack_args_copy (&func->priv->smanip.pop, argdim);
 
 	for (i = func->priv->n_arguments - 1; i >= 0; --i)
 	{
 		CdnFunctionArgument *a = arg->data;
 
 		cdn_function_argument_set_dimension (a,
-		                                     argdim[i * 2],
-		                                     argdim[i * 2 + 1]);
+		                                     &argdim->args[i].dimension);
 
 		arg = g_list_next (arg);
 	}
 }
 
 static CdnFunction *
-cdn_function_for_dimension_impl (CdnFunction *function,
-                                 gint         numargs,
-                                 gint        *argdim)
+cdn_function_for_dimension_impl (CdnFunction        *function,
+                                 CdnStackArgs const *argdim)
 {
 	if (!function->priv->has_dimension)
 	{
@@ -1514,7 +1522,7 @@ cdn_function_class_init (CdnFunctionClass *klass)
 
 	klass->execute = cdn_function_execute_impl;
 	klass->evaluate = cdn_function_evaluate_impl;
-	klass->get_dimension = cdn_function_get_dimension_impl;
+	klass->get_stack_manipulation = cdn_function_get_stack_manipulation_impl;
 	klass->argument_added = cdn_function_argument_added_impl;
 	klass->for_dimension = cdn_function_for_dimension_impl;
 	klass->get_derivative = cdn_function_get_derivative_impl;
@@ -1599,6 +1607,8 @@ cdn_function_init (CdnFunction *self)
 	                                                    g_str_equal,
 	                                                    (GDestroyNotify)g_free,
 	                                                    NULL);
+
+	self->priv->smanip.push.dimension = cdn_dimension_one;
 }
 
 /**
@@ -1804,13 +1814,9 @@ cdn_function_get_arguments (CdnFunction *function)
  **/
 void
 cdn_function_execute (CdnFunction *function,
-                      gint         nargs,
-                      gint        *argdim,
                       CdnStack    *stack)
 {
 	CDN_FUNCTION_GET_CLASS (function)->execute (function,
-	                                            nargs,
-	                                            argdim,
 	                                            stack);
 }
 
@@ -1970,14 +1976,10 @@ cdn_function_get_argument (CdnFunction *function,
 	return g_hash_table_lookup (function->priv->arguments_hash, name);
 }
 
-void
-cdn_function_get_dimension (CdnFunction *function,
-                            gint        *numr,
-                            gint        *numc)
+CdnStackManipulation const *
+cdn_function_get_stack_manipulation (CdnFunction *function)
 {
-	CDN_FUNCTION_GET_CLASS (function)->get_dimension (function,
-	                                                  numr,
-	                                                  numc);
+	return CDN_FUNCTION_GET_CLASS (function)->get_stack_manipulation (function);
 }
 
 /**
@@ -1993,13 +1995,12 @@ cdn_function_get_dimension (CdnFunction *function,
  *
  **/
 CdnFunction *
-cdn_function_for_dimension (CdnFunction *function,
-                            gint         numargs,
-                            gint        *argdim)
+cdn_function_for_dimension (CdnFunction        *function,
+                            CdnStackArgs const *argdim)
 {
 	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
 
-	return CDN_FUNCTION_GET_CLASS (function)->for_dimension (function, numargs, argdim);
+	return CDN_FUNCTION_GET_CLASS (function)->for_dimension (function, argdim);
 }
 
 /**

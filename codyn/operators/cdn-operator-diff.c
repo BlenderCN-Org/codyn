@@ -70,8 +70,7 @@ cdn_operator_diff_get_name ()
 
 static CdnFunction *
 derived_function (CdnExpression *expr,
-                  gint           numargs,
-                  gint          *argdim)
+                  CdnStackArgs const *argdim)
 {
 	GSList const *instr;
 	CdnFunction *func = NULL;
@@ -97,7 +96,7 @@ derived_function (CdnExpression *expr,
 
 	if (func)
 	{
-		func = cdn_function_for_dimension (func, numargs, argdim);
+		func = cdn_function_for_dimension (func, argdim);
 	}
 
 	return func;
@@ -125,8 +124,7 @@ static gboolean
 validate_arguments (GSList const  *expressions,
                     GSList const  *towards,
                     CdnFunction  **func,
-                    gint           numargs,
-                    gint          *argdim,
+                    CdnStackArgs const *argdim,
                     GSList       **syms,
                     gint          *order,
                     GError       **error)
@@ -135,7 +133,7 @@ validate_arguments (GSList const  *expressions,
 
 	expr = expressions->data;
 
-	*func = derived_function (expressions->data, numargs, argdim);
+	*func = derived_function (expressions->data, argdim);
 
 	if (!*func)
 	{
@@ -211,8 +209,7 @@ cdn_operator_diff_initialize (CdnOperator        *op,
                               gint                num_expressions,
                               GSList const      **indices,
                               gint                num_indices,
-                              gint                num_arguments,
-                              gint               *argdim,
+                              CdnStackArgs const *argdim,
                               CdnCompileContext  *context,
                               GError            **error)
 {
@@ -226,7 +223,6 @@ cdn_operator_diff_initialize (CdnOperator        *op,
 	                                                                      num_expressions,
 	                                                                      indices,
 	                                                                      num_indices,
-	                                                                      num_arguments,
 	                                                                      argdim,
 	                                                                      context,
 	                                                                      error))
@@ -252,7 +248,6 @@ cdn_operator_diff_initialize (CdnOperator        *op,
 	if (!validate_arguments (expressions[0],
 	                         num_expressions > 1 ? expressions[1] : NULL,
 	                         &func,
-	                         num_arguments,
 	                         argdim,
 	                         &towards,
 	                         &diff->priv->order,
@@ -321,7 +316,6 @@ cdn_operator_diff_copy (CdnOperator *op)
 	                                                                 cdn_operator_num_expressions (op),
 	                                                                 cdn_operator_all_indices (op),
 	                                                                 cdn_operator_num_indices (op),
-	                                                                 cdn_operator_get_num_arguments (op),
 	                                                                 cdn_operator_get_arguments_dimension (op),
 	                                                                 NULL,
 	                                                                 NULL);

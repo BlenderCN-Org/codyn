@@ -17,7 +17,11 @@ AC_PROG_YACC
 LT_PREREQ([2.2.6])
 LT_INIT(disable-static)
 
+m4_ifdef([GTK_DOC_CHECK], [
 GTK_DOC_CHECK(1.9)
+],[
+AM_CONDITIONAL([ENABLE_GTK_DOC], false)
+])
 
 AM_MAINTAINER_MODE([enable])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])

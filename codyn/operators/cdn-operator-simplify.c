@@ -61,9 +61,8 @@ cdn_operator_simplify_get_name ()
 }
 
 static CdnFunction *
-derived_function (CdnExpression *expr,
-                  gint           num_arguments,
-                  gint          *argdim)
+derived_function (CdnExpression      *expr,
+                  CdnStackArgs const *argdim)
 {
 	GSList const *instr;
 	CdnFunction *ret = NULL;
@@ -90,7 +89,6 @@ derived_function (CdnExpression *expr,
 	if (ret)
 	{
 		ret = cdn_function_for_dimension (ret,
-		                                  num_arguments,
 		                                  argdim);
 	}
 
@@ -135,15 +133,14 @@ replace_args (CdnFunction   *func,
 }
 
 static gboolean
-cdn_operator_simplify_initialize (CdnOperator        *op,
-                                  GSList const      **expressions,
-                                  gint                num_expressions,
-                                  GSList const      **indices,
-                                  gint                num_indices,
-                                  gint                num_arguments,
-                                  gint               *argdim,
-                                  CdnCompileContext  *context,
-                                  GError            **error)
+cdn_operator_simplify_initialize (CdnOperator         *op,
+                                  GSList const       **expressions,
+                                  gint                 num_expressions,
+                                  GSList const       **indices,
+                                  gint                 num_indices,
+                                  CdnStackArgs const  *argdim,
+                                  CdnCompileContext   *context,
+                                  GError             **error)
 {
 	CdnOperatorSimplify *simplify;
 	CdnFunction *func;
@@ -158,7 +155,6 @@ cdn_operator_simplify_initialize (CdnOperator        *op,
 	                                                                          num_expressions,
 	                                                                          indices,
 	                                                                          num_indices,
-	                                                                          num_arguments,
 	                                                                          argdim,
 	                                                                          context,
 	                                                                          error))
@@ -180,7 +176,6 @@ cdn_operator_simplify_initialize (CdnOperator        *op,
 	simplify = CDN_OPERATOR_SIMPLIFY (op);
 
 	func = derived_function (expressions[0]->data,
-	                         num_arguments,
 	                         argdim);
 
 	if (!func)
@@ -279,7 +274,6 @@ cdn_operator_simplify_copy (CdnOperator *op)
 	                                                                     cdn_operator_num_expressions (op),
 	                                                                     cdn_operator_all_indices (op),
 	                                                                     cdn_operator_num_indices (op),
-	                                                                     cdn_operator_get_num_arguments (op),
 	                                                                     cdn_operator_get_arguments_dimension (op),
 	                                                                     NULL,
 	                                                                     NULL);

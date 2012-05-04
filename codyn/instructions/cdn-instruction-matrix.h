@@ -39,10 +39,8 @@ struct _CdnInstructionMatrixClass
 
 GType cdn_instruction_matrix_get_type (void) G_GNUC_CONST;
 
-CdnInstruction *cdn_instruction_matrix_new (gint  numpop,
-                                            gint *popdims,
-                                            gint  numr,
-                                            gint  numc);
+CdnInstruction *cdn_instruction_matrix_new (CdnStackArgs const *args,
+                                            CdnDimension const *dim);
 
 G_END_DECLS
 

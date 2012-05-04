@@ -552,13 +552,12 @@ record_monitors (Monitored *monitored)
 	while (monitors)
 	{
 		Monitor *mon = monitors->data;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gdouble const *values;
 		gint num;
 
-		values = cdn_variable_get_values (mon->variable, &numr, &numc);
-		num = numr * numc;
+		values = cdn_variable_get_values (mon->variable, &dim);
+		num = cdn_dimension_size (&dim);
 
 		if (!first)
 		{
@@ -581,7 +580,7 @@ record_monitors (Monitored *monitored)
 
 			if (mon->col >= 0)
 			{
-				idx = mon->row * numc + mon->col;
+				idx = mon->row * dim.columns + mon->col;
 			}
 			else
 			{
@@ -695,18 +694,17 @@ resolve_monitors (CdnNetwork *network,
 		{
 			Monitor *mon = prop->data;
 			CdnExpression *expr;
-			gint nrows;
-			gint ncols;
+			CdnDimension ndim;
 			gchar *name;
 
 			monmon->monitors = g_slist_prepend (monmon->monitors,
 			mon);
 
 			expr = cdn_variable_get_expression (mon->variable);
-			cdn_expression_get_dimension (expr, &nrows, &ncols);
+			cdn_expression_get_dimension (expr, &ndim);
 			name = cdn_variable_get_full_name (mon->variable);
 
-			if (mon->row >= 0 || (nrows == 1 && ncols == 1))
+			if (mon->row >= 0 || cdn_dimension_is_one (&ndim))
 			{
 				monmon->names = g_slist_prepend (monmon->names,
 				name);
@@ -715,11 +713,11 @@ resolve_monitors (CdnNetwork *network,
 			{
 				gint r;
 
-				for (r = nrows - 1; r >= 0; --r)
+				for (r = ndim.rows - 1; r >= 0; --r)
 				{
 					gint c;
 
-					for (c = ncols - 1; c >= 0; --c)
+					for (c = ndim.columns - 1; c >= 0; --c)
 					{
 						gchar *s;
 
@@ -912,15 +910,16 @@ simulate_combinations (CdnNetwork    *network,
 		while (vars)
 		{
 			gdouble const *values;
-			gint numr;
-			gint numc;
+			CdnDimension dim;
 			gint i;
+			gint num;
 
 			values = cdn_variable_get_values (vars->data,
-			                                  &numr,
-			                                  &numc);
+			                                  &dim);
 
-			for (i = 0; i < numr * numc; ++i)
+			num = cdn_dimension_size (&dim);
+
+			for (i = 0; i < num; ++i)
 			{
 				gchar value[G_ASCII_DTOSTR_BUF_SIZE];
 

@@ -35,6 +35,7 @@ struct _CdnInputFilePrivate
 	guint num_columns;
 
 	CdnIoMode mode;
+	CdnStackManipulation smanip;
 
 	guint temporal : 1;
 	guint time_column_set : 1;
@@ -1292,25 +1293,25 @@ cdn_input_file_evaluate (CdnFunction *function,
 	}
 }
 
-static void
-cdn_input_file_get_dimension (CdnFunction *function,
-                              gint        *numr,
-                              gint        *numc)
+static CdnStackManipulation const *
+cdn_input_file_get_stack_manipulation (CdnFunction *function)
 {
 	CdnInputFile *input;
 
 	input = CDN_INPUT_FILE (function);
 
-	*numc = input->priv->num_columns;
+	input->priv->smanip.push.columns = input->priv->num_columns;
 
 	if (input->priv->temporal)
 	{
-		*numr = 1;
+		input->priv->smanip.push.rows = 1;
 	}
 	else
 	{
-		*numr = input->priv->num;
+		input->priv->smanip.push.rows = input->priv->num;
 	}
+
+	return &input->priv->smanip;
 }
 
 static void
@@ -1328,7 +1329,7 @@ cdn_input_file_class_init (CdnInputFileClass *klass)
 	cdnobject_class->compile = cdn_input_file_compile;
 	cdnobject_class->reset = cdn_input_file_reset;
 
-	cdnfunction_class->get_dimension = cdn_input_file_get_dimension;
+	cdnfunction_class->get_stack_manipulation = cdn_input_file_get_stack_manipulation;
 	cdnfunction_class->evaluate = cdn_input_file_evaluate;
 
 	g_type_class_add_private (object_class, sizeof(CdnInputFilePrivate));

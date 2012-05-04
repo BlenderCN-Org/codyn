@@ -184,15 +184,14 @@ cdn_operators_find (gchar const *name)
  *
  **/
 CdnOperator *
-cdn_operators_instantiate (gchar const   *name,
-                           GSList const **expressions,
-                           gint           num_expressions,
-                           GSList const **indices,
-                           gint           num_indices,
-                           gint           num_arguments,
-                           gint          *argdim,
-                           CdnCompileContext *context,
-                           GError       **error)
+cdn_operators_instantiate (gchar const         *name,
+                           GSList const       **expressions,
+                           gint                 num_expressions,
+                           GSList const       **indices,
+                           gint                 num_indices,
+                           CdnStackArgs const  *args,
+                           CdnCompileContext   *context,
+                           GError             **error)
 {
 	GType gtype;
 	CdnOperator *ret;
@@ -211,8 +210,7 @@ cdn_operators_instantiate (gchar const   *name,
 	                              num_expressions,
 	                              indices,
 	                              num_indices,
-	                              num_arguments,
-	                              argdim,
+	                              args,
 	                              context,
 	                              error))
 	{

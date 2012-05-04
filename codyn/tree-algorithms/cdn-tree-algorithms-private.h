@@ -103,6 +103,12 @@ CdnExpressionTreeIter   *iter_new_ufunc            (CdnMathFunctionType         
                                                     CdnExpressionTreeIter       *a,
                                                     gboolean                     take_a);
 
+void                     iter_fill_bfunc           (CdnExpressionTreeIter       *iter,
+                                                    CdnMathFunctionType          type);
+
+void                     iter_get_stack_args       (CdnExpressionTreeIter       *iter,
+                                                    CdnStackArgs                *args);
+
 G_END_DECLS
 
 #endif /* __CDN_TREE_ALGORITHMS_PRIVATE_H__ */
