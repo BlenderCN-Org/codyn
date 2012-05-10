@@ -603,11 +603,6 @@ execute_set_property (CdnEvent    *event,
 
 	values = cdn_expression_evaluate_values (p->value, &numr, &numc);
 
-	g_message ("Execute: %s => %s == %f",
-	           cdn_expression_get_as_string (event->priv->condition),
-	           cdn_variable_get_full_name_for_display (p->property),
-	           values[0]);
-
 	cdn_variable_set_values (p->property, values, numr, numc);
 }
 
@@ -615,9 +610,6 @@ void
 cdn_event_execute (CdnEvent *event)
 {
 	GSList *setprop;
-
-	g_message ("Execute all: %s",
-	           cdn_expression_get_as_string (event->priv->condition));
 
 	for (setprop = event->priv->set_properties; setprop; setprop = g_slist_next (setprop))
 	{

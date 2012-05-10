@@ -6670,8 +6670,6 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 
 		ev = cdn_selection_get_object (item->data);
 
-		g_message ("Check for : %s", cdn_object_get_full_id_for_display (CDN_OBJECT (ev)));
-
 		if (!CDN_IS_EVENT (ev))
 		{
 			continue;
