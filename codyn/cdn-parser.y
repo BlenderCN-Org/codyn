@@ -410,7 +410,7 @@ when
 	                                                                 NULL,
 	                                                                 NULL); }
 	  when_contents
-	  '}'
+	  '}'				{ cdn_parser_context_pop (context); }
 	| T_KEY_EVENT
 	  T_KEY_WHEN
 	  value_as_string
@@ -424,7 +424,7 @@ when
 	                                                                 NULL,
 	                                                                 NULL); }
 	  when_contents
-	  '}'
+	  '}'				{ cdn_parser_context_pop (context); }
 	;
 
 define_value

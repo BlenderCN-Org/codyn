@@ -284,7 +284,9 @@ extract_condition_parts (CdnEvent        *event,
 	while (instructions && instructions->next)
 	{
 		ret = g_slist_prepend (ret,
-		                       cdn_mini_object_copy (instructions->data));
+		                       cdn_mini_object_ref (instructions->data));
+
+		instructions = g_slist_next (instructions);
 	}
 
 	ret = g_slist_prepend (ret,
@@ -454,7 +456,7 @@ cdn_event_update (CdnEvent *event)
 		event->priv->value = cdn_expression_evaluate (event->priv->condition);
 
 		if (event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS ||
-		    event->priv->comparison == CDN_MATH_FUNCTION_TYPE_GREATER)
+		    event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL)
 		{
 			event->priv->value = -event->priv->value;
 		}
@@ -514,7 +516,7 @@ cdn_event_happened (CdnEvent *event,
 	val = cdn_expression_evaluate (event->priv->condition);
 
 	if (event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS ||
-	    event->priv->comparison == CDN_MATH_FUNCTION_TYPE_GREATER)
+	    event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL)
 	{
 		val = -val;
 	}
@@ -592,7 +594,8 @@ cdn_event_add_set_variable (CdnEvent      *event,
 }
 
 static void
-execute_set_property (SetProperty *p)
+execute_set_property (CdnEvent    *event,
+                      SetProperty *p)
 {
 	gint numr;
 	gint numc;
@@ -600,15 +603,26 @@ execute_set_property (SetProperty *p)
 
 	values = cdn_expression_evaluate_values (p->value, &numr, &numc);
 
+	g_message ("Execute: %s => %s == %f",
+	           cdn_expression_get_as_string (event->priv->condition),
+	           cdn_variable_get_full_name_for_display (p->property),
+	           values[0]);
+
 	cdn_variable_set_values (p->property, values, numr, numc);
 }
 
 void
 cdn_event_execute (CdnEvent *event)
 {
-	g_slist_foreach (event->priv->set_properties,
-	                 (GFunc)execute_set_property,
-	                 NULL);
+	GSList *setprop;
+
+	g_message ("Execute all: %s",
+	           cdn_expression_get_as_string (event->priv->condition));
+
+	for (setprop = event->priv->set_properties; setprop; setprop = g_slist_next (setprop))
+	{
+		execute_set_property (event, setprop->data);
+	}
 }
 
 void
