@@ -624,23 +624,52 @@ clear_columns (CdnInputFile *input)
 	input->priv->current_row = NULL;
 }
 
-static guint
-extract_num_columns (gchar const *line)
+static gint
+extract_num_columns (CdnInputFile  *file,
+                     gchar const   *line,
+                     GError       **error)
 {
-	guint ret = 0;
+	gint ret = 0;
 	gboolean nospace = FALSE;
-	gunichar c;
 
-	while ((c = g_utf8_get_char (line)))
+	while (TRUE)
 	{
-		if (is_separator (c))
+		gunichar c;
+
+		c = g_utf8_get_char (line);
+
+		if (is_separator (c) || c == '\0')
 		{
 			if (nospace)
 			{
+				gchar *name;
+
+				if (file->priv->temporal && ret == 0)
+				{
+					name = g_strdup ("time");
+				}
+				else
+				{
+					name = g_strdup_printf ("y%d", file->priv->temporal ? (ret - 1) : ret);
+				}
+
+				if (!create_column (file, name, error))
+				{
+					g_free (name);
+					return -1;
+				}
+
+				g_free (name);
+
 				++ret;
 			}
 
 			nospace = FALSE;
+
+			if (c == '\0')
+			{
+				break;
+			}
 		}
 		else
 		{
@@ -648,11 +677,6 @@ extract_num_columns (gchar const *line)
 		}
 
 		line = g_utf8_next_char (line);
-	}
-
-	if (nospace && *line)
-	{
-		++ret;
 	}
 
 	return ret;
@@ -723,7 +747,19 @@ extract_columns (CdnInputFile  *input,
 		}
 		else
 		{
-			input->priv->num_columns = extract_num_columns (line);
+			gint num;
+
+			num = extract_num_columns (input, line, error);
+			ret = num >= 0;
+
+			if (ret)
+			{
+				input->priv->num_columns = (guint)num;
+			}
+			else
+			{
+				input->priv->num_columns = 0;
+			}
 		}
 
 		g_free (line);
