@@ -641,7 +641,6 @@ simplify_index (CdnExpressionTreeIter *iter)
 		                                               popdims,
 		                                               numar,
 		                                               numac);
-		                                               
 	}
 
 	iter_replace_into (ret, iter);
@@ -721,11 +720,6 @@ simplify_function (CdnExpressionTreeIter *iter)
 	if (id == CDN_MATH_FUNCTION_TYPE_INDEX)
 	{
 		return simplify_index (iter);
-	}
-
-	if (cdn_math_function_is_variable (id))
-	{
-		return FALSE;
 	}
 
 	// Check if it's an element wise operation on a matrix. If so, we
