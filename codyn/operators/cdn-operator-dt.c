@@ -148,7 +148,8 @@ cdn_operator_dt_initialize (CdnOperator        *op,
 	                                           NULL,
 	                                           syms,
 	                                           dt->priv->order,
-	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_TIME,
+	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_TIME |
+	                                           CDN_EXPRESSION_TREE_ITER_DERIVE_SIMPLIFY,
 	                                           error);
 
 	cdn_expression_tree_iter_free (iter);
