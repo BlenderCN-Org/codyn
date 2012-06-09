@@ -1392,12 +1392,83 @@ simplify_factorize (CdnExpressionTreeIter *iter)
 	return TRUE;
 }
 
+static CdnExpressionTreeIter *
+iter_new_number_matrix (gdouble const *nums,
+                        gint           numr,
+                        gint           numc)
+{
+	CdnExpressionTreeIter *ret;
+	gint num;
+	gint i;
+
+	num = numr * numc;
+
+	ret = iter_new_sized_take (cdn_instruction_matrix_new (num,
+	                                                       NULL,
+	                                                       numr,
+	                                                       numc),
+	                           num);
+
+	for (i = 0; i < num; ++i)
+	{
+		ret->children[i] = iter_new_num (nums[i]);
+	}
+
+	return ret;
+}
+
+static void
+swap_int (gint *a,
+          gint *b)
+{
+	gint tmp = *a;
+
+	*a = *b;
+	*b = tmp;
+}
+
+static void
+swap_dblptr (gdouble **a,
+             gdouble **b)
+{
+	gdouble *tmp = *a;
+
+	*a = *b;
+	*b = tmp;
+}
+
+static void
+swaplr (gdouble **lnums,
+        gint     *lnumr,
+        gint     *lnumc,
+        gdouble **rnums,
+        gint     *rnumr,
+        gint     *rnumc)
+{
+	gint lnum;
+	gint rnum;
+
+	lnum = *lnumr * *lnumc;
+	rnum = *rnumr * *rnumc;
+
+	if (lnum < rnum)
+	{
+		swap_dblptr (lnums, rnums);
+		swap_int (lnumr, rnumr);
+		swap_int (lnumc, rnumc);
+	}
+}
+
 static gboolean
 simplify_plus (CdnExpressionTreeIter *iter)
 {
-	gdouble rnum = 0;
-	gdouble lnum = 0;
 	gboolean islnum;
+	gdouble *lrnums;
+	gint lnumr;
+	gint lnumc;
+	gdouble *rrnums;
+	gint rnumr;
+	gint rnumc;
 
 	// This is for numerical addition when both arguments are numerical
 	if (simplify_function (iter))
@@ -1417,40 +1488,82 @@ simplify_plus (CdnExpressionTreeIter *iter)
 
 	// In canonical form, two numbers in a tree of additions always appear
 	// on the left hand side of the first two plus operators in the tree
-	islnum = iter_is_number (iter->children[0], &lnum);
+	islnum = iter_is_number_matrix (iter->children[0],
+	                                &lrnums,
+	                                &lnumr,
+	                                &lnumc);
 
 	if (!islnum)
 	{
+		g_free (lrnums);
 		return FALSE;
 	}
 
 	if (iter_is_plus (iter->children[1]) &&
-	    iter_is_number (iter->children[1]->children[0], &rnum))
+	    iter_is_number_matrix (iter->children[1]->children[0],
+	                           &rrnums,
+	                           &rnumr,
+	                           &rnumc))
 	{
 		CdnInstructionNumber *nl;
+		gint lnum;
+		gint rnum;
+
+		swaplr (&lrnums, &lnumr, &lnumc,
+		        &rrnums, &rnumr, &rnumc);
+
+		lnum = lnumr * lnumc;
+		rnum = rnumr * rnumc;
 
 		// Here we apply: n1 + n2 + X = n3 + X
 		// i.e. preadding to numeric constants
-		nl = (CdnInstructionNumber *)(iter->children[0]->instruction);
+		if (lnum == 1 && rnum == 1)
+		{
+			nl = (CdnInstructionNumber *)(iter->children[0]->instruction);
 
-		cdn_instruction_number_set_value (nl,
-		                                  lnum + rnum);
+			cdn_instruction_number_set_value (nl,
+			                                  lrnums[0] + rrnums[0]);
 
-		// Replace the plus operator on the right, with the right hand
-		// side of the operator
-		iter_replace_into (iter->children[1]->children[1], iter->children[1]);
+			// Replace the plus operator on the right, with the right hand
+			// side of the operator
+			iter_replace_into (iter->children[1]->children[1],
+			                   iter->children[1]);
+		}
+		else
+		{
+			gint i;
+
+			for (i = 0; i < lnum; ++i)
+			{
+				lrnums[i] += rrnums[0];
+			}
+
+			iter_replace_into (iter_new_number_matrix (lrnums,
+			                                           lnumr,
+			                                           lnumc),
+			                   iter->children[0]);
+
+			iter_replace_into (iter->children[1]->children[1],
+			                   iter->children[1]);
+		}
+
 		iter_canonicalize (iter->children[1], FALSE, FALSE);
 	}
-	else if (cmp_double (lnum, 0))
+	else if (cmp_double_all (lrnums, lnumr * lnumc, 0))
 	{
-		// Here we apply the rule: 0 + a = a
 		iter_replace_into (iter->children[1], iter);
+		iter_canonicalize (iter->children[1], FALSE, FALSE);
 	}
 	else
 	{
+		g_free (lrnums);
+		g_free (rrnums);
+
 		return FALSE;
 	}
 
+	g_free (lrnums);
+	g_free (rrnums);
 	return TRUE;
 }
 
