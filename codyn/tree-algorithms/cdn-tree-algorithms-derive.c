@@ -952,6 +952,36 @@ derive_index (CdnExpressionTreeIter *iter,
 }
 
 static CdnExpressionTreeIter *
+derive_sum (CdnExpressionTreeIter *iter,
+            DeriveContext         *context)
+{
+	CdnExpressionTreeIter *ret = NULL;
+	guint i;
+
+	ret = iter_new_sized (cdn_expression_tree_iter_get_instruction (iter),
+	                      cdn_expression_tree_iter_get_num_children (iter));
+
+	// Simply derive all the children
+	for (i = 0; i < cdn_expression_tree_iter_get_num_children (iter); ++i)
+	{
+		CdnExpressionTreeIter *child;
+
+		child = cdn_expression_tree_iter_get_child (iter, i);
+		child = derive_iter (child, context);
+
+		if (!child)
+		{
+			cdn_expression_tree_iter_free (ret);
+			return NULL;
+		}
+
+		ret->children[i] = child;
+	}
+
+	return ret;
+}
+
+static CdnExpressionTreeIter *
 derive_function (CdnExpressionTreeIter  *iter,
                  CdnInstructionFunction *instr,
                  DeriveContext          *ctx)
@@ -1010,6 +1040,9 @@ derive_function (CdnExpressionTreeIter  *iter,
 		break;
 		case CDN_MATH_FUNCTION_TYPE_INDEX:
 			return derive_index (iter, ctx);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_SUM:
+			return derive_sum (iter, ctx);
 		break;
 	}
 
