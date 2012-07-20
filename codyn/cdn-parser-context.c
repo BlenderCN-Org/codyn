@@ -2012,7 +2012,11 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			pctx = expansion_context_push_base (context);
 
 			cdn_expansion_context_add_expansion (pctx, p->name);
-			cdn_expansion_context_add_expansion (pctx, p->value);
+
+			if (p->value)
+			{
+				cdn_expansion_context_add_expansion (pctx, p->value);
+			}
 
 			annotation = current_annotation (context);
 
