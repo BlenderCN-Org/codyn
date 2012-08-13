@@ -450,7 +450,7 @@ cdn_operator_get_name (CdnOperator *op)
 }
 
 /**
- * cdn_operator_all_expressions:
+ * cdn_operator_all_expressions: (skip):
  * @op: A #CdnOperator
  *
  * Get the list of all expressions.
@@ -467,10 +467,10 @@ cdn_operator_all_expressions (CdnOperator *op)
 }
 
 /**
- * cdn_operator_all_indices:
+ * cdn_operator_all_indices: (skip):
  * @op: A #CdnOperator
  *
- * Get a list of al indices..
+ * Get a list of al indices.
  *
  * Returns: (transfer none): A list of all indices
  *
@@ -592,6 +592,17 @@ cdn_operator_copy (CdnOperator *op)
 	return CDN_OPERATOR_GET_CLASS (op)->copy (op);
 }
 
+/**
+ * cdn_operator_equal:
+ * @op: a #CdnOperator.
+ * @other: a #CdnOperator.
+ * @asstring: whether to compare on string equaility.
+ *
+ * Compare two operators.
+ *
+ * Returns: %TRUE if the operators are equal, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_operator_equal (CdnOperator *op,
                     CdnOperator *other,
@@ -607,6 +618,15 @@ cdn_operator_equal (CdnOperator *op,
 	return CDN_OPERATOR_GET_CLASS (op)->equal (op, other, asstring);
 }
 
+/**
+ * cdn_operator_get_arguments_dimension:
+ * @op: a #CdnOperator.
+ *
+ * Get the arguments dimensions of this operator.
+ *
+ * Returns: a #CdnStackArgs.
+ *
+ **/
 CdnStackArgs const *
 cdn_operator_get_arguments_dimension (CdnOperator *op)
 {

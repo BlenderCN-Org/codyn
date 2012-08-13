@@ -172,8 +172,7 @@ cdn_operators_find (gchar const *name)
  * @num_expressions: the number of expressions
  * @indices: (array length=num_indices): the indices
  * @num_indices: the number of indices
- * @num_arguments: the number of arguments
- * @argdim: (array length=num_arguments): the argument dimensions
+ * @args: the argument dimensions
  * @context: the compile context
  * @error: a #GError
  *

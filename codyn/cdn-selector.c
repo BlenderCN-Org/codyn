@@ -3266,9 +3266,8 @@ cdn_selector_select (CdnSelector         *selector,
 /**
  * cdn_selector_select_set:
  * @selector: A #CdnSelector
- * @parents (element-type CdnSelection): A #GSList of #CdnSelection
+ * @parents: (element-type CdnSelection): A #GSList of #CdnSelection
  * @type: A #CdnSelectorType
- * @context: A #CdnExpansionContext
  *
  * Select objects (from @parent) using the selector.
  *

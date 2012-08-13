@@ -1985,8 +1985,7 @@ cdn_function_get_stack_manipulation (CdnFunction *function)
 /**
  * cdn_function_for_dimension:
  * @function: A #CdnFunction
- * @numargs: The number of arguments
- * @argdim: (array length=numargs): The argument dimensions
+ * @argdim: The argument dimensions
  *
  * Get the function prototype representing this function for the given
  * arguments.
@@ -2006,7 +2005,7 @@ cdn_function_for_dimension (CdnFunction        *function,
 /**
  * cdn_function_get_derivative:
  * @function: a #CdnFunction.
- * @towards: the variables towards which to derive
+ * @towards: (element-type CdnFunctionArgument): the variables towards which to derive
  * @order: the order of the derivative
  * @flags: derivation flags
  *

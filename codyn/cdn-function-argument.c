@@ -490,8 +490,7 @@ _cdn_function_argument_get_variable (CdnFunctionArgument *argument)
 /**
  * cdn_function_argument_get_dimension:
  * @argument: a #CdnFunctionArgument.
- * @numr: (out) (allow-none): the number of rows.
- * @numc: (out) (allow-none): the number of columns.
+ * @dimension: (out) (allow-none): the dimension
  *
  * Get the dimension of the function argument.
  *
@@ -511,8 +510,7 @@ cdn_function_argument_get_dimension (CdnFunctionArgument *argument,
 /**
  * cdn_function_argument_set_dimension:
  * @argument: a #CdnFunctionArgument.
- * @numr: the number of rows.
- * @numc: the number of columns.
+ * @dimension: the dimension
  *
  * Set the expected dimension of the function argument when the function is
  * called.

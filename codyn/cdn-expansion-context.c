@@ -597,6 +597,15 @@ cdn_expansion_context_shared_defines (CdnExpansionContext *context,
 	++context->marker;
 }
 
+/**
+ * cdn_expansion_context_foreach_define:
+ * @context: a #CdnExpansionContext.
+ * @hfunc: (scope call): the callback function.
+ * @userdata: user data provided to the callback.
+ *
+ * Call @hfunc for each define in the expansion context.
+ *
+ **/
 void
 cdn_expansion_context_foreach_define (CdnExpansionContext *context,
                                       GHFunc               hfunc,

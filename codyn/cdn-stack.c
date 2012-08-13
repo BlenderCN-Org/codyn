@@ -537,6 +537,15 @@ cdn_stack_manipulation_copy (CdnStackManipulation       *dest,
 	cdn_stack_args_copy (&dest->pop, &src->pop);
 }
 
+/**
+ * cdn_dimension_is_one:
+ * @dim: a #CdnDimension.
+ *
+ * Check if the dimension is 1 x 1.
+ *
+ * Returns: %TRUE if the dimension is single, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_dimension_is_one (CdnDimension const *dim)
 {
@@ -548,6 +557,16 @@ cdn_dimension_is_one (CdnDimension const *dim)
 	return dim->rows == 1 && dim->columns == 1;
 }
 
+/**
+ * cdn_dimension_equal:
+ * @dim: a #CdnDimension.
+ * @other: a #CdnDimension.
+ *
+ * Compare two dimensions for equality.
+ *
+ * Returns: %TRUE if the dimensions are equal, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_dimension_equal (CdnDimension const *dim,
                      CdnDimension const *other)
@@ -560,6 +579,15 @@ cdn_dimension_equal (CdnDimension const *dim,
 	return dim->rows == other->rows && dim->columns == other->columns;
 }
 
+/**
+ * cdn_dimension_size:
+ * @dim: a #CdnDimension.
+ *
+ * Get the size of a dimension (i.e. row x columns).
+ *
+ * Returns: the dimension size.
+ *
+ **/
 gint
 cdn_dimension_size (CdnDimension const *dim)
 {

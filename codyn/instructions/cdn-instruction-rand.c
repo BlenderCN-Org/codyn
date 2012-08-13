@@ -222,7 +222,6 @@ cdn_instruction_rand_init (CdnInstructionRand *self)
 
 /**
  * cdn_instruction_rand_new:
- * @numargs: The number of arguments
  * @argdim: the argument dimensions
  *
  * Create a new #CdnInstructionRand.

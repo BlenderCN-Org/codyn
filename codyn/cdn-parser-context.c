@@ -1665,6 +1665,10 @@ add_variable_diff (CdnParserContext  *context,
 	return TRUE;
 }
 
+/**
+ * cdn_parser_context_set_variable: (skip):
+ *
+ */
 void
 cdn_parser_context_set_variable (CdnParserContext  *context,
                                  CdnSelector       *selector,
@@ -1855,6 +1859,10 @@ decompose_dot (gchar const *name,
 	return NULL;
 }
 
+/**
+ * cdn_parser_context_add_variable: (skip):
+ *
+ */
 void
 cdn_parser_context_add_variable (CdnParserContext  *context,
                                  CdnEmbeddedString *name,
@@ -2070,6 +2078,10 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 	}
 }
 
+/**
+ * cdn_parser_context_add_action: (skip):
+ *
+ */
 void
 cdn_parser_context_add_action (CdnParserContext   *context,
                                CdnEmbeddedString  *target,
@@ -2231,6 +2243,10 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 	clear_annotation (context);
 }
 
+/**
+ * cdn_parser_context_add_polynomial: (skip):
+ *
+ */
 void
 cdn_parser_context_add_polynomial (CdnParserContext  *context,
                                    CdnEmbeddedString *name,
@@ -2343,6 +2359,10 @@ cdn_parser_context_add_polynomial (CdnParserContext  *context,
 	g_object_unref (name);
 }
 
+/**
+ * cdn_parser_context_add_interface: (skip):
+ *
+ */
 void
 cdn_parser_context_add_interface (CdnParserContext  *context,
                                   CdnEmbeddedString *name,
@@ -3230,6 +3250,10 @@ store_annotation_objects (CdnParserContext *context,
 	clear_annotation (context);
 }
 
+/**
+ * cdn_parser_context_push_objects: (skip):
+ *
+ */
 void
 cdn_parser_context_push_objects (CdnParserContext *context,
                                  GSList           *objects,
@@ -3355,6 +3379,10 @@ expansions_as_string (GSList *expansions)
 	return g_string_free (ret, FALSE);
 }
 
+/**
+ * cdn_parser_context_push_selection: (skip):
+ *
+ */
 void
 cdn_parser_context_push_selection (CdnParserContext *context,
                                    CdnSelector      *selector,
@@ -3726,6 +3754,10 @@ create_edges (CdnParserContext          *context,
 	return ret;
 }
 
+/**
+ * cdn_parser_context_push_node: (skip):
+ *
+ */
 void
 cdn_parser_context_push_node (CdnParserContext  *context,
                               CdnEmbeddedString *id,
@@ -3757,6 +3789,10 @@ cdn_parser_context_push_node (CdnParserContext  *context,
 	}
 }
 
+/**
+ * cdn_parser_context_push_edge: (skip):
+ *
+ */
 void
 cdn_parser_context_push_edge (CdnParserContext          *context,
                               CdnEmbeddedString         *id,
@@ -3937,6 +3973,10 @@ push_scope (CdnParserContext *context,
 	g_slist_free (objects);
 }
 
+/**
+ * cdn_parser_context_push_define: (skip):
+ *
+ */
 void
 cdn_parser_context_push_define (CdnParserContext *context,
                                 GSList           *attributes)
@@ -3949,6 +3989,11 @@ cdn_parser_context_push_define (CdnParserContext *context,
 	push_scope (context, attributes, FALSE);
 }
 
+/**
+ * cdn_parser_context_push_scope: (skip):
+ *
+ */
+
 void
 cdn_parser_context_push_scope (CdnParserContext *context,
                                GSList           *attributes)
@@ -3960,6 +4005,11 @@ cdn_parser_context_push_scope (CdnParserContext *context,
 
 	push_scope (context, attributes, TRUE);
 }
+
+/**
+ * cdn_parser_context_push_network: (skip):
+ *
+ */
 
 void
 cdn_parser_context_push_network (CdnParserContext *context,
@@ -3981,6 +4031,11 @@ cdn_parser_context_push_network (CdnParserContext *context,
 	cdn_parser_context_push_objects (context, objects, attributes);
 	g_slist_free (objects);
 }
+
+/**
+ * cdn_parser_context_push_integrator: (skip):
+ *
+ */
 
 void
 cdn_parser_context_push_integrator (CdnParserContext *context,
@@ -4004,6 +4059,11 @@ cdn_parser_context_push_integrator (CdnParserContext *context,
 	g_slist_free (objects);
 }
 
+/**
+ * cdn_parser_context_push_templates: (skip):
+ *
+ */
+
 void
 cdn_parser_context_push_templates (CdnParserContext *context,
                                    GSList           *attributes)
@@ -4026,6 +4086,11 @@ cdn_parser_context_push_templates (CdnParserContext *context,
 
 	g_slist_free (objects);
 }
+
+/**
+ * cdn_parser_context_push_function: (skip):
+ *
+ */
 
 void
 cdn_parser_context_push_function (CdnParserContext  *context,
@@ -4296,6 +4361,10 @@ cdn_parser_context_pop (CdnParserContext *context)
 	g_signal_emit (context, signals[CONTEXT_POPPED], 0);
 }
 
+/**
+ * cdn_parser_context_import: (skip):
+ *
+ */
 void
 cdn_parser_context_import (CdnParserContext  *context,
                            CdnEmbeddedString *id,
@@ -4534,6 +4603,11 @@ ensure_selector (CdnParserContext *context)
 	return context->priv->selectors->data;
 }
 
+/**
+ * cdn_parser_context_push_selector: (skip):
+ *
+ */
+
 void
 cdn_parser_context_push_selector (CdnParserContext *context,
                                   gboolean          with)
@@ -4559,6 +4633,11 @@ cdn_parser_context_push_selector (CdnParserContext *context,
 		                 selector);
 }
 
+/**
+ * cdn_parser_context_push_selector_identifier: (skip):
+ *
+ */
+
 void
 cdn_parser_context_push_selector_identifier (CdnParserContext  *context,
                                              CdnEmbeddedString *identifier)
@@ -4577,6 +4656,11 @@ cdn_parser_context_push_selector_identifier (CdnParserContext  *context,
 	               ensure_selector (context));
 }
 
+/**
+ * cdn_parser_context_push_selector_regex: (skip):
+ *
+ */
+
 void
 cdn_parser_context_push_selector_regex (CdnParserContext  *context,
                                         CdnEmbeddedString *regex)
@@ -4594,6 +4678,11 @@ cdn_parser_context_push_selector_regex (CdnParserContext  *context,
 	               0,
 	               ensure_selector (context));
 }
+
+/**
+ * cdn_parser_context_push_selector_pseudo: (skip):
+ *
+ */
 
 void
 cdn_parser_context_push_selector_pseudo (CdnParserContext      *context,
@@ -4677,6 +4766,10 @@ cdn_parser_context_get_scanner (CdnParserContext *context)
 	return context->priv->scanner;
 }
 
+/**
+ * cdn_parser_context_read: (skip):
+ *
+ */
 gssize
 cdn_parser_context_read (CdnParserContext *context,
                          gchar            *buffer,
@@ -4749,6 +4842,11 @@ cdn_parser_context_parse (CdnParserContext  *context,
 	return ret;
 }
 
+/**
+ * cdn_parser_context_set_line: (skip):
+ *
+ */
+
 void
 cdn_parser_context_set_line (CdnParserContext *context,
                              gchar const      *line,
@@ -4766,6 +4864,11 @@ cdn_parser_context_set_line (CdnParserContext *context,
 	                     GINT_TO_POINTER (lineno),
 	                     g_strdup (line));
 }
+
+/**
+ * cdn_parser_context_set_column: (skip):
+ *
+ */
 
 void
 cdn_parser_context_set_column (CdnParserContext *context,
@@ -4952,6 +5055,10 @@ cdn_parser_context_define (CdnParserContext  *context,
 	g_object_unref (value);
 }
 
+/**
+ * cdn_parser_context_push_input: (skip):
+ *
+ */
 void
 cdn_parser_context_push_input (CdnParserContext *context,
                                GFile            *file,
@@ -5004,6 +5111,10 @@ cdn_parser_context_push_input (CdnParserContext *context,
 	}
 }
 
+/**
+ * cdn_parser_context_include: (skip):
+ *
+ */
 void
 cdn_parser_context_include (CdnParserContext  *context,
                             CdnEmbeddedString *filename,
@@ -5023,6 +5134,10 @@ cdn_parser_context_include (CdnParserContext  *context,
 	                                         TRUE);
 }
 
+/**
+ * cdn_parser_context_link_library: (skip):
+ *
+ */
 void
 cdn_parser_context_link_library (CdnParserContext  *context,
                                  CdnEmbeddedString *filename)
@@ -5078,6 +5193,10 @@ cdn_parser_context_link_library (CdnParserContext  *context,
 	}
 }
 
+/**
+ * cdn_parser_context_push_input_from_path: (skip):
+ *
+ */
 void
 cdn_parser_context_push_input_from_path (CdnParserContext  *context,
                                          CdnEmbeddedString *filename,
@@ -5156,6 +5275,10 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 	g_object_unref (filename);
 }
 
+/**
+ * cdn_parser_context_push_input_from_string: (skip):
+ *
+ */
 void
 cdn_parser_context_push_input_from_string (CdnParserContext *context,
                                            gchar const      *s,
@@ -5192,7 +5315,10 @@ cdn_parser_context_push_input_from_string (CdnParserContext *context,
 	g_object_unref (stream);
 }
 
-
+/**
+ * cdn_parser_context_pop_input: (skip):
+ *
+ */
 void
 cdn_parser_context_pop_input (CdnParserContext *context)
 {
@@ -5284,6 +5410,10 @@ cdn_parser_context_set_start_token (CdnParserContext *context,
 	context->priv->start_token = token;
 }
 
+/**
+ * cdn_parser_context_push_annotation: (skip):
+ *
+ */
 void
 cdn_parser_context_push_annotation (CdnParserContext  *context,
                                     CdnEmbeddedString *annotation)
@@ -5305,6 +5435,10 @@ cdn_parser_context_push_annotation (CdnParserContext  *context,
 	context->priv->annotation = annotation;
 }
 
+/**
+ * cdn_parser_context_push_layout: (skip):
+ *
+ */
 void
 cdn_parser_context_push_layout (CdnParserContext *context,
                                 GSList           *attributes)
@@ -6372,6 +6506,10 @@ cdn_parser_context_unapply_template (CdnParserContext *context,
 	apply_unapply_template (context, templates, targets, FALSE);
 }
 
+/**
+ * cdn_parser_context_remove_record: (skip):
+ *
+ */
 void
 cdn_parser_context_remove_record (CdnParserContext *context,
                                   gint              len,
@@ -6458,6 +6596,10 @@ event_id (GSList   *from_phases,
 	return g_string_free (id, FALSE);
 }
 
+/**
+ * cdn_parser_context_push_event: (skip):
+ *
+ */
 void
 cdn_parser_context_push_event (CdnParserContext  *context,
                                CdnEmbeddedString *from_phase,
@@ -6726,6 +6868,10 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 	}
 }
 
+/**
+ * cdn_parser_context_push_io_type: (skip):
+ *
+ */
 void
 cdn_parser_context_push_io_type (CdnParserContext  *context,
                                  CdnIoMode          mode,
