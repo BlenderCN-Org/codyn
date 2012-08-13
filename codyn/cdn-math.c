@@ -1800,8 +1800,8 @@ sparsity_intersect (CdnStackArg const *arg1,
 
 			outarg->sparsity[outarg->num_sparse++] = s1;
 
-			++s1;
-			++s2;
+			++i1;
+			++i2;
 		}
 		else if (s1 > s2)
 		{
