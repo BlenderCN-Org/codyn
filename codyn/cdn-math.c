@@ -1779,7 +1779,6 @@ sparsity_intersect (CdnStackArg const *arg1,
 
 	// Sets the sparsity in outarg to the intersection of the sparsity
 	// in arg1 and arg2
-
 	cdn_stack_arg_set_sparsity (outarg, NULL, 0);
 
 	while (i1 < arg1->num_sparse && i2 < arg2->num_sparse)
