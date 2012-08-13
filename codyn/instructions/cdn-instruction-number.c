@@ -134,9 +134,7 @@ cdn_instruction_number_new (gdouble value)
 
 	if (fabs (self->priv->value) <= 1e-14)
 	{
-		guint sidx = 0;
-
-		cdn_stack_arg_set_sparsity (&self->priv->smanip.push, &sidx, 1);
+		cdn_stack_arg_set_sparsity_one (&self->priv->smanip.push, 0);
 	}
 
 	return CDN_INSTRUCTION (ret);
