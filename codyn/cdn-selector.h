@@ -53,11 +53,10 @@ typedef enum
 	CDN_SELECTOR_TYPE_ACTION = 1 << 5,
 	CDN_SELECTOR_TYPE_FUNCTION = 1 << 6,
 	CDN_SELECTOR_TYPE_TEMPLATE = 1 << 7,
-	CDN_SELECTOR_TYPE_OBJECT = CDN_SELECTOR_TYPE_STATE |
-	                           CDN_SELECTOR_TYPE_EDGE |
-	                           CDN_SELECTOR_TYPE_NODE |
-	                           CDN_SELECTOR_TYPE_FUNCTION |
-	                           CDN_SELECTOR_TYPE_TEMPLATE
+	CDN_SELECTOR_TYPE_OBJECT = (CDN_SELECTOR_TYPE_STATE |
+	                            CDN_SELECTOR_TYPE_EDGE |
+	                            CDN_SELECTOR_TYPE_NODE |
+	                            CDN_SELECTOR_TYPE_FUNCTION | CDN_SELECTOR_TYPE_TEMPLATE)
 } CdnSelectorType;
 
 typedef enum
