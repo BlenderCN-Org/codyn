@@ -237,9 +237,6 @@ void                   cdn_parser_context_add_event_set_variable (CdnParserConte
                                                                   CdnSelector       *selector,
                                                                   CdnEmbeddedString *value);
 
-void                   cdn_parser_context_set_proxy            (CdnParserContext           *context,
-                                                                GSList                     *objects);
-
 void                   cdn_parser_context_pop                  (CdnParserContext           *context);
 GSList const          *cdn_parser_context_current_selections   (CdnParserContext           *context);
 GSList const          *cdn_parser_context_previous_selections  (CdnParserContext           *context);
@@ -268,9 +265,6 @@ void                   cdn_parser_context_define               (CdnParserContext
                                                                 GObject                    *value,
                                                                 gboolean                    optional,
                                                                 CdnEmbeddedString          *count_name);
-
-void                   cdn_parser_context_remove               (CdnParserContext           *context,
-                                                                GSList                     *selectors);
 
 void                   cdn_parser_context_set_integrator       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *value);
