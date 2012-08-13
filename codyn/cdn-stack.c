@@ -26,19 +26,11 @@
 CdnDimension cdn_dimension_one = {.dims = {1, 1}};
 CdnDimension *cdn_dimension_onep = &cdn_dimension_one;
 
-GType
-cdn_stack_get_type ()
-{
-	static GType gtype = 0;
+G_DEFINE_BOXED_TYPE(CdnStack, cdn_stack, cdn_stack_copy, cdn_stack_free)
 
-	if (G_UNLIKELY (gtype == 0))
 	{
-		gtype = g_boxed_type_register_static ("CdnStack",
-		                                      (GBoxedCopyFunc)cdn_stack_copy,
-		                                      (GBoxedFreeFunc)cdn_stack_free);
 	}
 
-	return gtype;
 }
 
 static void
@@ -49,19 +41,9 @@ cdn_stack_manipulation_free (CdnStackManipulation *smanip)
 	g_slice_free (CdnStackManipulation, smanip);
 }
 
-GType
-cdn_stack_manipulation_get_type ()
 {
-	static GType gtype = 0;
 
-	if (G_UNLIKELY (gtype == 0))
-	{
-		gtype = g_boxed_type_register_static ("CdnStackManipulation",
-		                                      (GBoxedCopyFunc)cdn_stack_manipulation_copy,
-		                                      (GBoxedFreeFunc)cdn_stack_manipulation_free);
-	}
 
-	return gtype;
 }
 
 /**
