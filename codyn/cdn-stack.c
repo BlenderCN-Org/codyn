@@ -28,23 +28,100 @@ CdnDimension *cdn_dimension_onep = &cdn_dimension_one;
 
 G_DEFINE_BOXED_TYPE(CdnStack, cdn_stack, cdn_stack_copy, cdn_stack_free)
 
+static void
+cdn_stack_arg_destroy (CdnStackArg *arg)
+{
+	if (arg == NULL)
 	{
+		return;
 	}
 
+	g_free (arg->sparsity);
+
+	arg->sparsity = NULL;
+	arg->num_sparse = 0;
+}
+
+static CdnStackArg *
+_cdn_stack_arg_copy (CdnStackArg const *arg)
+{
+	CdnStackArg *ret;
+
+	ret = g_slice_new0 (CdnStackArg);
+	cdn_stack_arg_copy (ret, arg);
+
+	return ret;
 }
 
 static void
-cdn_stack_manipulation_free (CdnStackManipulation *smanip)
+_cdn_stack_arg_free (CdnStackArg *arg)
+{
+	cdn_stack_arg_destroy (arg);
+	g_slice_free (CdnStackArg, arg);
+}
+
+static CdnStackArgs *
+_cdn_stack_args_copy (CdnStackArgs const *args)
+{
+	CdnStackArgs *ret;
+
+	ret = g_slice_new0 (CdnStackArgs);
+	cdn_stack_args_copy (ret, args);
+
+	return ret;
+}
+
+static void
+_cdn_stack_args_free (CdnStackArgs *args)
+{
+	cdn_stack_args_destroy (args);
+	g_slice_free (CdnStackArgs, args);
+}
+
+static CdnDimension *
+_cdn_dimension_copy (CdnDimension const *dim)
+{
+	CdnDimension *ret;
+
+	ret = g_slice_new0 (CdnDimension);
+	*ret = *dim;
+
+	return ret;
+}
+
+static void
+_cdn_dimension_free (CdnDimension *dim)
+{
+	g_slice_free (CdnDimension, dim);
+}
+
+static CdnStackManipulation *
+_cdn_stack_manipulation_copy (CdnStackManipulation const *smanip)
+{
+	CdnStackManipulation *ret;
+
+	ret = g_slice_new0 (CdnStackManipulation);
+	cdn_stack_manipulation_copy (ret, smanip);
+
+	return ret;
+}
+
+static void
+_cdn_stack_manipulation_free (CdnStackManipulation *smanip)
 {
 	cdn_stack_manipulation_destroy (smanip);
 
 	g_slice_free (CdnStackManipulation, smanip);
 }
 
-{
+G_DEFINE_BOXED_TYPE(CdnStackManipulation,
+                    cdn_stack_manipulation,
+                    _cdn_stack_manipulation_copy,
+                    _cdn_stack_manipulation_free)
 
-
-}
+G_DEFINE_BOXED_TYPE(CdnStackArg, cdn_stack_arg, _cdn_stack_arg_copy, _cdn_stack_arg_free)
+G_DEFINE_BOXED_TYPE(CdnStackArgs, cdn_stack_args, _cdn_stack_args_copy, _cdn_stack_args_free)
+G_DEFINE_BOXED_TYPE(CdnDimension, cdn_dimension, _cdn_dimension_copy, _cdn_dimension_free)
 
 /**
  * SECTION:cdn-stack
@@ -358,9 +435,8 @@ cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip,
 /**
  * cdn_stack_manipulation_get_push:
  * @smanip: a #CdnStackManipulation.
- * @n: the popped argument index.
  *
- * Get the dimension of a particular pushed argument.
+ * Get the dimension of the pushed element.
  *
  **/
 CdnStackArg const *
@@ -423,20 +499,6 @@ cdn_stack_arg_set_sparsity_one (CdnStackArg *arg,
 	cdn_stack_arg_set_sparsity (arg, &sparsity, 1);
 }
 
-static void
-cdn_stack_arg_destroy (CdnStackArg *arg)
-{
-	if (arg == NULL)
-	{
-		return;
-	}
-
-	g_free (arg->sparsity);
-
-	arg->sparsity = NULL;
-	arg->num_sparse = 0;
-}
-
 void
 cdn_stack_args_destroy (CdnStackArgs *args)
 {
@@ -474,8 +536,6 @@ void
 cdn_stack_args_init (CdnStackArgs *args,
                      gint          num)
 {
-	cdn_stack_args_destroy (args);
-
 	args->num = num;
 	args->args = g_new0 (CdnStackArg, num);
 }
