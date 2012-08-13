@@ -29,6 +29,24 @@ G_BEGIN_DECLS
 
 typedef struct _CdnStack CdnStack;
 
+#ifdef __GI_SCANNER__
+
+typedef struct
+{
+	gint32 rows;
+	gint32 columns;
+} CdnDimension;
+
+typedef struct
+{
+	CdnDimension dimension;
+
+	guint *sparsity;
+	guint num_sparse;
+} CdnStackArg;
+
+#else
+
 typedef struct
 {
 	union
@@ -59,6 +77,7 @@ typedef struct
 	guint *sparsity;
 	guint num_sparse;
 } CdnStackArg;
+#endif
 
 typedef struct
 {
