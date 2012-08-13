@@ -83,6 +83,18 @@ cdn_instruction_variable_execute (CdnInstruction *instruction,
 	cdn_stack_pushn (stack, values, cdn_dimension_size (&dim));
 }
 
+static gboolean
+variable_is_sparse (CdnVariable *v)
+{
+	// Cannot be sparse if it's marked as in
+	if (cdn_variable_get_flags (v) & CDN_VARIABLE_FLAG_IN)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static CdnStackManipulation const *
 cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
                                                  GError         **error)
@@ -94,6 +106,7 @@ cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
 	if (self->priv->property)
 	{
 		CdnExpression *expr;
+		CdnStackArg const *arg;
 
 		expr = cdn_variable_get_expression (self->priv->property);
 
@@ -112,6 +125,23 @@ cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
 
 			g_free (name);
 			return NULL;
+		}
+
+		if (variable_is_sparse (self->priv->property))
+		{
+			CdnExpression *e;
+
+			e = cdn_variable_get_expression (self->priv->property);
+
+			// Check to see how to compute sparsity...
+			arg = cdn_expression_get_stack_arg (e);
+
+			if (arg->num_sparse > 0)
+			{
+				cdn_stack_arg_set_sparsity (&self->priv->smanip.push,
+				                            arg->sparsity,
+				                            arg->num_sparse);
+			}
 		}
 	}
 
