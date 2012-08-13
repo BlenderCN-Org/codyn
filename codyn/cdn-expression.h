@@ -146,6 +146,9 @@ gint           cdn_expression_get_error_start  (CdnExpression      *expression);
 gboolean       cdn_expression_get_dimension    (CdnExpression      *expression,
                                                 CdnDimension       *dimension);
 
+CdnStackArg   *cdn_expression_get_stack_arg    (CdnExpression      *expression);
+void           cdn_expression_recalculate_sparsity (CdnExpression *expression);
+
 void           cdn_expression_set_cache_notify (CdnExpression            *expression,
                                                 CdnExpressionCacheNotify  notify,
                                                 gpointer                  userdata,

@@ -4906,3 +4906,29 @@ cdn_expression_is_cached (CdnExpression *expression)
 {
 	return expression->priv->cached;
 }
+
+/**
+ * cdn_expression_get_stack_arg:
+ * @expression: a #CdnExpression.
+ *
+ * Get the stack return argument of the expression.
+ *
+ * Returns: (transfer none): a #CdnStackArg.
+ *
+ **/
+CdnStackArg *
+cdn_expression_get_stack_arg (CdnExpression *expression)
+{
+	return &expression->priv->retdim;
+}
+
+void
+cdn_expression_recalculate_sparsity (CdnExpression *expression)
+{
+	if (!expression)
+	{
+		return;
+	}
+
+	
+}
