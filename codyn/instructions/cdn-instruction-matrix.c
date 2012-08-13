@@ -135,13 +135,40 @@ cdn_instruction_matrix_new (CdnStackArgs const *args,
 {
 	CdnMiniObject *ret;
 	CdnInstructionMatrix *self;
+	gint i;
+	gint sp = 0;
 
 	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_MATRIX);
 	self = CDN_INSTRUCTION_MATRIX (ret);
 
 	cdn_stack_args_copy (&self->priv->smanip.pop, args);
-
 	self->priv->smanip.push.dimension = *dim;
+
+	for (i = 0; i < args->num; ++i)
+	{
+		sp += args->args[i].num_sparse;
+	}
+
+	if (sp > 0)
+	{
+		gint off = 0;
+		guint *sparsity = g_new0 (guint, sp);
+		gint spi = 0;
+
+		for (i = args->num - 1; i >= 0; --i)
+		{
+			gint j;
+
+			for (j = 0; j < args->args[i].num_sparse; ++j)
+			{
+				sparsity[spi++] = args->args[i].sparsity[j] + off;
+			}
+
+			off += cdn_dimension_size (&args->args[i].dimension);
+		}
+
+		cdn_stack_arg_set_sparsity (&self->priv->smanip.push, sparsity, sp);
+	}
 
 	return CDN_INSTRUCTION (ret);
 }
