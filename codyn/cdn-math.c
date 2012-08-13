@@ -1967,6 +1967,25 @@ sparsity_union (CdnStackArg const *arg1,
 	}
 }
 
+static guchar *
+make_sparse_matrix (CdnStackArg const *arg)
+{
+	guchar *ret;
+	gint num;
+	gint i;
+
+	num = cdn_dimension_size (&arg->dimension);
+
+	ret = g_new0 (guchar, num);
+
+	for (i = 0; i < arg->num_sparse; ++i)
+	{
+		ret[arg->sparsity[i]] = 1;
+	}
+
+	return ret;
+}
+
 static void
 sparsity_multiply (CdnStackArg const *arg1,
                    CdnStackArg const *arg2,
@@ -1975,14 +1994,53 @@ sparsity_multiply (CdnStackArg const *arg1,
 	if (arg1->columns == arg2->rows &&
 	    !(cdn_stack_arg_size (arg1) == 1 && cdn_stack_arg_size (arg2) == 1))
 	{
-		// matrix multiply
-		//guint *sparsity;
-		guint i;
+		guchar *s1;
+		guchar *s2;
+		guchar *s1ptr;
+		guint sidx = 0;
+		guint *sparsity;
+		gint r;
 
-		//sparsity = g_new0 (guint, arg1->rows * arg2->columns);
+		s1 = make_sparse_matrix (arg1);
+		s2 = make_sparse_matrix (arg2);
 
-		// TODO
-		for (i = 0; i < arg1->num_sparse; ++i);
+		s1ptr = s1;
+		sparsity = g_new0 (guint, arg1->rows * arg2->columns);
+
+		for (r = 0; r < arg1->rows; ++r)
+		{
+			guchar *s2ptr;
+			gint c;
+
+			s2ptr = s2;
+
+			for (c = 0; c < arg2->columns; ++c)
+			{
+				gboolean issparse = TRUE;
+				gint k;
+
+				for (k = 0; k < arg1->columns; ++k)
+				{
+					if (!s1ptr[k] && !s2ptr[k * arg2->columns])
+					{
+						issparse = FALSE;
+						break;
+					}
+				}
+
+				if (issparse)
+				{
+					sparsity[sidx++] = r * arg2->columns + c;
+				}
+
+				++s2ptr;
+			}
+
+			s1ptr += arg1->columns;
+		}
+
+		cdn_stack_arg_set_sparsity (outarg, sparsity, sidx);
+		g_free (sparsity);
 	}
 	else
 	{
