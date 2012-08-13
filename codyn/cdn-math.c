@@ -2048,10 +2048,10 @@ sparsity_multiply (CdnStackArg const *arg1,
 	}
 }
 
-static void
-compute_sparsity (CdnMathFunctionType  type,
-                  CdnStackArgs const  *inargs,
-                  CdnStackArg         *outarg)
+void
+cdn_math_compute_sparsity (CdnMathFunctionType  type,
+                           CdnStackArgs const  *inargs,
+                           CdnStackArg         *outarg)
 {
 	if (type >= CDN_MATH_FUNCTION_TYPE_NUM)
 	{
@@ -2554,6 +2554,6 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			return FALSE;
 	}
 
-	compute_sparsity (type, inargs, outarg);
+	cdn_math_compute_sparsity (type, inargs, outarg);
 	return TRUE;
 }
