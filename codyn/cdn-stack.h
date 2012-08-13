@@ -82,6 +82,9 @@ extern CdnDimension *cdn_dimension_onep;
 
 GType     cdn_stack_get_type ();
 GType     cdn_stack_manipulation_get_type ();
+GType     cdn_stack_arg_get_type ();
+GType     cdn_stack_args_get_type ();
+GType     cdn_dimension_get_type ();
 
 CdnStack *cdn_stack_new     (guint     size);
 CdnStack *cdn_stack_copy    (CdnStack *stack);
