@@ -4065,7 +4065,7 @@ cdn_expression_set_instructions (CdnExpression *expression,
 /**
  * cdn_expression_set_instructions_take:
  * @expression: a #CdnExpression.
- * @instructions: a #GSList.
+ * @instructions: (element-type CdnInstruction): a #GSList.
  *
  * Set the instructions used to evaluate the expression. You should never have
  * to use this function. It's main purpose is for optimization of expressions
