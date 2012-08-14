@@ -43,6 +43,7 @@
 #include <ctype.h>
 #include <glib.h>
 #include <unistd.h>
+#include <glib/gprintf.h>
 
 /**
  * SECTION:cdn-expression
@@ -3778,7 +3779,7 @@ validate_stack (CdnExpression *expression,
 	dim = expression->priv->retdim.dimension;
 
 #ifdef PRINT_STACK
-	g_message ("\n\nValidating stack for: %s", expression->priv->expression);
+	g_printf ("\n\nValidating stack for: %s\n", expression->priv->expression);
 #endif
 
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
@@ -3846,31 +3847,31 @@ validate_stack (CdnExpression *expression,
 		}
 
 #ifdef PRINT_STACK
-		g_message ("%s", cdn_instruction_to_string (inst));
+		g_printf ("  %-20s (", cdn_instruction_to_string (inst));
 #endif
 
 		nst = calculate_stack_manipulation (smanip, &tmpspace, &numpopped);
 
 #ifdef PRINT_STACK
-		g_message ("%s", cdn_instruction_to_string (inst));
-
 		gint i;
 
-		for (i = 0; i < smanip->num_pop; ++i)
+		for (i = 0; i < smanip->pop.num; ++i)
 		{
-			g_message ("  -(%d, %d)",
-			           smanip->pop_dims ? smanip->pop_dims[i * 2] : 1,
-			           smanip->pop_dims ? smanip->pop_dims[i * 2 + 1] : 1);
+			if (i != 0)
+			{
+				g_print (", ");
+			}
+
+			g_printf ("%d-by-%d",
+			           smanip->pop.args[i].rows,
+			           smanip->pop.args[i].columns);
 		}
 
-		for (i = 0; i < smanip->num_push; ++i)
-		{
-			g_message ("  +(%d, %d)",
-			           smanip->push_dims ? smanip->push_dims[i * 2] : 1,
-			           smanip->push_dims ? smanip->push_dims[i * 2 + 1] : 1);
-		}
+		g_printf (") [%d-by-%d] →  ",
+		           smanip->push.rows,
+		           smanip->push.columns);
 
-		g_message ("Stack size is now: %d (+%d)", stack, tmpspace + nst);
+		g_printf ("%d (+%d)\n", stack, tmpspace + nst);
 #endif
 
 		cdn_stack_arg_copy (&expression->priv->retdim, &smanip->push);
