@@ -1592,6 +1592,24 @@ wrap_dotted (CdnExpression  *expression,
 	return ret;
 }
 
+#define print_instructions(instrs) \
+{ \
+	GSList *__tmp = instrs; \
+	while (__tmp) \
+	{ \
+		g_printf ("%s", cdn_instruction_to_string (__tmp->data)); \
+\
+		__tmp = g_slist_next (__tmp); \
+\
+		if (__tmp) \
+		{ \
+			g_print (" →  "); \
+		} \
+	} \
+\
+	g_print ("\n"); \
+}
+
 static void
 replace_arg_with_zeros (CdnExpression      *expression,
                         ParserContext      *context,
