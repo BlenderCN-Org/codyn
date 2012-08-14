@@ -516,7 +516,8 @@ iter_get_stack_args (CdnExpressionTreeIter *iter,
 	{
 		CdnStackManipulation const *smanip;
 
-		smanip = cdn_instruction_get_stack_manipulation (iter->instruction, NULL);
+		smanip = cdn_instruction_get_stack_manipulation (iter->children[i]->instruction,
+		                                                 NULL);
 
 		cdn_stack_arg_copy (&args->args[iter->num_children - i - 1],
 		                    &smanip->push);
