@@ -95,6 +95,7 @@ typedef struct
 
 #define CDN_DIMENSION(r, c) {.rows = r, .columns = (c)}
 #define CDN_STACK_ARG(r, c) {.dimension = CDN_DIMENSION (r, c), .sparsity = NULL, .num_sparse = 0}
+#define CDN_STACK_ARG_EMPTY CDN_STACK_ARG(0, 0)
 
 extern CdnDimension cdn_dimension_one;
 extern CdnDimension *cdn_dimension_onep;

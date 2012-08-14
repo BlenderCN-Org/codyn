@@ -558,6 +558,9 @@ cdn_stack_args_copy (CdnStackArgs       *dest,
 
 	for (i = 0; i < src->num; ++i)
 	{
+		dest->args[i].sparsity = NULL;
+		dest->args[i].num_sparse = 0;
+
 		cdn_stack_arg_set_sparsity (&dest->args[i],
 		                            src->args[i].sparsity,
 		                            src->args[i].num_sparse);

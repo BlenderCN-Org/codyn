@@ -1411,7 +1411,7 @@ size_macro (CdnExpression *expression,
 	gchar *sr;
 	gchar *sc;
 	CdnStackArgs args;
-	CdnStackArg nargs[2];
+	CdnStackArg nargs[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
 	CdnDimension dim;
 
 	if (context->stack)
@@ -2141,7 +2141,7 @@ parse_matrix_row (CdnExpression *expression,
 			else if (dimension->rows != 1)
 			{
 				CdnStackArgs nargs;
-				CdnStackArg ar[2];
+				CdnStackArg ar[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
 
 				nargs.args = ar;
 				nargs.num = 2;

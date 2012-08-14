@@ -1009,8 +1009,8 @@ simplify_multiply (CdnExpressionTreeIter *iter)
 	gboolean iscomm;
 	CdnStackManipulation const *smanip;
 	CdnStackArgs args;
-	CdnStackArg nargs[2];
-	CdnStackArg outarg;
+	CdnStackArg nargs[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
+	CdnStackArg outarg = CDN_STACK_ARG_EMPTY;
 	gint extraspace;
 
 	if (simplify_function (iter))
