@@ -654,13 +654,24 @@ cdn_operator_get_function (CdnOperator *op,
 	return CDN_OPERATOR_GET_CLASS (op)->get_function (op, idx, numidx);
 }
 
+static void
+foreach_set_argdim (CdnFunction        *function,
+                    CdnStackArgs const *argdim)
+{
+	_cdn_function_set_arguments_dimension (function, argdim);
+}
+
 void
-_cdn_operator_set_arguments_dimension (CdnOperator *op,
+_cdn_operator_set_arguments_dimension (CdnOperator        *op,
                                        CdnStackArgs const *argdim)
 {
 	g_return_if_fail (CDN_IS_OPERATOR (op));
 
 	cdn_stack_args_copy (&op->priv->args, argdim);
+
+	cdn_operator_foreach_function (op,
+	                               (CdnForeachFunctionFunc)foreach_set_argdim,
+	                               (gpointer)argdim);
 }
 
 /**
