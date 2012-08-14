@@ -322,11 +322,18 @@ cdn_function_argument_new (gchar const   *name,
 CdnFunctionArgument *
 cdn_function_argument_copy (CdnFunctionArgument *argument)
 {
+	CdnFunctionArgument *ret;
+
 	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), NULL);
 
-	return cdn_function_argument_new (argument->priv->name,
-	                                  argument->priv->isexplicit,
-	                                  cdn_expression_copy (argument->priv->default_value));
+	ret = cdn_function_argument_new (argument->priv->name,
+	                                 argument->priv->isexplicit,
+	                                 cdn_expression_copy (argument->priv->default_value));
+
+	ret->priv->unused = argument->priv->unused;
+	ret->priv->dimension = argument->priv->dimension;
+
+	return ret;
 }
 
 /**
@@ -408,7 +415,7 @@ cdn_function_argument_set_explicit (CdnFunctionArgument *argument,
 static gchar *
 make_zeros (CdnDimension const *dimension)
 {
-	if (cdn_dimension_is_one (dimension))
+	if (cdn_dimension_size (dimension) <= 1)
 	{
 		return g_strdup ("0");
 	}
