@@ -486,7 +486,7 @@ cdn_stack_arg_set_sparsity (CdnStackArg *arg,
 
 		arg->num_sparse = num_sparse;
 	}
-	else
+	else if (num_sparse != 0)
 	{
 		memcpy (arg->sparsity, sparsity, sizeof (guint) * num_sparse);
 	}
