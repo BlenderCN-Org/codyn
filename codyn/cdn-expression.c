@@ -1646,17 +1646,19 @@ replace_arg_with_zeros (CdnExpression      *expression,
 
 			instrptr->next = g_slist_prepend (NULL, stackptr->data);
 			instrptr->next->next = next;
-			instrptr = next;
+
+			next = instrptr;
 		}
 		else
 		{
 			next = expression->priv->instructions;
 			expression->priv->instructions = g_slist_prepend (NULL, stackptr->data);
 			expression->priv->instructions->next = next;
+
+			next = NULL;
 		}
 
 		instrptr = next;
-
 		stackptr = g_slist_next (stackptr);
 	}
 }
