@@ -1112,6 +1112,15 @@ set_argdim (CdnFunction        *func,
 	}
 }
 
+void
+_cdn_function_set_arguments_dimension (CdnFunction        *function,
+                                       CdnStackArgs const *argdim)
+{
+	g_return_if_fail (CDN_IS_FUNCTION (function));
+
+	set_argdim (function, argdim);
+}
+
 static CdnFunction *
 cdn_function_for_dimension_impl (CdnFunction        *function,
                                  CdnStackArgs const *argdim)

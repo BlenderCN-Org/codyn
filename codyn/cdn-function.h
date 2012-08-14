@@ -156,6 +156,9 @@ CdnFunction         *cdn_function_get_derivative              (CdnFunction      
                                                                CdnExpressionTreeIterDeriveFlags   flags,
                                                                GError                           **error);
 
+void                _cdn_function_set_arguments_dimension     (CdnFunction          *function,
+                                                               CdnStackArgs const   *argdim);
+
 G_END_DECLS
 
 #endif /* __CDN_FUNCTION_H__ */
