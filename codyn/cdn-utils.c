@@ -460,11 +460,12 @@ cdn_decompose_dot (gchar const *name,
 	else
 	{
 		ret = g_strdup (name);
+		*order = 0;
 	}
 
 	last = ret + strlen (ret);
 
-	while (last > name)
+	while (last > ret)
 	{
 		last = g_utf8_prev_char (last);
 		next = g_utf8_get_char (last);
@@ -477,6 +478,8 @@ cdn_decompose_dot (gchar const *name,
 			g_free (ret);
 			return tmp;
 		}
+
+		++*order;
 	}
 
 	return ret;
