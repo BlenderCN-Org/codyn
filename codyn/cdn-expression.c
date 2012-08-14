@@ -3711,17 +3711,20 @@ parse_expression (CdnExpression   *expression,
 
 static gint
 calculate_stack_manipulation (CdnStackManipulation const *smanip,
-                              gint                       *tmpspace)
+                              gint                       *tmpspace,
+                              gint                       *numpopped)
 {
-	gint ret = 0;
+	gint ret;
 	gint i;
+
+	*numpopped = 0;
 
 	for (i = 0; i < smanip->pop.num; ++i)
 	{
-		ret -= cdn_dimension_size (&smanip->pop.args[i].dimension);
+		*numpopped += cdn_dimension_size (&smanip->pop.args[i].dimension);
 	}
 
-	ret += cdn_dimension_size (&smanip->push.dimension);
+	ret = -*numpopped + cdn_dimension_size (&smanip->push.dimension);
 
 	*tmpspace = smanip->extra_space;
 	return ret;
@@ -3768,6 +3771,7 @@ validate_stack (CdnExpression *expression,
 		CdnStackManipulation const *smanip;
 		GError *error = NULL;
 		gint nst;
+		gint numpopped;
 
 		// Don't allow references to be on the instruction set
 		if (CDN_IS_INSTRUCTION_CUSTOM_OPERATOR_REF (inst) ||
@@ -3827,7 +3831,7 @@ validate_stack (CdnExpression *expression,
 		g_message ("%s", cdn_instruction_to_string (inst));
 #endif
 
-		nst = calculate_stack_manipulation (smanip, &tmpspace);
+		nst = calculate_stack_manipulation (smanip, &tmpspace, &numpopped);
 
 #ifdef PRINT_STACK
 		g_message ("%s", cdn_instruction_to_string (inst));
@@ -3853,7 +3857,7 @@ validate_stack (CdnExpression *expression,
 
 		cdn_stack_arg_copy (&expression->priv->retdim, &smanip->push);
 
-		if (stack + nst <= 0)
+		if (stack + nst <= 0 || numpopped > stack)
 		{
 			return FALSE;
 		}
