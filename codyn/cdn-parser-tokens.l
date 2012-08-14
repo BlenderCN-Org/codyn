@@ -3,6 +3,7 @@
 #include "cdn-parser.h"
 
 static gchar *unquote_string (gchar const *s, gint len, gchar const *escape);
+static void *__top_state;
 
 void cdn_parser_set_column (int column_no, yyscan_t yyscanner);
 int cdn_parser_get_column (yyscan_t yyscanner);
@@ -84,7 +85,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 	}
 
 	/* To not get a compiler warning about defined but not used... */
-	yy_top_state (yyscanner);
+	__top_state = yy_top_state;
 %}
 
 <firstline>.*|\n			{
