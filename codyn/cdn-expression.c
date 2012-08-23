@@ -96,6 +96,7 @@ struct _CdnExpressionPrivate
 	guint modified : 1;
 	guint once : 1;
 	guint has_cache : 1;
+	guint pinned_sparsity : 1;
 };
 
 typedef struct
@@ -3874,7 +3875,14 @@ validate_stack (CdnExpression *expression,
 		g_printf ("%d (+%d)\n", stack, tmpspace + nst);
 #endif
 
-		cdn_stack_arg_copy (&expression->priv->retdim, &smanip->push);
+		if (expression->priv->pinned_sparsity)
+		{
+			expression->priv->retdim.dimension = smanip->push.dimension;
+		}
+		else
+		{
+			cdn_stack_arg_copy (&expression->priv->retdim, &smanip->push);
+		}
 
 		if (stack + nst <= 0 || numpopped > stack)
 		{
@@ -4123,6 +4131,8 @@ cdn_expression_set_instructions_take (CdnExpression *expression,
 
 	// Validate the stack here
 	validate_stack (expression, NULL, FALSE);
+
+	cdn_expression_recalculate_sparsity (expression);
 
 	// We are going to reset the expression completely here
 	expression->priv->prevent_cache_reset = FALSE;
@@ -4753,6 +4763,7 @@ cdn_expression_copy (CdnExpression *expression)
 	ret->priv->modified = expression->priv->modified;
 	ret->priv->has_cache = expression->priv->has_cache;
 	ret->priv->once = expression->priv->once;
+	ret->priv->pinned_sparsity = expression->priv->pinned_sparsity;
 
 	instr = expression->priv->instructions;
 
@@ -4945,6 +4956,29 @@ CdnStackArg *
 cdn_expression_get_stack_arg (CdnExpression *expression)
 {
 	return &expression->priv->retdim;
+}
+
+typedef struct
+{
+	guint *sparsity;
+	guint num_sparse;
+} SparsityInfo;
+
+void
+cdn_expression_set_pinned_sparsity (CdnExpression *expression,
+                                    gboolean       pinned)
+{
+	g_return_if_fail (CDN_IS_EXPRESSION (expression));
+
+	expression->priv->pinned_sparsity = pinned;
+}
+
+gboolean
+cdn_expression_get_pinned_sparsity (CdnExpression *expression)
+{
+	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
+
+	return expression->priv->pinned_sparsity;
 }
 
 void

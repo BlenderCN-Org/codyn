@@ -161,6 +161,11 @@ void           cdn_expression_set_evaluate_notify (CdnExpression            *exp
 
 guint          cdn_expression_get_stack_size   (CdnExpression       *expression);
 
+void           cdn_expression_set_pinned_sparsity (CdnExpression *expression,
+                                                   gboolean       pinned);
+
+gboolean       cdn_expression_get_pinned_sparsity (CdnExpression *expression);
+
 G_END_DECLS
 
 #endif /* __CDN_EXPRESSION_H__ */
