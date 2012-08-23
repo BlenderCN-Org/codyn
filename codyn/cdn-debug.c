@@ -21,13 +21,23 @@ cdn_debug_message (CdnDebugSection  section,
 		msg = g_strdup_vprintf (format, ap);
 		va_end (ap);
 
-		g_log ("Cdn",
-		       (GLogLevelFlags)section,
-		       "%s:%d (%s) %s",
-		       file,
-		       line,
-		       function,
-		       msg);
+		if (section & CDN_DEBUG_SIMPLIFY)
+		{
+			g_log ("Cdn",
+			       (GLogLevelFlags)section,
+			       "%s",
+			       msg);
+		}
+		else
+		{
+			g_log ("Cdn",
+			       (GLogLevelFlags)section,
+			       "%s:%d (%s) %s",
+			       file,
+			       line,
+			       function,
+			       msg);
+		}
 
 		g_free (msg);
 	}
