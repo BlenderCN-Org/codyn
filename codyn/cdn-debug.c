@@ -162,7 +162,8 @@ cdn_debug_init ()
 		                   CDN_DEBUG_IO |
 		                   CDN_DEBUG_DIFF |
 		                   CDN_DEBUG_MATH |
-		                   CDN_DEBUG_INTEGRATOR,
+		                   CDN_DEBUG_INTEGRATOR |
+		                   CDN_DEBUG_SIMPLIFY,
 		                   cdn_debug_log_handler,
 		                   NULL);
 	}
