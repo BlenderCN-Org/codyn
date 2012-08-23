@@ -1841,21 +1841,21 @@ CdnExpressionTreeIter *
 cdn_expression_tree_iter_simplify (CdnExpressionTreeIter *iter)
 {
 	cdn_debug_message (DEBUG_SIMPLIFY,
-	                   "Simplify non canonical: {%s}",
-	                   cdn_expression_tree_iter_to_string (iter));
+	                   "Simplifying: {%s} %s",
+	                   cdn_expression_tree_iter_to_string (iter),
+	                   sparsity_str (iter));
 
+	cdn_debug_push_indent ();
 	cdn_expression_tree_iter_canonicalize (iter);
-
-	cdn_debug_message (DEBUG_SIMPLIFY,
-	                   "Simplifying: {%s}",
-	                   cdn_expression_tree_iter_to_string (iter));
+	cdn_debug_pop_indent ();
 
 	iter_simplify (iter, TRUE);
 	iter_invalidate_cache_down (iter);
 
 	cdn_debug_message (DEBUG_SIMPLIFY,
-	                   "Simplified:  {%s}",
-	                   cdn_expression_tree_iter_to_string (iter));
+	                   "Simplified:  {%s} %s",
+	                   cdn_expression_tree_iter_to_string (iter),
+	                   sparsity_str (iter));
 
 	return iter;
 }
