@@ -21,6 +21,9 @@ property_to_string (CdnInstructionVariable *inst,
 {
 	CdnVariable *prop;
 	CdnInstructionVariableBinding binding;
+	CdnDimension slice_dim;
+	guint slice_length;
+	guint const *slice;
 
 	binding = cdn_instruction_variable_get_binding (inst);
 
@@ -44,6 +47,41 @@ property_to_string (CdnInstructionVariable *inst,
 	else
 	{
 		g_string_append (ret, cdn_variable_get_name (prop));
+	}
+
+	slice = cdn_instruction_variable_get_slice (inst,
+	                                            &slice_length,
+	                                            &slice_dim);
+
+	if (slice)
+	{
+		guint r;
+		guint i = 0;
+
+		g_string_append_c (ret, '[');
+
+		for (r = 0; r < slice_dim.rows; ++r)
+		{
+			guint c;
+
+			if (r != 0)
+			{
+				g_string_append (ret, "; ");
+			}
+
+			for (c = 0; c < slice_dim.columns; ++c)
+			{
+				if (c != 0)
+				{
+					g_string_append (ret, ", ");
+				}
+
+				g_string_append_printf (ret, "%u", slice[i]);
+				++i;
+			}
+		}
+
+		g_string_append_c (ret, ']');
 	}
 }
 
