@@ -47,6 +47,8 @@ struct _CdnInstructionClass
 	gboolean (*equal)           (CdnInstruction *i1,
 	                             CdnInstruction *i2,
 	                             gboolean        asstring);
+
+	void (*recalculate_sparsity) (CdnInstruction  *instruction);
 };
 
 GType     cdn_instruction_get_type               (void) G_GNUC_CONST;
@@ -75,6 +77,8 @@ void      cdn_instruction_set_location           (CdnInstruction *instruction,
 void      cdn_instruction_get_location           (CdnInstruction *instruction,
                                                   gint           *start,
                                                   gint           *end);
+
+void      cdn_instruction_recalculate_sparsity   (CdnInstruction  *instruction);
 
 G_END_DECLS
 
