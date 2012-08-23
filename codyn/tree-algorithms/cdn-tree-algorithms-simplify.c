@@ -1827,6 +1827,31 @@ iter_simplify (CdnExpressionTreeIter *iter,
 	return ret;
 }
 
+static gchar *
+sparsity_str (CdnExpressionTreeIter *iter)
+{
+	CdnStackManipulation const *smanip;
+	GString *s = g_string_new ("");
+	guint i;
+
+	smanip = cdn_instruction_get_stack_manipulation (iter->instruction, NULL);
+
+	g_string_append (s, "[sp:");
+
+	for (i = 0; i < smanip->push.num_sparse; ++i)
+	{
+		if (i != 0)
+		{
+			g_string_append (s, ", ");
+		}
+
+		g_string_append_printf (s, "%u", smanip->push.sparsity[i]);
+	}
+
+	g_string_append_c (s, ']');
+	return g_string_free (s, FALSE);
+}
+
 /**
  * cdn_expression_tree_iter_simplify:
  * @iter: a #CdnExpressionTreeIter

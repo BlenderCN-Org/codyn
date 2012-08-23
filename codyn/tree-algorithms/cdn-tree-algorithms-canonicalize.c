@@ -804,8 +804,16 @@ iter_canonicalize (CdnExpressionTreeIter *iter,
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_canonicalize (CdnExpressionTreeIter *iter)
 {
+	cdn_debug_message (DEBUG_SIMPLIFY,
+	                   "Canonicalize:  {%s}",
+	                   cdn_expression_tree_iter_to_string (iter));
+
 	iter_canonicalize (iter, TRUE, TRUE);
 	iter_invalidate_cache_down (iter);
+
+	cdn_debug_message (DEBUG_SIMPLIFY,
+	                   "Canonicalized: {%s}",
+	                   cdn_expression_tree_iter_to_string (iter));
 
 	return iter;
 }
