@@ -451,6 +451,11 @@ static gboolean
 canonical_multiply (CdnExpressionTreeIter *iter,
                     gboolean               dodefactor)
 {
+	if (iter_is_matrix_multiply (iter))
+	{
+		return FALSE;
+	}
+
 	if (!dodefactor || !defactorize (iter))
 	{
 		return merge_commutative_operator_trees (iter);
