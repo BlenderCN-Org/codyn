@@ -1154,9 +1154,16 @@ simplify_multiply (CdnExpressionTreeIter *iter)
 			if (cdn_dimension_is_one (&outarg.dimension) &&
 			    cdn_dimension_is_one (&dim1))
 			{
-				nl = (CdnInstructionNumber *)(iter->children[0]->instruction);
-
-				cdn_instruction_number_set_value (nl, cdn_stack_pop (&stack));
+				if (CDN_IS_INSTRUCTION_NUMBER (iter->children[0]->instruction))
+				{
+					nl = (CdnInstructionNumber *)(iter->children[0]->instruction);
+					cdn_instruction_number_set_value (nl, cdn_stack_pop (&stack));
+				}
+				else
+				{
+					iter_replace_into (iter_new_num (cdn_stack_pop (&stack)),
+					                   iter->children[0]);
+				}
 			}
 			else
 			{
@@ -1508,10 +1515,18 @@ simplify_plus (CdnExpressionTreeIter *iter)
 		// i.e. preadding to numeric constants
 		if (lnum == 1 && rnum == 1)
 		{
-			nl = (CdnInstructionNumber *)(iter->children[0]->instruction);
+			if (CDN_IS_INSTRUCTION_NUMBER (iter->children[0]->instruction))
+			{
+				nl = (CdnInstructionNumber *)(iter->children[0]->instruction);
 
-			cdn_instruction_number_set_value (nl,
-			                                  lrnums[0] + rrnums[0]);
+				cdn_instruction_number_set_value (nl,
+				                                  lrnums[0] + rrnums[0]);
+			}
+			else
+			{
+				iter_replace_into (iter_new_num (lrnums[0] + rrnums[0]),
+				                   iter->children[0]);
+			}
 
 			// Replace the plus operator on the right, with the right hand
 			// side of the operator
