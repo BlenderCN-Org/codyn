@@ -107,28 +107,6 @@ compute_index (gdouble const *valuesa,
 }
 
 static gboolean
-iter_is_matrix_multiply (CdnExpressionTreeIter *iter)
-{
-	CdnStackManipulation const *smanipa;
-	CdnStackManipulation const *smanipb;
-
-	if (!iter_is_multiply (iter))
-	{
-		return FALSE;
-	}
-
-	smanipa = cdn_instruction_get_stack_manipulation (iter->children[0]->instruction,
-	                                                  NULL);
-
-	smanipb = cdn_instruction_get_stack_manipulation (iter->children[1]->instruction,
-	                                                  NULL);
-
-	return smanipa->push.columns != 1 &&
-	       smanipb->push.rows != 1 &&
-	       smanipa->push.columns == smanipb->push.rows;
-}
-
-static gboolean
 is_single_item_matrix (CdnExpressionTreeIter *iter)
 {
 	gint i;

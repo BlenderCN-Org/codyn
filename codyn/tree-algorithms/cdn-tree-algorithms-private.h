@@ -112,6 +112,9 @@ void                     iter_fill_bfunc           (CdnExpressionTreeIter       
 void                     iter_get_stack_args       (CdnExpressionTreeIter       *iter,
                                                     CdnStackArgs                *args);
 
+gboolean                 iter_is_matrix_multiply   (CdnExpressionTreeIter       *iter);
+
+
 G_END_DECLS
 
 #endif /* __CDN_TREE_ALGORITHMS_PRIVATE_H__ */
