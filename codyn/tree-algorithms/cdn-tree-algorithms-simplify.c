@@ -974,31 +974,6 @@ is_eye (gdouble const      *values,
 	return TRUE;
 }
 
-static CdnExpressionTreeIter *
-iter_new_number_matrix (gdouble const      *nums,
-                        CdnDimension const *dim)
-{
-	CdnExpressionTreeIter *ret;
-	gint num;
-	gint i;
-	CdnStackArgs args;
-
-	num = cdn_dimension_size (dim);
-
-	ret = iter_new_sized_take (NULL, num);
-
-	for (i = 0; i < num; ++i)
-	{
-		ret->children[i] = nums ? iter_new_num (nums[i]) : iter_new_numstr ("0");
-	}
-
-	iter_get_stack_args (ret, &args);
-	ret->instruction = cdn_instruction_matrix_new (&args, dim),
-	cdn_stack_args_destroy (&args);
-
-	return ret;
-}
-
 static gboolean
 simplify_multiply (CdnExpressionTreeIter *iter)
 {
