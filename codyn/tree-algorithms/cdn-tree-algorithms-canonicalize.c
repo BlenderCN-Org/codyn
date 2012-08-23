@@ -1,6 +1,7 @@
 #include "cdn-tree-algorithms-private.h"
 #include <codyn/instructions/cdn-instructions.h>
 #include "codyn/cdn-operators.h"
+#include <codyn/cdn-debug.h>
 
 static gboolean canonical_multiply (CdnExpressionTreeIter *iter,
                                     gboolean               dodefactor);
@@ -556,6 +557,30 @@ function_argument_index (CdnFunction *f,
 	return -1;
 }
 
+static CdnExpressionTreeIter *
+make_index (guint const        *indices,
+            CdnDimension const *dim)
+{
+	gdouble *r;
+	guint n;
+	guint i;
+	CdnExpressionTreeIter *ret;
+
+	n = cdn_dimension_size (dim);
+
+	r = g_new (gdouble, n);
+
+	for (i = 0; i < n; ++i)
+	{
+		r[i] = (gdouble)indices[i];
+	}
+
+	ret = iter_new_number_matrix (r, dim);
+	g_free (r);
+
+	return ret;
+}
+
 static void
 canonical_custom_function_real (CdnExpressionTreeIter *iter,
                                 CdnFunction           *f)
@@ -566,7 +591,14 @@ canonical_custom_function_real (CdnExpressionTreeIter *iter,
 
 	func = cdn_expression_tree_iter_new (cdn_function_get_expression (f));
 
+	cdn_debug_push_indent ();
 	cdn_expression_tree_iter_simplify (func);
+	cdn_debug_pop_indent ();
+
+	cdn_debug_message (DEBUG_SIMPLIFY,
+	                   "Inlining function: %s: {%s}",
+	                   cdn_object_get_full_id_for_display (CDN_OBJECT (f)),
+	                   cdn_expression_tree_iter_to_string (func));
 
 	// Replace all property instructions with the nodes which are the
 	// current children of the iter
@@ -593,6 +625,9 @@ canonical_custom_function_real (CdnExpressionTreeIter *iter,
 				// Find argument index
 				gint idx = function_argument_index (f, prop);
 				CdnExpressionTreeIter *cp;
+				guint const *slice;
+				guint slice_length;
+				CdnDimension slice_dim;
 
 				if (idx >= 0)
 				{
@@ -601,12 +636,46 @@ canonical_custom_function_real (CdnExpressionTreeIter *iter,
 				else
 				{
 					cp = cdn_expression_tree_iter_new (cdn_variable_get_expression (prop));
+
+					cdn_debug_push_indent ();
+					cdn_expression_tree_iter_canonicalize (cp);
+					cdn_debug_pop_indent ();
+				}
+
+				// Preserve slice
+				slice = cdn_instruction_variable_get_slice (pi,
+				                                            &slice_length,
+				                                            &slice_dim);
+
+				if (slice)
+				{
+					if (CDN_IS_INSTRUCTION_VARIABLE (cp->instruction))
+					{
+						CdnInstructionVariable *vv;
+
+						vv = (CdnInstructionVariable *)cp->instruction;
+
+						cdn_instruction_variable_apply_slice (vv,
+						                                      slice,
+						                                      slice_length,
+						                                      &slice_dim);
+					}
+					else
+					{
+						cp = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_INDEX,
+						                     make_index (slice, &slice_dim),
+						                     cp,
+						                     TRUE,
+						                     TRUE);
+					}
 				}
 
 				if (it == func)
 				{
 					func = cp;
 				}
+
+				g_queue_push_head (&q, cp);
 
 				// Replace the iter with child arg
 				iter_replace (it, cp);
