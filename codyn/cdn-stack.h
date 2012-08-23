@@ -164,6 +164,9 @@ void      cdn_stack_arg_copy           (CdnStackArg       *ret,
 
 guint     cdn_stack_arg_size              (CdnStackArg const *arg);
 
+gboolean  cdn_stack_arg_is_sparse (CdnStackArg const *arg,
+                                   guint              idx);
+
 void      cdn_stack_arg_set_sparsity (CdnStackArg *arg,
                                       guint       *sparsity,
                                       guint        num_sparse);

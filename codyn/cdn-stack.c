@@ -22,6 +22,7 @@
 
 #include "cdn-stack-private.h"
 #include <string.h>
+#include <stdlib.h>
 
 CdnDimension cdn_dimension_one = {.dims = {1, 1}};
 CdnDimension *cdn_dimension_onep = &cdn_dimension_one;
@@ -497,6 +498,35 @@ cdn_stack_arg_set_sparsity_one (CdnStackArg *arg,
                                 guint        sparsity)
 {
 	cdn_stack_arg_set_sparsity (arg, &sparsity, 1);
+}
+
+static int
+compare_sparse_index (gconstpointer a,
+                      gconstpointer b)
+{
+	guint const *ai;
+	guint const *bi;
+
+	ai = (guint const *)a;
+	bi = (guint const *)b;
+
+	return ai < bi ? -1 : (ai == bi ? 0 : 1);
+}
+
+gboolean
+cdn_stack_arg_is_sparse (CdnStackArg const *arg,
+                         guint              idx)
+{
+	if (arg->sparsity == NULL)
+	{
+		return FALSE;
+	}
+
+	return bsearch (&idx,
+	                arg->sparsity,
+	                arg->num_sparse,
+	                sizeof (guint),
+	                compare_sparse_index) != NULL;
 }
 
 void
