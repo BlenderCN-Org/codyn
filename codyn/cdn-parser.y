@@ -1161,6 +1161,16 @@ variable
 	                                                                   $6.add,
 	                                                                   $6.remove,
 	                                                                   $1); errb }
+	| attributes
+	  T_KEY_SET
+	  selector
+	  '='
+	  variable_flags_strict		{ cdn_parser_context_set_variable (context,
+	                                                                   $3,
+	                                                                   cdn_embedded_string_new (),
+	                                                                   $5.add,
+	                                                                   $5.remove,
+	                                                                   $1); errb }
 	;
 
 variable_flag_sign

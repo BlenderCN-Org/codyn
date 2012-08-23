@@ -1763,8 +1763,11 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 				}
 			}
 
-			cdn_variable_set_expression (v,
-			                             cdn_expression_new (cdn_expansion_get (ex, 0)));
+			if (*cdn_expansion_get (ex, 0) != '\0')
+			{
+				cdn_variable_set_expression (v,
+				                             cdn_expression_new (cdn_expansion_get (ex, 0)));
+			}
 
 			cdn_variable_add_flags (v, add_flags);
 			cdn_variable_remove_flags (v, remove_flags);
