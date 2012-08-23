@@ -1827,10 +1827,6 @@ sparsity_transpose (CdnStackArg const *inarg,
 
 	sparsity = g_new (guint, inarg->num_sparse);
 
-	cdn_stack_arg_set_sparsity (outarg,
-	                            sparsity,
-	                            inarg->num_sparse);
-
 	for (i = 0; i < inarg->num_sparse; ++i)
 	{
 		guint idx;
@@ -1844,6 +1840,12 @@ sparsity_transpose (CdnStackArg const *inarg,
 
 		sparsity[i] = c * inarg->columns + r;
 	}
+
+	cdn_stack_arg_set_sparsity (outarg,
+	                            sparsity,
+	                            inarg->num_sparse);
+
+	g_free (sparsity);
 }
 
 static void
@@ -2039,7 +2041,10 @@ sparsity_multiply (CdnStackArg const *arg1,
 		}
 
 		cdn_stack_arg_set_sparsity (outarg, sparsity, sidx);
+
 		g_free (sparsity);
+		g_free (s1);
+		g_free (s2);
 	}
 	else
 	{
