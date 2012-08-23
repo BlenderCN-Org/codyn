@@ -279,7 +279,7 @@ iter_to_instructions (CdnExpressionTreeIter *iter,
  *
  * Get the instructions that this tree iter represents (including its children).
  *
- * Returns: (transfer full) (element-type CdnInstruction): A #GSList
+ * Returns: (transfer full) (element-type CdnInstructionBoxed): A #GSList
  *
  **/
 GSList *

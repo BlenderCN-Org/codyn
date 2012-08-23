@@ -4583,7 +4583,7 @@ cdn_expression_reset (CdnExpression *expression)
  * Get list of #CdnInstruction. The list is owned by @expression and should
  * not be freed or modified
  *
- * Returns: (element-type CdnInstruction) (transfer none): list of #CdnInstruction
+ * Returns: (element-type CdnInstructionBoxed) (transfer none): list of #CdnInstruction
  *
  **/
 const GSList *
