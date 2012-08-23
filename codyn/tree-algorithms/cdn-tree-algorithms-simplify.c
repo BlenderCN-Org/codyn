@@ -499,6 +499,78 @@ simplify_inline_matrix (CdnExpressionTreeIter *iter)
 	return TRUE;
 }
 
+static guint *
+make_sindex_slice (gdouble      const *valuesa,
+                   CdnDimension const *dima)
+{
+	guint n;
+	guint i;
+	guint *ret;
+
+	n = cdn_dimension_size (dima);
+
+	ret = g_new (guint, n);
+
+	for (i = 0; i < n; ++i)
+	{
+		ret[i] = (guint)(valuesa[i] + 0.5);
+	}
+
+	return ret;
+}
+
+static guint *
+make_mindex_slice (gdouble      const *valuesa,
+                   CdnDimension const *dima,
+                   gdouble      const *valuesb,
+                   CdnDimension const *dimb,
+                   CdnDimension const *retdim)
+{
+	// Compose linear indices from the row/column matrices
+	guint n;
+	guint i;
+	guint *ret;
+
+	n = cdn_dimension_size (dima);
+
+	ret = g_new (guint, n);
+
+	for (i = 0; i < n; ++i)
+	{
+		guint r;
+		guint c;
+
+		r = (guint)(valuesa[i] + 0.5);
+		c = (guint)(valuesb[i] + 0.5);
+
+		ret[i] = r * retdim->columns + c;
+	}
+
+	return ret;
+}
+
+static guint *
+make_index_slice (gdouble      const *valuesa,
+                  CdnDimension const *dima,
+                  gdouble      const *valuesb,
+                  CdnDimension const *dimb,
+                  CdnDimension const *retdim)
+{
+	if (valuesb)
+	{
+		return make_mindex_slice (valuesa,
+		                          dima,
+		                          valuesb,
+		                          dimb,
+		                          retdim);
+	}
+	else
+	{
+		return make_sindex_slice (valuesa,
+		                          dima);
+	}
+}
+
 static gboolean
 simplify_index (CdnExpressionTreeIter *iter)
 {
@@ -516,11 +588,6 @@ simplify_index (CdnExpressionTreeIter *iter)
 	last = iter->children[iter->num_children - 1];
 
 	waschanged = simplify_inline_matrix (last);
-
-	if (!iter_is_matrix (last))
-	{
-		return waschanged;
-	}
 
 	// Check if first (and second) arg are numeric
 	isnuma = iter_is_number_matrix (iter->children[0],
@@ -547,8 +614,37 @@ simplify_index (CdnExpressionTreeIter *iter)
 	smanip = cdn_instruction_get_stack_manipulation (last->instruction,
 	                                                 NULL);
 
-	dimb = smanip->push.dimension;
+	if (CDN_IS_INSTRUCTION_VARIABLE (last->instruction))
+	{
+		guint *slice;
+		CdnStackManipulation const *retsmanip;
 
+		slice = make_index_slice (valuesa,
+		                          &dima,
+		                          valuesb,
+		                          &dimb,
+		                          &smanip->push.dimension);
+
+		retsmanip = cdn_instruction_get_stack_manipulation (iter->instruction,
+		                                                    NULL);
+
+		cdn_instruction_variable_apply_slice (CDN_INSTRUCTION_VARIABLE (last->instruction),
+		                                      slice,
+		                                      cdn_dimension_size (&retsmanip->push.dimension),
+		                                      &retsmanip->push.dimension);
+
+		g_free (slice);
+
+		// Make a variable slice
+		iter_replace_into (last, iter);
+		return TRUE;
+	}
+	else if (!iter_is_matrix (last))
+	{
+		return waschanged;
+	}
+
+	dimb = smanip->push.dimension;
 	num = cdn_dimension_size (&dima);
 
 	if (num == 1)
