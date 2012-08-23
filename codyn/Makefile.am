@@ -47,6 +47,7 @@ COMMON_SOURCES = 		\
 	cdn-variable.c \
 	cdn-variable-interface.c \
 	cdn-selector.c \
+	cdn-network-simplify.c \
 	cdn-stack.c \
 	cdn-tokenizer.c \
 	cdn-usable.c \
@@ -246,11 +247,35 @@ TREEALGORITHMSSOURCES = 	\
 	tree-algorithms/cdn-tree-algorithms-substitute.c
 
 Cdn-3.0.gir: libcodyn-3.0.la
-INTROSPECTION_SCANNER_ARGS = -I$(top_srcdir) --warn-all --verbose
+
+INTROSPECTION_SCANNER_ARGS = 			\
+	-I$(top_srcdir) 			\
+	--warn-all 				\
+	--verbose 				\
+	--c-include=codyn/codyn.h
+
 Cdn_3_0_gir_NAMESPACE = Cdn
 Cdn_3_0_gir_VERSION = 3.0
-Cdn_3_0_gir_LIBS = libcodyn-3.0.la instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
-Cdn_3_0_gir_FILES = $(INST_H_FILES) $(COMMON_SOURCES) $(INSTRUCTIONHEADERS) $(INSTRUCTIONSOURCES) $(OPERATORHEADERS) $(OPERATORSOURCES) $(INTEGRATORHEADERS) $(INTEGRATORSOURCES) $(TREEALGORITHMSSOURCES) cdn-enum-types.h cdn-enum-types.c
+
+Cdn_3_0_gir_LIBS = 				\
+	libcodyn-3.0.la 			\
+	instructions/libinstructions.la 	\
+	operators/liboperators.la 		\
+	integrators/libintegrators.la 		\
+	tree-algorithms/libtreealgorithms.la
+
+Cdn_3_0_gir_FILES = 				\
+	$(INST_H_FILES) 			\
+	$(COMMON_SOURCES) 			\
+	$(INSTRUCTIONHEADERS) 			\
+	$(INSTRUCTIONSOURCES) 			\
+	$(OPERATORHEADERS) 			\
+	$(OPERATORSOURCES) 			\
+	$(INTEGRATORHEADERS) 			\
+	$(INTEGRATORSOURCES) 			\
+	$(TREEALGORITHMSSOURCES) 		\
+	cdn-enum-types.h cdn-enum-types.c
+
 Cdn_3_0_gir_INCLUDES = GLib-2.0 GObject-2.0 Gio-2.0
 
 girdir = $(datadir)/gir-1.0
