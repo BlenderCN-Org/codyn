@@ -4984,10 +4984,56 @@ cdn_expression_get_pinned_sparsity (CdnExpression *expression)
 void
 cdn_expression_recalculate_sparsity (CdnExpression *expression)
 {
-	if (!expression)
+	GQueue q;
+	GSList const *instr;
+	SparsityInfo *info;
+
+	if (!expression || expression->priv->pinned_sparsity)
 	{
 		return;
 	}
 
-	
+	g_queue_init (&q);
+
+	for (instr = expression->priv->instructions; instr; instr = g_slist_next (instr))
+	{
+		CdnInstruction *i = instr->data;
+		CdnStackManipulation const *smanip;
+
+		smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+
+		if (smanip->pop.num > 0)
+		{
+			guint idx;
+
+			for (idx = 0; idx < smanip->pop.num; ++idx)
+			{
+				info = g_queue_pop_head (&q);
+
+				cdn_stack_arg_set_sparsity (&smanip->pop.args[idx],
+				                            info->sparsity,
+				                            info->num_sparse);
+
+				g_slice_free (SparsityInfo, info);
+			}
+		}
+
+		cdn_instruction_recalculate_sparsity (i);
+
+		info = g_slice_new (SparsityInfo);
+
+		info->sparsity = smanip->push.sparsity;
+		info->num_sparse = smanip->push.num_sparse;
+
+		g_queue_push_head (&q, info);
+	}
+
+	info = g_queue_pop_head (&q);
+
+	cdn_stack_arg_set_sparsity (&expression->priv->retdim,
+	                            info->sparsity,
+	                            info->num_sparse);
+
+	g_slice_free (SparsityInfo, info);
 }
+
