@@ -35,5 +35,8 @@ void cdn_debug_message (CdnDebugSection section,
 
 gboolean cdn_debug_is_enabled (CdnDebugSection section);
 
+void cdn_debug_push_indent ();
+void cdn_debug_pop_indent ();
+
 #endif /* __CDN_DEBUG_H__ */
 

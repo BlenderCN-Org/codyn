@@ -2,6 +2,7 @@
 
 static CdnDebugSection debug_level = 0;
 static gboolean inited = FALSE;
+static gint log_indent = 0;
 
 void
 cdn_debug_message (CdnDebugSection  section,
@@ -77,11 +78,45 @@ cdn_debug_log_handler (gchar const    *log_domain,
                        gchar const    *message,
                        gpointer        userdata)
 {
-	g_printerr ("[%s:%s(%p)]: %s\n",
-	            log_domain,
-	            level_to_string (log_level),
-	            g_thread_self (),
-	            message);
+	gchar *id;
+
+	id = g_strnfill (log_indent * 2, ' ');
+
+	if (log_level & CDN_DEBUG_SIMPLIFY)
+	{
+		g_printerr ("%s[cs] %s\n",
+		            id,
+		            message);
+	}
+	else if (log_level & CDN_DEBUG_DIFF)
+	{
+		g_printerr ("%s[df] %s\n",
+		            id,
+		            message);
+	}
+	else
+	{
+		g_printerr ("%s[%s:%s(%p)]: %s\n",
+		            id,
+		            log_domain,
+		            level_to_string (log_level),
+		            g_thread_self (),
+		            message);
+	}
+
+	g_free (id);
+}
+
+void
+cdn_debug_push_indent ()
+{
+	++log_indent;
+}
+
+void
+cdn_debug_pop_indent ()
+{
+	--log_indent;
 }
 
 void
