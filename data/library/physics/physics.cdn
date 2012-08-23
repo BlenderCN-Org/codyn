@@ -19,7 +19,12 @@ templates
         {
             null = "zeros(@@1, 1)"
 
-            ## Generalized coordinates/velocities/accelerations (i.e. DOFs of joint)
+            defines
+            {
+                names = "{coordinates,velocities,accelerations}"
+            }
+
+            ## Generalized @names[@@0[!]] (i.e. DOFs of joint)
             "{q,dq,ddq}" = "null"
 
             ## Generalized coordinate accelerations differential equation
