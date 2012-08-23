@@ -175,7 +175,7 @@ cdn_compile_error_set (CdnCompileError *error,
 		error->priv->error = g_error_copy (gerror);
 	}
 
-	if (object)
+	if (object && (!error->priv->object || gerror))
 	{
 		if (error->priv->object)
 		{
@@ -185,7 +185,7 @@ cdn_compile_error_set (CdnCompileError *error,
 		error->priv->object = g_object_ref (object);
 	}
 
-	if (property)
+	if (property && (!error->priv->property || gerror))
 	{
 		if (error->priv->property)
 		{
@@ -200,7 +200,7 @@ cdn_compile_error_set (CdnCompileError *error,
 		}
 	}
 
-	if (action)
+	if (action && (!error->priv->action || gerror))
 	{
 		if (error->priv->action)
 		{
@@ -215,7 +215,7 @@ cdn_compile_error_set (CdnCompileError *error,
 		}
 	}
 
-	if (expression)
+	if (expression && (!error->priv->expression || gerror))
 	{
 		if (error->priv->expression)
 		{

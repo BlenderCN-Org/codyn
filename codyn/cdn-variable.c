@@ -1755,6 +1755,15 @@ cdn_variable_compile (CdnVariable       *variable,
 		g_free (variable->priv->update);
 		variable->priv->update = g_new0 (gdouble, cdn_dimension_size (&dim));
 	}
+	else
+	{
+		cdn_compile_error_set (error,
+		                       NULL,
+		                       variable->priv->object,
+		                       variable,
+		                       NULL,
+		                       NULL);
+	}
 
 	return ret;
 }

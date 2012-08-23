@@ -2428,7 +2428,7 @@ parse_identifier_as_variable (CdnExpression *expression,
 		// try parsing constants
 		ret = parse_constant (expression, id, context);
 
-		if (!ret)
+		if (!ret && !cdn_compile_error_get_error (context->error))
 		{
 			parser_failed (expression,
 			               context,
