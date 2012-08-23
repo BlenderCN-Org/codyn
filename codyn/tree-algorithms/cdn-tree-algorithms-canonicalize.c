@@ -480,7 +480,7 @@ canonical_unary_minus (CdnExpressionTreeIter *iter)
 
 	g_free (iter->children);
 	iter->num_children = 2;
-	iter->children = g_new (CdnExpressionTreeIter *, 2);
+	iter->children = g_new0 (CdnExpressionTreeIter *, 2);
 
 	iter->instruction = create_multiply (&arg1,
 	                                     &smanip->push);
