@@ -1555,7 +1555,7 @@ simplify_plus (CdnExpressionTreeIter *iter)
 	else if (cmp_double_all (lrnums, cdn_dimension_size (&ldim), 0))
 	{
 		iter_replace_into (iter->children[1], iter);
-		iter_canonicalize (iter->children[1], FALSE, FALSE);
+		iter_canonicalize (iter, FALSE, FALSE);
 	}
 	else
 	{
