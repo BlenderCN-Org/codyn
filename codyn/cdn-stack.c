@@ -580,6 +580,8 @@ cdn_stack_manipulation_copy (CdnStackManipulation       *dest,
 
 	cdn_stack_arg_copy (&dest->push, &src->push);
 	cdn_stack_args_copy (&dest->pop, &src->pop);
+
+	dest->extra_space = src->extra_space;
 }
 
 /**
