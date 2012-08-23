@@ -323,20 +323,32 @@ simplify_inline_matrix (CdnExpressionTreeIter *iter)
 		CdnVariable *v;
 		CdnVariableFlags flags;
 		CdnExpressionTreeIter *expanded;
+		CdnInstructionVariable *vinstr;
 
-		v = cdn_instruction_variable_get_variable (CDN_INSTRUCTION_VARIABLE (iter->instruction));
+		vinstr = CDN_INSTRUCTION_VARIABLE (iter->instruction);
+
+		v = cdn_instruction_variable_get_variable (vinstr);
 		flags = cdn_variable_get_flags (v);
 
 		if ((flags & (CDN_VARIABLE_FLAG_INTEGRATED | CDN_VARIABLE_FLAG_IN)) ||
-		    variable_has_actors (v))
+		    variable_has_actors (v) ||
+		    cdn_instruction_variable_get_slice (vinstr, NULL, NULL) != NULL)
 		{
 			return FALSE;
 		}
 
 		expanded = cdn_expression_tree_iter_new (cdn_variable_get_expression (v));
-		iter_replace_into (expanded, iter);
+		simplify_inline_matrix (expanded);
 
-		return TRUE;
+		if (CDN_IS_INSTRUCTION_MATRIX (expanded->instruction))
+		{
+			iter_replace_into (expanded, iter);
+			return TRUE;
+		}
+		else
+		{
+			return FALSE;
+		}
 	}
 
 	if (!iter_is_function (iter, &fid) ||
