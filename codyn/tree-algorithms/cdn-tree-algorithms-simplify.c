@@ -1465,7 +1465,7 @@ simplify_plus (CdnExpressionTreeIter *iter)
 	gboolean islnum;
 	gdouble *lrnums;
 	CdnDimension ldim;
-	gdouble *rrnums;
+	gdouble *rrnums = NULL;
 	CdnDimension rdim;
 
 	// This is for numerical addition when both arguments are numerical
