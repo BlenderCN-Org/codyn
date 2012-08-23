@@ -2,6 +2,11 @@
 [once] include "geometry.cdn"
 [once] include "transform.cdn"
 
+layout
+{
+    nodes at @count[++], -2
+}
+
 g = "[0; 0; 9.81]"
 
 templates
