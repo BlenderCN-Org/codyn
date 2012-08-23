@@ -1,5 +1,4 @@
 include "physics/physics.cdn"
-include "lreg.cdn"
 
 integrator
 {
@@ -10,8 +9,8 @@ defines
 {
     n = 1
 
-    l = "{1,1}"
-    m = "{1,0.5}"
+    l = "{@n*1}"
+    m = "{@n*1}"
 }
 
 node "system"
@@ -22,55 +21,15 @@ node "system"
         com = "[0; 0; -$(@l[@@1] / 2)]"
         coordinateTransform = "Sp.Translate([0, 0, $(@@1 == 0 ? 0 : -@l[$(@@1 - 1)])])"
 
-        q = "0"
-
-        q_ref = "0"
-        dq_ref = "0"
-
-        tau = "τ"
-
-        points = "[transformations.worldLocationᵀ;
-                   (transformations.worldMatrix ∙ [com; 1])[[0, 1, 2]]]"
+        layout
+        {
+            at $((@1 + 3) * cos((@1 + 3) / (10 + 3) * 2 * pi)), $((@1 + 3) * -sin((@1 + 3) / (10 + 3) * 2 * pi))
+        }
     }
 
-    edge from "p{0:$(@num - 2)}" to "p$(@1 + 1)" : physics.joint {}
+    edge from "p{0:$(@n - 2)}" to "p$(@1 + 1)" : physics.joint {}
 
     include "physics/dynamics.cdn"
-}
-
-node | system . /p([0-9]+)/
-{
-    # Damping
-    b = 5
-
-    τ_damping = "-b ∙ dq"
-
-    node "control" : "phase" . oscillator
-    {
-        r = "target_amplitude"
-        target_amplitude = "0.2"
-    }
-
-    k = 50
-
-    q_ref = "0.2 * sin(2 * pi * t + 0.1) + 0.1 * cos(4 * pi * t)"
-    q_tot = "q_ref"
-    q = "q_ref"
-
-    τ_control = "k ∙ (q_tot - q)"
-
-    # Joint torque
-    τ = "τ_damping + τ_control"
-}
-
-node | system . /p([0-9]+)/
-{
-    node "learning" : lreg
-    {
-        signal = "q_ref - q"
-    }
-
-    q_tot = "q_ref + learning.output"
 }
 
 # vi:ts=4:et
