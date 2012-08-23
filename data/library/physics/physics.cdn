@@ -31,6 +31,33 @@ templates
             q̈ = "ddq"
         }
 
+        node "transformations"
+        {
+            # World transformation
+            worldMatrix = "TransformInv(baseTransform)"
+            worldOrientation = "worldMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
+            worldLocation = "worldMatrix[[3; 7; 11]]"
+
+            # Local total transformation
+            localMatrix = "TransformInv(transform)"
+            localOrientation = "localMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
+            localLocation = "localMatrix[[3; 7; 11]]"
+
+            # Mark all properties as out
+            set variables = | out
+
+            # Computation of the inverse transformation matrix from child to
+            # parent coordinates. This is useful for rendering for example.
+            # Note that it computes [Eᵀ, Eᵀ ∙ -r; 0, 0, 0, 1], with E the
+            # rotation part of the spatial matrix and r the translation part
+            TransformInv(tr) = "[
+                tr[0, 0], tr[1, 0], tr[2, 0], -(tr[0, 2] ∙ tr[3, 1] + tr[1, 2] ∙ tr[4, 1] + tr[2, 2] ∙ tr[5, 1]);
+                tr[0, 1], tr[1, 1], tr[2, 1], -(tr[0, 0] ∙ tr[3, 2] + tr[1, 0] ∙ tr[4, 2] + tr[2, 0] ∙ tr[5, 2]);
+                tr[0, 2], tr[1, 2], tr[2, 2], -(tr[0, 1] ∙ tr[3, 0] + tr[1, 1] ∙ tr[4, 0] + tr[2, 1] ∙ tr[5, 0]);
+                0,        0,        0,        1
+            ]"
+        }
+
         node "body" : "dof1"
         {
             ## Mass of the body
@@ -126,30 +153,6 @@ templates
 
             ## Transform from the base to the joint
             baseTransform = "transform"
-
-            node "transformations"
-            {
-                # World transformation
-                worldMatrix = "TransformInv(baseTransform)"
-                worldOrientation = "worldMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
-                worldLocation = "worldMatrix[[3; 7; 11]]"
-
-                # Local total transformation
-                localMatrix = "TransformInv(transform)"
-                localOrientation = "localMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
-                localLocation = "localMatrix[[3; 7; 11]]"
-
-                # Computation of the inverse transformation matrix from child to
-                # parent coordinates. This is useful for rendering for example.
-                # Note that it computes [Eᵀ, Eᵀ ∙ -r; 0, 0, 0, 1], with E the
-                # rotation part of the spatial matrix and r the translation part
-                TransformInv(tr) = "[
-                    tr[0, 0], tr[1, 0], tr[2, 0], -(tr[0, 2] ∙ tr[3, 1] + tr[1, 2] ∙ tr[4, 1] + tr[2, 2] ∙ tr[5, 1]);
-                    tr[0, 1], tr[1, 1], tr[2, 1], -(tr[0, 0] ∙ tr[3, 2] + tr[1, 0] ∙ tr[4, 2] + tr[2, 0] ∙ tr[5, 2]);
-                    tr[0, 2], tr[1, 2], tr[2, 2], -(tr[0, 1] ∙ tr[3, 0] + tr[1, 1] ∙ tr[4, 0] + tr[2, 1] ∙ tr[5, 0]);
-                    0,        0,        0,        1
-                ]"
-            }
 
             ## Jacobian column for this body
             J = "Sp.Inverse(baseTransform) ∙ motionSubspace"
