@@ -387,7 +387,7 @@ cdn_operator_execute (CdnOperator     *op,
 }
 
 /**
- * cdn_operator_get_class_name:
+ * cdn_operator_get_class_name: (skip)
  * @op: A #CdnOperatorClass
  *
  * Get the operator name. This is the identifier that is used in expressions,
@@ -410,6 +410,16 @@ cdn_operator_get_class_name (CdnOperatorClass *klass)
 	return klass->name;
 }
 
+/**
+ * cdn_operator_responds_to: (skip)
+ * @klass: a #CdnOperatorClass.
+ * @name: The name.
+ *
+ * Check if the operator class responds to the name @name.
+ *
+ * Returns: %TRUE if the operator class responds to @name, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_operator_responds_to (CdnOperatorClass *klass,
                           gchar const      *name)

@@ -43,7 +43,7 @@ ensure_defaults ()
 }
 
 /**
- * cdn_operators_list:
+ * cdn_operators_list: (skip)
  *
  * Get the list of operators.
  *
@@ -105,12 +105,13 @@ cdn_operators_unregister (GType gtype)
 }
 
 /**
- * cdn_operators_find_class:
+ * cdn_operators_find_class: (skip)
  * @name: The name of the operator
  *
  * Find the class of an operator by name.
  *
- * Returns: (transfer none) (allow-none): A #CdnOperatorClass or %NULL if the operator with @name is not found
+ * Returns: (transfer none) (allow-none): A #CdnOperatorClass or %NULL if the
+ *          operator with @name is not found
  *
  **/
 CdnOperatorClass *
