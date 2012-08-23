@@ -55,6 +55,7 @@ static gdouble from = 0;
 static gdouble step = 0.001;
 static gdouble to = 1;
 static gint64 seed = 0;
+static gboolean simplify = FALSE;
 
 #define CDN_MONITOR_ERROR (cdn_monitor_error_quark())
 
@@ -341,6 +342,8 @@ static GOptionEntry entries[] = {
 	 "Random numbers seed (defaults to current time)", "SEED"},
 	{"vary", 'v', 0, G_OPTION_ARG_CALLBACK, parse_varied,
 	 "Run integration multiple times, varying this range (e.g. /state_.*/.\"{x,y}\"(0:0.1:10))", "RANGE"},
+	{"simplify", 'x', 0, G_OPTION_ARG_NONE, &simplify,
+	 "Enable global simplifications", NULL},
 	{NULL}
 };
 
@@ -1151,6 +1154,11 @@ monitor_network (gchar const *filename)
 	}
 
 	g_object_unref (err);
+
+	if (simplify)
+	{
+		cdn_network_simplify (network);
+	}
 
 	if (varied->len == 0)
 	{

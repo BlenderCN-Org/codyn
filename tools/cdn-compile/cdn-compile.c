@@ -51,6 +51,7 @@ static gchar const *color_bold = "\e[1m";
 static gchar const *color_off = "\e[0m";
 
 static GPtrArray *display;
+static gboolean simplify = FALSE;
 
 static gboolean
 parse_display (gchar const  *option_name,
@@ -67,6 +68,8 @@ static GOptionEntry entries[] = {
 	 "Do not use colors in the output", NULL},
 	{"display", 'd', 0, G_OPTION_ARG_CALLBACK, parse_display,
 	 "Display variable values (e.g. /state_.*/.\"{x,y}\")", "SEL"},
+	{"simplify", 'x', 0, G_OPTION_ARG_NONE, &simplify,
+	 "Enable global simplifications", NULL},
 	{NULL}
 };
 
@@ -272,6 +275,11 @@ compile_network (gchar const *filename)
 		g_object_unref (err);
 
 		return 1;
+	}
+
+	if (simplify)
+	{
+		cdn_network_simplify (network);
 	}
 
 	display_values (network);
