@@ -183,6 +183,7 @@ INSTRUCTIONHEADERS = \
 	instructions/cdn-instruction-custom-operator.h \
 	instructions/cdn-instruction-function.h \
 	instructions/cdn-instruction.h \
+	instructions/cdn-instruction-boxed.h \
 	instructions/cdn-instruction-number.h \
 	instructions/cdn-instruction-matrix.h \
 	instructions/cdn-instruction-variable.h \
@@ -191,6 +192,7 @@ INSTRUCTIONHEADERS = \
 
 INSTRUCTIONSOURCES = \
 	instructions/cdn-instruction.c \
+	instructions/cdn-instruction-boxed.c \
 	instructions/cdn-instruction-custom-function.c \
 	instructions/cdn-instruction-custom-operator.c \
 	instructions/cdn-instruction-custom-function-ref.c \

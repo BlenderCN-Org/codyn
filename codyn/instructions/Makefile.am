@@ -8,6 +8,7 @@ noinst_LTLIBRARIES = libinstructions.la
 
 libinstructions_la_SOURCES = 			\
 	cdn-instruction.c			\
+	cdn-instruction-boxed.c			\
 	cdn-instruction-custom-function.c	\
 	cdn-instruction-custom-function-ref.c	\
 	cdn-instruction-custom-operator.c	\
@@ -20,6 +21,7 @@ libinstructions_la_SOURCES = 			\
 
 libinstructions_headers =			\
 	cdn-instruction.h			\
+	cdn-instruction-boxed.h			\
 	cdn-instructions.h			\
 	cdn-instruction-custom-function.h	\
 	cdn-instruction-custom-function-ref.h	\
