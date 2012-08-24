@@ -36,7 +36,6 @@
 #include "cdn-annotatable.h"
 #include "cdn-layoutable.h"
 #include "cdn-selector.h"
-#include "cdn-taggable.h"
 #include "cdn-node.h"
 
 /**
@@ -79,7 +78,6 @@ struct _CdnObjectPrivate
 	GSList *templates_reverse_map;
 
 	gchar *annotation;
-	GHashTable *tags;
 
 	guint compiled : 1;
 	guint auto_imported : 1;
@@ -119,7 +117,6 @@ enum
 static void cdn_usable_iface_init (gpointer iface);
 static void cdn_annotatable_iface_init (gpointer iface);
 static void cdn_layoutable_iface_init (gpointer iface);
-static void cdn_taggable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CdnObject,
                                   cdn_object,
@@ -129,47 +126,9 @@ G_DEFINE_TYPE_WITH_CODE (CdnObject,
                                   G_IMPLEMENT_INTERFACE (CDN_TYPE_ANNOTATABLE,
                                                          cdn_annotatable_iface_init);
                                   G_IMPLEMENT_INTERFACE (CDN_TYPE_LAYOUTABLE,
-                                                         cdn_layoutable_iface_init);
-                                  G_IMPLEMENT_INTERFACE (CDN_TYPE_TAGGABLE,
-                                                         cdn_taggable_iface_init));
+                                                         cdn_layoutable_iface_init));
 
 static guint object_signals[NUM_SIGNALS] = {0,};
-
-static GHashTable *
-get_tag_table (CdnTaggable *taggable)
-{
-	return CDN_OBJECT (taggable)->priv->tags;
-}
-
-static void
-set_tag_table (CdnTaggable *taggable,
-               GHashTable  *table)
-{
-	CdnObject *self;
-
-	self = CDN_OBJECT (taggable);
-
-	if (self->priv->tags)
-	{
-		g_hash_table_unref (self->priv->tags);
-		self->priv->tags = NULL;
-	}
-
-	if (table)
-	{
-		self->priv->tags = g_hash_table_ref (table);
-	}
-}
-
-static void
-cdn_taggable_iface_init (gpointer iface)
-{
-	/* Use default implementation */
-	CdnTaggableInterface *taggable = iface;
-
-	taggable->get_tag_table = get_tag_table;
-	taggable->set_tag_table = set_tag_table;
-}
 
 GQuark
 cdn_object_error_quark (void)
@@ -262,11 +221,6 @@ cdn_object_finalize (GObject *object)
 	g_free (obj->priv->annotation);
 
 	g_hash_table_destroy (obj->priv->property_hash);
-
-	if (obj->priv->tags)
-	{
-		g_hash_table_unref (obj->priv->tags);
-	}
 
 	G_OBJECT_CLASS (cdn_object_parent_class)->finalize (object);
 }
@@ -774,41 +728,7 @@ cdn_object_copy_impl (CdnObject *object,
 		cdn_layoutable_set_location (CDN_LAYOUTABLE (object), x, y);
 	}
 
-	cdn_taggable_copy_to (CDN_TAGGABLE (source),
-	                      CDN_TAGGABLE (object));
-
 	g_free (annotation);
-}
-
-static void
-remove_template_tag (CdnTaggable *templ,
-                     gchar const *key,
-                     gchar const *value,
-                     CdnTaggable *object)
-{
-	GSList const *tt;
-
-	if (g_strcmp0 (cdn_taggable_get_tag (object, key),
-	               value) != 0)
-	{
-		return;
-	}
-
-	cdn_taggable_remove_tag (object, key);
-
-	for (tt = cdn_object_get_applied_templates (CDN_OBJECT (object));
-	     tt;
-	     tt = g_slist_next (tt))
-	{
-		gchar const *oval;
-
-		if (cdn_taggable_try_get_tag (tt->data, key, &oval))
-		{
-			cdn_taggable_add_tag (object,
-			                      key,
-			                      oval);
-		}
-	}
 }
 
 static gboolean
@@ -830,10 +750,6 @@ cdn_object_unapply_template_impl (CdnObject  *object,
 		on_template_variable_removed (templ, item->data, object);
 	}
 
-	cdn_taggable_foreach (CDN_TAGGABLE (templ),
-	                      (CdnTaggableForeachFunc)remove_template_tag,
-	                      object);
-
 	/* Keep the template around for the signal emission */
 	g_object_ref (templ);
 	cdn_usable_use (CDN_USABLE (templ));
@@ -848,15 +764,6 @@ cdn_object_unapply_template_impl (CdnObject  *object,
 	return TRUE;
 }
 
-static void
-foreach_tag_copy (CdnTaggable *source,
-                  gchar const *key,
-                  gchar const *value,
-                  CdnTaggable *target)
-{
-	cdn_taggable_add_tag (target, key, value);
-}
-
 static gboolean
 cdn_object_apply_template_impl (CdnObject  *object,
                                 CdnObject  *templ,
@@ -869,10 +776,6 @@ cdn_object_apply_template_impl (CdnObject  *object,
 	{
 		on_template_variable_added (templ, item->data, object);
 	}
-
-	cdn_taggable_foreach (CDN_TAGGABLE (templ),
-	                      (CdnTaggableForeachFunc)foreach_tag_copy,
-	                      object);
 
 	g_signal_connect (templ,
 	                  "variable-added",

@@ -838,7 +838,7 @@ cdn_network_load_from_stream (CdnNetwork    *network,
 		CdnParserContext *ctx;
 
 		ctx = cdn_parser_context_new (network);
-		cdn_parser_context_push_input (ctx, NULL, wrapped, NULL);
+		cdn_parser_context_push_input (ctx, NULL, wrapped, FALSE);
 
 		ret = cdn_parser_context_parse (ctx, TRUE, error);
 
@@ -917,7 +917,7 @@ cdn_network_load_from_file (CdnNetwork  *network,
 		CdnParserContext *ctx;
 
 		ctx = cdn_parser_context_new (network);
-		cdn_parser_context_push_input (ctx, file, stream, NULL);
+		cdn_parser_context_push_input (ctx, file, stream, FALSE);
 
 		ret = cdn_parser_context_parse (ctx, TRUE, error);
 

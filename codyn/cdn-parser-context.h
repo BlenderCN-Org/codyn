@@ -139,7 +139,6 @@ void                   cdn_parser_context_add_variable         (CdnParserContext
                                                                 CdnEmbeddedString          *expression,
                                                                 CdnVariableFlags            add_flags,
                                                                 CdnVariableFlags            remove_flags,
-                                                                GSList                     *attributes,
                                                                 gboolean                    assign_optional,
                                                                 CdnEmbeddedString          *constraint);
 
@@ -147,31 +146,26 @@ void                   cdn_parser_context_set_variable         (CdnParserContext
                                                                 CdnSelector                *selector,
                                                                 CdnEmbeddedString          *expression,
                                                                 CdnVariableFlags            add_flags,
-                                                                CdnVariableFlags            remove_flags,
-                                                                GSList                     *attributes);
+                                                                CdnVariableFlags            remove_flags);
 
 void                   cdn_parser_context_add_action           (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *target,
                                                                 CdnEmbeddedString          *expression,
-                                                                GSList                     *attributes,
                                                                 CdnEmbeddedString          *phases);
 
 void                   cdn_parser_context_add_polynomial       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
-                                                                GSList                     *pieces,
-                                                                GSList                     *attributes);
+                                                                GSList                     *pieces);
 
 void                   cdn_parser_context_add_interface        (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
                                                                 CdnEmbeddedString          *child_name,
                                                                 CdnEmbeddedString          *property_name,
-                                                                gboolean                    is_optional,
-                                                                GSList                     *attributes);
+                                                                gboolean                    is_optional);
 
 void                   cdn_parser_context_import               (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *id,
-                                                                CdnEmbeddedString          *path,
-                                                                GSList                     *attributes);
+                                                                CdnEmbeddedString          *path);
 
 void                   cdn_parser_context_set_error            (CdnParserContext           *context,
                                                                 gchar const                *message);
@@ -181,17 +175,14 @@ GError                *cdn_parser_context_get_error            (CdnParserContext
 void                   cdn_parser_context_push_selection       (CdnParserContext           *context,
                                                                 CdnSelector                *selector,
                                                                 CdnSelectorType             type,
-                                                                GSList                     *templates,
-                                                                GSList                     *attributes);
+                                                                GSList                     *templates);
 
 void                   cdn_parser_context_push_objects         (CdnParserContext           *context,
-                                                                GSList                     *objects,
-                                                                GSList                     *attributes);
+                                                                GSList                     *objects);
 
 void                   cdn_parser_context_push_node            (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *id,
-                                                                GSList                     *templates,
-                                                                GSList                     *attributes);
+                                                                GSList                     *templates);
 
 void                   cdn_parser_context_push_edge            (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *id,
@@ -200,19 +191,15 @@ void                   cdn_parser_context_push_edge            (CdnParserContext
                                                                 GSList                     *fromto,
                                                                 CdnEmbeddedString          *phase);
 
-void                   cdn_parser_context_push_network         (CdnParserContext           *context,
-                                                                GSList                     *attributes);
-void                   cdn_parser_context_push_templates       (CdnParserContext           *context,
-                                                                GSList                     *attributes);
-void                   cdn_parser_context_push_integrator      (CdnParserContext           *context,
-                                                                GSList                     *attributes);
+void                   cdn_parser_context_push_network         (CdnParserContext           *context);
+void                   cdn_parser_context_push_templates       (CdnParserContext           *context);
+void                   cdn_parser_context_push_integrator      (CdnParserContext           *context);
 
 void                   cdn_parser_context_push_function        (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *id,
                                                                 GSList                     *args,
                                                                 CdnEmbeddedString          *expression,
-                                                                gboolean                    optional,
-                                                                GSList                     *attributes);
+                                                                gboolean                    optional);
 
 void                   cdn_parser_context_push_event           (CdnParserContext  *context,
                                                                 CdnEmbeddedString *from_phase,
@@ -220,14 +207,12 @@ void                   cdn_parser_context_push_event           (CdnParserContext
                                                                 CdnEmbeddedString *condition,
                                                                 gboolean           terminal,
                                                                 CdnEmbeddedString *approximation,
-                                                                GSList            *templates,
-                                                                GSList            *attributes);
+                                                                GSList            *templates);
 
 void                   cdn_parser_context_push_io_type         (CdnParserContext  *context,
                                                                 CdnIoMode          mode,
                                                                 CdnEmbeddedString *id,
-                                                                CdnEmbeddedString *type,
-                                                                GSList            *attributes);
+                                                                CdnEmbeddedString *type);
 
 void                   cdn_parser_context_set_io_setting       (CdnParserContext  *context,
                                                                 CdnEmbeddedString *name,
@@ -271,22 +256,19 @@ void                   cdn_parser_context_set_integrator       (CdnParserContext
 
 void                   cdn_parser_context_push_input_from_path (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *filename,
-                                                                GSList                     *attributes,
                                                                 gboolean                    only_in_context);
 
 void                   cdn_parser_context_push_input_from_string (CdnParserContext         *context,
                                                                   gchar const              *s,
-                                                                  GSList                   *attributes,
                                                                   gboolean                  only_in_context);
 
 void                   cdn_parser_context_push_input           (CdnParserContext           *context,
                                                                 GFile                      *file,
                                                                 GInputStream               *stream,
-                                                                GSList                     *attributes);
+                                                                gboolean                    isonce);
 
 void                   cdn_parser_context_include              (CdnParserContext           *context,
-                                                                CdnEmbeddedString          *filename,
-                                                                GSList                     *attributes);
+                                                                CdnEmbeddedString          *filename);
 
 void                   cdn_parser_context_link_library         (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *filename);
@@ -302,14 +284,11 @@ void                   cdn_parser_context_set_start_token      (CdnParserContext
 void                   cdn_parser_context_push_annotation      (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *annotation);
 
-void                   cdn_parser_context_push_scope           (CdnParserContext           *context,
-                                                                GSList                     *attributes);
+void                   cdn_parser_context_push_scope           (CdnParserContext           *context);
 
-void                   cdn_parser_context_push_define          (CdnParserContext           *context,
-                                                                GSList                     *attributes);
+void                   cdn_parser_context_push_define          (CdnParserContext           *context);
 
-void                   cdn_parser_context_push_layout          (CdnParserContext           *context,
-                                                                GSList                     *attributes);
+void                   cdn_parser_context_push_layout          (CdnParserContext           *context);
 void                   cdn_parser_context_pop_layout           (CdnParserContext           *context);
 
 void                   cdn_parser_context_add_layout           (CdnParserContext           *context,

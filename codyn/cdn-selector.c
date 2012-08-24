@@ -26,7 +26,6 @@
 #include "cdn-expansion.h"
 #include "cdn-selection.h"
 #include "cdn-statement.h"
-#include "cdn-taggable.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -140,7 +139,6 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"type",
 	"has-flag",
 	"has-template",
-	"has-tag",
 	"reverse",
 	"recurse",
 	"append-context",
@@ -363,32 +361,6 @@ selector_pseudo_new (CdnSelector           *sel,
 	g_slist_foreach (selector->pseudo.arguments, (GFunc)g_object_ref, NULL);
 
 	return selector;
-}
-
-static Selector *
-selector_copy (CdnSelector *self,
-               Selector    *selector)
-{
-	switch (selector->type)
-	{
-		case SELECTOR_TYPE_IDENTIFIER:
-			return selector_identifier_new (self,
-			                                selector->identifier.identifier,
-			                                selector->identifier.partial);
-		break;
-		case SELECTOR_TYPE_REGEX:
-			return selector_regex_new (self,
-			                           selector->regex.regex,
-			                           selector->regex.partial);
-		break;
-		case SELECTOR_TYPE_PSEUDO:
-			return selector_pseudo_new (self,
-			                            selector->pseudo.type,
-			                            selector->pseudo.arguments);
-		break;
-	}
-
-	return NULL;
 }
 
 static Nth
@@ -651,7 +623,7 @@ cdn_selector_parse (CdnObject    *root,
 
 	stream = g_memory_input_stream_new_from_data (s, strlen (s), NULL);
 
-	cdn_parser_context_push_input (ctx, NULL, stream, NULL);
+	cdn_parser_context_push_input (ctx, NULL, stream, FALSE	);
 	g_object_unref (stream);
 
 	if (!cdn_parser_context_parse (ctx, TRUE, error))
@@ -1439,72 +1411,6 @@ has_all_templates (CdnObject *obj,
 	}
 
 	return TRUE;
-}
-
-static GSList *
-selector_pseudo_has_tag (CdnSelector  *self,
-                         Selector     *selector,
-                         CdnSelection *sel,
-                         GSList       *ret)
-
-{
-	gpointer obj;
-	gboolean valid = TRUE;
-	GSList *item;
-
-	obj = cdn_selection_get_object (sel);
-
-	if (!CDN_IS_TAGGABLE (obj))
-	{
-		return ret;
-	}
-
-	for (item = selector->pseudo.arguments; item; item = g_slist_next (item))
-	{
-		CdnEmbeddedString *s;
-		GSList *ex;
-		GSList *exitem;
-		CdnExpansionContext *pctx;
-
-		s = item->data;
-
-		if (!CDN_IS_EMBEDDED_STRING (s))
-		{
-			continue;
-		}
-
-		pctx = cdn_expansion_context_new (cdn_selection_get_context (sel));
-
-		ex = cdn_embedded_string_expand_multiple (s, pctx, NULL);
-
-		for (exitem = ex; exitem; exitem = g_slist_next (exitem))
-		{
-			if (!cdn_taggable_has_tag (obj,
-			                           cdn_expansion_get (exitem->data, 0)))
-			{
-				valid = FALSE;
-				break;
-			}
-		}
-
-		g_slist_foreach (ex, (GFunc)cdn_expansion_unref, NULL);
-		g_slist_free (ex);
-
-		cdn_expansion_context_unref (pctx);
-
-		if (!valid)
-		{
-			break;
-		}
-	}
-
-	if (valid)
-	{
-		ret = g_slist_prepend (ret,
-		                       cdn_selection_copy (sel));
-	}
-
-	return ret;
 }
 
 static GSList *
@@ -2929,12 +2835,6 @@ selector_select_pseudo (CdnSelector *self,
 				                                    sel,
 				                                    ret);
 			break;
-			case CDN_SELECTOR_PSEUDO_TYPE_HAS_TAG:
-				ret = selector_pseudo_has_tag (self,
-				                               selector,
-				                               sel,
-				                               ret);
-			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_TEMPLATES:
 				if (is_template (self, obj))
 				{
@@ -3495,66 +3395,6 @@ cdn_selector_set_self (CdnSelector  *selector,
 	{
 		selector->priv->self = cdn_selection_ref (selection);
 	}
-}
-
-/**
- * cdn_selector_copy_with:
- * @selector: A #CdnSelector
- *
- * Copy a selector for a with block.
- *
- * Returns: (transfer full): A #CdnSelector
- *
- **/
-CdnSelector *
-cdn_selector_copy_with (CdnSelector *selector)
-{
-	CdnSelector *ret;
-	GSList *item;
-	gboolean explicit_children;
-	Selector *children = NULL;
-
-	g_return_val_if_fail (CDN_IS_SELECTOR (selector), NULL);
-
-	ret = cdn_selector_new (selector->priv->root);
-
-	explicit_children = selector->priv->implicit_children &&
-	                    !selector->priv->prevent_implicit_children;
-
-	if (explicit_children)
-	{
-		children = selector_pseudo_new (ret,
-		                                CDN_SELECTOR_PSEUDO_TYPE_CHILDREN,
-		                                NULL);
-
-		if (ret->priv->has_selected)
-		{
-			ret->priv->selectors =
-				g_slist_prepend (ret->priv->selectors,
-				                 children);
-		}
-	}
-
-	for (item = selector->priv->selectors; item; item = g_slist_next (item))
-	{
-		ret->priv->selectors =
-			g_slist_prepend (ret->priv->selectors,
-			                 selector_copy (ret, item->data));
-	}
-
-	if (explicit_children && !ret->priv->has_selected)
-	{
-		ret->priv->selectors =
-			g_slist_prepend (ret->priv->selectors,
-			                 children);
-	}
-
-	ret->priv->selectors = g_slist_reverse (ret->priv->selectors);
-	ret->priv->has_selected = selector->priv->has_selected;
-
-	ret->priv->prevent_implicit_children = TRUE;
-
-	return ret;
 }
 
 void

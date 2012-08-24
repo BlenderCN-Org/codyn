@@ -226,7 +226,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"type"			return T_KEY_TYPE;
 <INITIAL,onlyselector>"has-flag"		return T_KEY_HAS_FLAG;
 <INITIAL,onlyselector>"has-template"		return T_KEY_HAS_TEMPLATE;
-<INITIAL,onlyselector>"has-tag"			return T_KEY_HAS_TAG;
 <INITIAL,onlyselector>"reverse"			return T_KEY_REVERSE;
 <INITIAL,onlyselector>"input"			return T_KEY_INPUT;
 <INITIAL,onlyselector>"output"			return T_KEY_OUTPUT;
@@ -240,13 +239,10 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
-"proxy"				return T_KEY_PROXY;
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
-"each"				return T_KEY_EACH;
 "settings"			return T_KEY_SETTINGS;
 "no-self"			return T_KEY_NO_SELF;
 "probability"			return T_KEY_PROBABILITY;
-"tag"				return T_KEY_TAG;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);

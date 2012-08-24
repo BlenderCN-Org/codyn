@@ -25,7 +25,6 @@
 #include "cdn-usable.h"
 #include "cdn-annotatable.h"
 #include "cdn-edge.h"
-#include "cdn-taggable.h"
 #include "cdn-enum-types.h"
 #include "cdn-phaseable.h"
 #include "cdn-compile-error.h"
@@ -56,7 +55,6 @@ struct _CdnEdgeActionPrivate
 	guint index_proxy_id;
 
 	gchar *annotation;
-	GHashTable *tags;
 	GHashTable *phases;
 
 	guint modified : 1;
@@ -79,7 +77,6 @@ enum
 
 static void cdn_modifiable_iface_init (gpointer iface);
 static void cdn_annotatable_iface_init (gpointer iface);
-static void cdn_taggable_iface_init (gpointer iface);
 static void cdn_phaseable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CdnEdgeAction,
@@ -89,8 +86,6 @@ G_DEFINE_TYPE_WITH_CODE (CdnEdgeAction,
                                                 cdn_modifiable_iface_init);
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_ANNOTATABLE,
                                                 cdn_annotatable_iface_init);
-                         G_IMPLEMENT_INTERFACE (CDN_TYPE_TAGGABLE,
-                                                cdn_taggable_iface_init);
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_PHASEABLE,
                                                 cdn_phaseable_iface_init));
 
@@ -130,42 +125,6 @@ cdn_phaseable_iface_init (gpointer iface)
 
 	phaseable->get_phase_table = cdn_phaseable_get_phase_table_impl;
 	phaseable->set_phase_table = cdn_phaseable_set_phase_table_impl;
-}
-
-static GHashTable *
-get_tag_table (CdnTaggable *taggable)
-{
-	return CDN_EDGE_ACTION (taggable)->priv->tags;
-}
-
-static void
-set_tag_table (CdnTaggable *taggable,
-               GHashTable  *table)
-{
-	CdnEdgeAction *self;
-
-	self = CDN_EDGE_ACTION (taggable);
-
-	if (self->priv->tags)
-	{
-		g_hash_table_unref (self->priv->tags);
-		self->priv->tags = NULL;
-	}
-
-	if (table)
-	{
-		self->priv->tags = g_hash_table_ref (table);
-	}
-}
-
-static void
-cdn_taggable_iface_init (gpointer iface)
-{
-	/* Use default implementation */
-	CdnTaggableInterface *taggable = iface;
-
-	taggable->get_tag_table = get_tag_table;
-	taggable->set_tag_table = set_tag_table;
 }
 
 static void
@@ -395,11 +354,6 @@ cdn_edge_action_finalize (GObject *object)
 	CdnEdgeAction *action = CDN_EDGE_ACTION (object);
 
 	g_free (action->priv->annotation);
-
-	if (action->priv->tags)
-	{
-		g_hash_table_unref (action->priv->tags);
-	}
 
 	if (action->priv->phases)
 	{
@@ -684,9 +638,6 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 
 	cdn_annotatable_set_annotation (CDN_ANNOTATABLE (newaction),
 	                                action->priv->annotation);
-
-	cdn_taggable_copy_to (CDN_TAGGABLE (action),
-	                      CDN_TAGGABLE (newaction));
 
 	cdn_phaseable_copy_to (CDN_PHASEABLE (action),
 	                       CDN_PHASEABLE (newaction));

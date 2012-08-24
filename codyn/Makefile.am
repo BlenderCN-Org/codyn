@@ -60,7 +60,6 @@ COMMON_SOURCES = 		\
 	cdn-attribute.c \
 	cdn-layoutable.c \
 	cdn-statement.c \
-	cdn-taggable.c \
 	cdn-event.c \
 	cdn-io-method.c \
 	cdn-cfile-stream.c
@@ -124,7 +123,6 @@ INST_H_FILES = \
 	cdn-attribute.h \
 	cdn-layoutable.h \
 	cdn-statement.h \
-	cdn-taggable.h \
 	cdn-event.h \
 	cdn-forward-decl.h \
 	cdn-io-method.h \

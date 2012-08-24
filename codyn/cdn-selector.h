@@ -96,7 +96,6 @@ typedef enum
 	CDN_SELECTOR_PSEUDO_TYPE_TYPE,
 	CDN_SELECTOR_PSEUDO_TYPE_HAS_FLAG,
 	CDN_SELECTOR_PSEUDO_TYPE_HAS_TEMPLATE,
-	CDN_SELECTOR_PSEUDO_TYPE_HAS_TAG,
 	CDN_SELECTOR_PSEUDO_TYPE_REVERSE,
 	CDN_SELECTOR_PSEUDO_TYPE_RECURSE,
 	CDN_SELECTOR_PSEUDO_TYPE_APPEND_CONTEXT,
@@ -123,8 +122,6 @@ CdnSelector  *cdn_selector_new               (CdnObject              *root);
 CdnSelector  *cdn_selector_parse             (CdnObject              *root,
                                               gchar const            *s,
                                               GError                **error);
-
-CdnSelector  *cdn_selector_copy_with         (CdnSelector            *selector);
 
 gchar        *cdn_selector_as_string         (CdnSelector            *selector);
 

@@ -32,7 +32,6 @@
 #include "cdn-modifiable.h"
 #include "cdn-annotatable.h"
 #include "cdn-selector.h"
-#include "cdn-taggable.h"
 #include "cdn-node.h"
 #include "cdn-debug.h"
 
@@ -63,7 +62,6 @@ struct _CdnVariablePrivate
 	CdnVariable *diff_for;
 
 	gchar *annotation;
-	GHashTable *tags;
 
 	gdouble last_value;
 	guint modified : 1;
@@ -74,7 +72,6 @@ struct _CdnVariablePrivate
 static void cdn_usable_iface_init (gpointer iface);
 static void cdn_modifiable_iface_init (gpointer iface);
 static void cdn_annotatable_iface_init (gpointer iface);
-static void cdn_taggable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CdnVariable,
                          cdn_variable,
@@ -84,9 +81,7 @@ G_DEFINE_TYPE_WITH_CODE (CdnVariable,
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_MODIFIABLE,
                                                 cdn_modifiable_iface_init);
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_ANNOTATABLE,
-                                                cdn_annotatable_iface_init);
-                         G_IMPLEMENT_INTERFACE (CDN_TYPE_TAGGABLE,
-                                                cdn_taggable_iface_init));
+                                                cdn_annotatable_iface_init));
 
 static guint signals[NUM_SIGNALS] = {0,};
 
@@ -163,42 +158,6 @@ static void
 cdn_modifiable_iface_init (gpointer iface)
 {
 	/* Use default implementation */
-}
-
-static GHashTable *
-get_tag_table (CdnTaggable *taggable)
-{
-	return CDN_VARIABLE (taggable)->priv->tags;
-}
-
-static void
-set_tag_table (CdnTaggable *taggable,
-               GHashTable  *table)
-{
-	CdnVariable *self;
-
-	self = CDN_VARIABLE (taggable);
-
-	if (self->priv->tags)
-	{
-		g_hash_table_unref (self->priv->tags);
-		self->priv->tags = NULL;
-	}
-
-	if (table)
-	{
-		self->priv->tags = g_hash_table_ref (table);
-	}
-}
-
-static void
-cdn_taggable_iface_init (gpointer iface)
-{
-	/* Use default implementation */
-	CdnTaggableInterface *taggable = iface;
-
-	taggable->get_tag_table = get_tag_table;
-	taggable->set_tag_table = set_tag_table;
 }
 
 static void
@@ -329,11 +288,6 @@ cdn_variable_finalize (GObject *object)
 	g_free (variable->priv->name);
 	g_free (variable->priv->annotation);
 	g_free (variable->priv->update);
-
-	if (variable->priv->tags)
-	{
-		g_hash_table_unref (variable->priv->tags);
-	}
 
 	G_OBJECT_CLASS (cdn_variable_parent_class)->finalize (object);
 }
@@ -1586,9 +1540,6 @@ cdn_variable_copy (CdnVariable *variable)
 
 	cdn_annotatable_set_annotation (CDN_ANNOTATABLE (ret),
 	                                variable->priv->annotation);
-
-	cdn_taggable_copy_to (CDN_TAGGABLE (variable),
-	                      CDN_TAGGABLE (ret));
 
 	if (variable->priv->constraint)
 	{
