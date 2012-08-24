@@ -155,6 +155,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 				}
 
 "include"			return T_KEY_INCLUDE;
+"require"			return T_KEY_REQUIRE;
 "parse"				return T_KEY_PARSE;
 "object"			return T_KEY_OBJECT;
 "edge"				return T_KEY_EDGE;

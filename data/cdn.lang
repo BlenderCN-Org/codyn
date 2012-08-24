@@ -103,6 +103,7 @@
 
         <context id="preprocessor" style-ref="preprocessor">
             <keyword>include</keyword>
+            <keyword>require</keyword>
         </context>
 
         <context id="regex" style-ref="regex">

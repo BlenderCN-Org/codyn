@@ -4674,7 +4674,8 @@ cdn_parser_context_push_input (CdnParserContext *context,
  */
 void
 cdn_parser_context_include (CdnParserContext  *context,
-                            CdnEmbeddedString *filename)
+                            CdnEmbeddedString *filename,
+                            gboolean           isonce)
 {
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (filename != NULL);
@@ -4686,7 +4687,8 @@ cdn_parser_context_include (CdnParserContext  *context,
 
 	cdn_parser_context_push_input_from_path (context,
 	                                         filename,
-	                                         TRUE);
+	                                         TRUE,
+	                                         isonce);
 }
 
 /**
@@ -4755,7 +4757,8 @@ cdn_parser_context_link_library (CdnParserContext  *context,
 void
 cdn_parser_context_push_input_from_path (CdnParserContext  *context,
                                          CdnEmbeddedString *filename,
-                                         gboolean           only_in_context)
+                                         gboolean           only_in_context,
+                                         gboolean           isonce)
 {
 	GSList *items;
 	GSList *item;
@@ -4809,7 +4812,7 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 		cdn_parser_context_push_input (context,
 		                               file,
 		                               NULL,
-		                               FALSE);
+		                               isonce);
 
 		if (!context->priv->error)
 		{

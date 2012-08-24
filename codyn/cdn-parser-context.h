@@ -254,7 +254,8 @@ void                   cdn_parser_context_set_integrator       (CdnParserContext
 
 void                   cdn_parser_context_push_input_from_path (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *filename,
-                                                                gboolean                    only_in_context);
+                                                                gboolean                    only_in_context,
+                                                                gboolean                    isonce);
 
 void                   cdn_parser_context_push_input_from_string (CdnParserContext         *context,
                                                                   gchar const              *s,
@@ -266,7 +267,8 @@ void                   cdn_parser_context_push_input           (CdnParserContext
                                                                 gboolean                    isonce);
 
 void                   cdn_parser_context_include              (CdnParserContext           *context,
-                                                                CdnEmbeddedString          *filename);
+                                                                CdnEmbeddedString          *filename,
+                                                                gboolean                    isonce);
 
 void                   cdn_parser_context_link_library         (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *filename);
