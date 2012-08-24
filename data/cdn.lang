@@ -138,17 +138,8 @@
 
         <context id="attributes" style-ref="keyword">
             <keyword>bidirectional</keyword>
-            <keyword>if</keyword>
-            <keyword>ifstr</keyword>
-            <keyword>notstr</keyword>
-            <keyword>each</keyword>
             <keyword>probability</keyword>
             <keyword>no-self</keyword>
-            <keyword>self</keyword>
-            <keyword>proxy</keyword>
-            <keyword>tag</keyword>
-            <keyword>with</keyword>
-            <keyword>once</keyword>
         </context>
 
         <context id="selectors" style-ref="keyword">
@@ -187,7 +178,6 @@
             <keyword>type</keyword>
             <keyword>has-flag</keyword>
             <keyword>has-template</keyword>
-            <keyword>has-tag</keyword>
             <keyword>reverse</keyword>
             <keyword>recurse</keyword>
             <keyword>append-context</keyword>
