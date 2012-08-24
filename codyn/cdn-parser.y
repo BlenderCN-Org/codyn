@@ -167,8 +167,6 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 %type <num> repeated_prime
 
-%type <multiassign> multi_assign_identifier
-
 %type <string> within
 
 %define api.pure
@@ -207,12 +205,6 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 		gint add;
 		gint remove;
 	} flags;
-
-	struct
-	{
-		CdnEmbeddedString *name;
-		CdnEmbeddedString *count;
-	} multiassign;
 
 	struct
 	{
@@ -410,18 +402,11 @@ define_value
 	;
 
 define_item
-	: multi_assign_identifier '=' define_value
+	: identifier_or_string assign_optional define_value
 					{ cdn_parser_context_define (context,
-					                             $1.name,
+					                             $1,
 					                             $3,
-					                             FALSE,
-					                             $1.count); }
-	| multi_assign_identifier '?' '=' define_value
-					{ cdn_parser_context_define (context,
-					                             $1.name,
-					                             $4,
-					                             TRUE,
-					                             $1.count); }
+					                             $2); }
 	| common_scopes
 	;
 
@@ -972,12 +957,6 @@ assign_optional
 	| '?' '='			{ $$ = TRUE; }
 	;
 
-multi_assign_identifier
-	: identifier_or_string ',' identifier_or_string
-					{ $$.name = $1; $$.count = $3; }
-	| identifier_or_string		{ $$.name = $1; $$.count = NULL; }
-	;
-
 constraint
 	:				{ $$ = NULL; }
 	| '(' value_as_string ')'	{ $$ = $2; }
@@ -1004,24 +983,22 @@ constraint
 	;
 
 variable_no_set
-	: multi_assign_identifier
+	: identifier_or_string
 	  assign_optional
 	  value_as_string
 	  variable_flags
 	  constraint
 					{ cdn_parser_context_add_variable (context,
-					                                   $1.name,
-					                                   $1.count,
+					                                   $1,
 					                                   $3,
 					                                   $4.add,
 					                                   $4.remove,
 					                                   $2,
 					                                   $5); errb }
-	| multi_assign_identifier
+	| identifier_or_string
 	  variable_flags_strict
 					{ cdn_parser_context_add_variable (context,
-					                                   $1.name,
-					                                   $1.count,
+					                                   $1,
 					                                   NULL,
 					                                   $2.add,
 					                                   $2.remove,

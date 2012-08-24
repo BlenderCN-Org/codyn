@@ -1010,7 +1010,6 @@ generate_name_value_pairs (CdnParserContext  *context,
                            CdnSelection      *sel,
                            CdnEmbeddedString *name,
                            gpointer           value,
-                           CdnEmbeddedString *count_name,
                            gboolean           single_unexpanded)
 {
 	GSList *names;
@@ -1218,35 +1217,6 @@ generate_name_value_pairs (CdnParserContext  *context,
 			g_slist_foreach (values, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (values);
 		}
-	}
-
-	if (count_name)
-	{
-		GSList *count_names;
-		GSList *cnt_item;
-		gchar *cnts;
-		CdnExpansion *ex;
-
-		embedded_string_expand_multiple_val (count_names,
-		                                     count_name,
-		                                     context,
-		                                     NULL);
-
-		cnts = g_strdup_printf ("%d", cnt);
-		ex = cdn_expansion_new_one (cnts);
-		g_free (cnts);
-
-		for (cnt_item = count_names; cnt_item; cnt_item = g_slist_next (cnt_item))
-		{
-			ret = g_slist_prepend (ret,
-			                       name_value_pair_new (cnt_item->data,
-			                                            ex));
-		}
-
-		cdn_expansion_unref (ex);
-
-		g_slist_foreach (count_names, (GFunc)cdn_expansion_unref, NULL);
-		g_slist_free (count_names);
 	}
 
 	expansion_context_pop (context);
@@ -1557,7 +1527,6 @@ decompose_dot (gchar const *name,
 void
 cdn_parser_context_add_variable (CdnParserContext  *context,
                                  CdnEmbeddedString *name,
-                                 CdnEmbeddedString *count_name,
                                  CdnEmbeddedString *expression,
                                  CdnVariableFlags   add_flags,
                                  CdnVariableFlags   remove_flags,
@@ -1590,7 +1559,6 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 		                                   item->data,
 		                                   name,
 		                                   G_OBJECT (expression),
-		                                   count_name,
 		                                   FALSE);
 
 		expansion_context_push_selection (context, item->data);
@@ -1744,11 +1712,6 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 	if (expression)
 	{
 		g_object_unref (expression);
-	}
-
-	if (count_name)
-	{
-		g_object_unref (count_name);
 	}
 
 	if (constraint)
@@ -3684,7 +3647,6 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 				                                   NULL,
 				                                   spec->name,
 				                                   spec->default_value,
-				                                   NULL,
 				                                   FALSE);
 
 				while (pairs)
@@ -4405,8 +4367,7 @@ void
 cdn_parser_context_define (CdnParserContext  *context,
                            CdnEmbeddedString *name,
                            GObject           *value,
-                           gboolean           optional,
-                           CdnEmbeddedString *count_name)
+                           gboolean           optional)
 {
 	GSList *ob;
 	Context *ctx;
@@ -4434,7 +4395,6 @@ cdn_parser_context_define (CdnParserContext  *context,
 		                                   sel,
 		                                   name,
 		                                   value,
-		                                   count_name,
 		                                   TRUE);
 
 		for (pair = pairs; pair; pair = g_slist_next (pair))
@@ -5188,7 +5148,6 @@ cdn_parser_context_add_integrator_variable (CdnParserContext  *context,
 		                                   item->data,
 		                                   name,
 		                                   value,
-		                                   NULL,
 		                                   FALSE);
 
 		while (pairs)
@@ -6309,7 +6268,6 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 		                                   sel,
 		                                   id,
 		                                   type,
-		                                   NULL,
 		                                   FALSE);
 
 		while (pairs)
@@ -6404,7 +6362,6 @@ cdn_parser_context_set_io_setting (CdnParserContext  *context,
 		                                   sel,
 		                                   name,
 		                                   value,
-		                                   NULL,
 		                                   FALSE);
 
 		while (pairs)

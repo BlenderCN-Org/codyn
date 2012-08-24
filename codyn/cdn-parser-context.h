@@ -135,7 +135,6 @@ void                   cdn_parser_context_begin_selector_item  (CdnParserContext
 
 void                   cdn_parser_context_add_variable         (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
-                                                                CdnEmbeddedString          *count_name,
                                                                 CdnEmbeddedString          *expression,
                                                                 CdnVariableFlags            add_flags,
                                                                 CdnVariableFlags            remove_flags,
@@ -248,8 +247,7 @@ gpointer               cdn_parser_context_get_scanner          (CdnParserContext
 void                   cdn_parser_context_define               (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
                                                                 GObject                    *value,
-                                                                gboolean                    optional,
-                                                                CdnEmbeddedString          *count_name);
+                                                                gboolean                    optional);
 
 void                   cdn_parser_context_set_integrator       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *value);
