@@ -131,9 +131,9 @@ class Window(Gtk.Window):
 
         self.icons = {}
 
-        for name in ('variable', 'object', 'function', 'edge', 'action'):
+        for name in ('variable', 'object', 'function', 'edge', 'action', 'blank'):
             try:
-                self.icons[name] = GdkPixbuf.Pixbuf.new_from_file(root + '/' + name + '.png')
+                self.icons[name] = GdkPixbuf.Pixbuf.new_from_file(os.path.join(root, name + '.png'))
             except:
                 pass
 
@@ -374,7 +374,7 @@ class Window(Gtk.Window):
         self.n.simplify()
 
     def get_icon(self, o):
-        name = None
+        name = 'blank'
 
         if isinstance(o, Cdn.Variable):
             name = 'variable'
@@ -387,10 +387,7 @@ class Window(Gtk.Window):
         elif isinstance(o, Cdn.Object):
             name = 'object'
 
-        if name and name in self.icons:
-            return self.icons[name]
-        else:
-            return None
+        return self.icons[name]
 
     def get_expression(self, o):
         if hasattr(o, 'get_expression'):
