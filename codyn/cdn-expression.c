@@ -3591,6 +3591,7 @@ parse_expression (CdnExpression   *expression,
 	gboolean ret = FALSE;
 	gint num = 0;
 
+	cdn_tokenizer_ensure_skip_space (context->buffer);
 	push_error_start (expression, context);
 
 	while ((token = cdn_tokenizer_peek (*context->buffer)))

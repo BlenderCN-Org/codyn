@@ -120,6 +120,7 @@ typedef struct
 	gint left_assoc;
 } CdnTokenOperator;
 
+void cdn_tokenizer_ensure_skip_space (const gchar **buffer);
 CdnToken *cdn_tokenizer_next (const gchar **buffer);
 CdnToken *cdn_tokenizer_peek (const gchar *buffer);
 
