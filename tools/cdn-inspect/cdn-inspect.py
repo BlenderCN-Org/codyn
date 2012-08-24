@@ -466,9 +466,15 @@ class Window(Gtk.Window):
 
                 e = self.get_expression_s(c)
 
+                target = c.get_target()
+                indices = c.get_indices()
+
+                if len(indices) > 0:
+                    target += "[" + ', '.join([str(i) for i in indices]) + ']'
+
                 self.model.set(par,
                                Column.OBJECT, c,
-                               Column.NAME, c.get_target(),
+                               Column.NAME, target,
                                Column.ICON, self.get_icon(c),
                                Column.EXPRESSION, GLib.markup_escape_text(e),
                                Column.EXPRESSION_ORIG, e)
