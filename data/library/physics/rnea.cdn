@@ -57,7 +57,7 @@ edge has-template(physics.joint)
 node "@bodies" : physics.rnea {}
 
 # Add a dynamics link back up from the child to the parent
-[each(edges | has-template(physics.joint) | output-name | input-name)]
+node edges | has-template(physics.joint) | output-name | input-name | parent
 {
     ## Edge transmitting forces from child to parent
     edge "dynamics_@@0_to_@0" from "@@@0" to "@@@0" : physics.dynamics {}
