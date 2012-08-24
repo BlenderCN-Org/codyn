@@ -809,6 +809,16 @@ get_indices (CdnEdgeAction *action)
 	}
 }
 
+/**
+ * cdn_edge_action_get_indices:
+ * @action: a #CdnEdgeAction.
+ * @num_indices: (out): return value for the number of indices.
+ *
+ * Get the indices for this action.
+ *
+ * Returns: (allow-none) (array length=num_indices): the indices for this action.
+ *
+ **/
 gint const *
 cdn_edge_action_get_indices (CdnEdgeAction *action,
                              gint          *num_indices)
