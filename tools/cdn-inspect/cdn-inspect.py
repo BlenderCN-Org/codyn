@@ -264,7 +264,11 @@ class Window(Gtk.Window):
         v = eq.get_variable()
 
         if v in self.mapping:
-            self.tv.get_selection().select_path(self.mapping[v])
+            path = self.mapping[v]
+
+            self.tv.expand_to_path(path)
+            self.tv.scroll_to_cell(path, None, True, 0.5, 0)
+            self.tv.get_selection().select_path(path)
 
     def get_eq_ref(self, ev):
         x, y = self.eq.window_to_buffer_coords(Gtk.TextWindowType.TEXT, ev.x, ev.y)
