@@ -3020,7 +3020,18 @@ filter_selection (CdnSelector     *selector,
 
 	for (item = selection; item; item = g_slist_next (item))
 	{
-		if (!selection_match_type (selector, item->data, type))
+		gpointer obj;
+
+		obj = cdn_selection_get_object (item->data);
+
+		if (type == CDN_SELECTOR_TYPE_EDGE && CDN_IS_NODE (obj))
+		{
+			cdn_selection_set_object (item->data,
+			                          cdn_node_get_self_edge (obj));
+
+			ret = g_slist_prepend (ret, item->data);
+		}
+		else if (!selection_match_type (selector, item->data, type))
 		{
 			cdn_selection_unref (item->data);
 		}
