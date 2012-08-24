@@ -212,7 +212,7 @@ parse_network (gchar const *args[], gint argc)
 	if (!fromstdin)
 #endif
 	{
-		cdn_parser_context_push_input (context, file, NULL, NULL);
+		cdn_parser_context_push_input (context, file, NULL, FALSE);
 		g_object_unref (file);
 	}
 #ifdef ENABLE_GIO_UNIX
@@ -222,7 +222,7 @@ parse_network (gchar const *args[], gint argc)
 
 		stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
 
-		cdn_parser_context_push_input (context, NULL, stream, NULL);
+		cdn_parser_context_push_input (context, NULL, stream, FALSE);
 		g_object_unref (stream);
 	}
 #endif

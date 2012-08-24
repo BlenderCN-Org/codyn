@@ -90,8 +90,7 @@ add_defines (CdnParserContext *context)
 			cdn_parser_context_define (context,
 			                           cdn_embedded_string_new_from_string (parts[0]),
 			                           G_OBJECT (cdn_embedded_string_new_from_string (parts[1])),
-			                           FALSE,
-			                           NULL);
+			                           FALSE);
 		}
 
 		g_strfreev (parts);
@@ -262,7 +261,7 @@ parse_network (gchar const *args[], gint argc)
 
 	add_defines (context);
 
-	cdn_parser_context_push_input (context, file, NULL, NULL);
+	cdn_parser_context_push_input (context, file, NULL, FALSE);
 
 	if (cdn_parser_context_parse (context, TRUE, &error))
 	{
