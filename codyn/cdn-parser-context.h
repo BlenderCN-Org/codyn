@@ -134,16 +134,16 @@ gboolean               cdn_parser_context_parse                (CdnParserContext
 void                   cdn_parser_context_begin_selector_item  (CdnParserContext           *context);
 
 void                   cdn_parser_context_add_variable         (CdnParserContext           *context,
-                                                                CdnEmbeddedString          *name,
-                                                                CdnEmbeddedString          *expression,
+                                                                GPtrArray                  *nameptr,
+                                                                GPtrArray                  *expressionptr,
                                                                 CdnVariableFlags            add_flags,
                                                                 CdnVariableFlags            remove_flags,
                                                                 gboolean                    assign_optional,
                                                                 CdnEmbeddedString          *constraint);
 
 void                   cdn_parser_context_set_variable         (CdnParserContext           *context,
-                                                                CdnSelector                *selector,
-                                                                CdnEmbeddedString          *expression,
+                                                                GPtrArray                  *selectorptr,
+                                                                GPtrArray                  *expressionptr,
                                                                 CdnVariableFlags            add_flags,
                                                                 CdnVariableFlags            remove_flags);
 

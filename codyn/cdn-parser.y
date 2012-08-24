@@ -125,6 +125,10 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %type <selector> selector_as_pseudo_arg
 %type <selector> selector_non_ambiguous_as_pseudo_arg
 
+%type <array> multi_selector
+%type <array> multi_selector_contents
+%type <selector> multi_selector_value
+
 %type <num> selector_pseudo_mixargs_key
 %type <object> selector_pseudo_mixargs_arg
 %type <list> selector_pseudo_mixargs_args
@@ -144,6 +148,14 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %type <string> double
 %type <string> integer
 %type <string> number
+
+%type <array> multi_value_as_string_contents
+%type <array> multi_value_as_string
+%type <string> multi_value_as_string_value
+
+%type <array> multi_identifier_or_string_contents
+%type <array> multi_identifier_or_string
+%type <string> multi_identifier_or_string_value
 
 %type <string> constraint
 
@@ -185,7 +197,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 	CdnVariable *variable;
 	gint num;
 	GSList *list;
-	GArray *array;
+	GPtrArray *array;
 	CdnFunctionPolynomialPieceSpec *piecespec;
 	CdnFunctionArgument *argument;
 	gpointer object;
@@ -447,15 +459,15 @@ template_contents
 	;
 
 template_list_more
-	: ',' selector
+	: ',' multi_selector
 					{ $$ = g_slist_prepend (NULL, $2); }
-	| template_list_more ',' selector
+	| template_list_more ',' multi_selector
 					{ $$ = g_slist_prepend ($1, $3); }
 	;
 
 template_list_rev
-	: ':' selector template_list_more { $$ = g_slist_append ($3, $2); }
-	| ':' selector			{ $$ = g_slist_prepend (NULL, $2); }
+	: ':' multi_selector template_list_more { $$ = g_slist_append ($3, $2); }
+	| ':' multi_selector			{ $$ = g_slist_prepend (NULL, $2); }
 	;
 
 template_list
@@ -952,6 +964,48 @@ identifier_or_string
 	| identifier_or_string_item	{ $$ = $1; }
 	;
 
+multi_selector_value
+	:				{ $$ = NULL; }
+	| selector			{ $$ = $1; }
+	;
+
+multi_selector_contents
+	: multi_selector_value		{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| multi_selector_contents
+	  ','
+	  multi_selector_value		{ g_ptr_array_add ($1, $3); $$ = $1; }
+	;
+
+multi_selector
+	: selector			{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| '['
+	   multi_selector_contents
+	  ']'				{ $$ = $2; }
+	;
+
+multi_identifier_or_string_value
+	:				{ $$ = NULL; }
+	| identifier_or_string		{ $$ = $1; }
+	;
+
+multi_identifier_or_string_contents
+	: multi_identifier_or_string_value	{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	                                          g_ptr_array_add ($$, $1); }
+	| multi_identifier_or_string_contents
+	  ','
+	  multi_identifier_or_string_value	{ g_ptr_array_add ($1, $3); $$ = $1; }
+	;
+
+multi_identifier_or_string
+	: identifier_or_string		{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| '['
+	  multi_identifier_or_string_contents
+	  ']'				{ $$ = $2; }
+	;
+
 assign_optional
 	: '='				{ $$ = FALSE; }
 	| '?' '='			{ $$ = TRUE; }
@@ -983,9 +1037,9 @@ constraint
 	;
 
 variable_no_set
-	: identifier_or_string
+	: multi_identifier_or_string
 	  assign_optional
-	  value_as_string
+	  multi_value_as_string
 	  variable_flags
 	  constraint
 					{ cdn_parser_context_add_variable (context,
@@ -995,10 +1049,10 @@ variable_no_set
 					                                   $4.remove,
 					                                   $2,
 					                                   $5); errb }
-	| identifier_or_string
+	| multi_identifier_or_string
 	  variable_flags_strict
 					{ cdn_parser_context_add_variable (context,
-					                                   $1,
+					                                   $1	,
 					                                   NULL,
 					                                   $2.add,
 					                                   $2.remove,
@@ -1009,20 +1063,20 @@ variable_no_set
 variable
 	: variable_no_set
 	| T_KEY_SET
-	  selector
+	  multi_selector
 	  '='
-	  value_as_string
+	  multi_value_as_string
 	  variable_flags		{ cdn_parser_context_set_variable (context,
 	                                                                   $2,
 	                                                                   $4,
 	                                                                   $5.add,
 	                                                                   $5.remove); errb }
 	| T_KEY_SET
-	  selector
+	  multi_selector
 	  '='
 	  variable_flags_strict		{ cdn_parser_context_set_variable (context,
 	                                                                   $2,
-	                                                                   cdn_embedded_string_new (),
+	                                                                   NULL,
 	                                                                   $4.add,
 	                                                                   $4.remove); errb }
 	;
@@ -1433,6 +1487,27 @@ value_as_string
 	| indirection
 	| identifier
 	| number
+	;
+
+multi_value_as_string_value
+	:				{ $$ = NULL; }
+	| value_as_string		{ $$ = $1; }
+	;
+
+multi_value_as_string_contents
+	: multi_value_as_string_value	{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| multi_value_as_string_contents
+	  ','
+	  multi_value_as_string_value 	{ g_ptr_array_add ($1, $3); $$ = $1; }
+	;
+
+multi_value_as_string
+	: value_as_string		{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| '['
+	    multi_value_as_string_contents
+	  ']'				{ $$ = $2; }
 	;
 
 string_item
