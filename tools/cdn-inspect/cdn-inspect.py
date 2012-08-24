@@ -7,6 +7,7 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 from gi.repository import Cdn, Gio, Gtk, GLib, Gdk, GdkPixbuf, Pango
 
 global root
+
 root = os.path.dirname(__file__)
 
 class Column:
@@ -22,6 +23,23 @@ class Window(Gtk.Window):
 
         self.n = n
         self.set_default_size(800, 600)
+
+        self.history = []
+        self.history_ptr = -1
+
+        Gtk.AccelMap.add_entry("<cdn-inspect>/Global/HistoryBack",
+                               Gdk.KEY_Left,
+                               Gdk.ModifierType.CONTROL_MASK)
+
+        Gtk.AccelMap.add_entry("<cdn-inspect>/Global/HistoryForward",
+                               Gdk.KEY_Right,
+                               Gdk.ModifierType.CONTROL_MASK)
+
+        grp = Gtk.AccelGroup()
+        grp.connect_by_path("<cdn-inspect>/Global/HistoryBack", self.on_history_back)
+        grp.connect_by_path("<cdn-inspect>/Global/HistoryForward", self.on_history_forward)
+
+        self.add_accel_group(grp)
 
         self.build_ui()
 
@@ -71,9 +89,40 @@ class Window(Gtk.Window):
 
                 self.model.set(it, Column.EXPRESSION, newe)
 
+    def on_history_forward(self, accelgroup, window, key, flags):
+        self.on_forward_clicked()
+        return True
+
+    def on_history_back(self, accelgroup, window, key, flags):
+        self.on_back_clicked()
+        return True
+
+    def update_sensitivity(self):
+        self.back.set_sensitive(self.history_ptr > 0)
+        self.forward.set_sensitive(self.history_ptr < len(self.history) - 1)
+
     def build_ui(self):
         self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self.vbox.show()
+
+        tbar = Gtk.Toolbar()
+        tbar.show()
+
+        self.back = Gtk.ToolButton.new_from_stock(Gtk.STOCK_GO_BACK)
+        self.back.show()
+        self.back.set_is_important(True)
+        self.back.connect('clicked', self.on_back_clicked)
+        tbar.insert(self.back, -1)
+
+        self.forward = Gtk.ToolButton.new_from_stock(Gtk.STOCK_GO_FORWARD)
+        self.forward.show()
+        self.forward.set_is_important(True)
+        self.forward.connect('clicked', self.on_forward_clicked)
+        tbar.insert(self.forward, -1)
+
+        tbar.get_style_context().add_class("primary-toolbar")
+
+        self.vbox.pack_start(tbar, False, True, 0)
 
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
         self.paned.show()
@@ -162,6 +211,7 @@ class Window(Gtk.Window):
         self.eqrefs = []
 
         self.eq.connect('motion-notify-event', self.on_eq_motion)
+        self.eq.connect('button-press-event', self.on_eq_button_press)
 
         self.vtag = self.eq.get_buffer().create_tag('v', foreground="#ce5c00")
 
@@ -181,22 +231,73 @@ class Window(Gtk.Window):
 
         self.tv.get_selection().connect('changed', self.on_selection_changed)
 
+        self.update_sensitivity()
+
+    def from_history(self):
+        self.tv.get_selection().select_path(self.history[self.history_ptr])
+        self.update_sensitivity()
+
+    def on_forward_clicked(self, *args):
+        if self.history_ptr < len(self.history) - 1:
+            self.history_ptr += 1
+            self.from_history()
+
+    def on_back_clicked(self, *args):
+        if self.history_ptr > 0:
+            self.history_ptr -= 1
+            self.from_history()
+
+    def on_eq_button_press(self, tv, ev):
+        win = tv.get_window(Gtk.TextWindowType.TEXT)
+
+        if ev.window != win:
+            return False
+
+        if ev.button != 1:
+            return False
+
+        eq = self.get_eq_ref(ev)
+
+        if not eq:
+            return False
+
+        v = eq.get_variable()
+
+        if v in self.mapping:
+            self.tv.get_selection().select_path(self.mapping[v])
+
+    def get_eq_ref(self, ev):
+        x, y = self.eq.window_to_buffer_coords(Gtk.TextWindowType.TEXT, ev.x, ev.y)
+
+        it, trailing = self.eq.get_iter_at_position(x, y)
+        location = self.eq.get_iter_location(it)
+
+        if x > location.x + location.width or \
+           x < location.x or \
+           y > location.y + location.height or \
+           y < location.y:
+            return None
+
+        idx = it.get_line_index()
+
+        for i in self.eqrefs:
+            if idx >= i[0] and idx < i[1]:
+                return i[2]
+
+        return None
+
     def on_eq_motion(self, tv, ev):
         win = tv.get_window(Gtk.TextWindowType.TEXT)
 
         if ev.window != win:
             return False
 
-        x, y = tv.window_to_buffer_coords(Gtk.TextWindowType.TEXT, ev.x, ev.y)
+        eq = self.get_eq_ref(ev)
 
-        it, trailing = tv.get_iter_at_position(x, y)
-        idx = it.get_line_index()
-
-        for i in self.eqrefs:
-            if idx >= i[0] and idx < i[1]:
-                curs = Gdk.Cursor(Gdk.CursorType.HAND2)
-                ev.window.set_cursor(curs)
-                return False
+        if eq:
+            curs = Gdk.Cursor(Gdk.CursorType.HAND2)
+            ev.window.set_cursor(curs)
+            return False
 
         ev.window.set_cursor(None)
         return False
@@ -255,6 +356,19 @@ class Window(Gtk.Window):
                     self.eqrefs.append((s - 1, e - 1, v))
         else:
             buf.set_text('')
+
+        self.add_history(model.get_path(it))
+
+    def add_history(self, path):
+        if self.history_ptr >= 0 and self.history_ptr < len(self.history) and \
+            path == self.history[self.history_ptr]:
+            return
+
+        del self.history[self.history_ptr + 1:]
+        self.history.append(path)
+        self.history_ptr = len(self.history) - 1
+
+        self.update_sensitivity()
 
     def on_simplify(self, but):
         self.n.simplify()
