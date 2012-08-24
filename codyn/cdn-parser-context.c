@@ -1384,10 +1384,14 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 			expression = g_ptr_array_index (expressionptr,
 			                                i % expressionptr->len);
 		}
+
+		if (!expression)
+		{
+			expression = cdn_embedded_string_new_from_string ("");
+		}
 		else
 		{
-			exprcache = g_slist_prepend (NULL,
-			                             cdn_expansion_new_one (""));
+			g_object_ref (expression);
 		}
 
 		++i;
@@ -1468,6 +1472,7 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 		}
 
 		expansion_context_pop (context);
+		g_object_unref (expression);
 
 		if (!ret)
 		{
