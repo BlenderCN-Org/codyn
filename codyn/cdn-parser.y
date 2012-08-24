@@ -938,6 +938,9 @@ edge_item
 	: action
 	| variable
 	| common_scopes
+	| node
+	| object
+	| edge
 	| layout
 	| '{'				{ cdn_parser_context_push_scope (context); }
 	  edge_contents
