@@ -45,7 +45,11 @@ class Window(Gtk.Window):
 
         err = Cdn.CompileError()
 
-        if not self.n.compile(None, err):
+        compiled = self.n.compile(None, err)
+
+        self.add_to_tree(None, self.n)
+
+        if not compiled:
             info = Gtk.InfoBar()
             info.add_button("Close", Gtk.ResponseType.CLOSE)
             info.set_message_type(Gtk.MessageType.ERROR)
@@ -172,7 +176,6 @@ class Window(Gtk.Window):
 
         self.mapping = {}
 
-        self.add_to_tree(None, self.n)
         self.paned.pack1(sw, True, False)
 
         vb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, border_width=6)
