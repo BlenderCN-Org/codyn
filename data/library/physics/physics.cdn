@@ -1,6 +1,6 @@
-[once] include "spatial.cdn"
-[once] include "geometry.cdn"
-[once] include "transform.cdn"
+require "spatial.cdn"
+require "geometry.cdn"
+require "transform.cdn"
 
 layout
 {
@@ -355,8 +355,7 @@ templates
 
             delete self | inputs | if(input | self) | if(output | self) . q
 
-            [self]
-            edge
+            edge self
             {
                 "q[0; 1; 2; 3]" <= "0.5 ∙ [-q[1], -q[2], -q[3];
                                             q[0], -q[3],  q[2];

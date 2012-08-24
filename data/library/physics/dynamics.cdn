@@ -1,7 +1,7 @@
+require "findbodies.cdn"
+
 include "rnea.cdn"
 include "crba.cdn"
-
-[once] include "findbodies.cdn"
 
 ## The dynamics node is used to accumulate the various quantities of the
 ## general rigid body dynamics equation: H ∙ q̈ + C = τ. The elements of H, C and
@@ -48,7 +48,8 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
         jr = "@{@jc||@0;@1}"
     }
 
-    [each(self | input . variables | /fh_([0-9]+)/)]
+    # For each variable fh_* in the input of this edge
+    edge | input . variables | /fh_([0-9]+)/ | self
     {
         defines
         {
@@ -59,17 +60,7 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 
         ## Write H from the body into the appropriate part of the dynamics H
         ## matrix
-        "H[[@ir], [@jc]]" <= "H_@@1"
-
-        # Check if we also want to fill in the upper triangle (or lower?) of
-        # the H matrix (normally not needed since the H matrix is symmetric)
-        [ifstr("$$(@1 != @@@0[!],1,)")]
-        {
-            [ifstr("$$(!@only_lower_H[?],1,)")]
-            {
-                "H[[@jr], [@ic]]" <= "H_@@@@1"
-            }
-        }
+        "H[[@ir, @jc], [@jc, @ir]]" <= "[H_@@1, H_@@1]"
     }
 
     # Fill column of the jacobian
@@ -81,7 +72,7 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 }
 
 # Integrate accelerations on bodies
-[each(@bodies)]
+node | @bodies | parent
 {
     defines
     {

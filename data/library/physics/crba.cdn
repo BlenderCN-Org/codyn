@@ -1,4 +1,4 @@
-[once] include "findbodies.cdn"
+require "findbodies.cdn"
 
 # This file implements the Composite Rigid Body Algorithm. This algorithm is
 # used to compute the mass matrix. Note that this file _only_ recursively
@@ -32,30 +32,26 @@ node @bodies : physics.crba
 
 # Compute the mass matrix for each body, up to each of its
 # ancestors
-[each(@bodies)]
+edge "@bodies" |
+     recurse(outputs | has-template(physics.dynamics) | output) |
+     outputs |
+     has-template(physics.dynamics)
 {
-    # Select all the dynamics (up) edges in the chain from the current body
-    # to the root
-    [with("@0" | recurse(outputs | has-template(physics.dynamics) | output) | outputs | has-template(physics.dynamics))]
+    # Initialize variables in the output of the dynamics edge for the
+    # effects of the current node on each output node in the up chain
+    node | output
     {
-        # Initialize variables in the output of the dynamics edge for the
-        # effects of the current node on each output node in the up chain
-        node | output
-        {
-            ## Recursively computed total inertial unfluence
-            "fh_@@0[!]" = "zeros(6, @bodydof[@@@0[!]])"
+        ## Recursively computed total inertial unfluence
+        "fh_@@0[!]" = "zeros(6, @bodydof[@@@0[!]])"
 
-            "H_@@0[!]" = "motionSubspaceT ∙ fh_@@@0[!]"
-        }
-
-        # In all those dynamic edges, add a calculation for fh_@@0 (i.e. this)
-        # is then recursively calculated from bottom to top
-        edge | edges
-        {
-            ## Inertial influence transformed in parent coordinates
-            "fh_@@0[!]" <= "transformT ∙ fh_@@@0[!]"
-        }
+        "H_@@0[!]" = "motionSubspaceT ∙ fh_@@@0[!]"
     }
+
+    # Add a calculation for fh_@@0 (i.e. this) is then recursively calculated
+    # from bottom to top
+
+    ## Inertial influence transformed in parent coordinates
+    "fh_@@0[!]" <= "transformT ∙ fh_@@@0[!]"
 }
 
 # Add computation of IC in the dynamics edge
