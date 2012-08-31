@@ -171,6 +171,9 @@ void      cdn_stack_arg_set_sparsity (CdnStackArg *arg,
                                       guint       *sparsity,
                                       guint        num_sparse);
 
+guint const *cdn_stack_arg_get_sparsity (CdnStackArg *arg,
+                                         guint       *num_sparse);
+
 void      cdn_stack_arg_set_sparsity_one (CdnStackArg *arg,
                                           guint        sparsity);
 

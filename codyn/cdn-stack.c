@@ -493,6 +493,24 @@ cdn_stack_arg_set_sparsity (CdnStackArg *arg,
 	}
 }
 
+/**
+ * cdn_stack_arg_get_sparsity:
+ * @arg: a #CdnStackArg.
+ * @num_sparse: (out): return value for the length of the sparsity array.
+ *
+ * Get the sparsity indices.
+ *
+ * Returns: (array length=num_sparse): the sparsity indices.
+ *
+ **/
+guint const *
+cdn_stack_arg_get_sparsity (CdnStackArg *arg,
+                            guint       *num_sparse)
+{
+	*num_sparse = arg->num_sparse;
+	return arg->sparsity;
+}
+
 void
 cdn_stack_arg_set_sparsity_one (CdnStackArg *arg,
                                 guint        sparsity)
