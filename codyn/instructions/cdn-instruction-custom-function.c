@@ -4,14 +4,26 @@ G_DEFINE_TYPE (CdnInstructionCustomFunction, cdn_instruction_custom_function, CD
 
 #define CDN_INSTRUCTION_CUSTOM_FUNCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION_CUSTOM_FUNCTION, CdnInstructionCustomFunctionPrivate))
 
+static void set_function (CdnInstructionCustomFunction *function,
+                          CdnFunction                  *func);
+
 struct _CdnInstructionCustomFunctionPrivate
 {
 	CdnFunction *function;
+
+	CdnStackManipulation smanip;
 };
 
 static void
 cdn_instruction_custom_function_finalize (CdnMiniObject *object)
 {
+	CdnInstructionCustomFunction *func;
+
+	func = (CdnInstructionCustomFunction *)object;
+
+	cdn_stack_manipulation_destroy (&func->priv->smanip);
+	set_function (func, NULL);
+
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_custom_function_parent_class)->finalize (object);
 }
 
@@ -27,7 +39,9 @@ cdn_instruction_custom_function_copy (CdnMiniObject *object)
 	src = CDN_INSTRUCTION_CUSTOM_FUNCTION_CONST (object);
 	func = CDN_INSTRUCTION_CUSTOM_FUNCTION (ret);
 
-	func->priv->function = g_object_ref (src->priv->function);
+	cdn_stack_manipulation_copy (&func->priv->smanip, &src->priv->smanip);
+
+	set_function (func, src->priv->function);
 
 	return ret;
 }
@@ -65,7 +79,7 @@ cdn_instruction_custom_function_get_stack_manipulation (CdnInstruction  *instruc
 
 	if (self->priv->function)
 	{
-		return cdn_function_get_stack_manipulation (self->priv->function);
+		return &self->priv->smanip;
 	}
 
 	return NULL;
