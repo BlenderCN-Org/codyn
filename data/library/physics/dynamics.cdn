@@ -39,28 +39,38 @@ node "@bodies"
 }
 
 # Fill in H and C for all relevant body relationships
-edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dynamics"
+edge "HC_@bodies" from   @1
+                       | <body-index>:append-context("@@1[!]")
+                       . variables
+                       | /fh_([0-9]+)/
+                       | parent
+                       | unique
+                  to     "dynamics"
 {
     defines
     {
         # Compute the indices of this bodies' DOF (in column and row)
-        jc = "@{@bodydofidx[@@@@@0[!]]:+$(@bodydof[@@@@@0[!]] - 1)||@0\,@1}"
+        jc = "@{@bodydofidx[@body-index]:+$(@bodydof[@body-index] - 1)||@0\,@1}"
         jr = "@{@jc||@0;@1}"
     }
 
     # For each variable fh_* in the input of this edge
-    edge | input . variables | /fh_([0-9]+)/ | self
+    edge   self
+         | input
+         . variables
+         | <fh>:/fh_([0-9]+)/
+         | self
     {
         defines
         {
             # Compute the indices of this childs' DOF (in column and row)
-            ic = "@{@bodydofidx[@@1]:+$(@bodydof[@@1] - 1)||@0\,@1}"
+            ic = "@{@bodydofidx[@fh[0]]:+$(@bodydof[@fh[0]] - 1)||@0\,@1}"
             ir = "@{@ic||@0;@1}"
         }
 
         ## Write H from the body into the appropriate part of the dynamics H
         ## matrix
-        "H[[@ir, @jc], [@jc, @ir]]" <= "[H_@@1, H_@@1]"
+        "H[[@ir, @jc], [@jc, @ir]]" <= "[H_@fh[0], H_@fh[0]]"
     }
 
     # Fill column of the jacobian
@@ -72,20 +82,20 @@ edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dyna
 }
 
 # Integrate accelerations on bodies
-node | @bodies | parent
+node | <body>:@bodies | parent
 {
     defines
     {
-        j = "@{@bodydofidx[@@0[!]]:+$(@bodydof[@@0[!]] - 1)||@0;@1}"
+        j = "@{@bodydofidx[@body[!]]:+$(@bodydof[@body[!]] - 1)||@0;@1}"
     }
 
-    edge "acceleration_@0" from "dynamics" to "@@@0"
+    edge "acceleration_@0" from "dynamics" to "@body"
     {
         ## Transmit calculated acceleration from dynamics to body
         ddq <= "ddq[[@j]]"
     }
 
-    edge "force_@0" from "@@0" to "dynamics"
+    edge "force_@body" from "@body" to "dynamics"
     {
         ## Compute generalized force vector element
         "τ[[@j], 0]" <= "τ"
