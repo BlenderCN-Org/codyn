@@ -141,6 +141,9 @@ guint         cdn_selector_append_regex      (CdnSelector            *selector,
 guint         cdn_selector_append_regex_partial (CdnSelector            *selector,
                                                  CdnEmbeddedString      *regex);
 
+void          cdn_selector_set_define_context (CdnSelector           *selector,
+                                               gchar const           *id);
+
 GSList       *cdn_selector_select            (CdnSelector              *selector,
                                               GObject                  *parent,
                                               CdnSelectorType           type,

@@ -52,6 +52,7 @@ typedef struct
 	guint id;
 	GSList *selections_in;
 	GSList *selections_out;
+	gchar *define_context;
 
 	union
 	{
@@ -210,6 +211,8 @@ selector_free (Selector *selector)
 		break;
 	}
 
+	g_free (selector->define_context);
+
 	free_current_selections (selector);
 
 	g_slice_free (Selector, selector);
@@ -218,19 +221,43 @@ selector_free (Selector *selector)
 static gchar *
 selector_identifier_to_string (Selector *selector)
 {
-	return g_strdup_printf ("\"%s\"",
-	                        cdn_embedded_string_expand (selector->identifier.identifier,
-	                                                    NULL,
-	                                                    NULL));
+	gchar const *r;
+
+	r = cdn_embedded_string_expand (selector->identifier.identifier,
+	                                NULL,
+	                                NULL);
+
+	if (selector->define_context)
+	{
+		return g_strdup_printf ("<@%s>:\"%s\"",
+		                        selector->define_context,
+		                        r);
+	}
+	else
+	{
+		return g_strdup_printf ("\"%s\"", r);
+	}
 }
 
 static gchar *
 selector_regex_to_string (Selector *selector)
 {
-	return g_strdup_printf ("/%s/",
-	                        cdn_embedded_string_expand (selector->identifier.identifier,
-	                                                    NULL,
-	                                                    NULL));
+	gchar const *r;
+
+	r = cdn_embedded_string_expand (selector->identifier.identifier,
+	                                NULL,
+	                                NULL);
+
+	if (selector->define_context)
+	{
+		return g_strdup_printf ("<@%s>:/%s/",
+		                        selector->define_context,
+		                        r);
+	}
+	else
+	{
+		return g_strdup_printf ("/%s/", r);
+	}
 }
 
 static Selector *
@@ -284,6 +311,13 @@ selector_pseudo_to_string (Selector *selector)
 	}
 
 	ret = g_string_new ("");
+
+	if (selector->define_context)
+	{
+		g_string_append (ret, "@<");
+		g_string_append (ret, selector->define_context);
+		g_string_append (ret, ">:");
+	}
 
 	g_string_append (ret, pseudo_name (selector->pseudo.type));
 	g_string_append_c (ret, '(');
@@ -728,6 +762,32 @@ cdn_selector_append_regex_partial (CdnSelector       *selector,
 	return add_selector (selector, selector_regex_new (selector,
 	                                                   regex,
 	                                                   TRUE));
+}
+
+void
+cdn_selector_set_define_context (CdnSelector *selector,
+                                 gchar const *id)
+{
+	Selector *sel;
+
+	g_return_if_fail (CDN_IS_SELECTOR (selector));
+	g_return_if_fail (id != NULL);
+
+	if (!selector->priv->selectors)
+	{
+		return;
+	}
+
+	if (!selector->priv->has_selected)
+	{
+		sel = selector->priv->selectors->data;
+	}
+	else
+	{
+		sel = g_slist_last (selector->priv->selectors)->data;
+	}
+
+	sel->define_context = g_strdup (id);
 }
 
 static CdnSelection *
@@ -2945,6 +3005,22 @@ selector_select (CdnSelector *self,
 		if (selector->type == SELECTOR_TYPE_REGEX)
 		{
 			annotate_first_expansion (ret);
+		}
+	}
+
+	if (selector->define_context)
+	{
+		for (item = ret; item; item = g_slist_next (item))
+		{
+			CdnExpansion *ex;
+			CdnExpansionContext *ctx;
+
+			ctx = cdn_selection_get_context (item->data);
+			ex = cdn_expansion_context_get_expansion (ctx, 0);
+
+			cdn_expansion_context_add_define (ctx,
+			                                  selector->define_context,
+			                                  ex);
 		}
 	}
 
