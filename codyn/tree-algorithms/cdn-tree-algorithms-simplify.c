@@ -325,6 +325,10 @@ simplify_inline_matrix (CdnExpressionTreeIter *iter)
 		CdnExpressionTreeIter *expanded;
 		CdnInstructionVariable *vinstr;
 
+		cdn_debug_message (DEBUG_SIMPLIFY,
+		                   "Inline matrix var: {%s}",
+		                   cdn_expression_tree_iter_to_string (iter));
+
 		vinstr = CDN_INSTRUCTION_VARIABLE (iter->instruction);
 
 		v = cdn_instruction_variable_get_variable (vinstr);
@@ -339,6 +343,10 @@ simplify_inline_matrix (CdnExpressionTreeIter *iter)
 
 		expanded = cdn_expression_tree_iter_new (cdn_variable_get_expression (v));
 		simplify_inline_matrix (expanded);
+
+		cdn_debug_message (DEBUG_SIMPLIFY,
+		                   "expanded: {%s}",
+		                   cdn_expression_tree_iter_to_string (expanded));
 
 		if (CDN_IS_INSTRUCTION_MATRIX (expanded->instruction))
 		{
