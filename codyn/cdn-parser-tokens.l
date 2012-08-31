@@ -109,15 +109,15 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 \n.*				{
 					HANDLE_NEWLINE
 				}
-"##"[ \t]*			{
+"##"				{
 					yy_push_state (annotation, yyscanner);
 					return T_ANNOTATION_START;
 				}
-<annotation>\n.*		{
+<annotation>[\t ]*\n.*		{
 					HANDLE_NEWLINE
 					yy_push_state (annotation_start, yyscanner);
 				}
-<annotation_start>[\t ]*##[\t ]* {
+<annotation_start>[\t ]*## {
 					yy_pop_state (yyscanner);
 
 					yylval->id = g_strdup ("\n");
