@@ -179,6 +179,8 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %type <list> edge_connect_fast
 %type <list> templated
 
+%type <id> selector_define_context
+
 %type <num> repeated_prime
 
 %type <string> within
@@ -1194,13 +1196,26 @@ selector_parse
 	: selector_parse_contents	{ cdn_selector_set_implicit_children (cdn_parser_context_peek_selector (context), TRUE); }
 	;
 
+selector_define_context
+	: '<'
+	  T_IDENTIFIER
+	  '>'
+	  ':'				{ $$ = g_strdup ($2); }
+	;
+
 selector_identifier
 	:				{ cdn_parser_context_begin_selector_item (context); }
 	  identifier_or_string 		{ cdn_parser_context_push_selector_identifier (context, $2); errb }
+	| selector_define_context	{ cdn_parser_context_begin_selector_item (context); }
+	  identifier_or_string		{ cdn_parser_context_push_selector_identifier (context, $3);
+	                                  cdn_parser_context_push_selector_define_context (context, $1); errb }
 	;
 
 selector_regex
 	: regex				{ cdn_parser_context_push_selector_regex (context, $1); errb }
+	| selector_define_context
+	  regex				{ cdn_parser_context_push_selector_regex (context, $2);
+	                                  cdn_parser_context_push_selector_define_context (context, $1); errb }
 	;
 
 selector_pseudo_simple_key_real
@@ -1387,6 +1402,10 @@ selector_pseudo_with_args
 selector_pseudo
 	: selector_pseudo_simple
 	| selector_pseudo_with_args
+	| selector_define_context
+	  selector_pseudo_simple		{ cdn_parser_context_push_selector_define_context (context, $1); }
+	| selector_define_context
+	  selector_pseudo_with_args		{ cdn_parser_context_push_selector_define_context (context, $1); }
 	;
 
 import

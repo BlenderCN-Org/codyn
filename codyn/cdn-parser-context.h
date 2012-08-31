@@ -233,6 +233,9 @@ void                   cdn_parser_context_push_selector_pseudo (CdnParserContext
                                                                 CdnSelectorPseudoType       type,
                                                                 GSList                     *arguments);
 
+void                   cdn_parser_context_push_selector_define_context (CdnParserContext *context,
+                                                                        gchar            *id);
+
 CdnSelector           *cdn_parser_context_pop_selector         (CdnParserContext           *context);
 CdnSelector           *cdn_parser_context_peek_selector        (CdnParserContext           *context);
 void                   cdn_parser_context_push_selector        (CdnParserContext           *context,

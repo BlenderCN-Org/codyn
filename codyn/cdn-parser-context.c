@@ -4219,6 +4219,17 @@ cdn_parser_context_push_selector (CdnParserContext *context,
 		                 selector);
 }
 
+void
+cdn_parser_context_push_selector_define_context (CdnParserContext *context,
+                                                 gchar            *id)
+{
+	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (id != NULL);
+
+	cdn_selector_set_define_context (ensure_selector(context), id);
+	g_free (id);
+}
+
 /**
  * cdn_parser_context_push_selector_identifier: (skip):
  *
