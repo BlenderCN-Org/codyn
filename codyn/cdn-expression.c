@@ -4836,6 +4836,16 @@ cdn_expression_set_has_cache (CdnExpression *expression,
 	set_has_cache (expression, cache);
 }
 
+/**
+ * cdn_expression_get_dimension:
+ * @expression: a #CdnExpression.
+ * @dimension: (out): return value for the expression dimension.
+ *
+ * Get the dimension of the expression.
+ *
+ * Returns: %TRUE if the expression has a known dimension, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_expression_get_dimension (CdnExpression *expression,
                               CdnDimension  *dimension)
