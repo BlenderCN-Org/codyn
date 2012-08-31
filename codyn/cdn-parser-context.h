@@ -148,8 +148,8 @@ void                   cdn_parser_context_set_variable         (CdnParserContext
                                                                 CdnVariableFlags            remove_flags);
 
 void                   cdn_parser_context_add_action           (CdnParserContext           *context,
-                                                                CdnEmbeddedString          *target,
-                                                                CdnEmbeddedString          *expression,
+                                                                GPtrArray                  *target,
+                                                                GPtrArray                  *expression,
                                                                 CdnEmbeddedString          *phases);
 
 void                   cdn_parser_context_add_polynomial       (CdnParserContext           *context,

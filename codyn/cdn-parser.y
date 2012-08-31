@@ -1120,9 +1120,9 @@ variable_flag
 	;
 
 action
-	: identifier_or_string
+	: multi_identifier_or_string
 	  '<' '='
-	  value_as_string
+	  multi_value_as_string
 	  phase
 					{ cdn_parser_context_add_action (context, $1, $4, $5); errb }
 	;

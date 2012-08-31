@@ -1793,17 +1793,23 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
  *
  */
 void
-cdn_parser_context_add_action (CdnParserContext   *context,
-                               CdnEmbeddedString  *target,
-                               CdnEmbeddedString  *expression,
-                               CdnEmbeddedString  *phase)
+cdn_parser_context_add_action (CdnParserContext  *context,
+                               GPtrArray         *targetptr,
+                               GPtrArray         *expressionptr,
+                               CdnEmbeddedString *phase)
 {
 	GSList *item;
-
 	GSList *objects;
+	gint i = 0;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (target != NULL);
+	g_return_if_fail (targetptr != NULL);
+	g_return_if_fail (expressionptr != NULL);
+
+	if (targetptr->len == 0)
+	{
+		return;
+	}
 
 	if (context->priv->in_event_handler)
 	{
@@ -1817,6 +1823,19 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 		GSList *exps;
 		GSList *iteme;
 		gchar const *annotation;
+		CdnEmbeddedString *target;
+		CdnEmbeddedString *expression;
+
+		target = g_ptr_array_index (targetptr, i % targetptr->len);
+
+		if (expressionptr->len > 0)
+		{
+			expression = g_ptr_array_index (expressionptr, i % expressionptr->len);
+		}
+		else
+		{
+			expression = NULL;
+		}
 
 		expansion_context_push_selection (context, item->data);
 
@@ -1935,8 +1954,8 @@ cdn_parser_context_add_action (CdnParserContext   *context,
 	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
 
-	g_object_unref (target);
-	g_object_unref (expression);
+	g_ptr_array_free (targetptr, TRUE);
+	g_ptr_array_free (expressionptr, TRUE);
 
 	clear_annotation (context);
 }
