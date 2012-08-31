@@ -262,11 +262,6 @@ iter_to_instructions (CdnExpressionTreeIter *iter,
 
 	for (i = iter->num_children - 1; i >= 0; --i)
 	{
-		if (iter->children[i] == 0)
-		{
-			g_message ("WHAT! %s, %d", cdn_instruction_to_string (iter->instruction), i);
-		}
-
 		ret = iter_to_instructions (iter->children[i], ret);
 	}
 
