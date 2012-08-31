@@ -1997,9 +1997,6 @@ parse_function (CdnExpression *expression,
 
 		get_argdim (expression, context, arguments, &args);
 
-		function = cdn_function_for_dimension (function,
-		                                       &args);
-
 		instruction = cdn_instruction_custom_function_new (function,
 		                                                   &args);
 
@@ -2026,7 +2023,6 @@ parse_function (CdnExpression *expression,
 			}
 		}
 
-		g_object_unref (function);
 		cdn_stack_args_destroy (&args);
 	}
 
