@@ -17,12 +17,9 @@ class Column:
     ICON = 3
     EXPRESSION_ORIG = 4
 
-class Window(Gtk.Window):
+class Window:
     def __init__(self, n):
-        super(Gtk.Window, self).__init__()
-
         self.n = n
-        self.set_default_size(800, 600)
 
         self.history = []
         self.history_ptr = -1
@@ -35,13 +32,35 @@ class Window(Gtk.Window):
                                Gdk.KEY_Right,
                                Gdk.ModifierType.CONTROL_MASK)
 
+        Gtk.AccelMap.add_entry("<cdn-inspect>/Global/Reload",
+                               Gdk.KEY_R,
+                               Gdk.ModifierType.CONTROL_MASK)
+
         grp = Gtk.AccelGroup()
         grp.connect_by_path("<cdn-inspect>/Global/HistoryBack", self.on_history_back)
         grp.connect_by_path("<cdn-inspect>/Global/HistoryForward", self.on_history_forward)
-
-        self.add_accel_group(grp)
+        grp.connect_by_path("<cdn-inspect>/Global/Reload", self.on_reload)
 
         self.build_ui()
+
+        self['window'].add_accel_group(grp)
+
+        self.reload()
+
+    def __getitem__(self, name):
+        return self.builder.get_object(name)
+
+    def on_reload(self, *args):
+        self.reload()
+
+    def reload(self):
+        f = self.n.get_file()
+        self.n = Cdn.Network.new_from_file(f)
+
+        self['treestore'].clear()
+        self.mapping = {}
+        self.history = []
+        self.history_ptr = -1
 
         err = Cdn.CompileError()
 
@@ -74,12 +93,12 @@ class Window(Gtk.Window):
             if o in self.mapping:
                 path = self.mapping[o]
 
-                self.tv.expand_to_path(path)
-                self.tv.get_selection().select_path(path)
+                self['treeview'].expand_to_path(path)
+                self['treeview'].get_selection().select_path(path)
 
                 # Highlight thingie
-                it = self.model.get_iter(path)
-                e = self.model.get_value(it, Column.EXPRESSION_ORIG)
+                it = self['treestore'].get_iter(path)
+                e = self['treestore'].get_value(it, Column.EXPRESSION_ORIG)
 
                 expr = err.get_expression()
                 start = expr.get_error_start()
@@ -91,7 +110,9 @@ class Window(Gtk.Window):
 
                 newe = prefix + '<span underline="error">' + infix + '</span>' + suffix
 
-                self.model.set(it, Column.EXPRESSION, newe)
+                self['treestore'].set(it, Column.EXPRESSION, newe)
+
+        self.update_sensitivity()
 
     def on_history_forward(self, accelgroup, window, key, flags):
         self.on_forward_clicked()
@@ -102,37 +123,10 @@ class Window(Gtk.Window):
         return True
 
     def update_sensitivity(self):
-        self.back.set_sensitive(self.history_ptr > 0)
-        self.forward.set_sensitive(self.history_ptr < len(self.history) - 1)
+        self['toolbutton_back'].set_sensitive(self.history_ptr > 0)
+        self['toolbutton_forward'].set_sensitive(self.history_ptr < len(self.history) - 1)
 
     def build_ui(self):
-        self.vbox = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        self.vbox.show()
-
-        tbar = Gtk.Toolbar()
-        tbar.show()
-
-        self.back = Gtk.ToolButton.new_from_stock(Gtk.STOCK_GO_BACK)
-        self.back.show()
-        self.back.set_is_important(True)
-        self.back.connect('clicked', self.on_back_clicked)
-        tbar.insert(self.back, -1)
-
-        self.forward = Gtk.ToolButton.new_from_stock(Gtk.STOCK_GO_FORWARD)
-        self.forward.show()
-        self.forward.set_is_important(True)
-        self.forward.connect('clicked', self.on_forward_clicked)
-        tbar.insert(self.forward, -1)
-
-        tbar.get_style_context().add_class("primary-toolbar")
-
-        self.vbox.pack_start(tbar, False, True, 0)
-
-        self.paned = Gtk.Paned(orientation=Gtk.Orientation.VERTICAL)
-        self.paned.show()
-
-        self.vbox.pack_end(self.paned, True, True, 0)
-
         self.icons = {}
 
         for name in ('variable', 'object', 'function', 'edge', 'action', 'blank'):
@@ -141,103 +135,43 @@ class Window(Gtk.Window):
             except:
                 pass
 
-        tv = Gtk.TreeView()
-        tv.show()
+        self.builder = Gtk.Builder()
+        self.builder.add_from_file(os.path.join(root, 'window.ui'))
 
-        self.tv = tv
+        self['window'].set_default_size(600, 800)
 
-        col = Gtk.TreeViewColumn('Name')
+        self['toolbutton_back'].connect('clicked', self.on_back_clicked)
+        self['toolbutton_forward'].connect('clicked', self.on_forward_clicked)
 
-        cell = Gtk.CellRendererPixbuf()
-        cell.props.yalign = 0
-        col.pack_start(cell, False)
-        col.add_attribute(cell, "pixbuf", Column.ICON)
+        self['toolbar'].get_style_context().add_class("primary-toolbar")
 
-        cell = Gtk.CellRendererText()
-        cell.props.yalign = 0
-        col.pack_start(cell, False)
-        col.add_attribute(cell, "text", Column.NAME)
+        tveq = self['textview_equation']
 
-        tv.append_column(col)
+        settings = Gio.Settings('org.gnome.desktop.interface')
+        font = settings.get_string('monospace-font-name')
 
-        cell = Gtk.CellRendererText()
-        cell.props.font_desc = Pango.FontDescription('Monospace 8')
-        cell.props.yalign = 0
-        col = Gtk.TreeViewColumn('Value', cell, markup=Column.EXPRESSION)
-        tv.append_column(col)
+        tveq.override_font(Pango.FontDescription(font))
 
-        sw = Gtk.ScrolledWindow()
-        sw.show()
-        sw.add(tv)
-        sw.set_shadow_type(Gtk.ShadowType.ETCHED_IN)
+        for l in ['info', 'sparsity', 'dimension']:
+            self['label_' + l].override_font(Pango.FontDescription(font))
 
-        self.model = Gtk.TreeStore(object, str, str, GdkPixbuf.Pixbuf, str)
-        tv.set_model(self.model)
-
-        self.mapping = {}
-
-        self.paned.pack1(sw, True, False)
-
-        vb = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, border_width=6)
-        vb.show()
-
-        hbox = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        hbox.show()
-
-        but = Gtk.Button('Simplify')
-        but.show()
-
-        but.connect('clicked', self.on_simplify)
-        hbox.pack_end(but, False, False, 0)
-
-        grid = Gtk.Grid()
-        grid.show()
-        grid.set_column_spacing(6)
-        grid.set_row_spacing(3)
-
-        grid.attach(self.make_label('<b>Info:</b>'), 0, 0, 1, 1)
-
-        self.info = Gtk.Label()
-        self.info.set_line_wrap(True)
-        self.info.set_hexpand(True)
-        self.info.props.halign = Gtk.Align.START
-        grid.attach(self.info, 1, 0, 1, 1)
-
-        grid.attach(self.make_label('<b>Eq:</b>'), 0, 1, 1, 1)
-        self.eq = Gtk.TextView()
-        self.eq.set_editable(False)
-        self.eq.set_cursor_visible(False)
-        self.eq.set_hexpand(True)
-        self.eq.show()
-
-        self.eq.override_font(Pango.FontDescription('Monospace 12'))
-        self.eqrefs = []
-
-        self.eq.connect('motion-notify-event', self.on_eq_motion)
-        self.eq.connect('button-press-event', self.on_eq_button_press)
-
-        self.vtag = self.eq.get_buffer().create_tag('v', foreground="#ce5c00")
-
-        grid.attach(self.eq, 1, 1, 1, 1)
+        tveq.connect('motion-notify-event', self.on_eq_motion)
+        tveq.connect('button-press-event', self.on_eq_button_press)
 
         css = Gtk.CssProvider()
         css.load_from_data('GtkTextView { background-color: @theme_bg_color; }')
-        self.eq.get_style_context().add_provider(css, 600)
+        tveq.get_style_context().add_provider(css, 600)
 
-        grid.show_all()
+        self.vtag = tveq.get_buffer().create_tag('v', foreground="#ce5c00")
 
-        vb.pack_start(grid, True, True, 0)
-        vb.pack_start(hbox, False, True, 0)
+        self['treeview'].get_selection().connect('changed', self.on_selection_changed)
 
-        self.paned.pack2(vb, False, False)
-        self.add(self.vbox)
-
-        self.tv.get_selection().connect('changed', self.on_selection_changed)
+        self['button_simplify'].connect('clicked', self.on_simplify)
 
         self.update_sensitivity()
 
     def from_history(self):
-        self.tv.get_selection().select_path(self.history[self.history_ptr])
+        self['treeview'].get_selection().select_path(self.history[self.history_ptr])
         self.update_sensitivity()
 
     def on_forward_clicked(self, *args):
@@ -264,20 +198,23 @@ class Window(Gtk.Window):
         if not eq:
             return False
 
-        v = eq.get_variable()
+        if hasattr(eq, 'get_variable'):
+            v = eq.get_variable()
+        elif hasattr(eq, 'get_function'):
+            v = eq.get_function()
 
         if v in self.mapping:
             path = self.mapping[v]
 
-            self.tv.expand_to_path(path)
-            self.tv.scroll_to_cell(path, None, True, 0.5, 0)
-            self.tv.get_selection().select_path(path)
+            self['treeview'].expand_to_path(path)
+            self['treeview'].scroll_to_cell(path, None, True, 0.5, 0)
+            self['treeview'].get_selection().select_path(path)
 
     def get_eq_ref(self, ev):
-        x, y = self.eq.window_to_buffer_coords(Gtk.TextWindowType.TEXT, ev.x, ev.y)
+        x, y = self['textview_equation'].window_to_buffer_coords(Gtk.TextWindowType.TEXT, ev.x, ev.y)
 
-        it, trailing = self.eq.get_iter_at_position(x, y)
-        location = self.eq.get_iter_location(it)
+        it, trailing = self['textview_equation'].get_iter_at_position(x, y)
+        location = self['textview_equation'].get_iter_location(it)
 
         if x > location.x + location.width or \
            x < location.x or \
@@ -309,16 +246,18 @@ class Window(Gtk.Window):
         ev.window.set_cursor(None)
         return False
 
-    def make_label(self, t):
-        ret = Gtk.Label(t)
-        ret.set_use_markup(True)
-        ret.props.valign = Gtk.Align.START
-        ret.show()
-
-        return ret
-
     def on_selection_changed(self, sel):
         model, it = sel.get_selected()
+
+        buf = self['textview_equation'].get_buffer()
+
+        for l in ['dimension', 'sparsity', 'info']:
+            self['label_' + l].set_text('')
+
+        buf.set_text('')
+
+        if not it:
+            return
 
         obj = model.get_value(it, Column.OBJECT)
 
@@ -326,22 +265,25 @@ class Window(Gtk.Window):
             an = obj.get_annotation()
 
             if not an:
-                an = ''
-            else:
-                an = re.sub(' *\n( +|(?=[^\n]))', ' ', an)
+                an = ""
 
-            self.info.set_markup(an)
-        else:
-            self.info.set_text('')
+            lines = an.splitlines()
+            retan = ""
+
+            for line in lines:
+                retan += line
+
+                if line.endswith('.'):
+                    retan += "\n"
+
+            self['label_info'].set_markup(retan.rstrip("\n"))
 
         e = self.get_expression(obj)
-        buf = self.eq.get_buffer()
 
         self.eqrefs = []
 
         if e:
             #eit = Cdn.ExpressionTreeIter.new(e)
-
             eits = e.get_as_string()
             instr = e.get_instructions()
 
@@ -349,20 +291,32 @@ class Window(Gtk.Window):
 
             for i in instr:
                 v = i.as_variable()
+                c = i.as_custom_function()
 
-                if v:
-                    s, e = i.get_location()
+                if v or c:
+                    s, et = i.get_location()
+
+                    if s == 0 or et == 0:
+                        continue
 
                     start = buf.get_start_iter()
                     start.set_line_index(s - 1)
 
                     end = buf.get_start_iter()
-                    end.set_line_index(e - 1)
+                    end.set_line_index(et - 1)
 
                     buf.apply_tag(self.vtag, start, end)
-                    self.eqrefs.append((s - 1, e - 1, v))
-        else:
-            buf.set_text('')
+                    self.eqrefs.append((s - 1, et - 1, v or c))
+
+            hasdim, dim = e.get_dimension()
+
+            if hasdim:
+                self['label_dimension'].set_text('[%d-by-%d]: ' % (dim.rows, dim.columns))
+
+            arg = e.get_stack_arg()
+            sparse = [str(x) for x in arg.get_sparsity()]
+
+            self['label_sparsity'].set_text('[' + ', '.join(sparse) + ']')
 
         self.add_history(model.get_path(it))
 
@@ -428,15 +382,15 @@ class Window(Gtk.Window):
             if isfunc and obj.get_argument(v.get_name()):
                 continue
 
-            vv = self.model.append(parent)
-            path = self.model.get_path(vv)
+            vv = self['treestore'].append(parent)
+            path = self['treestore'].get_path(vv)
 
             self.mapping[v] = path
             self.mapping[self.get_expression(v)] = path
 
             e = self.get_expression_s(v)
 
-            self.model.set(vv,
+            self['treestore'].set(vv,
                            Column.OBJECT, v,
                            Column.NAME, v.get_name(),
                            Column.EXPRESSION, GLib.markup_escape_text(e),
@@ -445,12 +399,12 @@ class Window(Gtk.Window):
 
         if isinstance(obj, Cdn.Node):
             for c in obj.get_children():
-                par = self.model.append(parent)
-                self.mapping[c] = self.model.get_path(par)
+                par = self['treestore'].append(parent)
+                self.mapping[c] = self['treestore'].get_path(par)
 
                 e = self.get_expression_s(c)
 
-                self.model.set(par,
+                self['treestore'].set(par,
                                Column.OBJECT, c,
                                Column.NAME, c.get_id(),
                                Column.ICON, self.get_icon(c),
@@ -460,9 +414,9 @@ class Window(Gtk.Window):
                 self.add_to_tree(par, c)
         elif isinstance(obj, Cdn.Edge):
             for c in obj.get_actions():
-                par = self.model.append(parent)
+                par = self['treestore'].append(parent)
 
-                path = self.model.get_path(par)
+                path = self['treestore'].get_path(par)
 
                 self.mapping[c] = path
                 self.mapping[self.get_expression(c)] = path
@@ -475,7 +429,7 @@ class Window(Gtk.Window):
                 if len(indices) > 0:
                     target += "[" + ', '.join([str(i) for i in indices]) + ']'
 
-                self.model.set(par,
+                self['treestore'].set(par,
                                Column.OBJECT, c,
                                Column.NAME, target,
                                Column.ICON, self.get_icon(c),
@@ -498,9 +452,9 @@ class Application(Gtk.Application):
             n = Cdn.Network.new_from_file(f)
 
             win = Window(n)
-            win.show()
+            win['window'].show()
 
-            app.add_window(win)
+            app.add_window(win['window'])
 
 app = Application()
 app.run(sys.argv)
