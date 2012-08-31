@@ -588,19 +588,16 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 		if (findidx && *findidx && ex)
 		{
-			if (ex)
-			{
-				gint i;
+			gint i;
 
-				for (i = 1; i < cdn_expansion_num (ex); ++i)
+			for (i = 1; i < cdn_expansion_num (ex); ++i)
+			{
+				if (g_strcmp0 (cdn_expansion_get (ex, i),
+				               findidx) == 0)
 				{
-					if (g_strcmp0 (cdn_expansion_get (ex, i),
-					               findidx) == 0)
-					{
-						// That's it...
-						ret = g_strdup_printf ("%d", i - 1);
-						break;
-					}
+					// That's it...
+					ret = g_strdup_printf ("%d", i - 1);
+					break;
 				}
 			}
 
