@@ -6532,6 +6532,7 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 			NameValuePair *pair = pairs->data;
 			GType tp;
 			CdnSelection *newsel;
+			CdnExpansionContext *pctx;
 
 			tp = cdn_io_method_find (cdn_expansion_get (pair->value, 0),
 			                         mode);
@@ -6552,6 +6553,14 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 				return;
 			}
 
+			pctx = expansion_context_push_base (context);
+
+			cdn_expansion_context_add_expansion (pctx,
+			                                     pair->name);
+
+			cdn_expansion_context_add_expansion (pctx,
+			                                     pair->value);
+
 			newsel = parse_object_single_id (context,
 			                                 pair->name,
 			                                 NULL,
@@ -6563,6 +6572,8 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 			                                 "mode",
 			                                 mode,
 			                                 NULL);
+
+			expansion_context_pop (context);
 
 			if (!newsel)
 			{
