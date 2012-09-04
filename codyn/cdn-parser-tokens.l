@@ -494,6 +494,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "+"				return '+';
 "?"				return '?';
 "'"				return '\'';
+"$"				return '$';
 
 %%
 

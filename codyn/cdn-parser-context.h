@@ -250,7 +250,8 @@ gpointer               cdn_parser_context_get_scanner          (CdnParserContext
 void                   cdn_parser_context_define               (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
                                                                 GObject                    *value,
-                                                                gboolean                    optional);
+                                                                gboolean                    optional,
+                                                                gboolean                    fromenv);
 
 void                   cdn_parser_context_set_integrator       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *value);

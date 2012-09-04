@@ -4582,7 +4582,8 @@ void
 cdn_parser_context_define (CdnParserContext  *context,
                            CdnEmbeddedString *name,
                            GObject           *value,
-                           gboolean           optional)
+                           gboolean           optional,
+                           gboolean           fromenv)
 {
 	GSList *ob;
 	Context *ctx;
@@ -4636,9 +4637,42 @@ cdn_parser_context_define (CdnParserContext  *context,
 				}
 			}
 
-			cdn_expansion_context_add_define (ctx,
-			                                  cdn_expansion_get (p->name, 0),
-			                                  p->value);
+			if (fromenv)
+			{
+				gint i;
+				gboolean dodefine = FALSE;
+
+				for (i = 0; i < cdn_expansion_num (p->value); ++i)
+				{
+					gchar const *s;
+					gchar const *envval;
+
+					s = cdn_expansion_get (p->value, i);
+					envval = g_getenv (s);
+
+					if (envval != NULL || cdn_expansion_num (p->value) != 1)
+					{
+						dodefine = TRUE;
+
+						cdn_expansion_set (p->value,
+						                   i,
+						                   envval ? envval : "");
+					}
+				}
+
+				if (dodefine)
+				{
+					cdn_expansion_context_add_define (ctx,
+					                                  cdn_expansion_get (p->name, 0),
+					                                  p->value);
+				}
+			}
+			else
+			{
+				cdn_expansion_context_add_define (ctx,
+				                                  cdn_expansion_get (p->name, 0),
+				                                  p->value);
+			}
 
 			name_value_pair_free (p);
 		}

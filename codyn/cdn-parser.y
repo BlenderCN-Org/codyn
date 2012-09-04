@@ -184,6 +184,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %type <num> repeated_prime
 
 %type <string> within
+%type <assign_optional_env> assign_optional_env
 
 %define api.pure
 %name-prefix="cdn_parser_"
@@ -227,6 +228,12 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 		CdnEmbeddedString *value;
 		gboolean set;
 	} within;
+
+	struct
+	{
+		gboolean optional;
+		gboolean env;
+	} assign_optional_env;
 }
 
 %start choose_parser
@@ -423,11 +430,13 @@ define_value
 	;
 
 define_item
-	: identifier_or_string assign_optional define_value
-					{ cdn_parser_context_define (context,
+	: identifier_or_string
+	  assign_optional_env
+	  define_value			{ cdn_parser_context_define (context,
 					                             $1,
 					                             $3,
-					                             $2); }
+					                             $2.optional,
+					                             $2.env); }
 	| common_scopes
 	;
 
@@ -1021,6 +1030,13 @@ multi_identifier_or_string
 assign_optional
 	: '='				{ $$ = FALSE; }
 	| '?' '='			{ $$ = TRUE; }
+	;
+
+assign_optional_env
+	: '='				{ $$.optional = FALSE; $$.env = FALSE; }
+	| '?' '='			{ $$.optional = TRUE; $$.env = FALSE; }
+	| '?' '$' '='			{ $$.optional = TRUE; $$.env = TRUE; }
+	| '$' '='			{ $$.optional = FALSE; $$.env = TRUE; }
 	;
 
 constraint
