@@ -27,7 +27,22 @@
 CdnDimension cdn_dimension_one = {{.dims = {1, 1}}};
 CdnDimension *cdn_dimension_onep = &cdn_dimension_one;
 
-G_DEFINE_BOXED_TYPE(CdnStack, cdn_stack, cdn_stack_copy, cdn_stack_free)
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_stack_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStack",
+		                                      (GBoxedCopyFunc)cdn_stack_copy,
+		                                      (GBoxedFreeFunc)cdn_stack_free);
+	}
+
+	return gtype;
+}
 
 static void
 cdn_stack_arg_destroy (CdnStackArg *arg)
@@ -115,14 +130,73 @@ _cdn_stack_manipulation_free (CdnStackManipulation *smanip)
 	g_slice_free (CdnStackManipulation, smanip);
 }
 
-G_DEFINE_BOXED_TYPE(CdnStackManipulation,
-                    cdn_stack_manipulation,
-                    _cdn_stack_manipulation_copy,
-                    _cdn_stack_manipulation_free)
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_stack_manipulation_get_type ()
+{
+	static GType gtype = 0;
 
-G_DEFINE_BOXED_TYPE(CdnStackArg, cdn_stack_arg, _cdn_stack_arg_copy, _cdn_stack_arg_free)
-G_DEFINE_BOXED_TYPE(CdnStackArgs, cdn_stack_args, _cdn_stack_args_copy, _cdn_stack_args_free)
-G_DEFINE_BOXED_TYPE(CdnDimension, cdn_dimension, _cdn_dimension_copy, _cdn_dimension_free)
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStackManipulation",
+		                                      (GBoxedCopyFunc)_cdn_stack_manipulation_copy,
+		                                      (GBoxedFreeFunc)_cdn_stack_manipulation_free);
+	}
+
+	return gtype;
+}
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_stack_arg_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStackArg",
+		                                      (GBoxedCopyFunc)_cdn_stack_arg_copy,
+		                                      (GBoxedFreeFunc)_cdn_stack_arg_free);
+	}
+
+	return gtype;
+}
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_stack_args_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStackArgs",
+		                                      (GBoxedCopyFunc)_cdn_stack_args_copy,
+		                                      (GBoxedFreeFunc)_cdn_stack_args_free);
+	}
+
+	return gtype;
+}
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_dimension_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnDimension",
+		                                      (GBoxedCopyFunc)_cdn_dimension_copy,
+		                                      (GBoxedFreeFunc)_cdn_dimension_free);
+	}
+
+	return gtype;
+}
 
 /**
  * SECTION:cdn-stack
