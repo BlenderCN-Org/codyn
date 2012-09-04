@@ -192,19 +192,7 @@ set_function (CdnInstructionCustomFunction *function,
 
 	if (func)
 	{
-		CdnFunction *forarg;
-		CdnStackManipulation const *smanip;
-
-		forarg = cdn_function_for_dimension (func,
-		                                     &function->priv->smanip.pop);
-
-		function->priv->function = forarg;
-
-		smanip = cdn_function_get_stack_manipulation (forarg);
-
-		// Copy the push dimensions
-		cdn_stack_arg_copy (&function->priv->smanip.push,
-		                    &smanip->push);
+		function->priv->function = g_object_ref (func);
 	}
 }
 
@@ -216,10 +204,6 @@ cdn_instruction_custom_function_new (CdnFunction        *function,
 
 	custom = CDN_INSTRUCTION_CUSTOM_FUNCTION (
 		cdn_mini_object_new (CDN_TYPE_INSTRUCTION_CUSTOM_FUNCTION));
-
-	// Store a copy of the argdim here, functions are shared but instructions
-	// aren't
-	cdn_stack_args_copy (&custom->priv->smanip.pop, argdim);
 
 	set_function (custom, function);
 
