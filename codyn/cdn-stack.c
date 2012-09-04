@@ -24,7 +24,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-CdnDimension cdn_dimension_one = {.dims = {1, 1}};
+CdnDimension cdn_dimension_one = {{.dims = {1, 1}}};
 CdnDimension *cdn_dimension_onep = &cdn_dimension_one;
 
 G_DEFINE_BOXED_TYPE(CdnStack, cdn_stack, cdn_stack_copy, cdn_stack_free)

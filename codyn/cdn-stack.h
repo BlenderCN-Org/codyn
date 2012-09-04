@@ -51,13 +51,13 @@ typedef struct
 {
 	union
 	{
-		gint32 dims[2];
-
 		struct
 		{
 			gint32 rows;
 			gint32 columns;
 		};
+
+		gint32 dims[2];
 	};
 } CdnDimension;
 
@@ -93,8 +93,8 @@ typedef struct
 	gint extra_space;
 } CdnStackManipulation;
 
-#define CDN_DIMENSION(r, c) {.rows = r, .columns = (c)}
-#define CDN_STACK_ARG(r, c) {.dimension = CDN_DIMENSION (r, c), .sparsity = NULL, .num_sparse = 0}
+#define CDN_DIMENSION(r, c) {{{.rows = r, .columns = (c)}}}
+#define CDN_STACK_ARG(r, c) {{.dimension = CDN_DIMENSION (r, c)}, .sparsity = NULL, .num_sparse = 0}
 #define CDN_STACK_ARG_EMPTY CDN_STACK_ARG(0, 0)
 
 extern CdnDimension cdn_dimension_one;

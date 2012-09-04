@@ -982,7 +982,7 @@ multi_selector_value
 	;
 
 multi_selector_contents
-	: multi_selector_value		{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	: multi_selector_value		{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 	                                  g_ptr_array_add ($$, $1); }
 	| multi_selector_contents
 	  ','
@@ -990,7 +990,7 @@ multi_selector_contents
 	;
 
 multi_selector
-	: selector			{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	: selector			{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 	                                  g_ptr_array_add ($$, $1); }
 	| '['
 	   multi_selector_contents
@@ -1003,7 +1003,7 @@ multi_identifier_or_string_value
 	;
 
 multi_identifier_or_string_contents
-	: multi_identifier_or_string_value	{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	: multi_identifier_or_string_value	{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 	                                          g_ptr_array_add ($$, $1); }
 	| multi_identifier_or_string_contents
 	  ','
@@ -1011,7 +1011,7 @@ multi_identifier_or_string_contents
 	;
 
 multi_identifier_or_string
-	: identifier_or_string		{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	: identifier_or_string		{ $$ =  g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 	                                  g_ptr_array_add ($$, $1); }
 	| '['
 	  multi_identifier_or_string_contents
@@ -1524,7 +1524,7 @@ multi_value_as_string_value
 	;
 
 multi_value_as_string_contents
-	: multi_value_as_string_value	{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	: multi_value_as_string_value	{ $$ =  g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 	                                  g_ptr_array_add ($$, $1); }
 	| multi_value_as_string_contents
 	  ','
@@ -1532,7 +1532,7 @@ multi_value_as_string_contents
 	;
 
 multi_value_as_string
-	: value_as_string		{ $$ = g_ptr_array_new_full (0, (GDestroyNotify)g_object_unref);
+	: value_as_string		{ $$ =  g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
 	                                  g_ptr_array_add ($$, $1); }
 	| '['
 	    multi_value_as_string_contents
