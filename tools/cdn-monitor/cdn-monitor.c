@@ -56,6 +56,7 @@ static gdouble step = 0.001;
 static gdouble to = 1;
 static gint64 seed = 0;
 static gboolean simplify = FALSE;
+static gboolean timestamp = FALSE;
 
 #define CDN_MONITOR_ERROR (cdn_monitor_error_quark())
 
@@ -344,6 +345,8 @@ static GOptionEntry entries[] = {
 	 "Run integration multiple times, varying this range (e.g. /state_.*/.\"{x,y}\"(0:0.1:10))", "RANGE"},
 	{"simplify", 'x', 0, G_OPTION_ARG_NONE, &simplify,
 	 "Enable global simplifications", NULL},
+	{"timestamp", 'p', 0, G_OPTION_ARG_NONE, &timestamp,
+	 "Write a timestamp (Unix time) at the beginning of each line", NULL},
 	{NULL}
 };
 
@@ -538,6 +541,17 @@ resolve_output_stream (Monitored *monmon)
 	}
 }
 
+static double
+get_current_time ()
+{
+  struct timeval tv;
+  struct timezone tz;
+
+  gettimeofday (&tv, &tz);
+
+  return tv.tv_sec + 1.e-6 * tv.tv_usec;
+}
+
 static void
 record_monitors (Monitored *monitored)
 {
@@ -548,6 +562,23 @@ record_monitors (Monitored *monitored)
 	if (!monitored)
 	{
 		return;
+	}
+
+	if (timestamp)
+	{
+		gchar *stamp;
+
+		stamp = g_strdup_printf ("%f", get_current_time ());
+
+		g_output_stream_write_all (monitored->stream,
+		                           stamp,
+		                           strlen (stamp),
+		                           NULL,
+		                           NULL,
+		                           NULL);
+		g_free (stamp);
+		
+		first = FALSE;
 	}
 
 	monitors = monitored->monitors;
