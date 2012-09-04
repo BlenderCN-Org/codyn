@@ -488,7 +488,7 @@ cdn_stack_pushni (CdnStack *stack,
 }
 
 /**
- * cdn_stack_manipulation_get_pop:
+ * cdn_stack_manipulation_get_popn:
  * @smanip: a #CdnStackManipulation.
  * @n: the popped argument index.
  *
@@ -496,8 +496,8 @@ cdn_stack_pushni (CdnStack *stack,
  *
  **/
 CdnStackArg const *
-cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip,
-                                gint                        n)
+cdn_stack_manipulation_get_popn (CdnStackManipulation const *smanip,
+                                 gint                        n)
 {
 	if (!smanip || smanip->pop.num <= n)
 	{
@@ -505,6 +505,30 @@ cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip,
 	}
 
 	return &smanip->pop.args[n];
+}
+
+/**
+ * cdn_stack_manipulation_get_pop:
+ * @smanip: a #CdnStackManipulation.
+ *
+ * Get the dimension of a particular popped argument.
+ *
+ **/
+CdnStackArgs const *
+cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip)
+{
+	if (!smanip)
+	{
+		return NULL;
+	}
+
+	return &smanip->pop;
+}
+
+guint
+cdn_stack_args_get_num (CdnStackArgs const *args)
+{
+	return args ? args->num : 0;
 }
 
 /**

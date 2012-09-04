@@ -153,8 +153,11 @@ void      cdn_stack_set_at  (CdnStack *stack,
                              gdouble   value);
 
 CdnStackArg const *
-          cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip,
-                                          gint                        n);
+          cdn_stack_manipulation_get_popn (CdnStackManipulation const *smanip,
+                                           gint                        n);
+
+CdnStackArgs const *
+          cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip);
 
 CdnStackArg const *
           cdn_stack_manipulation_get_push (CdnStackManipulation const *smanip);
@@ -186,6 +189,8 @@ void      cdn_stack_args_init (CdnStackArgs *args, gint num);
 
 void      cdn_stack_args_copy (CdnStackArgs       *dest,
                                CdnStackArgs const *src);
+
+guint     cdn_stack_args_get_num (CdnStackArgs const *args);
 
 void      cdn_stack_args_destroy (CdnStackArgs       *args);
 
