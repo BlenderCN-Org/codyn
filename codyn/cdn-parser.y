@@ -840,7 +840,8 @@ node_item_general_no_variable_set
 	;
 
 io_setting
-	: value_as_string '=' value_as_string
+	: debug
+	| value_as_string '=' value_as_string
 		{ cdn_parser_context_set_io_setting (context, $1, $3); errb }
 	;
 
