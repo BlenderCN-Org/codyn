@@ -18,6 +18,9 @@ struct _CdnIoNetworkClientPrivate
 	guint port;
 	CdnNetworkProtocol protocol;
 	CdnClient *client;
+
+	guint retry;
+	guint fatal_failed_connect : 1;
 };
 
 static void cdn_io_iface_init (gpointer iface);
@@ -36,7 +39,9 @@ enum
 	PROP_MODE,
 	PROP_HOST,
 	PROP_PORT,
-	PROP_PROTOCOL
+	PROP_PROTOCOL,
+	PROP_RETRY,
+	PROP_FATAL_FAILED_CONNECT
 };
 
 static gboolean
@@ -51,6 +56,8 @@ cdn_io_initialize_impl (CdnIo         *io,
 	GSocketAddressEnumerator *enumerator;
 	GSocketAddress *sockaddr;
 	GError *lasterr = NULL;
+	guint tried = 0;
+	GTimer *timer;
 
 #ifdef ENABLE_GIO_UNIX
 	if (client->priv->host == NULL &&
@@ -125,35 +132,77 @@ cdn_io_initialize_impl (CdnIo         *io,
 		g_object_unref (addr);
 	}
 
-	enumerator = g_socket_connectable_enumerate (conn);
-	g_object_unref (conn);
+	timer = g_timer_new ();
 
-	while ((sockaddr = g_socket_address_enumerator_next (enumerator,
-	                                                     cancellable,
-	                                                     error)))
+	while (tried <= client->priv->retry)
 	{
-		if (lasterr != NULL)
+		gdouble elapsed;
+		gdouble minwait = 1;
+
+		elapsed = g_timer_elapsed (timer, NULL);
+
+		if (elapsed < minwait && tried != 0)
 		{
-			g_error_free (lasterr);
+			if (lasterr)
+			{
+				g_warning ("Failed to connect to server: %s (retrying...)",
+				           lasterr->message);
+			}
+
+			g_usleep ((gulong)(G_USEC_PER_SEC * (minwait - elapsed)));
 		}
 
-		if (client->priv->protocol == CDN_NETWORK_PROTOCOL_UDP ||
-		    g_socket_connect (sock,
-		                      sockaddr,
-		                      cancellable,
-		                      &lasterr))
+		g_timer_start (timer);
+
+		enumerator = g_socket_connectable_enumerate (conn);
+
+		while ((sockaddr = g_socket_address_enumerator_next (enumerator,
+		                                                     cancellable,
+		                                                     error)))
 		{
-			g_object_ref (sockaddr);
-			break;
+			if (lasterr != NULL)
+			{
+				g_error_free (lasterr);
+				lasterr = NULL;
+			}
+
+			if (client->priv->protocol == CDN_NETWORK_PROTOCOL_UDP ||
+			    g_socket_connect (sock,
+			                      sockaddr,
+			                      cancellable,
+			                      &lasterr))
+			{
+				g_object_ref (sockaddr);
+
+				// To break out of the loop
+				tried = client->priv->retry;
+				break;
+			}
 		}
+
+		g_object_unref (enumerator);
+		++tried;
 	}
 
-	g_object_unref (enumerator);
+	g_timer_destroy (timer);
+	g_object_unref (conn);
 
 	if (client->priv->protocol != CDN_NETWORK_PROTOCOL_UDP &&
 	    !g_socket_is_connected (sock))
 	{
 		g_object_unref (sock);
+
+		if (!client->priv->fatal_failed_connect)
+		{
+			if (lasterr)
+			{
+				g_warning ("Failed to connect to server: %s",
+				           lasterr->message);
+
+				g_error_free (lasterr);
+				return TRUE;
+			}
+		}
 
 		if (lasterr && error && !*error)
 		{
@@ -251,6 +300,12 @@ cdn_io_network_client_set_property (GObject      *object,
 		case PROP_PROTOCOL:
 			self->priv->protocol = g_value_get_enum (value);
 			break;
+		case PROP_FATAL_FAILED_CONNECT:
+			self->priv->fatal_failed_connect = g_value_get_boolean (value);
+			break;
+		case PROP_RETRY:
+			self->priv->retry = g_value_get_uint (value);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -281,6 +336,12 @@ cdn_io_network_client_get_property (GObject    *object,
 			break;
 		case PROP_PROTOCOL:
 			g_value_set_enum (value, self->priv->protocol);
+			break;
+		case PROP_FATAL_FAILED_CONNECT:
+			g_value_set_boolean (value, self->priv->fatal_failed_connect);
+			break;
+		case PROP_RETRY:
+			g_value_set_uint (value, self->priv->retry);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -341,6 +402,28 @@ cdn_io_network_client_class_init (CdnIoNetworkClientClass *klass)
 	                                                    "Protocol",
 	                                                    CDN_TYPE_NETWORK_PROTOCOL,
 	                                                    CDN_NETWORK_PROTOCOL_TCP,
+	                                                    G_PARAM_READWRITE |
+	                                                    G_PARAM_CONSTRUCT |
+	                                                    G_PARAM_STATIC_STRINGS));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_FATAL_FAILED_CONNECT,
+	                                 g_param_spec_boolean ("fatal-no-connect",
+	                                                       "Fatal no connect",
+	                                                       "Fatal no connect",
+	                                                       FALSE,
+	                                                       G_PARAM_READWRITE |
+	                                                       G_PARAM_CONSTRUCT |
+	                                                       G_PARAM_STATIC_STRINGS));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_RETRY,
+	                                 g_param_spec_uint ("retry",
+	                                                    "Retry",
+	                                                    "Retry",
+	                                                    0,
+	                                                    G_MAXUINT,
+	                                                    3,
 	                                                    G_PARAM_READWRITE |
 	                                                    G_PARAM_CONSTRUCT |
 	                                                    G_PARAM_STATIC_STRINGS));
