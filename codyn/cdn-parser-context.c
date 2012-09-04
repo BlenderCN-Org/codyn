@@ -5341,6 +5341,11 @@ set_gobject_property (CdnParserContext  *context,
 	exname = cdn_expansion_get (name, 0);
 	exval = cdn_expansion_get (value, 0);
 
+	if (!exname || *exname == '\0')
+	{
+		return TRUE;
+	}
+
 	spec = g_object_class_find_property (klass, exname);
 
 	if (spec == NULL)
