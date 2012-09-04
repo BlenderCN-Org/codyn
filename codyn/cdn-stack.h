@@ -187,6 +187,8 @@ void      cdn_stack_manipulation_copy    (CdnStackManipulation       *dest,
 
 void      cdn_stack_args_init (CdnStackArgs *args, gint num);
 
+CdnStackArgs *cdn_stack_args_new (gint num);
+
 void      cdn_stack_args_copy (CdnStackArgs       *dest,
                                CdnStackArgs const *src);
 

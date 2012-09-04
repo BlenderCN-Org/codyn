@@ -678,6 +678,24 @@ cdn_stack_manipulation_destroy (CdnStackManipulation *smanip)
 	cdn_stack_arg_destroy (&smanip->push);
 }
 
+CdnStackArgs *
+cdn_stack_args_new (gint num)
+{
+	CdnStackArgs *ret;
+	gint i;
+
+	ret = g_slice_new (CdnStackArgs);
+	cdn_stack_args_init (ret, num);
+
+	for (i = 0; i < num; ++i)
+	{
+		ret->args[i].rows = 1;
+		ret->args[i].columns = 1;
+	}
+
+	return ret;
+}
+
 void
 cdn_stack_args_init (CdnStackArgs *args,
                      gint          num)
