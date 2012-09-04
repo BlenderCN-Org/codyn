@@ -2108,7 +2108,7 @@ update_header_real (CdnClient      *client,
 
 		idx = find_in_array (v->name, vars);
 
-		*map[i] = idx;
+		(*map)[i] = idx;
 		++i;
 	}
 }
