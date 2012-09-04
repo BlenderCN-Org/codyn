@@ -90,6 +90,7 @@ add_defines (CdnParserContext *context)
 			cdn_parser_context_define (context,
 			                           cdn_embedded_string_new_from_string (parts[0]),
 			                           G_OBJECT (cdn_embedded_string_new_from_string (parts[1])),
+			                           FALSE,
 			                           FALSE);
 		}
 
