@@ -38,7 +38,7 @@ IGNORE_HFILES= \
 	cdn-marshal.h \
 	codyn-parser-utils.h
 
-# Extra options to supply to gtkdoc-scan.
+# Extra options to supply to gtkdoc-scan
 # e.g. SCAN_OPTIONS=--deprecated-guards="GTK_DISABLE_DEPRECATED"
 SCAN_OPTIONS=--rebuild-types --rebuild-sections
 
@@ -96,9 +96,12 @@ GTKDOC_CFLAGS= \
 GTKDOC_LIBS=	\
 	$(top_builddir)/codyn/libcodyn-@CODYN_API_VERSION@.la	\
 	$(CODYN_LIBS)
-	
+
+EXTRA_DIST =
+CLEANFILES =
+
 # This includes the standard gtk-doc make rules, copied by gtkdocize.
-include $(top_srcdir)/gtk-doc.make
+-include $(top_srcdir)/gtk-doc.make
 
 # Other files to distribute
 # e.g. EXTRA_DIST += version.xml.in
