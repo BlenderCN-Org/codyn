@@ -34,6 +34,25 @@ PKG_PROG_PKG_CONFIG
 AC_PATH_PROG(GLIB_GENMARSHAL, glib-genmarshal)
 AC_PATH_PROG(GLIB_MKENUMS, glib-mkenums)
 
+dnl check for osx platform
+AC_MSG_CHECKING([for Mac OS X platform])
+
+case "$host" in
+	*-*-darwin*)
+		platform_osx=yes
+	;;
+	*)
+		platform_osx=no
+	;;
+esac
+
+AC_MSG_RESULT([$platform_osx])
+AM_CONDITIONAL(PLATFORM_OSX, test "$platform_osx" = "yes")
+
+if test "$platform_osx" = "yes"; then
+	AC_DEFINE([PLATFORM_OSX],[1],[Defined if platform is Mac OSX])
+fi
+
 AM_PATH_PYTHON
 
 dnl adl_RECURSIVE_EVAL(VALUE, RESULT)
@@ -245,11 +264,21 @@ AC_ARG_ENABLE([blas],
 have_blas=no
 
 if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
-	AC_CHECK_LIB([blas],
-	             [cblas_dgemm],
-	             [BLAS_LIBS="-lblas"
-	              have_blas=yes],
-	             [])
+	if test "x$platform_osx" = "xyes"; then
+		AC_MSG_CHECKING([for blas])
+		AC_MSG_RESULT([using Accelerate framework])
+
+		BLAS_LIBS="-framework Accelerate"
+		BLAS_CFLAGS=""
+
+		have_blas=Accelerate
+	else
+		AC_CHECK_LIB([blas],
+		             [cblas_dgemm],
+		             [BLAS_LIBS="-lblas"
+		              have_blas=yes],
+		             [])
+	fi
 fi
 
 dnl
@@ -327,7 +356,7 @@ if test "x$enable_blas" = "xauto" && test "x$have_blas" = "xno"; then
 	AC_MSG_WARN(failed to locate blas library)
 fi
 
-if test "$have_blas" = "yes"; then
+if test "$have_blas" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_BLAS], [1], [Have blas support])
 fi
 

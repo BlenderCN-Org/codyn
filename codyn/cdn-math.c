@@ -33,7 +33,11 @@
 #endif
 
 #ifdef HAVE_BLAS
+#ifdef PLATFORM_OSX
+#include <Accelerate/Accelerate.h>
+#else
 #include <cblas.h>
+#endif
 #endif
 
 #include "cdn-compile-error.h"
