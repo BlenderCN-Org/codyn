@@ -101,6 +101,7 @@ PKG_CHECK_MODULES(CODYN, [
 	gobject-2.0
 	libxml-2.0
 	gio-2.0
+	gmodule-2.0
 ])
 
 PKG_CHECK_MODULES(GIO_UNIX, [
