@@ -5,13 +5,19 @@
 #include <codyn/cdn-io.h>
 #include <string.h>
 #include <codyn/cdn-debug.h>
+#include <glib/gprintf.h>
 
 #define CDN_CLIENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_CLIENT, CdnClientPrivate))
+
+#if 0
+#define DEBUG_NETWORK 1
+#endif
 
 typedef enum
 {
 	VARIABLE_TYPE_VARIABLE,
 	VARIABLE_TYPE_SELECTOR,
+	VARIABLE_TYPE_INDEX,
 } VariableType;
 
 typedef enum
@@ -44,6 +50,7 @@ typedef struct
 	{
 		CdnVariable *variable;
 		gchar *selector;
+		gint index;
 	};
 
 	union
@@ -51,8 +58,7 @@ typedef struct
 		struct
 		{
 			gdouble *value;
-			gint numr;
-			gint numc;
+			guint num;
 		} value;
 
 		gchar *expression;
@@ -116,6 +122,8 @@ struct _CdnClientPrivate
 	gint num_output_map;
 
 	CdnCompileContext *cctx;
+
+	gchar *remote_name;
 
 	guint binary_mode : 1;
 	guint isdatagram : 1;
@@ -191,7 +199,9 @@ cdn_client_finalize (GObject *object)
 	}
 
 	g_free (self->priv->input_map);
+
 	g_free (self->priv->output_map);
+	g_free (self->priv->remote_name);
 
 	G_OBJECT_CLASS (cdn_client_parent_class)->finalize (object);
 }
@@ -294,13 +304,16 @@ message_set_free (MessageSet *msg)
 		return;
 	}
 
-	if (msg->variable_type == VARIABLE_TYPE_VARIABLE)
+	switch (msg->variable_type)
 	{
-		g_object_unref (msg->variable);
-	}
-	else
-	{
-		g_free (msg->selector);
+		case VARIABLE_TYPE_VARIABLE:
+			g_object_unref (msg->variable);
+		break;
+		case VARIABLE_TYPE_SELECTOR:
+			g_free (msg->selector);
+		break;
+		default:
+		break;
 	}
 
 	if (msg->value_type == VALUE_TYPE_VALUE)
@@ -316,25 +329,30 @@ message_set_free (MessageSet *msg)
 }
 
 static Message *
-message_set_new (CdnVariable *variable,
+message_set_new (gint         idx,
+                 CdnVariable *variable,
                  gchar const *selector,
                  gchar const *expression,
                  gdouble     *value,
-                 gint         numr,
-                 gint         numc)
+                 guint        num)
 {
 	MessageSet *ret;
 
-	if ((!variable && !selector) || (!expression && !value))
+	if (!expression && !value)
 	{
 		return NULL;
 	}
 
-	ret = g_slice_new (MessageSet);
+	ret = g_slice_new0 (MessageSet);
 
 	ret->type = MESSAGE_TYPE_SET;
 
-	if (!variable)
+	if (!variable && !expression)
+	{
+		ret->index = idx;
+		ret->variable_type = VARIABLE_TYPE_INDEX;
+	}
+	else if (!variable)
 	{
 		ret->selector = g_strdup (selector);
 		ret->variable_type = VARIABLE_TYPE_SELECTOR;
@@ -348,14 +366,12 @@ message_set_new (CdnVariable *variable,
 	if (expression)
 	{
 		ret->expression = g_strdup (expression);
-
 		ret->value_type = VALUE_TYPE_EXPRESSION;
 	}
 	else
 	{
 		ret->value.value = value;
-		ret->value.numr = numr;
-		ret->value.numc = numc;
+		ret->value.num = num;
 
 		ret->value_type = VALUE_TYPE_VALUE;
 	}
@@ -380,6 +396,11 @@ message_header_free (MessageHeader *message)
 static void
 message_free (Message *message)
 {
+	if (!message)
+	{
+		return;
+	}
+
 	switch (message->type)
 	{
 		case MESSAGE_TYPE_HEADER:
@@ -929,6 +950,24 @@ lookup_index_map (gint *map,
 	}
 }
 
+static gint
+lookup_output_index (CdnClient *client,
+                     gint       idx)
+{
+	return lookup_index_map (client->priv->output_map,
+	                         client->priv->num_output_map,
+	                         idx);
+}
+
+static gint
+lookup_input_index (CdnClient *client,
+                    gint       idx)
+{
+	return lookup_index_map (client->priv->input_map,
+	                         client->priv->num_input_map,
+	                         idx);
+}
+
 static gboolean
 process_set_ascii (CdnClient *client,
                    gssize    *start,
@@ -970,38 +1009,11 @@ process_set_ascii (CdnClient *client,
 			break;
 		}
 
-		if (simple_mode)
-		{
-			gint midx;
-
-			midx = lookup_index_map (client->priv->input_map,
-			                         client->priv->num_input_map,
-			                         idx);
-
-			if (midx < client->priv->in_variables->len)
-			{
-				v = g_ptr_array_index (client->priv->in_variables,
-				                       midx);
-			}
-
-			++idx;
-		}
-		else
+		if (!simple_mode)
 		{
 			if (ascii_read_index (client, &s, &idx))
 			{
 				ret = TRUE;
-
-				idx = lookup_index_map (client->priv->input_map,
-				                        client->priv->num_input_map,
-				                        idx);
-
-				// This is an index
-				if (idx < client->priv->in_variables->len)
-				{
-					v = g_ptr_array_index (client->priv->in_variables,
-					                       idx);
-				}
 			}
 			else if (ascii_read_identifier (client, &s, &ident))
 			{
@@ -1047,12 +1059,17 @@ process_set_ascii (CdnClient *client,
 			numc = 1;
 		}
 
-		push_message (client, message_set_new (v,
+		push_message (client, message_set_new (idx,
+		                                       v,
 		                                       selector,
 		                                       expression,
 		                                       value,
-		                                       numr,
-		                                       numc));
+		                                       numr * numc));
+
+		if (simple_mode)
+		{
+			++idx;
+		}
 
 		*start = s;
 
@@ -1088,15 +1105,12 @@ process_set_binary (CdnClient *client,
 
 	for (i = 0; i < numvar; ++i)
 	{
-		CdnVariable *v;
-		guint16 idx;
-		CdnExpression *e;
+		gint idx;
 		gdouble *ptr;
-		CdnDimension dim;
 		gint j;
-		gint num;
+		guint num;
 
-		idx = g_data_input_stream_read_uint16 (stream, NULL, &err);
+		idx = (gint)g_data_input_stream_read_uint16 (stream, NULL, &err);
 
 		if (err)
 		{
@@ -1104,16 +1118,7 @@ process_set_binary (CdnClient *client,
 			return FALSE;
 		}
 
-		if (idx >= client->priv->in_variables->len)
-		{
-			return FALSE;
-		}
-
-		v = g_ptr_array_index (client->priv->in_variables, idx);
-		e = cdn_variable_get_expression (v);
-
-		cdn_expression_get_dimension (e, &dim);
-		num = cdn_dimension_size (&dim);
+		num = g_data_input_stream_read_uint16 (stream, NULL, &err);
 		ptr = g_new (gdouble, num);
 
 		for (j = 0; j < num; ++j)
@@ -1137,11 +1142,12 @@ process_set_binary (CdnClient *client,
 			}
 		}
 
-		cdn_expression_set_values (e,
-		                           ptr,
-		                           &dim);
-
-		g_free (ptr);
+		push_message (client, message_set_new (idx,
+		                                       NULL,
+		                                       NULL,
+		                                       NULL,
+		                                       ptr,
+		                                       num));
 	}
 
 	*start += g_seekable_tell (G_SEEKABLE (inp));
@@ -1150,6 +1156,34 @@ process_set_binary (CdnClient *client,
 	g_object_unref (inp);
 
 	return TRUE;
+}
+
+static gboolean
+process_name_header (CdnClient *client,
+                     gssize    *start)
+{
+	gssize s;
+
+	s = *start;
+
+	g_free (client->priv->remote_name);
+	client->priv->remote_name = NULL;
+
+	while (s < client->priv->offset)
+	{
+		if (client->priv->bytes[s] == '\n')
+		{
+			client->priv->remote_name = g_strndup (client->priv->bytes + *start + 1,
+			                                       s - *start - 1);
+
+			*start = ++s;
+			return TRUE;
+		}
+
+		++s;
+	}
+
+	return FALSE;
 }
 
 static gboolean
@@ -1162,6 +1196,10 @@ process_header (CdnClient       *client,
 
 	message = (MessageHeader *)message_header_new (direction);
 
+#ifdef DEBUG_NETWORK
+	gssize rs = *start - 1;;
+#endif
+
 	while (*start < client->priv->offset)
 	{
 		CdnDimension dim = CDN_DIMENSION (1, 1);
@@ -1172,6 +1210,23 @@ process_header (CdnClient       *client,
 
 		if (client->priv->bytes[*start] == '\n')
 		{
+#ifdef DEBUG_NETWORK
+			g_printerr ("%s", cdn_object_get_id (CDN_OBJECT (client->priv->node)));
+
+			if (direction == HEADER_DIRECTION_IN)
+			{
+				g_printerr (" -> ");
+			}
+			else
+			{
+				g_printerr (" <- ");
+			}
+
+			g_printerr ("%s: %s\n",
+			            client->priv->remote_name,
+			            g_strndup (client->priv->bytes + rs, *start - rs));
+#endif
+
 			++*start;
 			break;
 		}
@@ -1314,6 +1369,9 @@ process_messages (CdnClient *client)
 			break;
 			case 'b':
 				ret = process_binary_mode (client, &s);
+			break;
+			case 'n':
+				ret = process_name_header (client, &s);
 			break;
 			default:
 				--s;
@@ -1671,17 +1729,14 @@ send_out_limit_ascii (CdnClient *client,
 		CdnVariable *v;
 		gdouble const *vals;
 		CdnDimension dim;
-		gint mapped;
 
-		mapped = lookup_index_map (client->priv->output_map,
-		                           client->priv->num_output_map,
-		                           i);
-
-		if (mapped == -1)
+		// Skip output if receiver is not interested in it
+		if (lookup_output_index (client, i) == -1)
 		{
 			continue;
 		}
 
+		// Send if we are going to be over the limit
 		if (limit > 0 && client->priv->outbuf->len >= limit)
 		{
 			g_socket_send_to (client->priv->socket,
@@ -1707,9 +1762,10 @@ send_out_limit_ascii (CdnClient *client,
 
 		v = g_ptr_array_index (client->priv->out_variables, i);
 
-
 		if (client->priv->output_map)
 		{
+			// Send index along only when there is a mapping with
+			// the receiver
 			g_string_append_printf (client->priv->outbuf,
 			                        "%u ", i);
 		}
@@ -1806,29 +1862,32 @@ static gint
 calculate_next_limit (CdnClient *client,
                       GPtrArray *vars,
                       gint       start,
-                      guint      limit)
+                      guint      limit,
+                      guint     *num)
 {
 	gint len = 0;
-
-	if (limit == 0)
-	{
-		return vars->len;
-	}
+	*num = 0;
 
 	while (start < vars->len)
 	{
-		gint s;
 		CdnDimension dim;
+		gint s = 0;
 
-		CdnVariable *v = g_ptr_array_index (vars, start);
-
-		cdn_variable_get_values (v, &dim);
-
-		s = sizeof (guint16) + cdn_dimension_size (&dim) * sizeof (guint64);
-
-		if (len + s > limit)
+		if (!client->priv->output_map ||
+		    lookup_output_index (client, start) != -1)
 		{
-			break;
+			CdnVariable *v = g_ptr_array_index (vars, start);
+
+			cdn_variable_get_values (v, &dim);
+
+			s = sizeof (guint16) + cdn_dimension_size (&dim) * sizeof (guint64);
+
+			if (limit > 0 && len + s > limit)
+			{
+				break;
+			}
+
+			++*num;
 		}
 
 		++start;
@@ -1859,10 +1918,18 @@ send_out_limit_binary (CdnClient *client,
 	start = 0;
 	end = start;
 
+#ifdef DEBUG_NETWORK
+	g_printerr ("send %s -> %s\n",
+	            cdn_object_get_id (CDN_OBJECT (client->priv->node)),
+	            client->priv->remote_name);
+#endif
+
 	while (start < vars->len)
 	{
 		gint i;
-		end = calculate_next_limit (client, vars, start, limit);
+		guint num;
+
+		end = calculate_next_limit (client, vars, start, limit, &num);
 
 		if (end == start)
 		{
@@ -1872,22 +1939,29 @@ send_out_limit_binary (CdnClient *client,
 		}
 
 		g_data_output_stream_put_byte (s, 'x', NULL, NULL);
-
-		// number of output
-		g_data_output_stream_put_uint32 (s, end - start, NULL, NULL);
+		g_data_output_stream_put_uint32 (s, num, NULL, NULL);
 
 		for (i = start; i < end; ++i)
 		{
-			CdnVariable *v = g_ptr_array_index (vars, i);
+			CdnVariable *v;
 			gdouble const *values;
 			CdnDimension dim;
 			gint num;
 			gint j;
 
+			// Only send when the receiver is interested
+			if (lookup_output_index (client, i) == -1)
+			{
+				continue;
+			}
+
+			v = g_ptr_array_index (vars, i);
+
 			values = cdn_variable_get_values (v, &dim);
 			num = cdn_dimension_size (&dim);
 
 			g_data_output_stream_put_uint16 (s, i, NULL, NULL);
+			g_data_output_stream_put_uint16 (s, num, NULL, NULL);
 
 			for (j = 0; j < num; ++j)
 			{
@@ -2029,6 +2103,26 @@ send_binary_header (CdnClient *client)
 }
 
 static void
+send_name_header (CdnClient *client)
+{
+	gchar *name;
+	gchar *full;
+
+	name = cdn_object_get_full_id_for_display (CDN_OBJECT (client->priv->node));
+	full = g_strdup_printf ("n %s\n", name);
+
+	g_socket_send_to (client->priv->socket,
+	                  client->priv->address,
+	                  full,
+	                  strlen (full),
+	                  NULL,
+	                  NULL);
+
+	g_free (name);
+	g_free (full);
+}
+
+static void
 send_input_header (CdnClient *client)
 {
 	send_header (client,
@@ -2052,6 +2146,7 @@ cdn_client_initialize (CdnClient *client)
 		return;
 	}
 
+	send_name_header (client);
 	send_input_header (client);
 	send_output_header (client);
 	send_binary_header (client);
@@ -2083,10 +2178,11 @@ update_header_real (CdnClient      *client,
                     MessageHeader  *message,
                     GPtrArray      *vars,
                     gint          **map,
-                    gint           *num_map)
+                    gint           *num_map,
+                    gboolean        inverse)
 {
 	GSList *item;
-	gint i = 0;
+	gint i;
 
 	g_free (*map);
 
@@ -2098,8 +2194,26 @@ update_header_real (CdnClient      *client,
 		return;
 	}
 
-	*num_map = g_slist_length (message->variables);
-	*map = g_new0 (gint, *num_map);
+	if (!inverse)
+	{
+		*num_map = g_slist_length (message->variables);
+		*map = g_new0 (gint, *num_map);
+	}
+	else
+	{
+		*num_map = vars->len;
+		*map = g_new0 (gint, *num_map);
+
+		// Fill initial map with -1 because we might not see all
+		// variables and we need the inverse map to point to -1 for
+		// variables that are not in the mapping
+		for (i = 0; i < *num_map; ++i)
+		{
+			(*map)[i] = -1;
+		}
+	}
+
+	i = 0;
 
 	for (item = message->variables; item; item = g_slist_next (item))
 	{
@@ -2108,7 +2222,15 @@ update_header_real (CdnClient      *client,
 
 		idx = find_in_array (v->name, vars);
 
-		(*map)[i] = idx;
+		if (!inverse)
+		{
+			(*map)[i] = idx;
+		}
+		else if (idx >= 0)
+		{
+			(*map)[idx] = i;
+		}
+
 		++i;
 	}
 }
@@ -2117,13 +2239,34 @@ static void
 update_header (CdnClient     *client,
                MessageHeader *header)
 {
+#ifdef DEBUG_NETWORK
+	gint i;
+#endif
+
 	if (header->direction == HEADER_DIRECTION_IN)
 	{
 		update_header_real (client,
 		                    header,
 		                    client->priv->out_variables,
 		                    &client->priv->output_map,
-		                    &client->priv->num_output_map);
+		                    &client->priv->num_output_map,
+		                    TRUE);
+
+#ifdef DEBUG_NETWORK
+		g_printerr ("map %s -> %s [",
+		            cdn_object_get_id (CDN_OBJECT (client->priv->node)),
+		            client->priv->remote_name);
+
+		for (i = 0; i < client->priv->num_output_map; ++i)
+		{
+			if (i != 0)
+			{
+				g_printerr (", ");
+			}
+
+			g_printerr ("%d", client->priv->output_map[i]);
+		}
+#endif
 	}
 	else
 	{
@@ -2131,8 +2274,29 @@ update_header (CdnClient     *client,
 		                    header,
 		                    client->priv->in_variables,
 		                    &client->priv->input_map,
-		                    &client->priv->num_input_map);
+		                    &client->priv->num_input_map,
+		                    FALSE);
+
+#ifdef DEBUG_NETWORK
+		g_printerr ("map %s <- %s [",
+		            cdn_object_get_id (CDN_OBJECT (client->priv->node)),
+		            client->priv->remote_name);
+
+		for (i = 0; i < client->priv->num_input_map; ++i)
+		{
+			if (i != 0)
+			{
+				g_printerr (", ");
+			}
+
+			g_printerr ("%d", client->priv->input_map[i]);
+		}
+#endif
 	}
+
+#ifdef DEBUG_NETWORK
+	g_printerr ("]\n");
+#endif
 }
 
 static CdnExpression *
@@ -2166,11 +2330,25 @@ update_set (CdnClient  *client,
 	CdnVariable *v = NULL;
 	CdnExpression *e = NULL;
 	gdouble const *value = NULL;
-	CdnDimension dim = CDN_DIMENSION (0, 0);
-	CdnDimension odim;
+	guint num = 0;
+	CdnDimension dim;
 
 	switch (message->variable_type)
 	{
+		case VARIABLE_TYPE_INDEX:
+		{
+			gint ridx;
+
+			ridx = lookup_input_index (client, message->index);
+
+			if (ridx < 0)
+			{
+				return;
+			}
+
+			v = g_ptr_array_index (client->priv->in_variables, ridx);
+		}
+		break;
 		case VARIABLE_TYPE_VARIABLE:
 			v = message->variable;
 		break;
@@ -2189,8 +2367,7 @@ update_set (CdnClient  *client,
 	{
 		case VALUE_TYPE_VALUE:
 			value = message->value.value;
-			dim.rows = message->value.numr;
-			dim.columns = message->value.numc;
+			num = message->value.num;
 		break;
 		case VALUE_TYPE_EXPRESSION:
 		{
@@ -2199,17 +2376,53 @@ update_set (CdnClient  *client,
 
 			if (e)
 			{
+				CdnDimension edim;
+
 				value = cdn_expression_evaluate_values (e,
-				                                        &dim);
+				                                        &edim);
+
+				num = cdn_dimension_size (&edim);
 			}
 		}
+
 		break;
 	}
 
-	cdn_expression_get_dimension (cdn_variable_get_expression (v),
-	                              &odim);
+#ifdef DEBUG_NETWORK
+	g_printerr ("recv %s <- %s: %s = ",
+	            cdn_object_get_id (CDN_OBJECT (client->priv->node)),
+	            client->priv->remote_name,
+	            cdn_variable_get_name (v));
 
-	if (value && cdn_dimension_equal (&dim, &odim))
+	if (num == 1)
+	{
+		g_printerr ("%.3f", *value);
+	}
+	else
+	{
+		gint i;
+		g_printerr ("[");
+
+		for (i = 0; i < num; ++i)
+		{
+			if (i != 0)
+			{
+				g_printerr (", ");
+			}
+
+			g_printerr ("%.3f", value[i]);
+		}
+
+		g_printerr ("]");
+	}
+
+	g_printerr ("\n");
+#endif
+
+	cdn_expression_get_dimension (cdn_variable_get_expression (v),
+	                              &dim);
+
+	if (value && cdn_dimension_size (&dim) == num)
 	{
 		cdn_variable_set_values (v,
 		                         value,
