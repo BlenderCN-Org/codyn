@@ -402,6 +402,7 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 		}
 	}
 
+	cdn_stack_args_copy (&delayed->priv->smanip.pop, argdim);
 	return TRUE;
 }
 
@@ -737,16 +738,9 @@ cdn_operator_delayed_initialize_integrate (CdnOperator   *op,
 static CdnStackManipulation const *
 cdn_operator_delayed_get_stack_manipulation (CdnOperator *op)
 {
-	CdnStackManipulation const *par;
 	CdnOperatorDelayed *d;
-	CdnOperatorClass *cls;
 
 	d = (CdnOperatorDelayed *)op;
-	cls = CDN_OPERATOR_CLASS (cdn_operator_delayed_parent_class);
-
-	par = cls->get_stack_manipulation (op);
-
-	d->priv->smanip.pop = par->pop;
 
 	return &d->priv->smanip;
 }
