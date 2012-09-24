@@ -6,12 +6,12 @@ layout
         per_type ?= 1
     }
 
-    [if(@per_type)]
+    [ifstr($$(@per_type,1,))]
     {
         type at $(@[@0+] * @distance), $(@0[?] * @distance)
     }
 
-    [if($(@per_type ? 0 : 1))]
+    [ifstr($$(@per_type,,1))]
     {
         count at $(@0[?] * @distance), 0
     }

@@ -24,63 +24,37 @@
 #define __CDN_SELECTION_H__
 
 #include <glib-object.h>
-#include <codyn/cdn-expansion.h>
+#include <codyn/cdn-expansion-context.h>
 
 G_BEGIN_DECLS
 
 #define CDN_TYPE_SELECTION		(cdn_selection_get_type ())
-#define CDN_SELECTION(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_SELECTION, CdnSelection))
-#define CDN_SELECTION_CONST(obj)	(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_SELECTION, CdnSelection const))
-#define CDN_SELECTION_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST ((klass), CDN_TYPE_SELECTION, CdnSelectionClass))
-#define CDN_IS_SELECTION(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CDN_TYPE_SELECTION))
-#define CDN_IS_SELECTION_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CDN_TYPE_SELECTION))
-#define CDN_SELECTION_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CDN_TYPE_SELECTION, CdnSelectionClass))
+#define CDN_SELECTION(x)		((CdnSelection *)(x))
 
 typedef struct _CdnSelection		CdnSelection;
-typedef struct _CdnSelectionClass	CdnSelectionClass;
-typedef struct _CdnSelectionPrivate	CdnSelectionPrivate;
 
-struct _CdnSelection
-{
-	GObject parent;
+GType                cdn_selection_get_type    (void) G_GNUC_CONST;
 
-	CdnSelectionPrivate *priv;
-};
+CdnSelection        *cdn_selection_new         (gpointer             object,
+                                                CdnExpansionContext *context);
 
-struct _CdnSelectionClass
-{
-	GObjectClass parent_class;
-};
+CdnSelection        *cdn_selection_ref         (CdnSelection *selection);
+void                 cdn_selection_unref       (CdnSelection *selection);
 
-GType         cdn_selection_get_type       (void) G_GNUC_CONST;
+void                 cdn_selection_set_object  (CdnSelection *selection,
+                                                gpointer      object);
 
-CdnSelection *cdn_selection_new            (gpointer      object,
-                                            GSList       *expansions,
-                                            GHashTable   *defines);
+CdnSelection        *cdn_selection_copy        (CdnSelection *selection);
 
-CdnSelection *cdn_selection_new_defines    (gpointer      object,
-                                            GSList       *expansions,
-                                            GHashTable   *defines,
-                                            gboolean      copy_defines);
+gpointer             cdn_selection_get_object  (CdnSelection *selection);
+CdnExpansionContext *cdn_selection_get_context (CdnSelection *selection);
+void                 cdn_selection_set_context (CdnSelection *selection,
+                                                CdnExpansionContext *context);
 
-void          cdn_selection_set_object     (CdnSelection *selection,
-                                            gpointer      object);
+gchar const        *_cdn_selection_get_override_name (CdnSelection *selection);
 
-CdnSelection *cdn_selection_copy           (CdnSelection *selection);
-CdnSelection *cdn_selection_copy_defines   (CdnSelection *selection,
-                                            gboolean      copy_defines);
-
-gpointer      cdn_selection_get_object     (CdnSelection *selection);
-GSList       *cdn_selection_get_expansions (CdnSelection *selection);
-
-CdnExpansion *cdn_selection_get_define     (CdnSelection *selection,
-                                            gchar const  *key);
-
-GHashTable   *cdn_selection_get_defines    (CdnSelection *selection);
-
-void          cdn_selection_add_define     (CdnSelection *selection,
-                                            gchar const  *key,
-                                            CdnExpansion *value);
+void                _cdn_selection_set_override_name (CdnSelection *selection,
+                                                      gchar const  *name);
 
 G_END_DECLS
 

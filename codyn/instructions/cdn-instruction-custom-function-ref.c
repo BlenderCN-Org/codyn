@@ -102,9 +102,6 @@ static void
 cdn_instruction_custom_function_ref_init (CdnInstructionCustomFunctionRef *self)
 {
 	self->priv = CDN_INSTRUCTION_CUSTOM_FUNCTION_REF_GET_PRIVATE (self);
-
-	self->priv->smanip.num_pop = 0;
-	self->priv->smanip.num_push = 0;
 }
 
 CdnInstruction *

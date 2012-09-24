@@ -53,11 +53,10 @@ typedef enum
 	CDN_SELECTOR_TYPE_ACTION = 1 << 5,
 	CDN_SELECTOR_TYPE_FUNCTION = 1 << 6,
 	CDN_SELECTOR_TYPE_TEMPLATE = 1 << 7,
-	CDN_SELECTOR_TYPE_OBJECT = CDN_SELECTOR_TYPE_STATE |
-	                           CDN_SELECTOR_TYPE_EDGE |
-	                           CDN_SELECTOR_TYPE_NODE |
-	                           CDN_SELECTOR_TYPE_FUNCTION |
-	                           CDN_SELECTOR_TYPE_TEMPLATE
+	CDN_SELECTOR_TYPE_OBJECT = (CDN_SELECTOR_TYPE_STATE |
+	                            CDN_SELECTOR_TYPE_EDGE |
+	                            CDN_SELECTOR_TYPE_NODE |
+	                            CDN_SELECTOR_TYPE_FUNCTION | CDN_SELECTOR_TYPE_TEMPLATE)
 } CdnSelectorType;
 
 typedef enum
@@ -69,7 +68,6 @@ typedef enum
 	CDN_SELECTOR_PSEUDO_TYPE_FIRST,
 	CDN_SELECTOR_PSEUDO_TYPE_LAST,
 	CDN_SELECTOR_PSEUDO_TYPE_SUBSET,
-	CDN_SELECTOR_PSEUDO_TYPE_STATES,
 	CDN_SELECTOR_PSEUDO_TYPE_EDGES,
 	CDN_SELECTOR_PSEUDO_TYPE_NODES,
 	CDN_SELECTOR_PSEUDO_TYPE_IMPORTS,
@@ -89,8 +87,6 @@ typedef enum
 	CDN_SELECTOR_PSEUDO_TYPE_SELF,
 	CDN_SELECTOR_PSEUDO_TYPE_DEBUG,
 	CDN_SELECTOR_PSEUDO_TYPE_NAME,
-	CDN_SELECTOR_PSEUDO_TYPE_DESCENDANTS,
-	CDN_SELECTOR_PSEUDO_TYPE_ANCESTORS,
 	CDN_SELECTOR_PSEUDO_TYPE_UNIQUE,
 	CDN_SELECTOR_PSEUDO_TYPE_IF,
 	CDN_SELECTOR_PSEUDO_TYPE_NOT,
@@ -100,10 +96,11 @@ typedef enum
 	CDN_SELECTOR_PSEUDO_TYPE_TYPE,
 	CDN_SELECTOR_PSEUDO_TYPE_HAS_FLAG,
 	CDN_SELECTOR_PSEUDO_TYPE_HAS_TEMPLATE,
-	CDN_SELECTOR_PSEUDO_TYPE_HAS_TAG,
 	CDN_SELECTOR_PSEUDO_TYPE_REVERSE,
 	CDN_SELECTOR_PSEUDO_TYPE_RECURSE,
 	CDN_SELECTOR_PSEUDO_TYPE_APPEND_CONTEXT,
+	CDN_SELECTOR_PSEUDO_TYPE_APPLIED_TEMPLATES,
+	CDN_SELECTOR_PSEUDO_TYPE_REDUCE,
 	CDN_SELECTOR_PSEUDO_NUM
 } CdnSelectorPseudoType;
 
@@ -126,8 +123,6 @@ CdnSelector  *cdn_selector_parse             (CdnObject              *root,
                                               gchar const            *s,
                                               GError                **error);
 
-CdnSelector  *cdn_selector_copy_with         (CdnSelector            *selector);
-
 gchar        *cdn_selector_as_string         (CdnSelector            *selector);
 
 guint         cdn_selector_append            (CdnSelector            *selector,
@@ -146,10 +141,17 @@ guint         cdn_selector_append_regex      (CdnSelector            *selector,
 guint         cdn_selector_append_regex_partial (CdnSelector            *selector,
                                                  CdnEmbeddedString      *regex);
 
-GSList       *cdn_selector_select            (CdnSelector            *selector,
-                                              GObject                *parent,
-                                              CdnSelectorType         type,
-                                              CdnEmbeddedContext     *context);
+void          cdn_selector_set_define_context (CdnSelector           *selector,
+                                               gchar const           *id);
+
+GSList       *cdn_selector_select            (CdnSelector              *selector,
+                                              GObject                  *parent,
+                                              CdnSelectorType           type,
+                                              CdnExpansionContext      *context);
+
+GSList       *cdn_selector_select_set        (CdnSelector              *selector,
+                                              GSList                   *parents,
+                                              CdnSelectorType           type);
 
 void          cdn_selector_set_partial       (CdnSelector          *selector,
                                               gboolean              partial);

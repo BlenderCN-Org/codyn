@@ -6,8 +6,6 @@
 struct _CdnInstructionMatrixPrivate
 {
 	CdnStackManipulation smanip;
-
-	gint push_dims[2];
 };
 
 G_DEFINE_TYPE (CdnInstructionMatrix, cdn_instruction_matrix, CDN_TYPE_INSTRUCTION)
@@ -18,8 +16,6 @@ cdn_instruction_matrix_copy (CdnMiniObject *object)
 	CdnMiniObject *ret;
 	CdnInstructionMatrix *self;
 	CdnInstructionMatrix const *src;
-	gint n;
-	gint i;
 
 	src = CDN_INSTRUCTION_MATRIX_CONST (object);
 
@@ -27,19 +23,7 @@ cdn_instruction_matrix_copy (CdnMiniObject *object)
 
 	self = CDN_INSTRUCTION_MATRIX (ret);
 
-	self->priv->push_dims[0] = src->priv->push_dims[0];
-	self->priv->push_dims[1] = src->priv->push_dims[1];
-
-	self->priv->smanip.num_pop = src->priv->smanip.num_pop;
-
-	n = src->priv->smanip.num_pop * 2;
-
-	self->priv->smanip.pop_dims = g_new (gint, n);
-
-	for (i = 0; i < n; ++i)
-	{
-		self->priv->smanip.pop_dims[i] = src->priv->smanip.pop_dims[i];
-	}
+	cdn_stack_manipulation_copy (&self->priv->smanip, &src->priv->smanip);
 
 	return ret;
 }
@@ -52,8 +36,8 @@ cdn_instruction_matrix_to_string (CdnInstruction *instruction)
 	self = CDN_INSTRUCTION_MATRIX (instruction);
 
 	return g_strdup_printf ("MAT (%d, %d)",
-	                        self->priv->push_dims[0],
-	                        self->priv->push_dims[1]);
+	                        self->priv->smanip.push.rows,
+	                        self->priv->smanip.push.columns);
 }
 
 static void
@@ -79,9 +63,15 @@ check_pop_dims (CdnInstructionMatrix *m1,
 {
 	gint i;
 
-	for (i = 0; i < m1->priv->smanip.num_pop * 2; ++i)
+	if (m1->priv->smanip.pop.num != m2->priv->smanip.pop.num)
 	{
-		if (m1->priv->smanip.pop_dims[i] != m2->priv->smanip.pop_dims[i])
+		return FALSE;
+	}
+
+	for (i = 0; i < m1->priv->smanip.pop.num; ++i)
+	{
+		if (m1->priv->smanip.pop.args[i].rows != m2->priv->smanip.pop.args[i].rows ||
+		    m1->priv->smanip.pop.args[i].columns != m2->priv->smanip.pop.args[i].columns)
 		{
 			return FALSE;
 		}
@@ -98,9 +88,8 @@ cdn_instruction_matrix_equal (CdnInstruction *i1,
 	CdnInstructionMatrix *n1 = CDN_INSTRUCTION_MATRIX (i1);
 	CdnInstructionMatrix *n2 = CDN_INSTRUCTION_MATRIX (i2);
 
-	return n1->priv->push_dims[0] == n2->priv->push_dims[0] &&
-	       n1->priv->push_dims[1] == n2->priv->push_dims[1] &&
-	       n1->priv->smanip.num_pop == n2->priv->smanip.num_pop &&
+	return n1->priv->smanip.push.rows == n2->priv->smanip.push.rows &&
+	       n1->priv->smanip.push.columns == n2->priv->smanip.push.columns &&
 	       check_pop_dims (n1, n2);
 }
 
@@ -111,9 +100,50 @@ cdn_instruction_matrix_finalize (CdnMiniObject *object)
 
 	self = CDN_INSTRUCTION_MATRIX (object);
 
-	g_free (self->priv->smanip.pop_dims);
+	cdn_stack_manipulation_destroy (&self->priv->smanip);
 
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_matrix_parent_class)->finalize (object);
+}
+
+static void
+cdn_instruction_matrix_recalculate_sparsity (CdnInstruction *instruction)
+{
+	CdnInstructionMatrix *self;
+	CdnStackArgs *args;
+	gint i;
+	gint sp = 0;
+
+	self = CDN_INSTRUCTION_MATRIX (instruction);
+
+	args = &self->priv->smanip.pop;
+
+	for (i = 0; i < args->num; ++i)
+	{
+		sp += args->args[i].num_sparse;
+	}
+
+	if (sp > 0)
+	{
+		gint off = 0;
+		guint *sparsity = g_new0 (guint, sp);
+		gint spi = 0;
+
+		for (i = args->num - 1; i >= 0; --i)
+		{
+			gint j;
+
+			for (j = 0; j < args->args[i].num_sparse; ++j)
+			{
+				sparsity[spi++] = args->args[i].sparsity[j] + off;
+			}
+
+			off += cdn_dimension_size (&args->args[i].dimension);
+		}
+
+		cdn_stack_arg_set_sparsity (&self->priv->smanip.push, sparsity, sp);
+		g_free (sparsity);
+	}
+
 }
 
 static void
@@ -130,6 +160,7 @@ cdn_instruction_matrix_class_init (CdnInstructionMatrixClass *klass)
 	inst_class->execute = cdn_instruction_matrix_execute;
 	inst_class->get_stack_manipulation = cdn_instruction_matrix_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_matrix_equal;
+	inst_class->recalculate_sparsity = cdn_instruction_matrix_recalculate_sparsity;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionMatrixPrivate));
 }
@@ -138,16 +169,11 @@ static void
 cdn_instruction_matrix_init (CdnInstructionMatrix *self)
 {
 	self->priv = CDN_INSTRUCTION_MATRIX_GET_PRIVATE (self);
-
-	self->priv->smanip.push_dims = self->priv->push_dims;
-	self->priv->smanip.num_push = 1;
 }
 
 CdnInstruction *
-cdn_instruction_matrix_new (gint  numpop,
-                            gint *popdims,
-                            gint  numr,
-                            gint  numc)
+cdn_instruction_matrix_new (CdnStackArgs const *args,
+                            CdnDimension const *dim)
 {
 	CdnMiniObject *ret;
 	CdnInstructionMatrix *self;
@@ -155,24 +181,10 @@ cdn_instruction_matrix_new (gint  numpop,
 	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_MATRIX);
 	self = CDN_INSTRUCTION_MATRIX (ret);
 
-	self->priv->smanip.num_pop = numpop;
+	cdn_stack_args_copy (&self->priv->smanip.pop, args);
+	self->priv->smanip.push.dimension = *dim;
 
-	if (!popdims)
-	{
-		gint i;
-
-		popdims = g_new0 (gint, numpop * 2);
-
-		for (i = 0; i < numpop * 2; ++i)
-		{
-			popdims[i] = 1;
-		}
-	}
-
-	self->priv->smanip.pop_dims = popdims;
-
-	self->priv->push_dims[0] = numr;
-	self->priv->push_dims[1] = numc;
+	cdn_instruction_matrix_recalculate_sparsity (CDN_INSTRUCTION (self));
 
 	return CDN_INSTRUCTION (ret);
 }

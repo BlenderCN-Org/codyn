@@ -7,8 +7,8 @@
 static void
 test_add_child ()
 {
-	CdnNode *node = cdn_node_new ("id", NULL);
-	CdnObject *child = CDN_OBJECT (cdn_node_new ("child", NULL));
+	CdnNode *node = cdn_node_new ("id");
+	CdnObject *child = CDN_OBJECT (cdn_node_new ("child"));
 
 	cdn_node_add (node, child, NULL);
 
@@ -18,8 +18,8 @@ test_add_child ()
 static void
 test_remove_child ()
 {
-	CdnNode *node = cdn_node_new ("id", NULL);
-	CdnObject *child = CDN_OBJECT (cdn_node_new ("child", NULL));
+	CdnNode *node = cdn_node_new ("id");
+	CdnObject *child = CDN_OBJECT (cdn_node_new ("child"));
 
 	g_assert (cdn_node_add (node, child, NULL));
 	g_assert (cdn_node_remove (node, child, NULL));
@@ -30,9 +30,9 @@ test_remove_child ()
 static void
 test_clear ()
 {
-	CdnNode *node = cdn_node_new ("id", NULL);
-	CdnObject *child = CDN_OBJECT (cdn_node_new ("child", NULL));
-	CdnObject *child2 = CDN_OBJECT (cdn_node_new ("child2", NULL));
+	CdnNode *node = cdn_node_new ("id");
+	CdnObject *child = CDN_OBJECT (cdn_node_new ("child"));
+	CdnObject *child2 = CDN_OBJECT (cdn_node_new ("child2"));
 
 	g_assert (cdn_node_add (node, child, NULL));
 	g_assert (cdn_node_add (node, child2, NULL));
@@ -46,9 +46,9 @@ test_clear ()
 static void
 test_unique_id ()
 {
-	CdnNode *node = cdn_node_new ("id", NULL);
-	CdnObject *child = CDN_OBJECT (cdn_node_new ("child", NULL));
-	CdnObject *child2 = CDN_OBJECT (cdn_node_new ("child", NULL));
+	CdnNode *node = cdn_node_new ("id");
+	CdnObject *child = CDN_OBJECT (cdn_node_new ("child"));
+	CdnObject *child2 = CDN_OBJECT (cdn_node_new ("child"));
 
 	g_assert (cdn_node_add (node, child, NULL));
 	g_assert (cdn_node_add (node, child2, NULL));
@@ -60,63 +60,13 @@ test_unique_id ()
 static void
 test_add_same ()
 {
-	CdnNode *node = cdn_node_new ("id", NULL);
-	CdnObject *child = CDN_OBJECT (cdn_node_new ("child", NULL));
+	CdnNode *node = cdn_node_new ("id");
+	CdnObject *child = CDN_OBJECT (cdn_node_new ("child"));
 
 	g_assert (cdn_node_add (node, child, NULL));
 	g_assert (!cdn_node_add (node, child, NULL));
 
 	g_assert (g_slist_length ((GSList *)cdn_node_get_children (node)) == 1);
-}
-
-static void
-test_proxy ()
-{
-	CdnObject *proxy = CDN_OBJECT (cdn_node_new ("proxy", NULL));
-
-	cdn_object_add_variable (proxy,
-	                         cdn_variable_new ("p1",
-	                                           cdn_expression_new ("0"),
-	                                           CDN_VARIABLE_FLAG_NONE),
-	                         NULL);
-
-	CdnNode *node = cdn_node_new ("id", proxy);
-
-	g_assert (cdn_node_get_child (node, "proxy"));
-
-	CdnVariable *p1 = cdn_object_get_variable (CDN_OBJECT (node), "p1");
-
-	g_assert (p1);
-
-	g_assert_cmpstr (cdn_expression_get_as_string (cdn_variable_get_expression (p1)), ==, "0");
-}
-
-static void
-test_copy ()
-{
-	CdnObject *proxy = CDN_OBJECT (cdn_node_new ("proxy", NULL));
-
-	cdn_object_add_variable (proxy,
-	                         cdn_variable_new ("p1",
-	                                           cdn_expression_new ("0"),
-	                                           CDN_VARIABLE_FLAG_NONE),
-	                         NULL);
-
-	CdnNode *node = cdn_node_new ("id", proxy);
-
-	CdnObject *child = CDN_OBJECT (cdn_node_new ("child", NULL));
-	cdn_node_add (node, child, NULL);
-
-	CdnNode *copy = CDN_NODE (cdn_object_copy (CDN_OBJECT (node)));
-
-	proxy = cdn_node_get_proxy (copy);
-
-	g_assert (proxy);
-	g_assert_cmpstr (cdn_object_get_id (proxy), ==, "proxy");
-
-	g_assert (cdn_object_get_variable (proxy, "p1"));
-
-	g_assert (cdn_node_get_child (copy, "child"));
 }
 
 static void
@@ -155,8 +105,6 @@ main (int   argc,
 	g_test_add_func ("/node/clear", test_clear);
 	g_test_add_func ("/node/unique_id", test_unique_id);
 	g_test_add_func ("/node/add_same", test_add_same);
-	g_test_add_func ("/node/proxy", test_proxy);
-	g_test_add_func ("/node/copy", test_copy);
 	g_test_add_func ("/node/integrate_multiple_euler", test_integrate_multiple_euler);
 
 	g_test_run ();

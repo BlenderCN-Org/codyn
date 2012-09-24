@@ -48,8 +48,6 @@ struct _CdnFunctionPolynomialPrivate
 	GSList *pieces;
 
 	CdnVariable *x;
-	CdnVariable *order;
-
 	GSList *dx;
 };
 
@@ -123,6 +121,7 @@ cdn_function_polynomial_evaluate_impl (CdnFunction *function,
 		CdnVariable *v;
 
 		v = _cdn_function_argument_get_variable (arg);
+
 		mult *= cdn_variable_get_value (v);
 	}
 
@@ -133,7 +132,7 @@ cdn_function_polynomial_evaluate_impl (CdnFunction *function,
 		gdouble begin = cdn_function_polynomial_piece_get_begin (piece);
 		gdouble end = cdn_function_polynomial_piece_get_end (piece);
 
-		if (val >= begin && val < end)
+		if ((val >= begin || item == pol->priv->pieces) && (val < end || !item->next))
 		{
 			ret += cdn_function_polynomial_piece_evaluate (piece,
 			                                               val - begin);
@@ -192,15 +191,6 @@ cdn_function_polynomial_clear_impl (CdnObject *object)
 	cdn_function_polynomial_clear_pieces (CDN_FUNCTION_POLYNOMIAL (object));
 }
 
-static void
-cdn_function_polynomial_get_dimension_impl (CdnFunction *function,
-                                            gint        *numr,
-                                            gint        *numc)
-{
-	*numr = 1;
-	*numc = 1;
-}
-
 static CdnFunction *
 cdn_function_polynomial_get_derivative_impl (CdnFunction                       *function,
                                              GSList                            *towards,
@@ -213,6 +203,7 @@ cdn_function_polynomial_get_derivative_impl (CdnFunction                       *
 	GSList *item;
 	gint i;
 	GString *dx;
+	gchar *newid;
 
 	if (order == 0)
 	{
@@ -221,18 +212,9 @@ cdn_function_polynomial_get_derivative_impl (CdnFunction                       *
 
 	self = CDN_FUNCTION_POLYNOMIAL (function);
 
-	ret = cdn_function_polynomial_new (cdn_object_get_id (CDN_OBJECT (function)));
-
-	if (flags & CDN_EXPRESSION_TREE_ITER_DERIVE_TIME)
-	{
-		CdnFunctionPolynomialPiece *piece;
-		gdouble coefs[] = {0};
-
-		piece = cdn_function_polynomial_piece_new (0, 1, coefs, 1);
-		cdn_function_polynomial_add (ret, piece);
-
-		return CDN_FUNCTION (ret);
-	}
+	newid = g_strconcat ("d", cdn_object_get_id (CDN_OBJECT (function)), NULL);
+	ret = cdn_function_polynomial_new (newid);
+	g_free (newid);
 
 	// Add dx arguments
 	dx = g_string_new ("dx");
@@ -286,6 +268,226 @@ cdn_function_polynomial_get_derivative_impl (CdnFunction                       *
 	return CDN_FUNCTION (ret);
 }
 
+static CdnFunctionPolynomial *
+last_template (CdnFunctionPolynomial *target)
+{
+	CdnFunctionPolynomial *ret = NULL;
+	GSList const *templates;
+
+	templates = cdn_object_get_applied_templates (CDN_OBJECT (target));
+
+	while (templates)
+	{
+		if (CDN_IS_FUNCTION_POLYNOMIAL (templates->data))
+		{
+			ret = templates->data;
+		}
+
+		templates = g_slist_next (templates);
+	}
+
+	return ret;
+}
+
+static gboolean
+is_from_template (CdnFunctionPolynomial *target)
+{
+	CdnFunctionPolynomial *templ;
+
+	templ = last_template (target);
+
+	if (!templ)
+	{
+		return target->priv->pieces == NULL;
+	}
+
+	return cdn_object_equal (CDN_OBJECT (target), CDN_OBJECT (templ));
+}
+
+static void
+cdn_function_polynomial_template_piece_added (CdnFunctionPolynomial      *source,
+                                              CdnFunctionPolynomialPiece *piece,
+                                              CdnFunctionPolynomial      *target)
+{
+	if (last_template (target) == source)
+	{
+		cdn_function_polynomial_add (target, cdn_function_polynomial_piece_copy (piece));
+	}
+}
+
+static void
+cdn_function_polynomial_template_piece_removed (CdnFunctionPolynomial      *source,
+                                                CdnFunctionPolynomialPiece *piece,
+                                                CdnFunctionPolynomial      *target)
+{
+	GSList *item;
+
+	if (!last_template (target))
+	{
+		return;
+	}
+
+	for (item = target->priv->pieces; item; item = g_slist_next (item))
+	{
+		CdnFunctionPolynomialPiece *mine;
+
+		mine = item->data;
+
+		if (cdn_function_polynomial_piece_equal (mine, piece))
+		{
+			cdn_function_polynomial_remove (target, mine);
+			break;
+		}
+	}
+}
+
+static void
+from_template (CdnFunctionPolynomial *target,
+               CdnFunctionPolynomial *source)
+{
+	GSList *item;
+
+	g_slist_foreach (target->priv->pieces,
+	                 (GFunc)g_object_unref,
+	                 NULL);
+
+	g_slist_free (target->priv->pieces);
+	target->priv->pieces = NULL;
+
+	for (item = source->priv->pieces; item; item = g_slist_next (item))
+	{
+		cdn_function_polynomial_add (target,
+		                             cdn_function_polynomial_piece_copy (item->data));
+	}
+}
+
+static gboolean
+cdn_function_polynomial_apply_template_impl (CdnObject  *object,
+                                             CdnObject  *templ,
+                                             GError    **error)
+{
+	CdnFunctionPolynomial *target = NULL;
+	CdnFunctionPolynomial *source = NULL;
+	gboolean apply;
+
+	target = CDN_FUNCTION_POLYNOMIAL (object);
+
+	if (CDN_IS_FUNCTION_POLYNOMIAL (templ))
+	{
+		source = CDN_FUNCTION_POLYNOMIAL (templ);
+	}
+
+	apply = source && is_from_template (target);
+
+	/* Remove all function arguments */
+	if (apply)
+	{
+		g_slist_foreach (target->priv->pieces,
+		                 (GFunc)g_object_unref,
+		                 NULL);
+
+		g_slist_free (target->priv->pieces);
+		target->priv->pieces = NULL;
+	}
+
+	if (CDN_OBJECT_CLASS (cdn_function_polynomial_parent_class)->apply_template)
+	{
+		if (!CDN_OBJECT_CLASS (cdn_function_polynomial_parent_class)->apply_template (object,
+		                                                                              templ,
+		                                                                              error))
+		{
+			return FALSE;
+		}
+	}
+
+	if (source)
+	{
+		g_signal_connect (source,
+		                  "piece-added",
+		                  G_CALLBACK (cdn_function_polynomial_template_piece_added),
+		                  target);
+
+		g_signal_connect (source,
+		                  "piece-removed",
+		                  G_CALLBACK (cdn_function_polynomial_template_piece_removed),
+		                  target);
+	}
+
+	if (apply)
+	{
+		from_template (target, source);
+	}
+
+	target->priv->x = cdn_object_get_variable (CDN_OBJECT (target), "x");
+
+	return TRUE;
+}
+
+static gboolean
+cdn_function_polynomial_unapply_template_impl (CdnObject  *object,
+                                               CdnObject  *templ,
+                                               GError    **error)
+{
+	GSList *last;
+	GSList const *templates;
+	gboolean waslast = FALSE;
+	CdnFunctionPolynomial *target = NULL;
+	CdnFunctionPolynomial *source = NULL;
+
+	templates = cdn_object_get_applied_templates (object);
+	last = g_slist_last ((GSList *)templates);
+
+	target = CDN_FUNCTION_POLYNOMIAL (object);
+
+	/* Remove all function pieces */
+	if (CDN_IS_FUNCTION_POLYNOMIAL (templ) && last && last->data == templ)
+	{
+		source = CDN_FUNCTION_POLYNOMIAL (templ);
+
+		g_slist_foreach (target->priv->pieces,
+		                 (GFunc)g_object_unref,
+		                 NULL);
+
+		g_slist_free (target->priv->pieces);
+		target->priv->pieces = NULL;
+
+		waslast = TRUE;
+	}
+
+	if (CDN_OBJECT_CLASS (cdn_function_polynomial_parent_class)->unapply_template)
+	{
+		if (!CDN_OBJECT_CLASS (cdn_function_polynomial_parent_class)->unapply_template (object, templ, error))
+		{
+			return FALSE;
+		}
+	}
+
+	if (source)
+	{
+		g_signal_handlers_disconnect_by_func (target,
+		                                      G_CALLBACK (cdn_function_polynomial_template_piece_added),
+		                                      object);
+
+		g_signal_handlers_disconnect_by_func (target,
+		                                      G_CALLBACK (cdn_function_polynomial_template_piece_removed),
+		                                      object);
+	}
+
+	if (waslast)
+	{
+		templates = cdn_object_get_applied_templates (object);
+		last = g_slist_last ((GSList *)templates);
+
+		if (last)
+		{
+			from_template (source, last->data);
+		}
+	}
+
+	return TRUE;
+}
+
+
 static void
 cdn_function_polynomial_class_init (CdnFunctionPolynomialClass *klass)
 {
@@ -294,11 +496,13 @@ cdn_function_polynomial_class_init (CdnFunctionPolynomialClass *klass)
 	CdnObjectClass *cdn_object_class = CDN_OBJECT_CLASS (klass);
 
 	function_class->evaluate = cdn_function_polynomial_evaluate_impl;
-	function_class->get_dimension = cdn_function_polynomial_get_dimension_impl;
 	function_class->get_derivative = cdn_function_polynomial_get_derivative_impl;
 
 	cdn_object_class->copy = cdn_function_polynomial_copy_impl;
 	cdn_object_class->clear = cdn_function_polynomial_clear_impl;
+
+	cdn_object_class->apply_template = cdn_function_polynomial_apply_template_impl;
+	cdn_object_class->unapply_template = cdn_function_polynomial_unapply_template_impl;
 
 	object_class->finalize = cdn_function_polynomial_finalize;
 

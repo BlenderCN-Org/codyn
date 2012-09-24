@@ -1,36 +1,44 @@
 #include "cdn-tree-algorithms-private.h"
 #include <codyn/instructions/cdn-instructions.h>
 #include "codyn/cdn-operators.h"
+#include <codyn/cdn-debug.h>
 
 static gboolean canonical_multiply (CdnExpressionTreeIter *iter,
                                     gboolean               dodefactor);
 
 static CdnInstruction *
-create_multiply (gint numr1,
-                 gint numc1,
-                 gint numr2,
-                 gint numc2)
+create_bin (CdnStackArg const   *arg1,
+            CdnStackArg const   *arg2,
+            CdnMathFunctionType  tp)
 {
-	gint argdim[4] = {numr2, numc2, numr1, numc1};
+	CdnStackArgs args;
+	CdnInstruction *ret;
 
-	return cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
-	                                     NULL,
-	                                     2,
-	                                     argdim);
+	cdn_stack_args_init (&args, 2);
+
+	// Note: reverse order of args
+	cdn_stack_arg_copy (&args.args[0], arg2);
+	cdn_stack_arg_copy (&args.args[1], arg1);
+
+	ret = cdn_instruction_function_new (tp, NULL, &args);
+
+	cdn_stack_args_destroy (&args);
+
+	return ret;
 }
 
 static CdnInstruction *
-create_plus (gint numr1,
-             gint numc1,
-             gint numr2,
-             gint numc2)
+create_multiply (CdnStackArg const *arg1,
+                 CdnStackArg const *arg2)
 {
-	gint argdim[4] = {numr2, numc2, numr1, numc1};
+	return create_bin (arg1, arg2, CDN_MATH_FUNCTION_TYPE_MULTIPLY);
+}
 
-	return cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
-	                                     NULL,
-	                                     2,
-	                                     argdim);
+static CdnInstruction *
+create_plus (CdnStackArg const *arg1,
+             CdnStackArg const *arg2)
+{
+	return create_bin (arg1, arg2, CDN_MATH_FUNCTION_TYPE_PLUS);
 }
 
 static gint
@@ -444,6 +452,11 @@ static gboolean
 canonical_multiply (CdnExpressionTreeIter *iter,
                     gboolean               dodefactor)
 {
+	if (iter_is_matrix_multiply (iter))
+	{
+		return FALSE;
+	}
+
 	if (!dodefactor || !defactorize (iter))
 	{
 		return merge_commutative_operator_trees (iter);
@@ -462,6 +475,7 @@ canonical_unary_minus (CdnExpressionTreeIter *iter)
 	CdnExpressionTreeIter *one;
 	CdnExpressionTreeIter *child;
 	CdnStackManipulation const *smanip;
+	CdnStackArg arg1 = CDN_STACK_ARG (1, 1);
 
 	// -(term) => -1 * term
 	cdn_mini_object_unref (CDN_MINI_OBJECT (iter->instruction));
@@ -472,12 +486,10 @@ canonical_unary_minus (CdnExpressionTreeIter *iter)
 
 	g_free (iter->children);
 	iter->num_children = 2;
-	iter->children = g_new (CdnExpressionTreeIter *, 2);
+	iter->children = g_new0 (CdnExpressionTreeIter *, 2);
 
-	iter->instruction = create_multiply (1,
-	                                     1,
-	                                     smanip->push_dims ? smanip->push_dims[0] : 1,
-	                                     smanip->push_dims ? smanip->push_dims[1] : 1);
+	iter->instruction = create_multiply (&arg1,
+	                                     &smanip->push);
 
 	one = iter_new_num (-1);
 
@@ -494,6 +506,7 @@ canonical_minus (CdnExpressionTreeIter *iter)
 	CdnExpressionTreeIter *mult;
 	CdnStackManipulation const *smanip1;
 	CdnStackManipulation const *smanip2;
+	CdnStackArg arg1 = CDN_STACK_ARG (1, 1);
 
 	smanip1 = cdn_instruction_get_stack_manipulation (iter->children[0]->instruction,
 	                                                  NULL);
@@ -502,10 +515,8 @@ canonical_minus (CdnExpressionTreeIter *iter)
 	                                                  NULL);
 
 	// t1 - t2 => t1 + -1 * t2
-	mult = iter_new_sized (create_multiply (1,
-	                                        1,
-	                                        smanip2->push_dims ? smanip2->push_dims[0] : 1,
-	                                        smanip2->push_dims ? smanip2->push_dims[1] : 1),
+	mult = iter_new_sized (create_multiply (&arg1,
+	                                        &smanip2->push),
 	                       2);
 
 	one = iter_new (cdn_instruction_number_new (-1));
@@ -514,10 +525,8 @@ canonical_minus (CdnExpressionTreeIter *iter)
 
 	cdn_mini_object_unref (CDN_MINI_OBJECT (iter->instruction));
 
-	iter->instruction = create_plus (smanip1->push_dims ? smanip1->push_dims[0] : 1,
-	                                 smanip1->push_dims ? smanip1->push_dims[1] : 1,
-	                                 smanip2->push_dims ? smanip2->push_dims[0] : 1,
-	                                 smanip2->push_dims ? smanip2->push_dims[1] : 1);
+	iter->instruction = create_plus (&smanip1->push,
+	                                 &smanip2->push);
 
 	iter_set_child (mult, iter->children[1], 1);
 	iter_set_child (iter, mult, 1);
@@ -548,6 +557,30 @@ function_argument_index (CdnFunction *f,
 	return -1;
 }
 
+static CdnExpressionTreeIter *
+make_index (guint const        *indices,
+            CdnDimension const *dim)
+{
+	gdouble *r;
+	guint n;
+	guint i;
+	CdnExpressionTreeIter *ret;
+
+	n = cdn_dimension_size (dim);
+
+	r = g_new (gdouble, n);
+
+	for (i = 0; i < n; ++i)
+	{
+		r[i] = (gdouble)indices[i];
+	}
+
+	ret = iter_new_number_matrix (r, dim);
+	g_free (r);
+
+	return ret;
+}
+
 static void
 canonical_custom_function_real (CdnExpressionTreeIter *iter,
                                 CdnFunction           *f)
@@ -558,7 +591,14 @@ canonical_custom_function_real (CdnExpressionTreeIter *iter,
 
 	func = cdn_expression_tree_iter_new (cdn_function_get_expression (f));
 
+	cdn_debug_push_indent ();
 	cdn_expression_tree_iter_simplify (func);
+	cdn_debug_pop_indent ();
+
+	cdn_debug_message (DEBUG_SIMPLIFY,
+	                   "Inlining function: %s: {%s}",
+	                   cdn_object_get_full_id_for_display (CDN_OBJECT (f)),
+	                   cdn_expression_tree_iter_to_string (func));
 
 	// Replace all property instructions with the nodes which are the
 	// current children of the iter
@@ -585,6 +625,9 @@ canonical_custom_function_real (CdnExpressionTreeIter *iter,
 				// Find argument index
 				gint idx = function_argument_index (f, prop);
 				CdnExpressionTreeIter *cp;
+				guint const *slice;
+				guint slice_length;
+				CdnDimension slice_dim;
 
 				if (idx >= 0)
 				{
@@ -593,12 +636,46 @@ canonical_custom_function_real (CdnExpressionTreeIter *iter,
 				else
 				{
 					cp = cdn_expression_tree_iter_new (cdn_variable_get_expression (prop));
+
+					cdn_debug_push_indent ();
+					cdn_expression_tree_iter_canonicalize (cp);
+					cdn_debug_pop_indent ();
+				}
+
+				// Preserve slice
+				slice = cdn_instruction_variable_get_slice (pi,
+				                                            &slice_length,
+				                                            &slice_dim);
+
+				if (slice)
+				{
+					if (CDN_IS_INSTRUCTION_VARIABLE (cp->instruction))
+					{
+						CdnInstructionVariable *vv;
+
+						vv = (CdnInstructionVariable *)cp->instruction;
+
+						cdn_instruction_variable_apply_slice (vv,
+						                                      slice,
+						                                      slice_length,
+						                                      &slice_dim);
+					}
+					else
+					{
+						cp = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_INDEX,
+						                     make_index (slice, &slice_dim),
+						                     cp,
+						                     TRUE,
+						                     TRUE);
+					}
 				}
 
 				if (it == func)
 				{
 					func = cp;
 				}
+
+				g_queue_push_head (&q, cp);
 
 				// Replace the iter with child arg
 				iter_replace (it, cp);
@@ -727,8 +804,16 @@ iter_canonicalize (CdnExpressionTreeIter *iter,
 CdnExpressionTreeIter *
 cdn_expression_tree_iter_canonicalize (CdnExpressionTreeIter *iter)
 {
+	cdn_debug_message (DEBUG_SIMPLIFY,
+	                   "Canonicalize:  {%s}",
+	                   cdn_expression_tree_iter_to_string (iter));
+
 	iter_canonicalize (iter, TRUE, TRUE);
 	iter_invalidate_cache_down (iter);
+
+	cdn_debug_message (DEBUG_SIMPLIFY,
+	                   "Canonicalized: {%s}",
+	                   cdn_expression_tree_iter_to_string (iter));
 
 	return iter;
 }

@@ -131,17 +131,15 @@ history_update_states (CdnIntegratorPredictCorrect *pc,
 {
 	while (states)
 	{
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gint n;
 		gdouble const *vals;
 		gint j;
 
 		vals = cdn_variable_get_update (states->data,
-		                                &numr,
-		                                &numc);
+		                                &dim);
 
-		n = numr * numc;
+		n = cdn_dimension_size (&dim);
 
 		for (j = 0; j < n; ++j)
 		{
@@ -197,13 +195,12 @@ prediction_step (CdnIntegratorPredictCorrect *pc,
 	{
 		CdnVariable *prop = integrated->data;
 		guint coeff_index;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gint i;
 		gint n;
 
-		cdn_variable_get_update (prop, &numr, &numc);
-		n = numr * numc;
+		cdn_variable_get_update (prop, &dim);
+		n = cdn_dimension_size (&dim);
 
 		/* derivative prediction for t+1 */
 		for (i = 0; i < n; ++i)
@@ -224,8 +221,7 @@ prediction_step (CdnIntegratorPredictCorrect *pc,
 
 		cdn_variable_set_values (prop,
 		                         pc->priv->tmpd,
-		                         numr,
-		                         numc);
+		                         &dim);
 
 		integrated = g_slist_next (integrated);
 		state_index += n;
@@ -250,14 +246,13 @@ correction_step (CdnIntegratorPredictCorrect *pc,
 	{
 		CdnVariable *prop = integrated->data;
 		guint coeff_index;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gdouble const *vals;
 		gint i;
 		gint n;
 
-		vals = cdn_variable_get_update (prop, &numr, &numc);
-		n = numr * numc;
+		vals = cdn_variable_get_update (prop, &dim);
+		n = cdn_dimension_size (&dim);
 
 		/* derivative prediction for t+1 */
 		for (i = 0; i < n; ++i)
@@ -275,8 +270,7 @@ correction_step (CdnIntegratorPredictCorrect *pc,
 
 		cdn_variable_set_values (prop,
 		                         pc->priv->tmpd,
-		                         numr,
-		                         numc);
+		                         &dim);
 
 		integrated = g_slist_next (integrated);
 		state_index += n;
@@ -313,14 +307,13 @@ calculate_props_length (GSList const *props,
 	{
 		CdnExpression *expr;
 
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 		gint n;
 
 		expr = cdn_variable_get_expression (props->data);
-		cdn_expression_get_dimension (expr, &numr, &numc);
+		cdn_expression_get_dimension (expr, &dim);
 
-		n = numr * numc;
+		n = cdn_dimension_size (&dim);
 
 		len += n;
 

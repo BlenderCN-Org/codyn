@@ -35,8 +35,7 @@ struct _CdnOperatorPrivate
 	GSList **indices;
 	gint num_indices;
 
-	CdnStackManipulation smanip;
-	gint push_dims[2];
+	CdnStackArgs args;
 };
 
 G_DEFINE_ABSTRACT_TYPE (CdnOperator,
@@ -73,25 +72,12 @@ cdn_operator_execute_default (CdnOperator     *op,
 
 	if (!f)
 	{
-		gint i;
-
 		g_warning ("Operator `%s' cannot be properly executed",
 		           cdn_operator_get_name (op));
-
-		// That's not good, but make sure the stack is ok
-		for (i = 0; i < op->priv->smanip.num_pop; ++i)
-		{
-			cdn_stack_pop (stack);
-		}
-
-		cdn_stack_push (stack, 0);
 	}
 	else
 	{
-		cdn_function_execute (f,
-		                      op->priv->smanip.num_pop,
-		                      op->priv->smanip.pop_dims,
-		                      stack);
+		cdn_function_execute (f, stack);
 	}
 }
 
@@ -170,37 +156,15 @@ disable_cache (CdnExpression *expr)
 	cdn_expression_set_has_cache (expr, FALSE);
 }
 
-static void
-set_num_arguments (CdnOperator *op,
-                   gint         num_arguments,
-                   gint        *argdim)
-{
-	gint i;
-
-	if (op->priv->smanip.num_pop != num_arguments)
-	{
-		g_free (op->priv->smanip.pop_dims);
-		op->priv->smanip.pop_dims = g_new (gint, num_arguments * 2);
-	}
-
-	op->priv->smanip.num_pop = num_arguments;
-
-	for (i = 0; i < num_arguments * 2; ++i)
-	{
-		op->priv->smanip.pop_dims[i] = argdim[i];
-	}
-}
-
 static gboolean
-cdn_operator_initialize_default (CdnOperator      *op,
-                                 GSList const    **expressions,
-                                 gint              num_expressions,
-                                 GSList const    **indices,
-                                 gint              num_indices,
-                                 gint              num_arguments,
-                                 gint             *argdim,
-                                 CdnCompileContext *context,
-                                 GError          **error)
+cdn_operator_initialize_default (CdnOperator          *op,
+                                 GSList const        **expressions,
+                                 gint                  num_expressions,
+                                 GSList const        **indices,
+                                 gint                  num_indices,
+                                 CdnStackArgs const   *argdim,
+                                 CdnCompileContext    *context,
+                                 GError              **error)
 {
 	op->priv->expressions = copy_2dim_slist (expressions,
 	                                         num_expressions);
@@ -210,13 +174,13 @@ cdn_operator_initialize_default (CdnOperator      *op,
 	                                     num_indices);
 	op->priv->num_indices = num_indices;
 
-	set_num_arguments (op, num_arguments, argdim);
-
 	// Set no-cache on indices
 	foreach_expression_impl (op->priv->indices,
 	                         op->priv->num_indices,
 	                         (GFunc)disable_cache,
 	                         NULL);
+
+	cdn_stack_args_copy (&op->priv->args, argdim);
 
 	return TRUE;
 }
@@ -235,6 +199,8 @@ cdn_operator_finalize (GObject *object)
 	                 operator->priv->num_indices);
 
 	cdn_operator_foreach_function (operator, (CdnForeachFunctionFunc)g_object_unref, NULL);
+
+	cdn_stack_args_destroy (&operator->priv->args);
 
 	G_OBJECT_CLASS (cdn_operator_parent_class)->finalize (object);
 }
@@ -282,7 +248,7 @@ cdn_operator_equal_default (CdnOperator *op,
 		return FALSE;
 	}
 
-	if (op->priv->smanip.num_pop != other->priv->smanip.num_pop)
+	if (op->priv->args.num != other->priv->args.num)
 	{
 		return FALSE;
 	}
@@ -327,8 +293,7 @@ cdn_operator_copy_default (CdnOperator *src)
 	                         src->priv->num_expressions,
 	                         (GSList const **)src->priv->indices,
 	                         src->priv->num_indices,
-	                         src->priv->smanip.num_pop,
-	                         src->priv->smanip.pop_dims,
+	                         &src->priv->args,
 	                         NULL,
 	                         NULL);
 
@@ -351,12 +316,10 @@ cdn_operator_get_stack_manipulation_default (CdnOperator *op)
 
 	if (f)
 	{
-		cdn_function_get_dimension (f,
-		                            &(op->priv->push_dims[0]),
-		                            &(op->priv->push_dims[1]));
+		return cdn_function_get_stack_manipulation (f);
 	}
 
-	return &op->priv->smanip;
+	return NULL;
 }
 
 static void
@@ -403,11 +366,6 @@ static void
 cdn_operator_init (CdnOperator *self)
 {
 	self->priv = CDN_OPERATOR_GET_PRIVATE (self);
-
-	self->priv->smanip.num_push = 1;
-	self->priv->smanip.push_dims = self->priv->push_dims;
-
-	self->priv->smanip.num_pop = 0;
 }
 
 /**
@@ -429,7 +387,7 @@ cdn_operator_execute (CdnOperator     *op,
 }
 
 /**
- * cdn_operator_get_class_name:
+ * cdn_operator_get_class_name: (skip)
  * @op: A #CdnOperatorClass
  *
  * Get the operator name. This is the identifier that is used in expressions,
@@ -452,6 +410,16 @@ cdn_operator_get_class_name (CdnOperatorClass *klass)
 	return klass->name;
 }
 
+/**
+ * cdn_operator_responds_to: (skip)
+ * @klass: a #CdnOperatorClass.
+ * @name: The name.
+ *
+ * Check if the operator class responds to the name @name.
+ *
+ * Returns: %TRUE if the operator class responds to @name, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_operator_responds_to (CdnOperatorClass *klass,
                           gchar const      *name)
@@ -492,7 +460,7 @@ cdn_operator_get_name (CdnOperator *op)
 }
 
 /**
- * cdn_operator_all_expressions:
+ * cdn_operator_all_expressions: (skip):
  * @op: A #CdnOperator
  *
  * Get the list of all expressions.
@@ -509,10 +477,10 @@ cdn_operator_all_expressions (CdnOperator *op)
 }
 
 /**
- * cdn_operator_all_indices:
+ * cdn_operator_all_indices: (skip):
  * @op: A #CdnOperator
  *
- * Get a list of al indices..
+ * Get a list of al indices.
  *
  * Returns: (transfer none): A list of all indices
  *
@@ -586,8 +554,7 @@ cdn_operator_num_indices (CdnOperator *op)
  * @num_expressions: The number of expressions
  * @indices: (array length=num_indices): The indices
  * @num_indices: The number of indices
- * @num_arguments: The number of arguments
- * @argdim: (array length=num_arguments): The argument dimensions
+ * @argdim: The argument dimensions
  * @context: a #CdnCompileContext
  * @error: A #GError
  *
@@ -602,8 +569,7 @@ cdn_operator_initialize (CdnOperator        *op,
                          gint                num_expressions,
                          GSList const      **indices,
                          gint                num_indices,
-                         gint                num_arguments,
-                         gint               *argdim,
+                         CdnStackArgs const *argdim,
                          CdnCompileContext  *context,
                          GError            **error)
 {
@@ -614,7 +580,6 @@ cdn_operator_initialize (CdnOperator        *op,
 	                                                num_expressions,
 	                                                indices,
 	                                                num_indices,
-	                                                num_arguments,
 	                                                argdim,
 	                                                context,
 	                                                error);
@@ -637,6 +602,17 @@ cdn_operator_copy (CdnOperator *op)
 	return CDN_OPERATOR_GET_CLASS (op)->copy (op);
 }
 
+/**
+ * cdn_operator_equal:
+ * @op: a #CdnOperator.
+ * @other: a #CdnOperator.
+ * @asstring: whether to compare on string equaility.
+ *
+ * Compare two operators.
+ *
+ * Returns: %TRUE if the operators are equal, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_operator_equal (CdnOperator *op,
                     CdnOperator *other,
@@ -652,20 +628,21 @@ cdn_operator_equal (CdnOperator *op,
 	return CDN_OPERATOR_GET_CLASS (op)->equal (op, other, asstring);
 }
 
-gint
-cdn_operator_get_num_arguments (CdnOperator *op)
+/**
+ * cdn_operator_get_arguments_dimension:
+ * @op: a #CdnOperator.
+ *
+ * Get the arguments dimensions of this operator.
+ *
+ * Returns: a #CdnStackArgs.
+ *
+ **/
+CdnStackArgs const *
+cdn_operator_get_arguments_dimension (CdnOperator *op)
 {
 	g_return_val_if_fail (CDN_IS_OPERATOR (op), 0);
 
-	return op->priv->smanip.num_pop;
-}
-
-gint *
-cdn_operator_get_arguments_dimension (CdnOperator *op)
-{
-	g_return_val_if_fail (CDN_IS_OPERATOR (op), NULL);
-
-	return op->priv->smanip.pop_dims;
+	return &op->priv->args;
 }
 
 /**
@@ -687,14 +664,24 @@ cdn_operator_get_function (CdnOperator *op,
 	return CDN_OPERATOR_GET_CLASS (op)->get_function (op, idx, numidx);
 }
 
+static void
+foreach_set_argdim (CdnFunction        *function,
+                    CdnStackArgs const *argdim)
+{
+	_cdn_function_set_arguments_dimension (function, argdim);
+}
+
 void
-_cdn_operator_set_num_arguments (CdnOperator *op,
-                                 gint         num,
-                                 gint        *argdim)
+_cdn_operator_set_arguments_dimension (CdnOperator        *op,
+                                       CdnStackArgs const *argdim)
 {
 	g_return_if_fail (CDN_IS_OPERATOR (op));
 
-	set_num_arguments (op, num, argdim);
+	cdn_stack_args_copy (&op->priv->args, argdim);
+
+	cdn_operator_foreach_function (op,
+	                               (CdnForeachFunctionFunc)foreach_set_argdim,
+	                               (gpointer)argdim);
 }
 
 /**

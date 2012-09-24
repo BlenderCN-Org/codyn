@@ -1,5 +1,3 @@
-import "phase.cdn" as "phase"
-
 ## The AWO library contains an oscillator implementing a very simple, first
 ## order arbitrary waveform dynamical system. The implementation is simply
 ## a feedback/feedforward differential equation on a known function f(x) and
@@ -11,6 +9,8 @@ import "phase.cdn" as "phase"
 ## oscillator.
 templates
 {
+  import "phase.cdn" as "phase"
+
   ## Arbitrary Waveform Oscillator (AWO)
   ##
   ## This 'oscillator' implements a very simple feedforward/feedback dynamical
@@ -26,19 +26,15 @@ templates
     g(φ) = "1"
 
     ## Feedback term of dynamical system (see ṙ)
-    feedback = "γ ∙ (target_amplitude ∙ g(φ) - r)"
+    feedback = "γ ∙ (target_amplitude ∙ g(φ) - s)"
 
     ## Feedforward term of dynamical system (see ṙ)
-    feedforward = "target_amplitude ∙ ġ(φ)"
+    feedforward = "target_amplitude * ġ(φ) + 0 * φ"
 
-    [self] edge
-    {
-      ## Amplitude state
-      r <= "feedback + feedforward"
-    }
+    s' = "feedback + feedforward"
 
     ## Output variable
-    "output" = "r"
+    "output" = "s"
 
     γForRelConv(τ, α, δ) = "ln(α / δ) / -τ"
   }

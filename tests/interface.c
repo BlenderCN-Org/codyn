@@ -236,114 +236,6 @@ test_templates_overrides_add_uninherited ()
 	g_object_unref (network);
 }
 
-static void
-test_templates_overrides_proxy ()
-{
-	CdnNetwork *network;
-	CdnVariable *p1;
-	CdnVariable *p2;
-
-	network = test_load_network_from_path ("test_interface_templates_override_proxy.cdn",
-	                                       CDN_PATH_OBJECT, "state.c1",
-	                                       CDN_PATH_OBJECT, "state.c2",
-	                                       CDN_PATH_PROPERTY, "state.p1",
-	                                       CDN_PATH_PROPERTY, "state.c1.p1",
-	                                       CDN_PATH_PROPERTY, "state.c2.p2",
-	                                       NULL);
-
-	p1 = cdn_node_find_variable (CDN_NODE (network), "state.p1");
-
-	g_assert (p1);
-
-	/* The prop should be from c1 because it comes from the proxy */
-	p2 = cdn_node_find_variable (CDN_NODE (network), "state.c1.p1");
-
-	g_assert (p2);
-	g_assert (p1 == p2);
-
-	g_object_unref (network);
-}
-
-static void
-test_templates_overrides_proxy_unapply ()
-{
-	CdnNetwork *network;
-	CdnNode *templates;
-	CdnObject *temp;
-	GError *error = NULL;
-	CdnObject *object;
-	CdnVariable *variable;
-
-	network = test_load_network_from_path ("test_interface_templates_override_proxy.cdn",
-	                                       CDN_PATH_OBJECT, "state.c1",
-	                                       CDN_PATH_OBJECT, "state.c2",
-	                                       CDN_PATH_PROPERTY, "state.p1",
-	                                       CDN_PATH_PROPERTY, "state.c1.p1",
-	                                       CDN_PATH_PROPERTY, "state.c2.p2",
-	                                       NULL);
-
-	templates = cdn_network_get_template_node (network);
-	temp = cdn_node_find_object (templates, "t2");
-
-	g_assert (temp);
-
-	object = cdn_node_find_object (CDN_NODE (network), "state");
-	g_assert (object);
-
-	variable = cdn_node_find_variable (CDN_NODE (network), "state.p1");
-	g_assert (variable);
-	g_assert_cmpstr (cdn_variable_get_name (variable), ==, "p1");
-
-	cdn_object_unapply_template (object, temp, &error);
-	g_assert_no_error (error);
-
-	/* Interface from proxy should still be there */
-	variable = cdn_node_find_variable (CDN_NODE (network), "state.p1");
-	g_assert (variable);
-
-	g_assert_cmpstr (cdn_variable_get_name (variable), ==, "p1");
-
-	g_object_unref (network);
-}
-
-static void
-test_templates_overrides_proxy_unapply_re_add ()
-{
-	CdnNetwork *network;
-	CdnNode *templates;
-	CdnObject *temp;
-	GError *error = NULL;
-	CdnObject *object;
-	CdnVariable *variable;
-
-	network = test_load_network_from_path ("test_interface_templates_override_proxy.cdn",
-	                                       CDN_PATH_OBJECT, "state.c1",
-	                                       CDN_PATH_OBJECT, "state.c2",
-	                                       CDN_PATH_PROPERTY, "state.p1",
-	                                       CDN_PATH_PROPERTY, "state.c1.p1",
-	                                       CDN_PATH_PROPERTY, "state.c2.p2",
-	                                       NULL);
-
-	templates = cdn_network_get_template_node (network);
-	temp = cdn_node_find_object (templates, "t1");
-
-	g_assert (temp);
-
-	object = cdn_node_find_object (CDN_NODE (network), "state");
-	g_assert (object);
-
-	cdn_object_unapply_template (object, temp, &error);
-	g_assert_no_error (error);
-
-	/* Interface should now come from t2 */
-	variable = cdn_node_find_variable (CDN_NODE (network), "state.p1");
-	g_assert (variable);
-
-	g_assert_cmpstr (cdn_variable_get_name (variable), ==, "p2");
-
-	g_object_unref (network);
-}
-
 int
 main (int   argc,
       char *argv[])
@@ -360,9 +252,6 @@ main (int   argc,
 	g_test_add_func ("/interface/templates_overrides_remove_inherited", test_templates_overrides_remove_inherited);
 	g_test_add_func ("/interface/templates_overrides_add_uninherited", test_templates_overrides_add_uninherited);
 	g_test_add_func ("/interface/templates_overrides_add_inherited", test_templates_overrides_add_inherited);
-	g_test_add_func ("/interface/templates_overrides_proxy", test_templates_overrides_proxy);
-	g_test_add_func ("/interface/templates_overrides_proxy_unapply", test_templates_overrides_proxy_unapply);
-	g_test_add_func ("/interface/templates_overrides_proxy_re_add", test_templates_overrides_proxy_unapply_re_add);
 
 	g_test_run ();
 

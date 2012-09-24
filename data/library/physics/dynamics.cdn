@@ -1,74 +1,104 @@
+require "findbodies.cdn"
+
 include "rnea.cdn"
 include "crba.cdn"
 
-[once] include "findbodies.cdn"
-
+## The dynamics node is used to accumulate the various quantities of the
+## general rigid body dynamics equation: H ∙ q̈ + C = τ. The elements of H, C and
+## are derived from coupling between the various bodies in the system, and then
+## transmitted to the dynamics node so that the system can be solved for the
+## accelerations (q̈) using a linear system solver. The resulting accelerations
+## are then transmitted back to each individual body so that they can be
+## integrated.
 node "dynamics"
 {
     ## Generalized forces
-    τ = "zeros(@bodies[~], 1)"
+    τ = "zeros(@numdof, 1)"
 
     ## C matrix
-    C = "zeros(@bodies[~], 1)"
+    C = "zeros(@numdof, 1)"
 
     ## Mass matrix
-    H = "zeros(@bodies[~], @bodies[~])"
+    H = "zeros(@numdof, @numdof)"
 
     ## Generalized accelerations
     ddq = "slinsolve(H, τ - C, parents)"
 
     ## Jacobian
-    J = "zeros(6, @bodies[~])"
+    #J = "zeros(6, @numdof)"
 
-    ## Parent indices
-    parents = "[{@parents||@0;@1}]"
+    ## Parent indices. This is used only for solving the linear system by
+    ## exploiting the branch induced sparsity (slinsolve).
+    parents = "[{@parentsdof||@0;@1}]"
 }
 
 node "@bodies"
 {
-    ## Jacobian selection matrix
-    JS = "[{@bodies|@bodychain[@@@@0_@0[!]?]||@0;@1}]"
+    # Jacobian selection matrix
+    #JS = "[{@bodies|@bodychain[@0[!]]||@0;@1}]"
 }
 
-# Fill in H for all relevant body relationships
-edge "HC_@bodies" from @1 . variables | /fh_([0-9]+)/ | parent | unique to "dynamics"
+# Fill in H and C for all relevant body relationships
+edge "HC_@bodies" from   @1
+                       | <body-index>:append-context("@@1[!]")
+                       . variables
+                       | /fh_([0-9]+)/
+                       | parent
+                       | unique
+                  to     "dynamics"
 {
     defines
     {
-        j = "@@@@@0[!]"
+        # Compute the indices of this bodies' DOF (in column and row)
+        jc = "@{@bodydofidx[@body-index]:+$(@bodydof[@body-index] - 1)||@0\,@1}"
+        jr = "@{@jc||@0;@1}"
     }
 
-    [each(self | input . variables | /fh_([0-9]+)/)]
+    # For each variable fh_* in the input of this edge
+    edge   self
+         | input
+         . variables
+         | <fh>:/fh_([0-9]+)/
+         | self
     {
         defines
         {
-            i = "@@1"
+            # Compute the indices of this childs' DOF (in column and row)
+            ic = "@{@bodydofidx[@fh[0]]:+$(@bodydof[@fh[0]] - 1)||@0\,@1}"
+            ir = "@{@ic||@0;@1}"
         }
 
-        "H[@i, @j]" <= "H_@i"
-
-        [ifstr("$$(@i != @j,1,)")]
-        {
-            "H[@j, @i]" <= "H_@i"
-        }
+        ## Write H from the body into the appropriate part of the dynamics H
+        ## matrix
+        "H[[@ir, @jc], [@jc, @ir]]" <= "[H_@fh[0], H_@fh[0]]"
     }
 
     # Fill column of the jacobian
-    "J[[{0:5||@0;@1}], @j]" <= "J"
-    "C[@j, 0]" <= "C"
+    #"J[[{0:5||@0;@1}], @jc]" <= "J"
+
+    ## Write C from the body into the appropriate part of the dynamics C
+    ## vector
+    "C[@jr]" <= "C"
 }
 
 # Integrate accelerations on bodies
-[each(@bodies)]
+node | <body>:@bodies | parent
 {
-    edge "acceleration_@0" from "dynamics" to "@@@0"
+    defines
     {
-        ddq <= "ddq[@@@@@0[!]]"
+        j = "@{@bodydofidx[@body[!]]:+$(@bodydof[@body[!]] - 1)||@0;@1}"
     }
 
-    edge "force_@0" from "@@0" to "dynamics"
+    edge "acceleration_@0" from "dynamics" to "@body"
     {
-        "τ[@@@@0[!], 0]" <= "τ"
+        ## Transmit calculated acceleration from dynamics to body
+        ddq <= "ddq[[@j]]"
+    }
+
+    edge "force_@body" from "@body" to "dynamics"
+    {
+        ## Compute generalized force vector element
+        "τ[[@j], 0]" <= "τ"
     }
 }
 

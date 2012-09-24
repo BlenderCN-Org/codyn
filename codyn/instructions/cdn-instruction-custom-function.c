@@ -7,20 +7,11 @@ G_DEFINE_TYPE (CdnInstructionCustomFunction, cdn_instruction_custom_function, CD
 struct _CdnInstructionCustomFunctionPrivate
 {
 	CdnFunction *function;
-
-	CdnStackManipulation smanip;
-	gint push_manip[2];
 };
 
 static void
 cdn_instruction_custom_function_finalize (CdnMiniObject *object)
 {
-	CdnInstructionCustomFunction *self;
-
-	self = CDN_INSTRUCTION_CUSTOM_FUNCTION (object);
-
-	g_free (self->priv->smanip.pop_dims);
-
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_custom_function_parent_class)->finalize (object);
 }
 
@@ -30,7 +21,6 @@ cdn_instruction_custom_function_copy (CdnMiniObject *object)
 	CdnMiniObject *ret;
 	CdnInstructionCustomFunction *func;
 	CdnInstructionCustomFunction const *src;
-	gint i;
 
 	ret = CDN_MINI_OBJECT_CLASS (cdn_instruction_custom_function_parent_class)->copy (object);
 
@@ -38,17 +28,6 @@ cdn_instruction_custom_function_copy (CdnMiniObject *object)
 	func = CDN_INSTRUCTION_CUSTOM_FUNCTION (ret);
 
 	func->priv->function = g_object_ref (src->priv->function);
-
-	func->priv->push_manip[0] = src->priv->push_manip[0];
-	func->priv->push_manip[1] = src->priv->push_manip[1];
-
-	func->priv->smanip.num_pop = src->priv->smanip.num_pop;
-	func->priv->smanip.pop_dims = g_new (gint, func->priv->smanip.num_pop * 2);
-
-	for (i = 0; i < func->priv->smanip.num_pop * 2; ++i)
-	{
-		func->priv->smanip.pop_dims[i] = src->priv->smanip.pop_dims[i];
-	}
 
 	return ret;
 }
@@ -73,8 +52,6 @@ cdn_instruction_custom_function_execute (CdnInstruction *instruction,
 	self = (CdnInstructionCustomFunction *)instruction;
 
 	cdn_function_execute (self->priv->function,
-	                      self->priv->smanip.num_pop,
-	                      self->priv->smanip.pop_dims,
 	                      stack);
 }
 
@@ -88,12 +65,10 @@ cdn_instruction_custom_function_get_stack_manipulation (CdnInstruction  *instruc
 
 	if (self->priv->function)
 	{
-		cdn_function_get_dimension (self->priv->function,
-		                            &(self->priv->push_manip[0]),
-		                            &(self->priv->push_manip[1]));
+		return cdn_function_get_stack_manipulation (self->priv->function);
 	}
 
-	return &self->priv->smanip;
+	return NULL;
 }
 
 static gboolean
@@ -119,24 +94,63 @@ static GSList *
 cdn_instruction_custom_function_get_dependencies (CdnInstruction *inst)
 {
 	CdnInstructionCustomFunction *f = CDN_INSTRUCTION_CUSTOM_FUNCTION (inst);
+	CdnExpression *expr;
+	GSList const *deps;
+	GSList *ret = NULL;
 
 	if (!f->priv->function)
 	{
 		return NULL;
 	}
-	else
+
+	expr = cdn_function_get_expression (f->priv->function);
+
+	if (!expr)
 	{
-		CdnExpression *expr;
-
-		expr = cdn_function_get_expression (f->priv->function);
-
-		if (expr)
-		{
-			return g_slist_prepend (NULL, expr);
-		}
-
 		return NULL;
 	}
+
+	// Ok, then we need to get the deps of this expression, but remove
+	// all the deps which are function arguments
+	deps = cdn_expression_get_dependencies (expr);
+
+	while (deps)
+	{
+		GList const *args;
+		gboolean cp;
+
+		cp = TRUE;
+
+		args = cdn_function_get_arguments (f->priv->function);
+
+		while (args)
+		{
+			CdnVariable *v;
+
+			v = _cdn_function_argument_get_variable (args->data);
+			args = g_list_next (args);
+
+			if (!v)
+			{
+				continue;
+			}
+
+			if (cdn_variable_get_expression (v) == deps->data)
+			{
+				cp = FALSE;
+				break;
+			}
+		}
+
+		if (cp)
+		{
+			ret = g_slist_prepend (ret, deps->data);
+		}
+
+		deps = g_slist_next (deps);
+	}
+
+	return g_slist_reverse (ret);
 }
 
 static void
@@ -161,29 +175,6 @@ static void
 cdn_instruction_custom_function_init (CdnInstructionCustomFunction *self)
 {
 	self->priv = CDN_INSTRUCTION_CUSTOM_FUNCTION_GET_PRIVATE (self);
-
-	self->priv->smanip.push_dims = self->priv->push_manip;
-	self->priv->smanip.num_push = 1;
-}
-
-static void
-set_arguments (CdnInstructionCustomFunction *function,
-               gint                          arguments,
-               gint                         *argdim)
-{
-	gint i;
-
-	g_return_if_fail (CDN_IS_INSTRUCTION_CUSTOM_FUNCTION (function));
-
-	g_free (function->priv->smanip.pop_dims);
-	function->priv->smanip.pop_dims = g_new (gint, arguments * 2);
-
-	for (i = 0; i < arguments * 2; ++i)
-	{
-		function->priv->smanip.pop_dims[i] = argdim[i];
-	}
-
-	function->priv->smanip.num_pop = arguments;
 }
 
 static void
@@ -206,9 +197,8 @@ set_function (CdnInstructionCustomFunction *function,
 }
 
 CdnInstruction *
-cdn_instruction_custom_function_new (CdnFunction *function,
-                                     gint         arguments,
-                                     gint        *argdim)
+cdn_instruction_custom_function_new (CdnFunction        *function,
+                                     CdnStackArgs const *argdim)
 {
 	CdnInstructionCustomFunction *custom;
 
@@ -216,7 +206,6 @@ cdn_instruction_custom_function_new (CdnFunction *function,
 		cdn_mini_object_new (CDN_TYPE_INSTRUCTION_CUSTOM_FUNCTION));
 
 	set_function (custom, function);
-	set_arguments (custom, arguments, argdim);
 
 	return CDN_INSTRUCTION (custom);
 }

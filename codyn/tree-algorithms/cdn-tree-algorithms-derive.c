@@ -952,6 +952,36 @@ derive_index (CdnExpressionTreeIter *iter,
 }
 
 static CdnExpressionTreeIter *
+derive_sum (CdnExpressionTreeIter *iter,
+            DeriveContext         *context)
+{
+	CdnExpressionTreeIter *ret = NULL;
+	guint i;
+
+	ret = iter_new_sized (cdn_expression_tree_iter_get_instruction (iter),
+	                      cdn_expression_tree_iter_get_num_children (iter));
+
+	// Simply derive all the children
+	for (i = 0; i < cdn_expression_tree_iter_get_num_children (iter); ++i)
+	{
+		CdnExpressionTreeIter *child;
+
+		child = cdn_expression_tree_iter_get_child (iter, i);
+		child = derive_iter (child, context);
+
+		if (!child)
+		{
+			cdn_expression_tree_iter_free (ret);
+			return NULL;
+		}
+
+		ret->children[i] = child;
+	}
+
+	return ret;
+}
+
+static CdnExpressionTreeIter *
 derive_function (CdnExpressionTreeIter  *iter,
                  CdnInstructionFunction *instr,
                  DeriveContext          *ctx)
@@ -1010,6 +1040,9 @@ derive_function (CdnExpressionTreeIter  *iter,
 		break;
 		case CDN_MATH_FUNCTION_TYPE_INDEX:
 			return derive_index (iter, ctx);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_SUM:
+			return derive_sum (iter, ctx);
 		break;
 	}
 
@@ -1230,7 +1263,8 @@ collect_towards (CdnExpressionTreeIter  *iter,
 		arg = args->data;
 		args = g_list_next (args);
 
-		if (!iter_contains_variable (iter->children[i], ctx->towards))
+		if ((ctx->flags & CDN_EXPRESSION_TREE_ITER_DERIVE_TIME) == 0 &&
+		    !iter_contains_variable (iter->children[i], ctx->towards))
 		{
 			continue;
 		}
@@ -1264,7 +1298,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 	gint num;
 	CdnFunction *df;
 	CdnExpressionTreeIter *ret = NULL;
-	gint *argdim;
+	CdnStackArgs args;
 	CdnExpressionTreeIter **children;
 	GSList *towards;
 	CdnExpressionTreeIterDeriveFlags flags;
@@ -1324,12 +1358,12 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 	}
 
 	num = cdn_expression_tree_iter_get_num_children (iter);
-	argdim = g_new0 (gint, (num + newgen) * 2);
+	cdn_stack_args_init (&args, num + newgen);
 
 	children = g_new0 (CdnExpressionTreeIter *, num + newgen);
 
-	idx = (num + newgen) * 2 - 1;
-	newidx = newgen * 2 - 1;
+	idx = (num + newgen) - 1;
+	newidx = newgen - 1;
 	newstart = num;
 
 	// Now, df will have new arguments for the derivatives which
@@ -1349,8 +1383,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 
 		smanip = cdn_instruction_get_stack_manipulation (instr, NULL);
 
-		argdim[idx--] = smanip->push_dims ? smanip->push_dims[0] : 1;
-		argdim[idx--] = smanip->push_dims ? smanip->push_dims[1] : 1;
+		cdn_stack_arg_copy (&args.args[idx--], &smanip->push);
 
 		// Then see if we need to derive this
 		if (towardsmap[i])
@@ -1369,7 +1402,7 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 				if (!derived)
 				{
 					// Oops
-					g_free (argdim);
+					cdn_stack_args_destroy (&args);
 					g_free (towardsmap);
 					g_free (children);
 					g_slist_free (towards);
@@ -1384,25 +1417,23 @@ derive_custom_function_real (CdnExpressionTreeIter *iter,
 
 				children[newstart++] = derived;
 
-				argdim[newidx--] = smanip->push_dims ? smanip->push_dims[0] : 1;
-				argdim[newidx--] = smanip->push_dims ? smanip->push_dims[1] : 1;
+				cdn_stack_arg_copy (&args.args[newidx--], &smanip->push);
 			}
 		}
 	}
 
-	nf = cdn_function_for_dimension (df, num + newgen, argdim);
+	nf = cdn_function_for_dimension (df, &args);
 	g_object_unref (df);
 
 	ret = iter_new_take (cdn_instruction_custom_function_new (nf,
-	                                                          num + newgen,
-	                                                          argdim));
+	                                                          &args));
 
 	g_object_unref (nf);
 
 	ret->children = children;
 	ret->num_children = num + newgen;
 
-	g_free (argdim);
+	cdn_stack_args_destroy (&args);
 	g_free (towardsmap);
 	g_slist_free (towards);
 

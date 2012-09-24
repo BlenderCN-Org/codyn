@@ -47,12 +47,13 @@ struct _CdnFunctionArgumentPrivate
 {
 	gchar *name;
 
-	gboolean isexplicit;
-	gint numr;
-	gint numc;
+	CdnDimension dimension;
 
 	CdnExpression *default_value;
 	CdnVariable *variable;
+
+	guint isexplicit : 1;
+	guint unused : 1;
 };
 
 G_DEFINE_TYPE (CdnFunctionArgument, cdn_function_argument, G_TYPE_INITIALLY_UNOWNED)
@@ -62,8 +63,6 @@ enum
 	PROP_0,
 	PROP_NAME,
 	PROP_EXPLICIT,
-	PROP_NUMR,
-	PROP_NUMC,
 	PROP_OPTIONAL,
 	PROP_DEFAULT_VALUE
 };
@@ -146,12 +145,6 @@ cdn_function_argument_set_property (GObject      *object,
 		case PROP_EXPLICIT:
 			self->priv->isexplicit = g_value_get_boolean (value);
 			break;
-		case PROP_NUMR:
-			self->priv->numr = g_value_get_int (value);
-			break;
-		case PROP_NUMC:
-			self->priv->numc = g_value_get_int (value);
-			break;
 		case PROP_DEFAULT_VALUE:
 			set_default_value (self, g_value_get_object (value));
 			break;
@@ -176,12 +169,6 @@ cdn_function_argument_get_property (GObject    *object,
 		break;
 		case PROP_EXPLICIT:
 			g_value_set_boolean (value, self->priv->isexplicit);
-			break;
-		case PROP_NUMR:
-			g_value_set_int (value, self->priv->numr);
-			break;
-		case PROP_NUMC:
-			g_value_set_int (value, self->priv->numc);
 			break;
 		case PROP_OPTIONAL:
 			g_value_set_boolean (value,
@@ -255,28 +242,6 @@ cdn_function_argument_class_init (CdnFunctionArgumentClass *klass)
 	                                                       TRUE,
 	                                                       G_PARAM_READWRITE |
 	                                                       G_PARAM_CONSTRUCT));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_NUMR,
-	                                 g_param_spec_int ("numr",
-	                                                   "Numr",
-	                                                   "Numr",
-	                                                   1,
-	                                                   G_MAXINT,
-	                                                   1,
-	                                                   G_PARAM_READWRITE |
-	                                                   G_PARAM_CONSTRUCT));
-
-	g_object_class_install_property (object_class,
-	                                 PROP_NUMC,
-	                                 g_param_spec_int ("numc",
-	                                                   "Numc",
-	                                                   "Numc",
-	                                                   1,
-	                                                   G_MAXINT,
-	                                                   1,
-	                                                   G_PARAM_READWRITE |
-	                                                   G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
 	                                 PROP_OPTIONAL,
@@ -357,11 +322,18 @@ cdn_function_argument_new (gchar const   *name,
 CdnFunctionArgument *
 cdn_function_argument_copy (CdnFunctionArgument *argument)
 {
+	CdnFunctionArgument *ret;
+
 	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), NULL);
 
-	return cdn_function_argument_new (argument->priv->name,
-	                                  argument->priv->isexplicit,
-	                                  cdn_expression_copy (argument->priv->default_value));
+	ret = cdn_function_argument_new (argument->priv->name,
+	                                 argument->priv->isexplicit,
+	                                 cdn_expression_copy (argument->priv->default_value));
+
+	ret->priv->unused = argument->priv->unused;
+	ret->priv->dimension = argument->priv->dimension;
+
+	return ret;
 }
 
 /**
@@ -441,10 +413,9 @@ cdn_function_argument_set_explicit (CdnFunctionArgument *argument,
 }
 
 static gchar *
-make_zeros (gint numr,
-            gint numc)
+make_zeros (CdnDimension const *dimension)
 {
-	if (numr == 1 && numc == 1)
+	if (cdn_dimension_size (dimension) <= 1)
 	{
 		return g_strdup ("0");
 	}
@@ -454,7 +425,7 @@ make_zeros (gint numr,
 
 	g_string_append_c (ret, '[');
 
-	for (r = 0; r < numr; ++r)
+	for (r = 0; r < dimension->rows; ++r)
 	{
 		gint c;
 
@@ -463,7 +434,7 @@ make_zeros (gint numr,
 			g_string_append (ret, ";\n");
 		}
 
-		for (c = 0; c < numc; ++c)
+		for (c = 0; c < dimension->columns; ++c)
 		{
 			if (c != 0)
 			{
@@ -494,12 +465,13 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 		gchar *zeros;
 		CdnExpression *expr;
 
-		zeros = make_zeros (argument->priv->numr,
-		                    argument->priv->numc);
+		zeros = make_zeros (&argument->priv->dimension);
 
 		expr = cdn_variable_get_expression (variable);
+
 		cdn_expression_set_from_string (expr, zeros);
 		cdn_expression_compile (expr, NULL, NULL);
+		cdn_expression_set_has_cache (expr, FALSE);
 
 		g_free (zeros);
 	}
@@ -525,35 +497,27 @@ _cdn_function_argument_get_variable (CdnFunctionArgument *argument)
 /**
  * cdn_function_argument_get_dimension:
  * @argument: a #CdnFunctionArgument.
- * @numr: (out) (allow-none): the number of rows.
- * @numc: (out) (allow-none): the number of columns.
+ * @dimension: (out) (allow-none): the dimension
  *
  * Get the dimension of the function argument.
  *
  **/
 void
 cdn_function_argument_get_dimension (CdnFunctionArgument *argument,
-                                     gint                *numr,
-                                     gint                *numc)
+                                     CdnDimension        *dimension)
 {
 	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
 
-	if (numr)
+	if (dimension)
 	{
-		*numr = argument->priv->numr;
-	}
-
-	if (numc)
-	{
-		*numc = argument->priv->numc;
+		*dimension = argument->priv->dimension;
 	}
 }
 
 /**
  * cdn_function_argument_set_dimension:
  * @argument: a #CdnFunctionArgument.
- * @numr: the number of rows.
- * @numc: the number of columns.
+ * @dimension: the dimension
  *
  * Set the expected dimension of the function argument when the function is
  * called.
@@ -561,20 +525,18 @@ cdn_function_argument_get_dimension (CdnFunctionArgument *argument,
  **/
 void
 cdn_function_argument_set_dimension (CdnFunctionArgument *argument,
-                                     gint                 numr,
-                                     gint                 numc)
+                                     CdnDimension const  *dimension)
 {
 	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
 
-	argument->priv->numr = numr;
-	argument->priv->numc = numc;
+	argument->priv->dimension = *dimension;
 
 	if (argument->priv->variable && argument->priv->isexplicit)
 	{
 		gchar *zeros;
 		CdnExpression *expr;
 
-		zeros = make_zeros (numr, numc);
+		zeros = make_zeros (dimension);
 
 		expr = cdn_variable_get_expression (argument->priv->variable);
 
@@ -641,3 +603,19 @@ cdn_function_argument_set_default_value (CdnFunctionArgument *argument,
 	g_object_notify (G_OBJECT (argument), "default-value");
 }
 
+gboolean
+cdn_function_argument_get_unused (CdnFunctionArgument *argument)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument), FALSE);
+
+	return argument->priv->unused;
+}
+
+void
+cdn_function_argument_set_unused (CdnFunctionArgument *argument,
+                                  gboolean             unused)
+{
+	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
+
+	argument->priv->unused = unused;
+}

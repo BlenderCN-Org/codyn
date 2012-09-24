@@ -69,9 +69,8 @@ cdn_operator_pdiff_responds_to (gchar const *name)
 }
 
 static CdnFunction *
-derived_function (CdnExpression *expr,
-                  gint           numargs,
-                  gint          *argdim)
+derived_function (CdnExpression      *expr,
+                  CdnStackArgs const *argdim)
 {
 	GSList const *instr;
 	CdnFunction *ret = NULL;
@@ -99,7 +98,7 @@ derived_function (CdnExpression *expr,
 		return NULL;
 	}
 
-	return cdn_function_for_dimension (ret, numargs, argdim);
+	return cdn_function_for_dimension (ret, argdim);
 }
 
 static CdnFunctionArgument *
@@ -121,16 +120,15 @@ derived_arg (CdnFunction   *func,
 }
 
 static gboolean
-validate_arguments (GSList const  *expressions,
-                    GSList const  *towardsexpr,
-                    CdnFunction  **func,
-                    gint           numargs,
-                    gint          *argdim,
-                    GSList       **towards,
-                    gint          *order,
-                    GError       **error)
+validate_arguments (GSList const        *expressions,
+                    GSList const        *towardsexpr,
+                    CdnFunction        **func,
+                    CdnStackArgs const  *argdim,
+                    GSList             **towards,
+                    gint                *order,
+                    GError             **error)
 {
-	*func = derived_function (expressions->data, numargs, argdim);
+	*func = derived_function (expressions->data, argdim);
 
 	if (!*func)
 	{
@@ -266,10 +264,8 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
                  GError           **error)
 {
 	CdnFunctionArgument *arg;
-	gint numr;
-	gint numc;
-	gint fnumr;
-	gint fnumc;
+	CdnDimension dim;
+	CdnStackManipulation const *fsmanip;
 	gint num;
 	gint i;
 	CdnExpressionTreeIter *iter;
@@ -282,26 +278,25 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 	CdnFunction *nf;
 	CdnFunctionArgument *nfarg;
 	CdnVariable *nfargv;
-	gint iargdim[4];
-	gint *popdims;
+	CdnStackArgs iargs;
+	CdnStackArgs popargs;
+	CdnStackArgs matargs;
 
 	// For each dimension of the argument to derive towards, compute the
 	// partial towards that dimension (this results in a jacobian matrix)
 	arg = tows->data;
 
-	cdn_function_get_dimension (func, &fnumr, &fnumc);
+	fsmanip = cdn_function_get_stack_manipulation (func);
 
-	cdn_function_argument_get_dimension (arg, &numr, &numc);
+	cdn_function_argument_get_dimension (arg, &dim);
 	argv = _cdn_function_argument_get_variable (arg);
 
 	dummy = cdn_variable_new (cdn_variable_get_name (argv),
 	                          cdn_expression_new0 (),
 	                          cdn_variable_get_flags (argv));
 
-	num = numr * numc;
+	num = cdn_dimension_size (&dim);
 	iter = cdn_expression_tree_iter_new (cdn_function_get_expression (func));
-
-	popdims = g_new0 (gint, num * 2);
 
 	syms = create_symbols (func);
 
@@ -316,10 +311,19 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 
 	replace_args (iter, func, nf);
 
-	iargdim[0] = numr;
-	iargdim[1] = numc;
-	iargdim[2] = 1;
-	iargdim[3] = 1;
+	// Initialize CdnStackArgs for the index operation
+	cdn_stack_args_init (&iargs, 2);
+	iargs.args[0].dimension = dim;
+	iargs.args[1].dimension = cdn_dimension_one;
+
+	cdn_stack_args_init (&popargs, num);
+	cdn_stack_args_init (&matargs, num);
+
+	// Make all sparse
+	for (i = 0; i < num; ++i)
+	{
+		cdn_stack_arg_set_sparsity_one (&matargs.args[i], 0);
+	}
 
 	for (i = 0; i < num; ++i)
 	{
@@ -333,14 +337,17 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 		CdnExpressionTreeIter *derived;
 		gint j;
 
-		popdims[i * 2] = fnumr;
-		popdims[i * 2 + 1] = fnumc;
+		popargs.args[i].dimension = fsmanip->push.dimension;
+
+		// Set i to not be sparse
+		cdn_stack_arg_set_sparsity (&matargs.args[i], NULL, 0);
 
 		instrs = g_slist_prepend (instrs,
-		                          cdn_instruction_matrix_new (num,
-		                                                      NULL,
-		                                                      numr,
-		                                                      numc));
+		                          cdn_instruction_matrix_new (&matargs,
+		                                                      &fsmanip->push.dimension));
+
+		// reset i to be sparse
+		cdn_stack_arg_set_sparsity_one (&matargs.args[i], 0);
 
 		for (j = num - 1; j >= 0; --j)
 		{
@@ -387,8 +394,7 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 		instrs = g_slist_prepend (NULL,
 		                           cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_INDEX,
 		                                                         NULL,
-		                                                         2,
-		                                                         iargdim));
+		                                                         &iargs));
 
 		instrs = g_slist_prepend (instrs,
 		                          cdn_instruction_variable_new (nfargv));
@@ -407,41 +413,48 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 		instructions = g_slist_concat (g_slist_reverse (cdn_expression_tree_iter_to_instructions (derived)),
 		                               instructions);
 
-		if (fnumr != 1)
+		if (fsmanip->push.rows != 1)
 		{
-			gint targdim[2];
+			CdnStackArgs targs;
 
-			targdim[0] = fnumr;
-			targdim[1] = fnumc;
+			cdn_stack_args_init (&targs, 1);
+			cdn_stack_arg_copy (&targs.args[0], &fsmanip->push);
 
 			instructions = g_slist_prepend (instructions,
 			                                cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
 			                                                              NULL,
-			                                                              1,
-			                                                              targdim));
+			                                                              &targs));
+
+			cdn_stack_args_destroy (&targs);
 		}
 
 		cdn_expression_tree_iter_free (derived);
 	}
 
+	cdn_stack_args_destroy (&matargs);
+	cdn_stack_args_destroy (&iargs);
+
 	if (retval)
 	{
-		gint tdims[2];
+		CdnStackArgs targs;
+		CdnDimension ndim;
 
-		tdims[0] = numr * numc;
-		tdims[1] = fnumr * fnumc;
+		ndim.rows = cdn_dimension_size (&dim);
+		ndim.columns = cdn_dimension_size (&fsmanip->push.dimension);
+
+		cdn_stack_args_init (&targs, 1);
+		targs.args[0].dimension = ndim;
 
 		instructions = g_slist_prepend (instructions,
-		                                cdn_instruction_matrix_new (num,
-		                                                            popdims,
-		                                                            numr * numc,
-		                                                            fnumr * fnumc));
+		                                cdn_instruction_matrix_new (&popargs,
+		                                                            &ndim));
 
 		instructions = g_slist_prepend (instructions,
 		                                cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
 		                                                              NULL,
-		                                                              1,
-		                                                              tdims));
+		                                                              &targs));
+
+		cdn_stack_args_destroy (&targs);
 
 		instructions = g_slist_reverse (instructions);
 
@@ -463,10 +476,11 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 	}
 	else
 	{
-		g_free (popdims);
 		g_object_unref (nf);
 		nf = NULL;
 	}
+
+	cdn_stack_args_destroy (&popargs);
 
 	g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
 	g_slist_free (instructions);
@@ -483,15 +497,14 @@ derive_jacobian (CdnOperatorPDiff  *pdiff,
 }
 
 static gboolean
-cdn_operator_pdiff_initialize (CdnOperator        *op,
-                               GSList const      **expressions,
-                               gint                num_expressions,
-                               GSList const      **indices,
-                               gint                num_indices,
-                               gint                num_arguments,
-                               gint               *argdim,
-                               CdnCompileContext  *context,
-                               GError            **error)
+cdn_operator_pdiff_initialize (CdnOperator         *op,
+                               GSList const       **expressions,
+                               gint                 num_expressions,
+                               GSList const       **indices,
+                               gint                 num_indices,
+                               CdnStackArgs const  *argdim,
+                               CdnCompileContext   *context,
+                               GError             **error)
 {
 	CdnOperatorPDiff *diff;
 	CdnFunction *func;
@@ -499,17 +512,15 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 	GSList *towards;
 	gint order;
 	CdnFunctionArgument *arg;
-	gint numr;
-	gint numc;
-	gint fnumr;
-	gint fnumc;
+	CdnDimension dim;
+	CdnStackManipulation const *fsmanip;
+	CdnDimension fdim;
 
 	if (!CDN_OPERATOR_CLASS (cdn_operator_pdiff_parent_class)->initialize (op,
 	                                                                       expressions,
 	                                                                       num_expressions,
 	                                                                       indices,
 	                                                                       num_indices,
-	                                                                       num_arguments,
 	                                                                       argdim,
 	                                                                       context,
 	                                                                       error))
@@ -536,7 +547,6 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 	if (!validate_arguments (expressions[0],
 	                         num_expressions > 1 ? expressions[1] : NULL,
 	                         &func,
-	                         num_arguments,
 	                         argdim,
 	                         &towards,
 	                         &order,
@@ -548,33 +558,34 @@ cdn_operator_pdiff_initialize (CdnOperator        *op,
 	// Do for each dimension
 	arg = towards->data;
 
-	cdn_function_argument_get_dimension (arg, &numr, &numc);
-	cdn_function_get_dimension (func, &fnumr, &fnumc);
+	cdn_function_argument_get_dimension (arg, &dim);
+	fsmanip = cdn_function_get_stack_manipulation (func);
+	fdim = fsmanip->push.dimension;
 
-	if (numr != 1 && numc != 1)
+	if (dim.rows != 1 && dim.columns != 1)
 	{
 		g_set_error (error,
 		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
 		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
 		             "Cannot take the partial derivative towards a matrix `%s' of %d-by-%d",
 		             cdn_function_argument_get_name (arg),
-		             numr,
-		             numc);
+		             dim.rows,
+		             dim.columns);
 	}
-	else if (fnumr != 1 && fnumc != 1 && !(numr == 1 && numc == 1))
+	else if (fdim.rows != 1 && fdim.columns != 1 && !cdn_dimension_is_one (&dim))
 	{
 		g_set_error (error,
 		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR,
 		             CDN_EXPRESSION_TREE_ITER_DERIVE_ERROR_UNSUPPORTED,
 		             "Cannot take the partial derivative of a matrix function `%s' (%d-by-%d) towards a vector `%s' (%d-by-%d)",
 		             cdn_object_get_id (CDN_OBJECT (func)),
-		             fnumr,
-		             fnumc,
+		             fdim.rows,
+		             fdim.columns,
 		             cdn_function_argument_get_name (arg),
-		             numr,
-		             numc);
+		             dim.rows,
+		             dim.columns);
 	}
-	else if (numr != 1 || numc != 1)
+	else if (dim.rows != 1 || dim.columns != 1)
 	{
 		// Take jacobian
 		nf = derive_jacobian (diff,
@@ -647,7 +658,6 @@ cdn_operator_pdiff_copy (CdnOperator *op)
 	                                                                 cdn_operator_num_expressions (op),
 	                                                                 cdn_operator_all_indices (op),
 	                                                                 cdn_operator_num_indices (op),
-	                                                                 cdn_operator_get_num_arguments (op),
 	                                                                 cdn_operator_get_arguments_dimension (op),
 	                                                                 NULL,
 	                                                                 NULL);

@@ -22,137 +22,65 @@
 
 #include "cdn-selection.h"
 #include "cdn-expansion.h"
-#include "cdn-taggable.h"
 
-#define CDN_SELECTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_SELECTION, CdnSelectionPrivate))
-
-struct _CdnSelectionPrivate
+struct _CdnSelection
 {
 	gpointer  object;
-
-	GSList   *expansions;
-	GHashTable *defines;
-
-	gboolean copy_defines_on_write;
-
-	GHashTable *tags;
+	CdnExpansionContext *context;
+	guint ref_count;
+	gchar *override_name;
 };
 
-static void cdn_taggable_iface_init (gpointer iface);
-
-G_DEFINE_TYPE_WITH_CODE (CdnSelection,
-                         cdn_selection,
-                         G_TYPE_OBJECT,
-                         G_IMPLEMENT_INTERFACE (CDN_TYPE_TAGGABLE,
-                                                cdn_taggable_iface_init))
-
-static GHashTable *
-get_tag_table (CdnTaggable *taggable)
+GType
+cdn_selection_get_type (void)
 {
-	return CDN_SELECTION (taggable)->priv->tags;
-}
+	static volatile gsize g_define_type_id__volatile = 0;
 
-static void
-cdn_taggable_iface_init (gpointer iface)
-{
-	/* Use default implementation */
-	CdnTaggableInterface *taggable = iface;
-
-	taggable->get_tag_table = get_tag_table;
-}
-
-static void
-cdn_selection_finalize (GObject *object)
-{
-	CdnSelection *selection;
-
-	selection = CDN_SELECTION (object);
-
-	if (selection->priv->object)
+	if (g_once_init_enter (&g_define_type_id__volatile))
 	{
-		g_object_unref (selection->priv->object);
+		GType g_define_type_id;
+
+		g_define_type_id =
+			g_boxed_type_register_static (g_intern_static_string ("CdnSelection"),
+			                              (GBoxedCopyFunc)cdn_selection_ref,
+			                              (GBoxedFreeFunc)cdn_selection_unref);
+
+		g_once_init_leave (&g_define_type_id__volatile, g_define_type_id);
 	}
 
-	g_slist_foreach (selection->priv->expansions, (GFunc)cdn_expansion_unref, NULL);
-	g_slist_free (selection->priv->expansions);
+	return g_define_type_id__volatile;
+}
 
-	if (selection->priv->defines)
+void
+cdn_selection_unref (CdnSelection *selection)
+{
+	if (!g_atomic_int_dec_and_test ((gint *)&selection->ref_count))
 	{
-		g_hash_table_unref (selection->priv->defines);
+		return;
 	}
 
-	g_hash_table_destroy (selection->priv->tags);
-
-	G_OBJECT_CLASS (cdn_selection_parent_class)->finalize (object);
-}
-
-static void
-cdn_selection_class_init (CdnSelectionClass *klass)
-{
-	GObjectClass *object_class = G_OBJECT_CLASS (klass);
-
-	object_class->finalize = cdn_selection_finalize;
-
-	g_type_class_add_private (object_class, sizeof (CdnSelectionPrivate));
-}
-
-static void
-cdn_selection_init (CdnSelection *self)
-{
-	self->priv = CDN_SELECTION_GET_PRIVATE (self);
-
-	self->priv->tags = cdn_taggable_create_table ();
-}
-
-static GSList *
-copy_expansions (GSList *list)
-{
-	GSList *ret = NULL;
-
-	while (list)
+	if (selection->object)
 	{
-		ret = g_slist_prepend (ret,
-		                       cdn_expansion_copy (list->data));
-
-		list = g_slist_next (list);
+		g_object_unref (selection->object);
 	}
 
-	return g_slist_reverse (ret);
-}
-
-static void
-copy_entry (gchar const  *key,
-            CdnExpansion *value,
-            GHashTable   *table)
-{
-	g_hash_table_insert (table,
-	                     g_strdup (key),
-	                     value ? cdn_expansion_copy (value) : cdn_expansion_new_one (""));
-}
-
-static GHashTable *
-copy_defines (GHashTable *table)
-{
-	GHashTable *ret;
-
-	ret = g_hash_table_new_full (g_str_hash,
-	                             g_str_equal,
-	                             (GDestroyNotify)g_free,
-	                             (GDestroyNotify)cdn_expansion_unref);
-
-	if (table)
+	if (selection->context)
 	{
-		g_hash_table_foreach (table, (GHFunc)copy_entry, ret);
+		cdn_expansion_context_unref (selection->context);
 	}
+}
 
-	return ret;
+CdnSelection *
+cdn_selection_ref (CdnSelection *selection)
+{
+	g_atomic_int_inc ((gint *)&selection->ref_count);
+	return selection;
 }
 
 /**
  * cdn_selection_new:
  * @object: The object
- * @expansions: (element-type CdnExpansion): A #GSList of #CdnExpansion
- * @defines: A #GHashTable
+ * @context: (transfer none): The expansion context
  *
  * Create a new selection.
  *
@@ -160,60 +88,19 @@ copy_defines (GHashTable *table)
  *
  **/
 CdnSelection *
-cdn_selection_new (gpointer    object,
-                   GSList     *expansions,
-                   GHashTable *defines)
+cdn_selection_new (gpointer             object,
+                   CdnExpansionContext *context)
 {
 	CdnSelection *ret;
 
-	ret = g_object_new (CDN_TYPE_SELECTION,
-	                    NULL);
+	ret = g_slice_new0 (CdnSelection);
+	ret->ref_count = 1;
 
-	ret->priv->object = object ? g_object_ref (object) : NULL;
-	ret->priv->expansions = copy_expansions (expansions);
-
-	if (defines)
-	{
-		ret->priv->defines = g_hash_table_ref (defines);
-		ret->priv->copy_defines_on_write = TRUE;
-	}
-	else
-	{
-		ret->priv->defines = copy_defines (NULL);
-	}
+	ret->object = object ? g_object_ref (object) : NULL;
+	ret->context = cdn_expansion_context_ref (context);
 
 	return ret;
 }
-
-/**
- * cdn_selection_new_defines:
- * @object: The selection object
- * @expansions: (element-type CdnExpansion): A #GSList of #CdnExpansion
- * @defines: A #GHashTable
- * @copy_defines: Whether to copy defines
- *
- * Create a new selection.
- *
- * Returns: A #CdnSelection
- *
- **/
-CdnSelection *
-cdn_selection_new_defines (gpointer    object,
-                           GSList     *expansions,
-                           GHashTable *defines,
-                           gboolean    copy_defines)
-{
-	CdnSelection *ret;
-
-	ret = cdn_selection_new (object, expansions, NULL);
-	g_hash_table_destroy (ret->priv->defines);
-
-	ret->priv->defines = g_hash_table_ref (defines);
-	ret->priv->copy_defines_on_write = copy_defines;
-
-	return ret;
-}
-
 
 /**
  * cdn_selection_copy:
@@ -227,71 +114,13 @@ cdn_selection_new_defines (gpointer    object,
 CdnSelection *
 cdn_selection_copy (CdnSelection *selection)
 {
-	CdnSelection *ret;
-
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
-
-	ret = cdn_selection_new (selection->priv->object,
-	                         selection->priv->expansions,
-	                         selection->priv->defines);
-
-	cdn_taggable_copy_to (CDN_TAGGABLE (selection),
-	                      ret->priv->tags);
-
-	return ret;
-}
-
-static void
-copy_defines_on_write (CdnSelection *selection)
-{
-	GHashTable *nd;
-
-	if (!selection->priv->copy_defines_on_write)
+	if (selection == NULL)
 	{
-		return;
+		return NULL;
 	}
 
-	nd = copy_defines (selection->priv->defines);
-	g_hash_table_unref (selection->priv->defines);
-	selection->priv->defines = nd;
-
-	selection->priv->copy_defines_on_write = FALSE;
-}
-
-/**
- * cdn_selection_copy_defines:
- * @selection: A #CdnSelection
- * @copy_defines: Whether to copy the defines
- *
- * Copy selection with defines.
- *
- * Returns: (transfer full): A #CdnSelection
- *
- **/
-CdnSelection *
-cdn_selection_copy_defines (CdnSelection *selection,
-                            gboolean      copy_defines)
-{
-	CdnSelection *ret;
-
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
-
-	if (!copy_defines)
-	{
-		copy_defines_on_write (selection);
-	}
-
-	ret = cdn_selection_new_defines (selection->priv->object,
-	                                 selection->priv->expansions,
-	                                 selection->priv->defines,
-	                                 copy_defines);
-
-	if (copy_defines)
-	{
-		selection->priv->copy_defines_on_write = TRUE;
-	}
-
-	return ret;
+	return cdn_selection_new (selection->object,
+	                          cdn_expansion_context_new_unreffed (selection->context));
 }
 
 /**
@@ -306,83 +135,79 @@ cdn_selection_copy_defines (CdnSelection *selection,
 gpointer
 cdn_selection_get_object (CdnSelection *selection)
 {
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
+	g_return_val_if_fail (selection != NULL, NULL);
 
-	return selection->priv->object;
+	return selection->object;
 }
 
 void
 cdn_selection_set_object (CdnSelection *selection,
                           gpointer      object)
 {
-	g_return_if_fail (CDN_IS_SELECTION (selection));
+	g_return_if_fail (selection != NULL);
 	g_return_if_fail (object == NULL || G_IS_OBJECT (object));
 
-	if (selection->priv->object)
+	if (selection->object)
 	{
-		g_object_unref (selection->priv->object);
-		selection->priv->object = NULL;
+		g_object_unref (selection->object);
+		selection->object = NULL;
 	}
 
 	if (object)
 	{
-		selection->priv->object = g_object_ref (object);
+		selection->object = g_object_ref (object);
 	}
 }
 
 /**
- * cdn_selection_get_expansions:
+ * cdn_selection_get_context:
  * @selection: A #CdnSelection
  *
- * Get the list of expansions.
+ * Get the selection context.
  *
- * Returns: (element-type CdnExpansion) (transfer none): A #GSList of #CdnExpansion
+ * Returns: (transfer none): a #CdnExpansionContext
  *
  **/
-GSList *
-cdn_selection_get_expansions (CdnSelection *selection)
+CdnExpansionContext *
+cdn_selection_get_context (CdnSelection *selection)
 {
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
+	g_return_val_if_fail (selection != NULL, NULL);
 
-	return selection->priv->expansions;
-}
-
-void
-cdn_selection_add_define (CdnSelection *selection,
-                          gchar const  *key,
-                          CdnExpansion *value)
-{
-	g_return_if_fail (CDN_IS_SELECTION (selection));
-
-	copy_defines_on_write (selection);
-
-	g_hash_table_insert (selection->priv->defines,
-	                     g_strdup (key),
-	                     value ? cdn_expansion_copy (value) : cdn_expansion_new_one (""));
+	return selection->context;
 }
 
 /**
- * cdn_selection_get_defines:
- * @selection: A #CdnSelection
+ * cdn_selection_set_context:
+ * @selection: (transfer none): a #CdnSelection.
  *
- * Get the hash table of defines for the selection.
- *
- * Returns: (transfer none): A #GHashTable
+ * Set the selection context.
  *
  **/
-GHashTable *
-cdn_selection_get_defines (CdnSelection *selection)
+void
+cdn_selection_set_context (CdnSelection        *selection,
+                           CdnExpansionContext *context)
 {
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
+	g_return_if_fail (selection != NULL);
 
-	return selection->priv->defines;
+	cdn_expansion_context_unref (selection->context);
+	selection->context = cdn_expansion_context_ref (context);
 }
 
-CdnExpansion *
-cdn_selection_get_define (CdnSelection *selection,
-                          gchar const  *key)
+gchar const *
+_cdn_selection_get_override_name (CdnSelection *selection)
 {
-	g_return_val_if_fail (CDN_IS_SELECTION (selection), NULL);
+	g_return_val_if_fail (selection != NULL, NULL);
 
-	return g_hash_table_lookup (selection->priv->defines, key);
+	return selection->override_name;
 }
+
+void
+_cdn_selection_set_override_name (CdnSelection *selection,
+                                  gchar const  *name)
+{
+	g_return_if_fail (selection != NULL);
+
+	g_free (selection->override_name);
+	selection->override_name = g_strdup (name);
+}
+

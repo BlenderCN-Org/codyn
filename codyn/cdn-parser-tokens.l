@@ -3,6 +3,7 @@
 #include "cdn-parser.h"
 
 static gchar *unquote_string (gchar const *s, gint len, gchar const *escape);
+static void *__top_state;
 
 void cdn_parser_set_column (int column_no, yyscan_t yyscanner);
 int cdn_parser_get_column (yyscan_t yyscanner);
@@ -84,7 +85,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 	}
 
 	/* To not get a compiler warning about defined but not used... */
-	yy_top_state (yyscanner);
+	__top_state = yy_top_state;
 %}
 
 <firstline>.*|\n			{
@@ -108,15 +109,15 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 \n.*				{
 					HANDLE_NEWLINE
 				}
-"##"[ \t]*			{
+"##"				{
 					yy_push_state (annotation, yyscanner);
 					return T_ANNOTATION_START;
 				}
-<annotation>\n.*		{
+<annotation>[\t ]*\n.*		{
 					HANDLE_NEWLINE
 					yy_push_state (annotation_start, yyscanner);
 				}
-<annotation_start>[\t ]*##[\t ]* {
+<annotation_start>[\t ]*## {
 					yy_pop_state (yyscanner);
 
 					yylval->id = g_strdup ("\n");
@@ -154,6 +155,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 				}
 
 "include"			return T_KEY_INCLUDE;
+"require"			return T_KEY_REQUIRE;
 "parse"				return T_KEY_PARSE;
 "object"			return T_KEY_OBJECT;
 "edge"				return T_KEY_EDGE;
@@ -196,56 +198,52 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "io"				return T_KEY_IO;
 "within"			return T_KEY_WITHIN;
 
-<INITIAL,onlyselector>"templates"	return T_KEY_TEMPLATES;
-<INITIAL,onlyselector>"templates-root"	return T_KEY_TEMPLATES_ROOT;
-<INITIAL,onlyselector>"root"		return T_KEY_ROOT;
-<INITIAL,onlyselector>"debug"		return T_KEY_DEBUG;
-<INITIAL,onlyselector>"children"	return T_KEY_CHILDREN;
-<INITIAL,onlyselector>"parent"		return T_KEY_PARENT;
-<INITIAL,onlyselector>"first"		return T_KEY_FIRST;
-<INITIAL,onlyselector>"last"		return T_KEY_LAST;
-<INITIAL,onlyselector>"subset"		return T_KEY_SUBSET;
-<INITIAL,onlyselector>"edges"		return T_KEY_EDGES;
-<INITIAL,onlyselector>"siblings"	return T_KEY_SIBLINGS;
-<INITIAL,onlyselector>"descendants"	return T_KEY_DESCENDANTS;
-<INITIAL,onlyselector>"ancestors"	return T_KEY_ANCESTORS;
-<INITIAL,onlyselector>"unique"		return T_KEY_UNIQUE;
-<INITIAL,onlyselector>"count"		return T_KEY_COUNT;
-<INITIAL,onlyselector>"name"		return T_KEY_NAME;
-<INITIAL,onlyselector>"self"		return T_KEY_SELF;
-<INITIAL,onlyselector>"nodes"		return T_KEY_NODES;
-<INITIAL,onlyselector>"imports"		return T_KEY_IMPORTS;
-<INITIAL,onlyselector>"objects"		return T_KEY_OBJECTS;
-<INITIAL,onlyselector>"variables"	return T_KEY_VARIABLES;
-<INITIAL,onlyselector>"actions"		return T_KEY_ACTION;
-<INITIAL,onlyselector>"not"		return T_KEY_NOT;
-<INITIAL,onlyselector>"if"		return T_KEY_IF;
-<INITIAL,onlyselector>"ifstr"		return T_KEY_IFSTR;
-<INITIAL,onlyselector>"notstr"		return T_KEY_NOTSTR;
-<INITIAL,onlyselector>"from-set"	return T_KEY_FROM_SET;
-<INITIAL,onlyselector>"type"		return T_KEY_TYPE;
-<INITIAL,onlyselector>"has-flag"	return T_KEY_HAS_FLAG;
-<INITIAL,onlyselector>"has-template"	return T_KEY_HAS_TEMPLATE;
-<INITIAL,onlyselector>"has-tag"		return T_KEY_HAS_TAG;
-<INITIAL,onlyselector>"reverse"		return T_KEY_REVERSE;
-<INITIAL,onlyselector>"input"		return T_KEY_INPUT;
-<INITIAL,onlyselector>"output"		return T_KEY_OUTPUT;
-<INITIAL,onlyselector>"inputs"		return T_KEY_INPUTS;
-<INITIAL,onlyselector>"outputs"		return T_KEY_OUTPUTS;
-<INITIAL,onlyselector>"input-name"	return T_KEY_INPUT_NAME;
-<INITIAL,onlyselector>"output-name"	return T_KEY_OUTPUT_NAME;
-<INITIAL,onlyselector>"recurse"		return T_KEY_RECURSE;
-<INITIAL,onlyselector>"append-context"	return T_KEY_APPEND_CONTEXT;
+<INITIAL,onlyselector>"templates"		return T_KEY_TEMPLATES;
+<INITIAL,onlyselector>"templates-root"		return T_KEY_TEMPLATES_ROOT;
+<INITIAL,onlyselector>"applied-templates"	return T_KEY_APPLIED_TEMPLATES;
+<INITIAL,onlyselector>"root"			return T_KEY_ROOT;
+<INITIAL,onlyselector>"debug"			return T_KEY_DEBUG;
+<INITIAL,onlyselector>"children"		return T_KEY_CHILDREN;
+<INITIAL,onlyselector>"parent"			return T_KEY_PARENT;
+<INITIAL,onlyselector>"first"			return T_KEY_FIRST;
+<INITIAL,onlyselector>"last"			return T_KEY_LAST;
+<INITIAL,onlyselector>"subset"			return T_KEY_SUBSET;
+<INITIAL,onlyselector>"edges"			return T_KEY_EDGES;
+<INITIAL,onlyselector>"siblings"		return T_KEY_SIBLINGS;
+<INITIAL,onlyselector>"unique"			return T_KEY_UNIQUE;
+<INITIAL,onlyselector>"count"			return T_KEY_COUNT;
+<INITIAL,onlyselector>"name"			return T_KEY_NAME;
+<INITIAL,onlyselector>"self"			return T_KEY_SELF;
+<INITIAL,onlyselector>"nodes"			return T_KEY_NODES;
+<INITIAL,onlyselector>"imports"			return T_KEY_IMPORTS;
+<INITIAL,onlyselector>"objects"			return T_KEY_OBJECTS;
+<INITIAL,onlyselector>"variables"		return T_KEY_VARIABLES;
+<INITIAL,onlyselector>"actions"			return T_KEY_ACTION;
+<INITIAL,onlyselector>"not"			return T_KEY_NOT;
+<INITIAL,onlyselector>"if"			return T_KEY_IF;
+<INITIAL,onlyselector>"ifstr"			return T_KEY_IFSTR;
+<INITIAL,onlyselector>"notstr"			return T_KEY_NOTSTR;
+<INITIAL,onlyselector>"from-set"		return T_KEY_FROM_SET;
+<INITIAL,onlyselector>"type"			return T_KEY_TYPE;
+<INITIAL,onlyselector>"has-flag"		return T_KEY_HAS_FLAG;
+<INITIAL,onlyselector>"has-template"		return T_KEY_HAS_TEMPLATE;
+<INITIAL,onlyselector>"reverse"			return T_KEY_REVERSE;
+<INITIAL,onlyselector>"input"			return T_KEY_INPUT;
+<INITIAL,onlyselector>"output"			return T_KEY_OUTPUT;
+<INITIAL,onlyselector>"inputs"			return T_KEY_INPUTS;
+<INITIAL,onlyselector>"outputs"			return T_KEY_OUTPUTS;
+<INITIAL,onlyselector>"input-name"		return T_KEY_INPUT_NAME;
+<INITIAL,onlyselector>"output-name"		return T_KEY_OUTPUT_NAME;
+<INITIAL,onlyselector>"recurse"			return T_KEY_RECURSE;
+<INITIAL,onlyselector>"append-context"		return T_KEY_APPEND_CONTEXT;
+<INITIAL,onlyselector>"reduce"			return T_KEY_REDUCE;
 
 "context"			return T_KEY_CONTEXT;
 "as"				return T_KEY_AS;
-"proxy"				return T_KEY_PROXY;
 "bidirectional"			return T_KEY_BIDIRECTIONAL;
-"each"				return T_KEY_EACH;
 "settings"			return T_KEY_SETTINGS;
 "no-self"			return T_KEY_NO_SELF;
 "probability"			return T_KEY_PROBABILITY;
-"tag"				return T_KEY_TAG;
 
 <INITIAL,onlyselector>{IDENTIFIER} {
 					yylval->id = g_strdup (yytext);
@@ -474,6 +472,11 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 					}
 				}
 
+<*>"@{"				{
+					yylval->id = g_strdup ("@");
+					yyless (1);
+					return T_STRING;
+				}
 <*>"{"				return '{';
 <*>"}"				return '}';
 <onlyselector,INITIAL>"("	return '(';
@@ -491,6 +494,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "+"				return '+';
 "?"				return '?';
 "'"				return '\'';
+"$"				return '$';
 
 %%
 

@@ -43,7 +43,7 @@ ensure_defaults ()
 }
 
 /**
- * cdn_operators_list:
+ * cdn_operators_list: (skip)
  *
  * Get the list of operators.
  *
@@ -105,12 +105,13 @@ cdn_operators_unregister (GType gtype)
 }
 
 /**
- * cdn_operators_find_class:
+ * cdn_operators_find_class: (skip)
  * @name: The name of the operator
  *
  * Find the class of an operator by name.
  *
- * Returns: (transfer none) (allow-none): A #CdnOperatorClass or %NULL if the operator with @name is not found
+ * Returns: (transfer none) (allow-none): A #CdnOperatorClass or %NULL if the
+ *          operator with @name is not found
  *
  **/
 CdnOperatorClass *
@@ -172,8 +173,7 @@ cdn_operators_find (gchar const *name)
  * @num_expressions: the number of expressions
  * @indices: (array length=num_indices): the indices
  * @num_indices: the number of indices
- * @num_arguments: the number of arguments
- * @argdim: (array length=num_arguments): the argument dimensions
+ * @args: the argument dimensions
  * @context: the compile context
  * @error: a #GError
  *
@@ -184,15 +184,14 @@ cdn_operators_find (gchar const *name)
  *
  **/
 CdnOperator *
-cdn_operators_instantiate (gchar const   *name,
-                           GSList const **expressions,
-                           gint           num_expressions,
-                           GSList const **indices,
-                           gint           num_indices,
-                           gint           num_arguments,
-                           gint          *argdim,
-                           CdnCompileContext *context,
-                           GError       **error)
+cdn_operators_instantiate (gchar const         *name,
+                           GSList const       **expressions,
+                           gint                 num_expressions,
+                           GSList const       **indices,
+                           gint                 num_indices,
+                           CdnStackArgs const  *args,
+                           CdnCompileContext   *context,
+                           GError             **error)
 {
 	GType gtype;
 	CdnOperator *ret;
@@ -211,8 +210,7 @@ cdn_operators_instantiate (gchar const   *name,
 	                              num_expressions,
 	                              indices,
 	                              num_indices,
-	                              num_arguments,
-	                              argdim,
+	                              args,
 	                              context,
 	                              error))
 	{

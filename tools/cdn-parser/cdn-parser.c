@@ -47,6 +47,7 @@
 static gchar *output_file;
 static gboolean no_colors = FALSE;
 static gboolean list_files = FALSE;
+static gboolean no_xml = FALSE;
 
 static gchar const *color_red = "\e[31m";
 static gchar const *color_green = "\e[32m";
@@ -71,7 +72,8 @@ add_define (gchar const  *option_name,
 
 static GOptionEntry entries[] = {
 	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
-	{"list-files", 'l', 0, G_OPTION_ARG_NONE, &list_files, "Print list of included files instead of XML", NULL},
+	{"list-files", 'l', 0, G_OPTION_ARG_NONE, &list_files, "Print list of included files instead of XML (implies --no-xml)", NULL},
+	{"no-xml", 'x', 0, G_OPTION_ARG_NONE, &no_xml, "Do not generate xml output", NULL},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
 	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
@@ -210,7 +212,7 @@ parse_network (gchar const *args[], gint argc)
 	if (!fromstdin)
 #endif
 	{
-		cdn_parser_context_push_input (context, file, NULL, NULL);
+		cdn_parser_context_push_input (context, file, NULL, FALSE);
 		g_object_unref (file);
 	}
 #ifdef ENABLE_GIO_UNIX
@@ -220,14 +222,14 @@ parse_network (gchar const *args[], gint argc)
 
 		stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
 
-		cdn_parser_context_push_input (context, NULL, stream, NULL);
+		cdn_parser_context_push_input (context, NULL, stream, FALSE);
 		g_object_unref (stream);
 	}
 #endif
 
 	if (cdn_parser_context_parse (context, TRUE, &error))
 	{
-		if (!list_files)
+		if (!list_files && !no_xml)
 		{
 			CdnNetworkSerializer *serializer;
 

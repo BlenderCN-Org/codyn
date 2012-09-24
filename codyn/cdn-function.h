@@ -87,17 +87,13 @@ struct _CdnFunctionClass
 	                               CdnStack            *stack);
 
 	void    (*execute)            (CdnFunction         *function,
-	                               gint                 nargs,
-	                               gint                *argdim,
 	                               CdnStack            *stack);
 
-	void    (*get_dimension)      (CdnFunction          *function,
-	                               gint                 *numr,
-	                               gint                 *numc);
+	CdnStackManipulation const *
+	        (*get_stack_manipulation) (CdnFunction      *function);
 
 	CdnFunction *(*for_dimension) (CdnFunction          *function,
-	                               gint                  numargs,
-	                               gint                 *argdim);
+	                               CdnStackArgs const   *argdim);
 
 	CdnFunction *(*get_derivative) (CdnFunction                       *function,
 	                                GSList                            *towards,
@@ -141,8 +137,6 @@ guint                cdn_function_get_n_implicit              (CdnFunction      
 guint                cdn_function_get_n_optional              (CdnFunction          *function);
 
 void                 cdn_function_execute                     (CdnFunction          *function,
-                                                               gint                  nargs,
-                                                               gint                 *argdim,
                                                                CdnStack             *stack);
 
 void                 cdn_function_set_expression              (CdnFunction          *function,
@@ -150,19 +144,20 @@ void                 cdn_function_set_expression              (CdnFunction      
 
 CdnExpression       *cdn_function_get_expression              (CdnFunction          *function);
 
-void                 cdn_function_get_dimension               (CdnFunction          *function,
-                                                               gint                 *numr,
-                                                               gint                 *numc);
+CdnStackManipulation const *
+                     cdn_function_get_stack_manipulation      (CdnFunction          *function);
 
 CdnFunction         *cdn_function_for_dimension               (CdnFunction          *function,
-                                                               gint                  numargs,
-                                                               gint                 *argdim);
+                                                               CdnStackArgs const   *argdim);
 
 CdnFunction         *cdn_function_get_derivative              (CdnFunction                       *function,
                                                                GSList                            *towards,
                                                                gint                               order,
                                                                CdnExpressionTreeIterDeriveFlags   flags,
                                                                GError                           **error);
+
+void                _cdn_function_set_arguments_dimension     (CdnFunction          *function,
+                                                               CdnStackArgs const   *argdim);
 
 G_END_DECLS
 

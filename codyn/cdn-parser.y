@@ -29,15 +29,11 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 		YYERROR;						\
 	}
 
-static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
-                                                            gchar const *end,
-                                                            GArray  *coefficients);
-
 %}
 
 %token T_KEY_IN T_KEY_INTEGRATED T_KEY_ONCE T_KEY_OUT
 
-%token T_KEY_EDGE T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_INPUT T_KEY_OUTPUT T_KEY_INPUTS T_KEY_OUTPUTS T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_EACH T_KEY_PROXY T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_NOT T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_HAS_TAG T_KEY_TAG T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_INPUT_NAME T_KEY_OUTPUT_NAME T_KEY_PHASE T_KEY_EVENT T_KEY_TERMINATE T_KEY_ANY T_KEY_SET T_KEY_RECURSE T_KEY_IO T_KEY_WITHIN T_KEY_IFSTR T_KEY_NOTSTR T_KEY_APPEND_CONTEXT T_KEY_LINK_LIBRARY
+%token T_KEY_EDGE T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_INPUT T_KEY_OUTPUT T_KEY_INPUTS T_KEY_OUTPUTS T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_REQUIRE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_NOT T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_INPUT_NAME T_KEY_OUTPUT_NAME T_KEY_PHASE T_KEY_EVENT T_KEY_TERMINATE T_KEY_ANY T_KEY_SET T_KEY_RECURSE T_KEY_IO T_KEY_WITHIN T_KEY_IFSTR T_KEY_NOTSTR T_KEY_APPEND_CONTEXT T_KEY_LINK_LIBRARY T_KEY_APPLIED_TEMPLATES T_KEY_REDUCE
 
 %token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
 %type <num> relation
@@ -79,10 +75,6 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <list> selector_pseudo_hasflag_args
 %type <list> selector_pseudo_hasflag_args_rev
 
-%type <object> selector_or_string_list_item
-%type <list> selector_or_string_list
-%type <list> selector_or_string_list_rev
-
 %type <string> identifier_or_string_or_nothing
 
 %token <num> T_INDIRECTION_BEGIN
@@ -106,8 +98,7 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <selector> layout_relative
 %type <num> layout_item_separator
 
-%type <array> double_list
-%type <piece> polynomial_piece
+%type <piecespec> polynomial_piece
 %type <list> polynomial_pieces
 %type <list> polynomial_pieces_rev
 
@@ -134,6 +125,10 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <selector> selector_as_pseudo_arg
 %type <selector> selector_non_ambiguous_as_pseudo_arg
 
+%type <array> multi_selector
+%type <array> multi_selector_contents
+%type <selector> multi_selector_value
+
 %type <num> selector_pseudo_mixargs_key
 %type <object> selector_pseudo_mixargs_arg
 %type <list> selector_pseudo_mixargs_args
@@ -153,30 +148,30 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <string> double
 %type <string> integer
 %type <string> number
-%type <id> number_value
+
+%type <num> include_or_require
+
+%type <array> multi_value_as_string_contents
+%type <array> multi_value_as_string
+%type <string> multi_value_as_string_value
+
+%type <array> multi_identifier_or_string_contents
+%type <array> multi_identifier_or_string
+%type <string> multi_identifier_or_string_value
 
 %type <string> constraint
 
-%type <list> attributes
-%type <list> attributes_strict
-%type <list> attributes_contents
-%type <attribute> attribute_contents
-%type <attribute> attribute_proxy
-%type <attribute> attribute_each
+%type <list> edge_attributes
+%type <list> edge_attributes_contents
+%type <attribute> edge_attribute_contents
 %type <attribute> attribute_bidirectional
-%type <attribute> attribute_if
-%type <attribute> attribute_not
-%type <attribute> attribute_ifstr
-%type <attribute> attribute_notstr
-%type <attribute> attribute_with
 %type <attribute> attribute_no_self
-%type <attribute> attribute_self
 %type <attribute> attribute_probability
-%type <attribute> attribute_tag
-%type <attribute> attribute_once
 
 %type <list> string_list
 %type <list> string_list_rev
+
+%type <list> selector_pseudo_reduce_args
 
 %type <object> define_value
 
@@ -184,11 +179,12 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 %type <list> edge_connect_fast
 %type <list> templated
 
+%type <id> selector_define_context
+
 %type <num> repeated_prime
 
-%type <multiassign> multi_assign_identifier
-
 %type <string> within
+%type <assign_optional_env> assign_optional_env
 
 %define api.pure
 %name-prefix="cdn_parser_"
@@ -206,8 +202,8 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 	CdnVariable *variable;
 	gint num;
 	GSList *list;
-	GArray *array;
-	CdnFunctionPolynomialPiece *piece;
+	GPtrArray *array;
+	CdnFunctionPolynomialPieceSpec *piecespec;
 	CdnFunctionArgument *argument;
 	gpointer object;
 	CdnSelector *selector;
@@ -229,20 +225,20 @@ static CdnFunctionPolynomialPiece *create_polynomial_piece (gchar const *start,
 
 	struct
 	{
-		CdnEmbeddedString *name;
-		CdnEmbeddedString *count;
-	} multiassign;
-
-	struct
-	{
 		CdnEmbeddedString *value;
 		gboolean set;
 	} within;
+
+	struct
+	{
+		gboolean optional;
+		gboolean env;
+	} assign_optional_env;
 }
 
 %start choose_parser
 
-%expect 18
+%expect 6
 
 %%
 
@@ -263,8 +259,7 @@ document_item
 	: node_item_general
 	| when
 	| integrator
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	| '{'				{ cdn_parser_context_push_scope (context); }
 	  document_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -273,10 +268,14 @@ eof
 	: T_EOF
 	;
 
+include_or_require
+	: T_KEY_INCLUDE			{ $$ = FALSE; }
+	| T_KEY_REQUIRE			{ $$ = TRUE; }
+	;
+
 include
-	: attributes
-	  T_KEY_INCLUDE
-	  value_as_string	{ cdn_parser_context_include (context, $3, $1); errb }
+	: include_or_require
+	  value_as_string	{ cdn_parser_context_include (context, $2, $1); errb }
 	;
 
 link_library
@@ -285,12 +284,11 @@ link_library
 	;
 
 parse
-	: attributes
-	  T_KEY_PARSE
+	: T_KEY_PARSE
 	  value_as_string
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	  '{'				{ cdn_parser_context_push_scope (context); }
 	  define_contents
-	  '}'				{ cdn_parser_context_push_input_from_path (context, $3, $1, TRUE); errb;
+	  '}'				{ cdn_parser_context_push_input_from_path (context, $2, TRUE, FALSE); errb;
 	                                  cdn_parser_context_pop (context); }
 	;
 
@@ -340,8 +338,7 @@ integrator_variable
 integrator_item
 	: integrator_variable
 	| common_scopes
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	| '{'				{ cdn_parser_context_push_scope (context); }
 	  integrator_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -352,16 +349,15 @@ integrator_contents
 	;
 
 integrator
-	: attributes
-	  T_KEY_INTEGRATOR
-	  '{'				{ cdn_parser_context_push_integrator (context, $1); }
+	: T_KEY_INTEGRATOR
+	  '{'				{ cdn_parser_context_push_integrator (context); }
 	  integrator_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
 
 when_item
 	: T_KEY_SET selector '=' value_as_string	{ cdn_parser_context_add_event_set_variable (context, $2, $4); }
-	| node_item
+	| node_item_no_variable_set
 	;
 
 when_contents
@@ -394,7 +390,6 @@ when
 	                                                                 $6,
 	                                                                 FALSE,
 	                                                                 $7,
-	                                                                 NULL,
 	                                                                 NULL); }
 	  when_contents
 	  '}'				{ cdn_parser_context_pop (context); }
@@ -411,10 +406,9 @@ when
 	                                                                 $6,
 	                                                                 TRUE,
 	                                                                 $7,
-	                                                                 NULL,
 	                                                                 NULL); }
 	  when_contents
-	  '}'
+	  '}'				{ cdn_parser_context_pop (context); }
 	| T_KEY_EVENT
 	  T_KEY_WHEN
 	  value_as_string
@@ -425,10 +419,9 @@ when
 	                                                                 $3,
 	                                                                 FALSE,
 	                                                                 $4,
-	                                                                 NULL,
 	                                                                 NULL); }
 	  when_contents
-	  '}'
+	  '}'				{ cdn_parser_context_pop (context); }
 	;
 
 define_value
@@ -437,23 +430,14 @@ define_value
 	;
 
 define_item
-	: multi_assign_identifier '=' define_value
-					{ cdn_parser_context_define (context,
-					                             $1.name,
+	: identifier_or_string
+	  assign_optional_env
+	  define_value			{ cdn_parser_context_define (context,
+					                             $1,
 					                             $3,
-					                             FALSE,
-					                             $1.count); }
-	| multi_assign_identifier '?' '=' define_value
-					{ cdn_parser_context_define (context,
-					                             $1.name,
-					                             $4,
-					                             TRUE,
-					                             $1.count); }
+					                             $2.optional,
+					                             $2.env); }
 	| common_scopes
-	| attributes_strict
-	  '{'				{ cdn_parser_context_push_define (context, $1); }
-	  define_contents
-	  '}'				{ cdn_parser_context_pop (context); }
 	;
 
 define_contents
@@ -462,17 +446,15 @@ define_contents
 	;
 
 define
-	: attributes
-	  T_KEY_DEFINES
-	  '{'				{ cdn_parser_context_push_define (context, $1); }
+	: T_KEY_DEFINES
+	  '{'				{ cdn_parser_context_push_define (context); }
 	  define_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
 
 templates
-	: attributes
-	  T_KEY_TEMPLATES
-	  '{'				{ cdn_parser_context_push_templates (context, $1); }
+	: T_KEY_TEMPLATES
+	  '{'				{ cdn_parser_context_push_templates (context); }
 	  template_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -484,8 +466,7 @@ template_item
 	| import
 	| common_scopes
 	| layout
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	| '{'				{ cdn_parser_context_push_scope (context); }
 	  template_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -496,15 +477,15 @@ template_contents
 	;
 
 template_list_more
-	: ',' selector
+	: ',' multi_selector
 					{ $$ = g_slist_prepend (NULL, $2); }
-	| template_list_more ',' selector
+	| template_list_more ',' multi_selector
 					{ $$ = g_slist_prepend ($1, $3); }
 	;
 
 template_list_rev
-	: ':' selector template_list_more { $$ = g_slist_append ($3, $2); }
-	| ':' selector			{ $$ = g_slist_prepend (NULL, $2); }
+	: ':' multi_selector template_list_more { $$ = g_slist_append ($3, $2); }
+	| ':' multi_selector			{ $$ = g_slist_prepend (NULL, $2); }
 	;
 
 template_list
@@ -522,54 +503,30 @@ identifier_or_string_or_nothing
 	;
 
 node
-	: attributes
-	  T_KEY_NODE
+	: T_KEY_NODE
 	  identifier_or_string_or_nothing
 	  templated
-	  '{' 				{ cdn_parser_context_push_node (context, $3, $4, $1); errb }
+	  '{' 				{ cdn_parser_context_push_node (context, $2, $3); errb }
 	  node_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
-	| attributes
-	  T_KEY_NODE
+	| T_KEY_NODE
 	  selector_non_ambiguous
 	  templated
 	  '{'				{ cdn_parser_context_push_selection (context,
-	                                                                     $3,
+	                                                                     $2,
 	                                                                     CDN_SELECTOR_TYPE_NODE,
-	                                                                     $4,
-	                                                                     $1); errb }
+	                                                                     $3); errb }
 	  node_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
 	;
 
-selector_or_string_list_item
-	: value_as_string		{ $$ = $1; }
-	| selector_non_ambiguous	{ $$ = $1; }
+string_list_rev
+	: value_as_string			{ $$ = g_slist_prepend (NULL, $1); }
+	| string_list_rev ',' value_as_string	{ $$ = g_slist_prepend ($1, $3); }
 	;
 
-selector_or_string_list_rev
-	: selector_or_string_list_item	{ $$ = g_slist_prepend (NULL, $1); }
-	| selector_or_string_list
-	  ','
-	  selector_or_string_list_item	{ $$ = g_slist_prepend ($1, $3); }
-	;
-
-selector_or_string_list
-	: selector_or_string_list_rev	{ $$ = g_slist_reverse ($1); }
-	;
-
-attribute_proxy
-	: T_KEY_PROXY			{ $$ = cdn_attribute_new ("proxy"); }
-	| T_KEY_PROXY '(' ')'		{ $$ = cdn_attribute_new ("proxy"); }
-	;
-
-attribute_each
-	: T_KEY_EACH '(' ')'		{ $$ = cdn_attribute_new ("each"); }
-	| T_KEY_EACH
-	  '('
-	  selector_or_string_list
-	  ')'				{ $$ = cdn_attribute_new ("each");
-					  cdn_attribute_set_arguments ($$, $3); }
+string_list
+	: string_list_rev			{ $$ = g_slist_reverse ($1); }
 	;
 
 attribute_bidirectional
@@ -577,65 +534,6 @@ attribute_bidirectional
 	| T_KEY_BIDIRECTIONAL '(' ')'	{ $$ = cdn_attribute_new ("bidirectional"); }
 	| T_KEY_BIDIRECTIONAL '(' value_as_string ',' value_as_string ')'
 					{ $$ = cdn_attribute_newv ("bidirectional", $3, $5, NULL); }
-	;
-
-attribute_if
-	: T_KEY_IF '(' ')'		{ $$ = cdn_attribute_new ("if"); }
-	| T_KEY_IF
-	  '('
-	  selector_pseudo_selector_args
-	  ')'				{ $$ = cdn_attribute_new ("if");
-					  cdn_attribute_set_arguments ($$, $3); }
-	;
-
-attribute_not
-	: T_KEY_NOT '(' ')'		{ $$ = cdn_attribute_new ("not"); }
-	| T_KEY_NOT
-	  '('
-	  selector_pseudo_selector_args
-	  ')'				{ $$ = cdn_attribute_new ("not");
-					  cdn_attribute_set_arguments ($$, $3); }
-	;
-
-attribute_ifstr
-	: T_KEY_IFSTR '(' ')'		{ $$ = cdn_attribute_new ("ifstr"); }
-	| T_KEY_IFSTR
-	  '('
-	  string_list
-	  ')'				{ $$ = cdn_attribute_new ("ifstr");
-					  cdn_attribute_set_arguments ($$, $3); }
-	;
-
-attribute_notstr
-	: T_KEY_NOTSTR '(' ')'		{ $$ = cdn_attribute_new ("notstr"); }
-	| T_KEY_NOTSTR
-	  '('
-	  string_list
-	  ')'				{ $$ = cdn_attribute_new ("notstr");
-					  cdn_attribute_set_arguments ($$, $3); }
-	;
-
-attribute_with
-	: T_KEY_WITH '(' selector ')'	{ $$ = cdn_attribute_newv ("with", $3, NULL); }
-	;
-
-attribute_once
-	: T_KEY_ONCE '(' ')'		{ $$ = cdn_attribute_new ("once"); }
-	| T_KEY_ONCE			{ $$ = cdn_attribute_new ("once"); }
-	;
-
-string_list_rev
-	: value_as_string			{ $$ = g_slist_prepend (NULL, $1); }
-	| string_list ',' value_as_string	{ $$ = g_slist_prepend ($1, $3); }
-	;
-
-string_list
-	: string_list_rev			{ $$ = g_slist_reverse ($1); }
-	;
-
-attribute_self
-	: T_KEY_SELF '(' ')' { $$ = cdn_attribute_new ("self"); }
-	| T_KEY_SELF { $$ = cdn_attribute_newv ("self", NULL); }
 	;
 
 attribute_no_self
@@ -647,43 +545,22 @@ attribute_probability
 	: T_KEY_PROBABILITY '(' value_as_string ')' { $$ = cdn_attribute_newv ("probability", $3, NULL); }
 	;
 
-attribute_tag
-	: T_KEY_TAG '(' ')'		{ $$ = cdn_attribute_new ("tag"); }
-	| T_KEY_TAG '(' string_list ')' { $$ = cdn_attribute_new ("tag");
-	                                  cdn_attribute_set_arguments ($$, $3); }
-	;
-
-attribute_contents
-	: attribute_proxy
-	| attribute_each
-	| attribute_bidirectional
-	| attribute_if
-	| attribute_not
-	| attribute_ifstr
-	| attribute_notstr
-	| attribute_with
+edge_attribute_contents
+	: attribute_bidirectional
 	| attribute_no_self
-	| attribute_self
 	| attribute_probability
-	| attribute_tag
-	| attribute_once
 	;
 
-attributes_contents
-	: attribute_contents		{$$ = g_slist_prepend (NULL, $1); }
-	| attributes_contents ',' attribute_contents
-					{ $$ = g_slist_prepend ($1, $3); }
+edge_attributes_contents
+	: edge_attribute_contents		{$$ = g_slist_prepend (NULL, $1); }
+	| edge_attributes_contents ',' edge_attribute_contents
+						{ $$ = g_slist_prepend ($1, $3); }
 	;
 
-attributes
-	:				{ $$ = NULL; }
-	| '[' ']'			{ $$ = NULL; }
-	| '[' attributes_contents ']'	{ $$ = g_slist_reverse ($2); }
-	;
-
-attributes_strict
-	: '[' ']'			{ $$ = NULL; }
-	| '[' attributes_contents ']'	{ $$ = g_slist_reverse ($2); }
+edge_attributes
+	:					{ $$ = NULL; }
+	| '<' '>'				{ $$ = NULL; }
+	| '<' edge_attributes_contents '>'	{ $$ = g_slist_reverse ($2); }
 	;
 
 edge_connect_fast
@@ -713,7 +590,7 @@ phase
 	;
 
 edge
-	: attributes
+	: edge_attributes
 	  T_KEY_EDGE
 	  identifier_or_string
 	  edge_connect
@@ -727,7 +604,7 @@ edge
 	                                                                $5); errb }
 	  edge_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
-	| attributes
+	| edge_attributes
 	  T_KEY_EDGE
 	  edge_connect_fast
 	  phase
@@ -740,7 +617,7 @@ edge
 	                                                                $4); errb }
 	  edge_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
-	| attributes
+	| edge_attributes
 	  T_KEY_EDGE
 	  phase
 	  templated
@@ -752,42 +629,38 @@ edge
 	                                                                $3); errb }
 	  edge_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
-	| attributes
+	| edge_attributes
 	  T_KEY_EDGE
 	  selector_non_ambiguous
 	  templated
 	  '{'				{ cdn_parser_context_push_selection (context,
 	                                                                     $3,
 	                                                                     CDN_SELECTOR_TYPE_EDGE,
-	                                                                     $4,
-	                                                                     $1); }
+	                                                                     $4); }
 	  edge_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
 	;
 
 object
-	: attributes
-	  T_KEY_OBJECT
+	: T_KEY_OBJECT
 	  selector_non_ambiguous
 	  templated
 	  '{'				{ cdn_parser_context_push_selection (context,
-	                                                                     $3,
+	                                                                     $2,
 	                                                                     CDN_SELECTOR_TYPE_OBJECT,
-	                                                                     $1,
-	                                                                     $4); }
+	                                                                     $3); }
 	  object_contents
 	  '}'				{ cdn_parser_context_pop (context); errb }
 	;
 
 function_polynomial
-	: attributes
-	  T_KEY_POLYNOMIAL
+	: T_KEY_POLYNOMIAL
 	  identifier_or_string
 	  '('
 	  ')'
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	  '{'				{ cdn_parser_context_push_scope (context); }
 	  polynomial_pieces
-	  '}'				{ cdn_parser_context_add_polynomial (context, $3, $8, $1); errb
+	  '}'				{ cdn_parser_context_add_polynomial (context, $2, $7); errb
 	                                  cdn_parser_context_pop (context); errb }
 	;
 
@@ -815,19 +688,17 @@ function_helper
 	;
 
 function_custom
-	: attributes
-	  identifier_or_string
+	: identifier_or_string
 	  '('
 	  function_argument_list_or_empty
 	  ')'
 	  function_argument_implicit
 	  assign_optional
 	  value_as_string		{ cdn_parser_context_push_function (context,
-	                                                                    $2,
-	                                                                    g_slist_concat ($4, $6),
-	                                                                    $8,
+	                                                                    $1,
+	                                                                    g_slist_concat ($3, $5),
 	                                                                    $7,
-	                                                                    $1); errb }
+	                                                                    $6); errb }
 	  function_helper	        { cdn_parser_context_pop (context); errb }
 	;
 
@@ -846,19 +717,17 @@ polynomial_pieces
 	: polynomial_pieces_rev		{ $$ = g_slist_reverse ($1); }
 	;
 
-number_value
-	: T_DOUBLE
-	| T_INTEGER
-	;
-
 polynomial_piece
-	: T_KEY_PIECE T_KEY_FROM number_value T_KEY_TO number_value '=' double_list
-					{ $$ = create_polynomial_piece ($3, $5, $7); }
-	;
-
-double_list
-	: number_value			{ append_array (NULL, gchar *, $1, $$ = arret); }
-	| double_list ',' number_value	{ append_array ($1, gchar *, $3, $$ = arret); }
+	: T_KEY_PIECE
+	  T_KEY_FROM
+	  value_as_string
+	  T_KEY_TO
+	  value_as_string
+	  '='
+	  string_list
+					{ $$ = cdn_function_polynomial_piece_spec_new ($3,
+					                                               $5,
+					                                               $7); }
 	;
 
 function_argument_impl
@@ -927,8 +796,7 @@ object_item
 	: variable
 	| common_scopes
 	| layout
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	| '{'				{ cdn_parser_context_push_scope (context); }
 	  object_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	| when
@@ -955,8 +823,25 @@ node_item_general
 	| templates
 	;
 
+node_item_general_no_variable_set
+	: variable_no_set
+	| object
+	| edge
+	| interface
+	| node
+	| io
+	| common_scopes
+	| layout
+	| function
+	| import
+	| delete
+	| delete_context
+	| templates
+	;
+
 io_setting
-	: value_as_string '=' value_as_string
+	: debug
+	| value_as_string '=' value_as_string
 		{ cdn_parser_context_set_io_setting (context, $1, $3); errb }
 	;
 
@@ -976,10 +861,9 @@ io_item
 	: io_settings
 	| variable
 	| common_scopes
-	| attributes
-	 '{'			{ cdn_parser_context_push_scope (context, $1); }
-	 io_contents
-	 '}'			{ cdn_parser_context_pop (context); }
+	| '{'			{ cdn_parser_context_push_scope (context); }
+	  io_contents
+	  '}'			{ cdn_parser_context_pop (context); }
 	;
 
 io_contents
@@ -994,20 +878,32 @@ io_mode
 	;
 
 io
-	: attributes
-	  io_mode
+	: io_mode
 	  identifier_or_string
 	  T_KEY_TYPE
 	  value_as_string
-	  '{'			{ cdn_parser_context_push_io_type (context, $2, $3, $5, $1); errb }
+	  '{'			{ cdn_parser_context_push_io_type (context, $1, $2, $4); errb }
 	  io_contents
 	  '}'			{ cdn_parser_context_pop (context); }
 	;
 
+node_contents_no_variable_set
+	:
+	| node_contents_no_variable_set node_item_no_variable_set
+	| node_contents_no_variable_set when
+	;
+
+node_item_no_variable_set
+	: node_item_general_no_variable_set
+	| '{'				{ cdn_parser_context_push_scope (context); }
+	  node_contents_no_variable_set
+	  '}'				{ cdn_parser_context_pop (context); }
+	;
+
+
 node_item
 	: node_item_general
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	| '{'				{ cdn_parser_context_push_scope (context); }
 	  node_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -1019,9 +915,8 @@ node_contents
 	;
 
 interface
-	: attributes
-	  T_KEY_INTERFACE
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	: T_KEY_INTERFACE
+	  '{'				{ cdn_parser_context_push_scope (context); }
 	  interface_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -1032,24 +927,21 @@ interface_contents
 	;
 
 interface_variable
-	: attributes
-	  identifier_or_string
+	: identifier_or_string
 	  assign_optional
 	  identifier_or_string
 	  T_KEY_IN
 	  identifier_or_string	{ cdn_parser_context_add_interface (context,
-	                                                            $2,
-	                                                            $6,
-	                                                            $4,
+	                                                            $1,
+	                                                            $5,
 	                                                            $3,
-	                                                            $1); errb }
+	                                                            $2); errb }
 	;
 
 interface_item
 	: interface_variable
 	| common_scopes
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	| '{'				{ cdn_parser_context_push_scope (context); }
 	  interface_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -1058,9 +950,11 @@ edge_item
 	: action
 	| variable
 	| common_scopes
+	| node
+	| object
+	| edge
 	| layout
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	| '{'				{ cdn_parser_context_push_scope (context); }
 	  edge_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	| when
@@ -1092,15 +986,58 @@ identifier_or_string
 	| identifier_or_string_item	{ $$ = $1; }
 	;
 
+multi_selector_value
+	:				{ $$ = NULL; }
+	| selector			{ $$ = $1; }
+	;
+
+multi_selector_contents
+	: multi_selector_value		{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| multi_selector_contents
+	  ','
+	  multi_selector_value		{ g_ptr_array_add ($1, $3); $$ = $1; }
+	;
+
+multi_selector
+	: selector			{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| '['
+	   multi_selector_contents
+	  ']'				{ $$ = $2; }
+	;
+
+multi_identifier_or_string_value
+	:				{ $$ = NULL; }
+	| identifier_or_string		{ $$ = $1; }
+	;
+
+multi_identifier_or_string_contents
+	: multi_identifier_or_string_value	{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                          g_ptr_array_add ($$, $1); }
+	| multi_identifier_or_string_contents
+	  ','
+	  multi_identifier_or_string_value	{ g_ptr_array_add ($1, $3); $$ = $1; }
+	;
+
+multi_identifier_or_string
+	: identifier_or_string		{ $$ =  g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| '['
+	  multi_identifier_or_string_contents
+	  ']'				{ $$ = $2; }
+	;
+
 assign_optional
 	: '='				{ $$ = FALSE; }
 	| '?' '='			{ $$ = TRUE; }
 	;
 
-multi_assign_identifier
-	: identifier_or_string ',' identifier_or_string
-					{ $$.name = $1; $$.count = $3; }
-	| identifier_or_string		{ $$.name = $1; $$.count = NULL; }
+assign_optional_env
+	: '='				{ $$.optional = FALSE; $$.env = FALSE; }
+	| '?' '='			{ $$.optional = TRUE; $$.env = FALSE; }
+	| '?' '$' '='			{ $$.optional = TRUE; $$.env = TRUE; }
+	| '$' '='			{ $$.optional = FALSE; $$.env = TRUE; }
 	;
 
 constraint
@@ -1128,45 +1065,49 @@ constraint
 	                                                cdn_embedded_string_add_text ($$, ")"); }
 	;
 
-variable
-	: attributes
-	  multi_assign_identifier
+variable_no_set
+	: multi_identifier_or_string
 	  assign_optional
-	  value_as_string
+	  multi_value_as_string
 	  variable_flags
 	  constraint
 					{ cdn_parser_context_add_variable (context,
-					                                   $2.name,
-					                                   $2.count,
-					                                   $4,
-					                                   $5.add,
-					                                   $5.remove,
 					                                   $1,
 					                                   $3,
-					                                   $6); errb }
-	| attributes
-	  multi_assign_identifier
+					                                   $4.add,
+					                                   $4.remove,
+					                                   $2,
+					                                   $5); errb }
+	| multi_identifier_or_string
 	  variable_flags_strict
 					{ cdn_parser_context_add_variable (context,
-					                                   $2.name,
-					                                   $2.count,
+					                                   $1	,
 					                                   NULL,
-					                                   $3.add,
-					                                   $3.remove,
-					                                   $1,
+					                                   $2.add,
+					                                   $2.remove,
 					                                   FALSE,
 					                                   NULL); errb }
-	| attributes
-	  T_KEY_SET
-	  selector
+	;
+
+variable
+	: variable_no_set
+	| T_KEY_SET
+	  multi_selector
 	  '='
-	  value_as_string
+	  multi_value_as_string
 	  variable_flags		{ cdn_parser_context_set_variable (context,
-	                                                                   $3,
-	                                                                   $5,
-	                                                                   $6.add,
-	                                                                   $6.remove,
-	                                                                   $1); errb }
+	                                                                   $2,
+	                                                                   $4,
+	                                                                   $5.add,
+	                                                                   $5.remove); errb }
+	| T_KEY_SET
+	  multi_selector
+	  '='
+	  variable_flags_strict		{ cdn_parser_context_set_variable (context,
+	                                                                   $2,
+	                                                                   NULL,
+	                                                                   $4.add,
+	                                                                   $4.remove); errb }
 	;
 
 variable_flag_sign
@@ -1198,12 +1139,11 @@ variable_flag
 	;
 
 action
-	: attributes
-	  identifier_or_string
+	: multi_identifier_or_string
 	  '<' '='
-	  value_as_string
+	  multi_value_as_string
 	  phase
-					{ cdn_parser_context_add_action (context, $2, $5, $1, $6); errb }
+					{ cdn_parser_context_add_action (context, $1, $4, $5); errb }
 	;
 
 selector_item_non_ambiguous
@@ -1273,18 +1213,32 @@ selector_parse
 	: selector_parse_contents	{ cdn_selector_set_implicit_children (cdn_parser_context_peek_selector (context), TRUE); }
 	;
 
+selector_define_context
+	: '<'
+	  T_IDENTIFIER
+	  '>'
+	  ':'				{ $$ = g_strdup ($2); }
+	;
+
 selector_identifier
 	:				{ cdn_parser_context_begin_selector_item (context); }
 	  identifier_or_string 		{ cdn_parser_context_push_selector_identifier (context, $2); errb }
+	| selector_define_context	{ cdn_parser_context_begin_selector_item (context); }
+	  identifier_or_string		{ cdn_parser_context_push_selector_identifier (context, $3);
+	                                  cdn_parser_context_push_selector_define_context (context, $1); errb }
 	;
 
 selector_regex
 	: regex				{ cdn_parser_context_push_selector_regex (context, $1); errb }
+	| selector_define_context
+	  regex				{ cdn_parser_context_push_selector_regex (context, $2);
+	                                  cdn_parser_context_push_selector_define_context (context, $1); errb }
 	;
 
 selector_pseudo_simple_key_real
 	: T_KEY_ROOT				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_ROOT; }
 	| T_KEY_TEMPLATES_ROOT			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT; }
+	| T_KEY_APPLIED_TEMPLATES		{ $$ = CDN_SELECTOR_PSEUDO_TYPE_APPLIED_TEMPLATES; }
 	| T_KEY_PARENT				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_PARENT; }
 	| T_KEY_FIRST				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_FIRST; }
 	| T_KEY_LAST				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_LAST; }
@@ -1295,9 +1249,7 @@ selector_pseudo_simple_key_real
 	| T_KEY_FROM_SET			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_FROM_SET; }
 	| T_KEY_TYPE				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_TYPE; }
 	| T_KEY_CHILDREN			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_CHILDREN; }
-	| T_KEY_DESCENDANTS			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_DESCENDANTS; }
 	| T_KEY_UNIQUE				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_UNIQUE; }
-	| T_KEY_ANCESTORS			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_ANCESTORS; }
 	| T_KEY_NODES				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_NODES; }
 	| T_KEY_IMPORTS				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_IMPORTS; }
 	| T_KEY_OBJECTS				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_OBJECTS; }
@@ -1362,7 +1314,6 @@ selector_pseudo_strargs_key_real
 	: T_KEY_SIBLINGS			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_SIBLINGS; }
 	| T_KEY_SUBSET				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_SUBSET; }
 	| T_KEY_DEBUG				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_DEBUG; }
-	| T_KEY_HAS_TAG				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_HAS_TAG; }
 	| T_KEY_APPEND_CONTEXT			{ $$ = CDN_SELECTOR_PSEUDO_TYPE_APPEND_CONTEXT; }
 	;
 
@@ -1392,6 +1343,22 @@ selector_pseudo_selector_args
 
 selector_pseudo_mixargs_key
 	: T_KEY_COUNT				{ $$ = CDN_SELECTOR_PSEUDO_TYPE_COUNT; }
+	;
+
+selector_pseudo_reduce_args
+	: selector_as_pseudo_arg ',' value_as_string
+						{ $$ = g_slist_prepend (g_slist_prepend (NULL, $3), $1); }
+	| selector_as_pseudo_arg
+						{ $$ = g_slist_prepend (NULL, $1); }
+	;
+
+selector_pseudo_reduce
+	: T_KEY_REDUCE
+	  '('					{ cdn_parser_context_push_selector (context, FALSE); }
+	  selector_pseudo_reduce_args
+	  ')'					{ cdn_parser_context_push_selector_pseudo (context,
+	                                                                                   CDN_SELECTOR_PSEUDO_TYPE_REDUCE,
+	                                                                                   $4); }
 	;
 
 selector_pseudo_mixargs_arg
@@ -1446,30 +1413,32 @@ selector_pseudo_with_args
 						                                           $1,
 						                                           NULL); }
 	| selector_pseudo_hasflag
+	| selector_pseudo_reduce
 	;
 
 selector_pseudo
 	: selector_pseudo_simple
 	| selector_pseudo_with_args
+	| selector_define_context
+	  selector_pseudo_simple		{ cdn_parser_context_push_selector_define_context (context, $1); }
+	| selector_define_context
+	  selector_pseudo_with_args		{ cdn_parser_context_push_selector_define_context (context, $1); }
 	;
 
 import
-	: attributes
-	  T_KEY_IMPORT
+	: T_KEY_IMPORT
 	  value_as_string
 	  T_KEY_AS
-	  identifier_or_string	{ cdn_parser_context_import (context, $5, $3, $1); errb }
+	  identifier_or_string	{ cdn_parser_context_import (context, $4, $2); errb }
 	;
 
 layout
-	: attributes
-	  T_KEY_LAYOUT
-	  '{'			{ cdn_parser_context_push_layout (context, $1); }
+	: T_KEY_LAYOUT
+	  '{'			{ cdn_parser_context_push_layout (context); }
 	  layout_contents
 	  '}'			{ cdn_parser_context_pop (context); }
 	|
-	  attributes
-	  T_KEY_LAYOUT          { cdn_parser_context_push_layout (context, $1); }
+	  T_KEY_LAYOUT          { cdn_parser_context_push_layout (context); }
 	  layout_item           { cdn_parser_context_pop (context); }
 	;
 
@@ -1525,8 +1494,7 @@ layout_item
 layout_item_or_others
 	: layout_item
 	| common_scopes
-	| attributes
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	| '{'				{ cdn_parser_context_push_scope (context); }
 	  layout_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -1565,6 +1533,27 @@ value_as_string
 	| indirection
 	| identifier
 	| number
+	;
+
+multi_value_as_string_value
+	:				{ $$ = NULL; }
+	| value_as_string		{ $$ = $1; }
+	;
+
+multi_value_as_string_contents
+	: multi_value_as_string_value	{ $$ =  g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| multi_value_as_string_contents
+	  ','
+	  multi_value_as_string_value 	{ g_ptr_array_add ($1, $3); $$ = $1; }
+	;
+
+multi_value_as_string
+	: value_as_string		{ $$ =  g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| '['
+	    multi_value_as_string_contents
+	  ']'				{ $$ = $2; }
 	;
 
 string_item
@@ -1771,14 +1760,13 @@ debug
 delete_item
 	: selector		{ cdn_parser_context_delete_selector (context, $1); errb }
 	| common_scopes
-	| attributes
-	  '{'			{ cdn_parser_context_push_scope (context, $1); }
+	| '{'			{ cdn_parser_context_push_scope (context); }
 	  delete_contents
 	  '}'			{ cdn_parser_context_pop (context); }
 	;
 
 delete
-	: T_KEY_DELETE delete_item
+	: T_KEY_DELETE selector	{ cdn_parser_context_delete_selector (context, $2); errb }
 	;
 
 delete_contents
@@ -1786,9 +1774,8 @@ delete_contents
 	| delete_contents delete_item;
 
 delete_context
-	: attributes
-	  T_KEY_DELETE
-	  '{'				{ cdn_parser_context_push_scope (context, $1); }
+	: T_KEY_DELETE
+	  '{'				{ cdn_parser_context_push_scope (context); }
 	  delete_contents
 	  '}'				{ cdn_parser_context_pop (context); }
 	;
@@ -1799,32 +1786,4 @@ static void
 yyerror (YYLTYPE *locp, CdnParserContext *context, char const *s)
 {
 	cdn_parser_context_set_error (context, s);
-}
-
-static CdnFunctionPolynomialPiece *
-create_polynomial_piece (gchar const *start,
-                         gchar const *end,
-                         GArray      *coefficients)
-{
-	guint len;
-	gdouble *coefs = NULL;
-
-	len = (guint)(coefficients ? coefficients->len : 0);
-
-	if (coefficients && len > 0)
-	{
-		guint i;
-
-		coefs = g_new (gdouble, len);
-
-		for (i = 0; i < len; ++i)
-		{
-			coefs[i] = g_ascii_strtod (g_array_index (coefficients, gchar *, i), NULL);
-		}
-	}
-
-	return g_object_ref_sink (cdn_function_polynomial_piece_new (g_ascii_strtod (start, NULL),
-	                                                             g_ascii_strtod (end, NULL),
-	                                                             coefs,
-	                                                             len));
 }

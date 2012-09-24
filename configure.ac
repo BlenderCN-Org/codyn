@@ -1,4 +1,4 @@
-AC_INIT(codyn, 3.0)
+AC_INIT(codyn, 3.1)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
@@ -17,8 +17,6 @@ AC_PROG_YACC
 LT_PREREQ([2.2.6])
 LT_INIT(disable-static)
 
-GTK_DOC_CHECK(1.9)
-
 AM_MAINTAINER_MODE([enable])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
@@ -29,6 +27,25 @@ PKG_PROG_PKG_CONFIG
 
 AC_PATH_PROG(GLIB_GENMARSHAL, glib-genmarshal)
 AC_PATH_PROG(GLIB_MKENUMS, glib-mkenums)
+
+dnl check for osx platform
+AC_MSG_CHECKING([for Mac OS X platform])
+
+case "$host" in
+	*-*-darwin*)
+		platform_osx=yes
+	;;
+	*)
+		platform_osx=no
+	;;
+esac
+
+AC_MSG_RESULT([$platform_osx])
+AM_CONDITIONAL(PLATFORM_OSX, test "$platform_osx" = "yes")
+
+if test "$platform_osx" = "yes"; then
+	AC_DEFINE([PLATFORM_OSX],[1],[Defined if platform is Mac OSX])
+fi
 
 AM_PATH_PYTHON
 
@@ -47,17 +64,6 @@ $2=`(test "x$prefix" = xNONE && prefix="$ac_default_prefix"
        eval _lcl_receval="\"[$]_lcl_receval\""
      done
      echo "[$]_lcl_receval")`])
-
-AC_ARG_ENABLE([doc],
-	AS_HELP_STRING([--disable-doc],[Enable building docs (default: enabled)]),
-	[enable_doc=$enableval],
-	[enable_doc=yes])
-
-if test "x$enable_doc" = "xyes"; then
-	AC_PATH_PROG([XSLTPROC], [xsltproc])
-fi
-
-AM_CONDITIONAL([ENABLE_DOC],[test "x$enable_doc" = "xyes"])
 
 # Introspection
 GOBJECT_INTROSPECTION_CHECK([0.10.7])
@@ -78,6 +84,7 @@ PKG_CHECK_MODULES(CODYN, [
 	gobject-2.0
 	libxml-2.0
 	gio-2.0
+	gmodule-2.0
 ])
 
 PKG_CHECK_MODULES(GIO_UNIX, [
@@ -167,9 +174,11 @@ dnl
 dnl Check for lapack in separate atlas/ dirs (both lib and include)
 dnl
 if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
-	for dir in "$EXPANDED_LIBDIR" "/usr/lib" "/usr/local/lib"; do
+	for dir in "$EXPANDED_LIBDIR" "/usr/lib64" "/usr/lib" "/usr/local/lib"; do
 		OLDLDFLAGS="$LDFLAGS"
 		LDFLAGS="$LDFLAGS -L$dir/atlas"
+
+		AS_UNSET([ac_cv_lib_lapack_clapack_dgetri])
 
 		AC_CHECK_LIB([lapack],
 		             [clapack_dgetri],
@@ -239,11 +248,21 @@ AC_ARG_ENABLE([blas],
 have_blas=no
 
 if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
-	AC_CHECK_LIB([blas],
-	             [cblas_dgemm],
-	             [BLAS_LIBS="-lblas"
-	              have_blas=yes],
-	             [])
+	if test "x$platform_osx" = "xyes"; then
+		AC_MSG_CHECKING([for blas])
+		AC_MSG_RESULT([using Accelerate framework])
+
+		BLAS_LIBS="-framework Accelerate"
+		BLAS_CFLAGS=""
+
+		have_blas=Accelerate
+	else
+		AC_CHECK_LIB([blas],
+		             [cblas_dgemm],
+		             [BLAS_LIBS="-lblas"
+		              have_blas=yes],
+		             [])
+	fi
 fi
 
 dnl
@@ -253,6 +272,8 @@ if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
 	OLDLDFLAGS="$LDFLAGS"
 	LDFLAGS="$LDFLAGS -L$EXPANDED_LIBDIR/libblas"
 
+	AS_UNSET([ac_cv_lib_blas_cblas_dgemm])
+
 	AC_CHECK_LIB([blas],
 	             [cblas_dgemm],
 	             [BLAS_LIBS="-L$EXPANDED_LIBDIR/libblas -lblas"
@@ -260,6 +281,30 @@ if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
 	             [])
 
 	LDFLAGS="$OLDLDFLAGS"
+fi
+
+dnl
+dnl Check for cblas in separate atlas/ dirs
+dnl
+if test "x$enable_blas" != "xno" && test "x$have_blas" = "xno"; then
+	for dir in "$EXPANDED_LIBDIR" "/usr/lib64" "/usr/lib" "/usr/local/lib"; do
+		OLDLDFLAGS="$LDFLAGS"
+		LDFLAGS="$LDFLAGS -L$dir/atlas"
+
+		AS_UNSET([ac_cv_lib_cblas_cblas_dgemm])
+
+		AC_CHECK_LIB([cblas],
+		             [cblas_dgemm],
+		             [BLAS_LIBS="-L$dir/atlas -lcblas"
+		              have_blas=yes],
+		             [])
+
+		LDFLAGS="$OLDLDFLAGS"
+
+		if test "x$have_blas" = "xyes"; then
+			break;
+		fi
+	done
 fi
 
 dnl
@@ -295,7 +340,7 @@ if test "x$enable_blas" = "xauto" && test "x$have_blas" = "xno"; then
 	AC_MSG_WARN(failed to locate blas library)
 fi
 
-if test "$have_blas" = "yes"; then
+if test "$have_blas" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_BLAS], [1], [Have blas support])
 fi
 
@@ -353,7 +398,7 @@ if test "x$enable_gedit" != "xno"; then
 		                  [gedit >= 3.0],
 		                  [GEDIT_MAJOR_VERSION=3],
 		                  [PKG_CHECK_MODULES([GEDIT],
-		                                     [gedit >= 2.0],
+		                                     [gedit-2.20 >= 2.0],
 		                                     [GEDIT_MAJOR_VERSION=2],
 		                                     [enable_gedit=no])])
 
@@ -436,9 +481,6 @@ data/library/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/physics/Makefile
-docs/Makefile
-docs/reference/Makefile
-docs/man/Makefile
 io/Makefile
 io/file/Makefile
 io/network/Makefile
@@ -471,7 +513,6 @@ Configuration:
 	Source code location:	${srcdir}
 	Compiler:		${CC}
 	GObject Introspection:	$enable_introspection
-	Documentation enabled:  $enable_doc
 	gedit plugin:           $enable_gedit ($GEDIT_MAJOR_VERSION)
 	cdn-archive:            $have_tar
 	network support:        $have_networking

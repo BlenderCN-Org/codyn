@@ -5,7 +5,6 @@ integrator
 
 node "node"
 {
-  [proxy]
   node "state_1"
   {
     x = 0 | integrated
@@ -14,6 +13,11 @@ node "node"
   edge "state_to_state_1" from "state_1" to "state_1"
   {
     x <= 1
+  }
+
+  interface
+  {
+    x = x in state_1
   }
 }
 

@@ -28,6 +28,7 @@
 #include <codyn/cdn-compile-context.h>
 #include <codyn/cdn-utils.h>
 #include <codyn/cdn-forward-decl.h>
+#include <codyn/cdn-stack.h>
 
 G_BEGIN_DECLS
 
@@ -67,6 +68,9 @@ GType          cdn_expression_get_type         (void) G_GNUC_CONST;
 
 CdnExpression *cdn_expression_new              (const gchar        *expression);
 CdnExpression *cdn_expression_new0             ();
+
+CdnExpression *cdn_expression_new_number       (gdouble             number);
+
 CdnExpression *cdn_expression_copy             (CdnExpression      *expression);
 
 gboolean       cdn_expression_depends_on       (CdnExpression      *expression,
@@ -85,8 +89,7 @@ gboolean       cdn_expression_compile          (CdnExpression      *expression,
 gdouble        cdn_expression_evaluate         (CdnExpression      *expression);
 
 gdouble const *cdn_expression_evaluate_values  (CdnExpression      *expression,
-                                                gint               *numr,
-                                                gint               *numc);
+                                                CdnDimension       *dim);
 
 gdouble const *cdn_expression_evaluate_values_flat (CdnExpression      *expression,
                                                     gint               *num);
@@ -96,12 +99,17 @@ void           cdn_expression_set_value        (CdnExpression      *expression,
 
 void           cdn_expression_set_values       (CdnExpression      *expression,
                                                 gdouble const      *values,
-                                                gint                numr,
-                                                gint                numc);
+                                                CdnDimension const *dim);
+
+void           cdn_expression_set_values_flat  (CdnExpression      *expression,
+                                                gdouble const      *values,
+                                                gint                numvals,
+                                                CdnDimension const *dim);
+
+gboolean       cdn_expression_is_cached        (CdnExpression      *expression);
 
 gdouble       *cdn_expression_get_cache        (CdnExpression      *expression,
-                                                gint               *numr,
-                                                gint               *numc);
+                                                CdnDimension       *dim);
 
 void           cdn_expression_reset            (CdnExpression      *expression);
 
@@ -136,8 +144,10 @@ gint           cdn_expression_get_error_at     (CdnExpression      *expression);
 gint           cdn_expression_get_error_start  (CdnExpression      *expression);
 
 gboolean       cdn_expression_get_dimension    (CdnExpression      *expression,
-                                                gint               *numr,
-                                                gint               *numc);
+                                                CdnDimension       *dimension);
+
+CdnStackArg   *cdn_expression_get_stack_arg    (CdnExpression      *expression);
+void           cdn_expression_recalculate_sparsity (CdnExpression *expression);
 
 void           cdn_expression_set_cache_notify (CdnExpression            *expression,
                                                 CdnExpressionCacheNotify  notify,
@@ -150,6 +160,11 @@ void           cdn_expression_set_evaluate_notify (CdnExpression            *exp
                                                    GDestroyNotify            destroy_notify);
 
 guint          cdn_expression_get_stack_size   (CdnExpression       *expression);
+
+void           cdn_expression_set_pinned_sparsity (CdnExpression *expression,
+                                                   gboolean       pinned);
+
+gboolean       cdn_expression_get_pinned_sparsity (CdnExpression *expression);
 
 G_END_DECLS
 

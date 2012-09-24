@@ -35,6 +35,7 @@ struct _CdnInputFilePrivate
 	guint num_columns;
 
 	CdnIoMode mode;
+	CdnStackManipulation smanip;
 
 	guint temporal : 1;
 	guint time_column_set : 1;
@@ -624,23 +625,52 @@ clear_columns (CdnInputFile *input)
 	input->priv->current_row = NULL;
 }
 
-static guint
-extract_num_columns (gchar const *line)
+static gint
+extract_num_columns (CdnInputFile  *file,
+                     gchar const   *line,
+                     GError       **error)
 {
-	guint ret = 0;
+	gint ret = 0;
 	gboolean nospace = FALSE;
-	gunichar c;
 
-	while ((c = g_utf8_get_char (line)))
+	while (TRUE)
 	{
-		if (is_separator (c))
+		gunichar c;
+
+		c = g_utf8_get_char (line);
+
+		if (is_separator (c) || c == '\0')
 		{
 			if (nospace)
 			{
+				gchar *name;
+
+				if (file->priv->temporal && ret == 0)
+				{
+					name = g_strdup ("time");
+				}
+				else
+				{
+					name = g_strdup_printf ("y%d", file->priv->temporal ? (ret - 1) : ret);
+				}
+
+				if (!create_column (file, name, error))
+				{
+					g_free (name);
+					return -1;
+				}
+
+				g_free (name);
+
 				++ret;
 			}
 
 			nospace = FALSE;
+
+			if (c == '\0')
+			{
+				break;
+			}
 		}
 		else
 		{
@@ -648,11 +678,6 @@ extract_num_columns (gchar const *line)
 		}
 
 		line = g_utf8_next_char (line);
-	}
-
-	if (nospace && *line)
-	{
-		++ret;
 	}
 
 	return ret;
@@ -723,7 +748,19 @@ extract_columns (CdnInputFile  *input,
 		}
 		else
 		{
-			input->priv->num_columns = extract_num_columns (line);
+			gint num;
+
+			num = extract_num_columns (input, line, error);
+			ret = num >= 0;
+
+			if (ret)
+			{
+				input->priv->num_columns = (guint)num;
+			}
+			else
+			{
+				input->priv->num_columns = 0;
+			}
 		}
 
 		g_free (line);
@@ -1256,25 +1293,25 @@ cdn_input_file_evaluate (CdnFunction *function,
 	}
 }
 
-static void
-cdn_input_file_get_dimension (CdnFunction *function,
-                              gint        *numr,
-                              gint        *numc)
+static CdnStackManipulation const *
+cdn_input_file_get_stack_manipulation (CdnFunction *function)
 {
 	CdnInputFile *input;
 
 	input = CDN_INPUT_FILE (function);
 
-	*numc = input->priv->num_columns;
+	input->priv->smanip.push.columns = input->priv->num_columns;
 
 	if (input->priv->temporal)
 	{
-		*numr = 1;
+		input->priv->smanip.push.rows = 1;
 	}
 	else
 	{
-		*numr = input->priv->num;
+		input->priv->smanip.push.rows = input->priv->num;
 	}
+
+	return &input->priv->smanip;
 }
 
 static void
@@ -1292,7 +1329,7 @@ cdn_input_file_class_init (CdnInputFileClass *klass)
 	cdnobject_class->compile = cdn_input_file_compile;
 	cdnobject_class->reset = cdn_input_file_reset;
 
-	cdnfunction_class->get_dimension = cdn_input_file_get_dimension;
+	cdnfunction_class->get_stack_manipulation = cdn_input_file_get_stack_manipulation;
 	cdnfunction_class->evaluate = cdn_input_file_evaluate;
 
 	g_type_class_add_private (object_class, sizeof(CdnInputFilePrivate));

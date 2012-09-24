@@ -108,16 +108,15 @@ static void
 integrate_values (CdnVariable *variable,
                   gdouble      timestep)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gdouble *update;
 	gdouble const *s;
 	gint i;
 	gint num;
 
-	update = cdn_variable_get_update (variable, &numr, &numc);
-	s = cdn_variable_get_values (variable, &numr, &numc);
-	num = numr * numc;
+	update = cdn_variable_get_update (variable, &dim);
+	s = cdn_variable_get_values (variable, &dim);
+	num = cdn_dimension_size (&dim);
 
 	for (i = 0; i < num; ++i)
 	{
@@ -128,12 +127,11 @@ integrate_values (CdnVariable *variable,
 static void
 update_values (CdnVariable *variable)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gdouble *values;
 
-	values = cdn_variable_get_update (variable, &numr, &numc);
-	cdn_variable_set_values (variable, values, numr, numc);
+	values = cdn_variable_get_update (variable, &dim);
+	cdn_variable_set_values (variable, values, &dim);
 }
 
 static gdouble

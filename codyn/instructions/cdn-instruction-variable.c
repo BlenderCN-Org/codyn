@@ -14,7 +14,10 @@ struct _CdnInstructionVariablePrivate
 	CdnVariable *property;
 	CdnInstructionVariableBinding binding;
 	CdnStackManipulation smanip;
-	gint push_dims[2];
+
+	guint *slice;
+	guint slice_length;
+	CdnDimension slice_dim;
 };
 
 G_DEFINE_TYPE (CdnInstructionVariable, cdn_instruction_variable, CDN_TYPE_INSTRUCTION)
@@ -27,6 +30,7 @@ cdn_instruction_variable_finalize (CdnMiniObject *object)
 	self = CDN_INSTRUCTION_VARIABLE (object);
 
 	cdn_instruction_variable_set_variable (self, NULL);
+	cdn_instruction_variable_set_slice (self, NULL, 0, NULL);
 
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_variable_parent_class)->finalize (object);
 }
@@ -47,8 +51,12 @@ cdn_instruction_variable_copy (CdnMiniObject *object)
 	cdn_instruction_variable_set_variable (self, src->priv->property);
 	self->priv->binding = src->priv->binding;
 
-	self->priv->push_dims[0] = src->priv->push_dims[0];
-	self->priv->push_dims[1] = src->priv->push_dims[1];
+	cdn_instruction_variable_set_slice (self,
+	                                    src->priv->slice,
+	                                    src->priv->slice_length,
+	                                    &src->priv->slice_dim);
+
+	cdn_stack_manipulation_copy (&self->priv->smanip, &src->priv->smanip);
 
 	return ret;
 }
@@ -63,7 +71,43 @@ cdn_instruction_variable_to_string (CdnInstruction *instruction)
 	self = CDN_INSTRUCTION_VARIABLE (instruction);
 	s = cdn_variable_get_full_name_for_display (self->priv->property);
 
-	ret = g_strdup_printf ("PRP (%s)", s);
+	if (self->priv->slice)
+	{
+		GString *st = g_string_new ("PRP");
+		guint r;
+		guint i = 0;
+
+		g_string_append_printf (st, " (%s[", s);
+
+		for (r = 0; r < self->priv->slice_dim.rows; ++r)
+		{
+			guint c;
+
+			if (r != 0)
+			{
+				g_string_append (st, "; ");
+			}
+
+			for (c = 0; c < self->priv->slice_dim.columns; ++c)
+			{
+				if (c != 0)
+				{
+					g_string_append (st, ", ");
+				}
+
+				g_string_append_printf (st, "%u", self->priv->slice[i]);
+				++i;
+			}
+		}
+
+		g_string_append (st, "])");
+		ret = g_string_free (st, FALSE);
+	}
+	else
+	{
+		ret = g_strdup_printf ("PRP (%s)", s);
+	}
+
 	g_free (s);
 
 	return ret;
@@ -74,16 +118,75 @@ cdn_instruction_variable_execute (CdnInstruction *instruction,
                                   CdnStack       *stack)
 {
 	gdouble const *values;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 
 	CdnInstructionVariable *self;
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CdnInstructionVariable *)instruction;
 
-	values = cdn_variable_get_values (self->priv->property, &numr, &numc);
-	cdn_stack_pushn (stack, values, numr * numc);
+	values = cdn_variable_get_values (self->priv->property, &dim);
+
+	if (self->priv->slice)
+	{
+		guint i;
+
+		for (i = 0; i < self->priv->slice_length; ++i)
+		{
+			cdn_stack_push (stack, values[self->priv->slice[i]]);
+		}
+	}
+	else
+	{
+		cdn_stack_pushn (stack, values, cdn_dimension_size (&dim));
+	}
+}
+
+static gboolean
+variable_is_sparse (CdnVariable *v)
+{
+	// Cannot be sparse if it's marked as in
+	if (cdn_variable_get_flags (v) & CDN_VARIABLE_FLAG_IN)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+static guint *
+map_slice_sparsity (CdnStackArg const *arg,
+                    guint       const *slice,
+                    guint              slice_length,
+                    guint             *retlen)
+{
+	guint *ret;
+	guint *rret;
+	guint i;
+	gint sidx = 0;
+
+	if (arg->sparsity == NULL)
+	{
+		*retlen = 0;
+		return NULL;
+	}
+
+	ret = g_new0 (guint, slice_length);
+
+	for (i = 0; i < slice_length; ++i)
+	{
+		if (cdn_stack_arg_is_sparse (arg, slice[i]))
+		{
+			ret[sidx] = i;
+			++sidx;
+		}
+	}
+
+	*retlen = sidx;
+	rret = g_memdup (ret, sizeof (guint) * sidx);
+	g_free (ret);
+
+	return rret;
 }
 
 static CdnStackManipulation const *
@@ -97,12 +200,12 @@ cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
 	if (self->priv->property)
 	{
 		CdnExpression *expr;
+		CdnStackArg const *arg;
 
 		expr = cdn_variable_get_expression (self->priv->property);
 
 		if (!cdn_expression_get_dimension (expr,
-		                                   &(self->priv->push_dims[0]),
-		                                   &(self->priv->push_dims[1])))
+		                                   &self->priv->smanip.push.dimension))
 		{
 			gchar *name;
 
@@ -117,6 +220,47 @@ cdn_instruction_variable_get_stack_manipulation (CdnInstruction  *instruction,
 			g_free (name);
 			return NULL;
 		}
+
+		if (self->priv->slice)
+		{
+			self->priv->smanip.push.dimension = self->priv->slice_dim;
+		}
+
+		if (variable_is_sparse (self->priv->property))
+		{
+			CdnExpression *e;
+
+			e = cdn_variable_get_expression (self->priv->property);
+
+			// Check to see how to compute sparsity...
+			arg = cdn_expression_get_stack_arg (e);
+
+			if (arg->num_sparse > 0)
+			{
+				if (self->priv->slice)
+				{
+					guint *d;
+					guint retlen;
+
+					d = map_slice_sparsity (arg,
+					                        self->priv->slice,
+					                        self->priv->slice_length,
+					                        &retlen);
+
+					cdn_stack_arg_set_sparsity (&self->priv->smanip.push,
+					                            d,
+					                            retlen);
+
+					g_free (d);
+				}
+				else
+				{
+					cdn_stack_arg_set_sparsity (&self->priv->smanip.push,
+					                            arg->sparsity,
+					                            arg->num_sparse);
+				}
+			}
+		}
 	}
 
 	return &self->priv->smanip;
@@ -126,6 +270,39 @@ static GSList *
 cdn_instruction_variable_get_dependencies (CdnInstruction *instruction)
 {
 	return g_slist_prepend (NULL, cdn_variable_get_expression (CDN_INSTRUCTION_VARIABLE (instruction)->priv->property));
+}
+
+static gboolean
+slice_equal (CdnInstructionVariable *p1,
+             CdnInstructionVariable *p2)
+{
+	guint i;
+
+	if ((p1->priv->slice != NULL) != (p2->priv->property != NULL))
+	{
+		return FALSE;
+	}
+
+	if (p1->priv->slice == NULL)
+	{
+		return TRUE;
+	}
+
+	if (!cdn_dimension_equal (&p1->priv->slice_dim,
+	                          &p2->priv->slice_dim))
+	{
+		return FALSE;
+	}
+
+	for (i = 0; i < p1->priv->slice_length; ++i)
+	{
+		if (p1->priv->slice[i] != p2->priv->slice[i])
+		{
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
 
 static gboolean
@@ -144,7 +321,7 @@ cdn_instruction_variable_equal (CdnInstruction *i1,
 	}
 	else
 	{
-		return p1->priv->property == p2->priv->property;
+		return p1->priv->property == p2->priv->property && slice_equal (p1, p2);
 	}
 }
 
@@ -170,10 +347,6 @@ static void
 cdn_instruction_variable_init (CdnInstructionVariable *self)
 {
 	self->priv = CDN_INSTRUCTION_VARIABLE_GET_PRIVATE (self);
-
-	self->priv->smanip.num_pop = 0;
-	self->priv->smanip.num_push = 1;
-	self->priv->smanip.push_dims = self->priv->push_dims;
 }
 
 /**
@@ -279,4 +452,107 @@ cdn_instruction_variable_get_binding (CdnInstructionVariable *instruction)
 	                      CDN_INSTRUCTION_VARIABLE_BINDING_NONE);
 
 	return instruction->priv->binding;
+}
+
+void
+cdn_instruction_variable_apply_slice (CdnInstructionVariable *instruction,
+                                      guint const            *slice,
+                                      guint                   length,
+                                      CdnDimension const     *dim)
+{
+	guint *ns;
+	guint i;
+
+	g_return_if_fail (CDN_IS_INSTRUCTION_VARIABLE (instruction));
+	g_return_if_fail (slice == NULL || (dim != NULL && cdn_dimension_size (dim) == length));
+
+	if (instruction->priv->slice == NULL)
+	{
+		cdn_instruction_variable_set_slice (instruction,
+		                                    slice,
+		                                    length,
+		                                    dim);
+
+		return;
+	}
+
+	// Compute slice on slice
+	ns = g_memdup (slice, sizeof (guint) * length);
+
+	for (i = 0; i < length; ++i)
+	{
+		ns[i] = instruction->priv->slice[slice[i]];
+	}
+
+	instruction->priv->slice_length = length;
+	instruction->priv->slice = ns;
+	instruction->priv->slice_dim = *dim;
+}
+
+void
+cdn_instruction_variable_set_slice (CdnInstructionVariable *instruction,
+                                    guint const            *slice,
+                                    guint                   length,
+                                    CdnDimension const     *dim)
+{
+	g_return_if_fail (CDN_IS_INSTRUCTION_VARIABLE (instruction));
+	g_return_if_fail (slice == NULL || (dim != NULL && cdn_dimension_size (dim) == length));
+
+	g_free (instruction->priv->slice);
+
+	instruction->priv->slice_length = length;
+
+	if (slice)
+	{
+		instruction->priv->slice = g_memdup (slice, sizeof (guint) * length);
+		instruction->priv->slice_dim = *dim;
+	}
+	else
+	{
+		instruction->priv->slice = NULL;
+		instruction->priv->slice_dim.rows = 0;
+		instruction->priv->slice_dim.columns = 0;
+	}
+}
+
+/**
+ * cdn_instruction_variable_get_slice:
+ * @instruction: a #CdnInstructionVariable.
+ * @length: (out): the length of the returned slice array.
+ * @dim: (out): the dimension of the slice.
+ *
+ * Get the slice, if any, of this variable.
+ *
+ * Returns: (array length=length): the slice indices.
+ *
+ **/
+guint const *
+cdn_instruction_variable_get_slice (CdnInstructionVariable *instruction,
+                                    guint                  *length,
+                                    CdnDimension           *dim)
+{
+	if (length)
+	{
+		*length = 0;
+	}
+
+	if (dim)
+	{
+		dim->rows = 0;
+		dim->columns = 0;
+	}
+
+	g_return_val_if_fail (CDN_IS_INSTRUCTION_VARIABLE (instruction), NULL);
+
+	if (length)
+	{
+		*length = instruction->priv->slice_length;
+	}
+
+	if (dim)
+	{
+		*dim = instruction->priv->slice_dim;
+	}
+
+	return instruction->priv->slice;
 }

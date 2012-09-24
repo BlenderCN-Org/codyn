@@ -16,15 +16,14 @@
         <style id="specifiers"        _name="Specifiers"          map-to="def:keyword"/>
         <style id="regex"             _name="Regex"               map-to="def:builtin"/>
         <style id="operator"          _name="Operator"            map-to="def:operator"/>
-        <style id="selector"          _name="Selector"            map-to="def:identifier"/>
-        <style id="define"            _name="Define"              map-to="def:constant"/>
+        <style id="define"            _name="Define"              map-to="def:operator"/>
         <style id="equation"          _name="Equation"            map-to="def:comment"/>
         <style id="condition"         _name="Condition"           map-to="def:comment"/>
-        <style id="indirection"       _name="Indirection"         map-to="def:constant"/>
+        <style id="indirection"       _name="Indirection"         map-to="def:operator"/>
         <style id="identifier"        _name="Identifier"          map-to="def:identifier"/>
+        <style id="define-context"    _name="Define context"      map-to="def:operator"/>
         <style id="expansion"         _name="Expansion"           map-to="def:comment"/>
-        <style id="paren"             _name="Paren"               map-to="def:operator"/>
-        <style id="range"             _name="Range"               map-to="def:keyword"/>
+        <style id="paren"             _name="Paren"               map-to="def:preprocessor"/>
         <style id="map"               _name="Map"                 map-to="def:function"/>
         <style id="reduce"            _name="Reduce"              map-to="def:constant"/>
     </styles>
@@ -43,7 +42,7 @@
             <match>\%{identifier}</match>
         </context>
 
-        <context id="string" style-ref="string" class="string" class-disabled="no-spell-check">
+        <context id="string" style-ref="string" class="string">
             <start>"</start>
             <end>"</end>
             <include>
@@ -86,9 +85,10 @@
         </context>
 
         <context id="indirection" style-ref="indirection" style-inside="true" end-at-line-end="true">
-            <start>@[[]</start>
+            <start>(@+\%{identifier})?[[]</start>
             <end>[]]</end>
             <include>
+                <context sub-pattern="1" where="start" style-ref="define"/>
                 <context ref="stuff_in_string"/>
                 <context ref="expansion" />
             </include>
@@ -103,6 +103,7 @@
 
         <context id="preprocessor" style-ref="preprocessor">
             <keyword>include</keyword>
+            <keyword>require</keyword>
         </context>
 
         <context id="regex" style-ref="regex">
@@ -113,15 +114,8 @@
             </include>
         </context>
 
-        <context id="range">
-            <match>([^{,|}]+:[^},|]+)(?&lt;![},|])</match>
-            <include>
-              <context sub-pattern="1" style-ref="range"/>
-            </include>
-        </context>
-
         <context id="map" style-ref="map" extend-parent="false">
-            <match>([|])[^|,}]+</match>
+            <match>([|])\s*([\\],|[^|,}])+</match>
             <include>
                 <context sub-pattern="1" style-ref="paren"/>
             </include>
@@ -129,7 +123,7 @@
 
         <context id="reduce" style-ref="reduce" extend-parent="false">
             <start>[|][|]</start>
-            <end>[|,}]</end>
+            <end>[^\\][|,}]</end>
             <include>
                 <context sub-pattern="0" where="start" style-ref="paren"/>
             </include>
@@ -137,56 +131,55 @@
 
         <context id="attributes" style-ref="keyword">
             <keyword>bidirectional</keyword>
-            <keyword>if</keyword>
-            <keyword>each</keyword>
             <keyword>probability</keyword>
             <keyword>no-self</keyword>
-            <keyword>self</keyword>
-            <keyword>proxy</keyword>
-            <keyword>tag</keyword>
-            <keyword>with</keyword>
-            <keyword>once</keyword>
+        </context>
+
+        <context id="define-context" style-ref="define-context">
+            <match>&lt;\s*\%{identifier}\s*&gt;\s*:</match>
         </context>
 
         <context id="selectors" style-ref="keyword">
-            <keyword>templates</keyword>
             <keyword>root</keyword>
             <keyword>templates-root</keyword>
-            <keyword>debug</keyword>
             <keyword>children</keyword>
             <keyword>parent</keyword>
             <keyword>first</keyword>
             <keyword>last</keyword>
             <keyword>subset</keyword>
             <keyword>edges</keyword>
-            <keyword>siblings</keyword>
-            <keyword>descendants</keyword>
-            <keyword>ancestors</keyword>
-            <keyword>unique</keyword>
-            <keyword>count</keyword>
-            <keyword>name</keyword>
-            <keyword>self</keyword>
             <keyword>nodes</keyword>
             <keyword>imports</keyword>
-            <keyword>objects</keyword>
             <keyword>variables</keyword>
             <keyword>actions</keyword>
-            <keyword>type</keyword>
-            <keyword>is-empty</keyword>
-            <keyword>remove</keyword>
-            <keyword>if</keyword>
-            <keyword>from-set</keyword>
+            <keyword>functions</keyword>
+            <keyword>objects</keyword>
+            <keyword>siblings</keyword>
+            <keyword>templates</keyword>
+            <keyword>count</keyword>
             <keyword>input</keyword>
             <keyword>output</keyword>
             <keyword>inputs</keyword>
             <keyword>outputs</keyword>
-            <keyword>has-template</keyword>
-            <keyword>has-tag</keyword>
+            <keyword>input-name</keyword>
+            <keyword>output-name</keyword>
+            <keyword>self</keyword>
+            <keyword>debug</keyword>
+            <keyword>name</keyword>
+            <keyword>unique</keyword>
+            <keyword>if</keyword>
+            <keyword>not</keyword>
+            <keyword>ifstr</keyword>
+            <keyword>notstr</keyword>
+            <keyword>from-set</keyword>
+            <keyword>type</keyword>
             <keyword>has-flag</keyword>
+            <keyword>has-template</keyword>
             <keyword>reverse</keyword>
             <keyword>recurse</keyword>
-            <keyword>sourced-by</keyword>
-            <keyword>sinked-by</keyword>
+            <keyword>append-context</keyword>
+            <keyword>applied-templates</keyword>
+            <keyword>reduce</keyword>
         </context>
 
         <context id="keywords" style-ref="keyword">
@@ -232,38 +225,32 @@
             <keyword>import</keyword>
         </context>
 
-        <context id="selector">
-            <match>([|.][a-z_-]+)(\(([^)]*)\))?</match>
-            <include>
-                <context sub-pattern="1" style-ref="selector"/>
-                <context sub-pattern="3" style-ref="string"/>
-            </include>
-        </context>
-
         <context id="defined" style-ref="define">
             <match>\%{define}</match>
         </context>
 
         <context id="stuff_in_string">
             <include>
+                <context ref="indirection" />
                 <context ref="defined" />
                 <context ref="equation" />
-                <context ref="indirection" />
                 <context ref="condition" />
             </include>
         </context>
 
-        <context id="expansion" style-ref="expansion" style-inside="true">
+        <context id="expansion">
             <start>{</start>
             <end>}</end>
             <include>
                 <context sub-pattern="0" where="start" style-ref="paren"/>
                 <context sub-pattern="0" where="end" style-ref="paren"/>
-                <context ref="map" />
                 <context ref="reduce" />
-                <context ref="range" />
+                <context ref="map" />
                 <context ref="stuff_in_string" />
                 <context ref="expansion" />
+                <context id="range" style-ref="operator">
+                  <match>(:[+]?|[*])</match>
+                </context>
             </include>
         </context>
 
@@ -278,13 +265,13 @@
                 <context ref="preprocessor"/>
                 <context ref="regex"/>
                 <context ref="string"/>
-                <context ref="selector"/>
                 <context ref="def:decimal"/>
                 <context ref="def:float"/>
                 <context ref="indirection"/>
                 <context ref="equation"/>
                 <context ref="defined"/>
                 <context ref="identifier"/>
+                <context ref="define-context"/>
             </include>
         </context>
     </definitions>

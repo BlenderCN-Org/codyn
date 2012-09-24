@@ -51,6 +51,7 @@ static gchar const *color_bold = "\e[1m";
 static gchar const *color_off = "\e[0m";
 
 static GPtrArray *display;
+static gboolean simplify = FALSE;
 
 static gboolean
 parse_display (gchar const  *option_name,
@@ -63,8 +64,12 @@ parse_display (gchar const  *option_name,
 }
 
 static GOptionEntry entries[] = {
-	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
-	{"display", 'd', 0, G_OPTION_ARG_CALLBACK, parse_display, "Display variable values (e.g. /state_.*/.\"{x,y}\")", "SEL"},
+	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors,
+	 "Do not use colors in the output", NULL},
+	{"display", 'd', 0, G_OPTION_ARG_CALLBACK, parse_display,
+	 "Display variable values (e.g. /state_.*/.\"{x,y}\")", "SEL"},
+	{"simplify", 'x', 0, G_OPTION_ARG_NONE, &simplify,
+	 "Enable global simplifications", NULL},
 	{NULL}
 };
 
@@ -72,8 +77,7 @@ static void
 display_variable (CdnVariable *v)
 {
 	gchar *name;
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gint r;
 	gint c;
 	gint i;
@@ -86,9 +90,9 @@ display_variable (CdnVariable *v)
 
 	g_free (name);
 
-	values = cdn_variable_get_values (v, &numr, &numc);
+	values = cdn_variable_get_values (v, &dim);
 
-	if (numr == 1 && numc == 1)
+	if (cdn_dimension_is_one (&dim))
 	{
 		g_free (fill);
 		g_printf ("%.5f\n", values[0]);
@@ -99,14 +103,14 @@ display_variable (CdnVariable *v)
 
 	g_printf ("[");
 
-	for (r = 0; r < numr; ++r)
+	for (r = 0; r < dim.rows; ++r)
 	{
 		if (r != 0)
 		{
 			g_printf ("%s", fill);
 		}
 
-		for (c = 0; c < numc; ++c)
+		for (c = 0; c < dim.columns; ++c)
 		{
 			gchar *sv;
 
@@ -126,7 +130,7 @@ display_variable (CdnVariable *v)
 			++i;
 		}
 
-		if (r != numr - 1)
+		if (r != dim.rows - 1)
 		{
 			g_printf ("\n");
 		}
@@ -142,7 +146,6 @@ display_value (CdnNetwork  *network,
 {
 	CdnSelector *sel;
 	GError *err = NULL;
-	CdnEmbeddedContext *context;
 	GSList *selection;
 
 	sel = cdn_selector_parse (CDN_OBJECT (network), expr, &err);
@@ -157,12 +160,10 @@ display_value (CdnNetwork  *network,
 		return 1;
 	}
 
-	context = cdn_embedded_context_new ();
-
 	selection = cdn_selector_select (sel,
 	                                 G_OBJECT (network),
 	                                 CDN_SELECTOR_TYPE_VARIABLE,
-	                                 context);
+	                                 NULL);
 
 	while (selection)
 	{
@@ -178,7 +179,7 @@ display_value (CdnNetwork  *network,
 			g_printf ("\n");
 		}
 
-		g_object_unref (s);
+		cdn_selection_unref (s);
 		selection = g_slist_delete_link (selection, selection);
 	}
 
@@ -274,6 +275,11 @@ compile_network (gchar const *filename)
 		g_object_unref (err);
 
 		return 1;
+	}
+
+	if (simplify)
+	{
+		cdn_network_simplify (network);
 	}
 
 	display_values (network);

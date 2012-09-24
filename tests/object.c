@@ -7,7 +7,7 @@
 static void
 test_create ()
 {
-	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id"));
 
 	g_assert_cmpstr (cdn_object_get_id (obj), ==, "id");
 	g_assert (cdn_object_get_variables (obj) == NULL);
@@ -16,7 +16,7 @@ test_create ()
 static void
 test_add_variable ()
 {
-	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id"));
 	CdnVariable *prop;
 
 	prop = cdn_variable_new ("prop",
@@ -31,7 +31,7 @@ test_add_variable ()
 static void
 test_remove_variable ()
 {
-	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id"));
 	CdnVariable *prop;
 
 	prop = cdn_variable_new ("prop",
@@ -47,7 +47,7 @@ test_remove_variable ()
 static void
 test_clear ()
 {
-	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id"));
 
 	cdn_object_add_variable (obj,
 	                         cdn_variable_new ("p1",
@@ -70,7 +70,7 @@ test_clear ()
 static void
 test_copy ()
 {
-	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id"));
 
 	cdn_object_add_variable (obj,
 	                         cdn_variable_new ("p1",
@@ -103,7 +103,7 @@ test_copy ()
 static void
 test_apply_template ()
 {
-	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (obj,
@@ -118,7 +118,7 @@ test_apply_template ()
 	                                           CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT),
 	                         NULL);
 
-	CdnObject *cp = CDN_OBJECT (cdn_node_new ("id2", NULL));
+	CdnObject *cp = CDN_OBJECT (cdn_node_new ("id2"));
 	cdn_object_apply_template (cp, obj, &error);
 	g_assert_no_error (error);
 
@@ -140,7 +140,7 @@ test_apply_template ()
 static void
 test_new_from_template ()
 {
-	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id", NULL));
+	CdnObject *obj = CDN_OBJECT (cdn_node_new ("id"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (obj,
@@ -183,10 +183,10 @@ test_relative_id ()
 	CdnNode *g2;
 	CdnObject *obj;
 
-	g1 = cdn_node_new ("g1", NULL);
-	g2 = cdn_node_new ("g2", NULL);
+	g1 = cdn_node_new ("g1");
+	g2 = cdn_node_new ("g2");
 
-	obj = CDN_OBJECT (cdn_node_new ("o1", NULL));
+	obj = CDN_OBJECT (cdn_node_new ("o1"));
 
 	cdn_node_add (g1, CDN_OBJECT (g2), NULL);
 	cdn_node_add (g2, obj, NULL);

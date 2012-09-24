@@ -43,8 +43,7 @@ CdnOperator         *cdn_operators_instantiate                (gchar const     *
                                                                gint             num_expressions,
                                                                GSList const   **indices,
                                                                gint             num_indices,
-                                                               gint             num_arguments,
-                                                               gint            *argdim,
+                                                               CdnStackArgs const *args,
                                                                CdnCompileContext *context,
                                                                GError         **error);
 GSList const        *cdn_operators_list                       ();

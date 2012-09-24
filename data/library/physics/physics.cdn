@@ -1,31 +1,76 @@
-[once] include "spatial.cdn"
-[once] include "geometry.cdn"
+require "spatial.cdn"
+require "geometry.cdn"
+require "transform.cdn"
 
-g = "[0, 9.81, 0]"
+layout
+{
+    nodes at @count[++], -2
+}
+
+g = "[0; 0; 9.81]"
 
 templates
 {
     node "physics"
     {
-        node "body"
+        node "system" {}
+
+        node "dof{1:6}"
+        {
+            null = "zeros(@@1, 1)"
+
+            defines
+            {
+                names = "{coordinates,velocities,accelerations}"
+            }
+
+            ## Generalized @names[@@0[!]] (i.e. DOFs of joint)
+            "{q,dq,ddq}" = "null"
+
+            ## Generalized coordinate accelerations differential equation
+            q̈ = "ddq"
+        }
+
+        node "transformations"
+        {
+            # World transformation
+            worldMatrix = "TransformInv(baseTransform)"
+            worldOrientation = "worldMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
+            worldLocation = "worldMatrix[[3; 7; 11]]"
+
+            # Local total transformation
+            localMatrix = "TransformInv(transform)"
+            localOrientation = "localMatrix[[0, 1, 2; 4, 5, 6; 8, 9, 10]]"
+            localLocation = "localMatrix[[3; 7; 11]]"
+
+            # Mark all properties as out
+            set variables = | out
+
+            # Computation of the inverse transformation matrix from child to
+            # parent coordinates. This is useful for rendering for example.
+            # Note that it computes [Eᵀ, Eᵀ ∙ -r; 0, 0, 0, 1], with E the
+            # rotation part of the spatial matrix and r the translation part
+            TransformInv(tr) = "[
+                tr[0, 0], tr[1, 0], tr[2, 0], -(tr[0, 2] ∙ tr[3, 1] + tr[1, 2] ∙ tr[4, 1] + tr[2, 2] ∙ tr[5, 1]);
+                tr[0, 1], tr[1, 1], tr[2, 1], -(tr[0, 0] ∙ tr[3, 2] + tr[1, 0] ∙ tr[4, 2] + tr[2, 0] ∙ tr[5, 2]);
+                tr[0, 2], tr[1, 2], tr[2, 2], -(tr[0, 1] ∙ tr[3, 0] + tr[1, 1] ∙ tr[4, 0] + tr[2, 1] ∙ tr[5, 0]);
+                0,        0,        0,        1
+            ]"
+        }
+
+        node "body" : "dof1"
         {
             ## Mass of the body
-            m   = "0"
+            m   = "1"
 
             ## Center of Mass of the body: 1-by-3
             com = "zeros(1, 3)"
 
             ## Inertia matrix of the body: 3-by-3
-            I   = "zeros(3, 3)"
-
-            ## Generalized coordinates (i.e. DOFs of joint)
-            q̈ = "ddq"
-
-            ## Variable for storing derived accelerations
-            ddq = "zeros(length(q), 1)"
+            I   = "Geometry.ISphere(m, 0.1)"
 
             ## Generalized force on the DOF of this body
-            τ = "zeros(length(q), 1)"
+            τ = "null"
 
             ## Joint model parameters. These parameters need to be specified
             ## for each joint type.
@@ -74,22 +119,29 @@ templates
             ## Helper variable to calculate the joint motion subspace
             motionSubspace = "joint.MotionSubspace(q, dq)"
 
-            ## Helper variable to calculate the velocity product term
+            ## Transposed motion subspace
+            motionSubspaceT = "motionSubspaceᵀ"
+
+            ## Transposed transformation
+            transformT = "transformᵀ"
+
+            ## Helper variable to calculate the velocity product term. See
+            ## joint.cJ
             cJ = "joint.cJ(q, dq)"
 
-            ## Coordinate transform from the parent frame to the child
-            ## frame. The product of this transform with the joint transform
-            ## is the total coordinate transformation from a parent frame to a
-            ## child frame
+            ## Coordinate transform from the parent frame to the body
+            ## frame (i.e. the transformation from the origin of the joint of
+            ## the parent to the origin of the joint of the body frame)
             coordinateTransform = "eye(6)"
 
-            ## The total transform from parent frame to body frame
+            ## The total transform from parent frame to body frame, including
+            ## both the transform of the coordinate system and the transform
+            ## that the joint induces (i.e. through it's generalized
+            ## coordinates)
             transform = "jointTransform ∙ coordinateTransform"
 
-            ## External force on this body (6-by-1)
-            fext = "zeros(6, 1)"
-
-            ## Spatial inertia given mass, center of mass and inertia
+            ## Spatial inertia calculated from the mass (m),
+            ## center of mass (com) and inertia (I)
             spI = "Sp.Inertia(com, m, I)"
 
             ## Body velocity, defaults to joint velocity
@@ -97,7 +149,7 @@ templates
 
             ## Body acceleration due to gravitational and coriolos effects,
             ## defaults to gravity
-            acceleration = "transform ∙ [0; 0; 0; gᵀ]"
+            acceleration = "transform ∙ [0; 0; 0; g] + cJ"
 
             ## Transform from the base to the joint
             baseTransform = "transform"
@@ -113,15 +165,15 @@ templates
 
         ## A revolute joint. This type of joint has one degree of freedom
         ## which rotates the body around an axis.
-        node "revolute" : "body"
+        node "revolute{X,Y,Z}" : "body"
         {
             node "joint"
             {
-                ## The joint axis (defaults to Z axis)
-                axis = "[0; 0; 1]"
+                axis = "[$(@@@1[!] == 0); $(@@@1[!] == 1); $(@@@1[!] == 2)]"
 
-                JointTransform(q) = "Sp.Rotate(q ∙ axis)"
+                JointTransform(q) = "Sp.Rotate@@@1(q)"
                 LocalJointVelocity(q, dq) = "[axis ∙ dq; 0; 0; 0]"
+                MotionSubspace(q, dq) = "[axis; 0; 0; 0]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -140,14 +192,15 @@ templates
 
         ## A prismatic joint. This type of joint has one degree of freedom
         ## which translates the body on an axis.
-        node "prismatic" : "body"
+        node "prismatic{X,Y,Z}" : "body"
         {
             node "joint"
             {
-                axis = "[0; 0; 1]"
+                axis = "[$(@@@1[!] == 0); $(@@@1[!] == 1); $(@@@1[!] == 2)]"
 
                 JointTransform(q) = "Sp.Translate(axis ∙ q)"
                 LocalJointVelocity(q, dq) = "[0; 0; 0; axis ∙ dq]"
+                MotionSubspace(q, dq) = "[0; 0; 0; axis]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -167,15 +220,22 @@ templates
         ## A helical joint. This type of joint has one degree of freedom around
         ## which the body screws. The amount of screw is determined by the
         ## h parameter.
-        node "helical" : "body"
+        node "helical{X,Y,Z}" : "body"
         {
             node "joint"
             {
-                axis = "[0; 0; 1]"
+                axis = "[$(@@@1[!] == 0); $(@@@1[!] == 1); $(@@@1[!] == 2)]"
 
-                JointTransform(q) = "Sp.Rotate(axis ∙ q) ∙ Sp.Translate(axis ∙ q ∙ h)"
+                ## Pitch of the helical joint. Note that when the pitch is 0, the
+                ## helical joint becomes a simple revolute joint
+                h = 0
+
+                JointTransform(q) = "Sp.Rotate@@@1(q) ∙ Sp.Translate(axis ∙ q ∙ h)"
+
                 LocalJointVelocity(q, dq) = "[axis ∙ dq;
                                               axis ∙ dq ∙ h]"
+
+                MotionSubspace(q, dq) = "[axis; axis ∙ h]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -190,28 +250,33 @@ templates
                                                   0,           0,            0,            1,            0;
                                                   0,           0,            0,            0,            1]"
             }
-
-            ## Pitch of the helical joint. Note that when the pitch is 0, the
-            ## helical joint becomes a simple revolute joint
-            h = "0"
         }
 
         ## A cylindrical joint. This type of joint is simply a combination of
         ## both a revolute and a prismatic joint. It has two degrees of freedom
         ## (one rotational and one translational).
-        node "cylindrical" : "body"
+        node "cylindrical" : "body", "dof2"
         {
             node "joint"
             {
                 axis = "[0; 0; 1]"
 
-                JointTransform(q) = "Sp.Rotate(axis ∙ q[0]) ∙ Sp.Translate(axis ∙ q[1])"
+                JointTransform(q) = "Sp.Rotate(axis ∙ q[0]) ∙
+                                     Sp.Translate(axis ∙ q[1])"
+
                 LocalJointVelocity(q, dq) = "[axis[0] ∙ dq[0], 0;
                                               axis[1] ∙ dq[0], 0;
                                               axis[2] ∙ dq[0], 0;
                                               0,               axis[0] ∙ dq[1];
                                               0,               axis[1] ∙ dq[1];
                                               0,               axis[2] ∙ dq[1]]"
+
+                MotionSubspace(q, dq) = "[axis[0], 0;
+                                          axis[1], 0;
+                                          axis[2], 0;
+                                          0, axis[0];
+                                          0, axis[1];
+                                          0, axis[2]]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -226,23 +291,15 @@ templates
                                                    0,           0,            axis[0],     axis[2];
                                                    0,           0,            0,           1 - axis[2]]"
             }
-
-            "{q,dq,ddq}" = "zeros(2, 1)"
         }
 
         ## A spherical joint. This type of joint is simply three rotational
         ## joints stacked together. It has three degrees of rotational freedom.
-        node "spherical" : "body"
+        node "spherical" : "body", "dof3"
         {
             node "joint"
             {
-                QuatRotation(q) = "2 ∙ [
-                    q[0]² + q[1]² - 0.5, q[1] ∙ q[2] + q[0] ∙ q[3], q[0] ∙ q[3] - q[0] ∙ q[2];
-                    q[1] ∙ q[2] - q[0] ∙ q[3], q[0]² + q[2]² - 0.5, q[2] ∙ q[3] + q[0] ∙ q[1];
-                    q[0] ∙ q[3] + q[0] ∙ q[2], q[2] ∙ q[3] - q[0] ∙ q[1], q[0]² + q[3]² - 0.5
-                ]"
-
-                JointTransform(q) = "Sp.Rotate(QuatRotation(q))"
+                JointTransform(q) = "Sp.Quaternion(q)"
 
                 # Note that here the joint velocity is directly specified and
                 # not the local joint velocity for the simple reason that
@@ -250,6 +307,13 @@ templates
                 # velocities in the successor frame, such that the joint
                 # velocity simply becomes 'dq'.
                 JointVelocity(q, dq) = "[dq; 0; 0; 0]"
+
+                MotionSubspace(q, dq) = "[1, 0, 0;
+                                          0, 1, 0;
+                                          0, 0, 1;
+                                          0, 0, 0;
+                                          0, 0, 0;
+                                          0, 0, 0]"
 
                 ConstraintForceSubspace(q, dq) = "[0, 0, 0;
                                                    0, 0, 0;
@@ -259,8 +323,8 @@ templates
                                                    0, 0, 1]"
             }
 
-            q = "zeros(4, 1)"
-            "{dq,ddq}" = "zeros(3, 1)"
+            # Use a constraint to normalize q
+            q = "[1; 0; 0; 0]" ("q / hypot(q)")
 
             delete self | inputs | if(input | self) | if(output | self) . q
 
@@ -272,24 +336,26 @@ templates
 
         ## A 6 DOF. This type of joint has no constraints and can be used
         ## to implement floating base models.
-        node "float" : "spherical"
+        node "float" : "body", "dof6"
         {
             node "joint"
             {
                 JointTransform(q) = "Sp.Translate(q[[4; 5; 6]]) ∙
-                                     Sp.Rotate(QuatRotation(q[[0; 1; 2; 3]]))"
+                                     Sp.Quaternion(q[[0; 1; 2; 3]])"
 
                 JointVelocity(q, dq) = "dq"
+                MotionSubspace(q, dq) = "eye(6)"
+
                 ConstraintForceSubspace(q, dq) = "[]"
+                cJ(q, dq) = "0"
             }
 
-            q = "zeros(7, 1)"
-            "{dq,ddq}" = "zeros(6, 1)"
+            # Use a constraint to normalize the first 4 q's
+            q = "[1; zeros(6, 1)]" #("[q[[0; 1; 2; 3]] / hypot(q[[0; 1; 2; 3]]); q[[4; 5; 6]]]")
 
             delete self | inputs | if(input | self) | if(output | self) . q
 
-            [self]
-            edge
+            edge self
             {
                 "q[0; 1; 2; 3]" <= "0.5 ∙ [-q[1], -q[2], -q[3];
                                             q[0], -q[3],  q[2];

@@ -52,19 +52,35 @@ struct _CdnInstructionVariableClass
 
 typedef CDN_FORWARD_DECL(CdnExpression) CdnExpressionForward;
 
-GType                          cdn_instruction_variable_get_type         (void) G_GNUC_CONST;
+GType           cdn_instruction_variable_get_type         (void) G_GNUC_CONST;
 
-CdnInstruction                *cdn_instruction_variable_new              (CdnVariable                   *property);
-CdnInstruction                *cdn_instruction_variable_new_with_binding (CdnVariable                   *property,
-                                                                          CdnInstructionVariableBinding  binding);
+CdnInstruction *cdn_instruction_variable_new              (CdnVariable                   *property);
+CdnInstruction *cdn_instruction_variable_new_with_binding (CdnVariable                   *property,
+                                                           CdnInstructionVariableBinding  binding);
 
-void                           cdn_instruction_variable_set_variable     (CdnInstructionVariable        *instruction,
-                                                                          CdnVariable                   *property);
-CdnVariable                   *cdn_instruction_variable_get_variable     (CdnInstructionVariable        *instruction);
+void            cdn_instruction_variable_set_variable     (CdnInstructionVariable        *instruction,
+                                                           CdnVariable                   *property);
+CdnVariable    *cdn_instruction_variable_get_variable     (CdnInstructionVariable        *instruction);
 
-void                           cdn_instruction_variable_set_binding      (CdnInstructionVariable        *instruction,
-                                                                          CdnInstructionVariableBinding  binding);
-CdnInstructionVariableBinding  cdn_instruction_variable_get_binding      (CdnInstructionVariable        *instruction);
+void            cdn_instruction_variable_apply_slice      (CdnInstructionVariable        *instruction,
+                                                           guint const                   *slice,
+                                                           guint                          length,
+                                                           CdnDimension const            *dim);
+
+void            cdn_instruction_variable_set_slice        (CdnInstructionVariable        *instruction,
+                                                           guint const                   *slice,
+                                                           guint                          length,
+                                                           CdnDimension const            *dim);
+
+guint const    *cdn_instruction_variable_get_slice        (CdnInstructionVariable        *instruction,
+                                                           guint                         *length,
+                                                           CdnDimension                  *dim);
+
+void            cdn_instruction_variable_set_binding      (CdnInstructionVariable        *instruction,
+                                                           CdnInstructionVariableBinding  binding);
+
+CdnInstructionVariableBinding
+                cdn_instruction_variable_get_binding      (CdnInstructionVariable        *instruction);
 
 G_END_DECLS
 

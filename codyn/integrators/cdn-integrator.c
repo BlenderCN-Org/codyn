@@ -28,6 +28,7 @@
 #include "cdn-event.h"
 #include "operators/cdn-operator.h"
 #include "instructions/cdn-instruction-rand.h"
+#include "cdn-debug.h"
 
 #include <math.h>
 
@@ -172,7 +173,10 @@ set_state (CdnIntegrator      *integrator,
 
 	g_object_notify (G_OBJECT (integrator), "state");
 
-	cdn_integrator_reset (integrator);
+	if (state)
+	{
+		cdn_integrator_reset (integrator);
+	}
 }
 
 static void
@@ -500,6 +504,8 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 	               t + timestep,
 	               timestep);
 
+	cdn_debug_message (DEBUG_INTEGRATOR, "Step");
+
 	elapsed = g_timer_elapsed (integrator->priv->step_timer, NULL);
 
 	if (integrator->priv->real_time > 0 &&
@@ -790,7 +796,7 @@ sum_values (gdouble       *values,
 
 		idx = indices ? indices[i] : i;
 
-		values[idx] += s[idx];
+		values[idx] += s[i];
 	}
 }
 
@@ -813,34 +819,36 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 
 	while (actions)
 	{
-		CdnEdgeAction *action = actions->data;
-		CdnVariable *target = cdn_edge_action_get_target_variable (action);
+		CdnEdgeAction *action;
+		CdnVariable *target;
+
+		action = actions->data;
+		target = cdn_edge_action_get_target_variable (action);
 
 		if (target != NULL)
 		{
-			CdnExpression *expr = cdn_edge_action_get_equation (action);
-			gint numr;
-			gint numc;
-			gint enumr;
-			gint enumc;
+			CdnExpression *expr;
+			CdnDimension dim;
+			CdnDimension edim;
 			gdouble *update;
 			gint const *indices;
 			gint num_indices;
 			gdouble const *values;
 
-			update = cdn_variable_get_update (target, &enumr, &enumc);
+			expr = cdn_edge_action_get_equation (action);
+
+			update = cdn_variable_get_update (target, &edim);
 
 			indices = cdn_edge_action_get_indices (action,
 			                                       &num_indices);
 
 			values = cdn_expression_evaluate_values (expr,
-			                                         &numr,
-			                                         &numc);
+			                                         &dim);
 
 			sum_values (update,
 			            values,
 			            indices,
-			            indices ? num_indices : numr * numc);
+			            indices ? num_indices : cdn_dimension_size (&dim));
 		}
 
 		actions = g_slist_next (actions);
@@ -982,6 +990,8 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 	               0,
 	               start);
 
+	cdn_debug_message (DEBUG_INTEGRATOR, "Begin");
+
 	return TRUE;
 }
 
@@ -1001,6 +1011,7 @@ cdn_integrator_end (CdnIntegrator  *integrator,
 
 	g_signal_emit (integrator, integrator_signals[END], 0);
 
+	cdn_debug_message (DEBUG_INTEGRATOR, "End");
 	return ret;
 }
 

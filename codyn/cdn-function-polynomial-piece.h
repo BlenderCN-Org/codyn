@@ -56,11 +56,14 @@ GType cdn_function_polynomial_piece_get_type (void) G_GNUC_CONST;
 CdnFunctionPolynomialPiece *
                cdn_function_polynomial_piece_new              (gdouble                     begin,
                                                                gdouble                     end,
-                                                               gdouble                    *coefficients,
+                                                               gdouble const              *coefficients,
                                                                guint                       num_coefficients);
 
 CdnFunctionPolynomialPiece *
                cdn_function_polynomial_piece_copy             (CdnFunctionPolynomialPiece *piece);
+
+gboolean       cdn_function_polynomial_piece_equal            (CdnFunctionPolynomialPiece *a,
+                                                               CdnFunctionPolynomialPiece *b);
 
 gdouble        cdn_function_polynomial_piece_get_begin         (CdnFunctionPolynomialPiece *piece);
 gdouble        cdn_function_polynomial_piece_get_end           (CdnFunctionPolynomialPiece *piece);
@@ -76,9 +79,6 @@ const gdouble *cdn_function_polynomial_piece_get_coefficients  (CdnFunctionPolyn
 void           cdn_function_polynomial_piece_set_coefficients  (CdnFunctionPolynomialPiece *piece,
                                                                 gdouble                    *coefficients,
                                                                 guint                       num);
-
-const gdouble *cdn_function_polynomial_piece_get_normalization (CdnFunctionPolynomialPiece *piece,
-                                                                guint                      *num);
 
 gdouble        cdn_function_polynomial_piece_evaluate          (CdnFunctionPolynomialPiece *piece,
                                                                 gdouble                     t);

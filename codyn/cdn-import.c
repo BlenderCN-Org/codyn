@@ -308,7 +308,7 @@ cdn_import_class_init (CdnImportClass *klass)
 }
 
 static gboolean
-verify_remove_import (CdnNode   *group,
+verify_remove_import (CdnNode    *group,
                       CdnObject  *child,
                       GError    **error,
                       CdnImport  *import)
@@ -328,9 +328,9 @@ verify_remove_import (CdnNode   *group,
 		{
 			CdnNode *parent = cdn_object_get_parent (item->data);
 
-			if (!cdn_node_verify_remove_child (parent,
-			                                    item->data,
-			                                    error))
+			if (parent && !cdn_node_verify_remove_child (parent,
+			                                             item->data,
+			                                             error))
 			{
 				import->priv->check_remove = FALSE;
 				return FALSE;
@@ -340,9 +340,9 @@ verify_remove_import (CdnNode   *group,
 		{
 			CdnObject *parent = cdn_variable_get_object (item->data);
 
-			if (!cdn_object_verify_remove_variable (parent,
-			                                        item->data,
-			                                        error))
+			if (parent && !cdn_object_verify_remove_variable (parent,
+			                                                  item->data,
+			                                                  error))
 			{
 				import->priv->check_remove = FALSE;
 				return FALSE;
@@ -366,14 +366,22 @@ import_removed (CdnImport *import)
 			CdnNode *parent = cdn_object_get_parent (item->data);
 
 			unregister_imported_object (import, item->data);
-			cdn_node_remove (parent, item->data, NULL);
+
+			if (parent)
+			{
+				cdn_node_remove (parent, item->data, NULL);
+			}
 		}
 		else if (CDN_IS_VARIABLE (item->data))
 		{
 			CdnObject *parent = cdn_variable_get_object (item->data);
 
 			unregister_imported_property (import, item->data);
-			cdn_object_remove_variable (parent, item->data, NULL);
+
+			if (parent)
+			{
+				cdn_object_remove_variable (parent, item->data, NULL);
+			}
 		}
 	}
 
@@ -605,9 +613,12 @@ unregister_imported_object (CdnImport *import,
 {
 	CdnNode *parent = cdn_object_get_parent (object);
 
-	g_signal_handlers_disconnect_by_func (parent,
-	                                      G_CALLBACK (deny_remove_imported_child),
-	                                      import);
+	if (parent)
+	{
+		g_signal_handlers_disconnect_by_func (parent,
+		                                      G_CALLBACK (deny_remove_imported_child),
+		                                      import);
+	}
 }
 
 static void

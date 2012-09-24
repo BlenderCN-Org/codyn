@@ -93,6 +93,9 @@ gboolean                iter_canonicalize          (CdnExpressionTreeIter       
                                                     gboolean                     canonicalize_children,
                                                     gboolean                     dodefactor);
 
+CdnExpressionTreeIter  *iter_new_number_matrix     (gdouble const               *nums,
+                                                    CdnDimension const          *dim);
+
 CdnExpressionTreeIter   *iter_new_bfunc            (CdnMathFunctionType          type,
                                                     CdnExpressionTreeIter       *a,
                                                     CdnExpressionTreeIter       *b,
@@ -102,6 +105,15 @@ CdnExpressionTreeIter   *iter_new_bfunc            (CdnMathFunctionType         
 CdnExpressionTreeIter   *iter_new_ufunc            (CdnMathFunctionType          type,
                                                     CdnExpressionTreeIter       *a,
                                                     gboolean                     take_a);
+
+void                     iter_fill_bfunc           (CdnExpressionTreeIter       *iter,
+                                                    CdnMathFunctionType          type);
+
+void                     iter_get_stack_args       (CdnExpressionTreeIter       *iter,
+                                                    CdnStackArgs                *args);
+
+gboolean                 iter_is_matrix_multiply   (CdnExpressionTreeIter       *iter);
+
 
 G_END_DECLS
 

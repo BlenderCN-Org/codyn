@@ -61,6 +61,11 @@ cdn_instruction_copy_impl (CdnMiniObject *object)
 }
 
 static void
+cdn_instruction_recalculate_sparsity_impl (CdnInstruction  *instruction)
+{
+}
+
+static void
 cdn_instruction_class_init (CdnInstructionClass *klass)
 {
 	CdnMiniObjectClass *mini_object_class;
@@ -71,6 +76,7 @@ cdn_instruction_class_init (CdnInstructionClass *klass)
 	klass->get_stack_manipulation = cdn_instruction_get_stack_manipulation_impl;
 	klass->get_dependencies = cdn_instruction_get_dependencies_impl;
 	klass->get_is_commutative = cdn_instruction_get_is_commutative_impl;
+	klass->recalculate_sparsity = cdn_instruction_recalculate_sparsity_impl;
 
 	mini_object_class->copy = cdn_instruction_copy_impl;
 
@@ -119,7 +125,7 @@ cdn_instruction_execute (CdnInstruction *instruction,
 }
 
 /**
- * cdn_instruction_get_stack_count:
+ * cdn_instruction_get_stack_manipulation:
  * @instruction: A #CdnInstruction
  *
  * Get by how many values the instruction will modify the stack when executed.
@@ -217,6 +223,16 @@ cdn_instruction_get_is_commutative (CdnInstruction *instruction)
 	return CDN_INSTRUCTION_GET_CLASS (instruction)->get_is_commutative (instruction);
 }
 
+/**
+ * cdn_instruction_set_location:
+ * @instruction: a #CdnInstruction.
+ * @start: the start.
+ * @end: the end.
+ *
+ * Set the location of this instruction in the corresponding string representation
+ * of the expression the instruction belongs to.
+ *
+ **/
 void
 cdn_instruction_set_location (CdnInstruction *instruction,
                               gint            start,
@@ -228,6 +244,16 @@ cdn_instruction_set_location (CdnInstruction *instruction,
 	instruction->priv->end = end;
 }
 
+/**
+ * cdn_instruction_get_location:
+ * @instruction: a #CdnInstruction.
+ * @start: (out): return value for the start.
+ * @end: (out): return value for the end.
+ *
+ * Get the location of this instruction in the corresponding string representation
+ * of the expression the instruction belongs to.
+ *
+ **/
 void
 cdn_instruction_get_location (CdnInstruction *instruction,
                               gint           *start,
@@ -246,3 +272,10 @@ cdn_instruction_get_location (CdnInstruction *instruction,
 	}
 }
 
+void
+cdn_instruction_recalculate_sparsity (CdnInstruction  *instruction)
+{
+	g_return_if_fail (CDN_IS_INSTRUCTION (instruction));
+
+	return CDN_INSTRUCTION_GET_CLASS (instruction)->recalculate_sparsity (instruction);
+}

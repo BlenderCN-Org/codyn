@@ -27,7 +27,6 @@
 #include "cdn-layoutable.h"
 #include "cdn-annotatable.h"
 #include "cdn-phaseable.h"
-#include "cdn-taggable.h"
 #include "cdn-function.h"
 
 /**
@@ -1216,9 +1215,6 @@ cdn_edge_add_action (CdnEdge       *link,
 		}
 
 		g_free (an);
-
-		cdn_taggable_copy_to (CDN_TAGGABLE (action),
-		                      cdn_taggable_get_tag_table (CDN_TAGGABLE (orig)));
 
 		if (g_object_is_floating (action))
 		{

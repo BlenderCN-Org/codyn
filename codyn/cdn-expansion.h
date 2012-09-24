@@ -25,6 +25,7 @@
 
 #include <glib-object.h>
 #include <codyn/cdn-mini-object.h>
+#include <stdio.h>
 
 G_BEGIN_DECLS
 
@@ -41,6 +42,9 @@ CdnExpansion *cdn_expansion_newv             (gchar const            *item,
                                               ...);
 
 CdnExpansion *cdn_expansion_new_one          (gchar const            *item);
+
+void          cdn_expansion_debug_print      (CdnExpansion *expansion,
+                                              FILE         *file);
 
 CdnExpansion *cdn_expansion_copy             (CdnExpansion           *id);
 CdnExpansion *cdn_expansion_ref             (CdnExpansion           *id);

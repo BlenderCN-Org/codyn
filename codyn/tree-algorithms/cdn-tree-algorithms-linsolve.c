@@ -39,6 +39,22 @@ make_coefficient (CdnExpressionTreeIter  *root,
 	return root;
 }
 
+static void
+set_args_from_iters (CdnStackArgs          *args,
+                     CdnExpressionTreeIter *iter1,
+                     CdnExpressionTreeIter *iter2)
+{
+	CdnStackManipulation const *smanip1;
+	CdnStackManipulation const *smanip2;
+
+	smanip1 = cdn_instruction_get_stack_manipulation (iter1->instruction, NULL);
+	smanip2 = cdn_instruction_get_stack_manipulation (iter2->instruction, NULL);
+
+	// Note: reverse order of argdim
+	args->args[0] = smanip2->push;
+	args->args[1] = smanip1->push;
+}
+
 static CdnExpressionTreeIter *
 sum_terms (GSList *terms,
            GSList *ignore)
@@ -62,12 +78,7 @@ sum_terms (GSList *terms,
 		return terms->next->data;
 	}
 
-	/* TODO: set the argdim */
-	root = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
-	                                                     "+",
-	                                                     2,
-	                                                     NULL),
-	                       2);
+	root = iter_new_sized (NULL, 2);
 
 	cur = root;
 	cur->children[0] = terms->data;
@@ -84,12 +95,7 @@ sum_terms (GSList *terms,
 		{
 			CdnExpressionTreeIter *np;
 
-			/* TODO: argdim */
-			np = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
-			                                                   "+",
-			                                                   2,
-			                                                   NULL),
-			                     2);
+			np = iter_new_sized (NULL, 2);
 
 			cur->children[1] = np;
 			np->parent = cur;
@@ -105,6 +111,9 @@ sum_terms (GSList *terms,
 			cur->children[1]->parent = cur;
 		}
 	}
+
+	// Then, create plus instructions for all the nodes
+	iter_fill_bfunc (root, CDN_MATH_FUNCTION_TYPE_PLUS);
 
 	return root;
 }
@@ -251,6 +260,9 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 	GSList *coefs = NULL;
 	CdnExpressionTreeIter *summed;
 	CdnExpressionTreeIter *div;
+	CdnStackArgs args;
+	CdnStackArg nargs[2];
+	CdnExpressionTreeIter *minone;
 
 	g_return_val_if_fail (CDN_IS_VARIABLE (prop), NULL);
 
@@ -329,12 +341,15 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 	summed = cdn_expression_tree_iter_simplify (sum_terms (coefs, NULL));
 	iter = cdn_expression_tree_iter_simplify (iter);
 
-	// Now divide inv by summed
-	/* TODO: argdim */
+	args.num = 2;
+	args.args = nargs;
+
+	set_args_from_iters (&args, iter, summed);
+
+	// Now divide iter by summed
 	div = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE,
-	                                                    "/",
-	                                                    2,
-	                                                    NULL),
+	                                                    NULL,
+	                                                    &args),
 	                      2);
 
 	div->children[0] = iter;
@@ -343,14 +358,16 @@ cdn_expression_tree_iter_solve_for (CdnExpressionTreeIter  *iter,
 	div->children[1] = summed;
 	div->children[1]->parent = div;
 
+	minone = iter_new_numstr ("-1");
+	set_args_from_iters (&args, minone, div);
+
 	/* TODO: argdim */
 	inv = iter_new_sized (cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
-	                                                    "*",
-	                                                    2,
-	                                                    NULL),
+	                                                    NULL,
+	                                                    &args),
 	                      2);
 
-	inv->children[0] = iter_new_numstr ("-1");
+	inv->children[0] = minone;
 	inv->children[0]->parent = inv;
 
 	inv->children[1] = div;

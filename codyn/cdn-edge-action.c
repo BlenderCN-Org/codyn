@@ -25,7 +25,6 @@
 #include "cdn-usable.h"
 #include "cdn-annotatable.h"
 #include "cdn-edge.h"
-#include "cdn-taggable.h"
 #include "cdn-enum-types.h"
 #include "cdn-phaseable.h"
 #include "cdn-compile-error.h"
@@ -56,7 +55,6 @@ struct _CdnEdgeActionPrivate
 	guint index_proxy_id;
 
 	gchar *annotation;
-	GHashTable *tags;
 	GHashTable *phases;
 
 	guint modified : 1;
@@ -79,7 +77,6 @@ enum
 
 static void cdn_modifiable_iface_init (gpointer iface);
 static void cdn_annotatable_iface_init (gpointer iface);
-static void cdn_taggable_iface_init (gpointer iface);
 static void cdn_phaseable_iface_init (gpointer iface);
 
 G_DEFINE_TYPE_WITH_CODE (CdnEdgeAction,
@@ -89,8 +86,6 @@ G_DEFINE_TYPE_WITH_CODE (CdnEdgeAction,
                                                 cdn_modifiable_iface_init);
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_ANNOTATABLE,
                                                 cdn_annotatable_iface_init);
-                         G_IMPLEMENT_INTERFACE (CDN_TYPE_TAGGABLE,
-                                                cdn_taggable_iface_init);
                          G_IMPLEMENT_INTERFACE (CDN_TYPE_PHASEABLE,
                                                 cdn_phaseable_iface_init));
 
@@ -130,21 +125,6 @@ cdn_phaseable_iface_init (gpointer iface)
 
 	phaseable->get_phase_table = cdn_phaseable_get_phase_table_impl;
 	phaseable->set_phase_table = cdn_phaseable_set_phase_table_impl;
-}
-
-static GHashTable *
-get_tag_table (CdnTaggable *taggable)
-{
-	return CDN_EDGE_ACTION (taggable)->priv->tags;
-}
-
-static void
-cdn_taggable_iface_init (gpointer iface)
-{
-	/* Use default implementation */
-	CdnTaggableInterface *taggable = iface;
-
-	taggable->get_tag_table = get_tag_table;
 }
 
 static void
@@ -374,7 +354,6 @@ cdn_edge_action_finalize (GObject *object)
 	CdnEdgeAction *action = CDN_EDGE_ACTION (object);
 
 	g_free (action->priv->annotation);
-	g_hash_table_destroy (action->priv->tags);
 
 	if (action->priv->phases)
 	{
@@ -548,8 +527,6 @@ static void
 cdn_edge_action_init (CdnEdgeAction *self)
 {
 	self->priv = CDN_EDGE_ACTION_GET_PRIVATE (self);
-
-	self->priv->tags = cdn_taggable_create_table ();
 }
 
 /**
@@ -662,9 +639,6 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 	cdn_annotatable_set_annotation (CDN_ANNOTATABLE (newaction),
 	                                action->priv->annotation);
 
-	cdn_taggable_copy_to (CDN_TAGGABLE (action),
-	                      action->priv->tags);
-
 	cdn_phaseable_copy_to (CDN_PHASEABLE (action),
 	                       CDN_PHASEABLE (newaction));
 
@@ -768,16 +742,14 @@ cdn_edge_action_set_index (CdnEdgeAction *action,
 static void
 get_indices (CdnEdgeAction *action)
 {
-	gint numr;
-	gint numc;
+	CdnDimension dim;
 	gdouble const *values;
 	gint i;
 
 	values = cdn_expression_evaluate_values (action->priv->index,
-	                                         &numr,
-	                                         &numc);
+	                                         &dim);
 
-	action->priv->num_indices = numr * numc;
+	action->priv->num_indices = cdn_dimension_size (&dim);
 
 	g_free (action->priv->indices);
 	action->priv->indices = g_new (gint, action->priv->num_indices);
@@ -788,6 +760,16 @@ get_indices (CdnEdgeAction *action)
 	}
 }
 
+/**
+ * cdn_edge_action_get_indices:
+ * @action: a #CdnEdgeAction.
+ * @num_indices: (out): return value for the number of indices.
+ *
+ * Get the indices for this action.
+ *
+ * Returns: (allow-none) (array length=num_indices): the indices for this action.
+ *
+ **/
 gint const *
 cdn_edge_action_get_indices (CdnEdgeAction *action,
                              gint          *num_indices)
@@ -881,10 +863,8 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 	if (cdn_modifiable_get_modified (CDN_MODIFIABLE (action->priv->equation)))
 	{
 		gboolean ret;
-		gint enumr;
-		gint enumc;
-		gint numr;
-		gint numc;
+		CdnDimension edim;
+		CdnDimension dim;
 
 		if (context == NULL)
 		{
@@ -936,14 +916,12 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 		}
 
 		cdn_expression_get_dimension (action->priv->equation,
-		                              &enumr,
-		                              &enumc);
+		                              &edim);
 
 		cdn_expression_get_dimension (cdn_variable_get_expression (action->priv->property),
-		                              &numr,
-		                              &numc);
+		                              &dim);
 
-		if (!action->priv->index && (numr != enumr || numc != enumc))
+		if (!action->priv->index && (dim.rows != edim.rows || dim.columns != edim.columns))
 		{
 			if (error)
 			{
@@ -952,11 +930,11 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 				gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
 				                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
 				                      "The dimensions of the edge action (%d-by-%d) and the initial value of `%s' (%d-by-%d) must be the same",
-				                      enumr,
-				                      enumc,
+				                      edim.rows,
+				                      edim.columns,
 				                      cdn_variable_get_name (action->priv->property),
-				                      numr,
-				                      numc);
+				                      dim.rows,
+				                      dim.columns);
 
 				cdn_compile_error_set (error,
 				                       gerror,

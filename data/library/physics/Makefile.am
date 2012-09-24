@@ -8,7 +8,9 @@ library_DATA = \
 	dynamics.cdn \
 	findbodies.cdn \
 	geometry.cdn \
-	slip.cdn
+	slip.cdn \
+	transform.cdn \
+	quaternion.cdn
 
 EXTRA_DIST = \
 	$(library_DATA)

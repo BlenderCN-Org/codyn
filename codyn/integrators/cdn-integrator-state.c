@@ -760,13 +760,12 @@ evaluate_notify (CdnExpression *expression,
 {
 	GSList *item;
 	gdouble *update;
-	gint enumr;
-	gint enumc;
+	CdnDimension edim;
 
 	// Update variable cache from the direct actions
 	cdn_variable_clear_update (info->variable);
 
-	update = cdn_variable_get_update (info->variable, &enumr, &enumc);
+	update = cdn_variable_get_update (info->variable, &edim);
 
 	for (item = info->actions; item; item = g_slist_next (item))
 	{
@@ -775,23 +774,21 @@ evaluate_notify (CdnExpression *expression,
 		gint const *indices;
 		gint num_indices;
 		gdouble const *values;
-		gint numr;
-		gint numc;
+		CdnDimension dim;
 
 		indices = cdn_edge_action_get_indices (action, &num_indices);
 
-		values = cdn_expression_evaluate_values (expr, &numr, &numc);
+		values = cdn_expression_evaluate_values (expr, &dim);
 
 		sum_values (update,
 		            values,
 		            indices,
-		            indices ? num_indices : numr * numc);
+		            indices ? num_indices : cdn_dimension_size (&dim));
 	}
 
 	cdn_variable_set_values (info->variable,
 	                         update,
-	                         enumr,
-	                         enumc);
+	                         &edim);
 }
 
 /**

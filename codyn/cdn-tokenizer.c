@@ -373,13 +373,19 @@ cdn_tokenizer_peek (gchar const *buffer)
 	return cdn_tokenizer_next (&buffer);
 }
 
-CdnToken *
-cdn_tokenizer_next (gchar const **buffer)
+void
+cdn_tokenizer_ensure_skip_space (const gchar **buffer)
 {
 	if (*buffer)
 	{
 		skip_whitespace (buffer);
 	}
+}
+
+CdnToken *
+cdn_tokenizer_next (gchar const **buffer)
+{
+	cdn_tokenizer_ensure_skip_space (buffer);
 
 	if (*buffer == NULL || **buffer == '\0')
 	{

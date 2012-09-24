@@ -10,7 +10,6 @@ struct _CdnInstructionFunctionPrivate
 	gchar *name;
 
 	CdnStackManipulation smanip;
-	gint push_dims[2];
 	GError *error;
 };
 
@@ -24,25 +23,9 @@ cdn_instruction_function_finalize (CdnMiniObject *object)
 	function = CDN_INSTRUCTION_FUNCTION (object);
 	g_free (function->priv->name);
 
-	g_free (function->priv->smanip.pop_dims);
+	cdn_stack_manipulation_destroy (&function->priv->smanip);
 
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_function_parent_class)->finalize (object);
-}
-
-static void
-copy_smanip (CdnStackManipulation const *src,
-             CdnStackManipulation       *dest)
-{
-	dest->num_pop = src->num_pop;
-	dest->num_push = src->num_push;
-
-	g_free (dest->pop_dims);
-	dest->pop_dims = g_new (gint, dest->num_pop * 2);
-
-	memcpy (dest->pop_dims, src->pop_dims, sizeof (gint) * src->num_pop * 2);
-	memcpy (dest->push_dims, src->push_dims, sizeof (gint) * src->num_pop * 2);
-
-	dest->extra_space = src->extra_space;
 }
 
 static CdnMiniObject *
@@ -61,7 +44,7 @@ cdn_instruction_function_copy (CdnMiniObject *object)
 	self->priv->id = src->priv->id;
 	self->priv->name = g_strdup (src->priv->name);
 
-	copy_smanip (&src->priv->smanip, &self->priv->smanip);
+	cdn_stack_manipulation_copy (&self->priv->smanip, &src->priv->smanip);
 
 	return ret;
 }
@@ -86,8 +69,7 @@ cdn_instruction_function_execute (CdnInstruction *instruction,
 	self = (CdnInstructionFunction *)instruction;
 
 	cdn_math_function_execute (self->priv->id,
-	                           self->priv->smanip.num_pop,
-	                           self->priv->smanip.pop_dims,
+	                           &self->priv->smanip.pop,
 	                           stack);
 }
 
@@ -105,6 +87,18 @@ cdn_instruction_function_get_stack_manipulation (CdnInstruction  *instruction,
 	}
 
 	return self->priv->error ? NULL : &self->priv->smanip;
+}
+
+static void
+cdn_instruction_function_recalculate_sparsity (CdnInstruction *instruction)
+{
+	CdnInstructionFunction *self;
+
+	self = CDN_INSTRUCTION_FUNCTION (instruction);
+
+	cdn_math_compute_sparsity ((CdnMathFunctionType)self->priv->id,
+	                           &self->priv->smanip.pop,
+	                           &self->priv->smanip.push);
 }
 
 static gboolean
@@ -129,8 +123,7 @@ cdn_instruction_function_get_is_commutative (CdnInstruction *instruction)
 	type = (CdnMathFunctionType)cdn_instruction_function_get_id (func);
 
 	return cdn_math_function_is_commutative (type,
-	                                         func->priv->smanip.num_pop,
-	                                         func->priv->smanip.pop_dims);
+	                                         &func->priv->smanip.pop);
 }
 
 static void
@@ -147,6 +140,7 @@ cdn_instruction_function_class_init (CdnInstructionFunctionClass *klass)
 	inst_class->get_stack_manipulation = cdn_instruction_function_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_function_equal;
 	inst_class->get_is_commutative = cdn_instruction_function_get_is_commutative;
+	inst_class->recalculate_sparsity = cdn_instruction_function_recalculate_sparsity;
 
 	g_type_class_add_private (object_class, sizeof(CdnInstructionFunctionPrivate));
 }
@@ -155,19 +149,15 @@ static void
 cdn_instruction_function_init (CdnInstructionFunction *self)
 {
 	self->priv = CDN_INSTRUCTION_FUNCTION_GET_PRIVATE (self);
-
-	self->priv->smanip.push_dims = self->priv->push_dims;
 }
 
 CdnInstruction *
-cdn_instruction_function_new (guint        id,
-                              const gchar *name,
-                              gint         arguments,
-                              gint        *argdim)
+cdn_instruction_function_new (guint               id,
+                              const gchar        *name,
+                              CdnStackArgs const *args)
 {
 	CdnMiniObject *ret;
 	CdnInstructionFunction *func;
-	gint i;
 
 	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_FUNCTION);
 	func = CDN_INSTRUCTION_FUNCTION (ret);
@@ -181,20 +171,11 @@ cdn_instruction_function_new (guint        id,
 		                                                             NULL));
 	}
 
-	func->priv->smanip.num_pop = arguments;
-	func->priv->smanip.pop_dims = g_new (gint, arguments * 2);
-
-	for (i = 0; i < arguments * 2; ++i)
-	{
-		func->priv->smanip.pop_dims[i] = argdim ? argdim[i] : 1;
-	}
-
-	func->priv->smanip.num_push = 1;
+	cdn_stack_args_copy (&func->priv->smanip.pop, args);
 
 	cdn_math_function_get_stack_manipulation (id,
-	                                          arguments,
-	                                          argdim,
-	                                          func->priv->push_dims,
+	                                          &func->priv->smanip.pop,
+	                                          &func->priv->smanip.push,
 	                                          &func->priv->smanip.extra_space,
 	                                          &func->priv->error);
 
@@ -241,10 +222,4 @@ cdn_instruction_function_get_name (CdnInstructionFunction *func)
 {
 	/* Omit type check to increase speed */
 	return func->priv->name;
-}
-
-gint *
-cdn_instruction_function_get_arguments_dimension (CdnInstructionFunction *func)
-{
-	return func->priv->smanip.pop_dims;
 }

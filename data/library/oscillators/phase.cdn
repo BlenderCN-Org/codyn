@@ -25,10 +25,10 @@ templates
         r2 = "r²"
 
         ## Amplitude node variable
-        ṙ = "γ_r ∙ (R ∙ R - r2)"
+        ṙ = "γ_r ∙ (target_amplitude ∙ target_amplitude - r2)"
 
         ## Output variable (r * sin(phase))
-        "output" = "r * sin(p)"
+        "output" = "r * sin(φ)"
 
         ## Function for γ such that it takes <i>τ</i> seconds to
         ## forget a perturbation of size (1 - <i>α</i>) * <i>δ</i>
@@ -47,7 +47,10 @@ templates
         ## Gain on phase coupling convergence
         weight = 1
 
-        φ <= "weight * sin(input.φ - output.φ - bias)"
+        ## Additional noise on the coupling
+        noise = 0
+
+        φ <= "weight * sin(input.φ - output.φ - bias) + noise"
     }
 
     include "layout/line.cdn"

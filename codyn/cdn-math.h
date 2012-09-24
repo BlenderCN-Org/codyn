@@ -133,6 +133,7 @@ typedef enum
 	CDN_MATH_FUNCTION_TYPE_MIN,
 	CDN_MATH_FUNCTION_TYPE_MAX,
 	CDN_MATH_FUNCTION_TYPE_EXP,
+	CDN_MATH_FUNCTION_TYPE_ERF,
 	CDN_MATH_FUNCTION_TYPE_FLOOR,
 	CDN_MATH_FUNCTION_TYPE_CEIL,
 	CDN_MATH_FUNCTION_TYPE_ROUND,
@@ -168,16 +169,14 @@ typedef enum
 	CDN_MATH_FUNCTION_TYPE_NUM
 } CdnMathFunctionType;
 
-typedef void (*CdnMathFunctionEvaluateFunc)(CdnStack *stack,
-                                            gint      numargs,
-                                            gint     *argdim,
-                                            gpointer  userdata);
+typedef void (*CdnMathFunctionEvaluateFunc)(CdnStack           *stack,
+                                            CdnStackArgs const *argdim,
+                                            gpointer            userdata);
 
-typedef gboolean (*CdnMathStackManipulationFunc)(gint     arguments,
-                                                 gint    *argdim,
-                                                 gint    *outargdim,
-                                                 gint    *extraspace,
-                                                 GError **error);
+typedef gboolean (*CdnMathStackManipulationFunc)(CdnStackArgs const  *inargs,
+                                                 CdnStackArg         *outarg,
+                                                 gint                *extraspace,
+                                                 GError             **error);
 
 CdnMathFunctionType  cdn_math_function_lookup                 (const gchar          *name,
                                                                gint                 *arguments);
@@ -185,22 +184,23 @@ gdouble              cdn_math_constant_lookup                 (const gchar      
                                                                gboolean             *found);
 
 void                 cdn_math_function_execute                (CdnMathFunctionType   type,
-                                                               gint                  numargs,
-                                                               gint                 *argdim,
+                                                               CdnStackArgs const   *argdim,
                                                                CdnStack             *stack);
 
 gboolean             cdn_math_function_is_variable            (CdnMathFunctionType   type);
 gboolean             cdn_math_function_is_commutative         (CdnMathFunctionType   type,
-                                                               gint                  numargs,
-                                                               gint                 *argdim);
+                                                               CdnStackArgs const   *argdim);
 
 const gchar         *cdn_math_function_lookup_by_id           (CdnMathFunctionType   type,
                                                                gint                 *arguments);
 
+void                 cdn_math_compute_sparsity                (CdnMathFunctionType  type,
+                                                               CdnStackArgs const  *inargs,
+                                                               CdnStackArg         *outarg);
+
 gboolean             cdn_math_function_get_stack_manipulation (CdnMathFunctionType   type,
-                                                               gint                  arguments,
-                                                               gint                 *argdim,
-                                                               gint                 *outargdim,
+                                                               CdnStackArgs const   *inargs,
+                                                               CdnStackArg          *outarg,
                                                                gint                 *extra_space,
                                                                GError              **error);
 

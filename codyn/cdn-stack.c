@@ -22,7 +22,13 @@
 
 #include "cdn-stack-private.h"
 #include <string.h>
+#include <stdlib.h>
 
+CdnDimension cdn_dimension_one = {{.dims = {1, 1}}};
+CdnDimension *cdn_dimension_onep = &cdn_dimension_one;
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
 GType
 cdn_stack_get_type ()
 {
@@ -38,45 +44,94 @@ cdn_stack_get_type ()
 	return gtype;
 }
 
-static CdnStackManipulation *
-cdn_stack_manipulation_copy (CdnStackManipulation *smanip)
+static void
+cdn_stack_arg_destroy (CdnStackArg *arg)
 {
-	CdnStackManipulation *s;
-
-	s = g_slice_new0 (CdnStackManipulation);
-	s->num_pop = smanip->num_pop;
-	s->num_push = smanip->num_push;
-
-	if (smanip->pop_dims)
+	if (arg == NULL)
 	{
-		s->pop_dims = g_new (gint, smanip->num_pop);
-
-		memcpy (s->pop_dims,
-		        smanip->pop_dims,
-		        sizeof (gint) * smanip->num_pop);
+		return;
 	}
 
-	if (smanip->push_dims)
-	{
-		s->push_dims = g_new (gint, smanip->num_push);
+	g_free (arg->sparsity);
 
-		memcpy (s->push_dims,
-		        smanip->push_dims,
-		        sizeof (gint) * smanip->num_push);
-	}
+	arg->sparsity = NULL;
+	arg->num_sparse = 0;
+}
 
-	return s;
+static CdnStackArg *
+_cdn_stack_arg_copy (CdnStackArg const *arg)
+{
+	CdnStackArg *ret;
+
+	ret = g_slice_new0 (CdnStackArg);
+	cdn_stack_arg_copy (ret, arg);
+
+	return ret;
 }
 
 static void
-cdn_stack_manipulation_free (CdnStackManipulation *smanip)
+_cdn_stack_arg_free (CdnStackArg *arg)
 {
-	g_free (smanip->pop_dims);
-	g_free (smanip->push_dims);
+	cdn_stack_arg_destroy (arg);
+	g_slice_free (CdnStackArg, arg);
+}
+
+static CdnStackArgs *
+_cdn_stack_args_copy (CdnStackArgs const *args)
+{
+	CdnStackArgs *ret;
+
+	ret = g_slice_new0 (CdnStackArgs);
+	cdn_stack_args_copy (ret, args);
+
+	return ret;
+}
+
+static void
+_cdn_stack_args_free (CdnStackArgs *args)
+{
+	cdn_stack_args_destroy (args);
+	g_slice_free (CdnStackArgs, args);
+}
+
+static CdnDimension *
+_cdn_dimension_copy (CdnDimension const *dim)
+{
+	CdnDimension *ret;
+
+	ret = g_slice_new0 (CdnDimension);
+	*ret = *dim;
+
+	return ret;
+}
+
+static void
+_cdn_dimension_free (CdnDimension *dim)
+{
+	g_slice_free (CdnDimension, dim);
+}
+
+static CdnStackManipulation *
+_cdn_stack_manipulation_copy (CdnStackManipulation const *smanip)
+{
+	CdnStackManipulation *ret;
+
+	ret = g_slice_new0 (CdnStackManipulation);
+	cdn_stack_manipulation_copy (ret, smanip);
+
+	return ret;
+}
+
+static void
+_cdn_stack_manipulation_free (CdnStackManipulation *smanip)
+{
+	cdn_stack_manipulation_destroy (smanip);
 
 	g_slice_free (CdnStackManipulation, smanip);
 }
 
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
 GType
 cdn_stack_manipulation_get_type ()
 {
@@ -85,8 +140,59 @@ cdn_stack_manipulation_get_type ()
 	if (G_UNLIKELY (gtype == 0))
 	{
 		gtype = g_boxed_type_register_static ("CdnStackManipulation",
-		                                      (GBoxedCopyFunc)cdn_stack_manipulation_copy,
-		                                      (GBoxedFreeFunc)cdn_stack_manipulation_free);
+		                                      (GBoxedCopyFunc)_cdn_stack_manipulation_copy,
+		                                      (GBoxedFreeFunc)_cdn_stack_manipulation_free);
+	}
+
+	return gtype;
+}
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_stack_arg_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStackArg",
+		                                      (GBoxedCopyFunc)_cdn_stack_arg_copy,
+		                                      (GBoxedFreeFunc)_cdn_stack_arg_free);
+	}
+
+	return gtype;
+}
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_stack_args_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnStackArgs",
+		                                      (GBoxedCopyFunc)_cdn_stack_args_copy,
+		                                      (GBoxedFreeFunc)_cdn_stack_args_free);
+	}
+
+	return gtype;
+}
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_dimension_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnDimension",
+		                                      (GBoxedCopyFunc)_cdn_dimension_copy,
+		                                      (GBoxedFreeFunc)_cdn_dimension_free);
 	}
 
 	return gtype;
@@ -382,85 +488,324 @@ cdn_stack_pushni (CdnStack *stack,
 }
 
 /**
- * cdn_stack_manipulation_get_pop_dimension:
+ * cdn_stack_manipulation_get_popn:
  * @smanip: a #CdnStackManipulation.
  * @n: the popped argument index.
- * @numr: (out): return value for the number of rows.
- * @numc: (out): return value for the number of columns.
  *
  * Get the dimension of a particular popped argument.
  *
  **/
-void
-cdn_stack_manipulation_get_pop_dimension (CdnStackManipulation const *smanip,
-                                          gint                        n,
-                                          gint                       *numr,
-                                          gint                       *numc)
+CdnStackArg const *
+cdn_stack_manipulation_get_popn (CdnStackManipulation const *smanip,
+                                 gint                        n)
 {
-	if (!smanip || !smanip->pop_dims)
+	if (!smanip || smanip->pop.num <= n)
 	{
-		if (numr)
-		{
-			*numr = 1;
-		}
-
-		if (numc)
-		{
-			*numc = 1;
-		}
+		return NULL;
 	}
-	else
+
+	return &smanip->pop.args[n];
+}
+
+/**
+ * cdn_stack_manipulation_get_pop:
+ * @smanip: a #CdnStackManipulation.
+ *
+ * Get the dimension of a particular popped argument.
+ *
+ **/
+CdnStackArgs const *
+cdn_stack_manipulation_get_pop (CdnStackManipulation const *smanip)
+{
+	if (!smanip)
 	{
-		if (numr)
+		return NULL;
+	}
+
+	return &smanip->pop;
+}
+
+guint
+cdn_stack_args_get_num (CdnStackArgs const *args)
+{
+	return args ? args->num : 0;
+}
+
+/**
+ * cdn_stack_manipulation_get_push:
+ * @smanip: a #CdnStackManipulation.
+ *
+ * Get the dimension of the pushed element.
+ *
+ **/
+CdnStackArg const *
+cdn_stack_manipulation_get_push (CdnStackManipulation const *smanip)
+{
+	if (!smanip)
+	{
+		return NULL;
+	}
+
+	return &smanip->push;
+}
+
+void
+cdn_stack_arg_copy (CdnStackArg       *ret,
+                    CdnStackArg const *src)
+{
+	ret->rows = src->rows;
+	ret->columns = src->columns;
+
+	cdn_stack_arg_set_sparsity (ret, src->sparsity, src->num_sparse);
+}
+
+guint
+cdn_stack_arg_size (CdnStackArg const *arg)
+{
+	return arg ? arg->rows * arg->columns : 1;
+}
+
+void
+cdn_stack_arg_set_sparsity (CdnStackArg *arg,
+                            guint       *sparsity,
+                            guint        num_sparse)
+{
+	if (num_sparse != arg->num_sparse)
+	{
+		g_free (arg->sparsity);
+
+		if (num_sparse != 0)
 		{
-			*numr = smanip->pop_dims[n * 2];
+			arg->sparsity = g_memdup (sparsity, sizeof (guint) * num_sparse);
+		}
+		else
+		{
+			arg->sparsity = NULL;
 		}
 
-		if (numc)
-		{
-			*numc = smanip->pop_dims[n * 2 + 1];
-		}
+		arg->num_sparse = num_sparse;
+	}
+	else if (num_sparse != 0)
+	{
+		memcpy (arg->sparsity, sparsity, sizeof (guint) * num_sparse);
 	}
 }
 
 /**
- * cdn_stack_manipulation_get_push_dimension:
- * @smanip: a #CdnStackManipulation.
- * @n: the popped argument index.
- * @numr: (out): return value for the number of rows.
- * @numc: (out): return value for the number of columns.
+ * cdn_stack_arg_get_sparsity:
+ * @arg: a #CdnStackArg.
+ * @num_sparse: (out): return value for the length of the sparsity array.
  *
- * Get the dimension of a particular pushed argument.
+ * Get the sparsity indices.
+ *
+ * Returns: (array length=num_sparse): the sparsity indices.
  *
  **/
-void
-cdn_stack_manipulation_get_push_dimension (CdnStackManipulation const *smanip,
-                                           gint                        n,
-                                           gint                       *numr,
-                                           gint                       *numc)
+guint const *
+cdn_stack_arg_get_sparsity (CdnStackArg *arg,
+                            guint       *num_sparse)
 {
-	if (!smanip || !smanip->push_dims)
-	{
-		if (numr)
-		{
-			*numr = 1;
-		}
+	*num_sparse = arg->num_sparse;
+	return arg->sparsity;
+}
 
-		if (numc)
-		{
-			*numc = 1;
-		}
-	}
-	else
-	{
-		if (numr)
-		{
-			*numr = smanip->push_dims[n * 2];
-		}
+void
+cdn_stack_arg_set_sparsity_one (CdnStackArg *arg,
+                                guint        sparsity)
+{
+	cdn_stack_arg_set_sparsity (arg, &sparsity, 1);
+}
 
-		if (numc)
-		{
-			*numc = smanip->push_dims[n * 2 + 1];
-		}
+static int
+compare_sparse_index (gconstpointer a,
+                      gconstpointer b)
+{
+	guint const *ai;
+	guint const *bi;
+
+	ai = (guint const *)a;
+	bi = (guint const *)b;
+
+	return ai < bi ? -1 : (ai == bi ? 0 : 1);
+}
+
+gboolean
+cdn_stack_arg_is_sparse (CdnStackArg const *arg,
+                         guint              idx)
+{
+	if (arg->sparsity == NULL)
+	{
+		return FALSE;
 	}
+
+	return bsearch (&idx,
+	                arg->sparsity,
+	                arg->num_sparse,
+	                sizeof (guint),
+	                compare_sparse_index) != NULL;
+}
+
+void
+cdn_stack_args_destroy (CdnStackArgs *args)
+{
+	gint i;
+
+	if (args == NULL)
+	{
+		return;
+	}
+
+	for (i = 0; i < args->num; ++i)
+	{
+		cdn_stack_arg_destroy (&args->args[i]);
+	}
+
+	g_free (args->args);
+
+	args->args = NULL;
+	args->num = 0;
+}
+
+void
+cdn_stack_manipulation_destroy (CdnStackManipulation *smanip)
+{
+	if (smanip == NULL)
+	{
+		return;
+	}
+
+	cdn_stack_args_destroy (&smanip->pop);
+	cdn_stack_arg_destroy (&smanip->push);
+}
+
+CdnStackArgs *
+cdn_stack_args_new (gint num)
+{
+	CdnStackArgs *ret;
+	gint i;
+
+	ret = g_slice_new (CdnStackArgs);
+	cdn_stack_args_init (ret, num);
+
+	for (i = 0; i < num; ++i)
+	{
+		ret->args[i].rows = 1;
+		ret->args[i].columns = 1;
+	}
+
+	return ret;
+}
+
+void
+cdn_stack_args_init (CdnStackArgs *args,
+                     gint          num)
+{
+	args->num = num;
+	args->args = g_new0 (CdnStackArg, num);
+}
+
+void
+cdn_stack_args_copy (CdnStackArgs       *dest,
+                     CdnStackArgs const *src)
+{
+	gint i;
+
+	for (i = 0; i < dest->num; ++i)
+	{
+		cdn_stack_arg_destroy (&dest->args[i]);
+	}
+
+	g_free (dest->args);
+
+	dest->num = src->num;
+	dest->args = g_memdup (src->args, sizeof (CdnStackArg) * dest->num);
+
+	for (i = 0; i < src->num; ++i)
+	{
+		dest->args[i].sparsity = NULL;
+		dest->args[i].num_sparse = 0;
+
+		cdn_stack_arg_set_sparsity (&dest->args[i],
+		                            src->args[i].sparsity,
+		                            src->args[i].num_sparse);
+	}
+}
+
+void
+cdn_stack_manipulation_copy (CdnStackManipulation       *dest,
+                             CdnStackManipulation const *src)
+{
+	if (dest == src || dest == NULL || src == NULL)
+	{
+		return;
+	}
+
+	cdn_stack_manipulation_destroy (dest);
+
+	cdn_stack_arg_copy (&dest->push, &src->push);
+	cdn_stack_args_copy (&dest->pop, &src->pop);
+
+	dest->extra_space = src->extra_space;
+}
+
+/**
+ * cdn_dimension_is_one:
+ * @dim: a #CdnDimension.
+ *
+ * Check if the dimension is 1 x 1.
+ *
+ * Returns: %TRUE if the dimension is single, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_dimension_is_one (CdnDimension const *dim)
+{
+	if (!dim)
+	{
+		return TRUE;
+	}
+
+	return dim->rows == 1 && dim->columns == 1;
+}
+
+/**
+ * cdn_dimension_equal:
+ * @dim: a #CdnDimension.
+ * @other: a #CdnDimension.
+ *
+ * Compare two dimensions for equality.
+ *
+ * Returns: %TRUE if the dimensions are equal, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_dimension_equal (CdnDimension const *dim,
+                     CdnDimension const *other)
+{
+	if (!dim || !other)
+	{
+		return FALSE;
+	}
+
+	return dim->rows == other->rows && dim->columns == other->columns;
+}
+
+/**
+ * cdn_dimension_size:
+ * @dim: a #CdnDimension.
+ *
+ * Get the size of a dimension (i.e. row x columns).
+ *
+ * Returns: the dimension size.
+ *
+ **/
+gint
+cdn_dimension_size (CdnDimension const *dim)
+{
+	if (!dim)
+	{
+		return 1;
+	}
+
+	return dim->rows * dim->columns;
 }

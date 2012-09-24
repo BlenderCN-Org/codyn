@@ -216,6 +216,8 @@ gboolean              cdn_network_link_library          (CdnNetwork  *network,
 void              _cdn_network_register_import       (CdnNetwork        *network,
                                                       CdnImportForward *import);
 
+void              cdn_network_simplify               (CdnNetwork *network);
+
 G_END_DECLS
 
 #endif /* __CDN_NETWORK_H__ */

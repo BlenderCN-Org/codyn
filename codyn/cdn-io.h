@@ -42,7 +42,7 @@ typedef enum
 {
 	CDN_IO_MODE_INPUT = 1 << 0,
 	CDN_IO_MODE_OUTPUT = 1 << 1,
-	CDN_IO_MODE_INPUT_OUTPUT = CDN_IO_MODE_INPUT | CDN_IO_MODE_OUTPUT
+	CDN_IO_MODE_INPUT_OUTPUT = 1 << 0 | 1 << 1
 } CdnIoMode;
 
 struct _CdnIoInterface
