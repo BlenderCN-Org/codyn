@@ -18,6 +18,24 @@ free_func (gpointer instr)
 	cdn_mini_object_unref (instr);
 }
 
+#ifndef G_DEFINE_BOXED_TYPE
+#define G_DEFINE_BOXED_TYPE(TypeName, type_name, copy_func, free_func)			\
+GType											\
+type_name##_get_type ()									\
+{											\
+	static GType gtype = 0;								\
+											\
+	if (G_UNLIKELY (gtype == 0))							\
+	{										\
+		gtype = g_boxed_type_register_static (#TypeName,			\
+		                                      (GBoxedCopyFunc)copy_func,	\
+		                                      (GBoxedFreeFunc)free_func);	\
+	}										\
+											\
+	return gtype;									\
+}
+#endif
+
 G_DEFINE_BOXED_TYPE (CdnInstructionBoxed, cdn_instruction_boxed, copy_func, free_func)
 G_DEFINE_BOXED_TYPE (CdnInstructionVariableBoxed, cdn_instruction_variable_boxed, copy_func, free_func)
 G_DEFINE_BOXED_TYPE (CdnInstructionCustomFunctionBoxed, cdn_instruction_custom_function_boxed, copy_func, free_func)
