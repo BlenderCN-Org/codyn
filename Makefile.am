@@ -1,9 +1,5 @@
 SUBDIRS = codyn data tests m4 win32 tools io
 
-if ENABLE_DOC
-SUBDIRS += docs
-endif
-
 ACLOCAL_AMFLAGS = -I m4
 
 pkgconfigdir = $(libdir)/pkgconfig
@@ -18,20 +14,12 @@ EXTRA_DIST = \
 
 DISTCHECK_CONFIGURE_FLAGS =
 
-if ENABLE_DOC
-DISTCHECK_CONFIGURE_FLAGS += --enable-gtk-doc
-endif
-
-DISTCLEANFILES = \
-	gnome-doc-utils.make
-
 MAINTAINERCLEANFILES = 		\
 	aclocal.m4		\
 	config.guess		\
 	config.h.in		\
 	config.sub		\
 	depcomp			\
-	gtk-doc.make		\
 	install-sh		\
 	ltmain.sh		\
 	missing			\
@@ -39,9 +27,6 @@ MAINTAINERCLEANFILES = 		\
 	mkinstalldirs		\
 	omf.make		\
 	py-compile		\
-	xmldocs.make		\
-	m4/gnome-doc-utils.m4	\
-	m4/gtk-doc.m4		\
 	m4/intltool.m4		\
 	m4/libtool.m4		\
 	m4/ltoptions.m4		\

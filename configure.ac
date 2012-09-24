@@ -17,12 +17,6 @@ AC_PROG_YACC
 LT_PREREQ([2.2.6])
 LT_INIT(disable-static)
 
-m4_ifdef([GTK_DOC_CHECK], [
-GTK_DOC_CHECK(1.9)
-],[
-AM_CONDITIONAL([ENABLE_GTK_DOC], false)
-])
-
 AM_MAINTAINER_MODE([enable])
 m4_ifdef([AM_SILENT_RULES],[AM_SILENT_RULES([yes])])
 
@@ -70,17 +64,6 @@ $2=`(test "x$prefix" = xNONE && prefix="$ac_default_prefix"
        eval _lcl_receval="\"[$]_lcl_receval\""
      done
      echo "[$]_lcl_receval")`])
-
-AC_ARG_ENABLE([doc],
-	AS_HELP_STRING([--disable-doc],[Enable building docs (default: enabled)]),
-	[enable_doc=$enableval],
-	[enable_doc=yes])
-
-if test "x$enable_doc" = "xyes"; then
-	AC_PATH_PROG([XSLTPROC], [xsltproc])
-fi
-
-AM_CONDITIONAL([ENABLE_DOC],[test "x$enable_doc" = "xyes"])
 
 # Introspection
 GOBJECT_INTROSPECTION_CHECK([0.10.7])
@@ -498,9 +481,6 @@ data/library/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/physics/Makefile
-docs/Makefile
-docs/reference/Makefile
-docs/man/Makefile
 io/Makefile
 io/file/Makefile
 io/network/Makefile
@@ -533,7 +513,6 @@ Configuration:
 	Source code location:	${srcdir}
 	Compiler:		${CC}
 	GObject Introspection:	$enable_introspection
-	Documentation enabled:  $enable_doc
 	gedit plugin:           $enable_gedit ($GEDIT_MAJOR_VERSION)
 	cdn-archive:            $have_tar
 	network support:        $have_networking

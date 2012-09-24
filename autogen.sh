@@ -7,14 +7,6 @@ test -n "$srcdir" || srcdir=.
 olddir=`pwd`
 cd "$srcdir"
 
-if ! test -f gtk-doc.make; then
-	DOCIZE=`which gtkdocize`
-
-	if ! test -z $DOCIZE; then
-		gtkdocize
-	fi
-fi
-
 AUTORECONF=`which autoreconf`
 
 if test -z $AUTORECONF; then
