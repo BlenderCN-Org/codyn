@@ -1,3 +1,10 @@
+codyn (3.1-1) UNRELEASED; urgency=low
+
+  * New upstream release
+
+ -- Jesse van den Kieboom <jesse@codyn.net>  Mon, 24 Sep 2012 14:52:45 +0200
+
+
 codyn (3.0-1) UNRELEASED; urgency=low
 
   * New upstream release 

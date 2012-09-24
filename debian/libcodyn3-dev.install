@@ -2,4 +2,3 @@ usr/include/codyn-3.0/codyn/*
 usr/lib/libcodyn-3*.so
 usr/lib/pkgconfig/codyn-3*
 usr/lib/libcodyn-3*.la
-usr/share/gtk-doc/html/codyn3/*
