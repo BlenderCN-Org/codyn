@@ -2591,34 +2591,6 @@ unique_id (CdnNode    *parent,
 	}
 }
 
-static void
-set_proxy (CdnParserContext *context,
-           GSList           *objects)
-{
-	while (objects)
-	{
-		CdnObject *obj;
-		CdnNode *parent;
-
-		obj = cdn_selection_get_object (objects->data);
-		objects = g_slist_next (objects);
-
-		if (CDN_IS_EDGE (obj))
-		{
-			continue;
-		}
-
-		parent = cdn_object_get_parent (obj);
-
-		if (!parent)
-		{
-			continue;
-		}
-
-		cdn_node_set_proxy (parent, obj);
-	}
-}
-
 static GSList *
 parse_objects (CdnParserContext  *context,
                CdnEmbeddedString *id,
@@ -2629,14 +2601,9 @@ parse_objects (CdnParserContext  *context,
 	GSList *parents;
 	GSList *parent;
 	GSList *ret = NULL;
-	gboolean isproxy;
 	gint i = 0;
 
 	parents = each_selections (context, TRUE);
-
-	//isproxy = find_attribute (attributes, "proxy") != NULL;
-	// TODO
-	isproxy = FALSE;
 
 	for (parent = parents; parent; parent = g_slist_next (parent))
 	{
@@ -2680,11 +2647,6 @@ parse_objects (CdnParserContext  *context,
 		                            parent->data,
 		                            gtype,
 		                            allow_create);
-
-		if (isproxy)
-		{
-			set_proxy (context, objs);
-		}
 
 		g_slist_foreach (ids, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ids);

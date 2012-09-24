@@ -42,7 +42,7 @@ test_load ()
 static void
 test_apply_state ()
 {
-	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (state,
@@ -101,8 +101,8 @@ test_apply_edge ()
 static void
 test_apply_node ()
 {
-	CdnNode *grp = cdn_node_new ("node", NULL);
-	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
+	CdnNode *grp = cdn_node_new ("node");
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state"));
 
 	cdn_object_add_variable (state,
 	                         cdn_variable_new ("x",
@@ -120,8 +120,6 @@ test_apply_node ()
 	cdn_node_add (grp, state, NULL);
 	cdn_node_add (grp, edge, NULL);
 
-	cdn_node_set_proxy (grp, state);
-
 	CdnObject *instance = cdn_object_copy (CDN_OBJECT (grp));
 
 	g_assert (CDN_IS_NODE (instance));
@@ -131,8 +129,6 @@ test_apply_node ()
 	state = cdn_node_get_child (grp, "state");
 
 	g_assert (state);
-	g_assert (state == cdn_node_get_proxy (grp));
-
 	g_assert (cdn_object_get_variable (state, "x"));
 
 	edge = cdn_node_get_child (grp, "edge");
@@ -238,7 +234,7 @@ test_apply_overload_node ()
 static void
 test_track_modified_state ()
 {
-	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (state,
@@ -321,7 +317,7 @@ test_track_modified_edge ()
 static void
 test_unapply_state ()
 {
-	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (state,
@@ -344,7 +340,7 @@ test_unapply_state ()
 static void
 test_unapply_modified_state ()
 {
-	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (state,
@@ -411,8 +407,8 @@ test_unapply_modified_edge ()
 static void
 test_apply_multiple_state ()
 {
-	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
-	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1"));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (t1,
@@ -427,7 +423,7 @@ test_apply_multiple_state ()
 	                                           0),
 	                         NULL);
 
-	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1"));
 
 	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);
@@ -445,8 +441,8 @@ test_apply_multiple_state ()
 static void
 test_apply_multiple_state_override ()
 {
-	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
-	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1"));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (t1,
@@ -461,7 +457,7 @@ test_apply_multiple_state_override ()
 	                                           0),
 	                         NULL);
 
-	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1"));
 
 	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);
@@ -479,8 +475,8 @@ test_apply_multiple_state_override ()
 static void
 test_unapply_multiple_state_override ()
 {
-	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1", NULL));
-	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2", NULL));
+	CdnObject *t1 = CDN_OBJECT (cdn_node_new ("s1"));
+	CdnObject *t2 = CDN_OBJECT (cdn_node_new ("s2"));
 	GError *error = NULL;
 
 	cdn_object_add_variable (t1,
@@ -495,7 +491,7 @@ test_unapply_multiple_state_override ()
 	                                           0),
 	                         NULL);
 
-	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1", NULL));
+	CdnObject *o = CDN_OBJECT (cdn_node_new ("o1"));
 
 	cdn_object_apply_template (o, t1, &error);
 	g_assert_no_error (error);

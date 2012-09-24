@@ -58,7 +58,6 @@ EXTRA_DIST = \
 	import.cdn \
 	test_node_integrate_multiple_euler.cdn \
 	test_interface_templates.cdn \
-	test_interface_templates_override_proxy.cdn \
 	test_input.txt \
 	test_file.cdn
 

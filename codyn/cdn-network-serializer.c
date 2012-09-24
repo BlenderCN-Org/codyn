@@ -1210,32 +1210,6 @@ any_object_to_xml (CdnNetworkSerializer *serializer,
 	}
 }
 
-static gboolean
-check_proxy_template (CdnObject *object,
-                      CdnObject *proxy)
-{
-	GSList const *templates = cdn_object_get_applied_templates (object);
-
-	while (templates)
-	{
-		if (CDN_IS_NODE (templates->data))
-		{
-			CdnObject *other_proxy = cdn_node_get_proxy (templates->data);
-
-			if (other_proxy != NULL &&
-			    g_strcmp0 (cdn_object_get_id (proxy),
-			               cdn_object_get_id (other_proxy)) == 0)
-			{
-				return TRUE;
-			}
-		}
-
-		templates = g_slist_next (templates);
-	}
-
-	return FALSE;
-}
-
 static void
 node_children_to_xml (CdnNetworkSerializer *serializer,
                        xmlNodePtr           group_node,
@@ -1321,29 +1295,6 @@ node_interface_is_template (CdnNode    *group,
 	return ret;
 }
 
-static gboolean
-node_interface_is_proxy (CdnNode    *group,
-                          gchar const *name)
-{
-	CdnObject *proxy;
-	gchar const *child_name;
-	CdnVariableInterface *iface;
-
-	/* Check if the interface is an automatically generated interface from
-	   a property on the proxy object */
-	proxy = cdn_node_get_proxy (group);
-
-	if (!proxy)
-	{
-		return FALSE;
-	}
-
-	iface = cdn_node_get_variable_interface (group);
-	child_name = cdn_variable_interface_lookup_child_name (iface, name);
-
-	return g_strcmp0 (cdn_object_get_id (proxy), child_name) == 0;
-}
-
 static gchar **
 find_non_template_interfaces (CdnNode *group)
 {
@@ -1360,11 +1311,6 @@ find_non_template_interfaces (CdnNode *group)
 	for (ptr = names; ptr && *ptr; ++ptr)
 	{
 		if (node_interface_is_template (group, *ptr))
-		{
-			continue;
-		}
-
-		if (node_interface_is_proxy (group, *ptr))
 		{
 			continue;
 		}
@@ -1436,16 +1382,6 @@ node_to_xml (CdnNetworkSerializer *serializer,
 		                            CDN_OBJECT (group),
 		                            "node",
 		                            NULL);
-
-		CdnObject *proxy = cdn_node_get_proxy (group);
-
-		if (proxy != NULL &&
-		    !check_proxy_template (CDN_OBJECT (group), proxy))
-		{
-			xmlNewProp (group_node,
-			            (xmlChar *)"proxy",
-			            (xmlChar *)cdn_object_get_id (proxy));
-		}
 	}
 	else
 	{

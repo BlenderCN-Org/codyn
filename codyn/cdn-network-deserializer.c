@@ -1540,31 +1540,6 @@ parse_node (CdnNetworkDeserializer *deserializer,
 		return FALSE;
 	}
 
-	xmlChar *proxy = xmlGetProp (node, (xmlChar *)"proxy");
-
-	if (proxy)
-	{
-		CdnObject *child = cdn_node_get_child (CDN_NODE (object),
-		                                        (gchar const *)proxy);
-
-		if (!child)
-		{
-			parser_failed (deserializer,
-			               node,
-			               CDN_NETWORK_LOAD_ERROR_OBJECT,
-			               "Could not find proxy `%s' for group `%s'",
-			               proxy,
-			               cdn_object_get_id (object));
-
-			xmlFree (proxy);
-			return FALSE;
-		}
-
-		cdn_node_set_proxy (CDN_NODE (object), child);
-
-		xmlFree (proxy);
-	}
-
 	if (!xml_xpath (deserializer,
 	                node,
 	                "interface/variable",

@@ -87,7 +87,7 @@ test_function_varargs ()
 static void
 test_complex ()
 {
-	CdnObject *obj = CDN_OBJECT (cdn_node_new (NULL, NULL));
+	CdnObject *obj = CDN_OBJECT (cdn_node_new (NULL));
 	CdnVariable *prop;
 
 	prop = cdn_variable_new ("x", cdn_expression_new ("1"), 0);

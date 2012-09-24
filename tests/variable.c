@@ -51,7 +51,7 @@ invalid_variable_name (gchar const *name)
 	GError *error = NULL;
 	gboolean ret;
 
-	obj = CDN_OBJECT (cdn_node_new ("s", NULL));
+	obj = CDN_OBJECT (cdn_node_new ("s"));
 
 	ret = cdn_object_add_variable (obj,
 	                               cdn_variable_new (name,

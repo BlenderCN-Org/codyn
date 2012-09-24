@@ -14,7 +14,7 @@ test_switch ()
 
 	network = cdn_network_new ();
 
-	CdnObject *state = CDN_OBJECT (cdn_node_new ("state", NULL));
+	CdnObject *state = CDN_OBJECT (cdn_node_new ("state"));
 	CdnVariable *variable = cdn_variable_new ("x",
 	                                          cdn_expression_new ("sin(t)"),
 	                                          0);

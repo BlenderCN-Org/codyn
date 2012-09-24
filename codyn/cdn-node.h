@@ -41,7 +41,6 @@ typedef enum
 {
 	CDN_NODE_ERROR_CHILD_ALREADY_EXISTS,
 	CDN_NODE_ERROR_CHILD_DOES_NOT_EXIST,
-	CDN_NODE_ERROR_INTERFACE_IS_PROXY,
 	CDN_NODE_ERROR_CHILD_IN_USE,
 	CDN_NODE_ERROR_NUM
 } CdnNodeError;
@@ -100,8 +99,7 @@ GQuark        cdn_node_error_quark   (void);
 
 GType         cdn_node_get_type      (void) G_GNUC_CONST;
 
-CdnNode     *cdn_node_new           (const gchar *id,
-                                       CdnObject   *proxy);
+CdnNode     *cdn_node_new           (const gchar *id);
 
 const GSList *cdn_node_get_children  (CdnNode    *node);
 
@@ -111,13 +109,6 @@ gboolean      cdn_node_add           (CdnNode    *node,
 gboolean      cdn_node_remove        (CdnNode    *node,
                                        CdnObject   *object,
                                        GError     **error);
-
-gboolean      cdn_node_set_proxy     (CdnNode    *node,
-                                       CdnObject   *proxy);
-CdnObject    *cdn_node_get_proxy     (CdnNode    *node);
-
-gboolean      cdn_node_variable_is_proxy (CdnNode    *node,
-                                           const gchar *name);
 
 void          cdn_node_foreach       (CdnNode    *node,
                                        GFunc        func,

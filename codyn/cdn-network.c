@@ -548,7 +548,7 @@ cdn_network_init (CdnNetwork *network)
 {
 	network->priv = CDN_NETWORK_GET_PRIVATE (network);
 
-	network->priv->template_group = cdn_node_new ("templates", NULL);
+	network->priv->template_group = cdn_node_new ("templates");
 	_cdn_object_set_parent (CDN_OBJECT (network->priv->template_group),
 	                        CDN_NODE (network));
 
