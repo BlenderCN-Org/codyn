@@ -1,20 +1,9 @@
+First time:
 1) Make sure to install the mingw32 package
-2) Install the following dependencies in /opt/win/mingw
+2) Install the dependencies in /opt/win/mingw using the 'install-dependencies.sh' script:
 
-  1) glib
-     ftp://ftp.gnome.org/pub/gnome/binaries/win32/glib/2.24/glib_2.24.1-1_win32.zip
-     ftp://ftp.gnome.org/pub/gnome/binaries/win32/glib/2.24/glib-dev_2.24.1-1_win32.zip
+$ ./install-dependencies.sh /opt/win/mingw
 
-  3) libxml
-     ftp://ftp.gnome.org/pub/gnome/binaries/win32/dependencies/libxml2_2.7.7-1_win32.zip
-     ftp://ftp.gnome.org/pub/gnome/binaries/win32/dependencies/libxml2-dev_2.7.7-1_win32.zip
-
-  4) libiconv
-     ftp://ftp.gnome.org/pub/gnome/binaries/win32/dependencies/libiconv-1.9.1.bin.woe32.zip
-
-  5) zlib
-     ftp://ftp.gnome.org/pub/gnome/binaries/win32/dependencies/zlib_1.2.4-2_win32.zip
-     ftp://ftp.gnome.org/pub/gnome/binaries/win32/dependencies/zlib-dev_1.2.4-2_win32.zip
-
-3) Run ./mingw-configure
-4) make && make install
+Building:
+1) Run ./mingw-configure
+2) make && make install
