@@ -47,7 +47,7 @@ if test "$platform_osx" = "yes"; then
 	AC_DEFINE([PLATFORM_OSX],[1],[Defined if platform is Mac OSX])
 fi
 
-AM_PATH_PYTHON
+AM_PATH_PYTHON([2.5],,[enable_python=no])
 
 dnl adl_RECURSIVE_EVAL(VALUE, RESULT)
 dnl =================================
