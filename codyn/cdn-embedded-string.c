@@ -643,11 +643,6 @@ resolve_indirection (CdnEmbeddedString   *em,
 				g_free (pname);
 
 				exidx = (gint)g_ascii_strtoll (idx, NULL, 10);
-
-				if (exidx >= 0)
-				{
-					++exidx;
-				}
 			}
 
 			if (flags == INDIRECTION_INCREMENT)
