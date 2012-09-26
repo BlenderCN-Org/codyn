@@ -641,10 +641,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 				                                       pname);
 
 				g_free (pname);
-			}
 
-			if (idx && *idx)
-			{
 				exidx = (gint)g_ascii_strtoll (idx, NULL, 10);
 
 				if (exidx >= 0)
