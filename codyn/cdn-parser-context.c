@@ -2767,7 +2767,7 @@ edge_pairs (CdnParserContext *context,
             CdnSelection     *parent,
             GSList           *attributes,
             CdnSelector      *from,
-            CdnSelector      *to,
+            GPtrArray        *tolst,
             gboolean          onlyself)
 {
 	GSList *fromobjs;
@@ -2779,6 +2779,7 @@ edge_pairs (CdnParserContext *context,
 	gdouble iffprob = 2.0; /* Something bigger than 1 */
 	long int p = 1;
 	CdnExpansionContext *pctx;
+	gint idx = 0;
 
 	bidi = find_attribute (attributes, "bidirectional");
 	iff = find_attribute (attributes, "probability");
@@ -2814,6 +2815,7 @@ edge_pairs (CdnParserContext *context,
 		cdn_expansion_context_add_expansion (pctx, id);
 	}
 
+	// Select on the from selector
 	fromobjs = cdn_selector_select (from,
 	                                cdn_selection_get_object (parent),
 	                                CDN_SELECTOR_TYPE_NODE,
@@ -2826,7 +2828,7 @@ edge_pairs (CdnParserContext *context,
 		return NULL;
 	}
 
-	if (!to)
+	if (!tolst)
 	{
 		// Truncate from obj
 		for (fromobj = fromobjs; fromobj; fromobj = g_slist_next (fromobj))
@@ -2854,6 +2856,11 @@ edge_pairs (CdnParserContext *context,
 	{
 		GSList *toobjs = NULL;
 		GSList *toobj;
+		CdnSelector *to;
+
+		to = g_ptr_array_index (tolst, idx % tolst->len);
+
+		++idx;
 
 		expansion_context_push_selection (context, fromobj->data);
 		cdn_selector_set_from_set (to, fromobjs);
@@ -3171,7 +3178,7 @@ create_edges_single (CdnParserContext          *context,
                      CdnSelection              *parent,
                      GSList                    *attributes,
                      CdnSelector               *from,
-                     CdnSelector               *to,
+                     GPtrArray                 *to,
                      gboolean                   onlyself)
 {
 	GSList *pairs;
@@ -3336,7 +3343,7 @@ create_edges (CdnParserContext          *context,
 	GSList *ret = NULL;
 	GSList *item;
 	CdnSelector *from;
-	CdnSelector *to;
+	GPtrArray *to;
 	gboolean onlyself = FALSE;
 	GSList *parents;
 	gint i = 0;

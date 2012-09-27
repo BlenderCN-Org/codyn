@@ -564,7 +564,7 @@ edge_attributes
 	;
 
 edge_connect_fast
-	: T_KEY_FROM selector T_KEY_TO selector
+	: T_KEY_FROM selector T_KEY_TO multi_selector
 					{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (0));
 					  $$ = g_slist_prepend ($$, $4);
 					  $$ = g_slist_prepend ($$, $2);
