@@ -2764,6 +2764,7 @@ static GSList *
 edge_pairs (CdnParserContext *context,
             CdnExpansion     *id,
             gboolean          autoid,
+            gint              idx,
             CdnSelection     *parent,
             GSList           *attributes,
             CdnSelector      *from,
@@ -2779,7 +2780,6 @@ edge_pairs (CdnParserContext *context,
 	gdouble iffprob = 2.0; /* Something bigger than 1 */
 	long int p = 1;
 	CdnExpansionContext *pctx;
-	gint idx = 0;
 
 	bidi = find_attribute (attributes, "bidirectional");
 	iff = find_attribute (attributes, "probability");
@@ -3190,10 +3190,16 @@ create_edges_single (CdnParserContext          *context,
 	gint rididx = 0;
 	CdnAttribute *bidi;
 
+	if (ididx)
+	{
+		rididx = *ididx;
+	}
+
 	/* For each pair FROM -> TO generate a edge */
 	pairs = edge_pairs (context,
 	                    id,
 	                    autoid,
+	                    rididx,
 	                    parent,
 	                    attributes,
 	                    from,
@@ -3204,11 +3210,6 @@ create_edges_single (CdnParserContext          *context,
 	bidi = find_attribute (attributes, "bidirectional");
 
 	multiple = pairs && pairs->next && pairs->next->next;
-
-	if (ididx)
-	{
-		rididx = *ididx;
-	}
 
 	while (item)
 	{
@@ -3342,7 +3343,7 @@ create_edges (CdnParserContext          *context,
 	GSList *ids;
 	GSList *ret = NULL;
 	GSList *item;
-	CdnSelector *from;
+	GPtrArray *from;
 	GPtrArray *to;
 	gboolean onlyself = FALSE;
 	GSList *parents;
@@ -3369,6 +3370,7 @@ create_edges (CdnParserContext          *context,
 	for (item = parents; item; item = g_slist_next (item))
 	{
 		GSList *it;
+		gint idit = 0;
 
 		/* Expand the id with the parent expansions */
 		expansion_context_push_selection (context,
@@ -3379,6 +3381,9 @@ create_edges (CdnParserContext          *context,
 		for (it = ids; it; it = g_slist_next (it))
 		{
 			GSList *filtered;
+			CdnSelector *rfrom;
+
+			rfrom = g_ptr_array_index (from, idit % from->len);
 
 			filtered = filter_templates_for_index (templates,
 			                                       i);
@@ -3391,11 +3396,12 @@ create_edges (CdnParserContext          *context,
 			                                           templates,
 			                                           item->data,
 			                                           attributes,
-			                                           from,
+			                                           rfrom,
 			                                           to,
 			                                           onlyself));
 
 			g_slist_free (filtered);
+			++idit;
 		}
 
 		expansion_context_pop (context);

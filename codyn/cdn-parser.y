@@ -564,16 +564,16 @@ edge_attributes
 	;
 
 edge_connect_fast
-	: T_KEY_FROM selector T_KEY_TO multi_selector
+	: T_KEY_FROM multi_selector T_KEY_TO multi_selector
 					{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (0));
 					  $$ = g_slist_prepend ($$, $4);
 					  $$ = g_slist_prepend ($$, $2);
 					}
-	| T_KEY_ALL selector		{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (0));
+	| T_KEY_ALL multi_selector	{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (0));
 					  $$ = g_slist_prepend ($$, NULL);
 					  $$ = g_slist_prepend ($$, $2);
 					}
-	| T_KEY_ON selector		{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (1));
+	| T_KEY_ON multi_selector	{ $$ = g_slist_prepend (NULL, GINT_TO_POINTER (1));
 					  $$ = g_slist_prepend ($$, NULL);
 					  $$ = g_slist_prepend ($$, $2);
 					}
