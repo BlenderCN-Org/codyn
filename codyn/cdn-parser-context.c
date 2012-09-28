@@ -5162,13 +5162,6 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 	{
 		CdnSelection *sel;
 		CdnExpansionContext *sharedctx;
-		CdnEmbeddedString *x;
-		CdnEmbeddedString *y;
-
-		x = g_ptr_array_index (ptrx, i % ptrx->len);
-		y = g_ptr_array_index (ptry, i % ptry->len);
-
-		++i;
 
 		sel = cobjs->data;
 
@@ -5198,6 +5191,13 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 			gdouble dx;
 			gdouble dy;
 			CdnExpansionContext *pctx;
+			CdnEmbeddedString *x;
+			CdnEmbeddedString *y;
+
+			x = g_ptr_array_index (ptrx, i % ptrx->len);
+			y = g_ptr_array_index (ptry, i % ptry->len);
+
+			++i;
 
 			if (!CDN_IS_LAYOUTABLE (cdn_selection_get_object (obj->data)) ||
 			    !cdn_layoutable_supports_location (CDN_LAYOUTABLE (cdn_selection_get_object (obj->data))))
