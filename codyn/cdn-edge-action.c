@@ -709,7 +709,7 @@ _cdn_edge_action_set_target_variable (CdnEdgeAction *action,
 
 	set_property (action, property);
 
-	if (action->priv->integrated_set)
+	if (property && action->priv->integrated_set)
 	{
 		CdnVariableFlags flags;
 
