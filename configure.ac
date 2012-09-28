@@ -75,6 +75,16 @@ else
 	enable_introspection=no
 fi
 
+bison_minor_version=`$YACC --version | head -n 1 | sed -e 's/.*2.\([0-9]*\)/\1/g'`
+
+if test "$bison_minor_version" -ge "5"; then
+	BISON_PURE_PARSER="%define api.pure"
+else
+	BISON_PURE_PARSER="%pure-parser"
+fi
+
+AC_SUBST(BISON_PURE_PARSER)
+
 dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
@@ -471,6 +481,7 @@ AC_CONFIG_FILES([
 Makefile
 codyn.pc
 codyn/Makefile
+codyn/cdn-parser.y
 codyn/instructions/Makefile
 codyn/operators/Makefile
 codyn/integrators/Makefile

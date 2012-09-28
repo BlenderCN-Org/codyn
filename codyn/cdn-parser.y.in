@@ -182,7 +182,8 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %type <string> within
 %type <assign_optional_env> assign_optional_env
 
-%define api.pure
+@BISON_PURE_PARSER@
+
 %name-prefix="cdn_parser_"
 
 %parse-param {CdnParserContext *context}
