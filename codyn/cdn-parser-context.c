@@ -5134,8 +5134,8 @@ cdn_parser_context_add_layout (CdnParserContext *context,
 void
 cdn_parser_context_add_layout_position (CdnParserContext  *context,
                                         CdnSelector       *selector,
-                                        CdnEmbeddedString *x,
-                                        CdnEmbeddedString *y,
+                                        GPtrArray         *ptrx,
+                                        GPtrArray         *ptry,
                                         CdnSelector       *of,
                                         gboolean           cartesian)
 {
@@ -5143,11 +5143,12 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 	GSList *cobjs;
 	GSList *obj;
 	Context *ctx;
+	gint i = 0;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 	g_return_if_fail (selector == NULL || CDN_IS_SELECTOR (selector));
-	g_return_if_fail (x != NULL);
-	g_return_if_fail (y != NULL);
+	g_return_if_fail (ptrx != NULL);
+	g_return_if_fail (ptry != NULL);
 	g_return_if_fail (of == NULL || CDN_IS_SELECTOR (of));
 
 	if (context->priv->in_event_handler)
@@ -5161,6 +5162,13 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 	{
 		CdnSelection *sel;
 		CdnExpansionContext *sharedctx;
+		CdnEmbeddedString *x;
+		CdnEmbeddedString *y;
+
+		x = g_ptr_array_index (ptrx, i % ptrx->len);
+		y = g_ptr_array_index (ptry, i % ptry->len);
+
+		++i;
 
 		sel = cobjs->data;
 

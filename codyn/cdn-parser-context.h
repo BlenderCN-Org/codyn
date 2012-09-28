@@ -303,8 +303,8 @@ void                   cdn_parser_context_add_layout           (CdnParserContext
 
 void                   cdn_parser_context_add_layout_position  (CdnParserContext           *context,
                                                                 CdnSelector                *selector,
-                                                                CdnEmbeddedString          *x,
-                                                                CdnEmbeddedString          *y,
+                                                                GPtrArray                  *x,
+                                                                GPtrArray                  *y,
                                                                 CdnSelector                *of,
                                                                 gboolean                    cartesian);
 

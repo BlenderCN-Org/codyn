@@ -1480,14 +1480,14 @@ layout_item_separator
 layout_item_absolute
 	: selector
 	  T_KEY_AT
-	  value_as_string
+	  multi_value_as_string
 	  layout_item_separator
-	  value_as_string
+	  multi_value_as_string
 	  layout_relative		{ cdn_parser_context_add_layout_position (context, $1, $3, $5, $6, $4); errb }
 	| T_KEY_AT
-	  value_as_string
+	  multi_value_as_string
 	  layout_item_separator
-	  value_as_string
+	  multi_value_as_string
 	  layout_relative		{ cdn_parser_context_add_layout_position (context, NULL, $2, $4, $5, $3); errb }
 	;
 
