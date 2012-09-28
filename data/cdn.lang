@@ -182,14 +182,12 @@
         </context>
 
         <context id="keywords" style-ref="keyword">
-            <keyword>above</keyword>
             <keyword>action</keyword>
             <keyword>all</keyword>
             <keyword>any</keyword>
             <keyword>apply</keyword>
             <keyword>as</keyword>
             <keyword>at</keyword>
-            <keyword>below</keyword>
             <keyword>bidirectional</keyword>
             <keyword>context</keyword>
             <keyword>debug-print</keyword>
@@ -207,7 +205,6 @@
             <keyword>interface</keyword>
             <keyword>io</keyword>
             <keyword>layout</keyword>
-            <keyword>left-of</keyword>
             <keyword>link-library</keyword>
             <keyword>node</keyword>
             <keyword>no-self</keyword>
@@ -222,7 +219,6 @@
             <keyword>polynomial</keyword>
             <keyword>probability</keyword>
             <keyword>require</keyword>
-            <keyword>right-of</keyword>
             <keyword>set</keyword>
             <keyword>settings</keyword>
             <keyword>terminate</keyword>

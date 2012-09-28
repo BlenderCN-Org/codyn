@@ -296,11 +296,6 @@ void                   cdn_parser_context_push_define          (CdnParserContext
 void                   cdn_parser_context_push_layout          (CdnParserContext           *context);
 void                   cdn_parser_context_pop_layout           (CdnParserContext           *context);
 
-void                   cdn_parser_context_add_layout           (CdnParserContext           *context,
-                                                                CdnLayoutRelation           relation,
-                                                                CdnSelector                *left,
-                                                                CdnSelector                *right);
-
 void                   cdn_parser_context_add_layout_position  (CdnParserContext           *context,
                                                                 CdnSelector                *selector,
                                                                 GPtrArray                  *x,

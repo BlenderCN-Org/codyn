@@ -176,10 +176,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "node"				return T_KEY_NODE;
 "layout"			return T_KEY_LAYOUT;
 "at"				return T_KEY_AT;
-"above"				return T_KEY_ABOVE;
-"below"				return T_KEY_BELOW;
-"left-of"			return T_KEY_LEFT_OF;
-"right-of"			return T_KEY_RIGHT_OF;
 "of"				return T_KEY_OF;
 "on"				return T_KEY_ON;
 "all"				return T_KEY_ALL;

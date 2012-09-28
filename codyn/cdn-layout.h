@@ -40,14 +40,6 @@ typedef struct _CdnLayout		CdnLayout;
 typedef struct _CdnLayoutClass		CdnLayoutClass;
 typedef struct _CdnLayoutPrivate	CdnLayoutPrivate;
 
-typedef enum
-{
-	CDN_LAYOUT_RELATION_ABOVE = 1 << 0,
-	CDN_LAYOUT_RELATION_BELOW = 1 << 1,
-	CDN_LAYOUT_RELATION_LEFT_OF = 1 << 2,
-	CDN_LAYOUT_RELATION_RIGHT_OF = 1 << 3
-} CdnLayoutRelation;
-
 struct _CdnLayout
 {
 	/*< private >*/
@@ -65,11 +57,6 @@ struct _CdnLayoutClass
 GType      cdn_layout_get_type (void) G_GNUC_CONST;
 
 CdnLayout *cdn_layout_new      (CdnNetwork        *network);
-
-void       cdn_layout_add      (CdnLayout         *layout,
-                                CdnLayoutable     *left,
-                                CdnLayoutable     *right,
-                                CdnLayoutRelation  relation);
 
 void       cdn_layout_set      (CdnLayout         *layout,
                                 CdnLayoutable     *layoutable,

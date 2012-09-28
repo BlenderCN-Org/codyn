@@ -26,13 +26,6 @@
 
 typedef struct
 {
-	CdnLayoutable *left;
-	CdnLayoutable *right;
-	CdnLayoutRelation relation;
-} Relation;
-
-typedef struct
-{
 	gint x;
 	gint y;
 } Position;
@@ -55,36 +48,9 @@ position_free (Position *self)
 	g_slice_free (Position, self);
 }
 
-static Relation *
-relation_new (CdnLayoutable *left,
-              CdnLayoutable *right,
-              CdnLayoutRelation relation)
-{
-	Relation *ret;
-
-	ret = g_slice_new0 (Relation);
-
-	ret->left = g_object_ref (left);
-	ret->right = g_object_ref (right);
-	ret->relation = relation;
-
-	return ret;
-}
-
-static void
-relation_free (Relation *self)
-{
-	g_object_unref (self->left);
-	g_object_unref (self->right);
-
-	g_slice_free (Relation, self);
-}
-
 struct _CdnLayoutPrivate
 {
 	CdnNetwork *network;
-
-	GSList *relations;
 	GHashTable *fixed;
 };
 
@@ -102,9 +68,6 @@ cdn_layout_finalize (GObject *object)
 	CdnLayout *layout;
 
 	layout = CDN_LAYOUT (object);
-
-	g_slist_foreach (layout->priv->relations, (GFunc)relation_free, NULL);
-	g_slist_free (layout->priv->relations);
 
 	g_hash_table_destroy (layout->priv->fixed);
 
@@ -200,21 +163,6 @@ cdn_layout_new (CdnNetwork *network)
 	return g_object_new (CDN_TYPE_LAYOUT,
 	                     "network", network,
 	                     NULL);
-}
-
-void
-cdn_layout_add (CdnLayout         *layout,
-                CdnLayoutable         *left,
-                CdnLayoutable         *right,
-                CdnLayoutRelation  relation)
-{
-	g_return_if_fail (CDN_IS_LAYOUT (layout));
-	g_return_if_fail (CDN_IS_LAYOUTABLE (left));
-	g_return_if_fail (CDN_IS_LAYOUTABLE (right));
-
-	layout->priv->relations =
-		g_slist_prepend (layout->priv->relations,
-		                 relation_new (left, right, relation));
 }
 
 void

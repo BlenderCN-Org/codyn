@@ -35,10 +35,6 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 %token T_KEY_EDGE T_KEY_FUNCTIONS T_KEY_INTERFACE T_KEY_IMPORT T_KEY_POLYNOMIAL T_KEY_FROM T_KEY_TO T_KEY_INPUT T_KEY_OUTPUT T_KEY_INPUTS T_KEY_OUTPUTS T_KEY_PIECE T_KEY_TEMPLATES T_KEY_TEMPLATES_ROOT T_KEY_DEFINES T_KEY_INTEGRATOR T_KEY_NODE T_KEY_LAYOUT T_KEY_AT T_KEY_OF T_KEY_ON T_KEY_INCLUDE T_KEY_REQUIRE T_KEY_DEBUG T_KEY_DEBUG_PRINT T_KEY_DELETE T_KEY_ACTION T_KEY_ROOT T_KEY_CHILDREN T_KEY_PARENT T_KEY_FIRST T_KEY_LAST T_KEY_SUBSET T_KEY_SIBLINGS T_KEY_EDGES T_KEY_COUNT T_KEY_SELF T_KEY_CONTEXT T_KEY_AS T_KEY_BIDIRECTIONAL T_KEY_OBJECTS T_KEY_NODES T_KEY_IMPORTS T_KEY_VARIABLES T_KEY_ACTIONS T_KEY_IF T_KEY_SETTINGS T_KEY_NAME T_KEY_DESCENDANTS T_KEY_ANCESTORS T_KEY_UNIQUE T_KEY_NOT T_KEY_NO_SELF T_KEY_PROBABILITY T_KEY_FROM_SET T_KEY_TYPE T_KEY_PARSE T_KEY_HAS_FLAG T_KEY_HAS_TEMPLATE T_KEY_ALL T_KEY_APPLY T_KEY_UNAPPLY T_KEY_REVERSE T_KEY_WITH T_KEY_OBJECT T_STRING_REDUCE_BEGIN T_STRING_REDUCE_END T_STRING_MAP_BEGIN T_STRING_MAP_END T_CONDITION_BEGIN T_CONDITION_END T_KEY_WHEN T_KEY_SOURCE T_KEY_SINK T_KEY_INPUT_NAME T_KEY_OUTPUT_NAME T_KEY_PHASE T_KEY_EVENT T_KEY_TERMINATE T_KEY_ANY T_KEY_SET T_KEY_RECURSE T_KEY_IO T_KEY_WITHIN T_KEY_IFSTR T_KEY_NOTSTR T_KEY_APPEND_CONTEXT T_KEY_LINK_LIBRARY T_KEY_APPLIED_TEMPLATES T_KEY_REDUCE
 
-%token <num> T_KEY_LEFT_OF T_KEY_RIGHT_OF T_KEY_BELOW T_KEY_ABOVE
-%type <num> relation
-%type <num> relation_item
-
 %token <id> T_DOUBLE
 %token <id> T_INTEGER
 
@@ -1447,29 +1443,9 @@ layout
 	  layout_item           { cdn_parser_context_pop (context); }
 	;
 
-relation_item
-	: T_KEY_LEFT_OF		{ $$ = CDN_LAYOUT_RELATION_LEFT_OF; }
-	| T_KEY_RIGHT_OF	{ $$ = CDN_LAYOUT_RELATION_RIGHT_OF; }
-	| T_KEY_ABOVE		{ $$ = CDN_LAYOUT_RELATION_ABOVE; }
-	| T_KEY_BELOW		{ $$ = CDN_LAYOUT_RELATION_BELOW; }
-	;
-
-relation
-	: relation_item			{ $$ = $1; }
-	| relation relation_item	{ $$ = $1 | $2; }
-	;
-
 layout_relative
 	:				{ $$ = NULL; }
 	| T_KEY_OF selector		{ $$ = $2; }
-	;
-
-layout_item_relative
-	: selector
-	  relation
-	  selector			{ cdn_parser_context_add_layout (context, $2, $1, $3); errb }
-	| relation
-	  selector			{ cdn_parser_context_add_layout (context, $1, NULL, $2); errb }
 	;
 
 layout_item_separator
@@ -1477,7 +1453,7 @@ layout_item_separator
 	| ':'				{ $$ = FALSE; }
 	;
 
-layout_item_absolute
+layout_item
 	: selector
 	  T_KEY_AT
 	  multi_value_as_string
@@ -1489,11 +1465,6 @@ layout_item_absolute
 	  layout_item_separator
 	  multi_value_as_string
 	  layout_relative		{ cdn_parser_context_add_layout_position (context, NULL, $2, $4, $5, $3); errb }
-	;
-
-layout_item
-	: layout_item_relative
-	| layout_item_absolute
 	;
 
 layout_item_or_others
