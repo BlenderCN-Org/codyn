@@ -1491,79 +1491,6 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 	}
 }
 
-static gchar *
-decompose_dot (gchar const *name,
-               gint        *order)
-{
-	gunichar next;
-
-	next = g_utf8_get_char (g_utf8_next_char (name));
-
-#if GLIB_MINOR_VERSION >= 30
-	gunichar a;
-	gunichar b;
-
-	if (g_unichar_decompose (g_utf8_get_char (name), &a, &b) &&
-	    (b == 775 || b == 776))
-	{
-		GString *dc;
-
-		dc = g_string_sized_new (strlen (name));
-		g_string_append_unichar (dc, a);
-		g_string_append (dc, g_utf8_next_char (name));
-
-		if (b == 775)
-		{
-			*order = 1;
-		}
-		else
-		{
-			*order = 2;
-		}
-
-		return g_string_free (dc, FALSE);
-	}
-	else
-#endif
-	if (next == 775 || next == 776)
-	{
-		GString *dc;
-
-		dc = g_string_sized_new (strlen (name));
-		g_string_append_unichar (dc, g_utf8_get_char (name));
-		g_string_append (dc, g_utf8_next_char (g_utf8_next_char (name)));
-
-		if (next == 775)
-		{
-			*order = 1;
-		}
-		else
-		{
-			*order = 2;
-		}
-
-		return g_string_free (dc, FALSE);
-	}
-	else if (g_str_has_suffix (name, "'"))
-	{
-		gchar const *ptr;
-		gchar const *last;
-
-		ptr = last = name + strlen (name) - 1;
-
-		while (ptr > name && g_utf8_get_char (ptr) == '\'')
-		{
-			ptr = g_utf8_prev_char (ptr);
-		}
-
-		*order = last - ptr;
-
-		return g_strndup (name, ptr - name + 1);
-	}
-
-	return NULL;
-}
-
 /**
  * cdn_parser_context_add_variable: (skip):
  *
@@ -1643,7 +1570,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 
 			exname = cdn_expansion_get (p->name, 0);
 
-			if (CDN_IS_NODE (obj) && (dotname = decompose_dot (exname, &order)))
+			if (CDN_IS_NODE (obj) && (dotname = cdn_decompose_dot (exname, &order)))
 			{
 				// This is a differential equation now...
 				add_variable_diff (context,
@@ -1788,6 +1715,49 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 	}
 }
 
+static gchar *
+parse_action_index (gchar const *target, CdnExpression **index)
+{
+	gchar const *ptr;
+	gchar *name;
+
+	// Simple parser for index
+	ptr = g_utf8_strchr (target, -1, '[');
+	*index = NULL;
+
+	if (ptr)
+	{
+		gchar *comp;
+		gchar *l;
+
+		name = g_strndup (target, ptr - target);
+
+		if (*(ptr + 1) == '[')
+		{
+			l = g_strndup (ptr + 1, strlen (ptr) - 2);
+
+			comp = g_strdup_printf ("lindex(%s, size(output.%s)[1])",
+			                        l,
+			                        name);
+
+			g_free (l);
+		}
+		else
+		{
+			comp = g_strdup (ptr);
+		}
+
+		*index = cdn_expression_new (comp);
+		g_free (comp);
+	}
+	else
+	{
+		name = g_strdup (target);
+	}
+
+	return name;
+}
+
 /**
  * cdn_parser_context_add_action: (skip):
  *
@@ -1796,7 +1766,8 @@ void
 cdn_parser_context_add_action (CdnParserContext  *context,
                                GPtrArray         *targetptr,
                                GPtrArray         *expressionptr,
-                               CdnEmbeddedString *phase)
+                               CdnEmbeddedString *phase,
+                               gboolean           integrated)
 {
 	GSList *item;
 	GSList *objects;
@@ -1850,47 +1821,57 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 			CdnEdgeAction *action;
 			CdnEdge *edge;
 			gchar *name;
-			CdnExpression *index = NULL;
-			gchar const *ptr;
+			CdnExpression *index;
 			CdnExpansionContext *pctx;
+
+			extarget = cdn_expansion_get (iteme->data, 0);
+			name = parse_action_index (extarget, &index);
+
+			if (integrated)
+			{
+				gint order;
+				gchar *decom;
+
+				decom = cdn_decompose_dot (name, &order);
+
+				if (!decom)
+				{
+					gchar *comp;
+
+					comp = cdn_compose_dot (name, 1);
+
+					parser_failed (context,
+					               CDN_STATEMENT (target),
+					               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+					               "`%s' does not appear to be a differential variable, did you mean %s?",
+					               name,
+					               comp);
+
+					g_free (comp);
+					return;
+				}
+
+				g_free (name);
+
+				if (order != 1)
+				{
+					gchar *primes;
+
+					primes = g_strnfill (order - 1, '\'');
+					name = g_strconcat (decom, primes, NULL);
+
+					g_free (primes);
+				}
+				else
+				{
+					name = decom;
+				}
+			}
 
 			pctx = expansion_context_push_base (context);
 			cdn_expansion_context_add_expansion (pctx, iteme->data);
 
-			extarget = cdn_expansion_get (iteme->data, 0);
-
 			edge = cdn_selection_get_object (item->data);
-			ptr = g_utf8_strchr (extarget, -1, '[');
-
-			if (ptr)
-			{
-				gchar *comp;
-				gchar *l;
-
-				name = g_strndup (extarget, ptr - extarget);
-
-				if (*(ptr + 1) == '[')
-				{
-					l = g_strndup (ptr + 1, strlen (ptr) - 2);
-
-					comp = g_strdup_printf ("lindex(%s, size(output.%s)[1])",
-					                        l,
-					                        name);
-
-					g_free (l);
-				}
-				else
-				{
-					comp = g_strdup (ptr);
-				}
-
-				index = cdn_expression_new (comp);
-				g_free (comp);
-			}
-			else
-			{
-				name = g_strdup (extarget);
-			}
 
 			action = cdn_edge_get_action_with_index (edge,
 			                                         name,
@@ -1919,6 +1900,7 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 			g_free (name);
 
 			cdn_edge_action_set_index (action, index);
+			_cdn_edge_action_set_integrated (action, integrated);
 
 			if (annotation && *annotation)
 			{

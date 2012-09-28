@@ -63,6 +63,11 @@ GType          cdn_edge_action_get_type      (void) G_GNUC_CONST;
 CdnEdgeAction *cdn_edge_action_new           (const gchar   *target,
                                               CdnExpression *equation);
 
+void           _cdn_edge_action_set_integrated (CdnEdgeAction *action,
+                                               gboolean       integrated);
+gboolean       _cdn_edge_action_get_integrated (CdnEdgeAction *action,
+                                                gboolean      *integrated);
+
 CdnEdgeAction *cdn_edge_action_copy          (CdnEdgeAction *action);
 
 const gchar   *cdn_edge_action_get_target    (CdnEdgeAction *action);

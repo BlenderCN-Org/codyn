@@ -1296,6 +1296,23 @@ parse_actions (CdnNetworkDeserializer *deserializer,
 		CdnEdgeAction *action = cdn_edge_action_new ((gchar const *)target,
 		                                              cdn_expression_new (expr));
 
+		xmlChar *integrated = xmlGetProp (node, (xmlChar *)"integrated");
+
+		if (integrated)
+		{
+			_cdn_edge_action_set_integrated (action,
+			                                 g_ascii_strcasecmp ((gchar const *)integrated,
+			                                                     "yes") == 0);
+		}
+
+		xmlChar *index = xmlGetProp (node, (xmlChar *)"index");
+
+		if (index)
+		{
+			cdn_edge_action_set_index (action,
+			                           cdn_expression_new ((gchar const *)index));
+		}
+
 		save_comment (node, G_OBJECT (action));
 
 		cdn_edge_add_action (link, action);

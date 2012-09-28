@@ -664,6 +664,7 @@ edge_to_xml (CdnNetworkSerializer *serializer,
 	{
 		CdnEdgeAction *action = item->data;
 		CdnExpression *index;
+		gboolean integrated;
 
 		if (action_matches_template (action, templates))
 		{
@@ -679,6 +680,13 @@ edge_to_xml (CdnNetworkSerializer *serializer,
 		xmlNewProp (ac,
 		            (xmlChar *)"target",
 		            (xmlChar *)cdn_edge_action_get_target (action));
+
+		if (_cdn_edge_action_get_integrated (action, &integrated))
+		{
+			xmlNewProp (ac,
+			            (xmlChar *)"integrated",
+			            (xmlChar *)(integrated ? "yes" : "no"));
+		}
 
 		gchar const *expr = cdn_expression_get_as_string (cdn_edge_action_get_equation (action));
 

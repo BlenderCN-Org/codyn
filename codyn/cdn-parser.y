@@ -1140,10 +1140,15 @@ variable_flag
 
 action
 	: multi_identifier_or_string
+	  '+' '='
+	  multi_value_as_string
+	  phase
+					{ cdn_parser_context_add_action (context, $1, $4, $5, TRUE); errb }
+	| multi_identifier_or_string
 	  '<' '='
 	  multi_value_as_string
 	  phase
-					{ cdn_parser_context_add_action (context, $1, $4, $5); errb }
+					{ cdn_parser_context_add_action (context, $1, $4, $5, FALSE); errb }
 	;
 
 selector_item_non_ambiguous

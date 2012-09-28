@@ -41,5 +41,6 @@ gboolean cdn_string_to_value                  (gchar const           *s,
 
 
 gchar *cdn_decompose_dot (gchar const *name, gint        *order);
+gchar *cdn_compose_dot (gchar const *name, gint order);
 
 #endif /* __CDN_UTILS_H__ */
