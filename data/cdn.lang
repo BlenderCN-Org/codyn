@@ -140,89 +140,97 @@
         </context>
 
         <context id="selectors" style-ref="keyword">
-            <keyword>root</keyword>
-            <keyword>templates-root</keyword>
-            <keyword>children</keyword>
-            <keyword>parent</keyword>
-            <keyword>first</keyword>
-            <keyword>last</keyword>
-            <keyword>subset</keyword>
-            <keyword>edges</keyword>
-            <keyword>nodes</keyword>
-            <keyword>imports</keyword>
-            <keyword>variables</keyword>
             <keyword>actions</keyword>
-            <keyword>functions</keyword>
-            <keyword>objects</keyword>
-            <keyword>siblings</keyword>
-            <keyword>templates</keyword>
-            <keyword>count</keyword>
-            <keyword>input</keyword>
-            <keyword>output</keyword>
-            <keyword>inputs</keyword>
-            <keyword>outputs</keyword>
-            <keyword>input-name</keyword>
-            <keyword>output-name</keyword>
-            <keyword>self</keyword>
-            <keyword>debug</keyword>
-            <keyword>name</keyword>
-            <keyword>unique</keyword>
-            <keyword>if</keyword>
-            <keyword>not</keyword>
-            <keyword>ifstr</keyword>
-            <keyword>notstr</keyword>
-            <keyword>from-set</keyword>
-            <keyword>type</keyword>
-            <keyword>has-flag</keyword>
-            <keyword>has-template</keyword>
-            <keyword>reverse</keyword>
-            <keyword>recurse</keyword>
             <keyword>append-context</keyword>
             <keyword>applied-templates</keyword>
+            <keyword>children</keyword>
+            <keyword>count</keyword>
+            <keyword>debug</keyword>
+            <keyword>edges</keyword>
+            <keyword>first</keyword>
+            <keyword>from-set</keyword>
+            <keyword>has-flag</keyword>
+            <keyword>has-template</keyword>
+            <keyword>if</keyword>
+            <keyword>ifstr</keyword>
+            <keyword>imports</keyword>
+            <keyword>input</keyword>
+            <keyword>input-name</keyword>
+            <keyword>inputs</keyword>
+            <keyword>last</keyword>
+            <keyword>name</keyword>
+            <keyword>nodes</keyword>
+            <keyword>not</keyword>
+            <keyword>notstr</keyword>
+            <keyword>objects</keyword>
+            <keyword>output</keyword>
+            <keyword>output-name</keyword>
+            <keyword>outputs</keyword>
+            <keyword>parent</keyword>
+            <keyword>recurse</keyword>
             <keyword>reduce</keyword>
+            <keyword>reverse</keyword>
+            <keyword>root</keyword>
+            <keyword>self</keyword>
+            <keyword>siblings</keyword>
+            <keyword>subset</keyword>
+            <keyword>templates</keyword>
+            <keyword>templates-root</keyword>
+            <keyword>type</keyword>
+            <keyword>unique</keyword>
+            <keyword>variables</keyword>
         </context>
 
         <context id="keywords" style-ref="keyword">
-            <keyword>edge</keyword>
-            <keyword>node</keyword>
-            <keyword>network</keyword>
-            <keyword>functions</keyword>
-            <keyword>interface</keyword>
-            <keyword>from</keyword>
-            <keyword>to</keyword>
-            <keyword>polynomial</keyword>
-            <keyword>input</keyword>
-            <keyword>piece</keyword>
+            <keyword>above</keyword>
+            <keyword>action</keyword>
+            <keyword>all</keyword>
+            <keyword>any</keyword>
+            <keyword>apply</keyword>
+            <keyword>as</keyword>
+            <keyword>at</keyword>
+            <keyword>below</keyword>
+            <keyword>bidirectional</keyword>
+            <keyword>context</keyword>
+            <keyword>debug-print</keyword>
             <keyword>defines</keyword>
+            <keyword>delete</keyword>
+            <keyword>edge</keyword>
+            <keyword>event</keyword>
+            <keyword>from</keyword>
+            <keyword>functions</keyword>
+            <keyword>import</keyword>
+            <keyword>in</keyword>
+            <keyword>include</keyword>
+            <keyword>integrated</keyword>
             <keyword>integrator</keyword>
+            <keyword>interface</keyword>
+            <keyword>io</keyword>
             <keyword>layout</keyword>
             <keyword>left-of</keyword>
-            <keyword>right-of</keyword>
-            <keyword>above</keyword>
-            <keyword>below</keyword>
-            <keyword>at</keyword>
-            <keyword>on</keyword>
-            <keyword>all</keyword>
-            <keyword>as</keyword>
+            <keyword>link-library</keyword>
+            <keyword>node</keyword>
+            <keyword>no-self</keyword>
+            <keyword>object</keyword>
             <keyword>of</keyword>
-            <keyword>delete</keyword>
-            <keyword>variable</keyword>
-            <keyword>action</keyword>
-            <keyword>context</keyword>
-            <keyword>as</keyword>
-            <keyword>settings</keyword>
+            <keyword>on</keyword>
+            <keyword>once</keyword>
+            <keyword>out</keyword>
             <keyword>parse</keyword>
-            <keyword>debug-print</keyword>
-            <keyword>apply</keyword>
+            <keyword>phase</keyword>
+            <keyword>piece</keyword>
+            <keyword>polynomial</keyword>
+            <keyword>probability</keyword>
+            <keyword>require</keyword>
+            <keyword>right-of</keyword>
+            <keyword>set</keyword>
+            <keyword>settings</keyword>
+            <keyword>terminate</keyword>
+            <keyword>to</keyword>
             <keyword>unapply</keyword>
             <keyword>when</keyword>
-            <keyword>phase</keyword>
-            <keyword>terminate</keyword>
-            <keyword>any</keyword>
-            <keyword>input</keyword>
-            <keyword>output</keyword>
-            <keyword>io</keyword>
-            <keyword>import</keyword>
+            <keyword>with</keyword>
+            <keyword>within</keyword>
         </context>
 
         <context id="defined" style-ref="define">
