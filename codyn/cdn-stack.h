@@ -164,6 +164,7 @@ CdnStackArg const *
 
 void      cdn_stack_arg_copy           (CdnStackArg       *ret,
                                         CdnStackArg const *src);
+void      cdn_stack_arg_destroy        (CdnStackArg       *arg);
 
 guint     cdn_stack_arg_size              (CdnStackArg const *arg);
 
@@ -195,6 +196,8 @@ void      cdn_stack_args_copy (CdnStackArgs       *dest,
 guint     cdn_stack_args_get_num (CdnStackArgs const *args);
 
 void      cdn_stack_args_destroy (CdnStackArgs       *args);
+void      cdn_stack_args_append (CdnStackArgs       *args,
+                                 CdnStackArg const  *arg);
 
 gboolean  cdn_dimension_is_one (CdnDimension const *dim);
 gint      cdn_dimension_size   (CdnDimension const *dim);
