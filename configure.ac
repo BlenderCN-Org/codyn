@@ -75,7 +75,7 @@ else
 	enable_introspection=no
 fi
 
-bison_minor_version=`$YACC --version | head -n 1 | sed -e 's/.*2.\([0-9]*\)/\1/g'`
+bison_minor_version=`$YACC --version | head -n 1 | sed -e 's/.*2\.\([[0-9]]*\)/\1/g'`
 
 if test "$bison_minor_version" -ge "5"; then
 	BISON_PURE_PARSER="%define api.pure"
