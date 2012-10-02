@@ -1,3 +1,13 @@
+codyn (3.2-1) UNRELEASED; urgency=low
+
+  * New upstream release
+  * Implemented deterministic rand streams for rawc validation
+  * Removed unused codyn format syntax
+  * Improved consistency for specifying differential equations
+
+ -- Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>  Tue, 02 Oct 2012 15:59:03 +0200
+
+
 codyn (3.1-1) UNRELEASED; urgency=low
 
   * New upstream release
