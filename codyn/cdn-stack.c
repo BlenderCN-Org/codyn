@@ -716,7 +716,10 @@ cdn_stack_args_append (CdnStackArgs      *args,
 	}
 	else
 	{
+		CdnStackArg empty = CDN_STACK_ARG_EMPTY;
+
 		args->args = g_renew (CdnStackArg, args->args, args->num);
+		args->args[args->num - 1] = empty;
 	}
 
 	cdn_stack_arg_copy (&args->args[args->num - 1], arg);
