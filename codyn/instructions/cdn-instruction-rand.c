@@ -33,8 +33,6 @@ typedef struct
 
 G_DEFINE_TYPE (CdnInstructionRand, cdn_instruction_rand, CDN_TYPE_INSTRUCTION)
 
-static guint seedid = 0;
-
 static void
 cdn_instruction_rand_finalize (CdnMiniObject *object)
 {
@@ -245,11 +243,6 @@ cdn_instruction_rand_init (CdnInstructionRand *self)
 
 	self->priv->smanip.push.rows = 1;
 	self->priv->smanip.push.columns = 1;
-
-	if (use_streams)
-	{
-		cdn_instruction_rand_set_seed (self, ++seedid);
-	}
 }
 
 /**
