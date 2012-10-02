@@ -44,7 +44,7 @@ cdn_stack_get_type ()
 	return gtype;
 }
 
-static void
+void
 cdn_stack_arg_destroy (CdnStackArg *arg)
 {
 	if (arg == NULL)
@@ -702,6 +702,27 @@ cdn_stack_args_init (CdnStackArgs *args,
 {
 	args->num = num;
 	args->args = g_new0 (CdnStackArg, num);
+}
+
+void
+cdn_stack_args_append (CdnStackArgs      *args,
+                       CdnStackArg const *arg)
+{
+	++args->num;
+
+	if (args->num == 1)
+	{
+		args->args = g_new0 (CdnStackArg, 1);
+	}
+	else
+	{
+		CdnStackArg empty = CDN_STACK_ARG_EMPTY;
+
+		args->args = g_renew (CdnStackArg, args->args, args->num);
+		args->args[args->num - 1] = empty;
+	}
+
+	cdn_stack_arg_copy (&args->args[args->num - 1], arg);
 }
 
 void

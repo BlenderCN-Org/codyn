@@ -13,6 +13,8 @@
 #define RANDOM random
 #endif
 
+static gboolean use_streams = FALSE;
+
 struct _CdnInstructionRandPrivate
 {
 	glong *random_value;
@@ -20,6 +22,14 @@ struct _CdnInstructionRandPrivate
 
 	CdnStackManipulation smanip;
 };
+
+typedef struct
+{
+	CdnInstructionRandPrivate priv;
+
+	char state[8];
+	guint seed;
+} CdnInstructionRandStatePrivate;
 
 G_DEFINE_TYPE (CdnInstructionRand, cdn_instruction_rand, CDN_TYPE_INSTRUCTION)
 
@@ -55,6 +65,14 @@ cdn_instruction_rand_copy (CdnMiniObject *object)
 	        sizeof (glong) * r->priv->num_random_value);
 
 	cdn_stack_manipulation_copy (&rret->priv->smanip, &r->priv->smanip);
+
+	if (use_streams)
+	{
+		CdnInstructionRandStatePrivate *spriv =
+			(CdnInstructionRandStatePrivate *)r->priv;
+
+		cdn_instruction_rand_set_seed (rret, spriv->seed);
+	}
 
 	return ret;
 }
@@ -208,7 +226,14 @@ cdn_instruction_rand_class_init (CdnInstructionRandClass *klass)
 	inst_class->get_stack_manipulation = cdn_instruction_rand_get_stack_manipulation;
 	inst_class->equal = cdn_instruction_rand_equal;
 
-	g_type_class_add_private (object_class, sizeof(CdnInstructionRandPrivate));
+	if (use_streams)
+	{
+		g_type_class_add_private (object_class, sizeof(CdnInstructionRandStatePrivate));
+	}
+	else
+	{
+		g_type_class_add_private (object_class, sizeof(CdnInstructionRandPrivate));
+	}
 }
 
 static void
@@ -288,9 +313,55 @@ cdn_instruction_rand_next (CdnInstructionRand *self)
 {
 	gint i;
 
+	if (use_streams)
+	{
+		CdnInstructionRandStatePrivate *spriv =
+			(CdnInstructionRandStatePrivate *)self->priv;
+
+		setstate (spriv->state);
+	}
+
 	/* Omit type check to increase speed */
 	for (i = 0; i < self->priv->num_random_value; ++i)
 	{
 		self->priv->random_value[i] = RANDOM ();
+	}
+}
+
+void
+cdn_instruction_rand_set_use_streams (gboolean use)
+{
+	use_streams = use;
+}
+
+void
+cdn_instruction_rand_set_seed (CdnInstructionRand *self,
+                               guint               seed)
+{
+	if (use_streams)
+	{
+		CdnInstructionRandStatePrivate *spriv =
+			(CdnInstructionRandStatePrivate *)self->priv;
+
+		spriv->seed = seed;
+
+		initstate (spriv->seed, spriv->state, sizeof(spriv->state));
+		cdn_instruction_rand_next (self);
+	}
+}
+
+guint
+cdn_instruction_rand_get_seed (CdnInstructionRand *self)
+{
+	if (use_streams)
+	{
+		CdnInstructionRandStatePrivate *spriv =
+			(CdnInstructionRandStatePrivate *)self->priv;
+
+		return spriv->seed;
+	}
+	else
+	{
+		return 0;
 	}
 }

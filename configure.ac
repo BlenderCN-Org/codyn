@@ -1,4 +1,4 @@
-AC_INIT(codyn, 3.1)
+AC_INIT(codyn, 3.2)
 
 AC_PREREQ(2.62)
 AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
@@ -47,7 +47,7 @@ if test "$platform_osx" = "yes"; then
 	AC_DEFINE([PLATFORM_OSX],[1],[Defined if platform is Mac OSX])
 fi
 
-AM_PATH_PYTHON
+AM_PATH_PYTHON([2.5],,[enable_python=no])
 
 dnl adl_RECURSIVE_EVAL(VALUE, RESULT)
 dnl =================================
@@ -74,6 +74,16 @@ if test "$found_introspection" = "yes"; then
 else
 	enable_introspection=no
 fi
+
+bison_minor_version=`$YACC --version | head -n 1 | sed -e 's/.*2\.\([[0-9]]*\)/\1/g'`
+
+if test "$bison_minor_version" -ge "5"; then
+	BISON_PURE_PARSER="%define api.pure"
+else
+	BISON_PURE_PARSER="%pure-parser"
+fi
+
+AC_SUBST(BISON_PURE_PARSER)
 
 dnl ================================================================
 dnl Start of pkg-config checks
@@ -471,6 +481,7 @@ AC_CONFIG_FILES([
 Makefile
 codyn.pc
 codyn/Makefile
+codyn/cdn-parser.y
 codyn/instructions/Makefile
 codyn/operators/Makefile
 codyn/integrators/Makefile

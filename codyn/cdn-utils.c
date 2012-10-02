@@ -399,6 +399,49 @@ cdn_string_to_value (gchar const  *s,
 }
 
 gchar *
+cdn_compose_dot (gchar const *name,
+                 gint         order)
+{
+	if (order == 0)
+	{
+		return g_strdup (name);
+	}
+
+	if (order > 2)
+	{
+		gchar *primed;
+		gchar *ret;
+
+		primed = g_strnfill (order, '\'');
+		ret = g_strconcat (name, primed, NULL);
+		g_free (primed);
+
+		return ret;
+	}
+
+	gchar const *next;
+	gunichar compose;
+	next = g_utf8_next_char (name);
+
+	if (order == 1)
+	{
+		compose = 775;
+	}
+	else
+	{
+		compose = 776;
+	}
+
+	GString *s = g_string_new ("");
+
+	g_string_append_unichar (s, g_utf8_get_char (name));
+	g_string_append_unichar (s, compose);
+	g_string_append (s, next);
+
+	return g_string_free (s, FALSE);
+}
+
+gchar *
 cdn_decompose_dot (gchar const *name,
                    gint        *order)
 {

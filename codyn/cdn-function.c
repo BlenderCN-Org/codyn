@@ -25,6 +25,7 @@
 #include "cdn-expression-tree-iter.h"
 #include "instructions/cdn-instruction-rand.h"
 #include "instructions/cdn-instruction-variable.h"
+#include "cdn-math.h"
 
 #include <string.h>
 
@@ -84,9 +85,18 @@ struct _CdnFunctionPrivate
 	guint has_dimension : 1;
 };
 
+typedef struct
+{
+	CdnFunctionPrivate priv;
+
+	GSList *rand_arguments;
+} CdnFunctionRandPrivate;
+
 G_DEFINE_TYPE (CdnFunction, cdn_function, CDN_TYPE_OBJECT)
 
 static guint signals[NUM_SIGNALS] = {0,};
+
+static gboolean use_rand_as_argument = FALSE;
 
 GQuark
 cdn_function_error_quark (void)
@@ -291,6 +301,155 @@ update_stack_manipulation (CdnFunction *f)
 	                              &f->priv->smanip.push.dimension);
 }
 
+static gchar *
+unique_rand_name (CdnFunction *self,
+                  gint        *i)
+{
+	while (TRUE)
+	{
+		gchar *name;
+
+		name = g_strdup_printf ("_rand%d", (*i)++);
+
+		if (cdn_object_get_variable (CDN_OBJECT (self), name) != NULL)
+		{
+			g_free (name);
+		}
+
+		return name;
+	}
+}
+
+static void
+promote_rand_instructions (CdnFunction *self)
+{
+	GSList const *instrs;
+	GSList *ret = NULL;
+	gint i = 0;
+	CdnFunctionRandPrivate *priv = (CdnFunctionRandPrivate *)self->priv;
+
+	g_slist_free (priv->rand_arguments);
+	priv->rand_arguments = NULL;
+
+	if (!cdn_expression_get_rand_instructions (self->priv->expression))
+	{
+		return;
+	}
+
+	instrs = cdn_expression_get_instructions (self->priv->expression);
+
+	while (instrs)
+	{
+		if (CDN_IS_INSTRUCTION_RAND (instrs->data))
+		{
+			CdnStackManipulation const *smanip;
+			CdnFunctionArgument *arg;
+			CdnVariable *varg;
+			CdnInstruction *vinstr;
+			gchar *name;
+			CdnStackArg sarg = CDN_STACK_ARG_EMPTY;
+
+			// Generate variable argument for it
+			name = unique_rand_name (self, &i);
+			arg = cdn_function_argument_new (name,
+			                                 TRUE,
+			                                 cdn_expression_new ("rand()"));
+
+			cdn_function_add_argument (self, arg);
+			varg = _cdn_function_argument_get_variable (arg);
+			vinstr = cdn_instruction_variable_new (varg);
+
+			smanip = cdn_instruction_get_stack_manipulation (instrs->data,
+			                                                 NULL);
+
+			priv->rand_arguments = g_slist_prepend (priv->rand_arguments,
+			                                        arg);
+
+			cdn_function_argument_set_dimension (arg,
+			                                     &smanip->push.dimension);
+
+			sarg.dimension = smanip->push.dimension;
+			cdn_stack_args_append (&self->priv->smanip.pop, &sarg);
+
+			if (smanip->pop.num == 2)
+			{
+				// Scale between first and second arg
+				CdnInstruction *scale;
+
+				CdnStackArg args[3] = {
+					CDN_STACK_ARG_EMPTY,
+					CDN_STACK_ARG_EMPTY,
+					CDN_STACK_ARG_EMPTY
+				};
+
+				CdnStackArgs ar = {3, args};
+
+				// TODO: check order here
+				cdn_stack_arg_copy (&args[2], &smanip->pop.args[1]);
+				cdn_stack_arg_copy (&args[1], &smanip->pop.args[0]);
+
+				args[0].rows = 1;
+				args[0].columns = 1;
+
+				scale = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LERP,
+				                                      NULL,
+				                                      &ar);
+
+				cdn_stack_arg_destroy (&args[1]);
+				cdn_stack_arg_destroy (&args[2]);
+
+				// Add rand and scale
+				ret = g_slist_prepend (ret, vinstr);
+				ret = g_slist_prepend (ret, scale);
+			}
+			else if (smanip->pop.num == 1)
+			{
+				CdnInstruction *mult;
+
+				CdnStackArg args[2] = {
+					CDN_STACK_ARG_EMPTY,
+					CDN_STACK_ARG_EMPTY
+				};
+
+				CdnStackArgs ar = {2, args};
+
+				// TODO: check order here
+				cdn_stack_arg_copy (&args[1], &smanip->pop.args[0]);
+
+				args[0].rows = 1;
+				args[0].columns = 1;
+
+				mult = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
+				                                     NULL,
+				                                     &ar);
+
+				cdn_stack_arg_destroy (&args[1]);
+
+				// Add rand and multiplication
+				ret = g_slist_prepend (ret, vinstr);
+				ret = g_slist_prepend (ret, mult);
+			}
+			else
+			{
+				// Replace directly with variable
+				ret = g_slist_prepend (ret, vinstr);
+			}
+		}
+		else
+		{
+			ret = g_slist_prepend (ret,
+			                       cdn_mini_object_copy (instrs->data));
+		}
+
+		instrs = g_slist_next (instrs);
+	}
+
+	priv->rand_arguments = g_slist_reverse (priv->rand_arguments);
+
+	ret = g_slist_reverse (ret);
+	cdn_expression_set_instructions_take (self->priv->expression, ret);
+}
+
 static gboolean
 cdn_function_compile_impl (CdnObject         *object,
                            CdnCompileContext *context,
@@ -350,6 +509,13 @@ cdn_function_compile_impl (CdnObject         *object,
 		}
 
 		ret = FALSE;
+	}
+
+	if (use_rand_as_argument)
+	{
+		// Promote any 'rand' instructions in the expression to
+		// arguments of this function.
+		promote_rand_instructions (self);
 	}
 
 	// Compile defaults
@@ -1604,7 +1770,14 @@ cdn_function_class_init (CdnFunctionClass *klass)
 		              G_TYPE_NONE,
 		              0);
 
-	g_type_class_add_private (object_class, sizeof(CdnFunctionPrivate));
+	if (use_rand_as_argument)
+	{
+		g_type_class_add_private (object_class, sizeof(CdnFunctionRandPrivate));
+	}
+	else
+	{
+		g_type_class_add_private (object_class, sizeof(CdnFunctionPrivate));
+	}
 }
 
 static void
@@ -2039,4 +2212,24 @@ cdn_function_get_derivative (CdnFunction                       *function,
 	                                                          order,
 	                                                          flags,
 	                                                          error);
+}
+
+void
+cdn_function_set_rand_as_argument (gboolean rand_as_argument)
+{
+	use_rand_as_argument = rand_as_argument;
+}
+
+GSList const *
+_cdn_function_get_rand_arguments (CdnFunction *function)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
+
+	if (!use_rand_as_argument)
+	{
+		return NULL;
+	}
+
+	CdnFunctionRandPrivate *priv = (CdnFunctionRandPrivate *)function->priv;
+	return priv->rand_arguments;
 }

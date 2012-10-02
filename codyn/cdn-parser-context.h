@@ -150,7 +150,8 @@ void                   cdn_parser_context_set_variable         (CdnParserContext
 void                   cdn_parser_context_add_action           (CdnParserContext           *context,
                                                                 GPtrArray                  *target,
                                                                 GPtrArray                  *expression,
-                                                                CdnEmbeddedString          *phases);
+                                                                CdnEmbeddedString          *phases,
+                                                                gboolean                    integrated);
 
 void                   cdn_parser_context_add_polynomial       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,
@@ -295,15 +296,10 @@ void                   cdn_parser_context_push_define          (CdnParserContext
 void                   cdn_parser_context_push_layout          (CdnParserContext           *context);
 void                   cdn_parser_context_pop_layout           (CdnParserContext           *context);
 
-void                   cdn_parser_context_add_layout           (CdnParserContext           *context,
-                                                                CdnLayoutRelation           relation,
-                                                                CdnSelector                *left,
-                                                                CdnSelector                *right);
-
 void                   cdn_parser_context_add_layout_position  (CdnParserContext           *context,
                                                                 CdnSelector                *selector,
-                                                                CdnEmbeddedString          *x,
-                                                                CdnEmbeddedString          *y,
+                                                                GPtrArray                  *x,
+                                                                GPtrArray                  *y,
                                                                 CdnSelector                *of,
                                                                 gboolean                    cartesian);
 

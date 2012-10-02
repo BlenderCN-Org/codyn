@@ -15,14 +15,14 @@ latexdir = $(datadir)/texmf/tex/latex/cdn
 latex_DATA = cdn.sty
 
 emacsdir = $(datadir)/emacs/site-lisp
-emacs_DATA = cdn-mode.el
+emacs_DATA = codyn-mode.el
 
 EXTRA_DIST = \
 	$(dtd_DATA) \
 	cdn.xml.in \
 	cdn.lang \
 	cdn.sty \
-	cdn-mode.el
+	codyn-mode.el
 
 CLEANFILES = cdn.xml
 

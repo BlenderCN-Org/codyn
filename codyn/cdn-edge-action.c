@@ -60,6 +60,8 @@ struct _CdnEdgeActionPrivate
 	guint modified : 1;
 	guint enabled : 1;
 	guint disposing : 1;
+	guint integrated : 1;
+	guint integrated_set : 1;
 };
 
 /* Properties */
@@ -72,7 +74,8 @@ enum
 	PROP_MODIFIED,
 	PROP_LINK,
 	PROP_ANNOTATION,
-	PROP_INDEX
+	PROP_INDEX,
+	PROP_INTEGRATED
 };
 
 static void cdn_modifiable_iface_init (gpointer iface);
@@ -393,7 +396,7 @@ cdn_edge_action_set_property (GObject      *object,
 		case PROP_INDEX:
 			set_index (self,
 			           CDN_EXPRESSION (g_value_get_object (value)));
-			break;
+		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -648,6 +651,9 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 		           cdn_expression_copy (action->priv->index));
 	}
 
+	newaction->priv->integrated = action->priv->integrated;
+	newaction->priv->integrated_set = action->priv->integrated_set;
+
 	return newaction;
 }
 
@@ -702,6 +708,24 @@ _cdn_edge_action_set_target_variable (CdnEdgeAction *action,
 	g_return_if_fail (property == NULL || CDN_IS_VARIABLE (property));
 
 	set_property (action, property);
+
+	if (property && action->priv->integrated_set)
+	{
+		CdnVariableFlags flags;
+
+		flags = cdn_variable_get_flags (property);
+
+		if (action->priv->integrated)
+		{
+			flags |= CDN_VARIABLE_FLAG_INTEGRATED;
+		}
+		else
+		{
+			flags &= ~CDN_VARIABLE_FLAG_INTEGRATED;
+		}
+
+		cdn_variable_set_flags (property, flags);
+	}
 }
 
 /**
@@ -954,4 +978,26 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 	}
 
 	return TRUE;
+}
+
+void
+_cdn_edge_action_set_integrated (CdnEdgeAction *action,
+                                 gboolean       integrated)
+{
+	action->priv->integrated_set = TRUE;
+	action->priv->integrated = integrated;
+}
+
+gboolean
+_cdn_edge_action_get_integrated (CdnEdgeAction *action,
+                                 gboolean      *integrated)
+{
+	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), FALSE);
+
+	if (integrated)
+	{
+		*integrated = action->priv->integrated;
+	}
+
+	return action->priv->integrated_set;
 }

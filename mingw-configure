@@ -165,13 +165,13 @@ libs_flags="--enable-shared --disable-static"
 # NOTE: --build *must* be here, it's autoconf bug (aka 'feature'), confirmed and
 # *documented*.
 echo sh $CONFIGURE --prefix=$WIN_PREFIX --build=`$CONFIG_GUESS` --host=$TARGET --target=$TARGET \
---disable-doc --disable-gtk-doc --disable-maintainer-mode --disable-lapack --disable-blas $libs_flags \
+--disable-maintainer-mode --disable-lapack --disable-blas $libs_flags \
 PKG_CONFIG="$PKG_CONFIG" GTK_PREFIX="$GTK_PREFIX" \
 WIN32_PYTHON_PREFIX="$WIN32_PYTHON_PREFIX" WIN32_PYTHON_HOME="$WIN32_PYTHON_HOME" \
 AR="$AR" RANLIB="$RANLIB" STRIP="$STRIP" AS="$AS" DLLTOOL="$DLLTOOL" \
 OBJDUMP="$OBJDUMP" NM="$NM" WINDRES="$WINDRES" CFLAGS="-DMINGW" $@
 exec sh $CONFIGURE --prefix=$WIN_PREFIX --build=`$CONFIG_GUESS` --host=$TARGET --target=$TARGET \
---disable-doc --disable-gtk-doc --disable-maintainer-mode --disable-lapack --disable-blas $libs_flags \
+--disable-maintainer-mode --disable-lapack --disable-blas $libs_flags \
 PKG_CONFIG="$PKG_CONFIG" GTK_PREFIX="$GTK_PREFIX" \
 WIN32_PYTHON_PREFIX="$WIN32_PYTHON_PREFIX" WIN32_PYTHON_HOME="$WIN32_PYTHON_HOME" \
 AR="$AR" RANLIB="$RANLIB" STRIP="$STRIP" AS="$AS" DLLTOOL="$DLLTOOL" \

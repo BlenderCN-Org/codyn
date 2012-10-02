@@ -541,8 +541,30 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	if (em->priv->indirection_regex == NULL)
 	{
-		em->priv->indirection_regex = g_regex_new ("^([0-9]+)([?!~])?|((.+?)(-?[0-9]*))(([?!~]|[+]+[0-9]*|[-]+[0-9]*)|([!](.+)))?$",
-		                                           0, 0, NULL);
+		em->priv->indirection_regex = g_regex_new (
+			"^"
+			"([0-9]+)"           // 1) an expansion index
+			"([?!~])?"           // 2) optional indexer
+
+			"|"                  // or
+
+			"("                  // 3)
+			    "(.+?)"          // 4) a define indentifier
+			    "(-?[0-9]*)"     // 5) with an optional (+-) index
+			")"
+
+			"("                  // 6) optional tail
+			    "("              // 7)
+			        "[?!~,]"      //   define indexer
+			        "|"          //    or
+			        "[+]+[0-9]*" //    define increment
+			        "|"          //    or
+			        "[-]+[0-9]*" //    define decrement
+			    ")"
+			    "|"
+			    "([!](.+))"      // 8) 9) define indexof
+			")?$",
+			0, 0, NULL);
 	}
 
 	if (!g_regex_match (em->priv->indirection_regex, s, 0, &info))
@@ -590,6 +612,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 		{
 			gint i;
 
+			// This is going to do an indexOf
 			for (i = 1; i < cdn_expansion_num (ex); ++i)
 			{
 				if (g_strcmp0 (cdn_expansion_get (ex, i),
@@ -607,6 +630,9 @@ resolve_indirection (CdnEmbeddedString   *em,
 		{
 			if (idx && *idx && !ex)
 			{
+				// Here we are going to try and index a
+				// define. The 'real' define name is in group
+				// 4 (i.e. identifier without the index)
 				gchar *pname;
 
 				pname = g_match_info_fetch (info, 4);
@@ -615,16 +641,8 @@ resolve_indirection (CdnEmbeddedString   *em,
 				                                       pname);
 
 				g_free (pname);
-			}
 
-			if (idx && *idx)
-			{
 				exidx = (gint)g_ascii_strtoll (idx, NULL, 10);
-
-				if (exidx >= 0)
-				{
-					++exidx;
-				}
 			}
 
 			if (flags == INDIRECTION_INCREMENT)

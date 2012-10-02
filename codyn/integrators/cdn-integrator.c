@@ -356,7 +356,8 @@ update_events (CdnIntegrator *integrator)
 static void
 prepare_next_step (CdnIntegrator *integrator,
                    gdouble        t,
-                   gdouble        timestep)
+                   gdouble        timestep,
+                   gboolean       genrand)
 {
 	GSList *item;
 	GSList const *io;
@@ -365,7 +366,10 @@ prepare_next_step (CdnIntegrator *integrator,
 	cdn_variable_set_value (integrator->priv->property_time, t);
 	cdn_variable_set_value (integrator->priv->property_timestep, timestep);
 
-	next_random (integrator);
+	if (genrand)
+	{
+		next_random (integrator);
+	}
 
 	reset_function_cache (integrator);
 
@@ -496,7 +500,7 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 		return timestep;
 	}
 
-	prepare_next_step (integrator, t + timestep, timestep);
+	prepare_next_step (integrator, t + timestep, timestep, TRUE);
 
 	g_signal_emit (integrator,
 	               integrator_signals[STEP],
@@ -978,7 +982,7 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 	}
 
 	// Generate set of next random values
-	prepare_next_step (integrator, start, 0);
+	prepare_next_step (integrator, start, 0, FALSE);
 
 	cdn_integrator_state_set_phase (integrator->priv->state,
 	                                integrator->priv->initial_phase);

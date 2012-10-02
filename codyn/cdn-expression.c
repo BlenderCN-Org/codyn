@@ -1683,6 +1683,21 @@ replace_arg_with_zeros (CdnExpression      *expression,
 	}
 }
 
+static void
+instructions_push_all (CdnExpression *expression,
+                       GSList const  *instrs,
+                       ParserContext *context)
+{
+	while (instrs)
+	{
+		instructions_push (expression,
+		                   cdn_mini_object_copy (instrs->data),
+		                   context);
+
+		instrs = g_slist_next (instrs);
+	}
+}
+
 static gboolean
 parse_function (CdnExpression *expression,
                 gchar const   *name,
@@ -1801,8 +1816,9 @@ parse_function (CdnExpression *expression,
 		return FALSE;
 	}
 
-	if ((function != NULL && (numargs > (arguments - n_implicit) || numargs < (arguments - n_implicit - n_optional))) ||
-	    (function == NULL && arguments != -1 && numargs != arguments))
+	if ((function != NULL && (numargs > (arguments - n_implicit) ||
+	                          numargs < (arguments - n_implicit - n_optional))) ||
+	                          (function == NULL && arguments != -1 && numargs != arguments))
 	{
 		return parser_failed (expression,
 		                      context,
@@ -1854,15 +1870,7 @@ parse_function (CdnExpression *expression,
 				instrs = cdn_expression_get_instructions (defval);
 			}
 
-			while (instrs)
-			{
-				instructions_push (expression,
-				                   cdn_mini_object_copy (instrs->data),
-				                   context);
-
-				instrs = g_slist_next (instrs);
-			}
-
+			instructions_push_all (expression, instrs, context);
 			start = g_list_next (start);
 		}
 
@@ -2000,14 +2008,36 @@ parse_function (CdnExpression *expression,
 		function = cdn_function_for_dimension (function,
 		                                       &args);
 
-		instruction = cdn_instruction_custom_function_new (function,
-		                                                   &args);
-
 		// Recursively compile the function here
 		ret = recurse_compile (expression, context, function);
 
 		if (ret)
 		{
+			GSList const *randargs;
+			CdnStackManipulation const *smanip;
+
+			smanip = cdn_function_get_stack_manipulation (function);
+
+			instruction = cdn_instruction_custom_function_new (function,
+			                                                   &smanip->pop);
+
+			// If needed, copy rand instructions used in the function
+			// as arguments to the function call
+			randargs = _cdn_function_get_rand_arguments (function);
+
+			while (randargs)
+			{
+				CdnExpression *def;
+
+				def = cdn_function_argument_get_default_value (randargs->data);
+
+				instructions_push_all (expression,
+				                       cdn_expression_get_instructions (def),
+				                       context);
+
+				randargs = g_slist_next (randargs);
+			}
+
 			GList const *arg;
 			gint i = arguments - 1;
 
@@ -2020,6 +2050,13 @@ parse_function (CdnExpression *expression,
 					                        context,
 					                        i,
 					                        &args.args[i].dimension);
+				}
+
+				if (i == 0)
+				{
+					// This happens only when we added args
+					// for the bubbled rand instructions
+					break;
 				}
 
 				--i;

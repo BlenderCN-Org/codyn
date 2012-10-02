@@ -36,6 +36,13 @@ CdnInstruction *cdn_instruction_rand_new      (CdnStackArgs const *argdim);
 
 void            cdn_instruction_rand_next     (CdnInstructionRand *self);
 
+void            cdn_instruction_rand_set_use_streams (gboolean use);
+
+void            cdn_instruction_rand_set_seed (CdnInstructionRand *self,
+                                               guint               seed);
+
+guint           cdn_instruction_rand_get_seed (CdnInstructionRand *self);
+
 G_END_DECLS
 
 #endif /* __CDN_INSTRUCTION_RAND_H__ */
