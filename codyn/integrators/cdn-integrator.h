@@ -133,6 +133,8 @@ void                 cdn_integrator_set_real_time   (CdnIntegrator *integrator,
 
 gdouble              cdn_integrator_get_real_time   (CdnIntegrator *integrator);
 
+gboolean             cdn_integrator_get_terminate   (CdnIntegrator *integrator);
+
 G_END_DECLS
 
 #endif /* __CDN_INTEGRATOR_H__ */

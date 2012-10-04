@@ -1286,3 +1286,11 @@ cdn_integrator_get_real_time (CdnIntegrator *integrator)
 
 	return integrator->priv->real_time;
 }
+
+gboolean
+cdn_integrator_get_terminate (CdnIntegrator *integrator)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), TRUE);
+
+	return integrator->priv->terminate;
+}
