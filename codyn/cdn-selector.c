@@ -32,13 +32,6 @@
 
 #define CDN_SELECTOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_SELECTOR, CdnSelectorPrivate))
 
-typedef enum
-{
-	SELECTOR_TYPE_IDENTIFIER,
-	SELECTOR_TYPE_REGEX,
-	SELECTOR_TYPE_PSEUDO
-} SelectorType;
-
 typedef struct
 {
 	gint a;
@@ -48,7 +41,7 @@ typedef struct
 
 typedef struct
 {
-	SelectorType type;
+	CdnSelectorPartType type;
 	guint id;
 	GSList *selections_in;
 	GSList *selections_out;
@@ -75,6 +68,11 @@ typedef struct
 		} pseudo;
 	};
 } Selector;
+
+struct _CdnSelectorPart
+{
+	Selector selector;
+};
 
 struct _CdnSelectorPrivate
 {
@@ -172,8 +170,8 @@ cdn_statement_iface_init (gpointer iface)
 }
 
 static Selector *
-selector_new (CdnSelector  *selector,
-              SelectorType  type)
+selector_new (CdnSelector         *selector,
+              CdnSelectorPartType  type)
 {
 	Selector *ret;
 
@@ -199,13 +197,13 @@ selector_free (Selector *selector)
 {
 	switch (selector->type)
 	{
-		case SELECTOR_TYPE_IDENTIFIER:
+		case CDN_SELECTOR_PART_TYPE_IDENTIFIER:
 			g_object_unref (selector->identifier.identifier);
 		break;
-		case SELECTOR_TYPE_REGEX:
+		case CDN_SELECTOR_PART_TYPE_REGEX:
 			g_object_unref (selector->regex.regex);
 		break;
-		case SELECTOR_TYPE_PSEUDO:
+		case CDN_SELECTOR_PART_TYPE_PSEUDO:
 			g_slist_foreach (selector->pseudo.arguments, (GFunc)g_object_unref, NULL);
 			g_slist_free (selector->pseudo.arguments);
 		break;
@@ -267,7 +265,7 @@ selector_identifier_new (CdnSelector       *sel,
 {
 	Selector *selector;
 
-	selector = selector_new (sel, SELECTOR_TYPE_IDENTIFIER);
+	selector = selector_new (sel, CDN_SELECTOR_PART_TYPE_IDENTIFIER);
 
 	selector->identifier.identifier = g_object_ref (identifier);
 	selector->identifier.partial = partial;
@@ -282,7 +280,7 @@ selector_regex_new (CdnSelector       *sel,
 {
 	Selector *selector;
 
-	selector = selector_new (sel, SELECTOR_TYPE_REGEX);
+	selector = selector_new (sel, CDN_SELECTOR_PART_TYPE_REGEX);
 
 	selector->regex.regex = g_object_ref (regex);
 	selector->regex.partial = partial;
@@ -366,13 +364,13 @@ selector_to_string (Selector *selector)
 {
 	switch (selector->type)
 	{
-		case SELECTOR_TYPE_IDENTIFIER:
+		case CDN_SELECTOR_PART_TYPE_IDENTIFIER:
 			return selector_identifier_to_string (selector);
 		break;
-		case SELECTOR_TYPE_REGEX:
+		case CDN_SELECTOR_PART_TYPE_REGEX:
 			return selector_regex_to_string (selector);
 		break;
-		case SELECTOR_TYPE_PSEUDO:
+		case CDN_SELECTOR_PART_TYPE_PSEUDO:
 			return selector_pseudo_to_string (selector);
 		break;
 	}
@@ -387,7 +385,7 @@ selector_pseudo_new (CdnSelector           *sel,
 {
 	Selector *selector;
 
-	selector = selector_new (sel, SELECTOR_TYPE_PSEUDO);
+	selector = selector_new (sel, CDN_SELECTOR_PART_TYPE_PSEUDO);
 
 	selector->pseudo.type = type;
 	selector->pseudo.arguments = g_slist_copy (arguments);
@@ -2969,7 +2967,7 @@ selector_select (CdnSelector *self,
 	GSList *ret = NULL;
 	GSList *item;
 
-	if (selector->type == SELECTOR_TYPE_PSEUDO)
+	if (selector->type == CDN_SELECTOR_PART_TYPE_PSEUDO)
 	{
 		ret = selector_select_pseudo (self,
 		                              selector,
@@ -2984,12 +2982,12 @@ selector_select (CdnSelector *self,
 
 			switch (selector->type)
 			{
-				case SELECTOR_TYPE_IDENTIFIER:
+				case CDN_SELECTOR_PART_TYPE_IDENTIFIER:
 					r = selector_select_identifier (self,
 					                                selector,
 					                                sel);
 				break;
-				case SELECTOR_TYPE_REGEX:
+				case CDN_SELECTOR_PART_TYPE_REGEX:
 					r = selector_select_regex (self,
 					                           selector,
 					                           sel);
@@ -3002,7 +3000,7 @@ selector_select (CdnSelector *self,
 			ret = g_slist_concat (ret, r);
 		}
 
-		if (selector->type == SELECTOR_TYPE_REGEX)
+		if (selector->type == CDN_SELECTOR_PART_TYPE_REGEX)
 		{
 			annotate_first_expansion (ret);
 		}
@@ -3293,11 +3291,11 @@ cdn_selector_set_partial (CdnSelector *selector,
 
 		sel = item->data;
 
-		if (sel->type == SELECTOR_TYPE_IDENTIFIER)
+		if (sel->type == CDN_SELECTOR_PART_TYPE_IDENTIFIER)
 		{
 			sel->identifier.partial = partial;
 		}
-		else if (sel->type == SELECTOR_TYPE_REGEX)
+		else if (sel->type == CDN_SELECTOR_PART_TYPE_REGEX)
 		{
 			sel->regex.partial = partial;
 		}
@@ -3491,4 +3489,51 @@ cdn_selector_set_implicit_children (CdnSelector *selector,
 	g_return_if_fail (CDN_IS_SELECTOR (selector));
 
 	selector->priv->implicit_children = isimplicit;
+}
+
+CdnSelectorPartType
+cdn_selector_part_type (CdnSelectorPart *part)
+{
+	return part->selector.type;
+}
+
+gchar const  *
+cdn_selector_part_identifier (CdnSelectorPart *part)
+{
+	if (part->selector.type == CDN_SELECTOR_PART_TYPE_IDENTIFIER)
+	{
+		return cdn_embedded_string_expand (part->selector.identifier.identifier,
+		                                   NULL,
+		                                   NULL);
+	}
+
+	return NULL;
+}
+
+GRegex *
+cdn_selector_part_regex (CdnSelectorPart        *part)
+{
+	if (part->selector.type == CDN_SELECTOR_PART_TYPE_REGEX)
+	{
+		return regex_create (&part->selector, NULL, NULL);
+	}
+
+	return NULL;
+}
+
+CdnSelectorPseudoType
+cdn_selector_part_pseudo_type (CdnSelectorPart *part)
+{
+	if (part->selector.type == CDN_SELECTOR_PART_TYPE_PSEUDO)
+	{
+		return part->selector.pseudo.type;
+	}
+
+	return CDN_SELECTOR_PSEUDO_NUM;
+}
+
+GSList const *
+cdn_selector_get_parts (CdnSelector *selector)
+{
+	return selector->priv->selectors;
 }

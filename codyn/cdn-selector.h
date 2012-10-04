@@ -44,6 +44,13 @@ typedef struct _CdnSelectorPrivate	CdnSelectorPrivate;
 
 typedef enum
 {
+	CDN_SELECTOR_PART_TYPE_IDENTIFIER,
+	CDN_SELECTOR_PART_TYPE_REGEX,
+	CDN_SELECTOR_PART_TYPE_PSEUDO
+} CdnSelectorPartType;
+
+typedef enum
+{
 	CDN_SELECTOR_TYPE_NONE = 0,
 	CDN_SELECTOR_TYPE_ANY = 1 << 0,
 	CDN_SELECTOR_TYPE_STATE = 1 << 1,
@@ -116,12 +123,23 @@ struct _CdnSelectorClass
 	GObjectClass parent_class;
 };
 
+typedef struct _CdnSelectorPart CdnSelectorPart;
+
 GType         cdn_selector_get_type          (void) G_GNUC_CONST;
 
 CdnSelector  *cdn_selector_new               (CdnObject              *root);
 CdnSelector  *cdn_selector_parse             (CdnObject              *root,
                                               gchar const            *s,
                                               GError                **error);
+
+GSList const *cdn_selector_get_parts         (CdnSelector            *selector);
+
+CdnSelectorPartType
+              cdn_selector_part_type         (CdnSelectorPart        *part);
+gchar const  *cdn_selector_part_identifier   (CdnSelectorPart        *part);
+GRegex       *cdn_selector_part_regex        (CdnSelectorPart        *part);
+CdnSelectorPseudoType
+              cdn_selector_part_pseudo_type  (CdnSelectorPart        *part);
 
 gchar        *cdn_selector_as_string         (CdnSelector            *selector);
 
