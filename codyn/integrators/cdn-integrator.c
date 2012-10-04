@@ -268,8 +268,6 @@ cdn_integrator_run_impl (CdnIntegrator *integrator,
 		return;
 	}
 
-	integrator->priv->terminate = FALSE;
-
 	while (from < to)
 	{
 		if (to - from < timestep)
@@ -980,6 +978,8 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 	{
 		return FALSE;
 	}
+
+	integrator->priv->terminate = FALSE;
 
 	// Generate set of next random values
 	prepare_next_step (integrator, start, 0, FALSE);
