@@ -30,25 +30,10 @@
 #include <locale.h>
 #include <codyn/cdn-cfile-stream.h>
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
-
-#ifdef ENABLE_GIO_UNIX
-#include <gio/gunixinputstream.h>
-#endif
-
-typedef struct
-{
-	GPtrArray *monitored;
-	GSList *monitors;
-	GSList *names;
-	gchar *output_file;
-	GOutputStream *stream;
-} Monitored;
+#include "monitor.h"
+#include "implementation.h"
 
 static GPtrArray *monitored = NULL;
-static GPtrArray *varied = NULL;
 static gboolean include_header = FALSE;
 static gchar *delimiter = NULL;
 static gdouble from = 0;
@@ -72,85 +57,17 @@ typedef enum
 	CDN_MONITOR_ERROR_RANGE
 } CdnMonitorError;
 
-typedef struct
-{
-	CdnVariable *variable;
-	gint row;
-	gint col;
-} Monitor;
-
-static Monitor *
-monitor_new (CdnVariable *variable,
-             gint         row,
-             gint         col)
-{
-	Monitor *ret;
-
-	ret = g_slice_new0 (Monitor);
-
-	ret->variable = g_object_ref (variable);
-	ret->row = row;
-	ret->col = col;
-
-	return ret;
-}
-
-static void
-monitor_free (Monitor *self)
-{
-	g_object_unref (self->variable);
-	g_slice_free (Monitor, self);
-}
-
-static Monitored *
-monitored_new ()
-{
-	Monitored *ret = g_slice_new0 (Monitored);
-
-	ret->monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free);
-	return ret;
-}
-
-static void
-monitored_free (Monitored *monitored)
-{
-	if (!monitored)
-	{
-		return;
-	}
-
-	if (monitored->monitored)
-	{
-		g_ptr_array_free (monitored->monitored, TRUE);
-	}
-
-	if (monitored->stream)
-	{
-		g_output_stream_flush (monitored->stream, NULL, NULL);
-		g_output_stream_close (monitored->stream, NULL, NULL);
-	}
-
-	g_slist_foreach (monitored->monitors, (GFunc)monitor_free, NULL);
-	g_slist_free (monitored->monitors);
-
-	g_slist_foreach (monitored->names, (GFunc)g_free, NULL);
-	g_slist_free (monitored->names);
-
-	g_free (monitored->output_file);
-	g_slice_free (Monitored, monitored);
-}
-
 static gboolean
 parse_monitored (gchar const  *option_name,
                  gchar const  *value,
                  gpointer      data,
                  GError      **error)
 {
-	Monitored *mon;
+	CdnMonitored *mon;
 
 	if (monitored->len == 0)
 	{
-		mon = monitored_new ();
+		mon = cdn_monitored_new ();
 		g_ptr_array_add (monitored, mon);
 	}
 	else
@@ -159,7 +76,7 @@ parse_monitored (gchar const  *option_name,
 
 		if (!mon)
 		{
-			mon = monitored_new ();
+			mon = cdn_monitored_new ();
 			monitored->pdata[monitored->len - 1] = mon;
 		}
 	}
@@ -174,11 +91,11 @@ parse_output_file (gchar const  *option_name,
                    gpointer      data,
                    GError      **error)
 {
-	Monitored *mon;
+	CdnMonitored *mon;
 
 	if (monitored->len == 0)
 	{
-		mon = monitored_new ();
+		mon = cdn_monitored_new ();
 		g_ptr_array_add (monitored, mon);
 	}
 	else
@@ -190,85 +107,6 @@ parse_output_file (gchar const  *option_name,
 	mon->output_file = g_strdup (value);
 
 	g_ptr_array_add (monitored, NULL);
-	return TRUE;
-}
-
-typedef struct
-{
-	gchar *selector;
-	gdouble from;
-	gdouble step;
-	gdouble to;
-} Range;
-
-static Range *
-range_new (gchar const *sel,
-           gdouble from,
-           gdouble step,
-           gdouble to)
-{
-	Range *ret;
-
-	ret = g_slice_new0 (Range);
-
-	ret->selector = g_strdup (sel);
-	ret->from = from;
-	ret->step = step;
-	ret->to = to;
-
-	return ret;
-}
-
-static void
-range_free (Range *self)
-{
-	g_free (self->selector);
-	g_slice_free (Range, self);
-}
-
-static gboolean
-parse_varied (gchar const  *option_name,
-              gchar const  *value,
-              gpointer      data,
-              GError      **error)
-{
-	static GRegex *regex = NULL;
-	GMatchInfo *info;
-
-	if (regex == NULL)
-	{
-		regex = g_regex_new ("^(.*):([^:]*):([^:]*):([^:]*)$", 0, 0, NULL);
-	}
-
-	if (!g_regex_match (regex, value, 0, &info))
-	{
-		if (error)
-		{
-			g_set_error (error,
-			             CDN_MONITOR_ERROR,
-			             CDN_MONITOR_ERROR_RANGE,
-			             "Could not parse range varying range: %s",
-			             value);
-		}
-
-		return FALSE;
-	}
-
-	gchar *s = g_match_info_fetch (info, 1);
-	gchar *from = g_match_info_fetch (info, 2);
-	gchar *step = g_match_info_fetch (info, 3);
-	gchar *to = g_match_info_fetch (info, 4);
-
-	g_ptr_array_add (varied, range_new (s,
-	                                    g_ascii_strtod (from, NULL),
-	                                    g_ascii_strtod (step, NULL),
-	                                    g_ascii_strtod (to, NULL)));
-
-	g_free (s);
-	g_free (from);
-	g_free (step);
-	g_free (to);
-
 	return TRUE;
 }
 
@@ -351,8 +189,6 @@ static GOptionEntry entries[] = {
 	 "Output file (defaults to standard output)", "FILE"},
 	{"seed", 's', 0, G_OPTION_ARG_CALLBACK, parse_seed,
 	 "Random numbers seed (defaults to current time)", "SEED"},
-	{"vary", 'v', 0, G_OPTION_ARG_CALLBACK, parse_varied,
-	 "Run integration multiple times, varying this range (e.g. /state_.*/.\"{x,y}\"(0:0.1:10))", "RANGE"},
 	{"simplify", 'x', 0, G_OPTION_ARG_NONE, &simplify,
 	 "Enable global simplifications", NULL},
 	{"timestamp", 'p', 0, G_OPTION_ARG_NONE, &timestamp,
@@ -361,7 +197,7 @@ static GOptionEntry entries[] = {
 };
 
 static void
-write_headers (Monitored *monmon)
+write_headers (CdnMonitored *monmon)
 {
 	GOutputStream *stream = monmon->stream;
 	GSList *names = monmon->names;
@@ -407,16 +243,19 @@ write_headers (Monitored *monmon)
 	                           NULL);
 }
 
-static GSList *
-find_matching_variables (CdnNetwork  *network,
-                          gchar const *expression)
+static CdnSelector *
+make_selector (CdnNetwork  *network,
+               gchar const *expression,
+               gint        *ncol,
+               gint        *nrow)
 {
 	GError *err = NULL;
 	CdnSelector *sel;
 	static GRegex *r = NULL;
 	GMatchInfo *info;
-	gint ncol = -1;
-	gint nrow = -1;
+
+	*ncol = -1;
+	*nrow = -1;
 
 	if (!r)
 	{
@@ -444,13 +283,13 @@ find_matching_variables (CdnNetwork  *network,
 			{
 				gchar *col;
 
-				nrow = g_ascii_strtoll (row, NULL, 10);
+				*nrow = g_ascii_strtoll (row, NULL, 10);
 
 				col = g_match_info_fetch (info, 4);
 
 				if (col && *col)
 				{
-					ncol = g_ascii_strtoll (col, NULL, 10);
+					*ncol = g_ascii_strtoll (col, NULL, 10);
 				}
 
 				g_free (col);
@@ -474,34 +313,11 @@ find_matching_variables (CdnNetwork  *network,
 		return NULL;
 	}
 
-	GSList *selection = cdn_selector_select (sel,
-	                                         G_OBJECT (network),
-	                                         CDN_SELECTOR_TYPE_VARIABLE,
-	                                         NULL);
-	GSList *element = selection;
-	GSList *variables = NULL;
-
-	while (element)
-	{
-		CdnVariable *var;
-
-		var = cdn_selection_get_object (element->data);
-
-		variables = g_slist_prepend (variables,
-		                             monitor_new (var, nrow, ncol));
-
-		cdn_selection_unref (element->data);
-		element = g_slist_next (element);
-	}
-
-	g_slist_free (selection);
-	g_object_unref (sel);
-
-	return variables;
+	return sel;
 }
 
 static void
-resolve_output_stream (Monitored *monmon)
+resolve_output_stream (CdnMonitored *monmon)
 {
 	GError *error = NULL;
 
@@ -554,16 +370,16 @@ resolve_output_stream (Monitored *monmon)
 static double
 get_current_time ()
 {
-  struct timeval tv;
-  struct timezone tz;
+	struct timeval tv;
+	struct timezone tz;
 
-  gettimeofday (&tv, &tz);
+	gettimeofday (&tv, &tz);
 
-  return tv.tv_sec + 1.e-6 * tv.tv_usec;
+	return tv.tv_sec + 1.e-6 * tv.tv_usec;
 }
 
 static void
-record_monitors (Monitored *monitored)
+record_monitors (CdnMonitored *monitored)
 {
 	// Record all monitors
 	gboolean first = TRUE;
@@ -595,12 +411,14 @@ record_monitors (Monitored *monitored)
 
 	while (monitors)
 	{
-		Monitor *mon = monitors->data;
+		CdnMonitorVariable *mon = monitors->data;
 		CdnDimension dim;
 		gdouble const *values;
 		gint num;
 
-		values = cdn_variable_get_values (mon->variable, &dim);
+		values = mon->get_values (mon);
+
+		dim = mon->dimension;
 		num = cdn_dimension_size (&dim);
 
 		if (!first)
@@ -692,9 +510,7 @@ record_monitors (Monitored *monitored)
 }
 
 static void
-on_step (CdnIntegrator *integrator,
-         gdouble        time,
-         gdouble        timestep)
+write_values (CdnMonitorImplementation *implementation)
 {
 	gint i;
 
@@ -704,20 +520,12 @@ on_step (CdnIntegrator *integrator,
 	}
 }
 
-static void
-on_begin (CdnIntegrator *integrator,
-          gdouble        from)
-{
-	on_step (integrator, from, 0);
-}
-
 static gboolean
-resolve_monitors (CdnNetwork *network,
-                  Monitored *monmon)
+resolve_monitors (CdnMonitorImplementation *implementation,
+                  CdnMonitored             *monmon)
 {
 	gint i;
 	GPtrArray *monitored;
-	CdnIntegrator *integrator;
 
 	if (!monmon)
 	{
@@ -730,28 +538,42 @@ resolve_monitors (CdnNetwork *network,
 	{
 		GSList *variables;
 		GSList *prop;
+		CdnSelector *sel;
+		gint nrow;
+		gint ncol;
 
-		variables = find_matching_variables (network, monitored->pdata[i]);
+		sel = make_selector (implementation->network,
+		                     monitored->pdata[i],
+		                     &nrow,
+		                     &ncol);
+
+		if (!sel)
+		{
+			return FALSE;
+		}
+
+		variables = implementation->resolve (implementation, sel);
 		prop = variables;
 
 		while (prop)
 		{
-			Monitor *mon = prop->data;
-			CdnExpression *expr;
+			CdnMonitorVariable *mon = prop->data;
 			CdnDimension ndim;
 			gchar *name;
 
-			monmon->monitors = g_slist_prepend (monmon->monitors,
-			mon);
+			mon->row = nrow;
+			mon->col = ncol;
 
-			expr = cdn_variable_get_expression (mon->variable);
-			cdn_expression_get_dimension (expr, &ndim);
-			name = cdn_variable_get_full_name (mon->variable);
+			monmon->monitors = g_slist_prepend (monmon->monitors,
+			                                    mon);
+
+			name = mon->get_name (mon);
+			ndim = mon->dimension;
 
 			if (mon->row >= 0 || cdn_dimension_is_one (&ndim))
 			{
 				monmon->names = g_slist_prepend (monmon->names,
-				name);
+				                                 name);
 			}
 			else
 			{
@@ -785,11 +607,9 @@ resolve_monitors (CdnNetwork *network,
 		g_slist_free (variables);
 	}
 
-	integrator = cdn_network_get_integrator (network);
-
+	// Prepend 't' monitor
 	monmon->monitors = g_slist_prepend (monmon->monitors,
-	                                    monitor_new (cdn_object_get_variable (CDN_OBJECT (integrator), "t"),
-	                                                 -1, -1));
+	                                    implementation->get_time (implementation));
 
 	resolve_output_stream (monmon);
 
@@ -805,13 +625,13 @@ resolve_monitors (CdnNetwork *network,
 }
 
 static gboolean
-resolve_all_monitors (CdnNetwork *network)
+resolve_all_monitors (CdnMonitorImplementation *implementation)
 {
 	gint i;
 
 	for (i = monitored->len - 1; i >= 0; --i)
 	{
-		if (!resolve_monitors (network, monitored->pdata[i]))
+		if (!resolve_monitors (implementation, monitored->pdata[i]))
 		{
 			return FALSE;
 		}
@@ -821,324 +641,48 @@ resolve_all_monitors (CdnNetwork *network)
 }
 
 static gint
-run_simple_monitor (CdnNetwork *network)
+run_simple_monitor (CdnMonitorImplementation *implementation)
 {
-	CdnIntegrator *integrator;
-	gint ret;
-	GError *err = NULL;
+	gdouble t;
 
-	if (!resolve_all_monitors (network))
+	if (!resolve_all_monitors (implementation))
 	{
 		return 1;
 	}
 
-	integrator = cdn_network_get_integrator (network);
+	t = from;
 
-	g_signal_connect (integrator,
-	                  "begin",
-	                  G_CALLBACK (on_begin),
-	                  NULL);
+	implementation->begin (implementation, t, step);
 
-	g_signal_connect (integrator,
-	                  "step",
-	                  G_CALLBACK (on_step),
-	                  NULL);
+	write_values (implementation);
 
-	if (!cdn_network_run (network, from, step, to, &err))
+	while (t < to)
 	{
-		g_printerr ("Failed to run network: %s\n",
-		            err->message);
+		gdouble realstep;
 
-		g_error_free (err);
-		ret = 1;
-	}
-	else
-	{
-		ret = 0;
-	}
-
-	return ret;
-}
-
-typedef struct
-{
-	CdnVariable *variable;
-	Range const *range;
-	gdouble value;
-} VariableRange;
-
-static VariableRange *
-variable_range_new (CdnVariable *variable,
-                    Range const *range)
-{
-	VariableRange *ret;
-
-	ret = g_slice_new0 (VariableRange);
-
-	ret->variable = variable;
-	ret->range = range;
-	ret->value = 0;
-
-	return ret;
-}
-
-static void
-variable_range_free (VariableRange *self)
-{
-	g_slice_free (VariableRange, self);
-}
-
-static void
-simulate_combinations (CdnNetwork    *network,
-                       GSList        *ranges,
-                       GSList        *all_ranges,
-                       GSList        *vars,
-                       GOutputStream *out)
-{
-	VariableRange *r;
-	gdouble v;
-
-	if (!ranges)
-	{
-		cdn_object_reset (CDN_OBJECT (network));
-		gboolean first = TRUE;
-		GError *err = NULL;
-
-		// Set all the current values
-		while (all_ranges)
+		if (to - t < step)
 		{
-			VariableRange *rr = all_ranges->data;
-			gchar value[G_ASCII_DTOSTR_BUF_SIZE];
-
-			cdn_variable_set_value (rr->variable, rr->value);
-
-			if (!first)
-			{
-				g_output_stream_write_all (out,
-				                           delimiter,
-				                           strlen (delimiter),
-				                           NULL,
-				                           NULL,
-				                           NULL);
-			}
-			else
-			{
-				first = FALSE;
-			}
-
-			g_ascii_dtostr (value,
-			                G_ASCII_DTOSTR_BUF_SIZE,
-			                rr->value);
-
-			g_output_stream_write_all (out,
-			                           value,
-			                           strlen (value),
-			                           NULL,
-			                           NULL,
-			                           NULL);
-
-			all_ranges = g_slist_next (all_ranges);
+			step = to - t;
 		}
 
-		// Simulate the network here
-		if (!cdn_network_run (network, from, step, to, &err))
+		realstep = implementation->step (implementation,
+		                                 t,
+		                                 step);
+
+		t += realstep;
+
+		write_values (implementation);
+
+		if (realstep <= 0 || implementation->terminated (implementation))
 		{
-			g_printerr ("Failed to run network: %s\n",
-			            err->message);
-
-			g_error_free (err);
-			return;
-		}
-
-		// Write the output
-		while (vars)
-		{
-			gdouble const *values;
-			CdnDimension dim;
-			gint i;
-			gint num;
-
-			values = cdn_variable_get_values (vars->data,
-			                                  &dim);
-
-			num = cdn_dimension_size (&dim);
-
-			for (i = 0; i < num; ++i)
-			{
-				gchar value[G_ASCII_DTOSTR_BUF_SIZE];
-
-				g_output_stream_write_all (out,
-				                           delimiter,
-				                           strlen (delimiter),
-				                           NULL,
-				                           NULL,
-				                           NULL);
-
-				g_ascii_dtostr (value,
-				                G_ASCII_DTOSTR_BUF_SIZE,
-				                values[i]);
-
-				g_output_stream_write_all (out,
-				                           value,
-				                           strlen (value),
-				                           NULL,
-				                           NULL,
-				                           NULL);
-			}
-
-			vars = g_slist_next (vars);
-		}
-
-		g_output_stream_write_all (out, "\n", 1, NULL, NULL, NULL);
-
-		return;
-	}
-
-	r = ranges->data;
-	v = r->range->from;
-
-	while (fabs(r->range->to - v) > 10e-9)
-	{
-		// This makes sure we can just reset the network, but these
-		// values stay persistent
-		r->value = v;
-
-		simulate_combinations (network, ranges->next, all_ranges, vars, out);
-
-		v += r->range->step;
-	}
-}
-
-static gint
-run_varied_monitor (CdnNetwork *network)
-{
-	GSList *vars = NULL;
-	GSList *ranges = NULL;
-	gint i;
-	gboolean first = TRUE;
-	GPtrArray *monmon;
-	GOutputStream *out;
-
-	if (!resolve_all_monitors (network))
-	{
-		return 1;
-	}
-
-	monmon = ((Monitored *)monitored->pdata[0])->monitored;
-	out = ((Monitored *)monitored->pdata[0])->stream;
-
-	if (!out)
-	{
-		return 1;
-	}
-
-	for (i = monmon->len - 1; i >= 0; --i)
-	{
-		GSList *variables = find_matching_variables (network, monmon->pdata[i]);
-
-		while (variables)
-		{
-			Monitor *mon = variables->data;
-
-			if (include_header)
-			{
-				if (!first)
-				{
-					g_output_stream_write_all (out,
-					                           delimiter,
-					                           strlen (delimiter),
-					                           NULL,
-					                           NULL,
-					                           NULL);
-				}
-				else
-				{
-					first = FALSE;
-				}
-
-				gchar *name = cdn_variable_get_full_name_for_display (mon->variable);
-
-				g_output_stream_write_all (out,
-				                           name,
-				                           strlen (name),
-				                           NULL,
-				                           NULL,
-				                           NULL);
-
-				g_free (name);
-			}
-
-			vars = g_slist_prepend (vars, mon->variable);
-
-			monitor_free (mon);
-
-			variables = g_slist_delete_link (variables,
-			                                 variables);
+			break;
 		}
 	}
 
-	for (i = varied->len - 1; i >= 0; --i)
+	if (implementation->end)
 	{
-		Range *r = varied->pdata[i];
-		GSList *variables = find_matching_variables (network, r->selector);
-
-		while (variables)
-		{
-			Monitor *mon = variables->data;
-
-			if (include_header)
-			{
-				if (!first)
-				{
-					g_output_stream_write_all (out,
-					                           delimiter,
-					                           strlen (delimiter),
-					                           NULL,
-					                           NULL,
-					                           NULL);
-				}
-				else
-				{
-					first = FALSE;
-				}
-
-				gchar *name = cdn_variable_get_full_name_for_display (mon->variable);
-
-				g_output_stream_write_all (out,
-				                           name,
-				                           strlen (name),
-				                           NULL,
-				                           NULL,
-				                           NULL);
-
-				g_free (name);
-			}
-
-			ranges = g_slist_prepend (ranges,
-			                          variable_range_new (mon->variable,
-			                                              r));
-
-			monitor_free (mon);
-
-			variables = g_slist_delete_link (variables,
-			                                 variables);
-		}
-
-		g_slist_free (variables);
+		implementation->end (implementation);
 	}
-
-	if (include_header)
-	{
-		g_output_stream_write_all (out, "\n", 1, NULL, NULL, NULL);
-	}
-
-	// For all the combinations of values in ranges, simulate the network
-	simulate_combinations (network, ranges, ranges, vars, out);
-
-	g_slist_foreach (ranges, (GFunc)variable_range_free, NULL);
-	g_slist_free (ranges);
-
-	g_slist_free (vars);
 
 	return 0;
 }
@@ -1146,32 +690,16 @@ run_varied_monitor (CdnNetwork *network)
 static gint
 monitor_network (gchar const *filename)
 {
-	CdnNetwork *network;
-	GError *error = NULL;
-	CdnCompileError *err;
+	CdnMonitorImplementation *implementation;
 	gint ret;
 
-#ifdef ENABLE_GIO_UNIX
-	if (g_strcmp0 (filename, "-") == 0)
+	if (g_str_has_suffix (filename, ".so"))
 	{
-		GInputStream *stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
-		network = cdn_network_new_from_stream (stream, &error);
-		g_object_unref (stream);
+		implementation = cdn_monitor_implementation_rawc_new (filename);
 	}
 	else
-#endif
 	{
-		GFile *file = g_file_new_for_commandline_arg (filename);
-		network = cdn_network_new_from_file (file, &error);
-		g_object_unref (file);
-	}
-
-	if (!network)
-	{
-		g_printerr ("Failed to load network `%s': %s\n", filename, error->message);
-		g_error_free (error);
-
-		return 1;
+		implementation = cdn_monitor_implementation_codyn_new (filename);
 	}
 
 	if (seed_set)
@@ -1179,44 +707,18 @@ monitor_network (gchar const *filename)
 		cdn_network_set_random_seed (network, seed);
 	}
 
-	err = cdn_compile_error_new ();
-
-	if (!cdn_object_compile (CDN_OBJECT (network), NULL, err))
+	if (!implementation)
 	{
-		gchar *msg;
-
-		msg = cdn_compile_error_get_formatted_string (err);
-
-		g_printerr ("Failed to compile network `%s'\n\n%s\n",
-		            filename,
-		            msg);
-
-		g_free (msg);
-
-		g_object_unref (network);
-		g_object_unref (err);
-
 		return 1;
 	}
 
-	g_object_unref (err);
-
-	if (simplify)
+	if (simplify && implementation->simplify)
 	{
-		cdn_network_simplify (network);
+		implementation->simplify (implementation);
 	}
 
-	if (varied->len == 0)
-	{
-		ret = run_simple_monitor (network);
-	}
-	else
-	{
-		ret = run_varied_monitor (network);
-	}
-
-	g_object_unref (network);
-
+	ret = run_simple_monitor (implementation);
+	cdn_monitor_implementation_free (implementation);
 	return ret;
 }
 
@@ -1225,7 +727,6 @@ cleanup ()
 {
 	g_ptr_array_free (monitored, TRUE);
 	g_free (delimiter);
-	g_ptr_array_free (varied, TRUE);
 }
 
 int
@@ -1241,8 +742,7 @@ main (int argc,
 
 	setlocale (LC_ALL, "");
 
-	monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)monitored_free);
-	varied = g_ptr_array_new_with_free_func ((GDestroyNotify)range_free);
+	monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)cdn_monitored_free);
 
 	delimiter = g_strdup ("\t");
 

@@ -9,7 +9,11 @@ INCLUDES =			\
 bin_PROGRAMS = cdn-monitor
 
 cdn_monitor_SOURCES = \
-	cdn-monitor.c
+	cdn-monitor.c \
+	monitor.c \
+	implementation.c \
+	implementation-codyn.c \
+	implementation-rawc.c
 
 cdn_monitor_LDADD = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la -lm $(CODYN_LIBS)
 
