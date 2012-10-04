@@ -3607,5 +3607,13 @@ cdn_selector_part_pseudo_type (CdnSelectorPart *part)
 GSList const *
 cdn_selector_get_parts (CdnSelector *selector)
 {
+	if (!selector->priv->has_selected)
+	{
+		selector->priv->selectors =
+			g_slist_reverse (selector->priv->selectors);
+
+		selector->priv->has_selected = TRUE;
+	}
+
 	return selector->priv->selectors;
 }
