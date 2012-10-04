@@ -3617,3 +3617,11 @@ cdn_selector_get_parts (CdnSelector *selector)
 
 	return selector->priv->selectors;
 }
+
+gboolean
+cdn_selector_get_implicit_children (CdnSelector *selector)
+{
+	g_return_val_if_fail (CDN_IS_SELECTOR (selector), FALSE);
+
+	return selector->priv->implicit_children && !selector->priv->prevent_implicit_children;
+}
