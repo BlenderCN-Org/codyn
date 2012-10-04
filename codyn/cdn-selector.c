@@ -3529,17 +3529,25 @@ cdn_selector_part_type (CdnSelectorPart *part)
  * Get the identifier of an identifier part. This is only valid if the part is
  * an identifier selector part.
  *
- * Returns: the identifier.
+ * Returns: (element-type CdnExpansion): the identifier.
  *
  **/
-gchar const  *
+GSList *
 cdn_selector_part_identifier (CdnSelectorPart *part)
 {
 	if (part->selector.type == CDN_SELECTOR_PART_TYPE_IDENTIFIER)
 	{
-		return cdn_embedded_string_expand (part->selector.identifier.identifier,
-		                                   NULL,
-		                                   NULL);
+		CdnExpansionContext *ctx;
+		GSList *ret;
+
+		ctx = cdn_expansion_context_new (NULL);
+
+		ret = cdn_embedded_string_expand_multiple (part->selector.identifier.identifier,
+		                                           ctx,
+		                                           NULL);
+
+		cdn_expansion_context_unref (ctx);
+		return ret;
 	}
 
 	return NULL;
