@@ -127,10 +127,17 @@
     \else%
       \advance\pgfutil@tempdima by-\pgf@xb%
     \fi%
+    \begingroup%
+    \tikz@mode%
+    \iftikz@mode@fill%
     \pgfpathcircle{\centerpoint}{\pgfutil@tempdima}%
+    \pgfusepath{fill}%
+    \fi%
+    \iftikz@mode@draw%
     %
     % The sine wave:
     %
+    \pgfpathcircle{\centerpoint}{\pgfutil@tempdima}%
     \pgfmathsetlength{\pgf@xb}{\pgfkeysvalueof{/pgf/wave width}\pgfutil@tempdima}%
     \pgfmathsetlength{\pgf@yb}{2*\pgfkeysvalueof{/pgf/wave height}\pgfutil@tempdima}%
     \pgfpathmoveto{\pgfpointadd{\centerpoint}{\pgfpoint{-\pgf@xb}{0pt}}}%
@@ -141,6 +148,8 @@
     \pgfpathsine{\pgfpoint{0.5\pgf@xb}{-0.5\pgf@yb}}%
     \pgfpathmoveto{\pgfpointadd{\centerpoint}{\pgfpoint{0.5\pgf@xb}{-0.5\pgf@yb}}}%
     \pgfpathcosine{\pgfpoint{0.5\pgf@xb}{0.5\pgf@yb}}%
+    \fi%
+    \endgroup%
   }%
 }
 
