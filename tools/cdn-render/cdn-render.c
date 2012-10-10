@@ -301,80 +301,14 @@ output_to_dot (CdnNetwork  *network,
 	return TRUE;
 }
 
-#define write_style(name,val) write_stream_printf ("\t\\tikzstyle{%s custom}+=[]\n\t\\tikzstyle{%s}=[%s,%s custom]\n\n", name, name, val, name)
-
-static gboolean
-tikz_styles (CdnNode           *root,
-             GDataOutputStream  *stream,
-             GError            **error)
-{
-	GSList const *children;
-	GHashTable *table;
-
-	write_style ("state", "circle, draw, minimum size=6mm");
-	write_style ("coupling", "max distance=6mm, -stealth'");
-	write_style ("sinewave", "scale=0.5,semithick");
-
-	write_stream_nl ("\t\\tikzstyle{bends custom}+=[]");
-	write_stream_nl ("\t\\tikzset{bends/.style={bend left=##1,bends custom=##1}}");
-	write_stream_nl ("");
-
-	children = cdn_node_get_children (root);
-
-	table = g_hash_table_new_full (g_str_hash,
-	                               g_str_equal,
-	                               (GDestroyNotify)g_free,
-	                               NULL);
-
-	while (children)
-	{
-		CdnObject *obj = children->data;
-		GSList const *temps = cdn_object_get_applied_templates (obj);
-
-		write_stream_printf ("\t\\tikzstyle{%s %s}+=[]\n",
-		                     CDN_IS_EDGE (obj) ? "link" : "state",
-		                     cdn_object_get_id (obj));
-
-		while (temps)
-		{
-			CdnObject *t = temps->data;
-			gchar *id;
-
-			id = cdn_object_get_full_id (t);
-
-			if (!g_hash_table_lookup (table, id))
-			{
-				write_stream_printf ("\t\\tikzstyle{template %s}+=[]\n", id);
-				g_hash_table_insert (table, id, GINT_TO_POINTER (1));
-			}
-			else
-			{
-				g_free (id);
-			}
-
-			temps = g_slist_next (temps);
-		}
-
-		children = g_slist_next (children);
-	}
-
-	g_hash_table_destroy (table);
-
-	write_stream_nl ("");
-
-	return TRUE;
-}
-
 typedef struct
 {
 	CdnEdge *link;
-	gchar const *bendname;
 	gint offset;
 } LinkInfo;
 
 static LinkInfo *
 link_info_new (CdnEdge     *link,
-               gchar const *bendname,
                gint         offset)
 {
 	LinkInfo *ret;
@@ -382,7 +316,6 @@ link_info_new (CdnEdge     *link,
 	ret = g_slice_new0 (LinkInfo);
 
 	ret->link = link;
-	ret->bendname = bendname;
 	ret->offset = offset;
 
 	return ret;
@@ -459,7 +392,7 @@ calculate_link_info (GSList *links)
 			ofs = GPOINTER_TO_INT (g_hash_table_lookup (offset, ptr));
 		}
 
-		info = link_info_new (link, "bend left", ofs);
+		info = link_info_new (link, ofs);
 		ret = g_slist_prepend (ret, info);
 
 		if (ofs == 0)
@@ -506,6 +439,8 @@ object_styles (CdnObject *obj)
 		g_string_append (ret, id);
 		g_free (id);
 
+		g_string_append (ret, "/.try");
+
 		temps = g_slist_next (temps);
 	}
 
@@ -516,14 +451,15 @@ object_styles (CdnObject *obj)
 
 	if (CDN_IS_EDGE (obj))
 	{
-		g_string_append (ret, "link ");
+		g_string_append (ret, "edge ");
 	}
 	else
 	{
-		g_string_append (ret, "state ");
+		g_string_append (ret, "node ");
 	}
 
 	g_string_append (ret, cdn_object_get_id (obj));
+	g_string_append (ret, "/.try");
 
 	return g_string_free (ret, FALSE);
 }
@@ -556,7 +492,8 @@ output_to_tikz (CdnNetwork  *network,
 			return FALSE;
 		}
 
-		write_stream_nl ("\\documentclass{article}"
+		write_stream_nl ("\\documentclass{article}\n"
+		                 "\\usepackage{codyn}\n"
 "\\usepackage{tikz}\n"
 "\\usepackage[active,tightpage]{preview}\n"
 "\n"
@@ -572,7 +509,7 @@ output_to_tikz (CdnNetwork  *network,
 
 		write_stream_nl ("\\begin{document}\n"
 "	\\begin{tikzpicture}\n"
-"		\\rendercdn[20]\n"
+"		\\rendercodyn\n"
 "	\\end{tikzpicture}\n"
 "\\end{document}");
 
@@ -599,31 +536,8 @@ output_to_tikz (CdnNetwork  *network,
 		return FALSE;
 	}
 
-	write_stream_nl ("\\newcommand{\\cdnconnect}[4] {");
-	write_stream_nl ("\t\\path (#1) edge [coupling,bends=#3,#4] (#2);");
-	write_stream_nl ("}\n");
-
-	write_stream_nl ("\\newcommand{\\cdnbendandconnect}[5] {");
-	write_stream_nl ("\t\\pgfmathsetmacro{\\ThisBend}{#3 * #4}");
-	write_stream_nl ("\t\\cdnconnect{#1}{#2}{\\ThisBend}{#5}");
-	write_stream_nl ("}\n");
-
-	write_stream_nl ("\\newcommand{\\cdnconnectself}[4] {");
-	write_stream_nl ("\t\\path (#1) edge [loop above,in=60,out=120,min distance=#3cm,coupling,#4] (#2);");
-	write_stream_nl ("}\n");
-
-	write_stream_nl ("\\newcommand{\\cdnbendandconnectself}[4] {");
-	write_stream_nl ("\t\\pgfmathsetmacro{\\ThisLength}{(#3 + 1) * 0.5}");
-	write_stream_nl ("\t\\cdnconnectself{#1}{#2}{\\ThisLength}{#4}");
-	write_stream_nl ("}\n");
-
-	write_stream_nl ("\\newcommand{\\rendercdn}[1][30]{");
-	write_stream_nl ("\t\\def\\Bending{#1}");
-
-	if (!tikz_styles (root, stream, error))
-	{
-		return FALSE;
-	}
+	write_stream_nl ("\\newcommand{\\rendercodyn}[1][]{");
+	write_stream_nl ("\t\\begin{scope}[#1]");
 
 	children = cdn_node_get_children (root);
 
@@ -645,7 +559,7 @@ output_to_tikz (CdnNetwork  *network,
 
 		styles = object_styles (child);
 
-		write_stream_printf ("\t\\node[state,%s] (%s)",
+		write_stream_printf ("\t\t\\cdnnode[cdn node,%s] (%s)",
 		                     styles,
 		                     cdn_object_get_id (child));
 
@@ -656,14 +570,10 @@ output_to_tikz (CdnNetwork  *network,
 			write_stream_printf (" at (%d, %d)", x, -y);
 		}
 
-		write_stream_printf (" {%s}",
-		                     use_labels ? cdn_object_get_id (child) : "");
-
-		write_stream_nl (";");
-
-		write_stream_printf ("\t\\draw [sinewave,x=1.57ex,y=1ex] ($(%s.center) - (2,0)$) sin +(1,1) cos +(1,-1) sin +(1,-1) cos +(1,1);\n\n", cdn_object_get_id (child));
-
+		write_stream_nl ("");
 	}
+
+	write_stream_nl ("");
 
 	links = g_slist_reverse (links);
 	infos = calculate_link_info (links);
@@ -678,28 +588,45 @@ output_to_tikz (CdnNetwork  *network,
 
 		styles = object_styles (CDN_OBJECT (info->link));
 
-		if (cdn_edge_get_input (info->link) ==
-		    cdn_edge_get_output (info->link))
-		{
-			write_stream_printf ("\t\\cdnbendandconnectself{%s}{%s}{%d}{%s}\n",
-			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_input (info->link))),
-			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_output (info->link))),
-			                     info->offset,
-			                     styles);
-		}
-		else
-		{
-			write_stream_printf ("\t\\cdnbendandconnect{%s}{%s}{%d}{\\Bending}{%s}\n",
-			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_input (info->link))),
-			                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_output (info->link))),
-			                     info->offset,
-			                     styles);
-		}
+		write_stream_printf ("\t\t\\cdnconnect[%scdn offset=%d,cdn edge,%s] (%s) from (%s) to (%s)\n",
+		                     cdn_edge_get_input (info->link) == cdn_edge_get_output (info->link) ? "cdn self," : "",
+		                     info->offset,
+		                     styles,
+		                     cdn_object_get_id (CDN_OBJECT (info->link)),
+		                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_input (info->link))),
+		                     cdn_object_get_id (CDN_OBJECT (cdn_edge_get_output (info->link))));
 
 		g_free (styles);
 	}
 
+	write_stream_nl ("");
+	
+	children = cdn_node_get_children (root);
+
+	while (children)
+	{
+		CdnObject *child;
+		gchar *styles;
+
+		child = children->data;
+		children = g_slist_next (children);
+
+		if (CDN_IS_EDGE (child))
+		{
+			continue;
+		}
+		styles = object_styles (child);
+
+		write_stream_printf ("\t\t\\cdnlabel[cdn node,%s] (%s)\n",
+		                     styles,
+		                     cdn_object_get_id (child));
+
+		g_free (styles);
+	}
+
+	write_stream_nl ("\t\\end{scope}");
 	write_stream_nl ("}");
+	write_stream_nl ("");
 
 	g_slist_foreach (infos, (GFunc)link_info_free, NULL);
 	g_slist_free (infos);
