@@ -2962,17 +2962,17 @@ cdn_parser_context_push_objects (CdnParserContext *context,
 static GType
 gtype_from_selector_type (CdnSelectorType type)
 {
-	if (type & CDN_SELECTOR_TYPE_OBJECT)
-	{
-		return CDN_TYPE_OBJECT;
-	}
-	else if (type & CDN_SELECTOR_TYPE_NODE)
+	if (type & CDN_SELECTOR_TYPE_NODE)
 	{
 		return CDN_TYPE_NODE;
 	}
 	else if (type & CDN_SELECTOR_TYPE_EDGE)
 	{
 		return CDN_TYPE_EDGE;
+	}
+	else if (type & CDN_SELECTOR_TYPE_OBJECT)
+	{
+		return CDN_TYPE_OBJECT;
 	}
 	else
 	{
@@ -3051,6 +3051,7 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 	GSList *item;
 	GSList *objs = NULL;
 	GSList *parents;
+	gint i = 0;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 
@@ -3084,17 +3085,23 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 			CdnObject *obj;
 			GSList *temps;
 			GSList *temp;
+			GSList *rt;
 
 			obj = cdn_selection_get_object (it->data);
 
 			expansion_context_push_selection (context,
 			                                  it->data);
 
+			rt = filter_templates_for_index (templates, i);
+			++i;
+
 			temps = get_templates (context,
 			                       obj,
 			                       CDN_NODE (cdn_object_get_parent (obj)),
-			                       templates,
+			                       rt,
 			                       gtype_from_selector_type (type));
+
+			g_slist_free (rt);
 
 			if (context->priv->error_occurred)
 			{
