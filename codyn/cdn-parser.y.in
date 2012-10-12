@@ -242,9 +242,10 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 choose_parser
 	:
 	| T_START_DOCUMENT document_contents
-	| T_START_SELECTOR selector_parse T_EOF
+	| T_START_SELECTOR selector_parse eof
 	| T_START_NODE node_contents
 	| T_START_EDGE edge_contents
+	| eof
 	;
 
 document_contents
