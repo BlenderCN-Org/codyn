@@ -160,13 +160,11 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 "#"				{
 					yy_push_state (comment, yyscanner);
-					return T_COMMENT_START;
 				}
+
 <comment>[^\n]*$		{
 					yy_pop_state (yyscanner);
-
-					yylval->id = g_strdup (yytext);
-					return T_COMMENT_END;
+					cdn_parser_context_push_annotation (yyextra, NULL);
 				}
 
 <<EOF>>				{
