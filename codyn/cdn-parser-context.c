@@ -107,6 +107,8 @@ void cdn_parser_tokens_push_input (gpointer scanner);
 
 int cdn_parser_parse (gpointer context);
 
+static void expansion_context_pop (CdnParserContext *context);
+
 #define CURRENT_INPUT(ctx) ((ctx)->priv->inputs ? ((InputItem *)((ctx)->priv->inputs->data)) : NULL)
 
 typedef struct
@@ -788,6 +790,61 @@ expansion_context_push_selection (CdnParserContext *context,
 {
 	return expansion_context_push (context,
 	                               selection ? cdn_selection_get_context (selection) : NULL);
+}
+
+static void
+store_annotation_objects (CdnParserContext *context,
+                          GSList           *objects,
+                          gboolean          append)
+{
+	if (!context->priv->annotation)
+	{
+		return;
+	}
+
+	while (objects)
+	{
+		CdnObject *obj;
+		gchar const *annotation;
+
+		expansion_context_push_selection (context,
+		                                  objects->data);
+
+		obj = cdn_selection_get_object (objects->data);
+
+		annotation = current_annotation (context);
+
+		/* TODO: not the right context */
+		if (annotation && *annotation)
+		{
+			gchar const *current;
+
+			current = cdn_annotatable_get_annotation (CDN_ANNOTATABLE (obj));
+
+			if (current && append)
+			{
+				gchar *combined;
+
+				combined = g_strconcat (current, "\n", annotation, NULL);
+
+				cdn_annotatable_set_annotation (CDN_ANNOTATABLE (obj),
+				                                combined);
+
+				g_free (combined);
+			}
+			else
+			{
+				cdn_annotatable_set_annotation (CDN_ANNOTATABLE (obj),
+				                                annotation);
+			}
+		}
+
+		expansion_context_pop (context);
+
+		objects = g_slist_next (objects);
+	}
+
+	clear_annotation (context);
 }
 
 static void
@@ -2899,42 +2956,6 @@ edge_pairs (CdnParserContext *context,
 	return g_slist_reverse (ret);
 }
 
-static void
-store_annotation_objects (CdnParserContext *context,
-                          GSList           *objects)
-{
-	if (!context->priv->annotation)
-	{
-		return;
-	}
-
-	while (objects)
-	{
-		CdnObject *obj;
-		gchar const *annotation;
-
-		expansion_context_push_selection (context,
-		                                  objects->data);
-
-		obj = cdn_selection_get_object (objects->data);
-
-		annotation = current_annotation (context);
-
-		/* TODO: not the right context */
-		if (annotation && *annotation)
-		{
-			cdn_annotatable_set_annotation (CDN_ANNOTATABLE (obj),
-			                                annotation);
-		}
-
-		expansion_context_pop (context);
-
-		objects = g_slist_next (objects);
-	}
-
-	clear_annotation (context);
-}
-
 /**
  * cdn_parser_context_push_objects: (skip):
  *
@@ -2950,7 +2971,7 @@ cdn_parser_context_push_objects (CdnParserContext *context,
 		return;
 	}
 
-	store_annotation_objects (context, objects);
+	store_annotation_objects (context, objects, FALSE);
 
 	context->priv->context_stack =
 		g_slist_prepend (context->priv->context_stack,
@@ -2962,17 +2983,17 @@ cdn_parser_context_push_objects (CdnParserContext *context,
 static GType
 gtype_from_selector_type (CdnSelectorType type)
 {
-	if (type & CDN_SELECTOR_TYPE_OBJECT)
-	{
-		return CDN_TYPE_OBJECT;
-	}
-	else if (type & CDN_SELECTOR_TYPE_NODE)
+	if (type & CDN_SELECTOR_TYPE_NODE)
 	{
 		return CDN_TYPE_NODE;
 	}
 	else if (type & CDN_SELECTOR_TYPE_EDGE)
 	{
 		return CDN_TYPE_EDGE;
+	}
+	else if (type & CDN_SELECTOR_TYPE_OBJECT)
+	{
+		return CDN_TYPE_OBJECT;
 	}
 	else
 	{
@@ -3051,6 +3072,7 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 	GSList *item;
 	GSList *objs = NULL;
 	GSList *parents;
+	gint i = 0;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
 
@@ -3084,17 +3106,23 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 			CdnObject *obj;
 			GSList *temps;
 			GSList *temp;
+			GSList *rt;
 
 			obj = cdn_selection_get_object (it->data);
 
 			expansion_context_push_selection (context,
 			                                  it->data);
 
+			rt = filter_templates_for_index (templates, i);
+			++i;
+
 			temps = get_templates (context,
 			                       obj,
 			                       CDN_NODE (cdn_object_get_parent (obj)),
-			                       templates,
+			                       rt,
 			                       gtype_from_selector_type (type));
+
+			g_slist_free (rt);
 
 			if (context->priv->error_occurred)
 			{
@@ -3913,6 +3941,11 @@ cdn_parser_context_pop (CdnParserContext *context)
 	}
 
 	ctx = CURRENT_CONTEXT (context);
+
+	store_annotation_objects (context,
+	                          ctx->objects,
+	                          TRUE);
+
 
 	if (context->priv->is_template == ctx)
 	{
@@ -5001,7 +5034,7 @@ cdn_parser_context_push_annotation (CdnParserContext  *context,
                                     CdnEmbeddedString *annotation)
 {
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (annotation != NULL);
+	g_return_if_fail (annotation == NULL || CDN_IS_EMBEDDED_STRING (annotation));
 
 	if (context->priv->in_event_handler)
 	{
@@ -5010,8 +5043,17 @@ cdn_parser_context_push_annotation (CdnParserContext  *context,
 
 	if (context->priv->annotation)
 	{
-		g_object_unref (context->priv->annotation);
-		context->priv->annotation = NULL;
+		if (context->priv->context)
+		{
+			store_annotation_objects (context,
+			                          CURRENT_CONTEXT (context)->objects,
+			                          TRUE);
+		}
+		else
+		{
+			g_object_unref (context->priv->annotation);
+			context->priv->annotation = NULL;
+		}
 	}
 
 	context->priv->annotation = annotation;

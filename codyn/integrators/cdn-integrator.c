@@ -1196,6 +1196,23 @@ cdn_integrator_get_name (CdnIntegrator *integrator)
 }
 
 /**
+ * cdn_integrator_get_class_id:
+ * @integrator: A #CdnIntegrator
+ *
+ * The integrator class id.
+ *
+ * Returns: the integrator class id
+ *
+ **/
+gchar const *
+cdn_integrator_get_class_id (CdnIntegrator *integrator)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), NULL);
+
+	return CDN_INTEGRATOR_GET_CLASS (integrator)->integrator_id;
+}
+
+/**
  * cdn_integrator_get_state:
  * @integrator: A #CdnIntegrator
  *

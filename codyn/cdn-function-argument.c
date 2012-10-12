@@ -457,7 +457,19 @@ _cdn_function_argument_set_variable (CdnFunctionArgument *argument,
 	g_return_if_fail (CDN_IS_FUNCTION_ARGUMENT (argument));
 	g_return_if_fail (variable == NULL || CDN_IS_VARIABLE (variable));
 
+	if (argument->priv->variable)
+	{
+		cdn_variable_remove_flags (argument->priv->variable,
+		                           CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT);
+	}
+
 	argument->priv->variable = variable;
+
+	if (variable)
+	{
+		cdn_variable_add_flags (variable,
+		                        CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT);
+	}
 
 	// Set the corresponding dimensions of the variable
 	if (argument->priv->isexplicit)

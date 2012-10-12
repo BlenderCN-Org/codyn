@@ -399,6 +399,8 @@ on_action_target_changed (CdnEdgeAction *action,
                           CdnEdge       *link)
 {
 	update_action_property (link, action);
+
+	cdn_object_taint (CDN_OBJECT (link));
 }
 
 static void
@@ -407,6 +409,8 @@ on_action_equation_changed (CdnEdgeAction *action,
                             CdnEdge       *link)
 {
 	check_modified_for_template (link, action);
+
+	cdn_object_taint (CDN_OBJECT (link));
 }
 
 static void

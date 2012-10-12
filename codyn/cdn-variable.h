@@ -50,6 +50,7 @@ typedef struct _CdnVariablePrivate    CdnVariablePrivate;
  * @CDN_VARIABLE_FLAG_IN: in
  * @CDN_VARIABLE_FLAG_OUT: out
  * @CDN_VARIABLE_FLAG_ONCE: once
+ * @CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT: function-argument
  * @CDN_VARIABLE_FLAG_INOUT: convenience for CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT
  *
  * Property flags.
@@ -62,6 +63,7 @@ typedef enum
 	CDN_VARIABLE_FLAG_IN = 1 << 1,
 	CDN_VARIABLE_FLAG_OUT = 1 << 2,
 	CDN_VARIABLE_FLAG_ONCE = 1 << 3,
+	CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT = 1 << 4,
 
 	CDN_VARIABLE_FLAG_INOUT = CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT
 } CdnVariableFlags;

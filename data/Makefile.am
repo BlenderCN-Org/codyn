@@ -12,7 +12,7 @@ lang2_DATA = cdn.lang
 endif
 
 latexdir = $(datadir)/texmf/tex/latex/cdn
-latex_DATA = cdn.sty
+latex_DATA = codyn.sty cdn-listings.tex
 
 emacsdir = $(datadir)/emacs/site-lisp
 emacs_DATA = codyn-mode.el
@@ -21,7 +21,7 @@ EXTRA_DIST = \
 	$(dtd_DATA) \
 	cdn.xml.in \
 	cdn.lang \
-	cdn.sty \
+	$(latex_DATA) \
 	codyn-mode.el
 
 CLEANFILES = cdn.xml

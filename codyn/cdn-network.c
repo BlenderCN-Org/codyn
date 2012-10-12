@@ -24,6 +24,7 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <sys/time.h>
 
 #include "cdn-network.h"
 #include "cdn-network-xml.h"
@@ -37,6 +38,7 @@
 #include "cdn-parser-context.h"
 #include "cdn-debug.h"
 #include "cdn-io-method.h"
+#include "instructions/cdn-instruction-rand.h"
 
 /**
  * SECTION:cdn-network
@@ -78,6 +80,8 @@ struct _CdnNetworkPrivate
 
 	GHashTable *imports;
 	GSList *linked_libraries;
+
+	guint seed;
 };
 
 enum
@@ -429,6 +433,24 @@ cdn_network_get_compile_context_impl (CdnObject         *object,
 	return context;
 }
 
+static void
+reset_rands (CdnNetwork *network)
+{
+	CdnIntegratorState *state;
+	GSList const *rands;
+
+	state = cdn_integrator_get_state (network->priv->integrator);
+	rands = cdn_integrator_state_rand_instructions (state);
+
+	srand (network->priv->seed);
+
+	while (rands)
+	{
+		cdn_instruction_rand_next (rands->data);
+		rands = g_slist_next (rands);
+	}
+}
+
 static gboolean
 cdn_network_compile_impl (CdnObject         *object,
                           CdnCompileContext *context,
@@ -461,6 +483,10 @@ cdn_network_compile_impl (CdnObject         *object,
 			               error);
 		}
 	}
+	else
+	{
+		reset_rands (network);
+	}
 
 	return ret;
 }
@@ -473,6 +499,19 @@ cdn_network_clear_impl (CdnObject *object)
 	CDN_OBJECT_CLASS (cdn_network_parent_class)->clear (object);
 
 	cdn_object_clear (CDN_OBJECT (network->priv->template_group));
+}
+
+static void
+cdn_network_reset_impl (CdnObject *object)
+{
+	CdnNetwork *network;
+
+	network = CDN_NETWORK (object);
+
+	// Reset the object
+	CDN_OBJECT_CLASS (cdn_network_parent_class)->reset (object);
+
+	reset_rands (network);
 }
 
 static void
@@ -490,6 +529,7 @@ cdn_network_class_init (CdnNetworkClass *klass)
 	cdn_class->compile = cdn_network_compile_impl;
 	cdn_class->get_compile_context = cdn_network_get_compile_context_impl;
 	cdn_class->clear = cdn_network_clear_impl;
+	cdn_class->reset = cdn_network_reset_impl;
 
 	group_class->add = cdn_network_add_impl;
 
@@ -544,9 +584,56 @@ cdn_network_class_init (CdnNetworkClass *klass)
 }
 
 static void
+init_seed_from_time (CdnNetwork *network)
+{
+	struct timeval tv;
+
+	gettimeofday (&tv, NULL);
+	network->priv->seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+static void
 cdn_network_init (CdnNetwork *network)
 {
 	network->priv = CDN_NETWORK_GET_PRIVATE (network);
+
+#ifdef G_OS_UNIX
+{
+	GFile *randomf;
+	GFileInputStream *istream;
+
+	randomf = g_file_new_for_path ("/dev/urandom");
+	istream = g_file_read (randomf, NULL, NULL);
+
+	if (istream)
+	{
+		GDataInputStream *dstream;
+		GError *err = NULL;
+
+		dstream = g_data_input_stream_new (G_INPUT_STREAM (istream));
+
+		network->priv->seed = g_data_input_stream_read_uint32 (dstream,
+		                                                       NULL,
+		                                                       &err);
+
+		if (err != NULL)
+		{
+			init_seed_from_time (network);
+		}
+
+		g_object_unref (dstream);
+		g_object_unref (istream);
+	}
+	else
+	{
+		init_seed_from_time (network);
+	}
+
+	g_object_unref (randomf);
+}
+#else
+	init_seed_from_time (network);
+#endif
 
 	network->priv->template_group = cdn_node_new ("templates");
 	_cdn_object_set_parent (CDN_OBJECT (network->priv->template_group),
@@ -568,6 +655,24 @@ cdn_network_init (CdnNetwork *network)
 	                                                (GEqualFunc)g_file_equal,
 	                                                (GDestroyNotify)g_object_unref,
 	                                                NULL);
+}
+
+void
+cdn_network_set_random_seed (CdnNetwork *network,
+                             guint       seed)
+{
+	g_return_if_fail (CDN_IS_NETWORK (network));
+
+	network->priv->seed = seed;
+	cdn_object_reset (CDN_OBJECT (network));
+}
+
+guint
+cdn_network_get_random_seed (CdnNetwork *network)
+{
+	g_return_val_if_fail (CDN_IS_NETWORK (network), 1);
+
+	return network->priv->seed;
 }
 
 /**

@@ -62,6 +62,7 @@ struct _CdnVariablePrivate
 	CdnVariable *diff_for;
 
 	gchar *annotation;
+	guint expression_proxy_id;
 
 	gdouble last_value;
 	guint modified : 1;
@@ -230,6 +231,13 @@ set_constraint (CdnVariable   *variable,
 	return TRUE;
 }
 
+static void
+on_expression_changed (CdnVariable *variable)
+{
+	g_object_notify (G_OBJECT (variable), "expression");
+	cdn_modifiable_set_modified (CDN_MODIFIABLE (variable), TRUE);
+}
+
 static gboolean
 set_expression (CdnVariable   *variable,
                 CdnExpression *expression,
@@ -256,6 +264,9 @@ set_expression (CdnVariable   *variable,
 
 	if (variable->priv->expression)
 	{
+		g_signal_handler_disconnect (variable->priv->expression,
+		                             variable->priv->expression_proxy_id);
+
 		g_object_unref (variable->priv->expression);
 		variable->priv->expression = NULL;
 	}
@@ -263,6 +274,12 @@ set_expression (CdnVariable   *variable,
 	if (expression)
 	{
 		variable->priv->expression = g_object_ref_sink (expression);
+
+		variable->priv->expression_proxy_id =
+			g_signal_connect_swapped (variable->priv->expression,
+			                          "notify::expression",
+			                          G_CALLBACK (on_expression_changed),
+			                          variable);
 	}
 
 	if (!variable->priv->disposing)

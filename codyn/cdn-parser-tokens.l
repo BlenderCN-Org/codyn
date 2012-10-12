@@ -109,10 +109,17 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 \n.*				{
 					HANDLE_NEWLINE
 				}
+
 "##"				{
 					yy_push_state (annotation, yyscanner);
 					return T_ANNOTATION_START;
 				}
+
+<annotation>(\\["@$\\]|[^"@$\\\n])+	{
+					yylval->id = g_strdup (yytext);
+					return T_STRING;
+				}
+
 <annotation>[\t ]*\n.*		{
 					HANDLE_NEWLINE
 					yy_push_state (annotation_start, yyscanner);
@@ -122,6 +129,24 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 					yylval->id = g_strdup ("\n");
 					return T_STRING;
+				}
+
+<annotation_start>[\t ]*\n.*	{
+					HANDLE_NEWLINE
+
+					yy_pop_state (yyscanner);
+					yy_pop_state (yyscanner);
+
+					return T_ANNOTATION_END;
+				}
+
+<annotation_start><<EOF>>	{
+					cdn_parser_context_remove_record (yyextra, yyleng, 0);
+
+					yy_pop_state (yyscanner);
+					yy_pop_state (yyscanner);
+
+					return T_ANNOTATION_END;
 				}
 <annotation_start>.		{
 					yyless (0);
@@ -133,8 +158,14 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 					return T_ANNOTATION_END;
 				}
 
-"#"				yy_push_state (comment, yyscanner);
-<comment>[^\n]*$		yy_pop_state (yyscanner);
+"#"				{
+					yy_push_state (comment, yyscanner);
+				}
+
+<comment>[^\n]*$		{
+					yy_pop_state (yyscanner);
+					cdn_parser_context_push_annotation (yyextra, NULL);
+				}
 
 <<EOF>>				{
 					if (cdn_parser_context_get_first_eof (yyextra))
@@ -351,11 +382,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 <inreduce,inmap>(\\["@$\\}|,]|[^"@$\\|},])+ {
 					yylval->id = unquote_string (yytext, yyleng, "@$}|,");
-					return T_STRING;
-				}
-
-<annotation>(\\["@$\\]|[^"@$\\\n])+	{
-					yylval->id = g_strdup (yytext);
 					return T_STRING;
 				}
 

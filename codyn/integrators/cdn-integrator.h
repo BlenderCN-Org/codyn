@@ -119,6 +119,7 @@ void                 cdn_integrator_simulation_step_integrate (CdnIntegrator *in
 
 void                 cdn_integrator_reset           (CdnIntegrator *integrator);
 
+const gchar         *cdn_integrator_get_class_id    (CdnIntegrator *integrator);
 const gchar         *cdn_integrator_get_name        (CdnIntegrator *integrator);
 
 gdouble              cdn_integrator_get_time        (CdnIntegrator *integrator);

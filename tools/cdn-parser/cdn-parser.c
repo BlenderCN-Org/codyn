@@ -57,7 +57,6 @@ static gchar const *color_bold = "\e[1m";
 static gchar const *color_off = "\e[0m";
 
 static GSList *defines = NULL;
-static gint64 seed = 0;
 
 static gboolean
 add_define (gchar const  *option_name,
@@ -76,7 +75,6 @@ static GOptionEntry entries[] = {
 	{"no-xml", 'x', 0, G_OPTION_ARG_NONE, &no_xml, "Do not generate xml output", NULL},
 	{"no-color", 'n', 0, G_OPTION_ARG_NONE, &no_colors, "Do not use colors in the output", NULL},
 	{"define", 'D', 0, G_OPTION_ARG_CALLBACK, (GOptionArgFunc)add_define, "Define variable", "NAME=VALUE"},
-	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed, "Random numbers seed (defaults to current time)", "SEED"},
 	{NULL}
 };
 
@@ -333,14 +331,10 @@ main (int argc, char *argv[])
 	GOptionContext *ctx;
 	GError *error = NULL;
 	gboolean ret;
-	struct timeval tv;
 
 	g_type_init ();
 
 	setlocale (LC_ALL, "");
-
-	gettimeofday (&tv, NULL);
-	seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
 	determine_color_support ();
 
@@ -374,8 +368,6 @@ main (int argc, char *argv[])
 
 		return 1;
 	}
-
-	srand (seed);
 
 	return parse_network ((gchar const **)(argv + 1), argc - 1);
 }

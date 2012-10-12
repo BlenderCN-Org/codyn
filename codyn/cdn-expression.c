@@ -116,8 +116,8 @@ static gboolean parse_variable (CdnExpression *expression,
                                 gchar const   *propname,
                                 ParserContext *context);
 
-static void reset_cache (CdnExpression *expression,
-                         gboolean       dimschanged);
+static gboolean reset_cache (CdnExpression *expression,
+                             gboolean       dimschanged);
 
 static void cdn_modifiable_iface_init (gpointer iface);
 
@@ -4018,6 +4018,7 @@ cdn_expression_compile (CdnExpression     *expression,
 {
 	CdnDimension olddim;
 	gboolean wasmod;
+	gboolean dimschanged;
 
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), FALSE);
@@ -4087,7 +4088,14 @@ cdn_expression_compile (CdnExpression     *expression,
 		expression->priv->modified = FALSE;
 	}
 
-	reset_cache (expression, !cdn_dimension_equal (&olddim, &expression->priv->retdim.dimension));
+	dimschanged = !cdn_dimension_equal (&olddim,
+	                                    &expression->priv->retdim.dimension);
+
+	if (!reset_cache (expression, dimschanged))
+	{
+		// If not, at least reset the depending cache
+		reset_depending_cache (expression, dimschanged);
+	}
 
 	if (wasmod)
 	{
@@ -4420,13 +4428,13 @@ cdn_expression_evaluate_values_flat (CdnExpression *expression,
 	return ret;
 }
 
-static void
+static gboolean
 reset_cache (CdnExpression *expression,
              gboolean       dimschanged)
 {
 	if (expression->priv->prevent_cache_reset)
 	{
-		return;
+		return FALSE;
 	}
 
 	/* Omit type check to increase speed */
@@ -4439,7 +4447,10 @@ reset_cache (CdnExpression *expression,
 		// Reset the caches of all the expressions that depend on this
 		// expression
 		reset_depending_cache (expression, dimschanged);
+		return TRUE;
 	}
+
+	return FALSE;
 }
 
 /**
