@@ -3464,6 +3464,14 @@ cdn_selector_set_from_set (CdnSelector *selector,
 	selector->priv->from_set = copy_selections (selections);
 }
 
+/**
+ * cdn_selector_set_self:
+ * @selector: a #CdnSelector.
+ * @selection: a #CdnSelection.
+ *
+ * Set the selection representing the "self" pseudo selector.
+ *
+ **/
 void
 cdn_selector_set_self (CdnSelector  *selector,
                        CdnSelection *selection)
@@ -3482,6 +3490,14 @@ cdn_selector_set_self (CdnSelector  *selector,
 	}
 }
 
+/**
+ * cdn_selector_set_implicit_children:
+ * @selector: a #CdnSelector.
+ * @isimplicit: implicit children.
+ *
+ * Sets whether the selector will apply an implicit "children" selector.
+ *
+ **/
 void
 cdn_selector_set_implicit_children (CdnSelector *selector,
                                     gboolean     isimplicit)
@@ -3491,12 +3507,31 @@ cdn_selector_set_implicit_children (CdnSelector *selector,
 	selector->priv->implicit_children = isimplicit;
 }
 
+/**
+ * cdn_selector_part_type:
+ * @part: a #CdnSelectorPart.
+ *
+ * Get the part type.
+ *
+ * Returns: a #CdnSelectorPartType.
+ *
+ **/
 CdnSelectorPartType
 cdn_selector_part_type (CdnSelectorPart *part)
 {
 	return part->selector.type;
 }
 
+/**
+ * cdn_selector_part_identifier:
+ * @part: a #CdnSelectorPart.
+ *
+ * Get the identifier of an identifier part. This is only valid if the part is
+ * an identifier selector part.
+ *
+ * Returns: the identifier.
+ *
+ **/
 gchar const  *
 cdn_selector_part_identifier (CdnSelectorPart *part)
 {
@@ -3510,6 +3545,16 @@ cdn_selector_part_identifier (CdnSelectorPart *part)
 	return NULL;
 }
 
+/**
+ * cdn_selector_part_regex:
+ * @part: a #CdnSelectorPart.
+ *
+ * Get the regular expression of a regex selector part. This is only valid if
+ * the part is a regex selector part.
+ *
+ * Returns: (transfer full): a #GRegex.
+ *
+ **/
 GRegex *
 cdn_selector_part_regex (CdnSelectorPart        *part)
 {
@@ -3521,6 +3566,16 @@ cdn_selector_part_regex (CdnSelectorPart        *part)
 	return NULL;
 }
 
+/**
+ * cdn_selector_part_pseudo_type:
+ * @part: a #CdnSelectorPart.
+ *
+ * Get the pseudo type of the pseudo selector part. This is only valid if the
+ * part is a pseudo selector part.
+ *
+ * Returns: a #CdnSelectorPseudoType.
+ *
+ **/
 CdnSelectorPseudoType
 cdn_selector_part_pseudo_type (CdnSelectorPart *part)
 {
@@ -3532,6 +3587,15 @@ cdn_selector_part_pseudo_type (CdnSelectorPart *part)
 	return CDN_SELECTOR_PSEUDO_NUM;
 }
 
+/**
+ * cdn_selector_get_parts:
+ * @selector: a #CdnSelector.
+ *
+ * Get the selector parts.
+ *
+ * Returns: (element-type CdnSelectorPart) (transfer none): a #GSList.
+ *
+ **/
 GSList const *
 cdn_selector_get_parts (CdnSelector *selector)
 {
