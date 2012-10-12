@@ -1,3 +1,10 @@
+codyn (3.3-1) UNRELEASED; urgency=low
+
+  * New upstream release
+
+ -- Jesse van den Kieboom <jesse.vandenkieboom@epfl.ch>  Fri, 12 Oct 2012 18:28:47 +0200
+
+
 codyn (3.2-1) UNRELEASED; urgency=low
 
   * New upstream release

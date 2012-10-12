@@ -1,5 +1,6 @@
 usr/share/gtksourceview*/language-specs/cdn.lang
 usr/share/emacs/site-lisp/codyn-mode.el
-usr/share/texmf/tex/latex/cdn/cdn.sty
+usr/share/texmf/tex/latex/cdn/codyn.sty
+usr/share/texmf/tex/latex/cdn/cdn-listings.tex
 usr/bin
 usr/lib/gedit*
