@@ -4,12 +4,6 @@
 
 #include "utils.h"
 
-#ifdef MINGW
-#define SRANDOM srand
-#else
-#define SRANDOM srandom
-#endif
-
 static gchar simple_xml[] = ""
 "node \"s1\"\n"
 "{\n"
@@ -107,8 +101,6 @@ static void
 test_variadic ()
 {
 	CdnNetwork *network;
-
-	SRANDOM (time (0));
 
 	network = cdn_network_new ();
 
