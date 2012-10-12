@@ -37,18 +37,16 @@
 
 static gchar *output_file = NULL;
 static gchar *select_root = NULL;
-static gboolean output_dot = TRUE;
-static gboolean output_tikz = FALSE;
+static gboolean output_tikz = TRUE;
+static gboolean output_dot = FALSE;
 static gboolean use_labels = FALSE;
-static gboolean no_preview = FALSE;
 
 static GOptionEntry entries[] = {
-	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file (defaults to standard output)", "FILE"},
-	{"dot", 'd', 0, G_OPTION_ARG_NONE, &output_dot, "Output a DOT file (default)", NULL},
-	{"tikz", 't', 0, G_OPTION_ARG_NONE, &output_tikz, "Output a TiKz file", NULL},
+	{"output", 'o', 0, G_OPTION_ARG_STRING, &output_file, "Output file basename (default is based on input file)", "FILE"},
+	{"tikz", 't', 0, G_OPTION_ARG_NONE, &output_tikz, "Output a TikZ file (default)", NULL},
+	{"dot", 'd', 0, G_OPTION_ARG_NONE, &output_dot, "Output a DOT file", NULL},
 	{"root", 'r', 0, G_OPTION_ARG_STRING, &select_root, "Select root group to output", NULL},
-	{"labels", 'l', 0, G_OPTION_ARG_NONE, &use_labels, "Use labels in nodes", NULL},
-	{"no-preview", 0, 0, G_OPTION_ARG_NONE, &no_preview, "Do not create preview file for TiKz output", NULL},
+	{"labels", 'l', 0, G_OPTION_ARG_NONE, &use_labels, "Use labels in nodes (no effect for TikZ)", NULL},
 	{NULL}
 };
 
@@ -107,6 +105,7 @@ parse_network (gchar const *filename, GError **error)
 static GDataOutputStream *
 create_output_stream (GFile        *input_file,
                       gchar const  *suffix,
+                      gboolean      overwrite,
                       gchar       **name,
                       GError      **error)
 {
@@ -163,7 +162,14 @@ create_output_stream (GFile        *input_file,
 		g_free (b);
 		g_free (prefix);
 
-		ret = G_OUTPUT_STREAM (g_file_replace (file, NULL, FALSE, G_FILE_CREATE_NONE, NULL, error));
+		if (g_file_query_exists (file, NULL) && !overwrite)
+		{
+			ret = NULL;
+		}
+		else
+		{
+			ret = G_OUTPUT_STREAM (g_file_replace (file, NULL, FALSE, G_FILE_CREATE_NONE, NULL, error));
+		}
 
 		g_object_unref (file);
 	}
@@ -221,7 +227,7 @@ output_to_dot (CdnNetwork  *network,
 	GFile *file;
 
 	file = cdn_network_get_file (network);
-	stream = create_output_stream (file, "dot", NULL, error);
+	stream = create_output_stream (file, "dot", TRUE, NULL, error);
 
 	if (file)
 	{
@@ -478,20 +484,9 @@ output_to_tikz (CdnNetwork  *network,
 
 	file = cdn_network_get_file (network);
 
-	if (!no_preview)
+	stream = create_output_stream (file, "tex", FALSE, &name, error);
+	if (stream)
 	{
-		stream = create_output_stream (file, "tex", &name, error);
-
-		if (!stream)
-		{
-			if (file)
-			{
-				g_object_unref (file);
-			}
-
-			return FALSE;
-		}
-
 		write_stream_nl ("\\documentclass{article}\n"
 		                 "\\usepackage{codyn}\n"
 "\\usepackage{tikz}\n"
@@ -516,15 +511,12 @@ output_to_tikz (CdnNetwork  *network,
 		if (name)
 		{
 			g_object_unref (stream);
-			stream = create_output_stream (file, "inc.tex", NULL, error);
 		}
 
 		g_free (name);
 	}
-	else
-	{
-		stream = create_output_stream (file, "inc.tex", NULL, error);
-	}
+
+	stream = create_output_stream (file, "inc.tex", TRUE, NULL, error);
 
 	if (file)
 	{
