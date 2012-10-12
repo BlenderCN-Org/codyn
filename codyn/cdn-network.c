@@ -24,6 +24,7 @@
 #include <string.h>
 #include <errno.h>
 #include <math.h>
+#include <sys/time.h>
 
 #include "cdn-network.h"
 #include "cdn-network-xml.h"
@@ -441,7 +442,7 @@ reset_rands (CdnNetwork *network)
 	state = cdn_integrator_get_state (network->priv->integrator);
 	rands = cdn_integrator_state_rand_instructions (state);
 
-	srandom (network->priv->seed);
+	srand (network->priv->seed);
 
 	while (rands)
 	{
@@ -583,11 +584,56 @@ cdn_network_class_init (CdnNetworkClass *klass)
 }
 
 static void
+init_seed_from_time (CdnNetwork *network)
+{
+	struct timeval tv;
+
+	gettimeofday (&tv, NULL);
+	network->priv->seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+}
+
+static void
 cdn_network_init (CdnNetwork *network)
 {
 	network->priv = CDN_NETWORK_GET_PRIVATE (network);
 
-	network->priv->seed = 1;
+#ifdef G_OS_UNIX
+{
+	GFile *randomf;
+	GFileInputStream *istream;
+
+	randomf = g_file_new_for_path ("/dev/urandom");
+	istream = g_file_read (randomf, NULL, NULL);
+
+	if (istream)
+	{
+		GDataInputStream *dstream;
+		GError *err = NULL;
+
+		dstream = g_data_input_stream_new (G_INPUT_STREAM (istream));
+
+		network->priv->seed = g_data_input_stream_read_uint32 (dstream,
+		                                                       NULL,
+		                                                       &err);
+
+		if (err != NULL)
+		{
+			init_seed_from_time (network);
+		}
+
+		g_object_unref (dstream);
+		g_object_unref (istream);
+	}
+	else
+	{
+		init_seed_from_time (network);
+	}
+
+	g_object_unref (randomf);
+}
+#else
+	init_seed_from_time (network);
+#endif
 
 	network->priv->template_group = cdn_node_new ("templates");
 	_cdn_object_set_parent (CDN_OBJECT (network->priv->template_group),
