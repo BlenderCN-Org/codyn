@@ -54,7 +54,8 @@ static gchar *delimiter = NULL;
 static gdouble from = 0;
 static gdouble step = 0.001;
 static gdouble to = 1;
-static gint64 seed = 0;
+static guint seed = 0;
+static gboolean seed_set = FALSE;
 static gboolean simplify = FALSE;
 static gboolean timestamp = FALSE;
 
@@ -222,7 +223,6 @@ static void
 range_free (Range *self)
 {
 	g_free (self->selector);
-
 	g_slice_free (Range, self);
 }
 
@@ -328,6 +328,16 @@ parse_time (gchar const  *option_name,
 	return TRUE;
 }
 
+static void
+parse_seed (gchar const  *option_name,
+            gchar const  *value,
+            gpointer      data,
+            GError      **error)
+{
+	seed_set = TRUE;
+	seed = (guint)g_ascii_strtoull (value, NULL, 10);
+}
+
 static GOptionEntry entries[] = {
 	{"monitor", 'm', 0, G_OPTION_ARG_CALLBACK, parse_monitored,
 	 "Selector for variables to monitor (e.g. /state_.*/.\"{x,y}\")", "SEL"},
@@ -339,7 +349,7 @@ static GOptionEntry entries[] = {
 	 "Time range (from:to or from:step:to, defaults to 0:0.01:1)", "RANGE"},
 	{"output", 'o', 0, G_OPTION_ARG_CALLBACK, parse_output_file,
 	 "Output file (defaults to standard output)", "FILE"},
-	{"seed", 's', 0, G_OPTION_ARG_INT64, &seed,
+	{"seed", 's', 0, G_OPTION_ARG_CALLBACK, parse_seed,
 	 "Random numbers seed (defaults to current time)", "SEED"},
 	{"vary", 'v', 0, G_OPTION_ARG_CALLBACK, parse_varied,
 	 "Run integration multiple times, varying this range (e.g. /state_.*/.\"{x,y}\"(0:0.1:10))", "RANGE"},
@@ -1164,6 +1174,11 @@ monitor_network (gchar const *filename)
 		return 1;
 	}
 
+	if (seed_set)
+	{
+		cdn_network_set_random_seed (network, seed);
+	}
+
 	err = cdn_compile_error_new ();
 
 	if (!cdn_object_compile (CDN_OBJECT (network), NULL, err))
@@ -1221,14 +1236,10 @@ main (int argc,
 	GError *error = NULL;
 	gchar const *file;
 	gint ret = 1;
-	struct timeval tv;
 
 	g_type_init ();
 
 	setlocale (LC_ALL, "");
-
-	gettimeofday (&tv, NULL);
-	seed = tv.tv_sec * 1000 + tv.tv_usec / 1000;
 
 	monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)monitored_free);
 	varied = g_ptr_array_new_with_free_func ((GDestroyNotify)range_free);
@@ -1263,8 +1274,6 @@ main (int argc,
 
 		return 1;
 	}
-
-	srand (seed);
 
 	ret = monitor_network (file);
 
