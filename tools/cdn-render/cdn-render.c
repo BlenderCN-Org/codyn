@@ -26,6 +26,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <codyn/cdn-cfile-stream.h>
+#include <math.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -470,6 +471,78 @@ object_styles (CdnObject *obj)
 	return g_string_free (ret, FALSE);
 }
 
+static gchar const *
+calculate_label_position (CdnNode *node)
+{
+	/* enum {EAST, NORTH, WEST, SOUTH, N_POS}; */
+	enum {EAST, NORTH_EAST, NORTH, NORTH_WEST, WEST, SOUTH_WEST, SOUTH, SOUTH_EAST, N_POS};
+	
+	gchar const *names[N_POS] = {"east", "north east", "north", "north west", "west", "south west", "south", "south east"};
+	gdouble weights[N_POS] = {0,};
+	GSList const *edges = cdn_node_get_edges (node);
+
+	GSList const *item;
+
+	CdnEdge *self = NULL;
+
+	if (cdn_node_has_self_edge (node))
+	{
+		self = cdn_node_get_self_edge (node);
+	}
+
+	for (item = edges; item; item = g_slist_next (item))
+	{
+		CdnNode *input = cdn_edge_get_input (CDN_EDGE (item->data));
+		CdnNode *output = cdn_edge_get_output (CDN_EDGE (item->data));
+
+		if (input == output)
+		{
+			if (item->data != self)
+			{
+				weights[SOUTH] += 2 * log (M_PI); /* counts as two edges */
+			}
+			continue;
+		}
+
+		gint x1;
+		gint x2;
+		gint y1;
+		gint y2;
+
+		get_location (CDN_OBJECT (node), &x1, &y1);
+		get_location (CDN_OBJECT (node == input ? output : input), &x2, &y2);
+
+		double angle = atan2 (y1 - y2, x2 - x1); /* y1 - y2 as Y axis points downwards in Codyn */
+
+		gint i;
+		
+		for (i = 0; i < N_POS; ++i)
+		{
+			double pos = 2 * M_PI * i / N_POS;
+			double dist = pos - angle;
+			
+			/* get a value in (-pi, pi) */
+			dist = fmod (dist + M_PI, 2 * M_PI) - M_PI;
+
+			weights[i] += log (fabs (dist));
+		}
+	}
+
+	gint i;
+	gint imax = 0;
+
+	for (i = 1; i < N_POS; ++i)
+	{
+		if (weights[i] > weights[imax])
+		{
+			imax = i;
+		}
+	}
+
+	return names[imax];
+}
+
+
 static gboolean
 output_to_tikz (CdnNetwork  *network,
                 CdnNode    *root,
@@ -603,13 +676,14 @@ output_to_tikz (CdnNetwork  *network,
 		child = children->data;
 		children = g_slist_next (children);
 
-		if (CDN_IS_EDGE (child))
+		if (!CDN_IS_NODE (child))
 		{
 			continue;
 		}
 		styles = object_styles (child);
 
-		write_stream_printf ("\t\t\\cdnlabel[cdn node,%s] (%s)\n",
+		write_stream_printf ("\t\t\\cdnlabel[label position=%s,cdn node,%s] (%s)\n",
+		                     calculate_label_position (CDN_NODE (child)),
 		                     styles,
 		                     cdn_object_get_id (child));
 
