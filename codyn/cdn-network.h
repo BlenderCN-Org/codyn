@@ -213,6 +213,11 @@ gboolean              cdn_network_link_library          (CdnNetwork  *network,
                                                      gchar const *path,
                                                      GError **error);
 
+void              cdn_network_set_random_seed        (CdnNetwork *network,
+                                                      guint       seed);
+
+guint             cdn_network_get_random_seed        (CdnNetwork *network);
+
 void              _cdn_network_register_import       (CdnNetwork        *network,
                                                       CdnImportForward *import);
 
