@@ -41,6 +41,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %token <id> T_IDENTIFIER
 %token <id> T_STRING
 %token T_ANNOTATION_START T_ANNOTATION_END
+%token T_COMMENT_START T_COMMENT_END
 
 %token T_EOF
 
@@ -299,6 +300,13 @@ common_scopes
 	| actions
 	| eof
 	| annotation
+	| comment
+	;
+
+comment
+	: T_COMMENT_START
+	  T_COMMENT_END			{ cdn_parser_context_push_annotation (context,
+	                                                                      NULL); }
 	;
 
 annotation
