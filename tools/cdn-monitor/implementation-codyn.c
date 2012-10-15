@@ -58,6 +58,13 @@ monitor_get_time (CdnMonitorImplementation *implementation)
 	return create_monitor_variable (t);
 }
 
+static void
+set_seed (CdnMonitorImplementation *implementation,
+          guint                     seed)
+{
+	cdn_network_set_random_seed (implementation->network, seed);
+}
+
 static gdouble
 monitor_step (CdnMonitorImplementation *implementation,
               gdouble                   t,
@@ -184,6 +191,8 @@ cdn_monitor_implementation_codyn_new (gchar const *filename)
 	ret->begin = monitor_begin;
 	ret->step = monitor_step;
 	ret->get_time = monitor_get_time;
+	ret->set_seed = set_seed;
+
 	ret->terminated = monitor_terminated;
 
 	return ret;

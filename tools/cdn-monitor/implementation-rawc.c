@@ -67,6 +67,13 @@ create_monitor_variable (CdnMonitorImplementation *implementation,
 	return ret;
 }
 
+static void
+set_seed (CdnMonitorImplementation *implementation,
+          guint                     seed)
+{
+	srand (seed);
+}
+
 static CdnMonitorVariable *
 monitor_get_time (CdnMonitorImplementation *implementation)
 {
@@ -451,6 +458,7 @@ cdn_monitor_implementation_rawc_new (gchar const *filename)
 
 	ret->free = monitor_free;
 	ret->userdata = data;
+	ret->set_seed = set_seed;
 
 	ret->resolve = monitor_resolve;
 	ret->begin = monitor_begin;

@@ -24,6 +24,9 @@ struct _CdnMonitorImplementation
 
 	CdnMonitorVariable *(*get_time) (CdnMonitorImplementation *implementation);
 
+	void (*set_seed) (CdnMonitorImplementation *implementation,
+	                  guint                     seed);
+
 	void (*begin) (CdnMonitorImplementation *implementation, gdouble t, gdouble dt);
 	gdouble (*step) (CdnMonitorImplementation *implementation, gdouble t, gdouble dt);
 	void (*end) (CdnMonitorImplementation *implementation);

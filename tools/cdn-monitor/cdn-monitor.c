@@ -704,7 +704,7 @@ monitor_network (gchar const *filename)
 
 	if (seed_set)
 	{
-		cdn_network_set_random_seed (network, seed);
+		implementation->set_seed (implementation, seed);
 	}
 
 	if (!implementation)
