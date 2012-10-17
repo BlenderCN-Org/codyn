@@ -179,7 +179,7 @@ cdn_annotatable_parse_annotation (CdnAnnotatable *annotatable)
 	{
 		regex = g_regex_new ("<at(?:\\.(?P<anchor>"
 		                     "north|north-east|east|south-east|south|south-west|west|north-west|center"
-		                     "))?\\((?P<x>[-0-9.]+),\\s*(?P<y>[-0-9.]+)\\)\\s+(of\\s+(?P<relative>.*))?>\\s*$",
+		                     "))?\\((?P<x>[-0-9.]+),\\s*(?P<y>[-0-9.]+)\\)(\\s+of\\s+(?P<relative>.*))?>\\s*$",
 		                     G_REGEX_MULTILINE | G_REGEX_CASELESS,
 		                     0,
 		                     NULL);
