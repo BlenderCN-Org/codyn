@@ -3529,7 +3529,7 @@ cdn_selector_part_type (CdnSelectorPart *part)
  * Get the identifier of an identifier part. This is only valid if the part is
  * an identifier selector part.
  *
- * Returns: (element-type CdnExpansion): the identifier.
+ * Returns: (element-type CdnExpansion) (transfer full): the identifier.
  *
  **/
 GSList *
