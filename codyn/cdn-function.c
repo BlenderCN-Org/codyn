@@ -76,6 +76,7 @@ struct _CdnFunctionPrivate
 	GList *arguments;
 	GHashTable *arguments_hash;
 	GSList *helper_vars;
+	GSList *dependencies;
 
 	guint n_arguments;
 	guint n_implicit;
@@ -132,6 +133,8 @@ cdn_function_finalize (GObject *object)
 		g_object_unref (self->priv->expression);
 	}
 
+	g_slist_free (self->priv->dependencies);
+
 	g_slist_free (self->priv->dimension_cache);
 
 	g_list_foreach (self->priv->arguments, (GFunc)g_object_unref, NULL);
@@ -146,6 +149,65 @@ cdn_function_finalize (GObject *object)
 	cdn_stack_manipulation_destroy (&self->priv->smanip);
 
 	G_OBJECT_CLASS (cdn_function_parent_class)->finalize (object);
+}
+
+static void
+extract_dependencies (CdnFunction *function)
+{
+	GSList const *deps;
+
+	g_slist_free (function->priv->dependencies);
+	function->priv->dependencies = NULL;
+
+	if (!function->priv->expression)
+	{
+		return;
+	}
+
+	// Ok, then we need to get the deps of this expression, but remove
+	// all the deps which are function arguments
+	deps = cdn_expression_get_dependencies (function->priv->expression);
+
+	while (deps)
+	{
+		GList const *args;
+		gboolean cp;
+
+		cp = TRUE;
+
+		args = cdn_function_get_arguments (function);
+
+		while (args)
+		{
+			CdnVariable *v;
+
+			v = _cdn_function_argument_get_variable (args->data);
+			args = g_list_next (args);
+
+			if (!v)
+			{
+				continue;
+			}
+
+			if (cdn_variable_get_expression (v) == deps->data)
+			{
+				cp = FALSE;
+				break;
+			}
+		}
+
+		if (cp)
+		{
+			function->priv->dependencies =
+				g_slist_prepend (function->priv->dependencies,
+				                 deps->data);
+		}
+
+		deps = g_slist_next (deps);
+	}
+
+	function->priv->dependencies =
+		g_slist_reverse (function->priv->dependencies);
 }
 
 static void
@@ -181,6 +243,7 @@ cdn_function_set_property (GObject *object, guint prop_id, const GValue *value, 
 				                              FALSE);
 			}
 
+			extract_dependencies (self);
 			cdn_object_taint (CDN_OBJECT (self));
 		}
 		break;
@@ -553,6 +616,8 @@ cdn_function_compile_impl (CdnObject         *object,
 	g_object_unref (context);
 
 	extract_helper_vars (self);
+	extract_dependencies (self);
+
 	mark_unused_arguments (self);
 	update_stack_manipulation (self);
 
@@ -2232,4 +2297,21 @@ _cdn_function_get_rand_arguments (CdnFunction *function)
 
 	CdnFunctionRandPrivate *priv = (CdnFunctionRandPrivate *)function->priv;
 	return priv->rand_arguments;
+}
+
+/**
+ * cdn_function_get_dependencies:
+ * @function: a #CdnFunction.
+ *
+ * Get the function expression dependencies.
+ *
+ * Returns: (element-type CdnExpression) (transfer none): a #GSList of #CdnExpression.
+ *
+ **/
+GSList const *
+cdn_function_get_dependencies (CdnFunction *function)
+{
+	g_return_val_if_fail (CDN_IS_FUNCTION (function), NULL);
+
+	return function->priv->dependencies;
 }

@@ -94,63 +94,13 @@ static GSList *
 cdn_instruction_custom_function_get_dependencies (CdnInstruction *inst)
 {
 	CdnInstructionCustomFunction *f = CDN_INSTRUCTION_CUSTOM_FUNCTION (inst);
-	CdnExpression *expr;
-	GSList const *deps;
-	GSList *ret = NULL;
 
 	if (!f->priv->function)
 	{
 		return NULL;
 	}
 
-	expr = cdn_function_get_expression (f->priv->function);
-
-	if (!expr)
-	{
-		return NULL;
-	}
-
-	// Ok, then we need to get the deps of this expression, but remove
-	// all the deps which are function arguments
-	deps = cdn_expression_get_dependencies (expr);
-
-	while (deps)
-	{
-		GList const *args;
-		gboolean cp;
-
-		cp = TRUE;
-
-		args = cdn_function_get_arguments (f->priv->function);
-
-		while (args)
-		{
-			CdnVariable *v;
-
-			v = _cdn_function_argument_get_variable (args->data);
-			args = g_list_next (args);
-
-			if (!v)
-			{
-				continue;
-			}
-
-			if (cdn_variable_get_expression (v) == deps->data)
-			{
-				cp = FALSE;
-				break;
-			}
-		}
-
-		if (cp)
-		{
-			ret = g_slist_prepend (ret, deps->data);
-		}
-
-		deps = g_slist_next (deps);
-	}
-
-	return g_slist_reverse (ret);
+	return g_slist_copy ((GSList *)cdn_function_get_dependencies (f->priv->function));
 }
 
 static void

@@ -143,6 +143,7 @@ void                 cdn_function_set_expression              (CdnFunction      
                                                                CdnExpression        *expression);
 
 CdnExpression       *cdn_function_get_expression              (CdnFunction          *function);
+GSList const        *cdn_function_get_dependencies            (CdnFunction          *function);
 
 CdnStackManipulation const *
                      cdn_function_get_stack_manipulation      (CdnFunction          *function);
