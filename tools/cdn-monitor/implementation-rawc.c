@@ -387,7 +387,7 @@ cdn_monitor_implementation_rawc_new (gchar const *filename)
 		name[strlen(name) - 3] = '\0';
 	}
 
-	symname = g_strconcat ("cdn_rawc_", ptr, "_init", NULL);
+	symname = g_strconcat ("cdn_rawc_", ptr, "_reset", NULL);
 
 	gpointer initsym;
 
