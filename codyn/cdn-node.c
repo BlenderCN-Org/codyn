@@ -765,6 +765,14 @@ cdn_node_cdn_foreach_expression (CdnObject                *object,
 	{
 		cdn_object_foreach_expression (item->data, func, userdata);
 	}
+
+	// And the self edge!
+	if (node->priv->self_edge)
+	{
+		cdn_object_foreach_expression (CDN_OBJECT (node->priv->self_edge),
+		                               func,
+		                               userdata);
+	}
 }
 
 static void
