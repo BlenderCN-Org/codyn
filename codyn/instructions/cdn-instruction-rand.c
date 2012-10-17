@@ -85,64 +85,19 @@ cdn_instruction_rand_execute (CdnInstruction *instruction,
 {
 	CdnInstructionRand *self;
 	gint i;
-	gdouble *ptr;
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CdnInstructionRand *)instruction;
 
-	ptr = cdn_stack_output_ptr (stack) - self->priv->num_random_value;
-
-	if (self->priv->smanip.pop.num == 0)
+	if (self->priv->num_random_value == 0)
 	{
 		cdn_stack_push (stack, (gdouble)self->priv->random_value[0] / RAND_MAX);
 	}
-	else if (self->priv->smanip.pop.num == 1)
+	else
 	{
 		for (i = 0; i < self->priv->num_random_value; ++i)
 		{
-			*ptr = self->priv->random_value[i] * *ptr / RAND_MAX;
-			++ptr;
-		}
-	}
-	else if (self->priv->smanip.pop.num == 2)
-	{
-		gint nd1 = cdn_stack_arg_size (&self->priv->smanip.pop.args[1]);
-		gint nd2 = cdn_stack_arg_size (&self->priv->smanip.pop.args[0]);
-
-		if (nd2 != 1 && nd1 == 1)
-		{
-			// Only one dimension for the "from"
-			--ptr;
-
-			gdouble from = *ptr;
-
-			for (i = 0; i < nd2; ++i)
-			{
-				*ptr = RAND2 (i, from, *(ptr + 1));
-				++ptr;
-			}
-
-			cdn_stack_pop (stack);
-		}
-		else if (nd1 != 1 && nd2 == 1)
-		{
-			gdouble to = cdn_stack_pop (stack);
-
-			// Only one dimension for the "to"
-			for (i = 0; i < nd1; ++i)
-			{
-				*ptr = RAND2 (i, *ptr, to);
-			}
-		}
-		else
-		{
-			// Both dimensions equal
-			for (i = 0; i < nd1; ++i)
-			{
-				--ptr;
-
-				*ptr = RAND2 (i, *ptr, cdn_stack_pop (stack));
-			}
+			cdn_stack_push (stack, (gdouble)self->priv->random_value[i] / RAND_MAX);
 		}
 	}
 }
@@ -154,39 +109,6 @@ cdn_instruction_rand_get_stack_manipulation (CdnInstruction  *instruction,
 	CdnInstructionRand *self;
 
 	self = (CdnInstructionRand *)instruction;
-
-	gint nd1 = 1;
-	gint nd2 = 1;
-
-	if (self->priv->smanip.pop.num > 2)
-	{
-		g_set_error (error,
-		             CDN_COMPILE_ERROR_TYPE,
-		             CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		             "The number of arguments can only be 0, 1 or 2");
-
-		return NULL;
-	}
-
-	if (self->priv->smanip.pop.num > 0)
-	{
-		nd1 = cdn_stack_arg_size (&self->priv->smanip.pop.args[0]);
-	}
-
-	if (self->priv->smanip.pop.num > 1)
-	{
-		nd2 = cdn_stack_arg_size (&self->priv->smanip.pop.args[1]);
-	}
-
-	if (nd1 != 1 && nd2 != 1 && nd1 != nd2)
-	{
-		g_set_error (error,
-		             CDN_COMPILE_ERROR_TYPE,
-		             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-		             "The two arguments to rand must have the same dimension");
-
-		return NULL;
-	}
 
 	return &self->priv->smanip;
 }
@@ -257,31 +179,29 @@ cdn_instruction_rand_new (CdnStackArgs const *argdim)
 	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_RAND);
 	rnd = CDN_INSTRUCTION_RAND (ret);
 
-	cdn_stack_args_copy (&rnd->priv->smanip.pop, argdim);
-
 	if (argdim->num > 0)
 	{
 		gint nd1 = 1;
 		gint nd2 = 1;
 
-		nd1 = cdn_stack_arg_size (&rnd->priv->smanip.pop.args[0]);
+		nd1 = cdn_stack_arg_size (&argdim->args[0]);
 
 		if (argdim->num > 1)
 		{
-			nd2 = cdn_stack_arg_size (&rnd->priv->smanip.pop.args[1]);
+			nd2 = cdn_stack_arg_size (&argdim->args[1]);
 		}
 
 		rnd->priv->num_random_value = nd1 == 1 ? nd2 : nd1;
 
 		if (nd1 != 1)
 		{
-			rnd->priv->smanip.push.rows = rnd->priv->smanip.pop.args[0].rows;
-			rnd->priv->smanip.push.columns = rnd->priv->smanip.pop.args[0].columns;
+			rnd->priv->smanip.push.rows = argdim->args[0].rows;
+			rnd->priv->smanip.push.columns = argdim->args[0].columns;
 		}
 		else if (nd2 != 1)
 		{
-			rnd->priv->smanip.push.rows = rnd->priv->smanip.pop.args[1].rows;
-			rnd->priv->smanip.push.columns = rnd->priv->smanip.pop.args[1].columns;
+			rnd->priv->smanip.push.rows = argdim->args[1].rows;
+			rnd->priv->smanip.push.columns = argdim->args[1].columns;
 		}
 	}
 	else

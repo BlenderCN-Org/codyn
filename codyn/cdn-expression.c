@@ -1938,6 +1938,43 @@ parse_function (CdnExpression *expression,
 
 			instruction = cdn_instruction_rand_new (&args);
 			cdn_stack_args_destroy (&args);
+
+			// Rand of 1 or 2 arguments (i.e. with bounds) are
+			// injected with a lerp function
+			if (numargs == 1)
+			{
+				// Push the lower bound
+				instructions_push (expression,
+				                   cdn_instruction_number_new_from_string ("0"),
+				                   context);
+
+				// Swap upper and lower bound
+				swap_arguments (expression, context);
+
+				// Push rand instruction
+				instructions_push (expression,
+				                   instruction,
+				                   context);
+			}
+			else if (numargs == 2)
+			{
+				// Push rand instruction
+				instructions_push (expression,
+				                   instruction,
+				                   context);
+			}
+
+			if (numargs > 0)
+			{
+				// Make the 'real' instruction the lerp
+				get_argdim (expression, context, 3, &args);
+
+				instruction = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_LERP,
+				                                            NULL,
+				                                            &args);
+
+				cdn_stack_args_destroy (&args);
+			}
 		}
 		else
 		{
