@@ -358,10 +358,10 @@ set_flags (CdnVariable      *variable,
 {
 	if (flags != variable->priv->flags)
 	{
-		gboolean wasonce = variable->priv->flags & CDN_VARIABLE_FLAG_ONCE;
+		gboolean wasonce = variable->priv->flags & (CDN_VARIABLE_FLAG_ONCE | CDN_VARIABLE_FLAG_IN);
 		variable->priv->flags = flags;
 
-		if (flags & CDN_VARIABLE_FLAG_ONCE)
+		if (flags & (CDN_VARIABLE_FLAG_ONCE | CDN_VARIABLE_FLAG_IN))
 		{
 			if (!wasonce)
 			{
