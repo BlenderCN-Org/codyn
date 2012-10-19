@@ -1516,7 +1516,7 @@ value_as_string
 	;
 
 multi_value_as_string_value
-	:				{ $$ = NULL; }
+	:				{ $$ = cdn_embedded_string_new_from_string (""); }
 	| value_as_string		{ $$ = $1; }
 	;
 
