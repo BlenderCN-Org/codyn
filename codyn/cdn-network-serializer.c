@@ -575,9 +575,9 @@ object_to_xml (CdnNetworkSerializer *serializer,
 	g_strfreev (refs_ptr);
 
 	variables_to_xml (serializer,
-	                   ptr,
-	                   object,
-	                   variables);
+	                  ptr,
+	                  object,
+	                  variables);
 
 	return ptr;
 }
@@ -1174,6 +1174,11 @@ io_to_xml (CdnNetworkSerializer *serializer,
 	io_settings_to_xml (serializer,
 	                       node,
 	                       io);
+
+	variables_to_xml (serializer,
+	                  node,
+	                  CDN_OBJECT (io),
+	                  NULL);
 
 	xmlAddChild (root, node);
 
