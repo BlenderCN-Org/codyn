@@ -6523,11 +6523,12 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 
 void
 cdn_parser_context_set_io_setting (CdnParserContext  *context,
-                                   CdnEmbeddedString *name,
-                                   CdnEmbeddedString *value)
+                                   GPtrArray         *nameptr,
+                                   GPtrArray         *valueptr)
 {
 	Context *ctx;
 	GSList *obj;
+	gint i = 0;
 
 	if (context->priv->in_event_handler)
 	{
@@ -6535,8 +6536,6 @@ cdn_parser_context_set_io_setting (CdnParserContext  *context,
 	}
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (CDN_IS_EMBEDDED_STRING (name));
-	g_return_if_fail (CDN_IS_EMBEDDED_STRING (value));
 
 	ctx = CURRENT_CONTEXT (context);
 
@@ -6544,8 +6543,15 @@ cdn_parser_context_set_io_setting (CdnParserContext  *context,
 	{
 		GSList *pairs;
 		CdnSelection *sel;
+		CdnEmbeddedString *name;
+		CdnEmbeddedString *value;
 
 		sel = obj->data;
+
+		name = g_ptr_array_index (nameptr, i % nameptr->len);
+		value = g_ptr_array_index (valueptr, i % valueptr->len);
+
+		++i;
 
 		pairs = generate_name_value_pairs (context,
 		                                   sel,
@@ -6575,6 +6581,6 @@ cdn_parser_context_set_io_setting (CdnParserContext  *context,
 		}
 	}
 
-	g_object_unref (name);
-	g_object_unref (value);
+	g_ptr_array_free (nameptr, TRUE);
+	g_ptr_array_free (valueptr, TRUE);
 }

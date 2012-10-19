@@ -215,8 +215,8 @@ void                   cdn_parser_context_push_io_type         (CdnParserContext
                                                                 CdnEmbeddedString *type);
 
 void                   cdn_parser_context_set_io_setting       (CdnParserContext  *context,
-                                                                CdnEmbeddedString *name,
-                                                                CdnEmbeddedString *value);
+                                                                GPtrArray         *nameptr,
+                                                                GPtrArray         *valueptr);
 
 void                   cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
                                                                   CdnSelector       *selector,
