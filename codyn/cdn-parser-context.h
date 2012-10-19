@@ -249,8 +249,8 @@ gssize                 cdn_parser_context_read                 (CdnParserContext
 gpointer               cdn_parser_context_get_scanner          (CdnParserContext           *context);
 
 void                   cdn_parser_context_define               (CdnParserContext           *context,
-                                                                CdnEmbeddedString          *name,
-                                                                GObject                    *value,
+                                                                GPtrArray                  *nameptr,
+                                                                GPtrArray                  *valueptr,
                                                                 gboolean                    optional,
                                                                 gboolean                    fromenv);
 

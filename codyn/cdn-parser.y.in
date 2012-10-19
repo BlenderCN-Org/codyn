@@ -169,7 +169,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 %type <list> selector_pseudo_reduce_args
 
-%type <object> define_value
+%type <array> define_value
 
 %type <list> edge_connect
 %type <list> edge_connect_fast
@@ -423,12 +423,14 @@ when
 	;
 
 define_value
-	: value_as_string		{ $$ = $1; }
-	| selector_non_ambiguous	{ $$ = $1; }
+	: multi_value_as_string		{ $$ = $1; }
+	| selector_non_ambiguous	{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1);
+	                                }
 	;
 
 define_item
-	: identifier_or_string
+	: multi_identifier_or_string
 	  assign_optional_env
 	  define_value			{ cdn_parser_context_define (context,
 					                             $1,

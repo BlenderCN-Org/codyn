@@ -4570,17 +4570,16 @@ cdn_parser_context_get_token (CdnParserContext *context)
 
 void
 cdn_parser_context_define (CdnParserContext  *context,
-                           CdnEmbeddedString *name,
-                           GObject           *value,
+                           GPtrArray         *nameptr,
+                           GPtrArray         *valueptr,
                            gboolean           optional,
                            gboolean           fromenv)
 {
 	GSList *ob;
 	Context *ctx;
+	gint i = 0;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
-	g_return_if_fail (name != NULL);
-	g_return_if_fail (value != NULL);
 
 	if (context->priv->in_event_handler)
 	{
@@ -4594,8 +4593,15 @@ cdn_parser_context_define (CdnParserContext  *context,
 		CdnSelection *sel;
 		GSList *pairs;
 		GSList *pair;
+		CdnEmbeddedString *name;
+		GObject *value;
 
 		sel = ob->data;
+
+		name = g_ptr_array_index (nameptr, i % nameptr->len);
+		value = g_ptr_array_index (valueptr, i % valueptr->len);
+
+		++i;
 
 		pairs = generate_name_value_pairs (context,
 		                                   sel,
@@ -4670,8 +4676,8 @@ cdn_parser_context_define (CdnParserContext  *context,
 		g_slist_free (pairs);
 	}
 
-	g_object_unref (name);
-	g_object_unref (value);
+	g_ptr_array_free (nameptr, TRUE);
+	g_ptr_array_free (valueptr, TRUE);
 }
 
 /**
