@@ -620,6 +620,7 @@ clear_columns (CdnInputFile *input)
 	}
 
 	input->priv->num_columns = 0;
+	input->priv->smanip.push.columns = input->priv->num_columns;
 
 	g_free (input->priv->current_row);
 	input->priv->current_row = NULL;
@@ -768,6 +769,7 @@ extract_columns (CdnInputFile  *input,
 	}
 
 	input->priv->current_row = g_new0 (gdouble, input->priv->num_columns);
+	input->priv->smanip.push.columns = input->priv->num_columns;
 
 	g_object_unref (stream);
 	return ret;
@@ -1250,8 +1252,8 @@ cdn_input_file_reset (CdnObject *object)
 }
 
 static void
-cdn_input_file_evaluate (CdnFunction *function,
-                         CdnStack    *stack)
+cdn_input_file_execute (CdnFunction *function,
+                        CdnStack    *stack)
 {
 	CdnInputFile *f;
 	gdouble t;
@@ -1261,14 +1263,41 @@ cdn_input_file_evaluate (CdnFunction *function,
 
 	if (!f->priv->temporal)
 	{
+		gint row;
+		gint nrow;
+		gdouble rt;
+		gdouble factor;
 		gint i;
 
-		// Push everything on the stack
-		for (i = 0; i < f->priv->num; ++i)
+		// Interpolate between 0 and 1
+		if (f->priv->repeat)
 		{
-			cdn_stack_pushn (stack,
-			                 f->priv->values[i],
-			                 f->priv->num_columns);
+			t = fmod (t, 1);
+		}
+		else if (t < 0)
+		{
+			t = 0;
+		}
+		else if (t > 1)
+		{
+			t = 1;
+		}
+
+		rt = t * (f->priv->num - 1);
+		factor = fmod (rt, 1);
+
+		row = (gint)floorf (rt) % (f->priv->num - 1);
+		nrow = (row + 1) % (f->priv->num - 1);
+
+		for (i = 0; i < f->priv->num_columns; ++i)
+		{
+			gdouble v1;
+			gdouble v2;
+
+			v1 = f->priv->values[row][i];
+			v2 = f->priv->values[nrow][i];
+
+			cdn_stack_push (stack, v1 + factor * (v2 - v1));
 		}
 	}
 	else if (t == f->priv->current_row_at)
@@ -1300,17 +1329,6 @@ cdn_input_file_get_stack_manipulation (CdnFunction *function)
 
 	input = CDN_INPUT_FILE (function);
 
-	input->priv->smanip.push.columns = input->priv->num_columns;
-
-	if (input->priv->temporal)
-	{
-		input->priv->smanip.push.rows = 1;
-	}
-	else
-	{
-		input->priv->smanip.push.rows = input->priv->num;
-	}
-
 	return &input->priv->smanip;
 }
 
@@ -1330,7 +1348,7 @@ cdn_input_file_class_init (CdnInputFileClass *klass)
 	cdnobject_class->reset = cdn_input_file_reset;
 
 	cdnfunction_class->get_stack_manipulation = cdn_input_file_get_stack_manipulation;
-	cdnfunction_class->evaluate = cdn_input_file_evaluate;
+	cdnfunction_class->execute = cdn_input_file_execute;
 
 	g_type_class_add_private (object_class, sizeof(CdnInputFilePrivate));
 
@@ -1409,10 +1427,20 @@ cdn_input_file_class_finalize (CdnInputFileClass *klass)
 static void
 cdn_input_file_init (CdnInputFile *self)
 {
+	CdnStackArg poparg = CDN_STACK_ARG (1, 1);
+	CdnExpression *defex;
+
 	self->priv = CDN_INPUT_FILE_GET_PRIVATE (self);
 
+	defex = cdn_expression_new ("t");
+
 	cdn_function_add_argument (CDN_FUNCTION (self),
-	                           cdn_function_argument_new ("t", FALSE, NULL));
+	                           cdn_function_argument_new ("t", TRUE, defex));
+
+	self->priv->smanip.push.columns = self->priv->num_columns;
+	self->priv->smanip.push.rows = 1;
+
+	cdn_stack_args_append (&self->priv->smanip.pop, &poparg);
 }
 
 void
