@@ -881,6 +881,54 @@ name_from_selection (CdnSelection *selection)
 	return NULL;
 }
 
+static gint
+sort_identifiers (CdnSelection *a,
+                  CdnSelection *b)
+{
+	CdnExpansionContext *ac;
+	CdnExpansionContext *bc;
+	CdnExpansion *exa;
+	CdnExpansion *exb;
+	gboolean eq = TRUE;
+	gint idx = 0;
+
+	ac = cdn_selection_get_context (a);
+	bc = cdn_selection_get_context (b);
+
+	exa = cdn_expansion_context_get_expansion (ac, 0);
+	exb = cdn_expansion_context_get_expansion (bc, 0);
+
+	while (eq)
+	{
+		gint ia;
+		gint ib;
+		gboolean lasta;
+		gboolean lastb;
+
+		lasta = (idx >= cdn_expansion_num (exa));
+		lastb = (idx >= cdn_expansion_num (exb));
+
+		if (lasta || lastb)
+		{
+			return lasta && lastb ? 0 : (lasta ? 1 : -1);
+		}
+
+		ia = cdn_expansion_get_index (exa, idx);
+		ib = cdn_expansion_get_index (exb, idx);
+
+		eq = (ia == ib);
+
+		if (!eq)
+		{
+			return (ia < ib ? -1 : 1);
+		}
+
+		++idx;
+	}
+
+	return 0;
+}
+
 static GSList *
 selector_select_identifier (CdnSelector  *self,
                             Selector     *selector,
@@ -919,7 +967,7 @@ selector_select_identifier (CdnSelector  *self,
 	g_slist_foreach (exps, (GFunc)cdn_expansion_unref, NULL);
 	g_slist_free (exps);
 
-	return g_slist_reverse (ret);
+	return g_slist_sort (ret, (GCompareFunc)sort_identifiers);
 }
 
 static CdnExpansion *
