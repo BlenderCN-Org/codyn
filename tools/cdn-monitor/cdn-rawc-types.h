@@ -61,6 +61,26 @@ typedef struct
 
 typedef struct
 {
+	uint32_t t;
+	uint32_t dt;
+
+	char const *name;
+
+	// List of metadata per state
+	CdnRawcStateMeta const *states;
+	uint32_t states_size;
+
+	// List of nodes in the network
+	CdnRawcNodeMeta const *nodes;
+	uint32_t nodes_size;
+
+	// Linked lists of node children
+	CdnRawcChildMeta const *children;
+	uint32_t children_size;
+} CdnRawcNetworkMeta;
+
+typedef struct
+{
 	void (*prepare) (ValueType *data, ValueType t);
 	void (*init) (ValueType *data, ValueType t);
 	void (*reset) (ValueType *data, ValueType t);
@@ -73,23 +93,7 @@ typedef struct
 
 	uint32_t data_size;
 
-	struct
-	{
-		uint32_t t;
-		uint32_t dt;
-
-		// List of metadata per state
-		CdnRawcStateMeta const *states;
-		uint32_t states_size;
-
-		// List of nodes in the network
-		CdnRawcNodeMeta const *nodes;
-		uint32_t nodes_size;
-
-		// Linked lists of node children
-		CdnRawcChildMeta const *children;
-		uint32_t children_size;
-	} meta;
+	CdnRawcNetworkMeta meta;
 } CdnRawcNetwork;
 
 typedef struct _CdnRawcIntegrator CdnRawcIntegrator;
@@ -107,6 +111,8 @@ struct _CdnRawcIntegrator
 	              ValueType         *data,
 	              ValueType          t,
 	              ValueType          dt);
+
+	uint32_t data_size;
 };
 
 CDN_RAWC_END_DECLS
