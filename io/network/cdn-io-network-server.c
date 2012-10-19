@@ -211,9 +211,25 @@ cdn_io_initialize_impl (CdnIo         *io,
 #endif
 	if (host != NULL)
 	{
+		GList *resolved;
 		GInetAddress *addr;
 
-		addr = g_inet_address_new_from_string (host);
+		resolved = g_resolver_lookup_by_name (g_resolver_get_default (),
+		                                      host,
+		                                      NULL,
+		                                      error);
+
+		if (!resolved)
+		{
+			g_free (host);
+			return FALSE;
+		}
+
+		addr = resolved->data;
+
+		resolved = g_list_delete_link (resolved, resolved);
+		g_list_foreach (resolved, (GFunc)g_object_unref, NULL);
+		g_list_free (resolved);
 
 		if (addr)
 		{
