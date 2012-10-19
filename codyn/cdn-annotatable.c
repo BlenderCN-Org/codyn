@@ -249,7 +249,7 @@ cdn_annotatable_parse_annotation (CdnAnnotatable *annotatable)
 		g_free (x);
 		g_free (y);
 
-		g_match_info_unref (info);
+		g_match_info_free (info);
 	}
 	else
 	{
