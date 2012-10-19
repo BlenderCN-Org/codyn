@@ -60,6 +60,7 @@ cdn_instruction_rand_copy (CdnMiniObject *object)
 
 	cdn_stack_manipulation_copy (&rret->priv->smanip, &r->priv->smanip);
 
+#ifndef MINGW
 	if (use_streams)
 	{
 		CdnInstructionRandStatePrivate *spriv =
@@ -67,6 +68,7 @@ cdn_instruction_rand_copy (CdnMiniObject *object)
 
 		cdn_instruction_rand_set_seed (rret, spriv->seed);
 	}
+#endif
 
 	return ret;
 }
@@ -227,6 +229,7 @@ cdn_instruction_rand_next (CdnInstructionRand *self)
 {
 	gint i;
 
+#ifndef MINGW
 	if (use_streams)
 	{
 		CdnInstructionRandStatePrivate *spriv =
@@ -234,6 +237,7 @@ cdn_instruction_rand_next (CdnInstructionRand *self)
 
 		setstate (spriv->state);
 	}
+#endif
 
 	/* Omit type check to increase speed */
 	for (i = 0; i < self->priv->num_random_value; ++i)
@@ -242,6 +246,7 @@ cdn_instruction_rand_next (CdnInstructionRand *self)
 	}
 }
 
+#ifndef MINGW
 void
 cdn_instruction_rand_set_use_streams (gboolean use)
 {
@@ -279,3 +284,4 @@ cdn_instruction_rand_get_seed (CdnInstructionRand *self)
 		return 0;
 	}
 }
+#endif
