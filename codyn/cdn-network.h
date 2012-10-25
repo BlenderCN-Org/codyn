@@ -169,18 +169,19 @@ void              cdn_network_set_integrator         (CdnNetwork     *network,
 
 CdnIntegrator    *cdn_network_get_integrator         (CdnNetwork     *network);
 
-void              cdn_network_merge                  (CdnNetwork     *network,
-                                                      CdnNetwork     *other);
-
-void              cdn_network_merge_from_file        (CdnNetwork     *network,
+gboolean          cdn_network_merge_from_file        (CdnNetwork     *network,
                                                       GFile          *file,
                                                       GError        **error);
 
-void              cdn_network_merge_from_path        (CdnNetwork     *network,
+gboolean          cdn_network_merge_from_stream      (CdnNetwork     *network,
+                                                      GInputStream   *stream,
+                                                      GError        **error);
+
+gboolean          cdn_network_merge_from_path        (CdnNetwork     *network,
                                                       const gchar    *path,
                                                       GError        **error);
 
-void              cdn_network_merge_from_string      (CdnNetwork     *network,
+gboolean          cdn_network_merge_from_string      (CdnNetwork     *network,
                                                       const gchar    *s,
                                                       GError        **error);
 

@@ -887,21 +887,11 @@ cdn_network_format_from_file (GFile *file)
 	return ret;
 }
 
-/**
- * cdn_network_load_from_stream:
- * @network: A #CdnNetwork
- * @stream: The stream to load
- * @error: A #GError
- *
- * Load a network from a stream
- *
- * Returns: %TRUE if the stream could be loaded, %FALSE otherwise
- *
- **/
-gboolean
-cdn_network_load_from_stream (CdnNetwork    *network,
-                              GInputStream  *stream,
-                              GError       **error)
+static gboolean
+load_from_stream (CdnNetwork    *network,
+                  GInputStream  *stream,
+                  gboolean       clearfirst,
+                  GError       **error)
 {
 	gboolean ret;
 	CdnNetworkFormat fmt;
@@ -910,7 +900,10 @@ cdn_network_load_from_stream (CdnNetwork    *network,
 	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), FALSE);
 
-	cdn_object_clear (CDN_OBJECT (network));
+	if (clearfirst)
+	{
+		cdn_object_clear (CDN_OBJECT (network));
+	}
 
 	if (!(G_IS_SEEKABLE (stream) && g_seekable_can_seek (G_SEEKABLE (stream))) &&
 	    !G_IS_BUFFERED_INPUT_STREAM (stream))
@@ -956,20 +949,29 @@ cdn_network_load_from_stream (CdnNetwork    *network,
 }
 
 /**
- * cdn_network_load_from_file:
+ * cdn_network_load_from_stream:
  * @network: A #CdnNetwork
- * @file: The file to load
+ * @stream: The stream to load
  * @error: A #GError
  *
- * Load a network from a file
+ * Load a network from a stream
  *
- * Returns: %TRUE if the file could be loaded, %FALSE otherwise
+ * Returns: %TRUE if the stream could be loaded, %FALSE otherwise
  *
  **/
 gboolean
-cdn_network_load_from_file (CdnNetwork  *network,
-                            GFile       *file,
-                            GError     **error)
+cdn_network_load_from_stream (CdnNetwork    *network,
+                              GInputStream  *stream,
+                              GError       **error)
+{
+	return load_from_stream (network, stream, TRUE, error);
+}
+
+static gboolean
+load_from_file (CdnNetwork  *network,
+                GFile       *file,
+                gboolean     clearfirst,
+                GError     **error)
 {
 	gboolean ret;
 	CdnNetworkFormat fmt;
@@ -982,7 +984,10 @@ cdn_network_load_from_file (CdnNetwork  *network,
 	set_file (network, file);
 	stream = NULL;
 
-	cdn_object_clear (CDN_OBJECT (network));
+	if (clearfirst)
+	{
+		cdn_object_clear (CDN_OBJECT (network));
+	}
 
 	bstream = g_file_read (file, NULL, error);
 
@@ -1038,6 +1043,41 @@ cdn_network_load_from_file (CdnNetwork  *network,
 }
 
 /**
+ * cdn_network_load_from_file:
+ * @network: A #CdnNetwork
+ * @file: The file to load
+ * @error: A #GError
+ *
+ * Load a network from a file
+ *
+ * Returns: %TRUE if the file could be loaded, %FALSE otherwise
+ *
+ **/
+gboolean
+cdn_network_load_from_file (CdnNetwork  *network,
+                            GFile       *file,
+                            GError     **error)
+{
+	return load_from_file (network, file, TRUE, error);
+}
+
+static gboolean
+load_from_path (CdnNetwork   *network,
+                const gchar  *path,
+                gboolean      clearfirst,
+                GError      **error)
+{
+	GFile *file;
+	gboolean ret;
+
+	file = g_file_new_for_path (path);
+	ret = load_from_file (network, file, clearfirst, error);
+	g_object_unref (file);
+
+	return ret;
+}
+
+/**
  * cdn_network_load_from_path:
  * @network: A #CdnNetwork
  * @path: The filename of the file to load
@@ -1056,9 +1096,21 @@ cdn_network_load_from_path (CdnNetwork   *network,
 	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (path != NULL, FALSE);
 
-	GFile *file = g_file_new_for_path (path);
-	gboolean ret = cdn_network_load_from_file (network, file, error);
-	g_object_unref (file);
+	return load_from_path (network, path, TRUE, error);
+}
+
+static gboolean
+load_from_string (CdnNetwork   *network,
+                  const gchar  *s,
+                  gboolean      clearfirst,
+                  GError      **error)
+{
+	GInputStream *stream;
+	gboolean ret;
+
+	stream = g_memory_input_stream_new_from_data (s, -1, NULL);
+	ret = load_from_stream (network, stream, clearfirst, error);
+	g_object_unref (stream);
 
 	return ret;
 }
@@ -1079,19 +1131,10 @@ cdn_network_load_from_string (CdnNetwork   *network,
                               const gchar  *s,
                               GError      **error)
 {
-	GInputStream *stream;
-	gboolean ret;
-
 	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
 	g_return_val_if_fail (s != NULL, FALSE);
 
-	cdn_object_clear (CDN_OBJECT (network));
-
-	stream = g_memory_input_stream_new_from_data (s, -1, NULL);
-	ret = cdn_network_load_from_stream (network, stream, error);
-	g_object_unref (stream);
-
-	return ret;
+	return load_from_string (network, s, TRUE, error);
 }
 
 /**
@@ -1311,66 +1354,6 @@ cdn_network_end (CdnNetwork  *network,
 }
 
 /**
- * cdn_network_merge:
- * @network: a #CdnNetwork
- * @other: a #CdnNetwork to merge
- *
- * Merges all the globals, templates and objects from @other into @network.
- *
- **/
-void
-cdn_network_merge (CdnNetwork  *network,
-                   CdnNetwork  *other)
-{
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (CDN_IS_NETWORK (other));
-
-	GSList *props = cdn_object_get_variables (CDN_OBJECT (other));
-	GSList *item;
-
-	for (item = props; item; item = g_slist_next (item))
-	{
-		CdnVariable *property = item->data;
-
-		if (!cdn_object_get_variable (CDN_OBJECT (network),
-		                              cdn_variable_get_name (property)))
-		{
-			cdn_object_add_variable (CDN_OBJECT (network),
-			                         cdn_variable_copy (property),
-			                         NULL);
-		}
-	}
-
-	g_slist_free (props);
-
-	/* Copy over templates */
-	CdnNode *template_group = cdn_network_get_template_node (other);
-	GSList const *templates = cdn_node_get_children (template_group);
-
-	while (templates)
-	{
-		CdnObject *template = templates->data;
-
-		if (!cdn_node_get_child (network->priv->template_group,
-		                          cdn_object_get_id (template)))
-		{
-			cdn_node_add (network->priv->template_group,
-			               template,
-			               NULL);
-		}
-	}
-
-	/* Copy over children */
-	GSList const *children = cdn_node_get_children (CDN_NODE (other));
-
-	while (children)
-	{
-		cdn_node_add (CDN_NODE (network), children->data, NULL);
-		children = g_slist_next (children);
-	}
-}
-
-/**
  * cdn_network_merge_from_file:
  * @network: a #CdnNetwork
  * @file: network file
@@ -1380,23 +1363,15 @@ cdn_network_merge (CdnNetwork  *network,
  * similar to creating a network from a file and merging it with @network.
  *
  **/
-void
+gboolean
 cdn_network_merge_from_file (CdnNetwork  *network,
                              GFile       *file,
                              GError     **error)
 {
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (G_IS_FILE (file));
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (G_IS_FILE (file), FALSE);
 
-	CdnNetwork *other;
-
-	other = cdn_network_new_from_file (file, error);
-
-	if (other != NULL)
-	{
-		cdn_network_merge (network, other);
-		g_object_unref (other);
-	}
+	return load_from_file (network, file, FALSE, error);
 }
 
 /**
@@ -1409,24 +1384,38 @@ cdn_network_merge_from_file (CdnNetwork  *network,
  * similar to creating a network from a file and merging it with @network.
  *
  **/
-void
+gboolean
 cdn_network_merge_from_path (CdnNetwork  *network,
                              const gchar *path,
                              GError     **error)
 {
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (path != NULL);
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (path != NULL, FALSE);
 
-	CdnNetwork *other;
-
-	other = cdn_network_new_from_path (path, error);
-
-	if (other != NULL)
-	{
-		cdn_network_merge (network, other);
-		g_object_unref (other);
-	}
+	return load_from_path (network, path, FALSE, error);
 }
+
+
+/**
+ * cdn_network_merge_from_stream:
+ * @network: a #CdnNetwork
+ * @stream: network stream
+ * @error: error return value
+ *
+ * Merges the network defined in the stream @stream into @network.
+ *
+ **/
+gboolean
+cdn_network_merge_from_stream (CdnNetwork    *network,
+                             GInputStream  *stream,
+                             GError       **error)
+{
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (G_IS_INPUT_STREAM (stream), FALSE);
+
+	return load_from_stream (network, stream, FALSE, error);
+}
+
 
 /**
  * cdn_network_merge_from_string:
@@ -1438,23 +1427,15 @@ cdn_network_merge_from_path (CdnNetwork  *network,
  * similar to creating a network from xml and merging it with @network.
  *
  **/
-void
+gboolean
 cdn_network_merge_from_string (CdnNetwork   *network,
                                gchar const  *s,
                                GError      **error)
 {
-	CdnNetwork *other;
+	g_return_val_if_fail (CDN_IS_NETWORK (network), FALSE);
+	g_return_val_if_fail (s != NULL, FALSE);
 
-	g_return_if_fail (CDN_IS_NETWORK (network));
-	g_return_if_fail (s != NULL);
-
-	other = cdn_network_new_from_string (s, error);
-
-	if (other != NULL)
-	{
-		cdn_network_merge (network, other);
-		g_object_unref (other);
-	}
+	return load_from_string (network, s, FALSE, error);
 }
 
 /**
