@@ -160,6 +160,7 @@ selector_identifier (RawcData     *data,
 	{
 		Selection *sel = selection->data;
 		gchar const *name;
+		GSList const *item;
 
 		name = selection_name (data->network, sel);
 
@@ -171,7 +172,7 @@ selector_identifier (RawcData     *data,
 			continue;
 		}
 
-		while (items)
+		for (item = items; item; item = g_slist_next (item))
 		{
 			CdnExpansion *ex = items->data;
 			gchar const *nm = cdn_expansion_get (ex, 0);
@@ -182,8 +183,6 @@ selector_identifier (RawcData     *data,
 				sel = NULL;
 				break;
 			}
-
-			items = g_slist_next (items);
 		}
 
 		if (sel)
