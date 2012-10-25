@@ -452,6 +452,11 @@ cdn_monitor_implementation_rawc_new (gchar const *filename)
 	data->network = get_network();
 	data->module = module;
 
+	if (data->network->meta.states_size == 0)
+	{
+		g_warning ("It seems that the network does not export any metadata, monitor will not be able to find anything to monitor!");
+	}
+
 	data->init = initsym;
 	data->step = stepsym;
 
