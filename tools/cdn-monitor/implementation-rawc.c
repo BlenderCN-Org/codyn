@@ -5,11 +5,44 @@ typedef struct
 {
 	GModule *module;
 	CdnRawcNetwork *network;
-	double *data;
 
-	void (*init) (double t, double dt);
-	void (*step) (double t, double dt);
+	union
+	{
+		double *data;
+		float *dataf;
+	};
+
+	double *buffer;
+
+	union
+	{
+		void (*init) (double t, double dt);
+		void (*initf) (float t, float dt);
+	};
+
+	union
+	{
+		void (*step) (double t, double dt);
+		void (*stepf) (float t, float dt);
+	};
 } RawcData;
+
+static gboolean
+rawc_is_float (RawcData *data)
+{
+	return sizeof (float) == data->network->type_size;
+}
+
+static void
+copy_buffer (RawcData *data)
+{
+	gint i;
+
+	for (i = 0; i < data->network->data_size; ++i)
+	{
+		data->buffer[i] = (gdouble)data->dataf[i];
+	}
+}
 
 static gboolean
 monitor_free (CdnMonitorImplementation *implementation)
@@ -40,7 +73,7 @@ variable_get_values (CdnMonitorVariable *v)
 	RawcData *data = v->userdata;
 
 	// TODO: multidim
-	return &data->data[v->state];
+	return &data->buffer[v->state];
 }
 
 static CdnMonitorVariable *
@@ -88,9 +121,18 @@ monitor_step (CdnMonitorImplementation *implementation,
               gdouble                   timestep)
 {
 	RawcData *data = implementation->userdata;
-	data->step (t, timestep);
 
-	return data->data[data->network->meta.dt];
+	if (rawc_is_float (data))
+	{
+		data->stepf ((gfloat)t, (gfloat)timestep);
+		copy_buffer (data);
+	}
+	else
+	{
+		data->step (t, timestep);
+	}
+
+	return data->buffer[data->network->meta.dt];
 }
 
 static void
@@ -100,7 +142,15 @@ monitor_begin (CdnMonitorImplementation *implementation,
 {
 	RawcData *data = implementation->userdata;
 
-	data->init (t, timestep);
+	if (rawc_is_float (data))
+	{
+		data->initf ((gfloat)t, (gfloat)timestep);
+		copy_buffer (data);
+	}
+	else
+	{
+		data->init (t, timestep);
+	}
 }
 
 typedef struct
@@ -449,8 +499,18 @@ cdn_monitor_implementation_rawc_new (gchar const *filename)
 	RawcData *data = g_slice_new0 (RawcData);
 
 	data->data = get_data();
+
 	data->network = get_network();
 	data->module = module;
+
+	if (rawc_is_float (data))
+	{
+		data->buffer = g_new0 (gdouble, data->network->data_size);
+	}
+	else
+	{
+		data->buffer = data->data;
+	}
 
 	if (data->network->meta.states_size == 0)
 	{
