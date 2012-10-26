@@ -164,6 +164,9 @@ extract_dependencies (CdnFunction *function)
 		return;
 	}
 
+	function->priv->dependencies = g_slist_prepend (function->priv->dependencies,
+	                                                function->priv->expression);
+
 	// Ok, then we need to get the deps of this expression, but remove
 	// all the deps which are function arguments
 	deps = cdn_expression_get_dependencies (function->priv->expression);

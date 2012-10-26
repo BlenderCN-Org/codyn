@@ -4504,6 +4504,13 @@ cdn_expression_reset_cache (CdnExpression *expression)
 }
 
 void
+_cdn_expression_reset_rand_cache (CdnExpression *expression)
+{
+	expression->priv->cached = TRUE;
+	reset_cache (expression, FALSE);
+}
+
+void
 cdn_expression_force_reset_cache (CdnExpression *expression)
 {
 	gboolean prevent;

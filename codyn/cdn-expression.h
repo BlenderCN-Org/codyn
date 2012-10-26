@@ -122,6 +122,7 @@ void           cdn_expression_set_from_string  (CdnExpression      *expression,
 
 void           cdn_expression_reset_cache      (CdnExpression      *expression);
 void           cdn_expression_force_reset_cache (CdnExpression *expression);
+void          _cdn_expression_reset_rand_cache (CdnExpression *expression);
 
 gboolean       cdn_expression_get_has_cache    (CdnExpression      *expression);
 void           cdn_expression_set_has_cache    (CdnExpression      *expression,
