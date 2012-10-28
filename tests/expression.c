@@ -4,6 +4,8 @@
 #include <codyn/codyn.h>
 #include <codyn/cdn-expression.h>
 #include <codyn/cdn-object.h>
+#include <codyn/cdn-debug.h>
+
 #include "utils.h"
 
 static CdnExpression *expression;
@@ -17,12 +19,16 @@ expression_initialize_context (gchar const *exp, CdnObject *context)
 	CdnCompileContext *ctx = cdn_compile_context_new ();
 	cdn_compile_context_prepend_object (ctx, context);
 
-	gboolean ret = cdn_expression_compile (expression, ctx, NULL);
+	CdnCompileError *err = cdn_compile_error_new ();
+	gboolean ret = cdn_expression_compile (expression, ctx, err);
 	g_object_unref (ctx);
 
 	if (!ret)
 	{
-		fprintf (stderr, "Could not parse expression: %s\n", exp);
+		fprintf (stderr,
+		         "%s\n",
+		         cdn_compile_error_get_formatted_string (err));
+
 		exit (1);
 	}
 }
@@ -142,11 +148,11 @@ test_random ()
 	cdn_assert_tol (ret, val);
 
 	srand (4);
-	expression_initialize ("rand (-1, 1)");
+	expression_initialize ("rand (-2.5, 4.3)");
 	ret = expression_eval ();
 
 	srand (4);
-	val = RAND (-1, 1);
+	val = RAND (-2.5, 4.3);
 	cdn_assert_tol (ret, val);
 }
 
@@ -167,12 +173,193 @@ test_globals ()
 	cdn_assert_tol (1, cdn_variable_get_value (x));
 }
 
+static void
+test_lerp ()
+{
+	gdouble ret;
+	gdouble const *vals;
+	CdnDimension dim;
+
+	expression_initialize ("lerp(0.2, 1, 10)");
+	ret = expression_eval ();
+	cdn_assert_tol (ret, 0.2 * 9 + 1);
+
+	expression_initialize ("lerp([0.1, 0.2, 0.3], 1, 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 0.1 * 9 + 1);
+	cdn_assert_tol (vals[1], 0.2 * 9 + 1);
+	cdn_assert_tol (vals[2], 0.3 * 9 + 1);
+
+	expression_initialize ("lerp([0.1, 0.2, 0.3], [1, 2, 3], 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 0.1 * 9 + 1);
+	cdn_assert_tol (vals[1], 0.2 * 8 + 2);
+	cdn_assert_tol (vals[2], 0.3 * 7 + 3);
+
+	expression_initialize ("lerp([0.1, 0.2, 0.3], [1; 2; 3], 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 0.1 * 9 + 1);
+	cdn_assert_tol (vals[1], 0.2 * 8 + 2);
+	cdn_assert_tol (vals[2], 0.3 * 7 + 3);
+
+	expression_initialize ("lerp(0.1, 1, [10, 20; 10, 30])");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 2);
+	g_assert_cmpint (dim.columns, ==, 2);
+
+	cdn_assert_tol (vals[0], 0.1 * 9 + 1);
+	cdn_assert_tol (vals[1], 0.1 * 19 + 1);
+	cdn_assert_tol (vals[2], 0.1 * 9 + 1);
+	cdn_assert_tol (vals[3], 0.1 * 29 + 1);
+}
+
+static void
+test_clip ()
+{
+	gdouble ret;
+	gdouble const *vals;
+	CdnDimension dim;
+
+	expression_initialize ("clip(0.2, 1, 10)");
+	ret = expression_eval ();
+	cdn_assert_tol (ret, 1);
+
+	expression_initialize ("clip(12, 1, 10)");
+	ret = expression_eval ();
+	cdn_assert_tol (ret, 10);
+
+	expression_initialize ("clip(0.2, -1, 10)");
+	ret = expression_eval ();
+	cdn_assert_tol (ret, 0.2);
+
+	expression_initialize ("clip([0.1, 5.2, 12], 1, 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 1);
+	cdn_assert_tol (vals[1], 5.2);
+	cdn_assert_tol (vals[2], 10);
+
+	expression_initialize ("clip([0.1, 3, 13], [1, 2, 3], 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 1);
+	cdn_assert_tol (vals[1], 3);
+	cdn_assert_tol (vals[2], 10);
+
+	expression_initialize ("clip([0.1, 3, 13], [1; 2; 3], 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 1);
+	cdn_assert_tol (vals[1], 3);
+	cdn_assert_tol (vals[2], 10);
+
+	expression_initialize ("clip(15, 1, [10, 20; 10, 30])");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 2);
+	g_assert_cmpint (dim.columns, ==, 2);
+
+	cdn_assert_tol (vals[0], 10);
+	cdn_assert_tol (vals[1], 15);
+	cdn_assert_tol (vals[2], 10);
+	cdn_assert_tol (vals[3], 15);
+}
+
+static void
+test_cycle ()
+{
+	gdouble ret;
+	gdouble const *vals;
+	CdnDimension dim;
+
+	expression_initialize ("cycle(0.2, 1, 10)");
+	ret = expression_eval ();
+	cdn_assert_tol (ret, 9.2);
+
+	expression_initialize ("cycle(12, 1, 10)");
+	ret = expression_eval ();
+	cdn_assert_tol (ret, 3);
+
+	expression_initialize ("cycle(0.2, -1, 10)");
+	ret = expression_eval ();
+	cdn_assert_tol (ret, 0.2);
+
+	expression_initialize ("cycle(0.2, -5, -1)");
+	ret = expression_eval ();
+	cdn_assert_tol (ret, -3.8);
+
+	expression_initialize ("cycle([0.1, 5.2, 12], 1, 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 9.1);
+	cdn_assert_tol (vals[1], 5.2);
+	cdn_assert_tol (vals[2], 3);
+
+	expression_initialize ("cycle([0.1, 3, 13], [1, 2, 3], 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 9.1);
+	cdn_assert_tol (vals[1], 3);
+	cdn_assert_tol (vals[2], 6);
+
+	expression_initialize ("cycle([0.1, 3, 13], [1; 2; 3], 10)");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 3);
+
+	cdn_assert_tol (vals[0], 9.1);
+	cdn_assert_tol (vals[1], 3);
+	cdn_assert_tol (vals[2], 6);
+
+	expression_initialize ("cycle(15, 1, [10, 20; 10, 11])");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 2);
+	g_assert_cmpint (dim.columns, ==, 2);
+
+	cdn_assert_tol (vals[0], 6);
+	cdn_assert_tol (vals[1], 15);
+	cdn_assert_tol (vals[2], 6);
+	cdn_assert_tol (vals[3], 5);
+}
+
 int
 main (int   argc,
       char *argv[])
 {
 	g_type_init ();
 	g_test_init (&argc, &argv, NULL);
+
+	cdn_debug_init ();
 
 	g_type_init ();
 
@@ -186,6 +373,10 @@ main (int   argc,
 	g_test_add_func ("/expression/scientific_notation", test_scientific_notation);
 	g_test_add_func ("/expression/random", test_random);
 	g_test_add_func ("/expression/globals", test_globals);
+
+	g_test_add_func ("/expression/lerp", test_lerp);
+	g_test_add_func ("/expression/clip", test_clip);
+	g_test_add_func ("/expression/cycle", test_cycle);
 
 	g_test_run ();
 
