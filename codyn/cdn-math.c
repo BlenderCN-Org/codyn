@@ -167,6 +167,89 @@ foreach_element2 (CdnStack           *stack,
 	}
 }
 
+typedef gdouble (*TernaryFunction)(gdouble a, gdouble b, gdouble c);
+
+static void
+foreach_element3 (CdnStack           *stack,
+                  CdnStackArgs const *argdim,
+                  TernaryFunction     op)
+{
+	gint num1;
+	gint num2;
+	gint num3;
+	gdouble *ptr;
+	gdouble *maxptr;
+	gdouble *minptr;
+
+	num1 = cdn_stack_arg_size (argdim->args + 2);
+	num2 = cdn_stack_arg_size (argdim->args + 1);
+	num3 = cdn_stack_arg_size (argdim->args + 0);
+
+	maxptr = cdn_stack_output_ptr (stack) - num3;
+	minptr = maxptr - num2;
+	ptr = minptr - num1;
+
+	if (num1 == 1 && num2 == 1 && num3 == 1)
+	{
+		*ptr = op (*ptr, *(ptr + 1), *(ptr + 2));
+		++ptr;
+	}
+	else if (num1 == 1 && num2 == 1)
+	{
+		gdouble val;
+		gdouble min;
+		gint i;
+
+		val = *ptr;
+		min = *(ptr + 1);
+
+		for (i = 0; i < num3; ++i)
+		{
+			*ptr = op (val, min, *(ptr + 2));
+			++ptr;
+		}
+	}
+	else if (num1 == 1)
+	{
+		gdouble val;
+		gint i;
+
+		val = *ptr;
+
+		for (i = 0; i < num2; ++i)
+		{
+			*ptr++ = op (val, *minptr++, *maxptr);
+
+			if (num3 > 1)
+			{
+				++maxptr;
+			}
+		}
+	}
+	else
+	{
+		gint i;
+
+		for (i = 0; i < num1; ++i)
+		{
+			*ptr = op (*ptr, *minptr, *maxptr);
+			++ptr;
+
+			if (num2 > 1)
+			{
+				++minptr;
+			}
+
+			if (num3 > 1)
+			{
+				++maxptr;
+			}
+		}
+	}
+
+	cdn_stack_set_output_ptr (stack, ptr);
+}
+
 static gdouble
 sign_value (gdouble value)
 {
@@ -339,17 +422,28 @@ op_hypot (CdnStack           *stack,
 	}
 }
 
+static gdouble
+op_lerp_impl (gdouble val,
+              gdouble min,
+              gdouble max)
+{
+	return min + (max - min) * val;
+}
+
 static void
 op_lerp (CdnStack           *stack,
          CdnStackArgs const *argdim,
          gpointer            userdata)
 {
-	gdouble third = cdn_stack_pop (stack);
-	gdouble second = cdn_stack_pop (stack);
-	gdouble first = cdn_stack_pop (stack);
+	foreach_element3 (stack, argdim, op_lerp_impl);
+}
 
-	// TODO: multidim
-	cdn_stack_push (stack, first + (second - first) * third);
+static gdouble
+op_clip_impl (gdouble val,
+              gdouble min,
+              gdouble max)
+{
+	return val < min ? min : (val > max ? max : val);
 }
 
 static void
@@ -357,12 +451,26 @@ op_clip (CdnStack           *stack,
          CdnStackArgs const *argdim,
          gpointer            userdata)
 {
-	gdouble max = cdn_stack_pop (stack);
-	gdouble min = cdn_stack_pop (stack);
-	gdouble val = cdn_stack_pop (stack);
+	foreach_element3 (stack, argdim, op_clip_impl);
+}
 
-	// TODO: multidim
-	cdn_stack_push (stack, val < min ? min : (val > max ? max : val));
+static gdouble
+op_cycle_impl (gdouble val,
+               gdouble min,
+               gdouble max)
+{
+	if (val > max)
+	{
+		return min + fmod (val - min, max - min);
+	}
+	else if (val < min)
+	{
+		return max - fmod (min - val, max - min);
+	}
+	else
+	{
+		return val;
+	}
 }
 
 static void
@@ -370,24 +478,7 @@ op_cycle (CdnStack           *stack,
           CdnStackArgs const *argdim,
           gpointer            userdata)
 {
-	gdouble max = cdn_stack_pop (stack);
-	gdouble min = cdn_stack_pop (stack);
-	gdouble val = cdn_stack_pop (stack);
-
-	// TODO: multidim
-
-	if (val > max)
-	{
-		cdn_stack_push (stack, min + fmod (val - min, max - min));
-	}
-	else if (val < min)
-	{
-		cdn_stack_push (stack, max - fmod (min - val, max - min));
-	}
-	else
-	{
-		cdn_stack_push (stack, val);
-	}
+	foreach_element3 (stack, argdim, op_cycle_impl);
 }
 
 static void
@@ -2290,44 +2381,44 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_LERP:
 		case CDN_MATH_FUNCTION_TYPE_CLIP:
 		case CDN_MATH_FUNCTION_TYPE_CYCLE:
-			if (inargs->args[1].rows != inargs->args[2].rows ||
-			    inargs->args[1].columns != inargs->args[2].columns)
-			{
-				g_set_error (error,
-				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Can only use on arguments with the same dimensions (got (%d, %d) and (%d, %d))",
-				             inargs->args[2].rows, inargs->args[2].columns,
-				             inargs->args[1].rows, inargs->args[1].columns);
+		{
+			CdnDimension thesize = CDN_DIMENSION(1, 1);
+			gint prevarg = 0;
+			gint i;
 
-				return FALSE;
-			}
-			else if (cdn_stack_arg_size (inargs->args) == 1)
+			for (i = 0; i < 3; ++i)
 			{
-				cdn_stack_arg_copy (outarg, inargs->args + 1);
-			}
-			else if (inargs->args[1].rows == 1 && inargs->args[0].rows == 1)
-			{
-				outarg->rows = inargs->args[0].columns;
-				outarg->columns = inargs->args[1].columns;
-			}
-			else if (inargs->args[1].columns == 1 && inargs->args[0].columns == 1)
-			{
-				outarg->rows = inargs->args[1].rows;
-				outarg->columns = inargs->args[0].rows;
-			}
-			else
-			{
-				g_set_error (error,
-				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Invalid dimensions of arguments (got (%d, %d) and (%d, %d) and (%d, %d))",
-				             inargs->args[2].rows, inargs->args[2].columns,
-				             inargs->args[1].rows, inargs->args[1].columns,
-				             inargs->args[0].rows, inargs->args[0].columns);
+				gint argsize = cdn_stack_arg_size (inargs->args + i);
 
-				return FALSE;
+				if (argsize == 1)
+				{
+					continue;
+				}
+
+				if (cdn_dimension_size (&thesize) == 1 || cdn_dimension_size (&thesize) == argsize)
+				{
+					thesize = inargs->args[i].dimension;
+					prevarg = i;
+				}
+				else
+				{
+					g_set_error (error,
+					             CDN_COMPILE_ERROR_TYPE,
+					             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+					             "Incompatible dimension for arguments %d and %d (got %d-by-%d and %d-by-%d)",
+					             3 - i,
+					             3 - prevarg,
+					             inargs->args[i].rows,
+					             inargs->args[i].columns,
+					             inargs->args[prevarg].rows,
+					             inargs->args[prevarg].columns);
+
+					return FALSE;
+				}
 			}
+
+			cdn_stack_arg_copy (outarg, inargs->args + prevarg);
+		}
 		break;
 		case CDN_MATH_FUNCTION_TYPE_INDEX:
 			if (inargs->num == 3)

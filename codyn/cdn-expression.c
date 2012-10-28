@@ -1504,6 +1504,37 @@ swap_arguments_index (CdnExpression *expression,
 	expression->priv->instructions = tmp;
 }
 
+static void
+swap_arguments_last_to_first (CdnExpression *expression,
+                              ParserContext *context)
+{
+	GSList *first = context->stack->data;
+	GSList *second = context->stack->next->data;
+	GSList *third = context->stack->next->next->data;
+
+	GSList *firstinstr;
+	GSList *secondinstr;
+	GSList *thirdinstr;
+	GSList *start;
+
+	// Swaps b, c, a to a, b, c
+	context->stack->data = second;
+	context->stack->next->data = third;
+	context->stack->next->next->data = first;
+
+	// Point to item in list being the LAST instruction of the set
+	firstinstr = g_slist_nth (expression->priv->instructions, g_slist_length (first) - 1);
+	secondinstr = g_slist_nth (firstinstr, g_slist_length (second));
+	thirdinstr = g_slist_nth (secondinstr, g_slist_length (third));
+
+	// Swap sublists around
+	start = expression->priv->instructions;
+
+	expression->priv->instructions = firstinstr->next;
+	firstinstr->next = thirdinstr->next;
+	thirdinstr->next = start;
+}
+
 static GSList *
 pop_stack (CdnExpression *expression,
            ParserContext *context)
@@ -1943,6 +1974,14 @@ parse_function (CdnExpression *expression,
 			// injected with a lerp function
 			if (numargs == 1)
 			{
+				// Push rand instruction
+				instructions_push (expression,
+				                   instruction,
+				                   context);
+
+				// Swap upper bound and rand
+				swap_arguments (expression, context);
+
 				// Push the lower bound
 				instructions_push (expression,
 				                   cdn_instruction_number_new_from_string ("0"),
@@ -1950,11 +1989,6 @@ parse_function (CdnExpression *expression,
 
 				// Swap upper and lower bound
 				swap_arguments (expression, context);
-
-				// Push rand instruction
-				instructions_push (expression,
-				                   instruction,
-				                   context);
 			}
 			else if (numargs == 2)
 			{
@@ -1962,6 +1996,8 @@ parse_function (CdnExpression *expression,
 				instructions_push (expression,
 				                   instruction,
 				                   context);
+
+				swap_arguments_last_to_first (expression, context);
 			}
 
 			if (numargs > 0)
