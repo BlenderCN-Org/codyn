@@ -3448,6 +3448,9 @@ parse_operator (CdnExpression *expression,
 		case CDN_TOKEN_OPERATOR_TYPE_MULTIPLY:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MULTIPLY, "*", &args);
 		break;
+		case CDN_TOKEN_OPERATOR_TYPE_EMULTIPLY:
+			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_EMULTIPLY, "*", &args);
+		break;
 		case CDN_TOKEN_OPERATOR_TYPE_DIVIDE:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE, "/", &args);
 		break;
