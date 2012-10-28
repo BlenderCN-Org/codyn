@@ -477,6 +477,15 @@ matrix_to_string (CdnInstructionMatrix *inst,
 	g_string_append_c (ret, ']');
 }
 
+static void
+rand_to_string (CdnInstructionRand  *inst,
+                gchar const * const *children,
+                GString             *ret,
+                gboolean             dbg)
+{
+	g_string_append (ret, "rand()");
+}
+
 static InstructionToStringFunc
 to_string_func (CdnInstruction *instruction)
 {
@@ -511,6 +520,10 @@ to_string_func (CdnInstruction *instruction)
 	else if (CDN_IS_INSTRUCTION_MATRIX (instruction))
 	{
 		return (InstructionToStringFunc)matrix_to_string;
+	}
+	else if (CDN_IS_INSTRUCTION_RAND (instruction))
+	{
+		return (InstructionToStringFunc)rand_to_string;
 	}
 
 	return NULL;
