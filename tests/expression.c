@@ -46,6 +46,42 @@ expression_eval ()
 }
 
 static void
+test_operator_multiply ()
+{
+	CdnDimension dim;
+	gdouble const *vals;
+
+	// Simple multiplication
+	expression_initialize ("3 * 4");
+	cdn_assert_tol (expression_eval (), (3 * 4));
+
+	// Matrix multiplication
+	expression_initialize ("[1, 0; 0, 1] * [2, 3; 4, 5]");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 2);
+	g_assert_cmpint (dim.columns, ==, 2);
+
+	cdn_assert_tol (vals[0], 2);
+	cdn_assert_tol (vals[1], 3);
+	cdn_assert_tol (vals[2], 4);
+	cdn_assert_tol (vals[3], 5);
+
+	// Element wise multiplication
+	expression_initialize ("[1, 0; 0, 1] .* [2, 3; 4, 5]");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 2);
+	g_assert_cmpint (dim.columns, ==, 2);
+
+	cdn_assert_tol (vals[0], 2);
+	cdn_assert_tol (vals[1], 0);
+	cdn_assert_tol (vals[2], 0);
+	cdn_assert_tol (vals[3], 5);
+
+}
+
+static void
 test_operator_plus ()
 {
 	expression_initialize ("3 + 4");
@@ -363,6 +399,7 @@ main (int   argc,
 
 	g_type_init ();
 
+	g_test_add_func ("/expression/operator_multiply", test_operator_multiply);
 	g_test_add_func ("/expression/operator_plus", test_operator_plus);
 	g_test_add_func ("/expression/operator_minus", test_operator_minus);
 	g_test_add_func ("/expression/operator_minus_unary", test_operator_minus_unary);
