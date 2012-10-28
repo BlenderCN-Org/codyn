@@ -84,8 +84,20 @@ test_operator_multiply ()
 static void
 test_operator_plus ()
 {
+	CdnDimension dim;
+	gdouble const *vals;
+
 	expression_initialize ("3 + 4");
 	cdn_assert_tol (expression_eval (), (3 + 4));
+
+	expression_initialize ("[1, 2] + [3, 4]");
+	vals = cdn_expression_evaluate_values (expression, &dim);
+
+	g_assert_cmpint (dim.rows, ==, 1);
+	g_assert_cmpint (dim.columns, ==, 2);
+
+	cdn_assert_tol (vals[0], 4);
+	cdn_assert_tol (vals[1], 6);
 }
 
 static void
