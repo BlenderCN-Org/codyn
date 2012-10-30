@@ -5259,14 +5259,6 @@ _cdn_expression_transfer_dependencies (CdnExpression *expression,
 		{
 			if (transfer_to)
 			{
-				g_message ("transfer dep from %s(%p) to %s(%p) in %s(%p)",
-				           cdn_expression_tree_iter_to_string (cdn_expression_tree_iter_new (expression)),
-				           expression,
-				           cdn_expression_tree_iter_to_string (cdn_expression_tree_iter_new (transfer_to)),
-				           transfer_to,
-				           cdn_expression_tree_iter_to_string (cdn_expression_tree_iter_new (other)),
-				           other);
-
 				// Replace the dependency with transfer_to
 				found->data = transfer_to;
 
