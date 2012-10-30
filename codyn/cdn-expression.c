@@ -4967,8 +4967,7 @@ cdn_expression_copy (CdnExpression *expression)
 	ret->priv->instructions =
 		g_slist_reverse (ret->priv->instructions);
 
-	validate_stack (expression, NULL, FALSE);
-
+	validate_stack (ret, NULL, FALSE);
 	return ret;
 }
 
