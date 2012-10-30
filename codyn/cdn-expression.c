@@ -97,6 +97,7 @@ struct _CdnExpressionPrivate
 	guint once : 1;
 	guint has_cache : 1;
 	guint pinned_sparsity : 1;
+	guint compiling : 1;
 };
 
 typedef struct
@@ -4095,6 +4096,9 @@ cdn_expression_compile (CdnExpression     *expression,
 	CdnDimension olddim;
 	gboolean wasmod;
 	gboolean dimschanged;
+	gchar *buffer = expression->priv->expression;
+	ParserContext ctx = {(gchar const **)&buffer, context, error};
+	gboolean ret;
 
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), FALSE);
@@ -4104,15 +4108,22 @@ cdn_expression_compile (CdnExpression     *expression,
 		return TRUE;
 	}
 
+	if (expression->priv->compiling)
+	{
+		parser_failed (expression,
+		               &ctx,
+		               CDN_COMPILE_ERROR_VARIABLE_RECURSE,
+		               "Infinite recursion in variable expression");
+
+		return FALSE;
+	}
+
+	expression->priv->compiling = TRUE;
+
 	cdn_expression_get_dimension (expression, &olddim);
-
-	gchar *buffer = expression->priv->expression;
-
 	instructions_free (expression);
 
 	cdn_stack_destroy (&(expression->priv->output));
-	ParserContext ctx = {(gchar const **)&buffer, context, error};
-	gboolean ret;
 
 	expression->priv->error_at = 0;
 	expression->priv->error_start = NULL;
@@ -4137,6 +4148,8 @@ cdn_expression_compile (CdnExpression     *expression,
 	if (!ret)
 	{
 		instructions_free (expression);
+		expression->priv->compiling = FALSE;
+
 		return FALSE;
 	}
 	else
@@ -4149,6 +4162,7 @@ cdn_expression_compile (CdnExpression     *expression,
 		if (!validate_stack (expression, &ctx, FALSE))
 		{
 			instructions_free (expression);
+			expression->priv->compiling = FALSE;
 
 			return parser_failed (expression,
 			                      &ctx,
@@ -4180,6 +4194,7 @@ cdn_expression_compile (CdnExpression     *expression,
 		g_object_notify (G_OBJECT (expression), "modified");
 	}
 
+	expression->priv->compiling = FALSE;
 	return TRUE;
 }
 
