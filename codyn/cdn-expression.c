@@ -4495,6 +4495,39 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	set_cache_from_stack (expression);
 	expression->priv->cached = expression->priv->has_cache;
 
+	if (cdn_debug_is_enabled (CDN_DEBUG_MATH))
+	{
+		CdnDimension dim;
+		gdouble const *vals;
+
+		vals = values_from_cache (expression, &dim);
+
+		if (cdn_dimension_is_one (&dim))
+		{
+			cdn_debug_message (DEBUG_MATH, "Evaluated: %g", *vals);
+		}
+		else
+		{
+			gint i;
+			GString *msg;
+
+			msg = g_string_new ("Evaluated: [");
+
+			for (i = 0; i < cdn_dimension_size (&dim); ++i)
+			{
+				if (i != 0)
+				{
+					g_string_append (msg, ", ");
+				}
+
+				g_string_append_printf (msg, "%g", vals[i]);
+			}
+
+			cdn_debug_message (DEBUG_MATH, "%s]", msg->str);
+			g_string_free (msg, TRUE);
+		}
+	}
+
 	return values_from_cache (expression, dimension);
 }
 
