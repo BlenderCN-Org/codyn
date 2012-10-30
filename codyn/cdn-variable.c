@@ -218,7 +218,6 @@ set_constraint (CdnVariable   *variable,
 	if (expression)
 	{
 		variable->priv->constraint = g_object_ref_sink (expression);
-		cdn_expression_set_has_cache (variable->priv->constraint, FALSE);
 	}
 
 	if (!variable->priv->disposing &&
