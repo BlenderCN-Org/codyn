@@ -21,7 +21,7 @@ cdn_debug_message (CdnDebugSection  section,
 		msg = g_strdup_vprintf (format, ap);
 		va_end (ap);
 
-		if (section & CDN_DEBUG_SIMPLIFY)
+		if (section & (CDN_DEBUG_SIMPLIFY | CDN_DEBUG_MATH))
 		{
 			g_log ("Cdn",
 			       (GLogLevelFlags)section,
