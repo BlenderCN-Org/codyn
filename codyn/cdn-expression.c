@@ -4462,8 +4462,11 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 		iter = cdn_expression_tree_iter_new (expression);
 
 		cdn_debug_message (DEBUG_MATH,
-		                   "Evaluating: %s",
+		                   "Evaluating: %p: %s",
+		                   expression,
 		                   cdn_expression_tree_iter_to_string (iter));
+
+		cdn_debug_push_indent ();
 
 		cdn_expression_tree_iter_free (iter);
 	}
@@ -4471,6 +4474,11 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	for (item = expression->priv->instructions; item; item = g_slist_next(item))
 	{
 		cdn_instruction_execute (item->data, stack);
+	}
+
+	if (cdn_debug_is_enabled (CDN_DEBUG_MATH))
+	{
+		cdn_debug_pop_indent ();
 	}
 
 	if (cdn_stack_count (&(expression->priv->output)) !=
