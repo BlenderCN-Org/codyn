@@ -167,6 +167,9 @@ void           cdn_expression_set_pinned_sparsity (CdnExpression *expression,
 
 gboolean       cdn_expression_get_pinned_sparsity (CdnExpression *expression);
 
+void          _cdn_expression_transfer_dependencies (CdnExpression *expression,
+                                                     CdnExpression *transfer_to);
+
 G_END_DECLS
 
 #endif /* __CDN_EXPRESSION_H__ */

@@ -264,6 +264,9 @@ set_expression (CdnVariable   *variable,
 
 	if (variable->priv->expression)
 	{
+		_cdn_expression_transfer_dependencies (variable->priv->expression,
+		                                       expression);
+
 		g_signal_handler_disconnect (variable->priv->expression,
 		                             variable->priv->expression_proxy_id);
 

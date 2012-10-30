@@ -5237,3 +5237,54 @@ cdn_expression_recalculate_sparsity (CdnExpression *expression)
 	g_slice_free (SparsityInfo, info);
 }
 
+void
+_cdn_expression_transfer_dependencies (CdnExpression *expression,
+                                       CdnExpression *transfer_to)
+{
+	GSList *item;
+
+	g_return_if_fail (CDN_IS_EXPRESSION (expression));
+	g_return_if_fail (transfer_to == NULL || CDN_IS_EXPRESSION (transfer_to));
+
+	// Transfer dependencies from other expressions on @expression to
+	// dependencies on @transfer_to
+	for (item = expression->priv->depends_on_me; item; item = g_slist_next (item))
+	{
+		CdnExpression *other;
+		GSList *found;
+
+		other = item->data;
+		found = g_slist_find (other->priv->depends_on, expression);
+
+		if (found)
+		{
+			if (transfer_to)
+			{
+				g_message ("transfer dep from %s(%p) to %s(%p) in %s(%p)",
+				           cdn_expression_tree_iter_to_string (cdn_expression_tree_iter_new (expression)),
+				           expression,
+				           cdn_expression_tree_iter_to_string (cdn_expression_tree_iter_new (transfer_to)),
+				           transfer_to,
+				           cdn_expression_tree_iter_to_string (cdn_expression_tree_iter_new (other)),
+				           other);
+
+				// Replace the dependency with transfer_to
+				found->data = transfer_to;
+
+				// Also add the dependencies back on transfer_to
+				if (!g_slist_find (transfer_to->priv->depends_on_me, other))
+				{
+					transfer_to->priv->depends_on_me =
+						g_slist_prepend (transfer_to->priv->depends_on_me,
+						                 other);
+				}
+			}
+			else
+			{
+				other->priv->depends_on =
+					g_slist_remove_link (other->priv->depends_on,
+					                     found);
+			}
+		}
+	}
+}
