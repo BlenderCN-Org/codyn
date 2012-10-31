@@ -1,0 +1,47 @@
+# Set the initial state to be in the air
+initial-state "air"
+
+integrator
+{
+	method = "runge-kutta"
+}
+
+# The radius of the ball
+radius = 0.5
+
+# How many times we have bounced the ball
+bounced = 0
+
+# The initial value of the state variable (the position of the ball)
+y = 1
+
+# Gravity
+g = 9.81
+
+# Mass
+m = 1
+
+# Springiness of the ball
+k = 300
+
+# Spring force of the ball when it's being compressed
+fspring = "k * (radius - y)"
+
+# We are always subject to gravity
+ÿ = "-m * g"
+
+# But on the ground there is also a spring force
+ÿ = "fspring" state "ground"
+
+# Transfer from ground to air when y becomes larger than the ball radius
+event "ground" to    "air" when "y > radius" within 0.001 {}
+
+# Transfer from the air to the ground when y becomes smaller than the ball radius
+event "air"    to "ground" when "y < radius" within 0.001
+{
+	# Keep track of the number of times we bounced
+	set bounced = "bounced + 1"
+}
+
+# Terminate after 10 bounces
+event any to terminate when "bounced >= 10" {}
