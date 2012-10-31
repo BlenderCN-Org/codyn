@@ -1,0 +1,32 @@
+# The initial state of an object can be set as follows:
+initial-state "air"
+
+# Transfer from one state to another on a particular condition and with a certain
+# error of event detection
+event "ground" to "air" when "y > 0" within 0.001
+{
+	# This is the event handler, which gets executed when the event occurs.
+	# Here we can change state variables to reflect a discrete change
+	# of state. An example which keeps track how many times the event
+	# has fired (ground_to_air must be defined before):
+	set ground_to_air = "ground_to_air + 1"
+}
+
+# To define a diffirential equation which is only "active" in a particular state:
+ÿ = "-m * g" state "air"
+
+# Termination events will terminate the simulation if the condition is met.
+# A terminate event transits to the special "terminate" state. If you want
+# an event to be fired from any possible state then use the "any" keyword
+# as used here:
+event any to terminate when "ground_to_air >= 10" {}
+
+# States are scoped within nodes. A node becomes stateful whenever there
+# is an event defined in the node which changes state.
+node "n"
+{
+	# This event will be local to "n"
+	event "ground" to "air" when "x > 0" {}
+
+	
+}
