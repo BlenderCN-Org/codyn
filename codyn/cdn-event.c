@@ -19,9 +19,9 @@ struct _CdnEventPrivate
 	GSList *set_flags;
 
 	GSList *events;
-	GHashTable *phases;
+	GHashTable *states;
 
-	gchar *goto_phase;
+	gchar *goto_state;
 	CdnMathFunctionType comparison;
 
 	guint terminal : 1;
@@ -40,7 +40,7 @@ enum
 	PROP_0,
 	PROP_CONDITION,
 	PROP_APPROXIMATION,
-	PROP_GOTO_PHASE,
+	PROP_GOTO_STATE,
 	PROP_TERMINAL
 };
 
@@ -75,7 +75,7 @@ set_property_free (SetProperty *self)
 static GHashTable *
 cdn_phaseable_get_phase_table_impl (CdnPhaseable *phaseable)
 {
-	return CDN_EVENT (phaseable)->priv->phases;
+	return CDN_EVENT (phaseable)->priv->states;
 }
 
 static void
@@ -86,15 +86,15 @@ cdn_phaseable_set_phase_table_impl (CdnPhaseable *phaseable,
 
 	ev = CDN_EVENT (phaseable);
 
-	if (ev->priv->phases)
+	if (ev->priv->states)
 	{
-		g_hash_table_unref (ev->priv->phases);
-		ev->priv->phases = NULL;
+		g_hash_table_unref (ev->priv->states);
+		ev->priv->states = NULL;
 	}
 
 	if (table)
 	{
-		ev->priv->phases = table;
+		ev->priv->states = table;
 		g_hash_table_ref (table);
 	}
 }
@@ -117,15 +117,15 @@ cdn_event_finalize (GObject *object)
 
 	self = CDN_EVENT (object);
 
-	g_free (self->priv->goto_phase);
+	g_free (self->priv->goto_state);
 
 	g_slist_foreach (self->priv->set_properties,
 	                 (GFunc)set_property_free,
 	                 NULL);
 
-	if (self->priv->phases)
+	if (self->priv->states)
 	{
-		g_hash_table_destroy (self->priv->phases);
+		g_hash_table_destroy (self->priv->states);
 	}
 
 	g_slist_foreach (self->priv->events,
@@ -174,9 +174,9 @@ cdn_event_set_property (GObject      *object,
 		case PROP_APPROXIMATION:
 			self->priv->approximation = g_value_get_double (value);
 			break;
-		case PROP_GOTO_PHASE:
-			g_free (self->priv->goto_phase);
-			self->priv->goto_phase = g_value_dup_string (value);
+		case PROP_GOTO_STATE:
+			g_free (self->priv->goto_state);
+			self->priv->goto_state = g_value_dup_string (value);
 			break;
 		case PROP_TERMINAL:
 			self->priv->terminal = g_value_get_boolean (value);
@@ -203,8 +203,8 @@ cdn_event_get_property (GObject    *object,
 		case PROP_APPROXIMATION:
 			g_value_set_double (value, self->priv->approximation);
 			break;
-		case PROP_GOTO_PHASE:
-			g_value_set_string (value, self->priv->goto_phase);
+		case PROP_GOTO_STATE:
+			g_value_set_string (value, self->priv->goto_state);
 			break;
 		case PROP_TERMINAL:
 			g_value_set_boolean (value, self->priv->terminal);
@@ -236,6 +236,36 @@ extract_condition_parts_error (CdnEvent        *event,
 	return FALSE;
 }
 
+static void
+replace_with_subtract (CdnEvent       *event,
+                       CdnInstruction *instr,
+                       GSList const   *instructions)
+{
+	CdnStackManipulation const *smanip;
+	GSList *ret = NULL;
+
+	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (instr),
+	                                                 NULL);
+
+	while (instructions && instructions->next)
+	{
+		ret = g_slist_prepend (ret,
+		                       cdn_mini_object_ref (instructions->data));
+
+		instructions = g_slist_next (instructions);
+	}
+
+	ret = g_slist_prepend (ret,
+	                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS,
+	                                                     "-",
+	                                                     &smanip->pop));
+
+	ret = g_slist_reverse (ret);
+	cdn_expression_set_instructions_take (event->priv->condition, ret);
+	g_slist_foreach (ret, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (ret);
+}
+
 static gboolean
 extract_condition_parts (CdnEvent        *event,
                          CdnCompileError *error)
@@ -243,9 +273,7 @@ extract_condition_parts (CdnEvent        *event,
 	GSList const *instructions;
 	GSList *last;
 	CdnInstructionFunction *instr;
-	GSList *ret = NULL;
 	CdnMathFunctionType id;
-	CdnStackManipulation const *smanip;
 
 	instructions = cdn_expression_get_instructions (event->priv->condition);
 
@@ -272,32 +300,16 @@ extract_condition_parts (CdnEvent        *event,
 		case CDN_MATH_FUNCTION_TYPE_GREATER:
 		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
 		case CDN_MATH_FUNCTION_TYPE_EQUAL:
+			replace_with_subtract (event, last->data, instructions);
+		case CDN_MATH_FUNCTION_TYPE_AND:
+		case CDN_MATH_FUNCTION_TYPE_OR:
+			// TODO: be cool and smart about and/or for measuring
+			// distance
 		break;
 		default:
 			return extract_condition_parts_error (event, error);
 		break;
 	}
-
-	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (instr),
-	                                                 NULL);
-
-	while (instructions && instructions->next)
-	{
-		ret = g_slist_prepend (ret,
-		                       cdn_mini_object_ref (instructions->data));
-
-		instructions = g_slist_next (instructions);
-	}
-
-	ret = g_slist_prepend (ret,
-	                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS,
-	                                                     "-",
-	                                                     &smanip->pop));
-
-	ret = g_slist_reverse (ret);
-	cdn_expression_set_instructions_take (event->priv->condition, ret);
-	g_slist_foreach (ret, (GFunc)cdn_mini_object_unref, NULL);
-	g_slist_free (ret);
 
 	event->priv->comparison = id;
 	return TRUE;
@@ -407,10 +419,10 @@ cdn_event_class_init (CdnEventClass *klass)
 	                                                      G_PARAM_CONSTRUCT));
 
 	g_object_class_install_property (object_class,
-	                                 PROP_GOTO_PHASE,
-	                                 g_param_spec_string ("goto-phase",
-	                                                      "Goto Phase",
-	                                                      "Goto phase",
+	                                 PROP_GOTO_STATE,
+	                                 g_param_spec_string ("goto-state",
+	                                                      "Goto State",
+	                                                      "Goto State",
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
@@ -554,6 +566,23 @@ cdn_event_happened (CdnEvent *event,
 				return FALSE;
 			}
 		break;
+		case CDN_MATH_FUNCTION_TYPE_AND:
+		case CDN_MATH_FUNCTION_TYPE_OR:
+			// From 0 to 1
+			if (event->priv->value < 0.5 && val >= 0.5)
+			{
+				if (dist)
+				{
+					*dist = 0;
+				}
+
+				return TRUE;
+			}
+			else
+			{
+				return FALSE;
+			}
+		break;
 		default:
 		break;
 	}
@@ -615,23 +644,23 @@ cdn_event_execute (CdnEvent *event)
 }
 
 void
-cdn_event_set_goto_phase (CdnEvent           *event,
+cdn_event_set_goto_state (CdnEvent           *event,
                           gchar const        *phase)
 {
 	g_return_if_fail (CDN_IS_EVENT (event));
 
-	g_free (event->priv->goto_phase);
-	event->priv->goto_phase = g_strdup (phase);
+	g_free (event->priv->goto_state);
+	event->priv->goto_state = g_strdup (phase);
 
-	g_object_notify (G_OBJECT (event), "goto-phase");
+	g_object_notify (G_OBJECT (event), "goto-state");
 }
 
 gchar const *
-cdn_event_get_goto_phase (CdnEvent *event)
+cdn_event_get_goto_state (CdnEvent *event)
 {
 	g_return_val_if_fail (CDN_IS_EVENT (event), NULL);
 
-	return event->priv->goto_phase;
+	return event->priv->goto_state;
 }
 
 void

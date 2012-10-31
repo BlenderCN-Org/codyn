@@ -81,10 +81,10 @@ const GSList       *cdn_integrator_state_operators               (CdnIntegratorS
 
 void                cdn_integrator_state_update                  (CdnIntegratorState *state);
 
-void                cdn_integrator_state_set_phase               (CdnIntegratorState *state,
-                                                                  gchar const        *phase);
+void                cdn_integrator_state_set_state               (CdnIntegratorState *state,
+                                                                  CdnNode            *node,
+                                                                  gchar const        *st);
 
-gchar const        *cdn_integrator_state_get_phase               (CdnIntegratorState *state);
 
 G_END_DECLS
 

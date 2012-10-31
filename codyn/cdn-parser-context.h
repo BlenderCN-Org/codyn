@@ -139,7 +139,8 @@ void                   cdn_parser_context_add_variable         (CdnParserContext
                                                                 CdnVariableFlags            add_flags,
                                                                 CdnVariableFlags            remove_flags,
                                                                 gboolean                    assign_optional,
-                                                                CdnEmbeddedString          *constraint);
+                                                                CdnEmbeddedString          *constraint,
+                                                                CdnEmbeddedString          *state);
 
 void                   cdn_parser_context_set_variable         (CdnParserContext           *context,
                                                                 GPtrArray                  *selectorptr,
@@ -183,6 +184,9 @@ void                   cdn_parser_context_push_objects         (CdnParserContext
 void                   cdn_parser_context_push_node            (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *id,
                                                                 GSList                     *templates);
+
+void                   cdn_parser_context_set_node_state       (CdnParserContext           *context,
+                                                                GPtrArray                  *states);
 
 void                   cdn_parser_context_push_edge            (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *id,

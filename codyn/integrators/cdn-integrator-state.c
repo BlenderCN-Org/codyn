@@ -30,8 +30,6 @@
 
 #define CDN_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR_STATE, CdnIntegratorStatePrivate))
 
-static void update_phases (CdnIntegratorState *state);
-
 /**
  * SECTION:cdn-integrator-state
  * @short_description: The integrator state
@@ -67,8 +65,7 @@ struct _CdnIntegratorStatePrivate
 	GSList *phase_integrated_edge_actions;
 
 	GHashTable *direct_variables_hash;
-
-	gchar *phase;
+	GHashTable *state_hash;
 };
 
 G_DEFINE_TYPE (CdnIntegratorState, cdn_integrator_state, G_TYPE_OBJECT)
@@ -82,8 +79,7 @@ enum
 enum
 {
 	PROP_0,
-	PROP_OBJECT,
-	PROP_PHASE
+	PROP_OBJECT
 };
 
 static guint signals[NUM_SIGNALS] = {0,};
@@ -186,8 +182,8 @@ clear_lists (CdnIntegratorState *state)
 	clear_list (&(state->priv->phase_events));
 
 	// Clear the table
-	g_hash_table_ref (state->priv->direct_variables_hash);
-	g_hash_table_destroy (state->priv->direct_variables_hash);
+	g_hash_table_remove_all (state->priv->direct_variables_hash);
+	g_hash_table_remove_all (state->priv->state_hash);
 }
 
 static void
@@ -247,36 +243,19 @@ cdn_integrator_state_dispose (GObject *object)
 	set_object (state, NULL);
 	clear_lists (state);
 
-	g_free (state->priv->phase);
-
 	if (state->priv->direct_variables_hash)
 	{
-		g_hash_table_destroy (state->priv->direct_variables_hash);
+		g_hash_table_unref (state->priv->direct_variables_hash);
 		state->priv->direct_variables_hash = NULL;
 	}
 
+	if (state->priv->state_hash)
+	{
+		g_hash_table_unref (state->priv->state_hash);
+		state->priv->state_hash = NULL;
+	}
+
 	G_OBJECT_CLASS (cdn_integrator_state_parent_class)->dispose (object);
-}
-
-static gboolean
-set_phase (CdnIntegratorState *state,
-           gchar const        *phase)
-{
-	if (phase == state->priv->phase)
-	{
-		return FALSE;
-	}
-
-	if (g_strcmp0 (phase, state->priv->phase) == 0)
-	{
-		return FALSE;
-	}
-
-	g_free (state->priv->phase);
-	state->priv->phase = g_strdup (phase);
-
-	update_phases (state);
-	return TRUE;
 }
 
 static void
@@ -292,9 +271,6 @@ cdn_integrator_state_set_property (GObject      *object,
 		case PROP_OBJECT:
 			set_object (self, g_value_get_object (value));
 		break;
-		case PROP_PHASE:
-			set_phase (self, g_value_get_string (value));
-			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -314,9 +290,6 @@ cdn_integrator_state_get_property (GObject    *object,
 		case PROP_OBJECT:
 			g_value_set_object (value, self->priv->object);
 		break;
-		case PROP_PHASE:
-			g_value_set_string (value, self->priv->phase);
-			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -365,14 +338,19 @@ cdn_integrator_state_class_init (CdnIntegratorStateClass *klass)
 	                                                      "Object",
 	                                                      CDN_TYPE_OBJECT,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+}
 
-	g_object_class_install_property (object_class,
-	                                 PROP_PHASE,
-	                                 g_param_spec_string ("phase",
-	                                                      "Phase",
-	                                                      "Phase",
-	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
+static void
+release_state_node (CdnNode *node)
+{
+	g_object_unref (node);
+}
+
+static void
+release_state_list (GSList *list)
+{
+	g_slist_foreach (list, (GFunc)g_object_unref, NULL);
+	g_slist_free (list);
 }
 
 static void
@@ -385,6 +363,12 @@ cdn_integrator_state_init (CdnIntegratorState *self)
 		                       g_direct_equal,
 		                       NULL,
 		                       (GDestroyNotify)direct_info_free);
+
+	self->priv->state_hash =
+		g_hash_table_new_full (g_direct_hash,
+		                       g_direct_equal,
+		                       (GDestroyNotify)release_state_node,
+		                       (GDestroyNotify)release_state_list);
 }
 
 /**
@@ -675,67 +659,6 @@ collect_expressions (CdnExpression      *expression,
 	}
 }
 
-static GSList *
-get_phase_actions (CdnIntegratorState *state,
-                   GSList             *actions)
-{
-	GSList *ret = NULL;
-
-	while (actions)
-	{
-		CdnEdge *edge;
-
-		edge = cdn_edge_action_get_edge (actions->data);
-
-		if (cdn_phaseable_is_active (CDN_PHASEABLE (edge), state->priv->phase) &&
-		    cdn_phaseable_is_active (CDN_PHASEABLE (actions->data), state->priv->phase))
-		{
-			ret = g_slist_prepend (ret, actions->data);
-		}
-
-		actions = g_slist_next (actions);
-	}
-
-	return g_slist_reverse (ret);
-}
-
-static GSList *
-get_phase_events (CdnIntegratorState *state,
-                  GSList             *events)
-{
-	GSList *ret = NULL;
-
-	while (events)
-	{
-		if (cdn_phaseable_is_active (CDN_PHASEABLE (events->data),
-		                             state->priv->phase))
-		{
-			ret = g_slist_prepend (ret, events->data);
-		}
-
-		events = g_slist_next (events);
-	}
-
-	return g_slist_reverse (ret);
-}
-
-static void
-update_phases (CdnIntegratorState *state)
-{
-	clear_list (&(state->priv->phase_direct_edge_actions));
-	clear_list (&(state->priv->phase_integrated_edge_actions));
-
-	state->priv->phase_direct_edge_actions =
-		get_phase_actions (state, state->priv->direct_edge_actions);
-
-	state->priv->phase_integrated_edge_actions =
-		get_phase_actions (state, state->priv->integrated_edge_actions);
-
-	clear_list (&(state->priv->phase_events));
-	state->priv->phase_events =
-		get_phase_events (state, state->priv->events);
-}
-
 static void
 sum_values (gdouble       *values,
             gdouble const *s,
@@ -791,6 +714,176 @@ evaluate_notify (CdnExpression *expression,
 	                         &edim);
 }
 
+static CdnNode *
+find_state_object (CdnIntegratorState  *state,
+                   CdnNode             *parent,
+                   GSList             **lst)
+{
+	*lst = NULL;
+
+	while (parent)
+	{
+		if (g_hash_table_lookup_extended (state->priv->state_hash,
+		                                  parent,
+		                                  NULL,
+		                                  (gpointer *)lst))
+		{
+			break;
+		}
+
+		parent = cdn_object_get_parent (CDN_OBJECT (parent));
+	}
+
+	return parent;
+}
+
+static gboolean
+phase_is_active (CdnPhaseable *ph,
+                 gchar const  *state)
+{
+	// For edge actions also check the edge
+	if (CDN_IS_EDGE_ACTION (ph))
+	{
+		CdnEdge *edge;
+
+		edge = cdn_edge_action_get_edge (CDN_EDGE_ACTION (ph));
+
+		if (!cdn_phaseable_is_active (CDN_PHASEABLE (edge), state))
+		{
+			return FALSE;
+		}
+	}
+
+	return cdn_phaseable_is_active (ph, state);
+}
+
+static GSList **
+get_state_list (CdnIntegratorState *state,
+                CdnPhaseable       *ph)
+{
+	CdnVariable *tv;
+
+	if (CDN_IS_EVENT (ph))
+	{
+		return &state->priv->phase_events;
+	}
+
+	tv = cdn_edge_action_get_target_variable (CDN_EDGE_ACTION (ph));
+
+	if (cdn_variable_get_integrated (tv))
+	{
+		return &state->priv->phase_integrated_edge_actions;
+	}
+	else
+	{
+		return &state->priv->phase_direct_edge_actions;
+	}
+}
+
+static void
+add_to_state_hash (CdnIntegratorState *state,
+                   CdnPhaseable       *ph,
+                   CdnNode            *parent)
+{
+	GHashTable *states;
+
+	states = cdn_phaseable_get_phase_table (ph);
+
+	if (states && g_hash_table_size (states) > 0)
+	{
+		CdnNode *st;
+		GSList *lst;
+
+		st = find_state_object (state, parent, &lst);
+
+		if (st)
+		{
+			gchar const *nst;
+
+			g_object_ref (ph);
+
+			// Make sure to never change the first element of the
+			// list so we don't have to reinsert it in the hash
+			lst->next = g_slist_prepend (lst->next, ph);
+			nst = cdn_node_get_state (st);
+
+			if (phase_is_active (ph, nst))
+			{
+				GSList **ptr;
+
+				ptr = get_state_list (state, ph);
+				*ptr = g_slist_prepend (*ptr, ph);
+			}
+		}
+	}
+	else
+	{
+		GSList **ptr;
+
+		ptr = get_state_list (state, ph);
+		*ptr = g_slist_prepend (*ptr, ph);
+	}
+}
+
+static void
+extract_state_hash (CdnIntegratorState *state)
+{
+	GSList *item;
+
+	g_hash_table_remove_all (state->priv->state_hash);
+
+	// Collect all the events on states
+	for (item = state->priv->events; item; item = g_slist_next (item))
+	{
+		CdnEvent *ev = item->data;
+		gchar const *st;
+		GHashTable *states;
+		CdnNode *parent;
+
+		parent = cdn_object_get_parent (CDN_OBJECT (ev));
+
+		if (g_hash_table_lookup (state->priv->state_hash, parent))
+		{
+			continue;
+		}
+
+		st = cdn_event_get_goto_state (ev);
+		states = cdn_phaseable_get_phase_table (CDN_PHASEABLE (ev));
+
+		if (st != NULL || (states && g_hash_table_size (states) > 0))
+		{
+			g_hash_table_insert (state->priv->state_hash,
+			                     g_object_ref (parent),
+			                     g_slist_prepend (NULL, NULL));
+		}
+	}
+
+	// Now, collect phaseables
+	for (item = state->priv->integrated_edge_actions; item; item = g_slist_next (item))
+	{
+		CdnNode *parent;
+
+		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		add_to_state_hash (state, item->data, parent);
+	}
+
+	for (item = state->priv->direct_edge_actions; item; item = g_slist_next (item))
+	{
+		CdnNode *parent;
+
+		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		add_to_state_hash (state, item->data, parent);
+	}
+
+	for (item = state->priv->events; item; item = g_slist_next (item))
+	{
+		CdnNode *parent;
+
+		parent = CDN_NODE (cdn_object_get_parent (item->data));
+		add_to_state_hash (state, item->data, parent);
+	}
+}
+
 /**
  * cdn_integrator_state_update:
  * @state: A #CdnIntegratorState
@@ -806,9 +899,6 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 	g_return_if_fail (CDN_IS_INTEGRATOR_STATE (state));
 
 	clear_lists (state);
-
-	g_free (state->priv->phase);
-	state->priv->phase = NULL;
 
 	collect (state, CDN_OBJECT (state->priv->object));
 
@@ -830,7 +920,7 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 	/* order the direct link actions based on their dependencies */
 	sort_edge_actions (state);
 
-	update_phases (state);
+	extract_state_hash (state);
 
 	cdn_object_foreach_expression (CDN_OBJECT (state->priv->object),
 	                               (CdnForeachExpressionFunc)collect_expressions,
@@ -1109,17 +1199,47 @@ cdn_integrator_state_phase_events (CdnIntegratorState *state)
 }
 
 void
-cdn_integrator_state_set_phase (CdnIntegratorState *state,
-                                gchar const        *phase)
+cdn_integrator_state_set_state (CdnIntegratorState *state,
+                                CdnNode            *node,
+                                gchar const        *st)
 {
-	if (set_phase (state, phase))
-	{
-		g_object_notify (G_OBJECT (state), "phase");
-	}
-}
+	gchar const *curst;
+	GSList *lst;
+	GSList *item;
 
-gchar const *
-cdn_integrator_state_get_phase (CdnIntegratorState *state)
-{
-	return state->priv->phase;
+	// Set the state of @node to st. Update all the phaseables that
+	// depend on this state
+	curst = cdn_node_get_state (node);
+	lst = g_hash_table_lookup (state->priv->state_hash, node);
+
+	// Note: first item is always NULL
+	for (item = lst->next; item; item = g_slist_next (item))
+	{
+		CdnPhaseable *ph = item->data;
+		gboolean activenow;
+		gboolean activelater;
+
+		activenow = phase_is_active (ph, curst);
+		activelater = phase_is_active (ph, st);
+
+		// See if ph is active now, but not later
+		if (activenow && !activelater)
+		{
+			GSList **ptr;
+
+			// Remove from list
+			ptr = get_state_list (state, ph);
+			*ptr = g_slist_remove (*ptr, ph);
+		}
+		else if (!activenow && activelater)
+		{
+			GSList **ptr;
+
+			// Add to list
+			ptr = get_state_list (state, ph);
+			*ptr = g_slist_prepend (*ptr, ph);
+		}
+	}
+
+	cdn_node_set_state (node, st);
 }

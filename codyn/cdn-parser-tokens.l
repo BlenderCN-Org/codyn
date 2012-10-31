@@ -217,13 +217,14 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "unapply"			return T_KEY_UNAPPLY;
 "with"				return T_KEY_WITH;
 "when"				return T_KEY_WHEN;
-"phase"				return T_KEY_PHASE;
+"state"				return T_KEY_STATE;
 "event"				return T_KEY_EVENT;
 "terminate"			return T_KEY_TERMINATE;
 "any"				return T_KEY_ANY;
 "set"				return T_KEY_SET;
 "io"				return T_KEY_IO;
 "within"			return T_KEY_WITHIN;
+"initial-state"			return T_KEY_INITIAL_STATE;
 
 <INITIAL,onlyselector>"templates"		return T_KEY_TEMPLATES;
 <INITIAL,onlyselector>"templates-root"		return T_KEY_TEMPLATES_ROOT;

@@ -71,6 +71,9 @@ void        cdn_phaseable_foreach            (CdnPhaseable            *phaseable
                                               CdnPhaseableForeachFunc  func,
                                               gpointer                 userdata);
 
+gboolean    cdn_phaseable_equal              (CdnPhaseable            *phaseable,
+                                              CdnPhaseable            *other);
+
 G_END_DECLS
 
 #endif /* __CDN_PHASEABLE_H__ */

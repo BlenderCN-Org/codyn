@@ -1293,7 +1293,8 @@ add_variable_diff (CdnParserContext  *context,
                    NameValuePair     *p,
                    CdnVariableFlags   add_flags,
                    CdnVariableFlags   remove_flags,
-                   CdnEmbeddedString *constraint)
+                   CdnEmbeddedString *constraint,
+                   CdnEmbeddedString *state)
 {
 	gint i;
 	CdnVariable *prev = NULL;
@@ -1307,6 +1308,7 @@ add_variable_diff (CdnParserContext  *context,
 		CdnVariable *prop;
 		CdnEdge *link;
 		GError *error = NULL;
+		CdnEdgeAction *action;
 
 		dd = g_strnfill (i + 1, 'd');
 		dfname = g_strconcat (dd, dotname, NULL);
@@ -1349,16 +1351,32 @@ add_variable_diff (CdnParserContext  *context,
 
 		if (i == order - 1)
 		{
-			cdn_edge_add_action (link,
-			                     cdn_edge_action_new (fname,
-			                                          cdn_expression_new (ex)));
+			action = cdn_edge_action_new (fname,
+			                              cdn_expression_new (ex));
 		}
 		else
 		{
-			cdn_edge_add_action (link,
-			                     cdn_edge_action_new (fname,
-			                                          cdn_expression_new (dfname)));
+			action = cdn_edge_action_new (fname,
+			                              cdn_expression_new (dfname));
 		}
+
+		if (state)
+		{
+			GSList *states;
+
+			embedded_string_expand_multiple_val (states, state, context, FALSE);
+
+			while (states)
+			{
+				cdn_phaseable_add_phase (CDN_PHASEABLE (action),
+				                         cdn_expansion_get (states->data, 0));
+
+				cdn_expansion_unref (states->data);
+				states = g_slist_delete_link (states, states);
+			}
+		}
+
+		cdn_edge_add_action (link, action);
 
 		if (constraint)
 		{
@@ -1559,7 +1577,8 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
                                  CdnVariableFlags   add_flags,
                                  CdnVariableFlags   remove_flags,
                                  gboolean           assign_optional,
-                                 CdnEmbeddedString *constraint)
+                                 CdnEmbeddedString *constraint,
+                                 CdnEmbeddedString *state)
 {
 	GSList *item;
 	GSList *objects;
@@ -1638,7 +1657,8 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 				                   p,
 				                   add_flags,
 				                   remove_flags,
-				                   constraint);
+				                   constraint,
+				                   state);
 
 				g_free (dotname);
 
@@ -1648,6 +1668,15 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 				}
 
 				continue;
+			}
+			else if (state)
+			{
+				parser_failed (context,
+				               CDN_STATEMENT (state),
+				               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+				               "Only differential equations can be associated to a state");
+
+				return;
 			}
 
 			property = cdn_object_get_variable (obj,
@@ -3456,6 +3485,49 @@ cdn_parser_context_push_node (CdnParserContext  *context,
 	if (id != NULL)
 	{
 		g_object_unref (id);
+	}
+}
+
+void
+cdn_parser_context_set_node_state (CdnParserContext  *context,
+                                   GPtrArray         *states)
+{
+	GSList *objects;
+	gint i = 0;
+
+	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
+
+	if (context->priv->in_event_handler)
+	{
+		return;
+	}
+
+	objects = each_selections (context, FALSE);
+
+	while (objects)
+	{
+		CdnSelection *sel = objects->data;
+		CdnNode *node = cdn_selection_get_object (sel);
+		CdnEmbeddedString *state;
+
+		state = g_ptr_array_index (states, i % states->len);
+		++i;
+
+		if (CDN_IS_NODE (node))
+		{
+			gchar const *st;
+
+			expansion_context_push_selection (context, sel);
+
+			embedded_string_expand (st, state, context);
+
+			cdn_node_set_state (node, st);
+
+			expansion_context_pop (context);
+		}
+
+		cdn_selection_unref (objects->data);
+		objects = g_slist_delete_link (objects, objects);
 	}
 }
 
@@ -6298,7 +6370,7 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 
 			if (to_phases)
 			{
-				cdn_event_set_goto_phase (ev,
+				cdn_event_set_goto_state (ev,
 				                          cdn_expansion_get (to_phases->data, 0));
 			}
 

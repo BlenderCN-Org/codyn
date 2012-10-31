@@ -1204,7 +1204,8 @@ cdn_edge_add_action (CdnEdge       *link,
 	                                       target,
 	                                       index);
 
-	if (orig != NULL)
+	if (orig != NULL && cdn_phaseable_equal (CDN_PHASEABLE (orig),
+	                                         CDN_PHASEABLE (action)))
 	{
 		cdn_edge_action_set_equation (orig,
 		                              cdn_edge_action_get_equation (action));

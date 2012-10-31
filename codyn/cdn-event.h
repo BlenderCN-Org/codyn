@@ -58,10 +58,10 @@ void             cdn_event_add_set_variable  (CdnEvent      *event,
                                               CdnVariable   *property,
                                               CdnExpression *value);
 
-void             cdn_event_set_goto_phase    (CdnEvent      *event,
-                                              gchar const   *phase);
+void             cdn_event_set_goto_state    (CdnEvent      *event,
+                                              gchar const   *state);
 
-gchar const     *cdn_event_get_goto_phase    (CdnEvent      *event);
+gchar const     *cdn_event_get_goto_state    (CdnEvent      *event);
 
 void             cdn_event_set_terminal      (CdnEvent      *event,
                                               gboolean       terminal);

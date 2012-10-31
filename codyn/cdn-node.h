@@ -145,6 +145,11 @@ const GSList     *cdn_node_get_actors     (CdnNode  *node);
 CdnEdgeForward *cdn_node_get_self_edge    (CdnNode *node);
 gboolean cdn_node_has_self_edge    (CdnNode *node);
 
+gchar const      *cdn_node_get_state (CdnNode *node);
+
+void              cdn_node_set_state (CdnNode *node,
+                                      gchar const *state);
+
 /* used for referencing links */
 void             _cdn_node_link           (CdnNode       *node,
                                             CdnEdgeForward *link);

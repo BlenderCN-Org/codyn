@@ -66,9 +66,17 @@ struct _CdnNodePrivate
 	GSList *edges;
 	GSList *actors;
 	CdnEdge *self_edge;
+
+	gchar *state;
 };
 
 G_DEFINE_TYPE (CdnNode, cdn_node, CDN_TYPE_OBJECT)
+
+enum
+{
+	PROP_0,
+	PROP_STATE
+};
 
 enum
 {
@@ -1503,12 +1511,55 @@ cdn_node_cdn_taint (CdnObject *object)
 }
 
 static void
+cdn_node_set_property (GObject      *object,
+                       guint         prop_id,
+                       const GValue *value,
+                       GParamSpec   *pspec)
+{
+	CdnNode *self = CDN_NODE (object);
+
+	switch (prop_id)
+	{
+		case PROP_STATE:
+			g_free (self->priv->state);
+			self->priv->state = g_value_dup_string (value);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
+cdn_node_get_property (GObject    *object,
+                       guint       prop_id,
+                       GValue     *value,
+                       GParamSpec *pspec)
+{
+	CdnNode *self = CDN_NODE (object);
+
+	switch (prop_id)
+	{
+		case PROP_STATE:
+			g_value_set_string (value, self->priv->state);
+			break;
+		default:
+			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+		break;
+	}
+}
+
+static void
 cdn_node_class_init (CdnNodeClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
 	CdnObjectClass *cdn_class = CDN_OBJECT_CLASS (klass);
 
 	object_class->finalize = cdn_node_finalize;
+
+	object_class->get_property = cdn_node_get_property;
+	object_class->set_property = cdn_node_set_property;
+
 	object_class->dispose = cdn_node_dispose;
 
 	cdn_class->get_variable = cdn_node_cdn_get_property;
@@ -1619,6 +1670,15 @@ cdn_node_class_init (CdnNodeClass *klass)
 		              2,
 		              CDN_TYPE_OBJECT,
 		              G_TYPE_POINTER);
+
+	g_object_class_install_property (object_class,
+	                                 PROP_STATE,
+	                                 g_param_spec_string ("state",
+	                                                      "State",
+	                                                      "State",
+	                                                      NULL,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -2189,4 +2249,25 @@ cdn_node_get_self_edge (CdnNode *node)
 	}
 
 	return node->priv->self_edge;
+}
+
+
+gchar const *
+cdn_node_get_state (CdnNode *node)
+{
+	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
+
+	return node->priv->state;
+}
+
+void
+cdn_node_set_state (CdnNode     *node,
+                    gchar const *state)
+{
+	g_return_if_fail (CDN_IS_NODE (node));
+
+	g_free (node->priv->state);
+	node->priv->state = g_strdup (state);
+
+	g_object_notify (G_OBJECT (node), "state");
 }

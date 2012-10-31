@@ -80,7 +80,7 @@ cdn_phaseable_is_active (CdnPhaseable *phaseable,
 	}
 	else
 	{
-		return TRUE;
+		return FALSE;
 	}
 }
 
@@ -97,6 +97,53 @@ create_table (CdnPhaseable *phaseable)
 	cdn_phaseable_set_phase_table (phaseable, table);
 
 	return table;
+}
+
+typedef struct
+{
+	GHashTable *other;
+	gboolean ret;
+} CompareInfo;
+
+static void
+phaseable_foreach_equal (gchar const *key,
+                         gpointer     value,
+                         CompareInfo *ret)
+{
+	if (!g_hash_table_lookup (ret->other, key))
+	{
+		ret->ret = FALSE;
+	}
+}
+
+gboolean
+cdn_phaseable_equal (CdnPhaseable *phaseable,
+                     CdnPhaseable *other)
+{
+	GHashTable *t1;
+	GHashTable *t2;
+	CompareInfo info = {NULL, TRUE};
+
+	g_return_val_if_fail (CDN_PHASEABLE (phaseable), FALSE);
+	g_return_val_if_fail (CDN_PHASEABLE (other), FALSE);
+
+	t1 = cdn_phaseable_get_phase_table (phaseable);
+	t2 = cdn_phaseable_get_phase_table (other);
+
+	if ((t1 != NULL) != (t2 != NULL))
+	{
+		return FALSE;
+	}
+
+	if (t1 == NULL)
+	{
+		return TRUE;
+	}
+
+	info.other = t2;
+	g_hash_table_foreach (t1, (GHFunc)phaseable_foreach_equal, &info);
+
+	return info.ret;
 }
 
 void

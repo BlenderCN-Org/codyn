@@ -31,6 +31,7 @@
 #include "cdn-debug.h"
 
 #include <math.h>
+#include <string.h>
 
 /**
  * SECTION:cdn-integrator
@@ -53,7 +54,6 @@ enum
 	PROP_OBJECT,
 	PROP_TIME,
 	PROP_STATE,
-	PROP_INITIAL_PHASE,
 	PROP_REAL_TIME
 };
 
@@ -76,7 +76,7 @@ struct _CdnIntegratorPrivate
 	CdnIntegratorState *state;
 	GSList *saved_state;
 
-	gchar *initial_phase;
+
 	GTimer *step_timer;
 	gdouble real_time;
 	gdouble rt_correction;
@@ -92,7 +92,14 @@ G_DEFINE_TYPE (CdnIntegrator, cdn_integrator, CDN_TYPE_OBJECT)
 typedef struct
 {
 	CdnVariable *property;
-	gdouble      value;
+
+	union
+	{
+		gdouble     *values;
+		gdouble      value;
+	};
+
+	CdnDimension dimension;
 } SavedState;
 
 static SavedState *
@@ -111,6 +118,11 @@ saved_state_new (CdnVariable *property)
 static void
 saved_state_free (SavedState *self)
 {
+	if (!cdn_dimension_is_one (&self->dimension))
+	{
+		g_free (self->values);
+	}
+
 	g_object_unref (self->property);
 	g_slice_free (SavedState, self);
 }
@@ -128,8 +140,6 @@ cdn_integrator_finalize (GObject *object)
 
 	g_slist_foreach (self->priv->saved_state, (GFunc)saved_state_free, NULL);
 	g_slist_free (self->priv->saved_state);
-
-	g_free (self->priv->initial_phase);
 
 	g_timer_destroy (self->priv->step_timer);
 
@@ -211,10 +221,6 @@ cdn_integrator_set_property (GObject      *object,
 			g_object_add_weak_pointer (G_OBJECT (self->priv->object),
 			                           (gpointer *)&(self->priv->object));
 		break;
-		case PROP_INITIAL_PHASE:
-			g_free (self->priv->initial_phase);
-			self->priv->initial_phase = g_value_dup_string (value);
-		break;
 		case PROP_REAL_TIME:
 			self->priv->real_time = g_value_get_double (value);
 			break;
@@ -242,9 +248,6 @@ cdn_integrator_get_property (GObject    *object,
 		break;
 		case PROP_STATE:
 			g_value_set_object (value, self->priv->state);
-		break;
-		case PROP_INITIAL_PHASE:
-			g_value_set_string (value, self->priv->initial_phase);
 		break;
 		case PROP_REAL_TIME:
 			g_value_set_double (value, self->priv->real_time);
@@ -383,7 +386,43 @@ prepare_next_step (CdnIntegrator *integrator,
 	for (item = integrator->priv->saved_state; item; item = g_slist_next (item))
 	{
 		SavedState *s = item->data;
-		s->value = cdn_variable_get_value (s->property);
+		CdnDimension dim;
+		gdouble const *vals;
+		guint dimsize;
+		guint ssize;
+
+		vals = cdn_variable_get_values (s->property, &dim);
+
+		dimsize = cdn_dimension_size (&dim);
+		ssize = cdn_dimension_size (&s->dimension);
+
+		if (dimsize != ssize)
+		{
+			if (ssize > 1)
+			{
+				g_free (s->values);
+			}
+
+			s->dimension = dim;
+
+			if (dimsize == 1)
+			{
+				s->value = *vals;
+			}
+			else
+			{
+				s->values = g_memdup (vals,
+				                      sizeof (gdouble) * dimsize);
+			}
+		}
+		else if (ssize == 1)
+		{
+			s->value = *vals;
+		}
+		else
+		{
+			memcpy (s->values, vals, sizeof (gdouble) * ssize);
+		}
 	}
 
 	update_events (integrator);
@@ -407,7 +446,16 @@ restore_saved_state (CdnIntegrator *integrator)
 	{
 		SavedState *s = item->data;
 
-		cdn_variable_set_value (s->property, s->value);
+		if (cdn_dimension_is_one (&s->dimension))
+		{
+			cdn_variable_set_value (s->property, s->value);
+		}
+		else
+		{
+			cdn_variable_set_values (s->property,
+			                         s->values,
+			                         &s->dimension);
+		}
 	}
 }
 
@@ -415,16 +463,21 @@ static void
 execute_event (CdnIntegrator *integrator,
                CdnEvent      *ev)
 {
-	gchar const *phase;
+	gchar const *state;
 
 	cdn_event_execute (ev);
 
-	phase = cdn_event_get_goto_phase (ev);
+	state = cdn_event_get_goto_state (ev);
 
-	if (phase)
+	if (state)
 	{
-		cdn_integrator_state_set_phase (integrator->priv->state,
-		                                phase);
+		CdnNode *parent;
+
+		parent = cdn_object_get_parent (CDN_OBJECT (ev));
+
+		cdn_integrator_state_set_state (integrator->priv->state,
+		                                parent,
+		                                state);
 	}
 	else if (cdn_event_get_terminal (ev))
 	{
@@ -746,14 +799,6 @@ cdn_integrator_class_init (CdnIntegratorClass *klass)
 	                                                      G_PARAM_READABLE));
 
 	g_object_class_install_property (object_class,
-	                                 PROP_INITIAL_PHASE,
-	                                 g_param_spec_string ("initial-phase",
-	                                                      "Initial Phase",
-	                                                      "Initial phase",
-	                                                      NULL,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
-
-	g_object_class_install_property (object_class,
 	                                 PROP_REAL_TIME,
 	                                 g_param_spec_double ("real-time",
 	                                                      "Real Time",
@@ -983,9 +1028,6 @@ cdn_integrator_begin (CdnIntegrator  *integrator,
 
 	// Generate set of next random values
 	prepare_next_step (integrator, start, 0, FALSE);
-
-	cdn_integrator_state_set_phase (integrator->priv->state,
-	                                integrator->priv->initial_phase);
 
 	g_timer_reset (integrator->priv->step_timer);
 
