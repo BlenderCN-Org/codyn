@@ -31,6 +31,7 @@ COMMON_SOURCES = 		\
 	cdn-edge.c \
 	cdn-edge-action.c \
 	cdn-math.c \
+	cdn-matrix.c \
 	cdn-mini-object.c \
 	cdn-modifiable.c \
 	cdn-monitor.c \
@@ -100,6 +101,7 @@ INST_H_FILES = \
 	cdn-edge.h \
 	cdn-edge-action.h \
 	cdn-math.h \
+	cdn-matrix.h \
 	cdn-mini-object.h \
 	cdn-modifiable.h \
 	cdn-monitor.h \
