@@ -364,6 +364,8 @@ prepare_next_step (CdnIntegrator *integrator,
 	GSList const *io;
 	GSList const *ops;
 
+	update_events (integrator);
+
 	cdn_variable_set_value (integrator->priv->property_time, t);
 	cdn_variable_set_value (integrator->priv->property_timestep, timestep);
 
@@ -424,8 +426,6 @@ prepare_next_step (CdnIntegrator *integrator,
 			memcpy (s->values, vals, sizeof (gdouble) * ssize);
 		}
 	}
-
-	update_events (integrator);
 
 	// Update operators
 	ops = cdn_integrator_state_operators (integrator->priv->state);
