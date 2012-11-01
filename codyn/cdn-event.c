@@ -537,7 +537,7 @@ cdn_event_happened (CdnEvent *event,
 		case CDN_MATH_FUNCTION_TYPE_LESS:
 		case CDN_MATH_FUNCTION_TYPE_GREATER:
 			// From negative to positive
-			if (event->priv->value >= 0 || val <= 0)
+			if (event->priv->value > 0 || val <= 0)
 			{
 				return FALSE;
 			}
