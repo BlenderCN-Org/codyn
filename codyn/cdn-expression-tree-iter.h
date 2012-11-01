@@ -42,6 +42,10 @@ void                   cdn_expression_tree_iter_free            (CdnExpressionTr
 void                   cdn_expression_tree_iter_set_num_children (CdnExpressionTreeIter *iter,
                                                                   gint                   i);
 
+void                   cdn_expression_tree_iter_swap_children   (CdnExpressionTreeIter *iter,
+                                                                 gint                   first,
+                                                                 gint                   second);
+
 CdnInstruction        *cdn_expression_tree_iter_get_instruction (CdnExpressionTreeIter *iter);
 void                   cdn_expression_tree_iter_set_instruction (CdnExpressionTreeIter *iter,
                                                                  CdnInstruction        *instr);

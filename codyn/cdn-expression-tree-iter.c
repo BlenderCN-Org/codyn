@@ -467,3 +467,28 @@ cdn_expression_tree_iter_initialize_stack (CdnExpressionTreeIter *iter,
 	g_slist_free (instructions);
 	g_queue_clear (&queue);
 }
+
+void
+cdn_expression_tree_iter_swap_children (CdnExpressionTreeIter *iter,
+                                        gint                   first,
+                                        gint                   second)
+{
+	CdnExpressionTreeIter *tmp;
+
+	if (first >= iter->num_children || first < 0)
+	{
+		g_warning ("Tree iter child index out of bounds: %d (max %d)", first, iter->num_children - 1);
+		return;
+	}
+
+	if (second >= iter->num_children || second < 0)
+	{
+		g_warning ("Tree iter child index out of bounds: %d (max %d)", second, iter->num_children - 1);
+		return;
+	}
+
+	tmp = iter->children[first];
+
+	iter->children[first] = iter->children[second];
+	iter->children[second] = tmp;
+}

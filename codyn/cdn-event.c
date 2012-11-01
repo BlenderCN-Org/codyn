@@ -4,16 +4,34 @@
 #include "cdn-phaseable.h"
 #include "cdn-math.h"
 #include "instructions/cdn-instruction-function.h"
+#include "cdn-expression-tree-iter.h"
 
 #include <math.h>
 
 #define CDN_EVENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EVENT, CdnEventPrivate))
 
+typedef struct _LogicalNode LogicalNode;
+
+struct _LogicalNode
+{
+	CdnMathFunctionType type;
+
+	// Only for non-terminal nodes
+	LogicalNode *left;
+	LogicalNode *right;
+
+	// Only for terminal nodes
+	CdnExpression *expression;
+
+	gdouble value;
+};
+
 struct _CdnEventPrivate
 {
 	CdnExpression *condition;
+	LogicalNode *condition_node;
+
 	gdouble approximation;
-	gdouble value;
 
 	GSList *set_properties;
 	GSList *set_flags;
@@ -22,12 +40,23 @@ struct _CdnEventPrivate
 	GHashTable *states;
 
 	gchar *goto_state;
-	CdnMathFunctionType comparison;
 
 	guint terminal : 1;
 };
 
+typedef struct
+{
+	CdnVariable *property;
+	CdnExpression *value;
+} SetProperty;
+
 static void cdn_phaseable_iface_init (gpointer iface);
+
+static gboolean logical_node_happened (CdnEvent    *event,
+                                       LogicalNode *node,
+                                       gdouble     *dist,
+                                       gdouble     *retval,
+                                       gboolean     update);
 
 G_DEFINE_TYPE_WITH_CODE (CdnEvent,
                          cdn_event,
@@ -44,13 +73,412 @@ enum
 	PROP_TERMINAL
 };
 
-typedef struct
+static void
+logical_node_free (LogicalNode *node)
 {
-	CdnVariable *property;
-	CdnExpression *value;
-} SetProperty;
+	if (!node)
+	{
+		return;
+	}
 
-static  SetProperty *
+	logical_node_free (node->left);
+	logical_node_free (node->right);
+
+	if (node->expression)
+	{
+		g_object_unref (node->expression);
+	}
+
+	g_slice_free (LogicalNode, node);
+}
+
+static LogicalNode *
+logical_node_new (CdnEvent              *event,
+                  CdnExpressionTreeIter *iter,
+                  CdnCompileError       *error)
+{
+	LogicalNode *node = NULL;
+	CdnInstruction *instr;
+
+	instr = cdn_expression_tree_iter_get_instruction (iter);
+
+	if (CDN_IS_INSTRUCTION_FUNCTION (instr))
+	{
+		CdnStackManipulation const *smanip;
+		CdnMathFunctionType type;
+
+		type = cdn_instruction_function_get_id (CDN_INSTRUCTION_FUNCTION (instr));
+		smanip = cdn_instruction_get_stack_manipulation (instr, NULL);
+
+		switch (type)
+		{
+		case CDN_MATH_FUNCTION_TYPE_AND:
+		case CDN_MATH_FUNCTION_TYPE_OR:
+		{
+			LogicalNode *left;
+			LogicalNode *right;
+
+			// Branch!
+			left = logical_node_new (event,
+			                         cdn_expression_tree_iter_get_child (iter, 0),
+			                         error);
+
+			if (!left)
+			{
+				return NULL;
+			}
+
+			right = logical_node_new (event,
+			                          cdn_expression_tree_iter_get_child (iter, 1),
+			                          error);
+
+			if (!right)
+			{
+				logical_node_free (left);
+				return NULL;
+			}
+
+			node = g_slice_new0 (LogicalNode);
+
+			node->type = type;
+			node->left = left;
+			node->right = right;
+		}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_LESS:
+		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
+		{
+			CdnInstruction *newinstr;
+
+			// Compute with minus, but swap arguments (and therefore dims)
+			CdnStackArg arg[2] = {
+				smanip->pop.args[1],
+				smanip->pop.args[2],
+			};
+
+			CdnStackArgs args = {
+				.num = 2,
+				.args = arg,
+			};
+
+			newinstr = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS,
+			                                         NULL,
+			                                         &args);
+
+			cdn_expression_tree_iter_set_instruction (iter, newinstr);
+			cdn_expression_tree_iter_swap_children (iter, 0, 1);
+
+			node = g_slice_new0 (LogicalNode);
+			node->type = type;
+			node->expression = cdn_expression_tree_iter_to_expression (iter);
+
+			cdn_mini_object_unref (newinstr);
+		}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_GREATER:
+		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+		case CDN_MATH_FUNCTION_TYPE_EQUAL:
+		{
+			CdnInstruction *newinstr;
+
+			// Compute with minus
+			newinstr = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS,
+			                                         NULL,
+			                                         &smanip->pop);
+
+			cdn_expression_tree_iter_set_instruction (iter, newinstr);
+			cdn_expression_tree_iter_set_instruction (iter, newinstr);
+
+			node = g_slice_new0 (LogicalNode);
+			node->type = type;
+
+			node->expression = cdn_expression_tree_iter_to_expression (iter);
+
+			cdn_mini_object_unref (newinstr);
+		}
+		break;
+		default:
+		break;
+		}
+	}
+
+	if (!node && error && !cdn_compile_error_get_error (error))
+	{
+		GError *err;
+
+		err = g_error_new (CDN_COMPILE_ERROR_TYPE,
+		                   CDN_COMPILE_ERROR_INVALID_STACK,
+		                   "The provided condition can only be composed of logical operators, got `%s'",
+		                   cdn_expression_tree_iter_to_string (iter));
+
+		cdn_compile_error_set (error,
+		                       err,
+		                       CDN_OBJECT (event),
+		                       NULL,
+		                       NULL,
+		                       event->priv->condition);
+	}
+
+	return node;
+}
+
+static gboolean
+condition_holds (CdnEvent    *event,
+                 LogicalNode *node,
+                 gdouble      val)
+{
+	switch (node->type)
+	{
+	case CDN_MATH_FUNCTION_TYPE_LESS:
+	case CDN_MATH_FUNCTION_TYPE_GREATER:
+		return val > 0;
+	break;
+	case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
+	case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+		return val >= 0;
+	break;
+	case CDN_MATH_FUNCTION_TYPE_AND:
+	case CDN_MATH_FUNCTION_TYPE_OR:
+		return val > 0.5;
+	break;
+	case CDN_MATH_FUNCTION_TYPE_EQUAL:
+		return fabs (val) <= event->priv->approximation;
+	default:
+	break;
+	}
+
+	return FALSE;
+}
+
+static gboolean
+logical_node_happened_and (CdnEvent    *event,
+                           LogicalNode *node,
+                           gdouble     *dist,
+                           gdouble     *retval,
+                           gboolean     update)
+{
+	gdouble ldist;
+	gdouble lval;
+	gdouble rdist;
+	gdouble rval;
+	gboolean lhap;
+	gboolean rhap;
+
+	// At least left OR right need to have happened and
+	// if so, the other should at least be TRUE now
+	lhap = logical_node_happened (event, node->left, &ldist, &lval, update);
+	rhap = logical_node_happened (event, node->right, &rdist, &rval, update);
+
+	if (retval)
+	{
+		*retval = 1;
+	}
+
+	if (update)
+	{
+		node->value = 1;
+	}
+
+	if (lhap && rhap)
+	{
+		// Both happened, use worst case as distance
+		if (dist)
+		{
+			*dist = ldist > rdist ? ldist : rdist;
+		}
+
+		return TRUE;
+	}
+	else if (lhap && condition_holds (event, node->right, rval))
+	{
+		if (dist)
+		{
+			*dist = ldist;
+		}
+
+		return TRUE;
+	}
+	else if (rhap && condition_holds (event, node->left, lval))
+	{
+		if (dist)
+		{
+			*dist = rdist;
+		}
+
+		return TRUE;
+	}
+	else
+	{
+		if (retval)
+		{
+			*retval = 0;
+		}
+
+		if (update)
+		{
+			node->value = 0;
+		}
+	}
+
+	return FALSE;
+}
+
+static gboolean
+logical_node_happened_or (CdnEvent    *event,
+                          LogicalNode *node,
+                          gdouble     *dist,
+                          gdouble     *retval,
+                          gboolean     update)
+{
+	gdouble ldist;
+	gdouble lval;
+	gdouble rdist;
+	gdouble rval;
+	gboolean lhap;
+	gboolean rhap;
+
+	// At least left OR right need to have happened
+	lhap = logical_node_happened (event, node->left, &ldist, &lval, update);
+	rhap = logical_node_happened (event, node->right, &rdist, &rval, update);
+
+	if (retval)
+	{
+		*retval = 1;
+	}
+
+	if (update)
+	{
+		node->value = 1;
+	}
+
+	if (lhap && rhap)
+	{
+		if (dist)
+		{
+			*dist = ldist > rdist ? ldist : rdist;
+		}
+
+		return TRUE;
+	}
+	else if (lhap)
+	{
+		if (dist)
+		{
+			*dist = ldist;
+		}
+
+		return TRUE;
+	}
+	else if (rhap)
+	{
+		if (dist)
+		{
+			*dist = rdist;
+		}
+
+		return TRUE;
+	}
+	else
+	{
+		if (retval)
+		{
+			*retval = 0;
+		}
+
+		if (update)
+		{
+			node->value = 0;
+		}
+	}
+
+	return FALSE;
+}
+
+static gboolean
+logical_node_happened (CdnEvent    *event,
+                       LogicalNode *node,
+                       gdouble     *dist,
+                       gdouble     *retval,
+                       gboolean     update)
+{
+	gdouble val = 0;
+
+	if (node->type == CDN_MATH_FUNCTION_TYPE_AND)
+	{
+		return logical_node_happened_and (event, node, dist, retval, update);
+	}
+	else if (node->type == CDN_MATH_FUNCTION_TYPE_OR)
+	{
+		return logical_node_happened_or (event, node, dist, retval, update);
+	}
+
+	val = cdn_expression_evaluate (node->expression);
+
+	if (retval)
+	{
+		*retval = val;
+	}
+
+	if (update)
+	{
+		node->value = val;
+	}
+
+	switch (node->type)
+	{
+	case CDN_MATH_FUNCTION_TYPE_LESS:
+	case CDN_MATH_FUNCTION_TYPE_GREATER:
+	case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
+	case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
+	case CDN_MATH_FUNCTION_TYPE_EQUAL:
+		if (condition_holds (event, node, node->value) ||
+		    !condition_holds (event, node, val))
+		{
+			return FALSE;
+		}
+	break;
+	default:
+	break;
+	}
+
+	if (dist)
+	{
+		if (node->type == CDN_MATH_FUNCTION_TYPE_EQUAL)
+		{
+			*dist = 0;
+		}
+		else
+		{
+			gdouble df = val - node->value;
+
+			if (df <= event->priv->approximation)
+			{
+				*dist = 0;
+			}
+			else
+			{
+				// Distance is measured relative to the change occuring
+				// between two steps (i.e. a fraction)
+				*dist = -node->value / df;
+			}
+		}
+	}
+
+	return TRUE;
+}
+
+static void
+logical_node_update (CdnEvent    *event,
+                     LogicalNode *node)
+{
+	logical_node_happened (event,
+	                       node,
+	                       NULL,
+	                       NULL,
+	                       TRUE);
+}
+
+static SetProperty *
 set_property_new (CdnVariable   *property,
                   CdnExpression *expression)
 {
@@ -132,7 +560,12 @@ cdn_event_finalize (GObject *object)
 	                 (GFunc)g_object_unref,
 	                 NULL);
 
-	g_object_unref (self->priv->condition);
+	if (self->priv->condition)
+	{
+		g_object_unref (self->priv->condition);
+	}
+
+	logical_node_free (self->priv->condition_node);
 
 	G_OBJECT_CLASS (cdn_event_parent_class)->finalize (object);
 }
@@ -216,102 +649,21 @@ cdn_event_get_property (GObject    *object,
 }
 
 static gboolean
-extract_condition_parts_error (CdnEvent        *event,
-                               CdnCompileError *error)
-{
-	GError *err;
-
-	err = g_error_new_literal (CDN_COMPILE_ERROR_TYPE,
-	                           CDN_COMPILE_ERROR_INVALID_STACK,
-	                           "The provided condition does not have a logical comparison");
-
-	cdn_compile_error_set (error,
-	                       err,
-	                       CDN_OBJECT (event),
-	                       NULL,
-	                       NULL,
-	                       event->priv->condition);
-
-	g_error_free (err);
-	return FALSE;
-}
-
-static void
-replace_with_subtract (CdnEvent       *event,
-                       CdnInstruction *instr,
-                       GSList const   *instructions)
-{
-	CdnStackManipulation const *smanip;
-	GSList *ret = NULL;
-
-	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (instr),
-	                                                 NULL);
-
-	while (instructions && instructions->next)
-	{
-		ret = g_slist_prepend (ret,
-		                       cdn_mini_object_ref (instructions->data));
-
-		instructions = g_slist_next (instructions);
-	}
-
-	ret = g_slist_prepend (ret,
-	                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_MINUS,
-	                                                     "-",
-	                                                     &smanip->pop));
-
-	ret = g_slist_reverse (ret);
-	cdn_expression_set_instructions_take (event->priv->condition, ret);
-	g_slist_foreach (ret, (GFunc)cdn_mini_object_unref, NULL);
-	g_slist_free (ret);
-}
-
-static gboolean
 extract_condition_parts (CdnEvent        *event,
                          CdnCompileError *error)
 {
-	GSList const *instructions;
-	GSList *last;
-	CdnInstructionFunction *instr;
-	CdnMathFunctionType id;
+	LogicalNode *node;
+	CdnExpressionTreeIter *iter;
 
-	instructions = cdn_expression_get_instructions (event->priv->condition);
+	iter = cdn_expression_tree_iter_new (event->priv->condition);
+	node = logical_node_new (event, iter, error);
 
-	last = g_slist_last ((GSList *)instructions);
-
-	if (!last)
+	if (!node)
 	{
-		return extract_condition_parts_error (event, error);
+		return FALSE;
 	}
 
-	instr = last->data;
-
-	if (!CDN_IS_INSTRUCTION_FUNCTION (instr))
-	{
-		return extract_condition_parts_error (event, error);
-	}
-
-	id = cdn_instruction_function_get_id (instr);
-
-	switch (id)
-	{
-		case CDN_MATH_FUNCTION_TYPE_LESS:
-		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
-		case CDN_MATH_FUNCTION_TYPE_GREATER:
-		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
-		case CDN_MATH_FUNCTION_TYPE_EQUAL:
-			replace_with_subtract (event, last->data, instructions);
-		case CDN_MATH_FUNCTION_TYPE_AND:
-		case CDN_MATH_FUNCTION_TYPE_OR:
-			// TODO: be cool and smart about and/or for measuring
-			// distance
-		break;
-		default:
-			return extract_condition_parts_error (event, error);
-		break;
-	}
-
-	event->priv->comparison = id;
+	event->priv->condition_node = node;
 	return TRUE;
 }
 
@@ -377,8 +729,6 @@ cdn_event_compile_impl (CdnObject         *object,
 
 		g_object_unref (ctx);
 	}
-
-	
 
 	return TRUE;
 }
@@ -462,16 +812,7 @@ cdn_event_new (gchar const   *id,
 void
 cdn_event_update (CdnEvent *event)
 {
-	if (event->priv->condition)
-	{
-		event->priv->value = cdn_expression_evaluate (event->priv->condition);
-
-		if (event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS ||
-		    event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL)
-		{
-			event->priv->value = -event->priv->value;
-		}
-	}
+	logical_node_update (event, event->priv->condition_node);
 }
 
 /**
@@ -522,86 +863,11 @@ gboolean
 cdn_event_happened (CdnEvent *event,
                     gdouble  *dist)
 {
-	gdouble val;
-
-	val = cdn_expression_evaluate (event->priv->condition);
-
-	if (event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS ||
-	    event->priv->comparison == CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL)
-	{
-		val = -val;
-	}
-
-	switch (event->priv->comparison)
-	{
-		case CDN_MATH_FUNCTION_TYPE_LESS:
-		case CDN_MATH_FUNCTION_TYPE_GREATER:
-			// From negative to positive
-			if (event->priv->value > 0 || val <= 0)
-			{
-				return FALSE;
-			}
-		break;
-		case CDN_MATH_FUNCTION_TYPE_LESS_OR_EQUAL:
-		case CDN_MATH_FUNCTION_TYPE_GREATER_OR_EQUAL:
-			// From negative to positive
-			if (event->priv->value >= 0 || val < 0)
-			{
-				return FALSE;
-			}
-		break;
-		case CDN_MATH_FUNCTION_TYPE_EQUAL:
-			if (fabs (event->priv->value) > event->priv->approximation &&
-			    fabs (val) <= event->priv->approximation)
-			{
-				if (dist)
-				{
-					*dist = 0;
-				}
-
-				return TRUE;
-			}
-			else
-			{
-				return FALSE;
-			}
-		break;
-		case CDN_MATH_FUNCTION_TYPE_AND:
-		case CDN_MATH_FUNCTION_TYPE_OR:
-			// From 0 to 1
-			if (event->priv->value < 0.5 && val >= 0.5)
-			{
-				if (dist)
-				{
-					*dist = 0;
-				}
-
-				return TRUE;
-			}
-			else
-			{
-				return FALSE;
-			}
-		break;
-		default:
-		break;
-	}
-
-	if (dist)
-	{
-		gdouble df = val - event->priv->value;
-
-		if (df <= event->priv->approximation)
-		{
-			*dist = 0;
-		}
-		else
-		{
-			*dist = -event->priv->value / df;
-		}
-	}
-
-	return TRUE;
+	return logical_node_happened (event,
+	                              event->priv->condition_node,
+	                              dist,
+	                              NULL,
+	                              FALSE);
 }
 
 void
