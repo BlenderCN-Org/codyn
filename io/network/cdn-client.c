@@ -1727,8 +1727,7 @@ send_out_limit_ascii (CdnClient *client,
 	for (i = 0; i < client->priv->out_variables->len; ++i)
 	{
 		CdnVariable *v;
-		gdouble const *vals;
-		CdnDimension dim;
+		CdnMatrix const *vals;
 
 		// Skip output if receiver is not interested in it
 		if (lookup_output_index (client, i) == -1)
@@ -1770,13 +1769,13 @@ send_out_limit_ascii (CdnClient *client,
 			                        "%u ", i);
 		}
 
-		vals = cdn_variable_get_values (v, &dim);
+		vals = cdn_variable_get_values (v);
 
-		if (cdn_dimension_is_one (&dim))
+		if (cdn_dimension_is_one (&vals->dimension))
 		{
 			g_ascii_dtostr (numbuf,
 			                G_ASCII_DTOSTR_BUF_SIZE,
-			                vals[0]);
+			                vals->value);
 
 			g_string_append (client->priv->outbuf, numbuf);
 		}
@@ -1788,14 +1787,14 @@ send_out_limit_ascii (CdnClient *client,
 
 			g_string_append_c (client->priv->outbuf, '[');
 
-			for (r = 0; r < dim.rows; ++r)
+			for (r = 0; r < vals->dimension.rows; ++r)
 			{
 				if (r != 0)
 				{
 					g_string_append (client->priv->outbuf, "; ");
 				}
 
-				for (c = 0; c < dim.columns; ++c)
+				for (c = 0; c < vals->dimension.columns; ++c)
 				{
 					if (c != 0)
 					{
@@ -1804,7 +1803,7 @@ send_out_limit_ascii (CdnClient *client,
 
 					g_ascii_dtostr (numbuf,
 					                G_ASCII_DTOSTR_BUF_SIZE,
-					                vals[i]);
+					                vals->values[i]);
 
 					g_string_append (client->priv->outbuf, numbuf);
 
@@ -1878,7 +1877,7 @@ calculate_next_limit (CdnClient *client,
 		{
 			CdnVariable *v = g_ptr_array_index (vars, start);
 
-			cdn_variable_get_values (v, &dim);
+			cdn_variable_get_dimension (v, &dim);
 
 			s = sizeof (guint16) + cdn_dimension_size (&dim) * sizeof (guint64);
 
@@ -1944,8 +1943,8 @@ send_out_limit_binary (CdnClient *client,
 		for (i = start; i < end; ++i)
 		{
 			CdnVariable *v;
-			gdouble const *values;
-			CdnDimension dim;
+			CdnMatrix const *values;
+			gdouble const *vals;
 			gint num;
 			gint j;
 
@@ -1957,8 +1956,9 @@ send_out_limit_binary (CdnClient *client,
 
 			v = g_ptr_array_index (vars, i);
 
-			values = cdn_variable_get_values (v, &dim);
-			num = cdn_dimension_size (&dim);
+			values = cdn_variable_get_values (v);
+			vals = cdn_matrix_get (values);
+			num = cdn_matrix_size (values);
 
 			g_data_output_stream_put_uint16 (s, i, NULL, NULL);
 			g_data_output_stream_put_uint16 (s, num, NULL, NULL);
@@ -1971,7 +1971,7 @@ send_out_limit_binary (CdnClient *client,
 					gdouble dval;
 				} val;
 
-				val.dval = values[j];
+				val.dval = vals[j];
 
 				g_data_output_stream_put_uint64 (s, val.val, NULL, NULL);
 				g_output_stream_flush (G_OUTPUT_STREAM (s), NULL, NULL);
@@ -2376,12 +2376,12 @@ update_set (CdnClient  *client,
 
 			if (e)
 			{
-				CdnDimension edim;
+				CdnMatrix const *mat;
 
-				value = cdn_expression_evaluate_values (e,
-				                                        &edim);
+				mat = cdn_expression_evaluate_values (e);
 
-				num = cdn_dimension_size (&edim);
+				value = cdn_matrix_get (mat);
+				num = cdn_matrix_size (mat);
 			}
 		}
 
@@ -2424,9 +2424,12 @@ update_set (CdnClient  *client,
 
 	if (value && cdn_dimension_size (&dim) == num)
 	{
-		cdn_variable_set_values (v,
-		                         value,
-		                         &dim);
+		CdnMatrix tmp = {
+			{.values = (gdouble *)value},
+			.dimension = dim,
+		};
+
+		cdn_variable_set_values (v, &tmp);
 	}
 
 	if (e)

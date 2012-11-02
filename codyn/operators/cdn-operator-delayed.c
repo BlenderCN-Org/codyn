@@ -412,8 +412,7 @@ evaluate_on_stack (CdnOperatorDelayed *d,
                    CdnExpression      *expression,
                    CdnStack           *stack)
 {
-	gdouble const *ret;
-	CdnDimension dim;
+	CdnMatrix const *ret;
 	gdouble told = 0;
 
 	// temporarily set t
@@ -428,9 +427,8 @@ evaluate_on_stack (CdnOperatorDelayed *d,
 		}
 	}
 
-	ret = cdn_expression_evaluate_values (expression, &dim);
-
-	cdn_stack_pushn (stack, ret, cdn_dimension_size (&dim));
+	ret = cdn_expression_evaluate_values (expression);
+	cdn_stack_pushn (stack, cdn_matrix_get (ret), cdn_matrix_size (ret));
 
 	if (d->priv->tvar)
 	{
@@ -689,9 +687,8 @@ cdn_operator_delayed_step (CdnOperator *op,
 {
 	CdnOperatorDelayed *d;
 	HistoryItem *current;
-	gdouble const *v;
+	CdnMatrix const *v;
 	gint nd;
-	CdnDimension dim;
 
 	// direct cast for efficiency
 	d = (CdnOperatorDelayed *)op;
@@ -709,19 +706,18 @@ cdn_operator_delayed_step (CdnOperator *op,
 		cdn_expression_reset_cache (d->priv->expression);
 	}
 
-	v = cdn_expression_evaluate_values (d->priv->expression,
-	                                    &dim);
+	v = cdn_expression_evaluate_values (d->priv->expression);
 
 	d->priv->eval_at_t = t;
 
-	nd = cdn_dimension_size (&dim);
+	nd = cdn_matrix_size (v);
 
 	if (current->v == NULL)
 	{
 		current->v = g_new (gdouble, nd);
 	}
 
-	memcpy (current->v, v, sizeof (gdouble) * nd);
+	memcpy (current->v, cdn_matrix_get (v), sizeof (gdouble) * nd);
 	d->priv->first_last_t = TRUE;
 }
 

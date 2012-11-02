@@ -682,13 +682,12 @@ evaluate_notify (CdnExpression *expression,
                  DirectInfo    *info)
 {
 	GSList *item;
-	gdouble *update;
-	CdnDimension edim;
+	CdnMatrix *update;
 
 	// Update variable cache from the direct actions
 	cdn_variable_clear_update (info->variable);
 
-	update = cdn_variable_get_update (info->variable, &edim);
+	update = cdn_variable_get_update (info->variable);
 
 	for (item = info->actions; item; item = g_slist_next (item))
 	{
@@ -696,22 +695,19 @@ evaluate_notify (CdnExpression *expression,
 		CdnExpression *expr = cdn_edge_action_get_equation (action);
 		gint const *indices;
 		gint num_indices;
-		gdouble const *values;
-		CdnDimension dim;
+		CdnMatrix const *values;
 
 		indices = cdn_edge_action_get_indices (action, &num_indices);
 
-		values = cdn_expression_evaluate_values (expr, &dim);
+		values = cdn_expression_evaluate_values (expr);
 
-		sum_values (update,
-		            values,
+		sum_values (cdn_matrix_get_memory (update),
+		            cdn_matrix_get (values),
 		            indices,
-		            indices ? num_indices : cdn_dimension_size (&dim));
+		            indices ? num_indices : cdn_matrix_size (values));
 	}
 
-	cdn_variable_set_values (info->variable,
-	                         update,
-	                         &edim);
+	cdn_variable_set_values (info->variable, update);
 }
 
 static CdnNode *

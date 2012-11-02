@@ -639,10 +639,8 @@ cdn_function_evaluate_impl (CdnFunction *function,
 {
 	if (function->priv->expression)
 	{
-		CdnDimension dim;
-		gint num;
-		gint i;
 		GSList *item;
+		CdnMatrix const *ret;
 
 		g_slist_foreach ((GSList *)cdn_expression_get_rand_instructions (function->priv->expression),
 		                 (GFunc)cdn_instruction_rand_next,
@@ -661,15 +659,8 @@ cdn_function_evaluate_impl (CdnFunction *function,
 			                 NULL);
 		}
 
-		gdouble const *ret = cdn_expression_evaluate_values (function->priv->expression,
-		                                                     &dim);
-
-		num = cdn_dimension_size (&dim);
-
-		for (i = 0; i < num; ++i)
-		{
-			cdn_stack_push (stack, ret[i]);
-		}
+		ret = cdn_expression_evaluate_values (function->priv->expression);
+		cdn_stack_pushn (stack, cdn_matrix_get (ret), cdn_matrix_size (ret));
 	}
 	else
 	{
@@ -697,19 +688,16 @@ cdn_function_execute_impl (CdnFunction *function,
 	{
 		CdnFunctionArgument *argument;
 		CdnVariable *v;
-		CdnDimension dim;
-		gdouble *vals;
+		CdnMatrix tmp;
 
 		argument = item->data;
 
 		v = _cdn_function_argument_get_variable (argument);
 
-		dim = function->priv->smanip.pop.args[i].dimension;
-		vals = cdn_stack_popn (stack, cdn_dimension_size (&dim));
+		tmp.dimension = function->priv->smanip.pop.args[i].dimension;
+		tmp.values = cdn_stack_popn (stack, cdn_matrix_size (&tmp));
 
-		cdn_variable_set_values (v,
-		                         vals,
-		                         &dim);
+		cdn_variable_set_values (v, &tmp);
 
 		item = g_list_previous (item);
 	}

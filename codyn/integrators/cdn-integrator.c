@@ -92,14 +92,7 @@ G_DEFINE_TYPE (CdnIntegrator, cdn_integrator, CDN_TYPE_OBJECT)
 typedef struct
 {
 	CdnVariable *property;
-
-	union
-	{
-		gdouble     *values;
-		gdouble      value;
-	};
-
-	CdnDimension dimension;
+	CdnMatrix values;
 } SavedState;
 
 static SavedState *
@@ -110,7 +103,6 @@ saved_state_new (CdnVariable *property)
 	ret = g_slice_new0 (SavedState);
 
 	ret->property = g_object_ref_sink (property);
-	ret->value = 0;
 
 	return ret;
 }
@@ -118,10 +110,7 @@ saved_state_new (CdnVariable *property)
 static void
 saved_state_free (SavedState *self)
 {
-	if (!cdn_dimension_is_one (&self->dimension))
-	{
-		g_free (self->values);
-	}
+	cdn_matrix_destroy (&self->values);
 
 	g_object_unref (self->property);
 	g_slice_free (SavedState, self);
@@ -388,43 +377,10 @@ prepare_next_step (CdnIntegrator *integrator,
 	for (item = integrator->priv->saved_state; item; item = g_slist_next (item))
 	{
 		SavedState *s = item->data;
-		CdnDimension dim;
-		gdouble const *vals;
-		guint dimsize;
-		guint ssize;
+		CdnMatrix const *vals;
 
-		vals = cdn_variable_get_values (s->property, &dim);
-
-		dimsize = cdn_dimension_size (&dim);
-		ssize = cdn_dimension_size (&s->dimension);
-
-		if (dimsize != ssize)
-		{
-			if (ssize > 1)
-			{
-				g_free (s->values);
-			}
-
-			s->dimension = dim;
-
-			if (dimsize == 1)
-			{
-				s->value = *vals;
-			}
-			else
-			{
-				s->values = g_memdup (vals,
-				                      sizeof (gdouble) * dimsize);
-			}
-		}
-		else if (ssize == 1)
-		{
-			s->value = *vals;
-		}
-		else
-		{
-			memcpy (s->values, vals, sizeof (gdouble) * ssize);
-		}
+		vals = cdn_variable_get_values (s->property);
+		cdn_matrix_copy (&s->values, vals);
 	}
 
 	// Update operators
@@ -446,16 +402,7 @@ restore_saved_state (CdnIntegrator *integrator)
 	{
 		SavedState *s = item->data;
 
-		if (cdn_dimension_is_one (&s->dimension))
-		{
-			cdn_variable_set_value (s->property, s->value);
-		}
-		else
-		{
-			cdn_variable_set_values (s->property,
-			                         s->values,
-			                         &s->dimension);
-		}
+		cdn_variable_set_values (s->property, &s->values);
 	}
 }
 
@@ -875,27 +822,24 @@ cdn_integrator_simulation_step_integrate (CdnIntegrator *integrator,
 		if (target != NULL)
 		{
 			CdnExpression *expr;
-			CdnDimension dim;
-			CdnDimension edim;
-			gdouble *update;
+			CdnMatrix *update;
 			gint const *indices;
 			gint num_indices;
-			gdouble const *values;
+			CdnMatrix const *values;
 
 			expr = cdn_edge_action_get_equation (action);
 
-			update = cdn_variable_get_update (target, &edim);
+			update = cdn_variable_get_update (target);
 
 			indices = cdn_edge_action_get_indices (action,
 			                                       &num_indices);
 
-			values = cdn_expression_evaluate_values (expr,
-			                                         &dim);
+			values = cdn_expression_evaluate_values (expr);
 
-			sum_values (update,
-			            values,
+			sum_values (cdn_matrix_get_memory (update),
+			            cdn_matrix_get (values),
 			            indices,
-			            indices ? num_indices : cdn_dimension_size (&dim));
+			            indices ? num_indices : cdn_matrix_size (values));
 		}
 
 		actions = g_slist_next (actions);

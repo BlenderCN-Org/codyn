@@ -55,7 +55,7 @@ struct _CdnVariablePrivate
 	CdnExpression *constraint;
 	CdnVariableFlags flags;
 
-	gdouble *update;
+	CdnMatrix update;
 	CdnObject *object;
 
 	CdnVariable *diff_of;
@@ -306,7 +306,7 @@ cdn_variable_finalize (GObject *object)
 
 	g_free (variable->priv->name);
 	g_free (variable->priv->annotation);
-	g_free (variable->priv->update);
+	cdn_matrix_destroy (&variable->priv->update);
 
 	G_OBJECT_CLASS (cdn_variable_parent_class)->finalize (object);
 }
@@ -719,44 +719,16 @@ cdn_variable_set_value (CdnVariable  *variable,
  * cdn_variable_set_values: (skip):
  * @variable: the #CdnVariable
  * @values: the new value
- * @dim: the dimension
  *
  * Change the value to a specific number.
  *
  **/
 void
-cdn_variable_set_values (CdnVariable        *variable,
-                         gdouble const      *values,
-                         CdnDimension const *dim)
+cdn_variable_set_values (CdnVariable     *variable,
+                         CdnMatrix const *values)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_set_values (variable->priv->expression,
-	                           values,
-	                           dim);
-}
-
-/**
- * cdn_variable_set_values_flat:
- * @variable: the #CdnVariable
- * @values: (array length=numvals): the new value
- * @numvals: the length of @values
- * @dim: the dimension
- *
- * Change variable value.
- *
- **/
-void
-cdn_variable_set_values_flat (CdnVariable        *variable,
-                              gdouble const      *values,
-                              gint                numvals,
-                              CdnDimension const *dim)
-{
-	g_return_if_fail (cdn_dimension_size (dim) == numvals);
-
-	/* Omit type check to increase speed */
-	cdn_expression_set_values (variable->priv->expression,
-	                           values,
-	                           dim);
+	cdn_expression_set_values (variable->priv->expression, values);
 }
 
 /**
@@ -799,20 +771,18 @@ cdn_variable_get_value (CdnVariable *variable)
 }
 
 /**
- * cdn_variable_get_values: (skip)
+ * cdn_variable_get_values:
  * @variable: a #CdnVariable.
- * @dim: (out): return value for the dimension
  *
  * Get the value of the variable.
  *
  * Returns: the value of the variable.
  *
  **/
-gdouble const *
-cdn_variable_get_values (CdnVariable  *variable,
-                         CdnDimension *dim)
+CdnMatrix const *
+cdn_variable_get_values (CdnVariable *variable)
 {
-	gdouble const *ret = NULL;
+	CdnMatrix const *ret = NULL;
 
 	if (variable->priv->expression)
 	{
@@ -820,8 +790,7 @@ cdn_variable_get_values (CdnVariable  *variable,
 		{
 			variable->priv->in_constraint = TRUE;
 
-			ret = cdn_expression_evaluate_values (variable->priv->constraint,
-			                                      dim);
+			ret = cdn_expression_evaluate_values (variable->priv->constraint);
 
 			variable->priv->in_constraint = FALSE;
 		}
@@ -837,48 +806,8 @@ cdn_variable_get_values (CdnVariable  *variable,
 				g_free (s);
 			}
 
-			ret = cdn_expression_evaluate_values (variable->priv->expression,
-			                                      dim);
+			ret = cdn_expression_evaluate_values (variable->priv->expression);
 		}
-	}
-	else
-	{
-		if (dim)
-		{
-			dim->rows = 0;
-			dim->columns = 0;
-		}
-	}
-
-	return ret;
-}
-
-/**
- * cdn_variable_get_values_flat:
- * @variable: a #CdnVariable.
- * @num: (out caller-allocates): return value for the number of elements in the return value.
- *
- * Get the value of a variable as a flat array. This is mostly useful for
- * bindings because it's difficult to bind #cdn_variable_get_values with
- * gobject introspection.
- *
- * Returns: (array length=num): the variable value.
- *
- **/
-gdouble const *
-cdn_variable_get_values_flat (CdnVariable *variable,
-                              gint        *num)
-{
-	CdnDimension dim;
-	gdouble const *ret;
-
-	g_return_val_if_fail (CDN_IS_VARIABLE (variable), NULL);
-
-	ret = cdn_variable_get_values (variable, &dim);
-
-	if (num)
-	{
-		*num = cdn_dimension_size (&dim);
 	}
 
 	return ret;
@@ -1179,82 +1108,28 @@ cdn_variable_remove_flags (CdnVariable      *variable,
 	set_flags (variable, variable->priv->flags & ~flags, TRUE);
 }
 
-/**
- * cdn_variable_set_update:
- * @variable: A #CdnVariable
- * @values: The update values
- * 
- * Set the update value of the variable. The update value is used to store the
- * result of differential equations on the variable/ You normally do not need
- * to use this function.
- *
- **/
-void
-cdn_variable_set_update (CdnVariable   *variable,
-                         gdouble const *values)
-{
-	CdnDimension dim;
-
-	cdn_expression_get_dimension (variable->priv->expression,
-	                              &dim);
-
-	/* Omit type check to increase speed */
-	memcpy (variable->priv->update,
-	        values,
-	        sizeof (gdouble) * cdn_dimension_size (&dim));
-}
-
 void
 cdn_variable_clear_update (CdnVariable *variable)
 {
-	CdnDimension dim;
-
-	cdn_expression_get_dimension (variable->priv->expression, &dim);
-
-	memset (variable->priv->update,
-	        0,
-	        sizeof (gdouble) * cdn_dimension_size (&dim));
-}
-
-void
-cdn_variable_set_update_value (CdnVariable        *variable,
-                               gdouble             value,
-                               CdnDimension const *dim)
-{
-	if (dim->columns < 0)
-	{
-		variable->priv->update[dim->rows] = value;
-	}
-	else
-	{
-		CdnDimension edim;
-
-		cdn_expression_get_dimension (variable->priv->expression,
-		                              &edim);
-
-		variable->priv->update[dim->rows * edim.columns + dim->columns] = value;
-	}
+	cdn_matrix_clear (&variable->priv->update);
 }
 
 /**
  * cdn_variable_get_update:
  * @variable: A #CdnVariable
- * @dim: (out): return value for the dimension
  *
  * Get the update value of a variable. The update value is used to store the
  * result of differential equations on the variable. You normally do not need
  * to use this function.
  *
- * Returns: The update value
+ * Returns: (transfer none): The update value
  *
  **/
-gdouble *
-cdn_variable_get_update (CdnVariable  *variable,
-                         CdnDimension *dim)
+CdnMatrix *
+cdn_variable_get_update (CdnVariable  *variable)
 {
 	/* Omit type check to increase speed */
-	cdn_expression_get_dimension (variable->priv->expression, dim);
-	return variable->priv->update;
+	return &variable->priv->update;
 }
 
 /**
@@ -1537,22 +1412,7 @@ cdn_variable_copy (CdnVariable *variable)
 	                        cdn_expression_copy (variable->priv->expression),
 	                        variable->priv->flags);
 
-	if (variable->priv->update)
-	{
-		CdnDimension dim;
-
-		if (cdn_expression_get_dimension (variable->priv->expression,
-		                                  &dim))
-		{
-			gint num = cdn_dimension_size (&dim);
-
-			ret->priv->update = g_new0 (gdouble, num);
-
-			memcpy (ret->priv->update,
-			        variable->priv->update,
-			        sizeof (gdouble) * num);
-		}
-	}
+	cdn_matrix_copy (&ret->priv->update, &variable->priv->update);
 
 	cdn_modifiable_set_modified (CDN_MODIFIABLE (ret),
 	                             variable->priv->modified);
@@ -1706,7 +1566,7 @@ cdn_variable_compile (CdnVariable       *variable,
 		ret = cdn_expression_compile (variable->priv->expression, context, error);
 		g_object_unref (context);
 	}
-	else if (variable->priv->update)
+	else if (variable->priv->update.values)
 	{
 		return TRUE;
 	}
@@ -1719,11 +1579,11 @@ cdn_variable_compile (CdnVariable       *variable,
 	{
 		CdnDimension dim;
 
-		cdn_expression_get_dimension (variable->priv->expression,
-		                              &dim);
+		cdn_expression_get_dimension (variable->priv->expression, &dim);
 
-		g_free (variable->priv->update);
-		variable->priv->update = g_new0 (gdouble, cdn_dimension_size (&dim));
+		cdn_matrix_set (&variable->priv->update,
+		                NULL,
+		                &dim);
 	}
 	else
 	{

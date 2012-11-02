@@ -117,15 +117,16 @@ static void
 cdn_instruction_variable_execute (CdnInstruction *instruction,
                                   CdnStack       *stack)
 {
-	gdouble const *values;
-	CdnDimension dim;
+	CdnMatrix const *values;
+	gdouble const *vals;
 
 	CdnInstructionVariable *self;
 
 	/* Direct cast to reduce overhead of GType cast */
 	self = (CdnInstructionVariable *)instruction;
 
-	values = cdn_variable_get_values (self->priv->property, &dim);
+	values = cdn_variable_get_values (self->priv->property);
+	vals = cdn_matrix_get (values);
 
 	if (self->priv->slice)
 	{
@@ -133,12 +134,14 @@ cdn_instruction_variable_execute (CdnInstruction *instruction,
 
 		for (i = 0; i < self->priv->slice_length; ++i)
 		{
-			cdn_stack_push (stack, values[self->priv->slice[i]]);
+			cdn_stack_push (stack, vals[self->priv->slice[i]]);
 		}
 	}
 	else
 	{
-		cdn_stack_pushn (stack, values, cdn_dimension_size (&dim));
+		cdn_stack_pushn (stack,
+		                 vals,
+		                 cdn_matrix_size (values));
 	}
 }
 

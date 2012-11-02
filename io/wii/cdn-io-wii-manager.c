@@ -856,11 +856,12 @@ set_binding_values (Binding *binding,
 {
 	if (binding->variables[i])
 	{
-		CdnDimension dim = CDN_DIMENSION (numr, numc);
+		CdnMatrix tmp = {
+			{.values = (gdouble *)vals},
+			.dimension = CDN_DIMENSION(numr, numc),
+		};
 
-		cdn_variable_set_values (binding->variables[i],
-		                         vals,
-		                         &dim);
+		cdn_variable_set_values (binding->variables[i], &tmp);
 	}
 }
 

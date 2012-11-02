@@ -891,11 +891,10 @@ static void
 execute_set_property (CdnEvent    *event,
                       SetProperty *p)
 {
-	CdnDimension dim;
-	gdouble const *values;
+	CdnMatrix const *values;
 
-	values = cdn_expression_evaluate_values (p->value, &dim);
-	cdn_variable_set_values (p->property, values, &dim);
+	values = cdn_expression_evaluate_values (p->value);
+	cdn_variable_set_values (p->property, values);
 }
 
 void

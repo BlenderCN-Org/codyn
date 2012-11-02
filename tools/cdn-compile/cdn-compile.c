@@ -77,10 +77,10 @@ static void
 display_variable (CdnVariable *v)
 {
 	gchar *name;
-	CdnDimension dim;
 	gint r;
 	gint c;
 	gint i;
+	CdnMatrix const *ret;
 	gdouble const *values;
 	gchar *fill;
 
@@ -90,9 +90,10 @@ display_variable (CdnVariable *v)
 
 	g_free (name);
 
-	values = cdn_variable_get_values (v, &dim);
+	ret = cdn_variable_get_values (v);
+	values = cdn_matrix_get (ret);
 
-	if (cdn_dimension_is_one (&dim))
+	if (cdn_dimension_is_one (&ret->dimension))
 	{
 		g_free (fill);
 		g_printf ("%.5f\n", values[0]);
@@ -103,14 +104,14 @@ display_variable (CdnVariable *v)
 
 	g_printf ("[");
 
-	for (r = 0; r < dim.rows; ++r)
+	for (r = 0; r < ret->dimension.rows; ++r)
 	{
 		if (r != 0)
 		{
 			g_printf ("%s", fill);
 		}
 
-		for (c = 0; c < dim.columns; ++c)
+		for (c = 0; c < ret->dimension.columns; ++c)
 		{
 			gchar *sv;
 
@@ -130,7 +131,7 @@ display_variable (CdnVariable *v)
 			++i;
 		}
 
-		if (r != dim.rows - 1)
+		if (r != ret->dimension.rows - 1)
 		{
 			g_printf ("\n");
 		}

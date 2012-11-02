@@ -119,11 +119,7 @@ void               cdn_variable_remove_flags            (CdnVariable        *var
 void               cdn_variable_reset                   (CdnVariable        *variable);
 
 gdouble            cdn_variable_get_value               (CdnVariable        *variable);
-gdouble const     *cdn_variable_get_values              (CdnVariable        *variable,
-                                                         CdnDimension       *dim);
-
-gdouble const     *cdn_variable_get_values_flat         (CdnVariable        *variable,
-                                                         gint               *num);
+CdnMatrix const   *cdn_variable_get_values              (CdnVariable        *variable);
 
 void               cdn_variable_get_dimension           (CdnVariable        *variable,
                                                          CdnDimension       *dim);
@@ -134,13 +130,7 @@ void               cdn_variable_set_value               (CdnVariable        *var
                                                          gdouble             value);
 
 void               cdn_variable_set_values              (CdnVariable        *variable,
-                                                         gdouble const      *values,
-                                                         CdnDimension const *dim);
-
-void               cdn_variable_set_values_flat         (CdnVariable        *variable,
-                                                         gdouble const      *values,
-                                                         gint                numvals,
-                                                         CdnDimension const *dim);
+                                                         CdnMatrix const    *values);
 
 void               cdn_variable_set_expression          (CdnVariable        *variable,
                                                          CdnExpression      *expression);
@@ -154,17 +144,9 @@ gboolean           cdn_variable_equal                   (CdnVariable        *var
                                                          CdnVariable        *other,
                                                          gboolean            asstring);
 
-void               cdn_variable_set_update              (CdnVariable        *variable,
-                                                         gdouble const      *values);
-
 void               cdn_variable_clear_update            (CdnVariable        *variable);
 
-void               cdn_variable_set_update_value        (CdnVariable        *variable,
-                                                         gdouble             value,
-                                                         CdnDimension const *dim);
-
-gdouble           *cdn_variable_get_update              (CdnVariable        *variable,
-                                                         CdnDimension       *dim);
+CdnMatrix         *cdn_variable_get_update              (CdnVariable        *variable);
 
 gchar             *cdn_variable_flags_to_string         (CdnVariableFlags    add_flags,
                                                          CdnVariableFlags    remove_flags);

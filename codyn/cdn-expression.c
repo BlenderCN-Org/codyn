@@ -72,13 +72,7 @@ struct _CdnExpressionPrivate
 	GSList *depends_on;
 	GSList *depends_on_me;
 
-	union
-	{
-		gdouble cached_output;
-		gdouble *cached_output_multi;
-	};
-
-	CdnDimension cached_dim;
+	CdnMatrix cached_output;
 
 	gint error_at;
 	GSList *error_start;
@@ -308,62 +302,14 @@ set_values (CdnExpression       *expression,
             gdouble       const *values,
             CdnDimension  const *dimension)
 {
-	gint cursize;
-	gint newsize;
-	CdnDimension olddim;
 	gboolean dimschanged;
 
-	cdn_expression_get_dimension (expression, &olddim);
+	dimschanged = !cdn_dimension_equal (&expression->priv->cached_output.dimension,
+	                                    dimension);
 
-	expression->priv->cached = TRUE;
-
-	cursize = cdn_dimension_size (&expression->priv->cached_dim);
-	newsize = cdn_dimension_size (dimension);
-
-	if (newsize == 1)
-	{
-		if (cursize != 1)
-		{
-			g_free (expression->priv->cached_output_multi);
-		}
-
-		expression->priv->cached_output = values ? *values : 0;
-	}
-	else
-	{
-		if (cursize != newsize)
-		{
-			if (cursize != 1)
-			{
-				expression->priv->cached_output_multi =
-					g_realloc (expression->priv->cached_output_multi,
-					           sizeof (gdouble) * newsize);
-			}
-			else
-			{
-				expression->priv->cached_output_multi =
-					g_new (gdouble, newsize);
-			}
-		}
-
-		if (expression->priv->cached_output_multi != values)
-		{
-			if (values)
-			{
-				memcpy (expression->priv->cached_output_multi,
-				        values,
-				        sizeof (gdouble) * newsize);
-			}
-			else
-			{
-				memset (expression->priv->cached_output_multi, 0, sizeof (gdouble) * newsize);
-			}
-		}
-	}
-
-	expression->priv->cached_dim = *dimension;
-
-	dimschanged = !cdn_dimension_equal (&olddim, dimension);
+	cdn_matrix_set (&expression->priv->cached_output,
+	                values,
+	                dimension);
 
 	if (expression->priv->has_cache || dimschanged)
 	{
@@ -394,6 +340,8 @@ cdn_expression_finalize (GObject *object)
 	                                    NULL,
 	                                    NULL);
 
+	cdn_matrix_destroy (&expression->priv->cached_output);
+
 	G_OBJECT_CLASS (cdn_expression_parent_class)->finalize (object);
 }
 
@@ -413,7 +361,7 @@ set_has_cache (CdnExpression *expression,
 		gboolean dimschanged;
 
 		dimschanged = expression->priv->cached &&
-		              !cdn_dimension_equal (&expression->priv->cached_dim,
+		              !cdn_dimension_equal (&expression->priv->cached_output.dimension,
 		                                    &expression->priv->retdim.dimension);
 
 		expression->priv->cached = FALSE;
@@ -4303,46 +4251,22 @@ cdn_expression_set_value (CdnExpression  *expression,
 {
 	set_values (expression, &value, cdn_dimension_onep);
 	expression->priv->prevent_cache_reset = TRUE;
-
 }
 
 /**
- * cdn_expression_set_values: (skip):
+ * cdn_expression_set_values:
  * @expression: A #CdnExpression
  * @values: the new values
- * @dim: the dimension
  *
  * Set expression value.
  *
  **/
 void
-cdn_expression_set_values (CdnExpression      *expression,
-                           gdouble const      *values,
-                           CdnDimension const *dim)
+cdn_expression_set_values (CdnExpression       *expression,
+                           CdnMatrix     const *values)
 {
-	set_values (expression, values, dim);
+	set_values (expression, cdn_matrix_get (values), &values->dimension);
 	expression->priv->prevent_cache_reset = TRUE;
-}
-
-/**
- * cdn_expression_set_values_flat:
- * @expression: A #CdnExpression
- * @values: (array length=numvals): the new values
- * @numvals: the number of values
- * @dim: the dimension
- *
- * Set expression value.
- *
- **/
-void
-cdn_expression_set_values_flat (CdnExpression      *expression,
-                                gdouble const      *values,
-                                gint                numvals,
-                                CdnDimension const *dim)
-{
-	g_return_if_fail (cdn_dimension_size (dim) == numvals);
-
-	cdn_expression_set_values (expression, values, dim);
 }
 
 /**
@@ -4360,31 +4284,10 @@ cdn_expression_set_values_flat (CdnExpression      *expression,
 gdouble
 cdn_expression_evaluate (CdnExpression *expression)
 {
-	gdouble const *ret;
+	CdnMatrix const *ret;
 
-	ret = cdn_expression_evaluate_values (expression,
-	                                      NULL);
-
-	return ret ? *ret : 0.0;
-}
-
-static gdouble const *
-values_from_cache (CdnExpression *expression,
-                   CdnDimension  *dimension)
-{
-	if (dimension)
-	{
-		*dimension = expression->priv->cached_dim;
-	}
-
-	if (cdn_dimension_is_one (&expression->priv->cached_dim))
-	{
-		return &(expression->priv->cached_output);
-	}
-	else
-	{
-		return expression->priv->cached_output_multi;
-	}
+	ret = cdn_expression_evaluate_values (expression);
+	return ret ? *cdn_matrix_get (ret) : 0;
 }
 
 static void
@@ -4396,15 +4299,14 @@ set_cache_from_stack (CdnExpression *expression)
 }
 
 /**
- * cdn_expression_evaluate_values: (skip)
+ * cdn_expression_evaluate_values:
  * @expression: a #CdnExpression
  *
  * Returns: the result of evaluating the expression
  *
  **/
-gdouble const *
-cdn_expression_evaluate_values (CdnExpression *expression,
-                                CdnDimension  *dimension)
+CdnMatrix const *
+cdn_expression_evaluate_values (CdnExpression *expression)
 {
 	/* Omit type check to increase speed */
 	if (!expression)
@@ -4414,7 +4316,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 	if (expression->priv->cached)
 	{
-		return values_from_cache (expression, dimension);
+		return &expression->priv->cached_output;
 	}
 
 	if (expression->priv->evaluate_notify)
@@ -4424,7 +4326,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 		if (expression->priv->cached)
 		{
-			return values_from_cache (expression, dimension);
+			return &expression->priv->cached_output;
 		}
 	}
 
@@ -4432,12 +4334,6 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 	CdnStack *stack = &(expression->priv->output);
 
 	cdn_stack_reset (stack);
-
-	if (dimension)
-	{
-		dimension->rows = 0;
-		dimension->columns = 0;
-	}
 
 	if (expression->priv->output.size == 0)
 	{
@@ -4497,12 +4393,13 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 	if (cdn_debug_is_enabled (CDN_DEBUG_MATH))
 	{
-		CdnDimension dim;
+		CdnMatrix const *mat;
 		gdouble const *vals;
 
-		vals = values_from_cache (expression, &dim);
+		mat = &expression->priv->cached_output;
+		vals = cdn_matrix_get (mat);
 
-		if (cdn_dimension_is_one (&dim))
+		if (cdn_dimension_is_one (&mat->dimension))
 		{
 			cdn_debug_message (DEBUG_MATH, "Evaluated: %g", *vals);
 		}
@@ -4513,7 +4410,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 
 			msg = g_string_new ("Evaluated: [");
 
-			for (i = 0; i < cdn_dimension_size (&dim); ++i)
+			for (i = 0; i < cdn_matrix_size (mat); ++i)
 			{
 				if (i != 0)
 				{
@@ -4528,36 +4425,7 @@ cdn_expression_evaluate_values (CdnExpression *expression,
 		}
 	}
 
-	return values_from_cache (expression, dimension);
-}
-
-/**
- * cdn_expression_evaluate_values_flat:
- * @expression: a #CdnExpression.
- * @num: (out caller-allocates): return value of the number of values.
- *
- * Get the values of the expression as a flat array. This is only really
- * useful for bindings because #cdn_expression_evaluate_values is difficult
- * to bind with gobject introspection.
- *
- * Returns: (array length=num) the expression values.
- *
- **/
-gdouble const *
-cdn_expression_evaluate_values_flat (CdnExpression *expression,
-                                     gint          *num)
-{
-	CdnDimension dimension;
-	gdouble const *ret;
-
-	ret = cdn_expression_evaluate_values (expression, &dimension);
-
-	if (num)
-	{
-		*num = cdn_dimension_size (&dimension);
-	}
-
-	return ret;
+	return &expression->priv->cached_output;
 }
 
 static gboolean
@@ -4737,7 +4605,7 @@ cdn_expression_reset (CdnExpression *expression)
 	reset_cache (expression,
 	             expression->priv->cached &&
 	             !cdn_dimension_equal (&expression->priv->retdim.dimension,
-	                                   &expression->priv->cached_dim));
+	                                   &expression->priv->cached_output.dimension));
 
 	if (expression->priv->once)
 	{
@@ -4922,31 +4790,13 @@ cdn_expression_copy (CdnExpression *expression)
 	ret->priv->cached = expression->priv->cached;
 	ret->priv->prevent_cache_reset = expression->priv->prevent_cache_reset;
 
-	ret->priv->cached_dim = expression->priv->cached_dim;
-
 	cdn_stack_arg_copy (&ret->priv->retdim, &expression->priv->retdim);
 
 	cdn_stack_resize (&ret->priv->output, expression->priv->output.size);
 	cdn_stack_reset (&ret->priv->output);
 
-	if (cdn_dimension_is_one (&ret->priv->cached_dim))
-	{
-		ret->priv->cached_output = expression->priv->cached_output;
-	}
-	else
-	{
-		gint num;
-		gint i;
-
-		num = cdn_dimension_size (&ret->priv->cached_dim);
-		ret->priv->cached_output_multi = g_new (gdouble, num);
-
-		for (i = 0; i < num; ++i)
-		{
-			ret->priv->cached_output_multi[i] =
-				expression->priv->cached_output_multi[i];
-		}
-	}
+	cdn_matrix_copy (&ret->priv->cached_output,
+	                 &expression->priv->cached_output);
 
 	ret->priv->modified = expression->priv->modified;
 	ret->priv->has_cache = expression->priv->has_cache;
@@ -5040,7 +4890,7 @@ cdn_expression_get_dimension (CdnExpression *expression,
 {
 	if (expression->priv->cached)
 	{
-		*dimension = expression->priv->cached_dim;
+		*dimension = expression->priv->cached_output.dimension;
 		return TRUE;
 	}
 
@@ -5082,41 +4932,6 @@ cdn_expression_set_evaluate_notify (CdnExpression               *expression,
 	expression->priv->evaluate_destroy_notify = destroy_notify;
 	expression->priv->evaluate_userdata = userdata;
 	expression->priv->evaluate_notify = notify;
-}
-
-gdouble *
-cdn_expression_get_cache (CdnExpression *expression,
-                          CdnDimension  *dimension)
-{
-	if ((expression->priv->retdim.rows > 1 ||
-	     expression->priv->retdim.columns > 1))
-	{
-		if ((expression->priv->cached_dim.rows <= 1 &&
-		     expression->priv->cached_dim.columns <= 1) ||
-		    !expression->priv->cached_output_multi)
-		{
-			expression->priv->cached_output_multi =
-				g_new0 (gdouble,
-				        cdn_dimension_size (&expression->priv->retdim.dimension));
-
-			expression->priv->cached_dim = expression->priv->retdim.dimension;
-		}
-
-		if (dimension)
-		{
-			*dimension = expression->priv->cached_dim;
-		}
-
-		return expression->priv->cached_output_multi;
-	}
-
-	if (dimension)
-	{
-		dimension->rows = 0;
-		dimension->columns = 0;
-	}
-
-	return NULL;
 }
 
 /**

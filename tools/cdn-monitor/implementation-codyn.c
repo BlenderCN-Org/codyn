@@ -24,7 +24,7 @@ variable_get_name (CdnMonitorVariable *v)
 static gdouble const *
 variable_get_values (CdnMonitorVariable *v)
 {
-	return cdn_variable_get_values (v->variable, NULL);
+	return cdn_matrix_get (cdn_variable_get_values (v->variable));
 }
 
 static CdnMonitorVariable *

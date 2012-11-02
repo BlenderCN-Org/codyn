@@ -131,19 +131,19 @@ history_update_states (CdnIntegratorPredictCorrect *pc,
 {
 	while (states)
 	{
-		CdnDimension dim;
 		gint n;
-		gdouble const *vals;
 		gint j;
+		CdnMatrix *up;
+		gdouble *upvals;
 
-		vals = cdn_variable_get_update (states->data,
-		                                &dim);
+		up = cdn_variable_get_update (states->data);
+		upvals = cdn_matrix_get_memory (up);
 
-		n = cdn_dimension_size (&dim);
+		n = cdn_matrix_size (up);
 
 		for (j = 0; j < n; ++j)
 		{
-			history_set (pc, (*i)++, 0, vals[j]);
+			history_set (pc, (*i)++, 0, upvals[j]);
 		}
 
 		states = g_slist_next (states);
@@ -195,12 +195,13 @@ prediction_step (CdnIntegratorPredictCorrect *pc,
 	{
 		CdnVariable *prop = integrated->data;
 		guint coeff_index;
-		CdnDimension dim;
+		CdnMatrix *up;
 		gint i;
 		gint n;
+		CdnMatrix tmp;
 
-		cdn_variable_get_update (prop, &dim);
-		n = cdn_dimension_size (&dim);
+		up = cdn_variable_get_update (prop);
+		n = cdn_matrix_size (up);
 
 		/* derivative prediction for t+1 */
 		for (i = 0; i < n; ++i)
@@ -219,9 +220,10 @@ prediction_step (CdnIntegratorPredictCorrect *pc,
 				timestep * pc->priv->tmpd[i];
 		}
 
-		cdn_variable_set_values (prop,
-		                         pc->priv->tmpd,
-		                         &dim);
+		tmp.values = pc->priv->tmpd;
+		tmp.dimension = up->dimension;
+
+		cdn_variable_set_values (prop, &tmp);
 
 		integrated = g_slist_next (integrated);
 		state_index += n;
@@ -246,18 +248,20 @@ correction_step (CdnIntegratorPredictCorrect *pc,
 	{
 		CdnVariable *prop = integrated->data;
 		guint coeff_index;
-		CdnDimension dim;
-		gdouble const *vals;
+		CdnMatrix *up;
+		gdouble const *upvals;
 		gint i;
 		gint n;
+		CdnMatrix tmp;
 
-		vals = cdn_variable_get_update (prop, &dim);
-		n = cdn_dimension_size (&dim);
+		up = cdn_variable_get_update (prop);
+		upvals = cdn_matrix_get (up);
+		n = cdn_matrix_size (up);
 
 		/* derivative prediction for t+1 */
 		for (i = 0; i < n; ++i)
 		{
-			pc->priv->tmpd[i] = correction_coeffs[coeff_row][0] * vals[i];
+			pc->priv->tmpd[i] = correction_coeffs[coeff_row][0] * upvals[i];
 
 			for (coeff_index = 1; coeff_index < n_coeffs; ++coeff_index)
 			{
@@ -265,12 +269,13 @@ correction_step (CdnIntegratorPredictCorrect *pc,
 			}
 
 			pc->priv->tmpd[i] = pc->priv->current_value[state_index + i] +
-			                         timestep * pc->priv->tmpd[i];
+			                    timestep * pc->priv->tmpd[i];
 		}
 
-		cdn_variable_set_values (prop,
-		                         pc->priv->tmpd,
-		                         &dim);
+		tmp.dimension = up->dimension;
+		tmp.values = pc->priv->tmpd;
+
+		cdn_variable_set_values (prop, &tmp);
 
 		integrated = g_slist_next (integrated);
 		state_index += n;

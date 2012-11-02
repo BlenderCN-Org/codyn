@@ -122,9 +122,8 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
                     guint                    order,
                     gdouble                  norm)
 {
-	guint i = 0;
-	guint n;
-	CdnDimension dim;
+	gint i = 0;
+	gint n;
 
 	while (integrated)
 	{
@@ -132,14 +131,12 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 
 		if (order == 0)
 		{
-			gdouble const *vals;
+			CdnMatrix const *vals;
 
-			vals = cdn_variable_get_values (prop, &dim);
-			n = cdn_dimension_size (&dim);
+			vals = cdn_variable_get_values (prop);
+			cdn_matrix_copy_to (vals, rk->priv->coefficients[0] + i);
 
-			memcpy (rk->priv->coefficients[0] + i,
-			        vals,
-			        sizeof (gdouble) * n);
+			n = cdn_matrix_size (vals);
 		}
 		else
 		{
@@ -147,10 +144,13 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 			{
 				/* Do the final update right away */
 				gint j;
-				gdouble *up;
+				CdnMatrix *up;
+				gdouble *upvals;
 
-				up = cdn_variable_get_update (prop, &dim);
-				n = cdn_dimension_size (&dim);
+				up = cdn_variable_get_update (prop);
+				upvals = cdn_matrix_get_memory (up);
+
+				n = cdn_matrix_size (up);
 
 				for (j = 0; j < n; ++j)
 				{
@@ -160,37 +160,35 @@ store_coefficients (CdnIntegratorRungeKutta *rk,
 					v = rk->priv->coefficients[1][idx] +
 					    2 * rk->priv->coefficients[2][idx] +
 					    2 * rk->priv->coefficients[3][idx] +
-					    up[j];
+					    upvals[j];
 
-					up[j] = rk->priv->coefficients[0][idx] +
-					         1.0 / 6.0 * norm * v;
+					upvals[j] = rk->priv->coefficients[0][idx] +
+					            1.0 / 6.0 * norm * v;
 				}
 
-				cdn_variable_set_values (prop, up, &dim);
+				cdn_variable_set_values (prop, up);
 			}
 			else
 			{
-				gdouble *ret;
+				CdnMatrix *ret;
+				gdouble *retvals;
 				gint j;
 
-				ret = cdn_variable_get_update (prop, &dim);
+				ret = cdn_variable_get_update (prop);
+				retvals = cdn_matrix_get_memory (ret);
 
-				cdn_expression_get_dimension (cdn_variable_get_expression (prop),
-				                              &dim);
+				n = cdn_matrix_size (ret);
 
-				n = cdn_dimension_size (&dim);
-
-				memcpy (rk->priv->coefficients[order] + i,
-				        ret,
-				        sizeof (gdouble) * n);
+				cdn_matrix_copy_to (ret,
+				                    rk->priv->coefficients[order] + i);
 
 				for (j = 0; j < n; ++j)
 				{
-					ret[j] = rk->priv->coefficients[0][i + j] +
-					          norm * ret[j];
+					retvals[j] = rk->priv->coefficients[0][i + j] +
+					             norm * retvals[j];
 				}
 
-				cdn_variable_set_values (prop, ret, &dim);
+				cdn_variable_set_values (prop, ret);
 			}
 		}
 

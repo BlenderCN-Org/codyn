@@ -766,21 +766,21 @@ cdn_edge_action_set_index (CdnEdgeAction *action,
 static void
 get_indices (CdnEdgeAction *action)
 {
-	CdnDimension dim;
-	gdouble const *values;
+	CdnMatrix const *values;
+	gdouble const *vals;
 	gint i;
 
-	values = cdn_expression_evaluate_values (action->priv->index,
-	                                         &dim);
+	values = cdn_expression_evaluate_values (action->priv->index);
+	vals = cdn_matrix_get (values);
 
-	action->priv->num_indices = cdn_dimension_size (&dim);
+	action->priv->num_indices = cdn_matrix_size (values);
 
 	g_free (action->priv->indices);
 	action->priv->indices = g_new (gint, action->priv->num_indices);
 
 	for (i = 0; i < action->priv->num_indices; ++i)
 	{
-		action->priv->indices[i] = (gint)rint (values[i]);
+		action->priv->indices[i] = (gint)rint (vals[i]);
 	}
 }
 

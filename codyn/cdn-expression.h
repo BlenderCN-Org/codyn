@@ -29,6 +29,7 @@
 #include <codyn/cdn-utils.h>
 #include <codyn/cdn-forward-decl.h>
 #include <codyn/cdn-stack.h>
+#include <codyn/cdn-matrix.h>
 
 G_BEGIN_DECLS
 
@@ -88,28 +89,15 @@ gboolean       cdn_expression_compile          (CdnExpression      *expression,
 
 gdouble        cdn_expression_evaluate         (CdnExpression      *expression);
 
-gdouble const *cdn_expression_evaluate_values  (CdnExpression      *expression,
-                                                CdnDimension       *dim);
-
-gdouble const *cdn_expression_evaluate_values_flat (CdnExpression      *expression,
-                                                    gint               *num);
+CdnMatrix const *cdn_expression_evaluate_values  (CdnExpression      *expression);
 
 void           cdn_expression_set_value        (CdnExpression      *expression,
                                                 gdouble             value);
 
 void           cdn_expression_set_values       (CdnExpression      *expression,
-                                                gdouble const      *values,
-                                                CdnDimension const *dim);
-
-void           cdn_expression_set_values_flat  (CdnExpression      *expression,
-                                                gdouble const      *values,
-                                                gint                numvals,
-                                                CdnDimension const *dim);
+                                                CdnMatrix const    *values);
 
 gboolean       cdn_expression_is_cached        (CdnExpression      *expression);
-
-gdouble       *cdn_expression_get_cache        (CdnExpression      *expression,
-                                                CdnDimension       *dim);
 
 void           cdn_expression_reset            (CdnExpression      *expression);
 
