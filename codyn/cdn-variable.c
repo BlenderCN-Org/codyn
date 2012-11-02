@@ -650,6 +650,9 @@ cdn_variable_init (CdnVariable *self)
 {
 	self->priv = CDN_VARIABLE_GET_PRIVATE (self);
 
+	self->priv->update.dimension.rows = 1;
+	self->priv->update.dimension.columns = 1;
+
 	self->priv->modified = FALSE;
 }
 

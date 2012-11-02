@@ -483,6 +483,8 @@ cdn_expression_init (CdnExpression *self)
 	self->priv = CDN_EXPRESSION_GET_PRIVATE (self);
 
 	self->priv->has_cache = TRUE;
+	self->priv->cached_output.dimension.rows = 1;
+	self->priv->cached_output.dimension.columns = 1;
 
 	cdn_stack_init (&(self->priv->output), 0);
 }
