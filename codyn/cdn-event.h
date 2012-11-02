@@ -43,6 +43,7 @@ CdnEvent        *cdn_event_new               (gchar const   *id,
 
 gboolean         cdn_event_happened          (CdnEvent      *event,
                                               gdouble       *dist);
+gdouble          cdn_event_last_distance     (CdnEvent      *event);
 
 void             cdn_event_update            (CdnEvent      *event);
 CdnExpression *  cdn_event_get_condition     (CdnEvent      *event);

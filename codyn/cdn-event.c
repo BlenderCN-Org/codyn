@@ -23,6 +23,7 @@ struct _LogicalNode
 	// Only for terminal nodes
 	CdnExpression *expression;
 
+	gdouble last_distance;
 	gdouble value;
 };
 
@@ -54,7 +55,6 @@ static void cdn_phaseable_iface_init (gpointer iface);
 
 static gboolean logical_node_happened (CdnEvent    *event,
                                        LogicalNode *node,
-                                       gdouble     *dist,
                                        gdouble     *retval,
                                        gboolean     update);
 
@@ -252,21 +252,18 @@ condition_holds (CdnEvent    *event,
 static gboolean
 logical_node_happened_and (CdnEvent    *event,
                            LogicalNode *node,
-                           gdouble     *dist,
                            gdouble     *retval,
                            gboolean     update)
 {
-	gdouble ldist;
 	gdouble lval;
-	gdouble rdist;
 	gdouble rval;
 	gboolean lhap;
 	gboolean rhap;
 
 	// At least left OR right need to have happened and
 	// if so, the other should at least be TRUE now
-	lhap = logical_node_happened (event, node->left, &ldist, &lval, update);
-	rhap = logical_node_happened (event, node->right, &rdist, &rval, update);
+	lhap = logical_node_happened (event, node->left, &lval, update);
+	rhap = logical_node_happened (event, node->right, &rval, update);
 
 	if (retval)
 	{
@@ -278,32 +275,24 @@ logical_node_happened_and (CdnEvent    *event,
 		node->value = 1;
 	}
 
+	node->last_distance = 0;
+
 	if (lhap && rhap)
 	{
 		// Both happened, use worst case as distance
-		if (dist)
-		{
-			*dist = ldist > rdist ? ldist : rdist;
-		}
+		node->last_distance = MAX(node->left->last_distance,
+		                          node->right->last_distance);
 
 		return TRUE;
 	}
 	else if (lhap && condition_holds (event, node->right, rval))
 	{
-		if (dist)
-		{
-			*dist = ldist;
-		}
-
+		node->last_distance = node->left->last_distance;
 		return TRUE;
 	}
 	else if (rhap && condition_holds (event, node->left, lval))
 	{
-		if (dist)
-		{
-			*dist = rdist;
-		}
-
+		node->last_distance = node->right->last_distance;
 		return TRUE;
 	}
 	else
@@ -325,20 +314,17 @@ logical_node_happened_and (CdnEvent    *event,
 static gboolean
 logical_node_happened_or (CdnEvent    *event,
                           LogicalNode *node,
-                          gdouble     *dist,
                           gdouble     *retval,
                           gboolean     update)
 {
-	gdouble ldist;
 	gdouble lval;
-	gdouble rdist;
 	gdouble rval;
 	gboolean lhap;
 	gboolean rhap;
 
 	// At least left OR right need to have happened
-	lhap = logical_node_happened (event, node->left, &ldist, &lval, update);
-	rhap = logical_node_happened (event, node->right, &rdist, &rval, update);
+	lhap = logical_node_happened (event, node->left, &lval, update);
+	rhap = logical_node_happened (event, node->right, &rval, update);
 
 	if (retval)
 	{
@@ -350,31 +336,23 @@ logical_node_happened_or (CdnEvent    *event,
 		node->value = 1;
 	}
 
+	node->last_distance = 0;
+
 	if (lhap && rhap)
 	{
-		if (dist)
-		{
-			*dist = ldist > rdist ? ldist : rdist;
-		}
+		node->last_distance = MAX(node->left->last_distance,
+		                          node->right->last_distance);
 
 		return TRUE;
 	}
 	else if (lhap)
 	{
-		if (dist)
-		{
-			*dist = ldist;
-		}
-
+		node->last_distance = node->left->last_distance;
 		return TRUE;
 	}
 	else if (rhap)
 	{
-		if (dist)
-		{
-			*dist = rdist;
-		}
-
+		node->last_distance = node->right->last_distance;
 		return TRUE;
 	}
 	else
@@ -396,7 +374,6 @@ logical_node_happened_or (CdnEvent    *event,
 static gboolean
 logical_node_happened (CdnEvent    *event,
                        LogicalNode *node,
-                       gdouble     *dist,
                        gdouble     *retval,
                        gboolean     update)
 {
@@ -404,11 +381,11 @@ logical_node_happened (CdnEvent    *event,
 
 	if (node->type == CDN_MATH_FUNCTION_TYPE_AND)
 	{
-		return logical_node_happened_and (event, node, dist, retval, update);
+		return logical_node_happened_and (event, node, retval, update);
 	}
 	else if (node->type == CDN_MATH_FUNCTION_TYPE_OR)
 	{
-		return logical_node_happened_or (event, node, dist, retval, update);
+		return logical_node_happened_or (event, node, retval, update);
 	}
 
 	val = cdn_expression_evaluate (node->expression);
@@ -422,6 +399,8 @@ logical_node_happened (CdnEvent    *event,
 	{
 		node->value = val;
 	}
+
+	node->last_distance = 0;
 
 	switch (node->type)
 	{
@@ -440,26 +419,23 @@ logical_node_happened (CdnEvent    *event,
 	break;
 	}
 
-	if (dist)
+	if (node->type == CDN_MATH_FUNCTION_TYPE_EQUAL)
 	{
-		if (node->type == CDN_MATH_FUNCTION_TYPE_EQUAL)
+		node->last_distance = 0;
+	}
+	else
+	{
+		gdouble df = val - node->value;
+
+		if (df <= event->priv->approximation)
 		{
-			*dist = 0;
+			node->last_distance = 0;
 		}
 		else
 		{
-			gdouble df = val - node->value;
-
-			if (df <= event->priv->approximation)
-			{
-				*dist = 0;
-			}
-			else
-			{
-				// Distance is measured relative to the change occuring
-				// between two steps (i.e. a fraction)
-				*dist = -node->value / df;
-			}
+			// Distance is measured relative to the change occuring
+			// between two steps (i.e. a fraction)
+			node->last_distance = -node->value / df;
 		}
 	}
 
@@ -472,7 +448,6 @@ logical_node_update (CdnEvent    *event,
 {
 	logical_node_happened (event,
 	                       node,
-	                       NULL,
 	                       NULL,
 	                       TRUE);
 }
@@ -858,15 +833,29 @@ cdn_event_set_approximation (CdnEvent *event,
 	}
 }
 
+gdouble
+cdn_event_last_distance (CdnEvent *event)
+{
+	return event->priv->condition_node->last_distance;
+}
+
 gboolean
 cdn_event_happened (CdnEvent *event,
                     gdouble  *dist)
 {
-	return logical_node_happened (event,
-	                              event->priv->condition_node,
-	                              dist,
-	                              NULL,
-	                              FALSE);
+	gboolean ret;
+
+	ret = logical_node_happened (event,
+	                             event->priv->condition_node,
+	                             NULL,
+	                             FALSE);
+
+	if (ret && dist)
+	{
+		*dist = event->priv->condition_node->last_distance;
+	}
+
+	return ret;
 }
 
 void
