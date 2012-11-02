@@ -153,7 +153,7 @@ logical_node_new (CdnEvent              *event,
 			// Compute with minus, but swap arguments (and therefore dims)
 			CdnStackArg arg[2] = {
 				smanip->pop.args[1],
-				smanip->pop.args[2],
+				smanip->pop.args[0],
 			};
 
 			CdnStackArgs args = {
