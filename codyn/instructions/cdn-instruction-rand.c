@@ -21,8 +21,10 @@ typedef struct
 {
 	CdnInstructionRandPrivate priv;
 
+#ifndef MINGW
 	char state[8];
 	guint seed;
+#endif
 } CdnInstructionRandStatePrivate;
 
 G_DEFINE_TYPE (CdnInstructionRand, cdn_instruction_rand, CDN_TYPE_INSTRUCTION)
