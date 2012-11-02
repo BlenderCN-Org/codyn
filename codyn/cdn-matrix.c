@@ -206,6 +206,84 @@ cdn_matrix_get (CdnMatrix const *matrix)
 }
 
 /**
+ * cdn_matrix_get_at:
+ * @matrix: a #CdnMatrix.
+ * @r: the value row.
+ * @c: the value column.
+ *
+ * Get a single value at a particular position in the matrix. Note that this
+ * is mostly useful for bindings and potentially slow. If you want to get
+ * values from the matrix just use #cdn_matrix_get and get the values
+ * directly.
+ *
+ * Returns: the value at @r, @c
+ *
+ **/
+gdouble
+cdn_matrix_get_at (CdnMatrix const *matrix,
+                   gint             r,
+                   gint             c)
+{
+	if (r >= matrix->dimension.rows || c >= matrix->dimension.columns)
+	{
+		g_warning ("Index out of bounds (%d, %d) > (%d, %d)",
+		           r, c,
+		           matrix->dimension.rows,
+		           matrix->dimension.columns);
+
+		return 0;
+	}
+
+	if (cdn_dimension_is_one (&matrix->dimension))
+	{
+		return matrix->value;
+	}
+	else
+	{
+		return matrix->values[r * matrix->dimension.columns + c];
+	}
+}
+
+/**
+ * cdn_matrix_set_at:
+ * @matrix: a #CdnMatrix.
+ * @r: the value row.
+ * @c: the value column.
+ * @value: the value.
+ *
+ * Set a single value at a particular position in the matrix. Note that this
+ * is mostly useful for bindings and potentially slow. If you want to set
+ * values in the matrix just use #cdn_matrix_get_memory and set the values
+ * directly.
+ *
+ **/
+void
+cdn_matrix_set_at (CdnMatrix *matrix,
+                   gint       r,
+                   gint       c,
+                   gdouble    value)
+{
+	if (r >= matrix->dimension.rows || c >= matrix->dimension.columns)
+	{
+		g_warning ("Index out of bounds (%d, %d) > (%d, %d)",
+		           r, c,
+		           matrix->dimension.rows,
+		           matrix->dimension.columns);
+
+		return;
+	}
+
+	if (cdn_dimension_is_one (&matrix->dimension))
+	{
+		matrix->value = value;
+	}
+	else
+	{
+		matrix->values[r * matrix->dimension.columns + c] = value;
+	}
+}
+
+/**
  * cdn_matrix_get: (skip):
  * @matrix: a #CdnMatrix.
  *
@@ -309,4 +387,19 @@ cdn_matrix_clear (CdnMatrix *matrix)
 	{
 		memset (matrix->values, 0, sizeof (gdouble) * cdn_matrix_size (matrix));
 	}
+}
+
+/**
+ * cdn_matrix_dimension:
+ * @matrix: a #CdnMatrix.
+ *
+ * Get the dimension of the matrix.
+ *
+ * Returns: a #CdnDimension.
+ *
+ **/
+CdnDimension const *
+cdn_matrix_dimension (CdnMatrix const *matrix)
+{
+	return &matrix->dimension;
 }
