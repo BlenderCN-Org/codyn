@@ -187,7 +187,6 @@ logical_node_new (CdnEvent              *event,
 			                                         &smanip->pop);
 
 			cdn_expression_tree_iter_set_instruction (iter, newinstr);
-			cdn_expression_tree_iter_set_instruction (iter, newinstr);
 
 			node = g_slice_new0 (LogicalNode);
 			node->type = type;
