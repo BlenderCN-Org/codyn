@@ -74,6 +74,8 @@ void        cdn_phaseable_foreach            (CdnPhaseable            *phaseable
 gboolean    cdn_phaseable_equal              (CdnPhaseable            *phaseable,
                                               CdnPhaseable            *other);
 
+gchar     **cdn_phaseable_get_phases         (CdnPhaseable            *phaseable) G_GNUC_WARN_UNUSED_RESULT;
+
 G_END_DECLS
 
 #endif /* __CDN_PHASEABLE_H__ */

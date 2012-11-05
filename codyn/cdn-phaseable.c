@@ -304,3 +304,42 @@ cdn_phaseable_foreach (CdnPhaseable            *phaseable,
 		                      &info);
 	}
 }
+
+static void
+phaseable_foreach_add (gchar const *key,
+                       gpointer     value,
+                       GPtrArray   *ptr)
+{
+	g_ptr_array_add (ptr, g_strdup (key));
+}
+
+/**
+ * cdn_phaseable_get_phases:
+ * @phaseable: a #CdnPhaseable.
+ *
+ * Get the list of phases. The returned list should be freed with #g_strfreev.
+ *
+ * Returns: (transfer full): %NULL terminated list of phases. Free the return
+ *                           value with #g_strfreev when done.
+ *
+ **/
+gchar **
+cdn_phaseable_get_phases (CdnPhaseable *phaseable)
+{
+	GPtrArray *ret;
+
+	ret = g_ptr_array_new ();
+
+	GHashTable *table;
+	table = cdn_phaseable_get_phase_table (phaseable);
+
+	if (table)
+	{
+		g_hash_table_foreach (table,
+		                      (GHFunc)phaseable_foreach_add,
+		                      ret);
+	}
+
+	g_ptr_array_add (ret, NULL);
+	return (gchar **)g_ptr_array_free (ret, FALSE);
+}
