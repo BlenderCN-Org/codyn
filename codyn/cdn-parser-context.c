@@ -1336,6 +1336,14 @@ add_variable_diff (CdnParserContext  *context,
 
 			prop = cdn_object_get_variable (CDN_OBJECT (obj), fname);
 		}
+		else if (i != order - 1 && cdn_variable_get_derivative (prop) != NULL)
+		{
+			// Do nothing
+			g_free (fname);
+			g_free (dfname);
+
+			continue;
+		}
 
 		cdn_variable_set_flags (prop, (CDN_VARIABLE_FLAG_INTEGRATED | add_flags) & ~remove_flags);
 
