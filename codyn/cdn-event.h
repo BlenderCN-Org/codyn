@@ -35,6 +35,8 @@ struct _CdnEventClass
 	CdnNodeClass parent_class;
 };
 
+typedef struct _CdnEventSetVariable CdnEventSetVariable;
+
 GType            cdn_event_get_type          (void) G_GNUC_CONST;
 
 CdnEvent        *cdn_event_new               (gchar const   *id,
@@ -70,6 +72,12 @@ void             cdn_event_set_terminal      (CdnEvent      *event,
 gboolean         cdn_event_get_terminal      (CdnEvent      *event);
 
 void             cdn_event_execute           (CdnEvent      *event);
+
+GSList const    *cdn_event_get_set_variables         (CdnEvent            *event);
+
+GType            cdn_event_set_variable_get_type     (void);
+CdnExpression   *cdn_event_set_variable_get_value    (CdnEventSetVariable *variable);
+CdnVariable     *cdn_event_set_variable_get_variable (CdnEventSetVariable *variable);
 
 G_END_DECLS
 

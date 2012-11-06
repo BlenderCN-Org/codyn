@@ -34,7 +34,7 @@ struct _CdnEventPrivate
 
 	gdouble approximation;
 
-	GSList *set_properties;
+	GSList *set_variables;
 	GSList *set_flags;
 
 	GSList *events;
@@ -45,11 +45,13 @@ struct _CdnEventPrivate
 	guint terminal : 1;
 };
 
-typedef struct
+struct _CdnEventSetVariable
 {
-	CdnVariable *property;
+	CdnVariable *variable;
 	CdnExpression *value;
-} SetProperty;
+};
+
+typedef CdnEventSetVariable SetVariable;
 
 static void cdn_phaseable_iface_init (gpointer iface);
 
@@ -452,26 +454,32 @@ logical_node_update (CdnEvent    *event,
 	                       TRUE);
 }
 
-static SetProperty *
-set_property_new (CdnVariable   *property,
+static SetVariable *
+set_variable_new (CdnVariable   *property,
                   CdnExpression *expression)
 {
-	SetProperty *ret;
+	SetVariable *ret;
 
-	ret = g_slice_new0 ( SetProperty);
-	ret->property = g_object_ref_sink (property);
+	ret = g_slice_new0 ( SetVariable);
+	ret->variable = g_object_ref_sink (property);
 	ret->value = g_object_ref_sink (expression);
 
 	return ret;
 }
 
-static void
-set_property_free (SetProperty *self)
+static SetVariable *
+set_variable_copy (SetVariable *v)
 {
-	g_object_unref (self->property);
+	return set_variable_new (v->variable, v->value);
+}
+
+static void
+set_variable_free (SetVariable *self)
+{
+	g_object_unref (self->variable);
 	g_object_unref (self->value);
 
-	g_slice_free (SetProperty, self);
+	g_slice_free (SetVariable, self);
 }
 
 static GHashTable *
@@ -521,8 +529,8 @@ cdn_event_finalize (GObject *object)
 
 	g_free (self->priv->goto_state);
 
-	g_slist_foreach (self->priv->set_properties,
-	                 (GFunc)set_property_free,
+	g_slist_foreach (self->priv->set_variables,
+	                 (GFunc)set_variable_free,
 	                 NULL);
 
 	if (self->priv->states)
@@ -684,12 +692,12 @@ cdn_event_compile_impl (CdnObject         *object,
 		return FALSE;
 	}
 
-	for (item = event->priv->set_properties; item; item = g_slist_next (item))
+	for (item = event->priv->set_variables; item; item = g_slist_next (item))
 	{
-		SetProperty *p = item->data;
+		SetVariable *p = item->data;
 		CdnCompileContext *ctx;
 
-		ctx = cdn_object_get_compile_context (cdn_variable_get_object (p->property),
+		ctx = cdn_object_get_compile_context (cdn_variable_get_object (p->variable),
 		                                      NULL);
 
 		// Add the event object in the context as well
@@ -863,26 +871,26 @@ cdn_event_add_set_variable (CdnEvent      *event,
                             CdnVariable   *property,
                             CdnExpression *value)
 {
-	SetProperty *p;
+	SetVariable *p;
 
 	g_return_if_fail (CDN_IS_EVENT (event));
 	g_return_if_fail (CDN_IS_VARIABLE (property));
 	g_return_if_fail (CDN_IS_EXPRESSION (value));
 
-	p = set_property_new (property, value);
+	p = set_variable_new (property, value);
 
-	event->priv->set_properties = g_slist_append (event->priv->set_properties,
+	event->priv->set_variables = g_slist_append (event->priv->set_variables,
 	                                              p);
 }
 
 static void
 execute_set_property (CdnEvent    *event,
-                      SetProperty *p)
+                      SetVariable *p)
 {
 	CdnMatrix const *values;
 
 	values = cdn_expression_evaluate_values (p->value);
-	cdn_variable_set_values (p->property, values);
+	cdn_variable_set_values (p->variable, values);
 }
 
 void
@@ -890,7 +898,7 @@ cdn_event_execute (CdnEvent *event)
 {
 	GSList *setprop;
 
-	for (setprop = event->priv->set_properties; setprop; setprop = g_slist_next (setprop))
+	for (setprop = event->priv->set_variables; setprop; setprop = g_slist_next (setprop))
 	{
 		execute_set_property (event, setprop->data);
 	}
@@ -934,4 +942,72 @@ gboolean
 cdn_event_get_terminal (CdnEvent *event)
 {
 	return event->priv->terminal;
+}
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_event_set_variable_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnEventSetVariable",
+		                                      (GBoxedCopyFunc)set_variable_copy,
+		                                      (GBoxedFreeFunc)set_variable_free);
+	}
+
+	return gtype;
+}
+
+/**
+ * cdn_event_get_set_variables:
+ * @event: a #CdnEvent.
+ *
+ * Get the variables that are modified when the event fires.
+ *
+ * Returns: (transfer none) (element-type CdnEventSetVariable): a #GSList of #CdnEventSetVariable.
+ *
+ **/
+GSList const *
+cdn_event_get_set_variables (CdnEvent *event)
+{
+	g_return_val_if_fail (CDN_IS_EVENT (event), NULL);
+
+	return event->priv->set_variables;
+}
+
+/**
+ * cdn_event_set_variable_get_value:
+ * @variable: a #CdnEventSetVariable.
+ *
+ * Get the expression used to update the variable when the event is fired.
+ *
+ * Returns: (transfer none): a #CdnExpression.
+ *
+ **/
+CdnExpression *
+cdn_event_set_variable_get_value (CdnEventSetVariable *variable)
+{
+	g_return_val_if_fail (variable != NULL, NULL);
+
+	return variable->value;
+}
+
+/**
+ * cdn_event_set_variable_get_variable:
+ * @variable: a #CdnEventSetVariable.
+ *
+ * Get the variable set when the event is fired.
+ *
+ * Returns: (transfer none): a #CdnVariable.
+ *
+ **/
+CdnVariable *
+cdn_event_set_variable_get_variable (CdnEventSetVariable *variable)
+{
+	g_return_val_if_fail (variable != NULL, NULL);
+
+	return variable->variable;
 }
