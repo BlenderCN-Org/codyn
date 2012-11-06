@@ -6,6 +6,7 @@
 #include <codyn/cdn-variable.h>
 #include <codyn/cdn-edge-action.h>
 #include <codyn/cdn-compile-context.h>
+#include <codyn/cdn-math.h>
 
 G_BEGIN_DECLS
 
@@ -35,6 +36,7 @@ struct _CdnEventClass
 	CdnNodeClass parent_class;
 };
 
+typedef struct _CdnEventLogicalNode CdnEventLogicalNode;
 typedef struct _CdnEventSetVariable CdnEventSetVariable;
 
 GType            cdn_event_get_type          (void) G_GNUC_CONST;
@@ -45,6 +47,7 @@ CdnEvent        *cdn_event_new               (gchar const   *id,
 
 gboolean         cdn_event_happened          (CdnEvent      *event,
                                               gdouble       *dist);
+
 gdouble          cdn_event_last_distance     (CdnEvent      *event);
 
 void             cdn_event_update            (CdnEvent      *event);
@@ -72,6 +75,23 @@ void             cdn_event_set_terminal      (CdnEvent      *event,
 gboolean         cdn_event_get_terminal      (CdnEvent      *event);
 
 void             cdn_event_execute           (CdnEvent      *event);
+
+GType            cdn_event_logical_node_get_type (void);
+
+CdnEventLogicalNode const *
+                 cdn_event_get_logical_tree  (CdnEvent      *event);
+
+CdnEventLogicalNode const *
+                 cdn_event_logical_node_get_left (CdnEventLogicalNode const *node);
+
+CdnEventLogicalNode const *
+                 cdn_event_logical_node_get_right (CdnEventLogicalNode const *node);
+
+CdnMathFunctionType
+                 cdn_event_logical_node_get_compare_type (CdnEventLogicalNode const *node);
+
+CdnExpression const *
+                 cdn_event_logical_node_get_expression (CdnEventLogicalNode const *node);
 
 GSList const    *cdn_event_get_set_variables         (CdnEvent            *event);
 

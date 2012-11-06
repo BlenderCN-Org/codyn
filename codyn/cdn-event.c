@@ -10,9 +10,9 @@
 
 #define CDN_EVENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EVENT, CdnEventPrivate))
 
-typedef struct _LogicalNode LogicalNode;
+typedef CdnEventLogicalNode LogicalNode;
 
-struct _LogicalNode
+struct _CdnEventLogicalNode
 {
 	CdnMathFunctionType type;
 
@@ -74,6 +74,34 @@ enum
 	PROP_GOTO_STATE,
 	PROP_TERMINAL
 };
+
+static LogicalNode *
+logical_node_copy (LogicalNode *node)
+{
+	LogicalNode *ret;
+
+	if (node == NULL)
+	{
+		return NULL;
+	}
+
+	ret = g_slice_new0 (LogicalNode);
+
+	ret->left = logical_node_copy (node->left);
+	ret->right = logical_node_copy (node->right);
+
+	ret->type = node->type;
+
+	if (node->expression)
+	{
+		ret->expression = g_object_ref (node->expression);
+	}
+
+	ret->value = node->value;
+	ret->last_distance = node->last_distance;
+
+	return ret;
+}
 
 static void
 logical_node_free (LogicalNode *node)
@@ -942,6 +970,110 @@ gboolean
 cdn_event_get_terminal (CdnEvent *event)
 {
 	return event->priv->terminal;
+}
+
+// Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
+// understand
+GType
+cdn_event_logical_node_get_type ()
+{
+	static GType gtype = 0;
+
+	if (G_UNLIKELY (gtype == 0))
+	{
+		gtype = g_boxed_type_register_static ("CdnEventLogicalNode",
+		                                      (GBoxedCopyFunc)logical_node_copy,
+		                                      (GBoxedFreeFunc)logical_node_free);
+	}
+
+	return gtype;
+}
+
+/**
+ * cdn_event_get_logical_tree:
+ * @event: a #CdnEvent.
+ *
+ * Get the logical tree representation of the event condition.
+ *
+ * Returns: (transfer none): a #CdnEventLogicalNode.
+ *
+ **/
+CdnEventLogicalNode const *
+cdn_event_get_logical_tree (CdnEvent *event)
+{
+	g_return_val_if_fail (CDN_IS_EVENT (event), NULL);
+
+	return event->priv->condition_node;
+}
+
+/**
+ * cdn_event_logical_node_get_left:
+ * @node: a #CdnEventLogicalNode.
+ *
+ * Get the left hand side node of the logical node. This is only non %NULL for
+ * nodes representing logical AND and OR.
+ *
+ * Returns: (transfer none): a #CdnEventLogicalNode.
+ *
+ **/
+CdnEventLogicalNode const *
+cdn_event_logical_node_get_left (CdnEventLogicalNode const *node)
+{
+	g_return_val_if_fail (node != NULL, NULL);
+
+	return node->left;
+}
+
+/**
+ * cdn_event_logical_node_get_right:
+ * @node: a #CdnEventLogicalNode.
+ *
+ * Get the right hand side node of the logical node. This is only non %NULL for
+ * nodes representing logical AND and OR.
+ *
+ * Returns: (transfer none): a #CdnEventLogicalNode.
+ *
+ **/
+CdnEventLogicalNode const *
+cdn_event_logical_node_get_right (CdnEventLogicalNode const *node)
+{
+	g_return_val_if_fail (node != NULL, NULL);
+
+	return node->right;
+}
+
+/**
+ * cdn_event_logical_node_get_compare_type:
+ * @node: a #CdnEventLogicalNode.
+ *
+ * Get the comparison type represented by the node.
+ *
+ * Returns: a #CdnMathFunctionType.
+ *
+ **/
+CdnMathFunctionType
+cdn_event_logical_node_get_compare_type (CdnEventLogicalNode const *node)
+{
+	g_return_val_if_fail (node != NULL, 0);
+
+	return node->type;
+}
+
+/**
+ * cdn_event_logical_node_get_expression:
+ * @node: a #CdnEventLogicalNode.
+ *
+ * Get the expression of the logical node.
+ *
+ * Returns: (transfer none): a #CdnExpression.
+ *
+ **/
+CdnExpression const *
+cdn_event_logical_node_get_expression (CdnEventLogicalNode const *node)
+{
+	g_return_val_if_fail (node != NULL, NULL);
+
+	return node->expression;
 }
 
 // Do not use G_DEFINE_BOXED_TYPE here because the C# API parser doesn't
