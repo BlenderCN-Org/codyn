@@ -430,7 +430,7 @@ logical_node_happened (CdnEvent    *event,
 		node->value = val;
 	}
 
-	node->last_distance = 0;
+	node->last_distance = -1;
 
 	switch (node->type)
 	{
@@ -451,7 +451,7 @@ logical_node_happened (CdnEvent    *event,
 
 	if (node->type == CDN_MATH_FUNCTION_TYPE_EQUAL)
 	{
-		node->last_distance = 0;
+		node->last_distance = 1;
 	}
 	else
 	{
@@ -459,17 +459,23 @@ logical_node_happened (CdnEvent    *event,
 
 		if (df <= event->priv->approximation)
 		{
-			node->last_distance = 0;
+			node->last_distance = 1;
 		}
 		else
 		{
 			// Distance is measured relative to the change occuring
 			// between two steps (i.e. a fraction)
-			node->last_distance = -node->value / df;
+			node->last_distance = node->value / (node->value - val);
+
+			if (node->type == CDN_MATH_FUNCTION_TYPE_LESS ||
+			    node->type == CDN_MATH_FUNCTION_TYPE_GREATER)
+			{
+				node->last_distance += 1e-10;
+			}
 		}
 	}
 
-	return TRUE;
+	return node->last_distance >= 0;
 }
 
 static void

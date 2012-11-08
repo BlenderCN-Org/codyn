@@ -505,7 +505,7 @@ append_happened (GSList   *events,
 	return first;
 }
 
-static gboolean
+static void
 handle_events (CdnIntegrator *integrator,
                gdouble        t,
                gdouble       *timestep)
@@ -532,7 +532,7 @@ handle_events (CdnIntegrator *integrator,
 	if (happened)
 	{
 		// Backup the simulation a bit if needed
-		if (smallest > 1e-9 && *timestep > integrator->priv->minimum_timestep)
+		if (smallest < (1 - 1e-9) && *timestep > integrator->priv->minimum_timestep)
 		{
 			gdouble nts;
 			gboolean isinner;
@@ -561,10 +561,7 @@ handle_events (CdnIntegrator *integrator,
 		}
 
 		g_slist_free (happened);
-		return TRUE;
 	}
-
-	return FALSE;
 }
 
 static gdouble
