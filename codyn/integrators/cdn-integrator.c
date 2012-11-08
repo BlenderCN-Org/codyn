@@ -84,8 +84,8 @@ struct _CdnIntegratorPrivate
 	gdouble rt_correction;
 	gdouble minimum_timestep;
 
-	guint event_handled : 1;
 	guint terminate : 1;
+	guint inner_event_loop : 1;
 };
 
 static guint integrator_signals[NUM_SIGNALS] = {0,};
@@ -535,21 +535,25 @@ handle_events (CdnIntegrator *integrator,
 		if (smallest > 1e-9 && *timestep > integrator->priv->minimum_timestep)
 		{
 			gdouble nts;
+			gboolean isinner;
 
 			restore_saved_state (integrator);
 
 			*timestep = smallest * *timestep;
+
+			if (*timestep < integrator->priv->minimum_timestep)
+			{
+				*timestep = integrator->priv->minimum_timestep;
+			}
+
+			isinner = integrator->priv->inner_event_loop;
+			integrator->priv->inner_event_loop = TRUE;
+
 			nts = cdn_integrator_step (integrator, t, *timestep);
 
-			// Execute the event code
-			if (!integrator->priv->event_handled)
-			{
-				execute_events (integrator, happened);
-			}
-			else
-			{
-				*timestep = nts;
-			}
+			integrator->priv->inner_event_loop = isinner;
+
+			*timestep = nts;
 		}
 		else
 		{
@@ -570,9 +574,10 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 {
 	gdouble elapsed;
 
-	if (handle_events (integrator, t, &timestep))
+	handle_events (integrator, t, &timestep);
+
+	if (integrator->priv->inner_event_loop)
 	{
-		integrator->priv->event_handled = TRUE;
 		return timestep;
 	}
 
@@ -607,7 +612,6 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 
 	g_timer_reset (integrator->priv->step_timer);
 
-	integrator->priv->event_handled = FALSE;
 	return timestep;
 }
 
