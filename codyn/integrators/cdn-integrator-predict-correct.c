@@ -220,8 +220,7 @@ prediction_step (CdnIntegratorPredictCorrect *pc,
 				timestep * pc->priv->tmpd[i];
 		}
 
-		tmp.values = pc->priv->tmpd;
-		tmp.dimension = up->dimension;
+		tmp = cdn_matrix_init (pc->priv->tmpd, &up->dimension);
 
 		cdn_variable_set_values (prop, &tmp);
 
@@ -272,8 +271,7 @@ correction_step (CdnIntegratorPredictCorrect *pc,
 			                    timestep * pc->priv->tmpd[i];
 		}
 
-		tmp.dimension = up->dimension;
-		tmp.values = pc->priv->tmpd;
+		tmp = cdn_matrix_init (pc->priv->tmpd, &up->dimension);
 
 		cdn_variable_set_values (prop, &tmp);
 

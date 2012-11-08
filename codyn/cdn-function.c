@@ -689,16 +689,17 @@ cdn_function_execute_impl (CdnFunction *function,
 		CdnFunctionArgument *argument;
 		CdnVariable *v;
 		CdnMatrix tmp;
+		CdnDimension const *dim;
 
 		argument = item->data;
 
 		v = _cdn_function_argument_get_variable (argument);
+		dim = &function->priv->smanip.pop.args[i].dimension;
 
-		tmp.dimension = function->priv->smanip.pop.args[i].dimension;
-		tmp.values = cdn_stack_popn (stack, cdn_matrix_size (&tmp));
+		tmp = cdn_matrix_init (cdn_stack_popn (stack, cdn_dimension_size (dim)),
+		                       dim);
 
 		cdn_variable_set_values (v, &tmp);
-
 		item = g_list_previous (item);
 	}
 

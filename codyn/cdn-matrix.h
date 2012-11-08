@@ -29,6 +29,9 @@ CdnMatrix          *cdn_matrix_new        (gdouble const      *values,
 
 CdnMatrix          *cdn_matrix_new_one    (gdouble             value);
 
+CdnMatrix           cdn_matrix_init       (gdouble            *values,
+                                           CdnDimension const *dimension);
+
 void                cdn_matrix_free       (CdnMatrix          *matrix);
 void                cdn_matrix_destroy    (CdnMatrix          *matrix);
 

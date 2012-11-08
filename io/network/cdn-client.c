@@ -2424,11 +2424,7 @@ update_set (CdnClient  *client,
 
 	if (value && cdn_dimension_size (&dim) == num)
 	{
-		CdnMatrix tmp = {
-			{.values = (gdouble *)value},
-			.dimension = dim,
-		};
-
+		CdnMatrix tmp = cdn_matrix_init ((gdouble *)value, &dim);
 		cdn_variable_set_values (v, &tmp);
 	}
 

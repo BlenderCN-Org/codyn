@@ -24,7 +24,6 @@ cdn_matrix_get_type (void)
 	}
 
 	return gtype;
-
 }
 
 /**
@@ -51,6 +50,27 @@ cdn_matrix_new (gdouble const      *values,
 	cdn_matrix_set (matrix, values, dimension);
 	return matrix;
 }
+
+CdnMatrix
+cdn_matrix_init (gdouble            *values,
+                 CdnDimension const *dimension)
+{
+	CdnMatrix ret;
+
+	ret.dimension = *dimension;
+
+	if (cdn_dimension_is_one (dimension))
+	{
+		ret.value = *values;
+	}
+	else
+	{
+		ret.values = values;
+	}
+
+	return ret;
+}
+
 
 /**
  * cdn_matrix_new_one:
