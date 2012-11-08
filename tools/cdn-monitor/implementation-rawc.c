@@ -498,9 +498,9 @@ cdn_monitor_implementation_rawc_new (gchar const *filename)
 
 	RawcData *data = g_slice_new0 (RawcData);
 
-	data->data = get_data();
+	data->data = get_data ();
 
-	data->network = get_network();
+	data->network = get_network ();
 	data->module = module;
 
 	if (rawc_is_float (data))
