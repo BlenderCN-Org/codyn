@@ -307,6 +307,8 @@ set_values (CdnExpression       *expression,
 	dimschanged = !cdn_dimension_equal (&expression->priv->cached_output.dimension,
 	                                    dimension);
 
+	expression->priv->cached = TRUE;
+
 	cdn_matrix_set (&expression->priv->cached_output,
 	                values,
 	                dimension);
