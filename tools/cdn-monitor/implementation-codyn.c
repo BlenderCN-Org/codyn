@@ -111,6 +111,14 @@ monitor_resolve (CdnMonitorImplementation *implementation,
 	                                 CDN_SELECTOR_TYPE_VARIABLE,
 	                                 NULL);
 
+	if (!selection)
+	{
+		selection = cdn_selector_select (selector,
+		                                 G_OBJECT (cdn_network_get_integrator (implementation->network)),
+		                                 CDN_SELECTOR_TYPE_VARIABLE,
+		                                 NULL);
+	}
+
 	while (selection)
 	{
 		CdnVariable *var;
