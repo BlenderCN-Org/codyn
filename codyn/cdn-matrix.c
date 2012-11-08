@@ -423,3 +423,52 @@ cdn_matrix_dimension (CdnMatrix const *matrix)
 {
 	return &matrix->dimension;
 }
+
+/**
+ * cdn_matrix_to_string:
+ * @matrix: a #CdnMatrix.
+ *
+ * Get a string representation of the matrix value. If the matrix is 1-by-1 then
+ * the resulting string is just a number. Otherwise it will be in the form
+ * [a, b; c, d] where a , separates columns and a ; separates rows.
+ *
+ * Returns: (transfer full): the string representation of the matrix. The result
+ *                           needs to be freed when no longer used.
+ *
+ **/
+gchar *
+cdn_matrix_to_string (CdnMatrix const *matrix)
+{
+	GString *ret;
+	gint r;
+	gint c;
+	gint i = 0;
+
+	if (cdn_dimension_is_one (&matrix->dimension))
+	{
+		return g_strdup_printf ("%g", matrix->value);
+	}
+
+	ret = g_string_new ("[");
+
+	for (r = 0; r < matrix->dimension.rows; ++r)
+	{
+		if (r != 0)
+		{
+			g_string_append (ret, "; ");
+		}
+
+		for (c = 0; c < matrix->dimension.columns; ++c)
+		{
+			if (c != 0)
+			{
+				g_string_append (ret, ", ");
+			}
+
+			g_string_append_printf (ret, "%g", matrix->values[i++]);
+		}
+	}
+
+	g_string_append_c (ret, ']');
+	return g_string_free (ret, FALSE);
+}

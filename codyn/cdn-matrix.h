@@ -70,5 +70,7 @@ gdouble const      *cdn_matrix_get_flat   (CdnMatrix const    *matrix,
 
 void                cdn_matrix_clear      (CdnMatrix          *matrix);
 
+gchar         *cdn_matrix_to_string (CdnMatrix const *matrix);
+
 #endif /* __CDN_MATRIX_H__ */
 
