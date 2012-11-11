@@ -5098,3 +5098,105 @@ _cdn_expression_transfer_dependencies (CdnExpression *expression,
 		}
 	}
 }
+
+/**
+ * cdn_expression_sum:
+ * @expressions: (element-type CdnExpression): a #GSList of #CdnExpression.
+ *
+ * Create a new expression which represents the sum of the given expressions.
+ *
+ * Returns: (transfer full): a #CdnExpression.
+ *
+ **/
+CdnExpression *
+cdn_expression_sum (GSList const *expressions)
+{
+	GSList const *item;
+	GSList *instructions = NULL;
+	CdnStackArg const *lastarg = NULL;
+	GString *srep;
+	CdnExpression *ret;
+
+	if (!expressions)
+	{
+		return cdn_expression_new0 ();
+	}
+
+	srep = g_string_new ("");
+
+	for (item = expressions; item; item = g_slist_next (item))
+	{
+		CdnExpression *e = item->data;
+		GSList const *instrs;
+		CdnStackArg *sarg;
+
+		if (e->priv->modified)
+		{
+			g_string_free (srep, TRUE);
+			g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+
+			return NULL;
+		}
+
+		if (item != expressions)
+		{
+			g_string_append (srep, " + ");
+		}
+
+		g_string_append (srep, e->priv->expression);
+
+		for (instrs = e->priv->instructions; instrs; instrs = g_slist_next (instrs))
+		{
+			instructions = g_slist_prepend (instructions,
+			                                cdn_mini_object_copy (instrs->data));
+		}
+
+		sarg = cdn_expression_get_stack_arg (e);
+
+		if (lastarg != NULL)
+		{
+			CdnInstruction *i;
+			CdnStackManipulation const *smanip;
+
+			CdnStackArg arg2[2] = {
+				*sarg,
+				*lastarg,
+			};
+
+			CdnStackArgs args = {
+				2,
+				arg2,
+			};
+
+			// Add plus operator
+			i = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_PLUS,
+			                                  NULL,
+			                                  &args);
+
+			instructions = g_slist_prepend (instructions, i);
+
+			smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+
+			if (!smanip)
+			{
+				g_string_free (srep, TRUE);
+				g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+
+				return NULL;
+			}
+
+			lastarg = &smanip->push;
+		}
+		else
+		{
+			lastarg = sarg;
+		}
+	}
+
+	instructions = g_slist_reverse (instructions);
+	ret = cdn_expression_new (srep->str);
+	g_string_free (srep, TRUE);
+
+	cdn_expression_set_instructions_take (ret, instructions);
+	return ret;
+}
