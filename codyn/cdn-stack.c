@@ -830,3 +830,24 @@ cdn_dimension_size (CdnDimension const *dim)
 
 	return dim->rows * dim->columns;
 }
+
+/**
+ * cdn_stack_arg_get_dimension:
+ * @arg: a #CdnStackArg.
+ * @dim: (out): a #CdnDimension return value.
+ *
+ * Get the dimension of the stack argument.
+ *
+ **/
+void
+cdn_stack_arg_get_dimension (CdnStackArg const *arg,
+                             CdnDimension      *dim)
+{
+	if (!dim || !arg)
+	{
+		return;
+	}
+
+	*dim = arg->dimension;
+}
+
