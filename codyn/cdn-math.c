@@ -281,6 +281,7 @@ SIMPLE_MATH_MAP_CODE (sign, sign_value)
 BIN_MATH_MAP (atan2)
 BIN_MATH_MAP (pow)
 BIN_MATH_MAP_CODE (csign, copysign)
+BIN_MATH_MAP_CODE (hypotv, hypot)
 
 static gdouble
 min (gdouble  a,
@@ -381,14 +382,6 @@ NESTED_MATH_MAP (sum, 0)
 NESTED_MATH_MAP (product, 1)
 NESTED_MATH_MAP (sqsum, 0)
 
-static gdouble
-hypot_impl (gdouble  a,
-            gdouble  b,
-            gboolean initial)
-{
-	return a + b * b;
-}
-
 static void
 op_hypot (CdnStack           *stack,
           CdnStackArgs const *argdim,
@@ -408,16 +401,13 @@ op_hypot (CdnStack           *stack,
 
 		cdn_stack_push (stack, hypot (a, b));
 	}
-	else if (argdim->num == 1 &&
-	         argdim->args[0].rows == 1 &&
-	         argdim->args[0].columns == 1)
+	else if (argdim->num == 2)
 	{
-		// NOOP
-		return;
+		op_hypotv (stack, argdim, userdata);
 	}
 	else
 	{
-		op_nested (stack, argdim, 0, hypot_impl);
+		op_nested (stack, argdim, 0, sqsum);
 		cdn_stack_push (stack, sqrt (cdn_stack_pop (stack)));
 	}
 }
@@ -2373,10 +2363,44 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_MAX:
 		case CDN_MATH_FUNCTION_TYPE_SUM:
 		case CDN_MATH_FUNCTION_TYPE_PRODUCT:
-		case CDN_MATH_FUNCTION_TYPE_HYPOT:
 		case CDN_MATH_FUNCTION_TYPE_SQSUM:
 			outarg->rows = 1;
 			outarg->columns = 1;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_HYPOT:
+			if (inargs->num == 2)
+			{
+				// Math functions with two arguments can operate
+				// elementwise (i.e. both arguments are NxM), or
+				// one argument is 1-by-1 and the other can be NxM
+				if (cdn_stack_arg_size (inargs->args) == 1)
+				{
+					// Take second arg size
+					cdn_stack_arg_copy (outarg, inargs->args + 1);
+				}
+				else if (cdn_stack_arg_size (inargs->args + 1) != 1 &&
+					 cdn_stack_arg_size (inargs->args) != cdn_stack_arg_size (inargs->args + 1))
+				{
+					g_set_error (error,
+						     CDN_COMPILE_ERROR_TYPE,
+						     CDN_COMPILE_ERROR_INVALID_DIMENSION,
+						     "Cannot perform element wise operation on arguments of %d-by-%d and %d-by-%d",
+						     inargs->args[1].rows, inargs->args[1].columns,
+						     inargs->args[0].rows, inargs->args[1].columns);
+
+					return FALSE;
+				}
+				else
+				{
+					// Take first arg size
+					cdn_stack_arg_copy (outarg, inargs->args);
+				}
+			}
+			else
+			{
+				outarg->rows = 1;
+				outarg->columns = 1;
+			}
 		break;
 		case CDN_MATH_FUNCTION_TYPE_LERP:
 		case CDN_MATH_FUNCTION_TYPE_CLIP:
