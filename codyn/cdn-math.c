@@ -2258,7 +2258,6 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_COSH:
 		case CDN_MATH_FUNCTION_TYPE_TANH:
 		case CDN_MATH_FUNCTION_TYPE_SIGN:
-		case CDN_MATH_FUNCTION_TYPE_CSIGN:
 			// Operators with one argument simply copy
 			cdn_stack_arg_copy (outarg, inargs->args);
 		break;
@@ -2278,6 +2277,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_AND:
 		case CDN_MATH_FUNCTION_TYPE_POW:
 		case CDN_MATH_FUNCTION_TYPE_ATAN2:
+		case CDN_MATH_FUNCTION_TYPE_CSIGN:
 			// Math functions with two arguments can operate
 			// elementwise (i.e. both arguments are NxM), or
 			// one argument is 1-by-1 and the other can be NxM
