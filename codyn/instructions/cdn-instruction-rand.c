@@ -248,7 +248,6 @@ cdn_instruction_rand_next (CdnInstructionRand *self)
 	}
 }
 
-#ifndef MINGW
 void
 cdn_instruction_rand_set_use_streams (gboolean use)
 {
@@ -259,6 +258,7 @@ void
 cdn_instruction_rand_set_seed (CdnInstructionRand *self,
                                guint               seed)
 {
+#ifndef MINGW
 	if (use_streams)
 	{
 		CdnInstructionRandStatePrivate *spriv =
@@ -266,14 +266,15 @@ cdn_instruction_rand_set_seed (CdnInstructionRand *self,
 
 		spriv->seed = seed;
 
-		initstate (spriv->seed, spriv->state, sizeof(spriv->state));
-		cdn_instruction_rand_next (self);
+		cdn_instruction_rand_reset (self);
 	}
+#endif
 }
 
 guint
 cdn_instruction_rand_get_seed (CdnInstructionRand *self)
 {
+#ifndef MINGW
 	if (use_streams)
 	{
 		CdnInstructionRandStatePrivate *spriv =
@@ -281,9 +282,23 @@ cdn_instruction_rand_get_seed (CdnInstructionRand *self)
 
 		return spriv->seed;
 	}
-	else
-	{
-		return 0;
-	}
-}
 #endif
+
+	return 0;
+}
+
+void
+cdn_instruction_rand_reset (CdnInstructionRand *self)
+{
+#ifndef MINGW
+	if (use_streams)
+	{
+		CdnInstructionRandStatePrivate *spriv =
+			(CdnInstructionRandStatePrivate *)self->priv;
+
+		initstate (spriv->seed, spriv->state, sizeof(spriv->state));
+	}
+#endif
+
+	cdn_instruction_rand_next (self);
+}

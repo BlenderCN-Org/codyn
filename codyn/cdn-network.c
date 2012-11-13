@@ -446,7 +446,7 @@ reset_rands (CdnNetwork *network)
 
 	while (rands)
 	{
-		cdn_instruction_rand_next (rands->data);
+		cdn_instruction_rand_reset (rands->data);
 		rands = g_slist_next (rands);
 	}
 }
