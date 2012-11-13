@@ -138,8 +138,7 @@ typedef struct
 	CdnRawcEventValue *(*get_events_value) (void     *data,
 	                                        uint32_t  i);
 
-	CdnRawcDimension const *(*get_dimension) (void                   *data,
-	                                          CdnRawcDimension const *dimensions,
+	CdnRawcDimension const *(*get_dimension) (CdnRawcDimension const *dimensions,
 	                                          uint32_t                i);
 
 	CdnRawcRange states;
