@@ -223,6 +223,31 @@ cdn_compile_context_append_object (CdnCompileContext *context,
 }
 
 /**
+ * cdn_compile_context_clear_objects:
+ * @context: a #CdnCompileContext.
+ *
+ * Clear all objects in the current context.
+ *
+ **/
+void
+cdn_compile_context_clear_objects (CdnCompileContext *context)
+{
+	Context *ctx;
+
+	g_return_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context));
+
+	if (!context)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+
+	g_slist_free (ctx->objects);
+	ctx->objects = NULL;
+}
+
+/**
  * cdn_compile_context_prepend_function:
  * @context: A #CdnCompileContext
  * @function: (type CdnFunction): A #CdnFunction

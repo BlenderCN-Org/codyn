@@ -542,12 +542,16 @@ cdn_function_compile_impl (CdnObject         *object,
 
 	context = cdn_object_get_compile_context (object, context);
 
+	cdn_compile_context_clear_objects (context);
+	cdn_compile_context_append_object (context, object);
+
 	if (CDN_OBJECT_CLASS (cdn_function_parent_class)->compile)
 	{
 		if (!CDN_OBJECT_CLASS (cdn_function_parent_class)->compile (object,
 		                                                            context,
 		                                                            error))
 		{
+			cdn_compile_context_restore (context);
 			g_object_unref (context);
 			return FALSE;
 		}
