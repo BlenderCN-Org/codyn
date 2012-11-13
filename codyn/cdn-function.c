@@ -2187,13 +2187,9 @@ cdn_function_get_n_optional (CdnFunction *function)
 
 		arg = item->data;
 
-		if (cdn_function_argument_get_default_value (arg))
+		if (cdn_function_argument_get_optional (arg))
 		{
 			++ret;
-		}
-		else
-		{
-			ret = 0;
 		}
 	}
 
