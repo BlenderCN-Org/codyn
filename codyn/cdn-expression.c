@@ -304,8 +304,12 @@ set_values (CdnExpression       *expression,
 {
 	gboolean dimschanged;
 
-	dimschanged = !cdn_dimension_equal (&expression->priv->cached_output.dimension,
-	                                    dimension);
+	dimschanged = (expression->priv->cached &&
+	               !cdn_dimension_equal (&expression->priv->cached_output.dimension,
+	                                     dimension)) ||
+	              (!expression->priv->cached &&
+	               !cdn_dimension_equal (&expression->priv->retdim.dimension,
+	                                     dimension));
 
 	expression->priv->cached = TRUE;
 
