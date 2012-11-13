@@ -1259,16 +1259,8 @@ op_size (CdnStack           *stack,
          CdnStackArgs const *argdim,
          gpointer            userdata)
 {
-	gint r;
-	gint c;
-
-	r = argdim->args[0].rows;
-	c = argdim->args[0].columns;
-
-	cdn_stack_popn (stack, r * c);
-
-	cdn_stack_push (stack, r);
-	cdn_stack_push (stack, c);
+	// This will never be executed because it's compiled as a
+	// kind of macro
 }
 
 static void
@@ -1276,12 +1268,8 @@ op_length (CdnStack           *stack,
            CdnStackArgs const *argdim,
            gpointer            userdata)
 {
-	gint n;
-
-	n = cdn_stack_arg_size (argdim->args);
-
-	cdn_stack_popn (stack, n);
-	cdn_stack_push (stack, n);
+	// This will never be executed because it's compiled as a
+	// kind of macro
 }
 
 static void
