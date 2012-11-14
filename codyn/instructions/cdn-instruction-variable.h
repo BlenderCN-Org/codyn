@@ -76,6 +76,8 @@ guint const    *cdn_instruction_variable_get_slice        (CdnInstructionVariabl
                                                            guint                         *length,
                                                            CdnDimension                  *dim);
 
+gboolean        cdn_instruction_variable_has_slice        (CdnInstructionVariable        *instruction);
+
 void            cdn_instruction_variable_set_binding      (CdnInstructionVariable        *instruction,
                                                            CdnInstructionVariableBinding  binding);
 
