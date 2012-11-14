@@ -2360,10 +2360,195 @@ parse_matrix (CdnExpression *expression,
 }
 
 static gboolean
+is_numeric (GSList const *instructions)
+{
+	while (instructions)
+	{
+		if (!(CDN_IS_INSTRUCTION_NUMBER (instructions->data) ||
+		      CDN_IS_INSTRUCTION_MATRIX (instructions->data)))
+		{
+			return FALSE;
+		}
+
+		instructions = g_slist_next (instructions);
+	}
+
+	return TRUE;
+}
+
+static CdnDimension
+instruction_get_dimension (CdnInstruction *i)
+{
+	CdnStackManipulation const *smanip;
+
+	smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+	return smanip->push.dimension;
+}
+
+static CdnStackArg const *
+instruction_get_push_arg (CdnInstruction *i)
+{
+	CdnStackManipulation const *smanip;
+
+	smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+	return &smanip->push;
+}
+
+static void
+instructions_to_indices (GSList const *instructions, gint *ret)
+{
+	while (instructions)
+	{
+		CdnInstructionNumber *n = instructions->data;
+
+		if (CDN_IS_INSTRUCTION_NUMBER (n))
+		{
+			gdouble v = cdn_instruction_number_get_value (n);
+			*ret++ = (gint)(v + 0.5);
+		}
+
+		instructions = g_slist_next (instructions);
+	}
+}
+
+static CdnInstruction *
+make_static_index (CdnExpression *expression,
+                   ParserContext *context,
+                   gint           nargs)
+{
+	gint *indices = NULL;
+	gint n;
+	CdnStackArg const *d3;
+	gboolean continuous;
+	gint offset;
+	CdnDimension retdim;
+	gint i;
+
+	if (nargs == 2)
+	{
+		GSList *i1;
+		GSList *i2;
+		CdnDimension d1;
+		CdnDimension d2;
+		gint *rows;
+		gint *cols;
+		gint i;
+
+		i2 = pop_stack (expression, context);
+		i1 = pop_stack (expression, context);
+
+		d1 = instruction_get_dimension (g_slist_last (i1)->data);
+		d2 = instruction_get_dimension (g_slist_last (i2)->data);
+
+		if (!cdn_dimension_equal (&d1, &d2))
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The dimensions of the two index arguments are different (%d-by-%d and %d-by-%d)",
+			               d1.rows, d1.columns,
+			               d2.rows, d2.columns);
+
+			return NULL;
+		}
+
+		d3 = instruction_get_push_arg (g_slist_last (context->stack->data)->data);
+
+		n = cdn_dimension_size (&d1);
+
+		rows = g_new (gint, n);
+		cols = g_new (gint, n);
+
+		instructions_to_indices (i1, rows);
+		instructions_to_indices (i2, cols);
+
+		// Double indexing. i1 represents rows, i2 represents columns
+		indices = g_new0 (gint, n);
+
+		for (i = 0; i < n; ++i)
+		{
+			indices[i] = rows[i] * d3->dimension.columns + cols[i];
+		}
+
+		g_slist_foreach (i1, (GFunc)cdn_mini_object_unref, NULL);
+		g_slist_free (i1);
+
+		g_slist_foreach (i2, (GFunc)cdn_mini_object_unref, NULL);
+		g_slist_free (i2);
+
+		retdim = d1;
+	}
+	else
+	{
+		GSList *i;
+		CdnDimension d;
+
+		i = pop_stack (expression, context);
+
+		// Single indexing. linear index
+		d = instruction_get_dimension (g_slist_last (i)->data);
+		d3 = instruction_get_push_arg (g_slist_last (context->stack->data)->data);
+
+		n = cdn_dimension_size (&d);
+		indices = g_new0 (gint, n);
+
+		instructions_to_indices (i, indices);
+
+		g_slist_foreach (i, (GFunc)cdn_mini_object_unref, NULL);
+		g_slist_free (i);
+
+		retdim = d;
+	}
+
+	continuous = TRUE;
+	offset = 0;
+
+	// indices now contains a list of n linear indices into the remaining
+	// thing on the stack. See if it fits.
+	for (i = 0; i < n; ++i)
+	{
+		if (indices[i] >= cdn_dimension_size (&d3->dimension))
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The specified indices are out of bounds");
+
+			return NULL;
+		}
+
+		if (i != 0 && offset + 1 != indices[i])
+		{
+			continuous = FALSE;
+		}
+		else
+		{
+			offset = indices[i];
+		}
+	}
+
+	if (continuous)
+	{
+		gint start = indices[0];
+		g_free (indices);
+
+		return cdn_instruction_index_new_offset (start,
+		                                         &retdim,
+		                                         d3);
+	}
+	else
+	{
+		// NOTE: the instruction takes ownership of the indices memory
+		return cdn_instruction_index_new (indices,
+		                                  &retdim,
+		                                  d3);
+	}
+}
+
+static gboolean
 parse_indexing (CdnExpression *expression,
                 ParserContext *context)
 {
-	CdnStackArgs args;
 	gint numargs = 0;
 	CdnTokenOperatorType type;
 
@@ -2439,17 +2624,35 @@ parse_indexing (CdnExpression *expression,
 		return FALSE;
 	}
 
-	swap_arguments_index (expression, context, numargs + 1);
+	if (is_numeric (context->stack->data) &&
+	    (numargs == 1 || is_numeric (context->stack->next->data)))
+	{
+		CdnInstruction *i = make_static_index (expression,
+		                                       context,
+		                                       numargs);
 
-	get_argdim (expression, context, numargs + 1, &args);
+		if (i == NULL)
+		{
+			return FALSE;
+		}
 
-	instructions_push (expression,
-	                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_INDEX,
-	                                                 "index",
-	                                                 &args),
-	                   context);
+		instructions_push (expression, i, context);
+	}
+	else
+	{
+		CdnStackArgs args;
 
-	cdn_stack_args_destroy (&args);
+		swap_arguments_index (expression, context, numargs + 1);
+		get_argdim (expression, context, numargs + 1, &args);
+
+		instructions_push (expression,
+		                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_INDEX,
+		                                                 "index",
+		                                                 &args),
+		                   context);
+
+		cdn_stack_args_destroy (&args);
+	}
 
 	cdn_token_free (next);
 
