@@ -31,8 +31,19 @@ cdn_instruction_index_copy (CdnMiniObject *object)
 	ret = CDN_MINI_OBJECT_CLASS (cdn_instruction_index_parent_class)->copy (object);
 
 	self = CDN_INSTRUCTION_INDEX (ret);
-
 	cdn_stack_manipulation_copy (&self->priv->smanip, &src->priv->smanip);
+
+	self->priv->is_offset = src->priv->is_offset;
+
+	if (self->priv->is_offset)
+	{
+		self->priv->offset = src->priv->offset;
+	}
+	else
+	{
+		self->priv->indices = g_memdup (src->priv->indices,
+		                                sizeof (gint) * cdn_stack_arg_size (&src->priv->smanip.push));
+	}
 
 	return ret;
 }
