@@ -275,3 +275,79 @@ cdn_instruction_index_new_offset (gint                offset,
 
 	return CDN_INSTRUCTION (ret);
 }
+
+/**
+ * cdn_instruction_index_is_offset:
+ * @instr: a #CdnInstructionIndex.
+ *
+ * Get whether the index instruction is an index offset instruction.
+ *
+ * Returns: %TRUE if the instruction is an index offset instruction, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_instruction_index_is_offset (CdnInstructionIndex *instr)
+{
+	return instr->priv->is_offset;
+}
+
+/**
+ * cdn_instruction_index_get_offset:
+ * @instr: a #CdnInstructionIndex.
+ *
+ * Get the offset of the index instruction. Note that this is only valid
+ * for offset index instructions (see #cdn_instruction_index_is_offset).
+ *
+ * Returns: the index offset.
+ *
+ **/
+gint
+cdn_instruction_index_get_offset  (CdnInstructionIndex *instr)
+{
+	if (instr->priv->is_offset)
+	{
+		return instr->priv->offset;
+	}
+	else
+	{
+		return -1;
+	}
+}
+
+/**
+ * cdn_instruction_index_get_indices:
+ * @instr: a #CdnInstructionIndex.
+ * @length: (out): return value for the length of the indices array.
+ *
+ * Get the indices array of the index instruction. This is only valid if
+ * the index instruction is not an offset instruction
+ * (see #cdn_instruction_index_is_offset).
+ *
+ * Returns: (array-length length): an array of #gint. Note that the memory belongs to the instruction
+ *                                 and should not be freed.
+ *
+ **/
+gint const *
+cdn_instruction_index_get_indices (CdnInstructionIndex *instr,
+                                   gint                *length)
+{
+	if (instr->priv->is_offset)
+	{
+		if (length)
+		{
+			*length = 0;
+		}
+
+		return NULL;
+	}
+	else
+	{
+		if (length)
+		{
+			*length = cdn_stack_arg_size (&instr->priv->smanip.push);
+		}
+
+		return instr->priv->indices;
+	}
+}
+

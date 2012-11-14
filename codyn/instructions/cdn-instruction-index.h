@@ -47,6 +47,11 @@ CdnInstruction *cdn_instruction_index_new_offset (gint                start,
                                                   CdnDimension const *retdim,
                                                   CdnStackArg const  *arg);
 
+gboolean        cdn_instruction_index_is_offset   (CdnInstructionIndex *instr);
+gint            cdn_instruction_index_get_offset  (CdnInstructionIndex *instr);
+gint const     *cdn_instruction_index_get_indices (CdnInstructionIndex *instr,
+                                                   gint                *length);
+
 G_END_DECLS
 
 #endif /* __CDN_INSTRUCTION_INDEX_H__ */
