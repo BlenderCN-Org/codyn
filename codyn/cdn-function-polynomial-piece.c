@@ -50,32 +50,8 @@ enum
 {
 	PROP_0,
 	PROP_BEGIN,
-	PROP_END,
-	PROP_COEFFICIENTS
+	PROP_END
 };
-
-static GValueArray *
-create_coefficients_value (gdouble const *coefficients,
-                           guint          num_coefficients)
-{
-	GValueArray *ret;
-	guint i;
-
-	ret = g_value_array_new (num_coefficients);
-
-	for (i = 0; i < num_coefficients; ++i)
-	{
-		GValue val = {0,};
-		g_value_init (&val, G_TYPE_DOUBLE);
-
-		g_value_set_double (&val, coefficients[i]);
-
-		g_value_array_insert (ret, i, &val);
-		g_value_unset (&val);
-	}
-
-	return ret;
-}
 
 static void
 set_coefficients (CdnFunctionPolynomialPiece *piece,
@@ -84,32 +60,8 @@ set_coefficients (CdnFunctionPolynomialPiece *piece,
 {
 	g_free (piece->priv->coefficients);
 
-	piece->priv->coefficients = g_new (gdouble, num);
-	memcpy (piece->priv->coefficients, coefficients, sizeof (gdouble) * num);
-
+	piece->priv->coefficients = g_memdup (coefficients, sizeof (gdouble) * num);
 	piece->priv->num_coefficients = num;
-
-	g_object_notify (G_OBJECT (piece), "coefficients");
-}
-
-static void
-set_coefficients_array (CdnFunctionPolynomialPiece *piece,
-                        GValueArray                *array)
-{
-	guint num_coefficients;
-	guint i;
-	gdouble *coefficients;
-
-	num_coefficients = array->n_values;
-	coefficients = g_new (gdouble, num_coefficients);
-
-	for (i = 0; i < num_coefficients; ++i)
-	{
-		coefficients[i] = g_value_get_double (&(array->values[i]));
-	}
-
-	set_coefficients (piece, coefficients, num_coefficients);
-	g_free (coefficients);
 }
 
 static void
@@ -165,9 +117,6 @@ cdn_function_polynomial_piece_set_property (GObject      *object,
 		case PROP_END:
 			set_range (self, self->priv->begin, g_value_get_double (value));
 		break;
-		case PROP_COEFFICIENTS:
-			set_coefficients_array (self, g_value_get_boxed (value));
-		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -189,11 +138,6 @@ cdn_function_polynomial_piece_get_property (GObject    *object,
 		break;
 		case PROP_END:
 			g_value_set_double (value, self->priv->end);
-		break;
-		case PROP_COEFFICIENTS:
-			g_value_take_boxed (value,
-			                    create_coefficients_value (self->priv->coefficients,
-			                                               self->priv->num_coefficients));
 		break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -247,27 +191,6 @@ cdn_function_polynomial_piece_class_init (CdnFunctionPolynomialPieceClass *klass
 	                                                      0,
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_CONSTRUCT));
-
-	/**
-	 * CdnFunctionPolynomialPiece:coefficients:
-	 *
-	 * The coefficients of the piece
-	 *
-	 **/
-	g_object_class_install_property (object_class,
-	                                 PROP_COEFFICIENTS,
-	                                 g_param_spec_value_array ("coefficients",
-	                                                           "Coefficients",
-	                                                           "Coefficients",
-	                                                           g_param_spec_double ("coefficient",
-	                                                                                "Coefficient",
-	                                                                                "Coefficient",
-	                                                                                -G_MAXDOUBLE,
-	                                                                                G_MAXDOUBLE,
-	                                                                                0,
-	                                                                                0),
-	                                                           G_PARAM_READWRITE |
-	                                                           G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -295,18 +218,15 @@ cdn_function_polynomial_piece_new (gdouble        begin,
                                    gdouble const *coefficients,
                                    guint          num_coefficients)
 {
-	GValueArray *coefs;
 	CdnFunctionPolynomialPiece *ret;
-
-	coefs = create_coefficients_value (coefficients, num_coefficients);
 
 	ret = g_object_new (CDN_TYPE_FUNCTION_POLYNOMIAL_PIECE,
 	                    "begin", begin,
 	                    "end", end,
-	                    "coefficients", coefs,
 	                    NULL);
 
-	g_value_array_free (coefs);
+	set_coefficients (ret, coefficients, num_coefficients);
+
 	return ret;
 }
 
