@@ -66,7 +66,7 @@ $2=`(test "x$prefix" = xNONE && prefix="$ac_default_prefix"
      echo "[$]_lcl_receval")`])
 
 # Introspection
-GOBJECT_INTROSPECTION_CHECK([0.10.7])
+GOBJECT_INTROSPECTION_CHECK([1.32])
 
 if test "$found_introspection" = "yes"; then
 	enable_introspection=yes
