@@ -89,13 +89,20 @@ dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
 
+checkpkgs="glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0"
+
+if test "$platform_osx" != "yes"; then
+	checkpkgs="$checkpkgs libxml-2.0"
+fi
+
 PKG_CHECK_MODULES(CODYN, [
-	glib-2.0
-	gobject-2.0
-	libxml-2.0
-	gio-2.0
-	gmodule-2.0
+	$checkpkgs
 ])
+
+if test "$platform_osx" = "yes"; then
+	CODYN_CFLAGS="$CODYN_CFLAGS -I/usr/include/libxml2"
+	CODYN_LIBS="$CODYN_LIBS -lxml2"
+fi
 
 PKG_CHECK_MODULES(GIO_UNIX, [
 	gio-unix-2.0
