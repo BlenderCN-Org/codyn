@@ -1,0 +1,5 @@
+#!/bin/bash
+
+. $(dirname "$0")/env
+
+$brew install --universal autoconf automake libtool glib gobject-introspection pygobject

@@ -153,6 +153,15 @@ libcodyn_3_0_la_CFLAGS = -D_GNU_SOURCE -Wall $(CODYN_CFLAGS) $(LAPACK_CFLAGS) $(
 libcodyn_3_0_la_LIBADD = instructions/libinstructions.la operators/liboperators.la integrators/libintegrators.la tree-algorithms/libtreealgorithms.la
 
 libcodyn_3_0_la_LDFLAGS = -export-dynamic -no-undefined -export-symbols-regex "[^_].*" $(CODYN_LIBS) $(INTROSPECTION_LIBS) $(LAPACK_LIBS) $(BLAS_LIBS) -lm
+
+if ENABLE_OSX_FRAMEWORK
+libcodyn_3_0_la_LDFLAGS += \
+	-Wl,-sub_library -Wl,libgobject-2.0			\
+	-Wl,-sub_library -Wl,libglib-2.0			\
+	-Wl,-sub_library -Wl,libgmodule-2.0			\
+	-Wl,-sub_library -Wl,libgio-2.0
+endif
+
 libcodyn_3_0_includedir = $(includedir)/codyn-$(CODYN_API_VERSION)/codyn
 
 libcodyn_3_0_la_SOURCES = $(COMMON_SOURCES)

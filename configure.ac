@@ -138,6 +138,13 @@ AC_CHECK_LIB([termcap],
                AC_DEFINE_UNQUOTED([ENABLE_TERMCAP], [1], [Termcap support])],
              [])
 
+AC_ARG_ENABLE([framework],
+              AS_HELP_STRING([--enable-framework=[yes/no]],[Enable build for OS X framework (default: no)]),
+              [enable_framework=$enableval],
+              [enable_framework=no])
+
+AM_CONDITIONAL(ENABLE_OSX_FRAMEWORK, test "x$enable_framework" = "xyes")
+
 AC_ARG_ENABLE([tar],
               AS_HELP_STRING([--enable-tar=[auto/yes/no]],[Enable tar support (default: auto)]),
               [enable_tar=$enableval],
