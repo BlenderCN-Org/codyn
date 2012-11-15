@@ -11,7 +11,12 @@ struct _CdnNetworkThreadPrivate
 	GThread *thread;
 	GMainContext *context;
 	GMainLoop *loop;
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	GMutex rmutex;
+#else
 	GMutex *rmutex;
+#endif
 
 	GHashTable *socket_table;
 };
@@ -21,6 +26,14 @@ G_DEFINE_DYNAMIC_TYPE (CdnNetworkThread, cdn_network_thread, G_TYPE_OBJECT)
 static void
 cdn_network_thread_finalize (GObject *object)
 {
+	CdnNetworkThread *self = CDN_NETWORK_THREAD (object);
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_clear (&self->priv->rmutex);
+#else
+	g_mutex_free (self->priv->rmutex);
+#endif
+
 	G_OBJECT_CLASS (cdn_network_thread_parent_class)->finalize (object);
 }
 
@@ -44,7 +57,11 @@ cdn_network_thread_init (CdnNetworkThread *self)
 {
 	self->priv = CDN_NETWORK_THREAD_GET_PRIVATE (self);
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_init (&self->priv->rmutex);
+#else
 	self->priv->rmutex = g_mutex_new ();
+#endif
 
 	self->priv->socket_table =
 		g_hash_table_new_full (g_direct_hash,
@@ -72,14 +89,23 @@ cdn_network_thread_register (CdnNetworkThread  *self,
 	GSource *source;
 	guint id;
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&self->priv->rmutex);
+#else
 	g_mutex_lock (self->priv->rmutex);
+#endif
 
 	if (g_hash_table_lookup_extended (self->priv->socket_table,
 	                                  socket,
 	                                  NULL,
 	                                  NULL))
 	{
+#if GLIB_CHECK_VERSION(2, 32, 0)
+		g_mutex_unlock (&self->priv->rmutex);
+#else
 		g_mutex_unlock (self->priv->rmutex);
+#endif
+
 		return;
 	}
 
@@ -89,10 +115,16 @@ cdn_network_thread_register (CdnNetworkThread  *self,
 		self->priv->loop = g_main_loop_new (self->priv->context,
 		                                    FALSE);
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+		self->priv->thread = g_thread_new ("cdn-network-thread",
+		                                   (GThreadFunc)run_in_thread,
+		                                   NULL);
+#else
 		self->priv->thread = g_thread_create ((GThreadFunc)run_in_thread,
 		                                      self,
 		                                      TRUE,
 		                                      NULL);
+#endif
 	}
 
 	source = g_socket_create_source (socket,
@@ -110,7 +142,11 @@ cdn_network_thread_register (CdnNetworkThread  *self,
 	                     g_object_ref (socket),
 	                     GINT_TO_POINTER ((gint)id));
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&self->priv->rmutex);
+#else
 	g_mutex_unlock (self->priv->rmutex);
+#endif
 }
 
 void
@@ -121,14 +157,23 @@ cdn_network_thread_unregister (CdnNetworkThread *self,
 	gpointer ptr;
 	guint id;
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&self->priv->rmutex);
+#else
 	g_mutex_lock (self->priv->rmutex);
+#endif
 
 	if (!g_hash_table_lookup_extended (self->priv->socket_table,
 	                                   socket,
 	                                   NULL,
 	                                   &ptr))
 	{
+#if GLIB_CHECK_VERSION(2, 32, 0)
+		g_mutex_unlock (&self->priv->rmutex);
+#else
 		g_mutex_unlock (self->priv->rmutex);
+#endif
+
 		return;
 	}
 
@@ -157,7 +202,11 @@ cdn_network_thread_unregister (CdnNetworkThread *self,
 		self->priv->context = NULL;
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&self->priv->rmutex);
+#else
 	g_mutex_unlock (self->priv->rmutex);
+#endif
 }
 
 CdnNetworkThread *

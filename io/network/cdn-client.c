@@ -107,7 +107,11 @@ struct _CdnClientPrivate
 	GHashTable *in_variables_map;
 
 	GSList *messages;
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	GMutex message_mutex;
+#else
 	GMutex *message_mutex;
+#endif
 
 	CdnIoMode io_mode;
 	gdouble throttle;
@@ -197,6 +201,12 @@ cdn_client_finalize (GObject *object)
 	{
 		g_object_unref (self->priv->cctx);
 	}
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_clear (&self->priv->message_mutex);
+#else
+	g_mutex_free (self->priv->message_mutex);
+#endif
 
 	g_free (self->priv->input_map);
 
@@ -449,7 +459,11 @@ push_message (CdnClient *client,
 		return;
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&client->priv->message_mutex);
+#else
 	g_mutex_lock (client->priv->message_mutex);
+#endif
 
 	if (message->type == MESSAGE_TYPE_HEADER)
 	{
@@ -462,7 +476,11 @@ push_message (CdnClient *client,
 		                                          message);
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&client->priv->message_mutex);
+#else
 	g_mutex_unlock (client->priv->message_mutex);
+#endif
 }
 
 static gboolean
@@ -1542,7 +1560,11 @@ cdn_client_constructed (GObject *object)
 	client->priv->num_bytes = 512;
 	client->priv->bytes = g_new (gchar, client->priv->num_bytes);
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_init (&client->priv->message_mutex);
+#else
 	client->priv->message_mutex = g_mutex_new ();
+#endif
 
 	client->priv->in_variables_map = g_hash_table_new_full (g_str_hash,
 	                                                        g_str_equal,
@@ -2457,7 +2479,11 @@ update_binary_mode (CdnClient *client)
 void
 cdn_client_update (CdnClient *client)
 {
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&client->priv->message_mutex);
+#else
 	g_mutex_lock (client->priv->message_mutex);
+#endif
 
 	client->priv->messages = g_slist_reverse (client->priv->messages);
 
@@ -2485,7 +2511,11 @@ cdn_client_update (CdnClient *client)
 			                     client->priv->messages);
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&client->priv->message_mutex);
+#else
 	g_mutex_unlock (client->priv->message_mutex);
+#endif
 
 	if (g_socket_is_closed (client->priv->socket))
 	{
