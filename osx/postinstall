@@ -1,0 +1,10 @@
+#!/bin/bash
+
+for i in /Library/Frameworks/Codyn.framework/Resources/bin/*; do
+	target=/usr/bin/$(basename $i)
+	if [ -f $target ]; then
+		unlink $target;
+	fi
+
+	ln -s $i $target
+done
