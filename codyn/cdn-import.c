@@ -203,7 +203,10 @@ default_search_path (void)
 {
 	const gchar * const *xdg_dirs;
 	gchar const *ienv;
-	GPtrArray *dirs = g_ptr_array_new ();
+	gchar const *datadir;
+	GPtrArray *dirs;
+
+	dirs = g_ptr_array_new ();
 
 	ienv = g_getenv (IMPORT_ENV);
 
@@ -238,7 +241,13 @@ default_search_path (void)
 		                                         NULL));
 	}
 
-	g_ptr_array_add (dirs, g_build_filename (DATADIR, IMPORT_DIR, "library", NULL));
+#if ENABLE_OSX_FRAMEWORK
+	datadir = "/Library/Frameworks/Codyn.framework/Resources/share";
+#else
+	datadir = DATADIR;
+#endif
+
+	g_ptr_array_add (dirs, g_build_filename (datadir, IMPORT_DIR, "library", NULL));
 
 	g_ptr_array_add (dirs, NULL);
 	return (gchar **) g_ptr_array_free (dirs, FALSE);

@@ -145,6 +145,10 @@ AC_ARG_ENABLE([framework],
 
 AM_CONDITIONAL(ENABLE_OSX_FRAMEWORK, test "x$enable_framework" = "xyes")
 
+if test "x$enable_framework" = "xyes"; then
+	AC_DEFINE([ENABLE_OSX_FRAMEWORK],[1],[Defined if building an OSX framework])
+fi
+
 AC_ARG_ENABLE([tar],
               AS_HELP_STRING([--enable-tar=[auto/yes/no]],[Enable tar support (default: auto)]),
               [enable_tar=$enableval],
