@@ -530,6 +530,8 @@ tools/plugins/gedit/Makefile
 tools/plugins/gedit/cdncontext/Makefile
 tools/plugins/gedit/cdncontext.plugin
 tools/plugins/gedit/cdncontext.gedit-plugin
+osx/Info.plist
+osx/make-framework
 ])
 
 AC_OUTPUT

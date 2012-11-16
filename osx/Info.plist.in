@@ -7,9 +7,9 @@
 	<key>CFBundleExecutable</key>
 	<string>Codyn</string>
 	<key>CFBundleGetInfoString</key>
-	<string>Codyn 3.0.0</string>
+	<string>Codyn @VERSION@</string>
 	<key>CFBundleIdentifier</key>
-	<string>net.codyn.codyn</string>
+	<string>net.codyn.Codyn</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -17,10 +17,10 @@
 	<key>CFBundlePackageType</key>
 	<string>FMWK</string>
 	<key>CFBundleShortVersionString</key>
-	<string>3.0.0</string>
+	<string>@VERSION@</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>3.0.0</string>
+	<string>@VERSION@</string>
 </dict>
 </plist>

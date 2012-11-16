@@ -1,0 +1,184 @@
+#!/usr/bin/python
+
+import inspect, os, shutil, subprocess, fnmatch, glob, re
+
+j = os.path.join
+d = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+
+version = '@VERSION@'
+api_version = '@CODYN_API_VERSION@'
+
+if version[0] == '@':
+    version = '3.3'
+    api_version = '3.0'
+
+print('Generating Codyn.framework')
+
+def find_deps(libnames, prefix, onlyone=False):
+    rlibnames = [os.path.realpath(x) for x in libnames]
+
+    q = list(rlibnames)
+    seen = {}
+    ret = {}
+    depmap = {}
+
+    while len(q) > 0:
+        l = q[0]
+        q = q[1:]
+
+        seen[l] = True
+
+        out = subprocess.check_output(['otool', '-L', l])
+        libs = out.splitlines()[1:]
+
+        depmap[l] = []
+
+        for ll in libs:
+            orig = ll.strip().split(' ')[0]
+            ll = os.path.realpath(orig)
+
+            if ll.startswith(prefix):
+                depmap[l].append(orig)
+
+                if not ll in seen:
+                    ret[orig] = ll
+                    seen[ll] = True
+                    q.append(ll)
+
+        if onlyone:
+            break
+
+    if onlyone:
+        return ret, depmap[rlibnames[0]]
+    else:
+        return ret, depmap
+
+fw = j(d, 'Codyn.framework.new')
+inst = j(d, 'install')
+
+shutil.rmtree(fw, ignore_errors=True)
+os.makedirs(fw)
+
+# Setup framework symlinks
+for i in ('Resources', 'Libraries'):
+    os.makedirs(j(fw, 'Versions', 'A', i))
+    os.symlink(j('Versions', 'Current', i), j(fw, i))
+
+os.symlink(j('Versions', 'Current', 'Headers'), j(fw, 'Headers'))
+os.makedirs(j(fw, 'Versions', 'A', 'Resources', 'bin'))
+os.makedirs(j(fw, 'Versions', 'A', 'Resources', 'share'))
+os.makedirs(j(fw, 'Versions', 'A', 'Resources', 'lib', 'codyn-' + api_version, 'io'))
+
+# Link current version to A
+os.symlink('A', j(fw, 'Versions', 'Current'))
+
+libcdn = j(inst, 'lib', 'libcodyn-' + api_version + '.0.dylib')
+
+# Copy main codyn lib
+shlib = j(fw, 'Versions', 'A', 'Codyn')
+shutil.copyfile(libcdn, shlib)
+os.symlink(j('..', 'Codyn'), j(fw, 'Versions', 'A', 'Libraries', 'libcodyn-' + api_version + '.0.dylib'))
+
+os.symlink(j('Versions', 'Current', 'Codyn'), j(fw, 'Codyn'))
+
+io = glob.glob(j(inst, 'lib', 'codyn-' + api_version, 'io', '*'))
+binaries = glob.glob(j(inst, 'bin', '*'))
+
+alllibs = [libcdn] + binaries + io
+
+# Copy library dependencies
+deps, depmap = find_deps(alllibs, d)
+
+libs = '/Library/Frameworks/Codyn.framework/Versions/A'
+
+def fix_names(target, newid, deps):
+    if newid:
+        subprocess.call(['install_name_tool', '-id', j(libs, newid), target])
+
+    for i in deps:
+        if os.path.basename(i) == 'libcodyn-' + api_version + '.0.dylib':
+            t = j(libs, 'Codyn')
+        else:
+            t = j(libs, 'Libraries', os.path.basename(i))
+
+        subprocess.call(['install_name_tool', '-change', i, t, target])
+
+for dep in deps:
+    real = deps[dep]
+    bname = os.path.basename(real)
+
+    target = j(fw, 'Versions', 'A', 'Libraries', os.path.basename(real))
+    shutil.copyfile(real, target)
+    os.chmod(target, 0755)
+
+    fix_names(target, j('Libraries', bname), depmap[real])
+
+fix_names(j(fw, 'Codyn'), 'Codyn', depmap[libcdn])
+
+# Copy binaries
+for b in binaries:
+    target = j(fw, 'Versions', 'A', 'Resources', 'bin', os.path.basename(b))
+    shutil.copyfile(b, target)
+    os.chmod(target, 0755)
+
+    fix_names(target, None, depmap[b])
+
+# Copy io methods
+for b in io:
+    target = j(fw, 'Versions', 'A', 'Resources', 'lib', 'codyn-' + api_version, 'io', os.path.basename(b))
+    shutil.copyfile(b, target)
+    os.chmod(target, 0755)
+
+    fix_names(target, None, depmap[b])
+
+# Copy data
+shutil.copytree(j(inst, 'share', 'codyn-' + api_version), j(fw, 'Versions', 'A', 'Resources', 'share', 'codyn-' + api_version))
+shutil.copytree(j(inst, 'share', 'emacs'), j(fw, 'Versions', 'A', 'Resources', 'share', 'emacs'))
+shutil.copytree(j(inst, 'share', 'gir-1.0'), j(fw, 'Versions', 'A', 'Resources', 'share', 'gir-1.0'))
+shutil.copytree(j(inst, 'lib', 'girepository-1.0'), j(fw, 'Versions', 'A', 'Resources', 'lib', 'girepository-1.0'))
+
+# Copy python wrapper
+target = j(fw, 'Versions', 'A', 'Resources', 'bin', 'cdn-python')
+shutil.copyfile(j(d, 'cdn-python'), target)
+os.chmod(target, 0755)
+
+# Copy introspection typelibs and girs
+gis = ('GObject-2.0', 'GLib-2.0', 'Gio-2.0', 'GModule-2.0', 'GIRepository-2.0')
+
+for gi in gis:
+    shutil.copyfile(j(d, 'brew', 'lib', 'girepository-1.0', gi + '.typelib'), j(fw, 'Versions', 'A', 'Resources', 'lib', 'girepository-1.0', gi + '.typelib'))
+    shutil.copyfile(j(d, 'brew', 'share', 'gir-1.0', gi + '.gir'), j(fw, 'Versions', 'A', 'Resources', 'share', 'gir-1.0', gi + '.gir'))
+
+# Copy introspection python stuff
+target = j(fw, 'Versions', 'A', 'Resources', 'lib', 'python2.7', 'site-packages')
+os.makedirs(target)
+shutil.copytree(j(d, 'brew', 'lib', 'python2.7', 'site-packages', 'gi'), j(target, 'gi'))
+
+# Copy headers
+shutil.copytree(j(inst, 'include', 'codyn-' + api_version, 'codyn'), j(fw, 'Versions', 'A', 'Headers'))
+
+exth = j(fw, 'Versions', 'A', 'Headers', 'ext')
+os.makedirs(exth)
+
+# Copy dependency headers
+shutil.copytree(j(d, 'brew', 'include', 'glib-2.0'), j(exth, 'glib-2.0'))
+shutil.copy(j(d, 'brew', 'lib', 'glib-2.0', 'include', 'glibconfig.h'), j(exth, 'glib-2.0'))
+
+# Fix include paths
+for root, dirnames, filenames in os.walk(j(fw, 'Versions', 'A', 'Headers')):
+    for filename in fnmatch.filter(filenames, '*.h'):
+        subprocess.call(['sed', '-i', '', '-E', '-e', 's/#include[ \t]*<(gio|glib|gobject|gmodule)/#include <Codyn\/ext\/glib-2.0\/\\1/g', '-e', 's/#include <codyn/#include <Codyn/g', os.path.join(root, filename)])
+
+# Copy info
+shutil.copyfile(j(d, 'Info.plist'), j(fw, 'Resources', 'Info.plist'))
+
+target = j(d, 'Codyn.framework')
+subprocess.call(['sudo', 'rm', '-rf', target])
+
+shutil.move(fw, target)
+subprocess.call(['sudo', 'chown', '-R', 'root:admin', target])
+
+print('Generating Codyn-' + version + '.pkg')
+subprocess.call(['/Applications/PackageMaker.app/Contents/MacOS/PackageMaker', '-n', version, '-d', j(d, 'Codyn.pmdoc'), '-o', j(d, 'Codyn-' + version + '.pkg')])
+
+# vi:ts=4:et
