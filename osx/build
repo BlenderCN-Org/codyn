@@ -7,4 +7,4 @@ prefix="$d/install"
 export CFLAGS='-arch i386 -arch x86_64'
 export LDFLAGS='-arch i386 -arch x86_64'
 
-(cd .. && ./autogen.sh --disable-dependency-tracking --disable-maintainer-mode --enable-framework --prefix "$prefix" && make clean && make install)
+(cd .. && ./autogen.sh --disable-dependency-tracking --enable-framework --prefix "$prefix" && make clean && make install)
