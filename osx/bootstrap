@@ -2,4 +2,5 @@
 
 . $(dirname "$0")/env
 
-$brew install --universal autoconf automake libtool glib gobject-introspection pygobject
+cp "$d/pygobject3.rb" "$b/Library/Formula/pygobject3.rb"
+$brew install --universal autoconf automake libtool glib gobject-introspection pygobject3
