@@ -346,7 +346,6 @@ load_all_io_methods ()
 	gchar const * const *xdg_dirs;
 	gchar const *imdir = "io";
 	gchar const *apidir = "codyn-" API_VERSION;
-	gchar const *libdir;
 
 	e = g_getenv ("CODYN_IO_METHODS");
 
@@ -384,13 +383,7 @@ load_all_io_methods ()
 		g_free (path);
 	}
 
-#if ENABLE_OSX_FRAMEWORK
-	libdir = "/Library/Frameworks/Codyn.framework/Resources/lib";
-#else
-	libdir = LIBDIR;
-#endif
-
-	path = g_build_filename (libdir, apidir, imdir, NULL);
+	path = g_build_filename (LIBDIR, apidir, imdir, NULL);
 
 	load_io_methods (path);
 	g_free (path);
