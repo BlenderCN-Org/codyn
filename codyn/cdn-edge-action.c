@@ -182,6 +182,7 @@ set_property (CdnEdgeAction *action,
 	if (action->priv->property)
 	{
 		cdn_usable_unuse (CDN_USABLE (action->priv->property));
+
 		g_object_unref (action->priv->property);
 		action->priv->property = NULL;
 	}
@@ -189,6 +190,13 @@ set_property (CdnEdgeAction *action,
 	if (property)
 	{
 		action->priv->property = g_object_ref_sink (property);
+
+		if (action->priv->integrated_set)
+		{
+			cdn_variable_set_integrated (action->priv->property,
+			                             action->priv->integrated);
+		}
+
 		cdn_usable_use (CDN_USABLE (action->priv->property));
 	}
 }
@@ -986,6 +994,12 @@ _cdn_edge_action_set_integrated (CdnEdgeAction *action,
 {
 	action->priv->integrated_set = TRUE;
 	action->priv->integrated = integrated;
+
+	if (action->priv->property)
+	{
+		cdn_variable_set_integrated (action->priv->property,
+		                             action->priv->integrated);
+	}
 }
 
 gboolean
