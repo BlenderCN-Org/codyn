@@ -1324,15 +1324,21 @@ add_variable_diff (CdnParserContext  *context,
 
 		if (!prop)
 		{
+			gchar *vex;
+
+			vex = g_strdup_printf ("zeros(size(%s))", ex);
+
 			if (!cdn_object_add_variable (CDN_OBJECT (obj),
 			                              cdn_variable_new (fname,
-			                                                cdn_expression_new0 (),
+			                                                cdn_expression_new (vex),
 			                                                0),
 			                              &error))
 			{
 				parser_failed_error (context, NULL, error);
 				return FALSE;
 			}
+
+			g_free (vex);
 
 			prop = cdn_object_get_variable (CDN_OBJECT (obj), fname);
 		}
