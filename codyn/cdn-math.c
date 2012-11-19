@@ -1463,7 +1463,7 @@ static FunctionEntry function_entries[] = {
 	{"length", op_length, 1, FALSE},
 	{"size", op_size, 1, FALSE},
 	{"hcat", op_hcat, 2, FALSE},
-	{"zeros", op_zeros, 2, FALSE},
+	{"zeros", op_zeros, -1, FALSE},
 	{"eye", op_eye, 1, FALSE},
 	{"block", op_block, 3, FALSE}
 };
