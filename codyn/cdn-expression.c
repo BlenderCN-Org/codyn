@@ -1471,7 +1471,7 @@ size_macro (CdnExpression *expression,
 		first = context->stack->data;
 	}
 
-	if (!first || first->next)
+	if (!first || context->stack->next)
 	{
 		parser_failed (expression,
 		               context,
