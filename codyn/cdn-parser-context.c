@@ -1284,6 +1284,49 @@ generate_name_value_pairs (CdnParserContext  *context,
 	return g_slist_reverse (ret);
 }
 
+static gchar *
+parse_action_index (gchar const *target, CdnExpression **index)
+{
+	gchar const *ptr;
+	gchar *name;
+
+	// Simple parser for index
+	ptr = g_utf8_strchr (target, -1, '[');
+	*index = NULL;
+
+	if (ptr)
+	{
+		gchar *comp;
+		gchar *l;
+
+		name = g_strndup (target, ptr - target);
+
+		if (*(ptr + 1) == '[')
+		{
+			l = g_strndup (ptr + 1, strlen (ptr) - 2);
+
+			comp = g_strdup_printf ("lindex(%s, size(output.%s)[1])",
+			                        l,
+			                        name);
+
+			g_free (l);
+		}
+		else
+		{
+			comp = g_strdup (ptr);
+		}
+
+		*index = cdn_expression_new (comp);
+		g_free (comp);
+	}
+	else
+	{
+		name = g_strdup (target);
+	}
+
+	return name;
+}
+
 static gboolean
 add_variable_diff (CdnParserContext  *context,
                    CdnNode           *obj,
@@ -1294,7 +1337,8 @@ add_variable_diff (CdnParserContext  *context,
                    CdnVariableFlags   add_flags,
                    CdnVariableFlags   remove_flags,
                    CdnEmbeddedString *constraint,
-                   CdnEmbeddedString *state)
+                   CdnEmbeddedString *state,
+                   CdnExpression     *index)
 {
 	gint i;
 	CdnVariable *prev = NULL;
@@ -1326,7 +1370,14 @@ add_variable_diff (CdnParserContext  *context,
 		{
 			gchar *vex;
 
-			vex = g_strdup_printf ("zeros(size(%s))", ex);
+			if (prev)
+			{
+				vex = g_strdup_printf ("zeros(size(%s))", cdn_variable_get_name (prev));
+			}
+			else
+			{
+				vex = g_strdup_printf ("zeros(size(%s))", ex);
+			}
 
 			if (!cdn_object_add_variable (CDN_OBJECT (obj),
 			                              cdn_variable_new (fname,
@@ -1372,6 +1423,12 @@ add_variable_diff (CdnParserContext  *context,
 		{
 			action = cdn_edge_action_new (fname,
 			                              cdn_expression_new (dfname));
+		}
+
+		if (index)
+		{
+			cdn_edge_action_set_index (action,
+			                           cdn_expression_copy (index));
 		}
 
 		if (state)
@@ -1653,28 +1710,38 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			NameValuePair *p = pair->data;
 			gchar *exexpression = NULL;
 			gchar const *exname;
+			gchar *noindexname;
 			gint order;
 			gchar *dotname;
 			CdnExpansionContext *pctx;
 			CdnVariable *nv;
+			CdnExpression *index;
 
 			exname = cdn_expansion_get (p->name, 0);
+			noindexname = parse_action_index (exname, &index);
 
-			if (CDN_IS_NODE (obj) && (dotname = cdn_decompose_dot (exname, &order)))
+			if (CDN_IS_NODE (obj) && (dotname = cdn_decompose_dot (noindexname, &order)))
 			{
 				// This is a differential equation now...
 				add_variable_diff (context,
 				                   CDN_NODE (obj),
-				                   exname,
+				                   noindexname,
 				                   dotname,
 				                   order,
 				                   p,
 				                   add_flags,
 				                   remove_flags,
 				                   constraint,
-				                   state);
+				                   state,
+				                   index);
 
 				g_free (dotname);
+				g_free (noindexname);
+
+				if (index)
+				{
+					g_object_unref (index);
+				}
 
 				if (context->priv->error)
 				{
@@ -1685,10 +1752,29 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			}
 			else if (state)
 			{
+				g_free (noindexname);
+
+				if (index)
+				{
+					g_object_unref (index);
+				}
+
 				parser_failed (context,
 				               CDN_STATEMENT (state),
 				               CDN_NETWORK_LOAD_ERROR_SYNTAX,
 				               "Only differential equations can be associated to a state");
+
+				return;
+			}
+			else if (index)
+			{
+				g_free (noindexname);
+				g_object_unref (index);
+
+				parser_failed (context,
+				               CDN_STATEMENT (state),
+				               CDN_NETWORK_LOAD_ERROR_SYNTAX,
+				               "Only differential equations can be associated with an index");
 
 				return;
 			}
@@ -1729,7 +1815,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			flags &= ~remove_flags;
 			flags |= add_flags;
 
-			nv = cdn_variable_new (exname,
+			nv = cdn_variable_new (noindexname,
 			                       cdn_expression_new (exexpression),
 			                       flags);
 
@@ -1744,19 +1830,17 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 			                              &error))
 			{
 				g_free (exexpression);
+				g_free (noindexname);
+
 
 				parser_failed_error (context, NULL, error);
 				break;
 			}
 
-			if (property)
-			{
-				
-			}
-
 			g_free (exexpression);
 
-			property = cdn_object_get_variable (obj, exname);
+			property = cdn_object_get_variable (obj, noindexname);
+			g_free (noindexname);
 
 			pctx = expansion_context_push_base (context);
 
@@ -1813,49 +1897,6 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 	{
 		g_object_unref (constraint);
 	}
-}
-
-static gchar *
-parse_action_index (gchar const *target, CdnExpression **index)
-{
-	gchar const *ptr;
-	gchar *name;
-
-	// Simple parser for index
-	ptr = g_utf8_strchr (target, -1, '[');
-	*index = NULL;
-
-	if (ptr)
-	{
-		gchar *comp;
-		gchar *l;
-
-		name = g_strndup (target, ptr - target);
-
-		if (*(ptr + 1) == '[')
-		{
-			l = g_strndup (ptr + 1, strlen (ptr) - 2);
-
-			comp = g_strdup_printf ("lindex(%s, size(output.%s)[1])",
-			                        l,
-			                        name);
-
-			g_free (l);
-		}
-		else
-		{
-			comp = g_strdup (ptr);
-		}
-
-		*index = cdn_expression_new (comp);
-		g_free (comp);
-	}
-	else
-	{
-		name = g_strdup (target);
-	}
-
-	return name;
 }
 
 /**
