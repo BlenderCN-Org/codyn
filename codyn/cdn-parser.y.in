@@ -155,6 +155,14 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 %type <array> multi_identifier_or_string
 %type <string> multi_identifier_or_string_value
 
+%type <string> simple_index
+%type <string> simple_index_contents
+%type <string> variable_with_index
+
+%type <array> multi_variable_or_string_contents
+%type <array> multi_variable_or_string
+%type <string> multi_variable_or_string_value
+
 %type <string> constraint
 
 %type <list> edge_attributes
@@ -1035,6 +1043,11 @@ multi_identifier_or_string
 	  ']'				{ $$ = $2; }
 	;
 
+variable_with_index
+	: identifier_or_string			{ $$ = $1; }
+	| identifier_or_string simple_index	{ cdn_embedded_string_add_string ($1, $2);
+	                                          $$ = $1; }
+
 assign_optional
 	: '='				{ $$ = FALSE; }
 	| '?' '='			{ $$ = TRUE; }
@@ -1072,8 +1085,56 @@ constraint
 	                                                cdn_embedded_string_add_text ($$, ")"); }
 	;
 
+simple_index_contents
+	: value_as_string				{ $$ = $1; }
+	| simple_index_contents ',' value_as_string	{ cdn_embedded_string_add_text ($1, ", ");
+	                                                  cdn_embedded_string_add_string ($1, $3);
+	                                                  $$ = $1; }
+	;
+
+simple_index
+	: '['
+	   simple_index_contents
+	  ']'						{ cdn_embedded_string_prepend_text ($2, "[");
+	                                                  cdn_embedded_string_add_text ($2, "]");
+	                                                  $$ = $2; }
+	| '['
+	  '['
+	  simple_index_contents
+	  ']'
+	  ','
+	  '['
+	  simple_index_contents
+	  ']'						{ cdn_embedded_string_prepend_text ($3, "[[");
+	                                                  cdn_embedded_string_add_text ($3, "], [");
+	                                                  cdn_embedded_string_add_string ($3, $7);
+	                                                  cdn_embedded_string_add_text ($3, "]]");
+	                                                  $$ = $3; }
+	;
+
+multi_variable_or_string_value
+	:				{ $$ = NULL; }
+	| variable_with_index		{ $$ = $1; }
+	;
+
+multi_variable_or_string_contents
+	: multi_variable_or_string_value	{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                          g_ptr_array_add ($$, $1); }
+	| multi_variable_or_string_contents
+	  ','
+	  multi_variable_or_string_value	{ g_ptr_array_add ($1, $3); $$ = $1; }
+	;
+
+multi_variable_or_string
+	: variable_with_index		{ $$ = g_ptr_array_new_with_free_func ((GDestroyNotify)g_object_unref);
+	                                  g_ptr_array_add ($$, $1); }
+	| '['
+	  multi_variable_or_string_contents
+	  ']'				{ $$ = $2; }
+	;
+
 variable_no_set
-	: multi_identifier_or_string
+	: multi_variable_or_string
 	  assign_optional
 	  multi_value_as_string
 	  variable_flags
@@ -1087,7 +1148,7 @@ variable_no_set
 					                                   $2,
 					                                   $5,
 					                                   $6); errb }
-	| multi_identifier_or_string
+	| multi_variable_or_string
 	  variable_flags_strict
 					{ cdn_parser_context_add_variable (context,
 					                                   $1	,
@@ -1149,12 +1210,12 @@ variable_flag
 	;
 
 action
-	: multi_identifier_or_string
+	: multi_variable_or_string
 	  '+' '='
 	  multi_value_as_string
 	  state
 					{ cdn_parser_context_add_action (context, $1, $4, $5, TRUE); errb }
-	| multi_identifier_or_string
+	| multi_variable_or_string
 	  '<' '='
 	  multi_value_as_string
 	  state
