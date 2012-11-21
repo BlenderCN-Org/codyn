@@ -5344,6 +5344,11 @@ cdn_expression_sum (GSList const *expressions)
 		return cdn_expression_new0 ();
 	}
 
+	if (!expressions->next)
+	{
+		return cdn_expression_copy (expressions->data);
+	}
+
 	srep = g_string_new ("");
 
 	for (item = expressions; item; item = g_slist_next (item))
