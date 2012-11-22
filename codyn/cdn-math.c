@@ -2014,20 +2014,25 @@ sparsity_union (CdnStackArg const *arg1,
 				s2 = arg2->sparsity[i2];
 			}
 
+			if (!outarg->sparsity)
+			{
+				gint num;
+
+				num = MIN (arg1->num_sparse + arg2->num_sparse,
+				           cdn_stack_arg_size (outarg));
+
+				outarg->sparsity = g_new (guint, num);
+				outarg->num_sparse = 0;
+			}
+
 			if (s1 == s2)
 			{
-				if (!outarg->sparsity)
-				{
-					outarg->sparsity = g_new (guint, MIN (arg1->num_sparse + arg2->num_sparse,
-					                                      cdn_stack_arg_size (outarg)));
-				}
-
 				outarg->sparsity[outarg->num_sparse++] = s1;
 
 				++i1;
 				++i2;
 			}
-			else if (s1 == -1 || s1 > s2)
+			else if (s1 == -1 || (s2 != -1 && s1 > s2))
 			{
 				outarg->sparsity[outarg->num_sparse++] = s2;
 				++i2;
