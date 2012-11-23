@@ -559,3 +559,18 @@ cdn_instruction_variable_get_slice (CdnInstructionVariable *instruction,
 
 	return instruction->priv->slice;
 }
+
+/**
+ * cdn_instruction_variable_has_slice:
+ * @instruction: a #CdnInstructionVariable.
+ *
+ * Get whether this variable instruction has a slice associated with it.
+ *
+ * Returns: %TRUE if the instruction is sliced, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_instruction_variable_has_slice (CdnInstructionVariable *instruction)
+{
+	return instruction->priv->slice != NULL;
+}

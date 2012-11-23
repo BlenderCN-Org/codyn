@@ -624,6 +624,11 @@ resolve_indirection (CdnEmbeddedString   *em,
 				}
 			}
 
+			if (!ret)
+			{
+				ret = g_strdup ("-1");
+			}
+
 			flags = INDIRECTION_NONE;
 		}
 		else

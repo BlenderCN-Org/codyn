@@ -14,6 +14,7 @@ libinstructions_la_SOURCES = 			\
 	cdn-instruction-custom-operator.c	\
 	cdn-instruction-custom-operator-ref.c	\
 	cdn-instruction-function.c		\
+	cdn-instruction-index.c			\
 	cdn-instruction-number.c		\
 	cdn-instruction-matrix.c		\
 	cdn-instruction-variable.c		\
@@ -28,6 +29,7 @@ libinstructions_headers =			\
 	cdn-instruction-custom-operator.h	\
 	cdn-instruction-custom-operator-ref.h	\
 	cdn-instruction-function.h		\
+	cdn-instruction-index.h			\
 	cdn-instruction-number.h		\
 	cdn-instruction-matrix.h		\
 	cdn-instruction-variable.h		\

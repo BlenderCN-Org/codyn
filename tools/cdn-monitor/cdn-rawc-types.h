@@ -20,11 +20,20 @@ typedef struct
 
 typedef struct
 {
+	uint16_t rows;
+	uint16_t columns;
+} CdnRawcDimension;
+
+typedef struct
+{
 	// Name of the state
 	char const *name;
 
 	// Index into network.meta.nodes
 	uint32_t parent;
+
+	// Index into data
+	uint32_t index;
 } CdnRawcStateMeta;
 
 typedef struct
@@ -114,8 +123,7 @@ typedef struct
 	void    (*events_update)      (void        *data);
 	void    (*events_post_update) (void        *data);
 
-	void    (*event_fire)         (void        *data,
-	                               uint32_t     i);
+	void    (*events_fire)        (void        *data);
 
 	ValueType *(*get_data)        (void        *data);
 	ValueType *(*get_states)      (void        *data);
@@ -130,12 +138,18 @@ typedef struct
 	CdnRawcEventValue *(*get_events_value) (void     *data,
 	                                        uint32_t  i);
 
+	CdnRawcDimension const *(*get_dimension) (CdnRawcDimension const *dimensions,
+	                                          uint32_t                i);
+
 	CdnRawcRange states;
 	CdnRawcRange derivatives;
 	CdnRawcRange event_values;
 
+	CdnRawcDimension const *dimensions;
+
 	uint32_t size;
 	uint32_t data_size;
+	uint32_t data_count;
 
 	uint8_t event_refinement;
 	uint8_t type_size;

@@ -16,8 +16,8 @@ typedef struct
 
 	union
 	{
-		void (*init) (double t, double dt);
-		void (*initf) (float t, float dt);
+		void (*init) (double t);
+		void (*initf) (float t);
 	};
 
 	union
@@ -25,6 +25,8 @@ typedef struct
 		void (*step) (double t, double dt);
 		void (*stepf) (float t, float dt);
 	};
+
+	CdnRawcDimension const *(*get_dimension) (uint32_t i);
 } RawcData;
 
 static gboolean
@@ -72,24 +74,34 @@ variable_get_values (CdnMonitorVariable *v)
 {
 	RawcData *data = v->userdata;
 
-	// TODO: multidim
-	return &data->buffer[v->state];
+	return data->buffer + data->network->meta.states[v->state].index;
 }
 
 static CdnMonitorVariable *
 create_monitor_variable (CdnMonitorImplementation *implementation,
-                         uint32_t state)
+                         uint32_t                  state)
 {
 	CdnMonitorVariable *ret;
+	RawcData *data = implementation->userdata;
+	CdnRawcDimension const *dim;
 
 	ret = g_slice_new0 (CdnMonitorVariable);
 
 	ret->state = state;
-	ret->userdata = implementation->userdata;
+	ret->userdata = data;
 
-	// TODO: multidim
-	ret->dimension.rows = 1;
-	ret->dimension.columns = 1;
+	dim = data->get_dimension (data->network->meta.states[state].index);
+
+	if (dim)
+	{
+		ret->dimension.rows = dim->rows;
+		ret->dimension.columns = dim->columns;
+	}
+	else
+	{
+		ret->dimension.rows = 1;
+		ret->dimension.columns = 1;
+	}
 
 	ret->get_name = variable_get_name;
 	ret->get_values = variable_get_values;
@@ -144,12 +156,12 @@ monitor_begin (CdnMonitorImplementation *implementation,
 
 	if (rawc_is_float (data))
 	{
-		data->initf ((gfloat)t, (gfloat)timestep);
+		data->initf ((gfloat)t);
 		copy_buffer (data);
 	}
 	else
 	{
-		data->init (t, timestep);
+		data->init (t);
 	}
 }
 
@@ -465,6 +477,23 @@ cdn_monitor_implementation_rawc_new (gchar const *filename)
 	}
 
 	g_free (symname);
+
+	symname = g_strconcat ("cdn_rawc_", ptr, "_get_dimension", NULL);
+
+	gpointer getdimsym;
+
+	if (!g_module_symbol (module, symname, &getdimsym))
+	{
+		g_printerr ("Could not find %s\n", symname);
+
+		g_free (name);
+		g_free (symname);
+
+		return NULL;
+	}
+
+	g_free (symname);
+
 	symname = g_strconcat ("cdn_rawc_", ptr, "_network", NULL);
 
 	CdnRawcNetwork *(*get_network) ();
@@ -519,6 +548,7 @@ cdn_monitor_implementation_rawc_new (gchar const *filename)
 
 	data->init = initsym;
 	data->step = stepsym;
+	data->get_dimension = getdimsym;
 
 	ret->free = monitor_free;
 	ret->userdata = data;

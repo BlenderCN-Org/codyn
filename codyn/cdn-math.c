@@ -1259,16 +1259,8 @@ op_size (CdnStack           *stack,
          CdnStackArgs const *argdim,
          gpointer            userdata)
 {
-	gint r;
-	gint c;
-
-	r = argdim->args[0].rows;
-	c = argdim->args[0].columns;
-
-	cdn_stack_popn (stack, r * c);
-
-	cdn_stack_push (stack, r);
-	cdn_stack_push (stack, c);
+	// This will never be executed because it's compiled as a
+	// kind of macro
 }
 
 static void
@@ -1276,12 +1268,8 @@ op_length (CdnStack           *stack,
            CdnStackArgs const *argdim,
            gpointer            userdata)
 {
-	gint n;
-
-	n = cdn_stack_arg_size (argdim->args);
-
-	cdn_stack_popn (stack, n);
-	cdn_stack_push (stack, n);
+	// This will never be executed because it's compiled as a
+	// kind of macro
 }
 
 static void
@@ -1475,7 +1463,7 @@ static FunctionEntry function_entries[] = {
 	{"length", op_length, 1, FALSE},
 	{"size", op_size, 1, FALSE},
 	{"hcat", op_hcat, 2, FALSE},
-	{"zeros", op_zeros, 2, FALSE},
+	{"zeros", op_zeros, -1, FALSE},
 	{"eye", op_eye, 1, FALSE},
 	{"block", op_block, 3, FALSE}
 };

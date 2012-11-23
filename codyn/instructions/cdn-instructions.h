@@ -11,6 +11,7 @@
 #include <codyn/instructions/cdn-instruction-rand.h>
 #include <codyn/instructions/cdn-instruction-variable.h>
 #include <codyn/instructions/cdn-instruction-matrix.h>
+#include <codyn/instructions/cdn-instruction-index.h>
 
 #endif /* __CDN_INSTRUCTIONS_H__ */
 
