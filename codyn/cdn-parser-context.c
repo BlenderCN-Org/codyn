@@ -2214,7 +2214,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 
 		expansion_context_push_selection (context, item->data);
 
-		embedded_string_expand_multiple (properties, property_name, context);
+		embedded_string_expand_multiple (properties, name, context);
 
 		for (prop = properties; prop; prop = g_slist_next (prop))
 		{
@@ -2226,7 +2226,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 
 			cdn_expansion_context_add_expansion (pctx, prop->data);
 
-			embedded_string_expand_multiple (exps, name, context);
+			embedded_string_expand_multiple (exps, property_name, context);
 
 			for (exp = exps; exp; exp = g_slist_next (exp))
 			{
@@ -2243,7 +2243,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 					GError *error = NULL;
 					gchar const *nm;
 
-					nm = cdn_expansion_get (exp->data, 0);
+					nm = cdn_expansion_get (prop->data, 0);
 
 					if (is_optional &&
 					    cdn_variable_interface_implements (iface,
@@ -2255,7 +2255,7 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 					if (!cdn_variable_interface_add (iface,
 					                                 nm,
 					                                 cdn_expansion_get (child->data, 0),
-					                                 cdn_expansion_get (prop->data, 0),
+					                                 cdn_expansion_get (exp->data, 0),
 					                                 &error))
 					{
 						parser_failed_error (context,
