@@ -1,17 +1,17 @@
-include "physics.cdn"
-
 integrator
 {
     ## Use runge-kutta 4th order integration
     method = "runge-kutta"
-
-    initial-phase = "air"
 }
+
+g = 9.81
 
 ## Basic SLIP (Spring Loaded Inverted Pendulum) model. Parameter values in this
 ## file come from [1].
 node "slip"
 {
+    initial-state "air"
+
     ## Leg length (rest position of the spring)
     l = 1
 
@@ -72,37 +72,26 @@ node "slip"
     ## Transition from air to ground when the end point of the leg
     ## (considering the desired angle of attack, aoa) would go through the
     ## ground. Note that the event is triggered on a negative zero crossing
-    phase "air" to "ground" when "y - l * cos(aoa)"
+    event "air" to "ground" when "y < l * cos(aoa)"
     {
         ## Calculate the position of the leg on impact and store this in xc
-        "xc" = "x + l * sin(aoa)"
-        "steps" = "steps + 1"
+        set xc = "x + l * sin(aoa)"
+        set steps = "steps + 1"
     }
 
     ## Transition from ground to air when the calculated leglength becomes
     ## larger than the zero leg length (i.e. the spring is fully extended).
-    ## Note that the event is triggered on a negative zero crossing
-    phase "ground" to "air" when "l - leglength" {}
-}
+    event "ground" to "air" when "leglength > l" {}
 
-## Differential equations for the air phase. In the air, the motion of the SLIP
-## model is simply balistic (i.e. only gravity working on the mass)
-edge on "slip" phase "air"
-{
-    ## y'' = g
-    dy <= "-g"
-}
+    ## Differential equations for the air phase. In the air, the motion of the SLIP
+    ## model is simply balistic (i.e. only gravity working on the mass)
+    dy' = "-g" state "air"
 
-## Differential equations for the ground phase. On the ground, the motion of
-## the SLIP model is subject to gravitational and spring forces. Note that
-## the actions are initially disabled, assuming we start in the air phase.
-edge on "slip" phase "ground"
-{
     ## x'' = projected(FSpring, X) / m
-    dx <= "(-sin(aol) * fspring) / m"
+    dx' = "(-sin(aol) * fspring) / m" state "ground"
 
     ## y'' = projected(FSpring, Y) / m - g
-    dy <= "(cos(aol) * fspring) / m - g"
+    dy' = "(cos(aol) * fspring) / m - g" state "ground"
 }
 
 # [1] Seyfarth, A. & Geyer, H. & Günther, M. & Blickhan, R. (2002).
