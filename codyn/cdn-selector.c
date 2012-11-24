@@ -1274,18 +1274,15 @@ append_context (CdnSelector *self,
 		for (arg = selector->pseudo.arguments; arg; arg = g_slist_next (arg))
 		{
 			CdnEmbeddedString *s;
-			GSList *sub;
+			CdnExpansion *ex;
 
 			s = arg->data;
 
-			sub = cdn_embedded_string_expand_multiple (s,
-			                                           pctx,
-			                                           NULL);
+			ex = cdn_embedded_string_as_expansion (s, pctx, NULL);
 
-			cdn_expansion_context_add_expansions (pctx, sub);
+			cdn_expansion_context_add_expansion (pctx, ex);
 
-			g_slist_foreach (sub, (GFunc)cdn_expansion_unref, NULL);
-			g_slist_free (sub);
+			cdn_expansion_unref (ex);
 		}
 
 		sel = cdn_selection_new (cdn_selection_get_object (parents->data),

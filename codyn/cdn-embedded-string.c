@@ -1719,10 +1719,10 @@ annotate_first (GSList *items)
 }
 
 static GSList *
-expand_elements (CdnEmbeddedString   *s,
+expand_elements (CdnEmbeddedString    *s,
                  CdnExpansionContext  *ctx,
-                 ExNode              *elements,
-                 GError             **error)
+                 ExNode               *elements,
+                 GError              **error)
 {
 	ExNode *child;
 	GSList *ret = NULL;
@@ -2461,3 +2461,58 @@ cdn_embedded_string_add_string (CdnEmbeddedString *s,
 	return s;
 }
 
+/**
+ * cdn_embedded_string_as_expansion:
+ * @s: a #CdnEmbeddedString.
+ * @context: a #CdnExpansionContext.
+ * @expanded: (element-type CdnExpansion) (allow-none): a #GSList of #CdnExpansion.
+ * @error: a #GError.
+ *
+ * Create an expansion representing the embedded string. The first
+ * element represents the non-multiexpanded expansion of the embedded string.
+ * When @expanded is %NULL, the embedded string @s is first multi-expanded into
+ * @expanded. Then, all 0th elements of each expansion in @expanded is added
+ * to the result expansion (i.e. represented in elements 1:N).
+ *
+ * Returns: (transfer full): a #CdnExpansion.
+ *
+ **/
+CdnExpansion *
+cdn_embedded_string_as_expansion (CdnEmbeddedString    *s,
+                                  CdnExpansionContext  *context,
+                                  GError              **error)
+{
+	GSList *ex;
+	GPtrArray *ptr;
+	gchar **p;
+	CdnExpansion *ret;
+	GSList *item;
+
+	ex = cdn_embedded_string_expand_multiple (s, context, error);
+
+	if (ex == NULL)
+	{
+		return NULL;
+	}
+
+	ptr = g_ptr_array_new ();
+
+	for (item = ex; item; item = g_slist_next (item))
+	{
+		g_ptr_array_add (ptr,
+		                 (gpointer)cdn_expansion_get (item->data,
+		                                              0));
+	}
+
+	g_ptr_array_add (ptr, NULL);
+	p = (gchar **)g_ptr_array_free (ptr, FALSE);
+
+	ret = cdn_expansion_new ((gchar const * const *)p);
+
+	g_free (p);
+
+	g_slist_foreach (ex, (GFunc)cdn_expansion_unref, NULL);
+	g_slist_free (ex);
+
+	return ret;
+}

@@ -120,6 +120,10 @@ void               cdn_embedded_string_clear_cache      (CdnEmbeddedString      
 
 gchar             *cdn_embedded_string_collapse         (gchar const * const       *s);
 
+CdnExpansion      *cdn_embedded_string_as_expansion     (CdnEmbeddedString         *s,
+                                                         CdnExpansionContext       *context,
+                                                         GError                   **error);
+
 G_END_DECLS
 
 #endif /* __CDN_EMBEDDED_STRING_H__ */
