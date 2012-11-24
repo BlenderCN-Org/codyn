@@ -1,6 +1,5 @@
 librarydir = $(pkgdatadir)-@CODYN_API_VERSION@/library/layout
 library_DATA = \
-	circular.cdn \
 	line.cdn
 
 EXTRA_DIST = \

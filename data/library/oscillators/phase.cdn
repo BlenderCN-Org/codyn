@@ -8,11 +8,15 @@ templates
         ## Desired frequency
         target_frequency = 1
 
-        ## Time constant on attractor of r towards f. Use
-        ## functions.GammaForRelConf to compute a γ value corresponding to a
-        ## certain speed of convergence
+        ## Amplitude squared
+        r2 = "r²"
+
+        ## Generic time constant.
         γ = 1
 
+        ## Time constant on attractor of r towards the target amplitude. Use
+        ## γForRelConv to compute a γ value corresponding to a
+        ## certain speed of convergence
         γ_r = "γ"
 
         ## Angular frequency
@@ -21,14 +25,11 @@ templates
         ## Phase node variable
         φ̇ = "ω"
 
-        ## Amplitude squared
-        r2 = "r²"
-
         ## Amplitude node variable
-        ṙ = "γ_r ∙ (target_amplitude ∙ target_amplitude - r2)"
+        ṙ = "γ_r ∙ (target_amplitude - r) ∙ r"
 
-        ## Output variable (r * sin(phase))
-        "output" = "r * sin(φ)"
+        ## Output variable
+        χ = "r ∙ cos(φ)"
 
         ## Function for γ such that it takes <i>τ</i> seconds to
         ## forget a perturbation of size (1 - <i>α</i>) * <i>δ</i>
@@ -39,19 +40,10 @@ templates
         γForRelConv(τ, α, δ) = "√(ln(α / δ) / -τ)"
     }
 
-    edge "coupling"
-    {
-        ## Desired phase bias between oscillators
-        bias = 0
+    import "polar.cdn" as "polar"
 
-        ## Gain on phase coupling convergence
-        weight = 1
-
-        ## Additional noise on the coupling
-        noise = 0
-
-        φ <= "weight * sin(input.φ - output.φ - bias) + noise"
-    }
+    ## Convenient alias for polar phase coupling
+    edge "coupling" : "polar" . "polar_phase_coupling" {}
 
     include "layout/line.cdn"
 }

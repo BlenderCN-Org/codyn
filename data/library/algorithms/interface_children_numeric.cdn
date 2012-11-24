@@ -1,0 +1,20 @@
+# Generates an interface for all properties of all the node's children
+# that have a name ending with a number. The number is used to name the
+# interface. For example, "neuron3"."x" will be exposed as "x3".
+node | /.*?([0-9]+)/
+{
+    defines
+    {
+        v = | variables
+    }
+
+    node self | parent
+    {
+        interface
+        {
+            "@v@1" ?= "@1" in "@@@0"
+        }
+    }
+}
+
+# vi:ts=4:et

@@ -1,0 +1,19 @@
+# Generates an interface for all variables of all the node's children
+# exposing "object"."variable" as object_variable.
+node | nodes | name
+{
+    defines
+    {
+        v = | variables
+    }
+
+    node self | parent
+    {
+        interface
+        {
+            "@0_@v" ?= "@1" in "@@@0"
+        }
+    }
+}
+
+# vi:ts=4:et

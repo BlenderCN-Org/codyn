@@ -1,0 +1,60 @@
+templates
+{
+    import "generic.cdn" as "generic"
+
+    ## Polar properties for Cartesian oscillator
+    node "add_polar"
+    {
+        φ ?= "atan2(y, x)"
+        r ?= "√(x² + y²)"
+    }
+
+    node "polar_for_cartesian" : "add_polar"
+    {
+        RDot(x_dot, y_dot)(r, φ) =
+            "x_dot ∙ cos(φ) + y_dot ∙ sin(φ)"
+
+        ΦDot(x_dot, y_dot)(r, φ) =
+            "r == 0 ? 0 : (y_dot ∙ cos(φ) - x_dot ∙ sin(φ)) / r"
+    }
+
+    ## Polar derivatives for Cartesian oscillator
+    node "polar_dot" : "polar_for_cartesian"
+    {
+        r_dot = "RDot(ẋ, ẏ)"
+        φ_dot = "ΦDot(ẋ, ẏ)"
+
+        ## Instantaneous frequency
+        frequency = "φ_dot / (2 ∙ π)"
+    }
+
+    ## Cartesian input properties for polar oscillator
+    node "cartesian_input" : "polar_for_cartesian"
+    {
+        node "node"
+        {
+            ## x input
+            s_x_dot = 0
+
+            ## y input
+            s_y_dot = 0
+        }
+
+        edge on self
+        {
+            ṙ += "RDot(s_x_dot, s_y_dot)"
+            φ̇ += "ΦDot(s_x_dot, s_y_dot)"
+        }
+    }
+
+    ## Diffusive phase coupling for Cartesian oscillators
+    ## To use this: 1) the receiver must implement the 'add_polar' template
+    ##              2) the sender must be polar or implement the 'add_polar' template
+    edge "cartesian_phase_coupling" : "generic" . "polar_coupling_base"
+    {
+        ẋ += "-output.y ∙ φ_dot"
+        ẏ += "output.x ∙ φ_dot"
+    }
+}
+
+# vi:ts=4:et

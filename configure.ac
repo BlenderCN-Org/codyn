@@ -503,6 +503,7 @@ codyn/tree-algorithms/Makefile
 data/Makefile
 data/cdn.xml
 data/library/Makefile
+data/library/algorithms/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/physics/Makefile

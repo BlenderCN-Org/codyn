@@ -34,34 +34,26 @@ templates
     ## Basic Matsuoka neuron
     node "neuron"
     {
-        [proxy]
-        node "node"
-        {
-            ## State variable x
-            x = "rand(-0.1, 0.1)" | integrated
+        ## State variable x
+        x = "rand(-0.1, 0.1)" | integrated
 
-            ## State variable v
-            v = "rand(-0.1, 0.1)" | integrated
+        ## State variable v
+        v = "rand(-0.1, 0.1)" | integrated
 
-            ## Neuron output
-            y = "max(x, 0)"
-        }
+        ## Neuron output
+        y = "max(x, 0)"
 
-        ## Neuron dynamics
-        edge "neuron_dynamics" on "node"
-        {
-            ## X dynamics targeting c, with adaptation through v
-            x <= "1 / tau * (c - output.x - b * output.v)"
-            
-            ## Adaptation dynamics
-            v <= "1 / Tau * (output.y - output.v)"
-        }
+        ## X dynamics targeting c, with adaptation through v
+        ẋ = "1 / tau * (c - output.x - b * output.v)"
+
+        ## Adaptation dynamics
+        v̇ = "1 / Tau * (output.y - output.v)"
     }
 
     ## Inhibition between neurons
     edge "inhibition"
     {
-        x <= "-1 / tau * a * input.y"
+        ẋ += "-1 / tau * a * input.y"
     }
 
     ## Basic Matsuoka oscillator made of 2 neurons
@@ -70,13 +62,13 @@ templates
         ## One of the half-center neurons
         node "neuron{1,2}" : "neuron" {}
 
-        apply "generic"."interface-children-numeric"
+        include "algorithms/interface_children_numeric.cdn"
 
-        [bidirectional]
+        <bidirectional>
         edge from "neuron1" to "neuron2" : "inhibition" {}
 
         ## The output of the oscillator
-        output = "y1 - y2"
+        χ = "y1 - y2"
 
         ## Estimated amplitude
         amplitude = "amplitude_estimate"
@@ -86,7 +78,7 @@ templates
 
         layout
         {
-            type at @[@0++], $(@0[?] * 5)
+            #type at @[@0++], $(@0[?] * 5)
         }
     }
 
@@ -96,13 +88,13 @@ templates
         strength = "1"
         signal = "1"
 
-        x1 <= "-(strength * max(0, signal))"
-        x2 <= "-(strength * -min(0, signal))"
+        x1' += "-(strength * max(0, signal))"
+        x2' += "-(strength * -min(0, signal))"
     }
 
     layout
     {
-        type at @[@0++], $(@0[?] * 5)
+        #type at @[@0++], $(@0[?] * 5)
     }
 }
 

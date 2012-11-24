@@ -4,6 +4,9 @@ library_DATA = \
 	phase.cdn \
 	matsuoka.cdn \
 	awo.cdn \
+	generic.cdn \
+	polar.cdn \
+	cartesian.cdn \
 	all.cdn
 
 EXTRA_DIST = \

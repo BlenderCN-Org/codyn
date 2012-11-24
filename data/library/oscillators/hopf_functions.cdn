@@ -1,50 +1,47 @@
 node "functions"
 {
-    functions
-    {
-        ## The time it takes for amplitude to reach some_r.
-        ## This is for the isolated Hopf oscillator, i.e. with no coupling or perturbation.
-        ## For Cartesian oscillators, it is assumed that gamma_x = gamma_y = gamma.
-        TimeForAmplitude(some_r)(r2, gamma, mu) = "ln(some_r * some_r * (mu - r2) / (r2 * (mu - some_r * some_r))) / (2 * gamma * mu)"
+    ## The time it takes for amplitude to reach some_r.
+    ## This is for the isolated Hopf oscillator, i.e. with no coupling or perturbation.
+    ## For Cartesian oscillators, it is assumed that γ_x = γ_y = γ.
+    TimeForAmplitude(some_r)(r2, γ, μ) = "ln(some_r ∙ some_r ∙ (μ - r2) / (r2 ∙ (μ - some_r ∙ some_r))) / (2 ∙ gamma ∙ μ)"
 
-        ## The product t * gamma such that amplitude / target_amplitude = alpha.
-        ## This is for the isolated Hopf oscillator, i.e. with no coupling or perturbation.
-        ## For Cartesian oscillators, it is assumed that gamma_x = gamma_y = gamma.
-        TimeGammaForRelConv(alpha)(r2, mu) = "ln(alpha * alpha / (1 - alpha * alpha) * (mu / r2 - 1)) / (2 * mu)"
+    ## The product t ∙ γ such that amplitude / target_amplitude = α.
+    ## This is for the isolated Hopf oscillator, i.e. with no coupling or perturbation.
+    ## For Cartesian oscillators, it is assumed that γ_x = γ_y = γ.
+    TimeGammaForRelConv(α)(r2, μ) = "ln(α ∙ α / (1 - α ∙ α) ∙ (μ / r2 - 1)) / (2 ∙ μ)"
 
-        ## The time it will take for r to reach alpha * R.
-        ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
-        ## For Cartesian oscillators, it is assumed that gamma_x = gamma_y = gamma.
-        TimeForRelConv(alpha)(gamma, r2, mu) = "TimeGammaForRelConv(alpha) / gamma"
+    ## The time it will take for r to reach α ∙ R.
+    ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
+    ## For Cartesian oscillators, it is assumed that γ_x = γ_y = γ.
+    TimeForRelConv(α)(γ, r2, μ) = "TimeGammaForRelConv(α) / γ"
 
-        ## The gamma needed to have amplitude = alpha * R after t seconds.
-        ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
-        ## For Cartesian oscillators, it is assumed that gamma_x = gamma_y = gamma.
-        GammaForRelConv(t, alpha)(r2, mu) = "TimeGammaForRelConv(alpha) / t"
+    ## The γ needed to have amplitude = α ∙ R after t seconds.
+    ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
+    ## For Cartesian oscillators, it is assumed that γ_x = γ_y = γ.
+    GammaForRelConv(t, α)(r2, μ) = "TimeGammaForRelConv(α) / t"
 
-        ## The amplitude at t seconds in the future.
-        ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
-        ## For Cartesian oscillators, it is assumed that gamma_x = gamma_y = gamma.
-        Amplitude(t)(mu, gamma, r2) = "sqrt(mu / (1 + (mu / r2 - 1) * exp(-2 * gamma * mu * t)))"
+    ## The amplitude at t seconds in the future.
+    ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
+    ## For Cartesian oscillators, it is assumed that γ_x = γ_y = γ.
+    Amplitude(t)(μ, γ, r2) = "√(μ / (1 + (μ / r2 - 1) ∙ exp(-2 ∙ γ ∙ μ ∙ t)))"
 
-        ## The phase at t seconds in the future.
-        ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
-        ## For Cartesian oscillators, it is assumed that gamma_x = gamma_y = gamma.
-        ## The oscillator must implement polar coordinates.
-        Phase(t)(omega, theta) = "omega * t + theta"
+    ## The phase at t seconds in the future.
+    ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
+    ## For Cartesian oscillators, it is assumed that γ_x = γ_y = γ.
+    ## The oscillator μst implement polar coordinates.
+    Phase(t)(ω, θ) = "ω ∙ t + θ"
 
-        ## Calculates x at t seconds in the future.
-        ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
-        ## For Cartesian oscillators, it is assumed that gamma_x = gamma_y = gamma.
-        ## The oscillator must implement polar coordinates.
-        X(t)(mu, gamma, omega, r2, theta) = "Amplitude(t) * cos(Phase(t))"
+    ## Calculates x at t seconds in the future.
+    ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
+    ## For Cartesian oscillators, it is assumed that γ_x = γ_y = γ.
+    ## The oscillator μst implement polar coordinates.
+    X(t)(μ, γ, ω, r2, θ) = "Amplitude(t) ∙ cos(Phase(t))"
 
-        ## Calculates y at t seconds in the future
-        ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
-        ## For Cartesian oscillators, it is assumed that gamma_x = gamma_y = gamma.
-        ## The oscillator must implement polar coordinates.
-        Y(t)(mu, gamma, omega, r2, theta) = "Amplitude(t) * sin(Phase(t))"
-    }
+    ## Calculates y at t seconds in the future
+    ## This is for the isolated Hopf oscillator, ie.. with no coupling or perturbation.
+    ## For Cartesian oscillators, it is assumed that γ_x = γ_y = γ.
+    ## The oscillator μst implement polar coordinates.
+    Y(t)(μ, γ, ω, r2, θ) = "Amplitude(t) ∙ sin(Phase(t))"
 }
 
 # vi:ex:ts=4:et

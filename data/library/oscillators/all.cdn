@@ -3,6 +3,9 @@ templates
     ## Hopf oscillator
     import "hopf.cdn" as "hopf"
 
+    ## Hopf polar oscillator
+    import "hopf_polar.cdn" as "hopf_polar"
+
     ## Phase oscillator
     import "phase.cdn" as "phase"
 

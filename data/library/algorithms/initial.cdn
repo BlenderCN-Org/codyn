@@ -1,0 +1,13 @@
+# Include this file to add initial value variables for each integrated variable
+# in all the children of the node in which this file is included.
+node | nodes
+{
+    defines
+    {
+        v = | children | variables | has-flag(integrated)
+    }
+
+    "@[v]0" ?= "@1" | once
+}
+
+# vi:ts=4:et
