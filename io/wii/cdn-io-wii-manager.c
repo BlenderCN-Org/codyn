@@ -20,7 +20,13 @@ typedef struct
 	gchar *name;
 
 	cwiid_wiimote_t *remote;
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	GMutex mutex;
+#else
 	GMutex *mutex;
+#endif
+
 	gboolean tryconnect;
 
 	GSList *objects;
@@ -33,7 +39,12 @@ struct _CdnIoWiiManagerPrivate
 	GDBusProxy *adapter;
 	GCancellable *cancellable;
 	GMainLoop *loop;
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	GMutex request_mutex;
+#else
 	GMutex *request_mutex;
+#endif
 
 	gdouble last_update;
 
@@ -109,7 +120,12 @@ wii_mote_new (gchar const *addr,
 
 	ret->addr = g_strdup (addr);
 	ret->name = g_strdup (name);
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_init (&ret->mutex);
+#else
 	ret->mutex = g_mutex_new ();
+#endif
 
 	return ret;
 }
@@ -120,7 +136,11 @@ wii_mote_free (WiiMote *self)
 	g_free (self->addr);
 	g_free (self->name);
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_clear (&self->mutex);
+#else
 	g_mutex_free (self->mutex);
+#endif
 
 	g_slice_free (WiiMote, self);
 }
@@ -155,7 +175,11 @@ cdn_io_wii_manager_finalize (GObject *object)
 
 	g_timer_destroy (manager->priv->throttle_timer);
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_clear (&manager->priv->request_mutex);
+#else
 	g_mutex_free (manager->priv->request_mutex);
+#endif
 
 	g_slist_foreach (manager->priv->wiimotes, (GFunc)wii_mote_free, NULL);
 	g_slist_free (manager->priv->wiimotes);
@@ -629,7 +653,12 @@ cdn_io_wii_manager_init (CdnIoWiiManager *self)
 	self->priv = CDN_IO_WII_MANAGER_GET_PRIVATE (self);
 
 	self->priv->cancellable = g_cancellable_new ();
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_init (&self->priv->request_mutex);
+#else
 	self->priv->request_mutex = g_mutex_new ();
+#endif
 
 	self->priv->throttle_timer = g_timer_new ();
 
@@ -748,7 +777,12 @@ cdn_io_wii_manager_bind_remote (CdnIoWiiManager *manager,
 
 	g_return_val_if_fail (CDN_IS_INPUT_WII_MANAGER (manager), FALSE);
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&manager->priv->request_mutex);
+#else
 	g_mutex_lock (manager->priv->request_mutex);
+#endif
+
 	mote = find_by_id (manager, deviceid);
 
 	if (!mote)
@@ -770,20 +804,38 @@ cdn_io_wii_manager_bind_remote (CdnIoWiiManager *manager,
 		mote = find_by_id (manager, deviceid);
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&manager->priv->request_mutex);
+#else
 	g_mutex_unlock (manager->priv->request_mutex);
+#endif
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_lock (&mote->mutex);
+#else
 	g_mutex_lock (mote->mutex);
+#endif
 
 	if (mote->remote != NULL)
 	{
 		bind_remote (manager, mote, object);
+
+#if GLIB_CHECK_VERSION(2, 32, 0)
+		g_mutex_unlock (&mote->mutex);
+#else
 		g_mutex_unlock (mote->mutex);
+#endif
+
 		return TRUE;
 	}
 
 	if (mote->tryconnect)
 	{
+#if GLIB_CHECK_VERSION(2, 32, 0)
+		g_mutex_unlock (&mote->mutex);
+#else
 		g_mutex_unlock (mote->mutex);
+#endif
 		return FALSE;
 	}
 
@@ -808,7 +860,12 @@ cdn_io_wii_manager_bind_remote (CdnIoWiiManager *manager,
 		bind_remote (manager, mote, object);
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&mote->mutex);
+#else
 	g_mutex_unlock (mote->mutex);
+#endif
+
 	return TRUE;
 }
 
@@ -819,7 +876,11 @@ cdn_io_wii_manager_reset (CdnIoWiiManager *manager)
 
 	g_return_if_fail (CDN_IS_INPUT_WII_MANAGER (manager));
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	if (!g_mutex_trylock (&manager->priv->request_mutex))
+#else
 	if (!g_mutex_trylock (manager->priv->request_mutex))
+#endif
 	{
 		return;
 	}
@@ -844,7 +905,11 @@ cdn_io_wii_manager_reset (CdnIoWiiManager *manager)
 		mote->objects = NULL;
 	}
 
+#if GLIB_CHECK_VERSION(2, 32, 0)
+	g_mutex_unlock (&manager->priv->request_mutex);
+#else
 	g_mutex_unlock (manager->priv->request_mutex);
+#endif
 }
 
 static void
