@@ -1085,9 +1085,16 @@ constraint
 	                                                cdn_embedded_string_add_text ($$, ")"); }
 	;
 
+simple_index_separator
+	: ','
+	| ';'
+	;
+
 simple_index_contents
 	: value_as_string				{ $$ = $1; }
-	| simple_index_contents ',' value_as_string	{ cdn_embedded_string_add_text ($1, ", ");
+	| simple_index_contents
+	  simple_index_separator
+	  value_as_string				{ cdn_embedded_string_add_text ($1, ", ");
 	                                                  cdn_embedded_string_add_string ($1, $3);
 	                                                  $$ = $1; }
 	;
