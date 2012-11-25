@@ -460,7 +460,7 @@ cdn_operator_get_name (CdnOperator *op)
 }
 
 /**
- * cdn_operator_all_expressions: (skip):
+ * cdn_operator_all_expressions: (skip)
  * @op: A #CdnOperator
  *
  * Get the list of all expressions.
@@ -477,7 +477,7 @@ cdn_operator_all_expressions (CdnOperator *op)
 }
 
 /**
- * cdn_operator_all_indices: (skip):
+ * cdn_operator_all_indices: (skip)
  * @op: A #CdnOperator
  *
  * Get a list of al indices.

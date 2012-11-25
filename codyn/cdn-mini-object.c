@@ -444,7 +444,7 @@ cdn_param_spec_mini_object_get_type (void)
 }
 
 /**
- * cdn_param_spec_mini_object: (skip):
+ * cdn_param_spec_mini_object: (skip)
  * @name: the name
  * @nick: the nick
  * @blurb: the blurb

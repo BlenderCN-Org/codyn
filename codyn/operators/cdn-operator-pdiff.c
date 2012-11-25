@@ -36,7 +36,7 @@
 #include <math.h>
 
 /**
- * SECTION:cdn-operator-diff
+ * SECTION:cdn-operator-pdiff
  * @short_description: Math operator for diff evaluation of an expression
  *
  * The #CdnOperatorPDiff is a special operator that can be used in

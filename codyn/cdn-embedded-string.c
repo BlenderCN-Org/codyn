@@ -2465,14 +2465,13 @@ cdn_embedded_string_add_string (CdnEmbeddedString *s,
  * cdn_embedded_string_as_expansion:
  * @s: a #CdnEmbeddedString.
  * @context: a #CdnExpansionContext.
- * @expanded: (element-type CdnExpansion) (allow-none): a #GSList of #CdnExpansion.
  * @error: a #GError.
  *
  * Create an expansion representing the embedded string. The first
  * element represents the non-multiexpanded expansion of the embedded string.
- * When @expanded is %NULL, the embedded string @s is first multi-expanded into
- * @expanded. Then, all 0th elements of each expansion in @expanded is added
- * to the result expansion (i.e. represented in elements 1:N).
+ * The embedded string @s is first multi-expanded. Then, all 0th elements of
+ * each expansion in @expanded are added to the result expansion (i.e.
+ * represented in elements 1:N).
  *
  * Returns: (transfer full): a #CdnExpansion.
  *

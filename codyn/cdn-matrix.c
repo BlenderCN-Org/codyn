@@ -51,6 +51,18 @@ cdn_matrix_new (gdouble const      *values,
 	return matrix;
 }
 
+/**
+ * cdn_matrix_init: (skip)
+ * @values: the matrix values.
+ * @dimension: a #CdnDimension.
+ *
+ * Initialize a new #CdnMatrix struct on the stack. The @values array must
+ * contain #cdn_dimension_size(@dimension) values. The returned matrix should
+ * be cleared with #cdn_matrix_destroy.
+ *
+ * Returns: a #CdnMatrix.
+ *
+ **/
 CdnMatrix
 cdn_matrix_init (gdouble            *values,
                  CdnDimension const *dimension)
@@ -139,7 +151,7 @@ cdn_matrix_set_one (CdnMatrix *matrix,
 }
 
 /**
- * cdn_matrix_set: (skip):
+ * cdn_matrix_set: (skip)
  * @matrix: a #CdnMatrix.
  * @values: the matrix values.
  * @dimension: the values dimension.
@@ -202,7 +214,7 @@ cdn_matrix_set (CdnMatrix          *matrix,
 }
 
 /**
- * cdn_matrix_get: (skip):
+ * cdn_matrix_get: (skip)
  * @matrix: a #CdnMatrix.
  *
  * Get the values memory of a matrix for reading values. For writing values,
@@ -304,7 +316,7 @@ cdn_matrix_set_at (CdnMatrix *matrix,
 }
 
 /**
- * cdn_matrix_get: (skip):
+ * cdn_matrix_get_memory: (skip)
  * @matrix: a #CdnMatrix.
  *
  * Get the values memory of a matrix for writing values. For reading values,
@@ -315,7 +327,7 @@ cdn_matrix_set_at (CdnMatrix *matrix,
  *
  **/
 gdouble *
-cdn_matrix_get_memory (CdnMatrix    *matrix)
+cdn_matrix_get_memory (CdnMatrix *matrix)
 {
 	return (gdouble *)cdn_matrix_get (matrix);
 }
@@ -374,7 +386,7 @@ cdn_matrix_copy (CdnMatrix       *dest,
 }
 
 /**
- * cdn_matrix_copy_to: (skip):
+ * cdn_matrix_copy_to: (skip)
  * @matrix: a #CdnMatrix.
  * @values: matrix values.
  *

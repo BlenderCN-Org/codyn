@@ -564,9 +564,9 @@ cdn_variable_class_init (CdnVariableClass *klass)
 	                                                      G_PARAM_READWRITE));
 
 	/**
-	 * CdnVariable:expression:
+	 * CdnVariable:constraint:
 	 *
-	 * The variable expression
+	 * The variable constraint expression
 	 *
 	 **/
 	g_object_class_install_property (object_class,
@@ -719,7 +719,7 @@ cdn_variable_set_value (CdnVariable  *variable,
 }
 
 /**
- * cdn_variable_set_values: (skip):
+ * cdn_variable_set_values: (skip)
  * @variable: the #CdnVariable
  * @values: the new value
  *
