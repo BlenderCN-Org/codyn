@@ -1088,6 +1088,7 @@ constraint
 simple_index_separator
 	: ','
 	| ';'
+	| ':'
 	;
 
 simple_index_contents
