@@ -17,6 +17,21 @@ typedef struct _CdnInstructionIndex		CdnInstructionIndex;
 typedef struct _CdnInstructionIndexClass	CdnInstructionIndexClass;
 typedef struct _CdnInstructionIndexPrivate	CdnInstructionIndexPrivate;
 
+typedef enum
+{
+	CDN_INSTRUCTION_INDEX_TYPE_INDEX,
+	CDN_INSTRUCTION_INDEX_TYPE_OFFSET,
+	CDN_INSTRUCTION_INDEX_TYPE_RANGE,
+	CDN_INSTRUCTION_INDEX_TYPE_RANGE_BLOCK,
+} CdnInstructionIndexType;
+
+typedef struct
+{
+	gint start;
+	gint step;
+	gint end;
+} CdnIndexRange;
+
 /**
  * CdnInstructionIndex:
  * @value: the numeric value
@@ -47,10 +62,31 @@ CdnInstruction *cdn_instruction_index_new_offset (gint                start,
                                                   CdnDimension const *retdim,
                                                   CdnStackArg const  *arg);
 
-gboolean        cdn_instruction_index_is_offset   (CdnInstructionIndex *instr);
+CdnInstruction *cdn_instruction_index_new_range  (CdnIndexRange const *range,
+                                                  CdnStackArg const   *arg);
+
+CdnInstruction *cdn_instruction_index_new_range_block (CdnIndexRange const *rows,
+                                                       CdnIndexRange const *columns,
+                                                       CdnStackArg const   *arg);
+
+CdnInstructionIndexType cdn_instruction_index_get_index_type (CdnInstructionIndex *instr);
+
+gboolean cdn_instruction_index_write_indices (CdnInstructionIndex *instr,
+                                              gint                *indices,
+                                              gint                 l);
+
 gint            cdn_instruction_index_get_offset  (CdnInstructionIndex *instr);
+CdnIndexRange const *cdn_instruction_index_get_range   (CdnInstructionIndex *instr);
+void            cdn_instruction_index_get_range_block   (CdnInstructionIndex *instr,
+                                                         CdnIndexRange       *rows,
+                                                         CdnIndexRange       *columns);
+
 gint const     *cdn_instruction_index_get_indices (CdnInstructionIndex *instr,
                                                    gint                *length);
+
+gint cdn_index_range_n (CdnIndexRange const *range);
+gboolean cdn_index_range_equal (CdnIndexRange const *a,
+                                CdnIndexRange const *b);
 
 G_END_DECLS
 

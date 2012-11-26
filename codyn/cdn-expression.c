@@ -101,6 +101,8 @@ typedef struct
 
 	CdnCompileError *error;
 	GSList *stack;
+
+	guint indexing : 1;
 } ParserContext;
 
 static gboolean validate_stack (CdnExpression *expression,
@@ -1172,7 +1174,8 @@ is_numeric (GSList const *instructions)
 	while (instructions)
 	{
 		if (!(CDN_IS_INSTRUCTION_NUMBER (instructions->data) ||
-		      CDN_IS_INSTRUCTION_MATRIX (instructions->data)))
+		      CDN_IS_INSTRUCTION_MATRIX (instructions->data) ||
+		      CDN_IS_INSTRUCTION_INDEX (instructions->data)))
 		{
 			return FALSE;
 		}
@@ -1192,21 +1195,59 @@ instruction_get_dimension (CdnInstruction *i)
 	return smanip->push.dimension;
 }
 
-static void
-instructions_to_indices (GSList const *instructions, gint *ret)
+static gint
+instructions_to_indices (GSList const *instructions,
+                         gint         *ret,
+                         gint          num)
 {
+	gint idx = 0;
+
 	while (instructions)
 	{
-		CdnInstructionNumber *n = instructions->data;
+		CdnInstruction *n = instructions->data;
 
 		if (CDN_IS_INSTRUCTION_NUMBER (n))
 		{
-			gdouble v = cdn_instruction_number_get_value (n);
+			if (idx >= num)
+			{
+				return -1;
+			}
+
+			gdouble v = cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (n));
 			*ret++ = (gint)(v + 0.5);
+
+			++idx;
+		}
+		else if (CDN_IS_INSTRUCTION_INDEX (n))
+		{
+			CdnInstructionIndex *i;
+
+			i = CDN_INSTRUCTION_INDEX (n);
+
+			if (!cdn_instruction_index_write_indices (i,
+			                                          ret,
+			                                          num - idx))
+			{
+				return -1;
+			}
+			else
+			{
+				CdnStackManipulation const *smanip;
+
+				smanip = cdn_instruction_get_stack_manipulation (n, NULL);
+
+				idx += cdn_dimension_size (&smanip->push.dimension);
+			}
+		}
+		else if (!CDN_IS_INSTRUCTION_MATRIX (n))
+		{
+			return -1;
 		}
 
 		instructions = g_slist_next (instructions);
 	}
+
+	return idx;
 }
 
 static CdnStackArg const *
@@ -1216,6 +1257,13 @@ instruction_get_push_arg (CdnInstruction *i)
 
 	smanip = cdn_instruction_get_stack_manipulation (i, NULL);
 	return &smanip->push;
+}
+
+static void
+free_popped_stack (GSList *i)
+{
+	g_slist_foreach (i, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (i);
 }
 
 static GSList *
@@ -1265,10 +1313,18 @@ zeros_macro (CdnExpression *expression,
 
 		i = pop_stack (expression, context);
 
-		instructions_to_indices (i, indices);
+		if (instructions_to_indices (i, indices, 2) == -1)
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The `zeros` function can only be called with 2 number arguments or a 1-by-2 number vector");
 
-		g_slist_foreach (i, (GFunc)cdn_mini_object_unref, NULL);
-		g_slist_free (i);
+			free_popped_stack (i);
+			return NULL;
+		}
+
+		free_popped_stack (i);
 
 		dimension.rows = indices[0];
 		dimension.columns = indices[1];
@@ -1289,9 +1345,9 @@ zeros_macro (CdnExpression *expression,
 		    !CDN_IS_INSTRUCTION_NUMBER (rows->data))
 		{
 			parser_failed (expression,
-				       context,
-				       CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-				       "The `zeros' function can only be called with 2 number arguments or a 1-by-2 number vector");
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The `zeros' function can only be called with 2 number arguments or a 1-by-2 number vector");
 
 			return NULL;
 		}
@@ -2426,6 +2482,27 @@ parse_matrix (CdnExpression *expression,
 	return TRUE;
 }
 
+static gboolean
+is_index_range (CdnInstruction       *instruction,
+                CdnInstructionIndex **retval)
+{
+	if (!CDN_IS_INSTRUCTION_INDEX (instruction))
+	{
+		return FALSE;
+	}
+
+	*retval = CDN_INSTRUCTION_INDEX (instruction);
+
+	return cdn_instruction_index_get_index_type (*retval) ==
+	       CDN_INSTRUCTION_INDEX_TYPE_RANGE;
+}
+
+static CdnStackArg const *
+get_last_stack_arg (ParserContext *context)
+{
+	return instruction_get_push_arg (g_slist_last (context->stack->data)->data);
+}
+
 static CdnInstruction *
 make_static_index (CdnExpression *expression,
                    ParserContext *context,
@@ -2448,9 +2525,59 @@ make_static_index (CdnExpression *expression,
 		gint *rows;
 		gint *cols;
 		gint i;
+		CdnInstructionIndex *r1;
+		CdnInstructionIndex *r2;
+		gboolean isi1;
+		gboolean isi2;
 
 		i2 = pop_stack (expression, context);
 		i1 = pop_stack (expression, context);
+
+		d3 = get_last_stack_arg (context);
+
+		isi1 = is_index_range (i1->data, &r1);
+		isi2 = is_index_range (i2->data, &r2);
+
+		if (isi1 && isi2)
+		{
+			CdnIndexRange const *rows;
+			CdnIndexRange const *columns;
+
+			rows = cdn_instruction_index_get_range (r1);
+			columns = cdn_instruction_index_get_range (r2);
+
+			return cdn_instruction_index_new_range_block (rows,
+			                                              columns,
+			                                              d3);
+		}
+		else if (isi1 && CDN_IS_INSTRUCTION_NUMBER (i2->data))
+		{
+			CdnIndexRange const *rows;
+			CdnIndexRange columns = {0, 1, 0};
+
+			rows = cdn_instruction_index_get_range (r1);
+
+			columns.start = (gint)(cdn_instruction_number_get_value (i2->data) + 0.5);
+			columns.end = columns.start + 1;
+
+			return cdn_instruction_index_new_range_block (rows,
+			                                              &columns,
+			                                              d3);
+		}
+		else if (isi2 && CDN_IS_INSTRUCTION_NUMBER (i1->data))
+		{
+			CdnIndexRange const *columns;
+			CdnIndexRange rows = {0, 1, 0};
+
+			columns = cdn_instruction_index_get_range (r2);
+
+			rows.start = (gint)(cdn_instruction_number_get_value (i1->data) + 0.5);
+			rows.end = rows.start + 1;
+
+			return cdn_instruction_index_new_range_block (&rows,
+			                                              columns,
+			                                              d3);
+		}
 
 		d1 = instruction_get_dimension (g_slist_last (i1)->data);
 		d2 = instruction_get_dimension (g_slist_last (i2)->data);
@@ -2467,15 +2594,13 @@ make_static_index (CdnExpression *expression,
 			return NULL;
 		}
 
-		d3 = instruction_get_push_arg (g_slist_last (context->stack->data)->data);
-
 		n = cdn_dimension_size (&d1);
 
 		rows = g_new (gint, n);
 		cols = g_new (gint, n);
 
-		instructions_to_indices (i1, rows);
-		instructions_to_indices (i2, cols);
+		instructions_to_indices (i1, rows, n);
+		instructions_to_indices (i2, cols, n);
 
 		// Double indexing. i1 represents rows, i2 represents columns
 		indices = g_new0 (gint, n);
@@ -2485,11 +2610,8 @@ make_static_index (CdnExpression *expression,
 			indices[i] = rows[i] * d3->dimension.columns + cols[i];
 		}
 
-		g_slist_foreach (i1, (GFunc)cdn_mini_object_unref, NULL);
-		g_slist_free (i1);
-
-		g_slist_foreach (i2, (GFunc)cdn_mini_object_unref, NULL);
-		g_slist_free (i2);
+		free_popped_stack (i1);
+		free_popped_stack (i2);
 
 		retdim = d1;
 	}
@@ -2497,20 +2619,35 @@ make_static_index (CdnExpression *expression,
 	{
 		GSList *i;
 		CdnDimension d;
+		CdnInstructionIndex *idx;
 
+		// First check for existing index.
 		i = pop_stack (expression, context);
+		d3 = get_last_stack_arg (context);
+
+		idx = (CdnInstructionIndex *)i->data;
+
+		if (i->next == NULL && CDN_IS_INSTRUCTION_INDEX (i->data) &&
+		    cdn_instruction_index_get_index_type (idx) ==
+		    CDN_INSTRUCTION_INDEX_TYPE_RANGE)
+		{
+			CdnInstruction *ret;
+
+			ret = cdn_instruction_index_new_range (cdn_instruction_index_get_range (idx),
+			                                       d3);
+
+			free_popped_stack (i);
+			return ret;
+		}
 
 		// Single indexing. linear index
 		d = instruction_get_dimension (g_slist_last (i)->data);
-		d3 = instruction_get_push_arg (g_slist_last (context->stack->data)->data);
 
 		n = cdn_dimension_size (&d);
 		indices = g_new0 (gint, n);
 
-		instructions_to_indices (i, indices);
-
-		g_slist_foreach (i, (GFunc)cdn_mini_object_unref, NULL);
-		g_slist_free (i);
+		instructions_to_indices (i, indices, n);
+		free_popped_stack (i);
 
 		retdim = d;
 	}
@@ -2564,11 +2701,11 @@ static gboolean
 parse_indexing (CdnExpression *expression,
                 ParserContext *context)
 {
-	gint numargs = 0;
 	CdnTokenOperatorType type;
+	gint numargs = 0;
 
 	// Indexing is done using one or two arguments, which can be matrices
-	// themselves
+	// themselves, or ranges
 	CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
 
 	if (next && CDN_TOKEN_IS_OPERATOR (next) &&
@@ -2579,10 +2716,12 @@ parse_indexing (CdnExpression *expression,
 	}
 	else
 	{
+		context->indexing = TRUE;
 		cdn_token_free (next);
 
 		if (!parse_expression (expression, context, -1, 0))
 		{
+			context->indexing = FALSE;
 			return FALSE;
 		}
 
@@ -2590,6 +2729,8 @@ parse_indexing (CdnExpression *expression,
 
 		next = cdn_tokenizer_peek (*(context->buffer));
 
+		// Check for a comma. In that case the indexing is a row/column
+		// index.
 		if (CDN_TOKEN_IS_OPERATOR (next))
 		{
 			type = CDN_TOKEN_OPERATOR (next)->type;
@@ -2604,6 +2745,7 @@ parse_indexing (CdnExpression *expression,
 
 				if (!parse_expression (expression, context, -1, 0))
 				{
+					context->indexing = FALSE;
 					return FALSE;
 				}
 
@@ -2612,29 +2754,33 @@ parse_indexing (CdnExpression *expression,
 		}
 		else
 		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "Expected `]' or `,' but got `%s'",
+			               next->text ? next->text : NULL);
+
 			cdn_token_free (next);
+			context->indexing = FALSE;
 
-			if (!parse_expression (expression, context, -1, 0))
-			{
-				return FALSE;
-			}
-
-			++numargs;
+			return FALSE;
 		}
 	}
 
 	next = cdn_tokenizer_next (context->buffer);
 	type = CDN_TOKEN_OPERATOR (next)->type;
 
+	context->indexing = FALSE;
+
 	if (type != CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END)
 	{
-		cdn_token_free (next);
-
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 		               "Expected `]' but got `%s'",
 		               next->text ? next->text : NULL);
+
+		cdn_token_free (next);
 
 		return FALSE;
 	}
@@ -2642,9 +2788,9 @@ parse_indexing (CdnExpression *expression,
 	if (is_numeric (context->stack->data) &&
 	    (numargs == 1 || is_numeric (context->stack->next->data)))
 	{
-		CdnInstruction *i = make_static_index (expression,
-		                                       context,
-		                                       numargs);
+		CdnInstruction *i;
+
+		i = make_static_index (expression, context, numargs);
 
 		if (i == NULL)
 		{
@@ -3559,6 +3705,64 @@ parse_square (CdnExpression *expression,
 	return ret;
 }
 
+static CdnInstruction *
+indexing_range (CdnExpression *expression,
+                ParserContext *context,
+                CdnStackArgs  *args)
+{
+	CdnInstructionNumber *n1;
+	CdnIndexRange range;
+	GSList *second;
+	GSList *first;
+
+	second = pop_stack (expression, context);
+	first = pop_stack (expression, context);
+
+	if (second->next ||
+	    first->next ||
+	    !CDN_IS_INSTRUCTION_NUMBER (first->data) ||
+	    !(CDN_IS_INSTRUCTION_NUMBER (second->data) || (CDN_IS_INSTRUCTION_INDEX (second->data) && cdn_instruction_index_get_index_type (second->data) == CDN_INSTRUCTION_INDEX_TYPE_RANGE)))
+	{
+		free_popped_stack (second);
+		free_popped_stack (first);
+
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The arguments for the range operator `:' can only be single numerical arguments");
+
+		return NULL;
+	}
+
+	n1 = CDN_INSTRUCTION_NUMBER (first->data);
+	range.start = (gint)(cdn_instruction_number_get_value (n1) + 0.5);
+
+	if (CDN_IS_INSTRUCTION_NUMBER (second->data))
+	{
+		CdnInstructionNumber *n2;
+
+		n2 = CDN_INSTRUCTION_NUMBER (second->data);
+
+		range.end = (gint)(cdn_instruction_number_get_value (n2) + 0.5);
+		range.step = 1;
+	}
+	else
+	{
+		CdnInstructionIndex *idx = CDN_INSTRUCTION_INDEX (second->data);
+		CdnIndexRange const *sr;;
+
+		sr = cdn_instruction_index_get_range (idx);
+
+		range.end = sr->end;
+		range.step = sr->start;
+	}
+
+	free_popped_stack (second);
+	free_popped_stack (first);
+
+	return cdn_instruction_index_new_range (&range, NULL);
+}
+
 static gboolean
 parse_operator (CdnExpression *expression,
                 CdnToken      *token,
@@ -3666,14 +3870,28 @@ parse_operator (CdnExpression *expression,
 		case CDN_TOKEN_OPERATOR_TYPE_AND:
 			inst = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_AND, "&&", &args);
 		break;
+		case CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE:
+			if (context->indexing)
+			{
+				inst = indexing_range (expression,
+				                       context,
+				                       &args);
+			}
+		break;
 		default:
-			cdn_stack_args_destroy (&args);
-			return FALSE;
 		break;
 	}
 
 	cdn_stack_args_destroy (&args);
-	return instructions_push (expression, inst, context);
+
+	if (inst)
+	{
+		return instructions_push (expression, inst, context);
+	}
+	else
+	{
+		return FALSE;
+	}
 }
 
 static gboolean
@@ -3929,7 +4147,7 @@ parse_expression (CdnExpression   *expression,
 				// group end
 				if (op->type == CDN_TOKEN_OPERATOR_TYPE_NODE_END ||
 				    op->type == CDN_TOKEN_OPERATOR_TYPE_COMMA ||
-				    op->type == CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE ||
+				    (op->type == CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE && !context->indexing) ||
 				    op->type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END ||
 				    op->type == CDN_TOKEN_OPERATOR_TYPE_SEMI_COLON)
 				{
@@ -4271,7 +4489,7 @@ cdn_expression_compile (CdnExpression     *expression,
 	gboolean wasmod;
 	gboolean dimschanged;
 	gchar *buffer = expression->priv->expression;
-	ParserContext ctx = {(gchar const **)&buffer, context, error};
+	ParserContext ctx = {(gchar const **)&buffer, context, error, FALSE};
 	gboolean ret;
 
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
