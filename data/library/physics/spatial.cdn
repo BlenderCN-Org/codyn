@@ -1,13 +1,12 @@
 node "Spatial"
 {
     ## Spatial inertia
-    Inertia(com, m, I) = "[
+    Inertia_(com, m, I, C) = "[
         I + m ∙ C ∙ Cᵀ, m ∙ C;
         m ∙ Cᵀ, [m, 0, 0; 0, m, 0; 0, 0, m]
     ]"
-    {
-        C = "Tilde(com)"
-    }
+
+    Inertia(com, m, I) = "Inertia_(com, m, I, Tilde(com))"
 
     Tilde(v) = "[
         0, -v[2], v[1];
@@ -25,8 +24,7 @@ node "Spatial"
          v[1], -v[0],  0,    0, 0, 1
     ]"
 
-    ## Create a spatial transform from a rotation of θ on the X axis
-    RotateX(θ) = "[
+    RotateX_(cθ, sθ) = "[
         1,  0,  0,  0,   0, 0;
         0,  cθ, sθ, 0,   0, 0;
         0, -sθ, cθ, 0,   0, 0;
@@ -34,13 +32,11 @@ node "Spatial"
         0,  0,  0,  0,  cθ, sθ;
         0,  0,  0,  0, -sθ, cθ
     ]"
-    {
-        cθ = "cos(θ)"
-        sθ = "sin(θ)"
-    }
 
-    ## Create a spatial transform from a rotation of θ on the Z axis
-    RotateZ(θ) = "[
+    ## Create a spatial transform from a rotation of θ on the X axis
+    RotateX(θ) = "RotateX_(cos(θ), sin(θ))"
+
+    RotateZ_(cθ, sθ) = "[
          cθ,  sθ, 0,  0,  0,  0;
         -sθ,  cθ, 0,  0,  0,  0;
          0,   0,  1,  0,  0,  0;
@@ -48,13 +44,11 @@ node "Spatial"
          0,   0,  0, -sθ, cθ, 0;
          0,   0,  0,   0, 0,  1
     ]"
-    {
-        cθ = "cos(θ)"
-        sθ = "sin(θ)"
-    }
 
-    ## Create a spatial transform from a rotation of θ on the Y axis
-    RotateY(θ) = "[
+    ## Create a spatial transform from a rotation of θ on the Z axis
+    RotateZ(θ) = "RotateZ_(cos(θ), sin(θ))"
+
+    RotateY_(cθ, sθ) = "[
         cθ, 0, -sθ, 0,  0,  0;
         0,  1,  0,  0,  0,  0;
         sθ, 0,  cθ, 0,  0,  0;
@@ -62,10 +56,9 @@ node "Spatial"
         0,  0,  0,  0,  1,  0;
         0,  0,  0,  sθ, 0,  cθ
     ]"
-    {
-        cθ = "cos(θ)"
-        sθ = "sin(θ)"
-    }
+
+    ## Create a spatial transform from a rotation of θ on the Y axis
+    RotateY(θ) = "RotateY_(cos(θ), sin(θ))"
 
     ## Create a spatial transform from a 3d rotation
     Rotate(R) = "[
@@ -77,21 +70,19 @@ node "Spatial"
         0,       0,       0,       R[2, 0], R[2, 1], R[2, 2]
     ]"
 
-    FromAxisAngle(axis, θ) = "Spatial.Rotate(R)"
-    {
-        cθ = "cos(θ)"
-        sθ = "sin(θ)"
+    FromAxisAngle_(axis, cθ, sθ) = "Spatial.Rotate(
+        [cθ + axis[0]² ∙ (1 - cθ),
+        axis[0] ∙ axis[1] ∙ (1 - cθ) - axis[2] ∙ sθ,
+        axis[0] ∙ axis[2] ∙ (1 - cθ) + axis[1] ∙ sθ;
+        axis[1] ∙ axis[0] ∙ (1 - cθ) + axis[2] ∙ sθ,
+        cθ + axis[1]² ∙ (1 - cθ),
+        axis[1] ∙ axis[2] ∙ (1 - cθ) - axis[0] ∙ sθ;
+        axis[2] ∙ axis[0] ∙ (1 - cθ) - axis[1] ∙ sθ,
+        axis[2] ∙ axis[1] ∙ (1 - cθ) + axis[0] ∙ sθ,
+        cθ + axis[2]² ∙ (1 - cθ)
+    ])"
 
-        R = "[cθ + axis[0]² ∙ (1 - cθ),
-              axis[0] ∙ axis[1] ∙ (1 - cθ) - axis[2] ∙ sθ,
-              axis[0] ∙ axis[2] ∙ (1 - cθ) + axis[1] ∙ sθ;
-              axis[1] ∙ axis[0] ∙ (1 - cθ) + axis[2] ∙ sθ,
-              cθ + axis[1]² ∙ (1 - cθ),
-              axis[1] ∙ axis[2] ∙ (1 - cθ) - axis[0] ∙ sθ;
-              axis[2] ∙ axis[0] ∙ (1 - cθ) - axis[1] ∙ sθ,
-              axis[2] ∙ axis[1] ∙ (1 - cθ) + axis[0] ∙ sθ,
-              cθ + axis[2]² ∙ (1 - cθ)]"
-    }
+    FromAxisAngle(axis, θ) = "FromAxisAngle_(axis, cos(θ), sin(θ))"
 
     Quaternion(q) = "Spatial.Rotate(2 ∙ [
         0.5 - q[2]^2 - q[3]^2,	   q[1] ∙ q[2] + q[3] ∙ q[0], q[1] ∙ q[3] - q[2] ∙ q[0];

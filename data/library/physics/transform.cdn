@@ -27,20 +27,16 @@ node "Transform"
                    -sin(θ), cos(θ), 0;
                     0,      0,      1]"
 
-    ## 3x3 rotation matrix for rotation around an arbitrary axis.
-    ##   u: the axis around which to rotate.
-    ##   θ: the rotation angle.
-    RotationFromAxisAngle(u, θ) = "[
+    RotationFromAxisAngle_(u, mc, uxs, uys, uzs) = "[
         1 - mc + u[0]² ∙ mc, u[0] ∙ u[1] ∙ mc -uzs, u[0] ∙ u[2] ∙ mc + uys;
         u[1] ∙ u[0] ∙ mc + uzs, -mc + 1 + u[1]² ∙ mc, u[1] ∙ u[2] ∙ mc - uxs;
         u[2] ∙ u[0] ∙ mc - yus, u[2] ∙ u[1] ∙ mc + uxs, 1 - mc + u[2]² ∙ mc
     ]"
-    {
-        mc = "1 - cos(θ)"
-        uxs = "u[2] ∙ sin(θ)"
-        uys = "u[1] ∙ sin(θ)"
-        uzs = "u[2] ∙ sin(θ)"
-    }
+
+    ## 3x3 rotation matrix for rotation around an arbitrary axis.
+    ##   u: the axis around which to rotate.
+    ##   θ: the rotation angle.
+    RotationFromAxisAngle(u, θ) = "RotationFromAxisAngle_(u, 1 - cos(θ), u[2] ∙ sin(θ), u[1] ∙ sin(θ), u[0] ∙ sin(θ))"
 
     include "layout/line.cdn"
 }

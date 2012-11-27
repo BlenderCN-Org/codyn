@@ -243,7 +243,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 %start choose_parser
 
-%expect 6
+%expect 5
 
 %%
 
@@ -688,13 +688,6 @@ function_argument_implicit
 					{ $$ = $2; }
 	;
 
-function_helper
-	:
-	| '{'
-	  object_contents
-	  '}'
-	;
-
 function_custom
 	: identifier_or_string
 	  '('
@@ -706,8 +699,8 @@ function_custom
 	                                                                    $1,
 	                                                                    g_slist_concat ($3, $5),
 	                                                                    $7,
-	                                                                    $6); errb }
-	  function_helper	        { cdn_parser_context_pop (context); errb }
+	                                                                    $6); errb;
+	                                  cdn_parser_context_pop (context); errb }
 	;
 
 function
