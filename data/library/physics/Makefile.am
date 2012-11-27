@@ -1,14 +1,14 @@
+SUBDIRS = lagrange direct
+
 librarydir = $(pkgdatadir)-@CODYN_API_VERSION@/library/physics
 library_DATA = \
 	physics.cdn \
-	lagrange.cdn \
 	spatial.cdn \
 	rnea.cdn \
 	crba.cdn \
 	dynamics.cdn \
 	findbodies.cdn \
-	geometry.cdn \
-	slip.cdn \
+	inertia.cdn \
 	transform.cdn \
 	quaternion.cdn
 

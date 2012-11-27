@@ -24,11 +24,12 @@ defines
                      reduce(last, "@0,@@@0"))
 
     # Construct list of parent indices for each body
-    parents = | @bodies | if (inputs | has-template(physics.joint) | input | name | append-context("@bodies[!@0]"),
+    parents = | @bodies
+              | if (inputs | has-template(physics.joint) | input | name | append-context("@bodies[!@0]"),
                               append-context("-1"))
 
     # Construct list of parent indices for each dof
-    parentsdof = "{@bodies|@bodydof[@0[!]]*@parents[@0[!]]}"
+    parentsdof = "{@bodies|@bodydof[$(@0[!] + 1)]*@parents[$(@0[!] + 1)]}"
 }
 
 # vi:ex:ts=4:et

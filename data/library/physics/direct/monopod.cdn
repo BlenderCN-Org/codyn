@@ -4,11 +4,20 @@ g = 1
 integrator
 {
     method = "runge-kutta"
-    initial-phase = "air"
+}
+
+templates
+{
+    edge "eom"
+    {
+        @q̈ <= "accelerations[@0[!]]"
+    }
 }
 
 node "monopod"
 {
+    initial-state "air"
+
     defines
     {
         q = "{x,y,φ,α,l}"
@@ -96,8 +105,6 @@ node "monopod"
           c3;
           -m3 ∙ (g ∙ cθ + (α̇ + φ̇)² ∙ (l - l3))]"
 
-    input-file "actuation.txt" as "actuation" {}
-
     # Passive forces on α and φ from the series elastic element
     τα = "kα ∙ (α0 + actuation.ua - α) + bα ∙ (actuation.uda - α̇)"
     τl = "kl ∙ (l0 + actuation.ul - l) + bl ∙ (actuation.udl - l̇)"
@@ -132,7 +139,7 @@ node "monopod"
 
     "phase" = 2
 
-    phase "air" to "ground" when < "rc[1]"
+    event "air" to "ground" when "rc[1] < 0"
     {
         q̇_after = "-Minv ∙ (JcT ∙ inverse(Jc ∙ Minv ∙ JcT) ∙ (Jc ∙ q̇)) + q̇"
 
@@ -142,30 +149,22 @@ node "monopod"
 
     Ftsh = "0.001"
 
-    phase "ground" to "air" when < "Fc[1] - Ftsh"
+    event "ground" to "air" when "Fc[1] < Ftsh"
     {
         set "phase" = 2
     }
-}
 
-templates
-{
-    edge "eom"
+    edge "ground" on self state "ground" : "eom"
     {
-        @q̈ <= "accelerations[@0[!]]"
+        # Accelerations
+        accelerations = "linsolve(M, -h + τ + JcT ∙ Fc)"
     }
-}
 
-edge "ground" on "monopod" phase "ground" : "eom"
-{
-    # Accelerations
-    accelerations = "linsolve(M, -h + τ + JcT ∙ Fc)"
-}
-
-edge "air" on "monopod" phase "air" : "eom"
-{
-    # Accelerations, there are no contact forces in the air
-    accelerations = "linsolve(M, -h + τ)"
+    edge "air" on self state "air" : "eom"
+    {
+        # Accelerations, there are no contact forces in the air
+        accelerations = "linsolve(M, -h + τ)"
+    }
 }
 
 # vi:ex:ts=4:et

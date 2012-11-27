@@ -33,7 +33,7 @@ templates
             ## coming from the acceleration and velocity acting on the spatial inertia,
             ## forces transmitted over the joint from the child, and finally external
             ## forces introduced on the body
-            force = "spI ∙ acceleration + Sp.CrossForce(velocity) ∙ spI ∙ velocity + forceChild - forceExternal"
+            force = "spI ∙ acceleration + Spatial.CrossForce(velocity) ∙ spI ∙ velocity + forceChild - forceExternal"
 
             ## C matrix row of this body. The C matrix row of this body is the force
             ## transmitted on the joint
@@ -51,7 +51,7 @@ edge has-template(physics.joint)
 
     ## Recursive joint acceleration (from parent to child)
     acceleration <= "output.transform ∙ acceleration +
-                     Sp.CrossMotion(output.velocity) ∙ output.jointVelocity"
+                     Spatial.CrossMotion(output.velocity) ∙ output.jointVelocity"
 }
 
 node "@bodies" : physics.rnea {}

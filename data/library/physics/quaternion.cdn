@@ -1,6 +1,6 @@
 node "Quaternion"
 {
-    FromAxisAngle(axis, angle) = "[cos(angle / 2), axis * sin(angle / 2)]"
+    FromAxisAngle(axis, angle) = "[cos(angle / 2), axis ∙ sin(angle / 2)]"
 }
 
 # vi:ex:ts=4:et

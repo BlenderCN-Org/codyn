@@ -1,0 +1,53 @@
+node "Inertia"
+{
+    ## Inertia matrix of a box.
+    ##   m: mass of the box.
+    ##   w: width of the box (x).
+    ##   h: height of the box (y).
+    ##   d: depth of the box (z).
+    Box(m, w, h, d) = "[
+        1 / 12 ∙ m ∙ (h² + d²), 0,                      0;
+        0,                      1 / 12 ∙ m ∙ (w² + d²), 0;
+        0,                      0,                      1 / 12 ∙ m ∙ (w² + h²)
+    ]"
+
+    Sym(ixx, ixy, ixz, iyy, iyz, izz) = "[
+        ixx, ixy, ixz;
+        ixy, iyy, iyz;
+        iyz, iyz, izz
+    ]"
+
+    ## Diagonal inertia matrix.
+    ##   c: the diagonal inertia component.
+    Diag(c) = "[c, 0, 0;
+                 0, c, 0;
+                 0, 0, c]"
+
+    ## Inertia matrix of a sphere.
+    ##   m: the mass of the sphere.
+    ##   r: the radius of the sphere.
+    Sphere(m, r) = "Diag(2 / 5 ∙ m ∙ r²)"
+
+    ## Inertia matrix of a cylinder.
+    ##   m: the mass of the cylinder.
+    ##   r: the radius of the cylinder.
+    ##   h: the height of the cylinder (z).
+    Cylinder(m, r, h) = "[
+        1 / 12 ∙ m ∙ (3 ∙ r² + h²), 0,                          0;
+        0,                          1 / 12 ∙ m ∙ (3 ∙ r² + h²), 0;
+        0,                          0,                          0.5 ∙ m ∙ r²
+    ]"
+
+    ## Inertia matrix of a rod.
+    ##   m: the mass of the rod.
+    ##   l: the length of the rod (y).
+    Rod(m, l) = "[
+        1 / 12 ∙ m ∙ l², 0, 0;
+        0,               0, 0;
+        0,               0, 1 / 12 ∙ m ∙ l²
+    ]"
+
+    include "layout/line.cdn"
+}
+
+# vi:ex:ts=4:et
