@@ -543,7 +543,7 @@ cdn_function_argument_set_dimension (CdnFunctionArgument *argument,
 
 	argument->priv->dimension = *dimension;
 
-	if (argument->priv->variable && argument->priv->isexplicit)
+	if (argument->priv->variable)
 	{
 		gchar *zeros;
 		CdnExpression *expr;
