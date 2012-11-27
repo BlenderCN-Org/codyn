@@ -1515,41 +1515,19 @@ static CdnInstruction *
 size_macro (CdnExpression *expression,
             ParserContext *context)
 {
-	GSList *first = NULL;
 	gchar *sr;
 	gchar *sc;
 	CdnStackArgs args;
 	CdnStackArg nargs[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
 	CdnDimension dim;
+	GSList *i;
 
-	if (context->stack)
-	{
-		first = context->stack->data;
-	}
+	i = pop_stack (expression, context);
+	dim = instruction_get_dimension (g_slist_last (i)->data);
+	free_popped_stack (i);
 
-	if (!first || context->stack->next)
-	{
-		parser_failed (expression,
-		               context,
-		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		               "The `size' function expects 1 argument");
-
-		return NULL;
-	}
-
-	get_argdim (expression, context, 1, &args);
-
-	while (first)
-	{
-		instructions_pop (expression);
-		first = g_slist_delete_link (first, first);
-	}
-
-	context->stack = g_slist_delete_link (context->stack,
-	                                      context->stack);
-
-	sr = g_strdup_printf ("%d", args.args[0].rows);
-	sc = g_strdup_printf ("%d", args.args[0].columns);
+	sr = g_strdup_printf ("%d", dim.rows);
+	sc = g_strdup_printf ("%d", dim.columns);
 
 	instructions_push (expression,
 	                   cdn_instruction_number_new_from_string (sr),
@@ -1561,8 +1539,6 @@ size_macro (CdnExpression *expression,
 
 	g_free (sr);
 	g_free (sc);
-
-	cdn_stack_args_destroy (&args);
 
 	args.num = 2;
 	args.args = nargs;
@@ -1807,6 +1783,12 @@ instructions_push_all (CdnExpression *expression,
 
 		instrs = g_slist_next (instrs);
 	}
+}
+
+static CdnStackArg const *
+get_last_stack_arg (ParserContext *context)
+{
+	return instruction_get_push_arg (g_slist_last (context->stack->data)->data);
 }
 
 static gboolean
@@ -2501,12 +2483,6 @@ is_index_range (CdnInstruction       *instruction,
 
 	return cdn_instruction_index_get_index_type (*retval) ==
 	       CDN_INSTRUCTION_INDEX_TYPE_RANGE;
-}
-
-static CdnStackArg const *
-get_last_stack_arg (ParserContext *context)
-{
-	return instruction_get_push_arg (g_slist_last (context->stack->data)->data);
 }
 
 static CdnInstruction *
