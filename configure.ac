@@ -89,7 +89,7 @@ dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
 
-checkpkgs="glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0"
+checkpkgs="glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 json-glib-1.0"
 
 if test "$platform_osx" != "yes"; then
 	checkpkgs="$checkpkgs libxml-2.0"

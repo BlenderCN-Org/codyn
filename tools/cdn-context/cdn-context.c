@@ -27,6 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <codyn/cdn-cfile-stream.h>
+#include <json-glib/json-glib.h>
 
 #ifdef HAVE_CONFIG_H
 #include <config.h>
@@ -858,18 +859,18 @@ parse_network (gchar const *args[], gint argc)
 			gint lend;
 			gint cstart;
 			gint cend;
-			gchar *esc;
-			GDataOutputStream *out;
+			JsonBuilder *builder;
+			JsonGenerator *generator;
 
-			out = g_data_output_stream_new (stream);
+			builder = json_builder_new ();
+			json_builder_begin_object (builder);
+			json_builder_set_member_name (builder, "status");
+			json_builder_add_string_value (builder, "error");
+			json_builder_set_member_name (builder, "data");
 
-			write_stream_nl (out, "{");
-			write_stream_nl (out, "  \"status\": \"error\",");
-			write_stream_nl (out, "  \"data\": {");
-
-			esc = g_strescape (error->message, NULL);
-			write_stream_format (out, "    \"message\": \"%s\",\n", esc);
-			g_free (esc);
+			json_builder_begin_object (builder);
+			json_builder_set_member_name (builder, "message");
+			json_builder_add_string_value (builder, error->message);
 
 			cdn_parser_context_get_error_location (context,
 			                                       &lstart,
@@ -879,33 +880,47 @@ parse_network (gchar const *args[], gint argc)
 
 			file = cdn_parser_context_get_file (context);
 			filename = file ? g_file_get_path (file) : g_strdup ("");
-			esc = g_strescape (filename, NULL);
-			g_free (filename);
 
 			if (file)
 			{
 				g_object_unref (file);
 			}
 
-			write_stream_format (out, "    \"filename\": \"%s\",\n", esc);
-			g_free (esc);
+			json_builder_set_member_name (builder, "filename");
+			json_builder_add_string_value (builder, filename);
+
+			g_free (filename);
 
 			line = cdn_parser_context_get_error_lines (context);
 
-			esc = g_strescape (line, NULL);
+			json_builder_set_member_name (builder, "line");
+			json_builder_add_string_value (builder, line);
+
 			g_free (line);
-			write_stream_format (out, "    \"line\": \"%s\",\n", esc);
-			g_free (esc);
 
-			write_stream_format (out, "    \"line_start\": %d,\n", lstart);
-			write_stream_format (out, "    \"line_end\": %d,\n", lend);
-			write_stream_format (out, "    \"column_start\": %d,\n", cstart);
-			write_stream_format (out, "    \"column_end\": %d\n", cend);
+			json_builder_set_member_name (builder, "line_start");
+			json_builder_add_int_value (builder, lstart);
 
-			write_stream_nl (out, "  }");
-			write_stream_nl (out, "}");
+			json_builder_set_member_name (builder, "line_end");
+			json_builder_add_int_value (builder, lend);
 
-			g_object_unref (out);
+			json_builder_set_member_name (builder, "column_start");
+			json_builder_add_int_value (builder, cstart);
+
+			json_builder_set_member_name (builder, "column_end");
+			json_builder_add_int_value (builder, cend);
+
+			json_builder_end_object (builder);
+			json_builder_end_object (builder);
+
+			generator = json_generator_new ();
+			json_generator_set_root (generator,
+			                         json_builder_get_root (builder));
+
+			json_generator_to_stream (generator, stream, NULL, NULL);
+
+			g_object_unref (generator);
+			g_object_unref (builder);
 
 			ret = FALSE;
 		}
