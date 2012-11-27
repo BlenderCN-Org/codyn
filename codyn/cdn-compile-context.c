@@ -44,8 +44,10 @@ typedef struct
 {
 	GSList *objects;
 	GSList *functions;
-	gboolean function_priority;
-	gboolean function_arg_priority;
+
+	guint function_priority : 1;
+	guint function_arg_priority : 1;
+	guint only_local_variables : 1;
 } Context;
 
 struct _CdnCompileContextPrivate
@@ -71,8 +73,10 @@ context_copy (Context *context)
 
 	ctx->objects = g_slist_copy (context->objects);
 	ctx->functions = g_slist_copy (context->functions);
+
 	ctx->function_priority = context->function_priority;
 	ctx->function_arg_priority = context->function_arg_priority;
+	ctx->only_local_variables = context->only_local_variables;
 
 	return ctx;
 }
@@ -223,31 +227,6 @@ cdn_compile_context_append_object (CdnCompileContext *context,
 }
 
 /**
- * cdn_compile_context_clear_objects:
- * @context: a #CdnCompileContext.
- *
- * Clear all objects in the current context.
- *
- **/
-void
-cdn_compile_context_clear_objects (CdnCompileContext *context)
-{
-	Context *ctx;
-
-	g_return_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context));
-
-	if (!context)
-	{
-		return;
-	}
-
-	ctx = CURRENT_CONTEXT (context);
-
-	g_slist_free (ctx->objects);
-	ctx->objects = NULL;
-}
-
-/**
  * cdn_compile_context_prepend_function:
  * @context: A #CdnCompileContext
  * @function: (type CdnFunction): A #CdnFunction
@@ -330,7 +309,7 @@ lookup_variable (CdnCompileContext *context,
 			variable = v;
 		}
 
-		if (variable && !getlast)
+		if (ctx->only_local_variables || (variable && !getlast))
 		{
 			break;
 		}
@@ -545,4 +524,37 @@ cdn_compile_context_get_function_arg_priority (CdnCompileContext *context)
 	ctx = CURRENT_CONTEXT (context);
 
 	return ctx->function_arg_priority;
+}
+
+void
+cdn_compile_context_set_only_local_variables (CdnCompileContext *context,
+                                              gboolean           only_local)
+{
+	Context *ctx;
+
+	g_return_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context));
+
+	if (context == NULL)
+	{
+		return;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+	ctx->only_local_variables = only_local;
+}
+
+gboolean
+cdn_compile_context_get_only_local_variables (CdnCompileContext *context)
+{
+	Context *ctx;
+
+	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), FALSE);
+
+	if (context == NULL)
+	{
+		return FALSE;
+	}
+
+	ctx = CURRENT_CONTEXT (context);
+	return ctx->only_local_variables;
 }
