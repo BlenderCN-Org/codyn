@@ -201,11 +201,11 @@ class BaseViewActivatable:
             self.parser.cancel()
             self.parser = None
 
-        if self.timeout:
+        if self.timeout is not None:
             utils.source_remove(self.timeout)
             self.timeout = None
 
-        if self.cursor_timeout:
+        if self.cursor_timeout is not None:
             utils.source_remove(self.cursor_timeout)
             self.cursor_timeout = None
 
@@ -240,7 +240,7 @@ class BaseViewActivatable:
         self.reparse()
 
     def reparse(self):
-        if self.timeout:
+        if self.timeout is not None:
             utils.source_remove(self.timeout)
             self.timeout = None
 
@@ -359,8 +359,15 @@ class BaseViewActivatable:
             self.parser.cancel()
             self.parser = None
 
-        self.parser = parser.Parser(self.view.get_buffer(), self.on_parser_finished)
-        self.parser.run()
+        buf = self.view.get_buffer()
+
+        self.parser = parser.Parser(buf, self.on_parser_finished)
+
+        ins = buf.get_iter_at_mark(buf.get_insert())
+        l = ins.get_line()
+        c = ins.get_line_offset()
+
+        self.parser.run(l + 1, c + 1)
 
         return False
 

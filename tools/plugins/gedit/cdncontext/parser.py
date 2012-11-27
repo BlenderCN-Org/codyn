@@ -107,14 +107,14 @@ class Parser:
             os.kill(self.pipe.pid, signal.SIGTERM)
             self.pipe = None
 
-    def run(self):
+    def run(self, line = 1, column = 1):
         dirname = os.path.dirname(self.filename)
         filename = os.path.basename(self.filename)
 
         self.ret = None
 
         try:
-            self.pipe = subprocess.Popen(['cdn-context', filename],
+            self.pipe = subprocess.Popen(['cdn-context', filename, '-l', str(line), '-c', str(column)],
                                          cwd=dirname,
                                          stdout=subprocess.PIPE)
         except Exception as (e):
