@@ -208,6 +208,13 @@ history_to_pool (CdnOperatorDelayed *operator,
 	                      num);
 }
 
+static void
+history_reset (CdnOperatorDelayed *operator)
+{
+	history_concat (&operator->priv->history_pool,
+	                &operator->priv->history);
+}
+
 static HistoryItem *
 pool_to_history (CdnOperatorDelayed  *operator,
                  gint                 num)
@@ -742,6 +749,20 @@ cdn_operator_delayed_get_stack_manipulation (CdnOperator *op)
 }
 
 static void
+cdn_operator_delayed_reset (CdnOperator *op)
+{
+	CdnOperatorDelayed *d;
+
+	d = (CdnOperatorDelayed *)op;
+
+	d->priv->last_t = 0;
+	d->priv->eval_at_t = 0;
+	d->priv->first_last_t = FALSE;
+
+	history_reset (d);
+}
+
+static void
 cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -759,6 +780,7 @@ cdn_operator_delayed_class_init (CdnOperatorDelayedClass *klass)
 	op_class->step = cdn_operator_delayed_step;
 	op_class->initialize_integrate = cdn_operator_delayed_initialize_integrate;
 	op_class->get_stack_manipulation = cdn_operator_delayed_get_stack_manipulation;
+	op_class->reset = cdn_operator_delayed_reset;
 
 	g_type_class_add_private (object_class, sizeof(CdnOperatorDelayedPrivate));
 
