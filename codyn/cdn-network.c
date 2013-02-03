@@ -508,6 +508,12 @@ cdn_network_reset_impl (CdnObject *object)
 
 	network = CDN_NETWORK (object);
 
+	// Reset the integrator
+	if (network->priv->integrator)
+	{
+		cdn_object_reset (CDN_OBJECT (network->priv->integrator));
+	}
+
 	// Reset the object
 	CDN_OBJECT_CLASS (cdn_network_parent_class)->reset (object);
 
