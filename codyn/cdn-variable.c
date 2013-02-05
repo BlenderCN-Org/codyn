@@ -1016,7 +1016,8 @@ cdn_variable_reset (CdnVariable *variable)
 {
 	/* Omit type check to increase speed */
 	cdn_expression_set_once (variable->priv->expression,
-	                         (variable->priv->flags & CDN_VARIABLE_FLAG_ONCE) != 0);
+	                         (variable->priv->flags & (CDN_VARIABLE_FLAG_ONCE |
+	                                                   CDN_VARIABLE_FLAG_IN)) != 0);
 }
 
 /**
