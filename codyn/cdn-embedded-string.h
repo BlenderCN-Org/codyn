@@ -53,6 +53,7 @@ typedef enum
 
 struct _CdnEmbeddedString
 {
+	/*< private >*/
 	GObject parent;
 
 	CdnEmbeddedStringPrivate *priv;
@@ -60,6 +61,7 @@ struct _CdnEmbeddedString
 
 struct _CdnEmbeddedStringClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 

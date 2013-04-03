@@ -30,6 +30,38 @@
 
 G_BEGIN_DECLS
 
+#define CDN_TYPE_INTEGRATORS		(cdn_integrators_get_type ())
+#define CDN_INTEGRATORS(obj)		(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_INTEGRATORS, CdnIntegrators))
+#define CDN_INTEGRATORS_CONST(obj)	(G_TYPE_CHECK_INSTANCE_CAST ((obj), CDN_TYPE_INTEGRATORS, CdnIntegrators const))
+#define CDN_INTEGRATORS_CLASS(klass)	(G_TYPE_CHECK_CLASS_CAST ((klass), CDN_TYPE_INTEGRATORS, CdnIntegratorsClass))
+#define CDN_IS_INTEGRATORS(obj)		(G_TYPE_CHECK_INSTANCE_TYPE ((obj), CDN_TYPE_INTEGRATORS))
+#define CDN_IS_INTEGRATORS_CLASS(klass)	(G_TYPE_CHECK_CLASS_TYPE ((klass), CDN_TYPE_INTEGRATORS))
+#define CDN_INTEGRATORS_GET_CLASS(obj)	(G_TYPE_INSTANCE_GET_CLASS ((obj), CDN_TYPE_INTEGRATORS, CdnIntegratorsClass))
+
+typedef struct _CdnIntegrators		CdnIntegrators;
+typedef struct _CdnIntegratorsClass	CdnIntegratorsClass;
+
+/**
+ * CdnIntegrators:
+ *
+ * Integrator registry.
+ *
+ * #CdnIntegrators provides a registry for integrators. All integrators must
+ * be registered before loading a #CdnNetwork.
+ **/
+struct _CdnIntegrators
+{
+	/*< private >*/
+	GObject parent;
+};
+
+struct _CdnIntegratorsClass
+{
+	/*< private >*/
+	GObjectClass parent_class;
+};
+
+GType cdn_integrators_get_type (void);
 GSList const *cdn_integrators_list (void);
 
 void cdn_integrators_register (GType gtype);

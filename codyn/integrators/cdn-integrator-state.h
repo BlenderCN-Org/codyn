@@ -40,6 +40,16 @@ typedef struct _CdnIntegratorState        CdnIntegratorState;
 typedef struct _CdnIntegratorStateClass   CdnIntegratorStateClass;
 typedef struct _CdnIntegratorStatePrivate CdnIntegratorStatePrivate;
 
+/**
+ * CdnIntegratorState:
+ *
+ * The integrator state.
+ *
+ * The integrator state stores information on which variables need to be
+ * integrated and how, based on a root object. It automatically tracks changes
+ * in the root object and recalculates the variables that need to be
+ * integrated.
+ */
 struct _CdnIntegratorState
 {
 	/*< private >*/

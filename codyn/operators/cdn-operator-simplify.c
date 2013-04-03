@@ -33,16 +33,6 @@
 
 #include <math.h>
 
-/**
- * SECTION:cdn-operator-simplify
- * @short_description: Math operator for simplify evaluation of an expression
- *
- * The #CdnOperatorSimplify is a special operator that can be used in
- * mathematical expressions ('delay'). When evaluated, it will return the
- * simplify value of its argument (which can be an arbitrary expression).
- *
- */
-
 #define CDN_OPERATOR_SIMPLIFY_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_OPERATOR_SIMPLIFY, CdnOperatorSimplifyPrivate))
 
 struct _CdnOperatorSimplifyPrivate

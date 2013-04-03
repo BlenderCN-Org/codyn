@@ -35,6 +35,13 @@ G_BEGIN_DECLS
 typedef struct _CdnLayoutable		CdnLayoutable;
 typedef struct _CdnLayoutableInterface	CdnLayoutableInterface;
 
+/**
+ * CdnLayoutable:
+ *
+ * Interface for object layouting.
+ *
+ * This interface can be implemented when an object can be layouted.
+ **/
 struct _CdnLayoutableInterface
 {
 	GTypeInterface parent;

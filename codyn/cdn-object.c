@@ -39,16 +39,6 @@
 #include "cdn-node.h"
 
 /**
- * SECTION:cdn-object
- * @short_description: Basis for all cdn objects
- *
- * #CdnObject is a base class for all the objects which can be added to a
- * network. It provides property storage and virtual methods which can be
- * implemented that drive the simulation process.
- *
- */
-
-/**
  * CdnForeachExpressionFunc:
  * @expression: a #CdnExpression
  * @userdata: user data

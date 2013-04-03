@@ -45,17 +45,6 @@
 #include <unistd.h>
 #include <glib/gprintf.h>
 
-/**
- * SECTION:cdn-expression
- * @short_description: Mathematical expression evaluation
- *
- * A #CdnExpression contains a mathematical expression. The expression in
- * string format can be compiled and evaluated. At the compilation phase,
- * a list of #CdnObject is provided as a context in which variables are mapped
- * to #CdnVariable in this context.
- *
- */
-
 #define CDN_EXPRESSION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EXPRESSION, CdnExpressionPrivate))
 
 struct _CdnExpressionPrivate

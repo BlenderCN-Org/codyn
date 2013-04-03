@@ -41,6 +41,23 @@ typedef struct _CdnEdge        CdnEdge;
 typedef struct _CdnEdgeClass   CdnEdgeClass;
 typedef struct _CdnEdgePrivate CdnEdgePrivate;
 
+/**
+ * CdnEdge:
+ *
+ * Connection between two nodes.
+ *
+ * A #CdnEdge is a connection between two #CdnNode. The edge defines actions
+ * which consist of a target variable in the edge output and an expression
+ * by which this target variable needs to be updated.
+ *
+ * <refsect2 id="CdnEdge-COPY">
+ * <title>CdnEdge Copy Semantics</title>
+ * When a link is copied with #cdn_object_copy, the link actions are also
+ * copied. However, the link #CdnEdge:input and #CdnEdge:output properties are
+ * <emphasis>NOT</emphasis> copied, so that you are free output attach it output
+ * two new objects.
+ * </refsect2>
+ */
 struct _CdnEdge
 {
 	/*< private >*/

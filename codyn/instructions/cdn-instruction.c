@@ -1,14 +1,5 @@
 #include "cdn-instruction.h"
 
-/**
- * SECTION:cdn-instruction
- * @short_description: Mathematical instruction base class
- *
- * The #CdnInstruction class is an abstract base class for all mathematical
- * instructions in Codyn.
- *
- **/
-
 #define CDN_INSTRUCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INSTRUCTION, CdnInstructionPrivate))
 
 struct _CdnInstructionPrivate

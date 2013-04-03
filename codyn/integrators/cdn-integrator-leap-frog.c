@@ -25,18 +25,6 @@
 
 #define CDN_INTEGRATOR_LEAP_FROG_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR_LEAP_FROG, CdnIntegratorLeapFrogPrivate))
 
-/**
- * SECTION:cdn-integrator-leap-frog
- * @short_description: LeapFrog integrator
- *
- * The leap frog integrator is a #CdnIntegrator subclass implementing a leap
- * frog integration scheme (useful for second order systems). You can use this
- * integrator to efficiently integrate dynamical equations of motion. Note
- * that this integration scheme is exactly the same as Euler integration when
- * dealing with first order systems.
- *
- */
-
 struct _CdnIntegratorLeapFrogPrivate
 {
 	GSList *first_order;

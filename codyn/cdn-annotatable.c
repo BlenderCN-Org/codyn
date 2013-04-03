@@ -40,14 +40,6 @@ struct _CdnAnnotationInfo
 	CdnAnnotationAnchor anchor;
 };
 
-/**
- * SECTION:cdn-annotatable
- * @short_description: Interface for annotating objects
- *
- * This interface can be implemented when an object supports annotations.
- *
- **/
-
 G_DEFINE_INTERFACE (CdnAnnotatable, cdn_annotatable, G_TYPE_OBJECT);
 
 static gchar *

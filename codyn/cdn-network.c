@@ -40,24 +40,6 @@
 #include "cdn-io-method.h"
 #include "instructions/cdn-instruction-rand.h"
 
-/**
- * SECTION:cdn-network
- * @short_description: The main CDN network object
- *
- * The cdn network is the main component of the codyn library. The network
- * consists of #CdnObject and #CdnEdge objects which combined make
- * up the network.
- *
- * The easiest way of using the library is to write the network using the
- * XML representation (see #xml-specification). You then create the network
- * from file using #cdn_network_new_from_file. To simulate the network, use
- * #cdn_network_run or for running single steps #cdn_network_step.
- *
- * For more information, see
- * <link linkend='making-a-network'>Making a network</link>.
- *
- */
-
 #define CDN_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CDN_TYPE_NETWORK, CdnNetworkPrivate))
 
 /* Properties */

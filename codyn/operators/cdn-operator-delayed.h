@@ -40,6 +40,15 @@ typedef struct _CdnOperatorDelayed		CdnOperatorDelayed;
 typedef struct _CdnOperatorDelayedClass		CdnOperatorDelayedClass;
 typedef struct _CdnOperatorDelayedPrivate	CdnOperatorDelayedPrivate;
 
+/**
+ * CdnOperatorDelayed:
+ *
+ * Math operator for delayed evaluation of an expression.
+ *
+ * The #CdnOperatorDelayed is a special operator that can be used in
+ * mathematical expressions ('delay'). When evaluated, it will return the
+ * delayed value of its argument (which can be an arbitrary expression).
+ */
 struct _CdnOperatorDelayed
 {
 	/*< private >*/

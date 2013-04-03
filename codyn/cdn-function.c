@@ -29,27 +29,6 @@
 
 #include <string.h>
 
-/**
- * SECTION:cdn-function
- * @short_description: Custom user defined function
- *
- * It is possible to define custom user functions in the network which can
- * then be used from any expression. This class provides the basic
- * user function functionality. User defined functions can reference global
- * constants as well as use other user defined functions in their expressions.
- *
- * The #CdnFunction class can be subclassed to provide more specific types
- * of functions. One such example is the #CdnFunctionPolynomial class which
- * can be used to define and evaluate piecewise polynomials.
- *
- * <refsect2 id="CdnFunction-COPY">
- * <title>CdnFunction Copy Semantics</title>
- * When a function is copied with #cdn_object_copy, the function expression
- * and all the arguments are copied as well.
- * </refsect2>
- *
- */
-
 #define CDN_FUNCTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_FUNCTION, CdnFunctionPrivate))
 
 /* Properties */

@@ -32,13 +32,6 @@
 #include <libxml/tree.h>
 #include <string.h>
 
-/**
- * SECTION:cdn-network-serializer
- * @short_description: Network to XML serializer
- *
- * This can be used to serialize a #CdnNetwork to XML.
- *
- */
 #define CDN_NETWORK_SERIALIZER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_NETWORK_SERIALIZER, CdnNetworkSerializerPrivate))
 
 struct _CdnNetworkSerializerPrivate

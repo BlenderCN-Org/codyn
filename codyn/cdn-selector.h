@@ -113,6 +113,7 @@ typedef enum
 
 struct _CdnSelector
 {
+	/*< private >*/
 	GObject parent;
 
 	CdnSelectorPrivate *priv;
@@ -120,6 +121,7 @@ struct _CdnSelector
 
 struct _CdnSelectorClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 

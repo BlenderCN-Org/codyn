@@ -25,15 +25,6 @@
 
 #include <string.h>
 
-/**
- * SECTION:cdn-function-argument
- * @short_description: An argument to a custom defined function
- *
- * A #CdnFunctionArgument contains information on an argument (or parameter)
- * to a custom defined function.
- *
- */
-
 #define CDN_FUNCTION_ARGUMENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_FUNCTION_ARGUMENT, CdnFunctionArgumentPrivate))
 
 /* signals */

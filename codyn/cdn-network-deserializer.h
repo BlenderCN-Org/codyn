@@ -40,6 +40,13 @@ typedef struct _CdnNetworkDeserializer		CdnNetworkDeserializer;
 typedef struct _CdnNetworkDeserializerClass	CdnNetworkDeserializerClass;
 typedef struct _CdnNetworkDeserializerPrivate	CdnNetworkDeserializerPrivate;
 
+/**
+ * CdnNetworkDeserializer:
+ *
+ * XML to Network deserializer.
+ *
+ * Use this to deserialize an XML description of a network to a #CdnNetwork.
+ */
 struct _CdnNetworkDeserializer
 {
 	/*< private >*/

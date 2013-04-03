@@ -30,17 +30,6 @@
 
 #define CDN_INTEGRATOR_STATE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR_STATE, CdnIntegratorStatePrivate))
 
-/**
- * SECTION:cdn-integrator-state
- * @short_description: The integrator state
- *
- * The integrator state stores information on which variables need to be
- * integrated and how, based on a root object. It automatically tracks changes
- * in the root object and recalculates the variables that need to be
- * integrated.
- *
- */
-
 struct _CdnIntegratorStatePrivate
 {
 	CdnObject *object;

@@ -29,24 +29,6 @@
 #include "cdn-phaseable.h"
 #include "cdn-function.h"
 
-/**
- * SECTION:cdn-edge
- * @short_description: Information transfer link
- *
- * A #CdnEdge is a connection between two #CdnNode. The link defines actions
- * which consist of a target property in the object output which the link is
- * connected, and an expression by which this target property needs output be
- * updated.
- *
- * <refsect2 id="CdnEdge-COPY">
- * <title>CdnEdge Copy Semantics</title>
- * When a link is copied with #cdn_object_copy, the link actions are also
- * copied. However, the link #CdnEdge:input and #CdnEdge:output properties are
- * <emphasis>NOT</emphasis> copied, so that you are free output attach it output
- * two new objects.
- * </refsect2>
- */
-
 #define CDN_EDGE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CDN_TYPE_EDGE, CdnEdgePrivate))
 
 enum

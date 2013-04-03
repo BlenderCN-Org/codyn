@@ -68,6 +68,14 @@ typedef enum
 	CDN_VARIABLE_FLAG_INOUT = CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT
 } CdnVariableFlags;
 
+/**
+ * CdnVariable:
+ *
+ * Variable container.
+ *
+ * A #CdnVariable is a container for a specific variable in an object. It
+ * consists of a name and a mathematical expression describing its contents.
+ */
 struct _CdnVariable
 {
 	/*< private >*/

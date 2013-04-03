@@ -199,14 +199,6 @@ cdn_dimension_get_type ()
 }
 
 /**
- * SECTION:cdn-stack
- * @short_description: Simple stack
- *
- * Very simple/efficient stack implementation for double numbers.
- *
- */
-
-/**
  * cdn_stack_init:
  * @stack: A #CdnStack
  * @size: the stack size

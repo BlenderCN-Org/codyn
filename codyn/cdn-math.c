@@ -44,14 +44,6 @@
 
 #include "cdn-math.h"
 
-/**
- * SECTION:cdn-math
- * @short_description: Math function/operators
- *
- * Math expression helper functions.
- *
- */
-
 #define foreach_element(op)							\
 gint i;										\
 gint num;									\

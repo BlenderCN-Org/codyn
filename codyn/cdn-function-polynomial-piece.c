@@ -23,16 +23,6 @@
 #include "cdn-function-polynomial-piece.h"
 #include <string.h>
 
-/**
- * SECTION:cdn-function-polynomial-piece
- * @short_description: Piecewise polynomial piece
- *
- * This class provides a single piece of a piecewise polynomial function. See
- * #CdnFunctionPolynomial for more information on the support for piecewise
- * polynomial functions.
- *
- */
-
 #define CDN_FUNCTION_POLYNOMIAL_PIECE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_FUNCTION_POLYNOMIAL_PIECE, CdnFunctionPolynomialPiecePrivate))
 
 struct _CdnFunctionPolynomialPiecePrivate

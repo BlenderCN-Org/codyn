@@ -41,8 +41,16 @@ typedef struct _CdnCompileError		CdnCompileError;
 typedef struct _CdnCompileErrorClass	CdnCompileErrorClass;
 typedef struct _CdnCompileErrorPrivate	CdnCompileErrorPrivate;
 
+/**
+ * CdnCompileError:
+ *
+ * Compile error message container.
+ *
+ * Object used to store information on expression compile errors.
+ */
 struct _CdnCompileError
 {
+	/*< private >*/
 	GObject parent;
 
 	CdnCompileErrorPrivate *priv;
@@ -50,6 +58,7 @@ struct _CdnCompileError
 
 struct _CdnCompileErrorClass
 {
+	/*< private >*/
 	GObjectClass parent_class;
 };
 

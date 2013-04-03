@@ -34,15 +34,6 @@
 #include <math.h>
 #include <string.h>
 
-/**
- * SECTION:cdn-integrator
- * @short_description: Simulation integrator
- *
- * #CdnIntegrator is a base class for implementing different integration
- * methods.
- *
- */
-
 #define CDN_INTEGRATOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR, CdnIntegratorPrivate))
 
 typedef gdouble (*CdnIntegratorStepFunc)(CdnIntegrator *, gdouble, gdouble);

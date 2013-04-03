@@ -27,6 +27,13 @@
 
 G_BEGIN_DECLS
 
+/**
+ * CdnStack:
+ *
+ * Simple stack.
+ *
+ * Very simple/efficient stack implementation for double numbers.
+ */
 typedef struct _CdnStack CdnStack;
 
 #ifdef __GI_SCANNER__

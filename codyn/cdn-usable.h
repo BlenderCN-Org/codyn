@@ -35,6 +35,13 @@ G_BEGIN_DECLS
 typedef struct _CdnUsable		CdnUsable;
 typedef struct _CdnUsableInterface	CdnUsableInterface;
 
+/**
+ * CdnUsable:
+ *
+ * Interface for counting the uses of an object.
+ *
+ * This interface can be implemented when an object provides a use count.
+ **/
 struct _CdnUsableInterface
 {
 	GTypeInterface parent;

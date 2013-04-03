@@ -51,6 +51,16 @@ typedef void (*CdnExpressionCacheNotify) (CdnExpression *expression,
 typedef void (*CdnExpressionEvaluateNotify) (CdnExpression *expression,
                                              gpointer       userdata);
 
+/**
+ * CdnExpression:
+ *
+ * Mathematical expression evaluation.
+ *
+ * A #CdnExpression contains a mathematical expression. The expression in
+ * string format can be compiled and evaluated. At the compilation phase,
+ * a list of #CdnObject is provided as a context in which variables are mapped
+ * to #CdnVariable in this context.
+ */
 struct _CdnExpression
 {
 	/*< private >*/

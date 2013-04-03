@@ -28,17 +28,6 @@
 
 #define MAX_COEFFICIENTS 4
 
-/**
- * SECTION:cdn-integrator-runge-kutta
- * @short_description: Runge-Kutta order 4 integrator
- *
- * The runge kutta integrator is a #CdnIntegrator subclass implementing a
- * runge-kutta order 4 integration scheme. It is the most accurate integrator
- * available, but also the slowest. For a good compromise between speed and
- * accuracy see #CdnIntegratorPredictCorrect.
- *
- */
-
 struct _CdnIntegratorRungeKuttaPrivate
 {
 	gdouble *coefficients[MAX_COEFFICIENTS];

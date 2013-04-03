@@ -30,21 +30,6 @@
 #include "cdn-layoutable.h"
 #include "cdn-io.h"
 
-/**
- * SECTION:cdn-node
- * @short_description: Group object nodeing many objects together
- *
- * The #CdnNode is a special #CdnObject that contains many objects as children.
- * This can be used make sub-networks that can be easily instantiated,
- * providing some common functionality.
- *
- * <refsect2 id="CdnNode-COPY">
- * <title>CdnNode Copy Semantics</title>
- * When a node is copied with #cdn_object_copy, all the children are
- * recursively copied as well.
- * </refsect2>
- */
-
 #define CDN_NODE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_NODE, CdnNodePrivate))
 
 enum
@@ -1864,7 +1849,7 @@ cdn_node_get_child (CdnNode    *node,
  *
  * Find objects by specifying a selector. For example, if there is
  * another node "g" containing a state "s", you can use
- * cdn_node_find_object (node, "g.s") to get the object.
+ * #cdn_node_find_object (node, "g.s") to get the object.
  *
  * Returns: (transfer container) (element-type CdnObject): A #CdnObject
  *
@@ -1917,7 +1902,7 @@ cdn_node_find_objects (CdnNode     *node,
  *
  * Find object by specifying a selector. For example, if there is
  * another node "g" containing a node "s", you can use
- * cdn_node_find_object (node, "g.s") to get the object.
+ * #cdn_node_find_object (node, "g.s") to get the object.
  *
  * Returns: (transfer none): A #CdnObject
  *
@@ -1951,7 +1936,7 @@ cdn_node_find_object (CdnNode    *node,
  *
  * Find variables by specifying a selector. For example, if there is
  * another node "g" containing a node "s" with variable "x", you can use
- * cdn_node_find_variables (node, "g.s.x") to remove the variable.
+ * #cdn_node_find_variables (node, "g.s.x") to remove the variable.
  *
  * Returns: (transfer container) (element-type CdnVariable): A list of #CdnVariable
  *
@@ -2003,7 +1988,7 @@ cdn_node_find_variables (CdnNode    *node,
  *
  * Find a variable by specifying a selector. For example, if there is
  * another node "g" containing a node "s" with a variable "x", you can use
- * cdn_node_find_variable (node, "g.s.x") to get the variable.
+ * #cdn_node_find_variable (node, "g.s.x") to get the variable.
  *
  * Returns: (transfer none): A #CdnVariable
  *

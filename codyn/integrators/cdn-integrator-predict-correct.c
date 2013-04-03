@@ -35,16 +35,6 @@
 #define MAX_CORRECTION_ORDER 5
 #define DEFAULT_CORRECTION_ORDER 5
 
-/**
- * SECTION:cdn-integrator-predict-correct
- * @short_description: Prediction Correction integrator
- *
- * The prediction correction integrator is a #CdnIntegrator subclass
- * implementing a prediction correction integration scheme. It supports multiple
- * orders of prediction and correction.
- *
- */
-
 /* necessary depth of history:
  * prediction method order 'n' uses f(t), f(t-1), ... f(t-n+2)
  * correction method order 'n' uses f(t+1), f(t), f(t-1), ..., f(t-n+3)

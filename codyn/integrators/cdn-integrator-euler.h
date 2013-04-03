@@ -39,6 +39,15 @@ typedef struct _CdnIntegratorEuler			CdnIntegratorEuler;
 typedef struct _CdnIntegratorEulerClass		CdnIntegratorEulerClass;
 typedef struct _CdnIntegratorEulerPrivate	CdnIntegratorEulerPrivate;
 
+/**
+ * CdnIntegratorEuler:
+ *
+ * Euler integrator.
+ *
+ * The euler integrator is a #CdnIntegrator subclass implementing a simple
+ * euler integration scheme. See #CdnIntegratorPredictCorrect or
+ * #CdnIntegratorRungeKutta for more accurate (but slower) integrators.
+ */
 struct _CdnIntegratorEuler
 {
 	/*< private >*/

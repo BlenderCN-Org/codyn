@@ -24,14 +24,6 @@
 
 #include <string.h>
 
-/**
- * SECTION:cdn-compile-error
- * @short_description: Compile error message container
- *
- * Object used to store information on expression compile errors.
- *
- */
-
 #define CDN_COMPILE_ERROR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_COMPILE_ERROR, CdnCompileErrorPrivate))
 
 struct _CdnCompileErrorPrivate

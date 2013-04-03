@@ -25,16 +25,6 @@
 
 #define CDN_INTEGRATOR_EULER_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_INTEGRATOR_EULER, CdnIntegratorEulerPrivate))
 
-/**
- * SECTION:cdn-integrator-euler
- * @short_description: Euler integrator
- *
- * The euler integrator is a #CdnIntegrator subclass implementing a simple
- * euler integration scheme. See #CdnIntegratorPredictCorrect or
- * #CdnIntegratorRungeKutta for more accurate (but slower) integrators.
- *
- */
-
 /*struct _CdnIntegratorEulerPrivate
 {
 };*/

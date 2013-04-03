@@ -41,6 +41,14 @@ typedef struct _CdnIntegrator        CdnIntegrator;
 typedef struct _CdnIntegratorClass   CdnIntegratorClass;
 typedef struct _CdnIntegratorPrivate CdnIntegratorPrivate;
 
+/**
+ * CdnIntegrator:
+ *
+ * Simulation integrator.
+ *
+ * #CdnIntegrator is a base class for implementing different integration
+ * methods.
+ */
 struct _CdnIntegrator
 {
 	/*< private >*/

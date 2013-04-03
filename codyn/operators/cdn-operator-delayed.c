@@ -31,16 +31,6 @@
 #include <string.h>
 #include <codyn/instructions/cdn-instructions.h>
 
-/**
- * SECTION:cdn-operator-delayed
- * @short_description: Math operator for delayed evaluation of an expression
- *
- * The #CdnOperatorDelayed is a special operator that can be used in
- * mathematical expressions ('delay'). When evaluated, it will return the
- * delayed value of its argument (which can be an arbitrary expression).
- *
- */
-
 #define CDN_OPERATOR_DELAYED_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_OPERATOR_DELAYED, CdnOperatorDelayedPrivate))
 
 typedef struct _HistoryItem HistoryItem;

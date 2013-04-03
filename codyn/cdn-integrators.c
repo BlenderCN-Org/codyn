@@ -22,16 +22,19 @@
 
 #include "cdn-integrators.h"
 
-/**
- * SECTION:cdn-integrators
- * @short_description: Integrator registry
- *
- * #CdnIntegrators provides a registry for integrators. All integrators must
- * be registered before loading a #CdnNetwork.
- *
- */
-
 static GSList *integrators = NULL;
+
+G_DEFINE_TYPE (CdnIntegrators, cdn_integrators, G_TYPE_OBJECT)
+
+static void
+cdn_integrators_class_init (CdnIntegratorsClass *klass)
+{
+}
+
+static void
+cdn_integrators_init (CdnIntegrators *self)
+{
+}
 
 static void
 ensure_defaults ()

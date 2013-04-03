@@ -25,16 +25,6 @@
 #include "cdn-variable.h"
 #include "cdn-function.h"
 
-/**
- * SECTION:cdn-compile-context
- * @short_description: The expression compile context
- *
- * The compile context provides information for compiling expressions such
- * as the available user defined functions and the objects that can be used
- * to lookup properties used in the expression.
- *
- */
-
 #define CURRENT_CONTEXT(x) (CONTEXT (x->priv->contexts->data))
 #define CONTEXT(x) ((Context *)x)
 

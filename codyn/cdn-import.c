@@ -27,14 +27,6 @@
 #include <string.h>
 #include "config.h"
 
-/**
- * SECTION:cdn-import
- * @short_description: Network import object
- *
- * The #CdnImport object can be used to import templates and objects from
- * an external network file.
- *
- **/
 #define CDN_IMPORT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_IMPORT, CdnImportPrivate))
 
 #define IMPORT_DIR "codyn-" API_VERSION

@@ -99,15 +99,6 @@ enum
 	PROP_ANNOTATION
 };
 
-/**
- * SECTION:cdn-variable
- * @short_description: Property container
- *
- * A #CdnVariable is a container for a specific variable in an object. It
- * consists of a name and a mathematical expression describing its contents.
- *
- */
-
 static void
 cdn_variable_use (CdnUsable *usable)
 {

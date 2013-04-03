@@ -44,6 +44,14 @@ typedef struct _CdnEdgeAction		CdnEdgeAction;
 typedef struct _CdnEdgeActionClass	CdnEdgeActionClass;
 typedef struct _CdnEdgeActionPrivate	CdnEdgeActionPrivate;
 
+/**
+ * CdnEdgeAction:
+ *
+ * Edge action equation.
+ *
+ * A #CdnEdgeAction is an action inside an edge which sets a target
+ * #CdnVariable to the value of a particular #CdnExpression equation.
+ */
 struct _CdnEdgeAction
 {
 	/*< private >*/

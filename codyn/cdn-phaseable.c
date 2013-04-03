@@ -22,15 +22,6 @@
 
 #include "cdn-phaseable.h"
 
-/**
- * SECTION:cdn-phaseable
- * @short_description: Interface for keeping track of the modified state of an object
- *
- * This interface can be implemented when an object needs to keep track of
- * whether or not it has been modified.
- *
- **/
-
 G_DEFINE_INTERFACE (CdnPhaseable, cdn_phaseable, G_TYPE_OBJECT);
 
 /* Default implementation */

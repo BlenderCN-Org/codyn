@@ -35,6 +35,11 @@ G_BEGIN_DECLS
 typedef struct _CdnStatement			CdnStatement;
 typedef struct _CdnStatementInterface		CdnStatementInterface;
 
+/**
+ * CdnStatement:
+ *
+ * Interface for keeping track statements.
+ **/
 struct _CdnStatementInterface
 {
 	GTypeInterface parent;

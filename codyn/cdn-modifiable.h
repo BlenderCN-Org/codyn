@@ -35,6 +35,14 @@ G_BEGIN_DECLS
 typedef struct _CdnModifiable			CdnModifiable;
 typedef struct _CdnModifiableInterface		CdnModifiableInterface;
 
+/**
+ * CdnModifiable:
+ *
+ * Interface for keeping track of the modified state of an object.
+ *
+ * This interface can be implemented when an object needs to keep track of
+ * whether or not it has been modified.
+ **/
 struct _CdnModifiableInterface
 {
 	GTypeInterface parent;

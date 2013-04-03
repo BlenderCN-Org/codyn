@@ -31,18 +31,6 @@
 #include <string.h>
 #include <math.h>
 
-/**
- * SECTION:cdn-monitor
- * @short_description: Property value monitor
- *
- * A #CdnMonitor can be used to monitor the value of a certain #CdnVariable
- * while simulating. The monitor will collect the value of the property at
- * each simulation step and provides methods to access these values.
- * Particularly useful is #cdn_monitor_get_data_resampled which retrieves the
- * data resampled at specific times.
- *
- */
-
 #define CDN_MONITOR_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_MONITOR, CdnMonitorPrivate))
 
 #define MONITOR_GROW_SIZE 1000

@@ -40,6 +40,15 @@ typedef struct _CdnOperatorLinsolve		CdnOperatorLinsolve;
 typedef struct _CdnOperatorLinsolveClass	CdnOperatorLinsolveClass;
 typedef struct _CdnOperatorLinsolvePrivate	CdnOperatorLinsolvePrivate;
 
+/**
+ * CdnOperatorLinsolve:
+ *
+ * Math operator for linsolve evaluation of an expression.
+ *
+ * The #CdnOperatorLinsolve is a special operator that can be used in
+ * mathematical expressions ('delay'). When evaluated, it will return the
+ * linsolve value of its argument (which can be an arbitrary expression).
+ */
 struct _CdnOperatorLinsolve
 {
 	/*< private >*/

@@ -22,15 +22,6 @@
 
 #include "cdn-modifiable.h"
 
-/**
- * SECTION:cdn-modifiable
- * @short_description: Interface for keeping track of the modified state of an object
- *
- * This interface can be implemented when an object needs to keep track of
- * whether or not it has been modified.
- *
- **/
-
 G_DEFINE_INTERFACE (CdnModifiable, cdn_modifiable, G_TYPE_OBJECT);
 
 /* Default implementation */

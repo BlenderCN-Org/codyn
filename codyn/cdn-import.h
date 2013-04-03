@@ -53,6 +53,14 @@ typedef struct _CdnImport		CdnImport;
 typedef struct _CdnImportClass		CdnImportClass;
 typedef struct _CdnImportPrivate	CdnImportPrivate;
 
+/**
+ * CdnImport:
+ *
+ * Network import object.
+ *
+ * The #CdnImport object can be used to import templates and objects from
+ * an external network file.
+ **/
 struct _CdnImport
 {
 	/*< private >*/

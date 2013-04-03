@@ -50,6 +50,13 @@ typedef enum
 	CDN_ANNOTATION_ANCHOR_CENTER
 } CdnAnnotationAnchor;
 
+/**
+ * CdnAnnotatable:
+ *
+ * Interface for annotating objects.
+ *
+ * This interface can be implemented when an object supports annotations.
+ **/
 struct _CdnAnnotatableInterface
 {
 	GTypeInterface parent;

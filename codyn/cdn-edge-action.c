@@ -31,14 +31,6 @@
 
 #include <math.h>
 
-/**
- * SECTION:cdn-edge-action
- * @short_description: Link action equation
- *
- * A #CdnEdgeAction is an action inside a link which sets a target
- * #CdnVariable to the value of a particular #CdnExpression equation.
- */
-
 #define CDN_EDGE_ACTION_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EDGE_ACTION, CdnEdgeActionPrivate))
 
 struct _CdnEdgeActionPrivate
