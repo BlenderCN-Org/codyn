@@ -3,14 +3,14 @@ INCLUDES =				\
 	-I$(builddir)			\
 	-I$(top_builddir)/tests		\
 	-I$(top_srcdir)/tests		\
-	-I$(top_srcdir)				\
+	-I$(top_srcdir)			\
 	$(CODYN_CFLAGS)
 
 TEST_PROGS = expression network direct import template object node variable operator integrator interface
 
 #TEST_PROGS += file
 
-progs_ldadd = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la
+progs_ldadd = $(top_builddir)/codyn/libcodyn-$(CODYN_API_VERSION).la $(CODYN_LIBS)
 
 noinst_PROGRAMS = $(TEST_PROGS)
 
