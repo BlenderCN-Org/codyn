@@ -42,7 +42,7 @@ typedef struct _CdnOperatorPDiffClass	CdnOperatorPDiffClass;
 typedef struct _CdnOperatorPDiffPrivate	CdnOperatorPDiffPrivate;
 
 /**
- * CdnOperatorPdiff:
+ * CdnOperatorPDiff:
  *
  * Math operator for diff evaluation of an expression.
  *
