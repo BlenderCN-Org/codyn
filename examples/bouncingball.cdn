@@ -7,7 +7,7 @@ integrator
 }
 
 # The radius of the ball
-radius = 0.5
+radius = 0.1
 
 # How many times we have bounced the ball
 bounced = 0
