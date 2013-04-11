@@ -1,6 +1,6 @@
 plugindir = $(IO_LIBS_DIR)
 
-INCLUDES =                              \
+AM_CPPFLAGS =                           \
 	-I$(srcdir)                     \
 	-I$(top_srcdir)                 \
 	-DDATADIR=\""$(datadir)"\"      \

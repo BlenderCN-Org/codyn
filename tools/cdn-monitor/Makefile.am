@@ -1,4 +1,4 @@
-INCLUDES =			\
+AM_CPPFLAGS =			\
 	-I$(srcdir)		\
 	-I$(builddir)		\
 	-I$(top_builddir)/tests	\

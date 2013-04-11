@@ -1,6 +1,6 @@
 SUBDIRS = instructions operators integrators tree-algorithms
 
-INCLUDES =				\
+AM_CPPFLAGS =				\
 	-I$(srcdir)			\
 	-I$(top_srcdir)			\
 	$(INTROSPECTION_CFLAGS)		\
