@@ -42,6 +42,51 @@
 
 #define CDN_NETWORK_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE ((object), CDN_TYPE_NETWORK, CdnNetworkPrivate))
 
+/**
+ * CdnNetwork:
+ *
+ * The main codyn network object.
+ *
+ * The #CdnNetwork class is a #CdnNode subclass representing the top-level
+ * node in which all other nodes are defined. Variables defined on the network
+ * are therefore automatically available to all the nodes in your network and
+ * can be considered as global variables. Please see #CdnNode for useful API
+ * for finding child nodes, and adding/removing nodes from the network.
+ *
+ * A #CdnNetwork can be loaded from either an XML format or the newer Codyn
+ * language format. Please see #cdn_network_new_from_file,
+ * #cdn_network_new_from_path, #cdn_network_new_from_stream and
+ * #cdn_network_new_from_string for more information.
+ *
+ * Networks are mainly composed of two types of objects, nodes and edges. A
+ * node (see #CdnNode) is a container of variables which can be either state
+ * variables or normal variables. Edges (see #CdnEdge) on the other hand
+ * represent connections between two nodes. Conceptually, they define the
+ * relationship between two nodes in terms of how variables in one node
+ * influence variables in another node. A typical example of the use of an
+ * edge is to implement coupling between two dynamical subsystems.
+ *
+ * To simulate a network, you can either use #cdn_network_run, which
+ * simulates the network for a given amount of time in one time.
+ * #cdn_network_run blocks until the simulation is done. Alternatively, you
+ * can use #cdn_network_begin, #cdn_network_step and #cdn_network_end to do
+ * the same without blocking. The simulation will use the integrater which can
+ * be set using #cdn_network_set_integrator.
+ *
+ * Templates in a network (useful when loading a network from a file) can be
+ * accessed through a special template node. This node only serves as a
+ * container for the templates and can be accessed from a network using
+ * #cdn_network_get_template_node.
+ *
+ * A network also governs the random number generator that is used to implement
+ * the `rand()` function. You can set the seed that is used for the random
+ * number generator with #cdn_network_set_random_seed. The default random seed
+ * is read from `/dev/urandom` on UNIX like systems. On non-UNIX systems, or when
+ * reading from `/dev/urandom` fails, the initial seed is set to the current
+ * system time (milliseconds since epoch).
+ *
+ */
+
 /* Properties */
 enum
 {
@@ -542,6 +587,11 @@ cdn_network_class_init (CdnNetworkClass *klass)
 		              1,
 		              CDN_TYPE_COMPILE_ERROR);
 
+	/**
+	 * CdnNetwork:integrator:
+	 *
+	 * The integrator used to simulate the network.
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_INTEGRATOR,
 	                                 g_param_spec_object ("integrator",
@@ -552,7 +602,11 @@ cdn_network_class_init (CdnNetworkClass *klass)
 
 	g_type_class_add_private (object_class, sizeof (CdnNetworkPrivate));
 
-
+	/**
+	 * CdnNetwork:file:
+	 *
+	 * The file from which the network was read (may be %NULL).
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_FILE,
 	                                 g_param_spec_object ("file",
@@ -561,7 +615,11 @@ cdn_network_class_init (CdnNetworkClass *klass)
 	                                                      G_TYPE_FILE,
 	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT));
 
-
+	/**
+	 * CdnNetwork:filename:
+	 *
+	 * The filename from which the network was read (may be %NULL).
+	 **/
 	g_object_class_install_property (object_class,
 	                                 PROP_FILENAME,
 	                                 g_param_spec_string ("filename",
@@ -645,6 +703,15 @@ cdn_network_init (CdnNetwork *network)
 	                                                NULL);
 }
 
+/**
+ * cdn_network_set_random_seed:
+ * @network: a #CdnNetwork.
+ * @seed: the new seed.
+ *
+ * Set the random seed used to initialize the random number generator. The
+ * network will be reset when calling this function which will reset the random
+ * number generator with the given seed.
+ */
 void
 cdn_network_set_random_seed (CdnNetwork *network,
                              guint       seed)
@@ -655,6 +722,14 @@ cdn_network_set_random_seed (CdnNetwork *network,
 	cdn_object_reset (CDN_OBJECT (network));
 }
 
+/**
+ * cdn_network_get_random_seed:
+ * @network: a #CdnNetwork.
+ *
+ * Get the random seed used to initialize the random number generator.
+ *
+ * Returns: the seed.
+ */
 guint
 cdn_network_get_random_seed (CdnNetwork *network)
 {
@@ -1613,7 +1688,9 @@ cdn_init ()
 {
 	static gboolean inited = FALSE;
 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
+#endif
 
 #if !GLIB_CHECK_VERSION(2, 31, 0)
 	g_thread_init (NULL);
@@ -1629,6 +1706,25 @@ cdn_init ()
 
 typedef void (*CdnLinkedLibraryInit) (CdnNetwork *network);
 
+/**
+ * cdn_network_link_library:
+ * @network a #CdnNetwork.
+ * @path path to the dynamic library to link.
+ * @error a #GError
+ *
+ * Link a dynamic library (.so, .dylib or .dll) at runtime. This method is
+ * mainly useful for internal use. It's used by the codyn format which has
+ * a link_library keyword to dynamically link a library when the network is
+ * loaded. The loaded library typically installs new math functions or defines
+ * a new type of integrator.
+ *
+ * When the library is loaded, a symbol with the name "cdn_linked_library_init"
+ * is resolved. If found, the symbol (interpreted as a function) is called with
+ * @network as a parameter.
+ *
+ * Returns: %TRUE if the library was linked successfully, %FALSE otherwise.
+ *
+ */
 gboolean
 cdn_network_link_library (CdnNetwork   *network,
                           gchar const  *path,

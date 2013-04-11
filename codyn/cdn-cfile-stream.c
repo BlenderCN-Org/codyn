@@ -4,6 +4,16 @@
 
 #define CDN_CFILE_STREAM_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_CFILE_STREAM, CdnCfileStreamPrivate))
 
+/**
+ * CdnCfileStream:
+ *
+ * An output stream implementation for C FILE streams.
+ *
+ * This class implements a GOutputStream wrapped around the C streaming FILE
+ * API.
+ *
+ **/
+
 struct _CdnCfileStreamPrivate
 {
 	FILE *cfile;
@@ -169,6 +179,11 @@ cdn_cfile_stream_class_init (CdnCfileStreamClass *klass)
 
 	g_type_class_add_private (object_class, sizeof(CdnCfileStreamPrivate));
 
+	/**
+	 * CdnCfileStream:cfile:
+	 *
+	 * A FILE pointer to write to.
+	 */
 	g_object_class_install_property (object_class,
 	                                 PROP_CFILE,
 	                                 g_param_spec_pointer ("cfile",
@@ -185,6 +200,14 @@ cdn_cfile_stream_init (CdnCfileStream *self)
 	self->priv = CDN_CFILE_STREAM_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_cfile_stream_new:
+ * @cfile: the FILE to write to.
+ *
+ * Create a new #CdnCfileStream from a FILE.
+ *
+ * Returns: a new #CdnCfileStream.
+ */
 GOutputStream *
 cdn_cfile_stream_new (FILE *cfile)
 {

@@ -37,6 +37,30 @@
 
 #define CDN_VARIABLE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_VARIABLE, CdnVariablePrivate))
 
+/**
+ * CdnVariable:
+ *
+ * Variable.
+ *
+ * A #CdnVariable represents a single variable in an object. A variable has
+ * a name and an mathematical expression describing its value.
+ *
+ * Variables can be constrained using a secondary equation which is evaluated
+ * just after the variable expression has been evaluated. This is useful for
+ * example to constrain a value within certain boundaries (use the clip() function)
+ * or to keep a variable in a certain circular domain such as [0, 2pi]
+ * (use the cycle() function). See #cdn_variable_set_constraint.
+ *
+ * Each variable has a set of flags which changes its behavior.
+ *
+ *  * integrated: specifies whether edges by default integrate on the variable.
+ *  * in: specifies that a variable can be externally changed (for rawc).
+ *  * out: specifies that a variable can be externall observed (for rawc).
+ *  * once: specifies that a variable is only ever evaluated once and never updates after.
+ *  * function_argument: used internally to mark a variable as a function argument.
+ *  * inout: convenience flag composed of in and out.
+ */
+
 /* signals */
 enum
 {

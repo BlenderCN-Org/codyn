@@ -49,21 +49,6 @@ typedef struct _CdnNode	CdnNode;
 typedef struct _CdnNodeClass	CdnNodeClass;
 typedef struct _CdnNodePrivate	CdnNodePrivate;
 
-/**
- * CdnNode:
- *
- * Group object nodeing many objects together.
- *
- * The #CdnNode is a special #CdnObject that contains many objects as children.
- * This can be used make sub-networks that can be easily instantiated,
- * providing some common functionality.
- *
- * <refsect2 id="CdnNode-COPY">
- * <title>CdnNode Copy Semantics</title>
- * When a node is copied with #cdn_object_copy, all the children are
- * recursively copied as well.
- * </refsect2>
- */
 struct _CdnNode
 {
 	/*< private >*/
@@ -160,10 +145,10 @@ const GSList     *cdn_node_get_actors     (CdnNode  *node);
 CdnEdgeForward *cdn_node_get_self_edge    (CdnNode *node);
 gboolean cdn_node_has_self_edge    (CdnNode *node);
 
-gchar const      *cdn_node_get_state (CdnNode *node);
+const gchar      *cdn_node_get_state (CdnNode *node);
 
 void              cdn_node_set_state (CdnNode *node,
-                                      gchar const *state);
+                                      const gchar *state);
 
 /* used for referencing links */
 void             _cdn_node_link           (CdnNode       *node,

@@ -32,6 +32,45 @@
 
 #define CDN_NODE_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_NODE, CdnNodePrivate))
 
+/**
+ * CdnNode:
+ *
+ * Base node class.
+ *
+ * The #CdnNode class is the basic variable container class in a network. It
+ * derives from #CdnObject (as all network objects do). Please see #CdnObject
+ * for useful API about getting, setting and finding variables, as those functions
+ * are defined for all #CdnObject.
+ *
+ * Apart from variables, a node may contain other nodes which can be used to
+ * compose reusable subsystems. Such child nodes can be added using
+ * #cdn_node_add and removed using #cdn_node_remove. To find child nodes,
+ * use #cdn_node_find_object or #cdn_node_find_objects (these use selectors), or
+ * #cdn_node_get_child to simply get a child by its identifier.
+ *
+ * It's often convenient to expose a set of variables from child nodes. Child
+ * nodes can not be directly accessed external to the node. To allow access to
+ * child node variables, each node can configure such a variable interface using
+ * its #CdnVariableInterface instance (see #cdn_node_get_variable_interface).
+ * The variable interface basically allows you to map a virtual node variable
+ * to a child node variable.
+ *
+ * Each node has a so-called self edge (see #cdn_node_get_self_edge). The self
+ * edge is used to define the equations on variables in the node which only
+ * use variables from the node itself. Although its functionally equivalent
+ * (and certainly allowed) to define an external edge which simply goes from the
+ * node to itself, it's often much more convenient to use the self edge. For
+ * example, the prime shorthand notation in the codyn format (x' = "(1 - x)")
+ * defines the given differential equation in the self edge of the containing
+ * node.
+ *
+ * <refsect2 id="CdnNode-COPY">
+ * <title>CdnNode Copy Semantics</title>
+ * When a node is copied with #cdn_object_copy, all the children are
+ * recursively copied as well.
+ * </refsect2>
+ */
+
 enum
 {
 	EXT_PROPERTY_ADDED,
@@ -1656,6 +1695,12 @@ cdn_node_class_init (CdnNodeClass *klass)
 		              CDN_TYPE_OBJECT,
 		              G_TYPE_POINTER);
 
+	/**
+	 * CdnNode:state:
+	 *
+	 * The current node state. Do not write to this property while the
+	 * network is running (use #cdn_integrator_state_set_state instead).
+	 */
 	g_object_class_install_property (object_class,
 	                                 PROP_STATE,
 	                                 g_param_spec_string ("state",
@@ -1721,7 +1766,7 @@ cdn_node_init (CdnNode *self)
  *
  **/
 CdnNode *
-cdn_node_new (gchar const *id)
+cdn_node_new (const gchar *id)
 {
 	return g_object_new (CDN_TYPE_NODE,
 	                     "id", id,
@@ -2198,6 +2243,17 @@ cdn_node_get_edges (CdnNode *node)
 	return node->priv->edges;
 }
 
+/**
+ * cdn_node_has_self_edge:
+ * @node: a #CdnNode.
+ *
+ * Get whether the node currently has a self edge. The node self edge is only
+ * created when needed (this happens automatically when using
+ * #cdn_node_get_self_edge, which therefore cannot be used to check for the
+ * existence of the self edge).
+ *
+ * Returns: %TRUE if the node has a self edge, %FALSE otherwise.
+ */
 gboolean
 cdn_node_has_self_edge (CdnNode *node)
 {
@@ -2206,14 +2262,13 @@ cdn_node_has_self_edge (CdnNode *node)
 	return node->priv->self_edge != NULL;
 }
 
-
 /**
  * cdn_node_get_self_edge:
  * @node: A #CdnNode
  *
  * Get the self edge of this node. Note that the self edge will be automatically
  * created if it does not exist yet. When this is undesired, use
- * @cdn_node_has_self_edge first.
+ * #cdn_node_has_self_edge first.
  *
  * Returns: (transfer none): A #CdnEdge
  *
@@ -2237,7 +2292,15 @@ cdn_node_get_self_edge (CdnNode *node)
 }
 
 
-gchar const *
+/**
+ * cdn_node_get_state:
+ * @node: a #CdnNode.
+ *
+ * Get the current state of the node.
+ *
+ * Returns: the current state.
+ */
+const gchar *
 cdn_node_get_state (CdnNode *node)
 {
 	g_return_val_if_fail (CDN_IS_NODE (node), NULL);
@@ -2245,9 +2308,21 @@ cdn_node_get_state (CdnNode *node)
 	return node->priv->state;
 }
 
+/**
+ * cdn_node_set_state:
+ * @node: a #CdnNode.
+ * @state: the new state.
+ *
+ * Set the current state of the node. Note that you should not try to call this
+ * yourself when the network is running since it will not have the desired
+ * effect (it's used internally to keep track of the state of the node). To
+ * programatically change the state of a node while the network is running, use
+ * #cdn_integrator_state_set_state.
+ *
+ */
 void
 cdn_node_set_state (CdnNode     *node,
-                    gchar const *state)
+                    const gchar *state)
 {
 	g_return_if_fail (CDN_IS_NODE (node));
 
