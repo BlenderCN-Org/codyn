@@ -200,6 +200,7 @@
             <keyword>import</keyword>
             <keyword>in</keyword>
             <keyword>include</keyword>
+            <keyword>initial-state</keyword>
             <keyword>integrated</keyword>
             <keyword>integrator</keyword>
             <keyword>interface</keyword>
@@ -214,13 +215,13 @@
             <keyword>once</keyword>
             <keyword>out</keyword>
             <keyword>parse</keyword>
-            <keyword>phase</keyword>
             <keyword>piece</keyword>
             <keyword>polynomial</keyword>
             <keyword>probability</keyword>
             <keyword>require</keyword>
             <keyword>set</keyword>
             <keyword>settings</keyword>
+            <keyword>state</keyword>
             <keyword>terminate</keyword>
             <keyword>to</keyword>
             <keyword>unapply</keyword>
