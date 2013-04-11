@@ -293,6 +293,12 @@ gir_DATA = $(INTROSPECTION_GIRS)
 typelibdir = $(libdir)/girepository-1.0
 typelib_DATA = $(INTROSPECTION_GIRS:.gir=.typelib)
 
+extract-keywords: cdn-parser-tokens.l
+	@grep T_KEY cdn-parser-tokens.l  | grep -v onlyselector | sed 's/"\([a-z-]*\)".*/\1/g' | sort
+
+extract-selectors: cdn-parser-tokens.l
+	@grep T_KEY cdn-parser-tokens.l  | grep onlyselector | sed 's/.*"\([a-z-]*\)".*/\1/g' | sort
+
 CLEANFILES +=			\
 	$(gir_DATA)	\
 	$(typelib_DATA)
