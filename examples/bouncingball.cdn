@@ -3,7 +3,7 @@ initial-state "air"
 
 integrator
 {
-	method = "runge-kutta"
+    method = "runge-kutta"
 }
 
 # The radius of the ball
@@ -39,9 +39,11 @@ event "ground" to    "air" when "y > radius" within 0.001 {}
 # Transfer from the air to the ground when y becomes smaller than the ball radius
 event "air"    to "ground" when "y < radius" within 0.001
 {
-	# Keep track of the number of times we bounced
-	set bounced = "bounced + 1"
+    # Keep track of the number of times we bounced
+    set bounced = "bounced + 1"
 }
 
 # Terminate after 10 bounces
 event any to terminate when "bounced >= 10" {}
+
+# vi:ts=4:et
