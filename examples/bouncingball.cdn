@@ -24,14 +24,18 @@ m = 1
 # Springiness of the ball
 k = 300
 
+# Damping of the ball
+d = 1
+
 # Spring force of the ball when it's being compressed
 fspring = "k * (radius - y)"
 
 # We are always subject to gravity
 ÿ = "-m * g"
 
-# But on the ground there is also a spring force
-ÿ = "fspring" state "ground"
+# But on the ground there is also a spring force resulting from the compression
+# of the ball, and some general energy dissipation which damps the ball motion
+ÿ = "fspring - d * y'" state "ground"
 
 # Transfer from ground to air when y becomes larger than the ball radius
 event "ground" to    "air" when "y > radius" within 0.001 {}
