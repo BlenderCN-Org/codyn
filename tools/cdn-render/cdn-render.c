@@ -766,7 +766,9 @@ main (int argc, char *argv[])
 	gboolean ret;
 	gint i;
 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
+#endif
 
 	ctx = g_option_context_new ("[FILES...] - render cdn network");
 	g_option_context_add_main_entries (ctx, entries, NULL);

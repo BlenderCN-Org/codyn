@@ -738,7 +738,9 @@ main (int argc,
 	gchar const *file;
 	gint ret = 1;
 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
+#endif
 
 	setlocale (LC_ALL, "");
 

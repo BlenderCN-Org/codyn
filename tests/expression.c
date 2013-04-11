@@ -410,12 +410,13 @@ int
 main (int   argc,
       char *argv[])
 {
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
+#endif
+
 	g_test_init (&argc, &argv, NULL);
 
 	cdn_debug_init ();
-
-	g_type_init ();
 
 	g_test_add_func ("/expression/operator_multiply", test_operator_multiply);
 	g_test_add_func ("/expression/operator_plus", test_operator_plus);

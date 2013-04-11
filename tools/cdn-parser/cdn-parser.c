@@ -332,7 +332,9 @@ main (int argc, char *argv[])
 	GError *error = NULL;
 	gboolean ret;
 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init ();
+#endif
 
 	setlocale (LC_ALL, "");
 
