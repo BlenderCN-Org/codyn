@@ -22,7 +22,7 @@ g = 9.81
 m = 1
 
 # Springiness of the ball
-k = 300
+k = 1000
 
 # Damping of the ball
 d = 1
