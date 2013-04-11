@@ -1259,7 +1259,8 @@ parse_polynomial (CdnNetworkDeserializer  *deserializer,
 
 static gboolean
 parse_actions (CdnNetworkDeserializer *deserializer,
-               GList                  *nodes)
+               GList                  *nodes,
+               gpointer                data)
 {
 	GList *item;
 	CdnEdge *link = CDN_EDGE (deserializer->priv->object);
@@ -1722,7 +1723,8 @@ template_error_message (CdnNetworkDeserializer *deserializer,
 
 static gboolean
 parse_network (CdnNetworkDeserializer *deserializer,
-               GList                  *nodes)
+               GList                  *nodes,
+               gpointer                data)
 {
 	GList *item;
 	gboolean ret = TRUE;
@@ -1897,7 +1899,8 @@ parse_instances (CdnNetworkDeserializer *deserializer)
 
 static gboolean
 parse_network_config (CdnNetworkDeserializer *deserializer,
-                      GList                  *nodes)
+                      GList                  *nodes,
+                      gpointer                data)
 {
 	if (!nodes)
 	{
