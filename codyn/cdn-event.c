@@ -455,9 +455,7 @@ logical_node_happened (CdnEvent    *event,
 	}
 	else
 	{
-		gdouble df = val - node->value;
-
-		if (df <= event->priv->approximation)
+		if (val <= event->priv->approximation)
 		{
 			node->last_distance = 1;
 		}
