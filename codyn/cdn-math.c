@@ -2349,35 +2349,44 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_SUM:
 		case CDN_MATH_FUNCTION_TYPE_PRODUCT:
 		case CDN_MATH_FUNCTION_TYPE_SQSUM:
-			outarg->rows = 1;
-			outarg->columns = 1;
-		break;
 		case CDN_MATH_FUNCTION_TYPE_HYPOT:
+			if (inargs->num > 2)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Function only accepts one matrix or two arguments with equal dimensions");
+
+				return FALSE;
+			}
+
 			if (inargs->num == 2)
 			{
-				// Math functions with two arguments can operate
-				// elementwise (i.e. both arguments are NxM), or
-				// one argument is 1-by-1 and the other can be NxM
 				if (cdn_stack_arg_size (inargs->args) == 1)
 				{
 					// Take second arg size
 					cdn_stack_arg_copy (outarg, inargs->args + 1);
 				}
-				else if (cdn_stack_arg_size (inargs->args + 1) != 1 &&
-					 cdn_stack_arg_size (inargs->args) != cdn_stack_arg_size (inargs->args + 1))
+				else if (cdn_stack_arg_size (inargs->args + 1) == 1)
+				{
+					cdn_stack_arg_copy (outarg, inargs->args);
+				}
+				else if (cdn_stack_arg_size (inargs->args) !=
+				         cdn_stack_arg_size (inargs->args + 1))
 				{
 					g_set_error (error,
-						     CDN_COMPILE_ERROR_TYPE,
-						     CDN_COMPILE_ERROR_INVALID_DIMENSION,
-						     "Cannot perform element wise operation on arguments of %d-by-%d and %d-by-%d",
-						     inargs->args[1].rows, inargs->args[1].columns,
-						     inargs->args[0].rows, inargs->args[1].columns);
+					             CDN_COMPILE_ERROR_TYPE,
+					             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+					             "Dimensions of arguments must be the same (got (%d, %d) and (%d, %d))",
+					              inargs->args[0].rows,
+					              inargs->args[0].columns,
+					              inargs->args[1].rows,
+					              inargs->args[1].columns);
 
 					return FALSE;
 				}
 				else
 				{
-					// Take first arg size
 					cdn_stack_arg_copy (outarg, inargs->args);
 				}
 			}
