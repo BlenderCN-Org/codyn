@@ -1,4 +1,6 @@
 #include "utils.h"
+#include <codyn/cdn-annotatable.h>
+#include <glib/gprintf.h>
 
 CdnEdgeAction *
 find_action (CdnNode    *parent,
@@ -203,4 +205,111 @@ test_load_network (gchar const *xml,
 	va_end (ap);
 
 	return network;
+}
+
+static gdouble *
+values_from_annotation (gchar const *a, gint *l)
+{
+	gchar **parts;
+	gdouble *ret;
+	gint i;
+	gint n;
+
+	parts = g_strsplit (a, " ", -1);
+	n = g_strv_length (parts);
+
+	ret = g_new0 (gdouble, n);
+	*l = 0;
+
+	for (i = 0; i < n; ++i)
+	{
+		if (parts[i] && *parts[i])
+		{
+			ret[(*l)++] = g_ascii_strtod (parts[i], NULL);
+		}
+	}
+
+	g_strfreev (parts);
+	return ret;
+}
+
+void
+test_variables_with_annotated_output_from_path (gchar const *path)
+{
+	CdnNetwork *network;
+	GError *error = NULL;
+	CdnCompileError *err;
+	GSList const *variables;
+
+	network = cdn_network_new_from_path (path, &error);
+
+	g_assert_no_error (error);
+	g_assert (network != NULL);
+
+	err = cdn_compile_error_new ();
+	cdn_object_compile (CDN_OBJECT (network), NULL, err);
+
+	g_assert_no_error (cdn_compile_error_get_error (err));
+
+	variables = cdn_object_get_variables (CDN_OBJECT (network));
+
+	while (variables)
+	{
+		CdnVariable *v = variables->data;
+		gchar *a;
+		gdouble *expected_vals;
+		gint l;
+		CdnMatrix const *vals;
+		gint i;
+
+		a = cdn_annotatable_get_annotation (CDN_ANNOTATABLE (v));
+		variables = g_slist_next (variables);
+
+		if (!a || !*a)
+		{
+			g_free (a);
+			continue;
+		}
+
+		expected_vals = values_from_annotation (a, &l);
+		g_free (a);
+
+		vals = cdn_variable_get_values (v);
+
+		g_printf ("Testing %s:%s ... ", path, cdn_variable_get_name (v));
+
+		if (cdn_matrix_size (vals) != l)
+		{
+			g_printf ("FAILED\n");
+
+			g_error ("Failed running %s:%s, expected %d values but got %d",
+			         path,
+			         cdn_variable_get_name (v),
+			         l,
+			         cdn_matrix_size (vals));
+
+			abort ();
+		}
+
+		for (i = 0; i < l; ++i)
+		{
+			if (!cdn_cmp_tol (vals->values[i], expected_vals[i]))
+			{
+				g_printf ("FAILED\n");
+
+				g_error ("Failed running %s:%s, expected %f but got %f at %d",
+				         path,
+				         cdn_variable_get_name (v),
+				         expected_vals[i],
+				         vals->values[i],
+				         i + 1);
+
+				abort ();
+			}
+		}
+
+		g_printf ("OK\n");
+
+		g_free (expected_vals);
+	}
 }
