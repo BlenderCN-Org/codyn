@@ -6,9 +6,20 @@ AM_INIT_AUTOMAKE([1.11 tar-ustar dist-xz no-dist-gzip -Wno-portability])
 AC_CONFIG_HEADERS(config.h)
 AC_CONFIG_MACRO_DIR([m4])
 
+AC_ARG_ENABLE([debug],
+              AS_HELP_STRING([--enable-debug=[yes/no]],[Enable debug build (default: no)]),
+              [enable_debug=$enableval],
+              [enable_debug=no])
+
+if test "$enable_debug" = "yes"; then
+CFLAGS="-O0 -g $CFLAGS"
+fi
+
+AC_PROG_CC
+
 AC_ISC_POSIX
 AC_STDC_HEADERS
-AC_PROG_CC
+
 AC_HEADER_STDC
 AM_PROG_LEX
 AC_PROG_YACC
@@ -119,7 +130,11 @@ CODYN_LIBS="${CODYN_LIBS} ${GIO_UNIX_LIBS}"
 CODYN_CFLAGS="${CODYN_CFLAGS} ${GIO_UNIX_CFLAGS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
-	CODYN_CFLAGS="$CODYN_CFLAGS -Wall -Werror -Wuninitialized -Wmissing-declarations -O2 -g"
+	CODYN_CFLAGS="$CODYN_CFLAGS -Wall -Werror -Wmissing-declarations"
+
+	if test "$enable_debug" != "yes"; then
+		CODYN_CFLAGS="$CODYN_CFLAGS -Wuninitialized -O2"
+	fi
 fi
 
 AC_SUBST(CODYN_LIBS)
