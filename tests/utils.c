@@ -2,6 +2,46 @@
 #include <codyn/cdn-annotatable.h>
 #include <glib/gprintf.h>
 
+void
+cdn_assert_float (gchar const *file,
+                  gchar const *func,
+                  gint         line,
+                  gdouble      real,
+                  gdouble      expect)
+{
+	if (!cdn_cmp_tol (real, expect))
+	{
+		g_printf ("\nERROR:%s:%d:%s: expected %f but got %f\n",
+		          file,
+		          line,
+		          func,
+		          expect,
+		          real);
+
+		abort ();
+	}
+}
+
+void
+cdn_assert_nfloat (gchar const *file,
+                  gchar const *func,
+                  gint         line,
+                  gdouble      real,
+                  gdouble      expect)
+{
+	if (cdn_cmp_tol (real, expect))
+	{
+		g_printf ("\nERROR:%s:%d:%s: expected unequal values, but got %f and %f\n",
+		          file,
+		          line,
+		          func,
+		          expect,
+		          real);
+
+		abort ();
+	}
+}
+
 CdnEdgeAction *
 find_action (CdnNode    *parent,
              gchar const *path)
@@ -234,7 +274,10 @@ values_from_annotation (gchar const *a, gint *l)
 }
 
 void
-test_variables_with_annotated_output_from_path (gchar const *path)
+test_variables_with_annotated_output_from_path_impl (gchar const *file,
+                                                     gchar const *func,
+                                                     gint         line,
+                                                     gchar const *path)
 {
 	CdnNetwork *network;
 	GError *error = NULL;
@@ -281,7 +324,10 @@ test_variables_with_annotated_output_from_path (gchar const *path)
 
 		if (cdn_matrix_size (vals) != l)
 		{
-			g_printf ("FAILED: expected %d values but got %d",
+			g_printf ("\nFAILED:%s:%d:%s: expected %d values but got %d",
+			          file,
+			          line,
+			          func,
 			          l,
 			          cdn_matrix_size (vals));
 
@@ -292,7 +338,10 @@ test_variables_with_annotated_output_from_path (gchar const *path)
 		{
 			if (!cdn_cmp_tol (vals->values[i], expected_vals[i]))
 			{
-				g_printf ("FAILED: expected %f but got %f at %d\n",
+				g_printf ("\nFAILED:%s:%d:%s: expected %f but got %f at %d\n",
+				          file,
+				          line,
+				          func,
 				          expected_vals[i],
 				          vals->values[i],
 				          i + 1);
