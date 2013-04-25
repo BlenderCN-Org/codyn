@@ -11,7 +11,7 @@
 static void
 test_matrix_parse ()
 {
-	test_variables_with_annotated_output_from_path ("test_matrix.cdn");
+	cdn_test_variables_with_annotated_output_from_path ("test_matrix.cdn");
 }
 
 int

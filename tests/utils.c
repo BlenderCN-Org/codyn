@@ -274,10 +274,10 @@ values_from_annotation (gchar const *a, gint *l)
 }
 
 void
-test_variables_with_annotated_output_from_path_impl (gchar const *file,
-                                                     gchar const *func,
-                                                     gint         line,
-                                                     gchar const *path)
+cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
+                                                         gchar const *func,
+                                                         gint         line,
+                                                         gchar const *path)
 {
 	CdnNetwork *network;
 	GError *error = NULL;
@@ -336,7 +336,7 @@ test_variables_with_annotated_output_from_path_impl (gchar const *file,
 
 		for (i = 0; i < l; ++i)
 		{
-			if (!cdn_cmp_tol (vals->values[i], expected_vals[i]))
+			if (!cdn_cmp_tol (cdn_matrix_get (vals)[i], expected_vals[i]))
 			{
 				g_printf ("\nFAILED:%s:%d:%s: expected %f but got %f at %d\n",
 				          file,
