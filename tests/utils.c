@@ -252,6 +252,7 @@ test_variables_with_annotated_output_from_path (gchar const *path)
 	g_assert_no_error (cdn_compile_error_get_error (err));
 
 	variables = cdn_object_get_variables (CDN_OBJECT (network));
+	g_printf("\n\n  Testing network %s:\n", path);
 
 	while (variables)
 	{
@@ -276,17 +277,13 @@ test_variables_with_annotated_output_from_path (gchar const *path)
 
 		vals = cdn_variable_get_values (v);
 
-		g_printf ("Testing %s:%s ... ", path, cdn_variable_get_name (v));
+		g_printf ("   - Testing %s ... ", cdn_variable_get_name (v));
 
 		if (cdn_matrix_size (vals) != l)
 		{
-			g_printf ("FAILED\n");
-
-			g_error ("Failed running %s:%s, expected %d values but got %d",
-			         path,
-			         cdn_variable_get_name (v),
-			         l,
-			         cdn_matrix_size (vals));
+			g_printf ("FAILED: expected %d values but got %d",
+			          l,
+			          cdn_matrix_size (vals));
 
 			abort ();
 		}
@@ -295,14 +292,10 @@ test_variables_with_annotated_output_from_path (gchar const *path)
 		{
 			if (!cdn_cmp_tol (vals->values[i], expected_vals[i]))
 			{
-				g_printf ("FAILED\n");
-
-				g_error ("Failed running %s:%s, expected %f but got %f at %d",
-				         path,
-				         cdn_variable_get_name (v),
-				         expected_vals[i],
-				         vals->values[i],
-				         i + 1);
+				g_printf ("FAILED: expected %f but got %f at %d\n",
+				          expected_vals[i],
+				          vals->values[i],
+				          i + 1);
 
 				abort ();
 			}
@@ -312,4 +305,6 @@ test_variables_with_annotated_output_from_path (gchar const *path)
 
 		g_free (expected_vals);
 	}
+
+	g_printf("\n");
 }
