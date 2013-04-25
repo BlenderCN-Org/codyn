@@ -2857,7 +2857,7 @@ matrix_vcat (CdnExpression      *expression,
 		{
 			CdnStackArgs args;
 			gint i = 0;
-			CdnInstruction *mi;
+			gboolean isone;
 
 			if (mrow > 0)
 			{
@@ -2885,6 +2885,7 @@ matrix_vcat (CdnExpression      *expression,
 			cdn_stack_args_init (&args, g_slist_length (stack));
 
 			vcat = NULL;
+			isone = !stack->next;
 
 			// Collect all instructions
 			while (stack)
@@ -2899,12 +2900,18 @@ matrix_vcat (CdnExpression      *expression,
 				stack = g_slist_delete_link (stack, stack);
 			}
 
-			// Add matrix instruction to group it all together
-			mi = cdn_instruction_matrix_new (&args,
-			                                 &row->dimension);
+			// Add matrix instruction to group it all together if needed
+			if (!isone)
+			{
+				CdnInstruction *mi;
 
-			vcat = g_slist_prepend (vcat, mi);
+				mi = cdn_instruction_matrix_new (&args,
+				                                 &row->dimension);
 
+				vcat = g_slist_prepend (vcat, mi);
+			}
+
+			if (retdim.rows > 0)
 			{
 				CdnStackArg varg[2] = {
 					CDN_STACK_ARG(0, 0),
@@ -2924,6 +2931,12 @@ matrix_vcat (CdnExpression      *expression,
 
 				// Add vcat instruction
 				vcat = g_slist_prepend (vcat, i);
+
+				retdim.rows += row->dimension.rows;
+			}
+			else
+			{
+				retdim = row->dimension;
 			}
 
 			ret = g_slist_concat (vcat, ret);
