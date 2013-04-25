@@ -104,7 +104,7 @@ cdn_operator_dt_initialize (CdnOperator         *op,
 
 	if (expressions[0]->next)
 	{
-		dt->priv->order = rint (cdn_expression_evaluate (expressions[0]->next->data));
+		dt->priv->order = (gint) (cdn_expression_evaluate (expressions[0]->next->data) + 0.5);
 
 		if (dt->priv->order < 0)
 		{

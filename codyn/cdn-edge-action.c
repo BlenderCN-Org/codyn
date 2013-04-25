@@ -780,7 +780,7 @@ get_indices (CdnEdgeAction *action)
 
 	for (i = 0; i < action->priv->num_indices; ++i)
 	{
-		action->priv->indices[i] = (gint)rint (vals[i]);
+		action->priv->indices[i] = (gint)(vals[i] + 0.5);
 	}
 }
 

@@ -122,6 +122,37 @@ enum
 	PROP_MODIFIED
 };
 
+#define dump_context(s, expression, context) \
+do { \
+	GSList *__stack = context->stack; \
+	gint __i = g_slist_length (__stack); \
+\
+	g_printf("\n[%s:%d] %s:\n", __PRETTY_FUNCTION__, __LINE__, s); \
+\
+	while (__stack) \
+	{ \
+		CdnExpressionTreeIter *__iter; \
+\
+		__iter = cdn_expression_tree_iter_new_from_instructions (__stack->data); \
+		g_printf ("  %2d) %s\n", __i, cdn_expression_tree_iter_to_string_dbg (__iter)); \
+\
+		cdn_expression_tree_iter_free (__iter); \
+\
+		--__i; \
+		__stack = g_slist_next (__stack); \
+	} \
+} while (0)
+
+#define dump_instructions(s, instructions) \
+do { \
+	GSList *__i; \
+\
+	g_printf("\n[%s:%d] %s:\n", __PRETTY_FUNCTION__, __LINE__, s); \
+	for (__i = (instructions); __i; __i = __i->next) { \
+		g_printf("  %s\n", cdn_instruction_to_string (__i->data)); \
+	} \
+} while (0)
+
 static int parse_expression (CdnExpression *expression,
                              ParserContext *context,
                              gint           priority,
@@ -640,6 +671,35 @@ parser_failed (CdnExpression *expression,
 	return FALSE;
 }
 
+static GSList *
+stack_push (GSList                     *stack,
+            CdnInstruction             *instruction,
+            CdnStackManipulation const *smanip)
+{
+	GSList *ret;
+	gint consume;
+
+	ret = g_slist_prepend (NULL, instruction);
+
+	if (!smanip)
+	{
+		smanip = cdn_instruction_get_stack_manipulation (instruction, NULL);
+	}
+
+	consume = smanip->pop.num;
+
+	while (consume)
+	{
+		ret = g_slist_concat (stack->data, ret);
+
+		stack = g_slist_delete_link (stack, stack);
+		--consume;
+	}
+
+	stack = g_slist_prepend (stack, ret);
+	return stack;
+}
+
 static gboolean
 instructions_push (CdnExpression  *expression,
                    CdnInstruction *next,
@@ -656,8 +716,6 @@ instructions_push (CdnExpression  *expression,
 	if (context)
 	{
 		CdnStackManipulation const *smanip;
-		GSList *ret = NULL;
-		gint consume;
 		GError *error = NULL;
 
 		cdn_instruction_set_location (next,
@@ -694,22 +752,7 @@ instructions_push (CdnExpression  *expression,
 			return FALSE;
 		}
 
-		consume = smanip->pop.num;
-
-		ret = g_slist_prepend (NULL, next);
-
-		while (consume)
-		{
-			ret = g_slist_concat (context->stack->data, ret);
-
-			context->stack = g_slist_delete_link (context->stack,
-			                                      context->stack);
-
-			--consume;
-		}
-
-		context->stack = g_slist_prepend (context->stack,
-		                                  ret);
+		context->stack = stack_push (context->stack, next, smanip);
 	}
 
 	return TRUE;
@@ -1248,6 +1291,15 @@ instruction_get_push_arg (CdnInstruction *i)
 	return &smanip->push;
 }
 
+static CdnStackArgs const *
+instruction_get_pop_args (CdnInstruction *i)
+{
+	CdnStackManipulation const *smanip;
+
+	smanip = cdn_instruction_get_stack_manipulation (i, NULL);
+	return &smanip->pop;
+}
+
 static void
 free_popped_stack (GSList *i)
 {
@@ -1283,7 +1335,8 @@ pop_stack (CdnExpression *expression,
 
 static CdnInstruction *
 zeros_macro (CdnExpression *expression,
-             ParserContext *context)
+             ParserContext *context,
+             gint           numargs)
 {
 	GSList *columns = NULL;
 	CdnDimension dimension = CDN_DIMENSION(1, 1);
@@ -1295,7 +1348,7 @@ zeros_macro (CdnExpression *expression,
 		dimension = instruction_get_dimension (g_slist_last (columns)->data);
 	}
 
-	if (cdn_dimension_size (&dimension) == 2)
+	if (numargs == 1 && cdn_dimension_size (&dimension) == 2)
 	{
 		gint indices[2] = {0, 0};
 		GSList *i;
@@ -1307,7 +1360,7 @@ zeros_macro (CdnExpression *expression,
 			parser_failed (expression,
 			               context,
 			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-			               "The `zeros` function can only be called with 2 number arguments or a 1-by-2 number vector");
+			               "The `zeros` function expects 2 number arguments or a 1-by-2 number vector");
 
 			free_popped_stack (i);
 			return NULL;
@@ -1318,7 +1371,7 @@ zeros_macro (CdnExpression *expression,
 		dimension.rows = indices[0];
 		dimension.columns = indices[1];
 	}
-	else
+	else if (numargs == 2)
 	{
 		GSList *rows = NULL;
 		GSList *i;
@@ -1336,7 +1389,7 @@ zeros_macro (CdnExpression *expression,
 			parser_failed (expression,
 			               context,
 			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-			               "The `zeros' function can only be called with 2 number arguments or a 1-by-2 number vector");
+			               "The `zeros' function expects 2 number arguments or a 1-by-2 number vector");
 
 			return NULL;
 		}
@@ -1349,6 +1402,15 @@ zeros_macro (CdnExpression *expression,
 
 		i = pop_stack (expression, context);
 		g_slist_foreach (i, (GFunc)cdn_mini_object_unref, NULL);
+	}
+	else
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The `zeros` function expects 2 number arguments or a 1-by-2 number vector");
+
+		return NULL;
 	}
 
 	ptr = make_zeros (&dimension);
@@ -1379,10 +1441,22 @@ zeros_macro (CdnExpression *expression,
 
 static CdnInstruction *
 eye_macro (CdnExpression *expression,
-           ParserContext *context)
+           ParserContext *context,
+           gint           numargs)
 {
 	GSList *first = NULL;
 	gint num;
+
+	if (numargs != 1)
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The `eye' function expects 1 argument, not %d",
+		               numargs);
+
+		return NULL;
+	}
 
 	if (context->stack)
 	{
@@ -1396,7 +1470,7 @@ eye_macro (CdnExpression *expression,
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		               "The `eye' function can only be called with 1 number argument");
+		               "The `eye' function expects 1 number argument");
 
 		return NULL;
 	}
@@ -1412,7 +1486,7 @@ eye_macro (CdnExpression *expression,
 	// Add identity matrix
 	if (num != 1)
 	{
-		gint r;
+		gint c;
 		gint i = 0;
 		CdnStackArgs args;
 		CdnDimension dim;
@@ -1422,11 +1496,11 @@ eye_macro (CdnExpression *expression,
 		dim.rows = num;
 		dim.columns = num;
 
-		for (r = 0; r < num; ++r)
+		for (c = 0; c < num; ++c)
 		{
-			gint c;
+			gint r;
 
-			for (c = 0; c < num; ++c)
+			for (r = 0; r < num; ++r)
 			{
 				gchar const *s;
 
@@ -1458,27 +1532,26 @@ eye_macro (CdnExpression *expression,
 
 static CdnInstruction *
 length_macro (CdnExpression *expression,
-              ParserContext *context)
+              ParserContext *context,
+              gint           numargs)
 {
 	GSList *first = NULL;
 	gchar *s;
 	CdnStackArgs args;
 	CdnInstruction *ret;
 
-	if (context->stack)
-	{
-		first = context->stack->data;
-	}
-
-	if (!first || first->next)
+	if (numargs != 1)
 	{
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
-		               "The `length' function expects 1 argument");
+		               "The `length' function expects 1 argument, not %d",
+		               numargs);
 
 		return NULL;
 	}
+
+	first = context->stack->data;
 
 	get_argdim (expression, context, 1, &args);
 
@@ -1502,43 +1575,96 @@ length_macro (CdnExpression *expression,
 
 static CdnInstruction *
 size_macro (CdnExpression *expression,
-            ParserContext *context)
+            ParserContext *context,
+            gint           numargs)
 {
-	gchar *sr;
-	gchar *sc;
-	CdnStackArgs args;
-	CdnStackArg nargs[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
-	CdnDimension dim;
-	GSList *i;
+	if (numargs < 1 || numargs > 2)
+	{
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "The `size' function expects 1 or 2 arguments, not %d",
+		               numargs);
 
-	i = pop_stack (expression, context);
-	dim = instruction_get_dimension (g_slist_last (i)->data);
-	free_popped_stack (i);
+		return NULL;
+	}
 
-	sr = g_strdup_printf ("%d", dim.rows);
-	sc = g_strdup_printf ("%d", dim.columns);
+	if (numargs == 2)
+	{
+		GSList *idx = pop_stack (expression, context);
+		gint i;
+		CdnDimension dim;
+		GSList *d;
 
-	instructions_push (expression,
-	                   cdn_instruction_number_new_from_string (sr),
-	                   context);
+		if (idx->next || !CDN_IS_INSTRUCTION_NUMBER (idx->data))
+		{
+			free_popped_stack (idx);
 
-	instructions_push (expression,
-	                   cdn_instruction_number_new_from_string (sc),
-	                   context);
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The second argument of the `size' function must be a number");
 
-	g_free (sr);
-	g_free (sc);
+			return NULL;
+		}
 
-	args.num = 2;
-	args.args = nargs;
+		i = (gint)(cdn_instruction_number_get_value (CDN_INSTRUCTION_NUMBER (idx->data)) + 0.5);
+		free_popped_stack(idx);
 
-	args.args[0].dimension = cdn_dimension_one;
-	args.args[1].dimension = cdn_dimension_one;
+		if (i != 0 && i != 1)
+		{
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "The second argument of the `size' function must be either 0 or 1");
 
-	dim.rows = 1;
-	dim.columns = 2;
+			return NULL;
+		}
 
-	return cdn_instruction_matrix_new (&args, &dim);
+		d = pop_stack (expression, context);
+		dim = instruction_get_dimension (g_slist_last (d)->data);
+		free_popped_stack (d);
+
+		return cdn_instruction_number_new (dim.dims[i]);
+	}
+	else
+	{
+		gchar *sr;
+		gchar *sc;
+		CdnStackArgs args;
+		CdnStackArg nargs[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
+		GSList *i;
+		CdnDimension dim;
+
+		i = pop_stack (expression, context);
+		dim = instruction_get_dimension (g_slist_last (i)->data);
+		free_popped_stack (i);
+
+		sr = g_strdup_printf ("%d", dim.rows);
+		sc = g_strdup_printf ("%d", dim.columns);
+
+		instructions_push (expression,
+		                   cdn_instruction_number_new_from_string (sr),
+		                   context);
+
+		instructions_push (expression,
+		                   cdn_instruction_number_new_from_string (sc),
+		                   context);
+
+		g_free (sr);
+		g_free (sc);
+
+		args.num = 2;
+		args.args = nargs;
+
+		args.args[0].dimension = cdn_dimension_one;
+		args.args[1].dimension = cdn_dimension_one;
+
+		dim.rows = 1;
+		dim.columns = 2;
+
+		return cdn_instruction_matrix_new (&args, &dim);
+	}
 }
 
 static void
@@ -2098,19 +2224,23 @@ parse_function (CdnExpression *expression,
 			{
 				case CDN_MATH_FUNCTION_TYPE_ZEROS:
 					instruction = zeros_macro (expression,
-					                           context);
+					                           context,
+					                           numargs);
 				break;
 				case CDN_MATH_FUNCTION_TYPE_EYE:
 					instruction = eye_macro (expression,
-					                         context);
+					                         context,
+					                         numargs);
 				break;
 				case CDN_MATH_FUNCTION_TYPE_LENGTH:
 					instruction = length_macro (expression,
-					                            context);
+					                            context,
+					                            numargs);
 				break;
 				case CDN_MATH_FUNCTION_TYPE_SIZE:
 					instruction = size_macro (expression,
-					                          context);
+					                          context,
+					                          numargs);
 				break;
 				break;
 				default:
@@ -2252,20 +2382,203 @@ convert_2dim_slist (GSList const *lst,
 	return ret;
 }
 
-static gboolean
+static void
+instructions_push_list (CdnExpression *expression,
+                        ParserContext *context,
+                        GSList        *instructions)
+{
+	while (instructions)
+	{
+		instructions_push (expression, instructions->data, context);
+		instructions = g_slist_delete_link (instructions, instructions);
+	}
+}
+
+static GSList *
+parse_matrix_decompose_variable (CdnInstruction *instruction,
+                                 GSList         *instructions)
+{
+	// Use slicing on the variable
+	CdnStackArg const *arg;
+	guint *slice;
+	CdnDimension dim;
+	gint rows;
+	gint columns;
+	gint r;
+	gint c;
+	GSList *ret = NULL;
+
+	arg = instruction_get_push_arg (instruction);
+
+	rows = arg->dimension.rows;
+	columns = arg->dimension.columns;
+
+	slice = g_new0 (guint, rows);
+
+	// Resulting slice dimensions
+	dim.rows = rows;
+	dim.columns = 1;
+
+	// Prepare initial slice
+	for (r = 0; r < rows; ++r)
+	{
+		slice[r] = (guint)r;
+	}
+
+	// For each column, append a variable slice instruction
+	for (c = 0; c < columns; ++c)
+	{
+		// Append new instructions with the slices
+		CdnInstructionVariable *v;
+
+		v = cdn_mini_object_copy (instruction);
+
+		cdn_instruction_variable_apply_slice (v,
+		                                      slice,
+		                                      rows,
+		                                      &dim);
+
+		// we prepend here, and reverse in the end
+		ret = g_slist_prepend (ret, v);
+
+		// Compute next column slice
+		for (r = 0; r < rows; ++r)
+		{
+			slice[r] += rows;
+		}
+	}
+
+	g_free (slice);
+
+	g_slist_foreach (instructions, (GFunc)cdn_mini_object_unref, NULL);
+	g_slist_free (instructions);
+
+	// keep result instructions in correct order
+	return g_slist_reverse (ret);
+}
+
+static GSList *
+parse_matrix_decompose_matrix (CdnInstruction *instruction,
+                               GSList         *instructions,
+                               GSList         *instructionl)
+{
+	// Check if individual values can be decomposed
+	CdnStackArgs const *args;
+	gint i;
+
+	// Decompose the individual values of the matrix, if possible
+	args = instruction_get_pop_args (instruction);
+
+	for (i = 0; i < args->num; ++i)
+	{
+		// Can only decompose single column values
+		if (args->args[i].dimension.columns != 1)
+		{
+			return NULL;
+		}
+	}
+
+	// To do this, we strip off the matrix instruction
+	cdn_mini_object_unref (instruction);
+	return g_slist_delete_link (instructions, instructionl);
+}
+
+/*
+ * parse_matrix_decompose will try to decompose the last expression on the
+ * stack into single column expressions if possible.
+ */
+static GSList *
+parse_matrix_decompose (GSList *instructions)
+{
+	CdnInstruction *last;
+	GSList *lastl;
+
+	lastl = g_slist_last (instructions);
+	last = lastl->data;
+
+	if (instruction_get_dimension (last).columns == 1)
+	{
+		// No need to decompose single column
+		return instructions;
+	}
+
+	if (CDN_IS_INSTRUCTION_VARIABLE (last))
+	{
+		return parse_matrix_decompose_variable (last, instructions);
+	}
+	else if (CDN_IS_INSTRUCTION_MATRIX (last))
+	{
+		return parse_matrix_decompose_matrix (last, instructions, lastl);
+	}
+	else
+	{
+		// Can't do it!
+		return NULL;
+	}
+}
+
+typedef struct
+{
+	CdnDimension dimension;
+	gint numpop;
+	GSList *arguments;
+} MatrixRow;
+
+static MatrixRow *
+matrix_row_new ()
+{
+	return g_slice_new0 (MatrixRow);
+}
+
+static void
+matrix_row_free (MatrixRow *row)
+{
+	while (row->arguments)
+	{
+		GSList *a = row->arguments->data;
+
+		g_slist_foreach (a, (GFunc)cdn_mini_object_unref, NULL);
+		g_slist_free (a);
+
+		row->arguments = g_slist_delete_link (row->arguments,
+		                                      row->arguments);
+	}
+
+	g_slice_free (MatrixRow, row);
+}
+
+/*
+ * parse_matrix_row parses column expressions until a full row of columns is
+ * parsed. Note that expressions parsed can be multidimensional and this function
+ * will check of the concatenated rows are the same. For example:
+ *
+ * 1) [[1;2;3], [4;5;6]]
+ * 2) [[1;2;3], [5;6]]
+ *
+ * Where the outer matrix is parsed in one time by this function. The first
+ * example has consistent rows, but the second example does not. Therefore this
+ * function returns FALSE (and sets an appropriate error) when trying to parse
+ * the second example.
+ */
+static MatrixRow *
 parse_matrix_row (CdnExpression *expression,
                   ParserContext *context,
-                  gboolean      *isend,
-                  CdnDimension  *dimension,
-                  gint          *numpop)
+                  gboolean      *isend)
 {
+	MatrixRow *ret;
+
 	*isend = FALSE;
 
 	CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
 
 	if (!next)
 	{
-		return FALSE;
+		parser_failed (expression,
+		               context,
+		               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		               "Unexpected end of expression (expected ; or ])");
+
+		return NULL;
 	}
 
 	*isend = CDN_TOKEN_IS_OPERATOR (next) &&
@@ -2273,97 +2586,75 @@ parse_matrix_row (CdnExpression *expression,
 
 	cdn_token_free (next);
 
+	ret = matrix_row_new ();
+
 	if (*isend)
 	{
-		return TRUE;
+		return ret;
 	}
-
-	*numpop = 0;
-	dimension->rows = 0;
-	dimension->columns = 0;
 
 	while (TRUE)
 	{
-		CdnStackArgs args;
+		CdnStackArg const *arg;
 
-		if (dimension->rows > 1 && *numpop > 1)
-		{
-			// Here we will need to concat the rows with a concat
-			// operation, so we will insert a matrix operation here
-			// if needed
-			get_argdim (expression, context, *numpop, &args);
-
-			instructions_push (expression,
-			                   cdn_instruction_matrix_new (&args,
-			                                               dimension),
-			                   context);
-
-			*numpop = 1;
-			cdn_stack_args_destroy (&args);
-		}
-
+		// Parse one expression
 		if (!parse_expression (expression, context, -1, 0))
 		{
-			return FALSE;
+			return NULL;
 		}
 
-		get_argdim (expression, context, 1, &args);
-		++*numpop;
+		// Get argdim of the last expression to extract the dimension
+		// of the expression
+		arg = get_last_stack_arg (context);
 
-		// Check argument consistency
-		if (dimension->rows != 0)
+		/* Check argument consistency. This function is parsing one row
+		 * in the sense of the matrix syntax (i.e. until ] or ;). The
+		 * invididual arguments being parsed can still be multi row
+		 * themselves. Here we simply check of we concatenate columns
+		 * with the same number of rows.
+		 */
+		if (ret->dimension.rows != 0)
 		{
-			if (dimension->rows != args.args[0].rows)
+			if (ret->dimension.rows != arg->rows)
 			{
 				parser_failed (expression,
 				               context,
 				               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 				               "Cannot concatenate %d row%s with %d row%s",
-				               dimension->rows,
-				               dimension->rows > 1 ? "s" : "",
-				               args.args[0].rows,
-				               args.args[0].rows > 1 ? "s" : "");
+				               ret->dimension.rows,
+				               ret->dimension.rows > 1 ? "s" : "",
+				               arg->rows,
+				               arg->rows > 1 ? "s" : "");
 
-				cdn_stack_args_destroy (&args);
-				return FALSE;
-			}
-			else if (dimension->rows != 1)
-			{
-				CdnStackArgs nargs;
-				CdnStackArg ar[2] = {CDN_STACK_ARG_EMPTY, CDN_STACK_ARG_EMPTY};
-
-				nargs.args = ar;
-				nargs.num = 2;
-
-				ar[0].dimension = *dimension;
-				ar[1].dimension = args.args[0].dimension;
-
-				// Here we have multiple rows concatenated with
-				// multiple rows. We are going to implement this
-				// using a hcat operator
-				instructions_push (expression,
-				                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_HCAT,
-				                                                 "hcat",
-				                                                 &nargs),
-				                   context);
-
-				*numpop = 1;
+				matrix_row_free (ret);
+				return NULL;
 			}
 
-			dimension->columns += args.args[0].columns;
+			ret->dimension.columns += arg->columns;
 		}
 		else
 		{
-			*dimension = args.args[0].dimension;
+			// Initial dimensions
+			ret->dimension = arg->dimension;
 		}
 
-		cdn_stack_args_destroy (&args);
+		ret->arguments = g_slist_prepend (ret->arguments,
+		                                  pop_stack (expression, context));
 
+		++ret->numpop;
+
+		// Check next token for the end of the "row"
 		CdnToken *next = cdn_tokenizer_peek (*(context->buffer));
 
 		if (!next)
 		{
-			return FALSE;
+			parser_failed (expression,
+			               context,
+			               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+			               "Unexpected end of expression (expected ; or ])");
+
+			matrix_row_free (ret);
+			return NULL;
 		}
 
 		CdnTokenOperatorType type = CDN_TOKEN_OPERATOR_TYPE_NONE;
@@ -2382,14 +2673,293 @@ parse_matrix_row (CdnExpression *expression,
 			cdn_token_free (cdn_tokenizer_next (context->buffer));
 			*isend = (type == CDN_TOKEN_OPERATOR_TYPE_OPERATOR_END);
 
-			return TRUE;
+			break;
 		}
 		else if (type == CDN_TOKEN_OPERATOR_TYPE_COMMA)
 		{
-			// Consume
+			// Consume comma token and continue parsing the row
 			cdn_token_free (cdn_tokenizer_next (context->buffer));
 		}
 	}
+
+	// store arguments in order of occurence
+	ret->arguments = g_slist_reverse (ret->arguments);
+	return ret;
+}
+
+static GSList *
+matrix_reorder_flat (GSList              *ret,
+                     CdnDimension        *retdim,
+                     GSList             **m,
+                     gint                 mrstride,
+                     gint                *rowsize,
+                     CdnDimension const  *dim)
+{
+	gint c;
+	gint i = 0;
+	gint mi = 0;
+	CdnStackArgs args;
+	gint r;
+	gint rrows = 0;
+	CdnDimension mdim;
+
+	cdn_stack_args_init (&args, cdn_dimension_size (dim));
+
+	for (c = 0; c < dim->columns; ++c)
+	{
+		for (r = 0; r < dim->rows; ++r)
+		{
+			ret = g_slist_concat (m[mi + r], ret);
+
+			args.args[i].dimension.rows = rowsize[r];
+			args.args[i].dimension.columns = 1;
+
+			if (c == 0)
+			{
+				rrows += rowsize[r];
+			}
+
+			++i;
+		}
+
+		mi += mrstride;
+	}
+
+	mdim.rows = rrows;
+	mdim.columns = dim->columns;
+
+	// Insert matrix instruction
+	ret = g_slist_prepend (ret, cdn_instruction_matrix_new (&args,
+	                                                        &mdim));
+
+	if (retdim->columns != 0)
+	{
+		CdnStackArg arg[2] = {
+			CDN_STACK_ARG(retdim->rows, retdim->columns),
+			CDN_STACK_ARG(dim->rows, dim->columns)
+		};
+
+		CdnStackArgs vargs = {
+			.num = 2,
+			.args = arg,
+		};
+
+		// Also insert a vcat here
+		ret = g_slist_prepend (ret,
+		                       cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_VCAT,
+		                                                     NULL,
+		                                                     &vargs));
+	}
+	else
+	{
+		retdim->columns = dim->columns;
+	}
+
+	retdim->rows += rrows;
+
+	cdn_stack_args_destroy (&args);
+	return ret;
+}
+
+/* matrix_vcat will concatenate single parsed matrix rows in one matrix
+ * expression. Its purpose is to perform the vcat inline if possible
+ * (on single column values) or to insert vcat() calls otherwise.
+ */
+static void
+matrix_vcat (CdnExpression      *expression,
+             ParserContext      *context,
+             GSList             *rows,
+             CdnDimension const *dim)
+{
+	GSList **m;
+	gint *rowsize;
+	gint mrow = 0;
+	GSList *vcat = NULL;
+	GSList *ret = NULL;
+	CdnDimension retdim = CDN_DIMENSION(0, 0);
+
+	m = g_new0 (GSList *, cdn_dimension_size (dim));
+	rowsize = g_new0 (gint, dim->rows);
+
+	while (rows)
+	{
+		MatrixRow *row = rows->data;
+		gboolean is_single = TRUE;
+		GSList *stack = NULL;
+
+		rowsize[mrow] = row->dimension.rows;
+
+		/* Try to decompose all the arguments that make up the row in
+		 * single valued columns, otherwise we can't rearrange them.
+		 */
+		while (row->arguments)
+		{
+			GSList *arg = row->arguments->data;
+			GSList *newinstr;
+
+			row->arguments = g_slist_delete_link (row->arguments,
+			                                      row->arguments);
+
+			newinstr = parse_matrix_decompose (arg);
+
+			if (newinstr == NULL)
+			{
+				is_single = FALSE;
+				newinstr = arg;
+			}
+
+			// Push instructions on the row stack
+			while (newinstr)
+			{
+				stack = stack_push (stack, newinstr->data, NULL);
+				newinstr = g_slist_delete_link (newinstr, newinstr);
+			}
+		}
+
+		if (is_single)
+		{
+			gint c;
+			gint nr = 0;
+
+			stack = g_slist_reverse (stack);
+			c = mrow;
+
+			// Fill one row of <m> from the stack
+			while (stack)
+			{
+				// note we reverse the stack list here because
+				// we keep values in <m> in reversed order so
+				// we can more efficiently concat them later
+				GSList *rev = g_slist_reverse (stack->data);
+				CdnDimension d;
+
+				// Accumulate instructions per row block
+				m[c] = g_slist_concat (rev, m[c]);
+
+				// Check if we should go to the next column
+				d = instruction_get_dimension (rev->data);
+
+				nr += d.rows;
+
+				if (nr == row->dimension.rows)
+				{
+					// advance!
+					c += dim->rows;
+					nr = 0;
+				}
+
+				stack = g_slist_delete_link (stack, stack);
+			}
+
+			++mrow;
+		}
+		else
+		{
+			CdnStackArgs args;
+			gint i = 0;
+			CdnInstruction *mi;
+
+			if (mrow > 0)
+			{
+				CdnDimension fd = CDN_DIMENSION(mrow, dim->columns);
+
+				/* We have been collecting things to be
+				 * reordered. Since we now need a vcat for the
+				 * next row, process the builtup matrix and
+				 * add it to the result.
+				 */
+				ret = matrix_reorder_flat (ret,
+				                           &retdim,
+				                           m,
+				                           dim->rows,
+				                           rowsize,
+				                           &fd);
+
+				mrow = 0;
+
+				// Clear memory
+				memset (m, 0, sizeof (GSList *) * cdn_dimension_size (dim));
+				memset (rowsize, 0, sizeof (gint) * dim->rows);
+			}
+
+			cdn_stack_args_init (&args, g_slist_length (stack));
+
+			vcat = NULL;
+
+			// Collect all instructions
+			while (stack)
+			{
+				CdnInstruction *last = g_slist_last (stack->data)->data;
+
+				args.args[i].dimension = instruction_get_dimension (last);
+
+				// note we reverse the stack instructions here
+				// because we build a reversed order result
+				vcat = g_slist_concat (vcat, g_slist_reverse (stack->data));
+				stack = g_slist_delete_link (stack, stack);
+			}
+
+			// Add matrix instruction to group it all together
+			mi = cdn_instruction_matrix_new (&args,
+			                                 &row->dimension);
+
+			vcat = g_slist_prepend (vcat, mi);
+
+			{
+				CdnStackArg varg[2] = {
+					CDN_STACK_ARG(0, 0),
+					CDN_STACK_ARG(0, 0)
+				};
+
+				CdnStackArgs vargs = {
+					.num = 2,
+					.args = varg
+				};
+
+				CdnInstruction *i;
+
+				i = cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_VCAT,
+				                                  NULL,
+				                                  &vargs);
+
+				// Add vcat instruction
+				vcat = g_slist_prepend (vcat, i);
+			}
+
+			ret = g_slist_concat (vcat, ret);
+			cdn_stack_args_destroy (&args);
+		}
+
+		matrix_row_free (row);
+		rows = g_slist_delete_link (rows, rows);
+	}
+
+	// rearrange the last remaining rows if any
+	if (mrow > 0)
+	{
+		CdnDimension fd = CDN_DIMENSION(mrow, dim->columns);
+
+		/* We have been collecting things to be
+		 * reordered. Since we now need a vcat for the
+		 * next row, process the builtup matrix and
+		 * add it to the result.
+		 */
+		ret = matrix_reorder_flat (ret,
+		                           &retdim,
+		                           m,
+		                           dim->rows,
+		                           rowsize,
+		                           &fd);
+	}
+
+	// ret was kept in reverse order, but instructions_push_list expects
+	// it in normal order, so reverse ret first
+	ret = g_slist_reverse (ret);
+
+	instructions_push_list (expression, context, ret);
+
+	g_free (m);
+	g_free (rowsize);
 }
 
 static gboolean
@@ -2398,45 +2968,57 @@ parse_matrix (CdnExpression *expression,
 {
 	CdnDimension tdim = CDN_DIMENSION (0, 0);
 	gint tnumpop = 0;
-	CdnStackArgs args;
+	GSList *rows = NULL;
 
 	while (TRUE)
 	{
-		gboolean isend = TRUE;
-		CdnDimension dimension = CDN_DIMENSION (0, 0);
-		gint numpop = 0;
+		MatrixRow *row;
+		gboolean isend;
 
-		if (!parse_matrix_row (expression,
-		                       context,
-		                       &isend,
-		                       &dimension,
-		                       &numpop))
+		row = parse_matrix_row (expression,
+		                        context,
+		                        &isend);
+
+		if (row == NULL)
 		{
+			g_slist_foreach (rows, (GFunc)matrix_row_free, NULL);
+			g_slist_free (rows);
 			return FALSE;
 		}
 
+		rows = g_slist_prepend (rows, row);
+
 		if (tdim.rows == 0)
 		{
-			tdim.rows = dimension.rows;
-			tdim.columns = dimension.columns;
+			// First time. Just store the dimensions and number of
+			// expressions consumed
+			tdim.rows = row->dimension.rows;
+			tdim.columns = row->dimension.columns;
 
-			tnumpop = numpop;
+			tnumpop = row->numpop;
 		}
-		else if (tdim.columns != dimension.columns)
+		else if (tdim.columns != row->dimension.columns)
 		{
+			gint cols = row->dimension.columns;
+
+			// Check for consistent columns concatenation between
+			// rows parsed
+			g_slist_foreach (rows, (GFunc)matrix_row_free, NULL);
+			g_slist_free (rows);
+
 			return parser_failed (expression,
 			                      context,
 			                      CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
 			                      "Cannot concatenate %d column%s with %d column%s",
 			                      tdim.columns,
 			                      tdim.columns > 1 ? "s" : "",
-			                      dimension.columns,
-			                      dimension.columns > 1 ? "s" : "");
+			                      cols,
+			                      cols > 1 ? "s" : "");
 		}
 		else
 		{
-			tnumpop += numpop;
-			tdim.rows += dimension.rows;
+			tnumpop += row->numpop;
+			tdim.rows += row->dimension.rows;
 		}
 
 		if (isend)
@@ -2445,16 +3027,59 @@ parse_matrix (CdnExpression *expression,
 		}
 	}
 
-	get_argdim (expression, context, tnumpop, &args);
+	// Store rows in order of occurance
+	rows = g_slist_reverse (rows);
 
-	// note that popdims memory is consumed by the matrix instruction
-	// and does not need to be freed
-	instructions_push (expression,
-	                   cdn_instruction_matrix_new (&args,
-	                                               &tdim),
-	                   context);
+	/* vcat when there is more than one parsed row and the resulting number
+	 * of columns is larger than 1.
+	 */
+	if (rows->next && tdim.columns > 1)
+	{
+		/* Here we need to vcat all the rows together. We are going to
+		 * try to do this inline right here as much as possible, by
+		 * rearranging expressions on the stack as needed. If such
+		 * rearrangement is not possible, a 'vcat' call will be inserted
+		 * which dynamically rearranges the terms when the expression
+		 * is executed.
+		 */
+		matrix_vcat (expression, context, rows, &tdim);
+	}
+	else
+	{
+		// Push back arguments on the stack
+		while (rows)
+		{
+			MatrixRow *row = rows->data;
 
-	cdn_stack_args_destroy (&args);
+			while (row->arguments)
+			{
+				instructions_push_list (expression,
+				                        context,
+				                        row->arguments->data);
+
+				row->arguments = g_slist_delete_link (row->arguments,
+				                                      row->arguments);
+			}
+
+			matrix_row_free (row);
+			rows = g_slist_delete_link (rows, rows);
+		}
+
+		if (tnumpop > 1)
+		{
+			CdnStackArgs args;
+
+			// Wrap in matrix instruction
+			get_argdim (expression, context, tnumpop, &args);
+
+			instructions_push (expression,
+			                   cdn_instruction_matrix_new (&args,
+			                                               &tdim),
+			                   context);
+
+			cdn_stack_args_destroy (&args);
+		}
+	}
 
 	return TRUE;
 }
@@ -2573,12 +3198,13 @@ make_static_index (CdnExpression *expression,
 		instructions_to_indices (i1, rows, n);
 		instructions_to_indices (i2, cols, n);
 
-		// Double indexing. i1 represents rows, i2 represents columns
+		// Double indexing. i1 represents rows, i2 represents columns.
+		// Note column-major ordering
 		indices = g_new0 (gint, n);
 
 		for (i = 0; i < n; ++i)
 		{
-			indices[i] = rows[i] * d3->dimension.columns + cols[i];
+			indices[i] = rows[i] + d3->dimension.rows * cols[i];
 		}
 
 		free_popped_stack (i1);

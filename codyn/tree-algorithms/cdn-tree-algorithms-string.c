@@ -438,40 +438,53 @@ matrix_to_string (CdnInstructionMatrix *inst,
 {
 	CdnStackManipulation const *smanip;
 	CdnDimension dim;
-	gint i = 0;
-	gint accumnumc = 0;
+	gint i;
+	gint nrows = 0;
+	gint rows = 0;
+	gint cols;
+	gint r;
 
 	g_string_append_c (ret, '[');
 
 	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (inst), NULL);
 	dim = smanip->push.dimension;
 
-	while (*children)
+	for (i = 0; i < smanip->pop.num; ++i)
 	{
-		CdnDimension cdim;
+		nrows += smanip->pop.args[i].dimension.rows;
+		++rows;
 
-		cdim = smanip->pop.args[i].dimension;
-
-		g_string_append (ret, *children);
-		accumnumc += cdim.columns;
-
-		++i;
-		++children;
-
-		if (accumnumc == dim.columns)
+		if (nrows == dim.rows)
 		{
-			if (*children)
+			break;
+		}
+	}
+
+	cols = smanip->pop.num / rows;
+
+	for (r = 0; r < rows; ++r)
+	{
+		gint c;
+
+		if (r != 0)
+		{
+			g_string_append (ret, "; ");
+		}
+
+		i = r;
+
+		for (c = 0; c < cols; ++c)
+		{
+			gchar const *s = children[i];
+			i += rows;
+
+			if (c != 0)
 			{
-				g_string_append (ret, "; ");
+				g_string_append (ret, ", ");
 			}
 
-			accumnumc = 0;
+			g_string_append (ret, s);
 		}
-		else if (*children)
-		{
-			g_string_append (ret, ", ");
-		}
-
 	}
 
 	g_string_append_c (ret, ']');

@@ -272,7 +272,7 @@ cdn_matrix_get_at (CdnMatrix const *matrix,
 	}
 	else
 	{
-		return matrix->values[r * matrix->dimension.columns + c];
+		return matrix->values[c * matrix->dimension.rows + r];
 	}
 }
 
@@ -311,7 +311,7 @@ cdn_matrix_set_at (CdnMatrix *matrix,
 	}
 	else
 	{
-		matrix->values[r * matrix->dimension.columns + c] = value;
+		matrix->values[c * matrix->dimension.rows + r] = value;
 	}
 }
 
