@@ -84,7 +84,7 @@ test_integrate_multiple_euler ()
 	prop = cdn_node_find_variable (CDN_NODE (network), "node.x");
 
 	g_assert (prop);
-	cdn_assert_tol (cdn_variable_get_value (prop), 0.1);
+	cdn_assert_tol (cdn_variable_get_value (prop), 0.2);
 
 	g_assert (network);
 
