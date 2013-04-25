@@ -63,6 +63,9 @@ EXTRA_DIST = \
 	test_interface_templates.cdn \
 	test_input.txt \
 	test_file.cdn \
-	test_matrix.cdn
+	test_matrix.cdn \
+	test_clip.cdn \
+	test_lerp.cdn \
+	test_cycle.cdn
 
 -include $(top_srcdir)/git.mk

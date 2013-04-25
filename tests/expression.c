@@ -233,177 +233,19 @@ test_globals ()
 static void
 test_lerp ()
 {
-	gdouble ret;
-	CdnMatrix const *vals;
-
-	expression_initialize ("lerp(0.2, 1, 10)");
-	ret = expression_eval ();
-	cdn_assert_tol (ret, 0.2 * 9 + 1);
-
-	expression_initialize ("lerp([0.1, 0.2, 0.3], 1, 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 0.1 * 9 + 1);
-	cdn_assert_tol (vals->values[1], 0.2 * 9 + 1);
-	cdn_assert_tol (vals->values[2], 0.3 * 9 + 1);
-
-	expression_initialize ("lerp([0.1, 0.2, 0.3], [1, 2, 3], 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 0.1 * 9 + 1);
-	cdn_assert_tol (vals->values[1], 0.2 * 8 + 2);
-	cdn_assert_tol (vals->values[2], 0.3 * 7 + 3);
-
-	expression_initialize ("lerp([0.1, 0.2, 0.3], [1; 2; 3], 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 0.1 * 9 + 1);
-	cdn_assert_tol (vals->values[1], 0.2 * 8 + 2);
-	cdn_assert_tol (vals->values[2], 0.3 * 7 + 3);
-
-	expression_initialize ("lerp(0.1, 1, [10, 20; 10, 30])");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 2);
-	g_assert_cmpint (vals->dimension.columns, ==, 2);
-
-	cdn_assert_tol (vals->values[0], 0.1 * 9 + 1);
-	cdn_assert_tol (vals->values[1], 0.1 * 9 + 1);
-	cdn_assert_tol (vals->values[2], 0.1 * 19 + 1);
-	cdn_assert_tol (vals->values[3], 0.1 * 29 + 1);
+	cdn_test_variables_with_annotated_output_from_path ("test_lerp.cdn");
 }
 
 static void
 test_clip ()
 {
-	gdouble ret;
-	CdnMatrix const *vals;
-
-	expression_initialize ("clip(0.2, 1, 10)");
-	ret = expression_eval ();
-	cdn_assert_tol (ret, 1);
-
-	expression_initialize ("clip(12, 1, 10)");
-	ret = expression_eval ();
-	cdn_assert_tol (ret, 10);
-
-	expression_initialize ("clip(0.2, -1, 10)");
-	ret = expression_eval ();
-	cdn_assert_tol (ret, 0.2);
-
-	expression_initialize ("clip([0.1, 5.2, 12], 1, 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 1);
-	cdn_assert_tol (vals->values[1], 5.2);
-	cdn_assert_tol (vals->values[2], 10);
-
-	expression_initialize ("clip([0.1, 3, 13], [1, 2, 3], 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 1);
-	cdn_assert_tol (vals->values[1], 3);
-	cdn_assert_tol (vals->values[2], 10);
-
-	expression_initialize ("clip([0.1, 3, 13], [1; 2; 3], 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 1);
-	cdn_assert_tol (vals->values[1], 3);
-	cdn_assert_tol (vals->values[2], 10);
-
-	expression_initialize ("clip(15, 1, [10, 20; 10, 30])");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 2);
-	g_assert_cmpint (vals->dimension.columns, ==, 2);
-
-	cdn_assert_tol (vals->values[0], 10);
-	cdn_assert_tol (vals->values[1], 10);
-	cdn_assert_tol (vals->values[2], 15);
-	cdn_assert_tol (vals->values[3], 15);
+	cdn_test_variables_with_annotated_output_from_path ("test_clip.cdn");
 }
 
 static void
 test_cycle ()
 {
-	gdouble ret;
-	CdnMatrix const *vals;
-
-	expression_initialize ("cycle(0.2, 1, 10)");
-	ret = expression_eval ();
-	cdn_assert_tol (ret, 9.2);
-
-	expression_initialize ("cycle(12, 1, 10)");
-	ret = expression_eval ();
-	cdn_assert_tol (ret, 3);
-
-	expression_initialize ("cycle(0.2, -1, 10)");
-	ret = expression_eval ();
-	cdn_assert_tol (ret, 0.2);
-
-	expression_initialize ("cycle(0.2, -5, -1)");
-	ret = expression_eval ();
-	cdn_assert_tol (ret, -3.8);
-
-	expression_initialize ("cycle([0.1, 5.2, 12], 1, 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 9.1);
-	cdn_assert_tol (vals->values[1], 5.2);
-	cdn_assert_tol (vals->values[2], 3);
-
-	expression_initialize ("cycle([0.1, 3, 13], [1, 2, 3], 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 9.1);
-	cdn_assert_tol (vals->values[1], 3);
-	cdn_assert_tol (vals->values[2], 6);
-
-	expression_initialize ("cycle([0.1, 3, 13], [1; 2; 3], 10)");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 3);
-
-	cdn_assert_tol (vals->values[0], 9.1);
-	cdn_assert_tol (vals->values[1], 3);
-	cdn_assert_tol (vals->values[2], 6);
-
-	expression_initialize ("cycle(15, 1, [10, 20; 10, 11])");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 2);
-	g_assert_cmpint (vals->dimension.columns, ==, 2);
-
-	cdn_assert_tol (vals->values[0], 6);
-	cdn_assert_tol (vals->values[1], 6);
-	cdn_assert_tol (vals->values[2], 15);
-	cdn_assert_tol (vals->values[3], 5);
+	cdn_test_variables_with_annotated_output_from_path ("test_cycle.cdn");
 }
 
 int
