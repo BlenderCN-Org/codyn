@@ -62,8 +62,8 @@ test_operator_multiply ()
 	g_assert_cmpint (vals->dimension.columns, ==, 2);
 
 	cdn_assert_tol (vals->values[0], 2);
-	cdn_assert_tol (vals->values[1], 3);
-	cdn_assert_tol (vals->values[2], 4);
+	cdn_assert_tol (vals->values[1], 4);
+	cdn_assert_tol (vals->values[2], 3);
 	cdn_assert_tol (vals->values[3], 5);
 
 	// Element wise multiplication
@@ -277,8 +277,8 @@ test_lerp ()
 	g_assert_cmpint (vals->dimension.columns, ==, 2);
 
 	cdn_assert_tol (vals->values[0], 0.1 * 9 + 1);
-	cdn_assert_tol (vals->values[1], 0.1 * 19 + 1);
-	cdn_assert_tol (vals->values[2], 0.1 * 9 + 1);
+	cdn_assert_tol (vals->values[1], 0.1 * 9 + 1);
+	cdn_assert_tol (vals->values[2], 0.1 * 19 + 1);
 	cdn_assert_tol (vals->values[3], 0.1 * 29 + 1);
 }
 
@@ -337,8 +337,8 @@ test_clip ()
 	g_assert_cmpint (vals->dimension.columns, ==, 2);
 
 	cdn_assert_tol (vals->values[0], 10);
-	cdn_assert_tol (vals->values[1], 15);
-	cdn_assert_tol (vals->values[2], 10);
+	cdn_assert_tol (vals->values[1], 10);
+	cdn_assert_tol (vals->values[2], 15);
 	cdn_assert_tol (vals->values[3], 15);
 }
 
@@ -401,8 +401,8 @@ test_cycle ()
 	g_assert_cmpint (vals->dimension.columns, ==, 2);
 
 	cdn_assert_tol (vals->values[0], 6);
-	cdn_assert_tol (vals->values[1], 15);
-	cdn_assert_tol (vals->values[2], 6);
+	cdn_assert_tol (vals->values[1], 6);
+	cdn_assert_tol (vals->values[2], 15);
 	cdn_assert_tol (vals->values[3], 5);
 }
 
