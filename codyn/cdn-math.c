@@ -1112,6 +1112,117 @@ op_inverse (CdnStack           *stack,
 	                ipiv);
 }
 
+extern void dgelsd_ (int *, int *, int *, double *, int *, double *, int *, double *, double *, int *, double *, int *, int *, int *);
+
+static gint
+pseudo_inverse_iwork (CdnDimension const *dim)
+{
+	gint mindim;
+	gint nlvl;
+
+	mindim = dim->rows < dim->columns ? dim->rows : dim->columns;
+	nlvl = (gint)log2(mindim / (25.0 + 1.0)) + 1;
+
+	if (nlvl < 0)
+	{
+		nlvl = 0;
+	}
+
+	return 3 * mindim * nlvl + 11 * mindim;
+}
+
+#include <glib/gprintf.h>
+
+static void
+op_pseudo_inverse (CdnStack           *stack,
+                   CdnStackArgs const *argdim,
+                   gpointer            userdata)
+{
+	gint n;
+	gint m;
+	gdouble *A;
+	gdouble *b;
+	gdouble *bptr;
+	gdouble *s;
+	gdouble *work;
+	gint *iwork;
+	gint liwork;
+	gint i;
+	gint rank;
+	gint info;
+	gint worksize;
+	gdouble rcond = -1;
+	gint maxdim;
+	gint mindim;
+	gint lb;
+
+	m = argdim->args[0].rows;
+	n = argdim->args[0].columns;
+
+	if (m > n)
+	{
+		maxdim = m;
+		mindim = n;
+	}
+	else
+	{
+		maxdim = n;
+		mindim = m;
+	}
+
+	// Reserved space starts with b
+	lb = maxdim;
+	b = cdn_stack_output_ptr (stack);
+
+	// Get where the matrix A is
+	A = b - (n * m);
+
+	// Then comes s
+	s = b + lb * lb;
+
+	// Then comes work and iwork
+	liwork = pseudo_inverse_iwork (&argdim->args[0].dimension);
+	iwork = (gint *)(s + mindim);
+
+	work = s + mindim + liwork;
+	worksize = (cdn_stack_ptr (stack) + cdn_stack_size (stack)) - work;
+
+	bptr = b;
+
+	memset (bptr, 0, sizeof (gdouble) * (lb * lb));
+
+	// fill b with identity matrix
+	for (i = 0; i < lb; ++i)
+	{
+		*bptr = 1;
+		bptr += lb + 1;
+	}
+
+	dgelsd_ (&m,
+	         &n,
+	         &lb,
+	         A,
+	         &m,
+	         b,
+	         &lb,
+	         s,
+	         &rcond,
+	         &rank,
+	         work,
+	         &worksize,
+	         iwork,
+	         &info);
+
+	// copy back from b the n-by-m pseudo inverse
+	for (i = 0; i < m; ++i)
+	{
+		memcpy (A, b, sizeof (gdouble) * n);
+
+		A += n;
+		b += lb;
+	}
+}
+
 static void
 op_linsolve (CdnStack           *stack,
              CdnStackArgs const *argdim,
@@ -1442,11 +1553,12 @@ static FunctionEntry function_entries[] = {
 	{"transpose", op_transpose, 1, FALSE},
 #ifdef HAVE_LAPACK
 	{"inv", op_inverse, 1, FALSE},
+	{"pinv", op_pseudo_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
 #else
 	{"inv", op_noop, 1, FALSE},
+	{"pinv", op_noop, 1, FALSE},
 	{"linsolve", op_noop, 2, FALSE},
-
 #endif
 	{"slinsolve", op_slinsolve, 3, FALSE},
 	{"sum", op_sum, -1, FALSE},
@@ -2148,6 +2260,72 @@ sparsity_multiply (CdnStackArg const *arg1,
 	}
 }
 
+static gint
+pseudo_inverse_work_space (CdnDimension const *dim)
+{
+	gint mindim;
+	gint maxdim;
+	gint iwork;
+	gint m;
+	gint n;
+	gdouble rcond = -1;
+	gint rank;
+	gdouble wkopt;
+	gint lwork = -1;
+	gint info;
+	gint lb;
+	gint *llwork;
+	gdouble *A;
+	gdouble *b;
+	gdouble *s;
+
+	m = dim->rows;
+	n = dim->columns;
+
+	if (m < n)
+	{
+		mindim = m;
+		maxdim = n;
+	}
+	else
+	{
+		mindim = n;
+		maxdim = m;
+	}
+
+	iwork = pseudo_inverse_iwork (dim);
+	lb = maxdim;
+
+	A = g_new0 (gdouble, m * n);
+	b = g_new0 (gdouble, lb * lb);
+	s = g_new0 (gdouble, mindim);
+	llwork = g_new0 (gint, iwork);
+
+	// query workspace
+	dgelsd_ (&m,
+	         &n,
+	         &lb,
+	         A,
+	         &m,
+	         b,
+	         &lb,
+	         s,
+	         &rcond,
+	         &rank,
+	         &wkopt,
+	         &lwork,
+	         llwork,
+	         &info);
+
+	g_free (A);
+	g_free (b);
+	g_free (s);
+	g_free (llwork);
+
+	// size for b (lb-by-lb), s (mindim) and work (lwork * 2)
+	return lb * lb + mindim + (gint)wkopt + iwork;
+}
+
 void
 cdn_math_compute_sparsity (CdnMathFunctionType  type,
                            CdnStackArgs const  *inargs,
@@ -2563,7 +2741,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				g_set_error (error,
 				             CDN_COMPILE_ERROR_TYPE,
 				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Cannot invert a non square matrix (%d, %d)",
+				             "Cannot invert a non square matrix (%d, %d) using `inv', use `pinv' instead'",
 				             inargs->args->rows, inargs->args->columns);
 
 				return FALSE;
@@ -2571,6 +2749,18 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 
 			cdn_stack_arg_copy (outarg, inargs->args);
 			*extra_space = inargs->args[0].rows;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_PSEUDO_INVERSE:
+		{
+			gint ws;
+
+			ws = pseudo_inverse_work_space (&inargs->args[0].dimension);
+
+			outarg->rows = inargs->args[0].columns;
+			outarg->columns = inargs->args[0].rows;
+
+			*extra_space = ws;
+		}
 		break;
 		case CDN_MATH_FUNCTION_TYPE_LINSOLVE:
 			// A x = B with A the second arg and B the first
