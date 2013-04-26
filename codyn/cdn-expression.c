@@ -149,7 +149,10 @@ do { \
 \
 	g_printf("\n[%s:%d] %s:\n", __PRETTY_FUNCTION__, __LINE__, s); \
 	for (__i = (instructions); __i; __i = __i->next) { \
-		g_printf("  %s\n", cdn_instruction_to_string (__i->data)); \
+		CdnStackManipulation const *__smanip = cdn_instruction_get_stack_manipulation (__i->data, NULL); \
+		g_printf("  %s [%d-by-%d]\n", \
+		         cdn_instruction_to_string (__i->data), \
+		         __smanip->push.dimension.rows, __smanip->push.dimension.columns); \
 	} \
 } while (0)
 
