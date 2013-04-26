@@ -39,7 +39,7 @@ edge | "@bodies" |
 {
     # Initialize variables in the output of the dynamics edge for the
     # effects of the current node on each output node in the up chain
-    node | output
+    node self | output
     {
         ## Recursively computed total inertial unfluence
         "fh_@@0[!]" = "zeros(6, @bodydof[@@@0[!]])"
