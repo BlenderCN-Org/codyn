@@ -621,7 +621,7 @@ matrix_multiply (CdnStack           *stack,
 	             argdim->args[0].rows,
 	             0,
 	             ptrC,
-	             argdim->args[0].columns);
+	             argdim->args[1].rows);
 #else
 {
 	gint c;
