@@ -9,9 +9,9 @@ node "Spatial"
     Inertia(com, m, I) = "Inertia_(com, m, I, Tilde(com))"
 
     Tilde(v) = "[
-        0, -v[2], v[1];
-        v[2], 0, -v[0];
-        -v[1], v[0], 0
+         0,    -v[2],  v[1];
+         v[2],  0,    -v[0];
+        -v[1],  v[0],  0
     ]"
 
     ## Create a spatial transform from a 3d translation
