@@ -96,14 +96,14 @@ static gint
 compute_index (gdouble const *valuesa,
                gdouble const *valuesb,
                gint           idx,
-               gint           numcc)
+               gint           numr)
 {
 	if (valuesb)
 	{
-		return (gint)rint (valuesa[idx]) * numcc + (gint)rint (valuesb[idx]);
+		return ((gint)(valuesa[idx] + 0.5)) + (gint)(valuesb[idx] + 0.5) * numr;
 	}
 
-	return (gint)rint (valuesa[idx]);
+	return ((gint)(valuesa[idx] + 0.5));
 }
 
 static gboolean
@@ -230,8 +230,8 @@ simplify_inline_matrix_multiply (CdnExpressionTreeIter *iter)
 				CdnExpressionTreeIter *prod;
 
 				prod = iter_new_bfunc (CDN_MATH_FUNCTION_TYPE_MULTIPLY,
-				                       iter->children[0]->children[r * dim1.columns + j],
-				                       iter->children[1]->children[j * dim2.columns + c],
+				                       iter->children[0]->children[j * dim1.rows + r],
+				                       iter->children[1]->children[c * dim2.rows + j],
 				                       FALSE,
 				                       FALSE);
 
@@ -551,7 +551,7 @@ make_mindex_slice (gdouble      const *valuesa,
 		r = (guint)(valuesa[i] + 0.5);
 		c = (guint)(valuesb[i] + 0.5);
 
-		ret[i] = r * retdim->columns + c;
+		ret[i] = c * retdim->rows + r;
 	}
 
 	return ret;
@@ -662,7 +662,7 @@ simplify_index (CdnExpressionTreeIter *iter)
 		idx = compute_index (valuesa,
 		                     valuesb,
 		                     0,
-		                     dimb.columns);
+		                     dimb.rows);
 
 		if (idx < last->num_children)
 		{
@@ -690,7 +690,7 @@ simplify_index (CdnExpressionTreeIter *iter)
 			gint idx;
 			CdnExpressionTreeIter *piter;
 
-			idx = compute_index (valuesa, valuesb, i, dimb.columns);
+			idx = compute_index (valuesa, valuesb, i, dimb.rows);
 
 			if (idx >= last->num_children)
 			{
