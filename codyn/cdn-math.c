@@ -29,7 +29,11 @@
 #include <string.h>
 
 #ifdef HAVE_LAPACK
+#ifdef PLATFORM_OSX
+#include <vecLib/clapack.h>
+#else
 #include <clapack.h>
+#endif
 #endif
 
 #ifdef HAVE_BLAS
@@ -1081,47 +1085,56 @@ op_transpose (CdnStack           *stack,
 }
 
 #ifdef HAVE_LAPACK
+
+#ifdef PLATFORM_OSX
+#define LP_int __CLPK_integer
+#define LP_double __CLPK_doublereal
+#else
+#define LP_int gint
+#define LP_double __CLPK_doublereal
+#endif
+
+#ifndef PLATFORM_OSX
+extern
+extern void dgetrf_ (int *, int *, double *, int *, int *, int *);
+extern void dgetri_ (int *, double *, int *, int *, double *, int *, int *);
+extern void dgelsd_ (int *, int *, int *, double *, int *, double *, int *, double *, double *, int *, double *, int *, int *, int *);
+#endif
+
 static void
 op_inverse (CdnStack           *stack,
             CdnStackArgs const *argdim,
             gpointer            userdata)
 {
-	gint n;
-	gdouble *ptr;
-	gint *ipiv;
-	gint nn;
+	LP_int n;
+	LP_double *ptr;
+	LP_int *ipiv;
+	LP_int nn;
+	LP_int info;
+	LP_double *work;
+	LP_int lwork;
 
 	n = argdim->args[0].rows;
 	nn = n * n;
 
 	ptr = cdn_stack_output_ptr (stack) - nn;
 
-	ipiv = (gint *)(cdn_stack_output_ptr (stack));
+	ipiv = (LP_int *)(cdn_stack_output_ptr (stack));
+	work = cdn_stack_output_ptr (stack) + n;
+	lwork = (cdn_stack_output_ptr (stack) + cdn_stack_size (stack)) - work;
 
-	clapack_dgetrf (CblasColMajor,
-	                n,
-	                n,
-	                ptr,
-	                n,
-	                ipiv);
-
-	clapack_dgetri (CblasColMajor,
-	                n,
-	                ptr,
-	                n,
-	                ipiv);
+	dgetrf_ (&n, &n, ptr, &n, ipiv, &info);
+	dgetri_ (&n, ptr, &n, ipiv, work, &lwork, &info);
 }
 
-extern void dgelsd_ (int *, int *, int *, double *, int *, double *, int *, double *, double *, int *, double *, int *, int *, int *);
-
-static gint
+static LP_int
 pseudo_inverse_iwork (CdnDimension const *dim)
 {
-	gint mindim;
-	gint nlvl;
+	LP_int mindim;
+	LP_int nlvl;
 
 	mindim = dim->rows < dim->columns ? dim->rows : dim->columns;
-	nlvl = (gint)log2(mindim / (25.0 + 1.0)) + 1;
+	nlvl = (LP_int)log2(mindim / (25.0 + 1.0)) + 1;
 
 	if (nlvl < 0)
 	{
@@ -1138,23 +1151,23 @@ op_pseudo_inverse (CdnStack           *stack,
                    CdnStackArgs const *argdim,
                    gpointer            userdata)
 {
-	gint n;
-	gint m;
-	gdouble *A;
-	gdouble *b;
-	gdouble *bptr;
-	gdouble *s;
-	gdouble *work;
-	gint *iwork;
-	gint liwork;
-	gint i;
-	gint rank;
-	gint info;
-	gint worksize;
-	gdouble rcond = -1;
-	gint maxdim;
-	gint mindim;
-	gint lb;
+	LP_int n;
+	LP_int m;
+	LP_double *A;
+	LP_double *b;
+	LP_double *bptr;
+	LP_double *s;
+	LP_double *work;
+	LP_int *iwork;
+	LP_int liwork;
+	LP_int i;
+	LP_int rank;
+	LP_int info;
+	LP_int worksize;
+	LP_double rcond = -1;
+	LP_int maxdim;
+	LP_int mindim;
+	LP_int lb;
 
 	m = argdim->args[0].rows;
 	n = argdim->args[0].columns;
@@ -1182,7 +1195,7 @@ op_pseudo_inverse (CdnStack           *stack,
 
 	// Then comes work and iwork
 	liwork = pseudo_inverse_iwork (&argdim->args[0].dimension);
-	iwork = (gint *)(s + mindim);
+	iwork = (LP_int *)(s + mindim);
 
 	work = s + mindim + liwork;
 	worksize = (cdn_stack_ptr (stack) + cdn_stack_size (stack)) - work;
@@ -1228,11 +1241,16 @@ op_linsolve (CdnStack           *stack,
              CdnStackArgs const *argdim,
              gpointer            userdata)
 {
-	gdouble *ptrA;
-	gdouble *ptrB;
-	gint *ptrIpv;
-	gint numa;
-	gint numb;
+	LP_double *ptrA;
+	LP_double *ptrB;
+	LP_int *ptrIpv;
+	LP_int numa;
+	LP_int numb;
+	LP_int n;
+	LP_int nrhs;
+	LP_int lda;
+	LP_int ldb;
+	LP_int info;
 
 	numa = cdn_stack_arg_size (argdim->args);
 	numb = cdn_stack_arg_size (argdim->args + 1);
@@ -1241,16 +1259,21 @@ op_linsolve (CdnStack           *stack,
 	ptrB = ptrA - numb;
 
 	// Use the extra space we allocated on the stack to write ipv
-	ptrIpv = (gint *)cdn_stack_output_ptr (stack);
+	ptrIpv = (LP_int *)cdn_stack_output_ptr (stack);
 
-	clapack_dgesv (CblasColMajor,
-	               argdim->args[0].rows,
-	               argdim->args[1].columns,
-	               ptrA,
-	               argdim->args[0].columns,
-	               ptrIpv,
-	               ptrB,
-	               argdim->args[0].rows);
+	n = argdim->args[0].rows;
+	nrhs = argdim->args[1].columns;
+	lda = argdim->args[0].columns;
+	ldb = argdim->args[0].rows;
+
+	dgesv_ (&n,
+	        &nrhs,
+	        ptrA,
+	        &lda,
+	        ptrIpv,
+	        ptrB,
+	        &ldb,
+	        &info);
 
 	cdn_stack_popn (stack, numa);
 }
@@ -2260,24 +2283,25 @@ sparsity_multiply (CdnStackArg const *arg1,
 	}
 }
 
-static gint
+#ifdef HAVE_LAPACK
+static LP_int
 pseudo_inverse_work_space (CdnDimension const *dim)
 {
-	gint mindim;
-	gint maxdim;
-	gint iwork;
-	gint m;
-	gint n;
-	gdouble rcond = -1;
-	gint rank;
-	gdouble wkopt;
-	gint lwork = -1;
-	gint info;
-	gint lb;
-	gint *llwork;
-	gdouble *A;
-	gdouble *b;
-	gdouble *s;
+	LP_int mindim;
+	LP_int maxdim;
+	LP_int iwork;
+	LP_int m;
+	LP_int n;
+	LP_double rcond = -1;
+	LP_int rank;
+	LP_double wkopt;
+	LP_int lwork = -1;
+	LP_int info;
+	LP_int lb;
+	LP_int *llwork;
+	LP_double *A;
+	LP_double *b;
+	LP_double *s;
 
 	m = dim->rows;
 	n = dim->columns;
@@ -2296,10 +2320,10 @@ pseudo_inverse_work_space (CdnDimension const *dim)
 	iwork = pseudo_inverse_iwork (dim);
 	lb = maxdim;
 
-	A = g_new0 (gdouble, m * n);
-	b = g_new0 (gdouble, lb * lb);
-	s = g_new0 (gdouble, mindim);
-	llwork = g_new0 (gint, iwork);
+	A = g_new0 (LP_double, m * n);
+	b = g_new0 (LP_double, lb * lb);
+	s = g_new0 (LP_double, mindim);
+	llwork = g_new0 (LP_int, iwork);
 
 	// query workspace
 	dgelsd_ (&m,
@@ -2323,8 +2347,41 @@ pseudo_inverse_work_space (CdnDimension const *dim)
 	g_free (llwork);
 
 	// size for b (lb-by-lb), s (mindim) and work (lwork * 2)
-	return lb * lb + mindim + (gint)wkopt + iwork;
+	return lb * lb + mindim + (LP_int)wkopt + iwork;
 }
+
+static LP_int
+linsolve_work_space (CdnDimension const *dim)
+{
+	LP_int n;
+	LP_int lda;
+	LP_double *A;
+	LP_int *ipiv;
+	LP_double work;
+	LP_int lwork = -1;
+	LP_int info;
+
+	ipiv = g_new0 (LP_int, dim->rows);
+	A = g_new0 (LP_double, cdn_dimension_size (dim));
+
+	n = dim->rows;
+	lda = dim->rows;
+
+	// for pivoting
+	dgetri_ (&n,
+	         A,
+	         &lda,
+	         ipiv,
+	         &work,
+	         &lwork,
+	         &info);
+
+	g_free (A);
+	g_free (ipiv);
+
+	return (LP_int)work + dim->rows;
+}
+#endif
 
 void
 cdn_math_compute_sparsity (CdnMathFunctionType  type,
@@ -2735,6 +2792,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			outarg->rows = inargs->args[0].columns;
 			outarg->columns = inargs->args[0].rows;
 		break;
+#ifdef HAVE_LAPACK
 		case CDN_MATH_FUNCTION_TYPE_INVERSE:
 			if (inargs->args->rows != inargs->args->columns)
 			{
@@ -2751,16 +2809,10 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			*extra_space = inargs->args[0].rows;
 		break;
 		case CDN_MATH_FUNCTION_TYPE_PSEUDO_INVERSE:
-		{
-			gint ws;
-
-			ws = pseudo_inverse_work_space (&inargs->args[0].dimension);
-
 			outarg->rows = inargs->args[0].columns;
 			outarg->columns = inargs->args[0].rows;
 
-			*extra_space = ws;
-		}
+			*extra_space = pseudo_inverse_work_space (&inargs->args[0].dimension);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_LINSOLVE:
 			// A x = B with A the second arg and B the first
@@ -2789,8 +2841,9 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			cdn_stack_arg_copy (outarg, inargs->args + 1);
 
 			// Need extra space to store the pivoting coefficients
-			*extra_space = inargs->args[0].rows;
+			*extra_space = linsolve_work_space (&inargs->args[0].dimension);
 		break;
+#endif
 		case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
 			// A x = B, λ
 			// with order of arguments: B, λ, A

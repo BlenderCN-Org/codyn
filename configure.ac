@@ -197,6 +197,16 @@ AC_ARG_ENABLE([lapack],
 
 have_lapack=no
 
+if test "x$enable_lapack" != "xno" && test "x$platform_osx" = "xyes"; then
+	AC_MSG_CHECKING([for lapack])
+	AC_MSG_RESULT([using vecLib framework])
+
+	LAPACK_LIBS="-framework vecLib"
+	LAPACK_CFLAGS=""
+
+	have_lapack=vecLib
+fi
+
 dnl
 dnl Check for lapack
 dnl
@@ -274,7 +284,7 @@ elif test "x$enable_lapack" = "xauto" && test "x$have_lapack" = "xno"; then
 	AC_MSG_WARN(could not find lapack library)
 fi
 
-if test "$have_lapack" = "yes"; then
+if test "$have_lapack" != "no"; then
 	AC_DEFINE_UNQUOTED([HAVE_LAPACK], [1], [Have lapack support])
 fi
 
