@@ -1,13 +1,16 @@
 # multiplication
 
-## 12
-test_multiply_1 = "3 * 4"
+    ## 12
+    test_multiply_1 = "3 * 4"
 
-## 2 4 3 5
-test_multiply_2 = "[1, 0; 0, 1] * [2, 3; 4, 5]"
+    ## 2 4 3 5
+    test_multiply_2 = "[1, 0; 0, 1] * [2, 3; 4, 5]"
 
-## 2 0 0 5
-test_multiply_3 = "[1, 0; 0, 1] .* [2, 3; 4, 5]"
+    ## 2 0 0 5
+    test_multiply_3 = "[1, 0; 0, 1] .* [2, 3; 4, 5]"
+
+    ## 30
+    test_multiply_4 = "[1 2 3 4] * [1; 2; 3; 4]"
 
 # plus
     ## 7
