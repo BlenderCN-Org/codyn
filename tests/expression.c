@@ -46,108 +46,6 @@ expression_eval ()
 }
 
 static void
-test_operator_multiply ()
-{
-	CdnMatrix const *vals;
-
-	// Simple multiplication
-	expression_initialize ("3 * 4");
-	cdn_assert_tol (expression_eval (), (3 * 4));
-
-	// Matrix multiplication
-	expression_initialize ("[1, 0; 0, 1] * [2, 3; 4, 5]");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 2);
-	g_assert_cmpint (vals->dimension.columns, ==, 2);
-
-	cdn_assert_tol (vals->values[0], 2);
-	cdn_assert_tol (vals->values[1], 4);
-	cdn_assert_tol (vals->values[2], 3);
-	cdn_assert_tol (vals->values[3], 5);
-
-	// Element wise multiplication
-	expression_initialize ("[1, 0; 0, 1] .* [2, 3; 4, 5]");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 2);
-	g_assert_cmpint (vals->dimension.columns, ==, 2);
-
-	cdn_assert_tol (vals->values[0], 2);
-	cdn_assert_tol (vals->values[1], 0);
-	cdn_assert_tol (vals->values[2], 0);
-	cdn_assert_tol (vals->values[3], 5);
-
-}
-
-static void
-test_operator_plus ()
-{
-	CdnMatrix const *vals;
-
-	expression_initialize ("3 + 4");
-	cdn_assert_tol (expression_eval (), (3 + 4));
-
-	expression_initialize ("[1, 2] + [3, 4]");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 2);
-
-	cdn_assert_tol (vals->values[0], 4);
-	cdn_assert_tol (vals->values[1], 6);
-}
-
-static void
-test_operator_minus ()
-{
-	CdnMatrix const *vals;
-
-	expression_initialize ("3 - 4");
-	cdn_assert_tol (expression_eval (), (3 - 4));
-
-	expression_initialize ("[1, 2] - [3, 4]");
-	vals = cdn_expression_evaluate_values (expression);
-
-	g_assert_cmpint (vals->dimension.rows, ==, 1);
-	g_assert_cmpint (vals->dimension.columns, ==, 2);
-
-	cdn_assert_tol (vals->values[0], -2);
-	cdn_assert_tol (vals->values[1], -2);
-}
-
-static void
-test_operator_minus_unary ()
-{
-	expression_initialize ("3 + -4");
-	cdn_assert_tol (expression_eval (), (3 + -4));
-}
-
-static void
-test_priority ()
-{
-	expression_initialize ("3 * 4 + 3");
-	cdn_assert_tol (expression_eval (), (3 * 4 + 3));
-
-	expression_initialize ("3 + 4 * 2");
-	cdn_assert_tol (expression_eval (), (3 + 4 * 2));
-}
-
-static void
-test_function_sin ()
-{
-	expression_initialize ("sin (pi)");
-	cdn_assert_tol (expression_eval (), sin (M_PI));
-}
-
-static void
-test_function_varargs ()
-{
-	expression_initialize ("max (0, 2 * pi)");
-	cdn_assert_tol (expression_eval (), 2 * M_PI);
-}
-
-static void
 test_complex ()
 {
 	CdnObject *obj = CDN_OBJECT (cdn_node_new (NULL));
@@ -172,22 +70,6 @@ test_complex ()
 	cdn_assert_tol (expression_eval (), 1 * sin (2) + 2 * 3 * M_PI);
 
 	g_object_unref (obj);
-}
-
-static void
-test_scientific_notation ()
-{
-	expression_initialize ("1e-2");
-	cdn_assert_tol (expression_eval (), 1e-2);
-
-	expression_initialize ("1e+20");
-	cdn_assert_tol (expression_eval (), 1e+20);
-
-	expression_initialize ("1.25e-5");
-	cdn_assert_tol (expression_eval (), 1.25e-5);
-
-	expression_initialize ("10.2523e+4");
-	cdn_assert_tol (expression_eval (), 10.2523e+4);
 }
 
 static void
@@ -231,21 +113,9 @@ test_globals ()
 }
 
 static void
-test_lerp ()
+test_math ()
 {
-	cdn_test_variables_with_annotated_output_from_path ("test_lerp.cdn");
-}
-
-static void
-test_clip ()
-{
-	cdn_test_variables_with_annotated_output_from_path ("test_clip.cdn");
-}
-
-static void
-test_cycle ()
-{
-	cdn_test_variables_with_annotated_output_from_path ("test_cycle.cdn");
+	cdn_test_variables_with_annotated_output_from_path ("test_math.cdn");
 }
 
 int
@@ -260,21 +130,10 @@ main (int   argc,
 
 	cdn_debug_init ();
 
-	g_test_add_func ("/expression/operator_multiply", test_operator_multiply);
-	g_test_add_func ("/expression/operator_plus", test_operator_plus);
-	g_test_add_func ("/expression/operator_minus", test_operator_minus);
-	g_test_add_func ("/expression/operator_minus_unary", test_operator_minus_unary);
-	g_test_add_func ("/expression/priority", test_priority);
-	g_test_add_func ("/expression/function_sin", test_function_sin);
+	g_test_add_func ("/expression/math", test_math);
 	g_test_add_func ("/expression/complex", test_complex);
-	g_test_add_func ("/expression/function_varargs", test_function_varargs);
-	g_test_add_func ("/expression/scientific_notation", test_scientific_notation);
 	g_test_add_func ("/expression/random", test_random);
 	g_test_add_func ("/expression/globals", test_globals);
-
-	g_test_add_func ("/expression/lerp", test_lerp);
-	g_test_add_func ("/expression/clip", test_clip);
-	g_test_add_func ("/expression/cycle", test_cycle);
 
 	g_test_run ();
 
