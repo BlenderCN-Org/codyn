@@ -42,16 +42,16 @@ edge | "@bodies" |
     node self | output
     {
         ## Recursively computed total inertial unfluence
-        "fh_@@0[!]" = "zeros(6, @bodydof[@@@0[!]])"
+        "fh_@0[!]" = "zeros(6, @bodydof[$(@@0[!] + 1)])"
 
-        "H_@@0[!]" = "motionSubspaceT ∙ fh_@@@0[!]"
+        "H_@0[!]" = "motionSubspaceT ∙ fh_@@0[!]"
     }
 
     # Add a calculation for fh_@@0 (i.e. this) is then recursively calculated
     # from bottom to top
 
     ## Inertial influence transformed in parent coordinates
-    "fh_@@0[!]" <= "transformT ∙ fh_@@@0[!]"
+    "fh_@0[!]" <= "transformT ∙ fh_@@0[!]"
 }
 
 # Add computation of IC in the dynamics edge
