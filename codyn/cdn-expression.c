@@ -150,9 +150,16 @@ do { \
 	g_printf("\n[%s:%d] %s:\n", __PRETTY_FUNCTION__, __LINE__, s); \
 	for (__i = (instructions); __i; __i = __i->next) { \
 		CdnStackManipulation const *__smanip = cdn_instruction_get_stack_manipulation (__i->data, NULL); \
-		g_printf("  %s [%d-by-%d]\n", \
+		gint __j; \
+		g_printf("  %s [%d-by-%d]", \
 		         cdn_instruction_to_string (__i->data), \
 		         __smanip->push.dimension.rows, __smanip->push.dimension.columns); \
+		for (__j = 0; __j < __smanip->pop.num; ++__j) { \
+			g_printf (", (%d-by-%d)", \
+			          __smanip->pop.args[__j].dimension.rows, \
+			          __smanip->pop.args[__j].dimension.columns); \
+		} \
+		g_printf("\n"); \
 	} \
 } while (0)
 
