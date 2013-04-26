@@ -1441,10 +1441,10 @@ static FunctionEntry function_entries[] = {
 	{"lindex", op_lindex, 3, FALSE},
 	{"transpose", op_transpose, 1, FALSE},
 #ifdef HAVE_LAPACK
-	{"inverse", op_inverse, 1, FALSE},
+	{"inv", op_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
 #else
-	{"inverse", op_noop, 1, FALSE},
+	{"inv", op_noop, 1, FALSE},
 	{"linsolve", op_noop, 2, FALSE},
 
 #endif
