@@ -2926,8 +2926,8 @@ matrix_vcat (CdnExpression      *expression,
 			if (retdim.rows > 0)
 			{
 				CdnStackArg varg[2] = {
-					CDN_STACK_ARG(0, 0),
-					CDN_STACK_ARG(0, 0)
+					CDN_STACK_ARG(row->dimension.rows, row->dimension.columns),
+					CDN_STACK_ARG(retdim.rows, retdim.columns)
 				};
 
 				CdnStackArgs vargs = {
