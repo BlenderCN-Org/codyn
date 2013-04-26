@@ -2908,6 +2908,8 @@ matrix_vcat (CdnExpression      *expression,
 				// because we build a reversed order result
 				vcat = g_slist_concat (vcat, g_slist_reverse (stack->data));
 				stack = g_slist_delete_link (stack, stack);
+
+				++i;
 			}
 
 			// Add matrix instruction to group it all together if needed
