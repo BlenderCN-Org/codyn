@@ -6,7 +6,7 @@ AM_CPPFLAGS =				\
 	-I$(top_srcdir)			\
 	$(CODYN_CFLAGS)
 
-TEST_PROGS = expression network direct import template object node variable operator integrator interface
+TEST_PROGS = expression network direct import template object node variable operator integrator interface matrix indices
 
 #TEST_PROGS += file
 
@@ -47,6 +47,12 @@ integrator_LDADD = $(progs_ldadd)
 interface_SOURCES = interface.c utils.h utils.c
 interface_LDADD = $(progs_ldadd)
 
+matrix_SOURCES = matrix.c utils.h utils.c
+matrix_LDADD = $(progs_ldadd)
+
+indices_SOURCES = indices.c utils.h utils.c
+indices_LDADD = $(progs_ldadd)
+
 #file_SOURCES = file.c utils.h utils.c
 #file_LDADD = $(progs_ldadd)
 
@@ -59,6 +65,8 @@ EXTRA_DIST = \
 	test_node_integrate_multiple_euler.cdn \
 	test_interface_templates.cdn \
 	test_input.txt \
-	test_file.cdn
+	test_file.cdn \
+	test_matrix.cdn \
+	test_math.cdn
 
 -include $(top_srcdir)/git.mk

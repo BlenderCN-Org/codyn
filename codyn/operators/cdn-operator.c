@@ -745,7 +745,7 @@ cdn_operator_get_primary_function (CdnOperator *op)
 				}
 				else
 				{
-					gint val = rint (cdn_expression_evaluate (idx->data));
+					gint val = (gint)(cdn_expression_evaluate (idx->data) + 0.5);
 
 					g_array_append_val (ret, val);
 					++num;

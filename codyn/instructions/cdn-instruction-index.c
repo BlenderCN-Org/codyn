@@ -213,9 +213,9 @@ execute_range_block (CdnInstructionIndex *self,
 	gboolean needcpy;
 	gdouble *readptr;
 	gdouble *writeptr;
-	gint ridx;
-	gint nc;
-	gint r;
+	gint cidx;
+	gint nr;
+	gint c;
 
 	needcpy = self->priv->block.rows.step < 0 ||
 	          self->priv->block.columns.step < 0;
@@ -223,7 +223,7 @@ execute_range_block (CdnInstructionIndex *self,
 	readptr = cdn_stack_output_ptr (stack) -
 	          cdn_stack_arg_size (self->priv->smanip.pop.args);
 
-	nc = self->priv->smanip.pop.args[0].columns;
+	nr = self->priv->smanip.pop.args[0].rows;
 
 	if (needcpy)
 	{
@@ -234,20 +234,20 @@ execute_range_block (CdnInstructionIndex *self,
 		writeptr = readptr;
 	}
 
-	ridx = self->priv->block.rows.start * nc;
+	cidx = self->priv->block.columns.start * nr;
 
-	for (r = 0; r < self->priv->block.nrows; ++r)
+	for (c = 0; c < self->priv->block.ncolumns; ++c)
 	{
-		gint c;
-		gint cidx = self->priv->block.columns.start;
+		gint r;
+		gint ridx = self->priv->block.rows.start;
 
-		for (c = 0; c < self->priv->block.ncolumns; ++c)
+		for (r = 0; r < self->priv->block.nrows; ++r)
 		{
 			*writeptr++ = readptr[ridx + cidx];
-			cidx += self->priv->block.columns.step;
+			ridx += self->priv->block.rows.step;
 		}
 
-		ridx += self->priv->block.rows.step * nc;
+		cidx += self->priv->block.columns.step * nr;
 	}
 
 	if (needcpy)
@@ -764,24 +764,24 @@ cdn_instruction_index_write_indices (CdnInstructionIndex *instr,
 	}
 	case CDN_INSTRUCTION_INDEX_TYPE_RANGE_BLOCK:
 	{
-		gint ridx = instr->priv->block.rows.start;
-		gint r;
+		gint cidx = instr->priv->block.columns.start;
+		gint c;
 
-		for (r = 0; r < instr->priv->block.nrows; ++r)
+		for (c = 0; c < instr->priv->block.ncolumns; ++c)
 		{
-			gint cidx = instr->priv->block.columns.start;
-			gint c;
+			gint ridx = instr->priv->block.rows.start;
+			gint r;
 			gint lridx;
 
-			lridx = ridx * dim->columns;
+			lridx = cidx * dim->rows;
 
-			for (c = 0; c < instr->priv->block.ncolumns; ++c)
+			for (r = 0; r < instr->priv->block.nrows; ++r)
 			{
-				*indices++ = lridx + cidx;
-				cidx += instr->priv->block.columns.step;
+				*indices++ = lridx + ridx;
+				ridx += instr->priv->block.rows.step;
 			}
 
-			ridx += instr->priv->block.rows.step;
+			cidx += instr->priv->block.columns.step;
 		}
 
 		break;

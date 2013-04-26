@@ -10,9 +10,9 @@ node "node"
     x = 0 | integrated
   }
 
-  edge "state_to_state_1" from "state_1" to "state_1"
+  edge "state_1_to_state_1" from "state_1" to "state_1"
   {
-    x <= 1
+    x' += 1
   }
 
   interface
@@ -23,7 +23,7 @@ node "node"
 
 edge "state_1_to_node" from "node" to "node"
 {
-  x <= 0
+  x' += 1
 }
 
 # vi:ex:ts=2:et

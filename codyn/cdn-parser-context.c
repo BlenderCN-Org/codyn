@@ -1305,7 +1305,7 @@ parse_action_index (gchar const *target, CdnExpression **index)
 		{
 			l = g_strndup (ptr + 1, strlen (ptr) - 2);
 
-			comp = g_strdup_printf ("lindex(%s, size(output.%s)[1])",
+			comp = g_strdup_printf ("lindex(%s, size(output.%s, 0))",
 			                        l,
 			                        name);
 
@@ -1964,18 +1964,12 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 
 				if (!decom)
 				{
-					gchar *comp;
-
-					comp = cdn_compose_dot (name, 1);
-
 					parser_failed (context,
 					               CDN_STATEMENT (target),
 					               CDN_NETWORK_LOAD_ERROR_SYNTAX,
-					               "`%s' does not appear to be a differential variable, did you mean %s?",
+					               "`%s' does not appear to be a differential variable, did you mean %s'?",
 					               name,
-					               comp);
-
-					g_free (comp);
+					               name);
 					return;
 				}
 
