@@ -2736,7 +2736,7 @@ matrix_reorder_flat (GSList              *ret,
 	{
 		CdnStackArg arg[2] = {
 			CDN_STACK_ARG(retdim->rows, retdim->columns),
-			CDN_STACK_ARG(dim->rows, dim->columns)
+			CDN_STACK_ARG(rrows, dim->columns)
 		};
 
 		CdnStackArgs vargs = {
