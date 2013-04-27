@@ -1313,6 +1313,11 @@ op_linsolve (CdnStack           *stack,
 }
 #endif
 
+/* slinsolve_factorize factorizes a matrix A into LᵀDL. It computes the lower
+ * unit triangular matrix L and the diagonal matrix D in place in the matrix
+ * A. L is a list of indices describing the kinematic tree from which the
+ * sparsity of A is induced.
+ */
 static void
 slinsolve_factorize (gdouble *A,
                      gdouble *L,
@@ -1320,7 +1325,6 @@ slinsolve_factorize (gdouble *A,
 {
 	gint k;
 
-	// First perform LTDL factorization of A exploiting sparsity
 	for (k = n - 1; k >= 0; --k)
 	{
 		gint i = (gint)L[k];
@@ -1353,7 +1357,6 @@ slinsolve_factorize (gdouble *A,
 
 			// H_{ki} = a
 			A[ki] = a;
-
 			i = (gint)L[i];
 		}
 	}
@@ -1368,12 +1371,19 @@ slinsolve_backsubs (gdouble *ptrA,
                     gint     idx)
 {
 	gint i;
+	gint diag;
 
-	// First solve for b = L^-T b
+	diag = n * n - 1;
+
+	// First solve for b = D^-1 L^-T b
 	// see Sparce Factorization Algorithms, page 115
 	for (i = n - 1; i >= 0; --i)
 	{
 		gint j;
+
+		// Apply D-1 from the diagonal elements if ptrA
+		ptrB[i] /= ptrA[diag];
+		diag -= n + 1;
 
 		j = (gint)ptrL[i];
 
