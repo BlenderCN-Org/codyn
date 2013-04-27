@@ -146,10 +146,12 @@ AC_DEFINE_UNQUOTED([API_VERSION], ["$CODYN_API_VERSION"], [API version])
 
 AC_CHECK_LIB([termcap],
              [tgetent],
-              [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -ltermcap"
-               CDN_CONTEXT_LIBS="$CDN_CONTEXT_LIBS -ltermcap"
-               CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltermcap"
-               AC_DEFINE_UNQUOTED([ENABLE_TERMCAP], [1], [Termcap support])],
+             [AC_CHECK_HEADER([termcap.h],
+                              [CDN_PARSER_LIBS="$CDN_PARSER_LIBS -ltermcap"
+                               CDN_CONTEXT_LIBS="$CDN_CONTEXT_LIBS -ltermcap"
+                               CDN_ARCHIVE_LIBS="$CDN_ARCHIVE_LIBS -ltermcap"
+                               AC_DEFINE_UNQUOTED([ENABLE_TERMCAP], [1], [Termcap support])],
+                              [])],
              [])
 
 AC_ARG_ENABLE([framework],
