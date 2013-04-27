@@ -919,8 +919,13 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 			return ret;
 		}
 
+		cdn_expression_get_dimension (action->priv->equation,
+		                              &edim);
+
 		if (action->priv->index)
 		{
+			CdnDimension idim;
+
 			if (!cdn_expression_compile (action->priv->index,
 			                             context,
 			                             error))
@@ -938,10 +943,35 @@ cdn_edge_action_compile (CdnEdgeAction     *action,
 				g_object_unref (context);
 				return FALSE;
 			}
-		}
 
-		cdn_expression_get_dimension (action->priv->equation,
-		                              &edim);
+			cdn_expression_get_dimension (action->priv->index, &idim);
+
+			if (!cdn_dimension_equal (&edim, &idim))
+			{
+				if (error)
+				{
+					GError *gerror;
+
+					gerror = g_error_new (CDN_COMPILE_ERROR_TYPE,
+					                      CDN_COMPILE_ERROR_INVALID_DIMENSION,
+					                      "The edge action index dimensions (%d-by-%d) do not correspond to the dimensions of the action equation (%d-by-%d)",
+					                      idim.rows, idim.columns,
+					                      edim.rows, edim.columns);
+
+					cdn_compile_error_set (error,
+					                       gerror,
+					                       CDN_OBJECT (action->priv->link),
+					                       NULL,
+					                       action,
+					                       NULL);
+
+					g_error_free (gerror);
+				}
+
+				g_object_unref (context);
+				return FALSE;
+			}
+		}
 
 		cdn_expression_get_dimension (cdn_variable_get_expression (action->priv->property),
 		                              &dim);
