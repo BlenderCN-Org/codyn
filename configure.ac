@@ -214,7 +214,7 @@ dnl Check for lapack
 dnl
 if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 	AC_CHECK_LIB([lapack],
-	             [clapack_dgetri],
+	             [dgelsd_],
 	             [LAPACK_LIBS="-llapack"
 	              have_lapack=yes],
 	             [])
@@ -231,7 +231,7 @@ if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 		AS_UNSET([ac_cv_lib_lapack_clapack_dgetri])
 
 		AC_CHECK_LIB([lapack],
-		             [clapack_dgetri],
+		             [dgelsd_],
 		             [LAPACK_LIBS="-L$dir/atlas -llapack"
 		              have_lapack=yes],
 		             [])
@@ -249,7 +249,7 @@ dnl Check for lapack_atlas, last resort
 dnl
 if test "x$enable_lapack" != "xno" && test "x$have_lapack" = "xno"; then
 	AC_CHECK_LIB([lapack_atlas],
-	             [clapack_dgetri],
+	             [dgelsd_],
 	             [LAPACK_LIBS="-llapack_atlas"
 	              have_lapack=yes],
 	             [])
