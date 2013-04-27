@@ -1091,14 +1091,48 @@ op_transpose (CdnStack           *stack,
 #define LP_double __CLPK_doublereal
 #else
 #define LP_int gint
-#define LP_double __CLPK_doublereal
+#define LP_double gdouble
 #endif
 
 #ifndef PLATFORM_OSX
-extern
-extern void dgetrf_ (int *, int *, double *, int *, int *, int *);
-extern void dgetri_ (int *, double *, int *, int *, double *, int *, int *);
-extern void dgelsd_ (int *, int *, int *, double *, int *, double *, int *, double *, double *, int *, double *, int *, int *, int *);
+extern void dgetrf_ (LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *,
+                     LP_int *);
+
+extern void dgetri_ (LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *);
+
+extern void dgelsd_ (LP_int *,
+                     LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *,
+                     LP_int *);
+
+extern void dgesv_ (LP_int *,
+                    LP_int *,
+                    LP_double *,
+                    LP_int *,
+                    LP_int *,
+                    LP_double *,
+                    LP_int *,
+                    LP_int *);
 #endif
 
 static void
