@@ -54,6 +54,7 @@ struct _CdnEdgeActionPrivate
 	guint disposing : 1;
 	guint integrated : 1;
 	guint integrated_set : 1;
+	guint adds : 1;
 };
 
 /* Properties */
@@ -1007,3 +1008,20 @@ _cdn_edge_action_get_integrated (CdnEdgeAction *action,
 
 	return action->priv->integrated_set;
 }
+
+void
+cdn_edge_action_set_adds (CdnEdgeAction *action,
+                          gboolean       adds)
+{
+	g_return_if_fail (CDN_IS_EDGE_ACTION (action));
+	
+	action->priv->adds = adds;
+}
+
+gboolean
+cdn_edge_action_get_adds (CdnEdgeAction *action)
+{
+	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), FALSE);
+	return action->priv->adds;
+}
+

@@ -152,7 +152,7 @@ void                   cdn_parser_context_add_action           (CdnParserContext
                                                                 GPtrArray                  *target,
                                                                 GPtrArray                  *expression,
                                                                 CdnEmbeddedString          *phases,
-                                                                gboolean                    integrated);
+                                                                gboolean                    added);
 
 void                   cdn_parser_context_add_polynomial       (CdnParserContext           *context,
                                                                 CdnEmbeddedString          *name,

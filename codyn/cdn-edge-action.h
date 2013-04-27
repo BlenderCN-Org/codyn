@@ -76,6 +76,10 @@ void           _cdn_edge_action_set_integrated (CdnEdgeAction *action,
 gboolean       _cdn_edge_action_get_integrated (CdnEdgeAction *action,
                                                 gboolean      *integrated);
 
+void           cdn_edge_action_set_adds      (CdnEdgeAction *action,
+                                              gboolean       adds);
+gboolean       cdn_edge_action_get_adds      (CdnEdgeAction *action);
+
 CdnEdgeAction *cdn_edge_action_copy          (CdnEdgeAction *action);
 
 const gchar   *cdn_edge_action_get_target    (CdnEdgeAction *action);

@@ -652,7 +652,8 @@ static void
 sum_values (gdouble       *values,
             gdouble const *s,
             gint const    *indices,
-            gint           num)
+            gint           num,
+            gboolean       dosum)
 {
 	gint i;
 
@@ -662,7 +663,14 @@ sum_values (gdouble       *values,
 
 		idx = indices ? indices[i] : i;
 
-		values[idx] += s[i];
+		if (dosum)
+		{
+			values[idx] += s[i];
+		}
+		else
+		{
+			values[idx] = s[i];
+		}
 	}
 }
 
@@ -687,13 +695,13 @@ evaluate_notify (CdnExpression *expression,
 		CdnMatrix const *values;
 
 		indices = cdn_edge_action_get_indices (action, &num_indices);
-
 		values = cdn_expression_evaluate_values (expr);
 
 		sum_values (cdn_matrix_get_memory (update),
 		            cdn_matrix_get (values),
 		            indices,
-		            indices ? num_indices : cdn_matrix_size (values));
+		            indices ? num_indices : cdn_matrix_size (values),
+		            cdn_edge_action_get_adds (action));
 	}
 
 	cdn_variable_set_values (info->variable, update);

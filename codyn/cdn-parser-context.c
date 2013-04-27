@@ -1895,7 +1895,7 @@ cdn_parser_context_add_action (CdnParserContext  *context,
                                GPtrArray         *targetptr,
                                GPtrArray         *expressionptr,
                                CdnEmbeddedString *phase,
-                               gboolean           integrated)
+                               gboolean           added)
 {
 	GSList *item;
 	GSList *objects;
@@ -1951,24 +1951,25 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 			gchar *name;
 			CdnExpression *index;
 			CdnExpansionContext *pctx;
+			gint order;
+			gchar *decom;
+			gboolean integrated = FALSE;
 
 			extarget = cdn_expansion_get (iteme->data, 0);
 			name = parse_action_index (extarget, &index);
 
-			if (integrated)
+			decom = cdn_decompose_dot (name, &order);
+			
+			if (decom)
 			{
-				gint order;
-				gchar *decom;
+				integrated = TRUE;
 
-				decom = cdn_decompose_dot (name, &order);
-
-				if (!decom)
+				if (!added)
 				{
 					parser_failed (context,
 					               CDN_STATEMENT (target),
 					               CDN_NETWORK_LOAD_ERROR_SYNTAX,
-					               "`%s' does not appear to be a differential variable, did you mean %s'?",
-					               name,
+					               "Use %s' += instead of <= for differential equations",
 					               name);
 					return;
 				}
@@ -2023,6 +2024,7 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 
 			cdn_edge_action_set_index (action, index);
 			_cdn_edge_action_set_integrated (action, integrated);
+			cdn_edge_action_set_adds (action, added);
 
 			if (annotation && *annotation)
 			{
