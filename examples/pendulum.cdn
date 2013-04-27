@@ -16,7 +16,6 @@ node "system"
     {
                           m = "1"
                         com = "[0; 0; -0.5]"
-        coordinateTransform = "Spatial.Translate([0, 0, -1])"
 
                           q = "0.5 * pi"
 
@@ -24,6 +23,11 @@ node "system"
         {
             at 0, $(@1 * 3)
         }
+    }
+    
+    node "p{2:@n}"
+    {
+        coordinateTransform = "Spatial.Translate([0, 0, -1])"
     }
 
     edge from "p{1:@n}" to "p$(@1 + 1)" : physics.joint {}
