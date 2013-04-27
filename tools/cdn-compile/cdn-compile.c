@@ -120,7 +120,7 @@ display_variable (CdnVariable *v)
 				g_printf (", ");
 			}
 
-			sv = g_strdup_printf ("%.5f", values[i]);
+			sv = g_strdup_printf ("%.5f", cdn_matrix_get_at (ret, r, c));
 
 			if (sv[0] != '-')
 			{
