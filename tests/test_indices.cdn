@@ -160,7 +160,7 @@ node "direct_coupling_right"
 
 edge from "direct_coupling_left" to "direct_coupling_right"
 {
-    a[2, 1] <= "a[0, 2]"
+    a[2, 1] <= "a[[0, 2]]"
 }
 
 node "direct_edge_chain{1:5}"
