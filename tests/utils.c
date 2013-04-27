@@ -455,7 +455,7 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 	CdnNetwork *network;
 	GError *error = NULL;
 	CdnCompileError *err;
-	GSList const *variables;
+	GSList *variables;
 	GSList *monitors;
 	gboolean monitored;
 
@@ -478,8 +478,9 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 		test_monitor (monitors->data, file, func, line);
 		monitors = g_slist_delete_link (monitors, monitors);
 	}
-
-	variables = cdn_object_get_variables (CDN_OBJECT (network));
+	
+	variables = cdn_node_find_variables (CDN_NODE (network),
+	                                     "recurse(children) | variables");
 
 	while (variables)
 	{
@@ -490,7 +491,7 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 		CdnMatrix const *vals;
 		gint i;
 
-		variables = g_slist_next (variables);
+		variables = g_slist_delete_link (variables, variables);
 
 		if (monitored && cdn_variable_get_integrated (v))
 		{
@@ -510,7 +511,7 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 
 		vals = cdn_variable_get_values (v);
 
-		g_printf ("   - Testing %s ... ", cdn_variable_get_name (v));
+		g_printf ("   - Testing %s ... ", cdn_variable_get_full_name_for_display (v));
 
 		if (cdn_matrix_size (vals) != l)
 		{
