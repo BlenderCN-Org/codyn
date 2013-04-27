@@ -2679,20 +2679,6 @@ selector_select_pseudo (CdnSelector *self,
 		case CDN_SELECTOR_PSEUDO_TYPE_TYPE:
 			return selector_pseudo_type (parent);
 		break;
-		case CDN_SELECTOR_PSEUDO_TYPE_SELF:
-			if (parent && parent->data)
-			{
-				/* Keep the context from the first parent */
-				return g_slist_prepend (NULL,
-				                        expand_obj (parent->data,
-				                                    cdn_selection_get_object (self->priv->self)));
-			}
-			else
-			{
-				return g_slist_prepend (NULL,
-				                        cdn_selection_ref (self->priv->self));
-			}
-		break;
 		case CDN_SELECTOR_PSEUDO_TYPE_DEBUG:
 			return debug_selections (self, selector, parent);
 		break;
@@ -2710,6 +2696,13 @@ selector_select_pseudo (CdnSelector *self,
 				                                    self->priv->root ?
 				                                    self->priv->root :
 				                                    top_parent (cdn_selection_get_object (self->priv->self))));
+			}
+		break;
+		case CDN_SELECTOR_PSEUDO_TYPE_SELF:
+			if (!parent)
+			{
+				return g_slist_prepend (NULL,
+				                        cdn_selection_ref (self->priv->self));
 			}
 		break;
 		case CDN_SELECTOR_PSEUDO_TYPE_TEMPLATES_ROOT:
@@ -2778,12 +2771,15 @@ selector_select_pseudo (CdnSelector *self,
 				}
 			}
 			break;
+			case CDN_SELECTOR_PSEUDO_TYPE_SELF:
+				ret = g_slist_prepend (ret,
+				                       expand_obj (sel,
+				                                   cdn_selection_get_object (self->priv->self)));
+			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_CHILDREN:
-			{
 				ret = g_slist_concat (children_reverse (sel,
 				                                        obj),
 				                      ret);
-			}
 			break;
 			case CDN_SELECTOR_PSEUDO_TYPE_SIBLINGS:
 			{
