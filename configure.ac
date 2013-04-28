@@ -189,8 +189,11 @@ fi
 
 AM_CONDITIONAL(ENABLE_ARCHIVE, test "x$have_tar" = "xyes")
 
+adl_RECURSIVE_EVAL($bindir, EXPANDED_BINDIR)
 adl_RECURSIVE_EVAL($libdir, EXPANDED_LIBDIR)
 adl_RECURSIVE_EVAL($includedir, EXPANDED_INCLUDEDIR)
+
+AC_SUBST(EXPANDED_BINDIR)
 
 AC_ARG_ENABLE([lapack],
 	AS_HELP_STRING([--disable-lapack],[Enable lapack support (default: enabled)]),
@@ -545,6 +548,7 @@ win32/Makefile
 win32/make-zip
 tools/Makefile
 tools/cdn-monitor/Makefile
+tools/cdn-monitor/cdn-monitor-i
 tools/cdn-parser/Makefile
 tools/cdn-render/Makefile
 tools/cdn-context/Makefile

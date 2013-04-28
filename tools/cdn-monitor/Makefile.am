@@ -7,6 +7,7 @@ AM_CPPFLAGS =			\
 	$(CODYN_CFLAGS)
 
 bin_PROGRAMS = cdn-monitor
+bin_SCRIPTS = cdn-monitor-i
 
 cdn_monitor_SOURCES = \
 	cdn-monitor.c \

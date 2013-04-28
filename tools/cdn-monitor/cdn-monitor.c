@@ -729,6 +729,124 @@ cleanup ()
 	g_free (delimiter);
 }
 
+static gchar **
+parse_interactive_flags (gchar const  *filename,
+                         gint         *l,
+                         GError      **error)
+{
+	gchar **ret = NULL;
+	GFile *f;
+	GFileInputStream *s;
+	GDataInputStream *d;
+	gboolean seencomment = FALSE;
+
+	*l = 0;
+	f = g_file_new_for_commandline_arg (filename);
+
+	s = g_file_read (f, NULL, error);
+
+	if (!s)
+	{
+		g_object_unref (f);
+		return NULL;
+	}
+
+	d = g_data_input_stream_new (G_INPUT_STREAM (s));
+
+	while (TRUE)
+	{
+		gchar *line;
+		gchar *ptr;
+		gsize n;
+		gboolean isempty = TRUE;
+
+		line = g_data_input_stream_read_line (d, &n, NULL, error);
+
+		// Skip spaces
+		for (ptr = line; ptr && *ptr; ptr = g_utf8_next_char (ptr))
+		{
+			gunichar c = g_utf8_get_char (ptr);
+
+			if (!g_unichar_isspace (c))
+			{
+				isempty = FALSE;
+
+				if (c != '#')
+				{
+					// Not a comment, break out
+					g_free (line);
+					line = NULL;
+				}
+				else
+				{
+					// Skip hash
+					ptr = g_utf8_next_char (ptr);
+				}
+
+				break;
+			}
+		}
+
+		if (line == NULL || (seencomment && isempty))
+		{
+			break;
+		}
+
+		if (g_utf8_get_char (ptr) != '!' || seencomment)
+		{
+			gint nargs;
+			gchar **argvp;
+
+			seencomment = TRUE;
+
+			// Parse command line arguments from the line
+			if (!g_shell_parse_argv (ptr, &nargs, &argvp, error))
+			{
+				g_strfreev (ret);
+
+				ret = NULL;
+				*l = 0;
+
+				g_free (line);
+				break;
+			}
+
+			if (!ret)
+			{
+				ret = argvp;
+				*l = nargs;
+			}
+			else
+			{
+				gchar **tmp = ret;
+				gint i;
+
+				ret = g_new0 (gchar *, *l + nargs + 1);
+
+				for (i = 0; i < *l; ++i)
+				{
+					ret[i] = tmp[i];
+				}
+
+				g_free (tmp);
+
+				for (i = 0; i < nargs; ++i)
+				{
+					ret[*l + i] = argvp[i];
+				}
+
+				g_free (argvp);
+				*l += nargs;
+			}
+		}
+	}
+
+	g_object_unref (s);
+	g_object_unref (f);
+
+	return ret;
+}
+
 int
 main (int argc,
       char *argv[])
@@ -745,36 +863,69 @@ main (int argc,
 	setlocale (LC_ALL, "");
 
 	monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)cdn_monitored_free);
-
 	delimiter = g_strdup ("\t");
 
 	ctx = g_option_context_new ("-m <SELECTOR> [-m ...] [-v RANGE...] [NETWORK] - monitor Codyn network");
 	g_option_context_set_summary (ctx, "Omit the network name or use a dash '-' to read from standard input.");
 	g_option_context_add_main_entries (ctx, entries, NULL);
 
-	if (!g_option_context_parse (ctx, &argc, &argv, &error))
+	if (argc == 3 && (strcmp (argv[1], "-i") == 0 || strcmp (argv[1], "--interactive") == 0))
 	{
-		g_printerr ("Failed to parse options: %s\n", error->message);
-		g_error_free (error);
-		cleanup ();
+		// Interactive mode. The second argument is the filename to monitor. Extract
+		// arguments from its first comments
+		gchar **args;
+		gint nargs;
 
-		return 1;
-	}
+		file = argv[2];
 
-	if (argc == 1)
-	{
-		file = "-";
-	}
-	else if (argc == 2)
-	{
-		file = argv[1];
+		args = parse_interactive_flags (file, &nargs, &error);
+
+		if (error != NULL)
+		{
+			g_printerr ("Failed to parse interactive flags: %s\n", error->message);
+			g_error_free (error);
+			cleanup ();
+
+			return 1;
+		}
+
+		if (!g_option_context_parse (ctx, &nargs, &args, &error))
+		{
+			g_printerr ("Failed to parse options: %s\n", error->message);
+			g_error_free (error);
+			cleanup ();
+
+			return 1;
+		}
+
+		g_strfreev (args);
 	}
 	else
 	{
-		g_printerr ("Too many arguments. Please provide at most one network to monitor\n");
-		cleanup ();
+		if (!g_option_context_parse (ctx, &argc, &argv, &error))
+		{
+			g_printerr ("Failed to parse options: %s\n", error->message);
+			g_error_free (error);
+			cleanup ();
 
-		return 1;
+			return 1;
+		}
+
+		if (argc == 1)
+		{
+			file = "-";
+		}
+		else if (argc == 2)
+		{
+			file = argv[1];
+		}
+		else
+		{
+			g_printerr ("Too many arguments. Please provide at most one network to monitor\n");
+			cleanup ();
+
+			return 1;
+		}
 	}
 
 	ret = monitor_network (file);
