@@ -66,11 +66,14 @@ edge "HC_@bodies" from   @1
             # Compute the indices of this childs' DOF (in column and row)
             ic = "@{@bodydofidx[$(@fh[1] + 1)]:+$(@bodydof[$(@fh[1] + 1)] - 1)||@0\,@1}"
             ir = "@{@ic||@0;@1}"
+
+            lir = "$(@ir >= @jc ? @ir : @jc)"
+            lic = "$(@ir >= @jc ? @jc : @ir)"
         }
 
         ## Write H from the body into the appropriate part of the dynamics H
         ## matrix
-        "H[[@ir, @jc], [@jc, @ir]]" <= "[H_@fh[1], H_@fh[1]]"
+        "H[[@lir], [@lic]]" <= "H_@fh[1]"
     }
 
     # Fill column of the jacobian
