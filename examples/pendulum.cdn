@@ -19,8 +19,8 @@ node "system"
     {
                           m = "1"
                         com = "[0; 0; -0.5]"
-
                           q = "0.5 * pi"
+                          τ = "-0.1 * dq"
 
         layout
         {
