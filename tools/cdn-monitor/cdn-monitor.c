@@ -730,7 +730,8 @@ cleanup ()
 }
 
 static gchar **
-parse_interactive_flags (gchar const  *filename,
+parse_interactive_flags (gchar const  *arg0,
+                         gchar const  *filename,
                          gint         *l,
                          GError      **error)
 {
@@ -752,6 +753,11 @@ parse_interactive_flags (gchar const  *filename,
 	}
 
 	d = g_data_input_stream_new (G_INPUT_STREAM (s));
+
+	ret = g_new0 (gchar *, 2);
+
+	ret[0] = g_strdup (arg0);
+	*l = 1;
 
 	while (TRUE)
 	{
@@ -796,6 +802,8 @@ parse_interactive_flags (gchar const  *filename,
 		{
 			gint nargs;
 			gchar **argvp;
+			gchar **tmp;
+			gint i;
 
 			seencomment = TRUE;
 
@@ -811,33 +819,23 @@ parse_interactive_flags (gchar const  *filename,
 				break;
 			}
 
-			if (!ret)
+			tmp = ret;
+			ret = g_new0 (gchar *, *l + nargs + 1);
+
+			for (i = 0; i < *l; ++i)
 			{
-				ret = argvp;
-				*l = nargs;
+				ret[i] = tmp[i];
 			}
-			else
+
+			g_free (tmp);
+
+			for (i = 0; i < nargs; ++i)
 			{
-				gchar **tmp = ret;
-				gint i;
-
-				ret = g_new0 (gchar *, *l + nargs + 1);
-
-				for (i = 0; i < *l; ++i)
-				{
-					ret[i] = tmp[i];
-				}
-
-				g_free (tmp);
-
-				for (i = 0; i < nargs; ++i)
-				{
-					ret[*l + i] = argvp[i];
-				}
-
-				g_free (argvp);
-				*l += nargs;
+				ret[*l + i] = argvp[i];
 			}
+
+			g_free (argvp);
+			*l += nargs;
 		}
 	}
 
@@ -878,7 +876,7 @@ main (int argc,
 
 		file = argv[2];
 
-		args = parse_interactive_flags (file, &nargs, &error);
+		args = parse_interactive_flags (argv[0], file, &nargs, &error);
 
 		if (error != NULL)
 		{
