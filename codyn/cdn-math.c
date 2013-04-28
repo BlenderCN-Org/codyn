@@ -1381,10 +1381,6 @@ slinsolve_backsubs (gdouble *ptrA,
 	{
 		gint j;
 
-		// Apply D-1 from the diagonal elements if ptrA
-		ptrB[i] /= ptrA[diag];
-		diag -= n + 1;
-
 		j = (gint)ptrL[i];
 
 		while (j >= 0)
@@ -1395,6 +1391,10 @@ slinsolve_backsubs (gdouble *ptrA,
 			ptrB[j] -= ptrA[ij] * ptrB[i];
 			j = (gint)ptrL[j];
 		}
+
+		// Apply D-1 from the diagonal elements if ptrA
+		ptrB[i] /= ptrA[diag];
+		diag -= n + 1;
 	}
 
 	// Then finally solve for L^-1 b
