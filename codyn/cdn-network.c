@@ -1688,7 +1688,7 @@ cdn_init ()
 {
 	static gboolean inited = FALSE;
 
-#if !GLIB_CHECK_VERSION(2, 36, 0)
+#if !GLIB_CHECK_VERSION(2, 35, 0)
 	g_type_init ();
 #endif
 
