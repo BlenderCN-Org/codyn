@@ -144,4 +144,19 @@
     ## 1 2 3 4
     test_transpose = "transpose([1 2; 3 4])"
 
+# diagonal
+    ## 1 4
+    test_diag_1 = "diag([1 2; 3 4])"
+
+    ## -2 0 0 -3
+    test_diag_2 = "diag([-2, -3])"
+
+    ## 1 4 7 0 5 8 0 0 9
+    test_tril = "tril([1 2 3; 4 5 6; 7 8 9])"
+
+    ## 1 0 0 2 5 0 3 6 9
+    test_triu = "triu([1 2 3;
+                       4 5 6;
+                       7 8 9])"
+
 # vi:ts=4:et

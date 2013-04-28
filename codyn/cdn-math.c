@@ -1555,6 +1555,102 @@ op_eye (CdnStack           *stack,
 	// kind of macro
 }
 
+static void
+op_diag (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gdouble *ptrM;
+
+	ptrM = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+
+	if (argdim->args[0].rows == 1 || argdim->args[0].columns == 1)
+	{
+		// Create diagonal matrix
+		gdouble *ptrRet = cdn_stack_output_ptr (stack);
+		gint n = cdn_stack_arg_size (&argdim->args[0]);
+		gint nd;
+		gint idiag = 0;
+		gint i;
+
+		nd = sizeof(gdouble) * n * n;
+
+		// Clear result
+		memset (ptrRet, 0, nd);
+
+		// Set diagonal
+		for (i = 0; i < n; ++i)
+		{
+			ptrRet[idiag] = ptrM[i];
+			idiag += n + 1;
+		}
+
+		// Copy back result
+		memmove (ptrM, ptrRet, nd);
+		cdn_stack_set_output_ptr (stack, ptrM + n * n);
+	}
+	else
+	{
+		// Select diagonal from matrix
+		gint n = argdim->args[0].rows;
+		gint i;
+		gint idiag = 0;
+
+		for (i = 0; i < n; ++i)
+		{
+			ptrM[i] = ptrM[idiag];
+			idiag += n + 1;
+		}
+
+		cdn_stack_set_output_ptr (stack, ptrM + n);
+	}
+}
+
+static void
+op_tril (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gdouble *ptrM;
+	gint c;
+	gint n;
+
+	ptrM = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+
+	n = argdim->args[0].rows;
+
+	// set zeros for upper triangle
+	for (c = 1; c < n; ++c)
+	{
+		ptrM += n;
+		memset (ptrM, 0, sizeof (gdouble) * c);
+	}
+}
+
+static void
+op_triu (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gdouble *ptrM;
+	gint c;
+	gint n;
+
+	ptrM = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+
+	// Skip first element
+	++ptrM;
+
+	n = argdim->args[0].rows;
+
+	// set zeros for lower triangle
+	for (c = n - 1; c >= 0; --c)
+	{
+		memset (ptrM, 0, sizeof (gdouble) * c);
+		ptrM += n + 1;
+	}
+}
+
 typedef struct
 {
 	gchar *name;
@@ -1634,7 +1730,10 @@ static FunctionEntry function_entries[] = {
 	{"size", op_size, -1, FALSE},
 	{"vcat", op_vcat, 2, FALSE},
 	{"zeros", op_zeros, -1, FALSE},
-	{"eye", op_eye, 1, FALSE}
+	{"eye", op_eye, 1, FALSE},
+	{"diag", op_diag, 1, FALSE},
+	{"tril", op_tril, 1, FALSE},
+	{"triu", op_triu, 1, FALSE}
 };
 
 typedef struct
@@ -2944,6 +3043,50 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_SIZE:
 			outarg->rows = 1;
 			outarg->columns = 2;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_TRIL:
+		case CDN_MATH_FUNCTION_TYPE_TRIU:
+			if (inargs->args[0].rows != inargs->args[0].columns)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Expected a square matrix but got %d-by-%d",
+				             inargs->args[0].rows,
+				             inargs->args[0].columns);
+
+				return FALSE;
+			}
+
+			cdn_stack_arg_copy (outarg, inargs->args);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_DIAG:
+			if (inargs->args[0].rows == 1 ||
+			    inargs->args[0].columns == 1)
+			{
+				gint n = cdn_stack_arg_size (&inargs->args[0]);
+
+				outarg->rows = n;
+				outarg->columns = n;
+
+				*extra_space = n * n;
+			}
+			else if (inargs->args[0].rows != inargs->args[0].columns)
+			{
+				g_set_error (error,
+				             CDN_COMPILE_ERROR_TYPE,
+				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
+				             "Expected a square matrix but got %d-by-%d",
+				             inargs->args[0].rows,
+				             inargs->args[0].columns);
+
+				return FALSE;
+			}
+			else
+			{
+				outarg->rows = inargs->args[0].rows;
+				outarg->columns = 1;
+			}
 		break;
 		case CDN_MATH_FUNCTION_TYPE_VCAT:
 			if (inargs->args[0].columns != inargs->args[1].columns)
