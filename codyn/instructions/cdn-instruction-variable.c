@@ -281,7 +281,7 @@ slice_equal (CdnInstructionVariable *p1,
 {
 	guint i;
 
-	if ((p1->priv->slice != NULL) != (p2->priv->property != NULL))
+	if ((p1->priv->slice != NULL) != (p2->priv->slice != NULL))
 	{
 		return FALSE;
 	}
