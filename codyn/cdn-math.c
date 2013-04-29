@@ -1133,6 +1133,25 @@ extern void dgesv_ (LP_int *,
                     LP_double *,
                     LP_int *,
                     LP_int *);
+
+extern void dgeqrf_ (LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *);
+
+extern void dorgqr_ (LP_int *,
+                     LP_int *,
+                     LP_int *,
+                     LP_double *,
+                     LP_int *,
+                     LP_double *,
+                     LP_double *,
+                     LP_int *,
+                     LP_int *);
 #endif
 
 static void
@@ -1310,6 +1329,74 @@ op_linsolve (CdnStack           *stack,
 	        &info);
 
 	cdn_stack_popn (stack, numa);
+}
+
+static void
+op_qr (CdnStack           *stack,
+       CdnStackArgs const *argdim,
+       gpointer            userdata)
+{
+	LP_double *ptrA;
+	LP_int m;
+	LP_int n;
+	LP_int lwork;
+	LP_double *tau;
+	LP_double *work;
+	LP_int mindim;
+	LP_int info;
+	gdouble *ptrWr;
+	gdouble *ptrRd;
+	gint numa;
+	LP_int i;
+
+	m = argdim->args[0].rows;
+	n = argdim->args[0].columns;
+
+	mindim = m < n ? m : n;
+
+	numa = cdn_stack_arg_size (argdim->args);
+	ptrA = cdn_stack_output_ptr (stack) - numa;
+	tau = cdn_stack_output_ptr (stack) + m * m;
+
+	// remaining work size
+	work = tau + mindim;
+	lwork = (cdn_stack_ptr (stack) + cdn_stack_size (stack)) - work;
+
+	dgeqrf_ (&m,
+	         &n,
+	         ptrA,
+	         &m,
+	         tau,
+	         work,
+	         &lwork,
+	         &info);
+
+	ptrWr = ptrA + m * m;
+	ptrRd = ptrA;
+
+	memset (ptrWr, 0, sizeof(gdouble) * m * n);
+
+	// copy r to after A
+	for (i = 1; i <= n; ++i)
+	{
+		memcpy (ptrWr, ptrRd, sizeof(gdouble) * i);
+
+		ptrWr += m;
+		ptrRd += m;
+	}
+
+	// compute q in ptrA
+	dorgqr_ (&m,
+	         &m,
+	         &n,
+	         ptrA,
+	         &m,
+	         tau,
+	         work,
+	         &lwork,
+	         &info);
+
+	cdn_stack_set_output_ptr (stack, tau);
 }
 #endif
 
@@ -1720,10 +1807,12 @@ static FunctionEntry function_entries[] = {
 	{"inv", op_inverse, 1, FALSE},
 	{"pinv", op_pseudo_inverse, 1, FALSE},
 	{"linsolve", op_linsolve, 2, FALSE},
+	{"qr", op_qr, 1, FALSE},
 #else
 	{"inv", op_noop, 1, FALSE},
 	{"pinv", op_noop, 1, FALSE},
 	{"linsolve", op_noop, 2, FALSE},
+	{"qr", op_noop, 1, FALSE},
 #endif
 	{"slinsolve", op_slinsolve, 3, FALSE},
 	{"sum", op_sum, -1, FALSE},
@@ -1735,7 +1824,7 @@ static FunctionEntry function_entries[] = {
 	{"eye", op_eye, 1, FALSE},
 	{"diag", op_diag, 1, FALSE},
 	{"tril", op_tril, 1, FALSE},
-	{"triu", op_triu, 1, FALSE}
+	{"triu", op_triu, 1, FALSE},
 };
 
 typedef struct
@@ -2526,6 +2615,42 @@ linsolve_work_space (CdnDimension const *dim)
 
 	return (LP_int)work + dim->rows;
 }
+
+static LP_int
+qr_work_space (CdnDimension const *dim)
+{
+	LP_int m;
+	LP_int n;
+	LP_double work;
+	LP_double *A;
+	LP_double *tau;
+	LP_int lwork = -1;
+	LP_int info;
+	LP_int mindim;
+
+	m = dim->rows;
+	n = dim->columns;
+
+	mindim = m < n ? m : n;
+
+	A = g_new0 (LP_double, cdn_dimension_size (dim));
+	tau = g_new0 (LP_double, mindim);
+
+	dgeqrf_ (&m,
+	         &n,
+	         A,
+	         &m,
+	         tau,
+	         &work,
+	         &lwork,
+	         &info);
+
+	g_free (A);
+	g_free (tau);
+
+	// space for tau and work
+	return mindim + (LP_int)work;
+}
 #endif
 
 void
@@ -3049,6 +3174,12 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		case CDN_MATH_FUNCTION_TYPE_TRIL:
 		case CDN_MATH_FUNCTION_TYPE_TRIU:
 			cdn_stack_arg_copy (outarg, inargs->args);
+		break;
+		case CDN_MATH_FUNCTION_TYPE_QR:
+			outarg->rows = inargs->args[0].rows;
+			outarg->columns = inargs->args[0].rows + inargs->args[0].columns;
+
+			*extra_space = qr_work_space (&inargs->args[0].dimension);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_DIAG:
 			if (inargs->args[0].rows == 1 ||
