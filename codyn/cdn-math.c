@@ -1366,9 +1366,7 @@ static void
 slinsolve_backsubs (gdouble *ptrA,
                     gdouble *ptrB,
                     gdouble *ptrL,
-                    gint     n,
-                    gint     numr,
-                    gint     idx)
+                    gint     n)
 {
 	gint i;
 	gint diag;
@@ -1385,7 +1383,7 @@ slinsolve_backsubs (gdouble *ptrA,
 
 		while (j >= 0)
 		{
-			gint ij = i + j * numr;
+			gint ij = i + j * n;
 
 			// x_j = x_j - L_{ij} x_i
 			ptrB[j] -= ptrA[ij] * ptrB[i];
@@ -1407,7 +1405,7 @@ slinsolve_backsubs (gdouble *ptrA,
 
 		while (j >= 0)
 		{
-			gint ij = i + j * numr;
+			gint ij = i + j * n;
 
 			// x_i = x_i - L_{ij} x_j
 			ptrB[i] -= ptrA[ij] * ptrB[j];
@@ -1457,9 +1455,9 @@ op_slinsolve (CdnStack           *stack,
 		slinsolve_backsubs (ptrA,
 		                    ptrB,
 		                    ptrL,
-		                    n,
-		                    argdim->args[2].rows,
-		                    i);
+		                    n);
+
+		ptrB += n;
 	}
 
 	// Finally pop lambda and A
@@ -1614,16 +1612,18 @@ op_tril (CdnStack           *stack,
 	gdouble *ptrM;
 	gint c;
 	gint n;
+	gint rows;
 
 	ptrM = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
 
-	n = argdim->args[0].rows;
+	rows = argdim->args[0].rows;
+	n = argdim->args[0].columns;
 
 	// set zeros for upper triangle
 	for (c = 1; c < n; ++c)
 	{
-		ptrM += n;
-		memset (ptrM, 0, sizeof (gdouble) * c);
+		ptrM += rows;
+		memset (ptrM, 0, sizeof (gdouble) * (c > rows ? rows : c));
 	}
 }
 
@@ -1635,19 +1635,21 @@ op_triu (CdnStack           *stack,
 	gdouble *ptrM;
 	gint c;
 	gint n;
+	gint rows;
 
 	ptrM = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
 
 	// Skip first element
 	++ptrM;
 
-	n = argdim->args[0].rows;
+	rows = argdim->args[0].rows;
+	n = argdim->args[0].columns;
 
 	// set zeros for lower triangle
-	for (c = n - 1; c >= 0; --c)
+	for (c = 1; c <= n && c < rows; ++c)
 	{
-		memset (ptrM, 0, sizeof (gdouble) * c);
-		ptrM += n + 1;
+		memset (ptrM, 0, sizeof (gdouble) * (rows - c));
+		ptrM += rows + 1;
 	}
 }
 
@@ -3046,18 +3048,6 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 		break;
 		case CDN_MATH_FUNCTION_TYPE_TRIL:
 		case CDN_MATH_FUNCTION_TYPE_TRIU:
-			if (inargs->args[0].rows != inargs->args[0].columns)
-			{
-				g_set_error (error,
-				             CDN_COMPILE_ERROR_TYPE,
-				             CDN_COMPILE_ERROR_INVALID_DIMENSION,
-				             "Expected a square matrix but got %d-by-%d",
-				             inargs->args[0].rows,
-				             inargs->args[0].columns);
-
-				return FALSE;
-			}
-
 			cdn_stack_arg_copy (outarg, inargs->args);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_DIAG:

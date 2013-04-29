@@ -152,11 +152,21 @@
     test_diag_2 = "diag([-2, -3])"
 
     ## 1 4 7 0 5 8 0 0 9
-    test_tril = "tril([1 2 3; 4 5 6; 7 8 9])"
+    test_tril_1 = "tril([1 2 3; 4 5 6; 7 8 9])"
+
+    ## 1 4 7 0 5 8
+    test_tril_2 = "tril([1 2; 4 5; 7 8])"
+
+    ## 1 4 0 5 0 0
+    test_tril_3 = "tril([1 2 3; 4 5 6])"
 
     ## 1 0 0 2 5 0 3 6 9
-    test_triu = "triu([1 2 3;
-                       4 5 6;
-                       7 8 9])"
+    test_triu_1 = "triu([1 2 3; 4 5 6; 7 8 9])"
+
+    ## 1 0 0 2 5 0
+    test_triu_2 = "triu([1 2; 4 5; 7 8])"
+
+    ## 1 0 2 5 3 6
+    test_triu_3 = "triu([1 2 3; 4 5 6])"
 
 # vi:ts=4:et
