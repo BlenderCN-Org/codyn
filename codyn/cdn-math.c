@@ -2649,7 +2649,7 @@ qr_work_space (CdnDimension const *dim)
 	g_free (tau);
 
 	// space for tau and work
-	return mindim + (LP_int)work;
+	return mindim + (LP_int)work + dim->rows * dim->rows;
 }
 #endif
 
