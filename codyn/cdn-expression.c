@@ -1910,10 +1910,162 @@ instructions_push_all (CdnExpression *expression,
 	}
 }
 
+static void
+instructions_push_list (CdnExpression *expression,
+                        ParserContext *context,
+                        GSList        *instructions)
+{
+	while (instructions)
+	{
+		instructions_push (expression, instructions->data, context);
+		instructions = g_slist_delete_link (instructions, instructions);
+	}
+}
+
 static CdnStackArg const *
 get_last_stack_arg (ParserContext *context)
 {
 	return instruction_get_push_arg (g_slist_last (context->stack->data)->data);
+}
+
+static gboolean
+inline_simple (CdnExpression       *expression,
+               ParserContext       *context,
+               CdnMathFunctionType  fid,
+               CdnStackArgs const  *args)
+{
+	switch (fid)
+	{
+	case CDN_MATH_FUNCTION_TYPE_TRIL:
+	case CDN_MATH_FUNCTION_TYPE_TRIU:
+	case CDN_MATH_FUNCTION_TYPE_DIAG:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			// NOOP
+			return TRUE;
+		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_LINSOLVE:
+	case CDN_MATH_FUNCTION_TYPE_SLINSOLVE:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			GSList *A;
+			GSList *b;
+
+			CdnStackArg narg[2] = {
+				CDN_STACK_ARG (1, 1),
+				CDN_STACK_ARG (1, 1),
+			};
+
+			CdnStackArgs nargs = {
+				.args = narg,
+				.num = 2,
+			};
+
+			A = pop_stack (expression, context);
+
+			if (fid == CDN_MATH_FUNCTION_TYPE_SLINSOLVE)
+			{
+				narg[1].columns = args->args[2].columns;
+
+				// lambda
+				free_popped_stack (pop_stack (expression, context));
+			}
+			else
+			{
+				narg[1].columns = args->args[1].columns;
+			}
+
+			b = pop_stack (expression, context);
+
+			instructions_push_list (expression, context, b);
+			instructions_push_list (expression, context, A);
+
+			// Push back division operator
+			instructions_push (expression,
+			                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE,
+			                                                 NULL,
+			                                                 &nargs),
+			                   context);
+
+			return TRUE;
+		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_QR:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			GSList *arg = pop_stack (expression, context);
+
+			CdnStackArg narg[2] = {
+				CDN_STACK_ARG(1, 1),
+				CDN_STACK_ARG(1, 1)
+			};
+
+			CdnStackArgs nargs = {
+				.args = narg,
+				.num = 2,
+			};
+
+			CdnDimension argdim = CDN_DIMENSION (1, 2);
+
+			// Push 1
+			instructions_push (expression,
+			                   cdn_instruction_number_new_from_string ("1"),
+			                   context);
+
+			// Push back the argument
+			instructions_push_list (expression, context, arg);
+
+			// Push matrix instruction
+			instructions_push (expression,
+			                   cdn_instruction_matrix_new (&nargs,
+			                                               &argdim),
+			                   context);
+
+			return TRUE;
+		}
+
+		break;
+	case CDN_MATH_FUNCTION_TYPE_INVERSE:
+	case CDN_MATH_FUNCTION_TYPE_PSEUDO_INVERSE:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			// Do a simple divide directly
+			GSList *arg = pop_stack (expression, context);
+
+			CdnStackArg narg[2] = {
+				CDN_STACK_ARG (1, 1),
+				CDN_STACK_ARG (1, 1),
+			};
+
+			CdnStackArgs nargs = {
+				.args = narg,
+				.num = 2,
+			};
+
+			// Push 1
+			instructions_push (expression,
+			                   cdn_instruction_number_new_from_string ("1"),
+			                   context);
+
+			// Push back the argument
+			instructions_push_list (expression, context, arg);
+
+			// Push back division operator
+			instructions_push (expression,
+			                   cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_DIVIDE,
+			                                                 NULL,
+			                                                 &nargs),
+			                   context);
+
+			return TRUE;
+		}
+		break;
+	default:
+		break;
+	}
+
+	return FALSE;
 }
 
 static gboolean
@@ -2252,12 +2404,18 @@ parse_function (CdnExpression *expression,
 					                          context,
 					                          numargs);
 				break;
-				break;
 				default:
 					get_argdim (expression,
 					            context,
 					            numargs,
 					            &args);
+
+					if (inline_simple (expression, context, fid, &args))
+					{
+						cdn_stack_args_destroy (&args);
+						g_free (dotname);
+						return TRUE;
+					}
 
 					instruction =
 						cdn_instruction_function_new (fid,
@@ -2390,18 +2548,6 @@ convert_2dim_slist (GSList const *lst,
 	}
 
 	return ret;
-}
-
-static void
-instructions_push_list (CdnExpression *expression,
-                        ParserContext *context,
-                        GSList        *instructions)
-{
-	while (instructions)
-	{
-		instructions_push (expression, instructions->data, context);
-		instructions = g_slist_delete_link (instructions, instructions);
-	}
 }
 
 static GSList *
@@ -4276,11 +4422,31 @@ parse_transpose (CdnExpression *expression,
 
 	get_argdim (expression, context, 1, &args);
 
-	ret = instructions_push (expression,
-	                         cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
-	                                                       "transpose",
-	                                                       &args),
-	                         context);
+	if (args.args[0].rows == 1 || args.args[0].columns == 1)
+	{
+		if (!cdn_dimension_is_one (&args.args[0].dimension))
+		{
+			CdnDimension argdim = CDN_DIMENSION (args.args[0].columns,
+			                                     args.args[0].rows);
+
+			ret = instructions_push (expression,
+			                         cdn_instruction_matrix_new (&args,
+			                                                     &argdim),
+			                         context);
+		}
+		else
+		{
+			ret = TRUE;
+		}
+	}
+	else
+	{
+		ret = instructions_push (expression,
+		                         cdn_instruction_function_new (CDN_MATH_FUNCTION_TYPE_TRANSPOSE,
+		                                                       "transpose",
+		                                                       &args),
+		                         context);
+	}
 
 	cdn_stack_args_destroy (&args);
 	return ret;
