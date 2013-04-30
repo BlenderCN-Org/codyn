@@ -13,7 +13,7 @@ defines
     n = 3
 }
 
-node "system"
+node "system" : physics.system
 {
     node "p{1:@n}" : physics.revoluteY
     {
