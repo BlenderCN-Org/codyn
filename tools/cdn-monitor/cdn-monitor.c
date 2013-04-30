@@ -32,6 +32,7 @@
 
 #include "monitor.h"
 #include "implementation.h"
+#include "defines.h"
 
 static GPtrArray *monitored = NULL;
 static gboolean include_header = FALSE;
@@ -690,16 +691,6 @@ run_simple_monitor (CdnMonitorImplementation *implementation)
 	return 0;
 }
 
-#ifdef PLATFORM_OSX
-#define DYLIB_SUFFIX "dylib"
-#else
-#ifdef MINGW
-#define DYLIB_SUFFIX "dll"
-#else
-#define DYLIB_SUFFIX "so"
-#endif
-#endif
-
 static gboolean
 query_mtime (GFile    *f,
              GTimeVal *mod)
@@ -778,7 +769,7 @@ try_rawc (gchar const *filename)
 	}
 
 	// Check if the file is already a rawc file
-	if (g_str_has_suffix (filename, "." DYLIB_SUFFIX))
+	if (g_str_has_suffix (filename, DYLIB_SUFFIX))
 	{
 		return g_strdup (filename);
 	}
@@ -803,7 +794,7 @@ try_rawc (gchar const *filename)
 		*dpos = '\0';
 	}
 
-	libname = g_strconcat ("lib", b, ".", DYLIB_SUFFIX, NULL);
+	libname = g_strconcat ("lib", b, DYLIB_SUFFIX, NULL);
 
 	f = g_file_get_child (d, libname);
 
@@ -838,7 +829,7 @@ monitor_network (gchar const *filename)
 
 	f = try_rawc (filename);
 
-	if (g_str_has_suffix (f, "." DYLIB_SUFFIX))
+	if (g_str_has_suffix (f, DYLIB_SUFFIX))
 	{
 		implementation = cdn_monitor_implementation_rawc_new (f);
 	}

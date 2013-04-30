@@ -1,4 +1,6 @@
 #include "implementation.h"
+#include "defines.h"
+
 #include <string.h>
 
 typedef struct
@@ -443,9 +445,9 @@ cdn_monitor_implementation_rawc_new (gchar const *filename)
 		ptr += 3;
 	}
 
-	if (g_str_has_suffix (name, ".so"))
+	if (g_str_has_suffix (name, DYLIB_SUFFIX))
 	{
-		name[strlen(name) - 3] = '\0';
+		name[strlen(name) - strlen (DYLIB_SUFFIX)] = '\0';
 	}
 
 	symname = g_strconcat ("cdn_rawc_", ptr, "_reset", NULL);
