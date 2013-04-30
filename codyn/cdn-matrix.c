@@ -360,7 +360,7 @@ cdn_matrix_get_memory (CdnMatrix *matrix)
  * Get the values memory of a matrix. This method is mostly for writing bindings
  * and should not be used.
  *
- * Returns: the matrix values.
+ * Returns: (array length=length): the matrix values.
  *
  **/
 gdouble const *
