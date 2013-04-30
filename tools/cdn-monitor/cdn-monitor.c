@@ -739,6 +739,8 @@ generate_rawc (gchar const *filename)
 
 	wd = g_path_get_dirname (filename);
 
+	g_printerr ("Generating rawc version of the network...\n");
+
 	if (!g_spawn_sync (wd,
 	                   (gchar **)argv,
 	                   NULL,
