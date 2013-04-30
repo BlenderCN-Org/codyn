@@ -734,7 +734,7 @@ cdn_variable_set_value (CdnVariable  *variable,
 }
 
 /**
- * cdn_variable_set_values: (skip)
+ * cdn_variable_set_values:
  * @variable: the #CdnVariable
  * @values: the new value
  *
