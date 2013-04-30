@@ -19,8 +19,8 @@ node "system" : physics.system
     {
                           m = "1"
                         com = "[0; 0; -0.5]"
-                          q = "0.5 * pi"
                           τ = "-0.1 * dq"
+          q = "0.25 * pi"
         localMatrix | out
 
         layout
@@ -32,6 +32,7 @@ node "system" : physics.system
     node "p{2:@n}"
     {
         coordinateTransform = "Spatial.Translate([0, 0, -1])"
+        q = "0"
     }
 
     edge from "p{1:@n}" to "p$(@1 + 1)" : physics.joint {}
