@@ -6,8 +6,9 @@
 #ifdef __GI_SCANNER__
 typedef struct
 {
-	gdouble *values;
-	CdnDimension dimension;
+	/*< private >*/
+	gdouble *_values;
+	CdnDimension _dimension;
 } CdnMatrix;
 #else
 typedef struct
