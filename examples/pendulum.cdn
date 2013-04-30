@@ -1,5 +1,5 @@
 #!/usr/bin/env cdn-monitor-i
-# -t 0:0.005:5 -m system./p[0-9]+/.q
+# -t 0:0.005:5 -m system./p[0-9]+/.q -r
 
 include "physics/physics.cdn"
 
