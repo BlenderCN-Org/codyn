@@ -473,8 +473,6 @@ cdn_matrix_to_string (CdnMatrix const *matrix)
 {
 	GString *ret;
 	gint r;
-	gint c;
-	gint i = 0;
 
 	if (cdn_dimension_is_one (&matrix->dimension))
 	{
@@ -485,10 +483,15 @@ cdn_matrix_to_string (CdnMatrix const *matrix)
 
 	for (r = 0; r < matrix->dimension.rows; ++r)
 	{
+		gint i;
+		gint c;
+
 		if (r != 0)
 		{
 			g_string_append (ret, "; ");
 		}
+
+		i = r;
 
 		for (c = 0; c < matrix->dimension.columns; ++c)
 		{
@@ -497,7 +500,9 @@ cdn_matrix_to_string (CdnMatrix const *matrix)
 				g_string_append (ret, ", ");
 			}
 
-			g_string_append_printf (ret, "%g", matrix->values[i++]);
+			g_string_append_printf (ret, "%g", matrix->values[i]);
+
+			i += matrix->dimension.rows;
 		}
 	}
 
