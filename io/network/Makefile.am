@@ -38,7 +38,7 @@ cdn-io-network-enum-types.h: cdn-io-network-enum-types.h.template $(hfiles) $(GL
 cdn-io-network-enum-types.c: cdn-io-network-enum-types.c.template cdn-io-network-enum-types.h $(hfiles) $(GLIB_MKENUMS)
 	(cd $(srcdir) && $(GLIB_MKENUMS) --template cdn-io-network-enum-types.c.template $(hfiles)) > $@
 
-libnetwork_la-cdn-io-network-enum-types.lo: cdn-io-network-enum-types.h
+libnetwork_la-cdn-io-network.lo .libs/libnetwork_la-cdn-io-network.o: cdn-io-network-enum-types.h
 
 install-data-hook:
 	rm -f $(DESTDIR)$(plugindir)/$(plugin_LTLIBRARIES)
