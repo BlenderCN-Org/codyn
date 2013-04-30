@@ -43,6 +43,7 @@ static guint seed = 0;
 static gboolean seed_set = FALSE;
 static gboolean simplify = FALSE;
 static gboolean timestamp = FALSE;
+static gboolean rawc = FALSE;
 
 #define CDN_MONITOR_ERROR (cdn_monitor_error_quark())
 
@@ -193,6 +194,8 @@ static GOptionEntry entries[] = {
 	 "Enable global simplifications", NULL},
 	{"timestamp", 'p', 0, G_OPTION_ARG_NONE, &timestamp,
 	 "Write a timestamp (Unix time) at the beginning of each line", NULL},
+	{"rawc", 'r', 0, G_OPTION_ARG_NONE, &rawc,
+	 "Use rawc (if possible) to run the network", NULL},
 	{NULL}
 };
 
@@ -687,20 +690,162 @@ run_simple_monitor (CdnMonitorImplementation *implementation)
 	return 0;
 }
 
+#ifdef PLATFORM_OSX
+#define DYLIB_SUFFIX "dylib"
+#else
+#ifdef MINGW
+#define DYLIB_SUFFIX "dll"
+#else
+#define DYLIB_SUFFIX "so"
+#endif
+#endif
+
+static gboolean
+query_mtime (GFile    *f,
+             GTimeVal *mod)
+{
+	GFileInfo *info;
+
+	info = g_file_query_info (f,
+	                          G_FILE_ATTRIBUTE_TIME_MODIFIED,
+	                          0,
+	                          NULL,
+	                          NULL);
+
+	if (!info)
+	{
+		return FALSE;
+	}
+
+	g_file_info_get_modification_time (info, mod);
+	g_object_unref (info);
+	return TRUE;
+}
+
+static gboolean
+generate_rawc (gchar const *filename)
+{
+	gchar *wd;
+	gint exit_status = 0;
+	gboolean ret = TRUE;
+
+	gchar const *argv[] = {
+		"cdn-rawc",
+		"--compile=",
+		"--shared",
+		filename,
+		NULL,
+	};
+
+	wd = g_path_get_dirname (filename);
+
+	if (!g_spawn_sync (wd,
+	                   (gchar **)argv,
+	                   NULL,
+	                   G_SPAWN_SEARCH_PATH |
+	                   G_SPAWN_STDOUT_TO_DEV_NULL,
+	                   (GSpawnChildSetupFunc)NULL,
+	                   NULL,
+	                   NULL,
+	                   NULL,
+	                   &exit_status,
+	                   NULL) || exit_status != 0)
+	{
+		ret = FALSE;
+	}
+
+	return ret;
+}
+
+static gchar *
+try_rawc (gchar const *filename)
+{
+	GFile *d;
+	GFile *f;
+	gchar *b;
+	gchar *dpos;
+	gchar *libname;
+	GFile *fi;
+	GTimeVal cdnmod;
+	GTimeVal rawcmod;
+	gchar *ret;
+
+	if (!rawc)
+	{
+		return g_strdup (filename);
+	}
+
+	// Check if the file is already a rawc file
+	if (g_str_has_suffix (filename, "." DYLIB_SUFFIX))
+	{
+		return g_strdup (filename);
+	}
+
+	// Query cdn file
+	fi = g_file_new_for_commandline_arg (filename);
+
+	if (!query_mtime (fi, &cdnmod))
+	{
+		g_object_unref (fi);
+		return g_strdup (filename);
+	}
+
+	// Try to find the corresponding rawc dynamic library
+	d = g_file_get_parent (fi);
+	b = g_file_get_basename (fi);
+
+	dpos = strchr (b, '.');
+
+	if (dpos)
+	{
+		*dpos = '\0';
+	}
+
+	libname = g_strconcat ("lib", b, ".", DYLIB_SUFFIX, NULL);
+
+	f = g_file_get_child (d, libname);
+
+	g_free (b);
+	g_free (libname);
+	g_object_unref (d);
+
+	ret = g_file_get_path (f);
+
+	if (!query_mtime (f, &rawcmod) ||
+	    (cdnmod.tv_sec + cdnmod.tv_usec * 1e-6) >
+	    (rawcmod.tv_sec + rawcmod.tv_usec * 1e-6))
+	{
+		// Regenerate rawc file, or try to anyway
+		if (!generate_rawc (filename))
+		{
+			g_free (ret);
+			ret = g_strdup (filename);
+		}
+	}
+
+	g_object_unref (f);
+	return ret;
+}
+
 static gint
 monitor_network (gchar const *filename)
 {
 	CdnMonitorImplementation *implementation;
 	gint ret;
+	gchar *f;
 
-	if (g_str_has_suffix (filename, ".so"))
+	f = try_rawc (filename);
+
+	if (g_str_has_suffix (f, "." DYLIB_SUFFIX))
 	{
-		implementation = cdn_monitor_implementation_rawc_new (filename);
+		implementation = cdn_monitor_implementation_rawc_new (f);
 	}
 	else
 	{
-		implementation = cdn_monitor_implementation_codyn_new (filename);
+		implementation = cdn_monitor_implementation_codyn_new (f);
 	}
+
+	g_free (f);
 
 	if (seed_set)
 	{
