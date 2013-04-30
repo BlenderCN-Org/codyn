@@ -1,4 +1,8 @@
-SUBDIRS = cdn-monitor cdn-parser cdn-render cdn-context cdn-compile plugins
+SUBDIRS = cdn-monitor cdn-parser cdn-render cdn-compile plugins
+
+if ENABLE_CONTEXT
+SUBDIRS += cdn-context
+endif
 
 if ENABLE_ARCHIVE
 SUBDIRS += cdn-archive

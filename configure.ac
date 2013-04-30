@@ -99,7 +99,7 @@ dnl ================================================================
 dnl Start of pkg-config checks
 dnl ================================================================
 
-checkpkgs="glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0 json-glib-1.0"
+checkpkgs="glib-2.0 gobject-2.0 gio-2.0 gmodule-2.0"
 
 if test "$platform_osx" != "yes"; then
 	checkpkgs="$checkpkgs libxml-2.0"
@@ -108,6 +108,12 @@ fi
 PKG_CHECK_MODULES(CODYN, [
 	$checkpkgs
 ])
+
+PKG_CHECK_MODULES(JSON_GLIB, [
+	json-glib-1.0
+], [have_json_glib=yes], [have_json_glib=no])
+
+AM_CONDITIONAL(ENABLE_CONTEXT, test "x$have_json_glib" = "xyes")
 
 if test "$platform_osx" = "yes"; then
 	CODYN_CFLAGS="$CODYN_CFLAGS -I/usr/include/libxml2"
@@ -126,8 +132,8 @@ PKG_CHECK_MODULES(GLIB26, [
 
 AM_CONDITIONAL(ENABLE_NETWORKING, test "x$have_networking" = "xyes")
 
-CODYN_LIBS="${CODYN_LIBS} ${GIO_UNIX_LIBS}"
-CODYN_CFLAGS="${CODYN_CFLAGS} ${GIO_UNIX_CFLAGS}"
+CODYN_LIBS="${CODYN_LIBS} ${GIO_UNIX_LIBS} ${JSON_GLIB_LIBS}"
+CODYN_CFLAGS="${CODYN_CFLAGS} ${GIO_UNIX_CFLAGS} ${JSON_GLIB_CFLAGS}"
 
 if test "$USE_MAINTAINER_MODE" = "yes"; then
 	CODYN_CFLAGS="$CODYN_CFLAGS -Wall -Werror -Wmissing-declarations"
@@ -573,6 +579,7 @@ Configuration:
 	GObject Introspection:	$enable_introspection
 	gedit plugin:           $enable_gedit ($GEDIT_MAJOR_VERSION)
 	cdn-archive:            $have_tar
+	cdn-context:            $have_json_glib
 	network support:        $have_networking
 	wii support:            $enable_wii
 	python support:         $enable_python
