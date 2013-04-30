@@ -731,7 +731,7 @@ generate_rawc (gchar const *filename)
 
 	gchar const *argv[] = {
 		"cdn-rawc",
-		"--compile=",
+		"--compile",
 		"--shared",
 		filename,
 		NULL,
