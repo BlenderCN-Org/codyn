@@ -15,12 +15,13 @@ defines
 
 node "system" : physics.system
 {
-    node "p{1:@n}" : physics.revoluteY
+    node "p{1:@n}" : physics.revoluteY, physics.transformations
     {
                           m = "1"
                         com = "[0; 0; -0.5]"
                           q = "0.5 * pi"
                           τ = "-0.1 * dq"
+        localMatrix | out
 
         layout
         {
