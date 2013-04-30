@@ -27,7 +27,7 @@ cdn_matrix_get_type (void)
 }
 
 /**
- * cdn_matrix_new:
+ * cdn_matrix_new: (skip)
  * @values: matrix values (or %NULL).
  * @dimension: the matrix dimensions.
  *
@@ -49,6 +49,26 @@ cdn_matrix_new (gdouble const      *values,
 
 	cdn_matrix_set (matrix, values, dimension);
 	return matrix;
+}
+
+/**
+ * cdn_matrix_new_flat:
+ * @values: (array length=length) (allow-none): matrix values (or %NULL).
+ * @length: the length
+ * @dimension: the matrix dimensions.
+ *
+ * Create a new matrix value of a given dimension.
+ *
+ * Returns: (transfer full): a #CdnMatrix.
+ *
+ **/
+CdnMatrix *
+cdn_matrix_new_flat (gdouble const      *values,
+                     gint                length,
+                     CdnDimension const *dimension)
+{
+	g_return_val_if_fail (cdn_dimension_size (dimension) == length, NULL);
+	return cdn_matrix_new (values, dimension);
 }
 
 /**

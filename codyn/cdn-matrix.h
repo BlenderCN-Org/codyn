@@ -27,6 +27,10 @@ GType               cdn_matrix_get_type   (void);
 CdnMatrix          *cdn_matrix_new        (gdouble const      *values,
                                            CdnDimension const *dimension);
 
+CdnMatrix          *cdn_matrix_new_flat   (gdouble const      *values,
+                                           gint                length,
+                                           CdnDimension const *dimension);
+
 CdnMatrix          *cdn_matrix_new_one    (gdouble             value);
 
 CdnMatrix           cdn_matrix_init       (gdouble            *values,
