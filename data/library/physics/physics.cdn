@@ -355,6 +355,8 @@ templates
                                                    1, 0, 0;
                                                    0, 1, 0;
                                                    0, 0, 1]"
+
+                cJ(q, dq) = "0"
             }
 
             # Use a constraint to normalize q
