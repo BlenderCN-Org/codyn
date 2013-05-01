@@ -13,7 +13,7 @@ blenderdata_DATA = \
 blenderzipdir = $(pkgdatadir)-@CODYN_API_VERSION@
 blenderzip_DATA = blender_codyn.zip
 
-blender_codyn.zip:
+blender_codyn.zip: $(blender_DATA) $(blenderdata_DATA)
 	$(AM_V_GEN) \
 	rm -rf blender_codyn; \
 	mkdir blender_codyn; \
