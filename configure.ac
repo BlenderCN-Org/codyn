@@ -23,6 +23,7 @@ AC_STDC_HEADERS
 AC_HEADER_STDC
 AM_PROG_LEX
 AC_PROG_YACC
+AC_PATH_PROG([ZIP], [zip])
 
 LT_PREREQ([2.2.6])
 LT_INIT(disable-static)
@@ -529,6 +530,7 @@ AM_CONDITIONAL(ENABLE_PYTHON, test x"$enable_python" = "xyes")
 AC_CONFIG_FILES([
 Makefile
 codyn.pc
+blender/Makefile
 codyn/Makefile
 codyn/cdn-parser.y
 codyn/instructions/Makefile

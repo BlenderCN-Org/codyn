@@ -1,0 +1,28 @@
+blenderdir = $(pkgdatadir)-@CODYN_API_VERSION@/blender
+blender_DATA = \
+	__init__.py \
+	codyn.py \
+	importer.py \
+	panel.py \
+	simulator.py
+
+blenderdatadir = $(blenderdir)/data
+blenderdata_DATA = \
+	data/library.blend
+
+blenderzipdir = $(pkgdatadir)-@CODYN_API_VERSION@
+blenderzip_DATA = blender_codyn.zip
+
+blender_codyn.zip:
+	$(AM_V_GEN) \
+	rm -rf blender_codyn; \
+	mkdir blender_codyn; \
+	cp $(blender_DATA) blender_codyn/; \
+	cp -r data blender_codyn/; \
+	zip -r $@ blender_codyn; \
+	rm -rf blender_codyn
+
+CLEANFILES = blender_codyn.zip
+EXTRA_DIST = $(blender_DATA) $(blenderdata_DATA)
+
+-include $(top_srcdir)/git.mk
