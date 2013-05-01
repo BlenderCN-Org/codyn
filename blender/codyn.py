@@ -31,8 +31,10 @@ def sync_variable_to_blender(obj, node, vname):
         pname = 'cdn_{0}'.format(vname)
         setattr(obj, pname, v.get_value())
 
-def to_mat(m):
-    v = m.get_flat()
+def to_mat4x4(v, dim):
+    if dim.rows != 4 or dim.columns != 4:
+        print('expected 4-by-4 but got {0}-by-{1}'.format(dim.rows, dim.columns))
+
     mat = mathutils.Matrix()
 
     mat[0] = mathutils.Vector([v[0], v[4], v[8],  v[12]])
@@ -42,8 +44,11 @@ def to_mat(m):
 
     return mat
 
+def matrix_to_mat4x4(m):
+    return to_mat4x4(m.get_flat(), m.dimension())
+
 def local_blender_transform(node):
-    jtmat = to_mat(node.get_variable("localMatrix").get_values())
+    jtmat = matrix_to_mat4x4(node.get_variable("localMatrix").get_values())
     return jtmat
 
 def sync_variables_to_blender(obj):
