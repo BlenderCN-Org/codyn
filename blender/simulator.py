@@ -1,6 +1,6 @@
 import os, platform, tempfile, shutil
 
-from . import codyn
+import codyn
 
 from gi.repository import Cdn
 import cdnrawc

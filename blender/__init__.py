@@ -3,11 +3,13 @@ bl_info = {
     "category": "Simulation"
 }
 
-import sys, math
+import sys, math, platform, os
 
 if not "gi.repository.Cdn" in sys.modules:
+    # TODO: this is a hack!
     p = '/usr/lib/python3/dist-packages'
     sys.path.append(p)
+
     from gi.repository import Cdn
     sys.path = sys.path[:-1]
 
@@ -17,8 +19,14 @@ if "bpy" in locals():
     imp.reload(codyn)
     imp.reload(simulator)
 else:
-    import bpy
-    from . import (importer, codyn, simulator)
+    import bpy, inspect
+
+    origpath = sys.path
+    sys.path.insert(0, os.path.dirname(inspect.getframeinfo(inspect.currentframe())[0]))
+
+    import codyn, simulator, importer
+
+    sys.path = origpath
 
 def simulator_init():
     simulator.init()

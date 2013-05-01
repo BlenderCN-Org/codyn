@@ -1,7 +1,7 @@
 import bpy, os, inspect, sys, math, mathutils
 from gi.repository import Cdn
 
-from . import codyn
+import codyn
 
 class CodynImport(bpy.types.Operator):
     """Import a codyn model"""
