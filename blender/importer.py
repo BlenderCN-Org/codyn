@@ -237,7 +237,7 @@ class CodynImport(bpy.types.Operator):
         cdnobj = self.make_object(context, name)
         cdnobj['cdn_filename'] = path
 
-        bpy.context.scene.objects.active = cdnobj
+        context.scene.objects.active = cdnobj
 
         if not 'init_sensor' in cdnobj.game.sensors:
             bpy.ops.logic.sensor_add(type='ALWAYS', name='init_sensor')
