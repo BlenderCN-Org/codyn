@@ -32,22 +32,83 @@ def find_and_load_rawc(data):
     except OSError:
         data.rawc = None
 
-class SimulatorCodyn:
-    def __init__(self, data):
+class Simulator:
+    def __init__(self, obj, data):
+        self.system = obj.children[0]
         self.data = data
+
+        self.nodes = {}
+        self._find_nodes(self.system)
+        self.setup()
+
+    def setup(self):
+        pass
+
+    def _find_nodes(self, root):
+        for child in root.children:
+            if 'cdn_node' in child:
+                self.nodes[child['cdn_node']] = child
+
+            self._find_nodes(child)
+
+class SimulatorCodyn(Simulator):
+    class Node:
+        def __init__(self, node, gobj):
+            self.node = node
+            self.gobj = gobj
+
+            self.localMatrix = self.node.get_variable("localMatrix")
+
+    def setup(self):
+        self.cdn_nodes = []
+
+        for n in self.nodes:
+            self.cdn_nodes.append(SimulatorCodyn.Node(self.data.cdn.find_object(n), self.nodes[n]))
+
+    def step(self, t):
+        for i in range(0, int(t / 0.001)):
+            self.data.cdn.step(0.001)
 
     def reset(self):
         self.data.cdn.reset()
+        self.data.cdn.begin(0)
 
-class SimulatorRawc:
-    def __init__(self, data):
-        self.data = data
+    def update(self):
+        # Update game node transformation from local transform
+        for node in self.cdn_nodes:
+            m = codyn.matrix_to_mat4x4(node.localMatrix.get_values())
+            node.gobj.localTransform = m
+
+class SimulatorRawc(Simulator):
+    class Node:
+        def __init__(self, node, gobj):
+            self.node = node
+            self.gobj = gobj
+
+            self.localMatrix = self.node["localMatrix"]
+
+    def setup(self):
+        self.cdn_nodes = []
+
+        for n in self.nodes:
+            mn = self.data.rawc.topology.fullname_to_node[n]
+            node = SimulatorRawc.Node(mn, self.nodes[n])
+
+            self.cdn_nodes.append(node)
 
     def reset(self):
         self.data.rawc.reset(0)
 
-def update(obj, network):
-    pass
+    def update(self):
+        for node in self.cdn_nodes:
+            m = codyn.to_mat4x4(node.localMatrix.flat_value,
+                                node.localMatrix.dimension)
+
+            node.gobj.localTransform = m
+
+    def step(self, t):
+        for i in range(0, int(t / 0.001)):
+            self.data.rawc.step(0.001)
 
 def init():
     import bge
@@ -76,12 +137,12 @@ def init():
     find_and_load_rawc(data)
 
     if not data.rawc is None:
-        data.simulator = SimulatorRawc(data)
+        data.simulator = SimulatorRawc(owner, data)
     else:
-        data.simulator = SimulatorCodyn(data)
+        data.simulator = SimulatorCodyn(owner, data)
 
     data.simulator.reset()
-    update(owner, data)
+    data.simulator.update()
 
     cont.activate('init_actuator')
 
@@ -91,6 +152,9 @@ def loop():
     cont = bge.logic.getCurrentController()
     owner = cont.owner
 
-    update(owner, codyn.data.networks[owner.name])
+    fps = bge.logic.getLogicTicRate()
+
+    codyn.data.networks[owner.name].simulator.step(1.0 / fps)
+    codyn.data.networks[owner.name].simulator.update()
 
 # vi:ts=4:et
