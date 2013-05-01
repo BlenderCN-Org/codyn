@@ -19,9 +19,7 @@ node "Inertia"
 
     ## Diagonal inertia matrix.
     ##   c: the diagonal inertia component.
-    Diag(c) = "[c, 0, 0;
-                 0, c, 0;
-                 0, 0, c]"
+    Diag(c) = "diag([c, c, c])"
 
     ## Inertia matrix of a sphere.
     ##   m: the mass of the sphere.
