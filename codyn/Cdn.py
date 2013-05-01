@@ -11,35 +11,57 @@ class Object(Cdn.Object):
         try:
             return Cdn.Object.__getattribute__(self, name)
         except:
-            return self.get_variable(name)
+            return self[name]
+
+    def __getitem__(self, name):
+        return self.get_variable(name)
 
 Object = override(Object)
 __all__.append('Object')
 
-def flat_to_matrix(ret, dims):
-    if len(ret) == 1:
-        return ret
+class Node(Cdn.Node):
+    def __getitem__(self, name):
+        v = self.get_variable(name)
 
-    rret = []
-    start = 0
+        if v is None:
+            return self.get_child(name)
+        else:
+            return v
 
-    for i in range(0, dims.columns]):
-        end = start + dims.rows
+Node = override(Node)
+__all__.append('Node')
 
-        rret.extend(ret[start:end])
-        start += dims.rows
-
-    return rret
 
 class Matrix(Cdn.Matrix):
     @property
-    def values(self)
+    def values(self):
         ret = self.get_flat()
         dims = self.get_dimension()
 
-        return flat_to_matrix(ret, dims)
+        return self._flat_to_matrix(ret, dims)
+
+    def _flat_to_matrix(self, ret, dim):
+        if len(ret) == 1:
+            return ret[0]
+
+        rret = [None] * dim.rows
+        i = 0
+
+        for c in range(0, dims.columns):
+            for r in range(0, dims.rows):
+                if c == 0:
+                    rret[r] = [0] * dims.columns
+
+                rret[r][c] = ret[i]
+                i += 1
+
+        return rret
+
 
     def set_values(self, vals, numr, numc):
         self.set_values_flat(vals, numr, numc)
+
+Matrix = override(Matrix)
+__all__.append('Matrix')
 
 # vi:ex:ts=4:et
