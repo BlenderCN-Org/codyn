@@ -233,7 +233,10 @@ class CodynImport(bpy.types.Operator):
         path = '/home/jvanden/work/phd/codyn/codyn/examples/pendulum.cdn'
 
         network = Cdn.Network.new_from_path(path)
-        network.compile(None, None)
+        err = Cdn.CompileError()
+
+        if not network.compile(None, err):
+            print(err)
 
         objmap = {}
         nodemap = {}
