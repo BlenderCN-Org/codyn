@@ -1,4 +1,4 @@
-import os, platform
+import os, platform, tempfile, shutil
 
 from . import codyn
 
@@ -16,7 +16,6 @@ def find_and_load_rawc(data):
         ext = '.so'
 
     name = os.path.splitext(basename)[0]
-
     rawclib = os.path.join(os.path.dirname(data.filename), 'lib{0}{1}'.format(name, ext))
 
     # Check if <rawclib> is newer
@@ -24,8 +23,22 @@ def find_and_load_rawc(data):
         rawctime = os.path.getmtime(rawclib)
 
         if rawctime > data.mtime:
-            # Load rawc version of the network
-            data.rawc = cdnrawc.Network(name, rawclib)
+            if not data.rawc is None:
+                try:
+                    os.remove(shutil.data.rawc.libname)
+                except:
+                    pass
+
+            # Load rawc version of the network. We need a dirty trick to force
+            # a reload
+            f = tempfile.NamedTemporaryFile(delete=False)
+            tmpname = f.name
+            f.close()
+            del f
+
+            shutil.copy(rawclib, tmpname)
+
+            data.rawc = cdnrawc.Network(name, tmpname)
             data.mtime = rawctime
         elif rawctime < data.mtime:
             data.rawc = None
