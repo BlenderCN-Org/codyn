@@ -794,7 +794,7 @@ cdn_variable_get_value (CdnVariable *variable)
  *
  * Get the value of the variable.
  *
- * Returns: the value of the variable.
+ * Returns: (transfer none): the value of the variable.
  *
  **/
 CdnMatrix const *

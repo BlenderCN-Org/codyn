@@ -241,7 +241,7 @@ cdn_matrix_set (CdnMatrix          *matrix,
  * use #cdn_matrix_get_memory. Note that the returned value is pointing to
  * the matrix internal memory.
  *
- * Returns: the matrix values.
+ * Returns: (transfer none): the matrix values.
  *
  **/
 gdouble const *
@@ -360,7 +360,7 @@ cdn_matrix_get_memory (CdnMatrix *matrix)
  * Get the values memory of a matrix. This method is mostly for writing bindings
  * and should not be used.
  *
- * Returns: (array length=length): the matrix values.
+ * Returns: (transfer none) (array length=length): the matrix values.
  *
  **/
 gdouble const *
@@ -447,7 +447,7 @@ cdn_matrix_clear (CdnMatrix *matrix)
  *
  * Get the dimension of the matrix.
  *
- * Returns: a #CdnDimension.
+ * Returns: (transfer none): a #CdnDimension.
  *
  **/
 CdnDimension const *
