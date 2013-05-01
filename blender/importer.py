@@ -230,7 +230,6 @@ class CodynImport(bpy.types.Operator):
         self.link_library()
 
         path = self.filepath
-        path = '/home/jvanden/work/phd/codyn/codyn/examples/pendulum.cdn'
 
         network = Cdn.Network.new_from_path(path)
         err = Cdn.CompileError()
@@ -306,9 +305,7 @@ class CodynImport(bpy.types.Operator):
         return {"FINISHED"}
 
     def invoke(self, context, event):
-        #context.window_manager.fileselect_add(self)
-        #return {'RUNNING_MODAL'}
-        self.execute(context)
-        return {'FINISHED'}
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
 
 # vi:ts=4:et
