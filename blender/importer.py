@@ -1,4 +1,4 @@
-import bpy, os, inspect, sys
+import bpy, os, inspect, sys, math, mathutils
 from gi.repository import Cdn
 
 from . import codyn
@@ -28,6 +28,113 @@ class CodynImport(bpy.types.Operator):
 
         return ret
 
+    def inertia_is_diag(self, inertia):
+        return inertia[0][1] == 0 and \
+               inertia[0][2] == 0 and \
+               inertia[1][0] == 0 and \
+               inertia[2][0] == 0 and \
+               inertia[1][2] == 0 and \
+               inertia[2][1] == 0
+
+    def inertia_like_sphere(self, m, inertia):
+        if not self.inertia_is_diag(inertia):
+            return False
+
+        if inertia[0][0] == inertia[1][1] and \
+           inertia[1][1] == inertia[2][2]:
+            return math.sqrt(inertia[0][0] / (2.0 / 5.0 * m))
+
+        return False
+
+    def inertia_like_cylinder(self, m, inertia):
+        if not self.inertia_is_diag(inertia):
+            return False
+
+        f = 1.0 / 12.0 * m
+
+        a = inertia[0][0] / f
+        b = inertia[1][1] / f
+        c = inertia[2][2] / (0.5 * m)
+
+        r2 = c
+        h2 = a - (3 * r2)
+
+        if a == b and a != c and h2 > 0:
+            return math.sqrt(r2), math.sqrt(h2)
+
+        if w2 > 0 and d2 > 0 and h2 > 0:
+            return math.sqrt(w2), math.sqrt(d2), math.sqrt(h2)
+
+    def inertia_like_box(self, m, inertia):
+        if not self.inertia_is_diag(inertia):
+            return False
+
+        f = 1.0 / 12.0 * m
+
+        a = inertia[0][0] / f
+        b = inertia[1][1] / f
+        c = inertia[2][2] / f
+
+        w2 = (c - a + b) / 2
+        d2 = b - w2
+        h2 = a - d2
+
+        if w2 > 0 and d2 > 0 and h2 > 0:
+            return math.sqrt(w2), math.sqrt(d2), math.sqrt(h2)
+
+        return False
+
+    def make_matrix(self, m):
+        dim = m.dimension()
+        v = m.get_flat()
+
+        ret = []
+        i = 0
+
+        for c in range(0, dim.columns):
+            for r in range(0, dim.rows):
+                if c == 0:
+                    ret.append([0] * dim.columns)
+
+                ret[r][c] = v[i]
+                i += 1
+
+        return ret
+
+    def try_make_shape(self, context, body):
+        m = body.get_variable('m').get_value()
+        I = body.get_variable('I').get_values()
+
+        # Inertia matrix
+        inertia = self.make_matrix(I)
+        name = '{0}_shape'.format(body.get_id())
+
+        r = self.inertia_like_sphere(m, inertia)
+
+        if r:
+            bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, size=r)
+            context.active_object.name = name
+            return context.active_object
+
+        c = self.inertia_like_cylinder(m, inertia)
+
+        if c:
+            bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=c[0], depth=c[1])
+            context.active_object.name = name
+            return context.active_object
+
+        b = self.inertia_like_box(m, inertia)
+
+        if b:
+            bpy.ops.mesh.primitive_cube_add()
+            context.active_object.name = name
+            context.active_object.scale = mathutils.Vector(b)
+            bpy.ops.object.transform_apply(scale=True)
+
+            return context.active_object
+        else:
+            return None
+
     def import_system(self, cdnobj, context, system):
         bodies = system.find_objects('has-template(physics.body)')
         ret = []
@@ -44,9 +151,6 @@ class CodynImport(bpy.types.Operator):
             # Center of mass
             com = body.get_variable("com")
 
-            # Inertia matrix
-            inertia = body.get_variable("inertia")
-
             bid = body.get_id()
             obj = self.make_object(context, bid)
 
@@ -61,6 +165,14 @@ class CodynImport(bpy.types.Operator):
 
             comobj = self.make_object(context, comid, lambda: bpy.data.meshes.new(comid))
             comobj.parent = obj
+
+            shape = self.try_make_shape(context, body)
+
+            if not shape is None:
+                shape.location = com.get_values().get_flat()
+                shape.parent = obj
+
+                ret.append(shape)
 
             ret.append(obj)
             ret.append(cs)
