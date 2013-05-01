@@ -154,6 +154,12 @@ class CodynImport(bpy.types.Operator):
             bid = body.get_id()
             obj = self.make_object(context, bid)
 
+            if not 'cdn_node' in obj.game.properties:
+                context.scene.objects.active = obj
+                bpy.ops.object.game_property_new(type='STRING', name='cdn_node')
+
+            obj.game.properties['cdn_node'].value = body.get_full_id()
+
             csid = '{0}_cs'.format(bid)
 
             cs = self.make_object(context, csid, lambda: bpy.data.meshes['coordinate_system'])
