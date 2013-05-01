@@ -257,7 +257,7 @@ class CodynImport(bpy.types.Operator):
 
             ctrl = cdnobj.game.controllers['init_controller']
             ctrl.mode = 'MODULE'
-            ctrl.module = 'codyn.simulator_init'
+            ctrl.module = 'blender_codyn.simulator_init'
             ctrl.states = 1
 
             bpy.ops.logic.actuator_add(type='STATE', name='init_actuator')
@@ -275,7 +275,7 @@ class CodynImport(bpy.types.Operator):
             ctrl = cdnobj.game.controllers['loop_controller']
             ctrl.states = 2
             ctrl.mode = 'MODULE'
-            ctrl.module = 'codyn.simulator_loop'
+            ctrl.module = 'blender_codyn.simulator_loop'
             loops.link(ctrl)
 
             bpy.ops.object.game_property_new(type='STRING', name='cdn_filename')
