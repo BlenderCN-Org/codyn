@@ -15,10 +15,10 @@ blenderzip_DATA = blender_codyn.zip
 
 blender_codyn.zip: $(blender_DATA) $(blenderdata_DATA)
 	$(AM_V_GEN) \
-	rm -rf blender_codyn; \
-	mkdir blender_codyn; \
+	rm -rf blender_codyn $@; \
+	mkdir -p blender_codyn/data; \
 	cp $(blender_DATA) blender_codyn/; \
-	cp -r data blender_codyn/; \
+	cp -r $(blenderdata_DATA) blender_codyn/data/; \
 	zip -r $@ blender_codyn; \
 	rm -rf blender_codyn
 
