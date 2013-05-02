@@ -165,6 +165,9 @@
     ## -2
     test_transpose_3 = "transpose(-2)"
 
+    ## 1 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 0 0
+    test_transpose_4 = "transpose([1, 0, 0; 0, 1, 0; 0, 0, 1; 0, 0, 0; 0, 0, 0; 0, 0, 0])"
+
 # diagonal
     ## 1 4
     test_diag_1 = "diag([1 2; 3 4])"
