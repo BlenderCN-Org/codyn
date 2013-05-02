@@ -8,10 +8,16 @@ import sys, math, platform, os
 if not "gi.repository.Cdn" in sys.modules:
     # TODO: this is a hack!
     p = '/usr/lib/python3/dist-packages'
-    sys.path.append(p)
+
+    if not p in sys.path:
+        sys.path.append(p)
+    else:
+        p = None
 
     from gi.repository import Cdn
-    sys.path = sys.path[:-1]
+
+    if not p is None and p in sys.path:
+        sys.path.remove(p)
 
 if "bpy" in locals():
     import imp
@@ -22,11 +28,17 @@ else:
     import bpy, inspect
 
     origpath = sys.path
-    sys.path.insert(0, os.path.dirname(inspect.getframeinfo(inspect.currentframe())[0]))
+    p = os.path.dirname(inspect.getframeinfo(inspect.currentframe())[0])
+
+    if not p in sys.path:
+        sys.path.insert(0, p)
+    else:
+        p = None
 
     import codyn, simulator, importer
 
-    sys.path = origpath
+    if not p is None and p in sys.path:
+        sys.path.remove(p)
 
 def simulator_init():
     simulator.init()
