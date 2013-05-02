@@ -1042,6 +1042,7 @@ op_transpose (CdnStack           *stack,
 	gint numr;
 	gint numc;
 	gint start;
+	gint num;
 
 	numr = argdim->args[0].rows;
 	numc = argdim->args[0].columns;
@@ -1052,11 +1053,13 @@ op_transpose (CdnStack           *stack,
 		return;
 	}
 
+	num = numr * numc;
+
 	gdouble *m = cdn_stack_ptr (stack) +
 	             cdn_stack_count (stack) -
-	             numr * numc;
+	             num;
 
-	for (start = 0; start < numr * numc; ++start)
+	for (start = 0; start < num; ++start)
 	{
 		gint next = start;
 		gint i = 0;
@@ -1065,7 +1068,7 @@ op_transpose (CdnStack           *stack,
 		do
 		{
 			++i;
-			next = (next % numr) * numc + next / numr;
+			next = (next % numc) * numr + next / numc;
 		} while (next > start);
 
 		if (next < start || i == 1)
@@ -1077,7 +1080,7 @@ op_transpose (CdnStack           *stack,
 
 		do
 		{
-			i = (next % numr) * numc + next / numr;
+			i = (next % numc) * numr + next / numc;
 			m[next] = (i == start) ? tmp : m[i];
 			next = i;
 		} while (next > start);
