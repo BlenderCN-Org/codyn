@@ -5930,7 +5930,10 @@ cdn_expression_equal (CdnExpression *expression,
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
 	g_return_val_if_fail (CDN_IS_EXPRESSION (other), FALSE);
 
-	if (!expression->priv->instructions || !other->priv->instructions)
+	if (!expression->priv->instructions ||
+	    !other->priv->instructions ||
+	    expression->priv->modified ||
+	    other->priv->modified)
 	{
 		return g_strcmp0 (expression->priv->expression,
 		                  other->priv->expression) == 0;
