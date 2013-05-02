@@ -268,6 +268,9 @@ set_expression (CdnVariable   *variable,
 			g_object_unref (expression);
 		}
 
+		cdn_modifiable_set_modified (CDN_MODIFIABLE (variable->priv->expression),
+		                             TRUE);
+
 		if (notify)
 		{
 			g_object_notify (G_OBJECT (variable), "modified");
