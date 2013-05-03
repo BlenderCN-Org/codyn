@@ -31,7 +31,7 @@ typedef struct _CdnExpressionTreeIter CdnExpressionTreeIter;
 
 GType cdn_expression_tree_iter_get_type ();
 
-CdnExpressionTreeIter *cdn_expression_tree_iter_new             (CdnExpression         *expression);
+CdnExpressionTreeIter *cdn_expression_tree_iter_new             (CdnExpression const *expression);
 CdnExpressionTreeIter *cdn_expression_tree_iter_new_from_instructions (GSList const *instructions);
 CdnExpressionTreeIter *cdn_expression_tree_iter_new_from_instruction (CdnInstruction *instruction);
 CdnExpressionTreeIter *cdn_expression_tree_iter_new_from_instruction_take (CdnInstruction *instruction);

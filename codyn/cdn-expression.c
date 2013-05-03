@@ -5869,7 +5869,7 @@ cdn_expression_reset (CdnExpression *expression)
  *
  **/
 const GSList *
-cdn_expression_get_instructions (CdnExpression *expression)
+cdn_expression_get_instructions (CdnExpression const *expression)
 {
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), NULL);
 

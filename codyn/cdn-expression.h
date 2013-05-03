@@ -126,7 +126,7 @@ gboolean       cdn_expression_get_has_cache    (CdnExpression      *expression);
 void           cdn_expression_set_has_cache    (CdnExpression      *expression,
                                                 gboolean            cache);
 
-const GSList  *cdn_expression_get_instructions (CdnExpression      *expression);
+const GSList  *cdn_expression_get_instructions (CdnExpression const *expression);
 void           cdn_expression_set_instructions (CdnExpression      *expression,
                                                 const GSList       *instructions);
 

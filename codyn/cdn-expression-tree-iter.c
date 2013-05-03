@@ -58,7 +58,7 @@ cdn_expression_tree_iter_free (CdnExpressionTreeIter *self)
 }
 
 static CdnExpressionTreeIter *
-tree_iter_new (CdnExpression *expression,
+tree_iter_new (CdnExpression const *expression,
                GSList const  *instructions)
 {
 	GQueue stack;
@@ -108,7 +108,7 @@ tree_iter_new (CdnExpression *expression,
 }
 
 CdnExpressionTreeIter *
-cdn_expression_tree_iter_new (CdnExpression *expression)
+cdn_expression_tree_iter_new (CdnExpression const *expression)
 {
 	return tree_iter_new (expression, NULL);
 }
