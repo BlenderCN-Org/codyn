@@ -359,9 +359,26 @@ templates
                 cJ(q, dq) = "0"
             }
 
-            # Use a constraint to normalize q
+            ## The generalized coordinate for a spherical 3dof joint is
+            ## represented by a quaternion in q. Like this, the spherical joint
+            ## does not have any problems with singularies which otherwise might
+            ## arise (when using Euler angles for example). This is why q is of
+            ## dimension 4-by-1. You can use the convenience methods from Quaternion
+            ## (such as Quaternion.FromAxisAngle) to set values for q.
+            ##
+            ## Some things to note. A quaternion only describes 3 independent
+            ## variables since hypot(q) == 1. Due to numerical issues when
+            ## integrating forward, q needs to be normalized. Here that
+            ## happens using a constraint equation.
             q = "[1; 0; 0; 0]" ("q / hypot(q)")
 
+            ## The derivative of the quaternion is given by the following
+            ## equation. Note that dq (the velocity variables) _are_ 3-by-1 and
+            ## are choosen to be the cartesian joint velocities expressed
+            ## in the successor frame (this simplifies the motion subspace and
+            ## the joint velocity). q̇ then simply becomes:
+            ## (see page 86 of Rigid Body Dynamics Algorithms, also
+            ## http://www.euclideanspace.com/physics/kinematics/angularvelocity/)
             q̇ = "0.5 ∙ [-q[1], -q[2], -q[3];
                          q[0], -q[3],  q[2];
                          q[3],  q[0], -q[1];
