@@ -188,7 +188,7 @@ templates
                 ## The axis around which to rotate.
                 axis = "[1; 0; 0]"
 
-                JointTransform(q)(axis) = "Spatial.FromAxisAngle(axis, q)"
+                JointTransform(q) = "Spatial.FromAxisAngle(axis, q)"
                 JointVelocity(q, dq) = "[axis ∙ dq; 0; 0; 0]"
 
                 # NOTE! this is only well defined for joint axis aligned with
@@ -197,7 +197,7 @@ templates
                 # needs to be adapted accordingly. The formulation below is
                 # simply a combinatory trick to get the right values in the
                 # constraint matrix.
-                ConstraintForceSubspace(q, dq)(axis) = "[
+                ConstraintForceSubspace(q, dq) = "[
                     1 - axis[0], 0,           0, 0, 0;
                     axis[0],     axis[2],     0, 0, 0;
                     0,           1 - axis[2], 0, 0, 0;
@@ -229,7 +229,7 @@ templates
             {
                 axis = ["[1; 0; 0]", "[0; 1; 0]", "[0; 0; 1]"]
 
-                JointTransform(q)(axis) = "Spatial.Translate(axis ∙ q)"
+                JointTransform(q) = "Spatial.Translate(axis ∙ q)"
                 JointVelocity(q, dq) = "[0; 0; 0; axis ∙ dq]"
 
                 # NOTE! this is only well defined for joint axis aligned with
@@ -238,7 +238,7 @@ templates
                 # needs to be adapted accordingly. The formulation below is
                 # simply a combinatory trick to get the right values in the
                 # constraint matrix.
-                ConstraintForceSubspace(q, dq)(axis) = "[
+                ConstraintForceSubspace(q, dq) = "[
                     1, 0, 0, 0,           0;
                     0, 1, 0, 0,           0;
                     0, 0, 1, 0,           0;
@@ -262,8 +262,8 @@ templates
                 ## helical joint becomes a simple revolute joint
                 h = 0
 
-                JointTransform(q)(axis) = "Spatial.Rotate@@@1(q) ∙
-                                           Spatial.Translate(axis ∙ q ∙ h)"
+                JointTransform(q) = "Spatial.Rotate@@@1(q) ∙
+                                     Spatial.Translate(axis ∙ q ∙ h)"
 
                 JointVelocity(q, dq) = "[axis ∙ dq;
                                          axis ∙ dq ∙ h]"
@@ -274,7 +274,7 @@ templates
                 # needs to be adapted accordingly. The formulation below is
                 # simply a combinatory trick to get the right values in the
                 # constraint matrix.
-                ConstraintForceSubspace(q, dq)(axis) = "[
+                ConstraintForceSubspace(q, dq) = "[
                     1 - axis[0], 0,           -h ∙ axis[0],  0,            0;
                     axis[0],     axis[2],      0,           -h ∙ axis[1],  0;
                     0,           1 - axis[2],  0,            0,           -h ∙ axis[2];
@@ -294,10 +294,10 @@ templates
             {
                 axis = "[0; 0; 1]"
 
-                JointTransform(q)(axis) = "Spatial.Rotate(axis ∙ q[0]) ∙
-                                           Spatial.Translate(axis ∙ q[1])"
+                JointTransform(q) = "Spatial.Rotate(axis ∙ q[0]) ∙
+                                     Spatial.Translate(axis ∙ q[1])"
 
-                LocalJointVelocity(q, dq)(axis) = "[
+                JointVelocity(q, dq) = "[
                     axis[0] ∙ dq[0], 0;
                     axis[1] ∙ dq[0], 0;
                     axis[2] ∙ dq[0], 0;
@@ -312,7 +312,7 @@ templates
                 # needs to be adapted accordingly. The formulation below is
                 # simply a combinatory trick to get the right values in the
                 # constraint matrix.
-                ConstraintForceSubspace(q, dq)(axis) = "[
+                ConstraintForceSubspace(q, dq) = "[
                     1 - axis[0], 0,            0, 0;
                     axis[0],     axis[2],      0, 0;
                     0,           1 - axis[2],  0, 0;
