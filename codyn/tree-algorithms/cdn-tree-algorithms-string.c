@@ -273,8 +273,9 @@ function_to_string (CdnInstructionFunction *inst,
 	}
 	else if (id == CDN_MATH_FUNCTION_TYPE_TRANSPOSE)
 	{
+		g_string_append(ret, "transpose(");
 		g_string_append (ret, *children);
-		g_string_append (ret, "\xe1\xb5\x80");
+		g_string_append (ret, ")");
 		return;
 	}
 
