@@ -74,7 +74,7 @@ static GOptionEntry entries[] = {
 };
 
 static void
-display_variable (CdnVariable *v)
+display_variable (CdnVariable *v, gchar const *indent)
 {
 	gchar *name;
 	gint r;
@@ -82,33 +82,44 @@ display_variable (CdnVariable *v)
 	gint i;
 	CdnMatrix const *ret;
 	gdouble const *values;
-	gchar *fill;
+	CdnExpression const *expr;
+	CdnExpressionTreeIter *iter;
+	CdnDimension dim;
 
 	name = cdn_variable_get_full_name_for_display (v);
-	g_printf ("%s: ", name);
-	fill = g_strnfill (strlen (name) + 3, ' ');
+
+	expr = cdn_variable_get_expression (v);
+	iter = cdn_expression_tree_iter_new (expr);
+	cdn_variable_get_dimension (v, &dim);
+
+	g_printf ("%s%s [%d-by-%d]: %s\n",
+	          indent,
+	          name,
+	          dim.rows,
+	          dim.columns,
+	          cdn_expression_tree_iter_to_string_dbg (iter));
 
 	g_free (name);
+	cdn_expression_tree_iter_free (iter);
 
 	ret = cdn_variable_get_values (v);
 	values = cdn_matrix_get (ret);
 
 	if (cdn_dimension_is_one (&ret->dimension))
 	{
-		g_free (fill);
-		g_printf ("%.5f\n", values[0]);
+		g_printf ("%s%.5f\n", indent, values[0]);
 		return;
 	}
 
 	i = 0;
 
-	g_printf ("[");
+	g_printf ("%s[", indent);
 
 	for (r = 0; r < ret->dimension.rows; ++r)
 	{
 		if (r != 0)
 		{
-			g_printf ("%s", fill);
+			g_printf ("%s ", indent);
 		}
 
 		for (c = 0; c < ret->dimension.columns; ++c)
@@ -137,8 +148,75 @@ display_variable (CdnVariable *v)
 		}
 	}
 
-	g_printf ("]\n");
-	g_free (fill);
+	g_printf ("%s]\n", indent);
+}
+
+static void
+display_function (CdnFunction *f)
+{
+	gchar *id;
+	GList const *args;
+	CdnExpression const *expr;
+	CdnExpressionTreeIter *iter;
+
+	expr = cdn_function_get_expression (f);
+	iter = cdn_expression_tree_iter_new (expr);
+
+	id = cdn_object_get_full_id_for_display (CDN_OBJECT (f));
+
+	g_printf ("Function %s(", id);
+
+	args = cdn_function_get_arguments (f);
+
+	while (args)
+	{
+		CdnFunctionArgument *arg = args->data;
+		CdnDimension dim;
+
+		cdn_function_argument_get_dimension (arg, &dim);
+
+		g_printf ("%s [%d-by-%d]",
+		          cdn_function_argument_get_name (arg),
+		          dim.rows,
+		          dim.columns);
+
+		args = g_list_next (args);
+
+		if (args)
+		{
+			g_printf (", ");
+		}
+	}
+
+	g_printf ("): %s\n",
+	          cdn_expression_tree_iter_to_string_dbg (iter));
+
+	g_free (id);
+	cdn_expression_tree_iter_free (iter);
+}
+
+static void
+display_object (CdnObject *o)
+{
+	gchar *id;
+	GSList *vars;
+
+	id = cdn_object_get_full_id_for_display (o);
+
+	g_printf ("Object %s\n", id);
+
+	vars = cdn_object_get_variables (o);
+
+	while (vars)
+	{
+		CdnVariable *v = vars->data;
+		vars = g_slist_delete_link (vars, vars);
+
+		display_variable (v, "  ");
+		g_printf ("\n");
+	}
+
+	g_free (id);
 }
 
 static gint
@@ -163,19 +241,35 @@ display_value (CdnNetwork  *network,
 
 	selection = cdn_selector_select (sel,
 	                                 G_OBJECT (network),
-	                                 CDN_SELECTOR_TYPE_VARIABLE,
+	                                 CDN_SELECTOR_TYPE_ANY,
 	                                 NULL);
 
 	while (selection)
 	{
 		CdnSelection *s = selection->data;
-		CdnVariable *v;
+		gpointer v;
+		gboolean ignore = FALSE;
 
 		v = cdn_selection_get_object (s);
 
-		display_variable (v);
+		if (CDN_IS_VARIABLE (v))
+		{
+			display_variable (v, "");
+		}
+		else if (CDN_IS_FUNCTION (v))
+		{
+			display_function (v);
+		}
+		else if (CDN_IS_OBJECT (v))
+		{
+			display_object (v);
+		}
+		else
+		{
+			ignore = TRUE;
+		}
 
-		if (selection->next)
+		if (!ignore && selection->next)
 		{
 			g_printf ("\n");
 		}
