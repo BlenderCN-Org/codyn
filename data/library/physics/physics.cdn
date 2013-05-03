@@ -390,7 +390,7 @@ templates
             ## variables since hypot(q) == 1. Due to numerical issues when
             ## integrating forward, q needs to be normalized. Here that
             ## happens using a constraint equation.
-            q = "[1; 0; 0; 0]" ("q / hypot(q)")
+            q = "[1; 0; 0; 0]" ("q / sqsum(q)")
 
             ## The derivative of the quaternion is given by the following
             ## equation. Note that dq (the velocity variables) _are_ 3-by-1 and
