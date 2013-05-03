@@ -96,13 +96,8 @@ templates
                 ## by the DOF of the joint).
                 JointTransform(q) = "eye(6)"
 
-                ## Velocity across the joint relative to the parent frame.
-                LocalJointVelocity(q, dq) = "zeros(6, 1)"
-
-                ## Velocity across the joint. The velocity across the joint is
-                ## is simply the joint transformation multiplied by the local
-                ## joint velocity.
-                JointVelocity(q, dq) = "JointTransform(q) ∙ LocalJointVelocity(q, dq)"
+                ## Velocity across the joint in successor frame coordinates.
+                JointVelocity(q, dq) = "zeros(6, 1)"
 
                 ## The joint motion subspace. This is a matrix specifying the
                 ## motion subspace of the joint. The motion subspace is defined
@@ -194,7 +189,7 @@ templates
                 axis = "[1; 0; 0]"
 
                 JointTransform(q)(axis) = "Spatial.FromAxisAngle(axis, q)"
-                LocalJointVelocity(q, dq)(axis) = "[axis ∙ dq; 0; 0; 0]"
+                JointVelocity(q, dq) = "[axis ∙ dq; 0; 0; 0]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -235,7 +230,7 @@ templates
                 axis = ["[1; 0; 0]", "[0; 1; 0]", "[0; 0; 1]"]
 
                 JointTransform(q)(axis) = "Spatial.Translate(axis ∙ q)"
-                LocalJointVelocity(q, dq)(axis) = "[0; 0; 0; axis ∙ dq]"
+                JointVelocity(q, dq) = "[0; 0; 0; axis ∙ dq]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
@@ -270,8 +265,8 @@ templates
                 JointTransform(q)(axis) = "Spatial.Rotate@@@1(q) ∙
                                            Spatial.Translate(axis ∙ q ∙ h)"
 
-                LocalJointVelocity(q, dq)(axis) = "[axis ∙ dq;
-                                              axis ∙ dq ∙ h]"
+                JointVelocity(q, dq) = "[axis ∙ dq;
+                                         axis ∙ dq ∙ h]"
 
                 # NOTE! this is only well defined for joint axis aligned with
                 # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
