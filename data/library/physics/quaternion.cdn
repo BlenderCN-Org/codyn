@@ -1,6 +1,17 @@
 node "Quaternion"
 {
     FromAxisAngle(axis, angle) = "[cos(angle / 2), axis ∙ sin(angle / 2)]"
+    _FromEulerAngles(cx, cy, cz, sx, sy, sz) = "[cx * cy * cz + sx * sy * sz,
+                                                 sx * cy * cz - cx * sy * sz,
+                                                 cx * sy * cz + sx * cy * sz,
+                                                 cx * cy * sz - sx * sy * cz]"
+
+    FromEulerAngles(x, y, z) = "_FromEulerAngles(cos(x / 2),
+                                                 cos(y / 2),
+                                                 cos(z / 2),
+                                                 sin(x / 2),
+                                                 sin(y / 2),
+                                                 sin(z / 2))"
 }
 
 # vi:ex:ts=4:et
