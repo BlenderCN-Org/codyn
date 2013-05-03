@@ -47,10 +47,8 @@ edge has-template(physics.joint)
     ## Recursive joint velocity (from parent to child)
     velocity <= "output.transform ∙ velocity + output.jointVelocity"
 
-    # TODO: add cJ in accel calc, add inverse dynamics case dqq not 0
-
     ## Recursive joint acceleration (from parent to child)
-    acceleration <= "output.transform ∙ acceleration +
+    acceleration <= "output.transform ∙ acceleration + output.cJ +
                      Spatial.CrossMotion(output.velocity) ∙ output.jointVelocity"
 }
 
