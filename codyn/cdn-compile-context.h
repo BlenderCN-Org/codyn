@@ -107,12 +107,6 @@ cdn_compile_context_lookup_function (CdnCompileContext *context,
 const GSList *cdn_compile_context_get_objects (CdnCompileContext *context);
 const GSList *cdn_compile_context_get_functions (CdnCompileContext *context);
 
-void cdn_compile_context_set_only_local_variables (CdnCompileContext *context,
-                                                   gboolean           only_local);
-
-gboolean cdn_compile_context_get_only_local_variables (CdnCompileContext *context);
-
-
 G_END_DECLS
 
 #endif /* __CDN_COMPILE_CONTEXT_H__ */

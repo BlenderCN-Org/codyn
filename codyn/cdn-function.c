@@ -520,7 +520,6 @@ cdn_function_compile_impl (CdnObject         *object,
 	}
 
 	context = cdn_object_get_compile_context (object, context);
-	cdn_compile_context_set_only_local_variables (context, TRUE);
 
 	if (CDN_OBJECT_CLASS (cdn_function_parent_class)->compile)
 	{
@@ -564,8 +563,6 @@ cdn_function_compile_impl (CdnObject         *object,
 		// arguments of this function.
 		promote_rand_instructions (self);
 	}
-
-	cdn_compile_context_set_only_local_variables (context, FALSE);
 
 	// Compile defaults
 	for (item = self->priv->arguments; item; item = g_list_next (item))

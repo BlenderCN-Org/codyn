@@ -37,7 +37,6 @@ typedef struct
 
 	guint function_priority : 1;
 	guint function_arg_priority : 1;
-	guint only_local_variables : 1;
 } Context;
 
 struct _CdnCompileContextPrivate
@@ -66,7 +65,6 @@ context_copy (Context *context)
 
 	ctx->function_priority = context->function_priority;
 	ctx->function_arg_priority = context->function_arg_priority;
-	ctx->only_local_variables = context->only_local_variables;
 
 	return ctx;
 }
@@ -299,7 +297,7 @@ lookup_variable (CdnCompileContext *context,
 			variable = v;
 		}
 
-		if (ctx->only_local_variables || (variable && !getlast))
+		if (variable && !getlast)
 		{
 			break;
 		}
@@ -514,37 +512,4 @@ cdn_compile_context_get_function_arg_priority (CdnCompileContext *context)
 	ctx = CURRENT_CONTEXT (context);
 
 	return ctx->function_arg_priority;
-}
-
-void
-cdn_compile_context_set_only_local_variables (CdnCompileContext *context,
-                                              gboolean           only_local)
-{
-	Context *ctx;
-
-	g_return_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context));
-
-	if (context == NULL)
-	{
-		return;
-	}
-
-	ctx = CURRENT_CONTEXT (context);
-	ctx->only_local_variables = only_local;
-}
-
-gboolean
-cdn_compile_context_get_only_local_variables (CdnCompileContext *context)
-{
-	Context *ctx;
-
-	g_return_val_if_fail (context == NULL || CDN_IS_COMPILE_CONTEXT (context), FALSE);
-
-	if (context == NULL)
-	{
-		return FALSE;
-	}
-
-	ctx = CURRENT_CONTEXT (context);
-	return ctx->only_local_variables;
 }

@@ -2253,7 +2253,6 @@ parse_function (CdnExpression *expression,
 			gchar const *aname;
 			CdnVariable *prop;
 			gchar const *ptr;
-			gboolean only_local;
 
 			a = start->data;
 
@@ -2277,12 +2276,7 @@ parse_function (CdnExpression *expression,
 				g_free (id);
 			}
 
-			only_local = cdn_compile_context_get_only_local_variables (context->context);
-			cdn_compile_context_set_only_local_variables (context->context, FALSE);
-
 			prop = lookup_variable (expression, context, aname);
-
-			cdn_compile_context_set_only_local_variables (context->context, only_local);
 
 			if (!prop)
 			{
