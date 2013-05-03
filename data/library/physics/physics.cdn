@@ -1,5 +1,6 @@
 require "spatial.cdn"
 require "inertia.cdn"
+require "quaternion.cdn"
 
 ## Gravity vector
 g = "[0; 0; 9.81]"
