@@ -327,6 +327,30 @@ templates
             }
         }
 
+        node "sphericalEuler" : "body", "dof3"
+        {
+            node "joint"
+            {
+                _JointTransform(c1, c2, c3, s1, s2, s3) = "[c1 * c2, s1 * c2, -s2;
+                                                            c1 * s2 * s3 - s1 * c3, s1 * s2 * s3 + c1 * c3, c2 * s3;
+                                                            c1 * s2 * c3 + s1 * s3, s1 * s2 * c3 - c1 * s3, c2 * c3]"
+                JointTransform(q) = "Spatial.Rotate(_JointTransform(cos(q[0]), cos(q[1]), cos(q[2]), sin(q[0]), sin(q[1]), sin(q[2])))"
+                MotionSubspace(q, dq) = "[-sin(q[1]), 0, 1;
+                                          cos(q[1]) * sin(q[2]), cos(q[2]), 0;
+                                          cos(q[1]) * cos(q[2]), -sin(q[2]), 0;
+                                          0, 0, 0;
+                                          0, 0, 0;
+                                          0, 0, 0]"
+
+                cJ(q, dq) = "[-cos(q[1]) * dq[0] * dq[1];
+                              -sin(q[1]) * sin(q[2]) * dq[0] * dq[1] + cos(q[1]) * cos(q[2]) * dq[0] * dq[2] - sin(q[2]) * dq[1] * dq[2];
+                              -sin(q[1]) * cos(q[2]) * dq[0] * dq[1] - cos(q[1]) * sin(q[2]) * dq[0] * dq[2] - cos(q[2]) * dq[1] * dq[2];
+                              0;
+                              0;
+                              0]"
+            }
+        }
+
         ## A spherical joint. This type of joint is simply three rotational
         ## joints stacked together. It has three degrees of rotational freedom.
         node "spherical" : "body", "dof3"
