@@ -3,7 +3,7 @@ bl_info = {
     "category": "Simulation"
 }
 
-import sys, math, platform, os
+import sys, math, platform, os, inspect
 
 if not "gi.repository.Cdn" in sys.modules:
     # TODO: this is a hack!
@@ -14,31 +14,36 @@ if not "gi.repository.Cdn" in sys.modules:
     else:
         p = None
 
+    if platform.system() == 'Darwin':
+        # preload some libs directly from the framework because dlopen can't
+        # find them otherwise when gi starts to try and load them...
+        pass
+
     from gi.repository import Cdn
 
     if not p is None and p in sys.path:
         sys.path.remove(p)
 
+origpath = sys.path
+p = os.path.dirname(inspect.getframeinfo(inspect.currentframe())[0])
+
+if not p in sys.path:
+    sys.path.insert(0, p)
+else:
+    p = None
+
 if "bpy" in locals():
     import imp
+
     imp.reload(importer)
     imp.reload(codyn)
     imp.reload(simulator)
 else:
     import bpy, inspect
-
-    origpath = sys.path
-    p = os.path.dirname(inspect.getframeinfo(inspect.currentframe())[0])
-
-    if not p in sys.path:
-        sys.path.insert(0, p)
-    else:
-        p = None
-
     import codyn, simulator, importer
 
-    if not p is None and p in sys.path:
-        sys.path.remove(p)
+if not p is None and p in sys.path:
+    sys.path.remove(p)
 
 def simulator_init():
     simulator.init()
