@@ -1001,18 +1001,33 @@ cdn_embedded_string_expand (CdnEmbeddedString    *s,
 
 static gchar *
 fast_itoa (gint   val,
-           gchar *ret)
+           gchar *ret,
+           gint   retsize)
 {
-	gint i = 30;
+	gint i = retsize - 2;
+	gboolean neg = FALSE;
+	gint stop = 0;
 
 	if (val == 0)
 	{
 		ret[i--] = '0';
 	}
+	else if (val < 0)
+	{
+		neg = TRUE;
+		++stop;
 
-	for (; val && i; --i, val /= 10)
+		val = -val;
+	}
+
+	for (; val && i > stop; --i, val /= 10)
 	{
 		ret[i] = "0123456789"[val % 10];
+	}
+
+	if (neg)
+	{
+		ret[i--] = '-';
 	}
 
 	return ret + i + 1;
@@ -1029,7 +1044,7 @@ parse_expansion_range_rev (gchar const *s)
 
 	if (rangereg == NULL)
 	{
-		rangereg = g_regex_new ("\\s*([0-9]+):([+-]?[0-9]+)(:([+-]?[0-9]+))?\\s*$",
+		rangereg = g_regex_new ("\\s*([+-]?[0-9]+):([+-]{0,2}[0-9]+)(:([+-]{0,2}[0-9]+))?\\s*$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -1037,7 +1052,7 @@ parse_expansion_range_rev (gchar const *s)
 
 	if (timesreg == NULL)
 	{
-		timesreg = g_regex_new ("^([0-9]+)[*]([^ ].*)$",
+		timesreg = g_regex_new ("^([+-]?[0-9]+)[*]([^ ].*)$",
 		                        G_REGEX_ANCHORED,
 		                        G_REGEX_MATCH_ANCHORED,
 		                        NULL);
@@ -1093,10 +1108,10 @@ parse_expansion_range_rev (gchar const *s)
 		{
 			while (cstart <= cend)
 			{
-				gchar it[32] = {0,};
+				gchar it[33] = {0,};
 
 				gchar const *pptr[] = {
-					fast_itoa (cstart, it),
+					fast_itoa (cstart, it, sizeof (it) / sizeof (gchar)),
 					NULL
 				};
 
