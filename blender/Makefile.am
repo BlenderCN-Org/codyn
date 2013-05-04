@@ -4,7 +4,8 @@ blender_DATA = \
 	codyn.py \
 	importer.py \
 	panel.py \
-	simulator.py
+	simulator.py \
+	camera.py
 
 blenderdatadir = $(blenderdir)/data
 blenderdata_DATA = \

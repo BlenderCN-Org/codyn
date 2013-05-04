@@ -1,6 +1,6 @@
 import os, platform, tempfile, shutil
 
-import codyn
+import codyn, camera
 
 from gi.repository import Cdn
 import cdnrawc
@@ -157,6 +157,7 @@ def init():
     data.simulator.reset()
     data.simulator.update()
 
+    bge.render.showMouse(True)
     cont.activate('init_actuator')
 
 def loop():
@@ -169,5 +170,7 @@ def loop():
 
     codyn.data.networks[owner.name].simulator.step(1.0 / fps)
     codyn.data.networks[owner.name].simulator.update()
+
+    camera.update(bge.logic.getCurrentScene().active_camera)
 
 # vi:ts=4:et

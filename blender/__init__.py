@@ -38,9 +38,10 @@ if "bpy" in locals():
     imp.reload(importer)
     imp.reload(codyn)
     imp.reload(simulator)
+    imp.reload(camera)
 else:
     import bpy, inspect
-    import codyn, simulator, importer
+    import codyn, simulator, importer, camera
 
 if not p is None and p in sys.path:
     sys.path.remove(p)
