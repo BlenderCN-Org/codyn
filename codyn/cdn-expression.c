@@ -2061,6 +2061,11 @@ inline_simple (CdnExpression       *expression,
 			return TRUE;
 		}
 		break;
+	case CDN_MATH_FUNCTION_TYPE_TRANSPOSE:
+		if (cdn_dimension_is_one (&args->args[0].dimension))
+		{
+			return TRUE;
+		}
 	default:
 		break;
 	}
