@@ -4466,7 +4466,7 @@ parse_square (CdnExpression *expression,
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_INVALID_TOKEN,
-		               "The transpose operator can only appear after an expression");
+		               "The square operator can only appear after an expression");
 
 		return FALSE;
 	}
