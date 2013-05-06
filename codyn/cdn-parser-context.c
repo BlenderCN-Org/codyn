@@ -121,7 +121,8 @@ typedef struct
 	gchar *token;
 
 	GHashTable *lines;
-	gboolean firsteof;
+	gboolean first_eof;
+	gboolean first_read;
 } InputItem;
 
 typedef struct
@@ -316,6 +317,7 @@ input_item_new (GFile         *file,
 	ret = g_slice_new0 (InputItem);
 
 	ret->file = file ? g_file_dup (file) : NULL;
+	ret->first_read = TRUE;
 
 	if (stream)
 	{
@@ -345,7 +347,7 @@ input_item_new (GFile         *file,
 	                                    NULL,
 	                                    (GDestroyNotify)g_free);
 
-	ret->firsteof = TRUE;
+	ret->first_eof = TRUE;
 
 	return ret;
 }
@@ -4504,6 +4506,15 @@ cdn_parser_context_read (CdnParserContext *context,
 		return 0;
 	}
 
+	if (item->first_read)
+	{
+		buffer[0] = '\n';
+		buffer[1] = '\0';
+
+		item->first_read = FALSE;
+		return 1;
+	}
+
 	ret = g_input_stream_read (item->stream,
 	                           buffer,
 	                           max_size,
@@ -4568,10 +4579,10 @@ cdn_parser_context_set_line (CdnParserContext *context,
 
 	input = CURRENT_INPUT (context);
 
-	input->lineno = lineno;
+	input->lineno = lineno - 1;
 
 	g_hash_table_insert (input->lines,
-	                     GINT_TO_POINTER (lineno),
+	                     GINT_TO_POINTER (lineno - 1),
 	                     g_strdup (line));
 }
 
@@ -6221,12 +6232,12 @@ cdn_parser_context_get_first_eof (CdnParserContext *context)
 		return FALSE;
 	}
 
-	return inp->firsteof;
+	return inp->first_eof;
 }
 
 void
 cdn_parser_context_set_first_eof (CdnParserContext *context,
-                                  gboolean          firsteof)
+                                  gboolean          first_eof)
 {
 	InputItem *inp;
 
@@ -6234,7 +6245,7 @@ cdn_parser_context_set_first_eof (CdnParserContext *context,
 
 	inp = CURRENT_INPUT (context);
 
-	inp->firsteof = firsteof;
+	inp->first_eof = first_eof;
 }
 
 static gchar *
