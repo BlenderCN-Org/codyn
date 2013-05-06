@@ -544,6 +544,7 @@ data/library/algorithms/Makefile
 data/library/layout/Makefile
 data/library/oscillators/Makefile
 data/library/physics/Makefile
+data/library/physics/algorithms/Makefile
 data/library/physics/lagrange/Makefile
 data/library/physics/direct/Makefile
 io/Makefile

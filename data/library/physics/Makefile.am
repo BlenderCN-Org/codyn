@@ -1,16 +1,19 @@
-SUBDIRS = lagrange direct
+SUBDIRS = lagrange direct algorithms
 
 librarydir = $(pkgdatadir)-@CODYN_API_VERSION@/library/physics
 library_DATA = \
-	physics.cdn \
-	spatial.cdn \
-	rnea.cdn \
-	crba.cdn \
+	contacts.cdn \
 	dynamics.cdn \
 	findbodies.cdn \
 	inertia.cdn \
+	joints.cdn \
+	model.cdn \
+	physics.cdn \
+	quaternion.cdn \
+	sensors.cdn \
+	spatial.cdn \
 	transform.cdn \
-	quaternion.cdn
+	transformations.cdn
 
 EXTRA_DIST = \
 	$(library_DATA)
