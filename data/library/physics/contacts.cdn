@@ -1,0 +1,78 @@
+require "spatial.cdn"
+require "sensors.cdn"
+
+templates
+{
+    node "physics"
+    {
+        node "contacts"
+        {
+            node "soft" : physics.sensors.velocity
+            {
+                initial-state "air"
+
+                # contact parameters
+                maxNormalForce = "5000 * system.m * hypot(g)"
+                normalStiffness = "5e8"
+                normalDamping = "1e5"
+                frictionDamping = "5e2"
+                frictionCoefficient = "1.5"
+
+                # calculate locations in base. [3xN]
+                p = "Spatial.TransformPoint3(localToBaseTransform, location)"
+
+                # calculate velocities in base. The velocity sensor from which
+                # we inherit separates the angular and linear velocities since
+                # only the linear velocity has to be recalculated for the sensor
+                # locations. Here we keep the separation and simply multiply with
+                # the relevants parts of the spatial transformation. [3xN]
+                dp = "localToBaseTransform[3:6, 0:3] * angularVelocity +
+                      localToBaseTransform[3:6, 3:6] * linearVelocity"
+
+                # [1xN]
+                pN = "p[2, :]"
+
+                # [1xN]
+                dpN = "dp[2, :]"
+
+                contactsActive = 0
+
+                contactForceNormalStiffness = "normalStiffness * -pN^3"
+                contactForceNormalDamping = "normalStiffness * dpN * pN^3"
+
+                # [1xN]
+                contactForceNormal = "max(0,
+                                          min(maxNormalForce,
+                                              contactForceNormalStiffness +
+                                              contactForceNormalDamping))"
+
+                # [1xN]
+                "forceTangential{X,Y}" = "-frictionDamping * dp[@1[!], :]"
+
+                # [1xN]
+                contactForceTangentialMax = "contactForceNormal * frictionCoefficient"
+
+                "contactForceTangential{X,Y}" = "csign(min(abs(forceTangential@1),
+                                                           abs(contactForceTangentialMax)),
+                                                       forceTangential@1)"
+
+                contactForce = "Spatial.ForceTransform(baseToLocalTransform) * [zeros(3, size(location, 1));
+                                                                                contactForceTangentialX;
+                                                                                contactForceTangentialY;
+                                                                                contactForceNormal]"
+
+                event "air" to "ground" when "min(pN) < 0" within 0.001
+                {
+                    set contactsActive = "1"
+                }
+
+                event "ground" to "air" when "max(pN) > 0" within 0.001
+                {
+                    set contactsActive = "0"
+                }
+            }
+        }
+    }
+}
+
+# vi:ts=4:et
