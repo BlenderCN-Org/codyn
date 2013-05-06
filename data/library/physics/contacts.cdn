@@ -56,10 +56,19 @@ templates
                                                            abs(contactForceTangentialMax)),
                                                        forceTangential@1)"
 
-                contactForce = "Spatial.ForceTransform(baseToLocalTransform) * [zeros(3, size(location, 1));
-                                                                                contactForceTangentialX;
-                                                                                contactForceTangentialY;
-                                                                                contactForceNormal]"
+                contactForceAtLocations = "[contactForceTangentialX;
+                                            contactForceTangentialY;
+                                            contactForceNormal]"
+
+                # Sum forces to single resultant force
+                ForceAtZero(l, f) = "[
+                                         -l[2, :] * f[1, :] +  l[1, :] * f[2, :];
+                     l[2, :] * f[0, :] +                      -l[0, :] * f[2, :];
+                    -l[1, :] * f[0, :] +  l[0, :] * f[1, :];
+                     f
+                ]"
+
+                contactForce = "Spatial.ForceTransform(baseToLocalTransform) * ForceAtZero(p, contactForceAtLocations)"
 
                 event "air" to "ground" when "min(pN) < 0" within 0.001
                 {
