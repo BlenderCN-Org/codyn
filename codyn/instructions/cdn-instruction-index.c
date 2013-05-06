@@ -83,6 +83,8 @@ cdn_instruction_index_copy (CdnMiniObject *object)
 		break;
 	}
 
+	self->priv->diff_size = src->priv->diff_size;
+
 	return ret;
 }
 
