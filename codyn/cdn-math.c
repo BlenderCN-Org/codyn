@@ -1729,8 +1729,8 @@ op_vcat (CdnStack           *stack,
 
 	ptr = cdn_stack_output_ptr (stack);
 
-	ptr2 = ptr - argdim->args[0].columns * r2;
-	ptr1 = ptr2 - argdim->args[1].columns * r1;
+	ptr2 = ptr - cdn_stack_arg_size (&argdim->args[0]);
+	ptr1 = ptr2 - cdn_stack_arg_size (&argdim->args[1]);
 
 	for (i = 0; i < argdim->args[0].columns; ++i)
 	{
