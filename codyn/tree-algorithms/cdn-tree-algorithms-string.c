@@ -500,6 +500,41 @@ rand_to_string (CdnInstructionRand  *inst,
 	g_string_append (ret, "rand()");
 }
 
+static void
+index_instr_to_string (CdnInstructionIndex *inst,
+                       gchar const * const *children,
+                       GString             *ret,
+                       gboolean             dbg)
+{
+	gint *indices;
+	gint n;
+	gint i;
+	CdnStackManipulation const *smanip;
+
+	smanip = cdn_instruction_get_stack_manipulation (CDN_INSTRUCTION (inst), NULL);
+
+	n = cdn_stack_arg_size (&smanip->push);
+	indices = g_new0 (gint, n);
+
+	cdn_instruction_index_write_indices (inst, indices, n);
+
+	g_string_append (ret, children[0]);
+	g_string_append (ret, "[");
+
+	for (i = 0; i < n; ++i)
+	{
+		if (i != 0)
+		{
+			g_string_append (ret, ", ");
+		}
+
+		g_string_append_printf (ret, "%d", indices[i]);
+	}
+
+	g_string_append (ret, "]");
+	g_free (indices);
+}
+
 static InstructionToStringFunc
 to_string_func (CdnInstruction *instruction)
 {
@@ -534,6 +569,10 @@ to_string_func (CdnInstruction *instruction)
 	else if (CDN_IS_INSTRUCTION_MATRIX (instruction))
 	{
 		return (InstructionToStringFunc)matrix_to_string;
+	}
+	else if (CDN_IS_INSTRUCTION_INDEX (instruction))
+	{
+		return (InstructionToStringFunc)index_instr_to_string;
 	}
 	else if (CDN_IS_INSTRUCTION_RAND (instruction))
 	{
