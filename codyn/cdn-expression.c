@@ -3306,42 +3306,62 @@ make_static_index (CdnExpression *expression,
 
 		if (isi1 && isi2)
 		{
-			CdnIndexRange const *rows;
-			CdnIndexRange const *columns;
+			CdnIndexRange rows;
+			CdnIndexRange columns;
 
-			rows = cdn_instruction_index_get_range (r1);
-			columns = cdn_instruction_index_get_range (r2);
+			rows = *cdn_instruction_index_get_range (r1);
+			columns = *cdn_instruction_index_get_range (r2);
 
-			return cdn_instruction_index_new_range_block (rows,
-			                                              columns,
+			if (rows.end < 0)
+			{
+				rows.end = d3->rows + 1 + rows.end;
+			}
+
+			if (columns.end < 0)
+			{
+				columns.end = d3->columns + 1 + columns.end;
+			}
+
+			return cdn_instruction_index_new_range_block (&rows,
+			                                              &columns,
 			                                              d3);
 		}
 		else if (isi1 && CDN_IS_INSTRUCTION_NUMBER (i2->data))
 		{
-			CdnIndexRange const *rows;
+			CdnIndexRange rows;
 			CdnIndexRange columns = {0, 1, 0};
 
-			rows = cdn_instruction_index_get_range (r1);
+			rows = *cdn_instruction_index_get_range (r1);
+
+			if (rows.end < 0)
+			{
+				rows.end = d3->rows + 1 + rows.end;
+			}
 
 			columns.start = (gint)(cdn_instruction_number_get_value (i2->data) + 0.5);
 			columns.end = columns.start + 1;
 
-			return cdn_instruction_index_new_range_block (rows,
+			return cdn_instruction_index_new_range_block (&rows,
 			                                              &columns,
 			                                              d3);
 		}
 		else if (isi2 && CDN_IS_INSTRUCTION_NUMBER (i1->data))
 		{
-			CdnIndexRange const *columns;
+			CdnIndexRange columns;
 			CdnIndexRange rows = {0, 1, 0};
 
-			columns = cdn_instruction_index_get_range (r2);
+			columns = *cdn_instruction_index_get_range (r2);
+
+			if (columns.end < 0)
+			{
+				columns.end = d3->columns + 1 + columns.end;
+			}
 
 			rows.start = (gint)(cdn_instruction_number_get_value (i1->data) + 0.5);
 			rows.end = rows.start + 1;
 
 			return cdn_instruction_index_new_range_block (&rows,
-			                                              columns,
+			                                              &columns,
 			                                              d3);
 		}
 
@@ -3399,9 +3419,16 @@ make_static_index (CdnExpression *expression,
 		    CDN_INSTRUCTION_INDEX_TYPE_RANGE)
 		{
 			CdnInstruction *ret;
+			CdnIndexRange r;
 
-			ret = cdn_instruction_index_new_range (cdn_instruction_index_get_range (idx),
-			                                       d3);
+			r = *cdn_instruction_index_get_range (idx);
+
+			if (r.end < 0)
+			{
+				r.end = cdn_stack_arg_size (d3) + 1 + r.end;
+			}
+
+			ret = cdn_instruction_index_new_range (&r, d3);
 
 			free_popped_stack (i);
 			return ret;
@@ -3569,6 +3596,34 @@ parse_indexing (CdnExpression *expression,
 	else
 	{
 		CdnStackArgs args;
+		gint i;
+		GSList *s = context->stack;
+
+		for (i = 0; i < numargs; ++i)
+		{
+			CdnInstruction *instr = s->data;
+
+			if (CDN_IS_INSTRUCTION_INDEX (instr) &&
+			    cdn_instruction_index_get_index_type (CDN_INSTRUCTION_INDEX (instr)) ==
+			    CDN_INSTRUCTION_INDEX_TYPE_RANGE)
+			{
+				CdnIndexRange const *range;
+
+				range = cdn_instruction_index_get_range (CDN_INSTRUCTION_INDEX (instr));
+
+				if (range->end < 0)
+				{
+					parser_failed (expression,
+					               context,
+					               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+					               "Cannot use range index operator `:' in a dynamic context");
+
+					return FALSE;
+				}
+			}
+
+			s = g_slist_next (s);
+		}
 
 		swap_arguments_index (expression, context, numargs + 1);
 		get_argdim (expression, context, numargs + 1, &args);
@@ -4233,6 +4288,24 @@ parse_unary_operator (CdnExpression *expression,
 	gboolean ret = TRUE;
 	CdnInstruction *inst = NULL;
 	CdnStackArgs args = {0,};
+
+	if (context->indexing && op->type == CDN_TOKEN_OPERATOR_TYPE_TERNARY_FALSE)
+	{
+		cdn_token_free (cdn_tokenizer_next (context->buffer));
+		CdnIndexRange r;
+
+		r.start = 0;
+		r.end = -1;
+		r.step = 1;
+
+		// Insert placeholder range. The actual range end will be set
+		// by the outer indexing parser
+		instructions_push (expression,
+		                   cdn_instruction_index_new_range (&r, NULL),
+		                   context);
+
+		return TRUE;
+	}
 
 	// handle group
 	switch (op->type)

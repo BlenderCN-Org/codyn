@@ -38,6 +38,11 @@ G_DEFINE_TYPE (CdnInstructionIndex, cdn_instruction_index, CDN_TYPE_INSTRUCTION)
 gint
 cdn_index_range_n (CdnIndexRange const *range)
 {
+	if (range->end < 0)
+	{
+		return 0;
+	}
+
 	return (range->end - range->start) / range->step;
 }
 
