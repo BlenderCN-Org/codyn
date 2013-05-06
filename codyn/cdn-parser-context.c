@@ -150,6 +150,7 @@ struct _CdnParserContextPrivate
 
 	GError *error;
 	CdnStatement *error_statement;
+	GFile *error_file;
 
 	CdnLayout *layout;
 	GHashTable *files;
@@ -392,6 +393,11 @@ cdn_parser_context_finalize (GObject *object)
 		g_object_unref (self->priv->error_statement);
 	}
 
+	if (self->priv->error_file)
+	{
+		g_object_unref (self->priv->error_file);
+	}
+
 	g_slist_foreach (self->priv->inputs, (GFunc)input_item_free, NULL);
 	g_slist_free (self->priv->inputs);
 
@@ -613,9 +619,22 @@ parser_failed_error (CdnParserContext *context,
 		context->priv->error_statement = NULL;
 	}
 
+	if (context->priv->error_file)
+	{
+		g_object_unref (context->priv->error_file);
+		context->priv->error_file = NULL;
+	}
+
 	if (statement)
 	{
+		InputItem *inp = CURRENT_INPUT (context);
+
 		context->priv->error_statement = g_object_ref (statement);
+
+		if (inp && inp->file)
+		{
+			context->priv->error_file = g_object_ref (inp->file);
+		}
 	}
 
 	context->priv->error = error;
@@ -5925,11 +5944,12 @@ cdn_parser_context_begin_selector_item (CdnParserContext *context)
 }
 
 void
-cdn_parser_context_get_error_location (CdnParserContext *context,
-                                       gint             *lstart,
-                                       gint             *lend,
-                                       gint             *cstart,
-                                       gint             *cend)
+cdn_parser_context_get_error_location (CdnParserContext  *context,
+                                       gint              *lstart,
+                                       gint              *lend,
+                                       gint              *cstart,
+                                       gint              *cend,
+                                       GFile            **file)
 {
 	CdnStatement *st;
 
@@ -5941,6 +5961,11 @@ cdn_parser_context_get_error_location (CdnParserContext *context,
 	{
 		cdn_statement_get_line (st, lstart, lend);
 		cdn_statement_get_column (st, cstart, cend);
+
+		if (file)
+		{
+			*file = g_file_dup (context->priv->error_file);
+		}
 	}
 	else
 	{
@@ -5948,6 +5973,11 @@ cdn_parser_context_get_error_location (CdnParserContext *context,
 		cdn_parser_context_get_line (context, lend);
 
 		cdn_parser_context_get_column (context, cstart, cend);
+
+		if (file)
+		{
+			*file = cdn_parser_context_get_file (context);
+		}
 	}
 }
 
@@ -5976,7 +6006,8 @@ cdn_parser_context_get_error_lines (CdnParserContext *context)
 	                                       &lstart,
 	                                       &lend,
 	                                       &cstart,
-	                                       &cend);
+	                                       &cend,
+	                                       NULL);
 
 	ret = g_string_new ("");
 	first = TRUE;

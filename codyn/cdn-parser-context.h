@@ -110,7 +110,8 @@ void                   cdn_parser_context_get_error_location   (CdnParserContext
                                                                 gint                       *lstart,
                                                                 gint                       *lend,
                                                                 gint                       *cstart,
-                                                                gint                       *cend);
+                                                                gint                       *cend,
+                                                                GFile                     **file);
 
 gchar                 *cdn_parser_context_get_error_lines      (CdnParserContext           *context);
 
