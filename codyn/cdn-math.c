@@ -81,8 +81,19 @@ op_##func (CdnStack           *stack,						\
            CdnStackArgs const *argdim,						\
            gpointer            userdata)					\
 {										\
-	foreach_element2 (stack, argdim, code);					\
-}
+	if (argdim->args[0].columns == 1 || argdim->args[1].columns == 1)	\
+	{									\
+		foreach_celement2 (stack, argdim, code);			\
+	}									\
+	else if (argdim->args[0].rows == 1 || argdim->args[1].rows == 1)	\
+	{									\
+		foreach_relement2 (stack, argdim, code);			\
+	}									\
+	else									\
+	{									\
+		foreach_element2 (stack, argdim, code);				\
+	}									\
+}										\
 
 typedef gdouble (*BinaryFunction)(gdouble a, gdouble b);
 
@@ -160,6 +171,120 @@ foreach_element2 (CdnStack           *stack,
 
 			--start;
 		}
+	}
+}
+
+static void
+foreach_celement2 (CdnStack           *stack,
+                   CdnStackArgs const *argdim,
+                   BinaryFunction      func)
+{
+	gdouble *a;
+	gdouble *b;
+	gdouble *aptr;
+	size_t c;
+	size_t cols;
+
+	if (argdim->args[0].columns == 1)
+	{
+		b = cdn_stack_output_ptr (stack) - argdim->args[0].rows;
+		a = b - cdn_stack_arg_size (&argdim->args[1]);
+		cols = argdim->args[1].columns;
+	}
+	else
+	{
+		a = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+		b = a - argdim->args[1].rows;
+		cols = argdim->args[0].columns;
+	}
+
+	aptr = a;
+
+	for (c = 0; c < cols; ++c)
+	{
+		size_t r;
+		gdouble *bptr = b;
+
+		for (r = 0; r < argdim->args[1].rows; ++r)
+		{
+			*aptr = func (*aptr, *bptr);
+
+			++aptr;
+			++bptr;
+		}
+	}
+
+	if (argdim->args[0].columns == 1)
+	{
+		// Remove b from the stack
+		cdn_stack_set_output_ptr (stack, b);
+	}
+	else
+	{
+		// Move a and remove b from the stack
+		memmove (b, a, sizeof (gdouble) * cdn_stack_arg_size (&argdim->args[0]));
+
+		cdn_stack_set_output_ptr (stack,
+		                          cdn_stack_output_ptr (stack) - argdim->args[1].rows);
+	}
+}
+
+static void
+foreach_relement2 (CdnStack           *stack,
+                   CdnStackArgs const *argdim,
+                   BinaryFunction      func)
+{
+	gdouble *a;
+	gdouble *b;
+	gdouble *aptr;
+	gdouble *bptr;
+
+	size_t c;
+	size_t rows;
+
+	if (argdim->args[0].rows == 1)
+	{
+		b = cdn_stack_output_ptr (stack) - argdim->args[0].columns;
+		a = b - cdn_stack_arg_size (&argdim->args[1]);
+
+		rows = argdim->args[1].rows;
+	}
+	else
+	{
+		a = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+		b = a - argdim->args[1].columns;
+
+		rows = argdim->args[0].rows;
+	}
+
+	aptr = a;
+	bptr = b;
+
+	for (c = 0; c < argdim->args[1].columns; ++c)
+	{
+		size_t r;
+
+		for (r = 0; r < rows; ++r)
+		{
+			*aptr = func (*aptr, *bptr);
+			++aptr;
+		}
+
+		++bptr;
+	}
+
+	if (argdim->args[0].rows == 1)
+	{
+		// Remove b from the stack
+		cdn_stack_set_output_ptr (stack, b);
+	}
+	else
+	{
+		// Move a and remove b from the stack
+		memmove (b, a, sizeof (gdouble) * cdn_stack_arg_size (&argdim->args[0]));
+
+		cdn_stack_set_output_ptr (stack,
+		                          cdn_stack_output_ptr (stack) - argdim->args[1].columns);
 	}
 }
 
@@ -2804,6 +2929,26 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			{
 				// Take second arg size
 				cdn_stack_arg_copy (outarg, inargs->args + 1);
+			}
+			else if ((inargs->args[0].columns == 1 || inargs->args[1].columns == 1) &&
+			         inargs->args[0].rows == inargs->args[1].rows)
+			{
+				// column wise
+				outarg->rows = inargs->args[0].rows;
+
+				outarg->columns = inargs->args[0].columns == 1 ?
+				                  inargs->args[1].columns :
+				                  inargs->args[0].columns;
+			}
+			else if ((inargs->args[0].rows == 1 || inargs->args[1].rows == 1) &&
+			         inargs->args[0].columns == inargs->args[1].columns)
+			{
+				// row wise
+				outarg->columns = inargs->args[0].columns;
+
+				outarg->rows = inargs->args[0].rows == 1 ?
+				               inargs->args[1].rows :
+				               inargs->args[0].rows;
 			}
 			else if (cdn_stack_arg_size (inargs->args + 1) != 1 &&
 			         cdn_stack_arg_size (inargs->args) != cdn_stack_arg_size (inargs->args + 1))
