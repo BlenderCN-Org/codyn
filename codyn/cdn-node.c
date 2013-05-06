@@ -1091,6 +1091,12 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 		children = g_slist_next (children);
 	}
 
+	if (source->priv->state)
+	{
+		g_free (node->priv->state);
+		node->priv->state = g_strdup (source->priv->state);
+	}
+
 	/* Apply interfaces from template */
 	source_iface = cdn_node_get_variable_interface (source);
 
@@ -1176,6 +1182,9 @@ cdn_node_cdn_copy (CdnObject *object,
 		g->priv->edges = g_slist_prepend (g->priv->edges,
 		                                  sl);
 	}
+
+	g_free (g->priv->state);
+	g->priv->state = g_strdup (CDN_NODE (source)->priv->state);
 }
 
 static gchar *
