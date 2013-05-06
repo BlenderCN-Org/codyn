@@ -83,13 +83,13 @@ templates
                                             contactForceTangentialY;
                                             contactForceNormal]"
 
-                # Sum forces to single resultant force
-                ForceAtZero(l, f) = "[
+                # translate forces f at l towards the origin
+                ForceAtZero(l, f) = "csum([
                                          -l[2, :] * f[1, :] +  l[1, :] * f[2, :];
                      l[2, :] * f[0, :] +                      -l[0, :] * f[2, :];
                     -l[1, :] * f[0, :] +  l[0, :] * f[1, :];
                      f
-                ]"
+                ])"
 
                 # finally, the contact force is calculated in body coordinates
                 # whereas all the previous quantities are calculated in base
