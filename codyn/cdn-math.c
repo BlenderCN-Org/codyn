@@ -1901,6 +1901,83 @@ op_triu (CdnStack           *stack,
 	}
 }
 
+static void
+op_csum (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gint c;
+	gdouble *A;
+	gdouble *ptr;
+	gdouble *outptr;
+
+	if (argdim->args[0].columns == 1)
+	{
+		return;
+	}
+
+	A = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+	ptr = A + argdim->args[0].rows;
+	outptr = ptr;
+
+	for (c = 1; c < argdim->args[0].columns; ++c)
+	{
+		gint r;
+
+		for (r = 0; r < argdim->args[0].rows; ++r)
+		{
+			A[r] += *ptr++;
+		}
+	}
+
+	cdn_stack_set_output_ptr (stack, outptr);
+}
+
+static void
+op_rsum (CdnStack           *stack,
+         CdnStackArgs const *argdim,
+         gpointer            userdata)
+{
+	gint c;
+	gdouble *A;
+	gdouble *wrptr;
+	gdouble *ptr;
+	gdouble *outptr;
+
+	if (argdim->args[0].rows == 1)
+	{
+		return;
+	}
+
+	A = cdn_stack_output_ptr (stack) - cdn_stack_arg_size (&argdim->args[0]);
+	outptr = A + argdim->args[0].columns;
+
+	wrptr = A;
+	ptr = A;
+
+	// Skip first element, it's already in the right location and that's
+	// where the sum starts
+	++ptr;
+
+	for (c = 0; c < argdim->args[0].columns; ++c)
+	{
+		gint r;
+
+		// Skip over first row, it's already in wrptr
+		for (r = 1; r < argdim->args[0].rows; ++r)
+		{
+			*wrptr += *ptr++;
+		}
+
+		++wrptr;
+
+		// Set first item of sum to first row element of column c
+		*wrptr = *ptr++;
+	}
+
+	cdn_stack_set_output_ptr (stack, outptr);
+}
+
 typedef struct
 {
 	gchar *name;
@@ -1986,6 +2063,8 @@ static FunctionEntry function_entries[] = {
 	{"diag", op_diag, 1, FALSE},
 	{"tril", op_tril, 1, FALSE},
 	{"triu", op_triu, 1, FALSE},
+	{"csum", op_csum, 1, FALSE},
+	{"rsum", op_rsum, 1, FALSE},
 };
 
 typedef struct
@@ -3002,6 +3081,14 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				// Take first arg size
 				cdn_stack_arg_copy (outarg, inargs->args);
 			}
+		break;
+		case CDN_MATH_FUNCTION_TYPE_CSUM:
+			outarg->rows = inargs->args[0].rows;
+			outarg->columns = 1;
+		break;
+		case CDN_MATH_FUNCTION_TYPE_RSUM:
+			outarg->columns = inargs->args[0].columns;
+			outarg->rows = 1;
 		break;
 		case CDN_MATH_FUNCTION_TYPE_MULTIPLY:
 			if (cdn_stack_arg_size (inargs->args) == 1)
