@@ -24,18 +24,9 @@ node "dynamics"
     ## Generalized accelerations
     ddq = "slinsolve(H, τ - C, parents)"
 
-    ## Jacobian
-    #J = "zeros(6, @numdof)"
-
     ## Parent indices. This is used only for solving the linear system by
     ## exploiting the branch induced sparsity (slinsolve).
     parents = "[{@parentsdof||@0;@1}]"
-}
-
-node "@bodies"
-{
-    # Jacobian selection matrix
-    #JS = "[{@bodies|@bodychain[@0[!]]||@0;@1}]"
 }
 
 # Fill in H and C for all relevant body relationships

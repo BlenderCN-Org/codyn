@@ -167,8 +167,6 @@ templates
             ## Transform from the base to the joint
             baseTransform = "transform"
 
-            ## Jacobian column for this body
-            J = "Spatial.Inverse(baseTransform) ∙ motionSubspace"
         }
 
         ## The joint edge connects two bodies in a kinematic chain.
