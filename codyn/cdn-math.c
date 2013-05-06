@@ -81,11 +81,15 @@ op_##func (CdnStack           *stack,						\
            CdnStackArgs const *argdim,						\
            gpointer            userdata)					\
 {										\
-	if (argdim->args[0].columns == 1 || argdim->args[1].columns == 1)	\
+	if ((argdim->args[0].columns == 1 || argdim->args[1].columns == 1) &&	\
+	    argdim->args[0].rows == argdim->args[1].rows &&			\
+	    argdim->args[0].rows != 1)						\
 	{									\
 		foreach_celement2 (stack, argdim, code);			\
 	}									\
-	else if (argdim->args[0].rows == 1 || argdim->args[1].rows == 1)	\
+	else if ((argdim->args[0].rows == 1 || argdim->args[1].rows == 1) &&	\
+	    argdim->args[0].columns == argdim->args[1].columns &&		\
+	    argdim->args[0].columns != 1)					\
 	{									\
 		foreach_relement2 (stack, argdim, code);			\
 	}									\
@@ -2931,7 +2935,8 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				cdn_stack_arg_copy (outarg, inargs->args + 1);
 			}
 			else if ((inargs->args[0].columns == 1 || inargs->args[1].columns == 1) &&
-			         inargs->args[0].rows == inargs->args[1].rows)
+			         inargs->args[0].rows == inargs->args[1].rows &&
+			         inargs->args[0].rows != 1)
 			{
 				// column wise
 				outarg->rows = inargs->args[0].rows;
@@ -2941,7 +2946,8 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				                  inargs->args[0].columns;
 			}
 			else if ((inargs->args[0].rows == 1 || inargs->args[1].rows == 1) &&
-			         inargs->args[0].columns == inargs->args[1].columns)
+			         inargs->args[0].columns == inargs->args[1].columns &&
+			         inargs->args[0].columns != 1)
 			{
 				// row wise
 				outarg->columns = inargs->args[0].columns;
