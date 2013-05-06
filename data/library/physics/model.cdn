@@ -1,0 +1,8 @@
+require "findbodies.cdn"
+
+node self
+{
+    m = "{@bodies|@1.m||@0 + @1}"
+}
+
+# vi:ts=4:et

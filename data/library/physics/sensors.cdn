@@ -1,0 +1,27 @@
+templates
+{
+    node "physics"
+    {
+        node "sensors"
+        {
+            node "point"
+            {
+                location = "com"
+            }
+
+            node "velocity" : "point"
+            {
+                # Compute linear velocity component at the locations of the points
+                angularVelocity = "velocity[0:3]"
+
+                # This implements the spatial translation from "location" to
+                # the spatial velocity (i.e. Spatial.Translation(location) * velocity)
+                # for the linear part of the velocity
+                linearVelocity = "velocity[3:6] + [ 0,               velocity[2],     velocity[1];
+                                                   -velocity[2],     0,               velocity[0];
+                                                   -velocity[1],    -velocity[0],     0] * location"
+            }
+        }
+    }
+}
+# vi:ex:ts=4:et

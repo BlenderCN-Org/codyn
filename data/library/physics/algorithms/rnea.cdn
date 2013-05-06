@@ -1,4 +1,4 @@
-require "findbodies.cdn"
+require "../findbodies.cdn"
 
 # This file implements the Recursive Newton Euler algorithm for forward
 # dynamics (i.e. with generalized accelerations set to 0),

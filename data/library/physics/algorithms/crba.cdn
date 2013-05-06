@@ -1,4 +1,4 @@
-require "findbodies.cdn"
+require "../findbodies.cdn"
 
 # This file implements the Composite Rigid Body Algorithm. This algorithm is
 # used to compute the mass matrix. Note that this file _only_ recursively

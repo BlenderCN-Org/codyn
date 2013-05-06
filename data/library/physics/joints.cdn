@@ -1,0 +1,262 @@
+require "spatial.cdn"
+require "quaternion.cdn"
+
+## Gravity vector
+g = "[0; 0; 9.81]"
+
+templates
+{
+    node "physics"
+    {
+
+        node "revolute" : "body"
+        {
+            node "joint"
+            {
+                ## The axis around which to rotate.
+                axis = "[1; 0; 0]"
+
+                JointTransform(q) = "Spatial.FromAxisAngle(axis, q)"
+                JointVelocity(q, dq) = "[axis ∙ dq; 0; 0; 0]"
+
+                # NOTE! this is only well defined for joint axis aligned with
+                # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
+                # if another axis is used then the constraint force subspace
+                # needs to be adapted accordingly. The formulation below is
+                # simply a combinatory trick to get the right values in the
+                # constraint matrix.
+                ConstraintForceSubspace(q, dq) = "[
+                    1 - axis[0], 0,           0, 0, 0;
+                    axis[0],     axis[2],     0, 0, 0;
+                    0,           1 - axis[2], 0, 0, 0;
+                    0,           0,           1, 0, 0;
+                    0,           0,           0, 1, 0;
+                    0,           0,           0, 0, 1
+                ]"
+            }
+        }
+
+        ## A revolute joint. This type of joint has one degree of freedom
+        ## which rotates the body around an axis. This joint rotates around the
+        ## @1 axis.
+        node "revolute{X,Y,Z}" : "revolute"
+        {
+            node "joint"
+            {
+                axis = ["[1; 0; 0]", "[0; 1; 0]", "[0; 0; 1]"]
+
+                JointTransform(q) = "Spatial.Rotation@@@1(q)"
+            }
+        }
+
+        ## A prismatic joint. This type of joint has one degree of freedom
+        ## which translates the body on an axis.
+        node "prismatic{X,Y,Z}" : "body"
+        {
+            node "joint"
+            {
+                axis = ["[1; 0; 0]", "[0; 1; 0]", "[0; 0; 1]"]
+
+                JointTransform(q) = "Spatial.Translation(axis ∙ q)"
+                JointVelocity(q, dq) = "[0; 0; 0; axis ∙ dq]"
+
+                # NOTE! this is only well defined for joint axis aligned with
+                # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
+                # if another axis is used then the constraint force subspace
+                # needs to be adapted accordingly. The formulation below is
+                # simply a combinatory trick to get the right values in the
+                # constraint matrix.
+                ConstraintForceSubspace(q, dq) = "[
+                    1, 0, 0, 0,           0;
+                    0, 1, 0, 0,           0;
+                    0, 0, 1, 0,           0;
+                    0, 0, 0, 1 - axis[0], 0;
+                    0, 0, 0, axis[0],     axis[2];
+                    0, 0, 0, 0,           1 - axis[2]
+                ]"
+            }
+        }
+
+        ## A helical joint. This type of joint has one degree of freedom around
+        ## which the body screws. The amount of screw is determined by the
+        ## h parameter.
+        node "helical{X,Y,Z}" : "body"
+        {
+            node "joint"
+            {
+                axis = ["[1; 0; 0]", "[0; 1; 0]", "[0; 0; 1]"]
+
+                ## Pitch of the helical joint. Note that when the pitch is 0, the
+                ## helical joint becomes a simple revolute joint
+                h = 0
+
+                JointTransform(q) = "Spatial.Rotation@@@1(q) ∙
+                                     Spatial.Translation(axis ∙ q ∙ h)"
+
+                JointVelocity(q, dq) = "[axis ∙ dq;
+                                         axis ∙ dq ∙ h]"
+
+                # NOTE! this is only well defined for joint axis aligned with
+                # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
+                # if another axis is used then the constraint force subspace
+                # needs to be adapted accordingly. The formulation below is
+                # simply a combinatory trick to get the right values in the
+                # constraint matrix.
+                ConstraintForceSubspace(q, dq) = "[
+                    1 - axis[0], 0,           -h ∙ axis[0],  0,            0;
+                    axis[0],     axis[2],      0,           -h ∙ axis[1],  0;
+                    0,           1 - axis[2],  0,            0,           -h ∙ axis[2];
+                    0,           0,            1,            0,            0;
+                    0,           0,            0,            1,            0;
+                    0,           0,            0,            0,            1
+                ]"
+            }
+        }
+
+        ## A cylindrical joint. This type of joint is simply a combination of
+        ## both a revolute and a prismatic joint. It has two degrees of freedom
+        ## (one rotational and one translational).
+        node "cylindrical" : "body", "dof2"
+        {
+            node "joint"
+            {
+                axis = "[0; 0; 1]"
+
+                JointTransform(q) = "Spatial.Rotation(axis ∙ q[0]) ∙
+                                     Spatial.Translation(axis ∙ q[1])"
+
+                JointVelocity(q, dq) = "[
+                    axis[0] ∙ dq[0], 0;
+                    axis[1] ∙ dq[0], 0;
+                    axis[2] ∙ dq[0], 0;
+                    0,               axis[0] ∙ dq[1];
+                    0,               axis[1] ∙ dq[1];
+                    0,               axis[2] ∙ dq[1]
+                ]"
+
+                # NOTE! this is only well defined for joint axis aligned with
+                # the x, y or z axis (i.e. [1, 0, 0], [0, 1, 0] or [0, 0, 1])
+                # if another axis is used then the constraint force subspace
+                # needs to be adapted accordingly. The formulation below is
+                # simply a combinatory trick to get the right values in the
+                # constraint matrix.
+                ConstraintForceSubspace(q, dq) = "[
+                    1 - axis[0], 0,            0, 0;
+                    axis[0],     axis[2],      0, 0;
+                    0,           1 - axis[2],  0, 0;
+                    0,           0,            1 - axis[0], 0;
+                    0,           0,            axis[0],     axis[2];
+                    0,           0,            0,           1 - axis[2]
+                ]"
+            }
+        }
+
+        node "sphericalEuler" : "body", "dof3"
+        {
+            node "joint"
+            {
+                _JointTransform(c1, c2, c3, s1, s2, s3) = "[c1 * c2, s1 * c2, -s2;
+                                                            c1 * s2 * s3 - s1 * c3, s1 * s2 * s3 + c1 * c3, c2 * s3;
+                                                            c1 * s2 * c3 + s1 * s3, s1 * s2 * c3 - c1 * s3, c2 * c3]"
+                JointTransform(q) = "Spatial.Rotation(_JointTransform(cos(q[0]), cos(q[1]), cos(q[2]), sin(q[0]), sin(q[1]), sin(q[2])))"
+                MotionSubspace(q, dq) = "[-sin(q[1]), 0, 1;
+                                          cos(q[1]) * sin(q[2]), cos(q[2]), 0;
+                                          cos(q[1]) * cos(q[2]), -sin(q[2]), 0;
+                                          0, 0, 0;
+                                          0, 0, 0;
+                                          0, 0, 0]"
+
+                cJ(q, dq) = "[-cos(q[1]) * dq[0] * dq[1];
+                              -sin(q[1]) * sin(q[2]) * dq[0] * dq[1] + cos(q[1]) * cos(q[2]) * dq[0] * dq[2] - sin(q[2]) * dq[1] * dq[2];
+                              -sin(q[1]) * cos(q[2]) * dq[0] * dq[1] - cos(q[1]) * sin(q[2]) * dq[0] * dq[2] - cos(q[2]) * dq[1] * dq[2];
+                              0;
+                              0;
+                              0]"
+            }
+        }
+
+        ## A spherical joint. This type of joint is simply three rotational
+        ## joints stacked together. It has three degrees of rotational freedom.
+        node "spherical" : "body", "dof3"
+        {
+            node "joint"
+            {
+                JointTransform(q) = "Spatial.Quaternion(q)"
+
+                # Note that here the joint velocity is directly specified and
+                # not the local joint velocity for the simple reason that
+                # the velocity variables are the cartesian angular
+                # velocities in the successor frame, such that the joint
+                # velocity simply becomes 'dq'.
+                JointVelocity(q, dq) = "[dq; 0; 0; 0]"
+
+                MotionSubspace(q, dq) = "[1, 0, 0;
+                                          0, 1, 0;
+                                          0, 0, 1;
+                                          0, 0, 0;
+                                          0, 0, 0;
+                                          0, 0, 0]"
+
+                ConstraintForceSubspace(q, dq) = "[0, 0, 0;
+                                                   0, 0, 0;
+                                                   0, 0, 0;
+                                                   1, 0, 0;
+                                                   0, 1, 0;
+                                                   0, 0, 1]"
+            }
+
+            ## The generalized coordinate for a spherical 3dof joint is
+            ## represented by a quaternion in q. Like this, the spherical joint
+            ## does not have any problems with singularies which otherwise might
+            ## arise (when using Euler angles for example). This is why q is of
+            ## dimension 4-by-1. You can use the convenience methods from Quaternion
+            ## (such as Quaternion.FromAxisAngle) to set values for q.
+            ##
+            ## Some things to note. A quaternion only describes 3 independent
+            ## variables since hypot(q) == 1. Due to numerical issues when
+            ## integrating forward, q needs to be normalized. Here that
+            ## happens using a constraint equation.
+            q = "[1; 0; 0; 0]" ("q / sqsum(q)")
+
+            ## The derivative of the quaternion is given by the following
+            ## equation. Note that dq (the velocity variables) _are_ 3-by-1 and
+            ## are choosen to be the cartesian joint velocities expressed
+            ## in the successor frame (this simplifies the motion subspace and
+            ## the joint velocity). q̇ then simply becomes:
+            ## (see page 86 of Rigid Body Dynamics Algorithms, also
+            ## http://www.euclideanspace.com/physics/kinematics/angularvelocity/)
+            q̇ = "0.5 ∙ [-q[1], -q[2], -q[3];
+                         q[0], -q[3],  q[2];
+                         q[3],  q[0], -q[1];
+                        -q[2],  q[1],  q[0]] ∙ dq"
+        }
+
+        ## A 6 DOF. This type of joint has no constraints and can be used
+        ## to implement floating base models.
+        node "float" : "body", "dof6"
+        {
+            node "joint"
+            {
+                JointTransform(q) = "Spatial.Translation(q[4:7]) ∙
+                                     Spatial.Quaternion(q[0:4])"
+
+                JointVelocity(q, dq) = "dq"
+                MotionSubspace(q, dq) = "eye(6)"
+
+                ConstraintForceSubspace(q, dq) = "[]"
+            }
+
+            # Use a constraint to normalize the first 4 q's
+            q = "[1; zeros(6, 1)]" ("[q[0:4] / sqsum(q[0:4]); q[4:7]]")
+
+            q̇[0:4] = "0.5 ∙ [-q[1], -q[2], -q[3];
+                              q[0], -q[3],  q[2];
+                              q[3],  q[0], -q[1];
+                             -q[2],  q[1],  q[0]] ∙ dq[0:3]"
+
+            q̇[4:7] = "dq[3:6]"
+        }
+    }
+}
+
+# vi:ex:ts=4:et

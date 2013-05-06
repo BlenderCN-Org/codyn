@@ -1,7 +1,7 @@
 include "findbodies.cdn"
 
-include "rnea.cdn"
-include "crba.cdn"
+include "algorithms/rnea.cdn"
+include "algorithms/crba.cdn"
 
 ## The dynamics node is used to accumulate the various quantities of the
 ## general rigid body dynamics equation: H ∙ q̈ + C = τ. The elements of H, C and

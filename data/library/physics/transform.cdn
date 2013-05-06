@@ -7,31 +7,34 @@ node "Transform"
         0,       0,       0,       1
     ]"
 
-    Rotate(θ) = "RotateX(θ[0]) ∙ RotateY(θ[1]) ∙ RotateZ(θ[2])"
+    Rotation(θ) = "RotationX(θ[0]) ∙ RotationY(θ[1]) ∙ RotationZ(θ[2])"
 
     ## 3-by-3 rotation matrix for rotation around the x-axis.
     ##   θ: the rotation angle.
-    RotateX(θ) = "[1,  0,       0;
-                   0,  cos(θ), sin(θ);
-                   0, -sin(θ), cos(θ)]"
+    RotationX(θ) = "[1,  0,       0;
+                    0,  cos(θ), sin(θ);
+                    0, -sin(θ), cos(θ)]"
 
     ## 3-by-3 rotation matrix for rotation around the y-axis.
     ##   θ: the rotation angle.
-    RotateY(θ) = "[cos(θ), 0, -sin(θ);
-                   0,      1,  0;
-                   sin(θ), 0,  cos(θ)]"
+    RotationY(θ) = "[cos(θ), 0, -sin(θ);
+                    0,      1,  0;
+                    sin(θ), 0,  cos(θ)]"
 
     ## 3-by-3 rotation matrix for rotation around the z-axis.
     ##   θ: the rotation angle.
-    RotateZ(θ) = "[ cos(θ), sin(θ), 0;
-                   -sin(θ), cos(θ), 0;
-                    0,      0,      1]"
+    RotationZ(θ) = "[ cos(θ), sin(θ), 0;
+                    -sin(θ), cos(θ), 0;
+                     0,      0,      1]"
 
     RotationFromAxisAngle_(u, mc, uxs, uys, uzs) = "[
         1 - mc + u[0]² ∙ mc, u[0] ∙ u[1] ∙ mc -uzs, u[0] ∙ u[2] ∙ mc + uys;
         u[1] ∙ u[0] ∙ mc + uzs, -mc + 1 + u[1]² ∙ mc, u[1] ∙ u[2] ∙ mc - uxs;
         u[2] ∙ u[0] ∙ mc - yus, u[2] ∙ u[1] ∙ mc + uxs, 1 - mc + u[2]² ∙ mc
     ]"
+
+    RotationPart(t) = "t[0:3, 0:3]"
+    TranslationPart(t) = "t[0:3, 3]"
 
     ## 3x3 rotation matrix for rotation around an arbitrary axis.
     ##   u: the axis around which to rotate.
