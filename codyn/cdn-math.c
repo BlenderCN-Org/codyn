@@ -406,6 +406,7 @@ SIMPLE_MATH_MAP_CODE (sign, sign_value)
 BIN_MATH_MAP (atan2)
 BIN_MATH_MAP (pow)
 BIN_MATH_MAP_CODE (csign, copysign)
+
 BIN_MATH_MAP_CODE (hypotv, hypot)
 
 static gdouble
@@ -461,25 +462,53 @@ op_nested (CdnStack            *stack,
            gdouble            (*func)(gdouble, gdouble, gboolean))
 {
 	gboolean first = TRUE;
-	gdouble value;
 	gint i;
 
-	value = initial;
-
-	for (i = 0; i < argdim->num; ++i)
+	if (argdim->num == 2 && cdn_dimension_equal (&argdim->args[0].dimension,
+	                                             &argdim->args[1].dimension))
 	{
-		gint n = cdn_stack_arg_size (argdim->args + i);
+		gdouble *ptrA;
+		gdouble *ptrB;
+		gdouble *outptr;
 
-		while (n > 0)
+		gint n = cdn_stack_arg_size (&argdim->args[0]);
+
+		ptrB = cdn_stack_output_ptr (stack) - n;
+		outptr = ptrB;
+
+		ptrA = ptrB - n;
+
+		for (i = 0; i < n; ++i)
 		{
-			value = func (value, cdn_stack_pop (stack), first);
-			first = FALSE;
+			*ptrA = func (*ptrA, func (initial, *ptrB, TRUE), FALSE);
 
-			--n;
+			++ptrA;
+			++ptrB;
 		}
-	}
 
-	cdn_stack_push (stack, value);
+		cdn_stack_set_output_ptr (stack, outptr);
+	}
+	else
+	{
+		gdouble value;
+
+		value = initial;
+
+		for (i = 0; i < argdim->num; ++i)
+		{
+			gint n = cdn_stack_arg_size (argdim->args + i);
+
+			while (n > 0)
+			{
+				value = func (value, cdn_stack_pop (stack), first);
+				first = FALSE;
+
+				--n;
+			}
+		}
+
+		cdn_stack_push (stack, value);
+	}
 }
 
 #define NESTED_MATH_MAP(func, initial) NESTED_MATH_MAP_CODE(func, func, initial)
