@@ -753,6 +753,27 @@ cdn_event_compile_impl (CdnObject         *object,
 	return TRUE;
 }
 
+static CdnVariable *
+lookup_set_variable (CdnNode     *n,
+                     gchar const *name)
+{
+	while (n)
+	{
+		CdnVariable *ret;
+
+		ret = cdn_object_get_variable (CDN_OBJECT (n), name);
+
+		if (ret != NULL)
+		{
+			return ret;
+		}
+
+		n = cdn_object_get_parent (CDN_OBJECT (n));
+	}
+
+	return NULL;
+}
+
 static void
 do_copy (CdnEvent *e,
          CdnEvent *se)
@@ -794,9 +815,21 @@ do_copy (CdnEvent *e,
 	/* Copy set variables. */
 	for (item = se->priv->set_variables; item; item = g_slist_next (item))
 	{
-		e->priv->set_variables =
-			g_slist_prepend (e->priv->set_variables,
-			                 set_variable_copy (item->data));
+		CdnVariable *v;
+		SetVariable *sv;
+
+		sv = item->data;
+
+		v = lookup_set_variable (cdn_object_get_parent (CDN_OBJECT (e)),
+		                         cdn_variable_get_name (sv->variable));
+
+		if (v)
+		{
+			e->priv->set_variables =
+				g_slist_prepend (e->priv->set_variables,
+				                 set_variable_new (v,
+				                                   cdn_expression_copy (sv->value)));
+		}
 	}
 
 	e->priv->set_variables = g_slist_reverse (e->priv->set_variables);
