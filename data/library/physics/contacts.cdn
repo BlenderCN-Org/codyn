@@ -18,44 +18,67 @@ templates
                 frictionDamping = "5e2"
                 frictionCoefficient = "1.5"
 
-                # calculate locations in base. [3xN]
+                # calculate locations in base.
+                #
+                # [3-by-N]
                 p = "Spatial.TransformPoint3(localToBaseTransform, location)"
 
                 # calculate velocities in base. The velocity sensor from which
                 # we inherit separates the angular and linear velocities since
                 # only the linear velocity has to be recalculated for the sensor
                 # locations. Here we keep the separation and simply multiply with
-                # the relevants parts of the spatial transformation. [3xN]
+                # the relevants parts of the spatial transformation.
+                #
+                # [3-by-N]
                 dp = "localToBaseTransform[3:6, 0:3] * angularVelocity +
                       localToBaseTransform[3:6, 3:6] * linearVelocity"
 
-                # [1xN]
+                # the contact position in the normal direction (Z)
+                #
+                # [1-by-N]
                 pN = "p[2, :]"
 
-                # [1xN]
+                # the contact velocity in the normal direction
+                #
+                # [1-by-N]
                 dpN = "dp[2, :]"
 
-                contactsActive = 0
-
+                # the contact force due to the contact model stiffness
+                #
+                # [1-by-N]
                 contactForceNormalStiffness = "normalStiffness * -pN^3"
+
+                # the contact force due to the contact model damping
+                #
+                # [1-by-N]
                 contactForceNormalDamping = "normalDamping * dpN * pN^3"
 
-                # [1xN]
+                # [1-by-N]
                 contactForceNormal = "max(0,
                                           min(maxNormalForce,
                                               contactForceNormalStiffness +
                                               contactForceNormalDamping))"
 
-                # [1xN]
+                # tangential forces due to friction (in X and Y)
+                #
+                # [1-by-N]
                 "forceTangential{X,Y}" = "-frictionDamping * dp[@1[!], :]"
 
-                # [1xN]
+                # maximum tangential force by simple coulomb friction
+                #
+                # [1-by-N]
                 contactForceTangentialMax = "contactForceNormal * frictionCoefficient"
 
+                # tangential contact forces limited by the maximum tangential force
+                #
+                # [1-by-N]
                 "contactForceTangential{X,Y}" = "csign(min(abs(forceTangential@1),
-                                                           abs(contactForceTangentialMax)),
+                                                           contactForceTangentialMax),
                                                        forceTangential@1)"
 
+                # the contact force (x, y, z) at each contact point location
+                #
+                # [3-by-N]
                 contactForceAtLocations = "[contactForceTangentialX;
                                             contactForceTangentialY;
                                             contactForceNormal]"
@@ -68,17 +91,16 @@ templates
                      f
                 ]"
 
+                # finally, the contact force is calculated in body coordinates
+                # whereas all the previous quantities are calculated in base
+                # coordinates. Here we first transform each force to the base
+                # origin, sum all the forces, and then transform the resultant
+                # to the body coordinate system.
                 contactForce = "Spatial.ForceTransform(baseToLocalTransform) * ForceAtZero(p, contactForceAtLocations)"
 
-                event "air" to "ground" when "min(pN) < 0" within 0.001
-                {
-                    set contactsActive = "1"
-                }
-
-                event "ground" to "air" when "max(pN) > 0" within 0.001
-                {
-                    set contactsActive = "0"
-                }
+                # Events used for event refinement
+                event "air" to "ground" when "min(pN) < 0" within 0.001 {}
+                event "ground" to "air" when "max(pN) > 0" within 0.001 {}
             }
         }
     }
