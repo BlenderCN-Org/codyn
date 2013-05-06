@@ -629,11 +629,12 @@ cdn_instruction_index_get_range (CdnInstructionIndex *instr)
 /**
  * cdn_instruction_index_get_range_block:
  * @instr: a #CdnInstructionIndex.
+ * @rows: (out): rows range.
+ * @columns: (out): columns range.
  *
- * Get the range of the index range instruction. This is only valid with the
- * type of the index instruction is #CDN_INSTRUCTION_INDEX_TYPE_RANGE.
- *
- * Returns: Description.
+ * Get the range blocks of the index range block instruction. This is only
+ * valid with the type of the index instruction is
+ * #CDN_INSTRUCTION_INDEX_TYPE_RANGE_BLOCK.
  *
  **/
 void
