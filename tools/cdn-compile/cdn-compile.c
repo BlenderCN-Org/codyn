@@ -307,31 +307,92 @@ display_values (CdnNetwork *network)
 	return 0;
 }
 
+static void
+print_parse_error (CdnNetwork *network)
+{
+	gchar const *line;
+	gint lineno;
+	gint cstart;
+	gint cend;
+	gchar *prefix;
+	gchar *lstr;
+	gchar *dash;
+	GFile *file;
+	CdnParserContext *context;
+
+	context = cdn_network_get_parser_context (network);
+
+	if (!context)
+	{
+		return;
+	}
+
+	cdn_parser_context_get_error_location (context,
+	                                       &lineno,
+	                                       NULL,
+	                                       &cstart,
+	                                       &cend,
+	                                       &file);
+
+	if (file)
+	{
+		gchar *fbase;
+
+		fbase = g_file_get_basename (file);
+
+		lstr = g_strdup_printf ("%s:%d.%d", fbase, lineno, cstart);
+
+		g_free (fbase);
+		g_object_unref (file);
+	}
+	else
+	{
+		lstr = g_strdup_printf ("%d.%d", lineno, cstart);
+	}
+
+	line = cdn_parser_context_get_line_at (context, lineno);
+
+	g_printerr ("(%s%s%s) %s%s%s\n", color_bold, lstr, color_off, color_blue, line, color_off);
+	prefix = g_strnfill (strlen (lstr) + 2 + cstart, ' ');
+	dash = g_strnfill (MAX (0, cend - cstart - 1), '-');
+
+	g_printerr ("%s%s^%s%s%s%s%s\n", prefix, color_red, color_yellow, dash, color_red, *dash ? "^" : "", color_off);
+
+	g_free (lstr);
+	g_free (prefix);
+	g_free (dash);
+}
+
 static int
 compile_network (gchar const *filename)
 {
 	CdnNetwork *network;
 	GError *error = NULL;
 	CdnCompileError *err;
+	gboolean loaded;
+
+	network = cdn_network_new ();
 
 #ifdef ENABLE_GIO_UNIX
 	if (g_strcmp0 (filename, "-") == 0)
 	{
 		GInputStream *stream = g_unix_input_stream_new (STDIN_FILENO, TRUE);
-		network = cdn_network_new_from_stream (stream, &error);
+
+		loaded = cdn_network_load_from_stream (network, stream, &error);
+
 		g_object_unref (stream);
 	}
 	else
 #endif
 	{
 		GFile *file = g_file_new_for_commandline_arg (filename);
-		network = cdn_network_new_from_file (file, &error);
+		loaded = cdn_network_load_from_file (network, file, &error);
 		g_object_unref (file);
 	}
 
-	if (!network)
+	if (!loaded)
 	{
-		g_printerr ("%sFailed to load network `%s%s%s%s': %s%s%s\n",
+		g_printerr ("%sFailed to parse network `%s%s%s%s': %s%s%s\n\n",
 		            color_red,
 		            color_off,
 		            color_bold,
@@ -341,7 +402,10 @@ compile_network (gchar const *filename)
 		            error->message,
 		            color_off);
 
+		print_parse_error (network);
+
 		g_error_free (error);
+		g_object_unref (network);
 
 		return 1;
 	}

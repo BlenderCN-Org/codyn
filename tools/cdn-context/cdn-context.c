@@ -876,7 +876,8 @@ parse_network (gchar const *args[], gint argc)
 			                                       &lstart,
 			                                       &lend,
 			                                       &cstart,
-			                                       &cend);
+			                                       &cend,
+			                                       NULL);
 
 			file = cdn_parser_context_get_file (context);
 			filename = file ? g_file_get_path (file) : g_strdup ("");

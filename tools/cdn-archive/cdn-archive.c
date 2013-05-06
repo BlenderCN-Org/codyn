@@ -306,6 +306,7 @@ parse_network (gchar const *args[], gint argc)
 		gchar *prefix;
 		gchar *lstr;
 		gchar *dash;
+		GFile *file;
 
 		g_printerr ("Failed to parse: %s\n\n", error->message);
 
@@ -313,7 +314,19 @@ parse_network (gchar const *args[], gint argc)
 		                                       &lineno,
 		                                       NULL,
 		                                       &cstart,
-		                                       &cend);
+		                                       &cend,
+		                                       &file);
+
+		if (file)
+		{
+			gchar *fbase;
+
+			fbase = g_file_get_basename (file);
+			g_printerr ("%s:\n", fbase);
+
+			g_free (fbase);
+			g_object_unref (file);
+		}
 
 		line = cdn_parser_context_get_line_at (context, lineno);
 
