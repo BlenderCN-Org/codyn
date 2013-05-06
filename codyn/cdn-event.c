@@ -35,9 +35,6 @@ struct _CdnEventPrivate
 	gdouble approximation;
 
 	GSList *set_variables;
-	GSList *set_flags;
-
-	GSList *events;
 	GHashTable *states;
 
 	gchar *goto_state;
@@ -76,7 +73,8 @@ enum
 };
 
 static LogicalNode *
-logical_node_copy (LogicalNode *node)
+logical_node_copy (LogicalNode *node,
+                   gboolean     copy_expr)
 {
 	LogicalNode *ret;
 
@@ -87,20 +85,33 @@ logical_node_copy (LogicalNode *node)
 
 	ret = g_slice_new0 (LogicalNode);
 
-	ret->left = logical_node_copy (node->left);
-	ret->right = logical_node_copy (node->right);
+	ret->left = logical_node_copy (node->left, copy_expr);
+	ret->right = logical_node_copy (node->right, copy_expr);
 
 	ret->type = node->type;
 
 	if (node->expression)
 	{
-		ret->expression = g_object_ref (node->expression);
+		if (copy_expr)
+		{
+			ret->expression = cdn_expression_copy (node->expression);
+		}
+		else
+		{
+			ret->expression = g_object_ref (node->expression);
+		}
 	}
 
 	ret->value = node->value;
 	ret->last_distance = node->last_distance;
 
 	return ret;
+}
+
+static LogicalNode *
+logical_node_copy_shallow (LogicalNode *node)
+{
+	return logical_node_copy (node, FALSE);
 }
 
 static void
@@ -570,10 +581,6 @@ cdn_event_finalize (GObject *object)
 		g_hash_table_destroy (self->priv->states);
 	}
 
-	g_slist_foreach (self->priv->events,
-	                 (GFunc)g_object_unref,
-	                 NULL);
-
 	if (self->priv->condition)
 	{
 		g_object_unref (self->priv->condition);
@@ -718,7 +725,6 @@ cdn_event_compile_impl (CdnObject         *object,
 
 	cdn_compile_context_restore (context);
 	g_object_unref (context);
-
 	if (!extract_condition_parts (event, error))
 	{
 		return FALSE;
@@ -748,6 +754,96 @@ cdn_event_compile_impl (CdnObject         *object,
 }
 
 static void
+do_copy (CdnEvent *e,
+         CdnEvent *se)
+{
+	GSList *item;
+
+	if (e->priv->condition)
+	{
+		g_object_unref (e->priv->condition);
+		e->priv->condition = NULL;
+	}
+
+	if (e->priv->condition_node)
+	{
+		logical_node_free (e->priv->condition_node);
+		e->priv->condition_node = NULL;
+	}
+
+	if (e->priv->goto_state)
+	{
+		g_free (e->priv->goto_state);
+		e->priv->goto_state = NULL;
+	}
+
+	g_slist_foreach (e->priv->set_variables, (GFunc)set_variable_free, NULL);
+	g_slist_free (e->priv->set_variables);
+	e->priv->set_variables = NULL;
+
+	/* Copy expression */
+	if (se->priv->condition)
+	{
+		e->priv->condition = cdn_expression_copy (se->priv->condition);
+	}
+
+	/* Copy logical nodes. */
+	e->priv->condition_node = logical_node_copy (se->priv->condition_node,
+	                                             TRUE);
+
+	/* Copy set variables. */
+	for (item = se->priv->set_variables; item; item = g_slist_next (item))
+	{
+		e->priv->set_variables =
+			g_slist_prepend (e->priv->set_variables,
+			                 set_variable_copy (item->data));
+	}
+
+	e->priv->set_variables = g_slist_reverse (e->priv->set_variables);
+
+	e->priv->goto_state = g_strdup (se->priv->goto_state);
+	e->priv->approximation = se->priv->approximation;
+	e->priv->terminal = se->priv->terminal;
+
+	cdn_phaseable_copy_to (CDN_PHASEABLE (se), CDN_PHASEABLE (e));
+}
+
+static void
+cdn_event_copy_impl (CdnObject *object,
+                     CdnObject *source)
+{
+	CdnEvent *e = CDN_EVENT (object);
+	CdnEvent *se = CDN_EVENT (source);
+
+	CDN_OBJECT_CLASS (cdn_event_parent_class)->copy (object, source);
+
+	do_copy (e, se);
+}
+
+static gboolean
+cdn_event_apply_template_impl (CdnObject  *object,
+                               CdnObject  *templ,
+                               GError    **error)
+{
+	/* Apply condition */
+	CdnEvent *e;
+	CdnEvent *se;
+
+	if (!CDN_OBJECT_CLASS (cdn_event_parent_class)->apply_template (object, templ, error))
+	{
+		return FALSE;
+	}
+
+	e = CDN_EVENT (object);
+	se = CDN_EVENT (templ);
+
+	do_copy (e, se);
+	cdn_object_taint (object);
+
+	return TRUE;
+}
+
+static void
 cdn_event_class_init (CdnEventClass *klass)
 {
 	GObjectClass *object_class = G_OBJECT_CLASS (klass);
@@ -759,6 +855,8 @@ cdn_event_class_init (CdnEventClass *klass)
 	object_class->set_property = cdn_event_set_property;
 
 	cdn_object_class->compile = cdn_event_compile_impl;
+	cdn_object_class->copy = cdn_event_copy_impl;
+	cdn_object_class->apply_template = cdn_event_apply_template_impl;
 
 	g_type_class_add_private (object_class, sizeof(CdnEventPrivate));
 
@@ -986,7 +1084,7 @@ cdn_event_logical_node_get_type ()
 	if (G_UNLIKELY (gtype == 0))
 	{
 		gtype = g_boxed_type_register_static ("CdnEventLogicalNode",
-		                                      (GBoxedCopyFunc)logical_node_copy,
+		                                      (GBoxedCopyFunc)logical_node_copy_shallow,
 		                                      (GBoxedFreeFunc)logical_node_free);
 	}
 
