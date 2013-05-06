@@ -107,6 +107,7 @@ struct _CdnNetworkPrivate
 
 	GHashTable *imports;
 	GSList *linked_libraries;
+	CdnParserContext *parser_context;
 
 	guint seed;
 };
@@ -206,6 +207,11 @@ cdn_network_finalize (GObject *object)
 	                      network);
 
 	g_hash_table_destroy (network->priv->imports);
+
+	if (network->priv->parser_context)
+	{
+		g_object_unref (network->priv->parser_context);
+	}
 
 	G_OBJECT_CLASS (cdn_network_parent_class)->finalize (object);
 }
@@ -1092,9 +1098,22 @@ load_from_file (CdnNetwork  *network,
 		ctx = cdn_parser_context_new (network);
 		cdn_parser_context_push_input (ctx, file, stream, FALSE);
 
+		if (network->priv->parser_context != NULL)
+		{
+			g_object_unref (network->priv->parser_context);
+			network->priv->parser_context = NULL;
+		}
+
 		ret = cdn_parser_context_parse (ctx, TRUE, error);
 
-		g_object_unref (ctx);
+		if (ret)
+		{
+			g_object_unref (ctx);
+		}
+		else
+		{
+			network->priv->parser_context = ctx;
+		}
 	}
 
 	if (stream)
@@ -1759,4 +1778,18 @@ cdn_network_link_library (CdnNetwork   *network,
 		                 mod);
 
 	return TRUE;
+}
+
+/**
+ * cdn_network_get_parser_context:
+ * @network the #CdnNetwork
+ *
+ * Returns: (transfer none): the parser context.
+ */
+CdnParserContext *
+cdn_network_get_parser_context (CdnNetwork *network)
+{
+	g_return_val_if_fail (CDN_IS_NETWORK (network), NULL);
+
+	return network->priv->parser_context;
 }

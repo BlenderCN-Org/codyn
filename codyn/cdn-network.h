@@ -224,6 +224,8 @@ void              _cdn_network_register_import       (CdnNetwork        *network
 
 void              cdn_network_simplify               (CdnNetwork *network);
 
+CdnParserContextForward *cdn_network_get_parser_context     (CdnNetwork *network);
+
 G_END_DECLS
 
 #endif /* __CDN_NETWORK_H__ */
