@@ -38,7 +38,7 @@ templates
                 contactsActive = 0
 
                 contactForceNormalStiffness = "normalStiffness * -pN^3"
-                contactForceNormalDamping = "normalStiffness * dpN * pN^3"
+                contactForceNormalDamping = "normalDamping * dpN * pN^3"
 
                 # [1xN]
                 contactForceNormal = "max(0,
