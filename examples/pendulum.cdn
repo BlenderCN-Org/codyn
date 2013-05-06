@@ -19,8 +19,10 @@ node "system" : physics.system
     {
           m = "1"
         com = "[0; 0; -0.5]"
-          q = "0.25 * pi"
           τ = "-0.1 * dq"
+        coordinateTransform = "Spatial.Translation([0, 0, -1])"
+        I = "Inertia.Cylinder(m, 0.1, 0.8)"
+
         localMatrix | out
 
         layout
@@ -29,14 +31,15 @@ node "system" : physics.system
         }
     }
     
-    node "p{2:@n}"
+    node "p1"
     {
-        coordinateTransform = "Spatial.Translate([0, 0, -1])"
-        q = "0"
+        coordinateTransform = "Spatial.Translation([0, 0, 0])"
+        q = "0.3 * pi"
     }
 
     edge from "p{1:@n}" to "p$(@1 + 1)" : physics.joint {}
 
+    include "physics/model.cdn"
     include "physics/dynamics.cdn"
 }
 
