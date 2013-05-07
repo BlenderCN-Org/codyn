@@ -1,9 +1,6 @@
 require "spatial.cdn"
 require "quaternion.cdn"
 
-## Gravity vector
-g = "[0; 0; 9.81]"
-
 templates
 {
     node "physics"
