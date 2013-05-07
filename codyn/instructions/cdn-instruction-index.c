@@ -715,6 +715,17 @@ cdn_instruction_index_get_indices (CdnInstructionIndex *instr,
 	return NULL;
 }
 
+gint
+cdn_instruction_index_num_indices (CdnInstructionIndex *instr)
+{
+	CdnDimension const *retdim;
+
+	g_return_val_if_fail (CDN_IS_INSTRUCTION_INDEX (instr), 0);
+
+	retdim = &instr->priv->smanip.push.dimension;
+	return cdn_dimension_size (retdim);
+}
+
 gboolean
 cdn_instruction_index_write_indices (CdnInstructionIndex *instr,
                                      gint                *indices,

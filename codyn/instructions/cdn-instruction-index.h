@@ -71,6 +71,9 @@ CdnInstruction *cdn_instruction_index_new_range_block (CdnIndexRange const *rows
 
 CdnInstructionIndexType cdn_instruction_index_get_index_type (CdnInstructionIndex *instr);
 
+
+gint cdn_instruction_index_num_indices (CdnInstructionIndex *instr);
+
 gboolean cdn_instruction_index_write_indices (CdnInstructionIndex *instr,
                                               gint                *indices,
                                               gint                 l);
