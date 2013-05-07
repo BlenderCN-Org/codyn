@@ -2066,6 +2066,19 @@ inline_simple (CdnExpression       *expression,
 		{
 			return TRUE;
 		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_CSUM:
+		if (args->args[0].columns == 1)
+		{
+			return TRUE;
+		}
+		break;
+	case CDN_MATH_FUNCTION_TYPE_RSUM:
+		if (args->args[0].rows == 1)
+		{
+			return TRUE;
+		}
+		break;
 	default:
 		break;
 	}
