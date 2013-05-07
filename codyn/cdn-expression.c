@@ -3328,13 +3328,6 @@ make_range_block_or_offset (CdnIndexRange const *rows,
 		// This is just a simple indexing of one element
 		idx[0] = columns->start * arg->dimension.rows + rows->start;
 
-		g_message ("r: %d, %d, %d    c: %d, %d, %d      for: %d-by-%d, index: %d",
-		           rows->start, rows->step, rows->end,
-		           columns->start, columns->step, columns->end,
-		           arg->rows,
-		           arg->columns,
-		           idx[0]);
-
 		return cdn_instruction_index_new (idx, &retdim, arg);
 	}
 	else if (cdn_index_range_n (columns) == 1 ||
@@ -3344,13 +3337,6 @@ make_range_block_or_offset (CdnIndexRange const *rows,
 		// This can be an offset
 		CdnDimension retdim = CDN_DIMENSION(arg->dimension.rows, columns->end - columns->start);
 		gint offset = columns->start * arg->dimension.rows + rows->start;
-
-		g_message ("r: %d, %d, %d    c: %d, %d, %d      for: %d-by-%d, offset: %d",
-		           rows->start, rows->step, rows->end,
-		           columns->start, columns->step, columns->end,
-		           arg->rows,
-		           arg->columns,
-		           offset);
 
 		return cdn_instruction_index_new_offset (offset, &retdim, arg);
 	}
