@@ -177,6 +177,16 @@ node "Spatial"
         zeros(3, 3), v[3:6, 3:6]
     ]"
 
+    ## ForcesAtOrigin calculates a resultant force at the origin given a set
+    ## of spatial forces and their corresponding 3d locations. The forces must
+    ## be in the same coordinate frame.
+    ForcesAtOrigin(f, p) = "csum([
+        f[0, :] +                         -p[2, :] * f[4, :] +  p[1, :] * f[5, :];
+        f[1, :] +     p[2, :] * f[3, :] +                      -p[0, :] * f[5, :];
+        f[2, :] +    -p[1, :] * f[3, :] +  p[0, :] * f[4, :];
+        f[3:6, :]
+    ])"
+
     # Spatial inverse. The spatial inverse can be computed by transposing
     # each 3x3 block matrix in the spatial 6x6 matrix since each block
     # represents an orthogonal space
