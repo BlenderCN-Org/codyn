@@ -686,10 +686,13 @@ evaluate_notify (CdnExpression *expression,
 	CdnMatrix *update;
 
 	// Update variable cache from the direct actions
-	cdn_variable_clear_update (info->variable);
+	if (!info->phase_actions)
+	{
+		return;
+	}
 
+	cdn_variable_clear_update (info->variable);
 	update = cdn_variable_get_update (info->variable);
-	cdn_matrix_clear (update);
 
 	for (item = info->phase_actions; item; item = g_slist_next (item))
 	{
@@ -792,6 +795,8 @@ update_direct_phase (CdnIntegratorState *state,
 
 	dinfo = g_hash_table_lookup (state->priv->direct_variables_hash,
 	                             tv);
+
+	cdn_expression_force_reset_cache (cdn_variable_get_expression (dinfo->variable));
 
 	if (add)
 	{
@@ -1271,7 +1276,7 @@ cdn_integrator_state_set_state (CdnIntegratorState *state,
 			// Remove from list
 			ptr = get_state_list (state, ph);
 
-			if (ptr == &state->priv->direct_edge_actions)
+			if (ptr == &state->priv->phase_direct_edge_actions)
 			{
 				update_direct_phase (state, item->data, FALSE);
 			}
@@ -1285,7 +1290,7 @@ cdn_integrator_state_set_state (CdnIntegratorState *state,
 			// Add to list
 			ptr = get_state_list (state, ph);
 
-			if (ptr == &state->priv->direct_edge_actions)
+			if (ptr == &state->priv->phase_direct_edge_actions)
 			{
 				update_direct_phase (state, item->data, TRUE);
 			}
