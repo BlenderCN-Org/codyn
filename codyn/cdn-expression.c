@@ -3335,7 +3335,8 @@ make_range_block_or_offset (CdnIndexRange const *rows,
 	          columns->step == 1))
 	{
 		// This can be an offset
-		CdnDimension retdim = CDN_DIMENSION(arg->dimension.rows, columns->end - columns->start);
+		CdnDimension retdim = CDN_DIMENSION(cdn_index_range_n (rows),
+		                                    columns->end - columns->start);
 		gint offset = columns->start * arg->dimension.rows + rows->start;
 
 		return cdn_instruction_index_new_offset (offset, &retdim, arg);
