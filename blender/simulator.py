@@ -46,6 +46,46 @@ def find_and_load_rawc(data):
         data.rawc = None
 
 class Simulator:
+    class Force:
+        def __init__(self, gobj, idx):
+            self.gobj = gobj
+            self.idx = idx
+
+            for child in self.gobj.children:
+                if 'bottom' in child.name:
+                    self.bottom = child
+                elif 'top' in child.name:
+                    self.top = child
+
+        def set_visible(self, v, obj=None):
+            if obj is None:
+                obj = self.gobj
+
+            obj.visible = v
+
+            for child in obj.children:
+                self.set_visible(v, child)
+
+        def update(self, f):
+            visible = (abs(f[3]) + abs(f[4]) + abs(f[5]) > 0.01)
+            self.set_visible(visible)
+
+            if visible:
+                vv = mathutils.Vector(f[3:6])
+                norm = vv.normalized()
+                l = vv.length
+
+                n = mathutils.Vector([0, 0, 1])
+                #norm = mathutils.Vector([0, 0, 1])
+
+                xyz = n.cross(norm)
+                w = 1 + n.dot(norm)
+
+                q = mathutils.Vector((w, xyz[0], xyz[1], xyz[2]))
+                q /= q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]
+
+                self.gobj.worldOrientation = mathutils.Quaternion(list(q))
+
     def __init__(self, obj, data):
         self.system = obj.children[0]
         self.data = data
@@ -69,6 +109,8 @@ class Simulator:
 
             self._find_nodes(child)
 
+    
+
 class SimulatorCodyn(Simulator):
     class Node:
         def __init__(self, node, gobj):
@@ -81,47 +123,19 @@ class SimulatorCodyn(Simulator):
             m = codyn.matrix_to_mat4x4(self.localMatrix.get_values())
             self.gobj.localTransform = m
 
-    class Force:
+    class Force(Simulator.Force):
         def __init__(self, node, gobj, idx):
+            Simulator.Force.__init__(self, gobj, idx)
+
             self.node = node
-            self.gobj = gobj
-            self.idx = idx
-
-            for child in self.gobj.children:
-                if 'bottom' in child.name:
-                    self.bottom = child
-                elif 'top' in child.name:
-                    self.top = child
-
             self.force = self.node.get_variable("contactForceAtLocations")
-
-        def set_visible(self, v, obj=None):
-            if obj is None:
-                obj = self.gobj
-
-            obj.visible = v
-
-            for child in obj.children:
-                self.set_visible(v, child)
 
         def update(self):
             v = self.force.get_values()
-            i = self.idx * 6 + 3
+            i = self.idx * 6
 
-            vec = v.get_flat()[i:i+3]
-
-            self.set_visible((vec[0] + vec[1] + vec[2] > 0.01))
-
-            vv = mathutils.Vector(vec)
-            norm = vv.normalized()
-            l = vv.length
-
-            n = mathutils.Vector([0, 0, 1])
-
-            xyz = n.cross(norm)
-            w = n.dot(norm)
-
-            self.gobj.worldOrientation = mathutils.Quaternion((w, xyz[0], xyz[1], xyz[2]))
+            vec = v.get_flat()[i:i + 6]
+            Simulator.Force.update(self, vec)
 
     def setup(self):
         self.cdn_nodes = []
@@ -158,8 +172,28 @@ class SimulatorRawc(Simulator):
 
             self.localMatrix = self.node["localMatrix"]
 
+        def update(self):
+            m = codyn.to_mat4x4(self.localMatrix.flat_value,
+                                 self.localMatrix.dimension)
+
+            self.gobj.localTransform = m
+
+    class Force(Simulator.Force):
+        def __init__(self, node, gobj, idx):
+            Simulator.Force.__init__(self, gobj, idx)
+
+            self.node = node
+            self.force = self.node["contactForceAtLocations"]
+
+        def update(self):
+            i = self.idx * 6
+            f = self.force.flat_value
+
+            Simulator.Force.update(self, f[i:i + 6])
+
     def setup(self):
         self.cdn_nodes = []
+        self.cdn_forces = []
 
         for n in self.nodes:
             mn = self.data.rawc.topology.fullname_to_node[n]
@@ -167,15 +201,23 @@ class SimulatorRawc(Simulator):
 
             self.cdn_nodes.append(node)
 
+        for n in self.forces:
+            force = self.forces[n]
+
+            mn = self.data.rawc.topology.fullname_to_node[n]
+            force = SimulatorRawc.Force(mn, force[0], force[1])
+
+            self.cdn_forces.append(force)
+
     def reset(self):
         self.data.rawc.reset(0)
 
     def update(self):
         for node in self.cdn_nodes:
-            m = codyn.to_mat4x4(node.localMatrix.flat_value,
-                                node.localMatrix.dimension)
+           node.update()
 
-            node.gobj.localTransform = m
+        for force in self.cdn_forces:
+            force.update()
 
     def step(self, t):
         for i in range(0, int(t / 0.001)):
