@@ -47,7 +47,8 @@ enum
 	PROP_TIME,
 	PROP_STATE,
 	PROP_REAL_TIME,
-	PROP_MINIMUM_TIMESTEP
+	PROP_MINIMUM_TIMESTEP,
+	PROP_DEFAULT_TIMESTEP
 };
 
 /* Signals */
@@ -74,6 +75,7 @@ struct _CdnIntegratorPrivate
 	gdouble real_time;
 	gdouble rt_correction;
 	gdouble minimum_timestep;
+	gdouble default_timestep;
 
 	guint terminate : 1;
 	guint inner_event_loop : 1;
@@ -210,6 +212,9 @@ cdn_integrator_set_property (GObject      *object,
 		case PROP_MINIMUM_TIMESTEP:
 			self->priv->minimum_timestep = g_value_get_double (value);
 			break;
+		case PROP_DEFAULT_TIMESTEP:
+			self->priv->default_timestep = g_value_get_double (value);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -240,6 +245,9 @@ cdn_integrator_get_property (GObject    *object,
 			break;
 		case PROP_MINIMUM_TIMESTEP:
 			g_value_set_double (value, self->priv->minimum_timestep);
+			break;
+		case PROP_DEFAULT_TIMESTEP:
+			g_value_set_double (value, self->priv->default_timestep);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -842,6 +850,18 @@ cdn_integrator_class_init (CdnIntegratorClass *klass)
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_STATIC_STRINGS |
 	                                                      G_PARAM_CONSTRUCT));
+
+	g_object_class_install_property (object_class,
+	                                 PROP_DEFAULT_TIMESTEP,
+	                                 g_param_spec_double ("default-timestep",
+	                                                      "Default Timestep",
+	                                                      "Default timestep",
+	                                                      G_MINDOUBLE,
+	                                                      G_MAXDOUBLE,
+	                                                      0.001,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_STATIC_STRINGS |
+	                                                      G_PARAM_CONSTRUCT));
 }
 
 static void
@@ -1118,6 +1138,11 @@ cdn_integrator_run (CdnIntegrator  *integrator,
 		return FALSE;
 	}
 
+	if (timestep == 0)
+	{
+		timestep = integrator->priv->default_timestep;
+	}
+
 	CDN_INTEGRATOR_GET_CLASS (integrator)->run (integrator,
 	                                            from,
 	                                            timestep,
@@ -1149,6 +1174,11 @@ cdn_integrator_step (CdnIntegrator *integrator,
                      gdouble        timestep)
 {
 	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), 0);
+
+	if (timestep == 0)
+	{
+		timestep = integrator->priv->default_timestep;
+	}
 
 	return CDN_INTEGRATOR_GET_CLASS (integrator)->step (integrator, t, timestep);
 }
@@ -1367,4 +1397,22 @@ cdn_integrator_get_terminate (CdnIntegrator *integrator)
 	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), TRUE);
 
 	return integrator->priv->terminate;
+}
+
+gdouble
+cdn_integrator_get_default_timestep (CdnIntegrator *integrator)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR (integrator), 0);
+
+	return integrator->priv->default_timestep;
+}
+
+void
+cdn_integrator_set_default_timestep (CdnIntegrator *integrator,
+                                     gdouble        value)
+{
+	g_return_if_fail (CDN_IS_INTEGRATOR (integrator));
+
+	integrator->priv->default_timestep = value;
+	g_object_notify (G_OBJECT (integrator), "default-timestep");
 }
