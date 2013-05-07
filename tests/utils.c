@@ -492,18 +492,10 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 		gint l;
 		CdnMatrix const *vals;
 		gint i;
-		GSList *actions;
-		gboolean hasac;
 
 		variables = g_slist_delete_link (variables, variables);
-		actions = cdn_variable_get_actions (v);
 
-		hasac = actions != NULL;
-
-		g_slist_foreach (actions, (GFunc)g_object_unref, NULL);
-		g_slist_free (actions);
-
-		if (monitored && hasac)
+		if (monitored && cdn_variable_has_actions (v))
 		{
 			continue;
 		}
