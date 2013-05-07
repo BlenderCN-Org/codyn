@@ -163,7 +163,7 @@ class CodynImport(bpy.types.Operator):
             csid = '{0}_cs'.format(bid)
 
             cs = self.make_object(context, csid, lambda: bpy.data.meshes['coordinate_system'])
-            cs.scale = [10, 10, 10]
+            cs.scale = [0.1, 0.1, 0.1]
             cs.parent = obj
 
             # Attach coordinate system visualization
@@ -177,8 +177,48 @@ class CodynImport(bpy.types.Operator):
             if not shape is None:
                 shape.location = com.get_values().get_flat()
                 shape.parent = obj
-
                 ret.append(shape)
+
+            contacts = body.find_objects('has-template(physics.contacts.soft)')
+
+            for c in contacts:
+                # Add contact force vector at each location
+                locs = c.get_variable('location').get_values()
+                locvals = locs.get_flat()
+                dim = locs.dimension()
+
+                for cc in range(dim.columns):
+                    bpy.ops.object.add_named(linked=True, name='force')
+                    fobj = context.active_object
+
+                    bpy.ops.object.add_named(linked=True, name='force_top')
+                    fobjtop = context.active_object
+
+                    bpy.ops.object.add_named(linked=True, name='force_bottom')
+                    fobjbottom = context.active_object
+
+                    fobj.name = '{0}_force_{1}'.format(bid, cc)
+                    fobjtop.name = '{0}_force_top_{1}'.format(bid, cc)
+                    fobjbottom.name = '{0}_force_bottom_{1}'.format(bid, cc)
+
+                    fobjtop.parent = fobj
+                    fobjbottom.parent = fobj
+
+                    fobj.scale = [0.1, 0.1, 0.1]
+                    fobj.parent = obj
+
+                    istart = cc * dim.rows
+                    fobj.location = locvals[istart:istart+3]
+
+                    if not 'cdn_force' in obj.game.properties:
+                        context.scene.objects.active = fobj
+                        bpy.ops.object.game_property_new(type='STRING', name='cdn_force')
+
+                    fobj.game.properties['cdn_force'].value = '{0}:{1}'.format(c.get_full_id(), cc)
+
+                    ret.append(fobj)
+                    ret.append(fobjtop)
+                    ret.append(fobjbottom)
 
             ret.append(obj)
             ret.append(cs)
@@ -218,7 +258,7 @@ class CodynImport(bpy.types.Operator):
 
         return ret
 
-    def link_library(self):
+    def link_library(self, context):
         filename = inspect.getframeinfo(inspect.currentframe()).filename
         dirname = os.path.dirname(filename)
 
@@ -226,8 +266,27 @@ class CodynImport(bpy.types.Operator):
             for attr in ['materials', 'meshes', 'objects', 'groups']:
                 setattr(data_to, attr, getattr(data_from, attr))
 
+        sobjs = context.scene.objects
+        bobjs = bpy.data.objects
+
+        if (not 'force' in sobjs) and ('force' in bobjs):
+            nm = ['force', 'force_top', 'force_bottom']
+
+            for n in nm:
+                sobjs.link(bobjs[n])
+
+            for n in nm:
+                sobjs[n].layers[1] = True
+                sobjs[n].layers[0] = False
+
+            sobjs['force'].location = mathutils.Vector((0, 0, 0))
+
+        context.scene.update()
+
     def execute(self, context):
-        self.link_library()
+        context.scene.cursor_location = [0, 0, 0]
+
+        self.link_library(context)
 
         path = self.filepath
 
@@ -301,6 +360,8 @@ class CodynImport(bpy.types.Operator):
         codyn.data.networks[name].filename = path
         codyn.data.networks[name].mtime = os.path.getmtime(path)
         codyn.data.networks[name].rawc = None
+
+        context.scene.update()
 
         return {"FINISHED"}
 

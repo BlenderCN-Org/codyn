@@ -1,4 +1,4 @@
-import os, platform, tempfile, shutil
+import os, platform, tempfile, shutil, mathutils
 
 import codyn, camera
 
@@ -51,6 +51,8 @@ class Simulator:
         self.data = data
 
         self.nodes = {}
+        self.forces = {}
+
         self._find_nodes(self.system)
         self.setup()
 
@@ -61,6 +63,9 @@ class Simulator:
         for child in root.children:
             if 'cdn_node' in child:
                 self.nodes[child['cdn_node']] = child
+            elif 'cdn_force' in child:
+                parts = child['cdn_force'].split(':')
+                self.forces[parts[0]] = [child, int(parts[1])]
 
             self._find_nodes(child)
 
@@ -72,11 +77,62 @@ class SimulatorCodyn(Simulator):
 
             self.localMatrix = self.node.get_variable("localMatrix")
 
+        def update(self):
+            m = codyn.matrix_to_mat4x4(self.localMatrix.get_values())
+            self.gobj.localTransform = m
+
+    class Force:
+        def __init__(self, node, gobj, idx):
+            self.node = node
+            self.gobj = gobj
+            self.idx = idx
+
+            for child in self.gobj.children:
+                if 'bottom' in child.name:
+                    self.bottom = child
+                elif 'top' in child.name:
+                    self.top = child
+
+            self.force = self.node.get_variable("contactForceAtLocations")
+
+        def set_visible(self, v, obj=None):
+            if obj is None:
+                obj = self.gobj
+
+            obj.visible = v
+
+            for child in obj.children:
+                self.set_visible(v, child)
+
+        def update(self):
+            v = self.force.get_values()
+            i = self.idx * 6 + 3
+
+            vec = v.get_flat()[i:i+3]
+
+            self.set_visible((vec[0] + vec[1] + vec[2] > 0.01))
+
+            vv = mathutils.Vector(vec)
+            norm = vv.normalized()
+            l = vv.length
+
+            n = mathutils.Vector([0, 0, 1])
+
+            xyz = n.cross(norm)
+            w = n.dot(norm)
+
+            self.gobj.worldOrientation = mathutils.Quaternion((w, xyz[0], xyz[1], xyz[2]))
+
     def setup(self):
         self.cdn_nodes = []
+        self.cdn_forces = []
 
         for n in self.nodes:
             self.cdn_nodes.append(SimulatorCodyn.Node(self.data.cdn.find_object(n), self.nodes[n]))
+
+        for n in self.forces:
+            f = self.forces[n]
+            self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(n), f[0], f[1]))
 
     def step(self, t):
         for i in range(0, int(t / 0.001)):
@@ -89,8 +145,10 @@ class SimulatorCodyn(Simulator):
     def update(self):
         # Update game node transformation from local transform
         for node in self.cdn_nodes:
-            m = codyn.matrix_to_mat4x4(node.localMatrix.get_values())
-            node.gobj.localTransform = m
+            node.update()
+
+        for force in self.cdn_forces:
+            force.update()
 
 class SimulatorRawc(Simulator):
     class Node:
