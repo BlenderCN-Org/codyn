@@ -1505,7 +1505,7 @@ variable_get_actions (CdnNode    *o,
  *
  * Get the actions acting on this variable.
  *
- * Returns: (element-type CdnEdgeAction) (transfer full): A #GSList of #CdnEdgeAction
+ * Returns: (element-type CdnEdgeAction) (transfer container): A #GSList of #CdnEdgeAction
  *
  **/
 GSList *
@@ -1517,7 +1517,7 @@ cdn_variable_get_actions (CdnVariable *variable)
 
 	obj = cdn_variable_get_object (variable);
 
-	if (!CDN_IS_NODE (obj))
+	if (obj == NULL || !CDN_IS_NODE (obj))
 	{
 		return NULL;
 	}
@@ -1525,6 +1525,51 @@ cdn_variable_get_actions (CdnVariable *variable)
 	return g_slist_reverse (variable_get_actions (CDN_NODE (cdn_variable_get_object (variable)),
 	                                              variable,
 	                                              NULL));
+}
+
+gboolean
+cdn_variable_has_actions (CdnVariable *variable)
+{
+	CdnNode *obj;
+
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), FALSE);
+
+	obj = (CdnNode *)cdn_variable_get_object (variable);
+
+	if (obj == NULL || !CDN_IS_NODE (obj))
+	{
+		return FALSE;
+	}
+
+	while (obj)
+	{
+		GSList const *l;
+
+		l = cdn_node_get_edges (obj);
+
+		while (l)
+		{
+			GSList const *actions;
+
+			actions = cdn_edge_get_actions (l->data);
+
+			while (actions)
+			{
+				if (cdn_edge_action_get_target_variable (actions->data) == variable)
+				{
+					return TRUE;
+				}
+
+				actions = g_slist_next (actions);
+			}
+
+			l = g_slist_next (l);
+		}
+
+		obj = cdn_object_get_parent (CDN_OBJECT (obj));
+	}
+
+	return FALSE;
 }
 
 void

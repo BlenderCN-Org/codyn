@@ -165,6 +165,7 @@ void               _cdn_variable_set_object             (CdnVariable      *varia
                                                          gboolean          notify);
 
 GSList            *cdn_variable_get_actions             (CdnVariable *variable);
+gboolean           cdn_variable_has_actions             (CdnVariable *variable);
 
 CdnVariable       *cdn_variable_get_integral            (CdnVariable *variable);
 CdnVariable       *cdn_variable_get_derivative          (CdnVariable *variable);

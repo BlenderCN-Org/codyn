@@ -177,7 +177,7 @@ simplify_network (CdnNetwork *network)
 		v = l->data;
 
 		if ((cdn_variable_get_flags (v) & (CDN_VARIABLE_FLAG_OUT | CDN_VARIABLE_FLAG_INTEGRATED)) ||
-		    cdn_variable_get_actions (v))
+		    cdn_variable_has_actions (v))
 		{
 			CdnExpression *e;
 
