@@ -30,6 +30,8 @@ struct _CdnMonitorImplementation
 	void (*begin) (CdnMonitorImplementation *implementation, gdouble t, gdouble dt);
 	gdouble (*step) (CdnMonitorImplementation *implementation, gdouble t, gdouble dt);
 	void (*end) (CdnMonitorImplementation *implementation);
+
+	gdouble (*default_timestep) (CdnMonitorImplementation *implementation);
 };
 
 void cdn_monitor_implementation_free (CdnMonitorImplementation *implementation);

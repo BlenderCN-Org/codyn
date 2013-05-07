@@ -38,7 +38,7 @@ static GPtrArray *monitored = NULL;
 static gboolean include_header = FALSE;
 static gchar *delimiter = NULL;
 static gdouble from = 0;
-static gdouble step = 0.001;
+static gdouble step = 0;
 static gdouble to = 1;
 static guint seed = 0;
 static gboolean seed_set = FALSE;
@@ -121,22 +121,11 @@ parse_time (gchar const  *option_name,
 	gchar **parts = g_strsplit (value, ":", 0);
 	gint len = g_strv_length (parts);
 
-	if (len < 2)
+	if (len == 1)
 	{
-		if (error)
-		{
-			g_set_error (error,
-			             CDN_MONITOR_ERROR,
-			             CDN_MONITOR_ERROR_RANGE,
-			             "Could not parse range: %s",
-			             value);
-		}
-
-		g_strfreev (parts);
-		return FALSE;
+		to = g_ascii_strtod (parts[0], NULL);
 	}
-
-	if (len == 2)
+	else if (len == 2)
 	{
 		from = g_ascii_strtod (parts[0], NULL);
 		to = g_ascii_strtod (parts[1], NULL);
@@ -150,7 +139,7 @@ parse_time (gchar const  *option_name,
 
 	g_strfreev (parts);
 
-	if ((to - (from + step)) >= to - from)
+	if (step != 0 && ((to - (from + step)) >= to - from))
 	{
 		if (error)
 		{
@@ -186,7 +175,7 @@ static GOptionEntry entries[] = {
 	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter,
 	 "Column delimiter (defaults to tab)", "DELIM"},
 	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time,
-	 "Time range (from:to or from:step:to, defaults to 0:0.01:1)", "RANGE"},
+	 "Time range (to, from:to or from:step:to, defaults to 1)", "RANGE"},
 	{"output", 'o', 0, G_OPTION_ARG_CALLBACK, parse_output_file,
 	 "Output file (defaults to standard output)", "FILE"},
 	{"seed", 's', 0, G_OPTION_ARG_CALLBACK, parse_seed,
@@ -655,6 +644,23 @@ run_simple_monitor (CdnMonitorImplementation *implementation)
 	}
 
 	t = from;
+
+	if (step == 0)
+	{
+		if (implementation->default_timestep)
+		{
+			step = implementation->default_timestep (implementation);
+		}
+		else
+		{
+			step = 0.001;
+		}
+
+		if (from > to)
+		{
+			step = -step;
+		}
+	}
 
 	implementation->begin (implementation, t, step);
 

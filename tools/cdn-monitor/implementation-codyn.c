@@ -137,6 +137,12 @@ monitor_resolve (CdnMonitorImplementation *implementation,
 	return variables;
 }
 
+static gdouble
+default_timestep (CdnMonitorImplementation *implementation)
+{
+	return cdn_integrator_get_default_timestep (cdn_network_get_integrator (implementation->network));
+}
+
 CdnMonitorImplementation *
 cdn_monitor_implementation_codyn_new (gchar const *filename)
 {
@@ -200,6 +206,7 @@ cdn_monitor_implementation_codyn_new (gchar const *filename)
 	ret->step = monitor_step;
 	ret->get_time = monitor_get_time;
 	ret->set_seed = set_seed;
+	ret->default_timestep = default_timestep;
 
 	ret->terminated = monitor_terminated;
 
