@@ -461,50 +461,78 @@ op_nested (CdnStack            *stack,
            gdouble              initial,
            gdouble            (*func)(gdouble, gdouble, gboolean))
 {
-	gboolean first = TRUE;
-	gint i;
-
-	if (argdim->num == 2 && cdn_dimension_equal (&argdim->args[0].dimension,
-	                                             &argdim->args[1].dimension))
+	if (argdim->num == 2)
 	{
 		gdouble *ptrA;
 		gdouble *ptrB;
+		gint i;
 		gdouble *outptr;
 
-		gint n = cdn_stack_arg_size (&argdim->args[0]);
+		gint n1 = cdn_stack_arg_size (&argdim->args[1]);
+		gint n2 = cdn_stack_arg_size (&argdim->args[0]);
 
-		ptrB = cdn_stack_output_ptr (stack) - n;
-		outptr = ptrB;
+		ptrB = cdn_stack_output_ptr (stack) - n2;
+		ptrA = ptrB - n1;
 
-		ptrA = ptrB - n;
-
-		for (i = 0; i < n; ++i)
+		if (n1 == n2)
 		{
-			*ptrA = func (*ptrA, func (initial, *ptrB, TRUE), FALSE);
+			outptr = ptrB;
 
-			++ptrA;
-			++ptrB;
+			for (i = 0; i < n1; ++i)
+			{
+				*ptrA = func (*ptrA, func (initial, *ptrB, TRUE), FALSE);
+
+				++ptrA;
+				++ptrB;
+			}
+
+			cdn_stack_set_output_ptr (stack, outptr);
 		}
+		else if (n1 == 1)
+		{
+			gdouble v = *ptrA;
 
-		cdn_stack_set_output_ptr (stack, outptr);
+			for (i = 0; i < n2; ++i)
+			{
+				*ptrA = func (v, func (initial, *ptrB, TRUE), FALSE);
+
+				++ptrA;
+				++ptrB;
+			}
+
+			// Pop one value of A
+			cdn_stack_pop (stack);
+		}
+		else
+		{
+			gdouble v = *ptrB;
+
+			for (i = 0; i < n1; ++i)
+			{
+				*ptrA = func (v, func (initial, *ptrA, TRUE), FALSE);
+				++ptrA;
+			}
+
+			// Pop one value of B
+			cdn_stack_pop (stack);
+		}
 	}
 	else
 	{
+		// Operate on single argument
 		gdouble value;
+		gboolean first = TRUE;
 
 		value = initial;
 
-		for (i = 0; i < argdim->num; ++i)
+		gint n = cdn_stack_arg_size (&argdim->args[0]);
+
+		while (n > 0)
 		{
-			gint n = cdn_stack_arg_size (argdim->args + i);
+			value = func (value, cdn_stack_pop (stack), first);
+			first = FALSE;
 
-			while (n > 0)
-			{
-				value = func (value, cdn_stack_pop (stack), first);
-				first = FALSE;
-
-				--n;
-			}
+			--n;
 		}
 
 		cdn_stack_push (stack, value);
