@@ -5447,6 +5447,28 @@ set_gobject_property (CdnParserContext  *context,
 	return TRUE;
 }
 
+static void
+replace_selection_object (CdnParserContext *context,
+                          gpointer          find,
+                          gpointer          replace)
+{
+	GSList *ctx;
+
+	for (ctx = context->priv->context_stack; ctx; ctx = g_slist_next (ctx))
+	{
+		Context *c = ctx->data;
+		GSList *item;
+
+		for (item = c->objects; item; item = g_slist_next (item))
+		{
+			if (cdn_selection_get_object (item->data) == find)
+			{
+				cdn_selection_set_object (item->data, replace);
+			}
+		}
+	}
+}
+
 void
 cdn_parser_context_add_integrator_variable (CdnParserContext  *context,
                                             CdnEmbeddedString *name,
@@ -5514,6 +5536,11 @@ cdn_parser_context_add_integrator_variable (CdnParserContext  *context,
 
 				it = g_object_new (type, NULL);
 				cdn_network_set_integrator (context->priv->network, it);
+
+				// Replace contexts
+				replace_selection_object (context,
+				                          cdn_selection_get_object (item->data),
+				                          it);
 
 				g_object_unref (it);
 			}
