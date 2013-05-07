@@ -689,6 +689,7 @@ evaluate_notify (CdnExpression *expression,
 	cdn_variable_clear_update (info->variable);
 
 	update = cdn_variable_get_update (info->variable);
+	cdn_matrix_clear (update);
 
 	for (item = info->phase_actions; item; item = g_slist_next (item))
 	{
