@@ -1,12 +1,12 @@
 node "Spatial"
 {
     ## Spatial inertia
-    Inertia_(com, m, I, C) = "[
+    Inertia_(m, I, C) = "[
         I + m ∙ C ∙ Cᵀ, m ∙ C;
         m ∙ Cᵀ, [m, 0, 0; 0, m, 0; 0, 0, m]
     ]"
 
-    Inertia(com, m, I) = "Inertia_(com, m, I, Tilde(com))"
+    Inertia(com, m, I) = "Inertia_(m, I, Tilde(com))"
 
     Tilde(v) = "[
          0,    -v[2],  v[1];
