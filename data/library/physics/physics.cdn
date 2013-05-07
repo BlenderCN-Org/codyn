@@ -44,8 +44,8 @@ templates
             ## Mass of the body
             m   = "1"
 
-            ## Center of Mass of the body: 1-by-3
-            com = "zeros(1, 3)"
+            ## Center of Mass of the body: 3-by-1
+            com = "zeros(3, 1)"
 
             ## Inertia matrix of the body: 3-by-3
             I   = "Inertia.Sphere(m, 0.1)"
