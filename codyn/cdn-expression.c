@@ -3282,6 +3282,86 @@ is_index_range (CdnInstruction       *instruction,
 	       CDN_INSTRUCTION_INDEX_TYPE_RANGE;
 }
 
+static gboolean
+check_index_dims (CdnExpression *expression,
+                  ParserContext *context,
+                  CdnIndexRange const *rows,
+                  CdnIndexRange const *columns,
+                  CdnDimension const *dim)
+{
+	if (rows->start >= dim->rows)
+	{
+		return parser_failed (expression,
+		                      context,
+		                      CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		                      "The specified row index is out of bounds (got %d for %d-by-%d)",
+		                      rows->start,
+		                      dim->rows,
+		                      dim->columns);
+	}
+
+	if (columns->start >= dim->columns)
+	{
+		return parser_failed (expression,
+		                      context,
+		                      CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+		                      "The specified column index is out of bounds (got %d for %d-by-%d)",
+		                      columns->start,
+		                      dim->rows,
+		                      dim->columns);
+	}
+
+	return TRUE;
+}
+
+static CdnInstruction *
+make_range_block_or_offset (CdnIndexRange const *rows,
+                            CdnIndexRange const *columns,
+                            CdnStackArg const *arg)
+{
+	if (cdn_index_range_n (rows) == 1 &&
+	    cdn_index_range_n (columns) == 1)
+	{
+		gint *idx = g_new0 (gint, 1);
+		CdnDimension retdim = CDN_DIMENSION(1, 1);
+
+		// This is just a simple indexing of one element
+		idx[0] = columns->start * arg->dimension.rows + rows->start;
+
+		g_message ("r: %d, %d, %d    c: %d, %d, %d      for: %d-by-%d, index: %d",
+		           rows->start, rows->step, rows->end,
+		           columns->start, columns->step, columns->end,
+		           arg->rows,
+		           arg->columns,
+		           idx[0]);
+
+		return cdn_instruction_index_new (idx, &retdim, arg);
+	}
+	else if (cdn_index_range_n (columns) == 1 ||
+	         (rows->start == 0 && rows->step == 1 && rows->end == arg->dimension.rows &&
+	          columns->step == 1))
+	{
+		// This can be an offset
+		CdnDimension retdim = CDN_DIMENSION(arg->dimension.rows, columns->end - columns->start);
+		gint offset = columns->start * arg->dimension.rows + rows->start;
+
+		g_message ("r: %d, %d, %d    c: %d, %d, %d      for: %d-by-%d, offset: %d",
+		           rows->start, rows->step, rows->end,
+		           columns->start, columns->step, columns->end,
+		           arg->rows,
+		           arg->columns,
+		           offset);
+
+		return cdn_instruction_index_new_offset (offset, &retdim, arg);
+	}
+	else
+	{
+		return cdn_instruction_index_new_range_block (rows,
+		                                              columns,
+		                                              arg);
+	}
+}
+
 static CdnInstruction *
 make_static_index (CdnExpression *expression,
                    ParserContext *context,
@@ -3335,9 +3415,12 @@ make_static_index (CdnExpression *expression,
 				columns.end = d3->columns + 1 + columns.end;
 			}
 
-			return cdn_instruction_index_new_range_block (&rows,
-			                                              &columns,
-			                                              d3);
+			if (!check_index_dims (expression, context, &rows, &columns, &d3->dimension))
+			{
+				return NULL;
+			}
+
+			return make_range_block_or_offset (&rows, &columns, d3);
 		}
 		else if (isi1 && CDN_IS_INSTRUCTION_NUMBER (i2->data))
 		{
@@ -3354,9 +3437,12 @@ make_static_index (CdnExpression *expression,
 			columns.start = (gint)(cdn_instruction_number_get_value (i2->data) + 0.5);
 			columns.end = columns.start + 1;
 
-			return cdn_instruction_index_new_range_block (&rows,
-			                                              &columns,
-			                                              d3);
+			if (!check_index_dims (expression, context, &rows, &columns, &d3->dimension))
+			{
+				return NULL;
+			}
+
+			return make_range_block_or_offset (&rows, &columns, d3);
 		}
 		else if (isi2 && CDN_IS_INSTRUCTION_NUMBER (i1->data))
 		{
@@ -3373,9 +3459,12 @@ make_static_index (CdnExpression *expression,
 			rows.start = (gint)(cdn_instruction_number_get_value (i1->data) + 0.5);
 			rows.end = rows.start + 1;
 
-			return cdn_instruction_index_new_range_block (&rows,
-			                                              &columns,
-			                                              d3);
+			if (!check_index_dims (expression, context, &rows, &columns, &d3->dimension))
+			{
+				return NULL;
+			}
+
+			return make_range_block_or_offset (&rows, &columns, d3);
 		}
 
 		d1 = instruction_get_dimension (g_slist_last (i1)->data);
