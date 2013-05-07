@@ -3322,13 +3322,13 @@ make_range_block_or_offset (CdnIndexRange const *rows,
 	if (cdn_index_range_n (rows) == 1 &&
 	    cdn_index_range_n (columns) == 1)
 	{
-		gint *idx = g_new0 (gint, 1);
+		gint offset;
 		CdnDimension retdim = CDN_DIMENSION(1, 1);
 
 		// This is just a simple indexing of one element
-		idx[0] = columns->start * arg->dimension.rows + rows->start;
+		offset = columns->start * arg->dimension.rows + rows->start;
 
-		return cdn_instruction_index_new (idx, &retdim, arg);
+		return cdn_instruction_index_new_offset (offset, &retdim, arg);
 	}
 	else if (cdn_index_range_n (columns) == 1 ||
 	         (rows->start == 0 && rows->step == 1 && rows->end == arg->dimension.rows &&
