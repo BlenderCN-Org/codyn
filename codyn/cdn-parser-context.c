@@ -1975,6 +1975,7 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 			gint order;
 			gchar *decom;
 			gboolean integrated = FALSE;
+			GSList *phases = NULL;
 
 			extarget = cdn_expansion_get (iteme->data, 0);
 			name = parse_action_index (extarget, &index);
@@ -2017,9 +2018,26 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 
 			edge = cdn_selection_get_object (item->data);
 
-			action = cdn_edge_get_action_with_index (edge,
-			                                         name,
-			                                         index);
+			if (phase)
+			{
+				GSList *item;
+
+				embedded_string_expand_multiple (phases, phase, context);
+
+				for (item = phases; item; item = g_slist_next (item))
+				{
+					CdnExpansion *ex;
+
+					ex = item->data;
+					item->data = g_strdup (cdn_expansion_get (ex, 0));
+					cdn_expansion_unref (ex);
+				}
+			}
+
+			action = cdn_edge_get_action_with_index_and_phases (edge,
+			                                                    name,
+			                                                    index,
+			                                                    phases);
 
 			embedded_string_expand (exexpression, expression, context);
 
@@ -2037,8 +2055,21 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 				action = cdn_edge_action_new (name,
 				                              cdn_expression_new (exexpression));
 
-				cdn_edge_add_action (edge,
-				                     action);
+				while (phases)
+				{
+					cdn_phaseable_add_phase (CDN_PHASEABLE (action),
+					                         phases->data);
+
+					g_free (phases->data);
+					phases = g_slist_next (phases);
+				}
+
+				cdn_edge_add_action (edge, action);
+			}
+			else
+			{
+				g_slist_foreach (phases, (GFunc)g_free, NULL);
+				g_slist_free (phases);
 			}
 
 			g_free (name);
@@ -2051,22 +2082,6 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 			{
 				cdn_annotatable_set_annotation (CDN_ANNOTATABLE (action),
 				                                annotation);
-			}
-
-			if (phase)
-			{
-				GSList *phases;
-
-				embedded_string_expand_multiple (phases, phase, context);
-
-				while (phases)
-				{
-					cdn_phaseable_add_phase (CDN_PHASEABLE (action),
-					                         cdn_expansion_get (phases->data, 0));
-	
-					cdn_expansion_unref (phases->data);
-					phases = g_slist_delete_link (phases, phases);
-				}
 			}
 
 			expansion_context_pop (context);

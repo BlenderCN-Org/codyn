@@ -1347,27 +1347,14 @@ cdn_edge_get_action (CdnEdge     *link,
 	                                       NULL);
 }
 
-/**
- * cdn_edge_get_action_with_index:
- * @link: A #CdnEdge
- * @target: The action target
- * @index: A #CdnExpression
- *
- * Get the action for a target with a specific index.
- *
- * Returns: (transfer none): A #CdnEdgeAction
- *
- **/
-CdnEdgeAction *
-cdn_edge_get_action_with_index (CdnEdge       *link,
-                                gchar const   *target,
-                                CdnExpression *index)
+static CdnEdgeAction *
+edge_get_action_intern (CdnEdge       *edge,
+                        gchar const   *target,
+                        CdnExpression *index,
+                        GSList const  *phases,
+                        gboolean       compare_phases)
 {
-	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
-	g_return_val_if_fail (target != NULL, NULL);
-	g_return_val_if_fail (index == NULL || CDN_IS_EXPRESSION (index), NULL);
-
-	GSList *actions = link->priv->actions;
+	GSList *actions = edge->priv->actions;
 
 	while (actions)
 	{
@@ -1393,10 +1380,75 @@ cdn_edge_get_action_with_index (CdnEdge       *link,
 			continue;
 		}
 
+		if (compare_phases)
+		{
+			GHashTable *table;
+			GSList const *item;
+			gint num = 0;
+
+			table = cdn_phaseable_get_phase_table (CDN_PHASEABLE (action));
+
+			if ((!table || g_hash_table_size (table) == 0) && !phases)
+			{
+				return action;
+			}
+
+			for (item = phases; item; item = g_slist_next (item))
+			{
+				if (!g_hash_table_lookup (table, item->data))
+				{
+					continue;
+				}
+
+				++num;
+			}
+
+			if (num != g_hash_table_size (table))
+			{
+				continue;
+			}
+		}
+
 		return action;
 	}
 
 	return NULL;
+}
+
+/**
+ * cdn_edge_get_action_with_index:
+ * @link: A #CdnEdge
+ * @target: The action target
+ * @index: A #CdnExpression
+ *
+ * Get the action for a target with a specific index.
+ *
+ * Returns: (transfer none): A #CdnEdgeAction
+ *
+ **/
+CdnEdgeAction *
+cdn_edge_get_action_with_index (CdnEdge       *link,
+                                gchar const   *target,
+                                CdnExpression *index)
+{
+	g_return_val_if_fail (CDN_IS_EDGE (link), NULL);
+	g_return_val_if_fail (target != NULL, NULL);
+	g_return_val_if_fail (index == NULL || CDN_IS_EXPRESSION (index), NULL);
+
+	return edge_get_action_intern (link, target, index, NULL, FALSE);
+}
+
+CdnEdgeAction *
+cdn_edge_get_action_with_index_and_phases (CdnEdge       *edge,
+                                           gchar const   *target,
+                                           CdnExpression *index,
+                                           GSList const  *phases)
+{
+	g_return_val_if_fail (CDN_IS_EDGE (edge), NULL);
+	g_return_val_if_fail (target != NULL, NULL);
+	g_return_val_if_fail (index == NULL || CDN_IS_EXPRESSION (index), NULL);
+
+	return edge_get_action_intern (edge, target, index, phases, TRUE);
 }
 
 /**

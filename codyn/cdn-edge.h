@@ -106,6 +106,11 @@ CdnEdgeAction *cdn_edge_get_action_with_index (CdnEdge       *link,
                                                gchar const   *target,
                                                CdnExpression *index);
 
+CdnEdgeAction *cdn_edge_get_action_with_index_and_phases (CdnEdge       *edge,
+                                                          gchar const   *target,
+                                                          CdnExpression *index,
+                                                          GSList const  *phases);
+
 G_END_DECLS
 
 #endif /* __CDN_EDGE_H__ */
