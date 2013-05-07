@@ -45,6 +45,7 @@ static gboolean seed_set = FALSE;
 static gboolean simplify = FALSE;
 static gboolean timestamp = FALSE;
 static gboolean rawc = FALSE;
+static gchar *precision = NULL;
 
 #define CDN_MONITOR_ERROR (cdn_monitor_error_quark())
 
@@ -186,6 +187,8 @@ static GOptionEntry entries[] = {
 	 "Write a timestamp (Unix time) at the beginning of each line", NULL},
 	{"rawc", 'r', 0, G_OPTION_ARG_NONE, &rawc,
 	 "Use rawc (if possible) to run the network", NULL},
+	{"precision", 'c', 0, G_OPTION_ARG_STRING, &precision,
+	 "Precision at which to print values (printf style)", "FORMAT"},
 	{NULL}
 };
 
@@ -431,11 +434,13 @@ record_monitors (CdnMonitored *monitored)
 		if (mon->row >= 0)
 		{
 			gchar value[G_ASCII_DTOSTR_BUF_SIZE];
+			gchar *rv = value;
 			gint idx;
+			gboolean freerv = FALSE;
 
 			if (mon->col >= 0)
 			{
-				idx = mon->row * dim.columns + mon->col;
+				idx = mon->col * dim.rows + mon->row;
 			}
 			else
 			{
@@ -448,17 +453,30 @@ record_monitors (CdnMonitored *monitored)
 			}
 			else
 			{
-				g_ascii_dtostr (value,
-				                G_ASCII_DTOSTR_BUF_SIZE,
-				                values[idx]);
+				if (!precision)
+				{
+					g_ascii_dtostr (value,
+					                G_ASCII_DTOSTR_BUF_SIZE,
+					                values[idx]);
+				}
+				else
+				{
+					freerv = TRUE;
+					rv = g_strdup_printf (precision, values[idx]);
+				}
 			}
 
 			g_output_stream_write_all (monitored->stream,
-			                           value,
-			                           strlen (value),
+			                           rv,
+			                           strlen (rv),
 			                           NULL,
 			                           NULL,
 			                           NULL);
+
+			if (freerv)
+			{
+				g_free (rv);
+			}
 		}
 		else
 		{
@@ -467,10 +485,20 @@ record_monitors (CdnMonitored *monitored)
 			for (i = 0; i < num; ++i)
 			{
 				gchar value[G_ASCII_DTOSTR_BUF_SIZE];
+				gchar *rv = value;
+				gboolean freerv = FALSE;
 
-				g_ascii_dtostr (value,
-				                G_ASCII_DTOSTR_BUF_SIZE,
-				                values[i]);
+				if (!precision)
+				{
+					g_ascii_dtostr (value,
+					                G_ASCII_DTOSTR_BUF_SIZE,
+					                values[i]);
+				}
+				else
+				{
+					freerv = TRUE;
+					rv = g_strdup_printf (precision, values[i]);
+				}
 
 				if (i != 0)
 				{
@@ -483,11 +511,16 @@ record_monitors (CdnMonitored *monitored)
 				}
 
 				g_output_stream_write_all (monitored->stream,
-				                           value,
-				                           strlen (value),
+				                           rv,
+				                           strlen (rv),
 				                           NULL,
 				                           NULL,
 				                           NULL);
+
+				if (freerv)
+				{
+					g_free (rv);
+				}
 			}
 		}
 
