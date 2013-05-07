@@ -4,7 +4,7 @@ require "quaternion.cdn"
 require "transformations.cdn"
 
 ## Gravity vector
-g = "[0; 0; 9.81]"
+g = "[0; 0; -9.81]"
 gU = "g / hypot(g)"
 
 templates
@@ -127,7 +127,7 @@ templates
 
             ## Body acceleration due to gravitational and coriolos effects,
             ## defaults to gravity.
-            acceleration = "transform ∙ [0; 0; 0; g] + cJ"
+            acceleration = "transform ∙ [0; 0; 0; -g] + cJ"
 
             ## Transform from the local coordinate system to base coordinate
             ## system
