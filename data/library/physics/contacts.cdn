@@ -76,31 +76,32 @@ templates
                                                            contactForceTangentialMax),
                                                        forceTangential@1)"
 
-                # the contact force (x, y, z) at each contact point location
+                # spatial contact force at each contact point location
                 #
-                # [3-by-N]
-                contactForceAtLocations = "[contactForceTangentialX;
+                # [6-by-N]
+                contactForceAtLocations = "[zeros(3, size(location, 1));
+                                            contactForceTangentialX;
                                             contactForceTangentialY;
                                             contactForceNormal]"
 
-                # translate forces f at l towards the origin
-                ForceAtZero(l, f) = "csum([
-                                         -l[2, :] * f[1, :] +  l[1, :] * f[2, :];
-                     l[2, :] * f[0, :] +                      -l[0, :] * f[2, :];
-                    -l[1, :] * f[0, :] +  l[0, :] * f[1, :];
-                     f
-                ])"
+                contactForce = "zeros(6, 1)"
 
                 # finally, the contact force is calculated in body coordinates
                 # whereas all the previous quantities are calculated in base
                 # coordinates. Here we first transform each force to the base
                 # origin, sum all the forces, and then transform the resultant
                 # to the body coordinate system.
-                contactForce = "Spatial.ForceTransform(baseToLocalTransform) * ForceAtZero(p, contactForceAtLocations)"
+                edge self
+                {
+                    contactForce <= "Spatial.ForceTransform(baseToLocalTransform) *
+                                     Spatial.ForcesAtOrigin(contactForceAtLocations, p)" state "ground"
+                }
+
+                active = 0
 
                 # Events used for event refinement
-                event "air" to "ground" when "min(pN) < 0" within 0.001 {}
-                event "ground" to "air" when "max(pN) > 0" within 0.001 {}
+                event "air" to "ground" when "min(pN) < 0" within 0.001 { set active = 1 }
+                event "ground" to "air" when "max(pN) > 0" within 0.001 { set active = 0 }
             }
         }
     }
