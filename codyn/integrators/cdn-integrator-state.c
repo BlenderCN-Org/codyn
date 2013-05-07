@@ -76,7 +76,9 @@ static guint signals[NUM_SIGNALS] = {0,};
 typedef struct
 {
 	CdnVariable *variable;
+
 	GSList      *actions;
+	GSList      *phase_actions;
 } DirectInfo;
 
 static void
@@ -99,10 +101,9 @@ direct_info_new (CdnVariable *variable)
 	DirectInfo *info;
 	CdnExpression *expr;
 
-	info = g_slice_new (DirectInfo);
+	info = g_slice_new0 (DirectInfo);
 
 	info->variable = g_object_ref (variable);
-	info->actions = NULL;
 
 	expr = cdn_variable_get_expression (variable);
 
@@ -130,7 +131,10 @@ direct_info_free (DirectInfo *info)
 	}
 
 	g_slist_foreach (info->actions, (GFunc)g_object_unref, NULL);
+
 	g_slist_free (info->actions);
+	g_slist_free (info->phase_actions);
+
 	g_slice_free (DirectInfo, info);
 }
 
@@ -686,7 +690,7 @@ evaluate_notify (CdnExpression *expression,
 
 	update = cdn_variable_get_update (info->variable);
 
-	for (item = info->actions; item; item = g_slist_next (item))
+	for (item = info->phase_actions; item; item = g_slist_next (item))
 	{
 		CdnEdgeAction *action = item->data;
 		CdnExpression *expr = cdn_edge_action_get_equation (action);
@@ -774,6 +778,33 @@ get_state_list (CdnIntegratorState *state,
 }
 
 static void
+update_direct_phase (CdnIntegratorState *state,
+                     CdnEdgeAction      *action,
+                     gboolean            add)
+{
+	CdnVariable *tv;
+	DirectInfo *dinfo;
+
+	// Need to remove from active list in direct
+	// info
+	tv = cdn_edge_action_get_target_variable (action);
+
+	dinfo = g_hash_table_lookup (state->priv->direct_variables_hash,
+	                             tv);
+
+	if (add)
+	{
+		dinfo->phase_actions = g_slist_prepend (dinfo->phase_actions,
+		                                        action);
+	}
+	else
+	{
+		dinfo->phase_actions = g_slist_remove (dinfo->phase_actions,
+		                                       action);
+	}
+}
+
+static void
 add_to_state_hash (CdnIntegratorState *state,
                    CdnPhaseable       *ph,
                    CdnNode            *parent)
@@ -805,6 +836,14 @@ add_to_state_hash (CdnIntegratorState *state,
 				GSList **ptr;
 
 				ptr = get_state_list (state, ph);
+
+				if (ptr == &state->priv->phase_direct_edge_actions)
+				{
+					update_direct_phase (state,
+					                     CDN_EDGE_ACTION (ph),
+					                     TRUE);
+				}
+
 				*ptr = g_slist_prepend (*ptr, ph);
 			}
 		}
@@ -814,6 +853,14 @@ add_to_state_hash (CdnIntegratorState *state,
 		GSList **ptr;
 
 		ptr = get_state_list (state, ph);
+
+		if (ptr == &state->priv->phase_direct_edge_actions)
+		{
+			update_direct_phase (state,
+			                     CDN_EDGE_ACTION (ph),
+			                     TRUE);
+		}
+
 		*ptr = g_slist_prepend (*ptr, ph);
 	}
 }
@@ -1222,6 +1269,12 @@ cdn_integrator_state_set_state (CdnIntegratorState *state,
 
 			// Remove from list
 			ptr = get_state_list (state, ph);
+
+			if (ptr == &state->priv->direct_edge_actions)
+			{
+				update_direct_phase (state, item->data, FALSE);
+			}
+
 			*ptr = g_slist_remove (*ptr, ph);
 		}
 		else if (!activenow && activelater)
@@ -1230,6 +1283,12 @@ cdn_integrator_state_set_state (CdnIntegratorState *state,
 
 			// Add to list
 			ptr = get_state_list (state, ph);
+
+			if (ptr == &state->priv->direct_edge_actions)
+			{
+				update_direct_phase (state, item->data, TRUE);
+			}
+
 			*ptr = g_slist_prepend (*ptr, ph);
 		}
 	}
