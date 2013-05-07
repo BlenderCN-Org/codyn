@@ -68,6 +68,7 @@ EXTRA_DIST = \
 	test_file.cdn \
 	test_matrix.cdn \
 	test_math.cdn \
-	test_direct.cdn
+	test_direct.cdn \
+	test_direct_events.cdn
 
 -include $(top_srcdir)/git.mk

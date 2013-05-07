@@ -311,7 +311,7 @@ integrate_annotated (CdnNetwork *network,
 	gchar **parts;
 	gdouble from, step, to;
 	GSList *ret = NULL;
-	GSList const *vars;
+	GSList *vars;
 	CdnIntegrator *integrator;
 	CdnIntegratorState *state;
 
@@ -336,7 +336,9 @@ integrate_annotated (CdnNetwork *network,
 
 	integrator = cdn_network_get_integrator (network);
 	state = cdn_integrator_get_state (integrator);
-	vars = cdn_integrator_state_integrated_variables (state);
+	vars = g_slist_copy ((GSList *)cdn_integrator_state_integrated_variables (state));
+
+	vars = g_slist_concat (vars, g_slist_copy ((GSList *)cdn_integrator_state_direct_variables (state)));
 
 	while (vars)
 	{
@@ -351,7 +353,7 @@ integrate_annotated (CdnNetwork *network,
 		}
 
 		g_free (va);
-		vars = g_slist_next (vars);
+		vars = g_slist_delete_link (vars, vars);
 	}
 
 	ret = g_slist_reverse (ret);
@@ -478,7 +480,7 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 		test_monitor (monitors->data, file, func, line);
 		monitors = g_slist_delete_link (monitors, monitors);
 	}
-	
+
 	variables = cdn_node_find_variables (CDN_NODE (network),
 	                                     "recurse(children) | variables");
 
@@ -490,10 +492,18 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 		gint l;
 		CdnMatrix const *vals;
 		gint i;
+		GSList *actions;
+		gboolean hasac;
 
 		variables = g_slist_delete_link (variables, variables);
+		actions = cdn_variable_get_actions (v);
 
-		if (monitored && cdn_variable_get_integrated (v))
+		hasac = actions != NULL;
+
+		g_slist_foreach (actions, (GFunc)g_object_unref, NULL);
+		g_slist_free (actions);
+
+		if (monitored && hasac)
 		{
 			continue;
 		}

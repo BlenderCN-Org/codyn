@@ -10,6 +10,12 @@ test_direct ()
 	cdn_test_variables_with_annotated_output_from_path ("test_direct.cdn");
 }
 
+static void
+test_direct_events ()
+{
+	cdn_test_variables_with_annotated_output_from_path ("test_direct_events.cdn");
+}
+
 int
 main (int   argc,
       char *argv[])
@@ -21,6 +27,7 @@ main (int   argc,
 	g_test_init (&argc, &argv, NULL);
 
 	g_test_add_func ("/direct/direct", test_direct);
+	g_test_add_func ("/direct/direct_events", test_direct_events);
 
 	g_test_run ();
 
