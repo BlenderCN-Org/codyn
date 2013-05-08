@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#  baseviewactivatable.py - cdncontext gedit plugin
+#  viewactivatable.py - cdncontext gedit plugin
 #
 #  Copyright (C) 2011 - Jesse van den Kieboom
 #
@@ -21,10 +21,15 @@
 
 from shareddata import SharedData
 import parser
-import utils
 
-class BaseViewActivatable:
+from gi.repository import GObject, Gedit, Pango, Gtk
+
+class ViewActivatable(GObject.Object, Gedit.ViewActivatable):
+    view = GObject.property(type=Gedit.View)
+
     def __init__(self):
+        GObject.Object.__init__(self)
+
         self.timeout = None
         self.cursor_timeout = None
         self.parser = None
@@ -44,7 +49,7 @@ class BaseViewActivatable:
 
         self.error_tag = doc.create_tag('CdnParsed::error')
         doc.get_tag_table().remove(self.error_tag)
-        self.error_tag.props.underline = utils.Underline.ERROR
+        self.error_tag.props.underline = Pango.Underline.ERROR
 
         self.language_changed()
 
@@ -168,7 +173,7 @@ class BaseViewActivatable:
         if not self.last_error:
             return False
 
-        xy = self.view.window_to_buffer_coords(utils.TextWindowType.WIDGET, x, y)
+        xy = self.view.window_to_buffer_coords(Gtk.TextWindowType.WIDGET, x, y)
 
         if not xy:
             return False
@@ -202,12 +207,8 @@ class BaseViewActivatable:
             self.parser = None
 
         if self.timeout is not None:
-            utils.source_remove(self.timeout)
+            GObject.source_remove(self.timeout)
             self.timeout = None
-
-        if self.cursor_timeout is not None:
-            utils.source_remove(self.cursor_timeout)
-            self.cursor_timeout = None
 
     def language_changed(self):
         doc = self.view.get_buffer()
@@ -231,23 +232,16 @@ class BaseViewActivatable:
 
             doc.get_tag_table().add(self.error_tag)
 
-            self.reparse()
+            self.request_update()
 
     def on_language_changed(self, doc, spec):
         self.language_changed()
 
     def on_doc_saved(self, doc, error):
-        self.reparse()
-
-    def reparse(self):
-        if self.timeout is not None:
-            utils.source_remove(self.timeout)
-            self.timeout = None
-
-        self.timeout = utils.timeout_add(200, self.on_doc_parse_timeout)
+        self.request_update()
 
     def on_doc_changed(self, doc):
-        self.reparse()
+        self.request_update()
 
     def clear_parsed(self):
         doc = self.view.get_buffer()
@@ -280,61 +274,21 @@ class BaseViewActivatable:
 
             doc.apply_tag(self.error_tag, piter, pend)
 
-    def find_context_at_cursor(self):
-        if not self.last_parsed:
-            return None
-
-        doc = self.view.get_buffer()
-        piter = doc.get_iter_at_mark(doc.get_insert())
-
-        line = piter.get_line() + 1
-        col = piter.get_line_offset() + 1
-
-        # Find the last context containing the cursor location
-        lastmatch = None
-
-        for context in self.last_parsed:
-            if context.line_start > line:
-                return lastmatch
-
-            if context.line_end < line:
-                continue
-
-            # Start line condition
-            if line == context.line_start and col <= context.column_start:
-                continue
-
-            # End line condition
-            if line == context.line_end and col > context.column_end:
-                continue
-
-            lastmatch = context
-
-        return lastmatch
-
-    def timeout_cursor_moved(self):
-        self.cursor_timeout = None
-
-        context = self.find_context_at_cursor()
-
-        SharedData().panel.model.update(context)
-        SharedData().panel.treeview.expand_all()
-
-    def cursor_moved(self):
-        if self.cursor_timeout:
-            utils.source_remove(self.cursor_timeout)
-            self.cursor_timeout = None
-
-        self.cursor_timeout = utils.timeout_add(100, self.timeout_cursor_moved)
+        SharedData().panel.model.update(None)
 
     def on_cursor_moved(self, doc):
-        self.cursor_moved()
+        self.request_update()
 
     def update_parsed_ok(self, data):
         self.last_parsed = data
         self.last_error = None
 
-        self.cursor_moved()
+        if len(data) > 0:
+            SharedData().panel.model.update(data[0])
+        else:
+            SharedData().panel.model.update(None)
+
+        SharedData().panel.treeview.expand_all()
 
     def update_parsed(self, ret):
         self.clear_parsed()
@@ -349,12 +303,9 @@ class BaseViewActivatable:
 
     def on_parser_finished(self, ret):
         self.parser = None
-
         self.update_parsed(ret)
 
-    def on_doc_parse_timeout(self):
-        self.timeout = None
-
+    def run_parser_at_cursor(self):
         if self.parser != None:
             self.parser.cancel()
             self.parser = None
@@ -363,13 +314,31 @@ class BaseViewActivatable:
 
         self.parser = parser.Parser(buf, self.on_parser_finished)
 
-        ins = buf.get_iter_at_mark(buf.get_insert())
-        l = ins.get_line()
-        c = ins.get_line_offset()
+        if SharedData().panel.get_mapped():
+            ins = buf.get_iter_at_mark(buf.get_insert())
+            l = ins.get_line() + 1
+            c = ins.get_line_offset() + 1
+        else:
+            l = -1
+            c = -1
 
-        self.parser.run(l + 1, c + 1)
+        self.parser.run(l, c)
 
+    def on_request_timeout(self):
+        self.timeout = None
+        self.run_parser_at_cursor()
         return False
+
+    def request_update(self):
+        if not self.parser is None:
+            self.parser.cancel()
+            self.parser = None
+
+        if not self.timeout is None:
+            GObject.source_remove(self.timeout)
+            self.timeout = None
+
+        self.timeout = GObject.timeout_add(300, self.on_request_timeout)
 
     def do_deactivate(self):
         doc = self.view.get_buffer()

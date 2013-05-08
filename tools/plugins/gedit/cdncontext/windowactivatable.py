@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#  basewindowactivatable.py - cdncontext gedit plugin
+#  windowactivatable.py - cdncontext gedit plugin
 #
 #  Copyright (C) 2011 - Jesse van den Kieboom
 #
@@ -20,13 +20,15 @@
 #  Boston, MA 02111-1307, USA.
 
 from panel import Panel
-import utils
-
 from shareddata import SharedData
 
-class BaseWindowActivatable:
+from gi.repository import GObject, Gedit, Gtk
+
+class WindowActivatable(GObject.Object, Gedit.WindowActivatable):
+    window = GObject.property(type=Gedit.Window)
+
     def __init__(self):
-        pass
+        GObject.Object.__init__(self)
 
     def do_activate(self):
         self.panel = Panel()
@@ -34,10 +36,7 @@ class BaseWindowActivatable:
 
         side = self.window.get_side_panel()
 
-        if utils.isgi:
-            side.add_item_with_stock_icon(self.panel, "cdncontext", "CDN Context", utils.gtk.STOCK_INDEX)
-        else:
-            side.add_item(self.panel, "Cdn Context", utils.gtk.STOCK_INDEX)
+        side.add_item_with_stock_icon(self.panel, "cdncontext", "CDN Context", Gtk.STOCK_INDEX)
 
         SharedData().panel = self.panel
 

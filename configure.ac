@@ -448,42 +448,37 @@ dnl Check for gedit
 dnl ================================================================
 
 AC_ARG_ENABLE([gedit],
-              AS_HELP_STRING([--enable-gedit=[2/3/no/auto]],[Enable installation of gedit plugin (default: auto)]),
+              AS_HELP_STRING([--enable-gedit=[yes/no/auto]],[Enable installation of gedit plugin (default: auto)]),
               [enable_gedit=$enableval],
               [enable_gedit=auto])
 
 if test "x$enable_gedit" != "xno"; then
-	if test "x$enable_gedit" = "xauto"; then
-		PKG_CHECK_MODULES([GEDIT],
-		                  [gedit >= 3.0],
-		                  [GEDIT_MAJOR_VERSION=3],
-		                  [PKG_CHECK_MODULES([GEDIT],
-		                                     [gedit-2.20 >= 2.0],
-		                                     [GEDIT_MAJOR_VERSION=2],
-		                                     [enable_gedit=no])])
+	AC_MSG_CHECKING([gedit])
 
-		if test "x$enable_gedit" != "xno"; then
-			enable_gedit="yes"
+	PKG_CHECK_MODULES([GEDIT],
+	                  [gedit >= 3.0],
+	                  [has_gedit=yes],
+	                  [has_gedit=no])
+
+	if test "x$has_gedit" = "xno"; then
+		if test "x$enable_gedit" = "xauto"; then
+			enable_gedit="no"
+			AC_MSG_RESULT([gedit 3 not found])
+		else
+			AC_MSG_ERROR([gedit 3 not found])
 		fi
 	else
-		GEDIT_MAJOR_VERSION="$enable_gedit"
 		enable_gedit="yes"
 	fi
 fi
 
 if test "x$enable_gedit" = "xyes"; then
-	if test "x$GEDIT_MAJOR_VERSION" = "x2"; then
-		GEDIT_PLUGIN_DIR="$libdir/gedit-2.0/plugins"
-	else
-		GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
-	fi
+	GEDIT_PLUGIN_DIR="$libdir/gedit/plugins"
 
 	AC_SUBST(GEDIT_PLUGIN_DIR)
-	AC_SUBST(GEDIT_MAJOR_VERSION)
 fi
 
 AM_CONDITIONAL(ENABLE_GEDIT, test "x$enable_gedit" = "xyes")
-AM_CONDITIONAL(ENABLE_GEDIT3, test "x$GEDIT_MAJOR_VERSION" = "x3")
 
 IO_LIBTOOL_FLAGS="-module -avoid-version"
 IO_LIBS_DIR="$libdir/codyn-$CODYN_API_VERSION/io"
@@ -566,8 +561,6 @@ tools/cdn-compile/Makefile
 tools/plugins/Makefile
 tools/plugins/gedit/Makefile
 tools/plugins/gedit/cdncontext/Makefile
-tools/plugins/gedit/cdncontext.plugin
-tools/plugins/gedit/cdncontext.gedit-plugin
 ])
 
 AC_OUTPUT
@@ -580,7 +573,7 @@ Configuration:
 	Source code location:	${srcdir}
 	Compiler:		${CC}
 	GObject Introspection:	$enable_introspection
-	gedit plugin:           $enable_gedit ($GEDIT_MAJOR_VERSION)
+	gedit plugin:           $enable_gedit
 	cdn-archive:            $have_tar
 	cdn-context:            $have_json_glib
 	network support:        $have_networking
