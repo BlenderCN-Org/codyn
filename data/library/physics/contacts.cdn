@@ -46,18 +46,18 @@ templates
                 # the contact force due to the contact model stiffness
                 #
                 # [1-by-N]
-                contactForceNormalStiffness = "normalStiffness * -pN^3"
+                forceNormalStiffness = "normalStiffness * -pN^3"
 
                 # the contact force due to the contact model damping
                 #
                 # [1-by-N]
-                contactForceNormalDamping = "normalDamping * dpN * pN^3"
+                forceNormalDamping = "normalDamping * dpN * pN^3"
 
                 # [1-by-N]
-                contactForceNormal = "max(0,
-                                          min(maxNormalForce,
-                                              contactForceNormalStiffness +
-                                              contactForceNormalDamping))"
+                forceNormal = "max(0,
+                                   min(maxNormalForce,
+                                       forceNormalStiffness +
+                                       forceNormalDamping))"
 
                 # tangential forces due to friction (in X and Y)
                 #
@@ -67,34 +67,34 @@ templates
                 # maximum tangential force by simple coulomb friction
                 #
                 # [1-by-N]
-                contactForceTangentialMax = "contactForceNormal * frictionCoefficient"
+                forceTangentialMax = "forceNormal * frictionCoefficient"
 
                 # tangential contact forces limited by the maximum tangential force
                 #
                 # [1-by-N]
-                "contactForceTangential{X,Y}" = "csign(min(abs(forceTangential@1),
-                                                           contactForceTangentialMax),
-                                                       forceTangential@1)"
+                "forceTangentialLimit{X,Y}" = "csign(min(abs(forceTangential@1),
+                                                         forceTangentialMax),
+                                                     forceTangential@1)"
 
                 # spatial contact force at each contact point location
                 #
                 # [6-by-N]
-                contactForceAtLocations = "[zeros(3, size(location, 1));
-                                            contactForceTangentialX;
-                                            contactForceTangentialY;
-                                            contactForceNormal]"
+                forceAtLocations = "[zeros(3, size(location, 1));
+                                     forceTangentialLimitX;
+                                     forceTangentialLimitY;
+                                     forceNormal]"
 
-                contactForce = "zeros(6, 1)"
+                force = "zeros(6, 1)"
 
                 # finally, the contact force is calculated in body coordinates
                 # whereas all the previous quantities are calculated in base
                 # coordinates. Here we first transform each force to the base
                 # origin, sum all the forces, and then transform the resultant
                 # to the body coordinate system.
-                edge self
+                edge self | first
                 {
-                    contactForce <= "Spatial.ForceTransform(baseToLocalTransform) *
-                                     Spatial.ForcesAtOrigin(contactForceAtLocations, p)" state "ground"
+                    force <= "Spatial.ForceTransform(baseToLocalTransform) *
+                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
                 }
 
                 active = 0

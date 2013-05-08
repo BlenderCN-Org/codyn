@@ -128,7 +128,7 @@ class SimulatorCodyn(Simulator):
             Simulator.Force.__init__(self, gobj, idx)
 
             self.node = node
-            self.force = self.node.get_variable("contactForceAtLocations")
+            self.force = self.node.get_variable("forceAtLocations")
 
         def update(self):
             v = self.force.get_values()
@@ -183,7 +183,7 @@ class SimulatorRawc(Simulator):
             Simulator.Force.__init__(self, gobj, idx)
 
             self.node = node
-            self.force = self.node["contactForceAtLocations"]
+            self.force = self.node["forceAtLocations"]
 
         def update(self):
             i = self.idx * 6
