@@ -47,6 +47,7 @@ edge "HC_@bodies" from   @1
 
     # For each variable fh_* in the input of this edge
     edge   self
+         | first
          | input
          . variables
          | <fh>:/fh_([0-9]+)/
