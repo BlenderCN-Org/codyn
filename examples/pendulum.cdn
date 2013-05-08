@@ -15,7 +15,7 @@ defines
 
 node "system" : physics.system
 {
-    node "p{1:@n}" : physics.revoluteY, physics.transformations
+    node "p{1:@n}" : physics.joints.revoluteY, physics.transformations
     {
           m = "1"
         com = "[0; 0; -0.5]"

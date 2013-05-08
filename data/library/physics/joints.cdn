@@ -3,10 +3,9 @@ require "quaternion.cdn"
 
 templates
 {
-    node "physics"
+    node "physics" { node "joints"
     {
-
-        node "revolute" : "body"
+        node "revolute" : physics.body
         {
             node "joint"
             {
@@ -36,7 +35,7 @@ templates
         ## A revolute joint. This type of joint has one degree of freedom
         ## which rotates the body around an axis. This joint rotates around the
         ## @1 axis.
-        node "revolute{X,Y,Z}" : "revolute"
+        node "revolute{X,Y,Z}" : revolute
         {
             node "joint"
             {
@@ -48,7 +47,7 @@ templates
 
         ## A prismatic joint. This type of joint has one degree of freedom
         ## which translates the body on an axis.
-        node "prismatic{X,Y,Z}" : "body"
+        node "prismatic{X,Y,Z}" : physics.body
         {
             node "joint"
             {
@@ -77,7 +76,7 @@ templates
         ## A helical joint. This type of joint has one degree of freedom around
         ## which the body screws. The amount of screw is determined by the
         ## h parameter.
-        node "helical{X,Y,Z}" : "body"
+        node "helical{X,Y,Z}" : physics.body
         {
             node "joint"
             {
@@ -113,7 +112,7 @@ templates
         ## A cylindrical joint. This type of joint is simply a combination of
         ## both a revolute and a prismatic joint. It has two degrees of freedom
         ## (one rotational and one translational).
-        node "cylindrical" : "body", "dof2"
+        node "cylindrical" : physics.body, physics.dof2
         {
             node "joint"
             {
@@ -148,7 +147,7 @@ templates
             }
         }
 
-        node "sphericalEuler" : "body", "dof3"
+        node "sphericalEuler" : physics.body, physics.dof3
         {
             node "joint"
             {
@@ -174,7 +173,7 @@ templates
 
         ## A spherical joint. This type of joint is simply three rotational
         ## joints stacked together. It has three degrees of rotational freedom.
-        node "spherical" : "body", "dof3"
+        node "spherical" : physics.body, physics.dof3
         {
             node "joint"
             {
@@ -200,6 +199,8 @@ templates
                                                    1, 0, 0;
                                                    0, 1, 0;
                                                    0, 0, 1]"
+
+                BiasVelocityProduct(q, dq) = "0"
             }
 
             ## The generalized coordinate for a spherical 3dof joint is
@@ -230,7 +231,7 @@ templates
 
         ## A 6 DOF. This type of joint has no constraints and can be used
         ## to implement floating base models.
-        node "float" : "body", "dof6"
+        node "float" : physics.body, physics.dof6
         {
             node "joint"
             {
@@ -241,19 +242,19 @@ templates
                 MotionSubspace(q, dq) = "eye(6)"
 
                 ConstraintForceSubspace(q, dq) = "[]"
+
+                BiasVelocityProduct(q, dq) = "0"
             }
 
             # Use a constraint to normalize the first 4 q's
             q = "[1; zeros(6, 1)]" ("[q[0:4] / sqsum(q[0:4]); q[4:7]]")
 
-            q̇[0:4] = "0.5 ∙ [-q[1], -q[2], -q[3];
-                              q[0], -q[3],  q[2];
-                              q[3],  q[0], -q[1];
-                             -q[2],  q[1],  q[0]] ∙ dq[0:3]"
-
-            q̇[4:7] = "dq[3:6]"
+            q̇ = "[0.5 ∙ [-q[1], -q[2], -q[3];
+                          q[0], -q[3],  q[2];
+                          q[3],  q[0], -q[1];
+                         -q[2],  q[1],  q[0]] ∙ dq[0:3]; dq[3:6]]"
         }
-    }
+    } }
 }
 
 # vi:ex:ts=4:et
