@@ -304,16 +304,15 @@ remove_empty (gchar **parts)
 }
 
 static GSList *
-integrate_annotated (CdnNetwork *network,
-                     gboolean   *monitored)
+integrate_annotated (CdnNetwork  *network,
+                     gboolean    *monitored,
+                     GSList     **nonmon)
 {
 	gchar *a;
 	gchar **parts;
 	gdouble from, step, to;
 	GSList *ret = NULL;
-	GSList *vars;
-	CdnIntegrator *integrator;
-	CdnIntegratorState *state;
+	GSList *variables;
 
 	a = cdn_annotatable_get_annotation (CDN_ANNOTATABLE (network));
 	*monitored = FALSE;
@@ -334,30 +333,36 @@ integrate_annotated (CdnNetwork *network,
 
 	g_strfreev (parts);
 
-	integrator = cdn_network_get_integrator (network);
-	state = cdn_integrator_get_state (integrator);
-	vars = g_slist_copy ((GSList *)cdn_integrator_state_integrated_variables (state));
+	variables = cdn_node_find_variables (CDN_NODE (network),
+	                                     "recurse(children) | variables");
 
-	vars = g_slist_concat (vars, g_slist_copy ((GSList *)cdn_integrator_state_direct_variables (state)));
-
-	while (vars)
+	while (variables)
 	{
-		CdnVariable *v = vars->data;
+		CdnVariable *v = variables->data;
 		gchar *va;
 
 		va = cdn_annotatable_get_annotation (CDN_ANNOTATABLE (v));
 
-		if (va && *va)
+		if (va && g_utf8_strchr (va, -1, '\n') != NULL)
 		{
 			ret = g_slist_prepend (ret, cdn_monitor_new (network, v));
 		}
+		else if (va && *va)
+		{
+			*nonmon = g_slist_prepend (*nonmon, v);
+		}
 
 		g_free (va);
-		vars = g_slist_delete_link (vars, vars);
+		variables = g_slist_delete_link (variables, variables);
 	}
 
-	ret = g_slist_reverse (ret);
-	cdn_network_run (network, from, step, to, NULL);
+	if (ret)
+	{
+		ret = g_slist_reverse (ret);
+		cdn_network_run (network, from, step, to, NULL);
+	}
+
+	*nonmon = g_slist_reverse (*nonmon);
 
 	return ret;
 }
@@ -386,7 +391,9 @@ test_monitor (CdnMonitor  *m,
 	d = cdn_monitor_get_data (m, &n);
 	cdn_variable_get_dimension (v, &dim);
 
-	g_printf ("   - Testing %s' ... ", cdn_variable_get_full_name_for_display (v));
+	g_printf ("   - Testing %s%s ... ",
+	          cdn_variable_get_full_name_for_display (v),
+	          cdn_variable_get_integrated (v) ? "'" : "");
 
 	nrows = (gint)n / cdn_dimension_size (&dim);
 
@@ -473,16 +480,14 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 
 	g_printf("\n\n  Testing network %s:\n", path);
 
-	monitors = integrate_annotated (network, &monitored);
+	variables = NULL;
+	monitors = integrate_annotated (network, &monitored, &variables);
 
 	while (monitors)
 	{
 		test_monitor (monitors->data, file, func, line);
 		monitors = g_slist_delete_link (monitors, monitors);
 	}
-
-	variables = cdn_node_find_variables (CDN_NODE (network),
-	                                     "recurse(children) | variables");
 
 	while (variables)
 	{
@@ -495,19 +500,7 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 
 		variables = g_slist_delete_link (variables, variables);
 
-		if (monitored && cdn_variable_has_actions (v))
-		{
-			continue;
-		}
-
 		a = cdn_annotatable_get_annotation (CDN_ANNOTATABLE (v));
-
-		if (!a || !*a)
-		{
-			g_free (a);
-			continue;
-		}
-
 		expected_vals = values_from_annotation (a, &l);
 		g_free (a);
 
