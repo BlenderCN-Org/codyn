@@ -62,8 +62,7 @@ class CodynImport(bpy.types.Operator):
         if a == b and a != c and h2 > 0:
             return math.sqrt(r2), math.sqrt(h2)
 
-        if w2 > 0 and d2 > 0 and h2 > 0:
-            return math.sqrt(w2), math.sqrt(d2), math.sqrt(h2)
+        return False
 
     def inertia_like_box(self, m, inertia):
         if not self.inertia_is_diag(inertia):
