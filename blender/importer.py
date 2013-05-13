@@ -37,7 +37,7 @@ class CodynImport(bpy.types.Operator):
                inertia[2][1] == 0
 
     def inertia_like_sphere(self, m, inertia):
-        if not self.inertia_is_diag(inertia):
+        if not self.inertia_is_diag(inertia) or m == 0:
             return False
 
         if inertia[0][0] == inertia[1][1] and \
@@ -47,7 +47,7 @@ class CodynImport(bpy.types.Operator):
         return False
 
     def inertia_like_cylinder(self, m, inertia):
-        if not self.inertia_is_diag(inertia):
+        if not self.inertia_is_diag(inertia) or m == 0:
             return False
 
         f = 1.0 / 12.0 * m
@@ -65,7 +65,7 @@ class CodynImport(bpy.types.Operator):
         return False
 
     def inertia_like_box(self, m, inertia):
-        if not self.inertia_is_diag(inertia):
+        if not self.inertia_is_diag(inertia) or m == 0:
             return False
 
         f = 1.0 / 12.0 * m
