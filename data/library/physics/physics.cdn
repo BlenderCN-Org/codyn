@@ -135,6 +135,8 @@ templates
 
             BaseForceToLocal(f, p) = "Spatial.ForceTransform(baseToLocalTransform) *
                                       Spatial.TranslateForce(f, p)"
+
+            LocalPointToBase(p) = "Spatial.TransformPoint3(localToBaseTransform, p)"
         }
 
         ## The joint edge connects two bodies in a kinematic chain.
