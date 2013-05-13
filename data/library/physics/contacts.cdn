@@ -21,7 +21,7 @@ templates
                 # calculate locations in base.
                 #
                 # [3-by-N]
-                p = "Spatial.TransformPoint3(localToBaseTransform, location)"
+                p = "LocalPointToBase(location)"
 
                 # calculate velocities in base. The velocity sensor from which
                 # we inherit separates the angular and linear velocities since
