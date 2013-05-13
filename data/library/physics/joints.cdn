@@ -73,6 +73,33 @@ templates
             }
         }
 
+        ## A prismatic joint. This type of joint has one degree of freedom
+        ## which translates the body on an axis.
+        node "cubical" : physics.body, physics.dof3
+        {
+            node "joint"
+            {
+                JointTransform(q) = "Spatial.Translation(q)"
+                JointVelocity(q, dq) = "[0; 0; 0; dq]"
+
+                MotionSubspace(q, dq) = "[0, 0, 0;
+                                          0, 0, 0;
+                                          0, 0, 0;
+                                          1, 0, 0;
+                                          0, 1, 0;
+                                          0, 0, 1]"
+
+                ConstraintForceSubspace(q, dq) = "[1, 0, 0;
+                                                   0, 1, 0;
+                                                   0, 0, 1;
+                                                   0, 0, 0;
+                                                   0, 0, 0;
+                                                   0, 0, 0]"
+
+                BiasVelocityProduct(q, dq) = "0"
+            }
+        }
+
         ## A helical joint. This type of joint has one degree of freedom around
         ## which the body screws. The amount of screw is determined by the
         ## h parameter.
