@@ -8,13 +8,19 @@ node "Spatial"
 
     Inertia(com, m, I) = "Inertia_(m, I, Tilde(com))"
 
+    ## The tilde matrix of v. The tilde matrix is a matrix version of the
+    ## cross product, in the sense that Tilde(v1) * v2 implements cross(v1, v2).
     Tilde(v) = "[
          0,    -v[2],  v[1];
          v[2],  0,    -v[0];
         -v[1],  v[0],  0
     ]"
 
-    ## Create a spatial transform from a 3d translation
+    Cross(r, v) = "[
+         r[1, :] ∙ v[2] - r[2, :] ∙ v[1];
+         r[2, :] ∙ v[0] - r[0, :] ∙ v[2];
+         r[0, :] ∙ v[1] - r[1, :] ∙ v[0]
+    ]"
     Translation(v) = "[
          1,        0,        0,       0,    0,    0;
          0,        1,        0,       0,    0,    0;
