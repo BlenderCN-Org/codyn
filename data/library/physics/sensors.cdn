@@ -17,9 +17,7 @@ templates
                 # This implements the spatial translation from "location" to
                 # the spatial velocity (i.e. Spatial.Translation(location) * velocity)
                 # for the linear part of the velocity
-                linearVelocity = "velocity[3:6] + [ 0,               velocity[2],     velocity[1];
-                                                   -velocity[2],     0,               velocity[0];
-                                                   -velocity[1],    -velocity[0],     0] * location"
+                linearVelocity = "velocity[3:6] + Spatial.Cross(-location, velocity[0:3])"
             }
         }
     }
