@@ -114,7 +114,7 @@ node "Spatial"
     ])"
 
     ## Create a spatial transform from a 3d rotation and translation
-    Transformation(R, p) = "[
+    Transform(R, p) = "[
          R[0, 0], R[0, 1],  R[0, 2], 0,       0,       0;
          R[1, 0], R[1, 1],  R[1, 2], 0,       0,       0;
          R[2, 0], R[2, 1],  R[2, 2], 0,       0,       0;
@@ -136,7 +136,7 @@ node "Spatial"
 
     ## Obtain a 4x4 homogeneous transformation matrix from a spatial
     ## transformation
-    Transformation4x4(sp) = "[
+    ToTransform4x4(sp) = "[
         Rotation3(sp), Translation3(sp);
         0, 0, 0, 1
     ]"
