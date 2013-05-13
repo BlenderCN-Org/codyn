@@ -12,7 +12,7 @@ templates
                 initial-state "air"
 
                 # contact parameters
-                maxNormalForce = "5000 * system.m * hypot(g)"
+                maxNormalForce = "5000"
                 normalStiffness = "5e8"
                 normalDamping = "1e5"
                 frictionDamping = "5e2"
