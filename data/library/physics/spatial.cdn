@@ -21,6 +21,10 @@ node "Spatial"
          r[2, :] ∙ v[0] - r[0, :] ∙ v[2];
          r[0, :] ∙ v[1] - r[1, :] ∙ v[0]
     ]"
+
+    ## Create a spatial transform from a 3d translation. This implements what
+    ## is referred to in Featherstone by the 'xlt' function, defined as
+    ## xlt(r) = [1, 0; -rx, 1] with rx being the tilde matrix of r.
     Translation(v) = "[
          1,        0,        0,       0,    0,    0;
          0,        1,        0,       0,    0,    0;
