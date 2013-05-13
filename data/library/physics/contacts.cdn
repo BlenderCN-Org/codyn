@@ -100,7 +100,7 @@ templates
 
                 # Events used for event refinement
                 event "air" to "ground" when "min(pN) < 0" within 0.001 { set active = 1 }
-                event "ground" to "air" when "max(pN) > 0" within 0.001 { set active = 0 }
+                event "ground" to "air" when "min(pN) > 0" within 0.001 { set active = 0 }
             }
         }
     }
