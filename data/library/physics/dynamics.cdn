@@ -62,8 +62,8 @@ edge "HC_@bodies" from   @1
 
         ## Write H from the body into the appropriate part of the dynamics H
         ## matrix
-        "H[[@jr], [@ic]]" <= "H_@fh[1]"
         "H[[@ir], [@jc]]" <= "transpose(H_@fh[1])"
+        "H[[@jr], [@ic]]" <= "H_@fh[1]"
     }
 
     # Fill column of the jacobian
