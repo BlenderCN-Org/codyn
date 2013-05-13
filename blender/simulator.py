@@ -76,7 +76,6 @@ class Simulator:
                 l = vv.length
 
                 n = mathutils.Vector([0, 0, 1])
-                #norm = mathutils.Vector([0, 0, 1])
 
                 xyz = n.cross(norm)
                 w = 1 + n.dot(norm)
@@ -84,7 +83,14 @@ class Simulator:
                 q = mathutils.Vector((w, xyz[0], xyz[1], xyz[2]))
                 q /= q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]
 
+                vl = l / 100
+
                 self.gobj.worldOrientation = mathutils.Quaternion(list(q))
+                self.bottom.localScale = [1, 1, vl]
+
+                pz = (vl - 1) * 0.6923
+                self.bottom.localPosition = [0, 0, pz]
+                self.top.localPosition = [0, 0, pz]
 
     def __init__(self, obj, data):
         self.system = obj.children[0]
