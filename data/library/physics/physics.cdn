@@ -5,7 +5,6 @@ require "transformations.cdn"
 
 ## Gravity vector
 g = "[0; 0; -9.81]"
-gU = "g / hypot(g)"
 
 templates
 {
