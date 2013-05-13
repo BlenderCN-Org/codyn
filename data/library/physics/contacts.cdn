@@ -30,8 +30,7 @@ templates
                 # the relevants parts of the spatial transformation.
                 #
                 # [3-by-N]
-                dp = "localToBaseTransform[3:6, 0:3] * angularVelocity +
-                      localToBaseTransform[3:6, 3:6] * linearVelocity"
+                dp = "localToBaseTransform[0:3, 0:3] * linearVelocity"
 
                 # the contact position in the normal direction (Z)
                 #
