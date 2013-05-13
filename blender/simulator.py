@@ -111,11 +111,9 @@ class Simulator:
                 self.nodes[child['cdn_node']] = child
             elif 'cdn_force' in child:
                 parts = child['cdn_force'].split(':')
-                self.forces[parts[0]] = [child, int(parts[1])]
+                self.forces[child['cdn_force']] = [child, parts[0], int(parts[1])]
 
             self._find_nodes(child)
-
-    
 
 class SimulatorCodyn(Simulator):
     class Node:
@@ -152,7 +150,7 @@ class SimulatorCodyn(Simulator):
 
         for n in self.forces:
             f = self.forces[n]
-            self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(n), f[0], f[1]))
+            self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(f[1]), f[0], f[2]))
 
     def step(self, t):
         for i in range(0, int(t / 0.001)):
