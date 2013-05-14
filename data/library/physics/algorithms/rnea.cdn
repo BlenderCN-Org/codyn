@@ -14,7 +14,7 @@ templates
         edge "dynamics"
         {
             ## Transmit force from the child to the parent frame
-            forceChild <= "transformT ∙ force"
+            forceChild += "transformT ∙ force"
         }
 
         node "rnea"
