@@ -12,11 +12,14 @@ templates
                 initial-state "air"
 
                 # contact parameters
-                maxNormalForce = "5000"
-                normalStiffness = "5e8"
-                normalDamping = "1e5"
-                frictionDamping = "5e2"
-                frictionCoefficient = "1.5"
+                normalization = "hypot(g) * totalMass"
+                normPerContact = "numActiveContacts > 0 ? normalization / numActiveContacts : normalization"
+
+                maxNormalForce = "50 * normalization"
+                normalStiffness = "1e7 * normPerContact"
+                normalDamping = "2.5e7 * normPerContact"
+                frictionCoefficient = "0.6"
+                frictionDamping = "6 * normPerContact"
 
                 # calculate locations in base.
                 #
