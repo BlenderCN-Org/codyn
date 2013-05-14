@@ -57,7 +57,7 @@ edge | "@bodies" |
 # Add computation of IC in the dynamics edge
 edge has-template("physics" . "dynamics")
 {
-     ICChild <= "transformT ∙ IC ∙ transform"
+     ICChild += "transformT ∙ IC ∙ transform"
 }
 
 # vi:ex:ts=4:et
