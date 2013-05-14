@@ -11,21 +11,24 @@ node "Transform"
 
     ## 3-by-3 rotation matrix for rotation around the x-axis.
     ##   θ: the rotation angle.
-    RotationX(θ) = "[1,  0,       0;
-                    0,  cos(θ), sin(θ);
-                    0, -sin(θ), cos(θ)]"
+    RotationX(θ) = "[1,  0,      0,      0;
+                     0,  cos(θ), sin(θ), 0;
+                     0, -sin(θ), cos(θ), 0;
+                     0,  0,      0,      1]"
 
     ## 3-by-3 rotation matrix for rotation around the y-axis.
     ##   θ: the rotation angle.
-    RotationY(θ) = "[cos(θ), 0, -sin(θ);
-                    0,      1,  0;
-                    sin(θ), 0,  cos(θ)]"
+    RotationY(θ) = "[cos(θ), 0, -sin(θ), 0;
+                     0,      1,  0,      0;
+                     sin(θ), 0,  cos(θ), 0;
+                     0,      0,  0,      1]"
 
     ## 3-by-3 rotation matrix for rotation around the z-axis.
     ##   θ: the rotation angle.
-    RotationZ(θ) = "[ cos(θ), sin(θ), 0;
-                    -sin(θ), cos(θ), 0;
-                     0,      0,      1]"
+    RotationZ(θ) = "[ cos(θ), sin(θ), 0, 0;
+                     -sin(θ), cos(θ), 0, 0;
+                      0,      0,      1, 0;
+                      0,      0,      0, 1]"
 
     RotationFromAxisAngle_(u, mc, uxs, uys, uzs) = "[
         1 - mc + u[0]² ∙ mc, u[0] ∙ u[1] ∙ mc -uzs, u[0] ∙ u[2] ∙ mc + uys;
