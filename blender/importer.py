@@ -103,7 +103,70 @@ class CodynImport(bpy.types.Operator):
 
         return ret
 
-    def try_make_shape(self, context, body):
+    def try_make_shapes(self, context, body, shapes):
+        retval = []
+        name = '{0}_shape'.format(body.get_id())
+
+        for shape in shapes:
+            o = None
+
+            if shape.find_object('self | first | has-template(physics.rendering.box)'):
+                bpy.ops.mesh.primitive_cube_add()
+                o = context.active_object
+
+                size = shape.get_variable('size').get_values().get_flat()
+                o.scale = mathutils.Vector(size)
+
+                bpy.ops.object.transform_apply(scale=True)
+
+                o.name = '{0}_{1}_box'.format(name, len(retval))
+
+            elif shape.find_object('self | first | has-template(physics.rendering.sphere)'):
+                r = shape.get_variable('radius').get_values().get_flat()[0]
+
+                bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, size=r)
+
+                o = context.active_object
+                o.name = '{0}_{1}_sphere'.format(name, len(retval))
+
+            elif shape.find_object('self | first | has-template(physics.rendering.cylinder)'):
+                r = shape.get_variable('radius').get_values().get_flat()[0]
+                h = shape.get_variable('height').get_values().get_flat()[0]
+
+                bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=r, depth=h)
+
+                o = context.active_object
+                o.name = '{0}_{1}_cylinder'.format(name, len(retval))
+
+            elif shape.find_object('self | first | has-template(physics.rendering.plane)'):
+                bpy.ops.mesh.primitive_plane_add()
+                o = context.active_object
+
+                o.scale = mathutils.Vector((1000, 1000, 0))
+                bpy.ops.object.transform_apply(scale=True)
+
+                o.name = '{0}_{1}_plane'.format(name, len(retval))
+
+            if not o is None:
+                tr = shape.get_variable('transform').get_values()
+                m = codyn.matrix_to_mat4x4(tr)
+                o.matrix_local = m
+
+                col = shape.get_variable('color').get_values().get_flat()
+                mat = bpy.data.materials.new('mat_' + o.name)
+                mat.diffuse_color = col
+                o.data.materials.append(mat)
+
+                retval.append(o)
+
+        return retval
+
+    def try_make_shape(self, context, body, com):
+        shapes = body.find_objects('has-template(physics.rendering.shape)')
+
+        if len(shapes) > 0:
+            return self.try_make_shapes(context, body, shapes)
+
         m = body.get_variable('m').get_value()
         I = body.get_variable('I').get_values()
 
@@ -116,14 +179,18 @@ class CodynImport(bpy.types.Operator):
         if r:
             bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=4, size=r)
             context.active_object.name = name
-            return context.active_object
+            context.active_object.location = com.get_values().get_flat()
+
+            return [context.active_object]
 
         c = self.inertia_like_cylinder(m, inertia)
 
         if c:
             bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=c[0], depth=c[1])
             context.active_object.name = name
-            return context.active_object
+            context.active_object.location = com.get_values().get_flat()
+
+            return [context.active_object]
 
         b = self.inertia_like_box(m, inertia)
 
@@ -133,9 +200,11 @@ class CodynImport(bpy.types.Operator):
             context.active_object.scale = mathutils.Vector(b)
             bpy.ops.object.transform_apply(scale=True)
 
-            return context.active_object
+            context.active_object.location = com.get_values().get_flat()
+
+            return [context.active_object]
         else:
-            return None
+            return []
 
     def import_system(self, cdnobj, context, system):
         bodies = system.find_objects('has-template(physics.body)')
@@ -148,6 +217,13 @@ class CodynImport(bpy.types.Operator):
 
         objmap = {}
         nodemap = {}
+
+        shapes = system.find_objects('has-template(physics.rendering.shape)')
+        shapes = self.try_make_shapes(context, system, shapes)
+
+        for shape in shapes:
+            shape.parent = sysobj
+            ret.append(shape)
 
         for body in bodies:
             # Center of mass
@@ -174,10 +250,9 @@ class CodynImport(bpy.types.Operator):
             comobj = self.make_object(context, comid, lambda: bpy.data.meshes.new(comid))
             comobj.parent = obj
 
-            shape = self.try_make_shape(context, body)
+            shapes = self.try_make_shape(context, body, com)
 
-            if not shape is None:
-                shape.location = com.get_values().get_flat()
+            for shape in shapes:
                 shape.parent = obj
                 ret.append(shape)
 
