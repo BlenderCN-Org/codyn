@@ -39,6 +39,9 @@ node "Transform"
     RotationPart(t) = "t[0:3, 0:3]"
     TranslationPart(t) = "t[0:3, 3]"
 
+    Translation(t) = "FromRotTrans(eye(3), t)]"
+    Rotation(R) = "FromRotTrans(R, [0; 0; 0])"
+
     ## 3x3 rotation matrix for rotation around an arbitrary axis.
     ##   u: the axis around which to rotate.
     ##   θ: the rotation angle.
