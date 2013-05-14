@@ -10,6 +10,7 @@ library_DATA = \
 	model.cdn \
 	physics.cdn \
 	quaternion.cdn \
+	rendering.cdn \
 	sensors.cdn \
 	spatial.cdn \
 	transform.cdn \
