@@ -1,0 +1,42 @@
+require "transform.cdn"
+
+templates
+{
+    node "physics" { node "rendering"
+    {
+        node "shape"
+        {
+            transform = "eye(4)" | out
+            color = "[0.5; 0.5; 0.5]"
+        }
+
+        node "sphere" : shape
+        {
+            radius = "0.1"
+        }
+
+        node "box" : shape
+        {
+            size = "[1, 1, 1]"
+        }
+
+        node "cylinder" : shape
+        {
+            height = 1
+            radius = 0.1
+        }
+
+        node "plane" : shape
+        {
+        }
+
+        node "camera"
+        {
+            orthographic = "0"
+            transform = "Transform.Translation([5; -5; 0.5]) *
+                         Transform.RotationZ(-0.25 * pi) * Transform.RotationX(-0.5 * pi)"
+        }
+    } }
+}
+
+# vi:ts=4:et
