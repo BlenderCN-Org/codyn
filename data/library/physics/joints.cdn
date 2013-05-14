@@ -256,6 +256,28 @@ templates
                         -q[2],  q[1],  q[0]] ∙ dq"
         }
 
+        node "planarY" : physics.body, physics.dof3
+        {
+            node "joint"
+            {
+                JointTransform(q) = "Spatial.Translation([q[1]; 0; q[2]]) *
+                                     Spatial.RotationY(q[0])"
+
+                JointVelocity(q, dq) = "[0; dq[0]; 0; dq[1]; 0; dq[2]]"
+
+                MotionSubspace(q, dq) = "[0, 0, 0;
+                                          1, 0, 0;
+                                          0, 0, 0;
+                                          0, 1, 0;
+                                          0, 0, 0;
+                                          0, 0, 1]"
+
+                BiasVelocityProduct(q, dq) = "0"
+            }
+
+            q̇ = "[dq[0]; dq[1] - q[2] * dq[0]; dq[2] + q[1] * dq[0]]"
+        }
+
         ## A 6 DOF. This type of joint has no constraints and can be used
         ## to implement floating base models.
         node "float" : physics.body, physics.dof6
