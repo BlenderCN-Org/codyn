@@ -7,7 +7,9 @@ templates
     {
         node "contacts"
         {
-            node "soft" : physics.sensors.velocity
+            node "contact" {}
+
+            node "soft" : contact, physics.sensors.velocity
             {
                 initial-state "air"
 
