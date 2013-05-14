@@ -654,6 +654,8 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 
 	newaction->priv->integrated = action->priv->integrated;
 	newaction->priv->integrated_set = action->priv->integrated_set;
+	newaction->priv->enabled = action->priv->enabled;
+	newaction->priv->adds = action->priv->adds;
 
 	return newaction;
 }
@@ -684,7 +686,7 @@ cdn_edge_action_equal (CdnEdgeAction *action,
 	if (action == NULL || other == NULL)
 	{
 		return action == other;
- 	}
+	}
 
 	if (g_strcmp0 (action->priv->target, other->priv->target) != 0)
 	{
