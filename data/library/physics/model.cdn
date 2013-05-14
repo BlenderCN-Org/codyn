@@ -1,8 +1,34 @@
 require "findbodies.cdn"
+require "contacts.cdn"
+
+node has-template(physics.body)
+{
+    node | has-template(physics.contacts.contact) | first | parent
+    {
+        defines
+        {
+            contactNames = | has-template(physics.contacts.contact)
+        }
+
+        bodyNumActiveContacts = "{@contactNames|@0.numActive||@0 + @1}"
+    }
+}
 
 node self
 {
-    m = "{@bodies|@1.m||@0 + @1}"
+    ## Total mass of the system
+    totalMass = "{@bodies|@1.m||@0 + @1}"
+
+    node | children | has-template(physics.contacts.contact) | first | parent | parent
+    {
+        defines
+        {
+            contactBodies = | @bodies | if(children | variables | "bodyNumActiveContacts") | "@@1"
+        }
+
+        ## Total number of active contact points in the system
+        numActiveContacts = "{@contactBodies|@0.bodyNumActiveContacts||@0 + @1}"
+    }
 }
 
 # vi:ts=4:et
