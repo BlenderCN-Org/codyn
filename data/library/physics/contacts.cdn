@@ -50,18 +50,18 @@ templates
                 # the contact force due to the contact model stiffness
                 #
                 # [1-by-N]
-                forceNormalStiffness = "normalStiffness * -pN^3"
+                forceNormalStiffness = "normalStiffness * -csign(pN^3, pN)"
 
                 # the contact force due to the contact model damping
                 #
                 # [1-by-N]
-                forceNormalDamping = "normalDamping * dpN * pN^3"
+                forceNormalDamping = "normalDamping * -csign(dpN * pN^3, dpN)"
 
                 # [1-by-N]
                 forceNormal = "max(0,
                                    min(maxNormalForce,
-                                       forceNormalStiffness +
-                                       forceNormalDamping))"
+                                       -csign(forceNormalStiffness +
+                                              forceNormalDamping, pN)))"
 
                 # tangential forces due to friction (in X and Y)
                 #
