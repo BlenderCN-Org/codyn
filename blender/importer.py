@@ -206,6 +206,20 @@ class CodynImport(bpy.types.Operator):
         else:
             return []
 
+    def add_camera(self, context, body, camera):
+        bpy.ops.object.camera_add()
+        o = context.active_object
+
+        o.parent = body
+        o.matrix_local = codyn.matrix_to_mat4x4(camera.get_variable('transform').get_values())
+
+        ortho = camera.get_variable('orthographic')
+
+        if not ortho is None and ortho.get_values().get_flat()[0] != 0:
+            o.data.type = 'ORTHO'
+
+        return o
+
     def import_system(self, cdnobj, context, system):
         bodies = system.find_objects('has-template(physics.body)')
         ret = []
@@ -224,6 +238,9 @@ class CodynImport(bpy.types.Operator):
         for shape in shapes:
             shape.parent = sysobj
             ret.append(shape)
+
+        for camera in system.find_objects('has-template(physics.rendering.camera)'):
+            ret.append(self.add_camera(context, sysobj, camera))
 
         for body in bodies:
             # Center of mass
