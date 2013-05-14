@@ -260,6 +260,7 @@ def init():
 
     data.simulator.reset()
     data.simulator.update()
+    data.paused = False
 
     bge.render.showMouse(True)
     cont.activate('init_actuator')
@@ -272,9 +273,18 @@ def loop():
 
     fps = bge.logic.getLogicTicRate()
 
-    codyn.data.networks[owner.name].simulator.step(1.0 / fps)
-    codyn.data.networks[owner.name].simulator.update()
+    data = codyn.data.networks[owner.name]
+
+    if not data.paused:
+        data.simulator.step(1.0 / fps)
+        data.simulator.update()
 
     camera.update(bge.logic.getCurrentScene().active_camera)
+
+    if bge.events.SPACEKEY in bge.logic.keyboard.active_events:
+        sp = bge.logic.keyboard.active_events[bge.events.SPACEKEY]
+
+        if sp == bge.logic.KX_INPUT_JUST_RELEASED:
+            data.paused = not data.paused
 
 # vi:ts=4:et
