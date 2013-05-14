@@ -26,6 +26,9 @@ class CodynImport(bpy.types.Operator):
         ret = bpy.data.objects.new(name, mesh)
         context.scene.objects.link(ret)
 
+        if mesh is None:
+            ret.empty_draw_size = 0.1
+
         return ret
 
     def inertia_is_diag(self, inertia):
