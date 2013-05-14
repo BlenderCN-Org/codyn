@@ -102,6 +102,7 @@ templates
                 }
 
                 active = 0
+                numActive = "sum(pN < 0)"
 
                 # Events used for event refinement
                 event "air" to "ground" when "min(pN) < 0" within 0.001 { set active = 1 }
