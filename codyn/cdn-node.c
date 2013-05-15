@@ -92,6 +92,7 @@ struct _CdnNodePrivate
 	CdnEdge *self_edge;
 
 	gchar *state;
+	gchar *initial_state;
 };
 
 G_DEFINE_TYPE (CdnNode, cdn_node, CDN_TYPE_OBJECT)
@@ -99,7 +100,8 @@ G_DEFINE_TYPE (CdnNode, cdn_node, CDN_TYPE_OBJECT)
 enum
 {
 	PROP_0,
-	PROP_STATE
+	PROP_STATE,
+	PROP_INITIAL_STATE
 };
 
 enum
@@ -776,6 +778,11 @@ cdn_node_cdn_reset (CdnObject *object)
 	cdn_node_foreach (node,
 	                   (GFunc)cdn_object_reset,
 	                   NULL);
+
+	g_free (node->priv->state);
+	node->priv->state = g_strdup (node->priv->initial_state);
+
+	g_object_notify (G_OBJECT (object), "state");
 }
 
 static void
@@ -1097,6 +1104,12 @@ cdn_node_cdn_apply_template (CdnObject  *object,
 		node->priv->state = g_strdup (source->priv->state);
 	}
 
+	if (source->priv->initial_state)
+	{
+		g_free (node->priv->initial_state);
+		node->priv->initial_state = g_strdup (source->priv->initial_state);
+	}
+
 	/* Apply interfaces from template */
 	source_iface = cdn_node_get_variable_interface (source);
 
@@ -1185,6 +1198,9 @@ cdn_node_cdn_copy (CdnObject *object,
 
 	g_free (g->priv->state);
 	g->priv->state = g_strdup (CDN_NODE (source)->priv->state);
+
+	g_free (g->priv->initial_state);
+	g->priv->initial_state = g_strdup (CDN_NODE (source)->priv->initial_state);
 }
 
 static gchar *
@@ -1557,6 +1573,10 @@ cdn_node_set_property (GObject      *object,
 			g_free (self->priv->state);
 			self->priv->state = g_value_dup_string (value);
 			break;
+		case PROP_INITIAL_STATE:
+			g_free (self->priv->initial_state);
+			self->priv->initial_state = g_value_dup_string (value);
+			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
 		break;
@@ -1575,6 +1595,9 @@ cdn_node_get_property (GObject    *object,
 	{
 		case PROP_STATE:
 			g_value_set_string (value, self->priv->state);
+			break;
+		case PROP_INITIAL_STATE:
+			g_value_set_string (value, self->priv->initial_state);
 			break;
 		default:
 			G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1715,6 +1738,20 @@ cdn_node_class_init (CdnNodeClass *klass)
 	                                 g_param_spec_string ("state",
 	                                                      "State",
 	                                                      "State",
+	                                                      NULL,
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_STATIC_STRINGS));
+
+	/**
+	 * CdnNode:initial-state:
+	 *
+	 * The initial node state.
+	 */
+	g_object_class_install_property (object_class,
+	                                 PROP_INITIAL_STATE,
+	                                 g_param_spec_string ("initial-state",
+	                                                      "Initial State",
+	                                                      "Initial state",
 	                                                      NULL,
 	                                                      G_PARAM_READWRITE |
 	                                                      G_PARAM_STATIC_STRINGS));
@@ -2300,7 +2337,6 @@ cdn_node_get_self_edge (CdnNode *node)
 	return node->priv->self_edge;
 }
 
-
 /**
  * cdn_node_get_state:
  * @node: a #CdnNode.
@@ -2339,4 +2375,43 @@ cdn_node_set_state (CdnNode     *node,
 	node->priv->state = g_strdup (state);
 
 	g_object_notify (G_OBJECT (node), "state");
+}
+
+/**
+ * cdn_node_set_initial_state:
+ * @node: a #CdnNode.
+ * @state: the initial state.
+ *
+ * Set the initial state of the node.
+ *
+ */
+void
+cdn_node_set_initial_state (CdnNode     *node,
+                            const gchar *state)
+{
+	g_return_if_fail (CDN_IS_NODE (node));
+
+	g_free (node->priv->initial_state);
+	node->priv->initial_state = g_strdup (state);
+
+	if (node->priv->state == NULL)
+	{
+		node->priv->state = g_strdup (state);
+	}
+
+	g_object_notify (G_OBJECT (node), "initial-state");
+}
+
+/**
+ * cdn_node_get_initial_state:
+ * @node: a #CdnNode.
+ *
+ * Get the initial state of the node.
+ *
+ * Returns: the initial state.
+ */
+const gchar *
+cdn_node_get_initial_state (CdnNode *node)
+{
+	return node->priv->initial_state;
 }

@@ -150,6 +150,11 @@ const gchar      *cdn_node_get_state (CdnNode *node);
 void              cdn_node_set_state (CdnNode *node,
                                       const gchar *state);
 
+void cdn_node_set_initial_state (CdnNode     *node,
+                                 const gchar *state);
+
+const gchar *cdn_node_get_initial_state (CdnNode     *node);
+
 /* used for referencing links */
 void             _cdn_node_link           (CdnNode       *node,
                                             CdnEdgeForward *link);

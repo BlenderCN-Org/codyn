@@ -3595,7 +3595,7 @@ cdn_parser_context_set_node_state (CdnParserContext  *context,
 
 			embedded_string_expand (st, state, context);
 
-			cdn_node_set_state (node, st);
+			cdn_node_set_initial_state (node, st);
 
 			expansion_context_pop (context);
 		}
