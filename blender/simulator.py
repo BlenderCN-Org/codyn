@@ -153,8 +153,11 @@ class SimulatorCodyn(Simulator):
             self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(f[1]), f[0], f[2]))
 
     def step(self, t):
-        for i in range(0, int(t / 0.001)):
-            self.data.cdn.step(0.001)
+        dt = self.data.cdn.get_integrator().get_default_timestep()
+        ns = max(1, int(t / dt))
+
+        for i in range(0, ns):
+            self.data.cdn.step(dt)
 
     def reset(self):
         self.data.cdn.reset()
@@ -224,8 +227,11 @@ class SimulatorRawc(Simulator):
             force.update()
 
     def step(self, t):
-        for i in range(0, int(t / 0.001)):
-            self.data.rawc.step(0.001)
+        dt = self.data.rawc.default_timestep
+        ns = max(1, int(t / dt))
+
+        for i in range(0, ns):
+            self.data.rawc.step(dt)
 
 def init():
     import bge
@@ -272,7 +278,6 @@ def loop():
     owner = cont.owner
 
     fps = bge.logic.getLogicTicRate()
-
     data = codyn.data.networks[owner.name]
 
     if not data.paused:
