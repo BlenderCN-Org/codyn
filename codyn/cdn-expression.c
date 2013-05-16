@@ -2870,8 +2870,10 @@ matrix_reorder_flat (GSList              *ret,
 	gint r;
 	gint rrows = 0;
 	CdnDimension mdim;
+	gint n;
 
-	cdn_stack_args_init (&args, cdn_dimension_size (dim));
+	n = cdn_dimension_size (dim);
+	cdn_stack_args_init (&args, n);
 
 	for (c = 0; c < dim->columns; ++c)
 	{
@@ -2879,8 +2881,8 @@ matrix_reorder_flat (GSList              *ret,
 		{
 			ret = g_slist_concat (m[mi + r], ret);
 
-			args.args[i].dimension.rows = rowsize[r];
-			args.args[i].dimension.columns = 1;
+			args.args[n - i - 1].dimension.rows = rowsize[r];
+			args.args[n - i - 1].dimension.columns = 1;
 
 			if (c == 0)
 			{
@@ -2988,9 +2990,12 @@ matrix_vcat (CdnExpression      *expression,
 		{
 			gint c;
 			gint nr = 0;
+			CdnStackArgs sargs;
 
 			stack = g_slist_reverse (stack);
 			c = mrow;
+
+			cdn_stack_args_init (&sargs, 0);
 
 			// Fill one row of <m> from the stack
 			while (stack)
@@ -3000,6 +3005,7 @@ matrix_vcat (CdnExpression      *expression,
 				// we can more efficiently concat them later
 				GSList *rev = g_slist_reverse (stack->data);
 				CdnDimension d;
+				CdnStackArg arg = CDN_STACK_ARG_EMPTY;
 
 				// Accumulate instructions per row block
 				m[c] = g_slist_concat (rev, m[c]);
@@ -3007,10 +3013,31 @@ matrix_vcat (CdnExpression      *expression,
 				// Check if we should go to the next column
 				d = instruction_get_dimension (rev->data);
 
+				arg.dimension = d;
+				cdn_stack_args_append (&sargs, &arg);
+
 				nr += d.rows;
 
 				if (nr == row->dimension.rows)
 				{
+					if (d.rows != row->dimension.rows)
+					{
+						// Insert matrix instruction to
+						// encapsulate the values in
+						// this column
+						CdnInstruction *minstr;
+						CdnDimension cdim = CDN_DIMENSION (row->dimension.rows,
+						                                   1);
+
+						minstr = cdn_instruction_matrix_new (&sargs,
+						                                     &cdim);
+
+						m[c] = g_slist_prepend (m[c], minstr);
+					}
+
+					cdn_stack_args_destroy (&sargs);
+					cdn_stack_args_init (&sargs, 0);
+
 					// advance!
 					c += dim->rows;
 					nr = 0;
