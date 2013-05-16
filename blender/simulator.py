@@ -211,8 +211,8 @@ class SimulatorRawc(Simulator):
         for n in self.forces:
             force = self.forces[n]
 
-            mn = self.data.rawc.topology.fullname_to_node[n]
-            force = SimulatorRawc.Force(mn, force[0], force[1])
+            mn = self.data.rawc.topology.fullname_to_node[force[1]]
+            force = SimulatorRawc.Force(mn, force[0], force[2])
 
             self.cdn_forces.append(force)
 
