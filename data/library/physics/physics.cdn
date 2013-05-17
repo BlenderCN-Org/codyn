@@ -29,9 +29,6 @@ templates
 
             ## Generalized @names[@@0[!]] (i.e. DOFs of joint)
             "{q,dq,ddq}" = "null"
-
-            ## Generalized coordinate accelerations differential equation
-            q̈ = "ddq"
         }
 
         ## Base physical body. It represents a single degree of freedom by

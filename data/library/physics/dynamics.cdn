@@ -29,6 +29,12 @@ node "dynamics"
     parents = "[{@parentsdof||@0;@1}]"
 }
 
+node "@bodies"
+{
+    ## Generalized coordinate accelerations differential equation
+    q̈ = "ddq"
+}
+
 # Fill in H and C for all relevant body relationships
 edge "HC_@bodies" from   @1
                        | <body-index>:append-context("@@1[!]")
