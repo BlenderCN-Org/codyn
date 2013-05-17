@@ -72,9 +72,6 @@ edge "HC_@bodies" from   @1
         "H[[@jr], [@ic]]" <= "H_@fh[1]"
     }
 
-    # Fill column of the jacobian
-    #"J[[{0:5||@0;@1}], @jc]" <= "J"
-
     ## Write C from the body into the appropriate part of the dynamics C
     ## vector
     "C[@jr]" <= "C"

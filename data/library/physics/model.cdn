@@ -37,4 +37,6 @@ node "model"
     }
 }
 
+include "jacobian.cdn"
+
 # vi:ts=4:et

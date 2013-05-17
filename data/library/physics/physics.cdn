@@ -125,6 +125,9 @@ templates
             ## defaults to gravity.
             acceleration = "transform ∙ [0; 0; 0; -g] + cJ"
 
+            ## Body jacobian column in base
+            bodyJacobian = "localToBaseTransform ∙ motionSubspace"
+
             ## Transform from the local coordinate system to base coordinate
             ## system
             baseToLocalTransform = "transform"
@@ -139,13 +142,18 @@ templates
                                                               LocalPointToBase(p))"
         }
 
-        ## The joint edge connects two bodies in a kinematic chain.
+        node "jacobian"
+        {
+                  location = "[0; 0; 0]"
+            locationInBase = "Spatial.TransformPoint3(localToBaseTransform, location)"
+                         J = "Spatial.Translation(locationInBase) * J0"
+        }
+
+        ## The joint edge forward connects two bodies in a kinematic chain.
         edge "joint"
         {
-            ## Set the base transform of the parent to the parent transform
-            ## multiplied by the child base transform. This chains all the
-            ## transformations recursively so that all the base transforms
-            ## are computed.
+            ## Resursive computation of the transformation from base coordinates
+            ## to body coordinates
             baseToLocalTransform <= "output.transform ∙ baseToLocalTransform"
         }
     }
