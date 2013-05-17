@@ -1007,7 +1007,7 @@ parse_dot_variable (CdnExpression *expression,
 		parser_failed (expression,
 		               context,
 		               CDN_COMPILE_ERROR_VARIABLE_NOT_FOUND,
-		               "Link property `%s.%s' could not be found",
+		               "Variable `%s.%s' could not be found",
 		               id, propid);
 	}
 
