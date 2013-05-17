@@ -1,5 +1,6 @@
 require "spatial.cdn"
 require "sensors.cdn"
+require "physics.cdn"
 
 templates
 {
@@ -14,8 +15,8 @@ templates
                 initial-state "air"
 
                 # contact parameters
-                normalization = "hypot(g) * totalMass"
-                normPerContact = "numActiveContacts > 0 ? normalization / numActiveContacts : normalization"
+                normalization = "hypot(g) * model.totalMass"
+                normPerContact = "model.numActiveContacts > 0 ? normalization / model.numActiveContacts : normalization"
 
                 maxNormalForce = "50 * normalization"
                 normalStiffness = "1e7 * normPerContact"
@@ -90,6 +91,10 @@ templates
 
                 force = "zeros(6, 1)"
 
+                # Add a jacobian node which will calculate the contact jacobian
+                # needed to calculate the contact impulse on impact
+                node "jacobian" : physics.jacobian {}
+
                 # finally, the contact force is calculated in body coordinates
                 # whereas all the previous quantities are calculated in base
                 # coordinates. Here we first transform each force to the base
@@ -99,14 +104,31 @@ templates
                 {
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
                               Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
+
+                    contactLocation = "csum((pN < 0) .* p) / (max(1, sum(pN < 0)))"
+                    contactJacobian = "Spatial.Translation(contactLocation) * J0"
+
+                    impactImpulse = "-inv(contactJacobian ∙ inv(dynamics.H) ∙ contactJacobianᵀ) ∙
+                                     contactJacobian ∙ model.dq"
+
+                    force <= "Spatial.ForceTransform(baseToLocalTransform) *
+                              impactImpulse" state "impacting"
                 }
 
                 active = 0
+                impacting = 0
                 numActive = "sum(pN < 0)"
 
                 # Events used for event refinement
-                event "air" to "ground" when "min(pN) < 0" within 0.001 { set active = 1 }
-                event "ground" to "air" when "min(pN) > 0" within 0.001 { set active = 0 }
+                event "air" to "impacting" when "min(pN) < 0" within 0.001
+                {
+                    set active = 1
+                    set impacting = 1
+                }
+
+                event "impacting" to "ground" when "min(dpN) <= 0"    within 0.001 { set impacting = 0 }
+                event "impacting" to "air"    when "min(dpN) > 0"     within 0.001 { set active = 0 set impacting = 0 }
+                event "ground"    to "air"    when "min(pN) > 0" within 0.001 { set active = 0 }
             }
         }
     }
