@@ -14,20 +14,26 @@ node has-template(physics.body)
     }
 }
 
-node self
+node "model"
 {
     ## Total mass of the system
     totalMass = "{@bodies|@1.m||@0 + @1}"
 
-    node | children | has-template(physics.contacts.contact) | first | parent | parent
+    ## All the q's
+    q = "[{@bodies|@1.q||@0;@1}]"
+
+    ## All the dq's
+    dq = "[{@bodies|@1.dq||@0;@1}]"
+
+    node | self | parent | children . has-template(physics.contacts.contact) | first | self
     {
         defines
         {
-            contactBodies = | @bodies | if(children | variables | "bodyNumActiveContacts") | "@@1"
+            contactBodies = | first | self | parent . @bodies | if(children | variables | "bodyNumActiveContacts") | "@@1"
         }
 
         ## Total number of active contact points in the system
-        numActiveContacts = "{@contactBodies|@0.bodyNumActiveContacts||@0 + @1}"
+        numActiveContacts = "{0,@contactBodies|@0.bodyNumActiveContacts||@0 + @1}"
     }
 }
 
