@@ -2926,6 +2926,8 @@ cdn_math_compute_sparsity (CdnMathFunctionType  type,
                            CdnStackArgs const  *inargs,
                            CdnStackArg         *outarg)
 {
+	return;
+
 	if (type >= CDN_MATH_FUNCTION_TYPE_NUM)
 	{
 		return;
