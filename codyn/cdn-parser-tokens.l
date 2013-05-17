@@ -195,7 +195,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "in"				return T_KEY_IN;
 "out"				return T_KEY_OUT;
 "once"				return T_KEY_ONCE;
-"functions"			return T_KEY_FUNCTIONS;
 "interface"			return T_KEY_INTERFACE;
 "polynomial"			return T_KEY_POLYNOMIAL;
 "import"			return T_KEY_IMPORT;
@@ -247,7 +246,8 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 <INITIAL,onlyselector>"imports"			return T_KEY_IMPORTS;
 <INITIAL,onlyselector>"objects"			return T_KEY_OBJECTS;
 <INITIAL,onlyselector>"variables"		return T_KEY_VARIABLES;
-<INITIAL,onlyselector>"actions"			return T_KEY_ACTION;
+<INITIAL,onlyselector>"actions"			return T_KEY_ACTIONS;
+<INITIAL,onlyselector>"functions"		return T_KEY_FUNCTIONS;
 <INITIAL,onlyselector>"not"			return T_KEY_NOT;
 <INITIAL,onlyselector>"if"			return T_KEY_IF;
 <INITIAL,onlyselector>"ifstr"			return T_KEY_IFSTR;
