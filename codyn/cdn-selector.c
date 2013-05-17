@@ -2029,6 +2029,14 @@ selector_until_as_string (CdnSelector *self,
 		ret = g_string_append (ret, "children");
 	}
 
+	if (!self->priv->has_selected)
+	{
+		self->priv->selectors =
+			g_slist_reverse (self->priv->selectors);
+
+		self->priv->has_selected = TRUE;
+	}
+
 	for (item = self->priv->selectors; item && item->data != selector; item = g_slist_next (item))
 	{
 		Selector *sel;
