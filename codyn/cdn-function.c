@@ -56,6 +56,7 @@ struct _CdnFunctionPrivate
 	GHashTable *arguments_hash;
 	GSList *helper_vars;
 	GSList *dependencies;
+	CdnFunction *original;
 
 	guint n_arguments;
 	guint n_implicit;
@@ -100,6 +101,22 @@ on_dimension_cache_removed (CdnFunction *function,
 	function->priv->dimension_cache =
 		g_slist_remove (function->priv->dimension_cache,
 		                where_the_object_was);
+}
+
+static CdnCompileContext *
+cdn_function_get_compile_context_impl (CdnObject         *object,
+                                       CdnCompileContext *context)
+{
+	CdnFunction *f;
+
+	f = CDN_FUNCTION (object);
+
+	if (f->priv->original && !cdn_object_get_parent (object))
+	{
+		context = cdn_object_get_compile_context (CDN_OBJECT (f->priv->original), context);
+	}
+
+	return CDN_OBJECT_CLASS (cdn_function_parent_class)->get_compile_context (object, context);
 }
 
 static void
@@ -1358,6 +1375,7 @@ cdn_function_for_dimension_impl (CdnFunction        *function,
 		// New cache!
 		other = CDN_FUNCTION (cdn_object_copy (CDN_OBJECT (function)));
 		other->priv->has_dimension = TRUE;
+		other->priv->original = function;
 
 		set_argdim (other, argdim);
 
@@ -1733,6 +1751,7 @@ cdn_function_class_init (CdnFunctionClass *klass)
 	cdn_object_class->apply_template = cdn_function_apply_template_impl;
 	cdn_object_class->unapply_template = cdn_function_unapply_template_impl;
 	cdn_object_class->equal = cdn_function_equal_impl;
+	cdn_object_class->get_compile_context = cdn_function_get_compile_context_impl;
 
 	klass->execute = cdn_function_execute_impl;
 	klass->evaluate = cdn_function_evaluate_impl;
