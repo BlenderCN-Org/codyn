@@ -27,15 +27,21 @@ node | <body>:@bodies | recurse(children) | has-template(physics.jacobian) | <ja
         "@[jacobian]LocationInBase" = locationInBase in @jacobian
     }
 
-    node | parent | parent
+    # Select system node
+    node | first | self | parent
     {
         edge "jacobian_in_@body" from jacobian to @body
         {
-            defines { parents = "@bodychain[$(@body[!] + 1)]" }
+            defines
+            {
+                parents = "@bodychain[$(@body[!] + 1)]"
+                parentsrev = "{@parents||@1\,@0}"
+                parentsdofex = "{@parentsrev|@bodydofex[$(@0 + 1)]}"
+            }
 
             # Fill in jacobian columns for the kinematic subtree from this body up
             # to the base
-            "J0[[0;1;2;3;4;5], [{@parents}]]" <= "J[0:6, @1]"
+            "J0[[0;1;2;3;4;5], [{@parentsdofex||@0\,@1}]]" <= "J[[0;1;2;3;4;5], [@1]]"
         }
     }
 }

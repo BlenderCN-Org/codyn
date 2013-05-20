@@ -13,6 +13,8 @@ defines
     # index of that particular body
     bodydofidx = "{@bodydof|@cnt[+@0]}"
 
+    bodydofex = "{@bodydofidx|@1:+$(@bodydof[$(@1[!] + 1)] - 1)}"
+
     # The total dofs in the system
     numdof = "@{@bodydof||$(@0 + @1)}"
 
