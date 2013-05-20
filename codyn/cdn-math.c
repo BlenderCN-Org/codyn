@@ -1029,6 +1029,44 @@ op_mindex (CdnStack           *stack,
 
 		cdn_stack_popn (stack, nv + 1);
 	}
+	else if (argdim->args[2].columns == 1 && argdim->args[1].rows == 1)
+	{
+		// In this case, we index the cross of rows-x-columns
+		gint c;
+		gdouble *wptr;
+		gdouble *retptr;
+		gint nret;
+
+		// write result in the extra space
+		wptr = cdn_stack_output_ptr (stack);
+		retptr = iptr1;
+
+		for (c = 0; c < argdim->args[1].columns; ++c)
+		{
+			gint r = 0;
+			gint cc = (gint)(*iptr2 + 0.5);
+
+			for (r = 0; r < argdim->args[2].rows; ++r)
+			{
+				gint rr = (gint)(iptr1[r] + 0.5);
+				gint i;
+
+				i = vrows * cc + rr;
+
+				*wptr++ = vptr[i];
+			}
+
+			++iptr2;
+		}
+
+		nret = argdim->args[2].rows * argdim->args[1].columns;
+
+		memmove (retptr,
+		         cdn_stack_output_ptr (stack),
+		         sizeof (gdouble) * nret);
+
+		cdn_stack_popn (stack, (nv + argdim->args[2].rows + argdim->args[1].columns) - nret);
+	}
 	else
 	{
 		// In this case, both rows and columns are equally sized vectors
@@ -3280,9 +3318,19 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 				a1 = (cdn_stack_arg_size (inargs->args + 2) == 1);
 				a2 = (cdn_stack_arg_size (inargs->args + 1) == 1);
 
-				if (!a1 && !a2 &&
-				    (inargs->args[1].rows != inargs->args[2].rows ||
-				     inargs->args[1].columns != inargs->args[2].columns))
+				if (inargs->args[2].columns == 1 &&
+				    inargs->args[1].rows == 1)
+				{
+					// row-x-column indexing
+					outarg->rows = inargs->args[2].rows;
+					outarg->columns = inargs->args[1].columns;
+
+					// reserve space for result
+					*extra_space = outarg->rows * outarg->columns;
+				}
+				else if (!a1 && !a2 &&
+				         (inargs->args[1].rows != inargs->args[2].rows ||
+				         inargs->args[1].columns != inargs->args[2].columns))
 				{
 					g_set_error (error,
 					             CDN_COMPILE_ERROR_TYPE,
@@ -3295,9 +3343,11 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 
 					return FALSE;
 				}
-
-				outarg->rows = a1 ? inargs->args[1].rows : inargs->args[2].rows;
-				outarg->columns = a1 ? inargs->args[1].columns : inargs->args[2].columns;
+				else
+				{
+					outarg->rows = a1 ? inargs->args[1].rows : inargs->args[2].rows;
+					outarg->columns = a1 ? inargs->args[1].columns : inargs->args[2].columns;
+				}
 			}
 			else
 			{

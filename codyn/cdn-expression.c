@@ -2211,9 +2211,11 @@ parse_function (CdnExpression *expression,
 		return parser_failed (expression,
 		                      context,
 		                      CDN_COMPILE_ERROR_MAXARG,
-		                      "Expected number of arguments (%d) for function `%s' does not match (got %d)",
+		                      "Expected number of arguments (%d) for function `%s%s%s' does not match (got %d)",
 		                      arguments - n_implicit,
 		                      name,
+		                      cname != NULL ? "." : "",
+		                      cname != NULL ? cname : "",
 		                      numargs);
 	}
 
@@ -3483,6 +3485,52 @@ make_static_index (CdnExpression *expression,
 
 		d1 = instruction_get_dimension (g_slist_last (i1)->data);
 		d2 = instruction_get_dimension (g_slist_last (i2)->data);
+
+		if (d1.columns == 1 && d2.rows == 1)
+		{
+			// row-x-column indexing
+			rows = g_new (gint, d1.rows);
+			cols = g_new (gint, d2.columns);
+
+			instructions_to_indices (i1, rows, d1.rows);
+			instructions_to_indices (i2, cols, d2.columns);
+
+			for (i = 0; i < d1.rows; ++i)
+			{
+				if (rows[i] >= d3->rows)
+				{
+					parser_failed (expression,
+					               context,
+					               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+					               "The row index %d is out of bounds (>= %d)",
+					               rows[i],
+					               d3->rows);
+
+					return NULL;
+				}
+			}
+
+			for (i = 0; i < d2.columns; ++i)
+			{
+				if (cols[i] >= d3->columns)
+				{
+					parser_failed (expression,
+					               context,
+					               CDN_COMPILE_ERROR_INVALID_ARGUMENTS,
+					               "The column index %d is out of bounds (>= %d)",
+					               cols[i],
+					               d3->columns);
+
+					return NULL;
+				}
+			}
+
+			return cdn_instruction_index_new_rows_x_columns (rows,
+			                                                 d1.rows,
+			                                                 cols,
+			                                                 d2.columns,
+			                                                 d3);
+		}
 
 		if (!cdn_dimension_equal (&d1, &d2))
 		{

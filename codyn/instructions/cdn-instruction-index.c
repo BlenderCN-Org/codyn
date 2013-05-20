@@ -26,6 +26,12 @@ struct _CdnInstructionIndexPrivate
 			CdnIndexRange columns;
 			gint          ncolumns;
 		} block;
+
+		struct
+		{
+			gint *rows;
+			gint *columns;
+		} rows_x_columns;
 	};
 
 	gint diff_size;
@@ -85,6 +91,14 @@ cdn_instruction_index_copy (CdnMiniObject *object)
 	case CDN_INSTRUCTION_INDEX_TYPE_INDEX:
 		self->priv->indices = g_memdup (src->priv->indices,
 		                                sizeof (gint) * cdn_stack_arg_size (&src->priv->smanip.push));
+		break;
+	case CDN_INSTRUCTION_INDEX_TYPE_ROWS_X_COLUMNS:
+		self->priv->rows_x_columns.rows = g_memdup (src->priv->rows_x_columns.rows,
+		                                            sizeof (gint) * src->priv->smanip.push.rows);
+
+		self->priv->rows_x_columns.columns = g_memdup (src->priv->rows_x_columns.columns,
+		                                               sizeof (gint) * src->priv->smanip.push.columns);
+
 		break;
 	}
 
@@ -268,6 +282,58 @@ execute_range_block (CdnInstructionIndex *self,
 }
 
 static void
+execute_rows_x_columns (CdnInstructionIndex *self,
+                        CdnStack            *stack)
+{
+	gdouble *retptr;
+	gdouble *endptr;
+	gint n;
+	gint nret;
+	gint c;
+	CdnDimension d;
+	CdnDimension dout;
+
+	d = self->priv->smanip.pop.args[0].dimension;
+	n = cdn_dimension_size (&d);
+
+	dout = self->priv->smanip.push.dimension;
+	nret = cdn_stack_arg_size (&self->priv->smanip.push);
+
+	endptr = cdn_stack_output_ptr (stack) - self->priv->diff_size;
+	retptr = cdn_stack_output_ptr (stack) - n;
+
+	// First copy in the back
+	if (self->priv->diff_size <= 0)
+	{
+		memcpy (endptr, retptr, sizeof (gdouble) * n);
+	}
+	else
+	{
+		memmove (endptr, retptr, sizeof (gdouble) * n);
+	}
+
+	// Construct resulting matrix by indexing rows-cross-columns
+	for (c = 0; c < dout.columns; ++c)
+	{
+		gint r;
+		gint istart;
+
+		istart = self->priv->rows_x_columns.columns[c] * d.rows;
+
+		for (r = 0; r < dout.rows; ++r)
+		{
+			gint i;
+
+			i = istart + self->priv->rows_x_columns.rows[r];
+
+			*retptr++ = endptr[i];
+		}
+	}
+
+	cdn_stack_set_output_ptr (stack, retptr);
+}
+
+static void
 cdn_instruction_index_execute (CdnInstruction *instruction,
                                CdnStack       *stack)
 {
@@ -287,6 +353,9 @@ cdn_instruction_index_execute (CdnInstruction *instruction,
 	case CDN_INSTRUCTION_INDEX_TYPE_RANGE_BLOCK:
 		execute_range_block (self, stack);
 		break;
+	case CDN_INSTRUCTION_INDEX_TYPE_ROWS_X_COLUMNS:
+		execute_rows_x_columns (self, stack);
+		break;
 	}
 }
 
@@ -298,6 +367,20 @@ cdn_instruction_index_get_stack_manipulation (CdnInstruction  *instruction,
 
 	self = CDN_INSTRUCTION_INDEX (instruction);
 	return &self->priv->smanip;
+}
+
+static gboolean
+indices_equal (gint const *i1,
+               gint        ni1,
+               gint const *i2,
+               gint        ni2)
+{
+	if (ni1 != ni2)
+	{
+		return FALSE;
+	}
+
+	return memcmp (i1, i2, sizeof (gint) * ni1) == 0;
 }
 
 static gboolean
@@ -326,20 +409,10 @@ cdn_instruction_index_equal (CdnInstruction *i1,
 	{
 	case CDN_INSTRUCTION_INDEX_TYPE_INDEX:
 	{
-		gint n;
-		gint i;
-
-		n = cdn_dimension_size (&n1->priv->smanip.push.dimension);
-
-		for (i = 0; i < n; ++i)
-		{
-			if (n1->priv->indices[i] != n2->priv->indices[i])
-			{
-				return FALSE;
-			}
-		}
-
-		return TRUE;
+		return indices_equal (n1->priv->indices,
+		                      cdn_dimension_size (&n1->priv->smanip.push.dimension),
+		                      n2->priv->indices,
+		                      cdn_dimension_size (&n2->priv->smanip.push.dimension));
 	}
 	case CDN_INSTRUCTION_INDEX_TYPE_OFFSET:
 		return n1->priv->offset == n2->priv->offset;
@@ -351,6 +424,15 @@ cdn_instruction_index_equal (CdnInstruction *i1,
 		                              &n2->priv->block.rows) &&
 		       cdn_index_range_equal (&n1->priv->block.columns,
 		                              &n2->priv->block.columns);
+	case CDN_INSTRUCTION_INDEX_TYPE_ROWS_X_COLUMNS:
+		return indices_equal (n1->priv->rows_x_columns.rows,
+		                      n1->priv->smanip.push.dimension.rows,
+		                      n2->priv->rows_x_columns.rows,
+		                      n1->priv->smanip.push.dimension.rows) &&
+		       indices_equal (n1->priv->rows_x_columns.columns,
+		                      n1->priv->smanip.push.dimension.columns,
+		                      n2->priv->rows_x_columns.columns,
+		                      n2->priv->smanip.push.dimension.columns);
 	}
 
 	return FALSE;
@@ -365,9 +447,16 @@ cdn_instruction_index_finalize (CdnMiniObject *object)
 
 	cdn_stack_manipulation_destroy (&self->priv->smanip);
 
-	if (self->priv->type == CDN_INSTRUCTION_INDEX_TYPE_INDEX)
+	switch (self->priv->type)
 	{
+	case CDN_INSTRUCTION_INDEX_TYPE_INDEX:
 		g_free (self->priv->indices);
+		break;
+	case CDN_INSTRUCTION_INDEX_TYPE_ROWS_X_COLUMNS:
+		g_free (self->priv->rows_x_columns.rows);
+		g_free (self->priv->rows_x_columns.columns);
+	default:
+		break;
 	}
 
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_index_parent_class)->finalize (object);
@@ -440,6 +529,53 @@ cdn_instruction_index_new (gint               *indices,
 	self->priv->diff_size = cdn_dimension_size (&arg->dimension) - cdn_dimension_size (retdim);
 
 	return CDN_INSTRUCTION (ret);
+}
+
+/**
+ * cdn_instruction_index_new_rows_x_columns:
+ * @rows: (array length=n_rows) (transfer full): row indices.
+ * @n_rows: number of row indices in @rows.
+ * @columns: (array length=n_columns) (transfer full): column indices.
+ * @n_columns: number of column indices in @columns.
+ * @arg: a #CdnStackArg.
+ *
+ * Create a new range index instruction. @arg can be %NULL in which case the
+ * range always represents a row. If @arg is not %NULL however, the range will
+ * be a column or row depending on the dimension of @arg.
+ *
+ * Returns: (transfer full): a #CdnInstruction.
+ *
+ **/
+CdnInstruction *
+cdn_instruction_index_new_rows_x_columns (gint              *rows,
+                                          gint               n_rows,
+                                          gint              *columns,
+                                          gint               n_columns,
+                                          CdnStackArg const *arg)
+{
+	CdnMiniObject *ret;
+	CdnInstructionIndex *self;
+
+	ret = cdn_mini_object_new (CDN_TYPE_INSTRUCTION_INDEX);
+	self = CDN_INSTRUCTION_INDEX (ret);
+
+	self->priv->type = CDN_INSTRUCTION_INDEX_TYPE_ROWS_X_COLUMNS;
+
+	self->priv->smanip.push.dimension.rows = n_rows;
+	self->priv->smanip.push.dimension.columns = n_columns;
+
+	cdn_stack_args_init (&self->priv->smanip.pop, 1);
+	cdn_stack_arg_copy (self->priv->smanip.pop.args, arg);
+
+	self->priv->rows_x_columns.rows = rows;
+	self->priv->rows_x_columns.columns = columns;
+
+	cdn_instruction_index_recalculate_sparsity (CDN_INSTRUCTION (self));
+	self->priv->smanip.extra_space = n_rows * n_columns;
+
+	self->priv->diff_size = cdn_dimension_size (&arg->dimension) - n_rows * n_columns;
+
+	return CDN_INSTRUCTION (self);
 }
 
 /**
@@ -803,6 +939,29 @@ cdn_instruction_index_write_indices (CdnInstructionIndex *instr,
 			cidx += instr->priv->block.columns.step;
 		}
 
+		break;
+	}
+	case CDN_INSTRUCTION_INDEX_TYPE_ROWS_X_COLUMNS:
+	{
+		gint c;
+		CdnDimension d;
+		CdnDimension dout;
+
+		d = instr->priv->smanip.pop.args[0].dimension;
+		dout = instr->priv->smanip.push.dimension;
+
+		for (c = 0; c < dout.columns; ++c)
+		{
+			gint r;
+			gint istart;
+
+			istart = d.rows * instr->priv->rows_x_columns.columns[c];
+
+			for (r = 0; r < dout.rows; ++r)
+			{
+				*indices++ = istart + instr->priv->rows_x_columns.rows[r];
+			}
+		}
 		break;
 	}
 	}

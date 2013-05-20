@@ -23,6 +23,7 @@ typedef enum
 	CDN_INSTRUCTION_INDEX_TYPE_OFFSET,
 	CDN_INSTRUCTION_INDEX_TYPE_RANGE,
 	CDN_INSTRUCTION_INDEX_TYPE_RANGE_BLOCK,
+	CDN_INSTRUCTION_INDEX_TYPE_ROWS_X_COLUMNS
 } CdnInstructionIndexType;
 
 typedef struct
@@ -68,6 +69,12 @@ CdnInstruction *cdn_instruction_index_new_range  (CdnIndexRange const *range,
 CdnInstruction *cdn_instruction_index_new_range_block (CdnIndexRange const *rows,
                                                        CdnIndexRange const *columns,
                                                        CdnStackArg const   *arg);
+
+CdnInstruction *cdn_instruction_index_new_rows_x_columns (gint              *rows,
+                                                          gint               n_rows,
+                                                          gint              *columns,
+                                                          gint               n_columns,
+                                                          CdnStackArg const *arg);
 
 CdnInstructionIndexType cdn_instruction_index_get_index_type (CdnInstructionIndex *instr);
 
