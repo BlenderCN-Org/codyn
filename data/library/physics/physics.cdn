@@ -152,7 +152,7 @@ templates
 
         node "jacobian"
         {
-                  location = "[0; 0; 0]"
+                  location = "com"
             locationInBase = "Spatial.TransformPoint3(localToBaseTransform, location)"
                          J = "Spatial.Translation(locationInBase) * J0"
         }
