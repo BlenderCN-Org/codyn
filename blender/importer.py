@@ -384,11 +384,17 @@ class CodynImport(bpy.types.Operator):
 
         path = self.filepath
 
-        network = Cdn.Network.new_from_path(path)
+        try:
+            network = Cdn.Network.new_from_path(path)
+        except Exception as e:
+            self.report({'ERROR'}, 'Failed to load network: ' + str(e))
+            return {'FINISHED'}
+
         err = Cdn.CompileError()
 
         if not network.compile(None, err):
-            print(err)
+            self.report({'ERROR'}, 'Failed to compile network: ' + err.get_formatted_string())
+            return {'FINISHED'}
 
         objmap = {}
         nodemap = {}
