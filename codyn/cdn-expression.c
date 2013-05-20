@@ -3413,6 +3413,16 @@ make_static_index (CdnExpression *expression,
 		isi1 = is_index_range (i1->data, &r1);
 		isi2 = is_index_range (i2->data, &r2);
 
+		if (isi1)
+		{
+			cdn_instruction_index_set_range_end (r1, d3->rows);
+		}
+
+		if (isi2)
+		{
+			cdn_instruction_index_set_range_end (r2, d3->columns);
+		}
+
 		if (isi1 && isi2)
 		{
 			CdnIndexRange rows;
@@ -3421,16 +3431,6 @@ make_static_index (CdnExpression *expression,
 			rows = *cdn_instruction_index_get_range (r1);
 			columns = *cdn_instruction_index_get_range (r2);
 
-			if (rows.end < 0)
-			{
-				rows.end = d3->rows + 1 + rows.end;
-			}
-
-			if (columns.end < 0)
-			{
-				columns.end = d3->columns + 1 + columns.end;
-			}
-
 			if (!check_index_dims (expression, context, &rows, &columns, &d3->dimension))
 			{
 				return NULL;
@@ -3438,17 +3438,12 @@ make_static_index (CdnExpression *expression,
 
 			return make_range_block_or_offset (&rows, &columns, d3);
 		}
-		else if (isi1 && CDN_IS_INSTRUCTION_NUMBER (i2->data))
+		else if (isi1 && !i2->next && CDN_IS_INSTRUCTION_NUMBER (i2->data))
 		{
 			CdnIndexRange rows;
 			CdnIndexRange columns = {0, 1, 0};
 
 			rows = *cdn_instruction_index_get_range (r1);
-
-			if (rows.end < 0)
-			{
-				rows.end = d3->rows + 1 + rows.end;
-			}
 
 			columns.start = (gint)(cdn_instruction_number_get_value (i2->data) + 0.5);
 			columns.end = columns.start + 1;
@@ -3460,17 +3455,12 @@ make_static_index (CdnExpression *expression,
 
 			return make_range_block_or_offset (&rows, &columns, d3);
 		}
-		else if (isi2 && CDN_IS_INSTRUCTION_NUMBER (i1->data))
+		else if (isi2 && !i1->next && CDN_IS_INSTRUCTION_NUMBER (i1->data))
 		{
 			CdnIndexRange columns;
 			CdnIndexRange rows = {0, 1, 0};
 
 			columns = *cdn_instruction_index_get_range (r2);
-
-			if (columns.end < 0)
-			{
-				columns.end = d3->columns + 1 + columns.end;
-			}
 
 			rows.start = (gint)(cdn_instruction_number_get_value (i1->data) + 0.5);
 			rows.end = rows.start + 1;
@@ -3485,6 +3475,16 @@ make_static_index (CdnExpression *expression,
 
 		d1 = instruction_get_dimension (g_slist_last (i1)->data);
 		d2 = instruction_get_dimension (g_slist_last (i2)->data);
+
+		if (isi1)
+		{
+			CdnIndexRange rows;
+
+			rows = *cdn_instruction_index_get_range (r1);
+
+			d1.rows = cdn_index_range_n (&rows);
+			d1.columns = 1;
+		}
 
 		if (d1.columns == 1 && d2.rows == 1)
 		{
@@ -3585,12 +3585,8 @@ make_static_index (CdnExpression *expression,
 			CdnInstruction *ret;
 			CdnIndexRange r;
 
+			cdn_instruction_index_set_range_end (idx, cdn_stack_arg_size (d3));
 			r = *cdn_instruction_index_get_range (idx);
-
-			if (r.end < 0)
-			{
-				r.end = cdn_stack_arg_size (d3) + 1 + r.end;
-			}
 
 			ret = cdn_instruction_index_new_range (&r, d3);
 

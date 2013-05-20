@@ -969,3 +969,17 @@ cdn_instruction_index_write_indices (CdnInstructionIndex *instr,
 	return TRUE;
 }
 
+void
+cdn_instruction_index_set_range_end (CdnInstructionIndex *instr,
+                                     gint                 end)
+{
+	g_return_if_fail (CDN_IS_INSTRUCTION_INDEX (instr));
+	g_return_if_fail (instr->priv->type == CDN_INSTRUCTION_INDEX_TYPE_RANGE);
+
+	if (instr->priv->range.range.end < 0)
+	{
+		instr->priv->range.range.end = end + 1 + instr->priv->range.range.end;
+		instr->priv->smanip.push.dimension.columns = cdn_index_range_n (&instr->priv->range.range);
+	}
+}
+
