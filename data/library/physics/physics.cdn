@@ -103,10 +103,18 @@ templates
             ## Transposed transformation
             transformT = "transformᵀ"
 
+            ## Coordinate translation from the body frame to the parent frame.
+            ## This is a convenient variable used by the default
+            ## value of the coordinateTransform variable.
+            tr = "[0; 0; 0]"
+
             ## Coordinate transform from the parent frame to the body
             ## frame (i.e. the transformation from the origin of the joint of
-            ## the parent to the origin of the joint of the body frame)
-            coordinateTransform = "eye(6)"
+            ## the parent to the origin of the joint of the body frame). The
+            ## default value is a simple translation by the tr variable. Use
+            ## the various method of the Spatial node for more complex
+            ## transformations.
+            coordinateTransform = "Spatial.Translation(tr)"
 
             ## The total transform from body frame to parent frame, including
             ## both the transform of the coordinate system and the transform
