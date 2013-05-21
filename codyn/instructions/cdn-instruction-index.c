@@ -288,7 +288,6 @@ execute_rows_x_columns (CdnInstructionIndex *self,
 	gdouble *retptr;
 	gdouble *endptr;
 	gint n;
-	gint nret;
 	gint c;
 	CdnDimension d;
 	CdnDimension dout;
@@ -297,7 +296,6 @@ execute_rows_x_columns (CdnInstructionIndex *self,
 	n = cdn_dimension_size (&d);
 
 	dout = self->priv->smanip.push.dimension;
-	nret = cdn_stack_arg_size (&self->priv->smanip.push);
 
 	endptr = cdn_stack_output_ptr (stack) - self->priv->diff_size;
 	retptr = cdn_stack_output_ptr (stack) - n;
