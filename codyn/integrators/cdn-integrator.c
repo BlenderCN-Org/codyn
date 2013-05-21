@@ -79,6 +79,7 @@ struct _CdnIntegratorPrivate
 
 	guint terminate : 1;
 	guint inner_event_loop : 1;
+	guint events_handled : 1;
 };
 
 static guint integrator_signals[NUM_SIGNALS] = {0,};
@@ -361,7 +362,10 @@ prepare_next_step (CdnIntegrator *integrator,
 	GSList const *io;
 	GSList const *ops;
 
-	update_events (integrator);
+	if (!integrator->priv->events_handled)
+	{
+		update_events (integrator);
+	}
 
 	cdn_variable_set_value (integrator->priv->property_time, t);
 	cdn_variable_set_value (integrator->priv->property_timestep, timestep);
@@ -419,6 +423,10 @@ execute_events (CdnIntegrator *integrator,
                 GSList        *events)
 {
 	gchar const *state;
+	GSList *added = NULL;
+
+	// Update all events just before changing phases
+	update_events (integrator);
 
 	while (events)
 	{
@@ -440,7 +448,9 @@ execute_events (CdnIntegrator *integrator,
 			{
 				cdn_integrator_state_set_state (integrator->priv->state,
 				                                parent,
-				                                state);
+				                                state,
+				                                &added,
+				                                NULL);
 			}
 			else if (cdn_event_get_terminal (ev))
 			{
@@ -451,7 +461,12 @@ execute_events (CdnIntegrator *integrator,
 		events = g_slist_next (events);
 	}
 
-	update_events (integrator);
+	// Update any events that were added by changing states
+	while (added)
+	{
+		cdn_event_update (added->data);
+		added = g_slist_delete_link (added, added);
+	}
 }
 
 static GSList *
@@ -513,6 +528,11 @@ handle_events (CdnIntegrator *integrator,
 	GSList *happened = NULL;
 	gdouble smallest = 0;
 
+	if (!integrator->priv->inner_event_loop)
+	{
+		integrator->priv->events_handled = FALSE;
+	}
+
 	// Here we are going to check our events
 	events = cdn_integrator_state_phase_events (integrator->priv->state);
 
@@ -557,6 +577,7 @@ handle_events (CdnIntegrator *integrator,
 		else
 		{
 			execute_events (integrator, happened);
+			integrator->priv->events_handled = TRUE;
 		}
 
 		g_slist_free (happened);

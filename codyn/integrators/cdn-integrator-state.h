@@ -91,9 +91,11 @@ const GSList       *cdn_integrator_state_operators               (CdnIntegratorS
 
 void                cdn_integrator_state_update                  (CdnIntegratorState *state);
 
-void                cdn_integrator_state_set_state               (CdnIntegratorState *state,
-                                                                  CdnNode            *node,
-                                                                  gchar const        *st);
+void                cdn_integrator_state_set_state               (CdnIntegratorState  *state,
+                                                                  CdnNode             *node,
+                                                                  gchar const         *st,
+                                                                  GSList             **events_added,
+                                                                  GSList             **events_removed);
 
 
 G_END_DECLS

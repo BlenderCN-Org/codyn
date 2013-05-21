@@ -1245,9 +1245,11 @@ cdn_integrator_state_phase_events (CdnIntegratorState *state)
 }
 
 void
-cdn_integrator_state_set_state (CdnIntegratorState *state,
-                                CdnNode            *node,
-                                gchar const        *st)
+cdn_integrator_state_set_state (CdnIntegratorState  *state,
+                                CdnNode             *node,
+                                gchar const         *st,
+                                GSList             **events_added,
+                                GSList             **events_removed)
 {
 	gchar const *curst;
 	GSList *lst;
@@ -1257,6 +1259,16 @@ cdn_integrator_state_set_state (CdnIntegratorState *state,
 	// depend on this state
 	curst = cdn_node_get_state (node);
 	lst = g_hash_table_lookup (state->priv->state_hash, node);
+
+	if (events_added)
+	{
+		*events_added = NULL;
+	}
+
+	if (events_removed)
+	{
+		*events_removed = NULL;
+	}
 
 	// Note: first item is always NULL
 	for (item = lst->next; item; item = g_slist_next (item))
@@ -1282,6 +1294,12 @@ cdn_integrator_state_set_state (CdnIntegratorState *state,
 			}
 
 			*ptr = g_slist_remove (*ptr, ph);
+
+			if (events_removed && CDN_IS_EVENT (item->data))
+			{
+				*events_removed = g_slist_prepend (*events_removed,
+				                                   item->data);
+			}
 		}
 		else if (!activenow && activelater)
 		{
@@ -1296,7 +1314,23 @@ cdn_integrator_state_set_state (CdnIntegratorState *state,
 			}
 
 			*ptr = g_slist_prepend (*ptr, ph);
+
+			if (events_added && CDN_IS_EVENT (item->data))
+			{
+				*events_added = g_slist_prepend (*events_added,
+				                                 item->data);
+			}
 		}
+	}
+
+	if (events_added)
+	{
+		*events_added = g_slist_reverse (*events_added);
+	}
+
+	if (events_removed)
+	{
+		*events_removed = g_slist_reverse (*events_removed);
 	}
 
 	cdn_node_set_state (node, st);
