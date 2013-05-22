@@ -1157,13 +1157,17 @@ filter_list_reverse (GSList  *objs,
 
 		sel = objs->data;
 		obj = cdn_selection_get_object (sel);
-		tp = G_OBJECT_TYPE (obj);
 
-		if ((inherited && g_type_is_a (tp, gtype)) ||
-		    (!inherited && tp == gtype))
+		if (obj)
 		{
-			ret = g_slist_prepend (ret,
-			                       cdn_selection_copy (sel));
+			tp = G_OBJECT_TYPE (obj);
+
+			if ((inherited && g_type_is_a (tp, gtype)) ||
+			    (!inherited && tp == gtype))
+			{
+				ret = g_slist_prepend (ret,
+					               cdn_selection_copy (sel));
+			}
 		}
 
 		objs = g_slist_next (objs);
