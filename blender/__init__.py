@@ -35,13 +35,13 @@ else:
 if "bpy" in locals():
     import imp
 
-    imp.reload(importer)
-    imp.reload(codyn)
-    imp.reload(simulator)
-    imp.reload(camera)
+    mods = (importer, codyn, simulator, camera, gui)
+
+    for m in mods:
+        imp.reload(m)
 else:
     import bpy, inspect
-    import codyn, simulator, importer, camera
+    import codyn, simulator, importer, camera, gui
 
 if not p is None and p in sys.path:
     sys.path.remove(p)

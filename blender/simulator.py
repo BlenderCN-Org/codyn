@@ -1,6 +1,6 @@
 import os, platform, tempfile, shutil, mathutils
 
-import codyn, camera
+import codyn, camera, gui
 
 from gi.repository import Cdn
 import cdnrawc
@@ -141,6 +141,10 @@ class SimulatorCodyn(Simulator):
             vec = v.get_flat()[i:i + 6]
             Simulator.Force.update(self, vec)
 
+    @property
+    def t(self):
+        return self.data.cdn.get_integrator().get_variable('t').get_value()
+
     def setup(self):
         self.cdn_nodes = []
         self.cdn_forces = []
@@ -233,6 +237,20 @@ class SimulatorRawc(Simulator):
         for i in range(0, ns):
             self.data.rawc.step(dt)
 
+def setup_gui(data):
+    b = gui.Box(orientation=gui.Box.HORIZONTAL)
+    b.background = gui.BoxTexture('bar.png', [-1], [-1, 1])
+    b.padding = gui.Rect(6, 6, 6, 6)
+    b.align.y = 1
+    b.fill.x = True
+
+    l = gui.Label('Time:')
+    l.color = gui.Color(1, 1, 1, 1)
+    b.add(l)
+
+    data.gui.add(b)
+    data.lbl_time = l
+
 def init():
     import bge
 
@@ -267,6 +285,12 @@ def init():
     data.simulator.reset()
     data.simulator.update()
     data.paused = False
+    data.gui = gui.Screen()
+
+    setup_gui(data)
+
+    scene = bge.logic.getCurrentScene()
+    scene.post_draw = [data.gui.draw]
 
     bge.render.showMouse(True)
     cont.activate('init_actuator')
@@ -283,6 +307,8 @@ def loop():
     if not data.paused:
         data.simulator.step(1.0 / fps)
         data.simulator.update()
+
+    data.lbl_time.text = 'time: {:>6.3f}'.format(data.simulator.t)
 
     camera.update(bge.logic.getCurrentScene().active_camera)
 
