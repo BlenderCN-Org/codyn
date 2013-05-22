@@ -2,6 +2,8 @@
 # -t 0:0.005:5 -m system./p[0-9]+/.q -r
 
 include "physics/physics.cdn"
+include "physics/contacts.cdn"
+include "physics/rendering.cdn"
 
 integrator
 {
@@ -19,22 +21,45 @@ node "system" : physics.system
     {
           m = "1"
         com = "[0; 0; -0.5]"
-          τ = "-0.1 * dq"
-        coordinateTransform = "Spatial.Translation([0, 0, -1])"
-        I = "Inertia.Cylinder(m, 0.1, 0.8)"
+         tr = "[0; 0; -1]"
+          I = "Inertia.Cylinder(m, 0.1, 0.8)"
 
         localMatrix | out
-
-        layout
-        {
-            at 0, $(@1 * 3)
-        }
     }
     
     node "p1"
     {
-        coordinateTransform = "Spatial.Translation([0, 0, 0])"
-        q = "0.3 * pi"
+        q0 = "0.3 * pi"
+        tr = "[0; 0; @n * cos(0.5 * q0)]"
+
+        q = "q0"
+    }
+
+    node "floor" : physics.rendering.box
+    {
+        size = "[100; 1; 0.05]"
+        color = "[0.8; 0.8; 1.0]"
+
+        transform = "Transform.Translation([0; -0.5; -0.05])"
+    }
+
+    node "camera" : physics.rendering.camera
+    {
+        orthographic = "1"
+        transform = "Transform.Translation([0; -5; 1.2]) *
+                     Transform.RotationX(-0.5 * pi)"
+    }
+
+    node | "p@n"
+    {
+        node "contact" : physics.contacts.soft
+        {
+            location = "[ 0;
+                          0;
+                         -1]"
+        }
+
+        forceExternal = "contact.force"
     }
 
     edge from "p{1:@n}" to "p$(@1 + 1)" : physics.joint {}
