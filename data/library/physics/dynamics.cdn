@@ -29,10 +29,12 @@ node "dynamics"
     parents = "[{@parentsdof||@0;@1}]"
 }
 
+include "algorithms/contacts.cdn"
+
 node "@bodies"
 {
     ## Generalized coordinate accelerations differential equation
-    q̈ = "ddq"
+    dq' = "ddq"
 }
 
 # Fill in H and C for all relevant body relationships

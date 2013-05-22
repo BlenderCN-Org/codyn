@@ -19,10 +19,11 @@ templates
                 normPerContact = "model.numActiveContacts > 0 ? normalization / model.numActiveContacts : normalization"
 
                 maxNormalForce = "50 * normalization"
-                normalStiffness = "1e7 * normPerContact"
-                normalDamping = "2.5e7 * normPerContact"
+                normalStiffness = "1e6 * normPerContact"
+                normalDamping = "5 * normPerContact"
                 frictionCoefficient = "0.6"
-                frictionDamping = "6 * normPerContact"
+                frictionDamping = "10 * normPerContact"
+                coefficientOfRestitution = "0.1"
 
                 # calculate locations in base.
                 #
@@ -51,18 +52,17 @@ templates
                 # the contact force due to the contact model stiffness
                 #
                 # [1-by-N]
-                forceNormalStiffness = "normalStiffness * -csign(pN^3, pN)"
+                forceNormalStiffness = "normalStiffness * -csign(pN², pN)"
 
                 # the contact force due to the contact model damping
                 #
                 # [1-by-N]
-                forceNormalDamping = "normalDamping * -csign(dpN * pN^3, dpN)"
+                forceNormalDamping = "-normalDamping * dpN"
 
                 # [1-by-N]
                 forceNormal = "max(0,
                                    min(maxNormalForce,
-                                       -csign(forceNormalStiffness +
-                                              forceNormalDamping, pN)))"
+                                       forceNormalStiffness + forceNormalDamping))"
 
                 # tangential forces due to friction (in X and Y)
                 #
@@ -104,31 +104,25 @@ templates
                 {
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
                               Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
-
-                    contactLocation = "csum((pN < 0) .* p) / (max(1, sum(pN < 0)))"
-                    contactJacobian = "Spatial.Translation(contactLocation) * J0"
-
-                    impactImpulse = "-inv(contactJacobian ∙ inv(dynamics.H) ∙ contactJacobianᵀ) ∙
-                                     contactJacobian ∙ model.dq"
-
-                    force <= "Spatial.ForceTransform(baseToLocalTransform) *
-                              impactImpulse" state "impacting"
                 }
 
-                active = 0
-                impacting = 0
+                active    = 0
                 numActive = "sum(pN < 0)"
+                impacting = 0
 
                 # Events used for event refinement
-                event "air" to "impacting" when "min(pN) < 0" within 0.001
+                event "impact" to "ground" when "impacting > 0 && min(dpN) <= 0"
                 {
-                    set active = 1
-                    set impacting = 1
+                    set impacting = 0
                 }
 
-                event "impacting" to "ground" when "min(dpN) <= 0"    within 0.001 { set impacting = 0 }
-                event "impacting" to "air"    when "min(dpN) > 0"     within 0.001 { set active = 0 set impacting = 0 }
-                event "ground"    to "air"    when "min(pN) > 0" within 0.001 { set active = 0 }
+                event "impact" to "air"    when "impacting > 0 && min(dpN)  > 0"
+                {
+                    set active = 0
+                    set impacting = 0
+                }
+
+                event "ground"    to "air"    when "min(pN)   > 0" within 0.001                 { set active = 0 }
             }
         }
     }

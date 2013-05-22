@@ -1,6 +1,6 @@
 require "findbodies.cdn"
 
-## The jacobian node contains the body to base jacobians of all the bodies
+## The model jacobian node contains the body to base jacobians of all the bodies
 node "jacobian"
 {
     J = "zeros(6, @numdof)"
@@ -16,7 +16,12 @@ node | <body>:@bodies | parent
     }
 }
 
-node | <body>:@bodies | recurse(children) | has-template(physics.jacobian) | <jacobian>:name | parent
+node | <body>:@bodies
+     | if (
+               recurse(children)
+             | has-template(physics.jacobian)
+             | <jacobian>:name
+          )
 {
     J0 = "zeros(6, @numdof)"
 
