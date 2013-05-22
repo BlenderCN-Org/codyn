@@ -423,10 +423,7 @@ execute_events (CdnIntegrator *integrator,
                 GSList        *events)
 {
 	gchar const *state;
-	GSList *added = NULL;
-
-	// Update all events just before changing phases
-	update_events (integrator);
+	GSList *execute = NULL;
 
 	while (events)
 	{
@@ -440,16 +437,16 @@ execute_events (CdnIntegrator *integrator,
 		// Make sure event is still active
 		if (cdn_phaseable_is_active (CDN_PHASEABLE (ev), curstate))
 		{
-			cdn_event_execute (ev);
-
 			state = cdn_event_get_goto_state (ev);
+
+			execute = g_slist_prepend (execute, ev);
 
 			if (state)
 			{
 				cdn_integrator_state_set_state (integrator->priv->state,
 				                                parent,
 				                                state,
-				                                &added,
+				                                NULL,
 				                                NULL);
 			}
 			else if (cdn_event_get_terminal (ev))
@@ -461,11 +458,14 @@ execute_events (CdnIntegrator *integrator,
 		events = g_slist_next (events);
 	}
 
-	// Update any events that were added by changing states
-	while (added)
+	update_events (integrator);
+
+	execute = g_slist_reverse (execute);
+
+	while (execute)
 	{
-		cdn_event_update (added->data);
-		added = g_slist_delete_link (added, added);
+		cdn_event_execute (execute->data);
+		execute = g_slist_delete_link (execute, execute);
 	}
 }
 
