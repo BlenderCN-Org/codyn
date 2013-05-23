@@ -9,7 +9,9 @@ blender_DATA = \
 
 blenderdatadir = $(blenderdir)/data
 blenderdata_DATA = \
-	data/library.blend
+	data/library.blend \
+	data/gui.atlas \
+	data/gui.png
 
 blenderzipdir = $(pkgdatadir)-@CODYN_API_VERSION@
 blenderzip_DATA = blender_codyn.zip
