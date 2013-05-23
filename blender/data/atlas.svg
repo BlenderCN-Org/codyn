@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="64"
+   height="64"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.3.1 r9886"
+   sodipodi:docname="atlas.svg"
+   inkscape:export-filename="/home/jvanden/work/phd/codyn/codyn/blender/data/atlas.png"
+   inkscape:export-xdpi="90"
+   inkscape:export-ydpi="90">
+  <defs
+     id="defs4" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="5.6568542"
+     inkscape:cx="35.043554"
+     inkscape:cy="42.381936"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="1247"
+     inkscape:window-height="915"
+     inkscape:window-x="283"
+     inkscape:window-y="51"
+     inkscape:window-maximized="0" />
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(0,-988.3622)">
+    <rect
+       style="fill:#f2f2f2;fill-opacity:1;stroke:none"
+       id="r_roundedrect"
+       width="16"
+       height="16"
+       x="0"
+       y="988.36218"
+       rx="3"
+       ry="3"
+       inkscape:export-filename="/home/jvanden/work/phd/codyn/codyn/blender/data/button.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"
+       inkscape:label="#rect2985" />
+    <g
+       id="r_bar"
+       inkscape:export-filename="/home/jvanden/work/phd/codyn/codyn/blender/data/bar.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"
+       inkscape:label="#g3785"
+       transform="translate(11.998326,-15.831709)">
+      <rect
+         y="1004.1939"
+         x="5.0016737"
+         height="16"
+         width="16"
+         id="rect3774"
+         style="fill:#000000;fill-opacity:0.78431373;stroke:none" />
+      <rect
+         y="1004.1939"
+         x="5.0016737"
+         height="1"
+         width="16"
+         id="rect3783"
+         style="fill:#d7d7d7;fill-opacity:1;stroke:none" />
+    </g>
+    <g
+       id="r_pause"
+       transform="matrix(0.80474961,0,0,0.799998,-1.2423319,178.72413)"
+       inkscape:export-filename="/home/jvanden/work/phd/codyn/codyn/blender/data/pause.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"
+       inkscape:label="#g3812">
+      <g
+         id="g3916"
+         transform="translate(4.8402424,6.5380895)">
+        <path
+           sodipodi:nodetypes="sssssssss"
+           inkscape:connector-curvature="0"
+           id="path3800"
+           d="m 26.259848,1031.0987 0.684832,3.395 c 0.157782,0.7822 0.157806,1.2546 0,2.0369 l -0.684832,3.3949 c -0.157786,0.7822 -1.879178,0.7821 -2.036925,0 l -0.684717,-3.3949 c -0.157762,-0.7822 -0.157743,-1.2548 0,-2.0369 l 0.684717,-3.395 c 0.157743,-0.7821 1.879143,-0.7822 2.036925,0 z"
+           style="fill:#727272;fill-opacity:1;stroke:none" />
+        <path
+           style="fill:#727272;fill-opacity:1;stroke:none"
+           d="m 31.315072,1031.0987 0.684832,3.395 c 0.157782,0.7822 0.157806,1.2546 0,2.0369 l -0.684832,3.3949 c -0.157786,0.7822 -1.879178,0.7821 -2.036925,0 l -0.684717,-3.3949 c -0.157762,-0.7822 -0.157743,-1.2548 0,-2.0369 l 0.684717,-3.395 c 0.157743,-0.7821 1.879143,-0.7822 2.036925,0 z"
+           id="path3802"
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="sssssssss" />
+      </g>
+      <rect
+         y="1034.5502"
+         x="25.153578"
+         height="15.000037"
+         width="14.91147"
+         id="rect3892-5"
+         style="fill:none;stroke:none" />
+    </g>
+    <g
+       id="r_step"
+       transform="matrix(1,0,0,0.9696992,-9.608387,33.596824)"
+       inkscape:label="#g3888"
+       style="fill:#727272;fill-opacity:1">
+      <rect
+         y="1003.162"
+         x="45.608387"
+         height="12.374971"
+         width="12"
+         id="rect3892-2"
+         style="fill:none;stroke:none;fill-opacity:1" />
+      <g
+         id="g3967"
+         transform="translate(-0.99999994,0)">
+        <path
+           sodipodi:nodetypes="sssssssss"
+           inkscape:connector-curvature="0"
+           id="path3802-9"
+           d="m 49.946997,1005.7084 0.563937,2.8009 c 0.129928,0.6453 0.129947,1.035 0,1.6804 l -0.563937,2.8008 c -0.129931,0.6453 -1.547441,0.6452 -1.67734,0 l -0.563842,-2.8008 c -0.129911,-0.6453 -0.129896,-1.0352 0,-1.6804 l 0.563842,-2.8009 c 0.129896,-0.6452 1.547412,-0.6453 1.67734,0 z"
+           style="fill:#727272;fill-opacity:1;stroke:none" />
+        <path
+           style="fill:#727272;fill-opacity:1;stroke:none"
+           d="m 54.167673,1005.6504 3.059364,2.8455 c 0.508466,0.4729 0.508466,1.2342 0,1.7072 l -3.059364,2.8455 c -0.508465,0.4729 -1.69346,0.6555 -1.835618,0 l -0.617046,-2.8455 c -0.142171,-0.6556 -0.142155,-1.0517 0,-1.7072 l 0.617046,-2.8455 c 0.142153,-0.6556 1.327153,-0.4729 1.835618,0 z"
+           id="qw3wewe-0"
+           inkscape:connector-curvature="0"
+           sodipodi:nodetypes="sssssssss"
+           inkscape:export-filename="/home/jvanden/work/phd/codyn/codyn/blender/data/play.png"
+           inkscape:export-xdpi="90"
+           inkscape:export-ydpi="90"
+           inkscape:label="#rect3795" />
+      </g>
+    </g>
+    <g
+       id="r_play"
+       inkscape:label="#g3894"
+       transform="translate(4,2.0000174)">
+      <path
+         inkscape:label="#rect3795"
+         inkscape:export-ydpi="90"
+         inkscape:export-xdpi="90"
+         inkscape:export-filename="/home/jvanden/work/phd/codyn/codyn/blender/data/play.png"
+         sodipodi:nodetypes="sssssssss"
+         inkscape:connector-curvature="0"
+         id="qw3wewe"
+         d="m 3.4123821,1005.8785 4.0791518,3.4491 c 0.6779548,0.5732 0.6779548,1.4961 0,2.0694 l -4.0791518,3.449 c -0.6779535,0.5732 -2.2579468,0.7946 -2.44749109,0 l -0.82272789,-3.449 c -0.18956206,-0.7947 -0.18953959,-1.2748 0,-2.0694 l 0.82272789,-3.4491 c 0.18953839,-0.7946 1.76953759,-0.5732 2.44749109,0 z"
+         style="fill:#727272;fill-opacity:1;stroke:none" />
+      <rect
+         y="1004.3622"
+         x="-2"
+         height="12"
+         width="12"
+         id="rect3892"
+         style="fill:none;stroke:none" />
+    </g>
+  </g>
+</svg>

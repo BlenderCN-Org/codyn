@@ -1,4 +1,87 @@
-import bgl, blf, inspect, os
+import bgl, blf, inspect, os, re, json
+
+class Point:
+    def __init__(self, x=0, y=0):
+        self.x = x
+        self.y = y
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) \
+            and other.x == self.x \
+            and other.y == self.y
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __iadd__(self, other):
+        if isinstance(other, Point):
+            self.x += other.x
+            self.y += other.y
+        else:
+            self.x += other
+            self.y += other
+
+        return self
+
+    def __add__(self, other):
+        ret = Point(self.x, self.y)
+        ret += other
+
+        return ret
+
+    def __isub__(self, other):
+        if isinstance(other, Point):
+            self.x -= other.x
+            self.y -= other.y
+        else:
+            self.x -= other
+            self.y -= other
+
+        return self
+
+    def __sub__(self, other):
+        ret = Point(self.x, self.y)
+        ret -= other
+
+        return ret
+
+    def __imul__(self, other):
+        if isinstance(other, Point):
+            self.x *= other.x
+            self.y *= other.y
+        else:
+            self.x *= other
+            self.y *= other
+
+        return self
+
+    def __mul__(self, other):
+        ret = Point(self.x, self.y)
+        ret *= other
+
+        return ret
+
+    def __itruediv__(self, other):
+        if isinstance(other, Point):
+            self.x /= other.x
+            self.y /= other.y
+        else:
+            self.x /= other
+            self.y /= other
+
+        return self
+
+    def __truediv__(self, other):
+        ret = Point(self.x, self.y)
+        ret /= other
+
+        return ret
+
+    def __neg__(self):
+        return Point(-self.x, -self.y)
+
+    def __repr__(self):
+        return '<{0} at 0x{1:x}, [x={2}, y={3}]>'.format(self.__class__.__name__, id(self), self.x, self.y)
 
 class Rect:
     def __init__(self, x=0, y=0, w=0, h=0):
@@ -6,6 +89,14 @@ class Rect:
         self.y = y
         self.w = w
         self.h = h
+
+    @staticmethod
+    def from_array(v):
+        return Rect(v[0], v[1], v[2], v[3])
+
+    @staticmethod
+    def uniform(v):
+        return Rect(v, v, v, v)
 
     def __eq__(self, other):
         return isinstance(other, Rect) \
@@ -16,6 +107,43 @@ class Rect:
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+    def reduce(self, other):
+        return Rect(self.x + other.x,
+                    self.y + other.y,
+                    self.w - other.sx,
+                    self.h - other.sy)
+
+    def __repr__(self):
+        return '<{0} at 0x{1:x}, [x={2}, y={3}, w={4}, h={5}]>'.format(self.__class__.__name__, id(self), self.x, self.y, self.w, self.h)
+
+    @property
+    def xy(self):
+        return Point(self.x, self.y)
+
+    @property
+    def xw(self):
+        return Point(self.x, self.w)
+
+    @property
+    def yh(self):
+        return Point(self.y, self.h)
+
+    @property
+    def wh(self):
+        return Point(self.w, self.h)
+
+    @property
+    def sx(self):
+        return self.x + self.w
+
+    @property
+    def sy(self):
+        return self.y + self.h
+
+    @property
+    def sxsy(self):
+        return Point(self.x + self.w, self.y + self.h)
 
 class Color:
     def __init__(self, r=0, g=0, b=0, a=0):
@@ -34,35 +162,23 @@ class Color:
     def __ne__(self, other):
         return not self.__eq__(other)
 
-class Alignment:
-    def __init__(self, x=0, y=0):
-        self.x = x
-        self.y = y
+    def apply(self):
+        bgl.glColor4f(self.r, self.g, self.b, self.a)
 
-    def __eq__(self, other):
-        return isinstance(other, Alignment) \
-            and other.x == self.x \
-            and other.y == self.y
+class Alignment(Point):
+    pass
 
-    def __ne__(self, other):
-        return not self.__ne__(other)
-
-class Fill:
-    def __init__(self, x=0, y=0):
-        self.x = x
-        self.y = y
-
-    def __eq__(self, other):
-        return isinstance(other, Fill) \
-            and other.x == self.x \
-            and other.y == self.y
-
-    def __ne__(self, other):
-        return not self.__ne__(other)
+class Fill(Point):
+    def __init__(self, x=False, y=False):
+        Point.__init__(self, x, y)
 
 class Texture:
+    atlas = re.compile('(.*[.]atlas):([a-z_][a-z0-9_]*)')
+
     def __init__(self, filename):
         from bge import texture
+
+        self.region = None
 
         if not filename.startswith('/'):
             f = inspect.getframeinfo(inspect.currentframe()).filename
@@ -70,44 +186,96 @@ class Texture:
 
             filename = os.path.join(d, 'data', filename)
 
+        m = Texture.atlas.match(filename)
+
         self.filename = filename
-        self.source = texture.ImageFFmpeg(self.filename)
-        self.buffer = texture.imageToArray(self.source, 'RGBA')
 
-        self.glid = bgl.Buffer(bgl.GL_INT, 1)
-        bgl.glGenTextures(1, self.glid)
+        if not m is None:
+            self.setup_atlas(m.group(1), m.group(2))
+        else:
+            self.source = texture.ImageFFmpeg(self.filename)
+            self.buffer = texture.imageToArray(self.source, 'RGBA')
 
-        self.bind()
+            if self.buffer is None:
+                print('Error loading {0}: {1}'.format(filename, texture.getLastError()))
 
-        bgl.glTexEnvi(bgl.GL_TEXTURE_ENV, bgl.GL_TEXTURE_ENV_MODE, bgl.GL_REPLACE)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_NEAREST)
-        bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_NEAREST)
+            self.glid = bgl.Buffer(bgl.GL_INT, 1)
+            bgl.glGenTextures(1, self.glid)
 
-        bgl.glTexImage2D(bgl.GL_TEXTURE_2D,
-                         0,
-                         bgl.GL_RGBA,
-                         self.width,
-                         self.height,
-                         0,
-                         bgl.GL_RGBA,
-                         bgl.GL_UNSIGNED_BYTE,
-                         self.buffer)
+            self.bind()
 
-        self.unbind()
+            bgl.glTexEnvi(bgl.GL_TEXTURE_ENV, bgl.GL_TEXTURE_ENV_MODE, bgl.GL_REPLACE)
+            bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MIN_FILTER, bgl.GL_NEAREST)
+            bgl.glTexParameteri(bgl.GL_TEXTURE_2D, bgl.GL_TEXTURE_MAG_FILTER, bgl.GL_NEAREST)
+
+            bgl.glTexImage2D(bgl.GL_TEXTURE_2D,
+                             0,
+                             bgl.GL_RGBA,
+                             self.width,
+                             self.height,
+                             0,
+                             bgl.GL_RGBA,
+                             bgl.GL_UNSIGNED_BYTE,
+                             self.buffer)
+
+            self.unbind()
+
+    def setup_atlas(self, filename, region):
+        with open(filename, 'r') as doc:
+            d = json.load(doc)
+
+            atlas = Textures.load(d['filename'])
+
+            self.glid = atlas.glid
+            self.source = atlas.source
+            self.buffer = atlas.buffer
+
+            if region in d['regions']:
+                self.region = Rect.from_array([float(x) for x in d['regions'][region]])
+
+                # Normalize as texture coordinates
+                self.region.x /= self.source.size[0]
+                self.region.y = (self.source.size[1] - self.region.y - self.region.h) / self.source.size[1]
+                self.region.w /= self.source.size[0]
+                self.region.h /= self.source.size[1]
+            else:
+                self.region = None
+
+    @property
+    def wh(self):
+        return Point(self.width, self.height)
 
     @property
     def width(self):
-        return self.source.size[0]
+        if self.region is None:
+            return self.source.size[0]
+        else:
+            return self.region.w * self.source.size[0]
 
     @property
     def height(self):
-        return self.source.size[1]
+        if self.region is None:
+            return self.source.size[1]
+        else:
+            return self.region.h * self.source.size[1]
 
     def bind(self):
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, self.glid[0])
 
+        if not self.region is None:
+            bgl.glMatrixMode(bgl.GL_TEXTURE)
+            bgl.glLoadIdentity()
+            bgl.glTranslatef(self.region.x, self.region.y, 0)
+            bgl.glScalef(self.region.w, self.region.h, 1)
+            bgl.glMatrixMode(bgl.GL_MODELVIEW)
+
     def unbind(self):
         bgl.glBindTexture(bgl.GL_TEXTURE_2D, 0)
+
+        if not self.region is None:
+            bgl.glMatrixMode(bgl.GL_TEXTURE)
+            bgl.glLoadIdentity()
+            bgl.glMatrixMode(bgl.GL_MODELVIEW)
 
 class Textures:
     textures = {}
@@ -169,7 +337,7 @@ class BoxTexture:
         self.texture.bind()
 
         bgl.glBegin(bgl.GL_QUADS)
-        bgl.glColor4f(self.color.r, self.color.g, self.color.b, self.color.a)
+        self.color.apply()
 
         for y in self.yregions:
             x0 = 0
@@ -205,21 +373,71 @@ class BoxTexture:
         self.texture.unbind()
 
 class Widget(object):
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.allocation = Rect()
         self.children = []
         self.parent = None
         self._relayout = False
         self.padding = Rect()
         self.margin = Rect()
-        self.align = Alignment()
+        self.alignment = Alignment()
         self.fill = Fill()
         self.background = None
+        self.color = Color(1, 1, 1, 1)
+        self._debug = False
 
-        self.debug = False
+        self.setup()
+
+        for k in kwargs:
+            setattr(self, k, kwargs[k])
+
+    def setup(self):
+        pass
+
+    def queue_resize(self):
+        self._relayout = True
+
+        if not self.parent is None:
+            self.parent.queue_resize()
+
+    def child_placement(self, child, alloc, childreq=None):
+        if childreq is None:
+            childreq = child.size_request()
+
+        # Calculate effective width/height of allocation area
+        es = Point()
+
+        if child.fill.x:
+            es.x = alloc.w - child.margin.sx
+        else:
+            es.x = childreq.x
+
+        if child.fill.y:
+            es.y = alloc.h - child.margin.sy
+        else:
+            es.y = childreq.y
+
+        pc = child.alignment * es
+        pp = child.alignment * (alloc.wh - child.margin.sxsy)
+
+        v = pp - pc + child.margin.xy
+
+        return Rect(alloc.x + v.x,
+                    alloc.sy - v.y - es.y,
+                    es.x,
+                    es.y)
 
     def size_request(self):
-        return (self.padding.x + self.padding.w, self.padding.y + self.padding.h)
+        ret = Point(self.padding.sx, self.padding.sy)
+        maxd = Point()
+
+        for child in self.children:
+            req = child.size_request()
+
+            maxd.x = max(maxd.x, req.x + child.margin.sx)
+            maxd.y = max(maxd.y, req.y + child.margin.sy)
+
+        return ret + maxd
 
     def add(self, child):
         if child.parent == self:
@@ -249,7 +467,16 @@ class Widget(object):
         self._relayout = True
 
     def layout_intern(self):
-        pass
+        area = Rect(self.padding.x,
+                    self.padding.y,
+                    self.allocation.w - self.padding.sx,
+                    self.allocation.h - self.padding.sy)
+
+        for child in self.children:
+            a = self.child_placement(child, area)
+
+            child.allocate(a)
+            child.layout()
 
     def layout(self):
         if self._relayout:
@@ -270,6 +497,16 @@ class Widget(object):
         bgl.glVertex2f(0, 0)
         bgl.glEnd()
 
+        bgl.glColor3f(0.5, 0, 0.5)
+
+        bgl.glBegin(bgl.GL_LINE_STRIP)
+        bgl.glVertex2f(self.padding.x, self.padding.h)
+        bgl.glVertex2f(w - self.padding.w, self.padding.h)
+        bgl.glVertex2f(w - self.padding.w, h - self.padding.y)
+        bgl.glVertex2f(self.padding.x, h - self.padding.y)
+        bgl.glVertex2f(self.padding.x, self.padding.h)
+        bgl.glEnd()
+
     def draw(self):
         if not self.background is None:
             self.background.draw(self.allocation.w, self.allocation.h)
@@ -288,21 +525,119 @@ class Widget(object):
 
             bgl.glPopMatrix()
 
-class Label(Widget):
-    def __init__(self, text='', size=10, font=0):
-        Widget.__init__(self)
+    @property
+    def debug(self):
+        return self._debug
 
-        self.text = text
-        self.size = size
-        self.color = Color(0, 0, 0, 1)
+    @debug.setter
+    def debug(self, v):
+        self._debug = v
 
-        self._font = font
-        self._dpi = 96
+        for child in self.children:
+            child.debug = v
+
+class Image(Widget):
+    def setup(self):
+        self._filename = None
+        self.texture = None
+
+    @property
+    def filename(self):
+        return self._filename
+
+    @filename.setter
+    def filename(self, v):
+        if self._filename == v:
+            return
+
+        self._filename = v
+        self.texture = Textures.load(v)
+
+        self.queue_resize()
+
+    def size_request(self):
+        return self.padding.sxsy + self.texture.wh
 
     def draw(self):
         Widget.draw(self)
 
-        bgl.glColor4f(self.color.r, self.color.g, self.color.b, self.color.a)
+        if self.texture is None:
+            return
+
+        self.texture.bind()
+
+        bgl.glBegin(bgl.GL_QUADS)
+        self.color.apply()
+
+        bgl.glTexCoord2f(0, 0)
+        bgl.glVertex2f(self.padding.x, self.padding.h)
+
+        bgl.glTexCoord2f(1, 0)
+        bgl.glVertex2f(self.allocation.w - self.padding.w, self.padding.h)
+
+        bgl.glTexCoord2f(1, 1)
+        bgl.glVertex2f(self.allocation.w - self.padding.w, self.allocation.h - self.padding.y)
+
+        bgl.glTexCoord2f(0, 1)
+        bgl.glVertex2f(self.padding.x, self.allocation.h - self.padding.y)
+
+        bgl.glEnd()
+        self.texture.unbind()
+
+class Label(Widget):
+    def setup(self):
+        self._text = ''
+        self._size = 10
+        self.color = Color(0, 0, 0, 1)
+        self._font = 0
+        self._fontname = None
+        self._dpi = 96
+
+    @property
+    def text(self):
+        return self._text
+
+    @text.setter
+    def text(self, v):
+        if self._text == v:
+            return
+
+        self._text = v
+        self.queue_resize()
+
+    @property
+    def size(self):
+        return self._size
+
+    @size.setter
+    def size(self, v):
+        if self._size == v:
+            return
+
+        self._size = v
+        self.queue_resize()
+
+    @property
+    def font(self):
+        return self._fontname
+
+    @font.setter
+    def font(self, v):
+        if self._fontname == v:
+            return
+
+        self._fontname = v
+        self._font = blf.load(self._fontname)
+
+        if self._font < 0:
+            self._font = 0
+
+        self.queue_resize()
+
+    def draw(self):
+        Widget.draw(self)
+
+        self.color.apply()
 
         blf.position(self._font, self.padding.x, self.padding.y, 0)
         blf.size(self._font, self.size, self._dpi)
@@ -312,17 +647,18 @@ class Label(Widget):
         blf.size(self._font, self.size, self._dpi)
         dim = blf.dimensions(self._font, self.text)
 
-        return (dim[0] + self.padding.x + self.padding.w, dim[1] + self.padding.y + self.padding.h)
+        return Point(dim[0] + self.padding.sx, dim[1] + self.padding.sy)
 
 class Box(Widget):
     VERTICAL = 0
     HORIZONTAL = 1
 
-    def __init__(self, orientation=VERTICAL):
-        Widget.__init__(self)
-
-        self._orientation = orientation
+    def __init__(self, **kwargs):
+        self._orientation = Box.VERTICAL
         self._homogeneous = False
+        self._spacing = 0
+
+        Widget.__init__(self, **kwargs)
 
     @property
     def orientation(self):
@@ -348,64 +684,92 @@ class Box(Widget):
         self._homogeneous = value
         self.queue_layout()
 
+    @property
+    def spacing(self):
+        return self._spacing
+
+    @orientation.setter
+    def spacing(self, value):
+        if self._spacing == value:
+            return
+
+        self._spacing = value
+        self.queue_layout()
+
     def layout_intern(self):
         if len(self.children) == 0:
             return
 
-        dim = [self.padding.x + self.padding.w, self.padding.y + self.padding.h]
+        dim = self.padding.sxsy
 
         sx = self.padding.x
-        sy = self.padding.y
+        sy = self.allocation.h - self.padding.h
 
         reqs = [child.size_request() for child in self.children]
 
         if self._homogeneous:
-            childw = (self.allocation.w - dim[0]) / len(self.children)
-            childh = (self.allocation.h - dim[1]) / len(self.children)
+            childs = (self.allocation.wh - dim) / len(self.children)
 
-            childw = [childw] * len(self.children)
-            childh = [childh] * len(self.children)
+            childs = [childs] * len(self.children)
         else:
-            sums = [0, 0]
+            sums = Point()
+            fixed = Point()
 
             for i in range(0, len(self.children)):
                 req = reqs[i]
                 child = self.children[i]
 
-                sums[0] += child.margin.x + child.margin.w + req[0]
-                sums[1] += child.margin.x + child.margin.w + req[1]
+                if child.fill.x:
+                    sums.x += child.margin.sx + req.x
+                else:
+                    fixed.x += child.margin.sx + req.x
 
-            childw = [None] * len(self.children)
-            childh = [None] * len(self.children)
+                if child.fill.y:
+                    sums.y += child.margin.sy + req.y
+                else:
+                    fixed.y += child.margin.sy + req.y
+
+            childs = [None] * len(self.children)
+            flex = (self.allocation.wh - dim) - fixed
+
+            if self._orientation == Box.VERTICAL:
+                flex.y -= max(0, len(self.children) - 1) * self._spacing
+            else:
+                flex.x -= max(0, len(self.children) - 1) * self._spacing
 
             for i in range(0, len(self.children)):
                 req = reqs[i]
                 child = self.children[i]
 
-                fracw = (child.margin.x + child.margin.w + req[0]) / sums[0]
-                frach = (child.margin.y + child.margin.h + req[1]) / sums[1]
+                childs[i] = Point()
 
-                childw[i] = (self.allocation.w - dim[0]) * fracw
-                childh[i] = (self.allocation.h - dim[1]) * frach
+                if child.fill.x:
+                    childs[i].x = flex.x * (child.margin.sx + req.x) / sums.x
+                else:
+                    childs[i].x = child.margin.sx + req.x
+
+                if child.fill.y:
+                    childs[i].y = flex.y * (child.margin.sy + req.y) / sums.y
+                else:
+                    childs[i].y = child.margin.sy + req.y
 
         for i in range(0, len(self.children)):
             req = reqs[i]
             child = self.children[i]
 
             if self._orientation == Box.VERTICAL:
-                child.allocate(Rect(sx + child.margin.x,
-                                    sy + child.margin.y,
-                                    self.allocation.w - self.padding.x - self.padding.w - child.margin.x - child.margin.w,
-                                    childh[i] - child.margin.y - child.margin.h))
+                sy -= childs[i].y
 
-                sy += childh[i]
+                area = Rect(sx, sy, self.allocation.w - self.padding.sx, childs[i].y)
+
+                child.allocate(self.child_placement(child, area, reqs[i]))
+
+                sy -= self._spacing
             else:
-                child.allocate(Rect(sx + child.margin.x,
-                                    sy + child.margin.y,
-                                    childw[i] - child.margin.x - child.margin.w,
-                                    self.allocation.h - self.padding.y - self.padding.h - child.margin.x - child.margin.w))
+                area = Rect(sx, self.padding.h, childs[i].x, self.allocation.h - self.padding.sy)
+                child.allocate(self.child_placement(child, area, reqs[i]))
 
-                sx += childw[i]
+                sx += childs[i].x + self._spacing
 
             child.layout()
 
@@ -416,8 +780,8 @@ class Box(Widget):
         for child in self.children:
             req = child.size_request()
 
-            cw = req[0] + child.margin.x + child.margin.w
-            ch = req[1] + child.margin.y + child.margin.h
+            cw = req.x + child.margin.sx
+            ch = req.y + child.margin.sy
 
             if self._orientation == Box.VERTICAL:
                 mw = max(mw, cw)
@@ -426,47 +790,79 @@ class Box(Widget):
                 mw += cw
                 mh = max(mh, ch)
 
-        return (self.padding.x + self.padding.w + mw, self.padding.y + self.padding.h + mh)
+        return Point(self.padding.sx + mw, self.padding.sy + mh)
 
-class Overlay(Widget):
+class Button(Widget):
+    def setup(self):
+        self.background = BoxTexture('gui.atlas:roundedrect', [3, -1, 3], [3, -1, 3])
+        self.padding = Rect.uniform(6)
+        self._icon = None
+        self._widget = None
+        self._text = None
+
+    @property
+    def icon(self):
+        return self._icon
+
+    @icon.setter
+    def icon(self, v):
+        if self._icon == v:
+            return
+
+        self._icon = v
+
+        if not isinstance(v, Widget):
+            v = Image(filename=v)
+            v.alignment = Alignment(0.5, 0.5)
+
+        if not self._widget is None:
+            self.remove(self._widget)
+
+        self._widget = v
+        self.add(v)
+        self.queue_resize()
+
+    @property
+    def text(self):
+        return self._text
+
+    @text.setter
+    def text(self, v):
+        if self._text == v:
+            return
+
+        self._text = v
+
+        if not isinstance(v, Widget):
+            v = Label(text=v)
+            v.alignment = Alignment(0.5, 0.5)
+
+        if not self._widget is None:
+            self.remove(self._widget)
+
+        self._widget = v
+        self.add(v)
+        self.queue_resize()
+
+    @property
+    def widget(self):
+        return self._widget
+
+    @widget.setter
+    def widget(self, v):
+        if self._widget == v:
+            return
+
+        if not self._widget is None:
+            self.remove(self._widget)
+
+        self._widget = v
+        self.add(v)
+        self.queue_resize()
+
+class Screen(Widget):
     def __init__(self):
         Widget.__init__(self)
-
-    def layout_intern(self):
-        w = self.allocation.w - self.padding.x - self.padding.w
-        h = self.allocation.h - self.padding.y - self.padding.h
-
-        for child in self.children:
-            req = child.size_request()
-
-            cw = req[0]
-            ch = req[1]
-
-            if child.fill.x:
-                cw = w
-
-            if child.fill.y:
-                cw = h
-
-            sxc = child.margin.x + child.margin.w + cw
-            syc = child.margin.y + child.margin.h + ch
-
-            pxc = child.align.x * sxc
-            pyc = child.align.y * syc
-
-            px = child.align.x * w + self.padding.x
-            py = child.align.y * h + self.padding.y
-
-            # Layout such that pxc aligns with px and pyc aligns with py
-            x = px - pxc + child.margin.x
-            y = py - pyc + child.margin.y
-
-            child.allocate(Rect(x, self.allocation.h - y - ch, cw, ch))
-            child.layout()
-
-class Screen(Overlay):
-    def __init__(self):
-        Overlay.__init__(self)
 
         from bge import render
         from bge import logic
@@ -477,8 +873,8 @@ class Screen(Overlay):
     def draw(self):
         self.allocate(Rect(self.margin.x,
                            self.margin.y,
-                           self._render.getWindowWidth() - self.margin.x - self.margin.w,
-                           self._render.getWindowHeight() - self.margin.y - self.margin.h))
+                           self._render.getWindowWidth() - self.margin.sx,
+                           self._render.getWindowHeight() - self.margin.sy))
         self.layout()
 
         bgl.glMatrixMode(bgl.GL_PROJECTION)

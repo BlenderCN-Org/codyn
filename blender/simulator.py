@@ -239,14 +239,28 @@ class SimulatorRawc(Simulator):
 
 def setup_gui(data):
     b = gui.Box(orientation=gui.Box.HORIZONTAL)
-    b.background = gui.BoxTexture('bar.png', [-1], [-1, 1])
+    b.background = gui.BoxTexture('gui.atlas:bar', [-1], [-1, 1])
     b.padding = gui.Rect(6, 6, 6, 6)
-    b.align.y = 1
+    b.alignment.y = 1
     b.fill.x = True
+    b.homogeneous = False
+    b.spacing = 6
 
-    l = gui.Label('Time:')
+    play = gui.Button(icon='gui.atlas:play')
+    b.add(play)
+
+    step = gui.Button(icon='gui.atlas:step')
+    b.add(step)
+
+    la = gui.Widget(alignment=gui.Alignment(1, 0.5), fill=gui.Fill(True, True))
+
+    l = gui.Label(text='time: {:>6.3f}'.format(0))
     l.color = gui.Color(1, 1, 1, 1)
-    b.add(l)
+    l.padding = gui.Rect.uniform(3)
+    l.alignment = gui.Alignment(1, 0.5)
+
+    la.add(l)
+    b.add(la)
 
     data.gui.add(b)
     data.lbl_time = l
