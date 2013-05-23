@@ -890,7 +890,7 @@ class Screen(Widget):
         bgl.glEnable(bgl.GL_BLEND)
         bgl.glDisable(bgl.GL_DEPTH)
 
-        Overlay.draw(self)
+        Widget.draw(self)
 
         bgl.glPopMatrix()
 
