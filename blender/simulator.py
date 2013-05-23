@@ -304,7 +304,7 @@ def init():
     setup_gui(data)
 
     scene = bge.logic.getCurrentScene()
-    scene.post_draw = [data.gui.draw]
+    scene.post_draw = [data.gui.update]
 
     bge.render.showMouse(True)
     cont.activate('init_actuator')

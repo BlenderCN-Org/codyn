@@ -114,6 +114,12 @@ class Rect:
                     self.w - other.sx,
                     self.h - other.sy)
 
+    def hittest(self, p):
+        return p.x >= self.x and \
+               p.x < self.x + self.w and \
+               p.y >= self.y and \
+               p.y < self.y + self.h
+
     def __repr__(self):
         return '<{0} at 0x{1:x}, [x={2}, y={3}, w={4}, h={5}]>'.format(self.__class__.__name__, id(self), self.x, self.y, self.w, self.h)
 
@@ -385,11 +391,41 @@ class Widget(object):
         self.background = None
         self.color = Color(1, 1, 1, 1)
         self._debug = False
+        self.mouse_focus = False
 
         self.setup()
 
         for k in kwargs:
             setattr(self, k, kwargs[k])
+
+    def on_mouse_focus_in(self, p):
+        self.mouse_focus = True
+        return True
+
+    def on_mouse_focus_out(self, p):
+        self.mouse_focus = False
+        return True
+
+    def on_button_press(self, p):
+        return False
+
+    def on_button_release(self, p):
+        return False
+
+    def hittest(self, p):
+        if not self.allocation.hittest(p):
+            return None, Point()
+
+        pc = p - self.allocation.xy
+
+        # Check children
+        for child in self.children:
+            w, retp = child.hittest(pc)
+
+            if not w is None:
+                return w, retp
+
+        return self, p
 
     def setup(self):
         pass
@@ -866,9 +902,86 @@ class Screen(Widget):
 
         from bge import render
         from bge import logic
+        from bge import events
 
         self._render = render
         self._logic = logic
+        self._events = events
+
+        self._mouse_focus = None
+        self._mouse_down = {}
+
+    def emit_event(self, w, cb, e):
+        while not w is None:
+            if cb(w, e):
+                return w
+
+            w = w.parent
+
+        return None
+
+    def process_mouse_move(self, xy):
+        widget, p = self.hittest(xy)
+
+        if widget == self._mouse_focus:
+            return
+
+        if not self._mouse_focus is None:
+            self._mouse_focus.on_mouse_focus_out(p)
+
+        self._mouse_focus = widget
+
+        if not widget is None:
+            self._mouse_focus = self.emit_event(widget, lambda x, e: x.on_mouse_focus_in(e), p)
+        else:
+            self._mouse_focus = None
+
+    def global_to_widget_coords(self, w, xy):
+        xyret = Point(xy.x, xy.y)
+
+        while not w is None:
+            xyret -= w.allocation.xy
+            w = w.parent
+
+        return xyret
+
+    def process_mouse_updown(self, xy, button):
+        active = self._logic.mouse.events[button] == self._logic.KX_INPUT_ACTIVE
+
+        if active and not button in self._mouse_down:
+            w, p = self.hittest(xy)
+
+            if not w is None:
+                self._mouse_down[button] = self.emit_event(w, lambda x, e: x.on_button_press(e), p)
+            else:
+                self._mouse_down[button] = None
+        elif not active and button in self._mouse_down:
+            if not self._mouse_down[button] is None:
+                self._mouse_down[button].on_button_release(self.global_to_widget_coords(self._mouse_down[button], xy))
+
+            del self._mouse_down[button]
+
+    def process_events(self):
+        m = self._logic.mouse
+        pos = m.position
+
+        p = Point(pos[0] * self._render.getWindowWidth(),
+                  (1 - pos[1]) * self._render.getWindowHeight())
+
+        if self._events.MOUSEX in m.active_events or self._events.MOUSEY in m.active_events:
+            self.process_mouse_move(p)
+
+        ev = [self._events.LEFTMOUSE, self._events.MIDDLEMOUSE, self._events.RIGHTMOUSE]
+
+        for e in ev:
+            if e in m.active_events:
+                self.process_mouse_updown(p, e)
+            elif e in self._mouse_down:
+                self.process_mouse_updown(p, e)
+
+    def update(self):
+        self.process_events()
+        self.draw()
 
     def draw(self):
         self.allocate(Rect(self.margin.x,
@@ -889,6 +1002,7 @@ class Screen(Widget):
         bgl.glEnable(bgl.GL_TEXTURE_2D)
         bgl.glEnable(bgl.GL_BLEND)
         bgl.glDisable(bgl.GL_DEPTH)
+        bgl.glDisable(bgl.GL_LIGHTING)
 
         Widget.draw(self)
 
