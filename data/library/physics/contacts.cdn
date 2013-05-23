@@ -23,7 +23,7 @@ templates
                 normalDamping = "5 * normPerContact"
                 frictionCoefficient = "0.6"
                 frictionDamping = "10 * normPerContact"
-                coefficientOfRestitution = "0.1"
+                coefficientOfRestitution = "0"
 
                 # calculate locations in base.
                 #
