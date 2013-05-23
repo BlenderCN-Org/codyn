@@ -1401,7 +1401,7 @@ op_inverse (CdnStack           *stack,
 
 	ipiv = (LP_int *)(cdn_stack_output_ptr (stack));
 	work = cdn_stack_output_ptr (stack) + n;
-	lwork = (cdn_stack_output_ptr (stack) + cdn_stack_size (stack)) - work;
+	lwork = (cdn_stack_ptr (stack) + cdn_stack_size (stack)) - work;
 
 	dgetrf_ (&n, &n, ptr, &n, ipiv, &info);
 	dgetri_ (&n, ptr, &n, ipiv, work, &lwork, &info);
