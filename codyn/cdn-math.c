@@ -2825,6 +2825,30 @@ sparsity_multiply (CdnStackArg const *arg1,
 
 #ifdef HAVE_LAPACK
 static LP_int
+inverse_work_space (CdnDimension const *dim)
+{
+	LP_int n;
+	LP_int *ipiv;
+	LP_int info;
+	LP_double work;
+	LP_int lwork;
+	LP_double *ptr;
+
+	n = dim->rows;
+
+	ptr = g_new0 (LP_double, n * n);
+	ipiv = g_new0 (LP_int, n);
+	lwork = -1;
+
+	dgetri_ (&n, ptr, &n, ipiv, &work, &lwork, &info);
+
+	g_free (ptr);
+	g_free (ipiv);
+
+	return n + (LP_int)work;
+}
+
+static LP_int
 pseudo_inverse_work_space (CdnDimension const *dim)
 {
 	LP_int mindim;
@@ -3426,7 +3450,7 @@ cdn_math_function_get_stack_manipulation (CdnMathFunctionType    type,
 			}
 
 			cdn_stack_arg_copy (outarg, inargs->args);
-			*extra_space = inargs->args[0].rows;
+			*extra_space = inverse_work_space (&inargs->args[0].dimension);
 		break;
 		case CDN_MATH_FUNCTION_TYPE_PSEUDO_INVERSE:
 			outarg->rows = inargs->args[0].columns;
