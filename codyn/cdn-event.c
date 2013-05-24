@@ -1046,24 +1046,29 @@ cdn_event_add_set_variable (CdnEvent      *event,
 	                                              p);
 }
 
-static void
-execute_set_property (CdnEvent    *event,
-                      SetVariable *p)
-{
-	CdnMatrix const *values;
-
-	values = cdn_expression_evaluate_values (p->value);
-	cdn_variable_set_values (p->variable, values);
-}
-
 void
 cdn_event_execute (CdnEvent *event)
 {
 	GSList *setprop;
+	GSList *vals = NULL;
 
 	for (setprop = event->priv->set_variables; setprop; setprop = g_slist_next (setprop))
 	{
-		execute_set_property (event, setprop->data);
+		SetVariable *p = setprop->data;
+
+		vals = g_slist_prepend (vals,
+		                        (gpointer)cdn_expression_evaluate_values (p->value));
+	}
+
+	vals = g_slist_reverse (vals);
+
+	for (setprop = event->priv->set_variables; setprop; setprop = g_slist_next (setprop))
+	{
+		SetVariable *p = setprop->data;
+
+		cdn_variable_set_values (p->variable, vals->data);
+
+		vals = g_slist_delete_link (vals, vals);
 	}
 }
 
