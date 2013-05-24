@@ -1,4 +1,4 @@
-node | "@bodies" . has-template(physics.contacts.soft)
+node | "@bodies" . has-template(physics.contacts)
 {
     event "air" to "impact" when "min(pN) < -0.001" within 0.001
     {
@@ -25,7 +25,7 @@ node | "@bodies" . has-template(physics.contacts.soft)
         set   recurse(parent)
             | has-template(physics.system)
             | first .
-                "@bodies".dq = "dqAfterImpulse[[{@bodydofex[$(@1[!] + 1)]||@0\, @1}]]"
+                "@bodies".dq = "dqAfterImpulse[[{@bodydofex[$(@@1[!] + 1)]||@0\, @1}]]"
     }
 }
 
