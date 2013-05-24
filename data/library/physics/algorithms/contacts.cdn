@@ -1,4 +1,4 @@
-node | "@bodies" . has-template(physics.contacts)
+node | "@bodies" . has-template(physics.contacts.soft)
 {
     event "air" to "impact" when "min(pN) < -0.001" within 0.001
     {
