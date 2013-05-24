@@ -202,6 +202,10 @@ class SimulatorRawc(Simulator):
 
             Simulator.Force.update(self, f[i:i + 6])
 
+    @property
+    def t(self):
+        return self.data.rawc.t
+
     def setup(self):
         self.cdn_nodes = []
         self.cdn_forces = []
