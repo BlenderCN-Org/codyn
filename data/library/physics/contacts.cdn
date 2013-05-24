@@ -19,7 +19,7 @@ templates
                 normPerContact = "model.numActiveContacts > 0 ? normalization / model.numActiveContacts : normalization"
 
                 maxNormalForce = "50 * normalization"
-                normalStiffness = "1e6 * normPerContact"
+                normalStiffness = "1e2 * normPerContact"
                 normalDamping = "5 * normPerContact"
                 frictionCoefficient = "0.6"
                 frictionDamping = "10 * normPerContact"
@@ -42,7 +42,7 @@ templates
                 # the contact position in the normal direction (Z)
                 #
                 # [1-by-N]
-                pN = "p[2, :]"
+                pN = "p[2, :]" | out
 
                 # the contact velocity in the normal direction
                 #
@@ -103,7 +103,7 @@ templates
                 edge self | first
                 {
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
-                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
+                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "{ground,impact}"
                 }
 
                 active    = 0
@@ -111,12 +111,13 @@ templates
                 impacting = 0
 
                 # Events used for event refinement
-                event "impact" to "ground" when "impacting > 0 && min(dpN) <= 0"
+                event "impact" to "ground" when "impacting > 0 && min(pN) <= 0"
                 {
                     set impacting = 0
+                    set active = 1
                 }
 
-                event "impact" to "air"    when "impacting > 0 && min(dpN)  > 0"
+                event "impact" to "air"    when "impacting > 0 && min(pN)  > 0"
                 {
                     set active = 0
                     set impacting = 0
