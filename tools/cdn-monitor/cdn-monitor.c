@@ -36,7 +36,6 @@
 
 static GPtrArray *monitored = NULL;
 static gboolean include_header = FALSE;
-static gchar *delimiter = NULL;
 static gdouble from = 0;
 static gdouble step = 0;
 static gdouble to = 1;
@@ -173,8 +172,6 @@ static GOptionEntry entries[] = {
 	 "Selector for variables to monitor (e.g. /state_.*/.\"{x,y}\")", "SEL"},
 	{"include-header", 'i', 0, G_OPTION_ARG_NONE, &include_header,
 	 "Include header in output", NULL},
-	{"delimiter", 'd', 0, G_OPTION_ARG_STRING, &delimiter,
-	 "Column delimiter (defaults to tab)", "DELIM"},
 	{"time", 't', 0, G_OPTION_ARG_CALLBACK, parse_time,
 	 "Time range (to, from:to or from:step:to, defaults to 1)", "RANGE"},
 	{"output", 'o', 0, G_OPTION_ARG_CALLBACK, parse_output_file,
@@ -213,13 +210,6 @@ write_headers (CdnMonitored *monmon)
 	while (names)
 	{
 		gchar const *name = names->data;
-
-		g_output_stream_write_all (stream,
-		                           delimiter,
-		                           strlen (delimiter),
-		                           NULL,
-		                           NULL,
-		                           NULL);
 
 		g_output_stream_write_all (stream,
 		                           name,
@@ -378,7 +368,6 @@ static void
 record_monitors (CdnMonitored *monitored)
 {
 	// Record all monitors
-	gboolean first = TRUE;
 	GSList *monitors;
 
 	if (!monitored)
@@ -390,7 +379,7 @@ record_monitors (CdnMonitored *monitored)
 	{
 		gchar *stamp;
 
-		stamp = g_strdup_printf ("%f", get_current_time ());
+		stamp = g_strdup_printf (precision, get_current_time ());
 
 		g_output_stream_write_all (monitored->stream,
 		                           stamp,
@@ -399,8 +388,6 @@ record_monitors (CdnMonitored *monitored)
 		                           NULL,
 		                           NULL);
 		g_free (stamp);
-		
-		first = FALSE;
 	}
 
 	monitors = monitored->monitors;
@@ -417,26 +404,10 @@ record_monitors (CdnMonitored *monitored)
 		dim = mon->dimension;
 		num = cdn_dimension_size (&dim);
 
-		if (!first)
-		{
-			g_output_stream_write_all (monitored->stream,
-			                           delimiter,
-			                           strlen (delimiter),
-			                           NULL,
-			                           NULL,
-			                           NULL);
-		}
-		else
-		{
-			first = FALSE;
-		}
-
 		if (mon->row >= 0)
 		{
-			gchar value[G_ASCII_DTOSTR_BUF_SIZE];
-			gchar *rv = value;
+			gchar *rv;
 			gint idx;
-			gboolean freerv = FALSE;
 
 			if (mon->col >= 0)
 			{
@@ -449,21 +420,11 @@ record_monitors (CdnMonitored *monitored)
 
 			if (idx >= num)
 			{
-				strcpy (value, "NAN");
+				rv = g_strdup ("NAN");
 			}
 			else
 			{
-				if (!precision)
-				{
-					g_ascii_dtostr (value,
-					                G_ASCII_DTOSTR_BUF_SIZE,
-					                values[idx]);
-				}
-				else
-				{
-					freerv = TRUE;
-					rv = g_strdup_printf (precision, values[idx]);
-				}
+				rv = g_strdup_printf (precision, values[idx]);
 			}
 
 			g_output_stream_write_all (monitored->stream,
@@ -473,10 +434,7 @@ record_monitors (CdnMonitored *monitored)
 			                           NULL,
 			                           NULL);
 
-			if (freerv)
-			{
-				g_free (rv);
-			}
+			g_free (rv);
 		}
 		else
 		{
@@ -484,31 +442,9 @@ record_monitors (CdnMonitored *monitored)
 
 			for (i = 0; i < num; ++i)
 			{
-				gchar value[G_ASCII_DTOSTR_BUF_SIZE];
-				gchar *rv = value;
-				gboolean freerv = FALSE;
+				gchar *rv;
 
-				if (!precision)
-				{
-					g_ascii_dtostr (value,
-					                G_ASCII_DTOSTR_BUF_SIZE,
-					                values[i]);
-				}
-				else
-				{
-					freerv = TRUE;
-					rv = g_strdup_printf (precision, values[i]);
-				}
-
-				if (i != 0)
-				{
-					g_output_stream_write_all (monitored->stream,
-					                           delimiter,
-					                           strlen (delimiter),
-					                           NULL,
-					                           NULL,
-					                           NULL);
-				}
+				rv = g_strdup_printf (precision, values[i]);
 
 				g_output_stream_write_all (monitored->stream,
 				                           rv,
@@ -517,10 +453,7 @@ record_monitors (CdnMonitored *monitored)
 				                           NULL,
 				                           NULL);
 
-				if (freerv)
-				{
-					g_free (rv);
-				}
+				g_free (rv);
 			}
 		}
 
@@ -903,7 +836,7 @@ static void
 cleanup ()
 {
 	g_ptr_array_free (monitored, TRUE);
-	g_free (delimiter);
+	g_free (precision);
 }
 
 static gchar **
@@ -1038,7 +971,7 @@ main (int argc,
 	setlocale (LC_ALL, "");
 
 	monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)cdn_monitored_free);
-	delimiter = g_strdup ("\t");
+	precision = g_strdup ("% 18.12f");
 
 	ctx = g_option_context_new ("-m <SELECTOR> [-m ...] [-v RANGE...] [NETWORK] - monitor Codyn network");
 	g_option_context_set_summary (ctx, "Omit the network name or use a dash '-' to read from standard input.");
