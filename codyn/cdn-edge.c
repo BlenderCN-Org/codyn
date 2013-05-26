@@ -1388,9 +1388,16 @@ edge_get_action_intern (CdnEdge       *edge,
 
 			table = cdn_phaseable_get_phase_table (CDN_PHASEABLE (action));
 
-			if ((!table || g_hash_table_size (table) == 0) && !phases)
+			if ((!table || g_hash_table_size (table) == 0))
 			{
-				return action;
+				if (!phases)
+				{
+					return action;
+				}
+				else
+				{
+					continue;
+				}
 			}
 
 			for (item = phases; item; item = g_slist_next (item))
