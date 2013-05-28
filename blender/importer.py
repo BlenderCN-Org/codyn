@@ -1,4 +1,4 @@
-import bpy, os, inspect, sys, math, mathutils
+import bpy, os, inspect, sys, math, mathutils, collections
 from gi.repository import Cdn
 
 import codyn
@@ -220,6 +220,23 @@ class CodynImport(bpy.types.Operator):
 
         return o
 
+    def has_applied_template(self, obj, template):
+        templmap = {}
+        templ = collections.deque(obj.get_applied_templates())
+
+        while len(templ) > 0:
+            t = templ.popleft()
+            templmap[t] = True
+
+            if t == template:
+                return True
+
+            for p in t.get_applied_templates():
+                if not p in templmap:
+                    templ.append(p)
+
+        return False
+
     def import_system(self, cdnobj, context, system):
         bodies = system.find_objects('has-template(physics.body)')
         ret = []
@@ -333,7 +350,9 @@ class CodynImport(bpy.types.Operator):
             obj = nodemap[body]
 
             for edge in body.get_edges():
-                if pedge in edge.get_applied_templates() and edge.get_output() == body:
+                hastempl = self.has_applied_template(edge, pedge)
+
+                if hastempl and edge.get_output() == body:
                     parnode = edge.get_input()
 
                     if not parnode in nodemap:
