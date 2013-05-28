@@ -113,7 +113,7 @@ templates
                               Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
                 }
 
-                   active    = 0
+                      active = 0
                    numActive = "sum(pN < 0)"
                 contactPoint = "zeros(3, size(location, 1))"
 
