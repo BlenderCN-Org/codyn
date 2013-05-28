@@ -21,7 +21,6 @@ node | "@bodies" . has-template(physics.contacts.soft)
         # The system output velocity after impulse: q̇⁺ = H⁻¹ Jᵀ F + q̇⁻
         dqAfterImpulse = "inertiaWeightedJacobianPseudoInverse ∙ dv + model.dq"
 
-        set impacting = "impacting + 1"
         set contactPoint = "p"
         set   recurse(parent)
             | has-template(physics.system)

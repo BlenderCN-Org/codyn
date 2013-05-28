@@ -115,7 +115,6 @@ templates
 
                    active    = 0
                    numActive = "sum(pN < 0)"
-                   impacting = 0
                 contactPoint = "zeros(3, size(location, 1))"
 
                 event "ground"    to "air"    when "min(pN)   > 0" within 0.001                 { set active = 0 }
