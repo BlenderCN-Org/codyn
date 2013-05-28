@@ -45,6 +45,7 @@ static gboolean simplify = FALSE;
 static gboolean timestamp = FALSE;
 static gboolean rawc = FALSE;
 static gchar *precision = NULL;
+static gboolean display = FALSE;
 
 #define CDN_MONITOR_ERROR (cdn_monitor_error_quark())
 
@@ -186,6 +187,8 @@ static GOptionEntry entries[] = {
 	 "Use rawc (if possible) to run the network", NULL},
 	{"precision", 'c', 0, G_OPTION_ARG_STRING, &precision,
 	 "Precision at which to print values (printf style)", "FORMAT"},
+	{"display", 'd', 0, G_OPTION_ARG_NONE, &display,
+	 "Display variable contents after simulation", NULL},
 	{NULL}
 };
 
@@ -469,6 +472,69 @@ record_monitors (CdnMonitored *monitored)
 }
 
 static void
+display_monitors (CdnMonitored *monitored)
+{
+	GSList *monitors;
+
+	monitors = monitored->monitors;
+
+	while (monitors)
+	{
+		CdnMonitorVariable *mon = monitors->data;
+		CdnDimension dim;
+		gdouble const *values;
+		CdnMatrix *m;
+		gchar *name;
+		gchar *val;
+
+		values = mon->get_values (mon);
+
+		dim = mon->dimension;
+
+		m = cdn_matrix_new (values, &dim);
+
+		name = mon->get_name (mon);
+
+		g_output_stream_write_all (monitored->stream,
+		                           name,
+		                           strlen (name),
+		                           NULL,
+		                           NULL,
+		                           NULL);
+
+		g_output_stream_write_all (monitored->stream,
+		                           ": ",
+		                           2,
+		                           NULL,
+		                           NULL,
+		                           NULL);
+
+		val = cdn_matrix_to_string (m);
+
+		g_output_stream_write_all (monitored->stream,
+		                           val,
+		                           strlen (val),
+		                           NULL,
+		                           NULL,
+		                           NULL);
+
+		g_free (name);
+		g_free (val);
+
+		g_output_stream_write_all (monitored->stream,
+		                           "\n\n",
+		                           2,
+		                           NULL,
+		                           NULL,
+		                           NULL);
+
+		cdn_matrix_free (m);
+
+		monitors = g_slist_next (monitors);
+	}
+}
+
+static void
 write_values (CdnMonitorImplementation *implementation)
 {
 	gint i;
@@ -476,6 +542,17 @@ write_values (CdnMonitorImplementation *implementation)
 	for (i = 0; i < monitored->len; ++i)
 	{
 		record_monitors (monitored->pdata[i]);
+	}
+}
+
+static void
+display_values (CdnMonitorImplementation *implementation)
+{
+	gint i;
+
+	for (i = 0; i < monitored->len; ++i)
+	{
+		display_monitors (monitored->pdata[i]);
 	}
 }
 
@@ -630,7 +707,10 @@ run_simple_monitor (CdnMonitorImplementation *implementation)
 
 	implementation->begin (implementation, t, step);
 
-	write_values (implementation);
+	if (!display)
+	{
+		write_values (implementation);
+	}
 
 	while (t < to)
 	{
@@ -647,7 +727,10 @@ run_simple_monitor (CdnMonitorImplementation *implementation)
 
 		t += realstep;
 
-		write_values (implementation);
+		if (!display)
+		{
+			write_values (implementation);
+		}
 
 		if (realstep <= 0 || implementation->terminated (implementation))
 		{
@@ -658,6 +741,11 @@ run_simple_monitor (CdnMonitorImplementation *implementation)
 	if (implementation->end)
 	{
 		implementation->end (implementation);
+	}
+
+	if (display)
+	{
+		display_values (implementation);
 	}
 
 	return 0;
