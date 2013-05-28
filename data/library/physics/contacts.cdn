@@ -15,14 +15,20 @@ templates
                 initial-state "air"
 
                 # contact parameters
-                normalization = "hypot(g) * model.totalMass"
-                normPerContact = "model.numActiveContacts > 0 ? normalization / model.numActiveContacts : normalization"
+                massPerContact = "model.numActiveContacts > 0 ? model.totalMass / model.numActiveContacts : model.totalMass"
 
-                maxNormalForce = "50 * normalization"
-                normalStiffness = "1e2 * normPerContact"
-                normalDamping = "5 * normPerContact"
+                maxNormalForce = "50 * model.totalMass"
+
+                normalζ = "0.001"
+                normalStiffness = "1e6 * massPerContact"
+                normalDamping = "normalζ * 2 * sqrt(massPerContact * normalStiffness)"
+
                 frictionCoefficient = "0.6"
-                frictionDamping = "10 * normPerContact"
+
+                frictionζ = "0.0001"
+                frictionStiffness = "1e7 * massPerContact"
+                frictionDamping = "frictionζ * 2 * sqrt(massPerContact * frictionStiffness)"
+
                 coefficientOfRestitution = "0"
 
                 # calculate locations in base.
@@ -57,7 +63,7 @@ templates
                 # the contact force due to the contact model damping
                 #
                 # [1-by-N]
-                forceNormalDamping = "-normalDamping * dpN"
+                forceNormalDamping = "2 * normalDamping * -dpN .* (pN < 0)"
 
                 # [1-by-N]
                 forceNormal = "max(0,
@@ -67,7 +73,8 @@ templates
                 # tangential forces due to friction (in X and Y)
                 #
                 # [1-by-N]
-                "forceTangential{X,Y}" = "-frictionDamping * dp[@1[!], :]"
+                ep = "contactPoint[@1[!], :] - p[@1[!], :]"
+                "forceTangential{X,Y}" = "frictionStiffness * csign(ep², ep) - 2 * frictionDamping * dp[@1[!], :]"
 
                 # maximum tangential force by simple coulomb friction
                 #
@@ -103,25 +110,13 @@ templates
                 edge self | first
                 {
                     force <= "Spatial.ForceTransform(baseToLocalTransform) *
-                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "{ground,impact}"
+                              Spatial.ForcesAtOrigin(forceAtLocations, p)" state "ground"
                 }
 
-                active    = 0
-                numActive = "sum(pN < 0)"
-                impacting = 0
-
-                # Events used for event refinement
-                event "impact" to "ground" when "impacting > 0 && min(pN) <= 0"
-                {
-                    set impacting = 0
-                    set active = 1
-                }
-
-                event "impact" to "air"    when "impacting > 0 && min(pN)  > 0"
-                {
-                    set active = 0
-                    set impacting = 0
-                }
+                   active    = 0
+                   numActive = "sum(pN < 0)"
+                   impacting = 0
+                contactPoint = "zeros(3, size(location, 1))"
 
                 event "ground"    to "air"    when "min(pN)   > 0" within 0.001                 { set active = 0 }
             }

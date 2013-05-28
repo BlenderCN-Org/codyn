@@ -1,6 +1,6 @@
 node | "@bodies" . has-template(physics.contacts.soft)
 {
-    event "air" to "impact" when "min(pN) < -0.001" within 0.001
+    event "air" to "ground" when "min(pN) < 0" within 0.001
     {
         contactLocation = "csum((pN < 0) .* p) / (max(1, sum(pN < 0)))"
         contactJacobian = "Spatial.Translation(p) * J0"
@@ -21,7 +21,8 @@ node | "@bodies" . has-template(physics.contacts.soft)
         # The system output velocity after impulse: q̇⁺ = H⁻¹ Jᵀ F + q̇⁻
         dqAfterImpulse = "inertiaWeightedJacobianPseudoInverse ∙ dv + model.dq"
 
-        set impacting = 1
+        set impacting = "impacting + 1"
+        set contactPoint = "p"
         set   recurse(parent)
             | has-template(physics.system)
             | first .
