@@ -160,9 +160,9 @@ load_network_from_path (gchar const *path,
 	GError *error = NULL;
 	gchar *p;
 
-	if (!g_path_is_absolute (path) && g_getenv ("srcdir"))
+	if (!g_path_is_absolute (path))
 	{
-		p = g_build_filename (g_getenv ("srcdir"), path, NULL);
+		p = g_build_filename (TEST_DATA_DIR, path, NULL);
 	}
 	else
 	{
@@ -467,8 +467,18 @@ cdn_test_variables_with_annotated_output_from_path_impl (gchar const *file,
 	GSList *variables;
 	GSList *monitors;
 	gboolean monitored;
+	gchar *p;
 
-	network = cdn_network_new_from_path (path, &error);
+	if (!g_path_is_absolute (path))
+	{
+		p = g_build_filename (TEST_DATA_DIR, path, NULL);
+	}
+	else
+	{
+		p = g_strdup (path);
+	}
+
+	network = cdn_network_new_from_path (p, &error);
 
 	g_assert_no_error (error);
 	g_assert (network != NULL);
