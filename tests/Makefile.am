@@ -73,17 +73,18 @@ constraints_LDADD = $(progs_ldadd)
 TESTS = $(TEST_PROGS)
 
 EXTRA_DIST = \
-	test_import.cdn \
-	test_import_templates.cdn \
 	import.cdn \
-	test_node_integrate_multiple_euler.cdn \
-	test_interface_templates.cdn \
-	test_input.txt \
-	test_file.cdn \
-	test_matrix.cdn \
-	test_math.cdn \
+	test_constraints.cdn \
 	test_direct.cdn \
 	test_direct_events.cdn \
-	test_constraints.cdn
+	test_file.cdn \
+	test_import.cdn \
+	test_import_templates.cdn \
+	test_indices.cdn \
+	test_input.txt \
+	test_interface_templates.cdn \
+	test_math.cdn \
+	test_matrix.cdn \
+	test_node_integrate_multiple_euler.cdn
 
 -include $(top_srcdir)/git.mk
