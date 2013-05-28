@@ -6,6 +6,8 @@ library_DATA = \
 	dynamics.cdn \
 	findbodies.cdn \
 	inertia.cdn \
+	inverse_dynamics.cdn \
+	jacobian.cdn \
 	joints.cdn \
 	model.cdn \
 	physics.cdn \

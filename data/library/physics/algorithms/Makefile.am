@@ -1,6 +1,7 @@
 algorithmsdir = $(pkgdatadir)-@CODYN_API_VERSION@/library/physics/algorithms
 algorithms_DATA = \
 	crba.cdn \
+	jacobian.cdn \
 	rnea.cdn
 
 EXTRA_DIST = \
