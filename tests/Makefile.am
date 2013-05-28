@@ -4,6 +4,7 @@ AM_CPPFLAGS =				\
 	-I$(top_builddir)/tests		\
 	-I$(top_srcdir)/tests		\
 	-I$(top_srcdir)			\
+	-DTEST_DATA_DIR=\"$(srcdir)\"	\
 	$(CODYN_CFLAGS)
 
 TEST_PROGS =				\
