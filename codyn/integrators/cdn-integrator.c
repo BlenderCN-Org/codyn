@@ -516,6 +516,7 @@ append_happened (GSList   *events,
 		}
 	}
 
+	first = g_slist_prepend (first, event);
 	return first;
 }
 
