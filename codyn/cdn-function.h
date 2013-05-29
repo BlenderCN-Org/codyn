@@ -177,6 +177,8 @@ CdnFunction         *cdn_function_get_derivative              (CdnFunction      
                                                                CdnExpressionTreeIterDeriveFlags   flags,
                                                                GError                           **error);
 
+gboolean             cdn_function_is_pure                     (CdnFunction          *function);
+
 void                _cdn_function_set_arguments_dimension     (CdnFunction          *function,
                                                                CdnStackArgs const   *argdim);
 

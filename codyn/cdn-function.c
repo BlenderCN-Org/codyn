@@ -2304,3 +2304,36 @@ cdn_function_get_dependencies (CdnFunction *function)
 
 	return function->priv->dependencies;
 }
+
+/**
+ * cdn_function_is_pure:
+ * @function: a #CdnFunction
+ *
+ * Get whether the function is pure. Pure functions only depend on their
+ * arguments and do not reference any other external variables.
+ *
+ * Returns: %TRUE if the function is pure, %FALSE otherwise.
+ *
+ **/
+gboolean
+cdn_function_is_pure (CdnFunction *function)
+{
+	GSList *vars;
+
+	g_return_val_if_fail (CDN_IS_FUNCTION (function), TRUE);
+
+	vars = cdn_expression_get_variable_dependencies (function->priv->expression);
+
+	while (vars)
+	{
+		if (!(cdn_variable_get_flags (vars->data) & CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT))
+		{
+			g_slist_free (vars);
+			return FALSE;
+		}
+
+		vars = g_slist_delete_link (vars, vars);
+	}
+
+	return TRUE;
+}
