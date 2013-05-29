@@ -33,7 +33,7 @@ node "model"
         }
 
         ## Total number of active contact points in the system
-        numActiveContacts = "{0,@contactBodies|@0.bodyNumActiveContacts||@0 + @1}"
+        numActiveContacts = "{0,{@contactBodies|@0.bodyNumActiveContacts}||@0 + @1}"
     }
 }
 
