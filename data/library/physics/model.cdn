@@ -1,18 +1,4 @@
 require "findbodies.cdn"
-require "contacts.cdn"
-
-node has-template(physics.body)
-{
-    node | has-template(physics.contacts.contact) | first | parent
-    {
-        defines
-        {
-            contactNames = | has-template(physics.contacts.contact)
-        }
-
-        bodyNumActiveContacts = "{@contactNames|@0.numActive||@0 + @1}"
-    }
-}
 
 node "model"
 {
@@ -24,17 +10,6 @@ node "model"
 
     ## All the dq's
     dq = "[{@bodies|@1.dq||@0;@1}]"
-
-    node | self | parent | children . has-template(physics.contacts.contact) | first | self
-    {
-        defines
-        {
-            contactBodies = | first | self | parent . @bodies | if(children | variables | "bodyNumActiveContacts") | "@@1"
-        }
-
-        ## Total number of active contact points in the system
-        numActiveContacts = "{0,{@contactBodies|@0.bodyNumActiveContacts}||@0 + @1}"
-    }
 }
 
 include "jacobian.cdn"
