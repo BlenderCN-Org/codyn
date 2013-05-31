@@ -46,7 +46,7 @@ templates
                 # the contact position in the normal direction (Z)
                 #
                 # [1-by-N]
-                pN = "p[2, :]" | out
+                pN = "p[2, :]"
 
                 # the contact velocity in the normal direction
                 #
