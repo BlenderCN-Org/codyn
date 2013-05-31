@@ -215,8 +215,13 @@ class CodynImport(bpy.types.Operator):
 
         ortho = camera.get_variable('orthographic')
 
-        if not ortho is None and ortho.get_values().get_flat()[0] != 0:
+        if not ortho is None and ortho.get_value() != 0:
             o.data.type = 'ORTHO'
+
+        scale = camera.get_variable('orthographicScale')
+
+        if not scale is None:
+            o.data.ortho_scale = scale.get_value()
 
         return o
 
