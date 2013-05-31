@@ -52,6 +52,7 @@ static gchar const *color_off = "\e[0m";
 
 static GPtrArray *display;
 static gboolean simplify = FALSE;
+static gchar *precision;
 
 static gboolean
 parse_display (gchar const  *option_name,
@@ -70,6 +71,8 @@ static GOptionEntry entries[] = {
 	 "Display variable values (e.g. /state_.*/.\"{x,y}\")", "SEL"},
 	{"simplify", 'x', 0, G_OPTION_ARG_NONE, &simplify,
 	 "Enable global simplifications", NULL},
+	{"precision", 'c', 0, G_OPTION_ARG_STRING, &precision,
+	 "Specify output precision for display", "PREC"},
 	{NULL}
 };
 
@@ -107,7 +110,9 @@ display_variable (CdnVariable *v, gchar const *indent)
 
 	if (cdn_dimension_is_one (&ret->dimension))
 	{
-		g_printf ("%s%.5f\n", indent, values[0]);
+		g_printf ("%s", indent);
+		g_printf (precision, values[0]);
+		g_printf ("\n");
 		return;
 	}
 
@@ -131,7 +136,7 @@ display_variable (CdnVariable *v, gchar const *indent)
 				g_printf (", ");
 			}
 
-			sv = g_strdup_printf ("%.5f", cdn_matrix_get_at (ret, r, c));
+			sv = g_strdup_printf (precision, cdn_matrix_get_at (ret, r, c));
 
 			if (sv[0] != '-')
 			{
@@ -510,6 +515,7 @@ main (int argc, char *argv[])
 	ctx = g_option_context_new ("NETWORK [--] [PARAMETER...] - compile cdn network");
 
 	display = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free);
+	precision = g_strdup ("% 7.4f");
 
 	g_option_context_set_summary (ctx,
 	                              "Use a dash '-' for the network name to read from standard input.\n"
