@@ -15,19 +15,17 @@ templates
                 initial-state "air"
 
                 # contact parameters
-                massPerContact = "model.numActiveContacts > 0 ? model.totalMass / model.numActiveContacts : model.totalMass"
-
                 maxNormalForce = "50 * model.totalMass"
 
                 normalζ = "0.001"
-                normalStiffness = "1e6 * massPerContact"
-                normalDamping = "normalζ * 2 * sqrt(massPerContact * normalStiffness)"
+                normalStiffness = "1e6 * model.totalMass"
+                normalDamping = "normalζ * 2 * sqrt(model.totalMass * normalStiffness)"
 
                 frictionCoefficient = "0.6"
 
                 frictionζ = "0.0001"
-                frictionStiffness = "1e7 * massPerContact"
-                frictionDamping = "frictionζ * 2 * sqrt(massPerContact * frictionStiffness)"
+                frictionStiffness = "1e7 * model.totalMass"
+                frictionDamping = "frictionζ * 2 * sqrt(model.totalMass * frictionStiffness)"
 
                 coefficientOfRestitution = "0"
 
