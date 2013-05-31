@@ -261,8 +261,15 @@ class CodynImport(bpy.types.Operator):
             shape.parent = sysobj
             ret.append(shape)
 
+        activecam = None
+
         for camera in system.find_objects('has-template(physics.rendering.camera)'):
-            ret.append(self.add_camera(context, sysobj, camera))
+            activecam = self.add_camera(context, sysobj, camera)
+            ret.append(activecam)
+
+        if not activecam is None:
+            context.scene.camera = activecam
+            bpy.ops.view3d.viewnumpad(type='CAMERA')
 
         for body in bodies:
             # Center of mass
