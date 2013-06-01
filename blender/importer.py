@@ -77,12 +77,12 @@ class CodynImport(bpy.types.Operator):
         b = inertia[1][1] / f
         c = inertia[2][2] / f
 
-        w2 = (c - a + b) / 2
-        d2 = b - w2
-        h2 = a - d2
+        z2 = (a - c + b) / 2
+        x2 = b - z2
+        y2 = c - x2
 
-        if w2 > 0 and d2 > 0 and h2 > 0:
-            return math.sqrt(w2), math.sqrt(d2), math.sqrt(h2)
+        if x2 > 0 and y2 > 0 and z2 > 0:
+            return math.sqrt(x2), math.sqrt(y2), math.sqrt(z2)
 
         return False
 
@@ -197,7 +197,7 @@ class CodynImport(bpy.types.Operator):
         if b:
             bpy.ops.mesh.primitive_cube_add()
             context.active_object.name = name
-            context.active_object.scale = mathutils.Vector(b)
+            context.active_object.scale = mathutils.Vector(b) / 2
             bpy.ops.object.transform_apply(scale=True)
 
             context.active_object.location = com.get_values().get_flat()
@@ -287,7 +287,7 @@ class CodynImport(bpy.types.Operator):
             csid = '{0}_cs'.format(bid)
 
             cs = self.make_object(context, csid, lambda: bpy.data.meshes['coordinate_system'])
-            cs.scale = [0.1, 0.1, 0.1]
+            cs.scale = [0.05, 0.05, 0.05]
             cs.parent = obj
 
             # Attach coordinate system visualization
