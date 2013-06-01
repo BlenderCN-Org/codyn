@@ -1,10 +1,10 @@
 defines
 {
-    # Find all nodes with the physics.body template applied
-    bodies = has-template("physics" . "body")
+    rootbodies = has-template(physics.body) | not(inputs | has-template(physics.joint))
+    bodies = | @rootbodies | recurse(outputs | has-template(physics.joint) | output) | name
 
     # Calculate a list of dof for each body
-    bodydof = | @bodies
+    bodydof = | @bodies | sort
               | if (applied-templates | recurse(applied-templates) | /dof([1-6])/ | last)
               | append-context("@1")
 
@@ -20,7 +20,7 @@ defines
 
     # bodychain will contain for each body, a comma separated list of indices
     # from (and including) the body upwards to the root of the kinematic tree.
-    bodychain = | @bodies
+    bodychain = | @bodies | sort
                 | if(recurse(inputs | has-template(physics.joint) | input) |
                      name |
                      append-context("@bodies[!@0]") |
@@ -29,13 +29,13 @@ defines
     # parents will contain for each body its direct parent index. Note that here
     # the fixed world reference frame is indicated by -1 (i.e. the parent of the
     # root of the kinematic tree is set to -1).
-    parents = | @bodies
+    parents = | @bodies | sort
               | if (inputs | has-template(physics.joint) | input | name | append-context("@bodies[!@0]"),
                 append-context("-1"))
 
     lastbodydof = "{@bodies|$(@bodydofidx[$(@0[!] + 1)] + @bodydof[$(@0[!] + 1)] - 1)}"
 
-    firstparent = | @bodies
+    firstparent = | @bodies | sort
                     | if (inputs | has-template(physics.joint) | input | name | append-context("@lastbodydof[$(@bodies[!@0] + 1)]"),
                       append-context("-1"))
 

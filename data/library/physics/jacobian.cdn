@@ -6,7 +6,7 @@ node "jacobian"
     J = "zeros(6, @numdof)"
 }
 
-node | <body>:@bodies | parent
+node | <body>:@bodies | sort | parent
 {
     edge "jacobian_@body" from "@body" to "jacobian"
     {
@@ -16,7 +16,7 @@ node | <body>:@bodies | parent
     }
 }
 
-node | <body>:@bodies
+node | <body>:@bodies | sort
      | if (
                recurse(children)
              | has-template(physics.jacobian)

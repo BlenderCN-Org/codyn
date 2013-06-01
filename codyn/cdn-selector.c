@@ -142,7 +142,8 @@ static gchar const *selector_pseudo_names[CDN_SELECTOR_PSEUDO_NUM] =
 	"recurse",
 	"append-context",
 	"applied-templates",
-	"reduce"
+	"reduce",
+	"sort"
 };
 
 static guint signals[NUM_SIGNALS];
@@ -2614,6 +2615,53 @@ selector_pseudo_reduce (CdnSelector  *self,
 	}
 }
 
+static gint
+sort_selections (CdnSelection *a,
+                 CdnSelection *b)
+{
+	CdnExpansionContext *ca;
+	CdnExpansionContext *cb;
+	CdnExpansion *ea;
+	CdnExpansion *eb;
+
+	ca = cdn_selection_get_context (a);
+	cb = cdn_selection_get_context (b);
+
+	ea = cdn_expansion_context_get_expansion (ca, 0);
+	eb = cdn_expansion_context_get_expansion (cb, 0);
+
+	if (ea == NULL && eb == NULL)
+	{
+		return 0;
+	}
+	else if (eb == NULL)
+	{
+		return -1;
+	}
+	else if (ea == NULL)
+	{
+		return 1;
+	}
+	else
+	{
+		gint ia;
+		gint ib;
+
+		ia = cdn_expansion_get_index (ea, 0);
+		ib = cdn_expansion_get_index (eb, 0);
+
+		return ia < ib ? -1 : (ia > ib ? 1 : 0);
+	}
+}
+
+static GSList *
+selector_pseudo_sort (CdnSelector *self,
+                      Selector    *selector,
+                      GSList      *parent)
+{
+	return g_slist_sort (parent, (GCompareFunc)sort_selections);
+}
+
 static GSList *
 selector_select_pseudo (CdnSelector *self,
                         Selector    *selector,
@@ -2739,6 +2787,8 @@ selector_select_pseudo (CdnSelector *self,
 			return selector_pseudo_reduce (self,
 			                               selector,
 			                               parent);
+		case CDN_SELECTOR_PSEUDO_TYPE_SORT:
+			return selector_pseudo_sort (self, selector, parent);
 		default:
 		break;
 	}
