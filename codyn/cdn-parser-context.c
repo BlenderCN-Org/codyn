@@ -1373,7 +1373,7 @@ add_variable_diff (CdnParserContext  *context,
 		CdnVariable *prop;
 		CdnEdge *link;
 		GError *error = NULL;
-		CdnEdgeAction *action;
+		CdnEdgeAction *action = NULL;
 
 		dd = g_strnfill (i + 1, 'd');
 		dfname = g_strconcat (dd, dotname, NULL);
@@ -1429,33 +1429,39 @@ add_variable_diff (CdnParserContext  *context,
 		}
 		else
 		{
-			action = cdn_edge_action_new (fname,
-			                              cdn_expression_new (dfname));
-		}
-
-		if (index)
-		{
-			cdn_edge_action_set_index (action,
-			                           cdn_expression_copy (index));
-		}
-
-		if (state)
-		{
-			GSList *states;
-
-			embedded_string_expand_multiple_val (states, state, context, FALSE);
-
-			while (states)
+			if (!cdn_variable_has_actions (prop))
 			{
-				cdn_phaseable_add_phase (CDN_PHASEABLE (action),
-				                         cdn_expansion_get (states->data, 0));
-
-				cdn_expansion_unref (states->data);
-				states = g_slist_delete_link (states, states);
+				action = cdn_edge_action_new (fname,
+				                              cdn_expression_new (dfname));
 			}
 		}
 
-		cdn_edge_add_action (link, action);
+		if (action)
+		{
+			if (index)
+			{
+				cdn_edge_action_set_index (action,
+					                   cdn_expression_copy (index));
+			}
+
+			if (state)
+			{
+				GSList *states;
+
+				embedded_string_expand_multiple_val (states, state, context, FALSE);
+
+				while (states)
+				{
+					cdn_phaseable_add_phase (CDN_PHASEABLE (action),
+						                 cdn_expansion_get (states->data, 0));
+
+					cdn_expansion_unref (states->data);
+					states = g_slist_delete_link (states, states);
+				}
+			}
+
+			cdn_edge_add_action (link, action);
+		}
 
 		if (constraint)
 		{
