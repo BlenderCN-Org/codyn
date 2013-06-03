@@ -393,7 +393,7 @@ test_monitor (CdnMonitor  *m,
 
 	g_printf ("   - Testing %s%s ... ",
 	          cdn_variable_get_full_name_for_display (v),
-	          cdn_variable_get_integrated (v) ? "'" : "");
+	          cdn_variable_has_flag (v, CDN_VARIABLE_FLAG_INTEGRATED) ? "'" : "");
 
 	nrows = (gint)n / cdn_dimension_size (&dim);
 

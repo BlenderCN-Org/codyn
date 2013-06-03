@@ -21,7 +21,8 @@ TEST_PROGS =				\
 	interface			\
 	matrix				\
 	indices				\
-	constraints
+	constraints			\
+	discrete
 
 #TEST_PROGS += file
 
@@ -37,6 +38,9 @@ network_LDADD = $(progs_ldadd)
 
 direct_SOURCES = direct.c utils.h utils.c
 direct_LDADD = $(progs_ldadd)
+
+discrete_SOURCES = discrete.c utils.h utils.c
+discrete_LDADD = $(progs_ldadd)
 
 import_SOURCES = import.c utils.h utils.c
 import_LDADD = $(progs_ldadd)
@@ -78,6 +82,7 @@ EXTRA_DIST = \
 	test_constraints.cdn \
 	test_direct.cdn \
 	test_direct_events.cdn \
+	test_discrete.cdn \
 	test_file.cdn \
 	test_import.cdn \
 	test_import_templates.cdn \

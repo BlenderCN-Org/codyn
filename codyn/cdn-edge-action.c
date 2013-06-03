@@ -186,8 +186,16 @@ set_property (CdnEdgeAction *action,
 
 		if (action->priv->integrated_set)
 		{
-			cdn_variable_set_integrated (action->priv->property,
-			                             action->priv->integrated);
+			if (action->priv->integrated)
+			{
+				cdn_variable_add_flags (action->priv->property,
+				                        CDN_VARIABLE_FLAG_INTEGRATED);
+			}
+			else
+			{
+				cdn_variable_remove_flags (action->priv->property,
+				                           CDN_VARIABLE_FLAG_INTEGRATED);
+			}
 		}
 
 		cdn_usable_use (CDN_USABLE (action->priv->property));
@@ -1022,8 +1030,16 @@ _cdn_edge_action_set_integrated (CdnEdgeAction *action,
 
 	if (action->priv->property)
 	{
-		cdn_variable_set_integrated (action->priv->property,
-		                             action->priv->integrated);
+		if (integrated)
+		{
+			cdn_variable_add_flags (action->priv->property,
+			                        CDN_VARIABLE_FLAG_INTEGRATED);
+		}
+		else
+		{
+			cdn_variable_remove_flags (action->priv->property,
+			                           CDN_VARIABLE_FLAG_INTEGRATED);
+		}
 	}
 }
 

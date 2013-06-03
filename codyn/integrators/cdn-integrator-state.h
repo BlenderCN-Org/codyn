@@ -71,11 +71,14 @@ CdnObject          *cdn_integrator_state_get_object              (CdnIntegratorS
 
 const GSList       *cdn_integrator_state_integrated_variables    (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_direct_variables        (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_discrete_variables      (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_all_variables           (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_integrated_edge_actions (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_direct_edge_actions     (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_discrete_edge_actions   (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_phase_integrated_edge_actions (CdnIntegratorState *state);
 const GSList       *cdn_integrator_state_phase_direct_edge_actions     (CdnIntegratorState *state);
+const GSList       *cdn_integrator_state_phase_discrete_edge_actions   (CdnIntegratorState *state);
 
 const GSList       *cdn_integrator_state_io                      (CdnIntegratorState *state);
 

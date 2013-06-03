@@ -63,7 +63,8 @@ typedef enum
 	CDN_VARIABLE_FLAG_IN = 1 << 1,
 	CDN_VARIABLE_FLAG_OUT = 1 << 2,
 	CDN_VARIABLE_FLAG_ONCE = 1 << 3,
-	CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT = 1 << 4,
+	CDN_VARIABLE_FLAG_DISCRETE = 1 << 4,
+	CDN_VARIABLE_FLAG_FUNCTION_ARGUMENT = 1 << 5,
 
 	CDN_VARIABLE_FLAG_INOUT = CDN_VARIABLE_FLAG_IN | CDN_VARIABLE_FLAG_OUT
 } CdnVariableFlags;
@@ -105,9 +106,8 @@ gboolean           cdn_variable_set_name                (CdnVariable        *var
 
 CdnObjectForward *cdn_variable_get_object              (CdnVariable        *variable);
 
-gboolean           cdn_variable_get_integrated          (CdnVariable        *variable);
-void               cdn_variable_set_integrated          (CdnVariable        *variable,
-                                                         gboolean            integrated);
+gboolean           cdn_variable_has_flag                (CdnVariable        *variable,
+                                                         CdnVariableFlags    flags);
 
 CdnVariableFlags   cdn_variable_get_flags               (CdnVariable        *variable);
 void               cdn_variable_set_flags               (CdnVariable        *variable,

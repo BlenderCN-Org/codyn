@@ -1445,6 +1445,18 @@ cdn_edge_get_action_with_index (CdnEdge       *link,
 	return edge_get_action_intern (link, target, index, NULL, FALSE);
 }
 
+/**
+ * cdn_edge_get_action_with_index_and_phases:
+ * @edge: A #CdnEdge
+ * @target: The action target
+ * @index: A #CdnExpression
+ * @phases: (element-type utf8) (transfer none): a list of phases
+ *
+ * Get the action for a target with a specific index and set of phases.
+ *
+ * Returns: (transfer none): A #CdnEdgeAction
+ *
+ **/
 CdnEdgeAction *
 cdn_edge_get_action_with_index_and_phases (CdnEdge       *edge,
                                            gchar const   *target,

@@ -99,6 +99,7 @@
             <keyword>in</keyword>
             <keyword>out</keyword>
             <keyword>once</keyword>
+            <keyword>discrete</keyword>
         </context>
 
         <context id="preprocessor" style-ref="preprocessor">

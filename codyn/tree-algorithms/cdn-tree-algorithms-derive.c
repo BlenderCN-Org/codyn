@@ -1182,7 +1182,7 @@ derive_variable_real (CdnInstructionVariable *instr,
 		{
 			return iter_new_take (cdn_instruction_variable_new (dv));
 		}
-		else if (cdn_variable_get_integrated (variable))
+		else if (cdn_variable_has_flag (variable, CDN_VARIABLE_FLAG_INTEGRATED))
 		{
 			return derive_integrated (variable, ctx);
 		}

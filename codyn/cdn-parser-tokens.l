@@ -195,6 +195,7 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 "in"				return T_KEY_IN;
 "out"				return T_KEY_OUT;
 "once"				return T_KEY_ONCE;
+"discrete"			return T_KEY_DISCRETE;
 "interface"			return T_KEY_INTERFACE;
 "polynomial"			return T_KEY_POLYNOMIAL;
 "import"			return T_KEY_IMPORT;

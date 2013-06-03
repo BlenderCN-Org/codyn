@@ -36,12 +36,15 @@ struct _CdnIntegratorStatePrivate
 
 	GSList *integrated_variables;
 	GSList *direct_variables;
+	GSList *discrete_variables;
 	GSList *all_variables;
 	GSList *rand_instructions;
 	GSList *rand_expressions;
 
 	GSList *integrated_edge_actions;
 	GSList *direct_edge_actions;
+	GSList *discrete_edge_actions;
+
 	GSList *operators;
 	GSList *functions;
 
@@ -52,6 +55,7 @@ struct _CdnIntegratorStatePrivate
 
 	GSList *phase_direct_edge_actions;
 	GSList *phase_integrated_edge_actions;
+	GSList *phase_discrete_edge_actions;
 
 	GHashTable *direct_variables_hash;
 	GHashTable *state_hash;
@@ -156,13 +160,16 @@ clear_lists (CdnIntegratorState *state)
 {
 	clear_list (&(state->priv->integrated_variables));
 	clear_list (&(state->priv->direct_variables));
+	clear_list (&(state->priv->discrete_variables));
 	clear_list (&(state->priv->all_variables));
 
 	clear_list (&(state->priv->integrated_edge_actions));
 	clear_list (&(state->priv->direct_edge_actions));
+	clear_list (&(state->priv->discrete_edge_actions));
 
 	clear_list (&(state->priv->phase_integrated_edge_actions));
 	clear_list (&(state->priv->phase_direct_edge_actions));
+	clear_list (&(state->priv->phase_discrete_edge_actions));
 
 	clear_list (&(state->priv->io));
 	clear_list (&(state->priv->expressions));
@@ -427,7 +434,13 @@ collect_link (CdnIntegratorState *state,
 
 		CdnVariable *target = cdn_edge_action_get_target_variable (action);
 
-		if (cdn_variable_get_integrated (target))
+		if (cdn_variable_has_flag (target, CDN_VARIABLE_FLAG_DISCRETE))
+		{
+			state->priv->discrete_edge_actions =
+				prepend_gslist_unique (state->priv->discrete_edge_actions,
+				                       action);
+		}
+		else if (cdn_variable_has_flag (target, CDN_VARIABLE_FLAG_INTEGRATED))
 		{
 			state->priv->integrated_edge_actions =
 				prepend_gslist_unique (state->priv->integrated_edge_actions,
@@ -481,7 +494,13 @@ collect_actors (CdnIntegratorState *state,
 	{
 		CdnVariable *variable = actors->data;
 
-		if (cdn_variable_get_integrated (variable))
+		if (cdn_variable_has_flag (variable, CDN_VARIABLE_FLAG_DISCRETE))
+		{
+			state->priv->discrete_variables =
+				prepend_gslist_unique (state->priv->discrete_variables,
+				                       variable);
+		}
+		else if (cdn_variable_has_flag (variable, CDN_VARIABLE_FLAG_INTEGRATED))
 		{
 			state->priv->integrated_variables =
 				prepend_gslist_unique (state->priv->integrated_variables,
@@ -771,7 +790,11 @@ get_state_list (CdnIntegratorState *state,
 
 	tv = cdn_edge_action_get_target_variable (CDN_EDGE_ACTION (ph));
 
-	if (cdn_variable_get_integrated (tv))
+	if (cdn_variable_has_flag (tv, CDN_VARIABLE_FLAG_DISCRETE))
+	{
+		return &state->priv->phase_discrete_edge_actions;
+	}
+	else if (cdn_variable_has_flag (tv, CDN_VARIABLE_FLAG_INTEGRATED))
 	{
 		return &state->priv->phase_integrated_edge_actions;
 	}
@@ -921,6 +944,14 @@ extract_state_hash (CdnIntegratorState *state)
 		add_to_state_hash (state, item->data, parent);
 	}
 
+	for (item = state->priv->discrete_edge_actions; item; item = g_slist_next (item))
+	{
+		CdnNode *parent;
+
+		parent = CDN_NODE (cdn_object_get_parent (CDN_OBJECT (cdn_edge_action_get_edge (item->data))));
+		add_to_state_hash (state, item->data, parent);
+	}
+
 	for (item = state->priv->events; item; item = g_slist_next (item))
 	{
 		CdnNode *parent;
@@ -956,6 +987,9 @@ cdn_integrator_state_update (CdnIntegratorState *state)
 
 	state->priv->direct_variables =
 		g_slist_reverse (state->priv->direct_variables);
+
+	state->priv->discrete_variables =
+		g_slist_reverse (state->priv->discrete_variables);
 
 	state->priv->io =
 		g_slist_reverse (state->priv->io);
@@ -1017,6 +1051,22 @@ cdn_integrator_state_direct_variables (CdnIntegratorState *state)
 {
 	/* Omit check for speed up */
 	return state->priv->direct_variables;
+}
+
+/**
+ * cdn_integrator_state_discrete_variables:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the discrete variables which are acted upon by links.
+ *
+ * Returns: (element-type CdnVariable) (transfer none): A #GSList of #CdnVariable
+ *
+ **/
+const GSList *
+cdn_integrator_state_discrete_variables (CdnIntegratorState *state)
+{
+	/* Omit check for speed up */
+	return state->priv->discrete_variables;
 }
 
 /**
@@ -1082,6 +1132,38 @@ cdn_integrator_state_phase_direct_edge_actions (CdnIntegratorState *state)
 {
 	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
 	return state->priv->phase_direct_edge_actions;
+}
+
+/**
+ * cdn_integrator_state_discrete_edge_actions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the link actions that act on discrete variables.
+ *
+ * Returns: (element-type CdnEdgeAction) (transfer none): A #GSList of #CdnEdgeAction
+ *
+ **/
+const GSList *
+cdn_integrator_state_discrete_edge_actions (CdnIntegratorState *state)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->discrete_edge_actions;
+}
+
+/**
+ * cdn_integrator_state_phase_discrete_edge_actions:
+ * @state: A #CdnIntegratorState
+ *
+ * Get the discrete edge actions in the current phase.
+ *
+ * Returns: (element-type CdnEdgeAction) (transfer none): A #GSList
+ *
+ **/
+GSList const *
+cdn_integrator_state_phase_discrete_edge_actions (CdnIntegratorState *state)
+{
+	g_return_val_if_fail (CDN_IS_INTEGRATOR_STATE (state), NULL);
+	return state->priv->phase_discrete_edge_actions;
 }
 
 /**
@@ -1244,6 +1326,17 @@ cdn_integrator_state_phase_events (CdnIntegratorState *state)
 	return state->priv->phase_events;
 }
 
+/**
+ * cdn_integrator_state_set_state:
+ * @state: A #CdnIntegratorState
+ * @node: A #CdnNode
+ * @st: the state
+ * @events_added: (element-type CdnEvent) (transfer container): return value for the events added by changing the state
+ * @events_removed: (element-type CdnEvent) (transfer container): return value for the events removed changing the state
+ *
+ * Change the active state of @node to @st.
+ *
+ */
 void
 cdn_integrator_state_set_state (CdnIntegratorState  *state,
                                 CdnNode             *node,

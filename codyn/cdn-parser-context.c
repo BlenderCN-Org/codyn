@@ -1374,6 +1374,7 @@ add_variable_diff (CdnParserContext  *context,
 		CdnEdge *link;
 		GError *error = NULL;
 		CdnEdgeAction *action = NULL;
+		CdnVariableFlags with_discrete;
 
 		dd = g_strnfill (i + 1, 'd');
 		dfname = g_strconcat (dd, dotname, NULL);
@@ -1410,7 +1411,16 @@ add_variable_diff (CdnParserContext  *context,
 			continue;
 		}
 
-		cdn_variable_set_flags (prop, (CDN_VARIABLE_FLAG_INTEGRATED | add_flags) & ~remove_flags);
+		if (cdn_variable_has_flag (prop, CDN_VARIABLE_FLAG_DISCRETE))
+		{
+			with_discrete = CDN_VARIABLE_FLAG_DISCRETE;
+		}
+		else
+		{
+			with_discrete = CDN_VARIABLE_FLAG_NONE;
+		}
+
+		cdn_variable_set_flags (prop, (CDN_VARIABLE_FLAG_INTEGRATED | add_flags | with_discrete) & ~remove_flags);
 
 		if (prev)
 		{

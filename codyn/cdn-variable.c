@@ -978,50 +978,6 @@ cdn_variable_set_name (CdnVariable *variable,
 }
 
 /**
- * cdn_variable_get_integrated:
- * @variable: a #CdnVariable
- *
- * Get whether the variable should be integrated during evaluation or not. This
- * is a convenience function that simply checks if the
- * CDN_VARIABLE_FLAG_INTEGRATED flag is set.
- *
- * Returns: %TRUE if the variable will be integrated, %FALSE otherwise
- *
- **/
-gboolean
-cdn_variable_get_integrated (CdnVariable *variable)
-{
-	/* Omit type check to increase speed */
-	return variable->priv->flags & CDN_VARIABLE_FLAG_INTEGRATED;
-}
-
-/**
- * cdn_variable_set_integrated:
- * @variable: a #CdnVariable
- * @integrated: integrate the variable
- *
- * Set whether the variable should be integrated during evaluation or not. This
- * is a convenience function that simply sets or unsets the
- * CDN_VARIABLE_FLAG_INTEGRATED flag.
- *
- **/
-void
-cdn_variable_set_integrated (CdnVariable  *variable,
-                             gboolean      integrated)
-{
-	g_return_if_fail (CDN_IS_VARIABLE (variable));
-
-	if (integrated)
-	{
-		cdn_variable_add_flags (variable, CDN_VARIABLE_FLAG_INTEGRATED);
-	}
-	else
-	{
-		cdn_variable_remove_flags (variable, CDN_VARIABLE_FLAG_INTEGRATED);
-	}
-}
-
-/**
  * cdn_variable_reset:
  * @variable: A #CdnVariable
  *
@@ -1663,4 +1619,13 @@ cdn_variable_compile (CdnVariable       *variable,
 	}
 
 	return ret;
+}
+
+gboolean
+cdn_variable_has_flag (CdnVariable      *variable,
+                       CdnVariableFlags  flags)
+{
+	g_return_val_if_fail (CDN_IS_VARIABLE (variable), FALSE);
+
+	return (variable->priv->flags & flags) != 0;
 }

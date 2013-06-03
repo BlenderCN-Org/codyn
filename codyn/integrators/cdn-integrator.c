@@ -585,12 +585,57 @@ handle_events (CdnIntegrator *integrator,
 	}
 }
 
+static void
+evaluate_discrete (CdnIntegrator *integrator)
+{
+	GSList const *variables;
+	GSList const *actions;
+	GSList const *variable;
+
+	variables = cdn_integrator_state_discrete_variables (integrator->priv->state);
+
+	for (variable = variables; variable; variable = g_slist_next (variable))
+	{
+		cdn_variable_clear_update (variable->data);
+	}
+
+	actions = cdn_integrator_state_phase_discrete_edge_actions (integrator->priv->state);
+	cdn_integrator_simulation_step_integrate (integrator, actions);
+
+	for (variable = variables; variable; variable = g_slist_next (variable))
+	{
+		CdnMatrix *update;
+		CdnMatrix const *m;
+		gint i;
+		gdouble *updatemem;
+		gdouble const *vals;
+		gint num;
+
+		update = cdn_variable_get_update (variable->data);
+		m = cdn_variable_get_values (variable->data);
+
+		updatemem = cdn_matrix_get_memory (update);
+		vals = cdn_matrix_get (m);
+
+		num = cdn_matrix_size (m);
+
+		for (i = 0; i < num; ++i)
+		{
+			updatemem[i] = vals[i] + updatemem[i];
+		}
+
+		cdn_variable_set_values (variable->data, update);
+	}
+}
+
 static gdouble
 cdn_integrator_step_impl (CdnIntegrator *integrator,
                           gdouble        t,
                           gdouble        timestep)
 {
 	gdouble elapsed;
+
+	evaluate_discrete (integrator);
 
 	handle_events (integrator, t, &timestep);
 
