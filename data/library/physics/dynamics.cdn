@@ -35,6 +35,7 @@ include "algorithms/contacts.cdn"
 node "@bodies"
 {
     ## Generalized coordinate accelerations differential equation
+    q̇ = "dqdot"
     q̈ = "ddq"
 }
 

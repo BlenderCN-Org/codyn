@@ -250,7 +250,7 @@ templates
             ## the joint velocity). q̇ then simply becomes:
             ## (see page 86 of Rigid Body Dynamics Algorithms, also
             ## http://www.euclideanspace.com/physics/kinematics/angularvelocity/)
-            q̇ = "0.5 ∙ [-q[1], -q[2], -q[3];
+            dqdot = "0.5 ∙ [-q[1], -q[2], -q[3];
                          q[0], -q[3],  q[2];
                          q[3],  q[0], -q[1];
                         -q[2],  q[1],  q[0]] ∙ dq"
@@ -284,7 +284,7 @@ templates
                 BiasVelocityProduct(q, dq) = "0"
             }
 
-            q̇ = "[dq[0]; dq[1] + q[2] * dq[0]; dq[2] - q[1] * dq[0]]"
+            dqdot = "[dq[0]; dq[1] + q[2] * dq[0]; dq[2] - q[1] * dq[0]]"
         }
 
         node "prismaticXZ" : physics.body, physics.dof2
@@ -342,7 +342,7 @@ templates
                 BiasVelocityProduct(q, dq) = "0"
             }
 
-            q̇ = "[dq[0]; dq[1] - q[2] * dq[0]; dq[2] + q[1] * dq[0]]"
+            dqdot = "[dq[0]; dq[1] - q[2] * dq[0]; dq[2] + q[1] * dq[0]]"
         }
 
         ## A 3 DOF planar joint in the Z plane. This joint has 1 rotation degree
@@ -373,7 +373,7 @@ templates
                 BiasVelocityProduct(q, dq) = "0"
             }
 
-            q̇ = "[dq[0]; dq[1] + q[2] * dq[0]; dq[2] - q[1] * dq[0]]"
+            dqdot = "[dq[0]; dq[1] + q[2] * dq[0]; dq[2] - q[1] * dq[0]]"
         }
 
         ## A 6 DOF. This type of joint has no constraints and can be used
@@ -396,7 +396,7 @@ templates
             # Use a constraint to normalize the first 4 q's
             q = "[1; zeros(6, 1)]" ("[q[0:4] / sqsum(q[0:4]); q[4:7]]")
 
-            q̇ = "[0.5 ∙ [-q[1], -q[2], -q[3];
+            dqdot = "[0.5 ∙ [-q[1], -q[2], -q[3];
                           q[0], -q[3],  q[2];
                           q[3],  q[0], -q[1];
                          -q[2],  q[1],  q[0]] ∙ dq[0:3];

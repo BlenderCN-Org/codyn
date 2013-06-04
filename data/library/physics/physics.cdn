@@ -29,7 +29,7 @@ templates
 
             ## Generalized @names[@@0[!]] (i.e. DOFs of joint)
             "{q,dq,ddq}" = "null"
-            q̇ = "dq"
+            dqdot = "dq"
         }
 
         ## Base physical body. It represents a single degree of freedom by
