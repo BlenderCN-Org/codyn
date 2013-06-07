@@ -33,6 +33,8 @@ templates
         node "camera"
         {
             orthographic = "0"
+            orthographicScale = "0"
+
             transform = "Transform.Translation(translation) *
                          Transform.Rotation(Quaternion.ToMatrix3x3(rotation))"
 
