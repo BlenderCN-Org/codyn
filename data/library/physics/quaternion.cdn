@@ -15,6 +15,10 @@ node "Quaternion"
 
     Rotate(q, r) = "ToMatrix3x3(q) * r"
 
+    RotationX(angle) = "[cos(angle / 2); sin(angle / 2); 0; 0]"
+    RotationY(angle) = "[cos(angle / 2); 0; sin(angle / 2); 0]"
+    RotationZ(angle) = "[cos(angle / 2); 0; 0; sin(angle / 2)]"
+
     ToMatrix3x3(q) = "2 ∙ [
         q[0]^2 + q[1]^2 - 0.5,	       q[1] ∙ q[2] + q[3] ∙ q[0],     q[1] ∙ q[3] - q[2] ∙ q[0];
         q[1] ∙ q[2] - q[3] ∙ q[0],     q[0]^2 + q[2]^2 - 0.5,	      q[2] ∙ q[3] + q[1] ∙ q[0];
