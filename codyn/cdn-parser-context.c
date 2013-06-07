@@ -6645,6 +6645,8 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 
 		sel = item->data;
 
+		expansion_context_push_selection (context, sel);
+
 		pairs = generate_name_value_pairs (context,
 		                                   sel,
 		                                   id,
@@ -6714,6 +6716,8 @@ cdn_parser_context_push_io_type (CdnParserContext  *context,
 			name_value_pair_free (pair);
 			pairs = g_slist_delete_link (pairs, pairs);
 		}
+
+		expansion_context_pop (context);
 	}
 
 	ret = g_slist_reverse (ret);
