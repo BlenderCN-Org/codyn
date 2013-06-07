@@ -37,10 +37,16 @@ def to_mat4x4(v, dim):
 
     mat = mathutils.Matrix()
 
-    mat[0] = mathutils.Vector([v[0], v[4], v[8],  v[12]])
-    mat[1] = mathutils.Vector([v[1], v[5], v[9],  v[13]])
-    mat[2] = mathutils.Vector([v[2], v[6], v[10], v[14]])
-    mat[3] = mathutils.Vector([v[3], v[7], v[11], v[15]])
+    if len(v) == 4:
+        mat[0] = mathutils.Vector(v[0])
+        mat[1] = mathutils.Vector(v[1])
+        mat[2] = mathutils.Vector(v[2])
+        mat[3] = mathutils.Vector(v[3])
+    else:
+        mat[0] = mathutils.Vector([v[0], v[4], v[8],  v[12]])
+        mat[1] = mathutils.Vector([v[1], v[5], v[9],  v[13]])
+        mat[2] = mathutils.Vector([v[2], v[6], v[10], v[14]])
+        mat[3] = mathutils.Vector([v[3], v[7], v[11], v[15]])
 
     return mat
 
