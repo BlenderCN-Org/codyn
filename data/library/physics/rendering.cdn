@@ -33,8 +33,13 @@ templates
         node "camera"
         {
             orthographic = "0"
-            transform = "Transform.Translation([5; -5; 0.5]) *
-                         Transform.RotationZ(-0.25 * pi) * Transform.RotationX(-0.5 * pi)"
+            transform = "Transform.Translation(translation) *
+                         Transform.Rotation(Quaternion.ToMatrix3x3(rotation))"
+
+            translation = "[5; -5; 0.5]"
+
+            rotation = "Quaternion.Multiply(Quaternion.RotationZ(-0.25 * pi),
+                                            Quaternion.RotationX(-0.5 * pi))"
         }
     } }
 }
