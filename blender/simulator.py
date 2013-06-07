@@ -184,7 +184,7 @@ class SimulatorRawc(Simulator):
             self.localMatrix = self.node["localMatrix"]
 
         def update(self):
-            m = codyn.to_mat4x4(self.localMatrix.flat_value,
+            m = codyn.to_mat4x4(self.localMatrix.value,
                                  self.localMatrix.dimension)
 
             self.gobj.localTransform = m
@@ -198,7 +198,7 @@ class SimulatorRawc(Simulator):
 
         def update(self):
             i = self.idx * 6
-            f = self.force.flat_value
+            f = self.force.value
 
             Simulator.Force.update(self, f[i:i + 6])
 
