@@ -56,12 +56,12 @@ templates
                 # the contact force due to the contact model stiffness
                 #
                 # [1-by-N]
-                forceNormalStiffness = "normalStiffness * -csign(pN², pN)"
+                forceNormalStiffness = "normalStiffness * -csign(pN^3, pN)"
 
                 # the contact force due to the contact model damping
                 #
                 # [1-by-N]
-                forceNormalDamping = "2 * normalDamping * -dpN .* (pN < 0)"
+                forceNormalDamping = "2 * normalDamping * -dpN .* abs(pN^3) .* (pN < 0)"
 
                 # [1-by-N]
                 forceNormal = "max(0,
@@ -72,7 +72,7 @@ templates
                 #
                 # [1-by-N]
                 ep = "contactPoint[@1[!], :] - p[@1[!], :]"
-                "forceTangential{X,Y}" = "frictionStiffness * csign(ep², ep) - 2 * frictionDamping * dp[@1[!], :]"
+                "forceTangential{X,Y}" = "(frictionStiffness * csign(ep^3, ep) - frictionDamping * dp[@1[!], :])  .* (pN < 0)"
 
                 # maximum tangential force by simple coulomb friction
                 #
