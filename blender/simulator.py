@@ -31,7 +31,7 @@ def find_and_load_rawc(data):
 
             # Load rawc version of the network. We need a dirty trick to force
             # a reload
-            f = tempfile.NamedTemporaryFile(delete=False)
+            f = tempfile.NamedTemporaryFile(delete=False, prefix='lib', suffix=ext)
             tmpname = f.name
             f.close()
             del f
