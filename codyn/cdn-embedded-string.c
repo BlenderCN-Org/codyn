@@ -569,6 +569,7 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	if (!g_regex_match (em->priv->indirection_regex, s, 0, &info))
 	{
+		g_match_info_free (info);
 		return g_strdup("");
 	}
 
@@ -744,6 +745,8 @@ resolve_indirection (CdnEmbeddedString   *em,
 
 	g_free (name);
 	g_free (num);
+
+	g_match_info_free (info);
 
 	return ret;
 }
