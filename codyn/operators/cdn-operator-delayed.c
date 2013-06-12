@@ -529,6 +529,18 @@ cdn_operator_delayed_execute (CdnOperator     *op,
 
 			return;
 		}
+		else
+		{
+			gint i;
+			gint n;
+
+			n = cdn_stack_arg_size (&d->priv->smanip.push);
+
+			for (i = 0; i < n; ++i)
+			{
+				cdn_stack_push (stack, h->v[i]);
+			}
+		}
 	}
 	else
 	{
