@@ -362,7 +362,7 @@ cdn_operator_delayed_initialize (CdnOperator   *op,
 		             "The operator `delayed' currently on supports "
 		             "1-by-1 time delay (got %d-by-%d)",
 		             argdim->args[0].rows,
-		             argdim->args[1].columns);
+		             argdim->args[0].columns);
 
 		return FALSE;
 	}
