@@ -1903,10 +1903,10 @@ expansion_append1 (CdnExpansion *a,
 }
 
 static GSList *
-expand_concat (CdnEmbeddedString   *s,
+expand_concat (CdnEmbeddedString    *s,
                CdnExpansionContext  *ctx,
-               ExNode              *node,
-               GError             **error)
+               ExNode               *node,
+               GError              **error)
 {
 	ExNode *child;
 	GSList *ret = NULL;
@@ -1929,20 +1929,30 @@ expand_concat (CdnEmbeddedString   *s,
 			{
 				CdnExpansion *et;
 
-				// Append the item onto the ritm
+				// Append the item onto the ritm which is the up until now
+				// collected items
 				if (ritm)
 				{
 					if (!ritm->next && !item->next)
 					{
+						// last result item to expand and last item
+						// to add. returns either and frees the other
 						et = expansion_append2 (ritm->data, item->data);
 					}
 					else if (!ritm->next)
 					{
+						// last result item to expand but there are still
+						// more ex items. returns item->data
 						et = expansion_append1 (ritm->data, item->data);
 					}
 					else
 					{
 						et = expansion_append (ritm->data, item->data);
+
+						if (!item->next)
+						{
+							cdn_expansion_unref (ritm->data);
+						}
 					}
 				}
 				else
@@ -1970,8 +1980,8 @@ expand_concat (CdnEmbeddedString   *s,
 		}
 
 		g_slist_free (ex);
-
 		g_slist_free (ret);
+
 		ret = g_slist_reverse (newret);
 
 		child = child->next;
