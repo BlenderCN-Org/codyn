@@ -1059,7 +1059,7 @@ main (int argc,
 	setlocale (LC_ALL, "");
 
 	monitored = g_ptr_array_new_with_free_func ((GDestroyNotify)cdn_monitored_free);
-	precision = g_strdup ("% 18.12f");
+	precision = g_strdup (" % 18.12f");
 
 	ctx = g_option_context_new ("-m <SELECTOR> [-m ...] [-v RANGE...] [NETWORK] - monitor Codyn network");
 	g_option_context_set_summary (ctx, "Omit the network name or use a dash '-' to read from standard input.");
