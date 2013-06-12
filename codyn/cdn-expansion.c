@@ -477,14 +477,7 @@ cdn_expansion_copy (CdnExpansion *id)
 	}
 	else
 	{
-		gint i;
-
 		ret->expansions = g_ptr_array_ref (id->expansions);
-
-		for (i = 0; i < cdn_expansion_num (id); ++i)
-		{
-			expansion_ref (get_ex (id, i));
-		}
 	}
 
 	ret->copy_on_write = TRUE;
