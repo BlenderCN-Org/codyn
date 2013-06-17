@@ -3545,6 +3545,19 @@ create_edges (CdnParserContext          *context,
 	return ret;
 }
 
+static void
+free_multi_array (GPtrArray *p)
+{
+	g_ptr_array_free (p, TRUE);
+}
+
+static void
+free_multi_array_list (GSList *p)
+{
+	g_slist_foreach (p, (GFunc)free_multi_array, NULL);
+	g_slist_free (p);
+}
+
 /**
  * cdn_parser_context_push_node: (skip)
  *
@@ -3576,6 +3589,8 @@ cdn_parser_context_push_node (CdnParserContext  *context,
 	{
 		g_object_unref (id);
 	}
+
+	free_multi_array_list (templates);
 }
 
 void
@@ -3708,6 +3723,8 @@ cdn_parser_context_push_edge (CdnParserContext          *context,
 	{
 		g_object_unref (phase);
 	}
+
+	free_multi_array_list (templates);
 }
 
 static void
@@ -6530,6 +6547,8 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 
 	cdn_parser_context_push_objects (context, ret);
 	g_slist_free (ret);
+
+	free_multi_array_list (templates);
 }
 
 void

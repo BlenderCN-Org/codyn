@@ -187,9 +187,11 @@ static void
 free_current_selections (Selector *selector)
 {
 	g_slist_foreach (selector->selections_in, (GFunc)cdn_selection_unref, NULL);
+	g_slist_free (selector->selections_in);
 	selector->selections_in = NULL;
 
 	g_slist_foreach (selector->selections_out, (GFunc)cdn_selection_unref, NULL);
+	g_slist_free (selector->selections_out);
 	selector->selections_out = NULL;
 }
 
