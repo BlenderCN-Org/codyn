@@ -1,65 +1,22 @@
 require "findbodies.cdn"
+require "algorithms/rnea.cdn"
 
-# This file implements the Recursive Newton Euler algorithm for inverse
-# dynamics.
 templates
 {
     node "physics"
     {
-        ## The dynamics edge is used to transmit forces from children to
-        ## parents.
-        edge "dynamics"
-        {
-            ## Transmit force from the child to the parent frame
-            forceChild <= "transformT ∙ force"
-        }
-
         node "rnea"
         {
-            ## Force transmitted from the child to the parent, see 'force'. This
-            ## force is accumulated from all cild bodies joint on this body. See
-            ## the physiscs.dynamics template
-            forceChild = "zeros(6, 1)"
-
-            ## External spatial force acting on the body. This force is a 6-by-1
-            ## vector containing torques and forces, acting on the local body
-            ## coordinates.
-            forceExternal = "zeros(6, 1)"
-
-            ## Force transmitted over the joint. This force is composed of the force
-            ## coming from the acceleration and velocity acting on the spatial inertia,
-            ## forces transmitted over the joint from the child, and finally external
-            ## forces introduced on the body
-            force = "spI ∙ acceleration +
-                     Sp.CrossForce(velocity) ∙ spI ∙ velocity +
-                     forceChild -
-                     forceExternal"
-
-            τ = "motionSubspaceT ∙ force"
+              τ = "C"
         }
     }
 }
 
 edge has-template(physics.joint)
 {
-    ## Recursive joint velocity (from parent to child)
-    velocity <= "output.transform ∙ velocity + output.jointVelocity"
-
-    # TODO: add cJ in accel calc, add inverse dynamics case dqq not 0
-
-    ## Recursive joint acceleration (from parent to child)
-    acceleration <= "output.transform ∙ acceleration +
-                     motionSubspace ∙ ddq +
-                     Sp.CrossMotion(output.velocity) ∙ output.jointVelocity"
-}
-
-node "@bodies" : physics.rnea {}
-
-# Add a dynamics link back up from the child to the parent
-node edges | has-template(physics.joint) | output-name | input-name | self
-{
-    ## Edge transmitting forces from child to parent
-    edge "dynamics_@@0_to_@0" from "@@@0" to "@@@0" : physics.dynamics {}
+    acceleration <= "output.transform ∙ acceleration + output.cJ +
+                     Spatial.CrossMotion(output.velocity) ∙ output.jointVelocity +
+                     motionSubspace ∙ ddq"
 }
 
 # vi:ex:ts=4:et
