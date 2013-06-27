@@ -304,6 +304,7 @@ def init():
     data.simulator.update()
     data.paused = False
     data.gui = gui.Screen()
+    data.i = 0
 
     setup_gui(data)
 
@@ -322,6 +323,9 @@ def loop():
     fps = bge.logic.getLogicTicRate()
     data = codyn.data.networks[owner.name]
 
+    cam = bge.logic.getCurrentScene().active_camera
+    record = (not cam is None and 'cdn_record' in cam and cam['cdn_record'])
+
     if not data.paused:
         data.simulator.step(1.0 / fps)
         data.simulator.update()
@@ -332,6 +336,11 @@ def loop():
 
     if bge.events.SPACEKEY in bge.logic.keyboard.active_events:
         sp = bge.logic.keyboard.active_events[bge.events.SPACEKEY]
+    if record:
+        fname = '/tmp/snapshots/{0:05d}.png'.format(data.i)
+        bge.render.makeScreenshot(fname)
+
+        data.i += 1
 
         if sp == bge.logic.KX_INPUT_JUST_RELEASED:
             data.paused = not data.paused

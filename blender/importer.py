@@ -225,6 +225,12 @@ class CodynImport(bpy.types.Operator):
         if not scale is None:
             o.data.ortho_scale = scale.get_value()
 
+        record = camera.get_variable('record')
+
+        if not 'cdn_record' in o.game.properties:
+            bpy.ops.object.game_property_new(type='BOOL', name='cdn_record')
+
+        o.game.properties['cdn_record'].value = not record is None
         return o
 
     def has_applied_template(self, obj, template):
