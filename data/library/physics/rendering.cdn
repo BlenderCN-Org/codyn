@@ -42,6 +42,9 @@ templates
 
             rotation = "Quaternion.Multiply(Quaternion.RotationZ(-0.25 * pi),
                                             Quaternion.RotationX(-0.5 * pi))"
+
+            localMatrix = transform
+            worldMatrix = transform
         }
     } }
 }
