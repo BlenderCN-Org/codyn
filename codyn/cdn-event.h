@@ -61,7 +61,7 @@ void             cdn_event_set_approximation (CdnEvent      *event,
                                               gdouble        approximation);
 
 void             cdn_event_add_set_variable  (CdnEvent      *event,
-                                              CdnVariable   *property,
+                                              CdnVariable   *variable,
                                               CdnExpression *value);
 
 void             cdn_event_set_goto_state    (CdnEvent      *event,

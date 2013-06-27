@@ -8,6 +8,30 @@
 
 #include <math.h>
 
+/**
+ * CdnEvent:
+ *
+ * Event class.
+ *
+ * The #CdnEvent class is a #CdnNode derivative defining node state transitions
+ * under specified conditions (see #cdn_event_set_condition). Each simulation
+ * step, all event conditions are checked and when the condition goes from
+ * false to true, the event is executed (see #cdn_event_execute).
+ *
+ * Events can be active only in certain states (see #CdnPhaseable), and can
+ * transition states when they are executed (see #cdn_event_set_goto_state).
+ * Note that these states are transitioned on the _parent_ #CdnNode, such that
+ * multiple event objects can affect the same state. Additionally, states can
+ * set variables to certain values when fired (see #cdn_event_add_set_variable).
+ *
+ * Finally, the occurence of events can be refined by the integrator. When
+ * the event approximation (#cdn_event_set_approximation) is set, then the
+ * time at which the event occurs will be refined beyond the specified
+ * integration time step, until the error of the condition going from false to
+ * true is within the specified approximation.
+ *
+ */
+
 #define CDN_EVENT_GET_PRIVATE(object)(G_TYPE_INSTANCE_GET_PRIVATE((object), CDN_TYPE_EVENT, CdnEventPrivate))
 
 typedef CdnEventLogicalNode LogicalNode;
@@ -937,12 +961,34 @@ cdn_event_init (CdnEvent *self)
 	self->priv = CDN_EVENT_GET_PRIVATE (self);
 }
 
+/**
+ * cdn_event_new:
+ * @id: the event node id.
+ * @condition: the event condition.
+ * @approximation: the event approximation.
+ *
+ * Create a new #CdnEvent. The specified @id is simply the #CdnObject id
+ * (note that #CdnEvent derives from #CdnNode). The @condition expression should
+ * be a logical expression indicating when the event is triggered.
+ *
+ * Set @approximation to the maximum allowed error (positive) on the condition
+ * for which the event should be triggered. A value of -1 specifies the maximum
+ * error and will not refine the time at which the event occured.
+ *
+ * Returns: a new #CdnEvent.
+ *
+ **/
 CdnEvent *
 cdn_event_new (gchar const   *id,
                CdnExpression *condition,
                gdouble        approximation)
 {
 	g_return_val_if_fail (CDN_IS_EXPRESSION (condition), NULL);
+
+	if (approximation < 0)
+	{
+		approximation = G_MAXDOUBLE;
+	}
 
 	return g_object_new (CDN_TYPE_EVENT,
 	                     "id",
@@ -954,6 +1000,14 @@ cdn_event_new (gchar const   *id,
 	                     NULL);
 }
 
+/**
+ * cdn_event_update:
+ * @event: the #CdnEvent.
+ *
+ * Update the event condition value. This is normally called by the integrator
+ * and should not be called manually.
+ *
+ **/
 void
 cdn_event_update (CdnEvent *event)
 {
@@ -966,7 +1020,7 @@ cdn_event_update (CdnEvent *event)
  *
  * Get the event condition.
  *
- * Returns: (transfer none): A #CdnExpression
+ * Returns: (transfer none): A #CdnExpression.
  *
  **/
 CdnExpression *
@@ -975,12 +1029,31 @@ cdn_event_get_condition (CdnEvent *event)
 	return event->priv->condition;
 }
 
+/**
+ * cdn_event_get_approximation:
+ * @event: the #CdnEvent.
+ *
+ * Get the maximum error on the condition allowed when the event should be
+ * triggered.
+ *
+ * Returns: the approximation.
+ *
+ **/
 gdouble
 cdn_event_get_approximation (CdnEvent *event)
 {
 	return event->priv->approximation;
 }
 
+/**
+ * cdn_event_set_condition:
+ * @event: the #CdnEvent.
+ * @condition: the condition.
+ *
+ * Set the condition at which the event should be triggered. This condition
+ * must be a logical expression.
+ *
+ */
 void
 cdn_event_set_condition (CdnEvent      *event,
                          CdnExpression *condition)
@@ -991,11 +1064,26 @@ cdn_event_set_condition (CdnEvent      *event,
 	set_condition (event, condition);
 }
 
+/**
+ * cdn_event_set_approximation:
+ * @event: the #CdnEvent.
+ * @approximation: the approximation value.
+ *
+ * Set the maximum error on the condition allowed when the event should be
+ * triggered. If do not want the event to be refined, then use the special
+ * value -1 for @approximation.
+ *
+ **/
 void
 cdn_event_set_approximation (CdnEvent *event,
                              gdouble   approximation)
 {
 	g_return_if_fail (CDN_IS_EVENT (event));
+
+	if (approximation == -1)
+	{
+		approximation = G_MAXDOUBLE;
+	}
 
 	if (event->priv->approximation != approximation)
 	{
@@ -1004,12 +1092,33 @@ cdn_event_set_approximation (CdnEvent *event,
 	}
 }
 
+/**
+ * cdn_event_last_distance:
+ * @event: the #CdnEvent.
+ *
+ * Get the last computed distance towards triggering the condition.
+ *
+ * Returns: the last condition distance.
+ *
+ **/
 gdouble
 cdn_event_last_distance (CdnEvent *event)
 {
 	return event->priv->condition_node->last_distance;
 }
 
+/**
+ * cdn_event_happened:
+ * @event: the #CdnEvent.
+ * @dist: (allow-none): return value for the condition distance.
+ *
+ * Check whether the event has happened in the last timestep. If the event
+ * has happened, and @dist is not %NULL, then the error on the event condition
+ * is returned in @dist.
+ *
+ * Returns: %TRUE if the event happened, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_event_happened (CdnEvent *event,
                     gdouble  *dist)
@@ -1029,23 +1138,41 @@ cdn_event_happened (CdnEvent *event,
 	return ret;
 }
 
+/**
+ * cdn_event_add_set_variable:
+ * @event: the #CdnEvent.
+ * @variable: the #CdnVariable to set.
+ * @value: the expression to set @variable to.
+ *
+ * Add an action to set @variable to @value when the event is triggered.
+ *
+ **/
 void
 cdn_event_add_set_variable (CdnEvent      *event,
-                            CdnVariable   *property,
+                            CdnVariable   *variable,
                             CdnExpression *value)
 {
 	SetVariable *p;
 
 	g_return_if_fail (CDN_IS_EVENT (event));
-	g_return_if_fail (CDN_IS_VARIABLE (property));
+	g_return_if_fail (CDN_IS_VARIABLE (variable));
 	g_return_if_fail (CDN_IS_EXPRESSION (value));
 
-	p = set_variable_new (property, value);
+	p = set_variable_new (variable, value);
 
 	event->priv->set_variables = g_slist_append (event->priv->set_variables,
 	                                              p);
 }
 
+/**
+ * cdn_event_execute:
+ * @event: the #CdnEvent.
+ *
+ * Execute the event. This will set all the variables added with
+ * #cdn_event_add_set_variable to their corresponding values. Note that this
+ * is normally called by the integrator and does not need to be manually called.
+ *
+ */
 void
 cdn_event_execute (CdnEvent *event)
 {
@@ -1072,6 +1199,15 @@ cdn_event_execute (CdnEvent *event)
 	}
 }
 
+/**
+ * cdn_event_set_goto_state:
+ * @event: the #CdnEvent.
+ * @phase: the state to transition to.
+ *
+ * Sets the state to which the parent node transitions when this event
+ * is triggered.
+ *
+ */
 void
 cdn_event_set_goto_state (CdnEvent           *event,
                           gchar const        *phase)
@@ -1084,6 +1220,17 @@ cdn_event_set_goto_state (CdnEvent           *event,
 	g_object_notify (G_OBJECT (event), "goto-state");
 }
 
+/**
+ * cdn_event_get_goto_state:
+ * @event: the #CdnEvent.
+ *
+ * Get the state to which the parent node transitions when the event is
+ * triggered. Note that this can return %NULL if the event doesn't cause a
+ * state transition.
+ *
+ * Returns: the state to which the event transitions the parent node when triggered.
+ *
+ **/
 gchar const *
 cdn_event_get_goto_state (CdnEvent *event)
 {
@@ -1092,6 +1239,14 @@ cdn_event_get_goto_state (CdnEvent *event)
 	return event->priv->goto_state;
 }
 
+/**
+ * cdn_event_set_terminal:
+ * @event: the #CdnEvent.
+ *
+ * Set whether the event is terminal. Terminal events cause the integration
+ * to stop when triggered.
+ *
+ **/
 void
 cdn_event_set_terminal (CdnEvent *event,
                         gboolean  terminal)
@@ -1106,6 +1261,15 @@ cdn_event_set_terminal (CdnEvent *event,
 	}
 }
 
+/**
+ * cdn_event_get_terminal:
+ * @event: the #CdnEvent.
+ *
+ * Get whether the event is terminal.
+ *
+ * Returns: %TRUE if the event is terminal, %FALSE otherwise.
+ *
+ **/
 gboolean
 cdn_event_get_terminal (CdnEvent *event)
 {
