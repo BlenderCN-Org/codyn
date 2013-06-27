@@ -201,10 +201,10 @@ class SimulatorRawc(Simulator):
             self.force = self.node["forceAtLocations"]
 
         def update(self):
-            i = self.idx * 6
             f = self.force.value
 
-            Simulator.Force.update(self, f[i:i + 6])
+
+            Simulator.Force.update(self, [x[self.idx] for x in f])
 
     @property
     def t(self):
