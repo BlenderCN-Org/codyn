@@ -10,6 +10,8 @@ class CodynImport(bpy.types.Operator):
     bl_description = "Import a codyn model"
 
     filepath = bpy.props.StringProperty(subtype="FILE_PATH")
+    animation_start = bpy.props.FloatProperty(name="Animation start (t)", min=0, subtype='UNSIGNED', default=0)
+    animation_end = bpy.props.FloatProperty(name="Animation end (t)", min=0, subtype='UNSIGNED', default=0)
 
     def make_object(self, context, name, mesh=None):
         if name in bpy.data.objects:
@@ -265,6 +267,7 @@ class CodynImport(bpy.types.Operator):
 
         for camera in system.find_objects('has-template(physics.rendering.camera)'):
             activecam = self.add_camera(context, sysobj, camera)
+            nodemap[camera] = activecam
             ret.append(activecam)
 
         if not activecam is None:
@@ -381,7 +384,7 @@ class CodynImport(bpy.types.Operator):
             # Transform
             nodemap[body].matrix_local = codyn.local_blender_transform(body)
 
-        return ret
+        return ret, nodemap
 
     def link_library(self, context):
         filename = inspect.getframeinfo(inspect.currentframe()).filename
@@ -407,6 +410,60 @@ class CodynImport(bpy.types.Operator):
             sobjs['force'].location = mathutils.Vector((0, 0, 0))
 
         context.scene.update()
+
+    def run_for(self, network, ts):
+        dt = network.get_integrator().get_default_timestep()
+        t = 0
+
+        while t < ts:
+            if ts - t < dt:
+                rdt = ts - t
+            else:
+                rdt = dt
+
+            t += network.step(rdt)
+
+        return t
+
+    def animate(self, context, name, start, end):
+        if start > end:
+            raise RuntimeError('Start animation time cannot be smaller than end')
+
+        s = context.scene
+        fps = s.render.fps
+
+        s.frame_current = 1
+        s.frame_start = 1
+        s.frame_end = (end - start) * fps
+
+        frame = 1
+
+        period = 1.0 / fps
+
+        network = codyn.data.networks[name]
+        network.cdn.reset()
+        network.cdn.begin(0)
+
+        if start != 0:
+            # Simulate until start
+            start = self.run_for(network.cdn, start)
+
+        # Simulate until start == end
+        while start < end:
+            # Update keyframe from codyn
+            for body in network.nodes:
+                node = network.nodes[body]
+
+                node.matrix_local = codyn.local_blender_transform(body)
+
+                node.keyframe_insert(data_path='location', frame=frame)
+                node.keyframe_insert(data_path='rotation_euler', frame=frame)
+
+            # Simulate for one frame
+            start += self.run_for(network.cdn, period)
+            frame += 1
+
+        network.cdn.end()
 
     def execute(self, context):
         context.scene.cursor_location = [0, 0, 0]
@@ -473,8 +530,12 @@ class CodynImport(bpy.types.Operator):
 
         systems = network.find_objects('has-template(physics.system)')
 
+        nodes = {}
+
         for system in systems:
-            objs.extend(self.import_system(cdnobj, context, system))
+            o, nodemap = self.import_system(cdnobj, context, system)
+            objs.extend(o)
+            nodes.update(nodemap)
 
         bpy.ops.object.select_all(action="DESELECT")
 
@@ -485,12 +546,25 @@ class CodynImport(bpy.types.Operator):
             context.scene.objects.active = objs[0]
 
         context.scene.layers[0] = True
-        context.scene.render.engine = 'BLENDER_GAME'
 
         codyn.data.networks[name].cdn = network
         codyn.data.networks[name].filename = path
         codyn.data.networks[name].mtime = os.path.getmtime(path)
         codyn.data.networks[name].rawc = None
+        codyn.data.networks[name].nodes = nodes
+        codyn.data.networks[name].systems = systems
+
+        if self.animation_end != 0:
+            context.scene.render.engine = 'BLENDER_RENDER'
+            context.scene.update()
+
+            try:
+                self.animate(context, name, self.animation_start, self.animation_end)
+            except Exception as e:
+                self.report({'ERROR'}, str(e))
+                return {'FINISHED'}
+        else:
+            context.scene.render.engine = 'BLENDER_GAME'
 
         context.scene.update()
 
