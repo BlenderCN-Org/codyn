@@ -156,9 +156,13 @@ class SimulatorCodyn(Simulator):
             f = self.forces[n]
             self.cdn_forces.append(SimulatorCodyn.Force(self.data.cdn.find_object(f[1]), f[0], f[2]))
 
-    def step(self, t):
+    def step(self, t=None):
         dt = self.data.cdn.get_integrator().get_default_timestep()
-        ns = max(1, int(t / dt))
+
+        if t is None:
+            ns = 1
+        else:
+            ns = max(1, int(t / dt))
 
         for i in range(0, ns):
             self.data.cdn.step(dt)
@@ -234,9 +238,13 @@ class SimulatorRawc(Simulator):
         for force in self.cdn_forces:
             force.update()
 
-    def step(self, t):
+    def step(self, t=None):
         dt = self.data.rawc.default_timestep
-        ns = max(1, int(t / dt))
+
+        if t is None:
+            ns = 1
+        else:
+            ns = max(1, int(t / dt))
 
         for i in range(0, ns):
             self.data.rawc.step(dt)
@@ -302,9 +310,11 @@ def init():
 
     data.simulator.reset()
     data.simulator.update()
-    data.paused = False
+    data.paused = True
+    data.single_step = False
     data.gui = gui.Screen()
     data.i = 0
+    data.nt = 1
 
     setup_gui(data)
 
@@ -313,6 +323,17 @@ def init():
 
     bge.render.showMouse(True)
     cont.activate('init_actuator')
+
+def key_pressed(k, release=False):
+    import bge
+
+    if not k in bge.logic.keyboard.active_events:
+        return False
+
+    if release and bge.logic.keyboard.active_events[k] != bge.logic.KX_INPUT_JUST_RELEASED:
+        return False
+
+    return True
 
 def loop():
     import bge
@@ -326,23 +347,49 @@ def loop():
     cam = bge.logic.getCurrentScene().active_camera
     record = (not cam is None and 'cdn_record' in cam and cam['cdn_record'])
 
+    if not record:
+        fps /= data.nt
+
+    if data.single_step:
+        data.simulator.step()
+        data.simulator.update()
+
+        data.paused = True
+        data.single_step = False
+
     if not data.paused:
         data.simulator.step(1.0 / fps)
         data.simulator.update()
 
-    data.lbl_time.text = 'time: {:>6.3f}'.format(data.simulator.t)
+    data.lbl_time.text = 'time: {:>6.3f}, {:>2.2f}x'.format(data.simulator.t, data.nt)
 
-    camera.update(bge.logic.getCurrentScene().active_camera)
+    if not cam is None:
+        camera.update(cam)
 
-    if bge.events.SPACEKEY in bge.logic.keyboard.active_events:
-        sp = bge.logic.keyboard.active_events[bge.events.SPACEKEY]
+    if key_pressed(bge.events.SPACEKEY, True):
+        data.paused = not data.paused
+
+    if key_pressed(bge.events.RIGHTARROWKEY):
+        data.single_step = True
+
     if record:
         fname = '/tmp/snapshots/{0:05d}.png'.format(data.i)
         bge.render.makeScreenshot(fname)
 
         data.i += 1
 
-        if sp == bge.logic.KX_INPUT_JUST_RELEASED:
-            data.paused = not data.paused
+    if key_pressed(bge.events.PADPLUSKEY, True):
+        data.nt *= 2
+
+    if key_pressed(bge.events.PADMINUS, True):
+        data.nt /= 2
+
+    if key_pressed(bge.events.RKEY):
+        data.simulator.reset()
+        data.simulator.update()
+
+        data.paused = True
+        data.single_step = False
+        data.i = 0
 
 # vi:ts=4:et
