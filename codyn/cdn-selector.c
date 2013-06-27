@@ -2661,7 +2661,7 @@ selector_pseudo_sort (CdnSelector *self,
                       Selector    *selector,
                       GSList      *parent)
 {
-	return g_slist_sort (parent, (GCompareFunc)sort_selections);
+	return g_slist_sort (g_slist_copy (parent), (GCompareFunc)sort_selections);
 }
 
 static GSList *
