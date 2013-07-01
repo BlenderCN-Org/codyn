@@ -1202,7 +1202,7 @@ cdn_event_execute (CdnEvent *event)
 /**
  * cdn_event_set_goto_state:
  * @event: the #CdnEvent.
- * @phase: the state to transition to.
+ * @state: the state to transition to.
  *
  * Sets the state to which the parent node transitions when this event
  * is triggered.
@@ -1210,12 +1210,12 @@ cdn_event_execute (CdnEvent *event)
  */
 void
 cdn_event_set_goto_state (CdnEvent           *event,
-                          gchar const        *phase)
+                          gchar const        *state)
 {
 	g_return_if_fail (CDN_IS_EVENT (event));
 
 	g_free (event->priv->goto_state);
-	event->priv->goto_state = g_strdup (phase);
+	event->priv->goto_state = g_strdup (state);
 
 	g_object_notify (G_OBJECT (event), "goto-state");
 }
