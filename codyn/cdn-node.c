@@ -1329,8 +1329,8 @@ register_object (CdnNode  *node,
 
 static gboolean
 cdn_node_add_impl (CdnNode   *node,
-                    CdnObject  *object,
-                    GError    **error)
+                   CdnObject  *object,
+                   GError    **error)
 {
 	CdnObject *other;
 
