@@ -340,10 +340,6 @@ void                   cdn_parser_context_unapply_template      (CdnParserContex
                                                                  CdnSelector       *templates,
                                                                  CdnSelector       *targets);
 
-void                   cdn_parser_context_remove_record         (CdnParserContext  *context,
-                                                                 gint               len,
-                                                                 gint               offset);
-
 gboolean               cdn_parser_context_get_first_eof         (CdnParserContext  *context);
 void                   cdn_parser_context_set_first_eof         (CdnParserContext  *context,
                                                                  gboolean           firsteof);

@@ -36,7 +36,6 @@ advance_column (CdnParserContext *context, gint offset)
 	cdn_parser_context_set_line (yyextra, yytext + 1, yylineno);		\
 	cdn_parser_context_set_column (yyextra, 0, 0);				\
 										\
-	cdn_parser_context_remove_record (yyextra, yyleng - 1, 0);		\
 	yyless (1);
 
 #define ECHO
@@ -93,7 +92,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 					cdn_parser_context_set_column (yyextra, 0, 0);
 
 					yyless (0);
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
 
@@ -141,8 +139,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 				}
 
 <annotation_start><<EOF>>	{
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
-
 					yy_pop_state (yyscanner);
 					yy_pop_state (yyscanner);
 
@@ -150,7 +146,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 				}
 <annotation_start>.		{
 					yyless (0);
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
 					yy_pop_state (yyscanner);
@@ -315,7 +310,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 <indirection_had_some>\n.*	{
 					yyless (0);
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
 
 					yy_pop_state (yyscanner);
 					return T_INDIRECTION_END;
@@ -325,7 +319,6 @@ IDENTIFIER ({UniAnyChar}|[a-z_])([a-z0-9_-]|{UniAnyChar})*
 
 					advance_column (yyextra, -yyleng);
 
-					cdn_parser_context_remove_record (yyextra, yyleng, 0);
 					yyless(0);
 
 					return T_INDIRECTION_END;
