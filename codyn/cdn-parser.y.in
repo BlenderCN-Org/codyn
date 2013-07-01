@@ -249,7 +249,7 @@ int cdn_parser_lex(YYSTYPE *lvalp, YYLTYPE *llocp, void *scanner);
 
 choose_parser
 	:
-	| T_START_DOCUMENT document_contents
+	| T_START_DOCUMENT document_contents eof
 	| T_START_SELECTOR selector_parse eof
 	| T_START_NODE node_contents
 	| T_START_EDGE edge_contents
@@ -1295,7 +1295,7 @@ selector_define_context
 	: '<'
 	  T_IDENTIFIER
 	  '>'
-	  ':'				{ $$ = g_strdup ($2); }
+	  ':'				{ $$ = g_strdup ($2); g_free ($2); }
 	;
 
 selector_identifier
@@ -1564,15 +1564,15 @@ repeated_prime
 	;
 
 identifier
-	: T_IDENTIFIER			{ $$ = cdn_embedded_string_new_from_string ($1); }
+	: T_IDENTIFIER			{ $$ = cdn_embedded_string_new_from_string ($1); g_free ($1); }
 	;
 
 double
-	: T_DOUBLE			{ $$ = cdn_embedded_string_new_from_string ($1); }
+	: T_DOUBLE			{ $$ = cdn_embedded_string_new_from_string ($1); g_free ($1); }
 	;
 
 integer
-	: T_INTEGER			{ $$ = cdn_embedded_string_new_from_string ($1); }
+	: T_INTEGER			{ $$ = cdn_embedded_string_new_from_string ($1); g_free ($1); }
 	;
 
 number
@@ -1616,7 +1616,7 @@ string_item
 	| indirection_inside
 	| reduce_inside
 	| map_inside
-	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); }
+	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); g_free ($1); }
 	| '{'				{ cdn_embedded_string_push_brace (cdn_parser_context_peek_string (context)); }
 	| '}'				{ cdn_embedded_string_pop_brace (cdn_parser_context_peek_string (context)); }
 	;
@@ -1683,9 +1683,9 @@ indirection_embedding
 
 indirection_contents
 	: T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context),
-	                                                                $1); }
+	                                                                $1); g_free ($1); }
 	| T_STRING 			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context),
-	                                                                $1); }
+	                                                                $1); g_free ($1); }
 	  indirection_embedding
 	| indirection_embedding
 	;
@@ -1712,7 +1712,7 @@ equation_item
 	                                                            CDN_EMBEDDED_STRING_NODE_INDIRECTION,
 	                                                            0);
 	                                  cdn_embedded_string_add_text (cdn_parser_context_peek_string (context),
-	                                                                $1);
+	                                                                $1); g_free ($1);
 	                                  cdn_embedded_string_pop (cdn_parser_context_peek_string (context)); }
 	;
 
@@ -1761,7 +1761,7 @@ map_item
 	: equation_inside
 	| condition_inside
 	| indirection_inside
-	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); }
+	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); g_free ($1); }
 	;
 
 map_contents
@@ -1781,7 +1781,7 @@ reduce_item
 	: equation_inside
 	| condition_inside
 	| indirection_inside
-	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); }
+	| T_STRING			{ cdn_embedded_string_add_text (cdn_parser_context_peek_string (context), $1); g_free ($1); }
 	;
 
 reduce_contents

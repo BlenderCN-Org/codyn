@@ -1113,6 +1113,7 @@ load_from_file (CdnNetwork  *network,
 		else
 		{
 			network->priv->parser_context = ctx;
+			g_object_set (ctx, "network", NULL, NULL);
 		}
 	}
 

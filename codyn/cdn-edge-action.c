@@ -645,7 +645,7 @@ cdn_edge_action_copy (CdnEdgeAction *action)
 
 	g_return_val_if_fail (CDN_IS_EDGE_ACTION (action), NULL);
 
-	newaction = cdn_edge_action_new (g_strdup (action->priv->target),
+	newaction = cdn_edge_action_new (action->priv->target,
 	                                 cdn_expression_copy (action->priv->equation));
 
 	cdn_annotatable_set_annotation (CDN_ANNOTATABLE (newaction),

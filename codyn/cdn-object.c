@@ -417,9 +417,7 @@ on_template_variable_added (CdnObject   *templ,
 	if (orig == NULL ||
 	    cdn_object_get_variable_template (object, orig, TRUE))
 	{
-		if (cdn_object_add_variable (object,
-		                             cdn_variable_copy (prop),
-		                             NULL))
+		if (cdn_object_add_variable (object, cdn_variable_copy (prop), NULL))
 		{
 			orig = cdn_object_get_variable (object,
 			                                cdn_variable_get_name (prop));
@@ -640,7 +638,7 @@ add_variable (CdnObject   *object,
 	g_object_ref_sink (property);
 
 	object->priv->variables = g_slist_append (object->priv->variables,
-	                                           property);
+	                                          property);
 
 	g_hash_table_insert (object->priv->property_hash,
 	                     g_strdup (cdn_variable_get_name (property)),
@@ -951,7 +949,7 @@ remove_variable (CdnObject   *object,
 	}
 
 	object->priv->variables = g_slist_remove (object->priv->variables,
-	                                           property);
+	                                          property);
 
 	_cdn_variable_set_object (property, NULL, object->priv->use_count > 1);
 
@@ -1105,6 +1103,12 @@ cdn_object_add_variable_impl (CdnObject    *object,
 		             cdn_variable_get_name (property));
 
 		g_free (nm);
+
+		if (g_object_is_floating (G_OBJECT (property)))
+		{
+			g_object_ref_sink (property);
+			g_object_unref (property);
+		}
 
 		return FALSE;
 	}

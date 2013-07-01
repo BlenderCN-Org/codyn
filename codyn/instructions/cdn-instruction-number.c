@@ -21,6 +21,7 @@ cdn_instruction_number_finalize (CdnMiniObject *object)
 	self = CDN_INSTRUCTION_NUMBER (object);
 
 	g_free (self->priv->repr);
+	cdn_stack_manipulation_destroy (&self->priv->smanip);
 
 	CDN_MINI_OBJECT_CLASS (cdn_instruction_number_parent_class)->finalize (object);
 }

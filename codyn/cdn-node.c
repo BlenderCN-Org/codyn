@@ -586,6 +586,7 @@ cdn_node_dispose (GObject *object)
 
 	g_slist_free (copy);
 	g_slist_free (node->priv->edges);
+
 	node->priv->edges = NULL;
 
 	if (node->priv->self_edge)
@@ -1466,7 +1467,7 @@ cdn_node_remove_impl (CdnNode   *node,
 		return FALSE;
 	}
 
-	node->priv->children = g_slist_remove_link (node->priv->children,
+	node->priv->children = g_slist_delete_link (node->priv->children,
 	                                            item);
 
 	remove_object (node, object);
@@ -2215,8 +2216,8 @@ _cdn_node_unlink (CdnNode *node,
 		return;
 	}
 
-	node->priv->edges = g_slist_remove_link (node->priv->edges,
-	                                           item);
+	node->priv->edges = g_slist_delete_link (node->priv->edges,
+	                                         item);
 
 	g_slist_free (node->priv->actors);
 	node->priv->actors = NULL;

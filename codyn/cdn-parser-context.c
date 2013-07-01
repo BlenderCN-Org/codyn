@@ -418,6 +418,11 @@ cdn_parser_context_finalize (GObject *object)
 			                     self->priv->context);
 	}
 
+	if (self->priv->layout)
+	{
+		g_object_unref (self->priv->layout);
+	}
+
 	g_hash_table_destroy (self->priv->files);
 
 	G_OBJECT_CLASS (cdn_parser_context_parent_class)->finalize (object);
@@ -434,6 +439,11 @@ cdn_parser_context_set_property (GObject      *object,
 	switch (prop_id)
 	{
 		case PROP_NETWORK:
+			if (self->priv->network)
+			{
+				g_object_unref (self->priv->network);
+			}
+
 			self->priv->network = g_value_dup_object (value);
 		break;
 		default:
@@ -492,7 +502,8 @@ cdn_parser_context_class_init (CdnParserContextClass *klass)
 	                                                      "Network",
 	                                                      "Network",
 	                                                      CDN_TYPE_NETWORK,
-	                                                      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY));
+	                                                      G_PARAM_READWRITE |
+	                                                      G_PARAM_CONSTRUCT));
 
 	signals[CONTEXT_PUSHED] =
 		g_signal_new ("context-pushed",
@@ -1517,7 +1528,12 @@ cdn_parser_context_set_variable (CdnParserContext  *context,
 
 	if (selectorptr->len == 0)
 	{
+		if (expressionptr)
+		{
+			g_ptr_array_free (expressionptr, TRUE);
+		}
 
+		g_ptr_array_free (selectorptr, TRUE);
 		return;
 	}
 
@@ -1772,7 +1788,8 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 				               CDN_NETWORK_LOAD_ERROR_SYNTAX,
 				               "Only differential equations can be associated to a state");
 
-				return;
+				expansion_context_pop (context);
+				goto cleanup;
 			}
 			else if (index)
 			{
@@ -1784,7 +1801,8 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 				               CDN_NETWORK_LOAD_ERROR_SYNTAX,
 				               "Only differential equations can be associated with an index");
 
-				return;
+				expansion_context_pop (context);
+				goto cleanup;
 			}
 
 			property = cdn_object_get_variable (obj,
@@ -1886,6 +1904,7 @@ cdn_parser_context_add_variable (CdnParserContext  *context,
 		expansion_context_pop (context);
 	}
 
+cleanup:
 	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
 
@@ -1928,6 +1947,9 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 
 	if (targetptr->len == 0)
 	{
+		g_ptr_array_free (targetptr, TRUE);
+		g_ptr_array_free (expressionptr, TRUE);
+
 		return;
 	}
 
@@ -1988,7 +2010,10 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 					               CDN_NETWORK_LOAD_ERROR_SYNTAX,
 					               "Use %s' += instead of <= for differential equations",
 					               name);
-					return;
+
+					expansion_context_pop (context);
+
+					goto cleanup;
 				}
 
 				g_free (name);
@@ -2088,6 +2113,7 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 		g_slist_free (exps);
 	}
 
+cleanup:
 	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (objects);
 
@@ -2951,7 +2977,6 @@ edge_pairs (CdnParserContext *context,
 	if (!fromobjs)
 	{
 		expansion_context_pop (context);
-
 		return NULL;
 	}
 
@@ -3040,7 +3065,6 @@ edge_pairs (CdnParserContext *context,
 	g_slist_free (fromobjs);
 
 	expansion_context_pop (context);
-
 	return g_slist_reverse (ret);
 }
 
@@ -3142,6 +3166,19 @@ expansions_as_string (GSList *expansions)
 	return g_string_free (ret, FALSE);
 }
 
+static void
+free_multi_array (GPtrArray *p)
+{
+	g_ptr_array_free (p, TRUE);
+}
+
+static void
+free_multi_array_list (GSList *p)
+{
+	g_slist_foreach (p, (GFunc)free_multi_array, NULL);
+	g_slist_free (p);
+}
+
 /**
  * cdn_parser_context_push_selection: (skip)
  *
@@ -3204,7 +3241,10 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 
 			if (context->priv->error_occurred)
 			{
-				return;
+				expansion_context_pop (context);
+				expansion_context_pop (context);
+
+				goto cleanup;
 			}
 
 			for (temp = temps; temp; temp = g_slist_next (temp))
@@ -3237,6 +3277,7 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 		expansion_context_pop (context);
 	}
 
+cleanup:
 	g_slist_foreach (parents, (GFunc)cdn_selection_unref, NULL);
 	g_slist_free (parents);
 
@@ -3245,6 +3286,9 @@ cdn_parser_context_push_selection (CdnParserContext *context,
 	cdn_parser_context_push_objects (context, objs);
 
 	g_slist_free (objs);
+	g_object_unref (selector);
+
+	free_multi_array_list (templates);
 }
 
 static GSList *
@@ -3395,6 +3439,8 @@ create_edges_single (CdnParserContext          *context,
 		expansion_context_pop (context);
 		cdn_expansion_unref (realid);
 
+		g_slist_free (filtered);
+
 		if (!obj)
 		{
 			continue;
@@ -3504,19 +3550,6 @@ create_edges (CdnParserContext          *context,
 	return ret;
 }
 
-static void
-free_multi_array (GPtrArray *p)
-{
-	g_ptr_array_free (p, TRUE);
-}
-
-static void
-free_multi_array_list (GSList *p)
-{
-	g_slist_foreach (p, (GFunc)free_multi_array, NULL);
-	g_slist_free (p);
-}
-
 /**
  * cdn_parser_context_push_node: (skip)
  *
@@ -3555,6 +3588,7 @@ cdn_parser_context_set_node_state (CdnParserContext  *context,
 	gint i = 0;
 
 	g_return_if_fail (CDN_IS_PARSER_CONTEXT (context));
+	g_return_if_fail (states != NULL);
 
 	objects = each_selections (context, FALSE);
 
@@ -3583,6 +3617,8 @@ cdn_parser_context_set_node_state (CdnParserContext  *context,
 		cdn_selection_unref (objects->data);
 		objects = g_slist_delete_link (objects, objects);
 	}
+
+	g_ptr_array_free (states, TRUE);
 }
 
 /**
@@ -3667,6 +3703,21 @@ cdn_parser_context_push_edge (CdnParserContext          *context,
 	{
 		g_object_unref (phase);
 	}
+
+	if (fromto)
+	{
+		if (fromto->data)
+		{
+			g_ptr_array_free (fromto->data, TRUE);
+		}
+
+		if (fromto->next->data)
+		{
+			g_ptr_array_free (fromto->next->data, TRUE);
+		}
+	}
+
+	g_slist_free (fromto);
 
 	free_multi_array_list (templates);
 }
@@ -3901,8 +3952,8 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 			g_slist_free (exprs);
 
 			cdn_node_add (CDN_NODE (cdn_selection_get_object (sel)),
-			               CDN_OBJECT (func),
-			               NULL);
+			              CDN_OBJECT (func),
+			              NULL);
 
 			// Add arguments from the specs
 			for (argit = args; argit; argit = g_slist_next (argit))
@@ -3967,6 +4018,7 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 			funcsel = cdn_selection_new (func,
 			                             expansion_context_peek (context));
 
+			g_object_unref (func);
 			expansion_context_pop (context);
 
 			funcs = g_slist_prepend (funcs, funcsel);
@@ -3995,6 +4047,8 @@ cdn_parser_context_push_function (CdnParserContext  *context,
 	{
 		g_slist_foreach (funcs, (GFunc)cdn_selection_unref, NULL);
 	}
+
+	g_slist_foreach (objects, (GFunc)cdn_selection_unref, NULL);
 
 	g_slist_free (objects);
 	g_slist_free (funcs);
@@ -5281,8 +5335,24 @@ cdn_parser_context_add_layout_position (CdnParserContext  *context,
 			expansion_context_pop (context);
 		}
 
+		g_slist_foreach (objs, (GFunc)cdn_selection_unref, NULL);
+		g_slist_free (objs);
+
 		expansion_context_pop (context);
 		expansion_context_pop (context);
+	}
+
+	if (selector)
+	{
+		g_object_unref (selector);
+	}
+
+	g_ptr_array_free (ptrx, TRUE);
+	g_ptr_array_free (ptry, TRUE);
+
+	if (of)
+	{
+		g_object_unref (of);
 	}
 }
 
@@ -5652,6 +5722,11 @@ cdn_parser_context_debug_selector (CdnParserContext *context,
 
 		expansion_context_pop (context);
 	}
+
+	if (selector)
+	{
+		g_object_unref (selector);
+	}
 }
 
 void
@@ -5699,6 +5774,8 @@ cdn_parser_context_debug_string (CdnParserContext  *context,
 		g_slist_foreach (ret, (GFunc)cdn_expansion_unref, NULL);
 		g_slist_free (ret);
 	}
+
+	g_object_unref (s);
 }
 
 void
@@ -5813,6 +5890,11 @@ cdn_parser_context_delete_selector (CdnParserContext *context,
 
 		g_slist_foreach (ret, (GFunc)cdn_selection_unref, NULL);
 		g_slist_free (ret);
+	}
+
+	if (selector)
+	{
+		g_object_unref (selector);
 	}
 }
 
@@ -6425,6 +6507,16 @@ cdn_parser_context_add_event_set_variable (CdnParserContext  *context,
 		}
 
 		expansion_context_pop (context);
+	}
+
+	if (selector)
+	{
+		g_object_unref (selector);
+	}
+
+	if (value)
+	{
+		g_object_unref (value);
 	}
 }
 

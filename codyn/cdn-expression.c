@@ -380,6 +380,8 @@ cdn_expression_finalize (GObject *object)
 
 	cdn_matrix_destroy (&expression->priv->cached_output);
 
+	cdn_stack_arg_destroy (&expression->priv->retdim);
+
 	G_OBJECT_CLASS (cdn_expression_parent_class)->finalize (object);
 }
 
@@ -5509,7 +5511,7 @@ cdn_expression_compile (CdnExpression     *expression,
 	gboolean wasmod;
 	gboolean dimschanged;
 	gchar *buffer = expression->priv->expression;
-	ParserContext ctx = {(gchar const **)&buffer, context, error, FALSE};
+	ParserContext ctx = {(gchar const **)&buffer, context, error, NULL, FALSE};
 	gboolean ret;
 
 	g_return_val_if_fail (CDN_IS_EXPRESSION (expression), FALSE);
@@ -5556,6 +5558,9 @@ cdn_expression_compile (CdnExpression     *expression,
 			expression->priv->error_at = *(ctx.buffer) - expression->priv->expression + 1;
 		}
 	}
+
+	g_slist_foreach (ctx.stack, (GFunc)g_slist_free, NULL);
+	g_slist_free (ctx.stack);
 
 	if (!ret)
 	{
@@ -6555,7 +6560,7 @@ _cdn_expression_transfer_dependencies (CdnExpression *expression,
 			else
 			{
 				other->priv->depends_on =
-					g_slist_remove_link (other->priv->depends_on,
+					g_slist_delete_link (other->priv->depends_on,
 					                     found);
 			}
 		}

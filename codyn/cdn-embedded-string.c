@@ -580,7 +580,6 @@ resolve_indirection (CdnEmbeddedString   *em,
 		// This is a numbered expansion
 		gchar *flag;
 
-		num = g_match_info_fetch (info, 1);
 		flag = g_match_info_fetch (info, 2);
 
 		flags = get_indirection_flags (flag);
@@ -2269,6 +2268,8 @@ expand_elements_escape (CdnEmbeddedString   *s,
 
 		pos = child->end;
 		child = child->next;
+
+		g_slist_free (items);
 
 		++idx;
 	}

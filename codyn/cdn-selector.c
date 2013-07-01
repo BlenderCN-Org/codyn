@@ -1080,9 +1080,9 @@ selector_select_regex_name (Selector     *selector,
 		                                            NULL);
 
 		ret = g_slist_prepend (ret, childsel);
-		g_match_info_free (info);
 	}
 
+	g_match_info_free (info);
 	g_regex_unref (regex);
 	return ret;
 }
@@ -2661,7 +2661,7 @@ selector_pseudo_sort (CdnSelector *self,
                       Selector    *selector,
                       GSList      *parent)
 {
-	return g_slist_sort (g_slist_copy (parent), (GCompareFunc)sort_selections);
+	return g_slist_sort (copy_selections (parent), (GCompareFunc)sort_selections);
 }
 
 static GSList *
