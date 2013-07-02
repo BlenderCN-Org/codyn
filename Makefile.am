@@ -1,5 +1,9 @@
 SUBDIRS = codyn data tests m4 win32 tools io blender examples
 
+if ENABLE_DOCS
+SUBDIRS += docs
+endif
+
 ACLOCAL_AMFLAGS = -I m4
 
 pkgconfigdir = $(libdir)/pkgconfig
