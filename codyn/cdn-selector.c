@@ -1390,6 +1390,7 @@ selector_pseudo_in_out_name (CdnSelector  *self,
                              CdnSelection *sel)
 {
 	CdnObject *obj;
+	CdnExpansion *ex;
 
 	if (!CDN_IS_EDGE (cdn_selection_get_object (sel)))
 	{
@@ -1403,10 +1404,12 @@ selector_pseudo_in_out_name (CdnSelector  *self,
 		return ret;
 	}
 
-	ret = g_slist_prepend (ret, make_child_selection (sel,
-	                                                  cdn_expansion_new_one (cdn_object_get_id (obj)),
-	                                                  NULL));
+	ex = cdn_expansion_new_one (cdn_object_get_id (obj));
+
+	ret = g_slist_prepend (ret, make_child_selection (sel, ex, NULL));
 	g_object_unref (obj);
+
+	cdn_expansion_unref (ex);
 
 	return ret;
 }
@@ -1830,6 +1833,7 @@ selector_pseudo_recurse (CdnSelector  *self,
 			}
 		}
 
+		g_hash_table_destroy (had);
 		cdn_expansion_context_unref (context);
 	}
 
@@ -2577,6 +2581,8 @@ selector_pseudo_reduce (CdnSelector  *self,
 
 			cdn_expansion_context_add_expansions (sctx, exs);
 			cdn_selection_set_context (sub->data, sctx);
+
+			cdn_expansion_context_unref (sctx);
 
 			g_slist_foreach (exs, (GFunc)cdn_expansion_unref, NULL);
 			g_slist_free (exs);

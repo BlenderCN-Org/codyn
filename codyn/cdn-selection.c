@@ -69,6 +69,8 @@ cdn_selection_unref (CdnSelection *selection)
 		cdn_expansion_context_unref (selection->context);
 	}
 
+	g_free (selection->override_name);
+
 	g_slice_free (CdnSelection, selection);
 }
 

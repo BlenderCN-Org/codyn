@@ -159,6 +159,9 @@ cdn_node_finalize (GObject *object)
 	g_slist_free (node->priv->edges);
 	g_slist_free (node->priv->actors);
 
+	g_free (node->priv->initial_state);
+	g_free (node->priv->state);
+
 	G_OBJECT_CLASS (cdn_node_parent_class)->finalize (object);
 }
 
@@ -1484,10 +1487,19 @@ cdn_node_cdn_clear (CdnObject *object)
 
 	for (child = children; child; child = g_slist_next (child))
 	{
+		cdn_object_clear (CDN_OBJECT (child->data));
 		cdn_node_remove (node, child->data, NULL);
 	}
 
 	g_slist_free (children);
+
+	if (node->priv->self_edge)
+	{
+		cdn_object_clear (CDN_OBJECT (node->priv->self_edge));
+
+		g_object_unref (node->priv->self_edge);
+		node->priv->self_edge = NULL;
+	}
 
 	CDN_OBJECT_CLASS (cdn_node_parent_class)->clear (object);
 }

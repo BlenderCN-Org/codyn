@@ -1924,6 +1924,11 @@ cleanup:
 	{
 		g_object_unref (constraint);
 	}
+
+	if (state)
+	{
+		g_object_unref (state);
+	}
 }
 
 /**
@@ -2081,7 +2086,7 @@ cdn_parser_context_add_action (CdnParserContext  *context,
 					                         phases->data);
 
 					g_free (phases->data);
-					phases = g_slist_next (phases);
+					phases = g_slist_delete_link (phases, phases);
 				}
 
 				cdn_edge_add_action (edge, action);
@@ -2121,6 +2126,11 @@ cleanup:
 	g_ptr_array_free (expressionptr, TRUE);
 
 	clear_annotation (context);
+
+	if (phase)
+	{
+		g_object_unref (phase);
+	}
 }
 
 /**
@@ -2348,6 +2358,8 @@ cdn_parser_context_add_interface (CdnParserContext  *context,
 	g_slist_free (objects);
 
 	g_object_unref (name);
+	g_object_unref (child_name);
+	g_object_unref (property_name);
 }
 
 void
@@ -3572,7 +3584,7 @@ cdn_parser_context_push_node (CdnParserContext  *context,
 	cdn_parser_context_push_objects (context, objects);
 	g_slist_free (objects);
 
-	if (id != NULL)
+	if (id)
 	{
 		g_object_unref (id);
 	}
@@ -4937,6 +4949,8 @@ cdn_parser_context_link_library (CdnParserContext  *context,
 			libs = g_slist_delete_link (libs, libs);
 		}
 	}
+
+	g_object_unref (filename);
 }
 
 /**
@@ -4964,6 +4978,7 @@ cdn_parser_context_push_input_from_path (CdnParserContext  *context,
 
 		if (!ctx || !ctx->objects)
 		{
+			g_object_unref (filename);
 			return;
 		}
 	}
@@ -6432,6 +6447,26 @@ cdn_parser_context_push_event (CdnParserContext  *context,
 	g_slist_free (ret);
 
 	free_multi_array_list (templates);
+
+	if (to_phase)
+	{
+		g_object_unref (to_phase);
+	}
+
+	if (from_phase)
+	{
+		g_object_unref (from_phase);
+	}
+
+	if (condition)
+	{
+		g_object_unref (condition);
+	}
+
+	if (approximation)
+	{
+		g_object_unref (approximation);
+	}
 }
 
 void

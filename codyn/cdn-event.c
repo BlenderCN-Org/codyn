@@ -600,6 +600,8 @@ cdn_event_finalize (GObject *object)
 	                 (GFunc)set_variable_free,
 	                 NULL);
 
+	g_slist_free (self->priv->set_variables);
+
 	if (self->priv->states)
 	{
 		g_hash_table_destroy (self->priv->states);
@@ -749,6 +751,7 @@ cdn_event_compile_impl (CdnObject         *object,
 
 	cdn_compile_context_restore (context);
 	g_object_unref (context);
+
 	if (!extract_condition_parts (event, error))
 	{
 		return FALSE;

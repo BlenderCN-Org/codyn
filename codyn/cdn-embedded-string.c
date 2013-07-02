@@ -1304,7 +1304,6 @@ apply_filters_rev (CdnEmbeddedString *s,
 	GPtrArray *ptr;
 	gchar **ptrs;
 	GSList *part;
-	GSList *fitem;
 	CdnExpansionContext *newctx;
 
 	filt = find_filter (s, position);
@@ -1317,7 +1316,6 @@ apply_filters_rev (CdnEmbeddedString *s,
 	items = g_slist_reverse (items);
 
 	// Add one expansion of all the parts
-	all = cdn_expansion_new (NULL);
 	ptr = g_ptr_array_new ();
 
 	for (part = items; part; part = g_slist_next (part))
@@ -1336,9 +1334,11 @@ apply_filters_rev (CdnEmbeddedString *s,
 
 	cdn_expansion_unref (all);
 
-	for (fitem = filt; fitem; fitem = g_slist_next (fitem))
+	while (filt)
 	{
-		Node *n = fitem->data;
+		Node *n = filt->data;
+
+		filt = g_slist_delete_link (filt, filt);
 
 		/* First filter here what we have until now */
 		if (n->type == CDN_EMBEDDED_STRING_NODE_REDUCE)
@@ -1360,7 +1360,6 @@ apply_filters_rev (CdnEmbeddedString *s,
 	}
 
 	cdn_expansion_context_unref (newctx);
-
 	return g_slist_reverse (items);
 }
 
