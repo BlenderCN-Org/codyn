@@ -1,0 +1,17 @@
+node "node{1,2}"
+{
+    R = 1
+
+    θ' = "2 ∙ π"
+    r' = "(R - r)"
+
+    x = "r ∙ cos(θ)"
+}
+
+<bidirectional>
+edge from "node1" to "node2"
+{
+    Φ = ["0.25 ∙ π", "-0.25 ∙ π"]
+
+    θ' += "sin(output.θ - input.θ + Φ)"
+}

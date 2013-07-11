@@ -1,0 +1,24 @@
+templates
+{
+    node "oscillator"
+    {
+        R = 1
+
+        θ' = "2 ∙ π"
+        r' = "(R - r)"
+
+        x = "r ∙ cos(θ)"
+    }
+
+    edge "coupling"
+    {
+        Φ = ["0.25 ∙ π", "-0.25 ∙ π"]
+
+        φ' += "sin(output.θ - input.θ + Φ)"
+    }
+}
+
+node "node{1,2}" : "oscillator" {}
+
+<bidirectional>
+edge from "node1" to "node2" : "coupling" {}

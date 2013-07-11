@@ -1,0 +1,68 @@
+templates
+{
+    node "oscillator"
+    {
+        ## The desired amplitude
+        R = 1
+
+        ## A positive constant
+        a = 1
+
+        ## The desired frequency
+        ν = 1
+
+        ## Phase state differential equation
+        θ' = "2 ∙ π ∙ ν"
+
+        ## Amplitude state differential equation
+        r'' = "a ∙ (a / 4 ∙ (R - r) - r')"
+
+        ## Oscillator output
+        x = "r ∙ (1 + cos(θ))"
+    }
+
+    edge "coupling"
+    {
+        ## Coupling weight
+        w = "1"
+
+        ## Coupling bias
+        Φ = "0"
+
+        ## Diffusive coupling term on the phase
+        θ' += "r ∙ w ∙ sin(θ - output.θ - Φ)"
+    }
+}
+
+defines
+{
+    # Define the number of oscillators to generate, if not yet defined. This
+    # define can afterwards be used anywhere else by writing @n.
+    n ?= 8
+}
+
+# Generate @n oscillators for both right and left sides of the chain
+node "oscillator_{1:@n}_{right,left}" : "oscillator"
+{
+}
+
+# Set the (x, y) layout of the nodes so they appear as a chain when visualized
+layout "oscillator_{1:@n}_{right,left}" at $(@2[!] ∙ 3), $(@1 ∙ 2)
+
+# up/down coupling to generate a traveling wave
+<bidirectional>
+edge from "oscillator_{1:@n}_{right,left}"
+       to "oscillator_$(@1 + 1)_@2" : "coupling"
+{
+    d = ["1", "-1"]
+    Φ = "d ∙ 2 ∙ π / @n"
+}
+
+# left/right coupling to generate anti-phase coupling
+<bidirectional>
+edge from "oscillator_{1:@n}_right"
+       to "oscillator_@1_left" : "coupling"
+{
+    d = ["1", "-1"]
+    Φ = "d ∙ π"
+}

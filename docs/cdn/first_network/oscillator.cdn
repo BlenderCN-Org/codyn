@@ -1,0 +1,24 @@
+templates
+{
+    node "oscillator"
+    {
+        ## The desired amplitude
+        R = 1
+
+        ## A positive constant
+        a = 1
+
+        ## The desired frequency
+        ν = 1
+
+        ## Phase state differential equation
+        θ' = "2 ∙ π ∙ ν"
+
+        ## Amplitude state differential equation
+        r'' = "a ∙ (a / 4 ∙ (R - r) - r')"
+
+        ## Oscillator output
+        x = "r ∙ (1 + cos(θ))"
+    }
+}
+
