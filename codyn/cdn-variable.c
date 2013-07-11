@@ -343,8 +343,14 @@ set_diff_of (CdnVariable *variable,
 	{
 		if (variable->priv->diff_of->priv->diff_for == variable)
 		{
+			g_object_remove_weak_pointer (G_OBJECT (variable),
+			                              (gpointer *)&variable->priv->diff_of->priv->diff_for);
+
 			variable->priv->diff_of->priv->diff_for = NULL;
 		}
+
+		g_object_remove_weak_pointer (G_OBJECT (variable->priv->diff_of),
+		                              (gpointer *)&variable->priv->diff_of);
 
 		variable->priv->diff_of = NULL;
 	}
@@ -352,7 +358,17 @@ set_diff_of (CdnVariable *variable,
 	if (diff_of)
 	{
 		variable->priv->diff_of = diff_of;
+
+		if (diff_of->priv->diff_for)
+		{
+			g_object_remove_weak_pointer (G_OBJECT (diff_of->priv->diff_for),
+			                              (gpointer *)&diff_of->priv->diff_for);
+		}
+
 		diff_of->priv->diff_for = variable;
+
+		g_object_add_weak_pointer (G_OBJECT (diff_of), (gpointer *)&variable->priv->diff_of);
+		g_object_add_weak_pointer (G_OBJECT (variable), (gpointer *)&diff_of->priv->diff_for);
 	}
 }
 
