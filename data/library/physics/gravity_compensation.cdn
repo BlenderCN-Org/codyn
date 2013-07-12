@@ -1,0 +1,23 @@
+require "findbodies.cdn"
+require "algorithms/rnea.cdn"
+
+templates
+{
+    node "physics"
+    {
+        node "rnea"
+        {
+                  q = "null"                            | in
+                  τ = "C"                               | out
+
+              force = "spI ∙ acceleration + forceChild"
+        }
+    }
+}
+
+edge has-template(physics.joint)
+{
+    acceleration <= "output.transform ∙ acceleration"
+}
+
+# vi:ex:ts=4:et
