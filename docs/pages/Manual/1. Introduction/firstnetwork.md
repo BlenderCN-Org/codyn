@@ -171,6 +171,32 @@ In our couplings we use this to set the expression of the `d` variable to
 `1` and `-1` for respectively the up-to-down and down-to-up couplings (and
 similarly for left-to-right and right-to-left).
 
+## Generating the segments
+The output of the chain of oscillators (for example joint angle) is actually
+the subtraction of the output of two ipsilateral oscillators. To get this output
+we will introduce a new segment node calculating this output. We first define
+a new segment template as follows:
+
+<<<cdn/first_network/segment_template.cdn>>>
+
+This template simply has two variables for `left` and `right`, and an `x`
+variable computing the difference of the two. Note the divisiion by 2 to scale
+the output. Next we will create the segment nodes in the network and couple them
+to the oscillators.
+
+<<<cdn/first_network/segment.cdn>>>
+
+Here we have introduced one new thing. In codyn, edges are not restricted to
+act on only state variables. If you want to *transmit* information from one
+node to another through an edge, then you can do this using `x <= expression` syntax in the
+edge. This syntax basically assigns the value of `expression` to the variable `x`
+in the `output` of the edge. We use this feature here to have access to the
+`x` of the right and left oscillator of the edge in the segment node.
+
+Note the use of `@@2` (two @'s) to reference an expansion in the second level of the
+context stack. The value of `@@2` is thus respectively `right` and `left`,
+referencing the second group in the expansion of `"oscillator_{1:@n}_{right,left}"`.
+
 ## Complete network
 The following code shows the complete working network with annotations.
 
