@@ -11,4 +11,4 @@ node "oscillator_{1:@n}_{right,left}" : "oscillator"
 }
 
 # Set the (x, y) layout of the nodes so they appear as a chain when visualized
-layout "oscillator_{1:@n}_{right,left}" at $(@2[!] ∙ 3), $(@1 ∙ 2)
+layout "oscillator_{1:@n}_{right,left}" at $(@2[!] ∙ 4), $(@1 ∙ 3)

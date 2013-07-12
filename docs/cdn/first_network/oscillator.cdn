@@ -11,6 +11,9 @@ templates
         ## The desired frequency
         ν = 1
 
+        ## Randomized value for the phase
+        θ = "rand(-π, π)"
+
         ## Phase state differential equation
         θ' = "2 ∙ π ∙ ν"
 

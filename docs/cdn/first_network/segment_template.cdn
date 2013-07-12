@@ -1,0 +1,10 @@
+templates
+{
+    node "segment"
+    {
+        right = "0"
+        left = "0"
+
+        x = "(right - left) / 2"
+    }
+}
