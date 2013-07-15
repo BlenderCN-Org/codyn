@@ -5,6 +5,7 @@ library_DATA = \
 	contacts.cdn \
 	dynamics.cdn \
 	findbodies.cdn \
+	gravity_compensation.cdn \
 	inertia.cdn \
 	inverse_dynamics.cdn \
 	jacobian.cdn \
