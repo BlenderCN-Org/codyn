@@ -137,6 +137,12 @@ templates
             ## Body jacobian column in base
             bodyJacobian = "localToBaseTransform ∙ motionSubspace"
 
+            ## Kinetic energy
+            T = "0.5 ∙ velocityᵀ ∙ spI ∙ velocity"
+
+            ## Potential energy
+            V = "m ∙ LocalPointToBase(com)ᵀ ∙ g"
+
             ## Transform from the local coordinate system to base coordinate
             ## system
             baseToLocalTransform = "transform"
