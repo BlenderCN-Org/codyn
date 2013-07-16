@@ -145,7 +145,7 @@ node "Spatial"
         0, 0, 0, 1
     ]"
 
-    TransformPoint3(sp, x) = "Rotation3(sp) * x + Translation3(sp)"
+    TransformPoint3(sp, x) = "Rotation3(sp) ∙ x + Translation3(sp)"
 
     ## Create a spatial transform containing the rotation part of the provided
     ## spatial transform
