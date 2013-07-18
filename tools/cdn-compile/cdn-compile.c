@@ -77,9 +77,8 @@ static GOptionEntry entries[] = {
 };
 
 static void
-display_variable (CdnVariable *v, gchar const *indent)
+display_variable (CdnVariable *v, gchar const *indent, gchar const *name)
 {
-	gchar *name;
 	gint r;
 	gint c;
 	gint i;
@@ -88,8 +87,16 @@ display_variable (CdnVariable *v, gchar const *indent)
 	CdnExpression const *expr;
 	CdnExpressionTreeIter *iter;
 	CdnDimension dim;
+	gchar *n;
 
-	name = cdn_variable_get_full_name_for_display (v);
+	if (name == NULL)
+	{
+		n = cdn_variable_get_full_name_for_display (v);
+	}
+	else
+	{
+		n = g_strdup (name);
+	}
 
 	expr = cdn_variable_get_expression (v);
 	iter = cdn_expression_tree_iter_new (expr);
@@ -97,12 +104,12 @@ display_variable (CdnVariable *v, gchar const *indent)
 
 	g_printf ("%s%s [%d-by-%d]: %s\n",
 	          indent,
-	          name,
+	          n,
 	          dim.rows,
 	          dim.columns,
 	          cdn_expression_tree_iter_to_string_dbg (iter));
 
-	g_free (name);
+	g_free (n);
 	cdn_expression_tree_iter_free (iter);
 
 	ret = cdn_variable_get_values (v);
@@ -200,6 +207,25 @@ display_function (CdnFunction *f)
 	cdn_expression_tree_iter_free (iter);
 }
 
+static gint
+compare_variables (CdnVariable *v1,
+                   CdnVariable *v2)
+{
+	gchar *n1;
+	gchar *n2;
+	gint ret;
+
+	n1 = g_utf8_casefold (cdn_variable_get_name (v1), -1);
+	n2 = g_utf8_casefold (cdn_variable_get_name (v2), -1);
+
+	ret = g_utf8_collate (n1, n2);
+
+	g_free (n1);
+	g_free (n2);
+
+	return ret;
+}
+
 static void
 display_object (CdnObject *o)
 {
@@ -211,14 +237,50 @@ display_object (CdnObject *o)
 	g_printf ("Object %s\n", id);
 
 	vars = cdn_object_get_variables (o);
+	vars = g_slist_sort (vars, (GCompareFunc)compare_variables);
 
 	while (vars)
 	{
 		CdnVariable *v = vars->data;
 		vars = g_slist_delete_link (vars, vars);
 
-		display_variable (v, "  ");
+		display_variable (v, "  ", NULL);
 		g_printf ("\n");
+	}
+
+	if (CDN_IS_NODE (o))
+	{
+		CdnVariableInterface *iface;
+		gchar **names;
+		gchar **name;
+		gchar *objfull;
+
+		iface = cdn_node_get_variable_interface (CDN_NODE (o));
+		names = cdn_variable_interface_get_names (iface);
+
+		objfull = cdn_object_get_full_id_for_display (o);
+
+		if (names && *names)
+		{
+			g_printf("\n  Interface variables:\n");
+		}
+
+		for (name = names; name && *name; ++name)
+		{
+			gchar *fid;
+
+			fid = g_strconcat (objfull, ".", *name, NULL);
+
+			display_variable (cdn_variable_interface_lookup (iface, *name),
+			                  "    ",
+			                  fid);
+
+			g_free (*name);
+			g_free (fid);
+		}
+
+		g_free (names);
+		g_free (objfull);
 	}
 
 	g_free (id);
@@ -259,7 +321,7 @@ display_value (CdnNetwork  *network,
 
 		if (CDN_IS_VARIABLE (v))
 		{
-			display_variable (v, "");
+			display_variable (v, "", NULL);
 		}
 		else if (CDN_IS_FUNCTION (v))
 		{
@@ -515,7 +577,7 @@ main (int argc, char *argv[])
 	ctx = g_option_context_new ("NETWORK [--] [PARAMETER...] - compile cdn network");
 
 	display = g_ptr_array_new_with_free_func ((GDestroyNotify)g_free);
-	precision = g_strdup ("% 7.4f");
+	precision = g_strdup ("% 9.4f");
 
 	g_option_context_set_summary (ctx,
 	                              "Use a dash '-' for the network name to read from standard input.\n"
