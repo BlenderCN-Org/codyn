@@ -4,6 +4,9 @@ require "findbodies.cdn"
 node "jacobian"
 {
     J = "zeros(6, @numdof)"
+    Jcom = "zeros(6, @numdof)"
+
+    totalMass = "{@bodies|@1.m||@0 + @1}"
 }
 
 node | <body>:@bodies | sort | parent
@@ -13,6 +16,7 @@ node | <body>:@bodies | sort | parent
         # Transmit jacobian columns corresponding to this DOF into J
         defines { j = "$(@body[!] + 1)"}
         "J[[0;1;2;3;4;5], [{@bodydofidx[@j]:+$(@bodydof[@j] - 1)||@0\,@1}]]" <= "bodyJacobian"
+        "Jcom[[0;1;2;3;4;5], [{@bodydofidx[@j]:+$(@bodydof[@j] - 1)||@0\,@1}]]" <= "bodyJacobianCom ∙ m / output.totalMass"
     }
 }
 

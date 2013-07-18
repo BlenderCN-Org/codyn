@@ -137,6 +137,9 @@ templates
             ## Body jacobian column in base
             bodyJacobian = "localToBaseTransform ∙ motionSubspace"
 
+            ## CoM jacobian column in base
+            bodyJacobianCom = "localToBaseTransform ∙ Spatial.Translation(com) ∙ motionSubspace"
+
             ## com in base coordinates
             comInBase = "LocalPointToBase(com)"
 
