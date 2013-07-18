@@ -158,6 +158,7 @@ templates
                                       Spatial.TranslateForce(f, p)"
 
             LocalPointToBase(p) = "Spatial.TransformPoint3(localToBaseTransform, p)"
+            BasePointToLocal(p) = "Spatial.TransformPoint3(baseToLocalTransform, p)"
 
             BaseForceAtLocalToLocal(f, p) = "BaseForceToLocal(f,
                                                               LocalPointToBase(p))"
