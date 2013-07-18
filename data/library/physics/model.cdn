@@ -5,6 +5,9 @@ node "model"
     ## Total mass of the system
     totalMass = "{@bodies|@1.m||@0 + @1}"
 
+    ## Center of mass of the system in base
+    com = "({@bodies|(@1.comInBase ∙ @1.m)||@0 + @1}) / totalMass"
+
     ## All the q's
     q = "[{@bodies|@1.q||@0;@1}]"
 
