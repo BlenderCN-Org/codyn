@@ -181,8 +181,8 @@ templates
 
         edge "jacobianRebased"
         {
-            r = "input.jacobianLocationInBase - output.jacobianLocationInBase"
-            J = "input.jacobianJ - Spatial.Translation(r) ∙ output.jacobianJ"
+            r = "output.jacobianLocationInBase - input.jacobianLocationInBase"
+            J = "output.jacobianJ - Spatial.Translation(r) ∙ input.jacobianJ"
         }
     }
 }
