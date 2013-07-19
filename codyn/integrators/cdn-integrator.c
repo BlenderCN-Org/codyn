@@ -601,6 +601,15 @@ evaluate_discrete (CdnIntegrator *integrator)
 
 	actions = cdn_integrator_state_phase_discrete_edge_actions (integrator->priv->state);
 	cdn_integrator_simulation_step_integrate (integrator, actions);
+}
+
+static void
+update_discrete (CdnIntegrator *integrator)
+{
+	GSList const *variables;
+	GSList const *variable;
+
+	variables = cdn_integrator_state_discrete_variables (integrator->priv->state);
 
 	for (variable = variables; variable; variable = g_slist_next (variable))
 	{
@@ -635,7 +644,7 @@ cdn_integrator_step_impl (CdnIntegrator *integrator,
 {
 	gdouble elapsed;
 
-	evaluate_discrete (integrator);
+	update_discrete (integrator);
 
 	handle_events (integrator, t, &timestep);
 
@@ -1305,6 +1314,8 @@ cdn_integrator_step_prepare (CdnIntegrator *integrator,
 
 	cdn_variable_set_value (integrator->priv->property_time, t);
 	cdn_variable_set_value (integrator->priv->property_timestep, timestep);
+
+	evaluate_discrete (integrator);
 
 	return TRUE;
 }
