@@ -1,0 +1,16 @@
+{
+    defines
+    {
+                 tip ?= "output"
+         tipJacobian ?= "@tip.jacobianJ"
+         tipLocation ?= "@tip.jacobianLocationInBase"
+                base ?= "input"
+        baseJacobian ?= "@base.jacobianJ"
+        baseLocation ?= "@base.jacobianLocationInBase"
+                 var ?= "J"
+    }
+
+    @var = "@tipJacobian - Spatial.Translation(@tipLocation - @baseLocation) ∙ @baseJacobian"
+}
+
+# vi:ts=4:et
